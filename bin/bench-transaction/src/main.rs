@@ -6,7 +6,11 @@ use anyhow::{Context, Result};
 use miden_objects::transaction::TransactionMeasurements;
 
 mod context_setups;
-use context_setups::{tx_consume_single_p2id, tx_consume_two_p2id_notes, tx_create_single_p2id};
+use context_setups::{
+    tx_consume_single_p2id_note,
+    tx_consume_two_p2id_notes,
+    tx_create_single_p2id_note,
+};
 
 mod cycle_counting_benchmarks;
 use cycle_counting_benchmarks::ExecutionBenchmark;
@@ -22,7 +26,7 @@ fn main() -> Result<()> {
     let benchmark_results = vec![
         (
             ExecutionBenchmark::ConsumeSingleP2ID,
-            tx_consume_single_p2id()?
+            tx_consume_single_p2id_note()?
                 .execute_blocking()
                 .map(TransactionMeasurements::from)?
                 .into(),
@@ -36,7 +40,7 @@ fn main() -> Result<()> {
         ),
         (
             ExecutionBenchmark::CreateSingleP2ID,
-            tx_create_single_p2id()?
+            tx_create_single_p2id_note()?
                 .execute_blocking()
                 .map(TransactionMeasurements::from)?
                 .into(),

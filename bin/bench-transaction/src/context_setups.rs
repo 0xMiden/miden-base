@@ -9,7 +9,7 @@ use miden_testing::{Auth, MockChain, TransactionContext};
 
 /// Returns the transaction context which could be used to run the transaction which creates a
 /// single P2ID note.
-pub fn tx_create_single_p2id() -> Result<TransactionContext> {
+pub fn tx_create_single_p2id_note() -> Result<TransactionContext> {
     let mut builder = MockChain::builder();
     let fungible_asset = FungibleAsset::mock(150);
     let account = builder.add_existing_wallet_with_assets(Auth::BasicAuth, [fungible_asset])?;
@@ -67,7 +67,7 @@ pub fn tx_create_single_p2id() -> Result<TransactionContext> {
 
 /// Returns the transaction context which could be used to run the transaction which consumes a
 /// single P2ID note into a new basic wallet.
-pub fn tx_consume_single_p2id() -> Result<TransactionContext> {
+pub fn tx_consume_single_p2id_note() -> Result<TransactionContext> {
     // Create assets
     let fungible_asset: Asset = FungibleAsset::mock(123);
 

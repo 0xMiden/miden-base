@@ -2,8 +2,8 @@ use std::hint::black_box;
 use std::time::Duration;
 
 use anyhow::Result;
-use bench_transaction::context_setups::{tx_consume_single_p2id, tx_consume_two_p2id_notes};
-use criterion::{Criterion, SamplingMode, criterion_group, criterion_main};
+use bench_transaction::context_setups::{tx_consume_single_p2id_note, tx_consume_two_p2id_notes};
+use criterion::{BatchSize, Criterion, SamplingMode, criterion_group, criterion_main};
 use miden_objects::transaction::{ExecutedTransaction, ProvenTransaction};
 use miden_tx::LocalTransactionProver;
 
@@ -36,19 +36,33 @@ fn core_benchmarks(c: &mut Criterion) {
         .warm_up_time(Duration::from_millis(1000));
 
     execute_group.bench_function(BENCH_EXECUTE_TX_CONSUME_SINGLE_P2ID, |b| {
-        let tx_context = tx_consume_single_p2id()
-            .expect("failed to create a context which consumes single P2ID note");
-
-        // benchmark only tx execution
-        b.iter(|| black_box(tx_context.clone().execute_blocking()));
+        b.iter_batched(
+            || {
+                // prepare the transaction context
+                tx_consume_single_p2id_note()
+                    .expect("failed to create a context which consumes single P2ID note")
+            },
+            |tx_context| {
+                // benchmark the transaction execution
+                black_box(tx_context.execute_blocking())
+            },
+            BatchSize::SmallInput,
+        );
     });
 
     execute_group.bench_function(BENCH_EXECUTE_TX_CONSUME_TWO_P2ID, |b| {
-        let tx_context = tx_consume_two_p2id_notes()
-            .expect("failed to create a context which consumes two P2ID notes");
-
-        // benchmark only tx execution
-        b.iter(|| black_box(tx_context.clone().execute_blocking()));
+        b.iter_batched(
+            || {
+                // prepare the transaction context
+                tx_consume_two_p2id_notes()
+                    .expect("failed to create a context which consumes two P2ID notes")
+            },
+            |tx_context| {
+                // benchmark the transaction execution
+                black_box(tx_context.execute_blocking())
+            },
+            BatchSize::SmallInput,
+        );
     });
 
     execute_group.finish();
@@ -64,33 +78,41 @@ fn core_benchmarks(c: &mut Criterion) {
         .warm_up_time(Duration::from_millis(1000));
 
     execute_and_prove_group.bench_function(BENCH_EXECUTE_AND_PROVE_TX_CONSUME_SINGLE_P2ID, |b| {
-        let tx_context = tx_consume_single_p2id()
-            .expect("failed to create a context which consumes single P2ID note");
-
-        // benchmark tx execution and proving
-        b.iter(|| {
-            black_box(prove_transaction(
-                tx_context
-                    .clone()
-                    .execute_blocking()
-                    .expect("execution of the single P2ID note consumption tx failed"),
-            ))
-        });
+        b.iter_batched(
+            || {
+                // prepare the transaction context
+                tx_consume_single_p2id_note()
+                    .expect("failed to create a context which consumes single P2ID note")
+            },
+            |tx_context| {
+                // benchmark the transaction execution and proving
+                black_box(prove_transaction(
+                    tx_context
+                        .execute_blocking()
+                        .expect("execution of the single P2ID note consumption tx failed"),
+                ))
+            },
+            BatchSize::SmallInput,
+        );
     });
 
     execute_and_prove_group.bench_function(BENCH_EXECUTE_AND_PROVE_TX_CONSUME_TWO_P2ID, |b| {
-        let tx_context = tx_consume_two_p2id_notes()
-            .expect("failed to create a context which consumes two P2ID notes");
-
-        // benchmark tx execution and proving
-        b.iter(|| {
-            black_box(prove_transaction(
-                tx_context
-                    .clone()
-                    .execute_blocking()
-                    .expect("execution of the two P2ID note consumption tx failed"),
-            ))
-        });
+        b.iter_batched(
+            || {
+                // prepare the transaction context
+                tx_consume_two_p2id_notes()
+                    .expect("failed to create a context which consumes two P2ID notes")
+            },
+            |tx_context| {
+                // benchmark the transaction execution and proving
+                black_box(prove_transaction(
+                    tx_context
+                        .execute_blocking()
+                        .expect("execution of the two P2ID note consumption tx failed"),
+                ))
+            },
+            BatchSize::SmallInput,
+        );
     });
 
     execute_and_prove_group.finish();
