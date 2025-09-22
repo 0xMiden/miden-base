@@ -366,7 +366,7 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
     // Then add each public key
     for public_key in new_public_keys.iter().rev() {
         let key_word: Word = (*public_key).into();
-        config_and_pubkeys_vector.extend_from_slice(&key_word.as_elements());
+        config_and_pubkeys_vector.extend_from_slice(key_word.as_elements());
     }
 
     // Hash the vector to create MULTISIG_CONFIG_HASH
@@ -374,7 +374,7 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
 
     // Insert the vector of config and public keys into the advice map using MULTISIG_CONFIG_HASH as
     // the key
-    advice_map.insert(multisig_config_hash.into(), config_and_pubkeys_vector);
+    advice_map.insert(multisig_config_hash, config_and_pubkeys_vector);
 
     // Create a transaction script that calls the update_signers procedure
     let tx_script_code = "
@@ -393,7 +393,7 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
     };
 
     // Pass the MULTISIG_CONFIG_HASH as the tx_script_args
-    let tx_script_args: Word = multisig_config_hash.into();
+    let tx_script_args: Word = multisig_config_hash;
 
     // Execute transaction without signatures first to get tx summary
     let tx_context_init = mock_chain
