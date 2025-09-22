@@ -1624,11 +1624,11 @@ export.set_empty_initial_storage_slots
         # => [slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
 
         # compute init slot ptr
-        dup dup.3 add
+        dup mul.8 dup.3 add
         # => [init_slot_ptr, slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
 
         # compute current slot ptr
-        dup.1 dup.3 add
+        dup.1 mul.8 dup.3 add
         # => [current_slot_ptr, init_slot_ptr, slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
 
         # load slot metadata from current ptr (which is offset by one word)
@@ -1667,11 +1667,11 @@ export.set_empty_initial_storage_slots
         end
         # => [slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
 
-        add.8
+        add.1
         # => [next_slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
 
         # slot index and num_slots are guaranteed to fit into a u32
-        dup dup.4 u32lt
+        dup dup.4 neq
         # => [should_continue, next_slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
     end
     # => [next_slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
