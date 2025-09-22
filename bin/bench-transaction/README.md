@@ -59,7 +59,7 @@ This command will run both the cycle counting and the time counting benchmarks.
 cargo run --bin bench-transaction
 
 # Run the time counting benchmarks
-cargo bench --bin bench-transaction --bench proving_benchmarks
+cargo bench --bin bench-transaction --bench time_counting_benchmarks
 ```
 
 ## License
