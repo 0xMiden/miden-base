@@ -1,6 +1,5 @@
 use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
-use std::fs::DirEntry;
 
 use anyhow::Context;
 use miden_lib::account::wallets::BasicWallet;

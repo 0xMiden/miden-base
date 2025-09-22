@@ -1617,7 +1617,7 @@ export.set_empty_initial_storage_slots
     # => [slot_idx = 0, current_slots_ptr, init_slots_ptr, num_slots]
 
     # enter loop if account has at least one storage slot
-    dup.1 neq.0
+    dup.3 neq.0
     # => [should_loop, slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
 
     while.true
