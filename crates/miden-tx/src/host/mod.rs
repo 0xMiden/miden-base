@@ -1196,7 +1196,7 @@ pub(super) enum TransactionEventData {
         current_account_id: AccountId,
         /// The root of the storage map in the account at the beginning of the transaction.
         map_root: Word,
-        /// The unhashed map key for which a witness is requested.
+        /// The raw map key for which a witness is requested.
         map_key: Word,
     },
 }
