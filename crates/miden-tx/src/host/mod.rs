@@ -234,25 +234,25 @@ where
             }
 
             TransactionEvent::AccountVaultBeforeAddAsset => {
-                Self::on_account_vault_before_add_or_remove_asset(process)
+                self.on_account_vault_before_add_or_remove_asset(process)
             },
             TransactionEvent::AccountVaultAfterAddAsset => {
                 self.on_account_vault_after_add_asset(process).map(|_| TransactionEventHandling::Handled(Vec::new()))
             },
 
             TransactionEvent::AccountVaultBeforeRemoveAsset => {
-                Self::on_account_vault_before_add_or_remove_asset(process)
+                self.on_account_vault_before_add_or_remove_asset(process)
             },
             TransactionEvent::AccountVaultAfterRemoveAsset => {
                 self.on_account_vault_after_remove_asset(process).map(|_| TransactionEventHandling::Handled(Vec::new()))
             },
 
             TransactionEvent::AccountVaultBeforeGetBalanceEvent => {
-                Self::on_account_vault_before_get_balance(process)
+                self.on_account_vault_before_get_balance(process)
             },
 
             TransactionEvent::AccountVaultBeforeHasNonFungibleAssetEvent => {
-                Self::on_account_vault_before_has_non_fungible_asset(process)
+                self.on_account_vault_before_has_non_fungible_asset(process)
             }
 
             TransactionEvent::AccountStorageBeforeGetMapItem => {
@@ -793,6 +793,7 @@ where
     ///
     /// Expected stack state: `[ASSET, account_vault_root_ptr]`
     pub fn on_account_vault_before_add_or_remove_asset(
+        &self,
         process: &ProcessState,
     ) -> Result<TransactionEventHandling, TransactionKernelError> {
         let asset: Asset = process.get_stack_word(0).try_into().map_err(|source| {
@@ -821,7 +822,7 @@ where
                 ))
             })?;
 
-        Self::on_account_vault_asset_accessed(process, asset, current_vault_root)
+        self.on_account_vault_asset_accessed(process, asset, current_vault_root)
     }
 
     /// Extracts the asset that is being removed from the account's vault from the process state
@@ -851,6 +852,7 @@ where
     ///
     /// Expected stack state: `[faucet_id_prefix, faucet_id_suffix, vault_root_ptr]`
     pub fn on_account_vault_before_get_balance(
+        &self,
         process: &ProcessState,
     ) -> Result<TransactionEventHandling, TransactionKernelError> {
         let stack_top = process.get_stack_word(0);
@@ -873,7 +875,7 @@ where
             )
         })?;
 
-        Self::on_account_vault_asset_accessed(process, asset.into(), vault_root)
+        self.on_account_vault_asset_accessed(process, asset.into(), vault_root)
     }
 
     /// Checks if the necessary witness for accessing the asset is already in the merkle store,
@@ -881,6 +883,7 @@ where
     ///
     /// Expected stack state: `[ASSET, vault_root_ptr]`
     pub fn on_account_vault_before_has_non_fungible_asset(
+        &self,
         process: &ProcessState,
     ) -> Result<TransactionEventHandling, TransactionKernelError> {
         let asset_word = process.get_stack_word(0);
@@ -891,12 +894,13 @@ where
         let vault_root_ptr = process.get_stack_item(4);
         let vault_root = Self::get_vault_root(process, vault_root_ptr)?;
 
-        Self::on_account_vault_asset_accessed(process, asset, vault_root)
+        self.on_account_vault_asset_accessed(process, asset, vault_root)
     }
 
     /// Checks if the necessary witness for accessing the provided asset is already in the merkle
     /// store, and if not, extracts all necessary data for requesting it.
     fn on_account_vault_asset_accessed(
+        &self,
         process: &ProcessState,
         asset: Asset,
         current_vault_root: Word,
@@ -904,6 +908,10 @@ where
         let leaf_index = AssetVault::vault_key_to_leaf_index(asset.vault_key());
         let current_account_id = Self::get_current_account_id(process)?;
 
+        // Note that we check whether a merkle path for the current vault root is present, not
+        // necessarily for the root we are going to request. This is because the end goal is to
+        // enable access to an asset against the current vault root, and so if this
+        // condition is already satisfied, there is nothing to request.
         if Self::advice_provider_has_merkle_path::<{ AssetVault::DEPTH }>(
             process,
             current_vault_root,
@@ -912,11 +920,19 @@ where
             // If the merkle path is already in the store there is nothing to do.
             Ok(TransactionEventHandling::Handled(Vec::new()))
         } else {
+            // For the native account we need to explicitly request the initial vault root, while
+            // for foreign accounts the current vault root is always the initial one.
+            let vault_root = if current_account_id == self.initial_account_header().id() {
+                self.initial_account_header().vault_root()
+            } else {
+                current_vault_root
+            };
+
             // If the merkle path is not in the store return the data to request it.
             Ok(TransactionEventHandling::Unhandled(
                 TransactionEventData::AccountVaultAssetWitness {
                     current_account_id,
-                    current_vault_root,
+                    vault_root,
                     asset,
                 },
             ))
@@ -1169,8 +1185,8 @@ pub(super) enum TransactionEventData {
     AccountVaultAssetWitness {
         /// The account ID for whose vault a witness is requested.
         current_account_id: AccountId,
-        /// The current vault root identifying the asset vault from which a witness is requested.
-        current_vault_root: Word,
+        /// The vault root identifying the asset vault from which a witness is requested.
+        vault_root: Word,
         /// The asset for which a witness is requested.
         asset: Asset,
     },
