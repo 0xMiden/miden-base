@@ -4,7 +4,7 @@ use alloc::string::ToString;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use miden_objects::account::AuthSecretKey;
+use miden_objects::account::{AuthSecretKey, Signature};
 use miden_objects::crypto::SequentialCommit;
 use miden_objects::transaction::TransactionSummary;
 use miden_objects::{Felt, Hasher, Word};
@@ -12,7 +12,6 @@ use miden_processor::FutureMaybeSend;
 use rand::Rng;
 use tokio::sync::RwLock;
 
-use super::signatures::Signature;
 use crate::errors::AuthenticationError;
 use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
