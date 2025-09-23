@@ -142,7 +142,7 @@ pub fn compute_current_commitment() -> miette::Result<()> {
     tx_context
         .execute_blocking()
         .into_diagnostic()
-        .wrap_err("failed to execute code")?;
+        .wrap_err("failed to execute transaction")?;
 
     Ok(())
 }
