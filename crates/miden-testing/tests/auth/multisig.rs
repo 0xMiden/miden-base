@@ -476,7 +476,7 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
     assert_eq!(
         threshold_config_storage[1],
         Felt::new(num_of_approvers),
-        "Threshold was not updated correctly"
+        "Num approvers was not updated correctly"
     );
 
     // Extract public keys using the interface function

@@ -77,7 +77,7 @@ end
 #! Inputs:
 #!   Operand stack: [MULTISIG_CONFIG_HASH] - the hash of the threshold and new public key vector
 #!   Advice map: {
-#!     MULTISIG_CONFIG_HASH => [MULTISIG_CONFIG, PUB_KEY_0, PUB_KEY_1, PUB_KEY_N]
+#!     MULTISIG_CONFIG_HASH => [CONFIG, PUB_KEY_N, PUB_KEY_N-1, ..., PUB_KEY_0]
 #!   }
 #! Outputs:
 #!   Operand stack: []
