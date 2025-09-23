@@ -6,7 +6,7 @@ use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::AccountId;
 use miden_objects::block::BlockNumber;
 use miden_objects::note::Note;
-use miden_objects::transaction::{InputNote, InputNotes, TransactionArgs, TransactionInputs};
+use miden_objects::transaction::{InputNotes, TransactionArgs, TransactionInputs};
 use miden_processor::fast::FastProcessor;
 
 use super::TransactionExecutor;
@@ -141,9 +141,8 @@ where
     ) -> Result<NoteConsumptionInfo, NoteCheckerError> {
         let mut candidate_notes = tx_inputs
             .input_notes()
-            .clone()
-            .into_iter()
-            .map(InputNote::into_note)
+            .iter()
+            .map(|note| note.clone().into_note())
             .collect::<Vec<_>>();
         let mut failed_notes = Vec::new();
 
@@ -152,7 +151,7 @@ where
         // further reduced.
         loop {
             // Execute the candidate notes.
-            tx_inputs.update_notes(candidate_notes.clone().into());
+            tx_inputs.set_input_notes_unchecked(candidate_notes.clone().into());
             match self.try_execute_notes(&tx_inputs, &tx_args).await {
                 Ok(()) => {
                     // A full set of successful notes has been found.
@@ -218,7 +217,7 @@ where
             for (idx, note) in remaining_notes.iter().enumerate() {
                 successful_notes.push(note.clone());
 
-                tx_inputs.update_notes(successful_notes.clone().into());
+                tx_inputs.set_input_notes_unchecked(successful_notes.clone().into());
                 match self.try_execute_notes(&tx_inputs, tx_args).await {
                     Ok(()) => {
                         // The successfully added note might have failed earlier. Remove it from the

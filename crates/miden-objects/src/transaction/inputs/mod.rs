@@ -49,7 +49,7 @@ impl TransactionInputs {
         blockchain: PartialBlockchain,
         input_notes: InputNotes<InputNote>,
     ) -> Result<Self, TransactionInputError> {
-        // check the block_chain and block_header are consistent
+        // Check that the partial blockchain and block header are consistent.
         let block_num = block_header.block_num();
         if blockchain.chain_length() != block_header.block_num() {
             return Err(TransactionInputError::InconsistentChainLength {
@@ -57,7 +57,6 @@ impl TransactionInputs {
                 actual: blockchain.chain_length(),
             });
         }
-
         if blockchain.peaks().hash_peaks() != block_header.chain_commitment() {
             return Err(TransactionInputError::InconsistentChainCommitment {
                 expected: block_header.chain_commitment(),
@@ -65,11 +64,10 @@ impl TransactionInputs {
             });
         }
 
-        // check the authentication paths of the input notes.
+        // Validate the authentication paths of the input notes.
         for note in input_notes.iter() {
             if let InputNote::Authenticated { note, proof } = note {
                 let note_block_num = proof.location().block_num();
-
                 let block_header = if note_block_num == block_num {
                     &block_header
                 } else {
@@ -77,7 +75,6 @@ impl TransactionInputs {
                         TransactionInputError::InputNoteBlockNotInPartialBlockchain(note.id()),
                     )?
                 };
-
                 validate_is_in_block(note, proof, block_header)?;
             }
         }
@@ -92,12 +89,12 @@ impl TransactionInputs {
 
     /// Updates the input notes for the transaction.
     ///
-    /// SAFETY:
+    /// # Warning
     ///
     /// This method does not validate the notes against the data already in this
     /// [`TransactionInputs`]. It should only be called with notes that have been validated by
     /// the constructor.
-    pub fn update_notes(&mut self, new_notes: InputNotes<InputNote>) {
+    pub fn set_input_notes_unchecked(&mut self, new_notes: InputNotes<InputNote>) {
         self.input_notes = new_notes;
     }
 
