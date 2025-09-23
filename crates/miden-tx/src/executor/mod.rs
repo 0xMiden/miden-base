@@ -248,7 +248,11 @@ where
     // HELPER METHODS
     // --------------------------------------------------------------------------------------------
 
-    // ...
+    // Validates input notes and account inputs after retrieving transaction inputs from the store.
+    //
+    // This method has a one-to-many call relationship with the `prepare_transaction` method. This
+    // method needs to be called only once in order to allow many transactions to be prepared based
+    // on its outputs.
     async fn validate_transaction_notes(
         &self,
         account_id: AccountId,
@@ -259,14 +263,14 @@ where
         let mut ref_blocks = validate_input_notes(input_notes, block_ref)?;
         ref_blocks.insert(block_ref);
 
-        let (account, block_header, mmr) = self
+        let (account, ref_block, mmr) = self
             .data_store
             .get_transaction_inputs(account_id, ref_blocks)
             .await
             .map_err(TransactionExecutorError::FetchTransactionInputsFailed)?;
 
-        validate_account_inputs(tx_args, &block_header)?;
-        Ok((account, block_header, mmr))
+        validate_account_inputs(tx_args, &ref_block)?;
+        Ok((account, ref_block, mmr))
     }
 
     /// Prepares the data needed for transaction execution.
