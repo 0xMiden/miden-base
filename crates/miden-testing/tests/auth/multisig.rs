@@ -1,7 +1,7 @@
 use miden_lib::account::components::multisig_library;
 use miden_lib::account::wallets::BasicWallet;
 use miden_lib::errors::tx_kernel_errors::ERR_TX_ALREADY_EXECUTED;
-use miden_lib::testing::account_interface::get_public_keys_from_account;
+use miden_lib::note::create_p2id_note;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{
     Account,
@@ -22,6 +22,8 @@ use miden_objects::transaction::OutputNote;
 use miden_objects::vm::AdviceMap;
 use miden_objects::{Felt, Hasher, Word};
 use miden_processor::AdviceInputs;
+use miden_processor::crypto::RpoRandomCoin;
+use miden_testing::utils::create_spawn_note;
 use miden_testing::{Auth, MockChainBuilder, assert_transaction_executor_error};
 use miden_tx::TransactionExecutorError;
 use miden_tx::auth::{BasicAuthenticator, SigningInputs, TransactionAuthenticator};
@@ -520,24 +522,25 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
         new_authenticators.push(authenticator);
     }
 
-    // Create a new mock chain builder with the updated account state
-    let mut new_mock_chain_builder =
-        MockChainBuilder::with_accounts([updated_multisig_account.clone()]).unwrap();
-
     // Create a new output note for the second transaction with new signers
-    let output_note_new = new_mock_chain_builder.add_p2id_note(
+    let output_note_new = create_p2id_note(
         updated_multisig_account.id(),
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE.try_into().unwrap(),
-        &[output_note_asset],
+        vec![output_note_asset],
         NoteType::Public,
+        Default::default(),
+        &mut RpoRandomCoin::new(Word::empty()),
     )?;
 
     // Create a new spawn note for the second transaction
-    let input_note_new = new_mock_chain_builder.add_spawn_note([&output_note_new])?;
+    let input_note_new = create_spawn_note([&output_note_new])?;
 
     let salt_new = Word::from([Felt::new(4); 4]);
 
-    // Build the new mock chain with the updated notes
+    // Build the new mock chain with the updated account and notes
+    let mut new_mock_chain_builder =
+        MockChainBuilder::with_accounts([updated_multisig_account.clone()]).unwrap();
+    new_mock_chain_builder.add_note(OutputNote::Full(input_note_new.clone()));
     let new_mock_chain = new_mock_chain_builder.build().unwrap();
 
     // Execute transaction without signatures first to get tx summary
@@ -618,7 +621,6 @@ async fn test_multisig_new_approvers_cannot_sign_before_update() -> anyhow::Resu
     // ================================================================================
 
     // Get the multisig library
-    let multisig_lib: miden_assembly::Library = multisig_library();
 
     // Setup new signers (these should NOT be able to sign the update transaction)
     let mut advice_map = AdviceMap::default();
@@ -657,7 +659,7 @@ async fn test_multisig_new_approvers_cannot_sign_before_update() -> anyhow::Resu
     ";
 
     let tx_script = ScriptBuilder::new(true)
-        .with_dynamically_linked_library(&multisig_lib)?
+        .with_dynamically_linked_library(&multisig_library())?
         .compile_tx_script(tx_script_code)?;
 
     let advice_inputs = AdviceInputs {
