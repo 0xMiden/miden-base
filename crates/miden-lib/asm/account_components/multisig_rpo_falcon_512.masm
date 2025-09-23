@@ -110,7 +110,7 @@ export.update_signers_and_threshold
     # => [num_approvers, threshold, num_approvers]
 
     u32assert2.err=MALFORMED_MULTISIG_CONFIG u32gt
-    # => [invalid_config]
+    # => [is_invalid_config]
 
     assertz.err=MALFORMED_MULTISIG_CONFIG
     # => [num_approvers]
