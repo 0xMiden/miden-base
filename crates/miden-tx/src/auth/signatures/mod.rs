@@ -7,7 +7,7 @@ use miden_processor::Felt;
 /// Represents a signature object ready for native verification.
 ///
 /// In order to use this signature within the Miden VM, a preparation step may be necessary to
-/// converts the native signature into a vector of field elements that can be loaded into the advice
+/// convert the native signature into a vector of field elements that can be loaded into the advice
 /// provider. To prepare the signature, use the provided `to_prepared_signature` method:
 /// ```rust,no_run
 /// use miden_objects::crypto::dsa::rpo_falcon512::SecretKey;
