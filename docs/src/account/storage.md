@@ -10,6 +10,9 @@ The [storage](https://docs.rs/miden-objects/latest/miden_objects/account/struct.
 
 An account's storage is typically the result of merging multiple [account components](./component.md).
 
+> [!Tip]
+> Asset holdings live in the separate [Vault](./vault.md), not in storage slots. Storage slots can, however, hold other Merkle roots (e.g., maps) for application data.
+
 ## Value Slots
 
 A value slot can be used whenever 32 bytes of data is enough, e.g. for storing a single public key for use in [authentication procedures](code.md#authentication).
