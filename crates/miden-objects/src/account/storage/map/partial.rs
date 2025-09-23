@@ -73,10 +73,14 @@ impl PartialStorageMap {
         self.partial_smt.root()
     }
 
-    /// Returns the value corresponding to the key or [`Word::empty`] if the key is not
-    /// associated with a value.
-    pub fn get(&self, raw_key: &Word) -> Word {
-        self.entries.get(raw_key).copied().unwrap_or_default()
+    /// Looks up the provided key in this map and returns:
+    /// - a non-empty [`Word`] if the key is tracked by this map and exists in it,
+    /// - [`Word::empty`] if the key is tracked by this map and does not exist,
+    /// - `None` if the key is not tracked by this map.
+    pub fn get(&self, raw_key: &Word) -> Option<Word> {
+        let hashed_key = StorageMap::hash_key(*raw_key);
+        // This returns an error if the key is not tracked which we map to a `None`.
+        self.partial_smt.get_value(&hashed_key).ok()
     }
 
     /// Returns an opening of the leaf associated with the raw key.

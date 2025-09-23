@@ -78,10 +78,13 @@ impl StorageMapWitness {
         &self.proof
     }
 
-    /// Returns the value corresponding to the key or [`Word::empty`] if the key is not
-    /// associated with a value.
-    pub fn get(&self, raw_key: &Word) -> Word {
-        self.entries.get(raw_key).copied().unwrap_or_default()
+    /// Looks up the provided key in this witness and returns:
+    /// - a non-empty [`Word`] if the key is tracked by this witness and exists in it,
+    /// - [`Word::empty`] if the key is tracked by this witness and does not exist,
+    /// - `None` if the key is not tracked by this witness.
+    pub fn get(&self, raw_key: &Word) -> Option<Word> {
+        let hashed_key = StorageMap::hash_key(*raw_key);
+        self.proof.get(&hashed_key)
     }
 
     /// Returns an iterator over the key-value pairs in this witness.
