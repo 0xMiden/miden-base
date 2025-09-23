@@ -427,7 +427,7 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
     let sig_2 = authenticators[1].get_signature(public_keys[1].into(), &tx_summary).await?;
 
     // Execute transaction with signatures - should succeed
-    let tx_context_execute = mock_chain
+    let update_approvers_tx = mock_chain
         .build_tx_context(multisig_account.id(), &[], &[])?
         .tx_script(tx_script)
         .tx_script_args(multisig_config_hash)
