@@ -12,7 +12,7 @@ use miden_processor::FutureMaybeSend;
 use rand::Rng;
 use tokio::sync::RwLock;
 
-use super::signatures::get_falcon_signature;
+use super::signatures::Signature;
 use crate::errors::AuthenticationError;
 use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
@@ -226,10 +226,13 @@ impl<R: Rng + Send + Sync> TransactionAuthenticator for BasicAuthenticator<R> {
         async move {
             let mut rng = self.rng.write().await;
             match self.keys.get(&pub_key) {
-                Some(key) => match key {
-                    AuthSecretKey::RpoFalcon512(falcon_key) => {
-                        get_falcon_signature(falcon_key, message, &mut *rng)
-                    },
+                Some(key) => {
+                    let signature: Signature = match key {
+                        AuthSecretKey::RpoFalcon512(falcon_key) => {
+                            falcon_key.sign_with_rng(message, &mut *rng).into()
+                        },
+                    };
+                    Ok(signature.to_prepared_signature())
                 },
                 None => Err(AuthenticationError::UnknownPublicKey(format!(
                     "public key {pub_key} is not contained in the authenticator's keys",
