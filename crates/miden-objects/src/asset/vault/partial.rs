@@ -187,11 +187,6 @@ mod tests {
             assert_eq!(entry, invalid_asset);
         });
 
-        let err = PartialVault::default().add(AssetWitness::new(proof)?).unwrap_err();
-        assert_matches!(err, PartialAssetVaultError::InvalidAssetInSmt { entry, .. } => {
-            assert_eq!(entry, invalid_asset);
-        });
-
         Ok(())
     }
 
@@ -204,12 +199,6 @@ mod tests {
         let partial_smt = PartialSmt::from_proofs([proof.clone()])?;
 
         let err = PartialVault::new(partial_smt).unwrap_err();
-        assert_matches!(err, PartialAssetVaultError::VaultKeyMismatch { expected, actual } => {
-            assert_eq!(actual, invalid_vault_key);
-            assert_eq!(expected, asset.vault_key());
-        });
-
-        let err = PartialVault::default().add(AssetWitness::new(proof)?).unwrap_err();
         assert_matches!(err, PartialAssetVaultError::VaultKeyMismatch { expected, actual } => {
             assert_eq!(actual, invalid_vault_key);
             assert_eq!(expected, asset.vault_key());
