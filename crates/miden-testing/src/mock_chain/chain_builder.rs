@@ -414,9 +414,9 @@ impl MockChainBuilder {
     pub fn add_public_p2any_note(
         &mut self,
         sender_account_id: AccountId,
-        asset: impl IntoIterator<Item = Asset>,
+        assets: impl IntoIterator<Item = Asset>,
     ) -> anyhow::Result<Note> {
-        let note = self.create_p2any_note(sender_account_id, NoteType::Public, asset)?;
+        let note = self.create_p2any_note(sender_account_id, NoteType::Public, assets)?;
         self.add_note(OutputNote::Full(note.clone()));
 
         Ok(note)
@@ -432,9 +432,9 @@ impl MockChainBuilder {
     pub fn add_private_p2any_note(
         &mut self,
         sender_account_id: AccountId,
-        asset: impl IntoIterator<Item = Asset>,
+        assets: impl IntoIterator<Item = Asset>,
     ) -> anyhow::Result<Note> {
-        let note = self.create_p2any_note(sender_account_id, NoteType::Private, asset)?;
+        let note = self.create_p2any_note(sender_account_id, NoteType::Private, assets)?;
         self.add_note(OutputNote::Full(note.clone()));
 
         Ok(note)
@@ -575,13 +575,13 @@ impl MockChainBuilder {
         &mut self,
         sender_account_id: AccountId,
         target_account_id: AccountId,
-        asset: impl IntoIterator<Item = Asset>,
+        assets: impl IntoIterator<Item = Asset>,
         note_type: NoteType,
     ) -> Result<Note, NoteError> {
         let note = create_p2id_note(
             sender_account_id,
             target_account_id,
-            asset.into_iter().collect::<Vec<_>>(),
+            assets.into_iter().collect::<Vec<_>>(),
             note_type,
             Default::default(),
             &mut self.rng,
