@@ -109,7 +109,7 @@ export.update_signers_and_threshold
     drop drop dup movdn.2
     # => [num_approvers, threshold, num_approvers]
 
-    u32assert2 u32gt
+    u32assert2.err=MALFORMED_MULTISIG_CONFIG u32gt
     # => [invalid_config]
 
     assertz.err=MALFORMED_MULTISIG_CONFIG
