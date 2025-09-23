@@ -32,8 +32,6 @@ use thiserror::Error;
 pub enum NoteCheckerError {
     #[error("invalid input note count {0} is out of range)")]
     InputNoteCountOutOfRange(usize),
-    #[error("transaction inputs erroneous: {0}")]
-    TransactionInputs(#[source] TransactionInputError),
     #[error("transaction preparation failed: {0}")]
     TransactionPreparation(#[source] TransactionExecutorError),
     #[error("transaction execution prologue failed: {0}")]
