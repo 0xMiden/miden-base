@@ -10,7 +10,13 @@ use miden_processor::Felt;
 /// converts the native signature into a vector of field elements that can be loaded into the advice
 /// provider. To prepare the signature, use the provided `to_prepared_signature` method:
 /// ```rust,no_run
-/// let signature: Signature = secret_key.sign_with_rng(message, &mut *rng).into();
+/// use miden_objects::crypto::dsa::rpo_falcon512::SecretKey;
+/// use miden_objects::{Felt, Word};
+/// use miden_tx::auth::signatures::Signature;
+///
+/// let secret_key = SecretKey::new();
+/// let message = Word::default();
+/// let signature: Signature = secret_key.sign(message).into();
 /// let prepared_signature: Vec<Felt> = signature.to_prepared_signature();
 /// ```
 pub enum Signature {
