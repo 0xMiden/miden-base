@@ -3,13 +3,7 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use miden_lib::transaction::{TransactionAdviceInputs, TransactionEvent};
-use miden_objects::account::{
-    AccountCode,
-    AccountDelta,
-    AccountId,
-    PartialAccount,
-    StorageSlotType,
-};
+use miden_objects::account::{AccountCode, AccountDelta, AccountId, PartialAccount};
 use miden_objects::assembly::debuginfo::Location;
 use miden_objects::assembly::{SourceFile, SourceManagerSync, SourceSpan};
 use miden_objects::asset::{Asset, AssetWitness, FungibleAsset};
@@ -277,41 +271,14 @@ where
 
     /// Handles a request for a storage map witness by querying the data store for a merkle path.
     ///
-    /// Note that we request witnesses against the initial map root for native accounts. See also
+    /// Note that we request witnesses against the _initial_ map root of the accounts. See also
     /// [`Self::on_account_vault_asset_witness_requested`] for more on this topic.
     async fn on_account_storage_map_witness_requested(
         &self,
         current_account_id: AccountId,
-        slot_index: usize,
-        _map_root: Word,
+        map_root: Word,
         map_key: Word,
     ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
-        // For now, we only support getting witnesses for the native account, so return early if the
-        // requested account is not the native one.
-        if current_account_id != self.base_host.initial_account_header().id() {
-            return Ok(Vec::new());
-        }
-
-        // For native accounts, we have to request witnesses against the initial root instead of the
-        // _current_ one, since the data store only has witnesses for initial one.
-        let map_root = {
-            let (slot_type, slot_value) =
-                self.base_host.initial_account_storage_header().slot(slot_index).map_err(
-                    |err| {
-                        TransactionKernelError::other_with_source(
-                            "failed to access storage map in storage header",
-                            err,
-                        )
-                    },
-                )?;
-            if *slot_type != StorageSlotType::Map {
-                return Err(TransactionKernelError::other(format!(
-                    "expected map slot type at slot index {slot_index}"
-                )));
-            }
-            *slot_value
-        };
-
         let storage_map_witness = self
             .base_host
             .store()
@@ -361,19 +328,19 @@ where
     /// the merkle store. Note that B' is in the store because the transaction inserted it into the
     /// merkle store as part of updating E, not because we inserted it. B is present in the store,
     /// but is simply ignored for the purpose of verifying G's inclusion.
+    ///
+    /// ## Foreign Accounts
+    ///
+    /// Foreign accounts are read-only and so they cannot change throughout transaction execution.
+    /// This means their _current_ vault root is always equivalent to their _initial_ vault root.
+    /// So, for foreign accounts, just like for the native account, we also always request
+    /// witnesses for the initial vault root.
     async fn on_account_vault_asset_witness_requested(
         &self,
         current_account_id: AccountId,
-        _vault_root: Word,
+        vault_root: Word,
         asset: Asset,
     ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
-        // For now, we only support getting witnesses for the native account, so return early if the
-        // requested account is not the native one.
-        if current_account_id != self.base_host.initial_account_header().id() {
-            return Ok(Vec::new());
-        }
-
-        let vault_root = self.base_host.initial_account_header().vault_root();
         let vault_key = asset.vault_key();
         let asset_witness = self
             .base_host
@@ -485,16 +452,10 @@ where
                     .map_err(EventError::from),
                 TransactionEventData::AccountStorageMapWitness {
                     current_account_id,
-                    slot_index,
                     map_root,
                     map_key,
                 } => self
-                    .on_account_storage_map_witness_requested(
-                        current_account_id,
-                        slot_index,
-                        map_root,
-                        map_key,
-                    )
+                    .on_account_storage_map_witness_requested(current_account_id, map_root, map_key)
                     .await
                     .map_err(EventError::from),
             }
