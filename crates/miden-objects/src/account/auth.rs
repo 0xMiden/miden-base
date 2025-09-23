@@ -69,6 +69,8 @@ impl Deserializable for AuthSecretKey {
 /// let signature: Signature = secret_key.sign(message).into();
 /// let prepared_signature: Vec<Felt> = signature.to_prepared_signature();
 /// ```
+#[derive(Clone, Debug)]
+#[repr(u8)]
 pub enum Signature {
     RpoFalcon512(rpo_falcon512::Signature),
 }
@@ -84,6 +86,42 @@ impl Signature {
 impl From<rpo_falcon512::Signature> for Signature {
     fn from(signature: rpo_falcon512::Signature) -> Self {
         Signature::RpoFalcon512(signature)
+    }
+}
+
+impl Signature {
+    /// Identifier for the type of signature scheme
+    pub fn auth_scheme_id(&self) -> u8 {
+        match self {
+            Signature::RpoFalcon512(_) => 0u8,
+        }
+    }
+}
+
+impl Serializable for Signature {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        target.write_u8(self.auth_scheme_id());
+        match self {
+            Signature::RpoFalcon512(signature) => {
+                signature.write_into(target);
+            },
+        }
+    }
+}
+
+impl Deserializable for Signature {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let auth_scheme_id: u8 = source.read_u8()?;
+        match auth_scheme_id {
+            // RpoFalcon512
+            0u8 => {
+                let signature = rpo_falcon512::Signature::read_from(source)?;
+                Ok(Signature::RpoFalcon512(signature))
+            },
+            val => Err(DeserializationError::InvalidValue(format!(
+                "Invalid signature scheme ID {val}"
+            ))),
+        }
     }
 }
 
