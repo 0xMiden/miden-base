@@ -1686,7 +1686,7 @@ end
 #!
 #! Inputs:
 #!   Operand stack: [MAP_ROOT, slot_idx],
-#!   Advice map: { MAP_ROOT: [MAP_ENTIRES] },
+#!   Advice map: { MAP_ROOT: [MAP_ENTRIES] },
 #! Outputs: []
 proc.add_storage_map_entries_to_delta
     adv.push_mapvaln
