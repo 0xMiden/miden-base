@@ -404,37 +404,17 @@ impl MockChainBuilder {
         self.notes.push(note.into());
     }
 
-    /// Creates a new public P2ANY note from the provided parameters and adds it to the list of
+    /// Creates a new P2ANY note from the provided parameters and adds it to the list of
     /// genesis notes.
     ///
     /// This note is similar to a P2ID note but can be consumed by any account.
-    ///
-    /// In the created [`MockChain`], the note will be immediately spendable by `target_account_id`
-    /// and carries no additional reclaim or timelock conditions.
-    pub fn add_public_p2any_note(
+    pub fn add_p2any_note(
         &mut self,
         sender_account_id: AccountId,
+        note_type: NoteType,
         assets: impl IntoIterator<Item = Asset>,
     ) -> anyhow::Result<Note> {
-        let note = self.create_p2any_note(sender_account_id, NoteType::Public, assets)?;
-        self.add_note(OutputNote::Full(note.clone()));
-
-        Ok(note)
-    }
-
-    /// Creates a new private P2ANY note from the provided parameters and adds it to the list of
-    /// genesis notes.
-    ///
-    /// This note is similar to a P2ID note but can be consumed by any account.
-    ///
-    /// In the created [`MockChain`], the note will be immediately spendable by `target_account_id`
-    /// and carries no additional reclaim or timelock conditions.
-    pub fn add_private_p2any_note(
-        &mut self,
-        sender_account_id: AccountId,
-        assets: impl IntoIterator<Item = Asset>,
-    ) -> anyhow::Result<Note> {
-        let note = self.create_p2any_note(sender_account_id, NoteType::Private, assets)?;
+        let note = self.create_p2any_note(sender_account_id, note_type, assets)?;
         self.add_note(OutputNote::Full(note.clone()));
 
         Ok(note)

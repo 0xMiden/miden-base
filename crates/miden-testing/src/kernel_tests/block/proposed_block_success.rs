@@ -50,8 +50,10 @@ fn proposed_block_basic_success() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let account0 = builder.add_existing_mock_account(Auth::IncrNonce)?;
     let account1 = builder.add_existing_mock_account(Auth::IncrNonce)?;
-    let note0 = builder.add_public_p2any_note(account0.id(), [FungibleAsset::mock(42)])?;
-    let note1 = builder.add_public_p2any_note(account1.id(), [FungibleAsset::mock(42)])?;
+    let note0 =
+        builder.add_p2any_note(account0.id(), NoteType::Public, [FungibleAsset::mock(42)])?;
+    let note1 =
+        builder.add_p2any_note(account1.id(), NoteType::Public, [FungibleAsset::mock(42)])?;
     let chain = builder.build()?;
 
     let proven_tx0 = chain.create_authenticated_notes_proven_tx(account0.id(), [note0.id()])?;

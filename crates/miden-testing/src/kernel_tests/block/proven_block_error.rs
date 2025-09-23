@@ -10,6 +10,7 @@ use miden_objects::account::{Account, AccountBuilder, AccountComponent, AccountI
 use miden_objects::asset::FungibleAsset;
 use miden_objects::batch::ProvenBatch;
 use miden_objects::block::{BlockInputs, BlockNumber, ProposedBlock};
+use miden_objects::note::NoteType;
 use miden_objects::transaction::ProvenTransactionBuilder;
 use miden_objects::vm::ExecutionProof;
 use miden_objects::{AccountTreeError, NullifierTreeError, Word};
@@ -35,9 +36,12 @@ fn witness_test_setup() -> anyhow::Result<WitnessTestSetup> {
     let account1 = builder.add_existing_mock_account(Auth::IncrNonce)?;
     let account2 = builder.add_existing_mock_account(Auth::IncrNonce)?;
 
-    let note0 = builder.add_public_p2any_note(account0.id(), [FungibleAsset::mock(100)])?;
-    let note1 = builder.add_public_p2any_note(account0.id(), [FungibleAsset::mock(100)])?;
-    let note2 = builder.add_public_p2any_note(account0.id(), [FungibleAsset::mock(100)])?;
+    let note0 =
+        builder.add_p2any_note(account0.id(), NoteType::Public, [FungibleAsset::mock(100)])?;
+    let note1 =
+        builder.add_p2any_note(account0.id(), NoteType::Public, [FungibleAsset::mock(100)])?;
+    let note2 =
+        builder.add_p2any_note(account0.id(), NoteType::Public, [FungibleAsset::mock(100)])?;
 
     let mut chain = builder.build()?;
 

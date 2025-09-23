@@ -57,7 +57,7 @@ fn empty_account_delta_commitment_is_empty_word() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let account = builder.add_existing_mock_account(Auth::Noop)?;
     let p2any_note =
-        builder.add_public_p2any_note(AccountId::try_from(ACCOUNT_ID_SENDER).unwrap(), [])?;
+        builder.add_p2any_note(AccountId::try_from(ACCOUNT_ID_SENDER)?, NoteType::Public, [])?;
     let mock_chain = builder.build()?;
 
     let executed_tx = mock_chain
