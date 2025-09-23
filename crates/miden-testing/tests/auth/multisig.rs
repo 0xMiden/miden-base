@@ -2,6 +2,7 @@ use miden_lib::account::components::multisig_library;
 use miden_lib::account::wallets::BasicWallet;
 use miden_lib::errors::tx_kernel_errors::ERR_TX_ALREADY_EXECUTED;
 use miden_lib::note::create_p2id_note;
+use miden_lib::testing::account_interface::get_public_keys_from_account;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{
     Account,
@@ -360,8 +361,6 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
 
     let salt = Word::from([Felt::new(3); 4]);
 
-    let multisig_lib: miden_assembly::Library = multisig_library();
-
     // Setup new signers
     let mut advice_map = AdviceMap::default();
     let (_new_secret_keys, new_public_keys, _new_authenticators) =
@@ -399,7 +398,7 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
     ";
 
     let tx_script = ScriptBuilder::new(true)
-        .with_dynamically_linked_library(&multisig_lib)?
+        .with_dynamically_linked_library(&multisig_library())?
         .compile_tx_script(tx_script_code)?;
 
     let advice_inputs = AdviceInputs {
