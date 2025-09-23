@@ -17,11 +17,7 @@ use thiserror::Error;
 
 use super::AuthScheme;
 use super::interface::{AccountComponentInterface, AccountInterface};
-use crate::account::auth::{
-    AuthRpoFalcon512Acl,
-    AuthRpoFalcon512AclConfig,
-    AuthRpoFalcon512Multisig,
-};
+use crate::account::auth::{AuthRpoFalcon512Acl, AuthRpoFalcon512AclConfig, NoAuth};
 use crate::account::components::{basic_fungible_faucet_library, network_fungible_faucet_library};
 use crate::transaction::memory::FAUCET_STORAGE_DATA_SLOT;
 
@@ -523,14 +519,10 @@ pub fn create_basic_fungible_faucet(
         )
         .map_err(FungibleFaucetError::AccountError)?
         .into(),
-        AuthScheme::RpoFalcon512Multisig { threshold, pub_keys } => {
-            AuthRpoFalcon512Multisig::new(threshold, pub_keys)
-                .map_err(FungibleFaucetError::AccountError)?
-                .into()
-        },
-        AuthScheme::NoAuth => {
+        AuthScheme::NoAuth => NoAuth::new().into(),
+        AuthScheme::RpoFalcon512Multisig { threshold: _, pub_keys: _ } => {
             return Err(FungibleFaucetError::UnsupportedAuthScheme(
-                "basic fungible faucets cannot be created with NoAuth authentication scheme".into(),
+                "basic fungible faucets do not support multisig authentication".into(),
             ));
         },
         AuthScheme::Unknown => {
@@ -591,15 +583,10 @@ pub fn create_network_fungible_faucet(
         )
         .map_err(FungibleFaucetError::AccountError)?
         .into(),
-        AuthScheme::RpoFalcon512Multisig { threshold, pub_keys } => {
-            AuthRpoFalcon512Multisig::new(threshold, pub_keys)
-                .map_err(FungibleFaucetError::AccountError)?
-                .into()
-        },
-        AuthScheme::NoAuth => {
+        AuthScheme::NoAuth => NoAuth::new().into(),
+        AuthScheme::RpoFalcon512Multisig { threshold: _, pub_keys: _ } => {
             return Err(FungibleFaucetError::UnsupportedAuthScheme(
-                "network fungible faucets cannot be created with NoAuth authentication scheme"
-                    .into(),
+                "network fungible faucets do not support multisig authentication".into(),
             ));
         },
         AuthScheme::Unknown => {

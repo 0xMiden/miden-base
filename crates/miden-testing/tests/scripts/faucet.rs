@@ -313,7 +313,7 @@ fn network_faucet_mint() -> anyhow::Result<()> {
     ]
     .into();
     let faucet = builder.add_existing_network_faucet(
-        Auth::BasicAuth,
+        Auth::IncrNonce,
         "NET",
         200,
         owner_account_id_config,
@@ -328,10 +328,10 @@ fn network_faucet_mint() -> anyhow::Result<()> {
 
     // The Network Fungible Faucet component is added as the second component after auth, so its
     // storage slot offset will be 2. Check that max_supply at the word's index 0 is 200.
-    assert_eq!(faucet.storage().get_item(2).unwrap()[0], Felt::new(200));
+    assert_eq!(faucet.storage().get_item(1).unwrap()[0], Felt::new(200));
 
     // Check that the creator account ID is stored in slot 3 (second storage slot of the component)
-    assert_eq!(faucet.storage().get_item(3).unwrap(), owner_account_id_config);
+    assert_eq!(faucet.storage().get_item(2).unwrap(), owner_account_id_config);
 
     // Check that the faucet reserved slot has been correctly initialized.
     // The already issued amount should be 50.
@@ -443,7 +443,7 @@ fn network_faucet_burn() -> anyhow::Result<()> {
     ]
     .into();
     let faucet = builder.add_existing_network_faucet(
-        Auth::BasicAuth,
+        Auth::IncrNonce,
         "NET",
         200,
         owner_account_id_config,

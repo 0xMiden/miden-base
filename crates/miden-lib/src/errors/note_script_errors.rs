@@ -13,6 +13,12 @@ use crate::errors::MasmError;
 /// Error Message: "auth procedure had been called from outside the epilogue"
 pub const ERR_AUTH_PROCEDURE_CALLED_FROM_WRONG_CONTEXT: MasmError = MasmError::from_static_str("auth procedure had been called from outside the epilogue");
 
+/// Error Message: "note contained more than one asset during burn invocation"
+pub const ERR_INVALID_NUM_ASSETS: MasmError = MasmError::from_static_str("note contained more than one asset during burn invocation");
+
+/// Error Message: "note sender is not owner"
+pub const ERR_NOT_OWNER: MasmError = MasmError::from_static_str("note sender is not owner");
+
 /// Error Message: "failed to reclaim P2IDE note because the reclaiming account is not the sender"
 pub const ERR_P2IDE_RECLAIM_ACCT_IS_NOT_SENDER: MasmError = MasmError::from_static_str("failed to reclaim P2IDE note because the reclaiming account is not the sender");
 /// Error Message: "P2IDE reclaim is disabled"

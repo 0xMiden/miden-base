@@ -9,7 +9,9 @@ use.miden::contracts::faucets::basic_fungible
 const.OWNER_CONFIG_SLOT=1
 
 # ERRORS
-const.NOT_OWNER="note sender is not owner"
+const.ERR_NOT_OWNER="note sender is not owner"
+
+const.ERR_INVALID_NUM_ASSETS="note contained more than one asset during burn invocation"
 
 # => []
 proc.is_owner
@@ -50,20 +52,23 @@ export.distribute
     exec.is_owner
     # => [is_owner, amount, tag, aux, note_type, execution_hint, RECIPIENT]
 
-    assert.err=NOT_OWNER
+    assert.err=ERR_NOT_OWNER
     # => [amount, tag, aux, note_type, execution_hint, RECIPIENT]
 
     exec.basic_fungible::distribute
     # => [note_idx]
 end
 
-#! Inputs: [ASSET]
+#! Inputs: []
 #! Outputs: [ASSET]
 export.burn
-    exec.is_owner
-    # => [is_owner, ASSET]
+    push.0 exec.active_note::get_assets
+    # => [num_assets, dest_ptr]
 
-    assert.err=NOT_OWNER
+    assert.err=ERR_INVALID_NUM_ASSETS
+    # => [dest_ptr]
+
+    mem_loadw
     # => [ASSET]
 
     exec.basic_fungible::burn
