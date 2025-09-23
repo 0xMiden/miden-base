@@ -46,22 +46,22 @@ impl TransactionInputs {
     pub fn new(
         partial_account: impl Into<PartialAccount>,
         block_header: BlockHeader,
-        block_chain: PartialBlockchain,
+        blockchain: PartialBlockchain,
         input_notes: InputNotes<InputNote>,
     ) -> Result<Self, TransactionInputError> {
         // check the block_chain and block_header are consistent
         let block_num = block_header.block_num();
-        if block_chain.chain_length() != block_header.block_num() {
+        if blockchain.chain_length() != block_header.block_num() {
             return Err(TransactionInputError::InconsistentChainLength {
                 expected: block_header.block_num(),
-                actual: block_chain.chain_length(),
+                actual: blockchain.chain_length(),
             });
         }
 
-        if block_chain.peaks().hash_peaks() != block_header.chain_commitment() {
+        if blockchain.peaks().hash_peaks() != block_header.chain_commitment() {
             return Err(TransactionInputError::InconsistentChainCommitment {
                 expected: block_header.chain_commitment(),
-                actual: block_chain.peaks().hash_peaks(),
+                actual: blockchain.peaks().hash_peaks(),
             });
         }
 
@@ -73,7 +73,7 @@ impl TransactionInputs {
                 let block_header = if note_block_num == block_num {
                     &block_header
                 } else {
-                    block_chain.get_block(note_block_num).ok_or(
+                    blockchain.get_block(note_block_num).ok_or(
                         TransactionInputError::InputNoteBlockNotInPartialBlockchain(note.id()),
                     )?
                 };
@@ -85,9 +85,20 @@ impl TransactionInputs {
         Ok(Self {
             account: partial_account.into(),
             block_header,
-            blockchain: block_chain,
+            blockchain,
             input_notes,
         })
+    }
+
+    /// Updates the input notes for the transaction.
+    ///
+    /// SAFETY:
+    ///
+    /// This method does not validate the notes against the data already in this
+    /// [`TransactionInputs`]. It should only be called with notes that have been validated by
+    /// the constructor.
+    pub fn update_notes(&mut self, new_notes: InputNotes<InputNote>) {
+        self.input_notes = new_notes;
     }
 
     // PUBLIC ACCESSORS

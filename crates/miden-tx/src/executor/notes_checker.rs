@@ -3,10 +3,10 @@ use alloc::vec::Vec;
 
 use miden_lib::note::well_known_note::WellKnownNote;
 use miden_lib::transaction::TransactionKernel;
-use miden_objects::account::{AccountId, PartialAccount};
-use miden_objects::block::{BlockHeader, BlockNumber};
+use miden_objects::account::AccountId;
+use miden_objects::block::BlockNumber;
 use miden_objects::note::Note;
-use miden_objects::transaction::{InputNote, InputNotes, PartialBlockchain, TransactionArgs};
+use miden_objects::transaction::{InputNote, InputNotes, TransactionArgs, TransactionInputs};
 use miden_processor::fast::FastProcessor;
 
 use super::TransactionExecutor;
@@ -117,15 +117,14 @@ where
         notes.sort_unstable_by_key(|note| WellKnownNote::from_note(note).is_none());
 
         let notes = InputNotes::from(notes);
-        let (account, ref_block, mmr) = self
+        let tx_inputs = self
             .0
-            .validate_transaction_notes(target_account_id, block_ref, &notes, &tx_args)
+            .validate_transaction_notes(target_account_id, block_ref, notes, &tx_args)
             .await
             .map_err(NoteCheckerError::TransactionPreparation)?;
 
         // Attempt to find an executable set of notes.
-        self.find_executable_notes_by_elimination(account, ref_block, mmr, notes, tx_args)
-            .await
+        self.find_executable_notes_by_elimination(tx_inputs, tx_args).await
     }
 
     // HELPER METHODS
@@ -137,13 +136,15 @@ where
     /// succeeded or failed to execute.
     async fn find_executable_notes_by_elimination(
         &self,
-        account: PartialAccount,
-        ref_block: BlockHeader,
-        mmr: PartialBlockchain,
-        notes: InputNotes<InputNote>,
+        mut tx_inputs: TransactionInputs,
         tx_args: TransactionArgs,
     ) -> Result<NoteConsumptionInfo, NoteCheckerError> {
-        let mut candidate_notes = notes.into_iter().map(InputNote::into_note).collect::<Vec<_>>();
+        let mut candidate_notes = tx_inputs
+            .input_notes()
+            .clone()
+            .into_iter()
+            .map(InputNote::into_note)
+            .collect::<Vec<_>>();
         let mut failed_notes = Vec::new();
 
         // Attempt to execute notes in a loop. Reduce the set of notes based on failures until
@@ -151,16 +152,8 @@ where
         // further reduced.
         loop {
             // Execute the candidate notes.
-            match self
-                .try_execute_notes(
-                    account.clone(),
-                    ref_block.clone(),
-                    mmr.clone(),
-                    candidate_notes.clone().into(),
-                    &tx_args,
-                )
-                .await
-            {
+            tx_inputs.update_notes(candidate_notes.clone().into());
+            match self.try_execute_notes(&tx_inputs, &tx_args).await {
                 Ok(()) => {
                     // A full set of successful notes has been found.
                     let successful = candidate_notes;
@@ -180,11 +173,9 @@ where
                 Err(TransactionCheckerError::EpilogueExecution(_)) => {
                     let consumption_info = self
                         .find_largest_executable_combination(
-                            account,
-                            ref_block,
-                            mmr,
                             candidate_notes,
                             failed_notes,
+                            tx_inputs,
                             &tx_args,
                         )
                         .await;
@@ -208,15 +199,12 @@ where
     /// set.
     async fn find_largest_executable_combination(
         &self,
-        account: PartialAccount,
-        ref_block: BlockHeader,
-        mmr: PartialBlockchain,
-        input_notes: Vec<Note>,
+        mut remaining_notes: Vec<Note>,
         mut failed_notes: Vec<FailedNote>,
+        mut tx_inputs: TransactionInputs,
         tx_args: &TransactionArgs,
     ) -> NoteConsumptionInfo {
         let mut successful_notes = Vec::new();
-        let mut remaining_notes = input_notes;
         let mut failed_note_index = BTreeMap::new();
 
         // Iterate by note count: try 1 note, then 2, then 3, etc.
@@ -230,16 +218,8 @@ where
             for (idx, note) in remaining_notes.iter().enumerate() {
                 successful_notes.push(note.clone());
 
-                match self
-                    .try_execute_notes(
-                        account.clone(),
-                        ref_block.clone(),
-                        mmr.clone(),
-                        successful_notes.clone().into(),
-                        tx_args,
-                    )
-                    .await
-                {
+                tx_inputs.update_notes(successful_notes.clone().into());
+                match self.try_execute_notes(&tx_inputs, tx_args).await {
                     Ok(()) => {
                         // The successfully added note might have failed earlier. Remove it from the
                         // failed list.
@@ -275,19 +255,16 @@ where
     /// or a specific [`NoteExecutionError`] indicating where and why the execution failed.
     async fn try_execute_notes(
         &self,
-        account: PartialAccount,
-        ref_block: BlockHeader,
-        mmr: PartialBlockchain,
-        notes: InputNotes<InputNote>,
+        tx_inputs: &TransactionInputs,
         tx_args: &TransactionArgs,
     ) -> Result<(), TransactionCheckerError> {
-        if notes.is_empty() {
+        if tx_inputs.input_notes().is_empty() {
             return Ok(());
         }
 
-        let (mut host, _, stack_inputs, advice_inputs) = self
+        let (mut host, stack_inputs, advice_inputs) = self
             .0
-            .prepare_transaction(account, ref_block, mmr, notes, tx_args, None)
+            .prepare_transaction(tx_inputs, tx_args, None)
             .await
             .map_err(TransactionCheckerError::TransactionPreparation)?;
 
