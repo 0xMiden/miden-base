@@ -182,7 +182,7 @@ where
         tx_args: TransactionArgs,
     ) -> Result<ExecutedTransaction, TransactionExecutorError> {
         let tx_inputs =
-            self.validate_transaction_notes(account_id, block_ref, notes, &tx_args).await?;
+            self.prepare_transaction_inputs(account_id, block_ref, notes, &tx_args).await?;
 
         let (mut host, stack_inputs, advice_inputs) =
             self.prepare_transaction(&tx_inputs, &tx_args, None).await?;
@@ -228,7 +228,7 @@ where
 
         let notes = InputNotes::default();
         let tx_inputs =
-            self.validate_transaction_notes(account_id, block_ref, notes, &tx_args).await?;
+            self.prepare_transaction_inputs(account_id, block_ref, notes, &tx_args).await?;
 
         let (mut host, stack_inputs, advice_inputs) =
             self.prepare_transaction(&tx_inputs, &tx_args, Some(advice_inputs)).await?;
@@ -250,8 +250,8 @@ where
     //
     // This method has a one-to-many call relationship with the `prepare_transaction` method. This
     // method needs to be called only once in order to allow many transactions to be prepared based
-    // on its outputs.
-    async fn validate_transaction_notes(
+    // on the transaction inputs returned by this method.
+    async fn prepare_transaction_inputs(
         &self,
         account_id: AccountId,
         block_ref: BlockNumber,

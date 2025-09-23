@@ -119,7 +119,7 @@ where
         let notes = InputNotes::from(notes);
         let tx_inputs = self
             .0
-            .validate_transaction_notes(target_account_id, block_ref, notes, &tx_args)
+            .prepare_transaction_inputs(target_account_id, block_ref, notes, &tx_args)
             .await
             .map_err(NoteCheckerError::TransactionPreparation)?;
 
