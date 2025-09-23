@@ -1,0 +1,71 @@
+use.miden::account
+use.miden::active_note
+use.miden::contracts::faucets::basic_fungible
+
+# CONSTANTS
+# ================================================================================================
+
+# The slot in this component's storage layout where the owner config is stored.
+const.OWNER_CONFIG_SLOT=1
+
+# ERRORS
+const.NOT_OWNER="note sender is not owner"
+
+# => []
+proc.is_owner
+
+    push.OWNER_CONFIG_SLOT
+    # => [owner_config_slot]
+
+    exec.account::get_item
+    # => [owner_prefix, owner_suffix, 0, 0]
+
+    exec.active_note::get_sender
+    # => [sender_prefix, sender_suffix, owner_prefix, owner_suffix, 0, 0]
+
+    movup.2
+    # => [owner_prefix, sender_prefix, sender_suffix, owner_suffix, 0, 0]
+
+    eq
+    # => [are_prefix_equal, sender_suffix, owner_suffix, 0, 0]
+
+    movdn.2
+    # => [sender_suffix, owner_suffix, are_prefix_equal, 0, 0]
+
+    eq
+    # => [are_suffix_equal, are_prefix_equal, 0, 0]
+
+    and
+    # => [is_owner, 0, 0]
+
+    #### @dev the two zeros can be used for "mint vs burn privileges"
+
+    movup.2 movup.2 drop drop
+    # => [is_owner]
+end
+
+#! Inputs: [amount, tag, aux, note_type, execution_hint, RECIPIENT]
+#! Outputs: [note_idx]
+export.distribute
+    exec.is_owner
+    # => [is_owner, amount, tag, aux, note_type, execution_hint, RECIPIENT]
+
+    assert.err=NOT_OWNER
+    # => [amount, tag, aux, note_type, execution_hint, RECIPIENT]
+
+    exec.basic_fungible::distribute
+    # => [note_idx]
+end
+
+#! Inputs: [ASSET]
+#! Outputs: [ASSET]
+export.burn
+    exec.is_owner
+    # => [is_owner, ASSET]
+
+    assert.err=NOT_OWNER
+    # => [ASSET]
+
+    exec.basic_fungible::burn
+    # => [ASSET]
+end

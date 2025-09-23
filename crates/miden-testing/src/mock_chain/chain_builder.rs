@@ -3,7 +3,7 @@ use alloc::vec::Vec;
 
 use anyhow::Context;
 use itertools::Itertools;
-use miden_lib::account::faucets::BasicFungibleFaucet;
+use miden_lib::account::faucets::{BasicFungibleFaucet, NetworkFungibleFaucet};
 use miden_lib::account::wallets::BasicWallet;
 use miden_lib::note::{create_p2id_note, create_p2ide_note, create_swap_note};
 use miden_lib::testing::account_component::MockAccountComponent;
@@ -267,8 +267,51 @@ impl MockChainBuilder {
             .context("invalid argument")?;
 
         let account_builder = AccountBuilder::new(self.rng.random())
-            .storage_mode(AccountStorageMode::Public)
+            .storage_mode(AccountStorageMode::Network)
             .with_component(basic_faucet)
+            .account_type(AccountType::FungibleFaucet);
+
+        let mut account =
+            self.add_account_from_builder(auth_method, account_builder, AccountState::Exists)?;
+
+        // The faucet's reserved slot is initialized to an empty word by default.
+        // If total_issuance is set, overwrite it and reinsert the account.
+        if let Some(issuance) = total_issuance {
+            account
+                .storage_mut()
+                .set_item(
+                    memory::FAUCET_STORAGE_DATA_SLOT,
+                    Word::from([ZERO, ZERO, ZERO, Felt::new(issuance)]),
+                )
+                .context("failed to set faucet storage")?;
+            self.accounts.insert(account.id(), account.clone());
+        }
+
+        Ok(account)
+    }
+
+    /// Adds an existing public [`NetworkFungibleFaucet`] account to the initial chain state and
+    /// registers the authenticator (if the given [`Auth`] results in the creation of one).
+    pub fn add_existing_network_faucet(
+        &mut self,
+        auth_method: Auth,
+        token_symbol: &str,
+        max_supply: u64,
+        creator_account_id: Word,
+        total_issuance: Option<u64>,
+    ) -> anyhow::Result<Account> {
+        let token_symbol = TokenSymbol::new(token_symbol).context("invalid argument")?;
+        let network_faucet = NetworkFungibleFaucet::new(
+            token_symbol,
+            10u8,
+            Felt::new(max_supply),
+            creator_account_id,
+        )
+        .context("invalid argument")?;
+
+        let account_builder = AccountBuilder::new(self.rng.random())
+            .storage_mode(AccountStorageMode::Network)
+            .with_component(network_faucet)
             .account_type(AccountType::FungibleFaucet);
 
         let mut account =

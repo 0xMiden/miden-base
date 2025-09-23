@@ -15,6 +15,7 @@ use crate::account::components::{
     basic_fungible_faucet_library,
     basic_wallet_library,
     multisig_library,
+    network_fungible_faucet_library,
     no_auth_library,
     rpo_falcon_512_acl_library,
     rpo_falcon_512_library,
@@ -139,6 +140,11 @@ impl AccountInterface {
                     component_proc_digests
                         .extend(basic_fungible_faucet_library().mast_forest().procedure_digests());
                 },
+                AccountComponentInterface::NetworkFungibleFaucet(_) => {
+                    component_proc_digests.extend(
+                        network_fungible_faucet_library().mast_forest().procedure_digests(),
+                    );
+                },
                 AccountComponentInterface::AuthRpoFalcon512(_) => {
                     component_proc_digests
                         .extend(rpo_falcon_512_library().mast_forest().procedure_digests());
@@ -250,6 +256,13 @@ impl AccountInterface {
             matches!(component_interface, AccountComponentInterface::BasicFungibleFaucet(_))
         }) {
             basic_fungible_faucet.send_note_body(*self.id(), output_notes)
+        } else if let Some(_network_fungible_faucet) =
+            self.components().iter().find(|component_interface| {
+                matches!(component_interface, AccountComponentInterface::NetworkFungibleFaucet(_))
+            })
+        {
+            // Network fungible faucet doesn't support send_note_body for now
+            Err(AccountInterfaceError::UnsupportedAccountInterface)
         } else if self.components().contains(&AccountComponentInterface::BasicWallet) {
             AccountComponentInterface::BasicWallet.send_note_body(*self.id(), output_notes)
         } else {

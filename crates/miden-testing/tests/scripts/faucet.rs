@@ -1,11 +1,28 @@
 extern crate alloc;
 
+use miden_lib::account::components::network_fungible_faucet_library;
 use miden_lib::account::faucets::FungibleFaucetExt;
 use miden_lib::errors::tx_kernel_errors::ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED;
 use miden_lib::utils::ScriptBuilder;
-use miden_objects::account::Account;
+use miden_objects::account::{
+    Account,
+    AccountId,
+    AccountIdVersion,
+    AccountStorageMode,
+    AccountType,
+};
 use miden_objects::asset::{Asset, FungibleAsset};
-use miden_objects::note::{NoteAssets, NoteExecutionHint, NoteId, NoteMetadata, NoteTag, NoteType};
+use miden_objects::note::{
+    Note,
+    NoteAssets,
+    NoteExecutionHint,
+    NoteId,
+    NoteInputs,
+    NoteMetadata,
+    NoteRecipient,
+    NoteTag,
+    NoteType,
+};
 use miden_objects::transaction::{ExecutedTransaction, OutputNote};
 use miden_objects::{Felt, Word};
 use miden_testing::{Auth, MockChain, assert_transaction_executor_error};
@@ -270,5 +287,232 @@ fn prove_burning_fungible_asset_on_existing_faucet_succeeds() -> anyhow::Result<
 
     assert_eq!(executed_transaction.account_delta().nonce_delta(), Felt::new(1));
     assert_eq!(executed_transaction.input_notes().get_note(0).id(), note.id());
+    Ok(())
+}
+
+// TESTS NETWORK FAUCET
+// ================================================================================================
+
+/// Tests minting on network faucet
+#[test]
+fn network_faucet_mint() -> anyhow::Result<()> {
+    let mut builder = MockChain::builder();
+
+    let faucet_owner_account_id = AccountId::dummy(
+        [1; 15],
+        AccountIdVersion::Version0,
+        AccountType::RegularAccountImmutableCode,
+        AccountStorageMode::Private,
+    );
+
+    let owner_account_id_config: Word = [
+        Felt::new(0),
+        Felt::new(0),
+        Felt::new(faucet_owner_account_id.suffix().into()),
+        Felt::new(faucet_owner_account_id.prefix().into()),
+    ]
+    .into();
+    let faucet = builder.add_existing_network_faucet(
+        Auth::BasicAuth,
+        "NET",
+        200,
+        owner_account_id_config,
+        Some(50),
+    )?;
+
+    println!(
+        "owner id: {} {}",
+        faucet_owner_account_id.prefix().as_felt(),
+        faucet_owner_account_id.suffix()
+    );
+
+    // The Network Fungible Faucet component is added as the second component after auth, so its
+    // storage slot offset will be 2. Check that max_supply at the word's index 0 is 200.
+    assert_eq!(faucet.storage().get_item(2).unwrap()[0], Felt::new(200));
+
+    // Check that the creator account ID is stored in slot 3 (second storage slot of the component)
+    assert_eq!(faucet.storage().get_item(3).unwrap(), owner_account_id_config);
+
+    // Check that the faucet reserved slot has been correctly initialized.
+    // The already issued amount should be 50.
+    assert_eq!(faucet.get_token_issuance().unwrap(), Felt::new(50));
+
+    // CREATE MINT NOTE DIRECTLY
+    // --------------------------------------------------------------------------------------------
+    let recipient = Word::from([0, 1, 2, 3u32]);
+    let amount = Felt::new(75);
+    let tag = NoteTag::for_local_use_case(0, 0).unwrap();
+    let aux = Felt::new(27);
+    let note_execution_hint = NoteExecutionHint::on_block_slot(5, 6, 7);
+    let note_type = NoteType::Private;
+
+    // Get the network fungible faucet library for dynamic linking
+    let network_faucet_lib = network_fungible_faucet_library();
+
+    let mint_note_script_code = format!(
+        "
+        # Network faucet mint note script - calls distribute on the account
+        begin
+            dropw
+
+            # pad the stack before call
+            push.0.0.0 padw
+
+            push.{recipient}
+            push.{note_execution_hint}
+            push.{note_type}
+            push.{aux}
+            push.{tag}
+            push.{amount}
+            # => [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
+
+            call.::distribute
+            # => [note_idx, pad(15)]
+
+            # truncate the stack
+            dropw dropw dropw dropw
+        end
+        ",
+        recipient = recipient,
+        amount = amount,
+        tag = u32::from(tag),
+        aux = aux,
+        note_execution_hint = Felt::from(note_execution_hint),
+        note_type = note_type as u8,
+    );
+
+    // Create note script with dynamic linking to the network faucet library
+    let note_script = ScriptBuilder::new(true)
+        .with_dynamically_linked_library(&network_faucet_lib)?
+        .compile_note_script(mint_note_script_code)?;
+
+    // Create the MINT note directly using Note::new
+    let mint_note_metadata =
+        NoteMetadata::new(faucet_owner_account_id, note_type, tag, note_execution_hint, aux)?;
+    let mint_note_assets = NoteAssets::new(vec![])?; // Empty assets for mint note
+    let serial_num = Word::from([1, 2, 3, 4u32]); // Random serial number
+    let inputs = NoteInputs::new(vec![]).unwrap(); // Empty inputs for now
+    let mint_note_recipient = NoteRecipient::new(serial_num, note_script, inputs);
+    let mint_note = Note::new(mint_note_assets, mint_note_metadata, mint_note_recipient);
+
+    // Add the MINT note to the mock chain
+    builder.add_note(OutputNote::Full(mint_note.clone()));
+    let mock_chain = builder.build()?;
+
+    // EXECUTE MINT NOTE AGAINST NETWORK FAUCET
+    // --------------------------------------------------------------------------------------------
+    let executed_transaction = mock_chain
+        .build_tx_context(faucet.id(), &[mint_note.id()], &[])?
+        .build()?
+        .execute_blocking()?;
+
+    // Check that a P2ID note was created by the faucet
+    assert_eq!(executed_transaction.output_notes().num_notes(), 1);
+    let output_note = executed_transaction.output_notes().get_note(0);
+
+    // Verify the output note contains the minted fungible asset
+    let expected_asset = FungibleAsset::new(faucet.id(), amount.into())?;
+    let assets = NoteAssets::new(vec![expected_asset.into()])?;
+    let expected_note_id = NoteId::new(recipient, assets.commitment());
+
+    assert_eq!(output_note.id(), expected_note_id);
+    assert_eq!(output_note.metadata().sender(), faucet.id());
+
+    assert_eq!(executed_transaction.account_delta().nonce_delta(), Felt::new(1));
+    assert_eq!(executed_transaction.input_notes().get_note(0).id(), mint_note.id());
+    Ok(())
+}
+
+/// Tests burning on network faucet
+#[test]
+fn network_faucet_burn() -> anyhow::Result<()> {
+    let mut builder = MockChain::builder();
+
+    let faucet_owner_account_id = AccountId::dummy(
+        [1; 15],
+        AccountIdVersion::Version0,
+        AccountType::RegularAccountImmutableCode,
+        AccountStorageMode::Private,
+    );
+
+    let owner_account_id_config: Word = [
+        Felt::new(0),
+        Felt::new(0),
+        Felt::new(faucet_owner_account_id.suffix().into()),
+        Felt::new(faucet_owner_account_id.prefix().into()),
+    ]
+    .into();
+    let faucet = builder.add_existing_network_faucet(
+        Auth::BasicAuth,
+        "NET",
+        200,
+        owner_account_id_config,
+        Some(100),
+    )?;
+    let mut mock_chain = builder.build()?;
+
+    let fungible_asset = FungibleAsset::new(faucet.id(), 100).unwrap();
+
+    // CREATE BURN NOTE SCRIPT WITH DYNAMIC LINKING
+    // --------------------------------------------------------------------------------------------
+    let burn_note_script_code = "
+        # burn the asset
+        begin
+            dropw
+
+            # pad the stack before call
+            padw padw padw padw
+            # => [pad(16)]
+
+            exec.::miden::active_note::get_assets drop
+            mem_loadw
+            # => [ASSET, pad(12)]
+
+            call.::burn
+
+            # truncate the stack
+            dropw dropw dropw dropw
+        end
+        ";
+
+    // Get the network faucet library for dynamic linking
+    let network_faucet_lib = network_fungible_faucet_library();
+
+    // Create note script with dynamic linking to the network faucet library
+    let note_script = ScriptBuilder::new(true)
+        .with_dynamically_linked_library(&network_faucet_lib)?
+        .compile_note_script(burn_note_script_code)?;
+
+    // Create the burn note manually with the dynamically linked script
+    let burn_note_metadata = NoteMetadata::new(
+        faucet_owner_account_id,
+        NoteType::Public,
+        NoteTag::for_local_use_case(0, 0)?,
+        NoteExecutionHint::Always,
+        Felt::new(0),
+    )?;
+    let burn_note_assets = NoteAssets::new(vec![fungible_asset.into()])?;
+    let serial_num = Word::from([5, 6, 7, 8u32]); // Random serial number
+    let inputs = NoteInputs::new(vec![]).unwrap();
+    let burn_note_recipient = NoteRecipient::new(serial_num, note_script, inputs);
+    let note = Note::new(burn_note_assets, burn_note_metadata, burn_note_recipient);
+
+    mock_chain.add_pending_note(OutputNote::Full(note.clone()));
+    mock_chain.prove_next_block()?;
+
+    // EXECUTE BURN NOTE AGAINST NETWORK FAUCET
+    // --------------------------------------------------------------------------------------------
+    let executed_transaction = mock_chain
+        .build_tx_context(faucet.id(), &[note.id()], &[])?
+        .build()?
+        .execute_blocking()?;
+
+    // Check that the burn was successful - no output notes should be created for burn
+    assert_eq!(executed_transaction.output_notes().num_notes(), 0);
+
+    // Verify the transaction was executed successfully
+    assert_eq!(executed_transaction.account_delta().nonce_delta(), Felt::new(1));
+    assert_eq!(executed_transaction.input_notes().get_note(0).id(), note.id());
+
     Ok(())
 }
