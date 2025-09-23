@@ -86,10 +86,6 @@ impl LocalTransactionProver {
 
         let builder = match account.has_public_state() {
             true => {
-                if account.is_new() && !post_fee_account_delta.is_full_state() {
-                    todo!("Error: new account requires full state delta")
-                }
-
                 let account_update_details = AccountUpdateDetails::Delta(post_fee_account_delta);
                 builder.account_update_details(account_update_details)
             },
