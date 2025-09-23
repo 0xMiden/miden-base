@@ -338,6 +338,9 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
 
     let multisig_account = create_multisig_account(2, &public_keys, 10)?;
 
+    // SECTION 1: Execute a transaction script to update signers and threshold
+    // ================================================================================
+
     let mut mock_chain_builder =
         MockChainBuilder::with_accounts([multisig_account.clone()]).unwrap();
 
@@ -500,6 +503,9 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
         );
     }
 
+    // SECTION 2: Create a second transaction signed by the new owners
+    // ================================================================================
+
     // Now test creating a note with the new signers
     // Setup authenticators for the new signers (we need 3 out of 4 for threshold 3)
     let mut new_authenticators = Vec::new();
@@ -560,6 +566,9 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
         .get_signature(new_public_keys[2].into(), &tx_summary_new)
         .await?;
 
+    // SECTION 3: Properly handle multisig authentication with the updated signers
+    // ================================================================================
+
     // Execute transaction with new signatures - should succeed
     let tx_context_execute_new = new_mock_chain
         .build_tx_context(updated_multisig_account.id(), &[input_note_new.id()], &[])?
@@ -591,6 +600,9 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
 /// 4. Verify that only the CURRENT approvers can sign the update transaction
 #[tokio::test]
 async fn test_multisig_new_approvers_cannot_sign_before_update() -> anyhow::Result<()> {
+    // SECTION 1: Create a multisig account with 2 original approvers
+    // ================================================================================
+
     let (_secret_keys, public_keys, _authenticators) = setup_keys_and_authenticators(2, 2)?;
 
     let multisig_account = create_multisig_account(2, &public_keys, 10)?;
@@ -601,6 +613,9 @@ async fn test_multisig_new_approvers_cannot_sign_before_update() -> anyhow::Resu
         .unwrap();
 
     let salt = Word::from([Felt::new(5); 4]);
+
+    // SECTION 2: Prepare a signer update transaction with new approvers
+    // ================================================================================
 
     // Get the multisig library
     let multisig_lib: miden_assembly::Library = multisig_library();
@@ -667,6 +682,9 @@ async fn test_multisig_new_approvers_cannot_sign_before_update() -> anyhow::Resu
         error => panic!("expected abort with tx effects: {error:?}"),
     };
 
+    // SECTION 3: Try to sign the transaction with the NEW approvers (should fail)
+    // ================================================================================
+
     // Get signatures from the NEW approvers (these should NOT work)
     let msg = tx_summary.as_ref().to_commitment();
     let tx_summary_signing = SigningInputs::TransactionSummary(tx_summary.clone());
@@ -688,6 +706,9 @@ async fn test_multisig_new_approvers_cannot_sign_before_update() -> anyhow::Resu
         .auth_args(salt)
         .extend_advice_inputs(advice_inputs.clone())
         .build()?;
+
+    // SECTION 4: Verify that only the CURRENT approvers can sign the update transaction
+    // ================================================================================
 
     // Should fail - new approvers not yet authorized
     let result = tx_context_with_new_sigs.execute().await;
