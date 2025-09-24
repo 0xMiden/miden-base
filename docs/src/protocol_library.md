@@ -76,6 +76,7 @@ Input note procedures can be used to fetch data on input notes consumed by the t
 | `get_assets` | Writes the [assets](note.md#assets) of the input note with the specified index into memory starting at the specified address.<br><br>Inputs: `[dest_ptr, note_index]`<br>Outputs: `[num_assets, dest_ptr, note_index]` | Any |
 | `get_recipient` | Returns the [recipient](note.md#note-recipient-restricting-consumption) of the input note with the specified index.<br><br>Inputs: `[note_index]`<br>Outputs: `[RECIPIENT]` | Any |
 | `get_metadata` | Returns the [metadata](note.md#metadata) of the input note with the specified index.<br><br>Inputs: `[note_index]`<br>Outputs: `[METADATA]` | Any |
+| `get_sender` | Returns the sender of the input note with the specified index.<br><br>Inputs: `[note_index]`<br>Outputs: `[sender_id_prefix, sender_id_suffix]` | Any |
 | `get_inputs_info` | Returns the [inputs](note.md#inputs) commitment and length of the input note with the specified index.<br><br>Inputs: `[note_index]`<br>Outputs: `[NOTE_INPUTS_COMMITMENT, num_inputs]` | Any |
 | `get_script_root` | Returns the [script root](note.md#script) of the input note with the specified index.<br><br>Inputs: `[note_index]`<br>Outputs: `[SCRIPT_ROOT]` | Any |
 | `get_serial_number` | Returns the [serial number](note.md#serial-number) of the input note with the specified index.<br><br>Inputs: `[note_index]`<br>Outputs: `[SERIAL_NUMBER]` | Any |
@@ -104,6 +105,7 @@ Note utility procedures can be used to compute the required utility data or writ
 | `write_assets_to_memory` | Writes the assets data stored in the advice map to the memory specified by the provided destination pointer.<br><br>Inputs: `[ASSETS_COMMITMENT, num_assets, dest_ptr]`<br>Outputs: `[num_assets, dest_ptr]` | Any |
 | `build_recipient_hash` | Returns the `RECIPIENT` for a specified `SERIAL_NUM`, `SCRIPT_ROOT`, and inputs commitment.<br><br>Inputs: `[SERIAL_NUM, SCRIPT_ROOT, INPUT_COMMITMENT]`<br>Outputs: `[RECIPIENT]` | Any |
 | `build_recipient` | Builds the recipient hash from note inputs, script root, and serial number.<br><br>Inputs: `[inputs_ptr, num_inputs, SERIAL_NUM, SCRIPT_ROOT]`<br>Outputs: `[RECIPIENT]` | Any |
+| `extract_sender_from_metadata` | Extracts the sender ID from the provided metadata word.<br><br>Inputs: `[METADATA]`<br>Outputs: `[sender_id_prefix, sender_id_suffix]` | Any |
 
 ## Transaction Procedures (`miden::tx`)
 
