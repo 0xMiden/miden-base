@@ -27,6 +27,7 @@ use miden_objects::transaction::{
     OutputNote,
     PartialBlockchain,
     ProvenTransaction,
+    TransactionArgs,
     TransactionInputs,
 };
 use miden_processor::{DeserializationError, Word};
@@ -606,8 +607,8 @@ impl MockChain {
     // INPUTS APIS
     // ----------------------------------------------------------------------------------------
 
-    /// Returns a valid [`TransactionInputs`] for the specified entities, executing against a
-    /// specific block number.
+    /// Returns a valid [`TransactionInputs`] for the specified entities, executing against
+    /// a specific block number.
     pub fn get_transaction_inputs_at(
         &self,
         reference_block: BlockNumber,
@@ -668,10 +669,13 @@ impl MockChain {
         let input_notes = InputNotes::new(input_notes)?;
 
         Ok(TransactionInputs::new(
-            account,
+            account.into(),
             ref_block.clone(),
             partial_blockchain,
             input_notes,
+            TransactionArgs::default(),
+            None,
+            Vec::new(),
         )?)
     }
 
