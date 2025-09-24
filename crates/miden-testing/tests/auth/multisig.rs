@@ -1,4 +1,4 @@
-use miden_lib::account::components::multisig_library;
+use miden_lib::account::components::rpo_falcon_512_multisig_library;
 use miden_lib::account::wallets::BasicWallet;
 use miden_lib::errors::tx_kernel_errors::ERR_TX_ALREADY_EXECUTED;
 use miden_lib::note::create_p2id_note;
@@ -398,7 +398,7 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
     ";
 
     let tx_script = ScriptBuilder::new(true)
-        .with_dynamically_linked_library(&multisig_library())?
+        .with_dynamically_linked_library(&rpo_falcon_512_multisig_library())?
         .compile_tx_script(tx_script_code)?;
 
     let advice_inputs = AdviceInputs {
@@ -658,7 +658,7 @@ async fn test_multisig_new_approvers_cannot_sign_before_update() -> anyhow::Resu
     ";
 
     let tx_script = ScriptBuilder::new(true)
-        .with_dynamically_linked_library(&multisig_library())?
+        .with_dynamically_linked_library(&rpo_falcon_512_multisig_library())?
         .compile_tx_script(tx_script_code)?;
 
     let advice_inputs = AdviceInputs {
