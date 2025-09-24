@@ -3,6 +3,7 @@ use alloc::vec::Vec;
 
 use anyhow::Context;
 use miden_block_prover::{LocalBlockProver, ProvenBlockError};
+use miden_lib::transaction::TransactionKernelInputs;
 use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{Account, AccountId, AuthSecretKey, PartialAccount};
 use miden_objects::batch::{ProposedBatch, ProvenBatch};
@@ -27,7 +28,8 @@ use miden_objects::transaction::{
     OutputNote,
     PartialBlockchain,
     ProvenTransaction,
-    TransactionInputs,
+    TransactionArgs,
+    TransactionPreparationInputs,
 };
 use miden_processor::{DeserializationError, Word};
 use miden_tx::LocalTransactionProver;
@@ -529,10 +531,10 @@ impl MockChain {
     /// Initializes a [`TransactionContextBuilder`] for executing against a specific block number.
     ///
     /// Depending on the provided `input`, the builder is initialized differently:
-    /// - [`TxContextInput::AccountId`]: Initialize the builder with [`TransactionInputs`] fetched
-    ///   from the chain for the public account identified by the ID.
-    /// - [`TxContextInput::Account`]: Initialize the builder with [`TransactionInputs`] where the
-    ///   account is passed as-is to the inputs.
+    /// - [`TxContextInput::AccountId`]: Initialize the builder with [`TransactionKernelInputs`]
+    ///   fetched from the chain for the public account identified by the ID.
+    /// - [`TxContextInput::Account`]: Initialize the builder with [`TransactionKernelInputs`] where
+    ///   the account is passed as-is to the inputs.
     ///
     /// In all cases, if the chain contains authenticator for the account, they are added to the
     /// builder.
@@ -578,13 +580,18 @@ impl MockChain {
             TxContextInput::Account(account) => account,
         };
 
-        let tx_inputs = self
-            .get_transaction_inputs_at(reference_block, &account, note_ids, unauthenticated_notes)
+        let kernel_inputs = self
+            .get_transaction_kernel_inputs_at(
+                reference_block,
+                &account,
+                note_ids,
+                unauthenticated_notes,
+            )
             .context("failed to gather transaction inputs")?;
 
         let tx_context_builder = TransactionContextBuilder::new(account)
             .authenticator(authenticator)
-            .tx_inputs(tx_inputs);
+            .set_kernel_inputs(kernel_inputs);
 
         Ok(tx_context_builder)
     }
@@ -606,15 +613,15 @@ impl MockChain {
     // INPUTS APIS
     // ----------------------------------------------------------------------------------------
 
-    /// Returns a valid [`TransactionInputs`] for the specified entities, executing against a
-    /// specific block number.
-    pub fn get_transaction_inputs_at(
+    /// Returns a valid [`TransactionKernelInputs`] for the specified entities, executing against
+    /// a specific block number.
+    pub fn get_transaction_kernel_inputs_at(
         &self,
         reference_block: BlockNumber,
         account: impl Into<PartialAccount>,
         notes: &[NoteId],
         unauthenticated_notes: &[Note],
-    ) -> anyhow::Result<TransactionInputs> {
+    ) -> anyhow::Result<TransactionKernelInputs> {
         let ref_block = self.block_header(reference_block.as_usize());
 
         let mut input_notes = vec![];
@@ -667,23 +674,32 @@ impl MockChain {
 
         let input_notes = InputNotes::new(input_notes)?;
 
-        Ok(TransactionInputs::new(
-            account,
+        let prep_inputs = TransactionPreparationInputs::new(
+            account.into(),
             ref_block.clone(),
             partial_blockchain,
+        )?;
+        Ok(TransactionKernelInputs::new(
+            prep_inputs,
             input_notes,
+            TransactionArgs::default(),
         )?)
     }
 
-    /// Returns a valid [`TransactionInputs`] for the specified entities.
-    pub fn get_transaction_inputs(
+    /// Returns a valid [`TransactionKernelInputs`] for the specified entities.
+    pub fn get_transaction_kernel_inputs(
         &self,
         account: impl Into<PartialAccount>,
         notes: &[NoteId],
         unauthenticated_notes: &[Note],
-    ) -> anyhow::Result<TransactionInputs> {
+    ) -> anyhow::Result<TransactionKernelInputs> {
         let latest_block_num = self.latest_block_header().block_num();
-        self.get_transaction_inputs_at(latest_block_num, account, notes, unauthenticated_notes)
+        self.get_transaction_kernel_inputs_at(
+            latest_block_num,
+            account,
+            notes,
+            unauthenticated_notes,
+        )
     }
 
     /// Returns inputs for a transaction batch for all the reference blocks of the provided

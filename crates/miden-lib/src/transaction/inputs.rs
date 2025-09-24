@@ -1,32 +1,114 @@
 use alloc::vec::Vec;
 
 use miden_objects::account::{AccountHeader, AccountId, PartialAccount};
-use miden_objects::block::AccountWitness;
+use miden_objects::block::{AccountWitness, BlockHeader, BlockNumber};
 use miden_objects::crypto::SequentialCommit;
 use miden_objects::crypto::merkle::InnerNodeInfo;
+use miden_objects::note::{Note, NoteInclusionProof};
 use miden_objects::transaction::{
     AccountInputs,
     InputNote,
+    InputNotes,
     PartialBlockchain,
     TransactionArgs,
-    TransactionInputs,
+    TransactionPreparationInputs,
+    TransactionScript,
 };
+use miden_objects::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
 use miden_objects::vm::AdviceInputs;
-use miden_objects::{EMPTY_WORD, Felt, FieldElement, Word, ZERO};
-use miden_processor::AdviceMutation;
+use miden_objects::{EMPTY_WORD, Felt, FieldElement, TransactionInputError, Word, ZERO};
+use miden_processor::{AdviceMutation, DeserializationError, StackInputs};
 use thiserror::Error;
 
 use super::TransactionKernel;
 
-// TRANSACTION ADVICE INPUTS
+// TRANSACTION KERNEL INPUTS
 // ================================================================================================
 
-/// Advice inputs wrapper for inputs that are meant to be used exclusively in the transaction
-/// kernel.
-#[derive(Debug, Clone, Default)]
-pub struct TransactionAdviceInputs(AdviceInputs);
+/// Contains the data required to execute a transaction.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TransactionKernelInputs {
+    prep_inputs: TransactionPreparationInputs,
+    input_notes: InputNotes<InputNote>,
+    tx_args: TransactionArgs,
+}
 
-impl TransactionAdviceInputs {
+impl TransactionKernelInputs {
+    // CONSTRUCTOR
+    // --------------------------------------------------------------------------------------------
+
+    /// Returns new [`TransactionKernelInputs`] instantiated with the specified parameters.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The partial blockchain does not track the block headers required to prove inclusion of any
+    ///   authenticated input note.
+    pub fn new(
+        prep_inputs: TransactionPreparationInputs,
+        input_notes: InputNotes<InputNote>,
+        tx_args: TransactionArgs,
+    ) -> Result<Self, TransactionInputError> {
+        // Validate the authentication paths of the input notes.
+        for note in input_notes.iter() {
+            if let InputNote::Authenticated { note, proof } = note {
+                let note_block_num = proof.location().block_num();
+                let block_header = if note_block_num == prep_inputs.block_header().block_num() {
+                    prep_inputs.block_header()
+                } else {
+                    prep_inputs.blockchain().get_block(note_block_num).ok_or(
+                        TransactionInputError::InputNoteBlockNotInPartialBlockchain(note.id()),
+                    )?
+                };
+                validate_is_in_block(note, proof, block_header)?;
+            }
+        }
+
+        Ok(Self { prep_inputs, input_notes, tx_args })
+    }
+
+    // MUTATORS
+    // --------------------------------------------------------------------------------------------
+
+    /// Updates the input notes for the transaction.
+    ///
+    /// # Warning
+    ///
+    /// This method does not validate the notes against the data already in this
+    /// [`TransactionKernelInputs`]. It should only be called with notes that have been validated
+    /// by the constructor.
+    pub fn set_input_notes_unchecked(&mut self, new_notes: InputNotes<InputNote>) {
+        self.input_notes = new_notes;
+    }
+
+    /// Updates the transaction arguments of the inputs.
+    pub fn set_tx_args(&mut self, tx_args: TransactionArgs) {
+        self.tx_args = tx_args;
+    }
+
+    /// Extends the advice inputs with the provided ones.
+    pub fn extend_advice_inputs(&mut self, advice_inputs: AdviceInputs) {
+        self.tx_args.extend_advice_inputs(advice_inputs);
+    }
+
+    // PUBLIC ACCESSORS
+    // --------------------------------------------------------------------------------------------
+
+    pub fn prepare_inputs(
+        &self,
+    ) -> Result<(StackInputs, TransactionAdviceInputs), TransactionAdviceMapMismatch> {
+        let stack_inputs = TransactionKernel::build_input_stack(
+            self.account().id(),
+            self.account().initial_commitment(),
+            self.input_notes().commitment(),
+            self.block_header().commitment(),
+            self.block_header().block_num(),
+        );
+
+        let tx_advice_inputs = self.transaction_advice_inputs()?;
+        Ok((stack_inputs, tx_advice_inputs))
+    }
+
     /// Creates a [`TransactionAdviceInputs`].
     ///
     /// The created advice inputs will be populated with the data required for executing a
@@ -34,19 +116,18 @@ impl TransactionAdviceInputs {
     /// optional account seed (required for new accounts), and the input note data, including
     /// core note data + authentication paths all the way to the root of one of partial
     /// blockchain peaks.
-    pub fn new(
-        tx_inputs: &TransactionInputs,
-        tx_args: &TransactionArgs,
-    ) -> Result<Self, TransactionAdviceMapMismatch> {
+    fn transaction_advice_inputs(
+        &self,
+    ) -> Result<TransactionAdviceInputs, TransactionAdviceMapMismatch> {
         let mut inputs = TransactionAdviceInputs::default();
 
-        inputs.build_stack(tx_inputs, tx_args);
+        inputs.build_stack(self);
         inputs.add_kernel_commitment();
-        inputs.add_partial_blockchain(tx_inputs.blockchain());
-        inputs.add_input_notes(tx_inputs, tx_args)?;
+        inputs.add_partial_blockchain(self.blockchain());
+        inputs.add_input_notes(self)?;
 
         // Add the script's MAST forest's advice inputs
-        if let Some(tx_script) = tx_args.tx_script() {
+        if let Some(tx_script) = self.tx_args().tx_script() {
             inputs.extend_map(
                 tx_script
                     .mast()
@@ -58,25 +139,145 @@ impl TransactionAdviceInputs {
 
         // --- native account injection ---------------------------------------
 
-        let partial_native_acc = tx_inputs.account();
+        let partial_native_acc = self.account();
         inputs.add_account(partial_native_acc)?;
 
         // if a seed was provided, extend the map appropriately
-        if let Some(seed) = tx_inputs.account().seed() {
+        if let Some(seed) = self.account().seed() {
             // ACCOUNT_ID |-> ACCOUNT_SEED
-            let account_id_key = Self::account_id_map_key(partial_native_acc.id());
+            let account_id_key = account_id_map_key(partial_native_acc.id());
             inputs.add_map_entry(account_id_key, seed.to_vec());
         }
 
         // --- foreign account injection --------------------------------------
-        inputs.add_foreign_accounts(tx_args.foreign_account_inputs())?;
+        inputs.add_foreign_accounts(self.tx_args().foreign_account_inputs())?;
 
         // any extra user-supplied advice
-        inputs.extend(tx_args.advice_inputs().clone());
+        inputs.extend(self.tx_args().advice_inputs().clone());
 
         Ok(inputs)
     }
 
+    /// Returns the account against which the transaction is executed.
+    pub fn account(&self) -> &PartialAccount {
+        self.prep_inputs.account()
+    }
+
+    /// Returns block header for the block referenced by the transaction.
+    pub fn block_header(&self) -> &BlockHeader {
+        self.prep_inputs.block_header()
+    }
+
+    /// Returns partial blockchain containing authentication paths for all notes consumed by the
+    /// transaction.
+    pub fn blockchain(&self) -> &PartialBlockchain {
+        self.prep_inputs.blockchain()
+    }
+
+    /// Returns the notes to be consumed in the transaction.
+    pub fn input_notes(&self) -> &InputNotes<InputNote> {
+        &self.input_notes
+    }
+
+    /// Returns the block number referenced by the inputs.
+    pub fn ref_block(&self) -> BlockNumber {
+        self.prep_inputs.block_header().block_num()
+    }
+
+    /// Returns the transaction script to be executed.
+    pub fn tx_script(&self) -> Option<&TransactionScript> {
+        self.tx_args.tx_script()
+    }
+
+    /// Returns the foreign account inputs to be consumed in the transaction.
+    pub fn foreign_account_inputs(&self) -> &[AccountInputs] {
+        self.tx_args.foreign_account_inputs()
+    }
+
+    /// Returns the advice inputs to be consumed in the transaction.
+    pub fn advice_inputs(&self) -> &AdviceInputs {
+        self.tx_args.advice_inputs()
+    }
+
+    /// Returns the transaction arguments to be consumed in the transaction.
+    pub fn tx_args(&self) -> &TransactionArgs {
+        &self.tx_args
+    }
+
+    // CONVERSIONS
+    // --------------------------------------------------------------------------------------------
+
+    /// Consumes these transaction inputs and returns their underlying components.
+    pub fn into_parts(
+        self,
+    ) -> (
+        PartialAccount,
+        BlockHeader,
+        PartialBlockchain,
+        InputNotes<InputNote>,
+        TransactionArgs,
+    ) {
+        let (account, block_header, blockchain) = self.prep_inputs.into_parts();
+        (account, block_header, blockchain, self.input_notes, self.tx_args)
+    }
+}
+
+impl Serializable for TransactionKernelInputs {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        self.prep_inputs.account().write_into(target);
+        self.prep_inputs.block_header().write_into(target);
+        self.prep_inputs.blockchain().write_into(target);
+        self.input_notes.write_into(target);
+        self.tx_args.write_into(target);
+    }
+}
+
+impl Deserializable for TransactionKernelInputs {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let account = PartialAccount::read_from(source)?;
+        let block_header = BlockHeader::read_from(source)?;
+        let blockchain = PartialBlockchain::read_from(source)?;
+        let input_notes = InputNotes::read_from(source)?;
+        let tx_args = TransactionArgs::read_from(source)?;
+
+        let prep_inputs = TransactionPreparationInputs::new(account, block_header, blockchain)
+            .map_err(|err| DeserializationError::InvalidValue(format!("{err}")))?;
+        Self::new(prep_inputs, input_notes, tx_args)
+            .map_err(|err| DeserializationError::InvalidValue(format!("{err}")))
+    }
+}
+
+impl From<TransactionKernelInputs> for TransactionPreparationInputs {
+    fn from(kernel_inputs: TransactionKernelInputs) -> Self {
+        let (prep_inputs, ..): (
+            TransactionPreparationInputs,
+            InputNotes<InputNote>,
+            TransactionArgs,
+        ) = kernel_inputs.into();
+        prep_inputs
+    }
+}
+
+impl From<TransactionKernelInputs>
+    for (TransactionPreparationInputs, InputNotes<InputNote>, TransactionArgs)
+{
+    fn from(kernel_inputs: TransactionKernelInputs) -> Self {
+        let (account, block_header, blockchain, input_notes, tx_args) = kernel_inputs.into_parts();
+        let prep_inputs = TransactionPreparationInputs::new(account, block_header, blockchain)
+            .expect("valid kernel inputs must make valid prep inputs");
+        (prep_inputs, input_notes, tx_args)
+    }
+}
+
+// TRANSACTION ADVICE INPUTS
+// ================================================================================================
+
+/// Advice inputs wrapper for inputs that are meant to be used exclusively in the transaction
+/// kernel.
+#[derive(Debug, Clone, Default)]
+pub struct TransactionAdviceInputs(AdviceInputs);
+
+impl TransactionAdviceInputs {
     /// Returns a reference to the underlying advice inputs.
     pub fn as_advice_inputs(&self) -> &AdviceInputs {
         &self.0
@@ -118,7 +319,7 @@ impl TransactionAdviceInputs {
 
             // for foreign accounts, we need to insert the id to state mapping
             // NOTE: keep this in sync with the account::load_from_advice procedure
-            let account_id_key = Self::account_id_map_key(foreign_acc.id());
+            let account_id_key = account_id_map_key(foreign_acc.id());
             let header = AccountHeader::from(foreign_acc.account());
 
             // ACCOUNT_ID |-> [ID_AND_NONCE, VAULT_ROOT, STORAGE_COMMITMENT, CODE_COMMITMENT]
@@ -126,13 +327,6 @@ impl TransactionAdviceInputs {
         }
 
         Ok(())
-    }
-
-    /// Returns the advice map key where:
-    /// - the seed for native accounts is stored.
-    /// - the account header for foreign accounts is stored.
-    pub fn account_id_map_key(id: AccountId) -> Word {
-        Word::from([id.suffix(), id.prefix().as_felt(), ZERO, ZERO])
     }
 
     /// Extend the advice stack with the transaction inputs.
@@ -161,8 +355,8 @@ impl TransactionAdviceInputs {
     ///     TX_SCRIPT_ARGS,
     ///     AUTH_ARGS,
     /// ]
-    fn build_stack(&mut self, tx_inputs: &TransactionInputs, tx_args: &TransactionArgs) {
-        let header = tx_inputs.block_header();
+    fn build_stack(&mut self, kernel_inputs: &TransactionKernelInputs) {
+        let header = kernel_inputs.block_header();
 
         // --- block header data (keep in sync with kernel's process_block_data) --
         self.extend_stack(header.prev_block_commitment());
@@ -188,7 +382,7 @@ impl TransactionAdviceInputs {
         self.extend_stack(header.note_root());
 
         // --- core account items (keep in sync with process_account_data) ----
-        let account = tx_inputs.account();
+        let account = kernel_inputs.account();
         self.extend_stack([
             account.id().suffix(),
             account.id().prefix().as_felt(),
@@ -200,7 +394,8 @@ impl TransactionAdviceInputs {
         self.extend_stack(account.code().commitment());
 
         // --- number of notes, script root and args --------------------------
-        self.extend_stack([Felt::from(tx_inputs.input_notes().num_notes())]);
+        self.extend_stack([Felt::from(kernel_inputs.input_notes().num_notes())]);
+        let tx_args = kernel_inputs.tx_args();
         self.extend_stack(tx_args.tx_script().map_or(Word::empty(), |script| script.root()));
         self.extend_stack(tx_args.tx_script_args());
 
@@ -339,19 +534,18 @@ impl TransactionAdviceInputs {
     /// The data above is processed by `prologue::process_input_notes_data`.
     fn add_input_notes(
         &mut self,
-        tx_inputs: &TransactionInputs,
-        tx_args: &TransactionArgs,
+        kernel_inputs: &TransactionKernelInputs,
     ) -> Result<(), TransactionAdviceMapMismatch> {
-        if tx_inputs.input_notes().is_empty() {
+        if kernel_inputs.input_notes().is_empty() {
             return Ok(());
         }
 
         let mut note_data = Vec::new();
-        for input_note in tx_inputs.input_notes().iter() {
+        for input_note in kernel_inputs.input_notes().iter() {
             let note = input_note.note();
             let assets = note.assets();
             let recipient = note.recipient();
-            let note_arg = tx_args.get_note_args(note.id()).unwrap_or(&EMPTY_WORD);
+            let note_arg = kernel_inputs.tx_args().get_note_args(note.id()).unwrap_or(&EMPTY_WORD);
 
             // recipient inputs / assets commitments
             self.add_map_entry(
@@ -381,10 +575,10 @@ impl TransactionAdviceInputs {
                     self.extend_merkle_store(proof.authenticated_nodes(note.commitment()));
 
                     let block_num = proof.location().block_num();
-                    let block_header = if block_num == tx_inputs.block_header().block_num() {
-                        tx_inputs.block_header()
+                    let block_header = if block_num == kernel_inputs.block_header().block_num() {
+                        kernel_inputs.block_header()
                     } else {
-                        tx_inputs
+                        kernel_inputs
                             .blockchain()
                             .get_block(block_num)
                             .expect("block not found in partial blockchain")
@@ -410,7 +604,7 @@ impl TransactionAdviceInputs {
             )?;
         }
 
-        self.add_map_entry(tx_inputs.input_notes().commitment(), note_data);
+        self.add_map_entry(kernel_inputs.input_notes().commitment(), note_data);
 
         Ok(())
     }
@@ -465,4 +659,30 @@ pub struct TransactionAdviceMapMismatch {
     pub key: Word,
     pub existing_val: Vec<Felt>,
     pub incoming_val: Vec<Felt>,
+}
+
+// HELPER FUNCTIONS
+// ================================================================================================
+
+/// Validates whether the provided note belongs to the note tree of the specified block.
+fn validate_is_in_block(
+    note: &Note,
+    proof: &NoteInclusionProof,
+    block_header: &BlockHeader,
+) -> Result<(), TransactionInputError> {
+    let note_index = proof.location().node_index_in_block().into();
+    let note_commitment = note.commitment();
+    proof
+        .note_path()
+        .verify(note_index, note_commitment, &block_header.note_root())
+        .map_err(|_| {
+            TransactionInputError::InputNoteNotInBlock(note.id(), proof.location().block_num())
+        })
+}
+
+/// Returns the advice map key where:
+/// - the seed for native accounts is stored.
+/// - the account header for foreign accounts is stored.
+fn account_id_map_key(id: AccountId) -> Word {
+    Word::from([id.suffix(), id.prefix().as_felt(), ZERO, ZERO])
 }

@@ -288,8 +288,10 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
     // Execute the account-creating transaction.
     // --------------------------------------------------------------------------------------------
 
-    let tx_inputs = mock_chain.get_transaction_inputs(&account, &[], &[])?;
-    let tx_context = TransactionContextBuilder::new(account).tx_inputs(tx_inputs).build()?;
+    let kernel_inputs = mock_chain.get_transaction_kernel_inputs(&account, &[], &[])?;
+    let tx_context = TransactionContextBuilder::new(account)
+        .set_kernel_inputs(kernel_inputs)
+        .build()?;
     let tx = tx_context.execute_blocking().context("failed to execute account creating tx")?;
     let tx = LocalTransactionProver::default().prove_dummy(tx)?;
 

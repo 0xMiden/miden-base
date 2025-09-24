@@ -1,7 +1,7 @@
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use miden_lib::transaction::TransactionKernel;
+use miden_lib::transaction::{TransactionKernel, TransactionKernelInputs};
 use miden_objects::AccountError;
 use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{
@@ -121,32 +121,37 @@ impl LocalTransactionProver {
         tx_witness: TransactionWitness,
     ) -> Result<ProvenTransaction, TransactionProverError> {
         let TransactionWitness {
-            tx_inputs,
+            prep_inputs,
+            input_notes,
             tx_args,
             foreign_account_code,
             advice_witness,
         } = tx_witness;
 
-        let (stack_inputs, advice_inputs) =
-            TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, Some(advice_witness))
-                .map_err(TransactionProverError::ConflictingAdviceMapEntry)?;
+        // TODO: refactor this to be member fn
+        let mut kernel_inputs = TransactionKernelInputs::new(prep_inputs, input_notes, tx_args)
+            .expect("transaction witness must make valid kernel inputs");
+        kernel_inputs.extend_advice_inputs(advice_witness);
+        let (stack_inputs, advice_inputs) = kernel_inputs
+            .prepare_inputs()
+            .map_err(TransactionProverError::ConflictingAdviceMapEntry)?;
 
-        self.mast_store.load_account_code(tx_inputs.account().code());
+        self.mast_store.load_account_code(kernel_inputs.account().code());
         for account_code in &foreign_account_code {
             self.mast_store.load_account_code(account_code);
         }
 
         let script_mast_store = ScriptMastForestStore::new(
-            tx_args.tx_script(),
-            tx_inputs.input_notes().iter().map(|n| n.note().script()),
+            kernel_inputs.tx_script(),
+            kernel_inputs.input_notes().iter().map(|n| n.note().script()),
         );
 
         let account_procedure_index_map = AccountProcedureIndexMap::new(
-            foreign_account_code.iter().chain([tx_inputs.account().code()]),
+            foreign_account_code.iter().chain([kernel_inputs.account().code()]),
         )
         .map_err(TransactionProverError::CreateAccountProcedureIndexMap)?;
 
-        let (partial_account, ref_block, _, input_notes) = tx_inputs.into_parts();
+        let (partial_account, ref_block, _, input_notes, _) = kernel_inputs.into_parts();
         let mut host = TransactionProverHost::new(
             &partial_account,
             input_notes,
@@ -252,10 +257,10 @@ impl LocalTransactionProver {
     ) -> Result<ProvenTransaction, TransactionProverError> {
         let (account_delta, tx_outputs, tx_witness, _) = executed_tx.into_parts();
 
-        let (partial_account, ref_block, _, input_notes) = tx_witness.tx_inputs.into_parts();
+        let (partial_account, ref_block, _) = tx_witness.prep_inputs.into_parts();
 
         self.build_proven_transaction(
-            &input_notes,
+            &tx_witness.input_notes,
             tx_outputs,
             account_delta,
             partial_account,

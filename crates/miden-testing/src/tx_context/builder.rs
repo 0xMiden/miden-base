@@ -8,6 +8,7 @@ use alloc::vec::Vec;
 use anyhow::Context;
 use miden_lib::testing::account_component::IncrNonceAuthComponent;
 use miden_lib::testing::mock_account::MockAccountExt;
+use miden_lib::transaction::TransactionKernelInputs;
 use miden_objects::EMPTY_WORD;
 use miden_objects::account::{
     Account,
@@ -30,7 +31,7 @@ use miden_objects::transaction::{
     AccountInputs,
     OutputNote,
     TransactionArgs,
-    TransactionInputs,
+    TransactionPreparationInputs,
     TransactionScript,
 };
 use miden_objects::vm::AdviceMap;
@@ -85,7 +86,7 @@ pub struct TransactionContextBuilder {
     tx_script: Option<TransactionScript>,
     tx_script_args: Word,
     note_args: BTreeMap<NoteId, Word>,
-    transaction_inputs: Option<TransactionInputs>,
+    kernel_inputs: Option<TransactionKernelInputs>,
     auth_args: Word,
     signatures: Vec<(PublicKeyCommitment, Word, Signature)>,
     is_lazy_loading_enabled: bool,
@@ -102,7 +103,7 @@ impl TransactionContextBuilder {
             tx_script_args: EMPTY_WORD,
             authenticator: None,
             advice_inputs: Default::default(),
-            transaction_inputs: None,
+            kernel_inputs: None,
             note_args: BTreeMap::new(),
             foreign_account_inputs: BTreeMap::new(),
             auth_args: EMPTY_WORD,
@@ -200,13 +201,13 @@ impl TransactionContextBuilder {
     }
 
     /// Set the desired transaction inputs
-    pub fn tx_inputs(mut self, tx_inputs: TransactionInputs) -> Self {
+    pub fn set_kernel_inputs(mut self, kernel_inputs: TransactionKernelInputs) -> Self {
         assert_eq!(
             AccountHeader::from(&self.account),
-            tx_inputs.account().into(),
+            kernel_inputs.account().into(),
             "account in context and account provided via tx inputs are not the same account"
         );
-        self.transaction_inputs = Some(tx_inputs);
+        self.kernel_inputs = Some(kernel_inputs);
         self
     }
 
@@ -264,8 +265,8 @@ impl TransactionContextBuilder {
     /// If no transaction inputs were provided manually, an ad-hoc MockChain is created in order
     /// to generate valid block data for the required notes.
     pub fn build(self) -> anyhow::Result<TransactionContext> {
-        let tx_inputs = match self.transaction_inputs {
-            Some(tx_inputs) => tx_inputs,
+        let mut kernel_inputs = match self.kernel_inputs {
+            Some(kernel_inputs) => kernel_inputs,
             None => {
                 // If no specific transaction inputs was provided, initialize an ad-hoc mockchain
                 // to generate valid block header/MMR data
@@ -283,23 +284,9 @@ impl TransactionContextBuilder {
                     mock_chain.committed_notes().values().map(MockChainNote::id).collect();
 
                 mock_chain
-                    .get_transaction_inputs(&self.account, &input_note_ids, &[])
+                    .get_transaction_kernel_inputs(&self.account, &input_note_ids, &[])
                     .context("failed to get transaction inputs from mock chain")?
             },
-        };
-
-        // If partial loading is enabled, construct an account that doesn't contain all
-        // merkle paths of assets and storage maps, in order to test lazy loading.
-        // Otherwise, load the full account.
-        let tx_inputs = if self.is_lazy_loading_enabled {
-            let (_account, block_header, partial_blockchain, input_notes) = tx_inputs.into_parts();
-            // Note that we use self.account instead of account, because we cannot do the same
-            // operation on a partial vault.
-            let account = minimal_partial_account(&self.account)?;
-
-            TransactionInputs::new(account, block_header, partial_blockchain, input_notes)?
-        } else {
-            tx_inputs
         };
 
         let foreign_account_inputs = if self.is_lazy_loading_enabled {
@@ -310,15 +297,12 @@ impl TransactionContextBuilder {
 
         let tx_args = TransactionArgs::new(AdviceMap::default(), foreign_account_inputs)
             .with_note_args(self.note_args);
-
         let mut tx_args = if let Some(tx_script) = self.tx_script {
             tx_args.with_tx_script_and_args(tx_script, self.tx_script_args)
         } else {
             tx_args
         };
-
         tx_args = tx_args.with_auth_args(self.auth_args);
-
         tx_args.extend_advice_inputs(self.advice_inputs.clone());
         tx_args.extend_output_note_recipients(self.expected_output_notes.clone());
 
@@ -326,9 +310,26 @@ impl TransactionContextBuilder {
             tx_args.add_signature(public_key_commitment, message, signature);
         }
 
+        // If partial loading is enabled, construct an account that doesn't contain all
+        // merkle paths of assets and storage maps, in order to test lazy loading.
+        // Otherwise, load the full account.
+        let kernel_inputs = if self.is_lazy_loading_enabled {
+            let (_, block_header, partial_blockchain, input_notes, _) = kernel_inputs.into_parts();
+            // Note that we use self.account instead of account, because we cannot do the same
+            // operation on a partial vault.
+            let account = minimal_partial_account(&self.account)?;
+
+            let prep_inputs =
+                TransactionPreparationInputs::new(account, block_header, partial_blockchain)?;
+            TransactionKernelInputs::new(prep_inputs, input_notes, tx_args)?
+        } else {
+            kernel_inputs.set_tx_args(tx_args);
+            kernel_inputs
+        };
+
         let mast_store = {
             let mast_forest_store = TransactionMastStore::new();
-            mast_forest_store.load_account_code(tx_inputs.account().code());
+            mast_forest_store.load_account_code(kernel_inputs.account().code());
 
             for acc_inputs in self.foreign_account_inputs.values() {
                 mast_forest_store.insert(acc_inputs.code().mast());
@@ -341,11 +342,9 @@ impl TransactionContextBuilder {
             account: self.account,
             expected_output_notes: self.expected_output_notes,
             foreign_account_inputs: self.foreign_account_inputs,
-            tx_args,
-            tx_inputs,
+            kernel_inputs,
             mast_store,
             authenticator: self.authenticator,
-            advice_inputs: self.advice_inputs,
             source_manager: self.source_manager,
         })
     }

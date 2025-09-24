@@ -10,13 +10,7 @@ use miden_objects::assembly::{Assembler, DefaultSourceManager, KernelLibrary};
 use miden_objects::asset::FungibleAsset;
 use miden_objects::block::BlockNumber;
 use miden_objects::crypto::SequentialCommit;
-use miden_objects::transaction::{
-    OutputNote,
-    OutputNotes,
-    TransactionArgs,
-    TransactionInputs,
-    TransactionOutputs,
-};
+use miden_objects::transaction::{OutputNote, OutputNotes, TransactionOutputs};
 use miden_objects::utils::serde::Deserializable;
 use miden_objects::utils::sync::LazyLock;
 use miden_objects::vm::{AdviceInputs, Program, ProgramInfo, StackInputs, StackOutputs};
@@ -31,7 +25,7 @@ mod events;
 pub use events::{EventId, TransactionEvent};
 
 mod inputs;
-pub use inputs::{TransactionAdviceInputs, TransactionAdviceMapMismatch};
+pub use inputs::{TransactionAdviceInputs, TransactionAdviceMapMismatch, TransactionKernelInputs};
 
 mod outputs;
 pub use outputs::{
@@ -123,33 +117,6 @@ impl TransactionKernel {
         let kernel = Self::kernel().kernel().clone();
 
         ProgramInfo::new(program_hash, kernel)
-    }
-
-    /// Transforms the provided [TransactionInputs] and [TransactionArgs] into stack and advice
-    /// inputs needed to execute a transaction kernel for a specific transaction.
-    ///
-    /// If `init_advice_inputs` is provided, they will be included in the returned advice inputs.
-    pub fn prepare_inputs(
-        tx_inputs: &TransactionInputs,
-        tx_args: &TransactionArgs,
-        init_advice_inputs: Option<AdviceInputs>,
-    ) -> Result<(StackInputs, TransactionAdviceInputs), TransactionAdviceMapMismatch> {
-        let account = tx_inputs.account();
-
-        let stack_inputs = TransactionKernel::build_input_stack(
-            account.id(),
-            account.initial_commitment(),
-            tx_inputs.input_notes().commitment(),
-            tx_inputs.block_header().commitment(),
-            tx_inputs.block_header().block_num(),
-        );
-
-        let mut tx_advice_inputs = TransactionAdviceInputs::new(tx_inputs, tx_args)?;
-        if let Some(init_advice_inputs) = init_advice_inputs {
-            tx_advice_inputs.extend(init_advice_inputs);
-        }
-
-        Ok((stack_inputs, tx_advice_inputs))
     }
 
     // ASSEMBLER CONSTRUCTOR

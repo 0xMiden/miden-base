@@ -490,10 +490,11 @@ pub fn test_timelock() -> anyhow::Result<()> {
 
     // Attempt to consume note too early.
     // ----------------------------------------------------------------------------------------
-    let tx_inputs = mock_chain.get_transaction_inputs(&account, &[timelock_note.id()], &[])?;
+    let kernel_inputs =
+        mock_chain.get_transaction_kernel_inputs(&account, &[timelock_note.id()], &[])?;
     let tx_context = TransactionContextBuilder::new(account.clone())
         .with_source_manager(source_manager.clone())
-        .tx_inputs(tx_inputs.clone())
+        .set_kernel_inputs(kernel_inputs.clone())
         .build()?;
     let result = tx_context.execute_blocking();
     assert_transaction_executor_error!(result, TIMESTAMP_ERROR);
@@ -504,8 +505,11 @@ pub fn test_timelock() -> anyhow::Result<()> {
         .prove_next_block_at(lock_timestamp)
         .context("failed to prove next block at lock timestamp")?;
 
-    let tx_inputs = mock_chain.get_transaction_inputs(&account, &[timelock_note.id()], &[])?;
-    let tx_context = TransactionContextBuilder::new(account).tx_inputs(tx_inputs).build()?;
+    let kernel_inputs =
+        mock_chain.get_transaction_kernel_inputs(&account, &[timelock_note.id()], &[])?;
+    let tx_context = TransactionContextBuilder::new(account)
+        .set_kernel_inputs(kernel_inputs)
+        .build()?;
     tx_context.execute_blocking()?;
 
     Ok(())

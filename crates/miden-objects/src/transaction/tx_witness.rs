@@ -1,7 +1,15 @@
 use alloc::vec::Vec;
 
-use super::{AdviceInputs, TransactionArgs, TransactionInputs};
-use crate::account::AccountCode;
+use super::AdviceInputs;
+use crate::account::{AccountCode, PartialAccount};
+use crate::block::BlockHeader;
+use crate::transaction::{
+    InputNote,
+    InputNotes,
+    PartialBlockchain,
+    TransactionArgs,
+    TransactionPreparationInputs,
+};
 use crate::utils::serde::{ByteReader, Deserializable, DeserializationError, Serializable};
 
 // TRANSACTION WITNESS
@@ -29,7 +37,8 @@ use crate::utils::serde::{ByteReader, Deserializable, DeserializationError, Seri
 /// transaction.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TransactionWitness {
-    pub tx_inputs: TransactionInputs,
+    pub prep_inputs: TransactionPreparationInputs,
+    pub input_notes: InputNotes<InputNote>,
     pub tx_args: TransactionArgs,
     pub foreign_account_code: Vec<AccountCode>,
     pub advice_witness: AdviceInputs,
@@ -40,7 +49,10 @@ pub struct TransactionWitness {
 
 impl Serializable for TransactionWitness {
     fn write_into<W: miden_crypto::utils::ByteWriter>(&self, target: &mut W) {
-        self.tx_inputs.write_into(target);
+        self.prep_inputs.account().write_into(target);
+        self.prep_inputs.block_header().write_into(target);
+        self.prep_inputs.blockchain().write_into(target);
+        self.input_notes.write_into(target);
         self.tx_args.write_into(target);
         self.foreign_account_code.write_into(target);
         self.advice_witness.write_into(target);
@@ -49,13 +61,19 @@ impl Serializable for TransactionWitness {
 
 impl Deserializable for TransactionWitness {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        let tx_inputs = TransactionInputs::read_from(source)?;
+        let account = PartialAccount::read_from(source)?;
+        let block_header = BlockHeader::read_from(source)?;
+        let blockchain = PartialBlockchain::read_from(source)?;
+        let input_notes = InputNotes::<InputNote>::read_from(source)?;
         let tx_args = TransactionArgs::read_from(source)?;
         let foreign_account_code = <Vec<AccountCode>>::read_from(source)?;
         let advice_witness = AdviceInputs::read_from(source)?;
 
+        let kernel_inputs = TransactionPreparationInputs::new(account, block_header, blockchain)
+            .map_err(|err| DeserializationError::InvalidValue(format!("{err}")))?;
         Ok(Self {
-            tx_inputs,
+            prep_inputs: kernel_inputs,
+            input_notes,
             tx_args,
             foreign_account_code,
             advice_witness,
@@ -77,7 +95,7 @@ mod tests {
         InputNotes,
         PartialBlockchain,
         TransactionArgs,
-        TransactionInputs,
+        TransactionPreparationInputs,
         TransactionWitness,
     };
     use crate::vm::AdviceInputs;
@@ -108,16 +126,16 @@ mod tests {
             Word::empty(),
         );
 
-        let tx_inputs = TransactionInputs::new(
-            &account,
+        let prep_inputs = TransactionPreparationInputs::new(
+            (&account).into(),
             block_header.clone(),
             partial_blockchain.clone(),
-            InputNotes::default(),
         )
         .unwrap();
 
         let witness = TransactionWitness {
-            tx_inputs,
+            prep_inputs,
+            input_notes: InputNotes::default(),
             tx_args: TransactionArgs::default(),
             foreign_account_code: vec![account.code().clone()],
             advice_witness: AdviceInputs::default(),

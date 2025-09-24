@@ -801,8 +801,10 @@ fn create_procedure_metadata_test_account(
     let account =
         Account::new(id, AssetVault::default(), storage, code, Felt::from(0u32), Some(seed))?;
 
-    let tx_inputs = mock_chain.get_transaction_inputs(&account, &[], &[])?;
-    let tx_context = TransactionContextBuilder::new(account).tx_inputs(tx_inputs).build()?;
+    let kernel_inputs = mock_chain.get_transaction_kernel_inputs(&account, &[], &[])?;
+    let tx_context = TransactionContextBuilder::new(account)
+        .set_kernel_inputs(kernel_inputs)
+        .build()?;
 
     let result = tx_context.execute_blocking().map_err(|err| {
         let TransactionExecutorError::TransactionProgramExecutionFailed(exec_err) = err else {
