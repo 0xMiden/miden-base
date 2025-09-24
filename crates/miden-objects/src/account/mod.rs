@@ -67,6 +67,7 @@ pub use storage::{
     AccountStorageHeader,
     PartialStorage,
     PartialStorageMap,
+    SlotName,
     StorageMap,
     StorageMapWitness,
     StorageSlot,

@@ -22,6 +22,7 @@ use crate::account::{
     AccountIdPrefix,
     AccountStorage,
     AccountType,
+    SlotName,
     StorageValueName,
     StorageValueNameError,
     TemplateTypeError,
@@ -213,6 +214,27 @@ pub enum AccountIdError {
     AccountIdSuffixMostSignificantBitMustBeZero,
     #[error("least significant byte of account ID suffix must be zero")]
     AccountIdSuffixLeastSignificantByteMustBeZero,
+}
+
+// SLOT NAME ERROR
+// ================================================================================================
+
+#[derive(Debug, Error)]
+pub enum SlotNameError {
+    #[error("slot names can only contain TODO")]
+    InvalidAlphabet,
+    #[error("slot names must be separated by double colons")]
+    InvalidColon,
+    #[error(
+        "slot names must contain at least {} components separated by double colons",
+        SlotName::MIN_COMPONENTS
+    )]
+    TooShort,
+    #[error(
+        "slot names must contain at most {} components separated by double colons",
+        SlotName::MAX_COMPONENTS
+    )]
+    TooLong,
 }
 
 // ACCOUNT TREE ERROR
