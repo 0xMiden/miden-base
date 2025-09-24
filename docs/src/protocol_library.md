@@ -58,12 +58,13 @@ Active note procedures can be used to fetch data from the note that is currently
 
 | Procedure | Description | Context |
 | --- | --- | --- |
-| `get_assets` | Writes the assets of the active note into memory starting at the specified address.<br><br>Inputs: `[dest_ptr]`<br>Outputs: `[num_assets, dest_ptr]` | Note |
-| `get_recipient` | Returns the recipient of the active note.<br><br>Inputs: `[]`<br>Outputs: `[RECIPIENT]` | Note |
-| `get_inputs` | Writes the note's inputs to the specified memory address.<br><br>Inputs: `[dest_ptr]`<br>Outputs: `[num_inputs, dest_ptr]` | Note |
+| `get_assets` | Writes the [assets](note.md#assets) of the active note into memory starting at the specified address.<br><br>Inputs: `[dest_ptr]`<br>Outputs: `[num_assets, dest_ptr]` | Note |
+| `get_recipient` | Returns the [recipient](note.md#note-recipient-restricting-consumption) of the active note.<br><br>Inputs: `[]`<br>Outputs: `[RECIPIENT]` | Note |
+| `get_inputs` | Writes the note's [inputs](note.md#inputs) to the specified memory address.<br><br>Inputs: `[dest_ptr]`<br>Outputs: `[num_inputs, dest_ptr]` | Note |
+| `get_metadata` | Returns the [metadata](note.md#metadata) of the active note.<br><br>Inputs: `[]`<br>Outputs: `[METADATA]` | Note |
 | `get_sender` | Returns the sender of the active note.<br><br>Inputs: `[]`<br>Outputs: `[sender_id_prefix, sender_id_suffix]` | Note |
-| `get_serial_number` | Returns the serial number of the active note.<br><br>Inputs: `[]`<br>Outputs: `[SERIAL_NUMBER]` | Note |
-| `get_script_root` | Returns the script root of the active note.<br><br>Inputs: `[]`<br>Outputs: `[SCRIPT_ROOT]` | Note |
+| `get_serial_number` | Returns the [serial number](note.md#serial-number) of the active note.<br><br>Inputs: `[]`<br>Outputs: `[SERIAL_NUMBER]` | Note |
+| `get_script_root` | Returns the [script root](note.md#script) of the active note.<br><br>Inputs: `[]`<br>Outputs: `[SCRIPT_ROOT]` | Note |
 | `add_assets_to_account` | Adds all assets from the active note to the account vault.<br><br>Inputs: `[]`<br>Outputs: `[]` | Note |
 
 ## Input Note Procedures (`miden::input_note`)

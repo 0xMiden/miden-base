@@ -129,6 +129,38 @@ export.get_inputs
     # => [num_inputs, dest_ptr]
 end
 
+#! Returns the metadata of the active note.
+#!
+#! Inputs:  []
+#! Outputs: [METADATA]
+#!
+#! Where:
+#! - METADATA is the metadata of the active note.
+#!
+#! Panics if:
+#! - no note is currently active.
+#!
+#! Invocation: exec
+export.get_metadata
+    # pad the stack
+    padw padw padw push.0.0
+    # => [pad(14)]
+
+    # push the flag indicating that we want to request metadata from the active note
+    push.1
+    # => [is_active_note = 1, pad(14)]
+
+    exec.kernel_proc_offsets::input_note_get_metadata_offset
+    # => [offset, is_active_note = 1, pad(14)]
+
+    syscall.exec_kernel_proc
+    # => [METADATA, pad(12)]
+
+    # clean the stack
+    swapdw dropw dropw swapw dropw
+    # => [METADATA]
+end
+
 #! Returns the sender of the active note.
 #!
 #! Inputs:  []
