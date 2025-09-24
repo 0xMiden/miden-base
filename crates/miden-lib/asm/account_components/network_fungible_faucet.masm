@@ -65,6 +65,9 @@ export.burn
     push.0 exec.active_note::get_assets
     # => [num_assets, dest_ptr]
 
+    # This assert enforces both that execution is in a note context and that the note contains exactly one asset.
+    # If not in a note context, get_assets will return 0, causing the assert to fail.
+    # If the note contains more than one asset, the assert will also fail.
     assert.err=ERR_INVALID_NUM_ASSETS
     # => [dest_ptr]
 
