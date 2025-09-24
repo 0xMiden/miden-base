@@ -3,7 +3,6 @@ use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::str::FromStr;
 
-use miden_assembly::Library;
 use miden_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
 use miden_processor::DeserializationError;
 use semver::Version;
@@ -13,70 +12,6 @@ use crate::errors::AccountComponentTemplateError;
 
 mod storage;
 pub use storage::*;
-
-// ACCOUNT COMPONENT TEMPLATE
-// ================================================================================================
-
-/// Represents a template containing a component's metadata and its associated library.
-///
-/// The [AccountComponentTemplate] encapsulates all necessary information to initialize and manage
-/// an account component within the system. It includes the configuration details and the compiled
-/// library code required for the component's operation.
-///
-/// A template can be instantiated into [AccountComponent](super::AccountComponent) objects.
-/// The component metadata can be defined with placeholders that can be replaced at instantiation
-/// time.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct AccountComponentTemplate {
-    /// The component's metadata. This describes the component and how the storage is laid out,
-    /// alongside how storage values are initialized.
-    metadata: AccountComponentMetadata,
-    /// The account component's assembled code. This defines all functionality related to the
-    /// component.
-    library: Library,
-}
-
-impl AccountComponentTemplate {
-    /// Creates a new [AccountComponentTemplate].
-    ///
-    /// This template holds everything needed to describe and implement a component, including the
-    /// compiled procedures (via the [Library]) and the metadata that defines the component’s
-    /// storage layout ([AccountComponentMetadata]). The metadata can include storage placeholders
-    /// that get filled in at the time of the [AccountComponent](super::AccountComponent)
-    /// instantiation.
-    pub fn new(metadata: AccountComponentMetadata, library: Library) -> Self {
-        Self { metadata, library }
-    }
-
-    /// Returns a reference to the template's [AccountComponentMetadata].
-    pub fn metadata(&self) -> &AccountComponentMetadata {
-        &self.metadata
-    }
-
-    /// Returns a reference to the underlying [Library] of this component.
-    pub fn library(&self) -> &Library {
-        &self.library
-    }
-}
-
-impl Serializable for AccountComponentTemplate {
-    fn write_into<W: miden_core::utils::ByteWriter>(&self, target: &mut W) {
-        target.write(&self.metadata);
-        target.write(&self.library);
-    }
-}
-
-impl Deserializable for AccountComponentTemplate {
-    fn read_from<R: miden_core::utils::ByteReader>(
-        source: &mut R,
-    ) -> Result<Self, miden_processor::DeserializationError> {
-        // Read and deserialize the configuration from a TOML string.
-        let metadata: AccountComponentMetadata = source.read()?;
-        let library = Library::read_from(source)?;
-
-        Ok(AccountComponentTemplate::new(metadata, library))
-    }
-}
 
 // ACCOUNT COMPONENT METADATA
 // ================================================================================================
@@ -329,22 +264,20 @@ impl Deserializable for AccountComponentMetadata {
 mod tests {
     use std::collections::BTreeSet;
     use std::string::ToString;
+    use std::sync::Arc;
 
     use assert_matches::assert_matches;
     use miden_assembly::Assembler;
-    use miden_core::utils::{Deserializable, Serializable};
+    use miden_core::utils::Serializable;
     use miden_core::{Felt, FieldElement};
+    use miden_mast_package::{MastArtifact, Package, PackageManifest};
     use semver::Version;
 
     use super::FeltRepresentation;
     use crate::AccountError;
     use crate::account::component::FieldIdentifier;
     use crate::account::component::template::storage::StorageEntry;
-    use crate::account::component::template::{
-        AccountComponentMetadata,
-        AccountComponentTemplate,
-        InitStorageData,
-    };
+    use crate::account::component::template::{AccountComponentMetadata, InitStorageData};
     use crate::account::{AccountComponent, StorageValueName};
     use crate::errors::AccountComponentTemplateError;
     use crate::testing::account_code::CODE;
@@ -397,35 +330,6 @@ mod tests {
             storage,
         );
         assert_matches!(result, Err(AccountComponentTemplateError::NonContiguousSlots(0, 2)));
-    }
-
-    #[test]
-    fn binary_serde_roundtrip() {
-        let storage = vec![
-            StorageEntry::new_multislot(
-                FieldIdentifier::with_name(StorageValueName::new("slot1").unwrap()),
-                1..3,
-                vec![default_felt_array(), default_felt_array()],
-            ),
-            StorageEntry::new_value(0, default_felt_array()),
-        ];
-
-        let component_metadata = AccountComponentMetadata {
-            name: "test".into(),
-            description: "desc".into(),
-            version: Version::parse("0.1.0").unwrap(),
-            supported_types: BTreeSet::new(),
-            storage,
-        };
-
-        let library = Assembler::default().assemble_library([CODE]).unwrap();
-        let template = AccountComponentTemplate::new(component_metadata, library);
-        let _ = AccountComponent::from_template(&template, &InitStorageData::default()).unwrap();
-
-        let serialized = template.to_bytes();
-        let deserialized = AccountComponentTemplate::read_from_bytes(&serialized).unwrap();
-
-        assert_eq!(deserialized, template);
     }
 
     #[test]
@@ -494,7 +398,12 @@ mod tests {
 
         let metadata = AccountComponentMetadata::from_toml(toml_text).unwrap();
         let library = Assembler::default().assemble_library([CODE]).unwrap();
-        let template = AccountComponentTemplate::new(metadata, library);
+        let package = Package {
+            name: "test".into(),
+            mast: MastArtifact::Library(Arc::new(library)),
+            manifest: PackageManifest::new(None),
+            account_component_metadata_bytes: Some(metadata.to_bytes()),
+        };
 
         // Fail to instantiate on a duplicate key
 
@@ -502,7 +411,8 @@ mod tests {
             StorageValueName::new("map.duplicate_key").unwrap(),
             "0x0000000000000000000000000000000000000000000000000100000000000000".to_string(),
         )]);
-        let account_component = AccountComponent::from_template(&template, &init_storage_data);
+        let account_component =
+            AccountComponent::from_package_with_init_data(&package, &init_storage_data);
         assert_matches!(
             account_component,
             Err(AccountError::AccountComponentTemplateInstantiationError(
@@ -515,6 +425,6 @@ mod tests {
             StorageValueName::new("map.duplicate_key").unwrap(),
             "0x30".to_string(),
         )]);
-        AccountComponent::from_template(&template, &valid_init_storage_data).unwrap();
+        AccountComponent::from_package_with_init_data(&package, &valid_init_storage_data).unwrap();
     }
 }

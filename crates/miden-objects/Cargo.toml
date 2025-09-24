@@ -60,6 +60,7 @@ getrandom = { features = ["wasm_js"], version = "0.3" }
 anyhow         = { features = ["backtrace", "std"], workspace = true }
 assert_matches = { workspace = true }
 criterion      = { default-features = false, features = ["html_reports"], version = "0.5" }
+miden-lib      = { workspace = true }
 miden-objects  = { features = ["testing"], path = "." }
 pprof          = { default-features = false, features = ["criterion", "flamegraph"], version = "0.15" }
 rstest         = { workspace = true }

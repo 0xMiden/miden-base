@@ -376,10 +376,12 @@ mod tests {
     use alloc::string::ToString;
     use core::error::Error;
     use core::panic;
+    use std::sync::Arc;
 
     use miden_assembly::Assembler;
     use miden_core::utils::{Deserializable, Serializable};
     use miden_core::{EMPTY_WORD, Felt, Word};
+    use miden_mast_package::{MastArtifact, Package, PackageManifest};
     use semver::Version;
 
     use crate::account::component::FieldIdentifier;
@@ -393,7 +395,6 @@ mod tests {
     };
     use crate::account::{
         AccountComponent,
-        AccountComponentTemplate,
         AccountType,
         FeltRepresentation,
         StorageEntry,
@@ -562,12 +563,17 @@ mod tests {
         assert_eq!(map_key_template.r#type.as_str(), "word");
 
         let library = Assembler::default().assemble_library([CODE]).unwrap();
-        let template = AccountComponentTemplate::new(component_metadata, library);
 
-        let template_bytes = template.to_bytes();
-        let template_deserialized =
-            AccountComponentTemplate::read_from_bytes(&template_bytes).unwrap();
-        assert_eq!(template, template_deserialized);
+        let package = Package {
+            name: "test".into(),
+            mast: MastArtifact::Library(Arc::new(library)),
+            manifest: PackageManifest::new(None),
+            account_component_metadata_bytes: Some(component_metadata.to_bytes()),
+        };
+
+        let package_bytes = package.to_bytes();
+        let package_deserialized = Package::read_from_bytes(&package_bytes).unwrap();
+        assert_eq!(package, package_deserialized);
 
         // Fail to parse because 2800 > u8
         let storage_placeholders = InitStorageData::new([
@@ -583,7 +589,8 @@ mod tests {
             (StorageValueName::new("default_recallable_height").unwrap(), "0".into()),
         ]);
 
-        let component = AccountComponent::from_template(&template, &storage_placeholders);
+        let component =
+            AccountComponent::from_package_with_init_data(&package, &storage_placeholders);
         assert_matches::assert_matches!(
             component,
             Err(AccountError::AccountComponentTemplateInstantiationError(
@@ -607,7 +614,8 @@ mod tests {
             (StorageValueName::new("default_recallable_height").unwrap(), "0x0".into()),
         ]);
 
-        let component = AccountComponent::from_template(&template, &storage_placeholders).unwrap();
+        let component =
+            AccountComponent::from_package_with_init_data(&package, &storage_placeholders).unwrap();
         assert_eq!(
             component.supported_types(),
             &[AccountType::FungibleFaucet, AccountType::RegularAccountImmutableCode]
@@ -630,7 +638,7 @@ mod tests {
         }
 
         let failed_instantiation =
-            AccountComponent::from_template(&template, &InitStorageData::default());
+            AccountComponent::from_package_with_init_data(&package, &InitStorageData::default());
 
         assert_matches::assert_matches!(
             failed_instantiation,

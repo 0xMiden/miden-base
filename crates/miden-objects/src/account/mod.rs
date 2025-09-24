@@ -36,7 +36,6 @@ pub mod component;
 pub use component::{
     AccountComponent,
     AccountComponentMetadata,
-    AccountComponentTemplate,
     FeltRepresentation,
     InitStorageData,
     MapEntry,
@@ -103,6 +102,28 @@ pub use partial::PartialAccount;
 ///
 /// The recommended way to build an account is through an [`AccountBuilder`], which can be
 /// instantiated through [`Account::builder`]. See the type's documentation for details.
+///
+/// # Example
+/// ```
+/// use miden_lib::account::auth::AuthRpoFalcon512;
+/// use miden_lib::account::wallets::BasicWallet;
+/// use miden_objects::Word;
+/// use miden_objects::account::AccountBuilder;
+/// use miden_objects::crypto::dsa::rpo_falcon512::PublicKey;
+///
+/// let pub_key = PublicKey::new(Word::empty());
+///
+/// let account = AccountBuilder::new([5; 32])
+///     .with_auth_component(AuthRpoFalcon512::new(pub_key))
+///     .with_component(BasicWallet)
+///     .build();
+/// ```
+///
+/// This will build a new account with the following components:
+/// - An empty [`AssetVault`].
+/// - The nonce set to [`Felt::ZERO`].
+/// - A seed which results in an [`AccountId`] valid for the configured account type and storage
+///   mode.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Account {
     id: AccountId,
