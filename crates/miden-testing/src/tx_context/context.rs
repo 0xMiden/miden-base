@@ -324,13 +324,11 @@ impl DataStore for TransactionContext {
                         ))
                     })?;
 
-                let smt_proof = map.open(&map_key).map_err(|err| {
+                map.open(&map_key).map_err(|err| {
                   DataStoreError::other_with_source(format!(
                         "failed to open {map_key} in storage map of foreign account {account_id}"
                     ), err)
-                })?;
-
-                Ok(StorageMapWitness::new(smt_proof))
+                })
             }
         }
     }

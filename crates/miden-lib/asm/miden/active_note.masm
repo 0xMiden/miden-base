@@ -129,6 +129,38 @@ export.get_inputs
     # => [num_inputs, dest_ptr]
 end
 
+#! Returns the metadata of the active note.
+#!
+#! Inputs:  []
+#! Outputs: [METADATA]
+#!
+#! Where:
+#! - METADATA is the metadata of the active note.
+#!
+#! Panics if:
+#! - no note is currently active.
+#!
+#! Invocation: exec
+export.get_metadata
+    # pad the stack
+    padw padw padw push.0.0
+    # => [pad(14)]
+
+    # push the flag indicating that we want to request metadata from the active note
+    push.1
+    # => [is_active_note = 1, pad(14)]
+
+    exec.kernel_proc_offsets::input_note_get_metadata_offset
+    # => [offset, is_active_note = 1, pad(14)]
+
+    syscall.exec_kernel_proc
+    # => [METADATA, pad(12)]
+
+    # clean the stack
+    swapdw dropw dropw swapw dropw
+    # => [METADATA]
+end
+
 #! Returns the sender of the active note.
 #!
 #! Inputs:  []
@@ -157,7 +189,7 @@ export.get_sender
     # => [METADATA, pad(12)]
 
     # extract the sender ID from the metadata word
-    exec.extract_sender_from_metadata
+    exec.note::extract_sender_from_metadata
     # => [sender_id_prefix, sender_id_suffix, pad(12)]
 
     # clean the stack
@@ -339,29 +371,4 @@ proc.write_inputs_to_memory
     exec.mem::pipe_preimage_to_memory drop
     # OS => [num_inputs, dest_ptr]
     # AS => []
-end
-
-#! Extracts the sender ID from the provided metadata word.
-#!
-#! Inputs:  [METADATA]
-#! Outputs: [sender_id_prefix, sender_id_suffix]
-#!
-#! Where:
-#! - METADATA is the metadata of some note.
-#! - sender_{prefix,suffix} are the prefix and suffix felts of the sender ID of the note which 
-#!   metadata was provided.
-proc.extract_sender_from_metadata
-    # => [aux, merged_tag_hint_payload, merged_sender_id_type_hint_tag, sender_id_prefix]
-
-    # drop aux felt and the felt containing tag, execution hint and payload
-    drop drop
-    # => [merged_sender_id_type_hint_tag, sender_id_prefix]
-
-    # extract suffix of sender from merged layout, which means clearing the least significant byte
-    exec.account_id::shape_suffix
-    # => [sender_id_suffix, sender_id_prefix]
-
-    # rearrange suffix and prefix
-    swap
-    # => [sender_id_prefix, sender_id_suffix]
 end

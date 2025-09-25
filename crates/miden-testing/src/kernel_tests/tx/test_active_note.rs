@@ -24,7 +24,7 @@ use miden_objects::testing::account_id::{
 };
 use miden_objects::{EMPTY_WORD, Felt, ONE, WORD_SIZE, Word};
 
-use crate::utils::create_p2any_note;
+use crate::utils::create_public_p2any_note;
 use crate::{
     Auth,
     MockChain,
@@ -74,12 +74,59 @@ fn test_active_note_get_sender_fails_from_tx_script() -> anyhow::Result<()> {
 }
 
 #[test]
+fn test_active_note_get_metadata() -> anyhow::Result<()> {
+    let tx_context = {
+        let account =
+            Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, Auth::IncrNonce);
+        let input_note = create_public_p2any_note(
+            ACCOUNT_ID_SENDER.try_into().unwrap(),
+            [FungibleAsset::mock(100)],
+        );
+        TransactionContextBuilder::new(account)
+            .extend_input_notes(vec![input_note])
+            .build()?
+    };
+
+    let code = format!(
+        r#"
+        use.$kernel::prologue
+        use.$kernel::note->note_internal
+        use.miden::active_note
+
+        begin
+            exec.prologue::prepare_transaction
+            exec.note_internal::prepare_note
+            dropw dropw dropw dropw
+
+            # get the metadata of the active note
+            exec.active_note::get_metadata
+            # => [METADATA]
+
+            # assert this metadata
+            push.{METADATA}
+            assert_eqw.err="note 0 has incorrect metadata"
+
+            # truncate the stack
+            swapw dropw
+        end
+        "#,
+        METADATA = Word::from(tx_context.input_notes().get_note(0).note().metadata())
+    );
+
+    tx_context.execute_code(&code)?;
+
+    Ok(())
+}
+
+#[test]
 fn test_active_note_get_sender() -> anyhow::Result<()> {
     let tx_context = {
         let account =
             Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, Auth::IncrNonce);
-        let input_note =
-            create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), [FungibleAsset::mock(100)]);
+        let input_note = create_public_p2any_note(
+            ACCOUNT_ID_SENDER.try_into().unwrap(),
+            [FungibleAsset::mock(100)],
+        );
         TransactionContextBuilder::new(account)
             .extend_input_notes(vec![input_note])
             .build()?
