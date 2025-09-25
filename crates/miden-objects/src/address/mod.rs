@@ -515,22 +515,15 @@ mod tests {
     fn address_serialization() {
         let rng = &mut rand::rng();
 
-        for account_id in [
-            AccountIdBuilder::new()
-                .account_type(AccountType::FungibleFaucet)
-                .build_with_rng(rng),
-            AccountIdBuilder::new()
-                .account_type(AccountType::NonFungibleFaucet)
-                .build_with_rng(rng),
-            AccountIdBuilder::new()
-                .account_type(AccountType::RegularAccountImmutableCode)
-                .build_with_rng(rng),
-            AccountIdBuilder::new()
-                .account_type(AccountType::RegularAccountUpdatableCode)
-                .build_with_rng(rng),
+        for account_type in [
+            AccountType::FungibleFaucet,
+            AccountType::NonFungibleFaucet,
+            AccountType::RegularAccountImmutableCode,
+            AccountType::RegularAccountUpdatableCode,
         ]
         .into_iter()
         {
+            let account_id = AccountIdBuilder::new().account_type(account_type).build_with_rng(rng);
             for account_id_address in [
                 AccountIdAddress::new(account_id, AddressInterface::BasicWallet),
                 AccountIdAddress::new(account_id, AddressInterface::Unspecified),
