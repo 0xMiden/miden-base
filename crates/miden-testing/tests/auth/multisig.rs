@@ -313,3 +313,102 @@ async fn test_multisig_replay_protection() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[tokio::test]
+async fn test_executor_bug() -> anyhow::Result<()> {
+    // Setup keys and authenticators
+    let (_secret_keys, public_keys, authenticators) = setup_keys_and_authenticators(2, 2)?;
+
+    // Create multisig account
+    let multisig_account = create_multisig_account(2, &public_keys, 10u64)?;
+
+    let mut mock_chain_builder =
+        MockChainBuilder::with_accounts([multisig_account.clone()]).unwrap();
+
+    // Create output note using add_p2id_note for spawn note
+    let output_note = mock_chain_builder.add_p2id_note(
+        multisig_account.id(),
+        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE.try_into().unwrap(),
+        &[FungibleAsset::mock(0)],
+        NoteType::Public,
+    )?;
+
+    // Create spawn note that will create the output note
+    let input_note = mock_chain_builder.add_spawn_note([&output_note])?;
+
+    let mock_chain = mock_chain_builder.build().unwrap();
+    let salt = Word::from([Felt::new(1); 4]);
+
+    // get the transaction context without signatures (just to obtain the summary)
+    let tx_context_without_signatures = mock_chain
+        .build_tx_context(multisig_account.id(), &[input_note.id()], &[])?
+        .extend_expected_output_notes(vec![OutputNote::Full(output_note.clone())])
+        .auth_args(salt)
+        .build()?;
+
+    // execute the transaction to get the summary
+    let tx_summary = match tx_context_without_signatures.execute().await.unwrap_err() {
+        TransactionExecutorError::Unauthorized(tx_effects) => tx_effects,
+        error => panic!("expected abort with tx effects: {error:?}"),
+    };
+
+    // Get signatures from both approvers
+    let msg = tx_summary.as_ref().to_commitment();
+    let tx_summary = SigningInputs::TransactionSummary(tx_summary);
+
+    let sig_1 = authenticators[0].get_signature(public_keys[0].into(), &tx_summary).await?;
+    let sig_2 = authenticators[1].get_signature(public_keys[1].into(), &tx_summary).await?;
+
+    // get the transaction context with signatures
+    let tx_context_with_signatures = mock_chain
+        .build_tx_context(multisig_account.id(), &[input_note.id()], &[])?
+        .extend_expected_output_notes(vec![OutputNote::Full(output_note)])
+        .add_signature(public_keys[0], msg, sig_1)
+        .add_signature(public_keys[1], msg, sig_2)
+        .auth_args(salt)
+        .build()?;
+
+    // The block below is essentially a copy of the `TransactionContext::execute(&self)` method.
+    // The only thing which I will change to demonstrate the bug -- the input notes.
+    //---------------------------------------------------------------------------------------------
+    let block_num = tx_context_with_signatures.tx_inputs().block_header().block_num();
+
+    // There are two ways of creating the InputNotes: either by requesting it from the context, or
+    // doing it by ourselves, using conversion from Vec<Note>.
+
+    // let notes = tx_context_with_signatures.tx_inputs().input_notes().clone();
+    //     ^-- these notes are obtained from the context (essentially there is only one
+    //         `input_note`), so they are either authenticated or unauthenticated depending on how
+    //         did we provide the `input_note` during the `tx_context_with_signatures` creation.
+
+    let notes = vec![input_note].into();
+    //  ^-- this notes vector could be created by us and will contain only the unauthenticated
+    //         notes (that's how this bug was discovered initially)
+    let tx_args = tx_context_with_signatures.tx_args().clone();
+
+    use miden_tx::TransactionExecutor;
+
+    let mut tx_executor = TransactionExecutor::new(&tx_context_with_signatures)
+        .with_source_manager(tx_context_with_signatures.source_manager().clone())
+        .with_debug_mode();
+    if let Some(authenticator) = tx_context_with_signatures.authenticator() {
+        tx_executor = tx_executor.with_authenticator(authenticator);
+    }
+
+    let result = tx_executor
+        .execute_transaction(multisig_account.id(), block_num, notes, tx_args)
+        .await;
+    //  ^-- execution succeeds if we provide the authenticated note to the executor, but it fails
+    //      otherwise: either if we create a transaction context with unauthenticated notes, or if
+    //      we create an InputNotes vector by ourselves (which consists of unauthenticated notes).
+    //
+    //      The most suspicious part is that the transaction is failing with the
+    //      `TransactionExecutorError::Unauthorized` error, which should not be anyhow connected to
+    //      the note inclusion proof existence. The necessary number of signatures (2) was provided
+    //      to the transaction context, so this error should not be returned.
+
+    assert!(result.is_err());
+    std::println!("{result:?}");
+
+    Ok(())
+}
