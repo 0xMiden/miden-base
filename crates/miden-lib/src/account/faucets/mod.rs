@@ -519,7 +519,11 @@ pub fn create_basic_fungible_faucet(
         )
         .map_err(FungibleFaucetError::AccountError)?
         .into(),
-        AuthScheme::NoAuth => NoAuth::new().into(),
+        AuthScheme::NoAuth => {
+            return Err(FungibleFaucetError::UnsupportedAuthScheme(
+                "basic fungible faucets cannot be created with NoAuth authentication scheme".into(),
+            ));
+        },
         AuthScheme::RpoFalcon512Multisig { threshold: _, pub_keys: _ } => {
             return Err(FungibleFaucetError::UnsupportedAuthScheme(
                 "basic fungible faucets do not support multisig authentication".into(),
@@ -572,21 +576,16 @@ pub fn create_network_fungible_faucet(
     account_storage_mode: AccountStorageMode,
     auth_scheme: AuthScheme,
 ) -> Result<Account, FungibleFaucetError> {
-    let distribute_proc_root = NetworkFungibleFaucet::distribute_digest();
-
     let auth_component: AccountComponent = match auth_scheme {
-        AuthScheme::RpoFalcon512 { pub_key } => AuthRpoFalcon512Acl::new(
-            pub_key,
-            AuthRpoFalcon512AclConfig::new()
-                .with_auth_trigger_procedures(vec![distribute_proc_root])
-                .with_allow_unauthorized_input_notes(true),
-        )
-        .map_err(FungibleFaucetError::AccountError)?
-        .into(),
         AuthScheme::NoAuth => NoAuth::new().into(),
-        AuthScheme::RpoFalcon512Multisig { threshold: _, pub_keys: _ } => {
+        AuthScheme::RpoFalcon512 { .. } => {
             return Err(FungibleFaucetError::UnsupportedAuthScheme(
-                "network fungible faucets do not support multisig authentication".into(),
+                "network fungible faucets only support NoAuth authentication scheme".into(),
+            ));
+        },
+        AuthScheme::RpoFalcon512Multisig { .. } => {
+            return Err(FungibleFaucetError::UnsupportedAuthScheme(
+                "network fungible faucets only support NoAuth authentication scheme".into(),
             ));
         },
         AuthScheme::Unknown => {
