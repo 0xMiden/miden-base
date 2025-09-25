@@ -1,6 +1,3 @@
-// AUTH SECRET KEY
-// ================================================================================================
-
 use alloc::vec::Vec;
 
 use crate::crypto::dsa::rpo_falcon512::{self, Polynomial, SecretKey};
@@ -12,6 +9,9 @@ use crate::utils::serde::{
     Serializable,
 };
 use crate::{Felt, Hasher};
+
+// AUTH SECRET KEY
+// ================================================================================================
 
 /// Types of secret keys used for signing messages
 #[derive(Clone, Debug)]
@@ -54,6 +54,9 @@ impl Deserializable for AuthSecretKey {
     }
 }
 
+// SIGNATURE
+// ================================================================================================
+
 /// Represents a signature object ready for native verification.
 ///
 /// In order to use this signature within the Miden VM, a preparation step may be necessary to
@@ -72,7 +75,7 @@ impl Deserializable for AuthSecretKey {
 #[derive(Clone, Debug)]
 #[repr(u8)]
 pub enum Signature {
-    RpoFalcon512(rpo_falcon512::Signature),
+    RpoFalcon512(rpo_falcon512::Signature) = 0,
 }
 
 impl Signature {
@@ -124,6 +127,9 @@ impl Deserializable for Signature {
         }
     }
 }
+
+// SIGNATURE PREPARATION
+// ================================================================================================
 
 /// Converts a Falcon [rpo_falcon512::Signature] to a vector of values to be pushed onto the
 /// advice stack. The values are the ones required for a Falcon signature verification inside the VM
