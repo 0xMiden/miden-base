@@ -113,6 +113,22 @@ impl StorageMap {
         self.smt.root()
     }
 
+    /// Returns the number of non-empty leaves in this storage map.
+    ///
+    /// Note that this may return a different value from [Self::num_entries()] as a single leaf may
+    /// contain more than one key-value pair.
+    pub fn num_leaves(&self) -> usize {
+        self.smt.num_leaves()
+    }
+
+    /// Returns the number of key-value pairs with non-default values in this storage map.
+    ///
+    /// Note that this may return a different value from [Self::num_leaves()] as a single leaf may
+    /// contain more than one key-value pair.
+    pub fn num_entries(&self) -> usize {
+        self.smt.num_entries()
+    }
+
     /// Returns the value corresponding to the key or [`Self::EMPTY_VALUE`] if the key is not
     /// associated with a value.
     pub fn get(&self, raw_key: &Word) -> Word {
@@ -244,6 +260,8 @@ mod tests {
             (Word::from([105, 106, 107, 108u32]), Word::from([5, 6, 7, 8u32])),
         ];
         let storage_map = StorageMap::with_entries(storage_map_leaves_2).unwrap();
+        assert_eq!(storage_map.num_entries(), 2);
+        assert_eq!(storage_map.num_leaves(), 2);
 
         let bytes = storage_map.to_bytes();
         let deserialized_map = StorageMap::read_from_bytes(&bytes).unwrap();
