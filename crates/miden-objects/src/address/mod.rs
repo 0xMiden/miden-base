@@ -516,7 +516,7 @@ mod tests {
     fn address_serialization() {
         let rng = &mut rand::rng();
 
-        for (_, account_id) in [
+        for account_id in [
             AccountIdBuilder::new()
                 .account_type(AccountType::FungibleFaucet)
                 .build_with_rng(rng),
@@ -531,7 +531,6 @@ mod tests {
                 .build_with_rng(rng),
         ]
         .into_iter()
-        .enumerate()
         {
             for account_id_address in [
                 AccountIdAddress::new(account_id, AddressInterface::BasicWallet),
