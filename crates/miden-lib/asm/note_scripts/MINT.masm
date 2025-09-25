@@ -19,13 +19,13 @@ const.ERR_MINT_WRONG_NUMBER_OF_INPUTS="MINT script expects exactly 9 note inputs
 #! Inputs:  [ARGS]
 #! Outputs: []
 #!
-#! Note inputs are assumed to be as follows:
-#! - amount: The amount to mint
-#! - tag: Note tag for the output note
-#! - aux: Auxiliary data for the output note
-#! - note_type: Type of the output note
-#! - execution_hint: Execution hint for the output note
+#! Note inputs are assumed to be as follows (in order):
 #! - RECIPIENT: The recipient account ID (4 elements)
+#! - execution_hint: Execution hint for the output note
+#! - note_type: Type of the output note
+#! - aux: Auxiliary data for the output note
+#! - tag: Note tag for the output note
+#! - amount: The amount to mint
 #!
 #! Panics if:
 #! - account does not expose distribute procedure.
