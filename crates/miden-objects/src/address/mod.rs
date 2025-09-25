@@ -20,9 +20,8 @@ use crate::note::NoteTag;
 /// A user-facing address in Miden.
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[repr(u8)]
 pub enum Address {
-    AccountId(AccountIdAddress) = 0,
+    AccountId(AccountIdAddress),
 }
 
 impl Address {
