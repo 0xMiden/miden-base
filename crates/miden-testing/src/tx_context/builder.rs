@@ -269,10 +269,11 @@ impl TransactionContextBuilder {
                 // If no specific transaction inputs was provided, initialize an ad-hoc mockchain
                 // to generate valid block header/MMR data
 
-                let mut mock_chain = MockChain::default();
+                let mut builder = MockChain::builder();
                 for i in self.input_notes {
-                    mock_chain.add_pending_note(OutputNote::Full(i));
+                    builder.add_note(OutputNote::Full(i));
                 }
+                let mut mock_chain = builder.build()?;
 
                 mock_chain.prove_next_block().context("failed to prove first block")?;
                 mock_chain.prove_next_block().context("failed to prove second block")?;

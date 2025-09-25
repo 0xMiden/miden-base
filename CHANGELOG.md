@@ -19,6 +19,7 @@
 - Added `get_item_init` and `get_map_item_init` procedures to `miden::account` module for accessing initial storage state ([#1883](https://github.com/0xMiden/miden-base/pull/1883)).
 - Updated `rpo_falcon512::verify_signatures` to use `account::get_map_item_init` ([#1885](https://github.com/0xMiden/miden-base/issues/1885))
 - Added `network_fungible_faucet` and `MINT` & `BURN` notes ([#1925](https://github.com/0xMiden/miden-base/pull/1925))
+- Implemented `input_note::get_sender` and `active_note::get_metadata` procedures in `miden` lib ([#1933]https://github.com/0xMiden/miden-base/pull/1933).
 
 ### Changes
 
@@ -38,11 +39,12 @@
 - [BREAKING] Moved `miden::asset::{create_fungible_asset, create_non_fungible_asset}` procedures to `miden::faucet` ([#1850](https://github.com/0xMiden/miden-base/pull/1850)).
 - [BREAKING] Moved `NetworkId` from account ID to address module ([#1851](https://github.com/0xMiden/miden-base/pull/1851)).
 - [BREAKING] Move `TransactionKernelError` to miden-tx ([#1859](https://github.com/0xMiden/miden-base/pull/1859)).
-- [BREAKING] Changed `PartialStorageMap` to track the correct set of key+value pairings ([#1878](https://github.com/0xMiden/miden-base/pull/1878)).
+- [BREAKING] Changed `PartialStorageMap` to track the correct set of key+value pairings ([#1878](https://github.com/0xMiden/miden-base/pull/1878), [#1921](https://github.com/0xMiden/miden-base/pull/1921)).
 - Change terminology of "current note" to "active note" ([#1863](https://github.com/0xMiden/miden-base/issues/1863)).
 - [BREAKING] Move and rename `miden::tx::{add_asset_to_note, create_note}` procedures to `miden::output_note::{add_asset, create}` ([#1874](https://github.com/0xMiden/miden-base/pull/1874)).
 - Merge `bench-prover` into `bench-tx` crate ([#1894](https://github.com/0xMiden/miden-base/pull/1894)).
 - Replace `eqw` usages with `exec.word::test_eq` and `exec.word::eq`, remove `is_key_greater` and `is_key_less` from `link_map` module ([#1897](https://github.com/0xMiden/miden-base/pull/1897)).
+- [BREAKING] Remove `MockChain::add_pending_note` to simplify mock chain internals ([#1903](https://github.com/0xMiden/miden-base/pull/1903)).
 - [BREAKING] Move active note procedures from `miden::note` to `miden::active_note` module ([#1901](https://github.com/0xMiden/miden-base/pull/1901)).
 - [BREAKING] Remove account_seed from AccountFile ([#1917](https://github.com/0xMiden/miden-base/pull/1917)).
 
