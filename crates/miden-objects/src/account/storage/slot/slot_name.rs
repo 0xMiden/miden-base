@@ -90,7 +90,7 @@ impl SlotName {
     /// We must check the validity of a slot name against the raw bytes of the UTF-8 string because
     /// typical character APIs are not available in a const version. We can do this because any byte
     /// in a UTF-8 string that is an ASCII character never represents anything other than such a
-    /// caracter, even though UTF-8 can contain multibyte sequences:
+    /// character, even though UTF-8 can contain multibyte sequences:
     ///
     /// > UTF-8, the object of this memo, has a one-octet encoding unit. It uses all bits of an
     /// > octet, but has the quality of preserving the full US-ASCII range: US-ASCII characters
