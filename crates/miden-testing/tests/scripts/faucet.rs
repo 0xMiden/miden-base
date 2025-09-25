@@ -320,12 +320,6 @@ fn network_faucet_mint() -> anyhow::Result<()> {
         Some(50),
     )?;
 
-    println!(
-        "owner id: {} {}",
-        faucet_owner_account_id.prefix().as_felt(),
-        faucet_owner_account_id.suffix()
-    );
-
     // The Network Fungible Faucet component is added as the second component after auth, so its
     // storage slot offset will be 2. Check that max_supply at the word's index 0 is 200.
     assert_eq!(faucet.storage().get_item(1).unwrap()[0], Felt::new(200));
@@ -361,8 +355,6 @@ fn network_faucet_mint() -> anyhow::Result<()> {
         tag.into(),
         amount,
     ])?;
-
-    println!("inputs: {:?}", inputs);
 
     // Create the MINT note using the standard script
     let mint_note_metadata =
