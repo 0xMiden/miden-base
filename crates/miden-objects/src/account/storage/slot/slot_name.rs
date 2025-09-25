@@ -41,7 +41,7 @@ impl SlotName {
     /// This function is `const` and can be used to define slot names as constants, e.g.:
     ///
     /// ```rust
-    /// # use crate::account::SlotName;
+    /// # use miden_objects::account::SlotName;
     /// const SLOT_NAME: SlotName = SlotName::from_static_str("miden::basic_fungible_faucet::metadata");
     /// ```
     ///
