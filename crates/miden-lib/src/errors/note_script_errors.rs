@@ -13,8 +13,14 @@ use crate::errors::MasmError;
 /// Error Message: "auth procedure had been called from outside the epilogue"
 pub const ERR_AUTH_PROCEDURE_CALLED_FROM_WRONG_CONTEXT: MasmError = MasmError::from_static_str("auth procedure had been called from outside the epilogue");
 
+/// Error Message: "BURN script requires exactly 1 note asset"
+pub const ERR_BURN_WRONG_NUMBER_OF_ASSETS: MasmError = MasmError::from_static_str("BURN script requires exactly 1 note asset");
+
 /// Error Message: "note contained more than one asset during burn invocation"
 pub const ERR_INVALID_NUM_ASSETS: MasmError = MasmError::from_static_str("note contained more than one asset during burn invocation");
+
+/// Error Message: "MINT script expects exactly 9 note inputs"
+pub const ERR_MINT_WRONG_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_str("MINT script expects exactly 9 note inputs");
 
 /// Error Message: "note sender is not owner"
 pub const ERR_NOT_OWNER: MasmError = MasmError::from_static_str("note sender is not owner");

@@ -1,8 +1,8 @@
 extern crate alloc;
 
-use miden_lib::account::components::network_fungible_faucet_library;
 use miden_lib::account::faucets::FungibleFaucetExt;
 use miden_lib::errors::tx_kernel_errors::ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED;
+use miden_lib::note::well_known_note::WellKnownNote;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{
     Account,
@@ -337,7 +337,7 @@ fn network_faucet_mint() -> anyhow::Result<()> {
     // The already issued amount should be 50.
     assert_eq!(faucet.get_token_issuance().unwrap(), Felt::new(50));
 
-    // CREATE MINT NOTE DIRECTLY
+    // CREATE MINT NOTE USING STANDARD NOTE
     // --------------------------------------------------------------------------------------------
     let recipient = Word::from([0, 1, 2, 3u32]);
     let amount = Felt::new(75);
@@ -346,52 +346,29 @@ fn network_faucet_mint() -> anyhow::Result<()> {
     let note_execution_hint = NoteExecutionHint::on_block_slot(5, 6, 7);
     let note_type = NoteType::Private;
 
-    // Get the network fungible faucet library for dynamic linking
-    let network_faucet_lib = network_fungible_faucet_library();
+    // Use the standard MINT note script
+    let note_script = WellKnownNote::MINT.script();
 
-    let mint_note_script_code = format!(
-        "
-        # Network faucet mint note script - calls distribute on the account
-        begin
-            dropw
+    // Create the note inputs for MINT note (reversed order)
+    let inputs = NoteInputs::new(vec![
+        recipient[0],
+        recipient[1],
+        recipient[2],
+        recipient[3],
+        note_execution_hint.into(),
+        note_type.into(),
+        aux,
+        tag.into(),
+        amount,
+    ])?;
 
-            # pad the stack before call
-            push.0.0.0 padw
+    println!("inputs: {:?}", inputs);
 
-            push.{recipient}
-            push.{note_execution_hint}
-            push.{note_type}
-            push.{aux}
-            push.{tag}
-            push.{amount}
-            # => [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
-
-            call.::distribute
-            # => [note_idx, pad(15)]
-
-            # truncate the stack
-            dropw dropw dropw dropw
-        end
-        ",
-        recipient = recipient,
-        amount = amount,
-        tag = u32::from(tag),
-        aux = aux,
-        note_execution_hint = Felt::from(note_execution_hint),
-        note_type = note_type as u8,
-    );
-
-    // Create note script with dynamic linking to the network faucet library
-    let note_script = ScriptBuilder::new(true)
-        .with_dynamically_linked_library(&network_faucet_lib)?
-        .compile_note_script(mint_note_script_code)?;
-
-    // Create the MINT note directly using Note::new
+    // Create the MINT note using the standard script
     let mint_note_metadata =
         NoteMetadata::new(faucet_owner_account_id, note_type, tag, note_execution_hint, aux)?;
     let mint_note_assets = NoteAssets::new(vec![])?; // Empty assets for mint note
     let serial_num = Word::from([1, 2, 3, 4u32]); // Random serial number
-    let inputs = NoteInputs::new(vec![]).unwrap(); // Empty inputs for now
     let mint_note_recipient = NoteRecipient::new(serial_num, note_script, inputs);
     let mint_note = Note::new(mint_note_assets, mint_note_metadata, mint_note_recipient);
 
@@ -453,37 +430,12 @@ fn network_faucet_burn() -> anyhow::Result<()> {
 
     let fungible_asset = FungibleAsset::new(faucet.id(), 100).unwrap();
 
-    // CREATE BURN NOTE SCRIPT WITH DYNAMIC LINKING
+    // CREATE BURN NOTE USING STANDARD NOTE
     // --------------------------------------------------------------------------------------------
-    let burn_note_script_code = "
-        # burn the asset
-        begin
-            dropw
+    // Use the standard BURN note script
+    let note_script = WellKnownNote::BURN.script();
 
-            # pad the stack before call
-            padw padw padw padw
-            # => [pad(16)]
-
-            exec.::miden::active_note::get_assets drop
-            mem_loadw
-            # => [ASSET, pad(12)]
-
-            call.::burn
-
-            # truncate the stack
-            dropw dropw dropw dropw
-        end
-        ";
-
-    // Get the network faucet library for dynamic linking
-    let network_faucet_lib = network_fungible_faucet_library();
-
-    // Create note script with dynamic linking to the network faucet library
-    let note_script = ScriptBuilder::new(true)
-        .with_dynamically_linked_library(&network_faucet_lib)?
-        .compile_note_script(burn_note_script_code)?;
-
-    // Create the burn note manually with the dynamically linked script
+    // Create the burn note using the standard script
     let burn_note_metadata = NoteMetadata::new(
         faucet_owner_account_id,
         NoteType::Public,
@@ -493,7 +445,7 @@ fn network_faucet_burn() -> anyhow::Result<()> {
     )?;
     let burn_note_assets = NoteAssets::new(vec![fungible_asset.into()])?;
     let serial_num = Word::from([5, 6, 7, 8u32]); // Random serial number
-    let inputs = NoteInputs::new(vec![]).unwrap();
+    let inputs = NoteInputs::new(vec![]).unwrap(); // BURN note has no inputs
     let burn_note_recipient = NoteRecipient::new(serial_num, note_script, inputs);
     let note = Note::new(burn_note_assets, burn_note_metadata, burn_note_recipient);
 

@@ -31,6 +31,20 @@ static SWAP_SCRIPT: LazyLock<NoteScript> = LazyLock::new(|| {
     NoteScript::new(program)
 });
 
+// Initialize the MINT note script only once
+static MINT_SCRIPT: LazyLock<NoteScript> = LazyLock::new(|| {
+    let bytes = include_bytes!(concat!(env!("OUT_DIR"), "/assets/note_scripts/MINT.masb"));
+    let program = Program::read_from_bytes(bytes).expect("Shipped MINT script is well-formed");
+    NoteScript::new(program)
+});
+
+// Initialize the BURN note script only once
+static BURN_SCRIPT: LazyLock<NoteScript> = LazyLock::new(|| {
+    let bytes = include_bytes!(concat!(env!("OUT_DIR"), "/assets/note_scripts/BURN.masb"));
+    let program = Program::read_from_bytes(bytes).expect("Shipped BURN script is well-formed");
+    NoteScript::new(program)
+});
+
 /// Returns the P2ID (Pay-to-ID) note script.
 fn p2id() -> NoteScript {
     P2ID_SCRIPT.clone()
@@ -61,6 +75,26 @@ fn swap_root() -> Word {
     SWAP_SCRIPT.root()
 }
 
+/// Returns the MINT (Mint note) note script.
+fn mint() -> NoteScript {
+    MINT_SCRIPT.clone()
+}
+
+/// Returns the MINT (Mint note) note script root.
+fn mint_root() -> Word {
+    MINT_SCRIPT.root()
+}
+
+/// Returns the BURN (Burn note) note script.
+fn burn() -> NoteScript {
+    BURN_SCRIPT.clone()
+}
+
+/// Returns the BURN (Burn note) note script root.
+fn burn_root() -> Word {
+    BURN_SCRIPT.root()
+}
+
 // WELL KNOWN NOTE
 // ================================================================================================
 
@@ -69,6 +103,8 @@ pub enum WellKnownNote {
     P2ID,
     P2IDE,
     SWAP,
+    MINT,
+    BURN,
 }
 
 impl WellKnownNote {
@@ -83,6 +119,12 @@ impl WellKnownNote {
 
     /// Expected number of inputs of the SWAP note.
     const SWAP_NUM_INPUTS: usize = 10;
+
+    /// Expected number of inputs of the MINT note.
+    const MINT_NUM_INPUTS: usize = 9;
+
+    /// Expected number of inputs of the BURN note.
+    const BURN_NUM_INPUTS: usize = 0;
 
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
@@ -101,6 +143,12 @@ impl WellKnownNote {
         if note_script_root == swap_root() {
             return Some(Self::SWAP);
         }
+        if note_script_root == mint_root() {
+            return Some(Self::MINT);
+        }
+        if note_script_root == burn_root() {
+            return Some(Self::BURN);
+        }
 
         None
     }
@@ -114,6 +162,8 @@ impl WellKnownNote {
             Self::P2ID => Self::P2ID_NUM_INPUTS,
             Self::P2IDE => Self::P2IDE_NUM_INPUTS,
             Self::SWAP => Self::SWAP_NUM_INPUTS,
+            Self::MINT => Self::MINT_NUM_INPUTS,
+            Self::BURN => Self::BURN_NUM_INPUTS,
         }
     }
 
@@ -123,6 +173,8 @@ impl WellKnownNote {
             Self::P2ID => p2id(),
             Self::P2IDE => p2ide(),
             Self::SWAP => swap(),
+            Self::MINT => mint(),
+            Self::BURN => burn(),
         }
     }
 
@@ -132,6 +184,8 @@ impl WellKnownNote {
             Self::P2ID => p2id_root(),
             Self::P2IDE => p2ide_root(),
             Self::SWAP => swap_root(),
+            Self::MINT => mint_root(),
+            Self::BURN => burn_root(),
         }
     }
 
@@ -154,6 +208,12 @@ impl WellKnownNote {
                 // must be present in the provided account interface.
                 interface_proc_digests.contains(&BasicWallet::receive_asset_digest())
                     && interface_proc_digests.contains(&BasicWallet::move_asset_to_note_digest())
+            },
+            Self::MINT | Self::BURN => {
+                // MINT and BURN notes are designed to work with network fungible faucets
+                // They don't require specific wallet procedures as they operate on the faucet
+                // itself
+                false
             },
         }
     }
