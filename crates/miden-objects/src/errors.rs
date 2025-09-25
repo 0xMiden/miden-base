@@ -221,20 +221,17 @@ pub enum AccountIdError {
 
 #[derive(Debug, Error)]
 pub enum SlotNameError {
-    #[error("slot names can only contain TODO")]
-    InvalidAlphabet,
+    #[error("slot names must only contain characters a..z, A..Z, 0..9 or underscore")]
+    InvalidCharacter,
     #[error("slot names must be separated by double colons")]
-    InvalidColon,
+    UnexpectedColon,
+    #[error("slot name components must not start with an underscore")]
+    UnexpectedUnderscore,
     #[error(
         "slot names must contain at least {} components separated by double colons",
-        SlotName::MIN_COMPONENTS
+        SlotName::MIN_NUM_COMPONENTS
     )]
     TooShort,
-    #[error(
-        "slot names must contain at most {} components separated by double colons",
-        SlotName::MAX_COMPONENTS
-    )]
-    TooLong,
 }
 
 // ACCOUNT TREE ERROR
