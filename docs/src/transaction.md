@@ -1,4 +1,9 @@
-# Transactions
+---
+title: "Transaction"
+sidebar_position: 4
+---
+
+# Transaction
 
 A `Transaction` in Miden is the state transition of a single account. A `Transaction` takes as input a single [account](account/overview.md) and zero or more [notes](note.md), and outputs the same account with an updated state, together with zero or more notes. Transactions in Miden are Miden VM programs, their execution resulting in the generation of a zero-knowledge proof.
 
@@ -7,9 +12,9 @@ Miden's `Transaction` model aims for the following:
 - **Parallel transaction execution**: Accounts can update their state independently from each other and in parallel.
 - **Private transaction execution**: Client-side `Transaction` proving allows the network to verify transactions validity with zero-knowledge.
 
-<p style="text-align: center;">
-    <img src="img/transaction/transaction-diagram.png" style="width:70%;" alt="Transaction diagram"/>
-</p>
+<div style={{textAlign: "center"}}>
+    <img src={require('./img/transaction/transaction-diagram.png').default} style={{width: "70%"}} alt="Transaction diagram" />
+</div>
 
 Compared to most blockchains, where a `Transaction` typically involves more than one account (e.g., sender and receiver), a `Transaction` in Miden involves a single account. To illustrate, Alice sends 5 ETH to Bob. In Miden, sending 5 ETH from Alice to Bob takes two transactions, one in which Alice creates a note containing 5 ETH and one in which Bob consumes that note and receives the 5 ETH. This model removes the need for a global lock on the blockchain's state, enabling Miden to process transactions in parallel.
 
@@ -21,9 +26,9 @@ A simple transaction currently takes about 1-2 seconds on a MacBook Pro. It take
 
 Every `Transaction` describes the process of an account changing its state. This process is described as a Miden VM program, resulting in the generation of a zero-knowledge proof. Transactions are being executed in a specified sequence, in which several notes and a transaction script can interact with an account.
 
-<p style="text-align: center;">
-    <img src="img/transaction/transaction-program.png" style="width:70%;" alt="Transaction program"/>
-</p>
+<div style={{textAlign: "center"}}>
+    <img src={require('./img/transaction/transaction-program.png').default} style={{width: "70%"}} alt="Transaction program" />
+</div>
 
 ### Inputs
 
@@ -113,23 +118,25 @@ The ability to facilitate both, local and network transactions, **is one of the 
 
 ---
 
-> [!Tip]
->
-> - Usually, notes that are consumed in a `Transaction` must be recorded on-chain in order for the `Transaction` to succeed. However, Miden supports **erasable notes** which are notes that can be consumed in a `Transaction` before being registered on-chain. For example, one can build a sub-second order book by allowing its traders to build faster transactions that depend on each other and are being validated or erased in batches.
->
-> - There is no nullifier check during a `Transaction`. Nullifiers are checked by the Miden operator during `Transaction` verification. So at the local level, there is "double spending." If a note was already spent, i.e. there exists a nullifier for that note, the block producer would never include the `Transaction` as it would make the block invalid.
->
-> - One of the main reasons for separating execution and proving steps is to allow _stateless provers_; i.e., the executed `Transaction` has all the data it needs to re-execute and prove a `Transaction` without database access. This supports easier proof-generation distribution.
->
-> - Not all transactions require notes. For example, the owner of a faucet can mint new tokens using only a `Transaction` script, without interacting with external notes.
->
-> - In Miden executors can choose arbitrary reference blocks to execute against their state. Hence it is possible to set `Transaction` expiration heights and in doing so, to define a block height until a `Transaction` should be included into a block. If the `Transaction` is expired, the resulting account state change is not valid and the `Transaction` cannot be verified anymore.
->
-> - Note and `Transaction` scripts can read the state of foreign accounts during execution. This is called foreign procedure invocation. For example, the price of an asset for the **Swap** script might depend on a certain value stored in the oracle account.
->
-> - An example of the right usage of `Transaction` arguments is the consumption of a **Swap** note. Those notes allow asset exchange based on predefined conditions. Example:
->   - The note's consumption condition is defined as "anyone can consume this note to take `X` units of asset A if they simultaneously create a note sending Y units of asset B back to the creator." If an executor wants to buy only a fraction `(X-m)` of asset A, they provide this amount via transaction arguments. The executor would provide the value `m`. The note script then enforces the correct transfer:
->     - A new note is created returning `Y-((m*Y)/X)` of asset B to the sender.
->     - A second note is created, holding the remaining `(X-m)` of asset A for future consumption.
->
-> - When executing a `Transaction` the max number of VM cycles is **$2^{30}$**.
+:::tip
+
+- Usually, notes that are consumed in a `Transaction` must be recorded on-chain in order for the `Transaction` to succeed. However, Miden supports **erasable notes** which are notes that can be consumed in a `Transaction` before being registered on-chain. For example, one can build a sub-second order book by allowing its traders to build faster transactions that depend on each other and are being validated or erased in batches.
+
+- There is no nullifier check during a `Transaction`. Nullifiers are checked by the Miden operator during `Transaction` verification. So at the local level, there is "double spending." If a note was already spent, i.e. there exists a nullifier for that note, the block producer would never include the `Transaction` as it would make the block invalid.
+
+- One of the main reasons for separating execution and proving steps is to allow _stateless provers_; i.e., the executed `Transaction` has all the data it needs to re-execute and prove a `Transaction` without database access. This supports easier proof-generation distribution.
+
+- Not all transactions require notes. For example, the owner of a faucet can mint new tokens using only a `Transaction` script, without interacting with external notes.
+
+- In Miden executors can choose arbitrary reference blocks to execute against their state. Hence it is possible to set `Transaction` expiration heights and in doing so, to define a block height until a `Transaction` should be included into a block. If the `Transaction` is expired, the resulting account state change is not valid and the `Transaction` cannot be verified anymore.
+
+- Note and `Transaction` scripts can read the state of foreign accounts during execution. This is called foreign procedure invocation. For example, the price of an asset for the **Swap** script might depend on a certain value stored in the oracle account.
+
+- An example of the right usage of `Transaction` arguments is the consumption of a **Swap** note. Those notes allow asset exchange based on predefined conditions. Example:
+
+  - The note's consumption condition is defined as "anyone can consume this note to take `X` units of asset A if they simultaneously create a note sending Y units of asset B back to the creator." If an executor wants to buy only a fraction `(X-m)` of asset A, they provide this amount via transaction arguments. The executor would provide the value `m`. The note script then enforces the correct transfer:
+    - A new note is created returning `Y-((m*Y)/X)` of asset B to the sender.
+    - A second note is created, holding the remaining `(X-m)` of asset A for future consumption.
+
+- When executing a `Transaction` the max number of VM cycles is **$2^{30}$**.
+  :::

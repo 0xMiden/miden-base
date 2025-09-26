@@ -1,4 +1,9 @@
-# Miden architecture overview
+---
+title: "Protocol"
+sidebar_position: 1
+---
+
+# Miden Architecture Overview
 
 Miden’s architecture departs considerably from typical blockchain designs to support privacy and parallel transaction execution.
 
@@ -8,9 +13,9 @@ However, user generated zero-knowledge proofs allow state transitions, e.g. tran
 
 ## Miden design goals
 
-* High throughput: The ability to process a high number of transactions (state changes) over a given time interval.
-* Privacy: The ability to keep data known to one’s self and anonymous while processing and/or storing it.
-* Asset safety: Maintaining a low risk of mistakes or malicious behavior leading to asset loss.
+- High throughput: The ability to process a high number of transactions (state changes) over a given time interval.
+- Privacy: The ability to keep data known to one’s self and anonymous while processing and/or storing it.
+- Asset safety: Maintaining a low risk of mistakes or malicious behavior leading to asset loss.
 
 ## Actor model
 
@@ -24,7 +29,7 @@ Miden uses _accounts_ and _notes_, both of which hold assets. Accounts consume a
 
 ### Accounts
 
-An [Account](account/overview.md) can hold assets and define rules how assets can be transferred. Accounts can represent users or autonomous smart contracts. The [account chapter](account/overview.md) describes the design of an account, its storage types, and creating an account.
+An [Account](account/index.md) can hold assets and define rules how assets can be transferred. Accounts can represent users or autonomous smart contracts. The [account chapter](account/index.md) describes the design of an account, its storage types, and creating an account.
 
 ### Notes
 
@@ -36,9 +41,9 @@ An [Asset](asset.md) can be fungible and non-fungible. They are stored in the ow
 
 ### Transactions
 
-A [Transactions](transaction.md) describe the production and consumption of notes by a single account. 
+A [Transactions](transaction.md) describe the production and consumption of notes by a single account.
 
-Executing a transaction always results in a STARK proof. 
+Executing a transaction always results in a STARK proof.
 
 The [transaction chapter](transaction.md) describes the transaction design and implementation, including an in-depth discussion of how transaction execution happens in the transaction kernel program.
 

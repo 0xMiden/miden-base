@@ -1,7 +1,13 @@
+---
+title: "Code"
+sidebar_position: 4
+---
+
 # Account Code
 
-> [!Note]
-> A collection of procedures defining the `Account`'s programmable interface.
+:::note
+A collection of procedures defining the `Account`'s programmable interface.
+:::
 
 Every Miden `Account` is essentially a smart contract. The `Code` defines the account's procedures, which can be invoked through both [note scripts](../note.md#script) and [transaction scripts](../transaction.md#inputs). Key characteristics include:
 
@@ -18,6 +24,7 @@ An account's code is typically the result of merging multiple [account component
 Authenticating a transaction, and therefore the changes to the account, is done with an _authentication procedure_. Every account's code must provide exactly one authentication procedure. It is automatically called during the transaction epilogue, i.e. after all note scripts and the transaction script have been executed.
 
 Such an authentication procedure typically inspects the transaction and then decides whether a signature is required to authenticate the changes. It does this by:
+
 - checking which account procedures have been called
   - Example: Authentication is required if the `distribute` procedure was called but not if `burn` was called.
 - inspecting the account delta.
@@ -26,7 +33,7 @@ Such an authentication procedure typically inspects the transaction and then dec
 - checking whether notes have been consumed.
 - checking whether notes have been created.
 
-Recall that an [account's nonce](overview.md#nonce) must be incremented whenever its state changes. Only authentication procedures are allowed to do so, to prevent accidental or unintended authorization of state changes.
+Recall that an [account's nonce](index.md#nonce) must be incremented whenever its state changes. Only authentication procedures are allowed to do so, to prevent accidental or unintended authorization of state changes.
 
 ### Procedure tracking
 

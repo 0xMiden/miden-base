@@ -1,7 +1,13 @@
+---
+title: "Address"
+sidebar_position: 3
+---
+
 # Address
 
-> [!Note]
-> A human-readable identifier for `Account`s or public keys.
+:::note
+A human-readable identifier for `Account`s or public keys.
+:::
 
 
 ## Purpose
@@ -25,8 +31,9 @@ These different address mechanisms provide different levels of privacy and secur
 - `Address::PoW`: the receiver is not revealed publicly, but potentially many entities can consume the note. The receiver has an advantage by specifying the salt.
 - `Address::PublicKey`: the receiver `AccountId` is not revealed publicly, only their public key. A fresh `Address::PublicKey` can be used for receiving each note, resulting in increased privacy.
 
-> [!Note]
-> The "Pay-to-PoW" and "Pay-to-Public-Key" notes and the corresponding address types are for illustration purposes only. They are not part of the Miden library.
+:::note
+The "Pay-to-PoW" and "Pay-to-Public-Key" notes and the corresponding address types are for illustration purposes only. They are not part of the Miden library.
+:::
 
 ### Communicating channel information
 
@@ -52,8 +59,9 @@ An address encodes an address type and an address interface:
 - The type determines what the address fundamentally points to, e.g. an account ID or, in the future, a public key.
 - The interface informs the sender of the capabilities of the receiver's account.
 
-> [!Note]
-> Adding a public key-based address type is planned.
+:::note
+Adding a public key-based address type is planned.
+:::
 
 The currently supported **address types** are:
 - `Address::AccountId` (type `0`): An address pointing to an account ID.

@@ -1,67 +1,77 @@
+---
+title: "Note"
+sidebar_position: 2
+---
+
 # Notes
 
-A `Note` is the medium through which [Accounts](account/overview.md) communicate. A `Note` holds assets and defines how they can be consumed.
+A `Note` is the medium through which [Accounts](account/index.md) communicate. A `Note` holds assets and defines how they can be consumed.
 
 ## What is the purpose of a note?
 
-In Miden's hybrid UTXO and account-based model notes represent UTXO's which enable parallel transaction execution and privacy through asynchronous local `Note` production and consumption. 
+In Miden's hybrid UTXO and account-based model notes represent UTXO's which enable parallel transaction execution and privacy through asynchronous local `Note` production and consumption.
 
 ## Note core components
 
 A `Note` is composed of several core components, illustrated below:
 
-<p style="text-align: center;">
-    <img src="img/note/note.png" style="width:30%;" alt="Note diagram"/>
-</p>
+<div style={{textAlign: "center"}}>
+    <img src={require('./img/note/note.png').default} style={{width: "30%"}} alt="Note diagram" />
+</div>
 
 These components are:
 
-1. [Assets](#assets)  
-2. [Script](#script)  
-3. [Inputs](#inputs)  
-4. [Serial number](#serial-number)  
+1. [Assets](#assets)
+2. [Script](#script)
+3. [Inputs](#inputs)
+4. [Serial number](#serial-number)
 5. [Metadata](#metadata)
 
 ### Assets
 
-> [!Note]
-> An [asset](asset.md) container for a `Note`.
+:::note
+An [asset](asset.md) container for a `Note`.
+:::
 
 A `Note` can contain from 0 up to 256 different assets. These assets represent fungible or non-fungible tokens, enabling flexible asset transfers.
 
 ### Script
 
-> [!Note]
-> The code executed when the `Note` is consumed.
+:::note
+The code executed when the `Note` is consumed.
+:::
 
 Each `Note` has a script that defines the conditions under which it can be consumed. When accounts consume notes in transactions, `Note` scripts call the account’s interface functions. This enables all sorts of operations beyond simple asset transfers. The Miden VM’s Turing completeness allows for arbitrary logic, making `Note` scripts highly versatile. There is no limit to the amount of code a `Note` can hold.
 
 ### Inputs
 
-> [!Note]
-> Arguments passed to the `Note` script during execution.
+:::note
+Arguments passed to the `Note` script during execution.
+:::
 
-A `Note` can have up to 128 input values, which adds up to a maximum of 1 KB of data. The `Note` script can access these inputs. They can convey arbitrary parameters for `Note` consumption. 
+A `Note` can have up to 128 input values, which adds up to a maximum of 1 KB of data. The `Note` script can access these inputs. They can convey arbitrary parameters for `Note` consumption.
 
 ### Serial number
 
-> [!Note]
-> A unique and immutable identifier for the `Note`.
+:::note
+A unique and immutable identifier for the `Note`.
+:::
 
 The serial number has two main purposes. Firstly by adding some randomness to the `Note` it ensures it's uniqueness, secondly in private notes it helps prevent linkability between the note's hash and its nullifier. The serial number should be a random 32 bytes number chosen by the user. If leaked, the note’s nullifier can be easily computed, potentially compromising privacy.
 
 ### Metadata
 
-> [!Note]
-> Additional `Note` information.
+:::note
+Additional `Note` information.
+:::
 
 Notes include metadata such as the sender’s account ID and a [tag](#note-discovery) that aids in discovery. Regardless of [storage mode](#note-storage-mode), these metadata fields remain public.
 
 ## Note Lifecycle
 
-<p style="text-align: center;">
-    <img src="img/note/note-life-cycle.png" style="width:70%;" alt="Note lifecycle"/>
-</p>
+<div style={{textAlign: "center"}}>
+    <img src={require('./img/note/note-life-cycle.png').default} style={{width: "70%"}} alt="Note lifecycle" />
+</div>
 
 The `Note` lifecycle proceeds through four primary phases: **creation**, **validation**, **discovery**, and **consumption**. Creation and consumption requires two separate transactions. Throughout this process, notes function as secure, privacy-preserving vehicles for asset transfers and logic execution.
 
@@ -74,7 +84,7 @@ Accounts can create notes in a transaction. The `Note` exists if it is included 
 
 #### Note storage mode
 
-As with [accounts](account/overview.md), notes can be stored either publicly or privately:
+As with [accounts](account/index.md), notes can be stored either publicly or privately:
 
 - **Public mode:** The `Note` data is stored in the [note database](state.md#note-database), making it fully visible on-chain.
 - **Private mode:** Only the `Note`’s hash is stored publicly. The `Note`’s actual data remains off-chain, enhancing privacy.
@@ -130,10 +140,9 @@ This achieves the following properties:
 
 That means if a `Note` is private and the operator stores only the note's hash, only those with the `Note` details know if this `Note` has been consumed already. Zcash first [introduced](https://zcash.github.io/orchard/design/nullifiers.html#nullifiers) this approach.
 
-
-<p style="text-align: center;">
-    <img src="img/note/nullifier.png" style="width:70%;" alt="Nullifier diagram"/>
-</p>
+<div style={{textAlign: "center"}}>
+    <img src={require('./img/note/nullifier.png').default} style={{width: "70%"}} alt="Nullifier diagram" />
+</div>
 
 ## Standard Note Types
 
@@ -144,6 +153,7 @@ The miden-base repository provides several standard note scripts that implement 
 The P2ID note script implements a simple pay-to-account-ID pattern. It adds all assets from the note to a specific target account.
 
 **Key characteristics:**
+
 - **Purpose:** Direct asset transfer to a specific account ID
 - **Inputs:** Requires exactly 2 note inputs containing the target account ID
 - **Validation:** Ensures the consuming account's ID matches the target account ID specified in the note
@@ -156,6 +166,7 @@ The P2ID note script implements a simple pay-to-account-ID pattern. It adds all 
 The P2IDE note script extends P2ID with additional features including time-locking and reclaim functionality.
 
 **Key characteristics:**
+
 - **Purpose:** Advanced asset transfer with time-lock and reclaim capabilities
 - **Inputs:** Requires exactly 4 note inputs:
   - Target account ID
@@ -167,6 +178,7 @@ The P2IDE note script extends P2ID with additional features including time-locki
 - **Requirements:** Account must expose the `miden::contracts::wallets::basic::receive_asset` procedure
 
 **Use cases:**
+
 - Escrow-like payments with time constraints
 - Conditional payments that can be reclaimed if not consumed
 - Time-delayed transfers
@@ -176,6 +188,7 @@ The P2IDE note script extends P2ID with additional features including time-locki
 The SWAP note script implements atomic asset swapping functionality.
 
 **Key characteristics:**
+
 - **Purpose:** Atomic asset exchange between two parties
 - **Inputs:** Requires exactly 12 note inputs specifying:
   - Requested asset details

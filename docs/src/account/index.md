@@ -1,3 +1,7 @@
+---
+sidebar_position: 1
+---
+
 # Accounts / Smart Contracts
 
 An `Account` represents the primary entity in Miden. It is capable of holding assets, storing data, and executing custom code. Each `Account` is a smart contract with a programmable interface through which note and transaction scripts can interact with the account's state and assets. By executing [transactions](../transaction.md) against an account, its state can be modified.
@@ -10,9 +14,9 @@ In Miden's hybrid UTXO- and account-based model, accounts enable the creation of
 
 An `Account` is composed of several core parts, illustrated below:
 
-<p style="text-align: center;">
-    <img src="../img/account/account-definition.png" style="width:30%;" alt="Account diagram"/>
-</p>
+<div style={{textAlign: "center"}}>
+    <img src={require('../img/account/account-definition.png').default} style={{width: "30%"}} alt="Account diagram" />
+</div>
 
 These parts are:
 
@@ -24,15 +28,17 @@ These parts are:
 
 ### Vault
 
-> [!Note]
-> A collection of [assets](../asset.md) stored by the `Account`.
+:::note
+A collection of [assets](../asset.md) stored by the `Account`.
+:::
 
 Large amounts of fungible and non-fungible assets can be stored in the account's vault.
 
 ### Nonce
 
-> [!Note]
-> A counter incremented with each state update to the `Account`.
+:::note
+A counter incremented with each state update to the `Account`.
+:::
 
 The nonce ensures that an account has a unique _commitment_ (or "hash") after every transaction, even if it contains the same assets and has the same storage state. That in turn allows ordering of transactions and prevents replay attacks. Whenever the state of an account changes in a transaction, its nonce must be incremented and it can only be incremented exactly once per transaction.
 
@@ -49,5 +55,5 @@ However, a user can locally create a new `Account` ID before it's recognized net
 3. Alice shares the new ID with Bob to receive an asset.
 4. Bob executes a transaction against his account, creating a note with assets for Alice.
 5. Alice consumes Bob's note in a transaction against her new account to claim the asset. This
-transaction is the first transaction against Alice's account and so it will register the account
-ID in the account database.
+   transaction is the first transaction against Alice's account and so it will register the account
+   ID in the account database.
