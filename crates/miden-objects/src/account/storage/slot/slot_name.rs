@@ -174,10 +174,7 @@ impl SlotName {
 
     /// Returns `true` if the given byte is a valid slot name character, `false` otherwise.
     const fn is_valid_char(byte: u8) -> bool {
-        b'A' <= byte && byte <= b'Z'
-            || b'a' <= byte && byte <= b'z'
-            || b'0' <= byte && byte <= b'9'
-            || b'_' == byte
+        byte.is_ascii_alphanumeric() || byte == b'_'
     }
 }
 
