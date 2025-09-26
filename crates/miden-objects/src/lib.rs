@@ -43,6 +43,7 @@ pub use errors::{
     ProvenBatchError,
     ProvenTransactionError,
     SlotNameError,
+    StorageMapError,
     TokenSymbolError,
     TransactionInputError,
     TransactionOutputError,

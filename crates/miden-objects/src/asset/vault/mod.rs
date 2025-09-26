@@ -110,11 +110,6 @@ impl AssetVault {
         AssetWitness::new_unchecked(smt_proof)
     }
 
-    /// Returns a reference to the Sparse Merkle Tree underling this asset vault.
-    pub fn asset_tree(&self) -> &Smt {
-        &self.asset_tree
-    }
-
     /// Returns a bool indicating whether the vault is empty.
     pub fn is_empty(&self) -> bool {
         self.asset_tree.is_empty()

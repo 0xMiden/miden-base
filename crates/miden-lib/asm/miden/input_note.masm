@@ -157,6 +157,48 @@ export.get_metadata
     # => [METADATA]
 end
 
+#! Returns the sender of the input note with the specified index.
+#!
+#! Inputs:  [note_index]
+#! Outputs: [sender_id_prefix, sender_id_suffix]
+#!
+#! Where:
+#! - note_index is the index of the input note whose sender should be returned.
+#! - sender_{prefix,suffix} are the prefix and suffix felts of the specified note.
+#!
+#! Panics if:
+#! - the note index is greater or equal to the total number of input notes.
+#!
+#! Invocation: exec
+export.get_sender
+    # start padding the stack
+    push.0 swap
+    # => [note_index, 0]
+
+    # push the flag indicating that we want to request metadata from the note with the specified
+    # index
+    push.0
+    # => [is_active_note = 0, note_index, 0]
+
+    exec.kernel_proc_offsets::input_note_get_metadata_offset
+    # => [offset, is_active_note = 0, note_index, 0]
+
+    # pad the stack
+    padw swapw padw padw swapdw
+    # => [offset, is_active_note = 0, note_index, pad(13)]
+
+    syscall.exec_kernel_proc
+    # => [METADATA, pad(12)]
+
+    # extract the sender ID from the metadata word
+    exec.note::extract_sender_from_metadata
+    # => [sender_id_prefix, sender_id_suffix, pad(12)]
+
+    # clean the stack
+    swapw dropw swapw dropw movdn.5 movdn.5 dropw
+    # => [sender_id_prefix, sender_id_suffix]
+end
+
 #! Returns the inputs commitment and length of the input note with the specified index.
 #!
 #! Inputs:  [note_index]

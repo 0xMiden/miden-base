@@ -23,7 +23,7 @@ pub use account_id::{
 
 pub mod auth;
 
-pub use auth::AuthSecretKey;
+pub use auth::{AuthSecretKey, Signature};
 
 mod builder;
 pub use builder::AccountBuilder;
