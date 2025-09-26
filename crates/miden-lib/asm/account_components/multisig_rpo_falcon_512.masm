@@ -72,6 +72,72 @@ proc.assert_new_tx
     # => []
 end
 
+#! Remove old owner public keys from the owner public key mapping.
+#!
+#! This procedure cleans up the storage by removing public keys of owners that are no longer
+#! part of the multisig configuration. It is only triggered when the number of approvers
+#! decreases (i.e., when owners are removed). When the number of approvers increases or
+#! remains the same, old owner public keys are simply overwritten in the mapping.
+#!
+#! The procedure iterates through the difference between the initial and new number of
+#! approvers, clearing the storage slots for removed owners by setting them to empty words.
+#!
+#! Inputs: [init_num_of_approvers, new_num_of_approvers]
+#! Outputs: []
+#!
+#! Where:
+#! - init_num_of_approvers is the original number of approvers before the update
+#! - new_num_of_approvers is the new number of approvers after the update
+proc.cleanup_pubkey_mapping
+    dup.1 dup.1
+    # => [init_num_of_approvers, new_num_of_approvers, init_num_of_approvers, new_num_of_approvers]
+
+    lt
+    # => [should_clear_old_pub_keys]
+
+    if.true
+        # => [init_num_of_approvers, new_num_of_approvers]
+
+        dup movup.2 sub dup
+        # => [num_iterations, num_iterations, init_num_of_approvers]
+
+        while.true
+            # => [num_iterations, init_num_of_approvers]
+
+            dup movdn.2
+            # => [num_iterations, init_num_of_approvers, num_iterations]
+
+            sub
+            # => [i, num_iterations]
+
+            push.0.0.0
+            # => [[0, 0, 0, i], num_iterations]
+
+            padw swapw
+            # => [[0, 0, 0, i], EMPTY_WORD, num_iterations]
+
+            push.PUBLIC_KEYS_MAP_SLOT
+            # => [pub_key_slot_idx, [0, 0, 0, i], EMPTY_WORD, num_iterations]
+
+            exec.account::set_map_item
+            # => [OLD_MAP_ROOT, OLD_MAP_VALUE, num_iterations]
+
+            dropw dropw
+            # => [num_iterations]
+
+            dup sub.1 neq.0
+            # => [is_non_zero, num_iterations]
+        end
+
+        drop
+        # => []
+    else
+        drop drop
+        # => []
+    end
+    # => []
+end
+
 #! Update threshold config and add / remove owners
 #!
 #! Inputs:
@@ -141,6 +207,29 @@ export.update_signers_and_threshold
         dup neq.0
         # => [is_non_zero, i-1]
     end
+
+    # compare initial vs current multisig config
+
+    push.THRESHOLD_CONFIG_SLOT
+    # => [threshold_confix_idx]
+
+    exec.account::get_item_init
+    # => [0, 0, init_num_of_approvers, init_threshold]
+
+    drop drop swap drop
+    # => [init_num_of_approvers]
+
+    push.THRESHOLD_CONFIG_SLOT
+    # => [threshold_confix_idx, init_num_of_approvers]
+
+    exec.account::get_item
+    # => [0, 0, new_num_of_approvers, new_init_threshold, init_num_of_approvers]
+
+    drop drop swap drop swap
+    # => [init_num_of_approvers, new_num_of_approvers]
+
+    exec.cleanup_pubkey_mapping
+    # => []
 end
 
 #! Authenticate a transaction using the Falcon signature scheme with multi-signature support.
@@ -229,5 +318,4 @@ export.auth_tx_rpo_falcon512_multisig
 
     exec.assert_new_tx
     # => [TX_SUMMARY_COMMITMENT]
-
 end

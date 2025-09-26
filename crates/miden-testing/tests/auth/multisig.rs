@@ -589,6 +589,157 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Tests multisig signer update functionality with owner removal.
+///
+/// This test verifies that a multisig account can:
+/// 1. Start with 5 owners and threshold 4
+/// 2. Execute a transaction to remove 1 owner (updating to 4 owners)
+/// 3. Create a second transaction signed by the remaining owners
+///
+/// **Roles:**
+/// - 5 Original Approvers (multisig signers, threshold 4)
+/// - 4 Updated Approvers (after removing 1 owner)
+/// - 1 Multisig Contract
+/// - 1 Transaction Script calling multisig procedures
+#[tokio::test]
+async fn test_multisig_update_signers_remove_owner() -> anyhow::Result<()> {
+    // Setup 5 original owners with threshold 4
+    let (_secret_keys, public_keys, authenticators) = setup_keys_and_authenticators(5, 5)?;
+    let multisig_account = create_multisig_account(4, &public_keys, 10)?;
+
+    // Build mock chain
+    let mock_chain_builder = MockChainBuilder::with_accounts([multisig_account.clone()]).unwrap();
+    let mut mock_chain = mock_chain_builder.build().unwrap();
+
+    // Setup new signers (remove the last owner, keeping first 4)
+    let new_public_keys = &public_keys[0..4];
+    let threshold = 3u64;
+    let num_of_approvers = 4u64;
+
+    // Create multisig config vector
+    let mut config_and_pubkeys_vector =
+        vec![Felt::new(threshold), Felt::new(num_of_approvers), Felt::new(0), Felt::new(0)];
+
+    // Add public keys in reverse order
+    for public_key in new_public_keys.iter().rev() {
+        let key_word: Word = (*public_key).into();
+        config_and_pubkeys_vector.extend_from_slice(key_word.as_elements());
+    }
+
+    // Create config hash and advice map
+    let multisig_config_hash = Hasher::hash_elements(&config_and_pubkeys_vector);
+    let mut advice_map = AdviceMap::default();
+    advice_map.insert(multisig_config_hash, config_and_pubkeys_vector);
+
+    // Create transaction script
+    let tx_script = ScriptBuilder::new(true)
+        .with_dynamically_linked_library(&rpo_falcon_512_multisig_library())?
+        .compile_tx_script("begin\n    call.::update_signers_and_threshold\nend")?;
+
+    let advice_inputs = AdviceInputs { map: advice_map, ..Default::default() };
+
+    let salt = Word::from([Felt::new(3); 4]);
+
+    // Execute without signatures to get tx summary
+    let tx_context_init = mock_chain
+        .build_tx_context(multisig_account.id(), &[], &[])?
+        .tx_script(tx_script.clone())
+        .tx_script_args(multisig_config_hash)
+        .extend_advice_inputs(advice_inputs.clone())
+        .auth_args(salt)
+        .build()?;
+
+    let tx_summary = match tx_context_init.execute().await.unwrap_err() {
+        TransactionExecutorError::Unauthorized(tx_effects) => tx_effects,
+        error => panic!("expected abort with tx effects: {error:?}"),
+    };
+
+    // Get signatures from 4 of the 5 original approvers (threshold is 4)
+    let msg = tx_summary.as_ref().to_commitment();
+    let tx_summary = SigningInputs::TransactionSummary(tx_summary);
+
+    let sig_1 = authenticators[0].get_signature(public_keys[0].into(), &tx_summary).await?;
+    let sig_2 = authenticators[1].get_signature(public_keys[1].into(), &tx_summary).await?;
+    let sig_3 = authenticators[2].get_signature(public_keys[2].into(), &tx_summary).await?;
+    let sig_4 = authenticators[3].get_signature(public_keys[3].into(), &tx_summary).await?;
+
+    // Execute with signatures
+    let update_approvers_tx = mock_chain
+        .build_tx_context(multisig_account.id(), &[], &[])?
+        .tx_script(tx_script)
+        .tx_script_args(multisig_config_hash)
+        .add_signature(public_keys[0], msg, sig_1)
+        .add_signature(public_keys[1], msg, sig_2)
+        .add_signature(public_keys[2], msg, sig_3)
+        .add_signature(public_keys[3], msg, sig_4)
+        .auth_args(salt)
+        .extend_advice_inputs(advice_inputs)
+        .build()?
+        .execute()
+        .await
+        .unwrap();
+
+    // Verify transaction success
+    assert_eq!(update_approvers_tx.account_delta().nonce_delta(), Felt::new(1));
+
+    mock_chain.add_pending_executed_transaction(&update_approvers_tx)?;
+    mock_chain.prove_next_block()?;
+
+    // Apply delta to get updated account
+    let mut updated_multisig_account = multisig_account.clone();
+    updated_multisig_account.apply_delta(update_approvers_tx.account_delta())?;
+
+    // Verify public keys were updated
+    for (i, expected_key) in new_public_keys.iter().enumerate() {
+        let storage_key = [Felt::new(i as u64), Felt::new(0), Felt::new(0), Felt::new(0)].into();
+        let storage_item = updated_multisig_account.storage().get_map_item(1, storage_key).unwrap();
+        let expected_word: Word = (*expected_key).into();
+        assert_eq!(storage_item, expected_word, "Public key {} doesn't match", i);
+    }
+
+    // Verify threshold and num_approvers
+    let threshold_config = updated_multisig_account.storage().get_item(0).unwrap();
+    assert_eq!(threshold_config[0], Felt::new(threshold), "Threshold not updated");
+    assert_eq!(threshold_config[1], Felt::new(num_of_approvers), "Num approvers not updated");
+
+    // Verify extracted public keys
+    let extracted_pub_keys = get_public_keys_from_account(&updated_multisig_account);
+    assert_eq!(extracted_pub_keys.len(), 4, "Should have 4 public keys after update");
+
+    for expected_key in new_public_keys.iter() {
+        let expected_word: Word = (*expected_key).into();
+        assert!(
+            extracted_pub_keys.contains(&expected_word),
+            "Public key not found in extracted keys"
+        );
+    }
+
+    // Verify removed owner's slot is empty
+    let empty_word = Word::from([Felt::new(0); 4]);
+    let removed_owner_key = [Felt::new(4), Felt::new(0), Felt::new(0), Felt::new(0)].into();
+    let removed_owner_slot =
+        updated_multisig_account.storage().get_map_item(1, removed_owner_key).unwrap();
+    assert_eq!(removed_owner_slot, empty_word, "Removed owner's slot should be empty");
+
+    // Verify only 4 non-empty keys remain
+    let mut non_empty_count = 0;
+    for i in 0..5 {
+        let storage_key = [Felt::new(i as u64), Felt::new(0), Felt::new(0), Felt::new(0)].into();
+        let storage_item = updated_multisig_account.storage().get_map_item(1, storage_key).unwrap();
+
+        if storage_item != empty_word {
+            non_empty_count += 1;
+            assert!(i < 4, "Found non-empty key at index {} which should be removed", i);
+
+            let expected_word: Word = new_public_keys[i].into();
+            assert_eq!(storage_item, expected_word, "Key at index {} doesn't match", i);
+        }
+    }
+    assert_eq!(non_empty_count, 4, "Should have exactly 4 non-empty keys");
+
+    Ok(())
+}
+
 /// Tests that newly added approvers cannot sign transactions before the signer update is executed.
 ///
 /// This is a regression test to ensure that unauthorized parties cannot add their own public keys
