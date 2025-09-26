@@ -1,22 +1,26 @@
+---
+sidebar_position: 7
+---
+
 # Blockchain
 
-The Miden blockchain protocol describes how the [state](state.md) progresses through blocks, which are containers that aggregate account state changes and their proofs, together with created and consumed notes. Blocks represent the delta of the global state between two time periods, and each is accompanied by a corresponding proof that attests to the correctness of all state transitions it contains. The current global state can be derived by applying all the blocks to the genesis state.
+The Miden blockchain protocol describes how the [state](state) progresses through blocks, which are containers that aggregate account state changes and their proofs, together with created and consumed notes. Blocks represent the delta of the global state between two time periods, and each is accompanied by a corresponding proof that attests to the correctness of all state transitions it contains. The current global state can be derived by applying all the blocks to the genesis state.
 
 Miden's blockchain protocol aims for the following:
 
 - **Proven transactions**: All included transactions have already been proven and verified when they reach the block.
 - **Fast genesis syncing**: New nodes can efficiently sync to the tip of the chain.
 
-<p style="text-align: center;">
-    <img src="img/blockchain/execution.png" style="width:70%;" alt="Execution diagram"/>
+<p style={{textAlign: 'center'}}>
+    <img src={require('./img/blockchain/execution.png').default} style={{width: '70%'}} alt="Execution diagram"/>
 </p>
 
 ## Batch production
 
 To reduce the required space on the blockchain, transaction proofs are not directly put into blocks. First, they are batched together by verifying them in the batch producer. The purpose of the batch producer is to generate a single proof that some number of proven transactions have been verified. This involves recursively verifying individual transaction proofs inside the Miden VM. As with any program that runs in the Miden VM, there is a proof of correct execution running the Miden verifier to verify transaction proofs. This results into a single batch proof.
 
-<p style="text-align: center;">
-    <img src="img/blockchain/batching.png" style="width:50%;" alt="Batch diagram"/>
+<p style={{textAlign: 'center'}}>
+    <img src={require('./img/blockchain/batching.png').default} style={{width: '50%'}} alt="Batch diagram"/>
 </p>
 
 The batch producer aggregates transactions sequentially by verifying that their proofs and state transitions are correct. More specifically, the batch producer ensures:
@@ -42,7 +46,7 @@ The block producer ensures:
 8. **Note erasure of erasable notes**: If an erasable note is created and consumed in different batches, it is erased now. If, however, an erasable note is consumed but not created within the block, the batch it contains is rejected. The Miden operator's mempool should preemptively filter such transactions.
 
 In final `Block` contains:
-- The commitments to the current global [state](state.md).
+- The commitments to the current global [state](state).
 - The newly created nullifiers.
 - The commitments to newly created notes.
 - The new state commitments for affected private accounts.
@@ -50,16 +54,18 @@ In final `Block` contains:
 
 The `Block` proof attests to the correct state transition from the previous `Block` commitment to the next, and therefore to the change in Miden's global state.
 
-<p style="text-align: center;">
-    <img src="img/blockchain/block.png" style="width:90%;" alt="Block diagram"/>
+<p style={{textAlign: 'center'}}>
+    <img src={require('./img/blockchain/block.png').default} style={{width: '90%'}} alt="Block diagram"/>
 </p>
 
-> [!Tip]
->
-> **Block Contents:**
-> - **State updates**: Contains only the hashes of updated elements. For example, for each updated account, a tuple is recorded as `([account id], [new account hash])`.
-> - **ZK Proof**: This proof attests that, given a state commitment from the previous `Block`, a set of valid batches was executed that resulted in the new state commitment.
-> - The `Block` also includes the full account and note data for public accounts and notes. For example, if account `123` is a public account that has been updated, you would see a record in the **state updates** section as `(123, 0x456..)`, and the full new state of this account (which should hash to `0x456..`) would be included in a separate section.
+:::tip
+
+**Block Contents:**
+- **State updates**: Contains only the hashes of updated elements. For example, for each updated account, a tuple is recorded as `([account id], [new account hash])`.
+- **ZK Proof**: This proof attests that, given a state commitment from the previous `Block`, a set of valid batches was executed that resulted in the new state commitment.
+- The `Block` also includes the full account and note data for public accounts and notes. For example, if account `123` is a public account that has been updated, you would see a record in the **state updates** section as `(123, 0x456..)`, and the full new state of this account (which should hash to `0x456..`) would be included in a separate section.
+
+:::
 
 ## Verifying blocks
 
