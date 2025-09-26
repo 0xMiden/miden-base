@@ -187,9 +187,6 @@ pub struct MockChain {
     /// AccountId |-> AccountAuthenticator mapping to store the authenticator for accounts to
     /// simplify transaction creation.
     account_authenticators: BTreeMap<AccountId, AccountAuthenticator>,
-
-    // The RNG used to generate note serial numbers, account seeds or cryptographic keys.
-    rng: ChaCha20Rng,
 }
 
 impl MockChain {
@@ -231,8 +228,6 @@ impl MockChain {
             committed_notes: BTreeMap::new(),
             committed_accounts: BTreeMap::new(),
             account_authenticators,
-            // Initialize RNG with default seed.
-            rng: ChaCha20Rng::from_seed(Default::default()),
         };
 
         // We do not have to apply the tree changes, because the account tree is already initialized
@@ -815,11 +810,6 @@ impl MockChain {
         Ok(last_block.expect("at least one block should have been created"))
     }
 
-    /// Sets the seed for the internal RNG.
-    pub fn set_rng_seed(&mut self, seed: [u8; 32]) {
-        self.rng = ChaCha20Rng::from_seed(seed);
-    }
-
     // PUBLIC MUTATORS (PENDING APIS)
     // ----------------------------------------------------------------------------------------
 
@@ -1033,7 +1023,6 @@ impl Deserializable for MockChain {
             committed_notes,
             committed_accounts,
             account_authenticators,
-            rng: ChaCha20Rng::from_os_rng(),
         })
     }
 }
