@@ -103,7 +103,7 @@ impl Signature {
 
 impl Serializable for Signature {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        target.write_u8(self.auth_scheme_id());
+        target.write_u8(self.signature_scheme_id());
         match self {
             Signature::RpoFalcon512(signature) => {
                 signature.write_into(target);
