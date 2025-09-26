@@ -100,18 +100,15 @@ impl PartialVault {
     // MUTATORS
     // --------------------------------------------------------------------------------------------
 
-    /// Adds an [`SmtProof`] to this [`PartialVault`].
+    /// Adds an [`AssetWitness`] to this [`PartialVault`].
     ///
     /// # Errors
     ///
     /// Returns an error if:
-    /// - the provided proof does not prove inclusion of valid [`Asset`]s.
-    /// - the vault key of the proven asset does not match the vault key derived from the asset.
     /// - the new root after the insertion of the leaf and the path does not match the existing root
     ///   (except when the first leaf is added).
-    pub fn add(&mut self, proof: SmtProof) -> Result<(), PartialAssetVaultError> {
-        Self::validate_entries(proof.leaf().entries())?;
-
+    pub fn add(&mut self, witness: AssetWitness) -> Result<(), PartialAssetVaultError> {
+        let proof = SmtProof::from(witness);
         self.partial_smt
             .add_proof(proof)
             .map_err(PartialAssetVaultError::FailedToAddProof)
@@ -190,11 +187,6 @@ mod tests {
             assert_eq!(entry, invalid_asset);
         });
 
-        let err = PartialVault::default().add(proof).unwrap_err();
-        assert_matches!(err, PartialAssetVaultError::InvalidAssetInSmt { entry, .. } => {
-            assert_eq!(entry, invalid_asset);
-        });
-
         Ok(())
     }
 
@@ -207,12 +199,6 @@ mod tests {
         let partial_smt = PartialSmt::from_proofs([proof.clone()])?;
 
         let err = PartialVault::new(partial_smt).unwrap_err();
-        assert_matches!(err, PartialAssetVaultError::VaultKeyMismatch { expected, actual } => {
-            assert_eq!(actual, invalid_vault_key);
-            assert_eq!(expected, asset.vault_key());
-        });
-
-        let err = PartialVault::default().add(proof).unwrap_err();
         assert_matches!(err, PartialAssetVaultError::VaultKeyMismatch { expected, actual } => {
             assert_eq!(actual, invalid_vault_key);
             assert_eq!(expected, asset.vault_key());

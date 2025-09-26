@@ -4,7 +4,7 @@ use alloc::string::ToString;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use miden_objects::account::AuthSecretKey;
+use miden_objects::account::{AuthSecretKey, Signature};
 use miden_objects::crypto::SequentialCommit;
 use miden_objects::transaction::TransactionSummary;
 use miden_objects::{Felt, Hasher, Word};
@@ -12,7 +12,6 @@ use miden_processor::FutureMaybeSend;
 use rand::Rng;
 use tokio::sync::RwLock;
 
-use super::signatures::get_falcon_signature;
 use crate::errors::AuthenticationError;
 use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
@@ -226,10 +225,13 @@ impl<R: Rng + Send + Sync> TransactionAuthenticator for BasicAuthenticator<R> {
         async move {
             let mut rng = self.rng.write().await;
             match self.keys.get(&pub_key) {
-                Some(key) => match key {
-                    AuthSecretKey::RpoFalcon512(falcon_key) => {
-                        get_falcon_signature(falcon_key, message, &mut *rng)
-                    },
+                Some(key) => {
+                    let signature: Signature = match key {
+                        AuthSecretKey::RpoFalcon512(falcon_key) => {
+                            falcon_key.sign_with_rng(message, &mut *rng).into()
+                        },
+                    };
+                    Ok(signature.to_prepared_signature())
                 },
                 None => Err(AuthenticationError::UnknownPublicKey(format!(
                     "public key {pub_key} is not contained in the authenticator's keys",

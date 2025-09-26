@@ -269,10 +269,11 @@ impl TransactionContextBuilder {
                 // If no specific transaction inputs was provided, initialize an ad-hoc mockchain
                 // to generate valid block header/MMR data
 
-                let mut mock_chain = MockChain::default();
+                let mut builder = MockChain::builder();
                 for i in self.input_notes {
-                    mock_chain.add_pending_note(OutputNote::Full(i));
+                    builder.add_note(OutputNote::Full(i));
                 }
+                let mut mock_chain = builder.build()?;
 
                 mock_chain.prove_next_block().context("failed to prove first block")?;
                 mock_chain.prove_next_block().context("failed to prove second block")?;
@@ -362,7 +363,7 @@ fn minimal_partial_account(account: &Account) -> anyhow::Result<PartialAccount> 
     // root as the full vault, but will not add any relevant merkle paths to the
     // merkle store, which will test lazy loading of assets.
     let mut partial_vault = PartialVault::default();
-    partial_vault.add(account.vault().open(Word::empty()).into())?;
+    partial_vault.add(account.vault().open(Word::empty()))?;
 
     // Construct a partial storage that tracks the empty word in all storage maps, but none
     // of the other keys, following the same rationale as the partial vault above.

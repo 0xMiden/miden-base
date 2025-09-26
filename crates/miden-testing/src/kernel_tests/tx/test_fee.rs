@@ -9,7 +9,7 @@ use miden_objects::{self, Felt, Word};
 use miden_tx::TransactionExecutorError;
 use winter_rand_utils::rand_value;
 
-use crate::utils::create_p2any_note;
+use crate::utils::create_public_p2any_note;
 use crate::{Auth, MockChain};
 
 // FEE TESTS
@@ -166,11 +166,12 @@ fn create_output_notes() -> anyhow::Result<ExecutedTransaction> {
     let note_asset1 = FungibleAsset::mock(500).unwrap_fungible();
 
     // This creates a note that adds the given assets to the account vault.
-    let asset_note = create_p2any_note(account.id(), [Asset::from(note_asset0.add(note_asset1)?)]);
+    let asset_note =
+        create_public_p2any_note(account.id(), [Asset::from(note_asset0.add(note_asset1)?)]);
     builder.add_note(OutputNote::Full(asset_note.clone()));
 
-    let output_note0 = create_p2any_note(account.id(), [note_asset0.into()]);
-    let output_note1 = create_p2any_note(account.id(), [note_asset1.into()]);
+    let output_note0 = create_public_p2any_note(account.id(), [note_asset0.into()]);
+    let output_note1 = create_public_p2any_note(account.id(), [note_asset1.into()]);
 
     let spawn_note = builder.add_spawn_note([&output_note0, &output_note1])?;
     builder

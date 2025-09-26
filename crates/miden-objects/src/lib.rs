@@ -42,6 +42,8 @@ pub use errors::{
     ProposedBlockError,
     ProvenBatchError,
     ProvenTransactionError,
+    SlotNameError,
+    StorageMapError,
     TokenSymbolError,
     TransactionInputError,
     TransactionOutputError,

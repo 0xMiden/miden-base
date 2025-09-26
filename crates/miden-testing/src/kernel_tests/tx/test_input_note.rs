@@ -144,6 +144,55 @@ fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Check that a sender of a note with one asset obtained from the `input_note::get_sender`
+/// procedure is correct.
+#[test]
+fn test_get_sender() -> anyhow::Result<()> {
+    let TestSetup {
+        mock_chain,
+        account,
+        p2id_note_0_assets: _,
+        p2id_note_1_asset,
+        p2id_note_2_assets: _,
+    } = setup_test()?;
+
+    let code = format!(
+        r#"
+        use.miden::input_note
+
+        begin
+            # get the sender from the input note
+            push.0
+            exec.input_note::get_sender
+            # => [sender_id_prefix, sender_id_suffix]
+
+            # assert the correctness of the prefix
+            push.{sender_prefix}
+            assert_eq.err="sender id prefix of the note 0 is incorrect"
+            # => [sender_id_suffix]
+
+            # assert the correctness of the suffix
+            push.{sender_suffix}
+            assert_eq.err="sender id suffix of the note 0 is incorrect"
+            # => []
+        end
+    "#,
+        sender_prefix = p2id_note_1_asset.metadata().sender().prefix().as_felt(),
+        sender_suffix = p2id_note_1_asset.metadata().sender().suffix(),
+    );
+
+    let tx_script = ScriptBuilder::default().compile_tx_script(code)?;
+
+    let tx_context = mock_chain
+        .build_tx_context(TxContextInput::AccountId(account.id()), &[], &[p2id_note_1_asset])?
+        .tx_script(tx_script)
+        .build()?;
+
+    tx_context.execute_blocking()?;
+
+    Ok(())
+}
+
 /// Check that the assets number and assets data obtained from the `input_note::get_assets`
 /// procedure is correct for each note with zero, one and two different assets.
 #[test]

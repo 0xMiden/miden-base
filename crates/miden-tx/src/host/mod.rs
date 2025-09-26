@@ -330,7 +330,15 @@ where
                 self.tx_progress.start_epilogue(process.clk());
                 Ok(TransactionEventHandling::Handled(Vec::new()))
             }
-            TransactionEvent::EpilogueTxCyclesObtained => {
+            TransactionEvent::EpilogueAuthProcStart => {
+                self.tx_progress.start_auth_procedure(process.clk());
+                Ok(TransactionEventHandling::Handled(Vec::new()))
+            }
+            TransactionEvent::EpilogueAuthProcEnd => {
+                self.tx_progress.end_auth_procedure(process.clk());
+                Ok(TransactionEventHandling::Handled(Vec::new()))
+            }
+            TransactionEvent::EpilogueAfterTxCyclesObtained => {
                 self.tx_progress.epilogue_after_tx_cycles_obtained(process.clk());
                 Ok(TransactionEventHandling::Handled(vec![]))
             }
