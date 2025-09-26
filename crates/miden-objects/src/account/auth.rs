@@ -94,7 +94,7 @@ impl From<rpo_falcon512::Signature> for Signature {
 
 impl Signature {
     /// Identifier for the type of signature scheme
-    pub fn auth_scheme_id(&self) -> u8 {
+    pub fn signature_scheme_id(&self) -> u8 {
         match self {
             Signature::RpoFalcon512(_) => 0u8,
         }
