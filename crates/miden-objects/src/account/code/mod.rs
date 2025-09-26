@@ -235,8 +235,9 @@ impl AccountCode {
 
 impl PartialEq for AccountCode {
     fn eq(&self, other: &Self) -> bool {
-        // TODO: consider checking equality based only on the set of procedures
-        self.mast == other.mast && self.procedures == other.procedures
+        // Equality is defined by the code commitment to ensure consistency with Ord
+        // and with how AccountCode is identified across the codebase.
+        self.commitment == other.commitment
     }
 }
 
