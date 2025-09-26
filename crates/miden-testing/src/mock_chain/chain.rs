@@ -45,35 +45,97 @@ use crate::{MockChainBuilder, TransactionContextBuilder};
 // ================================================================================================
 
 /// The [`MockChain`] simulates a simplified blockchain environment for testing purposes.
-/// It allows creating and managing accounts, minting assets, executing transactions, and applying
-/// state updates.
 ///
-/// This struct is designed to mock transaction workflows, asset transfers, and
-/// note creation in a test setting. Once entities are set up, [`TransactionContextBuilder`] objects
-/// can be obtained in order to execute transactions accordingly.
+/// A mock chain can be
 ///
-/// The primary way to interact with the mock chain is by generating transactions yourself and
-/// adding them to the mock chain "mempool" using [`MockChain::add_pending_executed_transaction`]
-/// or [`MockChain::add_pending_proven_transaction`]. Once some transactions have been added, they
-/// can be proven into a block using [`MockChain::prove_next_block`], which commits them to the
-/// chain state.
+/// The typical usage of a mock chain is:
+/// - Creating it using a [`MockChainBuilder`], which allows adding accounts and notes to the
+///   genesis state.
+/// - Creating transactions against the chain state and executing them.
+/// - Adding executed or proven transactions to the set of pending transactions (the "mempool"),
+///   e.g. using [`MockChain::add_pending_executed_transaction`].
+/// - Proving a block, which adds all pending transactions to the chain state, e.g. using
+///   [`MockChain::prove_next_block`].
 ///
 /// The mock chain uses the batch and block provers underneath to process pending transactions, so
 /// the generated blocks are realistic and indistinguishable from a real node. The only caveat is
 /// that no real ZK proofs are generated or validated as part of transaction, batch or block
-/// building. If realistic data is important for your use case, avoid using any pending APIs except
-/// for [`MockChain::add_pending_executed_transaction`] and
-/// [`MockChain::add_pending_proven_transaction`].
+/// building.
 ///
 /// # Examples
 ///
+/// ## Executing a simple transaction
+/// ```
+/// # use anyhow::Result;
+/// # use miden_objects::{
+/// #    asset::{Asset, FungibleAsset},
+/// #    note::NoteType,
+/// # };
+/// # use miden_testing::{Auth, MockChain};
+/// #
+/// # #[tokio::main(flavor = "current_thread")]
+/// # async fn main() -> Result<()> {
+/// // Build a genesis state for a mock chain using a MockChainBuilder.
+/// // --------------------------------------------------------------------------------------------
+///
+/// let mut builder = MockChain::builder();
+///
+/// // Add a recipient wallet.
+/// let receiver = builder.add_existing_wallet(Auth::BasicAuth)?;
+///
+/// // Add a wallet with assets.
+/// let sender = builder.add_existing_wallet(Auth::IncrNonce)?;
+///
+/// let fungible_asset = FungibleAsset::mock(10).unwrap_fungible();
+/// // Add a P2ID note with a fungible asset to the chain.
+/// let note = builder.add_p2id_note(
+///     sender.id(),
+///     receiver.id(),
+///     &[Asset::Fungible(fungible_asset)],
+///     NoteType::Public,
+/// )?;
+///
+/// let mut mock_chain: MockChain = builder.build()?;
+///
+/// // Create a transaction against the receiver account consuming the note.
+/// // --------------------------------------------------------------------------------------------
+///
+/// let transaction = mock_chain
+///     .build_tx_context(receiver.id(), &[note.id()], &[])?
+///     .build()?
+///     .execute()
+///     .await?;
+///
+/// // Add the transaction to the chain state.
+/// // --------------------------------------------------------------------------------------------
+///
+/// // Add the transaction to the mock chain's "mempool" of pending transactions.
+/// mock_chain.add_pending_executed_transaction(&transaction)?;
+///
+/// // Prove the next block to include the transaction in the chain state.
+/// mock_chain.prove_next_block()?;
+///
+/// // The receiver account should now have the asset in its account vault.
+/// assert_eq!(
+///     mock_chain
+///         .committed_account(receiver.id())?
+///         .vault()
+///         .get_balance(fungible_asset.faucet_id())?,
+///     fungible_asset.amount()
+/// );
+/// # Ok(())
+/// # }
+/// ```
+///
 /// ## Create mock objects and build a transaction context
+///
 /// ```
 /// # use anyhow::Result;
 /// # use miden_objects::{Felt, asset::{Asset, FungibleAsset}, note::NoteType};
 /// # use miden_testing::{Auth, MockChain, TransactionContextBuilder};
-///
-/// # fn main() -> Result<()> {
+/// #
+/// # #[tokio::main(flavor = "current_thread")]
+/// # async fn main() -> Result<()> {
 /// let mut builder = MockChain::builder();
 ///
 /// let faucet = builder.create_new_faucet(Auth::BasicAuth, "USDT", 100_000)?;
@@ -89,58 +151,7 @@ use crate::{MockChainBuilder, TransactionContextBuilder};
 /// // The target account is a new account so we move it into the build_tx_context, since the
 /// // chain's committed accounts do not yet contain it.
 /// let tx_context = mock_chain.build_tx_context(target, &[note.id()], &[])?.build()?;
-/// let executed_transaction = tx_context.execute_blocking()?;
-/// # Ok(())
-/// # }
-/// ```
-///
-/// ## Executing a simple transaction
-/// ```
-/// # use anyhow::Result;
-/// # use miden_objects::{
-/// #    asset::{Asset, FungibleAsset},
-/// #    note::NoteType,
-/// # };
-/// # use miden_testing::{Auth, MockChain};
-///
-/// # fn main() -> Result<()> {
-/// let mut builder = MockChain::builder();
-///
-/// // Add a recipient wallet.
-/// let receiver = builder.add_existing_wallet(Auth::BasicAuth)?;
-///
-/// // Add a wallet with assets.
-/// let sender = builder.add_existing_wallet(Auth::IncrNonce)?;
-/// let fungible_asset = FungibleAsset::mock(10).unwrap_fungible();
-///
-/// // Add a P2ID note to the chain.
-/// let note = builder.add_p2id_note(
-///     sender.id(),
-///     receiver.id(),
-///     &[Asset::Fungible(fungible_asset)],
-///     NoteType::Public,
-/// )?;
-///
-/// let mut mock_chain = builder.build()?;
-///
-/// let transaction = mock_chain
-///     .build_tx_context(receiver.id(), &[note.id()], &[])?
-///     .build()?
-///     .execute_blocking()?;
-///
-/// // Add the transaction to the mock chain's "mempool" of pending transactions.
-/// mock_chain.add_pending_executed_transaction(&transaction);
-///
-/// // Prove the next block to include the transaction in the chain state.
-/// mock_chain.prove_next_block()?;
-///
-/// assert_eq!(
-///     mock_chain
-///         .committed_account(receiver.id())?
-///         .vault()
-///         .get_balance(fungible_asset.faucet_id())?,
-///     fungible_asset.amount()
-/// );
+/// let executed_transaction = tx_context.execute().await?;
 /// # Ok(())
 /// # }
 /// ```
@@ -762,14 +773,16 @@ impl MockChain {
     // PUBLIC MUTATORS
     // ----------------------------------------------------------------------------------------
 
-    /// Creates the next block in the mock chain.
+    /// Proves the next block in the mock chain.
     ///
-    /// This will make all the objects currently pending available for use.
+    /// This will commit all the currently pending transactions into the chain state.
     pub fn prove_next_block(&mut self) -> anyhow::Result<ProvenBlock> {
         self.prove_and_apply_block(None)
     }
 
     /// Proves the next block in the mock chain at the given timestamp.
+    ///
+    /// This will commit all the currently pending transactions into the chain state.
     pub fn prove_next_block_at(&mut self, timestamp: u32) -> anyhow::Result<ProvenBlock> {
         self.prove_and_apply_block(Some(timestamp))
     }
@@ -814,8 +827,6 @@ impl MockChain {
     ///
     /// A block has to be created to apply the transaction effects to the chain state, e.g. using
     /// [`MockChain::prove_next_block`].
-    ///
-    /// Returns the resulting state of the executing account after executing the transaction.
     pub fn add_pending_executed_transaction(
         &mut self,
         transaction: &ExecutedTransaction,
