@@ -44,8 +44,6 @@ use crate::{AccountState, Auth, MockChain};
 
 /// A builder for a [`MockChain`]'s genesis block.
 ///
-/// See the [`MockChain`] documentation for examples on how to use the builder.
-///
 /// ## Example
 ///
 /// ```
