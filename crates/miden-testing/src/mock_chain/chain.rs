@@ -1,5 +1,4 @@
 use alloc::collections::{BTreeMap, BTreeSet};
-use alloc::string::ToString;
 use alloc::vec::Vec;
 
 use anyhow::Context;
@@ -30,7 +29,6 @@ use miden_objects::transaction::{
     ProvenTransaction,
     TransactionInputs,
 };
-use miden_objects::{MAX_BATCHES_PER_BLOCK, MAX_OUTPUT_NOTES_PER_BATCH};
 use miden_processor::{DeserializationError, Word};
 use miden_tx::LocalTransactionProver;
 use miden_tx::auth::BasicAuthenticator;
@@ -160,11 +158,6 @@ pub struct MockChain {
     /// Tree containing the state commitments of all accounts.
     account_tree: AccountTree,
 
-    /// Note batches created in transactions in the block.
-    ///
-    /// These will become available once the block is proven.
-    pending_output_notes: Vec<OutputNote>,
-
     /// Transactions that have been submitted to the chain but have not yet been included in a
     /// block.
     pending_transactions: Vec<ProvenTransaction>,
@@ -223,7 +216,6 @@ impl MockChain {
             blocks: vec![],
             nullifier_tree: NullifierTree::default(),
             account_tree,
-            pending_output_notes: Vec::new(),
             pending_transactions: Vec::new(),
             committed_notes: BTreeMap::new(),
             committed_accounts: BTreeMap::new(),
@@ -774,12 +766,12 @@ impl MockChain {
     ///
     /// This will make all the objects currently pending available for use.
     pub fn prove_next_block(&mut self) -> anyhow::Result<ProvenBlock> {
-        self.prove_block_inner(None)
+        self.prove_and_apply_block(None)
     }
 
     /// Proves the next block in the mock chain at the given timestamp.
     pub fn prove_next_block_at(&mut self, timestamp: u32) -> anyhow::Result<ProvenBlock> {
-        self.prove_block_inner(Some(timestamp))
+        self.prove_and_apply_block(Some(timestamp))
     }
 
     /// Proves new blocks until the block with the given target block number has been created.
@@ -901,7 +893,7 @@ impl MockChain {
                 block_note_index.leaf_index_value(),
                 note_path,
             )
-            .context("failed to construct note inclusion proof")?;
+            .context("failed to create inclusion proof for output note")?;
 
             if let OutputNote::Full(note) = created_note {
                 self.committed_notes
@@ -952,83 +944,16 @@ impl MockChain {
         Ok(vec![proven_batch])
     }
 
-    fn apply_pending_notes_to_block(
-        &mut self,
-        proven_block: &mut ProvenBlock,
-    ) -> anyhow::Result<()> {
-        // Add pending output notes to block.
-        let output_notes_block: BTreeSet<NoteId> =
-            proven_block.output_notes().map(|(_, output_note)| output_note.id()).collect();
-
-        // We could distribute notes over multiple batches (if space is available), but most likely
-        // one is sufficient.
-        if self.pending_output_notes.len() > MAX_OUTPUT_NOTES_PER_BATCH {
-            return Err(anyhow::anyhow!(
-                "too many pending output notes: {}, max allowed: {MAX_OUTPUT_NOTES_PER_BATCH}",
-                self.pending_output_notes.len(),
-            ));
-        }
-
-        let mut pending_note_batch = Vec::with_capacity(self.pending_output_notes.len());
-        let pending_output_notes = core::mem::take(&mut self.pending_output_notes);
-        for (note_idx, output_note) in pending_output_notes.into_iter().enumerate() {
-            if output_notes_block.contains(&output_note.id()) {
-                return Err(anyhow::anyhow!(
-                    "output note {} is already created in block through transactions",
-                    output_note.id()
-                ));
-            }
-
-            pending_note_batch.push((note_idx, output_note));
-        }
-
-        if (proven_block.output_note_batches().len() + 1) > MAX_BATCHES_PER_BLOCK {
-            return Err(anyhow::anyhow!(
-                "too many batches in block: cannot add more pending notes".to_string(),
-            ));
-        }
-
-        proven_block.output_note_batches_mut().push(pending_note_batch);
-
-        let updated_block_note_tree = proven_block.build_output_note_tree().root();
-
-        // Update note tree root in the block header.
-        let block_header = proven_block.header();
-        let updated_header = BlockHeader::new(
-            block_header.version(),
-            block_header.prev_block_commitment(),
-            block_header.block_num(),
-            block_header.chain_commitment(),
-            block_header.account_root(),
-            block_header.nullifier_root(),
-            updated_block_note_tree,
-            block_header.tx_commitment(),
-            block_header.tx_kernel_commitment(),
-            block_header.proof_commitment(),
-            block_header.fee_parameters().clone(),
-            block_header.timestamp(),
-        );
-        proven_block.set_block_header(updated_header);
-
-        Ok(())
-    }
-
     /// Creates a new block in the mock chain.
     ///
-    /// This will make all the objects currently pending available for use.
-    ///
-    /// If a `timestamp` is provided, it will be set on the block.
-    ///
-    /// Block building is divided into a few steps:
+    /// Block building is divided into two steps:
     ///
     /// 1. Build batches from pending transactions and a block from those batches. This results in a
     ///    block.
-    /// 2. Take the pending notes and insert them directly into the proven block. This means we have
-    ///    to update the header of the block with the updated block note tree root.
-    /// 3. Finally, the block contains both the updates from the regular transactions/batches as
-    ///    well as the pending notes. Now insert all the accounts, nullifier and notes into the
-    ///    chain state.
-    fn prove_block_inner(&mut self, timestamp: Option<u32>) -> anyhow::Result<ProvenBlock> {
+    /// 2. Insert all the account updates, nullifiers and notes from the block into the chain state.
+    ///
+    /// If a `timestamp` is provided, it will be set on the block.
+    fn prove_and_apply_block(&mut self, timestamp: Option<u32>) -> anyhow::Result<ProvenBlock> {
         // Create batches from pending transactions.
         // ----------------------------------------------------------------------------------------
 
@@ -1043,11 +968,10 @@ impl MockChain {
         let proposed_block = self
             .propose_block_at(batches, block_timestamp)
             .context("failed to create proposed block")?;
-        let mut proven_block = self.prove_block(proposed_block).context("failed to prove block")?;
+        let proven_block = self.prove_block(proposed_block).context("failed to prove block")?;
 
-        if !self.pending_output_notes.is_empty() {
-            self.apply_pending_notes_to_block(&mut proven_block)?;
-        }
+        // Apply block.
+        // ----------------------------------------------------------------------------------------
 
         self.apply_block(proven_block.clone()).context("failed to apply block")?;
 
@@ -1070,7 +994,6 @@ impl Serializable for MockChain {
         self.blocks.write_into(target);
         self.nullifier_tree.write_into(target);
         self.account_tree.write_into(target);
-        self.pending_output_notes.write_into(target);
         self.pending_transactions.write_into(target);
         self.committed_accounts.write_into(target);
         self.committed_notes.write_into(target);
@@ -1084,7 +1007,6 @@ impl Deserializable for MockChain {
         let blocks = Vec::<ProvenBlock>::read_from(source)?;
         let nullifier_tree = NullifierTree::read_from(source)?;
         let account_tree = AccountTree::read_from(source)?;
-        let pending_output_notes = Vec::<OutputNote>::read_from(source)?;
         let pending_transactions = Vec::<ProvenTransaction>::read_from(source)?;
         let committed_accounts = BTreeMap::<AccountId, Account>::read_from(source)?;
         let committed_notes = BTreeMap::<NoteId, MockChainNote>::read_from(source)?;
@@ -1096,7 +1018,6 @@ impl Deserializable for MockChain {
             blocks,
             nullifier_tree,
             account_tree,
-            pending_output_notes,
             pending_transactions,
             committed_notes,
             committed_accounts,
@@ -1327,7 +1248,6 @@ mod tests {
         assert_eq!(chain.blocks, deserialized.blocks);
         assert_eq!(chain.nullifier_tree, deserialized.nullifier_tree);
         assert_eq!(chain.account_tree, deserialized.account_tree);
-        assert_eq!(chain.pending_output_notes, deserialized.pending_output_notes);
         assert_eq!(chain.pending_transactions, deserialized.pending_transactions);
         assert_eq!(chain.committed_accounts, deserialized.committed_accounts);
         assert_eq!(chain.committed_notes, deserialized.committed_notes);
