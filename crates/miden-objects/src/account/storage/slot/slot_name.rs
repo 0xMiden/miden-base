@@ -14,6 +14,13 @@ use crate::errors::SlotNameError;
 /// The double-colon (`::`) serves as a separator and the strings in between the separators are
 /// called components.
 ///
+/// It is generally recommended that slot names have at least three components and follow this
+/// structure:
+///
+/// ```text
+/// organization::component::slot_name
+/// ```
+///
 /// ## Requirements
 ///
 /// For a string to be a valid slot name it needs to satisfy the following criteria:
@@ -21,6 +28,7 @@ use crate::errors::SlotNameError;
 /// - Each component must consist of at least one character.
 /// - Each component must only consist of the characters `a` to `z`, `A` to `Z`, `0` to `9` or `_`
 ///   (underscore).
+/// - Each component must not start with an underscore.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SlotName {
     name: Cow<'static, str>,
@@ -131,7 +139,7 @@ impl SlotName {
                 }
 
                 // A component cannot end with a colon, so this allows us to validate the start of a
-                // component: It must not not start with a colon or an underscore.
+                // component: It must not start with a colon or an underscore.
                 if (idx + 2) < bytes.len() {
                     if bytes[idx + 2] == b':' {
                         return Err(SlotNameError::UnexpectedColon);
