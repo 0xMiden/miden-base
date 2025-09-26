@@ -114,8 +114,8 @@ impl Serializable for Signature {
 
 impl Deserializable for Signature {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        let auth_scheme_id: u8 = source.read_u8()?;
-        match auth_scheme_id {
+        let signature_scheme_id: u8 = source.read_u8()?;
+        match signature_scheme_id {
             // RpoFalcon512
             0u8 => {
                 let signature = rpo_falcon512::Signature::read_from(source)?;
