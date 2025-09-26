@@ -5,14 +5,14 @@ use miden_lib::testing::account_component::MockAccountComponent;
 use miden_lib::testing::note::NoteBuilder;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{
+    Account,
     AccountBuilder,
     AccountComponent,
-    AccountId,
     AccountStorage,
     AccountStorageMode,
     AccountType,
 };
-use miden_objects::testing::account_id::ACCOUNT_ID_SENDER;
+use miden_objects::note::Note;
 use miden_objects::transaction::OutputNote;
 use miden_objects::{Felt, FieldElement, Word};
 use miden_processor::ExecutionError;
@@ -38,7 +38,7 @@ const TX_SCRIPT_NO_TRIGGER: &str = r#"
 fn setup_rpo_falcon_acl_test(
     allow_unauthorized_output_notes: bool,
     allow_unauthorized_input_notes: bool,
-) -> anyhow::Result<(miden_objects::account::Account, MockChain, miden_objects::note::Note)> {
+) -> anyhow::Result<(Account, MockChain, Note)> {
     let component: AccountComponent =
         MockAccountComponent::with_slots(AccountStorage::mock_storage_slots()).into();
 
@@ -66,20 +66,19 @@ fn setup_rpo_falcon_acl_test(
 
     let mut builder = MockChain::builder();
     builder.add_account(account.clone())?;
-    let mock_chain = builder.build()?;
-
     // Create a mock note to consume (needed to make the transaction non-empty)
-    let sender_id = AccountId::try_from(ACCOUNT_ID_SENDER)?;
-    let note = NoteBuilder::new(sender_id, &mut rand::rng())
+    let note = NoteBuilder::new(account.id(), &mut rand::rng())
         .build()
         .expect("failed to create mock note");
+    builder.add_note(OutputNote::Full(note.clone()));
+    let mock_chain = builder.build()?;
 
     Ok((account, mock_chain, note))
 }
 
 #[test]
 fn test_rpo_falcon_acl() -> anyhow::Result<()> {
-    let (account, mut mock_chain, note) = setup_rpo_falcon_acl_test(false, true)?;
+    let (account, mock_chain, note) = setup_rpo_falcon_acl_test(false, true)?;
 
     // We need to get the authenticator separately for this test
     let component: AccountComponent =
@@ -99,9 +98,6 @@ fn test_rpo_falcon_acl() -> anyhow::Result<()> {
         allow_unauthorized_input_notes: true,
     }
     .build_component();
-
-    mock_chain.add_pending_note(OutputNote::Full(note.clone()));
-    mock_chain.prove_next_block()?;
 
     let tx_script_with_trigger_1 = r#"
         use.mock::account
