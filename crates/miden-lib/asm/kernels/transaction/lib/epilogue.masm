@@ -376,6 +376,15 @@ export.finalize_transaction.12
     exec.execute_auth_procedure
     # => []
 
+    # check if nonce is 0 (account creation). If 0, do a force increment
+    exec.memory::get_native_account_nonce
+    # => [nonce]
+    eq.0
+    # => [is_nonce_0]
+    if.true
+        exec.account::incr_nonce drop
+    end
+
     # ------ Assert assets are preserved ------
 
     # build the output vault representing the assets that were in the account at the end of the
