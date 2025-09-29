@@ -168,7 +168,7 @@ fn create_output_notes() -> anyhow::Result<ExecutedTransaction> {
     // This creates a note that adds the given assets to the account vault.
     let asset_note =
         create_public_p2any_note(account.id(), [Asset::from(note_asset0.add(note_asset1)?)]);
-    builder.add_note(OutputNote::Full(asset_note.clone()));
+    builder.add_output_note(OutputNote::Full(asset_note.clone()));
 
     let output_note0 = create_public_p2any_note(account.id(), [note_asset0.into()]);
     let output_note1 = create_public_p2any_note(account.id(), [note_asset1.into()]);

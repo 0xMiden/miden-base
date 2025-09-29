@@ -327,7 +327,7 @@ async fn check_note_consumability_epilogue_failure_with_new_combination() -> any
     let fail_epilogue_note = NoteBuilder::new(account.id(), &mut rand::rng())
         .add_assets([Asset::from(note_asset)])
         .build()?;
-    builder.add_note(OutputNote::Full(fail_epilogue_note.clone()));
+    builder.add_output_note(OutputNote::Full(fail_epilogue_note.clone()));
 
     let mock_chain = builder.build()?;
     let notes = vec![

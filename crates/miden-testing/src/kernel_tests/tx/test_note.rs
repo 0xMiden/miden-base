@@ -481,7 +481,7 @@ pub fn test_timelock() -> anyhow::Result<()> {
         .dynamically_linked_libraries(TransactionKernel::mock_libraries())
         .build()?;
 
-    builder.add_note(OutputNote::Full(timelock_note.clone()));
+    builder.add_output_note(OutputNote::Full(timelock_note.clone()));
 
     let mut mock_chain = builder.build()?;
     mock_chain

@@ -1,5 +1,6 @@
 use alloc::string::ToString;
 
+use miden_crypto::merkle::InnerNodeInfo;
 use miden_processor::SMT_DEPTH;
 
 use super::{
@@ -98,7 +99,13 @@ impl AssetVault {
 
     /// Returns an iterator over the assets stored in the vault.
     pub fn assets(&self) -> impl Iterator<Item = Asset> + '_ {
-        self.asset_tree.entries().map(|x| Asset::new_unchecked(x.1))
+        // SAFETY: The asset tree tracks only valid assets.
+        self.asset_tree.entries().map(|(_key, value)| Asset::new_unchecked(*value))
+    }
+
+    /// Returns an iterator over the inner nodes of the underlying [`Smt`].
+    pub fn inner_nodes(&self) -> impl Iterator<Item = InnerNodeInfo> + '_ {
+        self.asset_tree.inner_nodes()
     }
 
     /// Returns an opening of the leaf associated with `vault_key`.
@@ -110,14 +117,25 @@ impl AssetVault {
         AssetWitness::new_unchecked(smt_proof)
     }
 
-    /// Returns a reference to the Sparse Merkle Tree underling this asset vault.
-    pub fn asset_tree(&self) -> &Smt {
-        &self.asset_tree
-    }
-
     /// Returns a bool indicating whether the vault is empty.
     pub fn is_empty(&self) -> bool {
         self.asset_tree.is_empty()
+    }
+
+    /// Returns the number of non-empty leaves in the underlying [`Smt`].
+    ///
+    /// Note that this may return a different value from [Self::num_assets()] as a single leaf may
+    /// contain more than one asset.
+    pub fn num_leaves(&self) -> usize {
+        self.asset_tree.num_leaves()
+    }
+
+    /// Returns the number of assets in this vault.
+    ///
+    /// Note that this may return a different value from [Self::num_leaves()] as a single leaf may
+    /// contain more than one asset.
+    pub fn num_assets(&self) -> usize {
+        self.asset_tree.num_entries()
     }
 
     // TODO: Replace with https://github.com/0xMiden/crypto/issues/515 once implemented.
