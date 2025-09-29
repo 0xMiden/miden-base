@@ -364,7 +364,7 @@ fn network_faucet_mint() -> anyhow::Result<()> {
     let mint_note = Note::new(mint_note_assets, mint_note_metadata, mint_note_recipient);
 
     // Add the MINT note to the mock chain
-    builder.add_note(OutputNote::Full(mint_note.clone()));
+    builder.add_output_note(OutputNote::Full(mint_note.clone()));
     let mock_chain = builder.build()?;
 
     // EXECUTE MINT NOTE AGAINST NETWORK FAUCET
@@ -439,7 +439,7 @@ fn network_faucet_burn() -> anyhow::Result<()> {
     let burn_note_recipient = NoteRecipient::new(serial_num, note_script, inputs);
     let note = Note::new(burn_note_assets, burn_note_metadata, burn_note_recipient);
 
-    builder.add_note(OutputNote::Full(note.clone()));
+    builder.add_output_note(OutputNote::Full(note.clone()));
     let mut mock_chain = builder.build()?;
     mock_chain.prove_next_block()?;
 
