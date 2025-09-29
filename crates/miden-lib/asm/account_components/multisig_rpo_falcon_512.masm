@@ -98,8 +98,6 @@ proc.cleanup_pubkey_mapping
     while.true
         # => [i, new_num_of_approvers]
 
-        push.111 debug.stack drop
-
         sub.1
         # => [i-1, new_num_of_approvers]
 
@@ -144,11 +142,14 @@ end
 #! - MULTISIG_CONFIG is [threshold, num_approvers, 0, 0]
 #! - PUB_KEY_i is the public key of the i-th signer
 #!
-export.update_signers_and_threshold
+export.update_signers_and_threshold.4
     adv.push_mapval
     # => [MULTISIG_CONFIG_HASH]
 
     adv_loadw
+    # => [MULTISIG_CONFIG]
+
+    loc_storew.0
     # => [MULTISIG_CONFIG]
 
     dupw
@@ -211,10 +212,7 @@ export.update_signers_and_threshold
     drop drop swap drop
     # => [init_num_of_approvers]
 
-    push.THRESHOLD_CONFIG_SLOT
-    # => [threshold_confix_idx, init_num_of_approvers]
-
-    exec.account::get_item
+    padw loc_loadw.0
     # => [0, 0, new_num_of_approvers, new_init_threshold, init_num_of_approvers]
 
     drop drop swap drop swap
