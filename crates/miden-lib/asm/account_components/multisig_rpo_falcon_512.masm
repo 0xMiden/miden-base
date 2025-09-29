@@ -229,6 +229,7 @@ export.update_signers_and_threshold.4
         drop drop
         # => [pad(12)]
     end
+    # => [pad(12)]
 end
 
 #! Authenticate a transaction using the Falcon signature scheme with multi-signature support.
