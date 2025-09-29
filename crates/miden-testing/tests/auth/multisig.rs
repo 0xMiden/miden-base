@@ -539,7 +539,7 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
     // Build the new mock chain with the updated account and notes
     let mut new_mock_chain_builder =
         MockChainBuilder::with_accounts([updated_multisig_account.clone()]).unwrap();
-    new_mock_chain_builder.add_note(OutputNote::Full(input_note_new.clone()));
+    new_mock_chain_builder.add_output_note(OutputNote::Full(input_note_new.clone()));
     let new_mock_chain = new_mock_chain_builder.build().unwrap();
 
     // Execute transaction without signatures first to get tx summary
