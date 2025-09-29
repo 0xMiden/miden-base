@@ -64,8 +64,8 @@ use crate::utils::{create_public_p2any_note, create_spawn_note};
 use crate::{Auth, MockChain, TransactionContextBuilder};
 
 /// Tests that executing a transaction with a foreign account whose inputs are stale fails.
-#[test]
-fn transaction_with_stale_foreign_account_inputs_fails() -> anyhow::Result<()> {
+#[tokio::test]
+async fn transaction_with_stale_foreign_account_inputs_fails() -> anyhow::Result<()> {
     // Create a chain with an account
     let mut builder = MockChain::builder();
     let native_account = builder.add_existing_wallet(Auth::IncrNonce)?;
@@ -80,10 +80,7 @@ fn transaction_with_stale_foreign_account_inputs_fails() -> anyhow::Result<()> {
         .expect("failed to get foreign account inputs");
 
     // Create a new unrelated account to modify the account tree.
-    let tx = mock_chain
-        .build_tx_context(new_account, &[], &[])?
-        .build()?
-        .execute_blocking()?;
+    let tx = mock_chain.build_tx_context(new_account, &[], &[])?.build()?.execute().await?;
     mock_chain.add_pending_executed_transaction(&tx)?;
     mock_chain.prove_next_block()?;
 
@@ -93,7 +90,8 @@ fn transaction_with_stale_foreign_account_inputs_fails() -> anyhow::Result<()> {
         .build_tx_context(native_account.id(), &[], &[])?
         .foreign_accounts(vec![inputs])
         .build()?
-        .execute_blocking();
+        .execute()
+        .await;
 
     assert_matches::assert_matches!(
         transaction,
@@ -166,8 +164,8 @@ async fn consuming_note_created_in_future_block_fails() -> anyhow::Result<()> {
 // BLOCK TESTS
 // ================================================================================================
 
-#[test]
-fn test_block_procedures() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_block_procedures() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
     let code = "
@@ -210,8 +208,8 @@ fn test_block_procedures() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[test]
-fn executed_transaction_output_notes() -> anyhow::Result<()> {
+#[tokio::test]
+async fn executed_transaction_output_notes() -> anyhow::Result<()> {
     let executor_account =
         Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, IncrNonceAuthComponent);
     let account_id = executor_account.id();
@@ -397,7 +395,7 @@ fn executed_transaction_output_notes() -> anyhow::Result<()> {
         ])
         .build()?;
 
-    let executed_transaction = tx_context.execute_blocking()?;
+    let executed_transaction = tx_context.execute().await?;
 
     // output notes
     // --------------------------------------------------------------------------------------------
@@ -450,8 +448,8 @@ fn executed_transaction_output_notes() -> anyhow::Result<()> {
 
 /// Tests that a transaction consuming and creating one note can emit an abort event in its auth
 /// component to result in a [`TransactionExecutorError::Unauthorized`] error.
-#[test]
-fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
+#[tokio::test]
+async fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
     let source_code = format!(
         "
       use.miden::auth
@@ -515,7 +513,7 @@ fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
     let input_notes = tx_context.input_notes().clone();
     let output_notes = OutputNotes::new(vec![OutputNote::Partial(output_note.into())])?;
 
-    let error = tx_context.execute_blocking().unwrap_err();
+    let error = tx_context.execute().await.unwrap_err();
 
     assert_matches!(error, TransactionExecutorError::Unauthorized(tx_summary) => {
         assert!(tx_summary.account_delta().vault().is_empty());
@@ -533,8 +531,8 @@ fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
 
 /// Tests that a transaction consuming and creating one note with basic authentication correctly
 /// signs the transaction summary.
-#[test]
-fn tx_summary_commitment_is_signed_by_falcon_auth() -> anyhow::Result<()> {
+#[tokio::test]
+async fn tx_summary_commitment_is_signed_by_falcon_auth() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let account = builder.add_existing_mock_account(Auth::BasicAuth)?;
     let mut rng = RpoRandomCoin::new(Word::empty());
@@ -552,7 +550,8 @@ fn tx_summary_commitment_is_signed_by_falcon_auth() -> anyhow::Result<()> {
     let tx = chain
         .build_tx_context(account.id(), &[spawn_note.id()], &[])?
         .build()?
-        .execute_blocking()?;
+        .execute()
+        .await?;
 
     let summary = TransactionSummary::new(
         tx.account_delta().clone(),
@@ -643,8 +642,8 @@ async fn execute_tx_view_script() -> anyhow::Result<()> {
 // ================================================================================================
 
 /// Tests transaction script inputs.
-#[test]
-fn test_tx_script_inputs() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_tx_script_inputs() -> anyhow::Result<()> {
     let tx_script_input_key = Word::from([9999, 8888, 9999, 8888u32]);
     let tx_script_input_value = Word::from([9, 8, 7, 6u32]);
     let tx_script_src = format!(
@@ -671,14 +670,14 @@ fn test_tx_script_inputs() -> anyhow::Result<()> {
         .extend_advice_map([(tx_script_input_key, tx_script_input_value.to_vec())])
         .build()?;
 
-    tx_context.execute_blocking().context("failed to execute transaction")?;
+    tx_context.execute().await.context("failed to execute transaction")?;
 
     Ok(())
 }
 
 /// Tests transaction script arguments.
-#[test]
-fn test_tx_script_args() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_tx_script_args() -> anyhow::Result<()> {
     let tx_script_args = Word::from([1, 2, 3, 4u32]);
 
     let tx_script_src = r#"
@@ -717,15 +716,15 @@ fn test_tx_script_args() -> anyhow::Result<()> {
         .tx_script_args(tx_script_args)
         .build()?;
 
-    tx_context.execute_blocking()?;
+    tx_context.execute().await?;
 
     Ok(())
 }
 
 // Tests that advice map from the account code and transaction script gets correctly passed as
 // part of the transaction advice inputs
-#[test]
-fn inputs_created_correctly() -> anyhow::Result<()> {
+#[tokio::test]
+async fn inputs_created_correctly() -> anyhow::Result<()> {
     let account_code_script = r#"
             adv_map.A([6,7,8,9])=[10,11,12,13]
 
@@ -789,7 +788,7 @@ fn inputs_created_correctly() -> anyhow::Result<()> {
         Felt::new(1u64),
     );
     let tx_context = crate::TransactionContextBuilder::new(account).tx_script(tx_script).build()?;
-    _ = tx_context.execute_blocking()?;
+    _ = tx_context.execute().await?;
 
     Ok(())
 }
