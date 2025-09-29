@@ -449,7 +449,7 @@ impl MockChainBuilder {
     // ----------------------------------------------------------------------------------------
 
     /// Adds the provided note to the initial chain state.
-    pub fn add_note(&mut self, note: impl Into<OutputNote>) {
+    pub fn add_output_note(&mut self, note: impl Into<OutputNote>) {
         self.notes.push(note.into());
     }
 
@@ -464,7 +464,7 @@ impl MockChainBuilder {
         assets: impl IntoIterator<Item = Asset>,
     ) -> anyhow::Result<Note> {
         let note = self.create_p2any_note(sender_account_id, note_type, assets)?;
-        self.add_note(OutputNote::Full(note.clone()));
+        self.add_output_note(OutputNote::Full(note.clone()));
 
         Ok(note)
     }
@@ -487,7 +487,7 @@ impl MockChainBuilder {
             asset.iter().copied(),
             note_type,
         )?;
-        self.add_note(OutputNote::Full(note.clone()));
+        self.add_output_note(OutputNote::Full(note.clone()));
 
         Ok(note)
     }
@@ -517,7 +517,7 @@ impl MockChainBuilder {
             &mut self.rng,
         )?;
 
-        self.add_note(OutputNote::Full(note.clone()));
+        self.add_output_note(OutputNote::Full(note.clone()));
 
         Ok(note)
     }
@@ -541,7 +541,7 @@ impl MockChainBuilder {
             &mut self.rng,
         )?;
 
-        self.add_note(OutputNote::Full(swap_note.clone()));
+        self.add_output_note(OutputNote::Full(swap_note.clone()));
 
         Ok((swap_note, payback_note))
     }
@@ -564,7 +564,7 @@ impl MockChainBuilder {
         I: ExactSizeIterator<Item = &'note Note>,
     {
         let note = create_spawn_note(output_notes)?;
-        self.add_note(OutputNote::Full(note.clone()));
+        self.add_output_note(OutputNote::Full(note.clone()));
 
         Ok(note)
     }
