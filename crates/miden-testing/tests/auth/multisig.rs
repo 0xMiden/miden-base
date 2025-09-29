@@ -593,12 +593,12 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
 ///
 /// This test verifies that a multisig account can:
 /// 1. Start with 5 owners and threshold 4
-/// 2. Execute a transaction to remove 1 owner (updating to 4 owners)
-/// 3. Create a second transaction signed by the remaining owners
+/// 2. Execute a transaction to remove 3 owners (updating to 2 owners)
+/// 3. Verify that all removed owners' storage slots are properly cleared
 ///
 /// **Roles:**
 /// - 5 Original Approvers (multisig signers, threshold 4)
-/// - 4 Updated Approvers (after removing 1 owner)
+/// - 2 Updated Approvers (after removing 3 owners)
 /// - 1 Multisig Contract
 /// - 1 Transaction Script calling multisig procedures
 #[tokio::test]
@@ -611,10 +611,10 @@ async fn test_multisig_update_signers_remove_owner() -> anyhow::Result<()> {
     let mock_chain_builder = MockChainBuilder::with_accounts([multisig_account.clone()]).unwrap();
     let mut mock_chain = mock_chain_builder.build().unwrap();
 
-    // Setup new signers (remove the last owner, keeping first 4)
-    let new_public_keys = &public_keys[0..4];
-    let threshold = 3u64;
-    let num_of_approvers = 4u64;
+    // Setup new signers (remove the last 3 owners, keeping first 2)
+    let new_public_keys = &public_keys[0..2];
+    let threshold = 2u64;
+    let num_of_approvers = 2u64;
 
     // Create multisig config vector
     let mut config_and_pubkeys_vector =
@@ -704,7 +704,7 @@ async fn test_multisig_update_signers_remove_owner() -> anyhow::Result<()> {
 
     // Verify extracted public keys
     let extracted_pub_keys = get_public_keys_from_account(&updated_multisig_account);
-    assert_eq!(extracted_pub_keys.len(), 4, "Should have 4 public keys after update");
+    assert_eq!(extracted_pub_keys.len(), 2, "Should have 2 public keys after update");
 
     for expected_key in new_public_keys.iter() {
         let expected_word: Word = (*expected_key).into();
@@ -714,14 +714,22 @@ async fn test_multisig_update_signers_remove_owner() -> anyhow::Result<()> {
         );
     }
 
-    // Verify removed owner's slot is empty
+    // Verify removed owners' slots are empty (indices 2, 3, and 4 should be cleared)
     let empty_word = Word::from([Felt::new(0); 4]);
-    let removed_owner_key = [Felt::new(4), Felt::new(0), Felt::new(0), Felt::new(0)].into();
-    let removed_owner_slot =
-        updated_multisig_account.storage().get_map_item(1, removed_owner_key).unwrap();
-    assert_eq!(removed_owner_slot, empty_word, "Removed owner's slot should be empty");
+    
+    for removed_idx in 2..5 {
+        let removed_owner_key = [Felt::new(removed_idx), Felt::new(0), Felt::new(0), Felt::new(0)].into();
+        let removed_owner_slot =
+            updated_multisig_account.storage().get_map_item(1, removed_owner_key).unwrap();
+        assert_eq!(
+            removed_owner_slot,
+            empty_word,
+            "Removed owner's slot at index {} should be empty",
+            removed_idx
+        );
+    }
 
-    // Verify only 4 non-empty keys remain
+    // Verify only 2 non-empty keys remain (at indices 0 and 1)
     let mut non_empty_count = 0;
     for i in 0..5 {
         let storage_key = [Felt::new(i as u64), Felt::new(0), Felt::new(0), Felt::new(0)].into();
@@ -729,13 +737,13 @@ async fn test_multisig_update_signers_remove_owner() -> anyhow::Result<()> {
 
         if storage_item != empty_word {
             non_empty_count += 1;
-            assert!(i < 4, "Found non-empty key at index {} which should be removed", i);
+            assert!(i < 2, "Found non-empty key at index {} which should be removed", i);
 
-            let expected_word: Word = new_public_keys[i].into();
+            let expected_word: Word = (*new_public_keys.get(i).unwrap()).into();
             assert_eq!(storage_item, expected_word, "Key at index {} doesn't match", i);
         }
     }
-    assert_eq!(non_empty_count, 4, "Should have exactly 4 non-empty keys");
+    assert_eq!(non_empty_count, 2, "Should have exactly 2 non-empty keys after removing 3 owners");
 
     Ok(())
 }

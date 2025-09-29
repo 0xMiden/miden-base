@@ -89,52 +89,44 @@ end
 #! - init_num_of_approvers is the original number of approvers before the update
 #! - new_num_of_approvers is the new number of approvers after the update
 proc.cleanup_pubkey_mapping
+    # => [i = init_num_of_approvers, new_num_of_approvers]
+
     dup.1 dup.1
-    # => [init_num_of_approvers, new_num_of_approvers, init_num_of_approvers, new_num_of_approvers]
+    u32assert2 u32lt
+    # => [should_loop, i, new_num_of_approvers]
 
-    lt
-    # => [should_clear_old_pub_keys]
+    while.true
+        # => [i, new_num_of_approvers]
 
-    if.true
-        # => [init_num_of_approvers, new_num_of_approvers]
+        push.111 debug.stack drop
 
-        dup movup.2 sub dup
-        # => [num_iterations, num_iterations, init_num_of_approvers]
+        sub.1
+        # => [i-1, new_num_of_approvers]
 
-        while.true
-            # => [num_iterations, init_num_of_approvers]
+        dup
+        # => [i-1, i-1, new_num_of_approvers]
 
-            dup movdn.2
-            # => [num_iterations, init_num_of_approvers, num_iterations]
+        push.0.0.0
+        # => [[0, 0, 0, i-1], i-1, new_num_of_approvers]
 
-            sub
-            # => [i, num_iterations]
+        padw swapw
+        # => [[0, 0, 0, i-1], EMPTY_WORD, i-1, new_num_of_approvers]
 
-            push.0.0.0
-            # => [[0, 0, 0, i], num_iterations]
+        push.PUBLIC_KEYS_MAP_SLOT
+        # => [pub_key_slot_idx, [0, 0, 0, i-1], EMPTY_WORD, i-1, new_num_of_approvers]
 
-            padw swapw
-            # => [[0, 0, 0, i], EMPTY_WORD, num_iterations]
+        exec.account::set_map_item
+        # => [OLD_MAP_ROOT, OLD_MAP_VALUE, i-1, new_num_of_approvers]
 
-            push.PUBLIC_KEYS_MAP_SLOT
-            # => [pub_key_slot_idx, [0, 0, 0, i], EMPTY_WORD, num_iterations]
+        dropw dropw
+        # => [i-1, new_num_of_approvers]
 
-            exec.account::set_map_item
-            # => [OLD_MAP_ROOT, OLD_MAP_VALUE, num_iterations]
-
-            dropw dropw
-            # => [num_iterations]
-
-            dup sub.1 neq.0
-            # => [is_non_zero, num_iterations]
-        end
-
-        drop
-        # => []
-    else
-        drop drop
-        # => []
+        dup.1 dup.1
+        u32assert2 u32lt
+        # => [should_loop, i-1, new_num_of_approvers]
     end
+
+    drop drop
     # => []
 end
 
