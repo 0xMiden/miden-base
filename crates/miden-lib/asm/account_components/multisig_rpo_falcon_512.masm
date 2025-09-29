@@ -131,7 +131,7 @@ end
 #! Update threshold config and add / remove owners
 #!
 #! Inputs:
-#!   Operand stack: [MULTISIG_CONFIG_HASH] - the hash of the threshold and new public key vector
+#!   Operand stack: [MULTISIG_CONFIG_HASH, pad(12)]
 #!   Advice map: {
 #!     MULTISIG_CONFIG_HASH => [CONFIG, PUB_KEY_N, PUB_KEY_N-1, ..., PUB_KEY_0]
 #!   }
@@ -139,87 +139,88 @@ end
 #!   Operand stack: []
 #!
 #! Where:
+#! - MULTISIG_CONFIG_HASH is the hash of the threshold and new public key vector
 #! - MULTISIG_CONFIG is [threshold, num_approvers, 0, 0]
 #! - PUB_KEY_i is the public key of the i-th signer
 #!
 export.update_signers_and_threshold.4
     adv.push_mapval
-    # => [MULTISIG_CONFIG_HASH]
+    # => [MULTISIG_CONFIG_HASH, pad(12)]
 
     adv_loadw
-    # => [MULTISIG_CONFIG]
+    # => [MULTISIG_CONFIG, pad(12)]
 
     loc_storew.0
-    # => [MULTISIG_CONFIG]
+    # => [MULTISIG_CONFIG, pad(12)]
 
     dupw
-    # => [MULTISIG_CONFIG, MULTISIG_CONFIG]
+    # => [MULTISIG_CONFIG, MULTISIG_CONFIG, pad(12)]
 
     push.THRESHOLD_CONFIG_SLOT
-    # => [slot, MULTISIG_CONFIG, MULTISIG_CONFIG]
+    # => [slot, MULTISIG_CONFIG, MULTISIG_CONFIG, pad(12)]
 
     exec.account::set_item
-    # => [OLD_THRESHOLD_CONFIG, MULTISIG_CONFIG]
+    # => [OLD_THRESHOLD_CONFIG, MULTISIG_CONFIG, pad(12)]
 
     dropw
-    # => [MULTISIG_CONFIG]
-    # => [0, 0, num_approvers, threshold]
+    # => [MULTISIG_CONFIG, pad(12)]
+    # => [0, 0, num_approvers, threshold, pad(12)]
 
     drop drop dup movdn.2
-    # => [num_approvers, threshold, num_approvers]
+    # => [num_approvers, threshold, num_approvers, pad(12)]
 
     u32assert2.err=ERR_MALFORMED_MULTISIG_CONFIG u32gt
-    # => [is_invalid_config]
+    # => [is_invalid_config, pad(12)]
 
     assertz.err=ERR_MALFORMED_MULTISIG_CONFIG
-    # => [num_approvers]
+    # => [num_approvers, pad(12)]
 
     dup neq.0
     while.true
         sub.1
-        # => [i-1]
+        # => [i-1, pad(12)]
 
         dup push.0.0.0
-        # => [[0, 0, 0, i-1], i-1]
+        # => [[0, 0, 0, i-1], i-1, pad(12)]
 
         padw adv_loadw
-        # => [PUB_KEY, [0, 0, 0, i-1], i-1]
+        # => [PUB_KEY, [0, 0, 0, i-1], i-1, pad(12)]
 
         swapw
-        # => [[0, 0, 0, i-1], PUB_KEY, i-1]
+        # => [[0, 0, 0, i-1], PUB_KEY, i-1, pad(12)]
 
         push.PUBLIC_KEYS_MAP_SLOT
-        # => [pub_key_slot_idx, [0, 0, 0, i-1], PUB_KEY, i-1]
+        # => [pub_key_slot_idx, [0, 0, 0, i-1], PUB_KEY, i-1, pad(12)]
 
         exec.account::set_map_item
-        # => [OLD_MAP_ROOT, OLD_MAP_VALUE, i-1]
+        # => [OLD_MAP_ROOT, OLD_MAP_VALUE, i-1, pad(12)]
 
         dropw dropw
-        # => [i-1]
+        # => [i-1, pad(12)]
 
         dup neq.0
-        # => [is_non_zero, i-1]
+        # => [is_non_zero, i-1, pad(12)]
     end
 
     # compare initial vs current multisig config
 
     push.THRESHOLD_CONFIG_SLOT
-    # => [threshold_confix_idx]
+    # => [threshold_confix_idx, pad(12)]
 
     exec.account::get_item_init
-    # => [0, 0, init_num_of_approvers, init_threshold]
+    # => [0, 0, init_num_of_approvers, init_threshold, pad(12)]
 
     drop drop swap drop
-    # => [init_num_of_approvers]
+    # => [init_num_of_approvers, pad(12)]
 
     padw loc_loadw.0
-    # => [0, 0, new_num_of_approvers, new_init_threshold, init_num_of_approvers]
+    # => [0, 0, new_num_of_approvers, new_init_threshold, init_num_of_approvers, pad(12)]
 
     drop drop swap drop swap
-    # => [init_num_of_approvers, new_num_of_approvers]
+    # => [init_num_of_approvers, new_num_of_approvers, pad(12)]
 
     exec.cleanup_pubkey_mapping
-    # => []
+    # => [pad(12)]
 end
 
 #! Authenticate a transaction using the Falcon signature scheme with multi-signature support.

@@ -81,7 +81,7 @@ pub fn no_auth_library() -> Library {
     NO_AUTH_LIBRARY.clone()
 }
 
-/// Returns the Multisig Library.
+/// Returns the RPO Falcon 512 Multisig Library.
 pub fn rpo_falcon_512_multisig_library() -> Library {
     RPO_FALCON_512_MULTISIG_LIBRARY.clone()
 }
