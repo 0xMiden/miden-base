@@ -46,8 +46,6 @@ use crate::{MockChainBuilder, TransactionContextBuilder};
 
 /// The [`MockChain`] simulates a simplified blockchain environment for testing purposes.
 ///
-/// A mock chain can be
-///
 /// The typical usage of a mock chain is:
 /// - Creating it using a [`MockChainBuilder`], which allows adding accounts and notes to the
 ///   genesis state.
