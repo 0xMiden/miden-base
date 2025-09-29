@@ -271,7 +271,7 @@ impl TransactionContextBuilder {
 
                 let mut builder = MockChain::builder();
                 for i in self.input_notes {
-                    builder.add_note(OutputNote::Full(i));
+                    builder.add_output_note(OutputNote::Full(i));
                 }
                 let mut mock_chain = builder.build()?;
 

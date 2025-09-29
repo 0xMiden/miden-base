@@ -275,8 +275,8 @@ fn noop_tx_and_state_updating_tx_against_same_account_in_same_block() -> anyhow:
         NoteBuilder::new(ACCOUNT_ID_SENDER.try_into().unwrap(), &mut rand::rng()).build()?;
     let noop_note1 =
         NoteBuilder::new(ACCOUNT_ID_SENDER.try_into().unwrap(), &mut rand::rng()).build()?;
-    builder.add_note(OutputNote::Full(noop_note0.clone()));
-    builder.add_note(OutputNote::Full(noop_note1.clone()));
+    builder.add_output_note(OutputNote::Full(noop_note0.clone()));
+    builder.add_output_note(OutputNote::Full(noop_note1.clone()));
     let mut chain = builder.build()?;
 
     let noop_tx = generate_conditional_tx(&mut chain, account0.id(), noop_note0, false);

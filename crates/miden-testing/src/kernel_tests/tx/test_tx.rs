@@ -506,7 +506,7 @@ fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
     let input_note = create_spawn_note(vec![&output_note])?;
 
     let mut builder = MockChain::builder();
-    builder.add_note(OutputNote::Full(input_note.clone()));
+    builder.add_output_note(OutputNote::Full(input_note.clone()));
     let mock_chain = builder.build()?;
 
     let tx_context = mock_chain.build_tx_context(account, &[input_note.id()], &[])?.build()?;

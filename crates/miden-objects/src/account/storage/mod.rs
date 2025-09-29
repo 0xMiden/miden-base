@@ -16,7 +16,7 @@ use super::{
 use crate::account::{AccountComponent, AccountType};
 
 mod slot;
-pub use slot::{StorageSlot, StorageSlotType};
+pub use slot::{SlotName, StorageSlot, StorageSlotType};
 
 mod map;
 pub use map::{PartialStorageMap, StorageMap, StorageMapWitness};

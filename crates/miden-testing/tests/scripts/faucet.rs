@@ -244,7 +244,7 @@ fn prove_burning_fungible_asset_on_existing_faucet_succeeds() -> anyhow::Result<
 
     let note = get_note_with_fungible_asset_and_script(fungible_asset, burn_note_script_code);
 
-    builder.add_note(OutputNote::Full(note.clone()));
+    builder.add_output_note(OutputNote::Full(note.clone()));
     let mock_chain = builder.build()?;
 
     // The Fungible Faucet component is added as the second component after auth, so it's storage
