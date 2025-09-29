@@ -142,7 +142,7 @@ pub fn compute_current_commitment() -> miette::Result<()> {
     tx_context
         .execute_blocking()
         .into_diagnostic()
-        .wrap_err("failed to execute code")?;
+        .wrap_err("failed to execute transaction")?;
 
     Ok(())
 }
@@ -1029,10 +1029,11 @@ fn proven_tx_storage_map_matches_executed_tx_for_new_account() -> anyhow::Result
 
     let proven_tx = LocalTransactionProver::default().prove_dummy(tx.clone())?;
 
-    let AccountUpdateDetails::New(new_account) = proven_tx.account_update().details() else {
+    let AccountUpdateDetails::Delta(delta) = proven_tx.account_update().details() else {
         panic!("expected delta");
     };
 
+    let new_account = Account::try_from(delta)?;
     account.apply_delta(tx.account_delta())?;
 
     for (idx, slot) in new_account.storage().slots().iter().enumerate() {

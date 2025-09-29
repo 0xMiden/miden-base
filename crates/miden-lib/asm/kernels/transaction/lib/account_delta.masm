@@ -177,6 +177,13 @@ proc.update_value_slot_delta
     dup.4 exec.account::get_item_init
     # => [INIT_VALUE, CURRENT_VALUE, slot_idx, RATE, RATE, PERM]
 
+    # TODO: Quick fix to handle new accounts explicitly
+    # if account is new, replace INIT_VALUE with EMPTY_WORD
+    exec.memory::get_init_nonce eq.0
+    if.true
+        dropw padw
+    end
+
     exec.word::test_eq not
     # => [was_changed, INIT_VALUE, CURRENT_VALUE, slot_idx, RATE, RATE, PERM]
 

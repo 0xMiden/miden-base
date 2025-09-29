@@ -52,7 +52,7 @@ pub const KERNEL_PROCEDURES: [Word; 50] = [
     // account_has_non_fungible_asset
     word!("0xc976f1583f11533cd4887d03bd4d82d8051c0a930f926f67ce8b6e9cb0af34a1"),
     // account_compute_delta_commitment
-    word!("0xb4589587f804af8205f9179ec6b58814d78171a3dc6d78cbf470db512ec25129"),
+    word!("0x41f4b634a7fc08bd7f0ffeffdbc8bf07d5c18e354bfafc0cec1b1c537c471f86"),
     // account_was_procedure_called
     word!("0x84c8c518a005605619909976ce54c41d6a88505e815421ff4b5516d0285b28bf"),
     // faucet_mint_asset
@@ -100,7 +100,7 @@ pub const KERNEL_PROCEDURES: [Word; 50] = [
     // tx_get_block_timestamp
     word!("0x7903185b847517debb6c2072364e3e757b99ee623e97c2bd0a4661316c5c5418"),
     // tx_start_foreign_context
-    word!("0x7fac8c3ab1af62226616bd157d01238ce3252f006bf4004e1b2ac6bc38f6c6f1"),
+    word!("0x4347b6c061a384621d758977ed1de185f1e84c93bf77f0e52074bb81577c61bd"),
     // tx_end_foreign_context
     word!("0xaa0018aa8da890b73511879487f65553753fb7df22de380dd84c11e6f77eec6f"),
     // tx_get_expiration_delta
