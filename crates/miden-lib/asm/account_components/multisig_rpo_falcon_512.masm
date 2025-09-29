@@ -91,10 +91,7 @@ end
 proc.cleanup_pubkey_mapping
     # => [i = init_num_of_approvers, new_num_of_approvers]
 
-    dup.1 dup.1
-    u32assert2 u32lt
-    # => [should_loop, i, new_num_of_approvers]
-
+    push.1
     while.true
         # => [i, new_num_of_approvers]
 
@@ -143,6 +140,8 @@ end
 #! - MULTISIG_CONFIG is [threshold, num_approvers, 0, 0]
 #! - PUB_KEY_i is the public key of the i-th signer
 #!
+#! Locals:
+#! 0: MULTISIG_CONFIG
 export.update_signers_and_threshold.4
     adv.push_mapval
     # => [MULTISIG_CONFIG_HASH, pad(12)]
@@ -219,8 +218,17 @@ export.update_signers_and_threshold.4
     drop drop swap drop swap
     # => [init_num_of_approvers, new_num_of_approvers, pad(12)]
 
-    exec.cleanup_pubkey_mapping
-    # => [pad(12)]
+    dup.1 dup.1
+    u32assert2 u32lt
+    # => [should_loop, init_num_of_approvers, new_num_of_approvers, pad(12)]
+
+    if.true
+        exec.cleanup_pubkey_mapping
+        # => [pad(12)]
+    else
+        drop drop
+        # => [pad(12)]
+    end
 end
 
 #! Authenticate a transaction using the Falcon signature scheme with multi-signature support.
