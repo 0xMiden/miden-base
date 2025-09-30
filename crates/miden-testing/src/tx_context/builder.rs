@@ -220,6 +220,12 @@ impl TransactionContextBuilder {
         self
     }
 
+    /// TODO
+    pub fn disable_lazy_loading(mut self) -> Self {
+        self.is_lazy_loading_enabled = false;
+        self
+    }
+
     /// Extend the note arguments map with the provided one.
     pub fn extend_note_args(mut self, note_args: BTreeMap<NoteId, Word>) -> Self {
         self.note_args.extend(note_args);
@@ -346,6 +352,7 @@ impl TransactionContextBuilder {
             authenticator: self.authenticator,
             advice_inputs: self.advice_inputs,
             source_manager: self.source_manager,
+            is_lazy_loading_enabled: self.is_lazy_loading_enabled,
         })
     }
 }

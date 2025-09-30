@@ -117,7 +117,7 @@ fn test_create_note() -> anyhow::Result<()> {
     );
 
     assert_eq!(
-        process.stack.get(0),
+        process.get_stack_item(0),
         ZERO,
         "top item on the stack is the index of the output note"
     );
@@ -386,7 +386,7 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
         "Validate the output note 1 metadata",
     );
 
-    assert_eq!(process.stack.get_word(0), expected_output_notes_commitment);
+    assert_eq!(process.get_stack_word(0), expected_output_notes_commitment);
     Ok(())
 }
 
@@ -446,7 +446,7 @@ fn test_create_note_and_add_asset() -> anyhow::Result<()> {
     );
 
     assert_eq!(
-        process.stack.get(0),
+        process.get_stack_item(0),
         ZERO,
         "top item on the stack is the index to the output note"
     );
@@ -540,7 +540,7 @@ fn test_create_note_and_add_multiple_assets() -> anyhow::Result<()> {
     );
 
     assert_eq!(
-        process.stack.get(0),
+        process.get_stack_item(0),
         ZERO,
         "top item on the stack is the index to the output note"
     );

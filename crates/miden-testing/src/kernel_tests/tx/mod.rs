@@ -43,10 +43,10 @@ mod test_fpi;
 mod test_input_note;
 mod test_lazy_loading;
 mod test_link_map;
-// mod test_note;
-// mod test_output_note;
+mod test_note;
+mod test_output_note;
 mod test_prologue;
-// mod test_tx;
+mod test_tx;
 
 // HELPER FUNCTIONS
 // ================================================================================================
@@ -101,7 +101,7 @@ impl ProcessMemoryExt for ExecutionOutput {
     }
 }
 
-fn input_note_data_ptr(note_idx: u32) -> memory::MemoryAddress {
+pub fn input_note_data_ptr(note_idx: u32) -> memory::MemoryAddress {
     memory::INPUT_NOTE_DATA_SECTION_OFFSET + note_idx * memory::NOTE_MEM_SIZE
 }
 

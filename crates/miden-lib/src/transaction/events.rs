@@ -87,6 +87,11 @@ impl TransactionEvent {
         let is_unprivileged = matches!(self, Self::AuthRequest | Self::Unauthorized);
         !is_unprivileged
     }
+
+    /// TODO
+    pub fn event_id(&self) -> EventId {
+        EventId::from_u64(self.clone() as u64)
+    }
 }
 
 impl fmt::Display for TransactionEvent {

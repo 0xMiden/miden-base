@@ -81,7 +81,7 @@ impl<H: AsyncHost> CodeExecutor<H> {
 }
 
 impl CodeExecutor<DefaultHost> {
-    pub(crate) fn with_default_host() -> Self {
+    pub fn with_default_host() -> Self {
         let mut host = DefaultHost::default();
 
         let test_lib = TransactionKernel::library();

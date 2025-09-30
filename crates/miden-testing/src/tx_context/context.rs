@@ -42,6 +42,7 @@ use miden_tx::{
 use rand_chacha::ChaCha20Rng;
 
 use crate::executor::CodeExecutor;
+use crate::mock_host::MockHost;
 use crate::tx_context::builder::MockAuthenticator;
 
 // TRANSACTION CONTEXT
@@ -61,6 +62,7 @@ pub struct TransactionContext {
     pub(super) advice_inputs: AdviceInputs,
     pub(super) authenticator: Option<MockAuthenticator>,
     pub(super) source_manager: Arc<dyn SourceManagerSync>,
+    pub(super) is_lazy_loading_enabled: bool,
 }
 
 impl TransactionContext {
@@ -121,7 +123,7 @@ impl TransactionContext {
         // The ref block is unimportant when using execute_code so we can set it to any value.
         let ref_block = self.tx_inputs().block_header().block_num();
 
-        let host = TransactionExecutorHost::<'_, '_, _, UnreachableAuth>::new(
+        let exec_host = TransactionExecutorHost::<'_, '_, _, UnreachableAuth>::new(
             &PartialAccount::from(self.account()),
             self.tx_inputs().input_notes().clone(),
             self,
@@ -133,7 +135,13 @@ impl TransactionContext {
         );
 
         let advice_inputs = advice_inputs.into_advice_inputs();
-        CodeExecutor::new(host)
+
+        let mut mock_host = MockHost::new(exec_host);
+        if self.is_lazy_loading_enabled {
+            mock_host.enable_lazy_loading()
+        }
+
+        CodeExecutor::new(mock_host)
             .stack_inputs(stack_inputs)
             .extend_advice_inputs(advice_inputs)
             .execute_program(program)

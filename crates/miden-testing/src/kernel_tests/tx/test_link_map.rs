@@ -3,10 +3,9 @@ use std::collections::BTreeMap;
 use std::string::String;
 
 use anyhow::Context;
-use miden_objects::{EMPTY_WORD, Felt, LexicographicWord, Word};
-use miden_processor::fast::ExecutionOutput;
-use miden_processor::{ContextId, ONE, ProcessState, ZERO};
-use miden_tx::{LinkMap, MemoryViewer};
+use miden_objects::{EMPTY_WORD, LexicographicWord, Word};
+use miden_processor::{ONE, ZERO};
+use miden_tx::LinkMap;
 use rand::seq::IteratorRandom;
 use winter_rand_utils::rand_value;
 
@@ -542,7 +541,7 @@ fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
     );
 
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
-    let mut exec_output = tx_context.execute_code(&code).context("failed to execute code")?;
+    let exec_output = tx_context.execute_code(&code).context("failed to execute code")?;
 
     for (map_ptr, control_map) in control_maps {
         let map = LinkMap::new(map_ptr.into(), &exec_output);

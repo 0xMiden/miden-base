@@ -54,12 +54,12 @@ use miden_objects::transaction::{
     TransactionArgs,
     TransactionSummary,
 };
-use miden_objects::{FieldElement, Hasher, Word};
+use miden_objects::{Felt, FieldElement, Hasher, ONE, Word};
 use miden_processor::crypto::RpoRandomCoin;
 use miden_tx::auth::UnreachableAuth;
 use miden_tx::{TransactionExecutor, TransactionExecutorError};
 
-use super::{Felt, ONE};
+use crate::kernel_tests::tx::ProcessMemoryExt;
 use crate::utils::{create_public_p2any_note, create_spawn_note};
 use crate::{Auth, MockChain, TransactionContextBuilder};
 
@@ -191,19 +191,19 @@ fn test_block_procedures() -> anyhow::Result<()> {
     let process = &tx_context.execute_code(code)?;
 
     assert_eq!(
-        process.stack.get_word(0),
+        process.get_stack_word(0),
         tx_context.tx_inputs().block_header().commitment(),
         "top word on the stack should be equal to the block header commitment"
     );
 
     assert_eq!(
-        process.stack.get(4).as_int(),
+        process.get_stack_item(4).as_int(),
         tx_context.tx_inputs().block_header().timestamp() as u64,
         "fifth element on the stack should be equal to the timestamp of the last block creation"
     );
 
     assert_eq!(
-        process.stack.get(5).as_int(),
+        process.get_stack_item(5).as_int(),
         tx_context.tx_inputs().block_header().block_num().as_u64(),
         "sixth element on the stack should be equal to the block number"
     );

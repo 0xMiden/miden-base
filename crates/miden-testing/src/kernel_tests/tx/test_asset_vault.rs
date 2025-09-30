@@ -98,9 +98,14 @@ fn peek_balance_returns_correct_amount() -> anyhow::Result<()> {
 }
 
 #[test]
-#[ignore = "transaction executor host returns error before the tx kernel, making the test less useful"]
+// #[ignore = "transaction executor host returns error before the tx kernel, making the test less
+// useful"]
 fn test_get_balance_non_fungible_fails() -> anyhow::Result<()> {
-    let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
+    // Disable lazy loading otherwise the handler will return an error before the transaction kernel
+    // can abort, which is what we want to test.
+    let tx_context = TransactionContextBuilder::with_existing_mock_account()
+        .disable_lazy_loading()
+        .build()?;
 
     let faucet_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET).unwrap();
     let code = format!(
@@ -119,12 +124,12 @@ fn test_get_balance_non_fungible_fails() -> anyhow::Result<()> {
     );
 
     // TODO: Consider building a VM host manually that does not do lazy loading.
-    let _exec_output = tx_context.execute_code(&code);
+    let exec_output = tx_context.execute_code(&code);
 
-    // assert_execution_error!(
-    //     exec_output,
-    //     ERR_VAULT_GET_BALANCE_CAN_ONLY_BE_CALLED_ON_FUNGIBLE_ASSET
-    // );
+    assert_execution_error!(
+        exec_output,
+        ERR_VAULT_GET_BALANCE_CAN_ONLY_BE_CALLED_ON_FUNGIBLE_ASSET
+    );
 
     Ok(())
 }

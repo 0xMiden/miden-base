@@ -33,12 +33,11 @@ use miden_objects::testing::account_id::{
 };
 use miden_objects::transaction::{AccountInputs, OutputNote, TransactionArgs};
 use miden_objects::{Felt, Word, ZERO};
+use miden_processor::fast::ExecutionOutput;
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 
-use super::Process;
-use crate::kernel_tests::tx::ProcessMemoryExt;
-use crate::utils::input_note_data_ptr;
+use crate::kernel_tests::tx::{ProcessMemoryExt, input_note_data_ptr};
 use crate::{
     Auth,
     MockChain,
@@ -166,13 +165,13 @@ fn test_note_script_and_note_args() -> miette::Result<()> {
     tx_context.set_tx_args(tx_args);
     let process = tx_context.execute_code(code).unwrap();
 
-    assert_eq!(process.stack.get_word(0), note_args[0]);
-    assert_eq!(process.stack.get_word(4), note_args[1]);
+    assert_eq!(process.get_stack_word(0), note_args[0]);
+    assert_eq!(process.get_stack_word(4), note_args[1]);
 
     Ok(())
 }
 
-fn note_setup_stack_assertions(process: &Process, inputs: &TransactionContext) {
+fn note_setup_stack_assertions(exec_output: &ExecutionOutput, inputs: &TransactionContext) {
     let mut expected_stack = [ZERO; 16];
 
     // replace the top four elements with the tx script root
@@ -181,13 +180,13 @@ fn note_setup_stack_assertions(process: &Process, inputs: &TransactionContext) {
     expected_stack[..4].copy_from_slice(&note_script_root);
 
     // assert that the stack contains the note inputs at the end of execution
-    assert_eq!(process.stack.trace_state(), expected_stack)
+    assert_eq!(exec_output.stack.as_slice(), expected_stack.as_slice())
 }
 
-fn note_setup_memory_assertions(process: &Process) {
+fn note_setup_memory_assertions(exec_output: &ExecutionOutput) {
     // assert that the correct pointer is stored in bookkeeping memory
     assert_eq!(
-        process.get_kernel_mem_word(ACTIVE_INPUT_NOTE_PTR)[0],
+        exec_output.get_kernel_mem_word(ACTIVE_INPUT_NOTE_PTR)[0],
         Felt::from(input_note_data_ptr(0))
     );
 }
@@ -281,7 +280,7 @@ fn test_build_recipient() -> anyhow::Result<()> {
     expected_stack.extend_from_slice(recipient_13.digest().as_elements());
     expected_stack.reverse();
 
-    assert_eq!(process.stack.get_state_at(process.system.clk())[0..12], expected_stack);
+    assert_eq!(process.stack[0..12], expected_stack);
     Ok(())
 }
 
@@ -369,7 +368,7 @@ fn test_compute_inputs_commitment() -> anyhow::Result<()> {
     expected_stack.extend_from_slice(Word::empty().as_elements());
     expected_stack.reverse();
 
-    assert_eq!(process.stack.get_state_at(process.system.clk())[0..16], expected_stack);
+    assert_eq!(process.stack[0..16], expected_stack);
     Ok(())
 }
 
@@ -424,12 +423,7 @@ fn test_build_metadata() -> miette::Result<()> {
 
         let process = tx_context.execute_code(&code).unwrap();
 
-        let metadata_word = Word::new([
-            process.stack.get(3),
-            process.stack.get(2),
-            process.stack.get(1),
-            process.stack.get(0),
-        ]);
+        let metadata_word = process.get_stack_word(0);
 
         assert_eq!(Word::from(test_metadata), metadata_word, "failed in iteration {iteration}");
     }
