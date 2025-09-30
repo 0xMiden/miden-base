@@ -6,10 +6,15 @@
     "build:dev": "docusaurus build",
     "serve:dev": "docusaurus serve build"
   },
-  "devDependencies": {
-    "@docusaurus/core": "^3",
-    "@docusaurus/preset-classic": "^3",
-    "remark-math": "^6",
-    "rehype-katex": "^7"
+  "dependencies": {
+    "@docusaurus/core": "3.8.1",
+    "@docusaurus/preset-classic": "3.8.1",
+    "@docusaurus/theme-mermaid": "^3.8.1",
+    "@mdx-js/react": "^3.1.1",
+    "katex": "^0.16.22",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "rehype-katex": "^7",
+    "remark-math": "^6"
   }
 }
