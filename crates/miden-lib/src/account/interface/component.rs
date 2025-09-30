@@ -3,11 +3,11 @@ use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
 use miden_objects::account::{AccountId, AccountProcedureInfo, AccountStorage};
-use miden_objects::crypto::dsa::rpo_falcon512::PublicKey;
 use miden_objects::note::PartialNote;
 use miden_objects::{Felt, FieldElement, Word};
 
 use crate::AuthScheme;
+use crate::account::auth::PublicKeyCommitment;
 use crate::account::components::WellKnownComponent;
 use crate::account::interface::AccountInterfaceError;
 
@@ -101,7 +101,7 @@ impl AccountComponentInterface {
             AccountComponentInterface::AuthRpoFalcon512(storage_index)
             | AccountComponentInterface::AuthRpoFalcon512Acl(storage_index) => {
                 vec![AuthScheme::RpoFalcon512 {
-                    pub_key: PublicKey::new(
+                    pub_key: PublicKeyCommitment::from(
                         storage
                             .get_item(*storage_index)
                             .expect("invalid storage index of the public key"),
@@ -304,8 +304,8 @@ fn extract_multisig_auth_scheme(storage: &AccountStorage, storage_index: u8) -> 
         let map_key = [Felt::new(key_index as u64), Felt::ZERO, Felt::ZERO, Felt::ZERO];
 
         match storage.get_map_item(pub_keys_map_slot, map_key.into()) {
-            Ok(pub_key_word) => {
-                pub_keys.push(PublicKey::new(pub_key_word));
+            Ok(pub_key) => {
+                pub_keys.push(PublicKeyCommitment::from(pub_key));
             },
             Err(_) => {
                 // If we can't read a public key, panic with a clear error message

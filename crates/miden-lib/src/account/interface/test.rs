@@ -7,7 +7,6 @@ use miden_objects::account::{AccountBuilder, AccountComponent, AccountType, Stor
 use miden_objects::assembly::diagnostics::NamedSource;
 use miden_objects::assembly::{Assembler, DefaultSourceManager};
 use miden_objects::asset::{FungibleAsset, NonFungibleAsset, TokenSymbol};
-use miden_objects::crypto::dsa::rpo_falcon512::PublicKey;
 use miden_objects::crypto::rand::{FeltRng, RpoRandomCoin};
 use miden_objects::note::{
     Note,
@@ -26,7 +25,12 @@ use miden_objects::testing::account_id::{
 use miden_objects::{AccountError, Felt, NoteError, Word, ZERO};
 
 use crate::AuthScheme;
-use crate::account::auth::{AuthRpoFalcon512, AuthRpoFalcon512Multisig, NoAuth};
+use crate::account::auth::{
+    AuthRpoFalcon512,
+    AuthRpoFalcon512Multisig,
+    NoAuth,
+    PublicKeyCommitment,
+};
 use crate::account::faucets::BasicFungibleFaucet;
 use crate::account::interface::{
     AccountComponentInterface,
@@ -703,8 +707,10 @@ impl AccountComponentExt for AccountComponent {
     }
 }
 
+/// Helper function to create a mock auth component for testing
 fn get_mock_auth_component() -> AuthRpoFalcon512 {
-    let mock_public_key = PublicKey::new(Word::from([0, 1, 2, 3u32]));
+    let mock_word = Word::from([0, 1, 2, 3u32]);
+    let mock_public_key = PublicKeyCommitment::from(mock_word);
     AuthRpoFalcon512::new(mock_public_key)
 }
 
@@ -735,7 +741,7 @@ fn test_get_auth_scheme_rpo_falcon512() {
     let auth_scheme = &auth_schemes[0];
     match auth_scheme {
         AuthScheme::RpoFalcon512 { pub_key } => {
-            assert_eq!(*pub_key, PublicKey::new(Word::from([0, 1, 2, 3u32])));
+            assert_eq!(*pub_key, PublicKeyCommitment::from(Word::from([0, 1, 2, 3u32])));
         },
         _ => panic!("Expected RpoFalcon512 auth scheme"),
     }
@@ -801,7 +807,8 @@ fn test_account_interface_from_account_uses_get_auth_scheme() {
 
     match &wallet_account_interface.auth()[0] {
         AuthScheme::RpoFalcon512 { pub_key } => {
-            assert_eq!(*pub_key, PublicKey::new(Word::from([0, 1, 2, 3u32])));
+            let expected_pub_key = PublicKeyCommitment::from(Word::from([0, 1, 2, 3u32]));
+            assert_eq!(*pub_key, expected_pub_key);
         },
         _ => panic!("Expected RpoFalcon512 auth scheme"),
     }
@@ -840,7 +847,7 @@ fn test_account_interface_get_auth_scheme() {
     assert_eq!(wallet_account_interface.auth().len(), 1);
     match &wallet_account_interface.auth()[0] {
         AuthScheme::RpoFalcon512 { pub_key } => {
-            assert_eq!(*pub_key, PublicKey::new(Word::from([0, 1, 2, 3u32])));
+            assert_eq!(*pub_key, PublicKeyCommitment::from(Word::from([0, 1, 2, 3u32])));
         },
         _ => panic!("Expected RpoFalcon512 auth scheme"),
     }
@@ -884,9 +891,9 @@ fn test_public_key_extraction_regular_account() {
 #[test]
 fn test_public_key_extraction_multisig_account() {
     // Create test public keys
-    let pub_key_1 = PublicKey::new(Word::from([1u32, 0, 0, 0]));
-    let pub_key_2 = PublicKey::new(Word::from([2u32, 0, 0, 0]));
-    let pub_key_3 = PublicKey::new(Word::from([3u32, 0, 0, 0]));
+    let pub_key_1 = PublicKeyCommitment::from(Word::from([1u32, 0, 0, 0]));
+    let pub_key_2 = PublicKeyCommitment::from(Word::from([2u32, 0, 0, 0]));
+    let pub_key_3 = PublicKeyCommitment::from(Word::from([3u32, 0, 0, 0]));
     let approvers = vec![pub_key_1, pub_key_2, pub_key_3];
     let threshold = 2u32;
 

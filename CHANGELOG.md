@@ -30,9 +30,10 @@
 ### Changes
 
 - [BREAKING] Incremented MSRV to 1.89.
-- [BREAKING] Remove `MockChain::add_pending_p2id_note` in favor of using `MockChainBuilder` ([#1842](https://github.com/0xMiden/miden-base/pull/#1842)).
-- [BREAKING] Remove versioning of the transaction kernel, leaving only one latest version ([#1793](https://github.com/0xMiden/miden-base/pull/1793)).
-- [BREAKING] Move `miden::asset::{create_fungible_asset, create_non_fungible_asset}` procedures to `miden::faucet` ([#1850](https://github.com/0xMiden/miden-base/pull/1850)).
+- [BREAKING] Migrated to `miden-vm` v0.18 and `miden-crypto` v0.17 ([#1832](https://github.com/0xMiden/miden-base/pull/1832)).
+- [BREAKING] Removed `MockChain::add_pending_p2id_note` in favor of using `MockChainBuilder` ([#1842](https://github.com/0xMiden/miden-base/pull/#1842)).
+- [BREAKING] Removed versioning of the transaction kernel, leaving only one latest version ([#1793](https://github.com/0xMiden/miden-base/pull/1793)).
+- [BREAKING] Moved `miden::asset::{create_fungible_asset, create_non_fungible_asset}` procedures to `miden::faucet` ([#1850](https://github.com/0xMiden/miden-base/pull/1850)).
 - [BREAKING] Removed versioning of the transaction kernel, leaving only one latest version ([#1793](https://github.com/0xMiden/miden-base/pull/1793)).
 - Added `AccountComponent::from_package()` method to create components from `miden-mast-package::Package` ([#1802](https://github.com/0xMiden/miden-base/pull/1802)).
 - [BREAKING] Removed some of the `note` kernel procedures and use `input_note` procedures instead ([#1834](https://github.com/0xMiden/miden-base/pull/1834)).

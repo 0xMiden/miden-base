@@ -162,6 +162,8 @@ pub enum AccountError {
         account_type: AccountType,
         component_index: usize,
     },
+    #[error("maximum number of storage map leaves exceeded")]
+    MaxNumStorageMapLeavesExceeded(#[source] MerkleError),
     /// This variant can be used by methods that are not inherent to the account but want to return
     /// this error type.
     #[error("{error_msg}")]
@@ -253,6 +255,8 @@ pub enum AccountTreeError {
     TreeRootConflict(#[source] MerkleError),
     #[error("failed to apply mutations to account tree")]
     ApplyMutations(#[source] MerkleError),
+    #[error("failed to compute account tree mutations")]
+    ComputeMutations(#[source] MerkleError),
     #[error("smt leaf's index is not a valid account ID prefix")]
     InvalidAccountIdPrefix(#[source] AccountIdError),
     #[error("account witness merkle path depth {0} does not match AccountTree::DEPTH")]
@@ -402,6 +406,8 @@ pub enum AssetError {
     },
     #[error("faucet account ID in asset is invalid")]
     InvalidFaucetAccountId(#[source] Box<dyn Error + Send + Sync + 'static>),
+    #[error("faucet account ID in asset has a non-faucet prefix: {}", .0)]
+    InvalidFaucetAccountIdPrefix(AccountIdPrefix),
     #[error(
       "faucet id {0} of type {id_type} must be of type {expected_ty} for fungible assets",
       id_type = .0.account_type(),
@@ -452,6 +458,8 @@ pub enum AssetVaultError {
     NonFungibleAssetNotFound(NonFungibleAsset),
     #[error("subtracting fungible asset amounts would underflow")]
     SubtractFungibleAssetBalanceError(#[source] AssetError),
+    #[error("maximum number of asset vault leaves exceeded")]
+    MaxLeafEntriesExceeded(#[source] MerkleError),
 }
 
 // PARTIAL ASSET VAULT ERROR
@@ -986,6 +994,9 @@ pub enum NullifierTreeError {
     #[error("attempt to mark nullifier {0} as spent but it is already spent")]
     NullifierAlreadySpent(Nullifier),
 
+    #[error("maximum number of nullifier tree leaves exceeded")]
+    MaxLeafEntriesExceeded(#[source] MerkleError),
+
     #[error("nullifier {nullifier} is not tracked by the partial nullifier tree")]
     UntrackedNullifier {
         nullifier: Nullifier,
@@ -994,4 +1005,7 @@ pub enum NullifierTreeError {
 
     #[error("new tree root after nullifier witness insertion does not match previous tree root")]
     TreeRootConflict(#[source] MerkleError),
+
+    #[error("failed to compute nulifier tree mutations")]
+    ComputeMutations(#[source] MerkleError),
 }
