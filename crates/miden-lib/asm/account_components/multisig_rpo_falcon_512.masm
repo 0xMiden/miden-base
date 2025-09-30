@@ -142,15 +142,16 @@ end
 #! - PUB_KEY_i is the public key of the i-th signer
 #!
 #! Locals:
-#! 0: MULTISIG_CONFIG
-export.update_signers_and_threshold.4
+#! 0: new_num_of_approvers
+#! 1: init_num_of_approvers
+export.update_signers_and_threshold.2
     adv.push_mapval
     # => [MULTISIG_CONFIG_HASH, pad(12)]
 
     adv_loadw dupw
     # => [MULTISIG_CONFIG, MULTISIG_CONFIG, pad(12)]
 
-    # store num_approvers for later
+    # store new_num_of_approvers for later
     drop drop loc_store.0 drop
     # => [MULTISIG_CONFIG, pad(12)]
 
@@ -180,7 +181,11 @@ export.update_signers_and_threshold.4
     exec.account::set_item
     # => [OLD_THRESHOLD_CONFIG, MULTISIG_CONFIG, pad(12)]
 
-    dropw dropw
+    # store init_num_of_approvers for later
+    drop drop loc_store.1 drop
+    # => [MULTISIG_CONFIG, pad(12)]
+
+    dropw
     # => [pad(12)]
 
     loc_load.0
@@ -219,17 +224,8 @@ export.update_signers_and_threshold.4
 
     # compare initial vs current multisig config
 
-    push.THRESHOLD_CONFIG_SLOT
-    # => [threshold_confix_idx, pad(12)]
-
-    exec.account::get_item_init
-    # => [0, 0, init_num_of_approvers, init_threshold, pad(12)]
-
-    drop drop swap drop
-    # => [init_num_of_approvers, pad(12)]
-
-    # load new_num_of_approvers
-    loc_load.0 swap
+    # load init_num_of_approvers & new_num_of_approvers
+    loc_load.0 loc_load.1
     # => [init_num_of_approvers, new_num_of_approvers, pad(12)]
 
     exec.cleanup_pubkey_mapping
