@@ -3,9 +3,10 @@ use std::collections::BTreeMap;
 use std::string::String;
 
 use anyhow::Context;
-use miden_objects::{EMPTY_WORD, LexicographicWord, Word};
-use miden_processor::{ONE, ProcessState, ZERO};
-use miden_tx::LinkMap;
+use miden_objects::{EMPTY_WORD, Felt, LexicographicWord, Word};
+use miden_processor::fast::ExecutionOutput;
+use miden_processor::{ContextId, ONE, ProcessState, ZERO};
+use miden_tx::{LinkMap, MemoryViewer};
 use rand::seq::IteratorRandom;
 use winter_rand_utils::rand_value;
 
@@ -173,10 +174,9 @@ fn insertion() -> anyhow::Result<()> {
     );
 
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
-    let mut process = tx_context.execute_code(&code).context("failed to execute code")?;
-    let state = ProcessState::from(&mut process);
+    let exec_output = tx_context.execute_code(&code).context("failed to execute code")?;
 
-    let map = LinkMap::new(map_ptr.into(), &state);
+    let map = LinkMap::new(map_ptr.into(), &exec_output);
     let mut map_iter = map.iter();
 
     let entry0 = map_iter.next().expect("map should have four entries");
@@ -542,11 +542,10 @@ fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
     );
 
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
-    let mut process = tx_context.execute_code(&code).context("failed to execute code")?;
-    let state = ProcessState::from(&mut process);
+    let mut exec_output = tx_context.execute_code(&code).context("failed to execute code")?;
 
     for (map_ptr, control_map) in control_maps {
-        let map = LinkMap::new(map_ptr.into(), &state);
+        let map = LinkMap::new(map_ptr.into(), &exec_output);
         let actual_map_len = map.iter().count();
         assert_eq!(
             actual_map_len,

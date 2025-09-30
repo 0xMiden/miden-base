@@ -4,27 +4,20 @@ use alloc::sync::Arc;
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::assembly::debuginfo::{SourceLanguage, Uri};
 use miden_objects::assembly::{DefaultSourceManager, SourceManagerSync};
-use miden_processor::{
-    AdviceInputs,
-    DefaultHost,
-    ExecutionError,
-    Process,
-    Program,
-    StackInputs,
-    SyncHost,
-};
+use miden_processor::fast::{ExecutionOutput, FastProcessor};
+use miden_processor::{AdviceInputs, AsyncHost, DefaultHost, ExecutionError, Program, StackInputs};
 
-// MOCK CODE EXECUTOR
+// CODE EXECUTOR
 // ================================================================================================
 
 /// Helper for executing arbitrary code within arbitrary hosts.
-pub struct CodeExecutor<H> {
+pub(crate) struct CodeExecutor<H> {
     host: H,
     stack_inputs: Option<StackInputs>,
     advice_inputs: AdviceInputs,
 }
 
-impl<H: SyncHost> CodeExecutor<H> {
+impl<H: AsyncHost> CodeExecutor<H> {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
     pub(crate) fn new(host: H) -> Self {
@@ -49,7 +42,7 @@ impl<H: SyncHost> CodeExecutor<H> {
     ///
     /// To improve the error message quality, convert the returned [`ExecutionError`] into a
     /// [`Report`](miden_objects::assembly::diagnostics::Report).
-    pub fn run(self, code: &str) -> Result<Process, ExecutionError> {
+    pub fn run(self, code: &str) -> Result<ExecutionOutput, ExecutionError> {
         let source_manager: Arc<dyn SourceManagerSync> = Arc::new(DefaultSourceManager::default());
         let assembler = TransactionKernel::with_kernel_library(source_manager.clone());
 
@@ -65,20 +58,30 @@ impl<H: SyncHost> CodeExecutor<H> {
     ///
     /// To improve the error message quality, convert the returned [`ExecutionError`] into a
     /// [`Report`](miden_objects::assembly::diagnostics::Report).
-    pub fn execute_program(mut self, program: Program) -> Result<Process, ExecutionError> {
-        let mut process = Process::new_debug(
-            program.kernel().clone(),
-            self.stack_inputs.unwrap_or_default(),
-            self.advice_inputs,
-        );
-        process.execute(&program, &mut self.host)?;
+    pub fn execute_program(mut self, program: Program) -> Result<ExecutionOutput, ExecutionError> {
+        // This reverses the stack inputs (even though it doesn't look like it does) because the
+        // fast processor expects the reverse order.
+        //
+        // Once we use the FastProcessor for execution and proving, we can change the way these
+        // inputs are constructed in TransactionKernel::prepare_inputs.
+        let stack_inputs =
+            StackInputs::new(self.stack_inputs.unwrap_or_default().iter().copied().collect())
+                .unwrap();
 
-        Ok(process)
+        let processor = FastProcessor::new_debug(stack_inputs.as_slice(), self.advice_inputs);
+
+        // TODO: Make async
+        let execution_output = tokio::runtime::Builder::new_current_thread()
+            .build()
+            .unwrap()
+            .block_on(processor.execute(&program, &mut self.host))?;
+
+        Ok(execution_output)
     }
 }
 
 impl CodeExecutor<DefaultHost> {
-    pub fn with_default_host() -> Self {
+    pub(crate) fn with_default_host() -> Self {
         let mut host = DefaultHost::default();
 
         let test_lib = TransactionKernel::library();

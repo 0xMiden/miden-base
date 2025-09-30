@@ -94,7 +94,7 @@ fn test_epilogue() -> anyhow::Result<()> {
         "
     );
 
-    let process = tx_context.execute_code(&code)?;
+    let exec_output = tx_context.execute_code(&code)?;
 
     // The final account is the initial account with the nonce incremented by one.
     let mut final_account = account.clone();
@@ -138,13 +138,13 @@ fn test_epilogue() -> anyhow::Result<()> {
     expected_stack.extend((13..16).map(|_| ZERO));
 
     assert_eq!(
-        *process.stack.build_stack_outputs()?,
+        exec_output.stack.as_slice(),
         expected_stack.as_slice(),
         "Stack state after finalize_transaction does not contain the expected values"
     );
 
     assert_eq!(
-        process.stack.depth(),
+        exec_output.stack.len(),
         16,
         "The stack must be truncated to 16 elements after finalize_transaction"
     );
@@ -390,7 +390,7 @@ fn test_block_expiration_height_monotonically_decreases() -> anyhow::Result<()> 
         // (which can only decrease, not increase)
         let expected_expiry =
             v1.min(v2) + tx_context.tx_inputs().block_header().block_num().as_u64();
-        assert_eq!(process.stack.get(EXPIRATION_BLOCK_ELEMENT_IDX).as_int(), expected_expiry);
+        assert_eq!(process.get_stack_item(EXPIRATION_BLOCK_ELEMENT_IDX).as_int(), expected_expiry);
     }
 
     Ok(())
@@ -444,8 +444,8 @@ fn test_no_expiration_delta_set() -> anyhow::Result<()> {
 
     let process = &tx_context.execute_code(code_template)?;
 
-    // Default value should be equal to u32::max, set in the prologue
-    assert_eq!(process.stack.get(EXPIRATION_BLOCK_ELEMENT_IDX).as_int() as u32, u32::MAX);
+    // Default value should be equal to u32::MAX, set in the prologue
+    assert_eq!(process.get_stack_item(EXPIRATION_BLOCK_ELEMENT_IDX).as_int() as u32, u32::MAX);
 
     Ok(())
 }

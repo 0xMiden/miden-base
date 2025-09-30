@@ -49,6 +49,7 @@ use rand_chacha::ChaCha20Rng;
 
 use super::{Felt, StackInputs, ZERO};
 use crate::executor::CodeExecutor;
+use crate::kernel_tests::tx::ProcessMemoryExt;
 use crate::{
     Auth,
     MockChain,
@@ -182,7 +183,7 @@ pub fn test_account_type() -> miette::Result<()> {
                 "
             );
 
-            let process = CodeExecutor::with_default_host()
+            let execution_output = CodeExecutor::with_default_host()
                 .stack_inputs(
                     StackInputs::new(vec![account_id.prefix().as_felt()]).into_diagnostic()?,
                 )
@@ -193,7 +194,7 @@ pub fn test_account_type() -> miette::Result<()> {
             has_type |= type_matches;
 
             assert_eq!(
-                process.stack.get(0),
+                execution_output.get_stack_item(0),
                 expected_result,
                 "Rust and Masm check on account type diverge. proc: {} account_id: {} account_type: {:?} expected_type: {:?}",
                 procedure,
@@ -311,13 +312,13 @@ fn test_is_faucet_procedure() -> miette::Result<()> {
             prefix = account_id.prefix().as_felt(),
         );
 
-        let process = CodeExecutor::with_default_host()
+        let execution_output = CodeExecutor::with_default_host()
             .run(&code)
             .wrap_err("failed to execute is_faucet procedure")?;
 
         let is_faucet = account_id.is_faucet();
         assert_eq!(
-            process.stack.get(0),
+            execution_output.get_stack_item(0),
             Felt::new(is_faucet as u64),
             "Rust and MASM is_faucet diverged for account_id {account_id}"
         );
@@ -425,22 +426,22 @@ fn test_get_map_item() -> miette::Result<()> {
         let process = &mut tx_context.execute_code(&code)?;
         assert_eq!(
             value,
-            process.stack.get_word(0),
+            process.stack.get_stack_word(0).unwrap(),
             "get_map_item result doesn't match the expected value",
         );
         assert_eq!(
             Word::empty(),
-            process.stack.get_word(4),
+            process.stack.get_stack_word(4).unwrap(),
             "The rest of the stack must be cleared",
         );
         assert_eq!(
             Word::empty(),
-            process.stack.get_word(8),
+            process.stack.get_stack_word(8).unwrap(),
             "The rest of the stack must be cleared",
         );
         assert_eq!(
             Word::empty(),
-            process.stack.get_word(12),
+            process.stack.get_stack_word(12).unwrap(),
             "The rest of the stack must be cleared",
         );
     }
@@ -482,13 +483,25 @@ fn test_get_storage_slot_type() -> miette::Result<()> {
 
         let storage_slot_type = storage_item.slot.slot_type();
 
-        assert_eq!(storage_slot_type, process.stack.get(0).try_into().unwrap());
-        assert_eq!(process.stack.get(1), ZERO, "the rest of the stack is empty");
-        assert_eq!(process.stack.get(2), ZERO, "the rest of the stack is empty");
-        assert_eq!(process.stack.get(3), ZERO, "the rest of the stack is empty");
-        assert_eq!(Word::empty(), process.stack.get_word(1), "the rest of the stack is empty");
-        assert_eq!(Word::empty(), process.stack.get_word(2), "the rest of the stack is empty");
-        assert_eq!(Word::empty(), process.stack.get_word(3), "the rest of the stack is empty");
+        assert_eq!(storage_slot_type, process.get_stack_item(0).try_into().unwrap());
+        assert_eq!(process.get_stack_item(1), ZERO, "the rest of the stack is empty");
+        assert_eq!(process.get_stack_item(2), ZERO, "the rest of the stack is empty");
+        assert_eq!(process.get_stack_item(3), ZERO, "the rest of the stack is empty");
+        assert_eq!(
+            Word::empty(),
+            process.stack.get_stack_word(1).unwrap(),
+            "the rest of the stack is empty"
+        );
+        assert_eq!(
+            Word::empty(),
+            process.stack.get_stack_word(2).unwrap(),
+            "the rest of the stack is empty"
+        );
+        assert_eq!(
+            Word::empty(),
+            process.stack.get_stack_word(3).unwrap(),
+            "the rest of the stack is empty"
+        );
     }
 
     Ok(())
@@ -576,19 +589,19 @@ fn test_set_map_item() -> miette::Result<()> {
         new_value = &new_value,
     );
 
-    let process = &tx_context.execute_code(&code).unwrap();
+    let exec_output = &tx_context.execute_code(&code).unwrap();
 
     let mut new_storage_map = AccountStorage::mock_map();
     new_storage_map.insert(new_key, new_value).unwrap();
 
     assert_eq!(
         new_storage_map.root(),
-        process.stack.get_word(0),
+        exec_output.stack.get_stack_word(0).unwrap(),
         "get_item must return the new updated value",
     );
     assert_eq!(
         storage_item.slot.value(),
-        process.stack.get_word(4),
+        exec_output.stack.get_stack_word(4).unwrap(),
         "The original value stored in the map doesn't match the expected value",
     );
 
@@ -1152,11 +1165,15 @@ fn test_authenticate_and_track_procedure() -> miette::Result<()> {
 
         // Execution of this code will return an EventError(UnknownAccountProcedure) for procs
         // that are not in the advice provider.
-        let process = tx_context.execute_code(&code);
+        let exec_output = tx_context.execute_code(&code);
 
         match valid {
-            true => assert!(process.is_ok(), "A valid procedure must successfully authenticate"),
-            false => assert!(process.is_err(), "An invalid procedure should fail to authenticate"),
+            true => {
+                assert!(exec_output.is_ok(), "A valid procedure must successfully authenticate")
+            },
+            false => {
+                assert!(exec_output.is_err(), "An invalid procedure should fail to authenticate")
+            },
         }
     }
 

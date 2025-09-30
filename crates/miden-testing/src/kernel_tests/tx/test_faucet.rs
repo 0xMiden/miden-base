@@ -39,6 +39,7 @@ use miden_objects::testing::noop_auth_component::NoopAuthComponent;
 use miden_objects::testing::storage::FAUCET_STORAGE_DATA_SLOT;
 use miden_objects::{Felt, Word};
 
+use crate::kernel_tests::tx::ProcessMemoryExt;
 use crate::utils::create_public_p2any_note;
 use crate::{TransactionContextBuilder, assert_execution_error, assert_transaction_executor_error};
 
@@ -89,12 +90,8 @@ fn test_mint_fungible_asset_succeeds() -> anyhow::Result<()> {
         FAUCET_STORAGE_DATA_SLOT as u32 + NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR;
     let faucet_storage_amount_location = faucet_reserved_slot_storage_location + 3;
 
-    let faucet_storage_amount = process
-        .chiplets
-        .memory
-        .get_value(process.system.ctx(), faucet_storage_amount_location)
-        .unwrap()
-        .as_int();
+    let faucet_storage_amount =
+        process.get_kernel_mem_element(faucet_storage_amount_location).as_int();
 
     assert_eq!(faucet_storage_amount, expected_final_storage_amount);
     Ok(())
@@ -383,12 +380,8 @@ fn test_burn_fungible_asset_succeeds() -> anyhow::Result<()> {
         FAUCET_STORAGE_DATA_SLOT as u32 + NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR;
     let faucet_storage_amount_location = faucet_reserved_slot_storage_location + 3;
 
-    let faucet_storage_amount = process
-        .chiplets
-        .memory
-        .get_value(process.system.ctx(), faucet_storage_amount_location)
-        .unwrap()
-        .as_int();
+    let faucet_storage_amount =
+        process.get_kernel_mem_element(faucet_storage_amount_location).as_int();
 
     assert_eq!(faucet_storage_amount, expected_final_storage_amount);
     Ok(())

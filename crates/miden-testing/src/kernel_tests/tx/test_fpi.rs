@@ -22,7 +22,6 @@ use miden_lib::transaction::memory::{
     NUM_ACCT_STORAGE_SLOTS_OFFSET,
 };
 use miden_lib::utils::ScriptBuilder;
-use miden_objects::FieldElement;
 use miden_objects::account::{
     Account,
     AccountBuilder,
@@ -43,12 +42,13 @@ use miden_objects::testing::account_id::{
 };
 use miden_objects::testing::storage::STORAGE_LEAVES_2;
 use miden_objects::transaction::AccountInputs;
+use miden_objects::{FieldElement, Word, ZERO};
+use miden_processor::fast::ExecutionOutput;
 use miden_processor::{AdviceInputs, Felt};
 use miden_tx::LocalTransactionProver;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 
-use super::{Process, Word, ZERO};
 use crate::kernel_tests::tx::ProcessMemoryExt;
 use crate::{Auth, MockChainBuilder, assert_execution_error, assert_transaction_executor_error};
 
@@ -163,7 +163,7 @@ fn test_fpi_memory_single_account() -> anyhow::Result<()> {
     let process = tx_context.execute_code(&code)?;
 
     assert_eq!(
-        process.stack.get_word(0),
+        process.get_stack_word(0),
         storage_slots[0].value(),
         "Value at the top of the stack (value in the storage at index 0) should be equal [1, 2, 3, 4]",
     );
@@ -217,7 +217,7 @@ fn test_fpi_memory_single_account() -> anyhow::Result<()> {
     let process = tx_context.execute_code(&code).unwrap();
 
     assert_eq!(
-        process.stack.get_word(0),
+        process.get_stack_word(0),
         STORAGE_LEAVES_2[0].1,
         "Value at the top of the stack should be equal [1, 2, 3, 4]",
     );
@@ -293,8 +293,8 @@ fn test_fpi_memory_single_account() -> anyhow::Result<()> {
     // Foreign account:   [16384; 24575] <- initialized during first FPI
     // Next account slot: [24576; 32767] <- should not be initialized
     assert_eq!(
-        process.try_get_kernel_mem_word(NATIVE_ACCOUNT_DATA_PTR + ACCOUNT_DATA_LENGTH as u32 * 2),
-        None,
+        process.get_kernel_mem_word(NATIVE_ACCOUNT_DATA_PTR + ACCOUNT_DATA_LENGTH as u32 * 2),
+        Word::empty(),
         "Memory starting from 24576 should stay uninitialized"
     );
     Ok(())
@@ -501,8 +501,8 @@ fn test_fpi_memory_two_accounts() -> anyhow::Result<()> {
 
     // check that the first word of the third foreign account slot was not initialized
     assert_eq!(
-        process.try_get_kernel_mem_word(NATIVE_ACCOUNT_DATA_PTR + ACCOUNT_DATA_LENGTH as u32 * 3),
-        None,
+        process.get_kernel_mem_word(NATIVE_ACCOUNT_DATA_PTR + ACCOUNT_DATA_LENGTH as u32 * 3),
+        Word::empty(),
         "Memory starting from 32768 should stay uninitialized"
     );
 
@@ -1612,11 +1612,14 @@ fn test_fpi_get_account_nonce() -> anyhow::Result<()> {
 // HELPER FUNCTIONS
 // ================================================================================================
 
-fn foreign_account_data_memory_assertions(foreign_account: &Account, process: &Process) {
+fn foreign_account_data_memory_assertions(
+    foreign_account: &Account,
+    exec_output: &ExecutionOutput,
+) {
     let foreign_account_data_ptr = NATIVE_ACCOUNT_DATA_PTR + ACCOUNT_DATA_LENGTH as u32;
 
     assert_eq!(
-        process.get_kernel_mem_word(foreign_account_data_ptr + ACCT_ID_AND_NONCE_OFFSET),
+        exec_output.get_kernel_mem_word(foreign_account_data_ptr + ACCT_ID_AND_NONCE_OFFSET),
         Word::new([
             foreign_account.id().suffix(),
             foreign_account.id().prefix().as_felt(),
@@ -1626,22 +1629,22 @@ fn foreign_account_data_memory_assertions(foreign_account: &Account, process: &P
     );
 
     assert_eq!(
-        process.get_kernel_mem_word(foreign_account_data_ptr + ACCT_VAULT_ROOT_OFFSET),
+        exec_output.get_kernel_mem_word(foreign_account_data_ptr + ACCT_VAULT_ROOT_OFFSET),
         foreign_account.vault().root(),
     );
 
     assert_eq!(
-        process.get_kernel_mem_word(foreign_account_data_ptr + ACCT_STORAGE_COMMITMENT_OFFSET),
+        exec_output.get_kernel_mem_word(foreign_account_data_ptr + ACCT_STORAGE_COMMITMENT_OFFSET),
         foreign_account.storage().commitment(),
     );
 
     assert_eq!(
-        process.get_kernel_mem_word(foreign_account_data_ptr + ACCT_CODE_COMMITMENT_OFFSET),
+        exec_output.get_kernel_mem_word(foreign_account_data_ptr + ACCT_CODE_COMMITMENT_OFFSET),
         foreign_account.code().commitment(),
     );
 
     assert_eq!(
-        process.get_kernel_mem_word(foreign_account_data_ptr + NUM_ACCT_STORAGE_SLOTS_OFFSET),
+        exec_output.get_kernel_mem_word(foreign_account_data_ptr + NUM_ACCT_STORAGE_SLOTS_OFFSET),
         Word::from([u16::try_from(foreign_account.storage().slots().len()).unwrap(), 0, 0, 0]),
     );
 
@@ -1652,7 +1655,7 @@ fn foreign_account_data_memory_assertions(foreign_account: &Account, process: &P
         .enumerate()
     {
         assert_eq!(
-            process.get_kernel_mem_word(
+            exec_output.get_kernel_mem_word(
                 foreign_account_data_ptr + ACCT_STORAGE_SLOTS_SECTION_OFFSET + (i as u32) * 4
             ),
             Word::try_from(elements).unwrap(),
@@ -1660,7 +1663,7 @@ fn foreign_account_data_memory_assertions(foreign_account: &Account, process: &P
     }
 
     assert_eq!(
-        process.get_kernel_mem_word(foreign_account_data_ptr + NUM_ACCT_PROCEDURES_OFFSET),
+        exec_output.get_kernel_mem_word(foreign_account_data_ptr + NUM_ACCT_PROCEDURES_OFFSET),
         Word::from([u16::try_from(foreign_account.code().num_procedures()).unwrap(), 0, 0, 0]),
     );
 
@@ -1671,7 +1674,7 @@ fn foreign_account_data_memory_assertions(foreign_account: &Account, process: &P
         .enumerate()
     {
         assert_eq!(
-            process.get_kernel_mem_word(
+            exec_output.get_kernel_mem_word(
                 foreign_account_data_ptr + ACCT_PROCEDURES_SECTION_OFFSET + (i as u32) * 4
             ),
             Word::try_from(elements).unwrap(),

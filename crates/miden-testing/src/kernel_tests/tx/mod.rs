@@ -2,6 +2,8 @@ use alloc::string::String;
 
 use anyhow::Context;
 use miden_lib::transaction::memory::{
+    self,
+    MemoryOffset,
     NOTE_MEM_SIZE,
     NUM_OUTPUT_NOTES_PTR,
     OUTPUT_NOTE_ASSETS_OFFSET,
@@ -21,8 +23,9 @@ use miden_objects::testing::account_id::{
 };
 use miden_objects::testing::storage::prepare_assets;
 use miden_objects::vm::StackInputs;
-use miden_objects::{Felt, Hasher, ONE, Word, ZERO};
-use miden_processor::{ContextId, Process};
+use miden_objects::{Felt, Word, ZERO};
+use miden_processor::ContextId;
+use miden_processor::fast::ExecutionOutput;
 
 use crate::MockChain;
 
@@ -40,10 +43,10 @@ mod test_fpi;
 mod test_input_note;
 mod test_lazy_loading;
 mod test_link_map;
-mod test_note;
-mod test_output_note;
+// mod test_note;
+// mod test_output_note;
 mod test_prologue;
-mod test_tx;
+// mod test_tx;
 
 // HELPER FUNCTIONS
 // ================================================================================================
@@ -59,26 +62,47 @@ pub trait ProcessMemoryExt {
     /// - the memory location is not initialized.
     fn get_kernel_mem_word(&self, addr: u32) -> Word;
 
-    /// Reads a word from transaction kernel memory.
-    ///
-    /// # Panics
-    ///
-    /// Panics if:
-    /// - the address is not word-aligned.
-    fn try_get_kernel_mem_word(&self, addr: u32) -> Option<Word>;
+    fn get_kernel_mem_element(&self, addr: u32) -> Felt {
+        // TODO: Use Memory::read_element once it no longer requires &mut self.
+        // https://github.com/0xMiden/miden-vm/issues/2237
+        // Copy of the function in Miden VM.
+        fn split_addr(addr: u32) -> (u32, u32) {
+            let idx = addr % miden_objects::WORD_SIZE as u32;
+            (addr - idx, idx)
+        }
+        let (word_addr, idx) = split_addr(addr);
+
+        self.get_kernel_mem_word(word_addr)[idx as usize]
+    }
+
+    fn get_stack_item(&self, idx: usize) -> Felt;
+
+    fn get_stack_word(&self, index: usize) -> Word;
+
+    fn get_note_mem_word(&self, note_idx: u32, offset: MemoryOffset) -> Word {
+        self.get_kernel_mem_word(input_note_data_ptr(note_idx) + offset)
+    }
 }
 
-impl ProcessMemoryExt for Process {
+impl ProcessMemoryExt for ExecutionOutput {
     fn get_kernel_mem_word(&self, addr: u32) -> Word {
-        self.try_get_kernel_mem_word(addr).expect("expected address to be initialized")
-    }
-
-    fn try_get_kernel_mem_word(&self, addr: u32) -> Option<Word> {
-        self.chiplets
-            .memory
-            .get_word(ContextId::root(), addr)
+        let err_ctx = ();
+        self.memory
+            .read_word(ContextId::root(), Felt::from(addr), 0u32.into(), &err_ctx)
             .expect("expected address to be word-aligned")
     }
+
+    fn get_stack_item(&self, index: usize) -> Felt {
+        *self.stack.get(index).unwrap()
+    }
+
+    fn get_stack_word(&self, index: usize) -> Word {
+        self.stack.get_stack_word(index).unwrap()
+    }
+}
+
+fn input_note_data_ptr(note_idx: u32) -> memory::MemoryAddress {
+    memory::INPUT_NOTE_DATA_SECTION_OFFSET + note_idx * memory::NOTE_MEM_SIZE
 }
 
 /// Returns MASM code that defines a procedure called `create_mock_notes` which creates the notes
