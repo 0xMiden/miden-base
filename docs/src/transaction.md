@@ -90,7 +90,7 @@ The Epilogue finalizes the transaction by computing the final account hash, asse
 
 ## Transaction types
 
-There are two types of transactions in Miden: **local transactions** and **network transactions** [not yet implemented].
+There are two types of transactions in Miden: **local transactions** and **network transactions**.
 
 ### Local transaction
 
@@ -133,6 +133,7 @@ The ability to facilitate both, local and network transactions, **is one of the 
 - Note and `Transaction` scripts can read the state of foreign accounts during execution. This is called foreign procedure invocation. For example, the price of an asset for the **Swap** script might depend on a certain value stored in the oracle account.
 
 - An example of the right usage of `Transaction` arguments is the consumption of a **Swap** note. Those notes allow asset exchange based on predefined conditions. Example:
+
   - The note's consumption condition is defined as "anyone can consume this note to take `X` units of asset A if they simultaneously create a note sending Y units of asset B back to the creator." If an executor wants to buy only a fraction `(X-m)` of asset A, they provide this amount via transaction arguments. The executor would provide the value `m`. The note script then enforces the correct transfer:
     - A new note is created returning `Y-((m*Y)/X)` of asset B to the sender.
     - A second note is created, holding the remaining `(X-m)` of asset A for future consumption.
