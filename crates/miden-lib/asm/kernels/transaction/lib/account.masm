@@ -980,6 +980,23 @@ export.get_balance
     # => [balance]
 end
 
+#! Returns the balance of a fungible asset associated with a faucet_id at the beginning of the 
+#! transaction.
+#!
+#! Inputs:  [faucet_id_prefix, faucet_id_suffix]
+#! Outputs: [init_balance]
+#!
+#! Where:
+#! - faucet_id_{prefix, suffix} are the prefix and suffix felts of the faucet id of the fungible
+#!   asset of interest.
+#! - init_balance is the vault balance of the fungible asset at the beginning of the transaction.
+#!
+#! Panics if:
+#! - the asset is not a fungible asset.
+export.get_initial_balance
+    nop
+end
+
 #! Returns a boolean indicating whether the non-fungible asset is present in the current account's vault.
 #!
 #! Inputs:  [ASSET]
