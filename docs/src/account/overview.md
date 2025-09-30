@@ -19,7 +19,7 @@ These parts are:
 1. [ID](id.md)
 2. [Code](code.md)
 3. [Storage](storage.md)
-4. [Vault](#vault)
+4. [Vault](vault.md)
 5. [Nonce](#nonce)
 
 ### Vault
@@ -27,7 +27,7 @@ These parts are:
 > [!Note]
 > A collection of [assets](../asset.md) stored by the `Account`.
 
-Large amounts of fungible and non-fungible assets can be stored in the account's vault.
+See the dedicated [Vault](vault.md) page for the data structure, operations, and capacity.
 
 ### Nonce
 
