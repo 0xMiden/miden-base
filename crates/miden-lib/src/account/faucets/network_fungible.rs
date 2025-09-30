@@ -1,5 +1,3 @@
-use alloc::string::String;
-
 use miden_objects::account::{
     Account,
     AccountBuilder,
@@ -12,7 +10,7 @@ use miden_objects::account::{
 use miden_objects::assembly::{ProcedureName, QualifiedProcedureName};
 use miden_objects::asset::{FungibleAsset, TokenSymbol};
 use miden_objects::utils::sync::LazyLock;
-use miden_objects::{AccountError, Felt, FieldElement, TokenSymbolError, Word};
+use miden_objects::{Felt, FieldElement, Word};
 
 use super::FungibleFaucetError;
 use crate::account::AuthScheme;

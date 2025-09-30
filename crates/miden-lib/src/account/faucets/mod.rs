@@ -76,16 +76,11 @@ pub enum FungibleFaucetError {
 #[cfg(test)]
 mod tests {
     use assert_matches::assert_matches;
-    use miden_objects::{FieldElement, ONE, Word};
     use miden_objects::account::{AccountBuilder, AccountStorageMode, AccountType};
     use miden_objects::asset::TokenSymbol;
+    use miden_objects::{FieldElement, ONE, Word};
 
-    use super::{
-        BasicFungibleFaucet,
-        Felt,
-        FungibleFaucetError,
-        create_basic_fungible_faucet,
-    };
+    use super::{BasicFungibleFaucet, Felt, FungibleFaucetError, create_basic_fungible_faucet};
     use crate::AuthScheme;
     use crate::account::auth::{AuthRpoFalcon512, PublicKeyCommitment};
     use crate::account::wallets::BasicWallet;
