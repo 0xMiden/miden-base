@@ -90,7 +90,7 @@ end
 #! - new_num_of_approvers is the new number of approvers after the update
 proc.cleanup_pubkey_mapping
     dup.1 dup.1
-    u32assert2 u32lt
+    u32lt
     # => [should_loop, i = init_num_of_approvers, new_num_of_approvers]
 
     while.true
@@ -121,6 +121,7 @@ proc.cleanup_pubkey_mapping
         u32assert2 u32lt
         # => [should_loop, i-1, new_num_of_approvers]
     end
+
     drop drop
     # => []
 end
@@ -146,11 +147,29 @@ export.update_signers_and_threshold.4
     adv.push_mapval
     # => [MULTISIG_CONFIG_HASH, pad(12)]
 
-    adv_loadw
+    adv_loadw dupw
+    # => [MULTISIG_CONFIG, MULTISIG_CONFIG, pad(12)]
+
+    # store num_approvers for later
+    drop drop loc_store.0 drop
     # => [MULTISIG_CONFIG, pad(12)]
 
-    loc_storew.0
-    # => [MULTISIG_CONFIG, pad(12)]
+    dupw
+    # => [MULTISIG_CONFIG, MULTISIG_CONFIG, pad(12)]
+    # => [0, 0, num_approvers, threshold, MULTISIG_CONFIG, pad(12)]
+
+    drop drop dup.1 dup.1
+    # => [num_approvers, threshold, num_approvers, threshold, MULTISIG_CONFIG, pad(12)]
+
+    # make sure that the threshold is smaller than the number of approvers
+    u32assert2.err=ERR_MALFORMED_MULTISIG_CONFIG
+    u32gt assertz.err=ERR_MALFORMED_MULTISIG_CONFIG
+    # => [num_approvers, threshold, MULTISIG_CONFIG, pad(12)]
+
+    # make sure that threshold or num_approvers are not zero
+    eq.0 assertz.err=ERR_MALFORMED_MULTISIG_CONFIG
+    eq.0 assertz.err=ERR_MALFORMED_MULTISIG_CONFIG
+    # => [MULTISIG_CONFIG]
 
     dupw
     # => [MULTISIG_CONFIG, MULTISIG_CONFIG, pad(12)]
@@ -161,18 +180,11 @@ export.update_signers_and_threshold.4
     exec.account::set_item
     # => [OLD_THRESHOLD_CONFIG, MULTISIG_CONFIG, pad(12)]
 
-    dropw
-    # => [MULTISIG_CONFIG, pad(12)]
-    # => [0, 0, num_approvers, threshold, pad(12)]
+    dropw dropw
+    # => [pad(12)]
 
-    drop drop dup movdn.2
-    # => [num_approvers, threshold, num_approvers, pad(12)]
-
-    u32assert2.err=ERR_MALFORMED_MULTISIG_CONFIG u32gt
-    # => [is_invalid_config, pad(12)]
-
-    assertz.err=ERR_MALFORMED_MULTISIG_CONFIG
-    # => [num_approvers, pad(12)]
+    loc_load.0
+    # => [num_approvers]
 
     dup neq.0
     while.true
@@ -200,6 +212,10 @@ export.update_signers_and_threshold.4
         dup neq.0
         # => [is_non_zero, i-1, pad(12)]
     end
+    # => [pad(13)]
+
+    drop
+    # => [pad(12)]
 
     # compare initial vs current multisig config
 
@@ -212,13 +228,9 @@ export.update_signers_and_threshold.4
     drop drop swap drop
     # => [init_num_of_approvers, pad(12)]
 
-    padw loc_loadw.0
-    # => [0, 0, new_num_of_approvers, new_init_threshold, init_num_of_approvers, pad(12)]
-
-    drop drop swap drop swap
+    # load new_num_of_approvers
+    loc_load.0 swap
     # => [init_num_of_approvers, new_num_of_approvers, pad(12)]
-
-    push.111 debug.stack drop
 
     exec.cleanup_pubkey_mapping
     # => [pad(12)]

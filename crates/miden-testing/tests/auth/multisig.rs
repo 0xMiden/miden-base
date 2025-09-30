@@ -613,7 +613,7 @@ async fn test_multisig_update_signers_remove_owner() -> anyhow::Result<()> {
 
     // Setup new signers (remove the last 3 owners, keeping first 2)
     let new_public_keys = &public_keys[0..2];
-    let threshold = 2u64;
+    let threshold = 1u64;
     let num_of_approvers = 2u64;
 
     // Create multisig config vector
