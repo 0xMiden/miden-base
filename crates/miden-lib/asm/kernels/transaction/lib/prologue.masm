@@ -16,6 +16,12 @@ use.$kernel::memory
 # Max U32 value, used for initializing the expiration block number
 const.MAX_BLOCK_NUM=0xFFFFFFFF
 
+# EVENTS
+#=================================================================================================
+
+# Emission of an equivalent to `ACCOUNT_VAULT_BEFORE_ADD_ASSET_EVENT`, use in `add_input_note_assets_to_vault`
+const.ACCOUNT_VAULT_BEFORE_ADD_ASSET_EVENT=event("miden::account::vault_before_add_asset")
+
 # ERRORS
 # =================================================================================================
 
@@ -93,7 +99,7 @@ end
 # KERNEL DATA
 # =================================================================================================
 
-#! Saves the kernel procedure roots to the memory. Verifies that the kernel commitment match the 
+#! Saves the kernel procedure roots to the memory. Verifies that the kernel commitment match the
 #! sequential hash of kernel procedures.
 #!
 #! Inputs:
@@ -442,7 +448,7 @@ proc.process_account_data
     # copy the initial account vault root to the input vault root to support transaction asset
     # invariant checking
     # this account vault root is also stored as an initial one in the global inputs
-    exec.memory::get_account_vault_root 
+    exec.memory::get_account_vault_root
     exec.memory::set_init_account_vault_root
     exec.memory::set_input_vault_root dropw
     # => [ACCOUNT_COMMITMENT]
@@ -576,7 +582,7 @@ end
 #! - SCRIPT_ROOT is the note's script root.
 #! - INPUTS_COMMITMENT is the sequential hash of the padded note's inputs.
 #! - ASSETS_COMMITMENT is the sequential hash of the padded note's assets.
-#! - NULLIFIER is the result of 
+#! - NULLIFIER is the result of
 #!   `hash(SERIAL_NUMBER || SCRIPT_ROOT || INPUTS_COMMITMENT || ASSETS_COMMITMENT)`.
 proc.process_input_note_details
     exec.memory::get_input_note_core_ptr
@@ -773,7 +779,8 @@ proc.add_input_note_assets_to_vault
         # pre-load all relevant merkle paths for the note assets before tx execution.
         #
         # This emitted event is equivalent to ACCOUNT_VAULT_BEFORE_ADD_ASSET_EVENT.
-        emit.131072
+
+        emit.ACCOUNT_VAULT_BEFORE_ADD_ASSET_EVENT
         # => [ASSET, input_vault_root_ptr, assets_start_ptr, assets_end_ptr, input_vault_root_ptr]
 
         exec.asset_vault::add_asset dropw
@@ -1061,7 +1068,7 @@ end
 #!
 #! Where:
 #! - TX_SCRIPT_ROOT is the transaction's script root.
-#! - TX_SCRIPT_ARGS is the word of values which could be used directly or could be used to obtain 
+#! - TX_SCRIPT_ARGS is the word of values which could be used directly or could be used to obtain
 #!   some values associated with it from the advice map.
 proc.process_tx_script_data
     # read the transaction script root from the advice stack

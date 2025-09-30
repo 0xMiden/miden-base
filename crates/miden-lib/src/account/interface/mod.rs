@@ -8,6 +8,7 @@ use miden_objects::account::{Account, AccountCode, AccountId, AccountIdPrefix, A
 use miden_objects::assembly::mast::{MastForest, MastNode, MastNodeId};
 use miden_objects::note::{Note, NoteScript, PartialNote};
 use miden_objects::transaction::TransactionScript;
+use miden_processor::MastNodeExt;
 use thiserror::Error;
 
 use crate::AuthScheme;

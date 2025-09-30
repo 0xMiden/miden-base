@@ -132,8 +132,8 @@ mod tests {
         let mut full = Smt::with_entries(kv_pairs).unwrap();
         let stale_proof0 = full.open(&key0);
         // Insert a non-empty value so the nullifier tree's root changes.
-        full.insert(key1, value1);
-        full.insert(key2, value2);
+        full.insert(key1, value1).unwrap();
+        full.insert(key2, value2).unwrap();
         let proof2 = full.open(&key2);
 
         assert_ne!(stale_proof0.compute_root(), proof2.compute_root());

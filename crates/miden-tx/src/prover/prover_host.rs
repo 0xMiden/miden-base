@@ -1,8 +1,7 @@
-use alloc::boxed::Box;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use miden_lib::transaction::TransactionEvent;
+use miden_lib::transaction::EventId;
 use miden_objects::Word;
 use miden_objects::account::{AccountDelta, PartialAccount};
 use miden_objects::assembly::debuginfo::Location;
@@ -86,10 +85,6 @@ impl<STORE> BaseHost for TransactionProverHost<'_, STORE>
 where
     STORE: MastForestStore,
 {
-    fn get_mast_forest(&self, procedure_root: &Word) -> Option<Arc<MastForest>> {
-        self.base_host.get_mast_forest(procedure_root)
-    }
-
     fn get_label_and_source_file(
         &self,
         _location: &Location,
@@ -105,14 +100,14 @@ impl<STORE> SyncHost for TransactionProverHost<'_, STORE>
 where
     STORE: MastForestStore,
 {
-    fn on_event(
-        &mut self,
-        process: &ProcessState,
-        event_id: u32,
-    ) -> Result<Vec<AdviceMutation>, EventError> {
-        let transaction_event = TransactionEvent::try_from(event_id).map_err(Box::new)?;
+    fn get_mast_forest(&self, node_digest: &Word) -> Option<Arc<MastForest>> {
+        self.base_host.get_mast_forest(node_digest)
+    }
 
-        match self.base_host.handle_event(process, transaction_event)? {
+    fn on_event(&mut self, process: &ProcessState) -> Result<Vec<AdviceMutation>, EventError> {
+        let event_id = EventId::from_felt(process.get_stack_item(0));
+
+        match self.base_host.handle_event(process, event_id)? {
             TransactionEventHandling::Unhandled(event_data) => {
                 // We match on the event_data here so that if a new
                 // variant is added to the enum, this fails compilation and we can adapt

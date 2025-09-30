@@ -1052,7 +1052,7 @@ end
 #! Where:
 #! - nonce is the nonce of the native account of the transaction.
 export.get_native_account_nonce
-    push.NATIVE_ACCOUNT_DATA_PTR add.ACCT_NONCE_OFFSET 
+    push.NATIVE_ACCOUNT_DATA_PTR add.ACCT_NONCE_OFFSET
     mem_load
 end
 
@@ -1368,7 +1368,7 @@ end
 export.get_account_initial_storage_slots_ptr
     exec.is_native_account
     # => [is_native_account]
-    
+
     if.true
         # For native account, return the initial storage slots pointer
         exec.get_native_account_initial_storage_slots_ptr
@@ -1830,8 +1830,11 @@ end
 #! - note_ptr is the memory address at which the output note data begins.
 export.get_output_note_metadata
     padw
+    # => [0, 0, 0, 0, note_ptr]
     movup.4 add.OUTPUT_NOTE_METADATA_OFFSET
+    # => [(note_ptr + offset), 0, 0, 0, 0]
     mem_loadw
+    # => [METADATA]
 end
 
 #! Sets the output note's metadata.

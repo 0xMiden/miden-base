@@ -1,9 +1,9 @@
 use alloc::vec::Vec;
 
 use miden_objects::account::{AccountCode, AccountComponent, StorageMap, StorageSlot};
-use miden_objects::crypto::dsa::rpo_falcon512::PublicKey;
 use miden_objects::{AccountError, Word};
 
+use crate::account::auth::PublicKeyCommitment;
 use crate::account::components::rpo_falcon_512_acl_library;
 
 /// Configuration for [`AuthRpoFalcon512Acl`] component.
@@ -110,7 +110,7 @@ impl Default for AuthRpoFalcon512AclConfig {
 ///
 /// This component supports all account types.
 pub struct AuthRpoFalcon512Acl {
-    public_key: PublicKey,
+    pub_key: PublicKeyCommitment,
     config: AuthRpoFalcon512AclConfig,
 }
 
@@ -121,7 +121,7 @@ impl AuthRpoFalcon512Acl {
     /// # Panics
     /// Panics if more than [AccountCode::MAX_NUM_PROCEDURES] procedures are specified.
     pub fn new(
-        public_key: PublicKey,
+        pub_key: PublicKeyCommitment,
         config: AuthRpoFalcon512AclConfig,
     ) -> Result<Self, AccountError> {
         let max_procedures = AccountCode::MAX_NUM_PROCEDURES;
@@ -131,7 +131,7 @@ impl AuthRpoFalcon512Acl {
             )));
         }
 
-        Ok(Self { public_key, config })
+        Ok(Self { pub_key, config })
     }
 }
 
@@ -140,7 +140,7 @@ impl From<AuthRpoFalcon512Acl> for AccountComponent {
         let mut storage_slots = Vec::with_capacity(3);
 
         // Slot 0: Public key
-        storage_slots.push(StorageSlot::Value(falcon.public_key.into()));
+        storage_slots.push(StorageSlot::Value(falcon.pub_key.into()));
 
         // Slot 1: [num_tracked_procs, allow_unauthorized_output_notes,
         // allow_unauthorized_input_notes, 0]
@@ -205,7 +205,7 @@ mod tests {
 
     /// Parametrized test helper for ACL component testing
     fn test_acl_component(config: AclTestConfig) {
-        let public_key = PublicKey::new(Word::empty());
+        let public_key = PublicKeyCommitment::from(Word::empty());
 
         // Build the configuration
         let mut acl_config = AuthRpoFalcon512AclConfig::new()
@@ -232,7 +232,7 @@ mod tests {
 
         // Assert public key in slot 0
         let public_key_slot = account.storage().get_item(0).expect("storage slot 0 access failed");
-        assert_eq!(public_key_slot, Word::from(public_key));
+        assert_eq!(public_key_slot, public_key.into());
 
         // Assert configuration in slot 1
         let slot_1 = account.storage().get_item(1).expect("storage slot 1 access failed");

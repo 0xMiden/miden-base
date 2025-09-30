@@ -9,7 +9,7 @@ use miden_lib::account::wallets::BasicWallet;
 use miden_lib::note::create_p2id_note;
 use miden_lib::testing::account_component::IncrNonceAuthComponent;
 use miden_lib::testing::mock_account::MockAccountExt;
-use miden_lib::transaction::{TransactionEvent, TransactionKernel};
+use miden_lib::transaction::TransactionKernel;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{
     Account,
@@ -452,10 +452,10 @@ fn executed_transaction_output_notes() -> anyhow::Result<()> {
 /// component to result in a [`TransactionExecutorError::Unauthorized`] error.
 #[test]
 fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
-    let source_code = format!(
-        "
+    let source_code = r#"
       use.miden::auth
       use.miden::tx
+      const.ABORT_EVENT=event("miden::auth::unauthorized")
       #! Inputs:  [AUTH_ARGS, pad(12)]
       #! Outputs: [pad(16)]
       export.auth_abort_tx
@@ -475,11 +475,9 @@ fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
           exec.auth::hash_tx_summary
           # => [MESSAGE, pad(16)]
 
-          emit.{abort_event}
+          emit.ABORT_EVENT
       end
-    ",
-        abort_event = TransactionEvent::Unauthorized as u32
-    );
+    "#;
 
     let auth_component =
         AccountComponent::compile(source_code, TransactionKernel::assembler(), vec![])

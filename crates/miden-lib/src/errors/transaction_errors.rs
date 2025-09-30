@@ -1,16 +1,21 @@
+use miden_core::EventId;
 use thiserror::Error;
+
+use crate::transaction::TransactionEvent;
 
 // TRANSACTION EVENT PARSING ERROR
 // ================================================================================================
 
 #[derive(Debug, Error)]
 pub enum TransactionEventError {
+    #[error("event id {0} is reserved for system events")]
+    ReservedSystemEvent(EventId),
     #[error("event id {0} is not a valid transaction event")]
-    InvalidTransactionEvent(u32),
+    InvalidTransactionEvent(EventId, Option<&'static str>),
     #[error("event id {0} is not a transaction kernel event")]
-    NotTransactionEvent(u32),
+    NotTransactionEvent(EventId, Option<&'static str>),
     #[error("event id {0} can only be emitted from the root context")]
-    NotRootContext(u32),
+    NotRootContext(TransactionEvent),
 }
 
 // TRANSACTION TRACE PARSING ERROR

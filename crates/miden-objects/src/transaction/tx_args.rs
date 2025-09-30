@@ -4,6 +4,7 @@ use alloc::vec::Vec;
 
 use miden_crypto::dsa::rpo_falcon512::PublicKey;
 use miden_crypto::merkle::InnerNodeInfo;
+use miden_processor::MastNodeExt;
 
 use super::{AccountInputs, Felt, Hasher, Word};
 use crate::note::{NoteId, NoteRecipient};
@@ -196,7 +197,7 @@ impl TransactionArgs {
     pub fn add_signature(&mut self, public_key: PublicKey, message: Word, signature: Vec<Felt>) {
         self.advice_inputs
             .map
-            .insert(Hasher::merge(&[public_key.into(), message]), signature);
+            .insert(Hasher::merge(&[public_key.to_commitment(), message]), signature);
     }
 
     /// Populates the advice inputs with the specified note recipient details.
