@@ -6,6 +6,7 @@ use miden_objects::account::AccountProcedureInfo;
 use miden_objects::assembly::Library;
 use miden_objects::utils::Deserializable;
 use miden_objects::utils::sync::LazyLock;
+use miden_processor::MastNodeExt;
 
 use crate::account::interface::AccountComponentInterface;
 

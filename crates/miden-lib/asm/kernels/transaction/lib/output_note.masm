@@ -59,14 +59,14 @@ const.ERR_NOTE_TAG_MUST_BE_U32="the note's tag must fit into a u32 so the 32 mos
 # =================================================================================================
 
 # Event emitted before a new note is created.
-const.NOTE_BEFORE_CREATED_EVENT=131083
+const.NOTE_BEFORE_CREATED_EVENT=event("miden::note::before_created")
 # Event emitted after a new note is created.
-const.NOTE_AFTER_CREATED_EVENT=131084
+const.NOTE_AFTER_CREATED_EVENT=event("miden::note::after_created")
 
 # Event emitted before an ASSET is added to a note
-const.NOTE_BEFORE_ADD_ASSET_EVENT=131085
+const.NOTE_BEFORE_ADD_ASSET_EVENT=event("miden::note::before_add_asset")
 # Event emitted after an ASSET is added to a note
-const.NOTE_AFTER_ADD_ASSET_EVENT=131086
+const.NOTE_AFTER_ADD_ASSET_EVENT=event("miden::note::after_add_asset")
 
 # OUTPUT NOTE PROCEDURES
 # =================================================================================================
@@ -111,7 +111,9 @@ export.create
     emit.NOTE_AFTER_CREATED_EVENT
 
     # set the metadata for the output note
-    dup.4 exec.memory::set_output_note_metadata dropw
+    dup.4
+    # => [note_ptr, NOTE_METADATA, note_ptr, RECIPIENT, note_idx]
+    exec.memory::set_output_note_metadata dropw
     # => [note_ptr, RECIPIENT, note_idx]
 
     # set the RECIPIENT for the output note
@@ -147,23 +149,23 @@ export.get_assets_info
     # able to get the assets later (in the `miden::output_note::get_assets` procedure)
 
     # get the start and the end pointers of the asset data
-    # 
-    # notice that if the number of assets is odd, the asset data end pointer will be shifted one 
-    # word further to make the assets number even (the same way it is done in the 
+    #
+    # notice that if the number of assets is odd, the asset data end pointer will be shifted one
+    # word further to make the assets number even (the same way it is done in the
     # `note::compute_output_note_assets_commitment` procedure)
     movup.4 exec.memory::get_output_note_asset_data_ptr
     # => [assets_data_ptr, ASSETS_COMMITMENT, num_assets]
 
     dup dup.6 dup is_odd add
     # => [padded_num_assets, assets_data_ptr, assets_data_ptr, ASSETS_COMMITMENT, num_assets]
-    
+
     mul.4 add
     # => [assets_end_ptr, assets_start_ptr, ASSETS_COMMITMENT, num_assets]
 
     movdn.5 movdn.4
     # => [ASSETS_COMMITMENT, assets_start_ptr, assets_end_ptr, num_assets]
 
-    # store the assets data to the advice map using ASSETS_COMMITMENT as a key  
+    # store the assets data to the advice map using ASSETS_COMMITMENT as a key
     adv.insert_mem
     # => [ASSETS_COMMITMENT, assets_start_ptr, assets_end_ptr, num_assets]
 
@@ -222,7 +224,7 @@ export.add_asset
     end
     # => [note_ptr, note_idx]
 
-    # update the assets commitment dirty flag to signal that the current assets commitment is not 
+    # update the assets commitment dirty flag to signal that the current assets commitment is not
     # valid anymore
     push.1 swap exec.memory::set_output_note_dirty_flag
     # => [note_idx]
@@ -238,9 +240,9 @@ end
 #! Outputs: [note_index]
 export.assert_note_index_in_bounds
     # assert that the provided note index is less than the total number of notes
-    dup exec.memory::get_num_output_notes 
+    dup exec.memory::get_num_output_notes
     # => [output_notes_num, note_index, note_index]
-    
+
     u32assert2.err=ERR_OUTPUT_NOTE_INDEX_OUT_OF_BOUNDS
     u32lt assert.err=ERR_OUTPUT_NOTE_INDEX_OUT_OF_BOUNDS
     # => [note_index]

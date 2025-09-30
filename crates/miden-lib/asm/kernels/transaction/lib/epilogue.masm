@@ -22,16 +22,16 @@ const.ERR_AUTH_PROCEDURE_CALLED_FROM_WRONG_CONTEXT="auth procedure had been call
 # =================================================================================================
 
 # Event emitted to signal that the compute_fee procedure has obtained the current number of cycles.
-const.EPILOGUE_AFTER_TX_CYCLES_OBTAINED=131097
+const.EPILOGUE_AFTER_TX_CYCLES_OBTAINED=event("miden::epilogue::after_tx_cycles_obtained")
 
 # Event emitted to signal that the fee was computed.
-const.EPILOGUE_BEFORE_TX_FEE_REMOVED_FROM_ACCOUNT=131098
+const.EPILOGUE_BEFORE_TX_FEE_REMOVED_FROM_ACCOUNT=event("miden::epilogue::before_tx_fee_removed_from_account")
 
 # Event emitted to signal that an execution of the authentication procedure has started.
-const.EPILOGUE_AUTH_PROC_START=131107
+const.EPILOGUE_AUTH_PROC_START=event("miden::epilogue::auth_proc_start")
 
 # Event emitted to signal that an execution of the authentication procedure has ended.
-const.EPILOGUE_AUTH_PROC_END=131108
+const.EPILOGUE_AUTH_PROC_END=event("miden::epilogue::auth_proc_end")
 
 # An additional number of cyclces to account for the number of cycles that smt::set will take when
 # removing the computed fee from the asset vault.

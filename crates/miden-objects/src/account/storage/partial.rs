@@ -147,8 +147,8 @@ mod tests {
         let map_key_absent: Word = [9u64, 12, 18, 3].try_into()?;
 
         let mut map_1 = StorageMap::new();
-        map_1.insert(map_key_absent, Word::try_from([1u64, 2, 3, 2])?);
-        map_1.insert(map_key_present, Word::try_from([5u64, 4, 3, 2])?);
+        map_1.insert(map_key_absent, Word::try_from([1u64, 2, 3, 2])?).unwrap();
+        map_1.insert(map_key_present, Word::try_from([5u64, 4, 3, 2])?).unwrap();
         assert_eq!(map_1.get(&map_key_present), [5u64, 4, 3, 2].try_into()?);
 
         let storage = AccountStorage::new(vec![StorageSlot::Map(map_1.clone())]).unwrap();

@@ -647,7 +647,7 @@ mod tests {
 
         let updated_map =
             StorageMapDelta::from_iters([], [(new_map_entry.0, new_map_entry.1.into())]);
-        storage_map.insert(new_map_entry.0, new_map_entry.1.into());
+        storage_map.insert(new_map_entry.0, new_map_entry.1.into()).unwrap();
 
         // build account delta
         let final_nonce = Felt::new(2);
