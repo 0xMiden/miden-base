@@ -94,7 +94,7 @@ use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 
 use super::{Felt, ZERO};
-use crate::kernel_tests::tx::ProcessMemoryExt;
+use crate::kernel_tests::tx::ExecutionOutputExt;
 use crate::utils::create_public_p2any_note;
 use crate::{
     Auth,
@@ -777,7 +777,7 @@ fn test_get_blk_version() -> anyhow::Result<()> {
     let exec_output = tx_context.execute_code(code)?;
 
     assert_eq!(
-        exec_output.get_stack_item(0),
+        exec_output.get_stack_element(0),
         tx_context.tx_inputs().block_header().version().into()
     );
 
@@ -803,7 +803,7 @@ fn test_get_blk_timestamp() -> anyhow::Result<()> {
     let exec_output = tx_context.execute_code(code)?;
 
     assert_eq!(
-        exec_output.get_stack_item(0),
+        exec_output.get_stack_element(0),
         tx_context.tx_inputs().block_header().timestamp().into()
     );
 

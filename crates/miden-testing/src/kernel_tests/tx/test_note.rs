@@ -37,7 +37,7 @@ use miden_processor::fast::ExecutionOutput;
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 
-use crate::kernel_tests::tx::{ProcessMemoryExt, input_note_data_ptr};
+use crate::kernel_tests::tx::{ExecutionOutputExt, input_note_data_ptr};
 use crate::{
     Auth,
     MockChain,

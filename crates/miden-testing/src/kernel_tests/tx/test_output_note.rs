@@ -47,7 +47,7 @@ use miden_objects::transaction::{OutputNote, OutputNotes};
 use miden_objects::{Felt, Word, ZERO};
 
 use super::{TestSetup, setup_test};
-use crate::kernel_tests::tx::ProcessMemoryExt;
+use crate::kernel_tests::tx::ExecutionOutputExt;
 use crate::utils::create_public_p2any_note;
 use crate::{Auth, MockChain, TransactionContextBuilder, assert_execution_error};
 
@@ -117,7 +117,7 @@ fn test_create_note() -> anyhow::Result<()> {
     );
 
     assert_eq!(
-        exec_output.get_stack_item(0),
+        exec_output.get_stack_element(0),
         ZERO,
         "top item on the stack is the index of the output note"
     );
@@ -447,7 +447,7 @@ fn test_create_note_and_add_asset() -> anyhow::Result<()> {
     );
 
     assert_eq!(
-        exec_output.get_stack_item(0),
+        exec_output.get_stack_element(0),
         ZERO,
         "top item on the stack is the index to the output note"
     );
@@ -541,7 +541,7 @@ fn test_create_note_and_add_multiple_assets() -> anyhow::Result<()> {
     );
 
     assert_eq!(
-        exec_output.get_stack_item(0),
+        exec_output.get_stack_element(0),
         ZERO,
         "top item on the stack is the index to the output note"
     );

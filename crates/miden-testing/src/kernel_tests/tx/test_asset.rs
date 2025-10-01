@@ -9,7 +9,7 @@ use miden_objects::testing::constants::{
 use miden_objects::{Felt, Hasher, Word};
 
 use crate::TransactionContextBuilder;
-use crate::kernel_tests::tx::ProcessMemoryExt;
+use crate::kernel_tests::tx::ExecutionOutputExt;
 
 #[test]
 fn test_create_fungible_asset_succeeds() -> anyhow::Result<()> {

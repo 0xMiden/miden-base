@@ -39,7 +39,7 @@ use miden_objects::testing::noop_auth_component::NoopAuthComponent;
 use miden_objects::testing::storage::FAUCET_STORAGE_DATA_SLOT;
 use miden_objects::{Felt, Word};
 
-use crate::kernel_tests::tx::ProcessMemoryExt;
+use crate::kernel_tests::tx::ExecutionOutputExt;
 use crate::utils::create_public_p2any_note;
 use crate::{TransactionContextBuilder, assert_execution_error, assert_transaction_executor_error};
 

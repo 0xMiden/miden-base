@@ -49,7 +49,7 @@ use miden_tx::LocalTransactionProver;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 
-use crate::kernel_tests::tx::ProcessMemoryExt;
+use crate::kernel_tests::tx::ExecutionOutputExt;
 use crate::{Auth, MockChainBuilder, assert_execution_error, assert_transaction_executor_error};
 
 // SIMPLE FPI TESTS

@@ -49,7 +49,7 @@ use rand_chacha::ChaCha20Rng;
 
 use super::{Felt, StackInputs, ZERO};
 use crate::executor::CodeExecutor;
-use crate::kernel_tests::tx::ProcessMemoryExt;
+use crate::kernel_tests::tx::ExecutionOutputExt;
 use crate::{
     Auth,
     MockChain,
@@ -194,7 +194,7 @@ pub fn test_account_type() -> miette::Result<()> {
             has_type |= type_matches;
 
             assert_eq!(
-                execution_output.get_stack_item(0),
+                execution_output.get_stack_element(0),
                 expected_result,
                 "Rust and Masm check on account type diverge. proc: {} account_id: {} account_type: {:?} expected_type: {:?}",
                 procedure,
@@ -318,7 +318,7 @@ fn test_is_faucet_procedure() -> miette::Result<()> {
 
         let is_faucet = account_id.is_faucet();
         assert_eq!(
-            execution_output.get_stack_item(0),
+            execution_output.get_stack_element(0),
             Felt::new(is_faucet as u64),
             "Rust and MASM is_faucet diverged for account_id {account_id}"
         );
@@ -483,10 +483,10 @@ fn test_get_storage_slot_type() -> miette::Result<()> {
 
         let storage_slot_type = storage_item.slot.slot_type();
 
-        assert_eq!(storage_slot_type, exec_output.get_stack_item(0).try_into().unwrap());
-        assert_eq!(exec_output.get_stack_item(1), ZERO, "the rest of the stack is empty");
-        assert_eq!(exec_output.get_stack_item(2), ZERO, "the rest of the stack is empty");
-        assert_eq!(exec_output.get_stack_item(3), ZERO, "the rest of the stack is empty");
+        assert_eq!(storage_slot_type, exec_output.get_stack_element(0).try_into().unwrap());
+        assert_eq!(exec_output.get_stack_element(1), ZERO, "the rest of the stack is empty");
+        assert_eq!(exec_output.get_stack_element(2), ZERO, "the rest of the stack is empty");
+        assert_eq!(exec_output.get_stack_element(3), ZERO, "the rest of the stack is empty");
         assert_eq!(
             Word::empty(),
             exec_output.stack.get_stack_word(1).unwrap(),

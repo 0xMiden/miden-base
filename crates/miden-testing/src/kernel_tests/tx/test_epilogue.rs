@@ -38,7 +38,7 @@ use miden_processor::{Felt, ONE};
 use rand::rng;
 
 use super::{ZERO, create_mock_notes_procedure};
-use crate::kernel_tests::tx::ProcessMemoryExt;
+use crate::kernel_tests::tx::ExecutionOutputExt;
 use crate::utils::{create_public_p2any_note, create_spawn_note};
 use crate::{
     Auth,
@@ -391,7 +391,7 @@ fn test_block_expiration_height_monotonically_decreases() -> anyhow::Result<()> 
         let expected_expiry =
             v1.min(v2) + tx_context.tx_inputs().block_header().block_num().as_u64();
         assert_eq!(
-            exec_output.get_stack_item(EXPIRATION_BLOCK_ELEMENT_IDX).as_int(),
+            exec_output.get_stack_element(EXPIRATION_BLOCK_ELEMENT_IDX).as_int(),
             expected_expiry
         );
     }
@@ -449,7 +449,7 @@ fn test_no_expiration_delta_set() -> anyhow::Result<()> {
 
     // Default value should be equal to u32::MAX, set in the prologue
     assert_eq!(
-        exec_output.get_stack_item(EXPIRATION_BLOCK_ELEMENT_IDX).as_int() as u32,
+        exec_output.get_stack_element(EXPIRATION_BLOCK_ELEMENT_IDX).as_int() as u32,
         u32::MAX
     );
 

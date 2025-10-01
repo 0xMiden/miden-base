@@ -51,53 +51,55 @@ mod test_tx;
 // HELPER FUNCTIONS
 // ================================================================================================
 
-/// Extension trait for a [`Process`] to conveniently read kernel memory.
-pub trait ProcessMemoryExt {
-    /// Reads a word from transaction kernel memory.
-    ///
-    /// # Panics
-    ///
-    /// Panics if:
-    /// - the address is not word-aligned.
-    /// - the memory location is not initialized.
+/// Extension trait for an [`ExecutionOutput`] to conveniently read the stack and kernel memory.
+pub trait ExecutionOutputExt {
+    /// Reads a word from transaction kernel memory or [`Word::empty`] if that location is not
+    /// initialized.
     fn get_kernel_mem_word(&self, addr: u32) -> Word;
 
+    /// Reads an element from transaction kernel memory or [`ZERO`] if that location is not
+    /// initialized.
     fn get_kernel_mem_element(&self, addr: u32) -> Felt {
         // TODO: Use Memory::read_element once it no longer requires &mut self.
         // https://github.com/0xMiden/miden-vm/issues/2237
-        // Copy of the function in Miden VM.
-        fn split_addr(addr: u32) -> (u32, u32) {
-            let idx = addr % miden_objects::WORD_SIZE as u32;
-            (addr - idx, idx)
-        }
-        let (word_addr, idx) = split_addr(addr);
+
+        // Copy of how Memory::read_element is implemented in Miden VM.
+        let idx = addr % miden_objects::WORD_SIZE as u32;
+        let word_addr = addr - idx;
 
         self.get_kernel_mem_word(word_addr)[idx as usize]
     }
 
-    fn get_stack_item(&self, idx: usize) -> Felt;
+    /// Reads an element from the stack.
+    fn get_stack_element(&self, idx: usize) -> Felt;
 
+    /// Reads a [`Word`] from the stack.
     fn get_stack_word(&self, index: usize) -> Word;
 
+    /// Reads the [`Word`] of the input note's memory identified by the index at the provided
+    /// `offset`.
     fn get_note_mem_word(&self, note_idx: u32, offset: MemoryOffset) -> Word {
         self.get_kernel_mem_word(input_note_data_ptr(note_idx) + offset)
     }
 }
 
-impl ProcessMemoryExt for ExecutionOutput {
+impl ExecutionOutputExt for ExecutionOutput {
     fn get_kernel_mem_word(&self, addr: u32) -> Word {
+        let tx_kernel_context = ContextId::root();
+        let clk = 0u32;
         let err_ctx = ();
+
         self.memory
-            .read_word(ContextId::root(), Felt::from(addr), 0u32.into(), &err_ctx)
+            .read_word(tx_kernel_context, Felt::from(addr), clk.into(), &err_ctx)
             .expect("expected address to be word-aligned")
     }
 
-    fn get_stack_item(&self, index: usize) -> Felt {
-        *self.stack.get(index).unwrap()
+    fn get_stack_element(&self, index: usize) -> Felt {
+        *self.stack.get(index).expect("index must be in bounds")
     }
 
     fn get_stack_word(&self, index: usize) -> Word {
-        self.stack.get_stack_word(index).unwrap()
+        self.stack.get_stack_word(index).expect("index must be in bounds")
     }
 }
 

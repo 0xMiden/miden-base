@@ -17,7 +17,7 @@ use miden_objects::testing::account_id::{
 use miden_objects::testing::constants::{FUNGIBLE_ASSET_AMOUNT, NON_FUNGIBLE_ASSET_DATA};
 use miden_objects::{AssetVaultError, Felt, ONE, Word, ZERO};
 
-use crate::kernel_tests::tx::ProcessMemoryExt;
+use crate::kernel_tests::tx::ExecutionOutputExt;
 use crate::{TransactionContextBuilder, assert_execution_error};
 
 /// Tests that account::get_balance returns the correct amount.
@@ -49,7 +49,7 @@ fn get_balance_returns_correct_amount() -> anyhow::Result<()> {
     let exec_output = tx_context.execute_code(&code)?;
 
     assert_eq!(
-        exec_output.get_stack_item(0).as_int(),
+        exec_output.get_stack_element(0).as_int(),
         tx_context.account().vault().get_balance(faucet_id).unwrap()
     );
 
@@ -90,7 +90,7 @@ fn peek_balance_returns_correct_amount() -> anyhow::Result<()> {
     let exec_output = tx_context.execute_code(&code)?;
 
     assert_eq!(
-        exec_output.get_stack_item(0).as_int(),
+        exec_output.get_stack_element(0).as_int(),
         tx_context.account().vault().get_balance(faucet_id).unwrap()
     );
 
@@ -159,7 +159,7 @@ fn test_has_non_fungible_asset() -> anyhow::Result<()> {
 
     let exec_output = tx_context.execute_code(&code)?;
 
-    assert_eq!(exec_output.get_stack_item(0), ONE);
+    assert_eq!(exec_output.get_stack_element(0), ONE);
 
     Ok(())
 }
