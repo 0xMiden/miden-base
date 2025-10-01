@@ -116,7 +116,7 @@ proc.cleanup_pubkey_mapping
         # => [i-1, new_num_of_approvers]
 
         dup.1 dup.1
-        u32assert2 u32lt
+        u32lt
         # => [should_loop, i-1, new_num_of_approvers]
     end
 
