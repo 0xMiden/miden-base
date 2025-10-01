@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.11.5 ()
+## 0.11.5 (2025-10-01)
 
 - Add new `can_consume` method to the `NoteConsumptionChecker` ([#1928](https://github.com/0xMiden/miden-base/pull/1928)).
 
