@@ -9,6 +9,7 @@
 # - token_symbol as three chars encoded in a Felt.
 
 use.miden::account
+use.miden::active_note
 use.miden::faucet
 use.miden::output_note
 
@@ -20,6 +21,8 @@ const.PRIVATE_NOTE=2
 # =================================================================================================
 
 const.ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED="distribute would cause the maximum supply to be exceeded"
+
+const.ERR_BASIC_FUNGIBLE_BURN_WRONG_NUMBER_OF_ASSETS="burn requires exactly 1 note asset"
 
 # CONSTANTS
 # =================================================================================================
@@ -88,26 +91,38 @@ export.distribute.4
     # => [note_idx, ASSET, pad(11)]
 end
 
-#! Burns fungible assets.
+#! Burns the fungible asset from the active note.
 #!
-#! Inputs:  [ASSET, pad(12)]
-#! Outputs: [pad(16)]
+#! This procedure retrieves the asset from the active note and burns it. The note must contain
+#! exactly one asset, which must be a fungible asset issued by this faucet.
+#!
+#! Inputs:  []
+#! Outputs: [ASSET]
 #!
 #! Where:
-#! - ASSET is the fungible asset to be burned.
+#! - ASSET is the fungible asset that was burned.
 #!
 #! Panics if:
+#! - the procedure is not called from a note context (active_note::get_assets will fail).
+#! - the note does not contain exactly one asset.
 #! - the transaction is executed against an account which is not a fungible asset faucet.
 #! - the transaction is executed against a faucet which is not the origin of the specified asset.
 #! - the amount about to be burned is greater than the outstanding supply of the asset.
 #!
 #! Invocation: call
 export.burn
+    # Get the assets from the note. This will fail if not called from a note context.
+    push.0 exec.active_note::get_assets
+    # => [num_assets, dest_ptr]
+
+    # Verify we have exactly one asset
+    assert.err=ERR_BASIC_FUNGIBLE_BURN_WRONG_NUMBER_OF_ASSETS
+    # => [dest_ptr]
+
+    mem_loadw
+    # => [ASSET]
+
     # burning the asset
     exec.faucet::burn
-    # => [ASSET, pad(12)]
-
-    # clear the stack
-    dropw
-    # => [pad(16)]
+    # => [ASSET]
 end

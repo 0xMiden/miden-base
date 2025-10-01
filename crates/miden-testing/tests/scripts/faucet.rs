@@ -243,19 +243,13 @@ fn prove_burning_fungible_asset_on_existing_faucet_succeeds() -> anyhow::Result<
         # burn the asset
         begin
             dropw
-
-            # pad the stack before call
-            padw padw padw padw
-            # => [pad(16)]
-
-            exec.::miden::active_note::get_assets drop
-            mem_loadw
-            # => [ASSET, pad(12)]
+            # => []
 
             call.::miden::contracts::faucets::basic_fungible::burn
+            # => [ASSET]
 
             # truncate the stack
-            dropw dropw dropw dropw
+            dropw
         end
         ";
 

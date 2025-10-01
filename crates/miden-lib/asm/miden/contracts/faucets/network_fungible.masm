@@ -12,18 +12,16 @@ const.OWNER_CONFIG_SLOT=1
 # ERRORS
 const.ERR_NOT_OWNER="note sender is not owner"
 
-const.ERR_INVALID_NUM_ASSETS="note contained more than one asset during burn invocation"
-
 # => []
 proc.is_owner
     push.OWNER_CONFIG_SLOT
     # => [owner_config_slot]
 
     exec.account::get_item
-    # => [owner_prefix, owner_suffix, 0, 0]
+    # => [owner_suffix, owner_prefix, 0, 0]
 
     exec.active_note::get_sender
-    # => [sender_prefix, sender_suffix, owner_prefix, owner_suffix, 0, 0]
+    # => [sender_suffix, sender_prefix, owner_suffix, owner_prefix, 0, 0]
 
     exec.account_id::is_equal
     # => [are_equal, 0, 0]
@@ -45,21 +43,24 @@ export.distribute
     # => [note_idx]
 end
 
-#! Inputs: []
+#! Burns the fungible asset from the active note.
+#!
+#! This procedure retrieves the asset from the active note and burns it. The note must contain
+#! exactly one asset, which must be a fungible asset issued by this faucet.
+#!
+#! This is a re-export of basic_fungible::burn since both procedures now have identical
+#! functionality.
+#!
+#! Inputs:  []
 #! Outputs: [ASSET]
-export.burn
-    push.0 exec.active_note::get_assets
-    # => [num_assets, dest_ptr]
-
-    # This assert enforces both that execution is in a note context and that the note contains exactly one asset.
-    # If not in a note context, get_assets will return 0, causing the assert to fail.
-    # If the note contains more than one asset, the assert will also fail.
-    assert.err=ERR_INVALID_NUM_ASSETS
-    # => [dest_ptr]
-
-    mem_loadw
-    # => [ASSET]
-
-    exec.basic_fungible::burn
-    # => [ASSET]
-end
+#!
+#! Where:
+#! - ASSET is the fungible asset that was burned.
+#!
+#! Panics if:
+#! - the procedure is not called from a note context (active_note::get_assets will fail).
+#! - the note does not contain exactly one asset.
+#! - the transaction is executed against an account which is not a fungible asset faucet.
+#! - the transaction is executed against a faucet which is not the origin of the specified asset.
+#! - the amount about to be burned is greater than the outstanding supply of the asset.
+export.basic_fungible::burn

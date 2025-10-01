@@ -6,8 +6,8 @@ use.miden::contracts::faucets::network_fungible->faucet
 
 const.ERR_BURN_WRONG_NUMBER_OF_ASSETS="BURN script requires exactly 1 note asset"
 
-#! Network Faucet BURN script: burns the asset from the note by calling the network faucet's burn function.
-#! This note is intended to be executed against a network fungible faucet account.
+#! Network Faucet BURN script: burns the asset from the note by calling the network faucet's burn
+#! function. This note is intended to be executed against a network fungible faucet account.
 #!
 #! Requires that the account exposes:
 #! - burn procedure (from network_fungible faucet contract).
