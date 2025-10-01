@@ -56,6 +56,7 @@
 - [BREAKING] Remove account_seed from AccountFile ([#1917](https://github.com/0xMiden/miden-base/pull/1917)).
 - [BREAKING] Change the signature of TransactionAuthenticator to return the native signature ([#1945](https://github.com/0xMiden/miden-base/pull/1945)).
 - [BREAKING] Rename `MockChainBuilder::add_note` to `add_output_note` ([#1946](https://github.com/0xMiden/miden-base/pull/1946)).
+- [BREAKING] Return `ExecutionOutput` from `TransactionContext::execute_code` ([#1955](https://github.com/0xMiden/miden-base/pull/1955)).
 
 ## 0.11.4 (2025-09-17)
 
