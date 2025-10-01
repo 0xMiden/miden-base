@@ -824,21 +824,23 @@ fn extract_event_definitions_from_file(
     let regex = Regex::new(r#"const\.(\w+)=event\("([^"]+)"\)"#).unwrap();
 
     for capture in regex.captures_iter(file_contents) {
-        let const_name = capture.get(1).unwrap().as_str().to_string();
-        let event_path = capture.get(2).unwrap().as_str().to_string();
+        let Some(const_name) = capture.get(1) else { continue };
+        let Some(event_path) = capture.get(2) else { continue };
 
-        let (const_name_wo_suffix, _const_name_w_suffix) =
+        let const_name = const_name.as_str();
+        let const_name_wo_suffix =
             if let Some((const_name_wo_suffix, _)) = const_name.rsplit_once("_EVENT") {
-                (const_name_wo_suffix.to_string(), const_name.to_string())
+                const_name_wo_suffix.to_string()
             } else {
-                (const_name.to_owned(), format!("{const_name}_EVENT"))
+                const_name.to_owned()
             };
 
         // TODO file out events we don't want to include, at this time it appears we want all of
         // them
 
+        let event_path = event_path.as_str();
         // Check for duplicates with different definitions
-        if let Some(existing_const_name) = events.get(&event_path) {
+        if let Some(existing_const_name) = events.get(event_path) {
             if existing_const_name != &const_name_wo_suffix {
                 println!(
                     "cargo:warning=Duplicate event definition found {event_path} with different definitions names:
@@ -862,8 +864,7 @@ fn generate_event_file_content(events: &BTreeMap<String, String>) -> Result<Stri
 
     // Generate constants
     for (event_path, event_name) in events {
-        let full_name = format!("miden::{}", event_path);
-        let value = miden_core::EventId::from_name(&full_name).as_felt().as_int();
+        let value = miden_core::EventId::from_name(&event_path).as_felt().as_int();
         writeln!(&mut output, "const {}: u64 = {};", event_name, value).into_diagnostic()?;
     }
 
