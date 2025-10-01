@@ -146,9 +146,7 @@ impl TransactionContext {
             .extend_advice_inputs(advice_inputs)
             .execute_program(program)
     }
-}
 
-impl TransactionContext {
     /// Executes the transaction through a [TransactionExecutor]
     pub async fn execute(self) -> Result<ExecutedTransaction, TransactionExecutorError> {
         let account_id = self.account().id();
