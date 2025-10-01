@@ -38,6 +38,42 @@ pub enum NoteCheckerError {
         failed_note_index: usize,
         error: TransactionExecutorError,
     },
+
+    // new variants were created instead of modifying existing ones do decrease the number of
+    // merge conflicts during the next release
+    #[error("transaction preparation failed: {0}")]
+    TransactionPreparation(#[source] TransactionExecutorError),
+    #[error("transaction execution prologue failed: {0}")]
+    PrologueExecution(#[source] TransactionExecutorError),
+}
+
+// TRANSACTION CHECKER ERROR
+// ================================================================================================
+
+#[derive(Debug, Error)]
+pub(crate) enum TransactionCheckerError {
+    #[error("transaction preparation failed: {0}")]
+    TransactionPreparation(#[source] TransactionExecutorError),
+    #[error("transaction execution prologue failed: {0}")]
+    PrologueExecution(#[source] TransactionExecutorError),
+    #[error("transaction execution epilogue failed: {0}")]
+    EpilogueExecution(#[source] TransactionExecutorError),
+    #[error("transaction note execution failed on note index {failed_note_index}: {error}")]
+    NoteExecution {
+        failed_note_index: usize,
+        error: TransactionExecutorError,
+    },
+}
+
+impl From<TransactionCheckerError> for TransactionExecutorError {
+    fn from(error: TransactionCheckerError) -> Self {
+        match error {
+            TransactionCheckerError::TransactionPreparation(error) => error,
+            TransactionCheckerError::PrologueExecution(error) => error,
+            TransactionCheckerError::EpilogueExecution(error) => error,
+            TransactionCheckerError::NoteExecution { error, .. } => error,
+        }
+    }
 }
 
 // TRANSACTION EXECUTOR ERROR
@@ -101,6 +137,10 @@ pub enum TransactionExecutorError {
     // It is boxed to avoid triggering clippy::result_large_err for functions that return this type.
     #[error("transaction is unauthorized with summary {0:?}")]
     Unauthorized(Box<TransactionSummary>),
+    #[error(
+        "failed to respond to signature requested since no authenticator is assigned to the host"
+    )]
+    MissingAuthenticator,
 }
 
 // TRANSACTION PROVER ERROR

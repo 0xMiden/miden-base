@@ -10,6 +10,8 @@ use miden_processor::fast::FastProcessor;
 
 use super::TransactionExecutor;
 use crate::auth::TransactionAuthenticator;
+use crate::errors::TransactionCheckerError;
+use crate::executor::map_execution_error;
 use crate::{DataStore, NoteCheckerError, TransactionExecutorError};
 
 // NOTE CONSUMPTION INFO
@@ -108,6 +110,61 @@ where
             .await
     }
 
+    /// Checks whether the provided input note could be consumed by the provided account by
+    /// executing a transaction at the specified block height.
+    ///
+    /// This function takes into account the possibility that the signatures may not be loaded into
+    /// the transaction context and returns the [`NoteConsumptionStatus`] result accordingly.
+    ///
+    /// This function first applies the static analysis of the provided note, and if it doesn't
+    /// reveal any errors next it tries to execute the transaction. Based on the execution result,
+    /// it either returns a [`NoteCheckerError`] or the [`NoteConsumptionStatus`]: depending on
+    /// whether the execution succeeded, failed in the prologue, during the note execution process
+    /// or in the epilogue.
+    pub async fn can_consume(
+        &self,
+        account_id: AccountId,
+        block_ref: BlockNumber,
+        note: InputNote,
+        tx_args: TransactionArgs,
+    ) -> Result<NoteConsumptionStatus, NoteCheckerError> {
+        // TODO: apply the static analysis before executing the tx
+
+        // try to consume the provided note
+        match self
+            .try_execute_notes(
+                account_id,
+                block_ref,
+                InputNotes::new_unchecked(vec![note]),
+                &tx_args,
+            )
+            .await
+        {
+            // execution succeeded
+            Ok(()) => Ok(NoteConsumptionStatus::Consumable),
+            Err(tx_checker_error) => {
+                match tx_checker_error {
+                    // execution failed on the preparation stage, before we actually executed the tx
+                    TransactionCheckerError::TransactionPreparation(e) => {
+                        Err(NoteCheckerError::TransactionPreparation(e))
+                    },
+                    // execution failed during the prologue
+                    TransactionCheckerError::PrologueExecution(e) => {
+                        Err(NoteCheckerError::PrologueExecution(e))
+                    },
+                    // execution failed during the note processing
+                    TransactionCheckerError::NoteExecution { .. } => {
+                        Ok(NoteConsumptionStatus::Unconsumable)
+                    },
+                    // execution failed during the epilogue
+                    TransactionCheckerError::EpilogueExecution(epilogue_error) => {
+                        Ok(handle_epilogue_error(epilogue_error))
+                    },
+                }
+            },
+        }
+    }
+
     // HELPER METHODS
     // --------------------------------------------------------------------------------------------
 
@@ -145,7 +202,7 @@ where
                         candidate_notes.into_iter().map(InputNote::into_note).collect::<Vec<_>>();
                     return Ok(NoteConsumptionInfo::new(successful, failed_notes));
                 },
-                Err(NoteCheckerError::NoteExecutionFailed { failed_note_index, error }) => {
+                Err(TransactionCheckerError::NoteExecution { failed_note_index, error }) => {
                     // SAFETY: Failed note index is in bounds of the candidate notes.
                     let failed_note = candidate_notes.remove(failed_note_index).into_note();
                     failed_notes.push(FailedNote::new(failed_note, Some(error)));
@@ -156,7 +213,7 @@ where
                     }
                     // Continue and process the next set of candidates.
                 },
-                Err(NoteCheckerError::EpilogueExecutionFailed(_)) => {
+                Err(TransactionCheckerError::EpilogueExecution(_)) => {
                     let consumption_info = self
                         .find_largest_executable_combination(
                             target_account_id,
@@ -168,7 +225,12 @@ where
                         .await;
                     return Ok(consumption_info);
                 },
-                Err(error) => return Err(error),
+                Err(TransactionCheckerError::PrologueExecution(err)) => {
+                    return Err(NoteCheckerError::PrologueExecution(err));
+                },
+                Err(TransactionCheckerError::TransactionPreparation(err)) => {
+                    return Err(NoteCheckerError::TransactionPreparation(err));
+                },
             }
         }
     }
@@ -250,7 +312,7 @@ where
         block_ref: BlockNumber,
         notes: InputNotes<InputNote>,
         tx_args: &TransactionArgs,
-    ) -> Result<(), NoteCheckerError> {
+    ) -> Result<(), TransactionCheckerError> {
         if notes.is_empty() {
             return Ok(());
         }
@@ -264,14 +326,14 @@ where
             .0
             .prepare_transaction(account_id, block_ref, notes, tx_args, None)
             .await
-            .map_err(NoteCheckerError::TransactionPreparationFailed)?;
+            .map_err(TransactionCheckerError::TransactionPreparation)?;
 
         let processor =
             FastProcessor::new_with_advice_inputs(stack_inputs.as_slice(), advice_inputs);
         let result = processor
             .execute(&TransactionKernel::main(), &mut host)
             .await
-            .map_err(TransactionExecutorError::TransactionProgramExecutionFailed);
+            .map_err(map_execution_error);
 
         match result {
             Ok(_) => Ok(()),
@@ -281,7 +343,7 @@ where
                 // Empty notes vector means that we didn't process the notes, so an error
                 // occurred.
                 if notes.is_empty() {
-                    return Err(NoteCheckerError::PrologueExecutionFailed(error));
+                    return Err(TransactionCheckerError::PrologueExecution(error));
                 }
 
                 let ((_, last_note_interval), success_notes) =
@@ -290,13 +352,60 @@ where
                 // If the interval end of the last note is specified, then an error occurred after
                 // notes processing.
                 if last_note_interval.end().is_some() {
-                    Err(NoteCheckerError::EpilogueExecutionFailed(error))
+                    Err(TransactionCheckerError::EpilogueExecution(error))
                 } else {
                     // Return the index of the failed note.
                     let failed_note_index = success_notes.len();
-                    Err(NoteCheckerError::NoteExecutionFailed { failed_note_index, error })
+                    Err(TransactionCheckerError::NoteExecution { failed_note_index, error })
                 }
             },
         }
     }
+}
+
+// HELPER FUNCTIONS
+// ================================================================================================
+
+/// Handle the epilogue error during the note consumption check in the `can_consume` method.
+///
+/// The goal of this helper function is to handle the cases where the account couldn't consume the
+/// note because of some epilogue check failure, e.g. absence of the authenticator.
+fn handle_epilogue_error(epilogue_error: TransactionExecutorError) -> NoteConsumptionStatus {
+    match epilogue_error {
+        // `Unauthorized` is returned for the multisig accounts if the transaction doesn't have
+        // enough signatures.
+        TransactionExecutorError::Unauthorized(_)
+        // `MissingAuthenticator` is returned for the account with the basic auth if the
+        // authenticator was not provided to the executor (UnreachableAuth).
+        | TransactionExecutorError::MissingAuthenticator => {
+            // Both these cases signal that there is a probability that the provided note could be
+            // consumed if the authentication is provided.
+            NoteConsumptionStatus::UnconsumableWithoutAuthorization
+        },
+        // TODO: apply additional checks to get the verbose error reason
+        _ => NoteConsumptionStatus::Unconsumable,
+    }
+}
+
+// HELPER STRUCTURES
+// ================================================================================================
+
+/// Describes if a note could be consumed under a specific conditions: target account state
+/// and block height.
+///
+/// The status does not account for any authorization that may be required to consume the
+/// note, nor does it indicate whether the account has sufficient fees to consume it.
+#[derive(Debug, PartialEq)]
+pub enum NoteConsumptionStatus {
+    /// The note can be consumed by the account at the specified block height.
+    Consumable,
+    /// The note can be consumed by the account after the required block height is achieved.
+    ConsumableAfter(BlockNumber),
+    /// The note cannot be consumed by the account without the authorization.
+    UnconsumableWithoutAuthorization,
+    /// The note cannot be consumed by the account at the specified conditions (i.e., block
+    /// height and account state).    
+    Unconsumable,
+    /// The note cannot be consumed by the specified account under any conditions.
+    Incompatible,
 }

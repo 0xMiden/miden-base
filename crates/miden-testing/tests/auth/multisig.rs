@@ -1,3 +1,4 @@
+use assert_matches::assert_matches;
 use miden_lib::account::wallets::BasicWallet;
 use miden_lib::errors::tx_kernel_errors::ERR_TX_ALREADY_EXECUTED;
 use miden_objects::account::{
@@ -19,8 +20,13 @@ use miden_objects::transaction::OutputNote;
 use miden_objects::vm::AdviceMap;
 use miden_objects::{Felt, Hasher, Word};
 use miden_testing::{Auth, MockChainBuilder, assert_transaction_executor_error};
-use miden_tx::TransactionExecutorError;
 use miden_tx::auth::{BasicAuthenticator, SigningInputs, TransactionAuthenticator};
+use miden_tx::{
+    NoteConsumptionChecker,
+    NoteConsumptionStatus,
+    TransactionExecutor,
+    TransactionExecutorError,
+};
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 
@@ -322,6 +328,105 @@ async fn test_multisig_replay_protection() -> anyhow::Result<()> {
     // This should fail - due to replay protection
     let result = tx_context_replay.execute().await;
     assert_transaction_executor_error!(result, ERR_TX_ALREADY_EXECUTED);
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_check_note_consumability_multisig() -> anyhow::Result<()> {
+    // Setup keys and authenticators
+    let (_secret_keys, public_keys, authenticators) = setup_keys_and_authenticators(2, 2)?;
+
+    // Create multisig account
+    let multisig_account = create_multisig_account(2, &public_keys, 10)?;
+
+    let mut mock_chain_builder =
+        MockChainBuilder::with_accounts([multisig_account.clone()]).unwrap();
+
+    let p2id_note = mock_chain_builder.add_p2id_note(
+        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE.try_into().unwrap(),
+        multisig_account.id(),
+        &[FungibleAsset::mock(1)],
+        NoteType::Public,
+    )?;
+
+    let mock_chain = mock_chain_builder.build().unwrap();
+
+    let salt = Word::from([Felt::new(1); 4]);
+
+    // get the transaction context without signatures
+    let tx_context_without_signatures = mock_chain
+        .build_tx_context(multisig_account.id(), &[p2id_note.id()], &[])?
+        .auth_args(salt)
+        .build()?;
+
+    let block_ref = tx_context_without_signatures.tx_inputs().block_header().block_num();
+    let tx_args = tx_context_without_signatures.tx_args();
+    let tx_executor = TransactionExecutor::<'_, '_, _, BasicAuthenticator<ChaCha20Rng>>::new(
+        &tx_context_without_signatures,
+    );
+
+    let notes_checker = NoteConsumptionChecker::new(&tx_executor);
+
+    // this check should return `UnconsumableWithoutAuthorization` variant: the note is consumable,
+    // but authentication is failing
+    let unconsumable_without_authorization = notes_checker
+        .can_consume(
+            multisig_account.id(),
+            block_ref,
+            miden_objects::transaction::InputNote::Unauthenticated { note: p2id_note.clone() },
+            tx_args.clone(),
+        )
+        .await?;
+    assert_matches!(
+        unconsumable_without_authorization,
+        NoteConsumptionStatus::UnconsumableWithoutAuthorization
+    );
+
+    // execute the transaction to get the summary
+    let tx_summary = match tx_context_without_signatures.execute().await.unwrap_err() {
+        TransactionExecutorError::Unauthorized(tx_effects) => tx_effects,
+        error => panic!("expected abort with tx effects: {error:?}"),
+    };
+
+    // Get signatures from both approvers
+    let msg = tx_summary.as_ref().to_commitment();
+    let tx_summary = SigningInputs::TransactionSummary(tx_summary);
+
+    let sig_1 = authenticators[0].get_signature(public_keys[0].into(), &tx_summary).await?;
+    let sig_2 = authenticators[1].get_signature(public_keys[1].into(), &tx_summary).await?;
+
+    // Populate advice map with signatures
+    let mut advice_map = AdviceMap::default();
+    advice_map.insert(Hasher::merge(&[public_keys[0].into(), msg]), sig_1);
+    advice_map.insert(Hasher::merge(&[public_keys[1].into(), msg]), sig_2);
+
+    // get the transaction context with signatures
+    let tx_context_with_signatures = mock_chain
+        .build_tx_context(multisig_account.id(), &[p2id_note.id()], &[])?
+        .extend_expected_output_notes(vec![OutputNote::Full(p2id_note)])
+        .extend_advice_map(advice_map.iter().map(|(k, v)| (*k, v.to_vec())))
+        .auth_args(salt)
+        .build()?;
+
+    let block_num = tx_context_with_signatures.tx_inputs().block_header().block_num();
+    let notes = tx_context_with_signatures.tx_inputs().input_notes().clone();
+    let tx_args = tx_context_with_signatures.tx_args().clone();
+
+    let mut tx_executor = TransactionExecutor::new(&tx_context_with_signatures)
+        .with_source_manager(tx_context_with_signatures.source_manager());
+    if let Some(authenticator) = tx_context_with_signatures.authenticator() {
+        tx_executor = tx_executor.with_authenticator(authenticator);
+    }
+
+    let notes_checker = NoteConsumptionChecker::new(&tx_executor);
+
+    // this check should return `Consumable` variant: we provided the signatures, so the transaction
+    // should execute successfully.
+    let consumable_with_authorization = notes_checker
+        .can_consume(multisig_account.id(), block_num, notes.get_note(0).clone(), tx_args)
+        .await?;
+    assert_matches!(consumable_with_authorization, NoteConsumptionStatus::Consumable);
 
     Ok(())
 }

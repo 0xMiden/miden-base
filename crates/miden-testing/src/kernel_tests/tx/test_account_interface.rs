@@ -14,6 +14,7 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
     ACCOUNT_ID_SENDER,
 };
+use miden_objects::transaction::InputNote;
 use miden_processor::ExecutionError;
 use miden_processor::crypto::RpoRandomCoin;
 use miden_tx::auth::UnreachableAuth;
@@ -21,6 +22,7 @@ use miden_tx::{
     FailedNote,
     NoteConsumptionChecker,
     NoteConsumptionInfo,
+    NoteConsumptionStatus,
     TransactionExecutor,
     TransactionExecutorError,
 };
@@ -283,5 +285,48 @@ async fn check_note_consumability_epilogue_failure() -> anyhow::Result<()> {
            assert_eq!(failed.len(), 1);
        }
     );
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_check_note_consumability_without_signatures() -> anyhow::Result<()> {
+    let mut builder = MockChain::builder();
+
+    // Use basic auth which will cause epilogue failure when paired up with unreachable auth.
+    let account = builder.add_existing_wallet(Auth::BasicAuth)?;
+
+    let successful_note = builder.add_p2id_note(
+        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
+        account.id(),
+        &[FungibleAsset::mock(10)],
+        NoteType::Public,
+    )?;
+
+    let mock_chain = builder.build()?;
+    let notes = vec![successful_note.clone()];
+    let tx_context = mock_chain
+        .build_tx_context(TxContextInput::Account(account), &[], &notes)?
+        .build()?;
+
+    let account_id = tx_context.account().id();
+    let block_ref = tx_context.tx_inputs().block_header().block_num();
+    let tx_args = tx_context.tx_args().clone();
+
+    // Use an auth that fails in order to force an epilogue failure when paired up with basic auth.
+    let executor =
+        TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context).with_tracing();
+    let notes_checker = NoteConsumptionChecker::new(&executor);
+
+    let consumability_info: NoteConsumptionStatus = notes_checker
+        .can_consume(
+            account_id,
+            block_ref,
+            InputNote::Unauthenticated { note: successful_note },
+            tx_args,
+        )
+        .await?;
+
+    assert_eq!(consumability_info, NoteConsumptionStatus::UnconsumableWithoutAuthorization);
+
     Ok(())
 }

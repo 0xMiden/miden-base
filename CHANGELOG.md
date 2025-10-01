@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.11.5 ()
+
+- Add new `can_consume` method to the `NoteConsumptionChecker` ([#1928](https://github.com/0xMiden/miden-base/pull/1928)).
+
 ## 0.11.4 (2025-09-17)
 
 - Updated `miden-vm` dependencies to `0.17.2` patch version. ([#1905](https://github.com/0xMiden/miden-base/pull/1905))

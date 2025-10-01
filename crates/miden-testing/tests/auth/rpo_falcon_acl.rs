@@ -3,7 +3,6 @@ use core::slice;
 use assert_matches::assert_matches;
 use miden_lib::testing::account_component::MockAccountComponent;
 use miden_lib::testing::note::NoteBuilder;
-use miden_lib::transaction::TransactionKernelError;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{
     AccountBuilder,
@@ -16,7 +15,6 @@ use miden_objects::account::{
 use miden_objects::testing::account_id::ACCOUNT_ID_SENDER;
 use miden_objects::transaction::OutputNote;
 use miden_objects::{Felt, FieldElement, Word};
-use miden_processor::ExecutionError;
 use miden_testing::{Auth, MockChain};
 use miden_tx::TransactionExecutorError;
 
@@ -164,14 +162,7 @@ fn test_rpo_falcon_acl() -> anyhow::Result<()> {
 
     let executed_tx_no_auth = tx_context_no_auth.execute_blocking();
 
-    assert_matches!(executed_tx_no_auth, Err(TransactionExecutorError::TransactionProgramExecutionFailed(
-        execution_error
-    )) => {
-        assert_matches!(execution_error, ExecutionError::EventError { error, .. } => {
-            let kernel_error = error.downcast_ref::<TransactionKernelError>().unwrap();
-            assert_matches!(kernel_error, TransactionKernelError::MissingAuthenticator);
-        })
-    });
+    assert_matches!(executed_tx_no_auth, Err(TransactionExecutorError::MissingAuthenticator));
 
     // Test 4: Transaction WITHOUT authenticator calling non-trigger procedure (should succeed)
     let tx_context_no_trigger = mock_chain
@@ -256,14 +247,7 @@ fn test_rpo_falcon_acl_with_disallow_unauthorized_input_notes() -> anyhow::Resul
 
     // This should fail with MissingAuthenticator error because input notes are being consumed
     // and allow_unauthorized_input_notes is false
-    assert_matches!(executed_tx_no_auth, Err(TransactionExecutorError::TransactionProgramExecutionFailed(
-        execution_error
-    )) => {
-        assert_matches!(execution_error, ExecutionError::EventError { error, .. } => {
-            let kernel_error = error.downcast_ref::<TransactionKernelError>().unwrap();
-            assert_matches!(kernel_error, TransactionKernelError::MissingAuthenticator);
-        })
-    });
+    assert_matches!(executed_tx_no_auth, Err(TransactionExecutorError::MissingAuthenticator));
 
     Ok(())
 }

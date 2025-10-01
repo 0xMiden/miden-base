@@ -9,9 +9,6 @@ use.miden::tx
 
 # Auth Request Constants
 
-# The event to request an authentication signature.
-const.AUTH_REQUEST=131087
-
 # The event emitted when a signature is not found for a required signer.
 const.UNAUTHORIZED_EVENT=131102
 
