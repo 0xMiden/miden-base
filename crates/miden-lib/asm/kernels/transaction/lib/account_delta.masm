@@ -801,7 +801,7 @@ end
 #! - is_delta_amount_positive indicates whether the delta amount is positive.
 #! - delta_amount_abs is the absolute value of the delta_amount, meaning negative values are
 #!   remapped to their positive equivalent value.
-export.delta_amount_absolute
+proc.delta_amount_absolute
     dup exec.is_delta_amount_negative not
     # => [is_positive, delta_amount]
 
