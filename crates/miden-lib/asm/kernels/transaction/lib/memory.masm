@@ -1391,7 +1391,7 @@ end
 #! Where:
 #! - account_delta_fungible_asset_ptr is the link map pointer to the fungible asset vault delta.
 export.get_account_delta_fungible_asset_ptr
-  push.ACCOUNT_DELTA_FUNGIBLE_ASSET_PTR
+    push.ACCOUNT_DELTA_FUNGIBLE_ASSET_PTR
 end
 
 #! Returns the link map pointer to the non-fungible asset vault delta.

@@ -3,6 +3,8 @@ use.$kernel::account_id
 use.$kernel::asset_vault
 use.$kernel::constants
 use.$kernel::memory
+use.$kernel::link_map
+
 use.std::collections::mmr
 use.std::collections::smt
 use.std::crypto::hashes::rpo
@@ -983,6 +985,9 @@ end
 #! Returns the balance of a fungible asset associated with a faucet_id at the beginning of the 
 #! transaction.
 #!
+#! To get the initial balance this procedure applies the changes stored in the fungible asset vault
+#! delta to the current asset balance.
+#!
 #! Inputs:  [faucet_id_prefix, faucet_id_suffix]
 #! Outputs: [init_balance]
 #!
@@ -994,7 +999,41 @@ end
 #! Panics if:
 #! - the asset is not a fungible asset.
 export.get_initial_balance
-    nop
+    # get the vault root
+    exec.memory::get_account_vault_root_ptr movdn.2
+    # => [faucet_id_prefix, faucet_id_suffix, vault_root_ptr]
+
+    # emit event to signal that an asset's balance is requested
+    emit.ACCOUNT_VAULT_BEFORE_GET_BALANCE_EVENT
+    # => [faucet_id_prefix, faucet_id_suffix, vault_root_ptr]
+
+    # get the asset associated with the provided faucet ID
+    exec.asset_vault::get_fungible_asset
+    # => [ASSET]
+
+    # build the asset key from the returned asset
+    exec.asset_vault::build_fungible_asset_vault_key
+    # => [ASSET_KEY, ASSET]
+
+    # get the link map pointer to the fungible asset vault delta.
+    exec.memory::get_account_delta_fungible_asset_ptr
+    # => [fungible_delta_map_ptr, ASSET_KEY, ASSET]
+
+    # retrieve the current delta amount
+    exec.link_map::get drop swapw dropw
+    # => [delta_amount, 0, 0, 0, ASSET]
+
+    # extract the asset's balance
+    swapw exec.::$kernel::util::asset::get_balance_from_fungible_asset
+    # => [current_balance, delta_amount, 0, 0, 0]
+
+    # remove the delta amount from the current asset balance to get the initial balance
+    swap sub
+    # => [initial_balance, 0, 0, 0]
+
+    # clean the stack
+    movdn.3 drop drop drop
+    # => [initial_balance]
 end
 
 #! Returns a boolean indicating whether the non-fungible asset is present in the current account's vault.

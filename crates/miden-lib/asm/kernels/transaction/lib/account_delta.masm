@@ -787,8 +787,8 @@ end
 # Since the golidlocks modulus is 2^64 - 2^32 + 1 and therefore odd, we can represent
 # modulus / 2 + 1 positive and modulus / 2 negative values. Again, 0 is counted on the positive
 # side and so the largest representable positive value is modulus / 2 and the smallest
-# representable negative value is -modulus/2. So, every negative value has a positive counterpart
-# (and vice versa).
+# representable negative value is -(modulus / 2). So, every negative value has a positive 
+# counterpart (and vice versa).
 
 #! Computes the absolute value of the given delta amount represented as a felt and returns a
 #! boolean flag indicating whether the value is positive (or unsigned).
@@ -801,7 +801,7 @@ end
 #! - is_delta_amount_positive indicates whether the delta amount is positive.
 #! - delta_amount_abs is the absolute value of the delta_amount, meaning negative values are
 #!   remapped to their positive equivalent value.
-proc.delta_amount_absolute
+export.delta_amount_absolute
     dup exec.is_delta_amount_negative not
     # => [is_positive, delta_amount]
 
