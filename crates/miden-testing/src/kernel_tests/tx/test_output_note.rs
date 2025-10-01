@@ -371,7 +371,8 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
     );
     assert_eq!(
         NoteMetadata::try_from(
-            exec_output.get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_METADATA_OFFSET)
+            exec_output
+                .get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_METADATA_OFFSET)
         )
         .unwrap(),
         *output_note_1.metadata(),

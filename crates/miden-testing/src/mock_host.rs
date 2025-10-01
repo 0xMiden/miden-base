@@ -22,10 +22,18 @@ use crate::TransactionContext;
 // MOCK HOST
 // ================================================================================================
 
-/// This is very similar to the TransactionHost in miden-tx. The differences include:
-/// - We do not track account delta here.
-/// - There is special handling of EMPTY_DIGEST in account procedure index map.
-/// - This host uses `MemAdviceProvider` which is instantiated from the passed in advice inputs.
+/// The [`MockHost`] wraps a [`TransactionExecutorHost`] and forwards event handling requests to it,
+/// with the difference that it only handles a subset of the events that the executor host handles.
+///
+/// Why don't we always forward requests to the executor host? In a some tests, when using
+/// [`TransactionContext::execute_code`], we want to test that the transaction kernel fails
+/// with a certain error when given invalid inputs, but the event handler in the executor host would
+/// prematurely abort the transaction due to the invalid inputs. To avoid this situation, the event
+/// handler can be disabled and we can test that the transaction kernel has the expected behavior
+/// (e.g. even if the transaction host was malicious).
+///
+/// Some event handlers, such as delta or output note tracking, will similarly interfere with
+/// testing a procedure in isolation and these are also turned off in this host.
 pub(crate) struct MockHost<'store> {
     /// The underlying [`TransactionExecutorHost`] that the mock host will forward requests to.
     exec_host: TransactionExecutorHost<'store, 'static, TransactionContext, UnreachableAuth>,
