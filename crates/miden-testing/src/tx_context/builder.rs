@@ -70,8 +70,8 @@ pub type MockAuthenticator = BasicAuthenticator<ChaCha20Rng>;
 /// end
 /// ";
 ///
-/// let process = tx_context.execute_code(code).unwrap();
-/// assert_eq!(process.stack.get(0), Felt::new(5),);
+/// let exec_output = tx_context.execute_code(code).unwrap();
+/// assert_eq!(exec_output.stack.get(0).unwrap(), &Felt::new(5));
 /// ```
 pub struct TransactionContextBuilder {
     source_manager: Arc<dyn SourceManagerSync>,
