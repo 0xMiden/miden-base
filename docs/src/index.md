@@ -29,7 +29,7 @@ Miden uses _accounts_ and _notes_, both of which hold assets. Accounts consume a
 
 ### Accounts
 
-An [Account](account/overview) can hold assets and define rules how assets can be transferred. Accounts can represent users or autonomous smart contracts. The [account chapter](account/overview) describes the design of an account, its storage types, and creating an account.
+An [Account](account) can hold assets and define rules how assets can be transferred. Accounts can represent users or autonomous smart contracts. The [account chapter](account) describes the design of an account, its storage types, and creating an account.
 
 ### Notes
 
@@ -41,11 +41,11 @@ An [Asset](asset) can be fungible and non-fungible. They are stored in the owner
 
 ### Transactions
 
-A [Transactions](transaction) describe the production and consumption of notes by a single account.
+A [Transactions](transactions) describe the production and consumption of notes by a single account.
 
 Executing a transaction always results in a STARK proof.
 
-The [transaction chapter](transaction) describes the transaction design and implementation, including an in-depth discussion of how transaction execution happens in the transaction kernel program.
+The [transaction chapter](transactions) describes the transaction design and implementation, including an in-depth discussion of how transaction execution happens in the transaction kernel program.
 
 #### Accounts produce and consume notes to communicate
 

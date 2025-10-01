@@ -4,7 +4,7 @@ sidebar_position: 1
 
 # Accounts / Smart Contracts
 
-An `Account` represents the primary entity in Miden. It is capable of holding assets, storing data, and executing custom code. Each `Account` is a smart contract with a programmable interface through which note and transaction scripts can interact with the account's state and assets. By executing [transactions](../transaction) against an account, its state can be modified.
+An `Account` represents the primary entity in Miden. It is capable of holding assets, storing data, and executing custom code. Each `Account` is a smart contract with a programmable interface through which note and transaction scripts can interact with the account's state and assets. By executing [transactions](../transactions) against an account, its state can be modified.
 
 ## What is the purpose of an account?
 
@@ -20,9 +20,9 @@ An `Account` is composed of several core parts, illustrated below:
 
 These parts are:
 
-1. [ID](id)
-2. [Code](code)
-3. [Storage](storage)
+1. [ID](./id)
+2. [Code](./code)
+3. [Storage](./storage)
 4. [Vault](#vault)
 5. [Nonce](#nonce)
 
@@ -55,5 +55,5 @@ However, a user can locally create a new `Account` ID before it's recognized net
 3. Alice shares the new ID with Bob to receive an asset.
 4. Bob executes a transaction against his account, creating a note with assets for Alice.
 5. Alice consumes Bob's note in a transaction against her new account to claim the asset. This
-transaction is the first transaction against Alice's account and so it will register the account
-ID in the account database.
+   transaction is the first transaction against Alice's account and so it will register the account
+   ID in the account database.

@@ -14,7 +14,7 @@ The [storage](https://docs.rs/miden-objects/latest/miden_objects/account/struct.
 - **Value slots:** Contains 32 bytes of arbitrary data.
 - **Map slots:** Contains a [StorageMap](#storagemap), a key-value store where both keys and values are 32 bytes. The slot's value is a commitment to the entire map.
 
-An account's storage is typically the result of merging multiple [account components](./component).
+An account's storage is typically the result of merging multiple [account components](./components).
 
 ## Value Slots
 
