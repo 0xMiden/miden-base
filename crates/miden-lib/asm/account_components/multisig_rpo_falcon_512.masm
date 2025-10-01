@@ -145,7 +145,7 @@ export.update_signers_and_threshold.2
     # => [MULTISIG_CONFIG_HASH, pad(12)]
 
     adv_loadw
-    # => [MULTISIG_CONFIG, MULTISIG_CONFIG, pad(12)]
+    # => [MULTISIG_CONFIG, pad(12)]
 
     # store new_num_of_approvers for later
     dup.2 loc_store.0
