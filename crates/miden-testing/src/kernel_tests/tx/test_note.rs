@@ -82,10 +82,10 @@ fn test_note_setup() -> anyhow::Result<()> {
         end
         ";
 
-    let process = tx_context.execute_code(code)?;
+    let exec_output = tx_context.execute_code(code)?;
 
-    note_setup_stack_assertions(&process, &tx_context);
-    note_setup_memory_assertions(&process);
+    note_setup_stack_assertions(&exec_output, &tx_context);
+    note_setup_memory_assertions(&exec_output);
     Ok(())
 }
 
@@ -163,10 +163,10 @@ fn test_note_script_and_note_args() -> miette::Result<()> {
     .with_note_args(note_args_map);
 
     tx_context.set_tx_args(tx_args);
-    let process = tx_context.execute_code(code).unwrap();
+    let exec_output = tx_context.execute_code(code).unwrap();
 
-    assert_eq!(process.get_stack_word(0), note_args[0]);
-    assert_eq!(process.get_stack_word(4), note_args[1]);
+    assert_eq!(exec_output.get_stack_word(0), note_args[0]);
+    assert_eq!(exec_output.get_stack_word(4), note_args[1]);
 
     Ok(())
 }
@@ -256,7 +256,7 @@ fn test_build_recipient() -> anyhow::Result<()> {
         serial_num = serial_num,
     );
 
-    let process = &tx_context.execute_code(&code)?;
+    let exec_output = &tx_context.execute_code(&code)?;
 
     // Create expected recipients and get their digests
     let note_inputs_4 = NoteInputs::new(word_1.to_vec())?;
@@ -280,7 +280,7 @@ fn test_build_recipient() -> anyhow::Result<()> {
     expected_stack.extend_from_slice(recipient_13.digest().as_elements());
     expected_stack.reverse();
 
-    assert_eq!(process.stack[0..12], expected_stack);
+    assert_eq!(exec_output.stack[0..12], expected_stack);
     Ok(())
 }
 
@@ -344,7 +344,7 @@ fn test_compute_inputs_commitment() -> anyhow::Result<()> {
         addr_3 = BASE_ADDR + 12,
     );
 
-    let process = &tx_context.execute_code(&code)?;
+    let exec_output = &tx_context.execute_code(&code)?;
 
     let mut inputs_5 = word_1.to_vec();
     inputs_5.push(word_2[0]);
@@ -368,7 +368,7 @@ fn test_compute_inputs_commitment() -> anyhow::Result<()> {
     expected_stack.extend_from_slice(Word::empty().as_elements());
     expected_stack.reverse();
 
-    assert_eq!(process.stack[0..16], expected_stack);
+    assert_eq!(exec_output.stack[0..16], expected_stack);
     Ok(())
 }
 
@@ -421,9 +421,9 @@ fn test_build_metadata() -> miette::Result<()> {
             tag = test_metadata.tag(),
         );
 
-        let process = tx_context.execute_code(&code).unwrap();
+        let exec_output = tx_context.execute_code(&code).unwrap();
 
-        let metadata_word = process.get_stack_word(0);
+        let metadata_word = exec_output.get_stack_word(0);
 
         assert_eq!(Word::from(test_metadata), metadata_word, "failed in iteration {iteration}");
     }

@@ -188,22 +188,22 @@ fn test_block_procedures() -> anyhow::Result<()> {
         end
         ";
 
-    let process = &tx_context.execute_code(code)?;
+    let exec_output = &tx_context.execute_code(code)?;
 
     assert_eq!(
-        process.get_stack_word(0),
+        exec_output.get_stack_word(0),
         tx_context.tx_inputs().block_header().commitment(),
         "top word on the stack should be equal to the block header commitment"
     );
 
     assert_eq!(
-        process.get_stack_item(4).as_int(),
+        exec_output.get_stack_item(4).as_int(),
         tx_context.tx_inputs().block_header().timestamp() as u64,
         "fifth element on the stack should be equal to the timestamp of the last block creation"
     );
 
     assert_eq!(
-        process.get_stack_item(5).as_int(),
+        exec_output.get_stack_item(5).as_int(),
         tx_context.tx_inputs().block_header().block_num().as_u64(),
         "sixth element on the stack should be equal to the block number"
     );

@@ -191,11 +191,11 @@ fn test_compute_output_note_id() -> anyhow::Result<()> {
             "
         );
 
-        let process = &tx_context.execute_code(&code)?;
+        let exec_output = &tx_context.execute_code(&code)?;
 
         assert_eq!(
             note.assets().commitment(),
-            process.get_kernel_mem_word(
+            exec_output.get_kernel_mem_word(
                 OUTPUT_NOTE_SECTION_OFFSET
                     + i * NOTE_MEM_SIZE
                     + OUTPUT_NOTE_ASSET_COMMITMENT_OFFSET
@@ -205,7 +205,7 @@ fn test_compute_output_note_id() -> anyhow::Result<()> {
 
         assert_eq!(
             Word::from(note.id()),
-            process.get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + i * NOTE_MEM_SIZE),
+            exec_output.get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + i * NOTE_MEM_SIZE),
             "NOTE_ID didn't match expected value",
         );
     }
@@ -271,9 +271,9 @@ fn test_epilogue_asset_preservation_violation_too_few_input() -> anyhow::Result<
         "
     );
 
-    let process = tx_context.execute_code(&code);
+    let exec_output = tx_context.execute_code(&code);
 
-    assert_execution_error!(process, ERR_EPILOGUE_TOTAL_NUMBER_OF_ASSETS_MUST_STAY_THE_SAME);
+    assert_execution_error!(exec_output, ERR_EPILOGUE_TOTAL_NUMBER_OF_ASSETS_MUST_STAY_THE_SAME);
     Ok(())
 }
 
@@ -345,9 +345,9 @@ fn test_epilogue_asset_preservation_violation_too_many_fungible_input() -> anyho
         "
     );
 
-    let process = tx_context.execute_code(&code);
+    let exec_output = tx_context.execute_code(&code);
 
-    assert_execution_error!(process, ERR_EPILOGUE_TOTAL_NUMBER_OF_ASSETS_MUST_STAY_THE_SAME);
+    assert_execution_error!(exec_output, ERR_EPILOGUE_TOTAL_NUMBER_OF_ASSETS_MUST_STAY_THE_SAME);
     Ok(())
 }
 
@@ -384,13 +384,16 @@ fn test_block_expiration_height_monotonically_decreases() -> anyhow::Result<()> 
             .replace("{value_2}", &v2.to_string())
             .replace("{min_value}", &v2.min(v1).to_string());
 
-        let process = &tx_context.execute_code(code)?;
+        let exec_output = &tx_context.execute_code(code)?;
 
         // Expiry block should be set to transaction's block + the stored expiration delta
         // (which can only decrease, not increase)
         let expected_expiry =
             v1.min(v2) + tx_context.tx_inputs().block_header().block_num().as_u64();
-        assert_eq!(process.get_stack_item(EXPIRATION_BLOCK_ELEMENT_IDX).as_int(), expected_expiry);
+        assert_eq!(
+            exec_output.get_stack_item(EXPIRATION_BLOCK_ELEMENT_IDX).as_int(),
+            expected_expiry
+        );
     }
 
     Ok(())
@@ -412,9 +415,9 @@ fn test_invalid_expiration_deltas() -> anyhow::Result<()> {
 
     for value in test_values {
         let code = &code_template.replace("{value_1}", &value.to_string());
-        let process = tx_context.execute_code(code);
+        let exec_output = tx_context.execute_code(code);
 
-        assert_execution_error!(process, ERR_TX_INVALID_EXPIRATION_DELTA);
+        assert_execution_error!(exec_output, ERR_TX_INVALID_EXPIRATION_DELTA);
     }
 
     Ok(())
@@ -442,10 +445,13 @@ fn test_no_expiration_delta_set() -> anyhow::Result<()> {
     end
     ";
 
-    let process = &tx_context.execute_code(code_template)?;
+    let exec_output = &tx_context.execute_code(code_template)?;
 
     // Default value should be equal to u32::MAX, set in the prologue
-    assert_eq!(process.get_stack_item(EXPIRATION_BLOCK_ELEMENT_IDX).as_int() as u32, u32::MAX);
+    assert_eq!(
+        exec_output.get_stack_item(EXPIRATION_BLOCK_ELEMENT_IDX).as_int() as u32,
+        u32::MAX
+    );
 
     Ok(())
 }

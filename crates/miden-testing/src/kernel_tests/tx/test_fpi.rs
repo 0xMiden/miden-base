@@ -160,15 +160,15 @@ fn test_fpi_memory_single_account() -> anyhow::Result<()> {
         get_item_foreign_hash = foreign_account.code().procedures()[1].mast_root(),
     );
 
-    let process = tx_context.execute_code(&code)?;
+    let exec_output = tx_context.execute_code(&code)?;
 
     assert_eq!(
-        process.get_stack_word(0),
+        exec_output.get_stack_word(0),
         storage_slots[0].value(),
         "Value at the top of the stack (value in the storage at index 0) should be equal [1, 2, 3, 4]",
     );
 
-    foreign_account_data_memory_assertions(&foreign_account, &process);
+    foreign_account_data_memory_assertions(&foreign_account, &exec_output);
 
     // GET MAP ITEM
     // --------------------------------------------------------------------------------------------
@@ -214,15 +214,15 @@ fn test_fpi_memory_single_account() -> anyhow::Result<()> {
         get_map_item_foreign_hash = foreign_account.code().procedures()[2].mast_root(),
     );
 
-    let process = tx_context.execute_code(&code).unwrap();
+    let exec_output = tx_context.execute_code(&code).unwrap();
 
     assert_eq!(
-        process.get_stack_word(0),
+        exec_output.get_stack_word(0),
         STORAGE_LEAVES_2[0].1,
         "Value at the top of the stack should be equal [1, 2, 3, 4]",
     );
 
-    foreign_account_data_memory_assertions(&foreign_account, &process);
+    foreign_account_data_memory_assertions(&foreign_account, &exec_output);
 
     // GET ITEM TWICE
     // --------------------------------------------------------------------------------------------
@@ -284,7 +284,7 @@ fn test_fpi_memory_single_account() -> anyhow::Result<()> {
         get_item_foreign_hash = foreign_account.code().procedures()[1].mast_root(),
     );
 
-    let process = &tx_context.execute_code(&code)?;
+    let exec_output = &tx_context.execute_code(&code)?;
 
     // Check that the second invocation of the foreign procedure from the same account does not load
     // the account data again: already loaded data should be reused.
@@ -293,7 +293,7 @@ fn test_fpi_memory_single_account() -> anyhow::Result<()> {
     // Foreign account:   [16384; 24575] <- initialized during first FPI
     // Next account slot: [24576; 32767] <- should not be initialized
     assert_eq!(
-        process.get_kernel_mem_word(NATIVE_ACCOUNT_DATA_PTR + ACCOUNT_DATA_LENGTH as u32 * 2),
+        exec_output.get_kernel_mem_word(NATIVE_ACCOUNT_DATA_PTR + ACCOUNT_DATA_LENGTH as u32 * 2),
         Word::empty(),
         "Memory starting from 24576 should stay uninitialized"
     );
@@ -467,7 +467,7 @@ fn test_fpi_memory_two_accounts() -> anyhow::Result<()> {
         foreign_2_suffix = foreign_account_2.id().suffix(),
     );
 
-    let process = &tx_context.execute_code(&code)?;
+    let exec_output = &tx_context.execute_code(&code)?;
 
     // Check the correctness of the memory layout after multiple foreign procedure invocations from
     // different foreign accounts
@@ -479,7 +479,7 @@ fn test_fpi_memory_two_accounts() -> anyhow::Result<()> {
 
     // check that the first word of the first foreign account slot is correct
     assert_eq!(
-        process.get_kernel_mem_word(NATIVE_ACCOUNT_DATA_PTR + ACCOUNT_DATA_LENGTH as u32),
+        exec_output.get_kernel_mem_word(NATIVE_ACCOUNT_DATA_PTR + ACCOUNT_DATA_LENGTH as u32),
         Word::new([
             foreign_account_1.id().suffix(),
             foreign_account_1.id().prefix().as_felt(),
@@ -490,7 +490,7 @@ fn test_fpi_memory_two_accounts() -> anyhow::Result<()> {
 
     // check that the first word of the second foreign account slot is correct
     assert_eq!(
-        process.get_kernel_mem_word(NATIVE_ACCOUNT_DATA_PTR + ACCOUNT_DATA_LENGTH as u32 * 2),
+        exec_output.get_kernel_mem_word(NATIVE_ACCOUNT_DATA_PTR + ACCOUNT_DATA_LENGTH as u32 * 2),
         Word::new([
             foreign_account_2.id().suffix(),
             foreign_account_2.id().prefix().as_felt(),
@@ -501,7 +501,7 @@ fn test_fpi_memory_two_accounts() -> anyhow::Result<()> {
 
     // check that the first word of the third foreign account slot was not initialized
     assert_eq!(
-        process.get_kernel_mem_word(NATIVE_ACCOUNT_DATA_PTR + ACCOUNT_DATA_LENGTH as u32 * 3),
+        exec_output.get_kernel_mem_word(NATIVE_ACCOUNT_DATA_PTR + ACCOUNT_DATA_LENGTH as u32 * 3),
         Word::empty(),
         "Memory starting from 32768 should stay uninitialized"
     );

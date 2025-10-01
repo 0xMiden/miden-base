@@ -423,25 +423,25 @@ fn test_get_map_item() -> miette::Result<()> {
             map_key = &key,
         );
 
-        let process = &mut tx_context.execute_code(&code)?;
+        let exec_output = &mut tx_context.execute_code(&code)?;
         assert_eq!(
             value,
-            process.stack.get_stack_word(0).unwrap(),
+            exec_output.stack.get_stack_word(0).unwrap(),
             "get_map_item result doesn't match the expected value",
         );
         assert_eq!(
             Word::empty(),
-            process.stack.get_stack_word(4).unwrap(),
+            exec_output.stack.get_stack_word(4).unwrap(),
             "The rest of the stack must be cleared",
         );
         assert_eq!(
             Word::empty(),
-            process.stack.get_stack_word(8).unwrap(),
+            exec_output.stack.get_stack_word(8).unwrap(),
             "The rest of the stack must be cleared",
         );
         assert_eq!(
             Word::empty(),
-            process.stack.get_stack_word(12).unwrap(),
+            exec_output.stack.get_stack_word(12).unwrap(),
             "The rest of the stack must be cleared",
         );
     }
@@ -479,27 +479,27 @@ fn test_get_storage_slot_type() -> miette::Result<()> {
             item_index = storage_item.index,
         );
 
-        let process = &tx_context.execute_code(&code).unwrap();
+        let exec_output = &tx_context.execute_code(&code).unwrap();
 
         let storage_slot_type = storage_item.slot.slot_type();
 
-        assert_eq!(storage_slot_type, process.get_stack_item(0).try_into().unwrap());
-        assert_eq!(process.get_stack_item(1), ZERO, "the rest of the stack is empty");
-        assert_eq!(process.get_stack_item(2), ZERO, "the rest of the stack is empty");
-        assert_eq!(process.get_stack_item(3), ZERO, "the rest of the stack is empty");
+        assert_eq!(storage_slot_type, exec_output.get_stack_item(0).try_into().unwrap());
+        assert_eq!(exec_output.get_stack_item(1), ZERO, "the rest of the stack is empty");
+        assert_eq!(exec_output.get_stack_item(2), ZERO, "the rest of the stack is empty");
+        assert_eq!(exec_output.get_stack_item(3), ZERO, "the rest of the stack is empty");
         assert_eq!(
             Word::empty(),
-            process.stack.get_stack_word(1).unwrap(),
+            exec_output.stack.get_stack_word(1).unwrap(),
             "the rest of the stack is empty"
         );
         assert_eq!(
             Word::empty(),
-            process.stack.get_stack_word(2).unwrap(),
+            exec_output.stack.get_stack_word(2).unwrap(),
             "the rest of the stack is empty"
         );
         assert_eq!(
             Word::empty(),
-            process.stack.get_stack_word(3).unwrap(),
+            exec_output.stack.get_stack_word(3).unwrap(),
             "the rest of the stack is empty"
         );
     }

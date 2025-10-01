@@ -269,7 +269,7 @@ fn test_active_note_get_assets() -> anyhow::Result<()> {
             # prepare note 0
             exec.note_internal::prepare_note
 
-            # process note 0
+            # exec_output note 0
             call.process_note_0
 
             # increment active input note pointer
@@ -278,7 +278,7 @@ fn test_active_note_get_assets() -> anyhow::Result<()> {
             # prepare note 1
             exec.note_internal::prepare_note
 
-            # process note 1
+            # exec_output note 1
             call.process_note_1
 
             # truncate the stack
@@ -495,10 +495,10 @@ fn test_active_note_get_serial_number() -> anyhow::Result<()> {
         end
         ";
 
-    let process = tx_context.execute_code(code)?;
+    let exec_output = tx_context.execute_code(code)?;
 
     let serial_number = tx_context.input_notes().get_note(0).note().serial_num();
-    assert_eq!(process.stack.get_stack_word(0).unwrap(), serial_number);
+    assert_eq!(exec_output.stack.get_stack_word(0).unwrap(), serial_number);
     Ok(())
 }
 

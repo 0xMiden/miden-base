@@ -37,11 +37,11 @@ fn test_create_fungible_asset_succeeds() -> anyhow::Result<()> {
         "
     );
 
-    let process = &tx_context.execute_code(&code)?;
+    let exec_output = &tx_context.execute_code(&code)?;
 
     let faucet_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).unwrap();
     assert_eq!(
-        process.get_stack_word(0),
+        exec_output.get_stack_word(0),
         Word::from([
             Felt::new(FUNGIBLE_ASSET_AMOUNT),
             Felt::new(0),
