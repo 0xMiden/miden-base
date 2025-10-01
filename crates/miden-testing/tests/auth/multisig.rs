@@ -744,7 +744,8 @@ async fn test_multisig_update_signers_remove_owner() -> anyhow::Result<()> {
         let removed_owner_slot =
             updated_multisig_account.storage().get_map_item(1, removed_owner_key).unwrap();
         assert_eq!(
-            removed_owner_slot, Word::empty(),
+            removed_owner_slot,
+            Word::empty(),
             "Removed owner's slot at index {} should be empty",
             removed_idx
         );
@@ -756,7 +757,7 @@ async fn test_multisig_update_signers_remove_owner() -> anyhow::Result<()> {
         let storage_key = [Felt::new(i as u64), Felt::new(0), Felt::new(0), Felt::new(0)].into();
         let storage_item = updated_multisig_account.storage().get_map_item(1, storage_key).unwrap();
 
-        if storage_item != empty_word {
+        if storage_item != Word::empty() {
             non_empty_count += 1;
             assert!(i < 2, "Found non-empty key at index {} which should be removed", i);
 

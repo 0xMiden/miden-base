@@ -44,6 +44,8 @@ const.ERR_TX_ALREADY_EXECUTED="failed to approve multisig transaction as it was 
 
 const.ERR_MALFORMED_MULTISIG_CONFIG="number of approvers must be equal to or greater than threshold"
 
+const.ERR_ZERO_IN_MULTISIG_CONFIG="number of approvers or threshold must not be zero"
+
 #! Check if transaction has already been executed and add it to executed transactions for replay protection.
 #!
 #! Inputs:  [MSG]
@@ -86,7 +88,7 @@ end
 #! - new_num_of_approvers is the new number of approvers after the update
 proc.cleanup_pubkey_mapping
     dup.1 dup.1
-    u32lt
+    u32assert2 u32lt
     # => [should_loop, i = init_num_of_approvers, new_num_of_approvers]
 
     while.true
@@ -163,8 +165,8 @@ export.update_signers_and_threshold.2
     # => [num_approvers, threshold, MULTISIG_CONFIG, pad(12)]
 
     # make sure that threshold or num_approvers are not zero
-    eq.0 assertz.err=ERR_MALFORMED_MULTISIG_CONFIG
-    eq.0 assertz.err=ERR_MALFORMED_MULTISIG_CONFIG
+    eq.0 assertz.err=ERR_ZERO_IN_MULTISIG_CONFIG
+    eq.0 assertz.err=ERR_ZERO_IN_MULTISIG_CONFIG
     # => [MULTISIG_CONFIG, pad(12)]
 
     push.THRESHOLD_CONFIG_SLOT
