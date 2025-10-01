@@ -1156,7 +1156,8 @@ async fn test_nested_fpi_stack_overflow() {
                 .tx_script(tx_script)
                 .build().unwrap();
 
-            let result = tx_context.execute_blocking();
+            let runtime = tokio::runtime::Builder::new_current_thread().build().unwrap();
+            let result = runtime.block_on(tx_context.execute());
 
             assert_transaction_executor_error!(result, ERR_FOREIGN_ACCOUNT_MAX_NUMBER_EXCEEDED);
         })
@@ -1166,8 +1167,8 @@ async fn test_nested_fpi_stack_overflow() {
 }
 
 /// Test that code will panic in attempt to call a procedure from the native account.
-#[test]
-fn test_nested_fpi_native_account_invocation() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_nested_fpi_native_account_invocation() -> anyhow::Result<()> {
     // ------ FIRST FOREIGN ACCOUNT ---------------------------------------------------------------
     let foreign_account_code_source = "
         use.miden::tx
@@ -1270,7 +1271,8 @@ fn test_nested_fpi_native_account_invocation() -> anyhow::Result<()> {
         .extend_advice_inputs(advice_inputs)
         .tx_script(tx_script)
         .build()?
-        .execute_blocking();
+        .execute()
+        .await;
 
     assert_transaction_executor_error!(result, ERR_FOREIGN_ACCOUNT_CONTEXT_AGAINST_NATIVE_ACCOUNT);
     Ok(())

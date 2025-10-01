@@ -516,8 +516,8 @@ pub async fn test_timelock() -> anyhow::Result<()> {
 ///
 /// Previously this setup was leading to the values collision in the advice map, see the
 /// [issue #1267](https://github.com/0xMiden/miden-base/issues/1267) for more details.
-#[test]
-fn test_public_key_as_note_input() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_public_key_as_note_input() -> anyhow::Result<()> {
     let mut rng = ChaCha20Rng::from_seed(Default::default());
     let sec_key = SecretKey::with_rng(&mut rng);
     // this value will be used both as public key in the RPO component of the target account and as
@@ -560,6 +560,6 @@ fn test_public_key_as_note_input() -> anyhow::Result<()> {
         .authenticator(authenticator)
         .build()?;
 
-    tx_context.execute_blocking()?;
+    tx_context.execute().await?;
     Ok(())
 }

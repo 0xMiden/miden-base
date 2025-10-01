@@ -44,7 +44,8 @@ fn core_benchmarks(c: &mut Criterion) {
             },
             |tx_context| {
                 // benchmark the transaction execution
-                black_box(tx_context.execute_blocking())
+                let runtime = tokio::runtime::Builder::new_current_thread().build().unwrap();
+                black_box(runtime.block_on(tx_context.execute()))
             },
             BatchSize::SmallInput,
         );
@@ -59,7 +60,8 @@ fn core_benchmarks(c: &mut Criterion) {
             },
             |tx_context| {
                 // benchmark the transaction execution
-                black_box(tx_context.execute_blocking())
+                let runtime = tokio::runtime::Builder::new_current_thread().build().unwrap();
+                black_box(runtime.block_on(tx_context.execute()))
             },
             BatchSize::SmallInput,
         );
@@ -86,9 +88,10 @@ fn core_benchmarks(c: &mut Criterion) {
             },
             |tx_context| {
                 // benchmark the transaction execution and proving
+                let runtime = tokio::runtime::Builder::new_current_thread().build().unwrap();
                 black_box(prove_transaction(
-                    tx_context
-                        .execute_blocking()
+                    runtime
+                        .block_on(tx_context.execute())
                         .expect("execution of the single P2ID note consumption tx failed"),
                 ))
             },
@@ -105,9 +108,10 @@ fn core_benchmarks(c: &mut Criterion) {
             },
             |tx_context| {
                 // benchmark the transaction execution and proving
+                let runtime = tokio::runtime::Builder::new_current_thread().build().unwrap();
                 black_box(prove_transaction(
-                    tx_context
-                        .execute_blocking()
+                    runtime
+                        .block_on(tx_context.execute())
                         .expect("execution of the two P2ID note consumption tx failed"),
                 ))
             },

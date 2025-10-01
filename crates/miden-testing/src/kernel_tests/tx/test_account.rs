@@ -983,8 +983,8 @@ fn test_compute_storage_commitment() -> anyhow::Result<()> {
 /// keys in storage maps, this test ensures that the partial storage map is correctly converted into
 /// a full storage map. If we end up representing new public accounts as account deltas, this test
 /// can likely go away.
-#[test]
-fn proven_tx_storage_map_matches_executed_tx_for_new_account() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proven_tx_storage_map_matches_executed_tx_for_new_account() -> anyhow::Result<()> {
     // Build a public account so the proven transaction includes the account update.
     let mock_slots = AccountStorage::mock_storage_slots();
     let mut account = AccountBuilder::new([1; 32])
@@ -1028,7 +1028,8 @@ fn proven_tx_storage_map_matches_executed_tx_for_new_account() -> anyhow::Result
         .tx_script(tx_script)
         .with_source_manager(source_manager)
         .build()?
-        .execute_blocking()?;
+        .execute()
+        .await?;
 
     let map_delta = tx.account_delta().storage().maps().get(&map_index).unwrap();
     assert_eq!(
@@ -1469,8 +1470,8 @@ fn test_get_map_item_init() -> miette::Result<()> {
 }
 
 /// Tests that incrementing the account nonce fails if it would overflow the field.
-#[test]
-fn incrementing_nonce_overflow_fails() -> anyhow::Result<()> {
+#[tokio::test]
+async fn incrementing_nonce_overflow_fails() -> anyhow::Result<()> {
     let mut account = AccountBuilder::new([42; 32])
         .with_auth_component(Auth::IncrNonce)
         .with_component(MockAccountComponent::with_empty_slots())
@@ -1480,7 +1481,7 @@ fn incrementing_nonce_overflow_fails() -> anyhow::Result<()> {
     // modulus - 2.
     account.increment_nonce(Felt::new(Felt::MODULUS - 2))?;
 
-    let result = TransactionContextBuilder::new(account).build()?.execute_blocking();
+    let result = TransactionContextBuilder::new(account).build()?.execute().await;
 
     assert_transaction_executor_error!(result, ERR_ACCOUNT_NONCE_AT_MAX);
 

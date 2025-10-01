@@ -61,8 +61,8 @@ async fn p2ide_script_success_without_reclaim_or_timelock() -> anyhow::Result<()
 }
 
 /// Test that the P2IDE note can have a timelock that unlocks before the reclaim block height
-#[test]
-fn p2ide_script_success_timelock_unlock_before_reclaim_height() -> anyhow::Result<()> {
+#[tokio::test]
+async fn p2ide_script_success_timelock_unlock_before_reclaim_height() -> anyhow::Result<()> {
     let reclaim_height = Some(BlockNumber::from(5u32));
     let timelock_height = None;
 
@@ -80,7 +80,8 @@ fn p2ide_script_success_timelock_unlock_before_reclaim_height() -> anyhow::Resul
     let executed_transaction_1 = mock_chain
         .build_tx_context(target_account.id(), &[p2ide_note.id()], &[])?
         .build()?
-        .execute_blocking()?;
+        .execute()
+        .await?;
 
     let target_account_after: Account = Account::new_existing(
         target_account.id(),
