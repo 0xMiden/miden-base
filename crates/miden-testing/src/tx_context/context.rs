@@ -67,16 +67,17 @@ pub struct TransactionContext {
 
 impl TransactionContext {
     /// Executes arbitrary code within the context of a mocked transaction environment and returns
-    /// the resulting [Process].
+    /// the resulting [`ExecutionOutput`].
     ///
     /// The code is compiled with the assembler returned by
     /// [`TransactionKernel::with_mock_libraries`] and executed with advice inputs constructed from
-    /// the data stored in the context. The program is run on a [`MockHost`] which is loaded with
-    /// the procedures exposed by the transaction kernel, and also individual kernel functions (not
-    /// normally exposed).
+    /// the data stored in the context. The program is run on a modified [`TransactionExecutorHost`]
+    /// which is loaded with the procedures exposed by the transaction kernel, and also
+    /// individual kernel functions (not normally exposed).
     ///
     /// To improve the error message quality, convert the returned [`ExecutionError`] into a
-    /// [`Report`](miden_objects::assembly::diagnostics::Report).
+    /// [`Report`](miden_objects::assembly::diagnostics::Report) or use `?` with
+    /// [`miden_objects::assembly::diagnostics::Result`].
     ///
     /// # Errors
     ///
