@@ -165,7 +165,7 @@ export.update_signers_and_threshold.2
     # make sure that threshold or num_approvers are not zero
     eq.0 assertz.err=ERR_MALFORMED_MULTISIG_CONFIG
     eq.0 assertz.err=ERR_MALFORMED_MULTISIG_CONFIG
-    # => [MULTISIG_CONFIG]
+    # => [MULTISIG_CONFIG, pad(12)]
 
     push.THRESHOLD_CONFIG_SLOT
     # => [slot, MULTISIG_CONFIG, pad(12)]
