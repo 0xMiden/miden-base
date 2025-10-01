@@ -196,9 +196,10 @@ impl TransactionArgs {
     ///
     /// - hash(public_key, message) |-> signature (prepared for VM execution).
     pub fn add_signature(&mut self, public_key: PublicKey, message: Word, signature: Signature) {
-        self.advice_inputs
-            .map
-            .insert(Hasher::merge(&[public_key.to_commitment(), message]), signature.to_prepared_signature());
+        self.advice_inputs.map.insert(
+            Hasher::merge(&[public_key.to_commitment(), message]),
+            signature.to_prepared_signature(),
+        );
     }
 
     /// Populates the advice inputs with the specified note recipient details.
