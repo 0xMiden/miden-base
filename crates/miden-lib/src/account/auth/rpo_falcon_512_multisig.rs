@@ -4,7 +4,7 @@ use miden_objects::account::{AccountComponent, StorageMap, StorageSlot};
 use miden_objects::{AccountError, Word};
 
 use crate::account::auth::PublicKeyCommitment;
-use crate::account::components::multisig_library;
+use crate::account::components::rpo_falcon_512_multisig_library;
 
 // MULTISIG AUTHENTICATION COMPONENT
 // ================================================================================================
@@ -73,7 +73,7 @@ impl From<AuthRpoFalcon512Multisig> for AccountComponent {
         let executed_transactions = StorageMap::default();
         storage_slots.push(StorageSlot::Map(executed_transactions));
 
-        AccountComponent::new(multisig_library(), storage_slots)
+        AccountComponent::new(rpo_falcon_512_multisig_library(), storage_slots)
             .expect("Multisig auth component should satisfy the requirements of a valid account component")
             .with_supports_all_types()
     }
