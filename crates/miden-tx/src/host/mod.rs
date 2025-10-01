@@ -379,10 +379,6 @@ where
             TransactionEvent::LinkMapGet => {
                 return LinkMap::handle_get_event(process).map(TransactionEventHandling::Handled);
             },
-            TransactionEvent::SmtPeek => {
-                // SMT_PEEK is a no-op event used for debugging purposes
-                Ok(TransactionEventHandling::Handled(Vec::new()))
-            },
             TransactionEvent::Unauthorized => {
               // Note: This always returns an error to abort the transaction.
               Err(self.on_unauthorized(process))

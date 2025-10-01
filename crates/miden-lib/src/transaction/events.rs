@@ -77,8 +77,6 @@ pub enum TransactionEvent {
     LinkMapSet = LINK_MAP_SET,
     LinkMapGet = LINK_MAP_GET,
 
-    SmtPeek = SMT_PEEK,
-
     Unauthorized = AUTH_UNAUTHORIZED,
 }
 
@@ -178,8 +176,6 @@ impl TryFrom<EventId> for TransactionEvent {
 
             LINK_MAP_SET => Ok(TransactionEvent::LinkMapSet),
             LINK_MAP_GET => Ok(TransactionEvent::LinkMapGet),
-
-            SMT_PEEK => Ok(TransactionEvent::SmtPeek),
 
             AUTH_UNAUTHORIZED => Ok(TransactionEvent::Unauthorized),
 

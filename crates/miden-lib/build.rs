@@ -827,7 +827,9 @@ fn extract_event_definitions_from_file(
         let Some(const_name) = capture.get(1) else { continue };
         let Some(event_path) = capture.get(2) else { continue };
 
+        let event_path = event_path.as_str();
         let const_name = const_name.as_str();
+
         let const_name_wo_suffix =
             if let Some((const_name_wo_suffix, _)) = const_name.rsplit_once("_EVENT") {
                 const_name_wo_suffix.to_string()
@@ -835,10 +837,15 @@ fn extract_event_definitions_from_file(
                 const_name.to_owned()
             };
 
-        // TODO file out events we don't want to include, at this time it appears we want all of
-        // them
+        if let Some((first, _)) = event_path.split_once("::") {
+            if first != "miden" {
+                // i.e. stdlib we don't want to have here
+            }
+        } else {
+            // path too short
+            continue;
+        }
 
-        let event_path = event_path.as_str();
         // Check for duplicates with different definitions
         if let Some(existing_const_name) = events.get(event_path) {
             if existing_const_name != &const_name_wo_suffix {
