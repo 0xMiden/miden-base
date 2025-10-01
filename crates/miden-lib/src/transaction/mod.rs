@@ -28,7 +28,7 @@ use super::MidenLib;
 pub mod memory;
 
 mod events;
-pub use events::TransactionEvent;
+pub use events::{EventId, TransactionEvent};
 
 mod inputs;
 pub use inputs::{TransactionAdviceInputs, TransactionAdviceMapMismatch};
@@ -284,7 +284,7 @@ impl TransactionKernel {
     /// - Indices 13..16 on the stack are not zeroes.
     /// - Overflow addresses are not empty.
     pub fn parse_output_stack(
-        stack: &StackOutputs,
+        stack: &StackOutputs, // FIXME TODO add an extension trait for this one
     ) -> Result<(Word, Word, FungibleAsset, BlockNumber), TransactionOutputError> {
         let output_notes_commitment = stack
             .get_stack_word(OUTPUT_NOTES_COMMITMENT_WORD_IDX * 4)

@@ -1,6 +1,9 @@
 mod no_auth;
 pub use no_auth::NoAuth;
 
+mod public_key_commitment;
+pub use public_key_commitment::PublicKeyCommitment;
+
 mod rpo_falcon_512;
 pub use rpo_falcon_512::AuthRpoFalcon512;
 

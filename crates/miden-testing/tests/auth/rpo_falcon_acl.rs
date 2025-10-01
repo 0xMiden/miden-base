@@ -70,7 +70,7 @@ fn setup_rpo_falcon_acl_test(
     let note = NoteBuilder::new(account.id(), &mut rand::rng())
         .build()
         .expect("failed to create mock note");
-    builder.add_note(OutputNote::Full(note.clone()));
+    builder.add_output_note(OutputNote::Full(note.clone()));
     let mock_chain = builder.build()?;
 
     Ok((account, mock_chain, note))

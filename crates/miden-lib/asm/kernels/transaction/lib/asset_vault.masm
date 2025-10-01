@@ -26,6 +26,11 @@ const.ERR_VAULT_REMOVE_FUNGIBLE_ASSET_FAILED_INITIAL_VALUE_INVALID="failed to re
 
 const.ERR_VAULT_NON_FUNGIBLE_ASSET_TO_REMOVE_NOT_FOUND="failed to remove non-existent non-fungible asset from the vault"
 
+# EVENTS
+# =================================================================================================
+
+const.SMT_PEEK=event("stdlib::collections::smt::smt_peek")
+
 # CONSTANTS
 # =================================================================================================
 
@@ -106,7 +111,7 @@ export.peek_balance
     # => [ASSET_KEY, ASSET_VAULT_ROOT]
 
     # lookup asset
-    adv.push_smtpeek
+    emit.SMT_PEEK
     # OS => [ASSET_KEY, ASSET_VAULT_ROOT]
     # AS => [ASSET]
 
@@ -198,8 +203,8 @@ export.add_fungible_asset
     # we therefore overwrite the faucet id with the faucet id from ASSET to account for this edge case
     mem_loadw swapw
     # => [ASSET_KEY, VAULT_ROOT, faucet_id_prefix, faucet_id_suffix, amount, vault_root_ptr]
-    adv.push_smtpeek
-    adv_loadw
+
+    emit.SMT_PEEK adv_loadw
     # => [CUR_VAULT_VALUE, VAULT_ROOT, faucet_id_prefix, faucet_id_suffix, amount, vault_root_ptr]
     swapw
     # => [VAULT_ROOT, CUR_VAULT_VALUE, faucet_id_prefix, faucet_id_suffix, amount, vault_root_ptr]
@@ -531,7 +536,7 @@ proc.peek_asset
     # => [ASSET_KEY, ASSET_VAULT_ROOT]
 
     # lookup asset
-    adv.push_smtpeek
+    emit.SMT_PEEK
     # OS => [ASSET_KEY, ASSET_VAULT_ROOT]
     # AS => [ASSET]
 
