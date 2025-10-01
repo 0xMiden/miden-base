@@ -19,6 +19,9 @@ pub const ERR_BURN_WRONG_NUMBER_OF_ASSETS: MasmError = MasmError::from_static_st
 /// Error Message: "note contained more than one asset during burn invocation"
 pub const ERR_INVALID_NUM_ASSETS: MasmError = MasmError::from_static_str("note contained more than one asset during burn invocation");
 
+/// Error Message: "number of approvers must be equal to or greater than threshold"
+pub const ERR_MALFORMED_MULTISIG_CONFIG: MasmError = MasmError::from_static_str("number of approvers must be equal to or greater than threshold");
+
 /// Error Message: "MINT script expects exactly 9 note inputs"
 pub const ERR_MINT_WRONG_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_str("MINT script expects exactly 9 note inputs");
 
@@ -45,3 +48,6 @@ pub const ERR_P2ID_WRONG_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_st
 pub const ERR_SWAP_WRONG_NUMBER_OF_ASSETS: MasmError = MasmError::from_static_str("SWAP script requires exactly 1 note asset");
 /// Error Message: "SWAP script expects exactly 12 note inputs"
 pub const ERR_SWAP_WRONG_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_str("SWAP script expects exactly 12 note inputs");
+
+/// Error Message: "number of approvers or threshold must not be zero"
+pub const ERR_ZERO_IN_MULTISIG_CONFIG: MasmError = MasmError::from_static_str("number of approvers or threshold must not be zero");
