@@ -738,15 +738,13 @@ async fn test_multisig_update_signers_remove_owner() -> anyhow::Result<()> {
     }
 
     // Verify removed owners' slots are empty (indices 2, 3, and 4 should be cleared)
-    let empty_word = Word::from([Felt::new(0); 4]);
-
     for removed_idx in 2..5 {
         let removed_owner_key =
             [Felt::new(removed_idx), Felt::new(0), Felt::new(0), Felt::new(0)].into();
         let removed_owner_slot =
             updated_multisig_account.storage().get_map_item(1, removed_owner_key).unwrap();
         assert_eq!(
-            removed_owner_slot, empty_word,
+            removed_owner_slot, Word::empty(),
             "Removed owner's slot at index {} should be empty",
             removed_idx
         );
