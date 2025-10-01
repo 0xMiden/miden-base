@@ -67,10 +67,9 @@ lint: ## Runs all linting tasks at once (Clippy, fixing, formatting, typos)
 doc: ## Generates & checks documentation
 	$(WARNINGS) cargo doc --all-features --keep-going --release
 
-
-.PHONY: book
-book: ## Builds the book & serves documentation site
-	mdbook serve --open docs
+.PHONY: serve-docs
+serve-docs: ## Serves the docs
+	cd docs && npm run start:dev
 
 # --- testing -------------------------------------------------------------------------------------
 
@@ -139,18 +138,25 @@ bench-note-checker: ## Run note checker benchmarks
 .PHONY: check-tools
 check-tools: ## Checks if development tools are installed
 	@echo "Checking development tools..."
-	@command -v mdbook >/dev/null 2>&1 && echo "[OK] mdbook is installed" || echo "[MISSING] mdbook is not installed (run: make install-tools)"
 	@command -v typos >/dev/null 2>&1 && echo "[OK] typos is installed" || echo "[MISSING] typos is not installed (run: make install-tools)"
 	@command -v cargo nextest >/dev/null 2>&1 && echo "[OK] cargo-nextest is installed" || echo "[MISSING] cargo-nextest is not installed (run: make install-tools)"
 	@command -v taplo >/dev/null 2>&1 && echo "[OK] taplo is installed" || echo "[MISSING] taplo is not installed (run: make install-tools)"
 	@command -v cargo-machete >/dev/null 2>&1 && echo "[OK] cargo-machete is installed" || echo "[MISSING] cargo-machete is not installed (run: make install-tools)"
+	@command -v npm >/dev/null 2>&1 && echo "[OK] npm is installed" || echo "[MISSING] npm is not installed (run: make install-tools)"
 
 .PHONY: install-tools
-install-tools: ## Installs development tools required by the Makefile (mdbook, typos, nextest, taplo)
+install-tools: ## Installs development tools required by the Makefile (typos, nextest, taplo, npm)
 	@echo "Installing development tools..."
-	cargo install mdbook --locked
 	cargo install typos-cli --locked
 	cargo install cargo-nextest --locked
 	cargo install taplo-cli --locked
 	cargo install cargo-machete --locked
+	@echo "Installing Node.js and npm..."
+	@if ! command -v node >/dev/null 2>&1; then \
+		echo "Node.js not found. Please install Node.js from https://nodejs.org/ or using your package manager"; \
+		echo "On macOS: brew install node"; \
+		echo "On Ubuntu/Debian: sudo apt install nodejs npm"; \
+		echo "On Windows: Download from https://nodejs.org/"; \
+		exit 1; \
+	fi
 	@echo "Development tools installation complete!"
