@@ -3,7 +3,7 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use miden_lib::StdLibrary;
-use miden_lib::transaction::{EventId, TransactionEvent, TransactionEventError};
+use miden_lib::transaction::{EventId, TransactionEvent};
 use miden_objects::Word;
 use miden_processor::{
     AdviceMutation,
@@ -27,7 +27,13 @@ use crate::TransactionContext;
 /// - There is special handling of EMPTY_DIGEST in account procedure index map.
 /// - This host uses `MemAdviceProvider` which is instantiated from the passed in advice inputs.
 pub(crate) struct MockHost<'store> {
+    /// The underlying [`TransactionExecutorHost`] that the mock host will forward requests to.
     exec_host: TransactionExecutorHost<'store, 'static, TransactionContext, UnreachableAuth>,
+
+    /// The set of event IDs that the mock host will forward to the [`TransactionExecutorHost`].
+    ///
+    /// Event IDs that are not in this set are not handled. This can be useful in certain test
+    /// scenarios.
     handled_events: BTreeSet<EventId>,
 }
 

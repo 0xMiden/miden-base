@@ -59,9 +59,9 @@ pub struct TransactionContext {
     pub(super) tx_args: TransactionArgs,
     pub(super) tx_inputs: TransactionInputs,
     pub(super) mast_store: TransactionMastStore,
-    pub(super) advice_inputs: AdviceInputs,
     pub(super) authenticator: Option<MockAuthenticator>,
     pub(super) source_manager: Arc<dyn SourceManagerSync>,
+    pub(super) advice_inputs: AdviceInputs,
     pub(super) is_lazy_loading_enabled: bool,
 }
 
@@ -146,7 +146,9 @@ impl TransactionContext {
             .extend_advice_inputs(advice_inputs)
             .execute_program(program)
     }
+}
 
+impl TransactionContext {
     /// Executes the transaction through a [TransactionExecutor]
     pub async fn execute(self) -> Result<ExecutedTransaction, TransactionExecutorError> {
         let account_id = self.account().id();
