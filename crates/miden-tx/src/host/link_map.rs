@@ -294,7 +294,7 @@ enum SetOperation {
     InsertAfterEntry = 2,
 }
 
-// PROCESS MEMORY ABSTRACTION
+// MEMORY VIEWER
 // ================================================================================================
 
 mod private {
@@ -309,6 +309,8 @@ mod private {
 ///
 /// This should all go away again once we change a LinkMap's implementation to be based on an actual
 /// map type instead of viewing a process' memory directly.
+///
+/// This trait is sealed and should not be implemented by users.
 pub trait MemoryViewer: private::MemoryViewerSeal {
     fn get_kernel_mem_element(&self, addr: u32) -> Option<Felt>;
     fn get_kernel_mem_word(&self, addr: u32) -> Option<Word>;
@@ -331,12 +333,10 @@ impl MemoryViewer for ExecutionOutput {
     fn get_kernel_mem_element(&self, addr: u32) -> Option<Felt> {
         // TODO: Use Memory::read_element once it no longer requires &mut self.
         // https://github.com/0xMiden/miden-vm/issues/2237
-        // Copy of the function in Miden VM.
-        fn split_addr(addr: u32) -> (u32, u32) {
-            let idx = addr % miden_objects::WORD_SIZE as u32;
-            (addr - idx, idx)
-        }
-        let (word_addr, idx) = split_addr(addr);
+
+        // Copy of how Memory::read_element is implemented in Miden VM.
+        let idx = addr % miden_objects::WORD_SIZE as u32;
+        let word_addr = addr - idx;
 
         Some(self.get_kernel_mem_word(word_addr)?[idx as usize])
     }

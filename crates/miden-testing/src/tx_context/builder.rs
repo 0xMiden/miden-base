@@ -220,7 +220,9 @@ impl TransactionContextBuilder {
         self
     }
 
-    /// TODO
+    /// Disables lazy loading.
+    ///
+    /// This is the opposite of [`Self::enable_lazy_loading`] - see its docs for details.
     pub fn disable_lazy_loading(mut self) -> Self {
         self.is_lazy_loading_enabled = false;
         self
