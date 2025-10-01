@@ -446,10 +446,12 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
 
     let sig_1 = authenticators[0]
         .get_signature(public_keys[0].to_commitment(), &tx_summary)
-        .await?;
+        .await?
+        .to_prepared_signature();
     let sig_2 = authenticators[1]
         .get_signature(public_keys[1].to_commitment(), &tx_summary)
-        .await?;
+        .await?
+        .to_prepared_signature();
 
     // Execute transaction with signatures - should succeed
     let update_approvers_tx = mock_chain
@@ -581,13 +583,16 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
 
     let sig_1_new = new_authenticators[0]
         .get_signature(new_public_keys[0].to_commitment(), &tx_summary_new)
-        .await?;
+        .await?
+        .to_prepared_signature();
     let sig_2_new = new_authenticators[1]
         .get_signature(new_public_keys[1].to_commitment(), &tx_summary_new)
-        .await?;
+        .await?
+        .to_prepared_signature();
     let sig_3_new = new_authenticators[2]
         .get_signature(new_public_keys[2].to_commitment(), &tx_summary_new)
-        .await?;
+        .await?
+        .to_prepared_signature();
 
     // SECTION 3: Properly handle multisig authentication with the updated signers
     // ================================================================================
@@ -681,16 +686,20 @@ async fn test_multisig_update_signers_remove_owner() -> anyhow::Result<()> {
 
     let sig_1 = authenticators[0]
         .get_signature(public_keys[0].to_commitment(), &tx_summary)
-        .await?;
+        .await?
+        .to_prepared_signature();
     let sig_2 = authenticators[1]
         .get_signature(public_keys[1].to_commitment(), &tx_summary)
-        .await?;
+        .await?
+        .to_prepared_signature();
     let sig_3 = authenticators[2]
         .get_signature(public_keys[2].to_commitment(), &tx_summary)
-        .await?;
+        .await?
+        .to_prepared_signature();
     let sig_4 = authenticators[3]
         .get_signature(public_keys[3].to_commitment(), &tx_summary)
-        .await?;
+        .await?
+        .to_prepared_signature();
 
     // Execute with signatures
     let update_approvers_tx = mock_chain
@@ -882,10 +891,12 @@ async fn test_multisig_new_approvers_cannot_sign_before_update() -> anyhow::Resu
 
     let new_sig_1 = new_authenticators[0]
         .get_signature(new_public_keys[0].to_commitment(), &tx_summary_signing)
-        .await?;
+        .await?
+        .to_prepared_signature();
     let new_sig_2 = new_authenticators[1]
         .get_signature(new_public_keys[1].to_commitment(), &tx_summary_signing)
-        .await?;
+        .await?
+        .to_prepared_signature();
 
     // Try to execute transaction with NEW signatures - should FAIL
     let tx_context_with_new_sigs = mock_chain
