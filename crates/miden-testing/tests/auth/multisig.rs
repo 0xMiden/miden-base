@@ -143,11 +143,11 @@ async fn test_multisig_2_of_2_with_note_creation() -> anyhow::Result<()> {
     let sig_1 = authenticators[0]
         .get_signature(public_keys[0].to_commitment(), &tx_summary)
         .await?
-        .to_prepared_signature();;
+        .to_prepared_signature();
     let sig_2 = authenticators[1]
         .get_signature(public_keys[1].to_commitment(), &tx_summary)
         .await?
-        .to_prepared_signature();;
+        .to_prepared_signature();
 
     // Execute transaction with signatures - should succeed
     let tx_context_execute = mock_chain
