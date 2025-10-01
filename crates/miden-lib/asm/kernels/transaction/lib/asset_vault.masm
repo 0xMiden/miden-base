@@ -29,7 +29,7 @@ const.ERR_VAULT_NON_FUNGIBLE_ASSET_TO_REMOVE_NOT_FOUND="failed to remove non-exi
 # EVENTS
 # =================================================================================================
 
-const.SMT_PEEK=event("stdlib::collections::smt::smt_peek")
+const.SMT_PEEK_EVENT=event("stdlib::collections::smt::smt_peek")
 
 # CONSTANTS
 # =================================================================================================
@@ -111,7 +111,7 @@ export.peek_balance
     # => [ASSET_KEY, ASSET_VAULT_ROOT]
 
     # lookup asset
-    emit.SMT_PEEK
+    emit.SMT_PEEK_EVENT
     # OS => [ASSET_KEY, ASSET_VAULT_ROOT]
     # AS => [ASSET]
 
@@ -204,7 +204,7 @@ export.add_fungible_asset
     mem_loadw swapw
     # => [ASSET_KEY, VAULT_ROOT, faucet_id_prefix, faucet_id_suffix, amount, vault_root_ptr]
 
-    emit.SMT_PEEK adv_loadw
+    emit.SMT_PEEK_EVENT adv_loadw
     # => [CUR_VAULT_VALUE, VAULT_ROOT, faucet_id_prefix, faucet_id_suffix, amount, vault_root_ptr]
     swapw
     # => [VAULT_ROOT, CUR_VAULT_VALUE, faucet_id_prefix, faucet_id_suffix, amount, vault_root_ptr]
@@ -536,7 +536,7 @@ proc.peek_asset
     # => [ASSET_KEY, ASSET_VAULT_ROOT]
 
     # lookup asset
-    emit.SMT_PEEK
+    emit.SMT_PEEK_EVENT
     # OS => [ASSET_KEY, ASSET_VAULT_ROOT]
     # AS => [ASSET]
 
