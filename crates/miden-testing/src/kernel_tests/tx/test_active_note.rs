@@ -24,6 +24,7 @@ use miden_objects::testing::account_id::{
 };
 use miden_objects::{EMPTY_WORD, Felt, ONE, WORD_SIZE, Word};
 
+use crate::kernel_tests::tx::ExecutionOutputExt;
 use crate::utils::create_public_p2any_note;
 use crate::{
     Auth,
@@ -269,7 +270,7 @@ fn test_active_note_get_assets() -> anyhow::Result<()> {
             # prepare note 0
             exec.note_internal::prepare_note
 
-            # exec_output note 0
+            # process note 0
             call.process_note_0
 
             # increment active input note pointer
@@ -278,7 +279,7 @@ fn test_active_note_get_assets() -> anyhow::Result<()> {
             # prepare note 1
             exec.note_internal::prepare_note
 
-            # exec_output note 1
+            # process note 1
             call.process_note_1
 
             # truncate the stack
@@ -498,7 +499,7 @@ fn test_active_note_get_serial_number() -> anyhow::Result<()> {
     let exec_output = tx_context.execute_code(code)?;
 
     let serial_number = tx_context.input_notes().get_note(0).note().serial_num();
-    assert_eq!(exec_output.stack.get_stack_word(0).unwrap(), serial_number);
+    assert_eq!(exec_output.get_stack_word(0), serial_number);
     Ok(())
 }
 
@@ -537,6 +538,6 @@ fn test_active_note_get_script_root() -> anyhow::Result<()> {
     let exec_output = tx_context.execute_code(code)?;
 
     let script_root = tx_context.input_notes().get_note(0).note().script().root();
-    assert_eq!(exec_output.stack.get_stack_word(0).unwrap(), script_root);
+    assert_eq!(exec_output.get_stack_word(0), script_root);
     Ok(())
 }

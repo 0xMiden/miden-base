@@ -98,8 +98,6 @@ fn peek_balance_returns_correct_amount() -> anyhow::Result<()> {
 }
 
 #[test]
-// #[ignore = "transaction executor host returns error before the tx kernel, making the test less
-// useful"]
 fn test_get_balance_non_fungible_fails() -> anyhow::Result<()> {
     // Disable lazy loading otherwise the handler will return an error before the transaction kernel
     // can abort, which is what we want to test.
@@ -123,11 +121,10 @@ fn test_get_balance_non_fungible_fails() -> anyhow::Result<()> {
         suffix = faucet_id.suffix(),
     );
 
-    // TODO: Consider building a VM host manually that does not do lazy loading.
-    let exec_output = tx_context.execute_code(&code);
+    let exec_result = tx_context.execute_code(&code);
 
     assert_execution_error!(
-        exec_output,
+        exec_result,
         ERR_VAULT_GET_BALANCE_CAN_ONLY_BE_CALLED_ON_FUNGIBLE_ASSET
     );
 
@@ -239,9 +236,9 @@ fn test_add_non_fungible_asset_fail_overflow() -> anyhow::Result<()> {
         FUNGIBLE_ASSET = Word::from(add_fungible_asset)
     );
 
-    let exec_output = tx_context.execute_code(&code);
+    let exec_result = tx_context.execute_code(&code);
 
-    assert_execution_error!(exec_output, ERR_VAULT_FUNGIBLE_MAX_AMOUNT_EXCEEDED);
+    assert_execution_error!(exec_result, ERR_VAULT_FUNGIBLE_MAX_AMOUNT_EXCEEDED);
     assert!(account_vault.add_asset(add_fungible_asset).is_err());
 
     Ok(())
@@ -312,9 +309,9 @@ fn test_add_non_fungible_asset_fail_duplicate() -> anyhow::Result<()> {
         NON_FUNGIBLE_ASSET = Word::from(non_fungible_asset)
     );
 
-    let exec_output = tx_context.execute_code(&code);
+    let exec_result = tx_context.execute_code(&code);
 
-    assert_execution_error!(exec_output, ERR_VAULT_NON_FUNGIBLE_ASSET_ALREADY_EXISTS);
+    assert_execution_error!(exec_result, ERR_VAULT_NON_FUNGIBLE_ASSET_ALREADY_EXISTS);
     assert!(account_vault.add_asset(non_fungible_asset).is_err());
 
     Ok(())
@@ -394,10 +391,10 @@ fn test_remove_fungible_asset_fail_remove_too_much() -> anyhow::Result<()> {
         FUNGIBLE_ASSET = Word::from(remove_fungible_asset)
     );
 
-    let exec_output = tx_context.execute_code(&code);
+    let exec_result = tx_context.execute_code(&code);
 
     assert_execution_error!(
-        exec_output,
+        exec_result,
         ERR_VAULT_FUNGIBLE_ASSET_AMOUNT_LESS_THAN_AMOUNT_TO_WITHDRAW
     );
 
@@ -482,9 +479,9 @@ fn test_remove_inexisting_non_fungible_asset_fails() -> anyhow::Result<()> {
         FUNGIBLE_ASSET = Word::from(non_existent_non_fungible_asset)
     );
 
-    let exec_output = tx_context.execute_code(&code);
+    let exec_result = tx_context.execute_code(&code);
 
-    assert_execution_error!(exec_output, ERR_VAULT_NON_FUNGIBLE_ASSET_TO_REMOVE_NOT_FOUND);
+    assert_execution_error!(exec_result, ERR_VAULT_NON_FUNGIBLE_ASSET_TO_REMOVE_NOT_FOUND);
     assert_matches!(
         account_vault.remove_asset(non_existent_non_fungible_asset).unwrap_err(),
         AssetVaultError::NonFungibleAssetNotFound(err_asset) if err_asset == nonfungible,

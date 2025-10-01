@@ -88,7 +88,7 @@ impl TransactionEvent {
         !is_unprivileged
     }
 
-    /// TODO
+    /// Returns the [`EventId`] of the transaction event.
     pub fn event_id(&self) -> EventId {
         EventId::from_u64(self.clone() as u64)
     }
