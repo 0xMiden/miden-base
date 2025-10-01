@@ -15,8 +15,8 @@ use miden_objects::note::{Note, NoteType};
 use miden_testing::{Auth, MockChain, assert_transaction_executor_error};
 
 /// Test that the P2IDE note works like a regular P2ID note
-#[test]
-fn p2ide_script_success_without_reclaim_or_timelock() -> anyhow::Result<()> {
+#[tokio::test]
+async fn p2ide_script_success_without_reclaim_or_timelock() -> anyhow::Result<()> {
     let reclaim_height = None; // if 0, means it is not reclaimable
     let timelock_height = None; // if 0 means it is not timelocked
 
@@ -33,7 +33,8 @@ fn p2ide_script_success_without_reclaim_or_timelock() -> anyhow::Result<()> {
     let executed_transaction_1 = mock_chain
         .build_tx_context(malicious_account.id(), &[], slice::from_ref(&p2ide_note))?
         .build()?
-        .execute_blocking();
+        .execute()
+        .await;
 
     assert_transaction_executor_error!(executed_transaction_1, ERR_P2IDE_RECLAIM_DISABLED);
 
@@ -41,7 +42,8 @@ fn p2ide_script_success_without_reclaim_or_timelock() -> anyhow::Result<()> {
     let executed_transaction_2 = mock_chain
         .build_tx_context(target_account.id(), &[p2ide_note.id()], &[])?
         .build()?
-        .execute_blocking()?;
+        .execute()
+        .await?;
 
     let target_account_after: Account = Account::new_existing(
         target_account.id(),
@@ -97,8 +99,8 @@ fn p2ide_script_success_timelock_unlock_before_reclaim_height() -> anyhow::Resul
 
 /// Test that the P2IDE note can have a timelock set and reclaim functionality
 /// disabled.
-#[test]
-fn p2ide_script_timelocked_reclaim_disabled() -> anyhow::Result<()> {
+#[tokio::test]
+async fn p2ide_script_timelocked_reclaim_disabled() -> anyhow::Result<()> {
     let reclaim_height = None;
     let timelock_height = BlockNumber::from(5u32);
     let P2ideTestSetup {
@@ -121,7 +123,8 @@ fn p2ide_script_timelocked_reclaim_disabled() -> anyhow::Result<()> {
             &[],
         )?
         .build()?
-        .execute_blocking();
+        .execute()
+        .await;
 
     assert_transaction_executor_error!(early_reclaim, ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED);
 
@@ -134,7 +137,8 @@ fn p2ide_script_timelocked_reclaim_disabled() -> anyhow::Result<()> {
             &[],
         )?
         .build()?
-        .execute_blocking();
+        .execute()
+        .await;
 
     assert_transaction_executor_error!(early_spend, ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED);
 
@@ -142,7 +146,8 @@ fn p2ide_script_timelocked_reclaim_disabled() -> anyhow::Result<()> {
     let early_reclaim = mock_chain
         .build_tx_context(sender_account.id(), &[p2ide_note.id()], &[])?
         .build()?
-        .execute_blocking();
+        .execute()
+        .await;
 
     assert_transaction_executor_error!(early_reclaim, ERR_P2IDE_RECLAIM_DISABLED);
 
@@ -150,7 +155,8 @@ fn p2ide_script_timelocked_reclaim_disabled() -> anyhow::Result<()> {
     let final_tx = mock_chain
         .build_tx_context(target_account.id(), &[p2ide_note.id()], &[])?
         .build()?
-        .execute_blocking()?;
+        .execute()
+        .await?;
 
     let target_after = Account::new_existing(
         target_account.id(),
@@ -169,8 +175,8 @@ fn p2ide_script_timelocked_reclaim_disabled() -> anyhow::Result<()> {
 /// before the timelock expires. Creating a P2IDE note with a reclaim block height that is
 /// less than the timelock block height would be the same as creating a P2IDE note
 /// where the reclaim block height is equal to the timelock block height
-#[test]
-fn p2ide_script_reclaim_fails_before_timelock_expiry() -> anyhow::Result<()> {
+#[tokio::test]
+async fn p2ide_script_reclaim_fails_before_timelock_expiry() -> anyhow::Result<()> {
     let reclaim_height = BlockNumber::from(1u32);
     let timelock_height = BlockNumber::from(5u32);
 
@@ -188,7 +194,8 @@ fn p2ide_script_reclaim_fails_before_timelock_expiry() -> anyhow::Result<()> {
     let executed_transaction_1 = mock_chain
         .build_tx_context_at(1, sender_account.id(), &[p2ide_note.id()], &[])?
         .build()?
-        .execute_blocking();
+        .execute()
+        .await;
 
     assert_transaction_executor_error!(
         executed_transaction_1,
@@ -199,7 +206,8 @@ fn p2ide_script_reclaim_fails_before_timelock_expiry() -> anyhow::Result<()> {
     let executed_transaction_2 = mock_chain
         .build_tx_context_at(timelock_height, sender_account.id(), &[p2ide_note.id()], &[])?
         .build()?
-        .execute_blocking()?;
+        .execute()
+        .await?;
 
     let sender_account_after: Account = Account::new_existing(
         sender_account.id(),
@@ -218,8 +226,8 @@ fn p2ide_script_reclaim_fails_before_timelock_expiry() -> anyhow::Result<()> {
 }
 
 /// Test that the P2IDE note can have timelock and reclaim functionality
-#[test]
-fn p2ide_script_reclaimable_timelockable() -> anyhow::Result<()> {
+#[tokio::test]
+async fn p2ide_script_reclaimable_timelockable() -> anyhow::Result<()> {
     let reclaim_height = BlockNumber::from(10u32);
     let timelock_height = BlockNumber::from(7u32);
 
@@ -237,7 +245,8 @@ fn p2ide_script_reclaimable_timelockable() -> anyhow::Result<()> {
     let early_reclaim = mock_chain
         .build_tx_context(sender_account.id(), &[p2ide_note.id()], &[])?
         .build()?
-        .execute_blocking();
+        .execute()
+        .await;
 
     assert_transaction_executor_error!(early_reclaim, ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED);
 
@@ -245,7 +254,8 @@ fn p2ide_script_reclaimable_timelockable() -> anyhow::Result<()> {
     let early_spend = mock_chain
         .build_tx_context(target_account.id(), &[p2ide_note.id()], &[])?
         .build()?
-        .execute_blocking();
+        .execute()
+        .await;
 
     assert_transaction_executor_error!(early_spend, ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED);
 
@@ -256,7 +266,8 @@ fn p2ide_script_reclaimable_timelockable() -> anyhow::Result<()> {
     let early_reclaim = mock_chain
         .build_tx_context(sender_account.id(), &[p2ide_note.id()], &[])?
         .build()?
-        .execute_blocking();
+        .execute()
+        .await;
 
     assert_transaction_executor_error!(early_reclaim, ERR_P2IDE_RECLAIM_HEIGHT_NOT_REACHED);
 
@@ -267,7 +278,8 @@ fn p2ide_script_reclaimable_timelockable() -> anyhow::Result<()> {
     let executed_transaction_1 = mock_chain
         .build_tx_context(malicious_account.id(), &[], slice::from_ref(&p2ide_note))?
         .build()?
-        .execute_blocking();
+        .execute()
+        .await;
 
     assert_transaction_executor_error!(
         executed_transaction_1,
@@ -278,7 +290,8 @@ fn p2ide_script_reclaimable_timelockable() -> anyhow::Result<()> {
     let final_tx = mock_chain
         .build_tx_context(target_account.id(), &[p2ide_note.id()], &[])?
         .build()?
-        .execute_blocking()?;
+        .execute()
+        .await?;
 
     let target_after = Account::new_existing(
         target_account.id(),
@@ -294,8 +307,8 @@ fn p2ide_script_reclaimable_timelockable() -> anyhow::Result<()> {
 }
 
 /// Test that the P2IDE note can be reclaimed after timelock
-#[test]
-fn p2ide_script_reclaim_success_after_timelock() -> anyhow::Result<()> {
+#[tokio::test]
+async fn p2ide_script_reclaim_success_after_timelock() -> anyhow::Result<()> {
     let reclaim_height = BlockNumber::from(5);
     let timelock_height = BlockNumber::from(3);
 
@@ -311,7 +324,8 @@ fn p2ide_script_reclaim_success_after_timelock() -> anyhow::Result<()> {
     let early_reclaim = mock_chain
         .build_tx_context(sender_account.id(), &[p2ide_note.id()], &[])?
         .build()?
-        .execute_blocking();
+        .execute()
+        .await;
 
     assert_transaction_executor_error!(early_reclaim, ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED);
 
@@ -322,7 +336,8 @@ fn p2ide_script_reclaim_success_after_timelock() -> anyhow::Result<()> {
     let final_tx = mock_chain
         .build_tx_context(sender_account.id(), &[p2ide_note.id()], &[])?
         .build()?
-        .execute_blocking()?;
+        .execute()
+        .await?;
 
     let sender_after = Account::new_existing(
         sender_account.id(),
