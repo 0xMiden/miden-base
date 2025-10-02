@@ -26,7 +26,7 @@
 - Added `Address` serialization and deserialization ([#1937](https://github.com/0xMiden/miden-base/issues/1937))
 - Added `StorageMap::{num_entries, num_leaves}` to retrieve the number of entries in a storage map ([#1935]https://github.com/0xMiden/miden-base/pull/1935).
 - Added `AssetVault::{num_assets, num_leaves, inner_nodes}` ([#1939]https://github.com/0xMiden/miden-base/pull/1939).
- - Added per-procedure threshold map to `RpoFalcon512Multisig` auth component and enforced a minimum of 1 approver to consume notes; procedure-specific thresholds are stored in slot 3 as `PROC_ROOT -> threshold` ([#1968](https://github.com/0xMiden/miden-base/pull/1968), closes [#1806](https://github.com/0xMiden/miden-base/issues/1806)).
+ - Added per-procedure approval thresholds `RpoFalcon512Multisig` auth component ([#1968](https://github.com/0xMiden/miden-base/pull/1968).
 
 ### Changes
 
