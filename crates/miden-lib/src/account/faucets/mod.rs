@@ -367,7 +367,8 @@ mod tests {
         TokenSymbol,
         create_basic_fungible_faucet,
     };
-    use crate::account::auth::{AuthRpoFalcon512, PublicKeyCommitment};
+    use crate::account::auth::AuthRpoFalcon512;
+    use miden_objects::account::PublicKeyCommitment;
     use crate::account::wallets::BasicWallet;
 
     #[test]

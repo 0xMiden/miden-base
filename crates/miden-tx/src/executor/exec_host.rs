@@ -2,7 +2,7 @@ use alloc::collections::BTreeMap;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use miden_lib::account::auth::PublicKeyCommitment;
+use miden_objects::account::PublicKeyCommitment;
 use miden_lib::transaction::{EventId, TransactionAdviceInputs};
 use miden_objects::account::{AccountCode, AccountDelta, AccountId, PartialAccount};
 use miden_objects::assembly::debuginfo::Location;

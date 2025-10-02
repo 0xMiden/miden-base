@@ -162,7 +162,7 @@ mod tests {
     use miden_processor::utils::{Deserializable, Serializable};
 
     use super::{Account, AccountStorageMode, AccountType, AuthScheme, create_basic_wallet};
-    use crate::account::auth::PublicKeyCommitment;
+    use miden_objects::account::PublicKeyCommitment;
     use crate::account::wallets::BasicWallet;
 
     #[test]

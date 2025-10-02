@@ -1,6 +1,6 @@
 use alloc::vec::Vec;
 
-use crate::account::auth::PublicKeyCommitment;
+use miden_objects::account::PublicKeyCommitment;
 
 /// Defines authentication schemes available to standard and faucet accounts.
 pub enum AuthScheme {

@@ -7,8 +7,8 @@ use miden_lib::account::auth::{
     AuthRpoFalcon512Acl,
     AuthRpoFalcon512AclConfig,
     AuthRpoFalcon512Multisig,
-    PublicKeyCommitment,
 };
+use miden_objects::account::PublicKeyCommitment;
 use miden_lib::testing::account_component::{ConditionalAuthComponent, IncrNonceAuthComponent};
 use miden_objects::Word;
 use miden_objects::account::{AccountComponent, AuthSecretKey};
@@ -60,8 +60,7 @@ impl Auth {
             Auth::BasicAuth => {
                 let mut rng = ChaCha20Rng::from_seed(Default::default());
                 let sec_key = SecretKey::with_rng(&mut rng);
-                let pub_key =
-                    miden_lib::account::auth::PublicKeyCommitment::from(sec_key.public_key());
+                let pub_key = PublicKeyCommitment::from(sec_key.public_key());
 
                 let component = AuthRpoFalcon512::new(pub_key).into();
                 let authenticator = BasicAuthenticator::<ChaCha20Rng>::new_with_rng(

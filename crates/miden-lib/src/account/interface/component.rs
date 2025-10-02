@@ -7,7 +7,7 @@ use miden_objects::note::PartialNote;
 use miden_objects::{Felt, FieldElement, Word};
 
 use crate::AuthScheme;
-use crate::account::auth::PublicKeyCommitment;
+use miden_objects::account::PublicKeyCommitment;
 use crate::account::components::WellKnownComponent;
 use crate::account::interface::AccountInterfaceError;
 
