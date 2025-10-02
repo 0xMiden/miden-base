@@ -31,7 +31,6 @@ use miden_objects::account::{
     AccountProcedureInfo,
     AccountStorage,
     AccountStorageMode,
-    PartialAccount,
     StorageSlot,
 };
 use miden_objects::assembly::DefaultSourceManager;
@@ -43,7 +42,6 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET,
 };
 use miden_objects::testing::storage::STORAGE_LEAVES_2;
-use miden_objects::transaction::AccountInputs;
 use miden_objects::{FieldElement, Word, ZERO};
 use miden_processor::fast::ExecutionOutput;
 use miden_processor::{AdviceInputs, Felt};

@@ -1,5 +1,4 @@
 use alloc::sync::Arc;
-use alloc::vec::Vec;
 
 use anyhow::Context;
 use assert_matches::assert_matches;
@@ -630,7 +629,7 @@ async fn execute_tx_view_script() -> anyhow::Result<()> {
         .with_source_manager(source_manager);
 
     let stack_outputs = executor
-        .execute_tx_view_script(account_id, block_ref, tx_script, advice_inputs, Vec::default())
+        .execute_tx_view_script(account_id, block_ref, tx_script, advice_inputs)
         .await?;
 
     assert_eq!(stack_outputs[..3], [Felt::new(7), Felt::new(2), ONE]);
