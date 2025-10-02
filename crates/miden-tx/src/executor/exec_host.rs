@@ -280,6 +280,8 @@ where
         map_root: Word,
         map_key: Word,
     ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
+        std::println!("request map key {map_key} for account {current_account_id}");
+
         let storage_map_witness = self
             .base_host
             .store()

@@ -69,7 +69,8 @@ impl TransactionAdviceInputs {
         }
 
         // --- foreign account injection --------------------------------------
-        inputs.add_foreign_accounts(tx_args.foreign_account_inputs())?;
+        // TODO: Remove?
+        // inputs.add_foreign_accounts(tx_args.foreign_account_inputs())?;
 
         // any extra user-supplied advice
         inputs.extend(tx_args.advice_inputs().clone());

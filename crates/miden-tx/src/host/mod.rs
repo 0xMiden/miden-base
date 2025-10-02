@@ -246,6 +246,8 @@ where
 
         let transaction_event = TransactionEvent::try_from(event_id).map_err(EventError::from)?;
 
+        std::println!("{} -> {}", transaction_event, transaction_event.event_id());
+
         // Privileged events can only be emitted from the root context.
         if process.ctx() != ContextId::root() && transaction_event.is_privileged() {
             return Err(Box::new(TransactionEventError::NotRootContext(transaction_event)));

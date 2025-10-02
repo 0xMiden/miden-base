@@ -712,6 +712,19 @@ impl MockChain {
     }
 
     /// Gets foreign account inputs to execute FPI transactions.
+    pub fn get_full_foreign_account_inputs(
+        &self,
+        account_id: AccountId,
+    ) -> anyhow::Result<(Account, AccountWitness)> {
+        let account = self.committed_account(account_id)?.clone();
+
+        let account_witness = self.account_tree().open(account_id);
+        assert_eq!(account_witness.state_commitment(), account.commitment());
+
+        Ok((account, account_witness))
+    }
+
+    /// Gets foreign account inputs to execute FPI transactions.
     pub fn get_foreign_account_inputs(
         &self,
         account_id: AccountId,

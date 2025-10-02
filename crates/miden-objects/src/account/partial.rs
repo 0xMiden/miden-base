@@ -3,8 +3,8 @@ use alloc::string::ToString;
 use miden_core::utils::{Deserializable, Serializable};
 use miden_core::{Felt, ZERO};
 
-use super::{Account, AccountCode, AccountId, PartialStorage};
-use crate::account::{hash_account, validate_account_seed};
+use super::{Account, AccountCode, AccountId, PartialStorage, StorageSlot};
+use crate::account::{PartialStorageMap, hash_account, validate_account_seed};
 use crate::asset::PartialVault;
 use crate::utils::serde::DeserializationError;
 use crate::{AccountError, Word};
@@ -170,12 +170,32 @@ impl From<&Account> for PartialAccount {
     /// Constructs a [`PartialAccount`] from the provided account with an empty seed, assuming it is
     /// an existing account.
     fn from(account: &Account) -> Self {
+        let partial_storage = if account.is_new() {
+            PartialStorage::from(account.storage())
+        } else {
+            let storage_maps = account.storage().slots().iter().filter_map(|slot| match slot {
+                StorageSlot::Value(_) => None,
+                StorageSlot::Map(storage_map) => {
+                    let mut partial_storage_map = PartialStorageMap::default();
+                    let key = Word::empty();
+                    let witness = storage_map.open(&key);
+                    partial_storage_map
+                        .add(witness)
+                        .expect("adding the first proof should never error");
+                    Some(partial_storage_map)
+                },
+            });
+
+            PartialStorage::new(account.storage().to_header(), storage_maps)
+                .expect("partial storage should be internally consistent")
+        };
+
         Self::new(
             account.id(),
             account.nonce(),
             account.code().clone(),
-            account.storage().into(),
-            account.vault().into(),
+            partial_storage,
+            PartialVault::from(account.vault()),
             account.seed(),
         )
         .expect("account should ensure that seed is valid for account")

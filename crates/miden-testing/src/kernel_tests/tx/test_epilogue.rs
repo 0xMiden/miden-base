@@ -16,8 +16,10 @@ use miden_lib::transaction::memory::{
 };
 use miden_lib::transaction::{EXPIRATION_BLOCK_ELEMENT_IDX, TransactionKernel};
 use miden_lib::utils::ScriptBuilder;
+use miden_objects::assembly::diagnostics::reporting::PrintDiagnostic;
 use miden_objects::Word;
 use miden_objects::account::{Account, AccountDelta, AccountStorageDelta, AccountVaultDelta};
+use miden_objects::assembly::diagnostics::miette;
 use miden_objects::asset::{Asset, AssetVault, FungibleAsset};
 use miden_objects::note::{NoteTag, NoteType};
 use miden_objects::testing::account_id::{
@@ -445,7 +447,9 @@ fn test_no_expiration_delta_set() -> anyhow::Result<()> {
     end
     ";
 
-    let exec_output = &tx_context.execute_code(code_template)?;
+    let exec_output = &tx_context
+        .execute_code(code_template)
+        .map_err(|err| anyhow::anyhow!(PrintDiagnostic::new(err).to_string()))?;
 
     // Default value should be equal to u32::MAX, set in the prologue
     assert_eq!(

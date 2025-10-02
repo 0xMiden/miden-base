@@ -63,6 +63,9 @@ impl<'store> MockHost<'store> {
                 &TransactionEvent::AccountPushProcedureIndex,
                 &TransactionEvent::LinkMapSetEvent,
                 &TransactionEvent::LinkMapGetEvent,
+                // TODO: It should be possible to remove this after implementing
+                // https://github.com/0xMiden/miden-base/issues/1852.
+                &TransactionEvent::EpilogueBeforeTxFeeRemovedFromAccount
             ]
             .map(TransactionEvent::event_id),
         );
