@@ -143,11 +143,11 @@ impl PartialVault {
 
 impl From<&AssetVault> for PartialVault {
     fn from(vault: &AssetVault) -> Self {
-        // Construct a partial vault that tracks the empty word, but none of the assets
-        // that are actually in the asset tree. That way, the partial vault has the same
-        // root as the full vault, but will not add any relevant merkle paths to the
-        // merkle store, which will test lazy loading of assets.
         let mut partial_vault = PartialVault::default();
+
+        // Construct a partial vault that tracks the empty word, but none of the assets that are
+        // actually in the asset tree. That way, the partial vault has the same root as the full
+        // vault. This is the most minimal and correct partial vault we can build.
         partial_vault
             .add(vault.open(Word::empty()))
             .expect("adding the first proof should never fail");

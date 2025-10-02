@@ -3,8 +3,8 @@ use alloc::string::ToString;
 use miden_core::utils::{Deserializable, Serializable};
 use miden_core::{Felt, ZERO};
 
-use super::{Account, AccountCode, AccountId, PartialStorage, StorageSlot};
-use crate::account::{PartialStorageMap, hash_account, validate_account_seed};
+use super::{Account, AccountCode, AccountId, PartialStorage};
+use crate::account::{hash_account, validate_account_seed};
 use crate::asset::PartialVault;
 use crate::utils::serde::DeserializationError;
 use crate::{AccountError, Word};
@@ -167,27 +167,25 @@ impl PartialAccount {
 }
 
 impl From<&Account> for PartialAccount {
-    /// Constructs a [`PartialAccount`] from the provided account with an empty seed, assuming it is
-    /// an existing account.
+    /// Constructs a [`PartialAccount`] from the provided account.
+    ///
+    /// The behavior is different whether the [`Account::is_new`] or not:
+    /// - For new accounts, the storage is tracked in full. This is because transactions that create
+    ///   accounts need the full state.
+    /// - For existing accounts, the storage is tracked minimally, i.e. the minimal necessary data
+    ///   is included.
+    ///
+    /// In both cases, the asset vault is minimally tracked.
+    ///
+    /// For precise control over how an account is converted to a partial account, use
+    /// [`PartialAccount::new`].
     fn from(account: &Account) -> Self {
         let partial_storage = if account.is_new() {
-            PartialStorage::from(account.storage())
+            // This is somewhat expensive, but it allows us to do this conversion from &Account and
+            // it penalizes only the rare case (new accounts).
+            PartialStorage::new_full(account.storage.clone())
         } else {
-            let storage_maps = account.storage().slots().iter().filter_map(|slot| match slot {
-                StorageSlot::Value(_) => None,
-                StorageSlot::Map(storage_map) => {
-                    let mut partial_storage_map = PartialStorageMap::default();
-                    let key = Word::empty();
-                    let witness = storage_map.open(&key);
-                    partial_storage_map
-                        .add(witness)
-                        .expect("adding the first proof should never error");
-                    Some(partial_storage_map)
-                },
-            });
-
-            PartialStorage::new(account.storage().to_header(), storage_maps)
-                .expect("partial storage should be internally consistent")
+            PartialStorage::new_minimal(account.storage())
         };
 
         Self::new(
