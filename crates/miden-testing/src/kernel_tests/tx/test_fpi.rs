@@ -5,7 +5,6 @@ use std::string::ToString;
 
 use miden_lib::errors::tx_kernel_errors::{
     ERR_FOREIGN_ACCOUNT_CONTEXT_AGAINST_NATIVE_ACCOUNT,
-    ERR_FOREIGN_ACCOUNT_INVALID_COMMITMENT,
     ERR_FOREIGN_ACCOUNT_MAX_NUMBER_EXCEEDED,
 };
 use miden_lib::testing::account_component::MockAccountComponent;
@@ -31,7 +30,6 @@ use miden_objects::account::{
     AccountProcedureInfo,
     AccountStorage,
     AccountStorageMode,
-    PartialAccount,
     StorageSlot,
 };
 use miden_objects::assembly::DefaultSourceManager;
@@ -43,8 +41,7 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET,
 };
 use miden_objects::testing::storage::STORAGE_LEAVES_2;
-use miden_objects::transaction::AccountInputs;
-use miden_objects::{FieldElement, Word, ZERO};
+use miden_objects::{Word, ZERO};
 use miden_processor::fast::ExecutionOutput;
 use miden_processor::{AdviceInputs, Felt};
 use miden_tx::LocalTransactionProver;
@@ -52,7 +49,7 @@ use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 
 use crate::kernel_tests::tx::ExecutionOutputExt;
-use crate::{Auth, MockChainBuilder, assert_execution_error, assert_transaction_executor_error};
+use crate::{Auth, MockChainBuilder, assert_transaction_executor_error};
 
 // SIMPLE FPI TESTS
 // ================================================================================================
@@ -759,7 +756,8 @@ fn foreign_account_can_get_balance_and_presence_of_asset() -> anyhow::Result<()>
         .with_dynamically_linked_library(foreign_account_component.library())?
         .compile_tx_script(code)?;
 
-    let foreign_account_inputs = mock_chain.get_full_foreign_account_inputs(foreign_account.id())?;
+    let foreign_account_inputs =
+        mock_chain.get_full_foreign_account_inputs(foreign_account.id())?;
 
     mock_chain
         .build_tx_context(native_account.id(), &[], &[])?
@@ -1735,7 +1733,8 @@ fn test_get_item_init_and_get_map_item_init_with_foreign_account() -> anyhow::Re
             .build()?;
     mock_chain.prove_next_block()?;
 
-    let foreign_account_inputs = mock_chain.get_full_foreign_account_inputs(foreign_account.id())?;
+    let foreign_account_inputs =
+        mock_chain.get_full_foreign_account_inputs(foreign_account.id())?;
 
     let code = format!(
         "

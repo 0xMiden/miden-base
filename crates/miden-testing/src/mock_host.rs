@@ -65,7 +65,7 @@ impl<'store> MockHost<'store> {
                 &TransactionEvent::LinkMapGetEvent,
                 // TODO: It should be possible to remove this after implementing
                 // https://github.com/0xMiden/miden-base/issues/1852.
-                &TransactionEvent::EpilogueBeforeTxFeeRemovedFromAccount
+                &TransactionEvent::EpilogueBeforeTxFeeRemovedFromAccount,
             ]
             .map(TransactionEvent::event_id),
         );
@@ -115,8 +115,10 @@ impl<'store> AsyncHost for MockHost<'store> {
         async move {
             // If the host should handle the event, delegate to the tx executor host.
             if self.handled_events.contains(&event_id) {
+                std::println!("mock host handles event {event_id}",);
                 self.exec_host.on_event(process).await
             } else {
+                std::println!("mock host skipping event {event_id}",);
                 Ok(Vec::new())
             }
         }
