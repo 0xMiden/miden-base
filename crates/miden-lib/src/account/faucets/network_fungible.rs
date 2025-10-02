@@ -2,6 +2,7 @@ use miden_objects::account::{
     Account,
     AccountBuilder,
     AccountComponent,
+    AccountId,
     AccountStorage,
     AccountStorageMode,
     AccountType,
@@ -60,7 +61,7 @@ static NETWORK_FUNGIBLE_FAUCET_BURN: LazyLock<Word> = LazyLock::new(|| {
 ///
 /// This component supports accounts of type [`AccountType::FungibleFaucet`].
 ///
-/// Unlike [`BasicFungibleFaucet`], this component uses two storage slots:
+/// Unlike [`super::BasicFungibleFaucet`], this component uses two storage slots:
 /// - First slot: Token metadata `[max_supply, decimals, token_symbol, 0]`
 /// - Second slot: Owner account ID as a single Word
 ///
@@ -96,7 +97,7 @@ impl NetworkFungibleFaucet {
         symbol: TokenSymbol,
         decimals: u8,
         max_supply: Felt,
-        owner_account_id: Word,
+        owner_account_id: AccountId,
     ) -> Result<Self, FungibleFaucetError> {
         // First check that the metadata is valid.
         if decimals > Self::MAX_DECIMALS {
@@ -111,11 +112,20 @@ impl NetworkFungibleFaucet {
             });
         }
 
+        // Convert AccountId to Word representation for storage
+        let owner_account_id_word: Word = [
+            Felt::new(0),
+            Felt::new(0),
+            Felt::new(owner_account_id.suffix().as_int()),
+            owner_account_id.prefix().as_felt(),
+        ]
+        .into();
+
         Ok(Self {
             symbol,
             decimals,
             max_supply,
-            owner_account_id,
+            owner_account_id: owner_account_id_word,
         })
     }
 
@@ -159,12 +169,14 @@ impl NetworkFungibleFaucet {
                     }
                 })?;
 
-                return NetworkFungibleFaucet::new(
-                    token_symbol,
-                    decimals,
-                    max_supply,
-                    owner_account_id,
-                );
+                // Convert the Word back to AccountId for the constructor
+                // The owner_account_id Word is stored as [0, 0, suffix, prefix]
+                let prefix_felt = owner_account_id[3];
+                let suffix_felt = owner_account_id[2];
+                let account_id = AccountId::try_from([prefix_felt, suffix_felt])
+                    .map_err(|_| FungibleFaucetError::InvalidStorageOffset(*offset + 1))?;
+
+                return NetworkFungibleFaucet::new(token_symbol, decimals, max_supply, account_id);
             }
         }
 
@@ -273,7 +285,7 @@ pub fn create_network_fungible_faucet(
     symbol: TokenSymbol,
     decimals: u8,
     max_supply: Felt,
-    owner_account_id: Word,
+    owner_account_id: AccountId,
     account_storage_mode: AccountStorageMode,
     auth_scheme: AuthScheme,
 ) -> Result<Account, FungibleFaucetError> {

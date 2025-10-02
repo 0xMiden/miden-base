@@ -298,7 +298,7 @@ impl MockChainBuilder {
         auth_method: Auth,
         token_symbol: &str,
         max_supply: u64,
-        owner_account_id: Word,
+        owner_account_id: AccountId,
         total_issuance: Option<u64>,
     ) -> anyhow::Result<Account> {
         let token_symbol = TokenSymbol::new(token_symbol).context("invalid argument")?;

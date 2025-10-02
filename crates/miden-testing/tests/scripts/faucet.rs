@@ -298,18 +298,11 @@ fn network_faucet_mint() -> anyhow::Result<()> {
         AccountStorageMode::Private,
     );
 
-    let owner_account_id_config: Word = [
-        Felt::new(0),
-        Felt::new(0),
-        Felt::new(faucet_owner_account_id.suffix().into()),
-        Felt::new(faucet_owner_account_id.prefix().into()),
-    ]
-    .into();
     let faucet = builder.add_existing_network_faucet(
         Auth::IncrNonce,
         "NET",
         200,
-        owner_account_id_config,
+        faucet_owner_account_id,
         Some(50),
     )?;
 
@@ -317,8 +310,11 @@ fn network_faucet_mint() -> anyhow::Result<()> {
     // storage slot offset will be 2. Check that max_supply at the word's index 0 is 200.
     assert_eq!(faucet.storage().get_item(1).unwrap()[0], Felt::new(200));
 
-    // Check that the creator account ID is stored in slot 3 (second storage slot of the component)
-    assert_eq!(faucet.storage().get_item(2).unwrap(), owner_account_id_config);
+    // Check that the creator account ID is stored in slot 2 (second storage slot of the component)
+    // The owner_account_id is stored as Word [0, 0, suffix, prefix]
+    let stored_owner_id = faucet.storage().get_item(2).unwrap();
+    assert_eq!(stored_owner_id[3], faucet_owner_account_id.prefix().as_felt());
+    assert_eq!(stored_owner_id[2], Felt::new(faucet_owner_account_id.suffix().as_int()));
 
     // Check that the faucet reserved slot has been correctly initialized.
     // The already issued amount should be 50.
@@ -397,18 +393,11 @@ fn network_faucet_burn() -> anyhow::Result<()> {
         AccountStorageMode::Private,
     );
 
-    let owner_account_id_config: Word = [
-        Felt::new(0),
-        Felt::new(0),
-        Felt::new(faucet_owner_account_id.suffix().into()),
-        Felt::new(faucet_owner_account_id.prefix().into()),
-    ]
-    .into();
     let faucet = builder.add_existing_network_faucet(
         Auth::IncrNonce,
         "NET",
         200,
-        owner_account_id_config,
+        faucet_owner_account_id,
         Some(100),
     )?;
 
