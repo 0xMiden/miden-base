@@ -1,0 +1,11 @@
+#! Re-exports the distribute procedure from the network fungible faucet in the miden library.
+#!
+#! Inputs: [amount, tag, aux, note_type, execution_hint, RECIPIENT]
+#! Outputs: [note_idx]
+export.::miden::contracts::faucets::network_fungible::distribute
+
+#! Re-exports the burn procedure from the network fungible faucet in the miden library.
+#!
+#! Inputs: []
+#! Outputs: [ASSET]
+export.::miden::contracts::faucets::network_fungible::burn
