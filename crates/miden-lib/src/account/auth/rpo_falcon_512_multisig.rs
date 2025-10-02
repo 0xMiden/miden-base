@@ -37,8 +37,7 @@ impl Default for AuthRpoFalcon512MultisigConfig {
 /// - Slot 0(value): [threshold, num_approvers, 0, 0]
 /// - Slot 1(map): A map with approver public keys (index -> pubkey)
 /// - Slot 2(map): A map which stores executed transactions
-/// - Slot 3(map): A map which stores procedure roots from the procedure threshold map
-/// - Slot 4(map): A map which stores procedure thresholds from the procedure threshold map
+/// - Slot 3(map): A map which stores procedure thresholds (PROC_ROOT -> threshold)
 ///
 /// This component supports all account types.
 #[derive(Debug)]
@@ -112,27 +111,16 @@ impl From<AuthRpoFalcon512Multisig> for AccountComponent {
         let executed_transactions = StorageMap::default();
         storage_slots.push(StorageSlot::Map(executed_transactions));
 
-        // Slot 3: A map which stores procedure roots from the procedure threshold map
+        // Slot 3: A map which stores procedure thresholds (PROC_ROOT -> threshold)
         let proc_threshold_roots = StorageMap::with_entries(
             multisig
                 .config
                 .proc_threshold_map
                 .iter()
-                .enumerate()
-                .map(|(i, (proc_root, _))| (Word::from([i as u32, 0, 0, 0]), *proc_root)),
+                .map(|(proc_root, threshold)| (*proc_root, Word::from([*threshold, 0, 0, 0]))),
         )
         .unwrap();
         storage_slots.push(StorageSlot::Map(proc_threshold_roots));
-
-        // Slot 4: A map which stores procedure thresholds from the procedure threshold map
-        let proc_threshold_map =
-            StorageMap::with_entries(multisig.config.proc_threshold_map.iter().enumerate().map(
-                |(i, (_, threshold))| {
-                    (Word::from([i as u32, 0, 0, 0]), Word::from([*threshold, 0, 0, 0]))
-                },
-            ))
-            .unwrap();
-        storage_slots.push(StorageSlot::Map(proc_threshold_map));
 
         AccountComponent::new(rpo_falcon_512_multisig_library(), storage_slots)
             .expect("Multisig auth component should satisfy the requirements of a valid account component")
