@@ -298,12 +298,13 @@ export.auth_tx_rpo_falcon512_multisig.1
 
     # ------ Checking threshold is >= num_verified_signatures ------
 
-    # initialize transaction_threshold = threshold
-    # iterate through all n account procedures
-    # for all entries with a 1, check if it corresponds to a procedure in the config's LenientProcedure list
-    # if it does, get the threshold of that LenientProcedure. Call it current_threshold
-    # if current_threshold < transaction_threshold, set transaction_threshold = current_threshold
-    # if not, break* and revert back to the default_threshold
+    # 1. initialize transaction_threshold = 0
+    # 2. iterate through all account procedures
+    #   a. check if the procedure was called during the transaction
+    #   b. if called, check if this procedure was included in the proc_threshold_map
+    #   c. if included, get its proc_threshold
+    #   d. if proc_threshold > transaction_threshold, set transaction_threshold = proc_threshold
+    # 3. if transaction_threshold == 0 at the end, revert to using default_threshold
 
     movup.5
     # => [default_threshold, num_verified_signatures, TX_SUMMARY_COMMITMENT]

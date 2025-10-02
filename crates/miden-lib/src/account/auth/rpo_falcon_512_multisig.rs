@@ -88,12 +88,12 @@ impl From<AuthRpoFalcon512Multisig> for AccountComponent {
     fn from(multisig: AuthRpoFalcon512Multisig) -> Self {
         let mut storage_slots = Vec::with_capacity(3);
 
-        // Slot 0: [threshold, num_approvers, num_procedure_thresholds, 0]
+        // Slot 0: [threshold, num_approvers, 0, 0]
         let num_approvers = multisig.approvers.len() as u32;
         storage_slots.push(StorageSlot::Value(Word::from([
             multisig.threshold,
             num_approvers,
-            multisig.config.proc_threshold_map.len() as u32,
+            0,
             0,
         ])));
 
