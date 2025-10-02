@@ -1194,7 +1194,6 @@ fn test_get_init_balance_addition() -> anyhow::Result<()> {
 
             # assert final balance is correct
             push.{final_balance}
-
             assert_eq.err="final balance is incorrect"
             # => [faucet_id_prefix, faucet_id_suffix]
 
@@ -1211,7 +1210,6 @@ fn test_get_init_balance_addition() -> anyhow::Result<()> {
         prefix = faucet_existing_asset.prefix().as_felt(),
         final_balance =
             initial_balance + fungible_asset_for_note_existing.unwrap_fungible().amount(),
-        initial_balance = initial_balance
     );
 
     let tx_script = ScriptBuilder::default().compile_tx_script(add_existing_source)?;
@@ -1265,7 +1263,6 @@ fn test_get_init_balance_addition() -> anyhow::Result<()> {
         suffix = faucet_new_asset.suffix(),
         prefix = faucet_new_asset.prefix().as_felt(),
         final_balance = initial_balance + fungible_asset_for_note_new.unwrap_fungible().amount(),
-        initial_balance = initial_balance
     );
 
     let tx_script = ScriptBuilder::default().compile_tx_script(add_new_source)?;
@@ -1372,7 +1369,7 @@ fn test_get_init_balance_subtraction() -> anyhow::Result<()> {
             exec.create_note
             # => [note_idx]
 
-            push.{REMOVED_ASSET}              # asset_1
+            push.{REMOVED_ASSET}
             # => [ASSET, note_idx]
 
             exec.move_asset_to_note dropw drop
@@ -1410,7 +1407,6 @@ fn test_get_init_balance_subtraction() -> anyhow::Result<()> {
         prefix = faucet_existing_asset.prefix().as_felt(),
         final_balance =
             initial_balance - fungible_asset_for_note_existing.unwrap_fungible().amount(),
-        initial_balance = initial_balance
     );
 
     let tx_script = ScriptBuilder::default().compile_tx_script(remove_existing_source)?;
