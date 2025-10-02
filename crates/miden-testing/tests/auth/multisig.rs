@@ -77,11 +77,12 @@ fn create_multisig_account(
     threshold: u32,
     public_keys: &[PublicKey],
     asset_amount: u64,
+    proc_threshold_map: Vec<(Word, u32)>,
 ) -> anyhow::Result<Account> {
     let approvers: Vec<_> = public_keys.iter().map(|pk| pk.to_commitment()).collect();
 
     let multisig_account = AccountBuilder::new([0; 32])
-        .with_auth_component(Auth::Multisig { threshold, approvers })
+        .with_auth_component(Auth::Multisig { threshold, approvers, proc_threshold_map })
         .with_component(BasicWallet)
         .account_type(AccountType::RegularAccountUpdatableCode)
         .storage_mode(AccountStorageMode::Public)
@@ -111,7 +112,8 @@ async fn test_multisig_2_of_2_with_note_creation() -> anyhow::Result<()> {
 
     // Create multisig account
     let multisig_starting_balance = 10u64;
-    let mut multisig_account = create_multisig_account(2, &public_keys, multisig_starting_balance)?;
+    let mut multisig_account =
+        create_multisig_account(2, &public_keys, multisig_starting_balance, vec![])?;
 
     let output_note_asset = FungibleAsset::mock(0);
 
@@ -196,7 +198,7 @@ async fn test_multisig_2_of_4_all_signer_combinations() -> anyhow::Result<()> {
     let (_secret_keys, public_keys, authenticators) = setup_keys_and_authenticators(4, 4)?;
 
     // Create multisig account with 4 approvers but threshold of 2
-    let multisig_account = create_multisig_account(2, &public_keys, 10)?;
+    let multisig_account = create_multisig_account(2, &public_keys, 10, vec![])?;
 
     let mut mock_chain = MockChainBuilder::with_accounts([multisig_account.clone()])
         .unwrap()
@@ -274,7 +276,7 @@ async fn test_multisig_replay_protection() -> anyhow::Result<()> {
     let (_secret_keys, public_keys, authenticators) = setup_keys_and_authenticators(3, 2)?;
 
     // Create 2/3 multisig account
-    let multisig_account = create_multisig_account(2, &public_keys, 20)?;
+    let multisig_account = create_multisig_account(2, &public_keys, 20, vec![])?;
 
     let mut mock_chain = MockChainBuilder::with_accounts([multisig_account.clone()])
         .unwrap()
@@ -350,7 +352,7 @@ async fn test_multisig_replay_protection() -> anyhow::Result<()> {
 async fn test_multisig_update_signers() -> anyhow::Result<()> {
     let (_secret_keys, public_keys, authenticators) = setup_keys_and_authenticators(2, 2)?;
 
-    let multisig_account = create_multisig_account(2, &public_keys, 10)?;
+    let multisig_account = create_multisig_account(2, &public_keys, 10, vec![])?;
 
     // SECTION 1: Execute a transaction script to update signers and threshold
     // ================================================================================
@@ -620,7 +622,7 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
 async fn test_multisig_update_signers_remove_owner() -> anyhow::Result<()> {
     // Setup 5 original owners with threshold 4
     let (_secret_keys, public_keys, authenticators) = setup_keys_and_authenticators(5, 5)?;
-    let multisig_account = create_multisig_account(4, &public_keys, 10)?;
+    let multisig_account = create_multisig_account(4, &public_keys, 10, vec![])?;
 
     // Build mock chain
     let mock_chain_builder = MockChainBuilder::with_accounts([multisig_account.clone()]).unwrap();
@@ -791,7 +793,7 @@ async fn test_multisig_new_approvers_cannot_sign_before_update() -> anyhow::Resu
 
     let (_secret_keys, public_keys, _authenticators) = setup_keys_and_authenticators(2, 2)?;
 
-    let multisig_account = create_multisig_account(2, &public_keys, 10)?;
+    let multisig_account = create_multisig_account(2, &public_keys, 10, vec![])?;
 
     let mock_chain = MockChainBuilder::with_accounts([multisig_account.clone()])
         .unwrap()
@@ -903,6 +905,68 @@ async fn test_multisig_new_approvers_cannot_sign_before_update() -> anyhow::Resu
         result.is_err(),
         "Transaction should fail when signed by unauthorized new approvers"
     );
+
+    Ok(())
+}
+
+/// Tests that 1-of-2 approvers can consume a note.
+///
+/// This test verifies that a multisig account with 2 approvers and threshold 2, but a procedure
+/// threshold of 1, can consume a note when only one approver signs the transaction.
+#[tokio::test]
+async fn test_multisig_note_consumption_one_approver() -> anyhow::Result<()> {
+    // Setup keys and authenticators
+    let (_secret_keys, public_keys, authenticators) = setup_keys_and_authenticators(2, 2)?;
+
+    let proc_threshold_map = vec![(BasicWallet::receive_asset_digest(), 1)];
+
+    // Create multisig account
+    let multisig_starting_balance = 10u64;
+    let multisig_account =
+        create_multisig_account(2, &public_keys, multisig_starting_balance, proc_threshold_map)?;
+
+    // 1. create a mock note from some random account
+    let mut mock_chain_builder =
+        MockChainBuilder::with_accounts([multisig_account.clone()]).unwrap();
+
+    let note = mock_chain_builder.add_p2id_note(
+        multisig_account.id(),
+        multisig_account.id(),
+        &[FungibleAsset::mock(1)],
+        NoteType::Public,
+    )?;
+
+    let mock_chain = mock_chain_builder.build()?;
+
+    // 2. consume without signatures
+    let salt = Word::from([Felt::new(1); 4]);
+    let tx_context = mock_chain
+        .build_tx_context(multisig_account.id(), &[note.id()], &[])?
+        .auth_args(salt)
+        .build()?;
+
+    let tx_summary = match tx_context.execute().await.unwrap_err() {
+        TransactionExecutorError::Unauthorized(tx_summary) => tx_summary,
+        error => panic!("expected abort with tx summary: {error:?}"),
+    };
+
+    // 3. get signature from one approver
+    let msg = tx_summary.as_ref().to_commitment();
+    let tx_summary_signing = SigningInputs::TransactionSummary(tx_summary.clone());
+    let sig = authenticators[0]
+        .get_signature(public_keys[0].to_commitment(), &tx_summary_signing)
+        .await?;
+
+    // 4. execute with signature
+    let tx_context = mock_chain
+        .build_tx_context(multisig_account.id(), &[note.id()], &[])?
+        .add_signature(public_keys[0].clone(), msg, sig)
+        .auth_args(salt)
+        .build()?
+        .execute()
+        .await;
+
+    assert!(tx_context.is_ok());
 
     Ok(())
 }
