@@ -884,7 +884,7 @@ fn generate_event_file_content(events: &BTreeMap<String, String>) -> Result<Stri
         writeln!(&mut output).into_diagnostic()?;
 
         writeln!(&mut output, r###"
-pub use alloc::collections::BTreeMap;
+use alloc::collections::BTreeMap;
 
 pub(crate) static EVENT_NAME_LUT: ::miden_objects::utils::sync::LazyLock<BTreeMap<u64, &'static str>> =
     ::miden_objects::utils::sync::LazyLock::new(|| {{
