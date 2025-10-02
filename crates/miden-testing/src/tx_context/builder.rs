@@ -163,7 +163,7 @@ impl TransactionContextBuilder {
         inputs: impl IntoIterator<Item = (Account, AccountWitness)>,
     ) -> Self {
         self.foreign_account_inputs.extend(
-            inputs.into_iter().map(|account_inputs| (account_inputs.0.id(), account_inputs)),
+            inputs.into_iter().map(|(account, witness)| (account.id(), (account, witness))),
         );
         self
     }

@@ -338,8 +338,8 @@ impl DataStore for TransactionContext {
                     .slots()
                     .iter()
                     .find_map(|slot| match slot {
-                      StorageSlot::Map(storage_map) if  storage_map.root() == map_root => {Some(storage_map)},
-                      _ => None,
+                        StorageSlot::Map(storage_map) if storage_map.root() == map_root => {Some(storage_map)},
+                        _ => None,
                     })
                     .ok_or_else(|| {
                         DataStoreError::other(format!(
