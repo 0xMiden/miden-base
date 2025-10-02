@@ -79,9 +79,9 @@ proc.assert_new_tx
     # => []
 end
 
-#! Remove old owner public keys from the owner public key mapping.
+#! Remove old approver public keys from the approver public key mapping.
 #!
-#! This procedure cleans up the storage by removing public keys of owners that are no longer
+#! This procedure cleans up the storage by removing public keys of approvers that are no longer
 #! part of the multisig configuration. This procedure assumes that init_num_of_approvers and
 #! new_num_of_approvers are u32 values.
 #!
@@ -129,7 +129,7 @@ proc.cleanup_pubkey_mapping
     # => []
 end
 
-#! Update threshold config and add / remove owners
+#! Update threshold config and add / remove approvers
 #!
 #! Inputs:
 #!   Operand stack: [MULTISIG_CONFIG_HASH, pad(12)]
@@ -276,7 +276,7 @@ export.auth_tx_rpo_falcon512_multisig
     exec.auth::hash_tx_summary
     # => [TX_SUMMARY_COMMITMENT]
 
-    # ------ Verifying owner signatures ------
+    # ------ Verifying approver signatures ------
 
     push.THRESHOLD_CONFIG_SLOT
     # => [index, TX_SUMMARY_COMMITMENT]
