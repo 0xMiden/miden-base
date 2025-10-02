@@ -65,7 +65,7 @@ use crate::{Auth, MockChain, TransactionContextBuilder};
 
 /// Tests that executing a transaction with a foreign account whose inputs are stale fails.
 #[test]
-#[ignore = "TODO: this is hard to test with lazy loading"]
+#[ignore = "TODO: should we reenable the check that this tests?"]
 fn transaction_with_stale_foreign_account_inputs_fails() -> anyhow::Result<()> {
     // Create a chain with an account
     let mut builder = MockChain::builder();

@@ -5,6 +5,7 @@ use std::string::ToString;
 
 use miden_lib::errors::tx_kernel_errors::{
     ERR_FOREIGN_ACCOUNT_CONTEXT_AGAINST_NATIVE_ACCOUNT,
+    ERR_FOREIGN_ACCOUNT_INVALID_COMMITMENT,
     ERR_FOREIGN_ACCOUNT_MAX_NUMBER_EXCEEDED,
 };
 use miden_lib::testing::account_component::MockAccountComponent;
@@ -30,6 +31,7 @@ use miden_objects::account::{
     AccountProcedureInfo,
     AccountStorage,
     AccountStorageMode,
+    PartialAccount,
     StorageSlot,
 };
 use miden_objects::assembly::DefaultSourceManager;
@@ -41,7 +43,8 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET,
 };
 use miden_objects::testing::storage::STORAGE_LEAVES_2;
-use miden_objects::{Word, ZERO};
+use miden_objects::transaction::AccountInputs;
+use miden_objects::{FieldElement, Word, ZERO};
 use miden_processor::fast::ExecutionOutput;
 use miden_processor::{AdviceInputs, Felt};
 use miden_tx::LocalTransactionProver;
@@ -49,7 +52,7 @@ use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 
 use crate::kernel_tests::tx::ExecutionOutputExt;
-use crate::{Auth, MockChainBuilder, assert_transaction_executor_error};
+use crate::{Auth, MockChainBuilder, assert_execution_error, assert_transaction_executor_error};
 
 // SIMPLE FPI TESTS
 // ================================================================================================
@@ -1275,7 +1278,6 @@ fn test_nested_fpi_native_account_invocation() -> anyhow::Result<()> {
     Ok(())
 }
 
-/*
 /// Test that providing an account whose commitment does not match the one in the account tree
 /// results in an error.
 #[test]
@@ -1322,33 +1324,19 @@ fn test_fpi_stale_account() -> anyhow::Result<()> {
         .storage_mut()
         .set_item(0, Word::from([Felt::ONE, Felt::ONE, Felt::ONE, Felt::ONE]))?;
 
-    // Place the modified account in the advice provider, which will cause the commitment mismatch.
-    let foreign_account_inputs = mock_chain
-        .get_foreign_account_inputs(foreign_account.id())
+    // We pass the modified foreign account with a witness that is valid against the ref block. This
+    // means the foreign account's commitment does not match the commitment that the account witness
+    // proves inclusion for.
+    let (_foreign_account, foreign_account_witness) = mock_chain
+        .get_full_foreign_account_inputs(foreign_account.id())
         .expect("failed to get foreign account inputs");
-
-    // We want to create a mixed ForeignAccountInputs because we want to have a valid account
-    // witness against the ref block, but have newer account data (ie, a new state). Otherwise,
-    // any non-validity of the account witness is caught in
-    // TransactionExecutor::execute_transaction() (see `test_fpi_anchoring_validations()` for
-    // context on this check)
-    let overridden_partial_accounts = PartialAccount::new(
-        foreign_account.id(),
-        foreign_account.nonce(),
-        foreign_account.code().clone(),
-        foreign_account.storage().into(),
-        foreign_account.vault().into(),
-        None,
-    )?;
-    let overridden_foreign_account_inputs =
-        AccountInputs::new(overridden_partial_accounts, foreign_account_inputs.witness().clone());
 
     // The account tree from which the transaction inputs are fetched here has the state from the
     // original unmodified foreign account. This should result in the foreign account's proof to be
     // invalid for this account tree root.
     let tx_context = mock_chain
         .build_tx_context(native_account, &[], &[])?
-        .foreign_accounts(vec![overridden_foreign_account_inputs])
+        .foreign_accounts(vec![(foreign_account.clone(), foreign_account_witness)])
         .build()?;
 
     // Attempt to run FPI.
@@ -1369,7 +1357,7 @@ fn test_fpi_stale_account() -> anyhow::Result<()> {
           # => [pad(16)]
 
           # push some hash onto the stack - for this test it does not matter
-          padw
+          push.[1,2,3,4]
           # => [FOREIGN_PROC_ROOT, pad(16)]
 
           # push the foreign account ID
@@ -1385,9 +1373,9 @@ fn test_fpi_stale_account() -> anyhow::Result<()> {
 
     let result = tx_context.execute_code(&code).map(|_| ());
     assert_execution_error!(result, ERR_FOREIGN_ACCOUNT_INVALID_COMMITMENT);
+
     Ok(())
 }
-*/
 
 /// This test checks that our `miden::get_id` and `miden::get_native_id` procedures return IDs of
 /// the current and native account respectively while being called from the foreign account.
