@@ -1,13 +1,11 @@
 use alloc::borrow::ToOwned;
 use alloc::collections::{BTreeMap, BTreeSet};
-use alloc::string::ToString;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::{Account, AccountId, PartialAccount, StorageMapWitness, StorageSlot};
 use miden_objects::assembly::debuginfo::{SourceLanguage, Uri};
-use miden_objects::assembly::diagnostics::reporting::PrintDiagnostic;
 use miden_objects::assembly::{SourceManager, SourceManagerSync};
 use miden_objects::asset::AssetWitness;
 use miden_objects::block::{AccountWitness, BlockHeader, BlockNumber};
@@ -68,11 +66,6 @@ pub struct TransactionContext {
 }
 
 impl TransactionContext {
-    pub fn execute_code2(&self, code: &str) -> anyhow::Result<ExecutionOutput> {
-        self.execute_code(code)
-            .map_err(|err| anyhow::anyhow!(PrintDiagnostic::new(err).to_string()))
-    }
-
     /// Executes arbitrary code within the context of a mocked transaction environment and returns
     /// the resulting [`ExecutionOutput`].
     ///
