@@ -20,7 +20,6 @@ use miden_objects::block::{
 };
 use miden_objects::note::{Note, NoteHeader, NoteId, NoteInclusionProof, Nullifier};
 use miden_objects::transaction::{
-    AccountInputs,
     ExecutedTransaction,
     InputNote,
     InputNotes,
@@ -712,18 +711,19 @@ impl MockChain {
     }
 
     /// Gets foreign account inputs to execute FPI transactions.
-    pub fn get_foreign_account_inputs(
+    ///
+    /// Only used internally and so does not need to be public.
+    #[cfg(test)]
+    pub(crate) fn get_foreign_account_inputs(
         &self,
         account_id: AccountId,
-    ) -> anyhow::Result<AccountInputs> {
-        let account = self.committed_account(account_id)?;
+    ) -> anyhow::Result<(Account, AccountWitness)> {
+        let account = self.committed_account(account_id)?.clone();
 
         let account_witness = self.account_tree().open(account_id);
         assert_eq!(account_witness.state_commitment(), account.commitment());
 
-        let partial_account = PartialAccount::from(account);
-
-        Ok(AccountInputs::new(partial_account, account_witness))
+        Ok((account, account_witness))
     }
 
     /// Gets the inputs for a block for the provided batches.

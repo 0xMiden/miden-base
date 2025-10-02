@@ -142,10 +142,17 @@ impl PartialVault {
 }
 
 impl From<&AssetVault> for PartialVault {
-    fn from(value: &AssetVault) -> Self {
-        let vault_partial_smt = value.asset_tree.clone().into();
+    fn from(vault: &AssetVault) -> Self {
+        let mut partial_vault = PartialVault::default();
 
-        PartialVault { partial_smt: vault_partial_smt }
+        // Construct a partial vault that tracks the empty word, but none of the assets that are
+        // actually in the asset tree. That way, the partial vault has the same root as the full
+        // vault. This is the most minimal and correct partial vault we can build.
+        partial_vault
+            .add(vault.open(Word::empty()))
+            .expect("adding the first proof should never fail");
+
+        partial_vault
     }
 }
 

@@ -1,15 +1,13 @@
 use alloc::collections::BTreeSet;
 use alloc::sync::Arc;
-use alloc::vec::Vec;
 
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::AccountId;
 use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::assembly::debuginfo::SourceManagerSync;
 use miden_objects::asset::Asset;
-use miden_objects::block::{BlockHeader, BlockNumber};
+use miden_objects::block::BlockNumber;
 use miden_objects::transaction::{
-    AccountInputs,
     ExecutedTransaction,
     InputNote,
     InputNotes,
@@ -181,8 +179,7 @@ where
         notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
     ) -> Result<ExecutedTransaction, TransactionExecutorError> {
-        let tx_inputs =
-            self.prepare_transaction_inputs(account_id, block_ref, notes, &tx_args).await?;
+        let tx_inputs = self.prepare_transaction_inputs(account_id, block_ref, notes).await?;
 
         let (mut host, stack_inputs, advice_inputs) =
             self.prepare_transaction(&tx_inputs, &tx_args, None).await?;
@@ -223,14 +220,11 @@ where
         block_ref: BlockNumber,
         tx_script: TransactionScript,
         advice_inputs: AdviceInputs,
-        foreign_account_inputs: Vec<AccountInputs>,
     ) -> Result<[Felt; 16], TransactionExecutorError> {
-        let tx_args = TransactionArgs::new(Default::default(), foreign_account_inputs)
-            .with_tx_script(tx_script);
+        let tx_args = TransactionArgs::default().with_tx_script(tx_script);
 
         let notes = InputNotes::default();
-        let tx_inputs =
-            self.prepare_transaction_inputs(account_id, block_ref, notes, &tx_args).await?;
+        let tx_inputs = self.prepare_transaction_inputs(account_id, block_ref, notes).await?;
 
         let (mut host, stack_inputs, advice_inputs) =
             self.prepare_transaction(&tx_inputs, &tx_args, Some(advice_inputs)).await?;
@@ -259,7 +253,6 @@ where
         account_id: AccountId,
         block_ref: BlockNumber,
         input_notes: InputNotes<InputNote>,
-        tx_args: &TransactionArgs,
     ) -> Result<TransactionInputs, TransactionExecutorError> {
         let mut ref_blocks = validate_input_notes(&input_notes, block_ref)?;
         ref_blocks.insert(block_ref);
@@ -269,8 +262,6 @@ where
             .get_transaction_inputs(account_id, ref_blocks)
             .await
             .map_err(TransactionExecutorError::FetchTransactionInputsFailed)?;
-
-        validate_account_inputs(tx_args, &ref_block)?;
 
         let tx_inputs = TransactionInputs::new(account, ref_block, mmr, input_notes)
             .map_err(TransactionExecutorError::InvalidTransactionInputs)?;
@@ -404,25 +395,6 @@ fn build_executed_transaction<STORE: DataStore + Sync, AUTH: TransactionAuthenti
         advice_inputs,
         tx_progress.into(),
     ))
-}
-
-/// Validates the account inputs against the reference block header.
-fn validate_account_inputs(
-    tx_args: &TransactionArgs,
-    ref_block: &BlockHeader,
-) -> Result<(), TransactionExecutorError> {
-    // Validate that foreign account inputs are anchored in the reference block
-    for foreign_account in tx_args.foreign_account_inputs() {
-        let computed_account_root = foreign_account.compute_account_root().map_err(|err| {
-            TransactionExecutorError::InvalidAccountWitness(foreign_account.id(), err)
-        })?;
-        if computed_account_root != ref_block.account_root() {
-            return Err(TransactionExecutorError::ForeignAccountNotAnchoredInReference(
-                foreign_account.id(),
-            ));
-        }
-    }
-    Ok(())
 }
 
 /// Validates that input notes were not created after the reference block.
