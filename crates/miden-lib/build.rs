@@ -859,7 +859,9 @@ fn extract_event_definitions_from_file(
 }
 
 /// Generate the content of the transaction_events.rs file
-fn generate_event_file_content(events: &BTreeMap<String, String>) -> std::io::Result<String> {
+fn generate_event_file_content(
+    events: &BTreeMap<String, String>,
+) -> std::result::Result<String, std::fmt::Error> {
     use std::fmt::Write;
 
     let mut output = String::new();
