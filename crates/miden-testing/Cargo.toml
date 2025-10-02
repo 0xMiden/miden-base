@@ -10,7 +10,7 @@ name                   = "miden-testing"
 readme                 = "README.md"
 repository.workspace   = true
 rust-version.workspace = true
-version                = "0.11.4"
+version                = "0.11.5"
 
 [features]
 std = ["miden-lib/std"]
