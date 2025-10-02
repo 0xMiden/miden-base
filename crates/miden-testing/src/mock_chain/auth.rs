@@ -8,10 +8,9 @@ use miden_lib::account::auth::{
     AuthRpoFalcon512AclConfig,
     AuthRpoFalcon512Multisig,
 };
-use miden_objects::account::PublicKeyCommitment;
 use miden_lib::testing::account_component::{ConditionalAuthComponent, IncrNonceAuthComponent};
 use miden_objects::Word;
-use miden_objects::account::{AccountComponent, AuthSecretKey};
+use miden_objects::account::{AccountComponent, AuthSecretKey, PublicKeyCommitment};
 use miden_objects::crypto::dsa::rpo_falcon512::SecretKey;
 use miden_objects::testing::noop_auth_component::NoopAuthComponent;
 use miden_tx::auth::BasicAuthenticator;

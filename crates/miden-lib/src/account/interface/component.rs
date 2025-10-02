@@ -2,12 +2,16 @@ use alloc::collections::BTreeMap;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
-use miden_objects::account::{AccountId, AccountProcedureInfo, AccountStorage};
+use miden_objects::account::{
+    AccountId,
+    AccountProcedureInfo,
+    AccountStorage,
+    PublicKeyCommitment,
+};
 use miden_objects::note::PartialNote;
 use miden_objects::{Felt, FieldElement, Word};
 
 use crate::AuthScheme;
-use miden_objects::account::PublicKeyCommitment;
 use crate::account::components::WellKnownComponent;
 use crate::account::interface::AccountInterfaceError;
 

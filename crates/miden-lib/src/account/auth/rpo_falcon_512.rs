@@ -1,6 +1,5 @@
-use miden_objects::account::{AccountComponent, StorageSlot};
+use miden_objects::account::{AccountComponent, PublicKeyCommitment, StorageSlot};
 
-use miden_objects::account::PublicKeyCommitment;
 use crate::account::components::rpo_falcon_512_library;
 
 /// An [`AccountComponent`] implementing the RpoFalcon512 signature scheme for authentication of

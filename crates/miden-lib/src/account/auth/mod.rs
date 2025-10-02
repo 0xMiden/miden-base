@@ -1,7 +1,6 @@
 mod no_auth;
 pub use no_auth::NoAuth;
 
-
 mod rpo_falcon_512;
 pub use rpo_falcon_512::AuthRpoFalcon512;
 
