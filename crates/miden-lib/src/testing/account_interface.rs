@@ -13,5 +13,6 @@ pub fn get_public_keys_from_account(account: &Account) -> Vec<Word> {
         .auth()
         .iter()
         .flat_map(|auth| auth.get_public_key_commitments())
+        .map(Word::from)
         .collect()
 }
