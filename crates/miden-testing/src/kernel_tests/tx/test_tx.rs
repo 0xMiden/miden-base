@@ -76,7 +76,7 @@ fn transaction_with_stale_foreign_account_inputs_fails() -> anyhow::Result<()> {
 
     // Retrieve inputs which will become stale
     let inputs = mock_chain
-        .get_full_foreign_account_inputs(foreign_account.id())
+        .get_foreign_account_inputs(foreign_account.id())
         .expect("failed to get foreign account inputs");
 
     // Create a new unrelated account to modify the account tree.

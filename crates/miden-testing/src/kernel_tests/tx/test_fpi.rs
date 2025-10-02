@@ -109,7 +109,7 @@ fn test_fpi_memory_single_account() -> anyhow::Result<()> {
     mock_chain.prove_next_block()?;
 
     let fpi_inputs = mock_chain
-        .get_full_foreign_account_inputs(foreign_account.id())
+        .get_foreign_account_inputs(foreign_account.id())
         .expect("failed to get foreign account inputs");
 
     let tx_context = mock_chain
@@ -371,11 +371,11 @@ fn test_fpi_memory_two_accounts() -> anyhow::Result<()> {
     .build()?;
     mock_chain.prove_next_block()?;
     let foreign_account_inputs_1 = mock_chain
-        .get_full_foreign_account_inputs(foreign_account_1.id())
+        .get_foreign_account_inputs(foreign_account_1.id())
         .expect("failed to get foreign account inputs");
 
     let foreign_account_inputs_2 = mock_chain
-        .get_full_foreign_account_inputs(foreign_account_2.id())
+        .get_foreign_account_inputs(foreign_account_2.id())
         .expect("failed to get foreign account inputs");
 
     let tx_context = mock_chain
@@ -635,7 +635,7 @@ fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
         .compile_tx_script(code)?;
 
     let foreign_account_inputs = mock_chain
-        .get_full_foreign_account_inputs(foreign_account.id())
+        .get_foreign_account_inputs(foreign_account.id())
         .expect("failed to get foreign account inputs");
 
     mock_chain
@@ -757,8 +757,7 @@ fn foreign_account_can_get_balance_and_presence_of_asset() -> anyhow::Result<()>
         .with_dynamically_linked_library(foreign_account_component.library())?
         .compile_tx_script(code)?;
 
-    let foreign_account_inputs =
-        mock_chain.get_full_foreign_account_inputs(foreign_account.id())?;
+    let foreign_account_inputs = mock_chain.get_foreign_account_inputs(foreign_account.id())?;
 
     mock_chain
         .build_tx_context(native_account.id(), &[], &[])?
@@ -913,10 +912,10 @@ fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
     mock_chain.prove_next_block()?;
     let foreign_account_inputs = vec![
         mock_chain
-            .get_full_foreign_account_inputs(first_foreign_account.id())
+            .get_foreign_account_inputs(first_foreign_account.id())
             .expect("failed to get foreign account inputs"),
         mock_chain
-            .get_full_foreign_account_inputs(second_foreign_account.id())
+            .get_foreign_account_inputs(second_foreign_account.id())
             .expect("failed to get foreign account inputs"),
     ];
 
@@ -1112,7 +1111,7 @@ fn test_nested_fpi_stack_overflow() {
 
             let foreign_accounts: Vec<_> = foreign_accounts
                 .iter()
-                .map(|acc| mock_chain.get_full_foreign_account_inputs(acc.id())
+                .map(|acc| mock_chain.get_foreign_account_inputs(acc.id())
                     .expect("failed to get foreign account inputs"))
                 .collect();
 
@@ -1251,7 +1250,7 @@ fn test_nested_fpi_native_account_invocation() -> anyhow::Result<()> {
         .compile_tx_script(code)?;
 
     let foreign_account_inputs = mock_chain
-        .get_full_foreign_account_inputs(foreign_account.id())
+        .get_foreign_account_inputs(foreign_account.id())
         .expect("failed to get foreign account inputs");
 
     // push the hash of the native procedure and native account IDs to the advice stack to be able
@@ -1326,7 +1325,7 @@ fn test_fpi_stale_account() -> anyhow::Result<()> {
     // means the foreign account's commitment does not match the commitment that the account witness
     // proves inclusion for.
     let (_foreign_account, foreign_account_witness) = mock_chain
-        .get_full_foreign_account_inputs(foreign_account.id())
+        .get_foreign_account_inputs(foreign_account.id())
         .expect("failed to get foreign account inputs");
 
     // The account tree from which the transaction inputs are fetched here has the state from the
@@ -1473,7 +1472,7 @@ fn test_fpi_get_account_id() -> anyhow::Result<()> {
         .compile_tx_script(code)?;
 
     let foreign_account_inputs = mock_chain
-        .get_full_foreign_account_inputs(foreign_account.id())
+        .get_foreign_account_inputs(foreign_account.id())
         .expect("failed to get foreign account inputs");
 
     mock_chain
@@ -1584,7 +1583,7 @@ fn test_fpi_get_account_nonce() -> anyhow::Result<()> {
     let tx_script = ScriptBuilder::default().compile_tx_script(code)?;
 
     let foreign_account_inputs = mock_chain
-        .get_full_foreign_account_inputs(foreign_account.id())
+        .get_foreign_account_inputs(foreign_account.id())
         .expect("failed to get foreign account inputs");
 
     mock_chain
@@ -1719,8 +1718,7 @@ fn test_get_item_init_and_get_map_item_init_with_foreign_account() -> anyhow::Re
             .build()?;
     mock_chain.prove_next_block()?;
 
-    let foreign_account_inputs =
-        mock_chain.get_full_foreign_account_inputs(foreign_account.id())?;
+    let foreign_account_inputs = mock_chain.get_foreign_account_inputs(foreign_account.id())?;
 
     let code = format!(
         "
