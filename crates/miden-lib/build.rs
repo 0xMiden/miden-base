@@ -824,8 +824,8 @@ fn extract_event_definitions_from_file(
     let regex = Regex::new(r#"const\.(\w+)=event\("([^"]+)"\)"#).unwrap();
 
     for capture in regex.captures_iter(file_contents) {
-        let Some(const_name) = capture.get(1) else { continue };
-        let Some(event_path) = capture.get(2) else { continue };
+        let const_name = capture.get(1).expect("const name should be captured");
+        let event_path = capture.get(2).expect("event path should be captured");
 
         let event_path = event_path.as_str();
         let const_name = const_name.as_str();
@@ -837,12 +837,7 @@ fn extract_event_definitions_from_file(
                 const_name.to_owned()
             };
 
-        if let Some((first, _)) = event_path.split_once("::") {
-            if first != "miden" {
-                // i.e. stdlib we don't want to have here
-            }
-        } else {
-            // path too short
+        if !event_path.starts_with("miden::") {
             continue;
         }
 
@@ -892,8 +887,7 @@ pub(crate) static EVENT_NAME_LUT: ::miden_objects::utils::sync::LazyLock<BTreeMa
 "###).into_diagnostic()?;
 
         for (event_path, const_name) in events {
-            let full_name = format!("miden::{}", event_path);
-            writeln!(&mut output, "        ({}, \"{}\"),", const_name, full_name)
+            writeln!(&mut output, "        ({}, \"{}\"),", const_name, event_path)
                 .into_diagnostic()?;
         }
 
