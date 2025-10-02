@@ -3,6 +3,8 @@ name: Trigger Aggregator Docs Rebuild
 on:
   push:
     branches: [next]
+    paths:
+      - "docs/**"
 
 jobs:
   notify:
