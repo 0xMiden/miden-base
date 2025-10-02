@@ -33,4 +33,4 @@ serde_json  = { features = ["preserve_order"], package = "serde_json", version =
 tokio       = { features = ["macros", "rt"], workspace = true }
 
 [dev-dependencies]
-criterion = { features = ["html_reports"], version = "0.6" }
+criterion = { features = ["async_tokio", "html_reports"], version = "0.6" }
