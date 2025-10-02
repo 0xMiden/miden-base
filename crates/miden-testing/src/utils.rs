@@ -2,7 +2,7 @@ use alloc::string::String;
 use alloc::vec::Vec;
 
 use miden_lib::testing::note::NoteBuilder;
-use miden_lib::transaction::{TransactionKernel, memory};
+use miden_lib::transaction::TransactionKernel;
 use miden_objects::Word;
 use miden_objects::account::AccountId;
 use miden_objects::asset::Asset;
@@ -62,13 +62,6 @@ macro_rules! assert_transaction_executor_error {
             Err(err) => panic!("Execution error was not as expected: {err}"),
         }
     };
-}
-
-// TEST UTILITIES
-// ================================================================================================
-
-pub fn input_note_data_ptr(note_idx: u32) -> memory::MemoryAddress {
-    memory::INPUT_NOTE_DATA_SECTION_OFFSET + note_idx * memory::NOTE_MEM_SIZE
 }
 
 // HELPER NOTES

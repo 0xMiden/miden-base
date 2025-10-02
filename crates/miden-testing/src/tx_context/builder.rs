@@ -71,8 +71,8 @@ pub type MockAuthenticator = BasicAuthenticator<ChaCha20Rng>;
 /// end
 /// ";
 ///
-/// let process = tx_context.execute_code(code).unwrap();
-/// assert_eq!(process.stack.get(0), Felt::new(5),);
+/// let exec_output = tx_context.execute_code(code).unwrap();
+/// assert_eq!(exec_output.stack.get(0).unwrap(), &Felt::new(5));
 /// ```
 pub struct TransactionContextBuilder {
     source_manager: Arc<dyn SourceManagerSync>,
@@ -221,6 +221,14 @@ impl TransactionContextBuilder {
         self
     }
 
+    /// Disables lazy loading.
+    ///
+    /// This is the opposite of [`Self::enable_lazy_loading`] - see its docs for details.
+    pub fn disable_lazy_loading(mut self) -> Self {
+        self.is_lazy_loading_enabled = false;
+        self
+    }
+
     /// Extend the note arguments map with the provided one.
     pub fn extend_note_args(mut self, note_args: BTreeMap<NoteId, Word>) -> Self {
         self.note_args.extend(note_args);
@@ -347,6 +355,7 @@ impl TransactionContextBuilder {
             authenticator: self.authenticator,
             advice_inputs: self.advice_inputs,
             source_manager: self.source_manager,
+            is_lazy_loading_enabled: self.is_lazy_loading_enabled,
         })
     }
 }

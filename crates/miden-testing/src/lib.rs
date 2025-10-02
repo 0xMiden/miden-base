@@ -21,7 +21,6 @@ pub use tx_context::{TransactionContext, TransactionContextBuilder};
 
 pub mod executor;
 
-pub use mock_host::MockHost;
 mod mock_host;
 
 pub mod utils;

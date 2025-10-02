@@ -7,8 +7,8 @@ use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{Account, AccountBuilder};
 use miden_objects::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE;
+use miden_objects::{Felt, ONE};
 
-use super::{Felt, ONE};
 use crate::{Auth, TransactionContextBuilder, assert_transaction_executor_error};
 
 pub const ERR_WRONG_ARGS: MasmError = MasmError::from_static_str(ERR_WRONG_ARGS_MSG);

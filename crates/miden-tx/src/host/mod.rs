@@ -5,7 +5,7 @@ use account_delta_tracker::AccountDeltaTracker;
 mod storage_delta_tracker;
 
 mod link_map;
-pub use link_map::LinkMap;
+pub use link_map::{LinkMap, MemoryViewer};
 
 mod account_procedures;
 pub use account_procedures::AccountProcedureIndexMap;

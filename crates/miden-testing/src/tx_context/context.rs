@@ -1,6 +1,5 @@
 use alloc::borrow::ToOwned;
 use alloc::collections::{BTreeMap, BTreeSet};
-use alloc::rc::Rc;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
@@ -20,27 +19,30 @@ use miden_objects::transaction::{
     TransactionArgs,
     TransactionInputs,
 };
+use miden_processor::fast::ExecutionOutput;
 use miden_processor::{
     AdviceInputs,
     ExecutionError,
     FutureMaybeSend,
     MastForest,
     MastForestStore,
-    Process,
     Word,
 };
-use miden_tx::auth::BasicAuthenticator;
+use miden_tx::auth::{BasicAuthenticator, UnreachableAuth};
 use miden_tx::{
+    AccountProcedureIndexMap,
     DataStore,
     DataStoreError,
+    ScriptMastForestStore,
     TransactionExecutor,
     TransactionExecutorError,
+    TransactionExecutorHost,
     TransactionMastStore,
 };
 use rand_chacha::ChaCha20Rng;
 
-use crate::MockHost;
 use crate::executor::CodeExecutor;
+use crate::mock_host::MockHost;
 use crate::tx_context::builder::MockAuthenticator;
 
 // TRANSACTION CONTEXT
@@ -57,23 +59,25 @@ pub struct TransactionContext {
     pub(super) tx_args: TransactionArgs,
     pub(super) tx_inputs: TransactionInputs,
     pub(super) mast_store: TransactionMastStore,
-    pub(super) advice_inputs: AdviceInputs,
     pub(super) authenticator: Option<MockAuthenticator>,
     pub(super) source_manager: Arc<dyn SourceManagerSync>,
+    pub(super) advice_inputs: AdviceInputs,
+    pub(super) is_lazy_loading_enabled: bool,
 }
 
 impl TransactionContext {
     /// Executes arbitrary code within the context of a mocked transaction environment and returns
-    /// the resulting [Process].
+    /// the resulting [`ExecutionOutput`].
     ///
     /// The code is compiled with the assembler returned by
     /// [`TransactionKernel::with_mock_libraries`] and executed with advice inputs constructed from
-    /// the data stored in the context. The program is run on a [`MockHost`] which is loaded with
-    /// the procedures exposed by the transaction kernel, and also individual kernel functions (not
-    /// normally exposed).
+    /// the data stored in the context. The program is run on a modified [`TransactionExecutorHost`]
+    /// which is loaded with the procedures exposed by the transaction kernel, and also
+    /// individual kernel functions (not normally exposed).
     ///
     /// To improve the error message quality, convert the returned [`ExecutionError`] into a
-    /// [`Report`](miden_objects::assembly::diagnostics::Report).
+    /// [`Report`](miden_objects::assembly::diagnostics::Report) or use `?` with
+    /// [`miden_objects::assembly::diagnostics::Result`].
     ///
     /// # Errors
     ///
@@ -82,7 +86,7 @@ impl TransactionContext {
     /// # Panics
     ///
     /// - If the provided `code` is not a valid program.
-    pub fn execute_code(&self, code: &str) -> Result<Process, ExecutionError> {
+    pub fn execute_code(&self, code: &str) -> Result<ExecutionOutput, ExecutionError> {
         let (stack_inputs, advice_inputs) = TransactionKernel::prepare_inputs(
             &self.tx_inputs,
             &self.tx_args,
@@ -104,27 +108,44 @@ impl TransactionContext {
             .assemble_program(virtual_source_file)
             .expect("code was not well formed");
 
-        let mast_store = Rc::new(TransactionMastStore::new());
+        // Load transaction kernel and the program into the mast forest in self.
+        // Note that native and foreign account's code are already loaded by the
+        // TransactionContextBuilder.
+        self.mast_store.insert(TransactionKernel::library().mast_forest().clone());
+        self.mast_store.insert(program.mast_forest().clone());
 
-        mast_store.insert(program.mast_forest().clone());
-        mast_store.insert(TransactionKernel::library().mast_forest().clone());
-        mast_store.load_account_code(self.account().code());
-        for acc_inputs in self.tx_args.foreign_account_inputs() {
-            mast_store.load_account_code(acc_inputs.code());
-        }
+        let account_procedure_idx_map = AccountProcedureIndexMap::new(
+            [self.tx_inputs().account().code()]
+                .into_iter()
+                .chain(self.tx_args().foreign_account_inputs().iter().map(|inputs| inputs.code())),
+        )
+        .expect("constructing account procedure index map should work");
+
+        // The ref block is unimportant when using execute_code so we can set it to any value.
+        let ref_block = self.tx_inputs().block_header().block_num();
+
+        let exec_host = TransactionExecutorHost::<'_, '_, _, UnreachableAuth>::new(
+            &PartialAccount::from(self.account()),
+            self.tx_inputs().input_notes().clone(),
+            self,
+            ScriptMastForestStore::default(),
+            account_procedure_idx_map,
+            None,
+            ref_block,
+            self.source_manager(),
+        );
 
         let advice_inputs = advice_inputs.into_advice_inputs();
-        CodeExecutor::new(
-            MockHost::new(
-                self.tx_inputs().account().code(),
-                mast_store,
-                self.tx_args.foreign_account_inputs(),
-            )
-            .with_source_manager(self.source_manager()),
-        )
-        .stack_inputs(stack_inputs)
-        .extend_advice_inputs(advice_inputs)
-        .execute_program(program)
+
+        let mut mock_host = MockHost::new(exec_host);
+        if self.is_lazy_loading_enabled {
+            mock_host.enable_lazy_loading()
+        }
+
+        CodeExecutor::new(mock_host)
+            .stack_inputs(stack_inputs)
+            .extend_advice_inputs(advice_inputs)
+            .execute_program(program)
     }
 
     /// Executes the transaction through a [TransactionExecutor]
