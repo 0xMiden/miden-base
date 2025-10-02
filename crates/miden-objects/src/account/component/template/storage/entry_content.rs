@@ -558,7 +558,7 @@ impl MapRepresentation {
     /// Validates map keys by checking for duplicates.
     ///
     /// Because keys can be represented in a variety of ways, the `to_string()` implementation is
-    /// used to check for duplicates.  
+    /// used to check for duplicates.
     pub(crate) fn validate(&self) -> Result<(), AccountComponentTemplateError> {
         let mut seen_keys = BTreeSet::new();
         for entry in self.entries() {

@@ -241,7 +241,7 @@ async fn settle_coincidence_of_wants() -> anyhow::Result<()> {
     // Create two different assets for the swap
     let faucet0 = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET)?;
     let faucet1 = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1)?;
-    let asset_a = FungibleAsset::new(faucet0, 10_000)?.into();
+    let asset_a = FungibleAsset::new(faucet0, 10_777)?.into();
     let asset_b = FungibleAsset::new(faucet1, 10)?.into();
 
     let mut builder = MockChain::builder();

@@ -270,10 +270,16 @@ mod tests {
         let proof1 = full_tree.open(&key1);
         assert_eq!(proof0.leaf(), proof1.leaf());
 
-        let witness0 =
-            AccountWitness::new_unchecked(id0, proof0.get(&key0).unwrap(), proof0.into_parts().0);
-        let witness1 =
-            AccountWitness::new_unchecked(id1, proof1.get(&key1).unwrap(), proof1.into_parts().0);
+        let witness0 = AccountWitness::new_unchecked(
+            id0,
+            proof0.get(&key0).unwrap(),
+            proof0.into_parts().0.into(),
+        );
+        let witness1 = AccountWitness::new_unchecked(
+            id1,
+            proof1.get(&key1).unwrap(),
+            proof1.into_parts().0.into(),
+        );
 
         let mut partial_tree = PartialAccountTree::new();
         partial_tree.track_account(witness0).unwrap();

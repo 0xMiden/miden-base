@@ -148,7 +148,7 @@ fn test_transaction_prologue() -> anyhow::Result<()> {
 
     let tx_script = TransactionScript::new(mock_tx_script_program);
 
-    let note_args = [Word::from([91, 91, 91, 91u32]), Word::from([92, 92, 92, 92u32])];
+    let note_args = [Word::from([91u32; 4]), Word::from([92u32; 4])];
 
     let note_args_map = BTreeMap::from([
         (tx_context.input_notes().get_note(0).note().id(), note_args[0]),

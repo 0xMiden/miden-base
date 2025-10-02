@@ -42,7 +42,7 @@ use miden_objects::testing::account_id::{
 use miden_objects::testing::storage::STORAGE_LEAVES_2;
 use miden_objects::transaction::{ExecutedTransaction, TransactionScript};
 use miden_objects::{LexicographicWord, StarkField};
-use miden_processor::{EMPTY_WORD, ExecutionError, Word};
+use miden_processor::{EMPTY_WORD, ExecutionError, MastNodeExt, Word};
 use miden_tx::{LocalTransactionProver, TransactionExecutorError};
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
@@ -119,7 +119,7 @@ pub async fn compute_current_commitment() -> miette::Result<()> {
             # => [STORAGE_COMMITMENT1, STORAGE_COMMITMENT0]
 
             # assert that the commitment has changed
-            exec.word::eq 
+            exec.word::eq
             assertz.err="storage commitment should have been updated by compute_current_commitment"
             # => []
         end
@@ -423,8 +423,7 @@ fn test_get_map_item() -> miette::Result<()> {
             map_key = &key,
         );
 
-        let process = &tx_context.execute_code(&code)?;
-
+        let process = &mut tx_context.execute_code(&code)?;
         assert_eq!(
             value,
             process.stack.get_word(0),
@@ -432,17 +431,17 @@ fn test_get_map_item() -> miette::Result<()> {
         );
         assert_eq!(
             Word::empty(),
-            process.stack.get_word(1),
+            process.stack.get_word(4),
             "The rest of the stack must be cleared",
         );
         assert_eq!(
             Word::empty(),
-            process.stack.get_word(2),
+            process.stack.get_word(8),
             "The rest of the stack must be cleared",
         );
         assert_eq!(
             Word::empty(),
-            process.stack.get_word(3),
+            process.stack.get_word(12),
             "The rest of the stack must be cleared",
         );
     }
@@ -581,7 +580,7 @@ fn test_set_map_item() -> miette::Result<()> {
     let process = &tx_context.execute_code(&code).unwrap();
 
     let mut new_storage_map = AccountStorage::mock_map();
-    new_storage_map.insert(new_key, new_value);
+    new_storage_map.insert(new_key, new_value).unwrap();
 
     assert_eq!(
         new_storage_map.root(),
@@ -590,7 +589,7 @@ fn test_set_map_item() -> miette::Result<()> {
     );
     assert_eq!(
         storage_item.slot.value(),
-        process.stack.get_word(1),
+        process.stack.get_word(4),
         "The original value stored in the map doesn't match the expected value",
     );
 
@@ -626,8 +625,8 @@ async fn test_account_component_storage_offset() -> miette::Result<()> {
         export.foo_read
             push.0
             exec.account::get_item
-            push.1.2.3.4 
-            
+            push.1.2.3.4
+
             exec.word::eq assert
         end
     ";
@@ -646,8 +645,8 @@ async fn test_account_component_storage_offset() -> miette::Result<()> {
         export.bar_read
             push.0
             exec.account::get_item
-            push.5.6.7.8 
-            
+            push.5.6.7.8
+
             exec.word::eq assert
         end
     ";
@@ -952,7 +951,7 @@ fn test_compute_storage_commitment() -> anyhow::Result<()> {
             push.{storage_commitment_0}
             assert_eqw.err="storage commitment after the 0th slot was updated is not equal to the expected one"
 
-            # get the storage commitment once more to get the cached data and assert that this data 
+            # get the storage commitment once more to get the cached data and assert that this data
             # didn't change
             call.mock_account::compute_storage_commitment
             push.{storage_commitment_0}
@@ -1452,7 +1451,7 @@ fn test_get_map_item_init() -> miette::Result<()> {
             push.{new_key}
             push.0
             call.mock_account::get_map_item_init
-            push.0.0.0.0
+            padw
             assert_eqw.err=\"new key should have empty initial value\"
 
             dropw dropw

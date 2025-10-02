@@ -30,7 +30,7 @@ std = [
   "miden-processor/std",
   "miden-verifier/std",
 ]
-testing = ["dep:rand", "dep:rand_xoshiro", "dep:winter-rand-utils"]
+testing = ["dep:rand", "dep:rand_xoshiro", "dep:winter-rand-utils", "miden-air/testing"]
 
 [dependencies]
 # Miden dependencies
@@ -65,3 +65,6 @@ pprof          = { default-features = false, features = ["criterion", "flamegrap
 rstest         = { workspace = true }
 tempfile       = { version = "3.19" }
 winter-air     = { version = "0.13" }
+# for HashFunction/ExecutionProof::new_dummy
+color-eyre = { version = "0.5" }
+miden-air  = { features = ["std", "testing"], version = "0.18" }

@@ -42,13 +42,8 @@ impl<'process> LinkMap<'process> {
     /// Expected operand stack state before: [map_ptr, KEY, NEW_VALUE]
     /// Advice stack state after: [set_operation, entry_ptr]
     pub fn handle_set_event(process: &ProcessState<'_>) -> Result<Vec<AdviceMutation>, EventError> {
-        let map_ptr = process.get_stack_item(0);
-        let map_key = Word::from([
-            process.get_stack_item(4),
-            process.get_stack_item(3),
-            process.get_stack_item(2),
-            process.get_stack_item(1),
-        ]);
+        let map_ptr = process.get_stack_item(1);
+        let map_key = process.get_stack_word(2);
 
         let link_map = LinkMap::new(map_ptr, process);
 
@@ -65,13 +60,8 @@ impl<'process> LinkMap<'process> {
     /// Expected operand stack state before: [map_ptr, KEY]
     /// Advice stack state after: [get_operation, entry_ptr]
     pub fn handle_get_event(process: &ProcessState<'_>) -> Result<Vec<AdviceMutation>, EventError> {
-        let map_ptr = process.get_stack_item(0);
-        let map_key = Word::from([
-            process.get_stack_item(4),
-            process.get_stack_item(3),
-            process.get_stack_item(2),
-            process.get_stack_item(1),
-        ]);
+        let map_ptr = process.get_stack_item(1);
+        let map_key = process.get_stack_word(2);
 
         let link_map = LinkMap::new(map_ptr, process);
         let (get_op, entry_ptr) = link_map.compute_get_operation(LexicographicWord::from(map_key));

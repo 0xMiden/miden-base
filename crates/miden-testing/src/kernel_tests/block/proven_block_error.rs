@@ -15,7 +15,6 @@ use miden_objects::transaction::ProvenTransactionBuilder;
 use miden_objects::vm::ExecutionProof;
 use miden_objects::{AccountTreeError, NullifierTreeError, Word};
 use miden_tx::LocalTransactionProver;
-use winterfell::Proof;
 
 use crate::kernel_tests::block::utils::MockChainBlockExt;
 use crate::{Auth, MockChain, TransactionContextBuilder};
@@ -384,7 +383,7 @@ async fn proven_block_fails_on_creating_account_with_duplicate_account_id_prefix
                 genesis_block.commitment(),
                 FungibleAsset::mock(500).unwrap_fungible(),
                 BlockNumber::from(u32::MAX),
-                ExecutionProof::new(Proof::new_dummy(), Default::default()),
+                ExecutionProof::new_dummy(),
             )
             .account_update_details(AccountUpdateDetails::Private)
             .build()

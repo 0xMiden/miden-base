@@ -35,7 +35,7 @@ fn get_balance_returns_correct_amount() -> anyhow::Result<()> {
         begin
             exec.prologue::prepare_transaction
 
-            push.{suffix}.{prefix}
+            push.{suffix} push.{prefix}
             exec.account::get_balance
             # => [balance]
 
@@ -74,7 +74,7 @@ fn peek_balance_returns_correct_amount() -> anyhow::Result<()> {
             exec.prologue::prepare_transaction
 
             exec.memory::get_account_vault_root_ptr
-            push.{suffix}.{prefix}
+            push.{suffix} push.{prefix}
             # => [prefix, suffix, account_vault_root_ptr, balance]
 
             exec.asset_vault::peek_balance
@@ -110,7 +110,7 @@ fn test_get_balance_non_fungible_fails() -> anyhow::Result<()> {
 
         begin
             exec.prologue::prepare_transaction
-            push.{suffix}.{prefix}
+            push.{suffix} push.{prefix}
             exec.account::get_balance
         end
         ",

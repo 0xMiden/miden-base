@@ -7,7 +7,6 @@ use core::fmt::{self, Display};
 use miden_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
 use miden_core::{Felt, Word};
 use miden_crypto::dsa::rpo_falcon512::{self};
-use miden_crypto::word::parse_hex_string_as_word;
 use miden_processor::DeserializationError;
 use thiserror::Error;
 
@@ -42,7 +41,7 @@ pub static TEMPLATE_REGISTRY: LazyLock<TemplateRegistry> = LazyLock::new(|| {
 /// templated elements.
 ///
 /// At component instantiation, a map of names to values must be provided to dynamically
-/// replace these placeholders with the instance’s actual values.
+/// replace these placeholders with the instance's actual values.
 #[derive(Clone, Debug, Ord, PartialOrd, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(::serde::Deserialize, ::serde::Serialize))]
 #[cfg_attr(feature = "std", serde(transparent))]
@@ -56,7 +55,7 @@ impl StorageValueName {
     /// A [`StorageValueName`] serves as an identifier for storage values that are determined at
     /// instantiation time of an [AccountComponentTemplate](super::super::AccountComponentTemplate).
     ///
-    /// The key can consist of one or more segments separated by dots (`.`).  
+    /// The key can consist of one or more segments separated by dots (`.`).
     /// Each segment must be non-empty and may contain only alphanumeric characters, underscores
     /// (`_`), or hyphens (`-`).
     ///
@@ -374,20 +373,35 @@ impl TemplateFelt for TokenSymbol {
 #[error("error parsing word: {0}")]
 struct WordParseError(String);
 
+/// Pads a hex string to 64 characters (excluding the 0x prefix).
+///
+/// If the input starts with "0x" and has fewer than 64 hex characters after the prefix,
+/// it will be left-padded with zeros. Otherwise, returns the input unchanged.
+fn pad_hex_string(input: &str) -> String {
+    if input.starts_with("0x") && input.len() < 66 {
+        // 66 = "0x" + 64 hex chars
+        let hex_part = &input[2..];
+        let padding = "0".repeat(64 - hex_part.len());
+        format!("0x{}{}", padding, hex_part)
+    } else {
+        input.to_string()
+    }
+}
+
 impl TemplateWord for Word {
     fn type_name() -> TemplateType {
         TemplateType::native_word()
     }
     fn parse_word(input: &str) -> Result<Word, TemplateTypeError> {
-        parse_hex_string_as_word(input)
-            .map_err(|err| {
-                TemplateTypeError::parse(
-                    Self::type_name().as_str(),
-                    Self::type_name(),
-                    WordParseError(err.into()),
-                )
-            })
-            .map(Word::from)
+        let padded_input = pad_hex_string(input);
+
+        Word::try_from(padded_input.as_str()).map_err(|err| {
+            TemplateTypeError::parse(
+                input.to_string(), // Use original input in error
+                Self::type_name(),
+                WordParseError(err.to_string()),
+            )
+        })
     }
 }
 
@@ -396,15 +410,15 @@ impl TemplateWord for rpo_falcon512::PublicKey {
         TemplateType::new("auth::rpo_falcon512::pub_key").expect("type is well formed")
     }
     fn parse_word(input: &str) -> Result<Word, TemplateTypeError> {
-        parse_hex_string_as_word(input)
-            .map_err(|err| {
-                TemplateTypeError::parse(
-                    input.to_string(),
-                    Self::type_name(),
-                    WordParseError(err.into()),
-                )
-            })
-            .map(Word::from)
+        let padded_input = pad_hex_string(input);
+
+        Word::try_from(padded_input.as_str()).map_err(|err| {
+            TemplateTypeError::parse(
+                input.to_string(), // Use original input in error
+                Self::type_name(),
+                WordParseError(err.to_string()),
+            )
+        })
     }
 }
 

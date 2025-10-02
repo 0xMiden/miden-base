@@ -230,16 +230,16 @@ async fn storage_delta_for_map_slots() -> anyhow::Result<()> {
     let key5_final_value = Word::from([1, 2, 3, 4u32]);
 
     let mut map0 = StorageMap::new();
-    map0.insert(key0, key0_init_value);
-    map0.insert(key1, key1_init_value);
+    map0.insert(key0, key0_init_value).unwrap();
+    map0.insert(key1, key1_init_value).unwrap();
 
     let mut map1 = StorageMap::new();
-    map1.insert(key2, key2_init_value);
-    map1.insert(key3, key3_init_value);
-    map1.insert(key4, key4_init_value);
+    map1.insert(key2, key2_init_value).unwrap();
+    map1.insert(key3, key3_init_value).unwrap();
+    map1.insert(key4, key4_init_value).unwrap();
 
     let mut map2 = StorageMap::new();
-    map2.insert(key5, key5_init_value);
+    map2.insert(key5, key5_init_value).unwrap();
 
     let TestSetup { mock_chain, account_id, .. } = setup_test(
         vec![
@@ -258,47 +258,47 @@ async fn storage_delta_for_map_slots() -> anyhow::Result<()> {
     let tx_script = compile_tx_script(format!(
         "
       begin
-          push.{key0_final_value}.{key0}.0
+          push.{key0_final_value} push.{key0} push.0
           # => [index, KEY, VALUE]
           exec.set_map_item
           # => []
 
-          push.{key1_tmp_value}.{key1}.0
+          push.{key1_tmp_value} push.{key1} push.0
           # => [index, KEY, VALUE]
           exec.set_map_item
           # => []
 
-          push.{key1_final_value}.{key1}.0
+          push.{key1_final_value} push.{key1} push.0
           # => [index, KEY, VALUE]
           exec.set_map_item
           # => []
 
-          push.{key2_final_value}.{key2}.1
+          push.{key2_final_value} push.{key2} push.1
           # => [index, KEY, VALUE]
           exec.set_map_item
           # => []
 
-          push.{key3_final_value}.{key3}.1
+          push.{key3_final_value} push.{key3} push.1
           # => [index, KEY, VALUE]
           exec.set_map_item
           # => []
 
-          push.{key4_tmp_value}.{key4}.1
+          push.{key4_tmp_value} push.{key4} push.1
           # => [index, KEY, VALUE]
           exec.set_map_item
           # => []
 
-          push.{key4_final_value}.{key4}.1
+          push.{key4_final_value} push.{key4} push.1
           # => [index, KEY, VALUE]
           exec.set_map_item
           # => []
 
-          push.{key5_tmp_value}.{key5}.2
+          push.{key5_tmp_value} push.{key5} push.2
           # => [index, KEY, VALUE]
           exec.set_map_item
           # => []
 
-          push.{key5_final_value}.{key5}.2
+          push.{key5_final_value} push.{key5} push.2
           # => [index, KEY, VALUE]
           exec.set_map_item
           # => []

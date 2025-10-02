@@ -68,14 +68,14 @@ export.get_assets_info
     # => [ASSETS_COMMITMENT, num_assets, pad(11)]
 
     # clean the stack
-    swapdw dropw dropw 
+    swapdw dropw dropw
     repeat.3
         movup.5 drop
     end
     # => [ASSETS_COMMITMENT, num_assets]
 end
 
-#! Writes the assets of the output note with the specified index into memory starting at the 
+#! Writes the assets of the output note with the specified index into memory starting at the
 #! specified address.
 #!
 #! Attention: memory starting from the `dest_ptr` should have enough space to store all the assets

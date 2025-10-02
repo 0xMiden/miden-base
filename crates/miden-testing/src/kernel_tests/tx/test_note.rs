@@ -3,6 +3,7 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use anyhow::Context;
+use miden_lib::account::auth::PublicKeyCommitment;
 use miden_lib::account::wallets::BasicWallet;
 use miden_lib::errors::MasmError;
 use miden_lib::testing::note::NoteBuilder;
@@ -166,7 +167,7 @@ fn test_note_script_and_note_args() -> miette::Result<()> {
     let process = tx_context.execute_code(code).unwrap();
 
     assert_eq!(process.stack.get_word(0), note_args[0]);
-    assert_eq!(process.stack.get_word(1), note_args[1]);
+    assert_eq!(process.stack.get_word(4), note_args[1]);
 
     Ok(())
 }
@@ -214,10 +215,10 @@ fn test_build_recipient() -> anyhow::Result<()> {
 
         begin
             # put the values that will be hashed into the memory
-            push.{word_1}.{base_addr} mem_storew dropw
-            push.{word_2}.{addr_1} mem_storew dropw
-            push.{word_3}.{addr_2} mem_storew dropw
-            push.{word_4}.{addr_3} mem_storew dropw
+            push.{word_1} push.{base_addr} mem_storew dropw
+            push.{word_2} push.{addr_1} mem_storew dropw
+            push.{word_3} push.{addr_2} mem_storew dropw
+            push.{word_4} push.{addr_3} mem_storew dropw
 
             # Test with 4 values
             push.{script_root}  # SCRIPT_ROOT
@@ -303,10 +304,10 @@ fn test_compute_inputs_commitment() -> anyhow::Result<()> {
 
         begin
             # put the values that will be hashed into the memory
-            push.{word_1}.{base_addr} mem_storew dropw
-            push.{word_2}.{addr_1} mem_storew dropw
-            push.{word_3}.{addr_2} mem_storew dropw
-            push.{word_4}.{addr_3} mem_storew dropw
+            push.{word_1} push.{base_addr} mem_storew dropw
+            push.{word_2} push.{addr_1} mem_storew dropw
+            push.{word_3} push.{addr_2} mem_storew dropw
+            push.{word_4} push.{addr_3} mem_storew dropw
 
             # push the number of values and pointer to the inputs on the stack
             push.5.4000
@@ -408,7 +409,7 @@ fn test_build_metadata() -> miette::Result<()> {
 
         begin
           exec.prologue::prepare_transaction
-          push.{execution_hint}.{note_type}.{aux}.{tag}
+          push.{execution_hint} push.{note_type} push.{aux} push.{tag}
           exec.output_note::build_metadata
 
           # truncate the stack
@@ -522,8 +523,8 @@ async fn test_public_key_as_note_input() -> anyhow::Result<()> {
     let sec_key = SecretKey::with_rng(&mut rng);
     // this value will be used both as public key in the RPO component of the target account and as
     // well as the input of the input note
-    let public_key = sec_key.public_key();
-    let public_key_value: Word = public_key.into();
+    let public_key = PublicKeyCommitment::from(sec_key.public_key());
+    let public_key_value = Word::from(public_key);
 
     let (rpo_component, authenticator) = Auth::BasicAuth.build_component();
 

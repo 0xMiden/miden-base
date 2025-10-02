@@ -157,6 +157,7 @@ impl AssetVault {
     ///   the vault.
     /// - If the delta contains a non-fungible asset removal that is not stored in the vault.
     /// - If the delta contains a non-fungible asset addition that is already stored in the vault.
+    /// - The maximum number of leaves per asset is exceeded.
     pub fn apply_delta(&mut self, delta: &AccountVaultDelta) -> Result<(), AssetVaultError> {
         for (&faucet_id, &delta) in delta.fungible().iter() {
             let asset = FungibleAsset::new(faucet_id, delta.unsigned_abs())
@@ -184,6 +185,7 @@ impl AssetVault {
     /// # Errors
     /// - If the total value of two fungible assets is greater than or equal to 2^63.
     /// - If the vault already contains the same non-fungible asset.
+    /// - The maximum number of leaves per asset is exceeded.
     pub fn add_asset(&mut self, asset: Asset) -> Result<Asset, AssetVaultError> {
         Ok(match asset {
             Asset::Fungible(asset) => Asset::Fungible(self.add_fungible_asset(asset)?),
@@ -196,6 +198,7 @@ impl AssetVault {
     ///
     /// # Errors
     /// - If the total value of assets is greater than or equal to 2^63.
+    /// - The maximum number of leaves per asset is exceeded.
     fn add_fungible_asset(
         &mut self,
         asset: FungibleAsset,
@@ -208,7 +211,9 @@ impl AssetVault {
                 current.add(asset).map_err(AssetVaultError::AddFungibleAssetBalanceError)?
             },
         };
-        self.asset_tree.insert(new.vault_key(), new.into());
+        self.asset_tree
+            .insert(new.vault_key(), new.into())
+            .map_err(AssetVaultError::MaxLeafEntriesExceeded)?;
 
         // return the new asset
         Ok(new)
@@ -218,12 +223,16 @@ impl AssetVault {
     ///
     /// # Errors
     /// - If the vault already contains the same non-fungible asset.
+    /// - The maximum number of leaves per asset is exceeded.
     fn add_non_fungible_asset(
         &mut self,
         asset: NonFungibleAsset,
     ) -> Result<NonFungibleAsset, AssetVaultError> {
         // add non-fungible asset to the vault
-        let old = self.asset_tree.insert(asset.vault_key(), asset.into());
+        let old = self
+            .asset_tree
+            .insert(asset.vault_key(), asset.into())
+            .map_err(AssetVaultError::MaxLeafEntriesExceeded)?;
 
         // if the asset already exists, return an error
         if old != Smt::EMPTY_VALUE {
@@ -260,6 +269,7 @@ impl AssetVault {
     /// # Errors
     /// - The asset is not found in the vault.
     /// - The amount of the asset in the vault is less than the amount to be removed.
+    /// - The maximum number of leaves per asset is exceeded.
     fn remove_fungible_asset(
         &mut self,
         asset: FungibleAsset,
@@ -280,7 +290,9 @@ impl AssetVault {
             0 => Smt::EMPTY_VALUE,
             _ => new.into(),
         };
-        self.asset_tree.insert(new.vault_key(), value);
+        self.asset_tree
+            .insert(new.vault_key(), value)
+            .map_err(AssetVaultError::MaxLeafEntriesExceeded)?;
 
         // return the asset that was removed.
         Ok(asset)
@@ -291,12 +303,16 @@ impl AssetVault {
     ///
     /// # Errors
     /// - The non-fungible asset is not found in the vault.
+    /// - The maximum number of leaves per asset is exceeded.
     fn remove_non_fungible_asset(
         &mut self,
         asset: NonFungibleAsset,
     ) -> Result<NonFungibleAsset, AssetVaultError> {
         // remove the asset from the vault.
-        let old = self.asset_tree.insert(asset.vault_key(), Smt::EMPTY_VALUE);
+        let old = self
+            .asset_tree
+            .insert(asset.vault_key(), Smt::EMPTY_VALUE)
+            .map_err(AssetVaultError::MaxLeafEntriesExceeded)?;
 
         // return an error if the asset did not exist in the vault.
         if old == Smt::EMPTY_VALUE {

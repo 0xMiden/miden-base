@@ -145,7 +145,7 @@ fn test_fpi_memory_single_account() -> anyhow::Result<()> {
             push.{get_item_foreign_hash}
 
             # push the foreign account ID
-            push.{foreign_suffix}.{foreign_prefix}
+            push.{foreign_suffix} push.{foreign_prefix}
             # => [foreign_account_id_prefix, foreign_account_id_suffix, FOREIGN_PROC_ROOT, storage_item_index, pad(11)]
 
             exec.tx::execute_foreign_procedure
@@ -198,7 +198,7 @@ fn test_fpi_memory_single_account() -> anyhow::Result<()> {
             push.{get_map_item_foreign_hash}
 
             # push the foreign account ID
-            push.{foreign_suffix}.{foreign_prefix}
+            push.{foreign_suffix} push.{foreign_prefix}
             # => [foreign_account_id_prefix, foreign_account_id_suffix, FOREIGN_PROC_ROOT, storage_item_index, MAP_ITEM_KEY, pad(10)]
 
             exec.tx::execute_foreign_procedure
@@ -252,7 +252,7 @@ fn test_fpi_memory_single_account() -> anyhow::Result<()> {
             push.{get_item_foreign_hash}
 
             # push the foreign account ID
-            push.{foreign_suffix}.{foreign_prefix}
+            push.{foreign_suffix} push.{foreign_prefix}
             # => [foreign_account_id_prefix, foreign_account_id_suffix, FOREIGN_PROC_ROOT, storage_item_index, pad(14)]
 
             exec.tx::execute_foreign_procedure dropw
@@ -270,7 +270,7 @@ fn test_fpi_memory_single_account() -> anyhow::Result<()> {
             push.{get_item_foreign_hash}
 
             # push the foreign account ID
-            push.{foreign_suffix}.{foreign_prefix}
+            push.{foreign_suffix} push.{foreign_prefix}
             # => [foreign_account_id_prefix, foreign_account_id_suffix, FOREIGN_PROC_ROOT, storage_item_index, pad(14)]
 
             exec.tx::execute_foreign_procedure
@@ -412,7 +412,7 @@ fn test_fpi_memory_two_accounts() -> anyhow::Result<()> {
             push.{get_item_foreign_1_hash}
 
             # push the foreign account ID
-            push.{foreign_1_suffix}.{foreign_1_prefix}
+            push.{foreign_1_suffix} push.{foreign_1_prefix}
             # => [foreign_account_1_id_prefix, foreign_account_1_id_suffix, FOREIGN_PROC_ROOT, storage_item_index, pad(14)]
 
             exec.tx::execute_foreign_procedure dropw
@@ -430,7 +430,7 @@ fn test_fpi_memory_two_accounts() -> anyhow::Result<()> {
             push.{get_item_foreign_2_hash}
 
             # push the foreign account ID
-            push.{foreign_2_suffix}.{foreign_2_prefix}
+            push.{foreign_2_suffix} push.{foreign_2_prefix}
             # => [foreign_account_2_id_prefix, foreign_account_2_id_suffix, FOREIGN_PROC_ROOT, storage_item_index, pad(14)]
 
             exec.tx::execute_foreign_procedure dropw
@@ -448,7 +448,7 @@ fn test_fpi_memory_two_accounts() -> anyhow::Result<()> {
             push.{get_item_foreign_1_hash}
 
             # push the foreign account ID
-            push.{foreign_1_suffix}.{foreign_1_prefix}
+            push.{foreign_1_suffix} push.{foreign_1_prefix}
             # => [foreign_account_1_id_prefix, foreign_account_1_id_suffix, FOREIGN_PROC_ROOT, storage_item_index, pad(14)]
 
             exec.tx::execute_foreign_procedure
@@ -584,7 +584,7 @@ async fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
             procref.::foreign_account::get_item_foreign
 
             # push the foreign account ID
-            push.{foreign_suffix}.{foreign_prefix}
+            push.{foreign_suffix} push.{foreign_prefix}
             # => [foreign_account_id_prefix, foreign_account_id_suffix, FOREIGN_PROC_ROOT, storage_item_index, pad(14)]
 
             exec.tx::execute_foreign_procedure
@@ -609,7 +609,7 @@ async fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
             procref.::foreign_account::get_map_item_foreign
 
             # push the foreign account ID
-            push.{foreign_suffix}.{foreign_prefix}
+            push.{foreign_suffix} push.{foreign_prefix}
             # => [foreign_account_id_prefix, foreign_account_id_suffix, FOREIGN_PROC_ROOT, storage_item_index, MAP_ITEM_KEY, pad(10)]
 
             exec.tx::execute_foreign_procedure
@@ -669,7 +669,7 @@ async fn foreign_account_can_get_balance_and_presence_of_asset() -> anyhow::Resu
 
         export.get_asset_balance
             # get balance of first asset
-            push.{fungible_faucet_id_suffix}.{fungible_faucet_id_prefix}
+            push.{fungible_faucet_id_suffix} push.{fungible_faucet_id_prefix}
             exec.account::get_balance
             # => [balance]
 
@@ -734,7 +734,7 @@ async fn foreign_account_can_get_balance_and_presence_of_asset() -> anyhow::Resu
             procref.::foreign_account_code::get_asset_balance
 
             # push the foreign account ID
-            push.{foreign_suffix}.{foreign_prefix}
+            push.{foreign_suffix} push.{foreign_prefix}
             # => [foreign_account_id_prefix, foreign_account_id_suffix, FOREIGN_PROC_ROOT, pad(15)]
 
             exec.tx::execute_foreign_procedure
@@ -954,7 +954,7 @@ async fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
             procref.::first_foreign_account::first_account_foreign_proc
 
             # push the foreign account ID
-            push.{foreign_suffix}.{foreign_prefix}
+            push.{foreign_suffix} push.{foreign_prefix}
             # => [foreign_account_id_prefix, foreign_account_id_suffix, FOREIGN_PROC_ROOT, storage_item_index, pad(14)]
 
             exec.tx::execute_foreign_procedure
@@ -1063,7 +1063,7 @@ async fn test_nested_fpi_stack_overflow() {
                     push.{next_account_proc_hash}
 
                     # push the foreign account ID
-                    push.{next_foreign_suffix}.{next_foreign_prefix}
+                    push.{next_foreign_suffix} push.{next_foreign_prefix}
                     # => [foreign_account_id_prefix, foreign_account_id_suffix, FOREIGN_PROC_ROOT, storage_item_index, pad(14)]
 
                     exec.tx::execute_foreign_procedure
@@ -1131,7 +1131,7 @@ async fn test_nested_fpi_stack_overflow() {
                 push.{foreign_account_proc_hash}
 
                 # push the foreign account ID
-                push.{foreign_suffix}.{foreign_prefix}
+                push.{foreign_suffix} push.{foreign_prefix}
                 # => [foreign_account_id_prefix, foreign_account_id_suffix, FOREIGN_PROC_ROOT, storage_item_index, pad(14)]
 
                 exec.tx::execute_foreign_procedure
@@ -1233,7 +1233,7 @@ async fn test_nested_fpi_native_account_invocation() -> anyhow::Result<()> {
             push.{first_account_foreign_proc_hash}
 
             # push the foreign account ID
-            push.{foreign_suffix}.{foreign_prefix}
+            push.{foreign_suffix} push.{foreign_prefix}
             # => [foreign_account_id_prefix, foreign_account_id_suffix, FOREIGN_PROC_ROOT, storage_item_index, pad(14)]
 
             exec.tx::execute_foreign_procedure
@@ -1371,11 +1371,11 @@ async fn test_fpi_stale_account() -> anyhow::Result<()> {
           # => [pad(16)]
 
           # push some hash onto the stack - for this test it does not matter
-          push.0.0.0.0
+          padw
           # => [FOREIGN_PROC_ROOT, pad(16)]
 
           # push the foreign account ID
-          push.{foreign_suffix}.{foreign_prefix}
+          push.{foreign_suffix} push.{foreign_prefix}
           # => [foreign_account_id_prefix, foreign_account_id_suffix, FOREIGN_PROC_ROOT, pad(16)]
 
           exec.tx::execute_foreign_procedure
@@ -1453,7 +1453,7 @@ async fn test_fpi_get_account_id() -> anyhow::Result<()> {
             procref.::foreign_account::get_current_and_native_ids
 
             # push the foreign account ID
-            push.{foreign_suffix}.{foreign_prefix}
+            push.{foreign_suffix} push.{foreign_prefix}
             # => [foreign_account_id_prefix, foreign_account_id_suffix, FOREIGN_PROC_ROOT, pad(15)]
 
             exec.tx::execute_foreign_procedure
@@ -1461,14 +1461,14 @@ async fn test_fpi_get_account_id() -> anyhow::Result<()> {
 
             # push the expected native account ID and check that it is equal to the one returned
             # from the FPI
-            push.{expected_native_suffix}.{expected_native_prefix}
+            push.{expected_native_suffix} push.{expected_native_prefix}
             exec.account_id::is_equal
             assert.err="native account ID returned from the FPI is not equal to the expected one"
             # => [acct_id_prefix, acct_id_suffix]
 
             # push the expected foreign account ID and check that it is equal to the one returned
             # from the FPI
-            push.{foreign_suffix}.{foreign_prefix}
+            push.{foreign_suffix} push.{foreign_prefix}
             exec.account_id::is_equal
             assert.err="foreign account ID returned from the FPI is not equal to the expected one"
             # => []
@@ -1568,7 +1568,7 @@ async fn test_fpi_get_account_nonce() -> anyhow::Result<()> {
             push.{get_current_and_native_nonce_values}
 
             # push the foreign account ID
-            push.{foreign_suffix}.{foreign_prefix}
+            push.{foreign_suffix} push.{foreign_prefix}
             # => [foreign_account_id_prefix, foreign_account_id_suffix, FOREIGN_PROC_ROOT, pad(15)]
 
             exec.tx::execute_foreign_procedure
@@ -1703,7 +1703,6 @@ async fn test_get_item_init_and_get_map_item_init_with_foreign_account() -> anyh
         use.miden::account
         use.std::sys
 
-
         export.test_get_item_init
             push.0
             exec.account::get_item_init
@@ -1744,10 +1743,10 @@ async fn test_get_item_init_and_get_map_item_init_with_foreign_account() -> anyh
         begin
 
             # Test get_item_init on foreign account
-            padw padw padw push.0.0
-            push.0
+            padw padw padw push.0.0.0
+            # => [ pad(4), pad(4), pad(4), 0, 0, 0 ]
             procref.::foreign_account::test_get_item_init
-            push.{foreign_account_id_suffix}.{foreign_account_id_prefix}
+            push.{foreign_account_id_suffix} push.{foreign_account_id_prefix}
             exec.tx::execute_foreign_procedure
             push.{expected_value_slot_0}
             assert_eqw.err=\"foreign account get_item_init should work\"
@@ -1757,7 +1756,7 @@ async fn test_get_item_init_and_get_map_item_init_with_foreign_account() -> anyh
             push.{map_key}
             push.1
             procref.::foreign_account::test_get_map_item_init
-            push.{foreign_account_id_suffix}.{foreign_account_id_prefix}
+            push.{foreign_account_id_suffix} push.{foreign_account_id_prefix}
             exec.tx::execute_foreign_procedure
             push.{map_value}
             assert_eqw.err=\"foreign account get_map_item_init should work\"

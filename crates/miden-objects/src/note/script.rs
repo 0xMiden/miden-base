@@ -2,6 +2,8 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::fmt::Display;
 
+use miden_processor::MastNodeExt;
+
 use super::Felt;
 use crate::assembly::mast::{MastForest, MastNodeId};
 use crate::utils::serde::{

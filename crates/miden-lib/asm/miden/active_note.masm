@@ -15,7 +15,7 @@ const.ERR_NOTE_INVALID_NUMBER_OF_INPUTS="the specified number of note inputs doe
 # ACTIVE NOTE PROCEDURES
 # =================================================================================================
 #
-# By the "active note" notion here we assume the note which is currently being processed by the 
+# By the "active note" notion here we assume the note which is currently being processed by the
 # transaction kernel.
 
 #! Writes the assets of the active note into memory starting at the specified address.
@@ -321,7 +321,7 @@ end
 # HELPER PROCEDURES
 # =================================================================================================
 
-#! Writes the note inputs stored in the advice map to the memory specified by the provided 
+#! Writes the note inputs stored in the advice map to the memory specified by the provided
 #! destination pointer.
 #!
 #! Inputs:

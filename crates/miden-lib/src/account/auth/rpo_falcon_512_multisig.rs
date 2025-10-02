@@ -1,10 +1,13 @@
 use alloc::vec::Vec;
 
 use miden_objects::account::{AccountComponent, StorageMap, StorageSlot};
-use miden_objects::crypto::dsa::rpo_falcon512::PublicKey;
 use miden_objects::{AccountError, Word};
 
-use crate::account::components::multisig_library;
+use crate::account::auth::PublicKeyCommitment;
+use crate::account::components::rpo_falcon_512_multisig_library;
+
+// MULTISIG AUTHENTICATION COMPONENT
+// ================================================================================================
 
 /// An [`AccountComponent`] implementing a multisig based on RpoFalcon512 signatures.
 ///
@@ -19,7 +22,7 @@ use crate::account::components::multisig_library;
 #[derive(Debug)]
 pub struct AuthRpoFalcon512Multisig {
     threshold: u32,
-    approvers: Vec<PublicKey>,
+    approvers: Vec<PublicKeyCommitment>,
 }
 
 impl AuthRpoFalcon512Multisig {
@@ -28,7 +31,7 @@ impl AuthRpoFalcon512Multisig {
     ///
     /// # Errors
     /// Returns an error if threshold is 0 or greater than the number of approvers.
-    pub fn new(threshold: u32, approvers: Vec<PublicKey>) -> Result<Self, AccountError> {
+    pub fn new(threshold: u32, approvers: Vec<PublicKeyCommitment>) -> Result<Self, AccountError> {
         if threshold == 0 {
             return Err(AccountError::other("threshold must be at least 1"));
         }
@@ -70,7 +73,7 @@ impl From<AuthRpoFalcon512Multisig> for AccountComponent {
         let executed_transactions = StorageMap::default();
         storage_slots.push(StorageSlot::Map(executed_transactions));
 
-        AccountComponent::new(multisig_library(), storage_slots)
+        AccountComponent::new(rpo_falcon_512_multisig_library(), storage_slots)
             .expect("Multisig auth component should satisfy the requirements of a valid account component")
             .with_supports_all_types()
     }
@@ -90,9 +93,9 @@ mod tests {
     #[test]
     fn test_multisig_component_setup() {
         // Create test public keys
-        let pub_key_1 = PublicKey::new(Word::from([1u32, 0, 0, 0]));
-        let pub_key_2 = PublicKey::new(Word::from([2u32, 0, 0, 0]));
-        let pub_key_3 = PublicKey::new(Word::from([3u32, 0, 0, 0]));
+        let pub_key_1 = PublicKeyCommitment::from(Word::from([1u32, 0, 0, 0]));
+        let pub_key_2 = PublicKeyCommitment::from(Word::from([2u32, 0, 0, 0]));
+        let pub_key_3 = PublicKeyCommitment::from(Word::from([3u32, 0, 0, 0]));
         let approvers = vec![pub_key_1, pub_key_2, pub_key_3];
         let threshold = 2u32;
 
@@ -124,7 +127,7 @@ mod tests {
     /// Test multisig component with minimum threshold (1 of 1)
     #[test]
     fn test_multisig_component_minimum_threshold() {
-        let pub_key = PublicKey::new(Word::from([42u32, 0, 0, 0]));
+        let pub_key = PublicKeyCommitment::from(Word::from([42u32, 0, 0, 0]));
         let approvers = vec![pub_key];
         let threshold = 1u32;
 
@@ -151,7 +154,7 @@ mod tests {
     /// Test multisig component error cases
     #[test]
     fn test_multisig_component_error_cases() {
-        let pub_key = PublicKey::new(Word::from([1u32, 0, 0, 0]));
+        let pub_key = PublicKeyCommitment::from(Word::from([1u32, 0, 0, 0]));
         let approvers = vec![pub_key];
 
         // Test threshold = 0 (should fail)

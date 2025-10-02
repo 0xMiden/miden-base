@@ -209,7 +209,7 @@ async fn test_get_assets() -> anyhow::Result<()> {
         let mut check_assets_code = format!(
             r#"
             # push the note index and memory destination pointer
-            push.{note_idx}.{dest_ptr}
+            push.{note_idx} push.{dest_ptr}
             # => [dest_ptr, note_index]
 
             # write the assets to the memory
@@ -305,7 +305,7 @@ async fn test_get_inputs_info() -> anyhow::Result<()> {
         use.miden::input_note
 
         begin
-            # get the inputs commitment and length from the input note with index 0 (the only one 
+            # get the inputs commitment and length from the input note with index 0 (the only one
             # we have)
             push.0
             exec.input_note::get_inputs_info

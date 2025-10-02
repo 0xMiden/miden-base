@@ -7,10 +7,10 @@ use.std::crypto::dsa::rpo_falcon512
 # =================================================================================================
 
 # The event to request an authentication signature.
-const.AUTH_REQUEST=131087
+const.AUTH_REQUEST=event("miden::auth::request")
 
 # The event emitted when a signature is not found for a required signer.
-const.UNAUTHORIZED_EVENT=131102
+const.UNAUTHORIZED_EVENT=event("miden::auth::unauthorized")
 
 # The slot in this component's storage layout where the public key is stored.
 const.PUBLIC_KEY_SLOT=0
