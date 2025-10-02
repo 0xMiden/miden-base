@@ -76,6 +76,11 @@ fn peek_balance_returns_correct_amount() -> anyhow::Result<()> {
             push.{suffix} push.{prefix}
             # => [prefix, suffix, account_vault_root_ptr, balance]
 
+            # emit an event to fetch the merkle path for the asset since peek_balance does not do
+            # that
+            emit.event("miden::account::vault_before_get_balance")
+            # => [prefix, suffix, account_vault_root_ptr, balance]
+
             exec.asset_vault::peek_balance
             # => [peeked_balance]
 
@@ -518,7 +523,7 @@ fn test_remove_non_fungible_asset_success() -> anyhow::Result<()> {
         FUNGIBLE_ASSET = Word::from(non_fungible_asset)
     );
 
-    let exec_output = &tx_context.execute_code(&code)?;
+    let exec_output = &tx_context.execute_code2(&code)?;
 
     assert_eq!(
         exec_output.get_stack_word(0),
