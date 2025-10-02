@@ -1,5 +1,7 @@
 use alloc::vec::Vec;
 
+use miden_objects::Word;
+
 use crate::account::auth::PublicKeyCommitment;
 
 /// Defines authentication schemes available to standard and faucet accounts.
@@ -22,4 +24,18 @@ pub enum AuthScheme {
     NoAuth,
     /// A non-standard authentication scheme.
     Unknown,
+}
+
+impl AuthScheme {
+    /// Returns all public key commitments associated with this authentication scheme as Words.
+    pub fn get_public_key_commitments(&self) -> Vec<Word> {
+        match self {
+            AuthScheme::NoAuth => Vec::new(),
+            AuthScheme::RpoFalcon512 { pub_key } => vec![Word::from(*pub_key)],
+            AuthScheme::RpoFalcon512Multisig { pub_keys, .. } => {
+                pub_keys.iter().map(|key| Word::from(*key)).collect()
+            },
+            AuthScheme::Unknown => Vec::new(),
+        }
+    }
 }
