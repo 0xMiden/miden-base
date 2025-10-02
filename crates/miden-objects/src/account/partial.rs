@@ -175,7 +175,8 @@ impl From<&Account> for PartialAccount {
     /// - For existing accounts, the storage is tracked minimally, i.e. the minimal necessary data
     ///   is included.
     ///
-    /// In both cases, the asset vault is minimally tracked.
+    /// Because new accounts always have empty vaults, in both cases, the asset vault is a minimal
+    /// representation.
     ///
     /// For precise control over how an account is converted to a partial account, use
     /// [`PartialAccount::new`].
