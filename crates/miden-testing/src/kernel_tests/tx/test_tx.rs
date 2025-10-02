@@ -62,46 +62,6 @@ use crate::kernel_tests::tx::ExecutionOutputExt;
 use crate::utils::{create_public_p2any_note, create_spawn_note};
 use crate::{Auth, MockChain, TransactionContextBuilder};
 
-/// Tests that executing a transaction with a foreign account whose inputs are stale fails.
-#[test]
-#[ignore = "TODO: should we reenable the check that this tests?"]
-fn transaction_with_stale_foreign_account_inputs_fails() -> anyhow::Result<()> {
-    // Create a chain with an account
-    let mut builder = MockChain::builder();
-    let native_account = builder.add_existing_wallet(Auth::IncrNonce)?;
-    let foreign_account = builder.add_existing_wallet(Auth::IncrNonce)?;
-    let new_account = builder.create_new_wallet(Auth::IncrNonce)?;
-
-    let mut mock_chain = builder.build()?;
-
-    // Retrieve inputs which will become stale
-    let inputs = mock_chain
-        .get_foreign_account_inputs(foreign_account.id())
-        .expect("failed to get foreign account inputs");
-
-    // Create a new unrelated account to modify the account tree.
-    let tx = mock_chain
-        .build_tx_context(new_account, &[], &[])?
-        .build()?
-        .execute_blocking()?;
-    mock_chain.add_pending_executed_transaction(&tx)?;
-    mock_chain.prove_next_block()?;
-
-    // Attempt to execute with older foreign account inputs. The AccountWitness in the foreign
-    // account's inputs have become stale and so this should fail.
-    let transaction = mock_chain
-        .build_tx_context(native_account.id(), &[], &[])?
-        .foreign_accounts(vec![inputs])
-        .build()?
-        .execute_blocking();
-
-    assert_matches::assert_matches!(
-        transaction,
-        Err(TransactionExecutorError::ForeignAccountNotAnchoredInReference(_))
-    );
-    Ok(())
-}
-
 /// Tests that consuming a note created in a block that is newer than the reference block of the
 /// transaction fails.
 #[tokio::test]
