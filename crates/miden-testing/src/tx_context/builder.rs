@@ -203,20 +203,10 @@ impl TransactionContextBuilder {
         self
     }
 
-    /// Causes the transaction to only construct a minimal partial account as the transaction
-    /// input, causing lazy loading of assets and storage map items throughout transaction
-    /// execution. Additionally, foreign accounts aren't provided via the transaction args but are
-    /// lazy loaded as well.
-    ///
-    /// This exists to test lazy loading selectively and should go away in the future.
-    pub fn enable_lazy_loading(mut self) -> Self {
-        self.is_lazy_loading_enabled = true;
-        self
-    }
-
     /// Disables lazy loading.
     ///
-    /// This is the opposite of [`Self::enable_lazy_loading`] - see its docs for details.
+    /// Only affects [`TransactionContext::execute_code`] and causes the host to _not_ handle lazy
+    /// loading events.
     pub fn disable_lazy_loading(mut self) -> Self {
         self.is_lazy_loading_enabled = false;
         self
