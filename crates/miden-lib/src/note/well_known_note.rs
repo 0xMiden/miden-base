@@ -4,6 +4,7 @@ use miden_objects::utils::Deserializable;
 use miden_objects::utils::sync::LazyLock;
 use miden_objects::vm::Program;
 
+use crate::account::faucets::{BasicFungibleFaucet, NetworkFungibleFaucet};
 use crate::account::interface::{AccountComponentInterface, AccountInterface};
 use crate::account::wallets::BasicWallet;
 
@@ -210,10 +211,14 @@ impl WellKnownNote {
                     && interface_proc_digests.contains(&BasicWallet::move_asset_to_note_digest())
             },
             Self::MINT | Self::BURN => {
-                // MINT and BURN notes are designed to work with network fungible faucets
-                // They don't require specific wallet procedures as they operate on the faucet
-                // itself
-                false
+                // MINT and BURN notes are designed to work with fungible faucets.
+                // They require either the basic or network fungible faucet procedures.
+                // For MINT notes, the faucet needs the `distribute` procedure.
+                // For BURN notes, the faucet needs the `burn` procedure.
+                (interface_proc_digests.contains(&BasicFungibleFaucet::distribute_digest())
+                    || interface_proc_digests.contains(&NetworkFungibleFaucet::distribute_digest()))
+                    && (interface_proc_digests.contains(&BasicFungibleFaucet::burn_digest())
+                        || interface_proc_digests.contains(&NetworkFungibleFaucet::burn_digest()))
             },
         }
     }

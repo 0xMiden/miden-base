@@ -12,7 +12,13 @@ const.OWNER_CONFIG_SLOT=1
 # ERRORS
 const.ERR_NOT_OWNER="note sender is not owner"
 
-# => []
+#! Checks if the note sender is the owner of this faucet.
+#!
+#! Inputs:  []
+#! Outputs: [is_owner]
+#!
+#! Where:
+#! - is_owner is 1 if the sender is the owner, 0 otherwise.
 proc.is_owner
     push.OWNER_CONFIG_SLOT
     # => [owner_config_slot]
@@ -30,8 +36,26 @@ proc.is_owner
     # => [is_owner]
 end
 
-#! Inputs: [amount, tag, aux, note_type, execution_hint, RECIPIENT]
-#! Outputs: [note_idx]
+#! Distributes freshly minted fungible assets to the provided recipient.
+#!
+#! This procedure first checks if the note sender is the owner of the faucet, then delegates
+#! to the basic_fungible::distribute procedure to handle the actual minting and distribution.
+#!
+#! Inputs:  [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
+#! Outputs: [note_idx, pad(15)]
+#!
+#! Where:
+#! - amount is the amount to be minted and sent.
+#! - tag is the tag to be included in the note.
+#! - aux is the auxiliary data to be included in the note.
+#! - note_type is the type of the note that holds the asset.
+#! - execution_hint is the execution hint of the note that holds the asset.
+#! - RECIPIENT is the recipient of the asset.
+#! - note_idx is the index of the output note.
+#!
+#! Panics if:
+#! - the note sender is not the owner of this faucet.
+#! - any of the validations in basic_fungible::distribute fail.
 export.distribute
     exec.is_owner
     # => [is_owner, amount, tag, aux, note_type, execution_hint, RECIPIENT]

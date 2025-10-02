@@ -1,46 +1,31 @@
-use.miden::active_note
 use.miden::contracts::faucets::network_fungible->faucet
-
-# ERRORS
-# =================================================================================================
-
-const.ERR_BURN_WRONG_NUMBER_OF_ASSETS="BURN script requires exactly 1 note asset"
 
 #! Network Faucet BURN script: burns the asset from the note by calling the network faucet's burn
 #! function. This note is intended to be executed against a network fungible faucet account.
 #!
+#! The burn procedure in the faucet already handles all necessary validations including:
+#! - Checking that the note contains exactly one asset
+#! - Verifying the asset is a fungible asset issued by this faucet
+#! - Ensuring the amount to burn doesn't exceed the outstanding supply
+#!
 #! Requires that the account exposes:
 #! - burn procedure (from network_fungible faucet contract).
 #!
-#! Inputs:  [ARGS]
-#! Outputs: []
+#! Inputs:  [ARGS, pad(12)]
+#! Outputs: [pad(16)]
 #!
 #! Panics if:
 #! - account does not expose burn procedure.
-#! - the note does not contain exactly one asset.
+#! - any of the validations in the burn procedure fail.
 begin
     dropw
-    # => []
+    # => [pad(12)]
 
-    # Get the asset from the note
-    push.0 exec.active_note::get_assets
-    # => [num_assets, dest_ptr]
-
-    # Verify we have exactly one asset
-    assert.err=ERR_BURN_WRONG_NUMBER_OF_ASSETS
-    # => [dest_ptr]
-
-    mem_loadw
-    # => [ASSET]
-
-    # Pad the stack before call
-    padw padw padw
-    # => [ASSET, pad(12)]
-
+    # Call the faucet's burn procedure which handles all validations
     call.faucet::burn
     # => [ASSET, pad(12)]
 
-    # Clean up stack
-    dropw dropw dropw dropw
-    # => []
+    # Clean up stack to return empty stack
+    dropw
+    # => [pad(12)]
 end
