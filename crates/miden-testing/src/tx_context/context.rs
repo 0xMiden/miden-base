@@ -8,7 +8,7 @@ use miden_objects::account::{Account, AccountId, PartialAccount, StorageMapWitne
 use miden_objects::assembly::debuginfo::{SourceLanguage, Uri};
 use miden_objects::assembly::{SourceManager, SourceManagerSync};
 use miden_objects::asset::AssetWitness;
-use miden_objects::block::{BlockHeader, BlockNumber};
+use miden_objects::block::{AccountWitness, BlockHeader, BlockNumber};
 use miden_objects::note::{Note, NoteScript};
 use miden_objects::transaction::{
     AccountInputs,
@@ -48,7 +48,7 @@ use crate::tx_context::builder::MockAuthenticator;
 pub struct TransactionContext {
     pub(super) account: Account,
     pub(super) expected_output_notes: Vec<Note>,
-    pub(super) foreign_account_inputs: BTreeMap<AccountId, AccountInputs>,
+    pub(super) foreign_account_inputs: BTreeMap<AccountId, (Account, AccountWitness)>,
     pub(super) tx_inputs: TransactionInputs,
     pub(super) mast_store: TransactionMastStore,
     pub(super) authenticator: Option<MockAuthenticator>,
@@ -113,7 +113,7 @@ impl TransactionContext {
         let account_procedure_idx_map = AccountProcedureIndexMap::new(
             [self.tx_inputs().account().code()]
                 .into_iter()
-                .chain(self.tx_args().foreign_account_inputs().iter().map(|inputs| inputs.code())),
+                .chain(self.foreign_account_inputs.values().map(|(account, _)| account.code())),
         )
         .expect("constructing account procedure index map should work");
 
@@ -220,11 +220,17 @@ impl DataStore for TransactionContext {
         // Note that we cannot validate that the foreign account inputs are valid for the
         // transaction's reference block.
         async move {
-            self.foreign_account_inputs.get(&foreign_account_id).cloned().ok_or_else(|| {
-                DataStoreError::other(format!(
-                    "failed to find foreign account {foreign_account_id}"
-                ))
-            })
+            let (foreign_account, account_witness) =
+                self.foreign_account_inputs.get(&foreign_account_id).ok_or_else(|| {
+                    DataStoreError::other(format!(
+                        "failed to find foreign account {foreign_account_id}"
+                    ))
+                })?;
+
+            Ok(AccountInputs::new(
+                PartialAccount::from(foreign_account),
+                account_witness.clone(),
+            ))
         }
     }
 
@@ -245,7 +251,7 @@ impl DataStore for TransactionContext {
 
                 Ok(self.account().vault().open(vault_key))
             } else {
-                let foreign_account_inputs = self
+                let (foreign_account, _witness) = self
                     .foreign_account_inputs
                     .iter()
                     .find_map(
@@ -259,21 +265,14 @@ impl DataStore for TransactionContext {
                         ))
                     })?;
 
-                if foreign_account_inputs.account().vault().root() != vault_root {
+                if foreign_account.vault().root() != vault_root {
                     return Err(DataStoreError::other(format!(
                         "foreign account {account_id} has vault root {} but {vault_root} was requested",
-                        foreign_account_inputs.account().vault().root()
+                        foreign_account.vault().root()
                     )));
                 }
 
-                foreign_account_inputs.account().vault().open(vault_key).map_err(|err| {
-                    DataStoreError::other_with_source(
-                        format!(
-                            "failed to open vault_key {vault_key} in foreign account {account_id}"
-                        ),
-                        err,
-                    )
-                })
+                Ok(foreign_account.vault().open(vault_key))
             }
         }
     }
@@ -306,7 +305,7 @@ impl DataStore for TransactionContext {
 
                 Ok(storage_map.open(&map_key))
             } else {
-                let foreign_account_inputs = self
+                let (foreign_account, _witness) = self
                     .foreign_account_inputs
                     .iter()
                     .find_map(
@@ -320,22 +319,21 @@ impl DataStore for TransactionContext {
                         ))
                     })?;
 
-                let map = foreign_account_inputs
-                    .account()
+                let map = foreign_account
                     .storage()
-                    .maps()
-                    .find(|map| map.root() == map_root)
+                    .slots()
+                    .iter()
+                    .find_map(|slot| match slot {
+                        StorageSlot::Map(storage_map) if storage_map.root() == map_root => {Some(storage_map)},
+                        _ => None,
+                    })
                     .ok_or_else(|| {
                         DataStoreError::other(format!(
                             "failed to find storage map with root {map_root} in foreign account {account_id}"
                         ))
                     })?;
 
-                map.open(&map_key).map_err(|err| {
-                  DataStoreError::other_with_source(format!(
-                        "failed to open {map_key} in storage map of foreign account {account_id}"
-                    ), err)
-                })
+                Ok(map.open(&map_key))
             }
         }
     }

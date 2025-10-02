@@ -80,12 +80,7 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_SENDER,
 };
 use miden_objects::testing::noop_auth_component::NoopAuthComponent;
-use miden_objects::transaction::{
-    AccountInputs,
-    ExecutedTransaction,
-    TransactionArgs,
-    TransactionScript,
-};
+use miden_objects::transaction::{ExecutedTransaction, TransactionArgs, TransactionScript};
 use miden_objects::{EMPTY_WORD, ONE, WORD_SIZE};
 use miden_processor::fast::ExecutionOutput;
 use miden_processor::{AdviceInputs, Word};
@@ -155,12 +150,9 @@ fn test_transaction_prologue() -> anyhow::Result<()> {
         (tx_context.input_notes().get_note(1).note().id(), note_args[1]),
     ]);
 
-    let tx_args = TransactionArgs::new(
-        tx_context.tx_args().advice_inputs().clone().map,
-        Vec::<AccountInputs>::new(),
-    )
-    .with_tx_script(tx_script)
-    .with_note_args(note_args_map);
+    let tx_args = TransactionArgs::new(tx_context.tx_args().advice_inputs().clone().map)
+        .with_tx_script(tx_script)
+        .with_note_args(note_args_map);
 
     tx_context.set_tx_args(tx_args);
     let exec_output = &tx_context.execute_code_blocking(code)?;

@@ -76,6 +76,11 @@ fn peek_balance_returns_correct_amount() -> anyhow::Result<()> {
             push.{suffix} push.{prefix}
             # => [prefix, suffix, account_vault_root_ptr, balance]
 
+            # emit an event to fetch the merkle path for the asset since peek_balance does not do
+            # that
+            emit.event("miden::account::vault_before_get_balance")
+            # => [prefix, suffix, account_vault_root_ptr, balance]
+
             exec.asset_vault::peek_balance
             # => [peeked_balance]
 

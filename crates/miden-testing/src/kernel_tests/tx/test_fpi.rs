@@ -30,7 +30,6 @@ use miden_objects::account::{
     AccountProcedureInfo,
     AccountStorage,
     AccountStorageMode,
-    PartialAccount,
     StorageSlot,
 };
 use miden_objects::assembly::DefaultSourceManager;
@@ -41,7 +40,6 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET,
 };
 use miden_objects::testing::storage::STORAGE_LEAVES_2;
-use miden_objects::transaction::AccountInputs;
 use miden_objects::{FieldElement, Word, ZERO};
 use miden_processor::fast::ExecutionOutput;
 use miden_processor::{AdviceInputs, Felt};
@@ -379,8 +377,7 @@ fn test_fpi_memory_two_accounts() -> anyhow::Result<()> {
         .expect("failed to get foreign account inputs");
 
     let tx_context = mock_chain
-        .build_tx_context(native_account.id(), &[], &[])
-        .expect("failed to build tx context")
+        .build_tx_context(native_account.id(), &[], &[])?
         .foreign_accounts(vec![foreign_account_inputs_1, foreign_account_inputs_2])
         .build()?;
 
@@ -640,7 +637,6 @@ async fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
         .build_tx_context(native_account.id(), &[], &[])
         .expect("failed to build tx context")
         .foreign_accounts([foreign_account_inputs])
-        .enable_lazy_loading()
         .tx_script(tx_script)
         .with_source_manager(source_manager)
         .build()?
@@ -760,7 +756,6 @@ async fn foreign_account_can_get_balance_and_presence_of_asset() -> anyhow::Resu
     mock_chain
         .build_tx_context(native_account.id(), &[], &[])?
         .foreign_accounts([foreign_account_inputs])
-        .enable_lazy_loading()
         .tx_script(tx_script)
         .with_source_manager(source_manager)
         .build()?
@@ -867,7 +862,6 @@ async fn foreign_account_get_initial_balance() -> anyhow::Result<()> {
     mock_chain
         .build_tx_context(native_account.id(), &[], &[])?
         .foreign_accounts([foreign_account_inputs])
-        .enable_lazy_loading()
         .tx_script(tx_script)
         .with_source_manager(source_manager)
         .build()?
@@ -1088,7 +1082,6 @@ async fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
         .build_tx_context(native_account.id(), &[], &[])
         .expect("failed to build tx context")
         .foreign_accounts(foreign_account_inputs)
-        .enable_lazy_loading()
         .extend_advice_inputs(advice_inputs)
         .tx_script(tx_script)
         .with_source_manager(source_manager)
@@ -1213,7 +1206,7 @@ async fn test_nested_fpi_stack_overflow() -> anyhow::Result<()> {
 
     mock_chain.prove_next_block().unwrap();
 
-    let foreign_accounts: Vec<AccountInputs> = foreign_accounts
+    let foreign_accounts: Vec<_> = foreign_accounts
         .iter()
         .map(|acc| {
             mock_chain
@@ -1247,21 +1240,18 @@ async fn test_nested_fpi_stack_overflow() -> anyhow::Result<()> {
             end
             ",
                 foreign_account_proc_hash =
-                    foreign_accounts.last().unwrap().code().procedures()[1].mast_root(),
-                foreign_prefix = foreign_accounts.last().unwrap().id().prefix().as_felt(),
-                foreign_suffix = foreign_accounts.last().unwrap().id().suffix(),
+                    foreign_accounts.last().unwrap().0.code().procedures()[1].mast_root(),
+                foreign_prefix = foreign_accounts.last().unwrap().0.id().prefix().as_felt(),
+                foreign_suffix = foreign_accounts.last().unwrap().0.id().suffix(),
             );
 
     let tx_script = ScriptBuilder::default().compile_tx_script(code).unwrap();
 
     let tx_context = mock_chain
-        .build_tx_context(native_account.id(), &[], &[])
-        .expect("failed to build tx context")
+        .build_tx_context(native_account.id(), &[], &[])?
         .foreign_accounts(foreign_accounts)
-        .enable_lazy_loading()
         .tx_script(tx_script)
-        .build()
-        .unwrap();
+        .build()?;
 
     let result = tx_context.execute().await;
 
@@ -1370,7 +1360,6 @@ async fn test_nested_fpi_native_account_invocation() -> anyhow::Result<()> {
         .build_tx_context(native_account.id(), &[], &[])
         .expect("failed to build tx context")
         .foreign_accounts(vec![foreign_account_inputs])
-        .enable_lazy_loading()
         .extend_advice_inputs(advice_inputs)
         .tx_script(tx_script)
         .build()?
@@ -1427,33 +1416,19 @@ async fn test_fpi_stale_account() -> anyhow::Result<()> {
         .storage_mut()
         .set_item(0, Word::from([Felt::ONE, Felt::ONE, Felt::ONE, Felt::ONE]))?;
 
-    // Place the modified account in the advice provider, which will cause the commitment mismatch.
-    let foreign_account_inputs = mock_chain
+    // We pass the modified foreign account with a witness that is valid against the ref block. This
+    // means the foreign account's commitment does not match the commitment that the account witness
+    // proves inclusion for.
+    let (_foreign_account, foreign_account_witness) = mock_chain
         .get_foreign_account_inputs(foreign_account.id())
         .expect("failed to get foreign account inputs");
-
-    // We want to create a mixed ForeignAccountInputs because we want to have a valid account
-    // witness against the ref block, but have newer account data (ie, a new state). Otherwise,
-    // any non-validity of the account witness is caught in
-    // TransactionExecutor::execute_transaction() (see `test_fpi_anchoring_validations()` for
-    // context on this check)
-    let overridden_partial_accounts = PartialAccount::new(
-        foreign_account.id(),
-        foreign_account.nonce(),
-        foreign_account.code().clone(),
-        foreign_account.storage().into(),
-        foreign_account.vault().into(),
-        None,
-    )?;
-    let overridden_foreign_account_inputs =
-        AccountInputs::new(overridden_partial_accounts, foreign_account_inputs.witness().clone());
 
     // The account tree from which the transaction inputs are fetched here has the state from the
     // original unmodified foreign account. This should result in the foreign account's proof to be
     // invalid for this account tree root.
     let tx_context = mock_chain
         .build_tx_context(native_account, &[], &[])?
-        .foreign_accounts(vec![overridden_foreign_account_inputs])
+        .foreign_accounts(vec![(foreign_account.clone(), foreign_account_witness)])
         .build()?;
 
     // Attempt to run FPI.
@@ -1474,7 +1449,7 @@ async fn test_fpi_stale_account() -> anyhow::Result<()> {
           # => [pad(16)]
 
           # push some hash onto the stack - for this test it does not matter
-          padw
+          push.[1,2,3,4]
           # => [FOREIGN_PROC_ROOT, pad(16)]
 
           # push the foreign account ID
@@ -1490,6 +1465,7 @@ async fn test_fpi_stale_account() -> anyhow::Result<()> {
 
     let result = tx_context.execute_code(&code).await.map(|_| ());
     assert_execution_error!(result, ERR_FOREIGN_ACCOUNT_INVALID_COMMITMENT);
+
     Ok(())
 }
 
@@ -1598,7 +1574,6 @@ async fn test_fpi_get_account_id() -> anyhow::Result<()> {
         .build_tx_context(native_account.id(), &[], &[])
         .expect("failed to build tx context")
         .foreign_accounts(vec![foreign_account_inputs])
-        .enable_lazy_loading()
         .tx_script(tx_script)
         .build()?
         .execute()
@@ -1710,7 +1685,6 @@ async fn test_fpi_get_account_nonce() -> anyhow::Result<()> {
         .build_tx_context(native_account.id(), &[], &[])
         .expect("failed to build tx context")
         .foreign_accounts(vec![foreign_account_inputs])
-        .enable_lazy_loading()
         .tx_script(tx_script)
         .build()?
         .execute()
