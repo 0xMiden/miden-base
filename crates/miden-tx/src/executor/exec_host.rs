@@ -12,6 +12,7 @@ use miden_objects::crypto::merkle::SmtProof;
 use miden_objects::transaction::{InputNote, InputNotes, OutputNote};
 use miden_objects::vm::AdviceMap;
 use miden_objects::{Felt, Hasher, Word};
+use miden_lib::account::auth::PublicKeyCommitment;
 use miden_processor::{
     AdviceMutation,
     AsyncHost,
@@ -182,7 +183,7 @@ where
             self.authenticator.ok_or(TransactionKernelError::MissingAuthenticator)?;
 
         let signature: Vec<Felt> = authenticator
-            .get_signature(pub_key_hash, &signing_inputs)
+            .get_signature(PublicKeyCommitment::from(pub_key_hash), &signing_inputs)
             .await
             .map_err(TransactionKernelError::SignatureGenerationFailed)?
             .to_prepared_signature();

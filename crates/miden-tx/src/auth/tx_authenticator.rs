@@ -5,6 +5,7 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use miden_objects::account::{AuthSecretKey, Signature};
+use miden_lib::account::auth::PublicKeyCommitment;
 use miden_objects::crypto::SequentialCommit;
 use miden_objects::transaction::TransactionSummary;
 use miden_objects::{Felt, Hasher, Word};
@@ -139,7 +140,7 @@ pub trait TransactionAuthenticator {
     ///   signature computation.
     fn get_signature(
         &self,
-        pub_key: Word,
+        pub_key_commitment: PublicKeyCommitment,
         signing_inputs: &SigningInputs,
     ) -> impl FutureMaybeSend<Result<Signature, AuthenticationError>>;
 }
@@ -158,7 +159,7 @@ impl TransactionAuthenticator for UnreachableAuth {
     #[allow(clippy::manual_async_fn)]
     fn get_signature(
         &self,
-        _pub_key: Word,
+        _pub_key_commitment: PublicKeyCommitment,
         _signing_inputs: &SigningInputs,
     ) -> impl FutureMaybeSend<Result<Signature, AuthenticationError>> {
         async { unreachable!("Type `UnreachableAuth` must not be instantiated") }
@@ -217,13 +218,14 @@ impl<R: Rng + Send + Sync> TransactionAuthenticator for BasicAuthenticator<R> {
     /// [`AuthenticationError::UnknownPublicKey`] is returned.
     fn get_signature(
         &self,
-        pub_key: Word,
+        pub_key_commitment: PublicKeyCommitment,
         signing_inputs: &SigningInputs,
     ) -> impl FutureMaybeSend<Result<Signature, AuthenticationError>> {
         let message = signing_inputs.to_commitment();
 
         async move {
             let mut rng = self.rng.write().await;
+            let pub_key: Word = pub_key_commitment.into();
             match self.keys.get(&pub_key) {
                 Some(key) => {
                     let signature: Signature = match key {
@@ -248,7 +250,7 @@ impl TransactionAuthenticator for () {
     #[allow(clippy::manual_async_fn)]
     fn get_signature(
         &self,
-        _pub_key: Word,
+        _pub_key_commitment: PublicKeyCommitment,
         _signing_inputs: &SigningInputs,
     ) -> impl FutureMaybeSend<Result<Signature, AuthenticationError>> {
         async {

@@ -2,7 +2,7 @@ use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use miden_crypto::dsa::rpo_falcon512::PublicKey;
+use crate::account::PublicKeyCommitment;
 use miden_crypto::merkle::InnerNodeInfo;
 use miden_processor::MastNodeExt;
 
@@ -195,11 +195,16 @@ impl TransactionArgs {
     /// The advice inputs' map is extended with the following key:
     ///
     /// - hash(public_key, message) |-> signature (prepared for VM execution).
-    pub fn add_signature(&mut self, public_key: PublicKey, message: Word, signature: Signature) {
-        self.advice_inputs.map.insert(
-            Hasher::merge(&[public_key.to_commitment(), message]),
-            signature.to_prepared_signature(),
-        );
+    pub fn add_signature(
+        &mut self,
+        public_key_commitment: PublicKeyCommitment,
+        message: Word,
+        signature: Signature,
+    ) {
+        let pk_word: Word = public_key_commitment.into();
+        self.advice_inputs
+            .map
+            .insert(Hasher::merge(&[pk_word, message]), signature.to_prepared_signature());
     }
 
     /// Populates the advice inputs with the specified note recipient details.

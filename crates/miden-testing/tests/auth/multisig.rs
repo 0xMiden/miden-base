@@ -150,18 +150,18 @@ async fn test_multisig_2_of_2_with_note_creation() -> anyhow::Result<()> {
     let tx_summary = SigningInputs::TransactionSummary(tx_summary);
 
     let sig_1 = authenticators[0]
-        .get_signature(public_keys[0].to_commitment(), &tx_summary)
+        .get_signature(public_keys[0].to_commitment().into(), &tx_summary)
         .await?;
     let sig_2 = authenticators[1]
-        .get_signature(public_keys[1].to_commitment(), &tx_summary)
+        .get_signature(public_keys[1].to_commitment().into(), &tx_summary)
         .await?;
 
     // Execute transaction with signatures - should succeed
     let tx_context_execute = mock_chain
         .build_tx_context(multisig_account.id(), &[input_note.id()], &[])?
         .extend_expected_output_notes(vec![OutputNote::Full(output_note)])
-        .add_signature(public_keys[0].clone(), msg, sig_1)
-        .add_signature(public_keys[1].clone(), msg, sig_2)
+        .add_signature(public_keys[0].clone().into(), msg, sig_1)
+        .add_signature(public_keys[1].clone().into(), msg, sig_2)
         .auth_args(salt)
         .build()?
         .execute()
@@ -232,18 +232,18 @@ async fn test_multisig_2_of_4_all_signer_combinations() -> anyhow::Result<()> {
         let tx_summary = SigningInputs::TransactionSummary(tx_summary);
 
         let sig_1 = authenticators[*signer1_idx]
-            .get_signature(public_keys[*signer1_idx].to_commitment(), &tx_summary)
+            .get_signature(public_keys[*signer1_idx].to_commitment().into(), &tx_summary)
             .await?;
         let sig_2 = authenticators[*signer2_idx]
-            .get_signature(public_keys[*signer2_idx].to_commitment(), &tx_summary)
+            .get_signature(public_keys[*signer2_idx].to_commitment().into(), &tx_summary)
             .await?;
 
         // Execute transaction with signatures - should succeed for any combination
         let tx_context_execute = mock_chain
             .build_tx_context(multisig_account.id(), &[], &[])?
             .auth_args(salt)
-            .add_signature(public_keys[*signer1_idx].clone(), msg, sig_1)
-            .add_signature(public_keys[*signer2_idx].clone(), msg, sig_2)
+            .add_signature(public_keys[*signer1_idx].clone().into(), msg, sig_1)
+            .add_signature(public_keys[*signer2_idx].clone().into(), msg, sig_2)
             .build()?;
 
         let executed_tx = tx_context_execute.execute().await.unwrap_or_else(|_| {
@@ -299,17 +299,17 @@ async fn test_multisig_replay_protection() -> anyhow::Result<()> {
     let tx_summary = SigningInputs::TransactionSummary(tx_summary);
 
     let sig_1 = authenticators[0]
-        .get_signature(public_keys[0].to_commitment(), &tx_summary)
+        .get_signature(public_keys[0].to_commitment().into(), &tx_summary)
         .await?;
     let sig_2 = authenticators[1]
-        .get_signature(public_keys[1].to_commitment(), &tx_summary)
+        .get_signature(public_keys[1].to_commitment().into(), &tx_summary)
         .await?;
 
     // Execute transaction with signatures - should succeed (first execution)
     let tx_context_execute = mock_chain
         .build_tx_context(multisig_account.id(), &[], &[])?
-        .add_signature(public_keys[0].clone(), msg, sig_1.clone())
-        .add_signature(public_keys[1].clone(), msg, sig_2.clone())
+        .add_signature(public_keys[0].clone().into(), msg, sig_1.clone())
+        .add_signature(public_keys[1].clone().into(), msg, sig_2.clone())
         .auth_args(salt)
         .build()?;
 
@@ -322,8 +322,8 @@ async fn test_multisig_replay_protection() -> anyhow::Result<()> {
     // Attempt to execute the same transaction again - should fail due to replay protection
     let tx_context_replay = mock_chain
         .build_tx_context(multisig_account.id(), &[], &[])?
-        .add_signature(public_keys[0].clone(), msg, sig_1)
-        .add_signature(public_keys[1].clone(), msg, sig_2)
+        .add_signature(public_keys[0].clone().into(), msg, sig_1)
+        .add_signature(public_keys[1].clone().into(), msg, sig_2)
         .auth_args(salt)
         .build()?;
 
@@ -439,10 +439,10 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
     let tx_summary = SigningInputs::TransactionSummary(tx_summary);
 
     let sig_1 = authenticators[0]
-        .get_signature(public_keys[0].to_commitment(), &tx_summary)
+        .get_signature(public_keys[0].to_commitment().into(), &tx_summary)
         .await?;
     let sig_2 = authenticators[1]
-        .get_signature(public_keys[1].to_commitment(), &tx_summary)
+        .get_signature(public_keys[1].to_commitment().into(), &tx_summary)
         .await?;
 
     // Execute transaction with signatures - should succeed
@@ -450,8 +450,8 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
         .build_tx_context(multisig_account.id(), &[], &[])?
         .tx_script(tx_script)
         .tx_script_args(multisig_config_hash)
-        .add_signature(public_keys[0].clone(), msg, sig_1)
-        .add_signature(public_keys[1].clone(), msg, sig_2)
+        .add_signature(public_keys[0].clone().into(), msg, sig_1)
+        .add_signature(public_keys[1].clone().into(), msg, sig_2)
         .auth_args(salt)
         .extend_advice_inputs(advice_inputs)
         .build()?
@@ -574,13 +574,13 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
     let tx_summary_new = SigningInputs::TransactionSummary(tx_summary_new);
 
     let sig_1_new = new_authenticators[0]
-        .get_signature(new_public_keys[0].to_commitment(), &tx_summary_new)
+        .get_signature(new_public_keys[0].to_commitment().into(), &tx_summary_new)
         .await?;
     let sig_2_new = new_authenticators[1]
-        .get_signature(new_public_keys[1].to_commitment(), &tx_summary_new)
+        .get_signature(new_public_keys[1].to_commitment().into(), &tx_summary_new)
         .await?;
     let sig_3_new = new_authenticators[2]
-        .get_signature(new_public_keys[2].to_commitment(), &tx_summary_new)
+        .get_signature(new_public_keys[2].to_commitment().into(), &tx_summary_new)
         .await?;
 
     // SECTION 3: Properly handle multisig authentication with the updated signers
@@ -590,9 +590,9 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
     let tx_context_execute_new = new_mock_chain
         .build_tx_context(updated_multisig_account.id(), &[input_note_new.id()], &[])?
         .extend_expected_output_notes(vec![OutputNote::Full(output_note_new)])
-        .add_signature(new_public_keys[0].clone(), msg_new, sig_1_new)
-        .add_signature(new_public_keys[1].clone(), msg_new, sig_2_new)
-        .add_signature(new_public_keys[2].clone(), msg_new, sig_3_new)
+        .add_signature(new_public_keys[0].clone().into(), msg_new, sig_1_new)
+        .add_signature(new_public_keys[1].clone().into(), msg_new, sig_2_new)
+        .add_signature(new_public_keys[2].clone().into(), msg_new, sig_3_new)
         .auth_args(salt_new)
         .build()?
         .execute()
@@ -674,16 +674,16 @@ async fn test_multisig_update_signers_remove_owner() -> anyhow::Result<()> {
     let tx_summary = SigningInputs::TransactionSummary(tx_summary);
 
     let sig_1 = authenticators[0]
-        .get_signature(public_keys[0].to_commitment(), &tx_summary)
+        .get_signature(public_keys[0].to_commitment().into(), &tx_summary)
         .await?;
     let sig_2 = authenticators[1]
-        .get_signature(public_keys[1].to_commitment(), &tx_summary)
+        .get_signature(public_keys[1].to_commitment().into(), &tx_summary)
         .await?;
     let sig_3 = authenticators[2]
-        .get_signature(public_keys[2].to_commitment(), &tx_summary)
+        .get_signature(public_keys[2].to_commitment().into(), &tx_summary)
         .await?;
     let sig_4 = authenticators[3]
-        .get_signature(public_keys[3].to_commitment(), &tx_summary)
+        .get_signature(public_keys[3].to_commitment().into(), &tx_summary)
         .await?;
 
     // Execute with signatures
@@ -691,10 +691,10 @@ async fn test_multisig_update_signers_remove_owner() -> anyhow::Result<()> {
         .build_tx_context(multisig_account.id(), &[], &[])?
         .tx_script(tx_script)
         .tx_script_args(multisig_config_hash)
-        .add_signature(public_keys[0].clone(), msg, sig_1)
-        .add_signature(public_keys[1].clone(), msg, sig_2)
-        .add_signature(public_keys[2].clone(), msg, sig_3)
-        .add_signature(public_keys[3].clone(), msg, sig_4)
+        .add_signature(public_keys[0].clone().into(), msg, sig_1)
+        .add_signature(public_keys[1].clone().into(), msg, sig_2)
+        .add_signature(public_keys[2].clone().into(), msg, sig_3)
+        .add_signature(public_keys[3].clone().into(), msg, sig_4)
         .auth_args(salt)
         .extend_advice_inputs(advice_inputs)
         .build()?
@@ -875,10 +875,10 @@ async fn test_multisig_new_approvers_cannot_sign_before_update() -> anyhow::Resu
     let tx_summary_signing = SigningInputs::TransactionSummary(tx_summary.clone());
 
     let new_sig_1 = new_authenticators[0]
-        .get_signature(new_public_keys[0].to_commitment(), &tx_summary_signing)
+        .get_signature(new_public_keys[0].to_commitment().into(), &tx_summary_signing)
         .await?;
     let new_sig_2 = new_authenticators[1]
-        .get_signature(new_public_keys[1].to_commitment(), &tx_summary_signing)
+        .get_signature(new_public_keys[1].to_commitment().into(), &tx_summary_signing)
         .await?;
 
     // Try to execute transaction with NEW signatures - should FAIL
@@ -886,8 +886,8 @@ async fn test_multisig_new_approvers_cannot_sign_before_update() -> anyhow::Resu
         .build_tx_context(multisig_account.id(), &[], &[])?
         .tx_script(tx_script.clone())
         .tx_script_args(multisig_config_hash)
-        .add_signature(new_public_keys[0].clone(), msg, new_sig_1)
-        .add_signature(new_public_keys[1].clone(), msg, new_sig_2)
+        .add_signature(new_public_keys[0].clone().into(), msg, new_sig_1)
+        .add_signature(new_public_keys[1].clone().into(), msg, new_sig_2)
         .auth_args(salt)
         .extend_advice_inputs(advice_inputs.clone())
         .build()?;

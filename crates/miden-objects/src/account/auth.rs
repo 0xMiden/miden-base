@@ -8,7 +8,8 @@ use crate::utils::serde::{
     DeserializationError,
     Serializable,
 };
-use crate::{Felt, Hasher};
+use crate::{Felt, Hasher, Word};
+use miden_crypto::dsa::rpo_falcon512::PublicKey as RpoFalconPublicKey;
 
 // AUTH SECRET KEY
 // ================================================================================================
@@ -56,6 +57,28 @@ impl Deserializable for AuthSecretKey {
 
 // SIGNATURE
 // ================================================================================================
+
+/// Commitment to a public key
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PublicKeyCommitment(pub Word);
+
+impl From<RpoFalconPublicKey> for PublicKeyCommitment {
+    fn from(value: RpoFalconPublicKey) -> Self {
+        Self(value.to_commitment())
+    }
+}
+
+impl From<PublicKeyCommitment> for Word {
+    fn from(value: PublicKeyCommitment) -> Self {
+        value.0
+    }
+}
+
+impl From<Word> for PublicKeyCommitment {
+    fn from(value: Word) -> Self {
+        Self(value)
+    }
+}
 
 /// Represents a signature object ready for native verification.
 ///
