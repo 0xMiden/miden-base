@@ -151,7 +151,6 @@ install-tools: ## Installs development tools required by the Makefile (typos, ne
 	cargo install cargo-nextest --locked
 	cargo install taplo-cli --locked
 	cargo install cargo-machete --locked
-	@echo "Installing Node.js and npm..."
 	@if ! command -v node >/dev/null 2>&1; then \
 		echo "Node.js not found. Please install Node.js from https://nodejs.org/ or using your package manager"; \
 		echo "On macOS: brew install node"; \
