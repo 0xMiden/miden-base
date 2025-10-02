@@ -42,6 +42,10 @@ const.IS_EXECUTED_FLAG=[1, 0, 0, 0]
 # ERRORS
 const.ERR_TX_ALREADY_EXECUTED="failed to approve multisig transaction as it was already executed"
 
+const.ERR_MALFORMED_MULTISIG_CONFIG="number of approvers must be equal to or greater than threshold"
+
+const.ERR_ZERO_IN_MULTISIG_CONFIG="number of approvers or threshold must not be zero"
+
 #! Check if transaction has already been executed and add it to executed transactions for replay protection.
 #!
 #! Inputs:  [MSG]
@@ -68,6 +72,155 @@ proc.assert_new_tx
 
     assertz.err=ERR_TX_ALREADY_EXECUTED
     # => []
+end
+
+#! Remove old owner public keys from the owner public key mapping.
+#!
+#! This procedure cleans up the storage by removing public keys of owners that are no longer
+#! part of the multisig configuration. This procedure assumes that init_num_of_approvers and
+#! new_num_of_approvers are u32 values.
+#!
+#! Inputs: [init_num_of_approvers, new_num_of_approvers]
+#! Outputs: []
+#!
+#! Where:
+#! - init_num_of_approvers is the original number of approvers before the update
+#! - new_num_of_approvers is the new number of approvers after the update
+proc.cleanup_pubkey_mapping
+    dup.1 dup.1
+    u32assert2 u32lt
+    # => [should_loop, i = init_num_of_approvers, new_num_of_approvers]
+
+    while.true
+        # => [i, new_num_of_approvers]
+
+        sub.1
+        # => [i-1, new_num_of_approvers]
+
+        dup
+        # => [i-1, i-1, new_num_of_approvers]
+
+        push.0.0.0
+        # => [[0, 0, 0, i-1], i-1, new_num_of_approvers]
+
+        padw swapw
+        # => [[0, 0, 0, i-1], EMPTY_WORD, i-1, new_num_of_approvers]
+
+        push.PUBLIC_KEYS_MAP_SLOT
+        # => [pub_key_slot_idx, [0, 0, 0, i-1], EMPTY_WORD, i-1, new_num_of_approvers]
+
+        exec.account::set_map_item
+        # => [OLD_MAP_ROOT, OLD_MAP_VALUE, i-1, new_num_of_approvers]
+
+        dropw dropw
+        # => [i-1, new_num_of_approvers]
+
+        dup.1 dup.1
+        u32lt
+        # => [should_loop, i-1, new_num_of_approvers]
+    end
+
+    drop drop
+    # => []
+end
+
+#! Update threshold config and add / remove owners
+#!
+#! Inputs:
+#!   Operand stack: [MULTISIG_CONFIG_HASH, pad(12)]
+#!   Advice map: {
+#!     MULTISIG_CONFIG_HASH => [CONFIG, PUB_KEY_N, PUB_KEY_N-1, ..., PUB_KEY_0]
+#!   }
+#! Outputs:
+#!   Operand stack: []
+#!
+#! Where:
+#! - MULTISIG_CONFIG_HASH is the hash of the threshold and new public key vector
+#! - MULTISIG_CONFIG is [threshold, num_approvers, 0, 0]
+#! - PUB_KEY_i is the public key of the i-th signer
+#!
+#! Locals:
+#! 0: new_num_of_approvers
+#! 1: init_num_of_approvers
+export.update_signers_and_threshold.2
+    adv.push_mapval
+    # => [MULTISIG_CONFIG_HASH, pad(12)]
+
+    adv_loadw
+    # => [MULTISIG_CONFIG, pad(12)]
+
+    # store new_num_of_approvers for later
+    dup.2 loc_store.0
+    # => [MULTISIG_CONFIG, pad(12)]
+
+    dup.3 dup.3
+    # => [num_approvers, threshold, MULTISIG_CONFIG, pad(12)]
+
+    # make sure that the threshold is smaller than the number of approvers
+    u32assert2.err=ERR_MALFORMED_MULTISIG_CONFIG
+    u32gt assertz.err=ERR_MALFORMED_MULTISIG_CONFIG
+    # => [MULTISIG_CONFIG, pad(12)]
+
+    dup.3 dup.3
+    # => [num_approvers, threshold, MULTISIG_CONFIG, pad(12)]
+
+    # make sure that threshold or num_approvers are not zero
+    eq.0 assertz.err=ERR_ZERO_IN_MULTISIG_CONFIG
+    eq.0 assertz.err=ERR_ZERO_IN_MULTISIG_CONFIG
+    # => [MULTISIG_CONFIG, pad(12)]
+
+    push.THRESHOLD_CONFIG_SLOT
+    # => [slot, MULTISIG_CONFIG, pad(12)]
+
+    exec.account::set_item
+    # => [OLD_THRESHOLD_CONFIG, pad(12)]
+
+    # store init_num_of_approvers for later
+    drop drop loc_store.1 drop
+    # => [pad(12)]
+
+    loc_load.0
+    # => [num_approvers]
+
+    dup neq.0
+    while.true
+        sub.1
+        # => [i-1, pad(12)]
+
+        dup push.0.0.0
+        # => [[0, 0, 0, i-1], i-1, pad(12)]
+
+        padw adv_loadw
+        # => [PUB_KEY, [0, 0, 0, i-1], i-1, pad(12)]
+
+        swapw
+        # => [[0, 0, 0, i-1], PUB_KEY, i-1, pad(12)]
+
+        push.PUBLIC_KEYS_MAP_SLOT
+        # => [pub_key_slot_idx, [0, 0, 0, i-1], PUB_KEY, i-1, pad(12)]
+
+        exec.account::set_map_item
+        # => [OLD_MAP_ROOT, OLD_MAP_VALUE, i-1, pad(12)]
+
+        dropw dropw
+        # => [i-1, pad(12)]
+
+        dup neq.0
+        # => [is_non_zero, i-1, pad(12)]
+    end
+    # => [pad(13)]
+
+    drop
+    # => [pad(12)]
+
+    # compare initial vs current multisig config
+
+    # load init_num_of_approvers & new_num_of_approvers
+    loc_load.0 loc_load.1
+    # => [init_num_of_approvers, new_num_of_approvers, pad(12)]
+
+    exec.cleanup_pubkey_mapping
+    # => [pad(12)]
 end
 
 #! Authenticate a transaction using the Falcon signature scheme with multi-signature support.
@@ -123,7 +276,7 @@ export.auth_tx_rpo_falcon512_multisig
     push.THRESHOLD_CONFIG_SLOT
     # => [index, TX_SUMMARY_COMMITMENT]
 
-    exec.account::get_item
+    exec.account::get_item_init
     # => [0, 0, num_of_approvers, threshold, TX_SUMMARY_COMMITMENT]
 
     drop drop
