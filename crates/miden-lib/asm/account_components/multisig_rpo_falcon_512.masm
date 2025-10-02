@@ -30,7 +30,7 @@ const.UNAUTHORIZED_EVENT=event("miden::auth::unauthorized")
 const.THRESHOLD_CONFIG_SLOT=0
 
 # The slot in this component's storage layout where the public keys map is stored.
-# Map entries: [key_index, 0, 0, 0] => owner_public_key
+# Map entries: [key_index, 0, 0, 0] => APPROVER_PUBLIC_KEY
 const.PUBLIC_KEYS_MAP_SLOT=1
 
 # The slot in this component's storage layout where executed transactions are stored.
