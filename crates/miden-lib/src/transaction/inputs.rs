@@ -68,10 +68,6 @@ impl TransactionAdviceInputs {
             inputs.add_map_entry(account_id_key, seed.to_vec());
         }
 
-        // --- foreign account injection --------------------------------------
-        // TODO: Remove?
-        // inputs.add_foreign_accounts(tx_args.foreign_account_inputs())?;
-
         // any extra user-supplied advice
         inputs.extend(tx_args.advice_inputs().clone());
 
