@@ -54,22 +54,22 @@ static NETWORK_FUNGIBLE_FAUCET_BURN: LazyLock<Word> = LazyLock::new(|| {
 /// - `distribute`, which mints an assets and create a note for the provided recipient.
 /// - `burn`, which burns the provided asset.
 ///
-/// `distribute` requires authentication while `burn` does not require authentication and can be
-/// called by anyone. Thus, this component must be combined with a component providing
-/// authentication.
+/// Both `distribute` and `burn` can only be called from note scripts. `distribute` requires
+/// authentication while `burn` does not require authentication and can be called by anyone.
+/// Thus, this component must be combined with a component providing authentication.
 ///
 /// This component supports accounts of type [`AccountType::FungibleFaucet`].
 ///
 /// Unlike [`BasicFungibleFaucet`], this component uses two storage slots:
 /// - First slot: Token metadata `[max_supply, decimals, token_symbol, 0]`
-/// - Second slot: Creator account ID as a single Word
+/// - Second slot: Owner account ID as a single Word
 ///
 /// [kasm]: crate::transaction::TransactionKernel::assembler
 pub struct NetworkFungibleFaucet {
     symbol: TokenSymbol,
     decimals: u8,
     max_supply: Felt,
-    creator_account_id: Word,
+    owner_account_id: Word,
 }
 
 impl NetworkFungibleFaucet {
@@ -96,7 +96,7 @@ impl NetworkFungibleFaucet {
         symbol: TokenSymbol,
         decimals: u8,
         max_supply: Felt,
-        creator_account_id: Word,
+        owner_account_id: Word,
     ) -> Result<Self, FungibleFaucetError> {
         // First check that the metadata is valid.
         if decimals > Self::MAX_DECIMALS {
@@ -115,7 +115,7 @@ impl NetworkFungibleFaucet {
             symbol,
             decimals,
             max_supply,
-            creator_account_id,
+            owner_account_id,
         })
     }
 
@@ -144,8 +144,8 @@ impl NetworkFungibleFaucet {
                     .map_err(|_| FungibleFaucetError::InvalidStorageOffset(*offset))?;
                 let [max_supply, decimals, token_symbol, _] = *faucet_metadata;
 
-                // obtain creator account ID from the next storage slot
-                let creator_account_id: Word = storage
+                // obtain owner account ID from the next storage slot
+                let owner_account_id: Word = storage
                     .get_item(*offset + 1)
                     .map_err(|_| FungibleFaucetError::InvalidStorageOffset(*offset + 1))?;
 
@@ -163,7 +163,7 @@ impl NetworkFungibleFaucet {
                     token_symbol,
                     decimals,
                     max_supply,
-                    creator_account_id,
+                    owner_account_id,
                 );
             }
         }
@@ -189,9 +189,9 @@ impl NetworkFungibleFaucet {
         self.max_supply
     }
 
-    /// Returns the creator account ID of the faucet.
-    pub fn creator_account_id(&self) -> Word {
-        self.creator_account_id
+    /// Returns the owner account ID of the faucet.
+    pub fn owner_account_id(&self) -> Word {
+        self.owner_account_id
     }
 
     /// Returns the digest of the `distribute` account procedure.
@@ -216,12 +216,12 @@ impl From<NetworkFungibleFaucet> for AccountComponent {
             Felt::ZERO,
         ]);
 
-        // Second storage slot stores the creator account ID
-        let creator_slot = StorageSlot::Value(faucet.creator_account_id);
+        // Second storage slot stores the owner account ID
+        let owner_slot = StorageSlot::Value(faucet.owner_account_id);
 
         AccountComponent::new(
             network_fungible_faucet_library(),
-            vec![StorageSlot::Value(metadata), creator_slot]
+            vec![StorageSlot::Value(metadata), owner_slot]
         )
             .expect("network fungible faucet component should satisfy the requirements of a valid account component")
             .with_supported_type(AccountType::FungibleFaucet)
@@ -250,14 +250,15 @@ impl TryFrom<&Account> for NetworkFungibleFaucet {
 
 /// Creates a new faucet account with network fungible faucet interface,
 /// account storage type, specified authentication scheme, and provided meta data (token symbol,
-/// decimals, max supply, creator account ID).
+/// decimals, max supply, owner account ID).
 ///
 /// The network faucet interface exposes two procedures:
 /// - `distribute`, which mints an assets and create a note for the provided recipient.
 /// - `burn`, which burns the provided asset.
 ///
-/// `distribute` requires authentication. The authentication procedure is defined by the specified
-/// authentication scheme. `burn` does not require authentication and can be called by anyone.
+/// Both `distribute` and `burn` can only be called from note scripts. `distribute` requires
+/// authentication. The authentication procedure is defined by the specified authentication scheme.
+/// `burn` does not require authentication and can be called by anyone.
 ///
 /// The storage layout of the network faucet account is:
 /// - Slot 0: Reserved slot for faucets.
@@ -266,13 +267,13 @@ impl TryFrom<&Account> for NetworkFungibleFaucet {
 ///   0].
 /// - Slot 3: A map with tracked procedure roots.
 /// - Slot 4: Token metadata of the faucet.
-/// - Slot 5: Creator account ID.
+/// - Slot 5: Owner account ID.
 pub fn create_network_fungible_faucet(
     init_seed: [u8; 32],
     symbol: TokenSymbol,
     decimals: u8,
     max_supply: Felt,
-    creator_account_id: Word,
+    owner_account_id: Word,
     account_storage_mode: AccountStorageMode,
     auth_scheme: AuthScheme,
 ) -> Result<Account, FungibleFaucetError> {
@@ -300,12 +301,7 @@ pub fn create_network_fungible_faucet(
         .account_type(AccountType::FungibleFaucet)
         .storage_mode(account_storage_mode)
         .with_auth_component(auth_component)
-        .with_component(NetworkFungibleFaucet::new(
-            symbol,
-            decimals,
-            max_supply,
-            creator_account_id,
-        )?)
+        .with_component(NetworkFungibleFaucet::new(symbol, decimals, max_supply, owner_account_id)?)
         .build()
         .map_err(FungibleFaucetError::AccountError)?;
 

@@ -54,9 +54,9 @@ static BASIC_FUNGIBLE_FAUCET_BURN: LazyLock<Word> = LazyLock::new(|| {
 /// - `distribute`, which mints an assets and create a note for the provided recipient.
 /// - `burn`, which burns the provided asset.
 ///
-/// `distribute` requires authentication while `burn` does not require authentication and can be
-/// called by anyone. Thus, this component must be combined with a component providing
-/// authentication.
+/// Both `distribute` and `burn` can only be called from note scripts. `distribute` requires
+/// authentication while `burn` does not require authentication and can be called by anyone.
+/// Thus, this component must be combined with a component providing authentication.
 ///
 /// This component supports accounts of type [`AccountType::FungibleFaucet`].
 ///
@@ -224,8 +224,9 @@ impl TryFrom<&Account> for BasicFungibleFaucet {
 /// - `distribute`, which mints an assets and create a note for the provided recipient.
 /// - `burn`, which burns the provided asset.
 ///
-/// `distribute` requires authentication. The authentication procedure is defined by the specified
-/// authentication scheme. `burn` does not require authentication and can be called by anyone.
+/// Both `distribute` and `burn` can only be called from note scripts. `distribute` requires
+/// authentication. The authentication procedure is defined by the specified authentication scheme.
+/// `burn` does not require authentication and can be called by anyone.
 ///
 /// The storage layout of the faucet account is:
 /// - Slot 0: Reserved slot for faucets.

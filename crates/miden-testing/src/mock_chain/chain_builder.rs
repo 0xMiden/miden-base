@@ -298,17 +298,13 @@ impl MockChainBuilder {
         auth_method: Auth,
         token_symbol: &str,
         max_supply: u64,
-        creator_account_id: Word,
+        owner_account_id: Word,
         total_issuance: Option<u64>,
     ) -> anyhow::Result<Account> {
         let token_symbol = TokenSymbol::new(token_symbol).context("invalid argument")?;
-        let network_faucet = NetworkFungibleFaucet::new(
-            token_symbol,
-            10u8,
-            Felt::new(max_supply),
-            creator_account_id,
-        )
-        .context("invalid argument")?;
+        let network_faucet =
+            NetworkFungibleFaucet::new(token_symbol, 10u8, Felt::new(max_supply), owner_account_id)
+                .context("invalid argument")?;
 
         let account_builder = AccountBuilder::new(self.rng.random())
             .storage_mode(AccountStorageMode::Network)
