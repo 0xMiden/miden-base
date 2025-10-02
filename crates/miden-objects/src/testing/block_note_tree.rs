@@ -16,8 +16,8 @@ impl BlockNoteTree {
     pub fn from_note_batches(notes: &[OutputNoteBatch]) -> Result<BlockNoteTree, MerkleError> {
         let iter = notes.iter().enumerate().flat_map(|(batch_idx, batch_notes)| {
             batch_notes.iter().map(move |(note_idx_in_batch, note)| {
-                let block_note_index =
-                    BlockNoteIndex::new(batch_idx, *note_idx_in_batch).expect("TODO");
+                let block_note_index = BlockNoteIndex::new(batch_idx, *note_idx_in_batch)
+                    .expect("max batches in block and max notes in batches should be enforced");
                 (block_note_index, note.id(), *note.metadata())
             })
         });
