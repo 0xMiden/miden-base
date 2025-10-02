@@ -16,6 +16,7 @@ use miden_objects::account::{
     PartialAccount,
     PartialStorage,
     PartialStorageMap,
+    Signature,
     StorageSlot,
 };
 use miden_objects::assembly::DefaultSourceManager;
@@ -86,7 +87,7 @@ pub struct TransactionContextBuilder {
     note_args: BTreeMap<NoteId, Word>,
     transaction_inputs: Option<TransactionInputs>,
     auth_args: Word,
-    signatures: Vec<(PublicKey, Word, Vec<Felt>)>,
+    signatures: Vec<(PublicKey, Word, Signature)>,
     is_lazy_loading_enabled: bool,
 }
 
@@ -252,7 +253,7 @@ impl TransactionContextBuilder {
         mut self,
         public_key: PublicKey,
         message: Word,
-        signature: Vec<Felt>,
+        signature: Signature,
     ) -> Self {
         self.signatures.push((public_key, message, signature));
         self

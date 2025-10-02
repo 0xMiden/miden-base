@@ -8,6 +8,7 @@ use miden_crypto::merkle::{
     SmtLeaf,
     SmtProof,
     SmtProofError,
+    SparseMerklePath,
 };
 
 use crate::account::AccountId;
@@ -104,7 +105,7 @@ impl AccountWitness {
         // the account trees.
         debug_assert_eq!(proof.path().depth(), AccountTree::DEPTH);
 
-        AccountWitness::new_unchecked(witness_id, commitment, proof.into_parts().0)
+        AccountWitness::new_unchecked(witness_id, commitment, proof.into_parts().0.into())
     }
 
     /// Constructs a new [`AccountWitness`] from the provided parts.
@@ -145,8 +146,14 @@ impl AccountWitness {
     /// Consumes self and returns the inner proof.
     pub fn into_proof(self) -> SmtProof {
         let leaf = self.leaf();
-        SmtProof::new(self.path, leaf)
-            .expect("merkle path depth should be the SMT depth by construction")
+        debug_assert_eq!(self.path.depth(), AccountTree::DEPTH);
+        SmtProof::new(
+            SparseMerklePath::try_from(self.path).expect(
+                "only ever exists for merkle paths that match the SMT depth by construction",
+            ),
+            leaf,
+        )
+        .expect("merkle path depth should be the SMT depth by construction")
     }
 
     /// Returns an iterator over every inner node of this witness' merkle path.

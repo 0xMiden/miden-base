@@ -141,7 +141,7 @@ pub trait TransactionAuthenticator {
         &self,
         pub_key: Word,
         signing_inputs: &SigningInputs,
-    ) -> impl FutureMaybeSend<Result<Vec<Felt>, AuthenticationError>>;
+    ) -> impl FutureMaybeSend<Result<Signature, AuthenticationError>>;
 }
 
 /// A placeholder type for the generic trait bound of `TransactionAuthenticator<'_,'_,_,T>`
@@ -160,7 +160,7 @@ impl TransactionAuthenticator for UnreachableAuth {
         &self,
         _pub_key: Word,
         _signing_inputs: &SigningInputs,
-    ) -> impl FutureMaybeSend<Result<Vec<Felt>, AuthenticationError>> {
+    ) -> impl FutureMaybeSend<Result<Signature, AuthenticationError>> {
         async { unreachable!("Type `UnreachableAuth` must not be instantiated") }
     }
 }
@@ -219,7 +219,7 @@ impl<R: Rng + Send + Sync> TransactionAuthenticator for BasicAuthenticator<R> {
         &self,
         pub_key: Word,
         signing_inputs: &SigningInputs,
-    ) -> impl FutureMaybeSend<Result<Vec<Felt>, AuthenticationError>> {
+    ) -> impl FutureMaybeSend<Result<Signature, AuthenticationError>> {
         let message = signing_inputs.to_commitment();
 
         async move {
@@ -231,7 +231,7 @@ impl<R: Rng + Send + Sync> TransactionAuthenticator for BasicAuthenticator<R> {
                             falcon_key.sign_with_rng(message, &mut *rng).into()
                         },
                     };
-                    Ok(signature.to_prepared_signature())
+                    Ok(signature)
                 },
                 None => Err(AuthenticationError::UnknownPublicKey(format!(
                     "public key {pub_key} is not contained in the authenticator's keys",
@@ -250,7 +250,7 @@ impl TransactionAuthenticator for () {
         &self,
         _pub_key: Word,
         _signing_inputs: &SigningInputs,
-    ) -> impl FutureMaybeSend<Result<Vec<Felt>, AuthenticationError>> {
+    ) -> impl FutureMaybeSend<Result<Signature, AuthenticationError>> {
         async {
             Err(AuthenticationError::RejectedSignature(
                 "default authenticator cannot provide signatures".to_string(),

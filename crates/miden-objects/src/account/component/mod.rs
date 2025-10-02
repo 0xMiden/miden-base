@@ -4,7 +4,7 @@ use alloc::vec::Vec;
 use miden_assembly::ast::QualifiedProcedureName;
 use miden_assembly::{Assembler, Library, Parse};
 use miden_core::utils::Deserializable;
-use miden_mast_package::Package;
+use miden_mast_package::{Package, SectionId};
 use miden_processor::MastForest;
 
 mod template;
@@ -22,21 +22,27 @@ impl TryFrom<Package> for AccountComponentTemplate {
     fn try_from(package: Package) -> Result<Self, Self::Error> {
         let library = package.unwrap_library().as_ref().clone();
 
-        // Extract metadata - require explicit account component metadata
-        let metadata = match package.account_component_metadata_bytes.as_deref() {
-            Some(metadata_bytes) => AccountComponentMetadata::read_from_bytes(metadata_bytes)
-                .map_err(|err| {
-                    AccountError::other_with_source(
-                        "failed to deserialize account component metadata",
-                        err,
-                    )
-                })?,
-            None => {
-                return Err(AccountError::other(
-                    "package does not contain account component metadata - packages without explicit metadata may be intended for other purposes (e.g., note scripts, transaction scripts)",
-                ));
-            },
-        };
+        // Look for account component metadata in sections
+        let metadata = package
+            .sections
+            .iter()
+            .find_map(|section| {
+                (section.id == SectionId::ACCOUNT_COMPONENT_METADATA).then(|| {
+                        AccountComponentMetadata::read_from_bytes(&section.data)
+                            .map_err(|err| {
+                                AccountError::other_with_source(
+                                    "failed to deserialize account component metadata",
+                                    err,
+                                )
+                            })
+                })
+            })
+            .transpose()?
+            .ok_or_else(|| {
+                AccountError::other(
+                    "package does not contain account component metadata section - packages without explicit metadata may be intended for other purposes (e.g., note scripts, transaction scripts)",
+                )
+            })?;
 
         Ok(AccountComponentTemplate::new(metadata, library))
     }
@@ -270,7 +276,7 @@ mod tests {
 
     use miden_assembly::Assembler;
     use miden_core::utils::Serializable;
-    use miden_mast_package::{MastArtifact, Package, PackageManifest};
+    use miden_mast_package::{MastArtifact, Package, PackageManifest, Section};
     use semver::Version;
 
     use super::*;
@@ -296,7 +302,13 @@ mod tests {
             name: "test_package".to_string(),
             mast: MastArtifact::Library(Arc::new(library.clone())),
             manifest: PackageManifest::new(None),
-            account_component_metadata_bytes: Some(metadata_bytes),
+
+            sections: vec![Section::new(
+                SectionId::ACCOUNT_COMPONENT_METADATA,
+                metadata_bytes.clone(),
+            )],
+            version: Default::default(),
+            description: None,
         };
 
         let template = AccountComponentTemplate::try_from(package_with_metadata).unwrap();
@@ -313,7 +325,9 @@ mod tests {
             name: "test_package_no_metadata".to_string(),
             mast: MastArtifact::Library(Arc::new(library)),
             manifest: PackageManifest::new(None),
-            account_component_metadata_bytes: None,
+            sections: vec![], // No metadata section
+            version: Default::default(),
+            description: None,
         };
 
         let result = AccountComponentTemplate::try_from(package_without_metadata);
@@ -340,15 +354,17 @@ mod tests {
         )
         .unwrap();
 
-        // Serialize the metadata
-        let metadata_bytes = metadata.to_bytes();
-
         // Create a package with metadata
         let package = Package {
             name: "test_package_init_data".to_string(),
             mast: MastArtifact::Library(Arc::new(library.clone())),
             manifest: PackageManifest::new(None),
-            account_component_metadata_bytes: Some(metadata_bytes),
+            sections: vec![Section::new(
+                SectionId::ACCOUNT_COMPONENT_METADATA,
+                metadata.to_bytes(),
+            )],
+            version: Default::default(),
+            description: None,
         };
 
         // Test with empty init data - this tests the complete workflow:
@@ -368,7 +384,9 @@ mod tests {
             name: "test_package_no_metadata".to_string(),
             mast: MastArtifact::Library(Arc::new(library)),
             manifest: PackageManifest::new(None),
-            account_component_metadata_bytes: None,
+            sections: vec![], // No metadata section
+            version: Default::default(),
+            description: None,
         };
 
         let result =
