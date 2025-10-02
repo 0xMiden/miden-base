@@ -1,5 +1,7 @@
 use alloc::vec::Vec;
 
+use miden_crypto::dsa::rpo_falcon512::PublicKey as RpoFalconPublicKey;
+
 use crate::crypto::dsa::rpo_falcon512::{self, Polynomial, SecretKey};
 use crate::utils::serde::{
     ByteReader,
@@ -9,7 +11,6 @@ use crate::utils::serde::{
     Serializable,
 };
 use crate::{Felt, Hasher, Word};
-use miden_crypto::dsa::rpo_falcon512::PublicKey as RpoFalconPublicKey;
 
 // AUTH SECRET KEY
 // ================================================================================================

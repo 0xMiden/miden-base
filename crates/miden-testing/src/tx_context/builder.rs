@@ -16,13 +16,13 @@ use miden_objects::account::{
     PartialAccount,
     PartialStorage,
     PartialStorageMap,
+    PublicKeyCommitment,
     Signature,
     StorageSlot,
 };
 use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::assembly::debuginfo::SourceManagerSync;
 use miden_objects::asset::PartialVault;
-use miden_objects::account::PublicKeyCommitment;
 use miden_objects::note::{Note, NoteId};
 use miden_objects::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE;
 use miden_objects::testing::noop_auth_component::NoopAuthComponent;

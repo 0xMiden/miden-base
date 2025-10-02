@@ -4,8 +4,8 @@ use alloc::string::ToString;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use miden_objects::account::{AuthSecretKey, Signature};
 use miden_lib::account::auth::PublicKeyCommitment;
+use miden_objects::account::{AuthSecretKey, Signature};
 use miden_objects::crypto::SequentialCommit;
 use miden_objects::transaction::TransactionSummary;
 use miden_objects::{Felt, Hasher, Word};

@@ -2,12 +2,11 @@ use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use crate::account::PublicKeyCommitment;
 use miden_crypto::merkle::InnerNodeInfo;
 use miden_processor::MastNodeExt;
 
 use super::{AccountInputs, Felt, Hasher, Word};
-use crate::account::Signature;
+use crate::account::{PublicKeyCommitment, Signature};
 use crate::note::{NoteId, NoteRecipient};
 use crate::utils::serde::{
     ByteReader,

@@ -2,6 +2,7 @@ use alloc::collections::BTreeMap;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
+use miden_lib::account::auth::PublicKeyCommitment;
 use miden_lib::transaction::{EventId, TransactionAdviceInputs};
 use miden_objects::account::{AccountCode, AccountDelta, AccountId, PartialAccount};
 use miden_objects::assembly::debuginfo::Location;
@@ -12,7 +13,6 @@ use miden_objects::crypto::merkle::SmtProof;
 use miden_objects::transaction::{InputNote, InputNotes, OutputNote};
 use miden_objects::vm::AdviceMap;
 use miden_objects::{Felt, Hasher, Word};
-use miden_lib::account::auth::PublicKeyCommitment;
 use miden_processor::{
     AdviceMutation,
     AsyncHost,
