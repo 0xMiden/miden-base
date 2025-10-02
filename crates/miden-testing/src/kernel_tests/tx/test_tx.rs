@@ -450,6 +450,7 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
 /// component to result in a [`TransactionExecutorError::Unauthorized`] error.
 #[tokio::test]
 async fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
+    let source_code = r#"
       use.miden::auth
       use.miden::tx
       const.ABORT_EVENT=event("miden::auth::unauthorized")
