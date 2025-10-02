@@ -16,15 +16,16 @@ const.UNAUTHORIZED_EVENT=event("miden::auth::unauthorized")
 
 # Storage Layout Constants
 #
-# ┌─────────────────────────────┬──────────┬──────────────┐
-# │    THRESHOLD & APPROVERS    │ PUB KEYS │ EXECUTED TXS │
-# │           (slot)            │   (map)  │    (map)     │
-# ├─────────────────────────────┼──────────┼──────────────┤
-# │              0              │    1     │      2       │
-# └─────────────────────────────┴──────────┴──────────────┘
+# ┌───────────────────────────────┬──────────┬──────────────┬──────────────┬────────────────────┐
+# │ THRESHOLD & APPROVERS CONFIG  │ PUB KEYS │ EXECUTED TXS │  PROC ROOTS  │  PROC THRESHOLDS   │
+# │           (slot)              │   (map)  │    (map)     │    (map)     │       (map)        │
+# ├───────────────────────────────┼──────────┼──────────────┼──────────────┼────────────────────┤
+# │              0                │    1     │      2       │      3       │         4          │
+# └───────────────────────────────┴──────────┴──────────────┴──────────────┴────────────────────┘
 
-# The slot in this component's storage layout where both the signature threshold
-# and number of approvers are stored as [threshold, num_approvers, 0, 0].
+# The slot in this component's storage layout where the signature threshold,
+# number of approvers, and number of procedure thresholds are stored as
+# [threshold, num_approvers, num_procedure_thresholds, 0].
 # The threshold is guaranteed to be less than or equal to num_approvers.
 const.THRESHOLD_CONFIG_SLOT=0
 
@@ -35,6 +36,16 @@ const.PUBLIC_KEYS_MAP_SLOT=1
 # The slot in this component's storage layout where executed transactions are stored.
 # Map entries: transaction_message => [is_executed, 0, 0, 0]
 const.EXECUTED_TXS_SLOT=2
+
+# The slot in this component's storage layout where procedure roots from the
+# procedure threshold map are stored.
+# Map entries: [index, 0, 0, 0] => PROCEDURE_ROOT
+const.PROC_THRESHOLD_ROOTS_SLOT=3
+
+# The slot in this component's storage layout where procedure thresholds from the
+# procedure threshold map are stored.
+# Map entries: [index, 0, 0, 0] => [threshold, 0, 0, 0]
+const.PROC_THRESHOLD_MAP_SLOT=4
 
 # Executed Transaction Flag Constant
 const.IS_EXECUTED_FLAG=[1, 0, 0, 0]
@@ -136,7 +147,7 @@ end
 #!
 #! Where:
 #! - MULTISIG_CONFIG_HASH is the hash of the threshold and new public key vector
-#! - MULTISIG_CONFIG is [threshold, num_approvers, 0, 0]
+#! - MULTISIG_CONFIG is [threshold, num_approvers, num_procedure_thresholds, 0]
 #! - PUB_KEY_i is the public key of the i-th signer
 #!
 #! Locals:
