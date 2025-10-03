@@ -150,7 +150,7 @@ where
         // further reduced.
         loop {
             // Execute the candidate notes.
-            kernel_inputs.set_input_notes_unchecked(candidate_notes.clone().into());
+            kernel_inputs.set_input_notes(candidate_notes.clone());
             match self.try_execute_notes(&kernel_inputs).await {
                 Ok(()) => {
                     // A full set of successful notes has been found.
@@ -214,7 +214,7 @@ where
             for (idx, note) in remaining_notes.iter().enumerate() {
                 successful_notes.push(note.clone());
 
-                kernel_inputs.set_input_notes_unchecked(successful_notes.clone().into());
+                kernel_inputs.set_input_notes(successful_notes.clone());
                 match self.try_execute_notes(&kernel_inputs).await {
                     Ok(()) => {
                         // The successfully added note might have failed earlier. Remove it from the

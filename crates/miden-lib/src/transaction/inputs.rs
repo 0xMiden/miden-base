@@ -76,8 +76,8 @@ impl TransactionKernelInputs {
     /// This method does not validate the notes against the data already in this
     /// [`TransactionKernelInputs`]. It should only be called with notes that have been validated
     /// by the constructor.
-    pub fn set_input_notes_unchecked(&mut self, new_notes: InputNotes<InputNote>) {
-        self.input_notes = new_notes;
+    pub fn set_input_notes(&mut self, new_notes: Vec<Note>) {
+        self.input_notes = new_notes.into();
     }
 
     /// Updates the transaction arguments of the inputs.
