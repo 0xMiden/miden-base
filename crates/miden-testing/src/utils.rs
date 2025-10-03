@@ -3,9 +3,10 @@ use alloc::vec::Vec;
 
 use miden_lib::testing::note::NoteBuilder;
 use miden_lib::transaction::{TransactionKernel, memory};
+use miden_objects::Word;
 use miden_objects::account::AccountId;
 use miden_objects::asset::Asset;
-use miden_objects::note::Note;
+use miden_objects::note::{Note, NoteType};
 use miden_objects::testing::storage::prepare_assets;
 use miden_processor::Felt;
 use rand::SeedableRng;
@@ -73,13 +74,32 @@ pub fn input_note_data_ptr(note_idx: u32) -> memory::MemoryAddress {
 // HELPER NOTES
 // ================================================================================================
 
+/// Creates a public `P2ANY` note.
+///
+/// A `P2ANY` note carries `assets` and a script that moves the assets into the executing account's
+/// vault.
+///
+/// The created note does not require authentication and can be consumed by any account.
+pub fn create_public_p2any_note(
+    sender: AccountId,
+    assets: impl IntoIterator<Item = Asset>,
+) -> Note {
+    create_p2any_note(sender, NoteType::Public, Word::from([1, 2, 3, 4u32]), assets)
+}
+
 /// Creates a `P2ANY` note.
 ///
 /// A `P2ANY` note carries `assets` and a script that moves the assets into the executing account's
 /// vault.
 ///
 /// The created note does not require authentication and can be consumed by any account.
-pub fn create_p2any_note(sender: AccountId, assets: &[Asset]) -> Note {
+pub fn create_p2any_note(
+    sender: AccountId,
+    note_type: NoteType,
+    serial_number: Word,
+    assets: impl IntoIterator<Item = Asset>,
+) -> Note {
+    let assets: Vec<_> = assets.into_iter().collect();
     let mut code_body = String::new();
     for i in 0..assets.len() {
         if i == 0 {
@@ -113,12 +133,12 @@ pub fn create_p2any_note(sender: AccountId, assets: &[Asset]) -> Note {
     let code = format!(
         "
         use.mock::account
-        use.miden::note
+        use.miden::active_note
         use.miden::contracts::wallets::basic->wallet
 
         begin
             # fetch pointer & number of assets
-            push.0 exec.note::get_assets          # [num_assets, dest_ptr]
+            push.0 exec.active_note::get_assets     # [num_assets, dest_ptr]
 
             # runtime-check we got the expected count
             push.{num_assets} assert_eq             # [dest_ptr]
@@ -132,6 +152,8 @@ pub fn create_p2any_note(sender: AccountId, assets: &[Asset]) -> Note {
 
     NoteBuilder::new(sender, SmallRng::from_seed([0; 32]))
         .add_assets(assets.iter().copied())
+        .note_type(note_type)
+        .serial_number(serial_number)
         .code(code)
         .dynamically_linked_libraries(TransactionKernel::mock_libraries())
         .build()
@@ -142,8 +164,30 @@ pub fn create_p2any_note(sender: AccountId, assets: &[Asset]) -> Note {
 ///
 ///  A `SPAWN` note contains a note script that creates all `output_notes` that get passed as a
 ///  parameter.
-pub fn create_spawn_note(sender_id: AccountId, output_notes: Vec<&Note>) -> anyhow::Result<Note> {
-    let note_code = note_script_that_creates_notes(output_notes);
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - the sender account ID of the provided output notes is not consistent or does not match the
+///   transaction's sender.
+pub fn create_spawn_note<'note, I>(
+    output_notes: impl IntoIterator<Item = &'note Note, IntoIter = I>,
+) -> anyhow::Result<Note>
+where
+    I: ExactSizeIterator<Item = &'note Note>,
+{
+    let mut output_notes = output_notes.into_iter().peekable();
+    if output_notes.len() == 0 {
+        anyhow::bail!("at least one output note is needed to create a SPAWN note");
+    }
+
+    let sender_id = output_notes
+        .peek()
+        .expect("at least one output note should be present")
+        .metadata()
+        .sender();
+
+    let note_code = note_script_that_creates_notes(sender_id, output_notes)?;
 
     let note = NoteBuilder::new(sender_id, SmallRng::from_os_rng())
         .code(note_code)
@@ -154,23 +198,44 @@ pub fn create_spawn_note(sender_id: AccountId, output_notes: Vec<&Note>) -> anyh
 }
 
 /// Returns the code for a note that creates all notes in `output_notes`
-fn note_script_that_creates_notes(output_notes: Vec<&Note>) -> String {
-    let mut out = String::from("use.miden::tx\nuse.mock::account\n\nbegin\n");
+fn note_script_that_creates_notes<'note>(
+    sender_id: AccountId,
+    output_notes: impl Iterator<Item = &'note Note>,
+) -> anyhow::Result<String> {
+    let mut out = String::from("use.miden::output_note\n\nbegin\n");
 
-    for (idx, note) in output_notes.iter().enumerate() {
+    for (idx, note) in output_notes.into_iter().enumerate() {
+        anyhow::ensure!(
+            note.metadata().sender() == sender_id,
+            "sender IDs of output notes passed to SPAWN note are inconsistent"
+        );
+
+        // Make sure that the transaction's native account matches the note sender.
+        out.push_str(&format!(
+            r#"exec.::miden::account::get_native_id
+             # => [native_account_id_prefix, native_account_id_suffix]
+             push.{sender_prefix} assert_eq.err="sender ID prefix does not match native account ID's prefix"
+             # => [native_account_id_suffix]
+             push.{sender_suffix} assert_eq.err="sender ID suffix does not match native account ID's suffix"
+             # => []
+        "#,
+          sender_prefix = sender_id.prefix().as_felt(),
+          sender_suffix = sender_id.suffix()
+        ));
+
         if idx == 0 {
             out.push_str("padw padw\n");
         } else {
             out.push_str("dropw dropw dropw\n");
         }
-        let assets_str = prepare_assets(note.assets());
         out.push_str(&format!(
-            " push.{recipient}
-              push.{hint}
-              push.{note_type}
-              push.{aux}
-              push.{tag}
-              call.tx::create_note\n",
+            "
+            push.{recipient}
+            push.{hint}
+            push.{note_type}
+            push.{aux}
+            push.{tag}
+            call.output_note::create\n",
             recipient = note.recipient().digest(),
             hint = Felt::from(note.metadata().execution_hint()),
             note_type = note.metadata().note_type() as u8,
@@ -178,14 +243,16 @@ fn note_script_that_creates_notes(output_notes: Vec<&Note>) -> String {
             tag = note.metadata().tag(),
         ));
 
+        let assets_str = prepare_assets(note.assets());
         for asset in assets_str {
             out.push_str(&format!(
                 " push.{asset}
-                  call.tx::add_asset_to_note\n",
+                  call.::miden::contracts::wallets::basic::move_asset_to_note\n",
             ));
         }
     }
 
     out.push_str("repeat.5 dropw end\nend");
-    out
+
+    Ok(out)
 }

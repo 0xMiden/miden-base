@@ -1,7 +1,6 @@
 use alloc::vec::Vec;
 
 use super::{
-    Account,
     AccountDelta,
     AccountHeader,
     AccountId,
@@ -17,6 +16,7 @@ use super::{
     TransactionOutputs,
     TransactionWitness,
 };
+use crate::account::{AccountCode, PartialAccount};
 use crate::asset::FungibleAsset;
 use crate::block::BlockNumber;
 use crate::utils::serde::{
@@ -47,6 +47,7 @@ pub struct ExecutedTransaction {
     tx_outputs: TransactionOutputs,
     account_delta: AccountDelta,
     tx_args: TransactionArgs,
+    foreign_account_code: Vec<AccountCode>,
     advice_witness: AdviceInputs,
     tx_measurements: TransactionMeasurements,
 }
@@ -64,6 +65,7 @@ impl ExecutedTransaction {
         tx_outputs: TransactionOutputs,
         account_delta: AccountDelta,
         tx_args: TransactionArgs,
+        foreign_account_code: Vec<AccountCode>,
         advice_witness: AdviceInputs,
         tx_measurements: TransactionMeasurements,
     ) -> Self {
@@ -73,7 +75,7 @@ impl ExecutedTransaction {
         // we create the id from the content, so we cannot construct the
         // `id` value after construction `Self {..}` without moving
         let id = TransactionId::new(
-            tx_inputs.account().init_commitment(),
+            tx_inputs.account().initial_commitment(),
             tx_outputs.account.commitment(),
             tx_inputs.input_notes().commitment(),
             tx_outputs.output_notes.commitment(),
@@ -85,6 +87,7 @@ impl ExecutedTransaction {
             tx_outputs,
             account_delta,
             tx_args,
+            foreign_account_code,
             advice_witness,
             tx_measurements,
         }
@@ -103,12 +106,12 @@ impl ExecutedTransaction {
         self.initial_account().id()
     }
 
-    /// Returns the description of the account before the transaction was executed.
-    pub fn initial_account(&self) -> &Account {
+    /// Returns the partial state of the account before the transaction was executed.
+    pub fn initial_account(&self) -> &PartialAccount {
         self.tx_inputs.account()
     }
 
-    /// Returns description of the account after the transaction was executed.
+    /// Returns the header of the account state after the transaction was executed.
     pub fn final_account(&self) -> &AccountHeader {
         &self.tx_outputs.account
     }
@@ -175,8 +178,10 @@ impl ExecutedTransaction {
         let tx_witness = TransactionWitness {
             tx_inputs: self.tx_inputs,
             tx_args: self.tx_args,
+            foreign_account_code: self.foreign_account_code,
             advice_witness: self.advice_witness,
         };
+
         (self.account_delta, self.tx_outputs, tx_witness, self.tx_measurements)
     }
 }
@@ -201,6 +206,7 @@ impl Serializable for ExecutedTransaction {
         self.tx_outputs.write_into(target);
         self.account_delta.write_into(target);
         self.tx_args.write_into(target);
+        self.foreign_account_code.write_into(target);
         self.advice_witness.write_into(target);
         self.tx_measurements.write_into(target);
     }
@@ -212,6 +218,7 @@ impl Deserializable for ExecutedTransaction {
         let tx_outputs = TransactionOutputs::read_from(source)?;
         let account_delta = AccountDelta::read_from(source)?;
         let tx_args = TransactionArgs::read_from(source)?;
+        let foreign_account_code = <Vec<AccountCode>>::read_from(source)?;
         let advice_witness = AdviceInputs::read_from(source)?;
         let tx_measurements = TransactionMeasurements::read_from(source)?;
 
@@ -220,6 +227,7 @@ impl Deserializable for ExecutedTransaction {
             tx_outputs,
             account_delta,
             tx_args,
+            foreign_account_code,
             advice_witness,
             tx_measurements,
         ))
@@ -238,6 +246,7 @@ pub struct TransactionMeasurements {
     pub note_execution: Vec<(NoteId, usize)>,
     pub tx_script_processing: usize,
     pub epilogue: usize,
+    pub auth_procedure: usize,
     /// The number of cycles the epilogue took to execute after compute_fee determined the cycle
     /// count.
     ///
@@ -267,6 +276,7 @@ impl Serializable for TransactionMeasurements {
         self.note_execution.write_into(target);
         self.tx_script_processing.write_into(target);
         self.epilogue.write_into(target);
+        self.auth_procedure.write_into(target);
         self.after_tx_cycles_obtained.write_into(target);
     }
 }
@@ -278,6 +288,7 @@ impl Deserializable for TransactionMeasurements {
         let note_execution = Vec::<(NoteId, usize)>::read_from(source)?;
         let tx_script_processing = usize::read_from(source)?;
         let epilogue = usize::read_from(source)?;
+        let auth_procedure = usize::read_from(source)?;
         let after_tx_cycles_obtained = usize::read_from(source)?;
 
         Ok(Self {
@@ -286,6 +297,7 @@ impl Deserializable for TransactionMeasurements {
             note_execution,
             tx_script_processing,
             epilogue,
+            auth_procedure,
             after_tx_cycles_obtained,
         })
     }

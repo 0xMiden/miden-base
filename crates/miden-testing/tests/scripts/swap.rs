@@ -40,14 +40,14 @@ pub fn prove_send_swap_note() -> anyhow::Result<()> {
 
     let tx_script_src = &format!(
         "
-        use.miden::tx
+        use.miden::output_note
         begin
             push.{recipient}
             push.{note_execution_hint}
             push.{note_type}
             push.0              # aux
             push.{tag}
-            call.tx::create_note
+            call.output_note::create
 
             push.{asset}
             call.::miden::contracts::wallets::basic::move_asset_to_note
@@ -236,7 +236,7 @@ fn settle_coincidence_of_wants() -> anyhow::Result<()> {
     // Create two different assets for the swap
     let faucet0 = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET)?;
     let faucet1 = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1)?;
-    let asset_a = FungibleAsset::new(faucet0, 10_000)?.into();
+    let asset_a = FungibleAsset::new(faucet0, 10_777)?.into();
     let asset_b = FungibleAsset::new(faucet1, 10)?.into();
 
     let mut builder = MockChain::builder();
@@ -327,7 +327,7 @@ fn setup_swap_test(payback_note_type: NoteType) -> anyhow::Result<SwapTestSetup>
         .add_swap_note(sender_account.id(), offered_asset, requested_asset, payback_note_type)
         .unwrap();
 
-    builder.add_note(OutputNote::Full(swap_note.clone()));
+    builder.add_output_note(OutputNote::Full(swap_note.clone()));
     let mock_chain = builder.build()?;
 
     Ok(SwapTestSetup {

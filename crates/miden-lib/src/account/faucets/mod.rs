@@ -281,7 +281,7 @@ pub fn create_basic_fungible_faucet(
     max_supply: Felt,
     account_storage_mode: AccountStorageMode,
     auth_scheme: AuthScheme,
-) -> Result<(Account, Word), FungibleFaucetError> {
+) -> Result<Account, FungibleFaucetError> {
     let distribute_proc_root = BasicFungibleFaucet::distribute_digest();
 
     let auth_component: AccountComponent = match auth_scheme {
@@ -311,7 +311,7 @@ pub fn create_basic_fungible_faucet(
         },
     };
 
-    let (account, account_seed) = AccountBuilder::new(init_seed)
+    let account = AccountBuilder::new(init_seed)
         .account_type(AccountType::FungibleFaucet)
         .storage_mode(account_storage_mode)
         .with_auth_component(auth_component)
@@ -319,7 +319,7 @@ pub fn create_basic_fungible_faucet(
         .build()
         .map_err(FungibleFaucetError::AccountError)?;
 
-    Ok((account, account_seed))
+    Ok(account)
 }
 
 // FUNGIBLE FAUCET ERROR
@@ -354,7 +354,7 @@ pub enum FungibleFaucetError {
 #[cfg(test)]
 mod tests {
     use assert_matches::assert_matches;
-    use miden_objects::crypto::dsa::rpo_falcon512::{self, PublicKey};
+    use miden_objects::account::PublicKeyCommitment;
     use miden_objects::{FieldElement, ONE, Word};
 
     use super::{
@@ -373,8 +373,8 @@ mod tests {
 
     #[test]
     fn faucet_contract_creation() {
-        let pub_key = rpo_falcon512::PublicKey::new(Word::new([ONE; 4]));
-        let auth_scheme: AuthScheme = AuthScheme::RpoFalcon512 { pub_key };
+        let pub_key_word = Word::new([ONE; 4]);
+        let auth_scheme: AuthScheme = AuthScheme::RpoFalcon512 { pub_key: pub_key_word.into() };
 
         // we need to use an initial seed to create the wallet account
         let init_seed: [u8; 32] = [
@@ -388,7 +388,7 @@ mod tests {
         let decimals = 2u8;
         let storage_mode = AccountStorageMode::Private;
 
-        let (faucet_account, _) = create_basic_fungible_faucet(
+        let faucet_account = create_basic_fungible_faucet(
             init_seed,
             token_symbol,
             decimals,
@@ -403,7 +403,7 @@ mod tests {
 
         // The falcon auth component is added first so its assigned storage slot for the public key
         // will be 1.
-        assert_eq!(faucet_account.storage().get_item(1).unwrap(), Word::from(pub_key));
+        assert_eq!(faucet_account.storage().get_item(1).unwrap(), pub_key_word);
 
         // Slot 2 stores [num_tracked_procs, allow_unauthorized_output_notes,
         // allow_unauthorized_input_notes, 0]. With 1 tracked procedure (distribute),
@@ -432,13 +432,22 @@ mod tests {
         );
 
         assert!(faucet_account.is_faucet());
+
+        assert_eq!(faucet_account.account_type(), AccountType::FungibleFaucet);
+
+        // Verify the faucet can be extracted and has correct metadata
+        let faucet_component = BasicFungibleFaucet::try_from(faucet_account.clone()).unwrap();
+        assert_eq!(faucet_component.symbol(), token_symbol);
+        assert_eq!(faucet_component.decimals(), decimals);
+        assert_eq!(faucet_component.max_supply(), max_supply);
     }
 
     #[test]
     fn faucet_create_from_account() {
         // prepare the test data
-        let mock_public_key = PublicKey::new(Word::from([0, 1, 2, 3u32]));
-        let mock_seed = Word::from([0, 1, 2, 3u32]).as_bytes();
+        let mock_word = Word::from([0, 1, 2, 3u32]);
+        let mock_public_key = PublicKeyCommitment::from(mock_word);
+        let mock_seed = mock_word.as_bytes();
 
         // valid account
         let token_symbol = TokenSymbol::new("POL").expect("invalid token symbol");

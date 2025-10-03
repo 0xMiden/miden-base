@@ -30,6 +30,7 @@ use miden_objects::block::{
     OutputNoteBatch,
     ProvenBlock,
 };
+use miden_objects::crypto::rand::FeltRng;
 use miden_objects::note::{Note, NoteDetails, NoteType};
 use miden_objects::testing::account_id::ACCOUNT_ID_NATIVE_ASSET_FAUCET;
 use miden_objects::transaction::{OrderedTransactionHeaders, OutputNote};
@@ -37,15 +38,64 @@ use miden_objects::{Felt, FieldElement, MAX_OUTPUT_NOTES_PER_BATCH, NoteError, W
 use miden_processor::crypto::RpoRandomCoin;
 use rand::Rng;
 
-use crate::mock_chain::chain::AccountCredentials;
+use crate::mock_chain::chain::AccountAuthenticator;
 use crate::utils::{create_p2any_note, create_spawn_note};
 use crate::{AccountState, Auth, MockChain};
 
-/// A builder for a [`MockChain`].
+/// A builder for a [`MockChain`]'s genesis block.
+///
+/// ## Example
+///
+/// ```
+/// # use anyhow::Result;
+/// # use miden_objects::{
+/// #    asset::{Asset, FungibleAsset},
+/// #    note::NoteType,
+/// # };
+/// # use miden_testing::{Auth, MockChain};
+/// #
+/// # fn main() -> Result<()> {
+/// let mut builder = MockChain::builder();
+/// let existing_wallet =
+///     builder.add_existing_wallet_with_assets(Auth::IncrNonce, [FungibleAsset::mock(500)])?;
+/// let new_wallet = builder.create_new_wallet(Auth::IncrNonce)?;
+///
+/// let existing_note = builder.add_p2id_note(
+///     existing_wallet.id(),
+///     new_wallet.id(),
+///     &[FungibleAsset::mock(100)],
+///     NoteType::Private,
+/// )?;
+/// let new_note = builder.create_p2id_note(
+///     existing_wallet.id(),
+///     new_wallet.id(),
+///     [FungibleAsset::mock(100)],
+///     NoteType::Private,
+/// )?;
+/// let chain = builder.build()?;
+///
+/// // The existing wallet and note should be part of the chain state.
+/// assert!(chain.committed_account(existing_wallet.id()).is_ok());
+/// assert!(chain.committed_notes().get(&existing_note.id()).is_some());
+///
+/// // The new wallet and note should *not* be part of the chain state - they must be created in
+/// // a transaction first.
+/// assert!(chain.committed_account(new_wallet.id()).is_err());
+/// assert!(chain.committed_notes().get(&new_note.id()).is_none());
+///
+/// # Ok(())
+/// # }
+/// ```
+///
+/// Note the distinction between `add_` and `create_` APIs. Any `add_` APIs will add something to
+/// the genesis chain state while `create_` APIs do not mutate the genesis state. The latter are
+/// simply convenient for creating accounts or notes that will be created by transactions.
+///
+/// See also the [`MockChain`] docs for examples on using the mock chain.
 #[derive(Debug, Clone)]
 pub struct MockChainBuilder {
     accounts: BTreeMap<AccountId, Account>,
-    account_credentials: BTreeMap<AccountId, AccountCredentials>,
+    account_authenticators: BTreeMap<AccountId, AccountAuthenticator>,
     notes: Vec<OutputNote>,
     rng: RpoRandomCoin,
     // Fee parameters.
@@ -69,7 +119,7 @@ impl MockChainBuilder {
 
         Self {
             accounts: BTreeMap::new(),
-            account_credentials: BTreeMap::new(),
+            account_authenticators: BTreeMap::new(),
             notes: Vec::new(),
             rng: RpoRandomCoin::new(Default::default()),
             native_asset_id,
@@ -79,9 +129,9 @@ impl MockChainBuilder {
 
     /// Initializes a new mock chain builder with the provided accounts.
     ///
-    /// This method only adds the accounts and cannot not register any seed or authenticator for it.
+    /// This method only adds the accounts and cannot not register any authenticators for them.
     /// Calling [`MockChain::build_tx_context`] on accounts added in this way will not work if the
-    /// account is new or if they need an authenticator.
+    /// account needs an authenticator.
     ///
     /// Due to these limitations, prefer using other methods to add accounts to the chain, e.g.
     /// [`MockChainBuilder::add_account_from_builder`].
@@ -157,7 +207,7 @@ impl MockChainBuilder {
         let nullifier_root = NullifierTree::new().root();
         let note_root = note_tree.root();
         let tx_commitment = transactions.commitment();
-        let tx_kernel_commitment = TransactionKernel::kernel_commitment();
+        let tx_kernel_commitment = TransactionKernel.to_commitment();
         let proof_commitment = Word::empty();
         let timestamp = MockChain::TIMESTAMP_START_SECS;
         let fee_parameters = FeeParameters::new(self.native_asset_id, self.verification_base_fee)
@@ -186,17 +236,17 @@ impl MockChainBuilder {
             transactions,
         );
 
-        MockChain::from_genesis_block(genesis_block, account_tree, self.account_credentials)
+        MockChain::from_genesis_block(genesis_block, account_tree, self.account_authenticators)
     }
 
     // ACCOUNT METHODS
     // ----------------------------------------------------------------------------------------
 
-    /// Creates a new public [`BasicWallet`] account and registers the authenticator (if any) and
-    /// seed.
+    /// Creates a new public [`BasicWallet`] account and registers the authenticator (if any) for
+    /// it.
     ///
     /// This does not add the account to the chain state, but it can still be used to call
-    /// [`MockChain::build_tx_context`] to automatically handle the authenticator and seed.
+    /// [`MockChain::build_tx_context`] to automatically add the authenticator.
     pub fn create_new_wallet(&mut self, auth_method: Auth) -> anyhow::Result<Account> {
         let account_builder = AccountBuilder::new(self.rng.random())
             .storage_mode(AccountStorageMode::Public)
@@ -227,10 +277,10 @@ impl MockChainBuilder {
     }
 
     /// Creates a new public [`BasicFungibleFaucet`] account and registers the authenticator (if
-    /// any) and seed.
+    /// any) for it.
     ///
     /// This does not add the account to the chain state, but it can still be used to call
-    /// [`MockChain::build_tx_context`] to automatically handle the authenticator and seed.
+    /// [`MockChain::build_tx_context`] to automatically add the authenticator.
     pub fn create_new_faucet(
         &mut self,
         auth_method: Auth,
@@ -349,9 +399,9 @@ impl MockChainBuilder {
     ///   to the initial chain state. It can then be used in a transaction without having to
     ///   validate its seed.
     /// - If [`AccountState::New`] is given the account is built as a new account and is **not**
-    ///   added to the chain. Its seed and authenticator are registered (if any). Its first
-    ///   transaction will be its creation transaction. [`MockChain::build_tx_context`] can be
-    ///   called with the account to automatically handle the authenticator and seed.
+    ///   added to the chain. Its authenticator is registered (if present). Its first transaction
+    ///   will be its creation transaction. [`MockChain::build_tx_context`] can be called with the
+    ///   account to automatically add the authenticator.
     pub fn add_account_from_builder(
         &mut self,
         auth_method: Auth,
@@ -361,19 +411,16 @@ impl MockChainBuilder {
         let (auth_component, authenticator) = auth_method.build_component();
         account_builder = account_builder.with_auth_component(auth_component);
 
-        let (account, seed) = if let AccountState::New = account_state {
-            let (account, seed) =
-                account_builder.build().context("failed to build account from builder")?;
-            (account, Some(seed))
+        let account = if let AccountState::New = account_state {
+            account_builder.build().context("failed to build account from builder")?
         } else {
-            let account = account_builder
+            account_builder
                 .build_existing()
-                .context("failed to build account from builder")?;
-            (account, None)
+                .context("failed to build account from builder")?
         };
 
-        self.account_credentials
-            .insert(account.id(), AccountCredentials::new(seed, authenticator));
+        self.account_authenticators
+            .insert(account.id(), AccountAuthenticator::new(authenticator));
 
         if let AccountState::Exists = account_state {
             self.accounts.insert(account.id(), account.clone());
@@ -384,9 +431,9 @@ impl MockChainBuilder {
 
     /// Adds the provided account to the list of genesis accounts.
     ///
-    /// This method only adds the account and does not store its account credentials (seed and
-    /// authenticator) for it. Calling [`MockChain::build_tx_context`] on accounts added in this
-    /// way will not work if the account is new or if they need an authenticator.
+    /// This method only adds the account and does not store its account authenticator for it.
+    /// Calling [`MockChain::build_tx_context`] on accounts added in this way will not work if
+    /// the account needs an authenticator.
     ///
     /// Due to these limitations, prefer using other methods to add accounts to the chain, e.g.
     /// [`MockChainBuilder::add_account_from_builder`].
@@ -398,27 +445,26 @@ impl MockChainBuilder {
         Ok(())
     }
 
-    // NOTE METHODS
+    // NOTE ADD METHODS
     // ----------------------------------------------------------------------------------------
 
     /// Adds the provided note to the initial chain state.
-    pub fn add_note(&mut self, note: impl Into<OutputNote>) {
+    pub fn add_output_note(&mut self, note: impl Into<OutputNote>) {
         self.notes.push(note.into());
     }
 
-    /// Creates a new P2ANY note from the provided parameters and adds it to the list of genesis
-    /// notes. This note is similar to a P2ID note but can be consumed by any account.
+    /// Creates a new P2ANY note from the provided parameters and adds it to the list of
+    /// genesis notes.
     ///
-    /// In the created [`MockChain`], the note will be immediately spendable by `target_account_id`
-    /// and carries no additional reclaim or timelock conditions.
+    /// This note is similar to a P2ID note but can be consumed by any account.
     pub fn add_p2any_note(
         &mut self,
         sender_account_id: AccountId,
-        asset: &[Asset],
+        note_type: NoteType,
+        assets: impl IntoIterator<Item = Asset>,
     ) -> anyhow::Result<Note> {
-        let note = create_p2any_note(sender_account_id, asset);
-
-        self.add_note(OutputNote::Full(note.clone()));
+        let note = self.create_p2any_note(sender_account_id, note_type, assets)?;
+        self.add_output_note(OutputNote::Full(note.clone()));
 
         Ok(note)
     }
@@ -435,16 +481,13 @@ impl MockChainBuilder {
         asset: &[Asset],
         note_type: NoteType,
     ) -> Result<Note, NoteError> {
-        let note = create_p2id_note(
+        let note = self.create_p2id_note(
             sender_account_id,
             target_account_id,
-            asset.to_vec(),
+            asset.iter().copied(),
             note_type,
-            Default::default(),
-            &mut self.rng,
         )?;
-
-        self.add_note(OutputNote::Full(note.clone()));
+        self.add_output_note(OutputNote::Full(note.clone()));
 
         Ok(note)
     }
@@ -474,7 +517,7 @@ impl MockChainBuilder {
             &mut self.rng,
         )?;
 
-        self.add_note(OutputNote::Full(note.clone()));
+        self.add_output_note(OutputNote::Full(note.clone()));
 
         Ok(note)
     }
@@ -498,7 +541,7 @@ impl MockChainBuilder {
             &mut self.rng,
         )?;
 
-        self.add_note(OutputNote::Full(swap_note.clone()));
+        self.add_output_note(OutputNote::Full(swap_note.clone()));
 
         Ok((swap_note, payback_note))
     }
@@ -507,15 +550,21 @@ impl MockChainBuilder {
     ///
     /// A `SPAWN` note contains a note script that creates all `output_notes` that get passed as a
     /// parameter.
-    pub fn add_spawn_note<'note>(
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - the sender account ID of the provided output notes is not consistent or does not match the
+    ///   transaction's sender.
+    pub fn add_spawn_note<'note, I>(
         &mut self,
-        sender_id: AccountId,
-        output_notes: impl IntoIterator<Item = &'note Note>,
-    ) -> anyhow::Result<Note> {
-        let output_notes = output_notes.into_iter().collect();
-        let note = create_spawn_note(sender_id, output_notes)?;
-
-        self.add_note(OutputNote::Full(note.clone()));
+        output_notes: impl IntoIterator<Item = &'note Note, IntoIter = I>,
+    ) -> anyhow::Result<Note>
+    where
+        I: ExactSizeIterator<Item = &'note Note>,
+    {
+        let note = create_spawn_note(output_notes)?;
+        self.add_output_note(OutputNote::Full(note.clone()));
 
         Ok(note)
     }
@@ -540,6 +589,49 @@ impl MockChainBuilder {
         )?;
 
         Ok(note)
+    }
+
+    // NOTE CREATE METHODS
+    // ----------------------------------------------------------------------------------------
+
+    /// Creates a new P2ID note from the provided parameters.
+    ///
+    /// The note is _not_ added to the list of genesis notes. It must be created by the caller to
+    /// make it available in the mock chain, e.g. using [`Self::add_spawn_note`].
+    ///
+    /// This is a convenience wrapper around [`create_p2id_note`].
+    pub fn create_p2id_note(
+        &mut self,
+        sender_account_id: AccountId,
+        target_account_id: AccountId,
+        assets: impl IntoIterator<Item = Asset>,
+        note_type: NoteType,
+    ) -> Result<Note, NoteError> {
+        let note = create_p2id_note(
+            sender_account_id,
+            target_account_id,
+            assets.into_iter().collect::<Vec<_>>(),
+            note_type,
+            Default::default(),
+            &mut self.rng,
+        )?;
+
+        Ok(note)
+    }
+
+    /// Creates a new P2ANY note from the provided parameters.
+    ///
+    /// This note is similar to a P2ID note but can be consumed by any account.
+    ///
+    /// The note is _not_ added to the list of genesis notes. It must be created by the caller to
+    /// make it available in the mock chain, e.g. using [`Self::add_spawn_note`].
+    pub fn create_p2any_note(
+        &mut self,
+        sender_account_id: AccountId,
+        note_type: NoteType,
+        assets: impl IntoIterator<Item = Asset>,
+    ) -> anyhow::Result<Note> {
+        Ok(create_p2any_note(sender_account_id, note_type, self.rng.draw_word(), assets))
     }
 
     // HELPER FUNCTIONS

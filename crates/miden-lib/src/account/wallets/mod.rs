@@ -116,7 +116,7 @@ pub fn create_basic_wallet(
     auth_scheme: AuthScheme,
     account_type: AccountType,
     account_storage_mode: AccountStorageMode,
-) -> Result<(Account, Word), BasicWalletError> {
+) -> Result<Account, BasicWalletError> {
     if matches!(account_type, AccountType::FungibleFaucet | AccountType::NonFungibleFaucet) {
         return Err(BasicWalletError::AccountError(AccountError::other(
             "basic wallet accounts cannot have a faucet account type",
@@ -142,7 +142,7 @@ pub fn create_basic_wallet(
         },
     };
 
-    let (account, account_seed) = AccountBuilder::new(init_seed)
+    let account = AccountBuilder::new(init_seed)
         .account_type(account_type)
         .storage_mode(account_storage_mode)
         .with_auth_component(auth_component)
@@ -150,7 +150,7 @@ pub fn create_basic_wallet(
         .build()
         .map_err(BasicWalletError::AccountError)?;
 
-    Ok((account, account_seed))
+    Ok(account)
 }
 
 // TESTS
@@ -158,8 +158,7 @@ pub fn create_basic_wallet(
 
 #[cfg(test)]
 mod tests {
-
-    use miden_objects::crypto::dsa::rpo_falcon512;
+    use miden_objects::account::PublicKeyCommitment;
     use miden_objects::{ONE, Word};
     use miden_processor::utils::{Deserializable, Serializable};
 
@@ -168,7 +167,7 @@ mod tests {
 
     #[test]
     fn test_create_basic_wallet() {
-        let pub_key = rpo_falcon512::PublicKey::new(Word::from([ONE; 4]));
+        let pub_key = PublicKeyCommitment::from(Word::from([ONE; 4]));
         let wallet = create_basic_wallet(
             [1; 32],
             AuthScheme::RpoFalcon512 { pub_key },
@@ -183,15 +182,14 @@ mod tests {
 
     #[test]
     fn test_serialize_basic_wallet() {
-        let pub_key = rpo_falcon512::PublicKey::new(Word::from([ONE; 4]));
+        let pub_key = PublicKeyCommitment::from(Word::from([ONE; 4]));
         let wallet = create_basic_wallet(
             [1; 32],
             AuthScheme::RpoFalcon512 { pub_key },
             AccountType::RegularAccountImmutableCode,
             AccountStorageMode::Public,
         )
-        .unwrap()
-        .0;
+        .unwrap();
 
         let bytes = wallet.to_bytes();
         let deserialized_wallet = Account::read_from_bytes(&bytes).unwrap();

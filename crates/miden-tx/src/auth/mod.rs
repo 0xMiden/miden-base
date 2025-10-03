@@ -5,5 +5,3 @@ pub use tx_authenticator::{
     TransactionAuthenticator,
     UnreachableAuth,
 };
-
-pub mod signatures;

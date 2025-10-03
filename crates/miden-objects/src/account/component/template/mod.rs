@@ -476,6 +476,8 @@ mod tests {
 
     #[test]
     pub fn fail_duplicate_key_instance() {
+        let _ = color_eyre::install();
+
         let toml_text = r#"
             name = "Test Component"
             description = "This is a test component"

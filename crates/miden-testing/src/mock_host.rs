@@ -1,20 +1,21 @@
 use alloc::boxed::Box;
-use alloc::collections::BTreeSet;
 use alloc::rc::Rc;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use miden_lib::transaction::{TransactionEvent, TransactionEventError};
-use miden_objects::account::{AccountHeader, AccountVaultDelta};
+use miden_lib::StdLibrary;
+use miden_lib::transaction::{EventId, TransactionEvent, TransactionEventError};
+use miden_objects::account::{AccountCode, AccountVaultDelta};
 use miden_objects::assembly::debuginfo::SourceManagerSync;
 use miden_objects::assembly::{DefaultSourceManager, SourceManager};
+use miden_objects::transaction::AccountInputs;
 use miden_objects::{Felt, Word};
 use miden_processor::{
-    AdviceInputs,
     AdviceMutation,
     BaseHost,
     ContextId,
     EventError,
+    EventHandlerRegistry,
     MastForest,
     MastForestStore,
     ProcessState,
@@ -33,25 +34,42 @@ pub struct MockHost {
     acct_procedure_index_map: AccountProcedureIndexMap,
     mast_store: Rc<TransactionMastStore>,
     source_manager: Arc<dyn SourceManagerSync>,
+    /// Handle the VM default events _before_ passing it to user defined ones.
+    stdlib_handlers: EventHandlerRegistry,
 }
 
 impl MockHost {
-    /// Returns a new [`MockHost`] instance with the provided [`AdviceInputs`].
+    /// Returns a new [`MockHost`] instance with the provided inputs.
     pub fn new(
-        account: AccountHeader,
-        advice_inputs: &AdviceInputs,
+        native_account_code: &AccountCode,
         mast_store: Rc<TransactionMastStore>,
-        mut foreign_code_commitments: BTreeSet<Word>,
+        foreign_account_inputs: &[AccountInputs],
     ) -> Self {
-        foreign_code_commitments.insert(account.code_commitment());
-        let account_procedure_index_map =
-            AccountProcedureIndexMap::new(foreign_code_commitments, advice_inputs)
-                .expect("account procedure index map should be valid");
+        let account_procedure_index_map = AccountProcedureIndexMap::new(
+            foreign_account_inputs
+                .iter()
+                .map(AccountInputs::code)
+                .chain([native_account_code]),
+        )
+        .expect("account procedure index map should be valid");
+
+        let stdlib_handlers = {
+            let mut registry = EventHandlerRegistry::new();
+
+            let stdlib = StdLibrary::default();
+            for (event_id, handler) in stdlib.handlers() {
+                registry
+                    .register(event_id, handler)
+                    .expect("There are no duplicates in the stdlibrary handlers");
+            }
+            registry
+        };
 
         Self {
             acct_procedure_index_map: account_procedure_index_map,
             mast_store,
             source_manager: Arc::new(DefaultSourceManager::default()),
+            stdlib_handlers,
         }
     }
 
@@ -79,10 +97,6 @@ impl MockHost {
 }
 
 impl BaseHost for MockHost {
-    fn get_mast_forest(&self, node_digest: &Word) -> Option<Arc<MastForest>> {
-        self.mast_store.get(node_digest)
-    }
-
     fn get_label_and_source_file(
         &self,
         location: &miden_objects::assembly::debuginfo::Location,
@@ -97,15 +111,19 @@ impl BaseHost for MockHost {
 }
 
 impl SyncHost for MockHost {
-    fn on_event(
-        &mut self,
-        process: &ProcessState,
-        event_id: u32,
-    ) -> Result<Vec<AdviceMutation>, EventError> {
+    fn get_mast_forest(&self, node_digest: &Word) -> Option<Arc<MastForest>> {
+        self.mast_store.get(node_digest)
+    }
+
+    fn on_event(&mut self, process: &ProcessState) -> Result<Vec<AdviceMutation>, EventError> {
+        let event_id = EventId::from_felt(process.get_stack_item(0));
+        if let Some(result) = self.stdlib_handlers.handle_event(event_id, process).transpose() {
+            return result;
+        }
         let event = TransactionEvent::try_from(event_id).map_err(Box::new)?;
 
         if process.ctx() != ContextId::root() {
-            return Err(Box::new(TransactionEventError::NotRootContext(event_id)));
+            return Err(Box::new(TransactionEventError::NotRootContext(event)));
         }
 
         let advice_mutations = match event {

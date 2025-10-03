@@ -2,6 +2,8 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::fmt::Display;
 
+use miden_processor::MastNodeExt;
+
 use super::Felt;
 use crate::assembly::mast::{MastForest, MastNodeId};
 use crate::utils::serde::{
@@ -84,7 +86,7 @@ impl From<&NoteScript> for Vec<Felt> {
         let len = bytes.len();
 
         // Pad the data so that it can be encoded with u32
-        let missing = if len % 4 > 0 { 4 - (len % 4) } else { 0 };
+        let missing = if !len.is_multiple_of(4) { 4 - (len % 4) } else { 0 };
         bytes.resize(bytes.len() + missing, 0);
 
         let final_size = 2 + bytes.len();

@@ -7,8 +7,8 @@ use super::{AccountIdPrefix, AccountType, Asset, AssetError, Felt, Hasher, Word}
 use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 use crate::{FieldElement, WORD_SIZE};
 
-/// Position of the faucet_id inside the [`NonFungibleAsset`] word.
-const FAUCET_ID_POS: usize = 3;
+/// Position of the faucet_id inside the [`NonFungibleAsset`] word having fields in BigEndian.
+const FAUCET_ID_POS_BE: usize = 3;
 
 // NON-FUNGIBLE ASSET
 // ================================================================================================
@@ -74,7 +74,7 @@ impl NonFungibleAsset {
             return Err(AssetError::NonFungibleFaucetIdTypeMismatch(faucet_id));
         }
 
-        data_hash[FAUCET_ID_POS] = Felt::from(faucet_id);
+        data_hash[FAUCET_ID_POS_BE] = Felt::from(faucet_id);
 
         Ok(Self(data_hash))
     }
@@ -110,7 +110,7 @@ impl NonFungibleAsset {
         let mut vault_key = self.0;
 
         // Swap prefix of faucet ID with hash0.
-        vault_key.swap(0, FAUCET_ID_POS);
+        vault_key.swap(0, FAUCET_ID_POS_BE);
 
         // Set the fungible bit to zero.
         vault_key[3] =
@@ -121,7 +121,7 @@ impl NonFungibleAsset {
 
     /// Return ID prefix of the faucet which issued this asset.
     pub fn faucet_id_prefix(&self) -> AccountIdPrefix {
-        AccountIdPrefix::new_unchecked(self.0[FAUCET_ID_POS])
+        AccountIdPrefix::new_unchecked(self.0[FAUCET_ID_POS_BE])
     }
 
     // HELPER FUNCTIONS
@@ -133,7 +133,7 @@ impl NonFungibleAsset {
     /// - The faucet_id is not a valid non-fungible faucet ID.
     /// - The most significant bit of the asset is not ZERO.
     fn validate(&self) -> Result<(), AssetError> {
-        let faucet_id = AccountIdPrefix::try_from(self.0[FAUCET_ID_POS])
+        let faucet_id = AccountIdPrefix::try_from(self.0[FAUCET_ID_POS_BE])
             .map_err(|err| AssetError::InvalidFaucetAccountId(Box::new(err)))?;
 
         let account_type = faucet_id.account_type();

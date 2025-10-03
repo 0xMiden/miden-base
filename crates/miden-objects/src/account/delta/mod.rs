@@ -616,8 +616,13 @@ mod tests {
         let account_code = AccountCode::mock();
         assert_eq!(account_code.to_bytes().len(), account_code.get_size_hint());
 
-        let account =
-            Account::from_parts(account_id, asset_vault, account_storage, account_code, Felt::ZERO);
+        let account = Account::new_existing(
+            account_id,
+            asset_vault,
+            account_storage,
+            account_code,
+            Felt::ONE,
+        );
         assert_eq!(account.to_bytes().len(), account.get_size_hint());
 
         // AccountUpdateDetails

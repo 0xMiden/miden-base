@@ -14,7 +14,6 @@ use miden_objects::transaction::{
     ProvenTransactionBuilder,
 };
 use miden_objects::vm::ExecutionProof;
-use winterfell::Proof;
 
 /// A builder to build mocked [`ProvenTransaction`]s.
 pub struct MockProvenTxBuilder {
@@ -112,7 +111,7 @@ impl MockProvenTxBuilder {
             self.ref_block_commitment.unwrap_or_default(),
             self.fee,
             self.expiration_block_num,
-            ExecutionProof::new(Proof::new_dummy(), Default::default()),
+            ExecutionProof::new_dummy(),
         )
         .add_input_notes(self.input_notes.unwrap_or_default())
         .add_input_notes(self.nullifiers.unwrap_or_default())

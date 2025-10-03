@@ -4,7 +4,7 @@ use miden_crypto::merkle::{InnerNodeInfo, MerkleError, PartialSmt, SmtLeaf, SmtP
 
 use super::AssetVault;
 use crate::Word;
-use crate::asset::Asset;
+use crate::asset::{Asset, AssetWitness};
 use crate::errors::PartialAssetVaultError;
 use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
@@ -60,6 +60,23 @@ impl PartialVault {
         self.partial_smt.leaves().map(|(_, leaf)| leaf)
     }
 
+    /// Returns an opening of the leaf associated with `vault_key`.
+    ///
+    /// The `vault_key` can be obtained with [`Asset::vault_key`].
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - the key is not tracked by this partial vault.
+    pub fn open(&self, vault_key: Word) -> Result<AssetWitness, PartialAssetVaultError> {
+        let smt_proof = self
+            .partial_smt
+            .open(&vault_key)
+            .map_err(PartialAssetVaultError::UntrackedAsset)?;
+        // SAFETY: The partial vault should only contain valid assets.
+        Ok(AssetWitness::new_unchecked(smt_proof))
+    }
+
     /// Returns the [`Asset`] associated with the given `vault_key`.
     ///
     /// The return value is `None` if the asset does not exist in the vault.
@@ -83,18 +100,15 @@ impl PartialVault {
     // MUTATORS
     // --------------------------------------------------------------------------------------------
 
-    /// Adds an [`SmtProof`] to this [`PartialVault`].
+    /// Adds an [`AssetWitness`] to this [`PartialVault`].
     ///
     /// # Errors
     ///
     /// Returns an error if:
-    /// - the provided proof does not prove inclusion of valid [`Asset`]s.
-    /// - the vault key of the proven asset does not match the vault key derived from the asset.
     /// - the new root after the insertion of the leaf and the path does not match the existing root
     ///   (except when the first leaf is added).
-    pub fn add(&mut self, proof: SmtProof) -> Result<(), PartialAssetVaultError> {
-        Self::validate_entries(proof.leaf().entries())?;
-
+    pub fn add(&mut self, witness: AssetWitness) -> Result<(), PartialAssetVaultError> {
+        let proof = SmtProof::from(witness);
         self.partial_smt
             .add_proof(proof)
             .map_err(PartialAssetVaultError::FailedToAddProof)
@@ -173,11 +187,6 @@ mod tests {
             assert_eq!(entry, invalid_asset);
         });
 
-        let err = PartialVault::default().add(proof).unwrap_err();
-        assert_matches!(err, PartialAssetVaultError::InvalidAssetInSmt { entry, .. } => {
-            assert_eq!(entry, invalid_asset);
-        });
-
         Ok(())
     }
 
@@ -190,12 +199,6 @@ mod tests {
         let partial_smt = PartialSmt::from_proofs([proof.clone()])?;
 
         let err = PartialVault::new(partial_smt).unwrap_err();
-        assert_matches!(err, PartialAssetVaultError::VaultKeyMismatch { expected, actual } => {
-            assert_eq!(actual, invalid_vault_key);
-            assert_eq!(expected, asset.vault_key());
-        });
-
-        let err = PartialVault::default().add(proof).unwrap_err();
         assert_matches!(err, PartialAssetVaultError::VaultKeyMismatch { expected, actual } => {
             assert_eq!(actual, invalid_vault_key);
             assert_eq!(expected, asset.vault_key());

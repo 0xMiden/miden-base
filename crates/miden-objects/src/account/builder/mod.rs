@@ -38,7 +38,7 @@ use crate::{AccountError, Felt, Word};
 ///
 /// Under the `testing` feature, it is possible to:
 /// - Build an existing account using [`AccountBuilder::build_existing`] which will set the
-///   account's nonce to `1`.
+///   account's nonce to `1` by default, or to the configured value.
 /// - Add assets to the account's vault, however this will only succeed when using
 ///   [`AccountBuilder::build_existing`].
 ///
@@ -56,6 +56,8 @@ use crate::{AccountError, Felt, Word};
 pub struct AccountBuilder {
     #[cfg(any(feature = "testing", test))]
     assets: Vec<crate::asset::Asset>,
+    #[cfg(any(feature = "testing", test))]
+    nonce: Option<Felt>,
     components: Vec<AccountComponent>,
     auth_component: Option<AccountComponent>,
     account_type: AccountType,
@@ -73,6 +75,8 @@ impl AccountBuilder {
         Self {
             #[cfg(any(feature = "testing", test))]
             assets: vec![],
+            #[cfg(any(feature = "testing", test))]
+            nonce: None,
             components: vec![],
             auth_component: None,
             init_seed,
@@ -112,7 +116,7 @@ impl AccountBuilder {
     /// Adds a designated authentication [`AccountComponent`] to the builder.
     ///
     /// This component may contain multiple procedures, but is expected to contain exactly one
-    /// authentication procedure (named `auth__*`).
+    /// authentication procedure (named `auth_*`).
     /// Calling this method multiple times will override the previous auth component.
     ///
     /// Procedures from this component will be placed at the beginning of the account procedure
@@ -190,7 +194,7 @@ impl AccountBuilder {
     /// - [`MastForest::merge`](miden_processor::MastForest::merge) fails on the given components.
     /// - If duplicate assets were added to the builder (only under the `testing` feature).
     /// - If the vault is not empty on new accounts (only under the `testing` feature).
-    pub fn build(mut self) -> Result<(Account, Word), AccountError> {
+    pub fn build(mut self) -> Result<Account, AccountError> {
         let (vault, code, storage) = self.build_inner()?;
 
         #[cfg(any(feature = "testing", test))]
@@ -219,9 +223,12 @@ impl AccountBuilder {
         debug_assert_eq!(account_id.account_type(), self.account_type);
         debug_assert_eq!(account_id.storage_mode(), self.storage_mode);
 
-        let account = Account::from_parts(account_id, vault, storage, code, Felt::ZERO);
+        // SAFETY: The account ID was derived from the seed and the seed is provided, so it is safe
+        // to bypass the checks of `Account::new`.
+        let account =
+            Account::new_unchecked(account_id, vault, storage, code, Felt::ZERO, Some(seed));
 
-        Ok((account, seed))
+        Ok(account)
     }
 }
 
@@ -233,6 +240,15 @@ impl AccountBuilder {
     /// accounts must have an empty vault.
     pub fn with_assets<I: IntoIterator<Item = crate::asset::Asset>>(mut self, assets: I) -> Self {
         self.assets.extend(assets);
+        self
+    }
+
+    /// Sets the nonce of an existing account.
+    ///
+    /// This method is optional. It must only be used when using [`Self::build_existing`]
+    /// instead of [`Self::build`] since new accounts must have a nonce of `0`.
+    pub fn nonce(mut self, nonce: Felt) -> Self {
+        self.nonce = Some(nonce);
         self
     }
 
@@ -255,7 +271,10 @@ impl AccountBuilder {
             )
         };
 
-        Ok(Account::from_parts(account_id, vault, storage, code, Felt::ONE))
+        // Use the nonce value set by the Self::nonce method or Felt::ONE as a default.
+        let nonce = self.nonce.unwrap_or(Felt::ONE);
+
+        Ok(Account::new_existing(account_id, vault, storage, code, nonce))
     }
 }
 
@@ -269,6 +288,7 @@ mod tests {
     use assert_matches::assert_matches;
     use miden_assembly::{Assembler, Library};
     use miden_core::FieldElement;
+    use miden_processor::MastNodeExt;
 
     use super::*;
     use crate::account::StorageSlot;
@@ -336,7 +356,7 @@ mod tests {
         let storage_slot1 = 12;
         let storage_slot2 = 42;
 
-        let (account, seed) = Account::builder([5; 32])
+        let account = Account::builder([5; 32])
             .with_auth_component(NoopAuthComponent)
             .with_component(CustomComponent1 { slot0: storage_slot0 })
             .with_component(CustomComponent2 {
@@ -350,7 +370,7 @@ mod tests {
         assert_eq!(account.nonce(), Felt::ZERO);
 
         let computed_id = AccountId::new(
-            seed,
+            account.seed().unwrap(),
             AccountIdVersion::Version0,
             account.code.commitment(),
             account.storage.commitment(),

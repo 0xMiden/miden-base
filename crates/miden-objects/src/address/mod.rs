@@ -1,15 +1,19 @@
 mod r#type;
 
 mod interface;
+mod network_id;
 use alloc::string::{String, ToString};
 
 use bech32::Bech32m;
 use bech32::primitives::decode::{ByteIter, CheckedHrpstring};
 pub use interface::AddressInterface;
+use miden_core::utils::{ByteWriter, Deserializable, Serializable};
+use miden_processor::DeserializationError;
+pub use network_id::{CustomNetworkId, NetworkId};
 pub use r#type::AddressType;
 
 use crate::AddressError;
-use crate::account::{AccountId, AccountStorageMode, NetworkId};
+use crate::account::{AccountId, AccountStorageMode};
 use crate::errors::Bech32Error;
 use crate::note::NoteTag;
 
@@ -111,6 +115,45 @@ impl Address {
         };
 
         Ok((network_id, address))
+    }
+
+    /// Identifier for the internal type of address
+    fn address_scheme_id(&self) -> u8 {
+        match self {
+            Address::AccountId(_) => 0u8,
+        }
+    }
+}
+
+impl Serializable for Address {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        target.write_u8(self.address_scheme_id());
+        match self {
+            Address::AccountId(addr) => {
+                let serialized: [u8; AccountIdAddress::SERIALIZED_SIZE] = (*addr).into();
+                serialized.write_into(target);
+            },
+        }
+    }
+}
+
+impl Deserializable for Address {
+    fn read_from<R: miden_core::utils::ByteReader>(
+        source: &mut R,
+    ) -> Result<Self, DeserializationError> {
+        let address_scheme_id: u8 = source.read_u8()?;
+        match address_scheme_id {
+            // AccountIdAddress
+            0u8 => {
+                let bytes: [u8; AccountIdAddress::SERIALIZED_SIZE] = source.read_array()?;
+                let account_id_address = AccountIdAddress::try_from(bytes)
+                    .map_err(|err| DeserializationError::InvalidValue(format!("{}", err)))?;
+                Ok(Address::AccountId(account_id_address))
+            },
+            val => {
+                Err(DeserializationError::InvalidValue(format!("Invalid address scheme ID {val}")))
+            },
+        }
     }
 }
 
@@ -324,11 +367,15 @@ impl TryFrom<[u8; AccountIdAddress::SERIALIZED_SIZE]> for AccountIdAddress {
 
 #[cfg(test)]
 mod tests {
+    use alloc::boxed::Box;
+    use alloc::str::FromStr;
+
     use assert_matches::assert_matches;
-    use bech32::{Bech32, Hrp, NoChecksum};
+    use bech32::{Bech32, NoChecksum};
 
     use super::*;
     use crate::account::AccountType;
+    use crate::address::CustomNetworkId;
     use crate::testing::account_id::{ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, AccountIdBuilder};
 
     /// Tests that an account ID address can be encoded and decoded.
@@ -343,8 +390,8 @@ mod tests {
         let rng = &mut rand::rng();
         for network_id in [
             NetworkId::Mainnet,
-            NetworkId::Custom(Hrp::parse("custom").unwrap()),
-            NetworkId::Custom(Hrp::parse(longest_possible_hrp).unwrap()),
+            NetworkId::Custom(Box::new(CustomNetworkId::from_str("custom").unwrap())),
+            NetworkId::Custom(Box::new(CustomNetworkId::from_str(longest_possible_hrp).unwrap())),
         ] {
             for (idx, account_id) in [
                 AccountIdBuilder::new()
@@ -367,7 +414,7 @@ mod tests {
                     AccountIdAddress::new(account_id, AddressInterface::BasicWallet);
                 let address = Address::from(account_id_address);
 
-                let bech32_string = address.to_bech32(network_id);
+                let bech32_string = address.to_bech32(network_id.clone());
                 let (decoded_network_id, decoded_address) =
                     Address::from_bech32(&bech32_string).unwrap();
 
@@ -461,5 +508,31 @@ mod tests {
             error,
             AddressError::Bech32DecodeError(Bech32Error::InvalidDataLength { .. })
         );
+    }
+
+    /// Tests that an Address can be serialized and deserialized
+    #[test]
+    fn address_serialization() {
+        let rng = &mut rand::rng();
+
+        for account_type in [
+            AccountType::FungibleFaucet,
+            AccountType::NonFungibleFaucet,
+            AccountType::RegularAccountImmutableCode,
+            AccountType::RegularAccountUpdatableCode,
+        ]
+        .into_iter()
+        {
+            let account_id = AccountIdBuilder::new().account_type(account_type).build_with_rng(rng);
+            for account_id_address in [
+                AccountIdAddress::new(account_id, AddressInterface::BasicWallet),
+                AccountIdAddress::new(account_id, AddressInterface::Unspecified),
+            ] {
+                let address = Address::from(account_id_address);
+                let serialized = address.to_bytes();
+                let deserialized = Address::read_from_bytes(&serialized).unwrap();
+                assert_eq!(address, deserialized);
+            }
+        }
     }
 }

@@ -1,4 +1,3 @@
-use alloc::boxed::Box;
 use alloc::vec::Vec;
 
 use miden_objects::asset::Asset;
@@ -13,7 +12,8 @@ use miden_objects::note::{
 };
 use miden_processor::AdviceProvider;
 
-use super::{Felt, OutputNote, TransactionKernelError, Word};
+use super::{Felt, OutputNote, Word};
+use crate::errors::TransactionKernelError;
 
 // OUTPUT NOTE BUILDER
 // ================================================================================================
@@ -104,10 +104,7 @@ impl OutputNoteBuilder {
             }
 
             let script = NoteScript::try_from(script_data).map_err(|source| {
-                TransactionKernelError::MalformedNoteScript {
-                    data: script_data.to_vec(),
-                    source: Box::new(source),
-                }
+                TransactionKernelError::MalformedNoteScript { data: script_data.to_vec(), source }
             })?;
             let recipient = NoteRecipient::new(serial_num, script, inputs);
 

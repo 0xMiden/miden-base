@@ -2,46 +2,27 @@ extern crate alloc;
 pub use alloc::collections::BTreeMap;
 pub use alloc::string::String;
 use std::fs::{read_to_string, write};
+use std::path::Path;
 
 use anyhow::Context;
-use miden_lib::account::auth::AuthRpoFalcon512;
-use miden_lib::account::wallets::BasicWallet;
-use miden_objects::account::{
-    Account,
-    AccountBuilder,
-    AccountStorageMode,
-    AccountType,
-    AuthSecretKey,
-};
-use miden_objects::asset::Asset;
-use miden_objects::crypto::dsa::rpo_falcon512::{PublicKey, SecretKey};
 use miden_objects::transaction::TransactionMeasurements;
-use miden_tx::auth::BasicAuthenticator;
-use rand_chacha::ChaCha20Rng;
-use rand_chacha::rand_core::SeedableRng;
 use serde::Serialize;
 use serde_json::{Value, from_str, to_string_pretty};
 
-use super::{Benchmark, Path};
-
-// CONSTANTS
-// ================================================================================================
-
-// Copied from miden_objects::testing::account_id.
-pub const ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET: u128 = 0x00aa00000000bc200000bc000000de00;
-pub const ACCOUNT_ID_SENDER: u128 = 0x00fa00000000bb800000cc000000de00;
+use super::ExecutionBenchmark;
 
 // MEASUREMENTS PRINTER
 // ================================================================================================
 
+/// Helper structure holding the cycle count of each transaction stage which could be easily
+/// converted to the JSON file.
 #[derive(Debug, Clone, Serialize)]
 pub struct MeasurementsPrinter {
     prologue: usize,
     notes_processing: usize,
     note_execution: BTreeMap<String, usize>,
     tx_script_processing: usize,
-    epilogue: usize,
-    after_tx_cycles_obtained: usize,
+    epilogue: EpilogueMeasurements,
 }
 
 impl From<TransactionMeasurements> for MeasurementsPrinter {
@@ -57,48 +38,47 @@ impl From<TransactionMeasurements> for MeasurementsPrinter {
             notes_processing: tx_measurements.notes_processing,
             note_execution: note_execution_map,
             tx_script_processing: tx_measurements.tx_script_processing,
-            epilogue: tx_measurements.epilogue,
-            after_tx_cycles_obtained: tx_measurements.after_tx_cycles_obtained,
+            epilogue: EpilogueMeasurements::from_parts(
+                tx_measurements.epilogue,
+                tx_measurements.auth_procedure,
+                tx_measurements.after_tx_cycles_obtained,
+            ),
         }
     }
 }
 
-// HELPER FUNCTIONS
-// ================================================================================================
-
-pub fn get_account_with_basic_authenticated_wallet(
-    init_seed: [u8; 32],
-    account_type: AccountType,
-    storage_mode: AccountStorageMode,
-    public_key: PublicKey,
-    assets: Option<Asset>,
-) -> Account {
-    AccountBuilder::new(init_seed)
-        .account_type(account_type)
-        .storage_mode(storage_mode)
-        .with_assets(assets)
-        .with_component(BasicWallet)
-        .with_auth_component(AuthRpoFalcon512::new(public_key))
-        .build_existing()
-        .unwrap()
+/// Helper structure holding the cycle count for different intervals in the epilogue, namely:
+/// - `total` interval holds the total number of cycles required to execute the epilogue
+/// - `auth_procedure` interval holds the number of cycles required to execute the authentication
+///   procedure
+/// - `after_tx_cycles_obtained` holds the number of cycles which was executed from the moment of
+///   the cycle count obtainment in the `epilogue::compute_fee` procedure to the end of the
+///   epilogue.
+#[derive(Debug, Clone, Serialize)]
+struct EpilogueMeasurements {
+    total: usize,
+    auth_procedure: usize,
+    after_tx_cycles_obtained: usize,
 }
 
-pub fn get_new_pk_and_authenticator() -> (PublicKey, BasicAuthenticator<ChaCha20Rng>) {
-    let mut rng = ChaCha20Rng::from_seed(Default::default());
-    let sec_key = SecretKey::with_rng(&mut rng);
-    let pub_key = sec_key.public_key();
-
-    let authenticator = BasicAuthenticator::<ChaCha20Rng>::new_with_rng(
-        &[(pub_key.into(), AuthSecretKey::RpoFalcon512(sec_key))],
-        rng,
-    );
-
-    (pub_key, authenticator)
+impl EpilogueMeasurements {
+    pub fn from_parts(
+        total: usize,
+        auth_procedure: usize,
+        after_tx_cycles_obtained: usize,
+    ) -> Self {
+        Self {
+            total,
+            auth_procedure,
+            after_tx_cycles_obtained,
+        }
+    }
 }
 
+/// Writes the provided benchmark results to the JSON file at the provided path.
 pub fn write_bench_results_to_json(
     path: &Path,
-    tx_benchmarks: Vec<(Benchmark, MeasurementsPrinter)>,
+    tx_benchmarks: Vec<(ExecutionBenchmark, MeasurementsPrinter)>,
 ) -> anyhow::Result<()> {
     // convert benchmark file internals to the JSON Value
     let benchmark_file = read_to_string(path).context("failed to read benchmark file")?;

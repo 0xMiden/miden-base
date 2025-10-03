@@ -8,11 +8,11 @@ use crate::testing::noop_auth_component::NoopAuthComponent;
 
 pub const CODE: &str = "
     export.foo
-        push.1 push.2 mul
+        push.1.2 mul
     end
 
     export.bar
-        push.1 push.2 add
+        push.1.2 add
     end
 ";
 

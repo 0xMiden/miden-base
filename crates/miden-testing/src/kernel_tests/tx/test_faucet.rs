@@ -39,7 +39,7 @@ use miden_objects::testing::noop_auth_component::NoopAuthComponent;
 use miden_objects::testing::storage::FAUCET_STORAGE_DATA_SLOT;
 use miden_objects::{Felt, Word};
 
-use crate::utils::create_p2any_note;
+use crate::utils::create_public_p2any_note;
 use crate::{TransactionContextBuilder, assert_execution_error, assert_transaction_executor_error};
 
 // FUNGIBLE FAUCET MINT TESTS
@@ -64,16 +64,16 @@ fn test_mint_fungible_asset_succeeds() -> anyhow::Result<()> {
         begin
             # mint asset
             exec.prologue::prepare_transaction
-            push.{FUNGIBLE_ASSET_AMOUNT}.0.{suffix}.{prefix}
+            push.{FUNGIBLE_ASSET_AMOUNT} push.0 push.{suffix} push.{prefix}
             call.faucet::mint
 
             # assert the correct asset is returned
-            push.{FUNGIBLE_ASSET_AMOUNT}.0.{suffix}.{prefix}
+            push.{FUNGIBLE_ASSET_AMOUNT} push.0 push.{suffix} push.{prefix}
             assert_eqw.err="minted asset does not match expected asset"
 
             # assert the input vault has been updated
             exec.memory::get_input_vault_root_ptr
-            push.{suffix}.{prefix}
+            push.{suffix} push.{prefix}
             exec.asset_vault::get_balance
             push.{FUNGIBLE_ASSET_AMOUNT} assert_eq.err="input vault should contain minted asset"
         end
@@ -336,9 +336,9 @@ fn test_burn_fungible_asset_succeeds() -> anyhow::Result<()> {
             ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
             Felt::new(FUNGIBLE_FAUCET_INITIAL_BALANCE),
         );
-        let note = create_p2any_note(
+        let note = create_public_p2any_note(
             ACCOUNT_ID_SENDER.try_into().unwrap(),
-            &[FungibleAsset::new(account.id(), 100u64).unwrap().into()],
+            [FungibleAsset::new(account.id(), 100u64).unwrap().into()],
         );
         TransactionContextBuilder::new(account).extend_input_notes(vec![note]).build()?
     };
@@ -355,17 +355,17 @@ fn test_burn_fungible_asset_succeeds() -> anyhow::Result<()> {
         begin
             # burn asset
             exec.prologue::prepare_transaction
-            push.{FUNGIBLE_ASSET_AMOUNT}.0.{suffix}.{prefix}
+            push.{FUNGIBLE_ASSET_AMOUNT} push.0 push.{suffix} push.{prefix}
             call.faucet::burn
 
             # assert the correct asset is returned
-            push.{FUNGIBLE_ASSET_AMOUNT}.0.{suffix}.{prefix}
+            push.{FUNGIBLE_ASSET_AMOUNT} push.0 push.{suffix} push.{prefix}
             assert_eqw.err="burnt asset does not match expected asset"
 
             # assert the input vault has been updated
             exec.memory::get_input_vault_root_ptr
 
-            push.{suffix}.{prefix}
+            push.{suffix} push.{prefix}
             exec.asset_vault::get_balance
 
             push.{final_input_vault_asset_amount} assert_eq.err="vault balance does not match expected balance"
@@ -438,7 +438,7 @@ fn test_burn_fungible_asset_inconsistent_faucet_id() -> anyhow::Result<()> {
 
         begin
             exec.prologue::prepare_transaction
-            push.{FUNGIBLE_ASSET_AMOUNT}.0.{suffix}.{prefix}
+            push.{FUNGIBLE_ASSET_AMOUNT} push.0 push.{suffix} push.{prefix}
             call.faucet::burn
         end
         ",
@@ -469,7 +469,7 @@ fn test_burn_fungible_asset_insufficient_input_amount() -> anyhow::Result<()> {
 
         begin
             exec.prologue::prepare_transaction
-            push.{saturating_amount}.0.{suffix}.{prefix}
+            push.{saturating_amount} push.0 push.{suffix} push.{prefix}
             call.faucet::burn
         end
         ",

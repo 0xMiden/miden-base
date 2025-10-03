@@ -16,7 +16,7 @@ use miden_lib::testing::account_component::MockAccountComponent;
 use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::transaction::TransactionKernel;
 use miden_lib::utils::ScriptBuilder;
-use miden_objects::StarkField;
+use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{
     Account,
     AccountBuilder,
@@ -41,8 +41,9 @@ use miden_objects::testing::account_id::{
 };
 use miden_objects::testing::storage::STORAGE_LEAVES_2;
 use miden_objects::transaction::{ExecutedTransaction, TransactionScript};
-use miden_processor::{EMPTY_WORD, ExecutionError, Word};
-use miden_tx::TransactionExecutorError;
+use miden_objects::{LexicographicWord, StarkField};
+use miden_processor::{EMPTY_WORD, ExecutionError, MastNodeExt, Word};
+use miden_tx::{LocalTransactionProver, TransactionExecutorError};
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 
@@ -72,6 +73,8 @@ pub fn compute_current_commitment() -> miette::Result<()> {
 
     let tx_script = format!(
         r#"
+        use.std::word
+
         use.miden::prologue
         use.miden::account
         use.mock::account->mock_account
@@ -115,10 +118,10 @@ pub fn compute_current_commitment() -> miette::Result<()> {
             swapdw dropw dropw swapw dropw
             # => [STORAGE_COMMITMENT1, STORAGE_COMMITMENT0]
 
-            eqw not assert.err="storage commitment should have been updated by compute_current_commitment"
-            # => [STORAGE_COMMITMENT1, STORAGE_COMMITMENT0]
-
-            dropw dropw dropw dropw
+            # assert that the commitment has changed
+            exec.word::eq
+            assertz.err="storage commitment should have been updated by compute_current_commitment"
+            # => []
         end
     "#,
         key = &key,
@@ -419,8 +422,7 @@ fn test_get_map_item() -> miette::Result<()> {
             map_key = &key,
         );
 
-        let process = &tx_context.execute_code(&code)?;
-
+        let process = &mut tx_context.execute_code(&code)?;
         assert_eq!(
             value,
             process.stack.get_word(0),
@@ -428,17 +430,17 @@ fn test_get_map_item() -> miette::Result<()> {
         );
         assert_eq!(
             Word::empty(),
-            process.stack.get_word(1),
+            process.stack.get_word(4),
             "The rest of the stack must be cleared",
         );
         assert_eq!(
             Word::empty(),
-            process.stack.get_word(2),
+            process.stack.get_word(8),
             "The rest of the stack must be cleared",
         );
         assert_eq!(
             Word::empty(),
-            process.stack.get_word(3),
+            process.stack.get_word(12),
             "The rest of the stack must be cleared",
         );
     }
@@ -577,7 +579,7 @@ fn test_set_map_item() -> miette::Result<()> {
     let process = &tx_context.execute_code(&code).unwrap();
 
     let mut new_storage_map = AccountStorage::mock_map();
-    new_storage_map.insert(new_key, new_value);
+    new_storage_map.insert(new_key, new_value).unwrap();
 
     assert_eq!(
         new_storage_map.root(),
@@ -586,7 +588,7 @@ fn test_set_map_item() -> miette::Result<()> {
     );
     assert_eq!(
         storage_item.slot.value(),
-        process.stack.get_word(1),
+        process.stack.get_word(4),
         "The original value stored in the map doesn't match the expected value",
     );
 
@@ -609,6 +611,7 @@ fn test_account_component_storage_offset() -> miette::Result<()> {
     // We will then assert that we are able to retrieve the correct elements from storage
     // insuring consistent "set" and "get" using offsets.
     let source_code_component1 = "
+        use.std::word
         use.miden::account
 
         export.foo_write
@@ -621,13 +624,14 @@ fn test_account_component_storage_offset() -> miette::Result<()> {
         export.foo_read
             push.0
             exec.account::get_item
-            push.1.2.3.4 eqw assert
+            push.1.2.3.4
 
-            dropw dropw
+            exec.word::eq assert
         end
     ";
 
     let source_code_component2 = "
+        use.std::word
         use.miden::account
 
         export.bar_write
@@ -640,9 +644,9 @@ fn test_account_component_storage_offset() -> miette::Result<()> {
         export.bar_read
             push.0
             exec.account::get_item
-            push.5.6.7.8 eqw assert
+            push.5.6.7.8
 
-            dropw dropw
+            exec.word::eq assert
         end
     ";
 
@@ -746,17 +750,14 @@ fn test_account_component_storage_offset() -> miette::Result<()> {
 #[test]
 fn create_account_with_empty_storage_slots() -> anyhow::Result<()> {
     for account_type in [AccountType::FungibleFaucet, AccountType::RegularAccountUpdatableCode] {
-        let (account, seed) = AccountBuilder::new([5; 32])
+        let account = AccountBuilder::new([5; 32])
             .account_type(account_type)
             .with_auth_component(Auth::IncrNonce)
             .with_component(MockAccountComponent::with_empty_slots())
             .build()
             .context("failed to build account")?;
 
-        TransactionContextBuilder::new(account)
-            .account_seed(Some(seed))
-            .build()?
-            .execute_blocking()?;
+        TransactionContextBuilder::new(account).build()?.execute_blocking()?;
     }
 
     Ok(())
@@ -797,13 +798,11 @@ fn create_procedure_metadata_test_account(
     let id = AccountId::new(seed, version, code.commitment(), storage.commitment())
         .context("failed to compute ID")?;
 
-    let account = Account::from_parts(id, AssetVault::default(), storage, code, Felt::from(0u32));
+    let account =
+        Account::new(id, AssetVault::default(), storage, code, Felt::from(0u32), Some(seed))?;
 
-    let tx_inputs = mock_chain.get_transaction_inputs(account.clone(), Some(seed), &[], &[])?;
-    let tx_context = TransactionContextBuilder::new(account)
-        .account_seed(Some(seed))
-        .tx_inputs(tx_inputs)
-        .build()?;
+    let tx_inputs = mock_chain.get_transaction_inputs(&account, &[], &[])?;
+    let tx_context = TransactionContextBuilder::new(account).tx_inputs(tx_inputs).build()?;
 
     let result = tx_context.execute_blocking().map_err(|err| {
         let TransactionExecutorError::TransactionProgramExecutionFailed(exec_err) = err else {
@@ -943,7 +942,7 @@ fn test_compute_storage_commitment() -> anyhow::Result<()> {
             push.{storage_commitment_0}
             assert_eqw.err="storage commitment after the 0th slot was updated is not equal to the expected one"
 
-            # get the storage commitment once more to get the cached data and assert that this data 
+            # get the storage commitment once more to get the cached data and assert that this data
             # didn't change
             call.mock_account::compute_storage_commitment
             push.{storage_commitment_0}
@@ -962,6 +961,82 @@ fn test_compute_storage_commitment() -> anyhow::Result<()> {
         "#,
     );
     tx_context.execute_code(&code)?;
+
+    Ok(())
+}
+
+/// Tests that the storage map updates for a _new public_ account in an executed and proven
+/// transaction match up.
+///
+/// This is an interesting test case because for new public accounts the prover converts the partial
+/// account into a full account as a temporary measure. Because of the additional hashing of map
+/// keys in storage maps, this test ensures that the partial storage map is correctly converted into
+/// a full storage map. If we end up representing new public accounts as account deltas, this test
+/// can likely go away.
+#[test]
+fn proven_tx_storage_map_matches_executed_tx_for_new_account() -> anyhow::Result<()> {
+    // Build a public account so the proven transaction includes the account update.
+    let mock_slots = AccountStorage::mock_storage_slots();
+    let mut account = AccountBuilder::new([1; 32])
+        .storage_mode(AccountStorageMode::Public)
+        .with_auth_component(Auth::IncrNonce)
+        .with_component(MockAccountComponent::with_slots(mock_slots.clone()))
+        .build()?;
+
+    // The index of the mock map in account storage is 2.
+    let map_index = 2u8;
+    // Fetch a random existing key from the map.
+    let StorageSlot::Map(mock_map) = &mock_slots[map_index as usize] else {
+        panic!("expected map");
+    };
+    let existing_key = mock_map.entries().next().unwrap().0;
+
+    let value0 = Word::from([3, 4, 5, 6u32]);
+
+    let code = format!(
+        "
+      use.mock::account
+
+      begin
+          # Update an existing key.
+          push.{value0}
+          push.{existing_key}
+          push.{map_index}
+          # => [index, KEY, VALUE]
+          call.account::set_map_item
+
+          exec.::std::sys::truncate_stack
+      end
+      "
+    );
+
+    let builder = ScriptBuilder::with_mock_libraries()?;
+    let source_manager = builder.source_manager();
+    let tx_script = builder.compile_tx_script(code)?;
+
+    let tx = TransactionContextBuilder::new(account.clone())
+        .tx_script(tx_script)
+        .with_source_manager(source_manager)
+        .build()?
+        .execute_blocking()?;
+
+    let map_delta = tx.account_delta().storage().maps().get(&map_index).unwrap();
+    assert_eq!(
+        map_delta.entries().get(&LexicographicWord::new(*existing_key)).unwrap(),
+        &value0
+    );
+
+    let proven_tx = LocalTransactionProver::default().prove_dummy(tx.clone())?;
+
+    let AccountUpdateDetails::New(new_account) = proven_tx.account_update().details() else {
+        panic!("expected delta");
+    };
+
+    account.apply_delta(tx.account_delta())?;
+
+    for (idx, slot) in new_account.storage().slots().iter().enumerate() {
+        assert_eq!(slot, &account.storage().slots()[idx], "slot {idx} did not match");
+    }
 
     Ok(())
 }
@@ -1240,7 +1315,7 @@ fn incrementing_nonce_twice_fails() -> anyhow::Result<()> {
     let source_code = "
         use.miden::account
 
-        export.auth__incr_nonce_twice
+        export.auth_incr_nonce_twice
             exec.account::incr_nonce drop
             exec.account::incr_nonce drop
         end
@@ -1249,18 +1324,135 @@ fn incrementing_nonce_twice_fails() -> anyhow::Result<()> {
     let faulty_auth_component =
         AccountComponent::compile(source_code, TransactionKernel::assembler(), vec![])?
             .with_supports_all_types();
-    let (account, seed) = AccountBuilder::new([5; 32])
+    let account = AccountBuilder::new([5; 32])
         .with_auth_component(faulty_auth_component)
         .with_component(MockAccountComponent::with_empty_slots())
         .build()
         .context("failed to build account")?;
 
-    let result = TransactionContextBuilder::new(account)
-        .account_seed(Some(seed))
-        .build()?
-        .execute_blocking();
+    let result = TransactionContextBuilder::new(account).build()?.execute_blocking();
 
     assert_transaction_executor_error!(result, ERR_ACCOUNT_NONCE_CAN_ONLY_BE_INCREMENTED_ONCE);
+
+    Ok(())
+}
+
+// ACCOUNT INITIAL STORAGE TESTS
+// ================================================================================================
+
+#[test]
+fn test_get_item_init() -> miette::Result<()> {
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build().unwrap();
+
+    // Test that get_item_init returns the initial value before any changes
+    let code = format!(
+        "
+        use.$kernel::account
+        use.$kernel::prologue
+        use.mock::account->mock_account
+
+        begin
+            exec.prologue::prepare_transaction
+
+            # get initial value of storage slot 0
+            push.0
+            exec.account::get_item_init
+
+            push.{expected_initial_value}
+            assert_eqw.err=\"initial value should match expected\"
+
+            # modify the storage slot
+            push.9.10.11.12.0
+            call.mock_account::set_item dropw drop
+
+            # get_item should return the new value
+            push.0
+            exec.account::get_item
+            push.9.10.11.12
+            assert_eqw.err=\"current value should be updated\"
+
+            # get_item_init should still return the initial value
+            push.0
+            exec.account::get_item_init
+            push.{expected_initial_value}
+            assert_eqw.err=\"initial value should remain unchanged\"
+        end
+        ",
+        expected_initial_value = &AccountStorage::mock_item_0().slot.value(),
+    );
+
+    tx_context.execute_code(&code).unwrap();
+
+    Ok(())
+}
+
+#[test]
+fn test_get_map_item_init() -> miette::Result<()> {
+    let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
+        .with_auth_component(Auth::IncrNonce)
+        .with_component(MockAccountComponent::with_slots(vec![AccountStorage::mock_item_2().slot]))
+        .build_existing()
+        .unwrap();
+
+    let tx_context = TransactionContextBuilder::new(account).build().unwrap();
+
+    // Use the first key-value pair from the mock storage
+    let (initial_key, initial_value) = STORAGE_LEAVES_2[0];
+    let new_key = Word::from([201, 202, 203, 204u32]);
+    let new_value = Word::from([301, 302, 303, 304u32]);
+
+    let code = format!(
+        "
+        use.$kernel::prologue
+        use.mock::account->mock_account
+
+        begin
+            exec.prologue::prepare_transaction
+
+            # get initial value from map
+            push.{initial_key}
+            push.0
+            call.mock_account::get_map_item_init
+            push.{initial_value}
+            assert_eqw.err=\"initial map value should match expected\"
+
+            # add a new key-value pair to the map
+            push.{new_value}
+            push.{new_key}
+            push.0
+            call.mock_account::set_map_item dropw dropw
+
+            # get_map_item should return the new value
+            push.{new_key}
+            push.0
+            call.mock_account::get_map_item
+            push.{new_value}
+            assert_eqw.err=\"current map value should be updated\"
+
+            # get_map_item_init should still return the initial value for the initial key
+            push.{initial_key}
+            push.0
+            call.mock_account::get_map_item_init
+            push.{initial_value}
+            assert_eqw.err=\"initial map value should remain unchanged\"
+
+            # get_map_item_init for the new key should return empty word (default)
+            push.{new_key}
+            push.0
+            call.mock_account::get_map_item_init
+            padw
+            assert_eqw.err=\"new key should have empty initial value\"
+
+            dropw dropw
+        end
+        ",
+        initial_key = &initial_key,
+        initial_value = &initial_value,
+        new_key = &new_key,
+        new_value = &new_value,
+    );
+
+    tx_context.execute_code(&code).unwrap();
 
     Ok(())
 }

@@ -427,7 +427,6 @@ mod tests {
     use anyhow::Context;
     use miden_crypto::merkle::{Mmr, PartialMmr};
     use miden_verifier::ExecutionProof;
-    use winter_air::proof::Proof;
     use winter_rand_utils::rand_value;
 
     use super::*;
@@ -473,7 +472,7 @@ mod tests {
         let block_num = reference_block_header.block_num();
         let block_ref = reference_block_header.commitment();
         let expiration_block_num = reference_block_header.block_num() + 1;
-        let proof = ExecutionProof::new(Proof::new_dummy(), Default::default());
+        let proof = ExecutionProof::new_dummy();
 
         let tx = ProvenTransactionBuilder::new(
             account_id,

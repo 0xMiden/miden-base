@@ -1,3 +1,5 @@
+use miden_crypto::merkle::SparseMerklePath;
+
 use crate::Word;
 use crate::account::{AccountCode, AccountId, PartialAccount, PartialStorage};
 use crate::asset::PartialVault;
@@ -66,6 +68,8 @@ impl AccountInputs {
     /// This root should be equal to the account root in the reference block header.
     pub fn compute_account_root(&self) -> Result<Word, SmtProofError> {
         let smt_merkle_path = self.witness.path().clone();
+        let smt_merkle_path = SparseMerklePath::try_from(smt_merkle_path)
+            .expect("Only ever exists for merkle paths that match the SMT depth by construction");
         let smt_leaf = self.witness.leaf();
         let root = SmtProof::new(smt_merkle_path, smt_leaf)?.compute_root();
 
@@ -101,7 +105,7 @@ mod tests {
     use miden_crypto::merkle::MerklePath;
     use miden_processor::SMT_DEPTH;
 
-    use crate::account::{Account, AccountCode, AccountId, AccountStorage};
+    use crate::account::{Account, AccountCode, AccountId, AccountStorage, PartialAccount};
     use crate::asset::AssetVault;
     use crate::block::AccountWitness;
     use crate::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE;
@@ -113,7 +117,7 @@ mod tests {
         let code = AccountCode::mock();
         let vault = AssetVault::new(&[]).unwrap();
         let storage = AccountStorage::new(vec![]).unwrap();
-        let account = Account::from_parts(id, vault, storage, code, Felt::new(10));
+        let account = Account::new_existing(id, vault, storage, code, Felt::new(10));
 
         let commitment = account.commitment();
 
@@ -124,7 +128,7 @@ mod tests {
         let merkle_path = MerklePath::new(merkle_nodes);
 
         let fpi_inputs = AccountInputs::new(
-            account.into(),
+            PartialAccount::from(&account),
             AccountWitness::new(id, commitment, merkle_path).unwrap(),
         );
 

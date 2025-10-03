@@ -22,6 +22,7 @@ use crate::account::{
     AccountIdPrefix,
     AccountStorage,
     AccountType,
+    SlotName,
     StorageValueName,
     StorageValueNameError,
     TemplateTypeError,
@@ -128,6 +129,14 @@ pub enum AccountError {
         "digest of the seed has {actual} trailing zeroes but must have at least {expected} trailing zeroes"
     )]
     SeedDigestTooFewTrailingZeros { expected: u32, actual: u32 },
+    #[error("account ID {actual} computed from seed does not match ID {expected} on account")]
+    AccountIdSeedMismatch { actual: AccountId, expected: AccountId },
+    #[error("account ID seed was provided for an existing account")]
+    ExistingAccountWithSeed,
+    #[error("account ID seed was not provided for a new account")]
+    NewAccountMissingSeed,
+    #[error("seed converts to an invalid account ID")]
+    SeedConvertsToInvalidAccountId(#[source] AccountIdError),
     #[error("storage map root {0} not found in the account storage")]
     StorageMapRootNotFound(Word),
     #[error("storage slot at index {0} is not of type map")]
@@ -153,6 +162,8 @@ pub enum AccountError {
         account_type: AccountType,
         component_index: usize,
     },
+    #[error("maximum number of storage map leaves exceeded")]
+    MaxNumStorageMapLeavesExceeded(#[source] MerkleError),
     /// This variant can be used by methods that are not inherent to the account but want to return
     /// this error type.
     #[error("{error_msg}")]
@@ -207,6 +218,24 @@ pub enum AccountIdError {
     AccountIdSuffixLeastSignificantByteMustBeZero,
 }
 
+// SLOT NAME ERROR
+// ================================================================================================
+
+#[derive(Debug, Error)]
+pub enum SlotNameError {
+    #[error("slot names must only contain characters a..z, A..Z, 0..9 or underscore")]
+    InvalidCharacter,
+    #[error("slot names must be separated by double colons")]
+    UnexpectedColon,
+    #[error("slot name components must not start with an underscore")]
+    UnexpectedUnderscore,
+    #[error(
+        "slot names must contain at least {} components separated by double colons",
+        SlotName::MIN_NUM_COMPONENTS
+    )]
+    TooShort,
+}
+
 // ACCOUNT TREE ERROR
 // ================================================================================================
 
@@ -226,6 +255,8 @@ pub enum AccountTreeError {
     TreeRootConflict(#[source] MerkleError),
     #[error("failed to apply mutations to account tree")]
     ApplyMutations(#[source] MerkleError),
+    #[error("failed to compute account tree mutations")]
+    ComputeMutations(#[source] MerkleError),
     #[error("smt leaf's index is not a valid account ID prefix")]
     InvalidAccountIdPrefix(#[source] AccountIdError),
     #[error("account witness merkle path depth {0} does not match AccountTree::DEPTH")]
@@ -327,6 +358,8 @@ pub enum AccountDeltaError {
 pub enum StorageMapError {
     #[error("map entries contain key {key} twice with values {value0} and {value1}")]
     DuplicateKey { key: Word, value0: Word, value1: Word },
+    #[error("map key {raw_key} is not present in provided SMT proof")]
+    MissingKey { raw_key: Word },
 }
 
 // BATCH ACCOUNT UPDATE ERROR
@@ -373,6 +406,8 @@ pub enum AssetError {
     },
     #[error("faucet account ID in asset is invalid")]
     InvalidFaucetAccountId(#[source] Box<dyn Error + Send + Sync + 'static>),
+    #[error("faucet account ID in asset has a non-faucet prefix: {}", .0)]
+    InvalidFaucetAccountIdPrefix(AccountIdPrefix),
     #[error(
       "faucet id {0} of type {id_type} must be of type {expected_ty} for fungible assets",
       id_type = .0.account_type(),
@@ -385,6 +420,8 @@ pub enum AssetError {
       expected_ty = AccountType::NonFungibleFaucet
     )]
     NonFungibleFaucetIdTypeMismatch(AccountIdPrefix),
+    #[error("vault key {actual} does not match expected vault key {expected}")]
+    VaultKeyMismatch { actual: Word, expected: Word },
 }
 
 // TOKEN SYMBOL ERROR
@@ -421,6 +458,8 @@ pub enum AssetVaultError {
     NonFungibleAssetNotFound(NonFungibleAsset),
     #[error("subtracting fungible asset amounts would underflow")]
     SubtractFungibleAssetBalanceError(#[source] AssetError),
+    #[error("maximum number of asset vault leaves exceeded")]
+    MaxLeafEntriesExceeded(#[source] MerkleError),
 }
 
 // PARTIAL ASSET VAULT ERROR
@@ -434,6 +473,8 @@ pub enum PartialAssetVaultError {
     VaultKeyMismatch { expected: Word, actual: Word },
     #[error("failed to add asset proof")]
     FailedToAddProof(#[source] MerkleError),
+    #[error("asset is not tracked in the partial vault")]
+    UntrackedAsset(#[source] MerkleError),
 }
 
 // NOTE ERROR
@@ -574,16 +615,8 @@ pub enum TransactionScriptError {
 
 #[derive(Debug, Error)]
 pub enum TransactionInputError {
-    #[error("account seed must be provided for new accounts")]
-    AccountSeedNotProvidedForNewAccount,
-    #[error("account seed must not be provided for existing accounts")]
-    AccountSeedProvidedForExistingAccount,
     #[error("transaction input note with nullifier {0} is a duplicate")]
     DuplicateInputNote(Nullifier),
-    #[error(
-        "ID {expected} of the new account does not match the ID {actual} computed from the provided seed"
-    )]
-    InconsistentAccountSeed { expected: AccountId, actual: AccountId },
     #[error("partial blockchain has length {actual} which does not match block number {expected}")]
     InconsistentChainLength {
         expected: BlockNumber,
@@ -597,8 +630,6 @@ pub enum TransactionInputError {
     InputNoteBlockNotInPartialBlockchain(NoteId),
     #[error("input note with id {0} was not created in block {1}")]
     InputNoteNotInBlock(NoteId, BlockNumber),
-    #[error("account ID computed from seed is invalid")]
-    InvalidAccountIdSeed(#[source] AccountIdError),
     #[error(
         "total number of input notes is {0} which exceeds the maximum of {MAX_INPUT_NOTES_PER_TX}"
     )]
@@ -655,14 +686,14 @@ pub enum ProvenTransactionError {
     InputNotesError(TransactionInputError),
     #[error("private account {0} should not have account details")]
     PrivateAccountWithDetails(AccountId),
-    #[error("on-chain account {0} is missing its account details")]
-    OnChainAccountMissingDetails(AccountId),
-    #[error("new on-chain account {0} is missing its account details")]
-    NewOnChainAccountRequiresFullDetails(AccountId),
+    #[error("account {0} with public state is missing its account details")]
+    PublicStateAccountMissingDetails(AccountId),
+    #[error("new account {0} with public state is missing its account details")]
+    NewPublicStateAccountRequiresFullDetails(AccountId),
     #[error(
-        "existing on-chain account {0} should only provide delta updates instead of full details"
+        "existing account {0} with public state should only provide delta updates instead of full details"
     )]
-    ExistingOnChainAccountRequiresDeltaDetails(AccountId),
+    ExistingPublicStateAccountRequiresDeltaDetails(AccountId),
     #[error("failed to construct output notes for proven transaction")]
     OutputNotesError(TransactionOutputError),
     #[error(
@@ -963,6 +994,9 @@ pub enum NullifierTreeError {
     #[error("attempt to mark nullifier {0} as spent but it is already spent")]
     NullifierAlreadySpent(Nullifier),
 
+    #[error("maximum number of nullifier tree leaves exceeded")]
+    MaxLeafEntriesExceeded(#[source] MerkleError),
+
     #[error("nullifier {nullifier} is not tracked by the partial nullifier tree")]
     UntrackedNullifier {
         nullifier: Nullifier,
@@ -971,4 +1005,7 @@ pub enum NullifierTreeError {
 
     #[error("new tree root after nullifier witness insertion does not match previous tree root")]
     TreeRootConflict(#[source] MerkleError),
+
+    #[error("failed to compute nulifier tree mutations")]
+    ComputeMutations(#[source] MerkleError),
 }

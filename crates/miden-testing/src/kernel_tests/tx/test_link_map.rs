@@ -1,5 +1,4 @@
 use alloc::vec::Vec;
-use core::cmp::Ordering;
 use std::collections::BTreeMap;
 use std::string::String;
 
@@ -11,7 +10,6 @@ use rand::seq::IteratorRandom;
 use winter_rand_utils::rand_value;
 
 use crate::TransactionContextBuilder;
-use crate::executor::CodeExecutor;
 
 /// Tests the following properties:
 /// - Insertion into an empty map.
@@ -171,15 +169,7 @@ fn insertion() -> anyhow::Result<()> {
           assert_eqw.err="retrieved value1 for key {entry3_key} should be an empty word"
           # => []
       end
-    "#,
-        entry0_key = entry0_key,
-        entry0_value = entry0_value,
-        entry1_key = entry1_key,
-        entry1_value = entry1_value,
-        entry2_key = entry2_key,
-        entry2_value = entry2_value,
-        entry3_key = entry3_key,
-        entry3_value = entry3_value,
+    "#
     );
 
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
@@ -369,69 +359,6 @@ fn set_update_get_random_entries() -> anyhow::Result<()> {
     execute_link_map_test(test_operations)
 }
 
-// COMPARISON OPERATIONS TESTS
-// ================================================================================================
-
-#[test]
-fn is_key_greater() -> anyhow::Result<()> {
-    execute_comparison_test(Ordering::Greater)
-}
-
-#[test]
-fn is_key_less() -> anyhow::Result<()> {
-    execute_comparison_test(Ordering::Less)
-}
-
-fn execute_comparison_test(operation: Ordering) -> anyhow::Result<()> {
-    let procedure_name = match operation {
-        Ordering::Less => "is_key_less",
-        Ordering::Equal => anyhow::bail!("unsupported ordering operation for testing"),
-        Ordering::Greater => "is_key_greater",
-    };
-
-    let mut test_code = String::new();
-
-    for _ in 0..1000 {
-        let key0 = rand_value::<Word>();
-        let key1 = rand_value::<Word>();
-
-        let cmp = LexicographicWord::from(key0).cmp(&LexicographicWord::from(key1));
-        let expected = cmp == operation;
-
-        let code = format!(
-            r#"
-        push.{KEY_1}
-        push.{KEY_0}
-        exec.link_map::{proc_name}
-        push.{expected_value}
-        assert_eq.err="failed for procedure {proc_name} with keys {key0:?}, {key1:?}"
-      "#,
-            KEY_0 = key0,
-            KEY_1 = key1,
-            proc_name = procedure_name,
-            expected_value = expected as u8
-        );
-
-        test_code.push_str(&code);
-    }
-
-    let code = format!(
-        r#"
-        use.$kernel::link_map
-
-        begin
-          {test_code}
-        end
-        "#,
-    );
-
-    CodeExecutor::with_default_host()
-        .run(&code)
-        .with_context(|| format!("comparison test for {procedure_name} failed"))?;
-
-    Ok(())
-}
-
 // TEST HELPERS
 // ================================================================================================
 
@@ -485,7 +412,7 @@ fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
 
                 let set_code = format!(
                     r#"
-                  push.{value1}.{value0}.{key}.{map_ptr}
+                  push.{value1} push.{value0} push.{key} push.{map_ptr}
                   # => [map_ptr, KEY, VALUE]
                   exec.link_map::set
                   # => [is_new_key]
@@ -512,7 +439,7 @@ fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
 
                 let get_code = format!(
                     r#"
-                  push.{key}.{map_ptr}
+                  push.{key} push.{map_ptr}
                   # => [map_ptr, KEY]
                   exec.link_map::get
                   # => [contains_key, VALUE0, VALUE1]

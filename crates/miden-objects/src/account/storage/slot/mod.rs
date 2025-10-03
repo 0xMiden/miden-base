@@ -5,6 +5,9 @@ use miden_processor::DeserializationError;
 use super::map::EMPTY_STORAGE_MAP_ROOT;
 use super::{StorageMap, Word};
 
+mod slot_name;
+pub use slot_name::SlotName;
+
 mod r#type;
 pub use r#type::StorageSlotType;
 

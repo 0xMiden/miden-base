@@ -184,11 +184,14 @@ impl AccountTree {
         &self,
         account_commitments: impl IntoIterator<Item = (AccountId, Word)>,
     ) -> Result<AccountMutationSet, AccountTreeError> {
-        let mutation_set = self.smt.compute_mutations(
-            account_commitments
-                .into_iter()
-                .map(|(id, commitment)| (Self::id_to_smt_key(id), commitment)),
-        );
+        let mutation_set = self
+            .smt
+            .compute_mutations(
+                account_commitments
+                    .into_iter()
+                    .map(|(id, commitment)| (Self::id_to_smt_key(id), commitment)),
+            )
+            .map_err(AccountTreeError::ComputeMutations)?;
 
         for id_key in mutation_set.new_pairs().keys() {
             // Check if the insertion would be valid.
@@ -234,7 +237,10 @@ impl AccountTree {
         state_commitment: Word,
     ) -> Result<Word, AccountTreeError> {
         let key = Self::id_to_smt_key(account_id);
-        let prev_value = self.smt.insert(key, state_commitment);
+        // SAFETY: account tree should not contain multi-entry leaves and so the maximum number
+        // of entries per leaf should never be exceeded.
+        let prev_value = self.smt.insert(key, state_commitment)
+            .expect("account tree should always have a single value per key, and hence cannot exceed the maximum leaf number");
 
         // If the leaf of the account ID now has two or more entries, we've inserted a duplicate
         // prefix.

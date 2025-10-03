@@ -16,10 +16,10 @@ use super::{
 use crate::account::{AccountComponent, AccountType};
 
 mod slot;
-pub use slot::{StorageSlot, StorageSlotType};
+pub use slot::{SlotName, StorageSlot, StorageSlotType};
 
 mod map;
-pub use map::{PartialStorageMap, StorageMap};
+pub use map::{PartialStorageMap, StorageMap, StorageMapWitness};
 
 mod header;
 pub use header::{AccountStorageHeader, StorageSlotHeader};
@@ -112,7 +112,7 @@ impl AccountStorage {
     }
 
     /// Returns a reference to the storage slots.
-    pub fn slots(&self) -> &Vec<StorageSlot> {
+    pub fn slots(&self) -> &[StorageSlot] {
         &self.slots
     }
 
@@ -185,7 +185,7 @@ impl AccountStorage {
                 _ => return Err(AccountError::StorageSlotNotMap(idx)),
             };
 
-            storage_map.apply_delta(map);
+            storage_map.apply_delta(map)?;
         }
 
         // update storage values
@@ -260,7 +260,7 @@ impl AccountStorage {
         let old_root = storage_map.root();
 
         // update the key-value pair in the map
-        let old_value = storage_map.insert(key, value);
+        let old_value = storage_map.insert(key, value)?;
 
         Ok((old_root, old_value))
     }

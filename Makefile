@@ -23,7 +23,7 @@ clippy: ## Runs Clippy with configs
 
 .PHONY: clippy-no-std
 clippy-no-std: ## Runs Clippy with configs
-	cargo clippy --no-default-features --target wasm32-unknown-unknown --workspace --lib --exclude bench-prover -- -D warnings
+	cargo clippy --no-default-features --target wasm32-unknown-unknown --workspace --lib -- -D warnings
 
 
 .PHONY: fix
@@ -116,23 +116,19 @@ build: ## By default we should build in release mode
 
 .PHONY: build-no-std
 build-no-std: ## Build without the standard library
-	$(BUILD_GENERATED_FILES_IN_SRC) cargo build --no-default-features --target wasm32-unknown-unknown --workspace --lib --exclude bench-prover
+	$(BUILD_GENERATED_FILES_IN_SRC) cargo build --no-default-features --target wasm32-unknown-unknown --workspace --lib
 
 
 .PHONY: build-no-std-testing
 build-no-std-testing: ## Build without the standard library. Includes the `testing` feature
-	$(BUILD_GENERATED_FILES_IN_SRC) cargo build --no-default-features --target wasm32-unknown-unknown --workspace --exclude miden-bench-tx --features testing --exclude bench-prover
+	$(BUILD_GENERATED_FILES_IN_SRC) cargo build --no-default-features --target wasm32-unknown-unknown --workspace --exclude bench-transaction --features testing
 
 # --- benchmarking --------------------------------------------------------------------------------
 
 .PHONY: bench-tx
 bench-tx: ## Run transaction benchmarks
-	cargo run --bin bench-tx
-
-.PHONY: bench-prover
-bench-prover: ## Run prover benchmarks and consolidate results.
-	cargo bench --bin bench-prover --bench benches
-	cargo run --bin bench-prover
+	cargo run --bin bench-transaction --features concurrent
+	cargo bench --bin bench-transaction --bench time_counting_benchmarks --features concurrent
 
 .PHONY: bench-note-checker
 bench-note-checker: ## Run note checker benchmarks
@@ -145,8 +141,9 @@ check-tools: ## Checks if development tools are installed
 	@echo "Checking development tools..."
 	@command -v mdbook >/dev/null 2>&1 && echo "[OK] mdbook is installed" || echo "[MISSING] mdbook is not installed (run: make install-tools)"
 	@command -v typos >/dev/null 2>&1 && echo "[OK] typos is installed" || echo "[MISSING] typos is not installed (run: make install-tools)"
-	@command -v nextest >/dev/null 2>&1 && echo "[OK] nextest is installed" || echo "[MISSING] nextest is not installed (run: make install-tools)"
+	@command -v cargo nextest >/dev/null 2>&1 && echo "[OK] cargo-nextest is installed" || echo "[MISSING] cargo-nextest is not installed (run: make install-tools)"
 	@command -v taplo >/dev/null 2>&1 && echo "[OK] taplo is installed" || echo "[MISSING] taplo is not installed (run: make install-tools)"
+	@command -v cargo-machete >/dev/null 2>&1 && echo "[OK] cargo-machete is installed" || echo "[MISSING] cargo-machete is not installed (run: make install-tools)"
 
 .PHONY: install-tools
 install-tools: ## Installs development tools required by the Makefile (mdbook, typos, nextest, taplo)
@@ -155,4 +152,5 @@ install-tools: ## Installs development tools required by the Makefile (mdbook, t
 	cargo install typos-cli --locked
 	cargo install cargo-nextest --locked
 	cargo install taplo-cli --locked
+	cargo install cargo-machete --locked
 	@echo "Development tools installation complete!"

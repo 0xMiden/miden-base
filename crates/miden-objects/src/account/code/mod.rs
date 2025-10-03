@@ -553,11 +553,11 @@ mod tests {
         let code_with_multiple_auth = "
             use.miden::account
 
-            export.auth__basic
+            export.auth_basic
                 push.1 drop
             end
 
-            export.auth__secondary
+            export.auth_secondary
                 push.0 drop
             end
         ";

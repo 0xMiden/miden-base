@@ -87,7 +87,7 @@ use miden_objects::transaction::{
     TransactionArgs,
     TransactionScript,
 };
-use miden_objects::{EMPTY_WORD, WORD_SIZE};
+use miden_objects::{EMPTY_WORD, ONE, WORD_SIZE};
 use miden_processor::{AdviceInputs, Process, Word};
 use miden_tx::TransactionExecutorError;
 use rand::{Rng, SeedableRng};
@@ -95,7 +95,7 @@ use rand_chacha::ChaCha20Rng;
 
 use super::{Felt, ZERO};
 use crate::kernel_tests::tx::ProcessMemoryExt;
-use crate::utils::{create_p2any_note, input_note_data_ptr};
+use crate::utils::{create_public_p2any_note, input_note_data_ptr};
 use crate::{
     Auth,
     MockChain,
@@ -110,12 +110,18 @@ fn test_transaction_prologue() -> anyhow::Result<()> {
     let mut tx_context = {
         let account =
             Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, Auth::IncrNonce);
-        let input_note_1 =
-            create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), &[FungibleAsset::mock(100)]);
-        let input_note_2 =
-            create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), &[FungibleAsset::mock(100)]);
-        let input_note_3 =
-            create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), &[FungibleAsset::mock(111)]);
+        let input_note_1 = create_public_p2any_note(
+            ACCOUNT_ID_SENDER.try_into().unwrap(),
+            [FungibleAsset::mock(100)],
+        );
+        let input_note_2 = create_public_p2any_note(
+            ACCOUNT_ID_SENDER.try_into().unwrap(),
+            [FungibleAsset::mock(100)],
+        );
+        let input_note_3 = create_public_p2any_note(
+            ACCOUNT_ID_SENDER.try_into().unwrap(),
+            [FungibleAsset::mock(111)],
+        );
         TransactionContextBuilder::new(account)
             .extend_input_notes(vec![input_note_1, input_note_2, input_note_3])
             .build()?
@@ -142,7 +148,7 @@ fn test_transaction_prologue() -> anyhow::Result<()> {
 
     let tx_script = TransactionScript::new(mock_tx_script_program);
 
-    let note_args = [Word::from([91, 91, 91, 91u32]), Word::from([92, 92, 92, 92u32])];
+    let note_args = [Word::from([91u32; 4]), Word::from([92u32; 4])];
 
     let note_args_map = BTreeMap::from([
         (tx_context.input_notes().get_note(0).note().id(), note_args[0]),
@@ -353,23 +359,17 @@ fn partial_blockchain_memory_assertions(process: &Process, prepared_tx: &Transac
 }
 
 fn kernel_data_memory_assertions(process: &Process) {
-    let latest_version_procedures = TransactionKernel::PROCEDURES
-        .last()
-        .expect("kernel should have at least one version");
-
     // check that the number of kernel procedures stored in the memory is equal to the number of
-    // kernel procedures in the `TransactionKernel` array.
-    //
-    // By default we check procedures of the latest kernel version
+    // procedures in the `TransactionKernel::PROCEDURES` array
     assert_eq!(
         process.get_kernel_mem_word(NUM_KERNEL_PROCEDURES_PTR)[0].as_int(),
-        latest_version_procedures.len() as u64,
+        TransactionKernel::PROCEDURES.len() as u64,
         "Number of the kernel procedures should be stored at the NUM_KERNEL_PROCEDURES_PTR"
     );
 
     // check that the hashes of the kernel procedures stored in the memory is equal to the hashes in
-    // `TransactionKernel`'s procedures array
-    for (i, &proc_hash) in latest_version_procedures.iter().enumerate() {
+    // `TransactionKernel::PROCEDURES` array
+    for (i, &proc_hash) in TransactionKernel::PROCEDURES.iter().enumerate() {
         assert_eq!(
             process.get_kernel_mem_word(KERNEL_PROCEDURES_PTR + (i * WORD_SIZE) as u32),
             proc_hash,
@@ -550,14 +550,13 @@ fn input_notes_memory_assertions(
 /// [`TransactionContext::execute_code`]).
 #[test]
 fn create_simple_account() -> anyhow::Result<()> {
-    let (account, seed) = AccountBuilder::new([6; 32])
+    let account = AccountBuilder::new([6; 32])
         .storage_mode(AccountStorageMode::Public)
         .with_auth_component(Auth::IncrNonce)
         .with_component(MockAccountComponent::with_empty_slots())
         .build()?;
 
     let tx = TransactionContextBuilder::new(account)
-        .account_seed(Some(seed))
         .build()?
         .execute_blocking()
         .context("failed to execute account-creating transaction")?;
@@ -577,13 +576,8 @@ fn create_simple_account() -> anyhow::Result<()> {
 /// `seed` is valid in the context of the given `mock_chain`.
 pub fn create_account_test(
     account: Account,
-    seed: Word,
 ) -> Result<ExecutedTransaction, TransactionExecutorError> {
-    TransactionContextBuilder::new(account)
-        .account_seed(Some(seed))
-        .build()
-        .unwrap()
-        .execute_blocking()
+    TransactionContextBuilder::new(account).build().unwrap().execute_blocking()
 }
 
 pub fn create_multiple_accounts_test(storage_mode: AccountStorageMode) -> anyhow::Result<()> {
@@ -595,7 +589,7 @@ pub fn create_multiple_accounts_test(storage_mode: AccountStorageMode) -> anyhow
         AccountType::FungibleFaucet,
         AccountType::NonFungibleFaucet,
     ] {
-        let (account, seed) = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
+        let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
             .account_type(account_type)
             .storage_mode(storage_mode)
             .with_auth_component(Auth::IncrNonce)
@@ -605,12 +599,12 @@ pub fn create_multiple_accounts_test(storage_mode: AccountStorageMode) -> anyhow
             .build()
             .context("account build failed")?;
 
-        accounts.push((account, seed));
+        accounts.push(account);
     }
 
-    for (account, seed) in accounts {
+    for account in accounts {
         let account_type = account.account_type();
-        create_account_test(account, seed).context(format!(
+        create_account_test(account).context(format!(
             "create_multiple_accounts_test test failed for account type {account_type}"
         ))?;
     }
@@ -630,7 +624,7 @@ pub fn create_accounts_with_all_storage_modes() -> anyhow::Result<()> {
 
 /// Takes an account with a placeholder ID and returns the same account but with its ID replaced
 /// with a newly generated one.
-fn compute_valid_account_id(account: Account) -> (Account, Word) {
+fn compute_valid_account_id(account: Account) -> Account {
     let init_seed: [u8; 32] = [5; 32];
     let seed = AccountId::compute_account_seed(
         init_seed,
@@ -651,10 +645,9 @@ fn compute_valid_account_id(account: Account) -> (Account, Word) {
     .unwrap();
 
     // Overwrite old ID with generated ID.
-    let (_, vault, storage, code, nonce) = account.into_parts();
-    let account = Account::from_parts(account_id, vault, storage, code, nonce);
-
-    (account, seed)
+    let (_, vault, storage, code, _nonce, _seed) = account.into_parts();
+    // Set nonce to zero so this is considered a new account.
+    Account::new(account_id, vault, storage, code, ZERO, Some(seed)).unwrap()
 }
 
 /// Tests that creating a fungible faucet account with a non-empty initial balance in its reserved
@@ -667,18 +660,19 @@ pub fn create_account_fungible_faucet_invalid_initial_balance() -> anyhow::Resul
         .with_component(MockAccountComponent::with_empty_slots())
         .build_existing()
         .expect("account should be valid");
-    let (id, vault, mut storage, code, _nonce) = account.into_parts();
+    let (id, vault, mut storage, code, _nonce, _seed) = account.into_parts();
 
     // Set the initial balance to a non-zero value manually, since the builder would not allow us to
     // do that.
     let faucet_data_slot = Word::from([0, 0, 0, 100u32]);
     storage.set_item(FAUCET_STORAGE_DATA_SLOT, faucet_data_slot).unwrap();
-    // Set the nonce to zero so this is considered a new account.
-    let account = Account::from_parts(id, vault, storage, code, ZERO);
 
-    let (account, account_seed) = compute_valid_account_id(account);
+    // The compute account ID function will set the nonce to zero so this is considered a new
+    // account.
+    let account = Account::new(id, vault, storage, code, ONE, None)?;
+    let account = compute_valid_account_id(account);
 
-    let result = create_account_test(account, account_seed);
+    let result = create_account_test(account);
 
     assert_transaction_executor_error!(
         result,
@@ -698,19 +692,20 @@ pub fn create_account_non_fungible_faucet_invalid_initial_reserved_slot() -> any
         StorageMap::with_entries([(asset.vault_key(), asset.into())]).unwrap();
     let storage = AccountStorage::new(vec![StorageSlot::Map(non_fungible_storage_map)]).unwrap();
 
-    let (account, _seed) = AccountBuilder::new([1; 32])
+    let account = AccountBuilder::new([1; 32])
         .account_type(AccountType::NonFungibleFaucet)
         .with_auth_component(NoopAuthComponent)
         .with_component(MockAccountComponent::with_empty_slots())
         .build()
         .expect("account should be valid");
-    let (id, vault, _storage, code, nonce) = account.into_parts();
+    let (id, vault, _storage, code, _nonce, _seed) = account.into_parts();
 
-    // Set the nonce to zero so this is considered a new account.
-    let account = Account::from_parts(id, vault, storage, code, nonce);
-    let (account, account_seed) = compute_valid_account_id(account);
+    // The compute account ID function will set the nonce to zero so this is considered a new
+    // account.
+    let account = Account::new(id, vault, storage, code, ONE, None)?;
+    let account = compute_valid_account_id(account);
 
-    let result = create_account_test(account, account_seed);
+    let result = create_account_test(account);
 
     assert_transaction_executor_error!(
         result,
@@ -726,14 +721,14 @@ pub fn create_account_invalid_seed() -> anyhow::Result<()> {
     let mut mock_chain = MockChain::new();
     mock_chain.prove_next_block()?;
 
-    let (account, seed) = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
+    let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .account_type(AccountType::RegularAccountUpdatableCode)
         .with_auth_component(Auth::IncrNonce)
         .with_component(BasicWallet)
         .build()?;
 
     let tx_inputs = mock_chain
-        .get_transaction_inputs(account.clone(), Some(seed), &[], &[])
+        .get_transaction_inputs(&account, &[], &[])
         .expect("failed to get transaction inputs from mock chain");
 
     // override the seed with an invalid seed to ensure the kernel fails
@@ -742,7 +737,6 @@ pub fn create_account_invalid_seed() -> anyhow::Result<()> {
         AdviceInputs::default().with_map([(Word::from(account_seed_key), vec![ZERO; WORD_SIZE])]);
 
     let tx_context = TransactionContextBuilder::new(account)
-        .account_seed(Some(seed))
         .tx_inputs(tx_inputs)
         .extend_advice_inputs(adv_inputs)
         .build()?;

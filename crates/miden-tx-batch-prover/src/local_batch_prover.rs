@@ -27,9 +27,39 @@ impl LocalBatchProver {
     /// Returns an error if:
     /// - a proof of any transaction in the batch fails to verify.
     pub fn prove(&self, proposed_batch: ProposedBatch) -> Result<ProvenBatch, ProvenBatchError> {
+        let verifier = TransactionVerifier::new(self.proof_security_level);
+
+        for tx in proposed_batch.transactions() {
+            verifier.verify(tx).map_err(|source| {
+                ProvenBatchError::TransactionVerificationFailed {
+                    transaction_id: tx.id(),
+                    source: Box::new(source),
+                }
+            })?;
+        }
+
+        self.prove_inner(proposed_batch)
+    }
+
+    /// Proves the provided [`ProposedBatch`] into a [`ProvenBatch`], **without verifying batches
+    /// and proving the block**.
+    ///
+    /// This is exposed for testing purposes.
+    #[cfg(any(feature = "testing", test))]
+    pub fn prove_dummy(
+        &self,
+        proposed_batch: ProposedBatch,
+    ) -> Result<ProvenBatch, ProvenBatchError> {
+        self.prove_inner(proposed_batch)
+    }
+
+    /// Converts a proposed batch into a proven batch.
+    ///
+    /// For now, this doesn't do anything interesting.
+    fn prove_inner(&self, proposed_batch: ProposedBatch) -> Result<ProvenBatch, ProvenBatchError> {
         let tx_headers = proposed_batch.transaction_headers();
         let (
-            transactions,
+            _transactions,
             block_header,
             _block_chain,
             _authenticatable_unauthenticated_notes,
@@ -39,17 +69,6 @@ impl LocalBatchProver {
             output_notes,
             batch_expiration_block_num,
         ) = proposed_batch.into_parts();
-
-        let verifier = TransactionVerifier::new(self.proof_security_level);
-
-        for tx in transactions {
-            verifier.verify(&tx).map_err(|source| {
-                ProvenBatchError::TransactionVerificationFailed {
-                    transaction_id: tx.id(),
-                    source: Box::new(source),
-                }
-            })?;
-        }
 
         ProvenBatch::new(
             id,

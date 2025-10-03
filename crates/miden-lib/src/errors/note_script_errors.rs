@@ -13,6 +13,9 @@ use crate::errors::MasmError;
 /// Error Message: "auth procedure had been called from outside the epilogue"
 pub const ERR_AUTH_PROCEDURE_CALLED_FROM_WRONG_CONTEXT: MasmError = MasmError::from_static_str("auth procedure had been called from outside the epilogue");
 
+/// Error Message: "number of approvers must be equal to or greater than threshold"
+pub const ERR_MALFORMED_MULTISIG_CONFIG: MasmError = MasmError::from_static_str("number of approvers must be equal to or greater than threshold");
+
 /// Error Message: "failed to reclaim P2IDE note because the reclaiming account is not the sender"
 pub const ERR_P2IDE_RECLAIM_ACCT_IS_NOT_SENDER: MasmError = MasmError::from_static_str("failed to reclaim P2IDE note because the reclaiming account is not the sender");
 /// Error Message: "P2IDE reclaim is disabled"
@@ -33,3 +36,6 @@ pub const ERR_P2ID_WRONG_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_st
 pub const ERR_SWAP_WRONG_NUMBER_OF_ASSETS: MasmError = MasmError::from_static_str("SWAP script requires exactly 1 note asset");
 /// Error Message: "SWAP script expects exactly 12 note inputs"
 pub const ERR_SWAP_WRONG_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_str("SWAP script expects exactly 12 note inputs");
+
+/// Error Message: "number of approvers or threshold must not be zero"
+pub const ERR_ZERO_IN_MULTISIG_CONFIG: MasmError = MasmError::from_static_str("number of approvers or threshold must not be zero");

@@ -43,7 +43,7 @@ fn p2ide_script_success_without_reclaim_or_timelock() -> anyhow::Result<()> {
         .build()?
         .execute_blocking()?;
 
-    let target_account_after: Account = Account::from_parts(
+    let target_account_after: Account = Account::new_existing(
         target_account.id(),
         AssetVault::new(&[fungible_asset])?,
         target_account.storage().clone(),
@@ -80,7 +80,7 @@ fn p2ide_script_success_timelock_unlock_before_reclaim_height() -> anyhow::Resul
         .build()?
         .execute_blocking()?;
 
-    let target_account_after: Account = Account::from_parts(
+    let target_account_after: Account = Account::new_existing(
         target_account.id(),
         AssetVault::new(&[fungible_asset])?,
         target_account.storage().clone(),
@@ -152,7 +152,7 @@ fn p2ide_script_timelocked_reclaim_disabled() -> anyhow::Result<()> {
         .build()?
         .execute_blocking()?;
 
-    let target_after = Account::from_parts(
+    let target_after = Account::new_existing(
         target_account.id(),
         AssetVault::new(&[fungible_asset])?,
         target_account.storage().clone(),
@@ -201,7 +201,7 @@ fn p2ide_script_reclaim_fails_before_timelock_expiry() -> anyhow::Result<()> {
         .build()?
         .execute_blocking()?;
 
-    let sender_account_after: Account = Account::from_parts(
+    let sender_account_after: Account = Account::new_existing(
         sender_account.id(),
         AssetVault::new(&[fungible_asset])?,
         sender_account.storage().clone(),
@@ -280,7 +280,7 @@ fn p2ide_script_reclaimable_timelockable() -> anyhow::Result<()> {
         .build()?
         .execute_blocking()?;
 
-    let target_after = Account::from_parts(
+    let target_after = Account::new_existing(
         target_account.id(),
         AssetVault::new(&[fungible_asset])?,
         target_account.storage().clone(),
@@ -324,7 +324,7 @@ fn p2ide_script_reclaim_success_after_timelock() -> anyhow::Result<()> {
         .build()?
         .execute_blocking()?;
 
-    let sender_after = Account::from_parts(
+    let sender_after = Account::new_existing(
         sender_account.id(),
         AssetVault::new(&[fungible_asset])?,
         sender_account.storage().clone(),

@@ -6,6 +6,7 @@ use miden_objects::account::AccountProcedureInfo;
 use miden_objects::assembly::Library;
 use miden_objects::utils::Deserializable;
 use miden_objects::utils::sync::LazyLock;
+use miden_processor::MastNodeExt;
 
 use crate::account::interface::AccountComponentInterface;
 
@@ -81,8 +82,8 @@ pub fn no_auth_library() -> Library {
     NO_AUTH_LIBRARY.clone()
 }
 
-/// Returns the Multisig Library.
-pub fn multisig_library() -> Library {
+/// Returns the RPO Falcon 512 Multisig Library.
+pub fn rpo_falcon_512_multisig_library() -> Library {
     RPO_FALCON_512_MULTISIG_LIBRARY.clone()
 }
 
