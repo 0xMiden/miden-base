@@ -264,7 +264,8 @@ export.get_item
     # => [VALUE]
 end
 
-#! Gets the initial item from the account storage slot as it was at the beginning of the transaction.
+#! Gets the initial item from the account storage slot as it was at the beginning of the
+#! transaction.
 #!
 #! Inputs:  [index]
 #! Outputs: [INIT_VALUE]
@@ -390,7 +391,8 @@ export.set_map_item
     # => [OLD_MAP_ROOT, OLD_MAP_VALUE]
 end
 
-#! Gets the initial VALUE from the account storage map as it was at the beginning of the transaction.
+#! Gets the initial VALUE from the account storage map as it was at the beginning of the
+#! transaction.
 #!
 #! Inputs:  [index, KEY]
 #! Outputs: [INIT_VALUE]
@@ -504,13 +506,14 @@ export.compute_storage_commitment
     # => [STORAGE_COMMITMENT]
 end
 
-#! Returns the balance of the fungible asset associated with the provided faucet_id in the current account's vault.
+#! Returns the balance of the fungible asset associated with the provided faucet_id in the current
+#! account's vault.
 #!
 #! Inputs:  [faucet_id_prefix, faucet_id_suffix]
 #! Outputs: [balance]
 #!
 #! Where:
-#! - faucet_id_{prefix,suffix} are the prefix and suffix felts of the faucet id of the fungible
+#! - faucet_id_{prefix,suffix} are the prefix and suffix felts of the faucet ID of the fungible
 #!   asset of interest.
 #! - balance is the vault balance of the fungible asset.
 #!
@@ -534,7 +537,37 @@ export.get_balance
     # => [balance]
 end
 
-#! Returns a boolean indicating whether the non-fungible asset is present in the current account's vault.
+#! Returns the balance of a fungible asset associated with a faucet_id at the beginning of the 
+#! transaction.
+#!
+#! Inputs:  [faucet_id_prefix, faucet_id_suffix]
+#! Outputs: [init_balance]
+#!
+#! Where:
+#! - faucet_id_{prefix, suffix} are the prefix and suffix felts of the faucet id of the fungible
+#!   asset of interest.
+#! - init_balance is the vault balance of the fungible asset at the beginning of the transaction.
+#!
+#! Panics if:
+#! - the asset is not a fungible asset.
+export.get_initial_balance
+    exec.kernel_proc_offsets::account_get_initial_balance_offset
+    # => [offset, faucet_id_prefix, faucet_id_suffix]
+
+    # pad the stack
+    push.0 movdn.3 padw swapw padw padw swapdw
+    # => [offset, faucet_id_prefix, faucet_id_suffix, pad(13)]
+
+    syscall.exec_kernel_proc
+    # => [init_balance, pad(15)]
+
+    # clean the stack
+    swapdw dropw dropw swapw dropw movdn.3 drop drop drop
+    # => [init_balance]
+end
+
+#! Returns a boolean indicating whether the non-fungible asset is present in the current account's
+#! vault.
 #!
 #! Inputs:  [ASSET]
 #! Outputs: [has_asset]
