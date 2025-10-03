@@ -14,10 +14,9 @@ use miden_objects::transaction::{
     TransactionPreparationInputs,
     TransactionScript,
 };
-use miden_objects::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
 use miden_objects::vm::AdviceInputs;
 use miden_objects::{EMPTY_WORD, Felt, FieldElement, TransactionInputError, Word, ZERO};
-use miden_processor::{AdviceMutation, DeserializationError, StackInputs};
+use miden_processor::{AdviceMutation, StackInputs};
 use thiserror::Error;
 
 use super::TransactionKernel;
@@ -219,31 +218,6 @@ impl TransactionKernelInputs {
     ) {
         let (account, block_header, blockchain) = self.prep_inputs.into_parts();
         (account, block_header, blockchain, self.input_notes, self.tx_args)
-    }
-}
-
-impl Serializable for TransactionKernelInputs {
-    fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        self.prep_inputs.account().write_into(target);
-        self.prep_inputs.block_header().write_into(target);
-        self.prep_inputs.blockchain().write_into(target);
-        self.input_notes.write_into(target);
-        self.tx_args.write_into(target);
-    }
-}
-
-impl Deserializable for TransactionKernelInputs {
-    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        let account = PartialAccount::read_from(source)?;
-        let block_header = BlockHeader::read_from(source)?;
-        let blockchain = PartialBlockchain::read_from(source)?;
-        let input_notes = InputNotes::read_from(source)?;
-        let tx_args = TransactionArgs::read_from(source)?;
-
-        let prep_inputs = TransactionPreparationInputs::new(account, block_header, blockchain)
-            .map_err(|err| DeserializationError::InvalidValue(format!("{err}")))?;
-        Self::new(prep_inputs, input_notes, tx_args)
-            .map_err(|err| DeserializationError::InvalidValue(format!("{err}")))
     }
 }
 
