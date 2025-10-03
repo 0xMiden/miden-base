@@ -14,8 +14,8 @@ use crate::prove_and_verify_transaction;
 /// This is an interesting test case because the prover needs to apply the fee asset to the account
 /// delta in order to prove the correct delta commitment. Once we have other tests with fees, this
 /// test may become obsolete.
-#[test]
-fn prove_account_creation_with_fees() -> anyhow::Result<()> {
+#[tokio::test]
+async fn prove_account_creation_with_fees() -> anyhow::Result<()> {
     let amount = 10_000;
     let mut builder = MockChain::builder().verification_base_fee(50);
     let account = builder.create_new_wallet(Auth::IncrNonce)?;
@@ -25,7 +25,8 @@ fn prove_account_creation_with_fees() -> anyhow::Result<()> {
     let tx = chain
         .build_tx_context(account, &[fee_note.id()], &[])?
         .build()?
-        .execute_blocking()
+        .execute()
+        .await
         .context("failed to execute account-creating transaction")?;
 
     let expected_fee = tx.compute_fee();

@@ -21,8 +21,8 @@ use super::utils::MockChainBlockExt;
 use crate::{AccountState, Auth, MockChain, TxContextInput};
 
 /// Tests that we can build empty blocks.
-#[test]
-fn proposed_block_succeeds_with_empty_batches() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proposed_block_succeeds_with_empty_batches() -> anyhow::Result<()> {
     let mut chain = MockChain::builder().build()?;
     chain.prove_next_block()?;
 
@@ -45,8 +45,8 @@ fn proposed_block_succeeds_with_empty_batches() -> anyhow::Result<()> {
 
 /// Tests that a proposed block from two batches with one transaction each can be successfully
 /// built.
-#[test]
-fn proposed_block_basic_success() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proposed_block_basic_success() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let account0 = builder.add_existing_mock_account(Auth::IncrNonce)?;
     let account1 = builder.add_existing_mock_account(Auth::IncrNonce)?;
@@ -56,8 +56,10 @@ fn proposed_block_basic_success() -> anyhow::Result<()> {
         builder.add_p2any_note(account1.id(), NoteType::Public, [FungibleAsset::mock(42)])?;
     let chain = builder.build()?;
 
-    let proven_tx0 = chain.create_authenticated_notes_proven_tx(account0.id(), [note0.id()])?;
-    let proven_tx1 = chain.create_authenticated_notes_proven_tx(account1.id(), [note1.id()])?;
+    let proven_tx0 =
+        chain.create_authenticated_notes_proven_tx(account0.id(), [note0.id()]).await?;
+    let proven_tx1 =
+        chain.create_authenticated_notes_proven_tx(account1.id(), [note1.id()]).await?;
 
     let batch0 = chain.create_batch(vec![proven_tx0.clone()])?;
     let batch1 = chain.create_batch(vec![proven_tx1.clone()])?;
@@ -110,8 +112,8 @@ fn proposed_block_basic_success() -> anyhow::Result<()> {
 }
 
 /// Tests that account updates are correctly aggregated into a block-level account update.
-#[test]
-fn proposed_block_aggregates_account_state_transition() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proposed_block_aggregates_account_state_transition() -> anyhow::Result<()> {
     let asset = FungibleAsset::mock(100);
     let sender_id = AccountId::try_from(ACCOUNT_ID_SENDER)?;
 
@@ -126,13 +128,13 @@ fn proposed_block_aggregates_account_state_transition() -> anyhow::Result<()> {
     chain.prove_next_block()?;
 
     // Create three transactions on the same account that build on top of each other.
-    let executed_tx0 = chain.create_authenticated_notes_tx(account1.id(), [note0.id()])?;
+    let executed_tx0 = chain.create_authenticated_notes_tx(account1.id(), [note0.id()]).await?;
 
     account1.apply_delta(executed_tx0.account_delta())?;
-    let executed_tx1 = chain.create_authenticated_notes_tx(account1.clone(), [note1.id()])?;
+    let executed_tx1 = chain.create_authenticated_notes_tx(account1.clone(), [note1.id()]).await?;
 
     account1.apply_delta(executed_tx1.account_delta())?;
-    let executed_tx2 = chain.create_authenticated_notes_tx(account1.clone(), [note2.id()])?;
+    let executed_tx2 = chain.create_authenticated_notes_tx(account1.clone(), [note2.id()]).await?;
 
     let [tx0, tx1, tx2] = [executed_tx0, executed_tx1, executed_tx2]
         .into_iter()
@@ -176,8 +178,8 @@ fn proposed_block_aggregates_account_state_transition() -> anyhow::Result<()> {
 }
 
 /// Tests that unauthenticated notes can be authenticated when inclusion proofs are provided.
-#[test]
-fn proposed_block_authenticating_unauthenticated_notes() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proposed_block_authenticating_unauthenticated_notes() -> anyhow::Result<()> {
     let sender_id = AccountId::try_from(ACCOUNT_ID_SENDER)?;
 
     let mut builder = MockChain::builder();
@@ -188,10 +190,12 @@ fn proposed_block_authenticating_unauthenticated_notes() -> anyhow::Result<()> {
     let chain = builder.build()?;
 
     // These txs will use block1 as the reference block.
-    let tx0 =
-        chain.create_unauthenticated_notes_proven_tx(account0.id(), slice::from_ref(&note0))?;
-    let tx1 =
-        chain.create_unauthenticated_notes_proven_tx(account1.id(), slice::from_ref(&note1))?;
+    let tx0 = chain
+        .create_unauthenticated_notes_proven_tx(account0.id(), slice::from_ref(&note0))
+        .await?;
+    let tx1 = chain
+        .create_unauthenticated_notes_proven_tx(account1.id(), slice::from_ref(&note1))
+        .await?;
 
     // These batches will use block1 as the reference block.
     let batch0 = chain.create_batch(vec![tx0.clone()])?;
@@ -224,8 +228,8 @@ fn proposed_block_authenticating_unauthenticated_notes() -> anyhow::Result<()> {
 }
 
 /// Tests that a batch that expires at the block being proposed is still accepted.
-#[test]
-fn proposed_block_with_batch_at_expiration_limit() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proposed_block_with_batch_at_expiration_limit() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let account0 = builder.add_existing_mock_account(Auth::IncrNonce)?;
     let account1 = builder.add_existing_mock_account(Auth::IncrNonce)?;
@@ -234,8 +238,8 @@ fn proposed_block_with_batch_at_expiration_limit() -> anyhow::Result<()> {
     chain.prove_next_block()?;
     let block1_num = chain.block_header(1).block_num();
 
-    let tx0 = chain.create_expiring_proven_tx(account0.id(), block1_num + 5)?;
-    let tx1 = chain.create_expiring_proven_tx(account1.id(), block1_num + 2)?;
+    let tx0 = chain.create_expiring_proven_tx(account0.id(), block1_num + 5).await?;
+    let tx1 = chain.create_expiring_proven_tx(account1.id(), block1_num + 2).await?;
 
     let batch0 = chain.create_batch(vec![tx0])?;
     let batch1 = chain.create_batch(vec![tx1])?;
@@ -258,8 +262,8 @@ fn proposed_block_with_batch_at_expiration_limit() -> anyhow::Result<()> {
 /// Tests that a NOOP transaction with state commitments X -> X against account A can appear
 /// in one batch while another batch contains a state-updating transaction with state commitments X
 /// -> Y against the same account A. Both batches are in the same block.
-#[test]
-fn noop_tx_and_state_updating_tx_against_same_account_in_same_block() -> anyhow::Result<()> {
+#[tokio::test]
+async fn noop_tx_and_state_updating_tx_against_same_account_in_same_block() -> anyhow::Result<()> {
     let account_builder = Account::builder(rand::rng().random())
         .storage_mode(AccountStorageMode::Public)
         .with_component(MockAccountComponent::with_empty_slots());
@@ -279,9 +283,10 @@ fn noop_tx_and_state_updating_tx_against_same_account_in_same_block() -> anyhow:
     builder.add_output_note(OutputNote::Full(noop_note1.clone()));
     let mut chain = builder.build()?;
 
-    let noop_tx = generate_conditional_tx(&mut chain, account0.id(), noop_note0, false);
+    let noop_tx = generate_conditional_tx(&mut chain, account0.id(), noop_note0, false).await;
     account0.apply_delta(noop_tx.account_delta())?;
-    let state_updating_tx = generate_conditional_tx(&mut chain, account0.clone(), noop_note1, true);
+    let state_updating_tx =
+        generate_conditional_tx(&mut chain, account0.clone(), noop_note1, true).await;
 
     // sanity check: NOOP transaction's init and final commitment should be the same.
     assert_eq!(noop_tx.initial_account().commitment(), noop_tx.final_account().commitment());
@@ -318,7 +323,7 @@ fn noop_tx_and_state_updating_tx_against_same_account_in_same_block() -> anyhow:
 /// - if `modify_storage` is false, it does nothing (NOOP).
 ///
 /// To make this transaction (always) non-empty, it consumes one "noop note", which does nothing.
-fn generate_conditional_tx(
+async fn generate_conditional_tx(
     chain: &mut MockChain,
     input: impl Into<TxContextInput>,
     noop_note: Note,
@@ -338,5 +343,5 @@ fn generate_conditional_tx(
         .auth_args(auth_args.into())
         .build()
         .unwrap();
-    tx_context.execute_blocking().unwrap()
+    tx_context.execute().await.unwrap()
 }

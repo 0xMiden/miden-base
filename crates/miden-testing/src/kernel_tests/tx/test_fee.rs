@@ -16,8 +16,8 @@ use crate::{Auth, MockChain};
 // ================================================================================================
 
 /// Tests that a simple wallet account can be created with non-zero fees.
-#[test]
-fn create_account_with_fees() -> anyhow::Result<()> {
+#[tokio::test]
+async fn create_account_with_fees() -> anyhow::Result<()> {
     let note_amount = 10_000;
 
     let mut builder = MockChain::builder().verification_base_fee(50);
@@ -28,7 +28,8 @@ fn create_account_with_fees() -> anyhow::Result<()> {
     let tx = chain
         .build_tx_context(account, &[fee_note.id()], &[])?
         .build()?
-        .execute_blocking()
+        .execute()
+        .await
         .context("failed to execute account-creating transaction")?;
 
     let expected_fee = tx.compute_fee();
@@ -52,8 +53,8 @@ fn create_account_with_fees() -> anyhow::Result<()> {
 
 /// Tests that the transaction executor host aborts the transaction if the balance of the native
 /// asset in the account does not cover the computed fee.
-#[test]
-fn tx_host_aborts_if_account_balance_does_not_cover_fee() -> anyhow::Result<()> {
+#[tokio::test]
+async fn tx_host_aborts_if_account_balance_does_not_cover_fee() -> anyhow::Result<()> {
     let account_amount = 100;
     let note_amount = 100;
     let native_asset_id = AccountId::try_from(ACCOUNT_ID_NATIVE_ASSET_FAUCET)?;
@@ -69,7 +70,8 @@ fn tx_host_aborts_if_account_balance_does_not_cover_fee() -> anyhow::Result<()> 
     let err = chain
         .build_tx_context(account, &[fee_note.id()], &[])?
         .build()?
-        .execute_blocking()
+        .execute()
+        .await
         .unwrap_err();
 
     assert_matches!(
@@ -87,11 +89,11 @@ fn tx_host_aborts_if_account_balance_does_not_cover_fee() -> anyhow::Result<()> 
 ///
 /// TODO: Once smt::set supports multiple leaves, this case should be tested explicitly here.
 #[rstest::rstest]
-#[case::create_account_no_storage(create_account_no_storage_no_fees()?)]
-#[case::mutate_account_with_storage(mutate_account_with_storage()?)]
-#[case::create_output_notes(create_output_notes()?)]
-#[test]
-fn num_tx_cycles_after_compute_fee_are_less_than_estimated(
+#[case::create_account_no_storage(create_account_no_storage_no_fees().await?)]
+#[case::mutate_account_with_storage(mutate_account_with_storage().await?)]
+#[case::create_output_notes(create_output_notes().await?)]
+#[tokio::test]
+async fn num_tx_cycles_after_compute_fee_are_less_than_estimated(
     #[case] tx: ExecutedTransaction,
 ) -> anyhow::Result<()> {
     // These constants should always be updated together with the equivalent constants in
@@ -109,19 +111,20 @@ fn num_tx_cycles_after_compute_fee_are_less_than_estimated(
 }
 
 /// Returns a transaction that creates an account without storage and 0 fees.
-fn create_account_no_storage_no_fees() -> anyhow::Result<ExecutedTransaction> {
+async fn create_account_no_storage_no_fees() -> anyhow::Result<ExecutedTransaction> {
     let mut builder = MockChain::builder();
     let account = builder.create_new_wallet(Auth::IncrNonce)?;
     builder
         .build()?
         .build_tx_context(account, &[], &[])?
         .build()?
-        .execute_blocking()
+        .execute()
+        .await
         .map_err(From::from)
 }
 
 /// Returns a transaction that mutates an account with storage and consumes a note.
-fn mutate_account_with_storage() -> anyhow::Result<ExecutedTransaction> {
+async fn mutate_account_with_storage() -> anyhow::Result<ExecutedTransaction> {
     let native_asset_id = AccountId::try_from(ACCOUNT_ID_NATIVE_ASSET_FAUCET)?;
     let native_asset = FungibleAsset::new(native_asset_id, 10_000)?;
     let mut builder =
@@ -144,12 +147,13 @@ fn mutate_account_with_storage() -> anyhow::Result<ExecutedTransaction> {
         .build()?
         .build_tx_context(account, &[p2id_note.id()], &[])?
         .build()?
-        .execute_blocking()
+        .execute()
+        .await
         .map_err(From::from)
 }
 
 /// Returns a transaction that consumes two notes and creates two notes.
-fn create_output_notes() -> anyhow::Result<ExecutedTransaction> {
+async fn create_output_notes() -> anyhow::Result<ExecutedTransaction> {
     let native_asset_id = AccountId::try_from(ACCOUNT_ID_NATIVE_ASSET_FAUCET)?;
     let native_asset = FungibleAsset::new(native_asset_id, 10_000)?;
     let mut builder =
@@ -182,6 +186,7 @@ fn create_output_notes() -> anyhow::Result<ExecutedTransaction> {
             OutputNote::Full(output_note1),
         ])
         .build()?
-        .execute_blocking()
+        .execute()
+        .await
         .map_err(From::from)
 }

@@ -15,8 +15,8 @@ use crate::kernel_tests::block::utils::MockChainBlockExt;
 use crate::{Auth, MockChain};
 
 /// Tests that too many batches produce an error.
-#[test]
-fn proposed_block_fails_on_too_many_batches() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proposed_block_fails_on_too_many_batches() -> anyhow::Result<()> {
     let count = MAX_BATCHES_PER_BLOCK + 1;
 
     let (chain, batches) = {
@@ -39,8 +39,9 @@ fn proposed_block_fails_on_too_many_batches() -> anyhow::Result<()> {
 
         let mut batches = Vec::with_capacity(count);
         for i in 0..count {
-            let proven_tx =
-                chain.create_authenticated_notes_proven_tx(accounts[i].id(), [notes[i].id()])?;
+            let proven_tx = chain
+                .create_authenticated_notes_proven_tx(accounts[i].id(), [notes[i].id()])
+                .await?;
             batches.push(chain.create_batch(vec![proven_tx])?);
         }
 
@@ -63,16 +64,17 @@ fn proposed_block_fails_on_too_many_batches() -> anyhow::Result<()> {
 }
 
 /// Tests that duplicate batches produce an error.
-#[test]
-fn proposed_block_fails_on_duplicate_batches() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proposed_block_fails_on_duplicate_batches() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let sender_account = builder.add_existing_mock_account(Auth::IncrNonce)?;
     let note =
         builder.add_p2any_note(sender_account.id(), NoteType::Public, [FungibleAsset::mock(42)])?;
     let chain = builder.build()?;
 
-    let proven_tx0 =
-        chain.create_authenticated_notes_proven_tx(sender_account.id(), [note.id()])?;
+    let proven_tx0 = chain
+        .create_authenticated_notes_proven_tx(sender_account.id(), [note.id()])
+        .await?;
     let batch0 = chain.create_batch(vec![proven_tx0])?;
 
     let batches = vec![batch0.clone(), batch0.clone()];
@@ -93,8 +95,8 @@ fn proposed_block_fails_on_duplicate_batches() -> anyhow::Result<()> {
 }
 
 /// Tests that an expired batch produces an error.
-#[test]
-fn proposed_block_fails_on_expired_batches() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proposed_block_fails_on_expired_batches() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let account0 = builder.add_existing_mock_account(Auth::IncrNonce)?;
     let account1 = builder.add_existing_mock_account(Auth::IncrNonce)?;
@@ -103,8 +105,8 @@ fn proposed_block_fails_on_expired_batches() -> anyhow::Result<()> {
     chain.prove_next_block()?;
     let block1_num = chain.block_header(1).block_num();
 
-    let tx0 = chain.create_expiring_proven_tx(account0.id(), block1_num + 5)?;
-    let tx1 = chain.create_expiring_proven_tx(account1.id(), block1_num + 1)?;
+    let tx0 = chain.create_expiring_proven_tx(account0.id(), block1_num + 5).await?;
+    let tx1 = chain.create_expiring_proven_tx(account1.id(), block1_num + 1).await?;
 
     let batch0 = chain.create_batch(vec![tx0])?;
     let batch1 = chain.create_batch(vec![tx1])?;
@@ -133,12 +135,12 @@ fn proposed_block_fails_on_expired_batches() -> anyhow::Result<()> {
 }
 
 /// Tests that a timestamp at or before the previous block header produces an error.
-#[test]
-fn proposed_block_fails_on_timestamp_not_increasing_monotonically() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proposed_block_fails_on_timestamp_not_increasing_monotonically() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let account = builder.add_existing_mock_account(Auth::IncrNonce)?;
     let chain = builder.build()?;
-    let proven_tx0 = chain.create_authenticated_notes_proven_tx(account, [])?;
+    let proven_tx0 = chain.create_authenticated_notes_proven_tx(account, []).await?;
 
     let batch0 = chain.create_batch(vec![proven_tx0])?;
     let batches = vec![batch0];
@@ -166,12 +168,13 @@ fn proposed_block_fails_on_timestamp_not_increasing_monotonically() -> anyhow::R
 
 /// Tests that a partial blockchain that is not at the state of the previous block header produces
 /// an error.
-#[test]
-fn proposed_block_fails_on_partial_blockchain_and_prev_block_inconsistency() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proposed_block_fails_on_partial_blockchain_and_prev_block_inconsistency()
+-> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let account = builder.add_existing_mock_account(Auth::IncrNonce)?;
     let chain = builder.build()?;
-    let proven_tx0 = chain.create_authenticated_notes_proven_tx(account, [])?;
+    let proven_tx0 = chain.create_authenticated_notes_proven_tx(account, []).await?;
 
     let batch0 = chain.create_batch(vec![proven_tx0])?;
     let batches = vec![batch0];
@@ -222,14 +225,14 @@ fn proposed_block_fails_on_partial_blockchain_and_prev_block_inconsistency() -> 
 
 /// Tests that a partial blockchain that does not contain all reference blocks of the batches
 /// produces an error.
-#[test]
-fn proposed_block_fails_on_missing_batch_reference_block() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proposed_block_fails_on_missing_batch_reference_block() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let account = builder.add_existing_mock_account(Auth::IncrNonce)?;
     let mut chain = builder.build()?;
     chain.prove_next_block()?;
 
-    let proven_tx0 = chain.create_authenticated_notes_proven_tx(account, [])?;
+    let proven_tx0 = chain.create_authenticated_notes_proven_tx(account, []).await?;
 
     // This batch will reference the latest block with number 1.
     let batch0 = chain.create_batch(vec![proven_tx0.clone()])?;
@@ -264,8 +267,8 @@ fn proposed_block_fails_on_missing_batch_reference_block() -> anyhow::Result<()>
 }
 
 /// Tests that duplicate input notes across batches produce an error.
-#[test]
-fn proposed_block_fails_on_duplicate_input_note() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proposed_block_fails_on_duplicate_input_note() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let account0 = builder.add_existing_mock_account(Auth::IncrNonce)?;
     let account1 = builder.add_existing_mock_account(Auth::IncrNonce)?;
@@ -280,9 +283,10 @@ fn proposed_block_fails_on_duplicate_input_note() -> anyhow::Result<()> {
     chain.prove_next_block()?;
 
     // Create two different transactions against the same account consuming the same note.
-    let tx0 =
-        chain.create_authenticated_notes_proven_tx(account1.id(), [note0.id(), note1.id()])?;
-    let tx1 = chain.create_authenticated_notes_proven_tx(account1.id(), [note0.id()])?;
+    let tx0 = chain
+        .create_authenticated_notes_proven_tx(account1.id(), [note0.id(), note1.id()])
+        .await?;
+    let tx1 = chain.create_authenticated_notes_proven_tx(account1.id(), [note0.id()]).await?;
 
     let batch0 = chain.create_batch(vec![tx0])?;
     let batch1 = chain.create_batch(vec![tx1])?;
@@ -298,8 +302,8 @@ fn proposed_block_fails_on_duplicate_input_note() -> anyhow::Result<()> {
 }
 
 /// Tests that duplicate output notes across batches produce an error.
-#[test]
-fn proposed_block_fails_on_duplicate_output_note() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proposed_block_fails_on_duplicate_output_note() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let account = builder.add_existing_mock_account(Auth::IncrNonce)?;
     let output_note = builder.create_p2any_note(account.id(), NoteType::Private, [])?;
@@ -316,8 +320,8 @@ fn proposed_block_fails_on_duplicate_output_note() -> anyhow::Result<()> {
     // We use the same account because the sender of the created output note is set to the account
     // of the transaction, so it is essential we use the same account to produce a duplicate output
     // note.
-    let tx0 = chain.create_authenticated_notes_proven_tx(account.id(), [note0.id()])?;
-    let tx1 = chain.create_authenticated_notes_proven_tx(account.id(), [note1.id()])?;
+    let tx0 = chain.create_authenticated_notes_proven_tx(account.id(), [note0.id()]).await?;
+    let tx1 = chain.create_authenticated_notes_proven_tx(account.id(), [note1.id()]).await?;
 
     let batch0 = chain.create_batch(vec![tx0])?;
     let batch1 = chain.create_batch(vec![tx1])?;
@@ -335,8 +339,8 @@ fn proposed_block_fails_on_duplicate_output_note() -> anyhow::Result<()> {
 /// Tests that a missing note inclusion proof produces an error.
 /// Also tests that an error is produced if the block that the note inclusion proof references is
 /// not in the partial blockchain.
-#[test]
-fn proposed_block_fails_on_invalid_proof_or_missing_note_inclusion_reference_block()
+#[tokio::test]
+async fn proposed_block_fails_on_invalid_proof_or_missing_note_inclusion_reference_block()
 -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let account0 = builder.add_existing_mock_account(Auth::IncrNonce)?;
@@ -347,8 +351,9 @@ fn proposed_block_fails_on_invalid_proof_or_missing_note_inclusion_reference_blo
     let mut chain = builder.build()?;
 
     // This tx will use block1 as the reference block.
-    let tx0 =
-        chain.create_unauthenticated_notes_proven_tx(account1.id(), slice::from_ref(&p2id_note))?;
+    let tx0 = chain
+        .create_unauthenticated_notes_proven_tx(account1.id(), slice::from_ref(&p2id_note))
+        .await?;
 
     // This batch will use block1 as the reference block.
     // With this setup, the block inputs need to contain a reference to block2 in order to prove
@@ -360,7 +365,8 @@ fn proposed_block_fails_on_invalid_proof_or_missing_note_inclusion_reference_blo
     let tx = chain
         .build_tx_context(account0.id(), &[spawn_note.id()], &[])?
         .build()?
-        .execute_blocking()?;
+        .execute()
+        .await?;
     chain.add_pending_executed_transaction(&tx)?;
     let block2 = chain.prove_next_block()?;
 
@@ -425,8 +431,8 @@ fn proposed_block_fails_on_invalid_proof_or_missing_note_inclusion_reference_blo
 }
 
 /// Tests that a missing note inclusion proof produces an error.
-#[test]
-fn proposed_block_fails_on_missing_note_inclusion_proof() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proposed_block_fails_on_missing_note_inclusion_proof() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let account0 = builder.add_existing_mock_account(Auth::IncrNonce)?;
     let account1 = builder.add_existing_mock_account(Auth::IncrNonce)?;
@@ -434,8 +440,9 @@ fn proposed_block_fails_on_missing_note_inclusion_proof() -> anyhow::Result<()> 
     let note0 = builder.create_p2any_note(account0.id(), NoteType::Private, [])?;
     let chain = builder.build()?;
 
-    let tx0 =
-        chain.create_unauthenticated_notes_proven_tx(account1.id(), slice::from_ref(&note0))?;
+    let tx0 = chain
+        .create_unauthenticated_notes_proven_tx(account1.id(), slice::from_ref(&note0))
+        .await?;
 
     let batch0 = chain.create_batch(vec![tx0])?;
 
@@ -452,8 +459,8 @@ fn proposed_block_fails_on_missing_note_inclusion_proof() -> anyhow::Result<()> 
 }
 
 /// Tests that a missing nullifier witness produces an error.
-#[test]
-fn proposed_block_fails_on_missing_nullifier_witness() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proposed_block_fails_on_missing_nullifier_witness() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let account = builder.add_existing_mock_account(Auth::IncrNonce)?;
     let p2id_note =
@@ -462,8 +469,9 @@ fn proposed_block_fails_on_missing_nullifier_witness() -> anyhow::Result<()> {
     chain.prove_next_block()?;
 
     // This tx will use block1 as the reference block.
-    let tx0 =
-        chain.create_unauthenticated_notes_proven_tx(account.id(), slice::from_ref(&p2id_note))?;
+    let tx0 = chain
+        .create_unauthenticated_notes_proven_tx(account.id(), slice::from_ref(&p2id_note))
+        .await?;
 
     // This batch will use block1 as the reference block.
     let batch0 = chain.create_batch(vec![tx0])?;
@@ -490,8 +498,8 @@ fn proposed_block_fails_on_missing_nullifier_witness() -> anyhow::Result<()> {
 }
 
 /// Tests that a nullifier witness pointing to a spent nullifier produces an error.
-#[test]
-fn proposed_block_fails_on_spent_nullifier_witness() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proposed_block_fails_on_spent_nullifier_witness() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let account0 = builder.add_existing_mock_account(Auth::IncrNonce)?;
     let account1 = builder.add_existing_mock_account(Auth::IncrNonce)?;
@@ -501,12 +509,16 @@ fn proposed_block_fails_on_spent_nullifier_witness() -> anyhow::Result<()> {
     chain.prove_next_block()?;
 
     // Consume the note with account 0 and add the transaction to a block.
-    let tx0 = chain.create_authenticated_notes_proven_tx(account0.id(), [p2any_note.id()])?;
+    let tx0 = chain
+        .create_authenticated_notes_proven_tx(account0.id(), [p2any_note.id()])
+        .await?;
     chain.add_pending_proven_transaction(tx0);
     chain.prove_next_block()?;
 
     // Consume the (already consumed) note with account 1 and build a batch from it.
-    let tx1 = chain.create_authenticated_notes_proven_tx(account1.id(), [p2any_note.id()])?;
+    let tx1 = chain
+        .create_authenticated_notes_proven_tx(account1.id(), [p2any_note.id()])
+        .await?;
     let batch1 = chain.create_batch(vec![tx1])?;
     let batches = vec![batch1];
     let block_inputs = chain.get_block_inputs(&batches)?;
@@ -524,8 +536,9 @@ fn proposed_block_fails_on_spent_nullifier_witness() -> anyhow::Result<()> {
 
 /// Tests that multiple transactions against the same account that start from the same initial state
 /// commitment but produce different final state commitments produce an error.
-#[test]
-fn proposed_block_fails_on_conflicting_transactions_updating_same_account() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proposed_block_fails_on_conflicting_transactions_updating_same_account()
+-> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let account1 = builder.add_existing_mock_account(Auth::IncrNonce)?;
     let note0 =
@@ -539,8 +552,8 @@ fn proposed_block_fails_on_conflicting_transactions_updating_same_account() -> a
 
     // Create two different transactions against the same account consuming a different note so they
     // result in a different final state commitment for the account.
-    let tx0 = chain.create_authenticated_notes_proven_tx(account1.id(), [note0.id()])?;
-    let tx1 = chain.create_authenticated_notes_proven_tx(account1.id(), [note1.id()])?;
+    let tx0 = chain.create_authenticated_notes_proven_tx(account1.id(), [note0.id()]).await?;
+    let tx1 = chain.create_authenticated_notes_proven_tx(account1.id(), [note1.id()]).await?;
 
     let batch0 = chain.create_batch(vec![tx0])?;
     let batch1 = chain.create_batch(vec![tx1])?;
@@ -564,12 +577,12 @@ fn proposed_block_fails_on_conflicting_transactions_updating_same_account() -> a
 }
 
 /// Tests that a missing account witness produces an error.
-#[test]
-fn proposed_block_fails_on_missing_account_witness() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proposed_block_fails_on_missing_account_witness() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let account = builder.add_existing_mock_account(Auth::IncrNonce)?;
     let chain = builder.build()?;
-    let tx0 = chain.create_authenticated_notes_proven_tx(account.id(), [])?;
+    let tx0 = chain.create_authenticated_notes_proven_tx(account.id(), []).await?;
 
     let batch0 = chain.create_batch(vec![tx0])?;
 
@@ -591,8 +604,8 @@ fn proposed_block_fails_on_missing_account_witness() -> anyhow::Result<()> {
 
 /// Tests that, given three transactions 0 -> 1 -> 2 which are executed against the same account and
 /// build on top of each other produce an error when tx 1 is missing from the block.
-#[test]
-fn proposed_block_fails_on_inconsistent_account_state_transition() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proposed_block_fails_on_inconsistent_account_state_transition() -> anyhow::Result<()> {
     let asset = FungibleAsset::mock(200);
 
     let mut builder = MockChain::builder();
@@ -603,15 +616,15 @@ fn proposed_block_fails_on_inconsistent_account_state_transition() -> anyhow::Re
     let chain = builder.build()?;
 
     // Create three transactions on the same account that build on top of each other.
-    let executed_tx0 = chain.create_authenticated_notes_tx(account.clone(), [note0.id()])?;
+    let executed_tx0 = chain.create_authenticated_notes_tx(account.clone(), [note0.id()]).await?;
 
     account.apply_delta(executed_tx0.account_delta())?;
     // Builds a tx on top of the account state from tx0.
-    let executed_tx1 = chain.create_authenticated_notes_tx(account.clone(), [note1.id()])?;
+    let executed_tx1 = chain.create_authenticated_notes_tx(account.clone(), [note1.id()]).await?;
 
     account.apply_delta(executed_tx1.account_delta())?;
     // Builds a tx on top of the account state from tx1.
-    let executed_tx2 = chain.create_authenticated_notes_tx(account.clone(), [note2.id()])?;
+    let executed_tx2 = chain.create_authenticated_notes_tx(account.clone(), [note2.id()]).await?;
 
     // We will only include tx0 and tx2 and leave out tx1, which will trigger the error condition
     // that there is no transition from tx0 -> tx2.
