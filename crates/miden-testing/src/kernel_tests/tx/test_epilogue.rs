@@ -126,7 +126,7 @@ fn test_epilogue() -> anyhow::Result<()> {
     expected_stack.extend(
         Word::from(
             FungibleAsset::new(
-                tx_context.tx_inputs().block_header().fee_parameters().native_asset_id(),
+                tx_context.kernel_inputs().block_header().fee_parameters().native_asset_id(),
                 0,
             )
             .unwrap(),
@@ -389,7 +389,7 @@ fn test_block_expiration_height_monotonically_decreases() -> anyhow::Result<()> 
         // Expiry block should be set to transaction's block + the stored expiration delta
         // (which can only decrease, not increase)
         let expected_expiry =
-            v1.min(v2) + tx_context.tx_inputs().block_header().block_num().as_u64();
+            v1.min(v2) + tx_context.kernel_inputs().block_header().block_num().as_u64();
         assert_eq!(process.stack.get(EXPIRATION_BLOCK_ELEMENT_IDX).as_int(), expected_expiry);
     }
 

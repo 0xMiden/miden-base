@@ -25,7 +25,7 @@ impl TransactionVerifier {
         Self { tx_program_info, proof_security_level }
     }
 
-    /// Verifies the provided [ProvenTransaction] against the transaction kernel.
+    /// Verifies the provided [`ProvenTransaction`] against the transaction kernel.
     ///
     /// # Errors
     /// Returns an error if:

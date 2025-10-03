@@ -2,11 +2,11 @@ use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
 
 use miden_lib::note::well_known_note::WellKnownNote;
-use miden_lib::transaction::TransactionKernel;
+use miden_lib::transaction::{TransactionKernel, TransactionKernelInputs};
 use miden_objects::account::AccountId;
 use miden_objects::block::BlockNumber;
 use miden_objects::note::Note;
-use miden_objects::transaction::{InputNotes, TransactionArgs, TransactionInputs};
+use miden_objects::transaction::{InputNotes, TransactionArgs};
 use miden_processor::fast::FastProcessor;
 
 use super::TransactionExecutor;
@@ -117,14 +117,14 @@ where
         notes.sort_unstable_by_key(|note| WellKnownNote::from_note(note).is_none());
 
         let notes = InputNotes::from(notes);
-        let tx_inputs = self
+        let kernel_inputs = self
             .0
-            .prepare_transaction_inputs(target_account_id, block_ref, notes, &tx_args)
+            .prepare_kernel_inputs(target_account_id, block_ref, notes, tx_args)
             .await
             .map_err(NoteCheckerError::TransactionPreparation)?;
 
         // Attempt to find an executable set of notes.
-        self.find_executable_notes_by_elimination(tx_inputs, tx_args).await
+        self.find_executable_notes_by_elimination(kernel_inputs).await
     }
 
     // HELPER METHODS
@@ -136,10 +136,9 @@ where
     /// succeeded or failed to execute.
     async fn find_executable_notes_by_elimination(
         &self,
-        mut tx_inputs: TransactionInputs,
-        tx_args: TransactionArgs,
+        mut kernel_inputs: TransactionKernelInputs,
     ) -> Result<NoteConsumptionInfo, NoteCheckerError> {
-        let mut candidate_notes = tx_inputs
+        let mut candidate_notes = kernel_inputs
             .input_notes()
             .iter()
             .map(|note| note.clone().into_note())
@@ -151,8 +150,8 @@ where
         // further reduced.
         loop {
             // Execute the candidate notes.
-            tx_inputs.set_input_notes_unchecked(candidate_notes.clone().into());
-            match self.try_execute_notes(&tx_inputs, &tx_args).await {
+            kernel_inputs.set_input_notes(candidate_notes.clone());
+            match self.try_execute_notes(&kernel_inputs).await {
                 Ok(()) => {
                     // A full set of successful notes has been found.
                     let successful = candidate_notes;
@@ -174,8 +173,7 @@ where
                         .find_largest_executable_combination(
                             candidate_notes,
                             failed_notes,
-                            tx_inputs,
-                            &tx_args,
+                            kernel_inputs,
                         )
                         .await;
                     return Ok(consumption_info);
@@ -200,8 +198,7 @@ where
         &self,
         mut remaining_notes: Vec<Note>,
         mut failed_notes: Vec<FailedNote>,
-        mut tx_inputs: TransactionInputs,
-        tx_args: &TransactionArgs,
+        mut kernel_inputs: TransactionKernelInputs,
     ) -> NoteConsumptionInfo {
         let mut successful_notes = Vec::new();
         let mut failed_note_index = BTreeMap::new();
@@ -217,8 +214,8 @@ where
             for (idx, note) in remaining_notes.iter().enumerate() {
                 successful_notes.push(note.clone());
 
-                tx_inputs.set_input_notes_unchecked(successful_notes.clone().into());
-                match self.try_execute_notes(&tx_inputs, tx_args).await {
+                kernel_inputs.set_input_notes(successful_notes.clone());
+                match self.try_execute_notes(&kernel_inputs).await {
                     Ok(()) => {
                         // The successfully added note might have failed earlier. Remove it from the
                         // failed list.
@@ -254,16 +251,15 @@ where
     /// or a specific [`NoteExecutionError`] indicating where and why the execution failed.
     async fn try_execute_notes(
         &self,
-        tx_inputs: &TransactionInputs,
-        tx_args: &TransactionArgs,
+        kernel_inputs: &TransactionKernelInputs,
     ) -> Result<(), TransactionCheckerError> {
-        if tx_inputs.input_notes().is_empty() {
+        if kernel_inputs.input_notes().is_empty() {
             return Ok(());
         }
 
         let (mut host, stack_inputs, advice_inputs) = self
             .0
-            .prepare_transaction(tx_inputs, tx_args, None)
+            .prepare_transaction(kernel_inputs)
             .await
             .map_err(TransactionCheckerError::TransactionPreparation)?;
 

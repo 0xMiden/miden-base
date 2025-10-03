@@ -58,6 +58,12 @@
 - Simplify `MockChain` internals and rework its documentation ([#1942]https://github.com/0xMiden/miden-base/pull/1942).
 - [BREAKING] Change the signature of TransactionAuthenticator to return the native signature ([#1945](https://github.com/0xMiden/miden-base/pull/1945)).
 - [BREAKING] Rename `MockChainBuilder::add_note` to `add_output_note` ([#1946](https://github.com/0xMiden/miden-base/pull/1946)).
+- [BREAKING] Rename `TransactionInputs` to `TransactionExecutionInputs` and make a new `TransactionInputs` struct which does not contain `InputNotes<InputNote>` ([#1934](https://github.com/0xMiden/miden-base/pull/1934)).
+- [BREAKING] Rename `MockChainBuilder::add_note` to `add_output_note` ([#1946](https://github.com/0xMiden/miden-base/pull/1946)).
+- [BREAKING] Refactor transaction input types to `TransactionKernelInputs` and `TransactionPreparationInputs` ([#1934](https://github.com/0xMiden/miden-base/pull/1934)).
+- [BREAKING] Update `DataStore` trait to return `TransactionInputs` ([#1934](https://github.com/0xMiden/miden-base/pull/1934)).
+- [BREAKING] Rename `MockChainBuilder::add_note` to `add_output_note` ([#1946](https://github.com/0xMiden/miden-base/pull/1946)).
+- [BREAKING] Update `DataStore` trait to return `TransactionPreparationInputs` ([#1934](https://github.com/0xMiden/miden-base/pull/1934)).
 
 ## 0.11.4 (2025-09-17)
 

@@ -4,24 +4,22 @@ use alloc::rc::Rc;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use miden_lib::transaction::TransactionKernel;
-use miden_objects::account::{Account, AccountId, PartialAccount, StorageMapWitness, StorageSlot};
+use miden_lib::transaction::{TransactionKernel, TransactionKernelInputs};
+use miden_objects::account::{Account, AccountId, StorageMapWitness, StorageSlot};
 use miden_objects::assembly::debuginfo::{SourceLanguage, Uri};
 use miden_objects::assembly::{SourceManager, SourceManagerSync};
 use miden_objects::asset::AssetWitness;
-use miden_objects::block::{BlockHeader, BlockNumber};
+use miden_objects::block::BlockNumber;
 use miden_objects::note::Note;
 use miden_objects::transaction::{
     AccountInputs,
     ExecutedTransaction,
     InputNote,
     InputNotes,
-    PartialBlockchain,
     TransactionArgs,
-    TransactionInputs,
+    TransactionPreparationInputs,
 };
 use miden_processor::{
-    AdviceInputs,
     ExecutionError,
     FutureMaybeSend,
     MastForest,
@@ -54,10 +52,8 @@ pub struct TransactionContext {
     pub(super) account: Account,
     pub(super) expected_output_notes: Vec<Note>,
     pub(super) foreign_account_inputs: BTreeMap<AccountId, AccountInputs>,
-    pub(super) tx_args: TransactionArgs,
-    pub(super) tx_inputs: TransactionInputs,
+    pub(super) kernel_inputs: TransactionKernelInputs,
     pub(super) mast_store: TransactionMastStore,
-    pub(super) advice_inputs: AdviceInputs,
     pub(super) authenticator: Option<MockAuthenticator>,
     pub(super) source_manager: Arc<dyn SourceManagerSync>,
 }
@@ -83,12 +79,10 @@ impl TransactionContext {
     ///
     /// - If the provided `code` is not a valid program.
     pub fn execute_code(&self, code: &str) -> Result<Process, ExecutionError> {
-        let (stack_inputs, advice_inputs) = TransactionKernel::prepare_inputs(
-            &self.tx_inputs,
-            &self.tx_args,
-            Some(self.advice_inputs.clone()),
-        )
-        .expect("error initializing transaction inputs");
+        let (stack_inputs, advice_inputs) = self
+            .kernel_inputs
+            .prepare_inputs()
+            .expect("error initializing transaction inputs");
 
         // Virtual file name should be unique.
         let virtual_source_file = self.source_manager.load(
@@ -109,16 +103,16 @@ impl TransactionContext {
         mast_store.insert(program.mast_forest().clone());
         mast_store.insert(TransactionKernel::library().mast_forest().clone());
         mast_store.load_account_code(self.account().code());
-        for acc_inputs in self.tx_args.foreign_account_inputs() {
+        for acc_inputs in self.kernel_inputs.tx_args().foreign_account_inputs() {
             mast_store.load_account_code(acc_inputs.code());
         }
 
         let advice_inputs = advice_inputs.into_advice_inputs();
         CodeExecutor::new(
             MockHost::new(
-                self.tx_inputs().account().code(),
+                self.kernel_inputs().account().code(),
                 mast_store,
-                self.tx_args.foreign_account_inputs(),
+                self.kernel_inputs().tx_args().foreign_account_inputs(),
             )
             .with_source_manager(self.source_manager()),
         )
@@ -130,8 +124,8 @@ impl TransactionContext {
     /// Executes the transaction through a [TransactionExecutor]
     pub async fn execute(self) -> Result<ExecutedTransaction, TransactionExecutorError> {
         let account_id = self.account().id();
-        let block_num = self.tx_inputs().block_header().block_num();
-        let notes = self.tx_inputs().input_notes().clone();
+        let block_num = self.kernel_inputs().block_header().block_num();
+        let notes = self.kernel_inputs().input_notes().clone();
         let tx_args = self.tx_args().clone();
 
         let mut tx_executor = TransactionExecutor::new(&self)
@@ -165,19 +159,19 @@ impl TransactionContext {
     }
 
     pub fn tx_args(&self) -> &TransactionArgs {
-        &self.tx_args
+        self.kernel_inputs.tx_args()
     }
 
     pub fn input_notes(&self) -> &InputNotes<InputNote> {
-        self.tx_inputs.input_notes()
+        self.kernel_inputs.input_notes()
     }
 
     pub fn set_tx_args(&mut self, tx_args: TransactionArgs) {
-        self.tx_args = tx_args;
+        self.kernel_inputs.set_tx_args(tx_args);
     }
 
-    pub fn tx_inputs(&self) -> &TransactionInputs {
-        &self.tx_inputs
+    pub fn kernel_inputs(&self) -> &TransactionKernelInputs {
+        &self.kernel_inputs
     }
 
     pub fn authenticator(&self) -> Option<&BasicAuthenticator<ChaCha20Rng>> {
@@ -191,18 +185,15 @@ impl TransactionContext {
 }
 
 impl DataStore for TransactionContext {
-    fn get_transaction_inputs(
+    fn get_transaction_preparation_inputs(
         &self,
         account_id: AccountId,
         _ref_blocks: BTreeSet<BlockNumber>,
-    ) -> impl FutureMaybeSend<Result<(PartialAccount, BlockHeader, PartialBlockchain), DataStoreError>>
-    {
+    ) -> impl FutureMaybeSend<Result<TransactionPreparationInputs, DataStoreError>> {
         assert_eq!(account_id, self.account().id());
-        assert_eq!(account_id, self.tx_inputs.account().id());
+        assert_eq!(account_id, self.kernel_inputs.account().id());
 
-        let (partial_account, header, mmr, _) = self.tx_inputs.clone().into_parts();
-
-        async move { Ok((partial_account, header, mmr)) }
+        async move { Ok(self.kernel_inputs.clone().into()) }
     }
 
     fn get_foreign_account_inputs(

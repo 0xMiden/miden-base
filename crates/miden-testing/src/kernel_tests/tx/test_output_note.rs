@@ -232,7 +232,7 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
     };
 
     // extract input note data
-    let input_note_1 = tx_context.tx_inputs().input_notes().get_note(0).note();
+    let input_note_1 = tx_context.kernel_inputs().input_notes().get_note(0).note();
     let input_asset_1 = **input_note_1
         .assets()
         .iter()
@@ -240,7 +240,7 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
         .collect::<Vec<_>>()
         .first()
         .context("getting first expected input asset")?;
-    let input_note_2 = tx_context.tx_inputs().input_notes().get_note(1).note();
+    let input_note_2 = tx_context.kernel_inputs().input_notes().get_note(1).note();
     let input_asset_2 = **input_note_2
         .assets()
         .iter()
@@ -258,7 +258,7 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
     let output_tag_1 = NoteTag::from_account_id(network_account);
     let assets = NoteAssets::new(vec![input_asset_1])?;
     let metadata = NoteMetadata::new(
-        tx_context.tx_inputs().account().id(),
+        tx_context.kernel_inputs().account().id(),
         NoteType::Public,
         output_tag_1,
         NoteExecutionHint::Always,
@@ -273,7 +273,7 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
     let output_tag_2 = NoteTag::from_account_id(local_account);
     let assets = NoteAssets::new(vec![input_asset_2])?;
     let metadata = NoteMetadata::new(
-        tx_context.tx_inputs().account().id(),
+        tx_context.kernel_inputs().account().id(),
         NoteType::Public,
         output_tag_2,
         NoteExecutionHint::after_block(123.into())?,
@@ -637,7 +637,7 @@ fn test_build_recipient_hash() -> anyhow::Result<()> {
             .extend_input_notes(vec![input_note_1])
             .build()?
     };
-    let input_note_1 = tx_context.tx_inputs().input_notes().get_note(0).note();
+    let input_note_1 = tx_context.kernel_inputs().input_notes().get_note(0).note();
 
     // create output note
     let output_serial_no = Word::from([0, 1, 2, 3u32]);

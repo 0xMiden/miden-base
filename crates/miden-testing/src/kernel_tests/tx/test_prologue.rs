@@ -178,7 +178,7 @@ fn test_transaction_prologue() -> anyhow::Result<()> {
 fn global_input_memory_assertions(process: &Process, inputs: &TransactionContext) {
     assert_eq!(
         process.get_kernel_mem_word(BLOCK_COMMITMENT_PTR),
-        inputs.tx_inputs().block_header().commitment(),
+        inputs.kernel_inputs().block_header().commitment(),
         "The block commitment should be stored at the BLOCK_COMMITMENT_PTR"
     );
 
@@ -233,80 +233,85 @@ fn global_input_memory_assertions(process: &Process, inputs: &TransactionContext
 fn block_data_memory_assertions(process: &Process, inputs: &TransactionContext) {
     assert_eq!(
         process.get_kernel_mem_word(BLOCK_COMMITMENT_PTR),
-        inputs.tx_inputs().block_header().commitment(),
+        inputs.kernel_inputs().block_header().commitment(),
         "The block commitment should be stored at the BLOCK_COMMITMENT_PTR"
     );
 
     assert_eq!(
         process.get_kernel_mem_word(PREV_BLOCK_COMMITMENT_PTR),
-        inputs.tx_inputs().block_header().prev_block_commitment(),
+        inputs.kernel_inputs().block_header().prev_block_commitment(),
         "The previous block commitment should be stored at the PARENT_BLOCK_COMMITMENT_PTR"
     );
 
     assert_eq!(
         process.get_kernel_mem_word(CHAIN_COMMITMENT_PTR),
-        inputs.tx_inputs().block_header().chain_commitment(),
+        inputs.kernel_inputs().block_header().chain_commitment(),
         "The chain commitment should be stored at the CHAIN_COMMITMENT_PTR"
     );
 
     assert_eq!(
         process.get_kernel_mem_word(ACCT_DB_ROOT_PTR),
-        inputs.tx_inputs().block_header().account_root(),
+        inputs.kernel_inputs().block_header().account_root(),
         "The account db root should be stored at the ACCT_DB_ROOT_PRT"
     );
 
     assert_eq!(
         process.get_kernel_mem_word(NULLIFIER_DB_ROOT_PTR),
-        inputs.tx_inputs().block_header().nullifier_root(),
+        inputs.kernel_inputs().block_header().nullifier_root(),
         "The nullifier db root should be stored at the NULLIFIER_DB_ROOT_PTR"
     );
 
     assert_eq!(
         process.get_kernel_mem_word(TX_COMMITMENT_PTR),
-        inputs.tx_inputs().block_header().tx_commitment(),
+        inputs.kernel_inputs().block_header().tx_commitment(),
         "The TX commitment should be stored at the TX_COMMITMENT_PTR"
     );
 
     assert_eq!(
         process.get_kernel_mem_word(TX_KERNEL_COMMITMENT_PTR),
-        inputs.tx_inputs().block_header().tx_kernel_commitment(),
+        inputs.kernel_inputs().block_header().tx_kernel_commitment(),
         "The kernel commitment should be stored at the TX_KERNEL_COMMITMENT_PTR"
     );
 
     assert_eq!(
         process.get_kernel_mem_word(PROOF_COMMITMENT_PTR),
-        inputs.tx_inputs().block_header().proof_commitment(),
+        inputs.kernel_inputs().block_header().proof_commitment(),
         "The proof commitment should be stored at the PROOF_COMMITMENT_PTR"
     );
 
     assert_eq!(
         process.get_kernel_mem_word(BLOCK_METADATA_PTR)[BLOCK_NUMBER_IDX],
-        inputs.tx_inputs().block_header().block_num().into(),
+        inputs.kernel_inputs().block_header().block_num().into(),
         "The block number should be stored at BLOCK_METADATA_PTR[BLOCK_NUMBER_IDX]"
     );
 
     assert_eq!(
         process.get_kernel_mem_word(BLOCK_METADATA_PTR)[PROTOCOL_VERSION_IDX],
-        inputs.tx_inputs().block_header().version().into(),
+        inputs.kernel_inputs().block_header().version().into(),
         "The protocol version should be stored at BLOCK_METADATA_PTR[PROTOCOL_VERSION_IDX]"
     );
 
     assert_eq!(
         process.get_kernel_mem_word(BLOCK_METADATA_PTR)[TIMESTAMP_IDX],
-        inputs.tx_inputs().block_header().timestamp().into(),
+        inputs.kernel_inputs().block_header().timestamp().into(),
         "The timestamp should be stored at BLOCK_METADATA_PTR[TIMESTAMP_IDX]"
     );
 
     assert_eq!(
         process.get_kernel_mem_word(FEE_PARAMETERS_PTR)[NATIVE_ASSET_ID_SUFFIX_IDX],
-        inputs.tx_inputs().block_header().fee_parameters().native_asset_id().suffix(),
+        inputs
+            .kernel_inputs()
+            .block_header()
+            .fee_parameters()
+            .native_asset_id()
+            .suffix(),
         "The native asset ID suffix should be stored at FEE_PARAMETERS_PTR[NATIVE_ASSET_ID_SUFFIX_IDX]"
     );
 
     assert_eq!(
         process.get_kernel_mem_word(FEE_PARAMETERS_PTR)[NATIVE_ASSET_ID_PREFIX_IDX],
         inputs
-            .tx_inputs()
+            .kernel_inputs()
             .block_header()
             .fee_parameters()
             .native_asset_id()
@@ -318,7 +323,7 @@ fn block_data_memory_assertions(process: &Process, inputs: &TransactionContext) 
     assert_eq!(
         process.get_kernel_mem_word(FEE_PARAMETERS_PTR)[VERIFICATION_BASE_FEE_IDX],
         inputs
-            .tx_inputs()
+            .kernel_inputs()
             .block_header()
             .fee_parameters()
             .verification_base_fee()
@@ -328,7 +333,7 @@ fn block_data_memory_assertions(process: &Process, inputs: &TransactionContext) 
 
     assert_eq!(
         process.get_kernel_mem_word(NOTE_ROOT_PTR),
-        inputs.tx_inputs().block_header().note_root(),
+        inputs.kernel_inputs().block_header().note_root(),
         "The note root should be stored at the NOTE_ROOT_PTR"
     );
 }
@@ -336,8 +341,8 @@ fn block_data_memory_assertions(process: &Process, inputs: &TransactionContext) 
 fn partial_blockchain_memory_assertions(process: &Process, prepared_tx: &TransactionContext) {
     // update the partial blockchain to point to the block against which this transaction is being
     // executed
-    let mut partial_blockchain = prepared_tx.tx_inputs().blockchain().clone();
-    partial_blockchain.add_block(prepared_tx.tx_inputs().block_header().clone(), true);
+    let mut partial_blockchain = prepared_tx.kernel_inputs().blockchain().clone();
+    partial_blockchain.add_block(prepared_tx.kernel_inputs().block_header().clone(), true);
 
     assert_eq!(
         process.get_kernel_mem_word(PARTIAL_BLOCKCHAIN_NUM_LEAVES_PTR)[0],
@@ -727,8 +732,8 @@ pub fn create_account_invalid_seed() -> anyhow::Result<()> {
         .with_component(BasicWallet)
         .build()?;
 
-    let tx_inputs = mock_chain
-        .get_transaction_inputs(&account, &[], &[])
+    let kernel_inputs = mock_chain
+        .get_transaction_kernel_inputs(&account, &[], &[])
         .expect("failed to get transaction inputs from mock chain");
 
     // override the seed with an invalid seed to ensure the kernel fails
@@ -737,7 +742,7 @@ pub fn create_account_invalid_seed() -> anyhow::Result<()> {
         AdviceInputs::default().with_map([(Word::from(account_seed_key), vec![ZERO; WORD_SIZE])]);
 
     let tx_context = TransactionContextBuilder::new(account)
-        .tx_inputs(tx_inputs)
+        .set_kernel_inputs(kernel_inputs)
         .extend_advice_inputs(adv_inputs)
         .build()?;
 
@@ -774,7 +779,7 @@ fn test_get_blk_version() -> anyhow::Result<()> {
 
     let process = tx_context.execute_code(code)?;
 
-    assert_eq!(process.stack.get(0), tx_context.tx_inputs().block_header().version().into());
+    assert_eq!(process.stack.get(0), tx_context.kernel_inputs().block_header().version().into());
 
     Ok(())
 }
@@ -797,7 +802,10 @@ fn test_get_blk_timestamp() -> anyhow::Result<()> {
 
     let process = tx_context.execute_code(code)?;
 
-    assert_eq!(process.stack.get(0), tx_context.tx_inputs().block_header().timestamp().into());
+    assert_eq!(
+        process.stack.get(0),
+        tx_context.kernel_inputs().block_header().timestamp().into()
+    );
 
     Ok(())
 }

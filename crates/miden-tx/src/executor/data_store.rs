@@ -1,9 +1,9 @@
 use alloc::collections::BTreeSet;
 
-use miden_objects::account::{AccountId, PartialAccount, StorageMapWitness};
+use miden_objects::account::{AccountId, StorageMapWitness};
 use miden_objects::asset::AssetWitness;
-use miden_objects::block::{BlockHeader, BlockNumber};
-use miden_objects::transaction::{AccountInputs, PartialBlockchain};
+use miden_objects::block::BlockNumber;
+use miden_objects::transaction::{AccountInputs, TransactionPreparationInputs};
 use miden_processor::{FutureMaybeSend, MastForestStore, Word};
 
 use crate::DataStoreError;
@@ -14,8 +14,9 @@ use crate::DataStoreError;
 /// The [DataStore] trait defines the interface that transaction objects use to fetch data
 /// required for transaction execution.
 pub trait DataStore: MastForestStore {
-    /// Returns all the data required to execute a transaction against the account with the
-    /// specified ID and consuming input notes created in blocks in the input `ref_blocks` set.
+    /// Returns the data required to prepare the execution of a transaction against the account with
+    /// the the account with the specified ID and consuming input notes created in blocks in the
+    /// input `ref_blocks` set.
     ///
     /// The highest block number in `ref_blocks` will be the transaction reference block. In
     /// general, it is recommended that the reference corresponds to the latest block available
@@ -27,11 +28,11 @@ pub trait DataStore: MastForestStore {
     /// - The block with the specified number could not be found in the data store.
     /// - The combination of specified inputs resulted in a transaction input error.
     /// - The data store encountered some internal error
-    fn get_transaction_inputs(
+    fn get_transaction_preparation_inputs(
         &self,
         account_id: AccountId,
         ref_blocks: BTreeSet<BlockNumber>,
-    ) -> impl FutureMaybeSend<Result<(PartialAccount, BlockHeader, PartialBlockchain), DataStoreError>>;
+    ) -> impl FutureMaybeSend<Result<TransactionPreparationInputs, DataStoreError>>;
 
     /// Returns a partial foreign account state together with a witness, proving its validity in the
     /// specified transaction reference block.

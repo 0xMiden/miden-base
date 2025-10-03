@@ -125,7 +125,7 @@ pub async fn run_mixed_notes_check(setup: &MixedNotesSetup) -> anyhow::Result<()
         .build_tx_context(TxContextInput::AccountId(setup.target_account_id), &[], &setup.notes)?
         .build()?;
 
-    let block_ref = tx_context.tx_inputs().block_header().block_num();
+    let block_ref = tx_context.kernel_inputs().block_header().block_num();
     let tx_args = tx_context.tx_args().clone();
 
     // Create executor and checker.

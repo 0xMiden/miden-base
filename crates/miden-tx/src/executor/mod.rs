@@ -2,7 +2,7 @@ use alloc::collections::BTreeSet;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use miden_lib::transaction::TransactionKernel;
+use miden_lib::transaction::{TransactionKernel, TransactionKernelInputs};
 use miden_objects::account::AccountId;
 use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::assembly::debuginfo::SourceManagerSync;
@@ -14,7 +14,6 @@ use miden_objects::transaction::{
     InputNote,
     InputNotes,
     TransactionArgs,
-    TransactionInputs,
     TransactionScript,
 };
 use miden_objects::vm::StackOutputs;
@@ -181,11 +180,11 @@ where
         notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
     ) -> Result<ExecutedTransaction, TransactionExecutorError> {
-        let tx_inputs =
-            self.prepare_transaction_inputs(account_id, block_ref, notes, &tx_args).await?;
+        let kernel_inputs =
+            self.prepare_kernel_inputs(account_id, block_ref, notes, tx_args).await?;
 
         let (mut host, stack_inputs, advice_inputs) =
-            self.prepare_transaction(&tx_inputs, &tx_args, None).await?;
+            self.prepare_transaction(&kernel_inputs).await?;
 
         let processor = FastProcessor::new_debug(stack_inputs.as_slice(), advice_inputs);
         let output = processor
@@ -203,7 +202,7 @@ where
             ..Default::default()
         };
 
-        build_executed_transaction(advice_inputs, tx_args, tx_inputs, stack_outputs, host)
+        build_executed_transaction(advice_inputs, kernel_inputs, stack_outputs, host)
     }
 
     // SCRIPT EXECUTION
@@ -225,15 +224,16 @@ where
         advice_inputs: AdviceInputs,
         foreign_account_inputs: Vec<AccountInputs>,
     ) -> Result<[Felt; 16], TransactionExecutorError> {
-        let tx_args = TransactionArgs::new(Default::default(), foreign_account_inputs)
+        let mut tx_args = TransactionArgs::new(Default::default(), foreign_account_inputs)
             .with_tx_script(tx_script);
+        tx_args.extend_advice_inputs(advice_inputs);
 
         let notes = InputNotes::default();
-        let tx_inputs =
-            self.prepare_transaction_inputs(account_id, block_ref, notes, &tx_args).await?;
+        let kernel_inputs =
+            self.prepare_kernel_inputs(account_id, block_ref, notes, tx_args).await?;
 
         let (mut host, stack_inputs, advice_inputs) =
-            self.prepare_transaction(&tx_inputs, &tx_args, Some(advice_inputs)).await?;
+            self.prepare_transaction(&kernel_inputs).await?;
 
         let processor =
             FastProcessor::new_with_advice_inputs(stack_inputs.as_slice(), advice_inputs);
@@ -254,28 +254,28 @@ where
     // This method has a one-to-many call relationship with the `prepare_transaction` method. This
     // method needs to be called only once in order to allow many transactions to be prepared based
     // on the transaction inputs returned by this method.
-    async fn prepare_transaction_inputs(
+    async fn prepare_kernel_inputs(
         &self,
         account_id: AccountId,
         block_ref: BlockNumber,
         input_notes: InputNotes<InputNote>,
-        tx_args: &TransactionArgs,
-    ) -> Result<TransactionInputs, TransactionExecutorError> {
+        tx_args: TransactionArgs,
+    ) -> Result<TransactionKernelInputs, TransactionExecutorError> {
         let mut ref_blocks = validate_input_notes(&input_notes, block_ref)?;
         ref_blocks.insert(block_ref);
 
-        let (account, ref_block, mmr) = self
+        let prep_inputs = self
             .data_store
-            .get_transaction_inputs(account_id, ref_blocks)
+            .get_transaction_preparation_inputs(account_id, ref_blocks)
             .await
             .map_err(TransactionExecutorError::FetchTransactionInputsFailed)?;
 
-        validate_account_inputs(tx_args, &ref_block)?;
+        validate_account_inputs(&tx_args, prep_inputs.block_header())?;
 
-        let tx_inputs = TransactionInputs::new(account, ref_block, mmr, input_notes)
+        let kernel_inputs = TransactionKernelInputs::new(prep_inputs, input_notes, tx_args, None)
             .map_err(TransactionExecutorError::InvalidTransactionInputs)?;
 
-        Ok(tx_inputs)
+        Ok(kernel_inputs)
     }
 
     /// Prepares the data needed for transaction execution.
@@ -284,16 +284,14 @@ where
     /// instantiating a transaction host.
     async fn prepare_transaction(
         &self,
-        tx_inputs: &TransactionInputs,
-        tx_args: &TransactionArgs,
-        init_advice_inputs: Option<AdviceInputs>,
+        kernel_inputs: &TransactionKernelInputs,
     ) -> Result<
         (TransactionExecutorHost<'store, 'auth, STORE, AUTH>, StackInputs, AdviceInputs),
         TransactionExecutorError,
     > {
-        let (stack_inputs, tx_advice_inputs) =
-            TransactionKernel::prepare_inputs(tx_inputs, tx_args, init_advice_inputs)
-                .map_err(TransactionExecutorError::ConflictingAdviceMapEntry)?;
+        let (stack_inputs, tx_advice_inputs) = kernel_inputs
+            .prepare_inputs()
+            .map_err(TransactionExecutorError::ConflictingAdviceMapEntry)?;
 
         // This reverses the stack inputs (even though it doesn't look like it does) because the
         // fast processor expects the reverse order.
@@ -302,27 +300,27 @@ where
         // inputs are constructed in TransactionKernel::prepare_inputs.
         let stack_inputs = StackInputs::new(stack_inputs.iter().copied().collect()).unwrap();
 
-        let input_notes = tx_inputs.input_notes();
+        let input_notes = kernel_inputs.input_notes();
 
         let script_mast_store = ScriptMastForestStore::new(
-            tx_args.tx_script(),
+            kernel_inputs.tx_script(),
             input_notes.iter().map(|n| n.note().script()),
         );
 
         // To start executing the transaction, the procedure index map only needs to contain the
         // native account's procedures. Foreign accounts are inserted into the map on first access.
         let account_procedure_index_map =
-            AccountProcedureIndexMap::new([tx_inputs.account().code()])
+            AccountProcedureIndexMap::new([kernel_inputs.account().code()])
                 .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
 
         let host = TransactionExecutorHost::new(
-            tx_inputs.account(),
+            kernel_inputs.account(),
             input_notes.clone(),
             self.data_store,
             script_mast_store,
             account_procedure_index_map,
             self.authenticator,
-            tx_inputs.block_header().block_num(),
+            kernel_inputs.block_header().block_num(),
             self.source_manager.clone(),
         );
 
@@ -338,8 +336,7 @@ where
 /// Creates a new [ExecutedTransaction] from the provided data.
 fn build_executed_transaction<STORE: DataStore + Sync, AUTH: TransactionAuthenticator + Sync>(
     mut advice_inputs: AdviceInputs,
-    tx_args: TransactionArgs,
-    tx_inputs: TransactionInputs,
+    kernel_inputs: TransactionKernelInputs,
     stack_outputs: StackOutputs,
     host: TransactionExecutorHost<STORE, AUTH>,
 ) -> Result<ExecutedTransaction, TransactionExecutorError> {
@@ -373,7 +370,7 @@ fn build_executed_transaction<STORE: DataStore + Sync, AUTH: TransactionAuthenti
         .remove_asset(Asset::from(tx_outputs.fee))
         .map_err(TransactionExecutorError::RemoveFeeAssetFromDelta)?;
 
-    let initial_account = tx_inputs.account();
+    let initial_account = kernel_inputs.account();
     let final_account = &tx_outputs.account;
 
     if initial_account.id() != final_account.id() {
@@ -395,11 +392,13 @@ fn build_executed_transaction<STORE: DataStore + Sync, AUTH: TransactionAuthenti
     // introduce generated signatures into the witness inputs
     advice_inputs.map.extend(generated_signatures);
 
+    let (prep_inputs, input_notes, tx_args) = kernel_inputs.into();
     Ok(ExecutedTransaction::new(
-        tx_inputs,
+        prep_inputs,
+        input_notes,
+        tx_args,
         tx_outputs,
         post_fee_account_delta,
-        tx_args,
         accessed_foreign_account_code,
         advice_inputs,
         tx_progress.into(),

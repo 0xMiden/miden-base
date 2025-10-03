@@ -192,19 +192,19 @@ fn test_block_procedures() -> anyhow::Result<()> {
 
     assert_eq!(
         process.stack.get_word(0),
-        tx_context.tx_inputs().block_header().commitment(),
+        tx_context.kernel_inputs().block_header().commitment(),
         "top word on the stack should be equal to the block header commitment"
     );
 
     assert_eq!(
         process.stack.get(4).as_int(),
-        tx_context.tx_inputs().block_header().timestamp() as u64,
+        tx_context.kernel_inputs().block_header().timestamp() as u64,
         "fifth element on the stack should be equal to the timestamp of the last block creation"
     );
 
     assert_eq!(
         process.stack.get(5).as_int(),
-        tx_context.tx_inputs().block_header().block_num().as_u64(),
+        tx_context.kernel_inputs().block_header().block_num().as_u64(),
         "sixth element on the stack should be equal to the block number"
     );
     Ok(())
@@ -508,7 +508,7 @@ fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
     let mock_chain = builder.build()?;
 
     let tx_context = mock_chain.build_tx_context(account, &[input_note.id()], &[])?.build()?;
-    let ref_block_num = tx_context.tx_inputs().block_header().block_num().as_u32();
+    let ref_block_num = tx_context.kernel_inputs().block_header().block_num().as_u32();
     let final_nonce = tx_context.account().nonce().as_int() as u32 + 1;
     let input_notes = tx_context.input_notes().clone();
     let output_notes = OutputNotes::new(vec![OutputNote::Partial(output_note.into())])?;
@@ -622,7 +622,7 @@ async fn execute_tx_view_script() -> anyhow::Result<()> {
         .tx_script(tx_script.clone())
         .build()?;
     let account_id = tx_context.account().id();
-    let block_ref = tx_context.tx_inputs().block_header().block_num();
+    let block_ref = tx_context.kernel_inputs().block_header().block_num();
     let advice_inputs = tx_context.tx_args().advice_inputs().clone();
 
     let executor = TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context)

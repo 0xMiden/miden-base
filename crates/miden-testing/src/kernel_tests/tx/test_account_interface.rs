@@ -59,7 +59,7 @@ async fn check_note_consumability_well_known_notes_success() -> anyhow::Result<(
         .build()?;
 
     let target_account_id = tx_context.account().id();
-    let block_ref = tx_context.tx_inputs().block_header().block_num();
+    let block_ref = tx_context.kernel_inputs().block_header().block_num();
     let tx_args = tx_context.tx_args().clone();
 
     let executor =
@@ -100,7 +100,7 @@ async fn check_note_consumability_custom_notes_success(
     };
 
     let account_id = tx_context.account().id();
-    let block_ref = tx_context.tx_inputs().block_header().block_num();
+    let block_ref = tx_context.kernel_inputs().block_header().block_num();
     let tx_args = tx_context.tx_args().clone();
 
     let executor = TransactionExecutor::new(&tx_context)
@@ -180,7 +180,7 @@ async fn check_note_consumability_partial_success() -> anyhow::Result<()> {
         .build()?;
 
     let account_id = tx_context.account().id();
-    let block_ref = tx_context.tx_inputs().block_header().block_num();
+    let block_ref = tx_context.kernel_inputs().block_header().block_num();
     let tx_args = tx_context.tx_args().clone();
 
     let executor =
@@ -259,7 +259,7 @@ async fn check_note_consumability_epilogue_failure() -> anyhow::Result<()> {
         .build()?;
 
     let account_id = tx_context.account().id();
-    let block_ref = tx_context.tx_inputs().block_header().block_num();
+    let block_ref = tx_context.kernel_inputs().block_header().block_num();
     let tx_args = tx_context.tx_args().clone();
 
     // Use an auth that fails in order to force an epilogue failure when paired up with basic auth.
@@ -342,7 +342,7 @@ async fn check_note_consumability_epilogue_failure_with_new_combination() -> any
         .build()?;
 
     let account_id = tx_context.account().id();
-    let block_ref = tx_context.tx_inputs().block_header().block_num();
+    let block_ref = tx_context.kernel_inputs().block_header().block_num();
     let tx_args = tx_context.tx_args().clone();
 
     let executor =

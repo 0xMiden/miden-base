@@ -12,13 +12,13 @@ use super::{
     OutputNotes,
     TransactionArgs,
     TransactionId,
-    TransactionInputs,
     TransactionOutputs,
     TransactionWitness,
 };
 use crate::account::{AccountCode, PartialAccount};
 use crate::asset::FungibleAsset;
 use crate::block::BlockNumber;
+use crate::transaction::{PartialBlockchain, TransactionPreparationInputs};
 use crate::utils::serde::{
     ByteReader,
     ByteWriter,
@@ -43,10 +43,11 @@ use crate::utils::serde::{
 #[derive(Debug, Clone, PartialEq)]
 pub struct ExecutedTransaction {
     id: TransactionId,
-    tx_inputs: TransactionInputs,
+    prep_inputs: TransactionPreparationInputs,
+    input_notes: InputNotes<InputNote>,
+    tx_args: TransactionArgs,
     tx_outputs: TransactionOutputs,
     account_delta: AccountDelta,
-    tx_args: TransactionArgs,
     foreign_account_code: Vec<AccountCode>,
     advice_witness: AdviceInputs,
     tx_measurements: TransactionMeasurements,
@@ -61,32 +62,34 @@ impl ExecutedTransaction {
     /// # Panics
     /// Panics if input and output account IDs are not the same.
     pub fn new(
-        tx_inputs: TransactionInputs,
+        prep_inputs: TransactionPreparationInputs,
+        input_notes: InputNotes<InputNote>,
+        tx_args: TransactionArgs,
         tx_outputs: TransactionOutputs,
         account_delta: AccountDelta,
-        tx_args: TransactionArgs,
         foreign_account_code: Vec<AccountCode>,
         advice_witness: AdviceInputs,
         tx_measurements: TransactionMeasurements,
     ) -> Self {
         // make sure account IDs are consistent across transaction inputs and outputs
-        assert_eq!(tx_inputs.account().id(), tx_outputs.account.id());
+        assert_eq!(prep_inputs.account().id(), tx_outputs.account.id());
 
         // we create the id from the content, so we cannot construct the
         // `id` value after construction `Self {..}` without moving
         let id = TransactionId::new(
-            tx_inputs.account().initial_commitment(),
+            prep_inputs.account().initial_commitment(),
             tx_outputs.account.commitment(),
-            tx_inputs.input_notes().commitment(),
+            input_notes.commitment(),
             tx_outputs.output_notes.commitment(),
         );
 
         Self {
             id,
-            tx_inputs,
+            prep_inputs,
+            input_notes,
+            tx_args,
             tx_outputs,
             account_delta,
-            tx_args,
             foreign_account_code,
             advice_witness,
             tx_measurements,
@@ -108,7 +111,7 @@ impl ExecutedTransaction {
 
     /// Returns the partial state of the account before the transaction was executed.
     pub fn initial_account(&self) -> &PartialAccount {
-        self.tx_inputs.account()
+        self.prep_inputs.account()
     }
 
     /// Returns the header of the account state after the transaction was executed.
@@ -118,7 +121,7 @@ impl ExecutedTransaction {
 
     /// Returns the notes consumed in this transaction.
     pub fn input_notes(&self) -> &InputNotes<InputNote> {
-        self.tx_inputs.input_notes()
+        &self.input_notes
     }
 
     /// Returns the notes created in this transaction.
@@ -143,7 +146,7 @@ impl ExecutedTransaction {
 
     /// Returns the block header for the block against which the transaction was executed.
     pub fn block_header(&self) -> &BlockHeader {
-        self.tx_inputs.block_header()
+        self.prep_inputs.block_header()
     }
 
     /// Returns a description of changes between the initial and final account states.
@@ -152,8 +155,8 @@ impl ExecutedTransaction {
     }
 
     /// Returns a reference to the inputs for this transaction.
-    pub fn tx_inputs(&self) -> &TransactionInputs {
-        &self.tx_inputs
+    pub fn prep_inputs(&self) -> &TransactionPreparationInputs {
+        &self.prep_inputs
     }
 
     /// Returns all the data requested by the VM from the advice provider while executing the
@@ -176,7 +179,8 @@ impl ExecutedTransaction {
         self,
     ) -> (AccountDelta, TransactionOutputs, TransactionWitness, TransactionMeasurements) {
         let tx_witness = TransactionWitness {
-            tx_inputs: self.tx_inputs,
+            prep_inputs: self.prep_inputs,
+            input_notes: self.input_notes,
             tx_args: self.tx_args,
             foreign_account_code: self.foreign_account_code,
             advice_witness: self.advice_witness,
@@ -202,10 +206,13 @@ impl From<ExecutedTransaction> for TransactionMeasurements {
 
 impl Serializable for ExecutedTransaction {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        self.tx_inputs.write_into(target);
+        self.prep_inputs.account().write_into(target);
+        self.prep_inputs.block_header().write_into(target);
+        self.prep_inputs.blockchain().write_into(target);
+        self.input_notes.write_into(target);
+        self.tx_args.write_into(target);
         self.tx_outputs.write_into(target);
         self.account_delta.write_into(target);
-        self.tx_args.write_into(target);
         self.foreign_account_code.write_into(target);
         self.advice_witness.write_into(target);
         self.tx_measurements.write_into(target);
@@ -214,19 +221,25 @@ impl Serializable for ExecutedTransaction {
 
 impl Deserializable for ExecutedTransaction {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        let tx_inputs = TransactionInputs::read_from(source)?;
+        let account = PartialAccount::read_from(source)?;
+        let block_header = BlockHeader::read_from(source)?;
+        let blockchain = PartialBlockchain::read_from(source)?;
+        let input_notes = InputNotes::<InputNote>::read_from(source)?;
+        let tx_args = TransactionArgs::read_from(source)?;
         let tx_outputs = TransactionOutputs::read_from(source)?;
         let account_delta = AccountDelta::read_from(source)?;
-        let tx_args = TransactionArgs::read_from(source)?;
         let foreign_account_code = <Vec<AccountCode>>::read_from(source)?;
         let advice_witness = AdviceInputs::read_from(source)?;
         let tx_measurements = TransactionMeasurements::read_from(source)?;
 
+        let prep_inputs = TransactionPreparationInputs::new(account, block_header, blockchain)
+            .map_err(|err| DeserializationError::InvalidValue(format!("{err}")))?;
         Ok(Self::new(
-            tx_inputs,
+            prep_inputs,
+            input_notes,
+            tx_args,
             tx_outputs,
             account_delta,
-            tx_args,
             foreign_account_code,
             advice_witness,
             tx_measurements,
