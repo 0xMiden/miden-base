@@ -683,6 +683,7 @@ impl MockChain {
             prep_inputs,
             input_notes,
             TransactionArgs::default(),
+            None,
         )?)
     }
 

@@ -271,7 +271,7 @@ where
 
         validate_account_inputs(&tx_args, prep_inputs.block_header())?;
 
-        let kernel_inputs = TransactionKernelInputs::new(prep_inputs, input_notes, tx_args)
+        let kernel_inputs = TransactionKernelInputs::new(prep_inputs, input_notes, tx_args, None)
             .map_err(TransactionExecutorError::InvalidTransactionInputs)?;
 
         Ok(kernel_inputs)

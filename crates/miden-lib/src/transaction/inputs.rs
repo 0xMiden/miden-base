@@ -30,6 +30,7 @@ pub struct TransactionKernelInputs {
     prep_inputs: TransactionPreparationInputs,
     input_notes: InputNotes<InputNote>,
     tx_args: TransactionArgs,
+    init_advice_inputs: Option<AdviceInputs>,
 }
 
 impl TransactionKernelInputs {
@@ -47,6 +48,7 @@ impl TransactionKernelInputs {
         prep_inputs: TransactionPreparationInputs,
         input_notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
+        init_advice_inputs: Option<AdviceInputs>,
     ) -> Result<Self, TransactionInputError> {
         // Validate the authentication paths of the input notes.
         for note in input_notes.iter() {
@@ -63,7 +65,12 @@ impl TransactionKernelInputs {
             }
         }
 
-        Ok(Self { prep_inputs, input_notes, tx_args })
+        Ok(Self {
+            prep_inputs,
+            input_notes,
+            tx_args,
+            init_advice_inputs,
+        })
     }
 
     // MUTATORS
@@ -93,6 +100,8 @@ impl TransactionKernelInputs {
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
+    /// Constructs stack and advice inputs needed to execute a transaction kernel for a specific
+    /// transaction.
     pub fn prepare_inputs(
         &self,
     ) -> Result<(StackInputs, TransactionAdviceInputs), TransactionAdviceMapMismatch> {
@@ -104,7 +113,10 @@ impl TransactionKernelInputs {
             self.block_header().block_num(),
         );
 
-        let tx_advice_inputs = self.transaction_advice_inputs()?;
+        let mut tx_advice_inputs = self.transaction_advice_inputs()?;
+        if let Some(ref init_advice_inputs) = self.init_advice_inputs {
+            tx_advice_inputs.extend(init_advice_inputs.clone());
+        }
         Ok((stack_inputs, tx_advice_inputs))
     }
 

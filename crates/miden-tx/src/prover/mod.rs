@@ -128,10 +128,9 @@ impl LocalTransactionProver {
             advice_witness,
         } = tx_witness;
 
-        // TODO: refactor this to be member fn
-        let mut kernel_inputs = TransactionKernelInputs::new(prep_inputs, input_notes, tx_args)
-            .expect("transaction witness must make valid kernel inputs");
-        kernel_inputs.extend_advice_inputs(advice_witness);
+        let kernel_inputs =
+            TransactionKernelInputs::new(prep_inputs, input_notes, tx_args, Some(advice_witness))
+                .expect("transaction witness must make valid kernel inputs");
         let (stack_inputs, advice_inputs) = kernel_inputs
             .prepare_inputs()
             .map_err(TransactionProverError::ConflictingAdviceMapEntry)?;

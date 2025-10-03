@@ -321,7 +321,7 @@ impl TransactionContextBuilder {
 
             let prep_inputs =
                 TransactionPreparationInputs::new(account, block_header, partial_blockchain)?;
-            TransactionKernelInputs::new(prep_inputs, input_notes, tx_args)?
+            TransactionKernelInputs::new(prep_inputs, input_notes, tx_args, None)?
         } else {
             kernel_inputs.set_tx_args(tx_args);
             kernel_inputs
