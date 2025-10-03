@@ -1,7 +1,9 @@
 # The MASM code of the Multi-Signature RPO Falcon 512 Authentication Component.
 
-use.miden::account
-use.miden::auth
+use miden::account
+use miden::auth
+
+type Word = [felt; 4]
 
 # CONSTANTS
 # =================================================================================================
@@ -9,7 +11,7 @@ use.miden::auth
 # Auth Request Constants
 
 # The event emitted when a signature is not found for a required signer.
-const.UNAUTHORIZED_EVENT=event("miden::auth::unauthorized")
+const UNAUTHORIZED_EVENT = event("miden::auth::unauthorized")
 
 # Storage Layout Constants
 #
@@ -23,25 +25,27 @@ const.UNAUTHORIZED_EVENT=event("miden::auth::unauthorized")
 # The slot in this component's storage layout where both the signature threshold
 # and number of approvers are stored as [threshold, num_approvers, 0, 0].
 # The threshold is guaranteed to be less than or equal to num_approvers.
-const.THRESHOLD_CONFIG_SLOT=0
+const THRESHOLD_CONFIG_SLOT = 0
 
 # The slot in this component's storage layout where the public keys map is stored.
 # Map entries: [key_index, 0, 0, 0] => owner_public_key
-const.PUBLIC_KEYS_MAP_SLOT=1
+const PUBLIC_KEYS_MAP_SLOT = 1
 
 # The slot in this component's storage layout where executed transactions are stored.
 # Map entries: transaction_message => [is_executed, 0, 0, 0]
-const.EXECUTED_TXS_SLOT=2
+const EXECUTED_TXS_SLOT = 2
 
 # Executed Transaction Flag Constant
-const.IS_EXECUTED_FLAG=[1, 0, 0, 0]
+const IS_EXECUTED_FLAG = [1, 0, 0, 0]
 
 # ERRORS
-const.ERR_TX_ALREADY_EXECUTED="failed to approve multisig transaction as it was already executed"
+# =================================================================================================
 
-const.ERR_MALFORMED_MULTISIG_CONFIG="number of approvers must be equal to or greater than threshold"
+const ERR_TX_ALREADY_EXECUTED = "failed to approve multisig transaction as it was already executed"
 
-const.ERR_ZERO_IN_MULTISIG_CONFIG="number of approvers or threshold must not be zero"
+const ERR_MALFORMED_MULTISIG_CONFIG = "number of approvers must be equal to or greater than threshold"
+
+const ERR_ZERO_IN_MULTISIG_CONFIG = "number of approvers or threshold must not be zero"
 
 #! Check if transaction has already been executed and add it to executed transactions for replay protection.
 #!
@@ -50,7 +54,7 @@ const.ERR_ZERO_IN_MULTISIG_CONFIG="number of approvers or threshold must not be 
 #!
 #! Panics if:
 #! - the same transaction has already been executed
-proc.assert_new_tx
+proc assert_new_tx(Msg: Word)
     push.IS_EXECUTED_FLAG
     # => [[0, 0, 0, is_executed], MSG]
 
@@ -83,7 +87,7 @@ end
 #! Where:
 #! - init_num_of_approvers is the original number of approvers before the update
 #! - new_num_of_approvers is the new number of approvers after the update
-proc.cleanup_pubkey_mapping
+proc cleanup_pubkey_mapping(init_num_of_approvers: felt, new_num_of_approvers: felt)
     dup.1 dup.1
     u32assert2 u32lt
     # => [should_loop, i = init_num_of_approvers, new_num_of_approvers]
@@ -139,7 +143,7 @@ end
 #! Locals:
 #! 0: new_num_of_approvers
 #! 1: init_num_of_approvers
-export.update_signers_and_threshold.2
+pub proc update_signers_and_threshold.2(Multisig_config_hash: Word)
     adv.push_mapval
     # => [MULTISIG_CONFIG_HASH, pad(12)]
 
@@ -251,7 +255,7 @@ end
 #! - the same transaction has already been executed (replay protection).
 #!
 #! Invocation: call
-export.auth_tx_rpo_falcon512_multisig
+pub proc auth_tx_rpo_falcon512_multisig(Salt: Word)
     exec.account::incr_nonce drop
     # => [SALT]
 
