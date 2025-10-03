@@ -180,10 +180,11 @@ where
         notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
     ) -> Result<ExecutedTransaction, TransactionExecutorError> {
-        let prep_inputs = self.prepare_kernel_inputs(account_id, block_ref, notes, tx_args).await?;
+        let kernel_inputs =
+            self.prepare_kernel_inputs(account_id, block_ref, notes, tx_args).await?;
 
         let (mut host, stack_inputs, advice_inputs) =
-            self.prepare_transaction(&prep_inputs).await?;
+            self.prepare_transaction(&kernel_inputs).await?;
 
         let processor = FastProcessor::new_debug(stack_inputs.as_slice(), advice_inputs);
         let output = processor
@@ -201,7 +202,7 @@ where
             ..Default::default()
         };
 
-        build_executed_transaction(advice_inputs, prep_inputs, stack_outputs, host)
+        build_executed_transaction(advice_inputs, kernel_inputs, stack_outputs, host)
     }
 
     // SCRIPT EXECUTION

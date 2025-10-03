@@ -92,11 +92,6 @@ impl TransactionKernelInputs {
         self.tx_args = tx_args;
     }
 
-    /// Extends the advice inputs with the provided ones.
-    pub fn extend_advice_inputs(&mut self, advice_inputs: AdviceInputs) {
-        self.tx_args.extend_advice_inputs(advice_inputs);
-    }
-
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 

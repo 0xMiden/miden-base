@@ -69,10 +69,10 @@ impl Deserializable for TransactionWitness {
         let foreign_account_code = <Vec<AccountCode>>::read_from(source)?;
         let advice_witness = AdviceInputs::read_from(source)?;
 
-        let kernel_inputs = TransactionPreparationInputs::new(account, block_header, blockchain)
+        let prep_inputs = TransactionPreparationInputs::new(account, block_header, blockchain)
             .map_err(|err| DeserializationError::InvalidValue(format!("{err}")))?;
         Ok(Self {
-            prep_inputs: kernel_inputs,
+            prep_inputs,
             input_notes,
             tx_args,
             foreign_account_code,

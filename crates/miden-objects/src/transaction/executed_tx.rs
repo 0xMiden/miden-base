@@ -155,7 +155,7 @@ impl ExecutedTransaction {
     }
 
     /// Returns a reference to the inputs for this transaction.
-    pub fn kernel_inputs(&self) -> &TransactionPreparationInputs {
+    pub fn prep_inputs(&self) -> &TransactionPreparationInputs {
         &self.prep_inputs
     }
 
@@ -232,10 +232,10 @@ impl Deserializable for ExecutedTransaction {
         let advice_witness = AdviceInputs::read_from(source)?;
         let tx_measurements = TransactionMeasurements::read_from(source)?;
 
-        let kernel_inputs = TransactionPreparationInputs::new(account, block_header, blockchain)
+        let prep_inputs = TransactionPreparationInputs::new(account, block_header, blockchain)
             .map_err(|err| DeserializationError::InvalidValue(format!("{err}")))?;
         Ok(Self::new(
-            kernel_inputs,
+            prep_inputs,
             input_notes,
             tx_args,
             tx_outputs,
