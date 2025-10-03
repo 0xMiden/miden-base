@@ -3,14 +3,13 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use anyhow::Context;
-use miden_lib::account::auth::PublicKeyCommitment;
 use miden_lib::account::wallets::BasicWallet;
 use miden_lib::errors::MasmError;
 use miden_lib::testing::note::NoteBuilder;
 use miden_lib::transaction::TransactionKernel;
 use miden_lib::transaction::memory::ACTIVE_INPUT_NOTE_PTR;
 use miden_lib::utils::ScriptBuilder;
-use miden_objects::account::{AccountBuilder, AccountId};
+use miden_objects::account::{AccountBuilder, AccountId, PublicKeyCommitment};
 use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::assembly::diagnostics::miette::{self, miette};
 use miden_objects::asset::FungibleAsset;

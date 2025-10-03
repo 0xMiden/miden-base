@@ -17,7 +17,7 @@ fn wallet_creation() {
     let mut rng = ChaCha20Rng::from_seed(seed);
 
     let sec_key = SecretKey::with_rng(&mut rng);
-    let pub_key = miden_lib::account::auth::PublicKeyCommitment::from(sec_key.public_key());
+    let pub_key = miden_objects::account::PublicKeyCommitment::from(sec_key.public_key());
     let auth_scheme: AuthScheme = AuthScheme::RpoFalcon512 { pub_key };
 
     // we need to use an initial seed to create the wallet account

@@ -4,7 +4,7 @@ use alloc::string::ToString;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use miden_objects::account::{AuthSecretKey, Signature};
+use miden_objects::account::{AuthSecretKey, PublicKeyCommitment, Signature};
 use miden_objects::crypto::SequentialCommit;
 use miden_objects::transaction::TransactionSummary;
 use miden_objects::{Felt, Hasher, Word};
@@ -139,9 +139,9 @@ pub trait TransactionAuthenticator {
     ///   signature computation.
     fn get_signature(
         &self,
-        pub_key: Word,
+        pub_key_commitment: PublicKeyCommitment,
         signing_inputs: &SigningInputs,
-    ) -> impl FutureMaybeSend<Result<Vec<Felt>, AuthenticationError>>;
+    ) -> impl FutureMaybeSend<Result<Signature, AuthenticationError>>;
 }
 
 /// A placeholder type for the generic trait bound of `TransactionAuthenticator<'_,'_,_,T>`
@@ -158,9 +158,9 @@ impl TransactionAuthenticator for UnreachableAuth {
     #[allow(clippy::manual_async_fn)]
     fn get_signature(
         &self,
-        _pub_key: Word,
+        _pub_key_commitment: PublicKeyCommitment,
         _signing_inputs: &SigningInputs,
-    ) -> impl FutureMaybeSend<Result<Vec<Felt>, AuthenticationError>> {
+    ) -> impl FutureMaybeSend<Result<Signature, AuthenticationError>> {
         async { unreachable!("Type `UnreachableAuth` must not be instantiated") }
     }
 }
@@ -217,13 +217,14 @@ impl<R: Rng + Send + Sync> TransactionAuthenticator for BasicAuthenticator<R> {
     /// [`AuthenticationError::UnknownPublicKey`] is returned.
     fn get_signature(
         &self,
-        pub_key: Word,
+        pub_key_commitment: PublicKeyCommitment,
         signing_inputs: &SigningInputs,
-    ) -> impl FutureMaybeSend<Result<Vec<Felt>, AuthenticationError>> {
+    ) -> impl FutureMaybeSend<Result<Signature, AuthenticationError>> {
         let message = signing_inputs.to_commitment();
 
         async move {
             let mut rng = self.rng.write().await;
+            let pub_key: Word = pub_key_commitment.into();
             match self.keys.get(&pub_key) {
                 Some(key) => {
                     let signature: Signature = match key {
@@ -231,7 +232,7 @@ impl<R: Rng + Send + Sync> TransactionAuthenticator for BasicAuthenticator<R> {
                             falcon_key.sign_with_rng(message, &mut *rng).into()
                         },
                     };
-                    Ok(signature.to_prepared_signature())
+                    Ok(signature)
                 },
                 None => Err(AuthenticationError::UnknownPublicKey(format!(
                     "public key {pub_key} is not contained in the authenticator's keys",
@@ -248,9 +249,9 @@ impl TransactionAuthenticator for () {
     #[allow(clippy::manual_async_fn)]
     fn get_signature(
         &self,
-        _pub_key: Word,
+        _pub_key_commitment: PublicKeyCommitment,
         _signing_inputs: &SigningInputs,
-    ) -> impl FutureMaybeSend<Result<Vec<Felt>, AuthenticationError>> {
+    ) -> impl FutureMaybeSend<Result<Signature, AuthenticationError>> {
         async {
             Err(AuthenticationError::RejectedSignature(
                 "default authenticator cannot provide signatures".to_string(),

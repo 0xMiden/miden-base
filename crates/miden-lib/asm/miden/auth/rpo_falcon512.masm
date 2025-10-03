@@ -9,9 +9,6 @@ use.std::crypto::dsa::rpo_falcon512
 # The event to request an authentication signature.
 const.AUTH_REQUEST_EVENT=event("miden::auth::request")
 
-# The event emitted when a signature is not found for a required signer.
-const.AUTH_UNAUTHORIZED_EVENT=event("miden::auth::unauthorized")
-
 # The slot in this component's storage layout where the public key is stored.
 const.PUBLIC_KEY_SLOT=0
 
@@ -74,8 +71,8 @@ end
 
 #! Verify signatures for all required signers in a loop.
 #!
-#! This procedure iterates through the required number of signers, fetches their public keys
-#! from the provided account storage map slot, verifies their signatures against the transaction message,
+#! This procedure iterates through the required number of signers, fetches their public keys from
+#! the provided account storage map slot, verifies their signatures against the transaction message,
 #! and returns the number of successfully verified signatures.
 #!
 #! Note: Calls `account::get_map_item_init` to access the transaction's initial storage state

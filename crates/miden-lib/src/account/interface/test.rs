@@ -3,7 +3,13 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use assert_matches::assert_matches;
-use miden_objects::account::{Account, AccountBuilder, AccountComponent, AccountType, StorageSlot};
+use miden_objects::account::{
+    AccountBuilder,
+    AccountComponent,
+    AccountType,
+    PublicKeyCommitment,
+    StorageSlot,
+};
 use miden_objects::assembly::diagnostics::NamedSource;
 use miden_objects::assembly::{Assembler, DefaultSourceManager};
 use miden_objects::asset::{FungibleAsset, NonFungibleAsset, TokenSymbol};
@@ -25,12 +31,7 @@ use miden_objects::testing::account_id::{
 use miden_objects::{AccountError, Felt, NoteError, Word, ZERO};
 
 use crate::AuthScheme;
-use crate::account::auth::{
-    AuthRpoFalcon512,
-    AuthRpoFalcon512Multisig,
-    NoAuth,
-    PublicKeyCommitment,
-};
+use crate::account::auth::{AuthRpoFalcon512, AuthRpoFalcon512Multisig, NoAuth};
 use crate::account::faucets::BasicFungibleFaucet;
 use crate::account::interface::{
     AccountComponentInterface,
@@ -39,6 +40,7 @@ use crate::account::interface::{
 };
 use crate::account::wallets::BasicWallet;
 use crate::note::{create_p2id_note, create_p2ide_note, create_swap_note};
+use crate::testing::account_interface::get_public_keys_from_account;
 use crate::transaction::TransactionKernel;
 use crate::utils::ScriptBuilder;
 
@@ -869,26 +871,6 @@ fn test_account_interface_get_auth_scheme() {
 
     // Note: We don't test the case where an account has no auth components because
     // accounts are required to have auth components in the current system design
-}
-
-fn get_public_keys_from_account(account: &Account) -> Vec<Word> {
-    let mut pub_keys = vec![];
-    let interface: AccountInterface = account.into();
-
-    for auth in interface.auth() {
-        match auth {
-            AuthScheme::NoAuth => {},
-            AuthScheme::RpoFalcon512 { pub_key } => pub_keys.push(Word::from(*pub_key)),
-            AuthScheme::RpoFalcon512Multisig { pub_keys: multisig_keys, .. } => {
-                for key in multisig_keys {
-                    pub_keys.push(Word::from(*key));
-                }
-            },
-            AuthScheme::Unknown => {},
-        }
-    }
-
-    pub_keys
 }
 
 #[test]

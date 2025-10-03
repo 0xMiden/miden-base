@@ -42,7 +42,56 @@ use crate::mock_chain::chain::AccountAuthenticator;
 use crate::utils::{create_p2any_note, create_spawn_note};
 use crate::{AccountState, Auth, MockChain};
 
-/// A builder for a [`MockChain`].
+/// A builder for a [`MockChain`]'s genesis block.
+///
+/// ## Example
+///
+/// ```
+/// # use anyhow::Result;
+/// # use miden_objects::{
+/// #    asset::{Asset, FungibleAsset},
+/// #    note::NoteType,
+/// # };
+/// # use miden_testing::{Auth, MockChain};
+/// #
+/// # fn main() -> Result<()> {
+/// let mut builder = MockChain::builder();
+/// let existing_wallet =
+///     builder.add_existing_wallet_with_assets(Auth::IncrNonce, [FungibleAsset::mock(500)])?;
+/// let new_wallet = builder.create_new_wallet(Auth::IncrNonce)?;
+///
+/// let existing_note = builder.add_p2id_note(
+///     existing_wallet.id(),
+///     new_wallet.id(),
+///     &[FungibleAsset::mock(100)],
+///     NoteType::Private,
+/// )?;
+/// let new_note = builder.create_p2id_note(
+///     existing_wallet.id(),
+///     new_wallet.id(),
+///     [FungibleAsset::mock(100)],
+///     NoteType::Private,
+/// )?;
+/// let chain = builder.build()?;
+///
+/// // The existing wallet and note should be part of the chain state.
+/// assert!(chain.committed_account(existing_wallet.id()).is_ok());
+/// assert!(chain.committed_notes().get(&existing_note.id()).is_some());
+///
+/// // The new wallet and note should *not* be part of the chain state - they must be created in
+/// // a transaction first.
+/// assert!(chain.committed_account(new_wallet.id()).is_err());
+/// assert!(chain.committed_notes().get(&new_note.id()).is_none());
+///
+/// # Ok(())
+/// # }
+/// ```
+///
+/// Note the distinction between `add_` and `create_` APIs. Any `add_` APIs will add something to
+/// the genesis chain state while `create_` APIs do not mutate the genesis state. The latter are
+/// simply convenient for creating accounts or notes that will be created by transactions.
+///
+/// See also the [`MockChain`] docs for examples on using the mock chain.
 #[derive(Debug, Clone)]
 pub struct MockChainBuilder {
     accounts: BTreeMap<AccountId, Account>,
