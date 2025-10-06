@@ -19,7 +19,7 @@ use.miden::contracts::faucets::network_fungible->faucet
 #! - any of the validations in the burn procedure fail.
 begin
     dropw
-    # => [pad(12)]
+    # => [pad(16)]
 
     # Call the faucet's burn procedure which handles all validations
     call.faucet::burn
@@ -27,5 +27,5 @@ begin
 
     # Clean up stack to return empty stack
     dropw
-    # => [pad(12)]
+    # => [pad(16)]
 end

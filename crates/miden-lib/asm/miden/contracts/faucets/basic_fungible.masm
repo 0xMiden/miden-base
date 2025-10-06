@@ -96,8 +96,8 @@ end
 #! This procedure retrieves the asset from the active note and burns it. The note must contain
 #! exactly one asset, which must be a fungible asset issued by this faucet.
 #!
-#! Inputs:  []
-#! Outputs: [ASSET]
+#! Inputs:  [pad(16)]
+#! Outputs: [ASSET, pad(12)]
 #!
 #! Where:
 #! - ASSET is the fungible asset that was burned.
