@@ -130,8 +130,8 @@ impl SyncHost for MockHost {
             TransactionEvent::AccountPushProcedureIndex => {
                 self.on_push_account_procedure_index(process)
             },
-            TransactionEvent::LinkMapSetEvent => LinkMap::handle_set_event(process),
-            TransactionEvent::LinkMapGetEvent => LinkMap::handle_get_event(process),
+            TransactionEvent::LinkMapSet => LinkMap::handle_set_event(process),
+            TransactionEvent::LinkMapGet => LinkMap::handle_get_event(process),
             _ => Ok(Vec::new()),
         }?;
 
