@@ -26,6 +26,8 @@ proc.is_owner
     exec.account::get_item
     # => [owner_suffix, owner_prefix, 0, 0]
 
+    push.111 debug.stack drop
+
     exec.active_note::get_sender
     # => [sender_suffix, sender_prefix, owner_suffix, owner_prefix, 0, 0]
 

@@ -455,7 +455,7 @@ fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
     let source_code = r#"
       use.miden::auth
       use.miden::tx
-      const.ABORT_EVENT=event("miden::auth::unauthorized")
+      const.AUTH_UNAUTHORIZED_EVENT=event("miden::auth::unauthorized")
       #! Inputs:  [AUTH_ARGS, pad(12)]
       #! Outputs: [pad(16)]
       export.auth_abort_tx
@@ -475,7 +475,7 @@ fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
           exec.auth::hash_tx_summary
           # => [MESSAGE, pad(16)]
 
-          emit.ABORT_EVENT
+          emit.AUTH_UNAUTHORIZED_EVENT
       end
     "#;
 

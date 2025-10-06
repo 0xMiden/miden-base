@@ -3,7 +3,13 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use miden_lib::transaction::{EventId, TransactionAdviceInputs};
-use miden_objects::account::{AccountCode, AccountDelta, AccountId, PartialAccount};
+use miden_objects::account::{
+    AccountCode,
+    AccountDelta,
+    AccountId,
+    PartialAccount,
+    PublicKeyCommitment,
+};
 use miden_objects::assembly::debuginfo::Location;
 use miden_objects::assembly::{SourceFile, SourceManagerSync, SourceSpan};
 use miden_objects::asset::{Asset, AssetWitness, FungibleAsset};
@@ -182,7 +188,7 @@ where
             self.authenticator.ok_or(TransactionKernelError::MissingAuthenticator)?;
 
         let signature: Vec<Felt> = authenticator
-            .get_signature(pub_key_hash, &signing_inputs)
+            .get_signature(PublicKeyCommitment::from(pub_key_hash), &signing_inputs)
             .await
             .map_err(TransactionKernelError::SignatureGenerationFailed)?
             .to_prepared_signature();

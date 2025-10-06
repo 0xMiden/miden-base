@@ -3,7 +3,13 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use assert_matches::assert_matches;
-use miden_objects::account::{AccountBuilder, AccountComponent, AccountType, StorageSlot};
+use miden_objects::account::{
+    AccountBuilder,
+    AccountComponent,
+    AccountType,
+    PublicKeyCommitment,
+    StorageSlot,
+};
 use miden_objects::assembly::diagnostics::NamedSource;
 use miden_objects::assembly::{Assembler, DefaultSourceManager};
 use miden_objects::asset::{FungibleAsset, NonFungibleAsset, TokenSymbol};
@@ -25,12 +31,7 @@ use miden_objects::testing::account_id::{
 use miden_objects::{AccountError, Felt, NoteError, Word, ZERO};
 
 use crate::AuthScheme;
-use crate::account::auth::{
-    AuthRpoFalcon512,
-    AuthRpoFalcon512Multisig,
-    NoAuth,
-    PublicKeyCommitment,
-};
+use crate::account::auth::{AuthRpoFalcon512, AuthRpoFalcon512Multisig, NoAuth};
 use crate::account::faucets::BasicFungibleFaucet;
 use crate::account::interface::{
     AccountComponentInterface,

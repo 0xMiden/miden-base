@@ -128,6 +128,10 @@ pub enum TransactionExecutorError {
     // It is boxed to avoid triggering clippy::result_large_err for functions that return this type.
     #[error("transaction is unauthorized with summary {0:?}")]
     Unauthorized(Box<TransactionSummary>),
+    #[error(
+        "failed to respond to signature requested since no authenticator is assigned to the host"
+    )]
+    MissingAuthenticator,
 }
 
 // TRANSACTION PROVER ERROR
