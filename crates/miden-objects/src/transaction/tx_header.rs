@@ -3,12 +3,12 @@ use alloc::vec::Vec;
 use miden_processor::DeserializationError;
 
 use crate::Word;
-use crate::note::NoteId;
+use crate::note::{NoteId, NoteMetadata};
 use crate::transaction::{
     AccountId,
     InputNoteCommitment,
     Nullifier,
-    OutputNote,
+    OutputNotes,
     ProvenTransaction,
     TransactionId,
 };
@@ -28,7 +28,7 @@ pub struct TransactionHeader {
     initial_state_commitment: Word,
     final_state_commitment: Word,
     input_notes: Vec<Nullifier>,
-    output_notes: Vec<NoteId>,
+    output_notes: Vec<(NoteId, NoteMetadata)>,
 }
 
 impl TransactionHeader {
@@ -47,8 +47,11 @@ impl TransactionHeader {
         initial_state_commitment: Word,
         final_state_commitment: Word,
         input_notes: Vec<Nullifier>,
-        output_notes: Vec<NoteId>,
+        output_notes: Vec<(NoteId, NoteMetadata)>,
     ) -> Self {
+        let _output_notes_commitment =
+            OutputNotes::compute_commitment(output_notes.iter().copied());
+
         Self {
             id,
             account_id,
@@ -67,7 +70,7 @@ impl TransactionHeader {
         initial_state_commitment: Word,
         final_state_commitment: Word,
         input_notes: Vec<Nullifier>,
-        output_notes: Vec<NoteId>,
+        output_notes: Vec<(NoteId, NoteMetadata)>,
     ) -> Self {
         Self::new(
             id,
@@ -112,11 +115,14 @@ impl TransactionHeader {
         &self.input_notes
     }
 
-    /// Returns a reference to the notes created by the transaction.
+    /// Returns a reference to the ID and metadata of the output notes created by the transaction.
+    ///
+    /// The returned output note data has the same order as the transaction from which it was
+    /// created.
     ///
     /// Note that the note may have been erased at the batch or block level, so it may not be
     /// present there.
-    pub fn output_notes(&self) -> &[NoteId] {
+    pub fn output_notes(&self) -> &[(NoteId, NoteMetadata)] {
         &self.output_notes
     }
 }
@@ -129,7 +135,10 @@ impl From<&ProvenTransaction> for TransactionHeader {
             tx.account_update().initial_state_commitment(),
             tx.account_update().final_state_commitment(),
             tx.input_notes().iter().map(InputNoteCommitment::nullifier).collect(),
-            tx.output_notes().iter().map(OutputNote::id).collect(),
+            tx.output_notes()
+                .iter()
+                .map(|output_note| (output_note.id(), *output_note.metadata()))
+                .collect(),
         )
     }
 }
@@ -155,7 +164,7 @@ impl Deserializable for TransactionHeader {
         let initial_state_commitment = <Word>::read_from(source)?;
         let final_state_commitment = <Word>::read_from(source)?;
         let input_notes = <Vec<Nullifier>>::read_from(source)?;
-        let output_notes = <Vec<NoteId>>::read_from(source)?;
+        let output_notes = <Vec<(NoteId, NoteMetadata)>>::read_from(source)?;
 
         Ok(Self::new(
             id,
