@@ -503,6 +503,18 @@ export.get_init_account_vault_root
     padw mem_loadw.INIT_NATIVE_ACCOUNT_VAULT_ROOT_PTR
 end
 
+#! Returns a memory address of vault root of the native account at the beginning of the transaction.
+#!
+#! Inputs:  []
+#! Outputs: [INIT_NATIVE_ACCOUNT_VAULT_ROOT_PTR]
+#!
+#! Where:
+#! - INIT_NATIVE_ACCOUNT_VAULT_ROOT_PTR is the memory pointer to the initial vault root of the 
+#!   native account.
+export.get_init_account_vault_root_ptr
+    push.INIT_NATIVE_ACCOUNT_VAULT_ROOT_PTR
+end
+
 #! Sets the storage commitment of the native account at the beginning of the transaction.
 #!
 #! Inputs:  [INIT_NATIVE_ACCOUNT_STORAGE_COMMITMENT]

@@ -52,10 +52,26 @@ const.INVERSE_FUNGIBLE_BITMASK_U32=0xffffffdf # last byte: 0b1101_1111
 #! - balance is the vault balance of the fungible asset.
 #!
 #! Panics if:
-#! - the asset is not a fungible asset.
+#! - the provided faucet ID is not an ID of a fungible faucet.
 export.get_balance
-    # get the asset associated with the provided faucet ID
-    exec.get_fungible_asset
+    # assert that the faucet id is a fungible faucet
+    dup exec.account_id::is_fungible_faucet
+
+    # `get_fungible_asset` is only called from `get_balance` or `get_initial_balance` so it is
+    # correct to return an error related to the balance obtainment
+    assert.err=ERR_VAULT_GET_BALANCE_CAN_ONLY_BE_CALLED_ON_FUNGIBLE_ASSET
+    # => [faucet_id_prefix, faucet_id_suffix, vault_root_ptr]
+
+    # load the asset vault root from memory
+    padw movup.6 mem_loadw
+    # => [ASSET_VAULT_ROOT, faucet_id_prefix, faucet_id_suffix]
+
+    # prepare the key for fungible asset lookup (pad least significant elements with zeros)
+    push.0.0 movup.7 movup.7
+    # => [faucet_id_prefix, faucet_id_suffix, 0, 0, ASSET_VAULT_ROOT]
+
+    # lookup asset
+    exec.smt::get swapw dropw
     # => [ASSET]
 
     # extract the asset's balance
@@ -114,41 +130,6 @@ export.peek_balance
     # extract the asset's balance
     exec.::$kernel::util::asset::get_balance_from_fungible_asset
     # => [balance]
-end
-
-#! Returns the fungible asset associated with a faucet_id.
-#!
-#! Inputs:  [faucet_id_prefix, faucet_id_suffix, vault_root_ptr]
-#! Outputs: [ASSET]
-#!
-#! Where:
-#! - vault_root_ptr is a pointer to the memory location at which the vault root is stored.
-#! - faucet_id_{prefix, suffix} are the prefix and suffix felts of the faucet id of the fungible
-#!   asset of interest.
-#! - ASSET is the fungible asset of interest.
-#!
-#! Panics if:
-#! - the asset is not a fungible asset.
-export.get_fungible_asset
-    # assert that the faucet id is a fungible faucet
-    dup exec.account_id::is_fungible_faucet
-
-    # `get_fungible_asset` is only called from `get_balance` or `get_initial_balance` so it is
-    # correct to return an error related to the balance obtainment
-    assert.err=ERR_VAULT_GET_BALANCE_CAN_ONLY_BE_CALLED_ON_FUNGIBLE_ASSET
-    # => [faucet_id_prefix, faucet_id_suffix, vault_root_ptr]
-
-    # load the asset vault root from memory
-    padw movup.6 mem_loadw
-    # => [ASSET_VAULT_ROOT, faucet_id_prefix, faucet_id_suffix]
-
-    # prepare the key for fungible asset lookup (pad least significant elements with zeros)
-    push.0.0 movup.7 movup.7
-    # => [faucet_id_prefix, faucet_id_suffix, 0, 0, ASSET_VAULT_ROOT]
-
-    # lookup asset
-    exec.smt::get swapw dropw
-    # => [ASSET]
 end
 
 #! Returns a boolean indicating whether the non-fungible asset is present in the vault.

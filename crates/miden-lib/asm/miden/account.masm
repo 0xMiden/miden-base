@@ -518,7 +518,7 @@ end
 #! - balance is the vault balance of the fungible asset.
 #!
 #! Panics if:
-#! - the asset is not a fungible asset.
+#! - the provided faucet ID is not an ID of a fungible faucet.
 #!
 #! Invocation: exec
 export.get_balance
@@ -537,8 +537,8 @@ export.get_balance
     # => [balance]
 end
 
-#! Returns the balance of a fungible asset associated with a faucet_id at the beginning of the 
-#! transaction.
+#! Returns the balance of a fungible asset associated with a faucet_id in the native account's vault
+#! at the beginning of the transaction.
 #!
 #! Inputs:  [faucet_id_prefix, faucet_id_suffix]
 #! Outputs: [init_balance]
@@ -549,7 +549,9 @@ end
 #! - init_balance is the vault balance of the fungible asset at the beginning of the transaction.
 #!
 #! Panics if:
-#! - the asset is not a fungible asset.
+#! - the provided faucet ID is not an ID of a fungible faucet.
+#!
+#! Invocation: exec
 export.get_initial_balance
     exec.kernel_proc_offsets::account_get_initial_balance_offset
     # => [offset, faucet_id_prefix, faucet_id_suffix]

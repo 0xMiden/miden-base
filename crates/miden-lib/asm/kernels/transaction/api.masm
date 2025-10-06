@@ -637,7 +637,7 @@ end
 #! - balance is the vault balance of the fungible asset.
 #!
 #! Panics if:
-#! - the asset is not a fungible asset.
+#! - the provided faucet ID is not an ID of a fungible faucet.
 #!
 #! Invocation: dynexec
 export.account_get_balance
@@ -645,7 +645,7 @@ export.account_get_balance
     # => [balance, pad(15)]
 end
 
-#! Returns the balance of the fungible asset associated with the provided faucet_id in the current
+#! Returns the balance of the fungible asset associated with the provided faucet_id in the native
 #! account's vault at the beginning of the transaction.
 #!
 #! Inputs:  [faucet_id_prefix, faucet_id_suffix, pad(14)]
@@ -657,7 +657,7 @@ end
 #! - init_balance is the vault balance of the fungible asset at the beginning of the transaction.
 #!
 #! Panics if:
-#! - the asset is not a fungible asset.
+#! - the provided faucet ID is not an ID of a fungible faucet.
 #!
 #! Invocation: dynexec
 export.account_get_initial_balance
