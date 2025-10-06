@@ -8,6 +8,7 @@ use miden_objects::account::{
     Account,
     AccountDelta,
     AccountStorage,
+    NamedStorageSlot,
     PartialAccount,
     PartialStorage,
     PartialStorageMap,
@@ -216,17 +217,21 @@ fn partial_storage_to_full(
 ) -> Result<AccountStorage, AccountError> {
     let (_, header, mut maps) = partial_storage.into_parts();
     let mut storage_slots = Vec::new();
-    for (slot_type, slot_value) in header.slots() {
+    for (slot_name, slot_type, slot_value) in header.slots() {
         match slot_type {
             StorageSlotType::Value => {
-                storage_slots.push(StorageSlot::Value(*slot_value));
+                storage_slots.push(NamedStorageSlot::new(
+                    slot_name.clone(),
+                    StorageSlot::Value(*slot_value),
+                ));
             },
             StorageSlotType::Map => {
                 let storage_map =
                     maps.remove(slot_value)
                         .map(partial_storage_map_to_storage_map)
                         .expect("partial storage map should be present in partial storage")?;
-                storage_slots.push(StorageSlot::Map(storage_map));
+                storage_slots
+                    .push(NamedStorageSlot::new(slot_name.clone(), StorageSlot::Map(storage_map)));
             },
         }
     }

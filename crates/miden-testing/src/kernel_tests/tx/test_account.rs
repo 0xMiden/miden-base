@@ -28,6 +28,8 @@ use miden_objects::account::{
     AccountStorage,
     AccountStorageMode,
     AccountType,
+    NamedStorageSlot,
+    SlotName,
     StorageSlot,
 };
 use miden_objects::assembly::diagnostics::{IntoDiagnostic, NamedSource, Report, WrapErr, miette};
@@ -784,7 +786,11 @@ fn create_procedure_metadata_test_account(
             .collect(),
     );
 
-    let storage = AccountStorage::new(vec![StorageSlot::Value(EMPTY_WORD)]).unwrap();
+    let storage = AccountStorage::new(vec![NamedStorageSlot::new(
+        SlotName::from_static_str("test::name"),
+        StorageSlot::Value(EMPTY_WORD),
+    )])
+    .unwrap();
 
     let seed = AccountId::compute_account_seed(
         [9; 32],
@@ -1037,6 +1043,33 @@ fn proven_tx_storage_map_matches_executed_tx_for_new_account() -> anyhow::Result
     for (idx, slot) in new_account.storage().slots().iter().enumerate() {
         assert_eq!(slot, &account.storage().slots()[idx], "slot {idx} did not match");
     }
+
+    Ok(())
+}
+
+/// TODO
+#[tokio::test]
+async fn create_account_with_named_storage_slots() -> anyhow::Result<()> {
+    let account = AccountBuilder::new([5; 32])
+        .account_type(AccountType::RegularAccountUpdatableCode)
+        .with_auth_component(Auth::IncrNonce)
+        .with_component(MockAccountComponent::with_empty_slots())
+        .build_existing()
+        .context("failed to build account")?;
+
+    const COUNTER_SLOT: SlotName = SlotName::from_static_str("miden::test::counter");
+    const MAP_SLOT: SlotName = SlotName::from_static_str("miden::test::map");
+
+    let slots = vec![
+        NamedStorageSlot::new(MAP_SLOT, StorageSlot::empty_map()),
+        NamedStorageSlot::new(COUNTER_SLOT, StorageSlot::empty_value()),
+    ];
+    let storage = AccountStorage::new(slots)?;
+
+    let (id, vault, _storage, code, nonce, _seed) = account.into_parts();
+    let account = Account::new_existing(id, vault, storage, code, nonce);
+
+    TransactionContextBuilder::new(account).build()?.execute().await?;
 
     Ok(())
 }

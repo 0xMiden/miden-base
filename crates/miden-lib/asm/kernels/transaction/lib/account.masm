@@ -3,8 +3,8 @@ use.$kernel::account_id
 use.$kernel::asset_vault
 use.$kernel::constants
 use.$kernel::memory
-use.std::collections::mmr
 use.std::collections::smt
+use.std::collections::sorted_array
 use.std::crypto::hashes::rpo
 use.std::mem
 
@@ -1237,6 +1237,46 @@ end
 # HELPER PROCEDURES
 # =================================================================================================
 
+#! Finds the slot identified by the key constructed from the name ID and slot type and returns the
+#! pointer to that slot.
+#!
+#! Inputs:  [storage_slots_ptr, name_id_prefix, name_id_suffix, slot_type]
+#! Outputs: [slot_ptr]
+#!
+#! Where:
+#! - storage_slots_ptr is the pointer to the storage slots section.
+#! - slot_ptr is the pointer to the resolved storage slot.
+#! - slot_type is the type of the storage slot.
+#! - name_id_{prefix, suffix} are the prefix and suffix felts of the name identifier, which are
+#!   the first two felts of the hashed slot name.
+proc.get_storage_slot_ptr
+    # construct the start and end pointers of the storage slot section in which we will search
+    dup exec.memory::get_num_storage_slots mul.8 add
+    # => [storage_slots_end_ptr, storage_slots_start_ptr, name_id_prefix, name_id_suffix, slot_type]
+
+    # TODO: Check if we can get here if num_storage_slots == 0. If so, return a better error than
+    # what find_key_value returns.
+
+    movdn.4 movdn.3
+    # => [name_id_prefix, name_id_suffix, slot_type, storage_slots_start_ptr, storage_slots_end_ptr]
+
+    # construct the slot key for the lookup
+    push.0 movdn.3
+    # => [[name_id_prefix, name_id_suffix, slot_type, 0], storage_slots_start_ptr, storage_slots_end_ptr]
+    # => [SLOT_KEY, storage_slots_start_ptr, storage_slots_end_ptr]
+
+    # find the slot with the constructed SLOT_KEY
+    # if the SLOT_KEY does not exist, this procedure will validate its absence
+    exec.sorted_array::find_key_value
+    # => [is_slot_found, slot_ptr, storage_slots_start_ptr, storage_slots_end_ptr]
+
+    assert.err="TODO: storage slot with the provided name and slot type does not exist"
+    # => [slot_ptr, storage_slots_start_ptr, storage_slots_end_ptr]
+
+    swap.2 drop drop
+    # => [slot_ptr]
+end
+
 #! Gets an item from storage using the provided storage slots pointer and index.
 #!
 #! Note:
@@ -1250,8 +1290,90 @@ end
 #! - index is the index of the item to get.
 #! - VALUE is the value of the item.
 export.get_item_raw
+    exec.constants::get_storage_slot_type_value
+    # => [value_slot_type, storage_slots_ptr, index]
+
+    # set the suffix to 0 temporarily
+    push.0 movup.3
+    # => [name_id_prefix = index, name_id_suffix = 0, value_slot_type, storage_slots_ptr]
+
+    movup.3
+    # => [storage_slots_ptr, name_id_prefix = index, name_id_suffix = 0, value_slot_type]
+
+    exec.get_storage_slot_ptr
+    # => [slot_ptr]
+
+    # offset the pointer to point to the VALUE in the slot
+    add.4
+    # => [slot_value_ptr]
+
+    # load the item from storage
+    padw movup.4 mem_loadw
+    # => [VALUE]
+end
+
+#! Gets an item from the storage slot at the provided index.
+#!
+#! WARNING: The index must be in bounds.
+#!
+#! Inputs:  [index]
+#! Outputs: [VALUE]
+#!
+#! Where:
+#! - storage_slots_ptr is the pointer to the storage slots section.
+#! - index is the index of the item to get.
+#! - VALUE is the value of the item.
+export.get_item_by_index
+    # get account storage slots section offset
+    exec.memory::get_account_storage_slots_section_ptr
+    # => [acct_storage_slots_section_offset, index]
+
+    exec.get_item_by_index_raw
+    # => [VALUE]
+end
+
+#! Gets an item from the storage slot at the provided index.
+#!
+#! WARNING: The index must be in bounds.
+#!
+#! Inputs:  [index]
+#! Outputs: [VALUE]
+#!
+#! Where:
+#! - storage_slots_ptr is the pointer to the storage slots section.
+#! - index is the index of the item to get.
+#! - VALUE is the value of the item.
+export.get_item_init_by_index
+    # get account initial storage slots section offset
+    exec.memory::get_account_initial_storage_slots_ptr
+    # => [account_initial_storage_slots_ptr, index]
+
+    exec.get_item_by_index_raw
+    # => [VALUE]
+end
+
+#! Gets an item from storage using the provided storage slots pointer and index.
+#!
+#! WARNING: The index must be in bounds.
+#!
+#! Inputs:  [storage_slots_ptr, index]
+#! Outputs: [VALUE]
+#!
+#! Where:
+#! - storage_slots_ptr is the pointer to the storage slots section.
+#! - index is the index of the item to get.
+#! - VALUE is the value of the item.
+proc.get_item_by_index_raw
     # get the item from storage
-    swap mul.8 add padw movup.4 mem_loadw
+    swap mul.8 add
+    # => [storage_slot_ptr]
+
+    # offset the pointer to point to the VALUE in the slot
+    add.4
+    # => [slot_value_ptr]
+
+    # load the item from storage
+    padw movup.4 mem_loadw
     # => [VALUE]
 end
 

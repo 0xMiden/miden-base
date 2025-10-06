@@ -285,7 +285,7 @@ impl DataStore for TransactionContext {
                     .storage()
                     .slots()
                     .iter()
-                    .find_map(|slot| match slot {
+                    .find_map(|slot| match slot.storage() {
                         StorageSlot::Map(storage_map) if storage_map.root() == map_root => {
                             Some(storage_map)
                         },

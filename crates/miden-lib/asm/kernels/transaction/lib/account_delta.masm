@@ -171,10 +171,10 @@ end
 #! Inputs:  [slot_idx, RATE, RATE, PERM]
 #! Outputs: [RATE, RATE, PERM]
 proc.update_value_slot_delta
-    dup exec.account::get_item
+    dup exec.account::get_item_by_index
     # => [CURRENT_VALUE, slot_idx, RATE, RATE, PERM]
 
-    dup.4 exec.account::get_item_init
+    dup.4 exec.account::get_item_init_by_index
     # => [INIT_VALUE, CURRENT_VALUE, slot_idx, RATE, RATE, PERM]
 
     exec.word::test_eq not

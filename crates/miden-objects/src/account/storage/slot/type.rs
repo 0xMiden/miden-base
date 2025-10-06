@@ -22,6 +22,14 @@ pub enum StorageSlotType {
 }
 
 impl StorageSlotType {
+    pub fn as_felt(&self) -> Felt {
+        match self {
+            StorageSlotType::Value => Felt::from(0u32),
+            StorageSlotType::Map => Felt::from(1u32),
+        }
+    }
+
+    /// TODO: Rename
     /// Returns storage slot type as a [Word]
     pub fn as_word(&self) -> Word {
         match self {

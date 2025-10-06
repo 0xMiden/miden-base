@@ -1316,8 +1316,12 @@ end
 #! - index is the location in memory of the storage slot.
 #! - slot_type is the type of the storage slot.
 export.get_storage_slot_type
-    # get storage slot type
-    swap mul.8 add add.4 mem_load
+    # compute storage slot ptr
+    swap mul.8 add
+    # => [storage_slot_ptr]
+
+    # load the slot type
+    add.2 mem_load
     # => [slot_type]
 end
 

@@ -1,7 +1,12 @@
 use alloc::borrow::Cow;
-use alloc::string::String;
+use alloc::string::{String, ToString};
+use core::fmt::Display;
 
+use miden_core::utils::hash_string_to_word;
+
+use crate::account::storage::slot::SlotNameId;
 use crate::errors::SlotNameError;
+use crate::utils::serde::{ByteWriter, Deserializable, DeserializationError, Serializable};
 
 /// The name of an account storage slot.
 ///
@@ -85,6 +90,15 @@ impl SlotName {
     /// Returns the slot name as a string slice.
     pub fn as_str(&self) -> &str {
         &self.name
+    }
+
+    /// TODO: Rename to compute_id
+    pub fn id(&self) -> SlotNameId {
+        let hashed_word = hash_string_to_word(self.as_str());
+        let prefix = hashed_word[0];
+        let suffix = hashed_word[1];
+
+        SlotNameId::new(prefix, suffix)
     }
 
     // HELPERS
@@ -177,6 +191,36 @@ impl SlotName {
         byte.is_ascii_alphanumeric() || byte == b'_'
     }
 }
+
+impl Display for SlotName {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl Serializable for SlotName {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        target.write(self.as_str().len());
+        target.write_many(self.as_str().as_bytes())
+    }
+}
+
+impl Deserializable for SlotName {
+    fn read_from<R: miden_core::utils::ByteReader>(
+        source: &mut R,
+    ) -> Result<Self, DeserializationError> {
+        // TODO: Enforce max length.
+        let len = source.read_u8()?;
+        let name = source.read_many(len as usize)?;
+        String::from_utf8(name)
+            .map_err(|err| DeserializationError::InvalidValue(err.to_string()))
+            .and_then(|name| {
+                Self::new(name).map_err(|err| DeserializationError::InvalidValue(err.to_string()))
+            })
+    }
+}
+
+// TODO: Test empty string
 
 // TESTS
 // ================================================================================================

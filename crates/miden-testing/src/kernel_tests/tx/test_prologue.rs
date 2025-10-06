@@ -72,6 +72,8 @@ use miden_objects::account::{
     AccountStorage,
     AccountStorageMode,
     AccountType,
+    NamedStorageSlot,
+    SlotName,
     StorageMap,
     StorageSlot,
 };
@@ -690,7 +692,11 @@ pub fn create_account_non_fungible_faucet_invalid_initial_reserved_slot() -> any
     let asset = NonFungibleAsset::mock(&[1, 2, 3, 4]);
     let non_fungible_storage_map =
         StorageMap::with_entries([(asset.vault_key(), asset.into())]).unwrap();
-    let storage = AccountStorage::new(vec![StorageSlot::Map(non_fungible_storage_map)]).unwrap();
+    let storage = AccountStorage::new(vec![NamedStorageSlot::new(
+        SlotName::from_static_str("test::slot_name"),
+        StorageSlot::Map(non_fungible_storage_map),
+    )])
+    .unwrap();
 
     let account = AccountBuilder::new([1; 32])
         .account_type(AccountType::NonFungibleFaucet)

@@ -5,6 +5,7 @@ use miden_objects::account::{
     AccountId,
     AccountStorage,
     AccountType,
+    NamedStorageSlot,
     StorageMap,
     StorageSlot,
 };
@@ -71,8 +72,11 @@ pub trait MockAccountExt {
         let asset = NonFungibleAsset::mock(&constants::NON_FUNGIBLE_ASSET_DATA_2);
         let non_fungible_storage_map =
             StorageMap::with_entries([(asset.vault_key(), asset.into())]).unwrap();
-        let storage =
-            AccountStorage::new(vec![StorageSlot::Map(non_fungible_storage_map)]).unwrap();
+        let storage = AccountStorage::new(vec![NamedStorageSlot::new(
+            NamedStorageSlot::FAUCET_RESERVED_SLOT_NAME,
+            StorageSlot::Map(non_fungible_storage_map),
+        )])
+        .unwrap();
 
         Account::new_existing(account_id, vault, storage, code, nonce)
     }
