@@ -40,6 +40,7 @@ pub use notes_checker::{
     MAX_NUM_CHECKER_NOTES,
     NoteConsumptionChecker,
     NoteConsumptionInfo,
+    NoteConsumptionStatus,
 };
 
 // TRANSACTION EXECUTOR
@@ -481,6 +482,9 @@ fn map_execution_error(exec_err: ExecutionError) -> TransactionExecutorError {
                         account_balance: *account_balance,
                         tx_fee: *tx_fee,
                     }
+                },
+                Some(TransactionKernelError::MissingAuthenticator) => {
+                    TransactionExecutorError::MissingAuthenticator
                 },
                 _ => TransactionExecutorError::TransactionProgramExecutionFailed(exec_err),
             }

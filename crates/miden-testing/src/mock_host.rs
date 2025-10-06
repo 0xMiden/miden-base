@@ -61,8 +61,8 @@ impl<'store> MockHost<'store> {
         handled_events.extend(
             [
                 &TransactionEvent::AccountPushProcedureIndex,
-                &TransactionEvent::LinkMapSetEvent,
-                &TransactionEvent::LinkMapGetEvent,
+                &TransactionEvent::LinkMapSet,
+                &TransactionEvent::LinkMapGet,
             ]
             .map(TransactionEvent::event_id),
         );
@@ -75,8 +75,8 @@ impl<'store> MockHost<'store> {
         self.handled_events.extend(
             [
                 &TransactionEvent::AccountBeforeForeignLoad,
-                &TransactionEvent::AccountVaultBeforeGetBalanceEvent,
-                &TransactionEvent::AccountVaultBeforeHasNonFungibleAssetEvent,
+                &TransactionEvent::AccountVaultBeforeGetBalance,
+                &TransactionEvent::AccountVaultBeforeHasNonFungibleAsset,
                 &TransactionEvent::AccountVaultBeforeAddAsset,
                 &TransactionEvent::AccountStorageBeforeSetMapItem,
                 &TransactionEvent::AccountStorageBeforeGetMapItem,

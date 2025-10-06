@@ -28,9 +28,9 @@ pub enum TransactionEvent {
     AccountVaultBeforeRemoveAsset = ACCOUNT_VAULT_BEFORE_REMOVE_ASSET,
     AccountVaultAfterRemoveAsset = ACCOUNT_VAULT_AFTER_REMOVE_ASSET,
 
-    AccountVaultBeforeGetBalanceEvent = ACCOUNT_VAULT_BEFORE_GET_BALANCE,
+    AccountVaultBeforeGetBalance = ACCOUNT_VAULT_BEFORE_GET_BALANCE,
 
-    AccountVaultBeforeHasNonFungibleAssetEvent = ACCOUNT_VAULT_BEFORE_HAS_NON_FUNGIBLE_ASSET,
+    AccountVaultBeforeHasNonFungibleAsset = ACCOUNT_VAULT_BEFORE_HAS_NON_FUNGIBLE_ASSET,
 
     AccountStorageBeforeSetItem = ACCOUNT_STORAGE_BEFORE_SET_ITEM,
     AccountStorageAfterSetItem = ACCOUNT_STORAGE_AFTER_SET_ITEM,
@@ -74,10 +74,10 @@ pub enum TransactionEvent {
     EpilogueAfterTxCyclesObtained = EPILOGUE_AFTER_TX_CYCLES_OBTAINED,
     EpilogueBeforeTxFeeRemovedFromAccount = EPILOGUE_BEFORE_TX_FEE_REMOVED_FROM_ACCOUNT,
 
-    LinkMapSetEvent = LINK_MAP_SET_EVENT,
-    LinkMapGetEvent = LINK_MAP_GET_EVENT,
+    LinkMapSet = LINK_MAP_SET,
+    LinkMapGet = LINK_MAP_GET,
 
-    Unauthorized = UNAUTHORIZED_EVENT,
+    Unauthorized = AUTH_UNAUTHORIZED,
 }
 
 impl TransactionEvent {
@@ -106,10 +106,7 @@ impl TryFrom<EventId> for TransactionEvent {
     fn try_from(value: EventId) -> Result<Self, Self::Error> {
         let raw = value.as_felt().as_int();
 
-        #[cfg(feature = "std")]
         let name = EVENT_NAME_LUT.get(&raw).copied();
-        #[cfg(not(feature = "std"))]
-        let name = Some("<EventId name resolution requires feature \"std\">");
 
         if value.is_reserved() {
             return Err(TransactionEventError::ReservedSystemEvent(value));
@@ -126,12 +123,10 @@ impl TryFrom<EventId> for TransactionEvent {
             },
             ACCOUNT_VAULT_AFTER_REMOVE_ASSET => Ok(TransactionEvent::AccountVaultAfterRemoveAsset),
 
-            ACCOUNT_VAULT_BEFORE_GET_BALANCE => {
-                Ok(TransactionEvent::AccountVaultBeforeGetBalanceEvent)
-            },
+            ACCOUNT_VAULT_BEFORE_GET_BALANCE => Ok(TransactionEvent::AccountVaultBeforeGetBalance),
 
             ACCOUNT_VAULT_BEFORE_HAS_NON_FUNGIBLE_ASSET => {
-                Ok(TransactionEvent::AccountVaultBeforeHasNonFungibleAssetEvent)
+                Ok(TransactionEvent::AccountVaultBeforeHasNonFungibleAsset)
             },
 
             ACCOUNT_STORAGE_BEFORE_SET_ITEM => Ok(TransactionEvent::AccountStorageBeforeSetItem),
@@ -184,10 +179,10 @@ impl TryFrom<EventId> for TransactionEvent {
             },
             EPILOGUE_END => Ok(TransactionEvent::EpilogueEnd),
 
-            LINK_MAP_SET_EVENT => Ok(TransactionEvent::LinkMapSetEvent),
-            LINK_MAP_GET_EVENT => Ok(TransactionEvent::LinkMapGetEvent),
+            LINK_MAP_SET => Ok(TransactionEvent::LinkMapSet),
+            LINK_MAP_GET => Ok(TransactionEvent::LinkMapGet),
 
-            UNAUTHORIZED_EVENT => Ok(TransactionEvent::Unauthorized),
+            AUTH_UNAUTHORIZED => Ok(TransactionEvent::Unauthorized),
 
             _ => Err(TransactionEventError::InvalidTransactionEvent(value, name)),
         }
