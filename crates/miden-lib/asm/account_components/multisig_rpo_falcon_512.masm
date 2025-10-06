@@ -54,7 +54,7 @@ const ERR_ZERO_IN_MULTISIG_CONFIG = "number of approvers or threshold must not b
 #!
 #! Panics if:
 #! - the same transaction has already been executed
-proc assert_new_tx(Msg: Word)
+proc assert_new_tx(msg: Word)
     push.IS_EXECUTED_FLAG
     # => [[0, 0, 0, is_executed], MSG]
 
@@ -143,7 +143,7 @@ end
 #! Locals:
 #! 0: new_num_of_approvers
 #! 1: init_num_of_approvers
-pub proc update_signers_and_threshold.2(Multisig_config_hash: Word)
+pub proc update_signers_and_threshold.2(multisig_config_hash: Word)
     adv.push_mapval
     # => [MULTISIG_CONFIG_HASH, pad(12)]
 
@@ -255,7 +255,7 @@ end
 #! - the same transaction has already been executed (replay protection).
 #!
 #! Invocation: call
-pub proc auth_tx_rpo_falcon512_multisig(Salt: Word)
+pub proc auth_tx_rpo_falcon512_multisig(salt: Word)
     exec.account::incr_nonce drop
     # => [SALT]
 

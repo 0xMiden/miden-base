@@ -28,7 +28,7 @@ const PUBLIC_KEY_SLOT = 0
 #! Outputs: [pad(16)]
 #!
 #! Invocation: call
-pub proc auth_tx_rpo_falcon512(Auth_args: Word)
+pub proc auth_tx_rpo_falcon512(auth_args: Word)
     dropw
     # => [pad(16)]
 

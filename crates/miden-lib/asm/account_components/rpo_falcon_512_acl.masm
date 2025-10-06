@@ -34,7 +34,7 @@ const AUTH_TRIGGER_PROCS_MAP_SLOT = 2
 #! Outputs: [pad(16)]
 #!
 #! Invocation: call
-pub proc auth_tx_rpo_falcon512_acl.2(Auth_args: Word)
+pub proc auth_tx_rpo_falcon512_acl.2(auth_args: Word)
     dropw
     # => [pad(16)]
 

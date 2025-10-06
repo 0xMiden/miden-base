@@ -815,17 +815,19 @@ fn extract_all_event_definitions(asm_source_dir: &Path) -> Result<BTreeMap<Strin
     Ok(events)
 }
 
-/// Extract `const.${X}=event("${x::path}")` definitions from a single MASM file
+/// Extract event definitions from a single MASM file in two possible forms:
+/// - `const.${X}=event("${x::path}")`
+/// - `const ${X} = event("${x::path}")`
 fn extract_event_definitions_from_file(
     events: &mut BTreeMap<String, String>,
     file_contents: &str,
     file_path: &Path,
 ) -> Result<()> {
-    let regex = Regex::new(r#"const\.(\w+)=event\("([^"]+)"\)"#).unwrap();
+    let regex = Regex::new(r#"const(\.|\ )(\w+)\ ?=\ ?event\("([^"]+)"\)"#).unwrap();
 
     for capture in regex.captures_iter(file_contents) {
-        let const_name = capture.get(1).expect("const name should be captured");
-        let event_path = capture.get(2).expect("event path should be captured");
+        let const_name = capture.get(2).expect("const name should be captured");
+        let event_path = capture.get(3).expect("event path should be captured");
 
         let event_path = event_path.as_str();
         let const_name = const_name.as_str();
