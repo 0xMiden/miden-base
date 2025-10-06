@@ -270,11 +270,11 @@ where
                 self.on_account_vault_after_remove_asset(process).map(|_| TransactionEventHandling::Handled(Vec::new()))
             },
 
-            TransactionEvent::AccountVaultBeforeGetBalanceEvent => {
+            TransactionEvent::AccountVaultBeforeGetBalance => {
                 self.on_account_vault_before_get_balance(process)
             },
 
-            TransactionEvent::AccountVaultBeforeHasNonFungibleAssetEvent => {
+            TransactionEvent::AccountVaultBeforeHasNonFungibleAsset => {
                 self.on_account_vault_before_has_non_fungible_asset(process)
             }
 
@@ -373,10 +373,10 @@ where
                 self.tx_progress.end_epilogue(process.clk());
                 Ok(TransactionEventHandling::Handled(Vec::new()))
             }
-            TransactionEvent::LinkMapSetEvent => {
+            TransactionEvent::LinkMapSet => {
                 return LinkMap::handle_set_event(process).map(TransactionEventHandling::Handled);
             },
-            TransactionEvent::LinkMapGetEvent => {
+            TransactionEvent::LinkMapGet => {
                 return LinkMap::handle_get_event(process).map(TransactionEventHandling::Handled);
             },
             TransactionEvent::Unauthorized => {

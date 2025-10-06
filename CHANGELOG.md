@@ -59,6 +59,7 @@
 - [BREAKING] Change the signature of TransactionAuthenticator to return the native signature ([#1945](https://github.com/0xMiden/miden-base/pull/1945)).
 - [BREAKING] Rename `MockChainBuilder::add_note` to `add_output_note` ([#1946](https://github.com/0xMiden/miden-base/pull/1946)).
 - Update the type signature syntax in the `account_components` module ([#1971](https://github.com/0xMiden/miden-base/pull/1971)).
+- Dynamically lookup all masm `EventId`s from source ([#1954](https://github.com/0xMiden/miden-base/pull/1954)).
 
 ## 0.11.5 (2025-10-02)
 
