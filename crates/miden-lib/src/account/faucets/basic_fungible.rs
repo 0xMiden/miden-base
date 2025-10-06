@@ -302,7 +302,7 @@ mod tests {
         TokenSymbol,
         create_basic_fungible_faucet,
     };
-    use crate::account::auth::{AuthRpoFalcon512, PublicKeyCommitment};
+    use crate::account::auth::AuthRpoFalcon512;
     use crate::account::wallets::BasicWallet;
 
     #[test]
@@ -380,7 +380,7 @@ mod tests {
     fn faucet_create_from_account() {
         // prepare the test data
         let mock_word = Word::from([0, 1, 2, 3u32]);
-        let mock_public_key = PublicKeyCommitment::from(mock_word);
+        let mock_public_key = miden_objects::account::PublicKeyCommitment::from(mock_word);
         let mock_seed = mock_word.as_bytes();
 
         // valid account

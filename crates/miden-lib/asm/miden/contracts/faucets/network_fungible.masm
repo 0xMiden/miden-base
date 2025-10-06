@@ -32,7 +32,7 @@ proc.is_owner
     exec.account_id::is_equal
     # => [are_equal, 0, 0]
 
-    swap drop swap drop
+    movdn.2 drop drop
     # => [is_owner]
 end
 

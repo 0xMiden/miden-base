@@ -210,15 +210,17 @@ impl WellKnownNote {
                 interface_proc_digests.contains(&BasicWallet::receive_asset_digest())
                     && interface_proc_digests.contains(&BasicWallet::move_asset_to_note_digest())
             },
-            Self::MINT | Self::BURN => {
-                // MINT and BURN notes are designed to work with fungible faucets.
-                // They require either the basic or network fungible faucet procedures.
-                // For MINT notes, the faucet needs the `distribute` procedure.
-                // For BURN notes, the faucet needs the `burn` procedure.
-                (interface_proc_digests.contains(&BasicFungibleFaucet::distribute_digest())
-                    || interface_proc_digests.contains(&NetworkFungibleFaucet::distribute_digest()))
-                    && (interface_proc_digests.contains(&BasicFungibleFaucet::burn_digest())
-                        || interface_proc_digests.contains(&NetworkFungibleFaucet::burn_digest()))
+            Self::MINT => {
+                // MINT notes require the `distribute` procedure from either basic or network
+                // fungible faucets
+                interface_proc_digests.contains(&BasicFungibleFaucet::distribute_digest())
+                    || interface_proc_digests.contains(&NetworkFungibleFaucet::distribute_digest())
+            },
+            Self::BURN => {
+                // BURN notes require the `burn` procedure from either basic or network fungible
+                // faucets
+                interface_proc_digests.contains(&BasicFungibleFaucet::burn_digest())
+                    || interface_proc_digests.contains(&NetworkFungibleFaucet::burn_digest())
             },
         }
     }
