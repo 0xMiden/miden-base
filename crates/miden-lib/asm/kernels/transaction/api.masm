@@ -1481,6 +1481,7 @@ export.account_get_procedure_root
 
     swapw dropw
     # => [PROC_ROOT, pad(13)]
+
     movup.4 drop
     # => [PROC_ROOT, pad(12)]
 end
