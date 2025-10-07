@@ -900,9 +900,7 @@ fn test_public_key_extraction_multisig_account() {
 
     // Create multisig component
     let multisig_component = AuthRpoFalcon512Multisig::new(
-        threshold,
-        approvers.clone(),
-        AuthRpoFalcon512MultisigConfig::default(),
+        AuthRpoFalcon512MultisigConfig::new(approvers.clone(), threshold).unwrap(),
     )
     .expect("multisig component creation failed");
 

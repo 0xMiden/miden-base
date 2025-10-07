@@ -296,13 +296,11 @@ pub fn create_basic_fungible_faucet(
         .into(),
         AuthScheme::RpoFalcon512Multisig { threshold, pub_keys } => {
             // TODO this means burning the asset requires m/n approvals. We should address this.
-            AuthRpoFalcon512Multisig::new(
-                threshold,
-                pub_keys,
-                AuthRpoFalcon512MultisigConfig::default(),
-            )
-            .map_err(FungibleFaucetError::AccountError)?
-            .into()
+            let config = AuthRpoFalcon512MultisigConfig::new(pub_keys, threshold)
+                .map_err(FungibleFaucetError::AccountError)?;
+            AuthRpoFalcon512Multisig::new(config)
+                .map_err(FungibleFaucetError::AccountError)?
+                .into()
         },
         AuthScheme::NoAuth => {
             return Err(FungibleFaucetError::UnsupportedAuthScheme(

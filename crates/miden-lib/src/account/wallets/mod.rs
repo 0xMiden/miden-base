@@ -130,9 +130,12 @@ pub fn create_basic_wallet(
     let auth_component: AccountComponent = match auth_scheme {
         AuthScheme::RpoFalcon512 { pub_key } => AuthRpoFalcon512::new(pub_key).into(),
         AuthScheme::RpoFalcon512Multisig { threshold, pub_keys } => {
-            let config =
-                AuthRpoFalcon512MultisigConfig::new(vec![(BasicWallet::receive_asset_digest(), 1)]);
-            AuthRpoFalcon512Multisig::new(threshold, pub_keys, config)
+            let config = AuthRpoFalcon512MultisigConfig::new(pub_keys, threshold)
+                .and_then(|cfg| {
+                    cfg.with_proc_thresholds(vec![(BasicWallet::receive_asset_digest(), 1)])
+                })
+                .map_err(BasicWalletError::AccountError)?;
+            AuthRpoFalcon512Multisig::new(config)
                 .map_err(BasicWalletError::AccountError)?
                 .into()
         },

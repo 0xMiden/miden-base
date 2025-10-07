@@ -80,13 +80,12 @@ impl Auth {
                 let pub_keys: Vec<_> =
                     approvers.iter().map(|word| PublicKeyCommitment::from(*word)).collect();
 
-                let component = AuthRpoFalcon512Multisig::new(
-                    *threshold,
-                    pub_keys,
-                    AuthRpoFalcon512MultisigConfig::new(proc_threshold_map.clone()),
-                )
-                .expect("multisig component creation failed")
-                .into();
+                let config = AuthRpoFalcon512MultisigConfig::new(pub_keys, *threshold)
+                    .and_then(|cfg| cfg.with_proc_thresholds(proc_threshold_map.clone()))
+                    .expect("invalid multisig config");
+                let component = AuthRpoFalcon512Multisig::new(config)
+                    .expect("multisig component creation failed")
+                    .into();
 
                 (component, None)
             },
