@@ -291,8 +291,8 @@ async fn prove_burning_fungible_asset_on_existing_faucet_succeeds() -> anyhow::R
 // ================================================================================================
 
 /// Tests minting on network faucet
-#[test]
-fn network_faucet_mint() -> anyhow::Result<()> {
+#[tokio::test]
+async fn network_faucet_mint() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
 
     let faucet_owner_account_id = AccountId::dummy(
@@ -359,7 +359,7 @@ fn network_faucet_mint() -> anyhow::Result<()> {
     // EXECUTE MINT NOTE AGAINST NETWORK FAUCET
     // --------------------------------------------------------------------------------------------
     let tx_context = mock_chain.build_tx_context(faucet.id(), &[mint_note.id()], &[])?.build()?;
-    let executed_transaction = tx_context.execute_blocking()?;
+    let executed_transaction = tx_context.execute().await?;
 
     // Check that a P2ID note was created by the faucet
     assert_eq!(executed_transaction.output_notes().num_notes(), 1);
@@ -379,8 +379,8 @@ fn network_faucet_mint() -> anyhow::Result<()> {
 }
 
 /// Tests burning on network faucet
-#[test]
-fn network_faucet_burn() -> anyhow::Result<()> {
+#[tokio::test]
+async fn network_faucet_burn() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
 
     let faucet_owner_account_id = AccountId::dummy(
@@ -421,7 +421,7 @@ fn network_faucet_burn() -> anyhow::Result<()> {
     // EXECUTE BURN NOTE AGAINST NETWORK FAUCET
     // --------------------------------------------------------------------------------------------
     let tx_context = mock_chain.build_tx_context(faucet.id(), &[note.id()], &[])?.build()?;
-    let executed_transaction = tx_context.execute_blocking()?;
+    let executed_transaction = tx_context.execute().await?;
 
     // Check that the burn was successful - no output notes should be created for burn
     assert_eq!(executed_transaction.output_notes().num_notes(), 0);
