@@ -243,7 +243,7 @@ impl LocalTransactionProver {
         &self,
         executed_transaction: ExecutedTransaction,
     ) -> Result<ProvenTransaction, TransactionProverError> {
-        let (account_delta, tx_outputs, tx_inputs, _) = executed_transaction.into_parts();
+        let (tx_inputs, tx_outputs, account_delta, _) = executed_transaction.into_parts();
 
         let (partial_account, ref_block, _, input_notes, _) = tx_inputs.into_parts();
 

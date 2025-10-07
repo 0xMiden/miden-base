@@ -164,8 +164,8 @@ impl ExecutedTransaction {
     /// Returns individual components of this transaction.
     pub fn into_parts(
         self,
-    ) -> (AccountDelta, TransactionOutputs, TransactionInputs, TransactionMeasurements) {
-        (self.account_delta, self.tx_outputs, self.tx_inputs, self.tx_measurements)
+    ) -> (TransactionInputs, TransactionOutputs, AccountDelta, TransactionMeasurements) {
+        (self.tx_inputs, self.tx_outputs, self.account_delta, self.tx_measurements)
     }
 }
 
@@ -184,7 +184,7 @@ impl From<ExecutedTransaction> for TransactionMeasurements {
 
 impl Serializable for ExecutedTransaction {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        self.tx_inputs().write_into(target);
+        self.tx_inputs.write_into(target);
         self.tx_outputs.write_into(target);
         self.account_delta.write_into(target);
         self.tx_measurements.write_into(target);

@@ -63,6 +63,8 @@ impl TransactionAdviceInputs {
 
         // Extend with extra user-supplied advice.
         inputs.extend(tx_inputs.tx_args().advice_inputs().clone());
+        inputs.extend(tx_inputs.advice_inputs().clone());
+
         Ok(inputs)
     }
 

@@ -397,7 +397,6 @@ fn build_executed_transaction<STORE: DataStore + Sync, AUTH: TransactionAuthenti
     // introduce generated signatures into the witness inputs
     advice_inputs.map.extend(generated_signatures);
 
-    // TODO: might need to update tx_inputs with foreign accounts etc
     tx_inputs.set_foreign_account_code(accessed_foreign_account_code);
     tx_inputs.set_advice_inputs(advice_inputs);
     Ok(ExecutedTransaction::new(

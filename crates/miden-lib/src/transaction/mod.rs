@@ -134,8 +134,7 @@ impl TransactionKernel {
             tx_inputs.block_header().block_num(),
         );
 
-        let mut tx_advice_inputs = TransactionAdviceInputs::new(tx_inputs)?;
-        tx_advice_inputs.extend(tx_inputs.advice_inputs().clone());
+        let tx_advice_inputs = TransactionAdviceInputs::new(tx_inputs)?;
 
         Ok((stack_inputs, tx_advice_inputs))
     }
