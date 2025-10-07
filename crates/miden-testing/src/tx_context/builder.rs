@@ -55,10 +55,14 @@ pub type MockAuthenticator = BasicAuthenticator<ChaCha20Rng>;
 ///
 /// Create a new account and execute code:
 /// ```
+/// # use anyhow::Result;
 /// # use miden_testing::TransactionContextBuilder;
 /// # use miden_objects::{account::AccountBuilder,Felt, FieldElement};
 /// # use miden_lib::transaction::TransactionKernel;
-/// let tx_context = TransactionContextBuilder::with_existing_mock_account().build().unwrap();
+/// #
+/// # #[tokio::main(flavor = "current_thread")]
+/// # async fn main() -> Result<()> {
+/// let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 ///
 /// let code = "
 /// use.$kernel::prologue
@@ -71,8 +75,10 @@ pub type MockAuthenticator = BasicAuthenticator<ChaCha20Rng>;
 /// end
 /// ";
 ///
-/// let exec_output = tx_context.execute_code(code).unwrap();
+/// let exec_output = tx_context.execute_code(code).await?;
 /// assert_eq!(exec_output.stack.get(0).unwrap(), &Felt::new(5));
+/// # Ok(())
+/// # }
 /// ```
 pub struct TransactionContextBuilder {
     source_manager: Arc<dyn SourceManagerSync>,
