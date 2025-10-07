@@ -278,11 +278,11 @@ end
 #! - the index of the requested item is out of bounds.
 #!
 #! Invocation: exec
-export.get_item_init
+export.get_initial_item
     push.0.0 movup.2
     # => [index, 0, 0]
 
-    exec.kernel_proc_offsets::account_get_item_init_offset
+    exec.kernel_proc_offsets::account_get_initial_item_offset
     # => [offset, index, 0, 0]
 
     # pad the stack

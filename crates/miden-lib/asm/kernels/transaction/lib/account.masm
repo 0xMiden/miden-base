@@ -486,7 +486,7 @@ end
 #! Where:
 #! - index is the index of the item to get.
 #! - INIT_VALUE is the initial value of the item at the beginning of the transaction.
-export.get_item_init
+export.get_initial_item
     # get account initial storage slots section offset
     exec.memory::get_account_initial_storage_slots_ptr
     # => [account_initial_storage_slots_ptr, index]
@@ -587,7 +587,7 @@ export.get_map_item_init
     # => [index, KEY, index]
 
     # fetch the initial account storage item, which is ROOT of the map
-    exec.get_item_init swapw
+    exec.get_initial_item swapw
     # => [KEY, INIT_ROOT, index]
 
     exec.get_map_item_raw

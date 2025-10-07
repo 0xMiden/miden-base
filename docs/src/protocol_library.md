@@ -36,7 +36,7 @@ Account procedures can be used to read and write to account storage, add or remo
 | `compute_current_commitment` | Computes and returns the account commitment from account data stored in memory.<br><br>Inputs: `[]`<br>Outputs: `[ACCOUNT_COMMITMENT]` | Any |
 | `compute_delta_commitment` | Computes the commitment to the native account's delta. Can only be called from auth procedures.<br><br>Inputs: `[]`<br>Outputs: `[DELTA_COMMITMENT]` | Auth |
 | `get_item` | Gets an item from the account storage.<br><br>Inputs: `[index]`<br>Outputs: `[VALUE]` | Account |
-| `get_item_init` | Gets the initial item from the account storage slot as it was at the beginning of the transaction.<br><br>Inputs: `[index]`<br>Outputs: `[VALUE]` | Account |
+| `get_initial_item` | Gets the initial item from the account storage slot as it was at the beginning of the transaction.<br><br>Inputs: `[index]`<br>Outputs: `[VALUE]` | Account |
 | `set_item` | Sets an item in the account storage.<br><br>Inputs: `[index, VALUE]`<br>Outputs: `[OLD_VALUE]` | Native & Account |
 | `get_map_item` | Returns the VALUE located under the specified KEY within the map contained in the given account storage slot.<br><br>Inputs: `[index, KEY]`<br>Outputs: `[VALUE]` | Account |
 | `get_map_item_init` | Gets the initial VALUE from the account storage map as it was at the beginning of the transaction.<br><br>Inputs: `[index, KEY]`<br>Outputs: `[VALUE]` | Account |

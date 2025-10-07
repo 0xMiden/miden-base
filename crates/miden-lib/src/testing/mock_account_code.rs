@@ -54,8 +54,8 @@ const MOCK_ACCOUNT_CODE: &str = "
 
     # Stack:  [index, pad(15)]
     # Output: [VALUE, pad(12)]
-    export.get_item_init
-        exec.account::get_item_init
+    export.get_initial_item
+        exec.account::get_initial_item
         # => [VALUE, pad(15)]
 
         # truncate the stack

@@ -1683,9 +1683,9 @@ fn foreign_account_data_memory_assertions(foreign_account: &Account, process: &P
     }
 }
 
-/// Test that get_item_init and get_map_item_init work correctly with foreign accounts.
+/// Test that get_initial_item and get_map_item_init work correctly with foreign accounts.
 #[tokio::test]
-async fn test_get_item_init_and_get_map_item_init_with_foreign_account() -> anyhow::Result<()> {
+async fn test_get_initial_item_and_get_map_item_init_with_foreign_account() -> anyhow::Result<()> {
     // Create a native account
     let native_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(Auth::IncrNonce)
@@ -1695,14 +1695,14 @@ async fn test_get_item_init_and_get_map_item_init_with_foreign_account() -> anyh
 
     let (map_key, map_value) = STORAGE_LEAVES_2[0];
 
-    // Create foreign procedures that test get_item_init and get_map_item_init
+    // Create foreign procedures that test get_initial_item and get_map_item_init
     let foreign_account_code_source = "
         use.miden::account
         use.std::sys
 
-        export.test_get_item_init
+        export.test_get_initial_item
             push.0
-            exec.account::get_item_init
+            exec.account::get_initial_item
             exec.sys::truncate_stack
         end
 
@@ -1739,14 +1739,14 @@ async fn test_get_item_init_and_get_map_item_init_with_foreign_account() -> anyh
 
         begin
 
-            # Test get_item_init on foreign account
+            # Test get_initial_item on foreign account
             padw padw padw push.0.0.0
             # => [ pad(4), pad(4), pad(4), 0, 0, 0 ]
-            procref.::foreign_account::test_get_item_init
+            procref.::foreign_account::test_get_initial_item
             push.{foreign_account_id_suffix} push.{foreign_account_id_prefix}
             exec.tx::execute_foreign_procedure
             push.{expected_value_slot_0}
-            assert_eqw.err=\"foreign account get_item_init should work\"
+            assert_eqw.err=\"foreign account get_initial_item should work\"
 
             # Test get_map_item_init on foreign account
             padw padw push.0.0

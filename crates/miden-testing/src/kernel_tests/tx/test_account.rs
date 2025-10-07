@@ -1617,10 +1617,10 @@ async fn incrementing_nonce_twice_fails() -> anyhow::Result<()> {
 // ================================================================================================
 
 #[test]
-fn test_get_item_init() -> miette::Result<()> {
+fn test_get_initial_item() -> miette::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build().unwrap();
 
-    // Test that get_item_init returns the initial value before any changes
+    // Test that get_initial_item returns the initial value before any changes
     let code = format!(
         "
         use.$kernel::account
@@ -1632,7 +1632,7 @@ fn test_get_item_init() -> miette::Result<()> {
 
             # get initial value of storage slot 0
             push.0
-            exec.account::get_item_init
+            exec.account::get_initial_item
 
             push.{expected_initial_value}
             assert_eqw.err=\"initial value should match expected\"
@@ -1647,9 +1647,9 @@ fn test_get_item_init() -> miette::Result<()> {
             push.9.10.11.12
             assert_eqw.err=\"current value should be updated\"
 
-            # get_item_init should still return the initial value
+            # get_initial_item should still return the initial value
             push.0
-            exec.account::get_item_init
+            exec.account::get_initial_item
             push.{expected_initial_value}
             assert_eqw.err=\"initial value should remain unchanged\"
         end
