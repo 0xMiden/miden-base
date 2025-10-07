@@ -349,7 +349,7 @@ export.auth_tx_rpo_falcon512_multisig.1
             drop drop drop dup dup.3
             # => [transaction_threshold, proc_threshold, proc_threshold, num_procedures-1, transaction_threshold, num_verified_signatures, TX_SUMMARY_COMMITMENT]
 
-            gt
+            u32gt
             # => [is_gt, proc_threshold, num_procedures-1, transaction_threshold, num_verified_signatures, TX_SUMMARY_COMMITMENT]
             if.true
                 # => [proc_threshold, num_procedures-1, transaction_threshold, num_verified_signatures, TX_SUMMARY_COMMITMENT]
