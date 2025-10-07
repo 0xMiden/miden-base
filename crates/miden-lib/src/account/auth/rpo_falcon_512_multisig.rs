@@ -9,7 +9,7 @@ use crate::account::components::rpo_falcon_512_multisig_library;
 // MULTISIG AUTHENTICATION COMPONENT
 // ================================================================================================
 
-/// Configuration for [`AuthRpoFalcon512MultisigConfig`] component.
+/// Configuration for [`AuthRpoFalcon512Multisig`] component.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AuthRpoFalcon512MultisigConfig {
     /// List of procedures with authentication thresholds different than the default.
