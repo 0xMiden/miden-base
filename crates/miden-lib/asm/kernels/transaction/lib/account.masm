@@ -313,7 +313,7 @@ export.memory::get_init_account_commitment->get_initial_commitment
 #!
 #! Where:
 #! - INIT_ACCOUNT_VAULT_ROOT is the initial account vault root.
-export.memory::get_init_account_vault_root->get_initial_vault_root
+export.memory::get_init_native_account_vault_root->get_initial_vault_root
 
 #! Returns the storage commitment of the native account at the beginning of the transaction.
 #!
@@ -985,9 +985,6 @@ end
 #! Returns the balance of a fungible asset associated with a faucet_id in the native account's vault
 #! at the beginning of the transaction.
 #!
-#! To get the initial balance this procedure applies the changes stored in the fungible asset vault
-#! delta to the current asset balance.
-#!
 #! Inputs:  [faucet_id_prefix, faucet_id_suffix]
 #! Outputs: [init_balance]
 #!
@@ -1000,7 +997,7 @@ end
 #! - the provided faucet ID is not an ID of a fungible faucet.
 export.get_initial_balance
     # get the vault root associated with the initial vault root of the native account
-    exec.memory::get_init_account_vault_root_ptr movdn.2
+    exec.memory::get_init_native_account_vault_root_ptr movdn.2
     # => [faucet_id_prefix, faucet_id_suffix, init_native_vault_root_ptr]
 
     # emit event to signal that an asset's balance is requested

@@ -488,7 +488,7 @@ end
 #!
 #! Where:
 #! - INIT_NATIVE_ACCOUNT_VAULT_ROOT is the initial vault root of the native account.
-export.set_init_account_vault_root
+export.set_init_native_account_vault_root
     mem_storew.INIT_NATIVE_ACCOUNT_VAULT_ROOT_PTR
 end
 
@@ -499,7 +499,7 @@ end
 #!
 #! Where:
 #! - INIT_NATIVE_ACCOUNT_VAULT_ROOT is the initial vault root of the native account.
-export.get_init_account_vault_root
+export.get_init_native_account_vault_root
     padw mem_loadw.INIT_NATIVE_ACCOUNT_VAULT_ROOT_PTR
 end
 
@@ -511,7 +511,7 @@ end
 #! Where:
 #! - INIT_NATIVE_ACCOUNT_VAULT_ROOT_PTR is the memory pointer to the initial vault root of the 
 #!   native account.
-export.get_init_account_vault_root_ptr
+export.get_init_native_account_vault_root_ptr
     push.INIT_NATIVE_ACCOUNT_VAULT_ROOT_PTR
 end
 

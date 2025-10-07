@@ -449,7 +449,7 @@ proc.process_account_data
     # invariant checking
     # this account vault root is also stored as an initial one in the global inputs
     exec.memory::get_account_vault_root
-    exec.memory::set_init_account_vault_root
+    exec.memory::set_init_native_account_vault_root
     exec.memory::set_input_vault_root dropw
     # => [ACCOUNT_COMMITMENT]
 

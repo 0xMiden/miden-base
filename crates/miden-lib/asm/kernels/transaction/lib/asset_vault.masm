@@ -56,9 +56,6 @@ const.INVERSE_FUNGIBLE_BITMASK_U32=0xffffffdf # last byte: 0b1101_1111
 export.get_balance
     # assert that the faucet id is a fungible faucet
     dup exec.account_id::is_fungible_faucet
-
-    # `get_fungible_asset` is only called from `get_balance` or `get_initial_balance` so it is
-    # correct to return an error related to the balance obtainment
     assert.err=ERR_VAULT_GET_BALANCE_CAN_ONLY_BE_CALLED_ON_FUNGIBLE_ASSET
     # => [faucet_id_prefix, faucet_id_suffix, vault_root_ptr]
 
