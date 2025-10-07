@@ -16,13 +16,13 @@ use miden_objects::account::{
     PartialAccount,
     PartialStorage,
     PartialStorageMap,
+    PublicKeyCommitment,
     Signature,
     StorageSlot,
 };
 use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::assembly::debuginfo::SourceManagerSync;
 use miden_objects::asset::PartialVault;
-use miden_objects::crypto::dsa::rpo_falcon512::PublicKey;
 use miden_objects::note::{Note, NoteId};
 use miden_objects::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE;
 use miden_objects::testing::noop_auth_component::NoopAuthComponent;
@@ -87,7 +87,7 @@ pub struct TransactionContextBuilder {
     note_args: BTreeMap<NoteId, Word>,
     transaction_inputs: Option<TransactionInputs>,
     auth_args: Word,
-    signatures: Vec<(PublicKey, Word, Signature)>,
+    signatures: Vec<(PublicKeyCommitment, Word, Signature)>,
     is_lazy_loading_enabled: bool,
 }
 
@@ -251,11 +251,11 @@ impl TransactionContextBuilder {
     /// Add a new signature for the message and the public key.
     pub fn add_signature(
         mut self,
-        public_key: PublicKey,
+        pub_key: PublicKeyCommitment,
         message: Word,
         signature: Signature,
     ) -> Self {
-        self.signatures.push((public_key, message, signature));
+        self.signatures.push((pub_key, message, signature));
         self
     }
 
@@ -322,8 +322,8 @@ impl TransactionContextBuilder {
         tx_args.extend_advice_inputs(self.advice_inputs.clone());
         tx_args.extend_output_note_recipients(self.expected_output_notes.clone());
 
-        for (public_key, message, signature) in self.signatures {
-            tx_args.add_signature(public_key, message, signature);
+        for (public_key_commitment, message, signature) in self.signatures {
+            tx_args.add_signature(public_key_commitment, message, signature);
         }
 
         let mast_store = {

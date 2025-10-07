@@ -26,6 +26,7 @@
 - Added `StorageMap::{num_entries, num_leaves}` to retrieve the number of entries in a storage map ([#1935]https://github.com/0xMiden/miden-base/pull/1935).
 - Added `AssetVault::{num_assets, num_leaves, inner_nodes}` ([#1939]https://github.com/0xMiden/miden-base/pull/1939).
 - Added `account::get_initial_balance` procedure to `miden` lib ([#1959](https://github.com/0xMiden/miden-base/pull/1959)).
+- [BREAKING] Enable computing the transaction ID from the data in a `TransactionHeader` ([#1973]https://github.com/0xMiden/miden-base/pull/1973).
 
 ### Changes
 
@@ -55,8 +56,14 @@
 - [BREAKING] Remove `MockChain::add_pending_note` to simplify mock chain internals ([#1903](https://github.com/0xMiden/miden-base/pull/1903)).
 - [BREAKING] Move active note procedures from `miden::note` to `miden::active_note` module ([#1901](https://github.com/0xMiden/miden-base/pull/1901)).
 - [BREAKING] Remove account_seed from AccountFile ([#1917](https://github.com/0xMiden/miden-base/pull/1917)).
+- Simplify `MockChain` internals and rework its documentation ([#1942]https://github.com/0xMiden/miden-base/pull/1942).
 - [BREAKING] Change the signature of TransactionAuthenticator to return the native signature ([#1945](https://github.com/0xMiden/miden-base/pull/1945)).
 - [BREAKING] Rename `MockChainBuilder::add_note` to `add_output_note` ([#1946](https://github.com/0xMiden/miden-base/pull/1946)).
+- Dynamically lookup all masm `EventId`s from source ([#1954](https://github.com/0xMiden/miden-base/pull/1954)).
+
+## 0.11.5 (2025-10-02)
+
+- Add new `can_consume` method to the `NoteConsumptionChecker` ([#1928](https://github.com/0xMiden/miden-base/pull/1928)).
 
 ## 0.11.4 (2025-09-17)
 

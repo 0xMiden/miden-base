@@ -8,11 +8,8 @@ use.miden::auth
 
 # Auth Request Constants
 
-# The event to request an authentication signature.
-const.AUTH_REQUEST=event("miden::auth::request")
-
 # The event emitted when a signature is not found for a required signer.
-const.UNAUTHORIZED_EVENT=event("miden::auth::unauthorized")
+const.AUTH_UNAUTHORIZED_EVENT=event("miden::auth::unauthorized")
 
 # Storage Layout Constants
 #
@@ -301,7 +298,7 @@ export.auth_tx_rpo_falcon512_multisig
 
     # If signatures are non-existent the tx will fail here.
     if.true
-        emit.UNAUTHORIZED_EVENT
+        emit.AUTH_UNAUTHORIZED_EVENT
         push.0 assert.err="insufficient number of signatures"
     end
 

@@ -3,14 +3,13 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use anyhow::Context;
-use miden_lib::account::auth::PublicKeyCommitment;
 use miden_lib::account::wallets::BasicWallet;
 use miden_lib::errors::MasmError;
 use miden_lib::testing::note::NoteBuilder;
 use miden_lib::transaction::TransactionKernel;
 use miden_lib::transaction::memory::ACTIVE_INPUT_NOTE_PTR;
 use miden_lib::utils::ScriptBuilder;
-use miden_objects::account::{AccountBuilder, AccountId};
+use miden_objects::account::{AccountBuilder, AccountId, PublicKeyCommitment};
 use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::assembly::diagnostics::miette::{self, miette};
 use miden_objects::asset::FungibleAsset;
@@ -438,8 +437,8 @@ fn test_build_metadata() -> miette::Result<()> {
 }
 
 /// This serves as a test that setting a custom timestamp on mock chain blocks works.
-#[test]
-pub fn test_timelock() -> anyhow::Result<()> {
+#[tokio::test]
+pub async fn test_timelock() -> anyhow::Result<()> {
     const TIMESTAMP_ERROR: MasmError = MasmError::from_static_str("123");
 
     let code = format!(
@@ -496,7 +495,7 @@ pub fn test_timelock() -> anyhow::Result<()> {
         .with_source_manager(source_manager.clone())
         .tx_inputs(tx_inputs.clone())
         .build()?;
-    let result = tx_context.execute_blocking();
+    let result = tx_context.execute().await;
     assert_transaction_executor_error!(result, TIMESTAMP_ERROR);
 
     // Consume note where lock timestamp matches the block timestamp.
@@ -507,7 +506,7 @@ pub fn test_timelock() -> anyhow::Result<()> {
 
     let tx_inputs = mock_chain.get_transaction_inputs(&account, &[timelock_note.id()], &[])?;
     let tx_context = TransactionContextBuilder::new(account).tx_inputs(tx_inputs).build()?;
-    tx_context.execute_blocking()?;
+    tx_context.execute().await?;
 
     Ok(())
 }
@@ -517,8 +516,8 @@ pub fn test_timelock() -> anyhow::Result<()> {
 ///
 /// Previously this setup was leading to the values collision in the advice map, see the
 /// [issue #1267](https://github.com/0xMiden/miden-base/issues/1267) for more details.
-#[test]
-fn test_public_key_as_note_input() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_public_key_as_note_input() -> anyhow::Result<()> {
     let mut rng = ChaCha20Rng::from_seed(Default::default());
     let sec_key = SecretKey::with_rng(&mut rng);
     // this value will be used both as public key in the RPO component of the target account and as
@@ -561,6 +560,6 @@ fn test_public_key_as_note_input() -> anyhow::Result<()> {
         .authenticator(authenticator)
         .build()?;
 
-    tx_context.execute_blocking()?;
+    tx_context.execute().await?;
     Ok(())
 }

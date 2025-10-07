@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet};
 use std::env;
 use std::fmt::Write;
 use std::io::{self};
@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use fs_err as fs;
-use miden_assembly::diagnostics::{IntoDiagnostic, Result, WrapErr};
+use miden_assembly::diagnostics::{IntoDiagnostic, Result, WrapErr, miette};
 use miden_assembly::utils::Serializable;
 use miden_assembly::{
     Assembler,
@@ -118,7 +118,7 @@ fn main() -> Result<()> {
 
     generate_error_constants(&source_dir)?;
 
-    generate_event_constants(&target_dir).into_diagnostic()?;
+    generate_event_constants(&source_dir, &target_dir)?;
     Ok(())
 }
 
@@ -779,90 +779,140 @@ impl TxKernelErrorCategory {
     }
 }
 
-fn generate_event_constants(dst: &Path) -> std::io::Result<()> {
-    let values = [
-        ("ACCOUNT_BEFORE_FOREIGN_LOAD", "account::before_foreign_load"),
-        ("ACCOUNT_VAULT_BEFORE_ADD_ASSET", "account::vault_before_add_asset"),
-        ("ACCOUNT_VAULT_AFTER_ADD_ASSET", "account::vault_after_add_asset"),
-        ("ACCOUNT_VAULT_BEFORE_REMOVE_ASSET", "account::vault_before_remove_asset"),
-        ("ACCOUNT_VAULT_AFTER_REMOVE_ASSET", "account::vault_after_remove_asset"),
-        ("ACCOUNT_VAULT_BEFORE_GET_BALANCE", "account::vault_before_get_balance"),
-        (
-            "ACCOUNT_VAULT_BEFORE_HAS_NON_FUNGIBLE_ASSET",
-            "account::vault_before_has_non_fungible_asset",
-        ),
-        ("ACCOUNT_STORAGE_BEFORE_SET_ITEM", "account::storage_before_set_item"),
-        ("ACCOUNT_STORAGE_AFTER_SET_ITEM", "account::storage_after_set_item"),
-        ("ACCOUNT_STORAGE_BEFORE_GET_MAP_ITEM", "account::storage_before_get_map_item"),
-        ("ACCOUNT_STORAGE_BEFORE_SET_MAP_ITEM", "account::storage_before_set_map_item"),
-        ("ACCOUNT_STORAGE_AFTER_SET_MAP_ITEM", "account::storage_after_set_map_item"),
-        ("ACCOUNT_BEFORE_INCREMENT_NONCE", "account::before_increment_nonce"),
-        ("ACCOUNT_AFTER_INCREMENT_NONCE", "account::after_increment_nonce"),
-        ("ACCOUNT_PUSH_PROCEDURE_INDEX", "account::push_procedure_index"),
-        ("NOTE_BEFORE_CREATED", "note::before_created"),
-        ("NOTE_AFTER_CREATED", "note::after_created"),
-        ("NOTE_BEFORE_ADD_ASSET", "note::before_add_asset"),
-        ("NOTE_AFTER_ADD_ASSET", "note::after_add_asset"),
-        ("AUTH_REQUEST", "auth::request"),
-        ("PROLOGUE_START", "tx::prologue_start"),
-        ("PROLOGUE_END", "tx::prologue_end"),
-        ("NOTES_PROCESSING_START", "tx::notes_processing_start"),
-        ("NOTES_PROCESSING_END", "tx::notes_processing_end"),
-        ("NOTE_EXECUTION_START", "tx::note_execution_start"),
-        ("NOTE_EXECUTION_END", "tx::note_execution_end"),
-        ("TX_SCRIPT_PROCESSING_START", "tx::tx_script_processing_start"),
-        ("TX_SCRIPT_PROCESSING_END", "tx::tx_script_processing_end"),
-        ("EPILOGUE_START", "tx::epilogue_start"),
-        ("EPILOGUE_END", "tx::epilogue_end"),
-        ("EPILOGUE_AFTER_TX_CYCLES_OBTAINED", "epilogue::after_tx_cycles_obtained"),
-        (
-            "EPILOGUE_BEFORE_TX_FEE_REMOVED_FROM_ACCOUNT",
-            "epilogue::before_tx_fee_removed_from_account",
-        ),
-        ("LINK_MAP_SET_EVENT", "link_map::set"),
-        ("LINK_MAP_GET_EVENT", "link_map::get"),
-        ("UNAUTHORIZED_EVENT", "auth::unauthorized"),
-        ("EPILOGUE_AUTH_PROC_START", "epilogue::auth_proc_start"),
-        ("EPILOGUE_AUTH_PROC_END", "epilogue::auth_proc_end"),
-    ];
+// EVENT CONSTANTS FILE GENERATION
+// ================================================================================================
 
-    use std::io::Write as _;
+/// Reads all MASM files from the `asm_source_dir` and extracts event definitions,
+/// then generates the transaction_events.rs file with constants.
+fn generate_event_constants(asm_source_dir: &Path, target_dir: &Path) -> Result<()> {
+    // Extract all event definitions from MASM files
+    let events = extract_all_event_definitions(asm_source_dir)?;
 
-    let map = HashMap::<String, (&str, u64)>::from_iter(values.iter().map(|&(konst, name)| {
-        let name = format!("miden::{name}");
-        let value = miden_core::EventId::from_name(&name).as_felt().as_int();
-        (name, (konst, value))
-    }));
+    // Generate the events file in OUT_DIR
+    let event_file_content = generate_event_file_content(&events).into_diagnostic()?;
+    let event_file_path = target_dir.join("transaction_events.rs");
+    fs::write(event_file_path, event_file_content).into_diagnostic()?;
 
-    let path = dst.join("transaction_events.rs");
-    let mut f = fs::OpenOptions::new().create(true).truncate(true).write(true).open(path)?;
-    for (_name, (konst, value)) in map.iter() {
-        writeln!(&mut f, "const {konst}: u64 = {value};")?;
+    Ok(())
+}
+
+/// Extract all `const.X=event("x")` definitions from all MASM files
+fn extract_all_event_definitions(asm_source_dir: &Path) -> Result<BTreeMap<String, String>> {
+    // collect mappings event path to const variable name, we want a unique mapping
+    // which we use to generate the constants and enum variant names
+    let mut events = BTreeMap::new();
+
+    // Walk all MASM files
+    for entry in WalkDir::new(asm_source_dir) {
+        let entry = entry.into_diagnostic()?;
+        if !is_masm_file(entry.path()).into_diagnostic()? {
+            continue;
+        }
+        let file_contents = fs::read_to_string(entry.path()).into_diagnostic()?;
+        extract_event_definitions_from_file(&mut events, &file_contents, entry.path())?;
     }
 
-    #[cfg(feature = "std")]
-    {
-        writeln!(&mut f, "// This file is generated by build.rs, do not modify")?;
+    Ok(events)
+}
 
-        // we require a form of lut, but we don't want to bother supporting non-std cases for now
-        let mut inner = String::new();
-        for (name, (_, value)) in map.iter() {
-            inner.push_str(format!("                   ({value}, \"{name}\"),\n").as_str());
+/// Extract `const.${X}=event("${x::path}")` definitions from a single MASM file
+fn extract_event_definitions_from_file(
+    events: &mut BTreeMap<String, String>,
+    file_contents: &str,
+    file_path: &Path,
+) -> Result<()> {
+    let regex = Regex::new(r#"const\.(\w+)=event\("([^"]+)"\)"#).unwrap();
+
+    for capture in regex.captures_iter(file_contents) {
+        let const_name = capture.get(1).expect("const name should be captured");
+        let event_path = capture.get(2).expect("event path should be captured");
+
+        let event_path = event_path.as_str();
+        let const_name = const_name.as_str();
+
+        let const_name_wo_suffix =
+            if let Some((const_name_wo_suffix, _)) = const_name.rsplit_once("_EVENT") {
+                const_name_wo_suffix.to_string()
+            } else {
+                const_name.to_owned()
+            };
+
+        if !event_path.starts_with("miden::") {
+            // we ignore any `stdlib::` prefixed ones
+            if !event_path.starts_with("stdlib::") {
+                return Err(miette::miette!(
+                    "unhandled `event_path={event_path}`, doesn't with `stdlib::` nor with `miden::`."
+                ));
+            }
+            continue;
         }
 
-        writeln!(&mut f)?;
-        writeln!(&mut f, "// Reverse lookup table for better error messages")?;
-        writeln!(&mut f)?;
+        // Check for duplicates with different definitions
+        if let Some(existing_const_name) = events.get(event_path) {
+            if existing_const_name != &const_name_wo_suffix {
+                println!(
+                    "cargo:warning=Duplicate event definition found {event_path} with different definitions names:
+                    '{existing_const_name}' vs '{const_name}' in {}",
+                    file_path.display()
+                );
+            }
+        } else {
+            events.insert(event_path.to_owned(), const_name_wo_suffix.to_owned());
+        }
+    }
+
+    Ok(())
+}
+
+/// Generate the content of the transaction_events.rs file
+fn generate_event_file_content(
+    events: &BTreeMap<String, String>,
+) -> std::result::Result<String, std::fmt::Error> {
+    use std::fmt::Write;
+
+    let mut output = String::new();
+
+    writeln!(&mut output, "// This file is generated by build.rs, do not modify")?;
+    writeln!(&mut output)?;
+
+    // Generate constants
+    //
+    // Note: If we ever encounter two constants `const.X`, that are both named `X` we will error
+    // when attempting to generate the rust code. Currently this is a side-effect, but we
+    // want to error out as early as possible:
+    // TODO: make the error out at build-time to be able to present better error hints
+    for (event_path, event_name) in events {
+        let value = miden_core::EventId::from_name(event_path).as_felt().as_int();
+        debug_assert!(!event_name.is_empty());
+        writeln!(&mut output, "const {}: u64 = {};", event_name, value)?;
+    }
+
+    {
+        writeln!(&mut output)?;
+
+        writeln!(&mut output)?;
+
         writeln!(
-            &mut f,
+            &mut output,
             r###"
-pub(crate) static EVENT_NAME_LUT: ::miden_objects::utils::sync::LazyLock<::std::collections::HashMap<u64, &'static str>> = ::miden_objects::utils::sync::LazyLock::new(|| {{
-    ::std::collections::HashMap::from_iter([
-        {inner}
-    ])
-}});
-            "###
+use alloc::collections::BTreeMap;
+
+pub(crate) static EVENT_NAME_LUT: ::miden_objects::utils::sync::LazyLock<BTreeMap<u64, &'static str>> =
+    ::miden_objects::utils::sync::LazyLock::new(|| {{
+    BTreeMap::from_iter([
+"###
+        )?;
+
+        for (event_path, const_name) in events {
+            writeln!(&mut output, "        ({}, \"{}\"),", const_name, event_path)?;
+        }
+
+        writeln!(
+            &mut output,
+            r###"    ])
+}});"###
         )?;
     }
-    Ok(())
+
+    Ok(output)
 }
