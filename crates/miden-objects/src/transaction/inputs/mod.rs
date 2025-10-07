@@ -17,7 +17,7 @@ mod notes;
 use miden_processor::AdviceInputs;
 pub use notes::{InputNote, InputNotes, ToInputNoteCommitments};
 
-// TRANSACTION KERNEL INPUTS
+// TRANSACTION INPUTS
 // ================================================================================================
 
 /// Contains the data required to execute a transaction.
