@@ -1461,7 +1461,7 @@ export.account_get_num_procedures
     # => [num_procedures, pad(15)]
 end
 
-#! Returns the procedure information for the procedure at the specified index.
+#! Returns the procedure root for the procedure at the specified index.
 #!
 #! Inputs:  [index, pad(15)]
 #! Outputs: [PROC_ROOT, pad(12)]

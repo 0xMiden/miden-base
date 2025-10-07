@@ -731,7 +731,7 @@ export.get_num_procedures
     # => [num_procedures]
 end
 
-#! Returns the procedure information for the procedure at the specified index.
+#! Returns the procedure root for the procedure at the specified index.
 #!
 #! Inputs:  [index]
 #! Outputs: [PROC_ROOT]
