@@ -54,7 +54,7 @@ impl TransactionAdviceInputs {
         // If a seed was provided, extend the map appropriately.
         if let Some(seed) = tx_inputs.account().seed() {
             // ACCOUNT_ID |-> ACCOUNT_SEED
-            let account_id_key = account_id_map_key(partial_native_acc.id());
+            let account_id_key = Self::account_id_map_key(partial_native_acc.id());
             inputs.add_map_entry(account_id_key, seed.to_vec());
         }
 
@@ -109,7 +109,7 @@ impl TransactionAdviceInputs {
 
             // for foreign accounts, we need to insert the id to state mapping
             // NOTE: keep this in sync with the account::load_from_advice procedure
-            let account_id_key = account_id_map_key(foreign_acc.id());
+            let account_id_key = Self::account_id_map_key(foreign_acc.id());
             let header = AccountHeader::from(foreign_acc.account());
 
             // ACCOUNT_ID |-> [ID_AND_NONCE, VAULT_ROOT, STORAGE_COMMITMENT, CODE_COMMITMENT]
@@ -421,6 +421,13 @@ impl TransactionAdviceInputs {
     fn extend_merkle_store(&mut self, iter: impl Iterator<Item = InnerNodeInfo>) {
         self.0.store.extend(iter);
     }
+
+    /// Returns the advice map key where:
+    /// - the seed for native accounts is stored.
+    /// - the account header for foreign accounts is stored.
+    fn account_id_map_key(id: AccountId) -> Word {
+        Word::from([id.suffix(), id.prefix().as_felt(), ZERO, ZERO])
+    }
 }
 
 // CONVERSIONS
@@ -449,14 +456,4 @@ pub struct TransactionAdviceMapMismatch {
     pub key: Word,
     pub existing_val: Vec<Felt>,
     pub incoming_val: Vec<Felt>,
-}
-
-// HELPER FUNCTIONS
-// ================================================================================================
-
-/// Returns the advice map key where:
-/// - the seed for native accounts is stored.
-/// - the account header for foreign accounts is stored.
-fn account_id_map_key(id: AccountId) -> Word {
-    Word::from([id.suffix(), id.prefix().as_felt(), ZERO, ZERO])
 }
