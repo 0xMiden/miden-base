@@ -747,11 +747,12 @@ end
 export.get_procedure_root
     # => [index]
 
+    push.0.0 movup.2
     exec.kernel_proc_offsets::account_get_procedure_root_offset
-    # => [offset, index]
+    # => [offset, index, 0, 0]
 
     # pad the stack
-    padw padw padw push.0 push.0 movup.15 movup.15
+    padw swapw padw padw swapdw
     # => [offset, index, pad(14)]
 
     syscall.exec_kernel_proc
