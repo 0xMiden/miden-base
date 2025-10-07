@@ -228,6 +228,94 @@ export.update_signers_and_threshold.2
     # => [pad(12)]
 end
 
+# Computes the effective transaction threshold based on called procedures and per-procedure
+# overrides stored in PROC_THRESHOLD_ROOTS_SLOT. Falls back to default_threshold if no
+# overrides apply.
+#
+#! Inputs:  [default_threshold]
+#! Outputs: [threshold]
+proc.compute_transaction_threshold.1
+    # 1. initialize transaction_threshold = 0
+    # 2. iterate through all account procedures
+    #   a. check if the procedure was called during the transaction
+    #   b. if called, check if this procedure was included in the proc_threshold_map
+    #   c. if included, get its proc_threshold
+    #   d. if proc_threshold > transaction_threshold, set transaction_threshold = proc_threshold
+    # 3. if transaction_threshold == 0 at the end, revert to using default_threshold
+
+    # store default_threshold for later
+    loc_store.0
+    # => []
+
+    # initialize transaction_threshold = 0
+    push.0
+    # => [transaction_threshold]
+
+    # get the number of account procedures
+    exec.account::get_num_procedures
+    # => [num_procedures, transaction_threshold]
+
+    # for each procedure, see if this procedure has been called in the transaction.
+    dup neq.0
+    # => [should_continue, num_procedures, transaction_threshold]
+    while.true
+        sub.1 dup
+        # => [num_procedures-1, num_procedures-1, transaction_threshold]
+
+        # get procedure root of the procedure with index i
+        exec.account::get_procedure_root dupw
+        # => [PROC_ROOT, PROC_ROOT, num_procedures-1, transaction_threshold]
+
+        # see if this procedure has been called in the transaction.
+        exec.account::was_procedure_called
+        # => [was_called, PROC_ROOT, num_procedures-1, transaction_threshold]
+
+        # if it has been called, get the threshold of that LenientProcedure. Call it current_threshold
+        if.true
+            # => [PROC_ROOT, num_procedures-1, transaction_threshold]
+
+            push.PROC_THRESHOLD_ROOTS_SLOT
+            # => [PROC_THRESHOLD_ROOTS_SLOT, PROC_ROOT, num_procedures-1, transaction_threshold]
+
+            exec.account::get_map_item
+            # => [[0, 0, 0, proc_threshold], num_procedures-1, transaction_threshold]
+
+            drop drop drop dup dup.3
+            # => [transaction_threshold, proc_threshold, proc_threshold, num_procedures-1, transaction_threshold]
+
+            u32assert2 u32gt
+            # => [is_gt, proc_threshold, num_procedures-1, transaction_threshold]
+            if.true
+                # => [proc_threshold, num_procedures-1, transaction_threshold]
+                movup.2 drop
+                swap
+                # => [num_procedures-1, proc_threshold]
+            else
+                # => [proc_threshold, num_procedures-1, transaction_threshold]
+                drop
+                # => [num_procedures-1, transaction_threshold]
+            end
+        else
+            dropw
+            # => [num_procedures-1, transaction_threshold]
+        end
+
+        dup neq.0
+        # => [should_continue, num_procedures-1, transaction_threshold]
+    end
+
+    drop
+    # => [transaction_threshold]
+    dup eq.0
+    if.true
+        drop
+        loc_load.0
+        # => [default_threshold]
+    end
+
+    # => [threshold]
+end
+
 #! Authenticate a transaction using the Falcon signature scheme with multi-signature support.
 #!
 #! This procedure implements multi-signature authentication by:
@@ -298,87 +386,10 @@ export.auth_tx_rpo_falcon512_multisig.1
 
     # ------ Checking threshold is >= num_verified_signatures ------
 
-    # 1. initialize transaction_threshold = 0
-    # 2. iterate through all account procedures
-    #   a. check if the procedure was called during the transaction
-    #   b. if called, check if this procedure was included in the proc_threshold_map
-    #   c. if included, get its proc_threshold
-    #   d. if proc_threshold > transaction_threshold, set transaction_threshold = proc_threshold
-    # 3. if transaction_threshold == 0 at the end, revert to using default_threshold
-
     movup.5
     # => [default_threshold, num_verified_signatures, TX_SUMMARY_COMMITMENT]
 
-    # store default_threshold for later
-    loc_store.0
-    # => [num_verified_signatures, TX_SUMMARY_COMMITMENT]
-
-    # initialize transaction_threshold = 0
-    push.0
-    # => [transaction_threshold, num_verified_signatures, TX_SUMMARY_COMMITMENT]
-
-    # get the number of account procedures
-    exec.account::get_num_procedures
-    # => [num_procedures, transaction_threshold, num_verified_signatures, TX_SUMMARY_COMMITMENT]
-
-    # for each procedure, see if this procedure has been called in the transaction.
-    dup neq.0
-    # => [should_continue, num_procedures, transaction_threshold, num_verified_signatures, TX_SUMMARY_COMMITMENT]
-    while.true
-        sub.1 dup
-        # => [num_procedures-1, num_procedures-1, transaction_threshold, num_verified_signatures, TX_SUMMARY_COMMITMENT]
-
-        # get procedure root of the procedure with index i
-        exec.account::get_procedure_root dupw
-        # => [PROC_ROOT, PROC_ROOT, num_procedures-1, transaction_threshold, num_verified_signatures, TX_SUMMARY_COMMITMENT]
-
-        # see if this procedure has been called in the transaction.
-        exec.account::was_procedure_called
-        # => [was_called, PROC_ROOT, num_procedures-1, transaction_threshold, num_verified_signatures, TX_SUMMARY_COMMITMENT]
-
-        # if it has been called, get the threshold of that LenientProcedure. Call it current_threshold
-        if.true
-            # => [PROC_ROOT, num_procedures-1, transaction_threshold, num_verified_signatures, TX_SUMMARY_COMMITMENT]
-
-            push.PROC_THRESHOLD_ROOTS_SLOT
-            # => [PROC_THRESHOLD_ROOTS_SLOT, PROC_ROOT, num_procedures-1, transaction_threshold, num_verified_signatures, TX_SUMMARY_COMMITMENT]
-
-            exec.account::get_map_item
-            # => [[0, 0, 0, proc_threshold], num_procedures-1, transaction_threshold, num_verified_signatures, TX_SUMMARY_COMMITMENT]
-
-            drop drop drop dup dup.3
-            # => [transaction_threshold, proc_threshold, proc_threshold, num_procedures-1, transaction_threshold, num_verified_signatures, TX_SUMMARY_COMMITMENT]
-
-            u32assert2 u32gt
-            # => [is_gt, proc_threshold, num_procedures-1, transaction_threshold, num_verified_signatures, TX_SUMMARY_COMMITMENT]
-            if.true
-                # => [proc_threshold, num_procedures-1, transaction_threshold, num_verified_signatures, TX_SUMMARY_COMMITMENT]
-                movup.2 drop
-                swap
-                # => [num_procedures-1, proc_threshold, num_verified_signatures, TX_SUMMARY_COMMITMENT]
-            else
-                # => [proc_threshold, num_procedures-1, transaction_threshold, num_verified_signatures, TX_SUMMARY_COMMITMENT]
-                drop
-                # => [num_procedures-1, transaction_threshold, num_verified_signatures, TX_SUMMARY_COMMITMENT]
-            end
-        else
-            dropw
-            # => [num_procedures-1, transaction_threshold, num_verified_signatures, TX_SUMMARY_COMMITMENT]
-        end
-
-        dup neq.0
-        # => [should_continue, num_procedures-1, transaction_threshold, num_verified_signatures, TX_SUMMARY_COMMITMENT]
-    end
-
-    drop
-    # => [transaction_threshold, num_verified_signatures, TX_SUMMARY_COMMITMENT]
-    dup eq.0
-    if.true
-        drop
-        loc_load.0
-        # => [default_threshold, num_verified_signatures, TX_SUMMARY_COMMITMENT]
-    end
-
+    exec.compute_transaction_threshold
     # => [threshold, num_verified_signatures, TX_SUMMARY_COMMITMENT]
 
     u32assert2 u32lt
