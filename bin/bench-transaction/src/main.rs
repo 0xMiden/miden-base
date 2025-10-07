@@ -16,7 +16,8 @@ mod cycle_counting_benchmarks;
 use cycle_counting_benchmarks::ExecutionBenchmark;
 use cycle_counting_benchmarks::utils::write_bench_results_to_json;
 
-fn main() -> Result<()> {
+#[tokio::main(flavor = "current_thread")]
+async fn main() -> Result<()> {
     // create a template file for benchmark results
     let path = Path::new("bin/bench-transaction/bench-tx.json");
     let mut file = File::create(path).context("failed to create file")?;
@@ -27,21 +28,24 @@ fn main() -> Result<()> {
         (
             ExecutionBenchmark::ConsumeSingleP2ID,
             tx_consume_single_p2id_note()?
-                .execute_blocking()
+                .execute()
+                .await
                 .map(TransactionMeasurements::from)?
                 .into(),
         ),
         (
             ExecutionBenchmark::ConsumeTwoP2ID,
             tx_consume_two_p2id_notes()?
-                .execute_blocking()
+                .execute()
+                .await
                 .map(TransactionMeasurements::from)?
                 .into(),
         ),
         (
             ExecutionBenchmark::CreateSingleP2ID,
             tx_create_single_p2id_note()?
-                .execute_blocking()
+                .execute()
+                .await
                 .map(TransactionMeasurements::from)?
                 .into(),
         ),

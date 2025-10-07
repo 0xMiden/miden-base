@@ -34,8 +34,8 @@ use crate::{
     assert_transaction_executor_error,
 };
 
-#[test]
-fn test_active_note_get_sender_fails_from_tx_script() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_active_note_get_sender_fails_from_tx_script() -> anyhow::Result<()> {
     // Creates a mockchain with an account and a note
     let mut builder = MockChain::builder();
     let account = builder.add_existing_wallet(Auth::BasicAuth)?;
@@ -65,7 +65,7 @@ fn test_active_note_get_sender_fails_from_tx_script() -> anyhow::Result<()> {
         .tx_script(tx_script)
         .build()?;
 
-    let result = tx_context.execute_blocking();
+    let result = tx_context.execute().await;
     assert_transaction_executor_error!(
         result,
         ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_METADATA_WHILE_NO_NOTE_BEING_PROCESSED
@@ -74,8 +74,8 @@ fn test_active_note_get_sender_fails_from_tx_script() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[test]
-fn test_active_note_get_metadata() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_active_note_get_metadata() -> anyhow::Result<()> {
     let tx_context = {
         let account =
             Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, Auth::IncrNonce);

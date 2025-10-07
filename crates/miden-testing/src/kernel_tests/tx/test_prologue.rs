@@ -550,8 +550,8 @@ fn input_notes_memory_assertions(
 
 /// Tests that a simple account can be created in a complete transaction execution (not using
 /// [`TransactionContext::execute_code`]).
-#[test]
-fn create_simple_account() -> anyhow::Result<()> {
+#[tokio::test]
+async fn create_simple_account() -> anyhow::Result<()> {
     let account = AccountBuilder::new([6; 32])
         .storage_mode(AccountStorageMode::Public)
         .with_auth_component(Auth::IncrNonce)
@@ -560,7 +560,8 @@ fn create_simple_account() -> anyhow::Result<()> {
 
     let tx = TransactionContextBuilder::new(account)
         .build()?
-        .execute_blocking()
+        .execute()
+        .await
         .context("failed to execute account-creating transaction")?;
 
     assert_eq!(tx.account_delta().nonce_delta(), Felt::new(1));
@@ -576,13 +577,13 @@ fn create_simple_account() -> anyhow::Result<()> {
 
 /// Test helper which executes the prologue to check if the creation of the given `account` with its
 /// `seed` is valid in the context of the given `mock_chain`.
-pub fn create_account_test(
+pub async fn create_account_test(
     account: Account,
 ) -> Result<ExecutedTransaction, TransactionExecutorError> {
-    TransactionContextBuilder::new(account).build().unwrap().execute_blocking()
+    TransactionContextBuilder::new(account).build().unwrap().execute().await
 }
 
-pub fn create_multiple_accounts_test(storage_mode: AccountStorageMode) -> anyhow::Result<()> {
+pub async fn create_multiple_accounts_test(storage_mode: AccountStorageMode) -> anyhow::Result<()> {
     let mut accounts = Vec::new();
 
     for account_type in [
@@ -606,7 +607,7 @@ pub fn create_multiple_accounts_test(storage_mode: AccountStorageMode) -> anyhow
 
     for account in accounts {
         let account_type = account.account_type();
-        create_account_test(account).context(format!(
+        create_account_test(account).await.context(format!(
             "create_multiple_accounts_test test failed for account type {account_type}"
         ))?;
     }
@@ -615,13 +616,13 @@ pub fn create_multiple_accounts_test(storage_mode: AccountStorageMode) -> anyhow
 }
 
 /// Tests that a valid account of each storage mode can be created successfully.
-#[test]
-pub fn create_accounts_with_all_storage_modes() -> anyhow::Result<()> {
-    create_multiple_accounts_test(AccountStorageMode::Private)?;
+#[tokio::test]
+pub async fn create_accounts_with_all_storage_modes() -> anyhow::Result<()> {
+    create_multiple_accounts_test(AccountStorageMode::Private).await?;
 
-    create_multiple_accounts_test(AccountStorageMode::Public)?;
+    create_multiple_accounts_test(AccountStorageMode::Public).await?;
 
-    create_multiple_accounts_test(AccountStorageMode::Network)
+    create_multiple_accounts_test(AccountStorageMode::Network).await
 }
 
 /// Takes an account with a placeholder ID and returns the same account but with its ID replaced
@@ -654,8 +655,8 @@ fn compute_valid_account_id(account: Account) -> Account {
 
 /// Tests that creating a fungible faucet account with a non-empty initial balance in its reserved
 /// slot fails.
-#[test]
-pub fn create_account_fungible_faucet_invalid_initial_balance() -> anyhow::Result<()> {
+#[tokio::test]
+pub async fn create_account_fungible_faucet_invalid_initial_balance() -> anyhow::Result<()> {
     let account = AccountBuilder::new([1; 32])
         .account_type(AccountType::FungibleFaucet)
         .with_auth_component(NoopAuthComponent)
@@ -674,7 +675,7 @@ pub fn create_account_fungible_faucet_invalid_initial_balance() -> anyhow::Resul
     let account = Account::new(id, vault, storage, code, ONE, None)?;
     let account = compute_valid_account_id(account);
 
-    let result = create_account_test(account);
+    let result = create_account_test(account).await;
 
     assert_transaction_executor_error!(
         result,
@@ -686,8 +687,9 @@ pub fn create_account_fungible_faucet_invalid_initial_balance() -> anyhow::Resul
 
 /// Tests that creating a non fungible faucet account with a non-empty storage map in its reserved
 /// slot fails.
-#[test]
-pub fn create_account_non_fungible_faucet_invalid_initial_reserved_slot() -> anyhow::Result<()> {
+#[tokio::test]
+pub async fn create_account_non_fungible_faucet_invalid_initial_reserved_slot() -> anyhow::Result<()>
+{
     // Create a storage map with a mock asset to make it non-empty.
     let asset = NonFungibleAsset::mock(&[1, 2, 3, 4]);
     let non_fungible_storage_map =
@@ -707,7 +709,7 @@ pub fn create_account_non_fungible_faucet_invalid_initial_reserved_slot() -> any
     let account = Account::new(id, vault, storage, code, ONE, None)?;
     let account = compute_valid_account_id(account);
 
-    let result = create_account_test(account);
+    let result = create_account_test(account).await;
 
     assert_transaction_executor_error!(
         result,
@@ -718,8 +720,8 @@ pub fn create_account_non_fungible_faucet_invalid_initial_reserved_slot() -> any
 }
 
 /// Tests that supplying an invalid seed causes account creation to fail.
-#[test]
-pub fn create_account_invalid_seed() -> anyhow::Result<()> {
+#[tokio::test]
+pub async fn create_account_invalid_seed() -> anyhow::Result<()> {
     let mut mock_chain = MockChain::new();
     mock_chain.prove_next_block()?;
 

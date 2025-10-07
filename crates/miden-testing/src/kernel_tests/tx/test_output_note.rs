@@ -603,8 +603,8 @@ fn test_create_note_and_add_same_nft_twice() -> anyhow::Result<()> {
 }
 
 /// Tests that creating a note with a fungible asset with amount zero works.
-#[test]
-fn creating_note_with_fungible_asset_amount_zero_works() -> anyhow::Result<()> {
+#[tokio::test]
+async fn creating_note_with_fungible_asset_amount_zero_works() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let account = builder.add_existing_mock_account(Auth::IncrNonce)?;
     let output_note = builder.add_p2id_note(
@@ -619,7 +619,8 @@ fn creating_note_with_fungible_asset_amount_zero_works() -> anyhow::Result<()> {
     chain
         .build_tx_context(account, &[input_note.id()], &[])?
         .build()?
-        .execute_blocking()?;
+        .execute()
+        .await?;
 
     Ok(())
 }
@@ -719,8 +720,8 @@ fn test_build_recipient_hash() -> anyhow::Result<()> {
 /// - Right after the previous check to make sure it returns the same commitment from the cached
 ///   data.
 /// - After adding the second `asset_1` to the note.
-#[test]
-fn test_get_asset_info() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_get_asset_info() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
 
     let fungible_asset_0 = Asset::Fungible(
@@ -855,15 +856,15 @@ fn test_get_asset_info() -> anyhow::Result<()> {
         .tx_script(tx_script)
         .build()?;
 
-    tx_context.execute_blocking()?;
+    tx_context.execute().await?;
 
     Ok(())
 }
 
 /// Check that recipient and metadata of a note with one asset obtained from the
 /// `output_note::get_recipient` procedure is correct.
-#[test]
-fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
 
     let account =
@@ -927,15 +928,15 @@ fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
         .tx_script(tx_script)
         .build()?;
 
-    tx_context.execute_blocking()?;
+    tx_context.execute().await?;
 
     Ok(())
 }
 
 /// Check that the assets number and assets data obtained from the `output_note::get_assets`
 /// procedure is correct for each note with zero, one and two different assets.
-#[test]
-fn test_get_assets() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_get_assets() -> anyhow::Result<()> {
     let TestSetup {
         mock_chain,
         account,
@@ -1033,7 +1034,7 @@ fn test_get_assets() -> anyhow::Result<()> {
         .tx_script(tx_script)
         .build()?;
 
-    tx_context.execute_blocking()?;
+    tx_context.execute().await?;
 
     Ok(())
 }

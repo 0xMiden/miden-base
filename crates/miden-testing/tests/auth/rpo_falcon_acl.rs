@@ -75,8 +75,8 @@ fn setup_rpo_falcon_acl_test(
     Ok((account, mock_chain, note))
 }
 
-#[test]
-fn test_rpo_falcon_acl() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_rpo_falcon_acl() -> anyhow::Result<()> {
     let (account, mock_chain, note) = setup_rpo_falcon_acl_test(false, true)?;
 
     // We need to get the authenticator separately for this test
@@ -135,7 +135,8 @@ fn test_rpo_falcon_acl() -> anyhow::Result<()> {
         .build()?;
 
     tx_context_with_auth_1
-        .execute_blocking()
+        .execute()
+        .await
         .expect("trigger 1 with auth should succeed");
 
     // Test 2: Transaction WITH authenticator calling trigger procedure 2 (should succeed)
@@ -146,7 +147,8 @@ fn test_rpo_falcon_acl() -> anyhow::Result<()> {
         .build()?;
 
     tx_context_with_auth_2
-        .execute_blocking()
+        .execute()
+        .await
         .expect("trigger 2 with auth should succeed");
 
     // Test 3: Transaction WITHOUT authenticator calling trigger procedure (should fail)
@@ -156,7 +158,7 @@ fn test_rpo_falcon_acl() -> anyhow::Result<()> {
         .tx_script(tx_script_trigger_1)
         .build()?;
 
-    let executed_tx_no_auth = tx_context_no_auth.execute_blocking();
+    let executed_tx_no_auth = tx_context_no_auth.execute().await;
 
     assert_matches!(executed_tx_no_auth, Err(TransactionExecutorError::MissingAuthenticator));
 
@@ -168,7 +170,8 @@ fn test_rpo_falcon_acl() -> anyhow::Result<()> {
         .build()?;
 
     let executed = tx_context_no_trigger
-        .execute_blocking()
+        .execute()
+        .await
         .expect("no trigger, no auth should succeed");
     assert_eq!(
         executed.account_delta().nonce_delta(),
@@ -179,8 +182,8 @@ fn test_rpo_falcon_acl() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[test]
-fn test_rpo_falcon_acl_with_allow_unauthorized_output_notes() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_rpo_falcon_acl_with_allow_unauthorized_output_notes() -> anyhow::Result<()> {
     let (account, mock_chain, note) = setup_rpo_falcon_acl_test(true, true)?;
 
     // Verify the storage layout includes both authorization flags
@@ -204,7 +207,8 @@ fn test_rpo_falcon_acl_with_allow_unauthorized_output_notes() -> anyhow::Result<
         .build()?;
 
     let executed = tx_context_no_trigger
-        .execute_blocking()
+        .execute()
+        .await
         .expect("no trigger, no auth should succeed");
     assert_eq!(
         executed.account_delta().nonce_delta(),
@@ -215,8 +219,8 @@ fn test_rpo_falcon_acl_with_allow_unauthorized_output_notes() -> anyhow::Result<
     Ok(())
 }
 
-#[test]
-fn test_rpo_falcon_acl_with_disallow_unauthorized_input_notes() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_rpo_falcon_acl_with_disallow_unauthorized_input_notes() -> anyhow::Result<()> {
     let (account, mock_chain, note) = setup_rpo_falcon_acl_test(true, false)?;
 
     // Verify the storage layout includes both flags
@@ -239,7 +243,7 @@ fn test_rpo_falcon_acl_with_disallow_unauthorized_input_notes() -> anyhow::Resul
         .tx_script(tx_script_no_trigger)
         .build()?;
 
-    let executed_tx_no_auth = tx_context_no_auth.execute_blocking();
+    let executed_tx_no_auth = tx_context_no_auth.execute().await;
 
     // This should fail with MissingAuthenticator error because input notes are being consumed
     // and allow_unauthorized_input_notes is false
