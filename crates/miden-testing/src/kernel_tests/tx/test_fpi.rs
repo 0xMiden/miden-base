@@ -160,7 +160,7 @@ fn test_fpi_memory_single_account() -> anyhow::Result<()> {
         get_item_foreign_hash = foreign_account.code().procedures()[1].mast_root(),
     );
 
-    let exec_output = tx_context.execute_code(&code)?;
+    let exec_output = tx_context.execute_code_blocking(&code)?;
 
     assert_eq!(
         exec_output.get_stack_word(0),
@@ -214,7 +214,7 @@ fn test_fpi_memory_single_account() -> anyhow::Result<()> {
         get_map_item_foreign_hash = foreign_account.code().procedures()[2].mast_root(),
     );
 
-    let exec_output = tx_context.execute_code(&code).unwrap();
+    let exec_output = tx_context.execute_code_blocking(&code).unwrap();
 
     assert_eq!(
         exec_output.get_stack_word(0),
@@ -284,7 +284,7 @@ fn test_fpi_memory_single_account() -> anyhow::Result<()> {
         get_item_foreign_hash = foreign_account.code().procedures()[1].mast_root(),
     );
 
-    let exec_output = &tx_context.execute_code(&code)?;
+    let exec_output = &tx_context.execute_code_blocking(&code)?;
 
     // Check that the second invocation of the foreign procedure from the same account does not load
     // the account data again: already loaded data should be reused.
@@ -467,7 +467,7 @@ fn test_fpi_memory_two_accounts() -> anyhow::Result<()> {
         foreign_2_suffix = foreign_account_2.id().suffix(),
     );
 
-    let exec_output = &tx_context.execute_code(&code)?;
+    let exec_output = &tx_context.execute_code_blocking(&code)?;
 
     // Check the correctness of the memory layout after multiple foreign procedure invocations from
     // different foreign accounts
@@ -1382,7 +1382,7 @@ async fn test_fpi_stale_account() -> anyhow::Result<()> {
         foreign_suffix = foreign_account.id().suffix(),
     );
 
-    let result = tx_context.execute_code(&code).map(|_| ());
+    let result = tx_context.execute_code(&code).await.map(|_| ());
     assert_execution_error!(result, ERR_FOREIGN_ACCOUNT_INVALID_COMMITMENT);
     Ok(())
 }

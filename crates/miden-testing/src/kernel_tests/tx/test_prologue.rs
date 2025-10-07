@@ -163,7 +163,7 @@ fn test_transaction_prologue() -> anyhow::Result<()> {
     .with_note_args(note_args_map);
 
     tx_context.set_tx_args(tx_args);
-    let exec_output = &tx_context.execute_code(code)?;
+    let exec_output = &tx_context.execute_code_blocking(code)?;
 
     global_input_memory_assertions(exec_output, &tx_context);
     block_data_memory_assertions(exec_output, &tx_context);
@@ -753,7 +753,7 @@ pub async fn create_account_invalid_seed() -> anyhow::Result<()> {
       end
       ";
 
-    let result = tx_context.execute_code(code);
+    let result = tx_context.execute_code(code).await;
 
     assert_execution_error!(result, ERR_ACCOUNT_SEED_AND_COMMITMENT_DIGEST_MISMATCH);
 
@@ -776,7 +776,7 @@ fn test_get_blk_version() -> anyhow::Result<()> {
     end
     ";
 
-    let exec_output = tx_context.execute_code(code)?;
+    let exec_output = tx_context.execute_code_blocking(code)?;
 
     assert_eq!(
         exec_output.get_stack_element(0),
@@ -802,7 +802,7 @@ fn test_get_blk_timestamp() -> anyhow::Result<()> {
     end
     ";
 
-    let exec_output = tx_context.execute_code(code)?;
+    let exec_output = tx_context.execute_code_blocking(code)?;
 
     assert_eq!(
         exec_output.get_stack_element(0),

@@ -94,7 +94,7 @@ fn test_epilogue() -> anyhow::Result<()> {
         "
     );
 
-    let exec_output = tx_context.execute_code(&code)?;
+    let exec_output = tx_context.execute_code_blocking(&code)?;
 
     // The final account is the initial account with the nonce incremented by one.
     let mut final_account = account.clone();
@@ -191,7 +191,7 @@ fn test_compute_output_note_id() -> anyhow::Result<()> {
             "
         );
 
-        let exec_output = &tx_context.execute_code(&code)?;
+        let exec_output = &tx_context.execute_code_blocking(&code)?;
 
         assert_eq!(
             note.assets().commitment(),
@@ -271,7 +271,7 @@ fn test_epilogue_asset_preservation_violation_too_few_input() -> anyhow::Result<
         "
     );
 
-    let exec_output = tx_context.execute_code(&code);
+    let exec_output = tx_context.execute_code_blocking(&code);
 
     assert_execution_error!(exec_output, ERR_EPILOGUE_TOTAL_NUMBER_OF_ASSETS_MUST_STAY_THE_SAME);
     Ok(())
@@ -345,7 +345,7 @@ fn test_epilogue_asset_preservation_violation_too_many_fungible_input() -> anyho
         "
     );
 
-    let exec_output = tx_context.execute_code(&code);
+    let exec_output = tx_context.execute_code_blocking(&code);
 
     assert_execution_error!(exec_output, ERR_EPILOGUE_TOTAL_NUMBER_OF_ASSETS_MUST_STAY_THE_SAME);
     Ok(())
@@ -384,7 +384,7 @@ fn test_block_expiration_height_monotonically_decreases() -> anyhow::Result<()> 
             .replace("{value_2}", &v2.to_string())
             .replace("{min_value}", &v2.min(v1).to_string());
 
-        let exec_output = &tx_context.execute_code(code)?;
+        let exec_output = &tx_context.execute_code_blocking(code)?;
 
         // Expiry block should be set to transaction's block + the stored expiration delta
         // (which can only decrease, not increase)
@@ -415,7 +415,7 @@ fn test_invalid_expiration_deltas() -> anyhow::Result<()> {
 
     for value in test_values {
         let code = &code_template.replace("{value_1}", &value.to_string());
-        let exec_output = tx_context.execute_code(code);
+        let exec_output = tx_context.execute_code_blocking(code);
 
         assert_execution_error!(exec_output, ERR_TX_INVALID_EXPIRATION_DELTA);
     }
@@ -445,7 +445,7 @@ fn test_no_expiration_delta_set() -> anyhow::Result<()> {
     end
     ";
 
-    let exec_output = &tx_context.execute_code(code_template)?;
+    let exec_output = &tx_context.execute_code_blocking(code_template)?;
 
     // Default value should be equal to u32::MAX, set in the prologue
     assert_eq!(
@@ -488,7 +488,7 @@ fn test_epilogue_increment_nonce_success() -> anyhow::Result<()> {
         "
     );
 
-    tx_context.execute_code(code.as_str())?;
+    tx_context.execute_code_blocking(code.as_str())?;
     Ok(())
 }
 
@@ -589,7 +589,7 @@ fn test_epilogue_empty_transaction_with_empty_output_note() -> anyhow::Result<()
 
     let tx_context = TransactionContextBuilder::with_noop_auth_account().build()?;
 
-    let result = tx_context.execute_code(&tx_script_source).map(|_| ());
+    let result = tx_context.execute_code_blocking(&tx_script_source).map(|_| ());
 
     // assert that even if the output note was created, the transaction is considered empty
     assert_execution_error!(result, ERR_EPILOGUE_EXECUTED_TRANSACTION_IS_EMPTY);

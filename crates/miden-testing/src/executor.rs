@@ -39,7 +39,7 @@ impl<H: AsyncHost> CodeExecutor<H> {
     /// To improve the error message quality, convert the returned [`ExecutionError`] into a
     /// [`Report`](miden_objects::assembly::diagnostics::Report).
     #[cfg(test)]
-    pub fn run(self, code: &str) -> Result<ExecutionOutput, ExecutionError> {
+    pub async fn run(self, code: &str) -> Result<ExecutionOutput, ExecutionError> {
         use alloc::borrow::ToOwned;
         use alloc::sync::Arc;
 
@@ -55,14 +55,17 @@ impl<H: AsyncHost> CodeExecutor<H> {
             source_manager.load(SourceLanguage::Masm, Uri::new("_user_code"), code.to_owned());
         let program = assembler.assemble_program(virtual_source_file).unwrap();
 
-        self.execute_program(program)
+        self.execute_program(program).await
     }
 
     /// Executes the provided [`Program`] and returns the [`Process`] state.
     ///
     /// To improve the error message quality, convert the returned [`ExecutionError`] into a
     /// [`Report`](miden_objects::assembly::diagnostics::Report).
-    pub fn execute_program(mut self, program: Program) -> Result<ExecutionOutput, ExecutionError> {
+    pub async fn execute_program(
+        mut self,
+        program: Program,
+    ) -> Result<ExecutionOutput, ExecutionError> {
         // This reverses the stack inputs (even though it doesn't look like it does) because the
         // fast processor expects the reverse order.
         //
@@ -74,11 +77,7 @@ impl<H: AsyncHost> CodeExecutor<H> {
 
         let processor = FastProcessor::new_debug(stack_inputs.as_slice(), self.advice_inputs);
 
-        // TODO: Make async
-        let execution_output = tokio::runtime::Builder::new_current_thread()
-            .build()
-            .unwrap()
-            .block_on(processor.execute(&program, &mut self.host))?;
+        let execution_output = processor.execute(&program, &mut self.host).await?;
 
         Ok(execution_output)
     }

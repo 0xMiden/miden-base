@@ -66,6 +66,14 @@ pub struct TransactionContext {
 }
 
 impl TransactionContext {
+    /// TODO: Remove.
+    pub fn execute_code_blocking(&self, code: &str) -> Result<ExecutionOutput, ExecutionError> {
+        tokio::runtime::Builder::new_current_thread()
+            .build()
+            .unwrap()
+            .block_on(self.execute_code(code))
+    }
+
     /// Executes arbitrary code within the context of a mocked transaction environment and returns
     /// the resulting [`ExecutionOutput`].
     ///
@@ -86,7 +94,7 @@ impl TransactionContext {
     /// # Panics
     ///
     /// - If the provided `code` is not a valid program.
-    pub fn execute_code(&self, code: &str) -> Result<ExecutionOutput, ExecutionError> {
+    pub async fn execute_code(&self, code: &str) -> Result<ExecutionOutput, ExecutionError> {
         let (stack_inputs, advice_inputs) = TransactionKernel::prepare_inputs(
             &self.tx_inputs,
             &self.tx_args,
@@ -146,6 +154,7 @@ impl TransactionContext {
             .stack_inputs(stack_inputs)
             .extend_advice_inputs(advice_inputs)
             .execute_program(program)
+            .await
     }
 
     /// Executes the transaction through a [TransactionExecutor]

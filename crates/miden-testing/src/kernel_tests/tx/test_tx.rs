@@ -186,7 +186,7 @@ async fn test_block_procedures() -> anyhow::Result<()> {
         end
         ";
 
-    let exec_output = &tx_context.execute_code(code)?;
+    let exec_output = &tx_context.execute_code(code).await?;
 
     assert_eq!(
         exec_output.get_stack_word(0),

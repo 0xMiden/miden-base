@@ -152,8 +152,8 @@ pub async fn compute_current_commitment() -> miette::Result<()> {
 // ACCOUNT ID TESTS
 // ================================================================================================
 
-#[test]
-pub fn test_account_type() -> miette::Result<()> {
+#[tokio::test]
+async fn test_account_type() -> miette::Result<()> {
     let procedures = vec![
         ("is_fungible_faucet", AccountType::FungibleFaucet),
         ("is_non_fungible_faucet", AccountType::NonFungibleFaucet),
@@ -188,7 +188,8 @@ pub fn test_account_type() -> miette::Result<()> {
                 .stack_inputs(
                     StackInputs::new(vec![account_id.prefix().as_felt()]).into_diagnostic()?,
                 )
-                .run(&code)?;
+                .run(&code)
+                .await?;
 
             let type_matches = account_id.account_type() == expected_type;
             let expected_result = Felt::from(type_matches);
@@ -211,8 +212,8 @@ pub fn test_account_type() -> miette::Result<()> {
     Ok(())
 }
 
-#[test]
-pub fn test_account_validate_id() -> miette::Result<()> {
+#[tokio::test]
+async fn test_account_validate_id() -> miette::Result<()> {
     let test_cases = [
         (ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE, None),
         (ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE, None),
@@ -256,7 +257,8 @@ pub fn test_account_validate_id() -> miette::Result<()> {
 
         let result = CodeExecutor::with_default_host()
             .stack_inputs(StackInputs::new(vec![suffix, prefix]).unwrap())
-            .run(code);
+            .run(code)
+            .await;
 
         match (result, expected_error) {
             (Ok(_), None) => (),
@@ -285,8 +287,8 @@ pub fn test_account_validate_id() -> miette::Result<()> {
     Ok(())
 }
 
-#[test]
-fn test_is_faucet_procedure() -> miette::Result<()> {
+#[tokio::test]
+async fn test_is_faucet_procedure() -> miette::Result<()> {
     let test_cases = [
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
         ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
@@ -315,6 +317,7 @@ fn test_is_faucet_procedure() -> miette::Result<()> {
 
         let exec_output = CodeExecutor::with_default_host()
             .run(&code)
+            .await
             .wrap_err("failed to execute is_faucet procedure")?;
 
         let is_faucet = account_id.is_faucet();
@@ -353,7 +356,7 @@ pub fn test_compute_code_commitment() -> miette::Result<()> {
         expected_code_commitment = account.code().commitment()
     );
 
-    tx_context.execute_code(&code)?;
+    tx_context.execute_code_blocking(&code)?;
 
     Ok(())
 }
@@ -387,7 +390,7 @@ fn test_get_item() -> miette::Result<()> {
             item_value = &storage_item.slot.value(),
         );
 
-        tx_context.execute_code(&code).unwrap();
+        tx_context.execute_code_blocking(&code).unwrap();
     }
 
     Ok(())
@@ -424,7 +427,7 @@ fn test_get_map_item() -> miette::Result<()> {
             map_key = &key,
         );
 
-        let exec_output = &mut tx_context.execute_code(&code)?;
+        let exec_output = &mut tx_context.execute_code_blocking(&code)?;
         assert_eq!(
             exec_output.get_stack_word(0),
             value,
@@ -480,7 +483,7 @@ fn test_get_storage_slot_type() -> miette::Result<()> {
             item_index = storage_item.index,
         );
 
-        let exec_output = &tx_context.execute_code(&code).unwrap();
+        let exec_output = &tx_context.execute_code_blocking(&code).unwrap();
 
         let storage_slot_type = storage_item.slot.slot_type();
 
@@ -529,7 +532,7 @@ fn test_set_item() -> miette::Result<()> {
         new_storage_item_index = 0,
     );
 
-    tx_context.execute_code(&code).unwrap();
+    tx_context.execute_code_blocking(&code).unwrap();
 
     Ok(())
 }
@@ -578,7 +581,7 @@ fn test_set_map_item() -> miette::Result<()> {
         new_value = &new_value,
     );
 
-    let exec_output = &tx_context.execute_code(&code).unwrap();
+    let exec_output = &tx_context.execute_code_blocking(&code).unwrap();
 
     let mut new_storage_map = AccountStorage::mock_map();
     new_storage_map.insert(new_key, new_value).unwrap();
@@ -896,7 +899,7 @@ fn test_get_initial_storage_commitment() -> anyhow::Result<()> {
         "#,
         expected_storage_commitment = &tx_context.account().storage().commitment(),
     );
-    tx_context.execute_code(&code)?;
+    tx_context.execute_code_blocking(&code)?;
 
     Ok(())
 }
@@ -970,7 +973,7 @@ fn test_compute_storage_commitment() -> anyhow::Result<()> {
         end
         "#,
     );
-    tx_context.execute_code(&code)?;
+    tx_context.execute_code_blocking(&code)?;
 
     Ok(())
 }
@@ -1086,7 +1089,7 @@ fn test_get_vault_root() -> anyhow::Result<()> {
         ",
         expected_vault_root = &account.vault().root(),
     );
-    tx_context.execute_code(&code)?;
+    tx_context.execute_code_blocking(&code)?;
 
     // get the current vault root
     account.vault_mut().add_asset(fungible_asset)?;
@@ -1114,7 +1117,7 @@ fn test_get_vault_root() -> anyhow::Result<()> {
         fungible_asset = Word::from(&fungible_asset),
         expected_vault_root = &account.vault().root(),
     );
-    tx_context.execute_code(&code)?;
+    tx_context.execute_code_blocking(&code)?;
 
     Ok(())
 }
@@ -1163,7 +1166,7 @@ fn test_authenticate_and_track_procedure() -> miette::Result<()> {
 
         // Execution of this code will return an EventError(UnknownAccountProcedure) for procs
         // that are not in the advice provider.
-        let exec_output = tx_context.execute_code(&code);
+        let exec_output = tx_context.execute_code_blocking(&code);
 
         match valid {
             true => {
@@ -1397,7 +1400,7 @@ fn test_get_item_init() -> miette::Result<()> {
         expected_initial_value = &AccountStorage::mock_item_0().slot.value(),
     );
 
-    tx_context.execute_code(&code).unwrap();
+    tx_context.execute_code_blocking(&code).unwrap();
 
     Ok(())
 }
@@ -1468,7 +1471,7 @@ fn test_get_map_item_init() -> miette::Result<()> {
         new_value = &new_value,
     );
 
-    tx_context.execute_code(&code).unwrap();
+    tx_context.execute_code_blocking(&code).unwrap();
 
     Ok(())
 }

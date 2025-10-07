@@ -46,7 +46,7 @@ fn get_balance_returns_correct_amount() -> anyhow::Result<()> {
         suffix = faucet_id.suffix(),
     );
 
-    let exec_output = tx_context.execute_code(&code)?;
+    let exec_output = tx_context.execute_code_blocking(&code)?;
 
     assert_eq!(
         exec_output.get_stack_element(0).as_int(),
@@ -87,7 +87,7 @@ fn peek_balance_returns_correct_amount() -> anyhow::Result<()> {
         suffix = faucet_id.suffix(),
     );
 
-    let exec_output = tx_context.execute_code(&code)?;
+    let exec_output = tx_context.execute_code_blocking(&code)?;
 
     assert_eq!(
         exec_output.get_stack_element(0).as_int(),
@@ -121,7 +121,7 @@ fn test_get_balance_non_fungible_fails() -> anyhow::Result<()> {
         suffix = faucet_id.suffix(),
     );
 
-    let exec_result = tx_context.execute_code(&code);
+    let exec_result = tx_context.execute_code_blocking(&code);
 
     assert_execution_error!(
         exec_result,
@@ -154,7 +154,7 @@ fn test_has_non_fungible_asset() -> anyhow::Result<()> {
         non_fungible_asset_key = Word::from(non_fungible_asset)
     );
 
-    let exec_output = tx_context.execute_code(&code)?;
+    let exec_output = tx_context.execute_code_blocking(&code)?;
 
     assert_eq!(exec_output.get_stack_element(0), ONE);
 
@@ -192,7 +192,7 @@ fn test_add_fungible_asset_success() -> anyhow::Result<()> {
         FUNGIBLE_ASSET = Word::from(add_fungible_asset)
     );
 
-    let exec_output = &tx_context.execute_code(&code)?;
+    let exec_output = &tx_context.execute_code_blocking(&code)?;
 
     assert_eq!(
         exec_output.get_stack_word(0),
@@ -236,7 +236,7 @@ fn test_add_non_fungible_asset_fail_overflow() -> anyhow::Result<()> {
         FUNGIBLE_ASSET = Word::from(add_fungible_asset)
     );
 
-    let exec_result = tx_context.execute_code(&code);
+    let exec_result = tx_context.execute_code_blocking(&code);
 
     assert_execution_error!(exec_result, ERR_VAULT_FUNGIBLE_MAX_AMOUNT_EXCEEDED);
     assert!(account_vault.add_asset(add_fungible_asset).is_err());
@@ -270,7 +270,7 @@ fn test_add_non_fungible_asset_success() -> anyhow::Result<()> {
         FUNGIBLE_ASSET = Word::from(add_non_fungible_asset)
     );
 
-    let exec_output = &tx_context.execute_code(&code)?;
+    let exec_output = &tx_context.execute_code_blocking(&code)?;
 
     assert_eq!(
         exec_output.get_stack_word(0),
@@ -309,7 +309,7 @@ fn test_add_non_fungible_asset_fail_duplicate() -> anyhow::Result<()> {
         NON_FUNGIBLE_ASSET = Word::from(non_fungible_asset)
     );
 
-    let exec_result = tx_context.execute_code(&code);
+    let exec_result = tx_context.execute_code_blocking(&code);
 
     assert_execution_error!(exec_result, ERR_VAULT_NON_FUNGIBLE_ASSET_ALREADY_EXISTS);
     assert!(account_vault.add_asset(non_fungible_asset).is_err());
@@ -349,7 +349,7 @@ fn test_remove_fungible_asset_success_no_balance_remaining() -> anyhow::Result<(
         FUNGIBLE_ASSET = Word::from(remove_fungible_asset)
     );
 
-    let exec_output = &tx_context.execute_code(&code)?;
+    let exec_output = &tx_context.execute_code_blocking(&code)?;
 
     assert_eq!(
         exec_output.get_stack_word(0),
@@ -391,7 +391,7 @@ fn test_remove_fungible_asset_fail_remove_too_much() -> anyhow::Result<()> {
         FUNGIBLE_ASSET = Word::from(remove_fungible_asset)
     );
 
-    let exec_result = tx_context.execute_code(&code);
+    let exec_result = tx_context.execute_code_blocking(&code);
 
     assert_execution_error!(
         exec_result,
@@ -433,7 +433,7 @@ fn test_remove_fungible_asset_success_balance_remaining() -> anyhow::Result<()> 
         FUNGIBLE_ASSET = Word::from(remove_fungible_asset)
     );
 
-    let exec_output = &tx_context.execute_code(&code)?;
+    let exec_output = &tx_context.execute_code_blocking(&code)?;
 
     assert_eq!(
         exec_output.get_stack_word(0),
@@ -479,7 +479,7 @@ fn test_remove_inexisting_non_fungible_asset_fails() -> anyhow::Result<()> {
         FUNGIBLE_ASSET = Word::from(non_existent_non_fungible_asset)
     );
 
-    let exec_result = tx_context.execute_code(&code);
+    let exec_result = tx_context.execute_code_blocking(&code);
 
     assert_execution_error!(exec_result, ERR_VAULT_NON_FUNGIBLE_ASSET_TO_REMOVE_NOT_FOUND);
     assert_matches!(
@@ -518,7 +518,7 @@ fn test_remove_non_fungible_asset_success() -> anyhow::Result<()> {
         FUNGIBLE_ASSET = Word::from(non_fungible_asset)
     );
 
-    let exec_output = &tx_context.execute_code(&code)?;
+    let exec_output = &tx_context.execute_code_blocking(&code)?;
 
     assert_eq!(
         exec_output.get_stack_word(0),

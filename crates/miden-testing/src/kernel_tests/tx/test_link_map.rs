@@ -173,7 +173,7 @@ fn insertion() -> anyhow::Result<()> {
     );
 
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
-    let exec_output = tx_context.execute_code(&code).context("failed to execute code")?;
+    let exec_output = tx_context.execute_code_blocking(&code).context("failed to execute code")?;
     let mem_viewer = MemoryViewer::ExecutionOutputs(&exec_output);
 
     let map = LinkMap::new(map_ptr.into(), &mem_viewer);
@@ -542,7 +542,7 @@ fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
     );
 
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
-    let exec_output = tx_context.execute_code(&code).context("failed to execute code")?;
+    let exec_output = tx_context.execute_code_blocking(&code).context("failed to execute code")?;
     let mem_viewer = MemoryViewer::ExecutionOutputs(&exec_output);
 
     for (map_ptr, control_map) in control_maps {

@@ -87,7 +87,7 @@ fn test_create_note() -> anyhow::Result<()> {
         tag = tag,
     );
 
-    let exec_output = &tx_context.execute_code(&code)?;
+    let exec_output = &tx_context.execute_code_blocking(&code)?;
 
     assert_eq!(
         exec_output.get_kernel_mem_word(NUM_OUTPUT_NOTES_PTR),
@@ -132,10 +132,10 @@ fn test_create_note_with_invalid_tag() -> anyhow::Result<()> {
     let valid_tag: Felt = NoteTag::for_local_use_case(0, 0).unwrap().into();
 
     // Test invalid tag
-    assert!(tx_context.execute_code(&note_creation_script(invalid_tag)).is_err());
+    assert!(tx_context.execute_code_blocking(&note_creation_script(invalid_tag)).is_err());
 
     // Test valid tag
-    assert!(tx_context.execute_code(&note_creation_script(valid_tag)).is_ok());
+    assert!(tx_context.execute_code_blocking(&note_creation_script(valid_tag)).is_ok());
 
     Ok(())
 }
@@ -200,7 +200,7 @@ fn test_create_note_too_many_notes() -> anyhow::Result<()> {
         aux = ZERO,
     );
 
-    let exec_output = tx_context.execute_code(&code);
+    let exec_output = tx_context.execute_code_blocking(&code);
 
     assert_execution_error!(exec_output, ERR_TX_NUMBER_OF_OUTPUT_NOTES_EXCEEDS_LIMIT);
     Ok(())
@@ -362,7 +362,7 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
         ),
     );
 
-    let exec_output = &tx_context.execute_code(&code)?;
+    let exec_output = &tx_context.execute_code_blocking(&code)?;
 
     assert_eq!(
         exec_output.get_kernel_mem_word(NUM_OUTPUT_NOTES_PTR),
@@ -438,7 +438,7 @@ fn test_create_note_and_add_asset() -> anyhow::Result<()> {
         asset = asset,
     );
 
-    let exec_output = &tx_context.execute_code(&code)?;
+    let exec_output = &tx_context.execute_code_blocking(&code)?;
 
     assert_eq!(
         exec_output.get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_ASSETS_OFFSET),
@@ -520,7 +520,7 @@ fn test_create_note_and_add_multiple_assets() -> anyhow::Result<()> {
         nft = non_fungible_asset_encoded,
     );
 
-    let exec_output = &tx_context.execute_code(&code)?;
+    let exec_output = &tx_context.execute_code_blocking(&code)?;
 
     assert_eq!(
         exec_output.get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_ASSETS_OFFSET),
@@ -596,7 +596,7 @@ fn test_create_note_and_add_same_nft_twice() -> anyhow::Result<()> {
         nft = encoded,
     );
 
-    let exec_output = tx_context.execute_code(&code);
+    let exec_output = tx_context.execute_code_blocking(&code);
 
     assert_execution_error!(exec_output, ERR_NON_FUNGIBLE_ASSET_ALREADY_EXISTS);
     Ok(())
@@ -694,7 +694,7 @@ fn test_build_recipient_hash() -> anyhow::Result<()> {
         aux = aux,
     );
 
-    let exec_output = &tx_context.execute_code(&code)?;
+    let exec_output = &tx_context.execute_code_blocking(&code)?;
 
     assert_eq!(
         exec_output.get_kernel_mem_word(NUM_OUTPUT_NOTES_PTR),

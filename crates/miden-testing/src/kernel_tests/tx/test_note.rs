@@ -81,7 +81,7 @@ fn test_note_setup() -> anyhow::Result<()> {
         end
         ";
 
-    let exec_output = tx_context.execute_code(code)?;
+    let exec_output = tx_context.execute_code_blocking(code)?;
 
     note_setup_stack_assertions(&exec_output, &tx_context);
     note_setup_memory_assertions(&exec_output);
@@ -162,7 +162,7 @@ fn test_note_script_and_note_args() -> miette::Result<()> {
     .with_note_args(note_args_map);
 
     tx_context.set_tx_args(tx_args);
-    let exec_output = tx_context.execute_code(code).unwrap();
+    let exec_output = tx_context.execute_code_blocking(code).unwrap();
 
     assert_eq!(exec_output.get_stack_word(0), note_args[0]);
     assert_eq!(exec_output.get_stack_word(4), note_args[1]);
@@ -255,7 +255,7 @@ fn test_build_recipient() -> anyhow::Result<()> {
         serial_num = serial_num,
     );
 
-    let exec_output = &tx_context.execute_code(&code)?;
+    let exec_output = &tx_context.execute_code_blocking(&code)?;
 
     // Create expected recipients and get their digests
     let note_inputs_4 = NoteInputs::new(word_1.to_vec())?;
@@ -343,7 +343,7 @@ fn test_compute_inputs_commitment() -> anyhow::Result<()> {
         addr_3 = BASE_ADDR + 12,
     );
 
-    let exec_output = &tx_context.execute_code(&code)?;
+    let exec_output = &tx_context.execute_code_blocking(&code)?;
 
     let mut inputs_5 = word_1.to_vec();
     inputs_5.push(word_2[0]);
@@ -420,7 +420,7 @@ fn test_build_metadata() -> miette::Result<()> {
             tag = test_metadata.tag(),
         );
 
-        let exec_output = tx_context.execute_code(&code).unwrap();
+        let exec_output = tx_context.execute_code_blocking(&code).unwrap();
 
         let metadata_word = exec_output.get_stack_word(0);
 

@@ -32,6 +32,8 @@ itertools   = { default-features = false, features = ["use_alloc"], version = "0
 rand        = { features = ["os_rng", "small_rng"], workspace = true }
 rand_chacha = { default-features = false, version = "0.9" }
 thiserror   = { workspace = true }
+# TODO: Remove when execute_code_blocking is gone.
+tokio       = { features = ["macros", "rt"], workspace = true }
 winterfell  = { version = "0.13" }
 
 [dev-dependencies]

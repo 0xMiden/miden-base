@@ -37,7 +37,7 @@ fn test_create_fungible_asset_succeeds() -> anyhow::Result<()> {
         "
     );
 
-    let exec_output = &tx_context.execute_code(&code)?;
+    let exec_output = &tx_context.execute_code_blocking(&code)?;
 
     let faucet_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).unwrap();
     assert_eq!(
@@ -79,7 +79,7 @@ fn test_create_non_fungible_asset_succeeds() -> anyhow::Result<()> {
         non_fungible_asset_data_hash = Hasher::hash(&NON_FUNGIBLE_ASSET_DATA),
     );
 
-    let exec_output = &tx_context.execute_code(&code)?;
+    let exec_output = &tx_context.execute_code_blocking(&code)?;
     assert_eq!(exec_output.get_stack_word(0), Word::from(non_fungible_asset));
 
     Ok(())
@@ -107,7 +107,7 @@ fn test_validate_non_fungible_asset() -> anyhow::Result<()> {
         "
     );
 
-    let exec_output = &tx_context.execute_code(&code)?;
+    let exec_output = &tx_context.execute_code_blocking(&code)?;
 
     assert_eq!(exec_output.get_stack_word(0), non_fungible_asset);
     Ok(())
