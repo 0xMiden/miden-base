@@ -75,7 +75,7 @@ pub fn create_mint_script_code(params: &FaucetTestParams) -> String {
 }
 
 /// Executes a minting transaction with the given faucet and parameters
-pub fn execute_mint_transaction(
+pub async fn execute_mint_transaction(
     mock_chain: &mut MockChain,
     faucet: Account,
     params: &FaucetTestParams,
@@ -84,7 +84,7 @@ pub fn execute_mint_transaction(
     let tx_script = ScriptBuilder::default().compile_tx_script(tx_script_code)?;
     let tx_context = mock_chain.build_tx_context(faucet, &[], &[])?.tx_script(tx_script).build()?;
 
-    Ok(tx_context.execute_blocking()?)
+    Ok(tx_context.execute().await?)
 }
 
 /// Verifies minted output note matches expectations
@@ -118,8 +118,8 @@ pub fn verify_minted_output_note(
 // ================================================================================================
 
 /// Tests that minting assets on an existing faucet succeeds.
-#[test]
-fn minting_fungible_asset_on_existing_faucet_succeeds() -> anyhow::Result<()> {
+#[tokio::test]
+async fn minting_fungible_asset_on_existing_faucet_succeeds() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let faucet = builder.add_existing_basic_faucet(Auth::BasicAuth, "TST", 200, None)?;
     let mut mock_chain = builder.build()?;
@@ -138,14 +138,15 @@ fn minting_fungible_asset_on_existing_faucet_succeeds() -> anyhow::Result<()> {
         .validate(params.note_type)
         .expect("note tag should support private notes");
 
-    let executed_transaction = execute_mint_transaction(&mut mock_chain, faucet.clone(), &params)?;
+    let executed_transaction =
+        execute_mint_transaction(&mut mock_chain, faucet.clone(), &params).await?;
     verify_minted_output_note(&executed_transaction, &faucet, &params)?;
 
     Ok(())
 }
 
-#[test]
-fn faucet_contract_mint_fungible_asset_fails_exceeds_max_supply() -> anyhow::Result<()> {
+#[tokio::test]
+async fn faucet_contract_mint_fungible_asset_fails_exceeds_max_supply() -> anyhow::Result<()> {
     // CONSTRUCT AND EXECUTE TX (Failure)
     // --------------------------------------------------------------------------------------------
     let mut builder = MockChain::builder();
@@ -187,7 +188,8 @@ fn faucet_contract_mint_fungible_asset_fails_exceeds_max_supply() -> anyhow::Res
         .build_tx_context(faucet.id(), &[], &[])?
         .tx_script(tx_script)
         .build()?
-        .execute_blocking();
+        .execute()
+        .await;
 
     // Execute the transaction and get the witness
     assert_transaction_executor_error!(
@@ -201,8 +203,8 @@ fn faucet_contract_mint_fungible_asset_fails_exceeds_max_supply() -> anyhow::Res
 // ================================================================================================
 
 /// Tests that minting assets on a new faucet succeeds.
-#[test]
-fn minting_fungible_asset_on_new_faucet_succeeds() -> anyhow::Result<()> {
+#[tokio::test]
+async fn minting_fungible_asset_on_new_faucet_succeeds() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let faucet = builder.create_new_faucet(Auth::BasicAuth, "TST", 200)?;
     let mut mock_chain = builder.build()?;
@@ -221,7 +223,8 @@ fn minting_fungible_asset_on_new_faucet_succeeds() -> anyhow::Result<()> {
         .validate(params.note_type)
         .expect("note tag should support private notes");
 
-    let executed_transaction = execute_mint_transaction(&mut mock_chain, faucet.clone(), &params)?;
+    let executed_transaction =
+        execute_mint_transaction(&mut mock_chain, faucet.clone(), &params).await?;
     verify_minted_output_note(&executed_transaction, &faucet, &params)?;
 
     Ok(())
@@ -231,8 +234,8 @@ fn minting_fungible_asset_on_new_faucet_succeeds() -> anyhow::Result<()> {
 // ================================================================================================
 
 /// Tests that burning a fungible asset on an existing faucet succeeds and proves the transaction.
-#[test]
-fn prove_burning_fungible_asset_on_existing_faucet_succeeds() -> anyhow::Result<()> {
+#[tokio::test]
+async fn prove_burning_fungible_asset_on_existing_faucet_succeeds() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let faucet = builder.add_existing_basic_faucet(Auth::BasicAuth, "TST", 200, Some(100))?;
 
@@ -273,7 +276,8 @@ fn prove_burning_fungible_asset_on_existing_faucet_succeeds() -> anyhow::Result<
     let executed_transaction = mock_chain
         .build_tx_context(faucet.id(), &[note.id()], &[])?
         .build()?
-        .execute_blocking()?;
+        .execute()
+        .await?;
 
     // Prove, serialize/deserialize and verify the transaction
     prove_and_verify_transaction(executed_transaction.clone())?;

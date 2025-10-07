@@ -144,18 +144,6 @@ impl TransactionContext {
         tx_executor.execute_transaction(account_id, block_num, notes, tx_args).await
     }
 
-    /// Executes the transaction through a [TransactionExecutor]
-    ///
-    /// TODO: This is a temporary workaround to avoid having to update each test to use tokio::test.
-    /// Eventually we should get rid of this method and use tokio::test + execute, but for the POC
-    /// stage this is easier.
-    pub fn execute_blocking(self) -> Result<ExecutedTransaction, TransactionExecutorError> {
-        tokio::runtime::Builder::new_current_thread()
-            .build()
-            .unwrap()
-            .block_on(self.execute())
-    }
-
     pub fn account(&self) -> &Account {
         &self.account
     }

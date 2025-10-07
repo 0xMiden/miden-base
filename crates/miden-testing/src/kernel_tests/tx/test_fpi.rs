@@ -514,8 +514,8 @@ fn test_fpi_memory_two_accounts() -> anyhow::Result<()> {
 /// It checks the foreign account code loading, providing the mast forest to the executor,
 /// construction of the account procedure maps and execution the foreign procedure in order to
 /// obtain the data from the foreign account's storage slot.
-#[test]
-fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
     // Prepare the test data
     let storage_slots =
         vec![AccountStorage::mock_item_0().slot, AccountStorage::mock_item_2().slot];
@@ -644,15 +644,16 @@ fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
         .tx_script(tx_script)
         .with_source_manager(source_manager)
         .build()?
-        .execute_blocking()?;
+        .execute()
+        .await?;
 
     Ok(())
 }
 
 /// Test that a foreign account can get the balance of a fungible asset and check the presence of a
 /// non-fungible asset.
-#[test]
-fn foreign_account_can_get_balance_and_presence_of_asset() -> anyhow::Result<()> {
+#[tokio::test]
+async fn foreign_account_can_get_balance_and_presence_of_asset() -> anyhow::Result<()> {
     let fungible_faucet_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1)?;
     let non_fungible_faucet_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET)?;
 
@@ -764,7 +765,8 @@ fn foreign_account_can_get_balance_and_presence_of_asset() -> anyhow::Result<()>
         .tx_script(tx_script)
         .with_source_manager(source_manager)
         .build()?
-        .execute_blocking()?;
+        .execute()
+        .await?;
 
     Ok(())
 }
@@ -779,8 +781,8 @@ fn foreign_account_can_get_balance_and_presence_of_asset() -> anyhow::Result<()>
 ///
 /// The call chain in this test looks like so:
 /// `Native -> First FA -> Second FA -> First FA`
-#[test]
-fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
     // ------ SECOND FOREIGN ACCOUNT ---------------------------------------------------------------
     let storage_slots = vec![AccountStorage::mock_item_0().slot];
     let second_foreign_account_code_source = r#"
@@ -985,7 +987,8 @@ fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
         .tx_script(tx_script)
         .with_source_manager(source_manager)
         .build()?
-        .execute_blocking()?;
+        .execute()
+        .await?;
 
     // TODO: Remove later and add a integration test using FPI.
     LocalTransactionProver::default().prove(executed_transaction.into())?;
@@ -997,15 +1000,11 @@ fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
 ///
 /// Attempt to create a 64th foreign account first triggers the assert during the account data
 /// loading, but we have an additional assert during the account stack push just in case.
-#[test]
-fn test_nested_fpi_stack_overflow() {
-    // use a custom thread to increase its stack capacity
-    std::thread::Builder::new()
-        .stack_size(8 * 1_048_576)
-        .spawn(|| {
-            let mut foreign_accounts = Vec::new();
+#[tokio::test]
+async fn test_nested_fpi_stack_overflow() -> anyhow::Result<()> {
+    let mut foreign_accounts = Vec::new();
 
-            let last_foreign_account_code_source = "
+    let last_foreign_account_code_source = "
                 use.miden::account
 
                 export.get_item_foreign
@@ -1026,27 +1025,27 @@ fn test_nested_fpi_stack_overflow() {
                 end
         ";
 
-            let storage_slots = vec![AccountStorage::mock_item_0().slot];
-            let last_foreign_account_component = AccountComponent::compile(
-                last_foreign_account_code_source,
-                TransactionKernel::with_kernel_library(Arc::new(DefaultSourceManager::default())),
-                storage_slots,
-            )
-            .unwrap()
-            .with_supports_all_types();
+    let storage_slots = vec![AccountStorage::mock_item_0().slot];
+    let last_foreign_account_component = AccountComponent::compile(
+        last_foreign_account_code_source,
+        TransactionKernel::with_kernel_library(Arc::new(DefaultSourceManager::default())),
+        storage_slots,
+    )
+    .unwrap()
+    .with_supports_all_types();
 
-            let last_foreign_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
-                .with_auth_component(Auth::IncrNonce)
-                .with_component(last_foreign_account_component)
-                .build_existing()
-                .unwrap();
+    let last_foreign_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
+        .with_auth_component(Auth::IncrNonce)
+        .with_component(last_foreign_account_component)
+        .build_existing()
+        .unwrap();
 
-            foreign_accounts.push(last_foreign_account);
+    foreign_accounts.push(last_foreign_account);
 
-            for foreign_account_index in 0..63 {
-                let next_account = foreign_accounts.last().unwrap();
+    for foreign_account_index in 0..63 {
+        let next_account = foreign_accounts.last().unwrap();
 
-                let foreign_account_code_source = format!(
+        let foreign_account_code_source = format!(
                     "
                 use.miden::tx
                 use.std::sys
@@ -1074,46 +1073,50 @@ fn test_nested_fpi_stack_overflow() {
                     next_foreign_prefix = next_account.id().prefix().as_felt(),
                 );
 
-                let foreign_account_component = AccountComponent::compile(
-                    foreign_account_code_source,
-                    TransactionKernel::with_kernel_library(Arc::new(DefaultSourceManager::default())),
-                    vec![],
-                )
-                .unwrap()
-                .with_supports_all_types();
+        let foreign_account_component = AccountComponent::compile(
+            foreign_account_code_source,
+            TransactionKernel::with_kernel_library(Arc::new(DefaultSourceManager::default())),
+            vec![],
+        )
+        .unwrap()
+        .with_supports_all_types();
 
-                let foreign_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
-                    .with_auth_component(Auth::IncrNonce)
-                    .with_component(foreign_account_component)
-                    .build_existing()
-                    .unwrap();
+        let foreign_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
+            .with_auth_component(Auth::IncrNonce)
+            .with_component(foreign_account_component)
+            .build_existing()
+            .unwrap();
 
-                foreign_accounts.push(foreign_account)
-            }
+        foreign_accounts.push(foreign_account)
+    }
 
-            // ------ NATIVE ACCOUNT ---------------------------------------------------------------
-            let native_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
-                .with_auth_component(Auth::IncrNonce)
-                .with_component(
-                    MockAccountComponent::with_empty_slots(),
-                )
-                .storage_mode(AccountStorageMode::Public)
-                .build_existing()
-                .unwrap();
+    // ------ NATIVE ACCOUNT ---------------------------------------------------------------
+    let native_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
+        .with_auth_component(Auth::IncrNonce)
+        .with_component(MockAccountComponent::with_empty_slots())
+        .storage_mode(AccountStorageMode::Public)
+        .build_existing()
+        .unwrap();
 
-            let mut mock_chain = MockChainBuilder::with_accounts(
-                [vec![native_account.clone()], foreign_accounts.clone()].concat(),
-            ).unwrap().build().unwrap();
+    let mut mock_chain = MockChainBuilder::with_accounts(
+        [vec![native_account.clone()], foreign_accounts.clone()].concat(),
+    )
+    .unwrap()
+    .build()
+    .unwrap();
 
-            mock_chain.prove_next_block().unwrap();
+    mock_chain.prove_next_block().unwrap();
 
-            let foreign_accounts: Vec<AccountInputs> = foreign_accounts
-                .iter()
-                .map(|acc| mock_chain.get_foreign_account_inputs(acc.id())
-                    .expect("failed to get foreign account inputs"))
-                .collect();
+    let foreign_accounts: Vec<AccountInputs> = foreign_accounts
+        .iter()
+        .map(|acc| {
+            mock_chain
+                .get_foreign_account_inputs(acc.id())
+                .expect("failed to get foreign account inputs")
+        })
+        .collect();
 
-            let code = format!(
+    let code = format!(
                 "
             use.std::sys
 
@@ -1143,28 +1146,26 @@ fn test_nested_fpi_stack_overflow() {
                 foreign_suffix = foreign_accounts.last().unwrap().id().suffix(),
             );
 
-            let tx_script = ScriptBuilder::default().compile_tx_script(code).unwrap();
+    let tx_script = ScriptBuilder::default().compile_tx_script(code).unwrap();
 
-            let tx_context = mock_chain
-                .build_tx_context(native_account.id(), &[], &[])
-                .expect("failed to build tx context")
-                .foreign_accounts(foreign_accounts)
-                .enable_lazy_loading()
-                .tx_script(tx_script)
-                .build().unwrap();
+    let tx_context = mock_chain
+        .build_tx_context(native_account.id(), &[], &[])
+        .expect("failed to build tx context")
+        .foreign_accounts(foreign_accounts)
+        .enable_lazy_loading()
+        .tx_script(tx_script)
+        .build()
+        .unwrap();
 
-            let result = tx_context.execute_blocking();
+    let result = tx_context.execute().await;
 
-            assert_transaction_executor_error!(result, ERR_FOREIGN_ACCOUNT_MAX_NUMBER_EXCEEDED);
-        })
-        .expect("thread panic external")
-        .join()
-        .expect("thread panic internal");
+    assert_transaction_executor_error!(result, ERR_FOREIGN_ACCOUNT_MAX_NUMBER_EXCEEDED);
+    Ok(())
 }
 
 /// Test that code will panic in attempt to call a procedure from the native account.
-#[test]
-fn test_nested_fpi_native_account_invocation() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_nested_fpi_native_account_invocation() -> anyhow::Result<()> {
     // ------ FIRST FOREIGN ACCOUNT ---------------------------------------------------------------
     let foreign_account_code_source = "
         use.miden::tx
@@ -1267,7 +1268,8 @@ fn test_nested_fpi_native_account_invocation() -> anyhow::Result<()> {
         .extend_advice_inputs(advice_inputs)
         .tx_script(tx_script)
         .build()?
-        .execute_blocking();
+        .execute()
+        .await;
 
     assert_transaction_executor_error!(result, ERR_FOREIGN_ACCOUNT_CONTEXT_AGAINST_NATIVE_ACCOUNT);
     Ok(())
@@ -1275,8 +1277,8 @@ fn test_nested_fpi_native_account_invocation() -> anyhow::Result<()> {
 
 /// Test that providing an account whose commitment does not match the one in the account tree
 /// results in an error.
-#[test]
-fn test_fpi_stale_account() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_fpi_stale_account() -> anyhow::Result<()> {
     // Prepare the test data
     let foreign_account_code_source = "
         use.miden::account
@@ -1387,8 +1389,8 @@ fn test_fpi_stale_account() -> anyhow::Result<()> {
 
 /// This test checks that our `miden::get_id` and `miden::get_native_id` procedures return IDs of
 /// the current and native account respectively while being called from the foreign account.
-#[test]
-fn test_fpi_get_account_id() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_fpi_get_account_id() -> anyhow::Result<()> {
     let foreign_account_code_source = "
         use.miden::account
 
@@ -1493,7 +1495,8 @@ fn test_fpi_get_account_id() -> anyhow::Result<()> {
         .enable_lazy_loading()
         .tx_script(tx_script)
         .build()?
-        .execute_blocking()?;
+        .execute()
+        .await?;
 
     Ok(())
 }
@@ -1501,8 +1504,8 @@ fn test_fpi_get_account_id() -> anyhow::Result<()> {
 /// This test checks that our `miden::get_nonce` and `miden::get_native_nonce` procedures return
 /// nonce values of the current and native account respectively while being called from the foreign
 /// account.
-#[test]
-fn test_fpi_get_account_nonce() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_fpi_get_account_nonce() -> anyhow::Result<()> {
     let foreign_account_code_source = "
         use.miden::account
 
@@ -1604,7 +1607,8 @@ fn test_fpi_get_account_nonce() -> anyhow::Result<()> {
         .enable_lazy_loading()
         .tx_script(tx_script)
         .build()?
-        .execute_blocking()?;
+        .execute()
+        .await?;
 
     Ok(())
 }
@@ -1680,8 +1684,8 @@ fn foreign_account_data_memory_assertions(foreign_account: &Account, process: &P
 }
 
 /// Test that get_item_init and get_map_item_init work correctly with foreign accounts.
-#[test]
-fn test_get_item_init_and_get_map_item_init_with_foreign_account() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_get_item_init_and_get_map_item_init_with_foreign_account() -> anyhow::Result<()> {
     // Create a native account
     let native_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(Auth::IncrNonce)
@@ -1773,7 +1777,8 @@ fn test_get_item_init_and_get_map_item_init_with_foreign_account() -> anyhow::Re
         .foreign_accounts(vec![foreign_account_inputs])
         .tx_script(tx_script)
         .build()?
-        .execute_blocking()?;
+        .execute()
+        .await?;
 
     Ok(())
 }

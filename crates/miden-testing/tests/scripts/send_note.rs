@@ -24,8 +24,8 @@ use miden_testing::{Auth, MockChain};
 /// has the [`BasicWallet`][wallet] interface.
 ///
 /// [wallet]: miden_lib::account::interface::AccountComponentInterface::BasicWallet
-#[test]
-fn test_send_note_script_basic_wallet() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_send_note_script_basic_wallet() -> anyhow::Result<()> {
     let sent_asset = FungibleAsset::mock(10);
 
     let mut builder = MockChain::builder();
@@ -64,7 +64,8 @@ fn test_send_note_script_basic_wallet() -> anyhow::Result<()> {
         .tx_script(send_note_transaction_script)
         .extend_expected_output_notes(vec![OutputNote::Full(note)])
         .build()?
-        .execute_blocking()?;
+        .execute()
+        .await?;
 
     // assert that the removed asset is in the delta
     let mut removed_assets: BTreeMap<_, _> = executed_transaction
@@ -87,8 +88,8 @@ fn test_send_note_script_basic_wallet() -> anyhow::Result<()> {
 /// has the [`BasicFungibleFaucet`][faucet] interface.
 ///
 /// [faucet]: miden_lib::account::interface::AccountComponentInterface::BasicFungibleFaucet
-#[test]
-fn test_send_note_script_basic_fungible_faucet() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_send_note_script_basic_fungible_faucet() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let sender_basic_fungible_faucet_account =
         builder.add_existing_basic_faucet(Auth::BasicAuth, "POL", 200, None)?;
@@ -127,6 +128,7 @@ fn test_send_note_script_basic_fungible_faucet() -> anyhow::Result<()> {
         .tx_script(send_note_transaction_script)
         .extend_expected_output_notes(vec![OutputNote::Full(note)])
         .build()?
-        .execute_blocking()?;
+        .execute()
+        .await?;
     Ok(())
 }
