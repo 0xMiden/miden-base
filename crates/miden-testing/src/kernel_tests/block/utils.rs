@@ -1,7 +1,5 @@
-use alloc::boxed::Box;
 use std::vec::Vec;
 
-use async_trait::async_trait;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::AccountId;
 use miden_objects::batch::ProvenBatch;
@@ -16,7 +14,6 @@ use crate::{MockChain, TxContextInput};
 // ================================================================================================
 
 /// Provides convenience methods for testing.
-#[async_trait]
 pub trait MockChainBlockExt {
     async fn create_authenticated_notes_tx(
         &self,
@@ -45,7 +42,6 @@ pub trait MockChainBlockExt {
     fn create_batch(&self, txs: Vec<ProvenTransaction>) -> anyhow::Result<ProvenBatch>;
 }
 
-#[async_trait]
 impl MockChainBlockExt for MockChain {
     async fn create_authenticated_notes_tx(
         &self,
