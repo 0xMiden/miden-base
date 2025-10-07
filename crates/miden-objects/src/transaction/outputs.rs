@@ -103,9 +103,7 @@ impl OutputNotes {
             }
         }
 
-        let commitment = Self::compute_commitment(
-            notes.iter().map(|output_note| (output_note.id(), *output_note.metadata())),
-        );
+        let commitment = Self::compute_commitment(notes.iter().map(NoteHeader::from));
 
         Ok(Self { notes, commitment })
     }
@@ -150,17 +148,15 @@ impl OutputNotes {
     ///
     /// For a non-empty list of notes, this is a sequential hash of (note_id, metadata) tuples for
     /// the notes created in a transaction. For an empty list, [EMPTY_WORD] is returned.
-    pub(crate) fn compute_commitment(
-        notes: impl ExactSizeIterator<Item = (NoteId, NoteMetadata)>,
-    ) -> Word {
+    pub(crate) fn compute_commitment(notes: impl ExactSizeIterator<Item = NoteHeader>) -> Word {
         if notes.len() == 0 {
             return Word::empty();
         }
 
         let mut elements: Vec<Felt> = Vec::with_capacity(notes.len() * 8);
-        for (note_id, note_metadata) in notes {
-            elements.extend_from_slice(note_id.as_elements());
-            elements.extend_from_slice(Word::from(note_metadata).as_elements());
+        for note_header in notes {
+            elements.extend_from_slice(note_header.id().as_elements());
+            elements.extend_from_slice(Word::from(note_header.metadata()).as_elements());
         }
 
         Hasher::hash_elements(&elements)
