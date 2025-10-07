@@ -13,6 +13,7 @@ use miden_objects::account::{
     Account,
     AccountBuilder,
     AccountId,
+    AccountIdVersion,
     AccountStorageMode,
     AccountType,
     StorageSlot,
@@ -303,9 +304,52 @@ impl MockChainBuilder {
         self.add_account_from_builder(auth_method, account_builder, AccountState::New)
     }
 
-    /// Adds an existing public [`BasicFungibleFaucet`] account to the initial chain state and
-    /// registers the authenticator (if the given [`Auth`] results in the creation of one).
+    /// Adds an existing fungible faucet account to the initial chain state.
+    ///
+    /// This is a convenience method that automatically determines the faucet type based on the auth
+    /// method:
+    /// - `Auth::Noop` creates a network faucet with `AccountStorageMode::Network`
+    /// - Other auth methods create a basic faucet with `AccountStorageMode::Public`
     pub fn add_existing_faucet(
+        &mut self,
+        auth_method: Auth,
+        token_symbol: &str,
+        max_supply: u64,
+        total_issuance: Option<u64>,
+    ) -> anyhow::Result<Account> {
+        match auth_method {
+            Auth::Noop => {
+                // For Noop auth, create a network faucet with a dummy owner
+                let owner_account_id = AccountId::dummy(
+                    [0; 15],
+                    AccountIdVersion::Version0,
+                    AccountType::RegularAccountImmutableCode,
+                    AccountStorageMode::Private,
+                );
+                self.add_existing_network_faucet(
+                    token_symbol,
+                    max_supply,
+                    owner_account_id,
+                    total_issuance,
+                )
+            },
+            _ => {
+                // For other auth methods, create a basic faucet
+                self.add_existing_basic_faucet(
+                    auth_method,
+                    token_symbol,
+                    max_supply,
+                    total_issuance,
+                )
+            },
+        }
+    }
+
+    /// Adds an existing [`BasicFungibleFaucet`] account to the initial chain state and
+    /// registers the authenticator.
+    ///
+    /// Basic fungible faucets always use `AccountStorageMode::Public` and require authentication.
+    pub fn add_existing_basic_faucet(
         &mut self,
         auth_method: Auth,
         token_symbol: &str,
@@ -317,7 +361,7 @@ impl MockChainBuilder {
             .context("invalid argument")?;
 
         let account_builder = AccountBuilder::new(self.rng.random())
-            .storage_mode(AccountStorageMode::Network)
+            .storage_mode(AccountStorageMode::Public)
             .with_component(basic_faucet)
             .account_type(AccountType::FungibleFaucet);
 
@@ -340,11 +384,11 @@ impl MockChainBuilder {
         Ok(account)
     }
 
-    /// Adds an existing public [`NetworkFungibleFaucet`] account to the initial chain state and
-    /// registers the authenticator (if the given [`Auth`] results in the creation of one).
+    /// Adds an existing [`NetworkFungibleFaucet`] account to the initial chain state.
+    ///
+    /// Network fungible faucets always use `AccountStorageMode::Network` and `Auth::NoAuth`.
     pub fn add_existing_network_faucet(
         &mut self,
-        auth_method: Auth,
         token_symbol: &str,
         max_supply: u64,
         owner_account_id: AccountId,
@@ -360,8 +404,9 @@ impl MockChainBuilder {
             .with_component(network_faucet)
             .account_type(AccountType::FungibleFaucet);
 
+        // Network faucets always use Noop auth (no authentication)
         let mut account =
-            self.add_account_from_builder(auth_method, account_builder, AccountState::Exists)?;
+            self.add_account_from_builder(Auth::IncrNonce, account_builder, AccountState::Exists)?;
 
         // The faucet's reserved slot is initialized to an empty word by default.
         // If total_issuance is set, overwrite it and reinsert the account.

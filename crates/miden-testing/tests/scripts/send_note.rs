@@ -38,7 +38,7 @@ fn test_send_note_script_basic_wallet() -> anyhow::Result<()> {
     let tag = NoteTag::from_account_id(sender_basic_wallet_account.id());
     let metadata = NoteMetadata::new(
         sender_basic_wallet_account.id(),
-        NoteType::Public,
+        NoteType::Private,
         tag,
         NoteExecutionHint::always(),
         Default::default(),
@@ -91,7 +91,7 @@ fn test_send_note_script_basic_wallet() -> anyhow::Result<()> {
 fn test_send_note_script_basic_fungible_faucet() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let sender_basic_fungible_faucet_account =
-        builder.add_existing_faucet(Auth::BasicAuth, "POL", 200, None)?;
+        builder.add_existing_basic_faucet(Auth::BasicAuth, "POL", 200, None)?;
     let mock_chain = builder.build()?;
 
     let sender_account_interface = AccountInterface::from(&sender_basic_fungible_faucet_account);
@@ -99,7 +99,7 @@ fn test_send_note_script_basic_fungible_faucet() -> anyhow::Result<()> {
     let tag = NoteTag::from_account_id(sender_basic_fungible_faucet_account.id());
     let metadata = NoteMetadata::new(
         sender_basic_fungible_faucet_account.id(),
-        NoteType::Public,
+        NoteType::Private,
         tag,
         NoteExecutionHint::always(),
         Default::default(),

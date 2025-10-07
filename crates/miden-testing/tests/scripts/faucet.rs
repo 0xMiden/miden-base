@@ -121,7 +121,7 @@ pub fn verify_minted_output_note(
 #[test]
 fn minting_fungible_asset_on_existing_faucet_succeeds() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
-    let faucet = builder.add_existing_faucet(Auth::BasicAuth, "TST", 200, None)?;
+    let faucet = builder.add_existing_basic_faucet(Auth::BasicAuth, "TST", 200, None)?;
     let mut mock_chain = builder.build()?;
 
     let params = FaucetTestParams {
@@ -149,7 +149,7 @@ fn faucet_contract_mint_fungible_asset_fails_exceeds_max_supply() -> anyhow::Res
     // CONSTRUCT AND EXECUTE TX (Failure)
     // --------------------------------------------------------------------------------------------
     let mut builder = MockChain::builder();
-    let faucet = builder.add_existing_faucet(Auth::BasicAuth, "TST", 200, None)?;
+    let faucet = builder.add_existing_basic_faucet(Auth::BasicAuth, "TST", 200, None)?;
     let mock_chain = builder.build()?;
 
     let recipient = Word::from([0, 1, 2, 3u32]);
@@ -234,7 +234,7 @@ fn minting_fungible_asset_on_new_faucet_succeeds() -> anyhow::Result<()> {
 #[test]
 fn prove_burning_fungible_asset_on_existing_faucet_succeeds() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
-    let faucet = builder.add_existing_faucet(Auth::BasicAuth, "TST", 200, Some(100))?;
+    let faucet = builder.add_existing_basic_faucet(Auth::BasicAuth, "TST", 200, Some(100))?;
 
     let fungible_asset = FungibleAsset::new(faucet.id(), 100).unwrap();
 
@@ -298,13 +298,8 @@ fn network_faucet_mint() -> anyhow::Result<()> {
         AccountStorageMode::Private,
     );
 
-    let faucet = builder.add_existing_network_faucet(
-        Auth::IncrNonce,
-        "NET",
-        200,
-        faucet_owner_account_id,
-        Some(50),
-    )?;
+    let faucet =
+        builder.add_existing_network_faucet("NET", 200, faucet_owner_account_id, Some(50))?;
 
     // The Network Fungible Faucet component is added as the second component after auth, so its
     // storage slot offset will be 2. Check that max_supply at the word's index 0 is 200.
@@ -393,13 +388,8 @@ fn network_faucet_burn() -> anyhow::Result<()> {
         AccountStorageMode::Private,
     );
 
-    let faucet = builder.add_existing_network_faucet(
-        Auth::IncrNonce,
-        "NET",
-        200,
-        faucet_owner_account_id,
-        Some(100),
-    )?;
+    let faucet =
+        builder.add_existing_network_faucet("NET", 200, faucet_owner_account_id, Some(100))?;
 
     let fungible_asset = FungibleAsset::new(faucet.id(), 100).unwrap();
 

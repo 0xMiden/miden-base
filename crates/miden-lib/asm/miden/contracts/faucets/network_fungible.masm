@@ -2,6 +2,7 @@ use.miden::account
 use.miden::account_id
 use.miden::active_note
 use.miden::contracts::faucets::basic_fungible
+use.miden::contracts::faucets
 
 # CONSTANTS
 # ================================================================================================
@@ -39,10 +40,13 @@ end
 #! Distributes freshly minted fungible assets to the provided recipient.
 #!
 #! This procedure first checks if the note sender is the owner of the faucet, then delegates
-#! to the basic_fungible::distribute procedure to handle the actual minting and distribution.
+#! to the faucets::distribute procedure to handle the actual minting and distribution.
 #!
-#! Inputs:  [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
-#! Outputs: [note_idx, pad(15)]
+#! Note: This procedure does NOT require padding when called. The faucets::distribute procedure
+#! handles the necessary padding internally.
+#!
+#! Inputs:  [amount, tag, aux, note_type, execution_hint, RECIPIENT]
+#! Outputs: [note_idx, ASSET, pad(11)]
 #!
 #! Where:
 #! - amount is the amount to be minted and sent.
@@ -52,10 +56,13 @@ end
 #! - execution_hint is the execution hint of the note that holds the asset.
 #! - RECIPIENT is the recipient of the asset.
 #! - note_idx is the index of the output note.
+#! - ASSET is the fungible asset that was minted.
 #!
 #! Panics if:
 #! - the note sender is not the owner of this faucet.
-#! - any of the validations in basic_fungible::distribute fail.
+#! - any of the validations in faucets::distribute fail.
+#!
+#! Invocation: call or exec
 export.distribute
     exec.is_owner
     # => [is_owner, amount, tag, aux, note_type, execution_hint, RECIPIENT]
@@ -63,8 +70,8 @@ export.distribute
     assert.err=ERR_NOT_OWNER
     # => [amount, tag, aux, note_type, execution_hint, RECIPIENT]
 
-    exec.basic_fungible::distribute
-    # => [note_idx]
+    exec.faucets::distribute
+    # => [note_idx, ASSET, pad(11)]
 end
 
 #! Burns the fungible asset from the active note.

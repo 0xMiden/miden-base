@@ -1,0 +1,116 @@
+use.miden::account
+use.miden::active_note
+use.miden::faucet
+use.miden::output_note
+
+# CONSTANTS
+# =================================================================================================
+
+const.PRIVATE_NOTE=2
+
+# ERRORS
+# =================================================================================================
+const.ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED="distribute would cause the maximum supply to be exceeded"
+
+const.ERR_BASIC_FUNGIBLE_BURN_WRONG_NUMBER_OF_ASSETS="burn requires exactly 1 note asset"
+
+# CONSTANTS
+# =================================================================================================
+
+# The slot in this component's storage layout where the metadata is stored.
+const.METADATA_SLOT=0
+
+#! Distributes freshly minted fungible assets to the provided recipient.
+#!
+#! Inputs:  [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
+#! Outputs: [note_idx, ASSET, pad(11)]
+#!
+#! Where:
+#! - amount is the amount to be minted and sent.
+#! - tag is the tag to be included in the note.
+#! - aux is the auxiliary data to be included in the note.
+#! - note_type is the type of the note that holds the asset.
+#! - execution_hint is the execution hint of the note that holds the asset.
+#! - RECIPIENT is the recipient of the asset, i.e.,
+#!   hash(hash(hash(serial_num, [0; 4]), script_root), input_commitment).
+#! - note_idx is the index of the output note.
+#!   This cannot directly be accessed from another context.
+#!
+#! Panics if:
+#! - the transaction is being executed against an account that is not a fungible asset faucet.
+#! - the total issuance after minting is greater than the maximum allowed supply.
+#!
+#! Invocation: exec
+proc.distribute_padded.4
+    # get max supply of this faucet. We assume it is stored at pos 3 of slot 1
+    push.METADATA_SLOT exec.account::get_item drop drop drop
+    # => [max_supply, amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
+
+    # get total issuance of this faucet so far and add amount to be minted
+    exec.faucet::get_total_issuance
+    # => [total_issuance, max_supply, amount, tag, aux, note_type, execution_hint, RECIPIENT,
+    #     pad(7)]
+
+    # compute maximum amount that can be minted, max_mint_amount = max_supply - total_issuance
+    sub
+    # => [max_supply - total_issuance, amount, tag, aux, note_type, execution_hint, RECIPIENT,
+    #     pad(7)]
+
+    # check that amount =< max_supply - total_issuance, fails if otherwise
+    dup.1 gte assert.err=ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED
+    # => [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
+
+    # creating the asset
+    exec.faucet::create_fungible_asset
+    # => [ASSET, tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
+
+    # mint the asset; this is needed to satisfy asset preservation logic.
+    exec.faucet::mint
+    # => [ASSET, tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
+
+    # store and drop the ASSET
+    loc_storew.0 dropw
+    # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
+
+    # create a note
+    exec.output_note::create
+    # => [note_idx, pad(15)]
+
+    # load the ASSET and add it to the note
+    movdn.4 loc_loadw.0 exec.output_note::add_asset movup.4
+    # => [note_idx, ASSET, pad(11)]
+end
+
+#! Distributes freshly minted fungible assets to the provided recipient.
+#!
+#! This procedure does NOT require padding when called. It adds the
+#! necessary padding before invoking the internal distribute_padded procedure.
+#!
+#! Inputs:  [amount, tag, aux, note_type, execution_hint, RECIPIENT]
+#! Outputs: [note_idx, ASSET, pad(11)]
+#!
+#! Where:
+#! - amount is the amount to be minted and sent.
+#! - tag is the tag to be included in the note.
+#! - aux is the auxiliary data to be included in the note.
+#! - note_type is the type of the note that holds the asset.
+#! - execution_hint is the execution hint of the note that holds the asset.
+#! - RECIPIENT is the recipient of the asset.
+#! - note_idx is the index of the output note.
+#! - ASSET is the fungible asset that was minted.
+#!
+#! Panics if:
+#! - the transaction is being executed against an account that is not a fungible asset faucet.
+#! - the total issuance after minting is greater than the maximum allowed supply.
+#!
+#! Invocation: call or exec (no padding required)
+export.distribute
+    repeat.7
+        push.0
+        movdn.8
+    end
+    # => [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
+
+    exec.distribute_padded
+    # => [note_idx, ASSET, pad(11)]
+end

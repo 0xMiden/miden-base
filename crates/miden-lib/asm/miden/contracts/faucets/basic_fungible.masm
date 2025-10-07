@@ -12,12 +12,13 @@ use.miden::account
 use.miden::active_note
 use.miden::faucet
 use.miden::output_note
+use.miden::contracts::faucets
 
-# CONSTANTS
+# CONSTANTS
 # =================================================================================================
 const.PRIVATE_NOTE=2
 
-# ERRORS
+# ERRORS
 # =================================================================================================
 
 const.ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED="distribute would cause the maximum supply to be exceeded"
@@ -32,8 +33,8 @@ const.METADATA_SLOT=0
 
 #! Distributes freshly minted fungible assets to the provided recipient.
 #!
-#! Inputs:  [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
-#! Outputs: [note_idx, pad(15)]
+#! Inputs:  [amount, tag, aux, note_type, execution_hint, RECIPIENT]
+#! Outputs: [note_idx, ASSET, pad(11)]
 #!
 #! Where:
 #! - amount is the amount to be minted and sent.
@@ -50,46 +51,8 @@ const.METADATA_SLOT=0
 #! - the transaction is being executed against an account that is not a fungible asset faucet.
 #! - the total issuance after minting is greater than the maximum allowed supply.
 #!
-#! Invocation: call
-export.distribute.4
-    # get max supply of this faucet. We assume it is stored at pos 3 of slot 1
-    push.METADATA_SLOT exec.account::get_item drop drop drop
-    # => [max_supply, amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
-
-    # get total issuance of this faucet so far and add amount to be minted
-    exec.faucet::get_total_issuance
-    # => [total_issuance, max_supply, amount, tag, aux, note_type, execution_hint, RECIPIENT,
-    #     pad(7)]
-
-    # compute maximum amount that can be minted, max_mint_amount = max_supply - total_issuance
-    sub
-    # => [max_supply - total_issuance, amount, tag, aux, note_type, execution_hint, RECIPIENT,
-    #     pad(7)]
-
-    # check that amount =< max_supply - total_issuance, fails if otherwise
-    dup.1 gte assert.err=ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED
-    # => [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
-
-    # creating the asset
-    exec.faucet::create_fungible_asset
-    # => [ASSET, tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
-
-    # mint the asset; this is needed to satisfy asset preservation logic.
-    exec.faucet::mint
-    # => [ASSET, tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
-
-    # store and drop the ASSET
-    loc_storew.0 dropw
-    # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
-
-    # create a note
-    exec.output_note::create
-    # => [note_idx, pad(15)]
-
-    # load the ASSET and add it to the note
-    movdn.4 loc_loadw.0 exec.output_note::add_asset movup.4
-    # => [note_idx, ASSET, pad(11)]
-end
+#! Invocation: exec
+export.faucets::distribute  
 
 #! Burns the fungible asset from the active note.
 #!
