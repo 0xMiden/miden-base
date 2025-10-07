@@ -7,7 +7,6 @@ use.$kernel::account
 use.$kernel::account_id
 use.$kernel::asset_vault
 use.$kernel::constants
-use.$kernel::input_note
 use.$kernel::memory
 
 # CONSTS

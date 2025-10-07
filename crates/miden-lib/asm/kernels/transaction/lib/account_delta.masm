@@ -5,7 +5,6 @@ use.$kernel::constants
 use.$kernel::link_map
 use.$kernel::memory
 use.std::crypto::hashes::rpo
-use.std::math::u64
 use.std::word
 
 # ERRORS

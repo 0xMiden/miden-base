@@ -1,7 +1,6 @@
 use.$kernel::account
 use.$kernel::account_delta
 use.$kernel::account_id
-use.$kernel::asset_vault
 use.$kernel::faucet
 use.$kernel::input_note
 use.$kernel::memory

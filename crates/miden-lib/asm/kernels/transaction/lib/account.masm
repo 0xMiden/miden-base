@@ -3,9 +3,7 @@ use.$kernel::account_id
 use.$kernel::asset_vault
 use.$kernel::constants
 use.$kernel::memory
-use.$kernel::link_map
 
-use.std::collections::mmr
 use.std::collections::smt
 use.std::crypto::hashes::rpo
 use.std::mem
