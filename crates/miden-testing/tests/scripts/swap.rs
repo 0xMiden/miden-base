@@ -317,14 +317,14 @@ fn settle_coninceidence_of_wants_in_flight() -> anyhow::Result<()> {
 
     let payback_note_type = NoteType::Private;
     let (if_swap_note_1, payback_note_1) =
-        builder.add_if_swap_note(account_1.id(), asset_a, asset_b, payback_note_type)?;
+        builder.add_swap_note(account_1.id(), asset_a, asset_b, payback_note_type)?;
 
     // CREATE ACCOUNT 2: Has asset B, wants asset A
     // --------------------------------------------------------------------------------------------
     let account_2 = builder.add_existing_wallet_with_assets(Auth::BasicAuth, vec![asset_b])?;
 
     let (if_swap_note_2, payback_note_2) =
-        builder.add_if_swap_note(account_2.id(), asset_b, asset_a, payback_note_type)?;
+        builder.add_swap_note(account_2.id(), asset_b, asset_a, payback_note_type)?;
 
     // MATCHER ACCOUNT: Will fulfill both IF_SWAP notes without receiving the assets
     // --------------------------------------------------------------------------------------------
