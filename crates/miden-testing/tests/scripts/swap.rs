@@ -2,7 +2,7 @@ use anyhow::Context;
 use miden_lib::note::utils;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{Account, AccountId};
-use miden_objects::asset::{Asset, FungibleAsset};
+use miden_objects::asset::{Asset, FungibleAsset, NonFungibleAsset};
 use miden_objects::note::{
     Note,
     NoteAssets,
@@ -303,9 +303,14 @@ async fn settle_coincidence_of_wants() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Tests that IF_SWAP notes offering asset A and requesting asset B can be matched against IF_SWAP
-/// notes offering asset B and requesting asset A, creating a coincidence of wants settlement
-/// where assets remain "in flight" (not added to consuming accounts).
+/// Tests that SWAP notes offering asset A and requesting asset B can be matched against SWAP
+/// notes offering asset B and requesting asset A, creating a "coincidence of wants" settlement
+/// where assets remain "in flight" (not added to the consuming account's vault).
+///
+/// In this scenario, a matcher account with no liquidity consumes both SWAP notes in a single
+/// transaction. The matcher doesn't need to hold any assets - the liquidity comes from the SWAP
+/// notes themselves. Assets flow directly between the original issuers via payback notes, while
+/// the matcher's vault remains empty throughout the process.
 #[tokio::test]
 async fn settle_coninceidence_of_wants_in_flight() -> anyhow::Result<()> {
     // Create two different assets for the swap
