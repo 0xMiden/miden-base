@@ -581,7 +581,7 @@ end
 #!
 #! Panics if:
 #! - the requested storage slot type is not map.
-export.get_map_item_init
+export.get_initial_map_item
     # duplicate index for later use
     dup movdn.5
     # => [index, KEY, index]

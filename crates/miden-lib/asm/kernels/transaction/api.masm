@@ -471,7 +471,7 @@ end
 #! - the requested storage slot type is not map.
 #!
 #! Invocation: dynexec
-export.account_get_map_item_init
+export.account_get_initial_map_item
     # authenticate that the procedure invocation originates from the account context
     exec.authenticate_account_origin
     # => [storage_offset, storage_size, index, KEY, pad(11)]
@@ -481,7 +481,7 @@ export.account_get_map_item_init
     # => [index_with_offset, KEY, pad(11)]
 
     # fetch the initial map item from account storage
-    exec.account::get_map_item_init
+    exec.account::get_initial_map_item
     # => [INIT_VALUE, pad(12)]
 end
 

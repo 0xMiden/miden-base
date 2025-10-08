@@ -1663,7 +1663,7 @@ fn test_get_initial_item() -> miette::Result<()> {
 }
 
 #[test]
-fn test_get_map_item_init() -> miette::Result<()> {
+fn test_get_initial_map_item() -> miette::Result<()> {
     let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(Auth::IncrNonce)
         .with_component(MockAccountComponent::with_slots(vec![AccountStorage::mock_item_2().slot]))
@@ -1688,7 +1688,7 @@ fn test_get_map_item_init() -> miette::Result<()> {
             # get initial value from map
             push.{initial_key}
             push.0
-            call.mock_account::get_map_item_init
+            call.mock_account::get_initial_map_item
             push.{initial_value}
             assert_eqw.err=\"initial map value should match expected\"
 
@@ -1705,17 +1705,17 @@ fn test_get_map_item_init() -> miette::Result<()> {
             push.{new_value}
             assert_eqw.err=\"current map value should be updated\"
 
-            # get_map_item_init should still return the initial value for the initial key
+            # get_initial_map_item should still return the initial value for the initial key
             push.{initial_key}
             push.0
-            call.mock_account::get_map_item_init
+            call.mock_account::get_initial_map_item
             push.{initial_value}
             assert_eqw.err=\"initial map value should remain unchanged\"
 
-            # get_map_item_init for the new key should return empty word (default)
+            # get_initial_map_item for the new key should return empty word (default)
             push.{new_key}
             push.0
-            call.mock_account::get_map_item_init
+            call.mock_account::get_initial_map_item
             padw
             assert_eqw.err=\"new key should have empty initial value\"
 

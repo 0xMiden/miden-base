@@ -407,8 +407,8 @@ end
 #! - the slot item at index is not a map.
 #!
 #! Invocation: exec
-export.get_map_item_init
-    exec.kernel_proc_offsets::account_get_map_item_init_offset
+export.get_initial_map_item
+    exec.kernel_proc_offsets::account_get_initial_map_item_offset
     # => [offset, index, KEY]
 
     # pad the stack
