@@ -23,9 +23,9 @@ const.UNAUTHORIZED_EVENT=event("miden::auth::unauthorized")
 # │              0                │    1     │      2       │      3       │
 # └───────────────────────────────┴──────────┴──────────────┴──────────────┘
 
-# The slot in this component's storage layout where the signature threshold,
-# number of approvers are stored as
-# [threshold, num_approvers, 0, 0].
+# The slot in this component's storage layout where the default signature threshold and
+# number of approvers are stored as:
+# [default_threshold, num_approvers, 0, 0].
 # The threshold is guaranteed to be less than or equal to num_approvers.
 const.THRESHOLD_CONFIG_SLOT=0
 
@@ -370,19 +370,19 @@ export.auth_tx_rpo_falcon512_multisig.1
     # => [index, TX_SUMMARY_COMMITMENT]
 
     exec.account::get_item_init
-    # => [0, 0, num_of_approvers, threshold, TX_SUMMARY_COMMITMENT]
+    # => [0, 0, num_of_approvers, default_threshold, TX_SUMMARY_COMMITMENT]
 
     drop drop
-    # => [num_of_approvers, threshold, TX_SUMMARY_COMMITMENT]
+    # => [num_of_approvers, default_threshold, TX_SUMMARY_COMMITMENT]
 
     swap movdn.5
-    # => [num_of_approvers, TX_SUMMARY_COMMITMENT, threshold]
+    # => [num_of_approvers, TX_SUMMARY_COMMITMENT, default_threshold]
 
     push.PUBLIC_KEYS_MAP_SLOT
-    # => [pub_key_slot_idx, num_of_approvers, TX_SUMMARY_COMMITMENT, threshold]
+    # => [pub_key_slot_idx, num_of_approvers, TX_SUMMARY_COMMITMENT, default_threshold]
 
     exec.::miden::auth::rpo_falcon512::verify_signatures
-    # => [num_verified_signatures, TX_SUMMARY_COMMITMENT, threshold]
+    # => [num_verified_signatures, TX_SUMMARY_COMMITMENT, default_threshold]
 
     # ------ Checking threshold is >= num_verified_signatures ------
 
