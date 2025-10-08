@@ -39,7 +39,7 @@ use miden_objects::account::{
     StorageMap,
     StorageSlotType,
 };
-use miden_objects::asset::{Asset, AssetVault, FungibleAsset};
+use miden_objects::asset::{Asset, AssetKey, AssetVault, FungibleAsset};
 use miden_objects::note::NoteId;
 use miden_objects::transaction::{
     InputNote,
@@ -929,7 +929,7 @@ where
                 TransactionEventData::AccountVaultAssetWitness {
                     current_account_id,
                     vault_root,
-                    asset,
+                    asset_key: asset.into(),
                 },
             ))
         }
@@ -1184,7 +1184,7 @@ pub(super) enum TransactionEventData {
         /// The vault root identifying the asset vault from which a witness is requested.
         vault_root: Word,
         /// The asset for which a witness is requested.
-        asset: Asset,
+        asset_key: AssetKey,
     },
     /// The data necessary to request a storage map witness from the data store.
     AccountStorageMapWitness {

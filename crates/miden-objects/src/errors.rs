@@ -216,6 +216,8 @@ pub enum AccountIdError {
     AccountIdSuffixMostSignificantBitMustBeZero,
     #[error("least significant byte of account ID suffix must be zero")]
     AccountIdSuffixLeastSignificantByteMustBeZero,
+    #[error(r#"account not of type "FungibleFaucet", "NonFungibleFaucet""#)]
+    UnknownAssetKey,
 }
 
 // SLOT NAME ERROR

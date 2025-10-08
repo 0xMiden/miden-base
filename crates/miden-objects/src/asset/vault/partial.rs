@@ -2,7 +2,7 @@ use alloc::string::ToString;
 
 use miden_crypto::merkle::{InnerNodeInfo, MerkleError, PartialSmt, SmtLeaf, SmtProof};
 
-use super::AssetVault;
+use super::{AssetKey, AssetVault};
 use crate::Word;
 use crate::asset::{Asset, AssetWitness};
 use crate::errors::PartialAssetVaultError;
@@ -68,10 +68,10 @@ impl PartialVault {
     ///
     /// Returns an error if:
     /// - the key is not tracked by this partial vault.
-    pub fn open(&self, vault_key: Word) -> Result<AssetWitness, PartialAssetVaultError> {
+    pub fn open(&self, vault_key: AssetKey) -> Result<AssetWitness, PartialAssetVaultError> {
         let smt_proof = self
             .partial_smt
-            .open(&vault_key)
+            .open(&vault_key.inner())
             .map_err(PartialAssetVaultError::UntrackedAsset)?;
         // SAFETY: The partial vault should only contain valid assets.
         Ok(AssetWitness::new_unchecked(smt_proof))
@@ -85,8 +85,8 @@ impl PartialVault {
     ///
     /// Returns an error if:
     /// - the key is not tracked by this partial SMT.
-    pub fn get(&self, vault_key: Word) -> Result<Option<Asset>, MerkleError> {
-        self.partial_smt.get_value(&vault_key).map(|word| {
+    pub fn get(&self, vault_key: AssetKey) -> Result<Option<Asset>, MerkleError> {
+        self.partial_smt.get_value(&vault_key.inner()).map(|word| {
             if word.is_empty() {
                 None
             } else {
@@ -129,9 +129,9 @@ impl PartialVault {
                 PartialAssetVaultError::InvalidAssetInSmt { entry: *asset, source }
             })?;
 
-            if asset.vault_key() != *vault_key {
+            if asset.vault_key().inner() != *vault_key {
                 return Err(PartialAssetVaultError::VaultKeyMismatch {
-                    expected: asset.vault_key(),
+                    expected: asset.vault_key().inner(),
                     actual: *vault_key,
                 });
             }
@@ -201,7 +201,7 @@ mod tests {
         let err = PartialVault::new(partial_smt).unwrap_err();
         assert_matches!(err, PartialAssetVaultError::VaultKeyMismatch { expected, actual } => {
             assert_eq!(actual, invalid_vault_key);
-            assert_eq!(expected, asset.vault_key());
+            assert_eq!(expected, asset.vault_key().inner());
         });
 
         Ok(())

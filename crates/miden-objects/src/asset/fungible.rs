@@ -2,6 +2,7 @@ use alloc::boxed::Box;
 use alloc::string::ToString;
 use core::fmt;
 
+use super::vault::AssetKey;
 use super::{AccountType, Asset, AssetError, Felt, Word, ZERO, is_not_a_non_fungible_asset};
 use crate::account::{AccountId, AccountIdPrefix};
 use crate::utils::serde::{
@@ -83,8 +84,8 @@ impl FungibleAsset {
     }
 
     /// Returns the key which is used to store this asset in the account vault.
-    pub fn vault_key(&self) -> Word {
-        Self::vault_key_from_faucet(self.faucet_id)
+    pub fn vault_key(&self) -> AssetKey {
+        Self::vault_key_from_faucet(self.faucet_id).into()
     }
 
     // OPERATIONS

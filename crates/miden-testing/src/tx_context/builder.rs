@@ -364,7 +364,7 @@ fn minimal_partial_account(account: &Account) -> anyhow::Result<PartialAccount> 
     // root as the full vault, but will not add any relevant merkle paths to the
     // merkle store, which will test lazy loading of assets.
     let mut partial_vault = PartialVault::default();
-    partial_vault.add(account.vault().open(Word::empty()))?;
+    partial_vault.add(account.vault().open(Word::empty().into()))?;
 
     // Construct a partial storage that tracks the empty word in all storage maps, but none
     // of the other keys, following the same rationale as the partial vault above.

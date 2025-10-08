@@ -12,7 +12,7 @@ use miden_objects::account::{
 };
 use miden_objects::assembly::debuginfo::Location;
 use miden_objects::assembly::{SourceFile, SourceManagerSync, SourceSpan};
-use miden_objects::asset::{Asset, AssetWitness, FungibleAsset};
+use miden_objects::asset::{Asset, AssetKey, AssetWitness, FungibleAsset};
 use miden_objects::block::BlockNumber;
 use miden_objects::crypto::merkle::SmtProof;
 use miden_objects::transaction::{InputNote, InputNotes, OutputNote};
@@ -217,7 +217,7 @@ where
             .await
             .map_err(|err| TransactionKernelError::GetVaultAssetWitness {
                 vault_root: self.base_host.initial_account_header().vault_root(),
-                vault_key: fee_asset.vault_key(),
+                vault_key: fee_asset.vault_key().inner(),
                 source: err,
             })?;
 
@@ -346,9 +346,8 @@ where
         &self,
         current_account_id: AccountId,
         vault_root: Word,
-        asset: Asset,
+        vault_key: AssetKey,
     ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
-        let vault_key = asset.vault_key();
         let asset_witness = self
             .base_host
             .store()
@@ -356,7 +355,7 @@ where
             .await
             .map_err(|err| TransactionKernelError::GetVaultAssetWitness {
                 vault_root,
-                vault_key,
+                vault_key: vault_key.inner(),
                 source: err,
             })?;
 
@@ -452,9 +451,13 @@ where
                 TransactionEventData::AccountVaultAssetWitness {
                     current_account_id,
                     vault_root,
-                    asset,
+                    asset_key,
                 } => self
-                    .on_account_vault_asset_witness_requested(current_account_id, vault_root, asset)
+                    .on_account_vault_asset_witness_requested(
+                        current_account_id,
+                        vault_root,
+                        asset_key,
+                    )
                     .await
                     .map_err(EventError::from),
                 TransactionEventData::AccountStorageMapWitness {

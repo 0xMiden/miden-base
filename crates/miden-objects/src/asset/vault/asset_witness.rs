@@ -1,7 +1,8 @@
 use miden_crypto::merkle::{InnerNodeInfo, SmtLeaf, SmtProof};
 
+use super::asset_key::AssetKey;
+use crate::AssetError;
 use crate::asset::Asset;
-use crate::{AssetError, Word};
 
 /// A witness of an asset in an [`AssetVault`](super::AssetVault).
 ///
@@ -23,10 +24,10 @@ impl AssetWitness {
     pub fn new(smt_proof: SmtProof) -> Result<Self, AssetError> {
         for (vault_key, asset) in smt_proof.leaf().entries() {
             let asset = Asset::try_from(asset)?;
-            if asset.vault_key() != *vault_key {
+            if asset.vault_key().inner() != *vault_key {
                 return Err(AssetError::VaultKeyMismatch {
                     actual: *vault_key,
-                    expected: asset.vault_key(),
+                    expected: asset.vault_key().inner(),
                 });
             }
         }
@@ -46,7 +47,7 @@ impl AssetWitness {
     // --------------------------------------------------------------------------------------------
 
     /// Searches for an [`Asset`] in the witness with the given `vault_key`.
-    pub fn find(&self, vault_key: Word) -> Option<Asset> {
+    pub fn find(&self, vault_key: AssetKey) -> Option<Asset> {
         self.assets().find(|asset| asset.vault_key() == vault_key)
     }
 
@@ -114,14 +115,15 @@ mod tests {
         let fungible_asset = FungibleAsset::mock(500);
         let non_fungible_asset = NonFungibleAsset::mock(&[1]);
 
-        let smt = Smt::with_entries([(fungible_asset.vault_key(), non_fungible_asset.into())])?;
-        let proof = smt.open(&fungible_asset.vault_key());
+        let smt =
+            Smt::with_entries([(fungible_asset.vault_key().inner(), non_fungible_asset.into())])?;
+        let proof = smt.open(&fungible_asset.vault_key().inner());
 
         let err = AssetWitness::new(proof).unwrap_err();
 
         assert_matches!(err, AssetError::VaultKeyMismatch { actual, expected } => {
-            assert_eq!(actual, fungible_asset.vault_key());
-            assert_eq!(expected, non_fungible_asset.vault_key());
+            assert_eq!(actual, fungible_asset.vault_key().inner());
+            assert_eq!(expected, non_fungible_asset.vault_key().inner());
         });
 
         Ok(())

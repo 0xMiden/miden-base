@@ -22,7 +22,7 @@ mod token_symbol;
 pub use token_symbol::TokenSymbol;
 
 mod vault;
-pub use vault::{AssetVault, AssetWitness, PartialVault};
+pub use vault::{AssetKey, AssetVault, AssetWitness, PartialVault};
 
 // ASSET
 // ================================================================================================
@@ -137,7 +137,7 @@ impl Asset {
     }
 
     /// Returns the key which is used to store this asset in the account vault.
-    pub fn vault_key(&self) -> Word {
+    pub fn vault_key(&self) -> AssetKey {
         match self {
             Self::Fungible(asset) => asset.vault_key(),
             Self::NonFungible(asset) => asset.vault_key(),
