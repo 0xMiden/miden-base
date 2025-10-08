@@ -5,19 +5,18 @@ use miden_lib::testing::account_component::MockAccountComponent;
 use miden_lib::testing::note::NoteBuilder;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{
+    Account,
     AccountBuilder,
     AccountComponent,
-    AccountId,
     AccountStorage,
     AccountStorageMode,
     AccountType,
 };
-use miden_objects::testing::account_id::ACCOUNT_ID_SENDER;
+use miden_objects::note::Note;
 use miden_objects::transaction::OutputNote;
 use miden_objects::{Felt, FieldElement, Word};
-use miden_processor::ExecutionError;
 use miden_testing::{Auth, MockChain};
-use miden_tx::{TransactionExecutorError, TransactionKernelError};
+use miden_tx::TransactionExecutorError;
 
 // CONSTANTS
 // ================================================================================================
@@ -38,7 +37,7 @@ const TX_SCRIPT_NO_TRIGGER: &str = r#"
 fn setup_rpo_falcon_acl_test(
     allow_unauthorized_output_notes: bool,
     allow_unauthorized_input_notes: bool,
-) -> anyhow::Result<(miden_objects::account::Account, MockChain, miden_objects::note::Note)> {
+) -> anyhow::Result<(Account, MockChain, Note)> {
     let component: AccountComponent =
         MockAccountComponent::with_slots(AccountStorage::mock_storage_slots()).into();
 
@@ -66,20 +65,19 @@ fn setup_rpo_falcon_acl_test(
 
     let mut builder = MockChain::builder();
     builder.add_account(account.clone())?;
-    let mock_chain = builder.build()?;
-
     // Create a mock note to consume (needed to make the transaction non-empty)
-    let sender_id = AccountId::try_from(ACCOUNT_ID_SENDER)?;
-    let note = NoteBuilder::new(sender_id, &mut rand::rng())
+    let note = NoteBuilder::new(account.id(), &mut rand::rng())
         .build()
         .expect("failed to create mock note");
+    builder.add_output_note(OutputNote::Full(note.clone()));
+    let mock_chain = builder.build()?;
 
     Ok((account, mock_chain, note))
 }
 
-#[test]
-fn test_rpo_falcon_acl() -> anyhow::Result<()> {
-    let (account, mut mock_chain, note) = setup_rpo_falcon_acl_test(false, true)?;
+#[tokio::test]
+async fn test_rpo_falcon_acl() -> anyhow::Result<()> {
+    let (account, mock_chain, note) = setup_rpo_falcon_acl_test(false, true)?;
 
     // We need to get the authenticator separately for this test
     let component: AccountComponent =
@@ -99,9 +97,6 @@ fn test_rpo_falcon_acl() -> anyhow::Result<()> {
         allow_unauthorized_input_notes: true,
     }
     .build_component();
-
-    mock_chain.add_pending_note(OutputNote::Full(note.clone()));
-    mock_chain.prove_next_block()?;
 
     let tx_script_with_trigger_1 = r#"
         use.mock::account
@@ -140,7 +135,8 @@ fn test_rpo_falcon_acl() -> anyhow::Result<()> {
         .build()?;
 
     tx_context_with_auth_1
-        .execute_blocking()
+        .execute()
+        .await
         .expect("trigger 1 with auth should succeed");
 
     // Test 2: Transaction WITH authenticator calling trigger procedure 2 (should succeed)
@@ -151,7 +147,8 @@ fn test_rpo_falcon_acl() -> anyhow::Result<()> {
         .build()?;
 
     tx_context_with_auth_2
-        .execute_blocking()
+        .execute()
+        .await
         .expect("trigger 2 with auth should succeed");
 
     // Test 3: Transaction WITHOUT authenticator calling trigger procedure (should fail)
@@ -161,16 +158,9 @@ fn test_rpo_falcon_acl() -> anyhow::Result<()> {
         .tx_script(tx_script_trigger_1)
         .build()?;
 
-    let executed_tx_no_auth = tx_context_no_auth.execute_blocking();
+    let executed_tx_no_auth = tx_context_no_auth.execute().await;
 
-    assert_matches!(executed_tx_no_auth, Err(TransactionExecutorError::TransactionProgramExecutionFailed(
-        execution_error
-    )) => {
-        assert_matches!(execution_error, ExecutionError::EventError { error, .. } => {
-            let kernel_error = error.downcast_ref::<TransactionKernelError>().unwrap();
-            assert_matches!(kernel_error, TransactionKernelError::MissingAuthenticator);
-        })
-    });
+    assert_matches!(executed_tx_no_auth, Err(TransactionExecutorError::MissingAuthenticator));
 
     // Test 4: Transaction WITHOUT authenticator calling non-trigger procedure (should succeed)
     let tx_context_no_trigger = mock_chain
@@ -180,7 +170,8 @@ fn test_rpo_falcon_acl() -> anyhow::Result<()> {
         .build()?;
 
     let executed = tx_context_no_trigger
-        .execute_blocking()
+        .execute()
+        .await
         .expect("no trigger, no auth should succeed");
     assert_eq!(
         executed.account_delta().nonce_delta(),
@@ -191,8 +182,8 @@ fn test_rpo_falcon_acl() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[test]
-fn test_rpo_falcon_acl_with_allow_unauthorized_output_notes() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_rpo_falcon_acl_with_allow_unauthorized_output_notes() -> anyhow::Result<()> {
     let (account, mock_chain, note) = setup_rpo_falcon_acl_test(true, true)?;
 
     // Verify the storage layout includes both authorization flags
@@ -216,7 +207,8 @@ fn test_rpo_falcon_acl_with_allow_unauthorized_output_notes() -> anyhow::Result<
         .build()?;
 
     let executed = tx_context_no_trigger
-        .execute_blocking()
+        .execute()
+        .await
         .expect("no trigger, no auth should succeed");
     assert_eq!(
         executed.account_delta().nonce_delta(),
@@ -227,8 +219,8 @@ fn test_rpo_falcon_acl_with_allow_unauthorized_output_notes() -> anyhow::Result<
     Ok(())
 }
 
-#[test]
-fn test_rpo_falcon_acl_with_disallow_unauthorized_input_notes() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_rpo_falcon_acl_with_disallow_unauthorized_input_notes() -> anyhow::Result<()> {
     let (account, mock_chain, note) = setup_rpo_falcon_acl_test(true, false)?;
 
     // Verify the storage layout includes both flags
@@ -251,18 +243,11 @@ fn test_rpo_falcon_acl_with_disallow_unauthorized_input_notes() -> anyhow::Resul
         .tx_script(tx_script_no_trigger)
         .build()?;
 
-    let executed_tx_no_auth = tx_context_no_auth.execute_blocking();
+    let executed_tx_no_auth = tx_context_no_auth.execute().await;
 
     // This should fail with MissingAuthenticator error because input notes are being consumed
     // and allow_unauthorized_input_notes is false
-    assert_matches!(executed_tx_no_auth, Err(TransactionExecutorError::TransactionProgramExecutionFailed(
-        execution_error
-    )) => {
-        assert_matches!(execution_error, ExecutionError::EventError { error, .. } => {
-            let kernel_error = error.downcast_ref::<TransactionKernelError>().unwrap();
-            assert_matches!(kernel_error, TransactionKernelError::MissingAuthenticator);
-        })
-    });
+    assert_matches!(executed_tx_no_auth, Err(TransactionExecutorError::MissingAuthenticator));
 
     Ok(())
 }

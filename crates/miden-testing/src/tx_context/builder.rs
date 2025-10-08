@@ -16,12 +16,13 @@ use miden_objects::account::{
     PartialAccount,
     PartialStorage,
     PartialStorageMap,
+    PublicKeyCommitment,
+    Signature,
     StorageSlot,
 };
 use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::assembly::debuginfo::SourceManagerSync;
 use miden_objects::asset::PartialVault;
-use miden_objects::crypto::dsa::rpo_falcon512::PublicKey;
 use miden_objects::note::{Note, NoteId};
 use miden_objects::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE;
 use miden_objects::testing::noop_auth_component::NoopAuthComponent;
@@ -86,7 +87,7 @@ pub struct TransactionContextBuilder {
     note_args: BTreeMap<NoteId, Word>,
     transaction_inputs: Option<TransactionInputs>,
     auth_args: Word,
-    signatures: Vec<(PublicKey, Word, Vec<Felt>)>,
+    signatures: Vec<(PublicKeyCommitment, Word, Signature)>,
     is_lazy_loading_enabled: bool,
 }
 
@@ -250,11 +251,11 @@ impl TransactionContextBuilder {
     /// Add a new signature for the message and the public key.
     pub fn add_signature(
         mut self,
-        public_key: PublicKey,
+        pub_key: PublicKeyCommitment,
         message: Word,
-        signature: Vec<Felt>,
+        signature: Signature,
     ) -> Self {
-        self.signatures.push((public_key, message, signature));
+        self.signatures.push((pub_key, message, signature));
         self
     }
 
@@ -269,10 +270,11 @@ impl TransactionContextBuilder {
                 // If no specific transaction inputs was provided, initialize an ad-hoc mockchain
                 // to generate valid block header/MMR data
 
-                let mut mock_chain = MockChain::default();
+                let mut builder = MockChain::builder();
                 for i in self.input_notes {
-                    mock_chain.add_pending_note(OutputNote::Full(i));
+                    builder.add_output_note(OutputNote::Full(i));
                 }
+                let mut mock_chain = builder.build()?;
 
                 mock_chain.prove_next_block().context("failed to prove first block")?;
                 mock_chain.prove_next_block().context("failed to prove second block")?;
@@ -290,43 +292,10 @@ impl TransactionContextBuilder {
         // merkle paths of assets and storage maps, in order to test lazy loading.
         // Otherwise, load the full account.
         let tx_inputs = if self.is_lazy_loading_enabled {
-            let (account, block_header, partial_blockchain, input_notes) = tx_inputs.into_parts();
-            // Construct a partial vault that tracks the empty word, but none of the assets
-            // that are actually in the asset tree. That way, the partial vault has the same
-            // root as the full vault, but will not add any relevant merkle paths to the
-            // merkle store, which will test lazy loading of assets.
+            let (_account, block_header, partial_blockchain, input_notes) = tx_inputs.into_parts();
             // Note that we use self.account instead of account, because we cannot do the same
             // operation on a partial vault.
-            let mut partial_vault = PartialVault::default();
-            partial_vault.add(self.account.vault().open(Word::empty()).into())?;
-
-            // Construct a partial storage that tracks the empty word in all storage maps, but none
-            // of the other keys, following the same rationale as the partial vault above.
-            let storage_header = self.account.storage().to_header();
-            let storage_maps =
-                self.account.storage().slots().iter().filter_map(
-                    |storage_slot| match storage_slot {
-                        StorageSlot::Map(storage_map) => {
-                            let mut partial_storage_map = PartialStorageMap::default();
-                            partial_storage_map
-                                .add(storage_map.open(&Word::empty()))
-                                .expect("adding the first proof should never error");
-                            Some(partial_storage_map)
-                        },
-                        _ => None,
-                    },
-                );
-            let partial_storage = PartialStorage::new(storage_header, storage_maps)
-                .expect("provided storage maps should match storage header");
-
-            let account = PartialAccount::new(
-                account.id(),
-                account.nonce(),
-                account.code().clone(),
-                partial_storage,
-                partial_vault,
-                None,
-            )?;
+            let account = minimal_partial_account(&self.account)?;
 
             TransactionInputs::new(account, block_header, partial_blockchain, input_notes)?
         } else {
@@ -353,8 +322,8 @@ impl TransactionContextBuilder {
         tx_args.extend_advice_inputs(self.advice_inputs.clone());
         tx_args.extend_output_note_recipients(self.expected_output_notes.clone());
 
-        for (public_key, message, signature) in self.signatures {
-            tx_args.add_signature(public_key, message, signature);
+        for (public_key_commitment, message, signature) in self.signatures {
+            tx_args.add_signature(public_key_commitment, message, signature);
         }
 
         let mast_store = {
@@ -386,4 +355,44 @@ impl Default for TransactionContextBuilder {
     fn default() -> Self {
         Self::with_existing_mock_account()
     }
+}
+
+/// Creates a minimal [`PartialAccount`] from the provided full [`Account`].
+fn minimal_partial_account(account: &Account) -> anyhow::Result<PartialAccount> {
+    // Construct a partial vault that tracks the empty word, but none of the assets
+    // that are actually in the asset tree. That way, the partial vault has the same
+    // root as the full vault, but will not add any relevant merkle paths to the
+    // merkle store, which will test lazy loading of assets.
+    let mut partial_vault = PartialVault::default();
+    partial_vault.add(account.vault().open(Word::empty()))?;
+
+    // Construct a partial storage that tracks the empty word in all storage maps, but none
+    // of the other keys, following the same rationale as the partial vault above.
+    let storage_header = account.storage().to_header();
+    let storage_maps =
+        account.storage().slots().iter().filter_map(|storage_slot| match storage_slot {
+            StorageSlot::Map(storage_map) => {
+                let mut partial_storage_map = PartialStorageMap::default();
+                let key = Word::empty();
+                let witness = storage_map.open(&key);
+                partial_storage_map
+                    .add(witness)
+                    .expect("adding the first proof should never error");
+                Some(partial_storage_map)
+            },
+            _ => None,
+        });
+    let partial_storage = PartialStorage::new(storage_header, storage_maps)
+        .expect("provided storage maps should match storage header");
+
+    let account = PartialAccount::new(
+        account.id(),
+        account.nonce(),
+        account.code().clone(),
+        partial_storage,
+        partial_vault,
+        None,
+    )?;
+
+    Ok(account)
 }

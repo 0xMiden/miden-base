@@ -5,32 +5,26 @@ use std::vec::Vec;
 use anyhow::Context;
 use assert_matches::assert_matches;
 use miden_lib::testing::account_component::MockAccountComponent;
+use miden_lib::testing::note::NoteBuilder;
 use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{Account, AccountId, AccountStorageMode};
+use miden_objects::asset::FungibleAsset;
 use miden_objects::block::{BlockInputs, ProposedBlock};
-use miden_objects::testing::account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET;
-use miden_objects::transaction::{OutputNote, TransactionHeader};
+use miden_objects::note::{Note, NoteType};
+use miden_objects::testing::account_id::ACCOUNT_ID_SENDER;
+use miden_objects::transaction::{ExecutedTransaction, OutputNote, TransactionHeader};
+use miden_objects::{Felt, FieldElement};
 use miden_tx::LocalTransactionProver;
 use rand::Rng;
 
-use super::utils::{
-    TestSetup,
-    generate_batch,
-    generate_executed_tx_with_authenticated_notes,
-    generate_fungible_asset,
-    generate_tracked_note_with_asset,
-    generate_tx_with_expiration,
-    generate_tx_with_unauthenticated_notes,
-    generate_untracked_note,
-    setup_chain,
-};
-use crate::kernel_tests::block::utils::generate_conditional_tx;
-use crate::{AccountState, Auth, MockChain};
+use super::utils::MockChainBlockExt;
+use crate::{AccountState, Auth, MockChain, TxContextInput};
 
 /// Tests that we can build empty blocks.
-#[test]
-fn proposed_block_succeeds_with_empty_batches() -> anyhow::Result<()> {
-    let TestSetup { chain, .. } = setup_chain(2);
+#[tokio::test]
+async fn proposed_block_succeeds_with_empty_batches() -> anyhow::Result<()> {
+    let mut chain = MockChain::builder().build()?;
+    chain.prove_next_block()?;
 
     let block_inputs = BlockInputs::new(
         chain.latest_block_header(),
@@ -51,16 +45,24 @@ fn proposed_block_succeeds_with_empty_batches() -> anyhow::Result<()> {
 
 /// Tests that a proposed block from two batches with one transaction each can be successfully
 /// built.
-#[test]
-fn proposed_block_basic_success() -> anyhow::Result<()> {
-    let TestSetup { mut chain, mut accounts, mut txs, .. } = setup_chain(2);
-    let account0 = accounts.remove(&0).unwrap();
-    let account1 = accounts.remove(&1).unwrap();
-    let proven_tx0 = txs.remove(&0).unwrap();
-    let proven_tx1 = txs.remove(&1).unwrap();
+#[tokio::test]
+async fn proposed_block_basic_success() -> anyhow::Result<()> {
+    let mut builder = MockChain::builder();
+    let account0 = builder.add_existing_mock_account(Auth::IncrNonce)?;
+    let account1 = builder.add_existing_mock_account(Auth::IncrNonce)?;
+    let note0 =
+        builder.add_p2any_note(account0.id(), NoteType::Public, [FungibleAsset::mock(42)])?;
+    let note1 =
+        builder.add_p2any_note(account1.id(), NoteType::Public, [FungibleAsset::mock(42)])?;
+    let chain = builder.build()?;
 
-    let batch0 = generate_batch(&mut chain, vec![proven_tx0.clone()]);
-    let batch1 = generate_batch(&mut chain, vec![proven_tx1.clone()]);
+    let proven_tx0 =
+        chain.create_authenticated_notes_proven_tx(account0.id(), [note0.id()]).await?;
+    let proven_tx1 =
+        chain.create_authenticated_notes_proven_tx(account1.id(), [note1.id()]).await?;
+
+    let batch0 = chain.create_batch(vec![proven_tx0.clone()])?;
+    let batch1 = chain.create_batch(vec![proven_tx1.clone()])?;
 
     let batches = [batch0, batch1];
     let block_inputs = chain.get_block_inputs(&batches)?;
@@ -110,36 +112,29 @@ fn proposed_block_basic_success() -> anyhow::Result<()> {
 }
 
 /// Tests that account updates are correctly aggregated into a block-level account update.
-#[test]
-fn proposed_block_aggregates_account_state_transition() -> anyhow::Result<()> {
-    // We need authentication because we're modifying accounts with the input notes.
-    let TestSetup { mut chain, mut accounts, .. } = setup_chain(2);
-    let asset = generate_fungible_asset(
-        100,
-        AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).unwrap(),
-    );
+#[tokio::test]
+async fn proposed_block_aggregates_account_state_transition() -> anyhow::Result<()> {
+    let asset = FungibleAsset::mock(100);
+    let sender_id = AccountId::try_from(ACCOUNT_ID_SENDER)?;
 
-    let account0 = accounts.remove(&0).unwrap();
-    let mut account1 = accounts.remove(&1).unwrap();
-
-    let note0 = generate_tracked_note_with_asset(&mut chain, account0.id(), account1.id(), asset);
-    let note1 = generate_tracked_note_with_asset(&mut chain, account0.id(), account1.id(), asset);
-    let note2 = generate_tracked_note_with_asset(&mut chain, account0.id(), account1.id(), asset);
+    let mut builder = MockChain::builder();
+    let mut account1 = builder.add_existing_mock_account(Auth::IncrNonce)?;
+    let note0 = builder.add_p2id_note(sender_id, account1.id(), &[asset], NoteType::Private)?;
+    let note1 = builder.add_p2id_note(sender_id, account1.id(), &[asset], NoteType::Public)?;
+    let note2 = builder.add_p2id_note(sender_id, account1.id(), &[asset], NoteType::Public)?;
+    let mut chain = builder.build()?;
 
     // Add notes to the chain.
     chain.prove_next_block()?;
 
     // Create three transactions on the same account that build on top of each other.
-    let executed_tx0 =
-        generate_executed_tx_with_authenticated_notes(&chain, account1.id(), &[note0.id()]);
+    let executed_tx0 = chain.create_authenticated_notes_tx(account1.id(), [note0.id()]).await?;
 
     account1.apply_delta(executed_tx0.account_delta())?;
-    let executed_tx1 =
-        generate_executed_tx_with_authenticated_notes(&chain, account1.clone(), &[note1.id()]);
+    let executed_tx1 = chain.create_authenticated_notes_tx(account1.clone(), [note1.id()]).await?;
 
     account1.apply_delta(executed_tx1.account_delta())?;
-    let executed_tx2 =
-        generate_executed_tx_with_authenticated_notes(&chain, account1.clone(), &[note2.id()]);
+    let executed_tx2 = chain.create_authenticated_notes_tx(account1.clone(), [note2.id()]).await?;
 
     let [tx0, tx1, tx2] = [executed_tx0, executed_tx1, executed_tx2]
         .into_iter()
@@ -148,8 +143,8 @@ fn proposed_block_aggregates_account_state_transition() -> anyhow::Result<()> {
         .try_into()
         .expect("we should have provided three executed txs");
 
-    let batch0 = generate_batch(&mut chain, vec![tx2.clone()]);
-    let batch1 = generate_batch(&mut chain, vec![tx0.clone(), tx1.clone()]);
+    let batch0 = chain.create_batch(vec![tx2.clone()])?;
+    let batch1 = chain.create_batch(vec![tx0.clone(), tx1.clone()])?;
 
     let batches = vec![batch0.clone(), batch1.clone()];
     let block_inputs = chain.get_block_inputs(&batches).unwrap();
@@ -183,29 +178,28 @@ fn proposed_block_aggregates_account_state_transition() -> anyhow::Result<()> {
 }
 
 /// Tests that unauthenticated notes can be authenticated when inclusion proofs are provided.
-#[test]
-fn proposed_block_authenticating_unauthenticated_notes() -> anyhow::Result<()> {
-    let TestSetup { mut chain, mut accounts, .. } = setup_chain(3);
-    let account0 = accounts.remove(&0).unwrap();
-    let account1 = accounts.remove(&1).unwrap();
-    let account2 = accounts.remove(&2).unwrap();
+#[tokio::test]
+async fn proposed_block_authenticating_unauthenticated_notes() -> anyhow::Result<()> {
+    let sender_id = AccountId::try_from(ACCOUNT_ID_SENDER)?;
 
-    let note0 = generate_untracked_note(account0.id(), account1.id());
-    let note1 = generate_untracked_note(account0.id(), account2.id());
+    let mut builder = MockChain::builder();
+    let account0 = builder.add_existing_mock_account(Auth::IncrNonce)?;
+    let account1 = builder.add_existing_mock_account(Auth::IncrNonce)?;
+    let note0 = builder.add_p2id_note(sender_id, account0.id(), &[], NoteType::Private)?;
+    let note1 = builder.add_p2id_note(sender_id, account1.id(), &[], NoteType::Public)?;
+    let chain = builder.build()?;
 
     // These txs will use block1 as the reference block.
-    let tx0 =
-        generate_tx_with_unauthenticated_notes(&mut chain, account1.id(), slice::from_ref(&note0));
-    let tx1 =
-        generate_tx_with_unauthenticated_notes(&mut chain, account2.id(), slice::from_ref(&note1));
+    let tx0 = chain
+        .create_unauthenticated_notes_proven_tx(account0.id(), slice::from_ref(&note0))
+        .await?;
+    let tx1 = chain
+        .create_unauthenticated_notes_proven_tx(account1.id(), slice::from_ref(&note1))
+        .await?;
 
     // These batches will use block1 as the reference block.
-    let batch0 = generate_batch(&mut chain, vec![tx0.clone()]);
-    let batch1 = generate_batch(&mut chain, vec![tx1.clone()]);
-
-    chain.add_pending_note(OutputNote::Full(note0.clone()));
-    chain.add_pending_note(OutputNote::Full(note1.clone()));
-    chain.prove_next_block()?;
+    let batch0 = chain.create_batch(vec![tx0.clone()])?;
+    let batch1 = chain.create_batch(vec![tx1.clone()])?;
 
     let batches = [batch0, batch1];
     // This block will use block2 as the reference block.
@@ -234,18 +228,21 @@ fn proposed_block_authenticating_unauthenticated_notes() -> anyhow::Result<()> {
 }
 
 /// Tests that a batch that expires at the block being proposed is still accepted.
-#[test]
-fn proposed_block_with_batch_at_expiration_limit() -> anyhow::Result<()> {
-    let TestSetup { mut chain, mut accounts, .. } = setup_chain(2);
+#[tokio::test]
+async fn proposed_block_with_batch_at_expiration_limit() -> anyhow::Result<()> {
+    let mut builder = MockChain::builder();
+    let account0 = builder.add_existing_mock_account(Auth::IncrNonce)?;
+    let account1 = builder.add_existing_mock_account(Auth::IncrNonce)?;
+    let mut chain = builder.build()?;
+
+    chain.prove_next_block()?;
     let block1_num = chain.block_header(1).block_num();
-    let account0 = accounts.remove(&0).unwrap();
-    let account1 = accounts.remove(&1).unwrap();
 
-    let tx0 = generate_tx_with_expiration(&mut chain, account0.id(), block1_num + 5);
-    let tx1 = generate_tx_with_expiration(&mut chain, account1.id(), block1_num + 2);
+    let tx0 = chain.create_expiring_proven_tx(account0.id(), block1_num + 5).await?;
+    let tx1 = chain.create_expiring_proven_tx(account1.id(), block1_num + 2).await?;
 
-    let batch0 = generate_batch(&mut chain, vec![tx0]);
-    let batch1 = generate_batch(&mut chain, vec![tx1]);
+    let batch0 = chain.create_batch(vec![tx0])?;
+    let batch1 = chain.create_batch(vec![tx1])?;
 
     // sanity check: batch 1 should expire at block 3.
     assert_eq!(batch1.batch_expiration_block_num().as_u32(), 3);
@@ -265,25 +262,31 @@ fn proposed_block_with_batch_at_expiration_limit() -> anyhow::Result<()> {
 /// Tests that a NOOP transaction with state commitments X -> X against account A can appear
 /// in one batch while another batch contains a state-updating transaction with state commitments X
 /// -> Y against the same account A. Both batches are in the same block.
-#[test]
-fn noop_tx_and_state_updating_tx_against_same_account_in_same_block() -> anyhow::Result<()> {
+#[tokio::test]
+async fn noop_tx_and_state_updating_tx_against_same_account_in_same_block() -> anyhow::Result<()> {
     let account_builder = Account::builder(rand::rng().random())
         .storage_mode(AccountStorageMode::Public)
         .with_component(MockAccountComponent::with_empty_slots());
 
     let mut builder = MockChain::builder();
-
     let mut account0 = builder.add_account_from_builder(
         Auth::Conditional,
         account_builder,
         AccountState::Exists,
     )?;
 
+    let noop_note0 =
+        NoteBuilder::new(ACCOUNT_ID_SENDER.try_into().unwrap(), &mut rand::rng()).build()?;
+    let noop_note1 =
+        NoteBuilder::new(ACCOUNT_ID_SENDER.try_into().unwrap(), &mut rand::rng()).build()?;
+    builder.add_output_note(OutputNote::Full(noop_note0.clone()));
+    builder.add_output_note(OutputNote::Full(noop_note1.clone()));
     let mut chain = builder.build()?;
 
-    let noop_tx = generate_conditional_tx(&mut chain, account0.id(), false);
+    let noop_tx = generate_conditional_tx(&mut chain, account0.id(), noop_note0, false).await;
     account0.apply_delta(noop_tx.account_delta())?;
-    let state_updating_tx = generate_conditional_tx(&mut chain, account0.clone(), true);
+    let state_updating_tx =
+        generate_conditional_tx(&mut chain, account0.clone(), noop_note1, true).await;
 
     // sanity check: NOOP transaction's init and final commitment should be the same.
     assert_eq!(noop_tx.initial_account().commitment(), noop_tx.final_account().commitment());
@@ -297,8 +300,8 @@ fn noop_tx_and_state_updating_tx_against_same_account_in_same_block() -> anyhow:
     let tx0 = LocalTransactionProver::default().prove_dummy(noop_tx)?;
     let tx1 = LocalTransactionProver::default().prove_dummy(state_updating_tx)?;
 
-    let batch0 = generate_batch(&mut chain, vec![tx0]);
-    let batch1 = generate_batch(&mut chain, vec![tx1.clone()]);
+    let batch0 = chain.create_batch(vec![tx0])?;
+    let batch1 = chain.create_batch(vec![tx1.clone()])?;
 
     let batches = vec![batch0.clone(), batch1.clone()];
 
@@ -310,4 +313,35 @@ fn noop_tx_and_state_updating_tx_against_same_account_in_same_block() -> anyhow:
     assert_eq!(update.final_state_commitment(), tx1.account_update().final_state_commitment());
 
     Ok(())
+}
+
+// HELPER FUNCTIONS
+// ================================================================================================
+
+/// Generates a transaction, which depending on the `modify_storage` flag, does the following:
+/// - if `modify_storage` is true, it increments the storage item of the account.
+/// - if `modify_storage` is false, it does nothing (NOOP).
+///
+/// To make this transaction (always) non-empty, it consumes one "noop note", which does nothing.
+async fn generate_conditional_tx(
+    chain: &mut MockChain,
+    input: impl Into<TxContextInput>,
+    noop_note: Note,
+    modify_storage: bool,
+) -> ExecutedTransaction {
+    let auth_args = [
+        // increment nonce if modify_storage is true
+        if modify_storage { Felt::ONE } else { Felt::ZERO },
+        Felt::new(99),
+        Felt::new(98),
+        Felt::new(97),
+    ];
+
+    let tx_context = chain
+        .build_tx_context(input.into(), &[noop_note.id()], &[])
+        .unwrap()
+        .auth_args(auth_args.into())
+        .build()
+        .unwrap();
+    tx_context.execute().await.unwrap()
 }

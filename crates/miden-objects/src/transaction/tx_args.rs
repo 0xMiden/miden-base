@@ -2,10 +2,11 @@ use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use miden_crypto::dsa::rpo_falcon512::PublicKey;
 use miden_crypto::merkle::InnerNodeInfo;
+use miden_processor::MastNodeExt;
 
 use super::{AccountInputs, Felt, Hasher, Word};
+use crate::account::{PublicKeyCommitment, Signature};
 use crate::note::{NoteId, NoteRecipient};
 use crate::utils::serde::{
     ByteReader,
@@ -188,15 +189,21 @@ impl TransactionArgs {
         self.advice_inputs.extend(AdviceInputs::default().with_map(new_elements));
     }
 
-    /// Adds the `signature` corresponding to `public_key` on `message` to the advice inputs' map.
+    /// Adds the `signature` corresponding to `pub_key` on `message` to the advice inputs' map.
     ///
     /// The advice inputs' map is extended with the following key:
     ///
-    /// - hash(public_key, message) |-> signature.
-    pub fn add_signature(&mut self, public_key: PublicKey, message: Word, signature: Vec<Felt>) {
+    /// - hash(pub_key, message) |-> signature (prepared for VM execution).
+    pub fn add_signature(
+        &mut self,
+        pub_key: PublicKeyCommitment,
+        message: Word,
+        signature: Signature,
+    ) {
+        let pk_word: Word = pub_key.into();
         self.advice_inputs
             .map
-            .insert(Hasher::merge(&[public_key.into(), message]), signature);
+            .insert(Hasher::merge(&[pk_word, message]), signature.to_prepared_signature());
     }
 
     /// Populates the advice inputs with the specified note recipient details.

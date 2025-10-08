@@ -14,7 +14,7 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
     ACCOUNT_ID_SENDER,
 };
-use miden_objects::transaction::OutputNote;
+use miden_objects::transaction::{InputNote, OutputNote};
 use miden_processor::ExecutionError;
 use miden_processor::crypto::RpoRandomCoin;
 use miden_tx::auth::UnreachableAuth;
@@ -22,13 +22,14 @@ use miden_tx::{
     FailedNote,
     NoteConsumptionChecker,
     NoteConsumptionInfo,
+    NoteConsumptionStatus,
     TransactionExecutor,
     TransactionExecutorError,
 };
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 
-use crate::utils::create_p2any_note;
+use crate::utils::create_public_p2any_note;
 use crate::{Auth, MockChain, TransactionContextBuilder, TxContextInput};
 
 #[tokio::test]
@@ -84,7 +85,7 @@ async fn check_note_consumability_well_known_notes_success() -> anyhow::Result<(
 }
 
 #[rstest::rstest]
-#[case::one(vec![create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), [FungibleAsset::mock(100)])])]
+#[case::one(vec![create_public_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), [FungibleAsset::mock(100)])])]
 #[tokio::test]
 async fn check_note_consumability_custom_notes_success(
     #[case] notes: Vec<Note>,
@@ -327,7 +328,7 @@ async fn check_note_consumability_epilogue_failure_with_new_combination() -> any
     let fail_epilogue_note = NoteBuilder::new(account.id(), &mut rand::rng())
         .add_assets([Asset::from(note_asset)])
         .build()?;
-    builder.add_note(OutputNote::Full(fail_epilogue_note.clone()));
+    builder.add_output_note(OutputNote::Full(fail_epilogue_note.clone()));
 
     let mock_chain = builder.build()?;
     let notes = vec![
@@ -397,5 +398,48 @@ async fn check_note_consumability_epilogue_failure_with_new_combination() -> any
                 );
             }
     );
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_check_note_consumability_without_signatures() -> anyhow::Result<()> {
+    let mut builder = MockChain::builder();
+
+    // Use basic auth which will cause epilogue failure when paired up with unreachable auth.
+    let account = builder.add_existing_wallet(Auth::BasicAuth)?;
+
+    let successful_note = builder.add_p2id_note(
+        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
+        account.id(),
+        &[FungibleAsset::mock(10)],
+        NoteType::Public,
+    )?;
+
+    let mock_chain = builder.build()?;
+    let notes = vec![successful_note.clone()];
+    let tx_context = mock_chain
+        .build_tx_context(TxContextInput::Account(account), &[], &notes)?
+        .build()?;
+
+    let account_id = tx_context.account().id();
+    let block_ref = tx_context.tx_inputs().block_header().block_num();
+    let tx_args = tx_context.tx_args().clone();
+
+    // Use an auth that fails in order to force an epilogue failure when paired up with basic auth.
+    let executor =
+        TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context).with_tracing();
+    let notes_checker = NoteConsumptionChecker::new(&executor);
+
+    let consumability_info: NoteConsumptionStatus = notes_checker
+        .can_consume(
+            account_id,
+            block_ref,
+            InputNote::Unauthenticated { note: successful_note },
+            tx_args,
+        )
+        .await?;
+
+    assert_eq!(consumability_info, NoteConsumptionStatus::ConsumableWithAuthorization);
+
     Ok(())
 }

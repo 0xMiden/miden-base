@@ -3,7 +3,8 @@ use alloc::rc::Rc;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use miden_lib::transaction::{TransactionEvent, TransactionEventError};
+use miden_lib::StdLibrary;
+use miden_lib::transaction::{EventId, TransactionEvent, TransactionEventError};
 use miden_objects::account::{AccountCode, AccountVaultDelta};
 use miden_objects::assembly::debuginfo::SourceManagerSync;
 use miden_objects::assembly::{DefaultSourceManager, SourceManager};
@@ -14,6 +15,7 @@ use miden_processor::{
     BaseHost,
     ContextId,
     EventError,
+    EventHandlerRegistry,
     MastForest,
     MastForestStore,
     ProcessState,
@@ -32,6 +34,8 @@ pub struct MockHost {
     acct_procedure_index_map: AccountProcedureIndexMap,
     mast_store: Rc<TransactionMastStore>,
     source_manager: Arc<dyn SourceManagerSync>,
+    /// Handle the VM default events _before_ passing it to user defined ones.
+    stdlib_handlers: EventHandlerRegistry,
 }
 
 impl MockHost {
@@ -49,10 +53,23 @@ impl MockHost {
         )
         .expect("account procedure index map should be valid");
 
+        let stdlib_handlers = {
+            let mut registry = EventHandlerRegistry::new();
+
+            let stdlib = StdLibrary::default();
+            for (event_id, handler) in stdlib.handlers() {
+                registry
+                    .register(event_id, handler)
+                    .expect("There are no duplicates in the stdlibrary handlers");
+            }
+            registry
+        };
+
         Self {
             acct_procedure_index_map: account_procedure_index_map,
             mast_store,
             source_manager: Arc::new(DefaultSourceManager::default()),
+            stdlib_handlers,
         }
     }
 
@@ -80,10 +97,6 @@ impl MockHost {
 }
 
 impl BaseHost for MockHost {
-    fn get_mast_forest(&self, node_digest: &Word) -> Option<Arc<MastForest>> {
-        self.mast_store.get(node_digest)
-    }
-
     fn get_label_and_source_file(
         &self,
         location: &miden_objects::assembly::debuginfo::Location,
@@ -98,23 +111,27 @@ impl BaseHost for MockHost {
 }
 
 impl SyncHost for MockHost {
-    fn on_event(
-        &mut self,
-        process: &ProcessState,
-        event_id: u32,
-    ) -> Result<Vec<AdviceMutation>, EventError> {
+    fn get_mast_forest(&self, node_digest: &Word) -> Option<Arc<MastForest>> {
+        self.mast_store.get(node_digest)
+    }
+
+    fn on_event(&mut self, process: &ProcessState) -> Result<Vec<AdviceMutation>, EventError> {
+        let event_id = EventId::from_felt(process.get_stack_item(0));
+        if let Some(result) = self.stdlib_handlers.handle_event(event_id, process).transpose() {
+            return result;
+        }
         let event = TransactionEvent::try_from(event_id).map_err(Box::new)?;
 
         if process.ctx() != ContextId::root() {
-            return Err(Box::new(TransactionEventError::NotRootContext(event_id)));
+            return Err(Box::new(TransactionEventError::NotRootContext(event)));
         }
 
         let advice_mutations = match event {
             TransactionEvent::AccountPushProcedureIndex => {
                 self.on_push_account_procedure_index(process)
             },
-            TransactionEvent::LinkMapSetEvent => LinkMap::handle_set_event(process),
-            TransactionEvent::LinkMapGetEvent => LinkMap::handle_get_event(process),
+            TransactionEvent::LinkMapSet => LinkMap::handle_set_event(process),
+            TransactionEvent::LinkMapGet => LinkMap::handle_get_event(process),
             _ => Ok(Vec::new()),
         }?;
 

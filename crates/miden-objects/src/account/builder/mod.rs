@@ -288,6 +288,7 @@ mod tests {
     use assert_matches::assert_matches;
     use miden_assembly::{Assembler, Library};
     use miden_core::FieldElement;
+    use miden_processor::MastNodeExt;
 
     use super::*;
     use crate::account::StorageSlot;

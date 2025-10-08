@@ -6,12 +6,13 @@ use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::AccountId;
 use miden_objects::block::BlockNumber;
 use miden_objects::note::Note;
-use miden_objects::transaction::{InputNote, InputNotes, TransactionArgs};
+use miden_objects::transaction::{InputNote, InputNotes, TransactionArgs, TransactionInputs};
 use miden_processor::fast::FastProcessor;
 
 use super::TransactionExecutor;
 use crate::auth::TransactionAuthenticator;
 use crate::errors::TransactionCheckerError;
+use crate::executor::map_execution_error;
 use crate::{DataStore, NoteCheckerError, TransactionExecutorError};
 
 // CONSTANTS
@@ -116,9 +117,74 @@ where
         // Ensure well-known notes are ordered first.
         notes.sort_unstable_by_key(|note| WellKnownNote::from_note(note).is_none());
 
-        // Attempt to find an executable set of notes.
-        self.find_executable_notes_by_elimination(target_account_id, block_ref, notes, tx_args)
+        let notes = InputNotes::from(notes);
+        let tx_inputs = self
+            .0
+            .prepare_transaction_inputs(target_account_id, block_ref, notes, &tx_args)
             .await
+            .map_err(NoteCheckerError::TransactionPreparation)?;
+
+        // Attempt to find an executable set of notes.
+        self.find_executable_notes_by_elimination(tx_inputs, tx_args).await
+    }
+
+    /// Checks whether the provided input note could be consumed by the provided account by
+    /// executing a transaction at the specified block height.
+    ///
+    /// This function takes into account the possibility that the signatures may not be loaded into
+    /// the transaction context and returns the [`NoteConsumptionStatus`] result accordingly.
+    ///
+    /// This function first applies the static analysis of the provided note, and if it doesn't
+    /// reveal any errors next it tries to execute the transaction. Based on the execution result,
+    /// it either returns a [`NoteCheckerError`] or the [`NoteConsumptionStatus`]: depending on
+    /// whether the execution succeeded, failed in the prologue, during the note execution process
+    /// or in the epilogue.
+    pub async fn can_consume(
+        &self,
+        target_account_id: AccountId,
+        block_ref: BlockNumber,
+        note: InputNote,
+        tx_args: TransactionArgs,
+    ) -> Result<NoteConsumptionStatus, NoteCheckerError> {
+        // TODO: apply the static analysis before executing the tx
+
+        // prepare the transaction inputs
+        let tx_inputs = self
+            .0
+            .prepare_transaction_inputs(
+                target_account_id,
+                block_ref,
+                InputNotes::new_unchecked(vec![note]),
+                &tx_args,
+            )
+            .await
+            .map_err(NoteCheckerError::TransactionPreparation)?;
+
+        // try to consume the provided note
+        match self.try_execute_notes(&tx_inputs, &tx_args).await {
+            // execution succeeded
+            Ok(()) => Ok(NoteConsumptionStatus::Consumable),
+            Err(tx_checker_error) => {
+                match tx_checker_error {
+                    // execution failed on the preparation stage, before we actually executed the tx
+                    TransactionCheckerError::TransactionPreparation(e) => {
+                        Err(NoteCheckerError::TransactionPreparation(e))
+                    },
+                    // execution failed during the prologue
+                    TransactionCheckerError::PrologueExecution(e) => {
+                        Err(NoteCheckerError::PrologueExecution(e))
+                    },
+                    // execution failed during the note processing
+                    TransactionCheckerError::NoteExecution { .. } => {
+                        Ok(NoteConsumptionStatus::Unconsumable)
+                    },
+                    // execution failed during the epilogue
+                    TransactionCheckerError::EpilogueExecution(epilogue_error) => {
+                        Ok(handle_epilogue_error(epilogue_error))
+                    },
+                }
+            },
+        }
     }
 
     // HELPER METHODS
@@ -130,12 +196,14 @@ where
     /// succeeded or failed to execute.
     async fn find_executable_notes_by_elimination(
         &self,
-        target_account_id: AccountId,
-        block_ref: BlockNumber,
-        notes: Vec<Note>,
+        mut tx_inputs: TransactionInputs,
         tx_args: TransactionArgs,
     ) -> Result<NoteConsumptionInfo, NoteCheckerError> {
-        let mut candidate_notes = notes;
+        let mut candidate_notes = tx_inputs
+            .input_notes()
+            .iter()
+            .map(|note| note.clone().into_note())
+            .collect::<Vec<_>>();
         let mut failed_notes = Vec::new();
 
         // Attempt to execute notes in a loop. Reduce the set of notes based on failures until
@@ -143,15 +211,8 @@ where
         // further reduced.
         loop {
             // Execute the candidate notes.
-            match self
-                .try_execute_notes(
-                    target_account_id,
-                    block_ref,
-                    candidate_notes.clone().into(),
-                    &tx_args,
-                )
-                .await
-            {
+            tx_inputs.set_input_notes_unchecked(candidate_notes.clone().into());
+            match self.try_execute_notes(&tx_inputs, &tx_args).await {
                 Ok(()) => {
                     // A full set of successful notes has been found.
                     let successful = candidate_notes;
@@ -171,10 +232,9 @@ where
                 Err(TransactionCheckerError::EpilogueExecution(_)) => {
                     let consumption_info = self
                         .find_largest_executable_combination(
-                            target_account_id,
-                            block_ref,
                             candidate_notes,
                             failed_notes,
+                            tx_inputs,
                             &tx_args,
                         )
                         .await;
@@ -198,14 +258,12 @@ where
     /// set.
     async fn find_largest_executable_combination(
         &self,
-        target_account_id: AccountId,
-        block_ref: BlockNumber,
-        input_notes: Vec<Note>,
+        mut remaining_notes: Vec<Note>,
         mut failed_notes: Vec<FailedNote>,
+        mut tx_inputs: TransactionInputs,
         tx_args: &TransactionArgs,
     ) -> NoteConsumptionInfo {
         let mut successful_notes = Vec::new();
-        let mut remaining_notes = input_notes;
         let mut failed_note_index = BTreeMap::new();
 
         // Iterate by note count: try 1 note, then 2, then 3, etc.
@@ -219,21 +277,8 @@ where
             for (idx, note) in remaining_notes.iter().enumerate() {
                 successful_notes.push(note.clone());
 
-                match self
-                    .try_execute_notes(
-                        target_account_id,
-                        block_ref,
-                        InputNotes::<InputNote>::new_unchecked(
-                            successful_notes
-                                .iter()
-                                .cloned()
-                                .map(InputNote::unauthenticated)
-                                .collect::<Vec<_>>(),
-                        ),
-                        tx_args,
-                    )
-                    .await
-                {
+                tx_inputs.set_input_notes_unchecked(successful_notes.clone().into());
+                match self.try_execute_notes(&tx_inputs, tx_args).await {
                     Ok(()) => {
                         // The successfully added note might have failed earlier. Remove it from the
                         // failed list.
@@ -269,23 +314,16 @@ where
     /// or a specific [`NoteExecutionError`] indicating where and why the execution failed.
     async fn try_execute_notes(
         &self,
-        account_id: AccountId,
-        block_ref: BlockNumber,
-        notes: InputNotes<InputNote>,
+        tx_inputs: &TransactionInputs,
         tx_args: &TransactionArgs,
     ) -> Result<(), TransactionCheckerError> {
-        if notes.is_empty() {
+        if tx_inputs.input_notes().is_empty() {
             return Ok(());
         }
 
-        // TODO: ideally, we should prepare the inputs only once for the whole note consumption
-        // check (rather than doing this every time when we try to execute some subset of notes),
-        // but we currently cannot do this because transaction preparation includes input notes;
-        // we should refactor the preparation process to separate input note preparation from the
-        // rest, and then we can prepare the rest of the inputs once for the whole check.
-        let (mut host, _, stack_inputs, advice_inputs) = self
+        let (mut host, stack_inputs, advice_inputs) = self
             .0
-            .prepare_transaction(account_id, block_ref, notes, tx_args, None)
+            .prepare_transaction(tx_inputs, tx_args, None)
             .await
             .map_err(TransactionCheckerError::TransactionPreparation)?;
 
@@ -294,7 +332,7 @@ where
         let result = processor
             .execute(&TransactionKernel::main(), &mut host)
             .await
-            .map_err(TransactionExecutorError::TransactionProgramExecutionFailed);
+            .map_err(map_execution_error);
 
         match result {
             Ok(_) => Ok(()),
@@ -322,4 +360,51 @@ where
             },
         }
     }
+}
+
+// HELPER FUNCTIONS
+// ================================================================================================
+
+/// Handle the epilogue error during the note consumption check in the `can_consume` method.
+///
+/// The goal of this helper function is to handle the cases where the account couldn't consume the
+/// note because of some epilogue check failure, e.g. absence of the authenticator.
+fn handle_epilogue_error(epilogue_error: TransactionExecutorError) -> NoteConsumptionStatus {
+    match epilogue_error {
+        // `Unauthorized` is returned for the multisig accounts if the transaction doesn't have
+        // enough signatures.
+        TransactionExecutorError::Unauthorized(_)
+        // `MissingAuthenticator` is returned for the account with the basic auth if the
+        // authenticator was not provided to the executor (UnreachableAuth).
+        | TransactionExecutorError::MissingAuthenticator => {
+            // Both these cases signal that there is a probability that the provided note could be
+            // consumed if the authentication is provided.
+            NoteConsumptionStatus::ConsumableWithAuthorization
+        },
+        // TODO: apply additional checks to get the verbose error reason
+        _ => NoteConsumptionStatus::Unconsumable,
+    }
+}
+
+// HELPER STRUCTURES
+// ================================================================================================
+
+/// Describes if a note could be consumed under a specific conditions: target account state
+/// and block height.
+///
+/// The status does not account for any authorization that may be required to consume the
+/// note, nor does it indicate whether the account has sufficient fees to consume it.
+#[derive(Debug, PartialEq)]
+pub enum NoteConsumptionStatus {
+    /// The note can be consumed by the account at the specified block height.
+    Consumable,
+    /// The note can be consumed by the account after the required block height is achieved.
+    ConsumableAfter(BlockNumber),
+    /// The note can be consumed by the account if proper authorization is provided.
+    ConsumableWithAuthorization,
+    /// The note cannot be consumed by the account at the specified conditions (i.e., block
+    /// height and account state).    
+    Unconsumable,
+    /// The note cannot be consumed by the specified account under any conditions.
+    Incompatible,
 }

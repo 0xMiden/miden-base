@@ -354,7 +354,7 @@ pub enum FungibleFaucetError {
 #[cfg(test)]
 mod tests {
     use assert_matches::assert_matches;
-    use miden_objects::crypto::dsa::rpo_falcon512::{self, PublicKey};
+    use miden_objects::account::PublicKeyCommitment;
     use miden_objects::{FieldElement, ONE, Word};
 
     use super::{
@@ -373,8 +373,8 @@ mod tests {
 
     #[test]
     fn faucet_contract_creation() {
-        let pub_key = rpo_falcon512::PublicKey::new(Word::new([ONE; 4]));
-        let auth_scheme: AuthScheme = AuthScheme::RpoFalcon512 { pub_key };
+        let pub_key_word = Word::new([ONE; 4]);
+        let auth_scheme: AuthScheme = AuthScheme::RpoFalcon512 { pub_key: pub_key_word.into() };
 
         // we need to use an initial seed to create the wallet account
         let init_seed: [u8; 32] = [
@@ -403,7 +403,7 @@ mod tests {
 
         // The falcon auth component is added first so its assigned storage slot for the public key
         // will be 1.
-        assert_eq!(faucet_account.storage().get_item(1).unwrap(), Word::from(pub_key));
+        assert_eq!(faucet_account.storage().get_item(1).unwrap(), pub_key_word);
 
         // Slot 2 stores [num_tracked_procs, allow_unauthorized_output_notes,
         // allow_unauthorized_input_notes, 0]. With 1 tracked procedure (distribute),
@@ -445,8 +445,9 @@ mod tests {
     #[test]
     fn faucet_create_from_account() {
         // prepare the test data
-        let mock_public_key = PublicKey::new(Word::from([0, 1, 2, 3u32]));
-        let mock_seed = Word::from([0, 1, 2, 3u32]).as_bytes();
+        let mock_word = Word::from([0, 1, 2, 3u32]);
+        let mock_public_key = PublicKeyCommitment::from(mock_word);
+        let mock_seed = mock_word.as_bytes();
 
         // valid account
         let token_symbol = TokenSymbol::new("POL").expect("invalid token symbol");

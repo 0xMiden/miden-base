@@ -5,7 +5,7 @@ use anyhow::Context;
 use itertools::Itertools;
 use miden_lib::account::faucets::BasicFungibleFaucet;
 use miden_lib::account::wallets::BasicWallet;
-use miden_lib::note::{create_if_swap_note, create_p2id_note, create_p2ide_note, create_swap_note};
+use miden_lib::note::{create_p2id_note, create_p2ide_note, create_swap_note};
 use miden_lib::testing::account_component::MockAccountComponent;
 use miden_lib::transaction::{TransactionKernel, memory};
 use miden_objects::account::delta::AccountUpdateDetails;
@@ -30,6 +30,7 @@ use miden_objects::block::{
     OutputNoteBatch,
     ProvenBlock,
 };
+use miden_objects::crypto::rand::FeltRng;
 use miden_objects::note::{Note, NoteDetails, NoteType};
 use miden_objects::testing::account_id::ACCOUNT_ID_NATIVE_ASSET_FAUCET;
 use miden_objects::transaction::{OrderedTransactionHeaders, OutputNote};
@@ -41,7 +42,56 @@ use crate::mock_chain::chain::AccountAuthenticator;
 use crate::utils::{create_p2any_note, create_spawn_note};
 use crate::{AccountState, Auth, MockChain};
 
-/// A builder for a [`MockChain`].
+/// A builder for a [`MockChain`]'s genesis block.
+///
+/// ## Example
+///
+/// ```
+/// # use anyhow::Result;
+/// # use miden_objects::{
+/// #    asset::{Asset, FungibleAsset},
+/// #    note::NoteType,
+/// # };
+/// # use miden_testing::{Auth, MockChain};
+/// #
+/// # fn main() -> Result<()> {
+/// let mut builder = MockChain::builder();
+/// let existing_wallet =
+///     builder.add_existing_wallet_with_assets(Auth::IncrNonce, [FungibleAsset::mock(500)])?;
+/// let new_wallet = builder.create_new_wallet(Auth::IncrNonce)?;
+///
+/// let existing_note = builder.add_p2id_note(
+///     existing_wallet.id(),
+///     new_wallet.id(),
+///     &[FungibleAsset::mock(100)],
+///     NoteType::Private,
+/// )?;
+/// let new_note = builder.create_p2id_note(
+///     existing_wallet.id(),
+///     new_wallet.id(),
+///     [FungibleAsset::mock(100)],
+///     NoteType::Private,
+/// )?;
+/// let chain = builder.build()?;
+///
+/// // The existing wallet and note should be part of the chain state.
+/// assert!(chain.committed_account(existing_wallet.id()).is_ok());
+/// assert!(chain.committed_notes().get(&existing_note.id()).is_some());
+///
+/// // The new wallet and note should *not* be part of the chain state - they must be created in
+/// // a transaction first.
+/// assert!(chain.committed_account(new_wallet.id()).is_err());
+/// assert!(chain.committed_notes().get(&new_note.id()).is_none());
+///
+/// # Ok(())
+/// # }
+/// ```
+///
+/// Note the distinction between `add_` and `create_` APIs. Any `add_` APIs will add something to
+/// the genesis chain state while `create_` APIs do not mutate the genesis state. The latter are
+/// simply convenient for creating accounts or notes that will be created by transactions.
+///
+/// See also the [`MockChain`] docs for examples on using the mock chain.
 #[derive(Debug, Clone)]
 pub struct MockChainBuilder {
     accounts: BTreeMap<AccountId, Account>,
@@ -395,27 +445,26 @@ impl MockChainBuilder {
         Ok(())
     }
 
-    // NOTE METHODS
+    // NOTE ADD METHODS
     // ----------------------------------------------------------------------------------------
 
     /// Adds the provided note to the initial chain state.
-    pub fn add_note(&mut self, note: impl Into<OutputNote>) {
+    pub fn add_output_note(&mut self, note: impl Into<OutputNote>) {
         self.notes.push(note.into());
     }
 
-    /// Creates a new P2ANY note from the provided parameters and adds it to the list of genesis
-    /// notes. This note is similar to a P2ID note but can be consumed by any account.
+    /// Creates a new P2ANY note from the provided parameters and adds it to the list of
+    /// genesis notes.
     ///
-    /// In the created [`MockChain`], the note will be immediately spendable by `target_account_id`
-    /// and carries no additional reclaim or timelock conditions.
+    /// This note is similar to a P2ID note but can be consumed by any account.
     pub fn add_p2any_note(
         &mut self,
         sender_account_id: AccountId,
-        asset: impl IntoIterator<Item = Asset>,
+        note_type: NoteType,
+        assets: impl IntoIterator<Item = Asset>,
     ) -> anyhow::Result<Note> {
-        let note = create_p2any_note(sender_account_id, asset);
-
-        self.add_note(OutputNote::Full(note.clone()));
+        let note = self.create_p2any_note(sender_account_id, note_type, assets)?;
+        self.add_output_note(OutputNote::Full(note.clone()));
 
         Ok(note)
     }
@@ -432,16 +481,13 @@ impl MockChainBuilder {
         asset: &[Asset],
         note_type: NoteType,
     ) -> Result<Note, NoteError> {
-        let note = create_p2id_note(
+        let note = self.create_p2id_note(
             sender_account_id,
             target_account_id,
-            asset.to_vec(),
+            asset.iter().copied(),
             note_type,
-            Default::default(),
-            &mut self.rng,
         )?;
-
-        self.add_note(OutputNote::Full(note.clone()));
+        self.add_output_note(OutputNote::Full(note.clone()));
 
         Ok(note)
     }
@@ -471,7 +517,7 @@ impl MockChainBuilder {
             &mut self.rng,
         )?;
 
-        self.add_note(OutputNote::Full(note.clone()));
+        self.add_output_note(OutputNote::Full(note.clone()));
 
         Ok(note)
     }
@@ -495,33 +541,9 @@ impl MockChainBuilder {
             &mut self.rng,
         )?;
 
-        self.add_note(OutputNote::Full(swap_note.clone()));
+        self.add_output_note(OutputNote::Full(swap_note.clone()));
 
         Ok((swap_note, payback_note))
-    }
-
-    /// Adds a public IF_SWAP [`OutputNote`] to the list of genesis notes.
-    pub fn add_if_swap_note(
-        &mut self,
-        sender: AccountId,
-        offered_asset: Asset,
-        requested_asset: Asset,
-        payback_note_type: NoteType,
-    ) -> anyhow::Result<(Note, NoteDetails)> {
-        let (if_swap_note, payback_note) = create_if_swap_note(
-            sender,
-            offered_asset,
-            requested_asset,
-            NoteType::Public,
-            Felt::ZERO,
-            payback_note_type,
-            Felt::ZERO,
-            &mut self.rng,
-        )?;
-
-        self.add_note(OutputNote::Full(if_swap_note.clone()));
-
-        Ok((if_swap_note, payback_note))
     }
 
     /// Adds a public `SPAWN` note to the list of genesis notes.
@@ -542,7 +564,7 @@ impl MockChainBuilder {
         I: ExactSizeIterator<Item = &'note Note>,
     {
         let note = create_spawn_note(output_notes)?;
-        self.add_note(OutputNote::Full(note.clone()));
+        self.add_output_note(OutputNote::Full(note.clone()));
 
         Ok(note)
     }
@@ -567,6 +589,49 @@ impl MockChainBuilder {
         )?;
 
         Ok(note)
+    }
+
+    // NOTE CREATE METHODS
+    // ----------------------------------------------------------------------------------------
+
+    /// Creates a new P2ID note from the provided parameters.
+    ///
+    /// The note is _not_ added to the list of genesis notes. It must be created by the caller to
+    /// make it available in the mock chain, e.g. using [`Self::add_spawn_note`].
+    ///
+    /// This is a convenience wrapper around [`create_p2id_note`].
+    pub fn create_p2id_note(
+        &mut self,
+        sender_account_id: AccountId,
+        target_account_id: AccountId,
+        assets: impl IntoIterator<Item = Asset>,
+        note_type: NoteType,
+    ) -> Result<Note, NoteError> {
+        let note = create_p2id_note(
+            sender_account_id,
+            target_account_id,
+            assets.into_iter().collect::<Vec<_>>(),
+            note_type,
+            Default::default(),
+            &mut self.rng,
+        )?;
+
+        Ok(note)
+    }
+
+    /// Creates a new P2ANY note from the provided parameters.
+    ///
+    /// This note is similar to a P2ID note but can be consumed by any account.
+    ///
+    /// The note is _not_ added to the list of genesis notes. It must be created by the caller to
+    /// make it available in the mock chain, e.g. using [`Self::add_spawn_note`].
+    pub fn create_p2any_note(
+        &mut self,
+        sender_account_id: AccountId,
+        note_type: NoteType,
+        assets: impl IntoIterator<Item = Asset>,
+    ) -> anyhow::Result<Note> {
+        Ok(create_p2any_note(sender_account_id, note_type, self.rng.draw_word(), assets))
     }
 
     // HELPER FUNCTIONS

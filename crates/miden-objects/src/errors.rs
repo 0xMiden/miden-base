@@ -22,6 +22,7 @@ use crate::account::{
     AccountIdPrefix,
     AccountStorage,
     AccountType,
+    SlotName,
     StorageValueName,
     StorageValueNameError,
     TemplateTypeError,
@@ -161,6 +162,8 @@ pub enum AccountError {
         account_type: AccountType,
         component_index: usize,
     },
+    #[error("maximum number of storage map leaves exceeded")]
+    MaxNumStorageMapLeavesExceeded(#[source] MerkleError),
     /// This variant can be used by methods that are not inherent to the account but want to return
     /// this error type.
     #[error("{error_msg}")]
@@ -215,6 +218,24 @@ pub enum AccountIdError {
     AccountIdSuffixLeastSignificantByteMustBeZero,
 }
 
+// SLOT NAME ERROR
+// ================================================================================================
+
+#[derive(Debug, Error)]
+pub enum SlotNameError {
+    #[error("slot names must only contain characters a..z, A..Z, 0..9 or underscore")]
+    InvalidCharacter,
+    #[error("slot names must be separated by double colons")]
+    UnexpectedColon,
+    #[error("slot name components must not start with an underscore")]
+    UnexpectedUnderscore,
+    #[error(
+        "slot names must contain at least {} components separated by double colons",
+        SlotName::MIN_NUM_COMPONENTS
+    )]
+    TooShort,
+}
+
 // ACCOUNT TREE ERROR
 // ================================================================================================
 
@@ -234,6 +255,8 @@ pub enum AccountTreeError {
     TreeRootConflict(#[source] MerkleError),
     #[error("failed to apply mutations to account tree")]
     ApplyMutations(#[source] MerkleError),
+    #[error("failed to compute account tree mutations")]
+    ComputeMutations(#[source] MerkleError),
     #[error("smt leaf's index is not a valid account ID prefix")]
     InvalidAccountIdPrefix(#[source] AccountIdError),
     #[error("account witness merkle path depth {0} does not match AccountTree::DEPTH")]
@@ -335,6 +358,8 @@ pub enum AccountDeltaError {
 pub enum StorageMapError {
     #[error("map entries contain key {key} twice with values {value0} and {value1}")]
     DuplicateKey { key: Word, value0: Word, value1: Word },
+    #[error("map key {raw_key} is not present in provided SMT proof")]
+    MissingKey { raw_key: Word },
 }
 
 // BATCH ACCOUNT UPDATE ERROR
@@ -381,6 +406,8 @@ pub enum AssetError {
     },
     #[error("faucet account ID in asset is invalid")]
     InvalidFaucetAccountId(#[source] Box<dyn Error + Send + Sync + 'static>),
+    #[error("faucet account ID in asset has a non-faucet prefix: {}", .0)]
+    InvalidFaucetAccountIdPrefix(AccountIdPrefix),
     #[error(
       "faucet id {0} of type {id_type} must be of type {expected_ty} for fungible assets",
       id_type = .0.account_type(),
@@ -431,6 +458,8 @@ pub enum AssetVaultError {
     NonFungibleAssetNotFound(NonFungibleAsset),
     #[error("subtracting fungible asset amounts would underflow")]
     SubtractFungibleAssetBalanceError(#[source] AssetError),
+    #[error("maximum number of asset vault leaves exceeded")]
+    MaxLeafEntriesExceeded(#[source] MerkleError),
 }
 
 // PARTIAL ASSET VAULT ERROR
@@ -965,6 +994,9 @@ pub enum NullifierTreeError {
     #[error("attempt to mark nullifier {0} as spent but it is already spent")]
     NullifierAlreadySpent(Nullifier),
 
+    #[error("maximum number of nullifier tree leaves exceeded")]
+    MaxLeafEntriesExceeded(#[source] MerkleError),
+
     #[error("nullifier {nullifier} is not tracked by the partial nullifier tree")]
     UntrackedNullifier {
         nullifier: Nullifier,
@@ -973,4 +1005,7 @@ pub enum NullifierTreeError {
 
     #[error("new tree root after nullifier witness insertion does not match previous tree root")]
     TreeRootConflict(#[source] MerkleError),
+
+    #[error("failed to compute nulifier tree mutations")]
+    ComputeMutations(#[source] MerkleError),
 }

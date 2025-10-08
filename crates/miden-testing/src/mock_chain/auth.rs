@@ -10,8 +10,8 @@ use miden_lib::account::auth::{
 };
 use miden_lib::testing::account_component::{ConditionalAuthComponent, IncrNonceAuthComponent};
 use miden_objects::Word;
-use miden_objects::account::{AccountComponent, AuthSecretKey};
-use miden_objects::crypto::dsa::rpo_falcon512::{PublicKey, SecretKey};
+use miden_objects::account::{AccountComponent, AuthSecretKey, PublicKeyCommitment};
+use miden_objects::crypto::dsa::rpo_falcon512::SecretKey;
 use miden_objects::testing::noop_auth_component::NoopAuthComponent;
 use miden_tx::auth::BasicAuthenticator;
 use rand::SeedableRng;
@@ -59,7 +59,7 @@ impl Auth {
             Auth::BasicAuth => {
                 let mut rng = ChaCha20Rng::from_seed(Default::default());
                 let sec_key = SecretKey::with_rng(&mut rng);
-                let pub_key = sec_key.public_key();
+                let pub_key = PublicKeyCommitment::from(sec_key.public_key());
 
                 let component = AuthRpoFalcon512::new(pub_key).into();
                 let authenticator = BasicAuthenticator::<ChaCha20Rng>::new_with_rng(
@@ -70,7 +70,8 @@ impl Auth {
                 (component, Some(authenticator))
             },
             Auth::Multisig { threshold, approvers } => {
-                let pub_keys: Vec<_> = approvers.iter().map(|word| PublicKey::new(*word)).collect();
+                let pub_keys: Vec<_> =
+                    approvers.iter().map(|word| PublicKeyCommitment::from(*word)).collect();
 
                 let component = AuthRpoFalcon512Multisig::new(*threshold, pub_keys)
                     .expect("multisig component creation failed")
@@ -85,7 +86,7 @@ impl Auth {
             } => {
                 let mut rng = ChaCha20Rng::from_seed(Default::default());
                 let sec_key = SecretKey::with_rng(&mut rng);
-                let pub_key = sec_key.public_key();
+                let pub_key = PublicKeyCommitment::from(sec_key.public_key());
 
                 let component = AuthRpoFalcon512Acl::new(
                     pub_key,

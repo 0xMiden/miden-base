@@ -39,7 +39,7 @@ use rand::rng;
 
 use super::{ZERO, create_mock_notes_procedure};
 use crate::kernel_tests::tx::ProcessMemoryExt;
-use crate::utils::{create_p2any_note, create_spawn_note};
+use crate::utils::{create_public_p2any_note, create_spawn_note};
 use crate::{
     Auth,
     MockChain,
@@ -53,12 +53,16 @@ use crate::{
 fn test_epilogue() -> anyhow::Result<()> {
     let account = Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, Auth::IncrNonce);
     let tx_context = {
-        let output_note_1 =
-            create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), [FungibleAsset::mock(100)]);
+        let output_note_1 = create_public_p2any_note(
+            ACCOUNT_ID_SENDER.try_into().unwrap(),
+            [FungibleAsset::mock(100)],
+        );
 
         // input_note_1 is needed for maintaining cohesion of involved assets
-        let input_note_1 =
-            create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), [FungibleAsset::mock(100)]);
+        let input_note_1 = create_public_p2any_note(
+            ACCOUNT_ID_SENDER.try_into().unwrap(),
+            [FungibleAsset::mock(100)],
+        );
         let input_note_2 = create_spawn_note([&output_note_1])?;
         TransactionContextBuilder::new(account.clone())
             .extend_input_notes(vec![input_note_1, input_note_2])
@@ -153,11 +157,11 @@ fn test_compute_output_note_id() -> anyhow::Result<()> {
         let account =
             Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, Auth::IncrNonce);
         let output_note_1 =
-            create_p2any_note(ACCOUNT_ID_SENDER.try_into()?, [FungibleAsset::mock(100)]);
+            create_public_p2any_note(ACCOUNT_ID_SENDER.try_into()?, [FungibleAsset::mock(100)]);
 
         // input_note_1 is needed for maintaining cohesion of involved assets
         let input_note_1 =
-            create_p2any_note(ACCOUNT_ID_SENDER.try_into()?, [FungibleAsset::mock(100)]);
+            create_public_p2any_note(ACCOUNT_ID_SENDER.try_into()?, [FungibleAsset::mock(100)]);
         let input_note_2 = create_spawn_note([&output_note_1])?;
         TransactionContextBuilder::new(account)
             .extend_input_notes(vec![input_note_1, input_note_2])
@@ -483,8 +487,8 @@ fn test_epilogue_increment_nonce_success() -> anyhow::Result<()> {
 }
 
 /// Tests that changing the account state without incrementing the nonce results in an error.
-#[test]
-fn epilogue_fails_on_account_state_change_without_nonce_increment() -> anyhow::Result<()> {
+#[tokio::test]
+async fn epilogue_fails_on_account_state_change_without_nonce_increment() -> anyhow::Result<()> {
     let code = "
         use.mock::account
 
@@ -504,7 +508,8 @@ fn epilogue_fails_on_account_state_change_without_nonce_increment() -> anyhow::R
     let result = TransactionContextBuilder::with_noop_auth_account()
         .tx_script(tx_script)
         .build()?
-        .execute_blocking();
+        .execute()
+        .await;
 
     assert_transaction_executor_error!(
         result,
@@ -514,11 +519,11 @@ fn epilogue_fails_on_account_state_change_without_nonce_increment() -> anyhow::R
     Ok(())
 }
 
-#[test]
-fn test_epilogue_execute_empty_transaction() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_epilogue_execute_empty_transaction() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_noop_auth_account().build()?;
 
-    let result = tx_context.execute_blocking();
+    let result = tx_context.execute().await;
 
     assert_transaction_executor_error!(result, ERR_EPILOGUE_EXECUTED_TRANSACTION_IS_EMPTY);
 

@@ -7,10 +7,7 @@ use.std::crypto::dsa::rpo_falcon512
 # =================================================================================================
 
 # The event to request an authentication signature.
-const.AUTH_REQUEST=131087
-
-# The event emitted when a signature is not found for a required signer.
-const.UNAUTHORIZED_EVENT=131102
+const.AUTH_REQUEST_EVENT=event("miden::auth::request")
 
 # The slot in this component's storage layout where the public key is stored.
 const.PUBLIC_KEY_SLOT=0
@@ -59,7 +56,7 @@ export.authenticate_transaction
     # Fetch signature from advice provider and verify.
     # ---------------------------------------------------------------------------------------------
     # Emit the authentication request event that pushes a signature for the message to the advice stack
-    emit.AUTH_REQUEST
+    emit.AUTH_REQUEST_EVENT
     swapw
     # OS => [PUB_KEY, MESSAGE]
     # AS => [SIGNATURE]
@@ -74,9 +71,14 @@ end
 
 #! Verify signatures for all required signers in a loop.
 #!
-#! This procedure iterates through the required number of signers, fetches their public keys
-#! from the provided account storage map slot, verifies their signatures against the transaction message,
+#! This procedure iterates through the required number of signers, fetches their public keys from
+#! the provided account storage map slot, verifies their signatures against the transaction message,
 #! and returns the number of successfully verified signatures.
+#!
+#! Note: Calls `account::get_map_item_init` to access the transaction's initial storage state
+#! rather than the current state. This is crucial when validating transactions that update
+#! the owner public key mapping - the previous signers must authorize the change to
+#! the new signers, not the new signers authorizing themselves.
 #!
 #! Inputs:  [pub_key_slot_idx, num_of_approvers, MSG]
 #! Outputs: [num_verified_signatures, MSG]
@@ -104,7 +106,8 @@ export.verify_signatures.16
         sub.1 dup push.0.0.0 loc_load.PUB_KEY_MAP_IDX_LOC
         # => [owner_key_slot, [0, 0, 0, i-1], i-1, MSG]
 
-        exec.account::get_map_item
+        # Get public key from initial storage state
+        exec.account::get_map_item_init
         # => [OWNER_PUB_KEY, i-1, MSG]
 
         loc_storew.CURRENT_PK_LOC
@@ -145,7 +148,7 @@ export.verify_signatures.16
             # => [MSG, PK, MSG, i-1]
 
             # Emit the authentication request event that pushes a signature for the message to the advice stack.
-            emit.AUTH_REQUEST
+            emit.AUTH_REQUEST_EVENT
 
             swapw
             # OS => [PUB_KEY, MSG, MSG, i-1]

@@ -5,6 +5,7 @@ use std::vec::Vec;
 use anyhow::Context;
 use miden_block_prover::LocalBlockProver;
 use miden_objects::MIN_PROOF_SECURITY_LEVEL;
+use miden_objects::asset::FungibleAsset;
 use miden_objects::batch::BatchNoteTree;
 use miden_objects::block::{
     AccountTree,
@@ -14,60 +15,60 @@ use miden_objects::block::{
     ProposedBlock,
 };
 use miden_objects::crypto::merkle::Smt;
-use miden_objects::transaction::{InputNoteCommitment, OutputNote};
-use rand::Rng;
+use miden_objects::note::NoteType;
+use miden_objects::transaction::InputNoteCommitment;
 
-use super::utils::{
-    TestSetup,
-    generate_batch,
-    generate_executed_tx_with_authenticated_notes,
-    generate_output_note,
-    generate_tracked_note,
-    generate_tx_with_authenticated_notes,
-    generate_tx_with_unauthenticated_notes,
-    setup_chain,
-};
-use crate::utils::create_spawn_note;
+use crate::kernel_tests::block::utils::MockChainBlockExt;
+use crate::{Auth, MockChain};
 
 /// Tests the outputs of a proven block with transactions that consume notes, create output notes
 /// and modify the account's state.
-#[test]
-fn proven_block_success() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proven_block_success() -> anyhow::Result<()> {
     // Setup test with notes that produce output notes, in order to test the block note tree root
     // computation.
     // --------------------------------------------------------------------------------------------
 
-    let TestSetup { mut chain, mut accounts, .. } = setup_chain(4);
+    let asset = FungibleAsset::mock(100);
+    let mut builder = MockChain::builder();
 
-    let account0 = accounts.remove(&0).unwrap();
-    let account1 = accounts.remove(&1).unwrap();
-    let account2 = accounts.remove(&2).unwrap();
-    let account3 = accounts.remove(&3).unwrap();
+    let account0 = builder.add_existing_mock_account_with_assets(Auth::IncrNonce, [asset])?;
+    let account1 = builder.add_existing_mock_account_with_assets(Auth::IncrNonce, [asset])?;
+    let account2 = builder.add_existing_mock_account_with_assets(Auth::IncrNonce, [asset])?;
+    let account3 = builder.add_existing_mock_account_with_assets(Auth::IncrNonce, [asset])?;
 
-    let output_note0 = generate_output_note(account0.id(), [0; 32]);
-    let output_note1 = generate_output_note(account1.id(), [1; 32]);
-    let output_note2 = generate_output_note(account2.id(), [2; 32]);
-    let output_note3 = generate_output_note(account3.id(), [3; 32]);
+    let output_note0 =
+        builder.create_p2id_note(account0.id(), account0.id(), [asset], NoteType::Private)?;
+    let output_note1 =
+        builder.create_p2id_note(account1.id(), account1.id(), [asset], NoteType::Private)?;
+    let output_note2 =
+        builder.create_p2id_note(account2.id(), account2.id(), [asset], NoteType::Private)?;
+    let output_note3 =
+        builder.create_p2id_note(account3.id(), account3.id(), [asset], NoteType::Private)?;
 
-    let input_note0 = create_spawn_note([&output_note0])?;
-    let input_note1 = create_spawn_note([&output_note1])?;
-    let input_note2 = create_spawn_note([&output_note2])?;
-    let input_note3 = create_spawn_note([&output_note3])?;
+    let input_note0 = builder.add_spawn_note([&output_note0])?;
+    let input_note1 = builder.add_spawn_note([&output_note1])?;
+    let input_note2 = builder.add_spawn_note([&output_note2])?;
+    let input_note3 = builder.add_spawn_note([&output_note3])?;
 
-    // Add input notes to chain so we can consume them.
-    chain.add_pending_note(OutputNote::Full(input_note0.clone()));
-    chain.add_pending_note(OutputNote::Full(input_note1.clone()));
-    chain.add_pending_note(OutputNote::Full(input_note2.clone()));
-    chain.add_pending_note(OutputNote::Full(input_note3.clone()));
+    let mut chain = builder.build()?;
     chain.prove_next_block()?;
 
-    let tx0 = generate_tx_with_authenticated_notes(&mut chain, account0.id(), &[input_note0.id()]);
-    let tx1 = generate_tx_with_authenticated_notes(&mut chain, account1.id(), &[input_note1.id()]);
-    let tx2 = generate_tx_with_authenticated_notes(&mut chain, account2.id(), &[input_note2.id()]);
-    let tx3 = generate_tx_with_authenticated_notes(&mut chain, account3.id(), &[input_note3.id()]);
+    let tx0 = chain
+        .create_authenticated_notes_proven_tx(account0.id(), [input_note0.id()])
+        .await?;
+    let tx1 = chain
+        .create_authenticated_notes_proven_tx(account1.id(), [input_note1.id()])
+        .await?;
+    let tx2 = chain
+        .create_authenticated_notes_proven_tx(account2.id(), [input_note2.id()])
+        .await?;
+    let tx3 = chain
+        .create_authenticated_notes_proven_tx(account3.id(), [input_note3.id()])
+        .await?;
 
-    let batch0 = generate_batch(&mut chain, [tx0.clone(), tx1.clone()].to_vec());
-    let batch1 = generate_batch(&mut chain, [tx2.clone(), tx3.clone()].to_vec());
+    let batch0 = chain.create_batch(vec![tx0.clone(), tx1.clone()])?;
+    let batch1 = chain.create_batch(vec![tx2.clone(), tx3.clone()])?;
 
     // Sanity check: Batches should have two output notes each.
     assert_eq!(batch0.output_notes().len(), 2);
@@ -203,41 +204,37 @@ fn proven_block_success() -> anyhow::Result<()> {
 ///
 /// We also test that the batch note tree containing the output generating transactions is a subtree
 /// of the subtree of the overall block note tree computed from the block's output notes.
-#[test]
-fn proven_block_erasing_unauthenticated_notes() -> anyhow::Result<()> {
-    let TestSetup { mut chain, mut accounts, .. } = setup_chain(4);
-    let account0 = accounts.remove(&0).unwrap();
-    let account1 = accounts.remove(&1).unwrap();
-    let account2 = accounts.remove(&2).unwrap();
-    let account3 = accounts.remove(&3).unwrap();
+#[tokio::test]
+async fn proven_block_erasing_unauthenticated_notes() -> anyhow::Result<()> {
+    let mut builder = MockChain::builder();
+    let account0 = builder.add_existing_mock_account(Auth::IncrNonce)?;
+    let account1 = builder.add_existing_mock_account(Auth::IncrNonce)?;
+    let account2 = builder.add_existing_mock_account(Auth::IncrNonce)?;
+    let account3 = builder.add_existing_mock_account(Auth::IncrNonce)?;
 
-    // Use an Rng to randomize the note IDs and therefore their position in the output note batches.
-    // This is useful to test that the block note tree is correctly computed no matter at what index
-    // the erased note ends up in.
-    let mut rng = rand::rng();
-    let output_note0 = generate_output_note(account0.id(), rng.random());
-    let output_note2 = generate_output_note(account2.id(), rng.random());
-    let output_note3 = generate_output_note(account3.id(), rng.random());
+    // The builder will use an rng which randomizes the note IDs and therefore their position in the
+    // output note batches. This is useful to test that the block note tree is correctly
+    // computed no matter at what index the erased note ends up in.
+    let output_note0 = builder.create_p2any_note(account0.id(), NoteType::Private, [])?;
+    let output_note2 = builder.create_p2any_note(account2.id(), NoteType::Private, [])?;
+    let output_note3 = builder.create_p2any_note(account3.id(), NoteType::Private, [])?;
+
+    // Sanity check that these notes have different IDs.
+    assert_ne!(output_note0.id(), output_note2.id());
+    assert_ne!(output_note2.id(), output_note3.id());
 
     // Create notes that, when consumed, will create the above corresponding output notes.
-    let note0 = create_spawn_note([&output_note0])?;
-    let note2 = create_spawn_note([&output_note2])?;
-    let note3 = create_spawn_note([&output_note3])?;
+    let note0 = builder.add_spawn_note([&output_note0])?;
+    let note2 = builder.add_spawn_note([&output_note2])?;
+    let note3 = builder.add_spawn_note([&output_note3])?;
+    let chain = builder.build()?;
 
-    // Add note{0,2,3} to the chain so we can consume them.
-    chain.add_pending_note(OutputNote::Full(note0.clone()));
-    chain.add_pending_note(OutputNote::Full(note2.clone()));
-    chain.add_pending_note(OutputNote::Full(note3.clone()));
-    chain.prove_next_block()?;
-
-    let tx0 = generate_tx_with_authenticated_notes(&mut chain, account0.id(), &[note0.id()]);
-    let tx1 = generate_tx_with_unauthenticated_notes(
-        &mut chain,
-        account1.id(),
-        slice::from_ref(&output_note0),
-    );
-    let tx2 = generate_tx_with_authenticated_notes(&mut chain, account2.id(), &[note2.id()]);
-    let tx3 = generate_tx_with_authenticated_notes(&mut chain, account3.id(), &[note3.id()]);
+    let tx0 = chain.create_authenticated_notes_proven_tx(account0.id(), [note0.id()]).await?;
+    let tx1 = chain
+        .create_unauthenticated_notes_proven_tx(account1.id(), slice::from_ref(&output_note0))
+        .await?;
+    let tx2 = chain.create_authenticated_notes_proven_tx(account2.id(), [note2.id()]).await?;
+    let tx3 = chain.create_authenticated_notes_proven_tx(account3.id(), [note3.id()]).await?;
 
     assert_eq!(tx0.input_notes().num_notes(), 1);
     assert_eq!(tx0.output_notes().num_notes(), 1);
@@ -251,8 +248,8 @@ fn proven_block_erasing_unauthenticated_notes() -> anyhow::Result<()> {
         tx1.input_notes().get_note(0).header().unwrap().id()
     );
 
-    let batch0 = generate_batch(&mut chain, vec![tx2.clone(), tx0.clone(), tx3.clone()]);
-    let batch1 = generate_batch(&mut chain, vec![tx1.clone()]);
+    let batch0 = chain.create_batch(vec![tx2.clone(), tx0.clone(), tx3.clone()])?;
+    let batch1 = chain.create_batch(vec![tx1.clone()])?;
 
     // Sanity check: The batches and contained transactions should have the same input notes (sorted
     // by nullifier).
@@ -316,7 +313,7 @@ fn proven_block_erasing_unauthenticated_notes() -> anyhow::Result<()> {
         .find_map(|(idx, note)| (note.id() == output_note0.id()).then_some(idx))
         .copied()
         .unwrap();
-    expected_output_notes_batch0.remove(erased_note_idx as usize);
+    expected_output_notes_batch0.remove(erased_note_idx);
 
     let output_notes_batch0 = &proposed_block.output_note_batches()[0];
     // The first batch creates three notes, one of which is erased, so we expect 2 notes in the
@@ -345,26 +342,25 @@ fn proven_block_erasing_unauthenticated_notes() -> anyhow::Result<()> {
 }
 
 /// Tests that we can build empty blocks.
-#[test]
-fn proven_block_succeeds_with_empty_batches() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proven_block_succeeds_with_empty_batches() -> anyhow::Result<()> {
     // Setup a chain with a non-empty nullifier tree by consuming some notes.
     // --------------------------------------------------------------------------------------------
 
-    let TestSetup { mut chain, mut accounts, .. } = setup_chain(2);
+    let mut builder = MockChain::builder();
+    let account0 = builder.add_existing_mock_account(Auth::IncrNonce)?;
+    let account1 = builder.add_existing_mock_account(Auth::IncrNonce)?;
+    let note0 =
+        builder.add_p2any_note(account0.id(), NoteType::Public, [FungibleAsset::mock(100)])?;
+    let note1 =
+        builder.add_p2any_note(account1.id(), NoteType::Public, [FungibleAsset::mock(100)])?;
+    let mut chain = builder.build()?;
 
-    let account0 = accounts.remove(&0).unwrap();
-    let account1 = accounts.remove(&1).unwrap();
+    let tx0 = chain.create_authenticated_notes_proven_tx(account0.id(), [note0.id()]).await?;
+    let tx1 = chain.create_authenticated_notes_proven_tx(account1.id(), [note1.id()]).await?;
 
-    // Add notes to the chain we can consume.
-    let note0 = generate_tracked_note(&mut chain, account1.id(), account0.id());
-    let note1 = generate_tracked_note(&mut chain, account0.id(), account1.id());
-    chain.prove_next_block()?;
-
-    let tx0 = generate_executed_tx_with_authenticated_notes(&chain, account0.id(), &[note0.id()]);
-    let tx1 = generate_executed_tx_with_authenticated_notes(&chain, account1.id(), &[note1.id()]);
-
-    chain.add_pending_executed_transaction(&tx0)?;
-    chain.add_pending_executed_transaction(&tx1)?;
+    chain.add_pending_proven_transaction(tx0);
+    chain.add_pending_proven_transaction(tx1);
     let blockx = chain.prove_next_block()?;
 
     // Build a block with empty inputs whose account tree and nullifier tree root are not the empty

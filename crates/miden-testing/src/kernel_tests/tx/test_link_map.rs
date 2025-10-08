@@ -412,7 +412,7 @@ fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
 
                 let set_code = format!(
                     r#"
-                  push.{value1}.{value0}.{key}.{map_ptr}
+                  push.{value1} push.{value0} push.{key} push.{map_ptr}
                   # => [map_ptr, KEY, VALUE]
                   exec.link_map::set
                   # => [is_new_key]
@@ -439,7 +439,7 @@ fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
 
                 let get_code = format!(
                     r#"
-                  push.{key}.{map_ptr}
+                  push.{key} push.{map_ptr}
                   # => [map_ptr, KEY]
                   exec.link_map::get
                   # => [contains_key, VALUE0, VALUE1]

@@ -22,8 +22,8 @@ use crate::{Auth, MockChain, TransactionContextBuilder};
 
 /// Tests that adding two different assets to the account vault succeeds when lazy loading is
 /// enabled.
-#[test]
-fn adding_fungible_assets_with_lazy_loading_succeeds() -> anyhow::Result<()> {
+#[tokio::test]
+async fn adding_fungible_assets_with_lazy_loading_succeeds() -> anyhow::Result<()> {
     let faucet_id1: AccountId = ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET.try_into().unwrap();
     let faucet_id2: AccountId = ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2.try_into().unwrap();
 
@@ -63,7 +63,7 @@ fn adding_fungible_assets_with_lazy_loading_succeeds() -> anyhow::Result<()> {
         .with_source_manager(source_manager)
         .build()?;
     let account = tx_context.account().clone();
-    let tx = tx_context.execute_blocking()?;
+    let tx = tx_context.execute().await?;
 
     let mut account_vault = account.vault().clone();
     account_vault.add_asset(fungible_asset1.into())?;
@@ -76,8 +76,8 @@ fn adding_fungible_assets_with_lazy_loading_succeeds() -> anyhow::Result<()> {
 
 /// Tests that removing two different assets from the account vault succeeds when lazy loading is
 /// enabled.
-#[test]
-fn removing_fungible_assets_with_lazy_loading_succeeds() -> anyhow::Result<()> {
+#[tokio::test]
+async fn removing_fungible_assets_with_lazy_loading_succeeds() -> anyhow::Result<()> {
     let faucet_id1: AccountId = ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET.try_into().unwrap();
     let faucet_id2: AccountId = ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2.try_into().unwrap();
 
@@ -129,7 +129,7 @@ fn removing_fungible_assets_with_lazy_loading_succeeds() -> anyhow::Result<()> {
         .with_source_manager(source_manager)
         .build()?;
     let account = tx_context.account().clone();
-    let tx = tx_context.execute_blocking()?;
+    let tx = tx_context.execute().await?;
 
     let mut account_vault = account.vault().clone();
     account_vault.remove_asset(fungible_asset1.into())?;
@@ -145,8 +145,8 @@ fn removing_fungible_assets_with_lazy_loading_succeeds() -> anyhow::Result<()> {
 ///
 /// The non-empty vault is important for the test because the advice provider's merkle store has all
 /// merkle paths for an empty vault by default, and so there would be nothing to load.
-#[test]
-fn loading_fee_asset_succeeds() -> anyhow::Result<()> {
+#[tokio::test]
+async fn loading_fee_asset_succeeds() -> anyhow::Result<()> {
     let mut builder =
         MockChain::builder().native_asset_id(ACCOUNT_ID_NATIVE_ASSET_FAUCET.try_into()?);
     let account = builder.add_existing_mock_account_with_assets(
@@ -161,7 +161,8 @@ fn loading_fee_asset_succeeds() -> anyhow::Result<()> {
         .build_tx_context(account, &[], &[])?
         .enable_lazy_loading()
         .build()?
-        .execute_blocking()?;
+        .execute()
+        .await?;
 
     Ok(())
 }
@@ -171,15 +172,15 @@ fn loading_fee_asset_succeeds() -> anyhow::Result<()> {
 
 /// Tests that updating or inserting a map item into a storage map succeeds when lazy loading is
 /// enabled.
-#[test]
-fn setting_map_item_with_lazy_loading_succeeds() -> anyhow::Result<()> {
+#[tokio::test]
+async fn setting_map_item_with_lazy_loading_succeeds() -> anyhow::Result<()> {
     // Fetch a random existing key from the map.
     let mock_map = AccountStorage::mock_map();
     let existing_key = *mock_map.entries().next().unwrap().0;
 
     let non_existent_key = Word::from([5, 5, 5, 5u32]);
     assert!(
-        mock_map.open(&non_existent_key).find(non_existent_key).is_none(),
+        mock_map.open(&non_existent_key).get(&non_existent_key).unwrap() == Word::empty(),
         "test setup requires that the non existent key does not exist"
     );
 
@@ -222,7 +223,8 @@ fn setting_map_item_with_lazy_loading_succeeds() -> anyhow::Result<()> {
         .enable_lazy_loading()
         .with_source_manager(source_manager)
         .build()?
-        .execute_blocking()?;
+        .execute()
+        .await?;
 
     let map_delta = tx.account_delta().storage().maps().get(&map_index).unwrap();
     assert_eq!(map_delta.entries().get(&LexicographicWord::new(existing_key)).unwrap(), &value0);
@@ -235,15 +237,15 @@ fn setting_map_item_with_lazy_loading_succeeds() -> anyhow::Result<()> {
 }
 
 /// Tests that getting a map item from a storage map succeeds when lazy loading is enabled.
-#[test]
-fn getting_map_item_with_lazy_loading_succeeds() -> anyhow::Result<()> {
+#[tokio::test]
+async fn getting_map_item_with_lazy_loading_succeeds() -> anyhow::Result<()> {
     // Fetch a random existing key from the map.
     let mock_map = AccountStorage::mock_map();
     let (existing_key, existing_value) = mock_map.entries().next().unwrap();
 
     let non_existent_key = Word::from([5, 5, 5, 5u32]);
     assert!(
-        mock_map.open(&non_existent_key).find(non_existent_key).is_none(),
+        mock_map.open(&non_existent_key).get(&non_existent_key).unwrap() == Word::empty(),
         "test setup requires that the non existent key does not exist"
     );
 
@@ -284,7 +286,8 @@ fn getting_map_item_with_lazy_loading_succeeds() -> anyhow::Result<()> {
         .enable_lazy_loading()
         .with_source_manager(source_manager)
         .build()?
-        .execute_blocking()?;
+        .execute()
+        .await?;
 
     Ok(())
 }

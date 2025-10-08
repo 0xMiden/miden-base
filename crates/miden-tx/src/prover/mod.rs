@@ -2,6 +2,7 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use miden_lib::transaction::TransactionKernel;
+use miden_objects::AccountError;
 use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{
     Account,
@@ -16,7 +17,6 @@ use miden_objects::account::{
 };
 use miden_objects::asset::{Asset, AssetVault};
 use miden_objects::block::BlockNumber;
-use miden_objects::crypto::merkle::SmtLeaf;
 use miden_objects::transaction::{
     ExecutedTransaction,
     InputNote,
@@ -200,7 +200,8 @@ fn partial_account_to_full(partial_account: PartialAccount) -> Account {
 
     // For new accounts, the partial storage must represent the full initial account
     // storage.
-    let storage = partial_storage_to_full(partial_storage);
+    let storage = partial_storage_to_full(partial_storage)
+        .expect("partial account should ensure internal consistency for seed");
 
     // The vault of a new account should be empty.
     debug_assert_eq!(partial_vault.leaves().count(), 0);
@@ -210,7 +211,9 @@ fn partial_account_to_full(partial_account: PartialAccount) -> Account {
         .expect("partial account should ensure internal consistency for seed")
 }
 
-fn partial_storage_to_full(partial_storage: PartialStorage) -> AccountStorage {
+fn partial_storage_to_full(
+    partial_storage: PartialStorage,
+) -> Result<AccountStorage, AccountError> {
     let (_, header, mut maps) = partial_storage.into_parts();
     let mut storage_slots = Vec::new();
     for (slot_type, slot_value) in header.slots() {
@@ -219,27 +222,26 @@ fn partial_storage_to_full(partial_storage: PartialStorage) -> AccountStorage {
                 storage_slots.push(StorageSlot::Value(*slot_value));
             },
             StorageSlotType::Map => {
-                let storage_map = maps
-                    .remove(slot_value)
-                    .map(partial_storage_map_to_storage_map)
-                    .expect("partial storage map should be present in partial storage");
+                let storage_map =
+                    maps.remove(slot_value)
+                        .map(partial_storage_map_to_storage_map)
+                        .expect("partial storage map should be present in partial storage")?;
                 storage_slots.push(StorageSlot::Map(storage_map));
             },
         }
     }
 
     AccountStorage::new(storage_slots)
-        .expect("partial storage should not contain more than max allowed storage slots")
 }
 
-fn partial_storage_map_to_storage_map(partial_storage_map: PartialStorageMap) -> StorageMap {
+fn partial_storage_map_to_storage_map(
+    partial_storage_map: PartialStorageMap,
+) -> Result<StorageMap, AccountError> {
     let mut storage_map = StorageMap::new();
-    for (key, value) in
-        partial_storage_map.leaves().map(|(_, leaf)| leaf).flat_map(SmtLeaf::entries)
-    {
-        storage_map.insert(*key, *value);
+    for (key, value) in partial_storage_map.entries() {
+        storage_map.insert(*key, *value)?;
     }
-    storage_map
+    Ok(storage_map)
 }
 
 #[cfg(any(feature = "testing", test))]

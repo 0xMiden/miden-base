@@ -131,12 +131,12 @@ impl Deserializable for PartialStorage {
 mod tests {
     use anyhow::Context;
     use miden_core::Word;
-    use miden_crypto::merkle::PartialSmt;
 
     use crate::account::{
         AccountStorage,
         AccountStorageHeader,
         PartialStorage,
+        PartialStorageMap,
         StorageMap,
         StorageSlot,
     };
@@ -147,8 +147,8 @@ mod tests {
         let map_key_absent: Word = [9u64, 12, 18, 3].try_into()?;
 
         let mut map_1 = StorageMap::new();
-        map_1.insert(map_key_absent, Word::try_from([1u64, 2, 3, 2])?);
-        map_1.insert(map_key_present, Word::try_from([5u64, 4, 3, 2])?);
+        map_1.insert(map_key_absent, Word::try_from([1u64, 2, 3, 2])?).unwrap();
+        map_1.insert(map_key_present, Word::try_from([5u64, 4, 3, 2])?).unwrap();
         assert_eq!(map_1.get(&map_key_present), [5u64, 4, 3, 2].try_into()?);
 
         let storage = AccountStorage::new(vec![StorageSlot::Map(map_1.clone())]).unwrap();
@@ -156,10 +156,10 @@ mod tests {
         // Create partial storage with validation of one map key
         let storage_header = AccountStorageHeader::from(&storage);
         let witness = map_1.open(&map_key_present);
-        let partial_smt = PartialSmt::from_proofs([witness.into()])?;
 
-        let partial_storage = PartialStorage::new(storage_header, [partial_smt.into()])
-            .context("creating partial storage")?;
+        let partial_storage =
+            PartialStorage::new(storage_header, [PartialStorageMap::from_witnesses([witness])?])
+                .context("creating partial storage")?;
 
         let retrieved_map = partial_storage.maps.get(&partial_storage.header.slot(0)?.1).unwrap();
         assert!(retrieved_map.open(&map_key_absent).is_err());

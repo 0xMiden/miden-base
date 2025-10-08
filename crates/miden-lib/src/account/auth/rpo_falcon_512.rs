@@ -1,5 +1,4 @@
-use miden_objects::account::{AccountComponent, StorageSlot};
-use miden_objects::crypto::dsa::rpo_falcon512::PublicKey;
+use miden_objects::account::{AccountComponent, PublicKeyCommitment, StorageSlot};
 
 use crate::account::components::rpo_falcon_512_library;
 
@@ -17,13 +16,13 @@ use crate::account::components::rpo_falcon_512_library;
 ///
 /// [kasm]: crate::transaction::TransactionKernel::assembler
 pub struct AuthRpoFalcon512 {
-    public_key: PublicKey,
+    pub_key: PublicKeyCommitment,
 }
 
 impl AuthRpoFalcon512 {
     /// Creates a new [`AuthRpoFalcon512`] component with the given `public_key`.
-    pub fn new(public_key: PublicKey) -> Self {
-        Self { public_key }
+    pub fn new(pub_key: PublicKeyCommitment) -> Self {
+        Self { pub_key }
     }
 }
 
@@ -31,7 +30,7 @@ impl From<AuthRpoFalcon512> for AccountComponent {
     fn from(falcon: AuthRpoFalcon512) -> Self {
         AccountComponent::new(
             rpo_falcon_512_library(),
-            vec![StorageSlot::Value(falcon.public_key.into())],
+            vec![StorageSlot::Value(falcon.pub_key.into())],
         )
         .expect("falcon component should satisfy the requirements of a valid account component")
         .with_supports_all_types()
