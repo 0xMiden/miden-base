@@ -909,12 +909,14 @@ async fn test_multisig_new_approvers_cannot_sign_before_update() -> anyhow::Resu
     Ok(())
 }
 
-/// Tests that 1-of-2 approvers can consume a note.
+/// Tests that 1-of-2 approvers can consume a note but 2-of-2 are required to send a note.
 ///
 /// This test verifies that a multisig account with 2 approvers and threshold 2, but a procedure
-/// threshold of 1, can consume a note when only one approver signs the transaction.
+/// threshold of 1 for note consumption, can:
+/// 1. Consume a note when only one approver signs the transaction
+/// 2. Send a note only when both approvers sign the transaction (default threshold)
 #[tokio::test]
-async fn test_multisig_note_consumption_one_approver() -> anyhow::Result<()> {
+async fn test_multisig_proc_threshold_overrides() -> anyhow::Result<()> {
     // Setup keys and authenticators
     let (_secret_keys, public_keys, authenticators) = setup_keys_and_authenticators(2, 2)?;
 
@@ -922,8 +924,11 @@ async fn test_multisig_note_consumption_one_approver() -> anyhow::Result<()> {
 
     // Create multisig account
     let multisig_starting_balance = 10u64;
-    let multisig_account =
+    let mut multisig_account =
         create_multisig_account(2, &public_keys, multisig_starting_balance, proc_threshold_map)?;
+
+    // SECTION 1: Test note consumption with 1 signature
+    // ================================================================================
 
     // 1. create a mock note from some random account
     let mut mock_chain_builder =
@@ -936,7 +941,7 @@ async fn test_multisig_note_consumption_one_approver() -> anyhow::Result<()> {
         NoteType::Public,
     )?;
 
-    let mock_chain = mock_chain_builder.build()?;
+    let mut mock_chain = mock_chain_builder.build()?;
 
     // 2. consume without signatures
     let salt = Word::from([Felt::new(1); 4]);
@@ -958,7 +963,7 @@ async fn test_multisig_note_consumption_one_approver() -> anyhow::Result<()> {
         .await?;
 
     // 4. execute with signature
-    let tx_context = mock_chain
+    let tx_result = mock_chain
         .build_tx_context(multisig_account.id(), &[note.id()], &[])?
         .add_signature(public_keys[0].clone(), msg, sig)
         .auth_args(salt)
@@ -966,7 +971,93 @@ async fn test_multisig_note_consumption_one_approver() -> anyhow::Result<()> {
         .execute()
         .await;
 
-    assert!(tx_context.is_ok());
+    assert!(tx_result.is_ok(), "Note consumption with 1 signature should succeed");
+
+    // Apply the transaction to the account
+    multisig_account.apply_delta(tx_result.as_ref().unwrap().account_delta())?;
+    mock_chain.add_pending_executed_transaction(&tx_result.unwrap())?;
+    mock_chain.prove_next_block()?;
+
+    // SECTION 2: Test note sending requires 2 signatures
+    // ================================================================================
+
+    let salt2 = Word::from([Felt::new(2); 4]);
+
+    // Create output note to send 5 units from the account
+    let output_note = create_p2id_note(
+        multisig_account.id(),
+        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE.try_into().unwrap(),
+        vec![FungibleAsset::mock(5)],
+        NoteType::Public,
+        Default::default(),
+        &mut RpoRandomCoin::new(Word::from([Felt::new(42); 4])),
+    )?;
+
+    // Execute transaction without signatures to get tx summary
+    let tx_context_init = mock_chain
+        .build_tx_context(multisig_account.id(), &[], &[])?
+        .extend_expected_output_notes(vec![OutputNote::Full(output_note.clone())])
+        .auth_args(salt2)
+        .build()?;
+
+    let tx_summary2 = match tx_context_init.execute().await.unwrap_err() {
+        TransactionExecutorError::Unauthorized(tx_effects) => tx_effects,
+        error => panic!("expected abort with tx effects: {error:?}"),
+    };
+
+    // Get signature from only ONE approver
+    let msg2 = tx_summary2.as_ref().to_commitment();
+    let tx_summary2_signing = SigningInputs::TransactionSummary(tx_summary2.clone());
+
+    let sig_1 = authenticators[0]
+        .get_signature(public_keys[0].to_commitment(), &tx_summary2_signing)
+        .await?;
+
+    // Try to execute with only 1 signature - should FAIL
+    let tx_context_one_sig = mock_chain
+        .build_tx_context(multisig_account.id(), &[], &[])?
+        .extend_expected_output_notes(vec![OutputNote::Full(output_note.clone())])
+        .add_signature(public_keys[0].clone(), msg2, sig_1)
+        .auth_args(salt2)
+        .build()?;
+
+    let result = tx_context_one_sig.execute().await;
+    match result {
+        Err(TransactionExecutorError::Unauthorized(_)) => {
+            // Expected: transaction should fail with insufficient signatures
+        },
+        _ => panic!(
+            "Transaction should fail with Unauthorized error when only 1 signature provided for note sending"
+        ),
+    }
+
+    // Now get signatures from BOTH approvers
+    let sig_1 = authenticators[0]
+        .get_signature(public_keys[0].to_commitment(), &tx_summary2_signing)
+        .await?;
+    let sig_2 = authenticators[1]
+        .get_signature(public_keys[1].to_commitment(), &tx_summary2_signing)
+        .await?;
+
+    // Execute with 2 signatures - should SUCCEED
+    let result = mock_chain
+        .build_tx_context(multisig_account.id(), &[], &[])?
+        .extend_expected_output_notes(vec![OutputNote::Full(output_note)])
+        .add_signature(public_keys[0].clone(), msg2, sig_1)
+        .add_signature(public_keys[1].clone(), msg2, sig_2)
+        .auth_args(salt2)
+        .build()?
+        .execute()
+        .await;
+
+    assert!(result.is_ok(), "Transaction should succeed with 2 signatures for note sending");
+
+    // Apply the transaction to the account
+    multisig_account.apply_delta(result.as_ref().unwrap().account_delta())?;
+    mock_chain.add_pending_executed_transaction(&result.unwrap())?;
+    mock_chain.prove_next_block()?;
+
+    assert_eq!(multisig_account.vault().get_balance(FungibleAsset::mock_issuer())?, 6);
 
     Ok(())
 }
