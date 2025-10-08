@@ -264,7 +264,7 @@ impl TransactionContextBuilder {
     /// If no transaction inputs were provided manually, an ad-hoc MockChain is created in order
     /// to generate valid block data for the required notes.
     pub fn build(self) -> anyhow::Result<TransactionContext> {
-        let mut tx_inputs = match self.tx_inputs {
+        let tx_inputs = match self.tx_inputs {
             Some(tx_inputs) => tx_inputs,
             None => {
                 // If no specific transaction inputs was provided, initialize an ad-hoc mockchain
@@ -317,18 +317,9 @@ impl TransactionContextBuilder {
             // Note that we use self.account instead of account, because we cannot do the same
             // operation on a partial vault.
             let account = minimal_partial_account(&self.account)?;
-            TransactionInputs::new(
-                account,
-                block_header,
-                partial_blockchain,
-                input_notes,
-                tx_args,
-                None,
-                Vec::new(),
-            )?
+            TransactionInputs::new(account, block_header, partial_blockchain, input_notes)?
         } else {
-            tx_inputs.set_tx_args(tx_args);
-            tx_inputs
+            tx_inputs.with_tx_args(tx_args)
         };
 
         let mast_store = {

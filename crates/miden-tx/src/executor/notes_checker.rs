@@ -333,6 +333,9 @@ where
 
         match result {
             Ok(execution_output) => {
+                // Set the advice inputs from the successful execution as advice inputs for
+                // reexecution. This avoids calls to the data store (to load data lazily) that have
+                // already been done as part of this execution.
                 let (_, advice_map, merkle_store) = execution_output.advice.into_parts();
                 let advice_inputs = AdviceInputs {
                     map: advice_map,

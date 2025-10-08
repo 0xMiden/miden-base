@@ -27,7 +27,6 @@ use miden_objects::transaction::{
     OutputNote,
     PartialBlockchain,
     ProvenTransaction,
-    TransactionArgs,
     TransactionInputs,
 };
 use miden_processor::{DeserializationError, Word};
@@ -673,9 +672,6 @@ impl MockChain {
             ref_block.clone(),
             partial_blockchain,
             input_notes,
-            TransactionArgs::default(),
-            None,
-            Vec::new(),
         )?)
     }
 

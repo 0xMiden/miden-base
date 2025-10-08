@@ -270,16 +270,9 @@ where
 
         validate_account_inputs(&tx_args, &block_header)?;
 
-        let tx_inputs = TransactionInputs::new(
-            account,
-            block_header,
-            blockchain,
-            input_notes,
-            tx_args,
-            None,
-            Vec::new(),
-        )
-        .map_err(TransactionExecutorError::InvalidTransactionInputs)?;
+        let tx_inputs = TransactionInputs::new(account, block_header, blockchain, input_notes)
+            .map_err(TransactionExecutorError::InvalidTransactionInputs)?
+            .with_tx_args(tx_args);
 
         Ok(tx_inputs)
     }
@@ -341,7 +334,7 @@ where
 /// Creates a new [ExecutedTransaction] from the provided data.
 fn build_executed_transaction<STORE: DataStore + Sync, AUTH: TransactionAuthenticator + Sync>(
     mut advice_inputs: AdviceInputs,
-    mut tx_inputs: TransactionInputs,
+    tx_inputs: TransactionInputs,
     stack_outputs: StackOutputs,
     host: TransactionExecutorHost<STORE, AUTH>,
 ) -> Result<ExecutedTransaction, TransactionExecutorError> {
@@ -385,7 +378,7 @@ fn build_executed_transaction<STORE: DataStore + Sync, AUTH: TransactionAuthenti
         });
     }
 
-    // make sure nonce delta was computed correctly
+    // Make sure nonce delta was computed correctly.
     let nonce_delta = final_account.nonce() - initial_account.nonce();
     if nonce_delta != post_fee_account_delta.nonce_delta() {
         return Err(TransactionExecutorError::InconsistentAccountNonceDelta {
@@ -394,11 +387,15 @@ fn build_executed_transaction<STORE: DataStore + Sync, AUTH: TransactionAuthenti
         });
     }
 
-    // introduce generated signatures into the witness inputs
+    // Introduce generated signatures into the witness inputs.
     advice_inputs.map.extend(generated_signatures);
 
-    tx_inputs.set_foreign_account_code(accessed_foreign_account_code);
-    tx_inputs.set_advice_inputs(advice_inputs);
+    // Overwrite advice inputs from after the execution on the transaction inputs. This is
+    // guaranteed to be a superset of the original advice inputs.
+    let tx_inputs = tx_inputs
+        .with_foreign_account_code(accessed_foreign_account_code)
+        .with_advice_inputs(advice_inputs);
+
     Ok(ExecutedTransaction::new(
         tx_inputs,
         tx_outputs,

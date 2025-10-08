@@ -48,9 +48,6 @@ impl TransactionInputs {
         block_header: BlockHeader,
         blockchain: PartialBlockchain,
         input_notes: InputNotes<InputNote>,
-        tx_args: TransactionArgs,
-        advice_inputs: Option<AdviceInputs>,
-        foreign_account_code: Vec<AccountCode>,
     ) -> Result<Self, TransactionInputError> {
         // Check that the partial blockchain and block header are consistent.
         if blockchain.chain_length() != block_header.block_num() {
@@ -85,10 +82,28 @@ impl TransactionInputs {
             block_header,
             blockchain,
             input_notes,
-            tx_args,
-            advice_inputs: advice_inputs.unwrap_or_default(),
-            foreign_account_code,
+            tx_args: TransactionArgs::default(),
+            advice_inputs: AdviceInputs::default(),
+            foreign_account_code: Vec::new(),
         })
+    }
+
+    /// Replaces the transaction inputs and assigns the given foreign account code.
+    pub fn with_foreign_account_code(mut self, foreign_account_code: Vec<AccountCode>) -> Self {
+        self.foreign_account_code = foreign_account_code;
+        self
+    }
+
+    /// Replaces the transaction inputs and assigns the given transaction arguments.
+    pub fn with_tx_args(mut self, tx_args: TransactionArgs) -> Self {
+        self.tx_args = tx_args;
+        self
+    }
+
+    /// Replaces the transaction inputs and assigns the given advice inputs.
+    pub fn with_advice_inputs(mut self, advice_inputs: AdviceInputs) -> Self {
+        self.advice_inputs = advice_inputs;
+        self
     }
 
     // MUTATORS
@@ -97,11 +112,6 @@ impl TransactionInputs {
     /// Replaces the input notes for the transaction.
     pub fn set_input_notes(&mut self, new_notes: Vec<Note>) {
         self.input_notes = new_notes.into();
-    }
-
-    /// Replaces the foreign account code for the transaction.
-    pub fn set_foreign_account_code(&mut self, new_foreign_account_code: Vec<AccountCode>) {
-        self.foreign_account_code = new_foreign_account_code;
     }
 
     /// Replaces the advice inputs for the transaction.
