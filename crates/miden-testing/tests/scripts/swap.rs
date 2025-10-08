@@ -394,13 +394,11 @@ struct SwapTestSetup {
 }
 
 fn setup_swap_test(payback_note_type: NoteType) -> anyhow::Result<SwapTestSetup> {
-    let faucet_id = AccountIdBuilder::new()
-        .account_type(AccountType::FungibleFaucet)
-        .storage_mode(AccountStorageMode::Private)
-        .build_with_seed([5; 32]);
+    let faucet_id_0 = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET)?;
+    let faucet_id_1 = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1)?;
 
-    let offered_asset = FungibleAsset::new(faucet_id, 2000)?.into();
-    let requested_asset = NonFungibleAsset::mock(&[1, 2, 3, 4]);
+    let offered_asset = FungibleAsset::new(faucet_id_0, 2000)?.into();
+    let requested_asset = FungibleAsset::new(faucet_id_1, 1000)?.into();
 
     let mut builder = MockChain::builder();
     let sender_account =
