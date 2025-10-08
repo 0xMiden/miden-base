@@ -38,7 +38,7 @@ const.PUBLIC_KEYS_MAP_SLOT=1
 const.EXECUTED_TXS_SLOT=2
 
 # The slot in this component's storage layout where procedure thresholds are stored.
-# Map entries: PROC_ROOT => [threshold, 0, 0, 0]
+# Map entries: PROC_ROOT => [proc_threshold, 0, 0, 0]
 const.PROC_THRESHOLD_ROOTS_SLOT=3
 
 # Executed Transaction Flag Constant
