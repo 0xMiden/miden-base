@@ -2,7 +2,7 @@ use anyhow::Context;
 use miden_lib::note::utils;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{Account, AccountId};
-use miden_objects::asset::{Asset, FungibleAsset, NonFungibleAsset};
+use miden_objects::asset::{Asset, FungibleAsset};
 use miden_objects::note::{
     Note,
     NoteAssets,
