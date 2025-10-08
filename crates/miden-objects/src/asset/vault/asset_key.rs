@@ -34,6 +34,8 @@ impl fmt::Display for AssetKey {
         write!(f, "{}", self.inner())
     }
 }
+// CONVERSIONS INTO WORD
+// ================================================================================================
 
 impl Into<AssetKey> for Word {
     fn into(self) -> AssetKey {
