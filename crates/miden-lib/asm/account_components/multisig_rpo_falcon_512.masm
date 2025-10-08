@@ -233,7 +233,7 @@ end
 # overrides apply.
 #
 #! Inputs:  [default_threshold]
-#! Outputs: [threshold]
+#! Outputs: [transaction_threshold]
 proc.compute_transaction_threshold.1
     # 1. initialize transaction_threshold = 0
     # 2. iterate through all account procedures
@@ -313,7 +313,7 @@ proc.compute_transaction_threshold.1
         # => [default_threshold]
     end
 
-    # => [threshold]
+    # => [transaction_threshold]
 end
 
 #! Authenticate a transaction using the Falcon signature scheme with multi-signature support.
@@ -390,7 +390,7 @@ export.auth_tx_rpo_falcon512_multisig.1
     # => [default_threshold, num_verified_signatures, TX_SUMMARY_COMMITMENT]
 
     exec.compute_transaction_threshold
-    # => [threshold, num_verified_signatures, TX_SUMMARY_COMMITMENT]
+    # => [transaction_threshold, num_verified_signatures, TX_SUMMARY_COMMITMENT]
 
     u32assert2 u32lt
     # => [is_unauthorized, TX_SUMMARY_COMMITMENT]
