@@ -954,7 +954,8 @@ export.remove_asset_from_vault
     # => [ASSET]
 end
 
-#! Returns the balance of a fungible asset associated with a faucet_id.
+#! Returns the balance of a fungible asset associated with a faucet_id in the current account's 
+#! vault.
 #!
 #! Inputs:  [faucet_id_prefix, faucet_id_suffix]
 #! Outputs: [balance]
@@ -980,8 +981,8 @@ export.get_balance
     # => [balance]
 end
 
-#! Returns the balance of a fungible asset associated with a faucet_id in the native account's vault
-#! at the beginning of the transaction.
+#! Returns the balance of a fungible asset associated with a faucet_id in the current account's 
+#! vault at the beginning of the transaction.
 #!
 #! Inputs:  [faucet_id_prefix, faucet_id_suffix]
 #! Outputs: [init_balance]
@@ -995,7 +996,7 @@ end
 #! - the provided faucet ID is not an ID of a fungible faucet.
 export.get_initial_balance
     # get the vault root associated with the initial vault root of the native account
-    exec.memory::get_init_native_account_vault_root_ptr movdn.2
+    exec.memory::get_account_initial_vault_root_ptr movdn.2
     # => [faucet_id_prefix, faucet_id_suffix, init_native_vault_root_ptr]
 
     # emit event to signal that an asset's balance is requested

@@ -1121,6 +1121,33 @@ export.set_account_vault_root
     mem_storew
 end
 
+#! Returns the memory pointer to the initial vault root of the current account.
+#!
+#! For the native account, this returns the pointer to the initial vault root.
+#! For foreign accounts, this returns the regular vault root pointer since foreign accounts
+#! are read-only and their initial and current vault state always matches.
+#!
+#! Inputs:  []
+#! Outputs: [account_initial_vault_root_ptr]
+#!
+#! Where:
+#! - account_initial_vault_root_ptr is the memory pointer to the initial vault root.
+export.get_account_initial_vault_root_ptr
+    exec.is_native_account
+    # => [is_native_account]
+
+    if.true
+        # For native account, return the initial vault root pointer
+        exec.get_init_native_account_vault_root_ptr
+        # => [account_initial_vault_root_ptr]
+    else
+        # For foreign account, return the regular vault root pointer since foreign accounts are 
+        # read-only and initial == current
+        exec.get_account_vault_root_ptr
+        # => [account_initial_vault_root_ptr]
+    end
+end
+
 ### ACCOUNT CODE #################################################
 
 #! Returns the code commitment of the account.
