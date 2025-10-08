@@ -3,12 +3,12 @@ use alloc::vec::Vec;
 use miden_processor::DeserializationError;
 
 use crate::Word;
-use crate::note::NoteId;
+use crate::note::NoteHeader;
 use crate::transaction::{
     AccountId,
     InputNoteCommitment,
-    Nullifier,
-    OutputNote,
+    InputNotes,
+    OutputNotes,
     ProvenTransaction,
     TransactionId,
 };
@@ -27,8 +27,8 @@ pub struct TransactionHeader {
     account_id: AccountId,
     initial_state_commitment: Word,
     final_state_commitment: Word,
-    input_notes: Vec<Nullifier>,
-    output_notes: Vec<NoteId>,
+    input_notes: InputNotes<InputNoteCommitment>,
+    output_notes: Vec<NoteHeader>,
 }
 
 impl TransactionHeader {
@@ -37,18 +37,30 @@ impl TransactionHeader {
 
     /// Constructs a new [`TransactionHeader`] from the provided parameters.
     ///
-    /// Note that the nullifiers of the input notes and note IDs of the output notes must be in the
-    /// same order as they appeared in the transaction. This is ensured when constructing this type
-    /// from a proven transaction, but cannot be validated during deserialization, hence additional
-    /// validation is necessary.
-    pub(crate) fn new(
-        id: TransactionId,
+    /// The [`TransactionId`] is computed from the provided parameters.
+    ///
+    /// The input notes and output notes must be in the same order as they appeared in the
+    /// transaction that this header represents, otherwise an incorrect ID will be computed.
+    ///
+    /// Note that this cannot validate that the [`AccountId`] is valid with respect to the other
+    /// data. This must be validated outside of this type.
+    pub fn new(
         account_id: AccountId,
         initial_state_commitment: Word,
         final_state_commitment: Word,
-        input_notes: Vec<Nullifier>,
-        output_notes: Vec<NoteId>,
+        input_notes: InputNotes<InputNoteCommitment>,
+        output_notes: Vec<NoteHeader>,
     ) -> Self {
+        let input_notes_commitment = input_notes.commitment();
+        let output_notes_commitment = OutputNotes::compute_commitment(output_notes.iter().copied());
+
+        let id = TransactionId::new(
+            initial_state_commitment,
+            final_state_commitment,
+            input_notes_commitment,
+            output_notes_commitment,
+        );
+
         Self {
             id,
             account_id,
@@ -59,24 +71,28 @@ impl TransactionHeader {
         }
     }
 
-    /// Constructs a new [`TransactionHeader`] from the provided parameters for testing purposes.
-    #[cfg(any(feature = "testing", test))]
+    /// Constructs a new [`TransactionHeader`] from the provided parameters.
+    ///
+    /// # Warning
+    ///
+    /// This does not validate the internal consistency of the data. Prefer [`Self::new`] whenever
+    /// possible.
     pub fn new_unchecked(
         id: TransactionId,
         account_id: AccountId,
         initial_state_commitment: Word,
         final_state_commitment: Word,
-        input_notes: Vec<Nullifier>,
-        output_notes: Vec<NoteId>,
+        input_notes: InputNotes<InputNoteCommitment>,
+        output_notes: Vec<NoteHeader>,
     ) -> Self {
-        Self::new(
+        Self {
             id,
             account_id,
             initial_state_commitment,
             final_state_commitment,
             input_notes,
             output_notes,
-        )
+        }
     }
 
     // PUBLIC ACCESSORS
@@ -104,32 +120,41 @@ impl TransactionHeader {
         self.final_state_commitment
     }
 
-    /// Returns a reference to the nullifiers of the consumed notes.
+    /// Returns a reference to the consumed notes of the transaction.
+    ///
+    /// The returned input note commitments have the same order as the transaction to which the
+    /// header belongs.
     ///
     /// Note that the note may have been erased at the batch or block level, so it may not be
     /// present there.
-    pub fn input_notes(&self) -> &[Nullifier] {
+    pub fn input_notes(&self) -> &InputNotes<InputNoteCommitment> {
         &self.input_notes
     }
 
-    /// Returns a reference to the notes created by the transaction.
+    /// Returns a reference to the ID and metadata of the output notes created by the transaction.
+    ///
+    /// The returned output note data has the same order as the transaction to which the header
+    /// belongs.
     ///
     /// Note that the note may have been erased at the batch or block level, so it may not be
     /// present there.
-    pub fn output_notes(&self) -> &[NoteId] {
+    pub fn output_notes(&self) -> &[NoteHeader] {
         &self.output_notes
     }
 }
 
 impl From<&ProvenTransaction> for TransactionHeader {
+    /// Constructs a [`TransactionHeader`] from a [`ProvenTransaction`].
     fn from(tx: &ProvenTransaction) -> Self {
-        TransactionHeader::new(
+        // SAFETY: The data in a proven transaction is guaranteed to be internally consistent and so
+        // we can skip the consistency checks by the `new` constructor.
+        TransactionHeader::new_unchecked(
             tx.id(),
             tx.account_id(),
             tx.account_update().initial_state_commitment(),
             tx.account_update().final_state_commitment(),
-            tx.input_notes().iter().map(InputNoteCommitment::nullifier).collect(),
-            tx.output_notes().iter().map(OutputNote::id).collect(),
+            tx.input_notes().clone(),
+            tx.output_notes().iter().map(NoteHeader::from).collect(),
         )
     }
 }
@@ -139,7 +164,6 @@ impl From<&ProvenTransaction> for TransactionHeader {
 
 impl Serializable for TransactionHeader {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        self.id.write_into(target);
         self.account_id.write_into(target);
         self.initial_state_commitment.write_into(target);
         self.final_state_commitment.write_into(target);
@@ -150,20 +174,20 @@ impl Serializable for TransactionHeader {
 
 impl Deserializable for TransactionHeader {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        let id = <TransactionId>::read_from(source)?;
         let account_id = <AccountId>::read_from(source)?;
         let initial_state_commitment = <Word>::read_from(source)?;
         let final_state_commitment = <Word>::read_from(source)?;
-        let input_notes = <Vec<Nullifier>>::read_from(source)?;
-        let output_notes = <Vec<NoteId>>::read_from(source)?;
+        let input_notes = <InputNotes<InputNoteCommitment>>::read_from(source)?;
+        let output_notes = <Vec<NoteHeader>>::read_from(source)?;
 
-        Ok(Self::new(
-            id,
+        let tx_header = Self::new(
             account_id,
             initial_state_commitment,
             final_state_commitment,
             input_notes,
             output_notes,
-        ))
+        );
+
+        Ok(tx_header)
     }
 }

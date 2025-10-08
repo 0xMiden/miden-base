@@ -358,6 +358,7 @@ pub enum FungibleFaucetError {
 #[cfg(test)]
 mod tests {
     use assert_matches::assert_matches;
+    use miden_objects::account::PublicKeyCommitment;
     use miden_objects::{FieldElement, ONE, Word};
 
     use super::{
@@ -371,7 +372,7 @@ mod tests {
         TokenSymbol,
         create_basic_fungible_faucet,
     };
-    use crate::account::auth::{AuthRpoFalcon512, PublicKeyCommitment};
+    use crate::account::auth::AuthRpoFalcon512;
     use crate::account::wallets::BasicWallet;
 
     #[test]

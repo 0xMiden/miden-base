@@ -1,5 +1,3 @@
-use miden_crypto::merkle::SparseMerklePath;
-
 use crate::Word;
 use crate::account::{AccountCode, AccountId, PartialAccount, PartialStorage};
 use crate::asset::PartialVault;
@@ -68,8 +66,6 @@ impl AccountInputs {
     /// This root should be equal to the account root in the reference block header.
     pub fn compute_account_root(&self) -> Result<Word, SmtProofError> {
         let smt_merkle_path = self.witness.path().clone();
-        let smt_merkle_path = SparseMerklePath::try_from(smt_merkle_path)
-            .expect("Only ever exists for merkle paths that match the SMT depth by construction");
         let smt_leaf = self.witness.leaf();
         let root = SmtProof::new(smt_merkle_path, smt_leaf)?.compute_root();
 
@@ -102,7 +98,7 @@ mod tests {
 
     use miden_core::Felt;
     use miden_core::utils::{Deserializable, Serializable};
-    use miden_crypto::merkle::MerklePath;
+    use miden_crypto::merkle::SparseMerklePath;
     use miden_processor::SMT_DEPTH;
 
     use crate::account::{Account, AccountCode, AccountId, AccountStorage, PartialAccount};
@@ -125,7 +121,8 @@ mod tests {
         for _ in 0..(SMT_DEPTH as usize) {
             merkle_nodes.push(commitment);
         }
-        let merkle_path = MerklePath::new(merkle_nodes);
+        let merkle_path = SparseMerklePath::from_sized_iter(merkle_nodes)
+            .expect("The nodes given are of SMT_DEPTH count");
 
         let fpi_inputs = AccountInputs::new(
             PartialAccount::from(&account),

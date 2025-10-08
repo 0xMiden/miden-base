@@ -7,10 +7,7 @@ use.std::crypto::dsa::rpo_falcon512
 # =================================================================================================
 
 # The event to request an authentication signature.
-const.AUTH_REQUEST=event("miden::auth::request")
-
-# The event emitted when a signature is not found for a required signer.
-const.UNAUTHORIZED_EVENT=event("miden::auth::unauthorized")
+const.AUTH_REQUEST_EVENT=event("miden::auth::request")
 
 # The slot in this component's storage layout where the public key is stored.
 const.PUBLIC_KEY_SLOT=0
@@ -59,7 +56,7 @@ export.authenticate_transaction
     # Fetch signature from advice provider and verify.
     # ---------------------------------------------------------------------------------------------
     # Emit the authentication request event that pushes a signature for the message to the advice stack
-    emit.AUTH_REQUEST
+    emit.AUTH_REQUEST_EVENT
     swapw
     # OS => [PUB_KEY, MESSAGE]
     # AS => [SIGNATURE]
@@ -74,8 +71,8 @@ end
 
 #! Verify signatures for all required signers in a loop.
 #!
-#! This procedure iterates through the required number of signers, fetches their public keys
-#! from the provided account storage map slot, verifies their signatures against the transaction message,
+#! This procedure iterates through the required number of signers, fetches their public keys from
+#! the provided account storage map slot, verifies their signatures against the transaction message,
 #! and returns the number of successfully verified signatures.
 #!
 #! Note: Calls `account::get_map_item_init` to access the transaction's initial storage state
@@ -151,7 +148,7 @@ export.verify_signatures.16
             # => [MSG, PK, MSG, i-1]
 
             # Emit the authentication request event that pushes a signature for the message to the advice stack.
-            emit.AUTH_REQUEST
+            emit.AUTH_REQUEST_EVENT
 
             swapw
             # OS => [PUB_KEY, MSG, MSG, i-1]
