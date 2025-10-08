@@ -1,8 +1,8 @@
 use.miden::account
 use.miden::account_id
 use.miden::active_note
-use.miden::contracts::faucets::basic_fungible
 use.miden::contracts::faucets
+use.miden::contracts::faucets::basic_fungible
 
 # CONSTANTS
 # ================================================================================================
@@ -42,9 +42,6 @@ end
 #! This procedure first checks if the note sender is the owner of the faucet, then delegates
 #! to the faucets::distribute procedure to handle the actual minting and distribution.
 #!
-#! Note: This procedure does NOT require padding when called. The faucets::distribute procedure
-#! handles the necessary padding internally.
-#!
 #! Inputs:  [amount, tag, aux, note_type, execution_hint, RECIPIENT]
 #! Outputs: [note_idx, ASSET, pad(11)]
 #!
@@ -62,7 +59,7 @@ end
 #! - the note sender is not the owner of this faucet.
 #! - any of the validations in faucets::distribute fail.
 #!
-#! Invocation: call or exec
+#! Invocation: call
 export.distribute
     exec.is_owner
     # => [is_owner, amount, tag, aux, note_type, execution_hint, RECIPIENT]
