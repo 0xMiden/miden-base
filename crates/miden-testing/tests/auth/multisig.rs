@@ -1,5 +1,6 @@
 use assert_matches::assert_matches;
 use miden_lib::account::components::rpo_falcon_512_multisig_library;
+use miden_lib::account::interface::AccountInterface;
 use miden_lib::account::wallets::BasicWallet;
 use miden_lib::errors::tx_kernel_errors::ERR_TX_ALREADY_EXECUTED;
 use miden_lib::note::create_p2id_note;
@@ -1095,11 +1096,18 @@ async fn test_multisig_proc_threshold_overrides() -> anyhow::Result<()> {
         Default::default(),
         &mut RpoRandomCoin::new(Word::from([Felt::new(42); 4])),
     )?;
+    let multisig_account_interface = AccountInterface::from(&multisig_account);
+    let send_note_transaction_script = multisig_account_interface.build_send_notes_script(
+        &[output_note.clone().into()],
+        None,
+        false,
+    )?;
 
     // Execute transaction without signatures to get tx summary
     let tx_context_init = mock_chain
         .build_tx_context(multisig_account.id(), &[], &[])?
         .extend_expected_output_notes(vec![OutputNote::Full(output_note.clone())])
+        .tx_script(send_note_transaction_script.clone())
         .auth_args(salt2)
         .build()?;
 
@@ -1107,7 +1115,6 @@ async fn test_multisig_proc_threshold_overrides() -> anyhow::Result<()> {
         TransactionExecutorError::Unauthorized(tx_effects) => tx_effects,
         error => panic!("expected abort with tx effects: {error:?}"),
     };
-
     // Get signature from only ONE approver
     let msg2 = tx_summary2.as_ref().to_commitment();
     let tx_summary2_signing = SigningInputs::TransactionSummary(tx_summary2.clone());
@@ -1121,6 +1128,7 @@ async fn test_multisig_proc_threshold_overrides() -> anyhow::Result<()> {
         .build_tx_context(multisig_account.id(), &[], &[])?
         .extend_expected_output_notes(vec![OutputNote::Full(output_note.clone())])
         .add_signature(public_keys[0].clone().into(), msg2, sig_1)
+        .tx_script(send_note_transaction_script.clone())
         .auth_args(salt2)
         .build()?;
 
@@ -1149,6 +1157,7 @@ async fn test_multisig_proc_threshold_overrides() -> anyhow::Result<()> {
         .add_signature(public_keys[0].clone().into(), msg2, sig_1)
         .add_signature(public_keys[1].clone().into(), msg2, sig_2)
         .auth_args(salt2)
+        .tx_script(send_note_transaction_script)
         .build()?
         .execute()
         .await;
