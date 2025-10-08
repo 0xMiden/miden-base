@@ -354,54 +354,8 @@ mod tests {
     use crate::TransactionContextBuilder;
 
     #[tokio::test]
-    async fn test_get_note_script_success() {
-        // Create a simple note script
-        let assembler = Assembler::default();
-        let note_script_code = "begin push.1 push.2 add end";
-        let program = assembler
-            .assemble_program(note_script_code)
-            .expect("Failed to assemble note script");
-        let note_script = NoteScript::new(program);
-        let script_root = note_script.root();
-
-        // Build a transaction context with the note script
-        let tx_context = TransactionContextBuilder::with_existing_mock_account()
-            .add_note_script(note_script.clone())
-            .build()
-            .expect("Failed to build transaction context");
-
-        // Test retrieving the note script
-        let retrieved_script = tx_context
-            .get_note_script(script_root)
-            .await
-            .expect("Failed to get note script");
-
-        assert_eq!(retrieved_script.root(), script_root);
-        assert_eq!(retrieved_script, note_script);
-    }
-
-    #[tokio::test]
-    async fn test_get_note_script_not_found() {
-        // Build a transaction context without any note scripts
-        let tx_context = TransactionContextBuilder::with_existing_mock_account()
-            .build()
-            .expect("Failed to build transaction context");
-
-        // Try to get a non-existent note script
-        let non_existent_root =
-            Word::from([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]);
-        let result = tx_context.get_note_script(non_existent_root).await;
-
-        // Verify we get the expected error
-        assert!(matches!(result, Err(DataStoreError::NoteScriptNotFound(_))));
-        if let Err(DataStoreError::NoteScriptNotFound(root)) = result {
-            assert_eq!(root, non_existent_root);
-        }
-    }
-
-    #[tokio::test]
-    async fn test_get_multiple_note_scripts() {
-        // Create multiple note scripts with separate assemblers
+    async fn test_get_note_scripts() {
+        // Create two note scripts
         let assembler1 = Assembler::default();
         let script1_code = "begin push.1 end";
         let program1 = assembler1
@@ -418,14 +372,14 @@ mod tests {
         let note_script2 = NoteScript::new(program2);
         let script_root2 = note_script2.root();
 
-        // Build a transaction context with multiple note scripts
+        // Build a transaction context with both note scripts
         let tx_context = TransactionContextBuilder::with_existing_mock_account()
             .add_note_script(note_script1.clone())
             .add_note_script(note_script2.clone())
             .build()
             .expect("Failed to build transaction context");
 
-        // Test retrieving both scripts
+        // Assert that fetching both note scripts works
         let retrieved_script1 = tx_context
             .get_note_script(script_root1)
             .await
@@ -437,5 +391,11 @@ mod tests {
             .await
             .expect("Failed to get note script 2");
         assert_eq!(retrieved_script2, note_script2);
+
+        // Fetching a non-existent one fails
+        let non_existent_root =
+            Word::from([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]);
+        let result = tx_context.get_note_script(non_existent_root).await;
+        assert!(matches!(result, Err(DataStoreError::NoteScriptNotFound(_))));
     }
 }
