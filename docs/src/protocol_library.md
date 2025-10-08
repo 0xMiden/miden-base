@@ -51,6 +51,8 @@ Account procedures can be used to read and write to account storage, add or remo
 | `get_initial_vault_root` | Returns the vault root of the native account at the beginning of the transaction.<br><br>Inputs: `[]`<br>Outputs: `[INIT_VAULT_ROOT]` | Any |
 | `get_vault_root` | Returns the vault root of the current account.<br><br>Inputs: `[]`<br>Outputs: `[VAULT_ROOT]` | Any |
 | `was_procedure_called` | Returns 1 if a procedure was called during transaction execution, and 0 otherwise.<br><br>Inputs: `[PROC_ROOT]`<br>Outputs: `[was_called]` | Any |
+| `get_num_procedures` | Returns the number of procedures in the current account.<br><br>Inputs: `[]`<br>Outputs: `[num_procedures]` | Any |
+| `get_procedure_root` | Returns the procedure root for the procedure at the specified index.<br><br>Inputs: `[index]`<br>Outputs: `[PROC_ROOT]` | Any |
 
 ## Active Note Procedures (`miden::active_note`)
 
