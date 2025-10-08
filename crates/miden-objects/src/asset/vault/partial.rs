@@ -71,7 +71,7 @@ impl PartialVault {
     pub fn open(&self, vault_key: AssetKey) -> Result<AssetWitness, PartialAssetVaultError> {
         let smt_proof = self
             .partial_smt
-            .open(&vault_key.inner())
+            .open(&vault_key.as_word())
             .map_err(PartialAssetVaultError::UntrackedAsset)?;
         // SAFETY: The partial vault should only contain valid assets.
         Ok(AssetWitness::new_unchecked(smt_proof))
@@ -86,7 +86,7 @@ impl PartialVault {
     /// Returns an error if:
     /// - the key is not tracked by this partial SMT.
     pub fn get(&self, vault_key: AssetKey) -> Result<Option<Asset>, MerkleError> {
-        self.partial_smt.get_value(&vault_key.inner()).map(|word| {
+        self.partial_smt.get_value(&vault_key.as_word()).map(|word| {
             if word.is_empty() {
                 None
             } else {
@@ -129,9 +129,9 @@ impl PartialVault {
                 PartialAssetVaultError::InvalidAssetInSmt { entry: *asset, source }
             })?;
 
-            if asset.vault_key().inner() != *vault_key {
+            if asset.vault_key().as_word() != *vault_key {
                 return Err(PartialAssetVaultError::VaultKeyMismatch {
-                    expected: asset.vault_key().inner(),
+                    expected: asset.vault_key(),
                     actual: *vault_key,
                 });
             }
@@ -201,7 +201,7 @@ mod tests {
         let err = PartialVault::new(partial_smt).unwrap_err();
         assert_matches!(err, PartialAssetVaultError::VaultKeyMismatch { expected, actual } => {
             assert_eq!(actual, invalid_vault_key);
-            assert_eq!(expected, asset.vault_key().inner());
+            assert_eq!(expected, asset.vault_key());
         });
 
         Ok(())

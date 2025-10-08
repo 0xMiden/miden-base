@@ -213,7 +213,7 @@ impl DataStore for TransactionContext {
         &self,
         account_id: AccountId,
         vault_root: Word,
-        vault_key: AssetKey,
+        asset_key: AssetKey,
     ) -> impl FutureMaybeSend<Result<AssetWitness, DataStoreError>> {
         async move {
             if account_id == self.account().id() {
@@ -224,7 +224,7 @@ impl DataStore for TransactionContext {
                     )));
                 }
 
-                Ok(self.account().vault().open(vault_key))
+                Ok(self.account().vault().open(asset_key))
             } else {
                 let foreign_account_inputs = self
                     .foreign_account_inputs
@@ -247,10 +247,10 @@ impl DataStore for TransactionContext {
                     )));
                 }
 
-                foreign_account_inputs.account().vault().open(vault_key).map_err(|err| {
+                foreign_account_inputs.account().vault().open(asset_key).map_err(|err| {
                     DataStoreError::other_with_source(
                         format!(
-                            "failed to open vault_key {vault_key} in foreign account {account_id}"
+                            "failed to open vault_key {asset_key} in foreign account {account_id}"
                         ),
                         err,
                     )

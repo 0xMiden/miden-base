@@ -691,7 +691,7 @@ pub async fn create_account_non_fungible_faucet_invalid_initial_reserved_slot() 
     // Create a storage map with a mock asset to make it non-empty.
     let asset = NonFungibleAsset::mock(&[1, 2, 3, 4]);
     let non_fungible_storage_map =
-        StorageMap::with_entries([(asset.vault_key().inner(), asset.into())]).unwrap();
+        StorageMap::with_entries([(asset.vault_key().as_word(), asset.into())]).unwrap();
     let storage = AccountStorage::new(vec![StorageSlot::Map(non_fungible_storage_map)]).unwrap();
 
     let account = AccountBuilder::new([1; 32])

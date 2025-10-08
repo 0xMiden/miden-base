@@ -22,7 +22,7 @@ use miden_objects::account::{
 };
 use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::assembly::debuginfo::SourceManagerSync;
-use miden_objects::asset::PartialVault;
+use miden_objects::asset::{AssetKey, PartialVault};
 use miden_objects::note::{Note, NoteId};
 use miden_objects::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE;
 use miden_objects::testing::noop_auth_component::NoopAuthComponent;
@@ -364,7 +364,9 @@ fn minimal_partial_account(account: &Account) -> anyhow::Result<PartialAccount> 
     // root as the full vault, but will not add any relevant merkle paths to the
     // merkle store, which will test lazy loading of assets.
     let mut partial_vault = PartialVault::default();
-    partial_vault.add(account.vault().open(Word::empty().into()))?;
+    // This is not a valid asset key, but this should be okay to do for now and will go away once
+    // https://github.com/0xMiden/miden-base/issues/1966 is addressed.
+    partial_vault.add(account.vault().open(AssetKey::new_unchecked(Word::empty())))?;
 
     // Construct a partial storage that tracks the empty word in all storage maps, but none
     // of the other keys, following the same rationale as the partial vault above.
