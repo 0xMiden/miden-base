@@ -318,6 +318,7 @@ impl TransactionContextBuilder {
             // operation on a partial vault.
             let account = minimal_partial_account(&self.account)?;
             TransactionInputs::new(account, block_header, partial_blockchain, input_notes)?
+                .with_tx_args(tx_args)
         } else {
             tx_inputs.with_tx_args(tx_args)
         };
