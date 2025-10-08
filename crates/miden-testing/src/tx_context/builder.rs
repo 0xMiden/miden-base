@@ -23,7 +23,7 @@ use miden_objects::account::{
 use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::assembly::debuginfo::SourceManagerSync;
 use miden_objects::asset::PartialVault;
-use miden_objects::note::{Note, NoteId};
+use miden_objects::note::{Note, NoteId, NoteScript};
 use miden_objects::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE;
 use miden_objects::testing::noop_auth_component::NoopAuthComponent;
 use miden_objects::transaction::{
@@ -89,6 +89,7 @@ pub struct TransactionContextBuilder {
     auth_args: Word,
     signatures: Vec<(PublicKeyCommitment, Word, Signature)>,
     is_lazy_loading_enabled: bool,
+    note_scripts: BTreeMap<Word, NoteScript>,
 }
 
 impl TransactionContextBuilder {
@@ -108,6 +109,7 @@ impl TransactionContextBuilder {
             auth_args: EMPTY_WORD,
             signatures: Vec::new(),
             is_lazy_loading_enabled: false,
+            note_scripts: BTreeMap::new(),
         }
     }
 
@@ -259,6 +261,12 @@ impl TransactionContextBuilder {
         self
     }
 
+    /// Add a note script to the context for testing.
+    pub fn add_note_script(mut self, script: NoteScript) -> Self {
+        self.note_scripts.insert(script.root(), script);
+        self
+    }
+
     /// Builds the [TransactionContext].
     ///
     /// If no transaction inputs were provided manually, an ad-hoc MockChain is created in order
@@ -347,6 +355,7 @@ impl TransactionContextBuilder {
             authenticator: self.authenticator,
             advice_inputs: self.advice_inputs,
             source_manager: self.source_manager,
+            note_scripts: self.note_scripts,
         })
     }
 }
