@@ -1,7 +1,8 @@
 use alloc::vec::Vec;
 
-use super::{AccountStorage, Felt, Hasher, StorageSlot, StorageSlotType, Word};
+use super::{AccountStorage, Felt, StorageSlot, StorageSlotType, Word};
 use crate::account::{SlotName, SlotNameId};
+use crate::crypto::SequentialCommit;
 use crate::utils::serde::{
     ByteReader,
     ByteWriter,
@@ -14,15 +15,13 @@ use crate::{AccountError, FieldElement, ZERO};
 // ACCOUNT STORAGE HEADER
 // ================================================================================================
 
-// TODO: Consider making this struct internal and storing SlotNameId directly.
-
 /// Storage slot header is a lighter version of the [StorageSlot] storing only the type and the
 /// top-level value for the slot, and being, in fact, just a thin wrapper around a tuple.
 ///
 /// That is, for complex storage slot (e.g., storage map), the header contains only the commitment
 /// to the underlying data.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct StorageSlotHeader {
+pub(crate) struct StorageSlotHeader {
     name_id: SlotNameId,
     typ: StorageSlotType,
     value: Word,
@@ -30,7 +29,7 @@ pub struct StorageSlotHeader {
 
 impl StorageSlotHeader {
     /// Returns a new instance of storage slot header from the provided storage slot type and value.
-    pub fn new(name_id: SlotNameId, typ: StorageSlotType, value: Word) -> Self {
+    pub(crate) fn new(name_id: SlotNameId, typ: StorageSlotType, value: Word) -> Self {
         Self { name_id, typ, value }
     }
 
@@ -40,7 +39,7 @@ impl StorageSlotHeader {
     /// ```text
     /// [[0, slot_type, name_id_suffix, name_id_prefix], SLOT_VALUE]
     /// ```
-    pub fn as_elements(&self) -> [Felt; StorageSlot::NUM_ELEMENTS_PER_STORAGE_SLOT] {
+    pub(crate) fn to_elements(&self) -> [Felt; StorageSlot::NUM_ELEMENTS_PER_STORAGE_SLOT] {
         let mut elements = [ZERO; StorageSlot::NUM_ELEMENTS_PER_STORAGE_SLOT];
         elements[0..4].copy_from_slice(&[
             Felt::ZERO,
@@ -123,12 +122,6 @@ impl AccountStorageHeader {
             })
     }
 
-    // NOTE: The way of computing the commitment should be kept in sync with `AccountStorage`
-    /// Computes the account storage header commitment.
-    pub fn compute_commitment(&self) -> Word {
-        Hasher::hash_elements(&self.as_elements())
-    }
-
     /// Indicates whether the slot at `index` is a map slot.
     ///
     /// # Errors
@@ -149,19 +142,34 @@ impl AccountStorageHeader {
     /// ```
     ///
     /// And then concatenating the resulting elements into a single vector.
-    pub fn as_elements(&self) -> Vec<Felt> {
-        self.slots
-            .iter()
-            .flat_map(|(slot_name, slot_type, value)| {
-                StorageSlotHeader::new(slot_name.id(), *slot_type, *value).as_elements()
-            })
-            .collect()
+    pub fn to_elements(&self) -> Vec<Felt> {
+        <Self as SequentialCommit>::to_elements(self)
+    }
+
+    /// Returns the commitment to the [`AccountStorage`] this header represents.
+    pub fn to_commitment(&self) -> Word {
+        <Self as SequentialCommit>::to_commitment(self)
     }
 }
 
 impl From<&AccountStorage> for AccountStorageHeader {
     fn from(value: &AccountStorage) -> Self {
         value.to_header()
+    }
+}
+
+// SEQUENTIAL COMMIT
+// ================================================================================================
+
+impl SequentialCommit for AccountStorageHeader {
+    type Commitment = Word;
+
+    fn to_elements(&self) -> Vec<Felt> {
+        self.slots()
+            .flat_map(|(slot_name, slot_type, slot_value)| {
+                StorageSlotHeader::new(slot_name.id(), *slot_type, *slot_value).to_elements()
+            })
+            .collect()
     }
 }
 

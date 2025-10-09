@@ -10,11 +10,12 @@ use super::{
     Deserializable,
     DeserializationError,
     Felt,
-    Hasher,
     Serializable,
     Word,
 };
+use crate::account::storage::header::StorageSlotHeader;
 use crate::account::{AccountComponent, AccountType};
+use crate::crypto::SequentialCommit;
 
 mod slot;
 pub use slot::{NamedStorageSlot, SlotName, SlotNameId, StorageSlot, StorageSlotType};
@@ -23,7 +24,7 @@ mod map;
 pub use map::{PartialStorageMap, StorageMap, StorageMapWitness};
 
 mod header;
-pub use header::{AccountStorageHeader, StorageSlotHeader};
+pub use header::AccountStorageHeader;
 
 mod partial;
 pub use partial::PartialStorage;
@@ -135,9 +136,20 @@ impl AccountStorage {
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns a commitment to this storage.
-    pub fn commitment(&self) -> Word {
-        build_slots_commitment(self.slots.iter())
+    /// Converts storage slots of this account storage into a vector of field elements.
+    ///
+    /// Each storage slot is represented by exactly 8 elements:
+    ///
+    /// ```text
+    /// [[0, slot_type, name_id_suffix, name_id_prefix], SLOT_VALUE]
+    /// ```
+    pub fn to_elements(&self) -> Vec<Felt> {
+        <Self as SequentialCommit>::to_elements(self)
+    }
+
+    /// Returns the commitment to the [`AccountStorage`].
+    pub fn to_commitment(&self) -> Word {
+        <Self as SequentialCommit>::to_commitment(self)
     }
 
     /// Returns the number of slots in the account's storage.
@@ -210,18 +222,6 @@ impl AccountStorage {
                 StorageSlot::Map(map) => Ok(map.get(&key)),
                 _ => Err(AccountError::StorageSlotNotMap(index)),
             })
-    }
-
-    /// Converts storage slots of this account storage into a vector of field elements.
-    ///
-    /// This is done by first converting each storage slot into exactly 8 elements as follows:
-    ///
-    /// ```text
-    /// [STORAGE_SLOT_VALUE, storage_slot_type, 0, 0, 0]
-    /// ```
-    /// And then concatenating the resulting elements into a single vector.
-    pub fn as_elements(&self) -> Vec<Felt> {
-        slots_as_elements(self.slots.iter())
     }
 
     // STATE MUTATORS
@@ -324,32 +324,25 @@ impl IntoIterator for AccountStorage {
     }
 }
 
-// HELPER FUNCTIONS
-// ------------------------------------------------------------------------------------------------
+// SEQUENTIAL COMMIT
+// ================================================================================================
 
-/// Converts given slots into field elements
-fn slots_as_elements<'storage>(
-    slots: impl IntoIterator<Item = &'storage NamedStorageSlot>,
-) -> Vec<Felt> {
-    slots
-        .into_iter()
-        .flat_map(|named_slot| {
-            StorageSlotHeader::new(
-                named_slot.name_id(),
-                named_slot.storage_slot().slot_type(),
-                named_slot.storage_slot().value(),
-            )
-            .as_elements()
-        })
-        .collect()
-}
+impl SequentialCommit for AccountStorage {
+    type Commitment = Word;
 
-/// Computes the commitment to the given slots
-pub fn build_slots_commitment<'storage>(
-    slots: impl IntoIterator<Item = &'storage NamedStorageSlot>,
-) -> Word {
-    let elements = slots_as_elements(slots);
-    Hasher::hash_elements(&elements)
+    fn to_elements(&self) -> Vec<Felt> {
+        self.slots()
+            .iter()
+            .flat_map(|named_slot| {
+                StorageSlotHeader::new(
+                    named_slot.name_id(),
+                    named_slot.storage_slot().slot_type(),
+                    named_slot.storage_slot().value(),
+                )
+                .to_elements()
+            })
+            .collect()
+    }
 }
 
 // SERIALIZATION
@@ -388,14 +381,7 @@ impl Deserializable for AccountStorage {
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        AccountStorage,
-        Deserializable,
-        Serializable,
-        StorageMap,
-        Word,
-        build_slots_commitment,
-    };
+    use super::{AccountStorage, Deserializable, Serializable, StorageMap, Word};
     use crate::account::{NamedStorageSlot, SlotName, StorageSlot};
 
     #[test]
@@ -413,13 +399,6 @@ mod tests {
         .unwrap();
         let bytes = storage.to_bytes();
         assert_eq!(storage, AccountStorage::read_from_bytes(&bytes).unwrap());
-    }
-
-    #[test]
-    fn test_account_storage_slots_commitment() {
-        let storage = AccountStorage::mock();
-        let storage_slots_commitment = build_slots_commitment(storage.slots());
-        assert_eq!(storage_slots_commitment, storage.commitment())
     }
 
     #[test]

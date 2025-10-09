@@ -44,7 +44,7 @@ impl PartialStorage {
             maps.insert(smt.root(), smt);
         }
 
-        let commitment = storage_header.compute_commitment();
+        let commitment = storage_header.to_commitment();
         Ok(Self { commitment, header: storage_header, maps })
     }
 
@@ -102,7 +102,7 @@ impl From<&AccountStorage> for PartialStorage {
         }
 
         let header: AccountStorageHeader = account_storage.to_header();
-        let commitment = header.compute_commitment();
+        let commitment = header.to_commitment();
         PartialStorage { header, maps: map_smts, commitment }
     }
 }
@@ -121,7 +121,7 @@ impl Deserializable for PartialStorage {
         let header: AccountStorageHeader = source.read()?;
         let map_smts: BTreeMap<Word, PartialStorageMap> = source.read()?;
 
-        let commitment = header.compute_commitment();
+        let commitment = header.to_commitment();
 
         Ok(PartialStorage { header, maps: map_smts, commitment })
     }

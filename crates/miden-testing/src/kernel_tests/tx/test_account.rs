@@ -792,10 +792,10 @@ fn create_procedure_metadata_test_account(
         AccountStorageMode::Private,
         version,
         code.commitment(),
-        storage.commitment(),
+        storage.to_commitment(),
     )
     .context("failed to compute seed")?;
-    let id = AccountId::new(seed, version, code.commitment(), storage.commitment())
+    let id = AccountId::new(seed, version, code.commitment(), storage.to_commitment())
         .context("failed to compute ID")?;
 
     let account =
@@ -884,7 +884,7 @@ fn test_get_initial_storage_commitment() -> anyhow::Result<()> {
             assert_eqw.err="actual storage commitment is not equal to the expected one"
         end
         "#,
-        expected_storage_commitment = &tx_context.account().storage().commitment(),
+        expected_storage_commitment = &tx_context.account().storage().to_commitment(),
     );
     tx_context.execute_code(&code)?;
 
@@ -906,17 +906,17 @@ fn test_compute_storage_commitment() -> anyhow::Result<()> {
     let mut account_clone = tx_context.account().clone();
     let account_storage = account_clone.storage_mut();
 
-    let init_storage_commitment = account_storage.commitment();
+    let init_storage_commitment = account_storage.to_commitment();
 
     account_storage.set_item(0, [9, 10, 11, 12].map(Felt::new).into())?;
-    let storage_commitment_0 = account_storage.commitment();
+    let storage_commitment_0 = account_storage.to_commitment();
 
     account_storage.set_map_item(
         2,
         [101, 102, 103, 104].map(Felt::new).into(),
         [5, 6, 7, 8].map(Felt::new).into(),
     )?;
-    let storage_commitment_2 = account_storage.commitment();
+    let storage_commitment_2 = account_storage.to_commitment();
 
     let code = format!(
         r#"

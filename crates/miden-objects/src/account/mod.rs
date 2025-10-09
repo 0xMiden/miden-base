@@ -137,7 +137,7 @@ impl Account {
         nonce: Felt,
         seed: Option<Word>,
     ) -> Result<Self, AccountError> {
-        validate_account_seed(id, code.commitment(), storage.commitment(), seed, nonce)?;
+        validate_account_seed(id, code.commitment(), storage.to_commitment(), seed, nonce)?;
 
         Ok(Self::new_unchecked(id, vault, storage, code, nonce, seed))
     }
@@ -233,7 +233,7 @@ impl Account {
             self.id,
             self.nonce,
             self.vault.root(),
-            self.storage.commitment(),
+            self.storage.to_commitment(),
             self.code.commitment(),
         )
     }
@@ -843,7 +843,7 @@ mod tests {
             Network,
             AccountIdVersion::Version0,
             code.commitment(),
-            storage.commitment(),
+            storage.to_commitment(),
         )?;
 
         // Set nonce to 1 so the account is considered existing and provide the seed.

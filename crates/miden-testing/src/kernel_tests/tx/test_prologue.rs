@@ -207,7 +207,7 @@ fn global_input_memory_assertions(process: &Process, inputs: &TransactionContext
 
     assert_eq!(
         process.get_kernel_mem_word(INIT_NATIVE_ACCT_STORAGE_COMMITMENT_PTR),
-        inputs.account().storage().commitment(),
+        inputs.account().storage().to_commitment(),
         "The initial native account storage commitment should be stored at the INIT_ACCT_STORAGE_COMMITMENT_PTR"
     );
 
@@ -398,7 +398,7 @@ fn account_data_memory_assertions(process: &Process, inputs: &TransactionContext
 
     assert_eq!(
         process.get_kernel_mem_word(NATIVE_ACCT_STORAGE_COMMITMENT_PTR),
-        inputs.account().storage().commitment(),
+        inputs.account().storage().to_commitment(),
         "The account storage commitment should be stored at NATIVE_ACCT_STORAGE_COMMITMENT_PTR"
     );
 
@@ -417,7 +417,7 @@ fn account_data_memory_assertions(process: &Process, inputs: &TransactionContext
     for (i, elements) in inputs
         .account()
         .storage()
-        .as_elements()
+        .to_elements()
         .chunks(StorageSlot::NUM_ELEMENTS_PER_STORAGE_SLOT / 2)
         .enumerate()
     {
@@ -634,7 +634,7 @@ fn compute_valid_account_id(account: Account) -> Account {
         AccountStorageMode::Public,
         AccountIdVersion::Version0,
         account.code().commitment(),
-        account.storage().commitment(),
+        account.storage().to_commitment(),
     )
     .unwrap();
 
@@ -642,7 +642,7 @@ fn compute_valid_account_id(account: Account) -> Account {
         seed,
         AccountIdVersion::Version0,
         account.code().commitment(),
-        account.storage().commitment(),
+        account.storage().to_commitment(),
     )
     .unwrap();
 
