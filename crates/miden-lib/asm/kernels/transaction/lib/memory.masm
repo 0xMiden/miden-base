@@ -505,10 +505,10 @@ end
 #! Returns a memory address of vault root of the native account at the beginning of the transaction.
 #!
 #! Inputs:  []
-#! Outputs: [INIT_NATIVE_ACCOUNT_VAULT_ROOT_PTR]
+#! Outputs: [native_account_initial_vault_root_ptr]
 #!
 #! Where:
-#! - INIT_NATIVE_ACCOUNT_VAULT_ROOT_PTR is the memory pointer to the initial vault root of the 
+#! - native_account_initial_vault_root_ptr is the memory pointer to the initial vault root of the 
 #!   native account.
 export.get_init_native_account_vault_root_ptr
     push.INIT_NATIVE_ACCOUNT_VAULT_ROOT_PTR
@@ -1133,19 +1133,22 @@ end
 #! Where:
 #! - account_initial_vault_root_ptr is the memory pointer to the initial vault root.
 export.get_account_initial_vault_root_ptr
-    exec.is_native_account
-    # => [is_native_account]
+    # For foreign account, use the regular vault root pointer since foreign accounts are read-only 
+    # and initial == current
+    exec.get_account_vault_root_ptr
+    # => [account_vault_root_ptr]
 
-    if.true
-        # For native account, return the initial vault root pointer
-        exec.get_init_native_account_vault_root_ptr
-        # => [account_initial_vault_root_ptr]
-    else
-        # For foreign account, return the regular vault root pointer since foreign accounts are 
-        # read-only and initial == current
-        exec.get_account_vault_root_ptr
-        # => [account_initial_vault_root_ptr]
-    end
+    # For native account, use the initial vault root pointer
+    exec.get_init_native_account_vault_root_ptr
+    # => [native_account_initial_vault_root_ptr, account_vault_root_ptr]
+
+    # get the flag indicating whether the current account is native
+    exec.is_native_account
+    # => [is_native_account, native_account_initial_vault_root_ptr, account_vault_root_ptr]
+
+    # according to the is_native_account flag, return the corresponding pointer
+    cdrop
+    # => [account_initial_vault_root_ptr]
 end
 
 ### ACCOUNT CODE #################################################
@@ -1404,19 +1407,22 @@ end
 #! Where:
 #! - account_initial_storage_slots_ptr is the memory pointer to the initial storage slot values.
 export.get_account_initial_storage_slots_ptr
-    exec.is_native_account
-    # => [is_native_account]
+    # For foreign account, use the regular storage slots pointer since foreign accounts are 
+    # read-only and initial == current
+    exec.get_account_storage_slots_section_ptr
+    # => [account_storage_slots_ptr]
 
-    if.true
-        # For native account, return the initial storage slots pointer
-        exec.get_native_account_initial_storage_slots_ptr
-        # => [account_initial_storage_slots_ptr]
-    else
-        # For foreign account, return the regular storage slots pointer since
-        # foreign accounts are read-only and initial == current
-        exec.get_account_storage_slots_section_ptr
-        # => [account_initial_storage_slots_ptr]
-    end
+    # For native account, use the initial storage slots pointer
+    exec.get_native_account_initial_storage_slots_ptr
+    # => [native_account_initial_storage_slots_ptr, account_storage_slots_ptr]
+
+    # get the flag indicating whether the current account is native
+    exec.is_native_account
+    # => [is_native_account, native_account_initial_storage_slots_ptr, account_storage_slots_ptr]
+
+    # according to the is_native_account flag, return the corresponding pointer
+    cdrop
+    # => [account_initial_storage_slots_ptr]
 end
 
 ### ACCOUNT DELTA #################################################
