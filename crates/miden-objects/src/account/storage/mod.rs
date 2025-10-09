@@ -231,30 +231,28 @@ impl AccountStorage {
     /// # Errors:
     /// - If the updates violate storage constraints.
     pub(super) fn apply_delta(&mut self, delta: &AccountStorageDelta) -> Result<(), AccountError> {
-        todo!("impl apply_delta")
-        // let len = self.slots.len() as u8;
+        let len = self.slots.len() as u8;
 
-        // // update storage maps
-        // for (&idx, map) in delta.maps().iter() {
-        //     let storage_slot = self
-        //         .slots
-        //         .get_mut(idx as usize)
-        //         .ok_or(AccountError::StorageIndexOutOfBounds { slots_len: len, index: idx })?;
+        // update storage maps
+        for (&idx, map) in delta.maps().iter() {
+            let named_slot = self
+                .get_mut(&SlotName::new_index(idx as usize))
+                .ok_or(AccountError::StorageIndexOutOfBounds { slots_len: len, index: idx })?;
 
-        //     let storage_map = match storage_slot {
-        //         StorageSlot::Map(map) => map,
-        //         _ => return Err(AccountError::StorageSlotNotMap(idx)),
-        //     };
+            let storage_map = match named_slot.storage_slot_mut() {
+                StorageSlot::Map(map) => map,
+                _ => return Err(AccountError::StorageSlotNotMap(idx)),
+            };
 
-        //     storage_map.apply_delta(map)?;
-        // }
+            storage_map.apply_delta(map)?;
+        }
 
-        // // update storage values
-        // for (&idx, &value) in delta.values().iter() {
-        //     self.set_item(idx, value)?;
-        // }
+        // update storage values
+        for (&idx, &value) in delta.values().iter() {
+            self.set_item(idx, value)?;
+        }
 
-        // Ok(())
+        Ok(())
     }
 
     /// Updates the value of the storage slot at the specified index.
