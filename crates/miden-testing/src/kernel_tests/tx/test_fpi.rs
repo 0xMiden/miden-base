@@ -695,7 +695,7 @@ async fn foreign_account_can_get_balance_and_presence_of_asset() -> anyhow::Resu
     let source_manager = Arc::new(DefaultSourceManager::default());
     let foreign_account_component = AccountComponent::compile(
         NamedSource::new("foreign_account_code", foreign_account_code_source),
-        TransactionKernel::with_kernel_library(source_manager.clone()),
+        TransactionKernel::assembler_with_source_manager(source_manager.clone()),
         vec![],
     )?
     .with_supports_all_types();
@@ -722,7 +722,6 @@ async fn foreign_account_can_get_balance_and_presence_of_asset() -> anyhow::Resu
         use.std::sys
 
         use.miden::tx
-        use.miden::account
 
         begin
             # Get the added balance of two assets from foreign account
@@ -742,6 +741,113 @@ async fn foreign_account_can_get_balance_and_presence_of_asset() -> anyhow::Resu
 
             # assert that the non fungible asset exists and the fungible asset has balance 1
             push.2 assert_eq.err=\"Total balance should be 2\"
+            # => []
+
+            # truncate the stack
+            exec.sys::truncate_stack
+        end
+        ",
+        foreign_prefix = foreign_account.id().prefix().as_felt(),
+        foreign_suffix = foreign_account.id().suffix(),
+    );
+
+    let tx_script = ScriptBuilder::with_source_manager(source_manager.clone())
+        .with_dynamically_linked_library(foreign_account_component.library())?
+        .compile_tx_script(code)?;
+
+    let foreign_account_inputs = mock_chain.get_foreign_account_inputs(foreign_account.id())?;
+
+    mock_chain
+        .build_tx_context(native_account.id(), &[], &[])?
+        .foreign_accounts([foreign_account_inputs])
+        .enable_lazy_loading()
+        .tx_script(tx_script)
+        .with_source_manager(source_manager)
+        .build()?
+        .execute()
+        .await?;
+
+    Ok(())
+}
+
+/// Test that the `miden::get_initial_balance` procedure works correctly being called from a foreign
+/// account.
+#[tokio::test]
+async fn foreign_account_get_initial_balance() -> anyhow::Result<()> {
+    let fungible_faucet_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1)?;
+    let fungible_asset = Asset::Fungible(FungibleAsset::new(fungible_faucet_id, 10)?);
+
+    let foreign_account_code_source = format!(
+        "
+        use.miden::account
+
+        export.get_initial_balance
+            # push the faucet ID on the stack
+            push.{fungible_faucet_id_suffix} push.{fungible_faucet_id_prefix}
+
+            # get the initial balance of the asset associated with the provided faucet ID
+            exec.account::get_balance
+            # => [initial_balance]
+
+            # truncate the stack
+            swap drop
+            # => [initial_balance]
+        end
+        ",
+        fungible_faucet_id_prefix = fungible_faucet_id.prefix().as_felt(),
+        fungible_faucet_id_suffix = fungible_faucet_id.suffix(),
+    );
+
+    let source_manager = Arc::new(DefaultSourceManager::default());
+    let foreign_account_component = AccountComponent::compile(
+        NamedSource::new("foreign_account_code", foreign_account_code_source),
+        TransactionKernel::assembler_with_source_manager(source_manager.clone()),
+        vec![],
+    )?
+    .with_supports_all_types();
+
+    let foreign_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
+        .with_auth_component(Auth::IncrNonce)
+        .with_component(foreign_account_component.clone())
+        .with_assets(vec![fungible_asset])
+        .build_existing()?;
+
+    let native_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
+        .with_auth_component(Auth::IncrNonce)
+        .with_component(MockAccountComponent::with_empty_slots())
+        .storage_mode(AccountStorageMode::Public)
+        .build_existing()?;
+
+    let mut mock_chain =
+        MockChainBuilder::with_accounts([native_account.clone(), foreign_account.clone()])?
+            .build()?;
+    mock_chain.prove_next_block()?;
+
+    let code = format!(
+        "
+        use.std::sys
+
+        use.miden::tx
+
+        begin
+            # Get the initial balance of the fungible asset from the foreign account
+
+            # pad the stack for the `execute_foreign_procedure` execution
+            padw padw padw push.0.0.0
+            # => [pad(15)]
+
+            # get the hash of the `get_initial_balance` procedure
+            procref.::foreign_account_code::get_initial_balance
+
+            # push the foreign account ID
+            push.{foreign_suffix} push.{foreign_prefix}
+            # => [foreign_account_id_prefix, foreign_account_id_suffix, FOREIGN_PROC_ROOT, pad(15)]
+
+            exec.tx::execute_foreign_procedure
+            # => [init_foreign_balance]
+
+            # assert that the initial balance of the asset in the foreign account equals 10
+            push.10 assert_eq.err=\"Initial balance should be 10\"
             # => []
 
             # truncate the stack

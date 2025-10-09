@@ -537,8 +537,8 @@ export.get_balance
     # => [balance]
 end
 
-#! Returns the balance of a fungible asset associated with a faucet_id in the native account's vault
-#! at the beginning of the transaction.
+#! Returns the balance of the fungible asset associated with the provided faucet_id in the current 
+#! account's vault at the beginning of the transaction.
 #!
 #! Inputs:  [faucet_id_prefix, faucet_id_suffix]
 #! Outputs: [init_balance]

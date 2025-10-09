@@ -45,7 +45,7 @@ Account procedures can be used to read and write to account storage, add or remo
 | `get_initial_storage_commitment` | Returns the storage commitment of the native account at the beginning of the transaction.<br><br>Inputs: `[]`<br>Outputs: `[INIT_STORAGE_COMMITMENT]` | Any |
 | `compute_storage_commitment` | Computes the latest account storage commitment of the current account.<br><br>Inputs: `[]`<br>Outputs: `[STORAGE_COMMITMENT]` | Account |
 | `get_balance` | Returns the balance of the fungible asset associated with the provided faucet_id in the current account's vault.<br><br>Inputs: `[faucet_id_prefix, faucet_id_suffix]`<br>Outputs: `[balance]` | Any |
-| `get_initial_balance` | Returns the balance of a fungible asset associated with a faucet_id in the current account's vault at the beginning of the transaction.<br><br>Inputs: `[faucet_id_prefix, faucet_id_suffix]`<br>Outputs: `[init_balance]` | Any |
+| `get_initial_balance` | Returns the balance of the fungible asset associated with the provided faucet_id in the current account's vault at the beginning of the transaction.<br><br>Inputs: `[faucet_id_prefix, faucet_id_suffix]`<br>Outputs: `[init_balance]` | Any |
 | `has_non_fungible_asset` | Returns a boolean indicating whether the non-fungible asset is present in the current account's vault.<br><br>Inputs: `[ASSET]`<br>Outputs: `[has_asset]` | Any |
 | `add_asset` | Adds the specified asset to the vault. For fungible assets, returns the total after addition.<br><br>Inputs: `[ASSET]`<br>Outputs: `[ASSET']` | Native & Account |
 | `remove_asset` | Removes the specified asset from the vault.<br><br>Inputs: `[ASSET]`<br>Outputs: `[ASSET]` | Native & Account |

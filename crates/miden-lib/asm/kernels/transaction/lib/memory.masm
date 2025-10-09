@@ -293,7 +293,7 @@ export.set_num_output_notes
     mem_store.NUM_OUTPUT_NOTES_PTR
 end
 
-#! Returns a pointer to the active input note.
+#! Returns the pointer to the active input note.
 #!
 #! Inputs:  []
 #! Outputs: [note_ptr]
@@ -315,7 +315,7 @@ export.set_active_input_note_ptr
     mem_store.ACTIVE_INPUT_NOTE_PTR
 end
 
-#! Returns a pointer to the memory address at which the input vault root is stored.
+#! Returns the pointer to the memory address at which the input vault root is stored.
 #!
 #! Inputs:  []
 #! Outputs: [input_vault_root_ptr]
@@ -349,7 +349,7 @@ export.set_input_vault_root
     mem_storew.INPUT_VAULT_ROOT_PTR
 end
 
-#! Returns a pointer to the memory address at which the output vault root is stored.
+#! Returns the pointer to the memory address at which the output vault root is stored.
 #!
 #! Inputs:  []
 #! Outputs: [output_vault_root_ptr]
@@ -502,7 +502,8 @@ export.get_init_native_account_vault_root
     padw mem_loadw.INIT_NATIVE_ACCOUNT_VAULT_ROOT_PTR
 end
 
-#! Returns a memory address of vault root of the native account at the beginning of the transaction.
+#! Returns the memory address of the vault root of the native account at the beginning of the 
+#! transaction.
 #!
 #! Inputs:  []
 #! Outputs: [native_account_initial_vault_root_ptr]
@@ -560,7 +561,7 @@ export.set_nullifier_commitment
     mem_storew.INPUT_NOTES_COMMITMENT_PTR
 end
 
-#! Returns a memory address of the transaction script root.
+#! Returns the memory address of the transaction script root.
 #!
 #! Inputs:  []
 #! Outputs: [tx_script_root_ptr]
