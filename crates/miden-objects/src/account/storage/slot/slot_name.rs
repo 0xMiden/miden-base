@@ -2,8 +2,6 @@ use alloc::borrow::Cow;
 use alloc::string::{String, ToString};
 use core::fmt::Display;
 
-use miden_core::utils::hash_string_to_word;
-
 use crate::account::storage::slot::SlotNameId;
 use crate::errors::SlotNameError;
 use crate::utils::serde::{ByteWriter, Deserializable, DeserializationError, Serializable};
@@ -233,7 +231,6 @@ impl Deserializable for SlotName {
         String::from_utf8(name)
             .map_err(|err| DeserializationError::InvalidValue(err.to_string()))
             .and_then(|name| {
-                std::println!("deser {name}",);
                 Self::new(name).map_err(|err| DeserializationError::InvalidValue(err.to_string()))
             })
     }

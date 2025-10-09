@@ -78,6 +78,17 @@ impl AccountStorage {
         Ok(Self { slots })
     }
 
+    /// TODO: Temporary API.
+    pub fn from_regular_slots(slots: Vec<StorageSlot>) -> Result<AccountStorage, AccountError> {
+        let slots = slots
+            .into_iter()
+            .enumerate()
+            .map(|(idx, slot)| NamedStorageSlot::new(SlotName::new_index(idx), slot))
+            .collect();
+
+        Self::new(slots)
+    }
+
     /// Creates an [`AccountStorage`] from the provided components' storage slots.
     ///
     /// If the account type is faucet the reserved slot (slot 0) will be initialized.

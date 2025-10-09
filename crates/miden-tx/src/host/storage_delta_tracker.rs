@@ -88,8 +88,9 @@ impl StorageDeltaTracker {
         value_slots.retain(|slot_idx, new_value| {
             // SAFETY: The header in the initial storage is the one from the account against which
             // the transaction is executed, so accessing that slot index should be fine.
-            let (_, initial_value) =
-                storage_header.slot(*slot_idx as usize).expect("index should be in bounds");
+            let (_, _, initial_value) = storage_header
+                .slot_header(*slot_idx as usize)
+                .expect("index should be in bounds");
             new_value != initial_value
         });
 

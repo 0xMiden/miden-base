@@ -98,16 +98,29 @@ impl AccountStorageHeader {
         self.slots.len() as u8
     }
 
+    /// TODO: Return StorageSlotHeader?
+    ///
     /// Returns a slot contained in the storage header at a given index.
     ///
     /// # Errors
     /// - If the index is out of bounds.
-    pub fn slot(&self, index: usize) -> Result<&(StorageSlotType, Word), AccountError> {
-        todo!("impl")
-        // self.slots.get(index).ok_or(AccountError::StorageIndexOutOfBounds {
-        //     slots_len: self.slots.len() as u8,
-        //     index: index as u8,
-        // })
+    pub fn slot_header(
+        &self,
+        index: usize,
+    ) -> Result<(&SlotName, &StorageSlotType, &Word), AccountError> {
+        let slot_name = SlotName::new_index(index);
+
+        self.slots
+            .binary_search_by_key(&slot_name.id(), |(name, ..)| name.id())
+            .map(|slot_idx| {
+                let (name, typ, value) = &self.slots[slot_idx];
+                (name, typ, value)
+            })
+            .ok()
+            .ok_or(AccountError::StorageIndexOutOfBounds {
+                slots_len: self.slots.len() as u8,
+                index: index as u8,
+            })
     }
 
     // NOTE: The way of computing the commitment should be kept in sync with `AccountStorage`
@@ -121,7 +134,7 @@ impl AccountStorageHeader {
     /// # Errors
     /// - If `index` exceeds the slot count.
     pub fn is_map_slot(&self, index: usize) -> Result<bool, AccountError> {
-        match self.slot(index)?.0 {
+        match self.slot_header(index)?.1 {
             StorageSlotType::Map => Ok(true),
             StorageSlotType::Value => Ok(false),
         }
@@ -182,27 +195,28 @@ mod tests {
 
     use super::AccountStorageHeader;
     use crate::Word;
-    use crate::account::{AccountStorage, StorageSlotType};
+    use crate::account::{AccountStorage, SlotName, StorageSlotType};
 
-    // #[test]
-    // fn test_from_account_storage() {
-    //     let storage_map = AccountStorage::mock_map();
+    #[test]
+    fn test_from_account_storage() {
+        let storage_map = AccountStorage::mock_map();
 
-    //     // create new storage header from AccountStorage
-    //     let slots = vec![
-    //         (StorageSlotType::Value, Word::from([1, 2, 3, 4u32])),
-    //         (
-    //             StorageSlotType::Value,
-    //             Word::from([Felt::new(5), Felt::new(6), Felt::new(7), Felt::new(8)]),
-    //         ),
-    //         (StorageSlotType::Map, storage_map.root()),
-    //     ];
+        // create new storage header from AccountStorage
+        let slots = vec![
+            (SlotName::new_index(0), StorageSlotType::Value, Word::from([1, 2, 3, 4u32])),
+            (
+                SlotName::new_index(1),
+                StorageSlotType::Value,
+                Word::from([Felt::new(5), Felt::new(6), Felt::new(7), Felt::new(8)]),
+            ),
+            (SlotName::new_index(2), StorageSlotType::Map, storage_map.root()),
+        ];
 
-    //     let expected_header = AccountStorageHeader { slots };
-    //     let account_storage = AccountStorage::mock();
+        let expected_header = AccountStorageHeader { slots };
+        let account_storage = AccountStorage::mock();
 
-    //     assert_eq!(expected_header, AccountStorageHeader::from(&account_storage))
-    // }
+        assert_eq!(expected_header, AccountStorageHeader::from(&account_storage))
+    }
 
     #[test]
     fn test_serde_account_storage_header() {
