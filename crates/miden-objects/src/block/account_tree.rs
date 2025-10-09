@@ -2,18 +2,19 @@ use alloc::string::ToString;
 use alloc::vec::Vec;
 
 use miden_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
+use miden_crypto::merkle::historical::{HistoricalError, SmtWithHistory};
 use miden_crypto::merkle::{MerkleError, MutationSet, Smt, SmtLeaf};
 use miden_processor::{DeserializationError, SMT_DEPTH};
 
 use crate::account::{AccountId, AccountIdPrefix};
-use crate::block::AccountWitness;
+use crate::block::{AccountWitness, BlockNumber};
 use crate::errors::AccountTreeError;
 use crate::{Felt, Word};
 
 // ACCOUNT TREE
 // ================================================================================================
 
-/// The sparse merkle tree of all accounts in the blockchain.
+/// The sparse merkle tree of all accounts in the blockchain with historical state tracking.
 ///
 /// The key is the [`AccountId`] while the value is the current state commitment of the account,
 /// i.e. [`Account::commitment`](crate::account::Account::commitment). If the account is new, then
@@ -21,9 +22,14 @@ use crate::{Felt, Word};
 ///
 /// Each account ID occupies exactly one leaf in the tree, which is identified by its
 /// [`AccountId::prefix`]. In other words, account ID prefixes are unique in the blockchain.
-#[derive(Debug, Clone, PartialEq, Eq)]
+///
+/// This tree uses `SmtWithHistory` to maintain historical states. The tree tracks the current
+/// block number and increments it with each mutation set applied, allowing queries for account
+/// states at specific block numbers.
+#[derive(Debug, Clone)]
 pub struct AccountTree {
-    smt: Smt,
+    /// The SMT with history tracking
+    smt: SmtWithHistory,
 }
 
 impl AccountTree {
@@ -41,12 +47,21 @@ impl AccountTree {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
-    /// Creates a new, empty account tree.
+    /// Creates a new, empty account tree starting at block 0.
     pub fn new() -> Self {
-        AccountTree { smt: Smt::new() }
+        AccountTree {
+            smt: SmtWithHistory::new(Smt::new(), 0u64),
+        }
     }
 
-    /// Returns a new [`Smt`] instantiated with the provided entries.
+    /// Creates a new, empty account tree starting at the specified block number.
+    pub fn new_at(block_number: BlockNumber) -> Self {
+        AccountTree {
+            smt: SmtWithHistory::new(Smt::new(), block_number.as_u64()),
+        }
+    }
+
+    /// Returns a new [`AccountTree`] instantiated with the provided entries.
     ///
     /// If the `concurrent` feature of `miden-crypto` is enabled, this function uses a parallel
     /// implementation to process the entries efficiently, otherwise it defaults to the
@@ -58,6 +73,7 @@ impl AccountTree {
     /// - the provided entries contain multiple commitments for the same account ID.
     /// - multiple account IDs share the same prefix.
     pub fn with_entries<I>(
+        block_number: BlockNumber,
         entries: impl IntoIterator<Item = (AccountId, Word), IntoIter = I>,
     ) -> Result<Self, AccountTreeError>
     where
@@ -102,11 +118,18 @@ impl AccountTree {
             }
         }
 
-        Ok(AccountTree { smt })
+        Ok(AccountTree {
+            smt: SmtWithHistory::new(smt, block_number.as_u64()),
+        })
     }
 
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
+
+    /// Returns the current block number.
+    pub fn current_block(&self) -> BlockNumber {
+        BlockNumber::from(self.smt.block_number() as u32)
+    }
 
     /// Returns an opening of the leaf associated with the `account_id`. This is a proof of the
     /// current state commitment of the given account ID.
@@ -119,15 +142,77 @@ impl AccountTree {
         AccountWitness::from_smt_proof(account_id, proof)
     }
 
+    /// Returns an opening of the leaf associated with the `account_id` at a specific block.
+    ///
+    /// # Arguments
+    ///
+    /// * `account_id` - The account ID to query
+    /// * `block_number` - The block number to query
+    ///
+    /// # Returns
+    ///
+    /// Returns `None` if the requested block is not available in history.
+    pub fn open_at(
+        &self,
+        account_id: AccountId,
+        block_number: BlockNumber,
+    ) -> Option<AccountWitness> {
+        let historical_view = self.smt.historical_view(block_number.as_u64())?;
+        let key = Self::id_to_smt_key(account_id);
+        let proof = historical_view.open(&key);
+
+        Some(AccountWitness::from_smt_proof(account_id, proof))
+    }
+
     /// Returns the current state commitment of the given account ID.
     pub fn get(&self, account_id: AccountId) -> Word {
         let key = Self::id_to_smt_key(account_id);
         self.smt.get_value(&key)
     }
 
+    /// Returns the state commitment of the given account ID at a specific block.
+    ///
+    /// # Arguments
+    ///
+    /// * `account_id` - The account ID to query
+    /// * `block_number` - The block number to query
+    ///
+    /// # Returns
+    ///
+    /// Returns `None` if the requested block is not available in history.
+    pub fn get_at(&self, account_id: AccountId, block_number: BlockNumber) -> Option<Word> {
+        let key = Self::id_to_smt_key(account_id);
+        let historical_view = self.smt.historical_view(block_number.as_u64())?;
+        Some(historical_view.get_value(&key))
+    }
+
     /// Returns the root of the tree.
     pub fn root(&self) -> Word {
         self.smt.root()
+    }
+
+    /// Returns the root of the tree at a specific block.
+    ///
+    /// # Arguments
+    ///
+    /// * `block_number` - The block number to query
+    ///
+    /// # Returns
+    ///
+    /// Returns `None` if the requested block is not available in history.
+    pub fn root_at(&self, block_number: BlockNumber) -> Option<Word> {
+        let historical_view = self.smt.historical_view(block_number.as_u64())?;
+        Some(historical_view.root())
+    }
+
+    /// Returns the number of historical states currently maintained.
+    pub fn history_len(&self) -> usize {
+        self.smt.history_len()
+    }
+
+    /// Returns the oldest offset still available in history.
+    pub fn oldest_offset(&self) -> usize {
+        self.smt.oldest()
     }
 
     /// Returns true if the tree contains a leaf for the given account ID prefix.
@@ -139,8 +224,9 @@ impl AccountTree {
 
     /// Returns the number of account IDs in this tree.
     pub fn num_accounts(&self) -> usize {
-        // Because each ID's prefix is unique in the tree and occupies a single leaf, the number of
-        // IDs in the tree is equivalent to the number of leaves in the tree.
+        // By definition, the account prefixes are unique which means every `SmtLeaf` is either
+        // empty or has a single value, and hence the number of populated leaves equals the
+        // number of accounts
         self.smt.num_leaves()
     }
 
@@ -158,7 +244,7 @@ impl AccountTree {
                 // SAFETY: By construction, the tree only contains valid IDs.
                 AccountId::try_from([key[Self::KEY_PREFIX_IDX], key[Self::KEY_SUFFIX_IDX]])
                     .expect("account tree should only contain valid IDs"),
-                *commitment,
+                commitment,
             )
         })
     }
@@ -172,8 +258,8 @@ impl AccountTree {
     /// implementation to compute the mutations, otherwise it defaults to the sequential
     /// implementation.
     ///
-    /// This is a thin wrapper around [`Smt::compute_mutations`]. See its documentation for more
-    /// details.
+    /// This is a thin wrapper around [`SmtWithHistory::compute_mutations`]. See its documentation
+    /// for more details.
     ///
     /// # Errors
     ///
@@ -191,7 +277,9 @@ impl AccountTree {
                     .into_iter()
                     .map(|(id, commitment)| (Self::id_to_smt_key(id), commitment)),
             )
-            .map_err(AccountTreeError::ComputeMutations)?;
+            .map_err(|e| match e {
+                HistoricalError::MerkleError(me) => AccountTreeError::ComputeMutations(me),
+            })?;
 
         for id_key in mutation_set.new_pairs().keys() {
             // Check if the insertion would be valid.
@@ -209,7 +297,7 @@ impl AccountTree {
                 },
                 SmtLeaf::Multiple(_) => {
                     unreachable!(
-                        "account tree should never contain duplicate ID prefixes and therefore never a multiple leaf"
+                        "account tree should never contain duplicate ID prefixes and therefore never a multiple leaf variant"
                     )
                 },
             }
@@ -234,26 +322,15 @@ impl AccountTree {
     pub fn insert(
         &mut self,
         account_id: AccountId,
-        state_commitment: Word,
-    ) -> Result<Word, AccountTreeError> {
-        let key = Self::id_to_smt_key(account_id);
-        // SAFETY: account tree should not contain multi-entry leaves and so the maximum number
-        // of entries per leaf should never be exceeded.
-        let prev_value = self.smt.insert(key, state_commitment)
-            .expect("account tree should always have a single value per key, and hence cannot exceed the maximum leaf number");
-
-        // If the leaf of the account ID now has two or more entries, we've inserted a duplicate
-        // prefix.
-        if self.smt.get_leaf(&key).num_entries() >= 2 {
-            return Err(AccountTreeError::DuplicateIdPrefix {
-                duplicate_prefix: account_id.prefix(),
-            });
-        }
-
-        Ok(prev_value)
+        commitment: Word,
+    ) -> Result<(), AccountTreeError> {
+        let mutations = self.compute_mutations([(account_id, commitment)])?;
+        self.apply_mutations(mutations)
     }
 
     /// Applies the prospective mutations computed with [`Self::compute_mutations`] to this tree.
+    ///
+    /// This automatically maintains the history of changes and increments the current block number.
     ///
     /// # Errors
     ///
@@ -263,9 +340,12 @@ impl AccountTree {
         &mut self,
         mutations: AccountMutationSet,
     ) -> Result<(), AccountTreeError> {
-        self.smt
-            .apply_mutations(mutations.into_mutation_set())
-            .map_err(AccountTreeError::ApplyMutations)
+        // Apply the mutations to the SMT
+        self.smt.apply_mutations(mutations.into_mutation_set()).map_err(|e| match e {
+            HistoricalError::MerkleError(me) => AccountTreeError::ApplyMutations(me),
+        })?;
+
+        Ok(())
     }
 
     // HELPERS
@@ -311,19 +391,35 @@ impl Default for AccountTree {
     }
 }
 
+impl PartialEq for AccountTree {
+    fn eq(&self, other: &Self) -> bool {
+        // Compare trees by their current root
+        // This is a simplified comparison - it only checks if the current state is the same
+        self.root() == other.root()
+    }
+}
+
+impl Eq for AccountTree {}
+
 // SERIALIZATION
 // ================================================================================================
 
 impl Serializable for AccountTree {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        self.account_commitments().collect::<Vec<_>>().write_into(target);
+        // TODO serialize history as well
+        let block_number = BlockNumber::from(self.smt.block_number() as u32);
+        block_number.write_into(target);
+        todo!("Iterate over values")
     }
 }
 
 impl Deserializable for AccountTree {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        // For deserialization, we read entries and create a new tree
+        // Historical states are not restored
+        let block_number = BlockNumber::read_from(source)?;
         let entries = Vec::<(AccountId, Word)>::read_from(source)?;
-        Self::with_entries(entries)
+        Self::with_entries(block_number, entries)
             .map_err(|err| DeserializationError::InvalidValue(err.to_string()))
     }
 }
@@ -422,7 +518,7 @@ pub(super) mod tests {
     fn with_entries_fails_on_duplicate_prefix() {
         let entries = setup_duplicate_prefix_ids();
 
-        let err = AccountTree::with_entries(entries.iter().copied()).unwrap_err();
+        let err = AccountTree::with_entries(BlockNumber::from(0), entries.iter().copied()).unwrap_err();
 
         assert_matches!(err, AccountTreeError::DuplicateIdPrefix {
           duplicate_prefix
@@ -450,7 +546,7 @@ pub(super) mod tests {
         let digest2 = Word::from([0, 0, 0, 3u32]);
         let digest3 = Word::from([0, 0, 0, 4u32]);
 
-        let mut tree = AccountTree::with_entries([(id0, digest0), (id1, digest1)]).unwrap();
+        let mut tree = AccountTree::with_entries(BlockNumber::from(0), [(id0, digest0), (id1, digest1)]).unwrap();
 
         let mutations = tree
             .compute_mutations([(id0, digest1), (id1, digest2), (id2, digest3)])
@@ -470,7 +566,7 @@ pub(super) mod tests {
         let id2 = AccountIdBuilder::new().build_with_seed([5; 32]);
         let commitment2 = Word::from([0, 0, 0, 99u32]);
 
-        let tree = AccountTree::with_entries([pair0, (id2, commitment2)]).unwrap();
+        let tree = AccountTree::with_entries(BlockNumber::from(0), [pair0, (id2, commitment2)]).unwrap();
 
         let err = tree.compute_mutations([pair1]).unwrap_err();
 
@@ -491,7 +587,7 @@ pub(super) mod tests {
         let empty_digest = Word::empty();
 
         let mut tree =
-            AccountTree::with_entries([(id0, digest0), (id1, digest1), (id2, digest2)]).unwrap();
+            AccountTree::with_entries(BlockNumber::from(0), [(id0, digest0), (id1, digest1), (id2, digest2)]).unwrap();
 
         // remove id2
         tree.insert(id2, empty_digest).unwrap();
@@ -512,7 +608,7 @@ pub(super) mod tests {
         let digest0 = Word::from([0, 0, 0, 1u32]);
         let digest1 = Word::from([0, 0, 0, 2u32]);
 
-        let tree = AccountTree::with_entries([(id0, digest0), (id1, digest1)]).unwrap();
+        let tree = AccountTree::with_entries(BlockNumber::from(0), [(id0, digest0), (id1, digest1)]).unwrap();
 
         assert_eq!(tree.num_accounts(), 2);
 
@@ -530,7 +626,7 @@ pub(super) mod tests {
     fn contains_account_prefix() {
         // Create a tree with a single account.
         let [pair0, pair1] = setup_duplicate_prefix_ids();
-        let tree = AccountTree::with_entries([(pair0.0, pair0.1)]).unwrap();
+        let tree = AccountTree::with_entries(BlockNumber::from(0), [(pair0.0, pair0.1)]).unwrap();
         assert_eq!(tree.num_accounts(), 1);
 
         // Validate the leaf for the inserted account exists.

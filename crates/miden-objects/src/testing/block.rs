@@ -20,9 +20,12 @@ impl BlockHeader {
         accounts: &[Account],
         tx_kernel_commitment: Word,
     ) -> Self {
-        let acct_db =
-            AccountTree::with_entries(accounts.iter().map(|acct| (acct.id(), acct.commitment())))
-                .expect("failed to create account db");
+        let block_num = block_num.into();
+        let acct_db = AccountTree::with_entries(
+            block_num,
+            accounts.iter().map(|acct| (acct.id(), acct.commitment())),
+        )
+        .expect("failed to create account db");
         let account_root = acct_db.root();
         let fee_parameters =
             FeeParameters::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET.try_into().unwrap(), 500)
@@ -81,7 +84,7 @@ impl BlockHeader {
         BlockHeader::new(
             0,
             prev_block_commitment,
-            block_num.into(),
+            block_num,
             chain_commitment,
             account_root,
             nullifier_root,

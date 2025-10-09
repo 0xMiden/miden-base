@@ -181,6 +181,7 @@ impl MockChainBuilder {
             .collect();
 
         let account_tree = AccountTree::with_entries(
+            BlockNumber::GENESIS,
             block_account_updates
                 .iter()
                 .map(|account| (account.account_id(), account.final_state_commitment())),
