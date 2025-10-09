@@ -1,7 +1,7 @@
 use alloc::vec::Vec;
 
 use super::{AccountStorage, Felt, Hasher, StorageSlot, StorageSlotType, Word};
-use crate::account::SlotName;
+use crate::account::{SlotName, SlotNameId};
 use crate::utils::serde::{
     ByteReader,
     ByteWriter,
@@ -23,14 +23,15 @@ use crate::{AccountError, FieldElement, ZERO};
 /// to the underlying data.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StorageSlotHeader {
+    name_id: SlotNameId,
     typ: StorageSlotType,
     value: Word,
 }
 
 impl StorageSlotHeader {
     /// Returns a new instance of storage slot header from the provided storage slot type and value.
-    pub fn new(typ: StorageSlotType, value: Word) -> Self {
-        Self { typ, value }
+    pub fn new(name_id: SlotNameId, typ: StorageSlotType, value: Word) -> Self {
+        Self { name_id, typ, value }
     }
 
     /// Returns this storage slot header as field elements.
@@ -39,16 +40,11 @@ impl StorageSlotHeader {
     /// ```text
     /// [[name_id_prefix, name_id_suffix, slot_type, 0], SLOT_VALUE]
     /// ```
-    pub fn as_elements(
-        &self,
-        slot_name: &SlotName,
-    ) -> [Felt; StorageSlot::NUM_ELEMENTS_PER_STORAGE_SLOT] {
-        let name_id = slot_name.id();
-
+    pub fn as_elements(&self) -> [Felt; StorageSlot::NUM_ELEMENTS_PER_STORAGE_SLOT] {
         let mut elements = [ZERO; StorageSlot::NUM_ELEMENTS_PER_STORAGE_SLOT];
         elements[0..4].copy_from_slice(&[
-            name_id.prefix(),
-            name_id.suffix(),
+            self.name_id.prefix(),
+            self.name_id.suffix(),
             self.typ.as_felt(),
             Felt::ZERO,
         ]);
@@ -144,7 +140,7 @@ impl AccountStorageHeader {
         self.slots
             .iter()
             .flat_map(|(slot_name, slot_type, value)| {
-                StorageSlotHeader::new(*slot_type, *value).as_elements(slot_name)
+                StorageSlotHeader::new(slot_name.id(), *slot_type, *value).as_elements()
             })
             .collect()
     }

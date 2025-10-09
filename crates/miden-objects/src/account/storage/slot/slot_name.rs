@@ -7,6 +7,7 @@ use miden_core::utils::hash_string_to_word;
 use crate::account::storage::slot::SlotNameId;
 use crate::errors::SlotNameError;
 use crate::utils::serde::{ByteWriter, Deserializable, DeserializationError, Serializable};
+use crate::{Felt, FieldElement};
 
 /// The name of an account storage slot.
 ///
@@ -94,11 +95,23 @@ impl SlotName {
 
     /// TODO: Rename to compute_id
     pub fn id(&self) -> SlotNameId {
-        let hashed_word = hash_string_to_word(self.as_str());
-        let prefix = hashed_word[0];
-        let suffix = hashed_word[1];
+        // let hashed_word = hash_string_to_word(self.as_str());
+        // let prefix = hashed_word[0];
+        // let suffix = hashed_word[1];
+        // SlotNameId::new(prefix, suffix)
 
-        SlotNameId::new(prefix, suffix)
+        // TODO: Temporary, replace later with the above.
+        let mut split = self.as_str().split("::");
+
+        let namespace = split.next().unwrap();
+        assert_eq!(namespace, "miden");
+
+        let slot_idx = split.next().unwrap();
+        let slot_index: u32 = slot_idx.parse().expect(
+            "named storage slots should for now have the slot index as the second component",
+        );
+
+        SlotNameId::new(Felt::from(slot_index), Felt::ZERO)
     }
 
     // HELPERS

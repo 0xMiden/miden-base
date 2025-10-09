@@ -78,18 +78,6 @@ impl AccountStorage {
         Ok(Self { slots })
     }
 
-    // pub fn new_named(
-    //     slots: BTreeMap<SlotName, StorageSlot>,
-    // ) -> Result<AccountStorage, AccountError> {
-    //     let num_slots = slots.len();
-
-    //     if num_slots > Self::MAX_NUM_STORAGE_SLOTS {
-    //         return Err(AccountError::StorageTooManySlots(num_slots as u64));
-    //     }
-
-    //     Ok(Self { slots })
-    // }
-
     /// Creates an [`AccountStorage`] from the provided components' storage slots.
     ///
     /// If the account type is faucet the reserved slot (slot 0) will be initialized.
@@ -125,8 +113,8 @@ impl AccountStorage {
             .cloned()
             .enumerate()
         {
-            let name = SlotName::new(format!("miden_temp::{slot_idx}"))
-                .expect("slot name should be valid");
+            let name =
+                SlotName::new(format!("miden::{slot_idx}")).expect("slot name should be valid");
             storage_slots.push(NamedStorageSlot::new(name, slot));
         }
 
@@ -163,6 +151,16 @@ impl AccountStorage {
                 })
                 .collect(),
         )
+    }
+
+    pub fn get(&self, slot_name: &SlotName) -> Option<&NamedStorageSlot> {
+        debug_assert!(self.slots.is_sorted());
+
+        let name_id = slot_name.id();
+        self.slots
+            .binary_search_by_key(&name_id, |slot| slot.name_id())
+            .map(|idx| &self.slots[idx])
+            .ok()
     }
 
     /// Returns an item from the storage at the specified index.
@@ -340,8 +338,12 @@ fn slots_as_elements<'storage>(
 ) -> Vec<Felt> {
     slots
         .flat_map(|named_slot| {
-            StorageSlotHeader::new(named_slot.storage().slot_type(), named_slot.storage().value())
-                .as_elements(named_slot.name())
+            StorageSlotHeader::new(
+                named_slot.name_id(),
+                named_slot.storage().slot_type(),
+                named_slot.storage().value(),
+            )
+            .as_elements()
         })
         .collect()
 }
@@ -388,39 +390,58 @@ impl Deserializable for AccountStorage {
 // TESTS
 // ================================================================================================
 
-// #[cfg(test)]
-// mod tests {
-//     use super::{
-//         AccountStorage,
-//         Deserializable,
-//         Serializable,
-//         StorageMap,
-//         Word,
-//         build_slots_commitment,
-//     };
-//     use crate::account::StorageSlot;
+#[cfg(test)]
+mod tests {
+    use super::{
+        AccountStorage,
+        Deserializable,
+        Serializable,
+        StorageMap,
+        Word,
+        build_slots_commitment,
+    };
+    use crate::account::{NamedStorageSlot, SlotName, StorageSlot};
 
-//     #[test]
-//     fn test_serde_account_storage() {
-//         // empty storage
-//         let storage = AccountStorage::new(vec![]).unwrap();
-//         let bytes = storage.to_bytes();
-//         assert_eq!(storage, AccountStorage::read_from_bytes(&bytes).unwrap());
+    // #[test]
+    // fn test_serde_account_storage() {
+    //     // empty storage
+    //     let storage = AccountStorage::new(vec![]).unwrap();
+    //     let bytes = storage.to_bytes();
+    //     assert_eq!(storage, AccountStorage::read_from_bytes(&bytes).unwrap());
 
-//         // storage with values for default types
-//         let storage = AccountStorage::new(vec![
-//             StorageSlot::Value(Word::empty()),
-//             StorageSlot::Map(StorageMap::default()),
-//         ])
-//         .unwrap();
-//         let bytes = storage.to_bytes();
-//         assert_eq!(storage, AccountStorage::read_from_bytes(&bytes).unwrap());
-//     }
+    //     // storage with values for default types
+    //     let storage = AccountStorage::new(vec![
+    //         StorageSlot::Value(Word::empty()),
+    //         StorageSlot::Map(StorageMap::default()),
+    //     ])
+    //     .unwrap();
+    //     let bytes = storage.to_bytes();
+    //     assert_eq!(storage, AccountStorage::read_from_bytes(&bytes).unwrap());
+    // }
 
-//     #[test]
-//     fn test_account_storage_slots_commitment() {
-//         let storage = AccountStorage::mock();
-//         let storage_slots_commitment = build_slots_commitment(storage.slots());
-//         assert_eq!(storage_slots_commitment, storage.commitment())
-//     }
-// }
+    // #[test]
+    // fn test_account_storage_slots_commitment() {
+    //     let storage = AccountStorage::mock();
+    //     let storage_slots_commitment = build_slots_commitment(storage.slots());
+    //     assert_eq!(storage_slots_commitment, storage.commitment())
+    // }
+
+    #[test]
+    fn test_get_slot_by_name() -> anyhow::Result<()> {
+        // const COUNTER_SLOT: SlotName = SlotName::from_static_str("miden::test::counter");
+        // const MAP_SLOT: SlotName = SlotName::from_static_str("miden::test::map");
+        const COUNTER_SLOT: SlotName = SlotName::from_static_str("miden::0");
+        const MAP_SLOT: SlotName = SlotName::from_static_str("miden::4");
+
+        let slots = vec![
+            NamedStorageSlot::new(COUNTER_SLOT, StorageSlot::empty_value()),
+            NamedStorageSlot::new(MAP_SLOT, StorageSlot::empty_map()),
+        ];
+        let storage = AccountStorage::new(slots.clone())?;
+
+        assert_eq!(storage.get(&COUNTER_SLOT).unwrap(), &slots[0]);
+        assert_eq!(storage.get(&MAP_SLOT).unwrap(), &slots[1]);
+
+        Ok(())
+    }
+}
