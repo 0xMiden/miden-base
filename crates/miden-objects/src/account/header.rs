@@ -180,29 +180,29 @@ impl Deserializable for AccountHeader {
 // TESTS
 // ================================================================================================
 
-// #[cfg(test)]
-// mod tests {
-//     use miden_core::Felt;
-//     use miden_core::utils::{Deserializable, Serializable};
+#[cfg(test)]
+mod tests {
+    use miden_core::Felt;
+    use miden_core::utils::{Deserializable, Serializable};
 
-//     use super::AccountHeader;
-//     use crate::Word;
-//     use crate::account::StorageSlot;
-//     use crate::account::tests::build_account;
-//     use crate::asset::FungibleAsset;
+    use super::AccountHeader;
+    use crate::Word;
+    use crate::account::StorageSlot;
+    use crate::account::tests::build_account;
+    use crate::asset::FungibleAsset;
 
-//     #[test]
-//     fn test_serde_account_storage() {
-//         let init_nonce = Felt::new(1);
-//         let asset_0 = FungibleAsset::mock(99);
-//         let word = Word::from([1, 2, 3, 4u32]);
-//         let storage_slot = StorageSlot::Value(word);
-//         let account = build_account(vec![asset_0], init_nonce, vec![storage_slot]);
+    #[test]
+    fn test_serde_account_storage() {
+        let init_nonce = Felt::new(1);
+        let asset_0 = FungibleAsset::mock(99);
+        let word = Word::from([1, 2, 3, 4u32]);
+        let storage_slot = StorageSlot::Value(word);
+        let account = build_account(vec![asset_0], init_nonce, vec![storage_slot]);
 
-//         let account_header: AccountHeader = account.into();
+        let account_header: AccountHeader = account.into();
 
-//         let header_bytes = account_header.to_bytes();
-//         let deserialized_header = AccountHeader::read_from_bytes(&header_bytes).unwrap();
-//         assert_eq!(deserialized_header, account_header);
-//     }
-// }
+        let header_bytes = account_header.to_bytes();
+        let deserialized_header = AccountHeader::read_from_bytes(&header_bytes).unwrap();
+        assert_eq!(deserialized_header, account_header);
+    }
+}

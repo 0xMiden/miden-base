@@ -530,367 +530,366 @@ fn validate_components_support_account_type(
 // TESTS
 // ================================================================================================
 
-// #[cfg(test)]
-// mod tests {
-//     use alloc::vec::Vec;
+#[cfg(test)]
+mod tests {
+    use alloc::vec::Vec;
 
-//     use assert_matches::assert_matches;
-//     use miden_assembly::Assembler;
-//     use miden_core::FieldElement;
-//     use miden_crypto::utils::{Deserializable, Serializable};
-//     use miden_crypto::{Felt, Word};
+    use assert_matches::assert_matches;
+    use miden_assembly::Assembler;
+    use miden_core::FieldElement;
+    use miden_crypto::utils::{Deserializable, Serializable};
+    use miden_crypto::{Felt, Word};
 
-//     use super::{
-//         AccountCode,
-//         AccountDelta,
-//         AccountId,
-//         AccountStorage,
-//         AccountStorageDelta,
-//         AccountVaultDelta,
-//     };
-//     use crate::AccountError;
-//     use crate::account::AccountStorageMode::Network;
-//     use crate::account::{
-//         Account,
-//         AccountBuilder,
-//         AccountComponent,
-//         AccountIdVersion,
-//         AccountType,
-//         StorageMap,
-//         StorageMapDelta,
-//         StorageSlot,
-//     };
-//     use crate::asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset};
-//     use crate::testing::account_id::{
-//         ACCOUNT_ID_PRIVATE_SENDER,
-//         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
-//     };
-//     use crate::testing::add_component::AddComponent;
-//     use crate::testing::noop_auth_component::NoopAuthComponent;
-//     use crate::testing::storage::AccountStorageDeltaBuilder;
+    use super::{
+        AccountCode,
+        AccountDelta,
+        AccountId,
+        AccountStorage,
+        AccountStorageDelta,
+        AccountVaultDelta,
+    };
+    use crate::AccountError;
+    use crate::account::AccountStorageMode::Network;
+    use crate::account::{
+        Account,
+        AccountBuilder,
+        AccountComponent,
+        AccountIdVersion,
+        AccountType,
+        StorageMap,
+        StorageMapDelta,
+        StorageSlot,
+    };
+    use crate::asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset};
+    use crate::testing::account_id::{
+        ACCOUNT_ID_PRIVATE_SENDER,
+        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
+    };
+    use crate::testing::add_component::AddComponent;
+    use crate::testing::noop_auth_component::NoopAuthComponent;
+    use crate::testing::storage::AccountStorageDeltaBuilder;
 
-//     #[test]
-//     fn test_serde_account() {
-//         let init_nonce = Felt::new(1);
-//         let asset_0 = FungibleAsset::mock(99);
-//         let word = Word::from([1, 2, 3, 4u32]);
-//         let storage_slot = StorageSlot::Value(word);
-//         let account = build_account(vec![asset_0], init_nonce, vec![storage_slot]);
+    #[test]
+    fn test_serde_account() {
+        let init_nonce = Felt::new(1);
+        let asset_0 = FungibleAsset::mock(99);
+        let word = Word::from([1, 2, 3, 4u32]);
+        let storage_slot = StorageSlot::Value(word);
+        let account = build_account(vec![asset_0], init_nonce, vec![storage_slot]);
 
-//         let serialized = account.to_bytes();
-//         let deserialized = Account::read_from_bytes(&serialized).unwrap();
-//         assert_eq!(deserialized, account);
-//     }
+        let serialized = account.to_bytes();
+        let deserialized = Account::read_from_bytes(&serialized).unwrap();
+        assert_eq!(deserialized, account);
+    }
 
-//     #[test]
-//     fn test_serde_account_delta() {
-//         let account_id = AccountId::try_from(ACCOUNT_ID_PRIVATE_SENDER).unwrap();
-//         let nonce_delta = Felt::new(2);
-//         let asset_0 = FungibleAsset::mock(15);
-//         let asset_1 = NonFungibleAsset::mock(&[5, 5, 5]);
-//         let storage_delta = AccountStorageDeltaBuilder::new()
-//             .add_cleared_items([0])
-//             .add_updated_values([(1_u8, Word::from([1, 2, 3, 4u32]))])
-//             .build()
-//             .unwrap();
-//         let account_delta = build_account_delta(
-//             account_id,
-//             vec![asset_1],
-//             vec![asset_0],
-//             nonce_delta,
-//             storage_delta,
-//         );
+    #[test]
+    fn test_serde_account_delta() {
+        let account_id = AccountId::try_from(ACCOUNT_ID_PRIVATE_SENDER).unwrap();
+        let nonce_delta = Felt::new(2);
+        let asset_0 = FungibleAsset::mock(15);
+        let asset_1 = NonFungibleAsset::mock(&[5, 5, 5]);
+        let storage_delta = AccountStorageDeltaBuilder::new()
+            .add_cleared_items([0])
+            .add_updated_values([(1_u8, Word::from([1, 2, 3, 4u32]))])
+            .build()
+            .unwrap();
+        let account_delta = build_account_delta(
+            account_id,
+            vec![asset_1],
+            vec![asset_0],
+            nonce_delta,
+            storage_delta,
+        );
 
-//         let serialized = account_delta.to_bytes();
-//         let deserialized = AccountDelta::read_from_bytes(&serialized).unwrap();
-//         assert_eq!(deserialized, account_delta);
-//     }
+        let serialized = account_delta.to_bytes();
+        let deserialized = AccountDelta::read_from_bytes(&serialized).unwrap();
+        assert_eq!(deserialized, account_delta);
+    }
 
-//     #[test]
-//     fn valid_account_delta_is_correctly_applied() {
-//         // build account
-//         let account_id = AccountId::try_from(ACCOUNT_ID_PRIVATE_SENDER).unwrap();
-//         let init_nonce = Felt::new(1);
-//         let asset_0 = FungibleAsset::mock(100);
-//         let asset_1 = NonFungibleAsset::mock(&[1, 2, 3]);
+    #[test]
+    fn valid_account_delta_is_correctly_applied() {
+        // build account
+        let account_id = AccountId::try_from(ACCOUNT_ID_PRIVATE_SENDER).unwrap();
+        let init_nonce = Felt::new(1);
+        let asset_0 = FungibleAsset::mock(100);
+        let asset_1 = NonFungibleAsset::mock(&[1, 2, 3]);
 
-//         // build storage slots
-//         let storage_slot_value_0 = StorageSlot::Value(Word::from([1, 2, 3, 4u32]));
-//         let storage_slot_value_1 = StorageSlot::Value(Word::from([5, 6, 7, 8u32]));
-//         let mut storage_map = StorageMap::with_entries([
-//             (
-//                 Word::new([Felt::new(101), Felt::new(102), Felt::new(103), Felt::new(104)]),
-//                 Word::from([
-//                     Felt::new(1_u64),
-//                     Felt::new(2_u64),
-//                     Felt::new(3_u64),
-//                     Felt::new(4_u64),
-//                 ]),
-//             ),
-//             (
-//                 Word::new([Felt::new(105), Felt::new(106), Felt::new(107), Felt::new(108)]),
-//                 Word::new([Felt::new(5_u64), Felt::new(6_u64), Felt::new(7_u64),
-// Felt::new(8_u64)]),             ),
-//         ])
-//         .unwrap();
-//         let storage_slot_map = StorageSlot::Map(storage_map.clone());
+        // build storage slots
+        let storage_slot_value_0 = StorageSlot::Value(Word::from([1, 2, 3, 4u32]));
+        let storage_slot_value_1 = StorageSlot::Value(Word::from([5, 6, 7, 8u32]));
+        let mut storage_map = StorageMap::with_entries([
+            (
+                Word::new([Felt::new(101), Felt::new(102), Felt::new(103), Felt::new(104)]),
+                Word::from([
+                    Felt::new(1_u64),
+                    Felt::new(2_u64),
+                    Felt::new(3_u64),
+                    Felt::new(4_u64),
+                ]),
+            ),
+            (
+                Word::new([Felt::new(105), Felt::new(106), Felt::new(107), Felt::new(108)]),
+                Word::new([Felt::new(5_u64), Felt::new(6_u64), Felt::new(7_u64), Felt::new(8_u64)]),
+            ),
+        ])
+        .unwrap();
+        let storage_slot_map = StorageSlot::Map(storage_map.clone());
 
-//         let mut account = build_account(
-//             vec![asset_0],
-//             init_nonce,
-//             vec![storage_slot_value_0, storage_slot_value_1, storage_slot_map],
-//         );
+        let mut account = build_account(
+            vec![asset_0],
+            init_nonce,
+            vec![storage_slot_value_0, storage_slot_value_1, storage_slot_map],
+        );
 
-//         // update storage map
-//         let new_map_entry = (
-//             Word::new([Felt::new(101), Felt::new(102), Felt::new(103), Felt::new(104)]),
-//             [Felt::new(9_u64), Felt::new(10_u64), Felt::new(11_u64), Felt::new(12_u64)],
-//         );
+        // update storage map
+        let new_map_entry = (
+            Word::new([Felt::new(101), Felt::new(102), Felt::new(103), Felt::new(104)]),
+            [Felt::new(9_u64), Felt::new(10_u64), Felt::new(11_u64), Felt::new(12_u64)],
+        );
 
-//         let updated_map =
-//             StorageMapDelta::from_iters([], [(new_map_entry.0, new_map_entry.1.into())]);
-//         storage_map.insert(new_map_entry.0, new_map_entry.1.into()).unwrap();
+        let updated_map =
+            StorageMapDelta::from_iters([], [(new_map_entry.0, new_map_entry.1.into())]);
+        storage_map.insert(new_map_entry.0, new_map_entry.1.into()).unwrap();
 
-//         // build account delta
-//         let final_nonce = Felt::new(2);
-//         let storage_delta = AccountStorageDeltaBuilder::new()
-//             .add_cleared_items([0])
-//             .add_updated_values([(1, Word::from([1, 2, 3, 4u32]))])
-//             .add_updated_maps([(2, updated_map)])
-//             .build()
-//             .unwrap();
-//         let account_delta = build_account_delta(
-//             account_id,
-//             vec![asset_1],
-//             vec![asset_0],
-//             final_nonce - init_nonce,
-//             storage_delta,
-//         );
+        // build account delta
+        let final_nonce = Felt::new(2);
+        let storage_delta = AccountStorageDeltaBuilder::new()
+            .add_cleared_items([0])
+            .add_updated_values([(1, Word::from([1, 2, 3, 4u32]))])
+            .add_updated_maps([(2, updated_map)])
+            .build()
+            .unwrap();
+        let account_delta = build_account_delta(
+            account_id,
+            vec![asset_1],
+            vec![asset_0],
+            final_nonce - init_nonce,
+            storage_delta,
+        );
 
-//         // apply delta and create final_account
-//         account.apply_delta(&account_delta).unwrap();
+        // apply delta and create final_account
+        account.apply_delta(&account_delta).unwrap();
 
-//         let final_account = build_account(
-//             vec![asset_1],
-//             final_nonce,
-//             vec![
-//                 StorageSlot::Value(Word::empty()),
-//                 StorageSlot::Value(Word::from([1, 2, 3, 4u32])),
-//                 StorageSlot::Map(storage_map),
-//             ],
-//         );
+        let final_account = build_account(
+            vec![asset_1],
+            final_nonce,
+            vec![
+                StorageSlot::Value(Word::empty()),
+                StorageSlot::Value(Word::from([1, 2, 3, 4u32])),
+                StorageSlot::Map(storage_map),
+            ],
+        );
 
-//         // assert account is what it should be
-//         assert_eq!(account, final_account);
-//     }
+        // assert account is what it should be
+        assert_eq!(account, final_account);
+    }
 
-//     #[test]
-//     #[should_panic]
-//     fn valid_account_delta_with_unchanged_nonce() {
-//         // build account
-//         let account_id = AccountId::try_from(ACCOUNT_ID_PRIVATE_SENDER).unwrap();
-//         let init_nonce = Felt::new(1);
-//         let asset = FungibleAsset::mock(110);
-//         let mut account =
-//             build_account(vec![asset], init_nonce, vec![StorageSlot::Value(Word::empty())]);
+    #[test]
+    #[should_panic]
+    fn valid_account_delta_with_unchanged_nonce() {
+        // build account
+        let account_id = AccountId::try_from(ACCOUNT_ID_PRIVATE_SENDER).unwrap();
+        let init_nonce = Felt::new(1);
+        let asset = FungibleAsset::mock(110);
+        let mut account =
+            build_account(vec![asset], init_nonce, vec![StorageSlot::Value(Word::empty())]);
 
-//         // build account delta
-//         let storage_delta = AccountStorageDeltaBuilder::new()
-//             .add_cleared_items([0])
-//             .add_updated_values([(1_u8, Word::from([1, 2, 3, 4u32]))])
-//             .build()
-//             .unwrap();
-//         let account_delta =
-//             build_account_delta(account_id, vec![], vec![asset], init_nonce, storage_delta);
+        // build account delta
+        let storage_delta = AccountStorageDeltaBuilder::new()
+            .add_cleared_items([0])
+            .add_updated_values([(1_u8, Word::from([1, 2, 3, 4u32]))])
+            .build()
+            .unwrap();
+        let account_delta =
+            build_account_delta(account_id, vec![], vec![asset], init_nonce, storage_delta);
 
-//         // apply delta
-//         account.apply_delta(&account_delta).unwrap()
-//     }
+        // apply delta
+        account.apply_delta(&account_delta).unwrap()
+    }
 
-//     #[test]
-//     #[should_panic]
-//     fn valid_account_delta_with_decremented_nonce() {
-//         // build account
-//         let account_id = AccountId::try_from(ACCOUNT_ID_PRIVATE_SENDER).unwrap();
-//         let init_nonce = Felt::new(2);
-//         let asset = FungibleAsset::mock(100);
-//         let mut account =
-//             build_account(vec![asset], init_nonce, vec![StorageSlot::Value(Word::empty())]);
+    #[test]
+    #[should_panic]
+    fn valid_account_delta_with_decremented_nonce() {
+        // build account
+        let account_id = AccountId::try_from(ACCOUNT_ID_PRIVATE_SENDER).unwrap();
+        let init_nonce = Felt::new(2);
+        let asset = FungibleAsset::mock(100);
+        let mut account =
+            build_account(vec![asset], init_nonce, vec![StorageSlot::Value(Word::empty())]);
 
-//         // build account delta
-//         let final_nonce = Felt::new(1);
-//         let storage_delta = AccountStorageDeltaBuilder::new()
-//             .add_cleared_items([0])
-//             .add_updated_values([(1_u8, Word::from([1, 2, 3, 4u32]))])
-//             .build()
-//             .unwrap();
-//         let account_delta =
-//             build_account_delta(account_id, vec![], vec![asset], final_nonce, storage_delta);
+        // build account delta
+        let final_nonce = Felt::new(1);
+        let storage_delta = AccountStorageDeltaBuilder::new()
+            .add_cleared_items([0])
+            .add_updated_values([(1_u8, Word::from([1, 2, 3, 4u32]))])
+            .build()
+            .unwrap();
+        let account_delta =
+            build_account_delta(account_id, vec![], vec![asset], final_nonce, storage_delta);
 
-//         // apply delta
-//         account.apply_delta(&account_delta).unwrap()
-//     }
+        // apply delta
+        account.apply_delta(&account_delta).unwrap()
+    }
 
-//     #[test]
-//     fn empty_account_delta_with_incremented_nonce() {
-//         // build account
-//         let account_id = AccountId::try_from(ACCOUNT_ID_PRIVATE_SENDER).unwrap();
-//         let init_nonce = Felt::new(1);
-//         let word = Word::from([1, 2, 3, 4u32]);
-//         let storage_slot = StorageSlot::Value(word);
-//         let mut account = build_account(vec![], init_nonce, vec![storage_slot]);
+    #[test]
+    fn empty_account_delta_with_incremented_nonce() {
+        // build account
+        let account_id = AccountId::try_from(ACCOUNT_ID_PRIVATE_SENDER).unwrap();
+        let init_nonce = Felt::new(1);
+        let word = Word::from([1, 2, 3, 4u32]);
+        let storage_slot = StorageSlot::Value(word);
+        let mut account = build_account(vec![], init_nonce, vec![storage_slot]);
 
-//         // build account delta
-//         let nonce_delta = Felt::new(1);
-//         let account_delta = AccountDelta::new(
-//             account_id,
-//             AccountStorageDelta::new(),
-//             AccountVaultDelta::default(),
-//             nonce_delta,
-//         )
-//         .unwrap();
+        // build account delta
+        let nonce_delta = Felt::new(1);
+        let account_delta = AccountDelta::new(
+            account_id,
+            AccountStorageDelta::new(),
+            AccountVaultDelta::default(),
+            nonce_delta,
+        )
+        .unwrap();
 
-//         // apply delta
-//         account.apply_delta(&account_delta).unwrap()
-//     }
+        // apply delta
+        account.apply_delta(&account_delta).unwrap()
+    }
 
-//     pub fn build_account_delta(
-//         account_id: AccountId,
-//         added_assets: Vec<Asset>,
-//         removed_assets: Vec<Asset>,
-//         nonce_delta: Felt,
-//         storage_delta: AccountStorageDelta,
-//     ) -> AccountDelta {
-//         let vault_delta = AccountVaultDelta::from_iters(added_assets, removed_assets);
-//         AccountDelta::new(account_id, storage_delta, vault_delta, nonce_delta).unwrap()
-//     }
+    pub fn build_account_delta(
+        account_id: AccountId,
+        added_assets: Vec<Asset>,
+        removed_assets: Vec<Asset>,
+        nonce_delta: Felt,
+        storage_delta: AccountStorageDelta,
+    ) -> AccountDelta {
+        let vault_delta = AccountVaultDelta::from_iters(added_assets, removed_assets);
+        AccountDelta::new(account_id, storage_delta, vault_delta, nonce_delta).unwrap()
+    }
 
-//     pub fn build_account(assets: Vec<Asset>, nonce: Felt, slots: Vec<StorageSlot>) -> Account {
-//         let id = AccountId::try_from(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE).unwrap();
-//         let code = AccountCode::mock();
+    pub fn build_account(assets: Vec<Asset>, nonce: Felt, slots: Vec<StorageSlot>) -> Account {
+        let id = AccountId::try_from(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE).unwrap();
+        let code = AccountCode::mock();
 
-//         let vault = AssetVault::new(&assets).unwrap();
+        let vault = AssetVault::new(&assets).unwrap();
 
-//         let storage = AccountStorage::new(slots).unwrap();
+        let storage = AccountStorage::new(slots).unwrap();
 
-//         Account::new_existing(id, vault, storage, code, nonce)
-//     }
+        Account::new_existing(id, vault, storage, code, nonce)
+    }
 
-//     /// Tests that initializing code and storage from a component which does not support the
-// given     /// account type returns an error.
-//     #[test]
-//     fn test_account_unsupported_component_type() {
-//         let code1 = "export.foo add end";
-//         let library1 = Assembler::default().assemble_library([code1]).unwrap();
+    /// Tests that initializing code and storage from a component which does not support the given
+    /// account type returns an error.
+    #[test]
+    fn test_account_unsupported_component_type() {
+        let code1 = "export.foo add end";
+        let library1 = Assembler::default().assemble_library([code1]).unwrap();
 
-//         // This component support all account types except the regular account with updatable
-// code.         let component1 = AccountComponent::new(library1, vec![])
-//             .unwrap()
-//             .with_supported_type(AccountType::FungibleFaucet)
-//             .with_supported_type(AccountType::NonFungibleFaucet)
-//             .with_supported_type(AccountType::RegularAccountImmutableCode);
+        // This component support all account types except the regular account with updatable code.
+        let component1 = AccountComponent::new(library1, vec![])
+            .unwrap()
+            .with_supported_type(AccountType::FungibleFaucet)
+            .with_supported_type(AccountType::NonFungibleFaucet)
+            .with_supported_type(AccountType::RegularAccountImmutableCode);
 
-//         let err = Account::initialize_from_components(
-//             AccountType::RegularAccountUpdatableCode,
-//             &[component1],
-//         )
-//         .unwrap_err();
+        let err = Account::initialize_from_components(
+            AccountType::RegularAccountUpdatableCode,
+            &[component1],
+        )
+        .unwrap_err();
 
-//         assert!(matches!(
-//             err,
-//             AccountError::UnsupportedComponentForAccountType {
-//                 account_type: AccountType::RegularAccountUpdatableCode,
-//                 component_index: 0
-//             }
-//         ))
-//     }
+        assert!(matches!(
+            err,
+            AccountError::UnsupportedComponentForAccountType {
+                account_type: AccountType::RegularAccountUpdatableCode,
+                component_index: 0
+            }
+        ))
+    }
 
-//     /// Two components who export a procedure with the same MAST root should fail to convert into
-//     /// code and storage.
-//     #[test]
-//     fn test_account_duplicate_exported_mast_root() {
-//         let code1 = "export.foo add eq.1 end";
-//         let code2 = "export.bar add eq.1 end";
+    /// Two components who export a procedure with the same MAST root should fail to convert into
+    /// code and storage.
+    #[test]
+    fn test_account_duplicate_exported_mast_root() {
+        let code1 = "export.foo add eq.1 end";
+        let code2 = "export.bar add eq.1 end";
 
-//         let library1 = Assembler::default().assemble_library([code1]).unwrap();
-//         let library2 = Assembler::default().assemble_library([code2]).unwrap();
+        let library1 = Assembler::default().assemble_library([code1]).unwrap();
+        let library2 = Assembler::default().assemble_library([code2]).unwrap();
 
-//         let component1 = AccountComponent::new(library1,
-// vec![]).unwrap().with_supports_all_types();         let component2 =
-// AccountComponent::new(library2, vec![]).unwrap().with_supports_all_types();
+        let component1 = AccountComponent::new(library1, vec![]).unwrap().with_supports_all_types();
+        let component2 = AccountComponent::new(library2, vec![]).unwrap().with_supports_all_types();
 
-//         let err = Account::initialize_from_components(
-//             AccountType::RegularAccountUpdatableCode,
-//             &[NoopAuthComponent.into(), component1, component2],
-//         )
-//         .unwrap_err();
+        let err = Account::initialize_from_components(
+            AccountType::RegularAccountUpdatableCode,
+            &[NoopAuthComponent.into(), component1, component2],
+        )
+        .unwrap_err();
 
-//         assert_matches!(err, AccountError::AccountComponentDuplicateProcedureRoot(_))
-//     }
+        assert_matches!(err, AccountError::AccountComponentDuplicateProcedureRoot(_))
+    }
 
-//     /// Tests all cases of account ID seed validation.
-//     #[test]
-//     fn seed_validation() -> anyhow::Result<()> {
-//         let account = AccountBuilder::new([5; 32])
-//             .with_auth_component(NoopAuthComponent)
-//             .with_component(AddComponent)
-//             .build()?;
-//         let (id, vault, storage, code, _nonce, seed) = account.into_parts();
-//         assert!(seed.is_some());
+    /// Tests all cases of account ID seed validation.
+    #[test]
+    fn seed_validation() -> anyhow::Result<()> {
+        let account = AccountBuilder::new([5; 32])
+            .with_auth_component(NoopAuthComponent)
+            .with_component(AddComponent)
+            .build()?;
+        let (id, vault, storage, code, _nonce, seed) = account.into_parts();
+        assert!(seed.is_some());
 
-//         let other_seed = AccountId::compute_account_seed(
-//             [9; 32],
-//             AccountType::FungibleFaucet,
-//             Network,
-//             AccountIdVersion::Version0,
-//             code.commitment(),
-//             storage.commitment(),
-//         )?;
+        let other_seed = AccountId::compute_account_seed(
+            [9; 32],
+            AccountType::FungibleFaucet,
+            Network,
+            AccountIdVersion::Version0,
+            code.commitment(),
+            storage.commitment(),
+        )?;
 
-//         // Set nonce to 1 so the account is considered existing and provide the seed.
-//         let err = Account::new(id, vault.clone(), storage.clone(), code.clone(), Felt::ONE, seed)
-//             .unwrap_err();
-//         assert_matches!(err, AccountError::ExistingAccountWithSeed);
+        // Set nonce to 1 so the account is considered existing and provide the seed.
+        let err = Account::new(id, vault.clone(), storage.clone(), code.clone(), Felt::ONE, seed)
+            .unwrap_err();
+        assert_matches!(err, AccountError::ExistingAccountWithSeed);
 
-//         // Set nonce to 0 so the account is considered new but don't provide the seed.
-//         let err = Account::new(id, vault.clone(), storage.clone(), code.clone(), Felt::ZERO,
-// None)             .unwrap_err();
-//         assert_matches!(err, AccountError::NewAccountMissingSeed);
+        // Set nonce to 0 so the account is considered new but don't provide the seed.
+        let err = Account::new(id, vault.clone(), storage.clone(), code.clone(), Felt::ZERO, None)
+            .unwrap_err();
+        assert_matches!(err, AccountError::NewAccountMissingSeed);
 
-//         // Set nonce to 0 so the account is considered new and provide a valid seed that results
-// in         // a different ID than the provided one.
-//         let err = Account::new(
-//             id,
-//             vault.clone(),
-//             storage.clone(),
-//             code.clone(),
-//             Felt::ZERO,
-//             Some(other_seed),
-//         )
-//         .unwrap_err();
-//         assert_matches!(err, AccountError::AccountIdSeedMismatch { .. });
+        // Set nonce to 0 so the account is considered new and provide a valid seed that results in
+        // a different ID than the provided one.
+        let err = Account::new(
+            id,
+            vault.clone(),
+            storage.clone(),
+            code.clone(),
+            Felt::ZERO,
+            Some(other_seed),
+        )
+        .unwrap_err();
+        assert_matches!(err, AccountError::AccountIdSeedMismatch { .. });
 
-//         // Set nonce to 0 so the account is considered new and provide a seed that results in an
-//         // invalid ID.
-//         let err = Account::new(
-//             id,
-//             vault.clone(),
-//             storage.clone(),
-//             code.clone(),
-//             Felt::ZERO,
-//             Some(Word::from([1, 2, 3, 4u32])),
-//         )
-//         .unwrap_err();
-//         assert_matches!(err, AccountError::SeedConvertsToInvalidAccountId(_));
+        // Set nonce to 0 so the account is considered new and provide a seed that results in an
+        // invalid ID.
+        let err = Account::new(
+            id,
+            vault.clone(),
+            storage.clone(),
+            code.clone(),
+            Felt::ZERO,
+            Some(Word::from([1, 2, 3, 4u32])),
+        )
+        .unwrap_err();
+        assert_matches!(err, AccountError::SeedConvertsToInvalidAccountId(_));
 
-//         // Set nonce to 1 so the account is considered existing and don't provide the seed, which
-//         // should be valid.
-//         Account::new(id, vault.clone(), storage.clone(), code.clone(), Felt::ONE, None)?;
+        // Set nonce to 1 so the account is considered existing and don't provide the seed, which
+        // should be valid.
+        Account::new(id, vault.clone(), storage.clone(), code.clone(), Felt::ONE, None)?;
 
-//         // Set nonce to 0 so the account is considered new and provide the original seed, which
-//         // should be valid.
-//         Account::new(id, vault.clone(), storage.clone(), code.clone(), Felt::ZERO, seed)?;
+        // Set nonce to 0 so the account is considered new and provide the original seed, which
+        // should be valid.
+        Account::new(id, vault.clone(), storage.clone(), code.clone(), Felt::ZERO, seed)?;
 
-//         Ok(())
-//     }
-// }
+        Ok(())
+    }
+}
