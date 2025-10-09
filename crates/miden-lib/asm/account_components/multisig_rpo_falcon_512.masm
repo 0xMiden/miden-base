@@ -273,7 +273,7 @@ export.auth_tx_rpo_falcon512_multisig
     push.THRESHOLD_CONFIG_SLOT
     # => [index, TX_SUMMARY_COMMITMENT]
 
-    exec.account::get_item_init
+    exec.account::get_initial_item
     # => [0, 0, num_of_approvers, threshold, TX_SUMMARY_COMMITMENT]
 
     drop drop

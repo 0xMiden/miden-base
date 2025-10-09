@@ -33,14 +33,17 @@ use miden_objects::account::{
 use miden_objects::assembly::diagnostics::{IntoDiagnostic, NamedSource, Report, WrapErr, miette};
 use miden_objects::assembly::{DefaultSourceManager, Library};
 use miden_objects::asset::{Asset, AssetVault, FungibleAsset};
+use miden_objects::note::NoteType;
 use miden_objects::testing::account_id::{
     ACCOUNT_ID_PRIVATE_NON_FUNGIBLE_FAUCET,
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
     ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
+    ACCOUNT_ID_SENDER,
 };
 use miden_objects::testing::storage::STORAGE_LEAVES_2;
-use miden_objects::transaction::{ExecutedTransaction, TransactionScript};
+use miden_objects::transaction::{ExecutedTransaction, OutputNote, TransactionScript};
 use miden_objects::{LexicographicWord, StarkField};
 use miden_processor::{EMPTY_WORD, ExecutionError, MastNodeExt, Word};
 use miden_tx::{LocalTransactionProver, TransactionExecutorError};
@@ -50,10 +53,12 @@ use rand_chacha::ChaCha20Rng;
 use super::{Felt, StackInputs, ZERO};
 use crate::executor::CodeExecutor;
 use crate::kernel_tests::tx::ExecutionOutputExt;
+use crate::utils::create_public_p2any_note;
 use crate::{
     Auth,
     MockChain,
     TransactionContextBuilder,
+    TxContextInput,
     assert_execution_error,
     assert_transaction_executor_error,
 };
@@ -1122,6 +1127,266 @@ fn test_get_vault_root() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// This test checks the correctness of the `miden::account::get_initial_balance` procedure in two
+/// cases:
+/// - when a note adds the asset which already exists in the account vault.
+/// - when a note adds the asset which doesn't exist in the account vault.
+///  
+/// As part of the test pipeline it also checks the correctness of the
+/// `miden::account::get_balance` procedure.
+#[tokio::test]
+async fn test_get_init_balance_addition() -> anyhow::Result<()> {
+    // prepare the testing data
+    // ------------------------------------------
+    let mut builder = MockChain::builder();
+
+    let faucet_existing_asset =
+        AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).context("id should be valid")?;
+    let faucet_new_asset =
+        AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1).context("id should be valid")?;
+
+    let fungible_asset_for_account = Asset::Fungible(
+        FungibleAsset::new(faucet_existing_asset, 10).context("fungible_asset_0 is invalid")?,
+    );
+    let account = builder
+        .add_existing_wallet_with_assets(crate::Auth::BasicAuth, [fungible_asset_for_account])?;
+
+    let fungible_asset_for_note_existing = Asset::Fungible(
+        FungibleAsset::new(faucet_existing_asset, 7).context("fungible_asset_0 is invalid")?,
+    );
+
+    let fungible_asset_for_note_new = Asset::Fungible(
+        FungibleAsset::new(faucet_new_asset, 20).context("fungible_asset_1 is invalid")?,
+    );
+
+    let p2id_note_existing_asset = builder.add_p2id_note(
+        ACCOUNT_ID_SENDER.try_into().unwrap(),
+        account.id(),
+        &[fungible_asset_for_note_existing],
+        NoteType::Public,
+    )?;
+    let p2id_note_new_asset = builder.add_p2id_note(
+        ACCOUNT_ID_SENDER.try_into().unwrap(),
+        account.id(),
+        &[fungible_asset_for_note_new],
+        NoteType::Public,
+    )?;
+
+    let mut mock_chain = builder.build()?;
+    mock_chain.prove_next_block()?;
+
+    // case 1: existing asset was added to the account
+    // ------------------------------------------
+
+    let initial_balance = account
+        .vault()
+        .get_balance(faucet_existing_asset)
+        .expect("faucet_id should be a fungible faucet ID");
+
+    let add_existing_source = format!(
+        r#"
+        use.miden::account
+
+        begin
+            # push faucet ID prefix and suffix
+            push.{suffix}.{prefix}
+            # => [faucet_id_prefix, faucet_id_suffix]
+
+            # get the current asset balance
+            dup.1 dup.1 exec.account::get_balance
+            # => [final_balance, faucet_id_prefix, faucet_id_suffix]
+
+            # assert final balance is correct
+            push.{final_balance}
+            assert_eq.err="final balance is incorrect"
+            # => [faucet_id_prefix, faucet_id_suffix]
+
+            # get the initial asset balance
+            exec.account::get_initial_balance
+            # => [init_balance]
+
+            # assert initial balance is correct
+            push.{initial_balance}
+            assert_eq.err="initial balance is incorrect"
+        end
+    "#,
+        suffix = faucet_existing_asset.suffix(),
+        prefix = faucet_existing_asset.prefix().as_felt(),
+        final_balance =
+            initial_balance + fungible_asset_for_note_existing.unwrap_fungible().amount(),
+    );
+
+    let tx_script = ScriptBuilder::default().compile_tx_script(add_existing_source)?;
+
+    let tx_context = mock_chain
+        .build_tx_context(
+            TxContextInput::AccountId(account.id()),
+            &[],
+            &[p2id_note_existing_asset],
+        )?
+        .tx_script(tx_script)
+        .build()?;
+
+    tx_context.execute().await?;
+
+    // case 2: new asset was added to the account
+    // ------------------------------------------
+
+    let initial_balance = account
+        .vault()
+        .get_balance(faucet_new_asset)
+        .expect("faucet_id should be a fungible faucet ID");
+
+    let add_new_source = format!(
+        r#"
+        use.miden::account
+
+        begin
+            # push faucet ID prefix and suffix
+            push.{suffix}.{prefix}
+            # => [faucet_id_prefix, faucet_id_suffix]
+
+            # get the current asset balance
+            dup.1 dup.1 exec.account::get_balance
+            # => [final_balance, faucet_id_prefix, faucet_id_suffix]
+
+            # assert final balance is correct
+            push.{final_balance}
+            assert_eq.err="final balance is incorrect"
+            # => [faucet_id_prefix, faucet_id_suffix]
+
+            # get the initial asset balance
+            exec.account::get_initial_balance
+            # => [init_balance]
+
+            # assert initial balance is correct
+            push.{initial_balance}
+            assert_eq.err="initial balance is incorrect"
+        end
+    "#,
+        suffix = faucet_new_asset.suffix(),
+        prefix = faucet_new_asset.prefix().as_felt(),
+        final_balance = initial_balance + fungible_asset_for_note_new.unwrap_fungible().amount(),
+    );
+
+    let tx_script = ScriptBuilder::default().compile_tx_script(add_new_source)?;
+
+    let tx_context = mock_chain
+        .build_tx_context(TxContextInput::AccountId(account.id()), &[], &[p2id_note_new_asset])?
+        .tx_script(tx_script)
+        .build()?;
+
+    tx_context.execute().await?;
+
+    Ok(())
+}
+
+/// This test checks the correctness of the `miden::account::get_initial_balance` procedure in case
+/// when we create a note which removes an asset from the account vault.
+///  
+/// As part of the test pipeline it also checks the correctness of the
+/// `miden::account::get_balance` procedure.
+#[tokio::test]
+async fn test_get_init_balance_subtraction() -> anyhow::Result<()> {
+    let mut builder = MockChain::builder();
+
+    let faucet_existing_asset =
+        AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).context("id should be valid")?;
+
+    let fungible_asset_for_account = Asset::Fungible(
+        FungibleAsset::new(faucet_existing_asset, 10).context("fungible_asset_0 is invalid")?,
+    );
+    let account = builder
+        .add_existing_wallet_with_assets(crate::Auth::BasicAuth, [fungible_asset_for_account])?;
+
+    let fungible_asset_for_note_existing = Asset::Fungible(
+        FungibleAsset::new(faucet_existing_asset, 7).context("fungible_asset_0 is invalid")?,
+    );
+
+    let mut mock_chain = builder.build()?;
+    mock_chain.prove_next_block()?;
+
+    let initial_balance = account
+        .vault()
+        .get_balance(faucet_existing_asset)
+        .expect("faucet_id should be a fungible faucet ID");
+
+    let expected_output_note =
+        create_public_p2any_note(ACCOUNT_ID_SENDER.try_into()?, [fungible_asset_for_note_existing]);
+
+    let remove_existing_source = format!(
+        r#"
+        use.miden::account
+        use.miden::contracts::wallets::basic->wallet
+        use.mock::util
+
+        # Inputs:  [ASSET, note_idx]
+        # Outputs: [ASSET, note_idx]
+        proc.move_asset_to_note
+            # pad the stack before call
+            push.0.0.0 movdn.7 movdn.7 movdn.7 padw padw swapdw
+            # => [ASSET, note_idx, pad(11)]
+
+            call.wallet::move_asset_to_note
+            # => [ASSET, note_idx, pad(11)]
+
+            # remove excess PADs from the stack
+            swapdw dropw dropw swapw movdn.7 drop drop drop
+            # => [ASSET, note_idx]
+        end
+
+        begin
+            # create random note and move the asset into it
+            exec.util::create_random_note
+            # => [note_idx]
+
+            push.{REMOVED_ASSET}
+            exec.move_asset_to_note dropw drop
+            # => []
+
+            # push faucet ID prefix and suffix
+            push.{suffix}.{prefix}
+            # => [faucet_id_prefix, faucet_id_suffix]
+
+            # get the current asset balance
+            dup.1 dup.1 exec.account::get_balance
+            # => [final_balance, faucet_id_prefix, faucet_id_suffix]
+
+            # assert final balance is correct
+            push.{final_balance}
+            assert_eq.err="final balance is incorrect"
+            # => [faucet_id_prefix, faucet_id_suffix]
+
+            # get the initial asset balance
+            exec.account::get_initial_balance
+            # => [init_balance]
+
+            # assert initial balance is correct
+            push.{initial_balance}
+            assert_eq.err="initial balance is incorrect"
+        end
+    "#,
+        REMOVED_ASSET = Word::from(fungible_asset_for_note_existing),
+        suffix = faucet_existing_asset.suffix(),
+        prefix = faucet_existing_asset.prefix().as_felt(),
+        final_balance =
+            initial_balance - fungible_asset_for_note_existing.unwrap_fungible().amount(),
+    );
+
+    let tx_script =
+        ScriptBuilder::with_mock_libraries()?.compile_tx_script(remove_existing_source)?;
+
+    let tx_context = mock_chain
+        .build_tx_context(TxContextInput::AccountId(account.id()), &[], &[])?
+        .tx_script(tx_script)
+        .extend_expected_output_notes(vec![OutputNote::Full(expected_output_note)])
+        .build()?;
+
+    tx_context.execute().await?;
+
+    Ok(())
+}
+
 // PROCEDURE AUTHENTICATION TESTS
 // ================================================================================================
 
@@ -1360,10 +1625,10 @@ async fn incrementing_nonce_twice_fails() -> anyhow::Result<()> {
 // ================================================================================================
 
 #[test]
-fn test_get_item_init() -> miette::Result<()> {
+fn test_get_initial_item() -> miette::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build().unwrap();
 
-    // Test that get_item_init returns the initial value before any changes
+    // Test that get_initial_item returns the initial value before any changes
     let code = format!(
         "
         use.$kernel::account
@@ -1375,7 +1640,7 @@ fn test_get_item_init() -> miette::Result<()> {
 
             # get initial value of storage slot 0
             push.0
-            exec.account::get_item_init
+            exec.account::get_initial_item
 
             push.{expected_initial_value}
             assert_eqw.err=\"initial value should match expected\"
@@ -1390,9 +1655,9 @@ fn test_get_item_init() -> miette::Result<()> {
             push.9.10.11.12
             assert_eqw.err=\"current value should be updated\"
 
-            # get_item_init should still return the initial value
+            # get_initial_item should still return the initial value
             push.0
-            exec.account::get_item_init
+            exec.account::get_initial_item
             push.{expected_initial_value}
             assert_eqw.err=\"initial value should remain unchanged\"
         end
@@ -1406,7 +1671,7 @@ fn test_get_item_init() -> miette::Result<()> {
 }
 
 #[test]
-fn test_get_map_item_init() -> miette::Result<()> {
+fn test_get_initial_map_item() -> miette::Result<()> {
     let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(Auth::IncrNonce)
         .with_component(MockAccountComponent::with_slots(vec![AccountStorage::mock_item_2().slot]))
@@ -1431,7 +1696,7 @@ fn test_get_map_item_init() -> miette::Result<()> {
             # get initial value from map
             push.{initial_key}
             push.0
-            call.mock_account::get_map_item_init
+            call.mock_account::get_initial_map_item
             push.{initial_value}
             assert_eqw.err=\"initial map value should match expected\"
 
@@ -1448,17 +1713,17 @@ fn test_get_map_item_init() -> miette::Result<()> {
             push.{new_value}
             assert_eqw.err=\"current map value should be updated\"
 
-            # get_map_item_init should still return the initial value for the initial key
+            # get_initial_map_item should still return the initial value for the initial key
             push.{initial_key}
             push.0
-            call.mock_account::get_map_item_init
+            call.mock_account::get_initial_map_item
             push.{initial_value}
             assert_eqw.err=\"initial map value should remain unchanged\"
 
-            # get_map_item_init for the new key should return empty word (default)
+            # get_initial_map_item for the new key should return empty word (default)
             push.{new_key}
             push.0
-            call.mock_account::get_map_item_init
+            call.mock_account::get_initial_map_item
             padw
             assert_eqw.err=\"new key should have empty initial value\"
 
