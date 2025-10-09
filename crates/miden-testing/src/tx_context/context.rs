@@ -20,13 +20,7 @@ use miden_objects::transaction::{
     TransactionInputs,
 };
 use miden_processor::fast::ExecutionOutput;
-use miden_processor::{
-    ExecutionError,
-    FutureMaybeSend,
-    MastForest,
-    MastForestStore,
-    Word,
-};
+use miden_processor::{ExecutionError, FutureMaybeSend, MastForest, MastForestStore, Word};
 use miden_tx::auth::{BasicAuthenticator, UnreachableAuth};
 use miden_tx::{
     AccountProcedureIndexMap,
