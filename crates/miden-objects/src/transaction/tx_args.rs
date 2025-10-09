@@ -234,7 +234,6 @@ impl TransactionArgs {
     }
 
     /// Extends the advice inputs in self with the provided ones.
-    #[cfg(feature = "testing")]
     pub fn extend_advice_inputs(&mut self, advice_inputs: AdviceInputs) {
         self.advice_inputs.extend(advice_inputs);
     }

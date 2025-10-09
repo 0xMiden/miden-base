@@ -317,7 +317,7 @@ export.memory::get_init_account_commitment->get_initial_commitment
 #!
 #! Where:
 #! - INIT_ACCOUNT_VAULT_ROOT is the initial account vault root.
-export.memory::get_init_account_vault_root->get_initial_vault_root
+export.memory::get_init_native_account_vault_root->get_initial_vault_root
 
 #! Returns the storage commitment of the native account at the beginning of the transaction.
 #!
@@ -492,7 +492,7 @@ end
 #! Where:
 #! - index is the index of the item to get.
 #! - INIT_VALUE is the initial value of the item at the beginning of the transaction.
-export.get_item_init
+export.get_initial_item
     # get account initial storage slots section offset
     exec.memory::get_account_initial_storage_slots_ptr
     # => [account_initial_storage_slots_ptr, index]
@@ -587,13 +587,13 @@ end
 #!
 #! Panics if:
 #! - the requested storage slot type is not map.
-export.get_map_item_init
+export.get_initial_map_item
     # duplicate index for later use
     dup movdn.5
     # => [index, KEY, index]
 
     # fetch the initial account storage item, which is ROOT of the map
-    exec.get_item_init swapw
+    exec.get_initial_item swapw
     # => [KEY, INIT_ROOT, index]
 
     exec.get_map_item_raw
@@ -984,7 +984,8 @@ export.remove_asset_from_vault
     # => [ASSET]
 end
 
-#! Returns the balance of a fungible asset associated with a faucet_id.
+#! Returns the balance of the fungible asset associated with the provided faucet_id in the current
+#! account's vault.
 #!
 #! Inputs:  [faucet_id_prefix, faucet_id_suffix]
 #! Outputs: [balance]
@@ -995,7 +996,7 @@ end
 #! - balance is the vault balance of the fungible asset.
 #!
 #! Panics if:
-#! - the asset is not a fungible asset.
+#! - the provided faucet ID is not an ID of a fungible faucet.
 export.get_balance
     # get the vault root
     exec.memory::get_account_vault_root_ptr movdn.2
@@ -1008,6 +1009,33 @@ export.get_balance
     # get the asset balance
     exec.asset_vault::get_balance
     # => [balance]
+end
+
+#! Returns the balance of the fungible asset associated with the provided faucet_id in the current 
+#! account's vault at the beginning of the transaction.
+#!
+#! Inputs:  [faucet_id_prefix, faucet_id_suffix]
+#! Outputs: [init_balance]
+#!
+#! Where:
+#! - faucet_id_{prefix, suffix} are the prefix and suffix felts of the faucet id of the fungible
+#!   asset of interest.
+#! - init_balance is the vault balance of the fungible asset at the beginning of the transaction.
+#!
+#! Panics if:
+#! - the provided faucet ID is not an ID of a fungible faucet.
+export.get_initial_balance
+    # get the vault root associated with the initial vault root of the native account
+    exec.memory::get_account_initial_vault_root_ptr movdn.2
+    # => [faucet_id_prefix, faucet_id_suffix, init_native_vault_root_ptr]
+
+    # emit event to signal that an asset's balance is requested
+    emit.ACCOUNT_VAULT_BEFORE_GET_BALANCE_EVENT
+    # => [faucet_id_prefix, faucet_id_suffix, init_native_vault_root_ptr]
+
+    # get the asset balance
+    exec.asset_vault::get_balance
+    # => [init_balance]
 end
 
 #! Returns a boolean indicating whether the non-fungible asset is present in the current account's vault.
@@ -1313,7 +1341,7 @@ export.get_item_by_index
     # => [VALUE]
 end
 
-#! Gets an item from the storage slot at the provided index.
+#! Gets the initial item from the storage slot at the provided index.
 #!
 #! WARNING: The index must be in bounds.
 #!
@@ -1324,7 +1352,7 @@ end
 #! - storage_slots_ptr is the pointer to the storage slots section.
 #! - index is the index of the item to get.
 #! - VALUE is the value of the item.
-export.get_item_init_by_index
+export.get_initial_item_by_index
     # get account initial storage slots section offset
     exec.memory::get_account_initial_storage_slots_ptr
     # => [account_initial_storage_slots_ptr, index]

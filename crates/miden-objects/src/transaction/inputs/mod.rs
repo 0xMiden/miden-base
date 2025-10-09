@@ -1,22 +1,20 @@
+use alloc::vec::Vec;
 use core::fmt::Debug;
+
+use miden_core::utils::{Deserializable, Serializable};
 
 use super::PartialBlockchain;
 use crate::TransactionInputError;
-use crate::account::PartialAccount;
-use crate::block::BlockHeader;
+use crate::account::{AccountCode, PartialAccount};
+use crate::block::{BlockHeader, BlockNumber};
 use crate::note::{Note, NoteInclusionProof};
-use crate::utils::serde::{
-    ByteReader,
-    ByteWriter,
-    Deserializable,
-    DeserializationError,
-    Serializable,
-};
+use crate::transaction::{TransactionArgs, TransactionScript};
 
 mod account;
 pub use account::AccountInputs;
 
 mod notes;
+use miden_processor::AdviceInputs;
 pub use notes::{InputNote, InputNotes, ToInputNoteCommitments};
 
 // TRANSACTION INPUTS
@@ -29,6 +27,9 @@ pub struct TransactionInputs {
     block_header: BlockHeader,
     blockchain: PartialBlockchain,
     input_notes: InputNotes<InputNote>,
+    tx_args: TransactionArgs,
+    advice_inputs: AdviceInputs,
+    foreign_account_code: Vec<AccountCode>,
 }
 
 impl TransactionInputs {
@@ -40,17 +41,15 @@ impl TransactionInputs {
     /// # Errors
     ///
     /// Returns an error if:
-    /// - The partial blockchain's length is not the number of the reference block.
-    /// - The partial blockchain's commitment does not match the reference block's chain commitment.
-    /// - The partial blockchain does not proof inclusion of an authenticated input note.
+    /// - The partial blockchain does not track the block headers required to prove inclusion of any
+    ///   authenticated input note.
     pub fn new(
-        partial_account: impl Into<PartialAccount>,
+        account: PartialAccount,
         block_header: BlockHeader,
         blockchain: PartialBlockchain,
         input_notes: InputNotes<InputNote>,
     ) -> Result<Self, TransactionInputError> {
         // Check that the partial blockchain and block header are consistent.
-        let block_num = block_header.block_num();
         if blockchain.chain_length() != block_header.block_num() {
             return Err(TransactionInputError::InconsistentChainLength {
                 expected: block_header.block_num(),
@@ -63,12 +62,11 @@ impl TransactionInputs {
                 actual: blockchain.peaks().hash_peaks(),
             });
         }
-
         // Validate the authentication paths of the input notes.
         for note in input_notes.iter() {
             if let InputNote::Authenticated { note, proof } = note {
                 let note_block_num = proof.location().block_num();
-                let block_header = if note_block_num == block_num {
+                let block_header = if note_block_num == block_header.block_num() {
                     &block_header
                 } else {
                     blockchain.get_block(note_block_num).ok_or(
@@ -80,22 +78,51 @@ impl TransactionInputs {
         }
 
         Ok(Self {
-            account: partial_account.into(),
+            account,
             block_header,
             blockchain,
             input_notes,
+            tx_args: TransactionArgs::default(),
+            advice_inputs: AdviceInputs::default(),
+            foreign_account_code: Vec::new(),
         })
     }
 
-    /// Updates the input notes for the transaction.
-    ///
-    /// # Warning
-    ///
-    /// This method does not validate the notes against the data already in this
-    /// [`TransactionInputs`]. It should only be called with notes that have been validated by
-    /// the constructor.
-    pub fn set_input_notes_unchecked(&mut self, new_notes: InputNotes<InputNote>) {
-        self.input_notes = new_notes;
+    /// Replaces the transaction inputs and assigns the given foreign account code.
+    pub fn with_foreign_account_code(mut self, foreign_account_code: Vec<AccountCode>) -> Self {
+        self.foreign_account_code = foreign_account_code;
+        self
+    }
+
+    /// Replaces the transaction inputs and assigns the given transaction arguments.
+    pub fn with_tx_args(mut self, tx_args: TransactionArgs) -> Self {
+        self.tx_args = tx_args;
+        self
+    }
+
+    /// Replaces the transaction inputs and assigns the given advice inputs.
+    pub fn with_advice_inputs(mut self, advice_inputs: AdviceInputs) -> Self {
+        self.advice_inputs = advice_inputs;
+        self
+    }
+
+    // MUTATORS
+    // --------------------------------------------------------------------------------------------
+
+    /// Replaces the input notes for the transaction.
+    pub fn set_input_notes(&mut self, new_notes: Vec<Note>) {
+        self.input_notes = new_notes.into();
+    }
+
+    /// Replaces the advice inputs for the transaction.
+    pub fn set_advice_inputs(&mut self, new_advice_inputs: AdviceInputs) {
+        self.advice_inputs = new_advice_inputs;
+    }
+
+    /// Updates the transaction arguments of the inputs.
+    #[cfg(feature = "testing")]
+    pub fn set_tx_args(&mut self, tx_args: TransactionArgs) {
+        self.tx_args = tx_args;
     }
 
     // PUBLIC ACCESSORS
@@ -122,35 +149,86 @@ impl TransactionInputs {
         &self.input_notes
     }
 
+    /// Returns the block number referenced by the inputs.
+    pub fn ref_block(&self) -> BlockNumber {
+        self.block_header.block_num()
+    }
+
+    /// Returns the transaction script to be executed.
+    pub fn tx_script(&self) -> Option<&TransactionScript> {
+        self.tx_args.tx_script()
+    }
+
+    /// Returns the foreign account code to be executed.
+    pub fn foreign_account_code(&self) -> &[AccountCode] {
+        &self.foreign_account_code
+    }
+
+    /// Returns the foreign account inputs to be consumed in the transaction.
+    pub fn foreign_account_inputs(&self) -> &[AccountInputs] {
+        self.tx_args.foreign_account_inputs()
+    }
+
+    /// Returns the advice inputs to be consumed in the transaction.
+    pub fn advice_inputs(&self) -> &AdviceInputs {
+        &self.advice_inputs
+    }
+
+    /// Returns the transaction arguments to be consumed in the transaction.
+    pub fn tx_args(&self) -> &TransactionArgs {
+        &self.tx_args
+    }
+
     // CONVERSIONS
     // --------------------------------------------------------------------------------------------
 
     /// Consumes these transaction inputs and returns their underlying components.
     pub fn into_parts(
         self,
-    ) -> (PartialAccount, BlockHeader, PartialBlockchain, InputNotes<InputNote>) {
-        (self.account, self.block_header, self.blockchain, self.input_notes)
+    ) -> (
+        PartialAccount,
+        BlockHeader,
+        PartialBlockchain,
+        InputNotes<InputNote>,
+        TransactionArgs,
+    ) {
+        (self.account, self.block_header, self.blockchain, self.input_notes, self.tx_args)
     }
 }
 
 impl Serializable for TransactionInputs {
-    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+    fn write_into<W: miden_core::utils::ByteWriter>(&self, target: &mut W) {
         self.account.write_into(target);
         self.block_header.write_into(target);
         self.blockchain.write_into(target);
         self.input_notes.write_into(target);
+        self.tx_args.write_into(target);
+        self.advice_inputs.write_into(target);
+        self.foreign_account_code.write_into(target);
     }
 }
 
 impl Deserializable for TransactionInputs {
-    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        let partial_account = PartialAccount::read_from(source)?;
+    fn read_from<R: miden_core::utils::ByteReader>(
+        source: &mut R,
+    ) -> Result<Self, miden_core::utils::DeserializationError> {
+        let account = PartialAccount::read_from(source)?;
         let block_header = BlockHeader::read_from(source)?;
         let blockchain = PartialBlockchain::read_from(source)?;
         let input_notes = InputNotes::read_from(source)?;
+        let tx_args = TransactionArgs::read_from(source)?;
+        let advice_inputs = AdviceInputs::read_from(source)?;
+        let foreign_account_code = Vec::<AccountCode>::read_from(source)?;
 
-        Self::new(partial_account, block_header, blockchain, input_notes)
-            .map_err(|err| DeserializationError::InvalidValue(format!("{err}")))
+        Ok(TransactionInputs {
+            account,
+            block_header,
+            blockchain,
+            input_notes,
+            tx_args,
+            advice_inputs,
+            foreign_account_code,
+        })
     }
 }
 

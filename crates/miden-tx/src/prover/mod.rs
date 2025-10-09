@@ -25,8 +25,8 @@ use miden_objects::transaction::{
     OutputNote,
     ProvenTransaction,
     ProvenTransactionBuilder,
+    TransactionInputs,
     TransactionOutputs,
-    TransactionWitness,
 };
 pub use miden_prover::ProvingOptions;
 use miden_prover::{ExecutionProof, Word, prove};
@@ -119,35 +119,28 @@ impl LocalTransactionProver {
 
     pub fn prove(
         &self,
-        tx_witness: TransactionWitness,
+        tx_inputs: impl Into<TransactionInputs>,
     ) -> Result<ProvenTransaction, TransactionProverError> {
-        let TransactionWitness {
-            tx_inputs,
-            tx_args,
-            foreign_account_code,
-            advice_witness,
-        } = tx_witness;
-
-        let (stack_inputs, advice_inputs) =
-            TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, Some(advice_witness))
-                .map_err(TransactionProverError::ConflictingAdviceMapEntry)?;
+        let tx_inputs = tx_inputs.into();
+        let (stack_inputs, advice_inputs) = TransactionKernel::prepare_inputs(&tx_inputs)
+            .map_err(TransactionProverError::ConflictingAdviceMapEntry)?;
 
         self.mast_store.load_account_code(tx_inputs.account().code());
-        for account_code in &foreign_account_code {
+        for account_code in tx_inputs.foreign_account_code() {
             self.mast_store.load_account_code(account_code);
         }
 
         let script_mast_store = ScriptMastForestStore::new(
-            tx_args.tx_script(),
+            tx_inputs.tx_script(),
             tx_inputs.input_notes().iter().map(|n| n.note().script()),
         );
 
         let account_procedure_index_map = AccountProcedureIndexMap::new(
-            foreign_account_code.iter().chain([tx_inputs.account().code()]),
+            tx_inputs.foreign_account_code().iter().chain([tx_inputs.account().code()]),
         )
         .map_err(TransactionProverError::CreateAccountProcedureIndexMap)?;
 
-        let (partial_account, ref_block, _, input_notes) = tx_inputs.into_parts();
+        let (partial_account, ref_block, _, input_notes, _) = tx_inputs.into_parts();
         let mut host = TransactionProverHost::new(
             &partial_account,
             input_notes,
@@ -253,11 +246,11 @@ fn partial_storage_map_to_storage_map(
 impl LocalTransactionProver {
     pub fn prove_dummy(
         &self,
-        executed_tx: ExecutedTransaction,
+        executed_transaction: ExecutedTransaction,
     ) -> Result<ProvenTransaction, TransactionProverError> {
-        let (account_delta, tx_outputs, tx_witness, _) = executed_tx.into_parts();
+        let (tx_inputs, tx_outputs, account_delta, _) = executed_transaction.into_parts();
 
-        let (partial_account, ref_block, _, input_notes) = tx_witness.tx_inputs.into_parts();
+        let (partial_account, ref_block, _, input_notes, _) = tx_inputs.into_parts();
 
         self.build_proven_transaction(
             &input_notes,

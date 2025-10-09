@@ -6,7 +6,7 @@ use miden_objects::{Word, word};
 // ================================================================================================
 
 /// Hashes of all dynamically executed kernel procedures.
-pub const KERNEL_PROCEDURES: [Word; 50] = [
+pub const KERNEL_PROCEDURES: [Word; 51] = [
     // account_get_initial_commitment
     word!("0x920898348bacd6d98a399301eb308478fd32b32eab019a5a6ef7a6b44abb61f6"),
     // account_compute_current_commitment
@@ -29,14 +29,14 @@ pub const KERNEL_PROCEDURES: [Word; 50] = [
     word!("0xa87008550383e1a88dde5d0adefc68ee3bf477aec07e4700f9101241aa1e868f"),
     // account_get_item
     word!("0x9662c76e2b6d5a6fd16aa65b248061988fa9c76f078337b8f382358b45379127"),
-    // account_get_item_init
-    word!("0x8c50df14ed7f3213ea7566d1ae550a8ed2b2938dfcdb5b53261d07a371b578f2"),
+    // account_get_initial_item
+    word!("0xf99db3b3222c463a88d300a58e0caaab725acec14681bfc72fde18f51214a97e"),
     // account_set_item
     word!("0x19044c21c41cfeb93157ecaa2b694d811fa31552be36cc10f6639a86be2207ce"),
     // account_get_map_item
     word!("0x9e5e4cc24d5ee06db654ec4890d04543a3b31247bc745ec572628b972150e5ea"),
-    // account_get_map_item_init
-    word!("0x5ca768619bbfda4550a90ac5f895cc17d1d602a972f4a0eeb851f0a70eaf4b68"),
+    // account_get_initial_map_item
+    word!("0x5282782c1c8ec8d00e21d34b29126329abb66826bb1ffeb8aa89345dc6aa8362"),
     // account_set_map_item
     word!("0xea5e90d9f62aaa91062da9f1a0e4e1ae78a9ff8b0c1b277049b7e9bc274eeee1"),
     // account_get_initial_vault_root
@@ -49,10 +49,12 @@ pub const KERNEL_PROCEDURES: [Word; 50] = [
     word!("0x7b965e458a962667a9cdc54a6677fd0c5a573bd7b265ccc33775a8a985aeead5"),
     // account_get_balance
     word!("0x52233827fc91ef50a5dc09f74d3176011d244fd80e291ae751b64bdaa2c6cf75"),
+    // account_get_initial_balance
+    word!("0x9758302462328d6557153655562e6a419def7992997c0abbcec412cbb4f9351f"),
     // account_has_non_fungible_asset
     word!("0xf975c799cffebf8565a8479475fe04c1832ef2a7484c4a2a42bbf7d8a340d649"),
     // account_compute_delta_commitment
-    word!("0x9cb23844ea3523618a5ed3d80116fb2b4513db0169e6c2904110877d49d4eda1"),
+    word!("0xa8ed4e547304dfa9ccb147919deeafe87b55de302a99044fad9dcc25d494bf32"),
     // account_was_procedure_called
     word!("0x34f27a609f2f2b4fec454b17182552b0acc52524e507e134257a1f1ed30a57cd"),
     // faucet_mint_asset

@@ -10,7 +10,7 @@ use miden_objects::assembly::debuginfo::{SourceLanguage, Uri};
 use miden_objects::assembly::{SourceManager, SourceManagerSync};
 use miden_objects::asset::AssetWitness;
 use miden_objects::block::{BlockHeader, BlockNumber};
-use miden_objects::note::Note;
+use miden_objects::note::{Note, NoteScript};
 use miden_objects::transaction::{
     AccountInputs,
     ExecutedTransaction,
@@ -21,7 +21,6 @@ use miden_objects::transaction::{
     TransactionInputs,
 };
 use miden_processor::{
-    AdviceInputs,
     ExecutionError,
     FutureMaybeSend,
     MastForest,
@@ -54,12 +53,11 @@ pub struct TransactionContext {
     pub(super) account: Account,
     pub(super) expected_output_notes: Vec<Note>,
     pub(super) foreign_account_inputs: BTreeMap<AccountId, AccountInputs>,
-    pub(super) tx_args: TransactionArgs,
     pub(super) tx_inputs: TransactionInputs,
     pub(super) mast_store: TransactionMastStore,
-    pub(super) advice_inputs: AdviceInputs,
     pub(super) authenticator: Option<MockAuthenticator>,
     pub(super) source_manager: Arc<dyn SourceManagerSync>,
+    pub(super) note_scripts: BTreeMap<Word, NoteScript>,
 }
 
 impl TransactionContext {
@@ -83,12 +81,8 @@ impl TransactionContext {
     ///
     /// - If the provided `code` is not a valid program.
     pub fn execute_code(&self, code: &str) -> Result<Process, ExecutionError> {
-        let (stack_inputs, advice_inputs) = TransactionKernel::prepare_inputs(
-            &self.tx_inputs,
-            &self.tx_args,
-            Some(self.advice_inputs.clone()),
-        )
-        .expect("error initializing transaction inputs");
+        let (stack_inputs, advice_inputs) = TransactionKernel::prepare_inputs(&self.tx_inputs)
+            .expect("error initializing transaction inputs");
 
         // Virtual file name should be unique.
         let virtual_source_file = self.source_manager.load(
@@ -109,7 +103,7 @@ impl TransactionContext {
         mast_store.insert(program.mast_forest().clone());
         mast_store.insert(TransactionKernel::library().mast_forest().clone());
         mast_store.load_account_code(self.account().code());
-        for acc_inputs in self.tx_args.foreign_account_inputs() {
+        for acc_inputs in self.tx_inputs.tx_args().foreign_account_inputs() {
             mast_store.load_account_code(acc_inputs.code());
         }
 
@@ -118,7 +112,7 @@ impl TransactionContext {
             MockHost::new(
                 self.tx_inputs().account().code(),
                 mast_store,
-                self.tx_args.foreign_account_inputs(),
+                self.tx_inputs().tx_args().foreign_account_inputs(),
             )
             .with_source_manager(self.source_manager()),
         )
@@ -144,18 +138,6 @@ impl TransactionContext {
         tx_executor.execute_transaction(account_id, block_num, notes, tx_args).await
     }
 
-    /// Executes the transaction through a [TransactionExecutor]
-    ///
-    /// TODO: This is a temporary workaround to avoid having to update each test to use tokio::test.
-    /// Eventually we should get rid of this method and use tokio::test + execute, but for the POC
-    /// stage this is easier.
-    pub fn execute_blocking(self) -> Result<ExecutedTransaction, TransactionExecutorError> {
-        tokio::runtime::Builder::new_current_thread()
-            .build()
-            .unwrap()
-            .block_on(self.execute())
-    }
-
     pub fn account(&self) -> &Account {
         &self.account
     }
@@ -165,7 +147,7 @@ impl TransactionContext {
     }
 
     pub fn tx_args(&self) -> &TransactionArgs {
-        &self.tx_args
+        self.tx_inputs.tx_args()
     }
 
     pub fn input_notes(&self) -> &InputNotes<InputNote> {
@@ -173,7 +155,7 @@ impl TransactionContext {
     }
 
     pub fn set_tx_args(&mut self, tx_args: TransactionArgs) {
-        self.tx_args = tx_args;
+        self.tx_inputs.set_tx_args(tx_args);
     }
 
     pub fn tx_inputs(&self) -> &TransactionInputs {
@@ -200,9 +182,10 @@ impl DataStore for TransactionContext {
         assert_eq!(account_id, self.account().id());
         assert_eq!(account_id, self.tx_inputs.account().id());
 
-        let (partial_account, header, mmr, _) = self.tx_inputs.clone().into_parts();
-
-        async move { Ok((partial_account, header, mmr)) }
+        let account = self.tx_inputs.account().clone();
+        let block_header = self.tx_inputs.block_header().clone();
+        let blockchain = self.tx_inputs.blockchain().clone();
+        async move { Ok((account, block_header, blockchain)) }
     }
 
     fn get_foreign_account_inputs(
@@ -332,10 +315,81 @@ impl DataStore for TransactionContext {
             }
         }
     }
+
+    fn get_note_script(
+        &self,
+        script_root: Word,
+    ) -> impl FutureMaybeSend<Result<NoteScript, DataStoreError>> {
+        async move {
+            self.note_scripts
+                .get(&script_root)
+                .cloned()
+                .ok_or_else(|| DataStoreError::NoteScriptNotFound(script_root))
+        }
+    }
 }
 
 impl MastForestStore for TransactionContext {
     fn get(&self, procedure_hash: &Word) -> Option<Arc<MastForest>> {
         self.mast_store.get(procedure_hash)
+    }
+}
+
+// TESTS
+// ================================================================================================
+
+#[cfg(test)]
+mod tests {
+    use miden_objects::Felt;
+    use miden_objects::assembly::Assembler;
+    use miden_objects::note::NoteScript;
+
+    use super::*;
+    use crate::TransactionContextBuilder;
+
+    #[tokio::test]
+    async fn test_get_note_scripts() {
+        // Create two note scripts
+        let assembler1 = Assembler::default();
+        let script1_code = "begin push.1 end";
+        let program1 = assembler1
+            .assemble_program(script1_code)
+            .expect("Failed to assemble note script 1");
+        let note_script1 = NoteScript::new(program1);
+        let script_root1 = note_script1.root();
+
+        let assembler2 = Assembler::default();
+        let script2_code = "begin push.2 push.3 add end";
+        let program2 = assembler2
+            .assemble_program(script2_code)
+            .expect("Failed to assemble note script 2");
+        let note_script2 = NoteScript::new(program2);
+        let script_root2 = note_script2.root();
+
+        // Build a transaction context with both note scripts
+        let tx_context = TransactionContextBuilder::with_existing_mock_account()
+            .add_note_script(note_script1.clone())
+            .add_note_script(note_script2.clone())
+            .build()
+            .expect("Failed to build transaction context");
+
+        // Assert that fetching both note scripts works
+        let retrieved_script1 = tx_context
+            .get_note_script(script_root1)
+            .await
+            .expect("Failed to get note script 1");
+        assert_eq!(retrieved_script1, note_script1);
+
+        let retrieved_script2 = tx_context
+            .get_note_script(script_root2)
+            .await
+            .expect("Failed to get note script 2");
+        assert_eq!(retrieved_script2, note_script2);
+
+        // Fetching a non-existent one fails
+        let non_existent_root =
+            Word::from([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]);
+        let result = tx_context.get_note_script(non_existent_root).await;
+        assert!(matches!(result, Err(DataStoreError::NoteScriptNotFound(_))));
     }
 }

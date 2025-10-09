@@ -55,7 +55,7 @@ const.INVERSE_FUNGIBLE_BITMASK_U32=0xffffffdf # last byte: 0b1101_1111
 #! - balance is the vault balance of the fungible asset.
 #!
 #! Panics if:
-#! - the asset is not a fungible asset.
+#! - the provided faucet ID is not an ID of a fungible faucet.
 export.get_balance
     # assert that the faucet id is a fungible faucet
     dup exec.account_id::is_fungible_faucet

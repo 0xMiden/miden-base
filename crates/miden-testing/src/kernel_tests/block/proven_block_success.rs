@@ -23,8 +23,8 @@ use crate::{Auth, MockChain};
 
 /// Tests the outputs of a proven block with transactions that consume notes, create output notes
 /// and modify the account's state.
-#[test]
-fn proven_block_success() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proven_block_success() -> anyhow::Result<()> {
     // Setup test with notes that produce output notes, in order to test the block note tree root
     // computation.
     // --------------------------------------------------------------------------------------------
@@ -54,10 +54,18 @@ fn proven_block_success() -> anyhow::Result<()> {
     let mut chain = builder.build()?;
     chain.prove_next_block()?;
 
-    let tx0 = chain.create_authenticated_notes_proven_tx(account0.id(), [input_note0.id()])?;
-    let tx1 = chain.create_authenticated_notes_proven_tx(account1.id(), [input_note1.id()])?;
-    let tx2 = chain.create_authenticated_notes_proven_tx(account2.id(), [input_note2.id()])?;
-    let tx3 = chain.create_authenticated_notes_proven_tx(account3.id(), [input_note3.id()])?;
+    let tx0 = chain
+        .create_authenticated_notes_proven_tx(account0.id(), [input_note0.id()])
+        .await?;
+    let tx1 = chain
+        .create_authenticated_notes_proven_tx(account1.id(), [input_note1.id()])
+        .await?;
+    let tx2 = chain
+        .create_authenticated_notes_proven_tx(account2.id(), [input_note2.id()])
+        .await?;
+    let tx3 = chain
+        .create_authenticated_notes_proven_tx(account3.id(), [input_note3.id()])
+        .await?;
 
     let batch0 = chain.create_batch(vec![tx0.clone(), tx1.clone()])?;
     let batch1 = chain.create_batch(vec![tx2.clone(), tx3.clone()])?;
@@ -196,8 +204,8 @@ fn proven_block_success() -> anyhow::Result<()> {
 ///
 /// We also test that the batch note tree containing the output generating transactions is a subtree
 /// of the subtree of the overall block note tree computed from the block's output notes.
-#[test]
-fn proven_block_erasing_unauthenticated_notes() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proven_block_erasing_unauthenticated_notes() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let account0 = builder.add_existing_mock_account(Auth::IncrNonce)?;
     let account1 = builder.add_existing_mock_account(Auth::IncrNonce)?;
@@ -221,11 +229,12 @@ fn proven_block_erasing_unauthenticated_notes() -> anyhow::Result<()> {
     let note3 = builder.add_spawn_note([&output_note3])?;
     let chain = builder.build()?;
 
-    let tx0 = chain.create_authenticated_notes_proven_tx(account0.id(), [note0.id()])?;
+    let tx0 = chain.create_authenticated_notes_proven_tx(account0.id(), [note0.id()]).await?;
     let tx1 = chain
-        .create_unauthenticated_notes_proven_tx(account1.id(), slice::from_ref(&output_note0))?;
-    let tx2 = chain.create_authenticated_notes_proven_tx(account2.id(), [note2.id()])?;
-    let tx3 = chain.create_authenticated_notes_proven_tx(account3.id(), [note3.id()])?;
+        .create_unauthenticated_notes_proven_tx(account1.id(), slice::from_ref(&output_note0))
+        .await?;
+    let tx2 = chain.create_authenticated_notes_proven_tx(account2.id(), [note2.id()]).await?;
+    let tx3 = chain.create_authenticated_notes_proven_tx(account3.id(), [note3.id()]).await?;
 
     assert_eq!(tx0.input_notes().num_notes(), 1);
     assert_eq!(tx0.output_notes().num_notes(), 1);
@@ -333,8 +342,8 @@ fn proven_block_erasing_unauthenticated_notes() -> anyhow::Result<()> {
 }
 
 /// Tests that we can build empty blocks.
-#[test]
-fn proven_block_succeeds_with_empty_batches() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proven_block_succeeds_with_empty_batches() -> anyhow::Result<()> {
     // Setup a chain with a non-empty nullifier tree by consuming some notes.
     // --------------------------------------------------------------------------------------------
 
@@ -347,8 +356,8 @@ fn proven_block_succeeds_with_empty_batches() -> anyhow::Result<()> {
         builder.add_p2any_note(account1.id(), NoteType::Public, [FungibleAsset::mock(100)])?;
     let mut chain = builder.build()?;
 
-    let tx0 = chain.create_authenticated_notes_proven_tx(account0.id(), [note0.id()])?;
-    let tx1 = chain.create_authenticated_notes_proven_tx(account1.id(), [note1.id()])?;
+    let tx0 = chain.create_authenticated_notes_proven_tx(account0.id(), [note0.id()]).await?;
+    let tx1 = chain.create_authenticated_notes_proven_tx(account1.id(), [note1.id()]).await?;
 
     chain.add_pending_proven_transaction(tx0);
     chain.add_pending_proven_transaction(tx1);
