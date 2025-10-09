@@ -48,8 +48,8 @@ miden-tx              = { default-features = false, path = "crates/miden-tx", ve
 miden-tx-batch-prover = { default-features = false, path = "crates/miden-tx-batch-prover", version = "0.12" }
 
 # Miden dependencies
-miden-assembly-syntax = { default-features = false, version = "0.18" }
 miden-assembly        = { default-features = false, version = "0.18" }
+miden-assembly-syntax = { default-features = false, version = "0.18" }
 miden-core            = { default-features = false, version = "0.18" }
 miden-crypto          = { default-features = false, version = "0.17" }
 miden-mast-package    = { default-features = false, version = "0.18" }
