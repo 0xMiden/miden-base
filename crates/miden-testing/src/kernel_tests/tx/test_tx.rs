@@ -283,7 +283,6 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
         "\
         use.miden::contracts::wallets::basic->wallet
         use.miden::output_note
-        use.mock::account
 
         # Inputs:  [tag, aux, note_type, execution_hint, RECIPIENT]
         # Outputs: [note_idx]

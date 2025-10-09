@@ -1,6 +1,5 @@
 use.miden::kernel_proc_offsets
 use.miden::note
-use.std::mem
 
 # PROCEDURES
 # =================================================================================================
