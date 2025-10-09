@@ -23,14 +23,14 @@ use crate::{AccountError, FieldElement, ZERO};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct StorageSlotHeader {
     name_id: SlotNameId,
-    typ: StorageSlotType,
+    r#type: StorageSlotType,
     value: Word,
 }
 
 impl StorageSlotHeader {
     /// Returns a new instance of storage slot header from the provided storage slot type and value.
-    pub(crate) fn new(name_id: SlotNameId, typ: StorageSlotType, value: Word) -> Self {
-        Self { name_id, typ, value }
+    pub(crate) fn new(name_id: SlotNameId, r#type: StorageSlotType, value: Word) -> Self {
+        Self { name_id, r#type, value }
     }
 
     /// Returns this storage slot header as field elements.
@@ -43,7 +43,7 @@ impl StorageSlotHeader {
         let mut elements = [ZERO; StorageSlot::NUM_ELEMENTS_PER_STORAGE_SLOT];
         elements[0..4].copy_from_slice(&[
             Felt::ZERO,
-            self.typ.as_felt(),
+            self.r#type.as_felt(),
             self.name_id.suffix(),
             self.name_id.prefix(),
         ]);
@@ -80,7 +80,7 @@ impl AccountStorageHeader {
 
     /// Returns an iterator over the storage header slots.
     pub fn slots(&self) -> impl Iterator<Item = (&SlotName, &StorageSlotType, &Word)> {
-        self.slots.iter().map(|(name, typ, value)| (name, typ, value))
+        self.slots.iter().map(|(name, r#type, value)| (name, r#type, value))
     }
 
     /// Returns an iterator over the storage header map slots.
@@ -110,8 +110,8 @@ impl AccountStorageHeader {
         self.slots
             .binary_search_by_key(&slot_name.compute_id(), |(name, ..)| name.compute_id())
             .map(|slot_idx| {
-                let (name, typ, value) = &self.slots[slot_idx];
-                (name, typ, value)
+                let (name, r#type, value) = &self.slots[slot_idx];
+                (name, r#type, value)
             })
             .ok()
             .ok_or(AccountError::StorageIndexOutOfBounds {
