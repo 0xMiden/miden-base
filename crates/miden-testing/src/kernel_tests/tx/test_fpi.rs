@@ -1097,7 +1097,7 @@ async fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
         .await?;
 
     // TODO: Remove later and add a integration test using FPI.
-    LocalTransactionProver::default().prove(executed_transaction.into())?;
+    LocalTransactionProver::default().prove(executed_transaction)?;
 
     Ok(())
 }

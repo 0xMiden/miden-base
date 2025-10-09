@@ -61,6 +61,9 @@
 - [BREAKING] Rename `MockChainBuilder::add_note` to `add_output_note` ([#1946](https://github.com/0xMiden/miden-base/pull/1946)).
 - Dynamically lookup all masm `EventId`s from source ([#1954](https://github.com/0xMiden/miden-base/pull/1954)).
 - [BREAKING] Rename `get_item_init` and `get_map_item_init` to `get_initial_item` and `get_initial_map_item` respectively ([#1959](https://github.com/0xMiden/miden-base/pull/1959)).
+- [BREAKING] Rename `TransactionInputs` to `TransactionExecutionInputs` and make a new `TransactionInputs` struct which does not contain `InputNotes<InputNote>` ([#1934](https://github.com/0xMiden/miden-base/pull/1934)).
+- [BREAKING] Rename `MockChainBuilder::add_note` to `add_output_note` ([#1946](https://github.com/0xMiden/miden-base/pull/1946)).
+- [BREAKING] Refactor `TransactionInputs` and remove `TransactionWitness` ([#1934](https://github.com/0xMiden/miden-base/pull/1934)).
 
 ## 0.11.5 (2025-10-02)
 

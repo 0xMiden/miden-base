@@ -127,7 +127,7 @@ fn core_benchmarks(c: &mut Criterion) {
 fn prove_transaction(executed_transaction: ExecutedTransaction) -> Result<()> {
     let executed_transaction_id = executed_transaction.id();
     let proven_transaction: ProvenTransaction =
-        LocalTransactionProver::default().prove(executed_transaction.into())?;
+        LocalTransactionProver::default().prove(executed_transaction)?;
 
     assert_eq!(proven_transaction.id(), executed_transaction_id);
     Ok(())
