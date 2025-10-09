@@ -332,7 +332,7 @@ proc.validate_new_account
             # => []
 
             # get the faucet reserved storage data slot type
-            exec.account::get_faucet_storage_data_slot exec.account::get_storage_slot_type
+            exec.account::get_faucet_storage_data_slot exec.account::get_storage_slot_type_by_index
             # => [slot_type]
 
             # assert the fungible faucet reserved slot type == value
@@ -347,7 +347,7 @@ proc.validate_new_account
             # => []
 
             # get the faucet reserved storage data slot type
-            exec.account::get_faucet_storage_data_slot exec.account::get_storage_slot_type
+            exec.account::get_faucet_storage_data_slot exec.account::get_storage_slot_type_by_index
             # => [slot_type]
 
             # assert the non-fungible faucet reserved slot type == map

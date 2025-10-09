@@ -50,6 +50,10 @@ impl crate::utils::serde::Serializable for NamedStorageSlot {
         target.write(&self.name);
         target.write(&self.slot);
     }
+
+    fn get_size_hint(&self) -> usize {
+        self.name.get_size_hint() + self.storage_slot().get_size_hint()
+    }
 }
 
 impl crate::utils::serde::Deserializable for NamedStorageSlot {

@@ -219,6 +219,11 @@ impl Serializable for SlotName {
         target.write(u8::try_from(self.as_str().len()).expect("TODO"));
         target.write_many(self.as_str().as_bytes())
     }
+
+    fn get_size_hint(&self) -> usize {
+        // Slot name length + name bytes
+        1usize + self.as_str().len()
+    }
 }
 
 impl Deserializable for SlotName {

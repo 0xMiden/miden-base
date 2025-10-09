@@ -117,13 +117,15 @@ impl AccountStorage {
             _ => vec![],
         };
 
+        let offset = storage_slots.len();
+
         for (slot_idx, slot) in components
             .iter()
             .flat_map(|component| component.storage_slots())
             .cloned()
             .enumerate()
         {
-            let name = SlotName::new_index(slot_idx);
+            let name = SlotName::new_index(slot_idx + offset);
             storage_slots.push(NamedStorageSlot::new(name, slot));
         }
 
@@ -399,14 +401,14 @@ mod tests {
     #[test]
     fn test_serde_account_storage() {
         // empty storage
-        let storage = AccountStorage::new_named(vec![]).unwrap();
+        let storage = AccountStorage::new(vec![]).unwrap();
         let bytes = storage.to_bytes();
         assert_eq!(storage, AccountStorage::read_from_bytes(&bytes).unwrap());
 
         // storage with values for default types
-        let storage = AccountStorage::new_named(vec![
-            NamedStorageSlot::new(SlotName::new_index(0), StorageSlot::Value(Word::empty())),
-            NamedStorageSlot::new(SlotName::new_index(1), StorageSlot::Map(StorageMap::default())),
+        let storage = AccountStorage::new(vec![
+            StorageSlot::Value(Word::empty()),
+            StorageSlot::Map(StorageMap::default()),
         ])
         .unwrap();
         let bytes = storage.to_bytes();
