@@ -27,6 +27,7 @@
 - Added `StorageMap::{num_entries, num_leaves}` to retrieve the number of entries in a storage map ([#1935]https://github.com/0xMiden/miden-base/pull/1935).
 - Added `AssetVault::{num_assets, num_leaves, inner_nodes}` ([#1939]https://github.com/0xMiden/miden-base/pull/1939).
 - [BREAKING] Enable computing the transaction ID from the data in a `TransactionHeader` ([#1973]https://github.com/0xMiden/miden-base/pull/1973).
+- Added `MastArtifact`, `PackageExport`, `PackageManifest`, `AttributeSet` and `QualifiedProcedureName` to re-export section ([#1984](https://github.com/0xMiden/miden-base/pull/1984))
 
 ### Changes
 
