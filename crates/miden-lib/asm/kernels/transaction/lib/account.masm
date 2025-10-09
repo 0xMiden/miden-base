@@ -117,6 +117,9 @@ const.ACCOUNT_STORAGE_SLOT_DATA_LENGTH=8
 # The number of field elements it takes to store one account procedure.
 const.ACCOUNT_PROCEDURE_DATA_LENGTH=8
 
+# The offset of the slot type in the storage slot.
+const.ACCOUNT_SLOT_TYPE_OFFSET=1
+
 # EVENTS
 # =================================================================================================
 
@@ -516,7 +519,7 @@ export.set_item
     # => [index, VALUE]
 
     # get storage slot type
-    dup exec.get_storage_slot_type
+    dup exec.get_storage_slot_type_by_index
     # => [storage_slot_type, index, VALUE]
 
     # check if type == slot
@@ -623,7 +626,7 @@ export.set_map_item.12
     # => [index, KEY, NEW_VALUE, OLD_ROOT, ...]
 
     # check if storage type is map
-    exec.get_storage_slot_type
+    exec.get_storage_slot_type_by_index
     # => [slot_type, KEY, NEW_VALUE, OLD_ROOT]
 
     # check if slot_type == map
@@ -677,6 +680,8 @@ export.set_map_item.12
     # => [OLD_MAP_ROOT, OLD_MAP_VALUE, ...]
 end
 
+#! TODO(named_slots): Refactor to take name instead.
+#!
 #! Returns the type of the requested storage slot.
 #!
 #! Inputs:  [index]
@@ -688,7 +693,7 @@ end
 #!
 #! Panics if:
 #! - the slot index is out of bounds.
-export.get_storage_slot_type
+export.get_storage_slot_type_by_index
     # check that index is in bounds
     dup exec.memory::get_num_storage_slots lt assert.err=ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS
     # => [index]
@@ -700,7 +705,25 @@ export.get_storage_slot_type
     # => [slot_ptr]
 
     # load the slot type
-    add.2 mem_load
+    add.ACCOUNT_SLOT_TYPE_OFFSET mem_load
+    # => [slot_type]
+end
+
+#! Returns the type of the requested storage slot.
+#!
+#! Inputs:  [account_storage_slots_section_ptr, index]
+#! Outputs: [slot_type]
+#!
+#! Where:
+#! - index is the location in memory of the storage slot.
+#! - slot_type is the type of the storage slot.
+export.get_storage_slot_type
+    # compute storage slot ptr
+    swap mul.8 add
+    # => [storage_slot_ptr]
+
+    # load the slot type
+    add.1 mem_load
     # => [slot_type]
 end
 
@@ -1347,7 +1370,7 @@ end
 #! - the requested storage slot type is not map.
 proc.get_map_item_raw
     # check storage slot type
-    dup.8 exec.get_storage_slot_type
+    dup.8 exec.get_storage_slot_type_by_index
     # => [slot_type, KEY, ROOT, index]
 
     # check if storage slot type is map

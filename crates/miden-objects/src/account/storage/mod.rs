@@ -108,14 +108,12 @@ impl AccountStorage {
         account_type: AccountType,
     ) -> Result<AccountStorage, AccountError> {
         let mut storage_slots = match account_type {
-            AccountType::FungibleFaucet => vec![NamedStorageSlot::new(
-                NamedStorageSlot::FAUCET_RESERVED_SLOT_NAME,
-                StorageSlot::empty_value(),
-            )],
-            AccountType::NonFungibleFaucet => vec![NamedStorageSlot::new(
-                NamedStorageSlot::FAUCET_RESERVED_SLOT_NAME,
-                StorageSlot::empty_map(),
-            )],
+            AccountType::FungibleFaucet => {
+                vec![NamedStorageSlot::new(SlotName::new_index(0), StorageSlot::empty_value())]
+            },
+            AccountType::NonFungibleFaucet => {
+                vec![NamedStorageSlot::new(SlotName::new_index(0), StorageSlot::empty_map())]
+            },
             _ => vec![],
         };
 

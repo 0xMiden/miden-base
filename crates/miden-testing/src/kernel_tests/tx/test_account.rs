@@ -469,7 +469,7 @@ fn test_get_storage_slot_type() -> miette::Result<()> {
                 push.{item_index}
 
                 # get the type of the respective storage slot
-                exec.account::get_storage_slot_type
+                exec.account::get_storage_slot_type_by_index
 
                 # truncate the stack
                 swap drop

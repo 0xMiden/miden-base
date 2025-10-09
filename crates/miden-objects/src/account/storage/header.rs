@@ -38,15 +38,15 @@ impl StorageSlotHeader {
     ///
     /// This is done by converting this storage slot into 8 field elements as follows:
     /// ```text
-    /// [[name_id_prefix, name_id_suffix, slot_type, 0], SLOT_VALUE]
+    /// [[0, slot_type, name_id_suffix, name_id_prefix], SLOT_VALUE]
     /// ```
     pub fn as_elements(&self) -> [Felt; StorageSlot::NUM_ELEMENTS_PER_STORAGE_SLOT] {
         let mut elements = [ZERO; StorageSlot::NUM_ELEMENTS_PER_STORAGE_SLOT];
         elements[0..4].copy_from_slice(&[
-            self.name_id.prefix(),
-            self.name_id.suffix(),
-            self.typ.as_felt(),
             Felt::ZERO,
+            self.typ.as_felt(),
+            self.name_id.suffix(),
+            self.name_id.prefix(),
         ]);
         elements[4..8].copy_from_slice(self.value.as_elements());
         elements
@@ -145,7 +145,7 @@ impl AccountStorageHeader {
     /// This is done by first converting each storage slot into exactly 8 elements as follows:
     ///
     /// ```text
-    /// [[name_id_prefix, name_id_suffix, slot_type, 0], SLOT_VALUE]
+    /// [[0, slot_type, name_id_suffix, name_id_prefix], SLOT_VALUE]
     /// ```
     ///
     /// And then concatenating the resulting elements into a single vector.

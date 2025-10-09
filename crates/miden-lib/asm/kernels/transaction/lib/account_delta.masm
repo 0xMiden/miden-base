@@ -151,7 +151,7 @@ proc.update_slot_delta
     dup exec.memory::get_native_account_storage_slots_ptr
     # => [native_account_storage_slots_section_ptr, slot_idx, slot_idx, RATE, RATE, PERM]
 
-    exec.memory::get_storage_slot_type
+    exec.account::get_storage_slot_type
     # => [storage_slot_type, slot_idx, RATE, RATE, PERM]
 
     # check if type == slot

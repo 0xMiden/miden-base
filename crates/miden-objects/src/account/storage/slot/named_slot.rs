@@ -10,9 +10,6 @@ pub struct NamedStorageSlot {
 
 // TODO: Docs + separators
 impl NamedStorageSlot {
-    pub const FAUCET_RESERVED_SLOT_NAME: SlotName =
-        SlotName::from_static_str("miden::faucet::reserved_slot");
-
     pub fn new(name: SlotName, slot: StorageSlot) -> Self {
         let name_id = name.id();
 
