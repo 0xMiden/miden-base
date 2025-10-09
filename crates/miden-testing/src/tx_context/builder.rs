@@ -85,7 +85,7 @@ pub struct TransactionContextBuilder {
     tx_script: Option<TransactionScript>,
     tx_script_args: Word,
     note_args: BTreeMap<NoteId, Word>,
-    transaction_inputs: Option<TransactionInputs>,
+    tx_inputs: Option<TransactionInputs>,
     auth_args: Word,
     signatures: Vec<(PublicKeyCommitment, Word, Signature)>,
     is_lazy_loading_enabled: bool,
@@ -103,7 +103,7 @@ impl TransactionContextBuilder {
             tx_script_args: EMPTY_WORD,
             authenticator: None,
             advice_inputs: Default::default(),
-            transaction_inputs: None,
+            tx_inputs: None,
             note_args: BTreeMap::new(),
             foreign_account_inputs: BTreeMap::new(),
             auth_args: EMPTY_WORD,
@@ -208,7 +208,7 @@ impl TransactionContextBuilder {
             tx_inputs.account().into(),
             "account in context and account provided via tx inputs are not the same account"
         );
-        self.transaction_inputs = Some(tx_inputs);
+        self.tx_inputs = Some(tx_inputs);
         self
     }
 
@@ -272,7 +272,7 @@ impl TransactionContextBuilder {
     /// If no transaction inputs were provided manually, an ad-hoc MockChain is created in order
     /// to generate valid block data for the required notes.
     pub fn build(self) -> anyhow::Result<TransactionContext> {
-        let tx_inputs = match self.transaction_inputs {
+        let tx_inputs = match self.tx_inputs {
             Some(tx_inputs) => tx_inputs,
             None => {
                 // If no specific transaction inputs was provided, initialize an ad-hoc mockchain
@@ -296,20 +296,6 @@ impl TransactionContextBuilder {
             },
         };
 
-        // If partial loading is enabled, construct an account that doesn't contain all
-        // merkle paths of assets and storage maps, in order to test lazy loading.
-        // Otherwise, load the full account.
-        let tx_inputs = if self.is_lazy_loading_enabled {
-            let (_account, block_header, partial_blockchain, input_notes) = tx_inputs.into_parts();
-            // Note that we use self.account instead of account, because we cannot do the same
-            // operation on a partial vault.
-            let account = minimal_partial_account(&self.account)?;
-
-            TransactionInputs::new(account, block_header, partial_blockchain, input_notes)?
-        } else {
-            tx_inputs
-        };
-
         let foreign_account_inputs = if self.is_lazy_loading_enabled {
             Vec::new()
         } else {
@@ -318,21 +304,32 @@ impl TransactionContextBuilder {
 
         let tx_args = TransactionArgs::new(AdviceMap::default(), foreign_account_inputs)
             .with_note_args(self.note_args);
-
         let mut tx_args = if let Some(tx_script) = self.tx_script {
             tx_args.with_tx_script_and_args(tx_script, self.tx_script_args)
         } else {
             tx_args
         };
-
         tx_args = tx_args.with_auth_args(self.auth_args);
-
         tx_args.extend_advice_inputs(self.advice_inputs.clone());
         tx_args.extend_output_note_recipients(self.expected_output_notes.clone());
 
         for (public_key_commitment, message, signature) in self.signatures {
             tx_args.add_signature(public_key_commitment, message, signature);
         }
+
+        // If partial loading is enabled, construct an account that doesn't contain all
+        // merkle paths of assets and storage maps, in order to test lazy loading.
+        // Otherwise, load the full account.
+        let tx_inputs = if self.is_lazy_loading_enabled {
+            let (_, block_header, partial_blockchain, input_notes, _) = tx_inputs.into_parts();
+            // Note that we use self.account instead of account, because we cannot do the same
+            // operation on a partial vault.
+            let account = minimal_partial_account(&self.account)?;
+            TransactionInputs::new(account, block_header, partial_blockchain, input_notes)?
+                .with_tx_args(tx_args)
+        } else {
+            tx_inputs.with_tx_args(tx_args)
+        };
 
         let mast_store = {
             let mast_forest_store = TransactionMastStore::new();
@@ -349,11 +346,9 @@ impl TransactionContextBuilder {
             account: self.account,
             expected_output_notes: self.expected_output_notes,
             foreign_account_inputs: self.foreign_account_inputs,
-            tx_args,
             tx_inputs,
             mast_store,
             authenticator: self.authenticator,
-            advice_inputs: self.advice_inputs,
             source_manager: self.source_manager,
             note_scripts: self.note_scripts,
         })

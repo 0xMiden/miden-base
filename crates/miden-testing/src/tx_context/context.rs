@@ -21,7 +21,6 @@ use miden_objects::transaction::{
     TransactionInputs,
 };
 use miden_processor::{
-    AdviceInputs,
     ExecutionError,
     FutureMaybeSend,
     MastForest,
@@ -54,10 +53,8 @@ pub struct TransactionContext {
     pub(super) account: Account,
     pub(super) expected_output_notes: Vec<Note>,
     pub(super) foreign_account_inputs: BTreeMap<AccountId, AccountInputs>,
-    pub(super) tx_args: TransactionArgs,
     pub(super) tx_inputs: TransactionInputs,
     pub(super) mast_store: TransactionMastStore,
-    pub(super) advice_inputs: AdviceInputs,
     pub(super) authenticator: Option<MockAuthenticator>,
     pub(super) source_manager: Arc<dyn SourceManagerSync>,
     pub(super) note_scripts: BTreeMap<Word, NoteScript>,
@@ -84,12 +81,8 @@ impl TransactionContext {
     ///
     /// - If the provided `code` is not a valid program.
     pub fn execute_code(&self, code: &str) -> Result<Process, ExecutionError> {
-        let (stack_inputs, advice_inputs) = TransactionKernel::prepare_inputs(
-            &self.tx_inputs,
-            &self.tx_args,
-            Some(self.advice_inputs.clone()),
-        )
-        .expect("error initializing transaction inputs");
+        let (stack_inputs, advice_inputs) = TransactionKernel::prepare_inputs(&self.tx_inputs)
+            .expect("error initializing transaction inputs");
 
         // Virtual file name should be unique.
         let virtual_source_file = self.source_manager.load(
@@ -110,7 +103,7 @@ impl TransactionContext {
         mast_store.insert(program.mast_forest().clone());
         mast_store.insert(TransactionKernel::library().mast_forest().clone());
         mast_store.load_account_code(self.account().code());
-        for acc_inputs in self.tx_args.foreign_account_inputs() {
+        for acc_inputs in self.tx_inputs.tx_args().foreign_account_inputs() {
             mast_store.load_account_code(acc_inputs.code());
         }
 
@@ -119,7 +112,7 @@ impl TransactionContext {
             MockHost::new(
                 self.tx_inputs().account().code(),
                 mast_store,
-                self.tx_args.foreign_account_inputs(),
+                self.tx_inputs().tx_args().foreign_account_inputs(),
             )
             .with_source_manager(self.source_manager()),
         )
@@ -154,7 +147,7 @@ impl TransactionContext {
     }
 
     pub fn tx_args(&self) -> &TransactionArgs {
-        &self.tx_args
+        self.tx_inputs.tx_args()
     }
 
     pub fn input_notes(&self) -> &InputNotes<InputNote> {
@@ -162,7 +155,7 @@ impl TransactionContext {
     }
 
     pub fn set_tx_args(&mut self, tx_args: TransactionArgs) {
-        self.tx_args = tx_args;
+        self.tx_inputs.set_tx_args(tx_args);
     }
 
     pub fn tx_inputs(&self) -> &TransactionInputs {
@@ -189,9 +182,10 @@ impl DataStore for TransactionContext {
         assert_eq!(account_id, self.account().id());
         assert_eq!(account_id, self.tx_inputs.account().id());
 
-        let (partial_account, header, mmr, _) = self.tx_inputs.clone().into_parts();
-
-        async move { Ok((partial_account, header, mmr)) }
+        let account = self.tx_inputs.account().clone();
+        let block_header = self.tx_inputs.block_header().clone();
+        let blockchain = self.tx_inputs.blockchain().clone();
+        async move { Ok((account, block_header, blockchain)) }
     }
 
     fn get_foreign_account_inputs(
