@@ -409,7 +409,12 @@ impl Serializable for AccountTree {
         // TODO serialize history as well
         let block_number = BlockNumber::from(self.smt.block_number() as u32);
         block_number.write_into(target);
-        todo!("Iterate over values")
+
+        // Collect all account commitments into a vector
+        let entries: Vec<(AccountId, Word)> = self.account_commitments().collect();
+
+        // Serialize the vector of entries
+        entries.write_into(target);
     }
 }
 
@@ -518,7 +523,8 @@ pub(super) mod tests {
     fn with_entries_fails_on_duplicate_prefix() {
         let entries = setup_duplicate_prefix_ids();
 
-        let err = AccountTree::with_entries(BlockNumber::from(0), entries.iter().copied()).unwrap_err();
+        let err =
+            AccountTree::with_entries(BlockNumber::from(0), entries.iter().copied()).unwrap_err();
 
         assert_matches!(err, AccountTreeError::DuplicateIdPrefix {
           duplicate_prefix
@@ -546,7 +552,9 @@ pub(super) mod tests {
         let digest2 = Word::from([0, 0, 0, 3u32]);
         let digest3 = Word::from([0, 0, 0, 4u32]);
 
-        let mut tree = AccountTree::with_entries(BlockNumber::from(0), [(id0, digest0), (id1, digest1)]).unwrap();
+        let mut tree =
+            AccountTree::with_entries(BlockNumber::from(0), [(id0, digest0), (id1, digest1)])
+                .unwrap();
 
         let mutations = tree
             .compute_mutations([(id0, digest1), (id1, digest2), (id2, digest3)])
@@ -566,7 +574,8 @@ pub(super) mod tests {
         let id2 = AccountIdBuilder::new().build_with_seed([5; 32]);
         let commitment2 = Word::from([0, 0, 0, 99u32]);
 
-        let tree = AccountTree::with_entries(BlockNumber::from(0), [pair0, (id2, commitment2)]).unwrap();
+        let tree =
+            AccountTree::with_entries(BlockNumber::from(0), [pair0, (id2, commitment2)]).unwrap();
 
         let err = tree.compute_mutations([pair1]).unwrap_err();
 
@@ -586,8 +595,11 @@ pub(super) mod tests {
         let digest2 = Word::from([0, 0, 0, 3u32]);
         let empty_digest = Word::empty();
 
-        let mut tree =
-            AccountTree::with_entries(BlockNumber::from(0), [(id0, digest0), (id1, digest1), (id2, digest2)]).unwrap();
+        let mut tree = AccountTree::with_entries(
+            BlockNumber::from(0),
+            [(id0, digest0), (id1, digest1), (id2, digest2)],
+        )
+        .unwrap();
 
         // remove id2
         tree.insert(id2, empty_digest).unwrap();
@@ -608,7 +620,9 @@ pub(super) mod tests {
         let digest0 = Word::from([0, 0, 0, 1u32]);
         let digest1 = Word::from([0, 0, 0, 2u32]);
 
-        let tree = AccountTree::with_entries(BlockNumber::from(0), [(id0, digest0), (id1, digest1)]).unwrap();
+        let tree =
+            AccountTree::with_entries(BlockNumber::from(0), [(id0, digest0), (id1, digest1)])
+                .unwrap();
 
         assert_eq!(tree.num_accounts(), 2);
 
