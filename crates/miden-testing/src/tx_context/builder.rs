@@ -370,8 +370,11 @@ fn minimal_partial_account(account: &Account) -> anyhow::Result<PartialAccount> 
     // of the other keys, following the same rationale as the partial vault above.
     let storage_header = account.storage().to_header();
     let storage_maps =
-        account.storage().slots().iter().filter_map(|storage_slot| {
-            match storage_slot.storage_slot() {
+        account
+            .storage()
+            .slots()
+            .iter()
+            .filter_map(|named_slot| match named_slot.storage_slot() {
                 StorageSlot::Map(storage_map) => {
                     let mut partial_storage_map = PartialStorageMap::default();
                     let key = Word::empty();
@@ -382,8 +385,7 @@ fn minimal_partial_account(account: &Account) -> anyhow::Result<PartialAccount> 
                     Some(partial_storage_map)
                 },
                 _ => None,
-            }
-        });
+            });
     let partial_storage = PartialStorage::new(storage_header, storage_maps)
         .expect("provided storage maps should match storage header");
 

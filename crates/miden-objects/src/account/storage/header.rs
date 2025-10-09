@@ -97,8 +97,6 @@ impl AccountStorageHeader {
         self.slots.len() as u8
     }
 
-    /// TODO: Return StorageSlotHeader?
-    ///
     /// Returns a slot contained in the storage header at a given index.
     ///
     /// # Errors
@@ -110,7 +108,7 @@ impl AccountStorageHeader {
         let slot_name = SlotName::new_index(index);
 
         self.slots
-            .binary_search_by_key(&slot_name.id(), |(name, ..)| name.id())
+            .binary_search_by_key(&slot_name.compute_id(), |(name, ..)| name.compute_id())
             .map(|slot_idx| {
                 let (name, typ, value) = &self.slots[slot_idx];
                 (name, typ, value)
@@ -167,7 +165,8 @@ impl SequentialCommit for AccountStorageHeader {
     fn to_elements(&self) -> Vec<Felt> {
         self.slots()
             .flat_map(|(slot_name, slot_type, slot_value)| {
-                StorageSlotHeader::new(slot_name.id(), *slot_type, *slot_value).to_elements()
+                StorageSlotHeader::new(slot_name.compute_id(), *slot_type, *slot_value)
+                    .to_elements()
             })
             .collect()
     }

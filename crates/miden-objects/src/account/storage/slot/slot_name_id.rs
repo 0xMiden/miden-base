@@ -2,6 +2,7 @@ use core::cmp::Ordering;
 
 use crate::Felt;
 
+// TODO(named_slots): Docs + separators for the entire module.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SlotNameId {
     prefix: Felt,

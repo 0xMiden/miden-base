@@ -83,7 +83,7 @@ impl SlotName {
         Ok(Self { name: Cow::Owned(name) })
     }
 
-    /// TODO: Temporary. Remove later.
+    // TODO(named_slots): Temporary. Remove later.
     pub fn new_index(slot_idx: usize) -> Self {
         SlotName::new(format!("miden::{slot_idx}")).expect("slot name should be valid")
     }
@@ -96,8 +96,8 @@ impl SlotName {
         &self.name
     }
 
-    /// TODO: Rename to compute_id
-    pub fn id(&self) -> SlotNameId {
+    // TODO(named_slots): Docs.
+    pub fn compute_id(&self) -> SlotNameId {
         // let hashed_word = hash_string_to_word(self.as_str());
         // let prefix = hashed_word[0];
         // let suffix = hashed_word[1];
@@ -230,7 +230,7 @@ impl Deserializable for SlotName {
     fn read_from<R: miden_core::utils::ByteReader>(
         source: &mut R,
     ) -> Result<Self, DeserializationError> {
-        // TODO: Enforce max length.
+        // TODO(named_slots): Enforce max slot name length of u8::MAX?
         let len = source.read_u8()?;
         let name = source.read_many(len as usize)?;
         String::from_utf8(name)
@@ -240,8 +240,6 @@ impl Deserializable for SlotName {
             })
     }
 }
-
-// TODO: Test empty string
 
 // TESTS
 // ================================================================================================

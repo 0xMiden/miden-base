@@ -1,6 +1,7 @@
 use crate::account::storage::slot::SlotNameId;
 use crate::account::{SlotName, StorageSlot};
 
+// TODO(named_slots): Docs + separators for the entire module.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NamedStorageSlot {
     name: SlotName,
@@ -8,10 +9,9 @@ pub struct NamedStorageSlot {
     slot: StorageSlot,
 }
 
-// TODO: Docs + separators
 impl NamedStorageSlot {
     pub fn new(name: SlotName, slot: StorageSlot) -> Self {
-        let name_id = name.id();
+        let name_id = name.compute_id();
 
         Self { name, name_id, slot }
     }

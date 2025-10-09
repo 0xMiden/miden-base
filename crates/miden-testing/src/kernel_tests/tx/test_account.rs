@@ -29,6 +29,7 @@ use miden_objects::account::{
     AccountStorageMode,
     AccountType,
     StorageSlot,
+    StorageSlotType,
 };
 use miden_objects::assembly::diagnostics::{IntoDiagnostic, NamedSource, Report, WrapErr, miette};
 use miden_objects::assembly::{DefaultSourceManager, Library};
@@ -482,7 +483,11 @@ fn test_get_storage_slot_type() -> miette::Result<()> {
 
         let storage_slot_type = storage_item.slot.slot_type();
 
-        assert_eq!(storage_slot_type, process.stack.get(0).try_into().unwrap());
+        assert_eq!(
+            storage_slot_type,
+            StorageSlotType::try_from(u8::try_from(process.stack.get(0).as_int()).unwrap())
+                .unwrap()
+        );
         assert_eq!(process.stack.get(1), ZERO, "the rest of the stack is empty");
         assert_eq!(process.stack.get(2), ZERO, "the rest of the stack is empty");
         assert_eq!(process.stack.get(3), ZERO, "the rest of the stack is empty");

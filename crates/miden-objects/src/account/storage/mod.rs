@@ -1,6 +1,6 @@
+use alloc::collections::BTreeMap;
 use alloc::string::ToString;
 use alloc::vec::Vec;
-use std::collections::BTreeMap;
 
 use super::{
     AccountError,
@@ -71,6 +71,7 @@ impl AccountStorage {
         Self::new_named(slots)
     }
 
+    /// TODO(named_slots): Rename to new.
     pub fn new_named(mut slots: Vec<NamedStorageSlot>) -> Result<AccountStorage, AccountError> {
         let num_slots = slots.len();
 
@@ -81,6 +82,7 @@ impl AccountStorage {
         let mut names = BTreeMap::new();
         for slot in &slots {
             if let Some(name) = names.insert(slot.name_id(), slot.name()) {
+                // TODO(named_slots): Return error.
                 todo!("error: storage slot name {name} is assigned to more than one slot")
             }
         }
@@ -183,7 +185,7 @@ impl AccountStorage {
     pub fn get(&self, slot_name: &SlotName) -> Option<&NamedStorageSlot> {
         debug_assert!(self.slots.is_sorted());
 
-        let name_id = slot_name.id();
+        let name_id = slot_name.compute_id();
         self.slots
             .binary_search_by_key(&name_id, |named_slot| named_slot.name_id())
             .map(|idx| &self.slots[idx])
@@ -191,7 +193,7 @@ impl AccountStorage {
     }
 
     fn get_mut(&mut self, slot_name: &SlotName) -> Option<&mut NamedStorageSlot> {
-        let name_id = slot_name.id();
+        let name_id = slot_name.compute_id();
         self.slots
             .binary_search_by_key(&name_id, |named_slot| named_slot.name_id())
             .map(|idx| &mut self.slots[idx])
@@ -403,7 +405,7 @@ mod tests {
 
     #[test]
     fn test_get_slot_by_name() -> anyhow::Result<()> {
-        // TODO: Use proper names.
+        // TODO(named_slots): Use proper names.
         // const COUNTER_SLOT: SlotName = SlotName::from_static_str("miden::test::counter");
         // const MAP_SLOT: SlotName = SlotName::from_static_str("miden::test::map");
         const COUNTER_SLOT: SlotName = SlotName::from_static_str("miden::0");
