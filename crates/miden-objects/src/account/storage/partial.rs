@@ -95,7 +95,7 @@ impl From<&AccountStorage> for PartialStorage {
     fn from(account_storage: &AccountStorage) -> Self {
         let mut map_smts = BTreeMap::new();
         for slot in account_storage.slots() {
-            if let StorageSlot::Map(map) = slot.storage() {
+            if let StorageSlot::Map(map) = slot.storage_slot() {
                 let smt: PartialStorageMap = map.clone().into();
                 map_smts.insert(smt.root(), smt);
             }

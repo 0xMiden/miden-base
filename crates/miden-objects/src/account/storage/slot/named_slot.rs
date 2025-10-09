@@ -27,9 +27,22 @@ impl NamedStorageSlot {
         self.name_id
     }
 
-    pub fn storage(&self) -> &StorageSlot {
+    pub fn storage_slot(&self) -> &StorageSlot {
         &self.slot
     }
+
+    pub fn storage_slot_mut(&mut self) -> &mut StorageSlot {
+        &mut self.slot
+    }
+
+    // pub fn set_storage_slot(&mut self, mut slot: StorageSlot) -> StorageSlot {
+    //     let current_slot = &mut self.slot;
+    //     let new_slot = &mut slot;
+
+    //     core::mem::swap(current_slot, new_slot);
+
+    //     slot
+    // }
 }
 
 impl Ord for NamedStorageSlot {

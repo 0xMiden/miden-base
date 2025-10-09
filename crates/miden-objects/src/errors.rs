@@ -145,6 +145,8 @@ pub enum AccountError {
     StorageSlotNotValue(u8),
     #[error("storage slot index is {index} but the slots length is {slots_len}")]
     StorageIndexOutOfBounds { slots_len: u8, index: u8 },
+    #[error("storage does not contain a slot with name {slot_name}")]
+    StorageSlotNameNotFound { slot_name: SlotName },
     #[error("number of storage slots is {0} but max possible number is {max}", max = AccountStorage::MAX_NUM_STORAGE_SLOTS)]
     StorageTooManySlots(u64),
     #[error("procedure storage offset + size is {0} which exceeds the maximum value of {max}",

@@ -113,8 +113,7 @@ impl AccountStorage {
             .cloned()
             .enumerate()
         {
-            let name =
-                SlotName::new(format!("miden::{slot_idx}")).expect("slot name should be valid");
+            let name = SlotName::new_index(slot_idx);
             storage_slots.push(NamedStorageSlot::new(name, slot));
         }
 
@@ -147,7 +146,11 @@ impl AccountStorage {
             self.slots
                 .iter()
                 .map(|slot| {
-                    (slot.name().clone(), slot.storage().slot_type(), slot.storage().value())
+                    (
+                        slot.name().clone(),
+                        slot.storage_slot().slot_type(),
+                        slot.storage_slot().value(),
+                    )
                 })
                 .collect(),
         )
@@ -158,8 +161,16 @@ impl AccountStorage {
 
         let name_id = slot_name.id();
         self.slots
-            .binary_search_by_key(&name_id, |slot| slot.name_id())
+            .binary_search_by_key(&name_id, |named_slot| named_slot.name_id())
             .map(|idx| &self.slots[idx])
+            .ok()
+    }
+
+    fn get_mut(&mut self, slot_name: &SlotName) -> Option<&mut NamedStorageSlot> {
+        let name_id = slot_name.id();
+        self.slots
+            .binary_search_by_key(&name_id, |named_slot| named_slot.name_id())
+            .map(|idx| &mut self.slots[idx])
             .ok()
     }
 
@@ -168,15 +179,10 @@ impl AccountStorage {
     /// # Errors:
     /// - If the index is out of bounds
     pub fn get_item(&self, index: u8) -> Result<Word, AccountError> {
-        todo!("impl")
-
-        // self.slots
-        //     .get(index as usize)
-        //     .ok_or(AccountError::StorageIndexOutOfBounds {
-        //         slots_len: self.slots.len() as u8,
-        //         index,
-        //     })
-        //     .map(|slot| slot.value())
+        let slot_name = SlotName::new_index(index as usize);
+        self.get(&slot_name)
+            .map(|named_slot| named_slot.storage_slot().value())
+            .ok_or_else(|| AccountError::StorageSlotNameNotFound { slot_name: slot_name.clone() })
     }
 
     /// Returns a map item from a map located in storage at the specified index.
@@ -185,15 +191,13 @@ impl AccountStorage {
     /// - If the index is out of bounds
     /// - If the [StorageSlot] is not [StorageSlotType::Map]
     pub fn get_map_item(&self, index: u8, key: Word) -> Result<Word, AccountError> {
-        todo!("impl")
-
-        // match self.slots.get(index as usize).ok_or(AccountError::StorageIndexOutOfBounds {
-        //     slots_len: self.slots.len() as u8,
-        //     index,
-        // })? {
-        //     StorageSlot::Map(map) => Ok(map.get(&key)),
-        //     _ => Err(AccountError::StorageSlotNotMap(index)),
-        // }
+        let slot_name = SlotName::new_index(index as usize);
+        self.get(&slot_name)
+            .ok_or_else(|| AccountError::StorageSlotNameNotFound { slot_name: slot_name.clone() })
+            .and_then(|named_slot| match named_slot.storage_slot() {
+                StorageSlot::Map(map) => Ok(map.get(&key)),
+                _ => Err(AccountError::StorageSlotNotMap(index)),
+            })
     }
 
     /// Converts storage slots of this account storage into a vector of field elements.
@@ -216,8 +220,7 @@ impl AccountStorage {
     /// # Errors:
     /// - If the updates violate storage constraints.
     pub(super) fn apply_delta(&mut self, delta: &AccountStorageDelta) -> Result<(), AccountError> {
-        todo!("impl")
-
+        todo!("impl apply_delta")
         // let len = self.slots.len() as u8;
 
         // // update storage maps
@@ -252,28 +255,20 @@ impl AccountStorage {
     /// - If the index is out of bounds
     /// - If the [StorageSlot] is not [StorageSlotType::Value]
     pub fn set_item(&mut self, index: u8, value: Word) -> Result<Word, AccountError> {
-        todo!("impl")
+        let slot_name = SlotName::new_index(index as usize);
+        let slot = self.get_mut(&slot_name).ok_or_else(|| {
+            AccountError::StorageSlotNameNotFound { slot_name: slot_name.clone() }
+        })?;
 
-        // // check if index is in bounds
-        // let num_slots = self.slots.len();
+        let StorageSlot::Value(old_value) = slot.storage_slot() else {
+            return Err(AccountError::StorageSlotNotValue(index));
+        };
+        let old_value = *old_value;
 
-        // if index as usize >= num_slots {
-        //     return Err(AccountError::StorageIndexOutOfBounds {
-        //         slots_len: self.slots.len() as u8,
-        //         index,
-        //     });
-        // }
+        let mut new_slot = StorageSlot::Value(value);
+        core::mem::swap(slot.storage_slot_mut(), &mut new_slot);
 
-        // let old_value = match self.slots[index as usize] {
-        //     StorageSlot::Value(value) => value,
-        //     // return an error if the type != Value
-        //     _ => return Err(AccountError::StorageSlotNotValue(index)),
-        // };
-
-        // // update the value of the storage slot
-        // self.slots[index as usize] = StorageSlot::Value(value);
-
-        // Ok(old_value)
+        Ok(old_value)
     }
 
     /// Updates the value of a key-value pair of a storage map at the specified index.
@@ -287,32 +282,23 @@ impl AccountStorage {
     pub fn set_map_item(
         &mut self,
         index: u8,
-        key: Word,
+        raw_key: Word,
         value: Word,
     ) -> Result<(Word, Word), AccountError> {
-        todo!("impl")
-        // // check if index is in bounds
-        // let num_slots = self.slots.len();
+        let slot_name = SlotName::new_index(index as usize);
+        let slot = self.get_mut(&slot_name).ok_or_else(|| {
+            AccountError::StorageSlotNameNotFound { slot_name: slot_name.clone() }
+        })?;
 
-        // if index as usize >= num_slots {
-        //     return Err(AccountError::StorageIndexOutOfBounds {
-        //         slots_len: self.slots.len() as u8,
-        //         index,
-        //     });
-        // }
+        let StorageSlot::Map(storage_map) = slot.storage_slot_mut() else {
+            return Err(AccountError::StorageSlotNotMap(index));
+        };
 
-        // let storage_map = match self.slots[index as usize] {
-        //     StorageSlot::Map(ref mut map) => map,
-        //     _ => return Err(AccountError::StorageSlotNotMap(index)),
-        // };
+        let old_root = storage_map.root();
 
-        // // get old map root to return
-        // let old_root = storage_map.root();
+        let old_value = storage_map.insert(raw_key, value)?;
 
-        // // update the key-value pair in the map
-        // let old_value = storage_map.insert(key, value)?;
-
-        // Ok((old_root, old_value))
+        Ok((old_root, old_value))
     }
 }
 
@@ -324,7 +310,6 @@ impl IntoIterator for AccountStorage {
     type IntoIter = alloc::vec::IntoIter<NamedStorageSlot>;
 
     fn into_iter(self) -> Self::IntoIter {
-        // TODO: Return slot name too
         self.slots.into_iter()
     }
 }
@@ -334,14 +319,15 @@ impl IntoIterator for AccountStorage {
 
 /// Converts given slots into field elements
 fn slots_as_elements<'storage>(
-    slots: impl Iterator<Item = &'storage NamedStorageSlot>,
+    slots: impl IntoIterator<Item = &'storage NamedStorageSlot>,
 ) -> Vec<Felt> {
     slots
+        .into_iter()
         .flat_map(|named_slot| {
             StorageSlotHeader::new(
                 named_slot.name_id(),
-                named_slot.storage().slot_type(),
-                named_slot.storage().value(),
+                named_slot.storage_slot().slot_type(),
+                named_slot.storage_slot().value(),
             )
             .as_elements()
         })
@@ -350,7 +336,7 @@ fn slots_as_elements<'storage>(
 
 /// Computes the commitment to the given slots
 pub fn build_slots_commitment<'storage>(
-    slots: impl ExactSizeIterator<Item = &'storage NamedStorageSlot>,
+    slots: impl IntoIterator<Item = &'storage NamedStorageSlot>,
 ) -> Word {
     let elements = slots_as_elements(slots);
     Hasher::hash_elements(&elements)
@@ -402,32 +388,33 @@ mod tests {
     };
     use crate::account::{NamedStorageSlot, SlotName, StorageSlot};
 
-    // #[test]
-    // fn test_serde_account_storage() {
-    //     // empty storage
-    //     let storage = AccountStorage::new(vec![]).unwrap();
-    //     let bytes = storage.to_bytes();
-    //     assert_eq!(storage, AccountStorage::read_from_bytes(&bytes).unwrap());
+    #[test]
+    fn test_serde_account_storage() {
+        // empty storage
+        let storage = AccountStorage::new(vec![]).unwrap();
+        let bytes = storage.to_bytes();
+        assert_eq!(storage, AccountStorage::read_from_bytes(&bytes).unwrap());
 
-    //     // storage with values for default types
-    //     let storage = AccountStorage::new(vec![
-    //         StorageSlot::Value(Word::empty()),
-    //         StorageSlot::Map(StorageMap::default()),
-    //     ])
-    //     .unwrap();
-    //     let bytes = storage.to_bytes();
-    //     assert_eq!(storage, AccountStorage::read_from_bytes(&bytes).unwrap());
-    // }
+        // storage with values for default types
+        let storage = AccountStorage::new(vec![
+            NamedStorageSlot::new(SlotName::new_index(0), StorageSlot::Value(Word::empty())),
+            NamedStorageSlot::new(SlotName::new_index(1), StorageSlot::Map(StorageMap::default())),
+        ])
+        .unwrap();
+        let bytes = storage.to_bytes();
+        assert_eq!(storage, AccountStorage::read_from_bytes(&bytes).unwrap());
+    }
 
-    // #[test]
-    // fn test_account_storage_slots_commitment() {
-    //     let storage = AccountStorage::mock();
-    //     let storage_slots_commitment = build_slots_commitment(storage.slots());
-    //     assert_eq!(storage_slots_commitment, storage.commitment())
-    // }
+    #[test]
+    fn test_account_storage_slots_commitment() {
+        let storage = AccountStorage::mock();
+        let storage_slots_commitment = build_slots_commitment(storage.slots());
+        assert_eq!(storage_slots_commitment, storage.commitment())
+    }
 
     #[test]
     fn test_get_slot_by_name() -> anyhow::Result<()> {
+        // TODO: Use proper names.
         // const COUNTER_SLOT: SlotName = SlotName::from_static_str("miden::test::counter");
         // const MAP_SLOT: SlotName = SlotName::from_static_str("miden::test::map");
         const COUNTER_SLOT: SlotName = SlotName::from_static_str("miden::0");

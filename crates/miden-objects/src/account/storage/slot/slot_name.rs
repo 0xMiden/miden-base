@@ -85,6 +85,11 @@ impl SlotName {
         Ok(Self { name: Cow::Owned(name) })
     }
 
+    /// TODO: Temporary. Remove later.
+    pub fn new_index(slot_idx: usize) -> Self {
+        SlotName::new(format!("miden::{slot_idx}")).expect("slot name should be valid")
+    }
+
     // ACCESSORS
     // --------------------------------------------------------------------------------------------
 
@@ -213,7 +218,7 @@ impl Display for SlotName {
 
 impl Serializable for SlotName {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        target.write(self.as_str().len());
+        target.write(u8::try_from(self.as_str().len()).expect("TODO"));
         target.write_many(self.as_str().as_bytes())
     }
 }
@@ -228,6 +233,7 @@ impl Deserializable for SlotName {
         String::from_utf8(name)
             .map_err(|err| DeserializationError::InvalidValue(err.to_string()))
             .and_then(|name| {
+                std::println!("deser {name}",);
                 Self::new(name).map_err(|err| DeserializationError::InvalidValue(err.to_string()))
             })
     }
@@ -366,6 +372,16 @@ mod tests {
     #[test]
     fn slot_name_with_many_components_is_valid() -> anyhow::Result<()> {
         SlotName::new("miden::faucet0::fungible_1::b4sic::metadata")?;
+        Ok(())
+    }
+
+    // Serialization tests
+    // --------------------------------------------------------------------------------------------
+
+    #[test]
+    fn serde_slot_name() -> anyhow::Result<()> {
+        let slot_name = SlotName::new("miden::faucet0::fungible_1::b4sic::metadata")?;
+        assert_eq!(slot_name, SlotName::read_from_bytes(&slot_name.to_bytes())?);
         Ok(())
     }
 }
