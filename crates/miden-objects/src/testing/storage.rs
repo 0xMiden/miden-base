@@ -99,7 +99,7 @@ pub const STORAGE_LEAVES_2: [(Word, Word); 2] = [
 impl AccountStorage {
     /// Create account storage:
     pub fn mock() -> Self {
-        AccountStorage::from_regular_slots(Self::mock_storage_slots()).unwrap()
+        AccountStorage::new(Self::mock_storage_slots()).unwrap()
     }
 
     pub fn mock_storage_slots() -> Vec<StorageSlot> {

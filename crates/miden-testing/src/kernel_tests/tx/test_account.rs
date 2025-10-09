@@ -28,8 +28,6 @@ use miden_objects::account::{
     AccountStorage,
     AccountStorageMode,
     AccountType,
-    NamedStorageSlot,
-    SlotName,
     StorageSlot,
 };
 use miden_objects::assembly::diagnostics::{IntoDiagnostic, NamedSource, Report, WrapErr, miette};
@@ -387,7 +385,7 @@ fn test_get_item() -> miette::Result<()> {
             item_value = &storage_item.slot.value(),
         );
 
-        tx_context.execute_code(&code).unwrap();
+        tx_context.execute_code(&code)?;
     }
 
     Ok(())
@@ -786,11 +784,7 @@ fn create_procedure_metadata_test_account(
             .collect(),
     );
 
-    let storage = AccountStorage::new(vec![NamedStorageSlot::new(
-        SlotName::from_static_str("test::name"),
-        StorageSlot::Value(EMPTY_WORD),
-    )])
-    .unwrap();
+    let storage = AccountStorage::new(vec![StorageSlot::Value(EMPTY_WORD)]).unwrap();
 
     let seed = AccountId::compute_account_seed(
         [9; 32],
