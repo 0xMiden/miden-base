@@ -24,12 +24,9 @@ impl TransactionAdviceInputs {
     /// Creates a [`TransactionAdviceInputs`].
     ///
     /// The created advice inputs will be populated with the data required for executing a
-    /// transaction with the specified inputs and arguments. This includes the initial account, an
-    /// optional account seed (required for new accounts), and the input note data, including
-    /// core note data + authentication paths all the way to the root of one of partial
-    /// blockchain peaks.
+    /// transaction with the specified transaction inputs.
     pub fn new(tx_inputs: &TransactionInputs) -> Result<Self, TransactionAdviceMapMismatch> {
-        let mut inputs = TransactionAdviceInputs::default();
+        let mut inputs = TransactionAdviceInputs(tx_inputs.advice_inputs().clone());
 
         inputs.build_stack(tx_inputs);
         inputs.add_kernel_commitment();
@@ -63,7 +60,6 @@ impl TransactionAdviceInputs {
 
         // Extend with extra user-supplied advice.
         inputs.extend(tx_inputs.tx_args().advice_inputs().clone());
-        inputs.extend(tx_inputs.advice_inputs().clone());
 
         Ok(inputs)
     }
