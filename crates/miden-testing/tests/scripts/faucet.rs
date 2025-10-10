@@ -2,6 +2,7 @@ extern crate alloc;
 
 use miden_lib::account::faucets::FungibleFaucetExt;
 use miden_lib::errors::tx_kernel_errors::ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED;
+use miden_lib::note::create_p2id_note;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::Account;
 use miden_objects::asset::{Asset, FungibleAsset};
@@ -273,5 +274,160 @@ async fn prove_burning_fungible_asset_on_existing_faucet_succeeds() -> anyhow::R
 
     assert_eq!(executed_transaction.account_delta().nonce_delta(), Felt::new(1));
     assert_eq!(executed_transaction.input_notes().get_note(0).id(), note.id());
+    Ok(())
+}
+
+// TEST PUBLIC NOTE CREATION DURING NOTE CONSUMPTION
+// ================================================================================================
+
+/// Tests that a public note can be created during note consumption by fetching the note script
+/// from the data store. This test verifies the functionality added in issue #1972.
+///
+/// The test creates a note that calls the faucet's `distribute` function to create a PUBLIC
+/// P2ID output note. The P2ID script is fetched from the data store during transaction execution.
+#[tokio::test]
+async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Result<()> {
+    use miden_lib::note::well_known_note::WellKnownNote;
+    use miden_objects::account::{AccountId, AccountIdVersion, AccountType, AccountStorageMode};
+    use miden_objects::crypto::rand::RpoRandomCoin;
+    use miden_objects::note::{Note, NoteInputs, NoteRecipient};
+
+    let mut builder = MockChain::builder();
+    let faucet = builder.add_existing_faucet(Auth::BasicAuth, "TST", 200, None)?;
+
+    // Parameters for the PUBLIC P2ID note that will be created by the faucet
+    let recipient_account_id = AccountId::dummy(
+        [1; 15],
+        AccountIdVersion::Version0,
+        AccountType::RegularAccountImmutableCode,
+        AccountStorageMode::Private,
+    );
+    let amount = Felt::new(75);
+    let tag = NoteTag::for_public_use_case(0, 0, miden_objects::note::NoteExecutionMode::Local)?;
+    let aux = Felt::new(27);
+    let note_execution_hint = NoteExecutionHint::on_block_slot(5, 6, 7);
+    let note_type = NoteType::Public; // PUBLIC note
+
+    // Create the expected P2ID note using the helper function for debugging purposes
+    let mut rng = RpoRandomCoin::new([Felt::from(0u32); 4].into());
+    let expected_p2id_note = create_p2id_note(
+        faucet.id(),
+        recipient_account_id,
+        vec![FungibleAsset::new(faucet.id(), amount.into())?.into()],
+        note_type,
+        aux,
+        &mut rng,
+    )?;
+    
+    // Extract recipient information from the expected note
+    let p2id_recipient = expected_p2id_note.recipient();
+    let p2id_script_root = p2id_recipient.script().root();
+    let serial_num = p2id_recipient.serial_num();
+    let target_account_suffix = recipient_account_id.suffix();
+    let target_account_prefix = recipient_account_id.prefix().as_felt();
+    
+    println!("note commitment: {:?}", expected_p2id_note.inputs().commitment());
+    println!("note recipient: {:?}", expected_p2id_note.recipient().digest());
+    println!("note script root: {:?}", expected_p2id_note.script().root());
+ 
+    let note_script_code = format!(
+        "
+            use.miden::note
+            
+            begin
+                # Build recipient hash from SERIAL_NUM, SCRIPT_ROOT, and INPUTS_COMMITMENT
+                push.{script_root}
+                # => [SCRIPT_ROOT]
+                
+                push.{serial_num}
+                # => [SERIAL_NUM, SCRIPT_ROOT]
+
+                # Store P2ID inputs (target account ID) in memory at address 0
+                # P2ID inputs are: [target.suffix(), target.prefix()]
+                push.{target_suffix}.{target_prefix} push.0.0
+                push.0 mem_storew dropw
+                # Memory[0] = [0, 0, target_prefix, target_suffix]
+
+                push.2 push.0
+                # => [inputs_ptr, num_inputs, SERIAL_NUM, SCRIPT_ROOT]
+                
+                exec.note::build_recipient
+                # => [RECIPIENT]
+                
+                # Now call distribute with the computed recipient
+                push.{note_execution_hint}
+                push.{note_type}
+                push.{aux}
+                push.{tag}
+                push.{amount}
+                # => [amount, tag, aux, note_type, execution_hint, RECIPIENT]
+
+                call.::miden::contracts::faucets::basic_fungible::distribute
+                # => [note_idx, pad(15)]
+
+                # Truncate the stack
+                dropw dropw dropw dropw
+            end
+            ",
+        note_type = note_type as u8,
+        target_suffix = target_account_suffix,
+        target_prefix = target_account_prefix,
+        script_root = p2id_script_root,
+        serial_num = serial_num,
+        aux = aux,
+        tag = u32::from(tag),
+        note_execution_hint = Felt::from(note_execution_hint),
+        amount = amount,
+    );
+
+    // Create the trigger note that will call distribute
+    let trigger_note_script = miden_lib::utils::ScriptBuilder::default()
+        .compile_note_script(note_script_code)?;
+    
+    let serial_num = Word::from([1, 2, 3, 4u32]);
+    let trigger_note_inputs = NoteInputs::new(vec![])?;
+    let trigger_note_recipient = NoteRecipient::new(serial_num, trigger_note_script, trigger_note_inputs);
+    let trigger_note_metadata = NoteMetadata::new(
+        faucet.id(),
+        NoteType::Private,
+        NoteTag::for_local_use_case(0, 0)?,
+        NoteExecutionHint::always(),
+        Felt::new(0),
+    )?;
+    let trigger_note_assets = NoteAssets::new(vec![])?;
+    let trigger_note = Note::new(trigger_note_assets, trigger_note_metadata, trigger_note_recipient);
+
+    builder.add_output_note(OutputNote::Full(trigger_note.clone()));
+    let mock_chain = builder.build()?;
+
+    // Add the P2ID script to the data store so it can be fetched during transaction execution
+    let p2id_script = WellKnownNote::P2ID.script();
+    
+    // Execute the transaction - this should fetch the P2ID script from the data store
+    let executed_transaction = mock_chain
+        .build_tx_context(faucet.id(), &[trigger_note.id()], &[])?
+        .add_note_script(p2id_script)
+        .build()?
+        .execute()
+        .await?;
+
+    // Verify that a PUBLIC P2ID note was created
+    assert_eq!(executed_transaction.output_notes().num_notes(), 1);
+    let output_note = executed_transaction.output_notes().get_note(0);
+
+    // Verify the output note is public
+    assert_eq!(output_note.metadata().note_type(), NoteType::Public);
+    
+    // Verify the output note contains the minted fungible asset
+    let expected_asset = FungibleAsset::new(faucet.id(), amount.into())?;
+    let expected_asset_obj = Asset::from(expected_asset);
+    assert!(output_note.assets().unwrap().iter().any(|asset| asset == &expected_asset_obj));
+
+    // Verify the note was created by the faucet
+    assert_eq!(output_note.metadata().sender(), faucet.id());
+
+    // Verify nonce was incremented
+    assert_eq!(executed_transaction.account_delta().nonce_delta(), Felt::new(1));
+
     Ok(())
 }

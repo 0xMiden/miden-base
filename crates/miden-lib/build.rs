@@ -93,7 +93,7 @@ fn main() -> Result<()> {
 
     // compile transaction kernel
     let mut assembler =
-        compile_tx_kernel(&source_dir.join(ASM_TX_KERNEL_DIR), &target_dir.join("kernels"))?;
+        compile_tx_kernel(&source_dir.join(ASM_TX_KERNEL_DIR), &target_dir.join("kernels"))?.with_debug_mode(true);
 
     // compile miden library
     let miden_lib = compile_miden_lib(&source_dir, &target_dir, assembler.clone())?;

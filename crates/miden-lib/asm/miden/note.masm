@@ -115,7 +115,27 @@ export.build_recipient
     movdnw.2
     # => [SERIAL_NUM, SCRIPT_ROOT, INPUTS_HASH]
 
+    dupw.2 dupw.2 dupw.2
+    # => [SERIAL_NUM, SCRIPT_ROOT, INPUTS_HASH, SERIAL_NUM, SCRIPT_ROOT, INPUTS_HASH]
+
     exec.build_recipient_hash
+    # => [RECIPIENT, SERIAL_NUM, SCRIPT_ROOT, INPUTS_HASH]
+
+    movdnw.3
+    # => [SERIAL_NUM, SCRIPT_ROOT, INPUTS_HASH, RECIPIENT]
+
+    push.222 debug.stack drop
+
+    mem_storew.0 dropw mem_storew.4 dropw mem_storew.8 dropw
+    # => [RECIPIENT]
+
+    push.12.0 movdn.5 movdn.5
+    # => [RECIPIENT, 0, 12]
+ 
+    adv.insert_mem
+    # => [RECIPIENT, 0, 12]
+
+    movup.5 drop movup.5 drop
     # => [RECIPIENT]
 end
 

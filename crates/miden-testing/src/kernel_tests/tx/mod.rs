@@ -2,6 +2,8 @@ use alloc::string::String;
 
 use anyhow::Context;
 use miden_lib::transaction::memory::{
+    self,
+    MemoryOffset,
     NOTE_MEM_SIZE,
     NUM_OUTPUT_NOTES_PTR,
     OUTPUT_NOTE_ASSETS_OFFSET,
@@ -21,8 +23,9 @@ use miden_objects::testing::account_id::{
 };
 use miden_objects::testing::storage::prepare_assets;
 use miden_objects::vm::StackInputs;
-use miden_objects::{Felt, Hasher, ONE, Word, ZERO};
-use miden_processor::{ContextId, Process};
+use miden_objects::{Felt, Word, ZERO};
+use miden_processor::ContextId;
+use miden_processor::fast::ExecutionOutput;
 
 use crate::MockChain;
 
@@ -48,37 +51,60 @@ mod test_tx;
 // HELPER FUNCTIONS
 // ================================================================================================
 
-/// Extension trait for a [`Process`] to conveniently read kernel memory.
-pub trait ProcessMemoryExt {
-    /// Reads a word from transaction kernel memory.
-    ///
-    /// # Panics
-    ///
-    /// Panics if:
-    /// - the address is not word-aligned.
-    /// - the memory location is not initialized.
+/// Extension trait for an [`ExecutionOutput`] to conveniently read the stack and kernel memory.
+pub trait ExecutionOutputExt {
+    /// Reads a word from transaction kernel memory or returns [`Word::empty`] if that location is
+    /// not initialized.
     fn get_kernel_mem_word(&self, addr: u32) -> Word;
 
-    /// Reads a word from transaction kernel memory.
-    ///
-    /// # Panics
-    ///
-    /// Panics if:
-    /// - the address is not word-aligned.
-    fn try_get_kernel_mem_word(&self, addr: u32) -> Option<Word>;
+    /// Reads an element from transaction kernel memory or returns [`ZERO`] if that location is not
+    /// initialized.
+    fn get_kernel_mem_element(&self, addr: u32) -> Felt {
+        // TODO: Use Memory::read_element once it no longer requires &mut self.
+        // https://github.com/0xMiden/miden-vm/issues/2237
+
+        // Copy of how Memory::read_element is implemented in Miden VM.
+        let idx = addr % miden_objects::WORD_SIZE as u32;
+        let word_addr = addr - idx;
+
+        self.get_kernel_mem_word(word_addr)[idx as usize]
+    }
+
+    /// Reads an element from the stack.
+    fn get_stack_element(&self, idx: usize) -> Felt;
+
+    /// Reads a [`Word`] from the stack.
+    fn get_stack_word(&self, index: usize) -> Word;
+
+    /// Reads the [`Word`] of the input note's memory identified by the index at the provided
+    /// `offset`.
+    fn get_note_mem_word(&self, note_idx: u32, offset: MemoryOffset) -> Word {
+        self.get_kernel_mem_word(input_note_data_ptr(note_idx) + offset)
+    }
 }
 
-impl ProcessMemoryExt for Process {
+impl ExecutionOutputExt for ExecutionOutput {
     fn get_kernel_mem_word(&self, addr: u32) -> Word {
-        self.try_get_kernel_mem_word(addr).expect("expected address to be initialized")
-    }
+        let tx_kernel_context = ContextId::root();
+        let clk = 0u32;
+        let err_ctx = ();
 
-    fn try_get_kernel_mem_word(&self, addr: u32) -> Option<Word> {
-        self.chiplets
-            .memory
-            .get_word(ContextId::root(), addr)
+        self.memory
+            .read_word(tx_kernel_context, Felt::from(addr), clk.into(), &err_ctx)
             .expect("expected address to be word-aligned")
     }
+
+    fn get_stack_element(&self, index: usize) -> Felt {
+        *self.stack.get(index).expect("index must be in bounds")
+    }
+
+    fn get_stack_word(&self, index: usize) -> Word {
+        self.stack.get_stack_word(index).expect("index must be in bounds")
+    }
+}
+
+pub fn input_note_data_ptr(note_idx: u32) -> memory::MemoryAddress {
+    memory::INPUT_NOTE_DATA_SECTION_OFFSET + note_idx * memory::NOTE_MEM_SIZE
 }
 
 /// Returns MASM code that defines a procedure called `create_mock_notes` which creates the notes

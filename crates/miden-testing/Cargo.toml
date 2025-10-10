@@ -13,7 +13,7 @@ rust-version.workspace = true
 version.workspace      = true
 
 [features]
-std = ["miden-lib/std"]
+std = ["miden-lib/std", "miden-tx/std"]
 
 [dependencies]
 # Workspace dependencies
@@ -32,7 +32,9 @@ itertools   = { default-features = false, features = ["use_alloc"], version = "0
 rand        = { features = ["os_rng", "small_rng"], workspace = true }
 rand_chacha = { default-features = false, version = "0.9" }
 thiserror   = { workspace = true }
-winterfell  = { version = "0.13" }
+# TODO: Remove when execute_code_blocking is gone.
+tokio      = { features = ["macros", "rt"], workspace = true }
+winterfell = { version = "0.13" }
 
 [dev-dependencies]
 anyhow            = { features = ["backtrace", "std"], workspace = true }
