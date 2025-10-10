@@ -16,7 +16,7 @@ use super::{
 };
 use crate::account::{AccountId, AccountVaultDelta, NonFungibleDeltaAction};
 use crate::crypto::merkle::Smt;
-use crate::{AssetVaultError, Felt, Word};
+use crate::{AssetVaultError, Word};
 
 mod partial;
 pub use partial::PartialVault;
@@ -94,7 +94,11 @@ impl AssetVault {
         }
 
         // if the tree value is [0, 0, 0, 0], the asset is not stored in the vault
-        match self.asset_tree.get_value(&FungibleAsset::vault_key_from_faucet(faucet_id)) {
+        match self.asset_tree.get_value(
+            &AssetKey::from_account_id(faucet_id)
+                .expect("faucet ID should be of type fungible")
+                .as_word(),
+        ) {
             asset if asset == Smt::EMPTY_VALUE => Ok(0),
             asset => Ok(FungibleAsset::new_unchecked(asset).amount()),
         }
@@ -139,13 +143,6 @@ impl AssetVault {
     /// contain more than one asset.
     pub fn num_assets(&self) -> usize {
         self.asset_tree.num_entries()
-    }
-
-    // TODO: Replace with https://github.com/0xMiden/crypto/issues/515 once implemented.
-    /// Returns the leaf index of a vault key.
-    pub fn vault_key_to_leaf_index(vault_key: AssetKey) -> Felt {
-        // The third element in an SMT key is the index.
-        vault_key.as_word()[3]
     }
 
     // PUBLIC MODIFIERS

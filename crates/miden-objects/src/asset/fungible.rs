@@ -85,7 +85,7 @@ impl FungibleAsset {
 
     /// Returns the key which is used to store this asset in the account vault.
     pub fn vault_key(&self) -> AssetKey {
-        Self::vault_key_from_faucet(self.faucet_id).into()
+        AssetKey::from_account_id(self.faucet_id).expect("faucet ID should be of type fungible")
     }
 
     // OPERATIONS
@@ -161,14 +161,6 @@ impl FungibleAsset {
         }
 
         Ok(self)
-    }
-
-    /// Returns the key which is used to store this asset in the account vault.
-    pub(super) fn vault_key_from_faucet(faucet_id: AccountId) -> Word {
-        let mut key = Word::empty();
-        key[2] = faucet_id.suffix();
-        key[3] = faucet_id.prefix().as_felt();
-        key
     }
 }
 

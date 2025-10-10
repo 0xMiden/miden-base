@@ -117,7 +117,7 @@ impl NonFungibleAsset {
         vault_key[3] =
             AccountIdPrefix::clear_fungible_bit(self.faucet_id_prefix().version(), vault_key[3]);
 
-        vault_key.into()
+        AssetKey::new_unchecked(vault_key)
     }
 
     /// Return ID prefix of the faucet which issued this asset.

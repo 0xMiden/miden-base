@@ -901,7 +901,7 @@ where
         asset: Asset,
         current_vault_root: Word,
     ) -> Result<TransactionEventHandling, TransactionKernelError> {
-        let leaf_index = AssetVault::vault_key_to_leaf_index(asset.vault_key());
+        let leaf_index = asset.vault_key().to_leaf_index();
         let current_account_id = Self::get_current_account_id(process)?;
 
         // Note that we check whether a merkle path for the current vault root is present, not

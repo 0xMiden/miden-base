@@ -217,7 +217,7 @@ where
             .await
             .map_err(|err| TransactionKernelError::GetVaultAssetWitness {
                 vault_root: self.base_host.initial_account_header().vault_root(),
-                vault_key: fee_asset.vault_key().as_word(),
+                asset_key: fee_asset.vault_key(),
                 source: err,
             })?;
 
@@ -355,7 +355,7 @@ where
             .await
             .map_err(|err| TransactionKernelError::GetVaultAssetWitness {
                 vault_root,
-                vault_key: vault_key.as_word(),
+                asset_key: vault_key,
                 source: err,
             })?;
 
