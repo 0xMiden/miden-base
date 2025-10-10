@@ -25,7 +25,7 @@ use crate::TransactionContext;
 /// The [`MockHost`] wraps a [`TransactionExecutorHost`] and forwards event handling requests to it,
 /// with the difference that it only handles a subset of the events that the executor host handles.
 ///
-/// Why don't we always forward requests to the executor host? In a some tests, when using
+/// Why don't we always forward requests to the executor host? In some tests, when using
 /// [`TransactionContext::execute_code`], we want to test that the transaction kernel fails
 /// with a certain error when given invalid inputs, but the event handler in the executor host would
 /// prematurely abort the transaction due to the invalid inputs. To avoid this situation, the event

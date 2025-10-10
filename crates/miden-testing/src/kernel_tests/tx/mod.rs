@@ -53,11 +53,11 @@ mod test_tx;
 
 /// Extension trait for an [`ExecutionOutput`] to conveniently read the stack and kernel memory.
 pub trait ExecutionOutputExt {
-    /// Reads a word from transaction kernel memory or [`Word::empty`] if that location is not
+    /// Reads a word from transaction kernel memory or returns [`Word::empty`] if that location is not
     /// initialized.
     fn get_kernel_mem_word(&self, addr: u32) -> Word;
 
-    /// Reads an element from transaction kernel memory or [`ZERO`] if that location is not
+    /// Reads an element from transaction kernel memory or returns [`ZERO`] if that location is not
     /// initialized.
     fn get_kernel_mem_element(&self, addr: u32) -> Felt {
         // TODO: Use Memory::read_element once it no longer requires &mut self.
