@@ -31,6 +31,10 @@ impl NamedStorageSlot {
     pub fn storage_slot_mut(&mut self) -> &mut StorageSlot {
         &mut self.slot
     }
+
+    pub fn into_parts(self) -> (SlotName, SlotNameId, StorageSlot) {
+        (self.name, self.name_id, self.slot)
+    }
 }
 
 impl Ord for NamedStorageSlot {

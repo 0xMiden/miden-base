@@ -1,5 +1,4 @@
 use alloc::sync::Arc;
-use alloc::vec::Vec;
 
 use anyhow::Context;
 use assert_matches::assert_matches;
@@ -54,51 +53,14 @@ use miden_objects::transaction::{
     TransactionArgs,
     TransactionSummary,
 };
-use miden_objects::{FieldElement, Hasher, Word};
+use miden_objects::{Felt, FieldElement, Hasher, ONE, Word};
 use miden_processor::crypto::RpoRandomCoin;
 use miden_tx::auth::UnreachableAuth;
 use miden_tx::{TransactionExecutor, TransactionExecutorError};
 
-use super::{Felt, ONE};
+use crate::kernel_tests::tx::ExecutionOutputExt;
 use crate::utils::{create_public_p2any_note, create_spawn_note};
 use crate::{Auth, MockChain, TransactionContextBuilder};
-
-/// Tests that executing a transaction with a foreign account whose inputs are stale fails.
-#[tokio::test]
-async fn transaction_with_stale_foreign_account_inputs_fails() -> anyhow::Result<()> {
-    // Create a chain with an account
-    let mut builder = MockChain::builder();
-    let native_account = builder.add_existing_wallet(Auth::IncrNonce)?;
-    let foreign_account = builder.add_existing_wallet(Auth::IncrNonce)?;
-    let new_account = builder.create_new_wallet(Auth::IncrNonce)?;
-
-    let mut mock_chain = builder.build()?;
-
-    // Retrieve inputs which will become stale
-    let inputs = mock_chain
-        .get_foreign_account_inputs(foreign_account.id())
-        .expect("failed to get foreign account inputs");
-
-    // Create a new unrelated account to modify the account tree.
-    let tx = mock_chain.build_tx_context(new_account, &[], &[])?.build()?.execute().await?;
-    mock_chain.add_pending_executed_transaction(&tx)?;
-    mock_chain.prove_next_block()?;
-
-    // Attempt to execute with older foreign account inputs. The AccountWitness in the foreign
-    // account's inputs have become stale and so this should fail.
-    let transaction = mock_chain
-        .build_tx_context(native_account.id(), &[], &[])?
-        .foreign_accounts(vec![inputs])
-        .build()?
-        .execute()
-        .await;
-
-    assert_matches::assert_matches!(
-        transaction,
-        Err(TransactionExecutorError::ForeignAccountNotAnchoredInReference(_))
-    );
-    Ok(())
-}
 
 /// Tests that consuming a note created in a block that is newer than the reference block of the
 /// transaction fails.
@@ -186,22 +148,22 @@ async fn test_block_procedures() -> anyhow::Result<()> {
         end
         ";
 
-    let process = &tx_context.execute_code(code)?;
+    let exec_output = &tx_context.execute_code(code).await?;
 
     assert_eq!(
-        process.stack.get_word(0),
+        exec_output.get_stack_word(0),
         tx_context.tx_inputs().block_header().commitment(),
         "top word on the stack should be equal to the block header commitment"
     );
 
     assert_eq!(
-        process.stack.get(4).as_int(),
+        exec_output.get_stack_element(4).as_int(),
         tx_context.tx_inputs().block_header().timestamp() as u64,
         "fifth element on the stack should be equal to the timestamp of the last block creation"
     );
 
     assert_eq!(
-        process.stack.get(5).as_int(),
+        exec_output.get_stack_element(5).as_int(),
         tx_context.tx_inputs().block_header().block_num().as_u64(),
         "sixth element on the stack should be equal to the block number"
     );
@@ -627,7 +589,7 @@ async fn execute_tx_view_script() -> anyhow::Result<()> {
         .with_source_manager(source_manager);
 
     let stack_outputs = executor
-        .execute_tx_view_script(account_id, block_ref, tx_script, advice_inputs, Vec::default())
+        .execute_tx_view_script(account_id, block_ref, tx_script, advice_inputs)
         .await?;
 
     assert_eq!(stack_outputs[..3], [Felt::new(7), Felt::new(2), ONE]);

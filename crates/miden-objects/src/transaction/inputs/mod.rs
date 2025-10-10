@@ -164,11 +164,6 @@ impl TransactionInputs {
         &self.foreign_account_code
     }
 
-    /// Returns the foreign account inputs to be consumed in the transaction.
-    pub fn foreign_account_inputs(&self) -> &[AccountInputs] {
-        self.tx_args.foreign_account_inputs()
-    }
-
     /// Returns the advice inputs to be consumed in the transaction.
     pub fn advice_inputs(&self) -> &AdviceInputs {
         &self.advice_inputs

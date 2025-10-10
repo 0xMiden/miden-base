@@ -85,6 +85,10 @@ end
 #! manipulation from a malicious host. Therefore this should only be used when the inclusion of the
 #! peeked balance is verified at a later point.
 #!
+#! WARNING: This is a generic vault procedure and so it cannot emit an event to lazy load asset
+#! merkle paths from the merkle store, since this is only possible for the account vault. Ensure
+#! that the merkle paths are present prior to calling.
+#!
 #! To get the verified balance, use get_balance.
 #!
 #! Inputs:  [faucet_id_prefix, faucet_id_suffix, vault_root_ptr]
