@@ -1400,29 +1400,29 @@ end
 #! Panics if:
 #! - the requested storage slot type is not map.
 proc.get_map_item_raw
+    emit.ACCOUNT_STORAGE_BEFORE_GET_MAP_ITEM_EVENT
+    # => [KEY, ROOT, index]
+
     # check storage slot type
-    dup.8 exec.get_storage_slot_type_by_index
-    # => [slot_type, KEY, ROOT, index]
+    movup.8 exec.get_storage_slot_type_by_index
+    # => [slot_type, KEY, ROOT]
 
     # check if storage slot type is map
     exec.constants::get_storage_slot_type_map eq
     assert.err=ERR_ACCOUNT_READING_MAP_VALUE_FROM_NON_MAP_SLOT
-    # => [KEY, ROOT, index]
-
-    emit.ACCOUNT_STORAGE_BEFORE_GET_MAP_ITEM_EVENT
-    # => [KEY, ROOT, index]
+    # => [KEY, ROOT]
 
     # see hash_map_key's docs for why this is done
     exec.hash_map_key
-    # => [HASHED_KEY, ROOT, index]
+    # => [HASHED_KEY, ROOT]
 
     # fetch the VALUE located under HASHED_KEY in the tree
     exec.smt::get
-    # => [VALUE, ROOT, index]
+    # => [VALUE, ROOT]
 
     # remove the ROOT from the stack
     swapw dropw
-    # => [VALUE, index]
+    # => [VALUE]
 
     movup.4 drop
     # => [VALUE]
