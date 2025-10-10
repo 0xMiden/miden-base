@@ -363,6 +363,45 @@ where
         Ok(asset_witness_to_advice_mutation(asset_witness))
     }
 
+    /// Handles a request for a note script by querying the data store.
+    ///
+    /// The script is fetched from the data store, added to the advice map, and then the note
+    /// builder is created using the provided stack state.
+    async fn on_note_script_requested(
+        &mut self,
+        script_root: Word,
+        stack: Vec<Felt>,
+        process: &ProcessState<'_>,
+    ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
+        let note_script = self
+            .base_host
+            .store()
+            .get_note_script(script_root)
+            .await
+            .map_err(|err| {
+                TransactionKernelError::other_with_source(
+                    format!("failed to get note script with root {script_root} from data store"),
+                    err,
+                )
+            })?;
+
+        let script_felts: Vec<Felt> = (&note_script).into();
+        
+        let mutations = vec![AdviceMutation::extend_map(AdviceMap::from_iter([(
+            script_root,
+            script_felts.clone(),
+        )]))];
+        
+        self.base_host.create_note_builder_from_stack_and_script(
+            stack,
+            script_root,
+            script_felts,
+            process.advice_provider(),
+        )?;
+        
+        Ok(mutations)
+    }
+
     /// Consumes `self` and returns the account delta, output notes, generated signatures and
     /// transaction progress.
     #[allow(clippy::type_complexity)]
@@ -465,6 +504,9 @@ where
                     .on_account_storage_map_witness_requested(current_account_id, map_root, map_key)
                     .await
                     .map_err(EventError::from),
+                TransactionEventData::NoteScript { script_root, stack } => {
+                    self.on_note_script_requested(script_root, stack, process).await.map_err(EventError::from)
+                },
             }
         }
     }

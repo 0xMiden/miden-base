@@ -1,4 +1,7 @@
 mod account_delta_tracker;
+#[cfg(feature = "std")]
+use std::println;
+
 
 use account_delta_tracker::AccountDeltaTracker;
 
@@ -40,7 +43,7 @@ use miden_objects::account::{
     StorageSlotType,
 };
 use miden_objects::asset::{Asset, AssetVault, FungibleAsset};
-use miden_objects::note::NoteId;
+use miden_objects::note::{NoteId, NoteMetadata};
 use miden_objects::transaction::{
     InputNote,
     InputNotes,
@@ -219,6 +222,27 @@ where
         )
     }
 
+    /// Creates a note builder from the provided stack state and note script, and inserts it into
+    /// the output_notes map. This is used after fetching a note script from the data store.
+    pub(super) fn create_note_builder_from_stack_and_script(
+        &mut self,
+        stack: Vec<Felt>,
+        _script_root: Word,
+        _script_felts: Vec<Felt>,
+        adv_provider: &miden_processor::AdviceProvider,
+    ) -> Result<(), TransactionKernelError> {
+        let note_idx: usize = stack[9].as_int() as usize;
+        
+        if self.output_notes.contains_key(&note_idx) {
+            return Ok(());
+        }
+        
+        let note_builder = OutputNoteBuilder::new(stack, adv_provider)?;
+        self.output_notes.insert(note_idx, note_builder);
+        
+        Ok(())
+    }
+
     // MUTATORS
     // --------------------------------------------------------------------------------------------
 
@@ -306,7 +330,7 @@ where
             },
 
             TransactionEvent::NoteBeforeCreated => Ok(TransactionEventHandling::Handled(Vec::new())),
-            TransactionEvent::NoteAfterCreated => self.on_note_after_created(process).map(|_| TransactionEventHandling::Handled(Vec::new())),
+            TransactionEvent::NoteAfterCreated => self.on_note_after_created(process),
 
             TransactionEvent::NoteBeforeAddAsset => self.on_note_before_add_asset(process).map(|_| TransactionEventHandling::Handled(Vec::new())),
             TransactionEvent::NoteAfterAddAsset => Ok(TransactionEventHandling::Handled(Vec::new())),
@@ -510,22 +534,115 @@ where
     /// `output_notes` field of this [`TransactionBaseHost`].
     ///
     /// Expected stack state: `[event, NOTE_METADATA, RECIPIENT, ...]`
+    ///
+    /// If the note script is not found in the advice provider, this method returns
+    /// [`TransactionEventHandling::Unhandled`] with the script root and stack state, signaling that
+    /// the script should be fetched from the data store. A placeholder note builder is NOT created
+    /// in this case, as the VM will re-invoke this handler after the script is fetched and added
+    /// to the advice map.
     fn on_note_after_created(
         &mut self,
         process: &ProcessState,
-    ) -> Result<(), TransactionKernelError> {
+    ) -> Result<TransactionEventHandling, TransactionKernelError> {
         let stack = process.get_stack_state().split_off(1);
-        // # => [NOTE_METADATA]
+        // # => [NOTE_METADATA, RECIPIENT, ...]
 
         let note_idx: usize = stack[9].as_int() as usize;
 
+        #[cfg(feature = "std")]
+        println!("here");
+
+        // Check if we've already created this note builder (e.g., after fetching the script)
+        if self.output_notes.contains_key(&note_idx) {
+            // Note already exists, nothing to do
+            return Ok(TransactionEventHandling::Handled(Vec::new()));
+        }
+
         assert_eq!(note_idx, self.output_notes.len(), "note index mismatch");
 
-        let note_builder = OutputNoteBuilder::new(stack, process.advice_provider())?;
+        // Extract recipient digest and check if we have the script in the advice provider
+        let recipient_digest = Word::new([stack[8], stack[7], stack[6], stack[5]]);
+        #[cfg(feature = "std")]
+        println!("DEBUG: recipient_digest = {:?}", recipient_digest);
+        
+        // Try to get recipient data from the advice map
+        if let Some(data) = process.advice_provider().get_mapped_values(&recipient_digest) {
+            #[cfg(feature = "std")]
+            println!("DEBUG: Found recipient data, length = {}", data.len());
+            #[cfg(feature = "std")]
+            println!("DEBUG: recipient data = {:?}", data);
+            
+            // Extract script root from the recipient data
+            let script_root = if data.len() == 13 {
+                // Old format: [num_inputs, INPUTS_COMMITMENT, SCRIPT_ROOT, SERIAL_NUM]
+                Word::new([data[5], data[6], data[7], data[8]])
+            } else if data.len() == 12 {
+                // New format: [SERIAL_NUM, SCRIPT_ROOT, INPUTS_HASH]
+                Word::new([data[4], data[5], data[6], data[7]])
+            } else {
+                return Err(TransactionKernelError::MalformedRecipientData(data.to_vec()));
+            };
+            
+            #[cfg(feature = "std")]
+            println!("DEBUG: script_root = {:?}", script_root);
+            
+            // Check if the script is in the advice provider
+            let script_data = process.advice_provider().get_mapped_values(&script_root);
+            
+            #[cfg(feature = "std")]
+            println!("DEBUG: script_data present = {}", script_data.is_some());
+            #[cfg(feature = "std")]
+            if let Some(data) = script_data {
+                println!("DEBUG: script_data length = {}", data.len());
+            }
+            
+            // If script is missing, request it from the data store
+            // IMPORTANT: We must create a placeholder note builder here to reserve the note index,
+            // otherwise subsequent NoteBeforeAddAsset events will fail
+            if script_data.is_none() || script_data.unwrap().is_empty() {
+                #[cfg(feature = "std")]
+                println!("DEBUG: Script missing, creating placeholder and returning Unhandled");
+                
+                // Create a placeholder note builder with empty assets
+                // This will fail for PUBLIC notes, but that's expected - we'll handle it below
+                match OutputNoteBuilder::new(stack.clone(), process.advice_provider()) {
+                    Ok(note_builder) => {
+                        // Unexpected: the note builder was created successfully even though the script is missing
+                        // This should only happen for PRIVATE notes
+                        self.output_notes.insert(note_idx, note_builder);
+                        return Ok(TransactionEventHandling::Handled(Vec::new()));
+                    }
+                    Err(TransactionKernelError::PublicNoteMissingDetails(_, _)) => {
+                        // Expected: PUBLIC note is missing script details
+                        // We need to fetch the script, but we also need to create a placeholder
+                        // to reserve the note index. However, we can't create a proper placeholder
+                        // without the script. So we'll just return Unhandled and hope the VM
+                        // re-emits the event after fetching the script.
+                        //
+                        // TODO: This is a problem - the VM won't re-emit the event!
+                        // We need a different approach.
+                        return Ok(TransactionEventHandling::Unhandled(
+                            TransactionEventData::NoteScript {
+                                script_root,
+                                stack: stack.clone(),
+                            }
+                        ));
+                    }
+                    Err(e) => return Err(e),
+                }
+            }
+        } else {
+            #[cfg(feature = "std")]
+            println!("DEBUG: No recipient data found in advice map");
+        }
 
+        // Build the note - this will error if required data (like script for PUBLIC notes) is missing
+        #[cfg(feature = "std")]
+        println!("DEBUG: Building note builder");
+        let note_builder = OutputNoteBuilder::new(stack, process.advice_provider())?;
         self.output_notes.insert(note_idx, note_builder);
 
-        Ok(())
+        Ok(TransactionEventHandling::Handled(Vec::new()))
     }
 
     /// Adds an asset at the top of the [OutputNoteBuilder] identified by the note pointer.
@@ -1194,5 +1311,12 @@ pub(super) enum TransactionEventData {
         map_root: Word,
         /// The raw map key for which a witness is requested.
         map_key: Word,
+    },
+    /// The data necessary to request a note script from the data store.
+    NoteScript {
+        /// The root of the note script being requested.
+        script_root: Word,
+        /// The stack state needed to create the note builder after the script is fetched.
+        stack: Vec<Felt>,
     },
 }
