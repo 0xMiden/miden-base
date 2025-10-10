@@ -35,11 +35,9 @@ macro_rules! procedure_digest {
                         panic!("failed to create name for '{}' procedure", $proc_name)
                     }),
                 );
-                $library_fn()
-                    .get_procedure_root_by_name(qualified_name)
-                    .unwrap_or_else(|| {
-                        panic!("{} should contain '{}' procedure", stringify!($library_fn), $proc_name)
-                    })
+                $library_fn().get_procedure_root_by_name(qualified_name).unwrap_or_else(|| {
+                    panic!("{} should contain '{}' procedure", stringify!($library_fn), $proc_name)
+                })
             });
     };
 }
