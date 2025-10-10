@@ -15,11 +15,11 @@ use crate::{AccountError, FieldElement, ZERO};
 // ACCOUNT STORAGE HEADER
 // ================================================================================================
 
-/// Storage slot header is a lighter version of the [StorageSlot] storing only the type and the
-/// top-level value for the slot, and being, in fact, just a thin wrapper around a tuple.
+/// The header of a [`StorageSlot`], storing only the name ID, slot type and value of the slot.
 ///
-/// That is, for complex storage slot (e.g., storage map), the header contains only the commitment
-/// to the underlying data.
+/// The stored value differs based on the slot type:
+/// - [`StorageSlotType::Value`]: The value of the slot itself.
+/// - [`StorageSlotType::Map`]: The root of the SMT that represents the storage map.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct StorageSlotHeader {
     name_id: SlotNameId,
@@ -52,11 +52,12 @@ impl StorageSlotHeader {
     }
 }
 
-/// Account storage header is a lighter version of the [AccountStorage] storing only the type and
-/// the top-level value for each storage slot.
+/// The header of an [`AccountStorage`], storing only the slot name, slot type and value of each
+/// storage slot.
 ///
-/// That is, for complex storage slots (e.g., storage maps), the header contains only the commitment
-/// to the underlying data.
+/// The stored value differs based on the slot type:
+/// - [`StorageSlotType::Value`]: The value of the slot itself.
+/// - [`StorageSlotType::Map`]: The root of the SMT that represents the storage map.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AccountStorageHeader {
     slots: Vec<(SlotName, StorageSlotType, Word)>,
