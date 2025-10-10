@@ -281,13 +281,14 @@ proc.compute_transaction_threshold.1
             drop drop drop dup dup.3
             # => [transaction_threshold, proc_threshold, proc_threshold, num_procedures-1, transaction_threshold]
 
-            u32assert2 u32gt
+            u32assert2.err="transaction threshold or procedure threshold are not u32"
+            u32gt
             # => [is_gt, proc_threshold, num_procedures-1, transaction_threshold]
             # 2c. if proc_threshold > transaction_threshold, update transaction_threshold
             if.true
                 # => [proc_threshold, num_procedures-1, transaction_threshold]
-                movup.2 drop
-                swap
+
+                swap.2 drop
                 # => [num_procedures-1, proc_threshold]
             # if proc_threshold <= transaction_threshold, keep transaction_threshold unchanged
             else
