@@ -110,11 +110,10 @@ end
 #! Invocation: exec
 export.build_recipient.2
 
-    dup.1 dup.1
-    loc_store.0
-    loc_store.1
+    push.111 debug.stack drop
 
-    push.112 debug.stack drop
+    dup.1 dup.1 loc_store.0 loc_store.1
+    # => [inputs_ptr, num_inputs, SERIAL_NUM, SCRIPT_ROOT] 
 
     exec.compute_inputs_commitment
     # => [INPUTS_HASH, SERIAL_NUM, SCRIPT_ROOT]
@@ -128,21 +127,19 @@ export.build_recipient.2
     exec.build_recipient_hash
     # => [RECIPIENT, SERIAL_NUM, SCRIPT_ROOT, INPUTS_HASH]
 
-    # insert inputs into AdviceMap
-
+    # inserting NoteInputs into AdviceMap
     dupw.3
     # => [INPUTS_HASH, RECIPIENT, SERIAL_NUM, SCRIPT_ROOT, INPUTS_HASH]
  
     loc_load.1 loc_load.0
     # => [inputs_ptr, num_inputs, INPUTS_HASH, RECIPIENT, SERIAL_NUM, SCRIPT_ROOT, INPUTS_HASH]
 
+    # compute end_ptr
     dup.1 dup.1 add swap.2 drop
     # => [inputs_ptr, end_ptr, INPUTS_HASH, RECIPIENT, SERIAL_NUM, SCRIPT_ROOT, INPUTS_HASH]
 
     movdn.5 movdn.5
     # => [INPUTS_HASH, inputs_ptr, end_ptr, RECIPIENT, SERIAL_NUM, SCRIPT_ROOT, INPUTS_HASH]
-
-    push.111 debug.stack drop
 
     adv.insert_mem
     # => [INPUTS_HASH, inputs_ptr, end_ptr, RECIPIENT, SERIAL_NUM, SCRIPT_ROOT, INPUTS_HASH]
@@ -153,19 +150,20 @@ export.build_recipient.2
     movdnw.3
     # => [SERIAL_NUM, SCRIPT_ROOT, INPUTS_HASH, RECIPIENT]
 
-    push.222 debug.stack drop
-
+    # inserting NoteDetails into AdviceMap
     mem_storew.0 dropw mem_storew.4 dropw mem_storew.8 dropw
     # => [RECIPIENT]
 
     push.12.0 movdn.5 movdn.5
     # => [RECIPIENT, 0, 12]
- 
+
     adv.insert_mem
     # => [RECIPIENT, 0, 12]
 
     movup.5 drop movup.5 drop
     # => [RECIPIENT]
+
+    push.222 debug.stack drop
 end
 
 #! Returns the RECIPIENT for a specified SERIAL_NUM, SCRIPT_ROOT, and inputs commitment.
