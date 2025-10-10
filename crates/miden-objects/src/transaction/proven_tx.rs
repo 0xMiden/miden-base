@@ -652,7 +652,6 @@ mod tests {
     use anyhow::Context;
     use miden_core::utils::Deserializable;
     use miden_verifier::ExecutionProof;
-    use winter_air::proof::Proof;
     use winter_rand_utils::rand_value;
 
     use super::ProvenTransaction;
@@ -776,7 +775,7 @@ mod tests {
         let ref_block_num = BlockNumber::from(1);
         let ref_block_commitment = Word::empty();
         let expiration_block_num = BlockNumber::from(2);
-        let proof = ExecutionProof::new(Proof::new_dummy(), Default::default());
+        let proof = ExecutionProof::new_dummy();
 
         let tx = ProvenTransactionBuilder::new(
             account_id,

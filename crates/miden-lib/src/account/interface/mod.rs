@@ -8,16 +8,17 @@ use miden_objects::account::{Account, AccountCode, AccountId, AccountIdPrefix, A
 use miden_objects::assembly::mast::{MastForest, MastNode, MastNodeId};
 use miden_objects::note::{Note, NoteScript, PartialNote};
 use miden_objects::transaction::TransactionScript;
+use miden_processor::MastNodeExt;
 use thiserror::Error;
 
 use crate::AuthScheme;
 use crate::account::components::{
     basic_fungible_faucet_library,
     basic_wallet_library,
-    multisig_library,
     no_auth_library,
     rpo_falcon_512_acl_library,
     rpo_falcon_512_library,
+    rpo_falcon_512_multisig_library,
 };
 use crate::errors::ScriptBuilderError;
 use crate::note::well_known_note::WellKnownNote;
@@ -148,8 +149,9 @@ impl AccountInterface {
                         .extend(rpo_falcon_512_acl_library().mast_forest().procedure_digests());
                 },
                 AccountComponentInterface::AuthRpoFalcon512Multisig(_) => {
-                    component_proc_digests
-                        .extend(multisig_library().mast_forest().procedure_digests());
+                    component_proc_digests.extend(
+                        rpo_falcon_512_multisig_library().mast_forest().procedure_digests(),
+                    );
                 },
                 AccountComponentInterface::AuthNoAuth => {
                     component_proc_digests

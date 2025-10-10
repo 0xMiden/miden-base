@@ -1,5 +1,4 @@
 use alloc::collections::{BTreeMap, BTreeSet};
-use alloc::string::ToString;
 use alloc::vec::Vec;
 
 use anyhow::Context;
@@ -21,7 +20,6 @@ use miden_objects::block::{
 };
 use miden_objects::note::{Note, NoteHeader, NoteId, NoteInclusionProof, Nullifier};
 use miden_objects::transaction::{
-    AccountInputs,
     ExecutedTransaction,
     InputNote,
     InputNotes,
@@ -30,7 +28,6 @@ use miden_objects::transaction::{
     ProvenTransaction,
     TransactionInputs,
 };
-use miden_objects::{MAX_BATCHES_PER_BLOCK, MAX_OUTPUT_NOTES_PER_BATCH};
 use miden_processor::{DeserializationError, Word};
 use miden_tx::LocalTransactionProver;
 use miden_tx::auth::BasicAuthenticator;
@@ -47,35 +44,95 @@ use crate::{MockChainBuilder, TransactionContextBuilder};
 // ================================================================================================
 
 /// The [`MockChain`] simulates a simplified blockchain environment for testing purposes.
-/// It allows creating and managing accounts, minting assets, executing transactions, and applying
-/// state updates.
 ///
-/// This struct is designed to mock transaction workflows, asset transfers, and
-/// note creation in a test setting. Once entities are set up, [`TransactionContextBuilder`] objects
-/// can be obtained in order to execute transactions accordingly.
-///
-/// The primary way to interact with the mock chain is by generating transactions yourself and
-/// adding them to the mock chain "mempool" using [`MockChain::add_pending_executed_transaction`]
-/// or [`MockChain::add_pending_proven_transaction`]. Once some transactions have been added, they
-/// can be proven into a block using [`MockChain::prove_next_block`], which commits them to the
-/// chain state.
+/// The typical usage of a mock chain is:
+/// - Creating it using a [`MockChainBuilder`], which allows adding accounts and notes to the
+///   genesis state.
+/// - Creating transactions against the chain state and executing them.
+/// - Adding executed or proven transactions to the set of pending transactions (the "mempool"),
+///   e.g. using [`MockChain::add_pending_executed_transaction`].
+/// - Proving a block, which adds all pending transactions to the chain state, e.g. using
+///   [`MockChain::prove_next_block`].
 ///
 /// The mock chain uses the batch and block provers underneath to process pending transactions, so
 /// the generated blocks are realistic and indistinguishable from a real node. The only caveat is
 /// that no real ZK proofs are generated or validated as part of transaction, batch or block
-/// building. If realistic data is important for your use case, avoid using any pending APIs except
-/// for [`MockChain::add_pending_executed_transaction`] and
-/// [`MockChain::add_pending_proven_transaction`].
+/// building.
 ///
 /// # Examples
 ///
+/// ## Executing a simple transaction
+/// ```
+/// # use anyhow::Result;
+/// # use miden_objects::{
+/// #    asset::{Asset, FungibleAsset},
+/// #    note::NoteType,
+/// # };
+/// # use miden_testing::{Auth, MockChain};
+/// #
+/// # #[tokio::main(flavor = "current_thread")]
+/// # async fn main() -> Result<()> {
+/// // Build a genesis state for a mock chain using a MockChainBuilder.
+/// // --------------------------------------------------------------------------------------------
+///
+/// let mut builder = MockChain::builder();
+///
+/// // Add a recipient wallet.
+/// let receiver = builder.add_existing_wallet(Auth::BasicAuth)?;
+///
+/// // Add a wallet with assets.
+/// let sender = builder.add_existing_wallet(Auth::IncrNonce)?;
+///
+/// let fungible_asset = FungibleAsset::mock(10).unwrap_fungible();
+/// // Add a P2ID note with a fungible asset to the chain.
+/// let note = builder.add_p2id_note(
+///     sender.id(),
+///     receiver.id(),
+///     &[Asset::Fungible(fungible_asset)],
+///     NoteType::Public,
+/// )?;
+///
+/// let mut mock_chain: MockChain = builder.build()?;
+///
+/// // Create a transaction against the receiver account consuming the note.
+/// // --------------------------------------------------------------------------------------------
+///
+/// let transaction = mock_chain
+///     .build_tx_context(receiver.id(), &[note.id()], &[])?
+///     .build()?
+///     .execute()
+///     .await?;
+///
+/// // Add the transaction to the chain state.
+/// // --------------------------------------------------------------------------------------------
+///
+/// // Add the transaction to the mock chain's "mempool" of pending transactions.
+/// mock_chain.add_pending_executed_transaction(&transaction)?;
+///
+/// // Prove the next block to include the transaction in the chain state.
+/// mock_chain.prove_next_block()?;
+///
+/// // The receiver account should now have the asset in its account vault.
+/// assert_eq!(
+///     mock_chain
+///         .committed_account(receiver.id())?
+///         .vault()
+///         .get_balance(fungible_asset.faucet_id())?,
+///     fungible_asset.amount()
+/// );
+/// # Ok(())
+/// # }
+/// ```
+///
 /// ## Create mock objects and build a transaction context
+///
 /// ```
 /// # use anyhow::Result;
 /// # use miden_objects::{Felt, asset::{Asset, FungibleAsset}, note::NoteType};
 /// # use miden_testing::{Auth, MockChain, TransactionContextBuilder};
-///
-/// # fn main() -> Result<()> {
+/// #
+/// # #[tokio::main(flavor = "current_thread")]
+/// # async fn main() -> Result<()> {
 /// let mut builder = MockChain::builder();
 ///
 /// let faucet = builder.create_new_faucet(Auth::BasicAuth, "USDT", 100_000)?;
@@ -91,58 +148,7 @@ use crate::{MockChainBuilder, TransactionContextBuilder};
 /// // The target account is a new account so we move it into the build_tx_context, since the
 /// // chain's committed accounts do not yet contain it.
 /// let tx_context = mock_chain.build_tx_context(target, &[note.id()], &[])?.build()?;
-/// let executed_transaction = tx_context.execute_blocking()?;
-/// # Ok(())
-/// # }
-/// ```
-///
-/// ## Executing a simple transaction
-/// ```
-/// # use anyhow::Result;
-/// # use miden_objects::{
-/// #    asset::{Asset, FungibleAsset},
-/// #    note::NoteType,
-/// # };
-/// # use miden_testing::{Auth, MockChain};
-///
-/// # fn main() -> Result<()> {
-/// let mut builder = MockChain::builder();
-///
-/// // Add a recipient wallet.
-/// let receiver = builder.add_existing_wallet(Auth::BasicAuth)?;
-///
-/// // Add a wallet with assets.
-/// let sender = builder.add_existing_wallet(Auth::IncrNonce)?;
-/// let fungible_asset = FungibleAsset::mock(10).unwrap_fungible();
-///
-/// // Add a P2ID note to the chain.
-/// let note = builder.add_p2id_note(
-///     sender.id(),
-///     receiver.id(),
-///     &[Asset::Fungible(fungible_asset)],
-///     NoteType::Public,
-/// )?;
-///
-/// let mut mock_chain = builder.build()?;
-///
-/// let transaction = mock_chain
-///     .build_tx_context(receiver.id(), &[note.id()], &[])?
-///     .build()?
-///     .execute_blocking()?;
-///
-/// // Add the transaction to the mock chain's "mempool" of pending transactions.
-/// mock_chain.add_pending_executed_transaction(&transaction);
-///
-/// // Prove the next block to include the transaction in the chain state.
-/// mock_chain.prove_next_block()?;
-///
-/// assert_eq!(
-///     mock_chain
-///         .committed_account(receiver.id())?
-///         .vault()
-///         .get_balance(fungible_asset.faucet_id())?,
-///     fungible_asset.amount()
-/// );
+/// let executed_transaction = tx_context.execute().await?;
 /// # Ok(())
 /// # }
 /// ```
@@ -159,11 +165,6 @@ pub struct MockChain {
 
     /// Tree containing the state commitments of all accounts.
     account_tree: AccountTree,
-
-    /// Note batches created in transactions in the block.
-    ///
-    /// These will become available once the block is proven.
-    pending_output_notes: Vec<OutputNote>,
 
     /// Transactions that have been submitted to the chain but have not yet been included in a
     /// block.
@@ -183,9 +184,6 @@ pub struct MockChain {
     /// AccountId |-> AccountAuthenticator mapping to store the authenticator for accounts to
     /// simplify transaction creation.
     account_authenticators: BTreeMap<AccountId, AccountAuthenticator>,
-
-    // The RNG used to generate note serial numbers, account seeds or cryptographic keys.
-    rng: ChaCha20Rng,
 }
 
 impl MockChain {
@@ -223,13 +221,10 @@ impl MockChain {
             blocks: vec![],
             nullifier_tree: NullifierTree::default(),
             account_tree,
-            pending_output_notes: Vec::new(),
             pending_transactions: Vec::new(),
             committed_notes: BTreeMap::new(),
             committed_accounts: BTreeMap::new(),
             account_authenticators,
-            // Initialize RNG with default seed.
-            rng: ChaCha20Rng::from_seed(Default::default()),
         };
 
         // We do not have to apply the tree changes, because the account tree is already initialized
@@ -610,8 +605,8 @@ impl MockChain {
     // INPUTS APIS
     // ----------------------------------------------------------------------------------------
 
-    /// Returns a valid [`TransactionInputs`] for the specified entities, executing against a
-    /// specific block number.
+    /// Returns a valid [`TransactionInputs`] for the specified entities, executing against
+    /// a specific block number.
     pub fn get_transaction_inputs_at(
         &self,
         reference_block: BlockNumber,
@@ -672,7 +667,7 @@ impl MockChain {
         let input_notes = InputNotes::new(input_notes)?;
 
         Ok(TransactionInputs::new(
-            account,
+            account.into(),
             ref_block.clone(),
             partial_blockchain,
             input_notes,
@@ -716,18 +711,19 @@ impl MockChain {
     }
 
     /// Gets foreign account inputs to execute FPI transactions.
-    pub fn get_foreign_account_inputs(
+    ///
+    /// Only used internally and so does not need to be public.
+    #[cfg(test)]
+    pub(crate) fn get_foreign_account_inputs(
         &self,
         account_id: AccountId,
-    ) -> anyhow::Result<AccountInputs> {
-        let account = self.committed_account(account_id)?;
+    ) -> anyhow::Result<(Account, AccountWitness)> {
+        let account = self.committed_account(account_id)?.clone();
 
         let account_witness = self.account_tree().open(account_id);
         assert_eq!(account_witness.state_commitment(), account.commitment());
 
-        let partial_account = PartialAccount::from(account);
-
-        Ok(AccountInputs::new(partial_account, account_witness))
+        Ok((account, account_witness))
     }
 
     /// Gets the inputs for a block for the provided batches.
@@ -770,16 +766,18 @@ impl MockChain {
     // PUBLIC MUTATORS
     // ----------------------------------------------------------------------------------------
 
-    /// Creates the next block in the mock chain.
+    /// Proves the next block in the mock chain.
     ///
-    /// This will make all the objects currently pending available for use.
+    /// This will commit all the currently pending transactions into the chain state.
     pub fn prove_next_block(&mut self) -> anyhow::Result<ProvenBlock> {
-        self.prove_block_inner(None)
+        self.prove_and_apply_block(None)
     }
 
     /// Proves the next block in the mock chain at the given timestamp.
+    ///
+    /// This will commit all the currently pending transactions into the chain state.
     pub fn prove_next_block_at(&mut self, timestamp: u32) -> anyhow::Result<ProvenBlock> {
-        self.prove_block_inner(Some(timestamp))
+        self.prove_and_apply_block(Some(timestamp))
     }
 
     /// Proves new blocks until the block with the given target block number has been created.
@@ -810,11 +808,6 @@ impl MockChain {
         Ok(last_block.expect("at least one block should have been created"))
     }
 
-    /// Sets the seed for the internal RNG.
-    pub fn set_rng_seed(&mut self, seed: [u8; 32]) {
-        self.rng = ChaCha20Rng::from_seed(seed);
-    }
-
     // PUBLIC MUTATORS (PENDING APIS)
     // ----------------------------------------------------------------------------------------
 
@@ -822,8 +815,6 @@ impl MockChain {
     ///
     /// A block has to be created to apply the transaction effects to the chain state, e.g. using
     /// [`MockChain::prove_next_block`].
-    ///
-    /// Returns the resulting state of the executing account after executing the transaction.
     pub fn add_pending_executed_transaction(
         &mut self,
         transaction: &ExecutedTransaction,
@@ -906,7 +897,7 @@ impl MockChain {
                 block_note_index.leaf_index_value(),
                 note_path,
             )
-            .context("failed to construct note inclusion proof")?;
+            .context("failed to create inclusion proof for output note")?;
 
             if let OutputNote::Full(note) = created_note {
                 self.committed_notes
@@ -957,83 +948,16 @@ impl MockChain {
         Ok(vec![proven_batch])
     }
 
-    fn apply_pending_notes_to_block(
-        &mut self,
-        proven_block: &mut ProvenBlock,
-    ) -> anyhow::Result<()> {
-        // Add pending output notes to block.
-        let output_notes_block: BTreeSet<NoteId> =
-            proven_block.output_notes().map(|(_, output_note)| output_note.id()).collect();
-
-        // We could distribute notes over multiple batches (if space is available), but most likely
-        // one is sufficient.
-        if self.pending_output_notes.len() > MAX_OUTPUT_NOTES_PER_BATCH {
-            return Err(anyhow::anyhow!(
-                "too many pending output notes: {}, max allowed: {MAX_OUTPUT_NOTES_PER_BATCH}",
-                self.pending_output_notes.len(),
-            ));
-        }
-
-        let mut pending_note_batch = Vec::with_capacity(self.pending_output_notes.len());
-        let pending_output_notes = core::mem::take(&mut self.pending_output_notes);
-        for (note_idx, output_note) in pending_output_notes.into_iter().enumerate() {
-            if output_notes_block.contains(&output_note.id()) {
-                return Err(anyhow::anyhow!(
-                    "output note {} is already created in block through transactions",
-                    output_note.id()
-                ));
-            }
-
-            pending_note_batch.push((note_idx, output_note));
-        }
-
-        if (proven_block.output_note_batches().len() + 1) > MAX_BATCHES_PER_BLOCK {
-            return Err(anyhow::anyhow!(
-                "too many batches in block: cannot add more pending notes".to_string(),
-            ));
-        }
-
-        proven_block.output_note_batches_mut().push(pending_note_batch);
-
-        let updated_block_note_tree = proven_block.build_output_note_tree().root();
-
-        // Update note tree root in the block header.
-        let block_header = proven_block.header();
-        let updated_header = BlockHeader::new(
-            block_header.version(),
-            block_header.prev_block_commitment(),
-            block_header.block_num(),
-            block_header.chain_commitment(),
-            block_header.account_root(),
-            block_header.nullifier_root(),
-            updated_block_note_tree,
-            block_header.tx_commitment(),
-            block_header.tx_kernel_commitment(),
-            block_header.proof_commitment(),
-            block_header.fee_parameters().clone(),
-            block_header.timestamp(),
-        );
-        proven_block.set_block_header(updated_header);
-
-        Ok(())
-    }
-
     /// Creates a new block in the mock chain.
     ///
-    /// This will make all the objects currently pending available for use.
-    ///
-    /// If a `timestamp` is provided, it will be set on the block.
-    ///
-    /// Block building is divided into a few steps:
+    /// Block building is divided into two steps:
     ///
     /// 1. Build batches from pending transactions and a block from those batches. This results in a
     ///    block.
-    /// 2. Take the pending notes and insert them directly into the proven block. This means we have
-    ///    to update the header of the block with the updated block note tree root.
-    /// 3. Finally, the block contains both the updates from the regular transactions/batches as
-    ///    well as the pending notes. Now insert all the accounts, nullifier and notes into the
-    ///    chain state.
-    fn prove_block_inner(&mut self, timestamp: Option<u32>) -> anyhow::Result<ProvenBlock> {
+    /// 2. Insert all the account updates, nullifiers and notes from the block into the chain state.
+    ///
+    /// If a `timestamp` is provided, it will be set on the block.
+    fn prove_and_apply_block(&mut self, timestamp: Option<u32>) -> anyhow::Result<ProvenBlock> {
         // Create batches from pending transactions.
         // ----------------------------------------------------------------------------------------
 
@@ -1048,11 +972,10 @@ impl MockChain {
         let proposed_block = self
             .propose_block_at(batches, block_timestamp)
             .context("failed to create proposed block")?;
-        let mut proven_block = self.prove_block(proposed_block).context("failed to prove block")?;
+        let proven_block = self.prove_block(proposed_block).context("failed to prove block")?;
 
-        if !self.pending_output_notes.is_empty() {
-            self.apply_pending_notes_to_block(&mut proven_block)?;
-        }
+        // Apply block.
+        // ----------------------------------------------------------------------------------------
 
         self.apply_block(proven_block.clone()).context("failed to apply block")?;
 
@@ -1075,7 +998,6 @@ impl Serializable for MockChain {
         self.blocks.write_into(target);
         self.nullifier_tree.write_into(target);
         self.account_tree.write_into(target);
-        self.pending_output_notes.write_into(target);
         self.pending_transactions.write_into(target);
         self.committed_accounts.write_into(target);
         self.committed_notes.write_into(target);
@@ -1089,7 +1011,6 @@ impl Deserializable for MockChain {
         let blocks = Vec::<ProvenBlock>::read_from(source)?;
         let nullifier_tree = NullifierTree::read_from(source)?;
         let account_tree = AccountTree::read_from(source)?;
-        let pending_output_notes = Vec::<OutputNote>::read_from(source)?;
         let pending_transactions = Vec::<ProvenTransaction>::read_from(source)?;
         let committed_accounts = BTreeMap::<AccountId, Account>::read_from(source)?;
         let committed_notes = BTreeMap::<NoteId, MockChainNote>::read_from(source)?;
@@ -1101,12 +1022,10 @@ impl Deserializable for MockChain {
             blocks,
             nullifier_tree,
             account_tree,
-            pending_output_notes,
             pending_transactions,
             committed_notes,
             committed_accounts,
             account_authenticators,
-            rng: ChaCha20Rng::from_os_rng(),
         })
     }
 }
@@ -1237,8 +1156,8 @@ mod tests {
         Ok(())
     }
 
-    #[test]
-    fn private_account_state_update() -> anyhow::Result<()> {
+    #[tokio::test]
+    async fn private_account_state_update() -> anyhow::Result<()> {
         let faucet_id = ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET.try_into()?;
         let account_builder = AccountBuilder::new([4; 32])
             .storage_mode(AccountStorageMode::Private)
@@ -1267,7 +1186,8 @@ mod tests {
         let tx = mock_chain
             .build_tx_context(TxContextInput::Account(account), &[], &[note_1])?
             .build()?
-            .execute_blocking()?;
+            .execute()
+            .await?;
 
         mock_chain.add_pending_executed_transaction(&tx)?;
         mock_chain.prove_next_block()?;
@@ -1281,8 +1201,8 @@ mod tests {
         Ok(())
     }
 
-    #[test]
-    fn mock_chain_serialization() {
+    #[tokio::test]
+    async fn mock_chain_serialization() {
         let mut builder = MockChain::builder();
 
         let mut notes = vec![];
@@ -1318,7 +1238,8 @@ mod tests {
                 .unwrap()
                 .build()
                 .unwrap()
-                .execute_blocking()
+                .execute()
+                .await
                 .unwrap();
             chain.add_pending_executed_transaction(&tx).unwrap();
             chain.prove_next_block().unwrap();
@@ -1332,7 +1253,6 @@ mod tests {
         assert_eq!(chain.blocks, deserialized.blocks);
         assert_eq!(chain.nullifier_tree, deserialized.nullifier_tree);
         assert_eq!(chain.account_tree, deserialized.account_tree);
-        assert_eq!(chain.pending_output_notes, deserialized.pending_output_notes);
         assert_eq!(chain.pending_transactions, deserialized.pending_transactions);
         assert_eq!(chain.committed_accounts, deserialized.committed_accounts);
         assert_eq!(chain.committed_notes, deserialized.committed_notes);

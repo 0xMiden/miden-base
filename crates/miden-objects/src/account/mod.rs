@@ -26,7 +26,7 @@ pub use account_id::{
 
 pub mod auth;
 
-pub use auth::{AuthSecretKey, Signature};
+pub use auth::{AuthSecretKey, PublicKeyCommitment, Signature};
 
 mod builder;
 pub use builder::AccountBuilder;
@@ -719,7 +719,7 @@ mod tests {
 
         let updated_map =
             StorageMapDelta::from_iters([], [(new_map_entry.0, new_map_entry.1.into())]);
-        storage_map.insert(new_map_entry.0, new_map_entry.1.into());
+        storage_map.insert(new_map_entry.0, new_map_entry.1.into()).unwrap();
 
         // build account delta
         let final_nonce = Felt::new(2);

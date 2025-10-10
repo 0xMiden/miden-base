@@ -47,7 +47,7 @@ use miden_objects::transaction::{OutputNote, OutputNotes};
 use miden_objects::{Felt, Word, ZERO};
 
 use super::{TestSetup, setup_test};
-use crate::kernel_tests::tx::ProcessMemoryExt;
+use crate::kernel_tests::tx::ExecutionOutputExt;
 use crate::utils::create_public_p2any_note;
 use crate::{Auth, MockChain, TransactionContextBuilder, assert_execution_error};
 
@@ -87,16 +87,16 @@ fn test_create_note() -> anyhow::Result<()> {
         tag = tag,
     );
 
-    let process = &tx_context.execute_code(&code)?;
+    let exec_output = &tx_context.execute_code_blocking(&code)?;
 
     assert_eq!(
-        process.get_kernel_mem_word(NUM_OUTPUT_NOTES_PTR),
+        exec_output.get_kernel_mem_word(NUM_OUTPUT_NOTES_PTR),
         Word::from([1, 0, 0, 0u32]),
         "number of output notes must increment by 1",
     );
 
     assert_eq!(
-        process.get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_RECIPIENT_OFFSET),
+        exec_output.get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_RECIPIENT_OFFSET),
         recipient,
         "recipient must be stored at the correct memory location",
     );
@@ -111,13 +111,13 @@ fn test_create_note() -> anyhow::Result<()> {
     .into();
 
     assert_eq!(
-        process.get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_METADATA_OFFSET),
+        exec_output.get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_METADATA_OFFSET),
         expected_note_metadata,
         "metadata must be stored at the correct memory location",
     );
 
     assert_eq!(
-        process.stack.get(0),
+        exec_output.get_stack_element(0),
         ZERO,
         "top item on the stack is the index of the output note"
     );
@@ -132,10 +132,10 @@ fn test_create_note_with_invalid_tag() -> anyhow::Result<()> {
     let valid_tag: Felt = NoteTag::for_local_use_case(0, 0).unwrap().into();
 
     // Test invalid tag
-    assert!(tx_context.execute_code(&note_creation_script(invalid_tag)).is_err());
+    assert!(tx_context.execute_code_blocking(&note_creation_script(invalid_tag)).is_err());
 
     // Test valid tag
-    assert!(tx_context.execute_code(&note_creation_script(valid_tag)).is_ok());
+    assert!(tx_context.execute_code_blocking(&note_creation_script(valid_tag)).is_ok());
 
     Ok(())
 }
@@ -200,9 +200,9 @@ fn test_create_note_too_many_notes() -> anyhow::Result<()> {
         aux = ZERO,
     );
 
-    let process = tx_context.execute_code(&code);
+    let exec_output = tx_context.execute_code_blocking(&code);
 
-    assert_execution_error!(process, ERR_TX_NUMBER_OF_OUTPUT_NOTES_EXCEEDS_LIMIT);
+    assert_execution_error!(exec_output, ERR_TX_NUMBER_OF_OUTPUT_NOTES_EXCEEDS_LIMIT);
     Ok(())
 }
 
@@ -362,23 +362,24 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
         ),
     );
 
-    let process = &tx_context.execute_code(&code)?;
+    let exec_output = &tx_context.execute_code_blocking(&code)?;
 
     assert_eq!(
-        process.get_kernel_mem_word(NUM_OUTPUT_NOTES_PTR),
+        exec_output.get_kernel_mem_word(NUM_OUTPUT_NOTES_PTR),
         Word::from([2u32, 0, 0, 0]),
         "The test creates two notes",
     );
     assert_eq!(
         NoteMetadata::try_from(
-            process.get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_METADATA_OFFSET)
+            exec_output
+                .get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_METADATA_OFFSET)
         )
         .unwrap(),
         *output_note_1.metadata(),
         "Validate the output note 1 metadata",
     );
     assert_eq!(
-        NoteMetadata::try_from(process.get_kernel_mem_word(
+        NoteMetadata::try_from(exec_output.get_kernel_mem_word(
             OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_METADATA_OFFSET + NOTE_MEM_SIZE
         ))
         .unwrap(),
@@ -386,7 +387,7 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
         "Validate the output note 1 metadata",
     );
 
-    assert_eq!(process.stack.get_word(0), expected_output_notes_commitment);
+    assert_eq!(exec_output.get_stack_word(0), expected_output_notes_commitment);
     Ok(())
 }
 
@@ -437,16 +438,16 @@ fn test_create_note_and_add_asset() -> anyhow::Result<()> {
         asset = asset,
     );
 
-    let process = &tx_context.execute_code(&code)?;
+    let exec_output = &tx_context.execute_code_blocking(&code)?;
 
     assert_eq!(
-        process.get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_ASSETS_OFFSET),
+        exec_output.get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_ASSETS_OFFSET),
         asset,
         "asset must be stored at the correct memory location",
     );
 
     assert_eq!(
-        process.stack.get(0),
+        exec_output.get_stack_element(0),
         ZERO,
         "top item on the stack is the index to the output note"
     );
@@ -519,28 +520,28 @@ fn test_create_note_and_add_multiple_assets() -> anyhow::Result<()> {
         nft = non_fungible_asset_encoded,
     );
 
-    let process = &tx_context.execute_code(&code)?;
+    let exec_output = &tx_context.execute_code_blocking(&code)?;
 
     assert_eq!(
-        process.get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_ASSETS_OFFSET),
+        exec_output.get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_ASSETS_OFFSET),
         asset,
         "asset must be stored at the correct memory location",
     );
 
     assert_eq!(
-        process.get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_ASSETS_OFFSET + 4),
+        exec_output.get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_ASSETS_OFFSET + 4),
         asset_2_and_3,
         "asset_2 and asset_3 must be stored at the same correct memory location",
     );
 
     assert_eq!(
-        process.get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_ASSETS_OFFSET + 8),
+        exec_output.get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_ASSETS_OFFSET + 8),
         non_fungible_asset_encoded,
         "non_fungible_asset must be stored at the correct memory location",
     );
 
     assert_eq!(
-        process.stack.get(0),
+        exec_output.get_stack_element(0),
         ZERO,
         "top item on the stack is the index to the output note"
     );
@@ -595,15 +596,15 @@ fn test_create_note_and_add_same_nft_twice() -> anyhow::Result<()> {
         nft = encoded,
     );
 
-    let process = tx_context.execute_code(&code);
+    let exec_output = tx_context.execute_code_blocking(&code);
 
-    assert_execution_error!(process, ERR_NON_FUNGIBLE_ASSET_ALREADY_EXISTS);
+    assert_execution_error!(exec_output, ERR_NON_FUNGIBLE_ASSET_ALREADY_EXISTS);
     Ok(())
 }
 
 /// Tests that creating a note with a fungible asset with amount zero works.
-#[test]
-fn creating_note_with_fungible_asset_amount_zero_works() -> anyhow::Result<()> {
+#[tokio::test]
+async fn creating_note_with_fungible_asset_amount_zero_works() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let account = builder.add_existing_mock_account(Auth::IncrNonce)?;
     let output_note = builder.add_p2id_note(
@@ -618,7 +619,8 @@ fn creating_note_with_fungible_asset_amount_zero_works() -> anyhow::Result<()> {
     chain
         .build_tx_context(account, &[input_note.id()], &[])?
         .build()?
-        .execute_blocking()?;
+        .execute()
+        .await?;
 
     Ok(())
 }
@@ -692,10 +694,10 @@ fn test_build_recipient_hash() -> anyhow::Result<()> {
         aux = aux,
     );
 
-    let process = &tx_context.execute_code(&code)?;
+    let exec_output = &tx_context.execute_code_blocking(&code)?;
 
     assert_eq!(
-        process.get_kernel_mem_word(NUM_OUTPUT_NOTES_PTR),
+        exec_output.get_kernel_mem_word(NUM_OUTPUT_NOTES_PTR),
         Word::from([1, 0, 0, 0u32]),
         "number of output notes must increment by 1",
     );
@@ -703,7 +705,7 @@ fn test_build_recipient_hash() -> anyhow::Result<()> {
     let recipient_digest = recipient.clone().digest();
 
     assert_eq!(
-        process.get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_RECIPIENT_OFFSET),
+        exec_output.get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_RECIPIENT_OFFSET),
         recipient_digest,
         "recipient hash not correct",
     );
@@ -718,8 +720,8 @@ fn test_build_recipient_hash() -> anyhow::Result<()> {
 /// - Right after the previous check to make sure it returns the same commitment from the cached
 ///   data.
 /// - After adding the second `asset_1` to the note.
-#[test]
-fn test_get_asset_info() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_get_asset_info() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
 
     let fungible_asset_0 = Asset::Fungible(
@@ -854,15 +856,15 @@ fn test_get_asset_info() -> anyhow::Result<()> {
         .tx_script(tx_script)
         .build()?;
 
-    tx_context.execute_blocking()?;
+    tx_context.execute().await?;
 
     Ok(())
 }
 
 /// Check that recipient and metadata of a note with one asset obtained from the
 /// `output_note::get_recipient` procedure is correct.
-#[test]
-fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
 
     let account =
@@ -926,15 +928,15 @@ fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
         .tx_script(tx_script)
         .build()?;
 
-    tx_context.execute_blocking()?;
+    tx_context.execute().await?;
 
     Ok(())
 }
 
 /// Check that the assets number and assets data obtained from the `output_note::get_assets`
 /// procedure is correct for each note with zero, one and two different assets.
-#[test]
-fn test_get_assets() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_get_assets() -> anyhow::Result<()> {
     let TestSetup {
         mock_chain,
         account,
@@ -947,7 +949,7 @@ fn test_get_assets() -> anyhow::Result<()> {
         let mut check_assets_code = format!(
             r#"
             # push the note index and memory destination pointer
-            push.{note_idx}.{dest_ptr}
+            push.{note_idx} push.{dest_ptr}
             # => [dest_ptr, note_index]
 
             # write the assets to the memory
@@ -1032,7 +1034,7 @@ fn test_get_assets() -> anyhow::Result<()> {
         .tx_script(tx_script)
         .build()?;
 
-    tx_context.execute_blocking()?;
+    tx_context.execute().await?;
 
     Ok(())
 }

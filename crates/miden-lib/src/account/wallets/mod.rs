@@ -158,8 +158,7 @@ pub fn create_basic_wallet(
 
 #[cfg(test)]
 mod tests {
-
-    use miden_objects::crypto::dsa::rpo_falcon512;
+    use miden_objects::account::PublicKeyCommitment;
     use miden_objects::{ONE, Word};
     use miden_processor::utils::{Deserializable, Serializable};
 
@@ -168,7 +167,7 @@ mod tests {
 
     #[test]
     fn test_create_basic_wallet() {
-        let pub_key = rpo_falcon512::PublicKey::new(Word::from([ONE; 4]));
+        let pub_key = PublicKeyCommitment::from(Word::from([ONE; 4]));
         let wallet = create_basic_wallet(
             [1; 32],
             AuthScheme::RpoFalcon512 { pub_key },
@@ -183,7 +182,7 @@ mod tests {
 
     #[test]
     fn test_serialize_basic_wallet() {
-        let pub_key = rpo_falcon512::PublicKey::new(Word::from([ONE; 4]));
+        let pub_key = PublicKeyCommitment::from(Word::from([ONE; 4]));
         let wallet = create_basic_wallet(
             [1; 32],
             AuthScheme::RpoFalcon512 { pub_key },

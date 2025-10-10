@@ -98,7 +98,7 @@ mod tests {
 
     use miden_core::Felt;
     use miden_core::utils::{Deserializable, Serializable};
-    use miden_crypto::merkle::MerklePath;
+    use miden_crypto::merkle::SparseMerklePath;
     use miden_processor::SMT_DEPTH;
 
     use crate::account::{Account, AccountCode, AccountId, AccountStorage, PartialAccount};
@@ -121,7 +121,8 @@ mod tests {
         for _ in 0..(SMT_DEPTH as usize) {
             merkle_nodes.push(commitment);
         }
-        let merkle_path = MerklePath::new(merkle_nodes);
+        let merkle_path = SparseMerklePath::from_sized_iter(merkle_nodes)
+            .expect("The nodes given are of SMT_DEPTH count");
 
         let fpi_inputs = AccountInputs::new(
             PartialAccount::from(&account),

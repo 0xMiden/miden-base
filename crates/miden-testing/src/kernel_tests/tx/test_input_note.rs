@@ -10,8 +10,8 @@ use crate::TxContextInput;
 /// Check that the assets number and assets commitment obtained from the
 /// `input_note::get_assets_info` procedure is correct for each note with zero, one and two
 /// different assets.
-#[test]
-fn test_get_asset_info() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_get_asset_info() -> anyhow::Result<()> {
     let TestSetup {
         mock_chain,
         account,
@@ -85,15 +85,15 @@ fn test_get_asset_info() -> anyhow::Result<()> {
         .tx_script(tx_script)
         .build()?;
 
-    tx_context.execute_blocking()?;
+    tx_context.execute().await?;
 
     Ok(())
 }
 
 /// Check that recipient and metadata of a note with one asset obtained from the
 /// `input_note::get_recipient` and `input_note::get_metadata` procedures are correct.
-#[test]
-fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
     let TestSetup {
         mock_chain,
         account,
@@ -139,15 +139,15 @@ fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
         .tx_script(tx_script)
         .build()?;
 
-    tx_context.execute_blocking()?;
+    tx_context.execute().await?;
 
     Ok(())
 }
 
 /// Check that a sender of a note with one asset obtained from the `input_note::get_sender`
 /// procedure is correct.
-#[test]
-fn test_get_sender() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_get_sender() -> anyhow::Result<()> {
     let TestSetup {
         mock_chain,
         account,
@@ -188,15 +188,15 @@ fn test_get_sender() -> anyhow::Result<()> {
         .tx_script(tx_script)
         .build()?;
 
-    tx_context.execute_blocking()?;
+    tx_context.execute().await?;
 
     Ok(())
 }
 
 /// Check that the assets number and assets data obtained from the `input_note::get_assets`
 /// procedure is correct for each note with zero, one and two different assets.
-#[test]
-fn test_get_assets() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_get_assets() -> anyhow::Result<()> {
     let TestSetup {
         mock_chain,
         account,
@@ -209,7 +209,7 @@ fn test_get_assets() -> anyhow::Result<()> {
         let mut check_assets_code = format!(
             r#"
             # push the note index and memory destination pointer
-            push.{note_idx}.{dest_ptr}
+            push.{note_idx} push.{dest_ptr}
             # => [dest_ptr, note_index]
 
             # write the assets to the memory
@@ -283,15 +283,15 @@ fn test_get_assets() -> anyhow::Result<()> {
         .tx_script(tx_script)
         .build()?;
 
-    tx_context.execute_blocking()?;
+    tx_context.execute().await?;
 
     Ok(())
 }
 
 /// Check that the number of the inputs and their commitment of a note with one asset
 /// obtained from the `input_note::get_inputs_info` procedure is correct.
-#[test]
-fn test_get_inputs_info() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_get_inputs_info() -> anyhow::Result<()> {
     let TestSetup {
         mock_chain,
         account,
@@ -305,7 +305,7 @@ fn test_get_inputs_info() -> anyhow::Result<()> {
         use.miden::input_note
 
         begin
-            # get the inputs commitment and length from the input note with index 0 (the only one 
+            # get the inputs commitment and length from the input note with index 0 (the only one
             # we have)
             push.0
             exec.input_note::get_inputs_info
@@ -333,15 +333,15 @@ fn test_get_inputs_info() -> anyhow::Result<()> {
         .tx_script(tx_script)
         .build()?;
 
-    tx_context.execute_blocking()?;
+    tx_context.execute().await?;
 
     Ok(())
 }
 
 /// Check that the script root of a note with one asset obtained from the
 /// `input_note::get_script_root` procedure is correct.
-#[test]
-fn test_get_script_root() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_get_script_root() -> anyhow::Result<()> {
     let TestSetup {
         mock_chain,
         account,
@@ -376,15 +376,15 @@ fn test_get_script_root() -> anyhow::Result<()> {
         .tx_script(tx_script)
         .build()?;
 
-    tx_context.execute_blocking()?;
+    tx_context.execute().await?;
 
     Ok(())
 }
 
 /// Check that the serial number of a note with one asset obtained from the
 /// `input_note::get_serial_number` procedure is correct.
-#[test]
-fn test_get_serial_number() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_get_serial_number() -> anyhow::Result<()> {
     let TestSetup {
         mock_chain,
         account,
@@ -419,7 +419,7 @@ fn test_get_serial_number() -> anyhow::Result<()> {
         .tx_script(tx_script)
         .build()?;
 
-    tx_context.execute_blocking()?;
+    tx_context.execute().await?;
 
     Ok(())
 }

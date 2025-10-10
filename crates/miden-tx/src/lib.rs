@@ -6,8 +6,6 @@ extern crate alloc;
 #[cfg(feature = "std")]
 extern crate std;
 
-pub use miden_objects::transaction::TransactionInputs;
-
 mod executor;
 pub use executor::{
     DataStore,
@@ -17,12 +15,13 @@ pub use executor::{
     MastForestStore,
     NoteConsumptionChecker,
     NoteConsumptionInfo,
+    NoteConsumptionStatus,
     TransactionExecutor,
     TransactionExecutorHost,
 };
 
 mod host;
-pub use host::{AccountProcedureIndexMap, LinkMap, ScriptMastForestStore};
+pub use host::{AccountProcedureIndexMap, LinkMap, MemoryViewer, ScriptMastForestStore};
 
 mod prover;
 pub use prover::{

@@ -1,5 +1,3 @@
-use.std::collections::smt
-
 use.$kernel::account
 use.$kernel::account_id
 use.$kernel::asset

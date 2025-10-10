@@ -4,13 +4,7 @@ use miden_objects::account::{AccountHeader, AccountId, PartialAccount};
 use miden_objects::block::AccountWitness;
 use miden_objects::crypto::SequentialCommit;
 use miden_objects::crypto::merkle::InnerNodeInfo;
-use miden_objects::transaction::{
-    AccountInputs,
-    InputNote,
-    PartialBlockchain,
-    TransactionArgs,
-    TransactionInputs,
-};
+use miden_objects::transaction::{AccountInputs, InputNote, PartialBlockchain, TransactionInputs};
 use miden_objects::vm::AdviceInputs;
 use miden_objects::{EMPTY_WORD, Felt, FieldElement, Word, ZERO};
 use miden_processor::AdviceMutation;
@@ -30,23 +24,17 @@ impl TransactionAdviceInputs {
     /// Creates a [`TransactionAdviceInputs`].
     ///
     /// The created advice inputs will be populated with the data required for executing a
-    /// transaction with the specified inputs and arguments. This includes the initial account, an
-    /// optional account seed (required for new accounts), and the input note data, including
-    /// core note data + authentication paths all the way to the root of one of partial
-    /// blockchain peaks.
-    pub fn new(
-        tx_inputs: &TransactionInputs,
-        tx_args: &TransactionArgs,
-    ) -> Result<Self, TransactionAdviceMapMismatch> {
-        let mut inputs = TransactionAdviceInputs::default();
+    /// transaction with the specified transaction inputs.
+    pub fn new(tx_inputs: &TransactionInputs) -> Result<Self, TransactionAdviceMapMismatch> {
+        let mut inputs = TransactionAdviceInputs(tx_inputs.advice_inputs().clone());
 
-        inputs.build_stack(tx_inputs, tx_args);
+        inputs.build_stack(tx_inputs);
         inputs.add_kernel_commitment();
         inputs.add_partial_blockchain(tx_inputs.blockchain());
-        inputs.add_input_notes(tx_inputs, tx_args)?;
+        inputs.add_input_notes(tx_inputs)?;
 
-        // Add the script's MAST forest's advice inputs
-        if let Some(tx_script) = tx_args.tx_script() {
+        // Add the script's MAST forest's advice inputs.
+        if let Some(tx_script) = tx_inputs.tx_args().tx_script() {
             inputs.extend_map(
                 tx_script
                     .mast()
@@ -56,12 +44,11 @@ impl TransactionAdviceInputs {
             );
         }
 
-        // --- native account injection ---------------------------------------
-
+        // Inject native account.
         let partial_native_acc = tx_inputs.account();
         inputs.add_account(partial_native_acc)?;
 
-        // if a seed was provided, extend the map appropriately
+        // If a seed was provided, extend the map appropriately.
         if let Some(seed) = tx_inputs.account().seed() {
             // ACCOUNT_ID |-> ACCOUNT_SEED
             let account_id_key = Self::account_id_map_key(partial_native_acc.id());
@@ -77,15 +64,13 @@ impl TransactionAdviceInputs {
                         value.as_elements().iter().chain(key.as_elements().iter()).copied()
                     })
                     .collect();
+                // TODO: Should we use the sequential hash instead?
                 inputs.add_map_entry(storage_map.root(), map_entries);
             }
         }
 
-        // --- foreign account injection --------------------------------------
-        inputs.add_foreign_accounts(tx_args.foreign_account_inputs())?;
-
-        // any extra user-supplied advice
-        inputs.extend(tx_args.advice_inputs().clone());
+        // Extend with extra user-supplied advice.
+        inputs.extend(tx_inputs.tx_args().advice_inputs().clone());
 
         Ok(inputs)
     }
@@ -141,13 +126,6 @@ impl TransactionAdviceInputs {
         Ok(())
     }
 
-    /// Returns the advice map key where:
-    /// - the seed for native accounts is stored.
-    /// - the account header for foreign accounts is stored.
-    pub fn account_id_map_key(id: AccountId) -> Word {
-        Word::from([id.suffix(), id.prefix().as_felt(), ZERO, ZERO])
-    }
-
     /// Extend the advice stack with the transaction inputs.
     ///
     /// The following data is pushed to the advice stack:
@@ -174,7 +152,7 @@ impl TransactionAdviceInputs {
     ///     TX_SCRIPT_ARGS,
     ///     AUTH_ARGS,
     /// ]
-    fn build_stack(&mut self, tx_inputs: &TransactionInputs, tx_args: &TransactionArgs) {
+    fn build_stack(&mut self, tx_inputs: &TransactionInputs) {
         let header = tx_inputs.block_header();
 
         // --- block header data (keep in sync with kernel's process_block_data) --
@@ -214,6 +192,7 @@ impl TransactionAdviceInputs {
 
         // --- number of notes, script root and args --------------------------
         self.extend_stack([Felt::from(tx_inputs.input_notes().num_notes())]);
+        let tx_args = tx_inputs.tx_args();
         self.extend_stack(tx_args.tx_script().map_or(Word::empty(), |script| script.root()));
         self.extend_stack(tx_args.tx_script_args());
 
@@ -353,7 +332,6 @@ impl TransactionAdviceInputs {
     fn add_input_notes(
         &mut self,
         tx_inputs: &TransactionInputs,
-        tx_args: &TransactionArgs,
     ) -> Result<(), TransactionAdviceMapMismatch> {
         if tx_inputs.input_notes().is_empty() {
             return Ok(());
@@ -364,7 +342,7 @@ impl TransactionAdviceInputs {
             let note = input_note.note();
             let assets = note.assets();
             let recipient = note.recipient();
-            let note_arg = tx_args.get_note_args(note.id()).unwrap_or(&EMPTY_WORD);
+            let note_arg = tx_inputs.tx_args().get_note_args(note.id()).unwrap_or(&EMPTY_WORD);
 
             // recipient inputs / assets commitments
             self.add_map_entry(
@@ -449,6 +427,13 @@ impl TransactionAdviceInputs {
     /// nodes.
     fn extend_merkle_store(&mut self, iter: impl Iterator<Item = InnerNodeInfo>) {
         self.0.store.extend(iter);
+    }
+
+    /// Returns the advice map key where:
+    /// - the seed for native accounts is stored.
+    /// - the account header for foreign accounts is stored.
+    fn account_id_map_key(id: AccountId) -> Word {
+        Word::from([id.suffix(), id.prefix().as_felt(), ZERO, ZERO])
     }
 }
 

@@ -2,6 +2,7 @@ use alloc::vec::Vec;
 use core::cmp::Ordering;
 
 use miden_objects::{Felt, LexicographicWord, Word, ZERO};
+use miden_processor::fast::ExecutionOutput;
 use miden_processor::{AdviceMutation, ContextId, EventError, ProcessState};
 
 // LINK MAP
@@ -16,11 +17,11 @@ use miden_processor::{AdviceMutation, ContextId, EventError, ProcessState};
 /// # Warning
 ///
 /// The functions on this type assume that the provided map_ptr points to a valid map in the
-/// provided process. If those assumptions are violated, the functions may panic.
-#[derive(Debug, Clone, Copy)]
+/// provided memory viewer. If those assumptions are violated, the functions may panic.
+#[derive(Clone, Copy)]
 pub struct LinkMap<'process> {
     map_ptr: u32,
-    process: &'process ProcessState<'process>,
+    mem: &'process MemoryViewer<'process>,
 }
 
 impl<'process> LinkMap<'process> {
@@ -28,10 +29,10 @@ impl<'process> LinkMap<'process> {
     // --------------------------------------------------------------------------------------------
 
     /// Creates a new link map from the provided map_ptr in the provided process.
-    pub fn new(map_ptr: Felt, process: &'process ProcessState<'process>) -> Self {
+    pub fn new(map_ptr: Felt, mem: &'process MemoryViewer<'process>) -> Self {
         let map_ptr: u32 = map_ptr.try_into().expect("map_ptr must be a valid u32");
 
-        Self { map_ptr, process }
+        Self { map_ptr, mem }
     }
 
     // PUBLIC METHODS
@@ -42,15 +43,11 @@ impl<'process> LinkMap<'process> {
     /// Expected operand stack state before: [map_ptr, KEY, NEW_VALUE]
     /// Advice stack state after: [set_operation, entry_ptr]
     pub fn handle_set_event(process: &ProcessState<'_>) -> Result<Vec<AdviceMutation>, EventError> {
-        let map_ptr = process.get_stack_item(0);
-        let map_key = Word::from([
-            process.get_stack_item(4),
-            process.get_stack_item(3),
-            process.get_stack_item(2),
-            process.get_stack_item(1),
-        ]);
+        let map_ptr = process.get_stack_item(1);
+        let map_key = process.get_stack_word(2);
 
-        let link_map = LinkMap::new(map_ptr, process);
+        let mem_viewer = MemoryViewer::ProcessState(process);
+        let link_map = LinkMap::new(map_ptr, &mem_viewer);
 
         let (set_op, entry_ptr) = link_map.compute_set_operation(LexicographicWord::from(map_key));
 
@@ -65,15 +62,11 @@ impl<'process> LinkMap<'process> {
     /// Expected operand stack state before: [map_ptr, KEY]
     /// Advice stack state after: [get_operation, entry_ptr]
     pub fn handle_get_event(process: &ProcessState<'_>) -> Result<Vec<AdviceMutation>, EventError> {
-        let map_ptr = process.get_stack_item(0);
-        let map_key = Word::from([
-            process.get_stack_item(4),
-            process.get_stack_item(3),
-            process.get_stack_item(2),
-            process.get_stack_item(1),
-        ]);
+        let map_ptr = process.get_stack_item(1);
+        let map_key = process.get_stack_word(2);
 
-        let link_map = LinkMap::new(map_ptr, process);
+        let mem_viewer = MemoryViewer::ProcessState(process);
+        let link_map = LinkMap::new(map_ptr, &mem_viewer);
         let (get_op, entry_ptr) = link_map.compute_get_operation(LexicographicWord::from(map_key));
 
         Ok(vec![AdviceMutation::extend_stack([
@@ -103,7 +96,7 @@ impl<'process> LinkMap<'process> {
         // Returns None if the value was either not yet initialized or points to 0.
         // It can point to 0 for example if a get operation is executed before a set operation,
         // which initializes the value in memory to 0 but does not change it.
-        self.get_kernel_mem_value(self.map_ptr).and_then(|head_ptr| {
+        self.mem.get_kernel_mem_element(self.map_ptr).and_then(|head_ptr| {
             if head_ptr == ZERO {
                 None
             } else {
@@ -130,23 +123,29 @@ impl<'process> LinkMap<'process> {
     /// Returns the key of the entry at the given pointer.
     fn key(&self, entry_ptr: u32) -> LexicographicWord {
         LexicographicWord::from(
-            self.get_kernel_mem_word(entry_ptr + 4).expect("entry pointer should be valid"),
+            self.mem
+                .get_kernel_mem_word(entry_ptr + 4)
+                .expect("entry pointer should be valid"),
         )
     }
 
     /// Returns the values of the entry at the given pointer.
     fn value(&self, entry_ptr: u32) -> (Word, Word) {
-        let value0 =
-            self.get_kernel_mem_word(entry_ptr + 8).expect("entry pointer should be valid");
-        let value1 =
-            self.get_kernel_mem_word(entry_ptr + 12).expect("entry pointer should be valid");
+        let value0 = self
+            .mem
+            .get_kernel_mem_word(entry_ptr + 8)
+            .expect("entry pointer should be valid");
+        let value1 = self
+            .mem
+            .get_kernel_mem_word(entry_ptr + 12)
+            .expect("entry pointer should be valid");
         (value0, value1)
     }
 
     /// Returns the metadata of the entry at the given pointer.
     fn metadata(&self, entry_ptr: u32) -> EntryMetadata {
         let entry_metadata =
-            self.get_kernel_mem_word(entry_ptr).expect("entry pointer should be valid");
+            self.mem.get_kernel_mem_word(entry_ptr).expect("entry pointer should be valid");
 
         let map_ptr = entry_metadata[0];
         let map_ptr = map_ptr.try_into().expect("entry_ptr should point to a u32 map_ptr");
@@ -222,19 +221,6 @@ impl<'process> LinkMap<'process> {
         };
         (get_op, entry_ptr)
     }
-
-    // HELPER METHODS
-    // --------------------------------------------------------------------------------------------
-
-    fn get_kernel_mem_value(&self, addr: u32) -> Option<Felt> {
-        self.process.get_mem_value(ContextId::root(), addr)
-    }
-
-    fn get_kernel_mem_word(&self, addr: u32) -> Option<Word> {
-        self.process
-            .get_mem_word(ContextId::root(), addr)
-            .expect("address should be word-aligned")
-    }
 }
 
 // LINK MAP ITER
@@ -306,4 +292,64 @@ enum SetOperation {
     Update = 0,
     InsertAtHead = 1,
     InsertAfterEntry = 2,
+}
+
+// MEMORY VIEWER
+// ================================================================================================
+
+/// A abstraction over ways to view a process' memory.
+///
+/// More specifically, it allows using a [`LinkMap`] both with a [`ProcessState`], i.e. a process
+/// that is actively executing and also an [`ExecutionOutput`], i.e. a process that has finished
+/// execution.
+///
+/// This should all go away again once we change a LinkMap's implementation to be based on an actual
+/// map type instead of viewing a process' memory directly.
+pub enum MemoryViewer<'mem> {
+    ProcessState(&'mem ProcessState<'mem>),
+    ExecutionOutputs(&'mem ExecutionOutput),
+}
+
+impl<'mem> MemoryViewer<'mem> {
+    /// Reads an element from transaction kernel memory.
+    fn get_kernel_mem_element(&self, addr: u32) -> Option<Felt> {
+        match self {
+            MemoryViewer::ProcessState(process_state) => {
+                process_state.get_mem_value(ContextId::root(), addr)
+            },
+            MemoryViewer::ExecutionOutputs(_execution_output) => {
+                // TODO: Use Memory::read_element once it no longer requires &mut self.
+                // https://github.com/0xMiden/miden-vm/issues/2237
+
+                // Copy of how Memory::read_element is implemented in Miden VM.
+                let idx = addr % miden_objects::WORD_SIZE as u32;
+                let word_addr = addr - idx;
+
+                Some(self.get_kernel_mem_word(word_addr)?[idx as usize])
+            },
+        }
+    }
+
+    /// Reads a word from transaction kernel memory.
+    fn get_kernel_mem_word(&self, addr: u32) -> Option<Word> {
+        match self {
+            MemoryViewer::ProcessState(process_state) => process_state
+                .get_mem_word(ContextId::root(), addr)
+                .expect("address should be word-aligned"),
+            MemoryViewer::ExecutionOutputs(execution_output) => {
+                let tx_kernel_context = ContextId::root();
+                let clk = 0u32;
+                let err_ctx = ();
+
+                // Note that this never returns None even if the location is uninitialized, but the
+                // link map does not rely on this.
+                Some(
+                    execution_output
+                        .memory
+                        .read_word(tx_kernel_context, Felt::from(addr), clk.into(), &err_ctx)
+                        .expect("expected address to be word-aligned"),
+                )
+            },
+        }
+    }
 }

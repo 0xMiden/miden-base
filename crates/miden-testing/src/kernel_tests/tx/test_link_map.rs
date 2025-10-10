@@ -4,8 +4,8 @@ use std::string::String;
 
 use anyhow::Context;
 use miden_objects::{EMPTY_WORD, LexicographicWord, Word};
-use miden_processor::{ONE, ProcessState, ZERO};
-use miden_tx::LinkMap;
+use miden_processor::{ONE, ZERO};
+use miden_tx::{LinkMap, MemoryViewer};
 use rand::seq::IteratorRandom;
 use winter_rand_utils::rand_value;
 
@@ -173,10 +173,10 @@ fn insertion() -> anyhow::Result<()> {
     );
 
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
-    let mut process = tx_context.execute_code(&code).context("failed to execute code")?;
-    let state = ProcessState::from(&mut process);
+    let exec_output = tx_context.execute_code_blocking(&code).context("failed to execute code")?;
+    let mem_viewer = MemoryViewer::ExecutionOutputs(&exec_output);
 
-    let map = LinkMap::new(map_ptr.into(), &state);
+    let map = LinkMap::new(map_ptr.into(), &mem_viewer);
     let mut map_iter = map.iter();
 
     let entry0 = map_iter.next().expect("map should have four entries");
@@ -412,7 +412,7 @@ fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
 
                 let set_code = format!(
                     r#"
-                  push.{value1}.{value0}.{key}.{map_ptr}
+                  push.{value1} push.{value0} push.{key} push.{map_ptr}
                   # => [map_ptr, KEY, VALUE]
                   exec.link_map::set
                   # => [is_new_key]
@@ -439,7 +439,7 @@ fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
 
                 let get_code = format!(
                     r#"
-                  push.{key}.{map_ptr}
+                  push.{key} push.{map_ptr}
                   # => [map_ptr, KEY]
                   exec.link_map::get
                   # => [contains_key, VALUE0, VALUE1]
@@ -542,11 +542,11 @@ fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
     );
 
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
-    let mut process = tx_context.execute_code(&code).context("failed to execute code")?;
-    let state = ProcessState::from(&mut process);
+    let exec_output = tx_context.execute_code_blocking(&code).context("failed to execute code")?;
+    let mem_viewer = MemoryViewer::ExecutionOutputs(&exec_output);
 
     for (map_ptr, control_map) in control_maps {
-        let map = LinkMap::new(map_ptr.into(), &state);
+        let map = LinkMap::new(map_ptr.into(), &mem_viewer);
         let actual_map_len = map.iter().count();
         assert_eq!(
             actual_map_len,

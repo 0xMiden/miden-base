@@ -1,5 +1,7 @@
 use alloc::vec::Vec;
 
+use miden_crypto::dsa::rpo_falcon512::PublicKey as RpoFalconPublicKey;
+
 use crate::crypto::dsa::rpo_falcon512::{self, Polynomial, SecretKey};
 use crate::utils::serde::{
     ByteReader,
@@ -8,7 +10,7 @@ use crate::utils::serde::{
     DeserializationError,
     Serializable,
 };
-use crate::{Felt, Hasher};
+use crate::{Felt, Hasher, Word};
 
 // AUTH SECRET KEY
 // ================================================================================================
@@ -51,6 +53,31 @@ impl Deserializable for AuthSecretKey {
             },
             val => Err(DeserializationError::InvalidValue(format!("Invalid auth scheme ID {val}"))),
         }
+    }
+}
+
+// PUBLIC KEY
+// ================================================================================================
+
+/// Commitment to a public key.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PublicKeyCommitment(Word);
+
+impl From<RpoFalconPublicKey> for PublicKeyCommitment {
+    fn from(value: RpoFalconPublicKey) -> Self {
+        Self(value.to_commitment())
+    }
+}
+
+impl From<PublicKeyCommitment> for Word {
+    fn from(value: PublicKeyCommitment) -> Self {
+        value.0
+    }
+}
+
+impl From<Word> for PublicKeyCommitment {
+    fn from(value: Word) -> Self {
+        Self(value)
     }
 }
 
@@ -150,7 +177,7 @@ fn prepare_rpo_falcon512_signature(sig: &rpo_falcon512::Signature) -> Vec<Felt> 
     let s2 = sig.sig_poly();
     // We also need in the VM the expanded key corresponding to the public key that was provided
     // via the operand stack
-    let h = sig.pk_poly();
+    let h = sig.public_key();
     // Lastly, for the probabilistic product routine that is part of the verification procedure,
     // we need to compute the product of the expanded key and the signature polynomial in
     // the ring of polynomials with coefficients in the Miden field.

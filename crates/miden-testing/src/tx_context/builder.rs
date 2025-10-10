@@ -9,30 +9,19 @@ use anyhow::Context;
 use miden_lib::testing::account_component::IncrNonceAuthComponent;
 use miden_lib::testing::mock_account::MockAccountExt;
 use miden_objects::EMPTY_WORD;
-use miden_objects::account::{
-    Account,
-    AccountHeader,
-    AccountId,
-    PartialAccount,
-    PartialStorage,
-    PartialStorageMap,
-    StorageSlot,
-};
+use miden_objects::account::{Account, AccountHeader, AccountId, PublicKeyCommitment, Signature};
 use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::assembly::debuginfo::SourceManagerSync;
-use miden_objects::asset::PartialVault;
-use miden_objects::crypto::dsa::rpo_falcon512::PublicKey;
-use miden_objects::note::{Note, NoteId};
+use miden_objects::block::AccountWitness;
+use miden_objects::note::{Note, NoteId, NoteScript};
 use miden_objects::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE;
 use miden_objects::testing::noop_auth_component::NoopAuthComponent;
 use miden_objects::transaction::{
-    AccountInputs,
     OutputNote,
     TransactionArgs,
     TransactionInputs,
     TransactionScript,
 };
-use miden_objects::vm::AdviceMap;
 use miden_processor::{AdviceInputs, Felt, Word};
 use miden_tx::TransactionMastStore;
 use miden_tx::auth::BasicAuthenticator;
@@ -54,10 +43,14 @@ pub type MockAuthenticator = BasicAuthenticator<ChaCha20Rng>;
 ///
 /// Create a new account and execute code:
 /// ```
+/// # use anyhow::Result;
 /// # use miden_testing::TransactionContextBuilder;
 /// # use miden_objects::{account::AccountBuilder,Felt, FieldElement};
 /// # use miden_lib::transaction::TransactionKernel;
-/// let tx_context = TransactionContextBuilder::with_existing_mock_account().build().unwrap();
+/// #
+/// # #[tokio::main(flavor = "current_thread")]
+/// # async fn main() -> Result<()> {
+/// let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 ///
 /// let code = "
 /// use.$kernel::prologue
@@ -70,8 +63,10 @@ pub type MockAuthenticator = BasicAuthenticator<ChaCha20Rng>;
 /// end
 /// ";
 ///
-/// let process = tx_context.execute_code(code).unwrap();
-/// assert_eq!(process.stack.get(0), Felt::new(5),);
+/// let exec_output = tx_context.execute_code(code).await?;
+/// assert_eq!(exec_output.stack.get(0).unwrap(), &Felt::new(5));
+/// # Ok(())
+/// # }
 /// ```
 pub struct TransactionContextBuilder {
     source_manager: Arc<dyn SourceManagerSync>,
@@ -79,15 +74,16 @@ pub struct TransactionContextBuilder {
     advice_inputs: AdviceInputs,
     authenticator: Option<MockAuthenticator>,
     expected_output_notes: Vec<Note>,
-    foreign_account_inputs: BTreeMap<AccountId, AccountInputs>,
+    foreign_account_inputs: BTreeMap<AccountId, (Account, AccountWitness)>,
     input_notes: Vec<Note>,
     tx_script: Option<TransactionScript>,
     tx_script_args: Word,
     note_args: BTreeMap<NoteId, Word>,
-    transaction_inputs: Option<TransactionInputs>,
+    tx_inputs: Option<TransactionInputs>,
     auth_args: Word,
-    signatures: Vec<(PublicKey, Word, Vec<Felt>)>,
+    signatures: Vec<(PublicKeyCommitment, Word, Signature)>,
     is_lazy_loading_enabled: bool,
+    note_scripts: BTreeMap<Word, NoteScript>,
 }
 
 impl TransactionContextBuilder {
@@ -101,12 +97,13 @@ impl TransactionContextBuilder {
             tx_script_args: EMPTY_WORD,
             authenticator: None,
             advice_inputs: Default::default(),
-            transaction_inputs: None,
+            tx_inputs: None,
             note_args: BTreeMap::new(),
             foreign_account_inputs: BTreeMap::new(),
             auth_args: EMPTY_WORD,
             signatures: Vec::new(),
-            is_lazy_loading_enabled: false,
+            is_lazy_loading_enabled: true,
+            note_scripts: BTreeMap::new(),
         }
     }
 
@@ -168,9 +165,13 @@ impl TransactionContextBuilder {
     }
 
     /// Set foreign account codes that are used by the transaction
-    pub fn foreign_accounts(mut self, inputs: impl IntoIterator<Item = AccountInputs>) -> Self {
-        self.foreign_account_inputs
-            .extend(inputs.into_iter().map(|account_inputs| (account_inputs.id(), account_inputs)));
+    pub fn foreign_accounts(
+        mut self,
+        inputs: impl IntoIterator<Item = (Account, AccountWitness)>,
+    ) -> Self {
+        self.foreign_account_inputs.extend(
+            inputs.into_iter().map(|(account, witness)| (account.id(), (account, witness))),
+        );
         self
     }
 
@@ -205,18 +206,16 @@ impl TransactionContextBuilder {
             tx_inputs.account().into(),
             "account in context and account provided via tx inputs are not the same account"
         );
-        self.transaction_inputs = Some(tx_inputs);
+        self.tx_inputs = Some(tx_inputs);
         self
     }
 
-    /// Causes the transaction to only construct a minimal partial account as the transaction
-    /// input, causing lazy loading of assets and storage map items throughout transaction
-    /// execution. Additionally, foreign accounts aren't provided via the transaction args but are
-    /// lazy loaded as well.
+    /// Disables lazy loading.
     ///
-    /// This exists to test lazy loading selectively and should go away in the future.
-    pub fn enable_lazy_loading(mut self) -> Self {
-        self.is_lazy_loading_enabled = true;
+    /// Only affects [`TransactionContext::execute_code`] and causes the host to _not_ handle lazy
+    /// loading events.
+    pub fn disable_lazy_loading(mut self) -> Self {
+        self.is_lazy_loading_enabled = false;
         self
     }
 
@@ -250,11 +249,17 @@ impl TransactionContextBuilder {
     /// Add a new signature for the message and the public key.
     pub fn add_signature(
         mut self,
-        public_key: PublicKey,
+        pub_key: PublicKeyCommitment,
         message: Word,
-        signature: Vec<Felt>,
+        signature: Signature,
     ) -> Self {
-        self.signatures.push((public_key, message, signature));
+        self.signatures.push((pub_key, message, signature));
+        self
+    }
+
+    /// Add a note script to the context for testing.
+    pub fn add_note_script(mut self, script: NoteScript) -> Self {
+        self.note_scripts.insert(script.root(), script);
         self
     }
 
@@ -263,7 +268,7 @@ impl TransactionContextBuilder {
     /// If no transaction inputs were provided manually, an ad-hoc MockChain is created in order
     /// to generate valid block data for the required notes.
     pub fn build(self) -> anyhow::Result<TransactionContext> {
-        let tx_inputs = match self.transaction_inputs {
+        let mut tx_inputs = match self.tx_inputs {
             Some(tx_inputs) => tx_inputs,
             None => {
                 // If no specific transaction inputs was provided, initialize an ad-hoc mockchain
@@ -271,7 +276,7 @@ impl TransactionContextBuilder {
 
                 let mut builder = MockChain::builder();
                 for i in self.input_notes {
-                    builder.add_note(OutputNote::Full(i));
+                    builder.add_output_note(OutputNote::Full(i));
                 }
                 let mut mock_chain = builder.build()?;
 
@@ -287,50 +292,29 @@ impl TransactionContextBuilder {
             },
         };
 
-        // If partial loading is enabled, construct an account that doesn't contain all
-        // merkle paths of assets and storage maps, in order to test lazy loading.
-        // Otherwise, load the full account.
-        let tx_inputs = if self.is_lazy_loading_enabled {
-            let (_account, block_header, partial_blockchain, input_notes) = tx_inputs.into_parts();
-            // Note that we use self.account instead of account, because we cannot do the same
-            // operation on a partial vault.
-            let account = minimal_partial_account(&self.account)?;
-
-            TransactionInputs::new(account, block_header, partial_blockchain, input_notes)?
-        } else {
-            tx_inputs
-        };
-
-        let foreign_account_inputs = if self.is_lazy_loading_enabled {
-            Vec::new()
-        } else {
-            self.foreign_account_inputs.values().cloned().collect()
-        };
-
-        let tx_args = TransactionArgs::new(AdviceMap::default(), foreign_account_inputs)
-            .with_note_args(self.note_args);
+        let tx_args = TransactionArgs::default().with_note_args(self.note_args);
 
         let mut tx_args = if let Some(tx_script) = self.tx_script {
             tx_args.with_tx_script_and_args(tx_script, self.tx_script_args)
         } else {
             tx_args
         };
-
         tx_args = tx_args.with_auth_args(self.auth_args);
-
         tx_args.extend_advice_inputs(self.advice_inputs.clone());
         tx_args.extend_output_note_recipients(self.expected_output_notes.clone());
 
-        for (public_key, message, signature) in self.signatures {
-            tx_args.add_signature(public_key, message, signature);
+        for (public_key_commitment, message, signature) in self.signatures {
+            tx_args.add_signature(public_key_commitment, message, signature);
         }
+
+        tx_inputs.set_tx_args(tx_args);
 
         let mast_store = {
             let mast_forest_store = TransactionMastStore::new();
             mast_forest_store.load_account_code(tx_inputs.account().code());
 
-            for acc_inputs in self.foreign_account_inputs.values() {
-                mast_forest_store.insert(acc_inputs.code().mast());
+            for (account, _) in self.foreign_account_inputs.values() {
+                mast_forest_store.insert(account.code().mast());
             }
 
             mast_forest_store
@@ -340,12 +324,12 @@ impl TransactionContextBuilder {
             account: self.account,
             expected_output_notes: self.expected_output_notes,
             foreign_account_inputs: self.foreign_account_inputs,
-            tx_args,
             tx_inputs,
             mast_store,
             authenticator: self.authenticator,
-            advice_inputs: self.advice_inputs,
             source_manager: self.source_manager,
+            is_lazy_loading_enabled: self.is_lazy_loading_enabled,
+            note_scripts: self.note_scripts,
         })
     }
 }
@@ -354,44 +338,4 @@ impl Default for TransactionContextBuilder {
     fn default() -> Self {
         Self::with_existing_mock_account()
     }
-}
-
-/// Creates a minimal [`PartialAccount`] from the provided full [`Account`].
-fn minimal_partial_account(account: &Account) -> anyhow::Result<PartialAccount> {
-    // Construct a partial vault that tracks the empty word, but none of the assets
-    // that are actually in the asset tree. That way, the partial vault has the same
-    // root as the full vault, but will not add any relevant merkle paths to the
-    // merkle store, which will test lazy loading of assets.
-    let mut partial_vault = PartialVault::default();
-    partial_vault.add(account.vault().open(Word::empty()))?;
-
-    // Construct a partial storage that tracks the empty word in all storage maps, but none
-    // of the other keys, following the same rationale as the partial vault above.
-    let storage_header = account.storage().to_header();
-    let storage_maps =
-        account.storage().slots().iter().filter_map(|storage_slot| match storage_slot {
-            StorageSlot::Map(storage_map) => {
-                let mut partial_storage_map = PartialStorageMap::default();
-                let key = Word::empty();
-                let witness = storage_map.open(&key);
-                partial_storage_map
-                    .add(witness)
-                    .expect("adding the first proof should never error");
-                Some(partial_storage_map)
-            },
-            _ => None,
-        });
-    let partial_storage = PartialStorage::new(storage_header, storage_maps)
-        .expect("provided storage maps should match storage header");
-
-    let account = PartialAccount::new(
-        account.id(),
-        account.nonce(),
-        account.code().clone(),
-        partial_storage,
-        partial_vault,
-        None,
-    )?;
-
-    Ok(account)
 }

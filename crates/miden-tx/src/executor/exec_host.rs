@@ -2,8 +2,14 @@ use alloc::collections::BTreeMap;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use miden_lib::transaction::{TransactionAdviceInputs, TransactionEvent};
-use miden_objects::account::{AccountCode, AccountDelta, AccountId, PartialAccount};
+use miden_lib::transaction::{EventId, TransactionAdviceInputs};
+use miden_objects::account::{
+    AccountCode,
+    AccountDelta,
+    AccountId,
+    PartialAccount,
+    PublicKeyCommitment,
+};
 use miden_objects::assembly::debuginfo::Location;
 use miden_objects::assembly::{SourceFile, SourceManagerSync, SourceSpan};
 use miden_objects::asset::{Asset, AssetWitness, FungibleAsset};
@@ -182,9 +188,10 @@ where
             self.authenticator.ok_or(TransactionKernelError::MissingAuthenticator)?;
 
         let signature: Vec<Felt> = authenticator
-            .get_signature(pub_key_hash, &signing_inputs)
+            .get_signature(PublicKeyCommitment::from(pub_key_hash), &signing_inputs)
             .await
-            .map_err(TransactionKernelError::SignatureGenerationFailed)?;
+            .map_err(TransactionKernelError::SignatureGenerationFailed)?
+            .to_prepared_signature();
 
         let signature_key = Hasher::merge(&[pub_key_hash, signing_inputs.to_commitment()]);
 
@@ -390,10 +397,6 @@ where
     STORE: DataStore,
     AUTH: TransactionAuthenticator,
 {
-    fn get_mast_forest(&self, procedure_root: &Word) -> Option<Arc<MastForest>> {
-        self.base_host.get_mast_forest(procedure_root)
-    }
-
     fn get_label_and_source_file(
         &self,
         location: &Location,
@@ -410,16 +413,20 @@ where
     STORE: DataStore + Sync,
     AUTH: TransactionAuthenticator + Sync,
 {
+    fn get_mast_forest(&self, node_digest: &Word) -> impl FutureMaybeSend<Option<Arc<MastForest>>> {
+        let mast_forest = self.base_host.get_mast_forest(node_digest);
+        async move { mast_forest }
+    }
+
     fn on_event(
         &mut self,
         process: &ProcessState,
-        event_id: u32,
     ) -> impl FutureMaybeSend<Result<Vec<AdviceMutation>, EventError>> {
+        let event_id = EventId::from_felt(process.get_stack_item(0));
+
         // TODO: Eventually, refactor this to let TransactionEvent contain the data directly, which
         // should be cleaner.
-        let event_handling_result = TransactionEvent::try_from(event_id)
-            .map_err(EventError::from)
-            .and_then(|transaction_event| self.base_host.handle_event(process, transaction_event));
+        let event_handling_result = self.base_host.handle_event(process, event_id);
 
         async move {
             let event_handling = event_handling_result?;

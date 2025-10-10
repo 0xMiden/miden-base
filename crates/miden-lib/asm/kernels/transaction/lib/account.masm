@@ -3,7 +3,7 @@ use.$kernel::account_id
 use.$kernel::asset_vault
 use.$kernel::constants
 use.$kernel::memory
-use.std::collections::mmr
+
 use.std::collections::smt
 use.std::crypto::hashes::rpo
 use.std::mem
@@ -121,45 +121,45 @@ const.ACCOUNT_PROCEDURE_DATA_LENGTH=8
 # =================================================================================================
 
 # Event emitted before a foreign account is loaded from the advice inputs.
-const.ACCOUNT_BEFORE_FOREIGN_LOAD_EVENT=131104
+const.ACCOUNT_BEFORE_FOREIGN_LOAD_EVENT=event("miden::account::before_foreign_load")
 
 # Event emitted before an asset is added to the account vault.
-const.ACCOUNT_VAULT_BEFORE_ADD_ASSET_EVENT=131072
+const.ACCOUNT_VAULT_BEFORE_ADD_ASSET_EVENT=event("miden::account::vault_before_add_asset")
 # Event emitted after an asset is added to the account vault.
-const.ACCOUNT_VAULT_AFTER_ADD_ASSET_EVENT=131073
+const.ACCOUNT_VAULT_AFTER_ADD_ASSET_EVENT=event("miden::account::vault_after_add_asset")
 
 # Event emitted before an asset is removed from the account vault.
-const.ACCOUNT_VAULT_BEFORE_REMOVE_ASSET_EVENT=131074
+const.ACCOUNT_VAULT_BEFORE_REMOVE_ASSET_EVENT=event("miden::account::vault_before_remove_asset")
 # Event emitted after an asset is removed from the account vault.
-const.ACCOUNT_VAULT_AFTER_REMOVE_ASSET_EVENT=131075
+const.ACCOUNT_VAULT_AFTER_REMOVE_ASSET_EVENT=event("miden::account::vault_after_remove_asset")
 
 # Event emitted before a fungible asset's balance is fetched from the account vault.
-const.ACCOUNT_VAULT_BEFORE_GET_BALANCE_EVENT=131105
+const.ACCOUNT_VAULT_BEFORE_GET_BALANCE_EVENT=event("miden::account::vault_before_get_balance")
 
 # Event emitted before it is checked whether a non-fungible asset exists in the account vault.
-const.ACCOUNT_VAULT_BEFORE_HAS_NON_FUNGIBLE_ASSET_EVENT=131106
+const.ACCOUNT_VAULT_BEFORE_HAS_NON_FUNGIBLE_ASSET_EVENT=event("miden::account::vault_before_has_non_fungible_asset")
 
 # Event emitted before an account storage item is updated.
-const.ACCOUNT_STORAGE_BEFORE_SET_ITEM_EVENT=131076
+const.ACCOUNT_STORAGE_BEFORE_SET_ITEM_EVENT=event("miden::account::storage_before_set_item")
 # Event emitted after an account storage item is updated.
-const.ACCOUNT_STORAGE_AFTER_SET_ITEM_EVENT=131077
+const.ACCOUNT_STORAGE_AFTER_SET_ITEM_EVENT=event("miden::account::storage_after_set_item")
 
 # Event emitted before an account storage map item is accessed.
-const.ACCOUNT_STORAGE_BEFORE_GET_MAP_ITEM_EVENT=131103
+const.ACCOUNT_STORAGE_BEFORE_GET_MAP_ITEM_EVENT=event("miden::account::storage_before_get_map_item")
 
 # Event emitted before an account storage map item is updated.
-const.ACCOUNT_STORAGE_BEFORE_SET_MAP_ITEM_EVENT=131078
+const.ACCOUNT_STORAGE_BEFORE_SET_MAP_ITEM_EVENT=event("miden::account::storage_before_set_map_item")
 # Event emitted after an account storage map item is updated.
-const.ACCOUNT_STORAGE_AFTER_SET_MAP_ITEM_EVENT=131079
+const.ACCOUNT_STORAGE_AFTER_SET_MAP_ITEM_EVENT=event("miden::account::storage_after_set_map_item")
 
 # Event emitted before an account nonce is incremented.
-const.ACCOUNT_BEFORE_INCREMENT_NONCE_EVENT=131080
+const.ACCOUNT_BEFORE_INCREMENT_NONCE_EVENT=event("miden::account::before_increment_nonce")
 # Event emitted after an account nonce is incremented.
-const.ACCOUNT_AFTER_INCREMENT_NONCE_EVENT=131081
+const.ACCOUNT_AFTER_INCREMENT_NONCE_EVENT=event("miden::account::after_increment_nonce")
 
 # Event emitted to push the index of the account procedure at the top of the operand stack onto
 # the advice stack.
-const.ACCOUNT_PUSH_PROCEDURE_INDEX_EVENT=131082
+const.ACCOUNT_PUSH_PROCEDURE_INDEX_EVENT=event("miden::account::push_procedure_index")
 
 # CONSTANT ACCESSORS
 # =================================================================================================
@@ -311,7 +311,7 @@ export.memory::get_init_account_commitment->get_initial_commitment
 #!
 #! Where:
 #! - INIT_ACCOUNT_VAULT_ROOT is the initial account vault root.
-export.memory::get_init_account_vault_root->get_initial_vault_root
+export.memory::get_init_native_account_vault_root->get_initial_vault_root
 
 #! Returns the storage commitment of the native account at the beginning of the transaction.
 #!
@@ -486,7 +486,7 @@ end
 #! Where:
 #! - index is the index of the item to get.
 #! - INIT_VALUE is the initial value of the item at the beginning of the transaction.
-export.get_item_init
+export.get_initial_item
     # get account initial storage slots section offset
     exec.memory::get_account_initial_storage_slots_ptr
     # => [account_initial_storage_slots_ptr, index]
@@ -581,13 +581,13 @@ end
 #!
 #! Panics if:
 #! - the requested storage slot type is not map.
-export.get_map_item_init
+export.get_initial_map_item
     # duplicate index for later use
     dup movdn.5
     # => [index, KEY, index]
 
     # fetch the initial account storage item, which is ROOT of the map
-    exec.get_item_init swapw
+    exec.get_initial_item swapw
     # => [KEY, INIT_ROOT, index]
 
     exec.get_map_item_raw
@@ -917,7 +917,8 @@ export.add_asset_to_vault
     # => [ASSET, ASSET']
 
     # emit event to signal that an asset is being added to the account vault
-    emit.ACCOUNT_VAULT_AFTER_ADD_ASSET_EVENT dropw
+    emit.ACCOUNT_VAULT_AFTER_ADD_ASSET_EVENT
+    dropw
     # => [ASSET']
 end
 
@@ -953,7 +954,8 @@ export.remove_asset_from_vault
     # => [ASSET]
 end
 
-#! Returns the balance of a fungible asset associated with a faucet_id.
+#! Returns the balance of the fungible asset associated with the provided faucet_id in the current
+#! account's vault.
 #!
 #! Inputs:  [faucet_id_prefix, faucet_id_suffix]
 #! Outputs: [balance]
@@ -964,7 +966,7 @@ end
 #! - balance is the vault balance of the fungible asset.
 #!
 #! Panics if:
-#! - the asset is not a fungible asset.
+#! - the provided faucet ID is not an ID of a fungible faucet.
 export.get_balance
     # get the vault root
     exec.memory::get_account_vault_root_ptr movdn.2
@@ -977,6 +979,33 @@ export.get_balance
     # get the asset balance
     exec.asset_vault::get_balance
     # => [balance]
+end
+
+#! Returns the balance of the fungible asset associated with the provided faucet_id in the current 
+#! account's vault at the beginning of the transaction.
+#!
+#! Inputs:  [faucet_id_prefix, faucet_id_suffix]
+#! Outputs: [init_balance]
+#!
+#! Where:
+#! - faucet_id_{prefix, suffix} are the prefix and suffix felts of the faucet id of the fungible
+#!   asset of interest.
+#! - init_balance is the vault balance of the fungible asset at the beginning of the transaction.
+#!
+#! Panics if:
+#! - the provided faucet ID is not an ID of a fungible faucet.
+export.get_initial_balance
+    # get the vault root associated with the initial vault root of the native account
+    exec.memory::get_account_initial_vault_root_ptr movdn.2
+    # => [faucet_id_prefix, faucet_id_suffix, init_native_vault_root_ptr]
+
+    # emit event to signal that an asset's balance is requested
+    emit.ACCOUNT_VAULT_BEFORE_GET_BALANCE_EVENT
+    # => [faucet_id_prefix, faucet_id_suffix, init_native_vault_root_ptr]
+
+    # get the asset balance
+    exec.asset_vault::get_balance
+    # => [init_balance]
 end
 
 #! Returns a boolean indicating whether the non-fungible asset is present in the current account's vault.

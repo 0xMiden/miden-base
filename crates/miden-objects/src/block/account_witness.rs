@@ -3,11 +3,11 @@ use alloc::string::ToString;
 use miden_crypto::merkle::{
     InnerNodeInfo,
     LeafIndex,
-    MerklePath,
     SMT_DEPTH,
     SmtLeaf,
     SmtProof,
     SmtProofError,
+    SparseMerklePath,
 };
 
 use crate::account::AccountId;
@@ -39,7 +39,7 @@ pub struct AccountWitness {
     /// The state commitment of the account ID.
     commitment: Word,
     /// The merkle path of the account witness.
-    path: MerklePath,
+    path: SparseMerklePath,
 }
 
 impl AccountWitness {
@@ -52,11 +52,11 @@ impl AccountWitness {
     pub fn new(
         account_id: AccountId,
         commitment: Word,
-        path: MerklePath,
+        path: SparseMerklePath,
     ) -> Result<Self, AccountTreeError> {
-        if path.len() != SMT_DEPTH as usize {
+        if path.depth() != SMT_DEPTH {
             return Err(AccountTreeError::WitnessMerklePathDepthDoesNotMatchAccountTreeDepth(
-                path.len(),
+                path.depth() as usize,
             ));
         }
 
@@ -112,7 +112,11 @@ impl AccountWitness {
     /// # Warning
     ///
     /// This does not validate any of the guarantees of this type.
-    pub(super) fn new_unchecked(account_id: AccountId, commitment: Word, path: MerklePath) -> Self {
+    pub(super) fn new_unchecked(
+        account_id: AccountId,
+        commitment: Word,
+        path: SparseMerklePath,
+    ) -> Self {
         Self { id: account_id, commitment, path }
     }
 
@@ -126,8 +130,8 @@ impl AccountWitness {
         self.commitment
     }
 
-    /// Returns the [`MerklePath`] of the account witness.
-    pub fn path(&self) -> &MerklePath {
+    /// Returns the [`SparseMerklePath`] of the account witness.
+    pub fn path(&self) -> &SparseMerklePath {
         &self.path
     }
 
@@ -145,6 +149,7 @@ impl AccountWitness {
     /// Consumes self and returns the inner proof.
     pub fn into_proof(self) -> SmtProof {
         let leaf = self.leaf();
+        debug_assert_eq!(self.path.depth(), AccountTree::DEPTH);
         SmtProof::new(self.path, leaf)
             .expect("merkle path depth should be the SMT depth by construction")
     }
@@ -179,11 +184,11 @@ impl Deserializable for AccountWitness {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let id = AccountId::read_from(source)?;
         let commitment = Word::read_from(source)?;
-        let path = MerklePath::read_from(source)?;
+        let path = SparseMerklePath::read_from(source)?;
 
-        if path.len() != SMT_DEPTH as usize {
+        if path.depth() != SMT_DEPTH {
             return Err(DeserializationError::InvalidValue(
-                SmtProofError::InvalidMerklePathLength(path.len()).to_string(),
+                SmtProofError::InvalidMerklePathLength(path.depth() as usize).to_string(),
             ));
         }
 

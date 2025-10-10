@@ -43,7 +43,56 @@ use crate::mock_chain::chain::AccountAuthenticator;
 use crate::utils::{create_p2any_note, create_spawn_note};
 use crate::{AccountState, Auth, MockChain};
 
-/// A builder for a [`MockChain`].
+/// A builder for a [`MockChain`]'s genesis block.
+///
+/// ## Example
+///
+/// ```
+/// # use anyhow::Result;
+/// # use miden_objects::{
+/// #    asset::{Asset, FungibleAsset},
+/// #    note::NoteType,
+/// # };
+/// # use miden_testing::{Auth, MockChain};
+/// #
+/// # fn main() -> Result<()> {
+/// let mut builder = MockChain::builder();
+/// let existing_wallet =
+///     builder.add_existing_wallet_with_assets(Auth::IncrNonce, [FungibleAsset::mock(500)])?;
+/// let new_wallet = builder.create_new_wallet(Auth::IncrNonce)?;
+///
+/// let existing_note = builder.add_p2id_note(
+///     existing_wallet.id(),
+///     new_wallet.id(),
+///     &[FungibleAsset::mock(100)],
+///     NoteType::Private,
+/// )?;
+/// let new_note = builder.create_p2id_note(
+///     existing_wallet.id(),
+///     new_wallet.id(),
+///     [FungibleAsset::mock(100)],
+///     NoteType::Private,
+/// )?;
+/// let chain = builder.build()?;
+///
+/// // The existing wallet and note should be part of the chain state.
+/// assert!(chain.committed_account(existing_wallet.id()).is_ok());
+/// assert!(chain.committed_notes().get(&existing_note.id()).is_some());
+///
+/// // The new wallet and note should *not* be part of the chain state - they must be created in
+/// // a transaction first.
+/// assert!(chain.committed_account(new_wallet.id()).is_err());
+/// assert!(chain.committed_notes().get(&new_note.id()).is_none());
+///
+/// # Ok(())
+/// # }
+/// ```
+///
+/// Note the distinction between `add_` and `create_` APIs. Any `add_` APIs will add something to
+/// the genesis chain state while `create_` APIs do not mutate the genesis state. The latter are
+/// simply convenient for creating accounts or notes that will be created by transactions.
+///
+/// See also the [`MockChain`] docs for examples on using the mock chain.
 #[derive(Debug, Clone)]
 pub struct MockChainBuilder {
     accounts: BTreeMap<AccountId, Account>,
@@ -403,7 +452,7 @@ impl MockChainBuilder {
     // ----------------------------------------------------------------------------------------
 
     /// Adds the provided note to the initial chain state.
-    pub fn add_note(&mut self, note: impl Into<OutputNote>) {
+    pub fn add_output_note(&mut self, note: impl Into<OutputNote>) {
         self.notes.push(note.into());
     }
 
@@ -418,7 +467,7 @@ impl MockChainBuilder {
         assets: impl IntoIterator<Item = Asset>,
     ) -> anyhow::Result<Note> {
         let note = self.create_p2any_note(sender_account_id, note_type, assets)?;
-        self.add_note(OutputNote::Full(note.clone()));
+        self.add_output_note(OutputNote::Full(note.clone()));
 
         Ok(note)
     }
@@ -441,7 +490,7 @@ impl MockChainBuilder {
             asset.iter().copied(),
             note_type,
         )?;
-        self.add_note(OutputNote::Full(note.clone()));
+        self.add_output_note(OutputNote::Full(note.clone()));
 
         Ok(note)
     }
@@ -471,7 +520,7 @@ impl MockChainBuilder {
             &mut self.rng,
         )?;
 
-        self.add_note(OutputNote::Full(note.clone()));
+        self.add_output_note(OutputNote::Full(note.clone()));
 
         Ok(note)
     }
@@ -495,7 +544,7 @@ impl MockChainBuilder {
             &mut self.rng,
         )?;
 
-        self.add_note(OutputNote::Full(swap_note.clone()));
+        self.add_output_note(OutputNote::Full(swap_note.clone()));
 
         Ok((swap_note, payback_note))
     }
@@ -518,7 +567,7 @@ impl MockChainBuilder {
         I: ExactSizeIterator<Item = &'note Note>,
     {
         let note = create_spawn_note(output_notes)?;
-        self.add_note(OutputNote::Full(note.clone()));
+        self.add_output_note(OutputNote::Full(note.clone()));
 
         Ok(note)
     }
@@ -590,6 +639,13 @@ impl MockChainBuilder {
 
     // HELPER FUNCTIONS
     // ----------------------------------------------------------------------------------------
+
+    /// Returns a mutable reference to the builder's RNG.
+    ///
+    /// This can be used when creating accounts or notes and randomness is required.
+    pub fn rng_mut(&mut self) -> &mut RpoRandomCoin {
+        &mut self.rng
+    }
 
     /// Constructs a fungible asset based on the native asset ID and the provided amount.
     fn native_fee_asset(&self, amount: u64) -> anyhow::Result<FungibleAsset> {

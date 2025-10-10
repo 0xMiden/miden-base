@@ -2,8 +2,12 @@ use alloc::collections::BTreeMap;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
-use miden_objects::account::{AccountId, AccountProcedureInfo, AccountStorage};
-use miden_objects::crypto::dsa::rpo_falcon512::PublicKey;
+use miden_objects::account::{
+    AccountId,
+    AccountProcedureInfo,
+    AccountStorage,
+    PublicKeyCommitment,
+};
 use miden_objects::note::PartialNote;
 use miden_objects::{Felt, FieldElement, Word};
 
@@ -101,7 +105,7 @@ impl AccountComponentInterface {
             AccountComponentInterface::AuthRpoFalcon512(storage_index)
             | AccountComponentInterface::AuthRpoFalcon512Acl(storage_index) => {
                 vec![AuthScheme::RpoFalcon512 {
-                    pub_key: PublicKey::new(
+                    pub_key: PublicKeyCommitment::from(
                         storage
                             .get_item(*storage_index)
                             .expect("invalid storage index of the public key"),
@@ -289,25 +293,31 @@ fn extract_multisig_auth_scheme(storage: &AccountStorage, storage_index: u8) -> 
     let threshold = config[0].as_int() as u32;
     let num_approvers = config[1].as_int() as u8;
 
-    // The public keys are stored in a map at the next slot (storage_index + 1)
+    // The multisig component has a fixed storage layout:
+    // - Slot 0: [threshold, num_approvers, 0, 0]
+    // - Slot 1: Map with public keys
+    // - Slot 2: Map with executed transactions
+    // The public keys are always stored in slot 1, regardless of storage_index
     let pub_keys_map_slot = storage_index + 1;
 
     let mut pub_keys = Vec::new();
 
     // Read each public key from the map
     for key_index in 0..num_approvers {
+        // The multisig component stores keys using pattern [index, 0, 0, 0]
         let map_key = [Felt::new(key_index as u64), Felt::ZERO, Felt::ZERO, Felt::ZERO];
 
         match storage.get_map_item(pub_keys_map_slot, map_key.into()) {
-            Ok(pub_key_word) => {
-                pub_keys.push(PublicKey::new(pub_key_word));
+            Ok(pub_key) => {
+                pub_keys.push(PublicKeyCommitment::from(pub_key));
             },
             Err(_) => {
                 // If we can't read a public key, panic with a clear error message
                 panic!(
-                    "Failed to read public key {} from multisig configuration at storage index {}. \
+                    "Failed to read public key {} from multisig configuration at storage slot {}. \
+                        Expected key pattern [index, 0, 0, 0]. \
                         This indicates corrupted multisig storage or incorrect storage layout.",
-                    key_index, storage_index
+                    key_index, pub_keys_map_slot
                 );
             },
         }

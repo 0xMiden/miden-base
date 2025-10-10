@@ -190,7 +190,7 @@ impl AccountStorage {
                 _ => return Err(AccountError::StorageSlotNotMap(idx)),
             };
 
-            storage_map.apply_delta(map);
+            storage_map.apply_delta(map)?;
         }
 
         // update storage values
@@ -265,7 +265,7 @@ impl AccountStorage {
         let old_root = storage_map.root();
 
         // update the key-value pair in the map
-        let old_value = storage_map.insert(key, value);
+        let old_value = storage_map.insert(key, value)?;
 
         Ok((old_root, old_value))
     }

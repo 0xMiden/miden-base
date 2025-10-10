@@ -52,8 +52,8 @@ use crate::{Auth, MockChain, TransactionContextBuilder};
 ///
 /// In order to make the account delta empty but the transaction still legal, we consume a note
 /// without assets.
-#[test]
-fn empty_account_delta_commitment_is_empty_word() -> anyhow::Result<()> {
+#[tokio::test]
+async fn empty_account_delta_commitment_is_empty_word() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let account = builder.add_existing_mock_account(Auth::Noop)?;
     let p2any_note =
@@ -64,7 +64,8 @@ fn empty_account_delta_commitment_is_empty_word() -> anyhow::Result<()> {
         .build_tx_context(account.id(), &[p2any_note.id()], &[])
         .expect("failed to build tx context")
         .build()?
-        .execute_blocking()
+        .execute()
+        .await
         .context("failed to execute transaction")?;
 
     assert_eq!(executed_tx.account_delta().nonce_delta(), ZERO);
@@ -75,15 +76,16 @@ fn empty_account_delta_commitment_is_empty_word() -> anyhow::Result<()> {
 }
 
 /// Tests that a noop transaction with [`Auth::IncrNonce`] results in a nonce delta of 1.
-#[test]
-fn delta_nonce() -> anyhow::Result<()> {
+#[tokio::test]
+async fn delta_nonce() -> anyhow::Result<()> {
     let TestSetup { mock_chain, account_id, .. } = setup_test([], [], [])?;
 
     let executed_tx = mock_chain
         .build_tx_context(account_id, &[], &[])
         .expect("failed to build tx context")
         .build()?
-        .execute_blocking()
+        .execute()
+        .await
         .context("failed to execute transaction")?;
 
     assert_eq!(executed_tx.account_delta().nonce_delta(), Felt::new(1));
@@ -97,8 +99,8 @@ fn delta_nonce() -> anyhow::Result<()> {
 /// - Slot 1: EMPTY_WORD -> [3,4,5,6]               -> Delta: [3,4,5,6]
 /// - Slot 2: [1,3,5,7]  -> [1,3,5,7]               -> Delta: None
 /// - Slot 3: [1,3,5,7]  -> [2,3,4,5] -> [1,3,5,7]  -> Delta: None
-#[test]
-fn storage_delta_for_value_slots() -> anyhow::Result<()> {
+#[tokio::test]
+async fn storage_delta_for_value_slots() -> anyhow::Result<()> {
     let slot_0_init_value = Word::from([2, 4, 6, 8u32]);
     let slot_0_tmp_value = Word::from([3, 4, 5, 6u32]);
     let slot_0_final_value = EMPTY_WORD;
@@ -171,7 +173,8 @@ fn storage_delta_for_value_slots() -> anyhow::Result<()> {
         .expect("failed to build tx context")
         .tx_script(tx_script)
         .build()?
-        .execute_blocking()
+        .execute()
+        .await
         .context("failed to execute transaction")?;
 
     let storage_values_delta = executed_tx
@@ -198,8 +201,8 @@ fn storage_delta_for_value_slots() -> anyhow::Result<()> {
 /// - Slot 2: key5: [1,2,3,4]  -> [2,3,4,5] -> [1,2,3,4] -> Delta: None
 ///   - key5 and key4 are the same scenario, but in different slots. In particular, slot 2's delta
 ///     map will be empty after normalization and so it shouldn't be present in the delta at all.
-#[test]
-fn storage_delta_for_map_slots() -> anyhow::Result<()> {
+#[tokio::test]
+async fn storage_delta_for_map_slots() -> anyhow::Result<()> {
     // Test with random keys to make sure the ordering in the MASM and Rust implementations
     // matches.
     let key0 = rand_value::<Word>();
@@ -227,16 +230,16 @@ fn storage_delta_for_map_slots() -> anyhow::Result<()> {
     let key5_final_value = Word::from([1, 2, 3, 4u32]);
 
     let mut map0 = StorageMap::new();
-    map0.insert(key0, key0_init_value);
-    map0.insert(key1, key1_init_value);
+    map0.insert(key0, key0_init_value).unwrap();
+    map0.insert(key1, key1_init_value).unwrap();
 
     let mut map1 = StorageMap::new();
-    map1.insert(key2, key2_init_value);
-    map1.insert(key3, key3_init_value);
-    map1.insert(key4, key4_init_value);
+    map1.insert(key2, key2_init_value).unwrap();
+    map1.insert(key3, key3_init_value).unwrap();
+    map1.insert(key4, key4_init_value).unwrap();
 
     let mut map2 = StorageMap::new();
-    map2.insert(key5, key5_init_value);
+    map2.insert(key5, key5_init_value).unwrap();
 
     let TestSetup { mock_chain, account_id, .. } = setup_test(
         vec![
@@ -255,47 +258,47 @@ fn storage_delta_for_map_slots() -> anyhow::Result<()> {
     let tx_script = compile_tx_script(format!(
         "
       begin
-          push.{key0_final_value}.{key0}.0
+          push.{key0_final_value} push.{key0} push.0
           # => [index, KEY, VALUE]
           exec.set_map_item
           # => []
 
-          push.{key1_tmp_value}.{key1}.0
+          push.{key1_tmp_value} push.{key1} push.0
           # => [index, KEY, VALUE]
           exec.set_map_item
           # => []
 
-          push.{key1_final_value}.{key1}.0
+          push.{key1_final_value} push.{key1} push.0
           # => [index, KEY, VALUE]
           exec.set_map_item
           # => []
 
-          push.{key2_final_value}.{key2}.1
+          push.{key2_final_value} push.{key2} push.1
           # => [index, KEY, VALUE]
           exec.set_map_item
           # => []
 
-          push.{key3_final_value}.{key3}.1
+          push.{key3_final_value} push.{key3} push.1
           # => [index, KEY, VALUE]
           exec.set_map_item
           # => []
 
-          push.{key4_tmp_value}.{key4}.1
+          push.{key4_tmp_value} push.{key4} push.1
           # => [index, KEY, VALUE]
           exec.set_map_item
           # => []
 
-          push.{key4_final_value}.{key4}.1
+          push.{key4_final_value} push.{key4} push.1
           # => [index, KEY, VALUE]
           exec.set_map_item
           # => []
 
-          push.{key5_tmp_value}.{key5}.2
+          push.{key5_tmp_value} push.{key5} push.2
           # => [index, KEY, VALUE]
           exec.set_map_item
           # => []
 
-          push.{key5_final_value}.{key5}.2
+          push.{key5_final_value} push.{key5} push.2
           # => [index, KEY, VALUE]
           exec.set_map_item
           # => []
@@ -307,7 +310,8 @@ fn storage_delta_for_map_slots() -> anyhow::Result<()> {
         .build_tx_context(account_id, &[], &[])?
         .tx_script(tx_script)
         .build()?
-        .execute_blocking()
+        .execute()
+        .await
         .context("failed to execute transaction")?;
     let maps_delta = executed_tx.account_delta().storage().maps();
 
@@ -337,8 +341,8 @@ fn storage_delta_for_map_slots() -> anyhow::Result<()> {
 /// - Asset2 is increased by 200 and decreased by 100 -> Delta: 100.
 /// - Asset3 is decreased by [`FungibleAsset::MAX_AMOUNT`] -> Delta: -MAX_AMOUNT.
 /// - Asset4 is increased by [`FungibleAsset::MAX_AMOUNT`] -> Delta: MAX_AMOUNT.
-#[test]
-fn fungible_asset_delta() -> anyhow::Result<()> {
+#[tokio::test]
+async fn fungible_asset_delta() -> anyhow::Result<()> {
     // Test with random IDs to make sure the ordering in the MASM and Rust implementations
     // matches.
     let faucet0: AccountId = AccountIdBuilder::new()
@@ -401,7 +405,8 @@ fn fungible_asset_delta() -> anyhow::Result<()> {
         .build_tx_context(account_id, &notes.iter().map(Note::id).collect::<Vec<_>>(), &[])?
         .tx_script(tx_script)
         .build()?
-        .execute_blocking()
+        .execute()
+        .await
         .context("failed to execute transaction")?;
 
     let mut added_assets = executed_tx
@@ -443,8 +448,8 @@ fn fungible_asset_delta() -> anyhow::Result<()> {
 /// - Asset1 is removed from the vault -> Delta: Remove.
 /// - Asset2 is added and removed -> Delta: No Change.
 /// - Asset3 is removed and added -> Delta: No Change.
-#[test]
-fn non_fungible_asset_delta() -> anyhow::Result<()> {
+#[tokio::test]
+async fn non_fungible_asset_delta() -> anyhow::Result<()> {
     let mut rng = rand::rng();
     // Test with random IDs to make sure the ordering in the MASM and Rust implementations
     // matches.
@@ -494,7 +499,8 @@ fn non_fungible_asset_delta() -> anyhow::Result<()> {
         .build_tx_context(account_id, &notes.iter().map(Note::id).collect::<Vec<_>>(), &[])?
         .tx_script(tx_script)
         .build()?
-        .execute_blocking()
+        .execute()
+        .await
         .context("failed to execute transaction")?;
 
     let mut added_assets = executed_tx
@@ -521,8 +527,8 @@ fn non_fungible_asset_delta() -> anyhow::Result<()> {
 
 /// Tests that adding and removing assets and updating value and map storage slots results in the
 /// correct delta.
-#[test]
-fn asset_and_storage_delta() -> anyhow::Result<()> {
+#[tokio::test]
+async fn asset_and_storage_delta() -> anyhow::Result<()> {
     let account_assets = AssetVault::mock().assets().collect::<Vec<Asset>>();
 
     let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
@@ -687,7 +693,7 @@ fn asset_and_storage_delta() -> anyhow::Result<()> {
     // expected delta
     // --------------------------------------------------------------------------------------------
     // execute the transaction and get the witness
-    let executed_transaction = tx_context.execute_blocking()?;
+    let executed_transaction = tx_context.execute().await?;
 
     // nonce delta
     // --------------------------------------------------------------------------------------------
@@ -748,8 +754,8 @@ fn asset_and_storage_delta() -> anyhow::Result<()> {
 
 /// Tests that adding a fungible asset with amount zero to the account vault works and does not
 /// result in an account delta entry.
-#[test]
-fn adding_amount_zero_fungible_asset_to_account_vault_works() -> anyhow::Result<()> {
+#[tokio::test]
+async fn adding_amount_zero_fungible_asset_to_account_vault_works() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let account = builder.add_existing_mock_account(Auth::IncrNonce)?;
     let input_note = builder.add_p2id_note(
@@ -763,7 +769,8 @@ fn adding_amount_zero_fungible_asset_to_account_vault_works() -> anyhow::Result<
     let tx = chain
         .build_tx_context(account, &[input_note.id()], &[])?
         .build()?
-        .execute_blocking()?;
+        .execute()
+        .await?;
 
     assert!(tx.account_delta().vault().is_empty());
 

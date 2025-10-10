@@ -10,13 +10,7 @@ use miden_objects::assembly::{Assembler, DefaultSourceManager, KernelLibrary};
 use miden_objects::asset::FungibleAsset;
 use miden_objects::block::BlockNumber;
 use miden_objects::crypto::SequentialCommit;
-use miden_objects::transaction::{
-    OutputNote,
-    OutputNotes,
-    TransactionArgs,
-    TransactionInputs,
-    TransactionOutputs,
-};
+use miden_objects::transaction::{OutputNote, OutputNotes, TransactionInputs, TransactionOutputs};
 use miden_objects::utils::serde::Deserializable;
 use miden_objects::utils::sync::LazyLock;
 use miden_objects::vm::{AdviceInputs, Program, ProgramInfo, StackInputs, StackOutputs};
@@ -28,7 +22,7 @@ use super::MidenLib;
 pub mod memory;
 
 mod events;
-pub use events::TransactionEvent;
+pub use events::{EventId, TransactionEvent};
 
 mod inputs;
 pub use inputs::{TransactionAdviceInputs, TransactionAdviceMapMismatch};
@@ -125,14 +119,10 @@ impl TransactionKernel {
         ProgramInfo::new(program_hash, kernel)
     }
 
-    /// Transforms the provided [TransactionInputs] and [TransactionArgs] into stack and advice
+    /// Transforms the provided [`TransactionInputs`] into stack and advice
     /// inputs needed to execute a transaction kernel for a specific transaction.
-    ///
-    /// If `init_advice_inputs` is provided, they will be included in the returned advice inputs.
     pub fn prepare_inputs(
         tx_inputs: &TransactionInputs,
-        tx_args: &TransactionArgs,
-        init_advice_inputs: Option<AdviceInputs>,
     ) -> Result<(StackInputs, TransactionAdviceInputs), TransactionAdviceMapMismatch> {
         let account = tx_inputs.account();
 
@@ -144,10 +134,7 @@ impl TransactionKernel {
             tx_inputs.block_header().block_num(),
         );
 
-        let mut tx_advice_inputs = TransactionAdviceInputs::new(tx_inputs, tx_args)?;
-        if let Some(init_advice_inputs) = init_advice_inputs {
-            tx_advice_inputs.extend(init_advice_inputs);
-        }
+        let tx_advice_inputs = TransactionAdviceInputs::new(tx_inputs)?;
 
         Ok((stack_inputs, tx_advice_inputs))
     }
@@ -284,7 +271,7 @@ impl TransactionKernel {
     /// - Indices 13..16 on the stack are not zeroes.
     /// - Overflow addresses are not empty.
     pub fn parse_output_stack(
-        stack: &StackOutputs,
+        stack: &StackOutputs, // FIXME TODO add an extension trait for this one
     ) -> Result<(Word, Word, FungibleAsset, BlockNumber), TransactionOutputError> {
         let output_notes_commitment = stack
             .get_stack_word(OUTPUT_NOTES_COMMITMENT_WORD_IDX * 4)
