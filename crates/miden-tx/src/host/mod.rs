@@ -2,7 +2,6 @@ mod account_delta_tracker;
 #[cfg(feature = "std")]
 use std::println;
 
-
 use account_delta_tracker::AccountDeltaTracker;
 
 mod storage_delta_tracker;
@@ -232,14 +231,14 @@ where
         adv_provider: &miden_processor::AdviceProvider,
     ) -> Result<(), TransactionKernelError> {
         let note_idx: usize = stack[9].as_int() as usize;
-        
+
         if self.output_notes.contains_key(&note_idx) {
             return Ok(());
         }
-        
+
         let note_builder = OutputNoteBuilder::new(stack, adv_provider)?;
         self.output_notes.insert(note_idx, note_builder);
-        
+
         Ok(())
     }
 
@@ -564,14 +563,14 @@ where
         let recipient_digest = Word::new([stack[8], stack[7], stack[6], stack[5]]);
         #[cfg(feature = "std")]
         println!("DEBUG: recipient_digest = {:?}", recipient_digest);
-        
+
         // Try to get recipient data from the advice map
         if let Some(data) = process.advice_provider().get_mapped_values(&recipient_digest) {
             #[cfg(feature = "std")]
             println!("DEBUG: Found recipient data, length = {}", data.len());
             #[cfg(feature = "std")]
             println!("DEBUG: recipient data = {:?}", data);
-            
+
             // Extract script root from the recipient data
             let script_root = if data.len() == 13 {
                 // Old format: [num_inputs, INPUTS_COMMITMENT, SCRIPT_ROOT, SERIAL_NUM]
@@ -582,37 +581,38 @@ where
             } else {
                 return Err(TransactionKernelError::MalformedRecipientData(data.to_vec()));
             };
-            
+
             #[cfg(feature = "std")]
             println!("DEBUG: script_root = {:?}", script_root);
-            
+
             // Check if the script is in the advice provider
             let script_data = process.advice_provider().get_mapped_values(&script_root);
-            
+
             #[cfg(feature = "std")]
             println!("DEBUG: script_data present = {}", script_data.is_some());
             #[cfg(feature = "std")]
             if let Some(data) = script_data {
                 println!("DEBUG: script_data length = {}", data.len());
             }
-            
+
             // If script is missing, request it from the data store
             // IMPORTANT: We must create a placeholder note builder here to reserve the note index,
             // otherwise subsequent NoteBeforeAddAsset events will fail
             if script_data.is_none() || script_data.unwrap().is_empty() {
                 #[cfg(feature = "std")]
                 println!("DEBUG: Script missing, creating placeholder and returning Unhandled");
-                
+
                 // Create a placeholder note builder with empty assets
                 // This will fail for PUBLIC notes, but that's expected - we'll handle it below
                 match OutputNoteBuilder::new(stack.clone(), process.advice_provider()) {
                     Ok(note_builder) => {
-                        // Unexpected: the note builder was created successfully even though the script is missing
-                        // This should only happen for PRIVATE notes
+                        // Unexpected: the note builder was created successfully even though the
+                        // script is missing This should only happen for
+                        // PRIVATE notes
                         self.output_notes.insert(note_idx, note_builder);
                         return Ok(TransactionEventHandling::Handled(Vec::new()));
-                    }
-                    Err(TransactionKernelError::PublicNoteMissingDetails(_, _)) => {
+                    },
+                    Err(TransactionKernelError::PublicNoteMissingDetails(..)) => {
                         // Expected: PUBLIC note is missing script details
                         // We need to fetch the script, but we also need to create a placeholder
                         // to reserve the note index. However, we can't create a proper placeholder
@@ -622,12 +622,9 @@ where
                         // TODO: This is a problem - the VM won't re-emit the event!
                         // We need a different approach.
                         return Ok(TransactionEventHandling::Unhandled(
-                            TransactionEventData::NoteScript {
-                                script_root,
-                                stack: stack.clone(),
-                            }
+                            TransactionEventData::NoteScript { script_root, stack: stack.clone() },
                         ));
-                    }
+                    },
                     Err(e) => return Err(e),
                 }
             }
@@ -636,7 +633,8 @@ where
             println!("DEBUG: No recipient data found in advice map");
         }
 
-        // Build the note - this will error if required data (like script for PUBLIC notes) is missing
+        // Build the note - this will error if required data (like script for PUBLIC notes) is
+        // missing
         #[cfg(feature = "std")]
         println!("DEBUG: Building note builder");
         let note_builder = OutputNoteBuilder::new(stack, process.advice_provider())?;

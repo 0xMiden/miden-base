@@ -415,4 +415,3 @@ mod tests {
         assert!(matches!(result, Err(DataStoreError::NoteScriptNotFound(_))));
     }
 }
-

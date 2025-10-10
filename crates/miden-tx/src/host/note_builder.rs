@@ -1,7 +1,6 @@
+use alloc::vec::Vec;
 #[cfg(feature = "std")]
 use std::eprintln;
-
-use alloc::vec::Vec;
 
 use miden_objects::asset::Asset;
 use miden_objects::note::{
@@ -80,27 +79,27 @@ impl OutputNoteBuilder {
                 let serial_num = Word::from([data[0], data[1], data[2], data[3]]);
                 let script_root = Word::new([data[4], data[5], data[6], data[7]]);
                 let inputs_commitment = Word::new([data[8], data[9], data[10], data[11]]);
-                
+
                 // For the new format, we need to get num_inputs from the inputs data itself
                 // We'll handle this below when we fetch the inputs
                 (serial_num, script_root, inputs_commitment, 0)
             } else {
                 return Err(TransactionKernelError::MalformedRecipientData(data.to_vec()));
             };
-            
+
             #[cfg(feature = "std")]
             eprintln!("DEBUG NoteBuilder: script_root = {:?}", script_root);
-            
+
             let script_data = adv_provider.get_mapped_values(&script_root).unwrap_or(&[]);
-            
+
             #[cfg(feature = "std")]
             eprintln!("DEBUG NoteBuilder: script_data.len() = {}", script_data.len());
-            
+
             #[cfg(feature = "std")]
             eprintln!("DEBUG NoteBuilder: inputs_commitment = {:?}", inputs_commitment);
 
             let inputs_data = adv_provider.get_mapped_values(&inputs_commitment);
-            
+
             #[cfg(feature = "std")]
             if let Some(data) = inputs_data {
                 eprintln!("DEBUG NoteBuilder: inputs_data.len() = {}", data.len());

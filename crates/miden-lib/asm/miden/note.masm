@@ -108,7 +108,14 @@ end
 #! - num_inputs is greater than 128.
 #!
 #! Invocation: exec
-export.build_recipient
+export.build_recipient.2
+
+    dup.1 dup.1
+    loc_store.0
+    loc_store.1
+
+    push.112 debug.stack drop
+
     exec.compute_inputs_commitment
     # => [INPUTS_HASH, SERIAL_NUM, SCRIPT_ROOT]
 
@@ -119,6 +126,28 @@ export.build_recipient
     # => [SERIAL_NUM, SCRIPT_ROOT, INPUTS_HASH, SERIAL_NUM, SCRIPT_ROOT, INPUTS_HASH]
 
     exec.build_recipient_hash
+    # => [RECIPIENT, SERIAL_NUM, SCRIPT_ROOT, INPUTS_HASH]
+
+    # insert inputs into AdviceMap
+
+    dupw.3
+    # => [INPUTS_HASH, RECIPIENT, SERIAL_NUM, SCRIPT_ROOT, INPUTS_HASH]
+ 
+    loc_load.1 loc_load.0
+    # => [inputs_ptr, num_inputs, INPUTS_HASH, RECIPIENT, SERIAL_NUM, SCRIPT_ROOT, INPUTS_HASH]
+
+    dup.1 dup.1 add swap.2 drop
+    # => [inputs_ptr, end_ptr, INPUTS_HASH, RECIPIENT, SERIAL_NUM, SCRIPT_ROOT, INPUTS_HASH]
+
+    movdn.5 movdn.5
+    # => [INPUTS_HASH, inputs_ptr, end_ptr, RECIPIENT, SERIAL_NUM, SCRIPT_ROOT, INPUTS_HASH]
+
+    push.111 debug.stack drop
+
+    adv.insert_mem
+    # => [INPUTS_HASH, inputs_ptr, end_ptr, RECIPIENT, SERIAL_NUM, SCRIPT_ROOT, INPUTS_HASH]
+
+    dropw drop drop
     # => [RECIPIENT, SERIAL_NUM, SCRIPT_ROOT, INPUTS_HASH]
 
     movdnw.3
