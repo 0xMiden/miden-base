@@ -22,12 +22,13 @@ use crate::{Felt, FieldElement};
 /// structure:
 ///
 /// ```text
-/// organization::component::slot_name
+/// organization_name::component_name::slot_name
 /// ```
 ///
 /// ## Requirements
 ///
 /// For a string to be a valid slot name it needs to satisfy the following criteria:
+/// - Its length must be less than 255.
 /// - It needs to have at least 2 components.
 /// - Each component must consist of at least one character.
 /// - Each component must only consist of the characters `a` to `z`, `A` to `Z`, `0` to `9` or `_`
@@ -42,8 +43,11 @@ impl SlotName {
     // CONSTANTS
     // --------------------------------------------------------------------------------------------
 
-    // The minimum number of components that a slot name must contain.
+    /// The minimum number of components that a slot name must contain.
     pub(crate) const MIN_NUM_COMPONENTS: usize = 2;
+
+    /// The maximum number of characters in a slot name.
+    pub(crate) const MAX_LENGTH: usize = u8::MAX as usize;
 
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
@@ -96,6 +100,18 @@ impl SlotName {
         &self.name
     }
 
+    /// Returns the slot name as a string slice.
+    pub fn len(&self) -> u8 {
+        // SAFETY: Slot name validation should enforce length fits into a u8.
+        debug_assert!(self.name.len() <= Self::MAX_LENGTH);
+        self.name.len() as u8
+    }
+
+    /// Returns `true` if the slot name has a length of zero.
+    pub fn is_empty(&self) -> bool {
+        self.name.is_empty()
+    }
+
     // TODO(named_slots): Docs.
     pub fn compute_id(&self) -> SlotNameId {
         // let hashed_word = hash_string_to_word(self.as_str());
@@ -142,6 +158,10 @@ impl SlotName {
 
         if bytes.is_empty() {
             return Err(SlotNameError::TooShort);
+        }
+
+        if bytes.len() > Self::MAX_LENGTH {
+            return Err(SlotNameError::TooLong);
         }
 
         // Slot names must not start with a colon or underscore.
@@ -216,13 +236,13 @@ impl Display for SlotName {
 
 impl Serializable for SlotName {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        target.write(u8::try_from(self.as_str().len()).expect("TODO"));
+        target.write_u8(self.len());
         target.write_many(self.as_str().as_bytes())
     }
 
     fn get_size_hint(&self) -> usize {
-        // Slot name length + name bytes
-        1usize + self.as_str().len()
+        // Slot name length + slot name bytes
+        1 + self.as_str().len()
     }
 }
 
@@ -230,7 +250,6 @@ impl Deserializable for SlotName {
     fn read_from<R: miden_core::utils::ByteReader>(
         source: &mut R,
     ) -> Result<Self, DeserializationError> {
-        // TODO(named_slots): Enforce max slot name length of u8::MAX?
         let len = source.read_u8()?;
         let name = source.read_many(len as usize)?;
         String::from_utf8(name)
@@ -246,6 +265,8 @@ impl Deserializable for SlotName {
 
 #[cfg(test)]
 mod tests {
+    use std::borrow::ToOwned;
+
     use assert_matches::assert_matches;
 
     use super::*;
@@ -319,7 +340,7 @@ mod tests {
         );
     }
 
-    // Num components tests
+    // Length validation tests
     // --------------------------------------------------------------------------------------------
 
     #[test]
@@ -330,6 +351,13 @@ mod tests {
     #[test]
     fn slot_name_fails_on_single_component() {
         assert_matches!(SlotName::new("single_component").unwrap_err(), SlotNameError::TooShort);
+    }
+
+    #[test]
+    fn slot_name_fails_on_string_whose_length_exceeds_max_length() {
+        let mut string = get_max_length_slot_name();
+        string.push('a');
+        assert_matches!(SlotName::new(string).unwrap_err(), SlotNameError::TooLong);
     }
 
     // Alphabet validation tests
@@ -375,6 +403,12 @@ mod tests {
         Ok(())
     }
 
+    #[test]
+    fn slot_name_with_max_length_is_valid() -> anyhow::Result<()> {
+        SlotName::new(get_max_length_slot_name())?;
+        Ok(())
+    }
+
     // Serialization tests
     // --------------------------------------------------------------------------------------------
 
@@ -383,5 +417,24 @@ mod tests {
         let slot_name = SlotName::new("miden::faucet0::fungible_1::b4sic::metadata")?;
         assert_eq!(slot_name, SlotName::read_from_bytes(&slot_name.to_bytes())?);
         Ok(())
+    }
+
+    #[test]
+    fn serde_max_length_slot_name() -> anyhow::Result<()> {
+        let slot_name = SlotName::new(get_max_length_slot_name())?;
+        assert_eq!(slot_name, SlotName::read_from_bytes(&slot_name.to_bytes())?);
+        Ok(())
+    }
+
+    // Test helpers
+    // --------------------------------------------------------------------------------------------
+
+    fn get_max_length_slot_name() -> String {
+        const MIDEN_STR: &str = "miden::";
+        let remainder = ['a'; SlotName::MAX_LENGTH - MIDEN_STR.len()];
+        let mut string = MIDEN_STR.to_owned();
+        string.extend(remainder);
+        assert_eq!(string.len(), SlotName::MAX_LENGTH);
+        string
     }
 }

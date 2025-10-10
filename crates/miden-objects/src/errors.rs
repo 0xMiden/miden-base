@@ -236,6 +236,8 @@ pub enum SlotNameError {
         SlotName::MIN_NUM_COMPONENTS
     )]
     TooShort,
+    #[error("slot names must contain at most {} characters", SlotName::MAX_LENGTH)]
+    TooLong,
 }
 
 // ACCOUNT TREE ERROR
