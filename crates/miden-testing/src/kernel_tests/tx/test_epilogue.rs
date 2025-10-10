@@ -41,8 +41,8 @@ use crate::{
     assert_transaction_executor_error,
 };
 
-#[test]
-fn test_epilogue() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_epilogue() -> anyhow::Result<()> {
     let account = Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, Auth::IncrNonce);
     let tx_context = {
         let output_note_1 = create_public_p2any_note(
@@ -86,7 +86,7 @@ fn test_epilogue() -> anyhow::Result<()> {
         "
     );
 
-    let exec_output = tx_context.execute_code_blocking(&code)?;
+    let exec_output = tx_context.execute_code(&code).await?;
 
     // The final account is the initial account with the nonce incremented by one.
     let mut final_account = account.clone();
@@ -143,8 +143,8 @@ fn test_epilogue() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[test]
-fn test_compute_output_note_id() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_compute_output_note_id() -> anyhow::Result<()> {
     let tx_context = {
         let account =
             Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, Auth::IncrNonce);
@@ -183,7 +183,7 @@ fn test_compute_output_note_id() -> anyhow::Result<()> {
             "
         );
 
-        let exec_output = &tx_context.execute_code_blocking(&code)?;
+        let exec_output = &tx_context.execute_code(&code).await?;
 
         assert_eq!(
             note.assets().commitment(),
@@ -310,8 +310,8 @@ async fn epilogue_fails_when_num_input_assets_exceed_num_output_assets() -> anyh
     Ok(())
 }
 
-#[test]
-fn test_block_expiration_height_monotonically_decreases() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_block_expiration_height_monotonically_decreases() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
     let test_pairs: [(u64, u64); 3] = [(9, 12), (18, 3), (20, 20)];
@@ -343,7 +343,7 @@ fn test_block_expiration_height_monotonically_decreases() -> anyhow::Result<()> 
             .replace("{value_2}", &v2.to_string())
             .replace("{min_value}", &v2.min(v1).to_string());
 
-        let exec_output = &tx_context.execute_code_blocking(code)?;
+        let exec_output = &tx_context.execute_code(code).await?;
 
         // Expiry block should be set to transaction's block + the stored expiration delta
         // (which can only decrease, not increase)
@@ -358,8 +358,8 @@ fn test_block_expiration_height_monotonically_decreases() -> anyhow::Result<()> 
     Ok(())
 }
 
-#[test]
-fn test_invalid_expiration_deltas() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_invalid_expiration_deltas() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
     let test_values = [0u64, u16::MAX as u64 + 1, u32::MAX as u64];
@@ -374,7 +374,7 @@ fn test_invalid_expiration_deltas() -> anyhow::Result<()> {
 
     for value in test_values {
         let code = &code_template.replace("{value_1}", &value.to_string());
-        let exec_output = tx_context.execute_code_blocking(code);
+        let exec_output = tx_context.execute_code(code).await;
 
         assert_execution_error!(exec_output, ERR_TX_INVALID_EXPIRATION_DELTA);
     }
@@ -382,8 +382,8 @@ fn test_invalid_expiration_deltas() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[test]
-fn test_no_expiration_delta_set() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_no_expiration_delta_set() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
     let code_template = "
@@ -404,7 +404,7 @@ fn test_no_expiration_delta_set() -> anyhow::Result<()> {
     end
     ";
 
-    let exec_output = &tx_context.execute_code_blocking(code_template)?;
+    let exec_output = &tx_context.execute_code(code_template).await?;
 
     // Default value should be equal to u32::MAX, set in the prologue
     assert_eq!(
@@ -415,8 +415,8 @@ fn test_no_expiration_delta_set() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[test]
-fn test_epilogue_increment_nonce_success() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_epilogue_increment_nonce_success() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
     let expected_nonce = ONE + ONE;
@@ -447,7 +447,7 @@ fn test_epilogue_increment_nonce_success() -> anyhow::Result<()> {
         "
     );
 
-    tx_context.execute_code_blocking(code.as_str())?;
+    tx_context.execute_code(code.as_str()).await?;
     Ok(())
 }
 
@@ -495,8 +495,8 @@ async fn test_epilogue_execute_empty_transaction() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[test]
-fn test_epilogue_empty_transaction_with_empty_output_note() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_epilogue_empty_transaction_with_empty_output_note() -> anyhow::Result<()> {
     let tag =
         NoteTag::from_account_id(ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE.try_into()?);
     let aux = Felt::new(26);
@@ -548,7 +548,7 @@ fn test_epilogue_empty_transaction_with_empty_output_note() -> anyhow::Result<()
 
     let tx_context = TransactionContextBuilder::with_noop_auth_account().build()?;
 
-    let result = tx_context.execute_code_blocking(&tx_script_source).map(|_| ());
+    let result = tx_context.execute_code(&tx_script_source).await.map(|_| ());
 
     // assert that even if the output note was created, the transaction is considered empty
     assert_execution_error!(result, ERR_EPILOGUE_EXECUTED_TRANSACTION_IS_EMPTY);
