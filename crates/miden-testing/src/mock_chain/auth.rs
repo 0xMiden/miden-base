@@ -20,14 +20,14 @@ use rand_chacha::ChaCha20Rng;
 /// Specifies which authentication mechanism is desired for accounts
 #[derive(Debug, Clone)]
 pub enum Auth {
-    /// Creates a [SecretKey] for the account and creates a [BasicAuthenticator] used to
+    /// Creates a secret key for the account and creates a [BasicAuthenticator] used to
     /// authenticate the account with [AuthRpoFalcon512].
     BasicAuth,
 
     /// Multisig
     Multisig { threshold: u32, approvers: Vec<Word> },
 
-    /// Creates a [SecretKey] for the account, and creates a [BasicAuthenticator] used to
+    /// Creates a secret key for the account, and creates a [BasicAuthenticator] used to
     /// authenticate the account with [AuthRpoFalcon512Acl]. Authentication will only be
     /// triggered if any of the procedures specified in the list are called during execution.
     Acl {
