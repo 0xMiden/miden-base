@@ -44,6 +44,8 @@ pub use errors::{
     ProvenTransactionError,
     SlotNameError,
     StorageMapError,
+    TokenNameError,
+    TokenLogoURIError,
     TokenSymbolError,
     TransactionInputError,
     TransactionOutputError,

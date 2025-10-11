@@ -17,7 +17,7 @@ use miden_objects::account::{
     AccountType,
     StorageSlot,
 };
-use miden_objects::asset::{Asset, FungibleAsset, TokenSymbol};
+use miden_objects::asset::{Asset, FungibleAsset, TokenLogoURI, TokenName, TokenSymbol};
 use miden_objects::block::{
     AccountTree,
     BlockAccountUpdate,
@@ -285,15 +285,25 @@ impl MockChainBuilder {
         &mut self,
         auth_method: Auth,
         token_symbol: &str,
+        token_name: &str,
+        token_logo_uri: Option<&str>,
         max_supply: u64,
     ) -> anyhow::Result<Account> {
         let token_symbol = TokenSymbol::new(token_symbol)
             .with_context(|| format!("invalid token symbol: {token_symbol}"))?;
+        let token_name = TokenName::new(token_name)
+            .with_context(|| format!("invalid token name: {token_name}"))?;
+        let token_logo_uri = token_logo_uri
+            .map(|uri| {
+                TokenLogoURI::new(uri).with_context(|| format!("invalid token logo uri: {uri}"))
+            })
+            .transpose()?;
         let max_supply_felt = max_supply.try_into().map_err(|_| {
             anyhow::anyhow!("max supply value cannot be converted to Felt: {max_supply}")
         })?;
-        let basic_faucet = BasicFungibleFaucet::new(token_symbol, 10, max_supply_felt)
-            .context("failed to create BasicFungibleFaucet")?;
+        let basic_faucet =
+            BasicFungibleFaucet::new(token_symbol, 10, max_supply_felt, token_name, token_logo_uri)
+                .context("failed to create BasicFungibleFaucet")?;
 
         let account_builder = AccountBuilder::new(self.rng.random())
             .storage_mode(AccountStorageMode::Public)
@@ -309,12 +319,24 @@ impl MockChainBuilder {
         &mut self,
         auth_method: Auth,
         token_symbol: &str,
+        token_name: &str,
+        token_logo_uri: Option<&str>,
         max_supply: u64,
         total_issuance: Option<u64>,
     ) -> anyhow::Result<Account> {
         let token_symbol = TokenSymbol::new(token_symbol).context("invalid argument")?;
-        let basic_faucet = BasicFungibleFaucet::new(token_symbol, 10u8, Felt::new(max_supply))
-            .context("invalid argument")?;
+        let token_name = TokenName::new(token_name).context("invalid argument")?;
+        let token_logo_uri = token_logo_uri
+            .map(|uri| TokenLogoURI::new(uri).context("invalid argument"))
+            .transpose()?;
+        let basic_faucet = BasicFungibleFaucet::new(
+            token_symbol,
+            10u8,
+            Felt::new(max_supply),
+            token_name,
+            token_logo_uri,
+        )
+        .context("invalid argument")?;
 
         let account_builder = AccountBuilder::new(self.rng.random())
             .storage_mode(AccountStorageMode::Public)

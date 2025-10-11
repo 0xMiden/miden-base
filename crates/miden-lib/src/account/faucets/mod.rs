@@ -10,9 +10,11 @@ use miden_objects::account::{
     StorageSlot,
 };
 use miden_objects::assembly::{ProcedureName, QualifiedProcedureName};
-use miden_objects::asset::{FungibleAsset, TokenSymbol};
+use miden_objects::asset::{FungibleAsset, TokenLogoURI, TokenName, TokenSymbol};
 use miden_objects::utils::sync::LazyLock;
-use miden_objects::{AccountError, Felt, FieldElement, TokenSymbolError, Word};
+use miden_objects::{
+    AccountError, Felt, FieldElement, TokenLogoURIError, TokenNameError, TokenSymbolError, Word,
+};
 use thiserror::Error;
 
 use super::AuthScheme;
@@ -72,6 +74,8 @@ pub struct BasicFungibleFaucet {
     symbol: TokenSymbol,
     decimals: u8,
     max_supply: Felt,
+    name: TokenName,
+    logo_uri: Option<TokenLogoURI>,
 }
 
 impl BasicFungibleFaucet {
@@ -98,6 +102,8 @@ impl BasicFungibleFaucet {
         symbol: TokenSymbol,
         decimals: u8,
         max_supply: Felt,
+        name: TokenName,
+        logo_uri: Option<TokenLogoURI>,
     ) -> Result<Self, FungibleFaucetError> {
         // First check that the metadata is valid.
         if decimals > Self::MAX_DECIMALS {
@@ -112,7 +118,13 @@ impl BasicFungibleFaucet {
             });
         }
 
-        Ok(Self { symbol, decimals, max_supply })
+        Ok(Self {
+            name,
+            logo_uri,
+            symbol,
+            decimals,
+            max_supply,
+        })
     }
 
     /// Attempts to create a new [`BasicFungibleFaucet`] component from the associated account
@@ -149,8 +161,45 @@ impl BasicFungibleFaucet {
                         max: Self::MAX_DECIMALS,
                     }
                 })?;
+                let name = {
+                    let name_storage_index = *offset + 1;
+                    let word1 = storage
+                        .get_item(name_storage_index)
+                        .map_err(|_| FungibleFaucetError::InvalidStorageOffset(*offset))?;
+                    let word2 = storage
+                        .get_item(name_storage_index + 1)
+                        .map_err(|_| FungibleFaucetError::InvalidStorageOffset(*offset))?;
+                    TokenName::try_from([word1, word2])
+                        .map_err(FungibleFaucetError::InvalidTokenName)?
+                };
 
-                return BasicFungibleFaucet::new(token_symbol, decimals, max_supply);
+                let logo_storage_index = *offset + 3;
+                let logo_uri = match storage.get_item(logo_storage_index) {
+                    Ok(word1) => {
+                        let mut words = [Word::empty(); 8];
+                        words[0] = word1;
+                        for (i, word) in words.iter_mut().enumerate().skip(1) {
+                            *word = storage
+                                .get_item(logo_storage_index + (i as u8))
+                                .map_err(|_| FungibleFaucetError::InvalidStorageOffset(*offset))?;
+                        }
+                        Some(
+                            TokenLogoURI::try_from(words)
+                                .map_err(FungibleFaucetError::InvalidTokenLogoURI)?,
+                        )
+                    },
+                    // if storage index out of bounds there was no logo in the faucet
+                    Err(AccountError::StorageIndexOutOfBounds { slots_len: _, index: _ }) => None,
+                    _ => return Err(FungibleFaucetError::InvalidStorageOffset(*offset)),
+                };
+
+                return BasicFungibleFaucet::new(
+                    token_symbol,
+                    decimals,
+                    max_supply,
+                    name,
+                    logo_uri,
+                );
             }
         }
 
@@ -175,6 +224,14 @@ impl BasicFungibleFaucet {
         self.max_supply
     }
 
+    pub fn name(&self) -> TokenName {
+        self.name
+    }
+
+    pub fn logo_uri(&self) -> Option<TokenLogoURI> {
+        self.logo_uri
+    }
+
     /// Returns the digest of the `distribute` account procedure.
     pub fn distribute_digest() -> Word {
         *BASIC_FUNGIBLE_FAUCET_DISTRIBUTE
@@ -197,7 +254,17 @@ impl From<BasicFungibleFaucet> for AccountComponent {
             Felt::ZERO,
         ]);
 
-        AccountComponent::new(basic_fungible_faucet_library(), vec![StorageSlot::Value(metadata)])
+        let name_slot = faucet.name.as_slice().map(StorageSlot::Value);
+        let logo_slot = match faucet.logo_uri {
+            Some(logo_uri) => &logo_uri.as_slice().map(StorageSlot::Value)[..],
+            None => &[],
+        };
+
+        let mut storage_slots = vec![StorageSlot::Value(metadata)];
+        storage_slots.extend_from_slice(&name_slot);
+        storage_slots.extend_from_slice(logo_slot);
+
+        AccountComponent::new(basic_fungible_faucet_library(), storage_slots)
             .expect("basic fungible faucet component should satisfy the requirements of a valid account component")
             .with_supported_type(AccountType::FungibleFaucet)
     }
@@ -277,8 +344,10 @@ impl FungibleFaucetExt for Account {
 pub fn create_basic_fungible_faucet(
     init_seed: [u8; 32],
     symbol: TokenSymbol,
+    name: TokenName,
     decimals: u8,
     max_supply: Felt,
+    logo_uri: Option<TokenLogoURI>,
     account_storage_mode: AccountStorageMode,
     auth_scheme: AuthScheme,
 ) -> Result<Account, FungibleFaucetError> {
@@ -315,7 +384,7 @@ pub fn create_basic_fungible_faucet(
         .account_type(AccountType::FungibleFaucet)
         .storage_mode(account_storage_mode)
         .with_auth_component(auth_component)
-        .with_component(BasicFungibleFaucet::new(symbol, decimals, max_supply)?)
+        .with_component(BasicFungibleFaucet::new(symbol, decimals, max_supply, name, logo_uri)?)
         .build()
         .map_err(FungibleFaucetError::AccountError)?;
 
@@ -340,6 +409,10 @@ pub enum FungibleFaucetError {
     InvalidStorageOffset(u8),
     #[error("invalid token symbol")]
     InvalidTokenSymbol(#[source] TokenSymbolError),
+    #[error("invalid token name")]
+    InvalidTokenName(#[source] TokenNameError),
+    #[error("invalid token logo uri")]
+    InvalidTokenLogoURI(#[source] TokenLogoURIError),
     #[error("unsupported authentication scheme: {0}")]
     UnsupportedAuthScheme(String),
     #[error("account creation failed")]
@@ -353,6 +426,7 @@ pub enum FungibleFaucetError {
 
 #[cfg(test)]
 mod tests {
+
     use assert_matches::assert_matches;
     use miden_objects::account::PublicKeyCommitment;
     use miden_objects::{FieldElement, ONE, Word};
@@ -366,6 +440,8 @@ mod tests {
         Felt,
         FungibleFaucetError,
         TokenSymbol,
+        TokenLogoURI,
+        TokenName,
         create_basic_fungible_faucet,
     };
     use crate::account::auth::AuthRpoFalcon512;
@@ -385,14 +461,20 @@ mod tests {
         let max_supply = Felt::new(123);
         let token_symbol_string = "POL";
         let token_symbol = TokenSymbol::try_from(token_symbol_string).unwrap();
+        let token_name_string = "polygon";
+        let token_logo_uri_string = "https://cryptologos.cc/logos/polygon-matic-logo.png?v=040";
+        let token_logo = TokenLogoURI::new(token_logo_uri_string).unwrap();
+        let token_name = TokenName::try_from(token_name_string).unwrap();
         let decimals = 2u8;
         let storage_mode = AccountStorageMode::Private;
 
         let faucet_account = create_basic_fungible_faucet(
             init_seed,
             token_symbol,
+            token_name,
             decimals,
             max_supply,
+            Some(token_logo),
             storage_mode,
             auth_scheme,
         )
@@ -431,6 +513,23 @@ mod tests {
             [Felt::new(123), Felt::new(2), token_symbol.into(), Felt::ZERO].into()
         );
 
+        // check that faucet name was intiialized iwth the given value
+        assert_eq!(
+            [
+                faucet_account.storage().get_item(5).unwrap(),
+                faucet_account.storage().get_item(6).unwrap()
+            ],
+            token_name.as_slice()
+        );
+
+        //check that token logo was initial properly
+        let mut logo_words = [Word::empty(); 8];
+        for (i, word) in logo_words.iter_mut().enumerate() {
+            *word = faucet_account.storage().get_item(7 + (i as u8)).unwrap();
+        }
+
+        assert_eq!(logo_words, token_logo.as_slice());
+
         assert!(faucet_account.is_faucet());
 
         assert_eq!(faucet_account.account_type(), AccountType::FungibleFaucet);
@@ -440,6 +539,48 @@ mod tests {
         assert_eq!(faucet_component.symbol(), token_symbol);
         assert_eq!(faucet_component.decimals(), decimals);
         assert_eq!(faucet_component.max_supply(), max_supply);
+        assert_eq!(faucet_component.name(), token_name);
+        assert_eq!(faucet_component.logo_uri(), Some(token_logo));
+    }
+
+    // test that None `logo_uri` works as well
+    #[test]
+    fn faucet_with_empty_logo() {
+        let pub_key_word = Word::new([ONE; 4]);
+        let auth_scheme: AuthScheme = AuthScheme::RpoFalcon512 { pub_key: pub_key_word.into() };
+
+        let init_seed: [u8; 32] = [
+            90, 110, 209, 94, 84, 105, 250, 242, 223, 203, 216, 124, 22, 159, 14, 132, 215, 85,
+            183, 204, 149, 90, 166, 68, 100, 73, 106, 168, 125, 237, 138, 16,
+        ];
+
+        let max_supply = Felt::new(123);
+        let token_symbol_string = "POL";
+        let token_symbol = TokenSymbol::try_from(token_symbol_string).unwrap();
+        let token_name_string = "polygon";
+        let token_logo = None;
+        let token_name = TokenName::try_from(token_name_string).unwrap();
+        let decimals = 2u8;
+        let storage_mode = AccountStorageMode::Private;
+
+        let faucet_account = create_basic_fungible_faucet(
+            init_seed,
+            token_symbol,
+            token_name,
+            decimals,
+            max_supply,
+            token_logo,
+            storage_mode,
+            auth_scheme,
+        )
+        .unwrap();
+
+        let faucet_component = BasicFungibleFaucet::try_from(faucet_account).unwrap();
+        assert_eq!(faucet_component.symbol(), token_symbol);
+        assert_eq!(faucet_component.decimals(), decimals);
+        assert_eq!(faucet_component.max_supply(), max_supply);
+        assert_eq!(faucet_component.name(), token_name);
+        assert_eq!(faucet_component.logo_uri(), None);
     }
 
     #[test]
@@ -451,10 +592,11 @@ mod tests {
 
         // valid account
         let token_symbol = TokenSymbol::new("POL").expect("invalid token symbol");
+        let token_name = TokenName::new("polygon").expect("Invalid token name");
         let faucet_account = AccountBuilder::new(mock_seed)
             .account_type(AccountType::FungibleFaucet)
             .with_component(
-                BasicFungibleFaucet::new(token_symbol, 10, Felt::new(100))
+                BasicFungibleFaucet::new(token_symbol, 10, Felt::new(100), token_name, None)
                     .expect("failed to create a fungible faucet component"),
             )
             .with_auth_component(AuthRpoFalcon512::new(mock_public_key))
