@@ -103,7 +103,7 @@ impl AuthSecretKey {
         Self::RpoFalcon512(rpo_falcon512::SecretKey::new())
     }
 
-    /// Generates an RpoFalcon512 secrete key using the provided random number generator `Rng`.
+    /// Generates an RpoFalcon512 secrete key using the provided random number generator.
     pub fn rpo_falcon512_with_rng<R: Rng>(rng: &mut R) -> Self {
         Self::RpoFalcon512(rpo_falcon512::SecretKey::with_rng(rng))
     }
@@ -208,7 +208,7 @@ impl PublicKey {
         }
     }
 
-    /// Verifies the provided signature against provided message and this public key.
+    /// Verifies the provided signature against the provided message and this public key.
     pub fn verify(&self, message: Word, signature: Signature) -> bool {
         match (self, signature) {
             (PublicKey::RpoFalcon512(key), Signature::RpoFalcon512(signature)) => {
@@ -272,6 +272,8 @@ impl Signature {
         }
     }
 
+    /// Converts this signature to a sequence of field elements in the format expected by the
+    /// native verification procedure in the VM.
     pub fn to_prepared_signature(&self) -> Vec<Felt> {
         match self {
             Signature::RpoFalcon512(signature) => prepare_rpo_falcon512_signature(signature),
