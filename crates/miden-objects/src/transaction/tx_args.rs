@@ -6,7 +6,7 @@ use miden_crypto::merkle::InnerNodeInfo;
 use miden_processor::MastNodeExt;
 
 use super::{Felt, Hasher, Word};
-use crate::account::{PublicKeyCommitment, Signature};
+use crate::account::auth::{PublicKeyCommitment, Signature};
 use crate::note::{NoteId, NoteRecipient};
 use crate::utils::serde::{
     ByteReader,

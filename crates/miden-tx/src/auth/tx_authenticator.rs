@@ -4,7 +4,7 @@ use alloc::string::ToString;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use miden_objects::account::{AuthSecretKey, PublicKeyCommitment, Signature};
+use miden_objects::account::auth::{AuthSecretKey, PublicKeyCommitment, Signature};
 use miden_objects::crypto::SequentialCommit;
 use miden_objects::transaction::TransactionSummary;
 use miden_objects::{Felt, Hasher, Word};
@@ -226,13 +226,11 @@ impl<R: Rng + Send + Sync> TransactionAuthenticator for BasicAuthenticator<R> {
             let mut rng = self.rng.write().await;
             let pub_key: Word = pub_key_commitment.into();
             match self.keys.get(&pub_key) {
-                Some(key) => {
-                    let signature: Signature = match key {
-                        AuthSecretKey::RpoFalcon512(falcon_key) => {
-                            falcon_key.sign_with_rng(message, &mut *rng).into()
-                        },
-                    };
-                    Ok(signature)
+                Some(key) => match key {
+                    AuthSecretKey::RpoFalcon512(falcon_key) => {
+                        Ok(falcon_key.sign_with_rng(message, &mut *rng).into())
+                    },
+                    key => Err(AuthenticationError::UnsupportedAuthScheme(key.auth_scheme())),
                 },
                 None => Err(AuthenticationError::UnknownPublicKey(format!(
                     "public key {pub_key} is not contained in the authenticator's keys",
@@ -263,22 +261,18 @@ impl TransactionAuthenticator for () {
 #[cfg(test)]
 mod test {
     use miden_lib::utils::{Deserializable, Serializable};
-    use miden_objects::account::AuthSecretKey;
-    use miden_objects::crypto::dsa::rpo_falcon512::SecretKey;
+    use miden_objects::account::auth::AuthSecretKey;
     use miden_objects::{Felt, Word};
 
     use super::SigningInputs;
 
     #[test]
     fn serialize_auth_key() {
-        let secret_key = SecretKey::new();
-        let auth_key = AuthSecretKey::RpoFalcon512(secret_key.clone());
+        let auth_key = AuthSecretKey::rpo_falcon512();
         let serialized = auth_key.to_bytes();
         let deserialized = AuthSecretKey::read_from_bytes(&serialized).unwrap();
 
-        match deserialized {
-            AuthSecretKey::RpoFalcon512(key) => assert_eq!(secret_key.to_bytes(), key.to_bytes()),
-        }
+        assert_eq!(auth_key, deserialized);
     }
 
     #[test]

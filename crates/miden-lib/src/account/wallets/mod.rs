@@ -158,7 +158,7 @@ pub fn create_basic_wallet(
 
 #[cfg(test)]
 mod tests {
-    use miden_objects::account::PublicKeyCommitment;
+    use miden_objects::account::auth::PublicKeyCommitment;
     use miden_objects::{ONE, Word};
     use miden_processor::utils::{Deserializable, Serializable};
 

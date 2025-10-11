@@ -392,10 +392,12 @@ impl DataStoreError {
 pub enum AuthenticationError {
     #[error("signature rejected: {0}")]
     RejectedSignature(String),
+    #[error("unsupported authentication scheme: {0}")]
+    UnsupportedAuthScheme(miden_objects::account::auth::AuthScheme),
     #[error("unknown public key: {0}")]
     UnknownPublicKey(String),
     /// Custom error variant for implementors of the
-    /// [`TransactionAuthenticatior`](crate::auth::TransactionAuthenticator) trait.
+    /// [`TransactionAuthenticator`](crate::auth::TransactionAuthenticator) trait.
     #[error("{error_msg}")]
     Other {
         error_msg: Box<str>,
