@@ -12,6 +12,26 @@ use crate::utils::serde::{
 };
 use crate::{Felt, Hasher, Word};
 
+// AUTH SCHEME
+// ================================================================================================
+
+const RPO_FALCON_512: u8 = 0;
+
+/// Defines standard authentication schemes (i.e., signature schemes) available in the Miden
+/// protocol.
+#[derive(Copy, Clone, Debug)]
+#[repr(u8)]
+pub enum AuthScheme {
+    RpoFalcon512 = RPO_FALCON_512,
+}
+
+impl AuthScheme {
+    /// Returns a numerical value of this auth scheme.
+    pub fn as_u8(&self) -> u8 {
+        *self as u8
+    }
+}
+
 // AUTH SECRET KEY
 // ================================================================================================
 
@@ -24,16 +44,16 @@ pub enum AuthSecretKey {
 
 impl AuthSecretKey {
     /// Identifier for the type of authentication key
-    pub fn auth_scheme_id(&self) -> u8 {
+    pub fn auth_scheme(&self) -> AuthScheme {
         match self {
-            AuthSecretKey::RpoFalcon512(_) => 0u8,
+            AuthSecretKey::RpoFalcon512(_) => AuthScheme::RpoFalcon512,
         }
     }
 }
 
 impl Serializable for AuthSecretKey {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        target.write_u8(self.auth_scheme_id());
+        target.write_u8(self.auth_scheme().as_u8());
         match self {
             AuthSecretKey::RpoFalcon512(secret_key) => {
                 secret_key.write_into(target);
@@ -46,8 +66,7 @@ impl Deserializable for AuthSecretKey {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let auth_key_id: u8 = source.read_u8()?;
         match auth_key_id {
-            // RpoFalcon512
-            0u8 => {
+            RPO_FALCON_512 => {
                 let secret_key = SecretKey::read_from(source)?;
                 Ok(AuthSecretKey::RpoFalcon512(secret_key))
             },
