@@ -55,7 +55,7 @@ const.INVERSE_FUNGIBLE_BITMASK_U32=0xffffffdf # last byte: 0b1101_1111
 #! - balance is the vault balance of the fungible asset.
 #!
 #! Panics if:
-#! - the asset is not a fungible asset.
+#! - the provided faucet ID is not an ID of a fungible faucet.
 export.get_balance
     # assert that the faucet id is a fungible faucet
     dup exec.account_id::is_fungible_faucet
@@ -84,6 +84,10 @@ end
 #! WARNING: Peeked means the balance is loaded from the advice provider, which is susceptible to
 #! manipulation from a malicious host. Therefore this should only be used when the inclusion of the
 #! peeked balance is verified at a later point.
+#!
+#! WARNING: This is a generic vault procedure and so it cannot emit an event to lazy load asset
+#! merkle paths from the merkle store, since this is only possible for the account vault. Ensure
+#! that the merkle paths are present prior to calling.
 #!
 #! To get the verified balance, use get_balance.
 #!

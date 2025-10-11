@@ -24,6 +24,7 @@ use miden_objects::testing::account_id::{
 };
 use miden_objects::{EMPTY_WORD, Felt, ONE, WORD_SIZE, Word};
 
+use crate::kernel_tests::tx::ExecutionOutputExt;
 use crate::utils::create_public_p2any_note;
 use crate::{
     Auth,
@@ -113,7 +114,7 @@ async fn test_active_note_get_metadata() -> anyhow::Result<()> {
         METADATA = Word::from(tx_context.input_notes().get_note(0).note().metadata())
     );
 
-    tx_context.execute_code(&code)?;
+    tx_context.execute_code(&code).await?;
 
     Ok(())
 }
@@ -149,11 +150,12 @@ fn test_active_note_get_sender() -> anyhow::Result<()> {
         end
         ";
 
-    let process = tx_context.execute_code(code)?;
+    let exec_output = tx_context.execute_code_blocking(code)?;
 
     let sender = tx_context.input_notes().get_note(0).note().metadata().sender();
-    assert_eq!(process.stack.get(0), sender.prefix().as_felt());
-    assert_eq!(process.stack.get(1), sender.suffix());
+    assert_eq!(exec_output.stack[0], sender.prefix().as_felt());
+    assert_eq!(exec_output.stack[1], sender.suffix());
+
     Ok(())
 }
 
@@ -290,7 +292,7 @@ fn test_active_note_get_assets() -> anyhow::Result<()> {
         NOTE_1_ASSET_ASSERTIONS = construct_asset_assertions(notes.get_note(1).note()),
     );
 
-    tx_context.execute_code(&code)?;
+    tx_context.execute_code_blocking(&code)?;
     Ok(())
 }
 
@@ -378,7 +380,7 @@ fn test_active_note_get_inputs() -> anyhow::Result<()> {
         NOTE_0_PTR = 100000000,
     );
 
-    tx_context.execute_code(&code)?;
+    tx_context.execute_code_blocking(&code)?;
     Ok(())
 }
 
@@ -457,7 +459,9 @@ fn test_active_note_get_exactly_8_inputs() -> anyhow::Result<()> {
             end
         ";
 
-    tx_context.execute_code(tx_code).context("transaction execution failed")?;
+    tx_context
+        .execute_code_blocking(tx_code)
+        .context("transaction execution failed")?;
 
     Ok(())
 }
@@ -494,10 +498,10 @@ fn test_active_note_get_serial_number() -> anyhow::Result<()> {
         end
         ";
 
-    let process = tx_context.execute_code(code)?;
+    let exec_output = tx_context.execute_code_blocking(code)?;
 
     let serial_number = tx_context.input_notes().get_note(0).note().serial_num();
-    assert_eq!(process.stack.get_word(0), serial_number);
+    assert_eq!(exec_output.get_stack_word(0), serial_number);
     Ok(())
 }
 
@@ -533,9 +537,9 @@ fn test_active_note_get_script_root() -> anyhow::Result<()> {
     end
     ";
 
-    let process = tx_context.execute_code(code)?;
+    let exec_output = tx_context.execute_code_blocking(code)?;
 
     let script_root = tx_context.input_notes().get_note(0).note().script().root();
-    assert_eq!(process.stack.get_word(0), script_root);
+    assert_eq!(exec_output.get_stack_word(0), script_root);
     Ok(())
 }

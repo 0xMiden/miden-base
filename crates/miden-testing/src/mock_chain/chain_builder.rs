@@ -679,6 +679,13 @@ impl MockChainBuilder {
     // HELPER FUNCTIONS
     // ----------------------------------------------------------------------------------------
 
+    /// Returns a mutable reference to the builder's RNG.
+    ///
+    /// This can be used when creating accounts or notes and randomness is required.
+    pub fn rng_mut(&mut self) -> &mut RpoRandomCoin {
+        &mut self.rng
+    }
+
     /// Constructs a fungible asset based on the native asset ID and the provided amount.
     fn native_fee_asset(&self, amount: u64) -> anyhow::Result<FungibleAsset> {
         FungibleAsset::new(self.native_asset_id, amount).context("failed to create fee asset")

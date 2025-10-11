@@ -59,7 +59,6 @@ async fn adding_fungible_assets_with_lazy_loading_succeeds() -> anyhow::Result<(
     let tx_context = TransactionContextBuilder::with_existing_mock_account()
         .tx_script(tx_script)
         .extend_input_notes(vec![asset_note])
-        .enable_lazy_loading()
         .with_source_manager(source_manager)
         .build()?;
     let account = tx_context.account().clone();
@@ -125,7 +124,6 @@ async fn removing_fungible_assets_with_lazy_loading_succeeds() -> anyhow::Result
         .build()?
         .build_tx_context(account, &[], &[])?
         .tx_script(tx_script)
-        .enable_lazy_loading()
         .with_source_manager(source_manager)
         .build()?;
     let account = tx_context.account().clone();
@@ -156,13 +154,7 @@ async fn loading_fee_asset_succeeds() -> anyhow::Result<()> {
             FungibleAsset::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2.try_into()?, 50)?.into(),
         ],
     )?;
-    builder
-        .build()?
-        .build_tx_context(account, &[], &[])?
-        .enable_lazy_loading()
-        .build()?
-        .execute()
-        .await?;
+    builder.build()?.build_tx_context(account, &[], &[])?.build()?.execute().await?;
 
     Ok(())
 }
@@ -220,7 +212,6 @@ async fn setting_map_item_with_lazy_loading_succeeds() -> anyhow::Result<()> {
 
     let tx = TransactionContextBuilder::with_existing_mock_account()
         .tx_script(tx_script)
-        .enable_lazy_loading()
         .with_source_manager(source_manager)
         .build()?
         .execute()
@@ -283,7 +274,6 @@ async fn getting_map_item_with_lazy_loading_succeeds() -> anyhow::Result<()> {
 
     TransactionContextBuilder::with_existing_mock_account()
         .tx_script(tx_script)
-        .enable_lazy_loading()
         .with_source_manager(source_manager)
         .build()?
         .execute()
