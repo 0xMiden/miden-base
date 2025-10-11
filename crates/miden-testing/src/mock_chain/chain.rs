@@ -29,13 +29,11 @@ use miden_objects::transaction::{
     ProvenTransaction,
     TransactionInputs,
 };
-use miden_processor::{DeserializationError, Word};
+use miden_processor::DeserializationError;
 use miden_tx::LocalTransactionProver;
 use miden_tx::auth::BasicAuthenticator;
 use miden_tx::utils::{ByteReader, Deserializable, Serializable};
 use miden_tx_batch_prover::LocalBatchProver;
-use rand::SeedableRng;
-use rand_chacha::ChaCha20Rng;
 use winterfell::ByteWriter;
 
 use super::note::MockChainNote;
@@ -1042,15 +1040,15 @@ pub enum AccountState {
 /// A wrapper around the authenticator of an account.
 #[derive(Debug, Clone)]
 pub(super) struct AccountAuthenticator {
-    authenticator: Option<BasicAuthenticator<ChaCha20Rng>>,
+    authenticator: Option<BasicAuthenticator>,
 }
 
 impl AccountAuthenticator {
-    pub fn new(authenticator: Option<BasicAuthenticator<ChaCha20Rng>>) -> Self {
+    pub fn new(authenticator: Option<BasicAuthenticator>) -> Self {
         Self { authenticator }
     }
 
-    pub fn authenticator(&self) -> Option<&BasicAuthenticator<ChaCha20Rng>> {
+    pub fn authenticator(&self) -> Option<&BasicAuthenticator> {
         self.authenticator.as_ref()
     }
 }
@@ -1074,17 +1072,16 @@ impl Serializable for AccountAuthenticator {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         self.authenticator
             .as_ref()
-            .map(|auth| auth.keys().iter().collect::<Vec<_>>())
+            .map(|auth| auth.keys().values().collect::<Vec<_>>())
             .write_into(target);
     }
 }
 
 impl Deserializable for AccountAuthenticator {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        let authenticator = Option::<Vec<(Word, AuthSecretKey)>>::read_from(source)?;
+        let authenticator = Option::<Vec<AuthSecretKey>>::read_from(source)?;
 
-        let authenticator = authenticator
-            .map(|keys| BasicAuthenticator::new_with_rng(&keys, ChaCha20Rng::from_os_rng()));
+        let authenticator = authenticator.map(|keys| BasicAuthenticator::new(&keys));
 
         Ok(Self { authenticator })
     }

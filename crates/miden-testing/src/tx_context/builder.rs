@@ -26,12 +26,9 @@ use miden_objects::transaction::{
 use miden_processor::{AdviceInputs, Felt, Word};
 use miden_tx::TransactionMastStore;
 use miden_tx::auth::BasicAuthenticator;
-use rand_chacha::ChaCha20Rng;
 
 use super::TransactionContext;
 use crate::{MockChain, MockChainNote};
-
-pub type MockAuthenticator = BasicAuthenticator<ChaCha20Rng>;
 
 // TRANSACTION CONTEXT BUILDER
 // ================================================================================================
@@ -73,7 +70,7 @@ pub struct TransactionContextBuilder {
     source_manager: Arc<dyn SourceManagerSync>,
     account: Account,
     advice_inputs: AdviceInputs,
-    authenticator: Option<MockAuthenticator>,
+    authenticator: Option<BasicAuthenticator>,
     expected_output_notes: Vec<Note>,
     foreign_account_inputs: BTreeMap<AccountId, (Account, AccountWitness)>,
     input_notes: Vec<Note>,
@@ -160,7 +157,7 @@ impl TransactionContextBuilder {
     }
 
     /// Set the authenticator for the transaction (if needed)
-    pub fn authenticator(mut self, authenticator: Option<MockAuthenticator>) -> Self {
+    pub fn authenticator(mut self, authenticator: Option<BasicAuthenticator>) -> Self {
         self.authenticator = authenticator;
         self
     }

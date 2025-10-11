@@ -165,8 +165,14 @@ impl Deserializable for AuthSecretKey {
 // ================================================================================================
 
 /// Commitment to a public key.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PublicKeyCommitment(Word);
+
+impl core::fmt::Display for PublicKeyCommitment {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 impl From<rpo_falcon512::PublicKey> for PublicKeyCommitment {
     fn from(value: rpo_falcon512::PublicKey) -> Self {

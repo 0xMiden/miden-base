@@ -32,11 +32,9 @@ use miden_tx::{
     TransactionExecutorHost,
     TransactionMastStore,
 };
-use rand_chacha::ChaCha20Rng;
 
 use crate::executor::CodeExecutor;
 use crate::mock_host::MockHost;
-use crate::tx_context::builder::MockAuthenticator;
 
 // TRANSACTION CONTEXT
 // ================================================================================================
@@ -51,7 +49,7 @@ pub struct TransactionContext {
     pub(super) foreign_account_inputs: BTreeMap<AccountId, (Account, AccountWitness)>,
     pub(super) tx_inputs: TransactionInputs,
     pub(super) mast_store: TransactionMastStore,
-    pub(super) authenticator: Option<MockAuthenticator>,
+    pub(super) authenticator: Option<BasicAuthenticator>,
     pub(super) source_manager: Arc<dyn SourceManagerSync>,
     pub(super) is_lazy_loading_enabled: bool,
     pub(super) note_scripts: BTreeMap<Word, NoteScript>,
@@ -186,7 +184,7 @@ impl TransactionContext {
         &self.tx_inputs
     }
 
-    pub fn authenticator(&self) -> Option<&BasicAuthenticator<ChaCha20Rng>> {
+    pub fn authenticator(&self) -> Option<&BasicAuthenticator> {
         self.authenticator.as_ref()
     }
 

@@ -12,7 +12,6 @@ use miden_lib::testing::account_component::{ConditionalAuthComponent, IncrNonceA
 use miden_objects::Word;
 use miden_objects::account::AccountComponent;
 use miden_objects::account::auth::{AuthSecretKey, PublicKeyCommitment};
-use miden_objects::crypto::dsa::rpo_falcon512::SecretKey;
 use miden_objects::testing::noop_auth_component::NoopAuthComponent;
 use miden_tx::auth::BasicAuthenticator;
 use rand::SeedableRng;
@@ -55,18 +54,15 @@ impl Auth {
     /// Converts `self` into its corresponding authentication [`AccountComponent`] and an optional
     /// [`BasicAuthenticator`]. The component is always returned, but the authenticator is only
     /// `Some` when [`Auth::BasicAuth`] is passed."
-    pub fn build_component(&self) -> (AccountComponent, Option<BasicAuthenticator<ChaCha20Rng>>) {
+    pub fn build_component(&self) -> (AccountComponent, Option<BasicAuthenticator>) {
         match self {
             Auth::BasicAuth => {
                 let mut rng = ChaCha20Rng::from_seed(Default::default());
-                let sec_key = SecretKey::with_rng(&mut rng);
-                let pub_key = PublicKeyCommitment::from(sec_key.public_key());
+                let sec_key = AuthSecretKey::rpo_falcon512_with_rng(&mut rng);
+                let pub_key = sec_key.public_key().to_commitment();
 
                 let component = AuthRpoFalcon512::new(pub_key).into();
-                let authenticator = BasicAuthenticator::<ChaCha20Rng>::new_with_rng(
-                    &[(pub_key.into(), AuthSecretKey::RpoFalcon512(sec_key))],
-                    rng,
-                );
+                let authenticator = BasicAuthenticator::new(&[sec_key]);
 
                 (component, Some(authenticator))
             },
@@ -86,8 +82,8 @@ impl Auth {
                 allow_unauthorized_input_notes,
             } => {
                 let mut rng = ChaCha20Rng::from_seed(Default::default());
-                let sec_key = SecretKey::with_rng(&mut rng);
-                let pub_key = PublicKeyCommitment::from(sec_key.public_key());
+                let sec_key = AuthSecretKey::rpo_falcon512_with_rng(&mut rng);
+                let pub_key = sec_key.public_key().to_commitment();
 
                 let component = AuthRpoFalcon512Acl::new(
                     pub_key,
@@ -98,10 +94,7 @@ impl Auth {
                 )
                 .expect("component creation failed")
                 .into();
-                let authenticator = BasicAuthenticator::<ChaCha20Rng>::new_with_rng(
-                    &[(pub_key.into(), AuthSecretKey::RpoFalcon512(sec_key))],
-                    rng,
-                );
+                let authenticator = BasicAuthenticator::new(&[sec_key]);
 
                 (component, Some(authenticator))
             },

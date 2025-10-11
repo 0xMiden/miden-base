@@ -1,7 +1,6 @@
 use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
 use alloc::string::ToString;
-use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use miden_objects::account::auth::{AuthSecretKey, PublicKeyCommitment, Signature};
@@ -9,8 +8,6 @@ use miden_objects::crypto::SequentialCommit;
 use miden_objects::transaction::TransactionSummary;
 use miden_objects::{Felt, Hasher, Word};
 use miden_processor::FutureMaybeSend;
-use rand::Rng;
-use tokio::sync::RwLock;
 
 use crate::errors::AuthenticationError;
 use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
@@ -170,43 +167,34 @@ impl TransactionAuthenticator for UnreachableAuth {
 
 /// Represents a signer for [AuthSecretKey] keys.
 #[derive(Clone, Debug)]
-pub struct BasicAuthenticator<R> {
+pub struct BasicAuthenticator {
     /// pub_key |-> secret_key mapping
-    keys: BTreeMap<Word, AuthSecretKey>,
-    rng: Arc<RwLock<R>>,
+    keys: BTreeMap<PublicKeyCommitment, AuthSecretKey>,
 }
 
-impl<R: Rng> BasicAuthenticator<R> {
-    #[cfg(feature = "std")]
-    pub fn new(keys: &[(Word, AuthSecretKey)]) -> BasicAuthenticator<rand::rngs::StdRng> {
-        use rand::SeedableRng;
-        use rand::rngs::StdRng;
-
-        let rng = StdRng::from_os_rng();
-        BasicAuthenticator::<StdRng>::new_with_rng(keys, rng)
-    }
-
-    pub fn new_with_rng(keys: &[(Word, AuthSecretKey)], rng: R) -> Self {
+impl BasicAuthenticator {
+    pub fn new(keys: &[AuthSecretKey]) -> Self {
         let mut key_map = BTreeMap::new();
-        for (word, secret_key) in keys {
-            key_map.insert(*word, secret_key.clone());
+        for secret_key in keys {
+            let pub_key = secret_key.public_key().to_commitment();
+            key_map.insert(pub_key, secret_key.clone());
         }
 
-        BasicAuthenticator {
-            keys: key_map,
-            rng: Arc::new(RwLock::new(rng)),
-        }
+        BasicAuthenticator { keys: key_map }
     }
 
-    /// Returns a reference to the keys map. Map keys represent the public keys, and values
-    /// represent the secret keys that the authenticator would use to sign messages.
-    pub fn keys(&self) -> &BTreeMap<Word, AuthSecretKey> {
+    /// Returns a reference to the keys map.
+    ///
+    /// Map keys represent the public key commitments, and values represent the secret keys that
+    /// the authenticator would use to sign messages.
+    pub fn keys(&self) -> &BTreeMap<PublicKeyCommitment, AuthSecretKey> {
         &self.keys
     }
 }
 
-impl<R: Rng + Send + Sync> TransactionAuthenticator for BasicAuthenticator<R> {
-    /// Gets a signature over a message, given a public key.
+impl TransactionAuthenticator for BasicAuthenticator {
+    /// Gets a signature over a message, given a public key commitment.
+    ///
     /// The key should be included in the `keys` map and should be a variant of [AuthSecretKey].
     ///
     /// Supported signature schemes:
@@ -223,18 +211,9 @@ impl<R: Rng + Send + Sync> TransactionAuthenticator for BasicAuthenticator<R> {
         let message = signing_inputs.to_commitment();
 
         async move {
-            let mut rng = self.rng.write().await;
-            let pub_key: Word = pub_key_commitment.into();
-            match self.keys.get(&pub_key) {
-                Some(key) => match key {
-                    AuthSecretKey::RpoFalcon512(falcon_key) => {
-                        Ok(falcon_key.sign_with_rng(message, &mut *rng).into())
-                    },
-                    key => Err(AuthenticationError::UnsupportedAuthScheme(key.auth_scheme())),
-                },
-                None => Err(AuthenticationError::UnknownPublicKey(format!(
-                    "public key {pub_key} is not contained in the authenticator's keys",
-                ))),
+            match self.keys.get(&pub_key_commitment) {
+                Some(key) => Ok(key.sign(message)),
+                None => Err(AuthenticationError::UnknownPublicKey(pub_key_commitment)),
             }
         }
     }
