@@ -38,7 +38,6 @@ pub use notes_checker::{
     MAX_NUM_CHECKER_NOTES,
     NoteConsumptionChecker,
     NoteConsumptionInfo,
-    NoteConsumptionStatus,
 };
 
 // TRANSACTION EXECUTOR

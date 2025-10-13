@@ -1,20 +1,32 @@
 use alloc::vec::Vec;
 
 use assert_matches::assert_matches;
+use miden_lib::note::well_known_note::{NoteConsumptionStatus, WellKnownNote};
 use miden_lib::note::{create_p2id_note, create_p2ide_note};
 use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::testing::note::NoteBuilder;
 use miden_lib::transaction::TransactionKernel;
-use miden_objects::Word;
 use miden_objects::account::{Account, AccountId};
 use miden_objects::asset::{Asset, FungibleAsset};
-use miden_objects::note::{Note, NoteType};
+use miden_objects::block::BlockNumber;
+use miden_objects::crypto::rand::FeltRng;
+use miden_objects::note::{
+    Note,
+    NoteAssets,
+    NoteExecutionHint,
+    NoteInputs,
+    NoteMetadata,
+    NoteRecipient,
+    NoteTag,
+    NoteType,
+};
 use miden_objects::testing::account_id::{
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
     ACCOUNT_ID_SENDER,
 };
 use miden_objects::transaction::OutputNote;
+use miden_objects::{Felt, Word, ZERO};
 use miden_processor::ExecutionError;
 use miden_processor::crypto::RpoRandomCoin;
 use miden_tx::auth::UnreachableAuth;
@@ -22,7 +34,6 @@ use miden_tx::{
     FailedNote,
     NoteConsumptionChecker,
     NoteConsumptionInfo,
-    NoteConsumptionStatus,
     TransactionExecutor,
     TransactionExecutorError,
 };
@@ -437,4 +448,132 @@ async fn test_check_note_consumability_without_signatures() -> anyhow::Result<()
     assert_eq!(consumability_info, NoteConsumptionStatus::ConsumableWithAuthorization);
 
     Ok(())
+}
+
+/// Tests the correctness of the [`NoteConsumptionChecker::can_consume()`] procedure in scenarios
+/// where static analysis should guarantee that the note cannot be consumed.
+#[tokio::test]
+async fn test_check_note_consumability_static_analysis() -> anyhow::Result<()> {
+    let mut builder = MockChain::builder();
+
+    let account = builder.add_existing_wallet(Auth::Noop)?;
+    let target_account_id = account.id();
+    let sender_account_id = ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap();
+
+    // create notes for testing
+    // --------------------------------------------------------------------------------------------
+    let p2ide_wrong_inputs_number = create_p2ide_note_with_inputs([1, 2, 3], sender_account_id);
+    builder.add_output_note(OutputNote::Full(p2ide_wrong_inputs_number.clone()));
+
+    let p2ide_invalid_target_id = create_p2ide_note_with_inputs([1, 2, 3, 4], sender_account_id);
+    builder.add_output_note(OutputNote::Full(p2ide_invalid_target_id.clone()));
+
+    let p2ide_timelock_not_reached = create_p2ide_note_with_inputs(
+        [target_account_id.suffix().as_int(), target_account_id.prefix().as_u64(), 3, 10],
+        sender_account_id,
+    );
+    builder.add_output_note(OutputNote::Full(p2ide_timelock_not_reached.clone()));
+
+    // swap target and sender account IDs to emulate the recall attempt scenario
+    let p2ide_recall_not_reached = create_p2ide_note_with_inputs(
+        [sender_account_id.suffix().as_int(), sender_account_id.prefix().as_u64(), 3, 0],
+        target_account_id,
+    );
+    builder.add_output_note(OutputNote::Full(p2ide_recall_not_reached.clone()));
+
+    // finalize mock chain and create notes checker
+    // --------------------------------------------------------------------------------------------
+    let mut mock_chain = builder.build()?;
+    mock_chain.prove_next_block()?;
+
+    let tx_context = mock_chain
+        .build_tx_context(
+            TxContextInput::Account(account),
+            &[],
+            &vec![p2ide_wrong_inputs_number.clone(), p2ide_timelock_not_reached.clone()],
+        )?
+        .build()?;
+
+    let block_ref = tx_context.tx_inputs().block_header().block_num();
+    let tx_args = tx_context.tx_args();
+
+    let executor =
+        TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context).with_tracing();
+    let notes_checker = NoteConsumptionChecker::new(&executor);
+
+    // check the note with invalid number of inputs
+    // --------------------------------------------------------------------------------------------
+    let consumability_info: NoteConsumptionStatus = notes_checker
+        .can_consume(
+            target_account_id,
+            block_ref,
+            p2ide_wrong_inputs_number.clone(),
+            tx_args.clone(),
+        )
+        .await?;
+    assert_matches!(consumability_info, NoteConsumptionStatus::Incompatible(reason) => {
+        assert_eq!(reason, format!(
+                        "P2IDE note should have 4 inputs, but {} was provided",
+                        p2ide_wrong_inputs_number.recipient().inputs().num_values()
+                    ));
+    });
+
+    // check the note with invalid target account ID
+    // --------------------------------------------------------------------------------------------
+    let consumability_info: NoteConsumptionStatus = notes_checker
+        .can_consume(target_account_id, block_ref, p2ide_invalid_target_id.clone(), tx_args.clone())
+        .await?;
+    assert_matches!(consumability_info, NoteConsumptionStatus::Incompatible(reason) => {
+        assert_eq!(reason, "Account ID provided to the P2IDE note inputs is invalid");
+    });
+
+    // check the note with timelock
+    // --------------------------------------------------------------------------------------------
+    let consumability_info: NoteConsumptionStatus = notes_checker
+        .can_consume(
+            target_account_id,
+            block_ref,
+            p2ide_timelock_not_reached.clone(),
+            tx_args.clone(),
+        )
+        .await?;
+    assert_eq!(
+        consumability_info,
+        NoteConsumptionStatus::ConsumableAfter(BlockNumber::from(10))
+    );
+
+    // check the note with unreached recall height
+    // --------------------------------------------------------------------------------------------
+    let consumability_info: NoteConsumptionStatus = notes_checker
+        .can_consume(
+            target_account_id,
+            block_ref,
+            p2ide_recall_not_reached.clone(),
+            tx_args.clone(),
+        )
+        .await?;
+    assert_eq!(consumability_info, NoteConsumptionStatus::ConsumableAfter(BlockNumber::from(3)));
+
+    Ok(())
+}
+
+// HELPER FUNCTIONS
+// ================================================================================================
+
+/// Creates a mock P2IDE note with the specified note inputs.
+fn create_p2ide_note_with_inputs(inputs: impl IntoIterator<Item = u64>, sender: AccountId) -> Note {
+    let serial_num = RpoRandomCoin::new(Default::default()).draw_word();
+    let note_script = WellKnownNote::P2IDE.script();
+    let recipient = NoteRecipient::new(
+        serial_num,
+        note_script,
+        NoteInputs::new(inputs.into_iter().map(Felt::new).collect()).unwrap(),
+    );
+
+    let tag = NoteTag::from_account_id(sender);
+    let metadata =
+        NoteMetadata::new(sender, NoteType::Public, tag, NoteExecutionHint::always(), ZERO)
+            .unwrap();
+
+    Note::new(NoteAssets::default(), metadata, recipient)
 }

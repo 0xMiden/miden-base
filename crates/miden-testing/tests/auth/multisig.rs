@@ -3,6 +3,7 @@ use miden_lib::account::components::rpo_falcon_512_multisig_library;
 use miden_lib::account::wallets::BasicWallet;
 use miden_lib::errors::tx_kernel_errors::ERR_TX_ALREADY_EXECUTED;
 use miden_lib::note::create_p2id_note;
+use miden_lib::note::well_known_note::NoteConsumptionStatus;
 use miden_lib::testing::account_interface::get_public_keys_from_account;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{
@@ -28,12 +29,7 @@ use miden_processor::crypto::RpoRandomCoin;
 use miden_testing::utils::create_spawn_note;
 use miden_testing::{Auth, MockChainBuilder, assert_transaction_executor_error};
 use miden_tx::auth::{BasicAuthenticator, SigningInputs, TransactionAuthenticator};
-use miden_tx::{
-    NoteConsumptionChecker,
-    NoteConsumptionStatus,
-    TransactionExecutor,
-    TransactionExecutorError,
-};
+use miden_tx::{NoteConsumptionChecker, TransactionExecutor, TransactionExecutorError};
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 
