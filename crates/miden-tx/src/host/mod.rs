@@ -219,6 +219,8 @@ where
 
     /// Creates a note builder from the provided stack state and note script, and inserts it into
     /// the output_notes map. This is used after fetching a note script from the data store.
+    ///
+    /// The script should have already been added to the advice provider before calling this method.
     pub(super) fn create_note_builder_from_stack_and_script(
         &mut self,
         stack: Vec<Felt>,
@@ -228,10 +230,12 @@ where
     ) -> Result<(), TransactionKernelError> {
         let note_idx: usize = stack[9].as_int() as usize;
 
+        // If the note builder already exists, we don't need to create it again
         if self.output_notes.contains_key(&note_idx) {
             return Ok(());
         }
 
+        // Create the note builder now that the script is available in the advice provider
         let note_builder = OutputNoteBuilder::new(stack, adv_provider)?;
         self.output_notes.insert(note_idx, note_builder);
 
@@ -530,23 +534,21 @@ where
     ///
     /// Expected stack state: `[event, NOTE_METADATA, RECIPIENT, ...]`
     ///
-    /// If the note script is not found in the advice provider, this method returns
-    /// [`TransactionEventHandling::Unhandled`] with the script root and stack state, signaling that
-    /// the script should be fetched from the data store. A placeholder note builder is NOT created
-    /// in this case, as the VM will re-invoke this handler after the script is fetched and added
-    /// to the advice map.
+    /// If the note script is not found in the advice provider for a PUBLIC note, this method
+    /// returns [`TransactionEventHandling::Unhandled`] with the script root and stack state,
+    /// signaling that the script should be fetched from the data store. The note builder will
+    /// be created later by [`create_note_builder_from_stack_and_script`] after the script is
+    /// fetched.
     fn on_note_after_created(
         &mut self,
         process: &ProcessState,
     ) -> Result<TransactionEventHandling, TransactionKernelError> {
         let stack = process.get_stack_state().split_off(1);
-        // # => [NOTE_METADATA, RECIPIENT, ...]
 
         let note_idx: usize = stack[9].as_int() as usize;
 
-        // Check if we've already created this note builder (e.g., after fetching the script)
+        // Check if we've already created this note builder (after fetching the script)
         if self.output_notes.contains_key(&note_idx) {
-            // Note already exists, nothing to do
             return Ok(TransactionEventHandling::Handled(Vec::new()));
         }
 
@@ -572,34 +574,11 @@ where
             let script_data = process.advice_provider().get_mapped_values(&script_root);
 
             // If script is missing, request it from the data store
-            // IMPORTANT: We must create a placeholder note builder here to reserve the note index,
-            // otherwise subsequent NoteBeforeAddAsset events will fail
             if script_data.is_none() || script_data.unwrap().is_empty() {
-                // Create a placeholder note builder with empty assets
-                // This will fail for PUBLIC notes, but that's expected - we'll handle it below
-                match OutputNoteBuilder::new(stack.clone(), process.advice_provider()) {
-                    Ok(note_builder) => {
-                        // Unexpected: the note builder was created successfully even though the
-                        // script is missing This should only happen for
-                        // PRIVATE notes
-                        self.output_notes.insert(note_idx, note_builder);
-                        return Ok(TransactionEventHandling::Handled(Vec::new()));
-                    },
-                    Err(TransactionKernelError::PublicNoteMissingDetails(..)) => {
-                        // Expected: PUBLIC note is missing script details
-                        // We need to fetch the script, but we also need to create a placeholder
-                        // to reserve the note index. However, we can't create a proper placeholder
-                        // without the script. So we'll just return Unhandled and hope the VM
-                        // re-emits the event after fetching the script.
-                        //
-                        // TODO: This is a problem - the VM won't re-emit the event!
-                        // We need a different approach.
-                        return Ok(TransactionEventHandling::Unhandled(
-                            TransactionEventData::NoteScript { script_root, stack: stack.clone() },
-                        ));
-                    },
-                    Err(e) => return Err(e),
-                }
+                return Ok(TransactionEventHandling::Unhandled(TransactionEventData::NoteScript {
+                    script_root,
+                    stack: stack.clone(),
+                }));
             }
         }
 
