@@ -5,30 +5,17 @@ use anyhow::Context;
 use itertools::Itertools;
 use miden_lib::account::faucets::BasicFungibleFaucet;
 use miden_lib::account::wallets::BasicWallet;
-use miden_lib::note::{create_p2id_note, create_p2ide_note, create_swap_note};
+use miden_lib::note::{create_p2ide_note, create_swap_note};
 use miden_lib::testing::account_component::MockAccountComponent;
 use miden_lib::transaction::{TransactionKernel, memory};
 use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{
-    Account,
-    AccountBuilder,
-    AccountId,
-    AccountStorageMode,
-    AccountType,
-    StorageSlot,
+    Account, AccountBuilder, AccountId, AccountStorageMode, AccountType, StorageSlot,
 };
 use miden_objects::asset::{Asset, FungibleAsset, TokenSymbol};
 use miden_objects::block::{
-    AccountTree,
-    BlockAccountUpdate,
-    BlockHeader,
-    BlockNoteTree,
-    BlockNumber,
-    Blockchain,
-    FeeParameters,
-    NullifierTree,
-    OutputNoteBatch,
-    ProvenBlock,
+    AccountTree, BlockAccountUpdate, BlockHeader, BlockNoteTree, BlockNumber, Blockchain,
+    FeeParameters, NullifierTree, OutputNoteBatch, ProvenBlock,
 };
 use miden_objects::crypto::rand::FeltRng;
 use miden_objects::note::{Note, NoteDetails, NoteType};
@@ -39,7 +26,7 @@ use miden_processor::crypto::RpoRandomCoin;
 use rand::Rng;
 
 use crate::mock_chain::chain::AccountAuthenticator;
-use crate::utils::{create_p2any_note, create_spawn_note};
+use crate::utils::create_spawn_note;
 use crate::{AccountState, Auth, MockChain};
 
 /// A builder for a [`MockChain`]'s genesis block.
@@ -66,11 +53,13 @@ use crate::{AccountState, Auth, MockChain};
 ///     &[FungibleAsset::mock(100)],
 ///     NoteType::Private,
 /// )?;
-/// let new_note = builder.create_p2id_note(
+/// let new_note = create_p2id_note(
 ///     existing_wallet.id(),
 ///     new_wallet.id(),
-///     [FungibleAsset::mock(100)],
+///     vec![FungibleAsset::mock(100)],
 ///     NoteType::Private,
+///     Felt::ZERO,
+///     builder.rng_mut(),
 /// )?;
 /// let chain = builder.build()?;
 ///
@@ -463,7 +452,7 @@ impl MockChainBuilder {
         note_type: NoteType,
         assets: impl IntoIterator<Item = Asset>,
     ) -> anyhow::Result<Note> {
-        let note = self.create_p2any_note(sender_account_id, note_type, assets)?;
+        let note = create_p2any_note(sender_account_id, note_type, assets, &mut self.rng);
         self.add_output_note(OutputNote::Full(note.clone()));
 
         Ok(note)
@@ -481,11 +470,13 @@ impl MockChainBuilder {
         asset: &[Asset],
         note_type: NoteType,
     ) -> Result<Note, NoteError> {
-        let note = self.create_p2id_note(
+        let note = create_p2id_note(
             sender_account_id,
             target_account_id,
-            asset.iter().copied(),
+            asset.to_vec(),
             note_type,
+            Felt::ZERO,
+            &mut self.rng,
         )?;
         self.add_output_note(OutputNote::Full(note.clone()));
 
@@ -591,49 +582,6 @@ impl MockChainBuilder {
         Ok(note)
     }
 
-    // NOTE CREATE METHODS
-    // ----------------------------------------------------------------------------------------
-
-    /// Creates a new P2ID note from the provided parameters.
-    ///
-    /// The note is _not_ added to the list of genesis notes. It must be created by the caller to
-    /// make it available in the mock chain, e.g. using [`Self::add_spawn_note`].
-    ///
-    /// This is a convenience wrapper around [`create_p2id_note`].
-    pub fn create_p2id_note(
-        &mut self,
-        sender_account_id: AccountId,
-        target_account_id: AccountId,
-        assets: impl IntoIterator<Item = Asset>,
-        note_type: NoteType,
-    ) -> Result<Note, NoteError> {
-        let note = create_p2id_note(
-            sender_account_id,
-            target_account_id,
-            assets.into_iter().collect::<Vec<_>>(),
-            note_type,
-            Default::default(),
-            &mut self.rng,
-        )?;
-
-        Ok(note)
-    }
-
-    /// Creates a new P2ANY note from the provided parameters.
-    ///
-    /// This note is similar to a P2ID note but can be consumed by any account.
-    ///
-    /// The note is _not_ added to the list of genesis notes. It must be created by the caller to
-    /// make it available in the mock chain, e.g. using [`Self::add_spawn_note`].
-    pub fn create_p2any_note(
-        &mut self,
-        sender_account_id: AccountId,
-        note_type: NoteType,
-        assets: impl IntoIterator<Item = Asset>,
-    ) -> anyhow::Result<Note> {
-        Ok(create_p2any_note(sender_account_id, note_type, self.rng.draw_word(), assets))
-    }
-
     // HELPER FUNCTIONS
     // ----------------------------------------------------------------------------------------
 
@@ -654,4 +602,40 @@ impl Default for MockChainBuilder {
     fn default() -> Self {
         Self::new()
     }
+}
+
+/// Creates a new P2ID note from the provided parameters.
+///
+/// This is a free-standing function that replicates the logic of the removed
+/// `MockChainBuilder::create_p2id_note` method. It does not add the note to any chain state.
+pub fn create_p2id_note(
+    sender_account_id: AccountId,
+    target_account_id: AccountId,
+    assets: Vec<Asset>,
+    note_type: NoteType,
+    aux: Felt,
+    rng: &mut RpoRandomCoin,
+) -> Result<Note, NoteError> {
+    miden_lib::note::create_p2id_note(
+        sender_account_id,
+        target_account_id,
+        assets,
+        note_type,
+        aux,
+        rng,
+    )
+}
+
+/// Creates a new P2ANY note from the provided parameters.
+///
+/// This is a free-standing function that replicates the logic of the removed
+/// `MockChainBuilder::create_p2any_note` method. It does not add the note to any chain state.
+pub fn create_p2any_note(
+    sender_account_id: AccountId,
+    note_type: NoteType,
+    assets: impl IntoIterator<Item = Asset>,
+    rng: &mut RpoRandomCoin,
+) -> Note {
+    let serial_number = rng.draw_word();
+    crate::utils::create_p2any_note(sender_account_id, note_type, serial_number, assets)
 }
