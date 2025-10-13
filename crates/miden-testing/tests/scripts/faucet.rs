@@ -1,5 +1,7 @@
 extern crate alloc;
 
+use core::slice;
+
 use miden_lib::account::faucets::FungibleFaucetExt;
 use miden_lib::errors::tx_kernel_errors::ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED;
 use miden_lib::note::well_known_note::WellKnownNote;
@@ -402,7 +404,7 @@ async fn network_faucet_mint() -> anyhow::Result<()> {
     // --------------------------------------------------------------------------------------------
     // Execute transaction to consume the output note with the target account
     let consume_tx_context = mock_chain
-        .build_tx_context(target_account.id(), &[], &[p2id_mint_output_note.clone()])?
+        .build_tx_context(target_account.id(), &[], slice::from_ref(&p2id_mint_output_note))?
         .build()?;
     let consume_executed_transaction = consume_tx_context.execute().await?;
 
@@ -418,6 +420,24 @@ async fn network_faucet_mint() -> anyhow::Result<()> {
     assert_eq!(account_delta.nonce_delta(), Felt::new(1));
 
     Ok(())
+}
+
+// TESTS FOR FAUCET PROCEDURE COMPATIBILITY
+// ================================================================================================
+
+/// Tests that basic and network fungible faucets have the same burn procedure digest.
+/// This is required for BURN notes to work with both faucet types.
+#[test]
+fn test_faucet_burn_procedures_are_identical() {
+    use miden_lib::account::faucets::{BasicFungibleFaucet, NetworkFungibleFaucet};
+
+    // Both faucet types must export the same burn procedure with identical MAST roots
+    // so that a single BURN note script can work with either faucet type
+    assert_eq!(
+        BasicFungibleFaucet::burn_digest(),
+        NetworkFungibleFaucet::burn_digest(),
+        "Basic and network fungible faucets must have the same burn procedure digest"
+    );
 }
 
 /// Tests burning on network faucet
