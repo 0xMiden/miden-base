@@ -42,7 +42,7 @@ pub use vault::{
 /// delta. A full state delta must be converted into an [`Account`] object, while a partial state
 /// delta must be applied to an existing [`Account`].
 ///
-/// TODO: The ability to track account code updates is an outstanding feature. For that reason, the
+/// TODO(code_upgrades): The ability to track account code updates is an outstanding feature. For that reason, the
 /// account code is not considered as part of the "nonce must be incremented if state changed"
 /// check.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -103,7 +103,7 @@ impl AccountDelta {
             });
         }
 
-        // TODO: This should go away once we have proper account code updates in deltas. Then, the
+        // TODO(code_upgrades): This should go away once we have proper account code updates in deltas. Then, the
         // two code updates can be merged. For now, code cannot be merged and this should never
         // happen.
         assert!(
@@ -144,7 +144,7 @@ impl AccountDelta {
     ///
     /// See the type-level docs for more on this distinction.
     pub fn is_full_state(&self) -> bool {
-        // TODO: Change this to another detection mechanism once we have code upgrade support,
+        // TODO(code_upgrades): Change this to another detection mechanism once we have code upgrade support,
         // at which point the presence of code may not be enough of an indication that a delta can
         // be converted to a full account.
         self.code.is_some()
@@ -337,7 +337,7 @@ impl TryFrom<&AccountDelta> for Account {
         let mut vault = AssetVault::default();
         vault.apply_delta(delta.vault()).map_err(AccountError::AssetVaultUpdateError)?;
 
-        // TODO: Once we support addition and removal of storage slots, we may be able to change
+        // Once we support addition and removal of storage slots, we may be able to change
         // this to create an empty account and use `Account::apply_delta` instead.
         // For now, we need to create the initial storage of the account with the same slot types.
         let mut empty_storage_slots = Vec::new();

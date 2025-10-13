@@ -163,12 +163,12 @@ impl ProvenTransaction {
             // otherwise this transaction is empty
             if self.account_update.initial_state_commitment()
                 == self.account_update.final_state_commitment()
-                && self.input_notes.commitment() == EMPTY_WORD
+                && self.input_notes.commitment().is_empty()
             {
                 return Err(ProvenTransactionError::EmptyTransaction);
             }
 
-            let is_new_account = self.account_update.initial_state_commitment() == Word::empty();
+            let is_new_account = self.account_update.initial_state_commitment().is_empty();
             match self.account_update.details() {
                 AccountUpdateDetails::Private => {
                     return Err(ProvenTransactionError::PublicStateAccountMissingDetails(
