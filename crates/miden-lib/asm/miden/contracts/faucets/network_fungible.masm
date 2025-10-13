@@ -60,13 +60,13 @@ end
 #! Invocation: call
 export.distribute
     exec.is_owner
-    # => [is_owner, amount, tag, aux, note_type, execution_hint, RECIPIENT]
+    # => [is_owner, amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
 
     assert.err=ERR_NOT_OWNER
-    # => [amount, tag, aux, note_type, execution_hint, RECIPIENT]
+    # => [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
 
     exec.faucets::distribute
-    # => [note_idx, ASSET, pad(11)]
+    # => [pad(16)]
 end
 
 #! Burns the fungible asset from the active note.
