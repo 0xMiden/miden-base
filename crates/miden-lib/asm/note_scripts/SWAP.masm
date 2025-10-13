@@ -1,43 +1,61 @@
+use.miden::account
 use.miden::active_note
-use.miden::output_note
 use.miden::contracts::wallets::basic->wallet
+use.miden::output_note
 
 # CONSTANTS
 # =================================================================================================
 
 const.SWAP_NOTE_INPUTS_NUMBER=12
 
-# ERRORS
+# ERRORS
 # =================================================================================================
-
 const.ERR_SWAP_WRONG_NUMBER_OF_INPUTS="SWAP script expects exactly 12 note inputs"
 
 const.ERR_SWAP_WRONG_NUMBER_OF_ASSETS="SWAP script requires exactly 1 note asset"
 
-#! Swap script: adds an asset from the note into consumers account and
-#! creates a note consumable by note issuer containing requested ASSET.
+#! SWAP note script: Facilitates atomic asset swaps between accounts.
+#!
+#! This script enables two modes of operation:
+#!
+#! 1. **Regular SWAP**: The consuming account provides liquidity from its own vault.
+#!    - The offered asset from the SWAP note is added to the consumer's account.
+#!    - The requested asset is moved from the consumer's account to a payback note for the issuer.
+#!
+#! 2. **In-Flight SWAP**: The consuming account matches multiple SWAP notes without providing
+#!    liquidity from its own vault. This enables a "coincidence of wants" settlement where:
+#!    - A matcher account can consume multiple SWAP notes that fulfill each other's requests.
+#!    - The matcher doesn't need to hold any assets; liquidity comes from the SWAP notes themselves.
+#!    - Assets flow directly between the original issuers via payback notes.
+#!    - Example: Account A offers asset X for Y, Account B offers Y for X. A matcher can consume
+#!      both notes in a single transaction, creating payback notes that satisfy both parties.
+#!
+#! The script automatically detects which mode to use by checking if the consuming account has
+#! sufficient balance of the requested asset. If the account balance is less than the requested
+#! amount, it assumes an in-flight swap and adds the requested asset directly to the payback note
+#! without moving it from the account vault.
 #!
 #! Requires that the account exposes:
-#! - miden::contracts::wallets::basic::receive_asset procedure.
-#! - miden::contracts::wallets::basic::move_asset_to_note procedure.
+#! - miden::contracts::wallets::basic::receive_asset procedure (for regular swaps).
+#! - miden::contracts::wallets::basic::move_asset_to_note procedure (for regular swaps).
 #!
 #! Inputs:  [ARGS]
 #! Outputs: []
 #!
 #! Note inputs are assumed to be as follows:
-#! - REQUESTED_ASSET
-#! - PAYBACK_NOTE_RECIPIENT
-#! - payback_note_execution_hint
-#! - payback_note_type
-#! - payback_note_aux
-#! - payback_note_tag
+#! - REQUESTED_ASSET (Word): The asset the note issuer wants to receive
+#! - PAYBACK_NOTE_RECIPIENT (Word): The recipient digest for the payback note
+#! - payback_note_execution_hint (Felt): Execution hint for the payback note
+#! - payback_note_type (Felt): Type of the payback note (public/private)
+#! - payback_note_aux (Felt): Auxiliary data for the payback note
+#! - payback_note_tag (Felt): Tag for the payback note
 #!
 #! Panics if:
-#! - account does not expose miden::contracts::wallets::basic::receive_asset procedure.
-#! - account does not expose miden::contracts::wallets::basic::move_asset_to_note procedure.
-#! - account vault does not contain the requested asset.
-#! - adding a fungible asset would result in amount overflow, i.e., the total amount would be
-#!   greater than 2^63.
+#! - The number of note inputs is not exactly 12.
+#! - The number of note assets is not exactly 1.
+#! - For regular swaps: account does not expose required wallet procedures.
+#! - For regular swaps: account vault does not contain sufficient requested asset.
+#! - Adding a fungible asset would result in amount overflow (total > 2^63).
 begin
     # dropping note args
     dropw
@@ -72,41 +90,67 @@ begin
     movdn.4
     # => [REQUESTED_ASSET, note_idx]
 
-    # padding stack with 11 zeros
-    repeat.11
-        push.0
-        movdn.5
-    end
-    # => [REQUESTED_ASSET, note_idx, pad(11)]
+    # --- check balance of REQUESTED_ASSET -------------------------
+    # if account balance < REQUESTED_ASSET -> assume inflight SWAP
+    # else settle SWAP note against account
 
-    # move asset to the note
-    call.wallet::move_asset_to_note
-    # => [REQUESTED_ASSET, note_idx, pad(11)]
+    dup.1 dup.1
+    # => [faucet_prefix, fauet_suffix, REQUESTED_ASSET, note_idx]
 
-    dropw drop push.0
-    # => [pad(12)]
+    exec.account::get_balance
+    # => [requested_asset_balance, REQUESTED_ASSET, note_idx]
 
-    # --- move assets from the SWAP note into the account -------------------------
+    dup.4
+    # => [requested_amount, requested_asset_balance, REQUESTED_ASSET, note_idx]
 
-    # store the number of note assets to memory starting at address 0
-    push.0 exec.active_note::get_assets
-    # => [num_assets, ptr, pad(12)]
+    lt
+    # => [try_inflight_swap, REQUESTED_ASSET, note_idx]
 
-    # make sure the number of assets is 1
-    assert.err=ERR_SWAP_WRONG_NUMBER_OF_ASSETS
-    # => [ptr, pad(12)]
+    if.true
+        # IN-FLIGHT SWAP (liquidity from counterparty SWAP note)
 
-    # load the ASSET
-    mem_loadw
-    # => [ASSET, pad(12)]
+        # add "asset" to note
+        exec.output_note::add_asset
+        # => [REQUESTED_ASSET, note_idx]
 
-    # add the ASSET to the account
-    call.wallet::receive_asset
-    # => [pad(16)]
+        dropw drop
+        # => []
+    else
+        # REGULAR SWAP (liquidity from account)
 
-    # clearing the stack of padded 0s
-    repeat.4
-        dropw
+        # padding stack with 11 zeros
+        repeat.11
+            push.0
+            movdn.5
+        end
+
+        # move asset to the note
+        call.wallet::move_asset_to_note
+        # => [REQUESTED_ASSET, note_idx, pad(11)]
+
+        # --- move assets from the SWAP note into the account -------------------------
+
+        # store the number of note assets to memory starting at address 0
+        push.0 exec.active_note::get_assets
+        # => [num_assets, ptr, pad(12)]
+
+        # make sure the number of assets is 1
+        assert.err=ERR_SWAP_WRONG_NUMBER_OF_ASSETS
+        # => [ptr, pad(12)]
+
+        # load the ASSET
+        mem_loadw
+        # => [ASSET, pad(12)]
+
+        # add the ASSET to the account
+        call.wallet::receive_asset
+        # => [pad(16)]
+
+        # clearing the stack of padded 0s
+        repeat.4
+            dropw
+        end
+        # => []
     end
     # => []
 end

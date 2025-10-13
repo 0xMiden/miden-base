@@ -1,8 +1,8 @@
 use anyhow::Context;
 use miden_lib::note::utils;
 use miden_lib::utils::ScriptBuilder;
-use miden_objects::account::{Account, AccountId, AccountStorageMode, AccountType};
-use miden_objects::asset::{Asset, FungibleAsset, NonFungibleAsset};
+use miden_objects::account::{Account, AccountId};
+use miden_objects::asset::{Asset, FungibleAsset};
 use miden_objects::note::{
     Note,
     NoteAssets,
@@ -15,7 +15,6 @@ use miden_objects::note::{
 use miden_objects::testing::account_id::{
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
-    AccountIdBuilder,
 };
 use miden_objects::transaction::OutputNote;
 use miden_objects::{Felt, NoteError, Word};
@@ -241,8 +240,8 @@ async fn settle_coincidence_of_wants() -> anyhow::Result<()> {
     // Create two different assets for the swap
     let faucet0 = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET)?;
     let faucet1 = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1)?;
-    let asset_a = FungibleAsset::new(faucet0, 10_777)?.into();
-    let asset_b = FungibleAsset::new(faucet1, 10)?.into();
+    let asset_a = FungibleAsset::new(faucet0, 100)?.into();
+    let asset_b = FungibleAsset::new(faucet1, 200)?.into();
 
     let mut builder = MockChain::builder();
 
@@ -304,6 +303,90 @@ async fn settle_coincidence_of_wants() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Tests that SWAP notes offering asset A and requesting asset B can be matched against SWAP
+/// notes offering asset B and requesting asset A, creating a "coincidence of wants" settlement
+/// where assets remain "in flight" (not added to the consuming account's vault).
+///
+/// In this scenario, a matcher account with no liquidity consumes both SWAP notes in a single
+/// transaction. The matcher doesn't need to hold any assets - the liquidity comes from the SWAP
+/// notes themselves. Assets flow directly between the original issuers via payback notes, while
+/// the matcher's vault remains empty throughout the process.
+#[tokio::test]
+async fn settle_coninceidence_of_wants_in_flight() -> anyhow::Result<()> {
+    // Create two different assets for the swap
+    let faucet0 = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET)?;
+    let faucet1 = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1)?;
+    let asset_a = FungibleAsset::new(faucet0, 100)?.into();
+    let asset_b = FungibleAsset::new(faucet1, 200)?.into();
+
+    let mut builder = MockChain::builder();
+
+    // CREATE ACCOUNT 1: Has asset A, wants asset B
+    // --------------------------------------------------------------------------------------------
+    let account_1 = builder.add_existing_wallet_with_assets(Auth::BasicAuth, vec![asset_a])?;
+
+    let payback_note_type = NoteType::Private;
+    let (if_swap_note_1, payback_note_1) =
+        builder.add_swap_note(account_1.id(), asset_a, asset_b, payback_note_type)?;
+
+    // CREATE ACCOUNT 2: Has asset B, wants asset A
+    // --------------------------------------------------------------------------------------------
+    let account_2 = builder.add_existing_wallet_with_assets(Auth::BasicAuth, vec![asset_b])?;
+
+    let (if_swap_note_2, payback_note_2) =
+        builder.add_swap_note(account_2.id(), asset_b, asset_a, payback_note_type)?;
+
+    // MATCHER ACCOUNT: Will fulfill both IF_SWAP notes without receiving the assets
+    // --------------------------------------------------------------------------------------------
+    let matcher_account = builder.add_existing_wallet_with_assets(Auth::IncrNonce, vec![])?;
+    // Initial matching account balance should be empty.
+    assert_eq!(matcher_account.vault().assets().count(), 0);
+
+    // EXECUTE SINGLE TRANSACTION TO CONSUME BOTH IF_SWAP NOTES
+    // --------------------------------------------------------------------------------------------
+    let mock_chain = builder.build()?;
+    let settle_tx = mock_chain
+        .build_tx_context(matcher_account.id(), &[if_swap_note_1.id(), if_swap_note_2.id()], &[])
+        .context("failed to build tx context")?
+        .build()?
+        .execute()
+        .await?;
+
+    // VERIFY PAYBACK NOTES WERE CREATED CORRECTLY
+    // --------------------------------------------------------------------------------------------
+    let output_notes: Vec<_> = settle_tx.output_notes().iter().collect();
+    assert_eq!(output_notes.len(), 2);
+
+    // Find payback notes by matching their IDs
+    let output_payback_1 = output_notes
+        .iter()
+        .find(|note| note.id() == payback_note_1.id())
+        .expect("Payback note 1 not found");
+    let output_payback_2 = output_notes
+        .iter()
+        .find(|note| note.id() == payback_note_2.id())
+        .expect("Payback note 2 not found");
+
+    // Verify payback note 1 contains exactly the initially requested asset B for account 1
+    assert_eq!(output_payback_1.assets().unwrap().iter().next().unwrap(), &asset_b);
+
+    // Verify payback note 2 contains exactly the initially requested asset A for account 2
+    assert_eq!(output_payback_2.assets().unwrap().iter().next().unwrap(), &asset_a);
+
+    // VERIFY MATCHER ACCOUNT STILL HAS NO ASSETS (assets stayed "in flight")
+    // --------------------------------------------------------------------------------------------
+    let mut updated_matcher_account = matcher_account;
+    updated_matcher_account
+        .apply_delta(settle_tx.account_delta())
+        .context("failed to apply delta to matcher account")?;
+
+    // The matcher account should still have no assets since IF_SWAP doesn't add assets to the
+    // account
+    assert_eq!(updated_matcher_account.vault().assets().count(), 0);
+
+    Ok(())
+}
+
 struct SwapTestSetup {
     mock_chain: MockChain,
     sender_account: Account,
@@ -315,13 +398,11 @@ struct SwapTestSetup {
 }
 
 fn setup_swap_test(payback_note_type: NoteType) -> anyhow::Result<SwapTestSetup> {
-    let faucet_id = AccountIdBuilder::new()
-        .account_type(AccountType::FungibleFaucet)
-        .storage_mode(AccountStorageMode::Private)
-        .build_with_seed([5; 32]);
+    let faucet_id_0 = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET)?;
+    let faucet_id_1 = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1)?;
 
-    let offered_asset = FungibleAsset::new(faucet_id, 2000)?.into();
-    let requested_asset = NonFungibleAsset::mock(&[1, 2, 3, 4]);
+    let offered_asset = FungibleAsset::new(faucet_id_0, 2000)?.into();
+    let requested_asset = FungibleAsset::new(faucet_id_1, 1000)?.into();
 
     let mut builder = MockChain::builder();
     let sender_account =
