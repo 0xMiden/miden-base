@@ -101,12 +101,11 @@ export.compute_commitment
     end
 end
 
-#! TODO: Rewrite
+#! Initializes the delta to the initial storage values in the account, by reading them from
+#! the advice inputs.
 #!
-#! Initializes the storage slots with their corresponding empty value.
-#!
-#! - Value slots are initialized to the empty word.
-#! - Map slots are initialized to the empty SMT root.
+#! This is only relevant for new accounts and only does actual work for storage maps, since
+#! value slots aren't explicitly tracked by the delta.
 #!
 #! Inputs:  []
 #! Outputs: []
