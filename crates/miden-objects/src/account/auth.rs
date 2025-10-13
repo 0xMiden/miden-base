@@ -88,7 +88,7 @@ pub enum AuthSchemeError {
 // AUTH SECRET KEY
 // ================================================================================================
 
-/// Secret keys of the standard authentication schemes available in the Miden protocol.
+/// Secret keys of the standard [`AuthScheme`]s available in the Miden protocol.
 #[derive(Clone, Debug)]
 #[non_exhaustive]
 #[repr(u8)]
