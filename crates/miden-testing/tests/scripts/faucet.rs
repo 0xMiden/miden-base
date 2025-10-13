@@ -395,7 +395,7 @@ async fn network_faucet_burn() -> anyhow::Result<()> {
 
     let fungible_asset = FungibleAsset::new(faucet.id(), 100).unwrap();
 
-    // CREATE BURN NOTE USING STANDARD NOTE
+    // CREATE BURN NOTE USING STANDARD NOTE SCRIPT
     // --------------------------------------------------------------------------------------------
     // Use the standard BURN note script
     let note_script = WellKnownNote::BURN.script();
