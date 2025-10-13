@@ -79,7 +79,7 @@ end
 #! This is a re-export of basic_fungible::burn since both procedures now have identical
 #! functionality.
 #!
-#! Inputs:  []
+#! Inputs:  [pad(16)]
 #! Outputs: [ASSET]
 #!
 #! Where:
@@ -91,4 +91,4 @@ end
 #! - the transaction is executed against an account which is not a fungible asset faucet.
 #! - the transaction is executed against a faucet which is not the origin of the specified asset.
 #! - the amount about to be burned is greater than the outstanding supply of the asset.
-export.basic_fungible::burn
+export.faucets::burn

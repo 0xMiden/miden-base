@@ -88,3 +88,38 @@ export.distribute.4
     # => [note_idx, ASSET, pad(11)]
 end
 
+#! Burns the fungible asset from the active note.
+#!
+#! This procedure retrieves the asset from the active note and burns it. The note must contain
+#! exactly one asset, which must be a fungible asset issued by this faucet.
+#!
+#! Inputs:  [pad(16)]
+#! Outputs: [ASSET, pad(12)]
+#!
+#! Where:
+#! - ASSET is the fungible asset that was burned.
+#!
+#! Panics if:
+#! - the procedure is not called from a note context (active_note::get_assets will fail).
+#! - the note does not contain exactly one asset.
+#! - the transaction is executed against an account which is not a fungible asset faucet.
+#! - the transaction is executed against a faucet which is not the origin of the specified asset.
+#! - the amount about to be burned is greater than the outstanding supply of the asset.
+#!
+#! Invocation: call
+export.burn
+    # Get the assets from the note. This will fail if not called from a note context.
+    push.0 exec.active_note::get_assets
+    # => [num_assets, dest_ptr]
+
+    # Verify we have exactly one asset
+    assert.err=ERR_BASIC_FUNGIBLE_BURN_WRONG_NUMBER_OF_ASSETS
+    # => [dest_ptr]
+
+    mem_loadw
+    # => [ASSET]
+
+    # burning the asset
+    exec.faucet::burn
+    # => [ASSET]
+end
