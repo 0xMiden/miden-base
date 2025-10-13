@@ -11,6 +11,9 @@ pub mod wallets;
 /// This macro generates a `LazyLock<Word>` static variable that lazily initializes
 /// the digest of a procedure from a library.
 ///
+/// Note: This macro references exported types from `miden_objects`, so your crate must
+/// include `miden-objects` as a dependency.
+///
 /// # Arguments
 /// * `$name` - The name of the static variable to create
 /// * `$proc_name` - The string name of the procedure
