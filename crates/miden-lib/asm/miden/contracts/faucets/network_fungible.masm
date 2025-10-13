@@ -39,8 +39,8 @@ end
 
 #! Distributes freshly minted fungible assets to the provided recipient.
 #!
-#! This procedure first checks if the note sender is the owner of the faucet, then delegates
-#! to the faucets::distribute procedure to handle the actual minting and distribution.
+#! This procedure first checks if the note sender is the owner of the faucet, and then 
+#! mints and distributes the asset.
 #!
 #! Inputs:  [amount, tag, aux, note_type, execution_hint, RECIPIENT]
 #! Outputs: [note_idx, ASSET, pad(11)]
