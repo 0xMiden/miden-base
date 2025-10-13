@@ -31,10 +31,10 @@ const.ERR_BASIC_FUNGIBLE_BURN_WRONG_NUMBER_OF_ASSETS="burn requires exactly 1 no
 # The slot in this component's storage layout where the metadata is stored.
 const.METADATA_SLOT=0
 
-#! Distributes freshly minted fungible assets to the provided recipient.
+#! Distributes freshly minted fungible assets to the provided recipient by creating a note.
 #!
-#! Inputs:  [amount, tag, aux, note_type, execution_hint, RECIPIENT]
-#! Outputs: [note_idx, ASSET, pad(11)]
+#! Inputs:  [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
+#! Outputs: [pad(16)]
 #!
 #! Where:
 #! - amount is the amount to be minted and sent.
@@ -44,8 +44,6 @@ const.METADATA_SLOT=0
 #! - execution_hint is the execution hint of the note that holds the asset.
 #! - RECIPIENT is the recipient of the asset, i.e.,
 #!   hash(hash(hash(serial_num, [0; 4]), script_root), input_commitment).
-#! - note_idx is the index of the output note.
-#!   This cannot directly be accessed from another context.
 #!
 #! Panics if:
 #! - the transaction is being executed against an account that is not a fungible asset faucet.
@@ -67,9 +65,6 @@ end
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [pad(16)]
-#!
-#! Where:
-#! - ASSET is the fungible asset that was burned.
 #!
 #! Panics if:
 #! - the procedure is not called from a note context (active_note::get_assets will fail).

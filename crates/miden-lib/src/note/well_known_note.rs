@@ -218,8 +218,13 @@ impl WellKnownNote {
                 interface_proc_digests.contains(&NetworkFungibleFaucet::distribute_digest())
             },
             Self::BURN => {
-                // BURN notes work with both basic and network fungible faucets because the burn
-                // procedure is the same in both faucet types.
+                // BURN notes work with both basic and network fungible faucets because both
+                // faucet types export the same burn procedure (i.e., they have the same digest).
+                debug_assert_eq!(
+                    BasicFungibleFaucet::burn_digest(),
+                    NetworkFungibleFaucet::burn_digest(),
+                    "Basic and network fungible faucets must have the same burn digest"
+                );
                 interface_proc_digests.contains(&BasicFungibleFaucet::burn_digest())
                     || interface_proc_digests.contains(&NetworkFungibleFaucet::burn_digest())
             },
