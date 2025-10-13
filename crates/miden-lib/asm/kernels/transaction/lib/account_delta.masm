@@ -173,7 +173,7 @@ end
 #! These entries must be present in the advice provider with the map root as the key.
 #!
 #! The procedure proves inclusion of the map entries in the account's storage map at the provided
-#! index. Note that the advice map entry could contain multiple occurences of a key-value pair
+#! index. Note that the advice map entry could contain multiple occurrences of a key-value pair
 #! A -> B, but this procedure has no way of detecting this condition.
 #! Such entries would naturally be deduplicated by the nature of the storage map or link map
 #! (used to track the storage map delta), and so are not problematic.
