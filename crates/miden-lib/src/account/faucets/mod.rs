@@ -21,20 +21,21 @@ use crate::account::auth::{
     AuthRpoFalcon512Multisig,
 };
 use crate::account::components::basic_fungible_faucet_library;
+use crate::procedure_digest;
 use crate::transaction::memory::FAUCET_STORAGE_DATA_SLOT;
 
 // BASIC FUNGIBLE FAUCET ACCOUNT COMPONENT
 // ================================================================================================
 
 // Initialize the digest of the `distribute` procedure of the Basic Fungible Faucet only once.
-crate::procedure_digest!(
+procedure_digest!(
     BASIC_FUNGIBLE_FAUCET_DISTRIBUTE,
     BasicFungibleFaucet::DISTRIBUTE_PROC_NAME,
     basic_fungible_faucet_library
 );
 
 // Initialize the digest of the `burn` procedure of the Basic Fungible Faucet only once.
-crate::procedure_digest!(
+procedure_digest!(
     BASIC_FUNGIBLE_FAUCET_BURN,
     BasicFungibleFaucet::BURN_PROC_NAME,
     basic_fungible_faucet_library

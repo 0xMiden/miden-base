@@ -13,19 +13,20 @@ use thiserror::Error;
 use super::AuthScheme;
 use crate::account::auth::{AuthRpoFalcon512, AuthRpoFalcon512Multisig};
 use crate::account::components::basic_wallet_library;
+use crate::procedure_digest;
 
 // BASIC WALLET
 // ================================================================================================
 
 // Initialize the digest of the `receive_asset` procedure of the Basic Wallet only once.
-crate::procedure_digest!(
+procedure_digest!(
     BASIC_WALLET_RECEIVE_ASSET,
     BasicWallet::RECEIVE_ASSET_PROC_NAME,
     basic_wallet_library
 );
 
 // Initialize the digest of the `move_asset_to_note` procedure of the Basic Wallet only once.
-crate::procedure_digest!(
+procedure_digest!(
     BASIC_WALLET_MOVE_ASSET_TO_NOTE,
     BasicWallet::MOVE_ASSET_TO_NOTE_PROC_NAME,
     basic_wallet_library
