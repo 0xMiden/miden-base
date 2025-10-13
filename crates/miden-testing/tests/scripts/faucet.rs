@@ -362,8 +362,6 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
                 push.{amount}
                 # => [amount, tag, aux, note_type, execution_hint, RECIPIENT]
 
-                push.111 debug.stack drop
-
                 call.::miden::contracts::faucets::basic_fungible::distribute
                 # => [note_idx, pad(15)]
 
