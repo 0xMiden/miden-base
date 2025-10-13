@@ -14,6 +14,8 @@ use crate::errors::MasmError;
 pub const ERR_ACCOUNT_CODE_COMMITMENT_MISMATCH: MasmError = MasmError::from_static_str("computed account code commitment does not match recorded account code commitment");
 /// Error Message: "account code must be updatable for it to be possible to set new code"
 pub const ERR_ACCOUNT_CODE_IS_NOT_UPDATABLE: MasmError = MasmError::from_static_str("account code must be updatable for it to be possible to set new code");
+/// Error Message: "storage map entries provided via the advice inputs are not present in the account's corresponding storage map"
+pub const ERR_ACCOUNT_DELTA_INITIAL_STORAGE_MAP_ENTRIES_NOT_PRESENT_IN_MAP_ROOT: MasmError = MasmError::from_static_str("storage map entries provided via the advice inputs are not present in the account's corresponding storage map");
 /// Error Message: "nonce must be incremented if account vault or account storage changed"
 pub const ERR_ACCOUNT_DELTA_NONCE_MUST_BE_INCREMENTED_IF_VAULT_OR_STORAGE_CHANGED: MasmError = MasmError::from_static_str("nonce must be incremented if account vault or account storage changed");
 /// Error Message: "the account ID must have storage mode public if the network flag is set"

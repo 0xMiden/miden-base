@@ -1278,7 +1278,9 @@ export.get_item_raw
     # => [VALUE]
 end
 
-#! Shared procedure for getting a map item from a storage slot.
+#! Shared procedure for getting a map item from a storage slot without checking the index.
+#!
+#! WARNING: Must be called with an index that is in bounds.
 #!
 #! Inputs:  [KEY, ROOT, index]
 #! Outputs: [VALUE]
@@ -1301,6 +1303,21 @@ proc.get_map_item_raw
     assert.err=ERR_ACCOUNT_READING_MAP_VALUE_FROM_NON_MAP_SLOT
     # => [KEY, ROOT, index]
 
+    # SAFETY: We just checked that the storage slot is of type map.
+    exec.get_map_item_raw_unchecked
+    # => [VALUE]
+end
+
+#! Shared procedure for getting a map item from a storage slot without checking the storage slot
+#! type or index.
+#!
+#! WARNING:
+#! - Must be called with an index that is in bounds.
+#! - Must be called only when the index points to a map type storage slot.
+#!
+#! Inputs:  [KEY, ROOT, index]
+#! Outputs: [VALUE]
+export.get_map_item_raw_unchecked
     emit.ACCOUNT_STORAGE_BEFORE_GET_MAP_ITEM_EVENT
     # => [KEY, ROOT, index]
 
@@ -1624,150 +1641,4 @@ export.set_was_procedure_called
 
     # save 1 to the was_called address
     add push.1 swap mem_store
-end
-
-#! Initializes the storage slots with their corresponding empty value.
-#!
-#! - Value slots are initialized to the empty word.
-#! - Map slots are initialized to the empty SMT root.
-#!
-#! Inputs:  []
-#! Outputs: []
-export.set_empty_initial_storage_slots
-    exec.memory::get_native_account_initial_storage_slots_ptr
-    exec.memory::get_native_account_storage_slots_ptr
-    # => [current_slots_ptr, init_slots_ptr]
-
-    exec.memory::get_num_storage_slots movdn.2
-    # => [current_slots_ptr, init_slots_ptr, num_slots]
-
-    # push loop index
-    push.0
-    # => [slot_idx = 0, current_slots_ptr, init_slots_ptr, num_slots]
-
-    # enter loop if account has at least one storage slot
-    dup.3 neq.0
-    # => [should_loop, slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
-
-    while.true
-        # => [slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
-
-        # compute init slot ptr
-        dup mul.8 dup.3 add
-        # => [init_slot_ptr, slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
-
-        # compute current slot ptr
-        dup.1 mul.8 dup.3 add
-        # => [current_slot_ptr, init_slot_ptr, slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
-
-        # load slot metadata from current ptr (which is offset by one word)
-        padw dup.4 add.4 mem_loadw
-        # => [SLOT_METADATA, current_slot_ptr, init_slot_ptr, slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
-
-        # copy metadata to initial slots section
-        dup.5 add.4 mem_storew
-        # => [SLOT_METADATA, current_slot_ptr, init_slot_ptr, slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
-
-        # extract slot type
-        drop drop drop
-        # => [slot_type, current_slot_ptr, init_slot_ptr, slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
-
-        exec.constants::get_storage_slot_type_value eq
-        # => [is_value_slot_type, current_slot_ptr, init_slot_ptr, slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
-
-        if.true
-            # store the empty word for value slots as the initial value
-            padw movup.5 mem_storew dropw drop
-            # => [slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
-        else
-            # store the empty SMT root for map slots as the initial value
-            exec.constants::get_empty_smt_root movup.5 mem_storew dropw
-            # => [current_slot_ptr, slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
-
-            dup.1 swap
-            # => [current_slot_ptr, slot_idx, slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
-
-            padw movup.4 mem_loadw
-            # => [MAP_ROOT, slot_idx, slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
-
-            # add map entries to the in-kernel delta
-            exec.add_storage_map_entries_to_delta
-            # => [slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
-        end
-        # => [slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
-
-        add.1
-        # => [next_slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
-
-        # slot index and num_slots are guaranteed to fit into a u32
-        dup dup.4 neq
-        # => [should_continue, next_slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
-    end
-    # => [next_slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
-
-    dropw
-    # => []
-end
-
-#! Inserts the entries of the provided storage map root into the account delta.
-#!
-#! These entries must be present in the advice provider with the map root as the key.
-#!
-#! Inputs:
-#!   Operand stack: [MAP_ROOT, slot_idx],
-#!   Advice map: { MAP_ROOT: [MAP_ENTRIES] },
-#! Outputs: []
-proc.add_storage_map_entries_to_delta
-    adv.push_mapvaln
-    # OS => [MAP_ROOT, slot_idx]
-    # AS => [num_entries, [MAP_ENTRIES]]
-
-    movup.4
-    # OS => [slot_idx, MAP_ROOT]
-    # AS => [num_entries, [MAP_ENTRIES]]
-
-    adv_push.1
-    # OS => [num_entries, slot_idx, MAP_ROOT]
-    # AS => [[MAP_ENTRIES]]
-
-    push.0
-    # OS => [entry_idx = 0, num_entries, slot_idx, MAP_ROOT]
-    # AS => [[MAP_ENTRIES]]
-
-    dup.1 neq.0
-    # OS => [should_loop, entry_idx, num_entries, slot_idx, MAP_ROOT]
-    # AS => [[MAP_ENTRIES]]
-
-    while.true
-        adv_push.8
-        # OS => [KEY, VALUE, entry_idx, num_entries, slot_idx, MAP_ROOT]
-        # AS => [[MAP_ENTRIES]]
-
-        # set the previous value for the set_map_item call to the empty word
-        padw swapw
-        # OS => [KEY, EMPTY_WORD, VALUE, entry_idx, num_entries, slot_idx, MAP_ROOT]
-        # AS => [[MAP_ENTRIES]]
-
-        dup.14
-        # OS => [slot_idx, KEY, EMPTY_WORD, VALUE, entry_idx, num_entries, slot_idx, MAP_ROOT]
-        # AS => [[MAP_ENTRIES]]
-
-        exec.account_delta::set_map_item
-        # OS => [entry_idx, num_entries, slot_idx, MAP_ROOT]
-        # AS => [[MAP_ENTRIES]]
-
-        # we process two words per iteration so increment by 8 felts
-        add.8
-        # OS => [entry_idx+8, num_entries, slot_idx, MAP_ROOT]
-        # AS => [[MAP_ENTRIES]]
-
-        dup dup.2 neq
-        # OS => [should_continue, entry_idx+8, num_entries, slot_idx, MAP_ROOT]
-        # AS => [[MAP_ENTRIES]]
-    end
-    # OS => [entry_idx+8, num_entries, slot_idx, MAP_ROOT]
-    # AS => []
-
-    drop drop drop dropw
-    # => []
 end

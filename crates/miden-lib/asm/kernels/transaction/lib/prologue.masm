@@ -4,6 +4,7 @@ use.std::crypto::hashes::rpo
 use.std::word
 
 use.$kernel::account
+use.$kernel::account_delta
 use.$kernel::account_id
 use.$kernel::asset_vault
 use.$kernel::constants
@@ -444,6 +445,11 @@ proc.process_account_data
     exec.account::save_account_procedure_data
     # => [ACCOUNT_COMMITMENT]
 
+    # duplicate the initial storage slots in memory to enable a diff computation
+    # for the account delta
+    exec.memory::mem_copy_initial_storage_slots
+    # OS => []
+
     # copy the initial account vault root to the input vault root to support transaction asset
     # invariant checking
     # this account vault root is also stored as an initial one in the global inputs
@@ -465,14 +471,11 @@ proc.process_account_data
 
     # process conditional logic depending on whether the account is new or existing
     if.true
-        # set the initial slot values to be empty depending on their type
-        # TODO: Quick fix to insert storage map entries into the account delta for new accounts.
-        # This currently does more than necessary; it would not need to overwrite the initial slots.
-        exec.account::set_empty_initial_storage_slots
-        # => []
-
-        # duplicate the storage slots in memory to be able to access the initial slot values
-        exec.memory::mem_copy_initial_storage_slots
+        # insert the initial storage values of the new account into the delta
+        # this is required only for new accounts because the delta at the end of an
+        # account-creating transaction needs to represent the entire account, while
+        # this is not a requirement for existing accounts
+        exec.account_delta::insert_new_account
         # => []
 
         # set the initial account commitment
@@ -483,10 +486,6 @@ proc.process_account_data
         exec.validate_new_account
         # => []
     else
-        # duplicate the storage slots in memory to be able to access the initial slot values
-        exec.memory::mem_copy_initial_storage_slots
-        # => []
-
         # assert that the existing account commitment matches the hash in global inputs
         exec.memory::get_init_account_commitment
         assert_eqw.err=ERR_PROLOGUE_PROVIDED_ACCOUNT_DATA_DOES_NOT_MATCH_ON_CHAIN_COMMITMENT
