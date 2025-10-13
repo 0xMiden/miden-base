@@ -1,10 +1,12 @@
-use super::{Felt, TokenLogoURIError, Word};
 use alloc::string::{String, ToString};
+
 use miden_core::FieldElement;
+
+use super::{Felt, TokenLogoURIError, Word};
 
 const LOGO_URI_WORD_SIZE: usize = 8;
 
-/// Represents a token logo URI (e.g., "https://www.circle.com/hubfs/Brand/USDC/USDC_icon_32x32.png") as a fixed-size array of [`Word`]s of length [`LOGO_URI_WORD_SIZE`].
+/// Represents a token logo URI (e.g., `\[https://www.circle.com/hubfs/Brand/USDC/USDC_icon_32x32.png\]`) as a fixed-size array of [`Word`]s of length `LOGO_URI_WORD_SIZE`.
 ///
 /// The logo URI can contain up to 128 bytes of UTF-8 encoded characters.
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
@@ -18,7 +20,7 @@ impl TokenLogoURI {
     ///
     /// # Errors
     /// Returns an error if:
-    /// - The length of the provided string is 0 or greater than [`MAX_LOGO_URI_LEN`].
+    /// - The length of the provided string is 0 or greater than [`TokenLogoURI::MAX_LOGO_URI_LEN`].
     pub fn new(logo_uri: &str) -> Result<Self, TokenLogoURIError> {
         let words = encode_logo_to_words(logo_uri)?;
         Ok(TokenLogoURI(words))
@@ -59,7 +61,8 @@ impl TryFrom<[Word; LOGO_URI_WORD_SIZE]> for TokenLogoURI {
 // HELPER FUNCTIONS
 // ============================================================================================
 
-/// Encodes the provided logo URI string into a fixed-size array of [`Word`]s of length [`LOGO_URI_WORD_SIZE`].
+/// Encodes the provided logo URI string into a fixed-size array of [`Word`]s of length
+/// [`LOGO_URI_WORD_SIZE`].
 ///
 /// It converts `logo_uri` to its bytes representation and then into corresponding words.
 /// [b0, b1, b2 ... b127] => [ [{b0, b1, b2, b3}  .....   {b12, b13, b14, b15}] , ... ]
@@ -135,9 +138,9 @@ fn decode_word_to_bytes(word: &Word) -> [u8; 16] {
 #[cfg(test)]
 mod test {
 
-    use super::{TokenLogoURI, TokenLogoURIError};
     use miden_core::assert_matches;
 
+    use super::{TokenLogoURI, TokenLogoURIError};
     #[test]
     fn test_token_logo_uri_encoding_decoding() {
         let uris = vec![

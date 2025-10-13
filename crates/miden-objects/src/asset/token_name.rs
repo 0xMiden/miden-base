@@ -1,9 +1,13 @@
-use super::{Felt, TokenNameError, Word};
 use alloc::string::{String, ToString};
+
 use miden_core::FieldElement;
+
+use super::{Felt, TokenNameError, Word};
+
 const NAME_WORD_SIZE: usize = 2;
 
-/// Represents a string token name as a fixed size array of [`Word`]s of length [`NAME_WORD_SIZE`]
+/// Represents a string token name as a fixed size array of [`Word`]s of length
+/// `NAME_WORD_SIZE`
 ///
 /// Token name can contain upto 32 bytes of UTF-8 encoded characters.
 #[derive(Default, Clone, Copy, Debug, PartialEq)]
@@ -17,7 +21,7 @@ impl TokenName {
     ///
     /// # Errors
     /// Returns an error if:
-    /// - The length of provided string is greater than `MAX_NAME_LEN`
+    /// - The length of provided string is greater than [`TokenName::MAX_NAME_LEN`]
     pub fn new(name: &str) -> Result<Self, TokenNameError> {
         let word = encode_name_to_words(name)?;
         Ok(Self(word))
@@ -64,7 +68,8 @@ impl TryFrom<[Word; NAME_WORD_SIZE]> for TokenName {
 // HELPER FUNCTIONS
 // ===========================================================================================
 
-/// Encodes the provided string convert to a fixed-size array of [`Word`]s of length [`NAME_WORD_SIZE`]
+/// Encodes the provided string convert to a fixed-size array of [`Word`]s of length
+/// `NAME_WORD_SIZE`
 ///
 /// It converts `name` to it's bytes representation and then into corresponding words
 /// [b0, b1, b2 ... b31] => [ [{b0, b1, b2, b3}  .....   {b12, b13, b14, b15}] , ... ]
@@ -142,7 +147,7 @@ mod test {
 
     use assert_matches::assert_matches;
 
-    use crate::{TokenNameError, asset::TokenName};
+    use super::{TokenName, TokenNameError};
 
     #[test]
     fn test_token_name_encoding_decoding() {
@@ -162,7 +167,7 @@ mod test {
         let token_name = TokenName::new(name);
         assert_matches!(token_name.unwrap_err(), TokenNameError::InvalidLength(0));
 
-        // `\u{10FFFF}` is the largest charcter in unicode set of size 4 bytes
+        // `\u{10FFFF}` is the largest character in unicode set of size 4 bytes
         // the string below is 4 * 8 + 1 = 33 bytes
         let name = format!("{}{}", "\u{10FFFF}".repeat(8), "a");
         let token_name = TokenName::new(&name);

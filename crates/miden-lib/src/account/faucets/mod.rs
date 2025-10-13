@@ -13,7 +13,13 @@ use miden_objects::assembly::{ProcedureName, QualifiedProcedureName};
 use miden_objects::asset::{FungibleAsset, TokenLogoURI, TokenName, TokenSymbol};
 use miden_objects::utils::sync::LazyLock;
 use miden_objects::{
-    AccountError, Felt, FieldElement, TokenLogoURIError, TokenNameError, TokenSymbolError, Word,
+    AccountError,
+    Felt,
+    FieldElement,
+    TokenLogoURIError,
+    TokenNameError,
+    TokenSymbolError,
+    Word,
 };
 use thiserror::Error;
 
@@ -439,9 +445,9 @@ mod tests {
         BasicFungibleFaucet,
         Felt,
         FungibleFaucetError,
-        TokenSymbol,
         TokenLogoURI,
         TokenName,
+        TokenSymbol,
         create_basic_fungible_faucet,
     };
     use crate::account::auth::AuthRpoFalcon512;
@@ -513,7 +519,7 @@ mod tests {
             [Felt::new(123), Felt::new(2), token_symbol.into(), Felt::ZERO].into()
         );
 
-        // check that faucet name was intiialized iwth the given value
+        // check that faucet name was initialized with the given value
         assert_eq!(
             [
                 faucet_account.storage().get_item(5).unwrap(),

@@ -135,7 +135,7 @@ use crate::{MockChainBuilder, TransactionContextBuilder};
 /// # async fn main() -> Result<()> {
 /// let mut builder = MockChain::builder();
 ///
-/// let faucet = builder.create_new_faucet(Auth::BasicAuth, "USDT", 100_000)?;
+/// let faucet = builder.create_new_faucet(Auth::BasicAuth, "USDT", "Tether USD", None, 100_000)?;
 /// let asset = Asset::from(FungibleAsset::new(faucet.id(), 10)?);
 ///
 /// let sender = builder.create_new_wallet(Auth::BasicAuth)?;

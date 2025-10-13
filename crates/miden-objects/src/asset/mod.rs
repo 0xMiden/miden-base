@@ -7,7 +7,14 @@ use super::utils::serde::{
     Serializable,
 };
 use super::{
-    AssetError, Felt, Hasher, TokenLogoURIError, TokenNameError, TokenSymbolError, Word, ZERO,
+    AssetError,
+    Felt,
+    Hasher,
+    TokenLogoURIError,
+    TokenNameError,
+    TokenSymbolError,
+    Word,
+    ZERO,
 };
 use crate::account::AccountIdPrefix;
 
