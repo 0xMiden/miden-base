@@ -439,6 +439,32 @@ pub enum TokenSymbolError {
     DataNotFullyDecoded,
 }
 
+// TOKEN NAME ERROR
+// ================================================================================================
+
+#[derive(Debug, Error)]
+pub enum TokenNameError {
+    #[error(
+        "token name should have length less than 32 characters, but it has length {0} characters."
+    )]
+    InvalidLength(usize),
+    #[error("the buffer provided for token name is not valid UTF-8")]
+    InvalidUtf8Buffer(#[source] alloc::string::FromUtf8Error),
+}
+
+// TOKEN LOGO URI ERROR
+// ================================================================================================
+
+#[derive(Debug, Error)]
+pub enum TokenLogoURIError {
+    #[error(
+        "token logo uri should have length less than 128 characters, but it has length {0} characters."
+    )]
+    InvalidLength(usize),
+    #[error("the buffer provided for token logo uri is not valid UTF-8")]
+    InvalidUtf8Buffer(#[source] alloc::string::FromUtf8Error),
+}
+
 // ASSET VAULT ERROR
 // ================================================================================================
 

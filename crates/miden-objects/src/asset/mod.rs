@@ -6,7 +6,16 @@ use super::utils::serde::{
     DeserializationError,
     Serializable,
 };
-use super::{AssetError, Felt, Hasher, TokenSymbolError, Word, ZERO};
+use super::{
+    AssetError,
+    Felt,
+    Hasher,
+    TokenLogoURIError,
+    TokenNameError,
+    TokenSymbolError,
+    Word,
+    ZERO,
+};
 use crate::account::AccountIdPrefix;
 
 mod fungible;
@@ -20,6 +29,12 @@ pub use nonfungible::{NonFungibleAsset, NonFungibleAssetDetails};
 
 mod token_symbol;
 pub use token_symbol::TokenSymbol;
+
+mod token_name;
+pub use token_name::TokenName;
+
+mod token_logo_uri;
+pub use token_logo_uri::TokenLogoURI;
 
 mod vault;
 pub use vault::{AssetVault, AssetWitness, PartialVault};

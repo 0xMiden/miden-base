@@ -28,6 +28,7 @@
 - Added `account::get_initial_balance` procedure to `miden` lib ([#1959](https://github.com/0xMiden/miden-base/pull/1959)).
 - [BREAKING] Enable computing the transaction ID from the data in a `TransactionHeader` ([#1973]https://github.com/0xMiden/miden-base/pull/1973).
 - [BREAKING] Change `Account` to `PartialAccount` conversion to generally track only minimal data ([#1963]https://github.com/0xMiden/miden-base/pull/1963).
+- [BREAKING] Added `TokenName` and `TokenLogoURI` to `BasicFungibleFaucet`([#1993](https://github.com/0xMiden/miden-base/pull/1993)).
 
 ### Changes
 
