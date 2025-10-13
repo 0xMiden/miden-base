@@ -346,16 +346,16 @@ where
         &self,
         current_account_id: AccountId,
         vault_root: Word,
-        vault_key: AssetKey,
+        asset_key: AssetKey,
     ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
         let asset_witness = self
             .base_host
             .store()
-            .get_vault_asset_witness(current_account_id, vault_root, vault_key)
+            .get_vault_asset_witness(current_account_id, vault_root, asset_key)
             .await
             .map_err(|err| TransactionKernelError::GetVaultAssetWitness {
                 vault_root,
-                asset_key: vault_key,
+                asset_key,
                 source: err,
             })?;
 

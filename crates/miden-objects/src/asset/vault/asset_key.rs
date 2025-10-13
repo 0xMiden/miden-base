@@ -1,6 +1,7 @@
 use core::fmt;
 
-use miden_core::Felt;
+use miden_crypto::merkle::LeafIndex;
+use miden_processor::SMT_DEPTH;
 
 use crate::Word;
 use crate::account::AccountType::FungibleFaucet;
@@ -67,9 +68,8 @@ impl AssetKey {
 
     // TODO: Replace with https://github.com/0xMiden/crypto/issues/515 once implemented.
     /// Returns the leaf index of a vault key.
-    pub fn to_leaf_index(&self) -> Felt {
-        // The third element in an SMT key is the index.
-        self.as_word()[3]
+    pub fn to_leaf_index(&self) -> LeafIndex<SMT_DEPTH> {
+        LeafIndex::<SMT_DEPTH>::from(self.as_word())
     }
 
     /// Returns `true` if the asset key is for a fungible asset, `false` otherwise.
@@ -125,6 +125,9 @@ impl From<NonFungibleAsset> for AssetKey {
         non_fungible_asset.vault_key()
     }
 }
+
+// TESTS
+// ================================================================================================
 
 #[cfg(test)]
 mod tests {
