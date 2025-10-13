@@ -211,14 +211,15 @@ impl WellKnownNote {
                     && interface_proc_digests.contains(&BasicWallet::move_asset_to_note_digest())
             },
             Self::MINT => {
-                // MINT notes require the `distribute` procedure from either basic or network
-                // fungible faucets
-                interface_proc_digests.contains(&BasicFungibleFaucet::distribute_digest())
-                    || interface_proc_digests.contains(&NetworkFungibleFaucet::distribute_digest())
+                // MINT notes work only with network fungible faucets. The network faucet uses
+                // note-based authentication (checking if the note sender equals the faucet owner)
+                // to authorize minting, while basic faucets have different mint procedures that
+                // are not compatible with MINT notes.
+                interface_proc_digests.contains(&NetworkFungibleFaucet::distribute_digest())
             },
             Self::BURN => {
-                // BURN notes require the `burn` procedure from either basic or network fungible
-                // faucets
+                // BURN notes work with both basic and network fungible faucets because the burn
+                // procedure is the same in both faucet types.
                 interface_proc_digests.contains(&BasicFungibleFaucet::burn_digest())
                     || interface_proc_digests.contains(&NetworkFungibleFaucet::burn_digest())
             },
