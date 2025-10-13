@@ -2,6 +2,16 @@ use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
 
 use anyhow::Context;
+
+// CONSTANTS
+// ================================================================================================
+
+/// Default number of decimals for faucets created in tests.
+const DEFAULT_FAUCET_DECIMALS: u8 = 10;
+
+// IMPORTS
+// ================================================================================================
+
 use itertools::Itertools;
 use miden_lib::account::faucets::{BasicFungibleFaucet, NetworkFungibleFaucet};
 use miden_lib::account::wallets::BasicWallet;
@@ -292,7 +302,7 @@ impl MockChainBuilder {
         let max_supply_felt = max_supply.try_into().map_err(|_| {
             anyhow::anyhow!("max supply value cannot be converted to Felt: {max_supply}")
         })?;
-        let basic_faucet = BasicFungibleFaucet::new(token_symbol, 10, max_supply_felt)
+        let basic_faucet = BasicFungibleFaucet::new(token_symbol, DEFAULT_FAUCET_DECIMALS, max_supply_felt)
             .context("failed to create BasicFungibleFaucet")?;
 
         let account_builder = AccountBuilder::new(self.rng.random())
@@ -315,7 +325,7 @@ impl MockChainBuilder {
         total_issuance: Option<u64>,
     ) -> anyhow::Result<Account> {
         let token_symbol = TokenSymbol::new(token_symbol).context("invalid argument")?;
-        let basic_faucet = BasicFungibleFaucet::new(token_symbol, 10u8, Felt::new(max_supply))
+        let basic_faucet = BasicFungibleFaucet::new(token_symbol, DEFAULT_FAUCET_DECIMALS, Felt::new(max_supply))
             .context("invalid argument")?;
 
         let account_builder = AccountBuilder::new(self.rng.random())
@@ -354,7 +364,7 @@ impl MockChainBuilder {
     ) -> anyhow::Result<Account> {
         let token_symbol = TokenSymbol::new(token_symbol).context("invalid argument")?;
         let network_faucet =
-            NetworkFungibleFaucet::new(token_symbol, 10u8, Felt::new(max_supply), owner_account_id)
+            NetworkFungibleFaucet::new(token_symbol, DEFAULT_FAUCET_DECIMALS, Felt::new(max_supply), owner_account_id)
                 .context("invalid argument")?;
 
         let account_builder = AccountBuilder::new(self.rng.random())
