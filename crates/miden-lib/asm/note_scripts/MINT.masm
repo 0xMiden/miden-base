@@ -56,7 +56,6 @@ begin
     call.faucet::distribute
     # => [note_idx, pad(16)]
 
-    # Clean up stack
     drop
     # => [pad(16)]
 end
