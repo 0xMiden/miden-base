@@ -80,10 +80,7 @@ end
 #! functionality.
 #!
 #! Inputs:  [pad(16)]
-#! Outputs: [ASSET]
-#!
-#! Where:
-#! - ASSET is the fungible asset that was burned.
+#! Outputs: [pad(16)]
 #!
 #! Panics if:
 #! - the procedure is not called from a note context (active_note::get_assets will fail).
@@ -91,4 +88,6 @@ end
 #! - the transaction is executed against an account which is not a fungible asset faucet.
 #! - the transaction is executed against a faucet which is not the origin of the specified asset.
 #! - the amount about to be burned is greater than the outstanding supply of the asset.
+#!
+#! Invocation: call
 export.faucets::burn

@@ -86,6 +86,9 @@ export.distribute.4
     # load the ASSET and add it to the note
     movdn.4 loc_loadw.0 exec.output_note::add_asset movup.4
     # => [note_idx, ASSET, pad(11)]
+
+    drop dropw
+    # => [pad(11)]
 end
 
 #! Burns the fungible asset from the active note.
@@ -94,7 +97,7 @@ end
 #! exactly one asset, which must be a fungible asset issued by this faucet.
 #!
 #! Inputs:  [pad(16)]
-#! Outputs: [ASSET, pad(12)]
+#! Outputs: [pad(16)]
 #!
 #! Where:
 #! - ASSET is the fungible asset that was burned.
@@ -122,4 +125,7 @@ export.burn
     # burning the asset
     exec.faucet::burn
     # => [ASSET]
+
+    dropw
+    # => []
 end

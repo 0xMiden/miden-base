@@ -302,8 +302,9 @@ impl MockChainBuilder {
         let max_supply_felt = max_supply.try_into().map_err(|_| {
             anyhow::anyhow!("max supply value cannot be converted to Felt: {max_supply}")
         })?;
-        let basic_faucet = BasicFungibleFaucet::new(token_symbol, DEFAULT_FAUCET_DECIMALS, max_supply_felt)
-            .context("failed to create BasicFungibleFaucet")?;
+        let basic_faucet =
+            BasicFungibleFaucet::new(token_symbol, DEFAULT_FAUCET_DECIMALS, max_supply_felt)
+                .context("failed to create BasicFungibleFaucet")?;
 
         let account_builder = AccountBuilder::new(self.rng.random())
             .storage_mode(AccountStorageMode::Public)
@@ -325,8 +326,9 @@ impl MockChainBuilder {
         total_issuance: Option<u64>,
     ) -> anyhow::Result<Account> {
         let token_symbol = TokenSymbol::new(token_symbol).context("invalid argument")?;
-        let basic_faucet = BasicFungibleFaucet::new(token_symbol, DEFAULT_FAUCET_DECIMALS, Felt::new(max_supply))
-            .context("invalid argument")?;
+        let basic_faucet =
+            BasicFungibleFaucet::new(token_symbol, DEFAULT_FAUCET_DECIMALS, Felt::new(max_supply))
+                .context("invalid argument")?;
 
         let account_builder = AccountBuilder::new(self.rng.random())
             .storage_mode(AccountStorageMode::Public)
@@ -363,9 +365,13 @@ impl MockChainBuilder {
         total_issuance: Option<u64>,
     ) -> anyhow::Result<Account> {
         let token_symbol = TokenSymbol::new(token_symbol).context("invalid argument")?;
-        let network_faucet =
-            NetworkFungibleFaucet::new(token_symbol, DEFAULT_FAUCET_DECIMALS, Felt::new(max_supply), owner_account_id)
-                .context("invalid argument")?;
+        let network_faucet = NetworkFungibleFaucet::new(
+            token_symbol,
+            DEFAULT_FAUCET_DECIMALS,
+            Felt::new(max_supply),
+            owner_account_id,
+        )
+        .context("invalid argument")?;
 
         let account_builder = AccountBuilder::new(self.rng.random())
             .storage_mode(AccountStorageMode::Network)

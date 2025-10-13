@@ -1,4 +1,4 @@
-use.miden::contracts::faucets::network_fungible->faucet
+use.miden::contracts::faucets->faucet
 
 #! Network Faucet BURN script: burns the asset from the note by calling the network faucet's burn
 #! function. This note is intended to be executed against a network fungible faucet account.
