@@ -27,6 +27,7 @@ use miden_objects::transaction::{ExecutedTransaction, OutputNote};
 use miden_objects::{Felt, Word};
 use miden_testing::{Auth, MockChain, assert_transaction_executor_error};
 
+use crate::scripts::swap::create_p2id_note_exact;
 use crate::{get_note_with_fungible_asset_and_script, prove_and_verify_transaction};
 
 // Shared test utilities for faucet tests
@@ -303,11 +304,14 @@ async fn network_faucet_mint() -> anyhow::Result<()> {
     );
 
     let faucet =
-        builder.add_existing_network_faucet("NET", 200, faucet_owner_account_id, Some(50))?;
+        builder.add_existing_network_faucet("NET", 1000, faucet_owner_account_id, Some(50))?;
+
+    // Create a target account to consume the minted note
+    let target_account = builder.add_existing_wallet(Auth::IncrNonce)?;
 
     // The Network Fungible Faucet component is added as the second component after auth, so its
     // storage slot offset will be 2. Check that max_supply at the word's index 0 is 200.
-    assert_eq!(faucet.storage().get_item(1).unwrap()[0], Felt::new(200));
+    assert_eq!(faucet.storage().get_item(1).unwrap()[0], Felt::new(1000));
 
     // Check that the creator account ID is stored in slot 2 (second storage slot of the component)
     // The owner_account_id is stored as Word [0, 0, suffix, prefix]
@@ -321,12 +325,26 @@ async fn network_faucet_mint() -> anyhow::Result<()> {
 
     // CREATE MINT NOTE USING STANDARD NOTE
     // --------------------------------------------------------------------------------------------
-    let recipient = Word::from([0, 1, 2, 3u32]);
+
+    let mint_asset: Asset = FungibleAsset::new(faucet.id(), 100).unwrap().into();
+
     let amount = Felt::new(75);
     let tag = NoteTag::for_local_use_case(0, 0).unwrap();
     let aux = Felt::new(27);
     let note_execution_hint = NoteExecutionHint::on_block_slot(5, 6, 7);
     let note_type = NoteType::Private;
+    let serial_num = Word::default();
+
+    let p2id_mint_output_note = create_p2id_note_exact(
+        faucet.id(),
+        target_account.id(),
+        vec![mint_asset],
+        note_type,
+        aux,
+        serial_num,
+    )
+    .unwrap();
+    let recipient = p2id_mint_output_note.recipient().digest();
 
     // Use the standard MINT note script
     let note_script = WellKnownNote::MINT.script();
@@ -354,7 +372,7 @@ async fn network_faucet_mint() -> anyhow::Result<()> {
 
     // Add the MINT note to the mock chain
     builder.add_output_note(OutputNote::Full(mint_note.clone()));
-    let mock_chain = builder.build()?;
+    let mut mock_chain = builder.build()?;
 
     // EXECUTE MINT NOTE AGAINST NETWORK FAUCET
     // --------------------------------------------------------------------------------------------
@@ -375,6 +393,30 @@ async fn network_faucet_mint() -> anyhow::Result<()> {
 
     assert_eq!(executed_transaction.account_delta().nonce_delta(), Felt::new(1));
     assert_eq!(executed_transaction.input_notes().get_note(0).id(), mint_note.id());
+
+    // Apply the transaction to the mock chain
+    mock_chain.add_pending_executed_transaction(&executed_transaction)?;
+    let _ = mock_chain.prove_next_block();
+
+    // CONSUME THE OUTPUT NOTE WITH TARGET ACCOUNT
+    // --------------------------------------------------------------------------------------------
+    // Execute transaction to consume the output note with the target account
+    let consume_tx_context = mock_chain
+        .build_tx_context(target_account.id(), &[], &[p2id_mint_output_note.clone()])?
+        .build()?;
+    let consume_executed_transaction = consume_tx_context.execute().await?;
+
+    // Verify the target account received the fungible asset
+    assert_eq!(consume_executed_transaction.input_notes().num_notes(), 1);
+    assert_eq!(
+        consume_executed_transaction.input_notes().get_note(0).id(),
+        p2id_mint_output_note.id()
+    );
+
+    // Verify the account delta shows the asset was added to the vault
+    let account_delta = consume_executed_transaction.account_delta();
+    assert_eq!(account_delta.nonce_delta(), Felt::new(1));
+
     Ok(())
 }
 
