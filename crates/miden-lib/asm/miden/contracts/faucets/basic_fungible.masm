@@ -14,11 +14,11 @@ use.miden::output_note
 
 # CONSTANTS
 # =================================================================================================
+
 const.PRIVATE_NOTE=2
 
 # ERRORS
 # =================================================================================================
-
 const.ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED="distribute would cause the maximum supply to be exceeded"
 
 # CONSTANTS
@@ -79,20 +79,13 @@ export.distribute.4
     loc_storew.0 dropw
     # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
 
-    push.101 debug.stack drop
-
     # create a note
     exec.output_note::create
     # => [note_idx, pad(15)]
 
-    push.102 debug.stack drop
-
     # load the ASSET and add it to the note
     movdn.4 loc_loadw.0 exec.output_note::add_asset movup.4
     # => [note_idx, ASSET, pad(11)]
-
-
-    push.103 debug.stack drop
 end
 
 #! Burns fungible assets.
