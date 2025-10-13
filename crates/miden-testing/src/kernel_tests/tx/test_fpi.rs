@@ -56,8 +56,8 @@ use crate::{Auth, MockChainBuilder, assert_execution_error, assert_transaction_e
 // FOREIGN PROCEDURE INVOCATION TESTS
 // ================================================================================================
 
-#[test]
-fn test_fpi_memory_single_account() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_fpi_memory_single_account() -> anyhow::Result<()> {
     // Prepare the test data
     let storage_slots =
         vec![AccountStorage::mock_item_0().slot, AccountStorage::mock_item_2().slot];
@@ -158,7 +158,7 @@ fn test_fpi_memory_single_account() -> anyhow::Result<()> {
         get_item_foreign_hash = foreign_account.code().procedures()[1].mast_root(),
     );
 
-    let exec_output = tx_context.execute_code_blocking(&code)?;
+    let exec_output = tx_context.execute_code(&code).await?;
 
     assert_eq!(
         exec_output.get_stack_word(0),
@@ -212,7 +212,7 @@ fn test_fpi_memory_single_account() -> anyhow::Result<()> {
         get_map_item_foreign_hash = foreign_account.code().procedures()[2].mast_root(),
     );
 
-    let exec_output = tx_context.execute_code_blocking(&code).unwrap();
+    let exec_output = tx_context.execute_code(&code).await.unwrap();
 
     assert_eq!(
         exec_output.get_stack_word(0),
@@ -282,7 +282,7 @@ fn test_fpi_memory_single_account() -> anyhow::Result<()> {
         get_item_foreign_hash = foreign_account.code().procedures()[1].mast_root(),
     );
 
-    let exec_output = &tx_context.execute_code_blocking(&code)?;
+    let exec_output = &tx_context.execute_code(&code).await?;
 
     // Check that the second invocation of the foreign procedure from the same account does not load
     // the account data again: already loaded data should be reused.
@@ -298,8 +298,8 @@ fn test_fpi_memory_single_account() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[test]
-fn test_fpi_memory_two_accounts() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_fpi_memory_two_accounts() -> anyhow::Result<()> {
     // Prepare the test data
     let storage_slots_1 = vec![AccountStorage::mock_item_0().slot];
     let storage_slots_2 = vec![AccountStorage::mock_item_1().slot];
@@ -464,7 +464,7 @@ fn test_fpi_memory_two_accounts() -> anyhow::Result<()> {
         foreign_2_suffix = foreign_account_2.id().suffix(),
     );
 
-    let exec_output = &tx_context.execute_code_blocking(&code)?;
+    let exec_output = &tx_context.execute_code(&code).await?;
 
     // Check the correctness of the memory layout after multiple foreign procedure invocations from
     // different foreign accounts
