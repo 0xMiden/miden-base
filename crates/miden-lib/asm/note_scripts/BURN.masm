@@ -23,9 +23,5 @@ begin
 
     # Call the faucet's burn procedure which handles all validations
     call.faucet::burn
-    # => [ASSET, pad(16)]
-
-    # Clean up stack to return empty stack
-    dropw
     # => [pad(16)]
 end

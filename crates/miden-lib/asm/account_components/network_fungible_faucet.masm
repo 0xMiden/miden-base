@@ -1,11 +1,6 @@
-#! Re-exports the distribute procedure from the network fungible faucet in the miden library.
-#!
-#! Inputs: [amount, tag, aux, note_type, execution_hint, RECIPIENT]
-#! Outputs: [note_idx]
-export.::miden::contracts::faucets::network_fungible::distribute
+# The MASM code of the Network Fungible Faucet Account Component.
+#
+# See the `NetworkFungibleFaucet` Rust type's documentation for more details.
 
-#! Re-exports the burn procedure from the network fungible faucet in the miden library.
-#!
-#! Inputs: []
-#! Outputs: [ASSET]
+export.::miden::contracts::faucets::network_fungible::distribute
 export.::miden::contracts::faucets::network_fungible::burn
