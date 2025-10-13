@@ -21,7 +21,7 @@ pub use executor::{
 };
 
 mod host;
-pub use host::{AccountProcedureIndexMap, LinkMap, ScriptMastForestStore};
+pub use host::{AccountProcedureIndexMap, LinkMap, MemoryViewer, ScriptMastForestStore};
 
 mod prover;
 pub use prover::{

@@ -55,9 +55,6 @@ impl TransactionAdviceInputs {
             inputs.add_map_entry(account_id_key, seed.to_vec());
         }
 
-        // Inject foreign account inputs.
-        inputs.add_foreign_accounts(tx_inputs.tx_args().foreign_account_inputs())?;
-
         // Extend with extra user-supplied advice.
         inputs.extend(tx_inputs.tx_args().advice_inputs().clone());
 
