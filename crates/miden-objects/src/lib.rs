@@ -32,6 +32,7 @@ pub use errors::{
     AddressError,
     AssetError,
     AssetVaultError,
+    AuthSchemeError,
     BatchAccountUpdateError,
     FeeError,
     NetworkIdError,

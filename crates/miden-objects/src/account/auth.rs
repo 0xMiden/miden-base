@@ -1,7 +1,6 @@
 use alloc::vec::Vec;
 
 use rand::Rng;
-use thiserror::Error;
 
 use crate::crypto::dsa::rpo_falcon512;
 use crate::utils::serde::{
@@ -11,7 +10,7 @@ use crate::utils::serde::{
     DeserializationError,
     Serializable,
 };
-use crate::{Felt, Hasher, Word};
+use crate::{AuthSchemeError, Felt, Hasher, Word};
 
 // AUTH SCHEME
 // ================================================================================================
@@ -74,15 +73,6 @@ impl Deserializable for AuthScheme {
             ))),
         }
     }
-}
-
-// AUTH SCHEME ERROR
-// ================================================================================================
-
-#[derive(Debug, Error)]
-pub enum AuthSchemeError {
-    #[error("auth scheme identifier `{0}` is not valid")]
-    InvalidAuthSchemeIdentifier(u8),
 }
 
 // AUTH SECRET KEY
