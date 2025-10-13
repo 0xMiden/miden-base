@@ -14,7 +14,7 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
     ACCOUNT_ID_SENDER,
 };
-use miden_objects::transaction::{InputNote, OutputNote};
+use miden_objects::transaction::OutputNote;
 use miden_processor::ExecutionError;
 use miden_processor::crypto::RpoRandomCoin;
 use miden_tx::auth::UnreachableAuth;
@@ -431,12 +431,7 @@ async fn test_check_note_consumability_without_signatures() -> anyhow::Result<()
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
     let consumability_info: NoteConsumptionStatus = notes_checker
-        .can_consume(
-            account_id,
-            block_ref,
-            InputNote::Unauthenticated { note: successful_note },
-            tx_args,
-        )
+        .can_consume(account_id, block_ref, successful_note, tx_args)
         .await?;
 
     assert_eq!(consumability_info, NoteConsumptionStatus::ConsumableWithAuthorization);
