@@ -466,7 +466,13 @@ proc.process_account_data
     # process conditional logic depending on whether the account is new or existing
     if.true
         # set the initial slot values to be empty depending on their type
+        # TODO: Quick fix to insert storage map entries into the account delta for new accounts.
+        # This currently does more than necessary; it would not need to overwrite the initial slots.
         exec.account::set_empty_initial_storage_slots
+        # => []
+
+        # duplicate the storage slots in memory to be able to access the initial slot values
+        exec.memory::mem_copy_initial_storage_slots
         # => []
 
         # set the initial account commitment
