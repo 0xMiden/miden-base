@@ -109,9 +109,6 @@ end
 #!
 #! Invocation: exec
 export.build_recipient.2
-
-    push.111 debug.stack drop
-
     dup.1 dup.1 loc_store.0 loc_store.1
     # => [inputs_ptr, num_inputs, SERIAL_NUM, SCRIPT_ROOT] 
 
@@ -160,10 +157,8 @@ export.build_recipient.2
     adv.insert_mem
     # => [RECIPIENT, 0, 12]
 
-    movup.5 drop movup.5 drop
+    movup.5 drop movup.4 drop
     # => [RECIPIENT]
-
-    push.222 debug.stack drop
 end
 
 #! Returns the RECIPIENT for a specified SERIAL_NUM, SCRIPT_ROOT, and inputs commitment.

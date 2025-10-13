@@ -351,11 +351,9 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
                 push.2 push.0
                 # => [inputs_ptr, num_inputs, SERIAL_NUM, SCRIPT_ROOT]
 
-                push.111 debug.stack drop
-
                 exec.note::build_recipient
                 # => [RECIPIENT]
-                
+
                 # Now call distribute with the computed recipient
                 push.{note_execution_hint}
                 push.{note_type}
@@ -363,6 +361,8 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
                 push.{tag}
                 push.{amount}
                 # => [amount, tag, aux, note_type, execution_hint, RECIPIENT]
+
+                push.111 debug.stack drop
 
                 call.::miden::contracts::faucets::basic_fungible::distribute
                 # => [note_idx, pad(15)]

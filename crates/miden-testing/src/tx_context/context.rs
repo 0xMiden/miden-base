@@ -53,8 +53,8 @@ pub struct TransactionContext {
     pub(super) mast_store: TransactionMastStore,
     pub(super) authenticator: Option<MockAuthenticator>,
     pub(super) source_manager: Arc<dyn SourceManagerSync>,
-    pub(super) note_scripts: BTreeMap<Word, NoteScript>,
     pub(super) is_lazy_loading_enabled: bool,
+    pub(super) note_scripts: BTreeMap<Word, NoteScript>,
 }
 
 impl TransactionContext {

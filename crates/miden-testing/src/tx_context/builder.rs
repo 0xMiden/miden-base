@@ -334,8 +334,8 @@ impl TransactionContextBuilder {
             mast_store,
             authenticator: self.authenticator,
             source_manager: self.source_manager,
-            note_scripts: self.note_scripts,
             is_lazy_loading_enabled: self.is_lazy_loading_enabled,
+            note_scripts: self.note_scripts,
         })
     }
 }
