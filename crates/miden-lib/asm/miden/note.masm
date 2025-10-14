@@ -90,7 +90,13 @@ end
 #! Builds the recipient hash from note inputs, script root, and serial number.
 #!
 #! This procedure computes the commitment of the note inputs and then uses it to calculate the note
-#! recipient by hashing this commit, the provided script root, and the serial number.
+#! recipient by hashing this commitment, the provided script root, and the serial number.
+#!
+#! The procedure also inserts the following data into the advice map:
+#! - Advice map: {
+#!     INPUTS_COMMITMENT: [[NOTE_INPUTS]]
+#!     RECIPIENT: [INPUTS_COMMITMENT, SCRIPT_ROOT, SERIAL_NUM]
+#! }
 #!
 #! Inputs:  [inputs_ptr, num_inputs, SERIAL_NUM, SCRIPT_ROOT]
 #! Outputs: [RECIPIENT]
@@ -100,7 +106,11 @@ end
 #! - num_inputs is the number of input values.
 #! - SCRIPT_ROOT is the script root of the note.
 #! - SERIAL_NUM is the serial number of the note.
-#! - RECIPIENT is the commitment to the input note's script, inputs, the serial number.
+#! - RECIPIENT is the commitment to the input note's script, inputs, and the serial number.
+#!
+#! Locals:
+#! - 0: inputs_ptr
+#! - 1: num_inputs
 #!
 #! Panics if:
 #! - inputs_ptr is not word-aligned (i.e., is not a multiple of 4).
