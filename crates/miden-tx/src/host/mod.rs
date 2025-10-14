@@ -578,10 +578,11 @@ where
             };
 
             // Check if the script is in the advice provider
-            let script_data = process.advice_provider().get_mapped_values(&script_root);
+            let is_script_missing =
+                process.advice_provider().get_mapped_values(&script_root).is_none();
 
             // If script is missing, request it from the data store
-            if script_data.is_none() || script_data.unwrap().is_empty() {
+            if is_script_missing {
                 return Ok(TransactionEventHandling::Unhandled(TransactionEventData::NoteScript {
                     script_root,
                     stack: stack.clone(),

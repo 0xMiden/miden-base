@@ -1,6 +1,4 @@
 use alloc::vec::Vec;
-#[cfg(feature = "std")]
-use std::eprintln;
 
 use miden_objects::asset::Asset;
 use miden_objects::note::{
@@ -88,20 +86,7 @@ impl OutputNoteBuilder {
             };
 
             let script_data = adv_provider.get_mapped_values(&script_root).unwrap_or(&[]);
-
-            #[cfg(feature = "std")]
-            eprintln!("DEBUG NoteBuilder: script_data.len() = {}", script_data.len());
-
-            #[cfg(feature = "std")]
-            eprintln!("DEBUG NoteBuilder: inputs_commitment = {:?}", inputs_commitment);
             let inputs_data = adv_provider.get_mapped_values(&inputs_commitment);
-
-            #[cfg(feature = "std")]
-            if let Some(data) = inputs_data {
-                eprintln!("DEBUG NoteBuilder: inputs_data.len() = {}", data.len());
-            } else {
-                eprintln!("DEBUG NoteBuilder: inputs_data is None");
-            }
 
             let inputs = match inputs_data {
                 None => NoteInputs::default(),
