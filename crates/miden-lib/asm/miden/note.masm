@@ -1,7 +1,6 @@
+use.miden::account_id
 use.std::crypto::hashes::rpo
 use.std::mem
-
-use.miden::account_id
 
 # ERRORS
 # =================================================================================================
@@ -56,7 +55,7 @@ end
 #! - max_inputs_per_note is the max inputs per note.
 export.::miden::util::note::get_max_inputs_per_note
 
-#! Writes the assets data stored in the advice map to the memory specified by the provided 
+#! Writes the assets data stored in the advice map to the memory specified by the provided
 #! destination pointer.
 #!
 #! Inputs:
@@ -110,7 +109,7 @@ end
 #! Invocation: exec
 export.build_recipient.2
     dup.1 dup.1 loc_store.0 loc_store.1
-    # => [inputs_ptr, num_inputs, SERIAL_NUM, SCRIPT_ROOT] 
+    # => [inputs_ptr, num_inputs, SERIAL_NUM, SCRIPT_ROOT]
 
     exec.compute_inputs_commitment
     # => [INPUTS_COMMITMENT, SERIAL_NUM, SCRIPT_ROOT]
@@ -127,12 +126,11 @@ export.build_recipient.2
     # inserting NoteInputs into AdviceMap
     dupw.3
     # => [INPUTS_HASH, RECIPIENT, SERIAL_NUM, SCRIPT_ROOT, INPUTS_HASH]
- 
-    loc_load.1 loc_load.0
-    # => [inputs_ptr, num_inputs, INPUTS_HASH, RECIPIENT, SERIAL_NUM, SCRIPT_ROOT, INPUTS_HASH]
 
-    # compute end_ptr
-    dup.1 dup.1 add swap.2 drop
+    loc_load.0 loc_load.1 loc_load.0
+    # => [inputs_ptr, num_inputs, inputs_ptr, INPUTS_HASH, RECIPIENT, SERIAL_NUM, SCRIPT_ROOT, INPUTS_HASH]
+
+    add swap
     # => [inputs_ptr, end_ptr, INPUTS_HASH, RECIPIENT, SERIAL_NUM, SCRIPT_ROOT, INPUTS_HASH]
 
     movdn.5 movdn.5
@@ -191,7 +189,7 @@ end
 #!
 #! Where:
 #! - METADATA is the metadata of some note.
-#! - sender_{prefix,suffix} are the prefix and suffix felts of the sender ID of the note which 
+#! - sender_{prefix,suffix} are the prefix and suffix felts of the sender ID of the note which
 #!   metadata was provided.
 export.extract_sender_from_metadata
     # => [aux, merged_tag_hint_payload, merged_sender_id_type_hint_tag, sender_id_prefix]
