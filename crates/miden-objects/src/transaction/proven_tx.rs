@@ -139,34 +139,16 @@ impl ProvenTransaction {
     /// # Errors
     ///
     /// Returns an error if:
-    /// - The size of the serialized account update exceeds [`ACCOUNT_UPDATE_MAX_SIZE`].
     /// - The transaction is empty, which is the case if the account state is unchanged or the
     ///   number of input notes is zero.
-    /// - The transaction was executed against a _new_ account with public state and its account ID
-    ///   does not match the ID in the account update.
-    /// - The transaction was executed against a _new_ account with public state and its commitment
-    ///   does not match the final state commitment of the account update.
-    /// - The transaction was executed against a private account and the account update is _not_ of
-    ///   type [`AccountUpdateDetails::Private`].
-    /// - The transaction was executed against an account with public state and the update is of
-    ///   type [`AccountUpdateDetails::Private`].
-    /// - The transaction was executed against an _existing_ account with public state and the
-    ///   update is of type [`AccountUpdateDetails::New`].
-    /// - The transaction creates a _new_ account with public state and the update is of type
-    ///   [`AccountUpdateDetails::Delta`].
     fn validate(self) -> Result<Self, ProvenTransactionError> {
-        // If the account's state is public, then the account update details must be present.
-        if self.account_id().has_public_state() {
-            // check that either the account state was changed or at least one note was consumed,
-            // otherwise this transaction is empty
-            if self.account_update.initial_state_commitment()
-                == self.account_update.final_state_commitment()
-                && self.input_notes.commitment().is_empty()
-            {
-                return Err(ProvenTransactionError::EmptyTransaction);
-            }
-        } else if !self.account_update.is_private() {
-            return Err(ProvenTransactionError::PrivateAccountWithDetails(self.account_id()));
+        // Check that either the account state was changed or at least one note was consumed,
+        // otherwise this transaction is considered empty.
+        if self.account_update.initial_state_commitment()
+            == self.account_update.final_state_commitment()
+            && self.input_notes.commitment().is_empty()
+        {
+            return Err(ProvenTransactionError::EmptyTransaction);
         }
 
         Ok(self)
