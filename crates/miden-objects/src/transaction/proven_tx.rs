@@ -157,8 +157,6 @@ impl ProvenTransaction {
     fn validate(self) -> Result<Self, ProvenTransactionError> {
         // If the account's state is public, then the account update details must be present.
         if self.account_id().has_public_state() {
-            self.account_update.validate()?;
-
             // check that either the account state was changed or at least one note was consumed,
             // otherwise this transaction is empty
             if self.account_update.initial_state_commitment()
@@ -168,41 +166,7 @@ impl ProvenTransaction {
                 return Err(ProvenTransactionError::EmptyTransaction);
             }
 
-            let is_new_account = self.account_update.initial_state_commitment().is_empty();
-            match self.account_update.details() {
-                AccountUpdateDetails::Private => {
-                    return Err(ProvenTransactionError::PublicStateAccountMissingDetails(
-                        self.account_id(),
-                    ));
-                },
-                AccountUpdateDetails::Delta(delta) => {
-                    if is_new_account {
-                        // This will fail if it is not a full state delta, which means we validate
-                        // that the full state for the account can be constructed from the delta,
-                        // which must be the case for a new account.
-                        let account = Account::try_from(delta).map_err(|err| {
-                            ProvenTransactionError::NewPublicStateAccountRequiresFullStateDelta {
-                                id: delta.id(),
-                                source: err,
-                            }
-                        })?;
-
-                        if account.id() != self.account_id() {
-                            return Err(ProvenTransactionError::AccountIdMismatch {
-                                tx_account_id: self.account_id(),
-                                details_account_id: delta.id(),
-                            });
-                        }
-
-                        if account.commitment() != self.account_update.final_state_commitment() {
-                            return Err(ProvenTransactionError::AccountFinalCommitmentMismatch {
-                                tx_final_commitment: self.account_update.final_state_commitment(),
-                                details_commitment: account.commitment(),
-                            });
-                        }
-                    }
-                },
-            }
+            self.account_update.validate()?;
         } else if !self.account_update.is_private() {
             return Err(ProvenTransactionError::PrivateAccountWithDetails(self.account_id()));
         }
@@ -516,13 +480,57 @@ impl TxAccountUpdate {
     pub fn validate(&self) -> Result<(), ProvenTransactionError> {
         let account_update_size = self.details().get_size_hint();
         if account_update_size > ACCOUNT_UPDATE_MAX_SIZE as usize {
-            Err(ProvenTransactionError::AccountUpdateSizeLimitExceeded {
+            return Err(ProvenTransactionError::AccountUpdateSizeLimitExceeded {
                 account_id: self.account_id(),
                 update_size: account_update_size,
-            })
-        } else {
-            Ok(())
+            });
         }
+
+        if self.account_id.is_private() {
+            if self.details().is_private() {
+                return Ok(());
+            } else {
+                return Err(ProvenTransactionError::PrivateAccountWithDetails(self.account_id()));
+            }
+        }
+
+        let is_new_account = self.initial_state_commitment().is_empty();
+
+        match self.details() {
+            AccountUpdateDetails::Private => {
+                return Err(ProvenTransactionError::PublicStateAccountMissingDetails(
+                    self.account_id(),
+                ));
+            },
+            AccountUpdateDetails::Delta(delta) => {
+                if is_new_account {
+                    // Validate that for new accounts, the full account state can be constructed
+                    // from the delta. This will fail if it is not such a full state delta.
+                    let account = Account::try_from(delta).map_err(|err| {
+                        ProvenTransactionError::NewPublicStateAccountRequiresFullStateDelta {
+                            id: delta.id(),
+                            source: err,
+                        }
+                    })?;
+
+                    if account.id() != self.account_id {
+                        return Err(ProvenTransactionError::AccountIdMismatch {
+                            tx_account_id: self.account_id(),
+                            details_account_id: delta.id(),
+                        });
+                    }
+
+                    if account.commitment() != self.final_state_commitment {
+                        return Err(ProvenTransactionError::AccountFinalCommitmentMismatch {
+                            tx_final_commitment: self.final_state_commitment,
+                            details_commitment: account.commitment(),
+                        });
+                    }
+                }
+            },
+        }
+
+        Ok(())
     }
 }
 
@@ -657,6 +665,7 @@ mod tests {
     use super::ProvenTransaction;
     use crate::account::delta::AccountUpdateDetails;
     use crate::account::{
+        Account,
         AccountDelta,
         AccountId,
         AccountIdVersion,
@@ -672,6 +681,8 @@ mod tests {
         ACCOUNT_ID_PRIVATE_SENDER,
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
     };
+    use crate::testing::add_component::AddComponent;
+    use crate::testing::noop_auth_component::NoopAuthComponent;
     use crate::transaction::{ProvenTransactionBuilder, TxAccountUpdate};
     use crate::utils::Serializable;
     use crate::{
@@ -701,26 +712,28 @@ mod tests {
     }
 
     #[test]
-    fn account_update_size_limit_not_exceeded() {
-        // A small delta does not exceed the limit.
-        let account_id = AccountId::try_from(ACCOUNT_ID_PRIVATE_SENDER).unwrap();
-        let storage_delta = AccountStorageDelta::from_iters(
-            [1, 2, 3, 4],
-            [(2, Word::from([1, 1, 1, 1u32])), (3, Word::from([1, 1, 0, 1u32]))],
-            [],
-        );
-        let delta = AccountDelta::new(account_id, storage_delta, AccountVaultDelta::default(), ONE)
-            .unwrap();
+    fn account_update_size_limit_not_exceeded() -> anyhow::Result<()> {
+        // A small account's delta does not exceed the limit.
+        let account = Account::builder([9; 32])
+            .account_type(AccountType::RegularAccountUpdatableCode)
+            .storage_mode(AccountStorageMode::Public)
+            .with_auth_component(NoopAuthComponent)
+            .with_component(AddComponent)
+            .build_existing()?;
+        let delta = AccountDelta::try_from(account.clone())?;
+
         let details = AccountUpdateDetails::Delta(delta);
+
         TxAccountUpdate::new(
-            AccountId::try_from(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE).unwrap(),
-            EMPTY_WORD,
-            EMPTY_WORD,
-            EMPTY_WORD,
+            account.id(),
+            account.commitment(),
+            account.commitment(),
+            Word::empty(),
             details,
         )
-        .validate()
-        .unwrap();
+        .validate()?;
+
+        Ok(())
     }
 
     #[test]
