@@ -366,11 +366,13 @@ where
     /// Handles a request for a note script by querying the data store.
     ///
     /// The script is fetched from the data store, added to the advice map, and then the note
-    /// builder is created using the provided stack state.
+    /// builder is created using the provided metadata, recipient digest, and note index.
     async fn on_note_script_requested(
         &mut self,
         script_root: Word,
-        stack: Vec<Felt>,
+        metadata: miden_objects::note::NoteMetadata,
+        recipient_digest: Word,
+        note_idx: usize,
         process: &ProcessState<'_>,
     ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
         let note_script =
@@ -389,7 +391,9 @@ where
         )]))];
 
         self.base_host.create_note_builder_from_stack_and_script(
-            stack,
+            metadata,
+            recipient_digest,
+            note_idx,
             script_root,
             script_felts,
             process.advice_provider(),
@@ -500,8 +504,19 @@ where
                     .on_account_storage_map_witness_requested(current_account_id, map_root, map_key)
                     .await
                     .map_err(EventError::from),
-                TransactionEventData::NoteScript { script_root, stack } => self
-                    .on_note_script_requested(script_root, stack, process)
+                TransactionEventData::NoteScript {
+                    script_root,
+                    metadata,
+                    recipient_digest,
+                    note_idx,
+                } => self
+                    .on_note_script_requested(
+                        script_root,
+                        metadata,
+                        recipient_digest,
+                        note_idx,
+                        process,
+                    )
                     .await
                     .map_err(EventError::from),
             }

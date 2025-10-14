@@ -38,7 +38,7 @@ use miden_objects::account::{
     StorageSlotType,
 };
 use miden_objects::asset::{Asset, AssetVault, FungibleAsset};
-use miden_objects::note::NoteId;
+use miden_objects::note::{NoteId, NoteMetadata};
 use miden_objects::transaction::{
     InputNote,
     InputNotes,
@@ -217,26 +217,27 @@ where
         )
     }
 
-    /// Creates a note builder from the provided stack state and note script, and inserts it into
-    /// the output_notes map. This is used after fetching a note script from the data store.
+    /// Creates a note builder from the provided metadata, recipient digest, note index and note
+    /// script, and inserts it into the output_notes map. This is used after fetching a note
+    /// script from the data store.
     ///
     /// The script should have already been added to the advice provider before calling this method.
     pub(super) fn create_note_builder_from_stack_and_script(
         &mut self,
-        stack: Vec<Felt>,
+        metadata: NoteMetadata,
+        recipient_digest: Word,
+        note_idx: usize,
         _script_root: Word,
         _script_felts: Vec<Felt>,
         adv_provider: &miden_processor::AdviceProvider,
     ) -> Result<(), TransactionKernelError> {
-        let note_idx: usize = stack[9].as_int() as usize;
-
         // If the note builder already exists, we don't need to create it again
         if self.output_notes.contains_key(&note_idx) {
             return Ok(());
         }
 
         // Create the note builder now that the script is available in the advice provider
-        let note_builder = OutputNoteBuilder::new(stack, adv_provider)?;
+        let note_builder = OutputNoteBuilder::new(metadata, recipient_digest, adv_provider)?;
         self.output_notes.insert(note_idx, note_builder);
 
         Ok(())
@@ -532,10 +533,10 @@ where
     /// Creates a new [OutputNoteBuilder] from the data on the operand stack and stores it into the
     /// `output_notes` field of this [`TransactionBaseHost`].
     ///
-    /// Expected stack state: `[event, NOTE_METADATA, RECIPIENT, ...]`
+    /// Expected stack state: `[event, NOTE_METADATA, note_ptr, RECIPIENT, note_idx]`
     ///
     /// If the note script is not found in the advice provider for a PUBLIC note, this method
-    /// returns [`TransactionEventHandling::Unhandled`] with the script root and stack state,
+    /// returns [`TransactionEventHandling::Unhandled`] with the script root and extracted data,
     /// signaling that the script should be fetched from the data store. The note builder will
     /// be created later by [`create_note_builder_from_stack_and_script`] after the script is
     /// fetched.
@@ -543,9 +544,16 @@ where
         &mut self,
         process: &ProcessState,
     ) -> Result<TransactionEventHandling, TransactionKernelError> {
-        let stack = process.get_stack_state().split_off(1);
+        // Extract metadata from stack
+        let metadata_word = process.get_stack_word(1);
+        let metadata = NoteMetadata::try_from(metadata_word)
+            .map_err(TransactionKernelError::MalformedNoteMetadata)?;
 
-        let note_idx: usize = stack[9].as_int() as usize;
+        // Extract recipient digest from stack
+        let recipient_digest = process.get_stack_word(6);
+
+        // Extract note index from stack
+        let note_idx = process.get_stack_item(10).as_int() as usize;
 
         // Check if we've already created this note builder (after fetching the script)
         if self.output_notes.contains_key(&note_idx) {
@@ -560,9 +568,6 @@ where
                 note_idx
             )));
         }
-
-        // Extract recipient digest and check if we have the script in the advice provider
-        let recipient_digest = Word::new([stack[8], stack[7], stack[6], stack[5]]);
 
         // Try to get recipient data from the advice map
         if let Some(data) = process.advice_provider().get_mapped_values(&recipient_digest) {
@@ -585,14 +590,17 @@ where
             if is_script_missing {
                 return Ok(TransactionEventHandling::Unhandled(TransactionEventData::NoteScript {
                     script_root,
-                    stack: stack.clone(),
+                    metadata,
+                    recipient_digest,
+                    note_idx,
                 }));
             }
         }
 
         // Build the note - this will error if required data (like script for PUBLIC notes) is
         // missing
-        let note_builder = OutputNoteBuilder::new(stack, process.advice_provider())?;
+        let note_builder =
+            OutputNoteBuilder::new(metadata, recipient_digest, process.advice_provider())?;
         self.output_notes.insert(note_idx, note_builder);
 
         Ok(TransactionEventHandling::Handled(Vec::new()))
@@ -1269,7 +1277,11 @@ pub(super) enum TransactionEventData {
     NoteScript {
         /// The root of the note script being requested.
         script_root: Word,
-        /// The stack state needed to create the note builder after the script is fetched.
-        stack: Vec<Felt>,
+        /// The note metadata extracted from the stack.
+        metadata: NoteMetadata,
+        /// The recipient digest extracted from the stack.
+        recipient_digest: Word,
+        /// The note index extracted from the stack.
+        note_idx: usize,
     },
 }

@@ -326,7 +326,7 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
     let target_account_suffix = recipient_account_id.suffix();
     let target_account_prefix = recipient_account_id.prefix().as_felt();
 
-   let note_script_code = format!(
+    let note_script_code = format!(
         "
             use.miden::note
             

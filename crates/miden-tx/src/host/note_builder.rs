@@ -1,5 +1,3 @@
-use alloc::vec::Vec;
-
 use miden_objects::asset::Asset;
 use miden_objects::note::{
     Note,
@@ -12,7 +10,7 @@ use miden_objects::note::{
 };
 use miden_processor::AdviceProvider;
 
-use super::{Felt, OutputNote, Word};
+use super::{OutputNote, Word};
 use crate::errors::TransactionKernelError;
 
 // OUTPUT NOTE BUILDER
@@ -31,37 +29,21 @@ impl OutputNoteBuilder {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
 
-    /// Returns a new [OutputNoteBuilder] read from the provided stack state and advice provider.
-    ///
-    /// The stack is expected to be in the following state:
-    ///
-    ///   [NOTE_METADATA, RECIPIENT]
+    /// Returns a new [OutputNoteBuilder] from the provided metadata, recipient digest, and advice
+    /// provider.
     ///
     /// Detailed note info such as assets and recipient (when available) are retrieved from the
     /// advice provider.
     ///
     /// # Errors
     /// Returns an error if:
-    /// - Note type specified via the stack is malformed.
-    /// - Sender account ID specified via the stack is invalid.
-    /// - A combination of note type, sender account ID, and note tag do not form a valid
-    ///   [NoteMetadata] object.
     /// - Recipient information in the advice provider is present but is malformed.
     /// - A non-private note is missing recipient details.
     pub fn new(
-        stack: Vec<Felt>,
+        metadata: NoteMetadata,
+        recipient_digest: Word,
         adv_provider: &AdviceProvider,
     ) -> Result<Self, TransactionKernelError> {
-        // read note metadata info from the stack and build the metadata object
-        let metadata_word = Word::from([stack[3], stack[2], stack[1], stack[0]]);
-        let metadata: NoteMetadata = metadata_word
-            .try_into()
-            .map_err(TransactionKernelError::MalformedNoteMetadata)?;
-
-        // read recipient digest from the stack and try to build note recipient object if there is
-        // enough info available in the advice provider
-        let recipient_digest = Word::new([stack[8], stack[7], stack[6], stack[5]]);
-
         // This method returns an error if the mapped value is not found.
         let recipient = if let Some(data) = adv_provider.get_mapped_values(&recipient_digest) {
             // Support both old format (13 felts) and new format (12 felts) from build_recipient
