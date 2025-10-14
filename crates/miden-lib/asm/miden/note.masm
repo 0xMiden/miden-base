@@ -117,7 +117,7 @@ end
 #! - num_inputs is greater than 128.
 #!
 #! Invocation: exec
-export.build_recipient.2
+export.build_recipient.12
     dup.1 dup.1 loc_store.0 loc_store.1
     # => [inputs_ptr, num_inputs, SERIAL_NUM, SCRIPT_ROOT]
 
@@ -156,14 +156,17 @@ export.build_recipient.2
     # => [SERIAL_NUM, SCRIPT_ROOT, INPUTS_HASH, RECIPIENT]
 
     # inserting NoteDetails into AdviceMap
-    mem_storew.0 dropw mem_storew.4 dropw mem_storew.8 dropw
+    loc_storew.0 dropw loc_storew.4 dropw loc_storew.8 dropw
     # => [RECIPIENT]
 
-    push.12.0 movdn.5 movdn.5
-    # => [RECIPIENT, 0, 12]
+    locaddr.0 dup push.12 add swap
+    # => [mem_ptr, end_ptr, RECIPIENT]
+
+    movdn.5 movdn.5
+    # => [RECIPIENT, mem_ptr, end_ptr]
 
     adv.insert_mem
-    # => [RECIPIENT, 0, 12]
+    # => [RECIPIENT, mem_ptr, end_ptr]
 
     movup.5 drop movup.4 drop
     # => [RECIPIENT]
