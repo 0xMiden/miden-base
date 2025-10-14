@@ -42,13 +42,14 @@ impl StorageDeltaTracker {
     /// transaction kernel delta.
     pub fn new(account: &PartialAccount) -> Self {
         let initial_storage_header = if account.is_new() {
+            // Create empty slots of the same type as the to-be-created account.
             let slots = account
                 .storage()
                 .header()
                 .slots()
                 .map(|(slot_type, _)| match slot_type {
                     StorageSlotType::Value => (*slot_type, Word::empty()),
-                    StorageSlotType::Map => (*slot_type, StorageMap::EMPTY_VALUE),
+                    StorageSlotType::Map => (*slot_type, StorageMap::new().root()),
                 })
                 .collect();
             AccountStorageHeader::new(slots)

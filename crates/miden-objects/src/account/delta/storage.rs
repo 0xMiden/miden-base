@@ -60,7 +60,7 @@ impl AccountStorageDelta {
     }
 
     /// Returns the slot type of the provided slot index or `None` if no such slot exists.
-    pub fn slot_type(&self, slot_index: u8) -> Option<StorageSlotType> {
+    pub(crate) fn slot_type(&self, slot_index: u8) -> Option<StorageSlotType> {
         if self.values().contains_key(&slot_index) {
             Some(StorageSlotType::Value)
         } else if self.maps().contains_key(&slot_index) {

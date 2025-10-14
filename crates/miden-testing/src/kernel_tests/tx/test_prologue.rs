@@ -62,7 +62,6 @@ use miden_lib::transaction::memory::{
     TX_SCRIPT_ROOT_PTR,
     VERIFICATION_BASE_FEE_IDX,
 };
-use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{
     Account,
     AccountBuilder,
@@ -82,10 +81,10 @@ use miden_objects::testing::account_id::{
 };
 use miden_objects::testing::noop_auth_component::NoopAuthComponent;
 use miden_objects::transaction::{ExecutedTransaction, TransactionArgs, TransactionScript};
-use miden_objects::{EMPTY_WORD, LexicographicWord, ONE, WORD_SIZE};
+use miden_objects::{EMPTY_WORD, ONE, WORD_SIZE};
 use miden_processor::fast::ExecutionOutput;
 use miden_processor::{AdviceInputs, Word};
-use miden_tx::{LocalTransactionProver, TransactionExecutorError};
+use miden_tx::TransactionExecutorError;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 
@@ -801,91 +800,6 @@ fn test_get_blk_timestamp() -> anyhow::Result<()> {
         exec_output.get_stack_element(0),
         tx_context.tx_inputs().block_header().timestamp().into()
     );
-
-    Ok(())
-}
-
-/// Tests that an account with a storage map can be created.
-///
-/// In particular, this tests the account delta logic for storage maps for _new_ accounts.
-#[tokio::test]
-async fn create_account_with_storage_map() -> anyhow::Result<()> {
-    let map_entries = [
-        (Word::from([1, 2, 3, 4u32]), Word::from([5, 6, 7, 8u32])),
-        (Word::from([10, 20, 30, 40u32]), Word::from([50, 60, 70, 80u32])),
-    ];
-    let map_slot = StorageSlot::Map(StorageMap::with_entries(map_entries)?);
-
-    let account = AccountBuilder::new([6; 32])
-        .storage_mode(AccountStorageMode::Public)
-        .with_auth_component(Auth::IncrNonce)
-        .with_component(MockAccountComponent::with_slots(vec![map_slot]))
-        .build()?;
-
-    let tx = TransactionContextBuilder::new(account)
-        .build()?
-        .execute()
-        .await
-        .context("failed to execute account-creating transaction")?;
-
-    assert_eq!(tx.account_delta().nonce_delta(), Felt::new(1));
-
-    assert_eq!(
-        tx.account_delta().storage().maps().get(&0).unwrap().entries(),
-        &BTreeMap::from_iter(
-            map_entries
-                .into_iter()
-                .map(|(key, value)| { (LexicographicWord::new(key), value) })
-        )
-    );
-
-    assert!(tx.account_delta().vault().is_empty());
-    assert_eq!(tx.final_account().nonce(), Felt::new(1));
-
-    // The delta should be present on the proven tx.
-    let proven_tx = LocalTransactionProver::default().prove(tx.clone())?;
-    let AccountUpdateDetails::Delta(delta) = proven_tx.account_update().details() else {
-        panic!("expected delta");
-    };
-    assert_eq!(delta, tx.account_delta());
-
-    Ok(())
-}
-
-/// Tests that an account with storage values can be created.
-///
-/// In particular, this tests the account delta logic for storage values for _new_ accounts.
-#[tokio::test]
-async fn create_account_with_storage_values() -> anyhow::Result<()> {
-    let slot0 = StorageSlot::Value(Word::from([1, 2, 3, 4u32]));
-    let slot1 = StorageSlot::Value(Word::from([10, 20, 30, 40u32]));
-
-    let account = AccountBuilder::new([7; 32])
-        .storage_mode(AccountStorageMode::Public)
-        .with_auth_component(Auth::IncrNonce)
-        .with_component(MockAccountComponent::with_slots(vec![slot0.clone(), slot1.clone()]))
-        .build()?;
-
-    let tx = TransactionContextBuilder::new(account)
-        .build()?
-        .execute()
-        .await
-        .context("failed to execute account-creating transaction")?;
-
-    assert_eq!(tx.account_delta().nonce_delta(), Felt::new(1));
-
-    assert_eq!(tx.account_delta().storage().values().get(&0).unwrap(), &slot0.value());
-    assert_eq!(tx.account_delta().storage().values().get(&1).unwrap(), &slot1.value());
-
-    assert!(tx.account_delta().vault().is_empty());
-    assert_eq!(tx.final_account().nonce(), Felt::new(1));
-
-    // The delta should be present on the proven tx.
-    let proven_tx = LocalTransactionProver::default().prove(tx.clone())?;
-    let AccountUpdateDetails::Delta(delta) = proven_tx.account_update().details() else {
-        panic!("expected delta");
-    };
-    assert_eq!(delta, tx.account_delta());
 
     Ok(())
 }

@@ -28,6 +28,7 @@ use miden_objects::account::{
     AccountStorage,
     AccountStorageMode,
     AccountType,
+    StorageMap,
     StorageSlot,
 };
 use miden_objects::assembly::diagnostics::{IntoDiagnostic, NamedSource, Report, WrapErr, miette};
@@ -995,7 +996,7 @@ fn test_compute_storage_commitment() -> anyhow::Result<()> {
 async fn proven_tx_storage_map_matches_executed_tx_for_new_account() -> anyhow::Result<()> {
     // Build a public account so the proven transaction includes the account update.
     let mock_slots = AccountStorage::mock_storage_slots();
-    let mut account = AccountBuilder::new([1; 32])
+    let account = AccountBuilder::new([1; 32])
         .storage_mode(AccountStorageMode::Public)
         .with_auth_component(Auth::IncrNonce)
         .with_component(MockAccountComponent::with_slots(mock_slots.clone()))
@@ -1051,12 +1052,68 @@ async fn proven_tx_storage_map_matches_executed_tx_for_new_account() -> anyhow::
         panic!("expected delta");
     };
 
-    let new_account = Account::try_from(delta)?;
-    account.apply_delta(tx.account_delta())?;
+    let proven_tx_account = Account::try_from(delta)?;
+    let exec_tx_account = Account::try_from(tx.account_delta())?;
 
-    for (idx, slot) in new_account.storage().slots().iter().enumerate() {
-        assert_eq!(slot, &account.storage().slots()[idx], "slot {idx} did not match");
-    }
+    assert_eq!(proven_tx_account.storage(), exec_tx_account.storage());
+
+    Ok(())
+}
+
+/// Tests that an account with a non-empty map can be created.
+///
+/// In particular, this tests the account delta logic for (non-empty) storage slots for _new_
+/// accounts.
+#[tokio::test]
+async fn prove_account_creation_with_non_empty_storage() -> anyhow::Result<()> {
+    let slot0 = StorageSlot::Value(Word::from([1, 2, 3, 4u32]));
+    let slot1 = StorageSlot::Value(Word::from([10, 20, 30, 40u32]));
+    let map_entries = [
+        (Word::from([1, 2, 3, 4u32]), Word::from([5, 6, 7, 8u32])),
+        (Word::from([10, 20, 30, 40u32]), Word::from([50, 60, 70, 80u32])),
+    ];
+    let map_slot = StorageSlot::Map(StorageMap::with_entries(map_entries)?);
+
+    let account = AccountBuilder::new([6; 32])
+        .storage_mode(AccountStorageMode::Public)
+        .with_auth_component(Auth::IncrNonce)
+        .with_component(MockAccountComponent::with_slots(vec![
+            slot0.clone(),
+            slot1.clone(),
+            map_slot,
+        ]))
+        .build()?;
+
+    let tx = TransactionContextBuilder::new(account)
+        .build()?
+        .execute()
+        .await
+        .context("failed to execute account-creating transaction")?;
+
+    assert_eq!(tx.account_delta().nonce_delta(), Felt::new(1));
+
+    assert_eq!(tx.account_delta().storage().values().get(&0).unwrap(), &slot0.value());
+    assert_eq!(tx.account_delta().storage().values().get(&1).unwrap(), &slot1.value());
+
+    assert_eq!(
+        tx.account_delta().storage().maps().get(&2).unwrap().entries(),
+        &BTreeMap::from_iter(
+            map_entries
+                .into_iter()
+                .map(|(key, value)| { (LexicographicWord::new(key), value) })
+        )
+    );
+
+    assert!(tx.account_delta().vault().is_empty());
+    assert_eq!(tx.final_account().nonce(), Felt::new(1));
+
+    let proven_tx = LocalTransactionProver::default().prove(tx.clone())?;
+
+    // The delta should be present on the proven tx.
+    let AccountUpdateDetails::Delta(delta) = proven_tx.account_update().details() else {
+        panic!("expected delta");
+    };
+    assert_eq!(delta, tx.account_delta());
 
     Ok(())
 }

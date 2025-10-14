@@ -352,6 +352,10 @@ impl Account {
     /// - The nonce specified in the provided delta smaller than or equal to the current account
     ///   nonce.
     pub fn apply_delta(&mut self, delta: &AccountDelta) -> Result<(), AccountError> {
+        if delta.is_full_state() {
+            return Err(AccountError::ApplyFullStateDeltaToAccount);
+        }
+
         // update vault; we don't check vault delta validity here because `AccountDelta` can contain
         // only valid vault deltas
         self.vault

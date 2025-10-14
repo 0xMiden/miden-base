@@ -166,6 +166,10 @@ pub enum AccountError {
         account_type: AccountType,
         component_index: usize,
     },
+    #[error(
+        "failed to apply full state delta to existing account; full state deltas can be converted to accounts directly"
+    )]
+    ApplyFullStateDeltaToAccount,
     #[error("only account deltas representing a full account can be converted to a full account")]
     PartialStateDeltaToAccount,
     #[error("maximum number of storage map leaves exceeded")]

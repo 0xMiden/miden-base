@@ -227,12 +227,12 @@ impl AccountDelta {
     ///
     /// # Security
     ///
-    /// The general concern with the commitment is that two deltas must never hash to the same
-    /// commitment. E.g. a commitment of a delta that changes a key-value pair in a storage map
-    /// slot should be different from a delta that adds a non-fungible asset to the vault. If
-    /// not, a delta can be crafted in the VM that sets a map key but a malicious actor crafts a
-    /// delta outside the VM that adds a non-fungible asset. To prevent that, a couple of
-    /// measures are taken.
+    /// The general concern with the commitment is that two distinct deltas must never hash to the
+    /// same commitment. E.g. a commitment of a delta that changes a key-value pair in a storage
+    /// map slot should be different from a delta that adds a non-fungible asset to the vault.
+    /// If not, a delta can be crafted in the VM that sets a map key but a malicious actor
+    /// crafts a delta outside the VM that adds a non-fungible asset. To prevent that, a couple
+    /// of measures are taken.
     ///
     /// - Because multiple unrelated contexts (e.g. vaults and storage slots) are hashed in the same
     ///   hasher, domain separators are used to disambiguate. For each changed asset and each
