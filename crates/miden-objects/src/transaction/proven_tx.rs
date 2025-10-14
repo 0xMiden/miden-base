@@ -1,3 +1,4 @@
+use alloc::boxed::Box;
 use alloc::string::ToString;
 use alloc::vec::Vec;
 
@@ -141,7 +142,9 @@ impl ProvenTransaction {
     /// Returns an error if:
     /// - The transaction is empty, which is the case if the account state is unchanged or the
     ///   number of input notes is zero.
-    fn validate(self) -> Result<Self, ProvenTransactionError> {
+    /// - The commitment computed on the actual account delta contained in [`TxAccountUpdate`] does
+    ///   not match its declared account delta commitment.
+    fn validate(mut self) -> Result<Self, ProvenTransactionError> {
         // Check that either the account state was changed or at least one note was consumed,
         // otherwise this transaction is considered empty.
         if self.account_update.initial_state_commitment()
@@ -149,6 +152,34 @@ impl ProvenTransaction {
             && self.input_notes.commitment().is_empty()
         {
             return Err(ProvenTransactionError::EmptyTransaction);
+        }
+
+        match &mut self.account_update.details {
+            // The delta commitment cannot be validated for private account updates. It will be
+            // validated as part of transaction proof verification implicitly.
+            AccountUpdateDetails::Private => (),
+            AccountUpdateDetails::Delta(post_fee_account_delta) => {
+                // Add the removed fee to the post fee delta to get the pre-fee delta, against which
+                // the delta commitment needs to be validated.
+                post_fee_account_delta.vault_mut().add_asset(self.fee.into()).map_err(|err| {
+                    ProvenTransactionError::AccountDeltaCommitmentMismatch(Box::from(err))
+                })?;
+
+                let expected_commitment = self.account_update.account_delta_commitment;
+                let actual_commitment = post_fee_account_delta.to_commitment();
+                if expected_commitment != actual_commitment {
+                    return Err(ProvenTransactionError::AccountDeltaCommitmentMismatch(Box::from(
+                        format!(
+                            "expected account delta commitment {expected_commitment} but found {actual_commitment}"
+                        ),
+                    )));
+                }
+
+                // Remove the added fee again to recreate the post fee delta.
+                post_fee_account_delta.vault_mut().remove_asset(self.fee.into()).map_err(
+                    |err| ProvenTransactionError::AccountDeltaCommitmentMismatch(Box::from(err)),
+                )?;
+            },
         }
 
         Ok(self)
@@ -321,19 +352,21 @@ impl ProvenTransactionBuilder {
     /// - The total number of output notes is greater than
     ///   [`MAX_OUTPUT_NOTES_PER_TX`](crate::constants::MAX_OUTPUT_NOTES_PER_TX).
     /// - The vector of output notes contains duplicates.
-    /// - The size of the serialized account update exceeds [`ACCOUNT_UPDATE_MAX_SIZE`].
     /// - The transaction is empty, which is the case if the account state is unchanged or the
     ///   number of input notes is zero.
+    /// - The commitment computed on the actual account delta contained in [`TxAccountUpdate`] does
+    ///   not match its declared account delta commitment.
+    /// - The size of the serialized account update exceeds [`ACCOUNT_UPDATE_MAX_SIZE`].
     /// - The transaction was executed against a _new_ account with public state and its account ID
     ///   does not match the ID in the account update.
     /// - The transaction was executed against a _new_ account with public state and its commitment
     ///   does not match the final state commitment of the account update.
+    /// - The transaction creates a _new_ account with public state and the update is of type
+    ///   [`AccountUpdateDetails::Delta`] but the account delta is not a full state delta.
     /// - The transaction was executed against a private account and the account update is _not_ of
     ///   type [`AccountUpdateDetails::Private`].
     /// - The transaction was executed against an account with public state and the update is of
     ///   type [`AccountUpdateDetails::Private`].
-    /// - The transaction creates a _new_ account with public state and the update is of type
-    ///   [`AccountUpdateDetails::Delta`] where the account delta is a full state delta.
     pub fn build(self) -> Result<ProvenTransaction, ProvenTransactionError> {
         let input_notes =
             InputNotes::new(self.input_notes).map_err(ProvenTransactionError::InputNotesError)?;

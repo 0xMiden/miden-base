@@ -711,6 +711,8 @@ pub enum ProvenTransactionError {
     },
     #[error("proven transaction neither changed the account state, nor consumed any notes")]
     EmptyTransaction,
+    #[error("failed to validate account delta in transaction account update")]
+    AccountDeltaCommitmentMismatch(#[source] Box<dyn Error + Send + Sync + 'static>),
 }
 
 // PROPOSED BATCH ERROR
