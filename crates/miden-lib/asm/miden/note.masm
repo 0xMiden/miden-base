@@ -113,7 +113,7 @@ export.build_recipient.2
     # => [inputs_ptr, num_inputs, SERIAL_NUM, SCRIPT_ROOT] 
 
     exec.compute_inputs_commitment
-    # => [INPUTS_HASH, SERIAL_NUM, SCRIPT_ROOT]
+    # => [INPUTS_COMMITMENT, SERIAL_NUM, SCRIPT_ROOT]
 
     movdnw.2
     # => [SERIAL_NUM, SCRIPT_ROOT, INPUTS_HASH]
