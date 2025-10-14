@@ -552,7 +552,14 @@ where
             return Ok(TransactionEventHandling::Handled(Vec::new()));
         }
 
-        assert_eq!(note_idx, self.output_notes.len(), "note index mismatch");
+        // Verify that the note index matches the expected next index
+        if note_idx != self.output_notes.len() {
+            return Err(TransactionKernelError::other(format!(
+                "note index mismatch: expected {}, got {}",
+                self.output_notes.len(),
+                note_idx
+            )));
+        }
 
         // Extract recipient digest and check if we have the script in the advice provider
         let recipient_digest = Word::new([stack[8], stack[7], stack[6], stack[5]]);
