@@ -66,15 +66,9 @@ impl VaultKey {
         }
     }
 
-    // TODO: Replace with https://github.com/0xMiden/crypto/issues/515 once implemented.
     /// Returns the leaf index of a vault key.
     pub fn to_leaf_index(&self) -> LeafIndex<SMT_DEPTH> {
         LeafIndex::<SMT_DEPTH>::from(self.as_word())
-    }
-
-    /// Returns `true` if the asset key is for a fungible asset, `false` otherwise.
-    fn is_fungible(&self) -> bool {
-        self.as_word()[0].as_int() == 0 && self.as_word()[1].as_int() == 0
     }
 
     /// Constructs a fungible asset's key from a faucet ID.
@@ -92,6 +86,11 @@ impl VaultKey {
             _ => None,
         }
     }
+
+    /// Returns `true` if the asset key is for a fungible asset, `false` otherwise.
+    fn is_fungible(&self) -> bool {
+        self.as_word()[0].as_int() == 0 && self.as_word()[1].as_int() == 0
+    }
 }
 
 impl fmt::Display for VaultKey {
@@ -103,8 +102,8 @@ impl fmt::Display for VaultKey {
 // ================================================================================================
 
 impl From<VaultKey> for Word {
-    fn from(val: VaultKey) -> Self {
-        val.0
+    fn from(vault_key: VaultKey) -> Self {
+        vault_key.0
     }
 }
 
@@ -134,12 +133,7 @@ mod tests {
     use miden_core::Felt;
 
     use super::*;
-    use crate::account::{AccountIdV0, AccountStorageMode, AccountType};
-
-    fn make_fungible_key(prefix: u64, suffix: u64) -> VaultKey {
-        let word = [Felt::new(0), Felt::new(0), Felt::new(suffix), Felt::new(prefix)].into();
-        VaultKey::new_unchecked(word)
-    }
+    use crate::account::{AccountIdVersion, AccountStorageMode, AccountType};
 
     fn make_non_fungible_key(prefix: u64) -> VaultKey {
         let word = [Felt::new(prefix), Felt::new(11), Felt::new(22), Felt::new(33)].into();
@@ -147,53 +141,39 @@ mod tests {
     }
 
     #[test]
-    fn test_faucet_id_prefix_for_fungible_asset() {
-        let input = [0xff; 15];
-
-        for storage_mode in [AccountStorageMode::Private, AccountStorageMode::Public] {
-            let id = AccountIdV0::dummy(input, AccountType::FungibleFaucet, storage_mode);
-
-            let key =
-                VaultKey::from_account_id(id.into()).expect("Expected VaultKey for FungibleFaucet");
-
-            // faucet_id_prefix() should match AccountId prefix
-            assert_eq!(key.faucet_id_prefix().as_felt(), id.prefix().as_felt());
-
-            // faucet_id() should return the same account id
-            let faucet_id = key.faucet_id().expect("Expected Some(AccountId)");
-            assert_eq!(faucet_id.prefix().as_felt(), id.prefix().as_felt());
-            assert_eq!(faucet_id.suffix(), id.suffix());
-        }
-    }
-
-    #[test]
-    fn test_faucet_id_prefix_for_non_fungible_asset() {
-        let prefix_val = 0;
-        let key = make_non_fungible_key(prefix_val);
-
-        let prefix = key.faucet_id_prefix();
-        assert_eq!(prefix.as_felt(), Felt::new(prefix_val));
-    }
-
-    #[test]
     fn test_faucet_id_for_fungible_asset() {
-        let prefix_val = 0;
-        let suffix_val = 0;
-        let key = make_fungible_key(prefix_val, suffix_val);
+        let id = AccountId::dummy(
+            [0xff; 15],
+            AccountIdVersion::Version0,
+            AccountType::FungibleFaucet,
+            AccountStorageMode::Public,
+        );
 
-        let faucet_id = key.faucet_id().expect("Expected Some(AccountId)");
-        assert_eq!(faucet_id.prefix().as_felt(), Felt::new(prefix_val));
-        assert_eq!(faucet_id.suffix(), Felt::new(suffix_val));
+        let key = VaultKey::from_account_id(id).expect("Expected VaultKey for FungibleFaucet");
+
+        // faucet_id_prefix() should match AccountId prefix
+        assert_eq!(key.faucet_id_prefix(), id.prefix());
+
+        // faucet_id() should return the same account id
+        assert_eq!(key.faucet_id().unwrap(), id);
     }
 
     #[test]
     fn test_faucet_id_for_non_fungible_asset() {
-        let input = [0xff; 15];
+        let id = AccountId::dummy(
+            [0xff; 15],
+            AccountIdVersion::Version0,
+            AccountType::NonFungibleFaucet,
+            AccountStorageMode::Public,
+        );
 
-        for storage_mode in [AccountStorageMode::Private, AccountStorageMode::Public] {
-            let id = AccountIdV0::dummy(input, AccountType::NonFungibleFaucet, storage_mode);
+        let prefix_value = id.prefix().as_u64();
+        let key = make_non_fungible_key(prefix_value);
 
-            assert!(VaultKey::from_account_id(id.into()).is_none());
-        }
+        // faucet_id_prefix() should match AccountId prefix
+        assert_eq!(key.faucet_id_prefix(), id.prefix());
+
+        // faucet_id() should return the None
+        assert_eq!(key.faucet_id(), None);
     }
 }
