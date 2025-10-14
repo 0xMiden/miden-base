@@ -30,10 +30,10 @@ use crate::asset::{Asset, FungibleAsset, NonFungibleAsset};
 ///
 /// The fungible bit is the bit in the [`AccountId`] that encodes whether the ID is a faucet.
 #[derive(Debug, PartialEq, Eq, Clone, Copy, PartialOrd, Ord)]
-pub struct AssetKey(Word);
+pub struct VaultKey(Word);
 
-impl AssetKey {
-    /// Creates a new [`AssetKey`] from the given [`Word`] **without performing validation**.
+impl VaultKey {
+    /// Creates a new [`VaultKey`] from the given [`Word`] **without performing validation**.
     ///
     /// ## Warning
     ///
@@ -43,7 +43,7 @@ impl AssetKey {
         Self(value)
     }
 
-    /// Returns the underlying [`Word`] that makes up this [`AssetKey`].
+    /// Returns the underlying [`Word`] that makes up this [`VaultKey`].
     pub fn as_word(&self) -> Word {
         self.0
     }
@@ -87,14 +87,14 @@ impl AssetKey {
                 let mut key = Word::empty();
                 key[2] = faucet_id.suffix();
                 key[3] = faucet_id.prefix().as_felt();
-                Some(AssetKey::new_unchecked(key))
+                Some(VaultKey::new_unchecked(key))
             },
             _ => None,
         }
     }
 }
 
-impl fmt::Display for AssetKey {
+impl fmt::Display for VaultKey {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.as_word())
     }
@@ -102,25 +102,25 @@ impl fmt::Display for AssetKey {
 // CONVERSIONS
 // ================================================================================================
 
-impl From<AssetKey> for Word {
-    fn from(val: AssetKey) -> Self {
+impl From<VaultKey> for Word {
+    fn from(val: VaultKey) -> Self {
         val.0
     }
 }
 
-impl From<Asset> for AssetKey {
+impl From<Asset> for VaultKey {
     fn from(asset: Asset) -> Self {
         asset.vault_key()
     }
 }
 
-impl From<FungibleAsset> for AssetKey {
+impl From<FungibleAsset> for VaultKey {
     fn from(fungible_asset: FungibleAsset) -> Self {
         fungible_asset.vault_key()
     }
 }
 
-impl From<NonFungibleAsset> for AssetKey {
+impl From<NonFungibleAsset> for VaultKey {
     fn from(non_fungible_asset: NonFungibleAsset) -> Self {
         non_fungible_asset.vault_key()
     }
@@ -136,14 +136,14 @@ mod tests {
     use super::*;
     use crate::account::{AccountIdV0, AccountStorageMode, AccountType};
 
-    fn make_fungible_key(prefix: u64, suffix: u64) -> AssetKey {
+    fn make_fungible_key(prefix: u64, suffix: u64) -> VaultKey {
         let word = [Felt::new(0), Felt::new(0), Felt::new(suffix), Felt::new(prefix)].into();
-        AssetKey::new_unchecked(word)
+        VaultKey::new_unchecked(word)
     }
 
-    fn make_non_fungible_key(prefix: u64) -> AssetKey {
+    fn make_non_fungible_key(prefix: u64) -> VaultKey {
         let word = [Felt::new(prefix), Felt::new(11), Felt::new(22), Felt::new(33)].into();
-        AssetKey::new_unchecked(word)
+        VaultKey::new_unchecked(word)
     }
 
     #[test]
@@ -154,7 +154,7 @@ mod tests {
             let id = AccountIdV0::dummy(input, AccountType::FungibleFaucet, storage_mode);
 
             let key =
-                AssetKey::from_account_id(id.into()).expect("Expected AssetKey for FungibleFaucet");
+                VaultKey::from_account_id(id.into()).expect("Expected VaultKey for FungibleFaucet");
 
             // faucet_id_prefix() should match AccountId prefix
             assert_eq!(key.faucet_id_prefix().as_felt(), id.prefix().as_felt());
@@ -193,7 +193,7 @@ mod tests {
         for storage_mode in [AccountStorageMode::Private, AccountStorageMode::Public] {
             let id = AccountIdV0::dummy(input, AccountType::NonFungibleFaucet, storage_mode);
 
-            assert!(AssetKey::from_account_id(id.into()).is_none());
+            assert!(VaultKey::from_account_id(id.into()).is_none());
         }
     }
 }

@@ -2,7 +2,7 @@ use alloc::string::ToString;
 
 use miden_crypto::merkle::{InnerNodeInfo, MerkleError, PartialSmt, SmtLeaf, SmtProof};
 
-use super::{AssetKey, AssetVault};
+use super::{AssetVault, VaultKey};
 use crate::Word;
 use crate::asset::{Asset, AssetWitness};
 use crate::errors::PartialAssetVaultError;
@@ -68,7 +68,7 @@ impl PartialVault {
     ///
     /// Returns an error if:
     /// - the key is not tracked by this partial vault.
-    pub fn open(&self, vault_key: AssetKey) -> Result<AssetWitness, PartialAssetVaultError> {
+    pub fn open(&self, vault_key: VaultKey) -> Result<AssetWitness, PartialAssetVaultError> {
         let smt_proof = self
             .partial_smt
             .open(&vault_key.as_word())
@@ -85,7 +85,7 @@ impl PartialVault {
     ///
     /// Returns an error if:
     /// - the key is not tracked by this partial SMT.
-    pub fn get(&self, vault_key: AssetKey) -> Result<Option<Asset>, MerkleError> {
+    pub fn get(&self, vault_key: VaultKey) -> Result<Option<Asset>, MerkleError> {
         self.partial_smt.get_value(&vault_key.as_word()).map(|word| {
             if word.is_empty() {
                 None

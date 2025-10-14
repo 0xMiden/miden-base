@@ -39,7 +39,7 @@ use miden_objects::account::{
     StorageMap,
     StorageSlotType,
 };
-use miden_objects::asset::{Asset, AssetKey, AssetVault, FungibleAsset};
+use miden_objects::asset::{Asset, AssetVault, FungibleAsset, VaultKey};
 use miden_objects::note::NoteId;
 use miden_objects::transaction::{
     InputNote,
@@ -862,7 +862,7 @@ where
         let vault_root = Self::get_vault_root(process, vault_root_ptr)?;
 
         // Construct the fungible asset so we can easily fetch the vault key.
-        // TODO: Replace this once we have a AssetKey type that can be constructed from a faucet ID
+        // TODO: Replace this once we have a VaultKey type that can be constructed from a faucet ID
         // directly: https://github.com/0xMiden/miden-base/issues/1890.
         let asset = FungibleAsset::new(faucet_id, 0).map_err(|err| {
             TransactionKernelError::other_with_source(
@@ -1184,7 +1184,7 @@ pub(super) enum TransactionEventData {
         /// The vault root identifying the asset vault from which a witness is requested.
         vault_root: Word,
         /// The asset for which a witness is requested.
-        asset_key: AssetKey,
+        asset_key: VaultKey,
     },
     /// The data necessary to request a storage map witness from the data store.
     AccountStorageMapWitness {

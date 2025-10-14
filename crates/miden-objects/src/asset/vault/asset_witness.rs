@@ -1,6 +1,6 @@
 use miden_crypto::merkle::{InnerNodeInfo, SmtLeaf, SmtProof};
 
-use super::asset_key::AssetKey;
+use super::vault_key::VaultKey;
 use crate::AssetError;
 use crate::asset::Asset;
 
@@ -47,7 +47,7 @@ impl AssetWitness {
     // --------------------------------------------------------------------------------------------
 
     /// Searches for an [`Asset`] in the witness with the given `vault_key`.
-    pub fn find(&self, vault_key: AssetKey) -> Option<Asset> {
+    pub fn find(&self, vault_key: VaultKey) -> Option<Asset> {
         self.assets().find(|asset| asset.vault_key() == vault_key)
     }
 

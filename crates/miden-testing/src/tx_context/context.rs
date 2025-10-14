@@ -8,7 +8,7 @@ use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::{Account, AccountId, PartialAccount, StorageMapWitness, StorageSlot};
 use miden_objects::assembly::debuginfo::{SourceLanguage, Uri};
 use miden_objects::assembly::{SourceManager, SourceManagerSync};
-use miden_objects::asset::{AssetKey, AssetWitness};
+use miden_objects::asset::{AssetWitness, VaultKey};
 use miden_objects::block::{BlockHeader, BlockNumber};
 use miden_objects::note::Note;
 use miden_objects::transaction::{
@@ -213,7 +213,7 @@ impl DataStore for TransactionContext {
         &self,
         account_id: AccountId,
         vault_root: Word,
-        asset_key: AssetKey,
+        asset_key: VaultKey,
     ) -> impl FutureMaybeSend<Result<AssetWitness, DataStoreError>> {
         async move {
             if account_id == self.account().id() {
