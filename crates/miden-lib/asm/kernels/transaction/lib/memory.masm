@@ -1,4 +1,3 @@
-use.$kernel::account
 use.$kernel::constants
 use.std::mem
 
@@ -294,7 +293,7 @@ export.set_num_output_notes
     mem_store.NUM_OUTPUT_NOTES_PTR
 end
 
-#! Returns a pointer to the active input note.
+#! Returns the pointer to the active input note.
 #!
 #! Inputs:  []
 #! Outputs: [note_ptr]
@@ -316,7 +315,7 @@ export.set_active_input_note_ptr
     mem_store.ACTIVE_INPUT_NOTE_PTR
 end
 
-#! Returns a pointer to the memory address at which the input vault root is stored.
+#! Returns the pointer to the memory address at which the input vault root is stored.
 #!
 #! Inputs:  []
 #! Outputs: [input_vault_root_ptr]
@@ -350,7 +349,7 @@ export.set_input_vault_root
     mem_storew.INPUT_VAULT_ROOT_PTR
 end
 
-#! Returns a pointer to the memory address at which the output vault root is stored.
+#! Returns the pointer to the memory address at which the output vault root is stored.
 #!
 #! Inputs:  []
 #! Outputs: [output_vault_root_ptr]
@@ -488,7 +487,7 @@ end
 #!
 #! Where:
 #! - INIT_NATIVE_ACCOUNT_VAULT_ROOT is the initial vault root of the native account.
-export.set_init_account_vault_root
+export.set_init_native_account_vault_root
     mem_storew.INIT_NATIVE_ACCOUNT_VAULT_ROOT_PTR
 end
 
@@ -499,8 +498,21 @@ end
 #!
 #! Where:
 #! - INIT_NATIVE_ACCOUNT_VAULT_ROOT is the initial vault root of the native account.
-export.get_init_account_vault_root
+export.get_init_native_account_vault_root
     padw mem_loadw.INIT_NATIVE_ACCOUNT_VAULT_ROOT_PTR
+end
+
+#! Returns the memory address of the vault root of the native account at the beginning of the 
+#! transaction.
+#!
+#! Inputs:  []
+#! Outputs: [native_account_initial_vault_root_ptr]
+#!
+#! Where:
+#! - native_account_initial_vault_root_ptr is the memory pointer to the initial vault root of the 
+#!   native account.
+export.get_init_native_account_vault_root_ptr
+    push.INIT_NATIVE_ACCOUNT_VAULT_ROOT_PTR
 end
 
 #! Sets the storage commitment of the native account at the beginning of the transaction.
@@ -549,7 +561,7 @@ export.set_nullifier_commitment
     mem_storew.INPUT_NOTES_COMMITMENT_PTR
 end
 
-#! Returns a memory address of the transaction script root.
+#! Returns the memory address of the transaction script root.
 #!
 #! Inputs:  []
 #! Outputs: [tx_script_root_ptr]
@@ -1110,6 +1122,36 @@ export.set_account_vault_root
     mem_storew
 end
 
+#! Returns the memory pointer to the initial vault root of the current account.
+#!
+#! For the native account, this returns the pointer to the initial vault root.
+#! For foreign accounts, this returns the regular vault root pointer since foreign accounts
+#! are read-only and their initial and current vault state always matches.
+#!
+#! Inputs:  []
+#! Outputs: [account_initial_vault_root_ptr]
+#!
+#! Where:
+#! - account_initial_vault_root_ptr is the memory pointer to the initial vault root.
+export.get_account_initial_vault_root_ptr
+    # For foreign account, use the regular vault root pointer since foreign accounts are read-only 
+    # and initial == current
+    exec.get_account_vault_root_ptr
+    # => [account_vault_root_ptr]
+
+    # For native account, use the initial vault root pointer
+    exec.get_init_native_account_vault_root_ptr
+    # => [native_account_initial_vault_root_ptr, account_vault_root_ptr]
+
+    # get the flag indicating whether the current account is native
+    exec.is_native_account
+    # => [is_native_account, native_account_initial_vault_root_ptr, account_vault_root_ptr]
+
+    # according to the is_native_account flag, return the corresponding pointer
+    cdrop
+    # => [account_initial_vault_root_ptr]
+end
+
 ### ACCOUNT CODE #################################################
 
 #! Returns the code commitment of the account.
@@ -1366,19 +1408,22 @@ end
 #! Where:
 #! - account_initial_storage_slots_ptr is the memory pointer to the initial storage slot values.
 export.get_account_initial_storage_slots_ptr
-    exec.is_native_account
-    # => [is_native_account]
+    # For foreign account, use the regular storage slots pointer since foreign accounts are 
+    # read-only and initial == current
+    exec.get_account_storage_slots_section_ptr
+    # => [account_storage_slots_ptr]
 
-    if.true
-        # For native account, return the initial storage slots pointer
-        exec.get_native_account_initial_storage_slots_ptr
-        # => [account_initial_storage_slots_ptr]
-    else
-        # For foreign account, return the regular storage slots pointer since
-        # foreign accounts are read-only and initial == current
-        exec.get_account_storage_slots_section_ptr
-        # => [account_initial_storage_slots_ptr]
-    end
+    # For native account, use the initial storage slots pointer
+    exec.get_native_account_initial_storage_slots_ptr
+    # => [native_account_initial_storage_slots_ptr, account_storage_slots_ptr]
+
+    # get the flag indicating whether the current account is native
+    exec.is_native_account
+    # => [is_native_account, native_account_initial_storage_slots_ptr, account_storage_slots_ptr]
+
+    # according to the is_native_account flag, return the corresponding pointer
+    cdrop
+    # => [account_initial_storage_slots_ptr]
 end
 
 ### ACCOUNT DELTA #################################################
@@ -1391,7 +1436,7 @@ end
 #! Where:
 #! - account_delta_fungible_asset_ptr is the link map pointer to the fungible asset vault delta.
 export.get_account_delta_fungible_asset_ptr
-  push.ACCOUNT_DELTA_FUNGIBLE_ASSET_PTR
+    push.ACCOUNT_DELTA_FUNGIBLE_ASSET_PTR
 end
 
 #! Returns the link map pointer to the non-fungible asset vault delta.

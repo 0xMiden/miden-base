@@ -167,15 +167,34 @@ impl PartialAccount {
 }
 
 impl From<&Account> for PartialAccount {
-    /// Constructs a [`PartialAccount`] from the provided account with an empty seed, assuming it is
-    /// an existing account.
+    /// Constructs a [`PartialAccount`] from the provided account.
+    ///
+    /// The behavior is different whether the [`Account::is_new`] or not:
+    /// - For new accounts, the storage is tracked in full. This is because transactions that create
+    ///   accounts need the full state.
+    /// - For existing accounts, the storage is tracked minimally, i.e. the minimal necessary data
+    ///   is included.
+    ///
+    /// Because new accounts always have empty vaults, in both cases, the asset vault is a minimal
+    /// representation.
+    ///
+    /// For precise control over how an account is converted to a partial account, use
+    /// [`PartialAccount::new`].
     fn from(account: &Account) -> Self {
+        let partial_storage = if account.is_new() {
+            // This is somewhat expensive, but it allows us to do this conversion from &Account and
+            // it penalizes only the rare case (new accounts).
+            PartialStorage::new_full(account.storage.clone())
+        } else {
+            PartialStorage::new_minimal(account.storage())
+        };
+
         Self::new(
             account.id(),
             account.nonce(),
             account.code().clone(),
-            account.storage().into(),
-            account.vault().into(),
+            partial_storage,
+            PartialVault::new_minimal(account.vault()),
             account.seed(),
         )
         .expect("account should ensure that seed is valid for account")

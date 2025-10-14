@@ -3,6 +3,7 @@ use alloc::collections::BTreeSet;
 use miden_objects::account::{AccountId, PartialAccount, StorageMapWitness};
 use miden_objects::asset::{AssetWitness, VaultKey};
 use miden_objects::block::{BlockHeader, BlockNumber};
+use miden_objects::note::NoteScript;
 use miden_objects::transaction::{AccountInputs, PartialBlockchain};
 use miden_processor::{FutureMaybeSend, MastForestStore, Word};
 
@@ -67,4 +68,18 @@ pub trait DataStore: MastForestStore {
         map_root: Word,
         map_key: Word,
     ) -> impl FutureMaybeSend<Result<StorageMapWitness, DataStoreError>>;
+
+    /// Returns a note script with the specified root.
+    ///
+    /// This method will try to find a note script with the specified root in the data store,
+    /// and if not found, return an error.
+    ///
+    /// # Errors
+    /// Returns an error if:
+    /// - The note script with the specified root could not be found in the data store.
+    /// - The data store encountered some internal error.
+    fn get_note_script(
+        &self,
+        script_root: Word,
+    ) -> impl FutureMaybeSend<Result<NoteScript, DataStoreError>>;
 }

@@ -24,6 +24,7 @@ use miden_objects::testing::account_id::{
 };
 use miden_objects::{EMPTY_WORD, Felt, ONE, WORD_SIZE, Word};
 
+use crate::kernel_tests::tx::ExecutionOutputExt;
 use crate::utils::create_public_p2any_note;
 use crate::{
     Auth,
@@ -113,13 +114,13 @@ async fn test_active_note_get_metadata() -> anyhow::Result<()> {
         METADATA = Word::from(tx_context.input_notes().get_note(0).note().metadata())
     );
 
-    tx_context.execute_code(&code)?;
+    tx_context.execute_code(&code).await?;
 
     Ok(())
 }
 
-#[test]
-fn test_active_note_get_sender() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_active_note_get_sender() -> anyhow::Result<()> {
     let tx_context = {
         let account =
             Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, Auth::IncrNonce);
@@ -149,16 +150,17 @@ fn test_active_note_get_sender() -> anyhow::Result<()> {
         end
         ";
 
-    let process = tx_context.execute_code(code)?;
+    let exec_output = tx_context.execute_code(code).await?;
 
     let sender = tx_context.input_notes().get_note(0).note().metadata().sender();
-    assert_eq!(process.stack.get(0), sender.prefix().as_felt());
-    assert_eq!(process.stack.get(1), sender.suffix());
+    assert_eq!(exec_output.stack[0], sender.prefix().as_felt());
+    assert_eq!(exec_output.stack[1], sender.suffix());
+
     Ok(())
 }
 
-#[test]
-fn test_active_note_get_assets() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_active_note_get_assets() -> anyhow::Result<()> {
     // Creates a mockchain with an account and a note that it can consume
     let tx_context = {
         let mut builder = MockChain::builder();
@@ -290,12 +292,12 @@ fn test_active_note_get_assets() -> anyhow::Result<()> {
         NOTE_1_ASSET_ASSERTIONS = construct_asset_assertions(notes.get_note(1).note()),
     );
 
-    tx_context.execute_code(&code)?;
+    tx_context.execute_code(&code).await?;
     Ok(())
 }
 
-#[test]
-fn test_active_note_get_inputs() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_active_note_get_inputs() -> anyhow::Result<()> {
     // Creates a mockchain with an account and a note that it can consume
     let tx_context = {
         let mut builder = MockChain::builder();
@@ -378,7 +380,7 @@ fn test_active_note_get_inputs() -> anyhow::Result<()> {
         NOTE_0_PTR = 100000000,
     );
 
-    tx_context.execute_code(&code)?;
+    tx_context.execute_code(&code).await?;
     Ok(())
 }
 
@@ -389,8 +391,8 @@ fn test_active_note_get_inputs() -> anyhow::Result<()> {
 /// Previously this setup was leading to the incorrect number of note inputs computed during the
 /// `get_inputs` procedure, see the [issue #1363](https://github.com/0xMiden/miden-base/issues/1363)
 /// for more details.
-#[test]
-fn test_active_note_get_exactly_8_inputs() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_active_note_get_exactly_8_inputs() -> anyhow::Result<()> {
     let sender_id = ACCOUNT_ID_SENDER
         .try_into()
         .context("failed to convert ACCOUNT_ID_SENDER to account ID")?;
@@ -457,13 +459,13 @@ fn test_active_note_get_exactly_8_inputs() -> anyhow::Result<()> {
             end
         ";
 
-    tx_context.execute_code(tx_code).context("transaction execution failed")?;
+    tx_context.execute_code(tx_code).await.context("transaction execution failed")?;
 
     Ok(())
 }
 
-#[test]
-fn test_active_note_get_serial_number() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_active_note_get_serial_number() -> anyhow::Result<()> {
     let tx_context = {
         let mut builder = MockChain::builder();
         let account = builder.add_existing_wallet(Auth::BasicAuth)?;
@@ -494,15 +496,15 @@ fn test_active_note_get_serial_number() -> anyhow::Result<()> {
         end
         ";
 
-    let process = tx_context.execute_code(code)?;
+    let exec_output = tx_context.execute_code(code).await?;
 
     let serial_number = tx_context.input_notes().get_note(0).note().serial_num();
-    assert_eq!(process.stack.get_word(0), serial_number);
+    assert_eq!(exec_output.get_stack_word(0), serial_number);
     Ok(())
 }
 
-#[test]
-fn test_active_note_get_script_root() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_active_note_get_script_root() -> anyhow::Result<()> {
     let tx_context = {
         let mut builder = MockChain::builder();
         let account = builder.add_existing_wallet(Auth::BasicAuth)?;
@@ -533,9 +535,9 @@ fn test_active_note_get_script_root() -> anyhow::Result<()> {
     end
     ";
 
-    let process = tx_context.execute_code(code)?;
+    let exec_output = tx_context.execute_code(code).await?;
 
     let script_root = tx_context.input_notes().get_note(0).note().script().root();
-    assert_eq!(process.stack.get_word(0), script_root);
+    assert_eq!(exec_output.get_stack_word(0), script_root);
     Ok(())
 }

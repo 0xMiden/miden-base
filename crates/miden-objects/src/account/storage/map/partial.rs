@@ -60,6 +60,36 @@ impl PartialStorageMap {
         Ok(PartialStorageMap { partial_smt, entries: map })
     }
 
+    /// Converts a [`StorageMap`] into a partial storage representation.
+    ///
+    /// The resulting [`PartialStorageMap`] will contain the _full_ entries and merkle paths of the
+    /// original storage map.
+    pub fn new_full(storage_map: StorageMap) -> Self {
+        let partial_smt = PartialSmt::from(storage_map.smt);
+        let entries = storage_map.entries;
+
+        PartialStorageMap { partial_smt, entries }
+    }
+
+    /// Converts a [`StorageMap`] into a partial storage representation.
+    ///
+    /// The resulting [`PartialStorageMap`] will contain only a single, unspecified key-value pair
+    /// in order to have the same root as the original storage map. Is it otherwise the most
+    /// _minimal_ representation of the storage map.
+    pub fn new_minimal(storage_map: &StorageMap) -> Self {
+        let mut partial_map = PartialStorageMap::default();
+
+        // Construct a partial storage map that tracks the empty word, but none of the assets that
+        // are actually in the asset tree. That way, the partial map has the same root as the full
+        // map. This is the most minimal and correct partial map we can build.
+        // TODO: Workaround for https://github.com/0xMiden/miden-base/issues/1966. Fix when implemented.
+        partial_map
+            .add(storage_map.open(&Word::empty()))
+            .expect("adding the first proof should never fail");
+
+        partial_map
+    }
+
     // ACCESSORS
     // --------------------------------------------------------------------------------------------
 
@@ -128,15 +158,6 @@ impl PartialStorageMap {
     pub fn add(&mut self, witness: StorageMapWitness) -> Result<(), MerkleError> {
         self.entries.extend(witness.entries().map(|(key, value)| (*key, *value)));
         self.partial_smt.add_proof(SmtProof::from(witness))
-    }
-}
-
-impl From<StorageMap> for PartialStorageMap {
-    fn from(value: StorageMap) -> Self {
-        let smt = value.smt;
-        let map = value.entries;
-
-        PartialStorageMap { partial_smt: smt.into(), entries: map }
     }
 }
 
