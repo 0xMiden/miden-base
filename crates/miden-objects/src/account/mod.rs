@@ -457,12 +457,17 @@ impl TryFrom<Account> for AccountDelta {
         let mut fungible_delta = FungibleAssetDelta::default();
         let mut non_fungible_delta = NonFungibleAssetDelta::default();
         for asset in vault.assets() {
+            // SAFETY: All assets in the account vault should be representable in the delta.
             match asset {
                 Asset::Fungible(fungible_asset) => {
-                    fungible_delta.add(fungible_asset).expect("TODO");
+                    fungible_delta
+                        .add(fungible_asset)
+                        .expect("delta should allow representing valid fungible assets");
                 },
                 Asset::NonFungible(non_fungible_asset) => {
-                    non_fungible_delta.add(non_fungible_asset).expect("TODO")
+                    non_fungible_delta
+                        .add(non_fungible_asset)
+                        .expect("delta should allow representing valid non-fungible assets");
                 },
             }
         }

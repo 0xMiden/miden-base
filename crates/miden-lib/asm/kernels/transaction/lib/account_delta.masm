@@ -124,9 +124,11 @@ export.insert_new_account
         sub.1
         # => [slot_idx, init_slots_ptr]
 
+        # compute the pointer corresponding to the slot index
         dup mul.8 dup.2 add
         # => [init_slot_ptr, slot_idx, init_slots_ptr]
 
+        # offset the pointer so it points to the slot's metadata
         dup add.4
         # => [init_slot_metadata_ptr, init_slot_ptr, slot_idx, init_slots_ptr]
 
@@ -171,12 +173,14 @@ end
 #! Inserts the entries of the provided storage map root into the account delta.
 #!
 #! These entries must be present in the advice provider with the map root as the key.
+#! For each entry, the initial value in the delta is set to the empty word so the delta for this
+#! map is computed as if the map had initially been empty.
 #!
 #! The procedure proves inclusion of the map entries in the account's storage map at the provided
 #! index. Note that the advice map entry could contain multiple occurrences of a key-value pair
 #! A -> B, but this procedure has no way of detecting this condition.
 #! Such entries would naturally be deduplicated by the nature of the storage map or link map
-#! (used to track the storage map delta), and so are not problematic.
+#! (used to track the storage map delta), and so are not problematic for overall correctness.
 #!
 #! Inputs:
 #!   Operand stack: [MAP_ROOT, slot_idx]
@@ -195,12 +199,12 @@ proc.add_storage_map_entries_to_delta
     # OS => [num_entries, slot_idx, MAP_ROOT]
     # AS => [[MAP_ENTRIES]]
 
-    dup push.8 u32assert2.err="num_entries should fit into a u32"
+    dup push.8 u32assert2.err="number of storage map entries should fit into a u32"
     # OS => [8, num_entries, num_entries, slot_idx, MAP_ROOT]
     # AS => [[MAP_ENTRIES]]
 
     # check that num_entries % 8 = 0 so we can use an equality check for the loop condition
-    u32divmod eq.0 assert.err="num_entries must be a multiple of 8"
+    u32divmod eq.0 assert.err="number of storage map entries must be a multiple of 8"
     drop
     # OS => [num_entries, slot_idx, MAP_ROOT]
     # AS => [[MAP_ENTRIES]]
@@ -215,6 +219,7 @@ proc.add_storage_map_entries_to_delta
         sub.8
         # => [remaining_entries, slot_idx, MAP_ROOT]
 
+        # push a key-value pair to the operand stack
         adv_push.8
         # => [KEY, VALUE, remaining_entries, slot_idx, MAP_ROOT]
 
@@ -235,11 +240,12 @@ proc.add_storage_map_entries_to_delta
         exec.account::get_map_item_raw_unchecked
         # => [EXPECTED_VALUE, KEY, VALUE, remaining_entries, slot_idx, MAP_ROOT]
 
-        # advice provided value and value in map must match
+        # advice-provided value and value in map must match
         dupw.2 assert_eqw.err=ERR_ACCOUNT_DELTA_INITIAL_STORAGE_MAP_ENTRIES_NOT_PRESENT_IN_MAP_ROOT
         # => [KEY, VALUE, remaining_entries, slot_idx, MAP_ROOT]
 
-        # set the previous value for the set_map_item call to the empty word
+        # for the account_delta::set_map_item call, set the initial value of that storage map entry
+        # to the empty word
         padw swapw
         # => [KEY, EMPTY_WORD, VALUE, remaining_entries, slot_idx, MAP_ROOT]
 

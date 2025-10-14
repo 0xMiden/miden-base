@@ -42,9 +42,9 @@ pub use vault::{
 /// delta. A full state delta must be converted into an [`Account`] object, while a partial state
 /// delta must be applied to an existing [`Account`].
 ///
-/// TODO(code_upgrades): The ability to track account code updates is an outstanding feature. For that reason, the
-/// account code is not considered as part of the "nonce must be incremented if state changed"
-/// check.
+/// TODO(code_upgrades): The ability to track account code updates is an outstanding feature. For
+/// that reason, the account code is not considered as part of the "nonce must be incremented if
+/// state changed" check.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AccountDelta {
     /// The ID of the account to which this delta applies. If the delta is created during
@@ -103,9 +103,9 @@ impl AccountDelta {
             });
         }
 
-        // TODO(code_upgrades): This should go away once we have proper account code updates in deltas. Then, the
-        // two code updates can be merged. For now, code cannot be merged and this should never
-        // happen.
+        // TODO(code_upgrades): This should go away once we have proper account code updates in
+        // deltas. Then, the two code updates can be merged. For now, code cannot be merged
+        // and this should never happen.
         assert!(
             !(self.is_full_state() && other.is_full_state()),
             "cannot merge two full state deltas"
@@ -144,9 +144,9 @@ impl AccountDelta {
     ///
     /// See the type-level docs for more on this distinction.
     pub fn is_full_state(&self) -> bool {
-        // TODO(code_upgrades): Change this to another detection mechanism once we have code upgrade support,
-        // at which point the presence of code may not be enough of an indication that a delta can
-        // be converted to a full account.
+        // TODO(code_upgrades): Change this to another detection mechanism once we have code upgrade
+        // support, at which point the presence of code may not be enough of an indication
+        // that a delta can be converted to a full account.
         self.code.is_some()
     }
 
@@ -182,9 +182,11 @@ impl AccountDelta {
 
     /// Computes the commitment to the account delta.
     ///
+    /// # Computation
+    ///
     /// The delta is a sequential hash over a vector of field elements which starts out empty and
-    /// is appended to in the following way. Whenever sorting is expected, it is that of a link map
-    /// key. The WORD layout is in memory-order.
+    /// is appended to in the following way. Whenever sorting is expected, it is that of a
+    /// [`LexicographicWord`](crate::LexicographicWord). The WORD layout is in memory-order.
     ///
     /// - Append `[[nonce_delta, 0, account_id_suffix, account_id_prefix], EMPTY_WORD]`, where
     ///   account_id_{prefix,suffix} are the prefix and suffix felts of the native account id and
@@ -225,7 +227,7 @@ impl AccountDelta {
     ///
     /// # Security
     ///
-    /// The general concern with the commitment is that two deltas must never has to the same
+    /// The general concern with the commitment is that two deltas must never hash to the same
     /// commitment. E.g. a commitment of a delta that changes a key-value pair in a storage map
     /// slot should be different from a delta that adds a non-fungible asset to the vault. If
     /// not, a delta can be crafted in the VM that sets a map key but a malicious actor crafts a
@@ -410,18 +412,18 @@ impl SequentialCommit for AccountDelta {
 /// In particular, private account changes aren't tracked at all; they are represented as
 /// [`AccountUpdateDetails::Private`].
 ///
-/// New non-private accounts are included in full and changes to a non-private account are tracked
-/// as an [`AccountDelta`].
+/// Non-private accounts are tracked as an [`AccountDelta`]. If the account is new, the delta can be
+/// converted into an [`Account`]. If not, the delta can be applied to the existing account using
+/// [`Account::apply_delta`].
 ///
 /// Note that these details can represent the changes from one or more transactions in which case
-/// the delta is either applied to the new account or deltas are merged together using
-/// [`AccountDelta::merge`].
+/// the deltas of each transaction are merged together using [`AccountDelta::merge`].
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum AccountUpdateDetails {
-    /// Account is private (no on-chain state change).
+    /// The state update details of a private account is not publicly accessible.
     Private,
 
-    /// For existing accounts, only the delta is needed.
+    /// The state update details of non-private accounts.
     Delta(AccountDelta),
 }
 

@@ -23,7 +23,7 @@ use crate::utils::serde::{
     Serializable,
 };
 use crate::vm::ExecutionProof;
-use crate::{ACCOUNT_UPDATE_MAX_SIZE, EMPTY_WORD, ProvenTransactionError, Word};
+use crate::{ACCOUNT_UPDATE_MAX_SIZE, ProvenTransactionError, Word};
 
 // PROVEN TRANSACTION
 // ================================================================================================
