@@ -73,7 +73,7 @@ impl NoteRecipient {
     /// - INPUTS_COMMITMENT is the commitment of the note inputs
     /// - SCRIPT_ROOT is the commitment of the note script (i.e., the script's MAST root)
     /// - SERIAL_NUMBER is the recipient's serial number
-    pub fn format_for_advice(&self) -> Vec<Felt> {
+    pub fn to_elements(&self) -> Vec<Felt> {
         let mut result = Vec::with_capacity(13);
         result.push(self.inputs.num_values().into());
         result.extend(self.inputs.commitment());
