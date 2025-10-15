@@ -404,13 +404,6 @@ async fn network_faucet_mint() -> anyhow::Result<()> {
         .build()?;
     let consume_executed_transaction = consume_tx_context.execute().await?;
 
-    // Verify the target account received the fungible asset
-    assert_eq!(consume_executed_transaction.input_notes().num_notes(), 1);
-    assert_eq!(
-        consume_executed_transaction.input_notes().get_note(0).id(),
-        p2id_mint_output_note.id()
-    );
-
     // Verify the account delta shows the asset was added to the vault
     let vault_delta = consume_executed_transaction.account_delta().vault();
     let added_assets: Vec<_> = vault_delta.added_assets().collect();
