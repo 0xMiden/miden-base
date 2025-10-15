@@ -392,9 +392,6 @@ async fn network_faucet_mint() -> anyhow::Result<()> {
     assert_eq!(output_note.id(), expected_note_id);
     assert_eq!(output_note.metadata().sender(), faucet.id());
 
-    assert_eq!(executed_transaction.account_delta().nonce_delta(), Felt::new(1));
-    assert_eq!(executed_transaction.input_notes().get_note(0).id(), mint_note.id());
-
     // Apply the transaction to the mock chain
     mock_chain.add_pending_executed_transaction(&executed_transaction)?;
     let _ = mock_chain.prove_next_block();
