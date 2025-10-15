@@ -6,21 +6,16 @@ use crate::account::{SlotName, StorageSlot};
 pub struct NamedStorageSlot {
     /// The name of the storage slot.
     name: SlotName,
-    /// The cached [`SlotNameId`] of the slot name. These must always be consistent with each
-    /// other.
-    ///
-    /// This is cached so that the `Ord` implementation can use the computed name ID instead of
-    /// having to hash the slot name on every comparison operation.
-    name_id: SlotNameId,
     /// The underlying storage slot.
     slot: StorageSlot,
 }
 
 impl NamedStorageSlot {
-    pub fn new(name: SlotName, slot: StorageSlot) -> Self {
-        let name_id = name.compute_id();
+    pub fn new(mut name: SlotName, slot: StorageSlot) -> Self {
+        // Cache the ID so that sorting named storage slots does not require rehashing slot names.
+        name.compute_and_cache_id();
 
-        Self { name, name_id, slot }
+        Self { name, slot }
     }
 
     pub fn name(&self) -> &SlotName {
@@ -28,7 +23,7 @@ impl NamedStorageSlot {
     }
 
     pub fn name_id(&self) -> SlotNameId {
-        self.name_id
+        self.name.get_or_compute_id()
     }
 
     pub fn storage_slot(&self) -> &StorageSlot {
@@ -39,14 +34,14 @@ impl NamedStorageSlot {
         &mut self.slot
     }
 
-    pub fn into_parts(self) -> (SlotName, SlotNameId, StorageSlot) {
-        (self.name, self.name_id, self.slot)
+    pub fn into_parts(self) -> (SlotName, StorageSlot) {
+        (self.name, self.slot)
     }
 }
 
 impl Ord for NamedStorageSlot {
     fn cmp(&self, other: &Self) -> core::cmp::Ordering {
-        self.name_id.cmp(&other.name_id)
+        self.name_id().cmp(&other.name_id())
     }
 }
 

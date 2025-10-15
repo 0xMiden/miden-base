@@ -34,9 +34,10 @@ use crate::{Felt, FieldElement};
 /// - Each component must only consist of the characters `a` to `z`, `A` to `Z`, `0` to `9` or `_`
 ///   (underscore).
 /// - Each component must not start with an underscore.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone)]
 pub struct SlotName {
     name: Cow<'static, str>,
+    id: Option<SlotNameId>,
 }
 
 impl SlotName {
@@ -69,7 +70,7 @@ impl SlotName {
     /// - the slot name is invalid (see the type-level docs for the requirements).
     pub const fn from_static_str(name: &'static str) -> Self {
         match Self::validate(name) {
-            Ok(()) => Self { name: Cow::Borrowed(name) },
+            Ok(()) => Self { name: Cow::Borrowed(name), id: None },
             // We cannot format the error in a const context.
             Err(_) => panic!("invalid slot name"),
         }
@@ -84,7 +85,8 @@ impl SlotName {
     pub fn new(name: impl Into<String>) -> Result<Self, SlotNameError> {
         let name = name.into();
         Self::validate(&name)?;
-        Ok(Self { name: Cow::Owned(name) })
+        let id = compute_id(&name);
+        Ok(Self { name: Cow::Owned(name), id: Some(id) })
     }
 
     // TODO(named_slots): Temporary. Remove later.
@@ -112,25 +114,27 @@ impl SlotName {
         self.name.is_empty()
     }
 
+    pub fn compute_and_cache_id(&mut self) -> SlotNameId {
+        if self.id.is_none() {
+            self.id = Some(compute_id(&self.name))
+        }
+        self.id.expect("id should always be set after the computation")
+    }
+
+    /// Returns the id of the [`SlotName`] if it has already been computed, `None` otherwise.
+    ///
+    /// - To compute and cache the ID (mutably), use [`Self::compute_and_cache_id`].
+    /// - To get or compute ID (immmutably), use [`Self::get_or_compute_id`].
+    pub fn id(&self) -> Option<SlotNameId> {
+        self.id
+    }
+
     // TODO(named_slots): Docs.
-    pub fn compute_id(&self) -> SlotNameId {
-        // let hashed_word = hash_string_to_word(self.as_str());
-        // let prefix = hashed_word[0];
-        // let suffix = hashed_word[1];
-        // SlotNameId::new(prefix, suffix)
-
-        // TODO: Temporary, replace later with the above.
-        let mut split = self.as_str().split("::");
-
-        let namespace = split.next().unwrap();
-        assert_eq!(namespace, "miden");
-
-        let slot_idx = split.next().unwrap();
-        let slot_index: u32 = slot_idx.parse().expect(
-            "named storage slots should for now have the slot index as the second component",
-        );
-
-        SlotNameId::new(Felt::from(slot_index), Felt::ZERO)
+    pub fn get_or_compute_id(&self) -> SlotNameId {
+        match self.id {
+            Some(id) => id,
+            None => compute_id(&self.name),
+        }
     }
 
     // HELPERS
@@ -228,6 +232,26 @@ impl SlotName {
     }
 }
 
+impl PartialEq for SlotName {
+    fn eq(&self, other: &Self) -> bool {
+        self.get_or_compute_id() == other.get_or_compute_id()
+    }
+}
+
+impl Eq for SlotName {}
+
+impl Ord for SlotName {
+    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+        self.get_or_compute_id().cmp(&other.get_or_compute_id())
+    }
+}
+
+impl PartialOrd for SlotName {
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 impl Display for SlotName {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.write_str(self.as_str())
@@ -258,6 +282,26 @@ impl Deserializable for SlotName {
                 Self::new(name).map_err(|err| DeserializationError::InvalidValue(err.to_string()))
             })
     }
+}
+
+fn compute_id(name: &str) -> SlotNameId {
+    // let hashed_word = hash_string_to_word(name);
+    // let prefix = hashed_word[0];
+    // let suffix = hashed_word[1];
+    // SlotNameId::new(prefix, suffix)
+
+    // TODO: Temporary, replace later with the above.
+    let mut split = name.split("::");
+
+    let namespace = split.next().unwrap();
+    assert_eq!(namespace, "miden");
+
+    let slot_idx = split.next().unwrap();
+    let slot_index: u32 = slot_idx
+        .parse()
+        .expect("named storage slots should for now have the slot index as the second component");
+
+    SlotNameId::new(Felt::from(slot_index), Felt::ZERO)
 }
 
 // TESTS
