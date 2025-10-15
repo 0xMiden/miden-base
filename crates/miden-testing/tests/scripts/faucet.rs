@@ -2,7 +2,7 @@ extern crate alloc;
 
 use core::slice;
 
-use miden_lib::account::faucets::FungibleFaucetExt;
+use miden_lib::account::faucets::{BasicFungibleFaucet, FungibleFaucetExt, NetworkFungibleFaucet};
 use miden_lib::errors::tx_kernel_errors::ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED;
 use miden_lib::note::well_known_note::WellKnownNote;
 use miden_lib::utils::ScriptBuilder;
@@ -328,9 +328,8 @@ async fn network_faucet_mint() -> anyhow::Result<()> {
     // CREATE MINT NOTE USING STANDARD NOTE
     // --------------------------------------------------------------------------------------------
 
-    let mint_asset: Asset = FungibleAsset::new(faucet.id(), 100).unwrap().into();
-
     let amount = Felt::new(75);
+    let mint_asset: Asset = FungibleAsset::new(faucet.id(), amount.into()).unwrap().into();
     let tag = NoteTag::for_local_use_case(0, 0).unwrap();
     let aux = Felt::new(27);
     let note_execution_hint = NoteExecutionHint::on_block_slot(5, 6, 7);
@@ -418,6 +417,12 @@ async fn network_faucet_mint() -> anyhow::Result<()> {
     // Verify the account delta shows the asset was added to the vault
     let account_delta = consume_executed_transaction.account_delta();
     assert_eq!(account_delta.nonce_delta(), Felt::new(1));
+    
+    // Verify the vault delta contains the expected fungible asset
+    let vault_delta = account_delta.vault();
+    let added_assets: Vec<_> = vault_delta.added_assets().collect();
+    assert_eq!(added_assets.len(), 1);
+    assert_eq!(added_assets[0], expected_asset.into());
 
     Ok(())
 }
@@ -429,8 +434,6 @@ async fn network_faucet_mint() -> anyhow::Result<()> {
 /// This is required for BURN notes to work with both faucet types.
 #[test]
 fn test_faucet_burn_procedures_are_identical() {
-    use miden_lib::account::faucets::{BasicFungibleFaucet, NetworkFungibleFaucet};
-
     // Both faucet types must export the same burn procedure with identical MAST roots
     // so that a single BURN note script can work with either faucet type
     assert_eq!(
