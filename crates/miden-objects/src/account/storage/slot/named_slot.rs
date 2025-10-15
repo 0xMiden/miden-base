@@ -4,8 +4,15 @@ use crate::account::{SlotName, StorageSlot};
 // TODO(named_slots): Docs + separators for the entire module.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NamedStorageSlot {
+    /// The name of the storage slot.
     name: SlotName,
+    /// The cached [`SlotNameId`] of the slot name. These must always be consistent with each
+    /// other.
+    ///
+    /// This is cached so that the `Ord` implementation can use the computed name ID instead of
+    /// having to hash the slot name on every comparison operation.
     name_id: SlotNameId,
+    /// The underlying storage slot.
     slot: StorageSlot,
 }
 
