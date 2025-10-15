@@ -3,6 +3,9 @@
 use miden::account
 use miden::auth
 
+# use `BeWord` once the `@bigendian` annotation is available
+# type BeWord = @bigendian struct { a: felt, b: felt, c: felt, d: felt }
+
 type Word = [felt; 4]
 
 # CONSTANTS
@@ -87,7 +90,7 @@ end
 #! Where:
 #! - init_num_of_approvers is the original number of approvers before the update
 #! - new_num_of_approvers is the new number of approvers after the update
-proc cleanup_pubkey_mapping(init_num_of_approvers: felt, new_num_of_approvers: felt)
+proc cleanup_pubkey_mapping(init_num_of_approvers: u32, new_num_of_approvers: u32)
     dup.1 dup.1
     u32assert2 u32lt
     # => [should_loop, i = init_num_of_approvers, new_num_of_approvers]
@@ -143,7 +146,7 @@ end
 #! Locals:
 #! 0: new_num_of_approvers
 #! 1: init_num_of_approvers
-pub proc update_signers_and_threshold.2(multisig_config_hash: Word)
+export update_signers_and_threshold.2(multisig_config_hash: Word)
     adv.push_mapval
     # => [MULTISIG_CONFIG_HASH, pad(12)]
 
@@ -255,7 +258,7 @@ end
 #! - the same transaction has already been executed (replay protection).
 #!
 #! Invocation: call
-pub proc auth_tx_rpo_falcon512_multisig(salt: Word)
+export auth_tx_rpo_falcon512_multisig(salt: Word)
     exec.account::incr_nonce drop
     # => [SALT]
 

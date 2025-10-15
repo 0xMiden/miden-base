@@ -5,6 +5,9 @@
 use miden::auth::rpo_falcon512
 use miden::account
 
+# use `BeWord` once the `@bigendian` annotation is available
+# type BeWord = @bigendian struct { a: felt, b: felt, c: felt, d: felt }
+
 type Word = [felt; 4]
 
 # CONSTANTS
@@ -28,7 +31,7 @@ const PUBLIC_KEY_SLOT = 0
 #! Outputs: [pad(16)]
 #!
 #! Invocation: call
-pub proc auth_tx_rpo_falcon512(auth_args: Word)
+export auth_tx_rpo_falcon512(auth_args: Word)
     dropw
     # => [pad(16)]
 
