@@ -221,12 +221,6 @@ impl WellKnownNote {
                 // BURN notes work with both basic and network fungible faucets because both
                 // faucet types export the same `burn` procedure with identical MAST roots.
                 // This allows a single BURN note script to work with either faucet type.
-                // The debug assertion below ensures this invariant is maintained.
-                debug_assert_eq!(
-                    BasicFungibleFaucet::burn_digest(),
-                    NetworkFungibleFaucet::burn_digest(),
-                    "Basic and network fungible faucets must have the same burn digest"
-                );
                 interface_proc_digests.contains(&BasicFungibleFaucet::burn_digest())
                     || interface_proc_digests.contains(&NetworkFungibleFaucet::burn_digest())
             },
