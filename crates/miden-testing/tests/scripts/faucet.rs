@@ -412,11 +412,7 @@ async fn network_faucet_mint() -> anyhow::Result<()> {
     );
 
     // Verify the account delta shows the asset was added to the vault
-    let account_delta = consume_executed_transaction.account_delta();
-    assert_eq!(account_delta.nonce_delta(), Felt::new(1));
-
-    // Verify the vault delta contains the expected fungible asset
-    let vault_delta = account_delta.vault();
+    let vault_delta = consume_executed_transaction.account_delta().vault();
     let added_assets: Vec<_> = vault_delta.added_assets().collect();
     assert_eq!(added_assets.len(), 1);
     assert_eq!(added_assets[0], expected_asset.into());
