@@ -353,6 +353,8 @@ export.compute_storage_commitment
     # => [STORAGE_COMMITMENT]
 end
 
+#! TODO(named_slots): Remove this procedure.
+#!
 #! Applies storage offset to provided storage slot index for storage access.
 #!
 #! Inputs:  [storage_offset, storage_size, slot_index]
@@ -462,19 +464,20 @@ end
 
 #! Gets an item from the account storage.
 #!
-#! Note:
-#! - We assume that index has been validated and is within bounds.
-#!
-#! Inputs:  [index]
+#! Inputs:  [name_id_prefix, name_id_suffix]
 #! Outputs: [VALUE]
 #!
 #! Where:
-#! - index is the index of the item to get.
+#! - name_id_{prefix, suffix} are the prefix and suffix felts of the name identifier, which are
+#!   the first two felts of the hashed slot name.
 #! - VALUE is the value of the item.
+#!
+#! Panics if:
+#! - a slot with the provided name ID does not exist in account storage.
 export.get_item
     # get account storage slots section offset
     exec.memory::get_account_storage_slots_section_ptr
-    # => [acct_storage_slots_section_offset, index]
+    # => [acct_storage_slots_section_offset, name_id_prefix, name_id_suffix]
 
     # get the item from storage
     exec.get_item_raw
@@ -496,6 +499,8 @@ export.get_initial_item
     # get account initial storage slots section offset
     exec.memory::get_account_initial_storage_slots_ptr
     # => [account_initial_storage_slots_ptr, index]
+
+    push.0 assert.err="TODO(named_slots): get_initial_item is unimplemented"
 
     # get the item from initial storage
     exec.get_item_raw
@@ -701,10 +706,10 @@ export.get_storage_slot_type_by_index
     dup exec.memory::get_num_storage_slots lt assert.err=ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS
     # => [index]
 
-    exec.memory::get_account_storage_slots_section_ptr
-    # => [curr_account_storage_slots_section_ptr, index]
+    mul.8
+    # => [slot_offset]
 
-    exec.find_indexed_storage_slot
+    exec.memory::get_account_storage_slots_section_ptr add
     # => [slot_ptr]
 
     # load the slot type
@@ -1300,16 +1305,19 @@ end
 #! Note:
 #! - We assume that index has been validated and is within bounds.
 #!
-#! Inputs:  [storage_slots_ptr, index]
+#! Inputs:  [storage_slots_ptr, name_id_prefix, name_id_suffix]
 #! Outputs: [VALUE]
 #!
 #! Where:
 #! - storage_slots_ptr is the pointer to the storage slots section.
-#! - index is the index of the item to get.
+#! - name_id_{prefix, suffix} are the prefix and suffix felts of the name identifier, which are
+#!   the first two felts of the hashed slot name.
 #! - VALUE is the value of the item.
+#!
+#! Panics if:
+#! - a slot with the provided name ID does not exist in account storage.
 export.get_item_raw
-    # TODO(named_slots): pass in name
-    exec.find_indexed_storage_slot
+    exec.find_storage_slot
     # => [slot_ptr]
 
     # offset the pointer to point to the VALUE in the slot
@@ -1443,7 +1451,8 @@ proc.set_item_raw
     exec.memory::get_account_storage_slots_section_ptr
     # => [storage_slots_ptr, index, NEW_VALUE]
 
-    exec.find_indexed_storage_slot
+    push.0 assert.err="TODO(named_slots): set_item_raw is unimplemented"
+    # exec.get_indexed_storage_slot_ptr
     # => [slot_ptr, NEW_VALUE]
 
     # offset the pointer to point to the VALUE in the slot
@@ -1466,22 +1475,6 @@ proc.set_item_raw
     # => [OLD_VALUE]
 end
 
-#! TODO(named_slots): Remove this API.
-#!
-#! Inputs:  [storage_slots_ptr, index]
-#! Outputs: [slot_ptr]
-proc.find_indexed_storage_slot
-    # set the suffix to 0
-    push.0 movup.2
-    # => [name_id_prefix = index, name_id_suffix = 0, storage_slots_ptr]
-
-    movup.2
-    # => [storage_slots_ptr, name_id_prefix = index, name_id_suffix = 0]
-
-    exec.find_storage_slot
-    # => [slot_ptr]
-end
-
 #! Finds the slot identified by the key constructed from the name ID and slot type and returns the
 #! pointer to that slot.
 #!
@@ -1493,6 +1486,9 @@ end
 #! - slot_ptr is the pointer to the resolved storage slot.
 #! - name_id_{prefix, suffix} are the prefix and suffix felts of the name identifier, which are
 #!   the first two felts of the hashed slot name.
+#!
+#! Panics if:
+#! - a slot with the provided name ID does not exist in account storage.
 proc.find_storage_slot
     # construct the start and end pointers of the storage slot section in which we will search
     dup exec.memory::get_num_storage_slots mul.8 add

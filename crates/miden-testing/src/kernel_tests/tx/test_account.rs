@@ -384,7 +384,8 @@ async fn test_get_item() -> miette::Result<()> {
                 exec.prologue::prepare_transaction
 
                 # push the account storage item index
-                push.{item_index}
+                push.0.{item_index}
+                # => [name_id_prefix, name_id_suffix]
 
                 # assert the item value is correct
                 exec.account::get_item

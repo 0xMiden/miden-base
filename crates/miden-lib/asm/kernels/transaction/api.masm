@@ -46,7 +46,7 @@ const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SERIAL_NUMBER_WHILE_NO_NOTE_BEING_PROCESSE
 #! Authenticates that the invocation of a kernel procedure originates from the account context.
 #!
 #! Inputs:  []
-#! Outputs: [storage_offset, storage_size]
+#! Outputs: []
 #!
 #! Panics if:
 #! - the invocation of the kernel procedure does not originate from the account context.
@@ -60,6 +60,10 @@ proc.authenticate_account_origin
     # assert that the caller is from the user context
     exec.account::authenticate_and_track_procedure
     # => [storage_offset, storage_size]
+
+    # TODO(named_slots): Remove storage offset and size from procedure info.
+    drop drop
+    # => []
 end
 
 #! Asserts that the invocation of a kernel procedure originates from the authentication procedure of
@@ -271,7 +275,7 @@ end
 #! Invocation: dynexec
 export.account_get_code_commitment
     # authenticate that the procedure invocation originates from the account context
-    exec.authenticate_account_origin drop drop
+    exec.authenticate_account_origin
     # => [pad(16)]
 
     # get the account code commitment
@@ -313,7 +317,7 @@ end
 #! Invocation: dynexec
 export.account_compute_storage_commitment
     # authenticate that the procedure invocation originates from the account context
-    exec.authenticate_account_origin drop drop
+    exec.authenticate_account_origin
     # => [pad(16)]
 
     # compute the account storage commitment
@@ -327,32 +331,29 @@ end
 
 #! Gets an item from the account storage.
 #!
-#! Inputs:  [index, pad(15)]
+#! Inputs:  [name_id_prefix, name_id_suffix, pad(14)]
 #! Outputs: [VALUE, pad(12)]
 #!
 #! Where:
-#! - index is the index of the item to get.
+#! - name_id_{prefix, suffix} are the prefix and suffix felts of the name identifier, which are
+#!   the first two felts of the hashed slot name.
 #! - VALUE is the value of the item.
 #!
 #! Panics if:
-#! - the index is out of bounds.
+#! - a slot with the provided name ID does not exist in account storage.
 #!
 #! Invocation: dynexec
 export.account_get_item
     # authenticate that the procedure invocation originates from the account context
     exec.authenticate_account_origin
-    # => [storage_offset, storage_size, index, pad(15)]
-
-    # apply offset to storage slot index
-    exec.account::apply_storage_offset
-    # => [index_with_offset, pad(15)]
+    # => [name_id_prefix, name_id_suffix, pad(14)]
 
     # fetch the account storage item
     exec.account::get_item
-    # => [VALUE, pad(15)]
+    # => [VALUE, pad(14)]
 
     # truncate the stack
-    movup.4 drop movup.4 drop movup.4 drop
+    movup.4 drop movup.4 drop
     # => [VALUE, pad(12)]
 end
 
@@ -385,11 +386,7 @@ export.account_set_item
 
     # authenticate that the procedure invocation originates from the account context
     exec.authenticate_account_origin
-    # => [storage_offset, storage_size, index, VALUE, pad(11)]
-
-    # apply offset to storage slot index
-    exec.account::apply_storage_offset
-    # => [index_with_offset, VALUE, pad(11)]
+    # => [index, VALUE, pad(11)]
 
     # set the account storage item
     exec.account::set_item
@@ -414,11 +411,7 @@ end
 export.account_get_map_item
     # authenticate that the procedure invocation originates from the account context
     exec.authenticate_account_origin
-    # => [storage_offset, storage_size, index, KEY, pad(11)]
-
-    # apply offset to storage slot index
-    exec.account::apply_storage_offset
-    # => [index_with_offset, KEY, pad(11)]
+    # => [index, KEY, pad(11)]
 
     # fetch the map item from account storage
     exec.account::get_map_item
@@ -441,11 +434,7 @@ end
 export.account_get_initial_item
     # authenticate that the procedure invocation originates from the account context
     exec.authenticate_account_origin
-    # => [storage_offset, storage_size, index, pad(15)]
-
-    # apply offset to storage slot index
-    exec.account::apply_storage_offset
-    # => [index_with_offset, pad(15)]
+    # => [index, pad(15)]
 
     # fetch the initial account storage item
     exec.account::get_initial_item
@@ -474,11 +463,7 @@ end
 export.account_get_initial_map_item
     # authenticate that the procedure invocation originates from the account context
     exec.authenticate_account_origin
-    # => [storage_offset, storage_size, index, KEY, pad(11)]
-
-    # apply offset to storage slot index
-    exec.account::apply_storage_offset
-    # => [index_with_offset, KEY, pad(11)]
+    # => [index, KEY, pad(11)]
 
     # fetch the initial map item from account storage
     exec.account::get_initial_map_item
@@ -512,11 +497,7 @@ export.account_set_map_item
 
     # authenticate that the procedure invocation originates from the account context
     exec.authenticate_account_origin
-    # => [storage_offset, storage_size, index, KEY, NEW_VALUE, pad(7)]
-
-    # apply offset to storage slot index
-    exec.account::apply_storage_offset
-    # => [index_with_offset, KEY, NEW_VALUE, pad(7)]
+    # => [index, KEY, NEW_VALUE, pad(7)]
 
     # set the new map item
     exec.account::set_map_item
@@ -587,7 +568,7 @@ export.account_add_asset
     # => [ASSET, pad(12)]
 
     # authenticate that the procedure invocation originates from the account context
-    exec.authenticate_account_origin drop drop
+    exec.authenticate_account_origin
     # => [ASSET, pad(12)]
 
     # add the specified asset to the account vault, emitting the corresponding events
@@ -616,7 +597,7 @@ export.account_remove_asset
     # => [ASSET, pad(12)]
 
     # authenticate that the procedure invocation originates from the account context
-    exec.authenticate_account_origin drop drop
+    exec.authenticate_account_origin
     # => [ASSET, pad(12)]
 
     # remove the specified asset from the account vault, emitting the corresponding events
@@ -710,7 +691,7 @@ export.faucet_mint_asset
     # => [ASSET, pad(12)]
 
     # authenticate that the procedure invocation originates from the account context
-    exec.authenticate_account_origin drop drop
+    exec.authenticate_account_origin
     # => [ASSET, pad(12)]
 
     # mint the asset
@@ -745,7 +726,7 @@ export.faucet_burn_asset
     # => [ASSET, pad(12)]
 
     # authenticate that the procedure invocation originates from the account context
-    exec.authenticate_account_origin drop drop
+    exec.authenticate_account_origin
     # => [ASSET, pad(12)]
 
     # burn the asset
