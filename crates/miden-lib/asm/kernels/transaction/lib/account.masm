@@ -704,7 +704,7 @@ export.get_storage_slot_type_by_index
     exec.memory::get_account_storage_slots_section_ptr
     # => [curr_account_storage_slots_section_ptr, index]
 
-    exec.get_indexed_storage_slot_ptr
+    exec.find_indexed_storage_slot
     # => [slot_ptr]
 
     # load the slot type
@@ -1309,7 +1309,7 @@ end
 #! - VALUE is the value of the item.
 export.get_item_raw
     # TODO(named_slots): pass in name
-    exec.get_indexed_storage_slot_ptr
+    exec.find_indexed_storage_slot
     # => [slot_ptr]
 
     # offset the pointer to point to the VALUE in the slot
@@ -1443,7 +1443,7 @@ proc.set_item_raw
     exec.memory::get_account_storage_slots_section_ptr
     # => [storage_slots_ptr, index, NEW_VALUE]
 
-    exec.get_indexed_storage_slot_ptr
+    exec.find_indexed_storage_slot
     # => [slot_ptr, NEW_VALUE]
 
     # offset the pointer to point to the VALUE in the slot
@@ -1470,7 +1470,7 @@ end
 #!
 #! Inputs:  [storage_slots_ptr, index]
 #! Outputs: [slot_ptr]
-proc.get_indexed_storage_slot_ptr
+proc.find_indexed_storage_slot
     # set the suffix to 0
     push.0 movup.2
     # => [name_id_prefix = index, name_id_suffix = 0, storage_slots_ptr]
@@ -1478,7 +1478,7 @@ proc.get_indexed_storage_slot_ptr
     movup.2
     # => [storage_slots_ptr, name_id_prefix = index, name_id_suffix = 0]
 
-    exec.get_storage_slot_ptr
+    exec.find_storage_slot
     # => [slot_ptr]
 end
 
@@ -1493,7 +1493,7 @@ end
 #! - slot_ptr is the pointer to the resolved storage slot.
 #! - name_id_{prefix, suffix} are the prefix and suffix felts of the name identifier, which are
 #!   the first two felts of the hashed slot name.
-proc.get_storage_slot_ptr
+proc.find_storage_slot
     # construct the start and end pointers of the storage slot section in which we will search
     dup exec.memory::get_num_storage_slots mul.8 add
     # => [storage_slots_end_ptr, storage_slots_start_ptr, name_id_prefix, name_id_suffix]
