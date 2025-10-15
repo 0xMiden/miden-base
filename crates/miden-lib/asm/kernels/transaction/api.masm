@@ -420,28 +420,29 @@ end
 
 #! Gets an item from the account storage at its initial state (beginning of transaction).
 #!
-#! Inputs:  [index, pad(15)]
+#! Inputs:  [name_id_prefix, name_id_suffix, pad(14)]
 #! Outputs: [INIT_VALUE, pad(12)]
 #!
 #! Where:
-#! - index is the index of the item to get.
+#! - name_id_{prefix, suffix} are the prefix and suffix felts of the name identifier, which are
+#!   the first two felts of the hashed slot name.
 #! - INIT_VALUE is the initial value of the item at the beginning of the transaction.
 #!
 #! Panics if:
-#! - the index is out of bounds.
+#! - a slot with the provided name ID does not exist in account storage.
 #!
 #! Invocation: dynexec
 export.account_get_initial_item
     # authenticate that the procedure invocation originates from the account context
     exec.authenticate_account_origin
-    # => [index, pad(15)]
+    # => [name_id_prefix, name_id_suffix, pad(14)]
 
     # fetch the initial account storage item
     exec.account::get_initial_item
-    # => [INIT_VALUE, pad(15)]
+    # => [INIT_VALUE, pad(14)]
 
     # truncate the stack
-    movup.4 drop movup.4 drop movup.4 drop
+    movup.4 drop movup.4 drop
     # => [INIT_VALUE, pad(12)]
 end
 

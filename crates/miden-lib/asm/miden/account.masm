@@ -268,27 +268,28 @@ end
 #! Gets the initial item from the account storage slot as it was at the beginning of the
 #! transaction.
 #!
-#! Inputs:  [index]
+#! Inputs:  [name_id_prefix, name_id_suffix]
 #! Outputs: [INIT_VALUE]
 #!
 #! Where:
-#! - index is the index of the item to get.
+#! - name_id_{prefix, suffix} are the prefix and suffix felts of the name identifier, which are
+#!   the first two felts of the hashed slot name.
 #! - INIT_VALUE is the initial value of the item at the beginning of the transaction.
 #!
 #! Panics if:
-#! - the index of the requested item is out of bounds.
+#! - a slot with the provided name ID does not exist in account storage.
 #!
 #! Invocation: exec
 export.get_initial_item
-    push.0.0 movup.2
-    # => [index, 0, 0]
+    push.0 movdn.2
+    # => [name_id_prefix, name_id_suffix, 0]
 
     exec.kernel_proc_offsets::account_get_initial_item_offset
-    # => [offset, index, 0, 0]
+    # => [offset, name_id_prefix, name_id_suffix, 0]
 
     # pad the stack
     padw swapw padw padw swapdw
-    # => [offset, index, pad(14)]
+    # => [offset, name_id_prefix, name_id_suffix, pad(13)]
 
     syscall.exec_kernel_proc
     # => [INIT_VALUE, pad(12)]

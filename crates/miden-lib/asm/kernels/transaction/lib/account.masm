@@ -486,21 +486,20 @@ end
 
 #! Gets an item from the account storage at its initial state (beginning of transaction).
 #!
-#! Note:
-#! - We assume that index has been validated and is within bounds.
-#!
-#! Inputs:  [index]
+#! Inputs:  [name_id_prefix, name_id_suffix]
 #! Outputs: [INIT_VALUE]
 #!
 #! Where:
-#! - index is the index of the item to get.
+#! - name_id_{prefix, suffix} are the prefix and suffix felts of the name identifier, which are
+#!   the first two felts of the hashed slot name.
 #! - INIT_VALUE is the initial value of the item at the beginning of the transaction.
+#!
+#! Panics if:
+#! - a slot with the provided name ID does not exist in account storage.
 export.get_initial_item
     # get account initial storage slots section offset
     exec.memory::get_account_initial_storage_slots_ptr
-    # => [account_initial_storage_slots_ptr, index]
-
-    push.0 assert.err="TODO(named_slots): get_initial_item is unimplemented"
+    # => [account_initial_storage_slots_ptr, name_id_prefix, name_id_suffix]
 
     # get the item from initial storage
     exec.get_item_raw
