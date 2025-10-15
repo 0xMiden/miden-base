@@ -58,14 +58,6 @@ pub struct TransactionContext {
 }
 
 impl TransactionContext {
-    /// TODO: Remove.
-    pub fn execute_code_blocking(&self, code: &str) -> Result<ExecutionOutput, ExecutionError> {
-        tokio::runtime::Builder::new_current_thread()
-            .build()
-            .unwrap()
-            .block_on(self.execute_code(code))
-    }
-
     /// Executes arbitrary code within the context of a mocked transaction environment and returns
     /// the resulting [`ExecutionOutput`].
     ///
