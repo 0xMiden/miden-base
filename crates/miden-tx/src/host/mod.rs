@@ -3,9 +3,6 @@ mod account_delta_tracker;
 use account_delta_tracker::AccountDeltaTracker;
 mod storage_delta_tracker;
 
-#[cfg(feature = "std")]
-use std::println;
-
 mod link_map;
 pub use link_map::{LinkMap, MemoryViewer};
 
@@ -552,9 +549,6 @@ where
         &mut self,
         process: &ProcessState,
     ) -> Result<TransactionEventHandling, TransactionKernelError> {
-        #[cfg(feature = "std")]
-        println!("in on_note_after_created");
-
         // Extract metadata from stack
         let metadata_word = process.get_stack_word(1);
         let metadata = NoteMetadata::try_from(metadata_word)
@@ -594,12 +588,6 @@ where
             // Extract script root from the recipient data
             // Old format: [num_inputs, INPUTS_COMMITMENT, SCRIPT_ROOT, SERIAL_NUM]
             let script_root = Word::new([data[5], data[6], data[7], data[8]]);
-
-            #[cfg(feature = "std")]
-            println!("on_note_after_created:: script_root: {:?}", script_root);
-
-            #[cfg(feature = "std")]
-            println!("adviceStack: {:?}", data);
 
             // Check if the script is in the advice provider
             let is_script_missing =

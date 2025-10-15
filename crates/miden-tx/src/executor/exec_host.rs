@@ -1,7 +1,6 @@
 use alloc::collections::BTreeMap;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
-use std::println;
 
 use miden_lib::transaction::{EventId, TransactionAdviceInputs};
 use miden_objects::account::{
@@ -366,8 +365,8 @@ where
 
     /// Handles a request for a note script by querying the data store.
     ///
-    /// The script is fetched from the data store, added to the advice map, and then the note
-    /// builder is created using the provided metadata, recipient digest, and note index.
+    /// The script is fetched from the data store, added to a temporary advice map, and then the
+    /// note builder is created using the updated advice provider that includes the script.
     async fn on_note_script_requested(
         &mut self,
         script_root: Word,
@@ -376,9 +375,6 @@ where
         note_idx: usize,
         process: &ProcessState<'_>,
     ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
-        #[cfg(feature = "std")]
-        println!("in on_note_script_requested");
-
         let note_script =
             self.base_host.store().get_note_script(script_root).await.map_err(|err| {
                 TransactionKernelError::other_with_source(
@@ -387,23 +383,33 @@ where
                 )
             })?;
 
-        #[cfg(feature = "std")]
-        println!("note script: {:?}", note_script.root());
-
         let script_felts: Vec<Felt> = (&note_script).into();
 
+        // Create mutations to add the script to the advice map
         let mutations = vec![AdviceMutation::extend_map(AdviceMap::from_iter([(
             script_root,
             script_felts.clone(),
         )]))];
 
+        // Apply the mutations to a temporary advice provider so we can create the note builder
+        // with the script already available
+        let mut temp_advice_provider = process.advice_provider().clone();
+        let temp_advice_map = AdviceMap::from_iter([(script_root, script_felts.clone())]);
+        temp_advice_provider.extend_map(&temp_advice_map).map_err(|err| {
+            TransactionKernelError::other_with_source(
+                "failed to extend advice map with note script",
+                err,
+            )
+        })?;
+
+        // Now create the note builder with the updated advice provider that includes the script
         self.base_host.create_note_builder_from_stack_and_script(
             metadata,
             recipient_digest,
             note_idx,
             script_root,
             script_felts,
-            process.advice_provider(),
+            &temp_advice_provider,
         )?;
 
         Ok(mutations)

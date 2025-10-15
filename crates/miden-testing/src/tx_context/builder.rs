@@ -303,12 +303,6 @@ impl TransactionContextBuilder {
         tx_args.extend_advice_inputs(self.advice_inputs.clone());
         tx_args.extend_output_note_recipients(self.expected_output_notes.clone());
 
-        // Add note scripts to the advice map so they're available during execution
-        for (script_root, note_script) in &self.note_scripts {
-            let script_felts: Vec<miden_processor::Felt> = note_script.into();
-            tx_args.extend_advice_map([(*script_root, script_felts)]);
-        }
-
         for (public_key_commitment, message, signature) in self.signatures {
             tx_args.add_signature(public_key_commitment, message, signature);
         }
