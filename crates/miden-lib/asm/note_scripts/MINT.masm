@@ -40,11 +40,11 @@ begin
     # => [num_inputs, inputs_ptr, pad(12)]
 
     # Verify we have the correct number of inputs
-    eq.MINT_NOTE_INPUTS_NUMBER assert.err=ERR_MINT_WRONG_NUMBER_OF_INPUTS
+    eq.MINT_NOTE_INPUTS_NUMBER assert.err=ERR_MINT_WRONG_NUMBER_OF_INPUTS drop
     # => [pad(12)]
 
     # Load amount
-    drop mem_loadw.0
+    mem_loadw.0
     # => [RECIPIENT, pad(12)]
 
     swapw mem_loadw.4
