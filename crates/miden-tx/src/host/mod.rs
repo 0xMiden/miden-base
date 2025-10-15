@@ -1,6 +1,10 @@
 mod account_delta_tracker;
+
 use account_delta_tracker::AccountDeltaTracker;
 mod storage_delta_tracker;
+
+#[cfg(feature = "std")]
+use std::println;
 
 mod link_map;
 pub use link_map::{LinkMap, MemoryViewer};
@@ -231,9 +235,13 @@ where
         _script_felts: Vec<Felt>,
         adv_provider: &miden_processor::AdviceProvider,
     ) -> Result<(), TransactionKernelError> {
-        // If the note builder already exists, we don't need to create it again
+        // If the note builder already exists, it's an error - we should never construct
+        // an output note builder twice
         if self.output_notes.contains_key(&note_idx) {
-            return Ok(());
+            return Err(TransactionKernelError::other(format!(
+                "Attempted to create note builder for note index {} twice",
+                note_idx
+            )));
         }
 
         // Create the note builder now that the script is available in the advice provider
@@ -544,6 +552,9 @@ where
         &mut self,
         process: &ProcessState,
     ) -> Result<TransactionEventHandling, TransactionKernelError> {
+        #[cfg(feature = "std")]
+        println!("in on_note_after_created");
+
         // Extract metadata from stack
         let metadata_word = process.get_stack_word(1);
         let metadata = NoteMetadata::try_from(metadata_word)
@@ -555,9 +566,13 @@ where
         // Extract note index from stack
         let note_idx = process.get_stack_item(10).as_int() as usize;
 
-        // Check if we've already created this note builder (after fetching the script)
+        // Check if we've already created this note builder
+        // This should not happen - we should only create each note builder once
         if self.output_notes.contains_key(&note_idx) {
-            return Ok(TransactionEventHandling::Handled(Vec::new()));
+            return Err(TransactionKernelError::other(format!(
+                "Attempted to create note builder for note index {} twice",
+                note_idx
+            )));
         }
 
         // Verify that the note index matches the expected next index
@@ -571,16 +586,20 @@ where
 
         // Try to get recipient data from the advice map
         if let Some(data) = process.advice_provider().get_mapped_values(&recipient_digest) {
-            // Extract script root from the recipient data
-            let script_root = if data.len() == 13 {
-                // Old format: [num_inputs, INPUTS_COMMITMENT, SCRIPT_ROOT, SERIAL_NUM]
-                Word::new([data[5], data[6], data[7], data[8]])
-            } else if data.len() == 12 {
-                // New format: [SERIAL_NUM, SCRIPT_ROOT, INPUTS_HASH]
-                Word::new([data[4], data[5], data[6], data[7]])
-            } else {
+            // Only support the old format (13 felts)
+            if data.len() != 13 {
                 return Err(TransactionKernelError::MalformedRecipientData(data.to_vec()));
-            };
+            }
+
+            // Extract script root from the recipient data
+            // Old format: [num_inputs, INPUTS_COMMITMENT, SCRIPT_ROOT, SERIAL_NUM]
+            let script_root = Word::new([data[5], data[6], data[7], data[8]]);
+
+            #[cfg(feature = "std")]
+            println!("on_note_after_created:: script_root: {:?}", script_root);
+
+            #[cfg(feature = "std")]
+            println!("adviceStack: {:?}", data);
 
             // Check if the script is in the advice provider
             let is_script_missing =

@@ -46,26 +46,16 @@ impl OutputNoteBuilder {
     ) -> Result<Self, TransactionKernelError> {
         // This method returns an error if the mapped value is not found.
         let recipient = if let Some(data) = adv_provider.get_mapped_values(&recipient_digest) {
-            // Support both old format (13 felts) and new format (12 felts) from build_recipient
-            let (serial_num, script_root, inputs_commitment, num_inputs) = if data.len() == 13 {
-                // Old format: [num_inputs, INPUTS_COMMITMENT, SCRIPT_ROOT, SERIAL_NUM]
-                let num_inputs = data[0].as_int() as usize;
-                let inputs_commitment = Word::new([data[1], data[2], data[3], data[4]]);
-                let script_root = Word::new([data[5], data[6], data[7], data[8]]);
-                let serial_num = Word::from([data[9], data[10], data[11], data[12]]);
-                (serial_num, script_root, inputs_commitment, num_inputs)
-            } else if data.len() == 12 {
-                // New format from build_recipient: [SERIAL_NUM, SCRIPT_ROOT, INPUTS_HASH]
-                let serial_num = Word::from([data[0], data[1], data[2], data[3]]);
-                let script_root = Word::new([data[4], data[5], data[6], data[7]]);
-                let inputs_commitment = Word::new([data[8], data[9], data[10], data[11]]);
-
-                // For the new format, we need to get num_inputs from the inputs data itself
-                // We'll handle this below when we fetch the inputs
-                (serial_num, script_root, inputs_commitment, 0)
-            } else {
+            // Only support the old format (13 felts)
+            if data.len() != 13 {
                 return Err(TransactionKernelError::MalformedRecipientData(data.to_vec()));
-            };
+            }
+
+            // Old format: [num_inputs, INPUTS_COMMITMENT, SCRIPT_ROOT, SERIAL_NUM]
+            let num_inputs = data[0].as_int() as usize;
+            let inputs_commitment = Word::new([data[1], data[2], data[3], data[4]]);
+            let script_root = Word::new([data[5], data[6], data[7], data[8]]);
+            let serial_num = Word::from([data[9], data[10], data[11], data[12]]);
 
             let script_data = adv_provider.get_mapped_values(&script_root).unwrap_or(&[]);
             let inputs_data = adv_provider.get_mapped_values(&inputs_commitment);
@@ -73,23 +63,20 @@ impl OutputNoteBuilder {
             let inputs = match inputs_data {
                 None => NoteInputs::default(),
                 Some(inputs) => {
-                    // For new format (12 felts), num_inputs is 0, so we use the actual length
-                    let actual_num_inputs = if num_inputs == 0 { inputs.len() } else { num_inputs };
-
                     // There must be at least `num_inputs` elements in the advice provider data,
                     // otherwise it is an error.
                     //
                     // It is possible to have more elements because of padding. The extra elements
                     // will be discarded below, and later their contents will be validated by
                     // computing the commitment and checking against the expected value.
-                    if actual_num_inputs > inputs.len() {
+                    if num_inputs > inputs.len() {
                         return Err(TransactionKernelError::TooFewElementsForNoteInputs {
-                            specified: actual_num_inputs as u64,
+                            specified: num_inputs as u64,
                             actual: inputs.len() as u64,
                         });
                     }
 
-                    NoteInputs::new(inputs[0..actual_num_inputs].to_vec())
+                    NoteInputs::new(inputs[0..num_inputs].to_vec())
                         .map_err(TransactionKernelError::MalformedNoteInputs)?
                 },
             };

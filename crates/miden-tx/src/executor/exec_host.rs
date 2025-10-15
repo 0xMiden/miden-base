@@ -1,6 +1,7 @@
 use alloc::collections::BTreeMap;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
+use std::println;
 
 use miden_lib::transaction::{EventId, TransactionAdviceInputs};
 use miden_objects::account::{
@@ -375,6 +376,9 @@ where
         note_idx: usize,
         process: &ProcessState<'_>,
     ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
+        #[cfg(feature = "std")]
+        println!("in on_note_script_requested");
+
         let note_script =
             self.base_host.store().get_note_script(script_root).await.map_err(|err| {
                 TransactionKernelError::other_with_source(
@@ -382,6 +386,9 @@ where
                     err,
                 )
             })?;
+
+        #[cfg(feature = "std")]
+        println!("note script: {:?}", note_script.root());
 
         let script_felts: Vec<Felt> = (&note_script).into();
 

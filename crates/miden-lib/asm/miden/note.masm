@@ -95,7 +95,7 @@ end
 #! The procedure also inserts the following data into the advice map:
 #! - Advice map: {
 #!     INPUTS_COMMITMENT: [[NOTE_INPUTS]]
-#!     RECIPIENT: [INPUTS_COMMITMENT, SCRIPT_ROOT, SERIAL_NUM]
+#!     RECIPIENT: [num_inputs, INPUTS_COMMITMENT, SCRIPT_ROOT, SERIAL_NUM]
 #! }
 #!
 #! Inputs:  [inputs_ptr, num_inputs, SERIAL_NUM, SCRIPT_ROOT]
@@ -117,7 +117,7 @@ end
 #! - num_inputs is greater than 128.
 #!
 #! Invocation: exec
-export.build_recipient.12
+export.build_recipient.16
     dup.1 dup.1 loc_store.0 loc_store.1
     # => [inputs_ptr, num_inputs, SERIAL_NUM, SCRIPT_ROOT]
 
@@ -125,41 +125,54 @@ export.build_recipient.12
     # => [INPUTS_COMMITMENT, SERIAL_NUM, SCRIPT_ROOT]
 
     movdnw.2
-    # => [SERIAL_NUM, SCRIPT_ROOT, INPUTS_HASH]
+    # => [SERIAL_NUM, SCRIPT_ROOT, INPUTS_COMMITMENT]
 
     dupw.2 dupw.2 dupw.2
-    # => [SERIAL_NUM, SCRIPT_ROOT, INPUTS_HASH, SERIAL_NUM, SCRIPT_ROOT, INPUTS_HASH]
+    # => [SERIAL_NUM, SCRIPT_ROOT, INPUTS_COMMITMENT, SERIAL_NUM, SCRIPT_ROOT, INPUTS_COMMITMENT]
 
     exec.build_recipient_hash
-    # => [RECIPIENT, SERIAL_NUM, SCRIPT_ROOT, INPUTS_HASH]
+    # => [RECIPIENT, SERIAL_NUM, SCRIPT_ROOT, INPUTS_COMMITMENT]
 
     # inserting NoteInputs into AdviceMap
     dupw.3
-    # => [INPUTS_HASH, RECIPIENT, SERIAL_NUM, SCRIPT_ROOT, INPUTS_HASH]
+    # => [INPUTS_COMMITMENT, RECIPIENT, SERIAL_NUM, SCRIPT_ROOT, INPUTS_COMMITMENT]
 
     loc_load.0 loc_load.1 loc_load.0
-    # => [inputs_ptr, num_inputs, inputs_ptr, INPUTS_HASH, RECIPIENT, SERIAL_NUM, SCRIPT_ROOT, INPUTS_HASH]
+    # => [inputs_ptr, num_inputs, inputs_ptr, INPUTS_COMMITMENT, RECIPIENT, SERIAL_NUM, SCRIPT_ROOT, INPUTS_COMMITMENT]
 
     add swap
-    # => [inputs_ptr, end_ptr, INPUTS_HASH, RECIPIENT, SERIAL_NUM, SCRIPT_ROOT, INPUTS_HASH]
+    # => [inputs_ptr, end_ptr, INPUTS_COMMITMENT, RECIPIENT, SERIAL_NUM, SCRIPT_ROOT, INPUTS_COMMITMENT]
 
     movdn.5 movdn.5
-    # => [INPUTS_HASH, inputs_ptr, end_ptr, RECIPIENT, SERIAL_NUM, SCRIPT_ROOT, INPUTS_HASH]
+    # => [INPUTS_COMMITMENT, inputs_ptr, end_ptr, RECIPIENT, SERIAL_NUM, SCRIPT_ROOT, INPUTS_COMMITMENT]
 
     adv.insert_mem
-    # => [INPUTS_HASH, inputs_ptr, end_ptr, RECIPIENT, SERIAL_NUM, SCRIPT_ROOT, INPUTS_HASH]
+    # => [INPUTS_COMMITMENT, inputs_ptr, end_ptr, RECIPIENT, SERIAL_NUM, SCRIPT_ROOT, INPUTS_COMMITMENT]
 
     dropw drop drop
-    # => [RECIPIENT, SERIAL_NUM, SCRIPT_ROOT, INPUTS_HASH]
+    # => [RECIPIENT, SERIAL_NUM, SCRIPT_ROOT, INPUTS_COMMITMENT]
 
     movdnw.3
-    # => [SERIAL_NUM, SCRIPT_ROOT, INPUTS_HASH, RECIPIENT]
+    # => [SERIAL_NUM, SCRIPT_ROOT, INPUTS_COMMITMENT, RECIPIENT]
 
-    # inserting NoteDetails into AdviceMap
-    loc_storew.0 dropw loc_storew.4 dropw loc_storew.8 dropw
+    # inserting NoteDetails into AdviceMap in old format
+    # Current local memory layout:
+    # Local 0: SERIAL_NUM (4 felts)
+    # Local 4: SCRIPT_ROOT (4 felts)
+    # Local 8: INPUTS_COMMITMENT (4 felts)
+    
+    # We need format: [num_inputs, INPUTS_COMMITMENT, SCRIPT_ROOT, SERIAL_NUM]
+    # Store in the correct order starting from local 0:
+    
+    loc_storew.12 dropw loc_storew.8 dropw loc_storew.4 dropw
     # => [RECIPIENT]
 
-    locaddr.0 dup push.12 add swap
+    loc_load.1 loc_store.3
+    # => [RECIPIENT]
+
+    push.222 debug.stack drop
+
+    locaddr.3 dup push.13 add swap
     # => [mem_ptr, end_ptr, RECIPIENT]
 
     movdn.5 movdn.5
