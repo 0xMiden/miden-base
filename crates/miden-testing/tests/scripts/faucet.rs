@@ -309,7 +309,7 @@ async fn network_faucet_mint() -> anyhow::Result<()> {
         builder.add_existing_network_faucet("NET", 1000, faucet_owner_account_id, Some(50))?;
 
     // Create a target account to consume the minted note
-    let target_account = builder.add_existing_wallet(Auth::IncrNonce)?;
+    let mut target_account = builder.add_existing_wallet(Auth::IncrNonce)?;
 
     // The Network Fungible Faucet component is added as the second component after auth, so its
     // storage slot offset will be 2. Check that max_supply at the word's index 0 is 200.
@@ -404,11 +404,12 @@ async fn network_faucet_mint() -> anyhow::Result<()> {
         .build()?;
     let consume_executed_transaction = consume_tx_context.execute().await?;
 
-    // Verify the account delta shows the asset was added to the vault
-    let vault_delta = consume_executed_transaction.account_delta().vault();
-    let added_assets: Vec<_> = vault_delta.added_assets().collect();
-    assert_eq!(added_assets.len(), 1);
-    assert_eq!(added_assets[0], expected_asset.into());
+    // Apply the delta to the target account and verify the asset was added to the account's vault
+    target_account.apply_delta(consume_executed_transaction.account_delta())?;
+
+    // Verify the account's vault now contains the expected fungible asset
+    let balance = target_account.vault().get_balance(faucet.id())?;
+    assert_eq!(balance, expected_asset.amount(),);
 
     Ok(())
 }
@@ -441,10 +442,11 @@ async fn network_faucet_burn() -> anyhow::Result<()> {
         AccountStorageMode::Private,
     );
 
-    let faucet =
+    let mut faucet =
         builder.add_existing_network_faucet("NET", 200, faucet_owner_account_id, Some(100))?;
 
-    let fungible_asset = FungibleAsset::new(faucet.id(), 100).unwrap();
+    let burn_amount = 100u64;
+    let fungible_asset = FungibleAsset::new(faucet.id(), burn_amount).unwrap();
 
     // CREATE BURN NOTE USING STANDARD NOTE SCRIPT
     // --------------------------------------------------------------------------------------------
@@ -460,14 +462,18 @@ async fn network_faucet_burn() -> anyhow::Result<()> {
         Felt::new(0),
     )?;
     let burn_note_assets = NoteAssets::new(vec![fungible_asset.into()])?;
-    let serial_num = Word::from([5, 6, 7, 8u32]); // Random serial number
-    let inputs = NoteInputs::new(vec![]).unwrap(); // BURN note has no inputs
+    let serial_num = Word::from([5, 6, 7, 8u32]);
+    let inputs = NoteInputs::new(vec![]).unwrap();
     let burn_note_recipient = NoteRecipient::new(serial_num, note_script, inputs);
     let note = Note::new(burn_note_assets, burn_note_metadata, burn_note_recipient);
 
     builder.add_output_note(OutputNote::Full(note.clone()));
     let mut mock_chain = builder.build()?;
     mock_chain.prove_next_block()?;
+
+    // Check the initial token issuance before burning
+    let initial_issuance = faucet.get_token_issuance().unwrap();
+    assert_eq!(initial_issuance, Felt::new(100));
 
     // EXECUTE BURN NOTE AGAINST NETWORK FAUCET
     // --------------------------------------------------------------------------------------------
@@ -480,6 +486,11 @@ async fn network_faucet_burn() -> anyhow::Result<()> {
     // Verify the transaction was executed successfully
     assert_eq!(executed_transaction.account_delta().nonce_delta(), Felt::new(1));
     assert_eq!(executed_transaction.input_notes().get_note(0).id(), note.id());
+
+    // Apply the delta to the faucet account and verify the token issuance decreased
+    faucet.apply_delta(executed_transaction.account_delta())?;
+    let final_issuance = faucet.get_token_issuance().unwrap();
+    assert_eq!(final_issuance, Felt::new(initial_issuance.as_int() - burn_amount));
 
     Ok(())
 }
