@@ -381,6 +381,8 @@ impl Account {
             });
         }
 
+        self.nonce = new_nonce;
+
         // Maintain internal consistency of the account, i.e. the seed should not be present for
         // existing accounts, where existing accounts are defined as having a nonce > 0.
         // If we've incremented the nonce, then we should remove the seed (if it was present at
@@ -388,8 +390,6 @@ impl Account {
         if !self.is_new() {
             self.seed = None;
         }
-
-        self.nonce = new_nonce;
 
         Ok(())
     }
