@@ -473,12 +473,15 @@ async fn test_check_note_consumability_static_analysis() -> anyhow::Result<()> {
     );
     builder.add_output_note(OutputNote::Full(p2ide_timelock_not_reached.clone()));
 
-    // swap target and sender account IDs to emulate the recall attempt scenario
-    let p2ide_recall_not_reached = create_p2ide_note_with_inputs(
-        [sender_account_id.suffix().as_int(), sender_account_id.prefix().as_u64(), 3, 0],
+    // swap target and sender account IDs to emulate the reclaim attempt scenario
+    //
+    // this note is also still timelocked, but the reclaim height is greater than the timelock, so
+    // the reclaim height should be returned
+    let p2ide_reclaim_not_reached = create_p2ide_note_with_inputs(
+        [sender_account_id.suffix().as_int(), sender_account_id.prefix().as_u64(), 3, 2],
         target_account_id,
     );
-    builder.add_output_note(OutputNote::Full(p2ide_recall_not_reached.clone()));
+    builder.add_output_note(OutputNote::Full(p2ide_reclaim_not_reached.clone()));
 
     // finalize mock chain and create notes checker
     // --------------------------------------------------------------------------------------------
@@ -542,13 +545,13 @@ async fn test_check_note_consumability_static_analysis() -> anyhow::Result<()> {
         NoteConsumptionStatus::ConsumableAfter(block_number) if block_number.as_u32() == 10
     );
 
-    // check the note with unreached recall height
+    // check the attempt to reclaim the note with unreached reclaim height and timelock
     // --------------------------------------------------------------------------------------------
     let consumability_info: NoteConsumptionStatus = notes_checker
         .can_consume(
             target_account_id,
             block_ref,
-            p2ide_recall_not_reached.clone(),
+            p2ide_reclaim_not_reached.clone(),
             tx_args.clone(),
         )
         .await?;

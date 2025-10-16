@@ -1,5 +1,6 @@
 use alloc::boxed::Box;
 use alloc::string::String;
+use core::cmp::max;
 use core::error::Error;
 
 use miden_objects::account::AccountId;
@@ -172,19 +173,6 @@ impl WellKnownNote {
     ///   general.
     /// - `None` if the consumption status of the note cannot be determined conclusively and further
     ///   checks are necessary.
-    ///
-    /// It performs:
-    /// - for `P2ID` note:
-    ///     - check that note inputs have correct number of values.
-    ///     - assertion that the account ID provided by the note inputs is equal to the target
-    ///       account ID.
-    /// - for `P2IDE` note:
-    ///     - check that note inputs have correct number of values.
-    ///     - assertion that the timelock block height is reached, so the note can be consumed.
-    ///     - assertion that the account ID provided by the note inputs is equal to the target
-    ///       account ID (which means that the note is going to be consumed by the target account)
-    ///       or that the target account ID is equal to the sender account ID (which means that the
-    ///       note is going to be consumed by the sender account)
     pub fn check_note_inputs(
         &self,
         note: &Note,
@@ -200,6 +188,36 @@ impl WellKnownNote {
         }
     }
 
+    /// Performs the inputs check of the provided note against the target account and the block
+    /// number.
+    ///
+    /// It performs:
+    /// - for `P2ID` note:
+    ///     - check that note inputs have correct number of values.
+    ///     - assertion that the account ID provided by the note inputs is equal to the target
+    ///       account ID.
+    /// - for `P2IDE` note:
+    ///     - check that note inputs have correct number of values.
+    ///     - check that the target account is either the receiver account or the sender account.
+    ///     - check that depending on whether the target account is sender or receiver, it could be
+    ///       either consumed, or consumed after timelock height, or consumed after reclaim height.
+    ///       See the underlying table for the specific cases:
+    /// ```text
+    ///       Where:
+    ///         - `curr` -- current block height
+    ///         - `tl`   -- timelock height
+    ///         - `rc`   -- reclaim height
+    ///       ┌───────────────────┬─────────────┬─────────────┐
+    ///       │  Height sequence  │   Sender    │  Receiver   │
+    ///       ├───────────────────┼─────────────┼─────────────┤
+    ///       │ curr   rc    tl   │  return tl  |  return tl  |
+    ///       |  rc   curr   tl   │  return tl  |  return tl  |
+    ///       │  rc    tl   curr  │ return None | return None |
+    ///       |  tl    rc   curr  │ return None | return None |
+    ///       │ curr   tl    rc   │  return rc  |  return tl  |
+    ///       |  tl   curr   rc   │  return rc  | return None |
+    ///       └───────────────────┴─────────────┴─────────────┘
+    /// ```
     fn check_note_inputs_inner(
         &self,
         note: &Note,
@@ -243,6 +261,14 @@ impl WellKnownNote {
 
                 let input_account_id = try_read_account_id_from_inputs(note_inputs)?;
 
+                // if the target account is not the sender of the note or the receiver (from the
+                // note's inputs), then this account cannot consume the note
+                if ![input_account_id, note.metadata().sender()].contains(&target_account_id) {
+                    return Ok(Some(NoteConsumptionStatus::NeverConsumable(
+                        "target account of the transaction does not match neither the receiver account specified by the P2IDE inputs, nor the sender account".into()
+                    )));
+                }
+
                 let reclaim_height = u32::try_from(note_inputs[2]).map_err(|_err| {
                     StaticAnalysisError::build_error("reclaim block height should be a u32")
                 })?;
@@ -251,32 +277,54 @@ impl WellKnownNote {
                     StaticAnalysisError::build_error("timelock block height should be a u32")
                 })?;
 
-                if block_ref.as_u32() < timelock_height {
+                let current_block_height = block_ref.as_u32();
+
+                // Handle the case when timelock height is greater than the current block height and
+                // reclaim height (first two rows in the table).
+                //
+                // Return the timelock height: neither sender, nor the target cannot consume the
+                // note.
+                if timelock_height > max(current_block_height, reclaim_height) {
                     return Ok(Some(NoteConsumptionStatus::ConsumableAfter(BlockNumber::from(
                         timelock_height,
                     ))));
                 }
 
-                if block_ref.as_u32() >= reclaim_height {
-                    let sender_account_id = note.metadata().sender();
-                    // At or after the recall height both the sender of the note and the receiver
-                    // (from the note's inputs) are allowed to consume the note.
-                    if [input_account_id, sender_account_id].contains(&target_account_id) {
-                        Ok(None)
-                    } else {
-                        Ok(Some(NoteConsumptionStatus::NeverConsumable("target account of the transaction does not match neither the target account specified by the P2IDE inputs, nor the sender account".into())))
-                    }
+                // Handle the case when current block height is greater than the timelock height and
+                // reclaim height (third and fourth rows in the table).
+                //
+                // Return None: both sender and receiver accounts can consume the note
+                if current_block_height > max(reclaim_height, timelock_height) {
+                    return Ok(None);
+                }
+
+                // We checked the cases where current block height is the largest and timelock
+                // height is the largest. If we have reached this check, then it means that the only
+                // left option is that the reclaim height is the largest of the three (last two rows
+                // in the table)
+                //
+                // For that case check that the target is the sender. If so, then return the reclaim
+                // height, since it will be the main restriction for it (`Sender` column of the last
+                // two rows in the table).
+                if target_account_id == note.metadata().sender() {
+                    Ok(Some(NoteConsumptionStatus::ConsumableAfter(BlockNumber::from(
+                        reclaim_height,
+                    ))))
                 } else {
-                    // in this case note could be consumed only by the target account
-                    if input_account_id == target_account_id {
+                    // If the target is receiver, then it can consume the note as soon as the
+                    // timelock will be reached (`Receiver` column of the last two rows in the
+                    // table).
+                    if current_block_height >= timelock_height {
                         Ok(None)
                     } else {
                         Ok(Some(NoteConsumptionStatus::ConsumableAfter(BlockNumber::from(
-                            reclaim_height,
+                            timelock_height,
                         ))))
                     }
                 }
             },
+
+            // if the note is `SWAP`, try to execute it to determine whether it could be consumed
             _ => Ok(None),
         }
     }
