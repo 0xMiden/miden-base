@@ -1,14 +1,5 @@
 use miden_objects::asset::Asset;
-use miden_objects::note::{
-    Note,
-    NoteAssets,
-    NoteInputs,
-    NoteMetadata,
-    NoteRecipient,
-    NoteScript,
-    PartialNote,
-};
-use miden_processor::AdviceProvider;
+use miden_objects::note::{Note, NoteAssets, NoteMetadata, NoteRecipient, PartialNote};
 
 use super::{OutputNote, Word};
 use crate::errors::TransactionKernelError;
@@ -29,80 +20,24 @@ impl OutputNoteBuilder {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
 
-    /// Returns a new [OutputNoteBuilder] from the provided metadata, recipient digest, and advice
-    /// provider.
-    ///
-    /// Detailed note info such as assets and recipient (when available) are retrieved from the
-    /// advice provider.
+    /// Returns a new [OutputNoteBuilder] from the provided metadata, recipient digest, and optional
+    /// recipient.
     ///
     /// # Errors
-    /// Returns an error if:
-    /// - Recipient information in the advice provider is present but is malformed.
-    /// - A non-private note is missing recipient details.
+    /// Returns an error if the note is public but no recipient is provided.
     pub fn new(
         metadata: NoteMetadata,
         recipient_digest: Word,
-        adv_provider: &AdviceProvider,
+        recipient: Option<NoteRecipient>,
     ) -> Result<Self, TransactionKernelError> {
-        // This method returns an error if the mapped value is not found.
-        let recipient = if let Some(data) = adv_provider.get_mapped_values(&recipient_digest) {
-            // Only support the old format (13 felts)
-            if data.len() != 13 {
-                return Err(TransactionKernelError::MalformedRecipientData(data.to_vec()));
-            }
-
-            // Old format: [num_inputs, INPUTS_COMMITMENT, SCRIPT_ROOT, SERIAL_NUM]
-            let num_inputs = data[0].as_int() as usize;
-            let inputs_commitment = Word::new([data[1], data[2], data[3], data[4]]);
-            let script_root = Word::new([data[5], data[6], data[7], data[8]]);
-            let serial_num = Word::from([data[9], data[10], data[11], data[12]]);
-
-            let script_data = adv_provider.get_mapped_values(&script_root).unwrap_or(&[]);
-            let inputs_data = adv_provider.get_mapped_values(&inputs_commitment);
-
-            let inputs = match inputs_data {
-                None => NoteInputs::default(),
-                Some(inputs) => {
-                    // There must be at least `num_inputs` elements in the advice provider data,
-                    // otherwise it is an error.
-                    //
-                    // It is possible to have more elements because of padding. The extra elements
-                    // will be discarded below, and later their contents will be validated by
-                    // computing the commitment and checking against the expected value.
-                    if num_inputs > inputs.len() {
-                        return Err(TransactionKernelError::TooFewElementsForNoteInputs {
-                            specified: num_inputs as u64,
-                            actual: inputs.len() as u64,
-                        });
-                    }
-
-                    NoteInputs::new(inputs[0..num_inputs].to_vec())
-                        .map_err(TransactionKernelError::MalformedNoteInputs)?
-                },
-            };
-
-            if inputs.commitment() != inputs_commitment {
-                return Err(TransactionKernelError::InvalidNoteInputs {
-                    expected: inputs_commitment,
-                    actual: inputs.commitment(),
-                });
-            }
-
-            let script = NoteScript::try_from(script_data).map_err(|source| {
-                TransactionKernelError::MalformedNoteScript { data: script_data.to_vec(), source }
-            })?;
-            let recipient = NoteRecipient::new(serial_num, script, inputs);
-
-            Some(recipient)
-        } else if metadata.is_private() {
-            None
-        } else {
-            // if there are no recipient details and the note is not private, return an error
+        // For public notes, we must have a recipient
+        if !metadata.is_private() && recipient.is_none() {
             return Err(TransactionKernelError::PublicNoteMissingDetails(
                 metadata,
                 recipient_digest,
             ));
-        };
+        }
+
         Ok(Self {
             metadata,
             recipient_digest,

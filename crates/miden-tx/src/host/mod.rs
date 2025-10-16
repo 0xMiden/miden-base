@@ -9,7 +9,7 @@ pub use link_map::{LinkMap, MemoryViewer};
 mod account_procedures;
 pub use account_procedures::AccountProcedureIndexMap;
 
-mod note_builder;
+pub(crate) mod note_builder;
 use miden_lib::StdLibrary;
 use note_builder::OutputNoteBuilder;
 
@@ -218,38 +218,27 @@ where
         )
     }
 
-    /// Creates a note builder from the provided metadata, recipient digest, note index and note
-    /// script, and inserts it into the output_notes map. This is used after fetching a note
-    /// script from the data store.
+    // MUTATORS
+    // --------------------------------------------------------------------------------------------
+
+    /// Inserts an output note builder at the specified index.
     ///
-    /// The script should have already been added to the advice provider before calling this method.
-    pub(super) fn create_note_builder_from_stack_and_script(
+    /// # Errors
+    /// Returns an error if a note builder already exists at the given index.
+    pub(super) fn insert_output_note_builder(
         &mut self,
-        metadata: NoteMetadata,
-        recipient_digest: Word,
         note_idx: usize,
-        _script_root: Word,
-        _script_felts: Vec<Felt>,
-        adv_provider: &miden_processor::AdviceProvider,
+        note_builder: OutputNoteBuilder,
     ) -> Result<(), TransactionKernelError> {
-        // If the note builder already exists, it's an error - we should never construct
-        // an output note builder twice
         if self.output_notes.contains_key(&note_idx) {
             return Err(TransactionKernelError::other(format!(
                 "Attempted to create note builder for note index {} twice",
                 note_idx
             )));
         }
-
-        // Create the note builder now that the script is available in the advice provider
-        let note_builder = OutputNoteBuilder::new(metadata, recipient_digest, adv_provider)?;
         self.output_notes.insert(note_idx, note_builder);
-
         Ok(())
     }
-
-    // MUTATORS
-    // --------------------------------------------------------------------------------------------
 
     /// Returns a mutable reference to the [`AccountProcedureIndexMap`].
     pub fn load_foreign_account_code(
@@ -540,11 +529,9 @@ where
     ///
     /// Expected stack state: `[event, NOTE_METADATA, note_ptr, RECIPIENT, note_idx]`
     ///
-    /// If the note script is not found in the advice provider for a PUBLIC note, this method
-    /// returns [`TransactionEventHandling::Unhandled`] with the script root and extracted data,
-    /// signaling that the script should be fetched from the data store. The note builder will
-    /// be created later by [`create_note_builder_from_stack_and_script`] after the script is
-    /// fetched.
+    /// This method extracts recipient data from the advice provider and attempts to build a
+    /// NoteRecipient. If the note script is not present in the advice provider, it returns
+    /// [`TransactionEventHandling::Unhandled`] to request the script from the data store.
     fn on_note_after_created(
         &mut self,
         process: &ProcessState,
@@ -578,23 +565,26 @@ where
             )));
         }
 
-        // Try to get recipient data from the advice map
-        if let Some(data) = process.advice_provider().get_mapped_values(&recipient_digest) {
-            // Only support the old format (13 felts)
+        // Check if the advice provider contains the recipient data
+        let recipient = if let Some(data) =
+            process.advice_provider().get_mapped_values(&recipient_digest)
+        {
+            // NoteDetails from AdviceProvider: [num_inputs, INPUTS_COMMITMENT, SCRIPT_ROOT,
+            // SERIAL_NUM]
             if data.len() != 13 {
                 return Err(TransactionKernelError::MalformedRecipientData(data.to_vec()));
             }
 
-            // Extract script root from the recipient data
-            // Old format: [num_inputs, INPUTS_COMMITMENT, SCRIPT_ROOT, SERIAL_NUM]
+            let num_inputs = data[0].as_int() as usize;
+            let inputs_commitment = Word::new([data[1], data[2], data[3], data[4]]);
             let script_root = Word::new([data[5], data[6], data[7], data[8]]);
+            let serial_num = Word::from([data[9], data[10], data[11], data[12]]);
 
             // Check if the script is in the advice provider
-            let is_script_missing =
-                process.advice_provider().get_mapped_values(&script_root).is_none();
+            let script_data = process.advice_provider().get_mapped_values(&script_root);
 
-            // If script is missing, request it from the data store
-            if is_script_missing {
+            if script_data.is_none() {
+                // Script is missing - request it from the data store
                 return Ok(TransactionEventHandling::Unhandled(TransactionEventData::NoteScript {
                     script_root,
                     metadata,
@@ -602,12 +592,55 @@ where
                     note_idx,
                 }));
             }
-        }
 
-        // Build the note - this will error if required data (like script for PUBLIC notes) is
-        // missing
-        let note_builder =
-            OutputNoteBuilder::new(metadata, recipient_digest, process.advice_provider())?;
+            // Script is present, build the recipient
+            let script_data = script_data.unwrap();
+            let inputs_data = process.advice_provider().get_mapped_values(&inputs_commitment);
+
+            let inputs = match inputs_data {
+                None => miden_objects::note::NoteInputs::default(),
+                Some(inputs) => {
+                    if num_inputs > inputs.len() {
+                        return Err(TransactionKernelError::TooFewElementsForNoteInputs {
+                            specified: num_inputs as u64,
+                            actual: inputs.len() as u64,
+                        });
+                    }
+
+                    miden_objects::note::NoteInputs::new(inputs[0..num_inputs].to_vec())
+                        .map_err(TransactionKernelError::MalformedNoteInputs)?
+                },
+            };
+
+            if inputs.commitment() != inputs_commitment {
+                return Err(TransactionKernelError::InvalidNoteInputs {
+                    expected: inputs_commitment,
+                    actual: inputs.commitment(),
+                });
+            }
+
+            let script =
+                miden_objects::note::NoteScript::try_from(script_data).map_err(|source| {
+                    TransactionKernelError::MalformedNoteScript {
+                        data: script_data.to_vec(),
+                        source,
+                    }
+                })?;
+
+            Some(miden_objects::note::NoteRecipient::new(serial_num, script, inputs))
+        } else if !metadata.is_private() {
+            // Public note without recipient data - return error
+            return Err(TransactionKernelError::PublicNoteMissingDetails(
+                metadata,
+                recipient_digest,
+            ));
+        } else {
+            // Private note without recipient data - this is OK
+            None
+        };
+
+        // Build the note builder with the recipient (or None for private notes)
+        let note_builder = OutputNoteBuilder::new(metadata, recipient_digest, recipient)?;
         self.output_notes.insert(note_idx, note_builder);
 
         Ok(TransactionEventHandling::Handled(Vec::new()))

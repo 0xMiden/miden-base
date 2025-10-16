@@ -155,7 +155,7 @@ export.build_recipient.16
     movdnw.3
     # => [SERIAL_NUM, SCRIPT_ROOT, INPUTS_COMMITMENT, RECIPIENT]
 
-    # inserting NoteDetails into AdviceMap in old format
+    # inserting NoteDetails into AdviceMap
     # Current local memory layout:
     # Local 0: SERIAL_NUM (4 felts)
     # Local 4: SCRIPT_ROOT (4 felts)

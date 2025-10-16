@@ -15,6 +15,7 @@ use miden_objects::assembly::{SourceFile, SourceManagerSync, SourceSpan};
 use miden_objects::asset::{Asset, AssetWitness, FungibleAsset};
 use miden_objects::block::BlockNumber;
 use miden_objects::crypto::merkle::SmtProof;
+use miden_objects::note::{NoteInputs, NoteRecipient};
 use miden_objects::transaction::{InputNote, InputNotes, OutputNote};
 use miden_objects::vm::AdviceMap;
 use miden_objects::{Felt, Hasher, Word};
@@ -30,6 +31,7 @@ use miden_processor::{
 
 use crate::auth::{SigningInputs, TransactionAuthenticator};
 use crate::errors::TransactionKernelError;
+use crate::host::note_builder::OutputNoteBuilder;
 use crate::host::{
     ScriptMastForestStore,
     TransactionBaseHost,
@@ -365,8 +367,8 @@ where
 
     /// Handles a request for a note script by querying the data store.
     ///
-    /// The script is fetched from the data store, added to a temporary advice map, and then the
-    /// note builder is created using the updated advice provider that includes the script.
+    /// The script is fetched from the data store, and then the NoteRecipient is built and used
+    /// to create the OutputNoteBuilder.
     async fn on_note_script_requested(
         &mut self,
         script_root: Word,
@@ -375,42 +377,86 @@ where
         note_idx: usize,
         process: &ProcessState<'_>,
     ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
-        let note_script =
-            self.base_host.store().get_note_script(script_root).await.map_err(|err| {
-                TransactionKernelError::other_with_source(
-                    format!("failed to get note script with root {script_root} from data store"),
-                    err,
-                )
-            })?;
+        // Try to get the note script from the data store
+        let note_script_result = self.base_host.store().get_note_script(script_root).await;
 
-        let script_felts: Vec<Felt> = (&note_script).into();
+        let (recipient, mutations) = match note_script_result {
+            Ok(note_script) => {
+                // Script found - build the recipient
+                let script_felts: Vec<Felt> = (&note_script).into();
 
-        // Create mutations to add the script to the advice map
-        let mutations = vec![AdviceMutation::extend_map(AdviceMap::from_iter([(
-            script_root,
-            script_felts.clone(),
-        )]))];
+                // Get recipient data from advice provider
+                let data = process
+                    .advice_provider()
+                    .get_mapped_values(&recipient_digest)
+                    .ok_or_else(|| {
+                        TransactionKernelError::other("recipient data should be in advice provider")
+                    })?;
 
-        // Apply the mutations to a temporary advice provider so we can create the note builder
-        // with the script already available
-        let mut temp_advice_provider = process.advice_provider().clone();
-        let temp_advice_map = AdviceMap::from_iter([(script_root, script_felts.clone())]);
-        temp_advice_provider.extend_map(&temp_advice_map).map_err(|err| {
-            TransactionKernelError::other_with_source(
-                "failed to extend advice map with note script",
-                err,
-            )
-        })?;
+                if data.len() != 13 {
+                    return Err(TransactionKernelError::MalformedRecipientData(data.to_vec()));
+                }
 
-        // Now create the note builder with the updated advice provider that includes the script
-        self.base_host.create_note_builder_from_stack_and_script(
-            metadata,
-            recipient_digest,
-            note_idx,
-            script_root,
-            script_felts,
-            &temp_advice_provider,
-        )?;
+                // NoteDetails from AdviceProvider: [num_inputs, INPUTS_COMMITMENT, SCRIPT_ROOT,
+                // SERIAL_NUM]
+                let num_inputs = data[0].as_int() as usize;
+                let inputs_commitment = Word::new([data[1], data[2], data[3], data[4]]);
+                let serial_num = Word::from([data[9], data[10], data[11], data[12]]);
+
+                let inputs_data = process.advice_provider().get_mapped_values(&inputs_commitment);
+
+                let inputs = match inputs_data {
+                    None => NoteInputs::default(),
+                    Some(inputs) => {
+                        if num_inputs > inputs.len() {
+                            return Err(TransactionKernelError::TooFewElementsForNoteInputs {
+                                specified: num_inputs as u64,
+                                actual: inputs.len() as u64,
+                            });
+                        }
+
+                        NoteInputs::new(inputs[0..num_inputs].to_vec())
+                            .map_err(TransactionKernelError::MalformedNoteInputs)?
+                    },
+                };
+
+                if inputs.commitment() != inputs_commitment {
+                    return Err(TransactionKernelError::InvalidNoteInputs {
+                        expected: inputs_commitment,
+                        actual: inputs.commitment(),
+                    });
+                }
+
+                let recipient = NoteRecipient::new(serial_num, note_script, inputs);
+
+                // Create mutations to add the script to the advice map
+                let mutations = vec![AdviceMutation::extend_map(AdviceMap::from_iter([(
+                    script_root,
+                    script_felts,
+                )]))];
+
+                (Some(recipient), mutations)
+            },
+            Err(err) => {
+                // Script not found in data store
+                if metadata.is_private() {
+                    // For private notes, gracefully handle missing script
+                    (None, Vec::new())
+                } else {
+                    // For public notes, this is an error
+                    return Err(TransactionKernelError::other_with_source(
+                        format!(
+                            "failed to get note script with root {script_root} from data store for public note"
+                        ),
+                        err,
+                    ));
+                }
+            },
+        };
+
+        // Build the note builder with the recipient (or None for private notes without script)
+        let note_builder = OutputNoteBuilder::new(metadata, recipient_digest, recipient)?;
+        self.base_host.insert_output_note_builder(note_idx, note_builder)?;
 
         Ok(mutations)
     }
