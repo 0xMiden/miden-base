@@ -268,6 +268,25 @@ impl AccountTree {
             .map_err(AccountTreeError::ApplyMutations)
     }
 
+    /// Applies the prospective mutations computed with [`Self::compute_mutations`] to this tree
+    /// and returns the reverse mutation set.
+    ///
+    /// Applying the reverse mutation sets to the updated tree will revert the changes.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - `mutations` was computed on a tree with a different root than this one.
+    pub fn apply_mutations_with_reversion(
+        &mut self,
+        mutations: AccountMutationSet,
+    ) -> Result<AccountMutationSet, AccountTreeError> {
+        let reversion = self.smt
+            .apply_mutations_with_reversion(mutations.into_mutation_set())
+            .map_err(AccountTreeError::ApplyMutations)?;
+        Ok(AccountMutationSet::new(reversion))
+    }
+
     // HELPERS
     // --------------------------------------------------------------------------------------------
 
