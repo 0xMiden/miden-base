@@ -455,8 +455,7 @@ impl MockChainBuilder {
         note_type: NoteType,
         assets: impl IntoIterator<Item = Asset>,
     ) -> anyhow::Result<Note> {
-        let note =
-            crate::utils::create_p2any_note(sender_account_id, note_type, assets, &mut self.rng);
+        let note = create_p2any_note(sender_account_id, note_type, assets, &mut self.rng);
         self.add_output_note(OutputNote::Full(note.clone()));
 
         Ok(note)
