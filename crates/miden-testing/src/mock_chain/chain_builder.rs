@@ -38,7 +38,7 @@ use miden_processor::crypto::RpoRandomCoin;
 use rand::Rng;
 
 use crate::mock_chain::chain::AccountAuthenticator;
-use crate::utils::create_spawn_note;
+use crate::utils::{create_p2any_note, create_spawn_note};
 use crate::{AccountState, Auth, MockChain};
 
 /// A builder for a [`MockChain`]'s genesis block.
