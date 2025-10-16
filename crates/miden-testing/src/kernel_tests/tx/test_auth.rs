@@ -7,8 +7,8 @@ use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{Account, AccountBuilder};
 use miden_objects::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE;
+use miden_objects::{Felt, ONE};
 
-use super::{Felt, ONE};
 use crate::{Auth, TransactionContextBuilder, assert_transaction_executor_error};
 
 pub const ERR_WRONG_ARGS: MasmError = MasmError::from_static_str(ERR_WRONG_ARGS_MSG);
@@ -18,8 +18,8 @@ pub const ERR_WRONG_ARGS: MasmError = MasmError::from_static_str(ERR_WRONG_ARGS_
 /// This test creates an account with a conditional auth component that expects specific
 /// auth arguments [97, 98, 99] to not error out. When the correct arguments are provided,
 /// the nonce is incremented (because of `incr_nonce_flag`).
-#[test]
-fn test_auth_procedure_args() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_auth_procedure_args() -> anyhow::Result<()> {
     let account =
         Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, ConditionalAuthComponent);
 
@@ -32,7 +32,7 @@ fn test_auth_procedure_args() -> anyhow::Result<()> {
 
     let tx_context = TransactionContextBuilder::new(account).auth_args(auth_args.into()).build()?;
 
-    tx_context.execute_blocking().context("failed to execute transaction")?;
+    tx_context.execute().await.context("failed to execute transaction")?;
 
     Ok(())
 }
@@ -42,8 +42,8 @@ fn test_auth_procedure_args() -> anyhow::Result<()> {
 /// This test creates an account with a conditional auth component that expects specific
 /// auth arguments [97, 98, 99, incr_nonce_flag]. When incorrect arguments are provided
 /// (in this case [101, 102, 103]), the transaction should fail with an appropriate error message.
-#[test]
-fn test_auth_procedure_args_wrong_inputs() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_auth_procedure_args_wrong_inputs() -> anyhow::Result<()> {
     let account =
         Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, ConditionalAuthComponent);
 
@@ -57,7 +57,7 @@ fn test_auth_procedure_args_wrong_inputs() -> anyhow::Result<()> {
 
     let tx_context = TransactionContextBuilder::new(account).auth_args(auth_args.into()).build()?;
 
-    let execution_result = tx_context.execute_blocking();
+    let execution_result = tx_context.execute().await;
 
     assert_transaction_executor_error!(execution_result, ERR_WRONG_ARGS);
 
@@ -65,8 +65,8 @@ fn test_auth_procedure_args_wrong_inputs() -> anyhow::Result<()> {
 }
 
 /// Tests that attempting to call the auth procedure manually from user code fails.
-#[test]
-fn test_auth_procedure_called_from_wrong_context() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_auth_procedure_called_from_wrong_context() -> anyhow::Result<()> {
     let (auth_component, _) = Auth::IncrNonce.build_component();
 
     let account = AccountBuilder::new([42; 32])
@@ -87,7 +87,7 @@ fn test_auth_procedure_called_from_wrong_context() -> anyhow::Result<()> {
 
     let tx_context = TransactionContextBuilder::new(account).tx_script(tx_script).build()?;
 
-    let execution_result = tx_context.execute_blocking();
+    let execution_result = tx_context.execute().await;
 
     assert_transaction_executor_error!(
         execution_result,

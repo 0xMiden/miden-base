@@ -20,6 +20,7 @@ const MAGIC: &str = "note";
 // ================================================================================================
 
 /// A serialized representation of a note.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum NoteFile {
     /// The note's details aren't known.
     NoteId(NoteId),

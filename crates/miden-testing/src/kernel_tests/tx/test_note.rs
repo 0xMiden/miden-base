@@ -1,6 +1,5 @@
 use alloc::collections::BTreeMap;
 use alloc::sync::Arc;
-use alloc::vec::Vec;
 
 use anyhow::Context;
 use miden_lib::account::wallets::BasicWallet;
@@ -30,14 +29,13 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
     ACCOUNT_ID_SENDER,
 };
-use miden_objects::transaction::{AccountInputs, OutputNote, TransactionArgs};
+use miden_objects::transaction::{OutputNote, TransactionArgs};
 use miden_objects::{Felt, Word, ZERO};
+use miden_processor::fast::ExecutionOutput;
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 
-use super::Process;
-use crate::kernel_tests::tx::ProcessMemoryExt;
-use crate::utils::input_note_data_ptr;
+use crate::kernel_tests::tx::{ExecutionOutputExt, input_note_data_ptr};
 use crate::{
     Auth,
     MockChain,
@@ -47,8 +45,8 @@ use crate::{
     assert_transaction_executor_error,
 };
 
-#[test]
-fn test_note_setup() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_note_setup() -> anyhow::Result<()> {
     let tx_context = {
         let mut builder = MockChain::builder();
         let account = builder.add_existing_wallet(Auth::BasicAuth)?;
@@ -82,15 +80,15 @@ fn test_note_setup() -> anyhow::Result<()> {
         end
         ";
 
-    let process = tx_context.execute_code(code)?;
+    let exec_output = tx_context.execute_code(code).await?;
 
-    note_setup_stack_assertions(&process, &tx_context);
-    note_setup_memory_assertions(&process);
+    note_setup_stack_assertions(&exec_output, &tx_context);
+    note_setup_memory_assertions(&exec_output);
     Ok(())
 }
 
-#[test]
-fn test_note_script_and_note_args() -> miette::Result<()> {
+#[tokio::test]
+async fn test_note_script_and_note_args() -> miette::Result<()> {
     let mut tx_context = {
         let mut builder = MockChain::builder();
         let account = builder.add_existing_wallet(Auth::BasicAuth).map_err(|err| miette!(err))?;
@@ -156,22 +154,19 @@ fn test_note_script_and_note_args() -> miette::Result<()> {
         (tx_context.input_notes().get_note(1).note().id(), note_args[0]),
     ]);
 
-    let tx_args = TransactionArgs::new(
-        tx_context.tx_args().advice_inputs().clone().map,
-        Vec::<AccountInputs>::new(),
-    )
-    .with_note_args(note_args_map);
+    let tx_args = TransactionArgs::new(tx_context.tx_args().advice_inputs().clone().map)
+        .with_note_args(note_args_map);
 
     tx_context.set_tx_args(tx_args);
-    let process = tx_context.execute_code(code).unwrap();
+    let exec_output = tx_context.execute_code(code).await.unwrap();
 
-    assert_eq!(process.stack.get_word(0), note_args[0]);
-    assert_eq!(process.stack.get_word(4), note_args[1]);
+    assert_eq!(exec_output.get_stack_word(0), note_args[0]);
+    assert_eq!(exec_output.get_stack_word(4), note_args[1]);
 
     Ok(())
 }
 
-fn note_setup_stack_assertions(process: &Process, inputs: &TransactionContext) {
+fn note_setup_stack_assertions(exec_output: &ExecutionOutput, inputs: &TransactionContext) {
     let mut expected_stack = [ZERO; 16];
 
     // replace the top four elements with the tx script root
@@ -180,19 +175,19 @@ fn note_setup_stack_assertions(process: &Process, inputs: &TransactionContext) {
     expected_stack[..4].copy_from_slice(&note_script_root);
 
     // assert that the stack contains the note inputs at the end of execution
-    assert_eq!(process.stack.trace_state(), expected_stack)
+    assert_eq!(exec_output.stack.as_slice(), expected_stack.as_slice())
 }
 
-fn note_setup_memory_assertions(process: &Process) {
+fn note_setup_memory_assertions(exec_output: &ExecutionOutput) {
     // assert that the correct pointer is stored in bookkeeping memory
     assert_eq!(
-        process.get_kernel_mem_word(ACTIVE_INPUT_NOTE_PTR)[0],
+        exec_output.get_kernel_mem_word(ACTIVE_INPUT_NOTE_PTR)[0],
         Felt::from(input_note_data_ptr(0))
     );
 }
 
-#[test]
-fn test_build_recipient() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_build_recipient() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
     // Create test script and serial number
@@ -256,7 +251,7 @@ fn test_build_recipient() -> anyhow::Result<()> {
         serial_num = serial_num,
     );
 
-    let process = &tx_context.execute_code(&code)?;
+    let exec_output = &tx_context.execute_code(&code).await?;
 
     // Create expected recipients and get their digests
     let note_inputs_4 = NoteInputs::new(word_1.to_vec())?;
@@ -280,12 +275,12 @@ fn test_build_recipient() -> anyhow::Result<()> {
     expected_stack.extend_from_slice(recipient_13.digest().as_elements());
     expected_stack.reverse();
 
-    assert_eq!(process.stack.get_state_at(process.system.clk())[0..12], expected_stack);
+    assert_eq!(exec_output.stack[0..12], expected_stack);
     Ok(())
 }
 
-#[test]
-fn test_compute_inputs_commitment() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_compute_inputs_commitment() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
     // Define test values as Words
@@ -344,7 +339,7 @@ fn test_compute_inputs_commitment() -> anyhow::Result<()> {
         addr_3 = BASE_ADDR + 12,
     );
 
-    let process = &tx_context.execute_code(&code)?;
+    let exec_output = &tx_context.execute_code(&code).await?;
 
     let mut inputs_5 = word_1.to_vec();
     inputs_5.push(word_2[0]);
@@ -368,12 +363,12 @@ fn test_compute_inputs_commitment() -> anyhow::Result<()> {
     expected_stack.extend_from_slice(Word::empty().as_elements());
     expected_stack.reverse();
 
-    assert_eq!(process.stack.get_state_at(process.system.clk())[0..16], expected_stack);
+    assert_eq!(exec_output.stack[0..16], expected_stack);
     Ok(())
 }
 
-#[test]
-fn test_build_metadata() -> miette::Result<()> {
+#[tokio::test]
+async fn test_build_metadata() -> miette::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build().unwrap();
 
     let sender = tx_context.account().id();
@@ -421,14 +416,9 @@ fn test_build_metadata() -> miette::Result<()> {
             tag = test_metadata.tag(),
         );
 
-        let process = tx_context.execute_code(&code).unwrap();
+        let exec_output = tx_context.execute_code(&code).await.unwrap();
 
-        let metadata_word = Word::new([
-            process.stack.get(3),
-            process.stack.get(2),
-            process.stack.get(1),
-            process.stack.get(0),
-        ]);
+        let metadata_word = exec_output.get_stack_word(0);
 
         assert_eq!(Word::from(test_metadata), metadata_word, "failed in iteration {iteration}");
     }
@@ -437,8 +427,8 @@ fn test_build_metadata() -> miette::Result<()> {
 }
 
 /// This serves as a test that setting a custom timestamp on mock chain blocks works.
-#[test]
-pub fn test_timelock() -> anyhow::Result<()> {
+#[tokio::test]
+pub async fn test_timelock() -> anyhow::Result<()> {
     const TIMESTAMP_ERROR: MasmError = MasmError::from_static_str("123");
 
     let code = format!(
@@ -495,7 +485,7 @@ pub fn test_timelock() -> anyhow::Result<()> {
         .with_source_manager(source_manager.clone())
         .tx_inputs(tx_inputs.clone())
         .build()?;
-    let result = tx_context.execute_blocking();
+    let result = tx_context.execute().await;
     assert_transaction_executor_error!(result, TIMESTAMP_ERROR);
 
     // Consume note where lock timestamp matches the block timestamp.
@@ -506,7 +496,7 @@ pub fn test_timelock() -> anyhow::Result<()> {
 
     let tx_inputs = mock_chain.get_transaction_inputs(&account, &[timelock_note.id()], &[])?;
     let tx_context = TransactionContextBuilder::new(account).tx_inputs(tx_inputs).build()?;
-    tx_context.execute_blocking()?;
+    tx_context.execute().await?;
 
     Ok(())
 }
@@ -516,8 +506,8 @@ pub fn test_timelock() -> anyhow::Result<()> {
 ///
 /// Previously this setup was leading to the values collision in the advice map, see the
 /// [issue #1267](https://github.com/0xMiden/miden-base/issues/1267) for more details.
-#[test]
-fn test_public_key_as_note_input() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_public_key_as_note_input() -> anyhow::Result<()> {
     let mut rng = ChaCha20Rng::from_seed(Default::default());
     let sec_key = SecretKey::with_rng(&mut rng);
     // this value will be used both as public key in the RPO component of the target account and as
@@ -560,6 +550,6 @@ fn test_public_key_as_note_input() -> anyhow::Result<()> {
         .authenticator(authenticator)
         .build()?;
 
-    tx_context.execute_blocking()?;
+    tx_context.execute().await?;
     Ok(())
 }

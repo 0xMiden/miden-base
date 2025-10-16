@@ -20,7 +20,6 @@ use miden_objects::block::{
 };
 use miden_objects::note::{Note, NoteHeader, NoteId, NoteInclusionProof, Nullifier};
 use miden_objects::transaction::{
-    AccountInputs,
     ExecutedTransaction,
     InputNote,
     InputNotes,
@@ -606,8 +605,8 @@ impl MockChain {
     // INPUTS APIS
     // ----------------------------------------------------------------------------------------
 
-    /// Returns a valid [`TransactionInputs`] for the specified entities, executing against a
-    /// specific block number.
+    /// Returns a valid [`TransactionInputs`] for the specified entities, executing against
+    /// a specific block number.
     pub fn get_transaction_inputs_at(
         &self,
         reference_block: BlockNumber,
@@ -668,7 +667,7 @@ impl MockChain {
         let input_notes = InputNotes::new(input_notes)?;
 
         Ok(TransactionInputs::new(
-            account,
+            account.into(),
             ref_block.clone(),
             partial_blockchain,
             input_notes,
@@ -712,18 +711,19 @@ impl MockChain {
     }
 
     /// Gets foreign account inputs to execute FPI transactions.
-    pub fn get_foreign_account_inputs(
+    ///
+    /// Only used internally and so does not need to be public.
+    #[cfg(test)]
+    pub(crate) fn get_foreign_account_inputs(
         &self,
         account_id: AccountId,
-    ) -> anyhow::Result<AccountInputs> {
-        let account = self.committed_account(account_id)?;
+    ) -> anyhow::Result<(Account, AccountWitness)> {
+        let account = self.committed_account(account_id)?.clone();
 
         let account_witness = self.account_tree().open(account_id);
         assert_eq!(account_witness.state_commitment(), account.commitment());
 
-        let partial_account = PartialAccount::from(account);
-
-        Ok(AccountInputs::new(partial_account, account_witness))
+        Ok((account, account_witness))
     }
 
     /// Gets the inputs for a block for the provided batches.
@@ -1151,8 +1151,8 @@ mod tests {
         Ok(())
     }
 
-    #[test]
-    fn private_account_state_update() -> anyhow::Result<()> {
+    #[tokio::test]
+    async fn private_account_state_update() -> anyhow::Result<()> {
         let faucet_id = ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET.try_into()?;
         let account_builder = AccountBuilder::new([4; 32])
             .storage_mode(AccountStorageMode::Private)
@@ -1181,7 +1181,8 @@ mod tests {
         let tx = mock_chain
             .build_tx_context(TxContextInput::Account(account), &[], &[note_1])?
             .build()?
-            .execute_blocking()?;
+            .execute()
+            .await?;
 
         mock_chain.add_pending_executed_transaction(&tx)?;
         mock_chain.prove_next_block()?;
@@ -1195,8 +1196,8 @@ mod tests {
         Ok(())
     }
 
-    #[test]
-    fn mock_chain_serialization() {
+    #[tokio::test]
+    async fn mock_chain_serialization() {
         let mut builder = MockChain::builder();
 
         let mut notes = vec![];
@@ -1232,7 +1233,8 @@ mod tests {
                 .unwrap()
                 .build()
                 .unwrap()
-                .execute_blocking()
+                .execute()
+                .await
                 .unwrap();
             chain.add_pending_executed_transaction(&tx).unwrap();
             chain.prove_next_block().unwrap();

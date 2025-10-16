@@ -8,6 +8,7 @@ use miden_objects::block::BlockNumber;
 use miden_objects::note::Note;
 use miden_objects::transaction::{InputNote, InputNotes, TransactionArgs, TransactionInputs};
 use miden_processor::fast::FastProcessor;
+use miden_prover::AdviceInputs;
 
 use super::TransactionExecutor;
 use crate::auth::TransactionAuthenticator;
@@ -120,12 +121,12 @@ where
         let notes = InputNotes::from(notes);
         let tx_inputs = self
             .0
-            .prepare_transaction_inputs(target_account_id, block_ref, notes, &tx_args)
+            .prepare_tx_inputs(target_account_id, block_ref, notes, tx_args)
             .await
             .map_err(NoteCheckerError::TransactionPreparation)?;
 
         // Attempt to find an executable set of notes.
-        self.find_executable_notes_by_elimination(tx_inputs, tx_args).await
+        self.find_executable_notes_by_elimination(tx_inputs).await
     }
 
     /// Checks whether the provided input note could be consumed by the provided account by
@@ -148,20 +149,20 @@ where
     ) -> Result<NoteConsumptionStatus, NoteCheckerError> {
         // TODO: apply the static analysis before executing the tx
 
-        // prepare the transaction inputs
-        let tx_inputs = self
+        // Prepare transaction inputs.
+        let mut tx_inputs = self
             .0
-            .prepare_transaction_inputs(
+            .prepare_tx_inputs(
                 target_account_id,
                 block_ref,
                 InputNotes::new_unchecked(vec![note]),
-                &tx_args,
+                tx_args,
             )
             .await
             .map_err(NoteCheckerError::TransactionPreparation)?;
 
         // try to consume the provided note
-        match self.try_execute_notes(&tx_inputs, &tx_args).await {
+        match self.try_execute_notes(&mut tx_inputs).await {
             // execution succeeded
             Ok(()) => Ok(NoteConsumptionStatus::Consumable),
             Err(tx_checker_error) => {
@@ -197,7 +198,6 @@ where
     async fn find_executable_notes_by_elimination(
         &self,
         mut tx_inputs: TransactionInputs,
-        tx_args: TransactionArgs,
     ) -> Result<NoteConsumptionInfo, NoteCheckerError> {
         let mut candidate_notes = tx_inputs
             .input_notes()
@@ -211,8 +211,8 @@ where
         // further reduced.
         loop {
             // Execute the candidate notes.
-            tx_inputs.set_input_notes_unchecked(candidate_notes.clone().into());
-            match self.try_execute_notes(&tx_inputs, &tx_args).await {
+            tx_inputs.set_input_notes(candidate_notes.clone());
+            match self.try_execute_notes(&mut tx_inputs).await {
                 Ok(()) => {
                     // A full set of successful notes has been found.
                     let successful = candidate_notes;
@@ -235,7 +235,6 @@ where
                             candidate_notes,
                             failed_notes,
                             tx_inputs,
-                            &tx_args,
                         )
                         .await;
                     return Ok(consumption_info);
@@ -261,7 +260,6 @@ where
         mut remaining_notes: Vec<Note>,
         mut failed_notes: Vec<FailedNote>,
         mut tx_inputs: TransactionInputs,
-        tx_args: &TransactionArgs,
     ) -> NoteConsumptionInfo {
         let mut successful_notes = Vec::new();
         let mut failed_note_index = BTreeMap::new();
@@ -277,8 +275,8 @@ where
             for (idx, note) in remaining_notes.iter().enumerate() {
                 successful_notes.push(note.clone());
 
-                tx_inputs.set_input_notes_unchecked(successful_notes.clone().into());
-                match self.try_execute_notes(&tx_inputs, tx_args).await {
+                tx_inputs.set_input_notes(successful_notes.clone());
+                match self.try_execute_notes(&mut tx_inputs).await {
                     Ok(()) => {
                         // The successfully added note might have failed earlier. Remove it from the
                         // failed list.
@@ -314,18 +312,17 @@ where
     /// or a specific [`NoteExecutionError`] indicating where and why the execution failed.
     async fn try_execute_notes(
         &self,
-        tx_inputs: &TransactionInputs,
-        tx_args: &TransactionArgs,
+        tx_inputs: &mut TransactionInputs,
     ) -> Result<(), TransactionCheckerError> {
         if tx_inputs.input_notes().is_empty() {
             return Ok(());
         }
 
-        let (mut host, stack_inputs, advice_inputs) = self
-            .0
-            .prepare_transaction(tx_inputs, tx_args, None)
-            .await
-            .map_err(TransactionCheckerError::TransactionPreparation)?;
+        let (mut host, stack_inputs, advice_inputs) =
+            self.0
+                .prepare_transaction(tx_inputs)
+                .await
+                .map_err(TransactionCheckerError::TransactionPreparation)?;
 
         let processor =
             FastProcessor::new_with_advice_inputs(stack_inputs.as_slice(), advice_inputs);
@@ -335,7 +332,19 @@ where
             .map_err(map_execution_error);
 
         match result {
-            Ok(_) => Ok(()),
+            Ok(execution_output) => {
+                // Set the advice inputs from the successful execution as advice inputs for
+                // reexecution. This avoids calls to the data store (to load data lazily) that have
+                // already been done as part of this execution.
+                let (_, advice_map, merkle_store) = execution_output.advice.into_parts();
+                let advice_inputs = AdviceInputs {
+                    map: advice_map,
+                    store: merkle_store,
+                    ..Default::default()
+                };
+                tx_inputs.set_advice_inputs(advice_inputs);
+                Ok(())
+            },
             Err(error) => {
                 let notes = host.tx_progress().note_execution();
 
@@ -403,7 +412,7 @@ pub enum NoteConsumptionStatus {
     /// The note can be consumed by the account if proper authorization is provided.
     ConsumableWithAuthorization,
     /// The note cannot be consumed by the account at the specified conditions (i.e., block
-    /// height and account state).    
+    /// height and account state).
     Unconsumable,
     /// The note cannot be consumed by the specified account under any conditions.
     Incompatible,

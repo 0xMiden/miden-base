@@ -91,9 +91,6 @@ fn main() -> Result<()> {
     // set target directory to {OUT_DIR}/assets
     let target_dir = Path::new(&build_dir).join(ASSETS_DIR);
 
-    // re-build if any of the generated files were modified
-    println!("cargo::rerun-if-changed={}", target_dir.display());
-
     // compile transaction kernel
     let mut assembler =
         compile_tx_kernel(&source_dir.join(ASM_TX_KERNEL_DIR), &target_dir.join("kernels"))?;

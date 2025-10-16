@@ -43,7 +43,7 @@ export auth_tx_rpo_falcon512_acl.2(auth_args: Word)
 
     # Get the authentication configuration
     push.AUTH_CONFIG_SLOT exec.account::get_item
-    # => [0, num_auth_trigger_procs, allow_unauthorized_output_notes, allow_unauthorized_input_notes, pad(16)]
+    # => [0, allow_unauthorized_input_notes, allow_unauthorized_output_notes, num_auth_trigger_procs, pad(16)]
 
     drop
     # => [allow_unauthorized_input_notes, allow_unauthorized_output_notes, num_auth_trigger_procs, pad(16)]
