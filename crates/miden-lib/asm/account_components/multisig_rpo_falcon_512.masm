@@ -275,7 +275,7 @@ proc.compute_transaction_threshold.1
 
             # 2b. get the override proc_threshold of that procedure
             # if the procedure has no override threshold, the returned map item will be [0, 0, 0, 0]
-            exec.account::get_map_item_init
+            exec.account::get_initial_map_item
             # => [[0, 0, 0, proc_threshold], num_procedures-1, transaction_threshold]
 
             drop drop drop dup dup.3
@@ -375,7 +375,7 @@ export.auth_tx_rpo_falcon512_multisig.1
     push.THRESHOLD_CONFIG_SLOT
     # => [index, TX_SUMMARY_COMMITMENT]
 
-    exec.account::get_item_init
+    exec.account::get_initial_item
     # => [0, 0, num_of_approvers, default_threshold, TX_SUMMARY_COMMITMENT]
 
     drop drop

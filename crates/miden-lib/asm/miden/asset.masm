@@ -1,4 +1,3 @@
-use.miden::account
 use.miden::account_id
 
 # ERRORS

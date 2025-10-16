@@ -1,7 +1,6 @@
 use.$kernel::account
 use.$kernel::account_delta
 use.$kernel::account_id
-use.$kernel::asset_vault
 use.$kernel::faucet
 use.$kernel::input_note
 use.$kernel::memory
@@ -439,7 +438,7 @@ end
 #! - the index is out of bounds.
 #!
 #! Invocation: dynexec
-export.account_get_item_init
+export.account_get_initial_item
     # authenticate that the procedure invocation originates from the account context
     exec.authenticate_account_origin
     # => [storage_offset, storage_size, index, pad(15)]
@@ -449,7 +448,7 @@ export.account_get_item_init
     # => [index_with_offset, pad(15)]
 
     # fetch the initial account storage item
-    exec.account::get_item_init
+    exec.account::get_initial_item
     # => [INIT_VALUE, pad(15)]
 
     # truncate the stack
@@ -472,7 +471,7 @@ end
 #! - the requested storage slot type is not map.
 #!
 #! Invocation: dynexec
-export.account_get_map_item_init
+export.account_get_initial_map_item
     # authenticate that the procedure invocation originates from the account context
     exec.authenticate_account_origin
     # => [storage_offset, storage_size, index, KEY, pad(11)]
@@ -482,11 +481,12 @@ export.account_get_map_item_init
     # => [index_with_offset, KEY, pad(11)]
 
     # fetch the initial map item from account storage
-    exec.account::get_map_item_init
+    exec.account::get_initial_map_item
     # => [INIT_VALUE, pad(12)]
 end
 
-#! Stores NEW_VALUE under the specified KEY within the map contained in the given account storage slot.
+#! Stores NEW_VALUE under the specified KEY within the map contained in the given account storage 
+#! slot.
 #!
 #! Inputs:  [index, KEY, NEW_VALUE, pad(7)]
 #! Outputs: [OLD_MAP_ROOT, OLD_MAP_VALUE, pad(8)]
@@ -624,7 +624,8 @@ export.account_remove_asset
     # => [ASSET, pad(12)]
 end
 
-#! Returns the balance of the fungible asset associated with the provided faucet_id in the current account's vault.
+#! Returns the balance of the fungible asset associated with the provided faucet_id in the current
+#! account's vault.
 #!
 #! Inputs:  [faucet_id_prefix, faucet_id_suffix, pad(14)]
 #! Outputs: [balance, pad(15)]
@@ -635,12 +636,32 @@ end
 #! - balance is the vault balance of the fungible asset.
 #!
 #! Panics if:
-#! - the asset is not a fungible asset.
+#! - the provided faucet ID is not an ID of a fungible faucet.
 #!
 #! Invocation: dynexec
 export.account_get_balance
     exec.account::get_balance
     # => [balance, pad(15)]
+end
+
+#! Returns the balance of the fungible asset associated with the provided faucet_id in the current 
+#! account's vault at the beginning of the transaction.
+#!
+#! Inputs:  [faucet_id_prefix, faucet_id_suffix, pad(14)]
+#! Outputs: [init_balance, pad(15)]
+#!
+#! Where:
+#! - faucet_id_{prefix,suffix} are the prefix and suffix felts of the faucet id of the fungible
+#!   asset of interest.
+#! - init_balance is the vault balance of the fungible asset at the beginning of the transaction.
+#!
+#! Panics if:
+#! - the provided faucet ID is not an ID of a fungible faucet.
+#!
+#! Invocation: dynexec
+export.account_get_initial_balance
+    exec.account::get_initial_balance
+    # => [init_balance, pad(15)]
 end
 
 #! Returns a boolean indicating whether the non-fungible asset is present in the current account's vault.
@@ -1179,11 +1200,11 @@ end
 
 #! Returns the input notes commitment.
 #!
-#! This is computed as a sequential hash of `(NULLIFIER, EMPTY_WORD_OR_NOTE_COMMITMENT)` over all input
-#! notes. The data `EMPTY_WORD_OR_NOTE_COMMITMENT` functions as a flag, if the value is set to zero, then
-#! the notes are authenticated by the transaction kernel. If the value is non-zero, then note
-#! authentication will be delayed to the batch/block kernel. The delayed authentication allows a
-#! transaction to consume a public note that is not yet included to a block.
+#! This is computed as a sequential hash of `(NULLIFIER, EMPTY_WORD_OR_NOTE_COMMITMENT)` over all 
+#! input notes. The data `EMPTY_WORD_OR_NOTE_COMMITMENT` functions as a flag, if the value is set to
+#! zero, then the notes are authenticated by the transaction kernel. If the value is non-zero, then
+#! note authentication will be delayed to the batch/block kernel. The delayed authentication allows
+#! a transaction to consume a public note that is not yet included to a block.
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [INPUT_NOTES_COMMITMENT, pad(12)]

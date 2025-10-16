@@ -37,6 +37,35 @@ impl PartialVault {
         Ok(PartialVault { partial_smt })
     }
 
+    /// Converts an [`AssetVault`] into a partial vault representation.
+    ///
+    /// The resulting [`PartialVault`] will contain the _full_ merkle paths of the original asset
+    /// vault.
+    pub fn new_full(vault: AssetVault) -> Self {
+        let partial_smt = PartialSmt::from(vault.asset_tree);
+
+        PartialVault { partial_smt }
+    }
+
+    /// Converts an [`AssetVault`] into a partial vault representation.
+    ///
+    /// The resulting [`PartialVault`] will contain only a single, unspecified key-value pair
+    /// in order to have the same root as the original storage map. Is it otherwise the most
+    /// _minimal_ representation of the asset vault.
+    pub fn new_minimal(vault: &AssetVault) -> Self {
+        let mut partial_vault = PartialVault::default();
+
+        // Construct a partial vault that tracks the empty word, but none of the assets that are
+        // actually in the asset tree. That way, the partial vault has the same root as the full
+        // vault. This is the most minimal and correct partial vault we can build.
+        // TODO: Workaround for https://github.com/0xMiden/miden-base/issues/1966. Fix when implemented.
+        partial_vault
+            .add(vault.open(Word::empty()))
+            .expect("adding the first proof should never fail");
+
+        partial_vault
+    }
+
     // ACCESSORS
     // --------------------------------------------------------------------------------------------
 
@@ -138,14 +167,6 @@ impl PartialVault {
         }
 
         Ok(())
-    }
-}
-
-impl From<&AssetVault> for PartialVault {
-    fn from(value: &AssetVault) -> Self {
-        let vault_partial_smt = value.asset_tree.clone().into();
-
-        PartialVault { partial_smt: vault_partial_smt }
     }
 }
 

@@ -4,9 +4,7 @@ use.$kernel::asset_vault
 use.$kernel::constants
 use.$kernel::memory
 use.$kernel::note
-use.$kernel::tx
 
-use.std::crypto::hashes::rpo
 use.std::word
 
 # ERRORS
