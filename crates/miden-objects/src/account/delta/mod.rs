@@ -324,8 +324,9 @@ impl TryFrom<&AccountDelta> for Account {
     ///
     /// Returns an error if:
     /// - If the delta is not a full state delta. See [`AccountDelta`] for details.
-    /// - If any vault delta operation removes an asset that doesn't exist or adds one that would
-    ///   overflow the maximum representable amount.
+    /// - If any vault delta operation removes an asset.
+    /// - If any vault delta operation adds an asset that would overflow the maximum representable
+    ///   amount.
     /// - If any storage delta update violates account storage constraints.
     fn try_from(delta: &AccountDelta) -> Result<Self, Self::Error> {
         if !delta.is_full_state() {
