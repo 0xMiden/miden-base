@@ -474,18 +474,20 @@ end
 #! Stores NEW_VALUE under the specified KEY within the map contained in the given account storage 
 #! slot.
 #!
-#! Inputs:  [index, KEY, NEW_VALUE, pad(7)]
+#! Inputs:  [name_id_prefix, name_id_suffix, KEY, NEW_VALUE, pad(6)]
 #! Outputs: [OLD_MAP_ROOT, OLD_MAP_VALUE, pad(8)]
 #!
 #! Where:
-#! - index is the index of the storage slot which contains the map root.
+#! - name_id_{prefix, suffix} are the prefix and suffix felts of the name identifier, which are
+#!   the first two felts of the hashed slot name.
+#!    - the slot must point to the root of the storage map.
 #! - NEW_VALUE is the value of the new map item for the respective KEY.
 #! - OLD_VALUE is the value of the old map item for the respective KEY.
 #! - KEY is the key of the new item.
 #! - OLD_MAP_ROOT is the root of the old map before insertion
 #!
 #! Panics if:
-#! - the index is out of bounds (>255).
+#! - a slot with the provided name ID does not exist in account storage.
 #! - the requested storage slot type is not map.
 #! - the procedure is called from a non-account context.
 #! - the invocation of this procedure does not originate from the native account.
@@ -494,14 +496,18 @@ end
 export.account_set_map_item
     # check that this procedure was executed against the native account
     exec.memory::assert_native_account
-    # => [index, KEY, NEW_VALUE, pad(7)]
+    # => [name_id_prefix, name_id_suffix, KEY, NEW_VALUE, pad(6)]
 
     # authenticate that the procedure invocation originates from the account context
     exec.authenticate_account_origin
-    # => [index, KEY, NEW_VALUE, pad(7)]
+    # => [name_id_prefix, name_id_suffix, KEY, NEW_VALUE, pad(6)]
 
     # set the new map item
     exec.account::set_map_item
+    # => [OLD_MAP_ROOT, OLD_VALUE, pad(6)]
+
+    # pad the stack to 16 elements
+    push.0 movdn.8 push.0 movdn.8
     # => [OLD_MAP_ROOT, OLD_VALUE, pad(8)]
 end
 

@@ -123,6 +123,9 @@ const.ACCOUNT_PROCEDURE_DATA_LENGTH=8
 # The offset of the slot type in the storage slot.
 const.ACCOUNT_SLOT_TYPE_OFFSET=1
 
+# The offset of the slot value in the storage slot.
+const.ACCOUNT_SLOT_VALUE_OFFSET=4
+
 # EVENTS
 # =================================================================================================
 
@@ -508,22 +511,21 @@ end
 
 #! Sets an item in the account storage.
 #!
-#! Note:
-#! - We assume that index has been validated and is within bounds.
-#!
-#! Inputs:  [index, VALUE]
+#! Inputs:  [name_id_prefix, name_id_suffix, VALUE]
 #! Outputs: [OLD_VALUE]
 #!
 #! Where:
-#! - index is the index of the item to set.
+#! - name_id_{prefix, suffix} are the prefix and suffix felts of the name identifier, which are
+#!   the first two felts of the hashed slot name.
 #! - VALUE is the value to set.
 #! - OLD_VALUE is the previous value of the item.
 #!
 #! Panics if:
+#! - a slot with the provided name ID does not exist in account storage.
 #! - the storage slot type is not value.
 export.set_item
     emit.ACCOUNT_STORAGE_BEFORE_SET_ITEM_EVENT
-    # => [index, VALUE]
+    # => [name_id_prefix, name_id_suffix, VALUE]
 
     # get storage slot type
     dup exec.get_storage_slot_type_by_index
@@ -605,86 +607,99 @@ end
 
 #! Stores NEW_VALUE under the specified KEY within the map contained in the given account storage slot.
 #!
-#! Note:
-#! - We assume that index has been validated and is within bounds.
-#!
-#! Inputs:  [index, KEY, NEW_VALUE]
+#! Inputs:  [name_id_prefix, name_id_suffix, KEY, NEW_VALUE]
 #! Outputs: [OLD_MAP_ROOT, OLD_MAP_VALUE]
 #!
 #! Where:
-#! - index is the index of the storage slot which contains the map root.
+#! - name_id_{prefix, suffix} are the prefix and suffix felts of the name identifier, which are
+#!   the first two felts of the hashed slot name.
+#!    - the slot must point to the root of the storage map.
 #! - NEW_VALUE is the value to set under KEY.
 #! - KEY is the key to set.
 #! - OLD_MAP_VALUE is the previous value of the item.
 #! - OLD_MAP_ROOT is the root of the old map before insertion
 #!
 #! Panics if:
+#! - a slot with the provided name ID does not exist in account storage.
 #! - the storage slot type is not map.
-#! - no map is found for ROOT.
+#! - no map is found for ROOT in the slot.
+#!
+#! Locals:
+#! - 0: name_id_suffix
+#! - 1: name_id_prefix
+#! - 2: slot_ptr
+#! - 4..8: OLD_MAP_VALUE
+#! - 8..12: OLD_MAP_ROOT
 export.set_map_item.12
-    # store index for later
-    dup loc_store.0 exec.get_item
-    # => [OLD_ROOT, KEY, NEW_VALUE, ...]
+    # store name ID until the end of the procedure
+    loc_store.1 swap loc_store.0 swap
+    # => [name_id_prefix, name_id_suffix, KEY, NEW_VALUE]
 
-    movdnw.2 loc_load.0
-    # => [index, KEY, NEW_VALUE, OLD_ROOT, ...]
+    exec.memory::get_account_storage_slots_section_ptr
+    # => [storage_slots_ptr, name_id_prefix, name_id_suffix, KEY, NEW_VALUE]
 
-    emit.ACCOUNT_STORAGE_BEFORE_SET_MAP_ITEM_EVENT
-    # => [index, KEY, NEW_VALUE, OLD_ROOT, ...]
+    # resolve the slot name to its pointer
+    exec.find_storage_slot
+    # => [slot_ptr, KEY, NEW_VALUE]
 
-    # check if storage type is map
-    exec.get_storage_slot_type_by_index
-    # => [slot_type, KEY, NEW_VALUE, OLD_ROOT]
+    # store slot_ptr until the end of the procedure
+    loc_store.2
 
-    # check if slot_type == map
+    # load the slot type
+    dup add.ACCOUNT_SLOT_TYPE_OFFSET mem_load
+    # => [slot_type, slot_ptr, KEY, NEW_VALUE]
+
+    # assert slot_type is map
     exec.constants::get_storage_slot_type_map eq
     assert.err=ERR_ACCOUNT_SETTING_MAP_ITEM_ON_NON_MAP_SLOT
-    # => [KEY, NEW_VALUE, OLD_ROOT]
+    # => [slot_ptr, KEY, NEW_VALUE]
 
-    # duplicate the original KEY and the NEW_VALUE to be able to emit an event after the
-    # account storage item was updated
-    movupw.2 dupw.2 dupw.2
-    # => [KEY, NEW_VALUE, OLD_ROOT, KEY, NEW_VALUE]
+    emit.ACCOUNT_STORAGE_BEFORE_SET_MAP_ITEM_EVENT
+    # => [slot_ptr, KEY, NEW_VALUE]
+
+    padw movup.4 add.ACCOUNT_SLOT_VALUE_OFFSET mem_loadw
+    # => [OLD_MAP_ROOT, KEY, NEW_VALUE]
+
+    # store OLD_MAP_ROOT until the end of the procedure
+    loc_storew.8
+    # => [OLD_MAP_ROOT, KEY, NEW_VALUE]
+
+    # duplicate the KEY and the NEW_VALUE for account delta insertion and event emission
+    dupw.2 dupw.2
+    # => [KEY, NEW_VALUE, OLD_MAP_ROOT, KEY, NEW_VALUE]
 
     # see hash_map_key's docs for why this is done
-    exec.hash_map_key
-    # => [HASHED_KEY, NEW_VALUE, OLD_ROOT, KEY, NEW_VALUE]
+    exec.hash_map_key swapw
+    # => [NEW_VALUE, HASHED_KEY, OLD_MAP_ROOT, KEY, NEW_VALUE]
 
     # set the NEW_VALUE under HASHED_KEY in the tree
-    # note smt::set expects the stack to be [NEW_VALUE, HASHED_KEY, OLD_ROOT]
-    swapw exec.smt::set
+    exec.smt::set
     # => [OLD_MAP_VALUE, NEW_ROOT, KEY, NEW_VALUE]
 
-    # store OLD_MAP_VALUE and NEW_ROOT until the end of the procedure
-    loc_storew.4 dropw loc_storew.8 dropw
-    # => [KEY, NEW_VALUE]
+    # store OLD_MAP_VALUE until the end of the procedure
+    loc_storew.4 swapw
+    # => [NEW_ROOT, OLD_MAP_VALUE, KEY, NEW_VALUE]
 
-    dupw.1
-    # => [NEW_VALUE, KEY, NEW_VALUE]
+    # store NEW_ROOT into the map slot's VALUE
+    loc_load.2 mem_storew dropw
+    # => [OLD_MAP_VALUE, KEY, NEW_VALUE]
 
-    padw loc_loadw.4
-    # => [OLD_MAP_VALUE, NEW_VALUE, KEY, NEW_VALUE]
+    swapw
+    # => [KEY, OLD_MAP_VALUE, NEW_VALUE]
 
-    dupw.2
-    # => [KEY, OLD_MAP_VALUE, NEW_VALUE, KEY, NEW_VALUE]
+    loc_load.0 loc_load.1
+    # => [name_id_prefix, name_id_suffix, KEY, OLD_MAP_VALUE, NEW_VALUE]
 
-    # emit event to signal that an account storage item is being updated
-    loc_load.0
-    # => [index, KEY, OLD_MAP_VALUE, NEW_VALUE, KEY, NEW_VALUE]
-
+    # emit event to signal that an account storage map item is being updated
     emit.ACCOUNT_STORAGE_AFTER_SET_MAP_ITEM_EVENT
-    # => [index, KEY, OLD_MAP_VALUE, NEW_VALUE, KEY, NEW_VALUE]
+    # => [name_id_prefix, name_id_suffix, KEY, OLD_MAP_VALUE, NEW_VALUE]
 
     exec.account_delta::set_map_item
-    # => [KEY, NEW_VALUE]
+    # => []
 
-    # load OLD_MAP_VALUE and NEW_ROOT on the top of the stack
-    loc_loadw.8 swapw loc_loadw.4 swapw
-    # => [NEW_ROOT, OLD_MAP_VALUE, ...]
-
-    # set the root of the map in the respective account storage slot
-    loc_load.0 exec.set_item_raw
-    # => [OLD_MAP_ROOT, OLD_MAP_VALUE, ...]
+    # load OLD_MAP_ROOT and OLD_MAP_VALUE as return values on the stack
+    padw loc_loadw.8 padw loc_loadw.4
+    # => [OLD_MAP_ROOT, OLD_MAP_VALUE]
 end
 
 #! TODO(named_slots): Refactor to take name instead.
@@ -1437,21 +1452,22 @@ end
 
 #! Sets an item in the account storage. Doesn't emit any events.
 #!
-#! Inputs:  [index, NEW_VALUE]
+#! Inputs:  [name_id_prefix, name_id_suffix, NEW_VALUE]
 #! Outputs: [OLD_VALUE]
 #!
 #! Where:
-#! - index is the index of the item to set.
+#! - name_id_{prefix, suffix} are the prefix and suffix felts of the name identifier, which are
+#!   the first two felts of the hashed slot name.
 #! - NEW_VALUE is the value to set.
 #! - OLD_VALUE is the previous value of the item.
+#!
+#! Panics if:
+#! - a slot with the provided name ID does not exist in account storage.
 proc.set_item_raw
-    # TODO(named_slots): pass in name
-
     exec.memory::get_account_storage_slots_section_ptr
-    # => [storage_slots_ptr, index, NEW_VALUE]
+    # => [storage_slots_ptr, name_id_prefix, name_id_suffix, NEW_VALUE]
 
-    push.0 assert.err="TODO(named_slots): set_item_raw is unimplemented"
-    # exec.get_indexed_storage_slot_ptr
+    exec.find_storage_slot
     # => [slot_ptr, NEW_VALUE]
 
     # offset the pointer to point to the VALUE in the slot

@@ -362,28 +362,38 @@ end
 
 #! Sets a map item in the account storage.
 #!
-#! Inputs:  [index, KEY, VALUE]
+#! Inputs:  [name_id_prefix, name_id_suffix, KEY, VALUE]
 #! Outputs: [OLD_MAP_ROOT, OLD_MAP_VALUE]
 #!
 #! Where:
-#! - index is the index of the map where the KEY VALUE should be set.
+#! - name_id_{prefix, suffix} are the prefix and suffix felts of the name identifier, which are
+#!   the first two felts of the hashed slot name.
+#!    - the slot must point to the root of the storage map.
 #! - KEY is the key to set at VALUE.
 #! - VALUE is the value to set at KEY.
 #! - OLD_MAP_ROOT is the old map root.
 #! - OLD_MAP_VALUE is the old value at KEY.
 #!
 #! Panics if:
-#! - the index for the map is out of bounds, meaning > 255.
-#! - the slot item at index is not a map.
+#! - a slot with the provided name ID does not exist in account storage.
+#! - the requested storage slot type is not map.
+#! - the procedure is called from a non-account context.
+#! - the invocation of this procedure does not originate from the native account.
 #!
 #! Invocation: exec
 export.set_map_item
     exec.kernel_proc_offsets::account_set_map_item_offset
-    # => [offset, index, KEY, VALUE]
+    # => [offset, name_id_prefix, name_id_suffix, KEY, VALUE]
 
     # pad the stack
-    push.0.0 movdn.11 movdn.11 padw movdnw.3
-    # => [offset, index, KEY, VALUE, pad(6)]
+    push.0 padw
+    # => [pad(4), 0, offset, name_id_prefix, name_id_suffix, KEY, VALUE]
+
+    movdnw.3
+    # => [0, offset, name_id_prefix, name_id_suffix, KEY, VALUE, pad(4)]
+
+    movdn.11
+    # => [offset, name_id_prefix, name_id_suffix, KEY, VALUE, pad(5)]
 
     syscall.exec_kernel_proc
     # => [OLD_MAP_ROOT, OLD_MAP_VALUE, pad(8)]
