@@ -111,6 +111,10 @@ end
 #! Locals:
 #! - 0: inputs_ptr
 #! - 1: num_inputs
+#! - 3: num_inputs (for NoteDetails format)
+#! - 4..7: SERIAL_NUM
+#! - 8..11: SCRIPT_ROOT
+#! - 12..15: INPUTS_COMMITMENT
 #!
 #! Panics if:
 #! - inputs_ptr is not word-aligned (i.e., is not a multiple of 4).
@@ -156,14 +160,6 @@ export.build_recipient.16
     # => [SERIAL_NUM, SCRIPT_ROOT, INPUTS_COMMITMENT, RECIPIENT]
 
     # inserting NoteDetails into AdviceMap
-    # Current local memory layout:
-    # Local 0: SERIAL_NUM (4 felts)
-    # Local 4: SCRIPT_ROOT (4 felts)
-    # Local 8: INPUTS_COMMITMENT (4 felts)
-
-    # We need format: [num_inputs, INPUTS_COMMITMENT, SCRIPT_ROOT, SERIAL_NUM]
-    # Store in the correct order starting from local 0:
-
     loc_storew.12 dropw loc_storew.8 dropw loc_storew.4 dropw
     # => [RECIPIENT]
 
