@@ -23,8 +23,8 @@ impl LocalBatchProver {
     /// Attempts to prove the [`ProposedBatch`] into a [`ProvenBatch`].
     ///
     /// Currently we don't perform any recursive proving. For now, this function runs a native
-    /// verifier for each transaction separately, and outputs a `ProvenBatch` object if all of their
-    /// proofs are valid
+    /// verifier for each transaction separately, and outputs a `ProvenBatch` object if all of the
+    /// individual proofs verify.
     ///
     /// # Errors
     ///
