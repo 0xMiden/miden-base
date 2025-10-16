@@ -1,4 +1,5 @@
 use alloc::sync::Arc;
+use alloc::vec::Vec;
 use std::collections::BTreeMap;
 
 use anyhow::Context;
@@ -50,6 +51,7 @@ use miden_processor::{EMPTY_WORD, ExecutionError, MastNodeExt, Word};
 use miden_tx::{LocalTransactionProver, TransactionExecutorError};
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
+use winter_rand_utils::rand_value;
 
 use super::{Felt, StackInputs, ZERO};
 use crate::executor::CodeExecutor;
@@ -1068,11 +1070,11 @@ async fn proven_tx_storage_map_matches_executed_tx_for_new_account() -> anyhow::
 async fn prove_account_creation_with_non_empty_storage() -> anyhow::Result<()> {
     let slot0 = StorageSlot::Value(Word::from([1, 2, 3, 4u32]));
     let slot1 = StorageSlot::Value(Word::from([10, 20, 30, 40u32]));
-    let map_entries = [
-        (Word::from([1, 2, 3, 4u32]), Word::from([5, 6, 7, 8u32])),
-        (Word::from([10, 20, 30, 40u32]), Word::from([50, 60, 70, 80u32])),
-    ];
-    let map_slot = StorageSlot::Map(StorageMap::with_entries(map_entries)?);
+    let mut map_entries = Vec::new();
+    for _ in 0..10 {
+        map_entries.push((rand_value::<Word>(), rand_value::<Word>()));
+    }
+    let map_slot = StorageSlot::Map(StorageMap::with_entries(map_entries.clone())?);
 
     let account = AccountBuilder::new([6; 32])
         .storage_mode(AccountStorageMode::Public)

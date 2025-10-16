@@ -223,7 +223,7 @@ proc.add_storage_map_entries_to_delta
         adv_push.8
         # => [KEY, VALUE, remaining_entries, slot_idx, MAP_ROOT]
 
-        dup.8
+        dup.9
         # => [slot_idx, KEY, VALUE, remaining_entries, slot_idx, MAP_ROOT]
 
         # copy the MAP_ROOT to the stack top
