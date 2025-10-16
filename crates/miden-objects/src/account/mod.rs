@@ -385,7 +385,7 @@ impl Account {
         // existing accounts, where existing accounts are defined as having a nonce > 0.
         // If we've incremented the nonce, then we should remove the seed (if it was present at
         // all).
-        if new_nonce.as_int() > 0 {
+        if !self.is_new() {
             self.seed = None;
         }
 
