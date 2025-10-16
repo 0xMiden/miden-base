@@ -126,27 +126,27 @@ export.insert_new_account
 
         # compute the pointer corresponding to the slot index
         dup mul.8 dup.2 add
-        # => [init_slot_ptr, slot_idx, init_slots_ptr]
+        # => [slot_ptr, slot_idx, init_slots_ptr]
 
         # offset the pointer so it points to the slot's metadata
         dup add.4
-        # => [init_slot_metadata_ptr, init_slot_ptr, slot_idx, init_slots_ptr]
+        # => [init_slot_metadata_ptr, slot_ptr, slot_idx, init_slots_ptr]
 
         # load the slot metadata
         padw movup.4 mem_loadw
-        # => [SLOT_METADATA, init_slot_ptr, slot_idx, init_slots_ptr]
-        # => [[0, 0, 0, slot_type], init_slot_ptr, slot_idx, init_slots_ptr]
+        # => [SLOT_METADATA, slot_ptr, slot_idx, init_slots_ptr]
+        # => [[0, 0, 0, slot_type], slot_ptr, slot_idx, init_slots_ptr]
 
         # extract the slot type
         drop drop drop
-        # => [slot_type, init_slot_ptr, slot_idx, init_slots_ptr]
+        # => [slot_type, slot_ptr, slot_idx, init_slots_ptr]
 
         exec.constants::get_storage_slot_type_map eq
-        # => [is_map_slot_type, init_slot_ptr, slot_idx, init_slots_ptr]
+        # => [is_map_slot_type, slot_ptr, slot_idx, init_slots_ptr]
 
         if.true
             dup.1 swap
-            # => [init_slot_ptr, slot_idx, slot_idx, init_slots_ptr]
+            # => [slot_ptr, slot_idx, slot_idx, init_slots_ptr]
 
             # load the map root
             padw movup.4 mem_loadw
