@@ -27,10 +27,8 @@
 - Added `AssetVault::{num_assets, num_leaves, inner_nodes}` ([#1939](https://github.com/0xMiden/miden-base/pull/1939)).
 - [BREAKING] Enable computing the transaction ID from the data in a `TransactionHeader` ([#1973](https://github.com/0xMiden/miden-base/pull/1973)).
 - Added `account::get_initial_balance` procedure to `miden` lib ([#1959](https://github.com/0xMiden/miden-base/pull/1959)).
-- [BREAKING] Enable computing the transaction ID from the data in a `TransactionHeader` ([#1973]https://github.com/0xMiden/miden-base/pull/1973).
-- [BREAKING] Change `Account` to `PartialAccount` conversion to generally track only minimal data ([#1963]https://github.com/0xMiden/miden-base/pull/1963).
-- [BREAKING] Added `get_note_script()` method to `DataStore` trait to enable lazy loading of note scripts during transaction execution ([#1995](https://github.com/0xMiden/miden-base/pull/1995)).
 - [BREAKING] Change `Account` to `PartialAccount` conversion to generally track only minimal data ([#1963](https://github.com/0xMiden/miden-base/pull/1963)).
+- [BREAKING] Added `get_note_script()` method to `DataStore` trait to enable lazy loading of note scripts during transaction execution ([#1995](https://github.com/0xMiden/miden-base/pull/1995)).
 - Added `MastArtifact`, `PackageExport`, `PackageManifest`, `AttributeSet` and `QualifiedProcedureName` to re-export section ([#1984](https://github.com/0xMiden/miden-base/pull/1984)).
 
 ### Changes
