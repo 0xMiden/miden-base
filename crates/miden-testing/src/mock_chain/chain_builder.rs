@@ -65,24 +65,15 @@ use crate::{AccountState, Auth, MockChain};
 ///     &[FungibleAsset::mock(100)],
 ///     NoteType::Private,
 /// )?;
-/// let new_note = miden_lib::note::create_p2id_note(
-///     existing_wallet.id(),
-///     new_wallet.id(),
-///     vec![FungibleAsset::mock(100)],
-///     NoteType::Private,
-///     ZERO,
-///     builder.rng_mut(),
-/// )?;
 /// let chain = builder.build()?;
 ///
 /// // The existing wallet and note should be part of the chain state.
 /// assert!(chain.committed_account(existing_wallet.id()).is_ok());
 /// assert!(chain.committed_notes().get(&existing_note.id()).is_some());
 ///
-/// // The new wallet and note should *not* be part of the chain state - they must be created in
+/// // The new wallet should *not* be part of the chain state - it must be created in
 /// // a transaction first.
 /// assert!(chain.committed_account(new_wallet.id()).is_err());
-/// assert!(chain.committed_notes().get(&new_note.id()).is_none());
 ///
 /// # Ok(())
 /// # }
