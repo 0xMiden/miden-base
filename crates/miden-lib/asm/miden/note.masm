@@ -160,17 +160,15 @@ export.build_recipient.16
     # Local 0: SERIAL_NUM (4 felts)
     # Local 4: SCRIPT_ROOT (4 felts)
     # Local 8: INPUTS_COMMITMENT (4 felts)
-    
+
     # We need format: [num_inputs, INPUTS_COMMITMENT, SCRIPT_ROOT, SERIAL_NUM]
     # Store in the correct order starting from local 0:
-    
+
     loc_storew.12 dropw loc_storew.8 dropw loc_storew.4 dropw
     # => [RECIPIENT]
 
     loc_load.1 loc_store.3
     # => [RECIPIENT]
-
-    push.222 debug.stack drop
 
     locaddr.3 dup push.13 add swap
     # => [mem_ptr, end_ptr, RECIPIENT]
