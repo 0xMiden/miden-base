@@ -21,14 +21,17 @@
 - Implement `SlotName` for named storage slots ([#1932](https://github.com/0xMiden/miden-base/issues/1932)).
 - [BREAKING] Removed `get_falcon_signature` from `miden-tx` crate ([#1924](https://github.com/0xMiden/miden-base/pull/1924)).
 - Created a `Signature` wrapper to simplify the preparation of "native" signatures for use in the VM ([#1924](https://github.com/0xMiden/miden-base/pull/1924)).
-- Implemented `input_note::get_sender` and `active_note::get_metadata` procedures in `miden` lib ([#1933]https://github.com/0xMiden/miden-base/pull/1933).
+- Implemented `input_note::get_sender` and `active_note::get_metadata` procedures in `miden` lib ([#1933](https://github.com/0xMiden/miden-base/pull/1933)).
 - Added `Address` serialization and deserialization ([#1937](https://github.com/0xMiden/miden-base/issues/1937)).
-- Added `StorageMap::{num_entries, num_leaves}` to retrieve the number of entries in a storage map ([#1935]https://github.com/0xMiden/miden-base/pull/1935).
-- Added `AssetVault::{num_assets, num_leaves, inner_nodes}` ([#1939]https://github.com/0xMiden/miden-base/pull/1939).
+- Added `StorageMap::{num_entries, num_leaves}` to retrieve the number of entries in a storage map ([#1935](https://github.com/0xMiden/miden-base/pull/1935)).
+- Added `AssetVault::{num_assets, num_leaves, inner_nodes}` ([#1939](https://github.com/0xMiden/miden-base/pull/1939)).
+- [BREAKING] Enable computing the transaction ID from the data in a `TransactionHeader` ([#1973](https://github.com/0xMiden/miden-base/pull/1973)).
 - Added `account::get_initial_balance` procedure to `miden` lib ([#1959](https://github.com/0xMiden/miden-base/pull/1959)).
 - [BREAKING] Enable computing the transaction ID from the data in a `TransactionHeader` ([#1973]https://github.com/0xMiden/miden-base/pull/1973).
 - [BREAKING] Change `Account` to `PartialAccount` conversion to generally track only minimal data ([#1963]https://github.com/0xMiden/miden-base/pull/1963).
 - [BREAKING] Added `get_note_script()` method to `DataStore` trait to enable lazy loading of note scripts during transaction execution ([#1995](https://github.com/0xMiden/miden-base/pull/1995)).
+- [BREAKING] Change `Account` to `PartialAccount` conversion to generally track only minimal data ([#1963](https://github.com/0xMiden/miden-base/pull/1963)).
+- Added `MastArtifact`, `PackageExport`, `PackageManifest`, `AttributeSet` and `QualifiedProcedureName` to re-export section ([#1984](https://github.com/0xMiden/miden-base/pull/1984)).
 
 ### Changes
 
