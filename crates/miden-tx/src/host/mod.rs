@@ -547,15 +547,6 @@ where
         // Extract note index from stack
         let note_idx = process.get_stack_item(10).as_int() as usize;
 
-        // Check if we've already created this note builder
-        // This should not happen - we should only create each note builder once
-        if self.output_notes.contains_key(&note_idx) {
-            return Err(TransactionKernelError::other(format!(
-                "Attempted to create note builder for note index {} twice",
-                note_idx
-            )));
-        }
-
         // Verify that the note index matches the expected next index
         if note_idx != self.output_notes.len() {
             return Err(TransactionKernelError::other(format!(
