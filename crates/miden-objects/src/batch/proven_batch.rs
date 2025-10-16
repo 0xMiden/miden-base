@@ -12,6 +12,8 @@ use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError,
 use crate::{MIN_PROOF_SECURITY_LEVEL, Word};
 
 /// A transaction batch with an execution proof.
+/// Currently, there is no proof attached. Future versions will extend this structure to include
+/// a proof artifact once recursive proving is implemented
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProvenBatch {
     id: BatchId,
