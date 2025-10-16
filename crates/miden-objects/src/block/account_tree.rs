@@ -281,7 +281,8 @@ impl AccountTree {
         &mut self,
         mutations: AccountMutationSet,
     ) -> Result<AccountMutationSet, AccountTreeError> {
-        let reversion = self.smt
+        let reversion = self
+            .smt
             .apply_mutations_with_reversion(mutations.into_mutation_set())
             .map_err(AccountTreeError::ApplyMutations)?;
         Ok(AccountMutationSet::new(reversion))

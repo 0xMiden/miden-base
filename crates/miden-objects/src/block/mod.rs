@@ -17,7 +17,7 @@ mod partial_account_tree;
 pub use partial_account_tree::PartialAccountTree;
 
 pub(super) mod account_tree;
-pub use account_tree::{AccountTree, AccountMutationSet};
+pub use account_tree::{AccountMutationSet, AccountTree};
 
 mod nullifier_tree;
 pub use nullifier_tree::NullifierTree;
