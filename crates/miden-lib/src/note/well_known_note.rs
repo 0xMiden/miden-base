@@ -1,4 +1,6 @@
-use alloc::string::{String, ToString};
+use alloc::boxed::Box;
+use alloc::string::String;
+use core::error::Error;
 
 use miden_objects::account::AccountId;
 use miden_objects::block::BlockNumber;
@@ -162,13 +164,16 @@ impl WellKnownNote {
         }
     }
 
-    /// Checks the correctness of the provided note inputs against the target account.
+    /// Performs the inputs check of the provided note against the target account and the block
+    /// number.
     ///
-    /// It returns the corresponding note consumption status in case we can guarantee that the note
-    /// cannot be consumed, or `None` otherwise.
+    /// This function returns:
+    /// - `Some` if the note can definitely not be consumed under the provided conditions or in
+    ///   general.
+    /// - `None` if the consumption status of the note cannot be determined conclusively and further
+    ///   checks are necessary.
     ///
     /// It performs:
-    /// - for all notes: a
     /// - for `P2ID` note:
     ///     - check that note inputs have correct number of values.
     ///     - assertion that the account ID provided by the note inputs is equal to the target
@@ -186,83 +191,93 @@ impl WellKnownNote {
         target_account_id: AccountId,
         block_ref: BlockNumber,
     ) -> Option<NoteConsumptionStatus> {
+        match self.check_note_inputs_inner(note, target_account_id, block_ref) {
+            Ok(status) => status,
+            Err(err) => {
+                let err: Box<dyn Error + Send + Sync + 'static> = Box::from(err);
+                Some(NoteConsumptionStatus::NeverConsumable(err))
+            },
+        }
+    }
+
+    fn check_note_inputs_inner(
+        &self,
+        note: &Note,
+        target_account_id: AccountId,
+        block_ref: BlockNumber,
+    ) -> Result<Option<NoteConsumptionStatus>, StaticAnalysisError> {
         match self {
             WellKnownNote::P2ID => {
                 let note_inputs = note.inputs().values();
                 if note_inputs.len() != self.num_expected_inputs() {
-                    return Some(NoteConsumptionStatus::Incompatible(format!(
-                        "P2ID note should have 2 inputs, but {} was provided",
-                        note_inputs.len()
+                    return Ok(Some(NoteConsumptionStatus::NeverConsumable(
+                        format!(
+                            "P2ID note should have {} inputs, but {} was provided",
+                            WellKnownNote::P2ID.num_expected_inputs(),
+                            note_inputs.len()
+                        )
+                        .into(),
                     )));
                 }
 
-                let Some(input_account_id) = try_read_account_id_from_inputs(note_inputs) else {
-                    return Some(NoteConsumptionStatus::Incompatible(
-                        "Account ID provided to the P2ID note inputs is invalid".to_string(),
-                    ));
-                };
+                let input_account_id = try_read_account_id_from_inputs(note_inputs)?;
 
                 if input_account_id == target_account_id {
-                    None
+                    Ok(None)
                 } else {
-                    Some(NoteConsumptionStatus::Incompatible("Account ID provided to the P2ID note inputs doesn't match the target account ID".to_string()))
+                    Ok(Some(NoteConsumptionStatus::NeverConsumable("account ID provided to the P2ID note inputs doesn't match the target account ID".into())))
                 }
             },
             WellKnownNote::P2IDE => {
                 let note_inputs = note.inputs().values();
                 if note_inputs.len() != self.num_expected_inputs() {
-                    return Some(NoteConsumptionStatus::Incompatible(format!(
-                        "P2IDE note should have 4 inputs, but {} was provided",
-                        note_inputs.len()
+                    return Ok(Some(NoteConsumptionStatus::NeverConsumable(
+                        format!(
+                            "P2IDE note should have {} inputs, but {} was provided",
+                            WellKnownNote::P2IDE.num_expected_inputs(),
+                            note_inputs.len()
+                        )
+                        .into(),
                     )));
                 }
 
-                let Some(input_account_id) = try_read_account_id_from_inputs(note_inputs) else {
-                    return Some(NoteConsumptionStatus::Incompatible(
-                        "Account ID provided to the P2IDE note inputs is invalid".to_string(),
-                    ));
-                };
+                let input_account_id = try_read_account_id_from_inputs(note_inputs)?;
 
-                let reclaim_height: Result<u32, _> = note_inputs[2].try_into();
-                let Ok(recall_height) = reclaim_height else {
-                    return Some(NoteConsumptionStatus::Incompatible("Reclaim block height provided to the P2IDE note inputs should be a u32 value".to_string()));
-                };
+                let reclaim_height = u32::try_from(note_inputs[2]).map_err(|_err| {
+                    StaticAnalysisError::build_error("reclaim block height should be a u32")
+                })?;
 
-                let timelock_height: Result<u32, _> = note_inputs[3].try_into();
-                let Ok(timelock_height) = timelock_height else {
-                    return Some(NoteConsumptionStatus::Incompatible("Timelock block height provided to the P2IDE note inputs should be a u32 value".to_string()));
-                };
+                let timelock_height = u32::try_from(note_inputs[3]).map_err(|_err| {
+                    StaticAnalysisError::build_error("timelock block height should be a u32")
+                })?;
 
                 if block_ref.as_u32() < timelock_height {
-                    return Some(NoteConsumptionStatus::ConsumableAfter(BlockNumber::from(
+                    return Ok(Some(NoteConsumptionStatus::ConsumableAfter(BlockNumber::from(
                         timelock_height,
-                    )));
+                    ))));
                 }
 
-                if block_ref.as_u32() >= recall_height {
+                if block_ref.as_u32() >= reclaim_height {
                     let sender_account_id = note.metadata().sender();
-                    // if the sender can already reclaim the assets back, then:
-                    // - target account ID could be equal to the inputs account ID if the note is
-                    //   going to be consumed by the target account
-                    // - target account ID could be equal to the sender account ID if the note is
-                    //   going to be consumed by the sender account
+                    // At or after the recall height both the sender of the note and the receiver
+                    // (from the note's inputs) are allowed to consume the note.
                     if [input_account_id, sender_account_id].contains(&target_account_id) {
-                        None
+                        Ok(None)
                     } else {
-                        Some(NoteConsumptionStatus::Incompatible("Target account of the transaction does not match neither the target account specified by the P2IDE inputs, nor the sender account".to_string()))
+                        Ok(Some(NoteConsumptionStatus::NeverConsumable("target account of the transaction does not match neither the target account specified by the P2IDE inputs, nor the sender account".into())))
                     }
                 } else {
                     // in this case note could be consumed only by the target account
                     if input_account_id == target_account_id {
-                        None
+                        Ok(None)
                     } else {
-                        Some(NoteConsumptionStatus::ConsumableAfter(BlockNumber::from(
-                            recall_height,
-                        )))
+                        Ok(Some(NoteConsumptionStatus::ConsumableAfter(BlockNumber::from(
+                            reclaim_height,
+                        ))))
                     }
                 }
             },
-            _ => None,
+            _ => Ok(None),
         }
     }
 }
@@ -273,12 +288,20 @@ impl WellKnownNote {
 /// Reads the account ID from the first two note input values.
 ///
 /// Returns None if the note input values used to construct the account ID are invalid.
-fn try_read_account_id_from_inputs(note_inputs: &[Felt]) -> Option<AccountId> {
-    let account_id_felts: [Felt; 2] = note_inputs[0..2].try_into().expect(
-        "Should be able to convert the first two note inputs to an array of two Felt elements",
-    );
+fn try_read_account_id_from_inputs(note_inputs: &[Felt]) -> Result<AccountId, StaticAnalysisError> {
+    let account_id_felts: [Felt; 2] = note_inputs[0..2].try_into().map_err(|source| {
+        StaticAnalysisError::build_error_with_source(
+            "should be able to convert the first two note inputs to an array of two Felt elements",
+            source,
+        )
+    })?;
 
-    AccountId::try_from([account_id_felts[1], account_id_felts[0]]).ok()
+    AccountId::try_from([account_id_felts[1], account_id_felts[0]]).map_err(|source| {
+        StaticAnalysisError::build_error_with_source(
+            "failed to create an account ID from the first two note inputs",
+            source,
+        )
+    })
 }
 
 // HELPER STRUCTURES
@@ -289,7 +312,7 @@ fn try_read_account_id_from_inputs(note_inputs: &[Felt]) -> Option<AccountId> {
 ///
 /// The status does not account for any authorization that may be required to consume the
 /// note, nor does it indicate whether the account has sufficient fees to consume it.
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub enum NoteConsumptionStatus {
     /// The note can be consumed by the account at the specified block height.
     Consumable,
@@ -299,7 +322,36 @@ pub enum NoteConsumptionStatus {
     ConsumableWithAuthorization,
     /// The note cannot be consumed by the account at the specified conditions (i.e., block
     /// height and account state).
-    Unconsumable,
+    UnconsumableConditions,
     /// The note cannot be consumed by the specified account under any conditions.
-    Incompatible(String),
+    NeverConsumable(Box<dyn Error + Send + Sync + 'static>),
+}
+
+#[derive(thiserror::Error, Debug)]
+#[error("failed to perform note static analysis: {message}")]
+struct StaticAnalysisError {
+    /// Stack size of `Box<str>` is smaller than String.
+    message: Box<str>,
+    /// thiserror will return this when calling Error::source on StaticAnalysisError.
+    source: Option<Box<dyn Error + Send + Sync + 'static>>,
+}
+
+impl StaticAnalysisError {
+    /// Creates a static analysis error from an error message.
+    pub fn build_error(message: impl Into<String>) -> Self {
+        let message: String = message.into();
+        Self { message: message.into(), source: None }
+    }
+
+    /// Creates a static analysis error from an error message and a source error.
+    pub fn build_error_with_source(
+        message: impl Into<String>,
+        source: impl Error + Send + Sync + 'static,
+    ) -> Self {
+        let message: String = message.into();
+        Self {
+            message: message.into(),
+            source: Some(Box::new(source)),
+        }
+    }
 }

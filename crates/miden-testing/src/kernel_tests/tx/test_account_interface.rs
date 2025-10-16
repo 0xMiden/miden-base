@@ -1,14 +1,13 @@
+use alloc::string::ToString;
 use alloc::vec::Vec;
 
 use assert_matches::assert_matches;
-use miden_lib::note::well_known_note::{NoteConsumptionStatus, WellKnownNote};
-use miden_lib::note::{create_p2id_note, create_p2ide_note};
+use miden_lib::note::{NoteConsumptionStatus, WellKnownNote, create_p2id_note, create_p2ide_note};
 use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::testing::note::NoteBuilder;
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::{Account, AccountId};
 use miden_objects::asset::{Asset, FungibleAsset};
-use miden_objects::block::BlockNumber;
 use miden_objects::crypto::rand::FeltRng;
 use miden_objects::note::{
     Note,
@@ -445,7 +444,7 @@ async fn test_check_note_consumability_without_signatures() -> anyhow::Result<()
         .can_consume(account_id, block_ref, successful_note, tx_args)
         .await?;
 
-    assert_eq!(consumability_info, NoteConsumptionStatus::ConsumableWithAuthorization);
+    assert_matches!(consumability_info, NoteConsumptionStatus::ConsumableWithAuthorization);
 
     Ok(())
 }
@@ -511,9 +510,10 @@ async fn test_check_note_consumability_static_analysis() -> anyhow::Result<()> {
             tx_args.clone(),
         )
         .await?;
-    assert_matches!(consumability_info, NoteConsumptionStatus::Incompatible(reason) => {
-        assert_eq!(reason, format!(
-                        "P2IDE note should have 4 inputs, but {} was provided",
+    assert_matches!(consumability_info, NoteConsumptionStatus::NeverConsumable(reason) => {
+        assert_eq!(reason.to_string(), format!(
+                        "P2IDE note should have {} inputs, but {} was provided",
+                        WellKnownNote::P2IDE.num_expected_inputs(),
                         p2ide_wrong_inputs_number.recipient().inputs().num_values()
                     ));
     });
@@ -523,8 +523,8 @@ async fn test_check_note_consumability_static_analysis() -> anyhow::Result<()> {
     let consumability_info: NoteConsumptionStatus = notes_checker
         .can_consume(target_account_id, block_ref, p2ide_invalid_target_id.clone(), tx_args.clone())
         .await?;
-    assert_matches!(consumability_info, NoteConsumptionStatus::Incompatible(reason) => {
-        assert_eq!(reason, "Account ID provided to the P2IDE note inputs is invalid");
+    assert_matches!(consumability_info, NoteConsumptionStatus::NeverConsumable(reason) => {
+        assert_eq!(reason.to_string(), "failed to perform note static analysis: failed to create an account ID from the first two note inputs");
     });
 
     // check the note with timelock
@@ -537,9 +537,9 @@ async fn test_check_note_consumability_static_analysis() -> anyhow::Result<()> {
             tx_args.clone(),
         )
         .await?;
-    assert_eq!(
+    assert_matches!(
         consumability_info,
-        NoteConsumptionStatus::ConsumableAfter(BlockNumber::from(10))
+        NoteConsumptionStatus::ConsumableAfter(block_number) if block_number.as_u32() == 10
     );
 
     // check the note with unreached recall height
@@ -552,7 +552,7 @@ async fn test_check_note_consumability_static_analysis() -> anyhow::Result<()> {
             tx_args.clone(),
         )
         .await?;
-    assert_eq!(consumability_info, NoteConsumptionStatus::ConsumableAfter(BlockNumber::from(3)));
+    assert_matches!(consumability_info, NoteConsumptionStatus::ConsumableAfter(block_number) if block_number.as_u32() == 3);
 
     Ok(())
 }

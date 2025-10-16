@@ -1,7 +1,7 @@
 use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
 
-use miden_lib::note::well_known_note::{NoteConsumptionStatus, WellKnownNote};
+use miden_lib::note::{NoteConsumptionStatus, WellKnownNote};
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::AccountId;
 use miden_objects::block::BlockNumber;
@@ -178,7 +178,7 @@ where
                     },
                     // execution failed during the note processing
                     TransactionCheckerError::NoteExecution { .. } => {
-                        Ok(NoteConsumptionStatus::Unconsumable)
+                        Ok(NoteConsumptionStatus::UnconsumableConditions)
                     },
                     // execution failed during the epilogue
                     TransactionCheckerError::EpilogueExecution(epilogue_error) => {
@@ -392,6 +392,6 @@ fn handle_epilogue_error(epilogue_error: TransactionExecutorError) -> NoteConsum
             NoteConsumptionStatus::ConsumableWithAuthorization
         },
         // TODO: apply additional checks to get the verbose error reason
-        _ => NoteConsumptionStatus::Unconsumable,
+        _ => NoteConsumptionStatus::UnconsumableConditions,
     }
 }

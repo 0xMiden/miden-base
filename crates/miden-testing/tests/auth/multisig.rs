@@ -2,8 +2,7 @@ use assert_matches::assert_matches;
 use miden_lib::account::components::rpo_falcon_512_multisig_library;
 use miden_lib::account::wallets::BasicWallet;
 use miden_lib::errors::tx_kernel_errors::ERR_TX_ALREADY_EXECUTED;
-use miden_lib::note::create_p2id_note;
-use miden_lib::note::well_known_note::NoteConsumptionStatus;
+use miden_lib::note::{NoteConsumptionStatus, create_p2id_note};
 use miden_lib::testing::account_interface::get_public_keys_from_account;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{

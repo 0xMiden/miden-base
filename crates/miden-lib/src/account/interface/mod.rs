@@ -21,7 +21,7 @@ use crate::account::components::{
     rpo_falcon_512_multisig_library,
 };
 use crate::errors::ScriptBuilderError;
-use crate::note::well_known_note::WellKnownNote;
+use crate::note::WellKnownNote;
 use crate::utils::ScriptBuilder;
 
 #[cfg(test)]
