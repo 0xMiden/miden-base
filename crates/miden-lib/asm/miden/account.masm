@@ -210,7 +210,7 @@ end
 #!
 #! The commitment to an empty delta is defined as the empty word.
 #!
-#! During an account-creating transaction (when the initial nonce is 0), this procedure may not
+#! During an account-creating transaction (when the initial nonce is 0), this procedure will not
 #! return the empty word even if the initial storage commitment and the current storage commitment
 #! are identical (storage hasn't changed). This is because the delta for a new account must
 #! represent its entire newly created state, and the initial storage in a transaction is
