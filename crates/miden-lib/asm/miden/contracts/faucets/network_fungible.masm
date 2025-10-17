@@ -11,7 +11,7 @@ use.miden::contracts::faucets::basic_fungible
 const.OWNER_CONFIG_SLOT=1
 
 # ERRORS
-const.ERR_NOT_OWNER="note sender is not owner"
+const.ERR_ONLY_OWNER_CAN_MINT="note sender is not the owner of the faucet who can mint assets"
 
 #! Checks if the note sender is the owner of this faucet.
 #!
