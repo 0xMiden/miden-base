@@ -13,12 +13,12 @@ const.AUTH_UNAUTHORIZED_EVENT=event("miden::auth::unauthorized")
 
 # Storage Layout Constants
 #
-# ┌───────────────────────────────┬──────────┬──────────────┬──────────────┐
-# │ THRESHOLD & APPROVERS CONFIG  │ PUB KEYS │ EXECUTED TXS │  PROC ROOTS  │
-# │           (slot)              │   (map)  │    (map)     │    (map)     │
-# ├───────────────────────────────┼──────────┼──────────────┼──────────────┤
-# │              0                │    1     │      2       │      3       │
-# └───────────────────────────────┴──────────┴──────────────┴──────────────┘
+# ┌───────────────────────────────┬──────────┬──────────────┬───────────────────┐
+# │ THRESHOLD & APPROVERS CONFIG  │ PUB KEYS │ EXECUTED TXS │  PROC THRESHOLDS  │
+# │           (slot)              │   (map)  │    (map)     │       (map)       │
+# ├───────────────────────────────┼──────────┼──────────────┼───────────────────┤
+# │              0                │    1     │      2       │         3         │
+# └───────────────────────────────┴──────────┴──────────────┴───────────────────┘
 
 # The slot in this component's storage layout where the default signature threshold and
 # number of approvers are stored as:

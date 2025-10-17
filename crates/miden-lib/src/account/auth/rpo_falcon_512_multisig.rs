@@ -13,7 +13,7 @@ use crate::account::components::rpo_falcon_512_multisig_library;
 pub struct AuthRpoFalcon512MultisigConfig {
     approvers: Vec<PublicKeyCommitment>,
     default_threshold: u32,
-    proc_threshold_map: Vec<(Word, u32)>,
+    proc_thresholds: Vec<(Word, u32)>,
 }
 
 impl AuthRpoFalcon512MultisigConfig {
@@ -36,7 +36,7 @@ impl AuthRpoFalcon512MultisigConfig {
         Ok(Self {
             approvers,
             default_threshold,
-            proc_threshold_map: vec![],
+            proc_thresholds: vec![],
         })
     }
 
@@ -44,9 +44,9 @@ impl AuthRpoFalcon512MultisigConfig {
     /// at most the number of approvers.
     pub fn with_proc_thresholds(
         mut self,
-        proc_threshold_map: Vec<(Word, u32)>,
+        proc_thresholds: Vec<(Word, u32)>,
     ) -> Result<Self, AccountError> {
-        for (_, threshold) in &proc_threshold_map {
+        for (_, threshold) in &proc_thresholds {
             if *threshold == 0 {
                 return Err(AccountError::other("procedure threshold must be at least 1"));
             }
@@ -56,7 +56,7 @@ impl AuthRpoFalcon512MultisigConfig {
                 ));
             }
         }
-        self.proc_threshold_map = proc_threshold_map;
+        self.proc_thresholds = proc_thresholds;
         Ok(self)
     }
 
@@ -68,8 +68,8 @@ impl AuthRpoFalcon512MultisigConfig {
         self.default_threshold
     }
 
-    pub fn proc_threshold_map(&self) -> &[(Word, u32)] {
-        &self.proc_threshold_map
+    pub fn proc_thresholds(&self) -> &[(Word, u32)] {
+        &self.proc_thresholds
     }
 }
 
@@ -128,7 +128,7 @@ impl From<AuthRpoFalcon512Multisig> for AccountComponent {
         let proc_threshold_roots = StorageMap::with_entries(
             multisig
                 .config
-                .proc_threshold_map()
+                .proc_thresholds()
                 .iter()
                 .map(|(proc_root, threshold)| (*proc_root, Word::from([*threshold, 0, 0, 0]))),
         )
