@@ -75,7 +75,10 @@ impl AuthRpoFalcon512MultisigConfig {
 
 /// An [`AccountComponent`] implementing a multisig based on RpoFalcon512 signatures.
 ///
-/// This component requires a threshold number of signatures from a set of approvers.
+/// It enforces a threshold of approver signatures for every transaction, with optional
+/// per-procedure thresholds overrides. Non-uniform thresholds (especially a threshold of one)
+/// should be used with caution for private multisig accounts, as a single approver could withhold
+///  the new state from other approvers, effectively locking them out.
 ///
 /// The storage layout is:
 /// - Slot 0(value): [threshold, num_approvers, 0, 0]
