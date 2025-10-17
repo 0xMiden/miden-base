@@ -2,13 +2,14 @@ use miden_crypto::merkle::SmtLeaf;
 
 use crate::Word;
 use crate::account::AccountId;
-use crate::block::{AccountTree, AccountWitness};
+use crate::block::AccountWitness;
+use crate::block::account_tree::account_id_to_smt_key;
 use crate::crypto::merkle::PartialSmt;
 use crate::errors::AccountTreeError;
 
 /// The partial sparse merkle tree containing the state commitments of accounts in the chain.
 ///
-/// This is the partial version of [`AccountTree`].
+/// This is the partial version of [`AccountTree`](crate::block::account_tree::AccountTree).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PartialAccountTree {
     smt: PartialSmt,
@@ -55,7 +56,7 @@ impl PartialAccountTree {
     /// Returns an error if:
     /// - the account ID is not tracked by this account tree.
     pub fn open(&self, account_id: AccountId) -> Result<AccountWitness, AccountTreeError> {
-        let key = AccountTree::id_to_smt_key(account_id);
+        let key = account_id_to_smt_key(account_id);
 
         self.smt
             .open(&key)
@@ -70,7 +71,7 @@ impl PartialAccountTree {
     /// Returns an error if:
     /// - the account ID is not tracked by this account tree.
     pub fn get(&self, account_id: AccountId) -> Result<Word, AccountTreeError> {
-        let key = AccountTree::id_to_smt_key(account_id);
+        let key = account_id_to_smt_key(account_id);
         self.smt
             .get_value(&key)
             .map_err(|source| AccountTreeError::UntrackedAccountId { id: account_id, source })
@@ -96,7 +97,7 @@ impl PartialAccountTree {
     ///   witness.
     pub fn track_account(&mut self, witness: AccountWitness) -> Result<(), AccountTreeError> {
         let id_prefix = witness.id().prefix();
-        let id_key = AccountTree::id_to_smt_key(witness.id());
+        let id_key = account_id_to_smt_key(witness.id());
         let (path, leaf) = witness.into_proof().into_parts();
 
         // If a leaf with the same prefix is already tracked by this partial tree, consider it an
@@ -151,7 +152,7 @@ impl PartialAccountTree {
         account_id: AccountId,
         state_commitment: Word,
     ) -> Result<Word, AccountTreeError> {
-        let key = AccountTree::id_to_smt_key(account_id);
+        let key = account_id_to_smt_key(account_id);
 
         // If there exists a tracked leaf whose key is _not_ the one we're about to overwrite, then
         // we would insert the new commitment next to an existing account ID with the same prefix,
@@ -185,11 +186,12 @@ mod tests {
     use miden_crypto::merkle::Smt;
 
     use super::*;
+    use crate::block::account_tree::AccountTree;
     use crate::block::account_tree::tests::setup_duplicate_prefix_ids;
 
     #[test]
     fn insert_fails_on_duplicate_prefix() {
-        let mut full_tree = AccountTree::new();
+        let mut full_tree = AccountTree::<Smt>::default();
         let mut partial_tree = PartialAccountTree::new();
 
         let [(id0, commitment0), (id1, commitment1)] = setup_duplicate_prefix_ids();
@@ -217,7 +219,7 @@ mod tests {
 
     #[test]
     fn insert_succeeds_on_multiple_updates() {
-        let mut full_tree = AccountTree::new();
+        let mut full_tree = AccountTree::<Smt>::default();
         let mut partial_tree = PartialAccountTree::new();
         let [(id0, commitment0), (_, commitment1)] = setup_duplicate_prefix_ids();
 
@@ -258,14 +260,14 @@ mod tests {
         // account IDs with the same prefix.
         let full_tree = Smt::with_entries(
             setup_duplicate_prefix_ids()
-                .map(|(id, commitment)| (AccountTree::id_to_smt_key(id), commitment)),
+                .map(|(id, commitment)| (account_id_to_smt_key(id), commitment)),
         )
         .unwrap();
 
         let [(id0, _), (id1, _)] = setup_duplicate_prefix_ids();
 
-        let key0 = AccountTree::id_to_smt_key(id0);
-        let key1 = AccountTree::id_to_smt_key(id1);
+        let key0 = account_id_to_smt_key(id0);
+        let key1 = account_id_to_smt_key(id1);
         let proof0 = full_tree.open(&key0);
         let proof1 = full_tree.open(&key1);
         assert_eq!(proof0.leaf(), proof1.leaf());
