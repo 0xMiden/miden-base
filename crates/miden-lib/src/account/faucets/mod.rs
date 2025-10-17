@@ -19,6 +19,7 @@ use crate::account::auth::{
     AuthRpoFalcon512Acl,
     AuthRpoFalcon512AclConfig,
     AuthRpoFalcon512Multisig,
+    AuthRpoFalcon512MultisigConfig,
 };
 use crate::account::components::basic_fungible_faucet_library;
 use crate::procedure_digest;
@@ -283,7 +284,10 @@ pub fn create_basic_fungible_faucet(
         .map_err(FungibleFaucetError::AccountError)?
         .into(),
         AuthScheme::RpoFalcon512Multisig { threshold, pub_keys } => {
-            AuthRpoFalcon512Multisig::new(threshold, pub_keys)
+            // TODO this means burning the asset requires m/n approvals. We should address this.
+            let config = AuthRpoFalcon512MultisigConfig::new(pub_keys, threshold)
+                .map_err(FungibleFaucetError::AccountError)?;
+            AuthRpoFalcon512Multisig::new(config)
                 .map_err(FungibleFaucetError::AccountError)?
                 .into()
         },

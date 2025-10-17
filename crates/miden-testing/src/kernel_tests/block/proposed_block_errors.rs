@@ -3,15 +3,17 @@ use std::collections::BTreeMap;
 use std::vec::Vec;
 
 use assert_matches::assert_matches;
+use miden_lib::note::create_p2id_note;
 use miden_objects::asset::FungibleAsset;
 use miden_objects::block::{BlockInputs, BlockNumber, ProposedBlock};
 use miden_objects::crypto::merkle::SparseMerklePath;
 use miden_objects::note::{NoteInclusionProof, NoteType};
-use miden_objects::{MAX_BATCHES_PER_BLOCK, ProposedBlockError};
+use miden_objects::{MAX_BATCHES_PER_BLOCK, ProposedBlockError, ZERO};
 use miden_processor::crypto::MerklePath;
 use miden_tx::LocalTransactionProver;
 
 use crate::kernel_tests::block::utils::MockChainBlockExt;
+use crate::utils::create_p2any_note;
 use crate::{Auth, MockChain};
 
 /// Tests that too many batches produce an error.
@@ -306,7 +308,7 @@ async fn proposed_block_fails_on_duplicate_input_note() -> anyhow::Result<()> {
 async fn proposed_block_fails_on_duplicate_output_note() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let account = builder.add_existing_mock_account(Auth::IncrNonce)?;
-    let output_note = builder.create_p2any_note(account.id(), NoteType::Private, [])?;
+    let output_note = create_p2any_note(account.id(), NoteType::Private, [], builder.rng_mut());
 
     // Create two different notes that will create the same output note. Their IDs will be different
     // due to having a different serial number generated from contained RNG.
@@ -345,8 +347,14 @@ async fn proposed_block_fails_on_invalid_proof_or_missing_note_inclusion_referen
     let mut builder = MockChain::builder();
     let account0 = builder.add_existing_mock_account(Auth::IncrNonce)?;
     let account1 = builder.add_existing_mock_account(Auth::IncrNonce)?;
-    let p2id_note =
-        builder.create_p2id_note(account0.id(), account1.id(), [], NoteType::Private)?;
+    let p2id_note = create_p2id_note(
+        account0.id(),
+        account1.id(),
+        vec![],
+        NoteType::Private,
+        ZERO,
+        builder.rng_mut(),
+    )?;
     let spawn_note = builder.add_spawn_note([&p2id_note])?;
     let mut chain = builder.build()?;
 
@@ -437,7 +445,7 @@ async fn proposed_block_fails_on_missing_note_inclusion_proof() -> anyhow::Resul
     let account0 = builder.add_existing_mock_account(Auth::IncrNonce)?;
     let account1 = builder.add_existing_mock_account(Auth::IncrNonce)?;
     // Note that this note is not added to the chain state.
-    let note0 = builder.create_p2any_note(account0.id(), NoteType::Private, [])?;
+    let note0 = create_p2any_note(account0.id(), NoteType::Private, [], builder.rng_mut());
     let chain = builder.build()?;
 
     let tx0 = chain
