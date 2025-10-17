@@ -309,17 +309,15 @@ proc.compute_transaction_threshold.1
     drop
     # => [transaction_threshold]
 
-    dup eq.0
-    # => [is_zero, transaction_threshold]
+    loc_load.0
+    # => [default_threshold, transaction_threshold]
 
     # 3. if transaction_threshold == 0 at the end, revert to using default_threshold
-    if.true
-        drop
-        loc_load.0
-        # => [default_threshold]
-    end
+    dup.1 eq.0
+    # => [is_zero, default_threshold, transaction_threshold]
 
-    # => [transaction_threshold]
+    cdrop
+    # => [effective_transaction_threshold]
 end
 
 #! Authenticate a transaction using the Falcon signature scheme with multi-signature support.
