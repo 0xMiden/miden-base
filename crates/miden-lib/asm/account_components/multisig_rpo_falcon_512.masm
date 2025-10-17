@@ -285,17 +285,12 @@ proc.compute_transaction_threshold.1
             u32gt
             # => [is_gt, proc_threshold, num_procedures-1, transaction_threshold]
             # 2c. if proc_threshold > transaction_threshold, update transaction_threshold
-            if.true
-                # => [proc_threshold, num_procedures-1, transaction_threshold]
-
-                swap.2 drop
-                # => [num_procedures-1, proc_threshold]
-            # if proc_threshold <= transaction_threshold, keep transaction_threshold unchanged
-            else
-                # => [proc_threshold, num_procedures-1, transaction_threshold]
-                drop
-                # => [num_procedures-1, transaction_threshold]
-            end
+            movup.2 movdn.3
+            # => [is_gt, proc_threshold, transaction_threshold, num_procedures-1]
+            cdrop
+            # => [updated_transaction_threshold, num_procedures-1]
+            swap
+            # => [num_procedures-1, updated_transaction_threshold]
         # if it has not been called during this transaction, nothing to do, move to the next procedure
         else
             dropw
