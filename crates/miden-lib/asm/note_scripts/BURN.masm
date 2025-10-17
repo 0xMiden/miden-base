@@ -1,7 +1,8 @@
-use.miden::contracts::faucets->faucet
+use.miden::contracts::faucets
 
-#! Network Faucet BURN script: burns the asset from the note by calling the network faucet's burn
-#! function. This note is intended to be executed against a network fungible faucet account.
+#! BURN script: burns the asset from the note by calling the faucet's burn procedure.
+#! This note can be executed against any faucet account that exposes the faucets::burn procedure
+#! (e.g., basic fungible faucet or network fungible faucet).
 #!
 #! The burn procedure in the faucet already handles all necessary validations including:
 #! - Checking that the note contains exactly one asset
@@ -9,7 +10,7 @@ use.miden::contracts::faucets->faucet
 #! - Ensuring the amount to burn doesn't exceed the outstanding supply
 #!
 #! Requires that the account exposes:
-#! - burn procedure (from network_fungible faucet contract).
+#! - burn procedure (from the faucets interface).
 #!
 #! Inputs:  [ARGS, pad(12)]
 #! Outputs: [pad(16)]
@@ -22,6 +23,6 @@ begin
     # => [pad(16)]
 
     # Call the faucet's burn procedure which handles all validations
-    call.faucet::burn
+    call.faucets::burn
     # => [pad(16)]
 end

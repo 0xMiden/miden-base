@@ -52,7 +52,7 @@ const.METADATA_SLOT=0
 #! Invocation: call
 export.distribute
     exec.faucets::distribute
-    # => [note_idx, ASSET, pad(11)]
+    # => [pad(16)]
 end
 
 #! Burns the fungible asset from the active note.

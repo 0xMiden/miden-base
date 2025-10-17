@@ -53,7 +53,7 @@ begin
     mem_load.8
     # => [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
 
-    call.faucet::distribute
+    call.network_faucet::distribute
     # => [note_idx, pad(16)]
 
     drop

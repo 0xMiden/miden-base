@@ -22,8 +22,8 @@ pub const ERR_MALFORMED_MULTISIG_CONFIG: MasmError = MasmError::from_static_str(
 /// Error Message: "MINT script expects exactly 9 note inputs"
 pub const ERR_MINT_WRONG_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_str("MINT script expects exactly 9 note inputs");
 
-/// Error Message: "note sender is not owner"
-pub const ERR_NOT_OWNER: MasmError = MasmError::from_static_str("note sender is not owner");
+/// Error Message: "note sender is not the owner of the faucet who can mint assets"
+pub const ERR_ONLY_OWNER_CAN_MINT: MasmError = MasmError::from_static_str("note sender is not the owner of the faucet who can mint assets");
 
 /// Error Message: "failed to reclaim P2IDE note because the reclaiming account is not the sender"
 pub const ERR_P2IDE_RECLAIM_ACCT_IS_NOT_SENDER: MasmError = MasmError::from_static_str("failed to reclaim P2IDE note because the reclaiming account is not the sender");

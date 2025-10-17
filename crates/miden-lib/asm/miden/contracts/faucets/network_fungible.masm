@@ -40,7 +40,7 @@ end
 #! Distributes freshly minted fungible assets to the provided recipient.
 #!
 #! This procedure first checks if the note sender is the owner of the faucet, and then
-#! mints and distributes the asset.
+#! mints the asset and creates an output note with that asset for the recipient.
 #!
 #! Inputs:  [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
 #! Outputs: [pad(16)]
@@ -62,7 +62,7 @@ export.distribute
     exec.is_owner
     # => [is_owner, amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
 
-    assert.err=ERR_NOT_OWNER
+    assert.err=ERR_ONLY_OWNER_CAN_MINT
     # => [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
 
     exec.faucets::distribute
