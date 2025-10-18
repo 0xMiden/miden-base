@@ -104,6 +104,26 @@ impl AccountStorageHeader {
     /// - If the index is out of bounds.
     pub fn slot_header(
         &self,
+        name_id: SlotNameId,
+    ) -> Result<(&SlotName, &StorageSlotType, &Word), AccountError> {
+        self.slots
+            .binary_search_by_key(&name_id, |(name, ..)| name.compute_id())
+            .map(|slot_idx| {
+                let (name, r#type, value) = &self.slots[slot_idx];
+                (name, r#type, value)
+            })
+            .ok()
+            .ok_or(AccountError::StorageSlotNameIdNotFound { slot_name_id: name_id })
+    }
+
+    /// TODO(named_slots): Remove this method.
+    ///
+    /// Returns a slot contained in the storage header at a given index.
+    ///
+    /// # Errors
+    /// - If the index is out of bounds.
+    pub fn slot_header_by_index(
+        &self,
         index: usize,
     ) -> Result<(&SlotName, &StorageSlotType, &Word), AccountError> {
         let slot_name = SlotName::new_index(index);
@@ -126,7 +146,7 @@ impl AccountStorageHeader {
     /// # Errors
     /// - If `index` exceeds the slot count.
     pub fn is_map_slot(&self, index: usize) -> Result<bool, AccountError> {
-        match self.slot_header(index)?.1 {
+        match self.slot_header_by_index(index)?.1 {
             StorageSlotType::Map => Ok(true),
             StorageSlotType::Value => Ok(false),
         }

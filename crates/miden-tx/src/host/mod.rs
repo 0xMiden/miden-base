@@ -25,6 +25,9 @@ use alloc::vec::Vec;
 
 use miden_lib::transaction::memory::{
     ACCOUNT_STACK_TOP_PTR,
+    ACCT_STORAGE_SLOT_NAME_ID_PREFIX_OFFSET,
+    ACCT_STORAGE_SLOT_NAME_ID_SUFFIX_OFFSET,
+    ACCT_STORAGE_SLOT_TYPE_OFFSET,
     ACTIVE_INPUT_NOTE_PTR,
     NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR,
 };
@@ -36,7 +39,9 @@ use miden_objects::account::{
     AccountId,
     AccountStorageHeader,
     PartialAccount,
+    SlotNameId,
     StorageMap,
+    StorageSlot,
     StorageSlotType,
 };
 use miden_objects::asset::{Asset, AssetVault, FungibleAsset, VaultKey};
@@ -632,28 +637,37 @@ where
         let current_map_root = process.get_stack_word(5);
         let slot_index = process.get_stack_item(9);
 
-        self.on_account_storage_before_get_or_set_map_item(
-            slot_index,
-            current_map_root,
-            map_key,
-            process,
-        )
+        todo!()
+        // self.on_account_storage_before_get_or_set_map_item(
+        //     slot_index,
+        //     current_map_root,
+        //     map_key,
+        //     process,
+        // )
     }
 
     /// Checks if the necessary witness for accessing the map item is already in the merkle store,
     /// and if not, extracts all necessary data for requesting it.
     ///
-    /// Expected stack state: `[event, index, KEY, NEW_VALUE, OLD_ROOT]`
+    /// Expected stack state: `[event, slot_ptr, KEY]`
     pub fn on_account_storage_before_set_map_item(
         &self,
         process: &ProcessState,
     ) -> Result<TransactionEventHandling, TransactionKernelError> {
-        let slot_index = process.get_stack_item(1);
+        let slot_ptr = process.get_stack_item(1);
         let map_key = process.get_stack_word(2);
-        let current_map_root = process.get_stack_word(10);
+
+        let (slot_name_id, slot_type, current_map_root) =
+            Self::get_storage_slot(process, slot_ptr)?;
+
+        if !slot_type.is_map() {
+            return Err(TransactionKernelError::other(format!(
+                "expected slot to be of type map, found {slot_type}"
+            )));
+        }
 
         self.on_account_storage_before_get_or_set_map_item(
-            slot_index,
+            slot_name_id,
             current_map_root,
             map_key,
             process,
@@ -664,7 +678,7 @@ where
     /// and if not, extracts all necessary data for requesting it.
     fn on_account_storage_before_get_or_set_map_item(
         &self,
-        slot_index: Felt,
+        slot_name_id: SlotNameId,
         current_map_root: Word,
         map_key: Word,
         process: &ProcessState,
@@ -686,11 +700,10 @@ where
             let map_root = if current_account_id == self.initial_account_header().id() {
                 // For native accounts, we have to request witnesses against the initial root
                 // instead of the _current_ one, since the data store only has
-                // witnesses for initial one.
+                // witnesses for the initial one.
                 let (_slot_name, slot_type, slot_value) = self
                     .initial_account_storage_header()
-                    // Slot index should always fit into a usize.
-                    .slot_header(slot_index.as_int() as usize)
+                    .slot_header(slot_name_id)
                     .map_err(|err| {
                         TransactionKernelError::other_with_source(
                             "failed to access storage map in storage header",
@@ -699,7 +712,7 @@ where
                     })?;
                 if *slot_type != StorageSlotType::Map {
                     return Err(TransactionKernelError::other(format!(
-                        "expected map slot type at slot index {slot_index}"
+                        "expected map slot type for slot {slot_name_id}"
                     )));
                 }
                 *slot_value
@@ -1034,6 +1047,64 @@ where
             ))?;
 
         Ok(num_storage_slots_felt.as_int())
+    }
+
+    fn get_storage_slot(
+        process: &ProcessState,
+        slot_ptr: Felt,
+    ) -> Result<(SlotNameId, StorageSlotType, Word), TransactionKernelError> {
+        let slot_ptr = u32::try_from(slot_ptr).map_err(|_err| {
+            TransactionKernelError::other(format!(
+                "slot ptr should fit into a u32, but was {slot_ptr}"
+            ))
+        })?;
+
+        let slot_metadata = process
+            .get_mem_word(process.ctx(), slot_ptr)
+            .map_err(|err| {
+                TransactionKernelError::other_with_source(
+                    format!("misaligned slot ptr {slot_ptr}"),
+                    err,
+                )
+            })?
+            .ok_or_else(|| {
+                TransactionKernelError::other(format!("slot ptr {slot_ptr} is uninitialized"))
+            })?;
+
+        let slot_value_ptr = slot_ptr + 4;
+        let slot_value = process
+            .get_mem_word(process.ctx(), slot_value_ptr)
+            .map_err(|err| {
+                TransactionKernelError::other_with_source(
+                    format!("misaligned slot value ptr {slot_value_ptr}"),
+                    err,
+                )
+            })?
+            .ok_or_else(|| {
+                TransactionKernelError::other(format!(
+                    "slot value ptr {slot_value_ptr} is uninitialized"
+                ))
+            })?;
+
+        let slot_type = slot_metadata[ACCT_STORAGE_SLOT_TYPE_OFFSET as usize].as_int();
+        let slot_type = u8::try_from(slot_type).map_err(|err| {
+            TransactionKernelError::other_with_source(
+                format!("failed to convert {slot_type} to u8"),
+                err,
+            )
+        })?;
+        let slot_type = StorageSlotType::try_from(slot_type).map_err(|err| {
+            TransactionKernelError::other_with_source(
+                format!("failed to convert {slot_type} to storage slot type"),
+                err,
+            )
+        })?;
+
+        let prefix = slot_metadata[ACCT_STORAGE_SLOT_NAME_ID_PREFIX_OFFSET as usize];
+        let suffix = slot_metadata[ACCT_STORAGE_SLOT_NAME_ID_SUFFIX_OFFSET as usize];
+        let slot_name_id = SlotNameId::new(prefix, suffix);
+
+        Ok((slot_name_id, slot_type, slot_value))
     }
 
     /// Builds a [TransactionSummary] by extracting data from the advice provider and validating

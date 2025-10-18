@@ -185,8 +185,10 @@ mod tests {
             PartialStorage::new(storage_header, [PartialStorageMap::from_witnesses([witness])?])
                 .context("creating partial storage")?;
 
-        let retrieved_map =
-            partial_storage.maps.get(partial_storage.header.slot_header(0)?.2).unwrap();
+        let retrieved_map = partial_storage
+            .maps
+            .get(partial_storage.header.slot_header_by_index(0)?.2)
+            .unwrap();
         assert!(retrieved_map.open(&map_key_absent).is_err());
         assert!(retrieved_map.open(&map_key_present).is_ok());
         Ok(())

@@ -89,7 +89,7 @@ impl StorageDeltaTracker {
             // SAFETY: The header in the initial storage is the one from the account against which
             // the transaction is executed, so accessing that slot index should be fine.
             let (_, _, initial_value) = storage_header
-                .slot_header(*slot_idx as usize)
+                .slot_header_by_index(*slot_idx as usize)
                 .expect("index should be in bounds");
             new_value != initial_value
         });

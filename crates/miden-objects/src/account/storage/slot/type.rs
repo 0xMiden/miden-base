@@ -1,4 +1,5 @@
 use alloc::string::ToString;
+use core::fmt::Display;
 
 use crate::utils::serde::{
     ByteReader,
@@ -49,6 +50,15 @@ impl TryFrom<u8> for StorageSlotType {
             Self::VALUE_TYPE => Ok(StorageSlotType::Value),
             Self::MAP_TYPE => Ok(StorageSlotType::Map),
             _ => Err(AccountError::other(format!("unsupported storage slot type {value}"))),
+        }
+    }
+}
+
+impl Display for StorageSlotType {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            StorageSlotType::Value => f.write_str("value"),
+            StorageSlotType::Map => f.write_str("map"),
         }
     }
 }

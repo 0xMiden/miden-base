@@ -708,6 +708,8 @@ end
 #! - PREV_VALUE is the previous value of the key in the storage map that is being updated.
 #! - NEW_VALUE is the new value of the key in the storage map that is being updated.
 export.set_map_item.8
+    push.0 assert.err="TODO(named_slots): set_map_item unimplemented"
+
     # retrieve the link map ptr to the storage map delta for the provided index
     exec.memory::get_account_delta_storage_map_ptr
     # => [account_delta_storage_map_ptr, KEY, PREV_VALUE, NEW_VALUE]
