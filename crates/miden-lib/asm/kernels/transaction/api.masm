@@ -393,26 +393,29 @@ export.account_set_item
     # => [OLD_VALUE, pad(12)]
 end
 
-#! Returns the VALUE located under the specified KEY within the map contained in the given
-#! account storage slot.
+#! Returns the VALUE located under the specified KEY within the map contained in the account
+#! storage slot identified by the name ID.
 #!
-#! Inputs:  [index, KEY, pad(11)]
+#! Inputs:  [name_id_prefix, name_id_suffix, KEY, pad(10)]
 #! Outputs: [VALUE, pad(12)]
 #!
 #! Where:
-#! - index is the index of the storage slot that contains the map root.
+#! - name_id_{prefix, suffix} are the prefix and suffix felts of the name identifier, which are
+#!   the first two felts of the hashed slot name.
+#!    - the slot must point to the root of the storage map.
 #! - VALUE is the value of the map item at KEY.
 #!
 #! Panics if:
-#! - the index is out of bounds (>255).
+#! - a slot with the provided name ID does not exist in account storage.
 #! - the requested storage slot type is not map.
 #!
 #! Invocation: dynexec
 export.account_get_map_item
     # authenticate that the procedure invocation originates from the account context
     exec.authenticate_account_origin
-    # => [index, KEY, pad(11)]
+    # => [name_id_prefix, name_id_suffix, KEY, pad(10)]
 
+    # TODO(kernel_stack_underflow): pad the stack so the following procedure can drop elements
     # fetch the map item from account storage
     exec.account::get_map_item
     # => [VALUE, pad(12)]
@@ -446,26 +449,29 @@ export.account_get_initial_item
     # => [INIT_VALUE, pad(12)]
 end
 
-#! Returns the initial VALUE located under the specified KEY within the map contained in the given
-#! account storage slot at the beginning of the transaction.
+#! Returns the initial VALUE located under the specified KEY within the map contained in the
+#! account storage slot identified by the name ID at the beginning of the transaction.
 #!
-#! Inputs:  [index, KEY, pad(11)]
+#! Inputs:  [name_id_prefix, name_id_suffix, KEY, pad(10)]
 #! Outputs: [INIT_VALUE, pad(12)]
 #!
 #! Where:
-#! - index is the index of the storage slot that contains the map root.
+#! - name_id_{prefix, suffix} are the prefix and suffix felts of the name identifier, which are
+#!   the first two felts of the hashed slot name.
+#!    - the slot must point to the root of the storage map.
 #! - INIT_VALUE is the initial value of the map item at KEY at the beginning of the transaction.
 #!
 #! Panics if:
-#! - the index is out of bounds (>255).
+#! - a slot with the provided name ID does not exist in account storage.
 #! - the requested storage slot type is not map.
 #!
 #! Invocation: dynexec
 export.account_get_initial_map_item
     # authenticate that the procedure invocation originates from the account context
     exec.authenticate_account_origin
-    # => [index, KEY, pad(11)]
+    # => [name_id_prefix, name_id_suffix, KEY, pad(10)]
 
+    # TODO(kernel_stack_underflow): pad the stack so the following procedure can drop elements
     # fetch the initial map item from account storage
     exec.account::get_initial_map_item
     # => [INIT_VALUE, pad(12)]
@@ -502,12 +508,9 @@ export.account_set_map_item
     exec.authenticate_account_origin
     # => [name_id_prefix, name_id_suffix, KEY, NEW_VALUE, pad(6)]
 
+    # TODO(kernel_stack_underflow): pad the stack so the following procedure can drop elements
     # set the new map item
     exec.account::set_map_item
-    # => [OLD_MAP_ROOT, OLD_VALUE, pad(6)]
-
-    # pad the stack to 16 elements
-    push.0 movdn.8 push.0 movdn.8
     # => [OLD_MAP_ROOT, OLD_VALUE, pad(8)]
 end
 

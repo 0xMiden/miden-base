@@ -41,7 +41,6 @@ use miden_objects::account::{
     PartialAccount,
     SlotNameId,
     StorageMap,
-    StorageSlot,
     StorageSlotType,
 };
 use miden_objects::asset::{Asset, AssetVault, FungibleAsset, VaultKey};
@@ -628,22 +627,15 @@ where
     /// Checks if the necessary witness for accessing the map item is already in the merkle store,
     /// and if not, extracts all necessary data for requesting it.
     ///
-    /// Expected stack state: `[event, KEY, ROOT, index]`
+    /// Expected stack state: `[event, slot_ptr, KEY]`
     pub fn on_account_storage_before_get_map_item(
         &self,
         process: &ProcessState,
     ) -> Result<TransactionEventHandling, TransactionKernelError> {
-        let map_key = process.get_stack_word(1);
-        let current_map_root = process.get_stack_word(5);
-        let slot_index = process.get_stack_item(9);
+        let slot_ptr = process.get_stack_item(1);
+        let map_key = process.get_stack_word(2);
 
-        todo!()
-        // self.on_account_storage_before_get_or_set_map_item(
-        //     slot_index,
-        //     current_map_root,
-        //     map_key,
-        //     process,
-        // )
+        self.on_account_storage_before_get_or_set_map_item(slot_ptr, map_key, process)
     }
 
     /// Checks if the necessary witness for accessing the map item is already in the merkle store,
@@ -657,6 +649,17 @@ where
         let slot_ptr = process.get_stack_item(1);
         let map_key = process.get_stack_word(2);
 
+        self.on_account_storage_before_get_or_set_map_item(slot_ptr, map_key, process)
+    }
+
+    /// Checks if the necessary witness for accessing the map item is already in the merkle store,
+    /// and if not, extracts all necessary data for requesting it.
+    fn on_account_storage_before_get_or_set_map_item(
+        &self,
+        slot_ptr: Felt,
+        map_key: Word,
+        process: &ProcessState,
+    ) -> Result<TransactionEventHandling, TransactionKernelError> {
         let (slot_name_id, slot_type, current_map_root) =
             Self::get_storage_slot(process, slot_ptr)?;
 
@@ -666,23 +669,6 @@ where
             )));
         }
 
-        self.on_account_storage_before_get_or_set_map_item(
-            slot_name_id,
-            current_map_root,
-            map_key,
-            process,
-        )
-    }
-
-    /// Checks if the necessary witness for accessing the map item is already in the merkle store,
-    /// and if not, extracts all necessary data for requesting it.
-    fn on_account_storage_before_get_or_set_map_item(
-        &self,
-        slot_name_id: SlotNameId,
-        current_map_root: Word,
-        map_key: Word,
-        process: &ProcessState,
-    ) -> Result<TransactionEventHandling, TransactionKernelError> {
         let current_account_id = Self::get_current_account_id(process)?;
         let hashed_map_key = StorageMap::hash_key(map_key);
         let leaf_index = StorageMap::hashed_map_key_to_leaf_index(hashed_map_key);

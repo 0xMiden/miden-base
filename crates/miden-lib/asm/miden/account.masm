@@ -331,26 +331,31 @@ end
 
 #! Gets a map item from the account storage.
 #!
-#! Inputs:  [index, KEY]
+#! Inputs:  [name_id_prefix, name_id_suffix, KEY]
 #! Outputs: [VALUE]
 #!
 #! Where:
-#! - index is the index of the map where the KEY VALUE should be read.
+#! - name_id_{prefix, suffix} are the prefix and suffix felts of the name identifier, which are
+#!   the first two felts of the hashed slot name.
+#!    - the slot must point to the root of the storage map.
 #! - KEY is the key of the item to get.
 #! - VALUE is the value of the item.
 #!
 #! Panics if:
-#! - the index for the map is out of bounds, meaning > 255.
+#! - a slot with the provided name ID does not exist in account storage.
 #! - the slot item at index is not a map.
 #!
 #! Invocation: exec
 export.get_map_item
     exec.kernel_proc_offsets::account_get_map_item_offset
-    # => [offset, index, KEY]
+    # => [offset, name_id_prefix, name_id_suffix, KEY]
 
     # pad the stack
-    push.0.0 movdn.7 movdn.7 padw padw swapdw
-    # => [offset, index, KEY, pad(10)]
+    push.0 padw padw swapdw
+    # => [0, offset, name_id_prefix, name_id_suffix, KEY, pad(8)]
+
+    movdn.7
+    # => [offset, name_id_prefix, name_id_suffix, KEY, pad(9)]
 
     syscall.exec_kernel_proc
     # => [VALUE, pad(12)]
@@ -406,26 +411,30 @@ end
 #! Gets the initial VALUE from the account storage map as it was at the beginning of the
 #! transaction.
 #!
-#! Inputs:  [index, KEY]
+#! Inputs:  [name_id_prefix, name_id_suffix, KEY]
 #! Outputs: [INIT_VALUE]
 #!
 #! Where:
-#! - index is the index of the map where the KEY VALUE should be read.
+#! - name_id_{prefix, suffix} are the prefix and suffix felts of the name identifier, which are
+#!   the first two felts of the hashed slot name.
 #! - KEY is the key of the item to get.
 #! - INIT_VALUE is the initial value of the item at the beginning of the transaction.
 #!
 #! Panics if:
-#! - the index for the map is out of bounds, meaning > 255.
+#! - a slot with the provided name ID does not exist in account storage.
 #! - the slot item at index is not a map.
 #!
 #! Invocation: exec
 export.get_initial_map_item
     exec.kernel_proc_offsets::account_get_initial_map_item_offset
-    # => [offset, index, KEY]
+    # => [offset, name_id_prefix, name_id_suffix, KEY]
 
     # pad the stack
-    push.0.0 movdn.7 movdn.7 padw padw swapdw
-    # => [offset, index, KEY, pad(10)]
+    push.0 padw padw swapdw
+    # => [0, offset, name_id_prefix, name_id_suffix, KEY, pad(8)]
+
+    movdn.7
+    # => [offset, name_id_prefix, name_id_suffix, KEY, pad(9)]
 
     syscall.exec_kernel_proc
     # => [INIT_VALUE, pad(12)]

@@ -551,29 +551,23 @@ export.set_item
     # => [OLD_VALUE]
 end
 
-#! Returns the VALUE located under the specified KEY within the map contained in the given
-#! account storage slot.
+#! Returns the VALUE located under the specified KEY within the map contained in the account
+#! storage slot identified by the name ID.
 #!
-#! Inputs:  [index, KEY]
+#! Inputs:  [name_id_prefix, name_id_suffix, KEY]
 #! Outputs: [VALUE]
 #!
-#! Note:
-#! - We assume that index has been validated and is within bounds.
-#!
 #! Where:
-#! - index is the index of the storage slot that contains the map root.
+#! - name_id_{prefix, suffix} are the prefix and suffix felts of the name identifier, which are
+#!   the first two felts of the hashed slot name.
 #! - VALUE is the value of the map item at KEY.
 #!
 #! Panics if:
+#! - a slot with the provided name ID does not exist in account storage.
 #! - the requested storage slot type is not map.
 export.get_map_item
-    # duplicate index for later use
-    dup movdn.5
-    # => [index, KEY, index]
-
-    # fetch the account storage item, which is ROOT of the map
-    exec.get_item swapw
-    # => [KEY, ROOT, index]
+    exec.memory::get_account_storage_slots_section_ptr
+    # => [storage_slots_ptr, name_id_prefix, name_id_suffix, KEY]
 
     exec.get_map_item_raw
 end
@@ -581,26 +575,20 @@ end
 #! Returns the VALUE located under the specified KEY within the map contained in the given
 #! account storage slot at its initial state (beginning of transaction).
 #!
-#! Inputs:  [index, KEY]
+#! Inputs:  [name_id_prefix, name_id_suffix, KEY]
 #! Outputs: [INIT_VALUE]
 #!
-#! Note:
-#! - We assume that index has been validated and is within bounds.
-#!
 #! Where:
-#! - index is the index of the storage slot that contains the map root.
+#! - name_id_{prefix, suffix} are the prefix and suffix felts of the name identifier, which are
+#!   the first two felts of the hashed slot name.
 #! - INIT_VALUE is the initial value of the map item at KEY at the beginning of the transaction.
 #!
 #! Panics if:
+#! - a slot with the provided name ID does not exist in account storage.
 #! - the requested storage slot type is not map.
 export.get_initial_map_item
-    # duplicate index for later use
-    dup movdn.5
-    # => [index, KEY, index]
-
-    # fetch the initial account storage item, which is ROOT of the map
-    exec.get_initial_item swapw
-    # => [KEY, INIT_ROOT, index]
+    exec.memory::get_account_initial_storage_slots_ptr
+    # => [initial_storage_slots_ptr, name_id_prefix, name_id_suffix, KEY]
 
     exec.get_map_item_raw
 end
@@ -1408,34 +1396,43 @@ proc.get_item_by_index_raw
     # => [VALUE]
 end
 
-#! Shared procedure for getting a map item from a storage slot.
+#! Finds the storage map root in the storage slot with the provided name in the provided storage
+#! slots section and returns the KEY in that map.
 #!
-#! Inputs:  [KEY, ROOT, index]
+#! Inputs:  [storage_slots_ptr, name_id_prefix, name_id_suffix, KEY]
 #! Outputs: [VALUE]
 #!
 #! Where:
 #! - KEY is the key to look up in the map.
-#! - ROOT is the root of the map.
-#! - index is the index of the storage slot that contains the map root.
+#! - name_id_{prefix, suffix} are the prefix and suffix felts of the name identifier, which are
+#!   the first two felts of the hashed slot name.
 #! - VALUE is the value of the map item at KEY.
 #!
 #! Panics if:
+#! - a slot with the provided name ID does not exist in account storage.
 #! - the requested storage slot type is not map.
 proc.get_map_item_raw
+    exec.find_storage_slot
+    # => [slot_ptr, KEY]
+
     emit.ACCOUNT_STORAGE_BEFORE_GET_MAP_ITEM_EVENT
-    # => [KEY, ROOT, index]
+    # => [slot_ptr, KEY]
 
-    # check storage slot type
-    movup.8 exec.get_storage_slot_type_by_index
-    # => [slot_type, KEY, ROOT]
+    # load the slot type
+    dup add.ACCOUNT_SLOT_TYPE_OFFSET mem_load
+    # => [slot_type, slot_ptr, KEY]
 
-    # check if storage slot type is map
+    # assert slot_type is map
     exec.constants::get_storage_slot_type_map eq
-    assert.err=ERR_ACCOUNT_READING_MAP_VALUE_FROM_NON_MAP_SLOT
-    # => [KEY, ROOT]
+    assert.err=ERR_ACCOUNT_SETTING_MAP_ITEM_ON_NON_MAP_SLOT
+    # => [slot_ptr, KEY]
+
+    # load the storage map root from the slot
+    padw dup.4 add.ACCOUNT_SLOT_VALUE_OFFSET mem_loadw
+    # => [ROOT, KEY]
 
     # see hash_map_key's docs for why this is done
-    exec.hash_map_key
+    swapw exec.hash_map_key
     # => [HASHED_KEY, ROOT]
 
     # fetch the VALUE located under HASHED_KEY in the tree
@@ -1444,9 +1441,6 @@ proc.get_map_item_raw
 
     # remove the ROOT from the stack
     swapw dropw
-    # => [VALUE]
-
-    movup.4 drop
     # => [VALUE]
 end
 
