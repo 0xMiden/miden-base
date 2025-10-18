@@ -72,6 +72,8 @@ impl AccountStorageHeader {
     /// # Panics
     /// - If the number of provided slots is greater than [AccountStorage::MAX_NUM_STORAGE_SLOTS].
     pub fn new(slots: Vec<(SlotName, StorageSlotType, Word)>) -> Self {
+        // TODO(named_slots): Change to return error.
+        // TODO(named_slots): Return error if slots are not sorted.
         assert!(slots.len() <= AccountStorage::MAX_NUM_STORAGE_SLOTS);
         Self { slots }
     }
@@ -101,11 +103,29 @@ impl AccountStorageHeader {
     /// Returns a slot contained in the storage header at a given index.
     ///
     /// # Errors
+    ///
+    /// Returns an error if:
+    /// - a slot with the provided name ID does not exist.
+    pub fn find_slot_header_by_name(
+        &self,
+        slot_name: &SlotName,
+    ) -> Option<(&StorageSlotType, &Word)> {
+        // TODO(named_slots): We could use binary search here but this would require re-hashing the
+        // ID of every slot we access, so a simple find should be more efficient for now.
+        self.slots
+            .iter()
+            .find(|(name, ..)| slot_name == name)
+            .map(|(_name, r#type, value)| (r#type, value))
+    }
+
+    /// Returns a slot contained in the storage header at a given index.
+    ///
+    /// # Errors
     /// - If the index is out of bounds.
-    pub fn slot_header(
+    pub fn find_slot_header_by_id(
         &self,
         name_id: SlotNameId,
-    ) -> Result<(&SlotName, &StorageSlotType, &Word), AccountError> {
+    ) -> Option<(&SlotName, &StorageSlotType, &Word)> {
         self.slots
             .binary_search_by_key(&name_id, |(name, ..)| name.compute_id())
             .map(|slot_idx| {
@@ -113,7 +133,6 @@ impl AccountStorageHeader {
                 (name, r#type, value)
             })
             .ok()
-            .ok_or(AccountError::StorageSlotNameIdNotFound { slot_name_id: name_id })
     }
 
     /// TODO(named_slots): Remove this method.

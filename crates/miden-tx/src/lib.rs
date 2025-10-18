@@ -1,5 +1,9 @@
 #![no_std]
 
+// TODO(named_slots): Remove.
+#![allow(unused_variables)]
+#![allow(dead_code)]
+
 #[macro_use]
 extern crate alloc;
 

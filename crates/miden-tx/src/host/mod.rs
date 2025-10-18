@@ -29,7 +29,6 @@ use miden_lib::transaction::memory::{
     ACCT_STORAGE_SLOT_NAME_ID_SUFFIX_OFFSET,
     ACCT_STORAGE_SLOT_TYPE_OFFSET,
     ACTIVE_INPUT_NOTE_PTR,
-    NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR,
 };
 use miden_lib::transaction::{EventId, TransactionEvent, TransactionEventError};
 use miden_objects::account::{
@@ -591,35 +590,34 @@ where
     /// Extracts information from the process state about the storage slot being updated and
     /// records the latest value of this storage slot.
     ///
-    /// Expected stack state: `[event, slot_index, NEW_SLOT_VALUE, CURRENT_SLOT_VALUE, ...]`
+    /// Expected stack state: `[event, slot_ptr, VALUE, OLD_VALUE]`
     pub fn on_account_storage_after_set_item(
         &mut self,
         process: &ProcessState,
     ) -> Result<(), TransactionKernelError> {
-        // get slot index from the stack and make sure it is valid
-        let slot_index = process.get_stack_item(1);
+        let slot_ptr = process.get_stack_item(1);
+        let new_value = process.get_stack_word(2);
+        let old_value = process.get_stack_word(6);
 
-        // get number of storage slots initialized by the account
-        let num_storage_slot = Self::get_num_storage_slots(process)?;
+        let (slot_name_id, slot_type, _old_value) = self.get_storage_slot(process, slot_ptr)?;
 
-        if slot_index.as_int() >= num_storage_slot {
-            return Err(TransactionKernelError::InvalidStorageSlotIndex {
-                max: num_storage_slot,
-                actual: slot_index.as_int(),
-            });
+        let (slot_name, ..) = self
+            .initial_account_storage_header()
+            .find_slot_header_by_id(slot_name_id)
+            .ok_or_else(|| {
+                TransactionKernelError::other(format!(
+                    "failed to find slot header with name ID {slot_name_id}"
+                ))
+            })?;
+
+        if !slot_type.is_value() {
+            return Err(TransactionKernelError::other(format!(
+                "expected slot to be of type value, found {slot_type}"
+            )));
         }
 
-        // get the value to which the slot is being updated
-        let new_slot_value = process.get_stack_word(2);
-
-        // get the current value for the slot
-        let current_slot_value = process.get_stack_word(6);
-
-        self.account_delta.storage().set_item(
-            slot_index.as_int() as u8,
-            current_slot_value,
-            new_slot_value,
-        );
+        // TODO(named_slots): Reinstantiate.
+        // self.account_delta.storage().set_item(slot_name, old_value, new_value);
 
         Ok(())
     }
@@ -661,7 +659,7 @@ where
         process: &ProcessState,
     ) -> Result<TransactionEventHandling, TransactionKernelError> {
         let (slot_name_id, slot_type, current_map_root) =
-            Self::get_storage_slot(process, slot_ptr)?;
+            self.get_storage_slot(process, slot_ptr)?;
 
         if !slot_type.is_map() {
             return Err(TransactionKernelError::other(format!(
@@ -689,16 +687,15 @@ where
                 // witnesses for the initial one.
                 let (_slot_name, slot_type, slot_value) = self
                     .initial_account_storage_header()
-                    .slot_header(slot_name_id)
-                    .map_err(|err| {
-                        TransactionKernelError::other_with_source(
-                            "failed to access storage map in storage header",
-                            err,
-                        )
+                    .find_slot_header_by_id(slot_name_id)
+                    .ok_or_else(|| {
+                        TransactionKernelError::other(format!(
+                            "failed to find storage map with name {slot_name_id} in storage header"
+                        ))
                     })?;
                 if *slot_type != StorageSlotType::Map {
                     return Err(TransactionKernelError::other(format!(
-                        "expected map slot type for slot {slot_name_id}"
+                        "expected slot {slot_name_id} to be of type map"
                     )));
                 }
                 *slot_value
@@ -720,39 +717,34 @@ where
     /// Extracts information from the process state about the storage map being updated and
     /// records the latest values of this storage map.
     ///
-    /// Expected stack state: `[event, slot_index, KEY, PREV_MAP_VALUE, NEW_MAP_VALUE]`
+    /// Expected stack state:
+    /// ```text
+    /// [event, name_id_prefix, name_id_suffix, KEY, OLD_MAP_VALUE, NEW_VALUE]
+    /// ```
     pub fn on_account_storage_after_set_map_item(
         &mut self,
         process: &ProcessState,
     ) -> Result<(), TransactionKernelError> {
-        // get slot index from the stack and make sure it is valid
-        let slot_index = process.get_stack_item(1);
+        let name_id_prefix = process.get_stack_item(1);
+        let name_id_suffix = process.get_stack_item(2);
+        let name_id = SlotNameId::new(name_id_prefix, name_id_suffix);
+        let key = process.get_stack_item(3);
+        let old_map_value = process.get_stack_item(7);
+        let new_map_value = process.get_stack_item(11);
 
-        // get number of storage slots initialized by the account
-        let num_storage_slot = Self::get_num_storage_slots(process)?;
+        let (slot_name, ..) = self
+            .initial_account_storage_header()
+            .find_slot_header_by_id(name_id)
+            .ok_or_else(|| {
+                TransactionKernelError::other(format!(
+                    "failed to resolve slot name ID {name_id} to slot name"
+                ))
+            })?;
 
-        if slot_index.as_int() >= num_storage_slot {
-            return Err(TransactionKernelError::InvalidStorageSlotIndex {
-                max: num_storage_slot,
-                actual: slot_index.as_int(),
-            });
-        }
-
-        // get the KEY to which the slot is being updated
-        let key = process.get_stack_word(2);
-
-        // get the previous VALUE of the slot
-        let prev_map_value = process.get_stack_word(6);
-
-        // get the VALUE to which the slot is being updated
-        let new_map_value = process.get_stack_word(10);
-
-        self.account_delta.storage().set_map_item(
-            slot_index.as_int() as u8,
-            key,
-            prev_map_value,
-            new_map_value,
-        );
+        // TODO(named_slots): Reinstantiate.
+        // self.account_delta
+        //     .storage()
+        //     .set_map_item(slot_name, key, old_map_value, new_map_value);
 
         Ok(())
     }
@@ -1020,22 +1012,24 @@ where
             })
     }
 
-    /// Returns the number of storage slots initialized for the current account.
-    ///
-    /// # Errors
-    /// Returns an error if the memory location supposed to contain the account storage slot number
-    /// has not been initialized.
-    fn get_num_storage_slots(process: &ProcessState) -> Result<u64, TransactionKernelError> {
-        let num_storage_slots_felt = process
-            .get_mem_value(process.ctx(), NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR)
-            .ok_or(TransactionKernelError::AccountStorageSlotsNumMissing(
-                NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR,
-            ))?;
+    // TODO(named_slots): Remove?
+    // /// Returns the number of storage slots initialized for the current account.
+    // ///
+    // /// # Errors
+    // /// Returns an error if the memory location supposed to contain the account storage slot
+    // number /// has not been initialized.
+    // fn get_num_storage_slots(process: &ProcessState) -> Result<u64, TransactionKernelError> {
+    //     let num_storage_slots_felt = process
+    //         .get_mem_value(process.ctx(), NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR)
+    //         .ok_or(TransactionKernelError::AccountStorageSlotsNumMissing(
+    //             NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR,
+    //         ))?;
 
-        Ok(num_storage_slots_felt.as_int())
-    }
+    //     Ok(num_storage_slots_felt.as_int())
+    // }
 
     fn get_storage_slot(
+        &self,
         process: &ProcessState,
         slot_ptr: Felt,
     ) -> Result<(SlotNameId, StorageSlotType, Word), TransactionKernelError> {
@@ -1072,16 +1066,13 @@ where
                 ))
             })?;
 
-        let slot_type = slot_metadata[ACCT_STORAGE_SLOT_TYPE_OFFSET as usize].as_int();
+        let slot_type = slot_metadata[ACCT_STORAGE_SLOT_TYPE_OFFSET as usize];
         let slot_type = u8::try_from(slot_type).map_err(|err| {
-            TransactionKernelError::other_with_source(
-                format!("failed to convert {slot_type} to u8"),
-                err,
-            )
+            TransactionKernelError::other(format!("failed to convert {slot_type} into u8: {err}"))
         })?;
         let slot_type = StorageSlotType::try_from(slot_type).map_err(|err| {
             TransactionKernelError::other_with_source(
-                format!("failed to convert {slot_type} to storage slot type"),
+                format!("failed to convert {slot_type} into storage slot type",),
                 err,
             )
         })?;
