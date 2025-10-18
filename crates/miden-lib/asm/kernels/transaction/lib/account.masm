@@ -527,27 +527,36 @@ export.set_item
     emit.ACCOUNT_STORAGE_BEFORE_SET_ITEM_EVENT
     # => [name_id_prefix, name_id_suffix, VALUE]
 
-    # get storage slot type
-    dup exec.get_storage_slot_type_by_index
-    # => [storage_slot_type, index, VALUE]
+    exec.memory::get_account_storage_slots_section_ptr
+    # => [storage_slots_ptr, name_id_prefix, name_id_suffix, VALUE]
 
-    # check if type == slot
+    exec.find_storage_slot
+    # => [slot_ptr, VALUE]
+
+    # load the slot type
+    dup add.ACCOUNT_SLOT_TYPE_OFFSET mem_load
+    # => [slot_type, slot_ptr, VALUE]
+
+    # assert slot_type is value
     exec.constants::get_storage_slot_type_value eq
     assert.err=ERR_ACCOUNT_SETTING_VALUE_ITEM_ON_NON_VALUE_SLOT
-    # => [index, VALUE]
+    # => [slot_ptr, VALUE]
 
-    # duplicate the index and the VALUE enabling emission of an
-    # event after an account storage item is being updated
-    movdn.4 dupw dup.8
-    # => [index, VALUE, VALUE, index]
+    movdn.4
+    # => [VALUE, slot_ptr]
 
-    # set VALUE in the storage slot
-    exec.set_item_raw
-    # => [OLD_VALUE, VALUE, index]
+    # load the old value of the slot
+    padw dup.8 add.ACCOUNT_SLOT_VALUE_OFFSET mem_loadw
+    # => [OLD_VALUE, VALUE, slot_ptr]
 
-    # emit event to signal that an account storage item is being updated
     swapw movup.8
-    emit.ACCOUNT_STORAGE_AFTER_SET_ITEM_EVENT drop dropw
+    # => [slot_ptr, VALUE, OLD_VALUE]
+
+    emit.ACCOUNT_STORAGE_AFTER_SET_ITEM_EVENT
+    # => [slot_ptr, VALUE, OLD_VALUE]
+
+    # store the new value into the slot
+    add.ACCOUNT_SLOT_VALUE_OFFSET mem_storew dropw
     # => [OLD_VALUE]
 end
 
@@ -1302,6 +1311,12 @@ end
 # HELPER PROCEDURES
 # =================================================================================================
 
+# Inputs:  [name_id_prefix, name_id_suffix]
+# Outputs: [is_faucet_storage_data_slot]
+export.is_faucet_storage_data_slot
+    push.0 assert.err="TODO(named_slots): is_faucet_storage_data_slot unimplemented"
+end
+
 #! Gets an item from storage using the provided storage slots pointer and index.
 #!
 #! Note:
@@ -1318,12 +1333,12 @@ end
 #!
 #! Panics if:
 #! - a slot with the provided name ID does not exist in account storage.
-export.get_item_raw
+proc.get_item_raw
     exec.find_storage_slot
     # => [slot_ptr]
 
     # offset the pointer to point to the VALUE in the slot
-    add.4
+    add.ACCOUNT_SLOT_VALUE_OFFSET
     # => [slot_value_ptr]
 
     # load the item from storage
@@ -1503,8 +1518,8 @@ proc.find_storage_slot
     dup exec.memory::get_num_storage_slots mul.8 add
     # => [storage_slots_end_ptr, storage_slots_start_ptr, name_id_prefix, name_id_suffix]
 
-    # TODO: Check if we can get here if num_storage_slots == 0. If so, return a better error than
-    # what find_key_value returns.
+    # TODO(named_slots): Check if we can get here if num_storage_slots == 0. If so, return a better
+    # error than what find_key_value returns.
 
     movdn.3 movdn.2
     # => [name_id_prefix, name_id_suffix, storage_slots_start_ptr, storage_slots_end_ptr]

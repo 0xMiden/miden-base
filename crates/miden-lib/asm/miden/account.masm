@@ -299,27 +299,30 @@ export.get_initial_item
     # => [INIT_VALUE]
 end
 
-#! Sets an item in the account storage. Panics if the index is out of bounds.
+#! Sets an item in the account storage.
 #!
-#! Inputs:  [index, VALUE]
+#! Inputs:  [name_id_prefix, name_id_suffix, VALUE]
 #! Outputs: [OLD_VALUE]
 #!
 #! Where:
-#! - index is the index of the item to set.
+#! - name_id_{prefix, suffix} are the prefix and suffix felts of the name identifier, which are
+#!   the first two felts of the hashed slot name.
 #! - VALUE is the value to set.
 #! - OLD_VALUE is the previous value of the item.
 #!
 #! Panics if:
-#! - the index of the item is out of bounds.
+#! - a slot with the provided name ID does not exist in account storage.
+#! - the invocation of this procedure does not originate from the native account.
+#! - the native account is a faucet and the provided name ID points to the reserved faucet storage slot.
 #!
 #! Invocation: exec
 export.set_item
     exec.kernel_proc_offsets::account_set_item_offset
-    # => [offset, index, VALUE]
+    # => [offset, name_id_prefix, name_id_suffix, VALUE]
 
     # pad the stack
-    push.0.0 movdn.7 movdn.7 padw padw swapdw
-    # => [offset, index, VALUE, pad(10)]
+    push.0 movdn.7 padw padw swapdw
+    # => [offset, name_id_prefix, name_id_suffix, VALUE, pad(9)]
 
     syscall.exec_kernel_proc
     # => [OLD_VALUE, pad(12)]
@@ -351,11 +354,8 @@ export.get_map_item
     # => [offset, name_id_prefix, name_id_suffix, KEY]
 
     # pad the stack
-    push.0 padw padw swapdw
-    # => [0, offset, name_id_prefix, name_id_suffix, KEY, pad(8)]
-
-    movdn.7
-    # => [offset, name_id_prefix, name_id_suffix, KEY, pad(9)]
+    push.0 movdn.7 padw padw swapdw
+    # => [0, offset, name_id_prefix, name_id_suffix, KEY, pad(9)]
 
     syscall.exec_kernel_proc
     # => [VALUE, pad(12)]
@@ -429,12 +429,8 @@ export.get_initial_map_item
     exec.kernel_proc_offsets::account_get_initial_map_item_offset
     # => [offset, name_id_prefix, name_id_suffix, KEY]
 
-    # pad the stack
-    push.0 padw padw swapdw
-    # => [0, offset, name_id_prefix, name_id_suffix, KEY, pad(8)]
-
-    movdn.7
-    # => [offset, name_id_prefix, name_id_suffix, KEY, pad(9)]
+    push.0 movdn.7 padw padw swapdw
+    # => [0, offset, name_id_prefix, name_id_suffix, KEY, pad(9)]
 
     syscall.exec_kernel_proc
     # => [INIT_VALUE, pad(12)]
