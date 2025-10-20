@@ -24,8 +24,8 @@ pub const ERR_P2IDE_RECLAIM_DISABLED: MasmError = MasmError::from_static_str("P2
 pub const ERR_P2IDE_RECLAIM_HEIGHT_NOT_REACHED: MasmError = MasmError::from_static_str("failed to reclaim P2IDE note because the reclaim block height is not reached yet");
 /// Error Message: "failed to consume P2IDE note because the note is still timelocked"
 pub const ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED: MasmError = MasmError::from_static_str("failed to consume P2IDE note because the note is still timelocked");
-/// Error Message: "P2IDE note expects exactly 4 note storage valyes"
-pub const ERR_P2IDE_WRONG_STORAGE_LENGTH: MasmError = MasmError::from_static_str("P2IDE note expects exactly 4 note storage valyes");
+/// Error Message: "P2IDE note expects exactly 4 note storage values"
+pub const ERR_P2IDE_WRONG_STORAGE_LENGTH: MasmError = MasmError::from_static_str("P2IDE note expects exactly 4 note storage values");
 
 /// Error Message: "P2ID's target account address and transaction address do not match"
 pub const ERR_P2ID_TARGET_ACCT_MISMATCH: MasmError = MasmError::from_static_str("P2ID's target account address and transaction address do not match");

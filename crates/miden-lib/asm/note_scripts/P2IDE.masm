@@ -6,7 +6,7 @@ use.miden::tx
 # ERRORS
 # =================================================================================================
 
-const.ERR_P2IDE_WRONG_STORAGE_LENGTH="P2IDE note expects exactly 4 note storage valyes"
+const.ERR_P2IDE_WRONG_STORAGE_LENGTH="P2IDE note expects exactly 4 note storage values"
 
 const.ERR_P2IDE_RECLAIM_ACCT_IS_NOT_SENDER="failed to reclaim P2IDE note because the reclaiming account is not the sender"
 
