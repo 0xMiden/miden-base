@@ -39,7 +39,7 @@ const.METADATA_SLOT=0
 #! - the total issuance after minting is greater than the maximum allowed supply.
 #!
 #! Invocation: exec
-export.distribute.4
+export.distribute
     # get max supply of this faucet. We assume it is stored at pos 3 of slot 1
     push.METADATA_SLOT exec.account::get_item drop drop drop
     # => [max_supply, amount, tag, aux, note_type, execution_hint, RECIPIENT]
@@ -65,18 +65,18 @@ export.distribute.4
     # => [ASSET, tag, aux, note_type, execution_hint, RECIPIENT]
 
     # store and drop the ASSET
-    loc_storew.0 dropw
-    # => [tag, aux, note_type, execution_hint, RECIPIENT]
+    movdnw.2
+    # => [tag, aux, note_type, execution_hint, RECIPIENT, ASSET]
 
     # create a note
     exec.output_note::create
-    # => [note_idx]
-
-    # load the ASSET and add it to the note
-    movdn.4 loc_loadw.0 exec.output_note::add_asset movup.4
     # => [note_idx, ASSET]
 
-    drop dropw
+    # load the ASSET and add it to the note
+    movdn.4 exec.output_note::add_asset
+    # => [ASSET, note_idx]
+
+    dropw drop
     # => []
 end
 
