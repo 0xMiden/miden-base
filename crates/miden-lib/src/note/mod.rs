@@ -9,9 +9,9 @@ use miden_objects::note::{
     NoteAssets,
     NoteDetails,
     NoteExecutionHint,
-    NoteInputs,
     NoteMetadata,
     NoteRecipient,
+    NoteStorage,
     NoteTag,
     NoteType,
 };
@@ -125,7 +125,7 @@ pub fn create_swap_note<R: FeltRng>(
     let requested_asset_word: Word = requested_asset.into();
     let payback_tag = NoteTag::from_account_id(sender);
 
-    let inputs = NoteInputs::new(vec![
+    let inputs = NoteStorage::new(vec![
         requested_asset_word[0],
         requested_asset_word[1],
         requested_asset_word[2],

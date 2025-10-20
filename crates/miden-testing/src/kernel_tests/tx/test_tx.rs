@@ -31,9 +31,9 @@ use miden_objects::note::{
     NoteExecutionMode,
     NoteHeader,
     NoteId,
-    NoteInputs,
     NoteMetadata,
     NoteRecipient,
+    NoteStorage,
     NoteTag,
     NoteType,
 };
@@ -219,7 +219,7 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
     // Create the expected output note for Note 2 which is public
     let serial_num_2 = Word::from([1, 2, 3, 4u32]);
     let note_script_2 = ScriptBuilder::default().compile_note_script(DEFAULT_NOTE_CODE)?;
-    let inputs_2 = NoteInputs::new(vec![ONE])?;
+    let inputs_2 = NoteStorage::new(vec![ONE])?;
     let metadata_2 =
         NoteMetadata::new(account_id, note_type2, tag2, NoteExecutionHint::none(), aux2)?;
     let vault_2 = NoteAssets::new(vec![removed_asset_3, removed_asset_4])?;
@@ -229,7 +229,7 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
     // Create the expected output note for Note 3 which is public
     let serial_num_3 = Word::from([Felt::new(5), Felt::new(6), Felt::new(7), Felt::new(8)]);
     let note_script_3 = ScriptBuilder::default().compile_note_script(DEFAULT_NOTE_CODE)?;
-    let inputs_3 = NoteInputs::new(vec![ONE, Felt::new(2)])?;
+    let inputs_3 = NoteStorage::new(vec![ONE, Felt::new(2)])?;
     let metadata_3 = NoteMetadata::new(
         account_id,
         note_type3,
@@ -389,7 +389,7 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
     assert_eq!(expected_output_note_3.id(), resulting_output_note_3.id());
     assert_eq!(expected_output_note_3.assets(), resulting_output_note_3.assets().unwrap());
 
-    // make sure that the number of note inputs remains the same
+    // make sure that the note storage length remains the same
     let resulting_note_2_recipient =
         resulting_output_note_2.recipient().expect("output note 2 is not full");
     assert_eq!(

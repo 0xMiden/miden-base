@@ -4,10 +4,10 @@ use miden_objects::asset::Asset;
 use miden_objects::note::{
     Note,
     NoteAssets,
-    NoteInputs,
     NoteMetadata,
     NoteRecipient,
     NoteScript,
+    NoteStorage,
     PartialNote,
 };
 use miden_processor::AdviceProvider;
@@ -74,7 +74,7 @@ impl OutputNoteBuilder {
 
             let inputs_data = adv_provider.get_mapped_values(&inputs_commitment);
             let inputs = match inputs_data {
-                None => NoteInputs::default(),
+                None => NoteStorage::default(),
                 Some(inputs) => {
                     let num_inputs = data[0].as_int() as usize;
 
@@ -85,19 +85,19 @@ impl OutputNoteBuilder {
                     // will be discarded below, and later their contents will be validated by
                     // computing the commitment and checking against the expected value.
                     if num_inputs > inputs.len() {
-                        return Err(TransactionKernelError::TooFewElementsForNoteInputs {
+                        return Err(TransactionKernelError::TooFewElementsForNoteStorage {
                             specified: num_inputs as u64,
                             actual: inputs.len() as u64,
                         });
                     }
 
-                    NoteInputs::new(inputs[0..num_inputs].to_vec())
-                        .map_err(TransactionKernelError::MalformedNoteInputs)?
+                    NoteStorage::new(inputs[0..num_inputs].to_vec())
+                        .map_err(TransactionKernelError::MalformedNoteStorage)?
                 },
             };
 
             if inputs.commitment() != inputs_commitment {
-                return Err(TransactionKernelError::InvalidNoteInputs {
+                return Err(TransactionKernelError::InvalidNoteStorage {
                     expected: inputs_commitment,
                     actual: inputs.commitment(),
                 });

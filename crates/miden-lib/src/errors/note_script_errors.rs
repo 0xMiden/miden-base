@@ -24,18 +24,18 @@ pub const ERR_P2IDE_RECLAIM_DISABLED: MasmError = MasmError::from_static_str("P2
 pub const ERR_P2IDE_RECLAIM_HEIGHT_NOT_REACHED: MasmError = MasmError::from_static_str("failed to reclaim P2IDE note because the reclaim block height is not reached yet");
 /// Error Message: "failed to consume P2IDE note because the note is still timelocked"
 pub const ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED: MasmError = MasmError::from_static_str("failed to consume P2IDE note because the note is still timelocked");
-/// Error Message: "P2IDE note expects exactly 4 note inputs"
-pub const ERR_P2IDE_WRONG_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_str("P2IDE note expects exactly 4 note inputs");
+/// Error Message: "P2IDE note expects exactly 4 note storage valyes"
+pub const ERR_P2IDE_WRONG_STORAGE_LENGTH: MasmError = MasmError::from_static_str("P2IDE note expects exactly 4 note storage valyes");
 
 /// Error Message: "P2ID's target account address and transaction address do not match"
 pub const ERR_P2ID_TARGET_ACCT_MISMATCH: MasmError = MasmError::from_static_str("P2ID's target account address and transaction address do not match");
-/// Error Message: "P2ID note expects exactly 2 note inputs"
-pub const ERR_P2ID_WRONG_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_str("P2ID note expects exactly 2 note inputs");
+/// Error Message: "P2ID note expects exactly 2 note storage values"
+pub const ERR_P2ID_WRONG_NUMBER_OF_STORAGE_VALUES: MasmError = MasmError::from_static_str("P2ID note expects exactly 2 note storage values");
 
 /// Error Message: "SWAP script requires exactly 1 note asset"
 pub const ERR_SWAP_WRONG_NUMBER_OF_ASSETS: MasmError = MasmError::from_static_str("SWAP script requires exactly 1 note asset");
-/// Error Message: "SWAP script expects exactly 12 note inputs"
-pub const ERR_SWAP_WRONG_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_str("SWAP script expects exactly 12 note inputs");
+/// Error Message: "SWAP script expects exactly 12 note storage values"
+pub const ERR_SWAP_WRONG_STORAGE_LENGTH: MasmError = MasmError::from_static_str("SWAP script expects exactly 12 note storage values");
 
 /// Error Message: "number of approvers or threshold must not be zero"
 pub const ERR_ZERO_IN_MULTISIG_CONFIG: MasmError = MasmError::from_static_str("number of approvers or threshold must not be zero");

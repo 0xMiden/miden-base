@@ -6,10 +6,10 @@ use crate::note::{
     Note,
     NoteAssets,
     NoteExecutionHint,
-    NoteInputs,
     NoteMetadata,
     NoteRecipient,
     NoteScript,
+    NoteStorage,
     NoteTag,
     NoteType,
 };
@@ -33,7 +33,7 @@ impl Note {
             ZERO,
         )
         .unwrap();
-        let inputs = NoteInputs::new(Vec::new()).unwrap();
+        let inputs = NoteStorage::new(Vec::new()).unwrap();
         let recipient = NoteRecipient::new(serial_num, note_script, inputs);
 
         Note::new(assets, metadata, recipient)

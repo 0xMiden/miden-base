@@ -1,6 +1,6 @@
 use miden_processor::DeserializationError;
 
-use super::{NoteAssets, NoteId, NoteInputs, NoteRecipient, NoteScript, Nullifier};
+use super::{NoteAssets, NoteId, NoteRecipient, NoteScript, NoteStorage, Nullifier};
 use crate::Word;
 use crate::utils::serde::{ByteReader, ByteWriter, Deserializable, Serializable};
 
@@ -50,8 +50,8 @@ impl NoteDetails {
         self.recipient.script()
     }
 
-    /// Returns the note's recipient inputs which customizes the script's behavior.
-    pub fn inputs(&self) -> &NoteInputs {
+    /// Returns the note's recipient storage values which customizes the script's behavior.
+    pub fn inputs(&self) -> &NoteStorage {
         self.recipient.inputs()
     }
 

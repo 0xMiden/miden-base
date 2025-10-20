@@ -202,11 +202,11 @@ end
 #! Returns the inputs commitment and length of the input note with the specified index.
 #!
 #! Inputs:  [note_index]
-#! Outputs: [NOTE_INPUTS_COMMITMENT, num_inputs]
+#! Outputs: [NOTE_STORAGE_COMMITMENT, num_inputs]
 #!
 #! Where:
 #! - note_index is the index of the input note whose data should be returned.
-#! - NOTE_INPUTS_COMMITMENT is the inputs commitment of the specified input note.
+#! - NOTE_STORAGE_COMMITMENT is the inputs commitment of the specified input note.
 #! - num_inputs is the number of input values of the specified input note.
 #!
 #! Panics if:
@@ -231,14 +231,14 @@ export.get_inputs_info
     # => [offset, is_active_note = 0, note_index, pad(13)]
 
     syscall.exec_kernel_proc
-    # => [NOTE_INPUTS_COMMITMENT, num_inputs, pad(11)]
+    # => [NOTE_STORAGE_COMMITMENT, num_inputs, pad(11)]
 
     # clean the stack
     swapdw dropw dropw 
     repeat.3
         movup.5 drop
     end
-    # => [NOTE_INPUTS_COMMITMENT, num_inputs]
+    # => [NOTE_STORAGE_COMMITMENT, num_inputs]
 end
 
 #! Returns the script root of the input note with the specified index.

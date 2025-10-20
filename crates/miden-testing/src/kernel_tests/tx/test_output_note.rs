@@ -25,9 +25,9 @@ use miden_objects::note::{
     NoteAssets,
     NoteExecutionHint,
     NoteExecutionMode,
-    NoteInputs,
     NoteMetadata,
     NoteRecipient,
+    NoteStorage,
     NoteTag,
     NoteType,
 };
@@ -264,7 +264,7 @@ async fn test_get_output_notes_commitment() -> anyhow::Result<()> {
         NoteExecutionHint::Always,
         ZERO,
     )?;
-    let inputs = NoteInputs::new(vec![])?;
+    let inputs = NoteStorage::new(vec![])?;
     let recipient = NoteRecipient::new(output_serial_no_1, input_note_1.script().clone(), inputs);
     let output_note_1 = Note::new(assets, metadata, recipient);
 
@@ -279,7 +279,7 @@ async fn test_get_output_notes_commitment() -> anyhow::Result<()> {
         NoteExecutionHint::after_block(123.into())?,
         ZERO,
     )?;
-    let inputs = NoteInputs::new(vec![])?;
+    let inputs = NoteStorage::new(vec![])?;
     let recipient = NoteRecipient::new(output_serial_no_2, input_note_2.script().clone(), inputs);
     let output_note_2 = Note::new(assets, metadata, recipient);
 
@@ -646,7 +646,7 @@ async fn test_build_recipient_hash() -> anyhow::Result<()> {
     let aux = Felt::new(27);
     let tag = NoteTag::for_public_use_case(42, 42, NoteExecutionMode::Network).unwrap();
     let single_input = 2;
-    let inputs = NoteInputs::new(vec![Felt::new(single_input)]).unwrap();
+    let inputs = NoteStorage::new(vec![Felt::new(single_input)]).unwrap();
     let input_commitment = inputs.commitment();
 
     let recipient = NoteRecipient::new(output_serial_no, input_note_1.script().clone(), inputs);

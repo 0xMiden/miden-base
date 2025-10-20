@@ -14,8 +14,8 @@ pub use details::NoteDetails;
 mod header;
 pub use header::{NoteHeader, compute_note_commitment};
 
-mod inputs;
-pub use inputs::NoteInputs;
+mod storage;
+pub use storage::NoteStorage;
 
 mod metadata;
 pub use metadata::NoteMetadata;
@@ -68,7 +68,7 @@ pub use file::NoteFile;
 /// note's script determines the conditions required for the note consumption, i.e. the target
 /// account of a P2ID or conditions of a SWAP, and the effects of the note. The serial number has
 /// a double duty of preventing double spend, and providing unlikability to the consumer of a note.
-/// The note's inputs allow for customization of its script.
+/// The note's storage values allow for customization of its script.
 ///
 /// To create a note, the kernel does not require all the information above, a user can create a
 /// note only with the commitment to the script, inputs, the serial number (i.e., the recipient),
@@ -131,7 +131,7 @@ impl Note {
     }
 
     /// Returns the note's recipient inputs which customizes the script's behavior.
-    pub fn inputs(&self) -> &NoteInputs {
+    pub fn inputs(&self) -> &NoteStorage {
         self.details.inputs()
     }
 

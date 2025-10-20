@@ -9,8 +9,8 @@ use super::{
     Deserializable,
     DeserializationError,
     Hasher,
-    NoteInputs,
     NoteScript,
+    NoteStorage,
     Serializable,
     Word,
 };
@@ -24,17 +24,17 @@ use super::{
 ///
 /// Recipient is computed as:
 ///
-/// > hash(hash(hash(serial_num, [0; 4]), script_root), input_commitment)
+/// > hash(hash(hash(serial_num, [0; 4]), script_root), storage_commitment)
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NoteRecipient {
     serial_num: Word,
     script: NoteScript,
-    inputs: NoteInputs,
+    inputs: NoteStorage,
     digest: Word,
 }
 
 impl NoteRecipient {
-    pub fn new(serial_num: Word, script: NoteScript, inputs: NoteInputs) -> Self {
+    pub fn new(serial_num: Word, script: NoteScript, inputs: NoteStorage) -> Self {
         let digest = compute_recipient_digest(serial_num, &script, &inputs);
         Self { serial_num, script, inputs, digest }
     }
@@ -53,7 +53,7 @@ impl NoteRecipient {
     }
 
     /// The recipient's inputs which customizes the script's behavior.
-    pub fn inputs(&self) -> &NoteInputs {
+    pub fn inputs(&self) -> &NoteStorage {
         &self.inputs
     }
 
@@ -66,11 +66,11 @@ impl NoteRecipient {
 
     /// Returns the recipient formatted to be used with the advice map.
     ///
-    /// The format is `inputs_length || INPUTS_COMMITMENT || SCRIPT_ROOT || SERIAL_NUMBER`
+    /// The format is `storage_length || STORAGE_COMMITMENT || SCRIPT_ROOT || SERIAL_NUMBER`
     ///
     /// Where:
-    /// - inputs_length is the length of the note inputs
-    /// - INPUTS_COMMITMENT is the commitment of the note inputs
+    /// - storage_length is the length of the note storage
+    /// - STORAGE_COMMITMENT is the commitment of the note storage
     /// - SCRIPT_ROOT is the commitment of the note script (i.e., the script's MAST root)
     /// - SERIAL_NUMBER is the recipient's serial number
     pub fn format_for_advice(&self) -> Vec<Felt> {
@@ -83,7 +83,7 @@ impl NoteRecipient {
     }
 }
 
-fn compute_recipient_digest(serial_num: Word, script: &NoteScript, inputs: &NoteInputs) -> Word {
+fn compute_recipient_digest(serial_num: Word, script: &NoteScript, inputs: &NoteStorage) -> Word {
     let serial_num_hash = Hasher::merge(&[serial_num, Word::empty()]);
     let merge_script = Hasher::merge(&[serial_num_hash, script.root()]);
     Hasher::merge(&[merge_script, inputs.commitment()])
@@ -113,7 +113,7 @@ impl Serializable for NoteRecipient {
 impl Deserializable for NoteRecipient {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let script = NoteScript::read_from(source)?;
-        let inputs = NoteInputs::read_from(source)?;
+        let inputs = NoteStorage::read_from(source)?;
         let serial_num = Word::read_from(source)?;
 
         Ok(Self::new(serial_num, script, inputs))

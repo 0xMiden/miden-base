@@ -34,7 +34,7 @@ const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_RECIPIENT_WHILE_NO_NOTE_BEING_PROCESSED="f
 
 const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_METADATA_WHILE_NO_NOTE_BEING_PROCESSED="failed to access note metadata of active note because no note is currently being processed"
 
-const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_INPUTS_WHILE_NO_NOTE_BEING_PROCESSED="failed to access note inputs of active note because no note is currently being processed"
+const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_STORAGE_WHILE_NO_NOTE_BEING_PROCESSED="failed to access note storage of active note because no note is currently being processed"
 
 const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SCRIPT_ROOT_WHILE_NO_NOTE_BEING_PROCESSED="failed to access note script root of active note because no note is currently being processed"
 
@@ -828,7 +828,7 @@ end
 #!
 #! Panics if:
 #! - the note index is greater or equal to the total number of input notes.
-#! - is_active_note is 1 and no input note is not being processed (attempted to access note inputs
+#! - is_active_note is 1 and no input note is not being processed (attempted to access note storage
 #!   from incorrect context).
 #!
 #! Invocation: dynexec
@@ -866,7 +866,7 @@ end
 #!
 #! Panics if:
 #! - the note index is greater or equal to the total number of input notes.
-#! - is_active_note is 1 and no input note is not being processed (attempted to access note inputs
+#! - is_active_note is 1 and no input note is not being processed (attempted to access note storage
 #!   from incorrect context).
 #!
 #! Invocation: dynexec
@@ -904,7 +904,7 @@ end
 #!
 #! Panics if:
 #! - the note index is greater or equal to the total number of input notes.
-#! - is_active_note is 1 and no input note is not being processed (attempted to access note inputs
+#! - is_active_note is 1 and no input note is not being processed (attempted to access note storage
 #!   from incorrect context).
 #!
 #! Invocation: dynexec
@@ -942,7 +942,7 @@ end
 #!
 #! Panics if:
 #! - the note index is greater or equal to the total number of input notes.
-#! - is_active_note is 1 and no input note is not being processed (attempted to access note inputs
+#! - is_active_note is 1 and no input note is not being processed (attempted to access note storage
 #!   from incorrect context).
 #!
 #! Invocation: dynexec
@@ -971,19 +971,19 @@ end
 #! Returns the inputs commitment and length of the specified input note.
 #!
 #! Inputs:  [is_active_note, note_index, pad(14)]
-#! Outputs: [NOTE_INPUTS_COMMITMENT, num_inputs, pad(11)]
+#! Outputs: [NOTE_STORAGE_COMMITMENT, num_inputs, pad(11)]
 #!
 #! Where:
 #! - is_active_note is the boolean flag indicating whether we should return the inputs commitment 
 #!   and length from the active note or from the note with the specified index.
 #! - note_index is the index of the input note whose data should be returned. Notice that if
 #!   is_active_note is 1, note_index is ignored.
-#! - NOTE_INPUTS_COMMITMENT is the inputs commitment of the specified input note.
+#! - NOTE_STORAGE_COMMITMENT is the inputs commitment of the specified input note.
 #! - num_inputs is the number of inputs of the specified input note.
 #!
 #! Panics if:
 #! - the note index is greater or equal to the total number of input notes.
-#! - is_active_note is 1 and no input note is not being processed (attempted to access note inputs
+#! - is_active_note is 1 and no input note is not being processed (attempted to access note storage
 #!   from incorrect context).
 #!
 #! Invocation: dynexec
@@ -995,22 +995,22 @@ export.input_note_get_inputs_info
 
     # assert the pointer is not zero - this would suggest the procedure has been called from an
     # incorrect context
-    dup neq.0 assert.err=ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_INPUTS_WHILE_NO_NOTE_BEING_PROCESSED
+    dup neq.0 assert.err=ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_STORAGE_WHILE_NO_NOTE_BEING_PROCESSED
     # => [input_note_ptr, pad(15)]
 
-    # get the note inputs length
+    # get the note storage length
     dup exec.memory::get_input_note_num_inputs swap
     # => [input_note_ptr, num_inputs, pad(16)]
 
     # get the inputs commitment
-    exec.memory::get_input_note_inputs_commitment
-    # => [NOTE_INPUTS_COMMITMENT, num_inputs, pad(16)]
+    exec.memory::get_input_note_storage_commitment
+    # => [NOTE_STORAGE_COMMITMENT, num_inputs, pad(16)]
 
     # truncate the stack
     repeat.5
         movup.5 drop
     end
-    # => [NOTE_INPUTS_COMMITMENT, num_inputs, pad(11)]
+    # => [NOTE_STORAGE_COMMITMENT, num_inputs, pad(11)]
 end
 
 #! Returns the script root of the specified input note.
@@ -1027,7 +1027,7 @@ end
 #!
 #! Panics if:
 #! - the note index is greater or equal to the total number of input notes.
-#! - is_active_note is 1 and no input note is not being processed (attempted to access note inputs
+#! - is_active_note is 1 and no input note is not being processed (attempted to access note storage
 #!   from incorrect context).
 #!
 #! Invocation: dynexec

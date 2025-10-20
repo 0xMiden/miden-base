@@ -1,7 +1,7 @@
 use miden_objects::account::AccountId;
 use miden_objects::asset::Asset;
 use miden_objects::block::BlockNumber;
-use miden_objects::note::{NoteExecutionMode, NoteInputs, NoteRecipient, NoteTag, NoteType};
+use miden_objects::note::{NoteExecutionMode, NoteRecipient, NoteStorage, NoteTag, NoteType};
 use miden_objects::{Felt, NoteError, Word};
 
 use super::well_known_note::WellKnownNote;
@@ -15,9 +15,9 @@ pub fn build_p2id_recipient(
     serial_num: Word,
 ) -> Result<NoteRecipient, NoteError> {
     let note_script = WellKnownNote::P2ID.script();
-    let note_inputs = NoteInputs::new(vec![target.suffix(), target.prefix().as_felt()])?;
+    let note_storage = NoteStorage::new(vec![target.suffix(), target.prefix().as_felt()])?;
 
-    Ok(NoteRecipient::new(serial_num, note_script, note_inputs))
+    Ok(NoteRecipient::new(serial_num, note_script, note_storage))
 }
 
 /// Creates a [NoteRecipient] for the P2IDE note.
@@ -35,14 +35,14 @@ pub fn build_p2ide_recipient(
     let reclaim_height_u32 = reclaim_block_height.map_or(0, |bn| bn.as_u32());
     let timelock_height_u32 = timelock_block_height.map_or(0, |bn| bn.as_u32());
 
-    let note_inputs = NoteInputs::new(vec![
+    let note_storage = NoteStorage::new(vec![
         target.suffix(),
         target.prefix().into(),
         Felt::new(reclaim_height_u32 as u64),
         Felt::new(timelock_height_u32 as u64),
     ])?;
 
-    Ok(NoteRecipient::new(serial_num, note_script, note_inputs))
+    Ok(NoteRecipient::new(serial_num, note_script, note_storage))
 }
 
 /// Returns a note tag for a swap note with the specified parameters.

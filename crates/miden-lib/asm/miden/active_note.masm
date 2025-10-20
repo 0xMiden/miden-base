@@ -9,7 +9,7 @@ use.miden::contracts::wallets::basic->wallet
 
 const.ERR_NOTE_DATA_DOES_NOT_MATCH_COMMITMENT="note data does not match the commitment"
 
-const.ERR_NOTE_INVALID_NUMBER_OF_INPUTS="the specified number of note inputs does not match the actual number"
+const.ERR_NOTE_INVALID_STORAGE_LENGTH="the specified note storage length does not match the actual number"
 
 # ACTIVE NOTE PROCEDURES
 # =================================================================================================
@@ -90,13 +90,13 @@ end
 #!
 #! Inputs:
 #!   Stack: [dest_ptr]
-#!   Advice Map: { NOTE_INPUTS_COMMITMENT: [INPUTS] }
+#!   Advice Map: { NOTE_STORAGE_COMMITMENT: [INPUTS] }
 #! Outputs:
 #!   Stack: [num_inputs, dest_ptr]
 #!
 #! Where:
-#! - dest_ptr is the memory address to write the note inputs.
-#! - NOTE_INPUTS_COMMITMENT is the sequential hash of the padded note's inputs.
+#! - dest_ptr is the memory address to write the note storage.
+#! - NOTE_STORAGE_COMMITMENT is the sequential hash of the padded note's inputs.
 #! - INPUTS is the data corresponding to the note's inputs.
 #!
 #! Panics if:
@@ -116,12 +116,12 @@ export.get_inputs
     # => [offset, is_active_note = 1, pad(14), dest_ptr]
 
     syscall.exec_kernel_proc
-    # => [NOTE_INPUTS_COMMITMENT, num_inputs, pad(11), dest_ptr]
+    # => [NOTE_STORAGE_COMMITMENT, num_inputs, pad(11), dest_ptr]
 
     # clean the stack
     swapdw dropw dropw
     movup.5 drop movup.5 drop movup.5 drop
-    # => [NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
+    # => [NOTE_STORAGE_COMMITMENT, num_inputs, dest_ptr]
 
     # write the inputs to the memory using the provided destination pointer
     exec.write_inputs_to_memory
@@ -320,50 +320,50 @@ end
 # HELPER PROCEDURES
 # =================================================================================================
 
-#! Writes the note inputs stored in the advice map to the memory specified by the provided
+#! Writes the note storage stored in the advice map to the memory specified by the provided
 #! destination pointer.
 #!
 #! Inputs:
-#!   Operand stack: [NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
+#!   Operand stack: [NOTE_STORAGE_COMMITMENT, num_inputs, dest_ptr]
 #!   Advice map: {
-#!     NOTE_INPUTS_COMMITMENT: [[INPUT_VALUES]]
+#!     NOTE_STORAGE_COMMITMENT: [[INPUT_VALUES]]
 #!   }
 #! Outputs:
 #!   Operand stack: [num_inputs, dest_ptr]
 proc.write_inputs_to_memory
     # load the inputs from the advice map to the advice stack
     adv.push_mapvaln
-    # OS => [NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
+    # OS => [NOTE_STORAGE_COMMITMENT, num_inputs, dest_ptr]
     # AS => [advice_num_inputs, [INPUT_VALUES]]
 
     # move the number of inputs obtained from advice map to the operand stack
     adv_push.1 dup.5
-    # OS => [num_inputs, advice_num_inputs, NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
+    # OS => [num_inputs, advice_num_inputs, NOTE_STORAGE_COMMITMENT, num_inputs, dest_ptr]
     # AS => [[INPUT_VALUES]]
 
-    # Validate the note inputs length. Round up the number of inputs to the next multiple of 8: that
+    # Validate the note storage length. Round up the number of inputs to the next multiple of 8: that
     # value should be equal to the length obtained from the `adv.push_mapvaln` procedure.
     u32divmod.8 neq.0 add mul.8
-    # OS => [rounded_up_num_inputs, advice_num_inputs, NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
+    # OS => [rounded_up_num_inputs, advice_num_inputs, NOTE_STORAGE_COMMITMENT, num_inputs, dest_ptr]
     # AS => [[INPUT_VALUES]]
 
-    assert_eq.err=ERR_NOTE_INVALID_NUMBER_OF_INPUTS
-    # OS => [NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
+    assert_eq.err=ERR_NOTE_INVALID_STORAGE_LENGTH
+    # OS => [NOTE_STORAGE_COMMITMENT, num_inputs, dest_ptr]
     # AS => [[INPUT_VALUES]]
 
     # calculate the number of words required to store the inputs
     dup.4 u32divmod.4 neq.0 add
-    # OS => [num_words, NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
+    # OS => [num_words, NOTE_STORAGE_COMMITMENT, num_inputs, dest_ptr]
     # AS => [[INPUT_VALUES]]
 
     # round up the number of words to the next multiple of 2
     dup is_odd add
-    # OS => [even_num_words, NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
+    # OS => [even_num_words, NOTE_STORAGE_COMMITMENT, num_inputs, dest_ptr]
     # AS => [[INPUT_VALUES]]
 
     # prepare the stack for the `pipe_preimage_to_memory` procedure
     dup.6 swap
-    # OS => [even_num_words, dest_ptr, NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
+    # OS => [even_num_words, dest_ptr, NOTE_STORAGE_COMMITMENT, num_inputs, dest_ptr]
     # AS => [[INPUT_VALUES]]
 
     # write the inputs from the advice stack into memory

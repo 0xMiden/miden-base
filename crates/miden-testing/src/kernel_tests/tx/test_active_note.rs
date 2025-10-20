@@ -11,9 +11,9 @@ use miden_objects::note::{
     Note,
     NoteAssets,
     NoteExecutionHint,
-    NoteInputs,
     NoteMetadata,
     NoteRecipient,
+    NoteStorage,
     NoteTag,
     NoteType,
 };
@@ -388,8 +388,8 @@ async fn test_active_note_get_inputs() -> anyhow::Result<()> {
 /// script attempts to load the inputs to memory using the `miden::active_note::get_inputs`
 /// procedure.
 ///
-/// Previously this setup was leading to the incorrect number of note inputs computed during the
-/// `get_inputs` procedure, see the [issue #1363](https://github.com/0xMiden/miden-base/issues/1363)
+/// Previously this setup was leading to the incorrect number of note storage values computed during
+/// the `get_inputs` procedure, see the [issue #1363](https://github.com/0xMiden/miden-base/issues/1363)
 /// for more details.
 #[tokio::test]
 async fn test_active_note_get_exactly_8_inputs() -> anyhow::Result<()> {
@@ -416,12 +416,12 @@ async fn test_active_note_get_exactly_8_inputs() -> anyhow::Result<()> {
         .compile_note_script("begin nop end")
         .context("failed to compile note script")?;
 
-    // create a recipient with note inputs, which number divides by 8. For simplicity create 8 input
-    // values
+    // create a recipient with note storage values, which number divides by 8. For simplicity create
+    // 8 input values
     let recipient = NoteRecipient::new(
         serial_num,
         note_script,
-        NoteInputs::new(vec![
+        NoteStorage::new(vec![
             ONE,
             Felt::new(2),
             Felt::new(3),
@@ -431,7 +431,7 @@ async fn test_active_note_get_exactly_8_inputs() -> anyhow::Result<()> {
             Felt::new(7),
             Felt::new(8),
         ])
-        .context("failed to create note inputs")?,
+        .context("failed to create note storage")?,
     );
     let input_note = Note::new(vault.clone(), metadata, recipient);
 

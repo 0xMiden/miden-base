@@ -147,8 +147,6 @@ pub const ERR_NON_FUNGIBLE_ASSET_PROVIDED_FAUCET_ID_IS_INVALID: MasmError = Masm
 
 /// Error Message: "failed to access note assets of active note because no note is currently being processed"
 pub const ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_ASSETS_WHILE_NO_NOTE_BEING_PROCESSED: MasmError = MasmError::from_static_str("failed to access note assets of active note because no note is currently being processed");
-/// Error Message: "failed to access note inputs of active note because no note is currently being processed"
-pub const ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_INPUTS_WHILE_NO_NOTE_BEING_PROCESSED: MasmError = MasmError::from_static_str("failed to access note inputs of active note because no note is currently being processed");
 /// Error Message: "failed to access note metadata of active note because no note is currently being processed"
 pub const ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_METADATA_WHILE_NO_NOTE_BEING_PROCESSED: MasmError = MasmError::from_static_str("failed to access note metadata of active note because no note is currently being processed");
 /// Error Message: "failed to access note recipient of active note because no note is currently being processed"
@@ -157,6 +155,8 @@ pub const ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_RECIPIENT_WHILE_NO_NOTE_BEING_PROCESSE
 pub const ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SCRIPT_ROOT_WHILE_NO_NOTE_BEING_PROCESSED: MasmError = MasmError::from_static_str("failed to access note script root of active note because no note is currently being processed");
 /// Error Message: "failed to access note serial number of active note because no note is currently being processed"
 pub const ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SERIAL_NUMBER_WHILE_NO_NOTE_BEING_PROCESSED: MasmError = MasmError::from_static_str("failed to access note serial number of active note because no note is currently being processed");
+/// Error Message: "failed to access note storage of active note because no note is currently being processed"
+pub const ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_STORAGE_WHILE_NO_NOTE_BEING_PROCESSED: MasmError = MasmError::from_static_str("failed to access note storage of active note because no note is currently being processed");
 /// Error Message: "note data does not match the commitment"
 pub const ERR_NOTE_DATA_DOES_NOT_MATCH_COMMITMENT: MasmError = MasmError::from_static_str("note data does not match the commitment");
 /// Error Message: "adding a fungible asset to a note cannot exceed the max_amount of 9223372036854775807"
@@ -165,8 +165,8 @@ pub const ERR_NOTE_FUNGIBLE_MAX_AMOUNT_EXCEEDED: MasmError = MasmError::from_sta
 pub const ERR_NOTE_INVALID_INDEX: MasmError = MasmError::from_static_str("failed to find note at the given index; index must be within [0, num_of_notes]");
 /// Error Message: "invalid note type for the given note tag prefix"
 pub const ERR_NOTE_INVALID_NOTE_TYPE_FOR_NOTE_TAG_PREFIX: MasmError = MasmError::from_static_str("invalid note type for the given note tag prefix");
-/// Error Message: "the specified number of note inputs does not match the actual number"
-pub const ERR_NOTE_INVALID_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_str("the specified number of note inputs does not match the actual number");
+/// Error Message: "the specified note storage length does not match the actual number"
+pub const ERR_NOTE_INVALID_STORAGE_LENGTH: MasmError = MasmError::from_static_str("the specified note storage length does not match the actual number");
 /// Error Message: "invalid note type"
 pub const ERR_NOTE_INVALID_TYPE: MasmError = MasmError::from_static_str("invalid note type");
 /// Error Message: "number of assets in a note exceed 255"
@@ -207,14 +207,14 @@ pub const ERR_PROLOGUE_NEW_NON_FUNGIBLE_FAUCET_RESERVED_SLOT_INVALID_TYPE: MasmE
 pub const ERR_PROLOGUE_NEW_NON_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_VALID_EMPTY_SMT: MasmError = MasmError::from_static_str("reserved slot for non-fungible faucet is not a valid empty SMT");
 /// Error Message: "failed to authenticate note inclusion in block"
 pub const ERR_PROLOGUE_NOTE_AUTHENTICATION_FAILED: MasmError = MasmError::from_static_str("failed to authenticate note inclusion in block");
-/// Error Message: "number of note inputs exceeded the maximum limit of 128"
-pub const ERR_PROLOGUE_NOTE_INPUTS_LEN_EXCEEDED_LIMIT: MasmError = MasmError::from_static_str("number of note inputs exceeded the maximum limit of 128");
+/// Error Message: "note storage length exceeded the maximum limit of 128"
+pub const ERR_PROLOGUE_NOTE_STORAGE_LENGTH_EXCEEDED_LIMIT: MasmError = MasmError::from_static_str("note storage length exceeded the maximum limit of 128");
+/// Error Message: "note storage length exceeded the maximum limit of 128"
+pub const ERR_PROLOGUE_NOTE_STORAGE_LEN_EXCEEDED_LIMIT: MasmError = MasmError::from_static_str("note storage length exceeded the maximum limit of 128");
 /// Error Message: "number of input notes exceeds the kernel's maximum limit of 1024"
 pub const ERR_PROLOGUE_NUMBER_OF_INPUT_NOTES_EXCEEDS_LIMIT: MasmError = MasmError::from_static_str("number of input notes exceeds the kernel's maximum limit of 1024");
 /// Error Message: "number of note assets exceeds the maximum limit of 256"
 pub const ERR_PROLOGUE_NUMBER_OF_NOTE_ASSETS_EXCEEDS_LIMIT: MasmError = MasmError::from_static_str("number of note assets exceeds the maximum limit of 256");
-/// Error Message: "number of note inputs exceeded the maximum limit of 128"
-pub const ERR_PROLOGUE_NUMBER_OF_NOTE_INPUTS_EXCEEDED_LIMIT: MasmError = MasmError::from_static_str("number of note inputs exceeded the maximum limit of 128");
 /// Error Message: "account data provided does not match the commitment recorded on-chain"
 pub const ERR_PROLOGUE_PROVIDED_ACCOUNT_DATA_DOES_NOT_MATCH_ON_CHAIN_COMMITMENT: MasmError = MasmError::from_static_str("account data provided does not match the commitment recorded on-chain");
 /// Error Message: "provided info about assets of an input does not match its commitment"

@@ -37,8 +37,8 @@ use crate::{
     MAX_ACCOUNTS_PER_BATCH,
     MAX_INPUT_NOTES_PER_BATCH,
     MAX_INPUT_NOTES_PER_TX,
-    MAX_INPUTS_PER_NOTE,
     MAX_OUTPUT_NOTES_PER_TX,
+    MAX_STORAGE_VALUE_PER_NOTE,
 };
 
 // ACCOUNT COMPONENT TEMPLATE ERROR
@@ -525,8 +525,8 @@ pub enum NoteError {
     NoteScriptDeserializationError(#[source] DeserializationError),
     #[error("note contains {0} assets which exceeds the maximum of {max}", max = NoteAssets::MAX_NUM_ASSETS)]
     TooManyAssets(usize),
-    #[error("note contains {0} inputs which exceeds the maximum of {max}", max = MAX_INPUTS_PER_NOTE)]
-    TooManyInputs(usize),
+    #[error("note contains {0} storage values which exceeds the maximum of {max}", max = MAX_STORAGE_VALUE_PER_NOTE)]
+    TooManyStorageValues(usize),
     #[error("note tag requires a public note but the note is of type {0}")]
     PublicNoteRequired(NoteType),
     #[error("{error_msg}")]

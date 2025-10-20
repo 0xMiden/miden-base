@@ -6,7 +6,7 @@ use.miden::tx
 # ERRORS
 # =================================================================================================
 
-const.ERR_P2IDE_WRONG_NUMBER_OF_INPUTS="P2IDE note expects exactly 4 note inputs"
+const.ERR_P2IDE_WRONG_STORAGE_LENGTH="P2IDE note expects exactly 4 note storage valyes"
 
 const.ERR_P2IDE_RECLAIM_ACCT_IS_NOT_SENDER="failed to reclaim P2IDE note because the reclaiming account is not the sender"
 
@@ -83,7 +83,7 @@ end
 #! Inputs:  []
 #! Outputs: []
 #!
-#! Note inputs are assumed to be as follows:
+#! Note storage values are assumed to be as follows:
 #! - target_account_id is the ID of the account for which the note is intended.
 #! - reclaim_block_height is the block height at which the note can be reclaimed by the sender.
 #! - timelock_block_height is the block height at which the note can be consumed by the target.
@@ -100,15 +100,15 @@ end
 #! - Adding a fungible asset would result in an amount overflow, i.e., the total amount would be
 #!   greater than 2^63.
 begin
-    # store the note inputs to memory starting at address 0
+    # store the note storage to memory starting at address 0
     push.0 exec.active_note::get_inputs
     # => [num_inputs, inputs_ptr]
 
     # make sure the number of inputs is 4
-    eq.4 assert.err=ERR_P2IDE_WRONG_NUMBER_OF_INPUTS
+    eq.4 assert.err=ERR_P2IDE_WRONG_STORAGE_LENGTH
     # => [inputs_ptr]
 
-    # read the reclaim block height, timelock_block_height, and target account ID from the note inputs
+    # read the reclaim block height, timelock_block_height, and target account ID from the note storage
     mem_loadw
     # => [timelock_block_height, reclaim_block_height, target_account_id_prefix, target_account_id_suffix]
 

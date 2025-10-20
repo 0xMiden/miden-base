@@ -30,7 +30,7 @@ use crate::{EMPTY_WORD, MastForest, MastNodeId};
 ///   be used as a default value. If the [AdviceInputs] are propagated with some user defined map
 ///   entries, this script arguments word could be used as a key to access the corresponding value.
 /// - Note arguments: data put onto the stack right before a note script is executed. These are
-///   different from note inputs, as the user executing the transaction can specify arbitrary note
+///   different from note storage, as the user executing the transaction can specify arbitrary note
 ///   args.
 /// - Advice inputs: provides data needed by the runtime, like the details of public output notes.
 /// - Foreign account inputs: provides foreign account data that will be used during the foreign

@@ -13,7 +13,7 @@ pub const MAX_ASSETS_PER_NOTE: usize = 255;
 ///
 /// The value is set to 128 so that it can be represented using as a single byte while being
 /// evenly divisible by 8.
-pub const MAX_INPUTS_PER_NOTE: usize = 128;
+pub const MAX_STORAGE_VALUE_PER_NOTE: usize = 128;
 
 /// The maximum number of notes that can be consumed by a single transaction.
 pub const MAX_INPUT_NOTES_PER_TX: usize = 1024;
