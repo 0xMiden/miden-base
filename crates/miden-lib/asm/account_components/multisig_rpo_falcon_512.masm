@@ -5,10 +5,7 @@
 use miden::account
 use miden::auth
 
-# use `BeWord` once the `@bigendian` annotation is available
-# type BeWord = @bigendian struct { a: felt, b: felt, c: felt, d: felt }
-
-type Word = [felt; 4]
+type BeWord = struct @bigendian { a: felt, b: felt, c: felt, d: felt }
 
 # CONSTANTS
 # =================================================================================================
@@ -64,7 +61,7 @@ const ERR_ZERO_IN_MULTISIG_CONFIG = "number of approvers or threshold must not b
 #!
 #! Panics if:
 #! - the same transaction has already been executed
-proc assert_new_tx(msg: Word)
+proc assert_new_tx(msg: BeWord)
     push.IS_EXECUTED_FLAG
     # => [[0, 0, 0, is_executed], MSG]
 
@@ -153,7 +150,7 @@ end
 #! Locals:
 #! 0: new_num_of_approvers
 #! 1: init_num_of_approvers
-export update_signers_and_threshold.2(multisig_config_hash: Word)
+export update_signers_and_threshold.2(multisig_config_hash: BeWord)
     adv.push_mapval
     # => [MULTISIG_CONFIG_HASH, pad(12)]
 
@@ -355,7 +352,7 @@ end
 #! - the same transaction has already been executed (replay protection).
 #!
 #! Invocation: call
-export auth_tx_rpo_falcon512_multisig.1(salt: Word)
+export auth_tx_rpo_falcon512_multisig.1(salt: BeWord)
     exec.account::incr_nonce drop
     # => [SALT]
 

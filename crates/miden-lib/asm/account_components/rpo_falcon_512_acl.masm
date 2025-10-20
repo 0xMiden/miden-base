@@ -6,10 +6,7 @@ use miden::account
 use miden::tx
 use std::word
 
-# use `BeWord` once the `@bigendian` annotation is available
-# type BeWord = @bigendian struct { a: felt, b: felt, c: felt, d: felt }
-
-type Word = [felt; 4]
+type BeWord = struct @bigendian { a: felt, b: felt, c: felt, d: felt }
 
 # CONSTANTS
 # ================================================================================================
@@ -37,7 +34,7 @@ const AUTH_TRIGGER_PROCS_MAP_SLOT = 2
 #! Outputs: [pad(16)]
 #!
 #! Invocation: call
-export auth_tx_rpo_falcon512_acl.2(auth_args: Word)
+export auth_tx_rpo_falcon512_acl.2(auth_args: BeWord)
     dropw
     # => [pad(16)]
 
