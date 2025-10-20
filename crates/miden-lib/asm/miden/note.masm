@@ -109,8 +109,7 @@ end
 #! - RECIPIENT is the commitment to the input note's script, inputs, and the serial number.
 #!
 #! Locals:
-#! - 0: inputs_ptr
-#! - 1: num_inputs
+#! - 2: inputs_ptr
 #! - 3: num_inputs (for NoteDetails format)
 #! - 4..7: SERIAL_NUM
 #! - 8..11: SCRIPT_ROOT
@@ -122,7 +121,7 @@ end
 #!
 #! Invocation: exec
 export.build_recipient.16
-    dup.1 dup.1 loc_store.0 loc_store.1
+    dup.1 dup.1 loc_store.2 loc_store.3
     # => [inputs_ptr, num_inputs, SERIAL_NUM, SCRIPT_ROOT]
 
     exec.compute_inputs_commitment
@@ -141,7 +140,7 @@ export.build_recipient.16
     dupw.3
     # => [INPUTS_COMMITMENT, RECIPIENT, SERIAL_NUM, SCRIPT_ROOT, INPUTS_COMMITMENT]
 
-    loc_load.0 loc_load.1 loc_load.0
+    loc_load.2 loc_load.3 loc_load.2
     # => [inputs_ptr, num_inputs, inputs_ptr, INPUTS_COMMITMENT, RECIPIENT, SERIAL_NUM, SCRIPT_ROOT, INPUTS_COMMITMENT]
 
     add swap
@@ -161,9 +160,6 @@ export.build_recipient.16
 
     # inserting NoteDetails into AdviceMap
     loc_storew.12 dropw loc_storew.8 dropw loc_storew.4 dropw
-    # => [RECIPIENT]
-
-    loc_load.1 loc_store.3
     # => [RECIPIENT]
 
     locaddr.3 dup push.13 add swap
