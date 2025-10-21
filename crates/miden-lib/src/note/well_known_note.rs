@@ -1,6 +1,5 @@
 use alloc::boxed::Box;
 use alloc::string::String;
-use core::cmp::max;
 use core::error::Error;
 
 use miden_objects::account::AccountId;
@@ -201,22 +200,26 @@ impl WellKnownNote {
     ///     - check that the target account is either the receiver account or the sender account.
     ///     - check that depending on whether the target account is sender or receiver, it could be
     ///       either consumed, or consumed after timelock height, or consumed after reclaim height.
-    ///       See the underlying table for the specific cases:
+    ///       See the underlying table for the specific cases. Notice that this table defines all
+    ///       possible variations of the values of the current block height, timelock height and
+    ///       reclaim height relative to each other (it was greatly reduced though).
     /// ```text
     ///       Where:
     ///         - `curr` -- current block height
     ///         - `tl`   -- timelock height
     ///         - `rc`   -- reclaim height
-    ///       ┌───────────────────┬─────────────┬─────────────┐
-    ///       │  Height sequence  │   Sender    │  Receiver   │
-    ///       ├───────────────────┼─────────────┼─────────────┤
-    ///       │ curr   rc    tl   │  return tl  |  return tl  |
-    ///       |  rc   curr   tl   │  return tl  |  return tl  |
-    ///       │  rc    tl   curr  │ return None | return None |
-    ///       |  tl    rc   curr  │ return None | return None |
-    ///       │ curr   tl    rc   │  return rc  |  return tl  |
-    ///       |  tl   curr   rc   │  return rc  | return None |
-    ///       └───────────────────┴─────────────┴─────────────┘
+    ///         - `v`    -- symbol to show that heights have any relation
+    ///       ┏━━━┳━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━━┓
+    ///       ┃ # ┃  Height sequence   ┃   Sender    ┃  Receiver   ┃
+    ///       ┣━━━╋━━━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━╋━━━━━━━━━━━━━┫
+    ///       │ 1 │  rc  v  tl  ≤ curr │ return None | return None |
+    ///       ├───┼────────────────────┼─────────────┼─────────────┤
+    ///       │ 2 │ curr v  rc  <  tl  │  return tl  |  return tl  |
+    ///       ├───┼────────────────────┼─────────────┼─────────────┤
+    ///       │ 3 │ curr <  tl  ≤  rc  │  return rc  |  return tl  |
+    ///       ├───┼────────────────────┼─────────────┼─────────────┤
+    ///       | 4 │  tl  ≤ curr <  rc  │  return rc  | return None |
+    ///       └───┴────────────────────┴─────────────┴─────────────┘
     /// ```
     fn check_note_inputs_inner(
         &self,
@@ -228,13 +231,10 @@ impl WellKnownNote {
             WellKnownNote::P2ID => {
                 let note_inputs = note.inputs().values();
                 if note_inputs.len() != self.num_expected_inputs() {
-                    return Ok(Some(NoteConsumptionStatus::NeverConsumable(
-                        format!(
-                            "P2ID note should have {} inputs, but {} was provided",
-                            WellKnownNote::P2ID.num_expected_inputs(),
-                            note_inputs.len()
-                        )
-                        .into(),
+                    return Err(StaticAnalysisError::new(format!(
+                        "P2ID note should have {} inputs, but {} was provided",
+                        WellKnownNote::P2ID.num_expected_inputs(),
+                        note_inputs.len()
                     )));
                 }
 
@@ -249,13 +249,10 @@ impl WellKnownNote {
             WellKnownNote::P2IDE => {
                 let note_inputs = note.inputs().values();
                 if note_inputs.len() != self.num_expected_inputs() {
-                    return Ok(Some(NoteConsumptionStatus::NeverConsumable(
-                        format!(
-                            "P2IDE note should have {} inputs, but {} was provided",
-                            WellKnownNote::P2IDE.num_expected_inputs(),
-                            note_inputs.len()
-                        )
-                        .into(),
+                    return Err(StaticAnalysisError::new(format!(
+                        "P2IDE note should have {} inputs, but {} was provided",
+                        WellKnownNote::P2IDE.num_expected_inputs(),
+                        note_inputs.len()
                     )));
                 }
 
@@ -270,32 +267,59 @@ impl WellKnownNote {
                 }
 
                 let reclaim_height = u32::try_from(note_inputs[2]).map_err(|_err| {
-                    StaticAnalysisError::build_error("reclaim block height should be a u32")
+                    StaticAnalysisError::new("reclaim block height should be a u32")
                 })?;
 
                 let timelock_height = u32::try_from(note_inputs[3]).map_err(|_err| {
-                    StaticAnalysisError::build_error("timelock block height should be a u32")
+                    StaticAnalysisError::new("timelock block height should be a u32")
                 })?;
 
                 let current_block_height = block_ref.as_u32();
 
+                // Handle the case when current block height is greater or equal to the timelock
+                // height and reclaim height (first row in the table).
+                //
+                // Return None: both sender and receiver accounts can consume the note
+                if current_block_height >= reclaim_height.max(timelock_height) {
+                    return Ok(None);
+                }
+
                 // Handle the case when timelock height is greater than the current block height and
-                // reclaim height (first two rows in the table).
+                // reclaim height (second row in the table).
                 //
                 // Return the timelock height: neither sender, nor the target cannot consume the
                 // note.
-                if timelock_height > max(current_block_height, reclaim_height) {
+                if timelock_height > current_block_height.max(reclaim_height) {
                     return Ok(Some(NoteConsumptionStatus::ConsumableAfter(BlockNumber::from(
                         timelock_height,
                     ))));
                 }
 
-                // Handle the case when current block height is greater than the timelock height and
-                // reclaim height (third and fourth rows in the table).
+                // Handle the case when the target account is the sender and the reclaim height is
+                // strictly greater than the current block height and greater or equal to the
+                // timelock height (`Sender` column of the last two rows in the table).
                 //
-                // Return None: both sender and receiver accounts can consume the note
-                if current_block_height > max(reclaim_height, timelock_height) {
-                    return Ok(None);
+                // Return the reclaim height since for the sender it is only important to know that
+                // the reclaim height is not reached yet and the reclaim height is greater than the
+                // timelock height (we should wait for the reclaim anyway).
+                if target_account_id == note.metadata().sender()
+                    && reclaim_height > current_block_height
+                    && reclaim_height >= timelock_height
+                {
+                    Ok(Some(NoteConsumptionStatus::ConsumableAfter(BlockNumber::from(
+                        reclaim_height,
+                    ))))
+                } else {
+                    // Receiver doesn't care what is the height of the reclaim block, so it should
+                    // be only checked whether the timelock height is greater than the current block
+                    // height or not.
+                    if timelock_height > current_block_height {
+                        Ok(Some(NoteConsumptionStatus::ConsumableAfter(BlockNumber::from(
+                            timelock_height,
+                        ))))
+                    } else {
+                        Ok(None)
+                    }
                 }
 
                 // We checked the cases where current block height is the largest and timelock
@@ -306,22 +330,22 @@ impl WellKnownNote {
                 // For that case check that the target is the sender. If so, then return the reclaim
                 // height, since it will be the main restriction for it (`Sender` column of the last
                 // two rows in the table).
-                if target_account_id == note.metadata().sender() {
-                    Ok(Some(NoteConsumptionStatus::ConsumableAfter(BlockNumber::from(
-                        reclaim_height,
-                    ))))
-                } else {
-                    // If the target is receiver, then it can consume the note as soon as the
-                    // timelock will be reached (`Receiver` column of the last two rows in the
-                    // table).
-                    if current_block_height >= timelock_height {
-                        Ok(None)
-                    } else {
-                        Ok(Some(NoteConsumptionStatus::ConsumableAfter(BlockNumber::from(
-                            timelock_height,
-                        ))))
-                    }
-                }
+                // if target_account_id == note.metadata().sender() {
+                //     Ok(Some(NoteConsumptionStatus::ConsumableAfter(BlockNumber::from(
+                //         reclaim_height,
+                //     ))))
+                // } else {
+                //     // If the target is receiver, then it can consume the note as soon as the
+                //     // timelock will be reached (`Receiver` column of the last two rows in the
+                //     // table).
+                //     if current_block_height >= timelock_height {
+                //         Ok(None)
+                //     } else {
+                //         Ok(Some(NoteConsumptionStatus::ConsumableAfter(BlockNumber::from(
+                //             timelock_height,
+                //         ))))
+                //     }
+                // }
             },
 
             // if the note is `SWAP`, try to execute it to determine whether it could be consumed
@@ -338,14 +362,14 @@ impl WellKnownNote {
 /// Returns None if the note input values used to construct the account ID are invalid.
 fn try_read_account_id_from_inputs(note_inputs: &[Felt]) -> Result<AccountId, StaticAnalysisError> {
     let account_id_felts: [Felt; 2] = note_inputs[0..2].try_into().map_err(|source| {
-        StaticAnalysisError::build_error_with_source(
+        StaticAnalysisError::with_source(
             "should be able to convert the first two note inputs to an array of two Felt elements",
             source,
         )
     })?;
 
     AccountId::try_from([account_id_felts[1], account_id_felts[0]]).map_err(|source| {
-        StaticAnalysisError::build_error_with_source(
+        StaticAnalysisError::with_source(
             "failed to create an account ID from the first two note inputs",
             source,
         )
@@ -385,14 +409,14 @@ struct StaticAnalysisError {
 }
 
 impl StaticAnalysisError {
-    /// Creates a static analysis error from an error message.
-    pub fn build_error(message: impl Into<String>) -> Self {
+    /// Creates a new static analysis error from an error message.
+    pub fn new(message: impl Into<String>) -> Self {
         let message: String = message.into();
         Self { message: message.into(), source: None }
     }
 
-    /// Creates a static analysis error from an error message and a source error.
-    pub fn build_error_with_source(
+    /// Creates a new static analysis error from an error message and a source error.
+    pub fn with_source(
         message: impl Into<String>,
         source: impl Error + Send + Sync + 'static,
     ) -> Self {

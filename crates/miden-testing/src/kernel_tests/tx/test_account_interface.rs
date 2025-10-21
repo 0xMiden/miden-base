@@ -1,4 +1,4 @@
-use alloc::string::ToString;
+use alloc::string::String;
 use alloc::vec::Vec;
 
 use assert_matches::assert_matches;
@@ -449,51 +449,70 @@ async fn test_check_note_consumability_without_signatures() -> anyhow::Result<()
     Ok(())
 }
 
-/// Tests the correctness of the [`NoteConsumptionChecker::can_consume()`] procedure in scenarios
-/// where static analysis should guarantee that the note cannot be consumed.
+/// Tests the correctness of the [`NoteConsumptionChecker::can_consume()`].
+///
+/// In this test the target account is the receiver.
+///
+/// It is expected that the current block height is 3.
+#[rstest::rstest]
+// rc == tl == curr
+#[case(3, 3, String::from("Ok(Consumable)"))]
+// rc < tl < curr
+#[case(1, 2, String::from("Ok(Consumable)"))]
+// rc < tl = curr
+#[case(1, 3, String::from("Ok(Consumable)"))]
+// rc = tl < curr
+#[case(1, 1, String::from("Ok(Consumable)"))]
+// tl < rc < curr
+#[case(2, 1, String::from("Ok(Consumable)"))]
+// tl < rc = curr
+#[case(3, 1, String::from("Ok(Consumable)"))]
+// curr < rc < tl
+#[case(4, 5, String::from("Ok(ConsumableAfter(BlockNumber(5)))"))]
+// curr < rc = tl
+#[case(4, 4, String::from("Ok(ConsumableAfter(BlockNumber(4)))"))]
+// curr = rc < tl
+#[case(3, 4, String::from("Ok(ConsumableAfter(BlockNumber(4)))"))]
+// rc < curr < tl
+#[case(2, 4, String::from("Ok(ConsumableAfter(BlockNumber(4)))"))]
+// rc < curr = tl
+#[case(2, 3, String::from("Ok(Consumable)"))]
+// curr < tl < rc
+#[case(5, 4, String::from("Ok(ConsumableAfter(BlockNumber(4)))"))]
+// curr = tl < rc
+#[case(4, 3, String::from("Ok(Consumable)"))]
+// tl < curr < rc
+#[case(4, 2, String::from("Ok(Consumable)"))]
+// tl < curr = rc
+#[case(3, 2, String::from("Ok(Consumable)"))]
 #[tokio::test]
-async fn test_check_note_consumability_static_analysis() -> anyhow::Result<()> {
+async fn test_check_note_consumability_static_analysis_receiver(
+    #[case] reclaim_height: u64,
+    #[case] timelock_height: u64,
+    #[case] expected: String,
+) -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
 
     let account = builder.add_existing_wallet(Auth::Noop)?;
     let target_account_id = account.id();
     let sender_account_id = ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap();
 
-    // create notes for testing
-    // --------------------------------------------------------------------------------------------
-    let p2ide_wrong_inputs_number = create_p2ide_note_with_inputs([1, 2, 3], sender_account_id);
-    builder.add_output_note(OutputNote::Full(p2ide_wrong_inputs_number.clone()));
-
-    let p2ide_invalid_target_id = create_p2ide_note_with_inputs([1, 2, 3, 4], sender_account_id);
-    builder.add_output_note(OutputNote::Full(p2ide_invalid_target_id.clone()));
-
-    let p2ide_timelock_not_reached = create_p2ide_note_with_inputs(
-        [target_account_id.suffix().as_int(), target_account_id.prefix().as_u64(), 3, 10],
+    let p2id = create_p2ide_note_with_inputs(
+        [
+            target_account_id.suffix().as_int(),
+            target_account_id.prefix().as_u64(),
+            reclaim_height,
+            timelock_height,
+        ],
         sender_account_id,
     );
-    builder.add_output_note(OutputNote::Full(p2ide_timelock_not_reached.clone()));
+    builder.add_output_note(OutputNote::Full(p2id.clone()));
 
-    // swap target and sender account IDs to emulate the reclaim attempt scenario
-    //
-    // this note is also still timelocked, but the reclaim height is greater than the timelock, so
-    // the reclaim height should be returned
-    let p2ide_reclaim_not_reached = create_p2ide_note_with_inputs(
-        [sender_account_id.suffix().as_int(), sender_account_id.prefix().as_u64(), 3, 2],
-        target_account_id,
-    );
-    builder.add_output_note(OutputNote::Full(p2ide_reclaim_not_reached.clone()));
-
-    // finalize mock chain and create notes checker
-    // --------------------------------------------------------------------------------------------
     let mut mock_chain = builder.build()?;
-    mock_chain.prove_next_block()?;
+    mock_chain.prove_until_block(3)?;
 
     let tx_context = mock_chain
-        .build_tx_context(
-            TxContextInput::Account(account),
-            &[],
-            &vec![p2ide_wrong_inputs_number.clone(), p2ide_timelock_not_reached.clone()],
-        )?
+        .build_tx_context(TxContextInput::Account(account), &[p2id.id()], &[])?
         .build()?;
 
     let block_ref = tx_context.tx_inputs().block_header().block_num();
@@ -505,57 +524,96 @@ async fn test_check_note_consumability_static_analysis() -> anyhow::Result<()> {
 
     // check the note with invalid number of inputs
     // --------------------------------------------------------------------------------------------
-    let consumability_info: NoteConsumptionStatus = notes_checker
-        .can_consume(
-            target_account_id,
-            block_ref,
-            p2ide_wrong_inputs_number.clone(),
-            tx_args.clone(),
-        )
-        .await?;
-    assert_matches!(consumability_info, NoteConsumptionStatus::NeverConsumable(reason) => {
-        assert_eq!(reason.to_string(), format!(
-                        "P2IDE note should have {} inputs, but {} was provided",
-                        WellKnownNote::P2IDE.num_expected_inputs(),
-                        p2ide_wrong_inputs_number.recipient().inputs().num_values()
-                    ));
-    });
+    let consumption_check_result = notes_checker
+        .can_consume(target_account_id, block_ref, p2id.clone(), tx_args.clone())
+        .await;
 
-    // check the note with invalid target account ID
-    // --------------------------------------------------------------------------------------------
-    let consumability_info: NoteConsumptionStatus = notes_checker
-        .can_consume(target_account_id, block_ref, p2ide_invalid_target_id.clone(), tx_args.clone())
-        .await?;
-    assert_matches!(consumability_info, NoteConsumptionStatus::NeverConsumable(reason) => {
-        assert_eq!(reason.to_string(), "failed to perform note static analysis: failed to create an account ID from the first two note inputs");
-    });
+    assert_eq!(format!("{:?}", consumption_check_result), expected);
 
-    // check the note with timelock
-    // --------------------------------------------------------------------------------------------
-    let consumability_info: NoteConsumptionStatus = notes_checker
-        .can_consume(
-            target_account_id,
-            block_ref,
-            p2ide_timelock_not_reached.clone(),
-            tx_args.clone(),
-        )
-        .await?;
-    assert_matches!(
-        consumability_info,
-        NoteConsumptionStatus::ConsumableAfter(block_number) if block_number.as_u32() == 10
+    Ok(())
+}
+
+/// Tests the correctness of the [`NoteConsumptionChecker::can_consume()`] procedure.
+///
+/// In this test the target account is the sender.
+///
+/// It is expected that the current block height is 3.
+#[rstest::rstest]
+// rc == tl == curr
+#[case(3, 3, String::from("Ok(Consumable)"))]
+// rc < tl < curr
+#[case(1, 2, String::from("Ok(Consumable)"))]
+// rc < tl = curr
+#[case(1, 3, String::from("Ok(Consumable)"))]
+// rc = tl < curr
+#[case(1, 1, String::from("Ok(Consumable)"))]
+// tl < rc < curr
+#[case(2, 1, String::from("Ok(Consumable)"))]
+// tl < rc = curr
+#[case(3, 1, String::from("Ok(Consumable)"))]
+// curr < rc < tl
+#[case(4, 5, String::from("Ok(ConsumableAfter(BlockNumber(5)))"))]
+// curr < rc = tl
+#[case(4, 4, String::from("Ok(ConsumableAfter(BlockNumber(4)))"))]
+// curr = rc < tl
+#[case(3, 4, String::from("Ok(ConsumableAfter(BlockNumber(4)))"))]
+// rc < curr < tl
+#[case(2, 4, String::from("Ok(ConsumableAfter(BlockNumber(4)))"))]
+// rc < curr = tl
+#[case(2, 3, String::from("Ok(Consumable)"))]
+// curr < tl < rc
+#[case(5, 4, String::from("Ok(ConsumableAfter(BlockNumber(5)))"))]
+// curr = tl < rc
+#[case(4, 3, String::from("Ok(ConsumableAfter(BlockNumber(4)))"))]
+// tl < curr < rc
+#[case(4, 2, String::from("Ok(ConsumableAfter(BlockNumber(4)))"))]
+// tl < curr = rc
+#[case(3, 2, String::from("Ok(Consumable)"))]
+#[tokio::test]
+async fn test_check_note_consumability_static_analysis_sender(
+    #[case] reclaim_height: u64,
+    #[case] timelock_height: u64,
+    #[case] expected: String,
+) -> anyhow::Result<()> {
+    let mut builder = MockChain::builder();
+
+    let account = builder.add_existing_wallet(Auth::Noop)?;
+    let sender_account_id = account.id();
+    let target_account_id: AccountId =
+        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap();
+
+    let p2id = create_p2ide_note_with_inputs(
+        [
+            target_account_id.suffix().as_int(),
+            target_account_id.prefix().as_u64(),
+            reclaim_height,
+            timelock_height,
+        ],
+        sender_account_id,
     );
+    builder.add_output_note(OutputNote::Full(p2id.clone()));
 
-    // check the attempt to reclaim the note with unreached reclaim height and timelock
+    let mut mock_chain = builder.build()?;
+    mock_chain.prove_until_block(3)?;
+
+    let tx_context = mock_chain
+        .build_tx_context(TxContextInput::Account(account), &[p2id.id()], &[])?
+        .build()?;
+
+    let block_ref = tx_context.tx_inputs().block_header().block_num();
+    let tx_args = tx_context.tx_args();
+
+    let executor =
+        TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context).with_tracing();
+    let notes_checker = NoteConsumptionChecker::new(&executor);
+
+    // check the note with invalid number of inputs
     // --------------------------------------------------------------------------------------------
-    let consumability_info: NoteConsumptionStatus = notes_checker
-        .can_consume(
-            target_account_id,
-            block_ref,
-            p2ide_reclaim_not_reached.clone(),
-            tx_args.clone(),
-        )
-        .await?;
-    assert_matches!(consumability_info, NoteConsumptionStatus::ConsumableAfter(block_number) if block_number.as_u32() == 3);
+    let consumption_check_result = notes_checker
+        .can_consume(sender_account_id, block_ref, p2id.clone(), tx_args.clone())
+        .await;
+
+    assert_eq!(format!("{:?}", consumption_check_result), expected);
 
     Ok(())
 }
