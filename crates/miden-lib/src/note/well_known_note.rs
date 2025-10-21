@@ -312,7 +312,7 @@ impl WellKnownNote {
                 } else {
                     // Receiver doesn't care what is the height of the reclaim block, so it should
                     // be only checked whether the timelock height is greater than the current block
-                    // height or not.
+                    // height or not (`Receiver` column of the last two rows in the table)
                     if timelock_height > current_block_height {
                         Ok(Some(NoteConsumptionStatus::ConsumableAfter(BlockNumber::from(
                             timelock_height,
@@ -321,31 +321,6 @@ impl WellKnownNote {
                         Ok(None)
                     }
                 }
-
-                // We checked the cases where current block height is the largest and timelock
-                // height is the largest. If we have reached this check, then it means that the only
-                // left option is that the reclaim height is the largest of the three (last two rows
-                // in the table)
-                //
-                // For that case check that the target is the sender. If so, then return the reclaim
-                // height, since it will be the main restriction for it (`Sender` column of the last
-                // two rows in the table).
-                // if target_account_id == note.metadata().sender() {
-                //     Ok(Some(NoteConsumptionStatus::ConsumableAfter(BlockNumber::from(
-                //         reclaim_height,
-                //     ))))
-                // } else {
-                //     // If the target is receiver, then it can consume the note as soon as the
-                //     // timelock will be reached (`Receiver` column of the last two rows in the
-                //     // table).
-                //     if current_block_height >= timelock_height {
-                //         Ok(None)
-                //     } else {
-                //         Ok(Some(NoteConsumptionStatus::ConsumableAfter(BlockNumber::from(
-                //             timelock_height,
-                //         ))))
-                //     }
-                // }
             },
 
             // if the note is `SWAP`, try to execute it to determine whether it could be consumed
