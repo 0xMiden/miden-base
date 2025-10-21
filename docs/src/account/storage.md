@@ -12,9 +12,9 @@ A flexible, arbitrary data store within the `Account`.
 The [storage](https://docs.rs/miden-objects/latest/miden_objects/account/struct.AccountStorage.html) is divided into a maximum of 255 indexed [storage slots](https://docs.rs/miden-objects/latest/miden_objects/account/enum.StorageSlot.html). Each slot can either store a 32-byte value or serve as the cryptographic root to a key-value store with the capacity to store large amounts of data.
 
 - **Value slots:** Contains 32 bytes of arbitrary data.
-- **Map slots:** Contains a [StorageMap](#storagemap), a key-value store where both keys and values are 32 bytes. The slot's value is a commitment to the entire map.
+- **Map slots:** Contains a [StorageMap](#map-slots), a key-value store where both keys and values are 32 bytes. The slot's value is a commitment to the entire map.
 
-An account's storage is typically the result of merging multiple [account components](./component).
+An account's storage is typically the result of merging multiple [account components](./components).
 
 ## Value Slots
 

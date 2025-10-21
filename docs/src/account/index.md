@@ -20,16 +20,16 @@ An `Account` is composed of several core parts, illustrated below:
 
 These parts are:
 
-1. [ID](id)
-2. [Code](code)
-3. [Storage](storage)
+1. [ID](id.md)
+2. [Code](code.md)
+3. [Storage](storage.md)
 4. [Vault](#vault)
 5. [Nonce](#nonce)
 
 ### Vault
 
 :::note
-A collection of [assets](../asset) stored by the `Account`.
+A collection of [assets](../asset.md) stored by the `Account`.
 :::
 
 Large amounts of fungible and non-fungible assets can be stored in the account's vault.
@@ -55,5 +55,5 @@ However, a user can locally create a new `Account` ID before it's recognized net
 3. Alice shares the new ID with Bob to receive an asset.
 4. Bob executes a transaction against his account, creating a note with assets for Alice.
 5. Alice consumes Bob's note in a transaction against her new account to claim the asset. This
-transaction is the first transaction against Alice's account and so it will register the account
-ID in the account database.
+   transaction is the first transaction against Alice's account and so it will register the account
+   ID in the account database.

@@ -4,7 +4,7 @@ sidebar_position: 5
 
 # Transactions
 
-A `Transaction` in Miden is the state transition of a single account. A `Transaction` takes as input a single [account](account/overview) and zero or more [notes](note), and outputs the same account with an updated state, together with zero or more notes. Transactions in Miden are Miden VM programs, their execution resulting in the generation of a zero-knowledge proof.
+A `Transaction` in Miden is the state transition of a single account. A `Transaction` takes as input a single [account](./account) and zero or more [notes](note), and outputs the same account with an updated state, together with zero or more notes. Transactions in Miden are Miden VM programs, their execution resulting in the generation of a zero-knowledge proof.
 
 Miden's `Transaction` model aims for the following:
 
@@ -51,7 +51,7 @@ A `Transaction` requires several inputs:
 4. **Epilogue**
    Completes the execution, resulting in an updated account state and a generated zero-knowledge proof. The validity of the resulting transaction is ensured by a combination of user-defined and protocol-defined checks:
    - The account's [authentication procedure](account/code#authentication) is called to authorize the transaction.
-   - The transaction fee is computed and removed from the account's vault in the chain's native asset. See [Fees](./fees).
+   - The transaction fee is computed and removed from the account's vault in the chain's native asset. See [Fees](fees).
    - The account's state must have changed, or at least one input note must have been consumed to make the transaction non-empty.
    - If the account's state has changed, the `nonce` must have been incremented to prevent replay attacks.
    - Additionally, the sum of all input assets must be equal to the sum of all output assets (if the account is not a faucet).

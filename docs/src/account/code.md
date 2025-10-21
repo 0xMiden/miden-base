@@ -17,7 +17,7 @@ Every Miden `Account` is essentially a smart contract. The `Code` defines the ac
 
 ## Interface
 
-An account's code is typically the result of merging multiple [account components](./component). This results in a set of procedures that make up the _interface_ of the account. As an example, a typical wallet uses the so-called _basic wallet_ interface, which is defined in `miden::contracts::wallets::basic`. It consists of the `receive_asset` and `move_asset_to_note` procedures. If an account has this interface, i.e. this set of procedures, it can consume standard [P2ID notes](../note#p2id-pay-to-id). If it doesn't, it can't consume this type of note. So, adhering to standard interfaces such as the basic wallet will generally make an account more interoperable.
+An account's code is typically the result of merging multiple [account components](./components). This results in a set of procedures that make up the _interface_ of the account. As an example, a typical wallet uses the so-called _basic wallet_ interface, which is defined in `miden::contracts::wallets::basic`. It consists of the `receive_asset` and `move_asset_to_note` procedures. If an account has this interface, i.e. this set of procedures, it can consume standard [P2ID notes](../note#p2id-pay-to-id). If it doesn't, it can't consume this type of note. So, adhering to standard interfaces such as the basic wallet will generally make an account more interoperable.
 
 ## Authentication
 
@@ -33,7 +33,7 @@ Such an authentication procedure typically inspects the transaction and then dec
 - checking whether notes have been consumed.
 - checking whether notes have been created.
 
-Recall that an [account's nonce](overview#nonce) must be incremented whenever its state changes. Only authentication procedures are allowed to do so, to prevent accidental or unintended authorization of state changes.
+Recall that an [account's nonce](index.md#nonce) must be incremented whenever its state changes. Only authentication procedures are allowed to do so, to prevent accidental or unintended authorization of state changes.
 
 ### Procedure tracking
 
