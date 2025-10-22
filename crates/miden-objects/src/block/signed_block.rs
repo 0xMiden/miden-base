@@ -63,3 +63,103 @@ impl Deserializable for SignedBlock {
         Ok(block)
     }
 }
+
+// TESTING
+// ================================================================================================
+
+#[cfg(test)]
+mod tests {
+    use alloc::vec;
+
+    use miden_crypto::dsa::ecdsa_k256_keccak::SecretKey;
+
+    use super::*;
+    use crate::Word;
+    use crate::account::AccountId;
+    use crate::block::{BlockHeader, BlockNumber, FeeParameters};
+    use crate::testing::account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET;
+    use crate::transaction::OrderedTransactionHeaders;
+
+    // HELPER FUNCTIONS
+    // --------------------------------------------------------------------------------------------
+
+    /// Creates a mock ProvenBlock for testing.
+    fn create_mock_proven_block() -> ProvenBlock {
+        let native_asset_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).unwrap();
+        let fee_params = FeeParameters::new(native_asset_id, 1000).unwrap();
+
+        let header = BlockHeader::new(
+            1,                    // version
+            Word::default(),      // prev_block_commitment
+            BlockNumber::GENESIS, // block_num
+            Word::default(),      // chain_commitment
+            Word::default(),      // account_root
+            Word::default(),      // nullifier_root
+            Word::default(),      // note_root
+            Word::default(),      // tx_commitment
+            Word::default(),      // tx_kernel_commitment
+            Word::default(),      // proof_commitment
+            fee_params,           // fee_parameters
+            0,                    // timestamp
+        );
+
+        ProvenBlock::new_unchecked(
+            header,
+            vec![],
+            vec![],
+            vec![],
+            OrderedTransactionHeaders::new_unchecked(vec![]),
+        )
+    }
+
+    /// Creates a mock SecretKey for testing.
+    fn create_mock_secret_key() -> SecretKey {
+        SecretKey::new()
+    }
+
+    // TESTS
+    // --------------------------------------------------------------------------------------------
+
+    #[test]
+    fn test_proven_block_sign_creates_valid_signed_block() {
+        // Prepare and sign a block.
+        let proven_block = create_mock_proven_block();
+        let commitment = proven_block.commitment();
+        let mut secret_key = create_mock_secret_key();
+        let public_key = secret_key.public_key();
+        let signed_block = proven_block.sign(&mut secret_key);
+
+        // Assert correctness.
+        assert_eq!(
+            signed_block.commitment(),
+            commitment,
+            "Signed block commitment does not match original commitment"
+        );
+        assert_eq!(
+            signed_block.header().block_num(),
+            BlockNumber::GENESIS,
+            "Block number should be genesis"
+        );
+        assert!(
+            !signed_block.signature().to_bytes().iter().all(|&b| b == 0),
+            "Signature should be non-zero"
+        );
+        assert!(signed_block.verify(&public_key), "Signature verification failed");
+    }
+
+    #[test]
+    fn test_signed_block_verify_with_incorrect_public_key() {
+        // Prepare and sign block.
+        let proven_block = create_mock_proven_block();
+        let mut secret_key1 = create_mock_secret_key();
+        let secret_key2 = create_mock_secret_key();
+        let wrong_public_key = secret_key2.public_key();
+        let signed_block = proven_block.sign(&mut secret_key1);
+
+        // Assert incorrectness.
+        assert!(
+            !signed_block.verify(&wrong_public_key),
+            "Signature verification should fail with incorrect public key"
+        );
+    }
+}
