@@ -1,11 +1,14 @@
 use alloc::vec::Vec;
 
+use miden_crypto::dsa::ecdsa_k256_keccak::SecretKey;
+
 use crate::block::{
     BlockAccountUpdate,
     BlockHeader,
     BlockNoteIndex,
     BlockNoteTree,
     OutputNoteBatch,
+    SignedBlock,
 };
 use crate::note::Nullifier;
 use crate::transaction::{OrderedTransactionHeaders, OutputNote};
@@ -141,6 +144,13 @@ impl ProvenBlock {
     /// Returns the [`OrderedTransactionHeaders`] of all transactions included in this block.
     pub fn transactions(&self) -> &OrderedTransactionHeaders {
         &self.transactions
+    }
+
+    /// Signs the block with the provided secret key. Consuming the [`ProvenBlock`] and returning a
+    /// [`SignedBlock`].
+    pub fn sign(self, secret_key: &mut SecretKey) -> SignedBlock {
+        let signature = secret_key.sign(self.commitment());
+        SignedBlock::new(self, signature)
     }
 }
 
