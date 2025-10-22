@@ -19,10 +19,10 @@ use miden_objects::asset::{Asset, AssetVault};
 use miden_objects::block::BlockNumber;
 use miden_objects::transaction::{
     InputNote,
+    InputNoteCommitment,
     InputNotes,
     OutputNote,
     ProvenTransaction,
-    ProvenTransactionBuilder,
     TransactionInputs,
     TransactionOutputs,
 };
@@ -73,46 +73,49 @@ impl LocalTransactionProver {
         // since it is the output of the transaction and so is needed for proof verification.
         let pre_fee_delta_commitment: Word = pre_fee_account_delta.to_commitment();
 
-        let builder = ProvenTransactionBuilder::new(
-            account.id(),
-            account.initial_commitment(),
+        // Collect input notes as commitments
+        let input_note_commitments: Vec<_> = input_notes.iter().map(InputNoteCommitment::from).collect();
+
+        // Determine account update details
+        let account_id = account.id();
+        let initial_commitment = account.initial_commitment();
+        let account_update_details = if account.has_public_state() {
+            // The full transaction delta is the pre fee delta with the fee asset removed.
+            let mut post_fee_account_delta = pre_fee_account_delta;
+            post_fee_account_delta
+                .vault_mut()
+                .remove_asset(Asset::from(tx_outputs.fee))
+                .map_err(TransactionProverError::RemoveFeeAssetFromDelta)?;
+
+            if account.is_new() {
+                let mut account = partial_account_to_full(account);
+                account
+                    .apply_delta(&post_fee_account_delta)
+                    .map_err(TransactionProverError::AccountDeltaApplyFailed)?;
+
+                AccountUpdateDetails::New(account)
+            } else {
+                AccountUpdateDetails::Delta(post_fee_account_delta)
+            }
+        } else {
+            AccountUpdateDetails::Private
+        };
+
+        ProvenTransaction::new(
+            account_id,
+            initial_commitment,
             tx_outputs.account.commitment(),
             pre_fee_delta_commitment,
+            account_update_details,
+            input_note_commitments,
+            output_notes,
             ref_block_num,
             ref_block_commitment,
             tx_outputs.fee,
             tx_outputs.expiration_block_num,
             proof,
         )
-        .add_input_notes(input_notes)
-        .add_output_notes(output_notes);
-
-        // The full transaction delta is the pre fee delta with the fee asset removed.
-        let mut post_fee_account_delta = pre_fee_account_delta;
-        post_fee_account_delta
-            .vault_mut()
-            .remove_asset(Asset::from(tx_outputs.fee))
-            .map_err(TransactionProverError::RemoveFeeAssetFromDelta)?;
-
-        let builder = match account.has_public_state() {
-            true => {
-                let account_update_details = if account.is_new() {
-                    let mut account = partial_account_to_full(account);
-                    account
-                        .apply_delta(&post_fee_account_delta)
-                        .map_err(TransactionProverError::AccountDeltaApplyFailed)?;
-
-                    AccountUpdateDetails::New(account)
-                } else {
-                    AccountUpdateDetails::Delta(post_fee_account_delta)
-                };
-
-                builder.account_update_details(account_update_details)
-            },
-            false => builder,
-        };
-
-        builder.build().map_err(TransactionProverError::ProvenTransactionBuildFailed)
+        .map_err(TransactionProverError::ProvenTransactionBuildFailed)
     }
 
     pub fn prove(
