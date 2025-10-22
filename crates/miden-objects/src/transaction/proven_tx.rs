@@ -7,19 +7,10 @@ use crate::asset::FungibleAsset;
 use crate::block::BlockNumber;
 use crate::note::NoteHeader;
 use crate::transaction::{
-    AccountId,
-    InputNotes,
-    Nullifier,
-    OutputNote,
-    OutputNotes,
-    TransactionId,
+    AccountId, InputNotes, Nullifier, OutputNote, OutputNotes, TransactionId,
 };
 use crate::utils::serde::{
-    ByteReader,
-    ByteWriter,
-    Deserializable,
-    DeserializationError,
-    Serializable,
+    ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
 };
 use crate::vm::ExecutionProof;
 use crate::{ACCOUNT_UPDATE_MAX_SIZE, EMPTY_WORD, ProvenTransactionError, Word};
@@ -36,6 +27,9 @@ use crate::{ACCOUNT_UPDATE_MAX_SIZE, EMPTY_WORD, ProvenTransactionError, Word};
 /// empty (i.e. contain no assets). Otherwise, a transaction with no account state change, no input
 /// notes and one such empty output note could be resubmitted many times to the network and fill up
 /// block space which is a form of DOS attack.
+///
+/// Instances are guaranteed to be valid as they are created via [`ProvenTransaction::new`], which
+/// performs validation inline.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProvenTransaction {
     /// A unique identifier for the transaction, see [TransactionId] for additional details.
@@ -132,6 +126,85 @@ impl ProvenTransaction {
 
     // HELPER METHODS
     // --------------------------------------------------------------------------------------------
+
+    /// Creates a new [`ProvenTransaction`] with the provided parameters.
+    ///
+    /// This constructor performs validation inline to ensure the transaction is valid.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The total number of input notes is greater than
+    ///   [`MAX_INPUT_NOTES_PER_TX`](crate::constants::MAX_INPUT_NOTES_PER_TX).
+    /// - The vector of input notes contains duplicates.
+    /// - The total number of output notes is greater than
+    ///   [`MAX_OUTPUT_NOTES_PER_TX`](crate::constants::MAX_OUTPUT_NOTES_PER_TX).
+    /// - The vector of output notes contains duplicates.
+    /// - The size of the serialized account update exceeds [`ACCOUNT_UPDATE_MAX_SIZE`].
+    /// - The transaction is empty, which is the case if the account state is unchanged or the
+    ///   number of input notes is zero.
+    /// - The transaction was executed against a _new_ account with public state and its account ID
+    ///   does not match the ID in the account update.
+    /// - The transaction was executed against a _new_ account with public state and its commitment
+    ///   does not match the final state commitment of the account update.
+    /// - The transaction was executed against a private account and the account update is _not_ of
+    ///   type [`AccountUpdateDetails::Private`].
+    /// - The transaction was executed against an account with public state and the update is of
+    ///   type [`AccountUpdateDetails::Private`].
+    /// - The transaction was executed against an _existing_ account with public state and the
+    ///   update is of type [`AccountUpdateDetails::New`].
+    /// - The transaction creates a _new_ account with public state and the update is of type
+    ///   [`AccountUpdateDetails::Delta`].
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        account_id: AccountId,
+        initial_account_commitment: Word,
+        final_account_commitment: Word,
+        account_delta_commitment: Word,
+        account_update_details: AccountUpdateDetails,
+        input_notes: impl IntoIterator<Item = InputNoteCommitment>,
+        output_notes: impl IntoIterator<Item = OutputNote>,
+        ref_block_num: BlockNumber,
+        ref_block_commitment: Word,
+        fee: FungibleAsset,
+        expiration_block_num: BlockNumber,
+        proof: ExecutionProof,
+    ) -> Result<Self, ProvenTransactionError> {
+        let input_notes_vec: Vec<_> = input_notes.into_iter().collect();
+        let output_notes_vec: Vec<_> = output_notes.into_iter().collect();
+
+        let input_notes =
+            InputNotes::new(input_notes_vec).map_err(ProvenTransactionError::InputNotesError)?;
+        let output_notes = OutputNotes::new(output_notes_vec)
+            .map_err(ProvenTransactionError::OutputNotesError)?;
+        let id = TransactionId::new(
+            initial_account_commitment,
+            final_account_commitment,
+            input_notes.commitment(),
+            output_notes.commitment(),
+        );
+        let account_update = TxAccountUpdate::new(
+            account_id,
+            initial_account_commitment,
+            final_account_commitment,
+            account_delta_commitment,
+            account_update_details,
+        );
+
+        let proven_transaction = Self {
+            id,
+            account_update,
+            input_notes,
+            output_notes,
+            ref_block_num,
+            ref_block_commitment,
+            fee,
+            expiration_block_num,
+            proof,
+        };
+
+        proven_transaction.validate()
+    }
 
     /// Validates the transaction.
     ///
@@ -239,193 +312,32 @@ impl Deserializable for ProvenTransaction {
         let expiration_block_num = BlockNumber::read_from(source)?;
         let proof = ExecutionProof::read_from(source)?;
 
-        let id = TransactionId::new(
-            account_update.initial_state_commitment(),
-            account_update.final_state_commitment(),
-            input_notes.commitment(),
-            output_notes.commitment(),
-        );
+        // Extract values from account_update
+        let account_id = account_update.account_id();
+        let initial_account_commitment = account_update.initial_state_commitment();
+        let final_account_commitment = account_update.final_state_commitment();
+        let account_delta_commitment = account_update.account_delta_commitment();
+        let account_update_details = account_update.details().clone();
 
-        let proven_transaction = Self {
-            id,
-            account_update,
-            input_notes,
-            output_notes,
-            ref_block_num,
-            ref_block_commitment,
-            fee,
-            expiration_block_num,
-            proof,
-        };
+        // Extract input and output notes as vecs
+        let input_notes_vec = input_notes.into_vec();
+        let output_notes_vec: Vec<_> = output_notes.iter().cloned().collect();
 
-        proven_transaction
-            .validate()
-            .map_err(|err| DeserializationError::InvalidValue(err.to_string()))
-    }
-}
-
-// PROVEN TRANSACTION BUILDER
-// ================================================================================================
-
-/// Builder for a proven transaction.
-#[derive(Clone, Debug)]
-pub struct ProvenTransactionBuilder {
-    /// ID of the account that the transaction was executed against.
-    account_id: AccountId,
-
-    /// The commitment of the account before the transaction was executed.
-    initial_account_commitment: Word,
-
-    /// The commitment of the account after the transaction was executed.
-    final_account_commitment: Word,
-
-    /// The commitment of the account delta produced by the transaction.
-    account_delta_commitment: Word,
-
-    /// State changes to the account due to the transaction.
-    account_update_details: AccountUpdateDetails,
-
-    /// List of [InputNoteCommitment]s of all consumed notes by the transaction.
-    input_notes: Vec<InputNoteCommitment>,
-
-    /// List of [OutputNote]s of all notes created by the transaction.
-    output_notes: Vec<OutputNote>,
-
-    /// [`BlockNumber`] of the transaction's reference block.
-    ref_block_num: BlockNumber,
-
-    /// Block digest of the transaction's reference block.
-    ref_block_commitment: Word,
-
-    /// The fee of the transaction.
-    fee: FungibleAsset,
-
-    /// The block number by which the transaction will expire, as defined by the executed scripts.
-    expiration_block_num: BlockNumber,
-
-    /// A STARK proof that attests to the correct execution of the transaction.
-    proof: ExecutionProof,
-}
-
-impl ProvenTransactionBuilder {
-    // CONSTRUCTOR
-    // --------------------------------------------------------------------------------------------
-
-    /// Returns a [ProvenTransactionBuilder] used to build a [ProvenTransaction].
-    #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        account_id: AccountId,
-        initial_account_commitment: Word,
-        final_account_commitment: Word,
-        account_delta_commitment: Word,
-        ref_block_num: BlockNumber,
-        ref_block_commitment: Word,
-        fee: FungibleAsset,
-        expiration_block_num: BlockNumber,
-        proof: ExecutionProof,
-    ) -> Self {
-        Self {
+        ProvenTransaction::new(
             account_id,
             initial_account_commitment,
             final_account_commitment,
             account_delta_commitment,
-            account_update_details: AccountUpdateDetails::Private,
-            input_notes: Vec::new(),
-            output_notes: Vec::new(),
+            account_update_details,
+            input_notes_vec,
+            output_notes_vec,
             ref_block_num,
             ref_block_commitment,
             fee,
             expiration_block_num,
             proof,
-        }
-    }
-
-    // PUBLIC ACCESSORS
-    // --------------------------------------------------------------------------------------------
-
-    /// Sets the account's update details.
-    pub fn account_update_details(mut self, details: AccountUpdateDetails) -> Self {
-        self.account_update_details = details;
-        self
-    }
-
-    /// Add notes consumed by the transaction.
-    pub fn add_input_notes<I, T>(mut self, notes: I) -> Self
-    where
-        I: IntoIterator<Item = T>,
-        T: Into<InputNoteCommitment>,
-    {
-        self.input_notes.extend(notes.into_iter().map(|note| note.into()));
-        self
-    }
-
-    /// Add notes produced by the transaction.
-    pub fn add_output_notes<T>(mut self, notes: T) -> Self
-    where
-        T: IntoIterator<Item = OutputNote>,
-    {
-        self.output_notes.extend(notes);
-        self
-    }
-
-    /// Builds the [`ProvenTransaction`].
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if:
-    /// - The total number of input notes is greater than
-    ///   [`MAX_INPUT_NOTES_PER_TX`](crate::constants::MAX_INPUT_NOTES_PER_TX).
-    /// - The vector of input notes contains duplicates.
-    /// - The total number of output notes is greater than
-    ///   [`MAX_OUTPUT_NOTES_PER_TX`](crate::constants::MAX_OUTPUT_NOTES_PER_TX).
-    /// - The vector of output notes contains duplicates.
-    /// - The size of the serialized account update exceeds [`ACCOUNT_UPDATE_MAX_SIZE`].
-    /// - The transaction is empty, which is the case if the account state is unchanged or the
-    ///   number of input notes is zero.
-    /// - The transaction was executed against a _new_ account with public state and its account ID
-    ///   does not match the ID in the account update.
-    /// - The transaction was executed against a _new_ account with public state and its commitment
-    ///   does not match the final state commitment of the account update.
-    /// - The transaction was executed against a private account and the account update is _not_ of
-    ///   type [`AccountUpdateDetails::Private`].
-    /// - The transaction was executed against an account with public state and the update is of
-    ///   type [`AccountUpdateDetails::Private`].
-    /// - The transaction was executed against an _existing_ account with public state and the
-    ///   update is of type [`AccountUpdateDetails::New`].
-    /// - The transaction creates a _new_ account with public state and the update is of type
-    ///   [`AccountUpdateDetails::Delta`].
-    pub fn build(self) -> Result<ProvenTransaction, ProvenTransactionError> {
-        let input_notes =
-            InputNotes::new(self.input_notes).map_err(ProvenTransactionError::InputNotesError)?;
-        let output_notes = OutputNotes::new(self.output_notes)
-            .map_err(ProvenTransactionError::OutputNotesError)?;
-        let id = TransactionId::new(
-            self.initial_account_commitment,
-            self.final_account_commitment,
-            input_notes.commitment(),
-            output_notes.commitment(),
-        );
-        let account_update = TxAccountUpdate::new(
-            self.account_id,
-            self.initial_account_commitment,
-            self.final_account_commitment,
-            self.account_delta_commitment,
-            self.account_update_details,
-        );
-
-        let proven_transaction = ProvenTransaction {
-            id,
-            account_update,
-            input_notes,
-            output_notes,
-            ref_block_num: self.ref_block_num,
-            ref_block_commitment: self.ref_block_commitment,
-            fee: self.fee,
-            expiration_block_num: self.expiration_block_num,
-            proof: self.proof,
-        };
-
-        proven_transaction.validate()
+        )
+        .map_err(|err| DeserializationError::InvalidValue(err.to_string()))
     }
 }
 
@@ -661,30 +573,19 @@ mod tests {
     use super::ProvenTransaction;
     use crate::account::delta::AccountUpdateDetails;
     use crate::account::{
-        AccountDelta,
-        AccountId,
-        AccountIdVersion,
-        AccountStorageDelta,
-        AccountStorageMode,
-        AccountType,
-        AccountVaultDelta,
-        StorageMapDelta,
+        AccountDelta, AccountId, AccountIdVersion, AccountStorageDelta, AccountStorageMode,
+        AccountType, AccountVaultDelta, StorageMapDelta,
     };
+    use alloc::vec::Vec;
     use crate::asset::FungibleAsset;
     use crate::block::BlockNumber;
     use crate::testing::account_id::{
-        ACCOUNT_ID_PRIVATE_SENDER,
-        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
+        ACCOUNT_ID_PRIVATE_SENDER, ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
     };
-    use crate::transaction::{ProvenTransactionBuilder, TxAccountUpdate};
+    use crate::transaction::{InputNoteCommitment, OutputNote, TxAccountUpdate};
     use crate::utils::Serializable;
     use crate::{
-        ACCOUNT_UPDATE_MAX_SIZE,
-        EMPTY_WORD,
-        LexicographicWord,
-        ONE,
-        ProvenTransactionError,
-        Word,
+        ACCOUNT_UPDATE_MAX_SIZE, EMPTY_WORD, LexicographicWord, ONE, ProvenTransactionError, Word,
     };
 
     fn check_if_sync<T: Sync>() {}
@@ -781,19 +682,21 @@ mod tests {
         let expiration_block_num = BlockNumber::from(2);
         let proof = ExecutionProof::new_dummy();
 
-        let tx = ProvenTransactionBuilder::new(
+        let tx = ProvenTransaction::new(
             account_id,
             initial_account_commitment,
             final_account_commitment,
             account_delta_commitment,
+            AccountUpdateDetails::Private,
+            Vec::<InputNoteCommitment>::new(),
+            Vec::<OutputNote>::new(),
             ref_block_num,
             ref_block_commitment,
             FungibleAsset::mock(42).unwrap_fungible(),
             expiration_block_num,
             proof,
         )
-        .build()
-        .context("failed to build proven transaction")?;
+        .context("failed to create proven transaction")?;
 
         let deserialized = ProvenTransaction::read_from_bytes(&tx.to_bytes()).unwrap();
 
