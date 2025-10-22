@@ -1630,3 +1630,19 @@ export.set_was_procedure_called
     # save 1 to the was_called address
     add push.1 swap mem_store
 end
+
+#! Returns the binary flag indicating whether the procedure with the provided root is exposed by the
+#! active account.
+#!
+#! Returns 1 if the procedure is exposed by the active account and 0 otherwise.
+#!
+#! Inputs:  [PROC_ROOT]
+#! Outputs: [is_procedure_exposed]
+#!
+#! Where:
+#! - PROC_ROOT is the hash of the procedure of interest.
+#! - is_procedure_exposed is the binary flag indicating whether the procedure with PROC_ROOT is 
+#!   exposed.
+export.has_procedure
+    nop
+end
