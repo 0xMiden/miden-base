@@ -23,7 +23,6 @@ pub use partial_blockchain::PartialBlockchain;
 pub use proven_tx::{
     InputNoteCommitment,
     ProvenTransaction,
-    ProvenTransactionBuilder,
     TxAccountUpdate,
 };
 pub use transaction_id::TransactionId;
