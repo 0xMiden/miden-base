@@ -1,4 +1,4 @@
-use core::ops::Deref;
+use core::ops::{Deref, DerefMut};
 
 use miden_core::utils::{
     ByteReader,
@@ -22,6 +22,12 @@ impl Deref for SignedBlock {
 
     fn deref(&self) -> &Self::Target {
         &self.proven_block
+    }
+}
+
+impl DerefMut for SignedBlock {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.proven_block
     }
 }
 
