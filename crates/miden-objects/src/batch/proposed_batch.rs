@@ -430,10 +430,12 @@ mod tests {
     use winter_rand_utils::rand_value;
 
     use super::*;
+    use alloc::vec::Vec;
     use crate::Word;
+    use crate::account::delta::AccountUpdateDetails;
     use crate::account::{AccountIdVersion, AccountStorageMode, AccountType};
     use crate::asset::FungibleAsset;
-    use crate::transaction::ProvenTransactionBuilder;
+    use crate::transaction::{InputNoteCommitment, OutputNote};
 
     #[test]
     fn proposed_batch_serialization() -> anyhow::Result<()> {
@@ -474,19 +476,21 @@ mod tests {
         let expiration_block_num = reference_block_header.block_num() + 1;
         let proof = ExecutionProof::new_dummy();
 
-        let tx = ProvenTransactionBuilder::new(
+        let tx = ProvenTransaction::new(
             account_id,
             initial_account_commitment,
             final_account_commitment,
             account_delta_commitment,
+            AccountUpdateDetails::Private,
+            Vec::<InputNoteCommitment>::new(),
+            Vec::<OutputNote>::new(),
             block_num,
             block_ref,
             FungibleAsset::mock(100).unwrap_fungible(),
             expiration_block_num,
             proof,
         )
-        .build()
-        .context("failed to build proven transaction")?;
+        .context("failed to create proven transaction")?;
 
         let batch = ProposedBatch::new(
             vec![Arc::new(tx)],
