@@ -43,24 +43,19 @@ impl VaultKey {
         Self(value)
     }
 
-    /// Returns the underlying [`Word`] that makes up this [`VaultKey`].
-    pub fn as_word(&self) -> Word {
-        self.0
-    }
-
     /// Returns an [`AccountIdPrefix`] from the asset key.
     pub fn faucet_id_prefix(&self) -> AccountIdPrefix {
         if self.is_fungible() {
-            AccountIdPrefix::new_unchecked(self.as_word()[3])
+            AccountIdPrefix::new_unchecked(self.0[3])
         } else {
-            AccountIdPrefix::new_unchecked(self.as_word()[0])
+            AccountIdPrefix::new_unchecked(self.0[0])
         }
     }
 
     /// Returns the [`AccountId`] from the asset key if it is a fungible asset, `None` otherwise.
     pub fn faucet_id(&self) -> Option<AccountId> {
         if self.is_fungible() {
-            Some(AccountId::new_unchecked([self.as_word()[3], self.as_word()[2]]))
+            Some(AccountId::new_unchecked([self.0[3], self.0[2]]))
         } else {
             None
         }
@@ -68,7 +63,7 @@ impl VaultKey {
 
     /// Returns the leaf index of a vault key.
     pub fn to_leaf_index(&self) -> LeafIndex<SMT_DEPTH> {
-        LeafIndex::<SMT_DEPTH>::from(self.as_word())
+        LeafIndex::<SMT_DEPTH>::from(self.0)
     }
 
     /// Constructs a fungible asset's key from a faucet ID.
@@ -89,15 +84,16 @@ impl VaultKey {
 
     /// Returns `true` if the asset key is for a fungible asset, `false` otherwise.
     fn is_fungible(&self) -> bool {
-        self.as_word()[0].as_int() == 0 && self.as_word()[1].as_int() == 0
+        self.0[0].as_int() == 0 && self.0[1].as_int() == 0
     }
 }
 
 impl fmt::Display for VaultKey {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.as_word())
+        write!(f, "{}", self.0)
     }
 }
+
 // CONVERSIONS
 // ================================================================================================
 

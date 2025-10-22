@@ -24,10 +24,10 @@ impl AssetWitness {
     pub fn new(smt_proof: SmtProof) -> Result<Self, AssetError> {
         for (vault_key, asset) in smt_proof.leaf().entries() {
             let asset = Asset::try_from(asset)?;
-            if asset.vault_key().as_word() != *vault_key {
+            if *vault_key != asset.vault_key().into() {
                 return Err(AssetError::VaultKeyMismatch {
                     actual: *vault_key,
-                    expected: asset.vault_key().as_word(),
+                    expected: asset.vault_key().into(),
                 });
             }
         }
@@ -116,14 +116,14 @@ mod tests {
         let non_fungible_asset = NonFungibleAsset::mock(&[1]);
 
         let smt =
-            Smt::with_entries([(fungible_asset.vault_key().as_word(), non_fungible_asset.into())])?;
-        let proof = smt.open(&fungible_asset.vault_key().as_word());
+            Smt::with_entries([(fungible_asset.vault_key().into(), non_fungible_asset.into())])?;
+        let proof = smt.open(&fungible_asset.vault_key().into());
 
         let err = AssetWitness::new(proof).unwrap_err();
 
         assert_matches!(err, AssetError::VaultKeyMismatch { actual, expected } => {
-            assert_eq!(actual, fungible_asset.vault_key().as_word());
-            assert_eq!(expected, non_fungible_asset.vault_key().as_word());
+            assert_eq!(actual, fungible_asset.vault_key().into());
+            assert_eq!(expected, non_fungible_asset.vault_key().into());
         });
 
         Ok(())
