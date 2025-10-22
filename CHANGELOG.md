@@ -30,11 +30,10 @@
 - [BREAKING] Enable computing the transaction ID from the data in a `TransactionHeader` ([#1973](https://github.com/0xMiden/miden-base/pull/1973)).
 - Added `account::get_initial_balance` procedure to `miden` lib ([#1959](https://github.com/0xMiden/miden-base/pull/1959)).
 - [BREAKING] Change `Account` to `PartialAccount` conversion to generally track only minimal data ([#1963](https://github.com/0xMiden/miden-base/pull/1963)).
-- Added `MastArtifact`, `PackageExport`, `PackageManifest`, `AttributeSet` and `QualifiedProcedureName` to re-export section ([#1984](https://github.com/0xMiden/miden-base/pull/1984)).
+- Added `MastArtifact`, `PackageExport`, `PackageManifest`, `AttributeSet`, `QualifiedProcedureName`, `Section` and `SectionId` to re-export section ([#1984](https://github.com/0xMiden/miden-base/pull/1984) and [#2015](https://github.com/0xMiden/miden-base/pull/2015)).
 - [BREAKING] Enable computing the transaction ID from the data in a `TransactionHeader` ([#1973]https://github.com/0xMiden/miden-base/pull/1973).
 - [BREAKING] Change `Account` to `PartialAccount` conversion to generally track only minimal data ([#1963]https://github.com/0xMiden/miden-base/pull/1963).
 - Added `AccountTree::apply_mutations_with_reversions` ([#2002](https://github.com/0xMiden/miden-base/pull/2002)).
-- Added `Section` and `SectionId` to re-export section ([#2015](https://github.com/0xMiden/miden-base/pull/2015)).
 
 ### Changes
 
