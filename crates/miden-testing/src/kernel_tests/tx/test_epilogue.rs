@@ -4,6 +4,7 @@ use alloc::vec::Vec;
 use miden_lib::errors::tx_kernel_errors::{
     ERR_ACCOUNT_DELTA_NONCE_MUST_BE_INCREMENTED_IF_VAULT_OR_STORAGE_CHANGED,
     ERR_EPILOGUE_EXECUTED_TRANSACTION_IS_EMPTY,
+    ERR_EPILOGUE_NONCE_CANNOT_BE_0,
     ERR_EPILOGUE_TOTAL_NUMBER_OF_ASSETS_MUST_STAY_THE_SAME,
     ERR_TX_INVALID_EXPIRATION_DELTA,
 };
@@ -480,6 +481,25 @@ async fn epilogue_fails_on_account_state_change_without_nonce_increment() -> any
         result,
         ERR_ACCOUNT_DELTA_NONCE_MUST_BE_INCREMENTED_IF_VAULT_OR_STORAGE_CHANGED
     );
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn epilogue_fails_when_nonce_not_incremented() -> anyhow::Result<()> {
+    let mut builder = MockChain::builder();
+    let account = builder.create_new_mock_account(Auth::Noop)?;
+
+    let mut mock_chain = builder.build()?;
+    mock_chain.prove_next_block()?;
+
+    let result = mock_chain
+        .build_tx_context(TxContextInput::Account(account), &[], &[])?
+        .build()?
+        .execute()
+        .await;
+
+    assert_transaction_executor_error!(result, ERR_EPILOGUE_NONCE_CANNOT_BE_0);
 
     Ok(())
 }

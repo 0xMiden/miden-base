@@ -24,7 +24,7 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
     ACCOUNT_ID_SENDER,
 };
-use miden_objects::transaction::OutputNote;
+use miden_objects::transaction::{InputNote, OutputNote};
 use miden_objects::{Felt, Word, ZERO};
 use miden_processor::ExecutionError;
 use miden_processor::crypto::RpoRandomCoin;
@@ -441,7 +441,12 @@ async fn test_check_note_consumability_without_signatures() -> anyhow::Result<()
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
     let consumability_info: NoteConsumptionStatus = notes_checker
-        .can_consume(account_id, block_ref, successful_note, tx_args)
+        .can_consume(
+            account_id,
+            block_ref,
+            InputNote::Unauthenticated { note: successful_note },
+            tx_args,
+        )
         .await?;
 
     assert_matches!(consumability_info, NoteConsumptionStatus::ConsumableWithAuthorization);
@@ -497,7 +502,7 @@ async fn test_check_note_consumability_static_analysis_receiver(
     let target_account_id = account.id();
     let sender_account_id = ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap();
 
-    let p2id = create_p2ide_note_with_inputs(
+    let p2ide = create_p2ide_note_with_inputs(
         [
             target_account_id.suffix().as_int(),
             target_account_id.prefix().as_u64(),
@@ -506,13 +511,13 @@ async fn test_check_note_consumability_static_analysis_receiver(
         ],
         sender_account_id,
     );
-    builder.add_output_note(OutputNote::Full(p2id.clone()));
+    builder.add_output_note(OutputNote::Full(p2ide.clone()));
 
     let mut mock_chain = builder.build()?;
     mock_chain.prove_until_block(3)?;
 
     let tx_context = mock_chain
-        .build_tx_context(TxContextInput::Account(account), &[p2id.id()], &[])?
+        .build_tx_context(TxContextInput::Account(account), &[p2ide.id()], &[])?
         .build()?;
 
     let block_ref = tx_context.tx_inputs().block_header().block_num();
@@ -525,7 +530,12 @@ async fn test_check_note_consumability_static_analysis_receiver(
     // check the note with invalid number of inputs
     // --------------------------------------------------------------------------------------------
     let consumption_check_result = notes_checker
-        .can_consume(target_account_id, block_ref, p2id.clone(), tx_args.clone())
+        .can_consume(
+            target_account_id,
+            block_ref,
+            InputNote::Unauthenticated { note: p2ide },
+            tx_args.clone(),
+        )
         .await;
 
     assert_eq!(format!("{:?}", consumption_check_result), expected);
@@ -582,7 +592,7 @@ async fn test_check_note_consumability_static_analysis_sender(
     let target_account_id: AccountId =
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap();
 
-    let p2id = create_p2ide_note_with_inputs(
+    let p2ide = create_p2ide_note_with_inputs(
         [
             target_account_id.suffix().as_int(),
             target_account_id.prefix().as_u64(),
@@ -591,13 +601,13 @@ async fn test_check_note_consumability_static_analysis_sender(
         ],
         sender_account_id,
     );
-    builder.add_output_note(OutputNote::Full(p2id.clone()));
+    builder.add_output_note(OutputNote::Full(p2ide.clone()));
 
     let mut mock_chain = builder.build()?;
     mock_chain.prove_until_block(3)?;
 
     let tx_context = mock_chain
-        .build_tx_context(TxContextInput::Account(account), &[p2id.id()], &[])?
+        .build_tx_context(TxContextInput::Account(account), &[p2ide.id()], &[])?
         .build()?;
 
     let block_ref = tx_context.tx_inputs().block_header().block_num();
@@ -610,7 +620,12 @@ async fn test_check_note_consumability_static_analysis_sender(
     // check the note with invalid number of inputs
     // --------------------------------------------------------------------------------------------
     let consumption_check_result = notes_checker
-        .can_consume(sender_account_id, block_ref, p2id.clone(), tx_args.clone())
+        .can_consume(
+            sender_account_id,
+            block_ref,
+            InputNote::Unauthenticated { note: p2ide },
+            tx_args.clone(),
+        )
         .await;
 
     assert_eq!(format!("{:?}", consumption_check_result), expected);

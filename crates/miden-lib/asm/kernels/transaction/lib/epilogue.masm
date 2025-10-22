@@ -16,6 +16,8 @@ const.ERR_EPILOGUE_EXECUTED_TRANSACTION_IS_EMPTY="executed transaction neither c
 
 const.ERR_AUTH_PROCEDURE_CALLED_FROM_WRONG_CONTEXT="auth procedure had been called from outside the epilogue"
 
+const.ERR_EPILOGUE_NONCE_CANNOT_BE_0="nonce cannot be 0 after an account-creating transaction"
+
 # CONSTANTS
 # =================================================================================================
 
@@ -383,6 +385,11 @@ export.finalize_transaction.12
 
     exec.execute_auth_procedure
     # => []
+
+    # nonce cannot be 0 after the first transaction
+    exec.memory::get_native_account_nonce
+    # => [nonce]
+    eq.0 assertz.err=ERR_EPILOGUE_NONCE_CANNOT_BE_0
 
     # ------ Assert assets are preserved ------
 

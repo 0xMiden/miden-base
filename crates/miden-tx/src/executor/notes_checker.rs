@@ -6,7 +6,7 @@ use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::AccountId;
 use miden_objects::block::BlockNumber;
 use miden_objects::note::Note;
-use miden_objects::transaction::{InputNotes, TransactionArgs, TransactionInputs};
+use miden_objects::transaction::{InputNote, InputNotes, TransactionArgs, TransactionInputs};
 use miden_processor::fast::FastProcessor;
 use miden_prover::AdviceInputs;
 
@@ -144,13 +144,13 @@ where
         &self,
         target_account_id: AccountId,
         block_ref: BlockNumber,
-        note: Note,
+        note: InputNote,
         tx_args: TransactionArgs,
     ) -> Result<NoteConsumptionStatus, NoteCheckerError> {
         // return the consumption status if we manage to determine it from the well-known note
-        if let Some(well_known_note) = WellKnownNote::from_note(&note)
+        if let Some(well_known_note) = WellKnownNote::from_note(note.note())
             && let Some(consumption_status) =
-                well_known_note.check_note_inputs(&note, target_account_id, block_ref)
+                well_known_note.check_note_inputs(note.note(), target_account_id, block_ref)
         {
             return Ok(consumption_status);
         }
@@ -158,7 +158,12 @@ where
         // Prepare transaction inputs.
         let mut tx_inputs = self
             .0
-            .prepare_tx_inputs(target_account_id, block_ref, vec![note].into(), tx_args)
+            .prepare_tx_inputs(
+                target_account_id,
+                block_ref,
+                InputNotes::new_unchecked(vec![note]),
+                tx_args,
+            )
             .await
             .map_err(NoteCheckerError::TransactionPreparation)?;
 
