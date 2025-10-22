@@ -916,6 +916,17 @@ async fn test_multisig_new_approvers_cannot_sign_before_update() -> anyhow::Resu
     Ok(())
 }
 
+/// Checks note consumability for authenticated and unauthenticated notes, both
+/// without and with multisig signatures.
+///
+/// Cases covered:
+/// - Without signatures: both the authenticated note and the unauthenticated note are reported as
+///   `ConsumableWithAuthorization` — the notes are consumable in principle, but fail due to missing
+///   multisig authorization.
+/// - With valid multisig signatures on an authenticated transaction: the authenticated note becomes
+///   `Consumable`, while the unauthenticated variant remains `ConsumableWithAuthorization` because
+///   signatures are bound to a different `TransactionSummary` (the authenticated context) and do
+///   not authorize the unauthenticated note.
 #[tokio::test]
 async fn test_check_note_consumability_multisig() -> anyhow::Result<()> {
     // Setup keys and authenticators
