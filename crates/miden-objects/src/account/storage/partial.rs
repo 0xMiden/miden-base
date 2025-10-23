@@ -159,8 +159,10 @@ mod tests {
     use crate::account::{
         AccountStorage,
         AccountStorageHeader,
+        NamedStorageSlot,
         PartialStorage,
         PartialStorageMap,
+        SlotName,
         StorageMap,
         StorageSlot,
     };
@@ -175,7 +177,11 @@ mod tests {
         map_1.insert(map_key_present, Word::try_from([5u64, 4, 3, 2])?).unwrap();
         assert_eq!(map_1.get(&map_key_present), [5u64, 4, 3, 2].try_into()?);
 
-        let storage = AccountStorage::new(vec![StorageSlot::Map(map_1.clone())]).unwrap();
+        let storage = AccountStorage::new_named(vec![NamedStorageSlot::new(
+            SlotName::new("miden::test_map")?,
+            StorageSlot::Map(map_1.clone()),
+        )])
+        .unwrap();
 
         // Create partial storage with validation of one map key
         let storage_header = AccountStorageHeader::from(&storage);

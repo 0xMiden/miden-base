@@ -1,6 +1,11 @@
-use miden_objects::account::{AccountComponent, PublicKeyCommitment, StorageSlot};
+use miden_objects::account::{AccountComponent, NamedStorageSlot, PublicKeyCommitment, SlotName};
+use miden_objects::utils::sync::LazyLock;
 
 use crate::account::components::rpo_falcon_512_library;
+
+static FALCON_PUBKEY_SLOT_NAME: LazyLock<SlotName> = LazyLock::new(|| {
+    SlotName::new("miden::auth_rpo_falcon512::public_key").expect("slot name should be valid")
+});
 
 /// An [`AccountComponent`] implementing the RpoFalcon512 signature scheme for authentication of
 /// transactions.
@@ -24,13 +29,21 @@ impl AuthRpoFalcon512 {
     pub fn new(pub_key: PublicKeyCommitment) -> Self {
         Self { pub_key }
     }
+
+    /// TODO(named_slots)
+    pub fn public_key_slot_name() -> &'static SlotName {
+        &FALCON_PUBKEY_SLOT_NAME
+    }
 }
 
 impl From<AuthRpoFalcon512> for AccountComponent {
     fn from(falcon: AuthRpoFalcon512) -> Self {
         AccountComponent::new(
             rpo_falcon_512_library(),
-            vec![StorageSlot::Value(falcon.pub_key.into())],
+            vec![NamedStorageSlot::with_value(
+                AuthRpoFalcon512::public_key_slot_name().clone(),
+                falcon.pub_key.into(),
+            )],
         )
         .expect("falcon component should satisfy the requirements of a valid account component")
         .with_supports_all_types()

@@ -393,7 +393,7 @@ async fn test_get_item() -> miette::Result<()> {
                 assert_eqw
             end
             ",
-            item_index = storage_item.index,
+            item_index = storage_item.name,
             item_value = &storage_item.slot.value(),
         );
 
@@ -487,7 +487,7 @@ async fn test_get_storage_slot_type() -> miette::Result<()> {
                 swap drop
             end
             ",
-            item_index = storage_item.index,
+            item_index = storage_item.name,
         );
 
         let exec_output = &tx_context.execute_code(&code).await.unwrap();

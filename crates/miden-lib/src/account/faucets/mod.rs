@@ -7,9 +7,12 @@ use miden_objects::account::{
     AccountStorage,
     AccountStorageMode,
     AccountType,
+    NamedStorageSlot,
+    SlotName,
     StorageSlot,
 };
 use miden_objects::asset::{FungibleAsset, TokenSymbol};
+use miden_objects::utils::sync::LazyLock;
 use miden_objects::{AccountError, Felt, FieldElement, TokenSymbolError, Word};
 use thiserror::Error;
 
@@ -41,6 +44,10 @@ procedure_digest!(
     BasicFungibleFaucet::BURN_PROC_NAME,
     basic_fungible_faucet_library
 );
+
+static METADATA_SLOT_NAME: LazyLock<SlotName> = LazyLock::new(|| {
+    SlotName::new("miden::basic_fungible_faucet::metadata").expect("slot name should be valid")
+});
 
 /// An [`AccountComponent`] implementing a basic fungible faucet.
 ///
@@ -150,6 +157,11 @@ impl BasicFungibleFaucet {
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
+    /// TODO(named_slots)
+    pub fn metadata_slot_name() -> &'static SlotName {
+        &METADATA_SLOT_NAME
+    }
+
     /// Returns the symbol of the faucet.
     pub fn symbol(&self) -> TokenSymbol {
         self.symbol
@@ -186,8 +198,12 @@ impl From<BasicFungibleFaucet> for AccountComponent {
             faucet.symbol.into(),
             Felt::ZERO,
         ]);
+        let storage_slot = NamedStorageSlot::new(
+            BasicFungibleFaucet::metadata_slot_name().clone(),
+            StorageSlot::Value(metadata),
+        );
 
-        AccountComponent::new(basic_fungible_faucet_library(), vec![StorageSlot::Value(metadata)])
+        AccountComponent::new(basic_fungible_faucet_library(), vec![storage_slot])
             .expect("basic fungible faucet component should satisfy the requirements of a valid account component")
             .with_supported_type(AccountType::FungibleFaucet)
     }

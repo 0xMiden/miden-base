@@ -16,6 +16,7 @@ use super::{
 use crate::account::storage::header::StorageSlotHeader;
 use crate::account::{AccountComponent, AccountType};
 use crate::crypto::SequentialCommit;
+use crate::utils::sync::LazyLock;
 
 mod slot;
 pub use slot::{NamedStorageSlot, SlotName, SlotNameId, StorageSlot, StorageSlotType};
@@ -28,6 +29,9 @@ pub use header::AccountStorageHeader;
 
 mod partial;
 pub use partial::PartialStorage;
+
+static FAUCET_METADATA_SLOT_NAME: LazyLock<SlotName> =
+    LazyLock::new(|| SlotName::new("miden::faucet::metadata").expect("slot name should be valid"));
 
 // ACCOUNT STORAGE
 // ================================================================================================
@@ -66,7 +70,7 @@ impl AccountStorage {
             .into_iter()
             .enumerate()
             .map(|(idx, slot)| NamedStorageSlot::new(SlotName::new_index(idx), slot))
-            .collect();
+            .collect::<Vec<_>>();
 
         Self::new_named(slots)
     }
@@ -107,29 +111,34 @@ impl AccountStorage {
     /// Returns an error if:
     /// - The number of [`StorageSlot`]s of all components exceeds 255.
     pub(super) fn from_components(
-        components: &[AccountComponent],
+        components: Vec<AccountComponent>,
         account_type: AccountType,
     ) -> Result<AccountStorage, AccountError> {
         let mut storage_slots = match account_type {
             AccountType::FungibleFaucet => {
-                vec![NamedStorageSlot::new(SlotName::new_index(0), StorageSlot::empty_value())]
+                vec![NamedStorageSlot::new(
+                    Self::faucet_metadata_slot_name().clone(),
+                    StorageSlot::empty_value(),
+                )]
             },
             AccountType::NonFungibleFaucet => {
-                vec![NamedStorageSlot::new(SlotName::new_index(0), StorageSlot::empty_map())]
+                vec![NamedStorageSlot::new(
+                    Self::faucet_metadata_slot_name().clone(),
+                    StorageSlot::empty_map(),
+                )]
             },
             _ => vec![],
         };
 
-        let offset = storage_slots.len();
+        for component_slot in components.into_iter().flat_map(|component| {
+            let AccountComponent { storage_slots, .. } = component;
+            storage_slots.into_iter()
+        }) {
+            if component_slot.name() == Self::faucet_metadata_slot_name() {
+                return Err(AccountError::StorageSlotNameMustNotBeFaucetMetadata);
+            }
 
-        for (slot_idx, slot) in components
-            .iter()
-            .flat_map(|component| component.storage_slots())
-            .cloned()
-            .enumerate()
-        {
-            let name = SlotName::new_index(slot_idx + offset);
-            storage_slots.push(NamedStorageSlot::new(name, slot));
+            storage_slots.push(component_slot);
         }
 
         Self::new_named(storage_slots)
@@ -137,6 +146,11 @@ impl AccountStorage {
 
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
+
+    /// Returns the slot name of the faucet's protocol metadata.
+    pub fn faucet_metadata_slot_name() -> &'static SlotName {
+        &FAUCET_METADATA_SLOT_NAME
+    }
 
     /// Converts storage slots of this account storage into a vector of field elements.
     ///
@@ -387,29 +401,34 @@ mod tests {
     use crate::account::{NamedStorageSlot, SlotName, StorageSlot};
 
     #[test]
-    fn test_serde_account_storage() {
+    fn test_serde_account_storage() -> anyhow::Result<()> {
         // empty storage
-        let storage = AccountStorage::new(vec![]).unwrap();
+        let storage = AccountStorage::new_named(vec![]).unwrap();
         let bytes = storage.to_bytes();
         assert_eq!(storage, AccountStorage::read_from_bytes(&bytes).unwrap());
 
         // storage with values for default types
-        let storage = AccountStorage::new(vec![
-            StorageSlot::Value(Word::empty()),
-            StorageSlot::Map(StorageMap::default()),
+        let storage = AccountStorage::new_named(vec![
+            NamedStorageSlot::new(
+                SlotName::new("miden::test::value")?,
+                StorageSlot::Value(Word::empty()),
+            ),
+            NamedStorageSlot::new(
+                SlotName::new("miden::test::map")?,
+                StorageSlot::Map(StorageMap::default()),
+            ),
         ])
         .unwrap();
         let bytes = storage.to_bytes();
         assert_eq!(storage, AccountStorage::read_from_bytes(&bytes).unwrap());
+
+        Ok(())
     }
 
     #[test]
     fn test_get_slot_by_name() -> anyhow::Result<()> {
-        // TODO(named_slots): Use proper names.
-        // const COUNTER_SLOT: SlotName = SlotName::from_static_str("miden::test::counter");
-        // const MAP_SLOT: SlotName = SlotName::from_static_str("miden::test::map");
-        const COUNTER_SLOT: SlotName = SlotName::from_static_str("miden::0");
-        const MAP_SLOT: SlotName = SlotName::from_static_str("miden::4");
+        const COUNTER_SLOT: SlotName = SlotName::from_static_str("miden::test::counter");
+        const MAP_SLOT: SlotName = SlotName::from_static_str("miden::test::map");
 
         let slots = vec![
             NamedStorageSlot::new(COUNTER_SLOT, StorageSlot::empty_value()),

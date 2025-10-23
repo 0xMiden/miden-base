@@ -1,4 +1,5 @@
 use alloc::string::ToString;
+use alloc::vec::Vec;
 
 use crate::asset::AssetVault;
 use crate::utils::serde::{
@@ -202,11 +203,11 @@ impl Account {
     /// - [`MastForest::merge`](miden_processor::MastForest::merge) fails on all libraries.
     pub(super) fn initialize_from_components(
         account_type: AccountType,
-        components: &[AccountComponent],
+        components: Vec<AccountComponent>,
     ) -> Result<(AccountCode, AccountStorage), AccountError> {
-        validate_components_support_account_type(components, account_type)?;
+        validate_components_support_account_type(&components, account_type)?;
 
-        let code = AccountCode::from_components_unchecked(components, account_type)?;
+        let code = AccountCode::from_components_unchecked(&components, account_type)?;
         let storage = AccountStorage::from_components(components, account_type)?;
 
         Ok((code, storage))
@@ -556,7 +557,9 @@ mod tests {
         AccountComponent,
         AccountIdVersion,
         AccountType,
+        NamedStorageSlot,
         PartialAccount,
+        SlotName,
         StorageMap,
         StorageMapDelta,
         StorageSlot,
@@ -772,7 +775,17 @@ mod tests {
 
         let vault = AssetVault::new(&assets).unwrap();
 
-        let storage = AccountStorage::new(slots).unwrap();
+        let slots = slots
+            .into_iter()
+            .enumerate()
+            .map(|(idx, slot)| {
+                let slot_name = SlotName::new(format!("miden::test::slot{idx}"))
+                    .expect("slot name should be valid");
+                NamedStorageSlot::new(slot_name, slot)
+            })
+            .collect();
+
+        let storage = AccountStorage::new_named(slots).unwrap();
 
         Account::new_existing(id, vault, storage, code, nonce)
     }
@@ -793,7 +806,7 @@ mod tests {
 
         let err = Account::initialize_from_components(
             AccountType::RegularAccountUpdatableCode,
-            &[component1],
+            vec![component1],
         )
         .unwrap_err();
 
@@ -821,7 +834,7 @@ mod tests {
 
         let err = Account::initialize_from_components(
             AccountType::RegularAccountUpdatableCode,
-            &[NoopAuthComponent.into(), component1, component2],
+            vec![NoopAuthComponent.into(), component1, component2],
         )
         .unwrap_err();
 

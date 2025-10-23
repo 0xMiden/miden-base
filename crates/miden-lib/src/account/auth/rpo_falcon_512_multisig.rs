@@ -1,9 +1,35 @@
 use alloc::vec::Vec;
 
-use miden_objects::account::{AccountComponent, PublicKeyCommitment, StorageMap, StorageSlot};
+use miden_objects::account::{
+    AccountComponent,
+    NamedStorageSlot,
+    PublicKeyCommitment,
+    SlotName,
+    StorageMap,
+};
+use miden_objects::utils::sync::LazyLock;
 use miden_objects::{AccountError, Word};
 
 use crate::account::components::rpo_falcon_512_multisig_library;
+
+static CONFIG_SLOT_NAME: LazyLock<SlotName> = LazyLock::new(|| {
+    SlotName::new("miden::auth_rpo_falcon512_multisig::config").expect("slot name should be valid")
+});
+
+static APPROVER_PUBKEYS_SLOT_NAME: LazyLock<SlotName> = LazyLock::new(|| {
+    SlotName::new("miden::auth_rpo_falcon512_multisig::approver_public_keys")
+        .expect("slot name should be valid")
+});
+
+static EXECUTED_TRANSACTIONS_SLOT_NAME: LazyLock<SlotName> = LazyLock::new(|| {
+    SlotName::new("miden::auth_rpo_falcon512_multisig::executed_transactions")
+        .expect("slot name should be valid")
+});
+
+static PROCEDURE_THRESHOLDS_SLOT_NAME: LazyLock<SlotName> = LazyLock::new(|| {
+    SlotName::new("miden::auth_rpo_falcon512_multisig::procedure_thresholds")
+        .expect("slot name should be valid")
+});
 
 // MULTISIG AUTHENTICATION COMPONENT
 // ================================================================================================
@@ -97,6 +123,26 @@ impl AuthRpoFalcon512Multisig {
     pub fn new(config: AuthRpoFalcon512MultisigConfig) -> Result<Self, AccountError> {
         Ok(Self { config })
     }
+
+    /// TODO(named_slots)
+    pub fn config_slot_name() -> &'static SlotName {
+        &CONFIG_SLOT_NAME
+    }
+
+    /// TODO(named_slots)
+    pub fn approver_public_keys() -> &'static SlotName {
+        &APPROVER_PUBKEYS_SLOT_NAME
+    }
+
+    /// TODO(named_slots)
+    pub fn executed_transactions_slot_name() -> &'static SlotName {
+        &EXECUTED_TRANSACTIONS_SLOT_NAME
+    }
+
+    /// TODO(named_slots)
+    pub fn procedure_thresholds_slot_name() -> &'static SlotName {
+        &PROCEDURE_THRESHOLDS_SLOT_NAME
+    }
 }
 
 impl From<AuthRpoFalcon512Multisig> for AccountComponent {
@@ -105,12 +151,10 @@ impl From<AuthRpoFalcon512Multisig> for AccountComponent {
 
         // Slot 0: [threshold, num_approvers, 0, 0]
         let num_approvers = multisig.config.approvers().len() as u32;
-        storage_slots.push(StorageSlot::Value(Word::from([
-            multisig.config.default_threshold(),
-            num_approvers,
-            0,
-            0,
-        ])));
+        storage_slots.push(NamedStorageSlot::with_value(
+            AuthRpoFalcon512Multisig::config_slot_name().clone(),
+            Word::from([multisig.config.default_threshold(), num_approvers, 0, 0]),
+        ));
 
         // Slot 1: A map with approver public keys
         let map_entries = multisig
@@ -121,11 +165,17 @@ impl From<AuthRpoFalcon512Multisig> for AccountComponent {
             .map(|(i, pub_key)| (Word::from([i as u32, 0, 0, 0]), (*pub_key).into()));
 
         // Safe to unwrap because we know that the map keys are unique.
-        storage_slots.push(StorageSlot::Map(StorageMap::with_entries(map_entries).unwrap()));
+        storage_slots.push(NamedStorageSlot::with_map(
+            AuthRpoFalcon512Multisig::approver_public_keys().clone(),
+            StorageMap::with_entries(map_entries).unwrap(),
+        ));
 
         // Slot 2: A map which stores executed transactions
         let executed_transactions = StorageMap::default();
-        storage_slots.push(StorageSlot::Map(executed_transactions));
+        storage_slots.push(NamedStorageSlot::with_map(
+            AuthRpoFalcon512Multisig::executed_transactions_slot_name().clone(),
+            executed_transactions,
+        ));
 
         // Slot 3: A map which stores procedure thresholds (PROC_ROOT -> threshold)
         let proc_threshold_roots = StorageMap::with_entries(
@@ -136,7 +186,10 @@ impl From<AuthRpoFalcon512Multisig> for AccountComponent {
                 .map(|(proc_root, threshold)| (*proc_root, Word::from([*threshold, 0, 0, 0]))),
         )
         .unwrap();
-        storage_slots.push(StorageSlot::Map(proc_threshold_roots));
+        storage_slots.push(NamedStorageSlot::with_map(
+            AuthRpoFalcon512Multisig::procedure_thresholds_slot_name().clone(),
+            proc_threshold_roots,
+        ));
 
         AccountComponent::new(rpo_falcon_512_multisig_library(), storage_slots)
             .expect("Multisig auth component should satisfy the requirements of a valid account component")

@@ -615,14 +615,14 @@ mod tests {
                 .collect()
         );
 
-        let storage_map = component.storage_slots.first().unwrap();
-        match storage_map {
+        let named_map_slot = component.storage_slots.first().unwrap();
+        match named_map_slot.storage_slot() {
             StorageSlot::Map(storage_map) => assert_eq!(storage_map.entries().count(), 3),
             _ => panic!("should be map"),
         }
 
-        let value_entry = component.storage_slots().get(2).unwrap();
-        match value_entry {
+        let named_value_slot = component.storage_slots().get(2).unwrap();
+        match named_value_slot.storage_slot() {
             StorageSlot::Value(v) => {
                 assert_eq!(v, &EMPTY_WORD)
             },

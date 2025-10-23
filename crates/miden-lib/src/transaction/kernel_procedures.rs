@@ -32,13 +32,13 @@ pub const KERNEL_PROCEDURES: [Word; 51] = [
     // account_get_initial_item
     word!("0x5fb6c9cc67bd4883ba5e8c88f1a2aab8511fcb3946095882c1be396d3c845d6b"),
     // account_set_item
-    word!("0xd949191932d09c029ccc3ecbdb9cdffbdc4a9f6f5c0123c291eb281eb8174301"),
+    word!("0x9166385d81e8d8567a49f5977ee0204ee76582ec8d5eadefb0070902c3d5ad9d"),
     // account_get_map_item
-    word!("0x0d00a5dfcdf1cfb31b3d6650533cac808209a387a1559bf04586108708573920"),
+    word!("0x09c556b686e072f3aaf2955d66fd8c5858e8598331e4973ddae28b00881d165b"),
     // account_get_initial_map_item
-    word!("0x5a27a2101298949fd601f0cb9c933f9ccc329962cc7c60411491d3fcf89c9ae1"),
+    word!("0xb824b1068d269b31bbe28c10787a0fc2816ba0e8a5727fd04ee19f3ee1c9a04a"),
     // account_set_map_item
-    word!("0xbb4897b85b413ad318a56e15de62bad6bdee9ffebb86227a4f0f6c6bf92b12cb"),
+    word!("0xb97eb4e13c2956c7935c160a778b0d896cfcfe4b23cb4adf7a06535379415514"),
     // account_get_initial_vault_root
     word!("0x4d4d91079aaacad1bc86b29a0d61d25508ccb705c29d1b1357016f7373bf299e"),
     // account_get_vault_root
@@ -58,13 +58,13 @@ pub const KERNEL_PROCEDURES: [Word; 51] = [
     // account_was_procedure_called
     word!("0x34f27a609f2f2b4fec454b17182552b0acc52524e507e134257a1f1ed30a57cd"),
     // faucet_mint_asset
-    word!("0xcf9d8e51142db8d75351e5f6f20433fa1d8f5a104ae7ebb642c2c4012f3e99d0"),
+    word!("0xcb75d21765e81dbefb6fba5f66daf437c5bfbe7d65d571fff2246424a749a2df"),
     // faucet_burn_asset
-    word!("0x313371b4d60ecb9af5f6823e2d304814eca7f3b5230416acc7476dab9c0c3383"),
+    word!("0xee0f875abfbcce9bd54bcb3dda155e25e801ae84c120fd30a98deaee3ce2f14b"),
     // faucet_get_total_fungible_asset_issuance
     word!("0x465c24cb4cbababba4245a76c265ceaca7666d0025998257bee8cdd6b443ed05"),
     // faucet_is_non_fungible_asset_issued
-    word!("0x4d0a906104514801eb1bbff08392f3918c4b09cc88456ebe59007a242649ec54"),
+    word!("0x8e11f94dc6caf9a3b26b092b258b20d49e2a9459785e4b562f84797b77d6ade3"),
     // input_note_get_metadata
     word!("0x7ad3e94585e7a397ee27443c98b376ed8d4ba762122af6413fde9314c00a6219"),
     // input_note_get_assets_info

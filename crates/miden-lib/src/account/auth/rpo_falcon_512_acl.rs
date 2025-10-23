@@ -3,13 +3,28 @@ use alloc::vec::Vec;
 use miden_objects::account::{
     AccountCode,
     AccountComponent,
+    NamedStorageSlot,
     PublicKeyCommitment,
+    SlotName,
     StorageMap,
-    StorageSlot,
 };
+use miden_objects::utils::sync::LazyLock;
 use miden_objects::{AccountError, Word};
 
 use crate::account::components::rpo_falcon_512_acl_library;
+
+static PUBKEY_SLOT_NAME: LazyLock<SlotName> = LazyLock::new(|| {
+    SlotName::new("miden::auth_rpo_falcon512_acl::public_key").expect("slot name should be valid")
+});
+
+static CONFIG_SLOT_NAME: LazyLock<SlotName> = LazyLock::new(|| {
+    SlotName::new("miden::auth_rpo_falcon512_acl::config").expect("slot name should be valid")
+});
+
+static TRACKED_PROCEDURE_ROOT_SLOT_NAME: LazyLock<SlotName> = LazyLock::new(|| {
+    SlotName::new("miden::auth_rpo_falcon512_acl::tracked_procedure_roots")
+        .expect("slot name should be valid")
+});
 
 /// Configuration for [`AuthRpoFalcon512Acl`] component.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -138,6 +153,21 @@ impl AuthRpoFalcon512Acl {
 
         Ok(Self { pub_key, config })
     }
+
+    /// TODO(named_slots)
+    pub fn public_key_slot_name() -> &'static SlotName {
+        &PUBKEY_SLOT_NAME
+    }
+
+    /// TODO(named_slots)
+    pub fn config_slot_name() -> &'static SlotName {
+        &CONFIG_SLOT_NAME
+    }
+
+    /// TODO(named_slots)
+    pub fn tracked_procedure_roots_slot_name() -> &'static SlotName {
+        &TRACKED_PROCEDURE_ROOT_SLOT_NAME
+    }
 }
 
 impl From<AuthRpoFalcon512Acl> for AccountComponent {
@@ -145,17 +175,23 @@ impl From<AuthRpoFalcon512Acl> for AccountComponent {
         let mut storage_slots = Vec::with_capacity(3);
 
         // Slot 0: Public key
-        storage_slots.push(StorageSlot::Value(falcon.pub_key.into()));
+        storage_slots.push(NamedStorageSlot::with_value(
+            AuthRpoFalcon512Acl::public_key_slot_name().clone(),
+            falcon.pub_key.into(),
+        ));
 
         // Slot 1: [num_tracked_procs, allow_unauthorized_output_notes,
         // allow_unauthorized_input_notes, 0]
         let num_procs = falcon.config.auth_trigger_procedures.len() as u32;
-        storage_slots.push(StorageSlot::Value(Word::from([
-            num_procs,
-            u32::from(falcon.config.allow_unauthorized_output_notes),
-            u32::from(falcon.config.allow_unauthorized_input_notes),
-            0,
-        ])));
+        storage_slots.push(NamedStorageSlot::with_value(
+            AuthRpoFalcon512Acl::config_slot_name().clone(),
+            Word::from([
+                num_procs,
+                u32::from(falcon.config.allow_unauthorized_output_notes),
+                u32::from(falcon.config.allow_unauthorized_input_notes),
+                0,
+            ]),
+        ));
 
         // Slot 2: A map with tracked procedure roots
         // We add the map even if there are no trigger procedures, to always maintain the same
@@ -168,7 +204,10 @@ impl From<AuthRpoFalcon512Acl> for AccountComponent {
             .map(|(i, proc_root)| (Word::from([i as u32, 0, 0, 0]), *proc_root));
 
         // Safe to unwrap because we know that the map keys are unique.
-        storage_slots.push(StorageSlot::Map(StorageMap::with_entries(map_entries).unwrap()));
+        storage_slots.push(NamedStorageSlot::with_map(
+            AuthRpoFalcon512Acl::tracked_procedure_roots_slot_name().clone(),
+            StorageMap::with_entries(map_entries).unwrap(),
+        ));
 
         AccountComponent::new(rpo_falcon_512_acl_library(), storage_slots)
             .expect(

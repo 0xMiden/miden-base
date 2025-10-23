@@ -144,13 +144,13 @@ impl AccountBuilder {
         let mut components = vec![auth_component];
         components.append(&mut self.components);
 
-        let (code, storage) = Account::initialize_from_components(self.account_type, &components)
+        let (code, storage) = Account::initialize_from_components(self.account_type, components)
             .map_err(|err| {
-            AccountError::BuildError(
-                "account components failed to build".into(),
-                Some(Box::new(err)),
-            )
-        })?;
+                AccountError::BuildError(
+                    "account components failed to build".into(),
+                    Some(Box::new(err)),
+                )
+            })?;
 
         Ok((vault, code, storage))
     }
@@ -291,7 +291,7 @@ mod tests {
     use miden_processor::MastNodeExt;
 
     use super::*;
-    use crate::account::StorageSlot;
+    use crate::account::{NamedStorageSlot, SlotName};
     use crate::testing::noop_auth_component::NoopAuthComponent;
 
     const CUSTOM_CODE1: &str = "
@@ -323,10 +323,14 @@ mod tests {
         fn from(custom: CustomComponent1) -> Self {
             let mut value = Word::empty();
             value[0] = Felt::new(custom.slot0);
+            let slot_name = SlotName::new("custom::component1").expect("slot name should be valid");
 
-            AccountComponent::new(CUSTOM_LIBRARY1.clone(), vec![StorageSlot::Value(value)])
-                .expect("component should be valid")
-                .with_supports_all_types()
+            AccountComponent::new(
+                CUSTOM_LIBRARY1.clone(),
+                vec![NamedStorageSlot::with_value(slot_name, value)],
+            )
+            .expect("component should be valid")
+            .with_supports_all_types()
         }
     }
 
@@ -340,10 +344,17 @@ mod tests {
             value0[3] = Felt::new(custom.slot0);
             let mut value1 = Word::empty();
             value1[3] = Felt::new(custom.slot1);
+            let slot_name0 =
+                SlotName::new("custom::component2::slot0").expect("slot name should be valid");
+            let slot_name1 =
+                SlotName::new("custom::component2::slot1").expect("slot name should be valid");
 
             AccountComponent::new(
                 CUSTOM_LIBRARY2.clone(),
-                vec![StorageSlot::Value(value0), StorageSlot::Value(value1)],
+                vec![
+                    NamedStorageSlot::with_value(slot_name0, value0),
+                    NamedStorageSlot::with_value(slot_name1, value1),
+                ],
             )
             .expect("component should be valid")
             .with_supports_all_types()

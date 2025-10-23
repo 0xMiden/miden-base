@@ -7,8 +7,8 @@ use miden_objects::account::{
     AccountBuilder,
     AccountComponent,
     AccountType,
+    NamedStorageSlot,
     PublicKeyCommitment,
-    StorageSlot,
 };
 use miden_objects::assembly::diagnostics::NamedSource;
 use miden_objects::assembly::{Assembler, DefaultSourceManager};
@@ -680,7 +680,7 @@ trait AccountComponentExt {
     fn compile_with_path(
         source_code: impl ToString,
         assembler: Assembler,
-        storage_slots: Vec<StorageSlot>,
+        storage_slots: Vec<NamedStorageSlot>,
         library_path: impl AsRef<str>,
     ) -> Result<AccountComponent, AccountError>;
 }
@@ -701,7 +701,7 @@ impl AccountComponentExt for AccountComponent {
     fn compile_with_path(
         source_code: impl ToString,
         assembler: Assembler,
-        storage_slots: Vec<StorageSlot>,
+        storage_slots: Vec<NamedStorageSlot>,
         library_path: impl AsRef<str>,
     ) -> Result<Self, AccountError> {
         let source = NamedSource::new(library_path, source_code.to_string());

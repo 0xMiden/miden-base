@@ -10,7 +10,7 @@ use miden_processor::MastForest;
 mod template;
 pub use template::*;
 
-use crate::account::{AccountType, StorageSlot};
+use crate::account::{AccountType, NamedStorageSlot};
 use crate::{AccountError, Word};
 
 // IMPLEMENTATIONS
@@ -66,7 +66,7 @@ impl TryFrom<Package> for AccountComponentTemplate {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AccountComponent {
     pub(super) library: Library,
-    pub(super) storage_slots: Vec<StorageSlot>,
+    pub(super) storage_slots: Vec<NamedStorageSlot>,
     pub(super) supported_types: BTreeSet<AccountType>,
 }
 
@@ -88,7 +88,7 @@ impl AccountComponent {
     ///
     /// Returns an error if:
     /// - The number of given [`StorageSlot`]s exceeds 255.
-    pub fn new(code: Library, storage_slots: Vec<StorageSlot>) -> Result<Self, AccountError> {
+    pub fn new(code: Library, storage_slots: Vec<NamedStorageSlot>) -> Result<Self, AccountError> {
         // Check that we have less than 256 storage slots.
         u8::try_from(storage_slots.len())
             .map_err(|_| AccountError::StorageTooManySlots(storage_slots.len() as u64))?;
@@ -114,7 +114,7 @@ impl AccountComponent {
     pub fn compile(
         source_code: impl Parse,
         assembler: Assembler,
-        storage_slots: Vec<StorageSlot>,
+        storage_slots: Vec<NamedStorageSlot>,
     ) -> Result<Self, AccountError> {
         let library = assembler
             .assemble_library([source_code])
@@ -137,16 +137,17 @@ impl AccountComponent {
         template: &AccountComponentTemplate,
         init_storage_data: &InitStorageData,
     ) -> Result<AccountComponent, AccountError> {
-        let mut storage_slots = vec![];
-        for storage_entry in template.metadata().storage_entries() {
-            let entry_storage_slots = storage_entry
-                .try_build_storage_slots(init_storage_data)
-                .map_err(AccountError::AccountComponentTemplateInstantiationError)?;
-            storage_slots.extend(entry_storage_slots);
-        }
+        todo!()
+        // let mut storage_slots = vec![];
+        // for storage_entry in template.metadata().storage_entries() {
+        //     let entry_storage_slots = storage_entry
+        //         .try_build_storage_slots(init_storage_data)
+        //         .map_err(AccountError::AccountComponentTemplateInstantiationError)?;
+        //     storage_slots.extend(entry_storage_slots);
+        // }
 
-        Ok(AccountComponent::new(template.library().clone(), storage_slots)?
-            .with_supported_types(template.metadata().supported_types().clone()))
+        // Ok(AccountComponent::new(template.library().clone(), storage_slots)?
+        //     .with_supported_types(template.metadata().supported_types().clone()))
     }
 
     /// Creates an [`AccountComponent`] from a [`Package`] using [`InitStorageData`].
@@ -193,8 +194,8 @@ impl AccountComponent {
         self.library.mast_forest().as_ref()
     }
 
-    /// Returns a slice of the underlying [`StorageSlot`]s of this component.
-    pub fn storage_slots(&self) -> &[StorageSlot] {
+    /// Returns a slice of the underlying [`NamedStorageSlot`]s of this component.
+    pub fn storage_slots(&self) -> &[NamedStorageSlot] {
         self.storage_slots.as_slice()
     }
 

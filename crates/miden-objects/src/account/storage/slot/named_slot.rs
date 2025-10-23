@@ -1,5 +1,6 @@
+use crate::Word;
 use crate::account::storage::slot::SlotNameId;
-use crate::account::{SlotName, StorageSlot};
+use crate::account::{SlotName, StorageMap, StorageSlot};
 
 // TODO(named_slots): Docs + separators for the entire module.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -21,6 +22,14 @@ impl NamedStorageSlot {
         let name_id = name.compute_id();
 
         Self { name, name_id, slot }
+    }
+
+    pub fn with_value(name: SlotName, value: Word) -> Self {
+        Self::new(name, StorageSlot::Value(value))
+    }
+
+    pub fn with_map(name: SlotName, map: StorageMap) -> Self {
+        Self::new(name, StorageSlot::Map(map))
     }
 
     pub fn name(&self) -> &SlotName {

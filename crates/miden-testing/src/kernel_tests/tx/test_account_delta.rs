@@ -31,7 +31,7 @@ use miden_objects::testing::constants::{
     NON_FUNGIBLE_ASSET_DATA,
     NON_FUNGIBLE_ASSET_DATA_2,
 };
-use miden_objects::testing::storage::{STORAGE_INDEX_0, STORAGE_INDEX_2};
+use miden_objects::testing::storage::{SLOT_NAME_VALUE0, STORAGE_INDEX_2};
 use miden_objects::transaction::TransactionScript;
 use miden_objects::{EMPTY_WORD, Felt, LexicographicWord, Word, ZERO};
 use rand::{Rng, SeedableRng};
@@ -630,7 +630,7 @@ async fn asset_and_storage_delta() -> anyhow::Result<()> {
             # => [13, 11, 9, 7]
 
             # get the index of account storage slot
-            push.{STORAGE_INDEX_0}
+            push.{SLOT_NAME_VALUE0}
             # => [idx, 13, 11, 9, 7]
             # update the storage value
             call.account::set_item dropw
@@ -705,7 +705,7 @@ async fn asset_and_storage_delta() -> anyhow::Result<()> {
     // We expect one updated item and one updated map
     assert_eq!(executed_transaction.account_delta().storage().values().len(), 1);
     assert_eq!(
-        executed_transaction.account_delta().storage().values().get(&STORAGE_INDEX_0),
+        executed_transaction.account_delta().storage().values().get(&SLOT_NAME_VALUE0),
         Some(&updated_slot_value)
     );
 
