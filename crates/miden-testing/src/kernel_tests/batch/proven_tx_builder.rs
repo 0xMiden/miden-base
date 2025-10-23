@@ -7,11 +7,7 @@ use miden_objects::asset::FungibleAsset;
 use miden_objects::block::BlockNumber;
 use miden_objects::crypto::merkle::SparseMerklePath;
 use miden_objects::note::{Note, NoteInclusionProof, Nullifier};
-use miden_objects::transaction::{
-    InputNote,
-    OutputNote,
-    ProvenTransaction,
-};
+use miden_objects::transaction::{InputNote, OutputNote, ProvenTransaction};
 use miden_objects::vm::ExecutionProof;
 
 /// A builder to build mocked [`ProvenTransaction`]s.
