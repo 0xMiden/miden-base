@@ -7,12 +7,7 @@ use miden_objects::asset::FungibleAsset;
 use miden_objects::block::BlockNumber;
 use miden_objects::crypto::merkle::SparseMerklePath;
 use miden_objects::note::{Note, NoteInclusionProof, Nullifier};
-use miden_objects::transaction::{
-    InputNote,
-    OutputNote,
-    ProvenTransaction,
-    ProvenTransactionBuilder,
-};
+use miden_objects::transaction::{InputNote, OutputNote, ProvenTransaction};
 use miden_objects::vm::ExecutionProof;
 
 /// A builder to build mocked [`ProvenTransaction`]s.
@@ -102,21 +97,31 @@ impl MockProvenTxBuilder {
 
     /// Builds the [`ProvenTransaction`] and returns potential errors.
     pub fn build(self) -> anyhow::Result<ProvenTransaction> {
-        ProvenTransactionBuilder::new(
+        use miden_objects::account::delta::AccountUpdateDetails;
+        use miden_objects::transaction::InputNoteCommitment;
+
+        let mut input_note_commitments = Vec::new();
+        if let Some(input_notes) = self.input_notes {
+            input_note_commitments.extend(input_notes.into_iter().map(InputNoteCommitment::from));
+        }
+        if let Some(nullifiers) = self.nullifiers {
+            input_note_commitments.extend(nullifiers.into_iter().map(Into::into));
+        }
+
+        ProvenTransaction::new(
             self.account_id,
             self.initial_account_commitment,
             self.final_account_commitment,
             Word::empty(),
+            AccountUpdateDetails::Private,
+            input_note_commitments,
+            self.output_notes.unwrap_or_default(),
             BlockNumber::from(0),
             self.ref_block_commitment.unwrap_or_default(),
             self.fee,
             self.expiration_block_num,
             ExecutionProof::new_dummy(),
         )
-        .add_input_notes(self.input_notes.unwrap_or_default())
-        .add_input_notes(self.nullifiers.unwrap_or_default())
-        .add_output_notes(self.output_notes.unwrap_or_default())
-        .build()
         .context("failed to build proven transaction")
     }
 }
