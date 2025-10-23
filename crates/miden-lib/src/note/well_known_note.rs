@@ -261,9 +261,9 @@ impl WellKnownNote {
                 // if the target account is not the sender of the note or the receiver (from the
                 // note's inputs), then this account cannot consume the note
                 if ![input_account_id, note.metadata().sender()].contains(&target_account_id) {
-                    return Ok(Some(NoteConsumptionStatus::NeverConsumable(
-                        "target account of the transaction does not match neither the receiver account specified by the P2IDE inputs, nor the sender account".into()
-                    )));
+                    return Err(StaticAnalysisError::new(
+                        "transaction target account doesn't match neither the receiver account specified by the P2IDE inputs, nor the sender account",
+                    ));
                 }
 
                 let reclaim_height = u32::try_from(note_inputs[2]).map_err(|_err| {
@@ -312,18 +312,24 @@ impl WellKnownNote {
                 } else {
                     // Receiver doesn't care what is the height of the reclaim block, so it should
                     // be only checked whether the timelock height is greater than the current block
-                    // height or not (`Receiver` column of the last two rows in the table)
+                    // height or not.
+                    //
+                    // Return timelock if it is greater than the current block height (third row,
+                    // `Receiver` column in the table).
                     if timelock_height > current_block_height {
                         Ok(Some(NoteConsumptionStatus::ConsumableAfter(BlockNumber::from(
                             timelock_height,
                         ))))
                     } else {
+                        // Return `None` if the current block height is greater or equal to the
+                        // timelock height (fourth row, `Receiver` column in the table).
                         Ok(None)
                     }
                 }
             },
 
-            // if the note is `SWAP`, try to execute it to determine whether it could be consumed
+            // the consumption status of the `SWAP` note cannot be determined by the static
+            // analysis, further checks are necessary.
             _ => Ok(None),
         }
     }
@@ -375,7 +381,7 @@ pub enum NoteConsumptionStatus {
 }
 
 #[derive(thiserror::Error, Debug)]
-#[error("failed to perform note static analysis: {message}")]
+#[error("{message}")]
 struct StaticAnalysisError {
     /// Stack size of `Box<str>` is smaller than String.
     message: Box<str>,
