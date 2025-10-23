@@ -74,7 +74,8 @@ impl LocalTransactionProver {
         let pre_fee_delta_commitment: Word = pre_fee_account_delta.to_commitment();
 
         // Collect input notes as commitments
-        let input_note_commitments: Vec<_> = input_notes.iter().map(InputNoteCommitment::from).collect();
+        let input_note_commitments: Vec<_> =
+            input_notes.iter().map(InputNoteCommitment::from).collect();
 
         // Determine account update details
         let account_id = account.id();

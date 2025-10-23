@@ -424,13 +424,14 @@ impl Deserializable for ProposedBatch {
 
 #[cfg(test)]
 mod tests {
+    use alloc::vec::Vec;
+
     use anyhow::Context;
     use miden_crypto::merkle::{Mmr, PartialMmr};
     use miden_verifier::ExecutionProof;
     use winter_rand_utils::rand_value;
 
     use super::*;
-    use alloc::vec::Vec;
     use crate::Word;
     use crate::account::delta::AccountUpdateDetails;
     use crate::account::{AccountIdVersion, AccountStorageMode, AccountType};
