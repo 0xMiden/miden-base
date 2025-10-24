@@ -35,7 +35,7 @@
 - [BREAKING] Change `Account` to `PartialAccount` conversion to generally track only minimal data ([#1963]https://github.com/0xMiden/miden-base/pull/1963).
 - Added `AccountTree::apply_mutations_with_reversions` ([#2002](https://github.com/0xMiden/miden-base/pull/2002)).
 - Added `Display` trait for `AddressInterface` ([#2016](https://github.com/0xMiden/miden-base/pull/2016)).
-- Added `has_procedure` procedure to the `miden::account` module ([]()).
+- Added `has_procedure` procedure to the `miden::account` module ([#2017](https://github.com/0xMiden/miden-base/pull/2017)).
 
 ### Changes
 
