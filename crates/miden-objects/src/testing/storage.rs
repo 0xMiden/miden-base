@@ -23,8 +23,8 @@ use crate::utils::sync::LazyLock;
 
 #[derive(Clone, Debug, Default)]
 pub struct AccountStorageDeltaBuilder {
-    values: BTreeMap<u8, Word>,
-    maps: BTreeMap<u8, StorageMapDelta>,
+    values: BTreeMap<SlotName, Word>,
+    maps: BTreeMap<SlotName, StorageMapDelta>,
 }
 
 impl AccountStorageDeltaBuilder {
@@ -41,19 +41,19 @@ impl AccountStorageDeltaBuilder {
     // MODIFIERS
     // -------------------------------------------------------------------------------------------
 
-    pub fn add_cleared_items(mut self, items: impl IntoIterator<Item = u8>) -> Self {
+    pub fn add_cleared_items(mut self, items: impl IntoIterator<Item = SlotName>) -> Self {
         self.values.extend(items.into_iter().map(|slot| (slot, EMPTY_WORD)));
         self
     }
 
-    pub fn add_updated_values(mut self, items: impl IntoIterator<Item = (u8, Word)>) -> Self {
+    pub fn add_updated_values(mut self, items: impl IntoIterator<Item = (SlotName, Word)>) -> Self {
         self.values.extend(items);
         self
     }
 
     pub fn add_updated_maps(
         mut self,
-        items: impl IntoIterator<Item = (u8, StorageMapDelta)>,
+        items: impl IntoIterator<Item = (SlotName, StorageMapDelta)>,
     ) -> Self {
         self.maps.extend(items);
         self
@@ -69,8 +69,6 @@ impl AccountStorageDeltaBuilder {
 
 // CONSTANTS
 // ================================================================================================
-
-pub const FAUCET_STORAGE_DATA_SLOT: u8 = 0;
 
 pub static SLOT_NAME_VALUE0: LazyLock<SlotName> =
     LazyLock::new(|| SlotName::new("miden::test::value0").expect("slot name should be valid"));

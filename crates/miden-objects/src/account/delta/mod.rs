@@ -147,16 +147,18 @@ impl AccountDelta {
     ///       assets since `faucet_id_prefix` is at the same position in the layout for both assets,
     ///       and, by design, it is never the same for fungible and non-fungible assets.
     ///     - Append `[hash0, hash1, hash2, faucet_id_prefix]`, i.e. the non-fungible asset.
-    /// - Storage Slots - for each slot **whose value has changed**, depending on the slot type:
+    /// - Storage Slots are sorted by slot name ID and are iterated in this order. For each slot
+    ///   **whose value has changed**, depending on the slot type:
     ///   - Value Slot
-    ///     - Append `[[domain = 2, slot_idx, 0, 0], NEW_VALUE]` where NEW_VALUE is the new value of
-    ///       the slot and slot_idx is the index of the slot.
+    ///     - Append `[[domain = 2, 0, name_id_suffix, name_id_prefix], NEW_VALUE]` where
+    ///       `NEW_VALUE` is the new value of the slot and `name_id_{suffix, prefix}` are the slot
+    ///       name identifiers of the slot.
     ///   - Map Slot
     ///     - For each key-value pair, sorted by key, whose new value is different from the previous
     ///       value in the map:
     ///       - Append `[KEY, NEW_VALUE]`.
-    ///     - Append `[[domain = 3, slot_idx, num_changed_entries, 0], 0, 0, 0, 0]`, except if
-    ///       `num_changed_entries` is 0, where slot_idx is the index of the slot and
+    ///     - Append `[[domain = 3, num_changed_entries, name_id_suffix, name_id_prefix], 0, 0, 0,
+    ///       0]`, where `name_id_{suffix, prefix}` are the slot name identifiers and
     ///       `num_changed_entries` is the number of changed key-value pairs in the map.
     ///
     /// # Rationale
@@ -192,6 +194,8 @@ impl AccountDelta {
     ///     inclusion of the slot index.
     ///
     /// **Domain Separators**
+    ///
+    /// TODO(named_slots): Replace slot_idx in examples with name ID.
     ///
     /// As an example for ambiguity, consider these two deltas:
     ///

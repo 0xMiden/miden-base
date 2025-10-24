@@ -196,6 +196,8 @@ impl AccountStorage {
         )
     }
 
+    /// Returns a reference to the storage slot with the provided name, if it exists, `None`
+    /// otherwise.
     pub fn get(&self, slot_name: &SlotName) -> Option<&NamedStorageSlot> {
         debug_assert!(self.slots.is_sorted());
 
@@ -216,27 +218,29 @@ impl AccountStorage {
 
     /// Returns an item from the storage at the specified index.
     ///
-    /// # Errors:
-    /// - If the index is out of bounds
-    pub fn get_item(&self, index: u8) -> Result<Word, AccountError> {
-        let slot_name = SlotName::new_index(index as usize);
-        self.get(&slot_name)
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - A slot with the provided name does not exist.
+    pub fn get_item(&self, slot_name: &SlotName) -> Result<Word, AccountError> {
+        self.get(slot_name)
             .map(|named_slot| named_slot.storage_slot().value())
             .ok_or_else(|| AccountError::StorageSlotNameNotFound { slot_name: slot_name.clone() })
     }
 
     /// Returns a map item from a map located in storage at the specified index.
     ///
-    /// # Errors:
-    /// - If the index is out of bounds
-    /// - If the [StorageSlot] is not [StorageSlotType::Map]
-    pub fn get_map_item(&self, index: u8, key: Word) -> Result<Word, AccountError> {
-        let slot_name = SlotName::new_index(index as usize);
-        self.get(&slot_name)
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - A slot with the provided name does not exist.
+    /// - If the [`StorageSlot`] is not [`StorageSlotType::Map`].
+    pub fn get_map_item(&self, slot_name: &SlotName, key: Word) -> Result<Word, AccountError> {
+        self.get(slot_name)
             .ok_or_else(|| AccountError::StorageSlotNameNotFound { slot_name: slot_name.clone() })
             .and_then(|named_slot| match named_slot.storage_slot() {
                 StorageSlot::Map(map) => Ok(map.get(&key)),
-                _ => Err(AccountError::StorageSlotNotMap(index)),
+                _ => Err(AccountError::StorageSlotNotMap(slot_name.clone())),
             })
     }
 
@@ -245,28 +249,28 @@ impl AccountStorage {
 
     /// Applies the provided delta to this account storage.
     ///
-    /// # Errors:
-    /// - If the updates violate storage constraints.
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The updates violate storage constraints.
     pub(super) fn apply_delta(&mut self, delta: &AccountStorageDelta) -> Result<(), AccountError> {
-        let len = self.slots.len() as u8;
+        // Update storage values
+        for (slot_name, &value) in delta.values().iter() {
+            self.set_item(slot_name, value)?;
+        }
 
-        // update storage maps
-        for (&idx, map) in delta.maps().iter() {
+        // Update storage maps
+        for (slot_name, map_delta) in delta.maps().iter() {
             let named_slot = self
-                .get_mut(&SlotName::new_index(idx as usize))
-                .ok_or(AccountError::StorageIndexOutOfBounds { slots_len: len, index: idx })?;
+                .get_mut(slot_name)
+                .ok_or(AccountError::StorageSlotNameNotFound { slot_name: slot_name.clone() })?;
 
             let storage_map = match named_slot.storage_slot_mut() {
                 StorageSlot::Map(map) => map,
-                _ => return Err(AccountError::StorageSlotNotMap(idx)),
+                _ => return Err(AccountError::StorageSlotNotMap(slot_name.clone())),
             };
 
-            storage_map.apply_delta(map)?;
-        }
-
-        // update storage values
-        for (&idx, &value) in delta.values().iter() {
-            self.set_item(idx, value)?;
+            storage_map.apply_delta(map_delta)?;
         }
 
         Ok(())
@@ -275,19 +279,20 @@ impl AccountStorage {
     /// Updates the value of the storage slot at the specified index.
     ///
     /// This method should be used only to update value slots. For updating values
-    /// in storage maps, please see [AccountStorage::set_map_item()].
+    /// in storage maps, please see [`AccountStorage::set_map_item`].
     ///
-    /// # Errors:
-    /// - If the index is out of bounds
-    /// - If the [StorageSlot] is not [StorageSlotType::Value]
-    pub fn set_item(&mut self, index: u8, value: Word) -> Result<Word, AccountError> {
-        let slot_name = SlotName::new_index(index as usize);
-        let slot = self.get_mut(&slot_name).ok_or_else(|| {
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - A slot with the provided name does not exist.
+    /// - The [`StorageSlot`] is not [`StorageSlotType::Value`].
+    pub fn set_item(&mut self, slot_name: &SlotName, value: Word) -> Result<Word, AccountError> {
+        let slot = self.get_mut(slot_name).ok_or_else(|| {
             AccountError::StorageSlotNameNotFound { slot_name: slot_name.clone() }
         })?;
 
         let StorageSlot::Value(old_value) = slot.storage_slot() else {
-            return Err(AccountError::StorageSlotNotValue(index));
+            return Err(AccountError::StorageSlotNotValue(slot_name.clone()));
         };
         let old_value = *old_value;
 
@@ -302,22 +307,23 @@ impl AccountStorage {
     /// This method should be used only to update storage maps. For updating values
     /// in storage slots, please see [AccountStorage::set_item()].
     ///
-    /// # Errors:
-    /// - If the index is out of bounds
-    /// - If the [StorageSlot] is not [StorageSlotType::Map]
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - A slot with the provided name does not exist.
+    /// - If the [`StorageSlot`] is not [`StorageSlotType::Map`].
     pub fn set_map_item(
         &mut self,
-        index: u8,
+        slot_name: &SlotName,
         raw_key: Word,
         value: Word,
     ) -> Result<(Word, Word), AccountError> {
-        let slot_name = SlotName::new_index(index as usize);
-        let slot = self.get_mut(&slot_name).ok_or_else(|| {
+        let slot = self.get_mut(slot_name).ok_or_else(|| {
             AccountError::StorageSlotNameNotFound { slot_name: slot_name.clone() }
         })?;
 
         let StorageSlot::Map(storage_map) = slot.storage_slot_mut() else {
-            return Err(AccountError::StorageSlotNotMap(index));
+            return Err(AccountError::StorageSlotNotMap(slot_name.clone()));
         };
 
         let old_root = storage_map.root();

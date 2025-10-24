@@ -141,10 +141,10 @@ pub enum AccountError {
     SeedConvertsToInvalidAccountId(#[source] AccountIdError),
     #[error("storage map root {0} not found in the account storage")]
     StorageMapRootNotFound(Word),
-    #[error("storage slot at index {0} is not of type map")]
-    StorageSlotNotMap(u8),
-    #[error("storage slot at index {0} is not of type value")]
-    StorageSlotNotValue(u8),
+    #[error("storage slot {0} is not of type map")]
+    StorageSlotNotMap(SlotName),
+    #[error("storage slot {0} is not of type value")]
+    StorageSlotNotValue(SlotName),
     #[error("storage slot index is {index} but the slots length is {slots_len}")]
     StorageIndexOutOfBounds { slots_len: u8, index: u8 },
     #[error(
@@ -329,7 +329,7 @@ pub enum AccountDeltaError {
     )]
     StorageSlotIndexOutOfBounds { slot_index: u8, num_slots: u8 },
     #[error("storage slot {0} was updated as a value and as a map")]
-    StorageSlotUsedAsDifferentTypes(u8),
+    StorageSlotUsedAsDifferentTypes(SlotName),
     #[error("non fungible vault can neither be added nor removed twice")]
     DuplicateNonFungibleVaultUpdate(NonFungibleAsset),
     #[error(

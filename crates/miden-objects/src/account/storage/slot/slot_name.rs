@@ -34,7 +34,7 @@ use crate::{Felt, FieldElement};
 /// - Each component must only consist of the characters `a` to `z`, `A` to `Z`, `0` to `9` or `_`
 ///   (underscore).
 /// - Each component must not start with an underscore.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SlotName {
     name: Cow<'static, str>,
 }
@@ -225,6 +225,19 @@ impl SlotName {
     /// Returns `true` if the given byte is a valid slot name character, `false` otherwise.
     const fn is_valid_char(byte: u8) -> bool {
         byte.is_ascii_alphanumeric() || byte == b'_'
+    }
+}
+
+impl Ord for SlotName {
+    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+        // TODO(named_slots): Cache ID in SlotName for efficiency.
+        self.compute_id().cmp(&other.compute_id())
+    }
+}
+
+impl PartialOrd for SlotName {
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+        Some(self.cmp(other))
     }
 }
 

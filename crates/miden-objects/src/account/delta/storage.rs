@@ -12,6 +12,8 @@ use super::{
     Serializable,
     Word,
 };
+#[cfg(any(feature = "testing", test))]
+use crate::account::SlotName;
 use crate::account::StorageMap;
 use crate::{EMPTY_WORD, Felt, LexicographicWord, ZERO};
 
@@ -28,9 +30,9 @@ use crate::{EMPTY_WORD, Felt, LexicographicWord, ZERO};
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AccountStorageDelta {
     /// The updates to the value slots of the account.
-    values: BTreeMap<u8, Word>,
+    values: BTreeMap<SlotName, Word>,
     /// The updates to the map slots of the account.
-    maps: BTreeMap<u8, StorageMapDelta>,
+    maps: BTreeMap<SlotName, StorageMapDelta>,
 }
 
 impl AccountStorageDelta {
@@ -50,8 +52,8 @@ impl AccountStorageDelta {
     /// - Any of the updated slot is referenced from both maps, which means a slot is treated as
     ///   both a value and a map slot.
     pub fn from_parts(
-        values: BTreeMap<u8, Word>,
-        maps: BTreeMap<u8, StorageMapDelta>,
+        values: BTreeMap<SlotName, Word>,
+        maps: BTreeMap<SlotName, StorageMapDelta>,
     ) -> Result<Self, AccountDeltaError> {
         let delta = Self { values, maps };
         delta.validate()?;
@@ -60,12 +62,12 @@ impl AccountStorageDelta {
     }
 
     /// Returns a reference to the updated values in this storage delta.
-    pub fn values(&self) -> &BTreeMap<u8, Word> {
+    pub fn values(&self) -> &BTreeMap<SlotName, Word> {
         &self.values
     }
 
     /// Returns a reference to the updated maps in this storage delta.
-    pub fn maps(&self) -> &BTreeMap<u8, StorageMapDelta> {
+    pub fn maps(&self) -> &BTreeMap<SlotName, StorageMapDelta> {
         &self.maps
     }
 
@@ -75,12 +77,12 @@ impl AccountStorageDelta {
     }
 
     /// Tracks a slot change
-    pub fn set_item(&mut self, slot_index: u8, new_slot_value: Word) {
+    pub fn set_item(&mut self, slot_index: SlotName, new_slot_value: Word) {
         self.values.insert(slot_index, new_slot_value);
     }
 
     /// Tracks a map item change
-    pub fn set_map_item(&mut self, slot_index: u8, key: Word, new_value: Word) {
+    pub fn set_map_item(&mut self, slot_index: SlotName, key: Word, new_value: Word) {
         self.maps.entry(slot_index).or_default().insert(key, new_value);
     }
 
@@ -111,7 +113,7 @@ impl AccountStorageDelta {
     fn validate(&self) -> Result<(), AccountDeltaError> {
         for slot in self.maps.keys() {
             if self.values.contains_key(slot) {
-                return Err(AccountDeltaError::StorageSlotUsedAsDifferentTypes(*slot));
+                return Err(AccountDeltaError::StorageSlotUsedAsDifferentTypes(slot.clone()));
             }
         }
 
@@ -119,12 +121,12 @@ impl AccountStorageDelta {
     }
 
     /// Returns an iterator of all the cleared storage slots.
-    fn cleared_slots(&self) -> impl Iterator<Item = u8> + '_ {
-        self.values.iter().filter(|&(_, value)| value.is_empty()).map(|(slot, _)| *slot)
+    fn cleared_values(&self) -> impl Iterator<Item = &SlotName> {
+        self.values.iter().filter(|&(_, value)| value.is_empty()).map(|(slot, _)| slot)
     }
 
     /// Returns an iterator of all the updated storage slots.
-    fn updated_slots(&self) -> impl Iterator<Item = (&u8, &Word)> + '_ {
+    fn updated_values(&self) -> impl Iterator<Item = (&SlotName, &Word)> {
         self.values.iter().filter(|&(_, value)| !value.is_empty())
     }
 
@@ -134,51 +136,63 @@ impl AccountStorageDelta {
         const DOMAIN_VALUE: Felt = Felt::new(2);
         const DOMAIN_MAP: Felt = Felt::new(3);
 
-        let highest_value_slot_idx = self.values.last_key_value().map(|(slot_idx, _)| slot_idx);
-        let highest_map_slot_idx = self.maps.last_key_value().map(|(slot_idx, _)| slot_idx);
-        let highest_slot_idx =
-            highest_value_slot_idx.max(highest_map_slot_idx).copied().unwrap_or(0);
+        // Merge slots into a single map to sort them by slot name.
+        let mut sorted_slots: BTreeMap<&SlotName, StorageSlotDelta> = self
+            .values()
+            .iter()
+            .map(|(name, value)| (name, StorageSlotDelta::Value(*value)))
+            .collect();
+        sorted_slots.extend(
+            self.maps()
+                .iter()
+                .map(|(name, map_delta)| (name, StorageSlotDelta::Map(map_delta))),
+        );
 
-        for slot_idx in 0..=highest_slot_idx {
-            let slot_idx_felt = Felt::from(slot_idx);
+        // The storage delta ensures that the value slots and map slots do not have overlapping
+        // slot names, so the number of entries should be identical after merging.
+        debug_assert_eq!(sorted_slots.len(), self.values.len() + self.maps.len());
 
-            // The storage delta ensures that the value slots and map slots do not have overlapping
-            // slot indices, so at most one of them will return `Some` for a given slot index.
-            match self.values.get(&slot_idx) {
-                Some(new_value) => {
-                    elements.extend_from_slice(&[DOMAIN_VALUE, slot_idx_felt, ZERO, ZERO]);
+        for (slot_name, slot_delta) in sorted_slots {
+            let name_id = slot_name.compute_id();
+
+            match slot_delta {
+                StorageSlotDelta::Value(new_value) => {
+                    elements.extend_from_slice(&[
+                        DOMAIN_VALUE,
+                        ZERO,
+                        name_id.suffix(),
+                        name_id.prefix(),
+                    ]);
                     elements.extend_from_slice(new_value.as_elements());
                 },
-                None => {
-                    if let Some(map_delta) = self.maps().get(&slot_idx) {
-                        if map_delta.is_empty() {
-                            continue;
-                        }
-
-                        for (key, value) in map_delta.entries() {
-                            elements.extend_from_slice(key.inner().as_elements());
-                            elements.extend_from_slice(value.as_elements());
-                        }
-
-                        let num_changed_entries = Felt::try_from(map_delta.num_entries()).expect(
-                            "number of changed entries should not exceed max representable felt",
-                        );
-
-                        elements.extend_from_slice(&[
-                            DOMAIN_MAP,
-                            slot_idx_felt,
-                            num_changed_entries,
-                            ZERO,
-                        ]);
-                        elements.extend_from_slice(EMPTY_WORD.as_elements());
+                StorageSlotDelta::Map(map_delta) => {
+                    if map_delta.is_empty() {
+                        continue;
                     }
+
+                    for (key, value) in map_delta.entries() {
+                        elements.extend_from_slice(key.inner().as_elements());
+                        elements.extend_from_slice(value.as_elements());
+                    }
+
+                    let num_changed_entries = Felt::try_from(map_delta.num_entries()).expect(
+                        "number of changed entries should not exceed max representable felt",
+                    );
+
+                    elements.extend_from_slice(&[
+                        DOMAIN_MAP,
+                        num_changed_entries,
+                        name_id.suffix(),
+                        name_id.prefix(),
+                    ]);
+                    elements.extend_from_slice(EMPTY_WORD.as_elements());
                 },
             }
         }
     }
 
     /// Consumes self and returns the underlying parts of the storage delta.
-    pub fn into_parts(self) -> (BTreeMap<u8, Word>, BTreeMap<u8, StorageMapDelta>) {
+    pub fn into_parts(self) -> (BTreeMap<SlotName, Word>, BTreeMap<SlotName, StorageMapDelta>) {
         (self.values, self.maps)
     }
 }
@@ -193,9 +207,9 @@ impl Default for AccountStorageDelta {
 impl AccountStorageDelta {
     /// Creates an [AccountStorageDelta] from the given iterators.
     pub fn from_iters(
-        cleared_values: impl IntoIterator<Item = u8>,
-        updated_values: impl IntoIterator<Item = (u8, Word)>,
-        updated_maps: impl IntoIterator<Item = (u8, StorageMapDelta)>,
+        cleared_values: impl IntoIterator<Item = SlotName>,
+        updated_values: impl IntoIterator<Item = (SlotName, Word)>,
+        updated_maps: impl IntoIterator<Item = (SlotName, StorageMapDelta)>,
     ) -> Self {
         Self {
             values: BTreeMap::from_iter(
@@ -208,14 +222,19 @@ impl AccountStorageDelta {
 
 impl Serializable for AccountStorageDelta {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        let cleared: Vec<u8> = self.cleared_slots().collect();
-        let updated: Vec<(&u8, &Word)> = self.updated_slots().collect();
+        let num_cleared = self.cleared_values().count();
+        let num_cleared = u8::try_from(num_cleared).expect("number of slots should fit in u8");
+        let cleared = self.cleared_values();
 
-        target.write_u8(cleared.len() as u8);
-        target.write_many(cleared.iter());
+        let num_updated = self.updated_values().count();
+        let num_updated = u8::try_from(num_updated).expect("number of slots should fit in u8");
+        let updated = self.updated_values();
 
-        target.write_u8(updated.len() as u8);
-        target.write_many(updated.iter());
+        target.write_u8(num_cleared);
+        target.write_many(cleared);
+
+        target.write_u8(num_updated);
+        target.write_many(updated);
 
         target.write_u8(self.maps.len() as u8);
         target.write_many(self.maps.iter());
@@ -223,7 +242,6 @@ impl Serializable for AccountStorageDelta {
 
     fn get_size_hint(&self) -> usize {
         let u8_size = 0u8.get_size_hint();
-        let word_size = EMPTY_WORD.get_size_hint();
 
         let mut storage_map_delta_size = 0;
         for (slot, storage_map_delta) in self.maps.iter() {
@@ -234,10 +252,12 @@ impl Serializable for AccountStorageDelta {
 
         // Length Prefixes
         u8_size * 3 +
-        // Cleared Slots
-        self.cleared_slots().count() * u8_size +
-        // Updated Slots
-        self.updated_slots().count() * (u8_size + word_size) +
+        // Cleared Values
+        self.cleared_values().fold(0, |acc, slot_name| acc + slot_name.get_size_hint()) +
+        // Updated Values
+        self.updated_values().fold(0, |acc, (slot_name, slot_value)| {
+            acc + slot_name.get_size_hint() + slot_value.get_size_hint()
+        }) +
         // Storage Map Delta
         storage_map_delta_size
     }
@@ -247,24 +267,34 @@ impl Deserializable for AccountStorageDelta {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let mut values = BTreeMap::new();
 
-        let num_cleared_items = source.read_u8()? as usize;
+        let num_cleared_items = source.read_u8()?;
         for _ in 0..num_cleared_items {
-            let cleared_slot = source.read_u8()?;
-            values.insert(cleared_slot, EMPTY_WORD);
+            let cleared_value: SlotName = source.read()?;
+            values.insert(cleared_value, EMPTY_WORD);
         }
 
-        let num_updated_items = source.read_u8()? as usize;
+        let num_updated_items = source.read_u8()?;
         for _ in 0..num_updated_items {
             let (updated_slot, updated_value) = source.read()?;
             values.insert(updated_slot, updated_value);
         }
 
         let num_maps = source.read_u8()? as usize;
-        let maps = source.read_many::<(u8, StorageMapDelta)>(num_maps)?.into_iter().collect();
+        let maps = source.read_many::<(SlotName, StorageMapDelta)>(num_maps)?.into_iter().collect();
 
         Self::from_parts(values, maps)
             .map_err(|err| DeserializationError::InvalidValue(err.to_string()))
     }
+}
+
+// STORAGE SLOT DELTA
+// ================================================================================================
+
+/// The delta of a single storage slot.
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum StorageSlotDelta<'map> {
+    Value(Word),
+    Map(&'map StorageMapDelta),
 }
 
 // STORAGE MAP DELTA

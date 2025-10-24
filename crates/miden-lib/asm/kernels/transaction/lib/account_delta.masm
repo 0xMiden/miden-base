@@ -104,6 +104,8 @@ end
 #! Inputs:  [RATE, RATE, PERM]
 #! Outputs: [RATE, RATE, PERM]
 proc.update_storage_delta
+    push.0 assert.err="TODO(named_slots): update_storage_delta unimplemented"
+
     exec.memory::get_num_storage_slots movdn.12
     # => [RATE, RATE, PERM, num_storage_slots]
 
