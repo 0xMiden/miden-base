@@ -48,7 +48,7 @@ Users can choose whether their accounts are stored publicly or privately. The pr
 An `Account` ID can be encoded in different formats:
 
 1. [**Bech32**](https://github.com/bitcoin/bips/blob/master/bip-0173.mediawiki) (user-facing):
-   - Example: `mm1qzqge9n53l5dpyqav7y0d2j0ggl3dc9m`
+   - Example: `mm1qrt4skk6t26a9vquwlad3rq2usul8fy2`
    - **Benefits**:
      - Built-in error detection via checksum algorithm
      - Human-readable prefix indicates network type
@@ -63,6 +63,6 @@ An `Account` ID can be encoded in different formats:
      - Data part with integrated checksum
 
 2. **Hexadecimal**:
-   - Example: `0xd345c9766a2d5e606477a5676b049a`
+   - Example: `0xd7585ada5ab5d2b01c77fad88c0ae4`
    - Frequently used encoding for blockchain addresses
    - Used to identify accounts in command-line interfaces or explorers.

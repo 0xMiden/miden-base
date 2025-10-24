@@ -22,6 +22,7 @@ use miden_core::utils::{ByteReader, Deserializable, Serializable};
 use miden_crypto::utils::hex_to_bytes;
 use miden_processor::DeserializationError;
 
+use crate::address::NetworkId;
 use crate::errors::AccountIdError;
 use crate::{AccountError, Word};
 
@@ -288,8 +289,8 @@ impl AccountId {
     /// This is an example of an account ID in hex and bech32 representations:
     ///
     /// ```text
-    /// hex:    0x140fa04a1e61fc100000126ef8f1d6
-    /// bech32: mm1qq2qlgz2reslcyqqqqfxa7836chrjcvk
+    /// hex:    0xd7585ada5ab5d2b01c77fad88c0ae4
+    /// bech32: mm1qrt4skk6t26a9vquwlad3rq2usul8fy2
     /// ```
     ///
     /// ## Rationale
@@ -483,12 +484,14 @@ impl Deserializable for AccountId {
 
 #[cfg(test)]
 mod tests {
+    use alloc::boxed::Box;
+
     use assert_matches::assert_matches;
-    use bech32::{Bech32, Bech32m, Hrp, NoChecksum};
+    use bech32::{Bech32, Bech32m, NoChecksum};
 
     use super::*;
     use crate::account::account_id::v0::{extract_storage_mode, extract_type, extract_version};
-    use crate::address::AddressType;
+    use crate::address::{AddressType, CustomNetworkId};
     use crate::errors::Bech32Error;
     use crate::testing::account_id::{
         ACCOUNT_ID_NETWORK_NON_FUNGIBLE_FAUCET,
@@ -497,6 +500,7 @@ mod tests {
         ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
         ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
+        AccountIdBuilder,
     };
 
     #[test]
@@ -522,36 +526,38 @@ mod tests {
     }
 
     #[test]
-    fn bech32_encode_decode_roundtrip() {
+    fn bech32_encode_decode_roundtrip() -> anyhow::Result<()> {
         // We use this to check that encoding does not panic even when using the longest possible
         // HRP.
         let longest_possible_hrp =
             "01234567890123456789012345678901234567890123456789012345678901234567890123456789012";
         assert_eq!(longest_possible_hrp.len(), 83);
 
+        let random_id = AccountIdBuilder::new().build_with_rng(&mut rand::rng());
+
         for network_id in [
             NetworkId::Mainnet,
-            NetworkId::Custom(Hrp::parse("custom").unwrap()),
-            NetworkId::Custom(Hrp::parse(longest_possible_hrp).unwrap()),
+            NetworkId::Custom(Box::new("custom".parse::<CustomNetworkId>()?)),
+            NetworkId::Custom(Box::new(longest_possible_hrp.parse::<CustomNetworkId>()?)),
         ] {
-            for (idx, account_id) in [
+            for account_id in [
                 ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
                 ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
                 ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
                 ACCOUNT_ID_PRIVATE_NON_FUNGIBLE_FAUCET,
                 ACCOUNT_ID_PRIVATE_SENDER,
+                random_id.into(),
             ]
             .into_iter()
-            .enumerate()
             {
                 let account_id = AccountId::try_from(account_id).unwrap();
 
-                let bech32_string = account_id.to_bech32(network_id);
+                let bech32_string = account_id.to_bech32(network_id.clone());
                 let (decoded_network_id, decoded_account_id) =
                     AccountId::from_bech32(&bech32_string).unwrap();
 
-                assert_eq!(network_id, decoded_network_id, "network id failed in {idx}");
-                assert_eq!(account_id, decoded_account_id, "account id failed in {idx}");
+                assert_eq!(network_id, decoded_network_id, "network id failed for {account_id}",);
+                assert_eq!(account_id, decoded_account_id, "account id failed for {account_id}");
 
                 let (_, data) = bech32::decode(&bech32_string).unwrap();
 
@@ -567,6 +573,8 @@ mod tests {
                 );
             }
         }
+
+        Ok(())
     }
 
     #[test]
