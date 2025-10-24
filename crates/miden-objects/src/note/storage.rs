@@ -115,7 +115,7 @@ impl TryFrom<Vec<Felt>> for NoteStorage {
 // HELPER FUNCTIONS
 // ================================================================================================
 
-/// Returns a vector with built from the provided storage values and padded to the next multiple of
+/// Returns a vector built from the provided storage values and padded to the next multiple of
 /// 8.
 fn pad_storage(storage_values: &[Felt]) -> Vec<Felt> {
     const BLOCK_SIZE: usize = WORD_SIZE * 2;

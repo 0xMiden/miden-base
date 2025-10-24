@@ -121,22 +121,22 @@ end
 
 #! Returns the RECIPIENT for a specified SERIAL_NUM, SCRIPT_ROOT, and inputs commitment.
 #!
-#! Inputs:  [SERIAL_NUM, SCRIPT_ROOT, STORGAGE_COMMITMENT]
+#! Inputs:  [SERIAL_NUM, SCRIPT_ROOT, STORAGE_COMMITMENT]
 #! Outputs: [RECIPIENT]
 #!
 #! Where:
 #! - SERIAL_NUM is the serial number of the recipient.
 #! - SCRIPT_ROOT is the commitment of the note script.
-#! - STORGAGE_COMMITMENT is the commitment of the note storage.
+#! - STORAGE_COMMITMENT is the commitment of the note storage.
 #! - RECIPIENT is the recipient of the note.
 #!
 #! Invocation: exec
 export.build_recipient_hash
     padw hmerge
-    # => [SERIAL_NUM_HASH, SCRIPT_ROOT, STORGAGE_COMMITMENT]
+    # => [SERIAL_NUM_HASH, SCRIPT_ROOT, STORAGE_COMMITMENT]
 
     swapw hmerge
-    # => [MERGE_SCRIPT, STORGAGE_COMMITMENT]
+    # => [MERGE_SCRIPT, STORAGE_COMMITMENT]
 
     swapw hmerge
     # [RECIPIENT]
