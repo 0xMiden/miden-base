@@ -60,8 +60,7 @@ end
 #! This procedure retrieves the asset from the active note and burns it. The note must contain
 #! exactly one asset, which must be a fungible asset issued by this faucet.
 #!
-#! This is a re-export of basic_fungible::burn since both procedures now have identical
-#! functionality.
+#! This is a re-export of basic_fungible::burn.
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [pad(16)]
