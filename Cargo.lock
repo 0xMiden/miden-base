@@ -1343,10 +1343,11 @@ dependencies = [
 
 [[package]]
 name = "miden-air"
-version = "0.18.1"
-source = "git+https://github.com/0xMiden/miden-vm?rev=61e58a8d8ed05d09375723c341e5184e8ebcbdb9#61e58a8d8ed05d09375723c341e5184e8ebcbdb9"
+version = "0.18.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "28b72121bacf147becf7eadcfc7bcd62d41c1e97c0d2cfdc1fd5dba2531721a8"
 dependencies = [
- "miden-core 0.18.1",
+ "miden-core 0.18.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "thiserror",
  "winter-air",
  "winter-prover",
@@ -1355,10 +1356,9 @@ dependencies = [
 [[package]]
 name = "miden-air"
 version = "0.18.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "28b72121bacf147becf7eadcfc7bcd62d41c1e97c0d2cfdc1fd5dba2531721a8"
+source = "git+https://github.com/0xMiden/miden-vm?branch=pgackst-find-half-key#eaa2c3016f4d9f9fe5a3c1ba087965fe3ce0a1e3"
 dependencies = [
- "miden-core 0.18.2",
+ "miden-core 0.18.2 (git+https://github.com/0xMiden/miden-vm?branch=pgackst-find-half-key)",
  "thiserror",
  "winter-air",
  "winter-prover",
@@ -1366,12 +1366,12 @@ dependencies = [
 
 [[package]]
 name = "miden-assembly"
-version = "0.18.1"
-source = "git+https://github.com/0xMiden/miden-vm?rev=61e58a8d8ed05d09375723c341e5184e8ebcbdb9#61e58a8d8ed05d09375723c341e5184e8ebcbdb9"
+version = "0.18.2"
+source = "git+https://github.com/0xMiden/miden-vm?branch=pgackst-find-half-key#eaa2c3016f4d9f9fe5a3c1ba087965fe3ce0a1e3"
 dependencies = [
  "log",
  "miden-assembly-syntax",
- "miden-core 0.18.1",
+ "miden-core 0.18.2 (git+https://github.com/0xMiden/miden-vm?branch=pgackst-find-half-key)",
  "miden-mast-package",
  "smallvec",
  "thiserror",
@@ -1379,15 +1379,15 @@ dependencies = [
 
 [[package]]
 name = "miden-assembly-syntax"
-version = "0.18.1"
-source = "git+https://github.com/0xMiden/miden-vm?rev=61e58a8d8ed05d09375723c341e5184e8ebcbdb9#61e58a8d8ed05d09375723c341e5184e8ebcbdb9"
+version = "0.18.2"
+source = "git+https://github.com/0xMiden/miden-vm?branch=pgackst-find-half-key#eaa2c3016f4d9f9fe5a3c1ba087965fe3ce0a1e3"
 dependencies = [
  "aho-corasick",
  "lalrpop",
  "lalrpop-util",
  "log",
- "miden-core 0.18.1",
- "miden-debug-types 0.18.1",
+ "miden-core 0.18.2 (git+https://github.com/0xMiden/miden-vm?branch=pgackst-find-half-key)",
+ "miden-debug-types 0.18.2 (git+https://github.com/0xMiden/miden-vm?branch=pgackst-find-half-key)",
  "miden-utils-diagnostics",
  "midenc-hir-type",
  "proptest",
@@ -1409,12 +1409,13 @@ dependencies = [
 
 [[package]]
 name = "miden-core"
-version = "0.18.1"
-source = "git+https://github.com/0xMiden/miden-vm?rev=61e58a8d8ed05d09375723c341e5184e8ebcbdb9#61e58a8d8ed05d09375723c341e5184e8ebcbdb9"
+version = "0.18.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "996f8d8e2a4dd4eef54225f6f116c73b14f03256bc23ea5d4260fe803dd103e2"
 dependencies = [
  "enum_dispatch",
  "miden-crypto",
- "miden-debug-types 0.18.1",
+ "miden-debug-types 0.18.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "miden-formatting",
  "num-derive",
  "num-traits",
@@ -1426,12 +1427,11 @@ dependencies = [
 [[package]]
 name = "miden-core"
 version = "0.18.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "996f8d8e2a4dd4eef54225f6f116c73b14f03256bc23ea5d4260fe803dd103e2"
+source = "git+https://github.com/0xMiden/miden-vm?branch=pgackst-find-half-key#eaa2c3016f4d9f9fe5a3c1ba087965fe3ce0a1e3"
 dependencies = [
  "enum_dispatch",
  "miden-crypto",
- "miden-debug-types 0.18.2",
+ "miden-debug-types 0.18.2 (git+https://github.com/0xMiden/miden-vm?branch=pgackst-find-half-key)",
  "miden-formatting",
  "num-derive",
  "num-traits",
@@ -1470,14 +1470,15 @@ dependencies = [
 
 [[package]]
 name = "miden-debug-types"
-version = "0.18.1"
-source = "git+https://github.com/0xMiden/miden-vm?rev=61e58a8d8ed05d09375723c341e5184e8ebcbdb9#61e58a8d8ed05d09375723c341e5184e8ebcbdb9"
+version = "0.18.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3c24f4040fd3a5b714f2492c723b91dffe29b1af591d15f393dd102063725cd0"
 dependencies = [
  "memchr",
  "miden-crypto",
  "miden-formatting",
  "miden-miette",
- "miden-utils-sync 0.18.1",
+ "miden-utils-sync 0.18.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "paste",
  "serde",
  "serde_spanned",
@@ -1487,14 +1488,13 @@ dependencies = [
 [[package]]
 name = "miden-debug-types"
 version = "0.18.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3c24f4040fd3a5b714f2492c723b91dffe29b1af591d15f393dd102063725cd0"
+source = "git+https://github.com/0xMiden/miden-vm?branch=pgackst-find-half-key#eaa2c3016f4d9f9fe5a3c1ba087965fe3ce0a1e3"
 dependencies = [
  "memchr",
  "miden-crypto",
  "miden-formatting",
  "miden-miette",
- "miden-utils-sync 0.18.2",
+ "miden-utils-sync 0.18.2 (git+https://github.com/0xMiden/miden-vm?branch=pgackst-find-half-key)",
  "paste",
  "serde",
  "serde_spanned",
@@ -1519,7 +1519,7 @@ dependencies = [
  "assert_matches",
  "fs-err",
  "miden-assembly",
- "miden-core 0.18.1",
+ "miden-core 0.18.2 (git+https://github.com/0xMiden/miden-vm?branch=pgackst-find-half-key)",
  "miden-objects",
  "miden-processor",
  "miden-stdlib",
@@ -1531,12 +1531,12 @@ dependencies = [
 
 [[package]]
 name = "miden-mast-package"
-version = "0.18.1"
-source = "git+https://github.com/0xMiden/miden-vm?rev=61e58a8d8ed05d09375723c341e5184e8ebcbdb9#61e58a8d8ed05d09375723c341e5184e8ebcbdb9"
+version = "0.18.2"
+source = "git+https://github.com/0xMiden/miden-vm?branch=pgackst-find-half-key#eaa2c3016f4d9f9fe5a3c1ba087965fe3ce0a1e3"
 dependencies = [
  "derive_more",
  "miden-assembly-syntax",
- "miden-core 0.18.1",
+ "miden-core 0.18.2 (git+https://github.com/0xMiden/miden-vm?branch=pgackst-find-half-key)",
  "thiserror",
 ]
 
@@ -1593,15 +1593,15 @@ dependencies = [
  "criterion 0.5.1",
  "getrandom 0.3.3",
  "log",
- "miden-air 0.18.2",
+ "miden-air 0.18.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "miden-assembly",
  "miden-assembly-syntax",
- "miden-core 0.18.1",
+ "miden-core 0.18.2 (git+https://github.com/0xMiden/miden-vm?branch=pgackst-find-half-key)",
  "miden-crypto",
  "miden-mast-package",
  "miden-objects",
  "miden-processor",
- "miden-utils-sync 0.18.1",
+ "miden-utils-sync 0.18.2 (git+https://github.com/0xMiden/miden-vm?branch=pgackst-find-half-key)",
  "miden-verifier",
  "pprof",
  "rand",
@@ -1618,12 +1618,12 @@ dependencies = [
 
 [[package]]
 name = "miden-processor"
-version = "0.18.1"
-source = "git+https://github.com/0xMiden/miden-vm?rev=61e58a8d8ed05d09375723c341e5184e8ebcbdb9#61e58a8d8ed05d09375723c341e5184e8ebcbdb9"
+version = "0.18.2"
+source = "git+https://github.com/0xMiden/miden-vm?branch=pgackst-find-half-key#eaa2c3016f4d9f9fe5a3c1ba087965fe3ce0a1e3"
 dependencies = [
- "miden-air 0.18.1",
- "miden-core 0.18.1",
- "miden-debug-types 0.18.1",
+ "miden-air 0.18.2 (git+https://github.com/0xMiden/miden-vm?branch=pgackst-find-half-key)",
+ "miden-core 0.18.2 (git+https://github.com/0xMiden/miden-vm?branch=pgackst-find-half-key)",
+ "miden-debug-types 0.18.2 (git+https://github.com/0xMiden/miden-vm?branch=pgackst-find-half-key)",
  "miden-utils-diagnostics",
  "paste",
  "thiserror",
@@ -1634,11 +1634,11 @@ dependencies = [
 
 [[package]]
 name = "miden-prover"
-version = "0.18.1"
-source = "git+https://github.com/0xMiden/miden-vm?rev=61e58a8d8ed05d09375723c341e5184e8ebcbdb9#61e58a8d8ed05d09375723c341e5184e8ebcbdb9"
+version = "0.18.2"
+source = "git+https://github.com/0xMiden/miden-vm?branch=pgackst-find-half-key#eaa2c3016f4d9f9fe5a3c1ba087965fe3ce0a1e3"
 dependencies = [
- "miden-air 0.18.1",
- "miden-debug-types 0.18.1",
+ "miden-air 0.18.2 (git+https://github.com/0xMiden/miden-vm?branch=pgackst-find-half-key)",
+ "miden-debug-types 0.18.2 (git+https://github.com/0xMiden/miden-vm?branch=pgackst-find-half-key)",
  "miden-processor",
  "tracing",
  "winter-maybe-async",
@@ -1647,16 +1647,16 @@ dependencies = [
 
 [[package]]
 name = "miden-stdlib"
-version = "0.18.1"
-source = "git+https://github.com/0xMiden/miden-vm?rev=61e58a8d8ed05d09375723c341e5184e8ebcbdb9#61e58a8d8ed05d09375723c341e5184e8ebcbdb9"
+version = "0.18.2"
+source = "git+https://github.com/0xMiden/miden-vm?branch=pgackst-find-half-key#eaa2c3016f4d9f9fe5a3c1ba087965fe3ce0a1e3"
 dependencies = [
  "env_logger",
  "fs-err",
  "miden-assembly",
- "miden-core 0.18.1",
+ "miden-core 0.18.2 (git+https://github.com/0xMiden/miden-vm?branch=pgackst-find-half-key)",
  "miden-crypto",
  "miden-processor",
- "miden-utils-sync 0.18.1",
+ "miden-utils-sync 0.18.2 (git+https://github.com/0xMiden/miden-vm?branch=pgackst-find-half-key)",
  "thiserror",
 ]
 
@@ -1711,24 +1711,14 @@ dependencies = [
 
 [[package]]
 name = "miden-utils-diagnostics"
-version = "0.18.1"
-source = "git+https://github.com/0xMiden/miden-vm?rev=61e58a8d8ed05d09375723c341e5184e8ebcbdb9#61e58a8d8ed05d09375723c341e5184e8ebcbdb9"
+version = "0.18.2"
+source = "git+https://github.com/0xMiden/miden-vm?branch=pgackst-find-half-key#eaa2c3016f4d9f9fe5a3c1ba087965fe3ce0a1e3"
 dependencies = [
  "miden-crypto",
- "miden-debug-types 0.18.1",
+ "miden-debug-types 0.18.2 (git+https://github.com/0xMiden/miden-vm?branch=pgackst-find-half-key)",
  "miden-miette",
  "paste",
  "tracing",
-]
-
-[[package]]
-name = "miden-utils-sync"
-version = "0.18.1"
-source = "git+https://github.com/0xMiden/miden-vm?rev=61e58a8d8ed05d09375723c341e5184e8ebcbdb9#61e58a8d8ed05d09375723c341e5184e8ebcbdb9"
-dependencies = [
- "lock_api",
- "loom",
- "parking_lot",
 ]
 
 [[package]]
@@ -1743,12 +1733,22 @@ dependencies = [
 ]
 
 [[package]]
-name = "miden-verifier"
-version = "0.18.1"
-source = "git+https://github.com/0xMiden/miden-vm?rev=61e58a8d8ed05d09375723c341e5184e8ebcbdb9#61e58a8d8ed05d09375723c341e5184e8ebcbdb9"
+name = "miden-utils-sync"
+version = "0.18.2"
+source = "git+https://github.com/0xMiden/miden-vm?branch=pgackst-find-half-key#eaa2c3016f4d9f9fe5a3c1ba087965fe3ce0a1e3"
 dependencies = [
- "miden-air 0.18.1",
- "miden-core 0.18.1",
+ "lock_api",
+ "loom",
+ "parking_lot",
+]
+
+[[package]]
+name = "miden-verifier"
+version = "0.18.2"
+source = "git+https://github.com/0xMiden/miden-vm?branch=pgackst-find-half-key#eaa2c3016f4d9f9fe5a3c1ba087965fe3ce0a1e3"
+dependencies = [
+ "miden-air 0.18.2 (git+https://github.com/0xMiden/miden-vm?branch=pgackst-find-half-key)",
+ "miden-core 0.18.2 (git+https://github.com/0xMiden/miden-vm?branch=pgackst-find-half-key)",
  "thiserror",
  "tracing",
  "winter-verifier",

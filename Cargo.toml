@@ -48,16 +48,16 @@ miden-tx              = { default-features = false, path = "crates/miden-tx", ve
 miden-tx-batch-prover = { default-features = false, path = "crates/miden-tx-batch-prover", version = "0.12" }
 
 # Miden dependencies
-miden-assembly     = { default-features = false, git = "https://github.com/0xMiden/miden-vm", rev = "61e58a8d8ed05d09375723c341e5184e8ebcbdb9", version = "0.18" }
-miden-assembly-syntax = { default-features = false, git = "https://github.com/0xMiden/miden-vm", rev = "61e58a8d8ed05d09375723c341e5184e8ebcbdb9", version = "0.18" }
-miden-core         = { default-features = false, git = "https://github.com/0xMiden/miden-vm", rev = "61e58a8d8ed05d09375723c341e5184e8ebcbdb9", version = "0.18" }
-miden-crypto       = { default-features = false, version = "0.17" }
-miden-mast-package = { default-features = false, git = "https://github.com/0xMiden/miden-vm", rev = "61e58a8d8ed05d09375723c341e5184e8ebcbdb9", version = "0.18" }
-miden-processor    = { default-features = false, git = "https://github.com/0xMiden/miden-vm", rev = "61e58a8d8ed05d09375723c341e5184e8ebcbdb9", version = "0.18" }
-miden-prover       = { default-features = false, git = "https://github.com/0xMiden/miden-vm", rev = "61e58a8d8ed05d09375723c341e5184e8ebcbdb9", version = "0.18" }
-miden-stdlib       = { default-features = false, git = "https://github.com/0xMiden/miden-vm", rev = "61e58a8d8ed05d09375723c341e5184e8ebcbdb9", version = "0.18" }
-miden-utils-sync   = { default-features = false, git = "https://github.com/0xMiden/miden-vm", rev = "61e58a8d8ed05d09375723c341e5184e8ebcbdb9", version = "0.18" }
-miden-verifier     = { default-features = false, git = "https://github.com/0xMiden/miden-vm", rev = "61e58a8d8ed05d09375723c341e5184e8ebcbdb9", version = "0.18" }
+miden-assembly        = { branch = "pgackst-find-half-key", default-features = false, git = "https://github.com/0xMiden/miden-vm", version = "0.18" }
+miden-assembly-syntax = { branch = "pgackst-find-half-key", default-features = false, git = "https://github.com/0xMiden/miden-vm", version = "0.18" }
+miden-core            = { branch = "pgackst-find-half-key", default-features = false, git = "https://github.com/0xMiden/miden-vm", version = "0.18" }
+miden-crypto          = { default-features = false, version = "0.17" }
+miden-mast-package    = { branch = "pgackst-find-half-key", default-features = false, git = "https://github.com/0xMiden/miden-vm", version = "0.18" }
+miden-processor       = { branch = "pgackst-find-half-key", default-features = false, git = "https://github.com/0xMiden/miden-vm", version = "0.18" }
+miden-prover          = { branch = "pgackst-find-half-key", default-features = false, git = "https://github.com/0xMiden/miden-vm", version = "0.18" }
+miden-stdlib          = { branch = "pgackst-find-half-key", default-features = false, git = "https://github.com/0xMiden/miden-vm", version = "0.18" }
+miden-utils-sync      = { branch = "pgackst-find-half-key", default-features = false, git = "https://github.com/0xMiden/miden-vm", version = "0.18" }
+miden-verifier        = { branch = "pgackst-find-half-key", default-features = false, git = "https://github.com/0xMiden/miden-vm", version = "0.18" }
 
 # External dependencies
 anyhow         = { default-features = false, features = ["backtrace", "std"], version = "1.0" }

@@ -28,17 +28,17 @@ pub const KERNEL_PROCEDURES: [Word; 53] = [
     // account_compute_storage_commitment
     word!("0xa87008550383e1a88dde5d0adefc68ee3bf477aec07e4700f9101241aa1e868f"),
     // account_get_item
-    word!("0x9662c76e2b6d5a6fd16aa65b248061988fa9c76f078337b8f382358b45379127"),
+    word!("0x0d8116834cc7a0bea32ce3770d596aa6d0c3fee7ce93395b85dcb492026db88f"),
     // account_get_initial_item
-    word!("0xf99db3b3222c463a88d300a58e0caaab725acec14681bfc72fde18f51214a97e"),
+    word!("0xc43750717f48a71ec2fcf27cf64fdb1c6ca68d762d0cf8b1e141805f6a03be13"),
     // account_set_item
-    word!("0x19044c21c41cfeb93157ecaa2b694d811fa31552be36cc10f6639a86be2207ce"),
+    word!("0x0aae7a80fd72a04d863d2de97bdc60b28ec1df908f4504aa068f0343f2f52c61"),
     // account_get_map_item
-    word!("0x061f60a31f3bf76e943bb4735450a895fc6a838f2198a921525887e294f5d438"),
+    word!("0x37b5e719ea4a5c2c5662e2aa1b30b3e94ede2b198ac5e6c0209ed17803b9b922"),
     // account_get_initial_map_item
-    word!("0x56837d05ddfdf4f9dbf546b5815b3edd8df0bc600b56bda00b8a9dd07b6cc67d"),
+    word!("0xb3573a56edb80588b26fe2231b3bfa56e4060e020d108f4a30f0d245df53ea14"),
     // account_set_map_item
-    word!("0xea5e90d9f62aaa91062da9f1a0e4e1ae78a9ff8b0c1b277049b7e9bc274eeee1"),
+    word!("0x64be67997d2962e2ffdf8b1042b89db03494b11df597e531fd87a69028b256d8"),
     // account_get_initial_vault_root
     word!("0x4d4d91079aaacad1bc86b29a0d61d25508ccb705c29d1b1357016f7373bf299e"),
     // account_get_vault_root
@@ -62,13 +62,13 @@ pub const KERNEL_PROCEDURES: [Word; 53] = [
     // account_was_procedure_called
     word!("0x34f27a609f2f2b4fec454b17182552b0acc52524e507e134257a1f1ed30a57cd"),
     // faucet_mint_asset
-    word!("0x4b5a9a96a7945e90b9f2ff96aabb77e289e6c1bbb1e7e70a68e85cb798442730"),
+    word!("0xbe0fedca1743dbc0115839d3c1af8764a2b8e110167d62c31b535e248b70c780"),
     // faucet_burn_asset
-    word!("0x543cdb9906ace9df75b5f0e9c59b83f0942bcb76a90e681c649ad545fc5ce8fb"),
+    word!("0xcec2a9a06a4f2a1634316c0a8010af8ce711d124f1d80e521989387bc499b1af"),
     // faucet_get_total_fungible_asset_issuance
-    word!("0x58de9e2173ddad0393db432f9e9b4dce94109fc64110552969dd2f652363a019"),
+    word!("0xaa40e5ccd2cdb8aaf73180aea5e756ced956b14c3c6eac4f7f4b051867606fdd"),
     // faucet_is_non_fungible_asset_issued
-    word!("0xe59e606628697447dd035de435ea653882eaaf58375ead4174195244900005ef"),
+    word!("0xa441e5dcf1de4a82f852c8b55c832386e7deea702a6a8b6032934816e43a892a"),
     // input_note_get_metadata
     word!("0x7ad3e94585e7a397ee27443c98b376ed8d4ba762122af6413fde9314c00a6219"),
     // input_note_get_assets_info
