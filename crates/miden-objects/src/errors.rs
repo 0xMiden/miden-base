@@ -216,6 +216,8 @@ pub enum AccountIdError {
     AccountIdSuffixMostSignificantBitMustBeZero,
     #[error("least significant byte of account ID suffix must be zero")]
     AccountIdSuffixLeastSignificantByteMustBeZero,
+    #[error("failed to decode bech32 string into account ID")]
+    Bech32DecodeError(#[source] Bech32Error),
 }
 
 // SLOT NAME ERROR

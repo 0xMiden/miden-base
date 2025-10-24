@@ -47,10 +47,20 @@ Users can choose whether their accounts are stored publicly or privately. The pr
 
 An `Account` ID can be encoded in different formats:
 
-1. [**Address**](./address#types--interfaces):
-
-   - Used when sending or receiving notes or assets.
-   - Used to communicate the [account interface](./code#interface) between sender and receiver.
+1. [**Bech32**](https://github.com/bitcoin/bips/blob/master/bip-0173.mediawiki) (user-facing):
+   - Example: `mm1qzqge9n53l5dpyqav7y0d2j0ggl3dc9m`
+   - **Benefits**:
+     - Built-in error detection via checksum algorithm
+     - Human-readable prefix indicates network type
+     - Less prone to transcription errors
+   - **Structure**:
+     - [Human-readable prefix](https://github.com/satoshilabs/slips/blob/master/slip-0173.md) that
+      determines the network:
+       - `mm` (indicates **M**iden **M**ainnet)
+       - `mtst` (indicates Miden Testnet)
+       - `mdev` (indicates Miden Devnet)
+     - Separator: `1`
+     - Data part with integrated checksum
 
 2. **Hexadecimal**:
    - Example: `0xd345c9766a2d5e606477a5676b049a`
