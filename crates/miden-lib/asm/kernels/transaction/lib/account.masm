@@ -7,6 +7,7 @@ use.$kernel::memory
 use.std::collections::smt
 use.std::crypto::hashes::rpo
 use.std::mem
+use.std::word
 
 # ERRORS
 # =================================================================================================
@@ -1644,5 +1645,55 @@ end
 #! - is_procedure_exposed is the binary flag indicating whether the procedure with PROC_ROOT is 
 #!   exposed.
 export.has_procedure
-    nop
+    # get the end pointer of the procedure section (where we should stop iterating)
+    exec.memory::get_num_account_procedures
+    exec.memory::get_account_procedure_ptr
+    # => [end_ptr, PROC_ROOT]
+
+    # get the start pointer of the procedure section (where we will start iterating)
+    push.0 exec.memory::get_account_procedure_ptr
+    # => [start_ptr, end_ptr, PROC_ROOT]
+
+    # prepare the stack for the loop
+    movdn.5 movdn.5 push.0 movdn.6
+    # => [PROC_ROOT, start_ptr, end_ptr, is_procedure_exposed]
+
+    # push the flag to enter the loop: an account should have at least 2 procedures
+    push.1
+    # => [should_loop, PROC_ROOT, start_ptr, end_ptr, is_procedure_exposed]
+
+    while.true
+        # => [PROC_ROOT, curr_proc_ptr, end_ptr, is_procedure_exposed]
+
+        # load the root of the current procedure
+        padw dup.8 mem_loadw_be
+        # => [CURR_PROC_ROOT, PROC_ROOT, curr_proc_ptr, end_ptr, is_procedure_exposed]
+
+        # check whether the current root is equal to the provided root
+        dupw.1 exec.word::eq
+        # => [is_equal, PROC_ROOT, curr_proc_ptr, end_ptr, is_procedure_exposed]
+
+        # update the is_procedure_exposed flag
+        movup.7 or movdn.6
+        # => [PROC_ROOT, curr_proc_ptr, end_ptr, is_procedure_exposed']
+
+        # move the current procedure pointer
+        movup.4 add.8
+        # => [curr_proc_ptr + 8, PROC_ROOT, end_ptr, is_procedure_exposed']
+
+        # compute should_loop flag: we should continue iterating if is_procedure_exposed' == 0 and
+        # curr_proc_ptr + 8 != end_ptr
+        dup dup.6 eq dup.7 or eq.0
+        # => [should_loop, curr_proc_ptr + 8, PROC_ROOT, end_ptr, is_procedure_exposed']
+
+        # rearrange the stack
+        swap movdn.5
+        # => [should_loop, PROC_ROOT, curr_proc_ptr + 8, end_ptr, is_procedure_exposed']
+    end
+
+    # => [PROC_ROOT, curr_proc_ptr', end_ptr, is_procedure_exposed']
+
+    # clean the stack
+    dropw drop drop
+    # => [is_procedure_exposed']
 end
