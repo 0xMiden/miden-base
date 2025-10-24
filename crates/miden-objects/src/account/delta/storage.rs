@@ -459,15 +459,18 @@ mod tests {
     use anyhow::Context;
 
     use super::{AccountStorageDelta, Deserializable, Serializable};
-    use crate::account::StorageMapDelta;
+    use crate::account::{SlotName, StorageMapDelta};
     use crate::testing::storage::AccountStorageDeltaBuilder;
     use crate::{ONE, Word, ZERO};
 
     #[test]
     fn account_storage_delta_validation() {
         let delta = AccountStorageDelta::from_iters(
-            [1, 2, 3],
-            [(4, Word::from([ONE, ONE, ONE, ONE])), (5, Word::from([ONE, ONE, ONE, ZERO]))],
+            [SlotName::new_test(1), SlotName::new_test(2), SlotName::new_test(3)],
+            [
+                (SlotName::new_test(4), Word::from([ONE, ONE, ONE, ONE])),
+                (SlotName::new_test(5), Word::from([ONE, ONE, ONE, ZERO])),
+            ],
             [],
         );
         assert!(delta.validate().is_ok());
@@ -477,9 +480,12 @@ mod tests {
 
         // duplicate across cleared items and maps
         let delta = AccountStorageDelta::from_iters(
-            [1, 2, 3],
-            [(2, Word::from([ONE, ONE, ONE, ONE])), (5, Word::from([ONE, ONE, ONE, ZERO]))],
-            [(1, StorageMapDelta::default())],
+            [SlotName::new_test(1), SlotName::new_test(2), SlotName::new_test(3)],
+            [
+                (SlotName::new_test(2), Word::from([ONE, ONE, ONE, ONE])),
+                (SlotName::new_test(5), Word::from([ONE, ONE, ONE, ZERO])),
+            ],
+            [(SlotName::new_test(1), StorageMapDelta::default())],
         );
         assert!(delta.validate().is_err());
 
@@ -488,9 +494,12 @@ mod tests {
 
         // duplicate across updated items and maps
         let delta = AccountStorageDelta::from_iters(
-            [1, 3],
-            [(2, Word::from([ONE, ONE, ONE, ONE])), (5, Word::from([ONE, ONE, ONE, ZERO]))],
-            [(2, StorageMapDelta::default())],
+            [SlotName::new_test(1), SlotName::new_test(3)],
+            [
+                (SlotName::new_test(2), Word::from([ONE, ONE, ONE, ONE])),
+                (SlotName::new_test(5), Word::from([ONE, ONE, ONE, ZERO])),
+            ],
+            [(SlotName::new_test(2), StorageMapDelta::default())],
         );
         assert!(delta.validate().is_err());
 
@@ -503,15 +512,21 @@ mod tests {
         let storage_delta = AccountStorageDelta::new();
         assert!(storage_delta.is_empty());
 
-        let storage_delta = AccountStorageDelta::from_iters([1], [], []);
+        let storage_delta = AccountStorageDelta::from_iters([SlotName::new_test(1)], [], []);
         assert!(!storage_delta.is_empty());
 
-        let storage_delta =
-            AccountStorageDelta::from_iters([], [(2, Word::from([ONE, ONE, ONE, ONE]))], []);
+        let storage_delta = AccountStorageDelta::from_iters(
+            [],
+            [(SlotName::new_test(2), Word::from([ONE, ONE, ONE, ONE]))],
+            [],
+        );
         assert!(!storage_delta.is_empty());
 
-        let storage_delta =
-            AccountStorageDelta::from_iters([], [], [(3, StorageMapDelta::default())]);
+        let storage_delta = AccountStorageDelta::from_iters(
+            [],
+            [],
+            [(SlotName::new_test(3), StorageMapDelta::default())],
+        );
         assert!(!storage_delta.is_empty());
     }
 
@@ -522,19 +537,25 @@ mod tests {
         let deserialized = AccountStorageDelta::read_from_bytes(&serialized).unwrap();
         assert_eq!(deserialized, storage_delta);
 
-        let storage_delta = AccountStorageDelta::from_iters([1], [], []);
+        let storage_delta = AccountStorageDelta::from_iters([SlotName::new_test(1)], [], []);
         let serialized = storage_delta.to_bytes();
         let deserialized = AccountStorageDelta::read_from_bytes(&serialized).unwrap();
         assert_eq!(deserialized, storage_delta);
 
-        let storage_delta =
-            AccountStorageDelta::from_iters([], [(2, Word::from([ONE, ONE, ONE, ONE]))], []);
+        let storage_delta = AccountStorageDelta::from_iters(
+            [],
+            [(SlotName::new_test(2), Word::from([ONE, ONE, ONE, ONE]))],
+            [],
+        );
         let serialized = storage_delta.to_bytes();
         let deserialized = AccountStorageDelta::read_from_bytes(&serialized).unwrap();
         assert_eq!(deserialized, storage_delta);
 
-        let storage_delta =
-            AccountStorageDelta::from_iters([], [], [(3, StorageMapDelta::default())]);
+        let storage_delta = AccountStorageDelta::from_iters(
+            [],
+            [],
+            [(SlotName::new_test(3), StorageMapDelta::default())],
+        );
         let serialized = storage_delta.to_bytes();
         let deserialized = AccountStorageDelta::read_from_bytes(&serialized).unwrap();
         assert_eq!(deserialized, storage_delta);
@@ -571,11 +592,11 @@ mod tests {
     ) -> anyhow::Result<()> {
         /// Creates a delta containing the item as an update if Some, else with the item cleared.
         fn create_delta(item: Option<u32>) -> anyhow::Result<AccountStorageDelta> {
-            const SLOT: u8 = 123;
-            let item = item.map(|x| (SLOT, Word::from([x, 0, 0, 0])));
+            let slot_name = SlotName::new_test(123);
+            let item = item.map(|x| (slot_name.clone(), Word::from([x, 0, 0, 0])));
 
             AccountStorageDeltaBuilder::new()
-                .add_cleared_items(item.is_none().then_some(SLOT))
+                .add_cleared_items(item.is_none().then_some(slot_name.clone()))
                 .add_updated_values(item)
                 .build()
                 .context("failed to build storage delta")

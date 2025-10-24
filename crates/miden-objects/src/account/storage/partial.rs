@@ -177,8 +177,10 @@ mod tests {
         map_1.insert(map_key_present, Word::try_from([5u64, 4, 3, 2])?).unwrap();
         assert_eq!(map_1.get(&map_key_present), [5u64, 4, 3, 2].try_into()?);
 
+        let slot_name = SlotName::new("miden::test_map")?;
+
         let storage = AccountStorage::new_named(vec![NamedStorageSlot::new(
-            SlotName::new("miden::test_map")?,
+            slot_name.clone(),
             StorageSlot::Map(map_1.clone()),
         )])
         .unwrap();
@@ -191,10 +193,8 @@ mod tests {
             PartialStorage::new(storage_header, [PartialStorageMap::from_witnesses([witness])?])
                 .context("creating partial storage")?;
 
-        let retrieved_map = partial_storage
-            .maps
-            .get(partial_storage.header.slot_header_by_index(0)?.2)
-            .unwrap();
+        let (_, map_root) = partial_storage.header.find_slot_header_by_name(&slot_name).unwrap();
+        let retrieved_map = partial_storage.maps.get(map_root).unwrap();
         assert!(retrieved_map.open(&map_key_absent).is_err());
         assert!(retrieved_map.open(&map_key_present).is_ok());
         Ok(())

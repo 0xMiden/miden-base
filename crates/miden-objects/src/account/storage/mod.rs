@@ -57,25 +57,14 @@ impl AccountStorage {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
 
-    /// TODO(named_slots): Remove this temporary API.
-    ///
     /// Returns a new instance of account storage initialized with the provided items.
     ///
     /// # Errors
     ///
     /// Returns an error if:
     /// - The number of [`StorageSlot`]s exceeds 255.
-    pub fn new(slots: Vec<StorageSlot>) -> Result<AccountStorage, AccountError> {
-        let slots = slots
-            .into_iter()
-            .enumerate()
-            .map(|(idx, slot)| NamedStorageSlot::new(SlotName::new_index(idx), slot))
-            .collect::<Vec<_>>();
-
-        Self::new_named(slots)
-    }
-
-    /// TODO(named_slots): Rename to new.
+    ///
+    /// TODO(named_slots): Rename to new & document errors.
     pub fn new_named(mut slots: Vec<NamedStorageSlot>) -> Result<AccountStorage, AccountError> {
         let num_slots = slots.len();
 

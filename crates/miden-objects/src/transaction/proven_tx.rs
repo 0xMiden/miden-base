@@ -668,6 +668,7 @@ mod tests {
         AccountStorageMode,
         AccountType,
         AccountVaultDelta,
+        SlotName,
         StorageMapDelta,
     };
     use crate::asset::FungibleAsset;
@@ -709,8 +710,11 @@ mod tests {
         // A small delta does not exceed the limit.
         let account_id = AccountId::try_from(ACCOUNT_ID_PRIVATE_SENDER).unwrap();
         let storage_delta = AccountStorageDelta::from_iters(
-            [1, 2, 3, 4],
-            [(2, Word::from([1, 1, 1, 1u32])), (3, Word::from([1, 1, 0, 1u32]))],
+            [1, 2, 3, 4].map(SlotName::new_test),
+            [
+                (SlotName::new_test(2), Word::from([1, 1, 1, 1u32])),
+                (SlotName::new_test(3), Word::from([1, 1, 0, 1u32])),
+            ],
             [],
         );
         let delta = AccountDelta::new(account_id, storage_delta, AccountVaultDelta::default(), ONE)
@@ -741,7 +745,8 @@ mod tests {
         let storage_delta = StorageMapDelta::new(map);
 
         // A delta that exceeds the limit returns an error.
-        let storage_delta = AccountStorageDelta::from_iters([], [], [(4, storage_delta)]);
+        let storage_delta =
+            AccountStorageDelta::from_iters([], [], [(SlotName::new_test(4), storage_delta)]);
         let delta = AccountDelta::new(account_id, storage_delta, AccountVaultDelta::default(), ONE)
             .unwrap();
         let details = AccountUpdateDetails::Delta(delta);

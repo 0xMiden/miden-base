@@ -2,10 +2,11 @@ use alloc::borrow::Cow;
 use alloc::string::{String, ToString};
 use core::fmt::Display;
 
+use miden_core::utils::hash_string_to_word;
+
 use crate::account::storage::slot::SlotNameId;
 use crate::errors::SlotNameError;
 use crate::utils::serde::{ByteWriter, Deserializable, DeserializationError, Serializable};
-use crate::{Felt, FieldElement};
 
 /// The name of an account storage slot.
 ///
@@ -87,11 +88,6 @@ impl SlotName {
         Ok(Self { name: Cow::Owned(name) })
     }
 
-    // TODO(named_slots): Temporary. Remove later.
-    pub fn new_index(slot_idx: usize) -> Self {
-        SlotName::new(format!("miden::{slot_idx}")).expect("slot name should be valid")
-    }
-
     // ACCESSORS
     // --------------------------------------------------------------------------------------------
 
@@ -114,23 +110,10 @@ impl SlotName {
 
     // TODO(named_slots): Docs.
     pub fn compute_id(&self) -> SlotNameId {
-        // let hashed_word = hash_string_to_word(self.as_str());
-        // let prefix = hashed_word[0];
-        // let suffix = hashed_word[1];
-        // SlotNameId::new(prefix, suffix)
-
-        // TODO: Temporary, replace later with the above.
-        let mut split = self.as_str().split("::");
-
-        let namespace = split.next().unwrap();
-        assert_eq!(namespace, "miden");
-
-        let slot_idx = split.next().unwrap();
-        let slot_index: u32 = slot_idx.parse().expect(
-            "named storage slots should for now have the slot index as the second component",
-        );
-
-        SlotNameId::new(Felt::from(slot_index), Felt::ZERO)
+        let hashed_word = hash_string_to_word(self.as_str());
+        let prefix = hashed_word[1];
+        let suffix = hashed_word[0];
+        SlotNameId::new(prefix, suffix)
     }
 
     // HELPERS

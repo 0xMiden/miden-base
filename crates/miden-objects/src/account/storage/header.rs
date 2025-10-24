@@ -135,42 +135,6 @@ impl AccountStorageHeader {
             .ok()
     }
 
-    /// TODO(named_slots): Remove this method.
-    ///
-    /// Returns a slot contained in the storage header at a given index.
-    ///
-    /// # Errors
-    /// - If the index is out of bounds.
-    pub fn slot_header_by_index(
-        &self,
-        index: usize,
-    ) -> Result<(&SlotName, &StorageSlotType, &Word), AccountError> {
-        let slot_name = SlotName::new_index(index);
-
-        self.slots
-            .binary_search_by_key(&slot_name.compute_id(), |(name, ..)| name.compute_id())
-            .map(|slot_idx| {
-                let (name, r#type, value) = &self.slots[slot_idx];
-                (name, r#type, value)
-            })
-            .ok()
-            .ok_or(AccountError::StorageIndexOutOfBounds {
-                slots_len: self.slots.len() as u8,
-                index: index as u8,
-            })
-    }
-
-    /// Indicates whether the slot at `index` is a map slot.
-    ///
-    /// # Errors
-    /// - If `index` exceeds the slot count.
-    pub fn is_map_slot(&self, index: usize) -> Result<bool, AccountError> {
-        match self.slot_header_by_index(index)?.1 {
-            StorageSlotType::Map => Ok(true),
-            StorageSlotType::Value => Ok(false),
-        }
-    }
-
     /// Converts storage slots of this account storage header into a vector of field elements.
     ///
     /// This is done by first converting each storage slot into exactly 8 elements as follows:
@@ -242,22 +206,24 @@ mod tests {
 
     use super::AccountStorageHeader;
     use crate::Word;
-    use crate::account::{AccountStorage, SlotName, StorageSlotType};
+    use crate::account::{AccountStorage, StorageSlotType};
+    use crate::testing::storage::{SLOT_NAME_MAP, SLOT_NAME_VALUE0, SLOT_NAME_VALUE1};
 
     #[test]
     fn test_from_account_storage() {
         let storage_map = AccountStorage::mock_map();
 
         // create new storage header from AccountStorage
-        let slots = vec![
-            (SlotName::new_index(0), StorageSlotType::Value, Word::from([1, 2, 3, 4u32])),
+        let mut slots = vec![
+            (SLOT_NAME_VALUE0.clone(), StorageSlotType::Value, Word::from([1, 2, 3, 4u32])),
             (
-                SlotName::new_index(1),
+                SLOT_NAME_VALUE1.clone(),
                 StorageSlotType::Value,
                 Word::from([Felt::new(5), Felt::new(6), Felt::new(7), Felt::new(8)]),
             ),
-            (SlotName::new_index(2), StorageSlotType::Map, storage_map.root()),
+            (SLOT_NAME_MAP.clone(), StorageSlotType::Map, storage_map.root()),
         ];
+        slots.sort_unstable_by_key(|(slot_name, ..)| slot_name.compute_id());
 
         let expected_header = AccountStorageHeader { slots };
         let account_storage = AccountStorage::mock();

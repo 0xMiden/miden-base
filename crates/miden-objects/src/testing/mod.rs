@@ -10,5 +10,6 @@ pub mod named_storage_slot;
 pub mod noop_auth_component;
 pub mod note;
 pub mod partial_blockchain;
+pub mod slot_name;
 pub mod storage;
 pub mod tx;

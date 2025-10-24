@@ -316,6 +316,16 @@ mod tests {
             .expect("code should be valid")
     });
 
+    static CUSTOM_COMPONENT1_SLOT_NAME: LazyLock<SlotName> = LazyLock::new(|| {
+        SlotName::new("custom::component1::slot0").expect("slot name should be valid")
+    });
+    static CUSTOM_COMPONENT2_SLOT_NAME0: LazyLock<SlotName> = LazyLock::new(|| {
+        SlotName::new("custom::component2::slot0").expect("slot name should be valid")
+    });
+    static CUSTOM_COMPONENT2_SLOT_NAME1: LazyLock<SlotName> = LazyLock::new(|| {
+        SlotName::new("custom::component2::slot1").expect("slot name should be valid")
+    });
+
     struct CustomComponent1 {
         slot0: u64,
     }
@@ -323,11 +333,10 @@ mod tests {
         fn from(custom: CustomComponent1) -> Self {
             let mut value = Word::empty();
             value[0] = Felt::new(custom.slot0);
-            let slot_name = SlotName::new("custom::component1").expect("slot name should be valid");
 
             AccountComponent::new(
                 CUSTOM_LIBRARY1.clone(),
-                vec![NamedStorageSlot::with_value(slot_name, value)],
+                vec![NamedStorageSlot::with_value(CUSTOM_COMPONENT1_SLOT_NAME.clone(), value)],
             )
             .expect("component should be valid")
             .with_supports_all_types()
@@ -344,16 +353,12 @@ mod tests {
             value0[3] = Felt::new(custom.slot0);
             let mut value1 = Word::empty();
             value1[3] = Felt::new(custom.slot1);
-            let slot_name0 =
-                SlotName::new("custom::component2::slot0").expect("slot name should be valid");
-            let slot_name1 =
-                SlotName::new("custom::component2::slot1").expect("slot name should be valid");
 
             AccountComponent::new(
                 CUSTOM_LIBRARY2.clone(),
                 vec![
-                    NamedStorageSlot::with_value(slot_name0, value0),
-                    NamedStorageSlot::with_value(slot_name1, value1),
+                    NamedStorageSlot::with_value(CUSTOM_COMPONENT2_SLOT_NAME0.clone(), value0),
+                    NamedStorageSlot::with_value(CUSTOM_COMPONENT2_SLOT_NAME1.clone(), value1),
                 ],
             )
             .expect("component should be valid")
@@ -418,15 +423,15 @@ mod tests {
         assert_eq!(bar_procedure_info.storage_size(), 2);
 
         assert_eq!(
-            account.storage().get_item(0).unwrap(),
+            account.storage().get_item(&CUSTOM_COMPONENT1_SLOT_NAME).unwrap(),
             [Felt::new(storage_slot0), Felt::new(0), Felt::new(0), Felt::new(0)].into()
         );
         assert_eq!(
-            account.storage().get_item(1).unwrap(),
+            account.storage().get_item(&CUSTOM_COMPONENT2_SLOT_NAME0).unwrap(),
             [Felt::new(0), Felt::new(0), Felt::new(0), Felt::new(storage_slot1)].into()
         );
         assert_eq!(
-            account.storage().get_item(2).unwrap(),
+            account.storage().get_item(&CUSTOM_COMPONENT2_SLOT_NAME1).unwrap(),
             [Felt::new(0), Felt::new(0), Felt::new(0), Felt::new(storage_slot2)].into()
         );
     }
