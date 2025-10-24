@@ -7,7 +7,6 @@ use miden_objects::account::{AccountDelta, PartialAccount};
 use miden_objects::asset::Asset;
 use miden_objects::block::BlockNumber;
 use miden_objects::transaction::{
-    ExecutedTransaction,
     InputNote,
     InputNotes,
     OutputNote,
@@ -171,7 +170,7 @@ impl Default for LocalTransactionProver {
 impl LocalTransactionProver {
     pub fn prove_dummy(
         &self,
-        executed_transaction: ExecutedTransaction,
+        executed_transaction: miden_objects::transaction::ExecutedTransaction,
     ) -> Result<ProvenTransaction, TransactionProverError> {
         let (tx_inputs, tx_outputs, account_delta, _) = executed_transaction.into_parts();
 

@@ -759,3 +759,60 @@ export.was_procedure_called
     swapdw dropw dropw swapw dropw movdn.3 drop drop drop
     # => [was_called]
 end
+
+#! Returns the number of procedures in the current account.
+#!
+#! Inputs:  []
+#! Outputs: [num_procedures]
+#!
+#! Where:
+#! - num_procedures is the number of procedures in the current account.
+#!
+#! Invocation: exec
+export.get_num_procedures
+    # pad the stack
+    padw padw padw push.0.0.0
+    # => [pad(15)]
+
+    exec.kernel_proc_offsets::account_get_num_procedures_offset
+    # => [offset, pad(15)]
+
+    syscall.exec_kernel_proc
+    # => [num_procedures, pad(15)]
+
+    # clean the stack
+    swap.15 dropw dropw dropw drop drop drop
+    # => [num_procedures]
+end
+
+#! Returns the procedure root for the procedure at the specified index.
+#!
+#! Inputs:  [index]
+#! Outputs: [PROC_ROOT]
+#!
+#! Where:
+#! - index is the index of the procedure.
+#! - PROC_ROOT is the hash of the procedure.
+#!
+#! Panics if:
+#! - the procedure index is out of bounds.
+#!
+#! Invocation: exec
+export.get_procedure_root
+    # => [index]
+
+    push.0.0 movup.2
+    exec.kernel_proc_offsets::account_get_procedure_root_offset
+    # => [offset, index, 0, 0]
+
+    # pad the stack
+    padw swapw padw padw swapdw
+    # => [offset, index, pad(14)]
+
+    syscall.exec_kernel_proc
+    # => [PROC_ROOT, pad(12)]
+
+    # clean the stack
+    swapdw dropw dropw swapw dropw
+    # => [PROC_ROOT]
+end

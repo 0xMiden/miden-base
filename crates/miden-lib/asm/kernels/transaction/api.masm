@@ -1472,6 +1472,50 @@ export.account_was_procedure_called
     # => [was_called, pad(15)]
 end
 
+#! Returns the number of procedures in the current account.
+#!
+#! Inputs:  [pad(16)]
+#! Outputs: [num_procedures, pad(15)]
+#!
+#! Where:
+#! - num_procedures is the number of procedures in the current account.
+#!
+#! Invocation: dynexec
+export.account_get_num_procedures
+    # get the number of procedures
+    exec.memory::get_num_account_procedures
+    # => [num_procedures, pad(16)]
+
+    # truncate the stack
+    swap drop
+    # => [num_procedures, pad(15)]
+end
+
+#! Returns the procedure root for the procedure at the specified index.
+#!
+#! Inputs:  [index, pad(15)]
+#! Outputs: [PROC_ROOT, pad(12)]
+#!
+#! Where:
+#! - index is the index of the procedure.
+#! - PROC_ROOT is the hash of the procedure.
+#!
+#! Panics if:
+#! - the procedure index is out of bounds.
+#!
+#! Invocation: dynexec
+export.account_get_procedure_root
+    # get the procedure information
+    exec.account::get_procedure_info
+    # => [PROC_ROOT, storage_offset, storage_size, pad(15)]
+
+    swapw dropw
+    # => [PROC_ROOT, pad(13)]
+
+    movup.4 drop
+    # => [PROC_ROOT, pad(12)]
+end
+
 #! Executes a kernel procedure specified by its offset.
 #!
 #! Inputs:  [procedure_offset, <procedure_inputs>, <pad>]

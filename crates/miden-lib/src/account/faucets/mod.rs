@@ -9,9 +9,7 @@ use miden_objects::account::{
     AccountType,
     StorageSlot,
 };
-use miden_objects::assembly::{ProcedureName, QualifiedProcedureName};
 use miden_objects::asset::{FungibleAsset, TokenSymbol};
-use miden_objects::utils::sync::LazyLock;
 use miden_objects::{AccountError, Felt, FieldElement, TokenSymbolError, Word};
 use thiserror::Error;
 
@@ -21,36 +19,28 @@ use crate::account::auth::{
     AuthRpoFalcon512Acl,
     AuthRpoFalcon512AclConfig,
     AuthRpoFalcon512Multisig,
+    AuthRpoFalcon512MultisigConfig,
 };
 use crate::account::components::basic_fungible_faucet_library;
+use crate::procedure_digest;
 use crate::transaction::memory::FAUCET_STORAGE_DATA_SLOT;
 
 // BASIC FUNGIBLE FAUCET ACCOUNT COMPONENT
 // ================================================================================================
 
 // Initialize the digest of the `distribute` procedure of the Basic Fungible Faucet only once.
-static BASIC_FUNGIBLE_FAUCET_DISTRIBUTE: LazyLock<Word> = LazyLock::new(|| {
-    let distribute_proc_name = QualifiedProcedureName::new(
-        Default::default(),
-        ProcedureName::new(BasicFungibleFaucet::DISTRIBUTE_PROC_NAME)
-            .expect("failed to create name for 'distribute' procedure"),
-    );
-    basic_fungible_faucet_library()
-        .get_procedure_root_by_name(distribute_proc_name)
-        .expect("Basic Fungible Faucet should contain 'distribute' procedure")
-});
+procedure_digest!(
+    BASIC_FUNGIBLE_FAUCET_DISTRIBUTE,
+    BasicFungibleFaucet::DISTRIBUTE_PROC_NAME,
+    basic_fungible_faucet_library
+);
 
 // Initialize the digest of the `burn` procedure of the Basic Fungible Faucet only once.
-static BASIC_FUNGIBLE_FAUCET_BURN: LazyLock<Word> = LazyLock::new(|| {
-    let burn_proc_name = QualifiedProcedureName::new(
-        Default::default(),
-        ProcedureName::new(BasicFungibleFaucet::BURN_PROC_NAME)
-            .expect("failed to create name for 'burn' procedure"),
-    );
-    basic_fungible_faucet_library()
-        .get_procedure_root_by_name(burn_proc_name)
-        .expect("Basic Fungible Faucet should contain 'burn' procedure")
-});
+procedure_digest!(
+    BASIC_FUNGIBLE_FAUCET_BURN,
+    BasicFungibleFaucet::BURN_PROC_NAME,
+    basic_fungible_faucet_library
+);
 
 /// An [`AccountComponent`] implementing a basic fungible faucet.
 ///
@@ -294,7 +284,10 @@ pub fn create_basic_fungible_faucet(
         .map_err(FungibleFaucetError::AccountError)?
         .into(),
         AuthScheme::RpoFalcon512Multisig { threshold, pub_keys } => {
-            AuthRpoFalcon512Multisig::new(threshold, pub_keys)
+            // TODO this means burning the asset requires m/n approvals. We should address this.
+            let config = AuthRpoFalcon512MultisigConfig::new(pub_keys, threshold)
+                .map_err(FungibleFaucetError::AccountError)?;
+            AuthRpoFalcon512Multisig::new(config)
                 .map_err(FungibleFaucetError::AccountError)?
                 .into()
         },

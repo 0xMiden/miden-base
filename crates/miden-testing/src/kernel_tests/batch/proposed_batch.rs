@@ -17,6 +17,7 @@ use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 
 use super::proven_tx_builder::MockProvenTxBuilder;
+use crate::utils::create_p2any_note;
 use crate::{AccountState, Auth, MockChain, MockChainBuilder};
 
 fn mock_account_id(num: u8) -> AccountId {
@@ -271,8 +272,8 @@ fn duplicate_output_notes() -> anyhow::Result<()> {
 async fn unauthenticated_note_converted_to_authenticated() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let account1 = generate_account(&mut builder);
-    let note1 = builder.create_p2any_note(account1.id(), NoteType::Public, [])?;
-    let note2 = builder.create_p2any_note(account1.id(), NoteType::Public, [])?;
+    let note1 = create_p2any_note(account1.id(), NoteType::Public, [], builder.rng_mut());
+    let note2 = create_p2any_note(account1.id(), NoteType::Public, [], builder.rng_mut());
     let spawn_note = builder.add_spawn_note([&note1, &note2])?;
     let mut chain = builder.build()?;
 
