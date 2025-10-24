@@ -394,7 +394,7 @@ async fn network_faucet_mint() -> anyhow::Result<()> {
 
     // Apply the transaction to the mock chain
     mock_chain.add_pending_executed_transaction(&executed_transaction)?;
-    let _ = mock_chain.prove_next_block();
+    mock_chain.prove_next_block()?;
 
     // CONSUME THE OUTPUT NOTE WITH TARGET ACCOUNT
     // --------------------------------------------------------------------------------------------
