@@ -363,14 +363,6 @@ impl Account {
         // update nonce
         self.increment_nonce(delta.nonce_delta())?;
 
-        // Maintain internal consistency of the account, i.e. the seed should not be present for
-        // existing accounts, where existing accounts are defined as having a nonce > 0.
-        // If we've incremented the nonce, then we should remove the seed (if it was present at
-        // all).
-        if delta.nonce_delta().as_int() > 0 {
-            self.seed = None;
-        }
-
         Ok(())
     }
 
@@ -392,6 +384,14 @@ impl Account {
         }
 
         self.nonce = new_nonce;
+
+        // Maintain internal consistency of the account, i.e. the seed should not be present for
+        // existing accounts, where existing accounts are defined as having a nonce > 0.
+        // If we've incremented the nonce, then we should remove the seed (if it was present at
+        // all).
+        if !self.is_new() {
+            self.seed = None;
+        }
 
         Ok(())
     }
@@ -556,6 +556,7 @@ mod tests {
         AccountComponent,
         AccountIdVersion,
         AccountType,
+        PartialAccount,
         StorageMap,
         StorageMapDelta,
         StorageSlot,
@@ -889,6 +890,23 @@ mod tests {
         // Set nonce to 0 so the account is considered new and provide the original seed, which
         // should be valid.
         Account::new(id, vault.clone(), storage.clone(), code.clone(), Felt::ZERO, seed)?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn incrementing_nonce_should_remove_seed() -> anyhow::Result<()> {
+        let mut account = AccountBuilder::new([5; 32])
+            .with_auth_component(NoopAuthComponent)
+            .with_component(AddComponent)
+            .build()?;
+        account.increment_nonce(Felt::ONE)?;
+
+        assert_matches!(account.seed(), None);
+
+        // Sanity check: We should be able to convert the account into a partial account which will
+        // re-check the internal seed - nonce consistency.
+        let _partial_account = PartialAccount::from(&account);
 
         Ok(())
     }

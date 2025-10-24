@@ -1,7 +1,13 @@
+---
+sidebar_position: 2
+title: "ID"
+---
+
 # Account ID
 
-> [!Note]
-> An immutable and unique identifier for the `Account`.
+:::note
+An immutable and unique identifier for the `Account`.
+:::
 
 The `Account` ID is a 120-bit long number. This identifier is designed to contain the metadata of an account. The metadata includes the [account type](#account-type), [account storage mode](#account-storage-mode) and the version of the `Account`. This metadata is included in the ID to ensure it can be read without needing the full account state.
 
@@ -15,17 +21,18 @@ There are two main categories of accounts in Miden: **basic accounts** and **fau
 
 - **Basic Accounts:**
   Basic Accounts may be either mutable or immutable:
-  - *Mutable:* Code can be changed after deployment.
-  - *Immutable:* Code cannot be changed once deployed.
+
+  - _Mutable:_ Code can be changed after deployment.
+  - _Immutable:_ Code cannot be changed once deployed.
 
 - **Faucets:**
   Faucets are always immutable and can be specialized by the type of assets they issue:
-  - *Fungible Faucet:* Can issue fungible [assets](../asset.md).
-  - *Non-fungible Faucet:* Can issue non-fungible [assets](../asset.md).
+  - _Fungible Faucet:_ Can issue fungible [assets](../asset).
+  - _Non-fungible Faucet:_ Can issue non-fungible [assets](../asset).
 
 ### Account storage mode
 
-Users can choose whether their accounts are stored publicly or privately. The preference is encoded in the third and fourth most significant bits of the account's [ID](#id):
+Users can choose whether their accounts are stored publicly or privately. The preference is encoded in the third and fourth most significant bits of the account's ID:
 
 - **Public Accounts:**
   The account's state is stored on-chain, similar to how accounts are stored in public blockchains like Ethereum.
@@ -40,9 +47,10 @@ Users can choose whether their accounts are stored publicly or privately. The pr
 
 An `Account` ID can be encoded in different formats:
 
-1. [**Address**](./address.md#types--interfaces):
-    - Used when sending or receiving notes or assets.
-    - Used to communicate the [account interface](./code.md#interface) between sender and receiver.
+1. [**Address**](./address#types--interfaces):
+
+   - Used when sending or receiving notes or assets.
+   - Used to communicate the [account interface](./code#interface) between sender and receiver.
 
 2. **Hexadecimal**:
    - Example: `0xd345c9766a2d5e606477a5676b049a`

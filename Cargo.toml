@@ -49,6 +49,7 @@ miden-tx-batch-prover = { default-features = false, path = "crates/miden-tx-batc
 
 # Miden dependencies
 miden-assembly     = { default-features = false, git = "https://github.com/0xMiden/miden-vm", rev = "61e58a8d8ed05d09375723c341e5184e8ebcbdb9", version = "0.18" }
+miden-assembly-syntax = { default-features = false, git = "https://github.com/0xMiden/miden-vm", rev = "61e58a8d8ed05d09375723c341e5184e8ebcbdb9", version = "0.18" }
 miden-core         = { default-features = false, git = "https://github.com/0xMiden/miden-vm", rev = "61e58a8d8ed05d09375723c341e5184e8ebcbdb9", version = "0.18" }
 miden-crypto       = { default-features = false, version = "0.17" }
 miden-mast-package = { default-features = false, git = "https://github.com/0xMiden/miden-vm", rev = "61e58a8d8ed05d09375723c341e5184e8ebcbdb9", version = "0.18" }
