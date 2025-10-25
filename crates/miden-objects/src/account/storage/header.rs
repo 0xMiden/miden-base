@@ -10,7 +10,7 @@ use crate::utils::serde::{
     DeserializationError,
     Serializable,
 };
-use crate::{AccountError, FieldElement, ZERO};
+use crate::{FieldElement, ZERO};
 
 // ACCOUNT STORAGE HEADER
 // ================================================================================================

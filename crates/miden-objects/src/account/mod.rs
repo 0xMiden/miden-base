@@ -36,19 +36,20 @@ pub use code::procedure::AccountProcedureInfo;
 pub mod component;
 pub use component::{
     AccountComponent,
-    AccountComponentMetadata,
-    AccountComponentTemplate,
-    FeltRepresentation,
-    InitStorageData,
-    MapEntry,
-    MapRepresentation,
-    PlaceholderTypeRequirement,
-    StorageEntry,
-    StorageValueName,
-    StorageValueNameError,
-    TemplateType,
-    TemplateTypeError,
-    WordRepresentation,
+    // TODO(named_slots): Uncomment.
+    // AccountComponentMetadata,
+    // AccountComponentTemplate,
+    // FeltRepresentation,
+    // InitStorageData,
+    // MapEntry,
+    // MapRepresentation,
+    // PlaceholderTypeRequirement,
+    // StorageEntry,
+    // StorageValueName,
+    // StorageValueNameError,
+    // TemplateType,
+    // TemplateTypeError,
+    // WordRepresentation,
 };
 
 pub mod delta;
