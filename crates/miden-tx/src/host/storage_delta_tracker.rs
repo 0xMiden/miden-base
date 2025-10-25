@@ -1,7 +1,7 @@
 use alloc::collections::BTreeMap;
 
 use miden_objects::Word;
-use miden_objects::account::{AccountStorageDelta, AccountStorageHeader};
+use miden_objects::account::{AccountStorageDelta, AccountStorageHeader, SlotName};
 
 /// Keeps track of the initial storage of an account during transaction execution.
 ///
@@ -21,7 +21,7 @@ pub struct StorageDeltaTracker {
     storage_header: AccountStorageHeader,
     /// A map from slot index to a map of key-value pairs where the key is a storage map key and
     /// the value represents the value of that key at the beginning of transaction execution.
-    init_maps: BTreeMap<u8, BTreeMap<Word, Word>>,
+    init_maps: BTreeMap<SlotName, BTreeMap<Word, Word>>,
     /// The account storage delta.
     delta: AccountStorageDelta,
 }
@@ -43,19 +43,25 @@ impl StorageDeltaTracker {
     // --------------------------------------------------------------------------------------------
 
     /// Updates a value slot.
-    pub fn set_item(&mut self, slot_index: u8, prev_value: Word, new_value: Word) {
+    pub fn set_item(&mut self, slot_name: SlotName, prev_value: Word, new_value: Word) {
         // Don't update the delta if the new value matches the old one.
         if prev_value != new_value {
-            self.delta.set_item(slot_index, new_value);
+            self.delta.set_item(slot_name, new_value);
         }
     }
 
     /// Updates a map slot.
-    pub fn set_map_item(&mut self, slot_index: u8, key: Word, prev_value: Word, new_value: Word) {
+    pub fn set_map_item(
+        &mut self,
+        slot_name: SlotName,
+        key: Word,
+        prev_value: Word,
+        new_value: Word,
+    ) {
         // Don't update the delta if the new value matches the old one.
         if prev_value != new_value {
-            self.set_init_map_item(slot_index, key, prev_value);
-            self.delta.set_map_item(slot_index, key, new_value);
+            self.set_init_map_item(slot_name.clone(), key, prev_value);
+            self.delta.set_map_item(slot_name, key, new_value);
         }
     }
 
@@ -69,8 +75,8 @@ impl StorageDeltaTracker {
 
     /// Sets the initial value of the given key in the given slot to the given value, if no value is
     /// already tracked for that key.
-    fn set_init_map_item(&mut self, slot_index: u8, key: Word, prev_value: Word) {
-        let slot_map = self.init_maps.entry(slot_index).or_default();
+    fn set_init_map_item(&mut self, slot_name: SlotName, key: Word, prev_value: Word) {
+        let slot_map = self.init_maps.entry(slot_name).or_default();
         slot_map.entry(key).or_insert(prev_value);
     }
 
@@ -85,12 +91,12 @@ impl StorageDeltaTracker {
         let (mut value_slots, mut map_slots) = delta.into_parts();
 
         // Keep only the values whose new value is different from the initial value.
-        value_slots.retain(|slot_idx, new_value| {
+        value_slots.retain(|slot_name, new_value| {
             // SAFETY: The header in the initial storage is the one from the account against which
-            // the transaction is executed, so accessing that slot index should be fine.
-            let (_, _, initial_value) = storage_header
-                .slot_header_by_index(*slot_idx as usize)
-                .expect("index should be in bounds");
+            // the transaction is executed, so accessing that slot should be fine.
+            let (_slot_type, initial_value) = storage_header
+                .find_slot_header_by_name(slot_name)
+                .expect("slot name should exist");
             new_value != initial_value
         });
 

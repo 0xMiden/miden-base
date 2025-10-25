@@ -609,6 +609,7 @@ where
                     "failed to find slot header with name ID {slot_name_id}"
                 ))
             })?;
+        let slot_name = slot_name.clone();
 
         if !slot_type.is_value() {
             return Err(TransactionKernelError::other(format!(
@@ -616,8 +617,7 @@ where
             )));
         }
 
-        // TODO(named_slots): Reinstantiate.
-        // self.account_delta.storage().set_item(slot_name, old_value, new_value);
+        self.account_delta.storage().set_item(slot_name.clone(), old_value, new_value);
 
         Ok(())
     }
@@ -728,9 +728,9 @@ where
         let name_id_prefix = process.get_stack_item(1);
         let name_id_suffix = process.get_stack_item(2);
         let name_id = SlotNameId::new(name_id_prefix, name_id_suffix);
-        let key = process.get_stack_item(3);
-        let old_map_value = process.get_stack_item(7);
-        let new_map_value = process.get_stack_item(11);
+        let key = process.get_stack_word(3);
+        let old_map_value = process.get_stack_word(7);
+        let new_map_value = process.get_stack_word(11);
 
         let (slot_name, ..) = self
             .initial_account_storage_header()
@@ -740,11 +740,11 @@ where
                     "failed to resolve slot name ID {name_id} to slot name"
                 ))
             })?;
+        let slot_name = slot_name.clone();
 
-        // TODO(named_slots): Reinstantiate.
-        // self.account_delta
-        //     .storage()
-        //     .set_map_item(slot_name, key, old_map_value, new_map_value);
+        self.account_delta
+            .storage()
+            .set_map_item(slot_name, key, old_map_value, new_map_value);
 
         Ok(())
     }
