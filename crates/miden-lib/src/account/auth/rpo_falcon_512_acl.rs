@@ -219,7 +219,6 @@ impl From<AuthRpoFalcon512Acl> for AccountComponent {
 
 #[cfg(test)]
 mod tests {
-    use anyhow::Context;
     use miden_objects::Word;
     use miden_objects::account::AccountBuilder;
 
@@ -249,7 +248,7 @@ mod tests {
     }
 
     /// Parametrized test helper for ACL component testing
-    fn test_acl_component(config: AclTestConfig) -> anyhow::Result<()> {
+    fn test_acl_component(config: AclTestConfig) {
         let public_key = PublicKeyCommitment::from(Word::empty());
 
         // Build the configuration
@@ -279,14 +278,14 @@ mod tests {
         let public_key_slot = account
             .storage()
             .get_item(AuthRpoFalcon512Acl::public_key_slot_name())
-            .context("public key storage slot access failed")?;
+            .expect("public key storage slot access failed");
         assert_eq!(public_key_slot, public_key.into());
 
         // Check configuration storage
         let config_slot = account
             .storage()
             .get_item(AuthRpoFalcon512Acl::config_slot_name())
-            .context("config storage slot access failed")?;
+            .expect("config storage slot access failed");
         assert_eq!(config_slot, config.expected_config_slot);
 
         // Check procedure roots
@@ -298,7 +297,7 @@ mod tests {
                         AuthRpoFalcon512Acl::tracked_procedure_roots_slot_name(),
                         Word::from([i as u32, 0, 0, 0]),
                     )
-                    .context("storage map access failed")?;
+                    .expect("storage map access failed");
                 assert_eq!(proc_root, *expected_proc_root);
             }
         } else {
@@ -309,11 +308,9 @@ mod tests {
                     AuthRpoFalcon512Acl::tracked_procedure_roots_slot_name(),
                     Word::empty(),
                 )
-                .context("storage map access failed")?;
+                .expect("storage map access failed");
             assert_eq!(proc_root, Word::empty());
         }
-
-        Ok(())
     }
 
     /// Test ACL component with no procedures and both authorization flags set to false
