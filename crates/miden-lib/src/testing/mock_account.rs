@@ -11,7 +11,6 @@ use miden_objects::account::{
 use miden_objects::asset::{AssetVault, NonFungibleAsset};
 use miden_objects::testing::constants::{self};
 use miden_objects::testing::noop_auth_component::NoopAuthComponent;
-use miden_objects::testing::storage::FAUCET_STORAGE_DATA_SLOT;
 use miden_objects::{Felt, Word, ZERO};
 
 use crate::testing::account_component::{MockAccountComponent, MockFaucetComponent};
@@ -50,7 +49,9 @@ pub trait MockAccountExt {
         let (_id, vault, mut storage, code, nonce, _seed) = account.into_parts();
 
         let faucet_data_slot = Word::from([ZERO, ZERO, ZERO, initial_balance]);
-        storage.set_item(FAUCET_STORAGE_DATA_SLOT, faucet_data_slot).unwrap();
+        storage
+            .set_item(AccountStorage::faucet_metadata_slot_name(), faucet_data_slot)
+            .unwrap();
 
         Account::new_existing(account_id, vault, storage, code, nonce)
     }

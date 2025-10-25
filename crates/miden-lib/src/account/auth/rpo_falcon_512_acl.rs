@@ -219,6 +219,7 @@ impl From<AuthRpoFalcon512Acl> for AccountComponent {
 
 #[cfg(test)]
 mod tests {
+    use anyhow::Context;
     use miden_objects::Word;
     use miden_objects::account::AccountBuilder;
 
@@ -234,8 +235,8 @@ mod tests {
         allow_unauthorized_output_notes: bool,
         /// Allow unauthorized input notes flag
         allow_unauthorized_input_notes: bool,
-        /// Expected slot 1 value [num_procs, allow_output, allow_input, 0]
-        expected_slot_1: Word,
+        /// Expected config slot value [num_procs, allow_output, allow_input, 0]
+        expected_config_slot: Word,
     }
 
     /// Helper function to get the basic wallet procedures for testing
@@ -248,7 +249,7 @@ mod tests {
     }
 
     /// Parametrized test helper for ACL component testing
-    fn test_acl_component(config: AclTestConfig) {
+    fn test_acl_component(config: AclTestConfig) -> anyhow::Result<()> {
         let public_key = PublicKeyCommitment::from(Word::empty());
 
         // Build the configuration
@@ -274,31 +275,45 @@ mod tests {
             .build()
             .expect("account building failed");
 
-        // Assert public key in slot 0
-        let public_key_slot = account.storage().get_item(0).expect("storage slot 0 access failed");
+        // Check public key storage
+        let public_key_slot = account
+            .storage()
+            .get_item(AuthRpoFalcon512Acl::public_key_slot_name())
+            .context("public key storage slot access failed")?;
         assert_eq!(public_key_slot, public_key.into());
 
-        // Assert configuration in slot 1
-        let slot_1 = account.storage().get_item(1).expect("storage slot 1 access failed");
-        assert_eq!(slot_1, config.expected_slot_1);
+        // Check configuration storage
+        let config_slot = account
+            .storage()
+            .get_item(AuthRpoFalcon512Acl::config_slot_name())
+            .context("config storage slot access failed")?;
+        assert_eq!(config_slot, config.expected_config_slot);
 
-        // Assert procedure roots in map (slot 2)
+        // Check procedure roots
         if config.with_procedures {
             for (i, expected_proc_root) in auth_trigger_procedures.iter().enumerate() {
                 let proc_root = account
                     .storage()
-                    .get_map_item(2, Word::from([i as u32, 0, 0, 0]))
-                    .expect("storage map access failed");
+                    .get_map_item(
+                        AuthRpoFalcon512Acl::tracked_procedure_roots_slot_name(),
+                        Word::from([i as u32, 0, 0, 0]),
+                    )
+                    .context("storage map access failed")?;
                 assert_eq!(proc_root, *expected_proc_root);
             }
         } else {
             // When no procedures, the map should return empty for key [0,0,0,0]
             let proc_root = account
                 .storage()
-                .get_map_item(2, Word::empty())
-                .expect("storage map access failed");
+                .get_map_item(
+                    AuthRpoFalcon512Acl::tracked_procedure_roots_slot_name(),
+                    Word::empty(),
+                )
+                .context("storage map access failed")?;
             assert_eq!(proc_root, Word::empty());
         }
+
+        Ok(())
     }
 
     /// Test ACL component with no procedures and both authorization flags set to false
@@ -308,7 +323,7 @@ mod tests {
             with_procedures: false,
             allow_unauthorized_output_notes: false,
             allow_unauthorized_input_notes: false,
-            expected_slot_1: Word::empty(), // [0, 0, 0, 0]
+            expected_config_slot: Word::empty(), // [0, 0, 0, 0]
         });
     }
 
@@ -319,7 +334,7 @@ mod tests {
             with_procedures: true,
             allow_unauthorized_output_notes: false,
             allow_unauthorized_input_notes: false,
-            expected_slot_1: Word::from([2u32, 0, 0, 0]),
+            expected_config_slot: Word::from([2u32, 0, 0, 0]),
         });
     }
 
@@ -330,7 +345,7 @@ mod tests {
             with_procedures: false,
             allow_unauthorized_output_notes: true,
             allow_unauthorized_input_notes: false,
-            expected_slot_1: Word::from([0u32, 1, 0, 0]),
+            expected_config_slot: Word::from([0u32, 1, 0, 0]),
         });
     }
 
@@ -341,7 +356,7 @@ mod tests {
             with_procedures: true,
             allow_unauthorized_output_notes: true,
             allow_unauthorized_input_notes: false,
-            expected_slot_1: Word::from([2u32, 1, 0, 0]),
+            expected_config_slot: Word::from([2u32, 1, 0, 0]),
         });
     }
 
@@ -352,7 +367,7 @@ mod tests {
             with_procedures: false,
             allow_unauthorized_output_notes: false,
             allow_unauthorized_input_notes: true,
-            expected_slot_1: Word::from([0u32, 0, 1, 0]),
+            expected_config_slot: Word::from([0u32, 0, 1, 0]),
         });
     }
 
@@ -363,7 +378,7 @@ mod tests {
             with_procedures: true,
             allow_unauthorized_output_notes: true,
             allow_unauthorized_input_notes: true,
-            expected_slot_1: Word::from([2u32, 1, 1, 0]),
+            expected_config_slot: Word::from([2u32, 1, 1, 0]),
         });
     }
 }

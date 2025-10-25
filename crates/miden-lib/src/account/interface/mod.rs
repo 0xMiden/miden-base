@@ -136,19 +136,19 @@ impl AccountInterface {
                     component_proc_digests
                         .extend(basic_wallet_library().mast_forest().procedure_digests());
                 },
-                AccountComponentInterface::BasicFungibleFaucet(_) => {
+                AccountComponentInterface::BasicFungibleFaucet => {
                     component_proc_digests
                         .extend(basic_fungible_faucet_library().mast_forest().procedure_digests());
                 },
-                AccountComponentInterface::AuthRpoFalcon512(_) => {
+                AccountComponentInterface::AuthRpoFalcon512 => {
                     component_proc_digests
                         .extend(rpo_falcon_512_library().mast_forest().procedure_digests());
                 },
-                AccountComponentInterface::AuthRpoFalcon512Acl(_) => {
+                AccountComponentInterface::AuthRpoFalcon512Acl => {
                     component_proc_digests
                         .extend(rpo_falcon_512_acl_library().mast_forest().procedure_digests());
                 },
-                AccountComponentInterface::AuthRpoFalcon512Multisig(_) => {
+                AccountComponentInterface::AuthRpoFalcon512Multisig => {
                     component_proc_digests.extend(
                         rpo_falcon_512_multisig_library().mast_forest().procedure_digests(),
                     );
@@ -249,7 +249,7 @@ impl AccountInterface {
         output_notes: &[PartialNote],
     ) -> Result<String, AccountInterfaceError> {
         if let Some(basic_fungible_faucet) = self.components().iter().find(|component_interface| {
-            matches!(component_interface, AccountComponentInterface::BasicFungibleFaucet(_))
+            matches!(component_interface, AccountComponentInterface::BasicFungibleFaucet)
         }) {
             basic_fungible_faucet.send_note_body(*self.id(), output_notes)
         } else if self.components().contains(&AccountComponentInterface::BasicWallet) {

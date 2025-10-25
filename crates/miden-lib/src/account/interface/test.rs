@@ -738,7 +738,7 @@ fn test_get_auth_scheme_rpo_falcon512() {
     let rpo_falcon_component = wallet_account_interface
         .components()
         .iter()
-        .find(|component| matches!(component, AccountComponentInterface::AuthRpoFalcon512(_)))
+        .find(|component| matches!(component, AccountComponentInterface::AuthRpoFalcon512))
         .expect("should have RpoFalcon512 component");
 
     // Test get_auth_schemes method

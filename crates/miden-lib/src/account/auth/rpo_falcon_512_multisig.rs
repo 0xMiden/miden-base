@@ -130,7 +130,7 @@ impl AuthRpoFalcon512Multisig {
     }
 
     /// TODO(named_slots)
-    pub fn approver_public_keys() -> &'static SlotName {
+    pub fn approver_public_keys_slot_name() -> &'static SlotName {
         &APPROVER_PUBKEYS_SLOT_NAME
     }
 
@@ -166,7 +166,7 @@ impl From<AuthRpoFalcon512Multisig> for AccountComponent {
 
         // Safe to unwrap because we know that the map keys are unique.
         storage_slots.push(NamedStorageSlot::with_map(
-            AuthRpoFalcon512Multisig::approver_public_keys().clone(),
+            AuthRpoFalcon512Multisig::approver_public_keys_slot_name().clone(),
             StorageMap::with_entries(map_entries).unwrap(),
         ));
 
@@ -231,16 +231,22 @@ mod tests {
             .build()
             .expect("account building failed");
 
-        // Verify slot 0: [threshold, num_approvers, 0, 0]
-        let threshold_slot = account.storage().get_item(0).expect("storage slot 0 access failed");
-        assert_eq!(threshold_slot, Word::from([threshold, approvers.len() as u32, 0, 0]));
+        // Verify config slot: [threshold, num_approvers, 0, 0]
+        let config_slot = account
+            .storage()
+            .get_item(AuthRpoFalcon512Multisig::config_slot_name())
+            .expect("config storage slot access failed");
+        assert_eq!(config_slot, Word::from([threshold, approvers.len() as u32, 0, 0]));
 
-        // Verify slot 1: Approver public keys in map
+        // Verify approver pub keys slot
         for (i, expected_pub_key) in approvers.iter().enumerate() {
             let stored_pub_key = account
                 .storage()
-                .get_map_item(1, Word::from([i as u32, 0, 0, 0]))
-                .expect("storage map access failed");
+                .get_map_item(
+                    AuthRpoFalcon512Multisig::approver_public_keys_slot_name(),
+                    Word::from([i as u32, 0, 0, 0]),
+                )
+                .expect("approver public key storage map access failed");
             assert_eq!(stored_pub_key, Word::from(*expected_pub_key));
         }
     }
@@ -265,13 +271,19 @@ mod tests {
             .expect("account building failed");
 
         // Verify storage layout
-        let threshold_slot = account.storage().get_item(0).expect("storage slot 0 access failed");
-        assert_eq!(threshold_slot, Word::from([threshold, approvers.len() as u32, 0, 0]));
+        let config_slot = account
+            .storage()
+            .get_item(AuthRpoFalcon512Multisig::config_slot_name())
+            .expect("config storage slot access failed");
+        assert_eq!(config_slot, Word::from([threshold, approvers.len() as u32, 0, 0]));
 
         let stored_pub_key = account
             .storage()
-            .get_map_item(1, Word::from([0u32, 0, 0, 0]))
-            .expect("storage map access failed");
+            .get_map_item(
+                AuthRpoFalcon512Multisig::approver_public_keys_slot_name(),
+                Word::from([0u32, 0, 0, 0]),
+            )
+            .expect("approver pub keys storage map access failed");
         assert_eq!(stored_pub_key, Word::from(pub_key));
     }
 
