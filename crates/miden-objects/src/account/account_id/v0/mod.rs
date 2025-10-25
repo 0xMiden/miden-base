@@ -227,14 +227,19 @@ impl AccountIdV0 {
         // SAFETY: Encoding only panics if the total length of the hrp, data (in GF(32)), separator
         // and checksum exceeds Bech32m::CODE_LENGTH, which is 1023. Since the data is 26 bytes in
         // that field and the hrp is at most 83 in size we are way below the limit.
+        //
+        // The only allowed checksum algorithm is [`Bech32m`](bech32::Bech32m) due to being the
+        // best available checksum algorithm with no known weaknesses (unlike
+        // [`Bech32`](bech32::Bech32)). No checksum is also not allowed since the intended
+        // use of bech32 is to have error detection capabilities.
         bech32::encode::<Bech32m>(network_id.into_hrp(), &data)
             .expect("code length of bech32 should not be exceeded")
     }
 
     /// See [`AccountId::from_bech32`](super::AccountId::from_bech32) for details.
     pub fn from_bech32(bech32_string: &str) -> Result<(NetworkId, Self), AccountIdError> {
-        // We use CheckedHrpString with an explicit checksum algorithm so we don't allow the
-        // `Bech32` or `NoChecksum` algorithms.
+        // We use CheckedHrpString instead of bech32::decode with an explicit checksum algorithm so
+        // we don't allow the `Bech32` or `NoChecksum` algorithms.
         let checked_string = CheckedHrpstring::new::<Bech32m>(bech32_string).map_err(|source| {
             // The CheckedHrpStringError does not implement core::error::Error, only
             // std::error::Error, so for now we convert it to a String. Even if it will

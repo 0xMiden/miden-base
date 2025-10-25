@@ -273,7 +273,8 @@ impl AccountId {
         }
     }
 
-    /// Encodes the [`AccountId`] into a [bech32](https://github.com/bitcoin/bips/blob/master/bip-0173.mediawiki) string.
+    /// Encodes the [`AccountId`] into a [bech32](https://github.com/bitcoin/bips/blob/master/bip-0173.mediawiki)
+    /// string.
     ///
     /// # Encoding
     ///
@@ -300,11 +301,6 @@ impl AccountId {
     /// address type as a multiple of 8 means the first character of the bech32 string after the
     /// `1` separator will be different for every address type. This makes the type of the address
     /// conveniently human-readable.
-    ///
-    /// The only allowed checksum algorithm is [`Bech32m`](bech32::Bech32m) due to being the best
-    /// available checksum algorithm with no known weaknesses (unlike [`Bech32`](bech32::Bech32)).
-    /// No checksum is also not allowed since the intended use of bech32 is to have error
-    /// detection capabilities.
     pub fn to_bech32(&self, network_id: NetworkId) -> String {
         match self {
             AccountId::V0(account_id_v0) => account_id_v0.to_bech32(network_id),
