@@ -61,10 +61,10 @@ const.ERR_ACCOUNT_READING_MAP_VALUE_FROM_NON_MAP_SLOT="failed to read an account
 # CONSTANTS
 # =================================================================================================
 
-# The account storage slot at which faucet data is stored.
+# The name of the account storage slot at which faucet data is stored.
 # Fungible faucet: The faucet data consists of [0, 0, 0, total_issuance]
 # Non-fungible faucet: The faucet data consists of SMT root containing minted non-fungible assets.
-const.FAUCET_STORAGE_DATA_SLOT=0
+const.FAUCET_STORAGE_DATA_SLOT=word("miden::faucet::metadata")
 
 # The maximum storage slot index
 const.MAX_STORAGE_SLOT_INDEX=254
@@ -184,12 +184,12 @@ const.ACCOUNT_PUSH_PROCEDURE_INDEX_EVENT=event("miden::account::push_procedure_i
 #! Non-fungible faucet: The faucet data consists of SMT root containing minted non-fungible assets.
 #!
 #! Inputs:  []
-#! Outputs: [faucet_storage_data_slot]
+#! Outputs: [faucet_name_id_prefix, faucet_name_id_suffix]
 #!
 #! Where:
 #! - faucet_storage_data_slot is the account storage slot at which faucet data is stored.
 export.get_faucet_storage_data_slot
-    push.FAUCET_STORAGE_DATA_SLOT
+    push.FAUCET_STORAGE_DATA_SLOT[0..2]
 end
 
 #! Returns the maximum number of account storage slots.
@@ -1330,7 +1330,16 @@ end
 # Inputs:  [name_id_prefix, name_id_suffix]
 # Outputs: [is_faucet_storage_data_slot]
 export.is_faucet_storage_data_slot
-    push.0 assert.err="TODO(named_slots): is_faucet_storage_data_slot unimplemented"
+    exec.get_faucet_storage_data_slot
+    # => [faucet_name_id_prefix, faucet_name_id_suffix, name_id_prefix, name_id_suffix]
+
+    movup.2 eq
+    # => [prefix_eq, faucet_name_id_suffix, name_id_suffix]
+
+    movdn.2 eq
+    # => [prefix_eq, suffix_eq]
+
+    # => [is_faucet_storage_data_slot]
 end
 
 #! Gets an item from storage using the provided storage slots pointer and index.
