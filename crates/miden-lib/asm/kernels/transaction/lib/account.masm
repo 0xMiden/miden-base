@@ -1351,6 +1351,7 @@ export.is_faucet_storage_data_slot
     movdn.2 eq
     # => [prefix_eq, suffix_eq]
 
+    and
     # => [is_faucet_storage_data_slot]
 end
 
