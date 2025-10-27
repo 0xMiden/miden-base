@@ -8,9 +8,7 @@ use miden_objects::account::{
     AccountType,
     StorageSlot,
 };
-use miden_objects::assembly::{ProcedureName, QualifiedProcedureName};
 use miden_objects::asset::{FungibleAsset, TokenSymbol};
-use miden_objects::utils::sync::LazyLock;
 use miden_objects::{Felt, FieldElement, Word};
 
 use super::FungibleFaucetError;
@@ -18,33 +16,24 @@ use crate::account::AuthScheme;
 use crate::account::auth::NoAuth;
 use crate::account::components::network_fungible_faucet_library;
 use crate::account::interface::{AccountComponentInterface, AccountInterface};
+use crate::procedure_digest;
 
 // NETWORK FUNGIBLE FAUCET ACCOUNT COMPONENT
 // ================================================================================================
 
 // Initialize the digest of the `distribute` procedure of the Network Fungible Faucet only once.
-static NETWORK_FUNGIBLE_FAUCET_DISTRIBUTE: LazyLock<Word> = LazyLock::new(|| {
-    let distribute_proc_name = QualifiedProcedureName::new(
-        Default::default(),
-        ProcedureName::new(NetworkFungibleFaucet::DISTRIBUTE_PROC_NAME)
-            .expect("failed to create name for 'distribute' procedure"),
-    );
-    network_fungible_faucet_library()
-        .get_procedure_root_by_name(distribute_proc_name)
-        .expect("Network Fungible Faucet should contain 'distribute' procedure")
-});
+procedure_digest!(
+    NETWORK_FUNGIBLE_FAUCET_DISTRIBUTE,
+    NetworkFungibleFaucet::DISTRIBUTE_PROC_NAME,
+    network_fungible_faucet_library
+);
 
 // Initialize the digest of the `burn` procedure of the Network Fungible Faucet only once.
-static NETWORK_FUNGIBLE_FAUCET_BURN: LazyLock<Word> = LazyLock::new(|| {
-    let burn_proc_name = QualifiedProcedureName::new(
-        Default::default(),
-        ProcedureName::new(NetworkFungibleFaucet::BURN_PROC_NAME)
-            .expect("failed to create name for 'burn' procedure"),
-    );
-    network_fungible_faucet_library()
-        .get_procedure_root_by_name(burn_proc_name)
-        .expect("Network Fungible Faucet should contain 'burn' procedure")
-});
+procedure_digest!(
+    NETWORK_FUNGIBLE_FAUCET_BURN,
+    NetworkFungibleFaucet::BURN_PROC_NAME,
+    network_fungible_faucet_library
+);
 
 /// An [`AccountComponent`] implementing a network fungible faucet.
 ///
