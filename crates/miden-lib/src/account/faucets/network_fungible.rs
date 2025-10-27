@@ -37,7 +37,7 @@ procedure_digest!(
 
 /// An [`AccountComponent`] implementing a network fungible faucet.
 ///
-/// It reexports the procedures from `miden::contracts::faucets::basic_fungible`. When linking
+/// It reexports the procedures from `miden::contracts::faucets::network_fungible`. When linking
 /// against this component, the `miden` library (i.e. [`MidenLib`](crate::MidenLib)) must be
 /// available to the assembler which is the case when using
 /// [`TransactionKernel::assembler()`][kasm]. The procedures of this component are:
