@@ -8,10 +8,10 @@ use miden_objects::account::{
     AccountType,
     StorageSlot,
 };
-use miden_objects::asset::{FungibleAsset, TokenSymbol};
+use miden_objects::asset::TokenSymbol;
 use miden_objects::{Felt, FieldElement, Word};
 
-use super::FungibleFaucetError;
+use super::{BasicFungibleFaucet, FungibleFaucetError};
 use crate::account::AuthScheme;
 use crate::account::auth::NoAuth;
 use crate::account::components::network_fungible_faucet_library;
@@ -56,9 +56,7 @@ procedure_digest!(
 ///
 /// [kasm]: crate::transaction::TransactionKernel::assembler
 pub struct NetworkFungibleFaucet {
-    symbol: TokenSymbol,
-    decimals: u8,
-    max_supply: Felt,
+    faucet: BasicFungibleFaucet,
     owner_account_id: Word,
 }
 
@@ -88,18 +86,8 @@ impl NetworkFungibleFaucet {
         max_supply: Felt,
         owner_account_id: AccountId,
     ) -> Result<Self, FungibleFaucetError> {
-        // First check that the metadata is valid.
-        if decimals > Self::MAX_DECIMALS {
-            return Err(FungibleFaucetError::TooManyDecimals {
-                actual: decimals as u64,
-                max: Self::MAX_DECIMALS,
-            });
-        } else if max_supply.as_int() > FungibleAsset::MAX_AMOUNT {
-            return Err(FungibleFaucetError::MaxSupplyTooLarge {
-                actual: max_supply.as_int(),
-                max: FungibleAsset::MAX_AMOUNT,
-            });
-        }
+        // Create the basic fungible faucet (this validates the metadata)
+        let faucet = BasicFungibleFaucet::new(symbol, decimals, max_supply)?;
 
         // Convert AccountId to Word representation for storage
         let owner_account_id_word: Word = [
@@ -111,9 +99,7 @@ impl NetworkFungibleFaucet {
         .into();
 
         Ok(Self {
-            symbol,
-            decimals,
-            max_supply,
+            faucet,
             owner_account_id: owner_account_id_word,
         })
     }
@@ -148,7 +134,7 @@ impl NetworkFungibleFaucet {
                     .get_item(*offset + 1)
                     .map_err(|_| FungibleFaucetError::InvalidStorageOffset(*offset + 1))?;
 
-                // verify metadata values
+                // verify metadata values and create BasicFungibleFaucet
                 let token_symbol = TokenSymbol::try_from(token_symbol)
                     .map_err(FungibleFaucetError::InvalidTokenSymbol)?;
                 let decimals = decimals.as_int().try_into().map_err(|_| {
@@ -158,14 +144,9 @@ impl NetworkFungibleFaucet {
                     }
                 })?;
 
-                // Convert the Word back to AccountId for the constructor
-                // The owner_account_id Word is stored as [0, 0, suffix, prefix]
-                let prefix_felt = owner_account_id[3];
-                let suffix_felt = owner_account_id[2];
-                let account_id = AccountId::try_from([prefix_felt, suffix_felt])
-                    .map_err(|_| FungibleFaucetError::InvalidStorageOffset(*offset + 1))?;
+                let faucet = BasicFungibleFaucet::new(token_symbol, decimals, max_supply)?;
 
-                return NetworkFungibleFaucet::new(token_symbol, decimals, max_supply, account_id);
+                return Ok(Self { faucet, owner_account_id });
             }
         }
 
@@ -177,17 +158,17 @@ impl NetworkFungibleFaucet {
 
     /// Returns the symbol of the faucet.
     pub fn symbol(&self) -> TokenSymbol {
-        self.symbol
+        self.faucet.symbol()
     }
 
     /// Returns the decimals of the faucet.
     pub fn decimals(&self) -> u8 {
-        self.decimals
+        self.faucet.decimals()
     }
 
     /// Returns the max supply of the faucet.
     pub fn max_supply(&self) -> Felt {
-        self.max_supply
+        self.faucet.max_supply()
     }
 
     /// Returns the owner account ID of the faucet.
@@ -207,18 +188,18 @@ impl NetworkFungibleFaucet {
 }
 
 impl From<NetworkFungibleFaucet> for AccountComponent {
-    fn from(faucet: NetworkFungibleFaucet) -> Self {
+    fn from(network_faucet: NetworkFungibleFaucet) -> Self {
         // Note: data is stored as [a0, a1, a2, a3] but loaded onto the stack as
         // [a3, a2, a1, a0, ...]
         let metadata = Word::new([
-            faucet.max_supply,
-            Felt::from(faucet.decimals),
-            faucet.symbol.into(),
+            network_faucet.faucet.max_supply(),
+            Felt::from(network_faucet.faucet.decimals()),
+            network_faucet.faucet.symbol().into(),
             Felt::ZERO,
         ]);
 
         // Second storage slot stores the owner account ID
-        let owner_slot = StorageSlot::Value(faucet.owner_account_id);
+        let owner_slot = StorageSlot::Value(network_faucet.owner_account_id);
 
         AccountComponent::new(
             network_fungible_faucet_library(),
