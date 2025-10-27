@@ -263,7 +263,8 @@ impl AccountInterface {
                 matches!(component_interface, AccountComponentInterface::NetworkFungibleFaucet(_))
             })
         {
-            // Network fungible faucet doesn't support send_note_body for now
+            // Network fungible faucet doesn't support send_note_body, because minting
+            // is done via a MINT note.
             Err(AccountInterfaceError::UnsupportedAccountInterface)
         } else if self.components().contains(&AccountComponentInterface::BasicWallet) {
             AccountComponentInterface::BasicWallet.send_note_body(*self.id(), output_notes)
