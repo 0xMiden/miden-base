@@ -28,7 +28,7 @@ const PUBLIC_KEY_SLOT = 0
 #! Outputs: [pad(16)]
 #!
 #! Invocation: call
-export auth_tx_rpo_falcon512(auth_args: BeWord)
+pub proc auth_tx_rpo_falcon512(auth_args: BeWord)
     dropw
     # => [pad(16)]
 
