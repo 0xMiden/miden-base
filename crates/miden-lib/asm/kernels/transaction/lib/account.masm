@@ -493,6 +493,36 @@ export.get_item
     # => [VALUE]
 end
 
+#! Gets an item and its slot type from the account storage.
+#!
+#! Inputs:  [name_id_prefix, name_id_suffix]
+#! Outputs: [VALUE, slot_type]
+#!
+#! Where:
+#! - storage_slots_ptr is the pointer to the storage slots section.
+#! - name_id_{prefix, suffix} are the prefix and suffix felts of the name identifier, which are
+#!   the first two felts of the hashed slot name.
+#! - VALUE is the value of the item.
+#! - slot_type is the type of the slot.
+#!
+#! Panics if:
+#! - a slot with the provided name ID does not exist in account storage.
+export.get_typed_item
+    # get account storage slots section offset
+    exec.memory::get_account_storage_slots_section_ptr
+    # => [acct_storage_slots_section_offset, name_id_prefix, name_id_suffix]
+
+    exec.find_storage_slot
+    # => [slot_ptr]
+
+    dup add.ACCOUNT_SLOT_TYPE_OFFSET mem_load
+    # => [slot_type, slot_ptr]
+
+    # load the item from storage
+    padw movup.5 add.ACCOUNT_SLOT_VALUE_OFFSET mem_loadw
+    # => [VALUE, slot_ptr]
+end
+
 #! Gets an item from the account storage at its initial state (beginning of transaction).
 #!
 #! Inputs:  [name_id_prefix, name_id_suffix]
@@ -719,9 +749,9 @@ export.set_map_item.12
     movupw.2 dropw movupw.2 dropw
 end
 
-#! TODO(named_slots): Refactor to take name instead.
+#! Returns the type of the storage slot at the provided index.
 #!
-#! Returns the type of the requested storage slot.
+#! WARNING: The index must be in bounds.
 #!
 #! Inputs:  [index]
 #! Outputs: [slot_type]
@@ -729,37 +759,15 @@ end
 #! Where:
 #! - index is the location in memory of the storage slot.
 #! - slot_type is the type of the storage slot.
-#!
-#! Panics if:
-#! - the slot index is out of bounds.
-export.get_storage_slot_type_by_index
-    # check that index is in bounds
-    dup exec.memory::get_num_storage_slots lt assert.err=ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS
-    # => [index]
-
-    mul.8
-    # => [slot_offset]
-
-    exec.memory::get_account_storage_slots_section_ptr add
-    # => [slot_ptr]
-
-    # load the slot type
-    add.ACCOUNT_SLOT_TYPE_OFFSET mem_load
-    # => [slot_type]
-end
-
-#! Returns the type of the requested storage slot.
-#!
-#! Inputs:  [account_storage_slots_section_ptr, index]
-#! Outputs: [slot_type]
-#!
-#! Where:
-#! - index is the location in memory of the storage slot.
-#! - slot_type is the type of the storage slot.
 export.get_storage_slot_type
+    # convert the index into a memory offset
+    mul.8
+    # => [offset]
+
     # compute storage slot ptr
-    swap mul.8 add
-    # => [storage_slot_ptr]
+    exec.memory::get_native_account_storage_slots_ptr
+    add
+    # => [storage_slots_ptr, offset]
 
     # load the slot type
     add.ACCOUNT_SLOT_TYPE_OFFSET mem_load
@@ -1347,9 +1355,6 @@ export.is_faucet_storage_data_slot
 end
 
 #! Gets an item from storage using the provided storage slots pointer and index.
-#!
-#! Note:
-#! - We assume that index has been validated and is within bounds.
 #!
 #! Inputs:  [storage_slots_ptr, name_id_prefix, name_id_suffix]
 #! Outputs: [VALUE]

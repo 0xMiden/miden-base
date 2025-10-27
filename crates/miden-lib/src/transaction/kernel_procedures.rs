@@ -28,7 +28,7 @@ pub const KERNEL_PROCEDURES: [Word; 53] = [
     // account_compute_storage_commitment
     word!("0xa87008550383e1a88dde5d0adefc68ee3bf477aec07e4700f9101241aa1e868f"),
     // account_get_item
-    word!("0xf4c00986bb9298096673c9d6e07f72f2201e85ad73c16010ab69764622683b5f"),
+    word!("0xf886b8dbd87fa1298f14d775638d7fdda026aba2f45d5025db051b098c153b8b"),
     // account_get_initial_item
     word!("0xca7c265e8807ce75709549c652f5bcca33dcf27e11a61ae4c88a287a10c5ad65"),
     // account_set_item
@@ -54,7 +54,7 @@ pub const KERNEL_PROCEDURES: [Word; 53] = [
     // account_has_non_fungible_asset
     word!("0xf975c799cffebf8565a8479475fe04c1832ef2a7484c4a2a42bbf7d8a340d649"),
     // account_compute_delta_commitment
-    word!("0x3f931354c2ff82cf73a6633212dce7598ed81fdf85d7adcb3a2e4f32f3ee0d39"),
+    word!("0x47c31b7c80a0662a596fe7aa1d62fc56e6442808f1e212cff05851f1cbce9c78"),
     // account_get_num_procedures
     word!("0x53b5ec38b7841948762c258010e6e07ad93963bcaac2d83813f8edb6710dc720"),
     // account_get_procedure_root

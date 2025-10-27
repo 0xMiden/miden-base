@@ -317,21 +317,17 @@ proc.validate_new_account
     # process conditional logic depending on whether the account is a faucet
     if.true
         # get the faucet reserved slot
-        exec.account::get_faucet_storage_data_slot exec.account::get_item
-        # => [FAUCET_RESERVED_SLOT, acct_id_prefix]
+        exec.account::get_faucet_storage_data_slot exec.account::get_typed_item
+        # => [FAUCET_RESERVED_SLOT, slot_type, acct_id_prefix]
 
         # check if the account is a fungible faucet
-        movup.4 exec.account_id::is_fungible_faucet
-        # => [is_fungible_faucet, FAUCET_RESERVED_SLOT]
+        movup.5 exec.account_id::is_fungible_faucet
+        # => [is_fungible_faucet, FAUCET_RESERVED_SLOT, slot_type]
 
         if.true
             # assert the fungible faucet reserved slot is initialized correctly (EMPTY_WORD)
             exec.word::eqz not
             assertz.err=ERR_PROLOGUE_NEW_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_EMPTY
-            # => []
-
-            # get the faucet reserved storage data slot type
-            exec.account::get_faucet_storage_data_slot exec.account::get_storage_slot_type_by_index
             # => [slot_type]
 
             # assert the fungible faucet reserved slot type == value
@@ -343,10 +339,6 @@ proc.validate_new_account
             # empty SMT)
             exec.constants::get_empty_smt_root
             assert_eqw.err=ERR_PROLOGUE_NEW_NON_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_VALID_EMPTY_SMT
-            # => []
-
-            # get the faucet reserved storage data slot type
-            exec.account::get_faucet_storage_data_slot exec.account::get_storage_slot_type_by_index
             # => [slot_type]
 
             # assert the non-fungible faucet reserved slot type == map
