@@ -32,13 +32,13 @@ pub const KERNEL_PROCEDURES: [Word; 53] = [
     // account_get_initial_item
     word!("0xca7c265e8807ce75709549c652f5bcca33dcf27e11a61ae4c88a287a10c5ad65"),
     // account_set_item
-    word!("0x5f754c8f7895227a2896442915d9311537dc413afa7cf32de834d96fb074927b"),
+    word!("0x727d92aaa2caabe832c663ceca44df464f7e7a1fe3a833294429a679d8ba57a2"),
     // account_get_map_item
     word!("0xf6827d1995706234571fd65db7a4162f910334a6196acc56180c9d90bac0cc18"),
     // account_get_initial_map_item
     word!("0x2cf046c15c09a197cab3dae7c888aa50811af4243559ee2c9dc7d65b1259b7a7"),
     // account_set_map_item
-    word!("0x5407434644c3738d40cba1b32864602be49fe5889f5748ea7717b2b3265c46fc"),
+    word!("0xcdb623cd08c6b668241ac8436714389b9d66928ab9c8f7990a6a641fe3529d8a"),
     // account_get_initial_vault_root
     word!("0x4d4d91079aaacad1bc86b29a0d61d25508ccb705c29d1b1357016f7373bf299e"),
     // account_get_vault_root
@@ -54,7 +54,7 @@ pub const KERNEL_PROCEDURES: [Word; 53] = [
     // account_has_non_fungible_asset
     word!("0xf975c799cffebf8565a8479475fe04c1832ef2a7484c4a2a42bbf7d8a340d649"),
     // account_compute_delta_commitment
-    word!("0x47c31b7c80a0662a596fe7aa1d62fc56e6442808f1e212cff05851f1cbce9c78"),
+    word!("0x826008ce65e7b6f3e7b0ff73b57930bffe5d83676f41680e3d22b2db316557e3"),
     // account_get_num_procedures
     word!("0x53b5ec38b7841948762c258010e6e07ad93963bcaac2d83813f8edb6710dc720"),
     // account_get_procedure_root
@@ -62,9 +62,9 @@ pub const KERNEL_PROCEDURES: [Word; 53] = [
     // account_was_procedure_called
     word!("0x34f27a609f2f2b4fec454b17182552b0acc52524e507e134257a1f1ed30a57cd"),
     // faucet_mint_asset
-    word!("0x6faa9cfd9c5effe0e21f61c8158d484c9ce8575929ba202787a9081ff98053a1"),
+    word!("0x5a39a5789f0a394c46caf5766c546d2e8129c81fb46ea76ece3cdca2b53793b0"),
     // faucet_burn_asset
-    word!("0x3b32acd3946499f6fb066029f84f00fc050493c0d8104bad83299830a2296942"),
+    word!("0x3f8fa19814de6a088cca694b3b12ff1f1b5253038d945898a734d5b0b37523ed"),
     // faucet_get_total_fungible_asset_issuance
     word!("0x037d3a3b3cdc3ad4b61d4e5c7888e8a0abb529ad3dcd31f02d10898d902f8305"),
     // faucet_is_non_fungible_asset_issued

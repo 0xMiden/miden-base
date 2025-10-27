@@ -145,12 +145,7 @@ end
 #! Inputs:  [slot_idx, RATE, RATE, PERM]
 #! Outputs: [RATE, RATE, PERM]
 proc.update_slot_delta
-    # we use memory::get_storage_slot_type instead of the procedure in account to
-    # avoid the assertion overhead
-    dup exec.memory::get_native_account_storage_slots_ptr
-    # => [native_account_storage_slots_section_ptr, slot_idx, slot_idx, RATE, RATE, PERM]
-
-    exec.account::get_storage_slot_type
+    dup exec.account::get_storage_slot_type
     # => [storage_slot_type, slot_idx, RATE, RATE, PERM]
 
     # check if slot is of type value
@@ -200,8 +195,8 @@ proc.update_value_slot_delta
         hperm
         # => [RATE, RATE, PERM]
     else
-        # drop init value, current value and slot idx
-        dropw dropw drop
+        # drop init value, current value and slot name
+        dropw dropw drop drop
         # => [RATE, RATE, PERM]
     end
     # => [RATE, RATE, PERM]
