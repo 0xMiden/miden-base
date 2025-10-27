@@ -1,1 +1,3 @@
-book
+.docusaurus/
+build/
+node_modules/

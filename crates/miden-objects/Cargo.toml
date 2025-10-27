@@ -26,6 +26,7 @@ std = [
   "dep:toml",
   "miden-assembly/std",
   "miden-core/std",
+  "miden-crypto/concurrent",
   "miden-crypto/std",
   "miden-processor/std",
   "miden-verifier/std",
