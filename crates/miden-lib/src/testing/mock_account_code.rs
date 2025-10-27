@@ -8,15 +8,15 @@ use crate::transaction::TransactionKernel;
 const MOCK_FAUCET_CODE: &str = "
     use.miden::faucet
 
-    # Stack:  [ASSET, pad(12)]
-    # Output: [ASSET, pad(12)]
+    #! Inputs:  [ASSET, pad(12)]
+    #! Outputs: [ASSET, pad(12)]
     export.mint
         exec.faucet::mint
         # => [ASSET, pad(12)]
     end
 
-    # Stack:  [ASSET, pad(12)]
-    # Output: [ASSET, pad(12)]
+    #! Inputs:  [ASSET, pad(12)]
+    #! Outputs: [ASSET, pad(12)]
     export.burn
         exec.faucet::burn
         # => [ASSET, pad(12)]
@@ -34,56 +34,58 @@ const MOCK_ACCOUNT_CODE: &str = "
     # is assumed that the operand stack at the beginning of their execution is pad'ed and
     # does not have any other valuable information.
 
-    # Stack:  [index, VALUE_TO_SET, pad(11)]
-    # Output: [PREVIOUS_STORAGE_VALUE, pad(12)]
+    #! Inputs:  [name_id_prefix, name_id_suffix, VALUE, pad(10)]
+    #! Outputs: [OLD_VALUE, pad(12)]
     export.set_item
         exec.account::set_item
-        # => [V, pad(12)]
+        # => [OLD_VALUE, pad(12)]
     end
 
-    # Stack:  [index, pad(15)]
-    # Output: [VALUE, pad(12)]
+    #! Inputs:  [name_id_prefix, name_id_suffix, pad(14)]
+    #! Outputs: [VALUE, pad(12)]
     export.get_item
         exec.account::get_item
-        # => [VALUE, pad(15)]
+        # => [VALUE, pad(14)]
 
         # truncate the stack
-        movup.8 drop movup.8 drop movup.8 drop
+        movup.4 drop movup.4 drop
         # => [VALUE, pad(12)]
     end
 
-    # Stack:  [index, pad(15)]
-    # Output: [VALUE, pad(12)]
+    #! Inputs:  [name_id_prefix, name_id_suffix, pad(14)]
+    #! Outputs: [VALUE, pad(12)]
     export.get_initial_item
         exec.account::get_initial_item
-        # => [VALUE, pad(15)]
+        # => [VALUE, pad(14)]
 
         # truncate the stack
-        movup.8 drop movup.8 drop movup.8 drop
+        movup.4 drop movup.4 drop
         # => [VALUE, pad(12)]
     end
 
-    # Stack:  [index, KEY, VALUE, pad(7)]
-    # Output: [OLD_MAP_ROOT, OLD_MAP_VALUE, pad(8)]
+    #! Inputs:  [name_id_prefix, name_id_suffix, KEY, NEW_VALUE, pad(6)]
+    #! Outputs: [OLD_MAP_ROOT, OLD_MAP_VALUE, pad(8)]
     export.set_map_item
         exec.account::set_map_item
-        # => [R', V, pad(8)]
+        # => [OLD_MAP_ROOT, OLD_MAP_VALUE, pad(8)]
     end
 
-    # Stack:  [index, KEY, pad(11)]
-    # Output: [VALUE, pad(12)]
+    #! Inputs:  [name_id_prefix, name_id_suffix, KEY, pad(10)]
+    #! Outputs: [VALUE, pad(12)]
     export.get_map_item
         exec.account::get_map_item
+        # => [VALUE, pad(12)]
     end
 
-    # Stack:  [index, KEY, pad(11)]
-    # Output: [VALUE, pad(12)]
+    #! Inputs:  [name_id_prefix, name_id_suffix, KEY, pad(10)]
+    #! Outputs: [INIT_VALUE, pad(12)]
     export.get_initial_map_item
         exec.account::get_initial_map_item
+        # => [INIT_VALUE, pad(12)]
     end
 
-    # Stack:  [pad(16)]
-    # Output: [CODE_COMMITMENT, pad(12)]
+    #! Inputs:  [pad(16)]
+    #! Outputs: [CODE_COMMITMENT, pad(12)]
     export.get_code_commitment
         exec.account::get_code_commitment
         # => [CODE_COMMITMENT, pad(16)]
@@ -93,8 +95,8 @@ const MOCK_ACCOUNT_CODE: &str = "
         # => [CODE_COMMITMENT, pad(12)]
     end
 
-    # Stack:  [pad(16)]
-    # Output: [CODE_COMMITMENT, pad(12)]
+    #! Inputs:  [pad(16)]
+    #! Outputs: [CODE_COMMITMENT, pad(12)]
     export.compute_storage_commitment
         exec.account::compute_storage_commitment
         # => [STORAGE_COMMITMENT, pad(16)]
@@ -103,22 +105,22 @@ const MOCK_ACCOUNT_CODE: &str = "
         # => [STORAGE_COMMITMENT, pad(12)]
     end
 
-    # Stack:  [ASSET, pad(12)]
-    # Output: [ASSET', pad(12)]
+    #! Inputs:  [ASSET, pad(12)]
+    #! Outputs: [ASSET', pad(12)]
     export.add_asset
         exec.account::add_asset
         # => [ASSET', pad(12)]
     end
 
-    # Stack:  [ASSET, pad(12)]
-    # Output: [ASSET, pad(12)]
+    #! Inputs:  [ASSET, pad(12)]
+    #! Outputs: [ASSET, pad(12)]
     export.remove_asset
         exec.account::remove_asset
         # => [ASSET, pad(12)]
     end
 
-    # Stack:  [pad(16)]
-    # Output: [3, pad(12)]
+    #! Inputs:  [pad(16)]
+    #! Outputs: [3, pad(12)]
     export.account_procedure_1
         push.1.2 add
 
@@ -126,8 +128,8 @@ const MOCK_ACCOUNT_CODE: &str = "
         swap drop
     end
 
-    # Stack:  [pad(16)]
-    # Output: [1, pad(12)]
+    #! Inputs:  [pad(16)]
+    #! Outputs: [1, pad(12)]
     export.account_procedure_2
         push.2.1 sub
 
