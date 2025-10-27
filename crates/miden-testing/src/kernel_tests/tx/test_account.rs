@@ -28,11 +28,13 @@ use miden_objects::account::{
     AccountStorage,
     AccountStorageMode,
     AccountType,
+    NamedStorageSlot,
+    StorageMap,
     StorageSlot,
     StorageSlotType,
 };
 use miden_objects::assembly::diagnostics::{IntoDiagnostic, NamedSource, Report, WrapErr, miette};
-use miden_objects::assembly::{DefaultSourceManager, Library};
+use miden_objects::assembly::{Assembler, DefaultSourceManager, Library};
 use miden_objects::asset::{Asset, AssetVault, FungibleAsset};
 use miden_objects::note::NoteType;
 use miden_objects::testing::account_id::{
@@ -43,10 +45,11 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
     ACCOUNT_ID_SENDER,
 };
-use miden_objects::testing::storage::STORAGE_LEAVES_2;
+use miden_objects::testing::storage::{SLOT_NAME_VALUE0, STORAGE_LEAVES_2};
 use miden_objects::transaction::{ExecutedTransaction, OutputNote, TransactionScript};
 use miden_objects::{LexicographicWord, StarkField};
-use miden_processor::{EMPTY_WORD, ExecutionError, MastNodeExt, Word};
+use miden_processor::fast::FastProcessor;
+use miden_processor::{AdviceInputs, DefaultHost, EMPTY_WORD, ExecutionError, MastNodeExt, Word};
 use miden_tx::{LocalTransactionProver, TransactionExecutorError};
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
@@ -376,25 +379,27 @@ async fn test_get_item() -> miette::Result<()> {
         let tx_context = TransactionContextBuilder::with_existing_mock_account().build().unwrap();
 
         let code = format!(
-            "
+            r#"
             use.$kernel::account
             use.$kernel::prologue
+
+            const.SLOT_NAME = word("{slot_name}")
 
             begin
                 exec.prologue::prepare_transaction
 
                 # push the account storage item index
-                push.0.{item_index}
+                push.SLOT_NAME[0..2]
                 # => [name_id_prefix, name_id_suffix]
 
                 # assert the item value is correct
                 exec.account::get_item
                 push.{item_value}
-                assert_eqw
+                assert_eqw.err="expected item to have value {item_value}"
             end
-            ",
-            item_index = storage_item.name,
-            item_value = &storage_item.slot.value(),
+            "#,
+            slot_name = storage_item.name(),
+            item_value = &storage_item.storage_slot().value(),
         );
 
         tx_context.execute_code(&code).await.unwrap();
@@ -405,56 +410,46 @@ async fn test_get_item() -> miette::Result<()> {
 
 #[tokio::test]
 async fn test_get_map_item() -> miette::Result<()> {
+    let named_slot = AccountStorage::mock_item_2();
     let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(Auth::IncrNonce)
-        .with_component(MockAccountComponent::with_slots(vec![AccountStorage::mock_item_2().slot]))
+        .with_component(MockAccountComponent::with_slots(vec![named_slot.clone()]))
         .build_existing()
         .unwrap();
 
     let tx_context = TransactionContextBuilder::new(account).build().unwrap();
 
-    for (key, value) in STORAGE_LEAVES_2 {
+    let StorageSlot::Map(map) = named_slot.storage_slot() else {
+        panic!("expected map")
+    };
+
+    for (key, expected_value) in map.entries() {
         let code = format!(
-            "
+            r#"
             use.$kernel::prologue
+            use.mock::account
+
+            const SLOT_NAME = word("{slot_name}")
 
             begin
                 exec.prologue::prepare_transaction
 
                 # get the map item
-                push.{map_key}
-                push.{item_index}
-                call.::mock::account::get_map_item
+                push.{key}
+                push.SLOT_NAME[0..2]
+                call.account::get_map_item
+                # => [VALUE]
 
-                # truncate the stack
-                swapw dropw movup.4 drop
+                push.{expected_value}
+                assert_eqw.err="value did not match {expected_value}"
+
+                exec.::std::sys::truncate_stack
             end
-            ",
-            item_index = 0,
-            map_key = &key,
+            "#,
+            slot_name = named_slot.name(),
         );
 
-        let exec_output = &mut tx_context.execute_code(&code).await?;
-        assert_eq!(
-            exec_output.get_stack_word(0),
-            value,
-            "get_map_item result doesn't match the expected value",
-        );
-        assert_eq!(
-            exec_output.get_stack_word(4),
-            Word::empty(),
-            "The rest of the stack must be cleared",
-        );
-        assert_eq!(
-            exec_output.get_stack_word(8),
-            Word::empty(),
-            "The rest of the stack must be cleared",
-        );
-        assert_eq!(
-            exec_output.get_stack_word(12),
-            Word::empty(),
-            "The rest of the stack must be cleared",
-        );
+        tx_context.execute_code(&code).await?;
     }
 
     Ok(())
@@ -462,12 +457,20 @@ async fn test_get_map_item() -> miette::Result<()> {
 
 #[tokio::test]
 async fn test_get_storage_slot_type() -> miette::Result<()> {
-    for storage_item in [
-        AccountStorage::mock_item_0(),
-        AccountStorage::mock_item_1(),
-        AccountStorage::mock_item_2(),
+    for slot_name in [
+        AccountStorage::mock_item_0().name(),
+        AccountStorage::mock_item_1().name(),
+        AccountStorage::mock_item_2().name(),
     ] {
         let tx_context = TransactionContextBuilder::with_existing_mock_account().build().unwrap();
+        let (slot_idx, slot) = tx_context
+            .account()
+            .storage()
+            .slots()
+            .iter()
+            .enumerate()
+            .find(|(_, slot)| slot.name() == slot_name)
+            .unwrap();
 
         let code = format!(
             "
@@ -477,25 +480,22 @@ async fn test_get_storage_slot_type() -> miette::Result<()> {
             begin
                 exec.prologue::prepare_transaction
 
-                # push the account storage item index
-                push.{item_index}
+                # push the account storage slot index
+                push.{slot_idx}
 
                 # get the type of the respective storage slot
-                exec.account::get_storage_slot_type_by_index
+                exec.account::get_storage_slot_type
 
                 # truncate the stack
                 swap drop
             end
             ",
-            item_index = storage_item.name,
         );
 
         let exec_output = &tx_context.execute_code(&code).await.unwrap();
 
-        let storage_slot_type = storage_item.slot.slot_type();
-
         assert_eq!(
-            storage_slot_type,
+            slot.slot_type(),
             StorageSlotType::try_from(
                 u8::try_from(exec_output.get_stack_element(0).as_int()).unwrap()
             )
@@ -513,39 +513,46 @@ async fn test_get_storage_slot_type() -> miette::Result<()> {
 }
 
 #[tokio::test]
-async fn test_set_item() -> miette::Result<()> {
+async fn test_set_item() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build().unwrap();
 
-    let new_storage_item = Word::from([91, 92, 93, 94u32]);
+    let slot_name = &*SLOT_NAME_VALUE0;
+    let new_value = Word::from([91, 92, 93, 94u32]);
+    let old_value = tx_context.account().storage().get_item(slot_name)?;
 
     let code = format!(
-        "
+        r#"
         use.$kernel::account
         use.$kernel::prologue
+
+        const.SLOT_NAME_VALUE0 = word("{slot_name}")
 
         begin
             exec.prologue::prepare_transaction
 
             # set the storage item
-            push.{new_storage_item}
-            push.{new_storage_item_index}
+            push.{new_value}
+            push.SLOT_NAME_VALUE0[0..2]
+            # => [name_id_prefix, name_id_suffix, NEW_VALUE]
+
             exec.account::set_item
 
             # assert old value was correctly returned
-            push.1.2.3.4 assert_eqw
+            push.{old_value}
+            assert_eqw.err="old value did not match"
 
             # assert new value has been correctly set
-            push.{new_storage_item_index}
+            push.SLOT_NAME_VALUE0[0..2]
+            # => [name_id_prefix, name_id_suffix]
+
             exec.account::get_item
-            push.{new_storage_item}
+            push.{new_value}
             assert_eqw
         end
-        ",
-        new_storage_item = &new_storage_item,
-        new_storage_item_index = 0,
+        "#,
     );
 
-    tx_context.execute_code(&code).await.unwrap();
+    tx_context.execute_code(&code).await?;
 
     Ok(())
 }
@@ -555,22 +562,23 @@ async fn test_set_map_item() -> miette::Result<()> {
     let (new_key, new_value) =
         (Word::from([109, 110, 111, 112u32]), Word::from([9, 10, 11, 12u32]));
 
+    let named_slot = AccountStorage::mock_item_2();
     let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(Auth::IncrNonce)
-        .with_component(MockAccountComponent::with_slots(vec![AccountStorage::mock_item_2().slot]))
+        .with_component(MockAccountComponent::with_slots(vec![named_slot.clone()]))
         .build_existing()
         .unwrap();
 
     let tx_context = TransactionContextBuilder::new(account).build().unwrap();
-    let storage_item = AccountStorage::mock_item_2();
 
     let code = format!(
-        "
+        r#"
         use.std::sys
 
-        use.mock::account
         use.$kernel::prologue
         use.mock::account->mock_account
+
+        const.SLOT_NAME=word("{slot_name}")
 
         begin
             exec.prologue::prepare_transaction
@@ -578,23 +586,33 @@ async fn test_set_map_item() -> miette::Result<()> {
             # set the map item
             push.{new_value}
             push.{new_key}
-            push.{item_index}
+            push.SLOT_NAME[0..2]
             call.mock_account::set_map_item
 
-            # double check that on storage slot is indeed the new map
-            push.{item_index}
+            # double check that the storage slot is indeed the new map
+            push.SLOT_NAME[0..2]
+            # => [name_id_prefix, name_id_suffix, OLD_VALUE, OLD_MAP_ROOT]
+
+            # pad the stack
+            repeat.14 push.0 movdn.2 end
+            # => [name_id_prefix, name_id_suffix, pad(14), OLD_VALUE, OLD_MAP_ROOT]
+
             call.mock_account::get_item
+            # => [MAP_ROOT, pad(12), OLD_VALUE, OLD_MAP_ROOT]
 
             # truncate the stack
+            repeat.3 swapw dropw end
+            # => [MAP_ROOT, OLD_VALUE, OLD_MAP_ROOT]
+
             exec.sys::truncate_stack
         end
-        ",
-        item_index = 0,
+        "#,
+        slot_name = named_slot.name(),
         new_key = &new_key,
         new_value = &new_value,
     );
 
-    let exec_output = &tx_context.execute_code(&code).await.unwrap();
+    let exec_output = &tx_context.execute_code(&code).await?;
 
     let mut new_storage_map = AccountStorage::mock_map();
     new_storage_map.insert(new_key, new_value).unwrap();
@@ -602,10 +620,10 @@ async fn test_set_map_item() -> miette::Result<()> {
     assert_eq!(
         new_storage_map.root(),
         exec_output.get_stack_word(0),
-        "get_item must return the new updated value",
+        "get_item should return the updated root",
     );
     assert_eq!(
-        storage_item.slot.value(),
+        named_slot.storage_slot().value(),
         exec_output.get_stack_word(4),
         "The original value stored in the map doesn't match the expected value",
     );
