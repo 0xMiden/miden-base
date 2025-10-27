@@ -1,6 +1,6 @@
 use crate::Word;
 use crate::account::storage::slot::SlotNameId;
-use crate::account::{SlotName, StorageMap, StorageSlot};
+use crate::account::{SlotName, StorageMap, StorageSlot, StorageSlotType};
 
 // TODO(named_slots): Docs + separators for the entire module.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -46,6 +46,11 @@ impl NamedStorageSlot {
 
     pub fn storage_slot_mut(&mut self) -> &mut StorageSlot {
         &mut self.slot
+    }
+
+    /// Returns the type of this storage slot
+    pub fn slot_type(&self) -> StorageSlotType {
+        self.slot.slot_type()
     }
 
     pub fn into_parts(self) -> (SlotName, SlotNameId, StorageSlot) {
