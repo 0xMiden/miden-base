@@ -105,7 +105,7 @@ impl NetworkFungibleFaucet {
         let owner_account_id_word: Word = [
             Felt::new(0),
             Felt::new(0),
-            Felt::new(owner_account_id.suffix().as_int()),
+            owner_account_id.suffix(),
             owner_account_id.prefix().as_felt(),
         ]
         .into();
