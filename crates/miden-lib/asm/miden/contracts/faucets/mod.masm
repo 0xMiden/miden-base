@@ -40,7 +40,7 @@ const.METADATA_SLOT=0
 #!
 #! Invocation: exec
 export.distribute
-    # get max supply of this faucet. We assume it is stored at pos 3 of slot 1
+    # get max supply of this faucet. We assume it is stored at pos 3 of slot 0
     push.METADATA_SLOT exec.account::get_item drop drop drop
     # => [max_supply, amount, tag, aux, note_type, execution_hint, RECIPIENT]
 
