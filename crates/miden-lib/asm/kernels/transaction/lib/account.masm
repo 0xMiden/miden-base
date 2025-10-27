@@ -1632,18 +1632,18 @@ export.set_was_procedure_called
     add push.1 swap mem_store
 end
 
-#! Returns the binary flag indicating whether the procedure with the provided root is exposed by the
-#! active account.
+#! Returns the binary flag indicating whether the procedure with the provided root is available on
+#! the active account.
 #!
-#! Returns 1 if the procedure is exposed by the active account and 0 otherwise.
+#! Returns 1 if the procedure is available on the active account and 0 otherwise.
 #!
 #! Inputs:  [PROC_ROOT]
-#! Outputs: [is_procedure_exposed]
+#! Outputs: [is_procedure_available]
 #!
 #! Where:
 #! - PROC_ROOT is the hash of the procedure of interest.
-#! - is_procedure_exposed is the binary flag indicating whether the procedure with PROC_ROOT is 
-#!   exposed.
+#! - is_procedure_available is the binary flag indicating whether the procedure with PROC_ROOT is 
+#!   available on the active account.
 export.has_procedure
     # get the end pointer of the procedure section (where we should stop iterating)
     exec.memory::get_num_account_procedures
@@ -1656,44 +1656,44 @@ export.has_procedure
 
     # prepare the stack for the loop
     movdn.5 movdn.5 push.0 movdn.6
-    # => [PROC_ROOT, start_ptr, end_ptr, is_procedure_exposed]
+    # => [PROC_ROOT, start_ptr, end_ptr, is_procedure_available]
 
     # push the flag to enter the loop: an account should have at least 2 procedures
     push.1
-    # => [should_loop, PROC_ROOT, start_ptr, end_ptr, is_procedure_exposed]
+    # => [should_loop, PROC_ROOT, start_ptr, end_ptr, is_procedure_available]
 
     while.true
-        # => [PROC_ROOT, curr_proc_ptr, end_ptr, is_procedure_exposed]
+        # => [PROC_ROOT, curr_proc_ptr, end_ptr, is_procedure_available]
 
         # load the root of the current procedure
         padw dup.8 mem_loadw_be
-        # => [CURR_PROC_ROOT, PROC_ROOT, curr_proc_ptr, end_ptr, is_procedure_exposed]
+        # => [CURR_PROC_ROOT, PROC_ROOT, curr_proc_ptr, end_ptr, is_procedure_available]
 
         # check whether the current root is equal to the provided root
         dupw.1 exec.word::eq
-        # => [is_equal, PROC_ROOT, curr_proc_ptr, end_ptr, is_procedure_exposed]
+        # => [is_equal, PROC_ROOT, curr_proc_ptr, end_ptr, is_procedure_available]
 
-        # update the is_procedure_exposed flag
+        # update the is_procedure_available flag
         movup.7 or movdn.6
-        # => [PROC_ROOT, curr_proc_ptr, end_ptr, is_procedure_exposed']
+        # => [PROC_ROOT, curr_proc_ptr, end_ptr, is_procedure_available']
 
         # move the current procedure pointer
         movup.4 add.8
-        # => [curr_proc_ptr + 8, PROC_ROOT, end_ptr, is_procedure_exposed']
+        # => [curr_proc_ptr + 8, PROC_ROOT, end_ptr, is_procedure_available']
 
-        # compute should_loop flag: we should continue iterating if is_procedure_exposed' == 0 and
+        # compute should_loop flag: we should continue iterating if is_procedure_available' == 0 and
         # curr_proc_ptr + 8 != end_ptr
         dup dup.6 eq dup.7 or eq.0
-        # => [should_loop, curr_proc_ptr + 8, PROC_ROOT, end_ptr, is_procedure_exposed']
+        # => [should_loop, curr_proc_ptr + 8, PROC_ROOT, end_ptr, is_procedure_available']
 
         # rearrange the stack
         swap movdn.5
-        # => [should_loop, PROC_ROOT, curr_proc_ptr + 8, end_ptr, is_procedure_exposed']
+        # => [should_loop, PROC_ROOT, curr_proc_ptr + 8, end_ptr, is_procedure_available']
     end
 
-    # => [PROC_ROOT, curr_proc_ptr', end_ptr, is_procedure_exposed']
+    # => [PROC_ROOT, curr_proc_ptr', end_ptr, is_procedure_available']
 
     # clean the stack
     dropw drop drop
-    # => [is_procedure_exposed']
+    # => [is_procedure_available']
 end

@@ -798,18 +798,18 @@ export.get_procedure_root
     # => [PROC_ROOT]
 end
 
-#! Returns the binary flag indicating whether the procedure with the provided root is exposed by the
-#! active account.
+#! Returns the binary flag indicating whether the procedure with the provided root is available on
+#! the active account.
 #!
-#! Returns 1 if the procedure is exposed by the active account and 0 otherwise.
+#! Returns 1 if the procedure is available on the active account and 0 otherwise.
 #!
 #! Inputs:  [PROC_ROOT]
-#! Outputs: [is_procedure_exposed]
+#! Outputs: [is_procedure_available]
 #!
 #! Where:
 #! - PROC_ROOT is the hash of the procedure of interest.
-#! - is_procedure_exposed is the binary flag indicating whether the procedure with PROC_ROOT is 
-#!   exposed.
+#! - is_procedure_available is the binary flag indicating whether the procedure with PROC_ROOT is 
+#!   available on the active account.
 #!
 #! Invocation: exec
 export.has_procedure
@@ -821,9 +821,9 @@ export.has_procedure
     # => [offset, PROC_ROOT, pad(11)]
 
     syscall.exec_kernel_proc
-    # => [is_procedure_exposed, pad(15)]
+    # => [is_procedure_available, pad(15)]
 
     # clean the stack
     swapdw dropw dropw swapw dropw movdn.3 drop drop drop
-    # => [is_procedure_exposed]
+    # => [is_procedure_available]
 end

@@ -745,24 +745,24 @@ export.account_get_procedure_root
     # => [PROC_ROOT, pad(12)]
 end
 
-#! Returns the binary flag indicating whether the procedure with the provided root is exposed by the
-#! active account.
+#! Returns the binary flag indicating whether the procedure with the provided root is available on
+#! the active account.
 #!
-#! Returns 1 if the procedure is exposed by the active account and 0 otherwise.
+#! Returns 1 if the procedure is available on the active account and 0 otherwise.
 #!
 #! Inputs:  [PROC_ROOT, pad(12)]
-#! Outputs: [is_procedure_exposed, pad(15)]
+#! Outputs: [is_procedure_available, pad(15)]
 #!
 #! Where:
 #! - PROC_ROOT is the hash of the procedure of interest.
-#! - is_procedure_exposed is the binary flag indicating whether the procedure with PROC_ROOT is 
-#!   exposed.
+#! - is_procedure_available is the binary flag indicating whether the procedure with PROC_ROOT is 
+#!   available on the active account.
 #!
 #! Invocation: dynexec
 export.account_has_procedure
     # check if the procedure was called
     exec.account::has_procedure
-    # => [is_procedure_exposed, pad(15)]
+    # => [is_procedure_available, pad(15)]
 end
 
 ### FAUCET ######################################

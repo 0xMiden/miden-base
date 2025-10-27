@@ -1636,12 +1636,12 @@ async fn test_has_procedure() -> miette::Result<()> {
         use.miden::account
 
         begin
-            # check that get_item procedure is exposed by the mock account
+            # check that get_item procedure is available on the mock account
             procref.mock_account::get_item
             # => [GET_ITEM_ROOT]
 
             exec.account::has_procedure
-            # => [is_procedure_exposed]
+            # => [is_procedure_available]
 
             # assert that the get_item is exposed
             assert.err="get_item procedure should be exposed by the mock account"
@@ -1650,7 +1650,7 @@ async fn test_has_procedure() -> miette::Result<()> {
             push.5.3.15.686
 
             exec.account::has_procedure
-            # => [is_procedure_exposed]
+            # => [is_procedure_available]
 
             # assert that the procedure with some random root is not exposed
             assertz.err="procedure with some random root should not be exposed by the mock account"
