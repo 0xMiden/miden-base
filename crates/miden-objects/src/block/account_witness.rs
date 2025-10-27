@@ -11,17 +11,18 @@ use miden_crypto::merkle::{
 };
 
 use crate::account::AccountId;
-use crate::block::AccountTree;
+use crate::block::account_tree::{account_id_to_smt_key, smt_key_to_account_id};
 use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 use crate::{AccountTreeError, Word};
 
 // ACCOUNT WITNESS
 // ================================================================================================
 
-/// A specialized version of an [`SmtProof`] for use in [`AccountTree`] and
+/// A specialized version of an [`SmtProof`] for use in
+/// [`AccountTree`](super::account_tree::AccountTree) and
 /// [`PartialAccountTree`](crate::block::PartialAccountTree). It proves the inclusion of an account
 /// ID at a certain state (i.e. [`Account::commitment`](crate::account::Account::commitment)) in the
-/// [`AccountTree`].
+/// [`AccountTree`](super::account_tree::AccountTree).
 ///
 /// By construction the witness can only represent the equivalent of an [`SmtLeaf`] with zero or one
 /// entries, which guarantees that the account ID prefix it represents is unique in the tree.
@@ -48,7 +49,7 @@ impl AccountWitness {
     /// # Errors
     ///
     /// Returns an error if:
-    /// - the merkle path's depth is not [`AccountTree::DEPTH`].
+    /// - the merkle path's depth is not [`SMT_DEPTH`].
     pub fn new(
         account_id: AccountId,
         commitment: Word,
@@ -74,7 +75,7 @@ impl AccountWitness {
     /// # Panics
     ///
     /// Panics if:
-    /// - the merkle path in the proof does not have depth equal to [`AccountTree::DEPTH`].
+    /// - the merkle path in the proof does not have depth equal to [`SMT_DEPTH`].
     /// - the proof contains an SmtLeaf::Multiple.
     pub(super) fn from_smt_proof(requested_account_id: AccountId, proof: SmtProof) -> Self {
         // Check which account ID this proof actually contains. We rely on the fact that the
@@ -89,7 +90,7 @@ impl AccountWitness {
             SmtLeaf::Empty(_) => requested_account_id,
             SmtLeaf::Single((key_in_leaf, _)) => {
                 // SAFETY: By construction, the tree only contains valid IDs.
-                AccountTree::smt_key_to_id(*key_in_leaf)
+                smt_key_to_account_id(*key_in_leaf)
             },
             SmtLeaf::Multiple(_) => {
                 unreachable!("account tree should only contain zero or one entry per ID prefix")
@@ -97,12 +98,12 @@ impl AccountWitness {
         };
 
         let commitment = proof
-            .get(&AccountTree::id_to_smt_key(witness_id))
+            .get(&account_id_to_smt_key(witness_id))
             .expect("we should have received a proof for the witness key");
 
-        // SAFETY: The proof is guaranteed to have depth AccountTree::DEPTH if it comes from one of
+        // SAFETY: The proof is guaranteed to have depth SMT_DEPTH if it comes from one of
         // the account trees.
-        debug_assert_eq!(proof.path().depth(), AccountTree::DEPTH);
+        debug_assert_eq!(proof.path().depth(), SMT_DEPTH);
 
         AccountWitness::new_unchecked(witness_id, commitment, proof.into_parts().0)
     }
@@ -138,10 +139,10 @@ impl AccountWitness {
     /// Returns the [`SmtLeaf`] of the account witness.
     pub fn leaf(&self) -> SmtLeaf {
         if self.commitment == Word::empty() {
-            let leaf_idx = LeafIndex::from(AccountTree::id_to_smt_key(self.id));
+            let leaf_idx = LeafIndex::from(account_id_to_smt_key(self.id));
             SmtLeaf::new_empty(leaf_idx)
         } else {
-            let key = AccountTree::id_to_smt_key(self.id);
+            let key = account_id_to_smt_key(self.id);
             SmtLeaf::new_single(key, self.commitment)
         }
     }
@@ -149,7 +150,7 @@ impl AccountWitness {
     /// Consumes self and returns the inner proof.
     pub fn into_proof(self) -> SmtProof {
         let leaf = self.leaf();
-        debug_assert_eq!(self.path.depth(), AccountTree::DEPTH);
+        debug_assert_eq!(self.path.depth(), SMT_DEPTH);
         SmtProof::new(self.path, leaf)
             .expect("merkle path depth should be the SMT depth by construction")
     }

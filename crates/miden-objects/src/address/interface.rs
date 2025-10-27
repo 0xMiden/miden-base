@@ -1,3 +1,5 @@
+use core::fmt::{self, Display, Formatter};
+
 use crate::AddressError;
 
 /// The account interface of an [`Address`](super::Address).
@@ -38,6 +40,15 @@ impl TryFrom<u16> for AddressInterface {
             Self::UNSPECIFIED => Ok(Self::Unspecified),
             Self::BASIC_WALLET => Ok(Self::BasicWallet),
             other => Err(AddressError::UnknownAddressInterface(other)),
+        }
+    }
+}
+
+impl Display for AddressInterface {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Unspecified => write!(f, "Unspecified"),
+            Self::BasicWallet => write!(f, "BasicWallet"),
         }
     }
 }

@@ -18,8 +18,8 @@ use miden_objects::account::{
     StorageSlot,
 };
 use miden_objects::asset::{Asset, FungibleAsset, TokenSymbol};
+use miden_objects::block::account_tree::AccountTree;
 use miden_objects::block::{
-    AccountTree,
     BlockAccountUpdate,
     BlockHeader,
     BlockNoteTree,
