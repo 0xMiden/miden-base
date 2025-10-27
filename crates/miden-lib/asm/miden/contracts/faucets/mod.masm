@@ -102,19 +102,19 @@ end
 export.burn
     # Get the assets from the note. This will fail if not called from a note context.
     push.0 exec.active_note::get_assets
-    # => [num_assets, dest_ptr]
+    # => [num_assets, dest_ptr, pad(16)]
 
     # Verify we have exactly one asset
     assert.err=ERR_BASIC_FUNGIBLE_BURN_WRONG_NUMBER_OF_ASSETS
-    # => [dest_ptr]
+    # => [dest_ptr, pad(16)]
 
     mem_loadw
-    # => [ASSET]
+    # => [ASSET, pad(16)]
 
     # burning the asset
     exec.faucet::burn
-    # => [ASSET]
+    # => [ASSET, pad(16)]
 
     dropw
-    # => []
+    # => [pad(16)]
 end
