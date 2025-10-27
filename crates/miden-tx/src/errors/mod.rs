@@ -6,7 +6,7 @@ use core::error::Error;
 use miden_lib::transaction::TransactionAdviceMapMismatch;
 use miden_objects::account::AccountId;
 use miden_objects::assembly::diagnostics::reporting::PrintDiagnostic;
-use miden_objects::asset::VaultKey;
+use miden_objects::asset::AssetVaultKey;
 use miden_objects::block::BlockNumber;
 use miden_objects::crypto::merkle::SmtProofError;
 use miden_objects::note::{NoteId, NoteMetadata};
@@ -292,7 +292,7 @@ pub enum TransactionKernelError {
     )]
     GetVaultAssetWitness {
         vault_root: Word,
-        asset_key: VaultKey,
+        asset_key: AssetVaultKey,
         // thiserror will return this when calling Error::source on TransactionKernelError.
         source: DataStoreError,
     },

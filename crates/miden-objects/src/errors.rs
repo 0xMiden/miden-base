@@ -28,7 +28,7 @@ use crate::account::{
     TemplateTypeError,
 };
 use crate::address::AddressType;
-use crate::asset::VaultKey;
+use crate::asset::AssetVaultKey;
 use crate::batch::BatchId;
 use crate::block::BlockNumber;
 use crate::note::{NoteAssets, NoteExecutionHint, NoteTag, NoteType, Nullifier};
@@ -423,8 +423,8 @@ pub enum AssetError {
       expected_ty = AccountType::NonFungibleFaucet
     )]
     NonFungibleFaucetIdTypeMismatch(AccountIdPrefix),
-    #[error("vault key {actual} does not match expected vault key {expected}")]
-    VaultKeyMismatch { actual: Word, expected: Word },
+    #[error("asset vault key {actual} does not match expected asset vault key {expected}")]
+    AssetVaultKeyMismatch { actual: Word, expected: Word },
 }
 
 // TOKEN SYMBOL ERROR
@@ -473,7 +473,7 @@ pub enum PartialAssetVaultError {
     #[error("provided SMT entry {entry} is not a valid asset")]
     InvalidAssetInSmt { entry: Word, source: AssetError },
     #[error("expected asset vault key to be {expected} but it was {actual}")]
-    VaultKeyMismatch { expected: VaultKey, actual: Word },
+    AssetVaultKeyMismatch { expected: AssetVaultKey, actual: Word },
     #[error("failed to add asset proof")]
     FailedToAddProof(#[source] MerkleError),
     #[error("asset is not tracked in the partial vault")]

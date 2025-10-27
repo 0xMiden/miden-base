@@ -25,7 +25,7 @@ mod asset_witness;
 pub use asset_witness::AssetWitness;
 
 mod vault_key;
-pub use vault_key::VaultKey;
+pub use vault_key::AssetVaultKey;
 
 // ASSET VAULT
 // ================================================================================================
@@ -95,7 +95,7 @@ impl AssetVault {
 
         // if the tree value is [0, 0, 0, 0], the asset is not stored in the vault
         match self.asset_tree.get_value(
-            &VaultKey::from_account_id(faucet_id)
+            &AssetVaultKey::from_account_id(faucet_id)
                 .expect("faucet ID should be of type fungible")
                 .into(),
         ) {
@@ -118,7 +118,7 @@ impl AssetVault {
     /// Returns an opening of the leaf associated with `vault_key`.
     ///
     /// The `vault_key` can be obtained with [`Asset::vault_key`].
-    pub fn open(&self, vault_key: VaultKey) -> AssetWitness {
+    pub fn open(&self, vault_key: AssetVaultKey) -> AssetWitness {
         let smt_proof = self.asset_tree.open(&vault_key.into());
         // SAFETY: The asset vault should only contain valid assets.
         AssetWitness::new_unchecked(smt_proof)

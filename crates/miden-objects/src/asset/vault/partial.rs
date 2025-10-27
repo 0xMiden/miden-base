@@ -2,7 +2,7 @@ use alloc::string::ToString;
 
 use miden_crypto::merkle::{InnerNodeInfo, MerkleError, PartialSmt, SmtLeaf, SmtProof};
 
-use super::{AssetVault, VaultKey};
+use super::{AssetVault, AssetVaultKey};
 use crate::Word;
 use crate::asset::{Asset, AssetWitness};
 use crate::errors::PartialAssetVaultError;
@@ -60,7 +60,7 @@ impl PartialVault {
         // vault. This is the most minimal and correct partial vault we can build.
         // TODO: Workaround for https://github.com/0xMiden/miden-base/issues/1966. Fix when implemented.
         partial_vault
-            .add(vault.open(VaultKey::new_unchecked(Word::empty())))
+            .add(vault.open(AssetVaultKey::new_unchecked(Word::empty())))
             .expect("adding the first proof should never fail");
 
         partial_vault
@@ -97,7 +97,7 @@ impl PartialVault {
     ///
     /// Returns an error if:
     /// - the key is not tracked by this partial vault.
-    pub fn open(&self, vault_key: VaultKey) -> Result<AssetWitness, PartialAssetVaultError> {
+    pub fn open(&self, vault_key: AssetVaultKey) -> Result<AssetWitness, PartialAssetVaultError> {
         let smt_proof = self
             .partial_smt
             .open(&vault_key.into())
@@ -114,7 +114,7 @@ impl PartialVault {
     ///
     /// Returns an error if:
     /// - the key is not tracked by this partial SMT.
-    pub fn get(&self, vault_key: VaultKey) -> Result<Option<Asset>, MerkleError> {
+    pub fn get(&self, vault_key: AssetVaultKey) -> Result<Option<Asset>, MerkleError> {
         self.partial_smt.get_value(&vault_key.into()).map(|word| {
             if word.is_empty() {
                 None
@@ -159,7 +159,7 @@ impl PartialVault {
             })?;
 
             if *vault_key != asset.vault_key().into() {
-                return Err(PartialAssetVaultError::VaultKeyMismatch {
+                return Err(PartialAssetVaultError::AssetVaultKeyMismatch {
                     expected: asset.vault_key(),
                     actual: *vault_key,
                 });
@@ -220,7 +220,7 @@ mod tests {
         let partial_smt = PartialSmt::from_proofs([proof.clone()])?;
 
         let err = PartialVault::new(partial_smt).unwrap_err();
-        assert_matches!(err, PartialAssetVaultError::VaultKeyMismatch { expected, actual } => {
+        assert_matches!(err, PartialAssetVaultError::AssetVaultKeyMismatch { expected, actual } => {
             assert_eq!(actual, invalid_vault_key);
             assert_eq!(expected, asset.vault_key());
         });
