@@ -79,7 +79,7 @@ impl NetworkFungibleFaucet {
     /// Returns an error if:
     /// - the decimals parameter exceeds maximum value of [`Self::MAX_DECIMALS`].
     /// - the max supply parameter exceeds maximum possible amount for a fungible asset
-    ///   ([`FungibleAsset::MAX_AMOUNT`])
+    ///   ([`miden_objects::asset::FungibleAsset::MAX_AMOUNT`])
     pub fn new(
         symbol: TokenSymbol,
         decimals: u8,
@@ -113,7 +113,7 @@ impl NetworkFungibleFaucet {
     ///   [`AccountComponentInterface::NetworkFungibleFaucet`] component.
     /// - the decimals parameter exceeds maximum value of [`Self::MAX_DECIMALS`].
     /// - the max supply value exceeds maximum possible amount for a fungible asset of
-    ///   [`FungibleAsset::MAX_AMOUNT`].
+    ///   [`miden_objects::asset::FungibleAsset::MAX_AMOUNT`].
     /// - the token symbol encoded value exceeds the maximum value of
     ///   [`TokenSymbol::MAX_ENCODED_VALUE`].
     fn try_from_interface(
