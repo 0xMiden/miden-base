@@ -7,6 +7,11 @@ use.std::mem
 
 const.ERR_PROLOGUE_NOTE_INPUTS_LEN_EXCEEDED_LIMIT="number of note inputs exceeded the maximum limit of 128"
 
+# CONSTANTS
+# =================================================================================================
+
+const.RECIPIENT_DATA_ADVICE_STACK_LENGTH=13
+
 # NOTE UTILITY PROCEDURES
 # =================================================================================================
 
@@ -162,7 +167,7 @@ export.build_recipient.16
     loc_storew.12 dropw loc_storew.8 dropw loc_storew.4 dropw
     # => [RECIPIENT]
 
-    locaddr.3 dup push.13 add swap
+    locaddr.3 dup push.RECIPIENT_DATA_ADVICE_STACK_LENGTH add swap
     # => [mem_ptr, end_ptr, RECIPIENT]
 
     movdn.5 movdn.5
