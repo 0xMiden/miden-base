@@ -45,7 +45,7 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
     ACCOUNT_ID_SENDER,
 };
-use miden_objects::testing::storage::{SLOT_NAME_VALUE0, STORAGE_LEAVES_2};
+use miden_objects::testing::storage::{SLOT_NAME_MAP, SLOT_NAME_VALUE0, STORAGE_LEAVES_2};
 use miden_objects::transaction::{ExecutedTransaction, OutputNote, TransactionScript};
 use miden_objects::{LexicographicWord, StarkField};
 use miden_processor::fast::FastProcessor;
@@ -690,21 +690,27 @@ async fn test_compute_storage_commitment() -> anyhow::Result<()> {
 
     let init_storage_commitment = account_storage.to_commitment();
 
-    account_storage.set_item(0, [9, 10, 11, 12].map(Felt::new).into())?;
-    let storage_commitment_0 = account_storage.to_commitment();
+    let slot_name_value0 = &*SLOT_NAME_VALUE0;
+    let slot_name_map = &*SLOT_NAME_MAP;
+
+    account_storage.set_item(slot_name_value0, [9, 10, 11, 12].map(Felt::new).into())?;
+    let storage_commitment_value = account_storage.to_commitment();
 
     account_storage.set_map_item(
-        2,
+        slot_name_map,
         [101, 102, 103, 104].map(Felt::new).into(),
         [5, 6, 7, 8].map(Felt::new).into(),
     )?;
-    let storage_commitment_2 = account_storage.to_commitment();
+    let storage_commitment_map = account_storage.to_commitment();
 
     let code = format!(
         r#"
         use.miden::account
         use.$kernel::prologue
         use.mock::account->mock_account
+
+        const.SLOT_NAME_VALUE0=word("{slot_name_value0}")
+        const.SLOT_NAME_MAP=word("{slot_name_map}")
 
         begin
             exec.prologue::prepare_transaction
@@ -714,34 +720,39 @@ async fn test_compute_storage_commitment() -> anyhow::Result<()> {
             push.{init_storage_commitment}
             assert_eqw.err="storage commitment at the beginning of the transaction is not equal to the expected one"
 
-            # update the 0th (value) storage slot
-            push.9.10.11.12.0
+            # update the value storage slot
+            push.9.10.11.12
+            push.SLOT_NAME_VALUE0[0..2]
             call.mock_account::set_item dropw drop
             # => []
 
-            # assert the correctness of the storage commitment after the 0th slot was updated
+            # assert the correctness of the storage commitment after the value slot was updated
             call.mock_account::compute_storage_commitment
-            push.{storage_commitment_0}
-            assert_eqw.err="storage commitment after the 0th slot was updated is not equal to the expected one"
+            push.{storage_commitment_value}
+            assert_eqw.err="storage commitment after the value slot was updated is not equal to the expected one"
 
             # get the storage commitment once more to get the cached data and assert that this data
             # didn't change
             call.mock_account::compute_storage_commitment
-            push.{storage_commitment_0}
+            push.{storage_commitment_value}
             assert_eqw.err="storage commitment should remain the same"
 
-            # update the 2nd (map) storage slot
-            push.5.6.7.8.101.102.103.104.2 # [idx, KEY, VALUE]
+            # update the map storage slot
+            push.5.6.7.8.101.102.103.104
+            push.SLOT_NAME_MAP[0..2]
+            # => [name_id_prefix, name_id_suffix, KEY, VALUE]
+
             call.mock_account::set_map_item dropw dropw
             # => []
 
-            # assert the correctness of the storage commitment after the 2nd slot was updated
+            # assert the correctness of the storage commitment after the map slot was updated
             call.mock_account::compute_storage_commitment
-            push.{storage_commitment_2}
-            assert_eqw.err="storage commitment after the 2nd slot was updated is not equal to the expected one"
+            push.{storage_commitment_map}
+            assert_eqw.err="storage commitment after the map slot was updated is not equal to the expected one"
         end
         "#,
     );
+
     tx_context.execute_code(&code).await?;
 
     Ok(())
@@ -765,31 +776,37 @@ async fn proven_tx_storage_map_matches_executed_tx_for_new_account() -> anyhow::
         .with_component(MockAccountComponent::with_slots(mock_slots.clone()))
         .build()?;
 
-    // The index of the mock map in account storage is 2.
-    let map_index = 2u8;
+    // The name of the mock map in account storage.
+    let slot_name_map = &*SLOT_NAME_MAP;
+
     // Fetch a random existing key from the map.
-    let StorageSlot::Map(mock_map) = &mock_slots[map_index as usize] else {
-        panic!("expected map");
+    let Some(StorageSlot::Map(mock_map)) =
+        account.storage().get(slot_name_map).map(NamedStorageSlot::storage_slot)
+    else {
+        anyhow::bail!("expected map");
     };
+
     let existing_key = mock_map.entries().next().unwrap().0;
 
     let value0 = Word::from([3, 4, 5, 6u32]);
 
     let code = format!(
-        "
+        r#"
       use.mock::account
+
+      const.SLOT_NAME_MAP=word("{slot_name_map}")
 
       begin
           # Update an existing key.
           push.{value0}
           push.{existing_key}
-          push.{map_index}
-          # => [index, KEY, VALUE]
+          push.SLOT_NAME_MAP[0..2]
+          # => [name_id_prefix, name_id_suffix, KEY, VALUE]
           call.account::set_map_item
 
           exec.::std::sys::truncate_stack
       end
-      "
+      "#
     );
 
     let builder = ScriptBuilder::with_mock_libraries()?;
@@ -803,7 +820,7 @@ async fn proven_tx_storage_map_matches_executed_tx_for_new_account() -> anyhow::
         .execute()
         .await?;
 
-    let map_delta = tx.account_delta().storage().maps().get(&map_index).unwrap();
+    let map_delta = tx.account_delta().storage().maps().get(slot_name_map).unwrap();
     assert_eq!(
         map_delta.entries().get(&LexicographicWord::new(*existing_key)).unwrap(),
         &value0
