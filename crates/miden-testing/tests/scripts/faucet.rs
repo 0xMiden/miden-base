@@ -3,12 +3,25 @@ extern crate alloc;
 use miden_lib::account::faucets::FungibleFaucetExt;
 use miden_lib::errors::tx_kernel_errors::ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED;
 use miden_lib::note::create_p2id_note;
+use miden_lib::note::well_known_note::WellKnownNote;
 use miden_lib::utils::ScriptBuilder;
-use miden_objects::account::Account;
+use miden_objects::account::{Account, AccountId};
 use miden_objects::asset::{Asset, FungibleAsset};
-use miden_objects::note::{NoteAssets, NoteExecutionHint, NoteId, NoteMetadata, NoteTag, NoteType};
+use miden_objects::note::{
+    Note,
+    NoteAssets,
+    NoteExecutionHint,
+    NoteId,
+    NoteInputs,
+    NoteMetadata,
+    NoteRecipient,
+    NoteTag,
+    NoteType,
+};
+use miden_objects::testing::account_id::ACCOUNT_ID_PRIVATE_SENDER;
 use miden_objects::transaction::{ExecutedTransaction, OutputNote};
 use miden_objects::{Felt, Word};
+use miden_processor::crypto::RpoRandomCoin;
 use miden_testing::{Auth, MockChain, assert_transaction_executor_error};
 
 use crate::{get_note_with_fungible_asset_and_script, prove_and_verify_transaction};
@@ -287,21 +300,11 @@ async fn prove_burning_fungible_asset_on_existing_faucet_succeeds() -> anyhow::R
 /// P2ID output note. The P2ID script is fetched from the data store during transaction execution.
 #[tokio::test]
 async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Result<()> {
-    use miden_lib::note::well_known_note::WellKnownNote;
-    use miden_objects::account::{AccountId, AccountIdVersion, AccountStorageMode, AccountType};
-    use miden_objects::crypto::rand::RpoRandomCoin;
-    use miden_objects::note::{Note, NoteInputs, NoteRecipient};
-
     let mut builder = MockChain::builder();
     let faucet = builder.add_existing_faucet(Auth::BasicAuth, "TST", 200, None)?;
 
     // Parameters for the PUBLIC P2ID note that will be created by the faucet
-    let recipient_account_id = AccountId::dummy(
-        [1; 15],
-        AccountIdVersion::Version0,
-        AccountType::RegularAccountImmutableCode,
-        AccountStorageMode::Private,
-    );
+    let recipient_account_id = AccountId::try_from(ACCOUNT_ID_PRIVATE_SENDER)?;
     let amount = Felt::new(75);
     let tag = NoteTag::for_public_use_case(0, 0, miden_objects::note::NoteExecutionMode::Local)?;
     let aux = Felt::new(27);
