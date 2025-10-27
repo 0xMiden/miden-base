@@ -51,11 +51,11 @@ begin
     # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
 
     mem_load.8
+    # => [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
+
+    movup.9 drop
     # => [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
 
     call.network_faucet::distribute
-    # => [pad(16)]
-
-    drop
     # => [pad(16)]
 end
