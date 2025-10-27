@@ -355,6 +355,9 @@ export.account_get_item
     # truncate the stack
     movup.4 drop movup.4 drop
     # => [VALUE, pad(12)]
+
+    # TODO(named_slots): This shouldn't be necessary, but it is.
+    movup.4 drop
 end
 
 #! Sets an item in the account storage.

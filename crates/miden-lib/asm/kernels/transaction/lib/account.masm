@@ -635,7 +635,8 @@ end
 #! - 8..12: OLD_MAP_ROOT
 export.set_map_item.12
     # store name ID until the end of the procedure
-    loc_store.1 swap loc_store.0 swap
+    loc_store.1 loc_store.0
+    loc_load.0 loc_load.1
     # => [name_id_prefix, name_id_suffix, KEY, NEW_VALUE]
 
     exec.memory::get_account_storage_slots_section_ptr
@@ -646,7 +647,7 @@ export.set_map_item.12
     # => [slot_ptr, KEY, NEW_VALUE]
 
     # store slot_ptr until the end of the procedure
-    loc_store.2
+    dup loc_store.2
 
     # load the slot type
     dup add.ACCOUNT_SLOT_TYPE_OFFSET mem_load
@@ -684,7 +685,7 @@ export.set_map_item.12
     # => [NEW_ROOT, OLD_MAP_VALUE, KEY, NEW_VALUE]
 
     # store NEW_ROOT into the map slot's VALUE
-    loc_load.2 mem_storew dropw
+    loc_load.2 add.ACCOUNT_SLOT_VALUE_OFFSET mem_storew dropw
     # => [OLD_MAP_VALUE, KEY, NEW_VALUE]
 
     swapw
@@ -711,8 +712,11 @@ export.set_map_item.12
     # => []
 
     # load OLD_MAP_ROOT and OLD_MAP_VALUE as return values on the stack
-    padw loc_loadw.8 padw loc_loadw.4
+    padw loc_loadw.4 padw loc_loadw.8
     # => [OLD_MAP_ROOT, OLD_MAP_VALUE]
+
+    # TODO: Figure out how to fix this.
+    movupw.2 dropw movupw.2 dropw
 end
 
 #! TODO(named_slots): Refactor to take name instead.
