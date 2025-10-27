@@ -57,7 +57,7 @@ procedure_digest!(
 /// [kasm]: crate::transaction::TransactionKernel::assembler
 pub struct NetworkFungibleFaucet {
     faucet: BasicFungibleFaucet,
-    owner_account_id: Word,
+    owner_account_id: AccountId,
 }
 
 impl NetworkFungibleFaucet {
@@ -89,19 +89,7 @@ impl NetworkFungibleFaucet {
         // Create the basic fungible faucet (this validates the metadata)
         let faucet = BasicFungibleFaucet::new(symbol, decimals, max_supply)?;
 
-        // Convert AccountId to Word representation for storage
-        let owner_account_id_word: Word = [
-            Felt::new(0),
-            Felt::new(0),
-            owner_account_id.suffix(),
-            owner_account_id.prefix().as_felt(),
-        ]
-        .into();
-
-        Ok(Self {
-            faucet,
-            owner_account_id: owner_account_id_word,
-        })
+        Ok(Self { faucet, owner_account_id })
     }
 
     /// Attempts to create a new [`NetworkFungibleFaucet`] component from the associated account
@@ -130,9 +118,15 @@ impl NetworkFungibleFaucet {
                 let [max_supply, decimals, token_symbol, _] = *faucet_metadata;
 
                 // obtain owner account ID from the next storage slot
-                let owner_account_id: Word = storage
+                let owner_account_id_word: Word = storage
                     .get_item(*offset + 1)
                     .map_err(|_| FungibleFaucetError::InvalidStorageOffset(*offset + 1))?;
+
+                // Convert Word back to AccountId
+                // Storage format: [0, 0, suffix, prefix]
+                let prefix = owner_account_id_word[3];
+                let suffix = owner_account_id_word[2];
+                let owner_account_id = AccountId::new_unchecked([prefix, suffix]);
 
                 // verify metadata values and create BasicFungibleFaucet
                 let token_symbol = TokenSymbol::try_from(token_symbol)
@@ -172,7 +166,7 @@ impl NetworkFungibleFaucet {
     }
 
     /// Returns the owner account ID of the faucet.
-    pub fn owner_account_id(&self) -> Word {
+    pub fn owner_account_id(&self) -> AccountId {
         self.owner_account_id
     }
 
@@ -198,8 +192,17 @@ impl From<NetworkFungibleFaucet> for AccountComponent {
             Felt::ZERO,
         ]);
 
+        // Convert AccountId to Word representation for storage
+        let owner_account_id_word: Word = [
+            Felt::new(0),
+            Felt::new(0),
+            network_faucet.owner_account_id.suffix(),
+            network_faucet.owner_account_id.prefix().as_felt(),
+        ]
+        .into();
+
         // Second storage slot stores the owner account ID
-        let owner_slot = StorageSlot::Value(network_faucet.owner_account_id);
+        let owner_slot = StorageSlot::Value(owner_account_id_word);
 
         AccountComponent::new(
             network_fungible_faucet_library(),
