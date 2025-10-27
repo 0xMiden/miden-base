@@ -1552,7 +1552,7 @@ proc.get_map_item_raw
     # => [slot_ptr, KEY]
 
     # load the storage map root from the slot
-    padw dup.4 add.ACCOUNT_SLOT_VALUE_OFFSET mem_loadw
+    padw movup.4 add.ACCOUNT_SLOT_VALUE_OFFSET mem_loadw
     # => [ROOT, KEY]
 
     # see hash_map_key's docs for why this is done
