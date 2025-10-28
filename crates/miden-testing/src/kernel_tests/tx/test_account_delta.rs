@@ -265,7 +265,7 @@ async fn storage_delta_for_map_slots() -> anyhow::Result<()> {
             // Include an empty map which does not receive any updates, to test that the "metadata
             // header" in the delta commitment is not appended if there are no updates to a map
             // slot.
-            NamedStorageSlot::randomly_named_map(StorageMap::new()),
+            NamedStorageSlot::new_test_map(0, StorageMap::new()),
         ],
         [],
         [],
