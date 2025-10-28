@@ -12,6 +12,7 @@ use miden_objects::{AccountError, Word};
 
 use crate::account::components::rpo_falcon_512_multisig_library;
 
+// TODO(named_slots): Rename to threshold_config.
 static CONFIG_SLOT_NAME: LazyLock<SlotName> = LazyLock::new(|| {
     SlotName::new("miden::auth_rpo_falcon512_multisig::config").expect("slot name should be valid")
 });
