@@ -233,7 +233,7 @@ async fn test_mint_non_fungible_asset_succeeds() -> anyhow::Result<()> {
         end
         "#,
         non_fungible_asset = Word::from(non_fungible_asset),
-        asset_vault_key = StorageMap::hash_key(asset_vault_key),
+        asset_vault_key = StorageMap::hash_key(asset_vault_key.into()),
     );
 
     tx_context.execute_code(&code).await?;

@@ -39,7 +39,7 @@ use miden_objects::account::{
     StorageMap,
     StorageSlotType,
 };
-use miden_objects::asset::{Asset, AssetVault, FungibleAsset};
+use miden_objects::asset::{Asset, AssetVault, FungibleAsset, VaultKey};
 use miden_objects::note::NoteId;
 use miden_objects::transaction::{
     InputNote,
@@ -818,7 +818,7 @@ where
                 ))
             })?;
 
-        self.on_account_vault_asset_accessed(process, asset, current_vault_root)
+        self.on_account_vault_asset_accessed(process, asset.vault_key(), current_vault_root)
     }
 
     /// Extracts the asset that is being removed from the account's vault from the process state
@@ -861,17 +861,12 @@ where
         let vault_root_ptr = stack_top[1];
         let vault_root = Self::get_vault_root(process, vault_root_ptr)?;
 
-        // Construct the fungible asset so we can easily fetch the vault key.
-        // TODO: Replace this once we have a AssetKey type that can be constructed from a faucet ID
-        // directly: https://github.com/0xMiden/miden-base/issues/1890.
-        let asset = FungibleAsset::new(faucet_id, 0).map_err(|err| {
-            TransactionKernelError::other_with_source(
-                "provided faucet ID is not valid for fungible assets",
-                err,
-            )
+        let vault_key = VaultKey::from_account_id(faucet_id).ok_or_else(|| {
+            TransactionKernelError::other(format!(
+                "provided faucet ID {faucet_id} is not valid for fungible assets"
+            ))
         })?;
-
-        self.on_account_vault_asset_accessed(process, asset.into(), vault_root)
+        self.on_account_vault_asset_accessed(process, vault_key, vault_root)
     }
 
     /// Checks if the necessary witness for accessing the asset is already in the merkle store,
@@ -890,7 +885,7 @@ where
         let vault_root_ptr = process.get_stack_item(5);
         let vault_root = Self::get_vault_root(process, vault_root_ptr)?;
 
-        self.on_account_vault_asset_accessed(process, asset, vault_root)
+        self.on_account_vault_asset_accessed(process, asset.vault_key(), vault_root)
     }
 
     /// Checks if the necessary witness for accessing the provided asset is already in the merkle
@@ -898,10 +893,10 @@ where
     fn on_account_vault_asset_accessed(
         &self,
         process: &ProcessState,
-        asset: Asset,
+        vault_key: VaultKey,
         current_vault_root: Word,
     ) -> Result<TransactionEventHandling, TransactionKernelError> {
-        let leaf_index = AssetVault::vault_key_to_leaf_index(asset.vault_key());
+        let leaf_index = Felt::new(vault_key.to_leaf_index().value());
         let current_account_id = Self::get_current_account_id(process)?;
 
         // Note that we check whether a merkle path for the current vault root is present, not
@@ -929,7 +924,7 @@ where
                 TransactionEventData::AccountVaultAssetWitness {
                     current_account_id,
                     vault_root,
-                    asset,
+                    asset_key: vault_key,
                 },
             ))
         }
@@ -1184,7 +1179,7 @@ pub(super) enum TransactionEventData {
         /// The vault root identifying the asset vault from which a witness is requested.
         vault_root: Word,
         /// The asset for which a witness is requested.
-        asset: Asset,
+        asset_key: VaultKey,
     },
     /// The data necessary to request a storage map witness from the data store.
     AccountStorageMapWitness {
