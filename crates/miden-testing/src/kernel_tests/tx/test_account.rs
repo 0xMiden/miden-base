@@ -45,7 +45,12 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
     ACCOUNT_ID_SENDER,
 };
-use miden_objects::testing::storage::{SLOT_NAME_MAP, SLOT_NAME_VALUE0, STORAGE_LEAVES_2};
+use miden_objects::testing::storage::{
+    SLOT_NAME_MAP,
+    SLOT_NAME_VALUE0,
+    SLOT_NAME_VALUE1,
+    STORAGE_LEAVES_2,
+};
 use miden_objects::transaction::{ExecutedTransaction, OutputNote, TransactionScript};
 use miden_objects::{LexicographicWord, StarkField};
 use miden_processor::fast::FastProcessor;
@@ -78,7 +83,8 @@ pub async fn compute_current_commitment() -> miette::Result<()> {
     let mut account_clone = account.clone();
     let key = Word::from([1, 2, 3, 4u32]);
     let value = Word::from([2, 3, 4, 5u32]);
-    account_clone.storage_mut().set_map_item(2, key, value).unwrap();
+    let slot_name_map = &*SLOT_NAME_MAP;
+    account_clone.storage_mut().set_map_item(slot_name_map, key, value).unwrap();
     let expected_commitment = account_clone.commitment();
 
     let tx_script = format!(
@@ -88,6 +94,8 @@ pub async fn compute_current_commitment() -> miette::Result<()> {
         use.miden::prologue
         use.miden::account
         use.mock::account->mock_account
+
+        const SLOT_NAME_MAP = word("{slot_name_map}")
 
         begin
             exec.account::get_initial_commitment
@@ -108,8 +116,8 @@ pub async fn compute_current_commitment() -> miette::Result<()> {
             padw push.0.0.0
             push.{value}
             push.{key}
-            push.2
-            # => [slot_idx = 2, KEY, VALUE, pad(7)]
+            push.SLOT_NAME_MAP[0..2]
+            # => [name_id_prefix, name_id_suffix, KEY, VALUE, pad(7)]
             call.mock_account::set_map_item
             dropw dropw dropw dropw
             # => [STORAGE_COMMITMENT0]
@@ -912,7 +920,7 @@ async fn test_get_vault_root() -> anyhow::Result<()> {
 /// cases:
 /// - when a note adds the asset which already exists in the account vault.
 /// - when a note adds the asset which doesn't exist in the account vault.
-///  
+///
 /// As part of the test pipeline it also checks the correctness of the
 /// `miden::account::get_balance` procedure.
 #[tokio::test]
@@ -1064,7 +1072,7 @@ async fn test_get_init_balance_addition() -> anyhow::Result<()> {
 
 /// This test checks the correctness of the `miden::account::get_initial_balance` procedure in case
 /// when we create a note which removes an asset from the account vault.
-///  
+///
 /// As part of the test pipeline it also checks the correctness of the
 /// `miden::account::get_balance` procedure.
 #[tokio::test]
@@ -1239,6 +1247,7 @@ async fn test_was_procedure_called() -> miette::Result<()> {
         .with_component(mock_component)
         .build_existing()
         .unwrap();
+    let slot_name_value1 = &*SLOT_NAME_VALUE1;
 
     // Create a transaction script that:
     // 1. Checks that get_item hasn't been called yet
@@ -1246,9 +1255,12 @@ async fn test_was_procedure_called() -> miette::Result<()> {
     // 3. Checks that get_item has been called
     // 4. Calls get_item **again**
     // 5. Checks that `was_procedure_called` returns `true`
-    let tx_script_code = r#"
+    let tx_script_code = format!(
+        r#"
         use.mock::account->mock_account
         use.miden::account
+
+        const SLOT_NAME_VALUE1 = word("{slot_name_value1}")
 
         begin
             # First check that get_item procedure hasn't been called yet
@@ -1257,7 +1269,7 @@ async fn test_was_procedure_called() -> miette::Result<()> {
             assertz.err="procedure should not have been called"
 
             # Call the procedure first time
-            push.0
+            push.SLOT_NAME_VALUE1[0..2]
             call.mock_account::get_item dropw
             # => []
 
@@ -1266,14 +1278,15 @@ async fn test_was_procedure_called() -> miette::Result<()> {
             assert.err="procedure should have been called"
 
             # Call the procedure second time
-            push.0
+            push.SLOT_NAME_VALUE1[0..2]
             call.mock_account::get_item dropw
 
             procref.mock_account::get_item
             exec.account::was_procedure_called
             assert.err="2nd call should not change the was_called flag"
         end
-        "#;
+        "#
+    );
 
     // Compile the transaction script using the testing assembler with mock account
     let tx_script = ScriptBuilder::with_mock_libraries()
@@ -1300,15 +1313,20 @@ async fn test_was_procedure_called() -> miette::Result<()> {
 /// `tx script -> account code -> external library`
 #[tokio::test]
 async fn transaction_executor_account_code_using_custom_library() -> miette::Result<()> {
-    const EXTERNAL_LIBRARY_CODE: &str = r#"
+    let external_library_code = format!(
+        r#"
       use.miden::account
+
+      const SLOT_NAME_VALUE0 = word("{slot_name_value0}")
 
       export.external_setter
         push.2.3.4.5
-        push.0
+        push.SLOT_NAME_VALUE0[0..2]
         exec.account::set_item
         dropw dropw
-      end"#;
+      end"#,
+        slot_name_value0 = &*SLOT_NAME_VALUE0,
+    );
 
     const ACCOUNT_COMPONENT_CODE: &str = "
       use.external_library::external_module
@@ -1318,7 +1336,7 @@ async fn transaction_executor_account_code_using_custom_library() -> miette::Res
       end";
 
     let external_library_source =
-        NamedSource::new("external_library::external_module", EXTERNAL_LIBRARY_CODE);
+        NamedSource::new("external_library::external_module", external_library_code);
     let external_library =
         TransactionKernel::assembler().assemble_library([external_library_source])?;
 
@@ -1369,7 +1387,7 @@ async fn transaction_executor_account_code_using_custom_library() -> miette::Res
     // Make sure that account storage has been updated as per the tx script call.
     assert_eq!(
         *executed_tx.account_delta().storage().values(),
-        BTreeMap::from([(0, Word::from([2, 3, 4, 5u32]))]),
+        BTreeMap::from([(SLOT_NAME_VALUE0.clone(), Word::from([2, 3, 4, 5u32]))]),
     );
     Ok(())
 }
@@ -1411,106 +1429,118 @@ async fn test_get_initial_item() -> miette::Result<()> {
 
     // Test that get_initial_item returns the initial value before any changes
     let code = format!(
-        "
+        r#"
         use.$kernel::account
         use.$kernel::prologue
         use.mock::account->mock_account
 
+        const SLOT_NAME_VALUE0 = word("{slot_name_value0}")
+
         begin
             exec.prologue::prepare_transaction
 
-            # get initial value of storage slot 0
-            push.0
+            # get initial value of the storage slot
+            push.SLOT_NAME_VALUE0[0..2]
             exec.account::get_initial_item
 
             push.{expected_initial_value}
-            assert_eqw.err=\"initial value should match expected\"
+            assert_eqw.err="initial value should match expected"
 
             # modify the storage slot
-            push.9.10.11.12.0
-            call.mock_account::set_item dropw drop
+            push.9.10.11.12
+            push.SLOT_NAME_VALUE0[0..2]
+            call.mock_account::set_item dropw drop drop
 
             # get_item should return the new value
-            push.0
+            push.SLOT_NAME_VALUE0[0..2]
             exec.account::get_item
             push.9.10.11.12
-            assert_eqw.err=\"current value should be updated\"
+            assert_eqw.err="current value should be updated"
 
             # get_initial_item should still return the initial value
-            push.0
+            push.SLOT_NAME_VALUE0[0..2]
             exec.account::get_initial_item
             push.{expected_initial_value}
-            assert_eqw.err=\"initial value should remain unchanged\"
+            assert_eqw.err="initial value should remain unchanged"
         end
-        ",
-        expected_initial_value = &AccountStorage::mock_item_0().slot.value(),
+        "#,
+        slot_name_value0 = &*SLOT_NAME_VALUE0,
+        expected_initial_value = &AccountStorage::mock_item_0().storage_slot().value(),
     );
 
-    tx_context.execute_code(&code).await.unwrap();
+    tx_context.execute_code(&code).await?;
 
     Ok(())
 }
 
 #[tokio::test]
 async fn test_get_initial_map_item() -> miette::Result<()> {
+    let map_slot = AccountStorage::mock_item_2();
     let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(Auth::IncrNonce)
-        .with_component(MockAccountComponent::with_slots(vec![AccountStorage::mock_item_2().slot]))
+        .with_component(MockAccountComponent::with_slots(vec![map_slot.clone()]))
         .build_existing()
         .unwrap();
 
     let tx_context = TransactionContextBuilder::new(account).build().unwrap();
 
     // Use the first key-value pair from the mock storage
-    let (initial_key, initial_value) = STORAGE_LEAVES_2[0];
+    let StorageSlot::Map(map) = map_slot.storage_slot() else {
+        panic!("epxected map");
+    };
+
+    let (initial_key, initial_value) = map.entries().next().unwrap();
     let new_key = Word::from([201, 202, 203, 204u32]);
     let new_value = Word::from([301, 302, 303, 304u32]);
+    let slot_name_map = map_slot.name();
 
     let code = format!(
-        "
+        r#"
         use.$kernel::prologue
         use.mock::account->mock_account
+
+        const SLOT_NAME_MAP = word("{slot_name_map}")
 
         begin
             exec.prologue::prepare_transaction
 
             # get initial value from map
             push.{initial_key}
-            push.0
+            push.SLOT_NAME_MAP[0..2]
             call.mock_account::get_initial_map_item
             push.{initial_value}
-            assert_eqw.err=\"initial map value should match expected\"
+            assert_eqw.err="initial map value should match expected"
 
             # add a new key-value pair to the map
             push.{new_value}
             push.{new_key}
-            push.0
+            push.SLOT_NAME_MAP[0..2]
             call.mock_account::set_map_item dropw dropw
 
             # get_map_item should return the new value
             push.{new_key}
-            push.0
+            push.SLOT_NAME_MAP[0..2]
             call.mock_account::get_map_item
             push.{new_value}
-            assert_eqw.err=\"current map value should be updated\"
+            assert_eqw.err="current map value should be updated"
 
             # get_initial_map_item should still return the initial value for the initial key
             push.{initial_key}
-            push.0
+            push.SLOT_NAME_MAP[0..2]
             call.mock_account::get_initial_map_item
             push.{initial_value}
-            assert_eqw.err=\"initial map value should remain unchanged\"
+            assert_eqw.err="initial map value should remain unchanged"
 
             # get_initial_map_item for the new key should return empty word (default)
             push.{new_key}
-            push.0
+            push.SLOT_NAME_MAP[0..2]
             call.mock_account::get_initial_map_item
             padw
-            assert_eqw.err=\"new key should have empty initial value\"
+            assert_eqw.err="new key should have empty initial value"
 
-            dropw dropw
+            dropw dropw dropw
         end
-        ",
+        "#,
         initial_key = &initial_key,
         initial_value = &initial_value,
         new_key = &new_key,
