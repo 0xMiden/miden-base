@@ -228,7 +228,7 @@ fn partial_storage_to_full(
         }
     }
 
-    AccountStorage::new_named(storage_slots)
+    AccountStorage::new(storage_slots)
 }
 
 fn partial_storage_map_to_storage_map(

@@ -145,8 +145,8 @@ pub enum AccountError {
     StorageSlotNotMap(SlotName),
     #[error("storage slot {0} is not of type value")]
     StorageSlotNotValue(SlotName),
-    #[error("storage slot index is {index} but the slots length is {slots_len}")]
-    StorageIndexOutOfBounds { slots_len: u8, index: u8 },
+    #[error("found duplicate storage slot name {0}")]
+    DuplicateStorageSlotName(SlotName),
     #[error(
         "storage cannot contain a user-provided slot with name {}",
         AccountStorage::faucet_metadata_slot()

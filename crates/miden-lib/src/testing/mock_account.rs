@@ -72,7 +72,7 @@ pub trait MockAccountExt {
         let asset = NonFungibleAsset::mock(&constants::NON_FUNGIBLE_ASSET_DATA_2);
         let non_fungible_storage_map =
             StorageMap::with_entries([(asset.vault_key().into(), asset.into())]).unwrap();
-        let storage = AccountStorage::new_named(vec![NamedStorageSlot::with_map(
+        let storage = AccountStorage::new(vec![NamedStorageSlot::with_map(
             AccountStorage::faucet_metadata_slot().clone(),
             non_fungible_storage_map,
         )])

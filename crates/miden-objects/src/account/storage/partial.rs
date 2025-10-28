@@ -179,7 +179,7 @@ mod tests {
 
         let slot_name = SlotName::new("miden::test_map")?;
 
-        let storage = AccountStorage::new_named(vec![NamedStorageSlot::new(
+        let storage = AccountStorage::new(vec![NamedStorageSlot::new(
             slot_name.clone(),
             StorageSlot::Map(map_1.clone()),
         )])

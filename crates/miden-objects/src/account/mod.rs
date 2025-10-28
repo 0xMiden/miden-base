@@ -786,7 +786,7 @@ mod tests {
             })
             .collect();
 
-        let storage = AccountStorage::new_named(slots).unwrap();
+        let storage = AccountStorage::new(slots).unwrap();
 
         Account::new_existing(id, vault, storage, code, nonce)
     }

@@ -57,15 +57,14 @@ impl AccountStorage {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
 
-    /// Returns a new instance of account storage initialized with the provided items.
+    /// Returns a new instance of account storage initialized with the provided storage slots.
     ///
     /// # Errors
     ///
     /// Returns an error if:
     /// - The number of [`StorageSlot`]s exceeds 255.
-    ///
-    /// TODO(named_slots): Rename to new & document errors.
-    pub fn new_named(mut slots: Vec<NamedStorageSlot>) -> Result<AccountStorage, AccountError> {
+    /// - There are multiple storage slots with the same [`SlotName`].
+    pub fn new(mut slots: Vec<NamedStorageSlot>) -> Result<AccountStorage, AccountError> {
         let num_slots = slots.len();
 
         if num_slots > Self::MAX_NUM_STORAGE_SLOTS {
@@ -75,8 +74,7 @@ impl AccountStorage {
         let mut names = BTreeMap::new();
         for slot in &slots {
             if let Some(name) = names.insert(slot.name_id(), slot.name()) {
-                // TODO(named_slots): Return error.
-                todo!("error: storage slot name {name} is assigned to more than one slot")
+                return Err(AccountError::DuplicateStorageSlotName(name.clone()));
             }
         }
 
@@ -130,7 +128,7 @@ impl AccountStorage {
             storage_slots.push(component_slot);
         }
 
-        Self::new_named(storage_slots)
+        Self::new(storage_slots)
     }
 
     // PUBLIC ACCESSORS
@@ -384,7 +382,7 @@ impl Deserializable for AccountStorage {
         let num_slots = source.read_u8()? as usize;
         let slots = source.read_many::<NamedStorageSlot>(num_slots)?;
 
-        Self::new_named(slots).map_err(|err| DeserializationError::InvalidValue(err.to_string()))
+        Self::new(slots).map_err(|err| DeserializationError::InvalidValue(err.to_string()))
     }
 }
 
@@ -399,12 +397,12 @@ mod tests {
     #[test]
     fn test_serde_account_storage() -> anyhow::Result<()> {
         // empty storage
-        let storage = AccountStorage::new_named(vec![]).unwrap();
+        let storage = AccountStorage::new(vec![]).unwrap();
         let bytes = storage.to_bytes();
         assert_eq!(storage, AccountStorage::read_from_bytes(&bytes).unwrap());
 
         // storage with values for default types
-        let storage = AccountStorage::new_named(vec![
+        let storage = AccountStorage::new(vec![
             NamedStorageSlot::new(
                 SlotName::new("miden::test::value")?,
                 StorageSlot::Value(Word::empty()),
@@ -430,7 +428,7 @@ mod tests {
             NamedStorageSlot::new(COUNTER_SLOT, StorageSlot::empty_value()),
             NamedStorageSlot::new(MAP_SLOT, StorageSlot::empty_map()),
         ];
-        let storage = AccountStorage::new_named(slots.clone())?;
+        let storage = AccountStorage::new(slots.clone())?;
 
         assert_eq!(storage.get(&COUNTER_SLOT).unwrap(), &slots[0]);
         assert_eq!(storage.get(&MAP_SLOT).unwrap(), &slots[1]);
