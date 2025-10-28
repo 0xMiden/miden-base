@@ -7,15 +7,16 @@ use miden_lib::account::faucets::BasicFungibleFaucet;
 use miden_lib::account::wallets::BasicWallet;
 use miden_lib::note::{create_p2id_note, create_p2ide_note, create_swap_note};
 use miden_lib::testing::account_component::MockAccountComponent;
-use miden_lib::transaction::{TransactionKernel, memory};
+use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{
     Account,
     AccountBuilder,
     AccountId,
+    AccountStorage,
     AccountStorageMode,
     AccountType,
-    StorageSlot,
+    NamedStorageSlot,
 };
 use miden_objects::asset::{Asset, FungibleAsset, TokenSymbol};
 use miden_objects::block::account_tree::AccountTree;
@@ -322,7 +323,7 @@ impl MockChainBuilder {
             account
                 .storage_mut()
                 .set_item(
-                    memory::FAUCET_STORAGE_DATA_SLOT,
+                    AccountStorage::faucet_metadata_slot_name(),
                     Word::from([ZERO, ZERO, ZERO, Felt::new(issuance)]),
                 )
                 .context("failed to set faucet storage")?;
@@ -353,7 +354,7 @@ impl MockChainBuilder {
     pub fn add_existing_mock_account_with_storage(
         &mut self,
         auth_method: Auth,
-        slots: impl IntoIterator<Item = StorageSlot>,
+        slots: impl IntoIterator<Item = NamedStorageSlot>,
     ) -> anyhow::Result<Account> {
         self.add_existing_mock_account_with_storage_and_assets(auth_method, slots, [])
     }
@@ -373,7 +374,7 @@ impl MockChainBuilder {
     pub fn add_existing_mock_account_with_storage_and_assets(
         &mut self,
         auth_method: Auth,
-        slots: impl IntoIterator<Item = StorageSlot>,
+        slots: impl IntoIterator<Item = NamedStorageSlot>,
         assets: impl IntoIterator<Item = Asset>,
     ) -> anyhow::Result<Account> {
         let account_builder = Account::builder(self.rng.random())
