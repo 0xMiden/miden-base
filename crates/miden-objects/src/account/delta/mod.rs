@@ -195,15 +195,13 @@ impl AccountDelta {
     ///
     /// **Domain Separators**
     ///
-    /// TODO(named_slots): Replace slot_idx in examples with name ID.
-    ///
     /// As an example for ambiguity, consider these two deltas:
     ///
     /// ```text
     /// [
     ///   ID_AND_NONCE, EMPTY_WORD,
     ///   [/* no fungible asset delta */],
-    ///   [[domain = 1, was_added = 1, 0, 0], NON_FUNGIBLE_ASSET],
+    ///   [[domain = 1, was_added = 0, 0, 0], NON_FUNGIBLE_ASSET],
     ///   [/* no storage delta */]
     /// ]
     /// ```
@@ -213,7 +211,7 @@ impl AccountDelta {
     ///   ID_AND_NONCE, EMPTY_WORD,
     ///   [/* no fungible asset delta */],
     ///   [/* no non-fungible asset delta */],
-    ///   [[domain = 2, slot_idx = 1, 0, 0], NEW_VALUE]
+    ///   [[domain = 2, 0, name_id_suffix = 0, name_id_prefix = 0], NEW_VALUE]
     /// ]
     /// ```
     ///
@@ -242,7 +240,7 @@ impl AccountDelta {
     ///   [/* no non-fungible asset delta */],
     ///   [KEY0, VALUE0],
     ///   [KEY1, VALUE1],
-    ///   [domain = 3, slot_idx = 0, num_changed_entries = 2, 0, 0, 0, 0, 0]
+    ///   [domain = 3, num_changed_entries = 2, name_id_suffix, name_id_prefix, 0, 0, 0, 0]
     /// ]
     /// ```
     ///
