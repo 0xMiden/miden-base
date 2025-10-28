@@ -518,9 +518,12 @@ export.account_set_map_item
     exec.authenticate_account_origin
     # => [name_id_prefix, name_id_suffix, KEY, NEW_VALUE, pad(6)]
 
-    # TODO(kernel_stack_underflow): pad the stack so the following procedure can drop elements
     # set the new map item
     exec.account::set_map_item
+    # => [OLD_MAP_ROOT, OLD_VALUE, pad(8)]
+
+    # Drop extraneous elements that set_map_item pushed onto the stack.
+    movupw.2 dropw movupw.2 dropw
     # => [OLD_MAP_ROOT, OLD_VALUE, pad(8)]
 end
 

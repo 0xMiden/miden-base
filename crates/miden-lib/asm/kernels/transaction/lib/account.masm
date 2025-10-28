@@ -750,10 +750,6 @@ export.set_map_item.12
     padw loc_loadw.4 padw loc_loadw.8
     # => [OLD_MAP_ROOT, OLD_MAP_VALUE]
 
-    # TODO: Figure out how to fix this.
-    movupw.2 dropw movupw.2 dropw
-    # => [OLD_MAP_ROOT, OLD_MAP_VALUE]
-
     # set the storage commitment dirty flag to indicate that the commitment is outdated
     push.1
     exec.memory::set_native_account_storage_commitment_dirty_flag
