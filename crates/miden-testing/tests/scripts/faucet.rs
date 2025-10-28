@@ -1,6 +1,6 @@
 extern crate alloc;
 
-use miden_lib::account::faucets::FungibleFaucetExt;
+use miden_lib::account::faucets::{BasicFungibleFaucet, FungibleFaucetExt};
 use miden_lib::errors::tx_kernel_errors::ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::Account;
@@ -250,10 +250,12 @@ async fn prove_burning_fungible_asset_on_existing_faucet_succeeds() -> anyhow::R
     builder.add_output_note(OutputNote::Full(note.clone()));
     let mock_chain = builder.build()?;
 
-    // The Fungible Faucet component is added as the second component after auth, so it's storage
-    // slot offset will be 2. Check that max_supply at the word's index 0 is 200. The remainder of
-    // the word is initialized with the metadata of the faucet which we don't need to check.
-    assert_eq!(faucet.storage().get_item(2).unwrap()[0], Felt::new(200));
+    // Check that max_supply at the word's index 0 is 200. The remainder of the word is initialized
+    // with the metadata of the faucet which we don't need to check.
+    assert_eq!(
+        faucet.storage().get_item(BasicFungibleFaucet::metadata_slot_name()).unwrap()[0],
+        Felt::new(200)
+    );
 
     // Check that the faucet reserved slot has been correctly initialized.
     // The already issued amount should be 100.

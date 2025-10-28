@@ -24,8 +24,8 @@ const.ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED="distr
 # CONSTANTS
 # =================================================================================================
 
-# The slot in this component's storage layout where the metadata is stored.
-const.METADATA_SLOT=0
+# The slot in this component's storage where the metadata is stored.
+const.METADATA_SLOT=word("miden::basic_fungible_faucet::metadata")
 
 #! Distributes freshly minted fungible assets to the provided recipient.
 #!
@@ -50,7 +50,7 @@ const.METADATA_SLOT=0
 #! Invocation: call
 export.distribute.4
     # get max supply of this faucet. We assume it is stored at pos 3 of slot 1
-    push.METADATA_SLOT exec.account::get_item drop drop drop
+    push.METADATA_SLOT[0..2] exec.account::get_item drop drop drop
     # => [max_supply, amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
 
     # get total issuance of this faucet so far and add amount to be minted
