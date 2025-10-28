@@ -455,7 +455,7 @@ export.account_get_initial_item
     # => [INIT_VALUE, pad(14)]
 
     # truncate the stack
-    movup.4 drop movup.4 drop
+    movup.4 drop movup.4 drop movup.4 drop
     # => [INIT_VALUE, pad(12)]
 end
 

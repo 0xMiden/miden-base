@@ -19,7 +19,6 @@ use miden_objects::account::{
     AccountStorageMode,
     AccountType,
     NamedStorageSlot,
-    StorageSlot,
 };
 use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::assembly::diagnostics::NamedSource;

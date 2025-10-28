@@ -13,7 +13,6 @@ use miden_objects::account::{
     AccountId,
     NamedStorageSlot,
     SlotName,
-    StorageSlot,
 };
 use miden_objects::asset::FungibleAsset;
 use miden_objects::batch::ProvenBatch;

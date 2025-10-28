@@ -30,7 +30,7 @@ pub const KERNEL_PROCEDURES: [Word; 53] = [
     // account_get_item
     word!("0x2d452567218004896f8823abc575a964aeea386bbc53eb7129cf02c88936f57d"),
     // account_get_initial_item
-    word!("0x85b711b0be89f47b37c5dd62b527a8b428be4645637d8ce1b7e1fbbee43bbde0"),
+    word!("0xda4f43551c484e397ed0978c7ab4c8ed877a3e50349d08c931e41c2ceda47e9e"),
     // account_set_item
     word!("0xb9ae172b1b090c7e29439ee2fcf148a27c145500c2f47c58fb5a6a5c81eb441a"),
     // account_get_map_item
