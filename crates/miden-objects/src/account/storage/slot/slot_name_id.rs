@@ -3,7 +3,10 @@ use core::fmt::Display;
 
 use crate::Felt;
 
-// TODO(named_slots): Docs + separators for the entire module.
+/// The identifier of a [`SlotName`](super::SlotName).
+///
+/// The ID of a slot name are the first two felts of the blake3-hashed slot name. The suffix is the
+/// 0th element and the prefix is the 1st element.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SlotNameId {
     prefix: Felt,
@@ -11,18 +14,28 @@ pub struct SlotNameId {
 }
 
 impl SlotNameId {
+    // CONSTRUCTORS
+    // --------------------------------------------------------------------------------------------
+
+    /// Creates a new [`SlotNameId`] from the provided felts.
     pub fn new(prefix: Felt, suffix: Felt) -> Self {
         Self { prefix, suffix }
     }
 
+    // ACCESSORS
+    // --------------------------------------------------------------------------------------------
+
+    /// Returns the prefix of the [`SlotNameId`].
     pub fn prefix(&self) -> Felt {
         self.prefix
     }
 
+    /// Returns the suffix of the [`SlotNameId`].
     pub fn suffix(&self) -> Felt {
         self.suffix
     }
 
+    /// Returns the [`SlotNameId`]'s felts encoded into a u128.
     fn as_u128(&self) -> u128 {
         let mut le_bytes = [0_u8; 16];
         le_bytes[..8].copy_from_slice(&self.suffix().as_int().to_le_bytes());
@@ -54,6 +67,9 @@ impl Display for SlotNameId {
         f.write_fmt(format_args!("0x{:032x}", self.as_u128()))
     }
 }
+
+// TESTS
+// ================================================================================================
 
 #[cfg(test)]
 mod tests {
