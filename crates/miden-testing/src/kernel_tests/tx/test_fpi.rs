@@ -62,13 +62,13 @@ async fn test_fpi_memory_single_account() -> anyhow::Result<()> {
     let storage_slots =
         vec![AccountStorage::mock_item_0().slot, AccountStorage::mock_item_2().slot];
     let foreign_account_code_source = "
-        use.miden::account
+        use.miden::active_account
 
         export.get_item_foreign
             # make this foreign procedure unique to make sure that we invoke the procedure of the
             # foreign account, not the native one
             push.1 drop
-            exec.account::get_item
+            exec.active_account::get_item
 
             # truncate the stack
             movup.6 movup.6 movup.6 drop drop drop
@@ -78,7 +78,7 @@ async fn test_fpi_memory_single_account() -> anyhow::Result<()> {
             # make this foreign procedure unique to make sure that we invoke the procedure of the
             # foreign account, not the native one
             push.2 drop
-            exec.account::get_map_item
+            exec.active_account::get_map_item
         end
     ";
 
@@ -305,26 +305,26 @@ async fn test_fpi_memory_two_accounts() -> anyhow::Result<()> {
     let storage_slots_2 = vec![AccountStorage::mock_item_1().slot];
 
     let foreign_account_code_source_1 = "
-        use.miden::account
+        use.miden::active_account
 
         export.get_item_foreign_1
             # make this foreign procedure unique to make sure that we invoke the procedure of the
             # foreign account, not the native one
             push.1 drop
-            exec.account::get_item
+            exec.active_account::get_item
 
             # truncate the stack
             movup.6 movup.6 movup.6 drop drop drop
         end
     ";
     let foreign_account_code_source_2 = "
-        use.miden::account
+        use.miden::active_account
 
         export.get_item_foreign_2
             # make this foreign procedure unique to make sure that we invoke the procedure of the
             # foreign account, not the native one
             push.2 drop
-            exec.account::get_item
+            exec.active_account::get_item
 
             # truncate the stack
             movup.6 movup.6 movup.6 drop drop drop
@@ -517,13 +517,13 @@ async fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
     let storage_slots =
         vec![AccountStorage::mock_item_0().slot, AccountStorage::mock_item_2().slot];
     let foreign_account_code_source = "
-        use.miden::account
+        use.miden::active_account
 
         export.get_item_foreign
             # make this foreign procedure unique to make sure that we invoke the procedure of the
             # foreign account, not the native one
             push.1 drop
-            exec.account::get_item
+            exec.active_account::get_item
 
             # truncate the stack
             movup.6 movup.6 movup.6 drop drop drop
@@ -533,7 +533,7 @@ async fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
             # make this foreign procedure unique to make sure that we invoke the procedure of the
             # foreign account, not the native one
             push.2 drop
-            exec.account::get_map_item
+            exec.active_account::get_map_item
         end
     ";
 
@@ -566,7 +566,6 @@ async fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
         use.std::sys
 
         use.miden::tx
-        use.miden::account
 
         begin
             # get the storage item at index 0
@@ -661,17 +660,17 @@ async fn foreign_account_can_get_balance_and_presence_of_asset() -> anyhow::Resu
 
     let foreign_account_code_source = format!(
         "
-        use.miden::account
+        use.miden::active_account
 
         export.get_asset_balance
             # get balance of first asset
             push.{fungible_faucet_id_suffix} push.{fungible_faucet_id_prefix}
-            exec.account::get_balance
+            exec.active_account::get_balance
             # => [balance]
 
             # check presence of non fungible asset
             push.{non_fungible_asset_word}
-            exec.account::has_non_fungible_asset
+            exec.active_account::has_non_fungible_asset
             # => [has_asset, balance]
 
             # add the balance and the bool
@@ -774,14 +773,14 @@ async fn foreign_account_get_initial_balance() -> anyhow::Result<()> {
 
     let foreign_account_code_source = format!(
         "
-        use.miden::account
+        use.miden::active_account
 
         export.get_initial_balance
             # push the faucet ID on the stack
             push.{fungible_faucet_id_suffix} push.{fungible_faucet_id_prefix}
 
             # get the initial balance of the asset associated with the provided faucet ID
-            exec.account::get_balance
+            exec.active_account::get_balance
             # => [initial_balance]
 
             # truncate the stack
@@ -887,7 +886,7 @@ async fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
     let storage_slots = vec![AccountStorage::mock_item_0().slot];
     let second_foreign_account_code_source = r#"
         use.miden::tx
-        use.miden::account
+        use.miden::active_account
 
         use.std::sys
 
@@ -915,7 +914,7 @@ async fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
 
             # get the first element of the 0'th storage slot (it should be 1) and add it to the
             # obtained foreign value.
-            push.0 exec.account::get_item drop drop drop
+            push.0 exec.active_account::get_item drop drop drop
             add
 
             # assert that the resulting value equals 6
@@ -943,7 +942,7 @@ async fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
         vec![AccountStorage::mock_item_0().slot, AccountStorage::mock_item_1().slot];
     let first_foreign_account_code_source = r#"
         use.miden::tx
-        use.miden::account
+        use.miden::active_account
 
         use.std::sys
 
@@ -964,7 +963,7 @@ async fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
 
             # get the second element of the 0'th storage slot (it should be 2) and add it to the
             # obtained foreign value.
-            push.0 exec.account::get_item drop drop swap drop
+            push.0 exec.active_account::get_item drop drop swap drop
             add
 
             # assert that the resulting value equals 8
@@ -977,7 +976,7 @@ async fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
             # make this foreign procedure unique to make sure that we invoke the procedure of the
             # foreign account, not the native one
             push.1 drop
-            exec.account::get_item
+            exec.active_account::get_item
 
             # return the first element of the resulting word
             drop drop drop
@@ -1104,7 +1103,7 @@ async fn test_nested_fpi_stack_overflow() -> anyhow::Result<()> {
     let mut foreign_accounts = Vec::new();
 
     let last_foreign_account_code_source = "
-                use.miden::account
+                use.miden::active_account
 
                 export.get_item_foreign
                     # make this foreign procedure unique to make sure that we invoke the procedure
@@ -1114,7 +1113,7 @@ async fn test_nested_fpi_stack_overflow() -> anyhow::Result<()> {
                     # push the index of desired storage item
                     push.0
 
-                    exec.account::get_item
+                    exec.active_account::get_item
 
                     # return the first element of the resulting word
                     drop drop drop
@@ -1376,12 +1375,12 @@ async fn test_nested_fpi_native_account_invocation() -> anyhow::Result<()> {
 async fn test_fpi_stale_account() -> anyhow::Result<()> {
     // Prepare the test data
     let foreign_account_code_source = "
-        use.miden::account
+        use.miden::native_account
 
         # code is not used in this test
         export.set_some_item_foreign
             push.34.1
-            exec.account::set_item
+            exec.native_account::set_item
         end
     ";
 
@@ -1474,15 +1473,16 @@ async fn test_fpi_stale_account() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_fpi_get_account_id() -> anyhow::Result<()> {
     let foreign_account_code_source = "
-        use.miden::account
+        use.miden::active_account
+        use.miden::native_account
 
         export.get_current_and_native_ids
             # get the ID of the current (foreign) account
-            exec.account::get_id
+            exec.active_account::get_id
             # => [acct_id_prefix, acct_id_suffix, pad(16)]
 
             # get the ID of the native account
-            exec.account::get_native_id
+            exec.native_account::get_id
             # => [native_acct_id_prefix, native_acct_id_suffix, acct_id_prefix, acct_id_suffix, pad(16)]
 
             # truncate the stack
@@ -1519,7 +1519,6 @@ async fn test_fpi_get_account_id() -> anyhow::Result<()> {
         use.std::sys
 
         use.miden::tx
-        use.miden::account
         use.miden::account_id
 
         begin
@@ -1588,15 +1587,16 @@ async fn test_fpi_get_account_id() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_fpi_get_account_nonce() -> anyhow::Result<()> {
     let foreign_account_code_source = "
-        use.miden::account
+        use.miden::active_account
+        use.miden::native_account
 
         export.get_current_and_native_nonce_values
             # get the nonce of the current (foreign) account
-            exec.account::get_nonce
+            exec.active_account::get_nonce
             # => [nonce, pad(16)]
 
             # get the nonce of the native account
-            exec.account::get_native_nonce
+            exec.native_account::get_nonce
             # => [native_nonce, nonce, pad(16)]
 
             # truncate the stack
@@ -1781,17 +1781,17 @@ async fn test_get_initial_item_and_get_initial_map_item_with_foreign_account() -
 
     // Create foreign procedures that test get_initial_item and get_initial_map_item
     let foreign_account_code_source = "
-        use.miden::account
+        use.miden::active_account
         use.std::sys
 
         export.test_get_initial_item
             push.0
-            exec.account::get_initial_item
+            exec.active_account::get_initial_item
             exec.sys::truncate_stack
         end
 
         export.test_get_initial_map_item
-            exec.account::get_initial_map_item
+            exec.active_account::get_initial_map_item
             exec.sys::truncate_stack
         end
     ";

@@ -542,7 +542,7 @@ export.account_get_initial_vault_root
     # => [INIT_VAULT_ROOT, pad(12)]
 end
 
-#! Returns the vault root of the current account.
+#! Returns the vault root of the active account.
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [VAULT_ROOT, pad(12)]
@@ -696,6 +696,10 @@ end
 #!
 #! Invocation: dynexec
 export.account_was_procedure_called
+    # check that this procedure was executed against the native account
+    exec.memory::assert_native_account
+    # => [PROC_ROOT, pad(12)]
+
     # check if the procedure was called
     exec.account::was_procedure_called
     # => [was_called, pad(15)]

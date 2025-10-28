@@ -203,7 +203,7 @@ end
 # PROCEDURES
 # =================================================================================================
 
-#! Computes the account commitment of the current account.
+#! Computes the commitment of the active account.
 #!
 #! Notice that there is no caching (and, hence, dirty flag) for the commitment of the entire
 #! account. Assuming that the storage commitment is current, computing account commitment is
@@ -296,32 +296,80 @@ export.memory::get_account_id->get_id
 #! - nonce is the account nonce.
 export.memory::get_account_nonce->get_nonce
 
-#! Returns the native account commitment at the beginning of the transaction.
+#! Returns the commitment of the active account at the beginning of the transaction.
 #!
 #! Inputs:  []
 #! Outputs: [INIT_COMMITMENT]
 #!
 #! Where:
 #! - INIT_COMMITMENT is the initial account commitment.
-export.memory::get_init_account_commitment->get_initial_commitment
+export.get_initial_commitment
+    # determine whether the active account is native
+    exec.memory::is_native_account
+    # => [is_native_account]
 
-#! Returns the vault root of the native account at the beginning of the transaction.
+    if.true
+        exec.memory::get_init_account_commitment
+    else
+        # for the foreign account current commitment equals to initial
+        exec.compute_current_commitment
+    end
+    # => [INIT_COMMITMENT]
+end
+
+#! Returns the vault root of the active account at the beginning of the transaction.
 #!
 #! Inputs:  []
 #! Outputs: [INIT_ACCOUNT_VAULT_ROOT]
 #!
 #! Where:
 #! - INIT_ACCOUNT_VAULT_ROOT is the initial account vault root.
-export.memory::get_init_native_account_vault_root->get_initial_vault_root
+export.get_initial_vault_root
+    # Get the vault root of the active account. For the foreign account this root will be equal to 
+    # the initial one.
+    exec.memory::get_account_vault_root
+    # => [ACTIVE_ACCOUNT_VAULT_ROOT]
 
-#! Returns the storage commitment of the native account at the beginning of the transaction.
+    # get the initial vault root of the native account
+    exec.memory::get_init_native_account_vault_root
+    # => [INIT_NATIVE_ACCOUNT_VAULT_ROOT, ACTIVE_ACCOUNT_VAULT_ROOT]
+
+    # check whether the active account is native
+    exec.memory::is_native_account
+    # => [is_native_account, INIT_NATIVE_ACCOUNT_VAULT_ROOT, ACTIVE_ACCOUNT_VAULT_ROOT]
+
+    # if the active account is native, keep the INIT_NATIVE_ACCOUNT_VAULT_ROOT, or
+    # ACTIVE_ACCOUNT_VAULT_ROOT otherwise
+    cdropw
+    # => [INIT_ACCOUNT_VAULT_ROOT]
+end
+
+#! Returns the storage commitment of the active account at the beginning of the transaction.
 #!
 #! Inputs:  []
 #! Outputs: [INIT_ACCOUNT_STORAGE_COMMITMENT]
 #!
 #! Where:
 #! - INIT_ACCOUNT_STORAGE_COMMITMENT is the initial account storage commitment.
-export.memory::get_init_account_storage_commitment->get_initial_storage_commitment
+export.get_initial_storage_commitment
+    # Get the storage commitment of the active account. For the foreign account this commitment will
+    # be initial.
+    exec.memory::get_account_storage_commitment
+    # => [ACTIVE_ACCOUNT_STORAGE_COMMITMENT]
+
+    # get the initial storage commitment of the native account
+    exec.memory::get_init_account_storage_commitment
+    # => [INIT_NATIVE_ACCOUNT_STORAGE_COMMITMENT, ACTIVE_ACCOUNT_STORAGE_COMMITMENT]
+
+    # check whether the active account is native
+    exec.memory::is_native_account
+    # => [is_native_account, INIT_NATIVE_ACCOUNT_STORAGE_COMMITMENT, ACTIVE_ACCOUNT_STORAGE_COMMITMENT]
+
+    # if the active account is native, keep the INIT_NATIVE_ACCOUNT_STORAGE_COMMITMENT, or
+    # ACTIVE_ACCOUNT_STORAGE_COMMITMENT otherwise
+    cdropw
+    # => [INIT_ACCOUNT_STORAGE_COMMITMENT]
+end
 
 #! Gets the code commitment of the current account.
 #!
@@ -955,7 +1003,7 @@ export.remove_asset_from_vault
     # => [ASSET]
 end
 
-#! Returns the balance of the fungible asset associated with the provided faucet_id in the current
+#! Returns the balance of the fungible asset associated with the provided faucet_id in the active
 #! account's vault.
 #!
 #! Inputs:  [faucet_id_prefix, faucet_id_suffix]
@@ -982,7 +1030,7 @@ export.get_balance
     # => [balance]
 end
 
-#! Returns the balance of the fungible asset associated with the provided faucet_id in the current 
+#! Returns the balance of the fungible asset associated with the provided faucet_id in the active 
 #! account's vault at the beginning of the transaction.
 #!
 #! Inputs:  [faucet_id_prefix, faucet_id_suffix]
@@ -1009,7 +1057,8 @@ export.get_initial_balance
     # => [init_balance]
 end
 
-#! Returns a boolean indicating whether the non-fungible asset is present in the current account's vault.
+#! Returns a boolean indicating whether the non-fungible asset is present in the active account's
+#! vault.
 #!
 #! Inputs:  [ASSET]
 #! Outputs: [has_asset]
@@ -1043,7 +1092,7 @@ end
 #! Inputs:
 #!   Operand stack: [account_id_prefix, account_id_suffix]
 #!   Advice map: {
-#!     ACCOUNT_ID: [[account_id_suffix, account_id_prefix, 0, account_nonce]],
+#!     ACCOUNT_ID: [[account_id_suffix, account_id_prefix, 0, account_nonce],
 #!                   VAULT_ROOT, STORAGE_COMMITMENT, CODE_COMMITMENT],
 #!     STORAGE_COMMITMENT: [[STORAGE_SLOT_DATA]],
 #!     CODE_COMMITMENT: [[ACCOUNT_PROCEDURE_DATA]],
@@ -1576,7 +1625,7 @@ proc.refresh_storage_commitment
     end
 end
 
-#! Checks if a procedure has been called during transaction execution.
+#! Checks if a native account procedure has been called during transaction execution.
 #!
 #! Note: This returns 1 only if the procedure invoked account-restricted kernel APIs (e.g.,
 #! `exec.faucet::mint`) which trigger `authenticate_and_track_procedure`. Procedures that execute

@@ -5,10 +5,10 @@ use miden_objects::utils::sync::LazyLock;
 use crate::transaction::TransactionKernel;
 
 const INCR_NONCE_AUTH_CODE: &str = "
-    use.miden::account
+    use.miden::native_account
 
     export.auth_incr_nonce
-        exec.account::incr_nonce drop
+        exec.native_account::incr_nonce drop
     end
 ";
 

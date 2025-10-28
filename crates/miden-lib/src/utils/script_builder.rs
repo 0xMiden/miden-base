@@ -352,20 +352,23 @@ mod tests {
     fn test_create_library_and_create_tx_script() -> anyhow::Result<()> {
         let script_code = "
             use.external_contract::counter_contract
+
             begin
                 call.counter_contract::increment
             end
         ";
 
         let account_code = "
-            use.miden::account
+            use.miden::active_account
+            use.miden::native_account
             use.std::sys
+
             export.increment
                 push.0
-                exec.account::get_item
+                exec.active_account::get_item
                 push.1 add
                 push.0
-                exec.account::set_item
+                exec.native_account::set_item
                 exec.sys::truncate_stack
             end
         ";
@@ -387,20 +390,23 @@ mod tests {
     fn test_compile_library_and_add_to_builder() -> anyhow::Result<()> {
         let script_code = "
             use.external_contract::counter_contract
+
             begin
                 call.counter_contract::increment
             end
         ";
 
         let account_code = "
-            use.miden::account
+            use.miden::active_account
+            use.miden::native_account
             use.std::sys
+
             export.increment
                 push.0
-                exec.account::get_item
+                exec.active_account::get_item
                 push.1 add
                 push.0
-                exec.account::set_item
+                exec.native_account::set_item
                 exec.sys::truncate_stack
             end
         ";
@@ -435,20 +441,23 @@ mod tests {
     fn test_builder_style_chaining() -> anyhow::Result<()> {
         let script_code = "
             use.external_contract::counter_contract
+
             begin
                 call.counter_contract::increment
             end
         ";
 
         let account_code = "
-            use.miden::account
+            use.miden::active_account
+            use.miden::native_account
             use.std::sys
+
             export.increment
                 push.0
-                exec.account::get_item
+                exec.active_account::get_item
                 push.1 add
                 push.0
-                exec.account::set_item
+                exec.native_account::set_item
                 exec.sys::truncate_stack
             end
         ";
@@ -493,27 +502,31 @@ mod tests {
         ";
 
         let account_code_1 = "
-            use.miden::account
+            use.miden::active_account
+            use.miden::native_account
             use.std::sys
+
             export.increment_1
                 push.0
-                exec.account::get_item
+                exec.active_account::get_item
                 push.1 add
                 push.0
-                exec.account::set_item
+                exec.native_account::set_item
                 exec.sys::truncate_stack
             end
         ";
 
         let account_code_2 = "
-            use.miden::account
+            use.miden::active_account
+            use.miden::native_account
             use.std::sys
+
             export.increment_2
                 push.0
-                exec.account::get_item
+                exec.active_account::get_item
                 push.2 add
                 push.0
-                exec.account::set_item
+                exec.native_account::set_item
                 exec.sys::truncate_stack
             end
         ";

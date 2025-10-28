@@ -8,7 +8,7 @@
 # - decimals are the decimals of the token.
 # - token_symbol as three chars encoded in a Felt.
 
-use.miden::account
+use.miden::active_account
 use.miden::faucet
 use.miden::output_note
 
@@ -50,7 +50,7 @@ const.METADATA_SLOT=0
 #! Invocation: call
 export.distribute.4
     # get max supply of this faucet. We assume it is stored at pos 3 of slot 1
-    push.METADATA_SLOT exec.account::get_item drop drop drop
+    push.METADATA_SLOT exec.active_account::get_item drop drop drop
     # => [max_supply, amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
 
     # get total issuance of this faucet so far and add amount to be minted

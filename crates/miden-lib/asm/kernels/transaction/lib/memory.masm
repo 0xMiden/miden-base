@@ -1122,7 +1122,7 @@ export.set_account_vault_root
     mem_storew
 end
 
-#! Returns the memory pointer to the initial vault root of the current account.
+#! Returns the memory pointer to the initial vault root of the active account.
 #!
 #! For the native account, this returns the pointer to the initial vault root.
 #! For foreign accounts, this returns the regular vault root pointer since foreign accounts
