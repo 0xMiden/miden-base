@@ -1680,9 +1680,10 @@ export.has_procedure
         # move the current procedure pointer
         movup.4 add.8
         # => [curr_proc_ptr + 8, PROC_ROOT, end_ptr, is_procedure_available']
-
-        # compute should_loop flag: we should continue iterating if is_procedure_available' == 0 and
-        # curr_proc_ptr + 8 != end_ptr
+        
+        # compute should_loop flag: we should continue iterating if
+        # !(is_procedure_available' || curr_proc_ptr + 8 == end_ptr), i.e. we didn't find the 
+        # procedure and we didn't reach the end of the procedures memory block
         dup dup.6 eq dup.7 or eq.0
         # => [should_loop, curr_proc_ptr + 8, PROC_ROOT, end_ptr, is_procedure_available']
 
