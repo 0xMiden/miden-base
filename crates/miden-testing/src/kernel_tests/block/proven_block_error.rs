@@ -6,7 +6,15 @@ use miden_block_prover::{LocalBlockProver, ProvenBlockError};
 use miden_lib::testing::account_component::{IncrNonceAuthComponent, MockAccountComponent};
 use miden_lib::testing::mock_account::MockAccountExt;
 use miden_objects::account::delta::AccountUpdateDetails;
-use miden_objects::account::{Account, AccountBuilder, AccountComponent, AccountId, StorageSlot};
+use miden_objects::account::{
+    Account,
+    AccountBuilder,
+    AccountComponent,
+    AccountId,
+    NamedStorageSlot,
+    SlotName,
+    StorageSlot,
+};
 use miden_objects::asset::FungibleAsset;
 use miden_objects::batch::ProvenBatch;
 use miden_objects::block::{BlockInputs, BlockNumber, ProposedBlock};
@@ -252,9 +260,10 @@ async fn proven_block_fails_on_creating_account_with_existing_account_id_prefix(
 
     let account = AccountBuilder::new([5; 32])
         .with_auth_component(auth_component.clone())
-        .with_component(MockAccountComponent::with_slots(vec![StorageSlot::Value(Word::from(
-            [5u32; 4],
-        ))]))
+        .with_component(MockAccountComponent::with_slots(vec![NamedStorageSlot::with_value(
+            SlotName::new("miden::test_slot")?,
+            Word::from([5u32; 4]),
+        )]))
         .build()
         .context("failed to build account")?;
 
@@ -343,9 +352,10 @@ async fn proven_block_fails_on_creating_account_with_duplicate_account_id_prefix
     let mock_chain = MockChain::new();
     let account = AccountBuilder::new([5; 32])
         .with_auth_component(Auth::IncrNonce)
-        .with_component(MockAccountComponent::with_slots(vec![StorageSlot::Value(Word::from(
-            [5u32; 4],
-        ))]))
+        .with_component(MockAccountComponent::with_slots(vec![NamedStorageSlot::with_value(
+            SlotName::new("miden::test_slot")?,
+            Word::from([5u32; 4]),
+        )]))
         .build()
         .context("failed to build account")?;
 
