@@ -397,7 +397,6 @@ export.account_set_item
     exec.authenticate_account_origin
     # => [name_id_prefix, name_id_suffix, VALUE, pad(10)]
 
-    # TODO(kernel_stack_underflow): pad the stack so the following procedure can drop elements
     # set the account storage item
     exec.account::set_item
     # => [OLD_VALUE, pad(12)]
@@ -425,7 +424,6 @@ export.account_get_map_item
     exec.authenticate_account_origin
     # => [name_id_prefix, name_id_suffix, KEY, pad(10)]
 
-    # TODO(kernel_stack_underflow): pad the stack so the following procedure can drop elements
     # fetch the map item from account storage
     exec.account::get_map_item
     # => [VALUE, pad(12)]
@@ -485,7 +483,6 @@ export.account_get_initial_map_item
     exec.authenticate_account_origin
     # => [name_id_prefix, name_id_suffix, KEY, pad(10)]
 
-    # TODO(kernel_stack_underflow): pad the stack so the following procedure can drop elements
     # fetch the initial map item from account storage
     exec.account::get_initial_map_item
     # => [INIT_VALUE, pad(12)]
