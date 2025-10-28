@@ -50,7 +50,7 @@ pub trait MockAccountExt {
 
         let faucet_data_slot = Word::from([ZERO, ZERO, ZERO, initial_balance]);
         storage
-            .set_item(AccountStorage::faucet_metadata_slot_name(), faucet_data_slot)
+            .set_item(AccountStorage::faucet_metadata_slot(), faucet_data_slot)
             .unwrap();
 
         Account::new_existing(account_id, vault, storage, code, nonce)
@@ -73,7 +73,7 @@ pub trait MockAccountExt {
         let non_fungible_storage_map =
             StorageMap::with_entries([(asset.vault_key().into(), asset.into())]).unwrap();
         let storage = AccountStorage::new_named(vec![NamedStorageSlot::with_map(
-            AccountStorage::faucet_metadata_slot_name().clone(),
+            AccountStorage::faucet_metadata_slot().clone(),
             non_fungible_storage_map,
         )])
         .unwrap();

@@ -30,8 +30,8 @@ impl AuthRpoFalcon512 {
         Self { pub_key }
     }
 
-    /// TODO(named_slots)
-    pub fn public_key_slot_name() -> &'static SlotName {
+    /// Returns the [`SlotName`] where the public key is stored.
+    pub fn public_key_slot() -> &'static SlotName {
         &FALCON_PUBKEY_SLOT_NAME
     }
 }
@@ -41,7 +41,7 @@ impl From<AuthRpoFalcon512> for AccountComponent {
         AccountComponent::new(
             rpo_falcon_512_library(),
             vec![NamedStorageSlot::with_value(
-                AuthRpoFalcon512::public_key_slot_name().clone(),
+                AuthRpoFalcon512::public_key_slot().clone(),
                 falcon.pub_key.into(),
             )],
         )

@@ -41,7 +41,7 @@ fn wallet_creation() {
     assert!(wallet.is_regular_account());
     assert_eq!(wallet.code().commitment(), expected_code_commitment);
     assert_eq!(
-        wallet.storage().get_item(AuthRpoFalcon512::public_key_slot_name()).unwrap(),
+        wallet.storage().get_item(AuthRpoFalcon512::public_key_slot()).unwrap(),
         Word::from(pub_key)
     );
 }

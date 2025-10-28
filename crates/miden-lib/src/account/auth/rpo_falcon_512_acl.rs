@@ -154,18 +154,18 @@ impl AuthRpoFalcon512Acl {
         Ok(Self { pub_key, config })
     }
 
-    /// TODO(named_slots)
-    pub fn public_key_slot_name() -> &'static SlotName {
+    /// Returns the [`SlotName`] where the public key is stored.
+    pub fn public_key_slot() -> &'static SlotName {
         &PUBKEY_SLOT_NAME
     }
 
-    /// TODO(named_slots)
-    pub fn config_slot_name() -> &'static SlotName {
+    /// Returns the [`SlotName`] where the component's configuration is stored.
+    pub fn config_slot() -> &'static SlotName {
         &CONFIG_SLOT_NAME
     }
 
-    /// TODO(named_slots)
-    pub fn tracked_procedure_roots_slot_name() -> &'static SlotName {
+    /// Returns the [`SlotName`] where the tracked procedure roots are stored.
+    pub fn tracked_procedure_roots_slot() -> &'static SlotName {
         &TRACKED_PROCEDURE_ROOT_SLOT_NAME
     }
 }
@@ -176,7 +176,7 @@ impl From<AuthRpoFalcon512Acl> for AccountComponent {
 
         // Slot 0: Public key
         storage_slots.push(NamedStorageSlot::with_value(
-            AuthRpoFalcon512Acl::public_key_slot_name().clone(),
+            AuthRpoFalcon512Acl::public_key_slot().clone(),
             falcon.pub_key.into(),
         ));
 
@@ -184,7 +184,7 @@ impl From<AuthRpoFalcon512Acl> for AccountComponent {
         // allow_unauthorized_input_notes, 0]
         let num_procs = falcon.config.auth_trigger_procedures.len() as u32;
         storage_slots.push(NamedStorageSlot::with_value(
-            AuthRpoFalcon512Acl::config_slot_name().clone(),
+            AuthRpoFalcon512Acl::config_slot().clone(),
             Word::from([
                 num_procs,
                 u32::from(falcon.config.allow_unauthorized_output_notes),
@@ -205,7 +205,7 @@ impl From<AuthRpoFalcon512Acl> for AccountComponent {
 
         // Safe to unwrap because we know that the map keys are unique.
         storage_slots.push(NamedStorageSlot::with_map(
-            AuthRpoFalcon512Acl::tracked_procedure_roots_slot_name().clone(),
+            AuthRpoFalcon512Acl::tracked_procedure_roots_slot().clone(),
             StorageMap::with_entries(map_entries).unwrap(),
         ));
 
@@ -277,14 +277,14 @@ mod tests {
         // Check public key storage
         let public_key_slot = account
             .storage()
-            .get_item(AuthRpoFalcon512Acl::public_key_slot_name())
+            .get_item(AuthRpoFalcon512Acl::public_key_slot())
             .expect("public key storage slot access failed");
         assert_eq!(public_key_slot, public_key.into());
 
         // Check configuration storage
         let config_slot = account
             .storage()
-            .get_item(AuthRpoFalcon512Acl::config_slot_name())
+            .get_item(AuthRpoFalcon512Acl::config_slot())
             .expect("config storage slot access failed");
         assert_eq!(config_slot, config.expected_config_slot);
 
@@ -294,7 +294,7 @@ mod tests {
                 let proc_root = account
                     .storage()
                     .get_map_item(
-                        AuthRpoFalcon512Acl::tracked_procedure_roots_slot_name(),
+                        AuthRpoFalcon512Acl::tracked_procedure_roots_slot(),
                         Word::from([i as u32, 0, 0, 0]),
                     )
                     .expect("storage map access failed");
@@ -304,10 +304,7 @@ mod tests {
             // When no procedures, the map should return empty for key [0,0,0,0]
             let proc_root = account
                 .storage()
-                .get_map_item(
-                    AuthRpoFalcon512Acl::tracked_procedure_roots_slot_name(),
-                    Word::empty(),
-                )
+                .get_map_item(AuthRpoFalcon512Acl::tracked_procedure_roots_slot(), Word::empty())
                 .expect("storage map access failed");
             assert_eq!(proc_root, Word::empty());
         }

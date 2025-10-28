@@ -665,7 +665,7 @@ pub async fn create_account_fungible_faucet_invalid_initial_balance() -> anyhow:
     // do that.
     let faucet_data_slot = Word::from([0, 0, 0, 100u32]);
     storage
-        .set_item(AccountStorage::faucet_metadata_slot_name(), faucet_data_slot)
+        .set_item(AccountStorage::faucet_metadata_slot(), faucet_data_slot)
         .unwrap();
 
     // The compute account ID function will set the nonce to zero so this is considered a new
@@ -693,7 +693,7 @@ pub async fn create_account_non_fungible_faucet_invalid_initial_reserved_slot() 
     let non_fungible_storage_map =
         StorageMap::with_entries([(asset.vault_key().into(), asset.into())]).unwrap();
     let storage = AccountStorage::new_named(vec![NamedStorageSlot::with_map(
-        AccountStorage::faucet_metadata_slot_name().clone(),
+        AccountStorage::faucet_metadata_slot().clone(),
         non_fungible_storage_map,
     )])
     .unwrap();

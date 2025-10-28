@@ -12,9 +12,9 @@ use miden_objects::{AccountError, Word};
 
 use crate::account::components::rpo_falcon_512_multisig_library;
 
-// TODO(named_slots): Rename to threshold_config.
-static CONFIG_SLOT_NAME: LazyLock<SlotName> = LazyLock::new(|| {
-    SlotName::new("miden::auth_rpo_falcon512_multisig::config").expect("slot name should be valid")
+static THRESHOLD_CONFIG_SLOT_NAME: LazyLock<SlotName> = LazyLock::new(|| {
+    SlotName::new("miden::auth_rpo_falcon512_multisig::threshold_config")
+        .expect("slot name should be valid")
 });
 
 static APPROVER_PUBKEYS_SLOT_NAME: LazyLock<SlotName> = LazyLock::new(|| {
@@ -125,23 +125,23 @@ impl AuthRpoFalcon512Multisig {
         Ok(Self { config })
     }
 
-    /// TODO(named_slots)
-    pub fn config_slot_name() -> &'static SlotName {
-        &CONFIG_SLOT_NAME
+    /// Returns the [`SlotName`] where the threshold configuration is stored.
+    pub fn threshold_config_slot() -> &'static SlotName {
+        &THRESHOLD_CONFIG_SLOT_NAME
     }
 
-    /// TODO(named_slots)
-    pub fn approver_public_keys_slot_name() -> &'static SlotName {
+    /// Returns the [`SlotName`] where the approver public keys are stored.
+    pub fn approver_public_keys_slot() -> &'static SlotName {
         &APPROVER_PUBKEYS_SLOT_NAME
     }
 
-    /// TODO(named_slots)
-    pub fn executed_transactions_slot_name() -> &'static SlotName {
+    /// Returns the [`SlotName`] where the executed transactions are stored.
+    pub fn executed_transactions_slot() -> &'static SlotName {
         &EXECUTED_TRANSACTIONS_SLOT_NAME
     }
 
-    /// TODO(named_slots)
-    pub fn procedure_thresholds_slot_name() -> &'static SlotName {
+    /// Returns the [`SlotName`] where the procedure thresholds are stored.
+    pub fn procedure_thresholds_slot() -> &'static SlotName {
         &PROCEDURE_THRESHOLDS_SLOT_NAME
     }
 }
@@ -153,7 +153,7 @@ impl From<AuthRpoFalcon512Multisig> for AccountComponent {
         // Slot 0: [threshold, num_approvers, 0, 0]
         let num_approvers = multisig.config.approvers().len() as u32;
         storage_slots.push(NamedStorageSlot::with_value(
-            AuthRpoFalcon512Multisig::config_slot_name().clone(),
+            AuthRpoFalcon512Multisig::threshold_config_slot().clone(),
             Word::from([multisig.config.default_threshold(), num_approvers, 0, 0]),
         ));
 
@@ -167,14 +167,14 @@ impl From<AuthRpoFalcon512Multisig> for AccountComponent {
 
         // Safe to unwrap because we know that the map keys are unique.
         storage_slots.push(NamedStorageSlot::with_map(
-            AuthRpoFalcon512Multisig::approver_public_keys_slot_name().clone(),
+            AuthRpoFalcon512Multisig::approver_public_keys_slot().clone(),
             StorageMap::with_entries(map_entries).unwrap(),
         ));
 
         // Slot 2: A map which stores executed transactions
         let executed_transactions = StorageMap::default();
         storage_slots.push(NamedStorageSlot::with_map(
-            AuthRpoFalcon512Multisig::executed_transactions_slot_name().clone(),
+            AuthRpoFalcon512Multisig::executed_transactions_slot().clone(),
             executed_transactions,
         ));
 
@@ -188,7 +188,7 @@ impl From<AuthRpoFalcon512Multisig> for AccountComponent {
         )
         .unwrap();
         storage_slots.push(NamedStorageSlot::with_map(
-            AuthRpoFalcon512Multisig::procedure_thresholds_slot_name().clone(),
+            AuthRpoFalcon512Multisig::procedure_thresholds_slot().clone(),
             proc_threshold_roots,
         ));
 
@@ -235,7 +235,7 @@ mod tests {
         // Verify config slot: [threshold, num_approvers, 0, 0]
         let config_slot = account
             .storage()
-            .get_item(AuthRpoFalcon512Multisig::config_slot_name())
+            .get_item(AuthRpoFalcon512Multisig::threshold_config_slot())
             .expect("config storage slot access failed");
         assert_eq!(config_slot, Word::from([threshold, approvers.len() as u32, 0, 0]));
 
@@ -244,7 +244,7 @@ mod tests {
             let stored_pub_key = account
                 .storage()
                 .get_map_item(
-                    AuthRpoFalcon512Multisig::approver_public_keys_slot_name(),
+                    AuthRpoFalcon512Multisig::approver_public_keys_slot(),
                     Word::from([i as u32, 0, 0, 0]),
                 )
                 .expect("approver public key storage map access failed");
@@ -274,14 +274,14 @@ mod tests {
         // Verify storage layout
         let config_slot = account
             .storage()
-            .get_item(AuthRpoFalcon512Multisig::config_slot_name())
+            .get_item(AuthRpoFalcon512Multisig::threshold_config_slot())
             .expect("config storage slot access failed");
         assert_eq!(config_slot, Word::from([threshold, approvers.len() as u32, 0, 0]));
 
         let stored_pub_key = account
             .storage()
             .get_map_item(
-                AuthRpoFalcon512Multisig::approver_public_keys_slot_name(),
+                AuthRpoFalcon512Multisig::approver_public_keys_slot(),
                 Word::from([0u32, 0, 0, 0]),
             )
             .expect("approver pub keys storage map access failed");

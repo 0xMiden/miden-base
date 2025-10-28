@@ -105,7 +105,7 @@ impl AccountComponentInterface {
                 vec![AuthScheme::RpoFalcon512 {
                     pub_key: PublicKeyCommitment::from(
                         storage
-                            .get_item(AuthRpoFalcon512::public_key_slot_name())
+                            .get_item(AuthRpoFalcon512::public_key_slot())
                             .expect("invalid slot name of the AuthRpoFalcon512 public key"),
                     ),
                 }]
@@ -114,7 +114,7 @@ impl AccountComponentInterface {
                 vec![AuthScheme::RpoFalcon512 {
                     pub_key: PublicKeyCommitment::from(
                         storage
-                            .get_item(AuthRpoFalcon512Acl::public_key_slot_name())
+                            .get_item(AuthRpoFalcon512Acl::public_key_slot())
                             .expect("invalid slot name of the AuthRpoFalcon512Acl public key"),
                     ),
                 }]
@@ -294,7 +294,7 @@ fn extract_multisig_auth_scheme(storage: &AccountStorage) -> AuthScheme {
     // Read the multisig configuration from the config slot
     // Format: [threshold, num_approvers, 0, 0]
     let config = storage
-        .get_item(AuthRpoFalcon512Multisig::config_slot_name())
+        .get_item(AuthRpoFalcon512Multisig::threshold_config_slot())
         .expect("invalid slot name of the multisig configuration");
 
     let threshold = config[0].as_int() as u32;
@@ -305,7 +305,7 @@ fn extract_multisig_auth_scheme(storage: &AccountStorage) -> AuthScheme {
     // - Slot 1: Map with public keys
     // - Slot 2: Map with executed transactions
     // The public keys are always stored in slot 1, regardless of storage_index
-    let approver_public_keys_slot = AuthRpoFalcon512Multisig::approver_public_keys_slot_name();
+    let approver_public_keys_slot = AuthRpoFalcon512Multisig::approver_public_keys_slot();
 
     let mut pub_keys = Vec::new();
 

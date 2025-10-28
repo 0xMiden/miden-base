@@ -323,7 +323,7 @@ impl MockChainBuilder {
             account
                 .storage_mut()
                 .set_item(
-                    AccountStorage::faucet_metadata_slot_name(),
+                    AccountStorage::faucet_metadata_slot(),
                     Word::from([ZERO, ZERO, ZERO, Felt::new(issuance)]),
                 )
                 .context("failed to set faucet storage")?;

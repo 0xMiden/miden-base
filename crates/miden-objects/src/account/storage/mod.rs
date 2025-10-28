@@ -106,13 +106,13 @@ impl AccountStorage {
         let mut storage_slots = match account_type {
             AccountType::FungibleFaucet => {
                 vec![NamedStorageSlot::new(
-                    Self::faucet_metadata_slot_name().clone(),
+                    Self::faucet_metadata_slot().clone(),
                     StorageSlot::empty_value(),
                 )]
             },
             AccountType::NonFungibleFaucet => {
                 vec![NamedStorageSlot::new(
-                    Self::faucet_metadata_slot_name().clone(),
+                    Self::faucet_metadata_slot().clone(),
                     StorageSlot::empty_map(),
                 )]
             },
@@ -123,7 +123,7 @@ impl AccountStorage {
             let AccountComponent { storage_slots, .. } = component;
             storage_slots.into_iter()
         }) {
-            if component_slot.name() == Self::faucet_metadata_slot_name() {
+            if component_slot.name() == Self::faucet_metadata_slot() {
                 return Err(AccountError::StorageSlotNameMustNotBeFaucetMetadata);
             }
 
@@ -136,8 +136,8 @@ impl AccountStorage {
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns the slot name of the faucet's protocol metadata.
-    pub fn faucet_metadata_slot_name() -> &'static SlotName {
+    /// Returns the [`SlotName`] of the faucet's protocol metadata.
+    pub fn faucet_metadata_slot() -> &'static SlotName {
         &FAUCET_METADATA_SLOT_NAME
     }
 

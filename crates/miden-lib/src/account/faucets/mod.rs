@@ -159,7 +159,7 @@ impl BasicFungibleFaucet {
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// TODO(named_slots)
+    /// Returns the [`SlotName`] where the [`BasicFungibleFaucet`]'s metadata is stored.
     pub fn metadata_slot_name() -> &'static SlotName {
         &METADATA_SLOT_NAME
     }
@@ -254,12 +254,13 @@ impl FungibleFaucetExt for Account {
             return Err(FungibleFaucetError::NotAFungibleFaucetAccount);
         }
 
-        let slot = self.storage().get_item(AccountStorage::faucet_metadata_slot_name()).map_err(
-            |err| FungibleFaucetError::StorageLookupFailed {
-                slot_name: AccountStorage::faucet_metadata_slot_name().clone(),
-                source: err,
-            },
-        )?;
+        let slot =
+            self.storage().get_item(AccountStorage::faucet_metadata_slot()).map_err(|err| {
+                FungibleFaucetError::StorageLookupFailed {
+                    slot_name: AccountStorage::faucet_metadata_slot().clone(),
+                    source: err,
+                }
+            })?;
         Ok(slot[Self::ISSUANCE_ELEMENT_INDEX])
     }
 }
@@ -416,7 +417,7 @@ mod tests {
         assert_eq!(
             faucet_account
                 .storage()
-                .get_item(AccountStorage::faucet_metadata_slot_name())
+                .get_item(AccountStorage::faucet_metadata_slot())
                 .unwrap(),
             Word::empty()
         );
@@ -425,7 +426,7 @@ mod tests {
         assert_eq!(
             faucet_account
                 .storage()
-                .get_item(AuthRpoFalcon512Acl::public_key_slot_name())
+                .get_item(AuthRpoFalcon512Acl::public_key_slot())
                 .unwrap(),
             pub_key_word
         );
@@ -436,10 +437,7 @@ mod tests {
         // With 1 tracked procedure (distribute), allow_unauthorized_output_notes=false, and
         // allow_unauthorized_input_notes=true, this should be [1, 0, 1, 0].
         assert_eq!(
-            faucet_account
-                .storage()
-                .get_item(AuthRpoFalcon512Acl::config_slot_name())
-                .unwrap(),
+            faucet_account.storage().get_item(AuthRpoFalcon512Acl::config_slot()).unwrap(),
             [Felt::ONE, Felt::ZERO, Felt::ONE, Felt::ZERO].into()
         );
 
@@ -449,7 +447,7 @@ mod tests {
             faucet_account
                 .storage()
                 .get_map_item(
-                    AuthRpoFalcon512Acl::tracked_procedure_roots_slot_name(),
+                    AuthRpoFalcon512Acl::tracked_procedure_roots_slot(),
                     [Felt::ZERO, Felt::ZERO, Felt::ZERO, Felt::ZERO].into()
                 )
                 .unwrap(),

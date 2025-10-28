@@ -28,7 +28,7 @@ const AUTH_UNAUTHORIZED_EVENT = event("miden::auth::unauthorized")
 # number of approvers are stored as:
 # [default_threshold, num_approvers, 0, 0].
 # The threshold is guaranteed to be less than or equal to num_approvers.
-const THRESHOLD_CONFIG_SLOT = word("miden::auth_rpo_falcon512_multisig::config")
+const THRESHOLD_CONFIG_SLOT = word("miden::auth_rpo_falcon512_multisig::threshold_config")
 
 # The slot in this component's storage layout where the public keys map is stored.
 # Map entries: [key_index, 0, 0, 0] => APPROVER_PUBLIC_KEY

@@ -203,7 +203,7 @@ async fn test_rpo_falcon_acl_with_allow_unauthorized_output_notes() -> anyhow::R
     // Verify the storage layout includes both authorization flags
     let config_slot = account
         .storage()
-        .get_item(AuthRpoFalcon512Acl::config_slot_name())
+        .get_item(AuthRpoFalcon512Acl::config_slot())
         .expect("storage slot 1 access failed");
     // Config Slot should be [num_tracked_procs, allow_unauthorized_output_notes,
     // allow_unauthorized_input_notes, 0] With 2 procedures,
@@ -243,7 +243,7 @@ async fn test_rpo_falcon_acl_with_disallow_unauthorized_input_notes() -> anyhow:
     // Verify the storage layout includes both flags
     let config_slot = account
         .storage()
-        .get_item(AuthRpoFalcon512Acl::config_slot_name())
+        .get_item(AuthRpoFalcon512Acl::config_slot())
         .expect("storage slot 1 access failed");
     // Config Slot should be [num_tracked_procs, allow_unauthorized_output_notes,
     // allow_unauthorized_input_notes, 0] With 2 procedures,

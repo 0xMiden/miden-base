@@ -149,7 +149,7 @@ pub enum AccountError {
     StorageIndexOutOfBounds { slots_len: u8, index: u8 },
     #[error(
         "storage cannot contain a user-provided slot with name {}",
-        AccountStorage::faucet_metadata_slot_name()
+        AccountStorage::faucet_metadata_slot()
     )]
     StorageSlotNameMustNotBeFaucetMetadata,
     #[error("storage does not contain a slot with name {slot_name}")]

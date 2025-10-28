@@ -231,7 +231,7 @@ async fn test_mint_non_fungible_asset_succeeds() -> anyhow::Result<()> {
             dropw
         end
         "#,
-        faucet_metadata_slot_name = AccountStorage::faucet_metadata_slot_name(),
+        faucet_metadata_slot_name = AccountStorage::faucet_metadata_slot(),
         non_fungible_asset = Word::from(non_fungible_asset),
         asset_vault_key = StorageMap::hash_key(asset_vault_key.into()),
     );
@@ -549,7 +549,7 @@ async fn test_burn_non_fungible_asset_succeeds() -> anyhow::Result<()> {
             dropw
         end
         "#,
-        faucet_metadata_slot_name = AccountStorage::faucet_metadata_slot_name(),
+        faucet_metadata_slot_name = AccountStorage::faucet_metadata_slot(),
         non_fungible_asset = Word::from(non_fungible_asset_burnt),
         burnt_asset_vault_key = burnt_asset_vault_key,
     );
