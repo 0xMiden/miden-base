@@ -719,25 +719,25 @@ where
     ///
     /// Expected stack state:
     /// ```text
-    /// [event, name_id_prefix, name_id_suffix, KEY, OLD_MAP_VALUE, NEW_VALUE]
+    /// [event, slot_ptr, KEY, OLD_MAP_VALUE, NEW_VALUE]
     /// ```
     pub fn on_account_storage_after_set_map_item(
         &mut self,
         process: &ProcessState,
     ) -> Result<(), TransactionKernelError> {
-        let name_id_prefix = process.get_stack_item(1);
-        let name_id_suffix = process.get_stack_item(2);
-        let name_id = SlotNameId::new(name_id_prefix, name_id_suffix);
-        let key = process.get_stack_word(3);
-        let old_map_value = process.get_stack_word(7);
-        let new_map_value = process.get_stack_word(11);
+        let slot_ptr = process.get_stack_item(1);
+        let key = process.get_stack_word(2);
+        let old_map_value = process.get_stack_word(6);
+        let new_map_value = process.get_stack_word(10);
+
+        let (slot_name_id, ..) = self.get_storage_slot(process, slot_ptr)?;
 
         let (slot_name, ..) = self
             .initial_account_storage_header()
-            .find_slot_header_by_id(name_id)
+            .find_slot_header_by_id(slot_name_id)
             .ok_or_else(|| {
                 TransactionKernelError::other(format!(
-                    "failed to resolve slot name ID {name_id} to slot name"
+                    "failed to resolve slot name ID {slot_name_id} to slot name"
                 ))
             })?;
         let slot_name = slot_name.clone();

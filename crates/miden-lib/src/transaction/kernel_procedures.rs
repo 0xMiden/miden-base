@@ -38,7 +38,7 @@ pub const KERNEL_PROCEDURES: [Word; 53] = [
     // account_get_initial_map_item
     word!("0xa89674ae189cf2ed276f6928c0e22da31c06e9b0179046d22aa986651a6c2d51"),
     // account_set_map_item
-    word!("0x4eaf5a8f108ec6a36721e0cbf5446f370175687d2434a4bcf157225b0bf64905"),
+    word!("0xad6b82c90c59101c247207a40ae426805bc394b29f6272a0f141fdc61f7c9a8a"),
     // account_get_initial_vault_root
     word!("0x4d4d91079aaacad1bc86b29a0d61d25508ccb705c29d1b1357016f7373bf299e"),
     // account_get_vault_root
@@ -62,9 +62,9 @@ pub const KERNEL_PROCEDURES: [Word; 53] = [
     // account_was_procedure_called
     word!("0x34f27a609f2f2b4fec454b17182552b0acc52524e507e134257a1f1ed30a57cd"),
     // faucet_mint_asset
-    word!("0xc71bf63645f8d67b1f5361515ec52d5eb4dc310e58155d2d5e8278c047999952"),
+    word!("0x20c49aa1ff8a87bad10a1370e08f12a64628348948750da1f82afef09693c8dc"),
     // faucet_burn_asset
-    word!("0xadd578c65153ea68550da69238c85936a2cfb9a1331f516e908e5d163b52bfc3"),
+    word!("0xc82598b05980603b7e2aa3459f992283d3b5fb230f0d5c005a40806992b82f43"),
     // faucet_get_total_fungible_asset_issuance
     word!("0x52234644eb004f90190f422c6b64efe2cf5a9a13929a959df02556baa1b8312f"),
     // faucet_is_non_fungible_asset_issued

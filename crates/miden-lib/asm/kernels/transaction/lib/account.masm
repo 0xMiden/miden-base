@@ -663,17 +663,10 @@ end
 #! - no map is found for ROOT in the slot.
 #!
 #! Locals:
-#! - 0: name_id_suffix
-#! - 1: name_id_prefix
-#! - 2: slot_ptr
+#! - 0: slot_ptr
 #! - 4..8: OLD_MAP_VALUE
 #! - 8..12: OLD_MAP_ROOT
 export.set_map_item.12
-    # store name ID until the end of the procedure
-    loc_store.1 loc_store.0
-    loc_load.0 loc_load.1
-    # => [name_id_prefix, name_id_suffix, KEY, NEW_VALUE]
-
     exec.memory::get_account_storage_slots_section_ptr
     # => [storage_slots_ptr, name_id_prefix, name_id_suffix, KEY, NEW_VALUE]
 
@@ -682,7 +675,7 @@ export.set_map_item.12
     # => [slot_ptr, KEY, NEW_VALUE]
 
     # store slot_ptr until the end of the procedure
-    dup loc_store.2
+    dup loc_store.0
 
     # load the slot type
     dup add.ACCOUNT_SLOT_TYPE_OFFSET mem_load
@@ -720,24 +713,17 @@ export.set_map_item.12
     # => [NEW_ROOT, OLD_MAP_VALUE, KEY, NEW_VALUE]
 
     # store NEW_ROOT into the map slot's VALUE
-    loc_load.2 add.ACCOUNT_SLOT_VALUE_OFFSET mem_storew dropw
+    loc_load.0 add.ACCOUNT_SLOT_VALUE_OFFSET mem_storew dropw
     # => [OLD_MAP_VALUE, KEY, NEW_VALUE]
 
     swapw
     # => [KEY, OLD_MAP_VALUE, NEW_VALUE]
 
-    loc_load.0 loc_load.1
-    # => [name_id_prefix, name_id_suffix, KEY, OLD_MAP_VALUE, NEW_VALUE]
+    loc_load.0
+    # => [slot_ptr, KEY, OLD_MAP_VALUE, NEW_VALUE]
 
     # emit event to signal that an account storage map item is being updated
     emit.ACCOUNT_STORAGE_AFTER_SET_MAP_ITEM_EVENT
-    # => [name_id_prefix, name_id_suffix, KEY, OLD_MAP_VALUE, NEW_VALUE]
-
-    # TODO(named_slots): Refactor to not load the name ID?
-    drop drop
-    # => [KEY, OLD_MAP_VALUE, NEW_VALUE]
-
-    loc_load.2
     # => [slot_ptr, KEY, OLD_MAP_VALUE, NEW_VALUE]
 
     exec.slot_ptr_to_index
