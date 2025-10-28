@@ -17,7 +17,6 @@ use miden_lib::transaction::memory::{
     BLOCK_METADATA_PTR,
     BLOCK_NUMBER_IDX,
     CHAIN_COMMITMENT_PTR,
-    FAUCET_STORAGE_DATA_SLOT,
     FEE_PARAMETERS_PTR,
     INIT_ACCT_COMMITMENT_PTR,
     INIT_NATIVE_ACCT_STORAGE_COMMITMENT_PTR,
@@ -71,6 +70,8 @@ use miden_objects::account::{
     AccountStorage,
     AccountStorageMode,
     AccountType,
+    NamedStorageSlot,
+    SlotName,
     StorageMap,
     StorageSlot,
 };
@@ -588,9 +589,10 @@ pub async fn create_multiple_accounts_test(storage_mode: AccountStorageMode) -> 
             .account_type(account_type)
             .storage_mode(storage_mode)
             .with_auth_component(Auth::IncrNonce)
-            .with_component(MockAccountComponent::with_slots(vec![StorageSlot::Value(Word::from(
-                [255u32; WORD_SIZE],
-            ))]))
+            .with_component(MockAccountComponent::with_slots(vec![NamedStorageSlot::with_value(
+                SlotName::new_test(0),
+                Word::from([255u32; WORD_SIZE]),
+            )]))
             .build()
             .with_context(|| {
                 format!("account build for {account_type} and {storage_mode} failed")
@@ -662,7 +664,9 @@ pub async fn create_account_fungible_faucet_invalid_initial_balance() -> anyhow:
     // Set the initial balance to a non-zero value manually, since the builder would not allow us to
     // do that.
     let faucet_data_slot = Word::from([0, 0, 0, 100u32]);
-    storage.set_item(FAUCET_STORAGE_DATA_SLOT, faucet_data_slot).unwrap();
+    storage
+        .set_item(AccountStorage::faucet_metadata_slot_name(), faucet_data_slot)
+        .unwrap();
 
     // The compute account ID function will set the nonce to zero so this is considered a new
     // account.
@@ -688,7 +692,11 @@ pub async fn create_account_non_fungible_faucet_invalid_initial_reserved_slot() 
     let asset = NonFungibleAsset::mock(&[1, 2, 3, 4]);
     let non_fungible_storage_map =
         StorageMap::with_entries([(asset.vault_key().into(), asset.into())]).unwrap();
-    let storage = AccountStorage::new(vec![StorageSlot::Map(non_fungible_storage_map)]).unwrap();
+    let storage = AccountStorage::new_named(vec![NamedStorageSlot::with_map(
+        AccountStorage::faucet_metadata_slot_name().clone(),
+        non_fungible_storage_map,
+    )])
+    .unwrap();
 
     let account = AccountBuilder::new([1; 32])
         .account_type(AccountType::NonFungibleFaucet)
