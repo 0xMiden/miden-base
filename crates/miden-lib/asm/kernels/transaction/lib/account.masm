@@ -32,7 +32,7 @@ const.ERR_ACCOUNT_PROC_NOT_AUTH_PROC="account procedure is not the authenticatio
 # TODO(named_slots): Remove along with index APIs.
 const.ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS="provided storage slot index is out of bounds"
 
-const.ERR_ACCOUNT_ID_UNKNOWN_STORAGE_SLOT_NAME="storage slot with the provided name does not exist"
+const.ERR_ACCOUNT_UNKNOWN_STORAGE_SLOT_NAME="storage slot with the provided name does not exist"
 
 const.ERR_FAUCET_INVALID_STORAGE_OFFSET="storage offset is invalid for a faucet account (0 is prohibited as it is the reserved data slot for faucets)"
 
@@ -1526,7 +1526,7 @@ proc.find_storage_slot
     exec.sorted_array::find_half_key_value
     # => [is_slot_found, slot_ptr, storage_slots_start_ptr, storage_slots_end_ptr]
 
-    assert.err=ERR_ACCOUNT_ID_UNKNOWN_STORAGE_SLOT_NAME
+    assert.err=ERR_ACCOUNT_UNKNOWN_STORAGE_SLOT_NAME
     # => [slot_ptr, storage_slots_start_ptr, storage_slots_end_ptr]
 
     swap.2 drop drop
