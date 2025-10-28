@@ -119,8 +119,9 @@ impl AccountStorageHeader {
         &self,
         slot_name: &SlotName,
     ) -> Option<(&StorageSlotType, &Word)> {
-        // TODO(named_slots): We could use binary search here but this would require re-hashing the
-        // ID of every slot we access, so a simple find should be more efficient for now.
+        // We could use binary search here but this would require re-hashing the ID of every slot we
+        // access, so a simple find should be more efficient for now. This can be changed once
+        // SlotName contains the precomputed SlotNameId.
         self.slots
             .iter()
             .find(|(name, ..)| slot_name == name)

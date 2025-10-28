@@ -108,7 +108,9 @@ impl SlotName {
         self.name.is_empty()
     }
 
-    // TODO(named_slots): Docs.
+    /// Computes the [`SlotNameId`] of this [`SlotName`].
+    ///
+    /// See the ID's docs for details.
     pub fn compute_id(&self) -> SlotNameId {
         let hashed_word = hash_string_to_word(self.as_str());
         let prefix = hashed_word[1];
