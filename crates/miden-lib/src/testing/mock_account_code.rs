@@ -141,6 +141,7 @@ const MOCK_ACCOUNT_CODE: &str = "
 static MOCK_FAUCET_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
     let source = NamedSource::new("mock::faucet", MOCK_FAUCET_CODE);
     TransactionKernel::assembler()
+        .with_debug_mode(cfg!(feature = "with-debug-info"))
         .assemble_library([source])
         .expect("mock faucet code should be valid")
 });
@@ -148,6 +149,7 @@ static MOCK_FAUCET_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
 static MOCK_ACCOUNT_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
     let source = NamedSource::new("mock::account", MOCK_ACCOUNT_CODE);
     TransactionKernel::assembler()
+        .with_debug_mode(cfg!(feature = "with-debug-info"))
         .assemble_library([source])
         .expect("mock account code should be valid")
 });
