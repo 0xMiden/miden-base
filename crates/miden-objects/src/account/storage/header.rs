@@ -1,3 +1,4 @@
+use alloc::string::ToString;
 use alloc::vec::Vec;
 
 use super::{AccountStorage, Felt, StorageSlot, StorageSlotType, Word};
@@ -10,7 +11,7 @@ use crate::utils::serde::{
     DeserializationError,
     Serializable,
 };
-use crate::{FieldElement, ZERO};
+use crate::{AccountError, FieldElement, ZERO};
 
 // ACCOUNT STORAGE HEADER
 // ================================================================================================
@@ -69,13 +70,21 @@ impl AccountStorageHeader {
 
     /// Returns a new instance of account storage header initialized with the provided slots.
     ///
-    /// # Panics
-    /// - If the number of provided slots is greater than [AccountStorage::MAX_NUM_STORAGE_SLOTS].
-    pub fn new(slots: Vec<(SlotName, StorageSlotType, Word)>) -> Self {
-        // TODO(named_slots): Change to return error.
-        // TODO(named_slots): Return error if slots are not sorted.
-        assert!(slots.len() <= AccountStorage::MAX_NUM_STORAGE_SLOTS);
-        Self { slots }
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The number of provided slots is greater than [`AccountStorage::MAX_NUM_STORAGE_SLOTS`].
+    /// - The slots are not sorted by [`SlotNameId`].
+    pub fn new(slots: Vec<(SlotName, StorageSlotType, Word)>) -> Result<Self, AccountError> {
+        if slots.len() > AccountStorage::MAX_NUM_STORAGE_SLOTS {
+            return Err(AccountError::StorageTooManySlots(slots.len() as u64));
+        }
+
+        if !slots.is_sorted_by_key(|(slot_name, ..)| slot_name.compute_id()) {
+            return Err(AccountError::StorageSlotsUnsorted);
+        }
+
+        Ok(Self { slots })
     }
 
     // PUBLIC ACCESSORS
@@ -191,8 +200,7 @@ impl Deserializable for AccountStorageHeader {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let len = source.read_u8()?;
         let slots = source.read_many(len as usize)?;
-        // number of storage slots is guaranteed to be smaller than or equal to 255
-        Ok(Self::new(slots))
+        Self::new(slots).map_err(|err| DeserializationError::InvalidValue(err.to_string()))
     }
 }
 

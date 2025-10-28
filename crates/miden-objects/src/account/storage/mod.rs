@@ -183,6 +183,7 @@ impl AccountStorage {
                 })
                 .collect(),
         )
+        .expect("slots should be valid as ensured by AccountStorage")
     }
 
     /// Returns a reference to the storage slot with the provided name, if it exists, `None`
