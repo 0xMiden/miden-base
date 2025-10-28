@@ -329,11 +329,6 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
     let target_account_suffix = recipient_account_id.suffix();
     let target_account_prefix = recipient_account_id.prefix().as_felt();
 
-    println!("SERIAL_NUM: {:?}", serial_num);
-    println!("SCRIPT_ROOT: {:?}", p2id_script_root);
-    println!("INPUTS_COMMITMENT: {:?}", expected_p2id_note.inputs().commitment());
-    println!("RECIPIENT {:?}", p2id_recipient.digest());
-
     let note_script_code = format!(
         "
             use.miden::note
@@ -408,8 +403,6 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
 
     // Add the P2ID script to the data store so it can be fetched during transaction execution
     let p2id_script = WellKnownNote::P2ID.script();
-    println!("P2ID script root from WellKnownNote: {:?}", p2id_script.root());
-    println!("P2ID script root used in test: {:?}", p2id_script_root);
 
     // Execute the transaction - this should fetch the P2ID script from the data store
     let executed_transaction = mock_chain
