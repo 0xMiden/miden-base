@@ -1432,7 +1432,7 @@ end
 #! - index is the index of the slot.
 #! - name_id_{prefix, suffix} are the prefix and suffix felts of the name identifier, which are
 #!   the first two felts of the hashed slot name.
-export.get_slot_name_by_index
+export.get_slot_name
     # convert the index into a memory offset
     mul.8
     # => [offset]
@@ -1446,81 +1446,6 @@ export.get_slot_name_by_index
 
     swap add.ACCOUNT_SLOT_NAME_ID_PREFIX_OFFSET mem_load
     # => [name_id_prefix, name_id_suffix]
-end
-
-#! TODO(named_slots): Check which of these procedures are still needed.
-#! Gets an item from the storage slot at the provided index.
-#!
-#! WARNING: The index must be in bounds.
-#!
-#! Inputs:  [index]
-#! Outputs: [name_id_prefix, name_id_suffix, VALUE]
-#!
-#! Where:
-#! - storage_slots_ptr is the pointer to the storage slots section.
-#! - index is the index of the item to get.
-#! - VALUE is the value of the item.
-export.get_item_by_index
-    # get account storage slots section offset
-    exec.memory::get_account_storage_slots_section_ptr
-    # => [acct_storage_slots_section_offset, index]
-
-    exec.get_item_by_index_raw
-    # => [name_id_prefix, name_id_suffix, VALUE]
-end
-
-#! Gets the initial item from the storage slot at the provided index.
-#!
-#! WARNING: The index must be in bounds.
-#!
-#! Inputs:  [index]
-#! Outputs: [name_id_prefix, name_id_suffix, VALUE]
-#!
-#! Where:
-#! - storage_slots_ptr is the pointer to the storage slots section.
-#! - index is the index of the item to get.
-#! - VALUE is the value of the item.
-export.get_initial_item_by_index
-    # get account initial storage slots section offset
-    exec.memory::get_account_initial_storage_slots_ptr
-    # => [account_initial_storage_slots_ptr, index]
-
-    exec.get_item_by_index_raw
-    # => [name_id_prefix, name_id_suffix, VALUE]
-end
-
-#! Gets an item from storage using the provided storage slots pointer and index.
-#!
-#! WARNING: The index must be in bounds.
-#!
-#! Inputs:  [storage_slots_ptr, index]
-#! Outputs: [name_id_prefix, name_id_suffix, VALUE]
-#!
-#! Where:
-#! - storage_slots_ptr is the pointer to the storage slots section.
-#! - index is the index of the item to get.
-#! - VALUE is the value of the item.
-proc.get_item_by_index_raw
-    # get the item from storage
-    swap mul.8 add
-    # => [slot_ptr]
-
-    # offset the pointer to point to the VALUE in the slot
-    dup add.ACCOUNT_SLOT_VALUE_OFFSET
-    # => [slot_value_ptr, slot_ptr]
-
-    # load the item from storage
-    padw movup.4 mem_loadw
-    # => [VALUE, slot_ptr]
-
-    movup.4 dup
-    # => [slot_ptr, slot_ptr, VALUE]
-
-    add.ACCOUNT_SLOT_NAME_ID_SUFFIX_OFFSET mem_load
-    # => [name_id_suffix, slot_ptr, VALUE]
-
-    swap add.ACCOUNT_SLOT_NAME_ID_PREFIX_OFFSET mem_load
-    # => [name_id_prefix, name_id_suffix, VALUE]
 end
 
 #! Finds the storage map root in the storage slot with the provided name in the provided storage
@@ -1569,46 +1494,6 @@ proc.get_map_item_raw
     # remove the ROOT from the stack
     swapw dropw
     # => [VALUE]
-end
-
-#! Sets an item in the account storage. Doesn't emit any events.
-#!
-#! Inputs:  [name_id_prefix, name_id_suffix, NEW_VALUE]
-#! Outputs: [OLD_VALUE]
-#!
-#! Where:
-#! - name_id_{prefix, suffix} are the prefix and suffix felts of the name identifier, which are
-#!   the first two felts of the hashed slot name.
-#! - NEW_VALUE is the value to set.
-#! - OLD_VALUE is the previous value of the item.
-#!
-#! Panics if:
-#! - a slot with the provided name ID does not exist in account storage.
-proc.set_item_raw
-    exec.memory::get_account_storage_slots_section_ptr
-    # => [storage_slots_ptr, name_id_prefix, name_id_suffix, NEW_VALUE]
-
-    exec.find_storage_slot
-    # => [slot_ptr, NEW_VALUE]
-
-    # offset the pointer to point to the VALUE in the slot
-    add.4 movdn.4
-    # => [NEW_VALUE, slot_value_ptr]
-
-    # load the item from storage
-    padw dup.8 mem_loadw
-    # => [OLD_VALUE, NEW_VALUE, slot_value_ptr]
-
-    swapw movup.8
-    # => [slot_value_ptr, NEW_VALUE, OLD_VALUE]
-
-    mem_storew dropw
-    # => [OLD_VALUE]
-
-    # update the storage commitment dirty flag, indicating that the commitment is outdated
-    push.1
-    exec.memory::set_native_account_storage_commitment_dirty_flag
-    # => [OLD_VALUE]
 end
 
 #! Finds the slot identified by the key constructed from the name ID and slot type and returns the
