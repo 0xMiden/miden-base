@@ -27,6 +27,7 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
     ACCOUNT_ID_SENDER,
 };
+use miden_objects::testing::storage::SLOT_NAME_VALUE0;
 use miden_objects::transaction::{OutputNote, OutputNotes};
 use miden_processor::{Felt, ONE};
 
@@ -423,17 +424,19 @@ async fn test_epilogue_increment_nonce_success() -> anyhow::Result<()> {
     let expected_nonce = ONE + ONE;
 
     let code = format!(
-        "
+        r#"
         use.$kernel::prologue
         use.mock::account
         use.$kernel::epilogue
         use.$kernel::memory
 
+        const SLOT_NAME_VALUE0 = word("{slot_name_value0}")
+
         begin
             exec.prologue::prepare_transaction
 
             push.1.2.3.4
-            push.0
+            push.SLOT_NAME_VALUE0[0..2]
             call.account::set_item
             dropw
 
@@ -445,7 +448,8 @@ async fn test_epilogue_increment_nonce_success() -> anyhow::Result<()> {
             exec.memory::get_account_nonce
             push.{expected_nonce} assert_eq
         end
-        "
+        "#,
+        slot_name_value0 = &*SLOT_NAME_VALUE0,
     );
 
     tx_context.execute_code(code.as_str()).await?;
@@ -455,19 +459,24 @@ async fn test_epilogue_increment_nonce_success() -> anyhow::Result<()> {
 /// Tests that changing the account state without incrementing the nonce results in an error.
 #[tokio::test]
 async fn epilogue_fails_on_account_state_change_without_nonce_increment() -> anyhow::Result<()> {
-    let code = "
+    let code = format!(
+        r#"
         use.mock::account
+
+        const SLOT_NAME_VALUE0 = word("{slot_name_value0}")
 
         begin
             push.91.92.93.94
-            push.0
+            push.SLOT_NAME_VALUE0[0..2]
             repeat.5 movup.5 drop end
-            # => [index, VALUE]
+            # => [name_id_prefix, name_id_suffix, VALUE]
             call.account::set_item
             # => [PREV_VALUE]
             dropw
         end
-        ";
+        "#,
+        slot_name_value0 = &*SLOT_NAME_VALUE0,
+    );
 
     let tx_script = ScriptBuilder::with_mock_libraries()?.compile_tx_script(code)?;
 
