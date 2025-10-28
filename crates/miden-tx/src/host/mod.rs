@@ -1012,22 +1012,6 @@ where
             })
     }
 
-    // TODO(named_slots): Remove?
-    // /// Returns the number of storage slots initialized for the current account.
-    // ///
-    // /// # Errors
-    // /// Returns an error if the memory location supposed to contain the account storage slot
-    // number /// has not been initialized.
-    // fn get_num_storage_slots(process: &ProcessState) -> Result<u64, TransactionKernelError> {
-    //     let num_storage_slots_felt = process
-    //         .get_mem_value(process.ctx(), NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR)
-    //         .ok_or(TransactionKernelError::AccountStorageSlotsNumMissing(
-    //             NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR,
-    //         ))?;
-
-    //     Ok(num_storage_slots_felt.as_int())
-    // }
-
     fn get_storage_slot(
         &self,
         process: &ProcessState,

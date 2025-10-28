@@ -275,6 +275,11 @@ end
 # ACCOUNT DATA
 # =================================================================================================
 
+#! TODO(named_slots): Validate that slot names are unique.
+#! This should only be necessary whenever the slots of an account "change", which is essentially
+#! the case when it is created, or when slots are added or removed (currently unimplemented).
+#! So, it should be sufficient to do this here instead of in save_account_storage_data.
+#!
 #! Validates that the account the transaction is being executed against satisfies the criteria
 #! for a new account.
 #!

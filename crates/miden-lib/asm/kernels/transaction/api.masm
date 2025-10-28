@@ -356,7 +356,7 @@ export.account_get_item
     movup.4 drop movup.4 drop
     # => [VALUE, pad(12)]
 
-    # TODO(named_slots): This shouldn't be necessary, but it is.
+    # Drop extraneous elements that get_item pushed onto the stack.
     movup.4 drop
 end
 
@@ -455,7 +455,11 @@ export.account_get_initial_item
     # => [INIT_VALUE, pad(14)]
 
     # truncate the stack
-    movup.4 drop movup.4 drop movup.4 drop
+    movup.4 drop movup.4 drop
+    # => [INIT_VALUE, pad(12)]
+
+    # Drop extraneous elements that get_initial_item pushed onto the stack.
+    movup.4 drop
     # => [INIT_VALUE, pad(12)]
 end
 
