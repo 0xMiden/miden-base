@@ -1474,7 +1474,7 @@ async fn test_get_initial_map_item() -> miette::Result<()> {
 
     // Use the first key-value pair from the mock storage
     let StorageSlot::Map(map) = map_slot.storage_slot() else {
-        panic!("epxected map");
+        panic!("expected map");
     };
 
     let (initial_key, initial_value) = map.entries().next().unwrap();
