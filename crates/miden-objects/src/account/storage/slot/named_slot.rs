@@ -2,13 +2,13 @@ use crate::Word;
 use crate::account::storage::slot::SlotNameId;
 use crate::account::{SlotName, StorageMap, StorageSlot, StorageSlotType};
 
-// TODO(named_slots): Docs + separators for the entire module.
+/// A [`StorageSlot`] identified by a [`SlotName`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NamedStorageSlot {
     /// The name of the storage slot.
     name: SlotName,
-    /// The cached [`SlotNameId`] of the slot name. These must always be consistent with each
-    /// other.
+    /// The cached [`SlotNameId`] of the slot name. This field must always be consistent with the
+    /// slot name.
     ///
     /// This is cached so that the `Ord` implementation can use the computed name ID instead of
     /// having to hash the slot name on every comparison operation.
@@ -18,41 +18,60 @@ pub struct NamedStorageSlot {
 }
 
 impl NamedStorageSlot {
+    // CONSTRUCTORS
+    // --------------------------------------------------------------------------------------------
+
+    /// Creates a new [`NamedStorageSlot`] with the given [`SlotName`] and [`StorageSlot`].
     pub fn new(name: SlotName, slot: StorageSlot) -> Self {
         let name_id = name.compute_id();
 
         Self { name, name_id, slot }
     }
 
+    /// Creates a new [`NamedStorageSlot`] with the given [`SlotName`] and the `value` wrapped into
+    /// a [`StorageSlot::Value`].
     pub fn with_value(name: SlotName, value: Word) -> Self {
         Self::new(name, StorageSlot::Value(value))
     }
 
+    /// Creates a new [`NamedStorageSlot`] with the given [`SlotName`] and the `map` wrapped into a
+    /// [`StorageSlot::Map`]
     pub fn with_map(name: SlotName, map: StorageMap) -> Self {
         Self::new(name, StorageSlot::Map(map))
     }
 
+    // ACCESSORS
+    // --------------------------------------------------------------------------------------------
+
+    /// Returns the [`SlotName`] by which the [`NamedStorageSlot`] is identified.
     pub fn name(&self) -> &SlotName {
         &self.name
     }
 
+    /// Returns the [`SlotNameId`] by which the [`NamedStorageSlot`] is identified.
     pub fn name_id(&self) -> SlotNameId {
         self.name_id
     }
 
+    /// Returns a reference to the [`StorageSlot`] contained in this [`NamedStorageSlot`].
     pub fn storage_slot(&self) -> &StorageSlot {
         &self.slot
     }
 
-    pub fn storage_slot_mut(&mut self) -> &mut StorageSlot {
-        &mut self.slot
-    }
-
-    /// Returns the type of this storage slot
+    /// Returns the [`StorageSlotType`] of this [`NamedStorageSlot`].
     pub fn slot_type(&self) -> StorageSlotType {
         self.slot.slot_type()
     }
 
+    // MUTATORS
+    // --------------------------------------------------------------------------------------------
+
+    /// Returns a mutable reference to the [`StorageSlot`] contained in this [`NamedStorageSlot`].
+    pub fn storage_slot_mut(&mut self) -> &mut StorageSlot {
+        &mut self.slot
+    }
+
+    /// Consumes self and returns the underlying parts.
     pub fn into_parts(self) -> (SlotName, SlotNameId, StorageSlot) {
         (self.name, self.name_id, self.slot)
     }
@@ -69,6 +88,9 @@ impl PartialOrd for NamedStorageSlot {
         Some(self.cmp(other))
     }
 }
+
+// SERIALIZATION
+// ================================================================================================
 
 impl crate::utils::serde::Serializable for NamedStorageSlot {
     fn write_into<W: crate::utils::serde::ByteWriter>(&self, target: &mut W) {
