@@ -9,8 +9,6 @@ use miden_lib::errors::tx_kernel_errors::{
     ERR_ACCOUNT_ID_UNKNOWN_VERSION,
     ERR_ACCOUNT_NONCE_AT_MAX,
     ERR_ACCOUNT_NONCE_CAN_ONLY_BE_INCREMENTED_ONCE,
-    ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS,
-    ERR_FAUCET_INVALID_STORAGE_OFFSET,
 };
 use miden_lib::testing::account_component::MockAccountComponent;
 use miden_lib::testing::mock_account::MockAccountExt;
@@ -23,19 +21,16 @@ use miden_objects::account::{
     AccountCode,
     AccountComponent,
     AccountId,
-    AccountIdVersion,
-    AccountProcedureInfo,
     AccountStorage,
     AccountStorageMode,
     AccountType,
     NamedStorageSlot,
-    StorageMap,
     StorageSlot,
     StorageSlotType,
 };
+use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::assembly::diagnostics::{IntoDiagnostic, NamedSource, Report, WrapErr, miette};
-use miden_objects::assembly::{Assembler, DefaultSourceManager, Library};
-use miden_objects::asset::{Asset, AssetVault, FungibleAsset};
+use miden_objects::asset::{Asset, FungibleAsset};
 use miden_objects::note::NoteType;
 use miden_objects::testing::account_id::{
     ACCOUNT_ID_PRIVATE_NON_FUNGIBLE_FAUCET,
@@ -45,17 +40,11 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
     ACCOUNT_ID_SENDER,
 };
-use miden_objects::testing::storage::{
-    SLOT_NAME_MAP,
-    SLOT_NAME_VALUE0,
-    SLOT_NAME_VALUE1,
-    STORAGE_LEAVES_2,
-};
-use miden_objects::transaction::{ExecutedTransaction, OutputNote, TransactionScript};
+use miden_objects::testing::storage::{SLOT_NAME_MAP, SLOT_NAME_VALUE0, SLOT_NAME_VALUE1};
+use miden_objects::transaction::OutputNote;
 use miden_objects::{LexicographicWord, StarkField};
-use miden_processor::fast::FastProcessor;
-use miden_processor::{AdviceInputs, DefaultHost, EMPTY_WORD, ExecutionError, MastNodeExt, Word};
-use miden_tx::{LocalTransactionProver, TransactionExecutorError};
+use miden_processor::{ExecutionError, Word};
+use miden_tx::LocalTransactionProver;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 
@@ -68,7 +57,6 @@ use crate::{
     MockChain,
     TransactionContextBuilder,
     TxContextInput,
-    assert_execution_error,
     assert_transaction_executor_error,
 };
 
