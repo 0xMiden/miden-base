@@ -40,6 +40,7 @@
 - Re-add bech32 encoding for `AccountId` ([#2018](https://github.com/0xMiden/miden-base/pull/2018)).
 - [BREAKING] Change `AccountTree` to be generic over `Smt` implementations ([#2006](https://github.com/0xMiden/miden-base/pull/2006)).
 - [BREAKING] Change `AccountTree` to be generic over `trait AccountTreeBackend` implementations ([#2006](https://github.com/0xMiden/miden-base/pull/2006)).
+- [BREAKING] Separate account APIs (`miden::account` and `kernel::account`) into `active_account` and `native_account` ([#2026](https://github.com/0xMiden/miden-base/pull/2026)).
 
 ### Changes
 
