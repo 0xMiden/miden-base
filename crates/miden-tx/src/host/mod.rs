@@ -609,14 +609,7 @@ where
                 })?;
 
             Some(miden_objects::note::NoteRecipient::new(serial_num, script, inputs))
-        } else if !metadata.is_private() {
-            // Public note without recipient data - return error
-            return Err(TransactionKernelError::PublicNoteMissingDetails(
-                metadata,
-                recipient_digest,
-            ));
         } else {
-            // Private note without recipient data - this is OK
             None
         };
 
