@@ -4,8 +4,6 @@ use miden_objects::Word;
 use miden_objects::block::{BlockAccountUpdate, ProposedBlock, ProvenBlock, SignedBlock};
 use miden_objects::note::Nullifier;
 
-use crate::errors::ProvenBlockError;
-
 // LOCAL BLOCK PROVER
 // ================================================================================================
 
@@ -37,7 +35,7 @@ impl LocalBlockProver {
     ///   computed from the account witnesses.
     /// - the nullifier tree root in the previous block header does not match the root of the tree
     ///   computed from the nullifier witnesses.
-    pub fn prove(&self, proposed_block: SignedBlock) -> Result<ProvenBlock, ProvenBlockError> {
+    pub fn prove(&self, proposed_block: SignedBlock) -> ProvenBlock {
         self.prove_without_batch_verification_inner(proposed_block)
     }
 
@@ -46,10 +44,7 @@ impl LocalBlockProver {
     ///
     /// This is exposed for testing purposes.
     #[cfg(any(feature = "testing", test))]
-    pub fn prove_dummy(
-        &self,
-        proposed_block: ProposedBlock,
-    ) -> Result<ProvenBlock, ProvenBlockError> {
+    pub fn prove_dummy(&self, proposed_block: ProposedBlock) -> ProvenBlock {
         // Sign block with mock values.
         use miden_objects::crypto::dsa::ecdsa_k256_keccak::SecretKey;
         let mut key = SecretKey::new();
@@ -61,10 +56,7 @@ impl LocalBlockProver {
     /// Proves the provided [`SignedBlock`] into a [`ProvenBlock`].
     ///
     /// See [`Self::prove`] for more details.
-    fn prove_without_batch_verification_inner(
-        &self,
-        signed_block: SignedBlock,
-    ) -> Result<ProvenBlock, ProvenBlockError> {
+    fn prove_without_batch_verification_inner(&self, signed_block: SignedBlock) -> ProvenBlock {
         // Deconstruct signed block into its components.
         let (header, proposed_block, _signature) = signed_block.into_parts();
         let (
@@ -99,15 +91,13 @@ impl LocalBlockProver {
         let proof_commitment = Word::empty();
 
         // Construct the new proven block.
-        let proven_block = ProvenBlock::new_unchecked(
+        ProvenBlock::new_unchecked(
             header,
             updated_accounts,
             output_note_batches,
             created_nullifiers,
             txs,
             proof_commitment,
-        );
-
-        Ok(proven_block)
+        )
     }
 }

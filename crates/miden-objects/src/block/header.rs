@@ -2,11 +2,10 @@ use alloc::collections::BTreeMap;
 use alloc::string::ToString;
 use alloc::vec::Vec;
 
-use thiserror::Error;
-
 use crate::account::{AccountId, AccountType};
 use crate::block::{
     AccountUpdateWitness,
+    BlockHeaderError,
     BlockNoteIndex,
     BlockNoteTree,
     BlockNumber,
@@ -25,7 +24,7 @@ use crate::utils::serde::{
     DeserializationError,
     Serializable,
 };
-use crate::{AccountTreeError, FeeError, Felt, Hasher, NullifierTreeError, Word, ZERO};
+use crate::{FeeError, Felt, Hasher, Word, ZERO};
 
 // BLOCK HEADER
 // ================================================================================================
@@ -254,7 +253,7 @@ impl BlockHeader {
 }
 
 impl TryFrom<ProposedBlock> for BlockHeader {
-    type Error = ProvenBlockError;
+    type Error = BlockHeaderError;
 
     fn try_from(proposed_block: ProposedBlock) -> Result<Self, Self::Error> {
         // Get the block number and timestamp of the new block and compute the tx commitment.
@@ -334,7 +333,7 @@ impl TryFrom<ProposedBlock> for BlockHeader {
 fn compute_account_root(
     updated_accounts: &[(AccountId, AccountUpdateWitness)],
     prev_block_header: &BlockHeader,
-) -> Result<Word, ProvenBlockError> {
+) -> Result<Word, BlockHeaderError> {
     // If no accounts were updated, the account tree root is unchanged.
     if updated_accounts.is_empty() {
         return Ok(prev_block_header.account_root());
@@ -346,12 +345,12 @@ fn compute_account_root(
     let mut partial_account_tree = PartialAccountTree::with_witnesses(
         updated_accounts.iter().map(|(_, update_witness)| update_witness.to_witness()),
     )
-    .map_err(|source| ProvenBlockError::AccountWitnessTracking { source })?;
+    .map_err(|source| BlockHeaderError::AccountWitnessTracking { source })?;
 
     // Check the account tree root in the previous block header matches the reconstructed tree's
     // root.
     if prev_block_header.account_root() != partial_account_tree.root() {
-        return Err(ProvenBlockError::StaleAccountTreeRoot {
+        return Err(BlockHeaderError::StaleAccountTreeRoot {
             prev_block_account_root: prev_block_header.account_root(),
             stale_account_root: partial_account_tree.root(),
         });
@@ -366,7 +365,7 @@ fn compute_account_root(
         .upsert_state_commitments(updated_accounts.iter().map(|(account_id, update_witness)| {
             (*account_id, update_witness.final_state_commitment())
         }))
-        .map_err(|source| ProvenBlockError::AccountIdPrefixDuplicate { source })?;
+        .map_err(|source| BlockHeaderError::AccountIdPrefixDuplicate { source })?;
 
     Ok(partial_account_tree.root())
 }
@@ -402,7 +401,7 @@ fn compute_nullifier_root(
     created_nullifiers: BTreeMap<Nullifier, NullifierWitness>,
     prev_block_header: &BlockHeader,
     block_num: BlockNumber,
-) -> Result<Word, ProvenBlockError> {
+) -> Result<Word, BlockHeaderError> {
     // If no nullifiers were created, the nullifier tree root is unchanged.
     if created_nullifiers.is_empty() {
         return Ok(prev_block_header.nullifier_root());
@@ -419,13 +418,13 @@ fn compute_nullifier_root(
     for witness in created_nullifiers.into_values() {
         partial_nullifier_tree
             .track_nullifier(witness)
-            .map_err(ProvenBlockError::NullifierWitnessRootMismatch)?;
+            .map_err(BlockHeaderError::NullifierWitnessRootMismatch)?;
     }
 
     // Check the nullifier tree root in the previous block header matches the reconstructed tree's
     // root.
     if prev_block_header.nullifier_root() != partial_nullifier_tree.root() {
-        return Err(ProvenBlockError::StaleNullifierTreeRoot {
+        return Err(BlockHeaderError::StaleNullifierTreeRoot {
             prev_block_nullifier_root: prev_block_header.nullifier_root(),
             stale_nullifier_root: partial_nullifier_tree.root(),
         });
@@ -575,34 +574,6 @@ impl Deserializable for FeeParameters {
     }
 }
 
-// TODO: rm / rename this
-#[derive(Debug, Error)]
-pub enum ProvenBlockError {
-    #[error("nullifier witness has a different root than the current nullifier tree root")]
-    NullifierWitnessRootMismatch(#[source] NullifierTreeError),
-
-    #[error("failed to track account witness")]
-    AccountWitnessTracking { source: AccountTreeError },
-
-    #[error("account ID prefix already exists in the tree")]
-    AccountIdPrefixDuplicate { source: AccountTreeError },
-
-    #[error(
-        "account tree root of the previous block header is {prev_block_account_root} but the root of the partial tree computed from account witnesses is {stale_account_root}, indicating that the witnesses are stale"
-    )]
-    StaleAccountTreeRoot {
-        prev_block_account_root: Word,
-        stale_account_root: Word,
-    },
-
-    #[error(
-        "nullifier tree root of the previous block header is {prev_block_nullifier_root} but the root of the partial tree computed from nullifier witnesses is {stale_nullifier_root}, indicating that the witnesses are stale"
-    )]
-    StaleNullifierTreeRoot {
-        prev_block_nullifier_root: Word,
-        stale_nullifier_root: Word,
-    },
-}
 // TESTS
 // ================================================================================================
 

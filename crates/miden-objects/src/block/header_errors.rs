@@ -1,8 +1,9 @@
-use miden_objects::{AccountTreeError, NullifierTreeError, Word};
-use thiserror::Error;
+use miden_core::Word;
 
-#[derive(Debug, Error)]
-pub enum ProvenBlockError {
+use crate::{AccountTreeError, NullifierTreeError};
+
+#[derive(Debug, thiserror::Error)]
+pub enum BlockHeaderError {
     #[error("nullifier witness has a different root than the current nullifier tree root")]
     NullifierWitnessRootMismatch(#[source] NullifierTreeError),
 

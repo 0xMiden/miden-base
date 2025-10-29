@@ -2,7 +2,7 @@ use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::vec::Vec;
 
 use anyhow::Context;
-use miden_block_prover::{LocalBlockProver, ProvenBlockError};
+use miden_block_prover::LocalBlockProver;
 use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{Account, AccountId, AuthSecretKey, PartialAccount};
 use miden_objects::batch::{ProposedBatch, ProvenBatch};
@@ -513,12 +513,7 @@ impl MockChain {
     }
 
     /// Mock-proves a proposed block into a proven block and returns it.
-    ///
-    /// This method does not modify the chain state.
-    pub fn prove_block(
-        &self,
-        proposed_block: ProposedBlock,
-    ) -> Result<ProvenBlock, ProvenBlockError> {
+    pub fn prove_block(&self, proposed_block: ProposedBlock) -> ProvenBlock {
         LocalBlockProver::new(0).prove_dummy(proposed_block)
     }
 
@@ -967,7 +962,7 @@ impl MockChain {
         let proposed_block = self
             .propose_block_at(batches, block_timestamp)
             .context("failed to create proposed block")?;
-        let proven_block = self.prove_block(proposed_block).context("failed to prove block")?;
+        let proven_block = self.prove_block(proposed_block);
 
         // Apply block.
         // ----------------------------------------------------------------------------------------
