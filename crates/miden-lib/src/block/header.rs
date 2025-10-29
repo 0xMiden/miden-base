@@ -1,8 +1,8 @@
 // BLOCK HEADER
 // ================================================================================================
 
-use std::collections::BTreeMap;
-use std::vec::Vec;
+use alloc::collections::BTreeMap;
+use alloc::vec::Vec;
 
 use miden_core::Word;
 use miden_objects::account::AccountId;
