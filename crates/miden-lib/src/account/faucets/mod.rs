@@ -63,6 +63,10 @@ static METADATA_SLOT_NAME: LazyLock<SlotName> = LazyLock::new(|| {
 ///
 /// This component supports accounts of type [`AccountType::FungibleFaucet`].
 ///
+/// ## Storage Layout
+///
+/// - [`Self::metadata_slot_name`]: Basic fungible faucet's metadata
+///
 /// [kasm]: crate::transaction::TransactionKernel::assembler
 pub struct BasicFungibleFaucet {
     symbol: TokenSymbol,

@@ -107,11 +107,13 @@ impl AuthRpoFalcon512MultisigConfig {
 /// should be used with caution for private multisig accounts, as a single approver could withhold
 ///  the new state from other approvers, effectively locking them out.
 ///
-/// The storage layout is:
-/// - Slot 0(value): [threshold, num_approvers, 0, 0]
-/// - Slot 1(map): A map with approver public keys (index -> pubkey)
-/// - Slot 2(map): A map which stores executed transactions
-/// - Slot 3(map): A map which stores procedure thresholds (PROC_ROOT -> threshold)
+/// ## Storage Layout
+///
+/// - [`Self::threshold_config_slot`]: `[threshold, num_approvers, 0, 0]`
+/// - [`Self::approver_public_keys_slot`]: A map with approver public keys (index -> pubkey)
+/// - [`Self::executed_transactions_slot`]: A map which stores executed transactions
+/// - [`Self::procedure_thresholds_slot`]: A map which stores procedure thresholds (PROC_ROOT ->
+///   threshold)
 ///
 /// This component supports all account types.
 #[derive(Debug)]
@@ -150,14 +152,14 @@ impl From<AuthRpoFalcon512Multisig> for AccountComponent {
     fn from(multisig: AuthRpoFalcon512Multisig) -> Self {
         let mut storage_slots = Vec::with_capacity(3);
 
-        // Slot 0: [threshold, num_approvers, 0, 0]
+        // Threshold config slot (value: [threshold, num_approvers, 0, 0])
         let num_approvers = multisig.config.approvers().len() as u32;
         storage_slots.push(NamedStorageSlot::with_value(
             AuthRpoFalcon512Multisig::threshold_config_slot().clone(),
             Word::from([multisig.config.default_threshold(), num_approvers, 0, 0]),
         ));
 
-        // Slot 1: A map with approver public keys
+        // Approver public keys slot (map)
         let map_entries = multisig
             .config
             .approvers()
@@ -171,14 +173,14 @@ impl From<AuthRpoFalcon512Multisig> for AccountComponent {
             StorageMap::with_entries(map_entries).unwrap(),
         ));
 
-        // Slot 2: A map which stores executed transactions
+        // Executed transactions slot (map)
         let executed_transactions = StorageMap::default();
         storage_slots.push(NamedStorageSlot::with_map(
             AuthRpoFalcon512Multisig::executed_transactions_slot().clone(),
             executed_transactions,
         ));
 
-        // Slot 3: A map which stores procedure thresholds (PROC_ROOT -> threshold)
+        // Procedure thresholds slot (map: PROC_ROOT -> threshold)
         let proc_threshold_roots = StorageMap::with_entries(
             multisig
                 .config

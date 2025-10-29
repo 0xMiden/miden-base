@@ -115,10 +115,11 @@ impl Default for AuthRpoFalcon512AclConfig {
 ///   allowing free note processing.
 ///
 /// ## Storage Layout
-/// - Slot 0(value): Public key (same as RpoFalcon512)
-/// - Slot 1(value): [num_tracked_procs, allow_unauthorized_output_notes,
-///   allow_unauthorized_input_notes, 0]
-/// - Slot 2(map): A map with trigger procedure roots
+///
+/// - [`Self::public_key_slot`]: Public key
+/// - [`Self::config_slot`]: `[num_tracked_procs, allow_unauthorized_output_notes,
+///   allow_unauthorized_input_notes, 0]`
+/// - [`Self::tracked_procedure_roots_slot`]: A map with trigger procedure roots
 ///
 /// ## Important Note on Procedure Detection
 /// The procedure-based authentication relies on the `was_procedure_called` kernel function,
@@ -174,14 +175,13 @@ impl From<AuthRpoFalcon512Acl> for AccountComponent {
     fn from(falcon: AuthRpoFalcon512Acl) -> Self {
         let mut storage_slots = Vec::with_capacity(3);
 
-        // Slot 0: Public key
+        // Public key slot
         storage_slots.push(NamedStorageSlot::with_value(
             AuthRpoFalcon512Acl::public_key_slot().clone(),
             falcon.pub_key.into(),
         ));
 
-        // Slot 1: [num_tracked_procs, allow_unauthorized_output_notes,
-        // allow_unauthorized_input_notes, 0]
+        // Config slot
         let num_procs = falcon.config.auth_trigger_procedures.len() as u32;
         storage_slots.push(NamedStorageSlot::with_value(
             AuthRpoFalcon512Acl::config_slot().clone(),
@@ -193,7 +193,7 @@ impl From<AuthRpoFalcon512Acl> for AccountComponent {
             ]),
         ));
 
-        // Slot 2: A map with tracked procedure roots
+        // Tracked procedure roots slot
         // We add the map even if there are no trigger procedures, to always maintain the same
         // storage layout.
         let map_entries = falcon

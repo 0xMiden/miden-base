@@ -19,6 +19,10 @@ static FALCON_PUBKEY_SLOT_NAME: LazyLock<SlotName> = LazyLock::new(|| {
 ///
 /// This component supports all account types.
 ///
+/// ## Storage Layout
+///
+/// - [`Self::public_key_slot`]: Public key
+///
 /// [kasm]: crate::transaction::TransactionKernel::assembler
 pub struct AuthRpoFalcon512 {
     pub_key: PublicKeyCommitment,
