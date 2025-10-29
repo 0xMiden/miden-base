@@ -106,10 +106,10 @@ impl AccountDelta {
         // TODO(code_upgrades): This should go away once we have proper account code updates in
         // deltas. Then, the two code updates can be merged. For now, code cannot be merged
         // and this should never happen.
-        assert!(
-            !(self.is_full_state() && other.is_full_state()),
-            "cannot merge two full state deltas"
-        );
+        if self.is_full_state() && other.is_full_state() {
+            return Err(AccountDeltaError::MergingFullStateDeltas);
+        }
+
         if let Some(code) = other.code {
             self.code = Some(code);
         }

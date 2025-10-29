@@ -362,6 +362,8 @@ pub enum AccountDeltaError {
     },
     #[error("account ID {0} in fungible asset delta is not of type fungible faucet")]
     NotAFungibleFaucetId(AccountId),
+    #[error("cannot merge two full state deltas")]
+    MergingFullStateDeltas,
 }
 
 // STORAGE MAP ERROR
