@@ -574,7 +574,7 @@ where
             // Check if the script is in the advice provider
             let script_data = process.advice_provider().get_mapped_values(&script_root);
 
-            if script_data.is_none() {
+            let Some(script_data) = script_data else {
                 // Script is missing - request it from the data store
                 return Ok(TransactionEventHandling::Unhandled(TransactionEventData::NoteScript {
                     script_root,
@@ -582,10 +582,9 @@ where
                     recipient_digest,
                     note_idx,
                 }));
-            }
+            };
 
             // Script is present, build the recipient
-            let script_data = script_data.unwrap();
             let inputs_data = process.advice_provider().get_mapped_values(&inputs_commitment);
 
             let inputs = match inputs_data {
