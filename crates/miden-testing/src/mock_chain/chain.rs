@@ -6,8 +6,8 @@ use miden_block_prover::{LocalBlockProver, ProvenBlockError};
 use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{Account, AccountId, AuthSecretKey, PartialAccount};
 use miden_objects::batch::{ProposedBatch, ProvenBatch};
+use miden_objects::block::account_tree::AccountTree;
 use miden_objects::block::{
-    AccountTree,
     AccountWitness,
     BlockHeader,
     BlockInputs,

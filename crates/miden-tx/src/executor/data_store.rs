@@ -1,7 +1,7 @@
 use alloc::collections::BTreeSet;
 
 use miden_objects::account::{AccountId, PartialAccount, StorageMapWitness};
-use miden_objects::asset::AssetWitness;
+use miden_objects::asset::{AssetWitness, VaultKey};
 use miden_objects::block::{BlockHeader, BlockNumber};
 use miden_objects::note::NoteScript;
 use miden_objects::transaction::{AccountInputs, PartialBlockchain};
@@ -51,7 +51,7 @@ pub trait DataStore: MastForestStore {
         &self,
         account_id: AccountId,
         vault_root: Word,
-        vault_key: Word,
+        vault_key: VaultKey,
     ) -> impl FutureMaybeSend<Result<AssetWitness, DataStoreError>>;
 
     /// Returns a witness for a storage map item identified by `map_key` in the requested account's

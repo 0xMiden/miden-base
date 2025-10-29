@@ -1,5 +1,5 @@
-use.miden::account
-use.std::word
+use miden::account
+use std::word
 
 #! Increment the nonce only if the account commitment has changed
 #!
@@ -11,7 +11,7 @@ use.std::word
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [pad(16)]
-export.auth_no_auth
+pub proc auth_no_auth
     # check if the account state has changed by comparing initial and final commitments
 
     exec.account::get_initial_commitment

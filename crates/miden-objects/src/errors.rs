@@ -28,6 +28,7 @@ use crate::account::{
     TemplateTypeError,
 };
 use crate::address::AddressType;
+use crate::asset::VaultKey;
 use crate::batch::BatchId;
 use crate::block::BlockNumber;
 use crate::note::{NoteAssets, NoteExecutionHint, NoteTag, NoteType, Nullifier};
@@ -226,6 +227,8 @@ pub enum AccountIdError {
     AccountIdSuffixMostSignificantBitMustBeZero,
     #[error("least significant byte of account ID suffix must be zero")]
     AccountIdSuffixLeastSignificantByteMustBeZero,
+    #[error("failed to decode bech32 string into account ID")]
+    Bech32DecodeError(#[source] Bech32Error),
 }
 
 // SLOT NAME ERROR
@@ -480,7 +483,7 @@ pub enum PartialAssetVaultError {
     #[error("provided SMT entry {entry} is not a valid asset")]
     InvalidAssetInSmt { entry: Word, source: AssetError },
     #[error("expected asset vault key to be {expected} but it was {actual}")]
-    VaultKeyMismatch { expected: Word, actual: Word },
+    VaultKeyMismatch { expected: VaultKey, actual: Word },
     #[error("failed to add asset proof")]
     FailedToAddProof(#[source] MerkleError),
     #[error("asset is not tracked in the partial vault")]

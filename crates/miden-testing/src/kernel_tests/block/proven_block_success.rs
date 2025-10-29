@@ -7,13 +7,8 @@ use miden_block_prover::LocalBlockProver;
 use miden_lib::note::create_p2id_note;
 use miden_objects::asset::FungibleAsset;
 use miden_objects::batch::BatchNoteTree;
-use miden_objects::block::{
-    AccountTree,
-    BlockInputs,
-    BlockNoteIndex,
-    BlockNoteTree,
-    ProposedBlock,
-};
+use miden_objects::block::account_tree::AccountTree;
+use miden_objects::block::{BlockInputs, BlockNoteIndex, BlockNoteTree, ProposedBlock};
 use miden_objects::crypto::merkle::Smt;
 use miden_objects::note::NoteType;
 use miden_objects::transaction::InputNoteCommitment;
@@ -398,7 +393,7 @@ async fn proven_block_succeeds_with_empty_batches() -> anyhow::Result<()> {
     assert_eq!(latest_block_header.commitment(), blockx.commitment());
 
     // Sanity check: The account and nullifier tree roots should not be the empty tree roots.
-    assert_ne!(latest_block_header.account_root(), AccountTree::new().root());
+    assert_ne!(latest_block_header.account_root(), AccountTree::<Smt>::default().root());
     assert_ne!(latest_block_header.nullifier_root(), Smt::new().root());
 
     let (_, empty_partial_blockchain) = chain.latest_selective_partial_blockchain([])?;

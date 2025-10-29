@@ -2,21 +2,23 @@
 #
 # See the `AuthRpoFalcon512Acl` Rust type's documentation for more details.
 
-use.miden::account
-use.miden::tx
-use.std::word
+use miden::account
+use miden::tx
+use std::word
+
+type BeWord = struct @bigendian { a: felt, b: felt, c: felt, d: felt }
 
 # CONSTANTS
 # ================================================================================================
 
 # The slot in this component's storage layout where the public key is stored.
-const.PUBLIC_KEY_SLOT=0
+const PUBLIC_KEY_SLOT = 0
 
 # The slot where the authentication configuration is stored.
-const.AUTH_CONFIG_SLOT=1
+const AUTH_CONFIG_SLOT = 1
 
 # The slot where the map of auth trigger procedure roots is stored.
-const.AUTH_TRIGGER_PROCS_MAP_SLOT=2
+const AUTH_TRIGGER_PROCS_MAP_SLOT = 2
 
 #! Authenticate a transaction using the Falcon signature scheme based on procedure calls and note usage.
 #!
@@ -32,7 +34,7 @@ const.AUTH_TRIGGER_PROCS_MAP_SLOT=2
 #! Outputs: [pad(16)]
 #!
 #! Invocation: call
-export.auth_tx_rpo_falcon512_acl.2
+pub proc auth_tx_rpo_falcon512_acl.2(auth_args: BeWord)
     dropw
     # => [pad(16)]
 

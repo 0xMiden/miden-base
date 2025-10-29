@@ -1681,6 +1681,60 @@ async fn incrementing_nonce_twice_fails() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[tokio::test]
+async fn test_has_procedure() -> miette::Result<()> {
+    // Create a standard account using the mock component
+    let mock_component = MockAccountComponent::with_slots(AccountStorage::mock_storage_slots());
+    let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
+        .with_auth_component(Auth::IncrNonce)
+        .with_component(mock_component)
+        .build_existing()
+        .unwrap();
+
+    let tx_script_code = r#"
+        use.mock::account->mock_account
+        use.miden::account
+
+        begin
+            # check that get_item procedure is available on the mock account
+            procref.mock_account::get_item
+            # => [GET_ITEM_ROOT]
+
+            exec.account::has_procedure
+            # => [is_procedure_available]
+
+            # assert that the get_item is exposed
+            assert.err="get_item procedure should be exposed by the mock account"
+
+            # get some random word and assert that it is not exposed
+            push.5.3.15.686
+
+            exec.account::has_procedure
+            # => [is_procedure_available]
+
+            # assert that the procedure with some random root is not exposed
+            assertz.err="procedure with some random root should not be exposed by the mock account"
+        end
+        "#;
+
+    // Compile the transaction script using the testing assembler with mock account
+    let tx_script = ScriptBuilder::with_mock_libraries()
+        .into_diagnostic()?
+        .compile_tx_script(tx_script_code)
+        .into_diagnostic()?;
+
+    // Create transaction context and execute
+    let tx_context = TransactionContextBuilder::new(account).tx_script(tx_script).build().unwrap();
+
+    tx_context
+        .execute()
+        .await
+        .into_diagnostic()
+        .wrap_err("Failed to execute transaction")?;
+
+    Ok(())
+}
+
 // ACCOUNT INITIAL STORAGE TESTS
 // ================================================================================================
 
