@@ -797,3 +797,33 @@ export.get_procedure_root
     swapdw dropw dropw swapw dropw
     # => [PROC_ROOT]
 end
+
+#! Returns the binary flag indicating whether the procedure with the provided root is available on
+#! the active account.
+#!
+#! Returns 1 if the procedure is available on the active account and 0 otherwise.
+#!
+#! Inputs:  [PROC_ROOT]
+#! Outputs: [is_procedure_available]
+#!
+#! Where:
+#! - PROC_ROOT is the hash of the procedure of interest.
+#! - is_procedure_available is the binary flag indicating whether the procedure with PROC_ROOT is 
+#!   available on the active account.
+#!
+#! Invocation: exec
+export.has_procedure
+    exec.kernel_proc_offsets::account_has_procedure_offset
+    # => [offset, PROC_ROOT]
+
+    # pad the stack
+    push.0.0.0 movdn.7 movdn.7 movdn.7 padw padw swapdw
+    # => [offset, PROC_ROOT, pad(11)]
+
+    syscall.exec_kernel_proc
+    # => [is_procedure_available, pad(15)]
+
+    # clean the stack
+    swapdw dropw dropw swapw dropw movdn.3 drop drop drop
+    # => [is_procedure_available]
+end

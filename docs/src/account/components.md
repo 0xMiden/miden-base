@@ -1,6 +1,11 @@
+---
+sidebar_position: 6
+title: "Components"
+---
+
 # Account Components
 
-Account components are reusable units of functionality that define a part of an account's code and storage. Multiple account components can be merged together to form an account's final [code](./code.md) and [storage](./storage.md).
+Account components are reusable units of functionality that define a part of an account's code and storage. Multiple account components can be merged together to form an account's final [code](./code) and [storage](./storage).
 
 As an example, consider a typical wallet account, capable of holding a user's assets and requiring authentication whenever assets are added or removed. Such an account can be created by merging a `BasicWallet` component with an `RpoFalcon512` authentication component. The basic wallet does not need any storage, but contains the code to move assets in and out of the account vault. The authentication component holds a user's public key in storage and additionally contains the code to verify a signature against that public key. Together, these components form a fully functional wallet account.
 
@@ -30,7 +35,7 @@ The component metadata can be defined using TOML. Below is an example specificat
 
 ```toml
 name = "Fungible Faucet"
-description = "This component showcases the component template format, and the different ways of 
+description = "This component showcases the component template format, and the different ways of
 providing valid values to it."
 version = "1.0.0"
 supported-types = ["FungibleFaucet"]
@@ -72,7 +77,7 @@ values = [
 
 #### Specifying values and their types
 
-In the TOML format, any value that is one word long can be written as a single value, or as exactly four field elements. In turn, a field element is a number within Miden's finite field. 
+In the TOML format, any value that is one word long can be written as a single value, or as exactly four field elements. In turn, a field element is a number within Miden's finite field.
 
 A word can be written as a hexadecimal value, and field elements can be written either as hexadecimal or decimal numbers. In all cases, numbers should be input as strings.
 
@@ -127,7 +132,7 @@ In the above example, the first and second storage entries are single-slot value
 
 ##### Storage map entries
 
-[Storage maps](./storage.md#map-slots) consist of key-value pairs, where both keys and values are single words.
+[Storage maps](./storage#map-slots) consist of key-value pairs, where both keys and values are single words.
 
 Storage map entries can specify the following fields:
 

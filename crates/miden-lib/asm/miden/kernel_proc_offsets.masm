@@ -45,52 +45,53 @@ const.ACCOUNT_COMPUTE_DELTA_COMMITMENT_OFFSET=23
 const.ACCOUNT_GET_NUM_PROCEDURES_OFFSET=24
 const.ACCOUNT_GET_PROCEDURE_ROOT_OFFSET=25
 const.ACCOUNT_WAS_PROCEDURE_CALLED_OFFSET=26
+const.ACCOUNT_HAS_PROCEDURE_OFFSET=27
 
 ### Faucet ######################################
-const.FAUCET_MINT_ASSET_OFFSET=27
-const.FAUCET_BURN_ASSET_OFFSET=28
-const.FAUCET_GET_TOTAL_FUNGIBLE_ASSET_ISSUANCE_OFFSET=29
-const.FAUCET_IS_NON_FUNGIBLE_ASSET_ISSUED_OFFSET=30
+const.FAUCET_MINT_ASSET_OFFSET=28
+const.FAUCET_BURN_ASSET_OFFSET=29
+const.FAUCET_GET_TOTAL_FUNGIBLE_ASSET_ISSUANCE_OFFSET=30
+const.FAUCET_IS_NON_FUNGIBLE_ASSET_ISSUED_OFFSET=31
 
 ### Note ########################################
 
 # input notes
-const.INPUT_NOTE_GET_METADATA_OFFSET=31
-const.INPUT_NOTE_GET_ASSETS_INFO_OFFSET=32
-const.INPUT_NOTE_GET_SCRIPT_ROOT_OFFSET=33
-const.INPUT_NOTE_GET_INPUTS_INFO_OFFSET=34
-const.INPUT_NOTE_GET_SERIAL_NUMBER_OFFSET=35
-const.INPUT_NOTE_GET_RECIPIENT_OFFSET=36
+const.INPUT_NOTE_GET_METADATA_OFFSET=32
+const.INPUT_NOTE_GET_ASSETS_INFO_OFFSET=33
+const.INPUT_NOTE_GET_SCRIPT_ROOT_OFFSET=34
+const.INPUT_NOTE_GET_INPUTS_INFO_OFFSET=35
+const.INPUT_NOTE_GET_SERIAL_NUMBER_OFFSET=36
+const.INPUT_NOTE_GET_RECIPIENT_OFFSET=37
 
 # output notes
-const.OUTPUT_NOTE_CREATE_OFFSET=37
-const.OUTPUT_NOTE_GET_METADATA_OFFSET=38
-const.OUTPUT_NOTE_GET_ASSETS_INFO_OFFSET=39
-const.OUTPUT_NOTE_GET_RECIPIENT_OFFSET=40
-const.OUTPUT_NOTE_ADD_ASSET_OFFSET=41
+const.OUTPUT_NOTE_CREATE_OFFSET=38
+const.OUTPUT_NOTE_GET_METADATA_OFFSET=39
+const.OUTPUT_NOTE_GET_ASSETS_INFO_OFFSET=40
+const.OUTPUT_NOTE_GET_RECIPIENT_OFFSET=41
+const.OUTPUT_NOTE_ADD_ASSET_OFFSET=42
 
 ### Tx ##########################################
 
 # input notes
-const.TX_GET_NUM_INPUT_NOTES_OFFSET=42
-const.TX_GET_INPUT_NOTES_COMMITMENT_OFFSET=43
+const.TX_GET_NUM_INPUT_NOTES_OFFSET=43
+const.TX_GET_INPUT_NOTES_COMMITMENT_OFFSET=44
 
 # output notes
-const.TX_GET_NUM_OUTPUT_NOTES_OFFSET=44
-const.TX_GET_OUTPUT_NOTES_COMMITMENT_OFFSET=45
+const.TX_GET_NUM_OUTPUT_NOTES_OFFSET=45
+const.TX_GET_OUTPUT_NOTES_COMMITMENT_OFFSET=46
 
 # block info
-const.TX_GET_BLOCK_COMMITMENT_OFFSET=46
-const.TX_GET_BLOCK_NUMBER_OFFSET=47
-const.TX_GET_BLOCK_TIMESTAMP_OFFSET=48
+const.TX_GET_BLOCK_COMMITMENT_OFFSET=47
+const.TX_GET_BLOCK_NUMBER_OFFSET=48
+const.TX_GET_BLOCK_TIMESTAMP_OFFSET=49
 
 # foreign context
-const.TX_START_FOREIGN_CONTEXT_OFFSET=49
-const.TX_END_FOREIGN_CONTEXT_OFFSET=50
+const.TX_START_FOREIGN_CONTEXT_OFFSET=50
+const.TX_END_FOREIGN_CONTEXT_OFFSET=51
 
 # expiration data
-const.TX_GET_EXPIRATION_DELTA_OFFSET=51               # accessor
-const.TX_UPDATE_EXPIRATION_BLOCK_DELTA_OFFSET=52      # mutator
+const.TX_GET_EXPIRATION_DELTA_OFFSET=52               # accessor
+const.TX_UPDATE_EXPIRATION_BLOCK_DELTA_OFFSET=53      # mutator
 
 # ACCESSORS
 # -------------------------------------------------------------------------------------------------
@@ -395,6 +396,18 @@ end
 #!   get the address where this procedure is stored.
 export.account_was_procedure_called_offset
     push.ACCOUNT_WAS_PROCEDURE_CALLED_OFFSET
+end
+
+#! Returns the offset of the `account_has_procedure` kernel procedure.
+#!
+#! Inputs:  []
+#! Outputs: [proc_offset]
+#!
+#! Where:
+#! - proc_offset is the offset of the `account_has_procedure` kernel procedure required to get the 
+#!   address where this procedure is stored.
+export.account_has_procedure_offset
+    push.ACCOUNT_HAS_PROCEDURE_OFFSET
 end
 
 #! Returns the offset of the `account_get_num_procedures` kernel procedure.

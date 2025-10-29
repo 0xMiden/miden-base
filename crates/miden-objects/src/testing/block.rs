@@ -1,9 +1,11 @@
+use miden_crypto::merkle::Smt;
 #[cfg(not(target_family = "wasm"))]
 use winter_rand_utils::rand_value;
 
 use crate::Word;
 use crate::account::Account;
-use crate::block::{AccountTree, BlockHeader, BlockNumber, FeeParameters};
+use crate::block::account_tree::{AccountTree, account_id_to_smt_key};
+use crate::block::{BlockHeader, BlockNumber, FeeParameters};
 use crate::testing::account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET;
 
 impl BlockHeader {
@@ -19,9 +21,13 @@ impl BlockHeader {
         note_root: Option<Word>,
         accounts: &[Account],
     ) -> Self {
-        let acct_db =
-            AccountTree::with_entries(accounts.iter().map(|acct| (acct.id(), acct.commitment())))
-                .expect("failed to create account db");
+        let smt = Smt::with_entries(
+            accounts
+                .iter()
+                .map(|acct| (account_id_to_smt_key(acct.id()), acct.commitment())),
+        )
+        .expect("failed to create account db");
+        let acct_db = AccountTree::new(smt).expect("failed to create account tree");
         let account_root = acct_db.root();
         let fee_parameters =
             FeeParameters::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET.try_into().unwrap(), 500)
