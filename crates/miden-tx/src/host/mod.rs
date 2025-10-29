@@ -547,15 +547,6 @@ where
         // Extract note index from stack
         let note_idx = process.get_stack_item(10).as_int() as usize;
 
-        // Verify that the note index matches the expected next index
-        if note_idx != self.output_notes.len() {
-            return Err(TransactionKernelError::other(format!(
-                "note index mismatch: expected {}, got {}",
-                self.output_notes.len(),
-                note_idx
-            )));
-        }
-
         // Check if the advice provider contains the recipient data
         let recipient = if let Some(data) =
             process.advice_provider().get_mapped_values(&recipient_digest)
@@ -631,7 +622,7 @@ where
 
         // Build the note builder with the recipient (or None for private notes)
         let note_builder = OutputNoteBuilder::new(metadata, recipient_digest, recipient)?;
-        self.output_notes.insert(note_idx, note_builder);
+        self.insert_output_note_builder(note_idx, note_builder)?;
 
         Ok(TransactionEventHandling::Handled(Vec::new()))
     }
