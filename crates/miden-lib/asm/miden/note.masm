@@ -116,9 +116,9 @@ end
 #! Locals:
 #! - 2: inputs_ptr
 #! - 3: num_inputs (for NoteDetails format)
-#! - 4..7: SERIAL_NUM
-#! - 8..11: SCRIPT_ROOT
-#! - 12..15: INPUTS_COMMITMENT
+#! - 4..8: SERIAL_NUM
+#! - 8..12: SCRIPT_ROOT
+#! - 12..16: INPUTS_COMMITMENT
 #!
 #! Panics if:
 #! - inputs_ptr is not word-aligned (i.e., is not a multiple of 4).
