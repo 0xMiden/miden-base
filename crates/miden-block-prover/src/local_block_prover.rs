@@ -57,16 +57,14 @@ impl LocalBlockProver {
         self.prove_without_batch_verification_inner(signed_block)
     }
 
-    /// Proves the provided [`ProposedBlock`] into a [`ProvenBlock`].
-    ///
-    /// The assumptions of this method are that the checks made by construction of a
-    /// [`ProposedBlock`] are enforced.
+    /// Proves the provided [`SignedBlock`] into a [`ProvenBlock`].
     ///
     /// See [`Self::prove`] for more details.
     fn prove_without_batch_verification_inner(
         &self,
         signed_block: SignedBlock,
     ) -> Result<ProvenBlock, ProvenBlockError> {
+        // Deconstruct signed block into its components.
         let (header, proposed_block, _signature) = signed_block.into_parts();
         let (
             batches,
@@ -79,8 +77,6 @@ impl LocalBlockProver {
         let created_nullifiers: Vec<Nullifier> = created_nullifiers.keys().copied().collect();
 
         // Transform the account update witnesses into block account updates.
-        // --------------------------------------------------------------------------------------------
-
         let updated_accounts = account_updated_witnesses
             .into_iter()
             .map(|(account_id, update_witness)| {
@@ -96,15 +92,12 @@ impl LocalBlockProver {
             .collect();
 
         // Aggregate the verified transactions of all batches.
-        // --------------------------------------------------------------------------------------------
-
         let txs = batches.into_transactions();
 
+        // For now, we're not actually proving the block.
         let proof_commitment = Word::empty();
 
         // Construct the new proven block.
-        // --------------------------------------------------------------------------------------------
-
         let proven_block = ProvenBlock::new_unchecked(
             header,
             updated_accounts,

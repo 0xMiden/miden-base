@@ -27,6 +27,9 @@ use crate::utils::serde::{
 };
 use crate::{AccountTreeError, FeeError, Felt, Hasher, NullifierTreeError, Word, ZERO};
 
+// BLOCK HEADER
+// ================================================================================================
+
 /// The header of a block. It contains metadata about the block, commitments to the current
 /// state of the chain and the hash of the proof that attests to the integrity of the chain.
 ///
@@ -255,14 +258,10 @@ impl TryFrom<ProposedBlock> for BlockHeader {
 
     fn try_from(proposed_block: ProposedBlock) -> Result<Self, Self::Error> {
         // Get the block number and timestamp of the new block and compute the tx commitment.
-        // --------------------------------------------------------------------------------------------
-
         let block_num = proposed_block.block_num();
         let timestamp = proposed_block.timestamp();
 
         // Split the proposed block into its parts.
-        // --------------------------------------------------------------------------------------------
-
         let (
             batches,
             account_updated_witnesses,
@@ -273,44 +272,34 @@ impl TryFrom<ProposedBlock> for BlockHeader {
         ) = proposed_block.into_parts();
 
         let prev_block_commitment = prev_block_header.commitment();
+
         // For now we copy the parameters of the previous header, which means the parameters set on
         // the genesis block will be passed through. Eventually, the contained base fees will be
         // updated based on the demand in the currently proposed block.
         let fee_parameters = prev_block_header.fee_parameters().clone();
 
         // Compute the root of the block note tree.
-        // --------------------------------------------------------------------------------------------
-
         let note_tree = compute_block_note_tree(&output_note_batches);
         let note_root = note_tree.root();
 
         // Insert the created nullifiers into the nullifier tree to compute its new root.
-        // --------------------------------------------------------------------------------------------
-
-        let (_created_nullifiers, new_nullifier_root) =
-            compute_nullifiers(created_nullifiers, &prev_block_header, block_num)?;
+        let new_nullifier_root =
+            compute_nullifier_root(created_nullifiers, &prev_block_header, block_num)?;
 
         // Insert the state commitments of updated accounts into the account tree to compute its new
         // root.
-        // --------------------------------------------------------------------------------------------
-
         let new_account_root =
             compute_account_root(&account_updated_witnesses, &prev_block_header)?;
 
         // Insert the previous block header into the block partial blockchain to get the new chain
         // commitment.
-        // --------------------------------------------------------------------------------------------
-
         let new_chain_commitment = compute_chain_commitment(partial_blockchain, prev_block_header);
 
         // Aggregate the verified transactions of all batches.
-        // --------------------------------------------------------------------------------------------
-
         let txs = batches.into_transactions();
         let tx_commitment = txs.commitment();
 
         // Construct the new block header.
-        // --------------------------------------------------------------------------------------------
 
         // Currently undefined and reserved for future use.
         // See miden-base/1155.
@@ -334,6 +323,9 @@ impl TryFrom<ProposedBlock> for BlockHeader {
         ))
     }
 }
+
+// HELPERS
+// ================================================================================================
 
 /// Computes the new account tree root after the given updates.
 ///
@@ -405,16 +397,15 @@ fn compute_block_note_tree(output_note_batches: &[OutputNoteBatch]) -> BlockNote
 }
 
 /// Computes the new nullifier root by inserting the nullifier witnesses into a partial nullifier
-/// tree and marking each nullifier as spent in the given block number. Returns the list of
-/// nullifiers and the new nullifier tree root.
-fn compute_nullifiers(
+/// tree and marking each nullifier as spent in the given block number.
+fn compute_nullifier_root(
     created_nullifiers: BTreeMap<Nullifier, NullifierWitness>,
     prev_block_header: &BlockHeader,
     block_num: BlockNumber,
-) -> Result<(Vec<Nullifier>, Word), ProvenBlockError> {
+) -> Result<Word, ProvenBlockError> {
     // If no nullifiers were created, the nullifier tree root is unchanged.
     if created_nullifiers.is_empty() {
-        return Ok((Vec::new(), prev_block_header.nullifier_root()));
+        return Ok(prev_block_header.nullifier_root());
     }
 
     let nullifiers: Vec<Nullifier> = created_nullifiers.keys().copied().collect();
@@ -450,7 +441,7 @@ fn compute_nullifiers(
       "nullifiers' merkle path should have been added to the partial tree and the nullifiers should be unspent",
     );
 
-    Ok((nullifiers, partial_nullifier_tree.root()))
+    Ok(partial_nullifier_tree.root())
 }
 
 /// Adds the commitment of the previous block header to the partial blockchain to compute the new

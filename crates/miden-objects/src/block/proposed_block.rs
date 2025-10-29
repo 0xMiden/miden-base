@@ -348,9 +348,8 @@ impl ProposedBlock {
     /// Signs the block with the provided secret key. Consuming the [`ProvenBlock`] and returning a
     /// [`SignedBlock`].
     pub fn sign(self, secret_key: &mut SecretKey) -> SignedBlock {
-        let preimage = Word::empty(); // TODO: what do we sign?
-        let signature = secret_key.sign(preimage);
         let header: BlockHeader = self.clone().try_into().unwrap();
+        let signature = secret_key.sign(header.commitment()); // TODO: what do we sign?
         SignedBlock::new(header, self, signature)
     }
 }
