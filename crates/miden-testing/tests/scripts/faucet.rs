@@ -4,20 +4,11 @@ use miden_lib::account::faucets::FungibleFaucetExt;
 use miden_lib::errors::tx_kernel_errors::ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED;
 use miden_lib::note::create_p2id_note;
 use miden_lib::note::well_known_note::WellKnownNote;
+use miden_lib::testing::note::NoteBuilder;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{Account, AccountId};
 use miden_objects::asset::{Asset, FungibleAsset};
-use miden_objects::note::{
-    Note,
-    NoteAssets,
-    NoteExecutionHint,
-    NoteId,
-    NoteInputs,
-    NoteMetadata,
-    NoteRecipient,
-    NoteTag,
-    NoteType,
-};
+use miden_objects::note::{NoteAssets, NoteExecutionHint, NoteId, NoteMetadata, NoteTag, NoteType};
 use miden_objects::testing::account_id::ACCOUNT_ID_PRIVATE_SENDER;
 use miden_objects::transaction::{ExecutedTransaction, OutputNote};
 use miden_objects::{Felt, Word};
@@ -380,23 +371,15 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
     );
 
     // Create the trigger note that will call distribute
-    let trigger_note_script =
-        miden_lib::utils::ScriptBuilder::default().compile_note_script(note_script_code)?;
-
-    let serial_num = Word::from([1, 2, 3, 4u32]);
-    let trigger_note_inputs = NoteInputs::new(vec![])?;
-    let trigger_note_recipient =
-        NoteRecipient::new(serial_num, trigger_note_script, trigger_note_inputs);
-    let trigger_note_metadata = NoteMetadata::new(
-        faucet.id(),
-        NoteType::Private,
-        NoteTag::for_local_use_case(0, 0)?,
-        NoteExecutionHint::always(),
-        Felt::new(0),
-    )?;
-    let trigger_note_assets = NoteAssets::new(vec![])?;
-    let trigger_note =
-        Note::new(trigger_note_assets, trigger_note_metadata, trigger_note_recipient);
+    let mut rng = RpoRandomCoin::new([Felt::from(1u32); 4].into());
+    let trigger_note = NoteBuilder::new(faucet.id(), &mut rng)
+        .note_type(NoteType::Private)
+        .tag(NoteTag::for_local_use_case(0, 0)?.into())
+        .note_execution_hint(NoteExecutionHint::always())
+        .aux(Felt::new(0))
+        .serial_number(Word::from([1, 2, 3, 4u32]))
+        .code(note_script_code)
+        .build()?;
 
     builder.add_output_note(OutputNote::Full(trigger_note.clone()));
     let mock_chain = builder.build()?;
