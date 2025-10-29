@@ -346,7 +346,10 @@ impl Account {
     /// to the values specified by the delta.
     ///
     /// # Errors
+    ///
     /// Returns an error if:
+    /// - [`AccountDelta::is_full_state`] returns `true`, i.e. represents the state of an entire
+    ///   account. Only partial state deltas can be applied to an account.
     /// - Applying vault sub-delta to the vault of this account fails.
     /// - Applying storage sub-delta to the storage of this account fails.
     /// - The nonce specified in the provided delta smaller than or equal to the current account
