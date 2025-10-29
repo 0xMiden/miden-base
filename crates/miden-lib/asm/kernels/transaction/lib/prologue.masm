@@ -475,8 +475,8 @@ proc.process_account_data
         # this is required only for new accounts because the delta at the end of an
         # account-creating transaction needs to represent the entire account, while
         # this is not a requirement for existing accounts
-        exec.account_delta::insert_new_account
-        # => []
+        exec.account::insert_new_storage
+        # => [ACCOUNT_COMMITMENT]
 
         # set the initial account commitment
         exec.memory::set_init_account_commitment dropw

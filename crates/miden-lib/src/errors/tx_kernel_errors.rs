@@ -14,8 +14,6 @@ use crate::errors::MasmError;
 pub const ERR_ACCOUNT_CODE_COMMITMENT_MISMATCH: MasmError = MasmError::from_static_str("computed account code commitment does not match recorded account code commitment");
 /// Error Message: "account code must be updatable for it to be possible to set new code"
 pub const ERR_ACCOUNT_CODE_IS_NOT_UPDATABLE: MasmError = MasmError::from_static_str("account code must be updatable for it to be possible to set new code");
-/// Error Message: "storage map entries provided via the advice inputs are not present in the account's corresponding storage map"
-pub const ERR_ACCOUNT_DELTA_INITIAL_STORAGE_MAP_ENTRIES_NOT_PRESENT_IN_MAP_ROOT: MasmError = MasmError::from_static_str("storage map entries provided via the advice inputs are not present in the account's corresponding storage map");
 /// Error Message: "nonce must be incremented if account vault or account storage changed"
 pub const ERR_ACCOUNT_DELTA_NONCE_MUST_BE_INCREMENTED_IF_VAULT_OR_STORAGE_CHANGED: MasmError = MasmError::from_static_str("nonce must be incremented if account vault or account storage changed");
 /// Error Message: "the account ID must have storage mode public if the network flag is set"
@@ -56,6 +54,8 @@ pub const ERR_ACCOUNT_STACK_OVERFLOW: MasmError = MasmError::from_static_str("de
 pub const ERR_ACCOUNT_STACK_UNDERFLOW: MasmError = MasmError::from_static_str("failed to end foreign context because the current account is the native account");
 /// Error Message: "computed account storage commitment does not match recorded account storage commitment"
 pub const ERR_ACCOUNT_STORAGE_COMMITMENT_MISMATCH: MasmError = MasmError::from_static_str("computed account storage commitment does not match recorded account storage commitment");
+/// Error Message: "storage map entries provided as advice inputs do not have the same storage map root as the root of the map the new account commits to"
+pub const ERR_ACCOUNT_STORAGE_MAP_ENTRIES_DO_NOT_MATCH_MAP_ROOT: MasmError = MasmError::from_static_str("storage map entries provided as advice inputs do not have the same storage map root as the root of the map the new account commits to");
 /// Error Message: "provided storage slot index is out of bounds"
 pub const ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS: MasmError = MasmError::from_static_str("provided storage slot index is out of bounds");
 /// Error Message: "number of account procedures exceeds the maximum limit of 256"
