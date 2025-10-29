@@ -215,6 +215,7 @@ impl MockChainBuilder {
             note_root,
             tx_commitment,
             tx_kernel_commitment,
+            proof_commitment,
             fee_parameters,
             timestamp,
         );

@@ -20,6 +20,7 @@ impl BlockHeader {
         chain_commitment: Option<Word>,
         note_root: Option<Word>,
         accounts: &[Account],
+        tx_kernel_commitment: Word,
     ) -> Self {
         let smt = Smt::with_entries(
             accounts
@@ -92,6 +93,7 @@ impl BlockHeader {
             nullifier_root,
             note_root,
             tx_commitment,
+            tx_kernel_commitment,
             proof_commitment,
             fee_parameters,
             timestamp,

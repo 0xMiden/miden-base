@@ -147,6 +147,8 @@ impl TransactionAdviceInputs {
         self.extend_stack(header.account_root());
         self.extend_stack(header.nullifier_root());
         self.extend_stack(header.tx_commitment());
+        self.extend_stack(header.tx_kernel_commitment());
+        self.extend_stack(header.proof_commitment());
         self.extend_stack([
             header.block_num().into(),
             header.version().into(),

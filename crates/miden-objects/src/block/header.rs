@@ -62,7 +62,8 @@ pub struct BlockHeader {
     nullifier_root: Word,
     note_root: Word,
     tx_commitment: Word,
-    signature: Word,
+    tx_kernel_commitment: Word,
+    proof_commitment: Word, // TODO(serge): remove this field as proofs are constructed later.
     fee_parameters: FeeParameters,
     timestamp: u32,
     sub_commitment: Word,
@@ -81,7 +82,8 @@ impl BlockHeader {
         nullifier_root: Word,
         note_root: Word,
         tx_commitment: Word,
-        signature: Word,
+        tx_kernel_commitment: Word,
+        proof_commitment: Word,
         fee_parameters: FeeParameters,
         timestamp: u32,
     ) -> Self {
@@ -93,7 +95,8 @@ impl BlockHeader {
             account_root,
             nullifier_root,
             tx_commitment,
-            signature,
+            tx_kernel_commitment,
+            proof_commitment,
             &fee_parameters,
             timestamp,
             block_num,
@@ -114,7 +117,8 @@ impl BlockHeader {
             nullifier_root,
             note_root,
             tx_commitment,
-            signature,
+            tx_kernel_commitment,
+            proof_commitment,
             fee_parameters,
             timestamp,
             sub_commitment,
@@ -191,9 +195,17 @@ impl BlockHeader {
         self.tx_commitment
     }
 
-    /// Returns the block signature.
-    pub fn signature(&self) -> Word {
-        self.signature
+    /// Returns the transaction kernel commitment.
+    ///
+    /// The transaction kernel commitment is computed as a sequential hash of all transaction kernel
+    /// hashes.
+    pub fn tx_kernel_commitment(&self) -> Word {
+        self.tx_kernel_commitment
+    }
+
+    /// Returns the proof commitment.
+    pub fn proof_commitment(&self) -> Word {
+        self.proof_commitment
     }
 
     /// Returns a reference to the [`FeeParameters`] in this header.
@@ -218,7 +230,7 @@ impl BlockHeader {
     ///
     /// The sub commitment is computed as a sequential hash of the following fields:
     /// `prev_block_commitment`, `chain_commitment`, `account_root`, `nullifier_root`, `note_root`,
-    /// `tx_commitment`, `tx_kernel_commitment`, `signature`, `version`, `timestamp`,
+    /// `tx_commitment`, `tx_kernel_commitment`, `proof_commitment`, `version`, `timestamp`,
     /// `block_num`, `native_asset_id`, `verification_base_fee` (all fields except the `note_root`).
     #[allow(clippy::too_many_arguments)]
     fn compute_sub_commitment(
@@ -228,7 +240,8 @@ impl BlockHeader {
         account_root: Word,
         nullifier_root: Word,
         tx_commitment: Word,
-        signature: Word,
+        tx_kernel_commitment: Word,
+        proof_commitment: Word,
         fee_parameters: &FeeParameters,
         timestamp: u32,
         block_num: BlockNumber,
@@ -239,7 +252,8 @@ impl BlockHeader {
         elements.extend_from_slice(account_root.as_elements());
         elements.extend_from_slice(nullifier_root.as_elements());
         elements.extend_from_slice(tx_commitment.as_elements());
-        elements.extend_from_slice(signature.as_elements());
+        elements.extend_from_slice(tx_kernel_commitment.as_elements());
+        elements.extend_from_slice(proof_commitment.as_elements());
         elements.extend([block_num.into(), version.into(), timestamp.into(), ZERO]);
         elements.extend([
             fee_parameters.native_asset_id().suffix(),
@@ -307,6 +321,9 @@ impl TryFrom<ProposedBlock> for BlockHeader {
         // For now, we're not actually proving the block.
         let proof_commitment = Word::empty();
 
+        // TODO: is this used? remove from block header?
+        let tx_kernel_commitment = Word::empty();
+
         Ok(BlockHeader::new(
             version,
             prev_block_commitment,
@@ -316,6 +333,7 @@ impl TryFrom<ProposedBlock> for BlockHeader {
             new_nullifier_root,
             note_root,
             tx_commitment,
+            tx_kernel_commitment,
             proof_commitment,
             fee_parameters,
             timestamp,
@@ -468,7 +486,8 @@ impl Serializable for BlockHeader {
         self.nullifier_root.write_into(target);
         self.note_root.write_into(target);
         self.tx_commitment.write_into(target);
-        self.signature.write_into(target);
+        self.tx_kernel_commitment.write_into(target);
+        self.proof_commitment.write_into(target);
         self.fee_parameters.write_into(target);
         self.timestamp.write_into(target);
     }
@@ -484,6 +503,7 @@ impl Deserializable for BlockHeader {
         let nullifier_root = source.read()?;
         let note_root = source.read()?;
         let tx_commitment = source.read()?;
+        let tx_kernel_commitment = source.read()?;
         let proof_commitment = source.read()?;
         let fee_parameters = source.read()?;
         let timestamp = source.read()?;
@@ -497,6 +517,7 @@ impl Deserializable for BlockHeader {
             nullifier_root,
             note_root,
             tx_commitment,
+            tx_kernel_commitment,
             proof_commitment,
             fee_parameters,
             timestamp,
@@ -590,7 +611,14 @@ mod tests {
     fn test_serde() {
         let chain_commitment = rand_value::<Word>();
         let note_root = rand_value::<Word>();
-        let header = BlockHeader::mock(0, Some(chain_commitment), Some(note_root), &[]);
+        let tx_kernel_commitment = rand_value::<Word>();
+        let header = BlockHeader::mock(
+            0,
+            Some(chain_commitment),
+            Some(note_root),
+            &[],
+            tx_kernel_commitment,
+        );
         let serialized = header.to_bytes();
         let deserialized = BlockHeader::read_from_bytes(&serialized).unwrap();
 

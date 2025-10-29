@@ -35,7 +35,6 @@ use miden_tx::auth::BasicAuthenticator;
 use miden_tx::utils::{ByteReader, Deserializable, Serializable};
 use miden_tx_batch_prover::LocalBatchProver;
 use rand::SeedableRng;
-use rand::rngs::{OsRng, SmallRng};
 use rand_chacha::ChaCha20Rng;
 use winterfell::ByteWriter;
 
