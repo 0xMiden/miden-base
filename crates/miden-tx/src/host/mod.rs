@@ -590,7 +590,7 @@ where
             let inputs = match inputs_data {
                 None => miden_objects::note::NoteInputs::default(),
                 Some(inputs) => {
-                    if num_inputs > inputs.len() {
+                    if num_inputs != inputs.len() {
                         return Err(TransactionKernelError::TooFewElementsForNoteInputs {
                             specified: num_inputs as u64,
                             actual: inputs.len() as u64,
