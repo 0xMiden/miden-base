@@ -430,7 +430,7 @@ async fn proven_block_fails_on_creating_account_with_duplicate_account_id_prefix
     Ok(())
 }
 
-/// ...
+/// Tests block signature verification.
 #[tokio::test]
 async fn proven_block_signature_verification_succeeds() -> anyhow::Result<()> {
     // Construct a new account.
