@@ -64,7 +64,6 @@ impl TransactionAdviceInputs {
                         value.as_elements().iter().chain(key.as_elements().iter()).copied()
                     })
                     .collect();
-                // TODO: Should we use the sequential hash instead?
                 inputs.add_map_entry(storage_map.root(), map_entries);
             }
         }
