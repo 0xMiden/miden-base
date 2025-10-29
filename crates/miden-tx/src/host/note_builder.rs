@@ -39,14 +39,14 @@ impl OutputNoteBuilder {
         }
 
         // If recipient is present, verify its digest matches the provided recipient_digest
-        if let Some(ref recipient) = recipient {
-            if recipient.digest() != recipient_digest {
-                return Err(TransactionKernelError::other(format!(
-                    "recipient digest mismatch: expected {}, but recipient has digest {}",
-                    recipient_digest,
-                    recipient.digest()
-                )));
-            }
+        if let Some(ref recipient) = recipient
+            && recipient.digest() != recipient_digest
+        {
+            return Err(TransactionKernelError::other(format!(
+                "recipient digest mismatch: expected {}, but recipient has digest {}",
+                recipient_digest,
+                recipient.digest()
+            )));
         }
 
         Ok(Self {
