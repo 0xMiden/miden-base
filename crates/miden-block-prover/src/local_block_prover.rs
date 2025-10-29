@@ -54,6 +54,7 @@ impl LocalBlockProver {
         use miden_objects::crypto::dsa::ecdsa_k256_keccak::SecretKey;
         let mut key = SecretKey::new();
         let signed_block = proposed_block.sign(&mut key);
+
         self.prove_without_batch_verification_inner(signed_block)
     }
 

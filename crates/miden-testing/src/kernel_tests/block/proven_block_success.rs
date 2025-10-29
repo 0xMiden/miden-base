@@ -5,6 +5,9 @@ use std::vec::Vec;
 use anyhow::Context;
 use miden_block_prover::LocalBlockProver;
 use miden_lib::note::create_p2id_note;
+use miden_lib::testing::account_component::MockAccountComponent;
+use miden_objects::account::delta::AccountUpdateDetails;
+use miden_objects::account::{AccountBuilder, StorageSlot};
 use miden_objects::asset::FungibleAsset;
 use miden_objects::batch::BatchNoteTree;
 use miden_objects::block::{
@@ -12,12 +15,14 @@ use miden_objects::block::{
     BlockInputs,
     BlockNoteIndex,
     BlockNoteTree,
+    BlockNumber,
     ProposedBlock,
 };
 use miden_objects::crypto::merkle::Smt;
 use miden_objects::note::NoteType;
-use miden_objects::transaction::InputNoteCommitment;
-use miden_objects::{MIN_PROOF_SECURITY_LEVEL, ZERO};
+use miden_objects::transaction::{InputNoteCommitment, ProvenTransactionBuilder};
+use miden_objects::vm::ExecutionProof;
+use miden_objects::{MIN_PROOF_SECURITY_LEVEL, Word, ZERO};
 
 use crate::kernel_tests::block::utils::MockChainBlockExt;
 use crate::utils::create_p2any_note;
@@ -438,6 +443,55 @@ async fn proven_block_succeeds_with_empty_batches() -> anyhow::Result<()> {
         chain.blockchain().peaks().hash_peaks()
     );
     assert_eq!(proven_block.header().block_num(), latest_block_header.block_num() + 1);
+
+    Ok(())
+}
+
+/// Tests block signature verification.
+#[tokio::test]
+async fn proven_block_signature_verification_succeeds() -> anyhow::Result<()> {
+    // Construct a new account.
+    let mock_chain = MockChain::new();
+    let account = AccountBuilder::new([5; 32])
+        .with_auth_component(Auth::IncrNonce)
+        .with_component(MockAccountComponent::with_slots(vec![StorageSlot::Value(Word::from(
+            [5u32; 4],
+        ))]))
+        .build()
+        .context("failed to build account")?;
+
+    let id = account.id();
+
+    let genesis_block = mock_chain.block_header(0);
+
+    let tx = ProvenTransactionBuilder::new(
+        id,
+        Word::empty(),
+        Word::from([0, 0, 0, 1u32]),
+        Word::empty(),
+        genesis_block.block_num(),
+        genesis_block.commitment(),
+        FungibleAsset::mock(500).unwrap_fungible(),
+        BlockNumber::from(u32::MAX),
+        ExecutionProof::new_dummy(),
+    )
+    .account_update_details(AccountUpdateDetails::Private)
+    .build()
+    .context("failed to build proven transaction")
+    .unwrap();
+
+    let batch = mock_chain.create_batch(vec![tx])?;
+    let batches = [batch];
+
+    let block = mock_chain.propose_block(batches).context("failed to propose block")?;
+
+    // Sign block with mock values.
+    use miden_objects::crypto::dsa::ecdsa_k256_keccak::SecretKey;
+    let mut key = SecretKey::new();
+    let signed_block = block.sign(&mut key);
+
+    // Verify the block.
+    assert!(signed_block.verify(&key.public_key()), "failed to verify block");
 
     Ok(())
 }
