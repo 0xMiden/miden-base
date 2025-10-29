@@ -385,6 +385,7 @@ impl Deserializable for ProposedBlock {
         Ok(block)
     }
 }
+
 // HELPER FUNCTIONS
 // ================================================================================================
 
