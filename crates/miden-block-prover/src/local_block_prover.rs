@@ -7,7 +7,7 @@ use miden_objects::note::Nullifier;
 // LOCAL BLOCK PROVER
 // ================================================================================================
 
-/// A local prover for blocks, proving a [`ProposedBlock`] and returning a [`ProvenBlock`].
+/// A local prover for blocks, proving a [`SignedBlock`] and returning a [`ProvenBlock`].
 #[derive(Clone)]
 pub struct LocalBlockProver {}
 
@@ -19,7 +19,7 @@ impl LocalBlockProver {
         Self {}
     }
 
-    /// Proves the provided [`ProposedBlock`] into a [`ProvenBlock`].
+    /// Proves the provided [`SignedBlock`] into a [`ProvenBlock`].
     ///
     /// For now this does not actually verify the batches or create a block proof, but will be added
     /// in the future.
@@ -27,16 +27,16 @@ impl LocalBlockProver {
     /// # Errors
     ///
     /// Returns an error if:
-    /// - the account witnesses provided in the proposed block result in a different account tree
+    /// - the account witnesses provided in the signed block result in a different account tree root
+    ///   than the contained previous block header commits to.
+    /// - the nullifier witnesses provided in the signed block result in a different nullifier tree
     ///   root than the contained previous block header commits to.
-    /// - the nullifier witnesses provided in the proposed block result in a different nullifier
-    ///   tree root than the contained previous block header commits to.
     /// - the account tree root in the previous block header does not match the root of the tree
     ///   computed from the account witnesses.
     /// - the nullifier tree root in the previous block header does not match the root of the tree
     ///   computed from the nullifier witnesses.
-    pub fn prove(&self, proposed_block: SignedBlock) -> ProvenBlock {
-        self.prove_without_batch_verification_inner(proposed_block)
+    pub fn prove(&self, signed_block: SignedBlock) -> ProvenBlock {
+        self.prove_without_batch_verification_inner(signed_block)
     }
 
     /// Proves the provided [`SignedBlock`] into a [`ProvenBlock`], **without verifying batches
@@ -53,7 +53,7 @@ impl LocalBlockProver {
     /// See [`Self::prove`] for more details.
     fn prove_without_batch_verification_inner(&self, signed_block: SignedBlock) -> ProvenBlock {
         // Deconstruct signed block into its components.
-        let (header, proposed_block, _signature) = signed_block.into_parts();
+        let (header, signed_block, _signature) = signed_block.into_parts();
         let (
             batches,
             account_updated_witnesses,
@@ -61,7 +61,7 @@ impl LocalBlockProver {
             created_nullifiers,
             _partial_blockchain,
             _prev_block_header,
-        ) = proposed_block.into_parts();
+        ) = signed_block.into_parts();
         let created_nullifiers: Vec<Nullifier> = created_nullifiers.keys().copied().collect();
 
         // Transform the account update witnesses into block account updates.
