@@ -499,7 +499,6 @@ end
 #! Outputs: [VALUE, slot_type]
 #!
 #! Where:
-#! - storage_slots_ptr is the pointer to the storage slots section.
 #! - name_id_{prefix, suffix} are the prefix and suffix felts of the name identifier, which are
 #!   the first two felts of the hashed slot name.
 #! - VALUE is the value of the item.
@@ -518,7 +517,7 @@ export.get_typed_item
     dup add.ACCOUNT_SLOT_TYPE_OFFSET mem_load
     # => [slot_type, slot_ptr]
 
-    # load the item from storage
+    # load the item from memory
     padw movup.5 add.ACCOUNT_SLOT_VALUE_OFFSET mem_loadw
     # => [VALUE, slot_ptr]
 end
@@ -660,7 +659,7 @@ end
 #! Panics if:
 #! - a slot with the provided name ID does not exist in account storage.
 #! - the storage slot type is not map.
-#! - no map is found for ROOT in the slot.
+#! - no map with the root of the slot is found.
 #!
 #! Locals:
 #! - 0: slot_ptr
@@ -689,6 +688,7 @@ export.set_map_item.12
     emit.ACCOUNT_STORAGE_BEFORE_SET_MAP_ITEM_EVENT
     # => [slot_ptr, KEY, NEW_VALUE]
 
+    # load the current map root from memory
     padw movup.4 add.ACCOUNT_SLOT_VALUE_OFFSET mem_loadw
     # => [OLD_MAP_ROOT, KEY, NEW_VALUE]
 
@@ -726,6 +726,7 @@ export.set_map_item.12
     emit.ACCOUNT_STORAGE_AFTER_SET_MAP_ITEM_EVENT
     # => [slot_ptr, KEY, OLD_MAP_VALUE, NEW_VALUE]
 
+    # convert the slot ptr to a slot index for the delta API
     exec.slot_ptr_to_index
     # => [slot_idx, KEY, OLD_MAP_VALUE, NEW_VALUE]
 
@@ -754,13 +755,13 @@ end
 #! - slot_type is the type of the storage slot.
 export.get_storage_slot_type
     # convert the index into a memory offset
-    mul.8
+    mul.ACCOUNT_STORAGE_SLOT_DATA_LENGTH
     # => [offset]
 
     # compute storage slot ptr
     exec.memory::get_native_account_storage_slots_ptr
     add
-    # => [storage_slots_ptr, offset]
+    # => [slot_ptr]
 
     # load the slot type
     add.ACCOUNT_SLOT_TYPE_OFFSET mem_load
@@ -1227,7 +1228,8 @@ export.save_account_storage_data
     # AS => [[STORAGE_SLOT_DATA]]
 
     # setup acct_storage_slots_ptr and end_ptr for reading from advice stack
-    mul.8 exec.memory::get_account_storage_slots_section_ptr dup movdn.2 add swap
+    mul.ACCOUNT_STORAGE_SLOT_DATA_LENGTH exec.memory::get_account_storage_slots_section_ptr
+    dup movdn.2 add swap
     # OS => [acct_storage_slots_ptr, end_ptr, STORAGE_COMMITMENT]
     # AS => [[STORAGE_SLOT_DATA]]
 
@@ -1369,7 +1371,7 @@ proc.get_item_raw
     add.ACCOUNT_SLOT_VALUE_OFFSET
     # => [slot_value_ptr]
 
-    # load the item from storage
+    # load the item from memory
     padw movup.4 mem_loadw
     # => [VALUE]
 end
@@ -1389,7 +1391,7 @@ end
 #! - CURRENT_VALUE is the current value of the item.
 export.get_item_delta
     # convert the index into a memory offset
-    mul.8
+    mul.ACCOUNT_STORAGE_SLOT_DATA_LENGTH
     # => [offset]
 
     # get account storage slots section offset
@@ -1434,7 +1436,7 @@ end
 #!   the first two felts of the hashed slot name.
 export.get_slot_name
     # convert the index into a memory offset
-    mul.8
+    mul.ACCOUNT_STORAGE_SLOT_DATA_LENGTH
     # => [offset]
 
     exec.memory::get_account_storage_slots_section_ptr
@@ -1512,7 +1514,7 @@ end
 #! - a slot with the provided name ID does not exist in account storage.
 proc.find_storage_slot
     # construct the start and end pointers of the storage slot section in which we will search
-    dup exec.memory::get_num_storage_slots mul.8 add
+    dup exec.memory::get_num_storage_slots mul.ACCOUNT_STORAGE_SLOT_DATA_LENGTH add
     # => [storage_slots_end_ptr, storage_slots_start_ptr, name_id_prefix, name_id_suffix]
 
     # TODO(named_slots): Check if we can get here if num_storage_slots == 0. If so, return a better
@@ -1550,7 +1552,7 @@ proc.slot_ptr_to_index
     # => [slot_offset]
 
     # compute slot_offset / 8 to get the index
-    u32div.8
+    u32div.ACCOUNT_STORAGE_SLOT_DATA_LENGTH
     # => [slot_idx]
 end
 
@@ -1738,7 +1740,8 @@ proc.refresh_storage_commitment
         # => [num_storage_slots]
 
         # setup start and end ptr
-        mul.8 exec.memory::get_account_storage_slots_section_ptr dup movdn.2 add swap
+        mul.ACCOUNT_STORAGE_SLOT_DATA_LENGTH exec.memory::get_account_storage_slots_section_ptr
+        dup movdn.2 add swap
         # => [start_ptr, end_ptr]
 
         # pad stack to read and hash from memory
