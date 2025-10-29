@@ -1,9 +1,6 @@
 mod header;
 pub use header::{BlockHeader, FeeParameters};
 
-mod header_errors;
-pub use header_errors::BlockHeaderError;
-
 mod block_number;
 pub use block_number::BlockNumber;
 

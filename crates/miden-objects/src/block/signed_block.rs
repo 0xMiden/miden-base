@@ -34,13 +34,7 @@ impl DerefMut for SignedBlock {
 
 impl SignedBlock {
     /// Creates a new signed block with the given proven block and signature.
-    ///
-    /// This should only be used internally by the [`ProvenBlock`] struct.
-    pub(crate) fn new(
-        header: BlockHeader,
-        proposed_block: ProposedBlock,
-        signature: Signature,
-    ) -> Self {
+    pub fn new(header: BlockHeader, proposed_block: ProposedBlock, signature: Signature) -> Self {
         SignedBlock { header, proposed_block, signature }
     }
 

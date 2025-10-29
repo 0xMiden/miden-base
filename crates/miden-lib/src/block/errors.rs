@@ -1,6 +1,8 @@
 use miden_core::Word;
+use miden_objects::{AccountTreeError, NullifierTreeError};
 
-use crate::{AccountTreeError, NullifierTreeError};
+// BLOCK HEADER ERROR
+// ================================================================================================
 
 #[derive(Debug, thiserror::Error)]
 pub enum BlockHeaderError {

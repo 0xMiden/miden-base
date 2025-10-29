@@ -4,6 +4,7 @@ use std::vec::Vec;
 
 use anyhow::Context;
 use miden_block_prover::LocalBlockProver;
+use miden_lib::block::sign_block;
 use miden_lib::note::create_p2id_note;
 use miden_lib::testing::account_component::MockAccountComponent;
 use miden_objects::account::delta::AccountUpdateDetails;
@@ -159,7 +160,7 @@ async fn proven_block_success() -> anyhow::Result<()> {
     // --------------------------------------------------------------------------------------------
 
     let mut key = SecretKey::new();
-    let signed_block = proposed_block.sign(&mut key);
+    let signed_block = sign_block(proposed_block, &mut key);
     let proven_block = LocalBlockProver::new(MIN_PROOF_SECURITY_LEVEL).prove_dummy(signed_block);
 
     // Check tree/chain commitments against expected values.
@@ -354,7 +355,7 @@ async fn proven_block_erasing_unauthenticated_notes() -> anyhow::Result<()> {
     assert_eq!(output_notes_batch0, &expected_output_notes_batch0);
 
     let mut key = SecretKey::new();
-    let signed_block = proposed_block.sign(&mut key);
+    let signed_block = sign_block(proposed_block, &mut key);
     let proven_block = LocalBlockProver::new(0).prove_dummy(signed_block);
     let actual_block_note_tree = proven_block.build_output_note_tree();
 
@@ -422,7 +423,7 @@ async fn proven_block_succeeds_with_empty_batches() -> anyhow::Result<()> {
         ProposedBlock::new(block_inputs, Vec::new()).context("failed to propose block")?;
 
     let mut key = SecretKey::new();
-    let signed_block = proposed_block.sign(&mut key);
+    let signed_block = sign_block(proposed_block, &mut key);
     let proven_block = LocalBlockProver::new(MIN_PROOF_SECURITY_LEVEL).prove_dummy(signed_block);
 
     // Nothing should be created or updated.
@@ -489,7 +490,7 @@ async fn proven_block_signature_verification_succeeds() -> anyhow::Result<()> {
     // Sign block with mock values.
     use miden_objects::crypto::dsa::ecdsa_k256_keccak::SecretKey;
     let mut key = SecretKey::new();
-    let signed_block = block.sign(&mut key);
+    let signed_block = sign_block(block, &mut key);
 
     // Verify the block.
     assert!(signed_block.verify(&key.public_key()), "failed to verify block");

@@ -2,8 +2,6 @@ use alloc::boxed::Box;
 use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::vec::Vec;
 
-use miden_crypto::dsa::ecdsa_k256_keccak::SecretKey;
-
 use crate::account::AccountId;
 use crate::account::delta::AccountUpdateDetails;
 use crate::batch::{
@@ -21,7 +19,6 @@ use crate::block::{
     BlockNumber,
     NullifierWitness,
     OutputNoteBatch,
-    SignedBlock,
 };
 use crate::errors::ProposedBlockError;
 use crate::note::{NoteId, Nullifier};
@@ -343,14 +340,6 @@ impl ProposedBlock {
             self.partial_blockchain,
             self.prev_block_header,
         )
-    }
-
-    /// Signs the block with the provided secret key. Consuming the [`ProvenBlock`] and returning a
-    /// [`SignedBlock`].
-    pub fn sign(self, secret_key: &mut SecretKey) -> SignedBlock {
-        let header: BlockHeader = self.clone().try_into().unwrap();
-        let signature = secret_key.sign(header.commitment()); // TODO: what do we sign?
-        SignedBlock::new(header, self, signature)
     }
 }
 

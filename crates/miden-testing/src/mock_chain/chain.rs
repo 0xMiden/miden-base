@@ -3,6 +3,7 @@ use alloc::vec::Vec;
 
 use anyhow::Context;
 use miden_block_prover::LocalBlockProver;
+use miden_lib::block::sign_block;
 use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{Account, AccountId, AuthSecretKey, PartialAccount};
 use miden_objects::batch::{ProposedBatch, ProvenBatch};
@@ -517,7 +518,7 @@ impl MockChain {
     pub fn prove_block(&self, proposed_block: ProposedBlock) -> ProvenBlock {
         let mut rng = ChaCha20Rng::from_os_rng();
         let mut key = SecretKey::with_rng(&mut rng);
-        let signed_block = proposed_block.sign(&mut key);
+        let signed_block = sign_block(proposed_block, &mut key);
         LocalBlockProver::new(0).prove_dummy(signed_block)
     }
 
