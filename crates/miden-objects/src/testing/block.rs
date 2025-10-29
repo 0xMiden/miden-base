@@ -18,7 +18,6 @@ impl BlockHeader {
         chain_commitment: Option<Word>,
         note_root: Option<Word>,
         accounts: &[Account],
-        tx_kernel_commitment: Word,
     ) -> Self {
         let acct_db =
             AccountTree::with_entries(accounts.iter().map(|acct| (acct.id(), acct.commitment())))
@@ -87,7 +86,6 @@ impl BlockHeader {
             nullifier_root,
             note_root,
             tx_commitment,
-            tx_kernel_commitment,
             proof_commitment,
             fee_parameters,
             timestamp,

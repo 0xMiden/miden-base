@@ -1,14 +1,11 @@
 use alloc::vec::Vec;
 
-use miden_crypto::dsa::ecdsa_k256_keccak::SecretKey;
-
 use crate::block::{
     BlockAccountUpdate,
     BlockHeader,
     BlockNoteIndex,
     BlockNoteTree,
     OutputNoteBatch,
-    SignedBlock,
 };
 use crate::note::Nullifier;
 use crate::transaction::{OrderedTransactionHeaders, OutputNote};
@@ -53,6 +50,9 @@ pub struct ProvenBlock {
     /// The aggregated and flattened transaction headers of all batches in the order in which they
     /// appeared in the proposed block.
     transactions: OrderedTransactionHeaders,
+
+    /// ...
+    proof_commitment: Word,
 }
 
 impl ProvenBlock {
@@ -68,6 +68,7 @@ impl ProvenBlock {
         output_note_batches: Vec<OutputNoteBatch>,
         created_nullifiers: Vec<Nullifier>,
         transactions: OrderedTransactionHeaders,
+        proof_commitment: Word,
     ) -> Self {
         Self {
             header,
@@ -75,12 +76,18 @@ impl ProvenBlock {
             output_note_batches,
             created_nullifiers,
             transactions,
+            proof_commitment,
         }
     }
 
     /// Returns the commitment to this block.
     pub fn commitment(&self) -> Word {
         self.header.commitment()
+    }
+
+    /// Returns the proof commitment to this block.
+    pub fn proof_commitment(&self) -> Word {
+        self.proof_commitment
     }
 
     /// Returns the header of this block.
@@ -145,13 +152,6 @@ impl ProvenBlock {
     pub fn transactions(&self) -> &OrderedTransactionHeaders {
         &self.transactions
     }
-
-    /// Signs the block with the provided secret key. Consuming the [`ProvenBlock`] and returning a
-    /// [`SignedBlock`].
-    pub fn sign(self, secret_key: &mut SecretKey) -> SignedBlock {
-        let signature = secret_key.sign(self.commitment());
-        SignedBlock::new(self, signature)
-    }
 }
 
 // SERIALIZATION
@@ -164,6 +164,7 @@ impl Serializable for ProvenBlock {
         self.output_note_batches.write_into(target);
         self.created_nullifiers.write_into(target);
         self.transactions.write_into(target);
+        self.proof_commitment.write_into(target);
     }
 }
 
@@ -175,6 +176,7 @@ impl Deserializable for ProvenBlock {
             output_note_batches: <Vec<OutputNoteBatch>>::read_from(source)?,
             created_nullifiers: <Vec<Nullifier>>::read_from(source)?,
             transactions: OrderedTransactionHeaders::read_from(source)?,
+            proof_commitment: Word::read_from(source)?,
         };
 
         Ok(block)

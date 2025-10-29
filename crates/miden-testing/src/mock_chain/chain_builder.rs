@@ -215,7 +215,6 @@ impl MockChainBuilder {
             note_root,
             tx_commitment,
             tx_kernel_commitment,
-            proof_commitment,
             fee_parameters,
             timestamp,
         );
@@ -226,6 +225,7 @@ impl MockChainBuilder {
             output_note_batches,
             created_nullifiers,
             transactions,
+            proof_commitment,
         );
 
         MockChain::from_genesis_block(genesis_block, account_tree, self.account_authenticators)

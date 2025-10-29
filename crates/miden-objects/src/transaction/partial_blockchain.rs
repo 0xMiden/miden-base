@@ -348,7 +348,7 @@ mod tests {
                 .unwrap();
         }
 
-        let fake_block_header2 = BlockHeader::mock(2, None, None, &[], Word::empty());
+        let fake_block_header2 = BlockHeader::mock(2, None, None, &[]);
 
         assert_ne!(block_header2.commitment(), fake_block_header2.commitment());
 
@@ -431,7 +431,6 @@ mod tests {
             0,
             Word::empty(),
             block_num.into(),
-            Word::empty(),
             Word::empty(),
             Word::empty(),
             Word::empty(),

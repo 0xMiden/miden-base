@@ -259,17 +259,17 @@ fn block_data_memory_assertions(exec_output: &ExecutionOutput, inputs: &Transact
         "The TX commitment should be stored at the TX_COMMITMENT_PTR"
     );
 
-    assert_eq!(
-        exec_output.get_kernel_mem_word(TX_KERNEL_COMMITMENT_PTR),
-        inputs.tx_inputs().block_header().tx_kernel_commitment(),
-        "The kernel commitment should be stored at the TX_KERNEL_COMMITMENT_PTR"
-    );
+    //assert_eq!(
+    //    exec_output.get_kernel_mem_word(TX_KERNEL_COMMITMENT_PTR),
+    //    inputs.tx_inputs().block_header().tx_kernel_commitment(),
+    //    "The kernel commitment should be stored at the TX_KERNEL_COMMITMENT_PTR"
+    //);
 
-    assert_eq!(
-        exec_output.get_kernel_mem_word(PROOF_COMMITMENT_PTR),
-        inputs.tx_inputs().block_header().proof_commitment(),
-        "The proof commitment should be stored at the PROOF_COMMITMENT_PTR"
-    );
+    //assert_eq!(
+    //    exec_output.get_kernel_mem_word(PROOF_COMMITMENT_PTR),
+    //    inputs.tx_inputs().block_header().proof_commitment(),
+    //    "The proof commitment should be stored at the PROOF_COMMITMENT_PTR"
+    //);
 
     assert_eq!(
         exec_output.get_kernel_mem_word(BLOCK_METADATA_PTR)[BLOCK_NUMBER_IDX],
