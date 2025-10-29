@@ -18,6 +18,7 @@ use miden_objects::block::{
     ProposedBlock,
     ProvenBlock,
 };
+use miden_objects::crypto::dsa::ecdsa_k256_keccak::SecretKey;
 use miden_objects::note::{Note, NoteHeader, NoteId, NoteInclusionProof, Nullifier};
 use miden_objects::transaction::{
     ExecutedTransaction,
@@ -34,6 +35,7 @@ use miden_tx::auth::BasicAuthenticator;
 use miden_tx::utils::{ByteReader, Deserializable, Serializable};
 use miden_tx_batch_prover::LocalBatchProver;
 use rand::SeedableRng;
+use rand::rngs::{OsRng, SmallRng};
 use rand_chacha::ChaCha20Rng;
 use winterfell::ByteWriter;
 
@@ -514,7 +516,10 @@ impl MockChain {
 
     /// Mock-proves a proposed block into a proven block and returns it.
     pub fn prove_block(&self, proposed_block: ProposedBlock) -> ProvenBlock {
-        LocalBlockProver::new(0).prove_dummy(proposed_block)
+        let mut rng = ChaCha20Rng::from_os_rng();
+        let mut key = SecretKey::with_rng(&mut rng);
+        let signed_block = proposed_block.sign(&mut key);
+        LocalBlockProver::new(0).prove_dummy(signed_block)
     }
 
     // TRANSACTION APIS

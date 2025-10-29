@@ -18,6 +18,7 @@ use miden_objects::block::{
     BlockNumber,
     ProposedBlock,
 };
+use miden_objects::crypto::dsa::ecdsa_k256_keccak::SecretKey;
 use miden_objects::crypto::merkle::Smt;
 use miden_objects::note::NoteType;
 use miden_objects::transaction::{InputNoteCommitment, ProvenTransactionBuilder};
@@ -157,7 +158,9 @@ async fn proven_block_success() -> anyhow::Result<()> {
     // Prove block.
     // --------------------------------------------------------------------------------------------
 
-    let proven_block = LocalBlockProver::new(MIN_PROOF_SECURITY_LEVEL).prove_dummy(proposed_block);
+    let mut key = SecretKey::new();
+    let signed_block = proposed_block.sign(&mut key);
+    let proven_block = LocalBlockProver::new(MIN_PROOF_SECURITY_LEVEL).prove_dummy(signed_block);
 
     // Check tree/chain commitments against expected values.
     // --------------------------------------------------------------------------------------------
@@ -350,7 +353,9 @@ async fn proven_block_erasing_unauthenticated_notes() -> anyhow::Result<()> {
     assert_eq!(output_notes_batch0.len(), 2);
     assert_eq!(output_notes_batch0, &expected_output_notes_batch0);
 
-    let proven_block = LocalBlockProver::new(0).prove_dummy(proposed_block);
+    let mut key = SecretKey::new();
+    let signed_block = proposed_block.sign(&mut key);
+    let proven_block = LocalBlockProver::new(0).prove_dummy(signed_block);
     let actual_block_note_tree = proven_block.build_output_note_tree();
 
     // Remove the erased note to get the expected batch note tree.
@@ -416,7 +421,9 @@ async fn proven_block_succeeds_with_empty_batches() -> anyhow::Result<()> {
     let proposed_block =
         ProposedBlock::new(block_inputs, Vec::new()).context("failed to propose block")?;
 
-    let proven_block = LocalBlockProver::new(MIN_PROOF_SECURITY_LEVEL).prove_dummy(proposed_block);
+    let mut key = SecretKey::new();
+    let signed_block = proposed_block.sign(&mut key);
+    let proven_block = LocalBlockProver::new(MIN_PROOF_SECURITY_LEVEL).prove_dummy(signed_block);
 
     // Nothing should be created or updated.
     assert_eq!(proven_block.updated_accounts().len(), 0);

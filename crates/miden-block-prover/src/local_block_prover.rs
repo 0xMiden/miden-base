@@ -1,7 +1,7 @@
 use std::vec::Vec;
 
 use miden_objects::Word;
-use miden_objects::block::{BlockAccountUpdate, ProposedBlock, ProvenBlock, SignedBlock};
+use miden_objects::block::{BlockAccountUpdate, ProvenBlock, SignedBlock};
 use miden_objects::note::Nullifier;
 
 // LOCAL BLOCK PROVER
@@ -39,17 +39,12 @@ impl LocalBlockProver {
         self.prove_without_batch_verification_inner(proposed_block)
     }
 
-    /// Proves the provided [`ProposedBlock`] into a [`ProvenBlock`], **without verifying batches
+    /// Proves the provided [`SignedBlock`] into a [`ProvenBlock`], **without verifying batches
     /// and proving the block**.
     ///
     /// This is exposed for testing purposes.
     #[cfg(any(feature = "testing", test))]
-    pub fn prove_dummy(&self, proposed_block: ProposedBlock) -> ProvenBlock {
-        // Sign block with mock values.
-        use miden_objects::crypto::dsa::ecdsa_k256_keccak::SecretKey;
-        let mut key = SecretKey::new();
-        let signed_block = proposed_block.sign(&mut key);
-
+    pub fn prove_dummy(&self, signed_block: SignedBlock) -> ProvenBlock {
         self.prove_without_batch_verification_inner(signed_block)
     }
 
