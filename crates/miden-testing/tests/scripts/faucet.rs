@@ -404,7 +404,9 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
     // Add the P2ID script to the data store so it can be fetched during transaction execution
     let p2id_script = WellKnownNote::P2ID.script();
 
-    // Execute the transaction - this should fetch the P2ID script from the data store
+    // Execute the transaction - this should fetch the P2ID script from the data store.
+    // Note: There is intentionally no call to extend_expected_output_notes here, so the
+    // transaction host is forced to request the script from the data store during execution.
     let executed_transaction = mock_chain
         .build_tx_context(faucet.id(), &[trigger_note.id()], &[])?
         .add_note_script(p2id_script)
