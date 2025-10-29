@@ -12,7 +12,6 @@ use miden_objects::asset::TokenSymbol;
 use miden_objects::{Felt, FieldElement, Word};
 
 use super::{BasicFungibleFaucet, FungibleFaucetError};
-use crate::account::AuthScheme;
 use crate::account::auth::NoAuth;
 use crate::account::components::network_fungible_faucet_library;
 use crate::account::interface::{AccountComponentInterface, AccountInterface};
@@ -233,17 +232,20 @@ impl TryFrom<&Account> for NetworkFungibleFaucet {
     }
 }
 
-/// Creates a new faucet account with network fungible faucet interface,
-/// account storage type, specified authentication scheme, and provided meta data (token symbol,
-/// decimals, max supply, owner account ID).
+/// Creates a new faucet account with network fungible faucet interface and provided metadata
+/// (token symbol, decimals, max supply, owner account ID).
 ///
 /// The network faucet interface exposes two procedures:
 /// - `distribute`, which mints an assets and create a note for the provided recipient.
 /// - `burn`, which burns the provided asset.
 ///
 /// Both `distribute` and `burn` can only be called from note scripts. `distribute` requires
-/// authentication. The authentication procedure is defined by the specified authentication scheme.
-/// `burn` does not require authentication and can be called by anyone.
+/// authentication using the NoAuth scheme. `burn` does not require authentication and can be
+/// called by anyone.
+///
+/// Network fungible faucets always use:
+/// - [`AccountStorageMode::Network`] for storage
+/// - [`NoAuth`] for authentication
 ///
 /// The storage layout of the network faucet account is:
 /// - Slot 0: Reserved slot for faucets.
@@ -259,32 +261,12 @@ pub fn create_network_fungible_faucet(
     decimals: u8,
     max_supply: Felt,
     owner_account_id: AccountId,
-    account_storage_mode: AccountStorageMode,
-    auth_scheme: AuthScheme,
 ) -> Result<Account, FungibleFaucetError> {
-    let auth_component: AccountComponent = match auth_scheme {
-        AuthScheme::NoAuth => NoAuth::new().into(),
-        AuthScheme::RpoFalcon512 { .. } => {
-            return Err(FungibleFaucetError::UnsupportedAuthScheme(
-                "network fungible faucets only support NoAuth authentication scheme".into(),
-            ));
-        },
-        AuthScheme::RpoFalcon512Multisig { .. } => {
-            return Err(FungibleFaucetError::UnsupportedAuthScheme(
-                "network fungible faucets only support NoAuth authentication scheme".into(),
-            ));
-        },
-        AuthScheme::Unknown => {
-            return Err(FungibleFaucetError::UnsupportedAuthScheme(
-                "network fungible faucets cannot be created with Unknown authentication scheme"
-                    .into(),
-            ));
-        },
-    };
+    let auth_component: AccountComponent = NoAuth::new().into();
 
     let account = AccountBuilder::new(init_seed)
         .account_type(AccountType::FungibleFaucet)
-        .storage_mode(account_storage_mode)
+        .storage_mode(AccountStorageMode::Network)
         .with_auth_component(auth_component)
         .with_component(NetworkFungibleFaucet::new(symbol, decimals, max_supply, owner_account_id)?)
         .build()
