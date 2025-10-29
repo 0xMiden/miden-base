@@ -12,7 +12,7 @@ use crate::account::{AccountType, NamedStorageSlot};
 use crate::{AccountError, Word};
 
 /// An [`AccountComponent`] defines a [`Library`] of code and the initial value and types of
-/// the [`StorageSlot`]s it accesses.
+/// the [`NamedStorageSlot`]s it accesses.
 ///
 /// One or more components can be used to built [`AccountCode`](crate::account::AccountCode) and
 /// [`AccountStorage`](crate::account::AccountStorage).
@@ -50,7 +50,7 @@ impl AccountComponent {
     /// or in their fallible constructors.
     ///
     /// Returns an error if:
-    /// - The number of given [`StorageSlot`]s exceeds 255.
+    /// - The number of given [`NamedStorageSlot`]s exceeds 255.
     pub fn new(code: Library, storage_slots: Vec<NamedStorageSlot>) -> Result<Self, AccountError> {
         // Check that we have less than 256 storage slots.
         u8::try_from(storage_slots.len())

@@ -12,9 +12,7 @@ use super::{
     Serializable,
     Word,
 };
-#[cfg(any(feature = "testing", test))]
-use crate::account::SlotName;
-use crate::account::StorageMap;
+use crate::account::{SlotName, StorageMap};
 use crate::{EMPTY_WORD, Felt, LexicographicWord, ZERO};
 
 // ACCOUNT STORAGE DELTA
