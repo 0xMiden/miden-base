@@ -436,20 +436,24 @@ where
 
                 (Some(recipient), mutations)
             },
-            Err(err) => {
+            Err(crate::DataStoreError::NoteScriptNotFound(_)) => {
                 // Script not found in data store
                 if metadata.is_private() {
                     // For private notes, gracefully handle missing script
                     (None, Vec::new())
                 } else {
                     // For public notes, this is an error
-                    return Err(TransactionKernelError::other_with_source(
-                        format!(
-                            "failed to get note script with root {script_root} from data store for public note"
-                        ),
-                        err,
-                    ));
+                    return Err(TransactionKernelError::other(format!(
+                        "note script with root {script_root} not found in data store for public note"
+                    )));
                 }
+            },
+            Err(err) => {
+                // Other data store errors should be propagated
+                return Err(TransactionKernelError::other_with_source(
+                    "failed to retrieve note script from data store",
+                    err,
+                ));
             },
         };
 
