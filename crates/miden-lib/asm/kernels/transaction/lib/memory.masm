@@ -1466,7 +1466,7 @@ end
 #!
 #! Inputs:  []
 #! Outputs: []
-export.mem_copy_initial_storage_slots
+export.mem_copy_native_account_initial_storage_slots
   exec.get_native_account_initial_storage_slots_ptr
   exec.get_native_account_storage_slots_ptr
   # => [storage_slots_section_ptr, initial_storage_slots_ptr]

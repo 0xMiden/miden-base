@@ -447,7 +447,7 @@ proc.process_account_data
 
     # duplicate the initial storage slots in memory to enable a diff computation
     # for the account delta
-    exec.memory::mem_copy_initial_storage_slots
+    exec.memory::mem_copy_native_account_initial_storage_slots
     # => [ACCOUNT_COMMITMENT]
 
     # copy the initial account vault root to the input vault root to support transaction asset
