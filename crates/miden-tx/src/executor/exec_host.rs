@@ -15,7 +15,7 @@ use miden_objects::assembly::{SourceFile, SourceManagerSync, SourceSpan};
 use miden_objects::asset::{Asset, AssetWitness, FungibleAsset, VaultKey};
 use miden_objects::block::BlockNumber;
 use miden_objects::crypto::merkle::SmtProof;
-use miden_objects::note::{NoteInputs, NoteRecipient};
+use miden_objects::note::{NoteInputs, NoteMetadata, NoteRecipient};
 use miden_objects::transaction::{InputNote, InputNotes, OutputNote};
 use miden_objects::vm::AdviceMap;
 use miden_objects::{Felt, Hasher, Word};
@@ -371,10 +371,11 @@ where
     async fn on_note_script_requested(
         &mut self,
         script_root: Word,
-        metadata: miden_objects::note::NoteMetadata,
+        metadata: NoteMetadata,
         recipient_digest: Word,
         note_idx: usize,
-        process: &ProcessState<'_>,
+        note_inputs: NoteInputs,
+        serial_num: Word,
     ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
         // Try to get the note script from the data store
         let note_script_result = self.base_host.store().get_note_script(script_root).await;
@@ -384,49 +385,7 @@ where
                 // Script found - build the recipient
                 let script_felts: Vec<Felt> = (&note_script).into();
 
-                // Get recipient data from advice provider
-                let data = process
-                    .advice_provider()
-                    .get_mapped_values(&recipient_digest)
-                    .ok_or_else(|| {
-                        TransactionKernelError::other("recipient data should be in advice provider")
-                    })?;
-
-                if data.len() != 13 {
-                    return Err(TransactionKernelError::MalformedRecipientData(data.to_vec()));
-                }
-
-                // NoteDetails from AdviceProvider: [num_inputs, INPUTS_COMMITMENT, SCRIPT_ROOT,
-                // SERIAL_NUM]
-                let num_inputs = data[0].as_int() as usize;
-                let inputs_commitment = Word::new([data[1], data[2], data[3], data[4]]);
-                let serial_num = Word::from([data[9], data[10], data[11], data[12]]);
-
-                let inputs_data = process.advice_provider().get_mapped_values(&inputs_commitment);
-
-                let inputs = match inputs_data {
-                    None => NoteInputs::default(),
-                    Some(inputs) => {
-                        if num_inputs > inputs.len() {
-                            return Err(TransactionKernelError::TooFewElementsForNoteInputs {
-                                specified: num_inputs as u64,
-                                actual: inputs.len() as u64,
-                            });
-                        }
-
-                        NoteInputs::new(inputs[0..num_inputs].to_vec())
-                            .map_err(TransactionKernelError::MalformedNoteInputs)?
-                    },
-                };
-
-                if inputs.commitment() != inputs_commitment {
-                    return Err(TransactionKernelError::InvalidNoteInputs {
-                        expected: inputs_commitment,
-                        actual: inputs.commitment(),
-                    });
-                }
-
-                let recipient = NoteRecipient::new(serial_num, note_script, inputs);
+                let recipient = NoteRecipient::new(serial_num, note_script, note_inputs);
 
                 // Create mutations to add the script to the advice map
                 let mutations = vec![AdviceMutation::extend_map(AdviceMap::from_iter([(
@@ -575,13 +534,16 @@ where
                     metadata,
                     recipient_digest,
                     note_idx,
+                    note_inputs,
+                    serial_num,
                 } => self
                     .on_note_script_requested(
                         script_root,
                         metadata,
                         recipient_digest,
                         note_idx,
-                        process,
+                        note_inputs,
+                        serial_num,
                     )
                     .await
                     .map_err(EventError::from),

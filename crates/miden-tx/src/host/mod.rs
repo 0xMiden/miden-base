@@ -39,7 +39,7 @@ use miden_objects::account::{
     StorageSlotType,
 };
 use miden_objects::asset::{Asset, AssetVault, FungibleAsset, VaultKey};
-use miden_objects::note::{NoteId, NoteMetadata};
+use miden_objects::note::{NoteId, NoteInputs, NoteMetadata};
 use miden_objects::transaction::{
     InputNote,
     InputNotes,
@@ -566,12 +566,39 @@ where
             let script_data = process.advice_provider().get_mapped_values(&script_root);
 
             let Some(script_data) = script_data else {
-                // Script is missing - request it from the data store
+                // Script is missing - extract note inputs and serial number to pass to executor
+                let inputs_data = process.advice_provider().get_mapped_values(&inputs_commitment);
+
+                let inputs = match inputs_data {
+                    None => NoteInputs::default(),
+                    Some(inputs) => {
+                        if num_inputs > inputs.len() {
+                            return Err(TransactionKernelError::TooFewElementsForNoteInputs {
+                                specified: num_inputs as u64,
+                                actual: inputs.len() as u64,
+                            });
+                        }
+
+                        NoteInputs::new(inputs[0..num_inputs].to_vec())
+                            .map_err(TransactionKernelError::MalformedNoteInputs)?
+                    },
+                };
+
+                if inputs.commitment() != inputs_commitment {
+                    return Err(TransactionKernelError::InvalidNoteInputs {
+                        expected: inputs_commitment,
+                        actual: inputs.commitment(),
+                    });
+                }
+
+                // Request script from the data store with extracted data
                 return Ok(TransactionEventHandling::Unhandled(TransactionEventData::NoteScript {
                     script_root,
                     metadata,
                     recipient_digest,
                     note_idx,
+                    note_inputs: inputs,
+                    serial_num,
                 }));
             };
 
@@ -1292,5 +1319,9 @@ pub(super) enum TransactionEventData {
         recipient_digest: Word,
         /// The note index extracted from the stack.
         note_idx: usize,
+        /// The note inputs extracted from the advice provider.
+        note_inputs: NoteInputs,
+        /// The serial number extracted from the advice provider.
+        serial_num: Word,
     },
 }
