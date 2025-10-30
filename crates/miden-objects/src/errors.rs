@@ -46,41 +46,43 @@ use crate::{
 // ACCOUNT COMPONENT TEMPLATE ERROR
 // ================================================================================================
 
-// #[derive(Debug, Error)]
-// pub enum AccountComponentTemplateError {
-//     #[error("storage slot name `{0}` is duplicate")]
-//     DuplicateEntryNames(StorageValueName),
-//     #[error("storage placeholder name `{0}` is duplicate")]
-//     DuplicatePlaceholderName(StorageValueName),
-//     #[error("slot {0} is defined multiple times")]
-//     DuplicateSlot(u8),
-//     #[error("storage value name is incorrect: {0}")]
-//     IncorrectStorageValueName(#[source] StorageValueNameError),
-//     #[error("type `{0}` is not valid for `{1}` slots")]
-//     InvalidType(String, String),
-//     #[error("error deserializing component metadata: {0}")]
-//     MetadataDeserializationError(String),
-//     #[error("multi-slot entry should contain as many values as storage slot indices")]
-//     MultiSlotArityMismatch,
-//     #[error("multi-slot entry slot range should occupy more than one storage slot")]
-//     MultiSlotSpansOneSlot,
-//     #[error("component storage slots are not contiguous ({0} is followed by {1})")]
-//     NonContiguousSlots(u8, u8),
-//     #[error("storage value for placeholder `{0}` was not provided in the init storage data")]
-//     PlaceholderValueNotProvided(StorageValueName),
-//     #[error("error converting value into expected type: ")]
-//     StorageValueParsingError(#[source] TemplateTypeError),
-//     #[error("storage map contains duplicate keys")]
-//     StorageMapHasDuplicateKeys(#[source] Box<dyn Error + Send + Sync + 'static>),
-//     #[error("component storage slots have to start at 0, but they start at {0}")]
-//     StorageSlotsDoNotStartAtZero(u8),
-//     #[cfg(feature = "std")]
-//     #[error("error trying to deserialize from toml")]
-//     TomlDeserializationError(#[source] toml::de::Error),
-//     #[cfg(feature = "std")]
-//     #[error("error trying to deserialize from toml")]
-//     TomlSerializationError(#[source] toml::ser::Error),
-// }
+/*
+#[derive(Debug, Error)]
+pub enum AccountComponentTemplateError {
+    #[error("storage slot name `{0}` is duplicate")]
+    DuplicateEntryNames(StorageValueName),
+    #[error("storage placeholder name `{0}` is duplicate")]
+    DuplicatePlaceholderName(StorageValueName),
+    #[error("slot {0} is defined multiple times")]
+    DuplicateSlot(u8),
+    #[error("storage value name is incorrect: {0}")]
+    IncorrectStorageValueName(#[source] StorageValueNameError),
+    #[error("type `{0}` is not valid for `{1}` slots")]
+    InvalidType(String, String),
+    #[error("error deserializing component metadata: {0}")]
+    MetadataDeserializationError(String),
+    #[error("multi-slot entry should contain as many values as storage slot indices")]
+    MultiSlotArityMismatch,
+    #[error("multi-slot entry slot range should occupy more than one storage slot")]
+    MultiSlotSpansOneSlot,
+    #[error("component storage slots are not contiguous ({0} is followed by {1})")]
+    NonContiguousSlots(u8, u8),
+    #[error("storage value for placeholder `{0}` was not provided in the init storage data")]
+    PlaceholderValueNotProvided(StorageValueName),
+    #[error("error converting value into expected type: ")]
+    StorageValueParsingError(#[source] TemplateTypeError),
+    #[error("storage map contains duplicate keys")]
+    StorageMapHasDuplicateKeys(#[source] Box<dyn Error + Send + Sync + 'static>),
+    #[error("component storage slots have to start at 0, but they start at {0}")]
+    StorageSlotsDoNotStartAtZero(u8),
+    #[cfg(feature = "std")]
+    #[error("error trying to deserialize from toml")]
+    TomlDeserializationError(#[source] toml::de::Error),
+    #[cfg(feature = "std")]
+    #[error("error trying to deserialize from toml")]
+    TomlSerializationError(#[source] toml::ser::Error),
+}
+*/
 
 // ACCOUNT ERROR
 // ================================================================================================
