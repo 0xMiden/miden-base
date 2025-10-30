@@ -779,11 +779,7 @@ mod tests {
         let slots = slots
             .into_iter()
             .enumerate()
-            .map(|(idx, slot)| {
-                let slot_name = SlotName::new(format!("miden::test::slot{idx}"))
-                    .expect("slot name should be valid");
-                NamedStorageSlot::new(slot_name, slot)
-            })
+            .map(|(idx, slot)| NamedStorageSlot::new(SlotName::new_test(idx), slot))
             .collect();
 
         let storage = AccountStorage::new(slots).unwrap();

@@ -132,8 +132,8 @@ async fn mutate_account_with_storage() -> anyhow::Result<ExecutedTransaction> {
     let account = builder.add_existing_mock_account_with_storage_and_assets(
         Auth::IncrNonce,
         [
-            NamedStorageSlot::new_test_value(0, rand_value()),
-            NamedStorageSlot::new_test_map(
+            NamedStorageSlot::with_test_value(0, rand_value()),
+            NamedStorageSlot::with_test_map(
                 1,
                 StorageMap::with_entries([(rand_value(), rand_value())])?,
             ),
@@ -164,11 +164,11 @@ async fn create_output_notes() -> anyhow::Result<ExecutedTransaction> {
     let account = builder.add_existing_mock_account_with_storage_and_assets(
         Auth::IncrNonce,
         [
-            NamedStorageSlot::new_test_map(
+            NamedStorageSlot::with_test_map(
                 0,
                 StorageMap::with_entries([(rand_value(), rand_value())])?,
             ),
-            NamedStorageSlot::new_test_value(1, rand_value()),
+            NamedStorageSlot::with_test_value(1, rand_value()),
         ],
         [Asset::from(native_asset), NonFungibleAsset::mock(&[1, 2, 3, 4])],
     )?;
