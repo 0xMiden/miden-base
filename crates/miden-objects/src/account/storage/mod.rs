@@ -36,15 +36,18 @@ static FAUCET_METADATA_SLOT_NAME: LazyLock<SlotName> =
 // ACCOUNT STORAGE
 // ================================================================================================
 
-/// Account storage is composed of a variable number of index-addressable [StorageSlot]s up to
+/// Account storage is composed of a variable number of name-addressable [`NamedStorageSlot`]s up to
 /// 255 slots in total.
 ///
 /// Each slot has a type which defines its size and structure. Currently, the following types are
 /// supported:
-/// - [StorageSlot::Value]: contains a single [Word] of data (i.e., 32 bytes).
-/// - [StorageSlot::Map]: contains a [StorageMap] which is a key-value map where both keys and
+/// - [`StorageSlot::Value`]: contains a single [`Word`] of data (i.e., 32 bytes).
+/// - [`StorageSlot::Map`]: contains a [`StorageMap`] which is a key-value map where both keys and
 ///   values are [Word]s. The value of a storage slot containing a map is the commitment to the
 ///   underlying map.
+///
+/// Slots are sorted by [`SlotName`] (or [`SlotNameId`] equivalently). This order is necessary to
+/// compute a consistent commitment over the slots.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AccountStorage {
     slots: Vec<NamedStorageSlot>,
@@ -58,6 +61,8 @@ impl AccountStorage {
     // --------------------------------------------------------------------------------------------
 
     /// Returns a new instance of account storage initialized with the provided storage slots.
+    ///
+    /// This function sorts the slots by [`SlotName`].
     ///
     /// # Errors
     ///
@@ -198,7 +203,7 @@ impl AccountStorage {
             .ok()
     }
 
-    /// Returns an item from the storage at the specified index.
+    /// Returns an item from the storage slot with the given name.
     ///
     /// # Errors
     ///
@@ -210,7 +215,7 @@ impl AccountStorage {
             .ok_or_else(|| AccountError::StorageSlotNameNotFound { slot_name: slot_name.clone() })
     }
 
-    /// Returns a map item from a map located in storage at the specified index.
+    /// Returns a map item from the map in the storage slot with the given name.
     ///
     /// # Errors
     ///
@@ -258,7 +263,7 @@ impl AccountStorage {
         Ok(())
     }
 
-    /// Updates the value of the storage slot at the specified index.
+    /// Updates the value of the storage slot with the given name.
     ///
     /// This method should be used only to update value slots. For updating values
     /// in storage maps, please see [`AccountStorage::set_map_item`].
@@ -284,7 +289,7 @@ impl AccountStorage {
         Ok(old_value)
     }
 
-    /// Updates the value of a key-value pair of a storage map at the specified index.
+    /// Updates the value of a key-value pair of a storage map with the given name.
     ///
     /// This method should be used only to update storage maps. For updating values
     /// in storage slots, please see [AccountStorage::set_item()].
