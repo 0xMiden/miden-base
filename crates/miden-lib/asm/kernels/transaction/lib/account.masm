@@ -1269,128 +1269,101 @@ end
 #! Inputs:  []
 #! Outputs: []
 export.insert_new_storage
-    exec.memory::get_account_storage_slots_section_ptr
-    # => [storage_slots_ptr]
-
     exec.memory::get_num_storage_slots
-    # => [num_slots, storage_slots_ptr]
+    # => [num_slots]
 
     # loop if there are storage slots
     dup neq.0
-    # => [should_loop, num_slots, storage_slots_ptr]
+    # => [should_loop, num_slots]
 
     while.true
         sub.1
-        # => [slot_idx, storage_slots_ptr]
+        # => [slot_idx]
 
-        # compute the pointer corresponding to the slot index
-        dup mul.ACCOUNT_STORAGE_SLOT_DATA_LENGTH dup.2 add
-        # => [slot_ptr, slot_idx, storage_slots_ptr]
-
-        # offset the pointer so it points to the slot's metadata and load
-        dup add.4 mem_load
-        # => [slot_type, slot_ptr, slot_idx, storage_slots_ptr]
+        dup exec.get_storage_slot_type
+        # => [slot_type, slot_idx]
 
         exec.constants::get_storage_slot_type_map eq
-        # => [is_map_slot_type, slot_ptr, slot_idx, storage_slots_ptr]
+        # => [is_map_slot_type, slot_idx]
 
         if.true
-            # load the current map root
-            padw dup.4 mem_loadw
-            # => [MAP_ROOT, slot_ptr, slot_idx, storage_slots_ptr]
-
-            # overwrite the map root with the root of an empty SMT, so we can insert the entries of
-            # the map into an empty map and then check whether the resulting root matches MAP_ROOT.
-            exec.constants::get_empty_smt_root
-            # => [EMPTY_SMT_ROOT, MAP_ROOT, slot_ptr, slot_idx, storage_slots_ptr]
-
-            dup.8 mem_storew dropw
-            # => [MAP_ROOT, slot_ptr, slot_idx, storage_slots_ptr]
-
-            dup.5
-            # => [slot_idx, MAP_ROOT, slot_ptr, slot_idx, storage_slots_ptr]
-
-            dup.4 dup.4 dup.4 dup.4
-            # => [MAP_ROOT, slot_idx, MAP_ROOT, slot_ptr, slot_idx, storage_slots_ptr]
-
-            # add map entries to account storage, which does two important things:
-            # - insert all entries into an empty storage map, so we can validate that exactly those
-            #   entries are present that are contained in the map (no more, no less)
-            # - insert all entries into the in-kernel account storage delta
-            exec.insert_new_storage_map_entries
-            # => [MAP_ROOT, slot_ptr, slot_idx, storage_slots_ptr]
-
-            # load the root after all entries have been inserted
-            padw movup.8 mem_loadw
-            # => [CURRENT_ROOT, MAP_ROOT, slot_idx, storage_slots_ptr]
-
-            # the storage map root after inserting all entries must match the map root that was
-            # committed to as part of account creation
-            assert_eqw.err=ERR_ACCOUNT_STORAGE_MAP_ENTRIES_DO_NOT_MATCH_MAP_ROOT
-            # => [slot_idx, storage_slots_ptr]
-        else
-            drop
-            # => [slot_idx, storage_slots_ptr]
+            # add map entries to account storage
+            dup exec.insert_and_validate_storage_map
+            # => [slot_idx]
         end
-        # => [slot_idx, storage_slots_ptr]
+        # => [slot_idx]
 
         dup neq.0
-        # => [should_continue, slot_idx, storage_slots_ptr]
+        # => [should_continue, slot_idx]
     end
-    # => [slot_idx, storage_slots_ptr]
+    # => [slot_idx]
 
-    drop drop
+    drop
     # => []
 end
 
 #! Inserts the entries of the provided storage map root into the account.
 #!
 #! These entries must be present in the advice provider with the map root as the key. Each entry is
-#! is inserted using set_map_item on an initially empty SMT root.
-#! This allows checking whether the root of the SMT with all entries inserted matches the root of
-#! the map the account commits to.
-#! It also inserts all entries into the in-kernel delta, where the initial value of each entry will
-#! be set to the empty word so the delta for this map is computed as if the map had initially been
-#! empty.
+#! is inserted using set_map_item on an initially empty SMT root. This does two important things:
+#! - It allows checking whether the root of the SMT with all entries inserted matches the root of
+#!   the map the account commits to.
+#! - It inserts all entries into the in-kernel delta, where the initial value of each entry will
+#!   be set to the empty word so the delta for this map is computed as if the map had initially
+#!   been empty.
 #!
 #! Inputs:
-#!   Operand stack: [MAP_ROOT, slot_idx]
+#!   Operand stack: [slot_idx]
 #!   Advice map: { MAP_ROOT: [MAP_ENTRIES] }
 #! Outputs: []
-proc.insert_new_storage_map_entries
+proc.insert_and_validate_storage_map
+    dup exec.memory::get_account_storage_slots_section_ptr
+    # => [storage_slots_ptr, slot_idx, slot_idx]
+
+    exec.get_item_raw
+    # => [MAP_ROOT, slot_idx]
+
+    # overwrite the map root with the root of an empty SMT, so we can insert the entries of
+    # the map into an empty map and then check whether the resulting root matches MAP_ROOT.
+    exec.constants::get_empty_smt_root
+    dup.8
+    # => [slot_idx, EMPTY_SMT_ROOT, MAP_ROOT, slot_idx]
+
+    exec.set_item_raw dropw
+    # => [MAP_ROOT, slot_idx]
+
     adv.push_mapvaln
     # OS => [MAP_ROOT, slot_idx]
-    # AS => [num_entries, [MAP_ENTRIES]]
+    # AS => [num_elements, [MAP_ENTRIES]]
 
     movup.4
     # OS => [slot_idx, MAP_ROOT]
-    # AS => [num_entries, [MAP_ENTRIES]]
+    # AS => [num_elements, [MAP_ENTRIES]]
 
     adv_push.1
+    # OS => [num_elements, slot_idx, MAP_ROOT]
+    # AS => [[MAP_ENTRIES]]
+
+    push.8 u32assert2.err="number of storage map elements should fit into a u32"
+    # OS => [8, num_elements, slot_idx, MAP_ROOT]
+    # AS => [[MAP_ENTRIES]]
+
+    # check that num_elements % 8 = 0 so we can use an equality check for the loop condition
+    # this also computes number_entries which is num_elements / 8.
+    u32divmod eq.0 assert.err="number of storage map elements must be a multiple of 8"
     # OS => [num_entries, slot_idx, MAP_ROOT]
     # AS => [[MAP_ENTRIES]]
 
-    dup push.8 u32assert2.err="number of storage map entries should fit into a u32"
-    # OS => [8, num_entries, num_entries, slot_idx, MAP_ROOT]
-    # AS => [[MAP_ENTRIES]]
-
-    # check that num_entries % 8 = 0 so we can use an equality check for the loop condition
-    u32divmod eq.0 assert.err="number of storage map entries must be a multiple of 8"
-    drop
-    # OS => [num_entries, slot_idx, MAP_ROOT]
-    # AS => [[MAP_ENTRIES]]
-
-    # loop if there are more than 0 storage map entries
+    # loop if there are more than 0 storage map elements
     dup neq.0
     # OS => [should_loop, num_entries, slot_idx, MAP_ROOT]
     # AS => [[MAP_ENTRIES]]
 
     while.true
-        # we process two words per iteration, so decrement by 8 felts
-        sub.8
+        sub.1
         # => [remaining_entries, slot_idx, MAP_ROOT]
 
-        # push a key-value pair to the operand stack
+        # push a key-value pair (8 felts) to the operand stack
         adv_push.8
         # => [KEY, VALUE, remaining_entries, slot_idx, MAP_ROOT]
 
@@ -1409,7 +1382,17 @@ proc.insert_new_storage_map_entries
     # OS => [remaining_entries, slot_idx, MAP_ROOT]
     # AS => []
 
-    drop drop dropw
+    drop
+    # => [slot_idx, MAP_ROOT]
+
+    # load the root after all entries have been inserted
+    exec.memory::get_account_storage_slots_section_ptr
+    exec.get_item_raw
+    # => [CURRENT_MAP_ROOT, MAP_ROOT]
+
+    # after inserting all entries, the storage map root must match the map root that was committed
+    # to as part of account creation
+    assert_eqw.err=ERR_ACCOUNT_STORAGE_MAP_ENTRIES_DO_NOT_MATCH_MAP_ROOT
     # => []
 end
 
