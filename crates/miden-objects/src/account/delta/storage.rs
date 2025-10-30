@@ -75,13 +75,13 @@ impl AccountStorageDelta {
     }
 
     /// Tracks a slot change
-    pub fn set_item(&mut self, slot_index: SlotName, new_slot_value: Word) {
-        self.values.insert(slot_index, new_slot_value);
+    pub fn set_item(&mut self, slot_name: SlotName, new_slot_value: Word) {
+        self.values.insert(slot_name, new_slot_value);
     }
 
     /// Tracks a map item change
-    pub fn set_map_item(&mut self, slot_index: SlotName, key: Word, new_value: Word) {
-        self.maps.entry(slot_index).or_default().insert(key, new_value);
+    pub fn set_map_item(&mut self, slot_name: SlotName, key: Word, new_value: Word) {
+        self.maps.entry(slot_name).or_default().insert(key, new_value);
     }
 
     /// Merges another delta into this one, overwriting any existing values.

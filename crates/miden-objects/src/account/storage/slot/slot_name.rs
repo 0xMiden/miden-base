@@ -113,9 +113,9 @@ impl SlotName {
     /// See the ID's docs for details.
     pub fn compute_id(&self) -> SlotNameId {
         let hashed_word = hash_string_to_word(self.as_str());
-        let prefix = hashed_word[1];
         let suffix = hashed_word[0];
-        SlotNameId::new(prefix, suffix)
+        let prefix = hashed_word[1];
+        SlotNameId::new(suffix, prefix)
     }
 
     // HELPERS

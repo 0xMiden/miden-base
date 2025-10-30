@@ -9,8 +9,8 @@ use crate::Felt;
 /// 0th element and the prefix is the 1st element.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SlotNameId {
-    prefix: Felt,
     suffix: Felt,
+    prefix: Felt,
 }
 
 impl SlotNameId {
@@ -18,21 +18,21 @@ impl SlotNameId {
     // --------------------------------------------------------------------------------------------
 
     /// Creates a new [`SlotNameId`] from the provided felts.
-    pub fn new(prefix: Felt, suffix: Felt) -> Self {
-        Self { prefix, suffix }
+    pub fn new(suffix: Felt, prefix: Felt) -> Self {
+        Self { suffix, prefix }
     }
 
     // ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns the prefix of the [`SlotNameId`].
-    pub fn prefix(&self) -> Felt {
-        self.prefix
-    }
-
     /// Returns the suffix of the [`SlotNameId`].
     pub fn suffix(&self) -> Felt {
         self.suffix
+    }
+
+    /// Returns the prefix of the [`SlotNameId`].
+    pub fn prefix(&self) -> Felt {
+        self.prefix
     }
 
     /// Returns the [`SlotNameId`]'s felts encoded into a u128.
@@ -77,9 +77,9 @@ mod tests {
 
     #[test]
     fn test_name_id_as_u128() {
-        let prefix = 1;
         let suffix = 5;
-        let name_id = SlotNameId::new(Felt::from(prefix as u32), Felt::from(suffix as u32));
+        let prefix = 1;
+        let name_id = SlotNameId::new(Felt::from(suffix as u32), Felt::from(prefix as u32));
         assert_eq!(name_id.as_u128(), (prefix << 64) + suffix);
         assert_eq!(format!("{name_id}"), "0x00000000000000010000000000000005");
     }

@@ -1061,9 +1061,9 @@ where
             )
         })?;
 
-        let prefix = slot_metadata[ACCT_STORAGE_SLOT_NAME_ID_PREFIX_OFFSET as usize];
         let suffix = slot_metadata[ACCT_STORAGE_SLOT_NAME_ID_SUFFIX_OFFSET as usize];
-        let slot_name_id = SlotNameId::new(prefix, suffix);
+        let prefix = slot_metadata[ACCT_STORAGE_SLOT_NAME_ID_PREFIX_OFFSET as usize];
+        let slot_name_id = SlotNameId::new(suffix, prefix);
 
         Ok((slot_name_id, slot_type, slot_value))
     }

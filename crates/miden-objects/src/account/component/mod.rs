@@ -233,6 +233,7 @@ impl From<AccountComponent> for Library {
     }
 }
 
+// TODO(named_slots): Reactivate tests once template is refactored.
 /*
 #[cfg(test)]
 mod tests {
