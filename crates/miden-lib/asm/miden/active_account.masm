@@ -448,31 +448,6 @@ export.has_non_fungible_asset
     # => [has_asset]
 end
 
-#! Returns the vault root of the active account.
-#!
-#! Inputs:  []
-#! Outputs: [VAULT_ROOT]
-#!
-#! Where:
-#! - VAULT_ROOT is the root of the account vault.
-#!
-#! Invocation: exec
-export.get_vault_root
-    # pad the stack for syscall invocation
-    padw padw padw push.0.0.0
-    # => [pad(15)]
-
-    exec.kernel_proc_offsets::account_get_vault_root_offset
-    # => [offset, pad(15)]
-
-    syscall.exec_kernel_proc
-    # => [VAULT_ROOT, pad(12)]
-
-    # clean the stack
-    swapdw dropw dropw swapw dropw
-    # => [VAULT_ROOT]
-end
-
 #! Returns the vault root of the active account at the beginning of the transaction.
 #!
 #! Inputs:  []
@@ -496,6 +471,31 @@ export.get_initial_vault_root
     # clean the stack
     swapdw dropw dropw swapw dropw
     # => [INIT_VAULT_ROOT]
+end
+
+#! Returns the vault root of the active account.
+#!
+#! Inputs:  []
+#! Outputs: [VAULT_ROOT]
+#!
+#! Where:
+#! - VAULT_ROOT is the root of the account vault.
+#!
+#! Invocation: exec
+export.get_vault_root
+    # pad the stack for syscall invocation
+    padw padw padw push.0.0.0
+    # => [pad(15)]
+
+    exec.kernel_proc_offsets::account_get_vault_root_offset
+    # => [offset, pad(15)]
+
+    syscall.exec_kernel_proc
+    # => [VAULT_ROOT, pad(12)]
+
+    # clean the stack
+    swapdw dropw dropw swapw dropw
+    # => [VAULT_ROOT]
 end
 
 #! Returns the number of procedures in the active account.
