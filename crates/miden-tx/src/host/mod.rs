@@ -28,6 +28,7 @@ use miden_lib::transaction::memory::{
     ACCT_STORAGE_SLOT_NAME_ID_PREFIX_OFFSET,
     ACCT_STORAGE_SLOT_NAME_ID_SUFFIX_OFFSET,
     ACCT_STORAGE_SLOT_TYPE_OFFSET,
+    ACCT_STORAGE_SLOT_VALUE_OFFSET,
     ACTIVE_INPUT_NOTE_PTR,
 };
 use miden_lib::transaction::{EventId, TransactionEvent, TransactionEventError};
@@ -1035,7 +1036,7 @@ where
                 TransactionKernelError::other(format!("slot ptr {slot_ptr} is uninitialized"))
             })?;
 
-        let slot_value_ptr = slot_ptr + 4;
+        let slot_value_ptr = slot_ptr + ACCT_STORAGE_SLOT_VALUE_OFFSET as u32;
         let slot_value = process
             .get_mem_word(process.ctx(), slot_value_ptr)
             .map_err(|err| {

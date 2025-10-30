@@ -314,6 +314,9 @@ pub const ACCT_STORAGE_SLOT_NAME_ID_SUFFIX_OFFSET: u8 = 2;
 /// The offset of the slot's name ID prefix in the storage slot.
 pub const ACCT_STORAGE_SLOT_NAME_ID_PREFIX_OFFSET: u8 = 3;
 
+/// The offset of the slot value in the storage slot.
+pub const ACCT_STORAGE_SLOT_VALUE_OFFSET: u8 = 4;
+
 /// The memory address at which the account storage slots section begins in the native account.
 pub const NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR: MemoryAddress =
     NATIVE_ACCOUNT_DATA_PTR + ACCT_STORAGE_SLOTS_SECTION_OFFSET;
