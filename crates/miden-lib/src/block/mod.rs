@@ -7,7 +7,7 @@ pub mod errors;
 pub mod header;
 
 pub fn sign_block(proposed_block: ProposedBlock, key: &mut SecretKey) -> SignedBlock {
-    let header: BlockHeader = construct_block_header(proposed_block.clone()).unwrap(); // TODO: no clone? error handling
+    let header: BlockHeader = construct_block_header(&proposed_block).unwrap(); // TODO: error handling
     let signature = key.sign(header.commitment()); // TODO: what do we sign?
     SignedBlock::new(header, proposed_block, signature)
 }

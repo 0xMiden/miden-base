@@ -1,6 +1,3 @@
-// BLOCK HEADER
-// ================================================================================================
-
 use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
 
@@ -25,50 +22,47 @@ use crate::block::errors::BlockHeaderError;
 use crate::transaction::TransactionKernel;
 
 pub fn construct_block_header(
-    proposed_block: ProposedBlock,
+    proposed_block: &ProposedBlock,
 ) -> Result<BlockHeader, BlockHeaderError> {
     // Get the block number and timestamp of the new block and compute the tx commitment.
     let block_num = proposed_block.block_num();
     let timestamp = proposed_block.timestamp();
 
-    // Split the proposed block into its parts.
-    let (
-        batches,
-        account_updated_witnesses,
-        output_note_batches,
-        created_nullifiers,
-        partial_blockchain,
-        prev_block_header,
-    ) = proposed_block.into_parts();
-
-    let prev_block_commitment = prev_block_header.commitment();
+    let prev_block_commitment = proposed_block.prev_block_header().commitment();
 
     // For now we copy the parameters of the previous header, which means the parameters set on
     // the genesis block will be passed through. Eventually, the contained base fees will be
     // updated based on the demand in the currently proposed block.
-    let fee_parameters = prev_block_header.fee_parameters().clone();
+    let fee_parameters = proposed_block.prev_block_header().fee_parameters().clone();
 
     // Compute the root of the block note tree.
-    let note_tree = compute_block_note_tree(&output_note_batches);
+    let note_tree = compute_block_note_tree(proposed_block.output_note_batches());
     let note_root = note_tree.root();
 
     // Insert the created nullifiers into the nullifier tree to compute its new root.
-    let new_nullifier_root =
-        compute_nullifier_root(created_nullifiers, &prev_block_header, block_num)?;
+    let new_nullifier_root = compute_nullifier_root(
+        proposed_block.created_nullifiers(),
+        proposed_block.prev_block_header(),
+        block_num,
+    )?;
 
     // Insert the state commitments of updated accounts into the account tree to compute its new
     // root.
-    let new_account_root = compute_account_root(&account_updated_witnesses, &prev_block_header)?;
+    let new_account_root = compute_account_root(
+        proposed_block.updated_accounts(),
+        proposed_block.prev_block_header(),
+    )?;
 
     // Insert the previous block header into the block partial blockchain to get the new chain
     // commitment.
-    let new_chain_commitment = compute_chain_commitment(partial_blockchain, prev_block_header);
+    let new_chain_commitment = compute_chain_commitment(
+        &mut proposed_block.partial_blockchain().clone(),
+        proposed_block.prev_block_header(),
+    );
 
     // Aggregate the verified transactions of all batches.
-    let txs = batches.into_transactions();
+    let txs = proposed_block.batches().clone().into_transactions();
     let tx_commitment = txs.commitment();
-
-    // Construct the new block header.
 
     // Currently undefined and reserved for future use.
     // See miden-base/1155.
@@ -170,7 +164,7 @@ fn compute_block_note_tree(output_note_batches: &[OutputNoteBatch]) -> BlockNote
 /// Computes the new nullifier root by inserting the nullifier witnesses into a partial nullifier
 /// tree and marking each nullifier as spent in the given block number.
 fn compute_nullifier_root(
-    created_nullifiers: BTreeMap<Nullifier, NullifierWitness>,
+    created_nullifiers: &BTreeMap<Nullifier, NullifierWitness>,
     prev_block_header: &BlockHeader,
     block_num: BlockNumber,
 ) -> Result<Word, BlockHeaderError> {
@@ -187,9 +181,9 @@ fn compute_nullifier_root(
     // to update.
     // Due to the guarantees of ProposedBlock we can safely assume that each nullifier is mapped to
     // its corresponding nullifier witness, so we don't have to check again whether they match.
-    for witness in created_nullifiers.into_values() {
+    for witness in created_nullifiers.values() {
         partial_nullifier_tree
-            .track_nullifier(witness)
+            .track_nullifier(witness.clone())
             .map_err(BlockHeaderError::NullifierWitnessRootMismatch)?;
     }
 
@@ -218,8 +212,8 @@ fn compute_nullifier_root(
 /// Adds the commitment of the previous block header to the partial blockchain to compute the new
 /// chain commitment.
 fn compute_chain_commitment(
-    mut partial_blockchain: PartialBlockchain,
-    prev_block_header: BlockHeader,
+    partial_blockchain: &mut PartialBlockchain,
+    prev_block_header: &BlockHeader,
 ) -> Word {
     // SAFETY: This does not panic as long as the block header we're adding is the next one in the
     // chain which is validated as part of constructing a `ProposedBlock`.
