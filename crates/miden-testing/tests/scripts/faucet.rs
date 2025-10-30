@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use miden_lib::account::faucets::{BasicFungibleFaucet, FungibleFaucetExt, NetworkFungibleFaucet};
 use miden_lib::errors::tx_kernel_errors::ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED;
-use miden_lib::note::create_p2id_note;
+use miden_lib::note::utils::build_p2id_recipient;
 use miden_lib::note::well_known_note::WellKnownNote;
 use miden_lib::testing::note::NoteBuilder;
 use miden_lib::utils::ScriptBuilder;
@@ -18,6 +18,7 @@ use miden_objects::account::{
 };
 use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::asset::{Asset, FungibleAsset};
+use miden_objects::crypto::rand::FeltRng;
 use miden_objects::note::{
     Note,
     NoteAssets,
@@ -321,21 +322,12 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
     let tag = NoteTag::for_public_use_case(0, 0, miden_objects::note::NoteExecutionMode::Local)?;
     let aux = Felt::new(27);
     let note_execution_hint = NoteExecutionHint::on_block_slot(5, 6, 7);
-    let note_type = NoteType::Public; // PUBLIC note
+    let note_type = NoteType::Public;
 
-    // Create the expected P2ID note using the helper function for debugging purposes
+    // Create the expected P2ID note RECIPIENT
     let mut rng = RpoRandomCoin::new([Felt::from(0u32); 4].into());
-    let expected_p2id_note = create_p2id_note(
-        faucet.id(),
-        recipient_account_id,
-        vec![FungibleAsset::new(faucet.id(), amount.into())?.into()],
-        note_type,
-        aux,
-        &mut rng,
-    )?;
 
-    // Extract recipient information from the expected note
-    let p2id_recipient = expected_p2id_note.recipient();
+    let p2id_recipient = build_p2id_recipient(recipient_account_id, rng.draw_word())?;
     let p2id_script_root = p2id_recipient.script().root();
     let serial_num = p2id_recipient.serial_num();
     let target_account_suffix = recipient_account_id.suffix();
