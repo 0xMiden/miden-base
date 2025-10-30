@@ -39,7 +39,7 @@ use miden_objects::account::{
     StorageSlotType,
 };
 use miden_objects::asset::{Asset, AssetVault, FungibleAsset, VaultKey};
-use miden_objects::note::{NoteId, NoteInputs, NoteMetadata};
+use miden_objects::note::{NoteId, NoteInputs, NoteMetadata, NoteRecipient, NoteScript};
 use miden_objects::transaction::{
     InputNote,
     InputNotes,
@@ -606,7 +606,7 @@ where
             let inputs_data = process.advice_provider().get_mapped_values(&inputs_commitment);
 
             let inputs = match inputs_data {
-                None => miden_objects::note::NoteInputs::default(),
+                None => NoteInputs::default(),
                 Some(inputs) => {
                     if num_inputs > inputs.len() {
                         return Err(TransactionKernelError::TooFewElementsForNoteInputs {
@@ -615,7 +615,7 @@ where
                         });
                     }
 
-                    miden_objects::note::NoteInputs::new(inputs[0..num_inputs].to_vec())
+                    NoteInputs::new(inputs[0..num_inputs].to_vec())
                         .map_err(TransactionKernelError::MalformedNoteInputs)?
                 },
             };
@@ -627,15 +627,11 @@ where
                 });
             }
 
-            let script =
-                miden_objects::note::NoteScript::try_from(script_data).map_err(|source| {
-                    TransactionKernelError::MalformedNoteScript {
-                        data: script_data.to_vec(),
-                        source,
-                    }
-                })?;
+            let script = NoteScript::try_from(script_data).map_err(|source| {
+                TransactionKernelError::MalformedNoteScript { data: script_data.to_vec(), source }
+            })?;
 
-            Some(miden_objects::note::NoteRecipient::new(serial_num, script, inputs))
+            Some(NoteRecipient::new(serial_num, script, inputs))
         } else {
             None
         };
