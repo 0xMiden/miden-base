@@ -526,29 +526,22 @@ where
     ///
     /// Expected stack state: `[event, NOTE_METADATA, note_ptr, RECIPIENT, note_idx]`
     ///
-    /// This method extracts recipient data from the advice provider and attempts to build a
-    /// NoteRecipient. If the note script is not present in the advice provider, it returns
+    /// If the note script is not present in the advice provider, returns
     /// [`TransactionEventHandling::Unhandled`] to request the script from the data store.
     fn on_note_after_created(
         &mut self,
         process: &ProcessState,
     ) -> Result<TransactionEventHandling, TransactionKernelError> {
-        // Extract metadata from stack
         let metadata_word = process.get_stack_word(1);
         let metadata = NoteMetadata::try_from(metadata_word)
             .map_err(TransactionKernelError::MalformedNoteMetadata)?;
 
-        // Extract recipient digest from stack
         let recipient_digest = process.get_stack_word(6);
-
-        // Extract note index from stack
         let note_idx = process.get_stack_item(10).as_int() as usize;
 
-        // Check if the advice provider contains the recipient data
         let recipient = if let Some(data) =
             process.advice_provider().get_mapped_values(&recipient_digest)
         {
-            // NoteDetails from AdviceProvider: [SN_SCRIPT_HASH, INPUTS_COMMITMENT]
             if data.len() != 8 {
                 return Err(TransactionKernelError::MalformedRecipientData(data.to_vec()));
             }
@@ -556,11 +549,11 @@ where
             let sn_script_hash = Word::new([data[0], data[1], data[2], data[3]]);
             let inputs_commitment = Word::new([data[4], data[5], data[6], data[7]]);
 
-            // Get the SN_SCRIPT_HASH data: [SN_HASH, SCRIPT_ROOT]
-            let sn_script_data = process.advice_provider().get_mapped_values(&sn_script_hash);
-            let Some(sn_script_data) = sn_script_data else {
-                return Err(TransactionKernelError::MalformedRecipientData(vec![]));
-            };
+            let sn_script_data = process
+                .advice_provider()
+                .get_mapped_values(&sn_script_hash)
+                .ok_or_else(|| TransactionKernelError::MalformedRecipientData(vec![]))?;
+
             if sn_script_data.len() != 8 {
                 return Err(TransactionKernelError::MalformedRecipientData(
                     sn_script_data.to_vec(),
@@ -580,62 +573,29 @@ where
                 sn_script_data[7],
             ]);
 
-            // Get the SN_HASH data: [SERIAL_NUM, EMPTY_WORD]
-            let sn_hash_data = process.advice_provider().get_mapped_values(&sn_hash);
-            let Some(sn_hash_data) = sn_hash_data else {
-                return Err(TransactionKernelError::MalformedRecipientData(vec![]));
-            };
+            let sn_hash_data = process
+                .advice_provider()
+                .get_mapped_values(&sn_hash)
+                .ok_or_else(|| TransactionKernelError::MalformedRecipientData(vec![]))?;
+
             if sn_hash_data.len() != 8 {
                 return Err(TransactionKernelError::MalformedRecipientData(sn_hash_data.to_vec()));
             }
 
             let serial_num =
                 Word::new([sn_hash_data[0], sn_hash_data[1], sn_hash_data[2], sn_hash_data[3]]);
-            // Note: sn_hash_data[4..8] should be EMPTY_WORD but we don't need to validate it
 
-            // Get the inputs data from INPUTS_COMMITMENT (padded)
-            let inputs_data = process.advice_provider().get_mapped_values(&inputs_commitment);
+            let num_inputs = process
+                .advice_provider()
+                .get_mapped_values(&inputs_commitment)
+                .and_then(|inputs| inputs.iter().rposition(|&x| x != ZERO).map(|pos| pos + 1))
+                .unwrap_or(0);
 
-            // For now, let's find the actual number of inputs by counting non-zero elements
-            // from the end, since inputs are padded with zeros
-            let num_inputs = match inputs_data {
-                None => 0,
-                Some(inputs) => {
-                    // Find the last non-zero element to determine actual input count
-                    inputs.iter().rposition(|&x| x != ZERO).map(|pos| pos + 1).unwrap_or(0)
-                },
-            };
-
-            // Check if the script is in the advice provider
             let script_data = process.advice_provider().get_mapped_values(&script_root);
 
-            let Some(script_data) = script_data else {
-                // Script is missing - extract note inputs and serial number to pass to executor
-                let inputs_data = process.advice_provider().get_mapped_values(&inputs_commitment);
+            if script_data.is_none() {
+                let inputs = self.extract_note_inputs(process, &inputs_commitment, num_inputs)?;
 
-                let inputs = match inputs_data {
-                    None => NoteInputs::default(),
-                    Some(inputs) => {
-                        if num_inputs > inputs.len() {
-                            return Err(TransactionKernelError::TooFewElementsForNoteInputs {
-                                specified: num_inputs as u64,
-                                actual: inputs.len() as u64,
-                            });
-                        }
-
-                        NoteInputs::new(inputs[0..num_inputs].to_vec())
-                            .map_err(TransactionKernelError::MalformedNoteInputs)?
-                    },
-                };
-
-                if inputs.commitment() != inputs_commitment {
-                    return Err(TransactionKernelError::InvalidNoteInputs {
-                        expected: inputs_commitment,
-                        actual: inputs.commitment(),
-                    });
-                }
-
-                // Request script from the data store with extracted data
                 return Ok(TransactionEventHandling::Unhandled(TransactionEventData::NoteScript {
                     script_root,
                     metadata,
@@ -644,35 +604,15 @@ where
                     note_inputs: inputs,
                     serial_num,
                 }));
-            };
-
-            // Script is present, build the recipient
-            let inputs_data = process.advice_provider().get_mapped_values(&inputs_commitment);
-
-            let inputs = match inputs_data {
-                None => NoteInputs::default(),
-                Some(inputs) => {
-                    if num_inputs > inputs.len() {
-                        return Err(TransactionKernelError::TooFewElementsForNoteInputs {
-                            specified: num_inputs as u64,
-                            actual: inputs.len() as u64,
-                        });
-                    }
-
-                    NoteInputs::new(inputs[0..num_inputs].to_vec())
-                        .map_err(TransactionKernelError::MalformedNoteInputs)?
-                },
-            };
-
-            if inputs.commitment() != inputs_commitment {
-                return Err(TransactionKernelError::InvalidNoteInputs {
-                    expected: inputs_commitment,
-                    actual: inputs.commitment(),
-                });
             }
 
-            let script = NoteScript::try_from(script_data).map_err(|source| {
-                TransactionKernelError::MalformedNoteScript { data: script_data.to_vec(), source }
+            let inputs = self.extract_note_inputs(process, &inputs_commitment, num_inputs)?;
+
+            let script = NoteScript::try_from(script_data.unwrap()).map_err(|source| {
+                TransactionKernelError::MalformedNoteScript {
+                    data: script_data.unwrap().to_vec(),
+                    source,
+                }
             })?;
 
             Some(NoteRecipient::new(serial_num, script, inputs))
@@ -680,11 +620,44 @@ where
             None
         };
 
-        // Build the note builder with the recipient (or None for private notes)
         let note_builder = OutputNoteBuilder::new(metadata, recipient_digest, recipient)?;
         self.insert_output_note_builder(note_idx, note_builder)?;
 
         Ok(TransactionEventHandling::Handled(Vec::new()))
+    }
+
+    /// Extracts and validates note inputs from the advice provider.
+    fn extract_note_inputs(
+        &self,
+        process: &ProcessState,
+        inputs_commitment: &Word,
+        num_inputs: usize,
+    ) -> Result<NoteInputs, TransactionKernelError> {
+        let inputs_data = process.advice_provider().get_mapped_values(inputs_commitment);
+
+        let inputs = match inputs_data {
+            None => NoteInputs::default(),
+            Some(inputs) => {
+                if num_inputs > inputs.len() {
+                    return Err(TransactionKernelError::TooFewElementsForNoteInputs {
+                        specified: num_inputs as u64,
+                        actual: inputs.len() as u64,
+                    });
+                }
+
+                NoteInputs::new(inputs[0..num_inputs].to_vec())
+                    .map_err(TransactionKernelError::MalformedNoteInputs)?
+            },
+        };
+
+        if inputs.commitment() != *inputs_commitment {
+            return Err(TransactionKernelError::InvalidNoteInputs {
+                expected: *inputs_commitment,
+                actual: inputs.commitment(),
+            });
+        }
+
+        Ok(inputs)
     }
 
     /// Adds an asset at the top of the [OutputNoteBuilder] identified by the note pointer.
