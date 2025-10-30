@@ -461,11 +461,11 @@ export.finalize_transaction.12
     # => [acct_data_end_ptr]
 
     # get the offset for the start of the account data section
-    exec.memory::get_current_account_data_ptr
+    exec.memory::get_active_account_data_ptr
     # => [acct_data_ptr, acct_data_end_ptr]
 
     # compute the final account commitment
-    exec.account::compute_current_commitment
+    exec.account::compute_commitment
     # => [FINAL_ACCOUNT_COMMITMENT, acct_data_ptr, acct_data_end_ptr]
 
     # insert final account data into the advice map

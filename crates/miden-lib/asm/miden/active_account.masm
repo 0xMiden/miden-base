@@ -12,8 +12,7 @@ use.miden::kernel_proc_offsets
 #! Outputs: [account_id_prefix, account_id_suffix]
 #!
 #! Where:
-#! - account_id_{prefix,suffix} are the prefix and suffix felts of the account ID of the currently
-#!   accessing account.
+#! - account_id_{prefix,suffix} are the prefix and suffix felts of the ID of the active account.
 #!
 #! Invocation: exec
 export.get_id
@@ -109,7 +108,7 @@ export.compute_commitment
     padw padw padw push.0.0.0
     # => [pad(15)]
 
-    exec.kernel_proc_offsets::account_compute_current_commitment_offset
+    exec.kernel_proc_offsets::account_compute_commitment_offset
     # => [offset, pad(15)]
 
     syscall.exec_kernel_proc
@@ -188,7 +187,7 @@ export.get_initial_storage_commitment
     # => [INIT_STORAGE_COMMITMENT]
 end
 
-#! Computes the latest account storage commitment of the current account.
+#! Computes the latest storage commitment of the active account.
 #!
 #! Notice that this procedure always returns the latest commitment, but it doesn't actually always
 #! recompute it: recomputation is performed only if the account's storage has been changed,
@@ -504,7 +503,7 @@ end
 #! Outputs: [num_procedures]
 #!
 #! Where:
-#! - num_procedures is the number of procedures in the current account.
+#! - num_procedures is the number of procedures in the active account.
 #!
 #! Invocation: exec
 export.get_num_procedures

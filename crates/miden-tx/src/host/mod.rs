@@ -960,7 +960,7 @@ where
         }
     }
 
-    /// Returns the ID of the currently executing account.
+    /// Returns the ID of the currently executing account (active account).
     fn get_current_account_id(process: &ProcessState) -> Result<AccountId, TransactionKernelError> {
         let account_stack_top_ptr =
             process.get_mem_value(process.ctx(), ACCOUNT_STACK_TOP_PTR).ok_or_else(|| {
@@ -974,22 +974,22 @@ where
             .get_mem_value(process.ctx(), account_stack_top_ptr)
             .ok_or_else(|| TransactionKernelError::other("account id should be initialized"))?;
         let current_account_ptr = u32::try_from(current_account_ptr).map_err(|_| {
-            TransactionKernelError::other("current account ptr should fit into a u32")
+            TransactionKernelError::other("active account ptr should fit into a u32")
         })?;
 
         let current_account_id_and_nonce = process
             .get_mem_word(process.ctx(), current_account_ptr)
             .map_err(|_| {
-                TransactionKernelError::other("current account ptr should be word-aligned")
+                TransactionKernelError::other("active account ptr should be word-aligned")
             })?
             .ok_or_else(|| {
-                TransactionKernelError::other("current account id should be initialized")
+                TransactionKernelError::other("active account id should be initialized")
             })?;
 
         AccountId::try_from([current_account_id_and_nonce[1], current_account_id_and_nonce[0]])
             .map_err(|_| {
                 TransactionKernelError::other(
-                    "current account id ptr should point to a valid account ID",
+                    "active account id ptr should point to a valid account ID",
                 )
             })
     }
@@ -1018,7 +1018,7 @@ where
             })
     }
 
-    /// Returns the number of storage slots initialized for the current account.
+    /// Returns the number of storage slots initialized for the active account.
     ///
     /// # Errors
     /// Returns an error if the memory location supposed to contain the account storage slot number

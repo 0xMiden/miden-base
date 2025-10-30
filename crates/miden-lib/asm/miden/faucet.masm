@@ -12,7 +12,7 @@ use.miden::kernel_proc_offsets
 #! - ASSET is the created fungible asset.
 #!
 #! Panics if:
-#! - the current account is not a fungible faucet.
+#! - the active account is not a fungible faucet.
 #!
 #! Invocation: exec
 export.create_fungible_asset
@@ -35,7 +35,7 @@ end
 #! - ASSET is the created non-fungible asset.
 #!
 #! Panics if:
-#! - the current account is not a non-fungible faucet.
+#! - the active account is not a non-fungible faucet.
 #!
 #! Invocation: exec
 export.create_non_fungible_asset

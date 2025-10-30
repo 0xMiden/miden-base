@@ -5,7 +5,7 @@ use.miden::output_note
 # =================================================================================================
 const.PUBLIC_NOTE=1
 
-#! Adds the provided asset to the current account.
+#! Adds the provided asset to the active account.
 #!
 #! Inputs:  [ASSET, pad(12)]
 #! Outputs: [pad(16)]

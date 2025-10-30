@@ -70,7 +70,7 @@ use crate::{
 // ================================================================================================
 
 #[tokio::test]
-pub async fn compute_current_commitment() -> miette::Result<()> {
+pub async fn compute_commitment() -> miette::Result<()> {
     let account = Account::mock(ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE, Auth::IncrNonce);
 
     // Precompute a commitment to a changed account so we can assert it during tx script execution.
@@ -129,7 +129,7 @@ pub async fn compute_current_commitment() -> miette::Result<()> {
 
             # assert that the commitment has changed
             exec.word::eq
-            assertz.err="storage commitment should have been updated by compute_current_commitment"
+            assertz.err="storage commitment should have been updated by compute_commitment"
             # => []
         end
     "#,

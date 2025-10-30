@@ -5,7 +5,7 @@
 
 # Entire account commitment
 const.ACCOUNT_GET_INITIAL_COMMITMENT_OFFSET=0
-const.ACCOUNT_COMPUTE_CURRENT_COMMITMENT_OFFSET=1
+const.ACCOUNT_COMPUTE_COMMITMENT_OFFSET=1
 
 # ID
 const.ACCOUNT_GET_ID_OFFSET=2
@@ -109,16 +109,16 @@ export.account_get_initial_commitment_offset
     push.ACCOUNT_GET_INITIAL_COMMITMENT_OFFSET
 end
 
-#! Returns the offset of the `account_compute_current_commitment` kernel procedure.
+#! Returns the offset of the `account_compute_commitment` kernel procedure.
 #!
 #! Inputs:  []
 #! Outputs: [proc_offset]
 #!
 #! Where:
-#! - proc_offset is the offset of the `account_compute_current_commitment` kernel procedure required
-#!   to get the address where this procedure is stored.
-export.account_compute_current_commitment_offset
-    push.ACCOUNT_COMPUTE_CURRENT_COMMITMENT_OFFSET
+#! - proc_offset is the offset of the `account_compute_commitment` kernel procedure required to get
+#!   the address where this procedure is stored.
+export.account_compute_commitment_offset
+    push.ACCOUNT_COMPUTE_COMMITMENT_OFFSET
 end
 
 #! Returns the offset of the `account_compute_delta_commitment` kernel procedure.

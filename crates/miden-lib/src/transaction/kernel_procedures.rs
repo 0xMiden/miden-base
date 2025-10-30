@@ -9,7 +9,7 @@ use miden_objects::{Word, word};
 pub const KERNEL_PROCEDURES: [Word; 53] = [
     // account_get_initial_commitment
     word!("0x1c95a0386ebf3645c6271253a4ae49ea4be8610dea7b4436c58951277a75f0c1"),
-    // account_compute_current_commitment
+    // account_compute_commitment
     word!("0x1aed40e2cc4d3798448f4efdce1a14c9598611da065eebe58432f144c3bca9de"),
     // account_get_id
     word!("0xc9f7e71b294e16d7a297ba283afb2f8c864817e40e73b6ef1d64efc310937fc7"),

@@ -120,7 +120,7 @@ pub enum AccountError {
     FinalAccountHeaderIdParsingFailed(#[source] AccountIdError),
     #[error("account header data has length {actual} but it must be of length {expected}")]
     HeaderDataIncorrectLength { actual: usize, expected: usize },
-    #[error("current account nonce {current} plus increment {increment} overflows a felt to {new}")]
+    #[error("active account nonce {current} plus increment {increment} overflows a felt to {new}")]
     NonceOverflow {
         current: Felt,
         increment: Felt,

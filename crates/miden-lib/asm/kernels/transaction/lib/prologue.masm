@@ -402,14 +402,14 @@ end
 #! - ACCOUNT_STORAGE_COMMITMENT is the account's storage commitment.
 #! - ACCOUNT_CODE_COMMITMENT is the account's code commitment.
 proc.process_account_data
-    # Initialize the current account data pointer in the bookkeeping section with the native offset
+    # Initialize the active account data pointer in the bookkeeping section with the native offset
     # (2048)
-    exec.memory::set_current_account_data_ptr_to_native_account
+    exec.memory::set_active_account_data_ptr_to_native_account
 
     # Copy the account data from the advice provider to memory and hash it
     # ---------------------------------------------------------------------------------------------
 
-    exec.memory::get_current_account_data_ptr
+    exec.memory::get_active_account_data_ptr
     # => [acct_data_ptr]
 
     # read account details and compute its digest. See `Advice stack` above for details.
