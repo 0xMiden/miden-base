@@ -13,7 +13,6 @@ use crate::account::{
     SlotName,
     StorageMap,
     StorageMapDelta,
-    StorageSlot,
 };
 use crate::note::NoteAssets;
 use crate::utils::sync::LazyLock;
@@ -103,15 +102,15 @@ impl AccountStorage {
     }
 
     pub fn mock_item_0() -> NamedStorageSlot {
-        NamedStorageSlot::new(SLOT_NAME_VALUE0.clone(), StorageSlot::Value(STORAGE_VALUE_0))
+        NamedStorageSlot::with_value(SLOT_NAME_VALUE0.clone(), STORAGE_VALUE_0)
     }
 
     pub fn mock_item_1() -> NamedStorageSlot {
-        NamedStorageSlot::new(SLOT_NAME_VALUE1.clone(), StorageSlot::Value(STORAGE_VALUE_1))
+        NamedStorageSlot::with_value(SLOT_NAME_VALUE1.clone(), STORAGE_VALUE_1)
     }
 
     pub fn mock_item_2() -> NamedStorageSlot {
-        NamedStorageSlot::new(SLOT_NAME_MAP.clone(), StorageSlot::Map(Self::mock_map()))
+        NamedStorageSlot::with_map(SLOT_NAME_MAP.clone(), Self::mock_map())
     }
 
     pub fn mock_map() -> StorageMap {

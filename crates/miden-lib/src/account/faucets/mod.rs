@@ -9,7 +9,6 @@ use miden_objects::account::{
     AccountType,
     NamedStorageSlot,
     SlotName,
-    StorageSlot,
 };
 use miden_objects::asset::{FungibleAsset, TokenSymbol};
 use miden_objects::utils::sync::LazyLock;
@@ -204,9 +203,9 @@ impl From<BasicFungibleFaucet> for AccountComponent {
             faucet.symbol.into(),
             Felt::ZERO,
         ]);
-        let storage_slot = NamedStorageSlot::new(
+        let storage_slot = NamedStorageSlot::with_value(
             BasicFungibleFaucet::metadata_slot_name().clone(),
-            StorageSlot::Value(metadata),
+            metadata,
         );
 
         AccountComponent::new(basic_fungible_faucet_library(), vec![storage_slot])

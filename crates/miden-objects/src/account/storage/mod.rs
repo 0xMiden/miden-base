@@ -103,16 +103,10 @@ impl AccountStorage {
     ) -> Result<AccountStorage, AccountError> {
         let mut storage_slots = match account_type {
             AccountType::FungibleFaucet => {
-                vec![NamedStorageSlot::new(
-                    Self::faucet_metadata_slot().clone(),
-                    StorageSlot::empty_value(),
-                )]
+                vec![NamedStorageSlot::with_empty_value(Self::faucet_metadata_slot().clone())]
             },
             AccountType::NonFungibleFaucet => {
-                vec![NamedStorageSlot::new(
-                    Self::faucet_metadata_slot().clone(),
-                    StorageSlot::empty_map(),
-                )]
+                vec![NamedStorageSlot::with_empty_map(Self::faucet_metadata_slot().clone())]
             },
             _ => vec![],
         };
@@ -391,8 +385,8 @@ impl Deserializable for AccountStorage {
 
 #[cfg(test)]
 mod tests {
-    use super::{AccountStorage, Deserializable, Serializable, StorageMap, Word};
-    use crate::account::{NamedStorageSlot, SlotName, StorageSlot};
+    use super::{AccountStorage, Deserializable, Serializable};
+    use crate::account::{NamedStorageSlot, SlotName};
 
     #[test]
     fn test_serde_account_storage() -> anyhow::Result<()> {
@@ -403,14 +397,8 @@ mod tests {
 
         // storage with values for default types
         let storage = AccountStorage::new(vec![
-            NamedStorageSlot::new(
-                SlotName::new("miden::test::value")?,
-                StorageSlot::Value(Word::empty()),
-            ),
-            NamedStorageSlot::new(
-                SlotName::new("miden::test::map")?,
-                StorageSlot::Map(StorageMap::default()),
-            ),
+            NamedStorageSlot::with_empty_value(SlotName::new("miden::test::value")?),
+            NamedStorageSlot::with_empty_map(SlotName::new("miden::test::map")?),
         ])
         .unwrap();
         let bytes = storage.to_bytes();
@@ -425,8 +413,8 @@ mod tests {
         const MAP_SLOT: SlotName = SlotName::from_static_str("miden::test::map");
 
         let slots = vec![
-            NamedStorageSlot::new(COUNTER_SLOT, StorageSlot::empty_value()),
-            NamedStorageSlot::new(MAP_SLOT, StorageSlot::empty_map()),
+            NamedStorageSlot::with_empty_value(COUNTER_SLOT),
+            NamedStorageSlot::with_empty_map(MAP_SLOT),
         ];
         let storage = AccountStorage::new(slots.clone())?;
 

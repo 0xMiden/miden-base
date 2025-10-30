@@ -164,7 +164,6 @@ mod tests {
         PartialStorageMap,
         SlotName,
         StorageMap,
-        StorageSlot,
     };
 
     #[test]
@@ -179,11 +178,9 @@ mod tests {
 
         let slot_name = SlotName::new("miden::test_map")?;
 
-        let storage = AccountStorage::new(vec![NamedStorageSlot::new(
-            slot_name.clone(),
-            StorageSlot::Map(map_1.clone()),
-        )])
-        .unwrap();
+        let storage =
+            AccountStorage::new(vec![NamedStorageSlot::with_map(slot_name.clone(), map_1.clone())])
+                .unwrap();
 
         // Create partial storage with validation of one map key
         let storage_header = AccountStorageHeader::from(&storage);

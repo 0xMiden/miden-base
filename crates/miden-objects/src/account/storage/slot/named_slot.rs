@@ -34,10 +34,22 @@ impl NamedStorageSlot {
         Self::new(name, StorageSlot::Value(value))
     }
 
+    /// Creates a new [`NamedStorageSlot`] with the given [`SlotName`] and
+    /// [`StorageSlot::empty_value`].
+    pub fn with_empty_value(name: SlotName) -> Self {
+        Self::new(name, StorageSlot::empty_value())
+    }
+
     /// Creates a new [`NamedStorageSlot`] with the given [`SlotName`] and the `map` wrapped into a
     /// [`StorageSlot::Map`]
     pub fn with_map(name: SlotName, map: StorageMap) -> Self {
         Self::new(name, StorageSlot::Map(map))
+    }
+
+    /// Creates a new [`NamedStorageSlot`] with the given [`SlotName`] and
+    /// [`StorageSlot::empty_map`].
+    pub fn with_empty_map(name: SlotName) -> Self {
+        Self::new(name, StorageSlot::empty_map())
     }
 
     // ACCESSORS
