@@ -50,9 +50,6 @@ pub struct ProvenBlock {
     /// The aggregated and flattened transaction headers of all batches in the order in which they
     /// appeared in the proposed block.
     transactions: OrderedTransactionHeaders,
-
-    /// The commitment to the proof of the block.
-    proof_commitment: Word,
 }
 
 impl ProvenBlock {
@@ -68,7 +65,6 @@ impl ProvenBlock {
         output_note_batches: Vec<OutputNoteBatch>,
         created_nullifiers: Vec<Nullifier>,
         transactions: OrderedTransactionHeaders,
-        proof_commitment: Word,
     ) -> Self {
         Self {
             header,
@@ -76,18 +72,12 @@ impl ProvenBlock {
             output_note_batches,
             created_nullifiers,
             transactions,
-            proof_commitment,
         }
     }
 
     /// Returns the commitment to this block.
     pub fn commitment(&self) -> Word {
         self.header.commitment()
-    }
-
-    /// Returns the proof commitment to this block.
-    pub fn proof_commitment(&self) -> Word {
-        self.proof_commitment
     }
 
     /// Returns the header of this block.
@@ -164,7 +154,6 @@ impl Serializable for ProvenBlock {
         self.output_note_batches.write_into(target);
         self.created_nullifiers.write_into(target);
         self.transactions.write_into(target);
-        self.proof_commitment.write_into(target);
     }
 }
 
@@ -176,7 +165,6 @@ impl Deserializable for ProvenBlock {
             output_note_batches: <Vec<OutputNoteBatch>>::read_from(source)?,
             created_nullifiers: <Vec<Nullifier>>::read_from(source)?,
             transactions: OrderedTransactionHeaders::read_from(source)?,
-            proof_commitment: Word::read_from(source)?,
         };
 
         Ok(block)

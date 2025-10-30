@@ -1,6 +1,5 @@
 use std::vec::Vec;
 
-use miden_objects::Word;
 use miden_objects::block::{BlockAccountUpdate, ProvenBlock, SignedBlock};
 use miden_objects::note::Nullifier;
 
@@ -82,17 +81,13 @@ impl LocalBlockProver {
         // Aggregate the verified transactions of all batches.
         let txs = batches.into_transactions();
 
-        // For now, we're not actually proving the block.
-        let proof_commitment = Word::empty();
-
-        // Construct the new proven block.
+        // For now, we're not actually proving the block. Just return the block.
         ProvenBlock::new_unchecked(
             header,
             updated_accounts,
             output_note_batches,
             created_nullifiers,
             txs,
-            proof_commitment,
         )
     }
 }
