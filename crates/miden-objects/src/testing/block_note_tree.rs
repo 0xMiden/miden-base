@@ -16,8 +16,9 @@ impl BlockNoteTree {
     pub fn from_note_batches(notes: &[OutputNoteBatch]) -> Result<BlockNoteTree, MerkleError> {
         let iter = notes.iter().enumerate().flat_map(|(batch_idx, batch_notes)| {
             batch_notes.iter().map(move |(note_idx_in_batch, note)| {
-                let block_note_index =
-                    BlockNoteIndex::new(batch_idx, *note_idx_in_batch).expect("TODO");
+                // SAFETY: This is only called from test code. Reconsider if this changes.
+                let block_note_index = BlockNoteIndex::new(batch_idx, *note_idx_in_batch)
+                    .expect("output note batch indices should fit into a block");
                 (block_note_index, note.id(), *note.metadata())
             })
         });

@@ -1,25 +1,14 @@
-# BASIC FUNGIBLE FAUCET CONTRACT
-# =================================================================================================
-# This is a basic fungible faucet smart contract.
-#
-# It allows the owner of the faucet to mint, distribute, and burn tokens. Token metadata is stored
-# in account storage at position 1 as [max_supply, decimals, token_symbol, 0], where:
-# - max_supply is the maximum supply of the token.
-# - decimals are the decimals of the token.
-# - token_symbol as three chars encoded in a Felt.
-
 use.miden::account
 use.miden::active_note
-use.miden::contracts::faucets
 use.miden::faucet
 use.miden::output_note
 
-# CONSTANTS
+# CONSTANTS
 # =================================================================================================
 
 const.PRIVATE_NOTE=2
 
-# ERRORS
+# ERRORS
 # =================================================================================================
 const.ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED="distribute would cause the maximum supply to be exceeded"
 
@@ -33,8 +22,8 @@ const.METADATA_SLOT=0
 
 #! Distributes freshly minted fungible assets to the provided recipient by creating a note.
 #!
-#! Inputs:  [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
-#! Outputs: [pad(16)]
+#! Inputs:  [amount, tag, aux, note_type, execution_hint, RECIPIENT]
+#! Outputs: []
 #!
 #! Where:
 #! - amount is the amount to be minted and sent.
@@ -49,10 +38,46 @@ const.METADATA_SLOT=0
 #! - the transaction is being executed against an account that is not a fungible asset faucet.
 #! - the total issuance after minting is greater than the maximum allowed supply.
 #!
-#! Invocation: call
+#! Invocation: exec
 export.distribute
-    exec.faucets::distribute
-    # => [pad(16)]
+    # get max supply of this faucet. We assume it is stored at pos 3 of slot 0
+    push.METADATA_SLOT exec.account::get_item drop drop drop
+    # => [max_supply, amount, tag, aux, note_type, execution_hint, RECIPIENT]
+
+    # get total issuance of this faucet so far and add amount to be minted
+    exec.faucet::get_total_issuance
+    # => [total_issuance, max_supply, amount, tag, aux, note_type, execution_hint, RECIPIENT]
+
+    # compute maximum amount that can be minted, max_mint_amount = max_supply - total_issuance
+    sub
+    # => [max_supply - total_issuance, amount, tag, aux, note_type, execution_hint, RECIPIENT]
+
+    # check that amount =< max_supply - total_issuance, fails if otherwise
+    dup.1 gte assert.err=ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED
+    # => [amount, tag, aux, note_type, execution_hint, RECIPIENT]
+
+    # creating the asset
+    exec.faucet::create_fungible_asset
+    # => [ASSET, tag, aux, note_type, execution_hint, RECIPIENT]
+
+    # mint the asset; this is needed to satisfy asset preservation logic.
+    exec.faucet::mint
+    # => [ASSET, tag, aux, note_type, execution_hint, RECIPIENT]
+
+    # store and drop the ASSET
+    movdnw.2
+    # => [tag, aux, note_type, execution_hint, RECIPIENT, ASSET]
+
+    # create a note
+    exec.output_note::create
+    # => [note_idx, ASSET]
+
+    # load the ASSET and add it to the note
+    movdn.4 exec.output_note::add_asset
+    # => [ASSET, note_idx]
+
+    dropw drop
+    # => []
 end
 
 #! Burns the fungible asset from the active note.
@@ -60,10 +85,11 @@ end
 #! This procedure retrieves the asset from the active note and burns it. The note must contain
 #! exactly one asset, which must be a fungible asset issued by this faucet.
 #!
-#! This is a re-export of basic_fungible::burn.
-#!
 #! Inputs:  [pad(16)]
 #! Outputs: [pad(16)]
+#!
+#! Where:
+#! - ASSET is the fungible asset that was burned.
 #!
 #! Panics if:
 #! - the procedure is not called from a note context (active_note::get_assets will fail).
@@ -71,4 +97,24 @@ end
 #! - the transaction is executed against an account which is not a fungible asset faucet.
 #! - the transaction is executed against a faucet which is not the origin of the specified asset.
 #! - the amount about to be burned is greater than the outstanding supply of the asset.
-export.faucets::burn
+#!
+#! Invocation: call
+export.burn
+    # Get the assets from the note. This will fail if not called from a note context.
+    push.0 exec.active_note::get_assets
+    # => [num_assets, dest_ptr, pad(16)]
+
+    # Verify we have exactly one asset
+    assert.err=ERR_BASIC_FUNGIBLE_BURN_WRONG_NUMBER_OF_ASSETS
+    # => [dest_ptr, pad(16)]
+
+    mem_loadw
+    # => [ASSET, pad(16)]
+
+    # burning the asset
+    exec.faucet::burn
+    # => [ASSET, pad(16)]
+
+    dropw
+    # => [pad(16)]
+end

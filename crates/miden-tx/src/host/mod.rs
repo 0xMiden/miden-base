@@ -142,10 +142,7 @@ where
             scripts_mast_store,
             initial_account_header: account.into(),
             initial_account_storage_header: account.storage().header().clone(),
-            account_delta: AccountDeltaTracker::new(
-                account.id(),
-                account.storage().header().clone(),
-            ),
+            account_delta: AccountDeltaTracker::new(account),
             acct_procedure_index_map,
             output_notes: BTreeMap::default(),
             input_notes,

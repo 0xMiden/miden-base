@@ -1,6 +1,9 @@
 extern crate alloc;
 
-use miden_lib::account::faucets::FungibleFaucetExt;
+use core::slice;
+use std::sync::Arc;
+
+use miden_lib::account::faucets::{BasicFungibleFaucet, FungibleFaucetExt, NetworkFungibleFaucet};
 use miden_lib::errors::tx_kernel_errors::ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED;
 use miden_lib::note::create_p2id_note;
 use miden_lib::note::well_known_note::WellKnownNote;
@@ -15,6 +18,7 @@ use miden_objects::{Felt, Word};
 use miden_processor::crypto::RpoRandomCoin;
 use miden_testing::{Auth, MockChain, assert_transaction_executor_error};
 
+use crate::scripts::swap::create_p2id_note_exact;
 use crate::{get_note_with_fungible_asset_and_script, prove_and_verify_transaction};
 
 // Shared test utilities for faucet tests
@@ -68,9 +72,15 @@ pub async fn execute_mint_transaction(
     faucet: Account,
     params: &FaucetTestParams,
 ) -> anyhow::Result<ExecutedTransaction> {
+    let source_manager = Arc::new(DefaultSourceManager::default());
     let tx_script_code = create_mint_script_code(params);
-    let tx_script = ScriptBuilder::default().compile_tx_script(tx_script_code)?;
-    let tx_context = mock_chain.build_tx_context(faucet, &[], &[])?.tx_script(tx_script).build()?;
+    let tx_script = ScriptBuilder::with_source_manager(source_manager.clone())
+        .compile_tx_script(tx_script_code)?;
+    let tx_context = mock_chain
+        .build_tx_context(faucet, &[], &[])?
+        .tx_script(tx_script)
+        .with_source_manager(source_manager)
+        .build()?;
 
     Ok(tx_context.execute().await?)
 }
@@ -109,7 +119,7 @@ pub fn verify_minted_output_note(
 #[tokio::test]
 async fn minting_fungible_asset_on_existing_faucet_succeeds() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
-    let faucet = builder.add_existing_faucet(Auth::BasicAuth, "TST", 200, None)?;
+    let faucet = builder.add_existing_basic_faucet(Auth::BasicAuth, "TST", 200, None)?;
     let mut mock_chain = builder.build()?;
 
     let params = FaucetTestParams {
@@ -138,7 +148,7 @@ async fn faucet_contract_mint_fungible_asset_fails_exceeds_max_supply() -> anyho
     // CONSTRUCT AND EXECUTE TX (Failure)
     // --------------------------------------------------------------------------------------------
     let mut builder = MockChain::builder();
-    let faucet = builder.add_existing_faucet(Auth::BasicAuth, "TST", 200, None)?;
+    let faucet = builder.add_existing_basic_faucet(Auth::BasicAuth, "TST", 200, None)?;
     let mock_chain = builder.build()?;
 
     let recipient = Word::from([0, 1, 2, 3u32]);
@@ -225,7 +235,7 @@ async fn minting_fungible_asset_on_new_faucet_succeeds() -> anyhow::Result<()> {
 #[tokio::test]
 async fn prove_burning_fungible_asset_on_existing_faucet_succeeds() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
-    let faucet = builder.add_existing_faucet(Auth::BasicAuth, "TST", 200, Some(100))?;
+    let faucet = builder.add_existing_basic_faucet(Auth::BasicAuth, "TST", 200, Some(100))?;
 
     let fungible_asset = FungibleAsset::new(faucet.id(), 100).unwrap();
 
@@ -234,19 +244,13 @@ async fn prove_burning_fungible_asset_on_existing_faucet_succeeds() -> anyhow::R
         # burn the asset
         begin
             dropw
-
-            # pad the stack before call
-            padw padw padw padw
-            # => [pad(16)]
-
-            exec.::miden::active_note::get_assets drop
-            mem_loadw
-            # => [ASSET, pad(12)]
+            # => []
 
             call.::miden::contracts::faucets::basic_fungible::burn
+            # => [ASSET]
 
             # truncate the stack
-            dropw dropw dropw dropw
+            dropw
         end
         ";
 

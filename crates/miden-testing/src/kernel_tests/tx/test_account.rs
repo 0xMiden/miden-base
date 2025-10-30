@@ -1,4 +1,5 @@
 use alloc::sync::Arc;
+use alloc::vec::Vec;
 use std::collections::BTreeMap;
 
 use anyhow::Context;
@@ -28,6 +29,7 @@ use miden_objects::account::{
     AccountStorage,
     AccountStorageMode,
     AccountType,
+    StorageMap,
     StorageSlot,
 };
 use miden_objects::assembly::diagnostics::{IntoDiagnostic, NamedSource, Report, WrapErr, miette};
@@ -49,6 +51,7 @@ use miden_processor::{EMPTY_WORD, ExecutionError, MastNodeExt, Word};
 use miden_tx::{LocalTransactionProver, TransactionExecutorError};
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
+use winter_rand_utils::rand_value;
 
 use super::{Felt, StackInputs, ZERO};
 use crate::executor::CodeExecutor;
@@ -149,7 +152,7 @@ pub async fn compute_current_commitment() -> miette::Result<()> {
         .execute()
         .await
         .into_diagnostic()
-        .wrap_err("failed to execute code")?;
+        .wrap_err("failed to execute transaction")?;
 
     Ok(())
 }
@@ -995,7 +998,7 @@ async fn test_compute_storage_commitment() -> anyhow::Result<()> {
 async fn proven_tx_storage_map_matches_executed_tx_for_new_account() -> anyhow::Result<()> {
     // Build a public account so the proven transaction includes the account update.
     let mock_slots = AccountStorage::mock_storage_slots();
-    let mut account = AccountBuilder::new([1; 32])
+    let account = AccountBuilder::new([1; 32])
         .storage_mode(AccountStorageMode::Public)
         .with_auth_component(Auth::IncrNonce)
         .with_component(MockAccountComponent::with_slots(mock_slots.clone()))
@@ -1047,15 +1050,72 @@ async fn proven_tx_storage_map_matches_executed_tx_for_new_account() -> anyhow::
 
     let proven_tx = LocalTransactionProver::default().prove_dummy(tx.clone())?;
 
-    let AccountUpdateDetails::New(new_account) = proven_tx.account_update().details() else {
+    let AccountUpdateDetails::Delta(delta) = proven_tx.account_update().details() else {
         panic!("expected delta");
     };
 
-    account.apply_delta(tx.account_delta())?;
+    let proven_tx_account = Account::try_from(delta)?;
+    let exec_tx_account = Account::try_from(tx.account_delta())?;
 
-    for (idx, slot) in new_account.storage().slots().iter().enumerate() {
-        assert_eq!(slot, &account.storage().slots()[idx], "slot {idx} did not match");
+    assert_eq!(proven_tx_account.storage(), exec_tx_account.storage());
+
+    Ok(())
+}
+
+/// Tests that an account with a non-empty map can be created.
+///
+/// In particular, this tests the account delta logic for (non-empty) storage slots for _new_
+/// accounts.
+#[tokio::test]
+async fn prove_account_creation_with_non_empty_storage() -> anyhow::Result<()> {
+    let slot0 = StorageSlot::Value(Word::from([1, 2, 3, 4u32]));
+    let slot1 = StorageSlot::Value(Word::from([10, 20, 30, 40u32]));
+    let mut map_entries = Vec::new();
+    for _ in 0..10 {
+        map_entries.push((rand_value::<Word>(), rand_value::<Word>()));
     }
+    let map_slot = StorageSlot::Map(StorageMap::with_entries(map_entries.clone())?);
+
+    let account = AccountBuilder::new([6; 32])
+        .storage_mode(AccountStorageMode::Public)
+        .with_auth_component(Auth::IncrNonce)
+        .with_component(MockAccountComponent::with_slots(vec![
+            slot0.clone(),
+            slot1.clone(),
+            map_slot,
+        ]))
+        .build()?;
+
+    let tx = TransactionContextBuilder::new(account)
+        .build()?
+        .execute()
+        .await
+        .context("failed to execute account-creating transaction")?;
+
+    assert_eq!(tx.account_delta().nonce_delta(), Felt::new(1));
+
+    assert_eq!(tx.account_delta().storage().values().get(&0).unwrap(), &slot0.value());
+    assert_eq!(tx.account_delta().storage().values().get(&1).unwrap(), &slot1.value());
+
+    assert_eq!(
+        tx.account_delta().storage().maps().get(&2).unwrap().entries(),
+        &BTreeMap::from_iter(
+            map_entries
+                .into_iter()
+                .map(|(key, value)| { (LexicographicWord::new(key), value) })
+        )
+    );
+
+    assert!(tx.account_delta().vault().is_empty());
+    assert_eq!(tx.final_account().nonce(), Felt::new(1));
+
+    let proven_tx = LocalTransactionProver::default().prove(tx.clone())?;
+
+    // The delta should be present on the proven tx.
+    let AccountUpdateDetails::Delta(delta) = proven_tx.account_update().details() else {
+        panic!("expected delta");
+    };
+    assert_eq!(delta, tx.account_delta());
 
     Ok(())
 }
@@ -1617,6 +1677,60 @@ async fn incrementing_nonce_twice_fails() -> anyhow::Result<()> {
     let result = TransactionContextBuilder::new(account).build()?.execute().await;
 
     assert_transaction_executor_error!(result, ERR_ACCOUNT_NONCE_CAN_ONLY_BE_INCREMENTED_ONCE);
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_has_procedure() -> miette::Result<()> {
+    // Create a standard account using the mock component
+    let mock_component = MockAccountComponent::with_slots(AccountStorage::mock_storage_slots());
+    let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
+        .with_auth_component(Auth::IncrNonce)
+        .with_component(mock_component)
+        .build_existing()
+        .unwrap();
+
+    let tx_script_code = r#"
+        use.mock::account->mock_account
+        use.miden::account
+
+        begin
+            # check that get_item procedure is available on the mock account
+            procref.mock_account::get_item
+            # => [GET_ITEM_ROOT]
+
+            exec.account::has_procedure
+            # => [is_procedure_available]
+
+            # assert that the get_item is exposed
+            assert.err="get_item procedure should be exposed by the mock account"
+
+            # get some random word and assert that it is not exposed
+            push.5.3.15.686
+
+            exec.account::has_procedure
+            # => [is_procedure_available]
+
+            # assert that the procedure with some random root is not exposed
+            assertz.err="procedure with some random root should not be exposed by the mock account"
+        end
+        "#;
+
+    // Compile the transaction script using the testing assembler with mock account
+    let tx_script = ScriptBuilder::with_mock_libraries()
+        .into_diagnostic()?
+        .compile_tx_script(tx_script_code)
+        .into_diagnostic()?;
+
+    // Create transaction context and execute
+    let tx_context = TransactionContextBuilder::new(account).tx_script(tx_script).build().unwrap();
+
+    tx_context
+        .execute()
+        .await
+        .into_diagnostic()
+        .wrap_err("Failed to execute transaction")?;
 
     Ok(())
 }
