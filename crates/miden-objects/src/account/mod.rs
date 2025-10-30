@@ -420,6 +420,7 @@ impl Account {
     }
 }
 
+#[cfg(any(test, feature = "testing"))]
 impl TryFrom<Account> for AccountDelta {
     type Error = AccountError;
 
