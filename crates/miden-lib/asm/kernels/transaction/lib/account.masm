@@ -489,6 +489,9 @@ export.get_item
     exec.memory::get_account_storage_slots_section_ptr
     # => [acct_storage_slots_section_offset, name_id_prefix, name_id_suffix]
 
+    exec.find_storage_slot
+    # => [slot_ptr]
+
     # get the item from storage
     exec.get_item_raw
     # => [VALUE]
@@ -518,8 +521,8 @@ export.get_typed_item
     dup add.ACCOUNT_SLOT_TYPE_OFFSET mem_load
     # => [slot_type, slot_ptr]
 
-    # load the item from memory
-    padw movup.5 add.ACCOUNT_SLOT_VALUE_OFFSET mem_loadw
+    # load the value
+    swap exec.get_item_raw
     # => [VALUE, slot_ptr]
 end
 
@@ -539,6 +542,9 @@ export.get_initial_item
     # get account initial storage slots section offset
     exec.memory::get_account_initial_storage_slots_ptr
     # => [account_initial_storage_slots_ptr, name_id_prefix, name_id_suffix]
+
+    exec.find_storage_slot
+    # => [slot_ptr]
 
     # get the item from initial storage
     exec.get_item_raw
@@ -582,7 +588,7 @@ export.set_item
     # => [VALUE, slot_ptr]
 
     # load the old value of the slot
-    padw dup.8 add.ACCOUNT_SLOT_VALUE_OFFSET mem_loadw
+    dup.4 exec.get_item_raw
     # => [OLD_VALUE, VALUE, slot_ptr]
 
     swapw movup.8
@@ -690,7 +696,7 @@ export.set_map_item.12
     # => [slot_ptr, KEY, NEW_VALUE]
 
     # load the current map root from memory
-    padw movup.4 add.ACCOUNT_SLOT_VALUE_OFFSET mem_loadw
+    exec.get_item_raw
     # => [OLD_MAP_ROOT, KEY, NEW_VALUE]
 
     # store OLD_MAP_ROOT until the end of the procedure
@@ -1351,32 +1357,6 @@ export.is_faucet_storage_data_slot
     # => [is_faucet_storage_data_slot]
 end
 
-#! Gets an item from storage using the provided storage slots pointer and index.
-#!
-#! Inputs:  [storage_slots_ptr, name_id_prefix, name_id_suffix]
-#! Outputs: [VALUE]
-#!
-#! Where:
-#! - storage_slots_ptr is the pointer to the storage slots section.
-#! - name_id_{prefix, suffix} are the prefix and suffix felts of the name identifier, which are
-#!   the first two felts of the hashed slot name.
-#! - VALUE is the value of the item.
-#!
-#! Panics if:
-#! - a slot with the provided name ID does not exist in account storage.
-proc.get_item_raw
-    exec.find_storage_slot
-    # => [slot_ptr]
-
-    # offset the pointer to point to the VALUE in the slot
-    add.ACCOUNT_SLOT_VALUE_OFFSET
-    # => [slot_value_ptr]
-
-    # load the item from memory
-    padw movup.4 mem_loadw
-    # => [VALUE]
-end
-
 #! Gets the initial and current value of an item from the storage slot at the provided index for
 #! the native account.
 #!
@@ -1411,7 +1391,7 @@ export.get_item_delta
     # => [name_id_prefix, name_id_suffix, slot_ptr, offset]
 
     # load the current value
-    padw movup.6 add.ACCOUNT_SLOT_VALUE_OFFSET mem_loadw
+    movup.2 exec.get_item_raw
     # => [CURRENT_VALUE, name_id_prefix, name_id_suffix, offset]
 
     # get account initial storage slots section offset
@@ -1421,7 +1401,7 @@ export.get_item_delta
     movup.7 add
     # => [init_slot_ptr, CURRENT_VALUE, name_id_prefix, name_id_suffix]
 
-    padw movup.4 add.ACCOUNT_SLOT_VALUE_OFFSET mem_loadw
+    exec.get_item_raw
     # => [INITIAL_VALUE, CURRENT_VALUE, name_id_prefix, name_id_suffix]
 end
 
@@ -1450,6 +1430,24 @@ export.get_slot_name
 
     swap add.ACCOUNT_SLOT_NAME_ID_PREFIX_OFFSET mem_load
     # => [name_id_prefix, name_id_suffix]
+end
+
+#! Gets the value of the provided slot pointer.
+#!
+#! Inputs:  [slot_ptr]
+#! Outputs: [VALUE]
+#!
+#! Where:
+#! - slot_ptr is the pointer to the storage slots section.
+#! - VALUE is the value of the item.
+proc.get_item_raw
+    # offset the pointer to point to the VALUE in the slot
+    add.ACCOUNT_SLOT_VALUE_OFFSET
+    # => [slot_value_ptr]
+
+    # load the item from memory
+    padw movup.4 mem_loadw
+    # => [VALUE]
 end
 
 #! Finds the storage map root in the storage slot with the provided name in the provided storage
@@ -1484,7 +1482,7 @@ proc.get_map_item_raw
     # => [slot_ptr, KEY]
 
     # load the storage map root from the slot
-    padw movup.4 add.ACCOUNT_SLOT_VALUE_OFFSET mem_loadw
+    exec.get_item_raw
     # => [ROOT, KEY]
 
     # see hash_map_key's docs for why this is done
