@@ -177,7 +177,7 @@ end
 #! Adds the ASSET to the note specified by the index.
 #!
 #! Inputs:  [note_idx, ASSET]
-#! Outputs: [note_idx]
+#! Outputs: []
 #!
 #! Where:
 #! - note_idx is the index of the note to which the asset is added.
@@ -232,6 +232,10 @@ export.add_asset
     # emit event to signal that a new asset was added to the note.
     emit.NOTE_AFTER_ADD_ASSET_EVENT
     # => [note_idx]
+
+    # drop the note index
+    drop
+    # => []
 end
 
 #! Assert that the provided note index is less than the total number of output notes.

@@ -74,9 +74,6 @@ export.distribute
 
     # load the ASSET and add it to the note
     movdn.4 exec.output_note::add_asset
-    # => [ASSET, note_idx]
-
-    dropw drop
     # => []
 end
 

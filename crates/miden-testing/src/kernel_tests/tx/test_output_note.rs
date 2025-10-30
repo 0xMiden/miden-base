@@ -315,9 +315,6 @@ async fn test_get_output_notes_commitment() -> anyhow::Result<()> {
 
             push.{asset_1}
             call.output_note::add_asset
-            # => [ASSET, note_idx]
-
-            dropw drop
             # => []
 
             # create output note 2
@@ -331,9 +328,6 @@ async fn test_get_output_notes_commitment() -> anyhow::Result<()> {
 
             push.{asset_2}
             call.output_note::add_asset
-            # => [ASSET, note_idx]
-
-            dropw drop
             # => []
 
             # compute the output notes commitment
@@ -406,7 +400,6 @@ async fn test_create_note_and_add_asset() -> anyhow::Result<()> {
         use.miden::output_note
 
         use.$kernel::prologue
-        use.mock::account
 
         begin
             exec.prologue::prepare_transaction
@@ -420,15 +413,18 @@ async fn test_create_note_and_add_asset() -> anyhow::Result<()> {
             call.output_note::create
             # => [note_idx]
 
-            push.{asset}
-            call.output_note::add_asset
-            # => [ASSET, note_idx]
-
-            dropw
+            # assert that the index of the created note equals zero
+            dup assertz.err=\"index of the created note should be zero\"
             # => [note_idx]
 
+            push.{asset}
+            # => [ASSET, note_idx]
+
+            call.output_note::add_asset
+            # => []
+
             # truncate the stack
-            swapdw dropw dropw
+            dropw dropw dropw
         end
         ",
         recipient = recipient,
@@ -446,11 +442,6 @@ async fn test_create_note_and_add_asset() -> anyhow::Result<()> {
         "asset must be stored at the correct memory location",
     );
 
-    assert_eq!(
-        exec_output.get_stack_element(0),
-        ZERO,
-        "top item on the stack is the index to the output note"
-    );
     Ok(())
 }
 
@@ -476,9 +467,7 @@ async fn test_create_note_and_add_multiple_assets() -> anyhow::Result<()> {
     let code = format!(
         "
         use.miden::output_note
-
         use.$kernel::prologue
-        use.mock::account
 
         begin
             exec.prologue::prepare_transaction
@@ -491,24 +480,28 @@ async fn test_create_note_and_add_multiple_assets() -> anyhow::Result<()> {
             call.output_note::create
             # => [note_idx]
 
-            push.{asset}
-            call.output_note::add_asset dropw
+            # assert that the index of the created note equals zero
+            dup assertz.err=\"index of the created note should be zero\"
             # => [note_idx]
 
-            push.{asset_2}
-            call.output_note::add_asset dropw
+            dup push.{asset}
+            call.output_note::add_asset
             # => [note_idx]
 
-            push.{asset_3}
-            call.output_note::add_asset dropw
+            dup push.{asset_2}
+            call.output_note::add_asset
+            # => [note_idx]
+
+            dup push.{asset_3}
+            call.output_note::add_asset
             # => [note_idx]
 
             push.{nft}
-            call.output_note::add_asset dropw
-            # => [note_idx]
+            call.output_note::add_asset
+            # => []
 
             # truncate the stack
-            swapdw dropw drop drop drop
+            repeat.7 dropw end
         end
         ",
         recipient = recipient,
@@ -540,11 +533,6 @@ async fn test_create_note_and_add_multiple_assets() -> anyhow::Result<()> {
         "non_fungible_asset must be stored at the correct memory location",
     );
 
-    assert_eq!(
-        exec_output.get_stack_element(0),
-        ZERO,
-        "top item on the stack is the index to the output note"
-    );
     Ok(())
 }
 
@@ -574,18 +562,17 @@ async fn test_create_note_and_add_same_nft_twice() -> anyhow::Result<()> {
             push.{tag}
 
             call.output_note::create
-            # => [note_idx, pad(15)]
+            # => [note_idx]
+
+            dup push.{nft}
+            # => [NFT, note_idx, note_idx]
+
+            call.output_note::add_asset
+            # => [note_idx]
 
             push.{nft}
             call.output_note::add_asset
-            # => [NFT, note_idx, pad(15)]
-            dropw
-
-            push.{nft}
-            call.output_note::add_asset
-            # => [NFT, note_idx, pad(15)]
-
-            repeat.5 dropw end
+            # => []
         end
         ",
         recipient = recipient,

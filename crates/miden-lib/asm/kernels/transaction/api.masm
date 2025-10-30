@@ -1173,7 +1173,7 @@ end
 #! Adds the ASSET to the note specified by the index.
 #!
 #! Inputs:  [note_idx, ASSET, pad(11)]
-#! Outputs: [note_idx, ASSET, pad(11)]
+#! Outputs: [pad(16)]
 #!
 #! Where:
 #! - note_idx is the index of the note to which the asset is added.
@@ -1188,12 +1188,8 @@ export.output_note_add_asset
     exec.memory::assert_native_account
     # => [note_idx, ASSET, pad(11)]
 
-    # duplicate the asset word to be able to return it
-    movdn.4 dupw movup.8
-    # => [note_idx, ASSET, ASSET, pad(11)]
-
     exec.output_note::add_asset
-    # => [note_idx, ASSET, pad(11)]
+    # => [pad(16)]
 end
 
 #! Returns the information about assets in the output note with the specified index.
