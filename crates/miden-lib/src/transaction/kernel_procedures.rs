@@ -6,7 +6,7 @@ use miden_objects::{Word, word};
 // ================================================================================================
 
 /// Hashes of all dynamically executed kernel procedures.
-pub const KERNEL_PROCEDURES: [Word; 54] = [
+pub const KERNEL_PROCEDURES: [Word; 53] = [
     // account_get_initial_commitment
     word!("0x1c95a0386ebf3645c6271253a4ae49ea4be8610dea7b4436c58951277a75f0c1"),
     // account_compute_current_commitment
@@ -19,8 +19,6 @@ pub const KERNEL_PROCEDURES: [Word; 54] = [
     word!("0x4a1f11db21ddb1f0ebf7c9fd244f896a95e99bb136008185da3e7d6aa85827a3"),
     // account_incr_nonce
     word!("0x99c6b16e86eb9eae02657256b8859e2809acd05bf25810933cf50e72d876d8bf"),
-    // account_get_native_nonce
-    word!("0xeae4dcae877e64a1951aa1ca35ac2adda724e359ee9c7689e55c42dde55d70c4"),
     // account_get_code_commitment
     word!("0xb2ebd0acc4ef40d37c403190dc07d03d7df9169fb8752e8025e3fe469b5ee192"),
     // account_get_initial_storage_commitment

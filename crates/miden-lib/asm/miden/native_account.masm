@@ -35,34 +35,6 @@ export.get_id
     # => [account_id_prefix, account_id_suffix]
 end
 
-#! Returns the nonce of the native account of the transaction.
-#!
-#! Inputs:  []
-#! Outputs: [nonce]
-#!
-#! Where:
-#! - nonce is the nonce of the native account of the transaction.
-#!
-#! Invocation: exec
-export.get_nonce
-    # start padding the stack
-    push.0.0.0
-
-    exec.kernel_proc_offsets::account_get_native_nonce_offset
-    # => [offset, 0, 0, 0]
-
-    # pad the stack
-    padw swapw padw padw swapdw
-    # => [offset, pad(15)]
-
-    syscall.exec_kernel_proc
-    # => [nonce, pad(15)]
-
-    # clean the stack
-    swapdw dropw dropw swapw dropw movdn.3 drop drop drop
-    # => [nonce]
-end
-
 #! Increments the nonce of the native account by one and returns the new nonce.
 #!
 #! Inputs:  []
