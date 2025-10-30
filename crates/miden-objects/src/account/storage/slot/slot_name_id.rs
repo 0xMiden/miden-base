@@ -3,10 +3,13 @@ use core::fmt::Display;
 
 use crate::Felt;
 
-/// The identifier of a [`SlotName`](super::SlotName).
+/// The partial hash of a [`SlotName`](super::SlotName).
 ///
-/// The ID of a slot name are the first two felts of the blake3-hashed slot name. The suffix is the
-/// 0th element and the prefix is the 1st element.
+/// The ID of a slot name are the first (`suffix`) and second (`prefix`) field elements of the
+/// blake3-hashed slot name.
+///
+/// The slot name ID is used to uniquely identify a storage slot and is used to sort slots in
+/// account storage.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SlotNameId {
     suffix: Felt,
