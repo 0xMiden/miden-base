@@ -119,13 +119,8 @@ impl AccountStorageHeader {
         &self,
         slot_name: &SlotName,
     ) -> Option<(&StorageSlotType, &Word)> {
-        // We could use binary search here but this would require re-hashing the ID of every slot we
-        // access, so a simple find should be more efficient for now. This can be changed once
-        // SlotName contains the precomputed SlotNameId.
-        self.slots
-            .iter()
-            .find(|(name, ..)| slot_name == name)
-            .map(|(_name, r#type, value)| (r#type, value))
+        self.find_slot_header_by_id(slot_name.compute_id())
+            .map(|(_slot_name, slot_type, slot_value)| (slot_type, slot_value))
     }
 
     /// Returns a slot contained in the storage header at a given index.
