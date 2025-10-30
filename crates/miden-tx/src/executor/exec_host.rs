@@ -39,7 +39,7 @@ use crate::host::{
     TransactionEventHandling,
     TransactionProgress,
 };
-use crate::{AccountProcedureIndexMap, DataStore};
+use crate::{AccountProcedureIndexMap, DataStore, DataStoreError};
 
 // TRANSACTION EXECUTOR HOST
 // ================================================================================================
@@ -395,7 +395,7 @@ where
 
                 (Some(recipient), mutations)
             },
-            Err(crate::DataStoreError::NoteScriptNotFound(_)) => {
+            Err(DataStoreError::NoteScriptNotFound(_)) => {
                 // Script not found in data store
                 if metadata.is_private() {
                     // For private notes, gracefully handle missing script
