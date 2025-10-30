@@ -98,18 +98,18 @@ impl AccountStorage {
     }
 
     pub fn mock_storage_slots() -> Vec<NamedStorageSlot> {
-        vec![Self::mock_item_0(), Self::mock_item_1(), Self::mock_item_2()]
+        vec![Self::mock_value_slot0(), Self::mock_value_slot1(), Self::mock_map_slot()]
     }
 
-    pub fn mock_item_0() -> NamedStorageSlot {
+    pub fn mock_value_slot0() -> NamedStorageSlot {
         NamedStorageSlot::with_value(MOCK_VALUE_SLOT0.clone(), STORAGE_VALUE_0)
     }
 
-    pub fn mock_item_1() -> NamedStorageSlot {
+    pub fn mock_value_slot1() -> NamedStorageSlot {
         NamedStorageSlot::with_value(MOCK_VALUE_SLOT1.clone(), STORAGE_VALUE_1)
     }
 
-    pub fn mock_item_2() -> NamedStorageSlot {
+    pub fn mock_map_slot() -> NamedStorageSlot {
         NamedStorageSlot::with_map(MOCK_MAP_SLOT.clone(), Self::mock_map())
     }
 

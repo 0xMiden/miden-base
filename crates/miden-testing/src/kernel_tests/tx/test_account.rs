@@ -371,7 +371,7 @@ pub async fn test_compute_code_commitment() -> miette::Result<()> {
 
 #[tokio::test]
 async fn test_get_item() -> miette::Result<()> {
-    for storage_item in [AccountStorage::mock_item_0(), AccountStorage::mock_item_1()] {
+    for storage_item in [AccountStorage::mock_value_slot0(), AccountStorage::mock_value_slot1()] {
         let tx_context = TransactionContextBuilder::with_existing_mock_account().build().unwrap();
 
         let code = format!(
@@ -406,7 +406,7 @@ async fn test_get_item() -> miette::Result<()> {
 
 #[tokio::test]
 async fn test_get_map_item() -> miette::Result<()> {
-    let named_slot = AccountStorage::mock_item_2();
+    let named_slot = AccountStorage::mock_map_slot();
     let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(Auth::IncrNonce)
         .with_component(MockAccountComponent::with_slots(vec![named_slot.clone()]))
@@ -454,9 +454,9 @@ async fn test_get_map_item() -> miette::Result<()> {
 #[tokio::test]
 async fn test_get_storage_slot_type() -> miette::Result<()> {
     for slot_name in [
-        AccountStorage::mock_item_0().name(),
-        AccountStorage::mock_item_1().name(),
-        AccountStorage::mock_item_2().name(),
+        AccountStorage::mock_value_slot0().name(),
+        AccountStorage::mock_value_slot1().name(),
+        AccountStorage::mock_map_slot().name(),
     ] {
         let tx_context = TransactionContextBuilder::with_existing_mock_account().build().unwrap();
         let (slot_idx, slot) = tx_context
@@ -558,7 +558,7 @@ async fn test_set_map_item() -> miette::Result<()> {
     let (new_key, new_value) =
         (Word::from([109, 110, 111, 112u32]), Word::from([9, 10, 11, 12u32]));
 
-    let named_slot = AccountStorage::mock_item_2();
+    let named_slot = AccountStorage::mock_map_slot();
     let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(Auth::IncrNonce)
         .with_component(MockAccountComponent::with_slots(vec![named_slot.clone()]))
@@ -1453,7 +1453,7 @@ async fn test_get_initial_item() -> miette::Result<()> {
         end
         "#,
         mock_value_slot0 = &*MOCK_VALUE_SLOT0,
-        expected_initial_value = &AccountStorage::mock_item_0().storage_slot().value(),
+        expected_initial_value = &AccountStorage::mock_value_slot0().storage_slot().value(),
     );
 
     tx_context.execute_code(&code).await?;
@@ -1463,7 +1463,7 @@ async fn test_get_initial_item() -> miette::Result<()> {
 
 #[tokio::test]
 async fn test_get_initial_map_item() -> miette::Result<()> {
-    let map_slot = AccountStorage::mock_item_2();
+    let map_slot = AccountStorage::mock_map_slot();
     let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(Auth::IncrNonce)
         .with_component(MockAccountComponent::with_slots(vec![map_slot.clone()]))

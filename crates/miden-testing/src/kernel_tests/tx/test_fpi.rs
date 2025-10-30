@@ -59,8 +59,8 @@ use crate::{Auth, MockChainBuilder, assert_execution_error, assert_transaction_e
 #[tokio::test]
 async fn test_fpi_memory_single_account() -> anyhow::Result<()> {
     // Prepare the test data
-    let value_slot = AccountStorage::mock_item_0();
-    let map_slot = AccountStorage::mock_item_2();
+    let value_slot = AccountStorage::mock_value_slot0();
+    let map_slot = AccountStorage::mock_map_slot();
     let foreign_account_code_source = "
         use.miden::account
 
@@ -97,7 +97,7 @@ async fn test_fpi_memory_single_account() -> anyhow::Result<()> {
 
     let native_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(Auth::IncrNonce)
-        .with_component(MockAccountComponent::with_slots(vec![AccountStorage::mock_item_2()]))
+        .with_component(MockAccountComponent::with_slots(vec![AccountStorage::mock_map_slot()]))
         .storage_mode(AccountStorageMode::Public)
         .build_existing()?;
 
@@ -314,8 +314,8 @@ async fn test_fpi_memory_single_account() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_fpi_memory_two_accounts() -> anyhow::Result<()> {
     // Prepare the test data
-    let value_slot0 = AccountStorage::mock_item_0();
-    let value_slot1 = AccountStorage::mock_item_1();
+    let value_slot0 = AccountStorage::mock_value_slot0();
+    let value_slot1 = AccountStorage::mock_value_slot1();
 
     let foreign_account_code_source_1 = "
         use.miden::account
@@ -533,8 +533,8 @@ async fn test_fpi_memory_two_accounts() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
     // Prepare the test data
-    let value_slot = AccountStorage::mock_item_0();
-    let map_slot = AccountStorage::mock_item_2();
+    let value_slot = AccountStorage::mock_value_slot0();
+    let map_slot = AccountStorage::mock_map_slot();
 
     let foreign_account_code_source = "
         use.miden::account
@@ -912,8 +912,8 @@ async fn foreign_account_get_initial_balance() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
     // ------ SECOND FOREIGN ACCOUNT ---------------------------------------------------------------
-    let value_slot0 = AccountStorage::mock_item_0();
-    let value_slot1 = AccountStorage::mock_item_1();
+    let mock_value_slot0 = AccountStorage::mock_value_slot0();
+    let mock_value_slot1 = AccountStorage::mock_value_slot1();
 
     let second_foreign_account_code_source = format!(
         r#"
@@ -960,15 +960,15 @@ async fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
             exec.sys::truncate_stack
         end
     "#,
-        mock_value_slot0 = value_slot0.name(),
-        mock_value_slot1 = value_slot1.name(),
+        mock_value_slot0 = mock_value_slot0.name(),
+        mock_value_slot1 = mock_value_slot1.name(),
     );
 
     let source_manager = Arc::new(DefaultSourceManager::default());
     let second_foreign_account_component = AccountComponent::compile(
         second_foreign_account_code_source,
         TransactionKernel::with_kernel_library(source_manager.clone()),
-        vec![value_slot0.clone()],
+        vec![mock_value_slot0.clone()],
     )?
     .with_supports_all_types();
 
@@ -1024,13 +1024,13 @@ async fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
             drop drop drop
         end
     "#,
-        mock_value_slot0 = value_slot0.name(),
+        mock_value_slot0 = mock_value_slot0.name(),
     );
 
     let first_foreign_account_component = AccountComponent::compile(
         NamedSource::new("first_foreign_account", first_foreign_account_code_source),
         TransactionKernel::with_kernel_library(source_manager.clone()),
-        vec![value_slot0.clone(), value_slot1.clone()],
+        vec![mock_value_slot0.clone(), mock_value_slot1.clone()],
     )?
     .with_supports_all_types();
 
@@ -1145,7 +1145,7 @@ async fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_nested_fpi_stack_overflow() -> anyhow::Result<()> {
     let mut foreign_accounts = Vec::new();
-    let value_slot = AccountStorage::mock_item_0();
+    let value_slot = AccountStorage::mock_value_slot0();
 
     let last_foreign_account_code_source = format!(
         r#"
@@ -1433,7 +1433,7 @@ async fn test_fpi_stale_account() -> anyhow::Result<()> {
         end
     ";
 
-    let value_slot = AccountStorage::mock_item_0();
+    let value_slot = AccountStorage::mock_value_slot0();
     let foreign_account_component = AccountComponent::compile(
         foreign_account_code_source,
         TransactionKernel::with_kernel_library(Arc::new(DefaultSourceManager::default())),
@@ -1448,7 +1448,7 @@ async fn test_fpi_stale_account() -> anyhow::Result<()> {
 
     let native_account = AccountBuilder::new([4; 32])
         .with_auth_component(Auth::IncrNonce)
-        .with_component(MockAccountComponent::with_slots(vec![AccountStorage::mock_item_2()]))
+        .with_component(MockAccountComponent::with_slots(vec![AccountStorage::mock_map_slot()]))
         .build_existing()?;
 
     let mut mock_chain =
@@ -1826,8 +1826,8 @@ async fn test_get_initial_item_and_get_initial_map_item_with_foreign_account() -
         .storage_mode(AccountStorageMode::Public)
         .build_existing()?;
 
-    let value_slot = AccountStorage::mock_item_0();
-    let map_slot = AccountStorage::mock_item_2();
+    let mock_value_slot0 = AccountStorage::mock_value_slot0();
+    let mock_map_slot = AccountStorage::mock_map_slot();
     let (map_key, map_value) = STORAGE_LEAVES_2[0];
 
     // Create foreign procedures that test get_initial_item and get_initial_map_item
@@ -1849,13 +1849,13 @@ async fn test_get_initial_item_and_get_initial_map_item_with_foreign_account() -
             exec.sys::truncate_stack
         end
     "#,
-        mock_value_slot0 = value_slot.name()
+        mock_value_slot0 = mock_value_slot0.name()
     );
 
     let foreign_account_component = AccountComponent::compile(
         NamedSource::new("foreign_account", foreign_account_code_source),
         TransactionKernel::assembler().with_debug_mode(true),
-        vec![value_slot.clone(), map_slot.clone()],
+        vec![mock_value_slot0.clone(), mock_map_slot.clone()],
     )?
     .with_supports_all_types();
 
@@ -1902,10 +1902,10 @@ async fn test_get_initial_item_and_get_initial_map_item_with_foreign_account() -
             exec.sys::truncate_stack
         end
         "#,
-        mock_map_slot = map_slot.name(),
+        mock_map_slot = mock_map_slot.name(),
         foreign_account_id_prefix = foreign_account.id().prefix().as_felt(),
         foreign_account_id_suffix = foreign_account.id().suffix(),
-        expected_value_slot_0 = value_slot.storage_slot().value(),
+        expected_value_slot_0 = mock_value_slot0.storage_slot().value(),
         map_key = &map_key,
         map_value = &map_value,
     );
