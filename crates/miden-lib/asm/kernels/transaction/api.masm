@@ -158,42 +158,51 @@ export.account_compute_delta_commitment
     # => [ACCOUNT_COMMITMENT, pad(12)]
 end
 
-#! Returns the ID of the active account.
+#! Returns the ID of the specified account.
 #!
-#! Inputs:  [pad(16)]
+#! Inputs:  [is_native, pad(15)]
 #! Outputs: [account_id_prefix, account_id_suffix, pad(14)]
 #!
 #! Where:
+#! - is_native is a boolean flag that indicates whether the account ID was requested for a native or
+#!   an active account.
 #! - account_id_{prefix,suffix} are the prefix and suffix felts of the ID of the active account.
 #!
 #! Invocation: dynexec
 export.account_get_id
-    # get the active account ID
-    exec.account::get_id
-    # => [account_id_prefix, account_id_suffix, pad(16)]
-
-    # truncate the stack
-    movup.2 drop movup.2 drop
-    # => [account_id_prefix, account_id_suffix, pad(14)]
-end
-
-#! Returns the native account ID.
-#!
-#! Inputs:  [pad(16)]
-#! Outputs: [account_id_prefix, account_id_suffix, pad(14)]
-#!
-#! Where:
-#! - account_id_{prefix,suffix} are the prefix and suffix felts of the native account ID of the
-#!   transaction.
-#!
-#! Invocation: dynexec
-export.account_get_native_id
     # get the native account ID
     exec.memory::get_native_account_id
-    # => [account_id_prefix, account_id_suffix, pad(16)]
+    # => [native_account_id_prefix, native_account_id_suffix, is_native, pad(15)]
 
-    # truncate the stack
-    movup.2 drop movup.2 drop
+    # get the active account ID
+    exec.account::get_id
+    # => [
+    #        active_account_id_prefix, active_account_id_suffix, 
+    #        native_account_id_prefix, native_account_id_suffix, 
+    #        is_native, pad(15)
+    #    ]
+
+    # prepare the stack for the first cdrop
+    movup.2 dup.4
+    # => [
+    #        is_native, native_account_id_prefix, active_account_id_prefix,
+    #        active_account_id_suffix, native_account_id_suffix, is_native, pad(15)
+    #    ]
+
+    # drop the prefix corresponding to the is_native flag
+    cdrop
+    # => [account_id_prefix, active_account_id_suffix, native_account_id_suffix, is_native, pad(15)]
+
+    # prepare the stack for the second cdrop
+    movdn.3 swap movup.2
+    # => [is_native, native_account_id_suffix, active_account_id_suffix, account_id_prefix, pad(15)]
+
+    # drop the suffix corresponding to the is_native flag
+    cdrop
+    # => [account_id_suffix, account_id_prefix, pad(15)]
+
+    # rearrange the ID parts and truncate the stack 
+    swap movup.2 drop
     # => [account_id_prefix, account_id_suffix, pad(14)]
 end
 

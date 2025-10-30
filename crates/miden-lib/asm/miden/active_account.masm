@@ -16,15 +16,16 @@ use.miden::kernel_proc_offsets
 #!
 #! Invocation: exec
 export.get_id
-    # start padding the stack
-    push.0.0.0
+    # pad the stack
+    padw padw padw push.0.0
+    # => [pad(14)]
+
+    # push the flag indicating that the ID of the current account was requested
+    push.0
+    # => [is_native = 0, pad(14)]
 
     exec.kernel_proc_offsets::account_get_id_offset
-    # => [offset, 0, 0, 0]
-
-    # pad the stack
-    padw swapw padw padw swapdw
-    # => [offset, pad(15)]
+    # => [offset, is_native = 0, pad(14)]
 
     syscall.exec_kernel_proc
     # => [account_id_prefix, account_id_suffix, pad(14)]
@@ -48,14 +49,11 @@ end
 #!
 #! Invocation: exec
 export.get_nonce
-    # start padding the stack
-    push.0.0.0
+    # pad the stack
+    padw padw padw push.0.0.0
+    # => [pad(15)]
 
     exec.kernel_proc_offsets::account_get_nonce_offset
-    # => [offset, 0, 0, 0]
-
-    # pad the stack
-    padw swapw padw padw swapdw
     # => [offset, pad(15)]
 
     syscall.exec_kernel_proc
@@ -142,11 +140,11 @@ end
 #!
 #! Invocation: exec
 export.get_code_commitment
-    exec.kernel_proc_offsets::account_get_code_commitment_offset
-    # => [offset]
-
     # pad the stack
-    push.0.0.0 movup.3 padw swapw padw padw swapdw
+    padw padw padw push.0.0.0
+    # => [pad(15)]
+
+    exec.kernel_proc_offsets::account_get_code_commitment_offset
     # => [offset, pad(15)]
 
     syscall.exec_kernel_proc
@@ -206,11 +204,11 @@ end
 #!
 #! Invocation: exec
 export.compute_storage_commitment
-    exec.kernel_proc_offsets::account_compute_storage_commitment_offset
-    # => [offset]
-
     # pad the stack
-    push.0.0.0 movup.3 padw swapw padw padw swapdw
+    padw padw padw push.0.0.0
+    # => [pad(15)]
+
+    exec.kernel_proc_offsets::account_compute_storage_commitment_offset
     # => [offset, pad(15)]
 
     syscall.exec_kernel_proc
