@@ -27,7 +27,7 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
     ACCOUNT_ID_SENDER,
 };
-use miden_objects::testing::storage::SLOT_NAME_VALUE0;
+use miden_objects::testing::storage::MOCK_VALUE_SLOT0;
 use miden_objects::transaction::{OutputNote, OutputNotes};
 use miden_processor::{Felt, ONE};
 
@@ -430,13 +430,13 @@ async fn test_epilogue_increment_nonce_success() -> anyhow::Result<()> {
         use.$kernel::epilogue
         use.$kernel::memory
 
-        const SLOT_NAME_VALUE0 = word("{slot_name_value0}")
+        const MOCK_VALUE_SLOT0 = word("{mock_value_slot0}")
 
         begin
             exec.prologue::prepare_transaction
 
             push.1.2.3.4
-            push.SLOT_NAME_VALUE0[0..2]
+            push.MOCK_VALUE_SLOT0[0..2]
             call.account::set_item
             dropw
 
@@ -449,7 +449,7 @@ async fn test_epilogue_increment_nonce_success() -> anyhow::Result<()> {
             push.{expected_nonce} assert_eq
         end
         "#,
-        slot_name_value0 = &*SLOT_NAME_VALUE0,
+        mock_value_slot0 = &*MOCK_VALUE_SLOT0,
     );
 
     tx_context.execute_code(code.as_str()).await?;
@@ -463,11 +463,11 @@ async fn epilogue_fails_on_account_state_change_without_nonce_increment() -> any
         r#"
         use.mock::account
 
-        const SLOT_NAME_VALUE0 = word("{slot_name_value0}")
+        const MOCK_VALUE_SLOT0 = word("{mock_value_slot0}")
 
         begin
             push.91.92.93.94
-            push.SLOT_NAME_VALUE0[0..2]
+            push.MOCK_VALUE_SLOT0[0..2]
             repeat.5 movup.5 drop end
             # => [name_id_prefix, name_id_suffix, VALUE]
             call.account::set_item
@@ -475,7 +475,7 @@ async fn epilogue_fails_on_account_state_change_without_nonce_increment() -> any
             dropw
         end
         "#,
-        slot_name_value0 = &*SLOT_NAME_VALUE0,
+        mock_value_slot0 = &*MOCK_VALUE_SLOT0,
     );
 
     let tx_script = ScriptBuilder::with_mock_libraries()?.compile_tx_script(code)?;

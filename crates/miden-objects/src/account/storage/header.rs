@@ -211,7 +211,7 @@ mod tests {
     use super::AccountStorageHeader;
     use crate::Word;
     use crate::account::{AccountStorage, StorageSlotType};
-    use crate::testing::storage::{SLOT_NAME_MAP, SLOT_NAME_VALUE0, SLOT_NAME_VALUE1};
+    use crate::testing::storage::{MOCK_MAP_SLOT, MOCK_VALUE_SLOT0, MOCK_VALUE_SLOT1};
 
     #[test]
     fn test_from_account_storage() {
@@ -219,13 +219,13 @@ mod tests {
 
         // create new storage header from AccountStorage
         let mut slots = vec![
-            (SLOT_NAME_VALUE0.clone(), StorageSlotType::Value, Word::from([1, 2, 3, 4u32])),
+            (MOCK_VALUE_SLOT0.clone(), StorageSlotType::Value, Word::from([1, 2, 3, 4u32])),
             (
-                SLOT_NAME_VALUE1.clone(),
+                MOCK_VALUE_SLOT1.clone(),
                 StorageSlotType::Value,
                 Word::from([Felt::new(5), Felt::new(6), Felt::new(7), Felt::new(8)]),
             ),
-            (SLOT_NAME_MAP.clone(), StorageSlotType::Map, storage_map.root()),
+            (MOCK_MAP_SLOT.clone(), StorageSlotType::Map, storage_map.root()),
         ];
         slots.sort_unstable_by_key(|(slot_name, ..)| slot_name.compute_id());
 

@@ -13,7 +13,7 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
 };
 use miden_objects::testing::constants::FUNGIBLE_ASSET_AMOUNT;
-use miden_objects::testing::storage::SLOT_NAME_MAP;
+use miden_objects::testing::storage::MOCK_MAP_SLOT;
 
 use super::Word;
 use crate::{Auth, MockChain, TransactionContextBuilder};
@@ -178,7 +178,7 @@ async fn setting_map_item_with_lazy_loading_succeeds() -> anyhow::Result<()> {
     );
 
     // The slot name of the mock map in account storage.
-    let slot_name_map = &*SLOT_NAME_MAP;
+    let mock_map_slot = &*MOCK_MAP_SLOT;
 
     let value0 = Word::from([3, 4, 5, 6u32]);
     let value1 = Word::from([9, 8, 7, 6u32]);
@@ -187,20 +187,20 @@ async fn setting_map_item_with_lazy_loading_succeeds() -> anyhow::Result<()> {
         r#"
       use.mock::account
 
-      const SLOT_NAME_MAP = word("{slot_name_map}")
+      const MOCK_MAP_SLOT = word("{mock_map_slot}")
 
       begin
           # Update an existing key.
           push.{value0}
           push.{existing_key}
-          push.SLOT_NAME_MAP[0..2]
+          push.MOCK_MAP_SLOT[0..2]
           # => [name_id_prefix, name_id_suffix, KEY, VALUE]
           call.account::set_map_item
 
           # Insert a non-existent key.
           push.{value1}
           push.{non_existent_key}
-          push.SLOT_NAME_MAP[0..2]
+          push.MOCK_MAP_SLOT[0..2]
           # => [name_id_prefix, name_id_suffix, KEY, VALUE]
           call.account::set_map_item
 
@@ -220,7 +220,7 @@ async fn setting_map_item_with_lazy_loading_succeeds() -> anyhow::Result<()> {
         .execute()
         .await?;
 
-    let map_delta = tx.account_delta().storage().maps().get(slot_name_map).unwrap();
+    let map_delta = tx.account_delta().storage().maps().get(mock_map_slot).unwrap();
     assert_eq!(map_delta.entries().get(&LexicographicWord::new(existing_key)).unwrap(), &value0);
     assert_eq!(
         map_delta.entries().get(&LexicographicWord::new(non_existent_key)).unwrap(),
@@ -243,19 +243,19 @@ async fn getting_map_item_with_lazy_loading_succeeds() -> anyhow::Result<()> {
         "test setup requires that the non existent key does not exist"
     );
 
-    let slot_name_map = &*SLOT_NAME_MAP;
+    let mock_map_slot = &*MOCK_MAP_SLOT;
 
     let code = format!(
         r#"
       use.std::word
       use.mock::account
 
-      const SLOT_NAME_MAP = word("{slot_name_map}")
+      const MOCK_MAP_SLOT = word("{mock_map_slot}")
 
       begin
           # Fetch value from existing key.
           push.{existing_key}
-          push.SLOT_NAME_MAP[0..2]
+          push.MOCK_MAP_SLOT[0..2]
           # => [name_id_prefix, name_id_suffix, KEY]
           call.account::get_map_item
 
@@ -264,7 +264,7 @@ async fn getting_map_item_with_lazy_loading_succeeds() -> anyhow::Result<()> {
 
           # Fetch a non-existent key.
           push.{non_existent_key}
-          push.SLOT_NAME_MAP[0..2]
+          push.MOCK_MAP_SLOT[0..2]
           # => [name_id_prefix, name_id_suffix, KEY]
           call.account::get_map_item
 

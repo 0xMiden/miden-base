@@ -69,11 +69,11 @@ impl AccountStorageDeltaBuilder {
 // CONSTANTS
 // ================================================================================================
 
-pub static SLOT_NAME_VALUE0: LazyLock<SlotName> =
+pub static MOCK_VALUE_SLOT0: LazyLock<SlotName> =
     LazyLock::new(|| SlotName::new("miden::test::value0").expect("slot name should be valid"));
-pub static SLOT_NAME_VALUE1: LazyLock<SlotName> =
+pub static MOCK_VALUE_SLOT1: LazyLock<SlotName> =
     LazyLock::new(|| SlotName::new("miden::test::value1").expect("slot name should be valid"));
-pub static SLOT_NAME_MAP: LazyLock<SlotName> =
+pub static MOCK_MAP_SLOT: LazyLock<SlotName> =
     LazyLock::new(|| SlotName::new("miden::test::map").expect("slot name should be valid"));
 
 pub const STORAGE_VALUE_0: Word =
@@ -102,15 +102,15 @@ impl AccountStorage {
     }
 
     pub fn mock_item_0() -> NamedStorageSlot {
-        NamedStorageSlot::with_value(SLOT_NAME_VALUE0.clone(), STORAGE_VALUE_0)
+        NamedStorageSlot::with_value(MOCK_VALUE_SLOT0.clone(), STORAGE_VALUE_0)
     }
 
     pub fn mock_item_1() -> NamedStorageSlot {
-        NamedStorageSlot::with_value(SLOT_NAME_VALUE1.clone(), STORAGE_VALUE_1)
+        NamedStorageSlot::with_value(MOCK_VALUE_SLOT1.clone(), STORAGE_VALUE_1)
     }
 
     pub fn mock_item_2() -> NamedStorageSlot {
-        NamedStorageSlot::with_map(SLOT_NAME_MAP.clone(), Self::mock_map())
+        NamedStorageSlot::with_map(MOCK_MAP_SLOT.clone(), Self::mock_map())
     }
 
     pub fn mock_map() -> StorageMap {

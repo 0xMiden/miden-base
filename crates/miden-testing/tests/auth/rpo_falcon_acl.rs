@@ -15,7 +15,7 @@ use miden_objects::account::{
     AccountType,
 };
 use miden_objects::note::Note;
-use miden_objects::testing::storage::SLOT_NAME_VALUE0;
+use miden_objects::testing::storage::MOCK_VALUE_SLOT0;
 use miden_objects::transaction::OutputNote;
 use miden_objects::{Felt, FieldElement, Word};
 use miden_testing::{Auth, MockChain};
@@ -105,31 +105,31 @@ async fn test_rpo_falcon_acl() -> anyhow::Result<()> {
         r#"
         use.mock::account
 
-        const SLOT_NAME_VALUE0 = word("{slot_name_value0}")
+        const MOCK_VALUE_SLOT0 = word("{mock_value_slot0}")
 
         begin
-            push.SLOT_NAME_VALUE0[0..2]
+            push.MOCK_VALUE_SLOT0[0..2]
             call.account::get_item
             dropw
         end
         "#,
-        slot_name_value0 = &*SLOT_NAME_VALUE0,
+        mock_value_slot0 = &*MOCK_VALUE_SLOT0,
     );
 
     let tx_script_with_trigger_2 = format!(
         r#"
         use.mock::account
 
-        const SLOT_NAME_VALUE0 = word("{slot_name_value0}")
+        const MOCK_VALUE_SLOT0 = word("{mock_value_slot0}")
 
         begin
             push.1.2.3.4
-            push.SLOT_NAME_VALUE0[0..2]
+            push.MOCK_VALUE_SLOT0[0..2]
             call.account::set_item
             dropw dropw
         end
         "#,
-        slot_name_value0 = &*SLOT_NAME_VALUE0,
+        mock_value_slot0 = &*MOCK_VALUE_SLOT0,
     );
 
     let tx_script_trigger_1 =

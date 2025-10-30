@@ -32,7 +32,7 @@ use miden_objects::testing::constants::{
     NON_FUNGIBLE_ASSET_DATA,
     NON_FUNGIBLE_ASSET_DATA_2,
 };
-use miden_objects::testing::storage::{SLOT_NAME_MAP, SLOT_NAME_VALUE0};
+use miden_objects::testing::storage::{MOCK_MAP_SLOT, MOCK_VALUE_SLOT0};
 use miden_objects::transaction::TransactionScript;
 use miden_objects::{EMPTY_WORD, Felt, LexicographicWord, Word, ZERO};
 use rand::{Rng, SeedableRng};
@@ -655,8 +655,8 @@ async fn asset_and_storage_delta() -> anyhow::Result<()> {
         use.mock::account
         use.miden::output_note
 
-        const SLOT_NAME_VALUE0 = word("{slot_name_value0}")
-        const SLOT_NAME_MAP = word("{slot_name_map}")
+        const MOCK_VALUE_SLOT0 = word("{mock_value_slot0}")
+        const MOCK_MAP_SLOT = word("{mock_map_slot}")
 
         ## TRANSACTION SCRIPT
         ## ========================================================================================
@@ -668,7 +668,7 @@ async fn asset_and_storage_delta() -> anyhow::Result<()> {
             # => [13, 11, 9, 7]
 
             # get the index of account storage slot
-            push.SLOT_NAME_VALUE0[0..2]
+            push.MOCK_VALUE_SLOT0[0..2]
             # => [name_id_prefix, name_id_suffix, 13, 11, 9, 7]
             # update the storage value
             call.account::set_item dropw
@@ -685,7 +685,7 @@ async fn asset_and_storage_delta() -> anyhow::Result<()> {
             # => [14, 15, 16, 17, 18, 19, 20, 21]
 
             # get the index of account storage slot
-            push.SLOT_NAME_MAP[0..2]
+            push.MOCK_MAP_SLOT[0..2]
             # => [name_id_prefix, name_id_suffix, 14, 15, 16, 17, 18, 19, 20, 21]
 
             # update the storage value
@@ -699,8 +699,8 @@ async fn asset_and_storage_delta() -> anyhow::Result<()> {
             dropw dropw dropw dropw
         end
     "#,
-        slot_name_value0 = &*SLOT_NAME_VALUE0,
-        slot_name_map = &*SLOT_NAME_MAP,
+        mock_value_slot0 = &*MOCK_VALUE_SLOT0,
+        mock_map_slot = &*MOCK_MAP_SLOT,
     );
 
     let tx_script = ScriptBuilder::with_mock_libraries()?.compile_tx_script(tx_script_src)?;
@@ -745,7 +745,7 @@ async fn asset_and_storage_delta() -> anyhow::Result<()> {
     // We expect one updated item and one updated map
     assert_eq!(executed_transaction.account_delta().storage().values().len(), 1);
     assert_eq!(
-        executed_transaction.account_delta().storage().values().get(&SLOT_NAME_VALUE0),
+        executed_transaction.account_delta().storage().values().get(&MOCK_VALUE_SLOT0),
         Some(&updated_slot_value)
     );
 
@@ -754,7 +754,7 @@ async fn asset_and_storage_delta() -> anyhow::Result<()> {
         .account_delta()
         .storage()
         .maps()
-        .get(&SLOT_NAME_MAP)
+        .get(&MOCK_MAP_SLOT)
         .context("failed to get expected value from storage map")?
         .entries();
     assert_eq!(
