@@ -364,10 +364,11 @@ where
         Ok(asset_witness_to_advice_mutation(asset_witness))
     }
 
-    /// Handles a request for a note script by querying the data store.
+    /// Handles a request for a [`NoteScript`] by querying the [`DataStore`].
     ///
-    /// The script is fetched from the data store, and then the NoteRecipient is built and used
-    /// to create the OutputNoteBuilder.
+    /// The script is fetched from the data store and used to build a [`NoteRecipient`], which is
+    /// then used to create an [`OutputNoteBuilder`]. This function is only called for public notes
+    /// where the script is not already available in the advice provider.
     async fn on_note_script_requested(
         &mut self,
         script_root: Word,
@@ -377,17 +378,12 @@ where
         note_inputs: NoteInputs,
         serial_num: Word,
     ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
-        // Try to get the note script from the data store
         let note_script_result = self.base_host.store().get_note_script(script_root).await;
 
         let (recipient, mutations) = match note_script_result {
             Ok(note_script) => {
-                // Script found - build the recipient
                 let script_felts: Vec<Felt> = (&note_script).into();
-
                 let recipient = NoteRecipient::new(serial_num, note_script, note_inputs);
-
-                // Create mutations to add the script to the advice map
                 let mutations = vec![AdviceMutation::extend_map(AdviceMap::from_iter([(
                     script_root,
                     script_felts,
@@ -395,20 +391,15 @@ where
 
                 (Some(recipient), mutations)
             },
+            Err(DataStoreError::NoteScriptNotFound(_)) if metadata.is_private() => {
+                (None, Vec::new())
+            },
             Err(DataStoreError::NoteScriptNotFound(_)) => {
-                // Script not found in data store
-                if metadata.is_private() {
-                    // For private notes, gracefully handle missing script
-                    (None, Vec::new())
-                } else {
-                    // For public notes, this is an error
-                    return Err(TransactionKernelError::other(format!(
-                        "note script with root {script_root} not found in data store for public note"
-                    )));
-                }
+                return Err(TransactionKernelError::other(format!(
+                    "note script with root {script_root} not found in data store for public note"
+                )));
             },
             Err(err) => {
-                // Other data store errors should be propagated
                 return Err(TransactionKernelError::other_with_source(
                     "failed to retrieve note script from data store",
                     err,
@@ -416,7 +407,6 @@ where
             },
         };
 
-        // Build the note builder with the recipient (or None for private notes without script)
         let note_builder = OutputNoteBuilder::new(metadata, recipient_digest, recipient)?;
         self.base_host.insert_output_note_builder(note_idx, note_builder)?;
 
