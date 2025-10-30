@@ -414,17 +414,17 @@ mod tests {
 
     #[test]
     fn test_get_slot_by_name() -> anyhow::Result<()> {
-        const COUNTER_SLOT: SlotName = SlotName::from_static_str("miden::test::counter");
-        const MAP_SLOT: SlotName = SlotName::from_static_str("miden::test::map");
+        let counter_slot = SlotName::new("miden::test::counter")?;
+        let map_slot = SlotName::new("miden::test::map")?;
 
         let slots = vec![
-            NamedStorageSlot::with_empty_value(COUNTER_SLOT),
-            NamedStorageSlot::with_empty_map(MAP_SLOT),
+            NamedStorageSlot::with_empty_value(counter_slot.clone()),
+            NamedStorageSlot::with_empty_map(map_slot.clone()),
         ];
         let storage = AccountStorage::new(slots.clone())?;
 
-        assert_eq!(storage.get(&COUNTER_SLOT).unwrap(), &slots[0]);
-        assert_eq!(storage.get(&MAP_SLOT).unwrap(), &slots[1]);
+        assert_eq!(storage.get(&counter_slot).unwrap(), &slots[0]);
+        assert_eq!(storage.get(&map_slot).unwrap(), &slots[1]);
 
         Ok(())
     }
