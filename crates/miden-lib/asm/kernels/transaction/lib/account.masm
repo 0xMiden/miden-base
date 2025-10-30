@@ -1459,21 +1459,6 @@ proc.get_map_item_raw
     assert.err=ERR_ACCOUNT_READING_MAP_VALUE_FROM_NON_MAP_SLOT
     # => [KEY, ROOT, index]
 
-    # SAFETY: We just checked that the storage slot is of type map.
-    exec.get_map_item_raw_unchecked
-    # => [VALUE]
-end
-
-#! Shared procedure for getting a map item from a storage slot without checking the storage slot
-#! type or index.
-#!
-#! WARNING:
-#! - Must be called with an index that is in bounds.
-#! - Must be called only when the index points to a map type storage slot.
-#!
-#! Inputs:  [KEY, ROOT, index]
-#! Outputs: [VALUE]
-export.get_map_item_raw_unchecked
     emit.ACCOUNT_STORAGE_BEFORE_GET_MAP_ITEM_EVENT
     # => [KEY, ROOT, index]
 
