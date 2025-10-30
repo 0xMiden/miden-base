@@ -67,7 +67,8 @@ impl NoteRecipient {
     /// Returns the recipient data formatted for the advice map structure.
     ///
     /// This method returns a vector of (key, value) pairs that should be inserted into the advice
-    /// map:
+    /// map. Each pair consists of a [`Word`] key and a [`Vec<Felt>`] value containing 8 elements (2
+    /// [`Word`]s):
     /// - RECIPIENT: [SN_SCRIPT_HASH, INPUTS_COMMITMENT]
     /// - SN_SCRIPT_HASH: [SN_HASH, SCRIPT_ROOT]
     /// - SN_HASH: [SERIAL_NUM, EMPTY_WORD]
@@ -77,33 +78,26 @@ impl NoteRecipient {
     /// - SCRIPT_ROOT is the commitment of the note script (i.e., the script's MAST root)
     /// - SERIAL_NUM is the recipient's serial number
     /// - EMPTY_WORD is [0, 0, 0, 0]
+    ///
+    /// This function mirrors the logic of the `note::build_recipient` procedure in miden-lib
     pub fn to_advice_map_entries(&self) -> Vec<(Word, Vec<Felt>)> {
-        let mut entries = Vec::new();
-
-        // Compute the intermediate hashes
         let sn_hash = Hasher::merge(&[self.serial_num, Word::empty()]);
         let sn_script_hash = Hasher::merge(&[sn_hash, self.script.root()]);
 
-        // SN_HASH: [SERIAL_NUM, EMPTY_WORD]
-        let mut sn_hash_data = Vec::with_capacity(8);
-        sn_hash_data.extend(self.serial_num);
-        sn_hash_data.extend(Word::empty());
-        entries.push((sn_hash, sn_hash_data));
-
-        // SN_SCRIPT_HASH: [SN_HASH, SCRIPT_ROOT]
-        let mut sn_script_hash_data = Vec::with_capacity(8);
-        sn_script_hash_data.extend(sn_hash);
-        sn_script_hash_data.extend(self.script.root());
-        entries.push((sn_script_hash, sn_script_hash_data));
-
-        // RECIPIENT: [SN_SCRIPT_HASH, INPUTS_COMMITMENT]
-        let mut recipient_data = Vec::with_capacity(8);
-        recipient_data.extend(sn_script_hash);
-        recipient_data.extend(self.inputs.commitment());
-        entries.push((self.digest, recipient_data));
-
-        entries
+        vec![
+            (sn_hash, concat_words(self.serial_num, Word::empty())),
+            (sn_script_hash, concat_words(sn_hash, self.script.root())),
+            (self.digest, concat_words(sn_script_hash, self.inputs.commitment())),
+        ]
     }
+}
+
+/// Concatenates two [`Word`]s into a [`Vec<Felt>`] containing 8 elements.
+fn concat_words(first: Word, second: Word) -> Vec<Felt> {
+    let mut result = Vec::with_capacity(8);
+    result.extend(first);
+    result.extend(second);
+    result
 }
 
 fn compute_recipient_digest(serial_num: Word, script: &NoteScript, inputs: &NoteInputs) -> Word {

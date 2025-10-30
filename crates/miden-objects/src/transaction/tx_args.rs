@@ -166,10 +166,8 @@ impl TransactionArgs {
         let script = note_recipient.script();
         let script_encoded: Vec<Felt> = script.into();
 
-        // Get the hierarchical advice map entries
         let mut new_elements = note_recipient.to_advice_map_entries();
 
-        // Add the inputs and script data
         new_elements.push((inputs.commitment(), inputs.format_for_advice()));
         new_elements.push((script.root(), script_encoded));
 
