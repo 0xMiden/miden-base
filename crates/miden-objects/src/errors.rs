@@ -147,10 +147,10 @@ pub enum AccountError {
     StorageSlotNotMap(SlotName),
     #[error("storage slot {0} is not of type value")]
     StorageSlotNotValue(SlotName),
-    #[error("found duplicate storage slot name {0}")]
+    #[error("storage slot name {0} is assigned to more than one slot")]
     DuplicateStorageSlotName(SlotName),
     #[error(
-        "storage cannot contain a user-provided slot with name {}",
+        "account storage cannot contain a user-provided slot with name {} as it is reserved by the protocol",
         AccountStorage::faucet_metadata_slot()
     )]
     StorageSlotNameMustNotBeFaucetMetadata,
@@ -159,7 +159,7 @@ pub enum AccountError {
     #[error("storage does not contain a slot with ID {slot_name_id}")]
     StorageSlotNameIdNotFound { slot_name_id: SlotNameId },
     #[error("storage slots must be sorted by slot name ID")]
-    StorageSlotsUnsorted,
+    UnsortedStorageSlots,
     #[error("number of storage slots is {0} but max possible number is {max}", max = AccountStorage::MAX_NUM_STORAGE_SLOTS)]
     StorageTooManySlots(u64),
     #[error("procedure storage offset + size is {0} which exceeds the maximum value of {max}",
@@ -328,10 +328,6 @@ pub enum NetworkIdError {
 
 #[derive(Debug, Error)]
 pub enum AccountDeltaError {
-    #[error(
-        "storage slot index {slot_index} is greater than or equal to the number of slots {num_slots}"
-    )]
-    StorageSlotIndexOutOfBounds { slot_index: u8, num_slots: u8 },
     #[error("storage slot {0} was updated as a value and as a map")]
     StorageSlotUsedAsDifferentTypes(SlotName),
     #[error("non fungible vault can neither be added nor removed twice")]

@@ -81,7 +81,7 @@ impl AccountStorageHeader {
         }
 
         if !slots.is_sorted_by_key(|(slot_name, ..)| slot_name.compute_id()) {
-            return Err(AccountError::StorageSlotsUnsorted);
+            return Err(AccountError::UnsortedStorageSlots);
         }
 
         Ok(Self { slots })
