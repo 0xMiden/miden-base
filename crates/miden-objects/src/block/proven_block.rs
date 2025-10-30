@@ -51,7 +51,7 @@ pub struct ProvenBlock {
     /// appeared in the proposed block.
     transactions: OrderedTransactionHeaders,
 
-    /// ...
+    /// The commitment to the proof of the block.
     proof_commitment: Word,
 }
 
