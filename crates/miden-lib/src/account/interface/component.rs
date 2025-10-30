@@ -300,11 +300,6 @@ fn extract_multisig_auth_scheme(storage: &AccountStorage) -> AuthScheme {
     let threshold = config[0].as_int() as u32;
     let num_approvers = config[1].as_int() as u8;
 
-    // The multisig component has a fixed storage layout:
-    // - Slot 0: [threshold, num_approvers, 0, 0]
-    // - Slot 1: Map with public keys
-    // - Slot 2: Map with executed transactions
-    // The public keys are always stored in slot 1, regardless of storage_index
     let approver_public_keys_slot = AuthRpoFalcon512Multisig::approver_public_keys_slot();
 
     let mut pub_keys = Vec::new();
