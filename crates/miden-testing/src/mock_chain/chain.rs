@@ -518,7 +518,8 @@ impl MockChain {
     pub fn prove_block(&self, proposed_block: ProposedBlock) -> ProvenBlock {
         let mut rng = ChaCha20Rng::from_os_rng();
         let mut key = SecretKey::with_rng(&mut rng);
-        let signed_block = sign_block(proposed_block, &mut key);
+        let signed_block =
+            sign_block(proposed_block, &mut key).expect("proposed block is signable");
         LocalBlockProver::new(0).prove_dummy(signed_block)
     }
 

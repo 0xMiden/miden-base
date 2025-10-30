@@ -21,6 +21,7 @@ use miden_objects::transaction::PartialBlockchain;
 use crate::block::errors::BlockHeaderError;
 use crate::transaction::TransactionKernel;
 
+/// Constructs a block header from the provided proposed block.
 pub fn construct_block_header(
     proposed_block: &ProposedBlock,
 ) -> Result<BlockHeader, BlockHeaderError> {
@@ -67,11 +68,10 @@ pub fn construct_block_header(
     // Currently undefined and reserved for future use.
     // See miden-base/1155.
     let version = 0;
-
-    // For now, we're not actually proving the block.
-    let proof_commitment = Word::empty();
-
     let tx_kernel_commitment = TransactionKernel.to_commitment();
+
+    // TODO(serge): remove proof commitment when block header is updated to no longer have it.
+    let proof_commitment = Word::empty();
 
     Ok(BlockHeader::new(
         version,

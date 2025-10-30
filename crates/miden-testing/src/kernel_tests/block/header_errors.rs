@@ -2,8 +2,7 @@ use alloc::vec::Vec;
 
 use anyhow::Context;
 use assert_matches::assert_matches;
-use miden_lib::block::errors::BlockHeaderError;
-use miden_lib::block::header::construct_block_header;
+use miden_lib::block::{BlockHeaderError, construct_block_header};
 use miden_lib::testing::account_component::{IncrNonceAuthComponent, MockAccountComponent};
 use miden_lib::testing::mock_account::MockAccountExt;
 use miden_objects::account::delta::AccountUpdateDetails;
