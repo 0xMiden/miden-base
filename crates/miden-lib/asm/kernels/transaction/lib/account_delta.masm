@@ -177,6 +177,9 @@ proc.update_value_slot_delta
     # => [INIT_VALUE, CURRENT_VALUE, slot_idx, RATE, RATE, PERM]
 
     # if account is new, replace INIT_VALUE with EMPTY_WORD
+    # we need to do this specifically for new accounts because for those, get_initial_item returns
+    # the same as get_item but we want the delta for value slots to be from an empty value to the
+    # final value
     # use get_init_nonce so the delta is still correctly computed when the nonce has already been
     # incremented
     padw exec.memory::get_init_nonce eq.0
