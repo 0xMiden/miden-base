@@ -59,8 +59,8 @@ use crate::{Auth, MockChainBuilder, assert_execution_error, assert_transaction_e
 #[tokio::test]
 async fn test_fpi_memory_single_account() -> anyhow::Result<()> {
     // Prepare the test data
-    let value_slot = AccountStorage::mock_value_slot0();
-    let map_slot = AccountStorage::mock_map_slot();
+    let mock_value_slot0 = AccountStorage::mock_value_slot0();
+    let mock_map_slot = AccountStorage::mock_map_slot();
     let foreign_account_code_source = "
         use.miden::account
 
@@ -86,7 +86,7 @@ async fn test_fpi_memory_single_account() -> anyhow::Result<()> {
     let foreign_account_component = AccountComponent::compile(
         foreign_account_code_source,
         TransactionKernel::with_kernel_library(source_manager.clone()),
-        vec![value_slot.clone(), map_slot.clone()],
+        vec![mock_value_slot0.clone(), mock_map_slot.clone()],
     )?
     .with_supports_all_types();
 
@@ -156,7 +156,7 @@ async fn test_fpi_memory_single_account() -> anyhow::Result<()> {
             exec.sys::truncate_stack
             end
             "#,
-        mock_value_slot0 = value_slot.name(),
+        mock_value_slot0 = mock_value_slot0.name(),
         foreign_prefix = foreign_account.id().prefix().as_felt(),
         foreign_suffix = foreign_account.id().suffix(),
         get_item_foreign_hash = foreign_account.code().procedures()[1].mast_root(),
@@ -166,7 +166,7 @@ async fn test_fpi_memory_single_account() -> anyhow::Result<()> {
 
     assert_eq!(
         exec_output.get_stack_word(0),
-        value_slot.storage_slot().value(),
+        mock_value_slot0.storage_slot().value(),
         "Value at the top of the stack should be equal to [1, 2, 3, 4]",
     );
 
@@ -213,7 +213,7 @@ async fn test_fpi_memory_single_account() -> anyhow::Result<()> {
             exec.sys::truncate_stack
         end
         "#,
-        mock_map_slot = map_slot.name(),
+        mock_map_slot = mock_map_slot.name(),
         foreign_prefix = foreign_account.id().prefix().as_felt(),
         foreign_suffix = foreign_account.id().suffix(),
         map_key = STORAGE_LEAVES_2[0].0,
@@ -289,7 +289,7 @@ async fn test_fpi_memory_single_account() -> anyhow::Result<()> {
             exec.sys::truncate_stack
         end
         "#,
-        mock_value_slot0 = value_slot.name(),
+        mock_value_slot0 = mock_value_slot0.name(),
         foreign_prefix = foreign_account.id().prefix().as_felt(),
         foreign_suffix = foreign_account.id().suffix(),
         get_item_foreign_hash = foreign_account.code().procedures()[1].mast_root(),
@@ -314,8 +314,8 @@ async fn test_fpi_memory_single_account() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_fpi_memory_two_accounts() -> anyhow::Result<()> {
     // Prepare the test data
-    let value_slot0 = AccountStorage::mock_value_slot0();
-    let value_slot1 = AccountStorage::mock_value_slot1();
+    let mock_value_slot0 = AccountStorage::mock_value_slot0();
+    let mock_value_slot1 = AccountStorage::mock_value_slot1();
 
     let foreign_account_code_source_1 = "
         use.miden::account
@@ -347,14 +347,14 @@ async fn test_fpi_memory_two_accounts() -> anyhow::Result<()> {
     let foreign_account_component_1 = AccountComponent::compile(
         foreign_account_code_source_1,
         TransactionKernel::with_kernel_library(Arc::new(DefaultSourceManager::default())),
-        vec![value_slot0.clone()],
+        vec![mock_value_slot0.clone()],
     )?
     .with_supports_all_types();
 
     let foreign_account_component_2 = AccountComponent::compile(
         foreign_account_code_source_2,
         TransactionKernel::with_kernel_library(Arc::new(DefaultSourceManager::default())),
-        vec![value_slot1.clone()],
+        vec![mock_value_slot1.clone()],
     )?
     .with_supports_all_types();
 
@@ -473,8 +473,8 @@ async fn test_fpi_memory_two_accounts() -> anyhow::Result<()> {
             exec.sys::truncate_stack
         end
         "#,
-        mock_value_slot0 = value_slot0.name(),
-        mock_value_slot1 = value_slot1.name(),
+        mock_value_slot0 = mock_value_slot0.name(),
+        mock_value_slot1 = mock_value_slot1.name(),
         get_item_foreign_1_hash = foreign_account_1.code().procedures()[1].mast_root(),
         get_item_foreign_2_hash = foreign_account_2.code().procedures()[1].mast_root(),
         foreign_1_prefix = foreign_account_1.id().prefix().as_felt(),
@@ -533,8 +533,8 @@ async fn test_fpi_memory_two_accounts() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
     // Prepare the test data
-    let value_slot = AccountStorage::mock_value_slot0();
-    let map_slot = AccountStorage::mock_map_slot();
+    let mock_value_slot0 = AccountStorage::mock_value_slot0();
+    let mock_map_slot = AccountStorage::mock_map_slot();
 
     let foreign_account_code_source = "
         use.miden::account
@@ -561,7 +561,7 @@ async fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
     let foreign_account_component = AccountComponent::compile(
         NamedSource::new("foreign_account", foreign_account_code_source),
         TransactionKernel::with_kernel_library(source_manager.clone()),
-        vec![value_slot.clone(), map_slot.clone()],
+        vec![mock_value_slot0.clone(), mock_map_slot.clone()],
     )?
     .with_supports_all_types();
 
@@ -646,8 +646,8 @@ async fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
             exec.sys::truncate_stack
         end
         "#,
-        mock_value_slot0 = value_slot.name(),
-        mock_map_slot = map_slot.name(),
+        mock_value_slot0 = mock_value_slot0.name(),
+        mock_map_slot = mock_map_slot.name(),
         foreign_prefix = foreign_account.id().prefix().as_felt(),
         foreign_suffix = foreign_account.id().suffix(),
         map_key = STORAGE_LEAVES_2[0].0,
@@ -1145,7 +1145,7 @@ async fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_nested_fpi_stack_overflow() -> anyhow::Result<()> {
     let mut foreign_accounts = Vec::new();
-    let value_slot = AccountStorage::mock_value_slot0();
+    let mock_value_slot0 = AccountStorage::mock_value_slot0();
 
     let last_foreign_account_code_source = format!(
         r#"
@@ -1170,13 +1170,13 @@ async fn test_nested_fpi_stack_overflow() -> anyhow::Result<()> {
                     assert
                 end
         "#,
-        mock_value_slot0 = value_slot.name(),
+        mock_value_slot0 = mock_value_slot0.name(),
     );
 
     let last_foreign_account_component = AccountComponent::compile(
         last_foreign_account_code_source,
         TransactionKernel::with_kernel_library(Arc::new(DefaultSourceManager::default())),
-        vec![value_slot.clone()],
+        vec![mock_value_slot0.clone()],
     )
     .unwrap()
     .with_supports_all_types();
@@ -1433,11 +1433,11 @@ async fn test_fpi_stale_account() -> anyhow::Result<()> {
         end
     ";
 
-    let value_slot = AccountStorage::mock_value_slot0();
+    let mock_value_slot0 = AccountStorage::mock_value_slot0();
     let foreign_account_component = AccountComponent::compile(
         foreign_account_code_source,
         TransactionKernel::with_kernel_library(Arc::new(DefaultSourceManager::default())),
-        vec![value_slot.clone()],
+        vec![mock_value_slot0.clone()],
     )?
     .with_supports_all_types();
 
@@ -1461,9 +1461,10 @@ async fn test_fpi_stale_account() -> anyhow::Result<()> {
 
     // Modify the account's storage to change its storage commitment and in turn the account
     // commitment.
-    foreign_account
-        .storage_mut()
-        .set_item(value_slot.name(), Word::from([Felt::ONE, Felt::ONE, Felt::ONE, Felt::ONE]))?;
+    foreign_account.storage_mut().set_item(
+        mock_value_slot0.name(),
+        Word::from([Felt::ONE, Felt::ONE, Felt::ONE, Felt::ONE]),
+    )?;
 
     // We pass the modified foreign account with a witness that is valid against the ref block. This
     // means the foreign account's commitment does not match the commitment that the account witness
