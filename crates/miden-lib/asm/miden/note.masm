@@ -7,11 +7,6 @@ use.std::mem
 
 const.ERR_PROLOGUE_NOTE_INPUTS_LEN_EXCEEDED_LIMIT="number of note inputs exceeded the maximum limit of 128"
 
-# CONSTANTS
-# =================================================================================================
-
-const.RECIPIENT_DATA_ADVICE_STACK_LENGTH=13
-
 # NOTE UTILITY PROCEDURES
 # =================================================================================================
 
