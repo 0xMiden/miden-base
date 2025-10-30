@@ -154,9 +154,10 @@ impl TransactionArgs {
 
     /// Populates the advice inputs with the expected recipient data for creating output notes.
     ///
-    /// The advice inputs' map is extended with the following keys:
-    ///
-    /// - recipient_digest |-> recipient details (inputs_hash, script_root, serial_num).
+    /// The advice inputs' map is extended with the following entries:
+    /// - RECIPIENT: [SN_SCRIPT_HASH, INPUTS_COMMITMENT]
+    /// - SN_SCRIPT_HASH: [SN_HASH, SCRIPT_ROOT]
+    /// - SN_HASH: [SERIAL_NUM, EMPTY_WORD]
     /// - inputs_commitment |-> inputs.
     /// - script_root |-> script.
     pub fn add_output_note_recipient<T: AsRef<NoteRecipient>>(&mut self, note_recipient: T) {
@@ -165,11 +166,12 @@ impl TransactionArgs {
         let script = note_recipient.script();
         let script_encoded: Vec<Felt> = script.into();
 
-        let new_elements = [
-            (note_recipient.digest(), note_recipient.to_elements()),
-            (inputs.commitment(), inputs.to_elements()),
-            (script.root(), script_encoded),
-        ];
+        // Get the hierarchical advice map entries
+        let mut new_elements = note_recipient.to_advice_map_entries();
+
+        // Add the inputs and script data
+        new_elements.push((inputs.commitment(), inputs.to_elements()));
+        new_elements.push((script.root(), script_encoded));
 
         self.advice_inputs.extend(AdviceInputs::default().with_map(new_elements));
     }

@@ -49,7 +49,7 @@ use miden_objects::transaction::{
     TransactionSummary,
 };
 use miden_objects::vm::RowIndex;
-use miden_objects::{Hasher, Word};
+use miden_objects::{Hasher, Word, ZERO};
 use miden_processor::{
     AdviceError,
     AdviceMutation,
@@ -548,16 +548,63 @@ where
         let recipient = if let Some(data) =
             process.advice_provider().get_mapped_values(&recipient_digest)
         {
-            // NoteDetails from AdviceProvider: [num_inputs, INPUTS_COMMITMENT, SCRIPT_ROOT,
-            // SERIAL_NUM]
-            if data.len() != 13 {
+            // NoteDetails from AdviceProvider: [SN_SCRIPT_HASH, INPUTS_COMMITMENT]
+            if data.len() != 8 {
                 return Err(TransactionKernelError::MalformedRecipientData(data.to_vec()));
             }
 
-            let num_inputs = data[0].as_int() as usize;
-            let inputs_commitment = Word::new([data[1], data[2], data[3], data[4]]);
-            let script_root = Word::new([data[5], data[6], data[7], data[8]]);
-            let serial_num = Word::from([data[9], data[10], data[11], data[12]]);
+            let sn_script_hash = Word::new([data[0], data[1], data[2], data[3]]);
+            let inputs_commitment = Word::new([data[4], data[5], data[6], data[7]]);
+
+            // Get the SN_SCRIPT_HASH data: [SN_HASH, SCRIPT_ROOT]
+            let sn_script_data = process.advice_provider().get_mapped_values(&sn_script_hash);
+            let Some(sn_script_data) = sn_script_data else {
+                return Err(TransactionKernelError::MalformedRecipientData(vec![]));
+            };
+            if sn_script_data.len() != 8 {
+                return Err(TransactionKernelError::MalformedRecipientData(
+                    sn_script_data.to_vec(),
+                ));
+            }
+
+            let sn_hash = Word::new([
+                sn_script_data[0],
+                sn_script_data[1],
+                sn_script_data[2],
+                sn_script_data[3],
+            ]);
+            let script_root = Word::new([
+                sn_script_data[4],
+                sn_script_data[5],
+                sn_script_data[6],
+                sn_script_data[7],
+            ]);
+
+            // Get the SN_HASH data: [SERIAL_NUM, EMPTY_WORD]
+            let sn_hash_data = process.advice_provider().get_mapped_values(&sn_hash);
+            let Some(sn_hash_data) = sn_hash_data else {
+                return Err(TransactionKernelError::MalformedRecipientData(vec![]));
+            };
+            if sn_hash_data.len() != 8 {
+                return Err(TransactionKernelError::MalformedRecipientData(sn_hash_data.to_vec()));
+            }
+
+            let serial_num =
+                Word::new([sn_hash_data[0], sn_hash_data[1], sn_hash_data[2], sn_hash_data[3]]);
+            // Note: sn_hash_data[4..8] should be EMPTY_WORD but we don't need to validate it
+
+            // Get the inputs data from INPUTS_COMMITMENT (padded)
+            let inputs_data = process.advice_provider().get_mapped_values(&inputs_commitment);
+
+            // For now, let's find the actual number of inputs by counting non-zero elements
+            // from the end, since inputs are padded with zeros
+            let num_inputs = match inputs_data {
+                None => 0,
+                Some(inputs) => {
+                    // Find the last non-zero element to determine actual input count
+                    inputs.iter().rposition(|&x| x != ZERO).map(|pos| pos + 1).unwrap_or(0)
+                },
+            };
 
             // Check if the script is in the advice provider
             let script_data = process.advice_provider().get_mapped_values(&script_root);

@@ -64,22 +64,45 @@ impl NoteRecipient {
         self.digest
     }
 
-    /// Returns the recipient formatted to be used with the advice map.
+    /// Returns the recipient data formatted for the advice map structure.
     ///
-    /// The format is `inputs_length || INPUTS_COMMITMENT || SCRIPT_ROOT || SERIAL_NUMBER`
+    /// This method returns a vector of (key, value) pairs that should be inserted into the advice
+    /// map:
+    /// - RECIPIENT: [SN_SCRIPT_HASH, INPUTS_COMMITMENT]
+    /// - SN_SCRIPT_HASH: [SN_HASH, SCRIPT_ROOT]
+    /// - SN_HASH: [SERIAL_NUM, EMPTY_WORD]
     ///
     /// Where:
-    /// - inputs_length is the length of the note inputs
     /// - INPUTS_COMMITMENT is the commitment of the note inputs
     /// - SCRIPT_ROOT is the commitment of the note script (i.e., the script's MAST root)
-    /// - SERIAL_NUMBER is the recipient's serial number
-    pub fn to_elements(&self) -> Vec<Felt> {
-        let mut result = Vec::with_capacity(13);
-        result.push(self.inputs.num_values().into());
-        result.extend(self.inputs.commitment());
-        result.extend(self.script.root());
-        result.extend(self.serial_num);
-        result
+    /// - SERIAL_NUM is the recipient's serial number
+    /// - EMPTY_WORD is [0, 0, 0, 0]
+    pub fn to_advice_map_entries(&self) -> Vec<(Word, Vec<Felt>)> {
+        let mut entries = Vec::new();
+
+        // Compute the intermediate hashes
+        let sn_hash = Hasher::merge(&[self.serial_num, Word::empty()]);
+        let sn_script_hash = Hasher::merge(&[sn_hash, self.script.root()]);
+
+        // SN_HASH: [SERIAL_NUM, EMPTY_WORD]
+        let mut sn_hash_data = Vec::with_capacity(8);
+        sn_hash_data.extend(self.serial_num);
+        sn_hash_data.extend(Word::empty());
+        entries.push((sn_hash, sn_hash_data));
+
+        // SN_SCRIPT_HASH: [SN_HASH, SCRIPT_ROOT]
+        let mut sn_script_hash_data = Vec::with_capacity(8);
+        sn_script_hash_data.extend(sn_hash);
+        sn_script_hash_data.extend(self.script.root());
+        entries.push((sn_script_hash, sn_script_hash_data));
+
+        // RECIPIENT: [SN_SCRIPT_HASH, INPUTS_COMMITMENT]
+        let mut recipient_data = Vec::with_capacity(8);
+        recipient_data.extend(sn_script_hash);
+        recipient_data.extend(self.inputs.commitment());
+        entries.push((self.digest, recipient_data));
+
+        entries
     }
 }
 

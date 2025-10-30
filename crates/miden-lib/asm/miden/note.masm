@@ -97,14 +97,19 @@ end
 #! This procedure computes the commitment of the note inputs and then uses it to calculate the note
 #! recipient by hashing this commitment, the provided script root, and the serial number.
 #!
-#! The procedure also inserts the following data into the advice map:
-#! - Advice map: {
-#!     INPUTS_COMMITMENT: [[NOTE_INPUTS]]
-#!     RECIPIENT: [num_inputs, INPUTS_COMMITMENT, SCRIPT_ROOT, SERIAL_NUM]
-#! }
-#!
-#! Inputs:  [inputs_ptr, num_inputs, SERIAL_NUM, SCRIPT_ROOT]
-#! Outputs: [RECIPIENT]
+#! Inputs:
+#!   Operand stack: [inputs_ptr, num_inputs, SERIAL_NUM, SCRIPT_ROOT]
+#!   Advice map: {
+#!      INPUTS_COMMITMENT: [INPUTS],
+#!   }
+#! Outputs:
+#!   Operand stack: [RECIPIENT]
+#!   Advice map: {
+#!      INPUTS_COMMITMENT: [INPUTS],
+#!      RECIPIENT: [SN_SCRIPT_HASH, INPUTS_COMMITMENT],
+#!      SN_SCRIPT_HASH: [SN_HASH, SCRIPT_ROOT],
+#!      SN_HASH: [SERIAL_NUM, EMPTY_WORD],
+#!   }
 #!
 #! Where:
 #! - inputs_ptr is the memory address where the note inputs are stored.
@@ -114,69 +119,50 @@ end
 #! - RECIPIENT is the commitment to the input note's script, inputs, and the serial number.
 #!
 #! Locals:
-#! - 2: inputs_ptr
-#! - 3: num_inputs (for NoteDetails format)
-#! - 4..8: INPUTS_COMMITMENT
-#! - 8..12: SCRIPT_ROOT
-#! - 12..16: SERIAL_NUM
+#! - 0: inputs_ptr
+#! - 1: num_inputs
 #!
 #! Panics if:
 #! - inputs_ptr is not word-aligned (i.e., is not a multiple of 4).
 #! - num_inputs is greater than 128.
 #!
 #! Invocation: exec
-export.build_recipient.16
-    dup.1 dup.1 loc_store.2 loc_store.3
+export.build_recipient.2
+    dup.1 dup.1 loc_store.0 loc_store.1
     # => [inputs_ptr, num_inputs, SERIAL_NUM, SCRIPT_ROOT]
 
     exec.compute_inputs_commitment
     # => [INPUTS_COMMITMENT, SERIAL_NUM, SCRIPT_ROOT]
 
+    # Insert the note inputs into the advice map under INPUTS_COMMITMENT
+    dupw
+    # => [INPUTS_COMMITMENT, INPUTS_COMMITMENT, SERIAL_NUM, SCRIPT_ROOT]
+
+    loc_load.0 loc_load.1 loc_load.0
+    # => [inputs_ptr, num_inputs, inputs_ptr, INPUTS_COMMITMENT, INPUTS_COMMITMENT, SERIAL_NUM, SCRIPT_ROOT]
+
+    add swap
+    # => [inputs_ptr, end_ptr, INPUTS_COMMITMENT, INPUTS_COMMITMENT, SERIAL_NUM, SCRIPT_ROOT]
+
+    movdn.5 movdn.5
+    # => [INPUTS_COMMITMENT, inputs_ptr, end_ptr, INPUTS_COMMITMENT, SERIAL_NUM, SCRIPT_ROOT]
+
+    adv.insert_mem
+    # => [INPUTS_COMMITMENT, inputs_ptr, end_ptr, INPUTS_COMMITMENT, SERIAL_NUM, SCRIPT_ROOT]
+
+    dropw drop drop
+    # => [INPUTS_COMMITMENT, SERIAL_NUM, SCRIPT_ROOT]
+
     movdnw.2
     # => [SERIAL_NUM, SCRIPT_ROOT, INPUTS_COMMITMENT]
 
-    dupw.2 dupw.2 dupw.2
-    # => [SERIAL_NUM, SCRIPT_ROOT, INPUTS_COMMITMENT, SERIAL_NUM, SCRIPT_ROOT, INPUTS_COMMITMENT]
+    padw adv.insert_hdword hmerge
+    # => [SN_HASH, SCRIPT_ROOT, INPUTS_COMMITMENT]
 
-    exec.build_recipient_hash
-    # => [RECIPIENT, SERIAL_NUM, SCRIPT_ROOT, INPUTS_COMMITMENT]
+    swapw adv.insert_hdword hmerge
+    # => [SN_SCRIPT_HASH, INPUTS_COMMITMENT]
 
-    # inserting NoteInputs into AdviceMap
-    dupw.3
-    # => [INPUTS_COMMITMENT, RECIPIENT, SERIAL_NUM, SCRIPT_ROOT, INPUTS_COMMITMENT]
-
-    loc_load.2 loc_load.3 loc_load.2
-    # => [inputs_ptr, num_inputs, inputs_ptr, INPUTS_COMMITMENT, RECIPIENT, SERIAL_NUM, SCRIPT_ROOT, INPUTS_COMMITMENT]
-
-    add swap
-    # => [inputs_ptr, end_ptr, INPUTS_COMMITMENT, RECIPIENT, SERIAL_NUM, SCRIPT_ROOT, INPUTS_COMMITMENT]
-
-    movdn.5 movdn.5
-    # => [INPUTS_COMMITMENT, inputs_ptr, end_ptr, RECIPIENT, SERIAL_NUM, SCRIPT_ROOT, INPUTS_COMMITMENT]
-
-    adv.insert_mem
-    # => [INPUTS_COMMITMENT, inputs_ptr, end_ptr, RECIPIENT, SERIAL_NUM, SCRIPT_ROOT, INPUTS_COMMITMENT]
-
-    dropw drop drop
-    # => [RECIPIENT, SERIAL_NUM, SCRIPT_ROOT, INPUTS_COMMITMENT]
-
-    movdnw.3
-    # => [SERIAL_NUM, SCRIPT_ROOT, INPUTS_COMMITMENT, RECIPIENT]
-
-    # inserting NoteDetails into AdviceMap
-    loc_storew.12 dropw loc_storew.8 dropw loc_storew.4 dropw
-    # => [RECIPIENT]
-
-    locaddr.3 dup add.RECIPIENT_DATA_ADVICE_STACK_LENGTH swap
-    # => [mem_ptr, end_ptr, RECIPIENT]
-
-    movdn.5 movdn.5
-    # => [RECIPIENT, mem_ptr, end_ptr]
-
-    adv.insert_mem
-    # => [RECIPIENT, mem_ptr, end_ptr]
-
-    movup.5 drop movup.4 drop
+    swapw adv.insert_hdword hmerge
     # => [RECIPIENT]
 end
 
