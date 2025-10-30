@@ -128,6 +128,15 @@ end
 
 #! Computes the commitment to the native account's delta.
 #!
+#! The commitment to an empty delta is defined as the empty word.
+#!
+#! During an account-creating transaction (when the initial nonce is 0), this procedure may not
+#! return the empty word even if the initial storage commitment and the current storage commitment
+#! are identical (storage hasn't changed). This is because the delta for a new account must
+#! represent its entire newly created state, and the initial storage in a transaction is
+#! initialized to the the storage that the account ID commits to, which may be non-empty. This
+#! does not have any consequences other than being inconsistent in this edge case.
+#!
 #! Inputs:  [pad(16)]
 #! Outputs: [DELTA_COMMITMENT, pad(12)]
 #!

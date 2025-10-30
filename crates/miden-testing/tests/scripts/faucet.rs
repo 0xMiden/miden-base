@@ -1,6 +1,7 @@
 extern crate alloc;
 
 use core::slice;
+use std::sync::Arc;
 
 use miden_lib::account::faucets::{BasicFungibleFaucet, FungibleFaucetExt, NetworkFungibleFaucet};
 use miden_lib::errors::tx_kernel_errors::ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED;
@@ -13,6 +14,7 @@ use miden_objects::account::{
     AccountStorageMode,
     AccountType,
 };
+use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::asset::{Asset, FungibleAsset};
 use miden_objects::note::{
     Note,
@@ -83,9 +85,15 @@ pub async fn execute_mint_transaction(
     faucet: Account,
     params: &FaucetTestParams,
 ) -> anyhow::Result<ExecutedTransaction> {
+    let source_manager = Arc::new(DefaultSourceManager::default());
     let tx_script_code = create_mint_script_code(params);
-    let tx_script = ScriptBuilder::default().compile_tx_script(tx_script_code)?;
-    let tx_context = mock_chain.build_tx_context(faucet, &[], &[])?.tx_script(tx_script).build()?;
+    let tx_script = ScriptBuilder::with_source_manager(source_manager.clone())
+        .compile_tx_script(tx_script_code)?;
+    let tx_context = mock_chain
+        .build_tx_context(faucet, &[], &[])?
+        .tx_script(tx_script)
+        .with_source_manager(source_manager)
+        .build()?;
 
     Ok(tx_context.execute().await?)
 }

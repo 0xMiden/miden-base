@@ -22,6 +22,7 @@ use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{
     Account,
     AccountBuilder,
+    AccountDelta,
     AccountId,
     AccountStorageMode,
     AccountType,
@@ -174,11 +175,13 @@ impl MockChainBuilder {
             .accounts
             .into_values()
             .map(|account| {
-                BlockAccountUpdate::new(
-                    account.id(),
-                    account.commitment(),
-                    AccountUpdateDetails::New(account),
-                )
+                let account_id = account.id();
+                let account_commitment = account.commitment();
+                let account_delta = AccountDelta::try_from(account)
+                    .expect("chain builder should only store existing accounts without seeds");
+                let update_details = AccountUpdateDetails::Delta(account_delta);
+
+                BlockAccountUpdate::new(account_id, account_commitment, update_details)
             })
             .collect();
 

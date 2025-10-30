@@ -126,6 +126,15 @@ end
 #! commitment doesn't change during transaction execution: commitment returned by this procedure
 #! could be used as both the initial and the current.
 #!
+#! The commitment to an empty delta is defined as the empty word.
+#!
+#! During an account-creating transaction (when the initial nonce is 0), this procedure will not
+#! return the empty word even if the initial storage commitment and the current storage commitment
+#! are identical (storage hasn't changed). This is because the delta for a new account must
+#! represent its entire newly created state, and the initial storage in a transaction is
+#! initialized to the the storage that the account ID commits to, which may be non-empty. This
+#! does not have any consequences other than being inconsistent in this edge case.
+#!
 #! Inputs:  []
 #! Outputs: [CODE_COMMITMENT]
 #!
@@ -151,6 +160,11 @@ end
 
 #! Returns the storage commitment of the active account at the beginning of the transaction.
 #!
+#! During an account-creating transaction (when the initial nonce is 0), this procedure and
+#! compute_storage_commitment will return the same value at the beginning of the transaction
+#! (before any note or transaction scripts were executed). Despite that, the account delta may
+#! not be empty. See account::compute_delta_commitment for more.
+#!
 #! Inputs:  []
 #! Outputs: [INIT_STORAGE_COMMITMENT]
 #!
@@ -174,11 +188,16 @@ export.get_initial_storage_commitment
     # => [INIT_STORAGE_COMMITMENT]
 end
 
-#! Computes the latest account storage commitment of the active account.
+#! Computes the latest account storage commitment of the current account.
 #!
 #! Notice that this procedure always returns the latest commitment, but it doesn't actually always
 #! recompute it: recomputation is performed only if the account's storage has been changed,
 #! otherwise the cached value is returned.
+#!
+#! During an account-creating transaction (when the initial nonce is 0), this procedure and
+#! get_initial_storage_commitment will return the same value at the beginning of the transaction
+#! (before any note or transaction scripts were executed). Despite that, the account delta may
+#! not be empty. See account::compute_delta_commitment for more.
 #!
 #! Inputs:  []
 #! Outputs: [STORAGE_COMMITMENT]
