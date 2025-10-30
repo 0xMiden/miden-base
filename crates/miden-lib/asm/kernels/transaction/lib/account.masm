@@ -598,12 +598,7 @@ export.set_item
     # => [slot_ptr, VALUE, OLD_VALUE]
 
     # store the new value into the slot
-    add.ACCOUNT_SLOT_VALUE_OFFSET mem_storew dropw
-    # => [OLD_VALUE]
-
-    # set the storage commitment dirty flag to indicate that the commitment is outdated
-    push.1
-    exec.memory::set_native_account_storage_commitment_dirty_flag
+    exec.set_item_raw
     # => [OLD_VALUE]
 end
 
@@ -720,7 +715,7 @@ export.set_map_item.12
     # => [NEW_ROOT, OLD_MAP_VALUE, KEY, NEW_VALUE]
 
     # store NEW_ROOT into the map slot's VALUE
-    loc_load.0 add.ACCOUNT_SLOT_VALUE_OFFSET mem_storew dropw
+    loc_load.0 exec.set_item_raw
     # => [OLD_MAP_VALUE, KEY, NEW_VALUE]
 
     swapw
@@ -742,11 +737,6 @@ export.set_map_item.12
 
     # load OLD_MAP_ROOT and OLD_MAP_VALUE as return values on the stack
     padw loc_loadw.4 padw loc_loadw.8
-    # => [OLD_MAP_ROOT, OLD_MAP_VALUE]
-
-    # set the storage commitment dirty flag to indicate that the commitment is outdated
-    push.1
-    exec.memory::set_native_account_storage_commitment_dirty_flag
     # => [OLD_MAP_ROOT, OLD_MAP_VALUE]
 end
 
@@ -1432,7 +1422,29 @@ export.get_slot_name
     # => [name_id_prefix, name_id_suffix]
 end
 
+#! Sets the value of the provided slot pointer to the provided value.
+#!
+#! The provided pointer must be a valid pointer into the current storage slot section.
+#!
+#! Inputs:  [slot_ptr, VALUE]
+#! Outputs: []
+#!
+#! Where:
+#! - slot_ptr is the pointer to the storage slots section.
+#! - VALUE is the new value of the item.
+proc.set_item_raw
+    add.ACCOUNT_SLOT_VALUE_OFFSET mem_storew dropw
+    # => []
+
+    # set the storage commitment dirty flag to indicate that the commitment is outdated
+    push.1
+    exec.memory::set_native_account_storage_commitment_dirty_flag
+    # => []
+end
+
 #! Gets the value of the provided slot pointer.
+#!
+#! The provided pointer must be a valid pointer into the initial or current storage slot section.
 #!
 #! Inputs:  [slot_ptr]
 #! Outputs: [VALUE]
