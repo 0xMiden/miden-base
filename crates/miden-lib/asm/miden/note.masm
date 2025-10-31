@@ -129,23 +129,19 @@ export.build_recipient.2
     exec.compute_inputs_commitment
     # => [INPUTS_COMMITMENT, SERIAL_NUM, SCRIPT_ROOT]
 
-    # Insert the note inputs into the advice map under INPUTS_COMMITMENT
-    dupw
-    # => [INPUTS_COMMITMENT, INPUTS_COMMITMENT, SERIAL_NUM, SCRIPT_ROOT]
-
     loc_load.0 loc_load.1 loc_load.0
-    # => [inputs_ptr, num_inputs, inputs_ptr, INPUTS_COMMITMENT, INPUTS_COMMITMENT, SERIAL_NUM, SCRIPT_ROOT]
+    # => [inputs_ptr, num_inputs, inputs_ptr, INPUTS_COMMITMENT, SERIAL_NUM, SCRIPT_ROOT]
 
     add swap
-    # => [inputs_ptr, end_ptr, INPUTS_COMMITMENT, INPUTS_COMMITMENT, SERIAL_NUM, SCRIPT_ROOT]
+    # => [inputs_ptr, end_ptr, INPUTS_COMMITMENT, SERIAL_NUM, SCRIPT_ROOT]
 
     movdn.5 movdn.5
-    # => [INPUTS_COMMITMENT, inputs_ptr, end_ptr, INPUTS_COMMITMENT, SERIAL_NUM, SCRIPT_ROOT]
+    # => [INPUTS_COMMITMENT, inputs_ptr, end_ptr, SERIAL_NUM, SCRIPT_ROOT]
 
     adv.insert_mem
-    # => [INPUTS_COMMITMENT, inputs_ptr, end_ptr, INPUTS_COMMITMENT, SERIAL_NUM, SCRIPT_ROOT]
+    # => [INPUTS_COMMITMENT, inputs_ptr, end_ptr, SERIAL_NUM, SCRIPT_ROOT]
 
-    dropw drop drop
+    movup.4 drop movup.4 drop
     # => [INPUTS_COMMITMENT, SERIAL_NUM, SCRIPT_ROOT]
 
     movdnw.2
