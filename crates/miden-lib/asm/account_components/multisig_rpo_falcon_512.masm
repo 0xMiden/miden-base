@@ -2,8 +2,11 @@
 #
 # See the `AuthRpoFalcon512Multisig` Rust type's documentation for more details.
 
-use.miden::account
-use.miden::auth
+use miden::active_account
+use miden::native_account
+use miden::auth
+
+type BeWord = struct @bigendian { a: felt, b: felt, c: felt, d: felt }
 
 # CONSTANTS
 # =================================================================================================
@@ -11,7 +14,7 @@ use.miden::auth
 # Auth Request Constants
 
 # The event emitted when a signature is not found for a required signer.
-const.AUTH_UNAUTHORIZED_EVENT=event("miden::auth::unauthorized")
+const AUTH_UNAUTHORIZED_EVENT = event("miden::auth::unauthorized")
 
 # Storage Layout Constants
 #
@@ -26,29 +29,31 @@ const.AUTH_UNAUTHORIZED_EVENT=event("miden::auth::unauthorized")
 # number of approvers are stored as:
 # [default_threshold, num_approvers, 0, 0].
 # The threshold is guaranteed to be less than or equal to num_approvers.
-const.THRESHOLD_CONFIG_SLOT=0
+const THRESHOLD_CONFIG_SLOT = 0
 
 # The slot in this component's storage layout where the public keys map is stored.
 # Map entries: [key_index, 0, 0, 0] => APPROVER_PUBLIC_KEY
-const.PUBLIC_KEYS_MAP_SLOT=1
+const PUBLIC_KEYS_MAP_SLOT = 1
 
 # The slot in this component's storage layout where executed transactions are stored.
 # Map entries: transaction_message => [is_executed, 0, 0, 0]
-const.EXECUTED_TXS_SLOT=2
+const EXECUTED_TXS_SLOT = 2
 
 # The slot in this component's storage layout where procedure thresholds are stored.
 # Map entries: PROC_ROOT => [proc_threshold, 0, 0, 0]
 const.PROC_THRESHOLD_ROOTS_SLOT=3
 
 # Executed Transaction Flag Constant
-const.IS_EXECUTED_FLAG=[1, 0, 0, 0]
+const IS_EXECUTED_FLAG = [1, 0, 0, 0]
 
 # ERRORS
-const.ERR_TX_ALREADY_EXECUTED="failed to approve multisig transaction as it was already executed"
+# =================================================================================================
 
-const.ERR_MALFORMED_MULTISIG_CONFIG="number of approvers must be equal to or greater than threshold"
+const ERR_TX_ALREADY_EXECUTED = "failed to approve multisig transaction as it was already executed"
 
-const.ERR_ZERO_IN_MULTISIG_CONFIG="number of approvers or threshold must not be zero"
+const ERR_MALFORMED_MULTISIG_CONFIG = "number of approvers must be equal to or greater than threshold"
+
+const ERR_ZERO_IN_MULTISIG_CONFIG = "number of approvers or threshold must not be zero"
 
 #! Check if transaction has already been executed and add it to executed transactions for replay protection.
 #!
@@ -57,7 +62,7 @@ const.ERR_ZERO_IN_MULTISIG_CONFIG="number of approvers or threshold must not be 
 #!
 #! Panics if:
 #! - the same transaction has already been executed
-proc.assert_new_tx
+proc assert_new_tx(msg: BeWord)
     push.IS_EXECUTED_FLAG
     # => [[0, 0, 0, is_executed], MSG]
 
@@ -68,7 +73,7 @@ proc.assert_new_tx
     # => [index, MSG, IS_EXECUTED_FLAG]
 
     # Set the key value pair in the map to mark transaction as executed
-    exec.account::set_map_item
+    exec.native_account::set_map_item
     # => [OLD_MAP_ROOT, [0, 0, 0, is_executed]]
 
     dropw drop drop drop
@@ -90,7 +95,7 @@ end
 #! Where:
 #! - init_num_of_approvers is the original number of approvers before the update
 #! - new_num_of_approvers is the new number of approvers after the update
-proc.cleanup_pubkey_mapping
+proc cleanup_pubkey_mapping(init_num_of_approvers: u32, new_num_of_approvers: u32)
     dup.1 dup.1
     u32assert2 u32lt
     # => [should_loop, i = init_num_of_approvers, new_num_of_approvers]
@@ -113,7 +118,7 @@ proc.cleanup_pubkey_mapping
         push.PUBLIC_KEYS_MAP_SLOT
         # => [pub_key_slot_idx, [0, 0, 0, i-1], EMPTY_WORD, i-1, new_num_of_approvers]
 
-        exec.account::set_map_item
+        exec.native_account::set_map_item
         # => [OLD_MAP_ROOT, OLD_MAP_VALUE, i-1, new_num_of_approvers]
 
         dropw dropw
@@ -146,7 +151,7 @@ end
 #! Locals:
 #! 0: new_num_of_approvers
 #! 1: init_num_of_approvers
-export.update_signers_and_threshold.2
+pub proc update_signers_and_threshold.2(multisig_config_hash: BeWord)
     adv.push_mapval
     # => [MULTISIG_CONFIG_HASH, pad(12)]
 
@@ -176,7 +181,7 @@ export.update_signers_and_threshold.2
     push.THRESHOLD_CONFIG_SLOT
     # => [slot, MULTISIG_CONFIG, pad(12)]
 
-    exec.account::set_item
+    exec.native_account::set_item
     # => [OLD_THRESHOLD_CONFIG, pad(12)]
 
     # store init_num_of_approvers for later
@@ -203,7 +208,7 @@ export.update_signers_and_threshold.2
         push.PUBLIC_KEYS_MAP_SLOT
         # => [pub_key_slot_idx, [0, 0, 0, i-1], PUB_KEY, i-1, pad(12)]
 
-        exec.account::set_map_item
+        exec.native_account::set_map_item
         # => [OLD_MAP_ROOT, OLD_MAP_VALUE, i-1, pad(12)]
 
         dropw dropw
@@ -233,7 +238,7 @@ end
 #
 #! Inputs:  [default_threshold]
 #! Outputs: [transaction_threshold]
-proc.compute_transaction_threshold.1
+proc compute_transaction_threshold.1(default_threshold: u32) -> u32
     # 1. initialize transaction_threshold = 0
     # 2. iterate through all account procedures
     #   a. check if the procedure was called during the transaction
@@ -250,7 +255,7 @@ proc.compute_transaction_threshold.1
     # => [transaction_threshold]
 
     # get the number of account procedures
-    exec.account::get_num_procedures
+    exec.active_account::get_num_procedures
     # => [num_procedures, transaction_threshold]
 
     # 2. iterate through all account procedures
@@ -261,11 +266,11 @@ proc.compute_transaction_threshold.1
         # => [num_procedures-1, num_procedures-1, transaction_threshold]
 
         # get procedure root of the procedure with index i
-        exec.account::get_procedure_root dupw
+        exec.active_account::get_procedure_root dupw
         # => [PROC_ROOT, PROC_ROOT, num_procedures-1, transaction_threshold]
 
         # 2a. check if this procedure has been called in the transaction
-        exec.account::was_procedure_called
+        exec.native_account::was_procedure_called
         # => [was_called, PROC_ROOT, num_procedures-1, transaction_threshold]
 
         # if it has been called, get the override threshold of that procedure
@@ -277,7 +282,7 @@ proc.compute_transaction_threshold.1
 
             # 2b. get the override proc_threshold of that procedure
             # if the procedure has no override threshold, the returned map item will be [0, 0, 0, 0]
-            exec.account::get_initial_map_item
+            exec.active_account::get_initial_map_item
             # => [[0, 0, 0, proc_threshold], num_procedures-1, transaction_threshold]
 
             drop drop drop dup dup.3
@@ -348,8 +353,8 @@ end
 #! - the same transaction has already been executed (replay protection).
 #!
 #! Invocation: call
-export.auth_tx_rpo_falcon512_multisig.1
-    exec.account::incr_nonce drop
+pub proc auth_tx_rpo_falcon512_multisig.1(salt: BeWord)
+    exec.native_account::incr_nonce drop
     # => [SALT]
 
     # ------ Computing transaction summary ------
@@ -370,7 +375,7 @@ export.auth_tx_rpo_falcon512_multisig.1
     push.THRESHOLD_CONFIG_SLOT
     # => [index, TX_SUMMARY_COMMITMENT]
 
-    exec.account::get_initial_item
+    exec.active_account::get_initial_item
     # => [0, 0, num_of_approvers, default_threshold, TX_SUMMARY_COMMITMENT]
 
     drop drop

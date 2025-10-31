@@ -422,7 +422,7 @@ async fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
           # => [pad(16)]
 
           push.0.0 exec.tx::get_block_number
-          exec.::miden::account::incr_nonce
+          exec.::miden::native_account::incr_nonce
           # => [[final_nonce, block_num, 0, 0], pad(16)]
           # => [SALT, pad(16)]
 

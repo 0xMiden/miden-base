@@ -1,4 +1,5 @@
 use alloc::sync::Arc;
+use alloc::vec::Vec;
 use std::collections::BTreeMap;
 
 use anyhow::Context;
@@ -28,6 +29,7 @@ use miden_objects::account::{
     AccountStorage,
     AccountStorageMode,
     AccountType,
+    StorageMap,
     StorageSlot,
 };
 use miden_objects::assembly::diagnostics::{IntoDiagnostic, NamedSource, Report, WrapErr, miette};
@@ -49,6 +51,7 @@ use miden_processor::{EMPTY_WORD, ExecutionError, MastNodeExt, Word};
 use miden_tx::{LocalTransactionProver, TransactionExecutorError};
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
+use winter_rand_utils::rand_value;
 
 use super::{Felt, StackInputs, ZERO};
 use crate::executor::CodeExecutor;
@@ -82,14 +85,14 @@ pub async fn compute_current_commitment() -> miette::Result<()> {
         use.std::word
 
         use.miden::prologue
-        use.miden::account
+        use.miden::active_account
         use.mock::account->mock_account
 
         begin
-            exec.account::get_initial_commitment
+            exec.active_account::get_initial_commitment
             # => [INITIAL_COMMITMENT]
 
-            exec.account::compute_current_commitment
+            exec.active_account::compute_commitment
             # => [CURRENT_COMMITMENT, INITIAL_COMMITMENT]
 
             assert_eqw.err="initial and current commitment should be equal when no changes have been made"
@@ -111,7 +114,7 @@ pub async fn compute_current_commitment() -> miette::Result<()> {
             # => [STORAGE_COMMITMENT0]
 
             # compute the commitment which will recompute the storage commitment
-            exec.account::compute_current_commitment
+            exec.active_account::compute_commitment
             # => [CURRENT_COMMITMENT, STORAGE_COMMITMENT0]
 
             push.{expected_commitment}
@@ -149,7 +152,7 @@ pub async fn compute_current_commitment() -> miette::Result<()> {
         .execute()
         .await
         .into_diagnostic()
-        .wrap_err("failed to execute code")?;
+        .wrap_err("failed to execute transaction")?;
 
     Ok(())
 }
@@ -560,7 +563,6 @@ async fn test_set_map_item() -> miette::Result<()> {
         "
         use.std::sys
 
-        use.mock::account
         use.$kernel::prologue
         use.mock::account->mock_account
 
@@ -622,18 +624,19 @@ async fn test_account_component_storage_offset() -> miette::Result<()> {
     // insuring consistent "set" and "get" using offsets.
     let source_code_component1 = "
         use.std::word
-        use.miden::account
+        use.miden::active_account
+        use.miden::native_account
 
         export.foo_write
             push.1.2.3.4.0
-            exec.account::set_item
+            exec.native_account::set_item
 
             dropw
         end
 
         export.foo_read
             push.0
-            exec.account::get_item
+            exec.active_account::get_item
             push.1.2.3.4
 
             exec.word::eq assert
@@ -642,18 +645,19 @@ async fn test_account_component_storage_offset() -> miette::Result<()> {
 
     let source_code_component2 = "
         use.std::word
-        use.miden::account
+        use.miden::active_account
+        use.miden::native_account
 
         export.bar_write
             push.5.6.7.8.0
-            exec.account::set_item
+            exec.native_account::set_item
 
             dropw
         end
 
         export.bar_read
             push.0
-            exec.account::get_item
+            exec.active_account::get_item
             push.5.6.7.8
 
             exec.word::eq assert
@@ -890,14 +894,14 @@ async fn test_get_initial_storage_commitment() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-        use.miden::account
+        use.miden::active_account
         use.$kernel::prologue
 
         begin
             exec.prologue::prepare_transaction
 
             # get the initial storage commitment
-            exec.account::get_initial_storage_commitment
+            exec.active_account::get_initial_storage_commitment
             push.{expected_storage_commitment}
             assert_eqw.err="actual storage commitment is not equal to the expected one"
         end
@@ -995,7 +999,7 @@ async fn test_compute_storage_commitment() -> anyhow::Result<()> {
 async fn proven_tx_storage_map_matches_executed_tx_for_new_account() -> anyhow::Result<()> {
     // Build a public account so the proven transaction includes the account update.
     let mock_slots = AccountStorage::mock_storage_slots();
-    let mut account = AccountBuilder::new([1; 32])
+    let account = AccountBuilder::new([1; 32])
         .storage_mode(AccountStorageMode::Public)
         .with_auth_component(Auth::IncrNonce)
         .with_component(MockAccountComponent::with_slots(mock_slots.clone()))
@@ -1047,15 +1051,72 @@ async fn proven_tx_storage_map_matches_executed_tx_for_new_account() -> anyhow::
 
     let proven_tx = LocalTransactionProver::default().prove_dummy(tx.clone())?;
 
-    let AccountUpdateDetails::New(new_account) = proven_tx.account_update().details() else {
+    let AccountUpdateDetails::Delta(delta) = proven_tx.account_update().details() else {
         panic!("expected delta");
     };
 
-    account.apply_delta(tx.account_delta())?;
+    let proven_tx_account = Account::try_from(delta)?;
+    let exec_tx_account = Account::try_from(tx.account_delta())?;
 
-    for (idx, slot) in new_account.storage().slots().iter().enumerate() {
-        assert_eq!(slot, &account.storage().slots()[idx], "slot {idx} did not match");
+    assert_eq!(proven_tx_account.storage(), exec_tx_account.storage());
+
+    Ok(())
+}
+
+/// Tests that an account with a non-empty map can be created.
+///
+/// In particular, this tests the account delta logic for (non-empty) storage slots for _new_
+/// accounts.
+#[tokio::test]
+async fn prove_account_creation_with_non_empty_storage() -> anyhow::Result<()> {
+    let slot0 = StorageSlot::Value(Word::from([1, 2, 3, 4u32]));
+    let slot1 = StorageSlot::Value(Word::from([10, 20, 30, 40u32]));
+    let mut map_entries = Vec::new();
+    for _ in 0..10 {
+        map_entries.push((rand_value::<Word>(), rand_value::<Word>()));
     }
+    let map_slot = StorageSlot::Map(StorageMap::with_entries(map_entries.clone())?);
+
+    let account = AccountBuilder::new([6; 32])
+        .storage_mode(AccountStorageMode::Public)
+        .with_auth_component(Auth::IncrNonce)
+        .with_component(MockAccountComponent::with_slots(vec![
+            slot0.clone(),
+            slot1.clone(),
+            map_slot,
+        ]))
+        .build()?;
+
+    let tx = TransactionContextBuilder::new(account)
+        .build()?
+        .execute()
+        .await
+        .context("failed to execute account-creating transaction")?;
+
+    assert_eq!(tx.account_delta().nonce_delta(), Felt::new(1));
+
+    assert_eq!(tx.account_delta().storage().values().get(&0).unwrap(), &slot0.value());
+    assert_eq!(tx.account_delta().storage().values().get(&1).unwrap(), &slot1.value());
+
+    assert_eq!(
+        tx.account_delta().storage().maps().get(&2).unwrap().entries(),
+        &BTreeMap::from_iter(
+            map_entries
+                .into_iter()
+                .map(|(key, value)| { (LexicographicWord::new(key), value) })
+        )
+    );
+
+    assert!(tx.account_delta().vault().is_empty());
+    assert_eq!(tx.final_account().nonce(), Felt::new(1));
+
+    let proven_tx = LocalTransactionProver::default().prove(tx.clone())?;
+
+    // The delta should be present on the proven tx.
+    let AccountUpdateDetails::Delta(delta) = proven_tx.account_update().details() else {
+        panic!("expected delta");
+    };
+    assert_eq!(delta, tx.account_delta());
 
     Ok(())
 }
@@ -1080,14 +1141,14 @@ async fn test_get_vault_root() -> anyhow::Result<()> {
     // get the initial vault root
     let code = format!(
         "
-        use.miden::account
+        use.miden::active_account
         use.$kernel::prologue
 
         begin
             exec.prologue::prepare_transaction
 
             # get the initial vault root
-            exec.account::get_initial_vault_root
+            exec.active_account::get_initial_vault_root
             push.{expected_vault_root}
             assert_eqw
         end
@@ -1101,7 +1162,7 @@ async fn test_get_vault_root() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-        use.miden::account
+        use.miden::active_account
         use.$kernel::prologue
         use.mock::account->mock_account
 
@@ -1114,7 +1175,7 @@ async fn test_get_vault_root() -> anyhow::Result<()> {
             # => []
 
             # get the current vault root
-            exec.account::get_vault_root
+            exec.active_account::get_vault_root
             push.{expected_vault_root}
             assert_eqw.err="actual vault root is not equal to the expected one"
         end
@@ -1127,13 +1188,13 @@ async fn test_get_vault_root() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// This test checks the correctness of the `miden::account::get_initial_balance` procedure in two
-/// cases:
+/// This test checks the correctness of the `miden::active_account::get_initial_balance` procedure
+/// in two cases:
 /// - when a note adds the asset which already exists in the account vault.
 /// - when a note adds the asset which doesn't exist in the account vault.
 ///  
 /// As part of the test pipeline it also checks the correctness of the
-/// `miden::account::get_balance` procedure.
+/// `miden::active_account::get_balance` procedure.
 #[tokio::test]
 async fn test_get_init_balance_addition() -> anyhow::Result<()> {
     // prepare the testing data
@@ -1185,7 +1246,7 @@ async fn test_get_init_balance_addition() -> anyhow::Result<()> {
 
     let add_existing_source = format!(
         r#"
-        use.miden::account
+        use.miden::active_account
 
         begin
             # push faucet ID prefix and suffix
@@ -1193,7 +1254,7 @@ async fn test_get_init_balance_addition() -> anyhow::Result<()> {
             # => [faucet_id_prefix, faucet_id_suffix]
 
             # get the current asset balance
-            dup.1 dup.1 exec.account::get_balance
+            dup.1 dup.1 exec.active_account::get_balance
             # => [final_balance, faucet_id_prefix, faucet_id_suffix]
 
             # assert final balance is correct
@@ -1202,7 +1263,7 @@ async fn test_get_init_balance_addition() -> anyhow::Result<()> {
             # => [faucet_id_prefix, faucet_id_suffix]
 
             # get the initial asset balance
-            exec.account::get_initial_balance
+            exec.active_account::get_initial_balance
             # => [init_balance]
 
             # assert initial balance is correct
@@ -1239,7 +1300,7 @@ async fn test_get_init_balance_addition() -> anyhow::Result<()> {
 
     let add_new_source = format!(
         r#"
-        use.miden::account
+        use.miden::active_account
 
         begin
             # push faucet ID prefix and suffix
@@ -1247,7 +1308,7 @@ async fn test_get_init_balance_addition() -> anyhow::Result<()> {
             # => [faucet_id_prefix, faucet_id_suffix]
 
             # get the current asset balance
-            dup.1 dup.1 exec.account::get_balance
+            dup.1 dup.1 exec.active_account::get_balance
             # => [final_balance, faucet_id_prefix, faucet_id_suffix]
 
             # assert final balance is correct
@@ -1256,7 +1317,7 @@ async fn test_get_init_balance_addition() -> anyhow::Result<()> {
             # => [faucet_id_prefix, faucet_id_suffix]
 
             # get the initial asset balance
-            exec.account::get_initial_balance
+            exec.active_account::get_initial_balance
             # => [init_balance]
 
             # assert initial balance is correct
@@ -1281,11 +1342,11 @@ async fn test_get_init_balance_addition() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// This test checks the correctness of the `miden::account::get_initial_balance` procedure in case
-/// when we create a note which removes an asset from the account vault.
+/// This test checks the correctness of the `miden::active_account::get_initial_balance` procedure
+/// in case when we create a note which removes an asset from the account vault.
 ///  
 /// As part of the test pipeline it also checks the correctness of the
-/// `miden::account::get_balance` procedure.
+/// `miden::active_account::get_balance` procedure.
 #[tokio::test]
 async fn test_get_init_balance_subtraction() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
@@ -1316,7 +1377,7 @@ async fn test_get_init_balance_subtraction() -> anyhow::Result<()> {
 
     let remove_existing_source = format!(
         r#"
-        use.miden::account
+        use.miden::active_account
         use.miden::contracts::wallets::basic->wallet
         use.mock::util
 
@@ -1349,7 +1410,7 @@ async fn test_get_init_balance_subtraction() -> anyhow::Result<()> {
             # => [faucet_id_prefix, faucet_id_suffix]
 
             # get the current asset balance
-            dup.1 dup.1 exec.account::get_balance
+            dup.1 dup.1 exec.active_account::get_balance
             # => [final_balance, faucet_id_prefix, faucet_id_suffix]
 
             # assert final balance is correct
@@ -1358,7 +1419,7 @@ async fn test_get_init_balance_subtraction() -> anyhow::Result<()> {
             # => [faucet_id_prefix, faucet_id_suffix]
 
             # get the initial asset balance
-            exec.account::get_initial_balance
+            exec.active_account::get_initial_balance
             # => [init_balance]
 
             # assert initial balance is correct
@@ -1467,12 +1528,12 @@ async fn test_was_procedure_called() -> miette::Result<()> {
     // 5. Checks that `was_procedure_called` returns `true`
     let tx_script_code = r#"
         use.mock::account->mock_account
-        use.miden::account
+        use.miden::native_account
 
         begin
             # First check that get_item procedure hasn't been called yet
             procref.mock_account::get_item
-            exec.account::was_procedure_called
+            exec.native_account::was_procedure_called
             assertz.err="procedure should not have been called"
 
             # Call the procedure first time
@@ -1481,7 +1542,7 @@ async fn test_was_procedure_called() -> miette::Result<()> {
             # => []
 
             procref.mock_account::get_item
-            exec.account::was_procedure_called
+            exec.native_account::was_procedure_called
             assert.err="procedure should have been called"
 
             # Call the procedure second time
@@ -1489,7 +1550,7 @@ async fn test_was_procedure_called() -> miette::Result<()> {
             call.mock_account::get_item dropw
 
             procref.mock_account::get_item
-            exec.account::was_procedure_called
+            exec.native_account::was_procedure_called
             assert.err="2nd call should not change the was_called flag"
         end
         "#;
@@ -1520,12 +1581,12 @@ async fn test_was_procedure_called() -> miette::Result<()> {
 #[tokio::test]
 async fn transaction_executor_account_code_using_custom_library() -> miette::Result<()> {
     const EXTERNAL_LIBRARY_CODE: &str = r#"
-      use.miden::account
+      use.miden::native_account
 
       export.external_setter
         push.2.3.4.5
         push.0
-        exec.account::set_item
+        exec.native_account::set_item
         dropw dropw
       end"#;
 
@@ -1597,11 +1658,11 @@ async fn transaction_executor_account_code_using_custom_library() -> miette::Res
 #[tokio::test]
 async fn incrementing_nonce_twice_fails() -> anyhow::Result<()> {
     let source_code = "
-        use.miden::account
+        use.miden::native_account
 
         export.auth_incr_nonce_twice
-            exec.account::incr_nonce drop
-            exec.account::incr_nonce drop
+            exec.native_account::incr_nonce drop
+            exec.native_account::incr_nonce drop
         end
     ";
 
@@ -1617,6 +1678,60 @@ async fn incrementing_nonce_twice_fails() -> anyhow::Result<()> {
     let result = TransactionContextBuilder::new(account).build()?.execute().await;
 
     assert_transaction_executor_error!(result, ERR_ACCOUNT_NONCE_CAN_ONLY_BE_INCREMENTED_ONCE);
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_has_procedure() -> miette::Result<()> {
+    // Create a standard account using the mock component
+    let mock_component = MockAccountComponent::with_slots(AccountStorage::mock_storage_slots());
+    let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
+        .with_auth_component(Auth::IncrNonce)
+        .with_component(mock_component)
+        .build_existing()
+        .unwrap();
+
+    let tx_script_code = r#"
+        use.mock::account->mock_account
+        use.miden::active_account
+
+        begin
+            # check that get_item procedure is available on the mock account
+            procref.mock_account::get_item
+            # => [GET_ITEM_ROOT]
+
+            exec.active_account::has_procedure
+            # => [is_procedure_available]
+
+            # assert that the get_item is exposed
+            assert.err="get_item procedure should be exposed by the mock account"
+
+            # get some random word and assert that it is not exposed
+            push.5.3.15.686
+
+            exec.active_account::has_procedure
+            # => [is_procedure_available]
+
+            # assert that the procedure with some random root is not exposed
+            assertz.err="procedure with some random root should not be exposed by the mock account"
+        end
+        "#;
+
+    // Compile the transaction script using the testing assembler with mock account
+    let tx_script = ScriptBuilder::with_mock_libraries()
+        .into_diagnostic()?
+        .compile_tx_script(tx_script_code)
+        .into_diagnostic()?;
+
+    // Create transaction context and execute
+    let tx_context = TransactionContextBuilder::new(account).tx_script(tx_script).build().unwrap();
+
+    tx_context
+        .execute()
+        .await
+        .into_diagnostic()
+        .wrap_err("Failed to execute transaction")?;
 
     Ok(())
 }

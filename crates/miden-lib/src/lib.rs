@@ -82,7 +82,7 @@ mod tests {
 
     #[test]
     fn test_compile() {
-        let path = "miden::account::get_id".parse::<LibraryPath>().unwrap();
+        let path = "miden::active_account::get_id".parse::<LibraryPath>().unwrap();
         let miden = MidenLib::default();
         let exists = miden.0.module_infos().any(|module| {
             module

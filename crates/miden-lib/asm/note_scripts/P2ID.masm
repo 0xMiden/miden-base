@@ -1,4 +1,4 @@
-use.miden::account
+use.miden::active_account
 use.miden::account_id
 use.miden::active_note
 
@@ -40,7 +40,7 @@ begin
     mem_loadw drop drop
     # => [target_account_id_prefix, target_account_id_suffix]
 
-    exec.account::get_id
+    exec.active_account::get_id
     # => [account_id_prefix, account_id_suffix, target_account_id_prefix, target_account_id_suffix, ...]
 
     # ensure account_id = target_account_id, fails otherwise

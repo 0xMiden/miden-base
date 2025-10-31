@@ -24,7 +24,8 @@ const MOCK_FAUCET_CODE: &str = "
 ";
 
 const MOCK_ACCOUNT_CODE: &str = "
-    use.miden::account
+    use.miden::active_account
+    use.miden::native_account
     use.miden::tx
 
     export.::miden::contracts::wallets::basic::receive_asset
@@ -37,14 +38,14 @@ const MOCK_ACCOUNT_CODE: &str = "
     # Stack:  [index, VALUE_TO_SET, pad(11)]
     # Output: [PREVIOUS_STORAGE_VALUE, pad(12)]
     export.set_item
-        exec.account::set_item
+        exec.native_account::set_item
         # => [V, pad(12)]
     end
 
     # Stack:  [index, pad(15)]
     # Output: [VALUE, pad(12)]
     export.get_item
-        exec.account::get_item
+        exec.active_account::get_item
         # => [VALUE, pad(15)]
 
         # truncate the stack
@@ -55,7 +56,7 @@ const MOCK_ACCOUNT_CODE: &str = "
     # Stack:  [index, pad(15)]
     # Output: [VALUE, pad(12)]
     export.get_initial_item
-        exec.account::get_initial_item
+        exec.active_account::get_initial_item
         # => [VALUE, pad(15)]
 
         # truncate the stack
@@ -66,26 +67,26 @@ const MOCK_ACCOUNT_CODE: &str = "
     # Stack:  [index, KEY, VALUE, pad(7)]
     # Output: [OLD_MAP_ROOT, OLD_MAP_VALUE, pad(8)]
     export.set_map_item
-        exec.account::set_map_item
+        exec.native_account::set_map_item
         # => [R', V, pad(8)]
     end
 
     # Stack:  [index, KEY, pad(11)]
     # Output: [VALUE, pad(12)]
     export.get_map_item
-        exec.account::get_map_item
+        exec.active_account::get_map_item
     end
 
     # Stack:  [index, KEY, pad(11)]
     # Output: [VALUE, pad(12)]
     export.get_initial_map_item
-        exec.account::get_initial_map_item
+        exec.active_account::get_initial_map_item
     end
 
     # Stack:  [pad(16)]
     # Output: [CODE_COMMITMENT, pad(12)]
     export.get_code_commitment
-        exec.account::get_code_commitment
+        exec.active_account::get_code_commitment
         # => [CODE_COMMITMENT, pad(16)]
 
         # truncate the stack
@@ -96,7 +97,7 @@ const MOCK_ACCOUNT_CODE: &str = "
     # Stack:  [pad(16)]
     # Output: [CODE_COMMITMENT, pad(12)]
     export.compute_storage_commitment
-        exec.account::compute_storage_commitment
+        exec.active_account::compute_storage_commitment
         # => [STORAGE_COMMITMENT, pad(16)]
 
         swapw dropw
@@ -106,14 +107,14 @@ const MOCK_ACCOUNT_CODE: &str = "
     # Stack:  [ASSET, pad(12)]
     # Output: [ASSET', pad(12)]
     export.add_asset
-        exec.account::add_asset
+        exec.native_account::add_asset
         # => [ASSET', pad(12)]
     end
 
     # Stack:  [ASSET, pad(12)]
     # Output: [ASSET, pad(12)]
     export.remove_asset
-        exec.account::remove_asset
+        exec.native_account::remove_asset
         # => [ASSET, pad(12)]
     end
 

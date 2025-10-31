@@ -1,3 +1,7 @@
+---
+sidebar_position: 6
+---
+
 # State
 
 The `State` describes the current condition of all accounts, notes, nullifiers and their statuses. Reflecting the "current reality" of the protocol at any given time.
@@ -25,8 +29,8 @@ The Miden node maintains three databases to describe `State`:
 2. Notes
 3. Nullifiers
 
-<p style="text-align: center;">
-    <img src="img/state/state.png" style="width:70%;" alt="State"/>
+<p style={{textAlign: 'center'}}>
+    <img src={require('./img/state/state.png').default} style={{width: '70%'}} alt="State"/>
 </p>
 
 ### Account database
@@ -38,11 +42,11 @@ The accounts database has two main purposes:
 
 This is done using an authenticated data structure, a sparse Merkle tree.
 
-<p style="text-align: center;">
-    <img src="img/state/account-db.png" style="width:70%;" alt="Account DB"/>
+<p style={{textAlign: 'center'}}>
+    <img src={require('./img/state/account-db.png').default} style={{width: '70%'}} alt="Account DB"/>
 </p>
 
-As described in the [account ID section](account/id.md#account-storage-mode), accounts can have different storage modes:
+As described in the [account ID section](account/id#account-storage-mode), accounts can have different storage modes:
 
 - **Public & Network accounts:** where all account data is stored on-chain.
 - **Private accounts:** where only the commitments to the account is stored on-chain.
@@ -51,12 +55,13 @@ Private accounts significantly reduce storage overhead. A private account contri
 
 The storage contribution of a public account depends on the amount of data it stores.
 
-> [!Warning]
-> In Miden, when the user is the custodian of their account `State` (in the case of a private account), losing this `State` amounts to losing their funds, similar to losing a private key.
+:::warning
+In Miden, when the user is the custodian of their account `State` (in the case of a private account), losing this `State` amounts to losing their funds, similar to losing a private key.
+:::
 
 ### Note database
 
-As described in the [notes section](note.md), there are two types of notes:
+As described in the [notes section](note), there are two types of notes:
 
 - **Public notes:** where the entire note content is stored on-chain.
 - **Private notes:** where only the note’s commitment is stored on-chain.
@@ -72,21 +77,22 @@ Using a Merkle Mountain Range (append-only accumulator) is important for two rea
  
 Both of these properties are needed for supporting local transactions using client-side proofs and privacy. In an append-only data structure, witness data does not become stale when the data structure is updated. That means users can generate valid proofs even if they don’t have the latest `State` of this database; so there is no need to query the operator on a constantly changing `State`.
 
-<p style="text-align: center;">
-    <img src="img/state/note-db.png" style="width:70%;" alt="Note DB"/>
+<p style={{textAlign: 'center'}}>
+    <img src={require('./img/state/note-db.png').default} style={{width: '70%'}} alt="Note DB"/>
 </p>
 
 ### Nullifier database
 
-Each [note](note.md) has an associated nullifier which enables the tracking of whether its associated note has been consumed or not, preventing double-spending.
+Each [note](note) has an associated nullifier which enables the tracking of whether its associated note has been consumed or not, preventing double-spending.
 
 To prove that a note has not been consumed, the operator must provide a Merkle path to the corresponding node and show that the node’s value is 0. Since nullifiers are 32 bytes each, the sparse Merkle tree height must be sufficient to represent all possible nullifiers. Operators must maintain the entire nullifier set to compute the new tree root after inserting new nullifiers. For each nullifier we also record the block in which it was created. This way "unconsumed" nullifiers have block 0, but all consumed nullifiers have a non-zero block.
 
-> [!Note]
-> Nullifiers in Miden break linkability between privately stored notes and their consumption details. To know the [note’s nullifier](note.md#note-nullifier-ensuring-private-consumption), one must know the note’s data.
+:::note
+Nullifiers in Miden break linkability between privately stored notes and their consumption details. To know the [note's nullifier](note#note-nullifier-ensuring-private-consumption), one must know the note's data.
+:::
 
-<p style="text-align: center;">
-    <img src="img/state/nullifier-db.png" style="width:70%;" alt="Nullifier DB"/>
+<p style={{textAlign: 'center'}}>
+    <img src={require('./img/state/nullifier-db.png').default} style={{width: '70%'}} alt="Nullifier DB"/>
 </p>
 
 ## Additional information
@@ -95,8 +101,8 @@ To prove that a note has not been consumed, the operator must provide a Merkle p
 
 In most blockchains, most smart contracts and decentralized applications (e.g., AAVE, Uniswap) need public shared `State`. Public shared `State` is also available on Miden and can be represented as in the following example:
 
-<p style="text-align: center;">
-    <img src="img/state/amm-transactions.gif" style="width:70%;" alt="Example: AMM transactions"/>
+<p style={{textAlign: 'center'}}>
+    <img src={require('./img/state/amm-transactions.gif').default} style={{width: '70%'}} alt="Example: AMM transactions"/>
 </p>
 
 In this diagram, multiple participants interact with a common, publicly accessible `State` (the AMM in the center). The figure illustrates how notes are created and consumed:
