@@ -291,6 +291,35 @@ pub enum AddressError {
     AccountIdDecodeError(#[source] AccountIdError),
     #[error("failed to decode bech32 string into an address")]
     Bech32DecodeError(#[source] Bech32Error),
+    #[error("{error_msg}")]
+    RoutingParametersDecodeError {
+        error_msg: Box<str>,
+        // thiserror will return this when calling Error::source on NoteError.
+        source: Option<Box<dyn Error + Send + Sync + 'static>>,
+    },
+    #[error("found unknown routing parameter key {0}")]
+    UnknownRoutingParameterKey(u8),
+}
+
+impl AddressError {
+    /// Creates an [`AddressError::RoutingParametersDecodeError`] variant from an error message.
+    pub fn routing_parameters_decode(message: impl Into<String>) -> Self {
+        let message: String = message.into();
+        Self::RoutingParametersDecodeError { error_msg: message.into(), source: None }
+    }
+
+    /// Creates an [`AddressError::RoutingParametersDecodeError`] variant from an error message and
+    /// a source error.
+    pub fn routing_parameters_decode_with_source(
+        message: impl Into<String>,
+        source: impl Error + Send + Sync + 'static,
+    ) -> Self {
+        let message: String = message.into();
+        Self::RoutingParametersDecodeError {
+            error_msg: message.into(),
+            source: Some(Box::new(source)),
+        }
+    }
 }
 
 // BECH32 ERROR

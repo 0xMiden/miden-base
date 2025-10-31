@@ -1,5 +1,8 @@
 mod r#type;
 
+mod routing_parameters;
+pub use routing_parameters::RoutingParameters;
+
 mod interface;
 mod network_id;
 use alloc::string::{String, ToString};

@@ -19,6 +19,7 @@ use crate::AddressError;
 #[repr(u16)]
 #[non_exhaustive]
 pub enum AddressInterface {
+    /// TODO(address_routing): Remove.
     /// Signals that the account interface is not specified.
     Unspecified = Self::UNSPECIFIED,
     /// The basic wallet interface.
