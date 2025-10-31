@@ -221,7 +221,7 @@ impl MockChainBuilder {
             timestamp,
         );
 
-        let body = BlockBody::new(
+        let body = BlockBody::new_unchecked(
             block_account_updates,
             output_note_batches,
             created_nullifiers,

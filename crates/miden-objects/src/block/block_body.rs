@@ -29,7 +29,13 @@ pub struct BlockBody {
 }
 
 impl BlockBody {
-    pub fn new(
+    /// Creates a new [`BlockBody`] without performing any validation.
+    ///
+    /// # Warning
+    ///
+    /// This does not validate any of the guarantees of this type. It should only be used internally
+    /// (in miden-lib) or in tests.
+    pub fn new_unchecked(
         updated_accounts: Vec<BlockAccountUpdate>,
         output_note_batches: Vec<OutputNoteBatch>,
         created_nullifiers: Vec<Nullifier>,

@@ -150,7 +150,12 @@ fn construct_block_body(
         })
         .collect();
     let created_nullifiers = created_nullifiers.keys().copied().collect::<Vec<_>>();
-    BlockBody::new(updated_accounts, output_note_batches, created_nullifiers, transactions)
+    BlockBody::new_unchecked(
+        updated_accounts,
+        output_note_batches,
+        created_nullifiers,
+        transactions,
+    )
 }
 
 /// Computes the new account tree root after the given updates.
