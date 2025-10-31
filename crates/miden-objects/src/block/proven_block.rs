@@ -39,7 +39,7 @@ pub struct ProvenBlock {
     /// The header of the block, committing to the current state of the chain.
     header: BlockHeader,
 
-    /// ...
+    /// The body of the block, containing the transactions and state updates.
     body: BlockBody,
 }
 

@@ -23,7 +23,10 @@ use miden_objects::transaction::{OrderedTransactionHeaders, OutputNote, PartialB
 use crate::block::errors::BlockHeaderError;
 use crate::transaction::TransactionKernel;
 
-/// ..
+/// Constructs a new [`BlockHeader`] and [`BlockBody`] from the given [`ProposedBlock`].
+///
+/// Construction of these types is handled here because the block header requires
+/// [`TransactionKernel`] for its various commitment fields.
 pub fn construct_block(
     proposed_block: ProposedBlock,
 ) -> Result<(BlockHeader, BlockBody), BlockHeaderError> {
@@ -69,7 +72,6 @@ pub fn construct_block(
 // HELPERS
 // ================================================================================================
 
-/// ...
 fn construct_block_header(
     block_num: BlockNumber,
     timestamp: u32,
@@ -128,7 +130,6 @@ fn construct_block_header(
     ))
 }
 
-/// ...
 fn construct_block_body(
     account_updated_witnesses: Vec<(AccountId, AccountUpdateWitness)>,
     created_nullifiers: BTreeMap<Nullifier, NullifierWitness>,
