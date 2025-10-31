@@ -539,51 +539,15 @@ where
         let recipient_digest = process.get_stack_word(6);
         let note_idx = process.get_stack_item(10).as_int() as usize;
 
-        let recipient = if let Some(data) =
-            process.advice_provider().get_mapped_values(&recipient_digest)
+        let recipient = if process.advice_provider().get_mapped_values(&recipient_digest).is_some()
         {
-            if data.len() != 8 {
-                return Err(TransactionKernelError::MalformedRecipientData(data.to_vec()));
-            }
+            let (sn_script_hash, inputs_commitment) =
+                Self::read_double_word_from_adv_map(process, recipient_digest)?;
 
-            let sn_script_hash = Word::new([data[0], data[1], data[2], data[3]]);
-            let inputs_commitment = Word::new([data[4], data[5], data[6], data[7]]);
+            let (sn_hash, script_root) =
+                Self::read_double_word_from_adv_map(process, sn_script_hash)?;
 
-            let sn_script_data = process
-                .advice_provider()
-                .get_mapped_values(&sn_script_hash)
-                .ok_or_else(|| TransactionKernelError::MalformedRecipientData(vec![]))?;
-
-            if sn_script_data.len() != 8 {
-                return Err(TransactionKernelError::MalformedRecipientData(
-                    sn_script_data.to_vec(),
-                ));
-            }
-
-            let sn_hash = Word::new([
-                sn_script_data[0],
-                sn_script_data[1],
-                sn_script_data[2],
-                sn_script_data[3],
-            ]);
-            let script_root = Word::new([
-                sn_script_data[4],
-                sn_script_data[5],
-                sn_script_data[6],
-                sn_script_data[7],
-            ]);
-
-            let sn_hash_data = process
-                .advice_provider()
-                .get_mapped_values(&sn_hash)
-                .ok_or_else(|| TransactionKernelError::MalformedRecipientData(vec![]))?;
-
-            if sn_hash_data.len() != 8 {
-                return Err(TransactionKernelError::MalformedRecipientData(sn_hash_data.to_vec()));
-            }
-
-            let serial_num =
-                Word::new([sn_hash_data[0], sn_hash_data[1], sn_hash_data[2], sn_hash_data[3]]);
+            let (serial_num, _) = Self::read_double_word_from_adv_map(process, sn_hash)?;
 
             let num_inputs = process
                 .advice_provider()
@@ -1064,6 +1028,30 @@ where
 
     // HELPER FUNCTIONS
     // --------------------------------------------------------------------------------------------
+
+    /// Reads a double word (two [`Word`]s, 8 [`Felt`]s total) from the advice map.
+    ///
+    /// # Errors
+    /// Returns an error if the key is not present in the advice map or if the data is malformed
+    /// (not exactly 8 elements).
+    fn read_double_word_from_adv_map(
+        process: &ProcessState,
+        key: Word,
+    ) -> Result<(Word, Word), TransactionKernelError> {
+        let data = process
+            .advice_provider()
+            .get_mapped_values(&key)
+            .ok_or_else(|| TransactionKernelError::MalformedRecipientData(vec![]))?;
+
+        if data.len() != 8 {
+            return Err(TransactionKernelError::MalformedRecipientData(data.to_vec()));
+        }
+
+        let first_word = Word::new([data[0], data[1], data[2], data[3]]);
+        let second_word = Word::new([data[4], data[5], data[6], data[7]]);
+
+        Ok((first_word, second_word))
+    }
 
     /// Returns the ID of the active note, or None if the note execution hasn't started yet or has
     /// already ended.
