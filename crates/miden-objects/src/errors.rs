@@ -291,12 +291,10 @@ pub enum AddressError {
     AccountIdDecodeError(#[source] AccountIdError),
     #[error("address separator must not be included without routing parameters")]
     TrailingSeparator,
-    #[error("failed to decode address")]
-    DecodeError(#[source] Bech32Error),
     #[error("failed to decode bech32 string into an address")]
     Bech32DecodeError(#[source] Bech32Error),
     #[error("{error_msg}")]
-    RoutingParametersDecodeError {
+    DecodeError {
         error_msg: Box<str>,
         // thiserror will return this when calling Error::source on NoteError.
         source: Option<Box<dyn Error + Send + Sync + 'static>>,
@@ -306,20 +304,20 @@ pub enum AddressError {
 }
 
 impl AddressError {
-    /// Creates an [`AddressError::RoutingParametersDecodeError`] variant from an error message.
-    pub fn routing_parameters_decode(message: impl Into<String>) -> Self {
+    /// Creates an [`AddressError::DecodeError`] variant from an error message.
+    pub fn decode_error(message: impl Into<String>) -> Self {
         let message: String = message.into();
-        Self::RoutingParametersDecodeError { error_msg: message.into(), source: None }
+        Self::DecodeError { error_msg: message.into(), source: None }
     }
 
-    /// Creates an [`AddressError::RoutingParametersDecodeError`] variant from an error message and
+    /// Creates an [`AddressError::DecodeError`] variant from an error message and
     /// a source error.
-    pub fn routing_parameters_decode_with_source(
+    pub fn decode_error_with_source(
         message: impl Into<String>,
         source: impl Error + Send + Sync + 'static,
     ) -> Self {
         let message: String = message.into();
-        Self::RoutingParametersDecodeError {
+        Self::DecodeError {
             error_msg: message.into(),
             source: Some(Box::new(source)),
         }

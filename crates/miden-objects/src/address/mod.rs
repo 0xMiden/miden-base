@@ -157,9 +157,9 @@ impl Address {
         }
 
         let mut split = address_str.split(ADDRESS_SEPARATOR);
-        let encoded_identifier = split.next().ok_or_else(|| {
-            AddressError::routing_parameters_decode("identifier missing in address string")
-        })?;
+        let encoded_identifier = split
+            .next()
+            .ok_or_else(|| AddressError::decode_error("identifier missing in address string"))?;
 
         let (network_id, identifier) = AddressId::decode(encoded_identifier)?;
 

@@ -145,7 +145,7 @@ impl RoutingParameters {
                 // std::error::Error, so for now we convert it to a String. Even if it will
                 // implement the trait in the future, we should include it as an opaque
                 // error since the crate does not have a stable release yet.
-                AddressError::routing_parameters_decode_with_source(
+                AddressError::decode_error_with_source(
                     "failed to decode routing parameters bech32 string",
                     Bech32Error::DecodeError(source.to_string().into()),
                 )
@@ -168,7 +168,7 @@ impl RoutingParameters {
             match key {
                 RECEIVER_PROFILE_KEY => {
                     if byte_iter.len() < 2 {
-                        return Err(AddressError::routing_parameters_decode(
+                        return Err(AddressError::decode_error(
                             "expected two bytes to decode receiver profile",
                         ));
                     };
@@ -180,7 +180,7 @@ impl RoutingParameters {
                     let tag_len = (receiver_profile >> 11) as u8;
                     let interface = receiver_profile & 0b0000_0111_1111_1111;
                     let interface = AddressInterface::try_from(interface).map_err(|err| {
-                        AddressError::routing_parameters_decode_with_source(
+                        AddressError::decode_error_with_source(
                             "failed to decode address interface",
                             err,
                         )
