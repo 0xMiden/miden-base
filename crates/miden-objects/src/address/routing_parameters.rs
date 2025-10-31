@@ -8,6 +8,13 @@ use bech32::{Bech32m, Hrp};
 use crate::AddressError;
 use crate::address::AddressInterface;
 use crate::errors::Bech32Error;
+use crate::utils::serde::{
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    Serializable,
+};
 use crate::utils::sync::LazyLock;
 
 /// The HRP used for encoding routing parameters.
@@ -21,7 +28,7 @@ const BECH32_SEPARATOR: &str = "1";
 const RECEIVER_PROFILE_KEY: u8 = 0;
 
 /// TODO: Docs.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 pub struct RoutingParameters {
     receiver_profile: Option<(u8, AddressInterface)>,
 }
@@ -34,6 +41,13 @@ impl RoutingParameters {
         Self { receiver_profile: None }
     }
 
+    /// Sets the tag length and interface routing parameters.
+    ///
+    /// The tag length preference determines how many bits of the account ID are encoded into
+    /// [`NoteTag`]s of notes targeted to this address. This lets the owner of the account choose
+    /// their level of privacy. A higher tag length makes the account more uniquely identifiable and
+    /// reduces privacy, while a shorter length increases privacy at the cost of matching more notes
+    /// published onchain.
     pub fn with_receiver_profile(mut self, tag_len: u8, interface: AddressInterface) -> Self {
         self.receiver_profile = Some((tag_len, interface));
         self
@@ -54,12 +68,12 @@ impl RoutingParameters {
         self.receiver_profile.map(|(_tag_len, interface)| interface)
     }
 
-    /// Encodes [`RoutingParameters`] to a bech32 string _without_ the leading hrp and separator.
+    /// Encodes [`RoutingParameters`] to a byte vector.
     ///
     /// The return value is either:
-    /// - An empty string if self is equal to [`RoutingParameters::default`].
-    /// - Or a bech32 string without the leading hrp and separator.
-    pub(crate) fn encode(&self) -> String {
+    /// - An empty vector if self is equal to [`RoutingParameters::default`].
+    /// - Or a non-empty vector if routing parameters are set.
+    pub(crate) fn encode_to_bytes(&self) -> Vec<u8> {
         let mut encoded = Vec::new();
 
         if let Some((tag_len, interface)) = self.receiver_profile {
@@ -80,6 +94,17 @@ impl RoutingParameters {
             encoded.push(RECEIVER_PROFILE_KEY);
             encoded.extend(receiver_profile);
         }
+
+        encoded
+    }
+
+    /// Encodes [`RoutingParameters`] to a bech32 string _without_ the leading hrp and separator.
+    ///
+    /// The return value is either:
+    /// - An empty string if self is equal to [`RoutingParameters::default`].
+    /// - Or a bech32 string without the leading hrp and separator.
+    pub(crate) fn encode_to_string(&self) -> String {
+        let encoded = self.encode_to_bytes();
 
         if encoded.is_empty() {
             return String::new();
@@ -126,10 +151,18 @@ impl RoutingParameters {
                 )
             })?;
 
-        // ------ Decode bytes into routing parameters ------
+        Self::decode_from_bytes(checked_string.byte_iter())
+    }
 
+    /// Decodes [`RoutingParameters`] from a bech32 string _without_ the leading hrp and separator.
+    ///
+    /// The string must be either:
+    /// - An empty string, in which case [`RoutingParameters::default`] is returned.
+    /// - Or a validly encoded bech32 string without the leading hrp and separator.
+    pub(crate) fn decode_from_bytes(
+        mut byte_iter: impl ExactSizeIterator<Item = u8>,
+    ) -> Result<Self, AddressError> {
         let mut routing_parameters = RoutingParameters::new();
-        let mut byte_iter = checked_string.byte_iter();
 
         while let Some(key) = byte_iter.next() {
             match key {
@@ -163,6 +196,27 @@ impl RoutingParameters {
         }
 
         Ok(routing_parameters)
+    }
+}
+
+impl Serializable for RoutingParameters {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        let bytes = self.encode_to_bytes();
+        // Due to the bech32 constraint of max 633 bytes, a u16 is sufficient.
+        let num_bytes = bytes.len() as u16;
+
+        target.write_u16(num_bytes);
+        target.write_many(bytes);
+    }
+}
+
+impl Deserializable for RoutingParameters {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let num_bytes = source.read_u16()?;
+        let bytes: Vec<u8> = source.read_many(num_bytes as usize)?;
+
+        Self::decode_from_bytes(bytes.into_iter())
+            .map_err(|err| DeserializationError::InvalidValue(err.to_string()))
     }
 }
 
@@ -203,13 +257,28 @@ mod tests {
     #[test]
     fn routing_parameters_bech32_encode_decode_roundtrip() -> anyhow::Result<()> {
         let empty_routing_params = RoutingParameters::default();
-        assert!(empty_routing_params.encode().is_empty());
-        assert_eq!(RoutingParameters::decode(empty_routing_params.encode())?, empty_routing_params);
+        assert!(empty_routing_params.encode_to_string().is_empty());
+        assert_eq!(
+            RoutingParameters::decode(empty_routing_params.encode_to_string())?,
+            empty_routing_params
+        );
 
         let routing_params =
             RoutingParameters::new().with_receiver_profile(8, AddressInterface::BasicWallet);
-        assert_eq!(routing_params, RoutingParameters::decode(routing_params.encode())?);
+        assert_eq!(routing_params, RoutingParameters::decode(routing_params.encode_to_string())?);
 
         Ok(())
+    }
+
+    /// Tests that routing parameters can be serialized and deserialized.
+    #[test]
+    fn routing_parameters_serialization() {
+        let routing_params =
+            RoutingParameters::new().with_receiver_profile(6, AddressInterface::BasicWallet);
+
+        assert_eq!(
+            routing_params,
+            RoutingParameters::read_from_bytes(&routing_params.to_bytes()).unwrap()
+        );
     }
 }

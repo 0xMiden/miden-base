@@ -8,6 +8,7 @@ use crate::errors::Bech32Error;
 /// This makes the type of the address conveniently human-readable.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(u8)]
+#[non_exhaustive]
 pub enum AddressType {
     AccountId = Self::ACCOUNT_ID,
 }
