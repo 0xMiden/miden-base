@@ -289,6 +289,8 @@ pub enum AddressError {
     UnknownAddressInterface(u16),
     #[error("failed to decode account ID")]
     AccountIdDecodeError(#[source] AccountIdError),
+    #[error("address separator must not be included without routing parameters")]
+    TrailingSeparator,
     #[error("failed to decode address")]
     DecodeError(#[source] Bech32Error),
     #[error("failed to decode bech32 string into an address")]

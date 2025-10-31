@@ -152,6 +152,10 @@ impl Address {
     /// See [`Address::encode`] for details on the format. The procedure for decoding the bech32
     /// data into the address are the inverse operations of encoding.
     pub fn decode(address_str: &str) -> Result<(NetworkId, Self), AddressError> {
+        if address_str.ends_with(ADDRESS_SEPARATOR) {
+            return Err(AddressError::TrailingSeparator);
+        }
+
         let mut split = address_str.split(ADDRESS_SEPARATOR);
         let encoded_identifier = split.next().ok_or_else(|| {
             AddressError::routing_parameters_decode("identifier missing in address string")
@@ -255,8 +259,32 @@ mod tests {
 
                 let AddressId::AccountId(decoded_account_id) = address.id();
                 assert_eq!(account_id, decoded_account_id);
+
+                // It should always be possible to strip the routing parameters and still have a
+                // valid address ID.
+                let address_id_str = bech32_string.split(ADDRESS_SEPARATOR).next().unwrap();
+                let (decoded_network_id, decoded_address) = Address::decode(address_id_str)?;
+
+                assert_eq!(network_id, decoded_network_id, "network id failed in {idx}");
+                assert_eq!(address.id(), decoded_address.id(), "address ID failed in {idx}");
             }
         }
+
+        Ok(())
+    }
+
+    #[test]
+    fn address_fails_on_trailing_separator() -> anyhow::Result<()> {
+        let id = AccountIdBuilder::new()
+            .account_type(AccountType::FungibleFaucet)
+            .build_with_rng(&mut rand::rng());
+
+        let address = Address::new(id);
+        let mut encoded_address = address.encode(NetworkId::Devnet);
+        encoded_address.push(ADDRESS_SEPARATOR);
+
+        let err = Address::decode(&encoded_address).unwrap_err();
+        assert_matches!(err, AddressError::TrailingSeparator);
 
         Ok(())
     }
