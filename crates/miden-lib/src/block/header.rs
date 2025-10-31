@@ -5,6 +5,7 @@ use miden_core::Word;
 use miden_objects::account::AccountId;
 use miden_objects::block::{
     AccountUpdateWitness,
+    BlockBody,
     BlockHeader,
     BlockNoteIndex,
     BlockNoteTree,
@@ -21,10 +22,10 @@ use miden_objects::transaction::PartialBlockchain;
 use crate::block::errors::BlockHeaderError;
 use crate::transaction::TransactionKernel;
 
-/// Constructs a block header from the provided proposed block.
-pub fn construct_block_header(
-    proposed_block: &ProposedBlock,
-) -> Result<BlockHeader, BlockHeaderError> {
+/// ..
+pub fn construct_block(
+    proposed_block: ProposedBlock,
+) -> Result<(BlockHeader, BlockBody), BlockHeaderError> {
     // Get the block number and timestamp of the new block and compute the tx commitment.
     let block_num = proposed_block.block_num();
     let timestamp = proposed_block.timestamp();
@@ -73,7 +74,8 @@ pub fn construct_block_header(
     // TODO(serge): remove proof commitment when block header is updated to no longer have it.
     let proof_commitment = Word::empty();
 
-    Ok(BlockHeader::new(
+    // ..
+    let header = BlockHeader::new(
         version,
         prev_block_commitment,
         block_num,
@@ -86,7 +88,12 @@ pub fn construct_block_header(
         proof_commitment,
         fee_parameters,
         timestamp,
-    ))
+    );
+
+    // Use the proposed block to create the block body.
+    let body = BlockBody::from(proposed_block);
+
+    Ok((header, body))
 }
 
 // HELPERS

@@ -1,7 +1,4 @@
-use std::vec::Vec;
-
-use miden_objects::block::{BlockAccountUpdate, ProvenBlock, SignedBlock};
-use miden_objects::note::Nullifier;
+use miden_objects::block::{ProvenBlock, SignedBlock};
 
 // LOCAL BLOCK PROVER
 // ================================================================================================
@@ -52,42 +49,9 @@ impl LocalBlockProver {
     /// See [`Self::prove`] for more details.
     fn prove_without_batch_verification_inner(&self, signed_block: SignedBlock) -> ProvenBlock {
         // Deconstruct signed block into its components.
-        let (header, signed_block, _signature) = signed_block.into_parts();
-        let (
-            batches,
-            account_updated_witnesses,
-            output_note_batches,
-            created_nullifiers,
-            _partial_blockchain,
-            _prev_block_header,
-        ) = signed_block.into_parts();
-        let created_nullifiers: Vec<Nullifier> = created_nullifiers.keys().copied().collect();
-
-        // Transform the account update witnesses into block account updates.
-        let updated_accounts = account_updated_witnesses
-            .into_iter()
-            .map(|(account_id, update_witness)| {
-                let (
-                    _initial_state_commitment,
-                    final_state_commitment,
-                    // Note that compute_account_root took out this value so it should not be used.
-                    _initial_state_proof,
-                    details,
-                ) = update_witness.into_parts();
-                BlockAccountUpdate::new(account_id, final_state_commitment, details)
-            })
-            .collect();
-
-        // Aggregate the verified transactions of all batches.
-        let txs = batches.into_transactions();
+        let (header, body) = signed_block.into_parts();
 
         // For now, we're not actually proving the block. Just return the block.
-        ProvenBlock::new_unchecked(
-            header,
-            updated_accounts,
-            output_note_batches,
-            created_nullifiers,
-            txs,
-        )
+        ProvenBlock::new_unchecked(header, body)
     }
 }
