@@ -550,16 +550,10 @@ where
 
             let (serial_num, _) = Self::read_double_word_from_adv_map(process, sn_hash)?;
 
-            let num_inputs = process
-                .advice_provider()
-                .get_mapped_values(&inputs_commitment)
-                .and_then(|inputs| inputs.iter().rposition(|&x| x != ZERO).map(|pos| pos + 1))
-                .unwrap_or(0);
-
             let script_data = process.advice_provider().get_mapped_values(&script_root);
 
             if script_data.is_none() {
-                let inputs = self.extract_note_inputs(process, &inputs_commitment, num_inputs)?;
+                let inputs = extract_note_inputs(process, &inputs_commitment)?;
 
                 return Ok(TransactionEventHandling::Unhandled(TransactionEventData::NoteData {
                     note_idx,
@@ -571,7 +565,7 @@ where
                 }));
             }
 
-            let inputs = self.extract_note_inputs(process, &inputs_commitment, num_inputs)?;
+            let inputs = extract_note_inputs(process, &inputs_commitment)?;
 
             let script = NoteScript::try_from(script_data.unwrap()).map_err(|source| {
                 TransactionKernelError::MalformedNoteScript {
@@ -589,40 +583,6 @@ where
         self.insert_output_note_builder(note_idx, note_builder)?;
 
         Ok(TransactionEventHandling::Handled(Vec::new()))
-    }
-
-    /// Extracts and validates note inputs from the advice provider.
-    fn extract_note_inputs(
-        &self,
-        process: &ProcessState,
-        inputs_commitment: &Word,
-        num_inputs: usize,
-    ) -> Result<NoteInputs, TransactionKernelError> {
-        let inputs_data = process.advice_provider().get_mapped_values(inputs_commitment);
-
-        let inputs = match inputs_data {
-            None => NoteInputs::default(),
-            Some(inputs) => {
-                if num_inputs > inputs.len() {
-                    return Err(TransactionKernelError::TooFewElementsForNoteInputs {
-                        specified: num_inputs as u64,
-                        actual: inputs.len() as u64,
-                    });
-                }
-
-                NoteInputs::new(inputs[0..num_inputs].to_vec())
-                    .map_err(TransactionKernelError::MalformedNoteInputs)?
-            },
-        };
-
-        if inputs.commitment() != *inputs_commitment {
-            return Err(TransactionKernelError::InvalidNoteInputs {
-                expected: *inputs_commitment,
-                actual: inputs.commitment(),
-            });
-        }
-
-        Ok(inputs)
     }
 
     /// Adds an asset at the top of the [OutputNoteBuilder] identified by the note pointer.
@@ -1251,6 +1211,61 @@ impl<'store, STORE> TransactionBaseHost<'store, STORE> {
     pub fn store(&self) -> &'store STORE {
         self.mast_store
     }
+}
+
+/// Extracts and validates note inputs from the advice provider using trial unhashing.
+///
+/// This function tries to determine the correct number of inputs by:
+/// 1. Finding the last non-zero element as a starting point
+/// 2. Building NoteInputs and checking if the hash matches inputs_commitment
+/// 3. If not, incrementing num_inputs and trying again (up to 6 more times)
+/// 4. If num_inputs grows to the size of inputs_data and there's still no match, returning an error
+fn extract_note_inputs(
+    process: &ProcessState,
+    inputs_commitment: &Word,
+) -> Result<NoteInputs, TransactionKernelError> {
+    let inputs_data = process.advice_provider().get_mapped_values(inputs_commitment);
+
+    let inputs = match inputs_data {
+        None => NoteInputs::default(),
+        Some(inputs) => {
+            // Start with the last non-zero element as a hint
+            let initial_num_inputs =
+                inputs.iter().rposition(|&x| x != ZERO).map(|pos| pos + 1).unwrap_or(0);
+
+            // Try different input counts using trial unhashing
+            let max_attempts = 7; // Initial attempt + 6 more
+            let mut num_inputs = initial_num_inputs;
+
+            for attempt in 0..max_attempts {
+                if num_inputs > inputs.len() {
+                    break;
+                }
+
+                let candidate_inputs = NoteInputs::new(inputs[0..num_inputs].to_vec())
+                    .map_err(TransactionKernelError::MalformedNoteInputs)?;
+
+                if candidate_inputs.commitment() == *inputs_commitment {
+                    return Ok(candidate_inputs);
+                }
+
+                // If this is not the last attempt, increment and try again
+                if attempt < max_attempts - 1 {
+                    num_inputs += 1;
+                }
+            }
+
+            // If we've exhausted all attempts, return an error
+            return Err(TransactionKernelError::InvalidNoteInputs {
+                expected: *inputs_commitment,
+                actual: NoteInputs::new(inputs[0..num_inputs.min(inputs.len())].to_vec())
+                    .map(|i| i.commitment())
+                    .unwrap_or(Word::default()),
+            });
+        },
+    };
+
+    Ok(inputs)
 }
 
 /// Extracts a word from a slice of field elements.

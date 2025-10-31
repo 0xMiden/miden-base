@@ -5,7 +5,6 @@ use std::sync::Arc;
 
 use miden_lib::account::faucets::{BasicFungibleFaucet, FungibleFaucetExt, NetworkFungibleFaucet};
 use miden_lib::errors::tx_kernel_errors::ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED;
-use miden_lib::note::utils::build_p2id_recipient;
 use miden_lib::note::well_known_note::WellKnownNote;
 use miden_lib::testing::note::NoteBuilder;
 use miden_lib::utils::ScriptBuilder;
@@ -18,11 +17,11 @@ use miden_objects::account::{
 };
 use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::asset::{Asset, FungibleAsset};
-use miden_objects::crypto::rand::FeltRng;
 use miden_objects::note::{
     Note,
     NoteAssets,
     NoteExecutionHint,
+    NoteExecutionMode,
     NoteId,
     NoteInputs,
     NoteMetadata,
@@ -316,24 +315,46 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
     let mut builder = MockChain::builder();
     let faucet = builder.add_existing_basic_faucet(Auth::BasicAuth, "TST", 200, None)?;
 
-    // Parameters for the PUBLIC P2ID note that will be created by the faucet
+    // Parameters for the PUBLIC note that will be created by the faucet
     let recipient_account_id = AccountId::try_from(ACCOUNT_ID_PRIVATE_SENDER)?;
     let amount = Felt::new(75);
-    let tag = NoteTag::for_public_use_case(0, 0, miden_objects::note::NoteExecutionMode::Local)?;
+    let tag = NoteTag::for_public_use_case(0, 0, NoteExecutionMode::Local)?;
     let aux = Felt::new(27);
     let note_execution_hint = NoteExecutionHint::on_block_slot(5, 6, 7);
     let note_type = NoteType::Public;
 
-    // Create the expected P2ID note RECIPIENT
-    let mut rng = RpoRandomCoin::new([Felt::from(0u32); 4].into());
+    // Create a simple output note script
+    let output_note_script_code = "begin push.1 drop end";
+    let source_manager = Arc::new(DefaultSourceManager::default());
+    let output_note_script = ScriptBuilder::with_source_manager(source_manager.clone())
+        .compile_note_script(output_note_script_code)?;
 
-    let p2id_recipient = build_p2id_recipient(recipient_account_id, rng.draw_word())?;
-    let p2id_script_root = p2id_recipient.script().root();
-    let serial_num = p2id_recipient.serial_num();
+    let serial_num = Word::default();
     let target_account_suffix = recipient_account_id.suffix();
     let target_account_prefix = recipient_account_id.prefix().as_felt();
 
-    let note_script_code = format!(
+    // Adding extra 0 values to inputs to test trial unhashing in extract_note_inputs fn
+    let note_inputs = NoteInputs::new(vec![
+        target_account_suffix,
+        target_account_prefix,
+        Felt::new(0),
+        Felt::new(0),
+        Felt::new(0),
+        Felt::new(0),
+        Felt::new(0),
+        Felt::new(1),
+    ])?;
+
+    let note_recipient =
+        NoteRecipient::new(serial_num, output_note_script.clone(), note_inputs.clone());
+
+    let output_script_root = note_recipient.script().root();
+
+    let asset = FungibleAsset::new(faucet.id(), amount.into())?;
+    let metadata = NoteMetadata::new(faucet.id(), note_type, tag, note_execution_hint, aux)?;
+    let expected_note = Note::new(NoteAssets::new(vec![asset.into()])?, metadata, note_recipient);
+
+    let trigger_note_script_code = format!(
         "
             use.miden::note
             
@@ -345,13 +366,18 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
                 push.{serial_num}
                 # => [SERIAL_NUM, SCRIPT_ROOT]
 
-                # Store P2ID inputs (target account ID) in memory at address 0
-                # P2ID inputs are: [target.suffix(), target.prefix()]
-                push.{target_suffix}.{target_prefix} push.0.0
-                push.0 mem_storew dropw
-                # Memory[0] = [0, 0, target_prefix, target_suffix]
+                # Store note inputs in memory at address 0
+                # First word: inputs[0..4]
+                push.{input0}.{input1}.{input2}.{input3}
+                mem_storew.0 dropw
+                # Memory[0] = [input0, input1, input2, input3]
 
-                push.2 push.0
+                # Second word: inputs[4..8]
+                push.{input4}.{input5}.{input6}.{input7}
+                mem_storew.4 dropw
+                # Memory[1] = [input4, input5, input6, input7]
+
+                push.8 push.0
                 # => [inputs_ptr, num_inputs, SERIAL_NUM, SCRIPT_ROOT]
 
                 exec.note::build_recipient
@@ -373,9 +399,15 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
             end
             ",
         note_type = note_type as u8,
-        target_suffix = target_account_suffix,
-        target_prefix = target_account_prefix,
-        script_root = p2id_script_root,
+        input0 = note_inputs.values()[0],
+        input1 = note_inputs.values()[1],
+        input2 = note_inputs.values()[2],
+        input3 = note_inputs.values()[3],
+        input4 = note_inputs.values()[4],
+        input5 = note_inputs.values()[5],
+        input6 = note_inputs.values()[6],
+        input7 = note_inputs.values()[7],
+        script_root = output_script_root,
         serial_num = serial_num,
         aux = aux,
         tag = u32::from(tag),
@@ -391,39 +423,53 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
         .note_execution_hint(NoteExecutionHint::always())
         .aux(Felt::new(0))
         .serial_number(Word::from([1, 2, 3, 4u32]))
-        .code(note_script_code)
+        .code(trigger_note_script_code)
         .build()?;
 
     builder.add_output_note(OutputNote::Full(trigger_note.clone()));
     let mock_chain = builder.build()?;
 
-    // Add the P2ID script to the data store so it can be fetched during transaction execution
-    let p2id_script = WellKnownNote::P2ID.script();
-
-    // Execute the transaction - this should fetch the P2ID script from the data store.
+    // Execute the transaction - this should fetch the output note script from the data store.
     // Note: There is intentionally no call to extend_expected_output_notes here, so the
     // transaction host is forced to request the script from the data store during execution.
     let executed_transaction = mock_chain
         .build_tx_context(faucet.id(), &[trigger_note.id()], &[])?
-        .add_note_script(p2id_script)
+        .add_note_script(output_note_script)
+        .with_source_manager(source_manager)
         .build()?
         .execute()
         .await?;
 
-    // Verify that a PUBLIC P2ID note was created
+    // Verify that a PUBLIC note was created
     assert_eq!(executed_transaction.output_notes().num_notes(), 1);
     let output_note = executed_transaction.output_notes().get_note(0);
 
+    // Extract the full note from the OutputNote enum
+    let full_note = match output_note {
+        OutputNote::Full(note) => note,
+        _ => panic!("Expected OutputNote::Full variant"),
+    };
+
     // Verify the output note is public
-    assert_eq!(output_note.metadata().note_type(), NoteType::Public);
+    assert_eq!(full_note.metadata().note_type(), NoteType::Public);
 
     // Verify the output note contains the minted fungible asset
     let expected_asset = FungibleAsset::new(faucet.id(), amount.into())?;
     let expected_asset_obj = Asset::from(expected_asset);
-    assert!(output_note.assets().unwrap().iter().any(|asset| asset == &expected_asset_obj));
+    assert!(full_note.assets().iter().any(|asset| asset == &expected_asset_obj));
 
     // Verify the note was created by the faucet
-    assert_eq!(output_note.metadata().sender(), faucet.id());
+    assert_eq!(full_note.metadata().sender(), faucet.id());
+
+    // Verify the note inputs commitment matches the expected commitment
+    assert_eq!(
+        full_note.recipient().inputs().commitment(),
+        note_inputs.commitment(),
+        "Output note inputs commitment should match expected inputs commitment"
+    );
+
+    // Verify the output note ID matches the expected note ID
+    assert_eq!(full_note.id(), expected_note.id());
 
     // Verify nonce was incremented
     assert_eq!(executed_transaction.account_delta().nonce_delta(), Felt::new(1));
