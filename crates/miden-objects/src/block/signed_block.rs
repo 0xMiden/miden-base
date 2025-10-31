@@ -15,7 +15,7 @@ pub struct SignedBlock {
 }
 
 impl SignedBlock {
-    /// Creates a new signed block with the given proven block and signature.
+    /// Creates a new [`SignedBlock`] with the given header and body.
     pub fn new(header: BlockHeader, body: BlockBody) -> Self {
         SignedBlock { header, body }
     }
