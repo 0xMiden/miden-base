@@ -521,13 +521,14 @@ where
         ))
     }
 
-    /// Creates a new [OutputNoteBuilder] from the data on the operand stack and stores it into the
-    /// `output_notes` field of this [`TransactionBaseHost`].
+    /// Handles the note creation event by extracting note data from the stack and advice provider.
+    ///
+    /// If the recipient data and note script are present in the advice provider, creates a new
+    /// [`OutputNoteBuilder`] and stores it in the `output_notes` field of this
+    /// [`TransactionBaseHost`]. Otherwise, returns [`TransactionEventHandling::Unhandled`] to
+    /// request the missing note script from the data store.
     ///
     /// Expected stack state: `[event, NOTE_METADATA, note_ptr, RECIPIENT, note_idx]`
-    ///
-    /// If the note script is not present in the advice provider, returns
-    /// [`TransactionEventHandling::Unhandled`] to request the script from the data store.
     fn on_note_after_created(
         &mut self,
         process: &ProcessState,
