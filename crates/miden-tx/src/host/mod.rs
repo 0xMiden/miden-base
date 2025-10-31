@@ -1260,7 +1260,7 @@ fn extract_note_inputs(
                 expected: *inputs_commitment,
                 actual: NoteInputs::new(inputs[0..num_inputs.min(inputs.len())].to_vec())
                     .map(|i| i.commitment())
-                    .unwrap_or(Word::default()),
+                    .unwrap_or_default(),
             });
         },
     };
