@@ -8,7 +8,7 @@ use miden_core::utils::{
     Serializable,
 };
 
-use crate::block::{BlockAccountUpdate, OutputNoteBatch, ProposedBlock};
+use crate::block::{BlockAccountUpdate, OutputNoteBatch};
 use crate::note::Nullifier;
 use crate::transaction::OrderedTransactionHeaders;
 
@@ -96,39 +96,6 @@ impl BlockBody {
             self.created_nullifiers,
             self.transactions,
         )
-    }
-}
-
-impl From<ProposedBlock> for BlockBody {
-    fn from(proposed_block: ProposedBlock) -> Self {
-        let (batches, account_updated_witnesses, output_note_batches, created_nullifiers, ..) =
-            proposed_block.into_parts();
-        let created_nullifiers = created_nullifiers.keys().copied().collect();
-
-        // Transform the account update witnesses into block account updates.
-        let updated_accounts = account_updated_witnesses
-            .into_iter()
-            .map(|(account_id, update_witness)| {
-                let (
-                    _initial_state_commitment,
-                    final_state_commitment,
-                    // Note that compute_account_root took out this value so it should not be used.
-                    _initial_state_proof,
-                    details,
-                ) = update_witness.into_parts();
-                BlockAccountUpdate::new(account_id, final_state_commitment, details)
-            })
-            .collect();
-
-        // Aggregate the verified transactions of all batches.
-        let transactions = batches.into_transactions();
-
-        Self {
-            updated_accounts,
-            output_note_batches,
-            created_nullifiers,
-            transactions,
-        }
     }
 }
 
