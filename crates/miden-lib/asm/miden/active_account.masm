@@ -92,7 +92,7 @@ export.get_initial_commitment
     # => [INIT_COMMITMENT]
 end
 
-#! Computes and returns the active account commitment from account data stored in memory.
+#! Computes and returns commitment to the state of the active account.
 #!
 #! Inputs:  []
 #! Outputs: [ACCOUNT_COMMITMENT]

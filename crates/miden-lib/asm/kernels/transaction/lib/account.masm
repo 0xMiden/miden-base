@@ -290,13 +290,13 @@ export.get_initial_commitment
     # => [INIT_COMMITMENT]
 end
 
-#! Computes the commitment of the active account.
+#! Computes commitment to the state of the active account.
 #!
 #! Notice that there is no caching (and, hence, dirty flag) for the commitment of the entire
-#! account. Assuming that the storage commitment is current, computing account commitment is
-#! relatively cheap — essentially is consists of just 2 permutations of the hash function and takes
-#! relatively small number of cycles, so it would not be worth adding a separate caching mechanism
-#! for this.
+#! account. If the storage commitment is current (which is ensured by this procedure), computing 
+#! account commitment is relatively cheap — essentially is consists of just 2 permutations of the 
+#! hash function and takes relatively small number of cycles, so it would not be worth adding a 
+#! separate caching mechanism for this.
 #!
 #! Inputs:  []
 #! Outputs: [ACCOUNT_COMMITMENT]

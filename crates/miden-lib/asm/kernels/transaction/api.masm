@@ -108,7 +108,7 @@ export.account_get_initial_commitment
     # => [INIT_COMMITMENT, pad(12)]
 end
 
-#! Computes the account commitment of the active account.
+#! Computes commitment to the state of the active account.
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [ACCOUNT_COMMITMENT, pad(12)]

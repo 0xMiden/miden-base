@@ -74,7 +74,7 @@ impl AccountProcedureIndexMap {
                         .try_into()
                         .expect("account stack top pointer should be less than u32::MAX"),
                 )
-                .expect("Active account pointer was not initialized")
+                .expect("active account pointer was not initialized")
                 .as_int();
             process
                 .get_mem_word(process.ctx(), curr_data_ptr as u32 + ACCT_CODE_COMMITMENT_OFFSET)
