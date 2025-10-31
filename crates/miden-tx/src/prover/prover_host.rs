@@ -125,7 +125,7 @@ where
                     TransactionEventData::AccountStorageMapWitness { .. } => Ok(Vec::new()),
                     // Note scripts should be in the advice provider at proving time, so there is
                     // nothing to do.
-                    TransactionEventData::NoteScript { .. } => Ok(Vec::new()),
+                    TransactionEventData::NoteData { .. } => Ok(Vec::new()),
                     // We don't track enough information to handle this event. Since this just
                     // improves error messages for users and the error should not be relevant during
                     // proving, we ignore it.

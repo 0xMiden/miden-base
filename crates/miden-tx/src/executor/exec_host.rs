@@ -519,11 +519,11 @@ where
                     .on_account_storage_map_witness_requested(current_account_id, map_root, map_key)
                     .await
                     .map_err(EventError::from),
-                TransactionEventData::NoteScript {
-                    script_root,
-                    metadata,
-                    recipient_digest,
+                TransactionEventData::NoteData {
                     note_idx,
+                    metadata,
+                    script_root,
+                    recipient_digest,
                     note_inputs,
                     serial_num,
                 } => self

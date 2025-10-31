@@ -596,11 +596,11 @@ where
             if script_data.is_none() {
                 let inputs = self.extract_note_inputs(process, &inputs_commitment, num_inputs)?;
 
-                return Ok(TransactionEventHandling::Unhandled(TransactionEventData::NoteScript {
-                    script_root,
-                    metadata,
-                    recipient_digest,
+                return Ok(TransactionEventHandling::Unhandled(TransactionEventData::NoteData {
                     note_idx,
+                    metadata,
+                    script_root,
+                    recipient_digest,
                     note_inputs: inputs,
                     serial_num,
                 }));
@@ -1323,15 +1323,15 @@ pub(super) enum TransactionEventData {
         map_key: Word,
     },
     /// The data necessary to request a note script from the data store.
-    NoteScript {
-        /// The root of the note script being requested.
-        script_root: Word,
-        /// The note metadata extracted from the stack.
-        metadata: NoteMetadata,
-        /// The recipient digest extracted from the stack.
-        recipient_digest: Word,
+    NoteData {
         /// The note index extracted from the stack.
         note_idx: usize,
+        /// The note metadata extracted from the stack.
+        metadata: NoteMetadata,
+        /// The root of the note script being requested.
+        script_root: Word,
+        /// The recipient digest extracted from the stack.
+        recipient_digest: Word,
         /// The note inputs extracted from the advice provider.
         note_inputs: NoteInputs,
         /// The serial number extracted from the advice provider.

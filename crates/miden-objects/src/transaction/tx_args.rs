@@ -166,7 +166,15 @@ impl TransactionArgs {
         let script = note_recipient.script();
         let script_encoded: Vec<Felt> = script.into();
 
-        let mut new_elements = note_recipient.to_advice_map_entries();
+        // Build the advice map entries inline (previously in to_advice_map_entries)
+        let sn_hash = Hasher::merge(&[note_recipient.serial_num(), Word::empty()]);
+        let sn_script_hash = Hasher::merge(&[sn_hash, script.root()]);
+
+        let mut new_elements = vec![
+            (sn_hash, concat_words(note_recipient.serial_num(), Word::empty())),
+            (sn_script_hash, concat_words(sn_hash, script.root())),
+            (note_recipient.digest(), concat_words(sn_script_hash, inputs.commitment())),
+        ];
 
         new_elements.push((inputs.commitment(), inputs.format_for_advice()));
         new_elements.push((script.root(), script_encoded));
@@ -222,6 +230,14 @@ impl TransactionArgs {
     pub fn extend_advice_inputs(&mut self, advice_inputs: AdviceInputs) {
         self.advice_inputs.extend(advice_inputs);
     }
+}
+
+/// Concatenates two [`Word`]s into a [`Vec<Felt>`] containing 8 elements.
+fn concat_words(first: Word, second: Word) -> Vec<Felt> {
+    let mut result = Vec::with_capacity(8);
+    result.extend(first);
+    result.extend(second);
+    result
 }
 
 impl Default for TransactionArgs {
