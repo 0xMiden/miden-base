@@ -700,7 +700,7 @@ async fn inputs_created_correctly() -> anyhow::Result<()> {
     let component = AccountComponent::compile(
         account_code_script,
         TransactionKernel::assembler(),
-        vec![NamedStorageSlot::with_value(SlotName::new_test(0), Word::default())],
+        vec![NamedStorageSlot::with_value(SlotName::mock(0), Word::default())],
     )?
     .with_supports_all_types();
 

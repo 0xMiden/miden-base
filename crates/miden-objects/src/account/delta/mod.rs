@@ -516,7 +516,7 @@ mod tests {
         AccountDelta::new(account_id, storage_delta.clone(), vault_delta.clone(), ONE).unwrap();
 
         // non-empty delta
-        let storage_delta = AccountStorageDelta::from_iters([SlotName::new_test(1)], [], []);
+        let storage_delta = AccountStorageDelta::from_iters([SlotName::mock(1)], [], []);
 
         assert_matches!(
             AccountDelta::new(account_id, storage_delta.clone(), vault_delta.clone(), ZERO)
@@ -564,13 +564,13 @@ mod tests {
         assert_eq!(account_delta.to_bytes().len(), account_delta.get_size_hint());
 
         let storage_delta = AccountStorageDelta::from_iters(
-            [SlotName::new_test(1)],
+            [SlotName::mock(1)],
             [
-                (SlotName::new_test(2), Word::from([1, 1, 1, 1u32])),
-                (SlotName::new_test(3), Word::from([1, 1, 0, 1u32])),
+                (SlotName::mock(2), Word::from([1, 1, 1, 1u32])),
+                (SlotName::mock(3), Word::from([1, 1, 0, 1u32])),
             ],
             [(
-                SlotName::new_test(4),
+                SlotName::mock(4),
                 StorageMapDelta::from_iters(
                     [Word::from([1, 1, 1, 0u32]), Word::from([0, 1, 1, 1u32])],
                     [(Word::from([1, 1, 1, 1u32]), Word::from([1, 1, 1, 1u32]))],

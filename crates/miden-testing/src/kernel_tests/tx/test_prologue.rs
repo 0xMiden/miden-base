@@ -590,7 +590,7 @@ pub async fn create_multiple_accounts_test(storage_mode: AccountStorageMode) -> 
             .storage_mode(storage_mode)
             .with_auth_component(Auth::IncrNonce)
             .with_component(MockAccountComponent::with_slots(vec![NamedStorageSlot::with_value(
-                SlotName::new_test(0),
+                SlotName::mock(0),
                 Word::from([255u32; WORD_SIZE]),
             )]))
             .build()

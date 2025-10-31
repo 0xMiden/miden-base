@@ -102,20 +102,20 @@ async fn delta_nonce() -> anyhow::Result<()> {
 /// - Slot 3: [1,3,5,7]  -> [2,3,4,5] -> [1,3,5,7]  -> Delta: None
 #[tokio::test]
 async fn storage_delta_for_value_slots() -> anyhow::Result<()> {
-    let slot_0_name = SlotName::new_test(0);
+    let slot_0_name = SlotName::mock(0);
     let slot_0_init_value = Word::from([2, 4, 6, 8u32]);
     let slot_0_tmp_value = Word::from([3, 4, 5, 6u32]);
     let slot_0_final_value = EMPTY_WORD;
 
-    let slot_1_name = SlotName::new_test(1);
+    let slot_1_name = SlotName::mock(1);
     let slot_1_init_value = EMPTY_WORD;
     let slot_1_final_value = Word::from([3, 4, 5, 6u32]);
 
-    let slot_2_name = SlotName::new_test(2);
+    let slot_2_name = SlotName::mock(2);
     let slot_2_init_value = Word::from([1, 3, 5, 7u32]);
     let slot_2_final_value = slot_2_init_value;
 
-    let slot_3_name = SlotName::new_test(3);
+    let slot_3_name = SlotName::mock(3);
     let slot_3_init_value = Word::from([1, 3, 5, 7u32]);
     let slot_3_tmp_value = Word::from([2, 3, 4, 5u32]);
     let slot_3_final_value = slot_3_init_value;
@@ -242,18 +242,18 @@ async fn storage_delta_for_map_slots() -> anyhow::Result<()> {
     let key5_tmp_value = Word::from([2, 3, 4, 5u32]);
     let key5_final_value = Word::from([1, 2, 3, 4u32]);
 
-    let slot_0_name = SlotName::new_test(0);
+    let slot_0_name = SlotName::mock(0);
     let mut map0 = StorageMap::new();
     map0.insert(key0, key0_init_value).unwrap();
     map0.insert(key1, key1_init_value).unwrap();
 
-    let slot_1_name = SlotName::new_test(1);
+    let slot_1_name = SlotName::mock(1);
     let mut map1 = StorageMap::new();
     map1.insert(key2, key2_init_value).unwrap();
     map1.insert(key3, key3_init_value).unwrap();
     map1.insert(key4, key4_init_value).unwrap();
 
-    let slot_2_name = SlotName::new_test(2);
+    let slot_2_name = SlotName::mock(2);
     let mut map2 = StorageMap::new();
     map2.insert(key5, key5_init_value).unwrap();
 
@@ -265,7 +265,7 @@ async fn storage_delta_for_map_slots() -> anyhow::Result<()> {
             // Include an empty map which does not receive any updates, to test that the "metadata
             // header" in the delta commitment is not appended if there are no updates to a map
             // slot.
-            NamedStorageSlot::with_map(SlotName::new_test(3), StorageMap::new()),
+            NamedStorageSlot::with_map(SlotName::mock(3), StorageMap::new()),
         ],
         [],
         [],

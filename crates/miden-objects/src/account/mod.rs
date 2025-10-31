@@ -594,8 +594,8 @@ mod tests {
         let asset_0 = FungibleAsset::mock(15);
         let asset_1 = NonFungibleAsset::mock(&[5, 5, 5]);
         let storage_delta = AccountStorageDeltaBuilder::new()
-            .add_cleared_items([SlotName::new_test(0)])
-            .add_updated_values([(SlotName::new_test(1), Word::from([1, 2, 3, 4u32]))])
+            .add_cleared_items([SlotName::mock(0)])
+            .add_updated_values([(SlotName::mock(1), Word::from([1, 2, 3, 4u32]))])
             .build()
             .unwrap();
         let account_delta = build_account_delta(
@@ -659,9 +659,9 @@ mod tests {
         // build account delta
         let final_nonce = Felt::new(2);
         let storage_delta = AccountStorageDeltaBuilder::new()
-            .add_cleared_items([SlotName::new_test(0)])
-            .add_updated_values([(SlotName::new_test(1), Word::from([1, 2, 3, 4u32]))])
-            .add_updated_maps([(SlotName::new_test(2), updated_map)])
+            .add_cleared_items([SlotName::mock(0)])
+            .add_updated_values([(SlotName::mock(1), Word::from([1, 2, 3, 4u32]))])
+            .add_updated_maps([(SlotName::mock(2), updated_map)])
             .build()
             .unwrap();
         let account_delta = build_account_delta(
@@ -701,8 +701,8 @@ mod tests {
 
         // build account delta
         let storage_delta = AccountStorageDeltaBuilder::new()
-            .add_cleared_items([SlotName::new_test(0)])
-            .add_updated_values([(SlotName::new_test(1), Word::from([1, 2, 3, 4u32]))])
+            .add_cleared_items([SlotName::mock(0)])
+            .add_updated_values([(SlotName::mock(1), Word::from([1, 2, 3, 4u32]))])
             .build()
             .unwrap();
         let account_delta =
@@ -725,8 +725,8 @@ mod tests {
         // build account delta
         let final_nonce = Felt::new(1);
         let storage_delta = AccountStorageDeltaBuilder::new()
-            .add_cleared_items([SlotName::new_test(0)])
-            .add_updated_values([(SlotName::new_test(1), Word::from([1, 2, 3, 4u32]))])
+            .add_cleared_items([SlotName::mock(0)])
+            .add_updated_values([(SlotName::mock(1), Word::from([1, 2, 3, 4u32]))])
             .build()
             .unwrap();
         let account_delta =
@@ -779,7 +779,7 @@ mod tests {
         let slots = slots
             .into_iter()
             .enumerate()
-            .map(|(idx, slot)| NamedStorageSlot::new(SlotName::new_test(idx), slot))
+            .map(|(idx, slot)| NamedStorageSlot::new(SlotName::mock(idx), slot))
             .collect();
 
         let storage = AccountStorage::new(slots).unwrap();
