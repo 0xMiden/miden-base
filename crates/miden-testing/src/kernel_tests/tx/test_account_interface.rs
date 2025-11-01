@@ -604,17 +604,17 @@ async fn test_check_note_consumability_static_analysis_invalid_inputs() -> anyho
 /// It is expected that the current block height is 3.
 #[rstest::rstest]
 // rc == tl == curr
-#[case(3, 3, String::from("Ok(Consumable)"))]
+#[case(3, 3, String::from("Ok(ConsumableWithAuthorization)"))]
 // rc < tl < curr
-#[case(1, 2, String::from("Ok(Consumable)"))]
+#[case(1, 2, String::from("Ok(ConsumableWithAuthorization)"))]
 // rc < tl = curr
-#[case(1, 3, String::from("Ok(Consumable)"))]
+#[case(1, 3, String::from("Ok(ConsumableWithAuthorization)"))]
 // rc = tl < curr
-#[case(1, 1, String::from("Ok(Consumable)"))]
+#[case(1, 1, String::from("Ok(ConsumableWithAuthorization)"))]
 // tl < rc < curr
-#[case(2, 1, String::from("Ok(Consumable)"))]
+#[case(2, 1, String::from("Ok(ConsumableWithAuthorization)"))]
 // tl < rc = curr
-#[case(3, 1, String::from("Ok(Consumable)"))]
+#[case(3, 1, String::from("Ok(ConsumableWithAuthorization)"))]
 // curr < rc < tl
 #[case(4, 5, String::from("Ok(ConsumableAfter(BlockNumber(5)))"))]
 // curr < rc = tl
@@ -624,15 +624,15 @@ async fn test_check_note_consumability_static_analysis_invalid_inputs() -> anyho
 // rc < curr < tl
 #[case(2, 4, String::from("Ok(ConsumableAfter(BlockNumber(4)))"))]
 // rc < curr = tl
-#[case(2, 3, String::from("Ok(Consumable)"))]
+#[case(2, 3, String::from("Ok(ConsumableWithAuthorization)"))]
 // curr < tl < rc
 #[case(5, 4, String::from("Ok(ConsumableAfter(BlockNumber(4)))"))]
 // curr = tl < rc
-#[case(4, 3, String::from("Ok(Consumable)"))]
+#[case(4, 3, String::from("Ok(ConsumableWithAuthorization)"))]
 // tl < curr < rc
-#[case(4, 2, String::from("Ok(Consumable)"))]
+#[case(4, 2, String::from("Ok(ConsumableWithAuthorization)"))]
 // tl < curr = rc
-#[case(3, 2, String::from("Ok(Consumable)"))]
+#[case(3, 2, String::from("Ok(ConsumableWithAuthorization)"))]
 #[tokio::test]
 async fn test_check_note_consumability_static_analysis_receiver(
     #[case] reclaim_height: u64,
@@ -693,17 +693,17 @@ async fn test_check_note_consumability_static_analysis_receiver(
 /// It is expected that the current block height is 3.
 #[rstest::rstest]
 // rc == tl == curr
-#[case(3, 3, String::from("Ok(Consumable)"))]
+#[case(3, 3, String::from("Ok(ConsumableWithAuthorization)"))]
 // rc < tl < curr
-#[case(1, 2, String::from("Ok(Consumable)"))]
+#[case(1, 2, String::from("Ok(ConsumableWithAuthorization)"))]
 // rc < tl = curr
-#[case(1, 3, String::from("Ok(Consumable)"))]
+#[case(1, 3, String::from("Ok(ConsumableWithAuthorization)"))]
 // rc = tl < curr
-#[case(1, 1, String::from("Ok(Consumable)"))]
+#[case(1, 1, String::from("Ok(ConsumableWithAuthorization)"))]
 // tl < rc < curr
-#[case(2, 1, String::from("Ok(Consumable)"))]
+#[case(2, 1, String::from("Ok(ConsumableWithAuthorization)"))]
 // tl < rc = curr
-#[case(3, 1, String::from("Ok(Consumable)"))]
+#[case(3, 1, String::from("Ok(ConsumableWithAuthorization)"))]
 // curr < rc < tl
 #[case(4, 5, String::from("Ok(ConsumableAfter(BlockNumber(5)))"))]
 // curr < rc = tl
@@ -713,7 +713,7 @@ async fn test_check_note_consumability_static_analysis_receiver(
 // rc < curr < tl
 #[case(2, 4, String::from("Ok(ConsumableAfter(BlockNumber(4)))"))]
 // rc < curr = tl
-#[case(2, 3, String::from("Ok(Consumable)"))]
+#[case(2, 3, String::from("Ok(ConsumableWithAuthorization)"))]
 // curr < tl < rc
 #[case(5, 4, String::from("Ok(ConsumableAfter(BlockNumber(5)))"))]
 // curr = tl < rc
@@ -721,7 +721,7 @@ async fn test_check_note_consumability_static_analysis_receiver(
 // tl < curr < rc
 #[case(4, 2, String::from("Ok(ConsumableAfter(BlockNumber(4)))"))]
 // tl < curr = rc
-#[case(3, 2, String::from("Ok(Consumable)"))]
+#[case(3, 2, String::from("Ok(ConsumableWithAuthorization)"))]
 #[tokio::test]
 async fn test_check_note_consumability_static_analysis_sender(
     #[case] reclaim_height: u64,

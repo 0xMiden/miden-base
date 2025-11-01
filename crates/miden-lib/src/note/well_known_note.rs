@@ -233,8 +233,8 @@ impl WellKnownNote {
         }
     }
 
-    /// Performs the inputs check of the provided note against the target account and the block
-    /// number.
+    /// Performs the inputs check of the provided well-known note against the target account and the
+    /// block number.
     ///
     /// This function returns:
     /// - `Some` if we can definitively determine whether the note can be consumed not by the target
@@ -268,8 +268,7 @@ impl WellKnownNote {
     ///     - check that note inputs have correct number of values.
     ///     - check that the target account is either the receiver account or the sender account.
     ///     - check that depending on whether the target account is sender or receiver, it could be
-    ///       either consumed, or consumed after timelock height, or consumed after reclaim height
-    ///       (see inline comments for more details).
+    ///       either consumed, or consumed after timelock height, or consumed after reclaim height.
     /// ```
     fn is_consumable_inner(
         &self,
@@ -282,7 +281,7 @@ impl WellKnownNote {
                 let input_account_id = parse_p2id_inputs(note.inputs().values())?;
 
                 if input_account_id == target_account_id {
-                    Ok(None)
+                    Ok(Some(NoteConsumptionStatus::ConsumableWithAuthorization))
                 } else {
                     Ok(Some(NoteConsumptionStatus::NeverConsumable("account ID provided to the P2ID note inputs doesn't match the target account ID".into())))
                 }
@@ -293,15 +292,18 @@ impl WellKnownNote {
 
                 let current_block_height = block_ref.as_u32();
 
+                // block height after which sender account can consume the note
+                let consumable_after = reclaim_height.max(timelock_height);
+
                 // handle the case when the target account of the transaction is sender
                 if target_account_id == note.metadata().sender() {
                     // For the sender, the current block height needs to have reached both reclaim
                     // and timelock height to be consumable.
-                    if current_block_height >= reclaim_height.max(timelock_height) {
-                        Ok(None)
+                    if current_block_height >= consumable_after {
+                        Ok(Some(NoteConsumptionStatus::ConsumableWithAuthorization))
                     } else {
                         Ok(Some(NoteConsumptionStatus::ConsumableAfter(BlockNumber::from(
-                            reclaim_height.max(timelock_height),
+                            consumable_after,
                         ))))
                     }
                 // handle the case when the target account of the transaction is receiver
@@ -310,7 +312,7 @@ impl WellKnownNote {
                     // timelock height to be consumable: we can ignore the reclaim height in this
                     // case
                     if current_block_height >= timelock_height {
-                        Ok(None)
+                        Ok(Some(NoteConsumptionStatus::ConsumableWithAuthorization))
                     } else {
                         Ok(Some(NoteConsumptionStatus::ConsumableAfter(BlockNumber::from(
                             timelock_height,
@@ -397,14 +399,7 @@ fn try_read_account_id_from_inputs(note_inputs: &[Felt]) -> Result<AccountId, St
         )));
     }
 
-    let account_id_felts: [Felt; 2] = note_inputs[0..2].try_into().map_err(|source| {
-        StaticAnalysisError::with_source(
-            "should be able to convert the first two note inputs to an array of two Felt elements",
-            source,
-        )
-    })?;
-
-    AccountId::try_from([account_id_felts[1], account_id_felts[0]]).map_err(|source| {
+    AccountId::try_from([note_inputs[1], note_inputs[0]]).map_err(|source| {
         StaticAnalysisError::with_source(
             "failed to create an account ID from the first two note inputs",
             source,
