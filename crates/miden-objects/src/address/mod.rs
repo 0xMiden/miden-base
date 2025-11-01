@@ -254,12 +254,11 @@ mod tests {
                 // Encode/Decode without routing parameters should be valid.
                 let mut address = Address::new(account_id);
 
-                address = address.with_routing_parameters(
-                    RoutingParameters::new(AddressInterface::BasicWallet)
-                        .with_note_tag_len(NoteTag::DEFAULT_NETWORK_TAG_LENGTH)?,
-                )?;
-
                 let bech32_string = address.encode(network_id.clone());
+                assert!(
+                    !bech32_string.contains(ADDRESS_SEPARATOR),
+                    "separator should not be present in address without routing params"
+                );
                 let (decoded_network_id, decoded_address) = Address::decode(&bech32_string)?;
 
                 assert_eq!(network_id, decoded_network_id, "network id failed in {idx}");
@@ -268,13 +267,24 @@ mod tests {
                 let AddressId::AccountId(decoded_account_id) = address.id();
                 assert_eq!(account_id, decoded_account_id);
 
-                // It should always be possible to strip the routing parameters and still have a
-                // valid address ID.
-                let address_id_str = bech32_string.split(ADDRESS_SEPARATOR).next().unwrap();
-                let (decoded_network_id, decoded_address) = Address::decode(address_id_str)?;
+                // Encode/Decode with routing parameters should be valid.
+                address = address.with_routing_parameters(
+                    RoutingParameters::new(AddressInterface::BasicWallet)
+                        .with_note_tag_len(NoteTag::DEFAULT_NETWORK_TAG_LENGTH)?,
+                )?;
+
+                let bech32_string = address.encode(network_id.clone());
+                assert!(
+                    bech32_string.contains(ADDRESS_SEPARATOR),
+                    "separator should be present in address without routing params"
+                );
+                let (decoded_network_id, decoded_address) = Address::decode(&bech32_string)?;
 
                 assert_eq!(network_id, decoded_network_id, "network id failed in {idx}");
-                assert_eq!(address.id(), decoded_address.id(), "address ID failed in {idx}");
+                assert_eq!(address, decoded_address, "address failed in {idx}");
+
+                let AddressId::AccountId(decoded_account_id) = address.id();
+                assert_eq!(account_id, decoded_account_id);
             }
         }
 
@@ -282,7 +292,7 @@ mod tests {
     }
 
     #[test]
-    fn address_fails_on_trailing_separator() -> anyhow::Result<()> {
+    fn address_decoding_fails_on_trailing_separator() -> anyhow::Result<()> {
         let id = AccountIdBuilder::new()
             .account_type(AccountType::FungibleFaucet)
             .build_with_rng(&mut rand::rng());
