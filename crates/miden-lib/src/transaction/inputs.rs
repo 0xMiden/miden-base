@@ -346,7 +346,7 @@ impl TransactionAdviceInputs {
             // recipient inputs / assets commitments
             self.add_map_entry(
                 recipient.inputs().commitment(),
-                recipient.inputs().format_for_advice(),
+                recipient.inputs().to_elements(),
             );
             self.add_map_entry(assets.commitment(), assets.to_padded_assets());
 

@@ -174,7 +174,7 @@ impl TransactionArgs {
             (sn_hash, concat_words(note_recipient.serial_num(), Word::empty())),
             (sn_script_hash, concat_words(sn_hash, script.root())),
             (note_recipient.digest(), concat_words(sn_script_hash, inputs.commitment())),
-            (inputs.commitment(), inputs.format_for_advice()),
+            (inputs.commitment(), inputs.to_elements()),
             (script.root(), script_encoded),
         ];
 
