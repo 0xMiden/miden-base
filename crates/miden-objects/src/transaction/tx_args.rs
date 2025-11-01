@@ -166,7 +166,7 @@ impl TransactionArgs {
         let script = note_recipient.script();
         let script_encoded: Vec<Felt> = script.into();
 
-        // Build the advice map entries inline (previously in to_advice_map_entries)
+        // Build the advice map entries
         let sn_hash = Hasher::merge(&[note_recipient.serial_num(), Word::empty()]);
         let sn_script_hash = Hasher::merge(&[sn_hash, script.root()]);
 
