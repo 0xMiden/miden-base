@@ -8,6 +8,7 @@ use bech32::{Bech32m, Hrp};
 use crate::AddressError;
 use crate::address::AddressInterface;
 use crate::errors::Bech32Error;
+use crate::note::NoteTag;
 use crate::utils::serde::{
     ByteReader,
     ByteWriter,
@@ -27,88 +28,83 @@ const BECH32_SEPARATOR: &str = "1";
 
 const RECEIVER_PROFILE_KEY: u8 = 0;
 
+/// The value to encode the absence of a note tag routing parameter (i.e. `None`).
+///
+/// Note tag length is ensured to be <= [`NoteTag::MAX_LOCAL_TAG_LENGTH`] and so 1 << 5 = 32 is used
+/// to encode `None`.
+const ABSENT_NOTE_TAG_LEN: u8 = 1 << 5;
+
 /// TODO: Docs.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RoutingParameters {
-    receiver_profile: Option<(u8, AddressInterface)>,
+    interface: AddressInterface,
+    note_tag_len: Option<u8>,
 }
 
 impl RoutingParameters {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
-    pub fn new() -> Self {
-        Self { receiver_profile: None }
+    pub fn new(interface: AddressInterface) -> Self {
+        Self { interface, note_tag_len: None }
     }
 
-    /// Sets the tag length and interface routing parameters.
+    /// Sets the note tag length routing parameter.
     ///
-    /// The tag length preference determines how many bits of the account ID are encoded into
-    /// [`NoteTag`]s of notes targeted to this address. This lets the owner of the account choose
-    /// their level of privacy. A higher tag length makes the account more uniquely identifiable and
+    /// The tag length determines how many bits of the account ID are encoded into [`NoteTag`]s of
+    /// notes targeted to this address. This lets the owner of the account choose their level of
+    /// privacy. A higher tag length makes the account more uniquely identifiable and
     /// reduces privacy, while a shorter length increases privacy at the cost of matching more notes
     /// published onchain.
-    pub fn with_receiver_profile(mut self, tag_len: u8, interface: AddressInterface) -> Self {
-        self.receiver_profile = Some((tag_len, interface));
-        self
+    pub fn with_note_tag_len(mut self, note_tag_len: u8) -> Result<Self, AddressError> {
+        if note_tag_len > NoteTag::MAX_LOCAL_TAG_LENGTH {
+            return Err(AddressError::TagLengthTooLarge(note_tag_len));
+        }
+
+        self.note_tag_len = Some(note_tag_len);
+        Ok(self)
     }
 
     // ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    pub fn receiver_profile(&self) -> Option<(u8, AddressInterface)> {
-        self.receiver_profile
+    pub fn note_tag_len(&self) -> Option<u8> {
+        self.note_tag_len
     }
 
-    pub fn tag_len(&self) -> Option<u8> {
-        self.receiver_profile.map(|(tag_len, _interface)| tag_len)
-    }
-
-    pub fn interface(&self) -> Option<AddressInterface> {
-        self.receiver_profile.map(|(_tag_len, interface)| interface)
+    pub fn interface(&self) -> AddressInterface {
+        self.interface
     }
 
     /// Encodes [`RoutingParameters`] to a byte vector.
-    ///
-    /// The return value is either:
-    /// - An empty vector if self is equal to [`RoutingParameters::default`].
-    /// - Or a non-empty vector if routing parameters are set.
     pub(crate) fn encode_to_bytes(&self) -> Vec<u8> {
         let mut encoded = Vec::new();
 
-        if let Some((tag_len, interface)) = self.receiver_profile {
-            let interface = interface as u16;
-            debug_assert_eq!(
-                interface >> 11,
-                0,
-                "address interface should have its upper 5 bits unset"
-            );
+        let note_tag_len = self.note_tag_len.unwrap_or(ABSENT_NOTE_TAG_LEN);
 
-            // The interface takes up 11 bits and the tag length 5 bits, so we can merge them
-            // together.
-            let tag_len = (tag_len as u16) << 11;
-            let receiver_profile: u16 = tag_len | interface;
-            let receiver_profile: [u8; 2] = receiver_profile.to_be_bytes();
+        let interface = self.interface as u16;
+        debug_assert_eq!(
+            interface >> 11,
+            0,
+            "address interface should have its upper 5 bits unset"
+        );
 
-            // Append the receiver profile key and the encoded value to the vector.
-            encoded.push(RECEIVER_PROFILE_KEY);
-            encoded.extend(receiver_profile);
-        }
+        // The interface takes up 11 bits and the tag length 5 bits, so we can merge them
+        // together.
+        let tag_len = (note_tag_len as u16) << 11;
+        let receiver_profile: u16 = tag_len | interface;
+        let receiver_profile: [u8; 2] = receiver_profile.to_be_bytes();
+
+        // Append the receiver profile key and the encoded value to the vector.
+        encoded.push(RECEIVER_PROFILE_KEY);
+        encoded.extend(receiver_profile);
 
         encoded
     }
 
     /// Encodes [`RoutingParameters`] to a bech32 string _without_ the leading hrp and separator.
-    ///
-    /// The return value is either:
-    /// - An empty string if self is equal to [`RoutingParameters::default`].
-    /// - Or a bech32 string without the leading hrp and separator.
     pub(crate) fn encode_to_string(&self) -> String {
         let encoded = self.encode_to_bytes();
-
-        if encoded.is_empty() {
-            return String::new();
-        }
 
         let bech32_str =
             bech32::encode::<Bech32m>(*ROUTING_PARAMETERS_HRP, &encoded).expect("TODO");
@@ -122,15 +118,7 @@ impl RoutingParameters {
     }
 
     /// Decodes [`RoutingParameters`] from a bech32 string _without_ the leading hrp and separator.
-    ///
-    /// The string must be either:
-    /// - An empty string, in which case [`RoutingParameters::default`] is returned.
-    /// - Or a validly encoded bech32 string without the leading hrp and separator.
     pub(crate) fn decode(mut bech32_string: String) -> Result<Self, AddressError> {
-        if bech32_string.is_empty() {
-            return Ok(RoutingParameters::new());
-        }
-
         // ------ Decode bech32 string into bytes ------
 
         // Reinsert the expected HRP into the string that is stripped during encoding.
@@ -162,7 +150,8 @@ impl RoutingParameters {
     pub(crate) fn decode_from_bytes(
         mut byte_iter: impl ExactSizeIterator<Item = u8>,
     ) -> Result<Self, AddressError> {
-        let mut routing_parameters = RoutingParameters::new();
+        let mut interface = None;
+        let mut note_tag_len = None;
 
         while let Some(key) = byte_iter.next() {
             match key {
@@ -178,22 +167,34 @@ impl RoutingParameters {
                     let receiver_profile = u16::from_be_bytes([byte0, byte1]);
 
                     let tag_len = (receiver_profile >> 11) as u8;
-                    let interface = receiver_profile & 0b0000_0111_1111_1111;
-                    let interface = AddressInterface::try_from(interface).map_err(|err| {
-                        AddressError::decode_error_with_source(
-                            "failed to decode address interface",
-                            err,
-                        )
-                    })?;
+                    note_tag_len = if tag_len == ABSENT_NOTE_TAG_LEN {
+                        None
+                    } else {
+                        Some(tag_len)
+                    };
 
-                    routing_parameters =
-                        routing_parameters.with_receiver_profile(tag_len, interface);
+                    let addr_interface = receiver_profile & 0b0000_0111_1111_1111;
+                    let addr_interface =
+                        AddressInterface::try_from(addr_interface).map_err(|err| {
+                            AddressError::decode_error_with_source(
+                                "failed to decode address interface",
+                                err,
+                            )
+                        })?;
+                    interface = Some(addr_interface);
                 },
                 other => {
                     return Err(AddressError::UnknownRoutingParameterKey(other));
                 },
             }
         }
+
+        let interface = interface.ok_or_else(|| {
+            AddressError::decode_error("interface must be present in routing parameters")
+        })?;
+
+        let mut routing_parameters = RoutingParameters::new(interface);
+        routing_parameters.note_tag_len = note_tag_len;
 
         Ok(routing_parameters)
     }
@@ -256,15 +257,8 @@ mod tests {
 
     #[test]
     fn routing_parameters_bech32_encode_decode_roundtrip() -> anyhow::Result<()> {
-        let empty_routing_params = RoutingParameters::default();
-        assert!(empty_routing_params.encode_to_string().is_empty());
-        assert_eq!(
-            RoutingParameters::decode(empty_routing_params.encode_to_string())?,
-            empty_routing_params
-        );
-
         let routing_params =
-            RoutingParameters::new().with_receiver_profile(8, AddressInterface::BasicWallet);
+            RoutingParameters::new(AddressInterface::BasicWallet).with_note_tag_len(8)?;
         assert_eq!(routing_params, RoutingParameters::decode(routing_params.encode_to_string())?);
 
         Ok(())
@@ -272,13 +266,15 @@ mod tests {
 
     /// Tests that routing parameters can be serialized and deserialized.
     #[test]
-    fn routing_parameters_serialization() {
+    fn routing_parameters_serialization() -> anyhow::Result<()> {
         let routing_params =
-            RoutingParameters::new().with_receiver_profile(6, AddressInterface::BasicWallet);
+            RoutingParameters::new(AddressInterface::BasicWallet).with_note_tag_len(6)?;
 
         assert_eq!(
             routing_params,
             RoutingParameters::read_from_bytes(&routing_params.to_bytes()).unwrap()
         );
+
+        Ok(())
     }
 }

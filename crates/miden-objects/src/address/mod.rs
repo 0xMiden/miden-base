@@ -30,38 +30,33 @@ const ADDRESS_SEPARATOR: char = '_';
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Address {
     id: AddressId,
-    routing_params: RoutingParameters,
+    routing_params: Option<RoutingParameters>,
 }
 
 impl Address {
     pub fn new(id: impl Into<AddressId>) -> Self {
-        Self {
-            id: id.into(),
-            routing_params: RoutingParameters::default(),
-        }
+        Self { id: id.into(), routing_params: None }
     }
 
     pub fn with_routing_parameters(
         mut self,
         routing_params: RoutingParameters,
     ) -> Result<Self, AddressError> {
-        if let Some(tag_len) = routing_params.tag_len() {
+        if let Some(tag_len) = routing_params.note_tag_len() {
             match self.id {
                 AddressId::AccountId(account_id) => {
-                    if account_id.storage_mode() == AccountStorageMode::Network {
-                        if tag_len != NoteTag::DEFAULT_NETWORK_TAG_LENGTH {
-                            return Err(AddressError::CustomTagLengthNotAllowedForNetworkAccounts(
-                                tag_len,
-                            ));
-                        }
-                    } else if tag_len > NoteTag::MAX_LOCAL_TAG_LENGTH {
-                        return Err(AddressError::TagLengthTooLarge(tag_len));
+                    if account_id.storage_mode() == AccountStorageMode::Network
+                        && tag_len != NoteTag::DEFAULT_NETWORK_TAG_LENGTH
+                    {
+                        return Err(AddressError::CustomTagLengthNotAllowedForNetworkAccounts(
+                            tag_len,
+                        ));
                     }
                 },
             }
         }
 
-        self.routing_params = routing_params;
+        self.routing_params = Some(routing_params);
 
         Ok(self)
     }
@@ -72,7 +67,7 @@ impl Address {
 
     /// Returns the [`AddressInterface`] of the account to which the address points.
     pub fn interface(&self) -> Option<AddressInterface> {
-        self.routing_params.interface()
+        self.routing_params.as_ref().map(RoutingParameters::interface)
     }
 
     /// Returns the preferred tag length.
@@ -81,13 +76,17 @@ impl Address {
     /// [`NoteTag::MAX_LOCAL_TAG_LENGTH`] and [`NoteTag::DEFAULT_NETWORK_TAG_LENGTH`]).
     pub fn note_tag_len(&self) -> u8 {
         match self.id {
-            AddressId::AccountId(id) => self.routing_params.tag_len().unwrap_or_else(|| {
-                if id.storage_mode() == AccountStorageMode::Network {
-                    NoteTag::DEFAULT_NETWORK_TAG_LENGTH
-                } else {
-                    NoteTag::DEFAULT_LOCAL_TAG_LENGTH
-                }
-            }),
+            AddressId::AccountId(id) => self
+                .routing_params
+                .as_ref()
+                .and_then(RoutingParameters::note_tag_len)
+                .unwrap_or_else(|| {
+                    if id.storage_mode() == AccountStorageMode::Network {
+                        NoteTag::DEFAULT_NETWORK_TAG_LENGTH
+                    } else {
+                        NoteTag::DEFAULT_LOCAL_TAG_LENGTH
+                    }
+                }),
         }
     }
 
@@ -141,8 +140,10 @@ impl Address {
             AddressId::AccountId(id) => id.to_bech32(network_id),
         };
 
-        encoded.push(ADDRESS_SEPARATOR);
-        encoded.push_str(&self.routing_params.encode_to_string());
+        if let Some(routing_params) = &self.routing_params {
+            encoded.push(ADDRESS_SEPARATOR);
+            encoded.push_str(&routing_params.encode_to_string());
+        }
 
         encoded
     }
@@ -163,13 +164,12 @@ impl Address {
 
         let (network_id, identifier) = AddressId::decode(encoded_identifier)?;
 
-        let routing_params = if let Some(encoded_routing_params) = split.next() {
-            RoutingParameters::decode(encoded_routing_params.to_owned())?
-        } else {
-            RoutingParameters::default()
-        };
+        let mut address = Address::new(identifier);
 
-        let address = Address::new(identifier).with_routing_parameters(routing_params)?;
+        if let Some(encoded_routing_params) = split.next() {
+            let routing_params = RoutingParameters::decode(encoded_routing_params.to_owned())?;
+            address = address.with_routing_parameters(routing_params)?;
+        }
 
         Ok((network_id, address))
     }
@@ -187,10 +187,17 @@ impl Deserializable for Address {
         source: &mut R,
     ) -> Result<Self, DeserializationError> {
         let identifier: AddressId = source.read()?;
-        let routing_params = source.read()?;
-        Self::new(identifier)
-            .with_routing_parameters(routing_params)
-            .map_err(|err| DeserializationError::InvalidValue(err.to_string()))
+        let routing_params: Option<RoutingParameters> = source.read()?;
+
+        let mut address = Self::new(identifier);
+
+        if let Some(routing_params) = routing_params {
+            address = address
+                .with_routing_parameters(routing_params)
+                .map_err(|err| DeserializationError::InvalidValue(err.to_string()))?;
+        }
+
+        Ok(address)
     }
 }
 
@@ -244,11 +251,12 @@ mod tests {
             .into_iter()
             .enumerate()
             {
-                let address = Address::new(account_id).with_routing_parameters(
-                    RoutingParameters::new().with_receiver_profile(
-                        NoteTag::DEFAULT_NETWORK_TAG_LENGTH,
-                        AddressInterface::BasicWallet,
-                    ),
+                // Encode/Decode without routing parameters should be valid.
+                let mut address = Address::new(account_id);
+
+                address = address.with_routing_parameters(
+                    RoutingParameters::new(AddressInterface::BasicWallet)
+                        .with_note_tag_len(NoteTag::DEFAULT_NETWORK_TAG_LENGTH)?,
                 )?;
 
                 let bech32_string = address.encode(network_id.clone());
@@ -295,7 +303,7 @@ mod tests {
         let network_id = NetworkId::Mainnet;
         let account_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET)?;
         let address = Address::new(account_id).with_routing_parameters(
-            RoutingParameters::new().with_receiver_profile(14, AddressInterface::BasicWallet),
+            RoutingParameters::new(AddressInterface::BasicWallet).with_note_tag_len(14)?,
         )?;
 
         let bech32_string = address.encode(network_id);
@@ -380,10 +388,8 @@ mod tests {
         {
             let account_id = AccountIdBuilder::new().account_type(account_type).build_with_rng(rng);
             let address = Address::new(account_id).with_routing_parameters(
-                RoutingParameters::new().with_receiver_profile(
-                    NoteTag::DEFAULT_NETWORK_TAG_LENGTH,
-                    AddressInterface::BasicWallet,
-                ),
+                RoutingParameters::new(AddressInterface::BasicWallet)
+                    .with_note_tag_len(NoteTag::DEFAULT_NETWORK_TAG_LENGTH)?,
             )?;
 
             let serialized = address.to_bytes();
