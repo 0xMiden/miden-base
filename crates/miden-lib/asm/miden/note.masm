@@ -101,9 +101,9 @@ end
 #!   Operand stack: [RECIPIENT]
 #!   Advice map: {
 #!      INPUTS_COMMITMENT: [INPUTS],
-#!      RECIPIENT: [SN_SCRIPT_HASH, INPUTS_COMMITMENT],
-#!      SN_SCRIPT_HASH: [SN_HASH, SCRIPT_ROOT],
-#!      SN_HASH: [SERIAL_NUM, EMPTY_WORD],
+#!      RECIPIENT: [SERIAL_SCRIPT_HASH, INPUTS_COMMITMENT],
+#!      SERIAL_SCRIPT_HASH: [SERIAL_HASH, SCRIPT_ROOT],
+#!      SERIAL_HASH: [SERIAL_NUM, EMPTY_WORD],
 #!   }
 #!
 #! Where:
@@ -148,10 +148,10 @@ export.build_recipient
     # => [SERIAL_NUM, SCRIPT_ROOT, INPUTS_COMMITMENT]
 
     padw adv.insert_hdword hmerge
-    # => [SN_HASH, SCRIPT_ROOT, INPUTS_COMMITMENT]
+    # => [SERIAL_HASH, SCRIPT_ROOT, INPUTS_COMMITMENT]
 
     swapw adv.insert_hdword hmerge
-    # => [SN_SCRIPT_HASH, INPUTS_COMMITMENT]
+    # => [SERIAL_SCRIPT_HASH, INPUTS_COMMITMENT]
 
     swapw adv.insert_hdword hmerge
     # => [RECIPIENT]

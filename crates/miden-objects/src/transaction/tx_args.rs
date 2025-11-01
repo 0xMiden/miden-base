@@ -155,9 +155,9 @@ impl TransactionArgs {
     /// Populates the advice inputs with the expected recipient data for creating output notes.
     ///
     /// The advice inputs' map is extended with the following entries:
-    /// - RECIPIENT: [SN_SCRIPT_HASH, INPUTS_COMMITMENT]
-    /// - SN_SCRIPT_HASH: [SN_HASH, SCRIPT_ROOT]
-    /// - SN_HASH: [SERIAL_NUM, EMPTY_WORD]
+    /// - RECIPIENT: [SERIAL_SCRIPT_HASH, INPUTS_COMMITMENT]
+    /// - SERIAL_SCRIPT_HASH: [SERIAL_HASH, SCRIPT_ROOT]
+    /// - SERIAL_HASH: [SERIAL_NUM, EMPTY_WORD]
     /// - inputs_commitment |-> inputs.
     /// - script_root |-> script.
     pub fn add_output_note_recipient<T: AsRef<NoteRecipient>>(&mut self, note_recipient: T) {
