@@ -161,7 +161,7 @@ fn compile_tx_kernel(source_dir: &Path, target_dir: &Path) -> Result<Assembler> 
     let output_file = target_dir.join("tx_kernel").with_extension(Library::LIBRARY_EXTENSION);
     kernel_lib.write_to_file(output_file).into_diagnostic()?;
 
-    let assembler = build_assembler(Some(kernel_lib))?.with_debug_mode(true);
+    let assembler = build_assembler(Some(kernel_lib))?;
 
     // assemble the kernel program and write it to the "tx_kernel.masb" file
     let mut main_assembler = assembler.clone();
