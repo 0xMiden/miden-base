@@ -1,7 +1,4 @@
-use alloc::vec::Vec;
 use core::fmt::Debug;
-
-use miden_crypto::Felt;
 
 use super::{
     ByteReader,
@@ -63,41 +60,6 @@ impl NoteRecipient {
     pub fn digest(&self) -> Word {
         self.digest
     }
-
-    /// Returns the recipient data formatted for the advice map structure.
-    ///
-    /// This method returns a vector of (key, value) pairs that should be inserted into the advice
-    /// map. Each pair consists of a [`Word`] key and a [`Vec<Felt>`] value containing 8 elements (2
-    /// [`Word`]s):
-    /// - RECIPIENT: [SN_SCRIPT_HASH, INPUTS_COMMITMENT]
-    /// - SN_SCRIPT_HASH: [SN_HASH, SCRIPT_ROOT]
-    /// - SN_HASH: [SERIAL_NUM, EMPTY_WORD]
-    ///
-    /// Where:
-    /// - INPUTS_COMMITMENT is the commitment of the note inputs
-    /// - SCRIPT_ROOT is the commitment of the note script (i.e., the script's MAST root)
-    /// - SERIAL_NUM is the recipient's serial number
-    /// - EMPTY_WORD is [0, 0, 0, 0]
-    ///
-    /// This function mirrors the logic of the `note::build_recipient` procedure in miden-lib
-    pub fn to_advice_map_entries(&self) -> Vec<(Word, Vec<Felt>)> {
-        let sn_hash = Hasher::merge(&[self.serial_num, Word::empty()]);
-        let sn_script_hash = Hasher::merge(&[sn_hash, self.script.root()]);
-
-        vec![
-            (sn_hash, concat_words(self.serial_num, Word::empty())),
-            (sn_script_hash, concat_words(sn_hash, self.script.root())),
-            (self.digest, concat_words(sn_script_hash, self.inputs.commitment())),
-        ]
-    }
-}
-
-/// Concatenates two [`Word`]s into a [`Vec<Felt>`] containing 8 elements.
-fn concat_words(first: Word, second: Word) -> Vec<Felt> {
-    let mut result = Vec::with_capacity(8);
-    result.extend(first);
-    result.extend(second);
-    result
 }
 
 fn compute_recipient_digest(serial_num: Word, script: &NoteScript, inputs: &NoteInputs) -> Word {
