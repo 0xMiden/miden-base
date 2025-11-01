@@ -170,14 +170,13 @@ impl TransactionArgs {
         let sn_hash = Hasher::merge(&[note_recipient.serial_num(), Word::empty()]);
         let sn_script_hash = Hasher::merge(&[sn_hash, script.root()]);
 
-        let mut new_elements = vec![
+        let new_elements = vec![
             (sn_hash, concat_words(note_recipient.serial_num(), Word::empty())),
             (sn_script_hash, concat_words(sn_hash, script.root())),
             (note_recipient.digest(), concat_words(sn_script_hash, inputs.commitment())),
+            (inputs.commitment(), inputs.format_for_advice()),
+            (script.root(), script_encoded),
         ];
-
-        new_elements.push((inputs.commitment(), inputs.format_for_advice()));
-        new_elements.push((script.root(), script_encoded));
 
         self.advice_inputs.extend(AdviceInputs::default().with_map(new_elements));
     }
