@@ -344,10 +344,7 @@ impl TransactionAdviceInputs {
             let note_arg = tx_inputs.tx_args().get_note_args(note.id()).unwrap_or(&EMPTY_WORD);
 
             // recipient inputs / assets commitments
-            self.add_map_entry(
-                recipient.inputs().commitment(),
-                recipient.inputs().format_for_advice(),
-            );
+            self.add_map_entry(recipient.inputs().commitment(), recipient.inputs().to_elements());
             self.add_map_entry(assets.commitment(), assets.to_padded_assets());
 
             // note details / metadata
