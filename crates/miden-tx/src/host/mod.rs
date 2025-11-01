@@ -543,18 +543,17 @@ where
         let recipient = if process.advice_provider().get_mapped_values(&recipient_digest).is_some()
         {
             let (sn_script_hash, inputs_commitment) =
-                Self::read_double_word_from_adv_map(process, recipient_digest)?;
+                read_double_word_from_adv_map(process, recipient_digest)?;
 
-            let (sn_hash, script_root) =
-                Self::read_double_word_from_adv_map(process, sn_script_hash)?;
+            let (sn_hash, script_root) = read_double_word_from_adv_map(process, sn_script_hash)?;
 
-            let (serial_num, _) = Self::read_double_word_from_adv_map(process, sn_hash)?;
+            let (serial_num, _) = read_double_word_from_adv_map(process, sn_hash)?;
+
+            let inputs = extract_note_inputs(process, &inputs_commitment)?;
 
             let script_data = process.advice_provider().get_mapped_values(&script_root);
 
             if script_data.is_none() {
-                let inputs = extract_note_inputs(process, &inputs_commitment)?;
-
                 return Ok(TransactionEventHandling::Unhandled(TransactionEventData::NoteData {
                     note_idx,
                     metadata,
@@ -564,8 +563,6 @@ where
                     serial_num,
                 }));
             }
-
-            let inputs = extract_note_inputs(process, &inputs_commitment)?;
 
             let script = NoteScript::try_from(script_data.unwrap()).map_err(|source| {
                 TransactionKernelError::MalformedNoteScript {
@@ -990,30 +987,6 @@ where
     // HELPER FUNCTIONS
     // --------------------------------------------------------------------------------------------
 
-    /// Reads a double word (two [`Word`]s, 8 [`Felt`]s total) from the advice map.
-    ///
-    /// # Errors
-    /// Returns an error if the key is not present in the advice map or if the data is malformed
-    /// (not exactly 8 elements).
-    fn read_double_word_from_adv_map(
-        process: &ProcessState,
-        key: Word,
-    ) -> Result<(Word, Word), TransactionKernelError> {
-        let data = process
-            .advice_provider()
-            .get_mapped_values(&key)
-            .ok_or_else(|| TransactionKernelError::MalformedRecipientData(vec![]))?;
-
-        if data.len() != 8 {
-            return Err(TransactionKernelError::MalformedRecipientData(data.to_vec()));
-        }
-
-        let first_word = Word::new([data[0], data[1], data[2], data[3]]);
-        let second_word = Word::new([data[4], data[5], data[6], data[7]]);
-
-        Ok((first_word, second_word))
-    }
-
     /// Returns the ID of the active note, or None if the note execution hasn't started yet or has
     /// already ended.
     ///
@@ -1206,6 +1179,30 @@ where
     }
 }
 
+/// Reads a double word (two [`Word`]s, 8 [`Felt`]s total) from the advice map.
+///
+/// # Errors
+/// Returns an error if the key is not present in the advice map or if the data is malformed
+/// (not exactly 8 elements).
+fn read_double_word_from_adv_map(
+    process: &ProcessState,
+    key: Word,
+) -> Result<(Word, Word), TransactionKernelError> {
+    let data = process
+        .advice_provider()
+        .get_mapped_values(&key)
+        .ok_or_else(|| TransactionKernelError::MalformedRecipientData(vec![]))?;
+
+    if data.len() != 8 {
+        return Err(TransactionKernelError::MalformedRecipientData(data.to_vec()));
+    }
+
+    let first_word = Word::new([data[0], data[1], data[2], data[3]]);
+    let second_word = Word::new([data[4], data[5], data[6], data[7]]);
+
+    Ok((first_word, second_word))
+}
+
 impl<'store, STORE> TransactionBaseHost<'store, STORE> {
     /// Returns the underlying store of the base host.
     pub fn store(&self) -> &'store STORE {
@@ -1234,14 +1231,9 @@ fn extract_note_inputs(
                 inputs.iter().rposition(|&x| x != ZERO).map(|pos| pos + 1).unwrap_or(0);
 
             // Try different input counts using trial unhashing
-            let max_attempts = 7; // Initial attempt + 6 more
             let mut num_inputs = initial_num_inputs;
 
-            for attempt in 0..max_attempts {
-                if num_inputs > inputs.len() {
-                    break;
-                }
-
+            loop {
                 let candidate_inputs = NoteInputs::new(inputs[0..num_inputs].to_vec())
                     .map_err(TransactionKernelError::MalformedNoteInputs)?;
 
@@ -1249,9 +1241,9 @@ fn extract_note_inputs(
                     return Ok(candidate_inputs);
                 }
 
-                // If this is not the last attempt, increment and try again
-                if attempt < max_attempts - 1 {
-                    num_inputs += 1;
+                num_inputs += 1;
+                if num_inputs > inputs.len() {
+                    break;
                 }
             }
 
