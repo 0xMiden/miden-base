@@ -216,25 +216,6 @@ export.account_get_nonce
     # => [nonce, pad(15)]
 end
 
-#! Returns the native account nonce.
-#!
-#! Inputs:  [pad(16)]
-#! Outputs: [native_nonce, pad(15)]
-#!
-#! Where:
-#! - native_nonce is the nonce of the native account.
-#!
-#! Invocation: dynexec
-export.account_get_native_nonce
-    # get the native account nonce
-    exec.memory::get_native_account_nonce
-    # => [native_nonce, pad(16)]
-
-    # truncate the stack
-    swap drop
-    # => [native_nonce, pad(15)]
-end
-
 #! Increments the account nonce by one and returns the new nonce.
 #!
 #! Inputs:  [pad(16)]
@@ -551,7 +532,7 @@ export.account_get_initial_vault_root
     # => [INIT_VAULT_ROOT, pad(12)]
 end
 
-#! Returns the vault root of the current account.
+#! Returns the vault root of the active account.
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [VAULT_ROOT, pad(12)]
@@ -705,6 +686,10 @@ end
 #!
 #! Invocation: dynexec
 export.account_was_procedure_called
+    # check that this procedure was executed against the native account
+    exec.memory::assert_native_account
+    # => [PROC_ROOT, pad(12)]
+
     # check if the procedure was called
     exec.account::was_procedure_called
     # => [was_called, pad(15)]

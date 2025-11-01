@@ -8,11 +8,7 @@
 # - decimals are the decimals of the token.
 # - token_symbol as three chars encoded in a Felt.
 
-use.miden::account
-use.miden::active_note
 use.miden::contracts::faucets
-use.miden::faucet
-use.miden::output_note
 
 # CONSTANTS
 # =================================================================================================

@@ -85,14 +85,14 @@ pub async fn compute_current_commitment() -> miette::Result<()> {
         use.std::word
 
         use.miden::prologue
-        use.miden::account
+        use.miden::active_account
         use.mock::account->mock_account
 
         begin
-            exec.account::get_initial_commitment
+            exec.active_account::get_initial_commitment
             # => [INITIAL_COMMITMENT]
 
-            exec.account::compute_current_commitment
+            exec.active_account::compute_commitment
             # => [CURRENT_COMMITMENT, INITIAL_COMMITMENT]
 
             assert_eqw.err="initial and current commitment should be equal when no changes have been made"
@@ -114,7 +114,7 @@ pub async fn compute_current_commitment() -> miette::Result<()> {
             # => [STORAGE_COMMITMENT0]
 
             # compute the commitment which will recompute the storage commitment
-            exec.account::compute_current_commitment
+            exec.active_account::compute_commitment
             # => [CURRENT_COMMITMENT, STORAGE_COMMITMENT0]
 
             push.{expected_commitment}
@@ -563,7 +563,6 @@ async fn test_set_map_item() -> miette::Result<()> {
         "
         use.std::sys
 
-        use.mock::account
         use.$kernel::prologue
         use.mock::account->mock_account
 
@@ -625,18 +624,19 @@ async fn test_account_component_storage_offset() -> miette::Result<()> {
     // insuring consistent "set" and "get" using offsets.
     let source_code_component1 = "
         use.std::word
-        use.miden::account
+        use.miden::active_account
+        use.miden::native_account
 
         export.foo_write
             push.1.2.3.4.0
-            exec.account::set_item
+            exec.native_account::set_item
 
             dropw
         end
 
         export.foo_read
             push.0
-            exec.account::get_item
+            exec.active_account::get_item
             push.1.2.3.4
 
             exec.word::eq assert
@@ -645,18 +645,19 @@ async fn test_account_component_storage_offset() -> miette::Result<()> {
 
     let source_code_component2 = "
         use.std::word
-        use.miden::account
+        use.miden::active_account
+        use.miden::native_account
 
         export.bar_write
             push.5.6.7.8.0
-            exec.account::set_item
+            exec.native_account::set_item
 
             dropw
         end
 
         export.bar_read
             push.0
-            exec.account::get_item
+            exec.active_account::get_item
             push.5.6.7.8
 
             exec.word::eq assert
@@ -893,14 +894,14 @@ async fn test_get_initial_storage_commitment() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-        use.miden::account
+        use.miden::active_account
         use.$kernel::prologue
 
         begin
             exec.prologue::prepare_transaction
 
             # get the initial storage commitment
-            exec.account::get_initial_storage_commitment
+            exec.active_account::get_initial_storage_commitment
             push.{expected_storage_commitment}
             assert_eqw.err="actual storage commitment is not equal to the expected one"
         end
@@ -1140,14 +1141,14 @@ async fn test_get_vault_root() -> anyhow::Result<()> {
     // get the initial vault root
     let code = format!(
         "
-        use.miden::account
+        use.miden::active_account
         use.$kernel::prologue
 
         begin
             exec.prologue::prepare_transaction
 
             # get the initial vault root
-            exec.account::get_initial_vault_root
+            exec.active_account::get_initial_vault_root
             push.{expected_vault_root}
             assert_eqw
         end
@@ -1161,7 +1162,7 @@ async fn test_get_vault_root() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-        use.miden::account
+        use.miden::active_account
         use.$kernel::prologue
         use.mock::account->mock_account
 
@@ -1174,7 +1175,7 @@ async fn test_get_vault_root() -> anyhow::Result<()> {
             # => []
 
             # get the current vault root
-            exec.account::get_vault_root
+            exec.active_account::get_vault_root
             push.{expected_vault_root}
             assert_eqw.err="actual vault root is not equal to the expected one"
         end
@@ -1187,13 +1188,13 @@ async fn test_get_vault_root() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// This test checks the correctness of the `miden::account::get_initial_balance` procedure in two
-/// cases:
+/// This test checks the correctness of the `miden::active_account::get_initial_balance` procedure
+/// in two cases:
 /// - when a note adds the asset which already exists in the account vault.
 /// - when a note adds the asset which doesn't exist in the account vault.
 ///  
 /// As part of the test pipeline it also checks the correctness of the
-/// `miden::account::get_balance` procedure.
+/// `miden::active_account::get_balance` procedure.
 #[tokio::test]
 async fn test_get_init_balance_addition() -> anyhow::Result<()> {
     // prepare the testing data
@@ -1245,7 +1246,7 @@ async fn test_get_init_balance_addition() -> anyhow::Result<()> {
 
     let add_existing_source = format!(
         r#"
-        use.miden::account
+        use.miden::active_account
 
         begin
             # push faucet ID prefix and suffix
@@ -1253,7 +1254,7 @@ async fn test_get_init_balance_addition() -> anyhow::Result<()> {
             # => [faucet_id_prefix, faucet_id_suffix]
 
             # get the current asset balance
-            dup.1 dup.1 exec.account::get_balance
+            dup.1 dup.1 exec.active_account::get_balance
             # => [final_balance, faucet_id_prefix, faucet_id_suffix]
 
             # assert final balance is correct
@@ -1262,7 +1263,7 @@ async fn test_get_init_balance_addition() -> anyhow::Result<()> {
             # => [faucet_id_prefix, faucet_id_suffix]
 
             # get the initial asset balance
-            exec.account::get_initial_balance
+            exec.active_account::get_initial_balance
             # => [init_balance]
 
             # assert initial balance is correct
@@ -1299,7 +1300,7 @@ async fn test_get_init_balance_addition() -> anyhow::Result<()> {
 
     let add_new_source = format!(
         r#"
-        use.miden::account
+        use.miden::active_account
 
         begin
             # push faucet ID prefix and suffix
@@ -1307,7 +1308,7 @@ async fn test_get_init_balance_addition() -> anyhow::Result<()> {
             # => [faucet_id_prefix, faucet_id_suffix]
 
             # get the current asset balance
-            dup.1 dup.1 exec.account::get_balance
+            dup.1 dup.1 exec.active_account::get_balance
             # => [final_balance, faucet_id_prefix, faucet_id_suffix]
 
             # assert final balance is correct
@@ -1316,7 +1317,7 @@ async fn test_get_init_balance_addition() -> anyhow::Result<()> {
             # => [faucet_id_prefix, faucet_id_suffix]
 
             # get the initial asset balance
-            exec.account::get_initial_balance
+            exec.active_account::get_initial_balance
             # => [init_balance]
 
             # assert initial balance is correct
@@ -1341,11 +1342,11 @@ async fn test_get_init_balance_addition() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// This test checks the correctness of the `miden::account::get_initial_balance` procedure in case
-/// when we create a note which removes an asset from the account vault.
+/// This test checks the correctness of the `miden::active_account::get_initial_balance` procedure
+/// in case when we create a note which removes an asset from the account vault.
 ///  
 /// As part of the test pipeline it also checks the correctness of the
-/// `miden::account::get_balance` procedure.
+/// `miden::active_account::get_balance` procedure.
 #[tokio::test]
 async fn test_get_init_balance_subtraction() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
@@ -1376,7 +1377,7 @@ async fn test_get_init_balance_subtraction() -> anyhow::Result<()> {
 
     let remove_existing_source = format!(
         r#"
-        use.miden::account
+        use.miden::active_account
         use.miden::contracts::wallets::basic->wallet
         use.mock::util
 
@@ -1409,7 +1410,7 @@ async fn test_get_init_balance_subtraction() -> anyhow::Result<()> {
             # => [faucet_id_prefix, faucet_id_suffix]
 
             # get the current asset balance
-            dup.1 dup.1 exec.account::get_balance
+            dup.1 dup.1 exec.active_account::get_balance
             # => [final_balance, faucet_id_prefix, faucet_id_suffix]
 
             # assert final balance is correct
@@ -1418,7 +1419,7 @@ async fn test_get_init_balance_subtraction() -> anyhow::Result<()> {
             # => [faucet_id_prefix, faucet_id_suffix]
 
             # get the initial asset balance
-            exec.account::get_initial_balance
+            exec.active_account::get_initial_balance
             # => [init_balance]
 
             # assert initial balance is correct
@@ -1527,12 +1528,12 @@ async fn test_was_procedure_called() -> miette::Result<()> {
     // 5. Checks that `was_procedure_called` returns `true`
     let tx_script_code = r#"
         use.mock::account->mock_account
-        use.miden::account
+        use.miden::native_account
 
         begin
             # First check that get_item procedure hasn't been called yet
             procref.mock_account::get_item
-            exec.account::was_procedure_called
+            exec.native_account::was_procedure_called
             assertz.err="procedure should not have been called"
 
             # Call the procedure first time
@@ -1541,7 +1542,7 @@ async fn test_was_procedure_called() -> miette::Result<()> {
             # => []
 
             procref.mock_account::get_item
-            exec.account::was_procedure_called
+            exec.native_account::was_procedure_called
             assert.err="procedure should have been called"
 
             # Call the procedure second time
@@ -1549,7 +1550,7 @@ async fn test_was_procedure_called() -> miette::Result<()> {
             call.mock_account::get_item dropw
 
             procref.mock_account::get_item
-            exec.account::was_procedure_called
+            exec.native_account::was_procedure_called
             assert.err="2nd call should not change the was_called flag"
         end
         "#;
@@ -1580,12 +1581,12 @@ async fn test_was_procedure_called() -> miette::Result<()> {
 #[tokio::test]
 async fn transaction_executor_account_code_using_custom_library() -> miette::Result<()> {
     const EXTERNAL_LIBRARY_CODE: &str = r#"
-      use.miden::account
+      use.miden::native_account
 
       export.external_setter
         push.2.3.4.5
         push.0
-        exec.account::set_item
+        exec.native_account::set_item
         dropw dropw
       end"#;
 
@@ -1657,11 +1658,11 @@ async fn transaction_executor_account_code_using_custom_library() -> miette::Res
 #[tokio::test]
 async fn incrementing_nonce_twice_fails() -> anyhow::Result<()> {
     let source_code = "
-        use.miden::account
+        use.miden::native_account
 
         export.auth_incr_nonce_twice
-            exec.account::incr_nonce drop
-            exec.account::incr_nonce drop
+            exec.native_account::incr_nonce drop
+            exec.native_account::incr_nonce drop
         end
     ";
 
@@ -1693,14 +1694,14 @@ async fn test_has_procedure() -> miette::Result<()> {
 
     let tx_script_code = r#"
         use.mock::account->mock_account
-        use.miden::account
+        use.miden::active_account
 
         begin
             # check that get_item procedure is available on the mock account
             procref.mock_account::get_item
             # => [GET_ITEM_ROOT]
 
-            exec.account::has_procedure
+            exec.active_account::has_procedure
             # => [is_procedure_available]
 
             # assert that the get_item is exposed
@@ -1709,7 +1710,7 @@ async fn test_has_procedure() -> miette::Result<()> {
             # get some random word and assert that it is not exposed
             push.5.3.15.686
 
-            exec.account::has_procedure
+            exec.active_account::has_procedure
             # => [is_procedure_available]
 
             # assert that the procedure with some random root is not exposed

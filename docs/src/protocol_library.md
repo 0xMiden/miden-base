@@ -25,40 +25,46 @@ Most procedures in the Miden protocol library are implemented as wrappers around
 
 The procedures maintain the same security and context restrictions as the underlying kernel procedures. When invoking these procedures, ensure that the calling context matches the requirements.
 
-## Account Procedures (`miden::account`)
+## Active account Procedures (`miden::active_account`)
 
-Account procedures can be used to read and write to account storage, add or remove assets from the vault and fetch or compute commitments.
+Active account procedures can be used to read from storage, fetch or compute commitments or obtain other internal data of the active account. 
 
-| Procedure                        | Description                                                                                                                                                                                               | Context          |
-| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
-| `get_id`                         | Returns the ID of the current account.<br/><br/>**Inputs:** `[]`<br/>**Outputs:** `[account_id_prefix, account_id_suffix]`                                                                                | Any              |
-| `get_native_id`                  | Returns the ID of the native account of the transaction.<br/><br/>**Inputs:** `[]`<br/>**Outputs:** `[account_id_prefix, account_id_suffix]`                                                              | Any              |
-| `get_nonce`                      | Returns the nonce of the current account. Always returns the initial nonce as it can only be incremented in auth procedures.<br/><br/>**Inputs:** `[]`<br/>**Outputs:** `[nonce]`                         | Any              |
-| `get_native_nonce`               | Returns the nonce of the native account of the transaction.<br/><br/>**Inputs:** `[]`<br/>**Outputs:** `[nonce]`                                                                                          | Any              |
-| `incr_nonce`                     | Increments the account nonce by one and returns the new nonce. Can only be called from auth procedures.<br/><br/>**Inputs:** `[]`<br/>**Outputs:** `[final_nonce]`                                        | Auth             |
-| `get_initial_commitment`         | Returns the native account commitment at the beginning of the transaction.<br/><br/>**Inputs:** `[]`<br/>**Outputs:** `[INIT_COMMITMENT]`                                                                 | Any              |
-| `compute_current_commitment`     | Computes and returns the account commitment from account data stored in memory.<br/><br/>**Inputs:** `[]`<br/>**Outputs:** `[ACCOUNT_COMMITMENT]`                                                         | Any              |
-| `compute_delta_commitment`       | Computes the commitment to the native account's delta. Can only be called from auth procedures.<br/><br/>**Inputs:** `[]`<br/>**Outputs:** `[DELTA_COMMITMENT]`                                           | Auth             |
+| Procedure                        | Description                   | Context                       |
+| -------------------------------- | ----------------------------- | ----------------------------- |
+| `get_id`                         | Returns the ID of the active account.<br/><br/>**Inputs:** `[]`<br/>**Outputs:** `[account_id_prefix, account_id_suffix]`                                                                                | Any              |
+| `get_nonce`                      | Returns the nonce of the active account. Always returns the initial nonce as it can only be incremented in auth procedures.<br/><br/>**Inputs:** `[]`<br/>**Outputs:** `[nonce]`                         | Any              |
+| `get_initial_commitment`         | Returns the active account commitment at the beginning of the transaction.<br/><br/>**Inputs:** `[]`<br/>**Outputs:** `[INIT_COMMITMENT]`                                                                 | Any              |
+| `compute_commitment`             | Computes and returns the account commitment from account data stored in memory.<br/><br/>**Inputs:** `[]`<br/>**Outputs:** `[ACCOUNT_COMMITMENT]`                                                         | Any              |
+| `get_code_commitment`            | Gets the account code commitment of the active account.<br/><br/>**Inputs:** `[]`<br/>**Outputs:** `[CODE_COMMITMENT]`                                                                                   | Account          |
+| `get_initial_storage_commitment` | Returns the storage commitment of the active account at the beginning of the transaction.<br/><br/>**Inputs:** `[]`<br/>**Outputs:** `[INIT_STORAGE_COMMITMENT]`                                          | Any              |
+| `compute_storage_commitment`     | Computes the latest account storage commitment of the active account.<br/><br/>**Inputs:** `[]`<br/>**Outputs:** `[STORAGE_COMMITMENT]`                                                                  | Account          |
 | `get_item`                       | Gets an item from the account storage.<br/><br/>**Inputs:** `[index]`<br/>**Outputs:** `[VALUE]`                                                                                                          | Account          |
 | `get_initial_item`               | Gets the initial item from the account storage slot as it was at the beginning of the transaction.<br/><br/>**Inputs:** `[index]`<br/>**Outputs:** `[VALUE]`                                              | Account          |
-| `set_item`                       | Sets an item in the account storage.<br/><br/>**Inputs:** `[index, VALUE]`<br/>**Outputs:** `[OLD_VALUE]`                                                                                                 | Native & Account |
 | `get_map_item`                   | Returns the VALUE located under the specified KEY within the map contained in the given account storage slot.<br/><br/>**Inputs:** `[index, KEY]`<br/>**Outputs:** `[VALUE]`                              | Account          |
 | `get_initial_map_item`           | Gets the initial VALUE from the account storage map as it was at the beginning of the transaction.<br/><br/>**Inputs:** `[index, KEY]`<br/>**Outputs:** `[VALUE]`                                         | Account          |
-| `set_map_item`                   | Sets VALUE under the specified KEY within the map contained in the given account storage slot.<br/><br/>**Inputs:** `[index, KEY, VALUE]`<br/>**Outputs:** `[OLD_MAP_ROOT, OLD_MAP_VALUE]`                | Native & Account |
-| `get_code_commitment`            | Gets the account code commitment of the current account.<br/><br/>**Inputs:** `[]`<br/>**Outputs:** `[CODE_COMMITMENT]`                                                                                   | Account          |
-| `get_initial_storage_commitment` | Returns the storage commitment of the native account at the beginning of the transaction.<br/><br/>**Inputs:** `[]`<br/>**Outputs:** `[INIT_STORAGE_COMMITMENT]`                                          | Any              |
-| `compute_storage_commitment`     | Computes the latest account storage commitment of the current account.<br/><br/>**Inputs:** `[]`<br/>**Outputs:** `[STORAGE_COMMITMENT]`                                                                  | Account          |
 | `get_balance`                    | Returns the balance of the fungible asset associated with the provided faucet_id in the current account's vault.<br/><br/>**Inputs:** `[faucet_id_prefix, faucet_id_suffix]`<br/>**Outputs:** `[balance]` | Any              |
 | `get_initial_balance`            | Returns the balance of the fungible asset associated with the provided faucet_id in the current account's vault at the beginning of the transaction.<br/><br/>**Inputs:** `[faucet_id_prefix, faucet_id_suffix]`<br/>**Outputs:** `[init_balance]` | Any              |
 | `has_non_fungible_asset`         | Returns a boolean indicating whether the non-fungible asset is present in the current account's vault.<br/><br/>**Inputs:** `[ASSET]`<br/>**Outputs:** `[has_asset]`                                      | Any              |
-| `add_asset`                      | Adds the specified asset to the vault. For fungible assets, returns the total after addition.<br/><br/>**Inputs:** `[ASSET]`<br/>**Outputs:** `[ASSET']`                                                  | Native & Account |
-| `remove_asset`                   | Removes the specified asset from the vault.<br/><br/>**Inputs:** `[ASSET]`<br/>**Outputs:** `[ASSET]`                                                                                                     | Native & Account |
-| `get_initial_vault_root`         | Returns the vault root of the native account at the beginning of the transaction.<br/><br/>**Inputs:** `[]`<br/>**Outputs:** `[INIT_VAULT_ROOT]`                                                          | Any              |
-| `get_vault_root`                 | Returns the vault root of the current account.<br/><br/>**Inputs:** `[]`<br/>**Outputs:** `[VAULT_ROOT]`                                                                                                  | Any              |
-| `was_procedure_called`           | Returns 1 if a procedure was called during transaction execution, and 0 otherwise.<br/><br/>**Inputs:** `[PROC_ROOT]`<br/>**Outputs:** `[was_called]`                                                     | Any              |
-| `get_num_procedures`             | Returns the number of procedures in the current account.<br/><br/>**Inputs:** `[]`<br/>**Outputs:** `[num_procedures]`                                                                                     | Any              |
+| `get_initial_vault_root`         | Returns the vault root of the active account at the beginning of the transaction.<br/><br/>**Inputs:** `[]`<br/>**Outputs:** `[INIT_VAULT_ROOT]`                                                          | Any              |
+| `get_vault_root`                 | Returns the vault root of the active account.<br/><br/>**Inputs:** `[]`<br/>**Outputs:** `[VAULT_ROOT]`                                                                                                  | Any              |
+| `get_num_procedures`             | Returns the number of procedures in the active account.<br/><br/>**Inputs:** `[]`<br/>**Outputs:** `[num_procedures]`                                                                                     | Any              |
 | `get_procedure_root`             | Returns the procedure root for the procedure at the specified index.<br/><br/>**Inputs:** `[index]`<br/>**Outputs:** `[PROC_ROOT]`                                                                         | Any              |
 | `has_procedure`                  | Returns the binary flag indicating whether the procedure with the provided root is available on the active account.<br/><br/>**Inputs:** `[PROC_ROOT]`<br/>**Outputs:** `[is_procedure_available]`                           | Any |
+
+## Native account Procedures (`miden::native_account`)
+
+Native account procedures can be used to write to storage, add or remove assets from the vault and compute delta commitment of the native account. 
+
+| Procedure                      | Description                    | Context                        |
+| ------------------------------ | ------------------------------ | ------------------------------ |
+| `get_id`                       | Returns the ID of the native account of the transaction.<br/><br/>**Inputs:** `[]`<br/>**Outputs:** `[account_id_prefix, account_id_suffix]`                                                              | Any              |
+| `incr_nonce`                   | Increments the nonce of the native account by one and returns the new nonce. Can only be called from auth procedures.<br/><br/>**Inputs:** `[]`<br/>**Outputs:** `[final_nonce]`                                        | Auth             |
+| `compute_delta_commitment`     | Computes the commitment to the native account's delta. Can only be called from auth procedures.<br/><br/>**Inputs:** `[]`<br/>**Outputs:** `[DELTA_COMMITMENT]`                                           | Auth             |
+| `set_item`                     | Sets an item in the native account storage.<br/><br/>**Inputs:** `[index, VALUE]`<br/>**Outputs:** `[OLD_VALUE]`                                                                                                 | Native & Account |
+| `set_map_item`                 | Sets VALUE under the specified KEY within the map contained in the given native account storage slot.<br/><br/>**Inputs:** `[index, KEY, VALUE]`<br/>**Outputs:** `[OLD_MAP_ROOT, OLD_MAP_VALUE]`                | Native & Account |
+| `add_asset`                    | Adds the specified asset to the vault. For fungible assets, returns the total after addition.<br/><br/>**Inputs:** `[ASSET]`<br/>**Outputs:** `[ASSET']`                                                  | Native & Account |
+| `remove_asset`                 | Removes the specified asset from the vault.<br/><br/>**Inputs:** `[ASSET]`<br/>**Outputs:** `[ASSET]`                                                                                                     | Native & Account |
+| `was_procedure_called`         | Returns 1 if a native account procedure was called during transaction execution, and 0 otherwise.<br/><br/>**Inputs:** `[PROC_ROOT]`<br/>**Outputs:** `[was_called]`                                                     | Any              |
 
 ## Active Note Procedures (`miden::active_note`)
 

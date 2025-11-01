@@ -1,4 +1,4 @@
-use.miden::account
+use.miden::active_account
 use.miden::account_id
 use.miden::active_note
 use.miden::contracts::faucets
@@ -24,7 +24,7 @@ proc.is_owner
     push.OWNER_CONFIG_SLOT
     # => [owner_config_slot]
 
-    exec.account::get_item
+    exec.active_account::get_item
     # => [owner_prefix, owner_suffix, 0, 0]
 
     exec.active_note::get_sender

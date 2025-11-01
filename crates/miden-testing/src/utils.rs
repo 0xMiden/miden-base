@@ -208,7 +208,7 @@ fn note_script_that_creates_notes<'note>(
 
         // Make sure that the transaction's native account matches the note sender.
         out.push_str(&format!(
-            r#"exec.::miden::account::get_native_id
+            r#"exec.::miden::native_account::get_id
              # => [native_account_id_prefix, native_account_id_suffix]
              push.{sender_prefix} assert_eq.err="sender ID prefix does not match native account ID's prefix"
              # => [native_account_id_suffix]
