@@ -44,6 +44,7 @@
 - [BREAKING] Change `AccountTree` to be generic over `trait AccountTreeBackend` implementations ([#2006](https://github.com/0xMiden/miden-base/pull/2006)).
 - [BREAKING] Separate account APIs in `miden::account` into `active_account` and `native_account` ([#2026](https://github.com/0xMiden/miden-base/pull/2026)).
 - [BREAKING] Remove `miden::account::get_native_nonce` procedure ([#2026](https://github.com/0xMiden/miden-base/pull/2026)).
+- [BREAKING] Refactor `Address` to make routing parameters optional ([#2032](https://github.com/0xMiden/miden-base/pull/2032)).
 
 ### Changes
 
