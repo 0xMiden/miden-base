@@ -27,8 +27,8 @@ use miden_processor::AdviceInputs;
 use miden_processor::crypto::RpoRandomCoin;
 use miden_testing::utils::create_spawn_note;
 use miden_testing::{Auth, MockChainBuilder, assert_transaction_executor_error};
-use miden_tx::auth::{BasicAuthenticator, SigningInputs, TransactionAuthenticator};
 use miden_tx::TransactionExecutorError;
+use miden_tx::auth::{BasicAuthenticator, SigningInputs, TransactionAuthenticator};
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 

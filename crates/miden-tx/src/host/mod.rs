@@ -1,7 +1,6 @@
 mod account_delta_tracker;
 
 use account_delta_tracker::AccountDeltaTracker;
-
 mod storage_delta_tracker;
 
 mod link_map;
@@ -10,7 +9,7 @@ pub use link_map::{LinkMap, MemoryViewer};
 mod account_procedures;
 pub use account_procedures::AccountProcedureIndexMap;
 
-mod note_builder;
+pub(crate) mod note_builder;
 use miden_lib::StdLibrary;
 use note_builder::OutputNoteBuilder;
 
@@ -40,7 +39,7 @@ use miden_objects::account::{
     StorageSlotType,
 };
 use miden_objects::asset::{Asset, AssetVault, FungibleAsset, VaultKey};
-use miden_objects::note::NoteId;
+use miden_objects::note::{NoteId, NoteInputs, NoteMetadata, NoteRecipient, NoteScript};
 use miden_objects::transaction::{
     InputNote,
     InputNotes,
@@ -50,7 +49,7 @@ use miden_objects::transaction::{
     TransactionSummary,
 };
 use miden_objects::vm::RowIndex;
-use miden_objects::{Hasher, Word};
+use miden_objects::{Hasher, Word, ZERO};
 use miden_processor::{
     AdviceError,
     AdviceMutation,
@@ -219,6 +218,25 @@ where
     // MUTATORS
     // --------------------------------------------------------------------------------------------
 
+    /// Inserts an output note builder at the specified index.
+    ///
+    /// # Errors
+    /// Returns an error if a note builder already exists at the given index.
+    pub(super) fn insert_output_note_builder(
+        &mut self,
+        note_idx: usize,
+        note_builder: OutputNoteBuilder,
+    ) -> Result<(), TransactionKernelError> {
+        if self.output_notes.contains_key(&note_idx) {
+            return Err(TransactionKernelError::other(format!(
+                "Attempted to create note builder for note index {} twice",
+                note_idx
+            )));
+        }
+        self.output_notes.insert(note_idx, note_builder);
+        Ok(())
+    }
+
     /// Returns a mutable reference to the [`AccountProcedureIndexMap`].
     pub fn load_foreign_account_code(
         &mut self,
@@ -303,7 +321,7 @@ where
             },
 
             TransactionEvent::NoteBeforeCreated => Ok(TransactionEventHandling::Handled(Vec::new())),
-            TransactionEvent::NoteAfterCreated => self.on_note_after_created(process).map(|_| TransactionEventHandling::Handled(Vec::new())),
+            TransactionEvent::NoteAfterCreated => self.on_note_after_created(process),
 
             TransactionEvent::NoteBeforeAddAsset => self.on_note_before_add_asset(process).map(|_| TransactionEventHandling::Handled(Vec::new())),
             TransactionEvent::NoteAfterAddAsset => Ok(TransactionEventHandling::Handled(Vec::new())),
@@ -503,26 +521,65 @@ where
         ))
     }
 
-    /// Creates a new [OutputNoteBuilder] from the data on the operand stack and stores it into the
-    /// `output_notes` field of this [`TransactionBaseHost`].
+    /// Handles the note creation event by extracting note data from the stack and advice provider.
     ///
-    /// Expected stack state: `[event, NOTE_METADATA, RECIPIENT, ...]`
+    /// If the recipient data and note script are present in the advice provider, creates a new
+    /// [`OutputNoteBuilder`] and stores it in the `output_notes` field of this
+    /// [`TransactionBaseHost`]. Otherwise, returns [`TransactionEventHandling::Unhandled`] to
+    /// request the missing note script from the data store.
+    ///
+    /// Expected stack state: `[event, NOTE_METADATA, note_ptr, RECIPIENT, note_idx]`
     fn on_note_after_created(
         &mut self,
         process: &ProcessState,
-    ) -> Result<(), TransactionKernelError> {
-        let stack = process.get_stack_state().split_off(1);
-        // # => [NOTE_METADATA]
+    ) -> Result<TransactionEventHandling, TransactionKernelError> {
+        let metadata_word = process.get_stack_word(1);
+        let metadata = NoteMetadata::try_from(metadata_word)
+            .map_err(TransactionKernelError::MalformedNoteMetadata)?;
 
-        let note_idx: usize = stack[9].as_int() as usize;
+        let recipient_digest = process.get_stack_word(6);
+        let note_idx = process.get_stack_item(10).as_int() as usize;
 
-        assert_eq!(note_idx, self.output_notes.len(), "note index mismatch");
+        let recipient = if process.advice_provider().get_mapped_values(&recipient_digest).is_some()
+        {
+            let (sn_script_hash, inputs_commitment) =
+                read_double_word_from_adv_map(process, recipient_digest)?;
 
-        let note_builder = OutputNoteBuilder::new(stack, process.advice_provider())?;
+            let (sn_hash, script_root) = read_double_word_from_adv_map(process, sn_script_hash)?;
 
-        self.output_notes.insert(note_idx, note_builder);
+            let (serial_num, _) = read_double_word_from_adv_map(process, sn_hash)?;
 
-        Ok(())
+            let inputs = extract_note_inputs(process, &inputs_commitment)?;
+
+            let script_data = process.advice_provider().get_mapped_values(&script_root);
+
+            if script_data.is_none() {
+                return Ok(TransactionEventHandling::Unhandled(TransactionEventData::NoteData {
+                    note_idx,
+                    metadata,
+                    script_root,
+                    recipient_digest,
+                    note_inputs: inputs,
+                    serial_num,
+                }));
+            }
+
+            let script = NoteScript::try_from(script_data.unwrap()).map_err(|source| {
+                TransactionKernelError::MalformedNoteScript {
+                    data: script_data.unwrap().to_vec(),
+                    source,
+                }
+            })?;
+
+            Some(NoteRecipient::new(serial_num, script, inputs))
+        } else {
+            None
+        };
+
+        let note_builder = OutputNoteBuilder::new(metadata, recipient_digest, recipient)?;
+        self.insert_output_note_builder(note_idx, note_builder)?;
+
+        Ok(TransactionEventHandling::Handled(Vec::new()))
     }
 
     /// Adds an asset at the top of the [OutputNoteBuilder] identified by the note pointer.
@@ -1122,11 +1179,85 @@ where
     }
 }
 
+/// Reads a double word (two [`Word`]s, 8 [`Felt`]s total) from the advice map.
+///
+/// # Errors
+/// Returns an error if the key is not present in the advice map or if the data is malformed
+/// (not exactly 8 elements).
+fn read_double_word_from_adv_map(
+    process: &ProcessState,
+    key: Word,
+) -> Result<(Word, Word), TransactionKernelError> {
+    let data = process
+        .advice_provider()
+        .get_mapped_values(&key)
+        .ok_or_else(|| TransactionKernelError::MalformedRecipientData(vec![]))?;
+
+    if data.len() != 8 {
+        return Err(TransactionKernelError::MalformedRecipientData(data.to_vec()));
+    }
+
+    let first_word = Word::new([data[0], data[1], data[2], data[3]]);
+    let second_word = Word::new([data[4], data[5], data[6], data[7]]);
+
+    Ok((first_word, second_word))
+}
+
 impl<'store, STORE> TransactionBaseHost<'store, STORE> {
     /// Returns the underlying store of the base host.
     pub fn store(&self) -> &'store STORE {
         self.mast_store
     }
+}
+
+/// Extracts and validates note inputs from the advice provider using trial unhashing.
+///
+/// This function tries to determine the correct number of inputs by:
+/// 1. Finding the last non-zero element as a starting point
+/// 2. Building NoteInputs and checking if the hash matches inputs_commitment
+/// 3. If not, incrementing num_inputs and trying again (up to 6 more times)
+/// 4. If num_inputs grows to the size of inputs_data and there's still no match, returning an error
+fn extract_note_inputs(
+    process: &ProcessState,
+    inputs_commitment: &Word,
+) -> Result<NoteInputs, TransactionKernelError> {
+    let inputs_data = process.advice_provider().get_mapped_values(inputs_commitment);
+
+    let inputs = match inputs_data {
+        None => NoteInputs::default(),
+        Some(inputs) => {
+            // Start with the last non-zero element as a hint
+            let initial_num_inputs =
+                inputs.iter().rposition(|&x| x != ZERO).map(|pos| pos + 1).unwrap_or(0);
+
+            // Try different input counts using trial unhashing
+            let mut num_inputs = initial_num_inputs;
+
+            loop {
+                let candidate_inputs = NoteInputs::new(inputs[0..num_inputs].to_vec())
+                    .map_err(TransactionKernelError::MalformedNoteInputs)?;
+
+                if candidate_inputs.commitment() == *inputs_commitment {
+                    return Ok(candidate_inputs);
+                }
+
+                num_inputs += 1;
+                if num_inputs > inputs.len() {
+                    break;
+                }
+            }
+
+            // If we've exhausted all attempts, return an error
+            return Err(TransactionKernelError::InvalidNoteInputs {
+                expected: *inputs_commitment,
+                actual: NoteInputs::new(inputs[0..num_inputs.min(inputs.len())].to_vec())
+                    .map(|i| i.commitment())
+                    .unwrap_or_default(),
+            });
+        },
+    };
+
+    Ok(inputs)
 }
 
 /// Extracts a word from a slice of field elements.
@@ -1186,5 +1317,20 @@ pub(super) enum TransactionEventData {
         map_root: Word,
         /// The raw map key for which a witness is requested.
         map_key: Word,
+    },
+    /// The data necessary to request a note script from the data store.
+    NoteData {
+        /// The note index extracted from the stack.
+        note_idx: usize,
+        /// The note metadata extracted from the stack.
+        metadata: NoteMetadata,
+        /// The root of the note script being requested.
+        script_root: Word,
+        /// The recipient digest extracted from the stack.
+        recipient_digest: Word,
+        /// The note inputs extracted from the advice provider.
+        note_inputs: NoteInputs,
+        /// The serial number extracted from the advice provider.
+        serial_num: Word,
     },
 }

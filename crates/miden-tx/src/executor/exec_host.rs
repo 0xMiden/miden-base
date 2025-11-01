@@ -15,6 +15,7 @@ use miden_objects::assembly::{SourceFile, SourceManagerSync, SourceSpan};
 use miden_objects::asset::{Asset, AssetWitness, FungibleAsset, VaultKey};
 use miden_objects::block::BlockNumber;
 use miden_objects::crypto::merkle::SmtProof;
+use miden_objects::note::{NoteInputs, NoteMetadata, NoteRecipient};
 use miden_objects::transaction::{InputNote, InputNotes, OutputNote};
 use miden_objects::vm::AdviceMap;
 use miden_objects::{Felt, Hasher, Word};
@@ -30,6 +31,7 @@ use miden_processor::{
 
 use crate::auth::{SigningInputs, TransactionAuthenticator};
 use crate::errors::TransactionKernelError;
+use crate::host::note_builder::OutputNoteBuilder;
 use crate::host::{
     ScriptMastForestStore,
     TransactionBaseHost,
@@ -37,7 +39,7 @@ use crate::host::{
     TransactionEventHandling,
     TransactionProgress,
 };
-use crate::{AccountProcedureIndexMap, DataStore};
+use crate::{AccountProcedureIndexMap, DataStore, DataStoreError};
 
 // TRANSACTION EXECUTOR HOST
 // ================================================================================================
@@ -362,6 +364,55 @@ where
         Ok(asset_witness_to_advice_mutation(asset_witness))
     }
 
+    /// Handles a request for a [`NoteScript`] by querying the [`DataStore`].
+    ///
+    /// The script is fetched from the data store and used to build a [`NoteRecipient`], which is
+    /// then used to create an [`OutputNoteBuilder`]. This function is only called for public notes
+    /// where the script is not already available in the advice provider.
+    async fn on_note_script_requested(
+        &mut self,
+        script_root: Word,
+        metadata: NoteMetadata,
+        recipient_digest: Word,
+        note_idx: usize,
+        note_inputs: NoteInputs,
+        serial_num: Word,
+    ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
+        let note_script_result = self.base_host.store().get_note_script(script_root).await;
+
+        let (recipient, mutations) = match note_script_result {
+            Ok(note_script) => {
+                let script_felts: Vec<Felt> = (&note_script).into();
+                let recipient = NoteRecipient::new(serial_num, note_script, note_inputs);
+                let mutations = vec![AdviceMutation::extend_map(AdviceMap::from_iter([(
+                    script_root,
+                    script_felts,
+                )]))];
+
+                (Some(recipient), mutations)
+            },
+            Err(DataStoreError::NoteScriptNotFound(_)) if metadata.is_private() => {
+                (None, Vec::new())
+            },
+            Err(DataStoreError::NoteScriptNotFound(_)) => {
+                return Err(TransactionKernelError::other(format!(
+                    "note script with root {script_root} not found in data store for public note"
+                )));
+            },
+            Err(err) => {
+                return Err(TransactionKernelError::other_with_source(
+                    "failed to retrieve note script from data store",
+                    err,
+                ));
+            },
+        };
+
+        let note_builder = OutputNoteBuilder::new(metadata, recipient_digest, recipient)?;
+        self.base_host.insert_output_note_builder(note_idx, note_builder)?;
+
+        Ok(mutations)
+    }
+
     /// Consumes `self` and returns the account delta, output notes, generated signatures and
     /// transaction progress.
     #[allow(clippy::type_complexity)]
@@ -466,6 +517,24 @@ where
                     map_key,
                 } => self
                     .on_account_storage_map_witness_requested(current_account_id, map_root, map_key)
+                    .await
+                    .map_err(EventError::from),
+                TransactionEventData::NoteData {
+                    note_idx,
+                    metadata,
+                    script_root,
+                    recipient_digest,
+                    note_inputs,
+                    serial_num,
+                } => self
+                    .on_note_script_requested(
+                        script_root,
+                        metadata,
+                        recipient_digest,
+                        note_idx,
+                        note_inputs,
+                        serial_num,
+                    )
                     .await
                     .map_err(EventError::from),
             }

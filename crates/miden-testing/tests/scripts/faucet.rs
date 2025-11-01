@@ -6,6 +6,7 @@ use std::sync::Arc;
 use miden_lib::account::faucets::{BasicFungibleFaucet, FungibleFaucetExt, NetworkFungibleFaucet};
 use miden_lib::errors::tx_kernel_errors::ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED;
 use miden_lib::note::WellKnownNote;
+use miden_lib::testing::note::NoteBuilder;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{
     Account,
@@ -20,6 +21,7 @@ use miden_objects::note::{
     Note,
     NoteAssets,
     NoteExecutionHint,
+    NoteExecutionMode,
     NoteId,
     NoteInputs,
     NoteMetadata,
@@ -27,8 +29,10 @@ use miden_objects::note::{
     NoteTag,
     NoteType,
 };
+use miden_objects::testing::account_id::ACCOUNT_ID_PRIVATE_SENDER;
 use miden_objects::transaction::{ExecutedTransaction, OutputNote};
 use miden_objects::{Felt, Word};
+use miden_processor::crypto::RpoRandomCoin;
 use miden_testing::{Auth, MockChain, assert_transaction_executor_error};
 
 use crate::scripts::swap::create_p2id_note_exact;
@@ -295,6 +299,181 @@ async fn prove_burning_fungible_asset_on_existing_faucet_succeeds() -> anyhow::R
 
     assert_eq!(executed_transaction.account_delta().nonce_delta(), Felt::new(1));
     assert_eq!(executed_transaction.input_notes().get_note(0).id(), note.id());
+    Ok(())
+}
+
+// TEST PUBLIC NOTE CREATION DURING NOTE CONSUMPTION
+// ================================================================================================
+
+/// Tests that a public note can be created during note consumption by fetching the note script
+/// from the data store. This test verifies the functionality added in issue #1972.
+///
+/// The test creates a note that calls the faucet's `distribute` function to create a PUBLIC
+/// P2ID output note. The P2ID script is fetched from the data store during transaction execution.
+#[tokio::test]
+async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Result<()> {
+    let mut builder = MockChain::builder();
+    let faucet = builder.add_existing_basic_faucet(Auth::BasicAuth, "TST", 200, None)?;
+
+    // Parameters for the PUBLIC note that will be created by the faucet
+    let recipient_account_id = AccountId::try_from(ACCOUNT_ID_PRIVATE_SENDER)?;
+    let amount = Felt::new(75);
+    let tag = NoteTag::for_public_use_case(0, 0, NoteExecutionMode::Local)?;
+    let aux = Felt::new(27);
+    let note_execution_hint = NoteExecutionHint::on_block_slot(5, 6, 7);
+    let note_type = NoteType::Public;
+
+    // Create a simple output note script
+    let output_note_script_code = "begin push.1 drop end";
+    let source_manager = Arc::new(DefaultSourceManager::default());
+    let output_note_script = ScriptBuilder::with_source_manager(source_manager.clone())
+        .compile_note_script(output_note_script_code)?;
+
+    let serial_num = Word::default();
+    let target_account_suffix = recipient_account_id.suffix();
+    let target_account_prefix = recipient_account_id.prefix().as_felt();
+
+    // Adding extra 0 values to inputs to test trial unhashing in extract_note_inputs fn
+    let note_inputs = NoteInputs::new(vec![
+        target_account_suffix,
+        target_account_prefix,
+        Felt::new(0),
+        Felt::new(0),
+        Felt::new(0),
+        Felt::new(0),
+        Felt::new(0),
+        Felt::new(1),
+    ])?;
+
+    let note_recipient =
+        NoteRecipient::new(serial_num, output_note_script.clone(), note_inputs.clone());
+
+    let output_script_root = note_recipient.script().root();
+
+    let asset = FungibleAsset::new(faucet.id(), amount.into())?;
+    let metadata = NoteMetadata::new(faucet.id(), note_type, tag, note_execution_hint, aux)?;
+    let expected_note = Note::new(NoteAssets::new(vec![asset.into()])?, metadata, note_recipient);
+
+    let trigger_note_script_code = format!(
+        "
+            use.miden::note
+            
+            begin
+                # Build recipient hash from SERIAL_NUM, SCRIPT_ROOT, and INPUTS_COMMITMENT
+                push.{script_root}
+                # => [SCRIPT_ROOT]
+                
+                push.{serial_num}
+                # => [SERIAL_NUM, SCRIPT_ROOT]
+
+                # Store note inputs in memory at address 0
+                # First word: inputs[0..4]
+                push.{input0}.{input1}.{input2}.{input3}
+                mem_storew.0 dropw
+                # Memory[0] = [input0, input1, input2, input3]
+
+                # Second word: inputs[4..8]
+                push.{input4}.{input5}.{input6}.{input7}
+                mem_storew.4 dropw
+                # Memory[1] = [input4, input5, input6, input7]
+
+                push.8 push.0
+                # => [inputs_ptr, num_inputs, SERIAL_NUM, SCRIPT_ROOT]
+
+                exec.note::build_recipient
+                # => [RECIPIENT]
+
+                # Now call distribute with the computed recipient
+                push.{note_execution_hint}
+                push.{note_type}
+                push.{aux}
+                push.{tag}
+                push.{amount}
+                # => [amount, tag, aux, note_type, execution_hint, RECIPIENT]
+
+                call.::miden::contracts::faucets::basic_fungible::distribute
+                # => [note_idx, pad(15)]
+
+                # Truncate the stack
+                dropw dropw dropw dropw
+            end
+            ",
+        note_type = note_type as u8,
+        input0 = note_inputs.values()[0],
+        input1 = note_inputs.values()[1],
+        input2 = note_inputs.values()[2],
+        input3 = note_inputs.values()[3],
+        input4 = note_inputs.values()[4],
+        input5 = note_inputs.values()[5],
+        input6 = note_inputs.values()[6],
+        input7 = note_inputs.values()[7],
+        script_root = output_script_root,
+        serial_num = serial_num,
+        aux = aux,
+        tag = u32::from(tag),
+        note_execution_hint = Felt::from(note_execution_hint),
+        amount = amount,
+    );
+
+    // Create the trigger note that will call distribute
+    let mut rng = RpoRandomCoin::new([Felt::from(1u32); 4].into());
+    let trigger_note = NoteBuilder::new(faucet.id(), &mut rng)
+        .note_type(NoteType::Private)
+        .tag(NoteTag::for_local_use_case(0, 0)?.into())
+        .note_execution_hint(NoteExecutionHint::always())
+        .aux(Felt::new(0))
+        .serial_number(Word::from([1, 2, 3, 4u32]))
+        .code(trigger_note_script_code)
+        .build()?;
+
+    builder.add_output_note(OutputNote::Full(trigger_note.clone()));
+    let mock_chain = builder.build()?;
+
+    // Execute the transaction - this should fetch the output note script from the data store.
+    // Note: There is intentionally no call to extend_expected_output_notes here, so the
+    // transaction host is forced to request the script from the data store during execution.
+    let executed_transaction = mock_chain
+        .build_tx_context(faucet.id(), &[trigger_note.id()], &[])?
+        .add_note_script(output_note_script)
+        .with_source_manager(source_manager)
+        .build()?
+        .execute()
+        .await?;
+
+    // Verify that a PUBLIC note was created
+    assert_eq!(executed_transaction.output_notes().num_notes(), 1);
+    let output_note = executed_transaction.output_notes().get_note(0);
+
+    // Extract the full note from the OutputNote enum
+    let full_note = match output_note {
+        OutputNote::Full(note) => note,
+        _ => panic!("Expected OutputNote::Full variant"),
+    };
+
+    // Verify the output note is public
+    assert_eq!(full_note.metadata().note_type(), NoteType::Public);
+
+    // Verify the output note contains the minted fungible asset
+    let expected_asset = FungibleAsset::new(faucet.id(), amount.into())?;
+    let expected_asset_obj = Asset::from(expected_asset);
+    assert!(full_note.assets().iter().any(|asset| asset == &expected_asset_obj));
+
+    // Verify the note was created by the faucet
+    assert_eq!(full_note.metadata().sender(), faucet.id());
+
+    // Verify the note inputs commitment matches the expected commitment
+    assert_eq!(
+        full_note.recipient().inputs().commitment(),
+        note_inputs.commitment(),
+        "Output note inputs commitment should match expected inputs commitment"
+    );
+
+    // Verify the output note ID matches the expected note ID
+    assert_eq!(full_note.id(), expected_note.id());
+
+    // Verify nonce was incremented
+    assert_eq!(executed_transaction.account_delta().nonce_delta(), Felt::new(1));
+
     Ok(())
 }
 
