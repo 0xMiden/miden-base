@@ -53,8 +53,6 @@ export.move_asset_to_note
     exec.account::remove_asset
     # => [ASSET, note_idx, pad(11)]
 
-    # TODO: optimize the `move_asset_to_note` output
-
     dupw dup.8 movdn.4
     # => [ASSET, note_idx, ASSET, note_idx, pad(11)]
 
