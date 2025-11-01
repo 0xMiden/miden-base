@@ -563,7 +563,7 @@ async fn test_check_note_consumability_static_analysis_invalid_inputs() -> anyho
         )
         .await?;
     assert_matches!(consumability_info, NoteConsumptionStatus::NeverConsumable(reason) => {
-        assert_eq!(reason.to_string(), "transaction target account doesn't match neither the receiver account specified by the P2IDE inputs, nor the sender account");
+        assert_eq!(reason.to_string(), "target account of the transaction does not match neither the receiver account specified by the P2IDE inputs, nor the sender account");
     });
 
     // check the note with an invalid reclaim height

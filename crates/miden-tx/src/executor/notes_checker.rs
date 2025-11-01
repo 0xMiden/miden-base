@@ -150,7 +150,7 @@ where
         // return the consumption status if we manage to determine it from the well-known note
         if let Some(well_known_note) = WellKnownNote::from_note(note.note())
             && let Some(consumption_status) =
-                well_known_note.check_note_inputs(note.note(), target_account_id, block_ref)
+                well_known_note.is_consumable(note.note(), target_account_id, block_ref)
         {
             return Ok(consumption_status);
         }
