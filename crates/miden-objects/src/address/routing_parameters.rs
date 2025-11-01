@@ -24,15 +24,17 @@ use crate::utils::sync::LazyLock;
 static ROUTING_PARAMETERS_HRP: LazyLock<Hrp> =
     LazyLock::new(|| Hrp::parse("mrp").expect("hrp should be valid"));
 
+/// The separator character used in bech32.
 const BECH32_SEPARATOR: &str = "1";
-
-const RECEIVER_PROFILE_KEY: u8 = 0;
 
 /// The value to encode the absence of a note tag routing parameter (i.e. `None`).
 ///
 /// Note tag length is ensured to be <= [`NoteTag::MAX_LOCAL_TAG_LENGTH`] and so 1 << 5 = 32 is used
 /// to encode `None`.
 const ABSENT_NOTE_TAG_LEN: u8 = 1 << 5;
+
+/// The routing parameter key for the receiver profile.
+const RECEIVER_PROFILE_KEY: u8 = 0;
 
 /// TODO: Docs.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -45,6 +47,8 @@ impl RoutingParameters {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
+    /// Creates new [`RoutingParameters`] from an [`AddressInterface`] and all other parameters
+    /// initialized to `None`.
     pub fn new(interface: AddressInterface) -> Self {
         Self { interface, note_tag_len: None }
     }
@@ -56,6 +60,12 @@ impl RoutingParameters {
     /// privacy. A higher tag length makes the account more uniquely identifiable and
     /// reduces privacy, while a shorter length increases privacy at the cost of matching more notes
     /// published onchain.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The tag length exceeds the maximum of [`NoteTag::MAX_LOCAL_TAG_LENGTH`] and
+    ///   [`NoteTag::DEFAULT_NETWORK_TAG_LENGTH`].
     pub fn with_note_tag_len(mut self, note_tag_len: u8) -> Result<Self, AddressError> {
         if note_tag_len > NoteTag::MAX_LOCAL_TAG_LENGTH {
             return Err(AddressError::TagLengthTooLarge(note_tag_len));
@@ -68,13 +78,21 @@ impl RoutingParameters {
     // ACCESSORS
     // --------------------------------------------------------------------------------------------
 
+    /// Returns the note tag length preference.
+    ///
+    /// This is guaranteed to be in range `0..=30` (e.g. the maximum of
+    /// [`NoteTag::MAX_LOCAL_TAG_LENGTH`] and [`NoteTag::DEFAULT_NETWORK_TAG_LENGTH`]).
     pub fn note_tag_len(&self) -> Option<u8> {
         self.note_tag_len
     }
 
+    /// Returns the [`AddressInterface`] of the account to which the address points.
     pub fn interface(&self) -> AddressInterface {
         self.interface
     }
+
+    // HELPERS
+    // --------------------------------------------------------------------------------------------
 
     /// Encodes [`RoutingParameters`] to a byte vector.
     pub(crate) fn encode_to_bytes(&self) -> Vec<u8> {
@@ -220,6 +238,9 @@ impl Deserializable for RoutingParameters {
             .map_err(|err| DeserializationError::InvalidValue(err.to_string()))
     }
 }
+
+// TESTS
+// ================================================================================================
 
 #[cfg(test)]
 mod tests {

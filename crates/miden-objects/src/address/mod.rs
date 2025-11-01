@@ -24,9 +24,33 @@ use crate::utils::serde::{ByteWriter, Deserializable, Serializable};
 mod address_id;
 pub use address_id::AddressId;
 
-const ADDRESS_SEPARATOR: char = '_';
-
 /// A user-facing address in Miden.
+///
+/// An address consists of an [`AddressId`] and optional [`RoutingParameters`].
+///
+/// A user who wants to receive a note creates an address and sends it to the sender of the note.
+/// The sender creates a note that only the address ID can consume (i.e. it provides access-control)
+/// and the routing parameters inform the sender about various aspects like:
+/// - what kind of note the receiver's account can consume.
+/// - how the receiver discovers the note.
+///
+/// It can be encoded to a string using [`Self::encode`] and decoded using [`Self::decode`].
+/// If routing parameters are present, the ID and parameters are separated by
+/// [`Address::SEPARATOR`].
+///
+/// ## Example
+///
+/// ```text
+/// # account ID
+/// mm1qrgu2vdxjqt9curephr0c94n0quevadt
+/// # account ID + routing parameters
+/// mm1qrgu2vdxjqt9curephr0c94n0quevadt_qrcqzlvsfdp
+/// ```
+///
+/// The encoding of an address without routing parameters matches the encoding of the underlying
+/// identifier exactly (e.g. an account ID). This provides compatibility between identifiers and
+/// addresses and gives end-users a hint that an address is only an extension of the identifier
+/// (e.g. their account's ID) that they are likely to recognize.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Address {
     id: AddressId,
@@ -34,10 +58,28 @@ pub struct Address {
 }
 
 impl Address {
+    // CONSTANTS
+    // --------------------------------------------------------------------------------------------
+
+    /// The separator character in an encoded address between the ID and routing parameters.
+    pub const SEPARATOR: char = '_';
+
+    // CONSTRUCTORS
+    // --------------------------------------------------------------------------------------------
+
+    /// Returns a new address from an [`AddressId`].
     pub fn new(id: impl Into<AddressId>) -> Self {
         Self { id: id.into(), routing_params: None }
     }
 
+    /// For local (both public and private) accounts, up to 30 bits can be encoded into the tag.
+    /// For network accounts, the tag length must be set to 30 bits.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The tag length routing parameter is not [`NoteTag::DEFAULT_NETWORK_TAG_LENGTH`] for
+    ///   network accounts.
     pub fn with_routing_parameters(
         mut self,
         routing_params: RoutingParameters,
@@ -61,6 +103,10 @@ impl Address {
         Ok(self)
     }
 
+    // ACCESSORS
+    // --------------------------------------------------------------------------------------------
+
+    /// Returns the identifier of the address.
     pub fn id(&self) -> AddressId {
         self.id
     }
@@ -107,41 +153,22 @@ impl Address {
         }
     }
 
-    /// TODO: This is outdated - update.
-    ///
-    /// Encodes the [`Address`] into a [bech32](https://github.com/bitcoin/bips/blob/master/bip-0173.mediawiki) string.
+    /// Encodes the [`Address`] into a string.
     ///
     /// ## Encoding
     ///
-    /// The encoding of an address into bech32 is done as follows:
-    /// - Encode the underlying address to bytes.
-    /// - Into that data, insert the [`AddressType`] byte at index 0, shifting all other elements to
-    ///   the right.
-    /// - Choose an HRP, defined as a [`NetworkId`], e.g. [`NetworkId::Mainnet`] whose string
-    ///   representation is `mm`.
-    /// - Encode the resulting HRP together with the data into a bech32 string using the
-    ///   [`bech32::Bech32m`] checksum algorithm.
-    ///
-    /// This is an example of an address in bech32 representation:
-    ///
-    /// ```text
-    /// mm1qpkdyek2c0ywwvzupakc7zlzty8qn2qnfc
-    /// ```
-    ///
-    /// ## Rationale
-    ///
-    /// The address type is at the very beginning so that it can be decoded first to detect the type
-    /// of the address, without having to decode the entire data. Moreover, since the address type
-    /// is chosen as a multiple of 8, the first character of the bech32 string after the
-    /// `1` separator will be different for every address type. That makes the type of the address
-    /// conveniently human-readable.
+    /// The encoding of an address into a string is done as follows:
+    /// - Encode the underlying [`AddressId`] to a bech32 string.
+    /// - If routing parameters are present:
+    ///   - Append the [`Address::SEPARATOR`] to that string.
+    ///   - Append the encoded routing parameters to that string.
     pub fn encode(&self, network_id: NetworkId) -> String {
         let mut encoded = match self.id {
             AddressId::AccountId(id) => id.to_bech32(network_id),
         };
 
         if let Some(routing_params) = &self.routing_params {
-            encoded.push(ADDRESS_SEPARATOR);
+            encoded.push(Self::SEPARATOR);
             encoded.push_str(&routing_params.encode_to_string());
         }
 
@@ -150,14 +177,14 @@ impl Address {
 
     /// Decodes an address string into the [`NetworkId`] and an [`Address`].
     ///
-    /// See [`Address::encode`] for details on the format. The procedure for decoding the bech32
-    /// data into the address are the inverse operations of encoding.
+    /// See [`Address::encode`] for details on the format. The procedure for decoding the string
+    /// into the address are the inverse operations of encoding.
     pub fn decode(address_str: &str) -> Result<(NetworkId, Self), AddressError> {
-        if address_str.ends_with(ADDRESS_SEPARATOR) {
+        if address_str.ends_with(Self::SEPARATOR) {
             return Err(AddressError::TrailingSeparator);
         }
 
-        let mut split = address_str.split(ADDRESS_SEPARATOR);
+        let mut split = address_str.split(Self::SEPARATOR);
         let encoded_identifier = split
             .next()
             .ok_or_else(|| AddressError::decode_error("identifier missing in address string"))?;
@@ -256,7 +283,7 @@ mod tests {
 
                 let bech32_string = address.encode(network_id.clone());
                 assert!(
-                    !bech32_string.contains(ADDRESS_SEPARATOR),
+                    !bech32_string.contains(Address::SEPARATOR),
                     "separator should not be present in address without routing params"
                 );
                 let (decoded_network_id, decoded_address) = Address::decode(&bech32_string)?;
@@ -275,7 +302,7 @@ mod tests {
 
                 let bech32_string = address.encode(network_id.clone());
                 assert!(
-                    bech32_string.contains(ADDRESS_SEPARATOR),
+                    bech32_string.contains(Address::SEPARATOR),
                     "separator should be present in address without routing params"
                 );
                 let (decoded_network_id, decoded_address) = Address::decode(&bech32_string)?;
@@ -299,7 +326,7 @@ mod tests {
 
         let address = Address::new(id);
         let mut encoded_address = address.encode(NetworkId::Devnet);
-        encoded_address.push(ADDRESS_SEPARATOR);
+        encoded_address.push(Address::SEPARATOR);
 
         let err = Address::decode(&encoded_address).unwrap_err();
         assert_matches!(err, AddressError::TrailingSeparator);

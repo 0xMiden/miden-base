@@ -10,7 +10,9 @@ use crate::address::{AddressType, NetworkId};
 use crate::errors::Bech32Error;
 use crate::utils::serde::{ByteWriter, Deserializable, Serializable};
 
-/// The identifier of an [`Address`].
+/// The identifier of an [`Address`](super::Address).
+///
+/// See the address docs for more details.
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum AddressId {
@@ -18,13 +20,15 @@ pub enum AddressId {
 }
 
 impl AddressId {
+    /// Returns the [`AddressType`] of this ID.
     pub fn address_type(&self) -> AddressType {
         match self {
             AddressId::AccountId(_) => AddressType::AccountId,
         }
     }
 
-    pub fn decode(bech32_string: &str) -> Result<(NetworkId, Self), AddressError> {
+    /// Decodes a bech32 string into an identifier.
+    pub(crate) fn decode(bech32_string: &str) -> Result<(NetworkId, Self), AddressError> {
         // We use CheckedHrpString with an explicit checksum algorithm so we don't allow the
         // `Bech32` or `NoChecksum` algorithms.
         let checked_string = CheckedHrpstring::new::<Bech32m>(bech32_string).map_err(|source| {
