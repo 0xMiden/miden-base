@@ -193,7 +193,7 @@ async fn block_header_fails_on_account_tree_root_mismatch() -> anyhow::Result<()
     Ok(())
 }
 
-/// Tests that a block header cannot be built if both witnesses from a stale nullifier tree and from
+/// Tests that a block cannot be built if both witnesses from a stale nullifier tree and from
 /// the current nullifier tree are used which results in different nullifier tree roots.
 #[tokio::test]
 async fn block_header_fails_on_nullifier_tree_root_mismatch() -> anyhow::Result<()> {

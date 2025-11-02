@@ -16,9 +16,13 @@ use crate::block::{
     AccountUpdateWitness,
     AccountWitness,
     BlockHeader,
+    BlockNoteIndex,
+    BlockNoteTree,
     BlockNumber,
     NullifierWitness,
     OutputNoteBatch,
+    PartialAccountTree,
+    PartialNullifierTree,
 };
 use crate::errors::ProposedBlockError;
 use crate::note::{NoteId, Nullifier};
@@ -317,8 +321,131 @@ impl ProposedBlock {
         &self.output_note_batches
     }
 
+    /// Computes the new account tree root after the given updates.
+    ///
+    /// It uses a PartialMerkleTree for now while we use a SimpleSmt for the account tree. Once that
+    /// is updated to an Smt, we can use a PartialSmt instead.
+    pub fn compute_account_root(&self) -> Result<Word, ProposedBlockError> {
+        // If no accounts were updated, the account tree root is unchanged.
+        if self.account_updated_witnesses.is_empty() {
+            return Ok(self.prev_block_header.account_root());
+        }
+
+        // First reconstruct the current account tree from the provided merkle paths.
+        // If a witness points to a leaf where multiple account IDs share the same prefix, this will
+        // return an error.
+        let mut partial_account_tree = PartialAccountTree::with_witnesses(
+            self.account_updated_witnesses
+                .iter()
+                .map(|(_, update_witness)| update_witness.to_witness()),
+        )
+        .map_err(|source| ProposedBlockError::AccountWitnessTracking { source })?;
+
+        // Check the account tree root in the previous block header matches the reconstructed tree's
+        // root.
+        if self.prev_block_header.account_root() != partial_account_tree.root() {
+            return Err(ProposedBlockError::StaleAccountTreeRoot {
+                prev_block_account_root: self.prev_block_header.account_root(),
+                stale_account_root: partial_account_tree.root(),
+            });
+        }
+
+        // Second, update the account tree by inserting the new final account state commitments to
+        // compute the new root of the account tree.
+        // If an account ID's prefix already exists in the tree, this will return an error.
+        // Note that we have inserted all witnesses that we want to update into the partial account
+        // tree, so we should not run into the untracked key error.
+        partial_account_tree
+            .upsert_state_commitments(self.account_updated_witnesses.iter().map(
+                |(account_id, update_witness)| {
+                    (*account_id, update_witness.final_state_commitment())
+                },
+            ))
+            .map_err(|source| ProposedBlockError::AccountIdPrefixDuplicate { source })?;
+
+        Ok(partial_account_tree.root())
+    }
+
+    /// Computes the new nullifier root by inserting the nullifier witnesses into a partial
+    /// nullifier tree and marking each nullifier as spent in the given block number.
+    pub fn compute_nullifier_root(&self) -> Result<Word, ProposedBlockError> {
+        // If no nullifiers were created, the nullifier tree root is unchanged.
+        if self.created_nullifiers.is_empty() {
+            return Ok(self.prev_block_header.nullifier_root());
+        }
+
+        let nullifiers: Vec<Nullifier> = self.created_nullifiers.keys().copied().collect();
+
+        let mut partial_nullifier_tree = PartialNullifierTree::new();
+
+        // First, reconstruct the current nullifier tree with the merkle paths of the nullifiers we
+        // want to update.
+        // Due to the guarantees of ProposedBlock we can safely assume that each nullifier is mapped
+        // to its corresponding nullifier witness, so we don't have to check again whether
+        // they match.
+        for witness in self.created_nullifiers.values() {
+            partial_nullifier_tree.track_nullifier(witness.clone())?;
+        }
+
+        // Check the nullifier tree root in the previous block header matches the reconstructed
+        // tree's root.
+        if self.prev_block_header.nullifier_root() != partial_nullifier_tree.root() {
+            return Err(ProposedBlockError::StaleNullifierTreeRoot {
+                prev_block_nullifier_root: self.prev_block_header.nullifier_root(),
+                stale_nullifier_root: partial_nullifier_tree.root(),
+            });
+        }
+
+        // Second, mark each nullifier as spent in the tree. Note that checking whether each
+        // nullifier is unspent is checked as part of the proposed block.
+
+        // SAFETY: As mentioned above, we can safely assume that each nullifier's witness was
+        // added and every nullifier should be tracked by the partial tree and
+        // therefore updatable.
+        partial_nullifier_tree.mark_spent(nullifiers.iter().copied(), self.block_num()).expect(
+          "nullifiers' merkle path should have been added to the partial tree and the nullifiers should be unspent",
+        );
+
+        Ok(partial_nullifier_tree.root())
+    }
+
+    /// Compute the block note tree from the output note batches.
+    pub fn compute_block_note_tree(&self) -> BlockNoteTree {
+        let output_notes_iter =
+            self.output_note_batches.iter().enumerate().flat_map(|(batch_idx, notes)| {
+                notes.iter().map(move |(note_idx_in_batch, note)| {
+                    (
+                        // SAFETY: The proposed block contains at most the max allowed number of
+                        // batches and each batch is guaranteed to contain at most
+                        // the max allowed number of output notes.
+                        BlockNoteIndex::new(batch_idx, *note_idx_in_batch).expect(
+                            "max batches in block and max notes in batches should be enforced",
+                        ),
+                        note.id(),
+                        *note.metadata(),
+                    )
+                })
+            });
+
+        // SAFETY: We only construct proposed blocks that:
+        // - do not contain duplicates
+        // - contain at most the max allowed number of batches and each batch is guaranteed to
+        //   contain at most the max allowed number of output notes.
+        BlockNoteTree::with_entries(output_notes_iter)
+            .expect("the output notes of the block should not contain duplicates and contain at most the allowed maximum")
+    }
+
     // STATE MUTATORS
     // --------------------------------------------------------------------------------------------
+
+    /// Adds the commitment of the previous block header to the partial blockchain to compute the
+    /// new chain commitment.
+    pub fn compute_chain_commitment(&mut self) -> Word {
+        // SAFETY: This does not panic as long as the block header we're adding is the next one in
+        // the chain which is validated as part of constructing a `ProposedBlock`.
+        self.partial_blockchain.add_block(&self.prev_block_header, true);
+        self.partial_blockchain.peaks().hash_peaks()
+    }
 
     /// Consumes self and returns the non-[`Copy`] parts of the block.
     #[allow(clippy::type_complexity)]

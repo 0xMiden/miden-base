@@ -1,13 +1,16 @@
 use miden_core::Word;
-use miden_objects::{AccountTreeError, NullifierTreeError};
+use miden_objects::{AccountTreeError, NullifierTreeError, ProposedBlockError};
 
 // BLOCK HEADER ERROR
 // ================================================================================================
 
 #[derive(Debug, thiserror::Error)]
 pub enum BlockHeaderError {
+    #[error("could not construct block header from proposed block fields")]
+    ProposedBlockError(#[from] ProposedBlockError),
+
     #[error("nullifier witness has a different root than the current nullifier tree root")]
-    NullifierWitnessRootMismatch(#[source] NullifierTreeError),
+    NullifierWitnessRootMismatch(#[from] NullifierTreeError),
 
     #[error("failed to track account witness")]
     AccountWitnessTracking { source: AccountTreeError },
