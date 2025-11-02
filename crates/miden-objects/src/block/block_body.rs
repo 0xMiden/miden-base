@@ -1,5 +1,6 @@
 use alloc::vec::Vec;
 
+use miden_core::Word;
 use miden_core::utils::{
     ByteReader,
     ByteWriter,
@@ -8,7 +9,7 @@ use miden_core::utils::{
     Serializable,
 };
 
-use crate::block::{BlockAccountUpdate, OutputNoteBatch};
+use crate::block::{BlockAccountUpdate, OutputNoteBatch, ProposedBlock};
 use crate::note::Nullifier;
 use crate::transaction::OrderedTransactionHeaders;
 
@@ -87,6 +88,11 @@ impl BlockBody {
         &mut self.output_note_batches
     }
 
+    /// Returns the commitment of all transactions included in this block.
+    pub fn transaction_commitment(&self) -> Word {
+        self.transactions.commitment()
+    }
+
     /// Consumes the block body and returns its parts.
     pub fn into_parts(
         self,
@@ -102,6 +108,38 @@ impl BlockBody {
             self.created_nullifiers,
             self.transactions,
         )
+    }
+}
+
+impl From<ProposedBlock> for BlockBody {
+    fn from(block: ProposedBlock) -> Self {
+        // Split the proposed block into its constituent parts.
+        let (batches, account_updated_witnesses, output_note_batches, created_nullifiers, ..) =
+            block.into_parts();
+
+        // Transform the account update witnesses into block account updates.
+        let updated_accounts = account_updated_witnesses
+            .into_iter()
+            .map(|(account_id, update_witness)| {
+                let (
+                    _initial_state_commitment,
+                    final_state_commitment,
+                    // Note that compute_account_root took out this value so it should not be used.
+                    _initial_state_proof,
+                    details,
+                ) = update_witness.into_parts();
+                BlockAccountUpdate::new(account_id, final_state_commitment, details)
+            })
+            .collect();
+        let created_nullifiers = created_nullifiers.keys().copied().collect::<Vec<_>>();
+        // Aggregate the verified transactions of all batches.
+        let transactions = batches.into_transactions();
+        Self {
+            updated_accounts,
+            output_note_batches,
+            created_nullifiers,
+            transactions,
+        }
     }
 }
 

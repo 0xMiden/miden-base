@@ -4,6 +4,7 @@ use miden_objects::{AccountTreeError, NullifierTreeError, ProposedBlockError};
 // BLOCK HEADER ERROR
 // ================================================================================================
 
+// TODO(current pr): clean up variants no longer needed
 #[derive(Debug, thiserror::Error)]
 pub enum BlockHeaderError {
     #[error("could not construct block header from proposed block fields")]

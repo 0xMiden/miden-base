@@ -1,20 +1,5 @@
-use alloc::collections::BTreeMap;
-use alloc::vec::Vec;
-
 use miden_core::Word;
-use miden_objects::account::AccountId;
-use miden_objects::block::{
-    AccountUpdateWitness,
-    BlockAccountUpdate,
-    BlockBody,
-    BlockHeader,
-    BlockNumber,
-    NullifierWitness,
-    OutputNoteBatch,
-    ProposedBlock,
-};
-use miden_objects::note::Nullifier;
-use miden_objects::transaction::OrderedTransactionHeaders;
+use miden_objects::block::{BlockBody, BlockHeader, BlockNumber, ProposedBlock};
 
 use crate::block::errors::BlockHeaderError;
 use crate::transaction::TransactionKernel;
@@ -26,9 +11,10 @@ use crate::transaction::TransactionKernel;
 pub fn construct_block(
     mut proposed_block: ProposedBlock,
 ) -> Result<(BlockHeader, BlockBody), BlockHeaderError> {
-    // Get the block number and timestamp of the new block and compute the tx commitment.
+    // Get fields from the proposed block before it is consumed.
     let block_num = proposed_block.block_num();
     let timestamp = proposed_block.timestamp();
+    let prev_block_header = proposed_block.prev_block_header().clone();
 
     // Insert the state commitments of updated accounts into the account tree to compute its new
     // root.
@@ -45,20 +31,11 @@ pub fn construct_block(
     // commitment.
     let new_chain_commitment = proposed_block.compute_chain_commitment();
 
-    // Split the proposed block into its constituent parts.
-    let (
-        batches,
-        account_updated_witnesses,
-        output_note_batches,
-        created_nullifiers,
-        partial_blockchain,
-        prev_block_header,
-    ) = proposed_block.into_parts();
+    // Construct the block body from the proposed block.
+    let body = BlockBody::from(proposed_block);
 
-    // Aggregate the verified transactions of all batches.
-    let transactions = batches.into_transactions();
-    let tx_commitment = transactions.commitment();
-
+    // Construct the header.
+    let tx_commitment = body.transaction_commitment();
     let header = construct_block_header(
         block_num,
         timestamp,
@@ -69,13 +46,6 @@ pub fn construct_block(
         new_nullifier_root,
         note_root,
     )?;
-
-    let body = construct_block_body(
-        account_updated_witnesses,
-        created_nullifiers,
-        output_note_batches,
-        transactions,
-    );
 
     Ok((header, body))
 }
@@ -122,33 +92,4 @@ fn construct_block_header(
         fee_parameters,
         timestamp,
     ))
-}
-
-fn construct_block_body(
-    account_updated_witnesses: Vec<(AccountId, AccountUpdateWitness)>,
-    created_nullifiers: BTreeMap<Nullifier, NullifierWitness>,
-    output_note_batches: Vec<OutputNoteBatch>,
-    transactions: OrderedTransactionHeaders,
-) -> BlockBody {
-    // Transform the account update witnesses into block account updates.
-    let updated_accounts = account_updated_witnesses
-        .into_iter()
-        .map(|(account_id, update_witness)| {
-            let (
-                _initial_state_commitment,
-                final_state_commitment,
-                // Note that compute_account_root took out this value so it should not be used.
-                _initial_state_proof,
-                details,
-            ) = update_witness.into_parts();
-            BlockAccountUpdate::new(account_id, final_state_commitment, details)
-        })
-        .collect();
-    let created_nullifiers = created_nullifiers.keys().copied().collect::<Vec<_>>();
-    BlockBody::new_unchecked(
-        updated_accounts,
-        output_note_batches,
-        created_nullifiers,
-        transactions,
-    )
 }
