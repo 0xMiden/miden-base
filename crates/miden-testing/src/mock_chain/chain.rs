@@ -847,13 +847,13 @@ impl MockChain {
     /// - Consumed notes are removed from the committed notes.
     /// - The block is appended to the [`BlockChain`] and the list of proven blocks.
     fn apply_block(&mut self, proven_block: ProvenBlock) -> anyhow::Result<()> {
-        for account_update in proven_block.updated_accounts() {
+        for account_update in proven_block.body().updated_accounts() {
             self.account_tree
                 .insert(account_update.account_id(), account_update.final_state_commitment())
                 .context("failed to insert account update into account tree")?;
         }
 
-        for nullifier in proven_block.created_nullifiers() {
+        for nullifier in proven_block.body().created_nullifiers() {
             self.nullifier_tree
                 .mark_spent(*nullifier, proven_block.header().block_num())
                 .context("failed to mark block nullifier as spent")?;
@@ -863,7 +863,7 @@ impl MockChain {
             // nullifiers, so we'll have to create a second index to do this.
         }
 
-        for account_update in proven_block.updated_accounts() {
+        for account_update in proven_block.body().updated_accounts() {
             match account_update.details() {
                 AccountUpdateDetails::New(account) => {
                     self.committed_accounts.insert(account.id(), account.clone());
@@ -883,8 +883,8 @@ impl MockChain {
             }
         }
 
-        let notes_tree = proven_block.build_output_note_tree();
-        for (block_note_index, created_note) in proven_block.output_notes() {
+        let notes_tree = proven_block.body().build_output_note_tree();
+        for (block_note_index, created_note) in proven_block.body().output_notes() {
             let note_path = notes_tree.open(block_note_index);
             let note_inclusion_proof = NoteInclusionProof::new(
                 proven_block.header().block_num(),

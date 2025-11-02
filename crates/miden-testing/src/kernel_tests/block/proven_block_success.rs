@@ -175,27 +175,27 @@ async fn proven_block_success() -> anyhow::Result<()> {
 
     assert_eq!(proven_block.header().note_root(), expected_block_note_tree.root());
     // Assert that the block note tree can be reconstructed.
-    assert_eq!(proven_block.build_output_note_tree(), expected_block_note_tree);
+    assert_eq!(proven_block.body().build_output_note_tree(), expected_block_note_tree);
 
     // Check input notes / nullifiers.
     // --------------------------------------------------------------------------------------------
 
-    assert_eq!(proven_block.created_nullifiers().len(), 4);
-    assert!(proven_block.created_nullifiers().contains(&input_note0.nullifier()));
-    assert!(proven_block.created_nullifiers().contains(&input_note1.nullifier()));
-    assert!(proven_block.created_nullifiers().contains(&input_note2.nullifier()));
-    assert!(proven_block.created_nullifiers().contains(&input_note3.nullifier()));
+    assert_eq!(proven_block.body().created_nullifiers().len(), 4);
+    assert!(proven_block.body().created_nullifiers().contains(&input_note0.nullifier()));
+    assert!(proven_block.body().created_nullifiers().contains(&input_note1.nullifier()));
+    assert!(proven_block.body().created_nullifiers().contains(&input_note2.nullifier()));
+    assert!(proven_block.body().created_nullifiers().contains(&input_note3.nullifier()));
 
     // Check output notes.
     // --------------------------------------------------------------------------------------------
 
-    assert_eq!(proven_block.output_note_batches().len(), 2);
+    assert_eq!(proven_block.body().output_note_batches().len(), 2);
     assert_eq!(
-        proven_block.output_note_batches()[0],
+        proven_block.body().output_note_batches()[0],
         batch0.output_notes().iter().cloned().enumerate().collect::<Vec<_>>()
     );
     assert_eq!(
-        proven_block.output_note_batches()[1],
+        proven_block.body().output_note_batches()[1],
         batch1.output_notes().iter().cloned().enumerate().collect::<Vec<_>>()
     );
 
@@ -206,6 +206,7 @@ async fn proven_block_success() -> anyhow::Result<()> {
     for (tx, batch) in [(&tx0, &batch0), (&tx1, &batch0), (&tx2, &batch1), (&tx3, &batch1)] {
         let updated_account = tx.account_id();
         let block_account_update = proven_block
+            .body()
             .updated_accounts()
             .iter()
             .find(|update| update.account_id() == updated_account)
@@ -352,7 +353,7 @@ async fn proven_block_erasing_unauthenticated_notes() -> anyhow::Result<()> {
     let (header, body) = construct_block(proposed_block)?;
     let signed_block = SignedBlock::new(header, body);
     let proven_block = LocalBlockProver::new(0).prove_dummy(signed_block);
-    let actual_block_note_tree = proven_block.build_output_note_tree();
+    let actual_block_note_tree = proven_block.body().build_output_note_tree();
 
     // Remove the erased note to get the expected batch note tree.
     let mut batch_tree = BatchNoteTree::with_contiguous_leaves(
@@ -397,7 +398,7 @@ async fn proven_block_succeeds_with_empty_batches() -> anyhow::Result<()> {
     // --------------------------------------------------------------------------------------------
 
     let latest_block_header = chain.latest_block_header();
-    assert_eq!(latest_block_header.commitment(), blockx.commitment());
+    assert_eq!(latest_block_header.commitment(), blockx.header().commitment());
 
     // Sanity check: The account and nullifier tree roots should not be the empty tree roots.
     assert_ne!(latest_block_header.account_root(), AccountTree::<Smt>::default().root());
@@ -422,10 +423,10 @@ async fn proven_block_succeeds_with_empty_batches() -> anyhow::Result<()> {
     let proven_block = LocalBlockProver::new(MIN_PROOF_SECURITY_LEVEL).prove_dummy(signed_block);
 
     // Nothing should be created or updated.
-    assert_eq!(proven_block.updated_accounts().len(), 0);
-    assert_eq!(proven_block.output_note_batches().len(), 0);
-    assert_eq!(proven_block.created_nullifiers().len(), 0);
-    assert!(proven_block.build_output_note_tree().is_empty());
+    assert_eq!(proven_block.body().updated_accounts().len(), 0);
+    assert_eq!(proven_block.body().output_note_batches().len(), 0);
+    assert_eq!(proven_block.body().created_nullifiers().len(), 0);
+    assert!(proven_block.body().build_output_note_tree().is_empty());
 
     // Account and nullifier root should match the previous block header's roots, since nothing has
     // changed.

@@ -1,17 +1,9 @@
 use alloc::vec::Vec;
 
-use crate::block::{
-    BlockAccountUpdate,
-    BlockBody,
-    BlockHeader,
-    BlockNoteIndex,
-    BlockNoteTree,
-    OutputNoteBatch,
-};
+use crate::MIN_PROOF_SECURITY_LEVEL;
+use crate::block::{BlockAccountUpdate, BlockBody, BlockHeader, OutputNoteBatch};
 use crate::note::Nullifier;
-use crate::transaction::{OrderedTransactionHeaders, OutputNote};
 use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
-use crate::{MIN_PROOF_SECURITY_LEVEL, Word};
 
 // PROVEN BLOCK
 // ================================================================================================
@@ -54,77 +46,19 @@ impl ProvenBlock {
         Self { header, body }
     }
 
-    /// Returns the commitment to this block.
-    pub fn commitment(&self) -> Word {
-        self.header.commitment()
-    }
-
-    /// Returns the header of this block.
-    pub fn header(&self) -> &BlockHeader {
-        &self.header
-    }
-
-    /// Returns the slice of [`BlockAccountUpdate`]s for all accounts updated in this block.
-    pub fn updated_accounts(&self) -> &[BlockAccountUpdate] {
-        self.body.updated_accounts()
-    }
-
-    /// Returns the slice of [`OutputNoteBatch`]es for all output notes created in this block.
-    pub fn output_note_batches(&self) -> &[OutputNoteBatch] {
-        self.body.output_note_batches()
-    }
-
     /// Returns the proof security level of the block.
     pub fn proof_security_level(&self) -> u32 {
         MIN_PROOF_SECURITY_LEVEL
     }
 
-    /// Returns an iterator over all [`OutputNote`]s created in this block.
-    ///
-    /// Each note is accompanied by a corresponding index specifying where the note is located
-    /// in the block's [`BlockNoteTree`].
-    pub fn output_notes(&self) -> impl Iterator<Item = (BlockNoteIndex, &OutputNote)> {
-        self.body
-            .output_note_batches()
-            .iter()
-            .enumerate()
-            .flat_map(|(batch_idx, notes)| {
-                notes.iter().map(move |(note_idx_in_batch, note)| {
-                    (
-                        // SAFETY: The proven block contains at most the max allowed number of
-                        // batches and each batch is guaranteed to contain
-                        // at most the max allowed number of output notes.
-                        BlockNoteIndex::new(batch_idx, *note_idx_in_batch).expect(
-                            "max batches in block and max notes in batches should be enforced",
-                        ),
-                        note,
-                    )
-                })
-            })
+    /// Returns the header of the block.
+    pub fn header(&self) -> &BlockHeader {
+        &self.header
     }
 
-    /// Returns the [`BlockNoteTree`] containing all [`OutputNote`]s created in this block.
-    pub fn build_output_note_tree(&self) -> BlockNoteTree {
-        let entries = self
-            .output_notes()
-            .map(|(note_index, note)| (note_index, note.id(), *note.metadata()));
-
-        // SAFETY: We only construct proven blocks that:
-        // - do not contain duplicates
-        // - contain at most the max allowed number of batches and each batch is guaranteed to
-        //   contain at most the max allowed number of output notes.
-        BlockNoteTree::with_entries(entries)
-            .expect("the output notes of the block should not contain duplicates and contain at most the allowed maximum")
-    }
-
-    /// Returns a reference to the slice of nullifiers for all notes consumed in the block.
-    pub fn created_nullifiers(&self) -> &[Nullifier] {
-        self.body.created_nullifiers()
-    }
-
-    /// Returns the [`OrderedTransactionHeaders`] of all transactions included in this block.
-    pub fn transactions(&self) -> &OrderedTransactionHeaders {
-        self.body.transactions()
+    /// Returns the body of the block.
+    pub fn body(&self) -> &BlockBody {
+        &self.body
     }
 }
 

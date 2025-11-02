@@ -9,9 +9,15 @@ use miden_core::utils::{
     Serializable,
 };
 
-use crate::block::{BlockAccountUpdate, OutputNoteBatch, ProposedBlock};
+use crate::block::{
+    BlockAccountUpdate,
+    BlockNoteIndex,
+    BlockNoteTree,
+    OutputNoteBatch,
+    ProposedBlock,
+};
 use crate::note::Nullifier;
-use crate::transaction::OrderedTransactionHeaders;
+use crate::transaction::{OrderedTransactionHeaders, OutputNote};
 
 /// Body of a block in the chain which contains data pertaining to all relevant state changes.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -92,6 +98,39 @@ impl BlockBody {
     /// Returns the commitment of all transactions included in this block.
     pub fn transaction_commitment(&self) -> Word {
         self.transactions.commitment()
+    }
+
+    /// Returns an iterator over all [`OutputNote`]s created in this block.
+    ///
+    /// Each note is accompanied by a corresponding index specifying where the note is located
+    /// in the block's [`BlockNoteTree`].
+    pub fn output_notes(&self) -> impl Iterator<Item = (BlockNoteIndex, &OutputNote)> {
+        self.output_note_batches.iter().enumerate().flat_map(|(batch_idx, notes)| {
+            notes.iter().map(move |(note_idx_in_batch, note)| {
+                (
+                    // SAFETY: The proven block contains at most the max allowed number of
+                    // batches and each batch is guaranteed to contain
+                    // at most the max allowed number of output notes.
+                    BlockNoteIndex::new(batch_idx, *note_idx_in_batch)
+                        .expect("max batches in block and max notes in batches should be enforced"),
+                    note,
+                )
+            })
+        })
+    }
+
+    /// Returns the [`BlockNoteTree`] containing all [`OutputNote`]s created in this block.
+    pub fn build_output_note_tree(&self) -> BlockNoteTree {
+        let entries = self
+            .output_notes()
+            .map(|(note_index, note)| (note_index, note.id(), *note.metadata()));
+
+        // SAFETY: We only construct proven blocks that:
+        // - do not contain duplicates
+        // - contain at most the max allowed number of batches and each batch is guaranteed to
+        //   contain at most the max allowed number of output notes.
+        BlockNoteTree::with_entries(entries)
+                .expect("the output notes of the block should not contain duplicates and contain at most the allowed maximum")
     }
 
     /// Consumes the block body and returns its parts.
