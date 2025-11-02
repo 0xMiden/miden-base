@@ -13,6 +13,7 @@ use crate::block::{BlockAccountUpdate, OutputNoteBatch, ProposedBlock};
 use crate::note::Nullifier;
 use crate::transaction::OrderedTransactionHeaders;
 
+/// Body of a block in the chain which contains data pertaining to all relevant state changes.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BlockBody {
     /// Account updates for the block.
