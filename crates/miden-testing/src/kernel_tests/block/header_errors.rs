@@ -2,7 +2,7 @@ use alloc::vec::Vec;
 
 use anyhow::Context;
 use assert_matches::assert_matches;
-use miden_lib::block::{BlockHeaderError, construct_block};
+use miden_lib::block::construct_block;
 use miden_lib::testing::account_component::{IncrNonceAuthComponent, MockAccountComponent};
 use miden_lib::testing::mock_account::MockAccountExt;
 use miden_objects::account::delta::AccountUpdateDetails;
@@ -13,7 +13,7 @@ use miden_objects::block::{BlockInputs, BlockNumber, ProposedBlock};
 use miden_objects::note::NoteType;
 use miden_objects::transaction::ProvenTransactionBuilder;
 use miden_objects::vm::ExecutionProof;
-use miden_objects::{AccountTreeError, NullifierTreeError, Word};
+use miden_objects::{AccountTreeError, NullifierTreeError, ProposedBlockError, Word};
 use miden_tx::LocalTransactionProver;
 
 use crate::kernel_tests::block::utils::MockChainBlockExt;
@@ -101,7 +101,7 @@ async fn block_header_fails_on_stale_account_witnesses() -> anyhow::Result<()> {
 
     assert_matches!(
         error,
-        BlockHeaderError::StaleAccountTreeRoot {
+        ProposedBlockError::StaleAccountTreeRoot {
             prev_block_account_root,
             ..
         } if prev_block_account_root == valid_block_inputs.prev_block_header().account_root()
@@ -138,7 +138,7 @@ async fn block_header_fails_on_stale_nullifier_witnesses() -> anyhow::Result<()>
 
     assert_matches!(
         error,
-        BlockHeaderError::StaleNullifierTreeRoot {
+        ProposedBlockError::StaleNullifierTreeRoot {
           prev_block_nullifier_root,
           ..
         } if prev_block_nullifier_root == valid_block_inputs.prev_block_header().nullifier_root()
@@ -184,7 +184,7 @@ async fn block_header_fails_on_account_tree_root_mismatch() -> anyhow::Result<()
 
     assert_matches!(
         error,
-        BlockHeaderError::AccountWitnessTracking {
+        ProposedBlockError::AccountWitnessTracking {
             source: AccountTreeError::TreeRootConflict { .. },
             ..
         }
@@ -232,7 +232,7 @@ async fn block_header_fails_on_nullifier_tree_root_mismatch() -> anyhow::Result<
 
     assert_matches!(
         error,
-        BlockHeaderError::NullifierWitnessRootMismatch(NullifierTreeError::TreeRootConflict(_))
+        ProposedBlockError::NullifierWitnessRootMismatch(NullifierTreeError::TreeRootConflict(_))
     );
 
     Ok(())
@@ -326,7 +326,7 @@ async fn block_header_fails_on_creating_account_with_existing_account_id_prefix(
     // This should fail when we try to _insert_ the same two prefixes into the partial tree.
     assert_matches!(
         err,
-        BlockHeaderError::AccountIdPrefixDuplicate {
+        ProposedBlockError::AccountIdPrefixDuplicate {
             source: AccountTreeError::DuplicateIdPrefix { duplicate_prefix }
         } if duplicate_prefix == new_id.prefix()
     );
@@ -422,7 +422,7 @@ async fn block_header_fails_on_creating_account_with_duplicate_account_id_prefix
     // This should fail when we try to _track_ the same two prefixes in the partial tree.
     assert_matches!(
         err,
-        BlockHeaderError::AccountWitnessTracking {
+        ProposedBlockError::AccountWitnessTracking {
             source: AccountTreeError::DuplicateIdPrefix { duplicate_prefix }
         } if duplicate_prefix == id0.prefix()
     );

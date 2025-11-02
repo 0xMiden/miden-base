@@ -1,7 +1,7 @@
 use miden_core::Word;
+use miden_objects::ProposedBlockError;
 use miden_objects::block::{BlockBody, BlockHeader, BlockNumber, ProposedBlock};
 
-use crate::block::errors::BlockHeaderError;
 use crate::transaction::TransactionKernel;
 
 /// Constructs a new [`BlockHeader`] and [`BlockBody`] from the given [`ProposedBlock`].
@@ -10,7 +10,7 @@ use crate::transaction::TransactionKernel;
 /// [`TransactionKernel`] for its various commitment fields.
 pub fn construct_block(
     mut proposed_block: ProposedBlock,
-) -> Result<(BlockHeader, BlockBody), BlockHeaderError> {
+) -> Result<(BlockHeader, BlockBody), ProposedBlockError> {
     // Get fields from the proposed block before it is consumed.
     let block_num = proposed_block.block_num();
     let timestamp = proposed_block.timestamp();
@@ -45,7 +45,7 @@ pub fn construct_block(
         new_account_root,
         new_nullifier_root,
         note_root,
-    )?;
+    );
 
     Ok((header, body))
 }
@@ -62,7 +62,7 @@ fn construct_block_header(
     new_account_root: Word,
     new_nullifier_root: Word,
     note_root: Word,
-) -> Result<BlockHeader, BlockHeaderError> {
+) -> BlockHeader {
     let prev_block_commitment = prev_block_header.commitment();
 
     // For now we copy the parameters of the previous header, which means the parameters set on
@@ -78,7 +78,7 @@ fn construct_block_header(
     // TODO(serge): remove proof commitment when block header is updated to no longer have it.
     let proof_commitment = Word::empty();
 
-    Ok(BlockHeader::new(
+    BlockHeader::new(
         version,
         prev_block_commitment,
         block_num,
@@ -91,5 +91,5 @@ fn construct_block_header(
         proof_commitment,
         fee_parameters,
         timestamp,
-    ))
+    )
 }
