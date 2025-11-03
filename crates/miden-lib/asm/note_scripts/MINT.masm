@@ -44,10 +44,10 @@ begin
     # => [pad(16)]
 
     # Load amount
-    mem_loadw.0
+    mem_loadw_be.0
     # => [RECIPIENT, pad(12)]
 
-    swapw mem_loadw.4
+    swapw mem_loadw_be.4
     # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
 
     mem_load.8

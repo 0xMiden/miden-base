@@ -410,7 +410,7 @@ where
         &self,
         process: &ProcessState,
     ) -> Result<TransactionEventHandling, TransactionKernelError> {
-        let account_id_word = process.get_stack_word(1);
+        let account_id_word = process.get_stack_word_be(1);
         let account_id =
             AccountId::try_from([account_id_word[3], account_id_word[2]]).map_err(|err| {
                 TransactionKernelError::other_with_source(
@@ -436,8 +436,8 @@ where
         &self,
         process: &ProcessState,
     ) -> Result<TransactionEventHandling, TransactionKernelError> {
-        let message = process.get_stack_word(1);
-        let pub_key_hash = process.get_stack_word(5);
+        let message = process.get_stack_word_be(1);
+        let pub_key_hash = process.get_stack_word_be(5);
         let signature_key = Hasher::merge(&[pub_key_hash, message]);
 
         let tx_summary = self.build_tx_summary(process, message)?;
@@ -482,7 +482,7 @@ where
     /// MESSAGE -> [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
     /// ```
     fn on_unauthorized(&self, process: &ProcessState) -> TransactionKernelError {
-        let msg = process.get_stack_word(1);
+        let msg = process.get_stack_word_be(1);
 
         let tx_summary = match self.build_tx_summary(process, msg) {
             Ok(s) => s,
@@ -510,7 +510,7 @@ where
         &self,
         process: &ProcessState,
     ) -> Result<TransactionEventHandling, TransactionKernelError> {
-        let fee_asset = process.get_stack_word(1);
+        let fee_asset = process.get_stack_word_be(1);
         let fee_asset = FungibleAsset::try_from(fee_asset)
             .map_err(TransactionKernelError::FailedToConvertFeeAsset)?;
 
@@ -531,11 +531,11 @@ where
         &mut self,
         process: &ProcessState,
     ) -> Result<TransactionEventHandling, TransactionKernelError> {
-        let metadata_word = process.get_stack_word(1);
+        let metadata_word = process.get_stack_word_be(1);
         let metadata = NoteMetadata::try_from(metadata_word)
             .map_err(TransactionKernelError::MalformedNoteMetadata)?;
 
-        let recipient_digest = process.get_stack_word(6);
+        let recipient_digest = process.get_stack_word_be(6);
         let note_idx = process.get_stack_item(10).as_int() as usize;
 
         // try to read the full recipient from the advice provider
@@ -588,7 +588,7 @@ where
         assert!(note_idx < self.output_notes.len() as u64);
         let node_idx = note_idx as usize;
 
-        let asset_word = process.get_stack_word(1);
+        let asset_word = process.get_stack_word_be(1);
         let asset = Asset::try_from(asset_word).map_err(|source| {
             TransactionKernelError::MalformedAssetInEventHandler {
                 handler: "on_note_before_add_asset",
@@ -652,10 +652,10 @@ where
         }
 
         // get the value to which the slot is being updated
-        let new_slot_value = process.get_stack_word(2);
+        let new_slot_value = process.get_stack_word_be(2);
 
         // get the current value for the slot
-        let current_slot_value = process.get_stack_word(6);
+        let current_slot_value = process.get_stack_word_be(6);
 
         self.account_delta.storage().set_item(
             slot_index.as_int() as u8,
@@ -674,8 +674,8 @@ where
         &self,
         process: &ProcessState,
     ) -> Result<TransactionEventHandling, TransactionKernelError> {
-        let map_key = process.get_stack_word(1);
-        let current_map_root = process.get_stack_word(5);
+        let map_key = process.get_stack_word_be(1);
+        let current_map_root = process.get_stack_word_be(5);
         let slot_index = process.get_stack_item(9);
 
         self.on_account_storage_before_get_or_set_map_item(
@@ -695,8 +695,8 @@ where
         process: &ProcessState,
     ) -> Result<TransactionEventHandling, TransactionKernelError> {
         let slot_index = process.get_stack_item(1);
-        let map_key = process.get_stack_word(2);
-        let current_map_root = process.get_stack_word(10);
+        let map_key = process.get_stack_word_be(2);
+        let current_map_root = process.get_stack_word_be(10);
 
         self.on_account_storage_before_get_or_set_map_item(
             slot_index,
@@ -786,13 +786,13 @@ where
         }
 
         // get the KEY to which the slot is being updated
-        let key = process.get_stack_word(2);
+        let key = process.get_stack_word_be(2);
 
         // get the previous VALUE of the slot
-        let prev_map_value = process.get_stack_word(6);
+        let prev_map_value = process.get_stack_word_be(6);
 
         // get the VALUE to which the slot is being updated
-        let new_map_value = process.get_stack_word(10);
+        let new_map_value = process.get_stack_word_be(10);
 
         self.account_delta.storage().set_map_item(
             slot_index.as_int() as u8,
@@ -815,7 +815,7 @@ where
         &mut self,
         process: &ProcessState,
     ) -> Result<(), TransactionKernelError> {
-        let asset: Asset = process.get_stack_word(1).try_into().map_err(|source| {
+        let asset: Asset = process.get_stack_word_be(1).try_into().map_err(|source| {
             TransactionKernelError::MalformedAssetInEventHandler {
                 handler: "on_account_vault_after_add_asset",
                 source,
@@ -837,7 +837,7 @@ where
         &self,
         process: &ProcessState,
     ) -> Result<TransactionEventHandling, TransactionKernelError> {
-        let asset_word = process.get_stack_word(1);
+        let asset_word = process.get_stack_word_be(1);
         let asset = Asset::try_from(asset_word).map_err(|source| {
             TransactionKernelError::MalformedAssetInEventHandler {
                 handler: "on_account_vault_before_add_or_remove_asset",
@@ -875,7 +875,7 @@ where
         &mut self,
         process: &ProcessState,
     ) -> Result<(), TransactionKernelError> {
-        let asset: Asset = process.get_stack_word(1).try_into().map_err(|source| {
+        let asset: Asset = process.get_stack_word_be(1).try_into().map_err(|source| {
             TransactionKernelError::MalformedAssetInEventHandler {
                 handler: "on_account_vault_after_remove_asset",
                 source,
@@ -897,7 +897,7 @@ where
         &self,
         process: &ProcessState,
     ) -> Result<TransactionEventHandling, TransactionKernelError> {
-        let stack_top = process.get_stack_word(1);
+        let stack_top = process.get_stack_word_be(1);
         let faucet_id = AccountId::try_from([stack_top[3], stack_top[2]]).map_err(|err| {
             TransactionKernelError::other_with_source(
                 "failed to convert faucet ID word into faucet ID",
@@ -923,7 +923,7 @@ where
         &self,
         process: &ProcessState,
     ) -> Result<TransactionEventHandling, TransactionKernelError> {
-        let asset_word = process.get_stack_word(1);
+        let asset_word = process.get_stack_word_be(1);
         let asset = Asset::try_from(asset_word).map_err(|err| {
             TransactionKernelError::other_with_source("provided asset is not a valid asset", err)
         })?;
@@ -1132,7 +1132,7 @@ fn advice_provider_has_merkle_path<const TREE_DEPTH: u8>(
 ) -> Result<bool, TransactionKernelError> {
     match process
         .advice_provider()
-        .get_merkle_path(root, &Felt::from(TREE_DEPTH), &leaf_index)
+        .get_merkle_path(root, Felt::from(TREE_DEPTH), leaf_index)
     {
         // Merkle path is already in the store; consider the event handled.
         Ok(_) => Ok(true),

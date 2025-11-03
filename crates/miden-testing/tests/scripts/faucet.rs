@@ -369,12 +369,12 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
                 # Store note inputs in memory at address 0
                 # First word: inputs[0..4]
                 push.{input0}.{input1}.{input2}.{input3}
-                mem_storew.0 dropw
+                mem_storew_be.0 dropw
                 # Memory[0] = [input0, input1, input2, input3]
 
                 # Second word: inputs[4..8]
                 push.{input4}.{input5}.{input6}.{input7}
-                mem_storew.4 dropw
+                mem_storew_be.4 dropw
                 # Memory[1] = [input4, input5, input6, input7]
 
                 push.8 push.0

@@ -606,13 +606,13 @@ export.set_map_item.12
     # => [OLD_MAP_VALUE, NEW_ROOT, KEY, NEW_VALUE]
 
     # store OLD_MAP_VALUE and NEW_ROOT until the end of the procedure
-    loc_storew.4 dropw loc_storew.8 dropw
+    loc_storew_be.4 dropw loc_storew_be.8 dropw
     # => [KEY, NEW_VALUE]
 
     dupw.1
     # => [NEW_VALUE, KEY, NEW_VALUE]
 
-    padw loc_loadw.4
+    padw loc_loadw_be.4
     # => [OLD_MAP_VALUE, NEW_VALUE, KEY, NEW_VALUE]
 
     dupw.2
@@ -629,7 +629,7 @@ export.set_map_item.12
     # => [KEY, NEW_VALUE]
 
     # load OLD_MAP_VALUE and NEW_ROOT on the top of the stack
-    loc_loadw.8 swapw loc_loadw.4 swapw
+    loc_loadw_be.8 swapw loc_loadw_be.4 swapw
     # => [NEW_ROOT, OLD_MAP_VALUE, ...]
 
     # set the root of the map in the respective account storage slot
@@ -957,7 +957,7 @@ export.get_procedure_info
     # => [proc_ptr, metadata_ptr]
 
     # load procedure information from memory
-    padw movup.4 mem_loadw padw movup.8 mem_loadw
+    padw movup.4 mem_loadw_be padw movup.8 mem_loadw_be
     # => [METADATA, PROC_ROOT]
     # more explicitly:
     # => [0, 0, storage_size, storage_offset, PROC_ROOT]
@@ -1483,7 +1483,7 @@ end
 #! - VALUE is the value of the item.
 export.get_item_raw
     # get the item from storage
-    swap mul.8 add padw movup.4 mem_loadw
+    swap mul.8 add padw movup.4 mem_loadw_be
     # => [VALUE]
 end
 
@@ -1554,7 +1554,7 @@ proc.set_item_raw
     # => [acct_storage_slots_section_offset, index, NEW_VALUE, OLD_VALUE]
 
     # update storage
-    swap mul.8 add mem_storew
+    swap mul.8 add mem_storew_be
     # => [NEW_VALUE, OLD_VALUE]
 
     # update the storage commitment dirty flag, indicating that the commitment is outdated
@@ -1587,7 +1587,7 @@ proc.get_procedure_root
     # => [proc_ptr]
 
     # load procedure root from memory
-    padw movup.4 mem_loadw
+    padw movup.4 mem_loadw_be
     # => [PROC_ROOT]
 end
 
@@ -1608,7 +1608,7 @@ proc.get_procedure_metadata
     # => [storage_offset_ptr, EMPTY_WORD]
 
     # load procedure metadata from memory and keep relevant data
-    mem_loadw drop drop swap
+    mem_loadw_be drop drop swap
     # => [storage_offset, storage_size]
 end
 
@@ -1653,7 +1653,7 @@ export.get_account_data_ptr
         # => [curr_account_ptr', foreign_account_id_prefix, foreign_account_id_suffix]
 
         # load the first data word at the current account pointer
-        padw dup.4 mem_loadw
+        padw dup.4 mem_loadw_be
         # => [FIRST_DATA_WORD, curr_account_ptr', foreign_account_id_prefix, foreign_account_id_suffix]
 
         # check whether the last value in the word equals zero

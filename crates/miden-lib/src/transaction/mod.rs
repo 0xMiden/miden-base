@@ -274,15 +274,15 @@ impl TransactionKernel {
         stack: &StackOutputs, // FIXME TODO add an extension trait for this one
     ) -> Result<(Word, Word, FungibleAsset, BlockNumber), TransactionOutputError> {
         let output_notes_commitment = stack
-            .get_stack_word(OUTPUT_NOTES_COMMITMENT_WORD_IDX * 4)
+            .get_stack_word_be(OUTPUT_NOTES_COMMITMENT_WORD_IDX * 4)
             .expect("output_notes_commitment (first word) missing");
 
         let account_update_commitment = stack
-            .get_stack_word(ACCOUNT_UPDATE_COMMITMENT_WORD_IDX * 4)
+            .get_stack_word_be(ACCOUNT_UPDATE_COMMITMENT_WORD_IDX * 4)
             .expect("account_update_commitment (second word) missing");
 
         let fee = stack
-            .get_stack_word(FEE_ASSET_WORD_IDX * 4)
+            .get_stack_word_be(FEE_ASSET_WORD_IDX * 4)
             .expect("fee_asset (third word) missing");
 
         let expiration_block_num = stack
@@ -299,7 +299,7 @@ impl TransactionKernel {
 
         // Make sure that indices 13, 14 and 15 are zeroes (i.e. the fourth word without the
         // expiration block number).
-        if stack.get_stack_word(12).expect("fourth word missing").as_elements()[..3]
+        if stack.get_stack_word_be(12).expect("fourth word missing").as_elements()[..3]
             != Word::empty().as_elements()[..3]
         {
             return Err(TransactionOutputError::OutputStackInvalid(
