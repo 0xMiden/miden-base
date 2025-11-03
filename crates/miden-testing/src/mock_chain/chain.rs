@@ -883,7 +883,7 @@ impl MockChain {
             }
         }
 
-        let notes_tree = proven_block.body().build_output_note_tree();
+        let notes_tree = proven_block.body().compute_block_note_tree();
         for (block_note_index, created_note) in proven_block.body().output_notes() {
             let note_path = notes_tree.open(block_note_index);
             let note_inclusion_proof = NoteInclusionProof::new(

@@ -119,8 +119,8 @@ impl BlockBody {
         })
     }
 
-    /// Returns the [`BlockNoteTree`] containing all [`OutputNote`]s created in this block.
-    pub fn build_output_note_tree(&self) -> BlockNoteTree {
+    /// Computes the [`BlockNoteTree`] containing all [`OutputNote`]s created in this block.
+    pub fn compute_block_note_tree(&self) -> BlockNoteTree {
         let entries = self
             .output_notes()
             .map(|(note_index, note)| (note_index, note.id(), *note.metadata()));

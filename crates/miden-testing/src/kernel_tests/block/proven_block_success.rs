@@ -175,7 +175,7 @@ async fn proven_block_success() -> anyhow::Result<()> {
 
     assert_eq!(proven_block.header().note_root(), expected_block_note_tree.root());
     // Assert that the block note tree can be reconstructed.
-    assert_eq!(proven_block.body().build_output_note_tree(), expected_block_note_tree);
+    assert_eq!(proven_block.body().compute_block_note_tree(), expected_block_note_tree);
 
     // Check input notes / nullifiers.
     // --------------------------------------------------------------------------------------------
@@ -353,7 +353,7 @@ async fn proven_block_erasing_unauthenticated_notes() -> anyhow::Result<()> {
     let (header, body) = construct_block(proposed_block)?;
     let signed_block = SignedBlock::new(header, body);
     let proven_block = LocalBlockProver::new(0).prove_dummy(signed_block);
-    let actual_block_note_tree = proven_block.body().build_output_note_tree();
+    let actual_block_note_tree = proven_block.body().compute_block_note_tree();
 
     // Remove the erased note to get the expected batch note tree.
     let mut batch_tree = BatchNoteTree::with_contiguous_leaves(
@@ -426,7 +426,7 @@ async fn proven_block_succeeds_with_empty_batches() -> anyhow::Result<()> {
     assert_eq!(proven_block.body().updated_accounts().len(), 0);
     assert_eq!(proven_block.body().output_note_batches().len(), 0);
     assert_eq!(proven_block.body().created_nullifiers().len(), 0);
-    assert!(proven_block.body().build_output_note_tree().is_empty());
+    assert!(proven_block.body().compute_block_note_tree().is_empty());
 
     // Account and nullifier root should match the previous block header's roots, since nothing has
     // changed.
