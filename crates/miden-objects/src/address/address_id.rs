@@ -5,9 +5,10 @@ use bech32::primitives::decode::CheckedHrpstring;
 use miden_processor::DeserializationError;
 
 use crate::AddressError;
-use crate::account::AccountId;
+use crate::account::{AccountId, AccountStorageMode};
 use crate::address::{AddressType, NetworkId};
 use crate::errors::Bech32Error;
+use crate::note::NoteTag;
 use crate::utils::serde::{ByteWriter, Deserializable, Serializable};
 
 /// The identifier of an [`Address`](super::Address).
@@ -24,6 +25,22 @@ impl AddressId {
     pub fn address_type(&self) -> AddressType {
         match self {
             AddressId::AccountId(_) => AddressType::AccountId,
+        }
+    }
+
+    /// Returns the default tag length of the ID.
+    ///
+    /// This is guaranteed to be in range `0..=30` (e.g. the maximum of
+    /// [`NoteTag::MAX_LOCAL_TAG_LENGTH`] and [`NoteTag::DEFAULT_NETWORK_TAG_LENGTH`]).
+    pub fn default_note_tag_len(&self) -> u8 {
+        match self {
+            AddressId::AccountId(id) => {
+                if id.storage_mode() == AccountStorageMode::Network {
+                    NoteTag::DEFAULT_NETWORK_TAG_LENGTH
+                } else {
+                    NoteTag::DEFAULT_LOCAL_TAG_LENGTH
+                }
+            },
         }
     }
 

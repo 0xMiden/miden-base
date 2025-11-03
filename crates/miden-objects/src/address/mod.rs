@@ -121,19 +121,10 @@ impl Address {
     /// This is guaranteed to be in range `0..=30` (e.g. the maximum of
     /// [`NoteTag::MAX_LOCAL_TAG_LENGTH`] and [`NoteTag::DEFAULT_NETWORK_TAG_LENGTH`]).
     pub fn note_tag_len(&self) -> u8 {
-        match self.id {
-            AddressId::AccountId(id) => self
-                .routing_params
-                .as_ref()
-                .and_then(RoutingParameters::note_tag_len)
-                .unwrap_or_else(|| {
-                    if id.storage_mode() == AccountStorageMode::Network {
-                        NoteTag::DEFAULT_NETWORK_TAG_LENGTH
-                    } else {
-                        NoteTag::DEFAULT_LOCAL_TAG_LENGTH
-                    }
-                }),
-        }
+        self.routing_params
+            .as_ref()
+            .and_then(RoutingParameters::note_tag_len)
+            .unwrap_or(self.id.default_note_tag_len())
     }
 
     /// Returns a note tag derived from this address.
