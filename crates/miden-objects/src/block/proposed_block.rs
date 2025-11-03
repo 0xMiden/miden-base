@@ -322,9 +322,6 @@ impl ProposedBlock {
     }
 
     /// Computes the new account tree root after the given updates.
-    ///
-    /// It uses a PartialMerkleTree for now while we use a SimpleSmt for the account tree. Once that
-    /// is updated to an Smt, we can use a PartialSmt instead.
     pub fn compute_account_root(&self) -> Result<Word, ProposedBlockError> {
         // If no accounts were updated, the account tree root is unchanged.
         if self.account_updated_witnesses.is_empty() {
