@@ -1,7 +1,13 @@
 use alloc::collections::BTreeMap;
 
 use miden_objects::Word;
-use miden_objects::account::{AccountStorageDelta, AccountStorageHeader};
+use miden_objects::account::{
+    AccountStorageDelta,
+    AccountStorageHeader,
+    PartialAccount,
+    StorageMap,
+    StorageSlotType,
+};
 
 /// Keeps track of the initial storage of an account during transaction execution.
 ///
@@ -30,13 +36,53 @@ impl StorageDeltaTracker {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
-    /// Constructs a new initial account storage from a storage header.
-    pub fn new(storage_header: AccountStorageHeader) -> Self {
-        Self {
-            storage_header,
+    /// Constructs a new initial storage delta from the provided account.
+    ///
+    /// If the account is new, inserts the storage entries into the delta analogously to the
+    /// transaction kernel delta.
+    pub fn new(account: &PartialAccount) -> Self {
+        let initial_storage_header = if account.is_new() {
+            empty_storage_header_from_account(account)
+        } else {
+            account.storage().header().clone()
+        };
+
+        let mut storage_delta_tracker = Self {
+            storage_header: initial_storage_header,
             init_maps: BTreeMap::new(),
             delta: AccountStorageDelta::new(),
+        };
+
+        // Insert account storage into delta if it is new to match the kernel behavior.
+        if account.is_new() {
+            (0..u8::MAX).zip(account.storage().header().slots()).for_each(
+                |(slot_idx, (slot_type, value))| match slot_type {
+                    StorageSlotType::Value => {
+                        // Note that we can insert the value unconditionally as the delta will be
+                        // normalized before the commitment is computed.
+                        storage_delta_tracker.set_item(slot_idx, Word::empty(), *value);
+                    },
+                    StorageSlotType::Map => {
+                        let storage_map = account
+                            .storage()
+                            .maps()
+                            .find(|map| map.root() == *value)
+                            .expect("storage map should be present in partial storage");
+
+                        storage_map.entries().for_each(|(key, value)| {
+                            storage_delta_tracker.set_map_item(
+                                slot_idx,
+                                *key,
+                                Word::empty(),
+                                *value,
+                            );
+                        });
+                    },
+                },
+            );
         }
+
+        storage_delta_tracker
     }
 
     // PUBLIC MUTATORS
@@ -117,4 +163,18 @@ impl StorageDeltaTracker {
         AccountStorageDelta::from_parts(value_slots, map_slots)
             .expect("storage delta should still be valid since no new values were added")
     }
+}
+
+/// Creates empty slots of the same slot types as the to-be-created account.
+fn empty_storage_header_from_account(account: &PartialAccount) -> AccountStorageHeader {
+    let slots = account
+        .storage()
+        .header()
+        .slots()
+        .map(|(slot_type, _)| match slot_type {
+            StorageSlotType::Value => (*slot_type, Word::empty()),
+            StorageSlotType::Map => (*slot_type, StorageMap::new().root()),
+        })
+        .collect();
+    AccountStorageHeader::new(slots)
 }

@@ -2,21 +2,9 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use miden_lib::transaction::TransactionKernel;
-use miden_objects::AccountError;
 use miden_objects::account::delta::AccountUpdateDetails;
-use miden_objects::account::{
-    Account,
-    AccountDelta,
-    AccountStorage,
-    NamedStorageSlot,
-    PartialAccount,
-    PartialStorage,
-    PartialStorageMap,
-    StorageMap,
-    StorageSlot,
-    StorageSlotType,
-};
-use miden_objects::asset::{Asset, AssetVault};
+use miden_objects::account::{AccountDelta, PartialAccount};
+use miden_objects::asset::Asset;
 use miden_objects::block::BlockNumber;
 use miden_objects::transaction::{
     InputNote,
@@ -97,17 +85,7 @@ impl LocalTransactionProver {
 
         let builder = match account.has_public_state() {
             true => {
-                let account_update_details = if account.is_new() {
-                    let mut account = partial_account_to_full(account);
-                    account
-                        .apply_delta(&post_fee_account_delta)
-                        .map_err(TransactionProverError::AccountDeltaApplyFailed)?;
-
-                    AccountUpdateDetails::New(account)
-                } else {
-                    AccountUpdateDetails::Delta(post_fee_account_delta)
-                };
-
+                let account_update_details = AccountUpdateDetails::Delta(post_fee_account_delta);
                 builder.account_update_details(account_update_details)
             },
             false => builder,
@@ -186,59 +164,6 @@ impl Default for LocalTransactionProver {
             proof_options: Default::default(),
         }
     }
-}
-
-fn partial_account_to_full(partial_account: PartialAccount) -> Account {
-    let (id, partial_vault, partial_storage, code, nonce, seed) = partial_account.into_parts();
-
-    // For new accounts, the partial storage must represent the full initial account
-    // storage.
-    let storage = partial_storage_to_full(partial_storage)
-        .expect("partial account should ensure internal consistency for seed");
-
-    // The vault of a new account should be empty.
-    debug_assert_eq!(partial_vault.leaves().count(), 0);
-    let vault = AssetVault::default();
-
-    Account::new(id, vault, storage, code, nonce, seed)
-        .expect("partial account should ensure internal consistency for seed")
-}
-
-fn partial_storage_to_full(
-    partial_storage: PartialStorage,
-) -> Result<AccountStorage, AccountError> {
-    let (_, header, mut maps) = partial_storage.into_parts();
-    let mut storage_slots = Vec::new();
-    for (slot_name, slot_type, slot_value) in header.slots() {
-        match slot_type {
-            StorageSlotType::Value => {
-                storage_slots.push(NamedStorageSlot::new(
-                    slot_name.clone(),
-                    StorageSlot::Value(*slot_value),
-                ));
-            },
-            StorageSlotType::Map => {
-                let storage_map =
-                    maps.remove(slot_value)
-                        .map(partial_storage_map_to_storage_map)
-                        .expect("partial storage map should be present in partial storage")?;
-                storage_slots
-                    .push(NamedStorageSlot::new(slot_name.clone(), StorageSlot::Map(storage_map)));
-            },
-        }
-    }
-
-    AccountStorage::new_named(storage_slots)
-}
-
-fn partial_storage_map_to_storage_map(
-    partial_storage_map: PartialStorageMap,
-) -> Result<StorageMap, AccountError> {
-    let mut storage_map = StorageMap::new();
-    for (key, value) in partial_storage_map.entries() {
-        storage_map.insert(*key, *value)?;
-    }
-    Ok(storage_map)
 }
 
 #[cfg(any(feature = "testing", test))]

@@ -56,6 +56,8 @@ pub const ERR_ACCOUNT_STACK_OVERFLOW: MasmError = MasmError::from_static_str("de
 pub const ERR_ACCOUNT_STACK_UNDERFLOW: MasmError = MasmError::from_static_str("failed to end foreign context because the current account is the native account");
 /// Error Message: "computed account storage commitment does not match recorded account storage commitment"
 pub const ERR_ACCOUNT_STORAGE_COMMITMENT_MISMATCH: MasmError = MasmError::from_static_str("computed account storage commitment does not match recorded account storage commitment");
+/// Error Message: "storage map entries provided as advice inputs do not have the same storage map root as the root of the map the new account commits to"
+pub const ERR_ACCOUNT_STORAGE_MAP_ENTRIES_DO_NOT_MATCH_MAP_ROOT: MasmError = MasmError::from_static_str("storage map entries provided as advice inputs do not have the same storage map root as the root of the map the new account commits to");
 /// Error Message: "provided storage slot index is out of bounds"
 pub const ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS: MasmError = MasmError::from_static_str("provided storage slot index is out of bounds");
 /// Error Message: "number of account procedures exceeds the maximum limit of 256"
