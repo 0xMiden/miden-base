@@ -517,7 +517,7 @@ impl MockChain {
     /// Mock-proves a proposed block into a proven block and returns it.
     pub fn prove_block(&self, proposed_block: ProposedBlock) -> ProvenBlock {
         let (header, body) = construct_block(proposed_block).unwrap();
-        let signed_block = SignedBlock::new(header, body);
+        let signed_block = SignedBlock::new_unchecked(header, body);
         LocalBlockProver::new(0).prove_dummy(signed_block)
     }
 

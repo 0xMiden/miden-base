@@ -16,7 +16,12 @@ pub struct SignedBlock {
 
 impl SignedBlock {
     /// Creates a new [`SignedBlock`] with the given header and body.
-    pub fn new(header: BlockHeader, body: BlockBody) -> Self {
+    ///
+    /// # Warning
+    ///
+    /// This constructor does not do any validation, so passing incorrect values may lead to later
+    /// panics.
+    pub fn new_unchecked(header: BlockHeader, body: BlockBody) -> Self {
         SignedBlock { header, body }
     }
 
