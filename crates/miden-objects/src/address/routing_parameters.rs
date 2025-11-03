@@ -55,10 +55,10 @@ impl RoutingParameters {
 
     /// Sets the note tag length routing parameter.
     ///
-    /// The tag length determines how many bits of the account ID are encoded into [`NoteTag`]s of
-    /// notes targeted to this address. This lets the owner of the account choose their level of
-    /// privacy. A higher tag length makes the account more uniquely identifiable and
-    /// reduces privacy, while a shorter length increases privacy at the cost of matching more notes
+    /// The tag length determines how many bits of the address ID are encoded into [`NoteTag`]s of
+    /// notes targeted to this address. This lets the receiver choose their level of privacy. A
+    /// higher tag length makes the address ID more uniquely identifiable and reduces privacy,
+    /// while a shorter length increases privacy at the cost of matching more notes
     /// published onchain.
     ///
     /// # Errors
