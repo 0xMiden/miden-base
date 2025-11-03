@@ -42,9 +42,9 @@ pub use address_id::AddressId;
 ///
 /// ```text
 /// # account ID
-/// mm1qrgu2vdxjqt9curephr0c94n0quevadt
+/// mm1apk5f8jqxnadegr46xtklmm78qhdgkwc
 /// # account ID + routing parameters
-/// mm1qrgu2vdxjqt9curephr0c94n0quevadt_qrcqzlvsfdp
+/// mm1apk5f8jqxnadegr46xtklmm78qhdgkwc_qrcqzlvsfdp
 /// ```
 ///
 /// The encoding of an address without routing parameters matches the encoding of the underlying
@@ -67,7 +67,9 @@ impl Address {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns a new address from an [`AddressId`].
+    /// Returns a new address from an [`AddressId`] and routing parameters set to `None`.
+    ///
+    /// To set routing parameters, use [`Self::with_routing_parameters`].
     pub fn new(id: impl Into<AddressId>) -> Self {
         Self { id: id.into(), routing_params: None }
     }

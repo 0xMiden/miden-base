@@ -20,6 +20,9 @@ use crate::utils::sync::LazyLock;
 
 /// The HRP used for encoding routing parameters.
 ///
+/// This HRP is only used internally, but needs to be well-defined for other routing parameter
+/// encode/decode implementations.
+///
 /// `mrp` stands for Miden Routing Parameters.
 static ROUTING_PARAMETERS_HRP: LazyLock<Hrp> =
     LazyLock::new(|| Hrp::parse("mrp").expect("hrp should be valid"));
@@ -161,11 +164,7 @@ impl RoutingParameters {
         Self::decode_from_bytes(checked_string.byte_iter())
     }
 
-    /// Decodes [`RoutingParameters`] from a bech32 string _without_ the leading hrp and separator.
-    ///
-    /// The string must be either:
-    /// - An empty string, in which case [`RoutingParameters::default`] is returned.
-    /// - Or a validly encoded bech32 string without the leading hrp and separator.
+    /// Decodes [`RoutingParameters`] from a byte iterator.
     pub(crate) fn decode_from_bytes(
         mut byte_iter: impl ExactSizeIterator<Item = u8>,
     ) -> Result<Self, AddressError> {

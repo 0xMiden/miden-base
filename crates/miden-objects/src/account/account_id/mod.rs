@@ -291,8 +291,8 @@ impl AccountId {
     /// This is an example of an account ID in hex and bech32 representations:
     ///
     /// ```text
-    /// hex:    0xd7585ada5ab5d2b01c77fad88c0ae4
-    /// bech32: mm1qrt4skk6t26a9vquwlad3rq2usul8fy2
+    /// hex:    0x6d449e4034fadca075d1976fef7e38
+    /// bech32: mm1apk5f8jqxnadegr46xtklmm78qhdgkwc
     /// ```
     ///
     /// ## Rationale
