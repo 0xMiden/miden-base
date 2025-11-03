@@ -5,10 +5,14 @@ use std::string::String;
 use anyhow::Context;
 use miden_lib::testing::account_component::MockAccountComponent;
 use miden_lib::utils::ScriptBuilder;
+use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{
+    Account,
     AccountBuilder,
+    AccountDelta,
     AccountId,
     AccountStorage,
+    AccountStorageMode,
     AccountType,
     StorageMap,
     StorageSlot,
@@ -34,6 +38,7 @@ use miden_objects::testing::constants::{
 use miden_objects::testing::storage::{STORAGE_INDEX_0, STORAGE_INDEX_2};
 use miden_objects::transaction::TransactionScript;
 use miden_objects::{EMPTY_WORD, Felt, LexicographicWord, Word, ZERO};
+use miden_tx::LocalTransactionProver;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 use winter_rand_utils::rand_value;
@@ -749,6 +754,113 @@ async fn asset_and_storage_delta() -> anyhow::Result<()> {
         removed_assets.len(),
         executed_transaction.account_delta().vault().removed_assets().count()
     );
+    Ok(())
+}
+
+/// Tests that the storage map updates for a _new public_ account in an executed and proven
+/// transaction match up.
+///
+/// This is an interesting test case because:
+/// - for new accounts in general, the storage map entries must be available in the advice provider
+///   and the resulting delta must be convertible to a full account.
+/// - The prover mutates the delta to account for fee logic.
+///
+/// Both of these are tested here.
+#[tokio::test]
+async fn proven_tx_storage_maps_matches_executed_tx_for_new_account() -> anyhow::Result<()> {
+    let map0 = StorageMap::with_entries([(rand_value(), rand_value())])?;
+    let map1 = StorageMap::with_entries([
+        (rand_value(), rand_value()),
+        (rand_value(), rand_value()),
+        (rand_value(), rand_value()),
+    ])?;
+    let map2 = StorageMap::with_entries([
+        (rand_value(), rand_value()),
+        (rand_value(), rand_value()),
+        (rand_value(), rand_value()),
+        (rand_value(), rand_value()),
+    ])?;
+
+    // Build a public account so the proven transaction includes the account update.
+    let account = AccountBuilder::new([1; 32])
+        .storage_mode(AccountStorageMode::Public)
+        .with_auth_component(Auth::IncrNonce)
+        .with_component(MockAccountComponent::with_slots(vec![
+            AccountStorage::mock_item_0().slot,
+            StorageSlot::Map(map0.clone()),
+            StorageSlot::Map(map1.clone()),
+            AccountStorage::mock_item_1().slot,
+            StorageSlot::Map(map2.clone()),
+        ]))
+        .build()?;
+
+    // The index of map2 in account storage is 2.
+    let map_index = 2u8;
+    // Fetch a random existing key from the map.
+    let existing_key = map2.entries().next().unwrap().0;
+
+    let value0 = Word::from([3, 4, 5, 6u32]);
+
+    let code = format!(
+        "
+      use.mock::account
+
+      begin
+          # Update an existing key.
+          push.{value0}
+          push.{existing_key}
+          push.{map_index}
+          # => [index, KEY, VALUE]
+          call.account::set_map_item
+
+          exec.::std::sys::truncate_stack
+      end
+      "
+    );
+
+    let builder = ScriptBuilder::with_mock_libraries()?;
+    let source_manager = builder.source_manager();
+    let tx_script = builder.compile_tx_script(code)?;
+
+    let tx = TransactionContextBuilder::new(account.clone())
+        .tx_script(tx_script)
+        .with_source_manager(source_manager)
+        .build()?
+        .execute()
+        .await?;
+
+    let map_delta = tx.account_delta().storage().maps().get(&map_index).unwrap();
+    assert_eq!(
+        map_delta.entries().get(&LexicographicWord::new(*existing_key)).unwrap(),
+        &value0
+    );
+
+    let proven_tx = LocalTransactionProver::default().prove_dummy(tx.clone())?;
+
+    let AccountUpdateDetails::Delta(proven_tx_delta) = proven_tx.account_update().details() else {
+        panic!("expected delta");
+    };
+
+    let proven_tx_account = Account::try_from(proven_tx_delta)?;
+    let exec_tx_account = Account::try_from(tx.account_delta())?;
+
+    assert_eq!(proven_tx_account.storage(), exec_tx_account.storage());
+
+    // Check the conversion back into a full-state delta works correctly.
+    let proven_tx_delta_converted = AccountDelta::try_from(proven_tx_account)?;
+    let exec_tx_delta_converted = AccountDelta::try_from(exec_tx_account)?;
+
+    // Check that the deltas from proven and executed tx, which were converted from accounts are
+    // identical. This is essentially a roundtrip test.
+    assert_eq!(&proven_tx_delta_converted, proven_tx_delta);
+    assert_eq!(&exec_tx_delta_converted, tx.account_delta());
+    assert_eq!(&proven_tx_delta_converted, tx.account_delta());
+
+    // The commitments should match as well.
+    assert_eq!(proven_tx_delta_converted.to_commitment(), proven_tx_delta.to_commitment());
+    assert_eq!(exec_tx_delta_converted.to_commitment(), tx.account_delta().to_commitment());
+    assert_eq!(proven_tx_delta_converted.to_commitment(), tx.account_delta().to_commitment());
+
     Ok(())
 }
 
