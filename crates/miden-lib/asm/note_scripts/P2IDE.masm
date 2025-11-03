@@ -1,4 +1,4 @@
-use.miden::account
+use.miden::active_account
 use.miden::account_id
 use.miden::active_note
 use.miden::tx
@@ -121,7 +121,7 @@ begin
     # => [current_block_height, reclaim_block_height, target_account_id_prefix, target_account_id_suffix]
 
     # get current account id
-    exec.account::get_id dup.1 dup.1
+    exec.active_account::get_id dup.1 dup.1
     # => [account_id_prefix, account_id_suffix, account_id_prefix, account_id_suffix, current_block_height, reclaim_block_height, target_account_id_prefix, target_account_id_suffix]
 
     # determine if the current account is the target account

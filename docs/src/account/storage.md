@@ -22,7 +22,7 @@ A value slot can be used whenever 32 bytes of data is enough, e.g. for storing a
 
 ## Map Slots
 
-A map slot contains a `StorageMap` which is a key-value store implemented as a sparse Merkle tree (SMT). This allows an account to store a much larger amount of data than would be possible using only the account's storage slots. The root of the underlying SMT is stored in a single account storage slot, and each map entry is a leaf in the tree. When retrieving an entry (e.g., via `account::get_map_item`), its inclusion is proven using a Merkle proof.
+A map slot contains a `StorageMap` which is a key-value store implemented as a sparse Merkle tree (SMT). This allows an account to store a much larger amount of data than would be possible using only the account's storage slots. The root of the underlying SMT is stored in a single account storage slot, and each map entry is a leaf in the tree. When retrieving an entry (e.g., via `active_account::get_map_item`), its inclusion is proven using a Merkle proof.
 
 Key properties of `StorageMap`:
 

@@ -16,10 +16,11 @@
 - Added `build_recipient` procedure to `miden::note` module ([#1807](https://github.com/0xMiden/miden-base/pull/1807)).
 - [BREAKING] Move account seed into `PartialAccount` ([#1875](https://github.com/0xMiden/miden-base/pull/1875), [#2003](https://github.com/0xMiden/miden-base/pull/2003)).
 - [BREAKING] Enabled lazy loading of assets and storage map items for foreign accounts during transaction execution ([#1888](https://github.com/0xMiden/miden-base/pull/1888)).
+- Updated `rpo_falcon512::verify_signatures` to use `account::get_map_item_init` ([#1885](https://github.com/0xMiden/miden-base/issues/1885))
+- [BREAKING] Represent new accounts as account deltas ([#1896](https://github.com/0xMiden/miden-base/pull/1896)).
+- Implement `SlotName` for named storage slots ([#1932](https://github.com/0xMiden/miden-base/issues/1932))
 - Added `get_initial_item` and `get_map_item_init` procedures to `miden::account` module for accessing initial storage state ([#1883](https://github.com/0xMiden/miden-base/pull/1883)).
-- Updated `rpo_falcon512::verify_signatures` to use `account::get_map_item_init` ([#1885](https://github.com/0xMiden/miden-base/issues/1885)).
 - Added `update_signers_and_threshold` procedure to update owner public keys and threshold config in multisig authentication component ([#1707](https://github.com/0xMiden/miden-base/issues/1707)).
-- Implement `SlotName` for named storage slots ([#1932](https://github.com/0xMiden/miden-base/issues/1932)).
 - [BREAKING] Removed `get_falcon_signature` from `miden-tx` crate ([#1924](https://github.com/0xMiden/miden-base/pull/1924)).
 - Created a `Signature` wrapper to simplify the preparation of "native" signatures for use in the VM ([#1924](https://github.com/0xMiden/miden-base/pull/1924)).
  - Added per-procedure approval thresholds to `AuthRpoFalcon512Multisig` auth component ([#1968](https://github.com/0xMiden/miden-base/pull/1968)).
@@ -32,13 +33,18 @@
 - [BREAKING] Change `Account` to `PartialAccount` conversion to generally track only minimal data ([#1963](https://github.com/0xMiden/miden-base/pull/1963)).
 - Added `MastArtifact`, `PackageExport`, `PackageManifest`, `AttributeSet`, `QualifiedProcedureName`, `Section` and `SectionId` to re-export section ([#1984](https://github.com/0xMiden/miden-base/pull/1984) and [#2015](https://github.com/0xMiden/miden-base/pull/2015)).
 - [BREAKING] Enable computing the transaction ID from the data in a `TransactionHeader` ([#1973]https://github.com/0xMiden/miden-base/pull/1973).
-- [BREAKING] Introduce `VaultKey` newtype wrapper for asset vault keys ([#1978]https://github.com/0xMiden/miden-base/pull/1978).
+- [BREAKING] Introduce VaultKey newtype wrapper for asset vault keys ([#1978](https://github.com/0xMiden/miden-base/pull/1978), [#2024](https://github.com/0xMiden/miden-base/pull/2024)).
 - [BREAKING] Change `Account` to `PartialAccount` conversion to generally track only minimal data ([#1963]https://github.com/0xMiden/miden-base/pull/1963).
+- Added `network_fungible_faucet` and `MINT` & `BURN` notes ([#1925](https://github.com/0xMiden/miden-base/pull/1925))
 - Added `AccountTree::apply_mutations_with_reversions` ([#2002](https://github.com/0xMiden/miden-base/pull/2002)).
 - Added `Display` trait for `AddressInterface` ([#2016](https://github.com/0xMiden/miden-base/pull/2016)).
+- Added `has_procedure` procedure to the `miden::account` module ([#2017](https://github.com/0xMiden/miden-base/pull/2017)).
 - Re-add bech32 encoding for `AccountId` ([#2018](https://github.com/0xMiden/miden-base/pull/2018)).
 - [BREAKING] Change `AccountTree` to be generic over `Smt` implementations ([#2006](https://github.com/0xMiden/miden-base/pull/2006)).
 - [BREAKING] Change `AccountTree` to be generic over `trait AccountTreeBackend` implementations ([#2006](https://github.com/0xMiden/miden-base/pull/2006)).
+- [BREAKING] Added `get_note_script()` method to `DataStore` trait to enable lazy loading of note scripts during transaction execution ([#1995](https://github.com/0xMiden/miden-base/pull/1995)).
+- [BREAKING] Separate account APIs in `miden::account` into `active_account` and `native_account` ([#2026](https://github.com/0xMiden/miden-base/pull/2026)).
+- [BREAKING] Remove `miden::account::get_native_nonce` procedure ([#2026](https://github.com/0xMiden/miden-base/pull/2026)).
 
 ### Changes
 
@@ -78,7 +84,6 @@
 - [BREAKING] Rename `MockChainBuilder::add_note` to `add_output_note` ([#1946](https://github.com/0xMiden/miden-base/pull/1946)).
 - [BREAKING] Refactor `TransactionInputs` and remove `TransactionWitness` ([#1934](https://github.com/0xMiden/miden-base/pull/1934)).
 - [BREAKING] Assert nonce is non-zero after the auth procedure ([#1982](https://github.com/0xMiden/miden-base/pull/1982)).
-- [BREAKING] Rename `VaultKey` to `AssetVaultKey` ([#2024](https://github.com/0xMiden/miden-base/pull/2024)).
 
 ## 0.11.5 (2025-10-02)
 

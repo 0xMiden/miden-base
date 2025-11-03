@@ -7,6 +7,7 @@ use.$kernel::memory
 use.std::collections::smt
 use.std::crypto::hashes::rpo
 use.std::mem
+use.std::word
 
 # ERRORS
 # =================================================================================================
@@ -40,6 +41,8 @@ const.ERR_ACCOUNT_TOO_MANY_PROCEDURES="number of account procedures exceeds the 
 const.ERR_ACCOUNT_TOO_MANY_STORAGE_SLOTS="number of account storage slots exceeds the maximum limit of 255"
 
 const.ERR_ACCOUNT_STORAGE_COMMITMENT_MISMATCH="computed account storage commitment does not match recorded account storage commitment"
+
+const.ERR_ACCOUNT_STORAGE_MAP_ENTRIES_DO_NOT_MATCH_MAP_ROOT="storage map entries provided as advice inputs do not have the same storage map root as the root of the map the new account commits to"
 
 const.ERR_ACCOUNT_INVALID_STORAGE_OFFSET_FOR_SIZE="storage size can only be zero if storage offset is also zero"
 
@@ -202,7 +205,7 @@ end
 # PROCEDURES
 # =================================================================================================
 
-#! Computes the account commitment of the current account.
+#! Computes the commitment of the active account.
 #!
 #! Notice that there is no caching (and, hence, dirty flag) for the commitment of the entire
 #! account. Assuming that the storage commitment is current, computing account commitment is
@@ -295,32 +298,80 @@ export.memory::get_account_id->get_id
 #! - nonce is the account nonce.
 export.memory::get_account_nonce->get_nonce
 
-#! Returns the native account commitment at the beginning of the transaction.
+#! Returns the commitment of the active account at the beginning of the transaction.
 #!
 #! Inputs:  []
 #! Outputs: [INIT_COMMITMENT]
 #!
 #! Where:
 #! - INIT_COMMITMENT is the initial account commitment.
-export.memory::get_init_account_commitment->get_initial_commitment
+export.get_initial_commitment
+    # determine whether the active account is native
+    exec.memory::is_native_account
+    # => [is_native_account]
 
-#! Returns the vault root of the native account at the beginning of the transaction.
+    if.true
+        exec.memory::get_init_account_commitment
+    else
+        # for the foreign account current commitment equals to initial
+        exec.compute_current_commitment
+    end
+    # => [INIT_COMMITMENT]
+end
+
+#! Returns the vault root of the active account at the beginning of the transaction.
 #!
 #! Inputs:  []
 #! Outputs: [INIT_ACCOUNT_VAULT_ROOT]
 #!
 #! Where:
 #! - INIT_ACCOUNT_VAULT_ROOT is the initial account vault root.
-export.memory::get_init_native_account_vault_root->get_initial_vault_root
+export.get_initial_vault_root
+    # Get the vault root of the active account. For the foreign account this root will be equal to 
+    # the initial one.
+    exec.memory::get_account_vault_root
+    # => [ACTIVE_ACCOUNT_VAULT_ROOT]
 
-#! Returns the storage commitment of the native account at the beginning of the transaction.
+    # get the initial vault root of the native account
+    exec.memory::get_init_native_account_vault_root
+    # => [INIT_NATIVE_ACCOUNT_VAULT_ROOT, ACTIVE_ACCOUNT_VAULT_ROOT]
+
+    # check whether the active account is native
+    exec.memory::is_native_account
+    # => [is_native_account, INIT_NATIVE_ACCOUNT_VAULT_ROOT, ACTIVE_ACCOUNT_VAULT_ROOT]
+
+    # if the active account is native, keep the INIT_NATIVE_ACCOUNT_VAULT_ROOT, or
+    # ACTIVE_ACCOUNT_VAULT_ROOT otherwise
+    cdropw
+    # => [INIT_ACCOUNT_VAULT_ROOT]
+end
+
+#! Returns the storage commitment of the active account at the beginning of the transaction.
 #!
 #! Inputs:  []
 #! Outputs: [INIT_ACCOUNT_STORAGE_COMMITMENT]
 #!
 #! Where:
 #! - INIT_ACCOUNT_STORAGE_COMMITMENT is the initial account storage commitment.
-export.memory::get_init_account_storage_commitment->get_initial_storage_commitment
+export.get_initial_storage_commitment
+    # Get the storage commitment of the active account. For the foreign account this commitment will
+    # be initial.
+    exec.memory::get_account_storage_commitment
+    # => [ACTIVE_ACCOUNT_STORAGE_COMMITMENT]
+
+    # get the initial storage commitment of the native account
+    exec.memory::get_init_account_storage_commitment
+    # => [INIT_NATIVE_ACCOUNT_STORAGE_COMMITMENT, ACTIVE_ACCOUNT_STORAGE_COMMITMENT]
+
+    # check whether the active account is native
+    exec.memory::is_native_account
+    # => [is_native_account, INIT_NATIVE_ACCOUNT_STORAGE_COMMITMENT, ACTIVE_ACCOUNT_STORAGE_COMMITMENT]
+
+    # if the active account is native, keep the INIT_NATIVE_ACCOUNT_STORAGE_COMMITMENT, or
+    # ACTIVE_ACCOUNT_STORAGE_COMMITMENT otherwise
+    cdropw
+    # => [INIT_ACCOUNT_STORAGE_COMMITMENT]
+end
 
 #! Gets the code commitment of the current account.
 #!
@@ -954,7 +1005,7 @@ export.remove_asset_from_vault
     # => [ASSET]
 end
 
-#! Returns the balance of the fungible asset associated with the provided faucet_id in the current
+#! Returns the balance of the fungible asset associated with the provided faucet_id in the active
 #! account's vault.
 #!
 #! Inputs:  [faucet_id_prefix, faucet_id_suffix]
@@ -981,7 +1032,7 @@ export.get_balance
     # => [balance]
 end
 
-#! Returns the balance of the fungible asset associated with the provided faucet_id in the current 
+#! Returns the balance of the fungible asset associated with the provided faucet_id in the active 
 #! account's vault at the beginning of the transaction.
 #!
 #! Inputs:  [faucet_id_prefix, faucet_id_suffix]
@@ -1008,7 +1059,8 @@ export.get_initial_balance
     # => [init_balance]
 end
 
-#! Returns a boolean indicating whether the non-fungible asset is present in the current account's vault.
+#! Returns a boolean indicating whether the non-fungible asset is present in the active account's
+#! vault.
 #!
 #! Inputs:  [ASSET]
 #! Outputs: [has_asset]
@@ -1042,7 +1094,7 @@ end
 #! Inputs:
 #!   Operand stack: [account_id_prefix, account_id_suffix]
 #!   Advice map: {
-#!     ACCOUNT_ID: [[account_id_suffix, account_id_prefix, 0, account_nonce]],
+#!     ACCOUNT_ID: [[account_id_suffix, account_id_prefix, 0, account_nonce],
 #!                   VAULT_ROOT, STORAGE_COMMITMENT, CODE_COMMITMENT],
 #!     STORAGE_COMMITMENT: [[STORAGE_SLOT_DATA]],
 #!     CODE_COMMITMENT: [[ACCOUNT_PROCEDURE_DATA]],
@@ -1185,11 +1237,6 @@ export.save_account_storage_data
     # verify hashed account storage slots match account storage commitment
     assert_eqw.err=ERR_ACCOUNT_STORAGE_COMMITMENT_MISMATCH
     # OS => []
-
-    # duplicate the initial storage slots in memory to enable a diff computation
-    # for the account delta
-    exec.memory::mem_copy_initial_storage_slots
-    # OS => []
 end
 
 #! Saves account procedure data into memory and validates that the code commitment matches the
@@ -1262,6 +1309,142 @@ export.save_account_procedure_data
     # OS => []
 end
 
+#! Writes the initial storage values from the advice inputs into the account delta and validates
+#! that they match what the account commits to.
+#!
+#! This is only relevant for new accounts and only does actual work for storage maps, since
+#! value slots aren't explicitly tracked by the delta.
+#!
+#! Inputs:  []
+#! Outputs: []
+export.insert_new_storage
+    exec.memory::get_num_storage_slots
+    # => [num_slots]
+
+    # loop if there are storage slots
+    dup neq.0
+    # => [should_loop, num_slots]
+
+    while.true
+        sub.1
+        # => [slot_idx]
+
+        dup exec.get_storage_slot_type
+        # => [slot_type, slot_idx]
+
+        exec.constants::get_storage_slot_type_map eq
+        # => [is_map_slot_type, slot_idx]
+
+        if.true
+            # add map entries to account storage
+            dup exec.insert_and_validate_storage_map
+            # => [slot_idx]
+        end
+        # => [slot_idx]
+
+        dup neq.0
+        # => [should_continue, slot_idx]
+    end
+    # => [slot_idx]
+
+    drop
+    # => []
+end
+
+#! Inserts the entries of the provided storage map root into the account.
+#!
+#! These entries must be present in the advice provider with the map root as the key. Each entry is
+#! is inserted using set_map_item on an initially empty SMT root. This does two important things:
+#! - It allows checking whether the root of the SMT with all entries inserted matches the root of
+#!   the map the account commits to.
+#! - It inserts all entries into the in-kernel delta, where the initial value of each entry will
+#!   be set to the empty word so the delta for this map is computed as if the map had initially
+#!   been empty.
+#!
+#! Inputs:
+#!   Operand stack: [slot_idx]
+#!   Advice map: { MAP_ROOT: [MAP_ENTRIES] }
+#! Outputs: []
+proc.insert_and_validate_storage_map
+    dup exec.memory::get_account_storage_slots_section_ptr
+    # => [storage_slots_ptr, slot_idx, slot_idx]
+
+    exec.get_item_raw
+    # => [MAP_ROOT, slot_idx]
+
+    # overwrite the map root with the root of an empty SMT, so we can insert the entries of
+    # the map into an empty map and then check whether the resulting root matches MAP_ROOT.
+    exec.constants::get_empty_smt_root
+    dup.8
+    # => [slot_idx, EMPTY_SMT_ROOT, MAP_ROOT, slot_idx]
+
+    exec.set_item_raw dropw
+    # => [MAP_ROOT, slot_idx]
+
+    adv.push_mapvaln
+    # OS => [MAP_ROOT, slot_idx]
+    # AS => [num_elements, [MAP_ENTRIES]]
+
+    movup.4
+    # OS => [slot_idx, MAP_ROOT]
+    # AS => [num_elements, [MAP_ENTRIES]]
+
+    adv_push.1
+    # OS => [num_elements, slot_idx, MAP_ROOT]
+    # AS => [[MAP_ENTRIES]]
+
+    push.8 u32assert2.err="number of storage map elements should fit into a u32"
+    # OS => [8, num_elements, slot_idx, MAP_ROOT]
+    # AS => [[MAP_ENTRIES]]
+
+    # check that num_elements % 8 = 0 so we can use an equality check for the loop condition
+    # this also computes number_entries which is num_elements / 8.
+    u32divmod eq.0 assert.err="number of storage map elements must be a multiple of 8"
+    # OS => [num_entries, slot_idx, MAP_ROOT]
+    # AS => [[MAP_ENTRIES]]
+
+    # loop if there are more than 0 storage map elements
+    dup neq.0
+    # OS => [should_loop, num_entries, slot_idx, MAP_ROOT]
+    # AS => [[MAP_ENTRIES]]
+
+    while.true
+        sub.1
+        # => [remaining_entries, slot_idx, MAP_ROOT]
+
+        # push a key-value pair (8 felts) to the operand stack
+        adv_push.8
+        # => [KEY, VALUE, remaining_entries, slot_idx, MAP_ROOT]
+
+        dup.9
+        # => [slot_idx, KEY, VALUE, remaining_entries, slot_idx, MAP_ROOT]
+
+        # insert the key-value pair into account storage
+        # this could be optimized to avoid the map slot type assertion and reading and writing the
+        # root on every call
+        exec.set_map_item dropw dropw
+        # => [remaining_entries, slot_idx, MAP_ROOT]
+
+        dup neq.0
+        # => [should_continue, remaining_entries, slot_idx, MAP_ROOT]
+    end
+    # OS => [remaining_entries, slot_idx, MAP_ROOT]
+    # AS => []
+
+    drop
+    # => [slot_idx, MAP_ROOT]
+
+    # load the root after all entries have been inserted
+    exec.memory::get_account_storage_slots_section_ptr
+    exec.get_item_raw
+    # => [CURRENT_MAP_ROOT, MAP_ROOT]
+
+    # after inserting all entries, the storage map root must match the map root that was committed
+    # to as part of account creation
+    assert_eqw.err=ERR_ACCOUNT_STORAGE_MAP_ENTRIES_DO_NOT_MATCH_MAP_ROOT
+    # => []
+end
+
 # HELPER PROCEDURES
 # =================================================================================================
 
@@ -1283,7 +1466,9 @@ export.get_item_raw
     # => [VALUE]
 end
 
-#! Shared procedure for getting a map item from a storage slot.
+#! Shared procedure for getting a map item from a storage slot without checking the index.
+#!
+#! WARNING: Must be called with an index that is in bounds.
 #!
 #! Inputs:  [KEY, ROOT, index]
 #! Outputs: [VALUE]
@@ -1575,7 +1760,7 @@ proc.refresh_storage_commitment
     end
 end
 
-#! Checks if a procedure has been called during transaction execution.
+#! Checks if a native account procedure has been called during transaction execution.
 #!
 #! Note: This returns 1 only if the procedure invoked account-restricted kernel APIs (e.g.,
 #! `exec.faucet::mint`) which trigger `authenticate_and_track_procedure`. Procedures that execute
@@ -1629,4 +1814,71 @@ export.set_was_procedure_called
 
     # save 1 to the was_called address
     add push.1 swap mem_store
+end
+
+#! Returns the binary flag indicating whether the procedure with the provided root is available on
+#! the active account.
+#!
+#! Returns 1 if the procedure is available on the active account and 0 otherwise.
+#!
+#! Inputs:  [PROC_ROOT]
+#! Outputs: [is_procedure_available]
+#!
+#! Where:
+#! - PROC_ROOT is the hash of the procedure of interest.
+#! - is_procedure_available is the binary flag indicating whether the procedure with PROC_ROOT is 
+#!   available on the active account.
+export.has_procedure
+    # get the end pointer of the procedure section (where we should stop iterating)
+    exec.memory::get_num_account_procedures
+    exec.memory::get_account_procedure_ptr
+    # => [end_ptr, PROC_ROOT]
+
+    # get the start pointer of the procedure section (where we will start iterating)
+    push.0 exec.memory::get_account_procedure_ptr
+    # => [start_ptr, end_ptr, PROC_ROOT]
+
+    # prepare the stack for the loop
+    movdn.5 movdn.5 push.0 movdn.6
+    # => [PROC_ROOT, start_ptr, end_ptr, is_procedure_available]
+
+    # push the flag to enter the loop: an account should have at least 2 procedures
+    push.1
+    # => [should_loop, PROC_ROOT, start_ptr, end_ptr, is_procedure_available]
+
+    while.true
+        # => [PROC_ROOT, curr_proc_ptr, end_ptr, is_procedure_available]
+
+        # load the root of the current procedure
+        padw dup.8 mem_loadw_be
+        # => [CURR_PROC_ROOT, PROC_ROOT, curr_proc_ptr, end_ptr, is_procedure_available]
+
+        # check whether the current root is equal to the provided root
+        dupw.1 exec.word::eq
+        # => [is_equal, PROC_ROOT, curr_proc_ptr, end_ptr, is_procedure_available]
+
+        # update the is_procedure_available flag
+        movup.7 or movdn.6
+        # => [PROC_ROOT, curr_proc_ptr, end_ptr, is_procedure_available']
+
+        # move the current procedure pointer
+        movup.4 add.8
+        # => [curr_proc_ptr + 8, PROC_ROOT, end_ptr, is_procedure_available']
+        
+        # compute should_loop flag: we should continue iterating if
+        # !(is_procedure_available' || curr_proc_ptr + 8 == end_ptr), i.e. we didn't find the 
+        # procedure and we didn't reach the end of the procedures memory block
+        dup dup.6 eq dup.7 or eq.0
+        # => [should_loop, curr_proc_ptr + 8, PROC_ROOT, end_ptr, is_procedure_available']
+
+        # rearrange the stack
+        swap movdn.5
+        # => [should_loop, PROC_ROOT, curr_proc_ptr + 8, end_ptr, is_procedure_available']
+    end
+
+    # => [PROC_ROOT, curr_proc_ptr', end_ptr, is_procedure_available']
+
+    # clean the stack
+    dropw drop drop
+    # => [is_procedure_available']
 end

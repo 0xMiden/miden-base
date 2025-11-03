@@ -26,7 +26,7 @@ pub const EMPTY_STORAGE_MAP_ROOT: Word = *EmptySubtreeRoots::entry(StorageMap::D
 /// It can be used to store a large amount of data in an account than would be otherwise possible
 /// using just the account's storage slots. This works by storing the root of the map's underlying
 /// SMT in one account storage slot. Each map entry is a leaf in the tree and its inclusion is
-/// proven while retrieving it (e.g. via `account::get_map_item`).
+/// proven while retrieving it (e.g. via `active_account::get_map_item`).
 ///
 /// As a side-effect, this also means that _not all_ entries of the map have to be present at
 /// transaction execution time in order to access or modify the map. It is sufficient if _just_ the

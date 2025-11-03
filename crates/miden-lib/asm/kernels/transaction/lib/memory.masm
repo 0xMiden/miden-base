@@ -1122,7 +1122,7 @@ export.set_account_vault_root
     mem_storew
 end
 
-#! Returns the memory pointer to the initial vault root of the current account.
+#! Returns the memory pointer to the initial vault root of the active account.
 #!
 #! For the native account, this returns the pointer to the initial vault root.
 #! For foreign accounts, this returns the regular vault root pointer since foreign accounts
@@ -1466,7 +1466,7 @@ end
 #!
 #! Inputs:  []
 #! Outputs: []
-export.mem_copy_initial_storage_slots
+export.mem_copy_native_account_initial_storage_slots
   exec.get_native_account_initial_storage_slots_ptr
   exec.get_native_account_storage_slots_ptr
   # => [storage_slots_section_ptr, initial_storage_slots_ptr]

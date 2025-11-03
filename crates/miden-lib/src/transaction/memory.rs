@@ -32,21 +32,21 @@ pub type StorageSlot = u8;
 //
 // Here the "end pointer" is the last memory pointer occupied by the current data
 //
-// | Section           | Start address, pointer (word pointer) | End address, pointer (word pointer) | Comment                             |
-// | ----------------- | :-----------------------------------: | :---------------------------------: | ----------------------------------- |
-// | ID and nonce      | 0 (0)                                 | 3 (0)                               |                                     |
-// | Vault root        | 4 (1)                                 | 7 (1)                               |                                     |
-// | Storage root      | 8 (2)                                 | 11 (2)                              |                                     |
-// | Code root         | 12 (3)                                | 15 (3)                              |                                     |
-// | Padding           | 16 (4)                                | 27 (6)                              |                                     |
-// | Num procedures    | 28 (7)                                | 31 (7)                              |                                     |
-// | Procedures info   | 32 (8)                                | 2_079 (519)                         | 255 procedures max, 8 elements each |
-// | Padding           | 2_080 (520)                           | 2_083 (520)                         |                                     |
-// | Proc tracking     | 2_084 (521)                           | 2_339 (584)                         | 255 procedures max, 1 element each  |
-// | Num storage slots | 2_340 (585)                           | 2_343 (585)                         |                                     |
-// | Storage slot info | 2_344 (586)                           | 4_383 (1095)                        | 255 slots max, 8 elements each      |
-// | Initial slot info | 4_384 (1096)                          | 6_423 (1545)                        | Only present on the native account  |
-// | Padding           | 6_424 (1545)                          | 8_191 (2047)                        |                                     |
+// | Section            | Start address, pointer (word pointer) | End address, pointer (word pointer) | Comment                             |
+// | ------------------ | :-----------------------------------: | :---------------------------------: | ----------------------------------- |
+// | ID and nonce       | 0 (0)                                 | 3 (0)                               |                                     |
+// | Vault root         | 4 (1)                                 | 7 (1)                               |                                     |
+// | Storage commitment | 8 (2)                                 | 11 (2)                              |                                     |
+// | Code commitment    | 12 (3)                                | 15 (3)                              |                                     |
+// | Padding            | 16 (4)                                | 27 (6)                              |                                     |
+// | Num procedures     | 28 (7)                                | 31 (7)                              |                                     |
+// | Procedures info    | 32 (8)                                | 2_079 (519)                         | 255 procedures max, 8 elements each |
+// | Padding            | 2_080 (520)                           | 2_083 (520)                         |                                     |
+// | Proc tracking      | 2_084 (521)                           | 2_339 (584)                         | 255 procedures max, 1 element each  |
+// | Num storage slots  | 2_340 (585)                           | 2_343 (585)                         |                                     |
+// | Storage slot info  | 2_344 (586)                           | 4_383 (1095)                        | 255 slots max, 8 elements each      |
+// | Initial slot info  | 4_384 (1096)                          | 6_423 (1545)                        | Only present on the native account  |
+// | Padding            | 6_424 (1545)                          | 8_191 (2047)                        |                                     |
 
 // Relative layout of the native account's delta.
 //
