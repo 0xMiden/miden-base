@@ -941,13 +941,13 @@ async fn test_multisig_proc_threshold_overrides() -> anyhow::Result<()> {
     let msg = tx_summary.as_ref().to_commitment();
     let tx_summary_signing = SigningInputs::TransactionSummary(tx_summary.clone());
     let sig = authenticators[0]
-        .get_signature(public_keys[0].to_commitment().into(), &tx_summary_signing)
+        .get_signature(public_keys[0].to_commitment(), &tx_summary_signing)
         .await?;
 
     // 4. execute with signature
     let tx_result = mock_chain
         .build_tx_context(multisig_account.id(), &[note.id()], &[])?
-        .add_signature(public_keys[0].clone().into(), msg, sig)
+        .add_signature(public_keys[0].to_commitment(), msg, sig)
         .auth_args(salt)
         .build()?
         .execute()
@@ -998,14 +998,14 @@ async fn test_multisig_proc_threshold_overrides() -> anyhow::Result<()> {
     let tx_summary2_signing = SigningInputs::TransactionSummary(tx_summary2.clone());
 
     let sig_1 = authenticators[0]
-        .get_signature(public_keys[0].to_commitment().into(), &tx_summary2_signing)
+        .get_signature(public_keys[0].to_commitment(), &tx_summary2_signing)
         .await?;
 
     // Try to execute with only 1 signature - should FAIL
     let tx_context_one_sig = mock_chain
         .build_tx_context(multisig_account.id(), &[], &[])?
         .extend_expected_output_notes(vec![OutputNote::Full(output_note.clone())])
-        .add_signature(public_keys[0].clone().into(), msg2, sig_1)
+        .add_signature(public_keys[0].to_commitment(), msg2, sig_1)
         .tx_script(send_note_transaction_script.clone())
         .auth_args(salt2)
         .build()?;
@@ -1022,18 +1022,18 @@ async fn test_multisig_proc_threshold_overrides() -> anyhow::Result<()> {
 
     // Now get signatures from BOTH approvers
     let sig_1 = authenticators[0]
-        .get_signature(public_keys[0].to_commitment().into(), &tx_summary2_signing)
+        .get_signature(public_keys[0].to_commitment(), &tx_summary2_signing)
         .await?;
     let sig_2 = authenticators[1]
-        .get_signature(public_keys[1].to_commitment().into(), &tx_summary2_signing)
+        .get_signature(public_keys[1].to_commitment(), &tx_summary2_signing)
         .await?;
 
     // Execute with 2 signatures - should SUCCEED
     let result = mock_chain
         .build_tx_context(multisig_account.id(), &[], &[])?
         .extend_expected_output_notes(vec![OutputNote::Full(output_note)])
-        .add_signature(public_keys[0].clone().into(), msg2, sig_1)
-        .add_signature(public_keys[1].clone().into(), msg2, sig_2)
+        .add_signature(public_keys[0].to_commitment(), msg2, sig_1)
+        .add_signature(public_keys[1].to_commitment(), msg2, sig_2)
         .auth_args(salt2)
         .tx_script(send_note_transaction_script)
         .build()?
