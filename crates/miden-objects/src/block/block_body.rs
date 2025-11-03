@@ -108,7 +108,7 @@ impl BlockBody {
         self.output_note_batches.iter().enumerate().flat_map(|(batch_idx, notes)| {
             notes.iter().map(move |(note_idx_in_batch, note)| {
                 (
-                    // SAFETY: The proven block contains at most the max allowed number of
+                    // SAFETY: The block body contains at most the max allowed number of
                     // batches and each batch is guaranteed to contain
                     // at most the max allowed number of output notes.
                     BlockNoteIndex::new(batch_idx, *note_idx_in_batch)
@@ -125,7 +125,7 @@ impl BlockBody {
             .output_notes()
             .map(|(note_index, note)| (note_index, note.id(), *note.metadata()));
 
-        // SAFETY: We only construct proven blocks that:
+        // SAFETY: We only construct block bodies that:
         // - do not contain duplicates
         // - contain at most the max allowed number of batches and each batch is guaranteed to
         //   contain at most the max allowed number of output notes.
