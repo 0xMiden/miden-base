@@ -33,7 +33,7 @@
 - [BREAKING] Change `Account` to `PartialAccount` conversion to generally track only minimal data ([#1963](https://github.com/0xMiden/miden-base/pull/1963)).
 - Added `MastArtifact`, `PackageExport`, `PackageManifest`, `AttributeSet`, `QualifiedProcedureName`, `Section` and `SectionId` to re-export section ([#1984](https://github.com/0xMiden/miden-base/pull/1984) and [#2015](https://github.com/0xMiden/miden-base/pull/2015)).
 - [BREAKING] Enable computing the transaction ID from the data in a `TransactionHeader` ([#1973]https://github.com/0xMiden/miden-base/pull/1973).
-- [BREAKING] Introduce VaultKey newtype wrapper for asset vault keys ([#1978](https://github.com/0xMiden/miden-base/pull/1978), [#2024](https://github.com/0xMiden/miden-base/pull/2024)).
+- [BREAKING] Introduce `AssetVaultKey` newtype wrapper for asset vault keys ([#1978](https://github.com/0xMiden/miden-base/pull/1978), [#2024](https://github.com/0xMiden/miden-base/pull/2024)).
 - [BREAKING] Change `Account` to `PartialAccount` conversion to generally track only minimal data ([#1963]https://github.com/0xMiden/miden-base/pull/1963).
 - Added `network_fungible_faucet` and `MINT` & `BURN` notes ([#1925](https://github.com/0xMiden/miden-base/pull/1925))
 - Added `AccountTree::apply_mutations_with_reversions` ([#2002](https://github.com/0xMiden/miden-base/pull/2002)).
