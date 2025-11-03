@@ -1,7 +1,7 @@
 use alloc::collections::BTreeMap;
 use alloc::sync::Arc;
 
-use anyhow::Context;
+use anyhow::{Context, anyhow};
 use miden_lib::account::wallets::BasicWallet;
 use miden_lib::errors::MasmError;
 use miden_lib::testing::note::NoteBuilder;
@@ -10,7 +10,6 @@ use miden_lib::transaction::memory::ACTIVE_INPUT_NOTE_PTR;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{AccountBuilder, AccountId, PublicKeyCommitment};
 use miden_objects::assembly::DefaultSourceManager;
-use miden_objects::assembly::diagnostics::miette::{self, miette};
 use miden_objects::asset::FungibleAsset;
 use miden_objects::crypto::dsa::rpo_falcon512::SecretKey;
 use miden_objects::crypto::rand::{FeltRng, RpoRandomCoin};
@@ -88,10 +87,11 @@ async fn test_note_setup() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
-async fn test_note_script_and_note_args() -> miette::Result<()> {
+async fn test_note_script_and_note_args() -> anyhow::Result<()> {
     let mut tx_context = {
         let mut builder = MockChain::builder();
-        let account = builder.add_existing_wallet(Auth::BasicAuth).map_err(|err| miette!(err))?;
+        let account =
+            builder.add_existing_wallet(Auth::BasicAuth).map_err(|err| anyhow!("{err}"))?;
         let p2id_note_1 = builder
             .add_p2id_note(
                 ACCOUNT_ID_SENDER.try_into().unwrap(),
@@ -99,7 +99,7 @@ async fn test_note_script_and_note_args() -> miette::Result<()> {
                 &[FungibleAsset::mock(150)],
                 NoteType::Public,
             )
-            .map_err(|err| miette!(err))?;
+            .map_err(|err| anyhow!("{err}"))?;
         let p2id_note_2 = builder
             .add_p2id_note(
                 ACCOUNT_ID_SENDER.try_into().unwrap(),
@@ -107,8 +107,8 @@ async fn test_note_script_and_note_args() -> miette::Result<()> {
                 &[FungibleAsset::mock(300)],
                 NoteType::Public,
             )
-            .map_err(|err| miette!(err))?;
-        let mut mock_chain = builder.build().map_err(|err| miette!(err))?;
+            .map_err(|err| anyhow!("{err}"))?;
+        let mut mock_chain = builder.build().map_err(|err| anyhow!("{err}"))?;
         mock_chain.prove_next_block().unwrap();
 
         mock_chain
@@ -368,32 +368,32 @@ async fn test_compute_inputs_commitment() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
-async fn test_build_metadata() -> miette::Result<()> {
+async fn test_build_metadata() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build().unwrap();
 
     let sender = tx_context.account().id();
     let receiver = AccountId::try_from(ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE)
-        .map_err(|e| miette::miette!("Failed to convert account ID: {}", e))?;
+        .map_err(|e| anyhow!("Failed to convert account ID: {}", e))?;
 
     let test_metadata1 = NoteMetadata::new(
         sender,
         NoteType::Private,
         NoteTag::from_account_id(receiver),
         NoteExecutionHint::after_block(500.into())
-            .map_err(|e| miette::miette!("Failed to create execution hint: {}", e))?,
-        Felt::try_from(1u64 << 63).map_err(|e| miette::miette!("Failed to convert felt: {}", e))?,
+            .map_err(|e| anyhow!("Failed to create execution hint: {}", e))?,
+        Felt::try_from(1u64 << 63).map_err(|e| anyhow!("Failed to convert felt: {}", e))?,
     )
-    .map_err(|e| miette::miette!("Failed to create metadata: {}", e))?;
+    .map_err(|e| anyhow!("Failed to create metadata: {}", e))?;
     let test_metadata2 = NoteMetadata::new(
         sender,
         NoteType::Public,
         // Use largest allowed use_case_id.
         NoteTag::for_public_use_case((1 << 14) - 1, u16::MAX, NoteExecutionMode::Local)
-            .map_err(|e| miette::miette!("Failed to create note tag: {}", e))?,
+            .map_err(|e| anyhow!("Failed to create note tag: {}", e))?,
         NoteExecutionHint::on_block_slot(u8::MAX, u8::MAX, u8::MAX),
-        Felt::try_from(0u64).map_err(|e| miette::miette!("Failed to convert felt: {}", e))?,
+        Felt::try_from(0u64).map_err(|e| anyhow!("Failed to convert felt: {}", e))?,
     )
-    .map_err(|e| miette::miette!("Failed to create metadata: {}", e))?;
+    .map_err(|e| anyhow!("Failed to create metadata: {}", e))?;
 
     for (iteration, test_metadata) in [test_metadata1, test_metadata2].into_iter().enumerate() {
         let code = format!(

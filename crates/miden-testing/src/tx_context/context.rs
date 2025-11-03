@@ -20,7 +20,7 @@ use miden_objects::transaction::{
     TransactionInputs,
 };
 use miden_processor::fast::ExecutionOutput;
-use miden_processor::{ExecutionError, FutureMaybeSend, MastForest, MastForestStore, Word};
+use miden_processor::{FutureMaybeSend, MastForest, MastForestStore, Word};
 use miden_tx::auth::{BasicAuthenticator, UnreachableAuth};
 use miden_tx::{
     AccountProcedureIndexMap,
@@ -37,6 +37,7 @@ use rand_chacha::ChaCha20Rng;
 use crate::executor::CodeExecutor;
 use crate::mock_host::MockHost;
 use crate::tx_context::builder::MockAuthenticator;
+use crate::tx_context::errors::ExecError;
 
 // TRANSACTION CONTEXT
 // ================================================================================================
@@ -78,7 +79,7 @@ impl TransactionContext {
     /// # Panics
     ///
     /// - If the provided `code` is not a valid program.
-    pub async fn execute_code(&self, code: &str) -> Result<ExecutionOutput, ExecutionError> {
+    pub async fn execute_code(&self, code: &str) -> Result<ExecutionOutput, ExecError> {
         let (stack_inputs, advice_inputs) = TransactionKernel::prepare_inputs(&self.tx_inputs)
             .expect("error initializing transaction inputs");
 
@@ -135,6 +136,7 @@ impl TransactionContext {
             .extend_advice_inputs(advice_inputs)
             .execute_program(program)
             .await
+            .map_err(ExecError)
     }
 
     /// Executes the transaction through a [TransactionExecutor]
