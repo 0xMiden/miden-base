@@ -36,7 +36,8 @@ const ABSENT_NOTE_TAG_LEN: u8 = 1 << 5;
 /// The routing parameter key for the receiver profile.
 const RECEIVER_PROFILE_KEY: u8 = 0;
 
-/// TODO: Docs.
+/// Parameters that define how a sender should route a note to the [`AddressId`](super::AddressId)
+/// in an [`Address`](super::Address).
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RoutingParameters {
     interface: AddressInterface,
