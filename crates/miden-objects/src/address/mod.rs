@@ -29,8 +29,9 @@ pub use address_id::AddressId;
 /// An address consists of an [`AddressId`] and optional [`RoutingParameters`].
 ///
 /// A user who wants to receive a note creates an address and sends it to the sender of the note.
-/// The sender creates a note intended for the holder of this address ID (e.g., it provides access-control)
-/// and the routing parameters inform the sender about various aspects like:
+/// The sender creates a note intended for the holder of this address ID (e.g., it provides
+/// discoverability and potentially access-control) and the routing parameters inform the sender
+/// about various aspects like:
 /// - what kind of note the receiver's account can consume.
 /// - how the receiver discovers the note.
 ///
