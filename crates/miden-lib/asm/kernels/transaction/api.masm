@@ -164,8 +164,8 @@ end
 #! Outputs: [account_id_prefix, account_id_suffix, pad(14)]
 #!
 #! Where:
-#! - is_native is a boolean flag that indicates whether the account ID was requested for a native or
-#!   an active account.
+#! - is_native is a boolean flag that indicates whether the account ID was requested for the native
+#!   or the active account.
 #! - account_id_{prefix,suffix} are the prefix and suffix felts of the ID of the active account.
 #!
 #! Invocation: dynexec

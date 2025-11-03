@@ -8,7 +8,7 @@ The Miden protocol library provides a set of procedures that wrap transaction ke
 
 ## Contexts
 
-Here and in other places we use a notion of _active account_: it is the account which is being currently accessed.
+Here and in other places we use the notion of _active account_: it is the account which is currently being accessed.
 
 The Miden VM contexts from which procedures can be called are:
 

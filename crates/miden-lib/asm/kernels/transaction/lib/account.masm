@@ -293,7 +293,7 @@ end
 #! Computes commitment to the state of the active account.
 #!
 #! Notice that there is no caching (and, hence, dirty flag) for the commitment of the entire
-#! account. If the storage commitment is current (which is ensured by this procedure), computing 
+#! account. If the storage commitment is up-to-date (which is ensured by this procedure), computing 
 #! account commitment is relatively cheap — essentially is consists of just 2 permutations of the 
 #! hash function and takes relatively small number of cycles, so it would not be worth adding a 
 #! separate caching mechanism for this.
