@@ -371,8 +371,6 @@ impl ProposedBlock {
             return Ok(self.prev_block_header.nullifier_root());
         }
 
-        let nullifiers: Vec<Nullifier> = self.created_nullifiers.keys().copied().collect();
-
         let mut partial_nullifier_tree = PartialNullifierTree::new();
 
         // First, reconstruct the current nullifier tree with the merkle paths of the nullifiers we
@@ -399,7 +397,7 @@ impl ProposedBlock {
         // SAFETY: As mentioned above, we can safely assume that each nullifier's witness was
         // added and every nullifier should be tracked by the partial tree and
         // therefore updatable.
-        partial_nullifier_tree.mark_spent(nullifiers.iter().copied(), self.block_num()).expect(
+        partial_nullifier_tree.mark_spent(self.created_nullifiers.keys().copied(), self.block_num()).expect(
           "nullifiers' merkle path should have been added to the partial tree and the nullifiers should be unspent",
         );
 
