@@ -18,7 +18,7 @@ pub struct PartialNullifierTree(PartialSmt);
 impl PartialNullifierTree {
     /// Creates a new, empty partial nullifier tree.
     pub fn new() -> Self {
-        PartialNullifierTree(PartialSmt::new())
+        PartialNullifierTree(PartialSmt::default())
     }
 
     /// Returns a new [`PartialNullifierTree`] instantiated with the provided entries.

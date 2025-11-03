@@ -21,7 +21,7 @@ impl PartialAccountTree {
 
     /// Creates a new, empty partial account tree.
     pub fn new() -> Self {
-        PartialAccountTree { smt: PartialSmt::new() }
+        PartialAccountTree { smt: PartialSmt::default() }
     }
 
     /// Returns a new [`PartialAccountTree`] instantiated with the provided entries.

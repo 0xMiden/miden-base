@@ -401,7 +401,7 @@ export.finalize_transaction.12
     # assert no net creation or destruction of assets over the transaction
     exec.memory::get_input_vault_root exec.memory::get_output_vault_root
     assert_eqw.err=ERR_EPILOGUE_TOTAL_NUMBER_OF_ASSETS_MUST_STAY_THE_SAME
-    # => [ACCOUNT_UPDATE_COMMITMENT]
+    # => []
 
     # ------ Compute output notes commitment ------
 
