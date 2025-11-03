@@ -167,7 +167,7 @@ impl AccountStorage {
     }
 
     /// Consumes self and returns the storage slots of the account storage.
-    pub fn into_slots(self) -> Vec<StorageSlot> {
+    pub fn into_slots(self) -> Vec<NamedStorageSlot> {
         self.slots
     }
 

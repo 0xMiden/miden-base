@@ -1359,7 +1359,7 @@ export.insert_new_storage
         sub.1
         # => [slot_idx]
 
-        dup exec.get_storage_slot_type
+        dup exec.get_storage_slot_type_by_index
         # => [slot_type, slot_idx]
 
         exec.constants::get_storage_slot_type_map eq

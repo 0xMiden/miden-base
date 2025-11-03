@@ -444,6 +444,7 @@ impl TryFrom<Account> for AccountDelta {
         let mut map_slots = BTreeMap::new();
 
         for (slot_idx, slot) in (0..u8::MAX).zip(storage.into_slots().into_iter()) {
+            let (_, _, slot) = slot.into_parts();
             match slot {
                 StorageSlot::Value(word) => {
                     value_slots.insert(slot_idx, word);
