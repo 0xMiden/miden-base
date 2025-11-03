@@ -763,18 +763,15 @@ async fn asset_and_storage_delta() -> anyhow::Result<()> {
 /// This is an interesting test case because:
 /// - for new accounts in general, the storage map entries must be available in the advice provider
 ///   and the resulting delta must be convertible to a full account.
+/// - it creates an account with two identical storage maps.
 /// - The prover mutates the delta to account for fee logic.
-///
-/// Both of these are tested here.
 #[tokio::test]
 async fn proven_tx_storage_maps_matches_executed_tx_for_new_account() -> anyhow::Result<()> {
+    // Use two identical maps to test that they are properly handled
+    // (see also https://github.com/0xMiden/miden-base/issues/2037).
     let map0 = StorageMap::with_entries([(rand_value(), rand_value())])?;
-    let map1 = StorageMap::with_entries([
-        (rand_value(), rand_value()),
-        (rand_value(), rand_value()),
-        (rand_value(), rand_value()),
-    ])?;
-    let map2 = StorageMap::with_entries([
+    let map1 = map0.clone();
+    let mut map2 = StorageMap::with_entries([
         (rand_value(), rand_value()),
         (rand_value(), rand_value()),
         (rand_value(), rand_value()),
@@ -794,11 +791,11 @@ async fn proven_tx_storage_maps_matches_executed_tx_for_new_account() -> anyhow:
         ]))
         .build()?;
 
-    // The index of map2 in account storage is 2.
-    let map_index = 2u8;
+    let map0_index = 1;
+    let map1_index = 2;
+    let map2_index = 4;
     // Fetch a random existing key from the map.
-    let existing_key = map2.entries().next().unwrap().0;
-
+    let existing_key = *map2.entries().next().unwrap().0;
     let value0 = Word::from([3, 4, 5, 6u32]);
 
     let code = format!(
@@ -809,7 +806,7 @@ async fn proven_tx_storage_maps_matches_executed_tx_for_new_account() -> anyhow:
           # Update an existing key.
           push.{value0}
           push.{existing_key}
-          push.{map_index}
+          push.{map2_index}
           # => [index, KEY, VALUE]
           call.account::set_map_item
 
@@ -829,11 +826,19 @@ async fn proven_tx_storage_maps_matches_executed_tx_for_new_account() -> anyhow:
         .execute()
         .await?;
 
-    let map_delta = tx.account_delta().storage().maps().get(&map_index).unwrap();
-    assert_eq!(
-        map_delta.entries().get(&LexicographicWord::new(*existing_key)).unwrap(),
-        &value0
-    );
+    map2.insert(existing_key, value0)?;
+
+    for (map_index, expected_map) in [(map0_index, map0), (map1_index, map1), (map2_index, map2)] {
+        let map_delta = tx.account_delta().storage().maps().get(&map_index).unwrap();
+        assert_eq!(
+            map_delta
+                .entries()
+                .iter()
+                .map(|(key, value)| (*key.inner(), *value))
+                .collect::<BTreeMap<_, _>>(),
+            expected_map.into_entries()
+        );
+    }
 
     let proven_tx = LocalTransactionProver::default().prove_dummy(tx.clone())?;
 
