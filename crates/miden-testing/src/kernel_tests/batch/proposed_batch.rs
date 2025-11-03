@@ -17,6 +17,7 @@ use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 
 use super::proven_tx_builder::MockProvenTxBuilder;
+use crate::utils::create_p2any_note;
 use crate::{AccountState, Auth, MockChain, MockChainBuilder};
 
 fn mock_account_id(num: u8) -> AccountId {
@@ -271,8 +272,8 @@ fn duplicate_output_notes() -> anyhow::Result<()> {
 async fn unauthenticated_note_converted_to_authenticated() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let account1 = generate_account(&mut builder);
-    let note1 = builder.create_p2any_note(account1.id(), NoteType::Public, [])?;
-    let note2 = builder.create_p2any_note(account1.id(), NoteType::Public, [])?;
+    let note1 = create_p2any_note(account1.id(), NoteType::Public, [], builder.rng_mut());
+    let note2 = create_p2any_note(account1.id(), NoteType::Public, [], builder.rng_mut());
     let spawn_note = builder.add_spawn_note([&note1, &note2])?;
     let mut chain = builder.build()?;
 
@@ -700,19 +701,21 @@ fn expired_transaction() -> anyhow::Result<()> {
 /// _before_ a state-updating transaction with state commitments X -> Y against account A.
 #[test]
 fn noop_tx_before_state_updating_tx_against_same_account() -> anyhow::Result<()> {
-    let TestSetup { mut chain, account1, .. } = setup_chain();
+    let TestSetup { mut chain, account1, note1, .. } = setup_chain();
     let block1 = chain.block_header(1);
     let block2 = chain.prove_next_block()?;
 
     let random_final_state_commitment = Word::from([1, 2, 3, 4u32]);
 
     let note = mock_note(40);
+    // consume a random note to make the transaction non-empty
     let noop_tx1 = MockProvenTxBuilder::with_account(
         account1.id(),
         account1.commitment(),
         account1.commitment(),
     )
     .ref_block_commitment(block1.commitment())
+    .authenticated_notes(vec![note1])
     .output_notes(vec![OutputNote::Full(note.clone())])
     .build()?;
 
@@ -749,7 +752,7 @@ fn noop_tx_before_state_updating_tx_against_same_account() -> anyhow::Result<()>
 /// _after_ a state-updating transaction with state commitments X -> Y against account A.
 #[test]
 fn noop_tx_after_state_updating_tx_against_same_account() -> anyhow::Result<()> {
-    let TestSetup { mut chain, account1, .. } = setup_chain();
+    let TestSetup { mut chain, account1, note1, .. } = setup_chain();
     let block1 = chain.block_header(1);
     let block2 = chain.prove_next_block()?;
 
@@ -766,12 +769,14 @@ fn noop_tx_after_state_updating_tx_against_same_account() -> anyhow::Result<()> 
     .unauthenticated_notes(vec![note.clone()])
     .build()?;
 
+    // consume a random note to make the transaction non-empty
     let noop_tx2 = MockProvenTxBuilder::with_account(
         account1.id(),
         random_final_state_commitment,
         random_final_state_commitment,
     )
     .ref_block_commitment(block1.commitment())
+    .authenticated_notes(vec![note1])
     .output_notes(vec![OutputNote::Full(note.clone())])
     .build()?;
 

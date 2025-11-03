@@ -28,6 +28,7 @@ use crate::account::{
     TemplateTypeError,
 };
 use crate::address::AddressType;
+use crate::asset::AssetVaultKey;
 use crate::batch::BatchId;
 use crate::block::BlockNumber;
 use crate::note::{NoteAssets, NoteExecutionHint, NoteTag, NoteType, Nullifier};
@@ -119,7 +120,7 @@ pub enum AccountError {
     FinalAccountHeaderIdParsingFailed(#[source] AccountIdError),
     #[error("account header data has length {actual} but it must be of length {expected}")]
     HeaderDataIncorrectLength { actual: usize, expected: usize },
-    #[error("current account nonce {current} plus increment {increment} overflows a felt to {new}")]
+    #[error("active account nonce {current} plus increment {increment} overflows a felt to {new}")]
     NonceOverflow {
         current: Felt,
         increment: Felt,
@@ -135,6 +136,10 @@ pub enum AccountError {
     ExistingAccountWithSeed,
     #[error("account ID seed was not provided for a new account")]
     NewAccountMissingSeed,
+    #[error(
+        "an account with a seed cannot be converted into a delta since it represents an unregistered account"
+    )]
+    DeltaFromAccountWithSeed,
     #[error("seed converts to an invalid account ID")]
     SeedConvertsToInvalidAccountId(#[source] AccountIdError),
     #[error("storage map root {0} not found in the account storage")]
@@ -162,6 +167,12 @@ pub enum AccountError {
         account_type: AccountType,
         component_index: usize,
     },
+    #[error(
+        "failed to apply full state delta to existing account; full state deltas can be converted to accounts directly"
+    )]
+    ApplyFullStateDeltaToAccount,
+    #[error("only account deltas representing a full account can be converted to a full account")]
+    PartialStateDeltaToAccount,
     #[error("maximum number of storage map leaves exceeded")]
     MaxNumStorageMapLeavesExceeded(#[source] MerkleError),
     /// This variant can be used by methods that are not inherent to the account but want to return
@@ -216,6 +227,8 @@ pub enum AccountIdError {
     AccountIdSuffixMostSignificantBitMustBeZero,
     #[error("least significant byte of account ID suffix must be zero")]
     AccountIdSuffixLeastSignificantByteMustBeZero,
+    #[error("failed to decode bech32 string into account ID")]
+    Bech32DecodeError(#[source] Bech32Error),
 }
 
 // SLOT NAME ERROR
@@ -349,6 +362,8 @@ pub enum AccountDeltaError {
     },
     #[error("account ID {0} in fungible asset delta is not of type fungible faucet")]
     NotAFungibleFaucetId(AccountId),
+    #[error("cannot merge two full state deltas")]
+    MergingFullStateDeltas,
 }
 
 // STORAGE MAP ERROR
@@ -420,8 +435,8 @@ pub enum AssetError {
       expected_ty = AccountType::NonFungibleFaucet
     )]
     NonFungibleFaucetIdTypeMismatch(AccountIdPrefix),
-    #[error("vault key {actual} does not match expected vault key {expected}")]
-    VaultKeyMismatch { actual: Word, expected: Word },
+    #[error("asset vault key {actual} does not match expected asset vault key {expected}")]
+    AssetVaultKeyMismatch { actual: Word, expected: Word },
 }
 
 // TOKEN SYMBOL ERROR
@@ -470,7 +485,7 @@ pub enum PartialAssetVaultError {
     #[error("provided SMT entry {entry} is not a valid asset")]
     InvalidAssetInSmt { entry: Word, source: AssetError },
     #[error("expected asset vault key to be {expected} but it was {actual}")]
-    VaultKeyMismatch { expected: Word, actual: Word },
+    AssetVaultKeyMismatch { expected: AssetVaultKey, actual: Word },
     #[error("failed to add asset proof")]
     FailedToAddProof(#[source] MerkleError),
     #[error("asset is not tracked in the partial vault")]
@@ -688,8 +703,8 @@ pub enum ProvenTransactionError {
     PrivateAccountWithDetails(AccountId),
     #[error("account {0} with public state is missing its account details")]
     PublicStateAccountMissingDetails(AccountId),
-    #[error("new account {0} with public state is missing its account details")]
-    NewPublicStateAccountRequiresFullDetails(AccountId),
+    #[error("new account {id} with public state must be accompanied by a full state delta")]
+    NewPublicStateAccountRequiresFullStateDelta { id: AccountId, source: AccountError },
     #[error(
         "existing account {0} with public state should only provide delta updates instead of full details"
     )]
@@ -705,6 +720,8 @@ pub enum ProvenTransactionError {
     },
     #[error("proven transaction neither changed the account state, nor consumed any notes")]
     EmptyTransaction,
+    #[error("failed to validate account delta in transaction account update")]
+    AccountDeltaCommitmentMismatch(#[source] Box<dyn Error + Send + Sync + 'static>),
 }
 
 // PROPOSED BATCH ERROR

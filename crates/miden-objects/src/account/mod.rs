@@ -1,6 +1,9 @@
+use alloc::collections::BTreeMap;
 use alloc::string::ToString;
 
-use crate::asset::AssetVault;
+use miden_core::LexicographicWord;
+
+use crate::asset::{Asset, AssetVault};
 use crate::utils::serde::{
     ByteReader,
     ByteWriter,
@@ -341,12 +344,19 @@ impl Account {
     /// to the values specified by the delta.
     ///
     /// # Errors
+    ///
     /// Returns an error if:
+    /// - [`AccountDelta::is_full_state`] returns `true`, i.e. represents the state of an entire
+    ///   account. Only partial state deltas can be applied to an account.
     /// - Applying vault sub-delta to the vault of this account fails.
     /// - Applying storage sub-delta to the storage of this account fails.
     /// - The nonce specified in the provided delta smaller than or equal to the current account
     ///   nonce.
     pub fn apply_delta(&mut self, delta: &AccountDelta) -> Result<(), AccountError> {
+        if delta.is_full_state() {
+            return Err(AccountError::ApplyFullStateDeltaToAccount);
+        }
+
         // update vault; we don't check vault delta validity here because `AccountDelta` can contain
         // only valid vault deltas
         self.vault
@@ -358,14 +368,6 @@ impl Account {
 
         // update nonce
         self.increment_nonce(delta.nonce_delta())?;
-
-        // Maintain internal consistency of the account, i.e. the seed should not be present for
-        // existing accounts, where existing accounts are defined as having a nonce > 0.
-        // If we've incremented the nonce, then we should remove the seed (if it was present at
-        // all).
-        if delta.nonce_delta().as_int() > 0 {
-            self.seed = None;
-        }
 
         Ok(())
     }
@@ -389,6 +391,14 @@ impl Account {
 
         self.nonce = new_nonce;
 
+        // Maintain internal consistency of the account, i.e. the seed should not be present for
+        // existing accounts, where existing accounts are defined as having a nonce > 0.
+        // If we've incremented the nonce, then we should remove the seed (if it was present at
+        // all).
+        if !self.is_new() {
+            self.seed = None;
+        }
+
         Ok(())
     }
 
@@ -405,6 +415,80 @@ impl Account {
     /// Returns a mutable reference to the storage of this account.
     pub fn storage_mut(&mut self) -> &mut AccountStorage {
         &mut self.storage
+    }
+}
+
+impl TryFrom<Account> for AccountDelta {
+    type Error = AccountError;
+
+    /// Converts an [`Account`] into an [`AccountDelta`].
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - the account has a seed. Accounts with seeds have a nonce of 0. Representing such accounts
+    ///   as deltas is not possible because deltas with a non-empty state change need a nonce_delta
+    ///   greater than 0.
+    fn try_from(account: Account) -> Result<Self, Self::Error> {
+        let Account { id, vault, storage, code, nonce, seed } = account;
+
+        if seed.is_some() {
+            return Err(AccountError::DeltaFromAccountWithSeed);
+        }
+
+        let mut value_slots = BTreeMap::new();
+        let mut map_slots = BTreeMap::new();
+
+        for (slot_idx, slot) in (0..u8::MAX).zip(storage.into_slots().into_iter()) {
+            match slot {
+                StorageSlot::Value(word) => {
+                    value_slots.insert(slot_idx, word);
+                },
+                StorageSlot::Map(storage_map) => {
+                    let map_delta = StorageMapDelta::new(
+                        storage_map
+                            .into_entries()
+                            .into_iter()
+                            .map(|(key, value)| (LexicographicWord::from(key), value))
+                            .collect(),
+                    );
+                    map_slots.insert(slot_idx, map_delta);
+                },
+            }
+        }
+        let storage_delta = AccountStorageDelta::from_parts(value_slots, map_slots)
+            .expect("value and map slots from account storage should not overlap");
+
+        let mut fungible_delta = FungibleAssetDelta::default();
+        let mut non_fungible_delta = NonFungibleAssetDelta::default();
+        for asset in vault.assets() {
+            // SAFETY: All assets in the account vault should be representable in the delta.
+            match asset {
+                Asset::Fungible(fungible_asset) => {
+                    fungible_delta
+                        .add(fungible_asset)
+                        .expect("delta should allow representing valid fungible assets");
+                },
+                Asset::NonFungible(non_fungible_asset) => {
+                    non_fungible_delta
+                        .add(non_fungible_asset)
+                        .expect("delta should allow representing valid non-fungible assets");
+                },
+            }
+        }
+        let vault_delta = AccountVaultDelta::new(fungible_delta, non_fungible_delta);
+
+        // The nonce of the account is the nonce delta since adding the nonce_delta to 0 would
+        // result in the nonce.
+        let nonce_delta = nonce;
+
+        // SAFETY: As checked earlier, the nonce delta should be greater than 0 allowing for
+        // non-empty state changes.
+        let delta = AccountDelta::new(id, storage_delta, vault_delta, nonce_delta)
+            .expect("nonce_delta should be greater than 0")
+            .with_code(Some(code));
+
+        Ok(delta)
     }
 }
 
@@ -552,6 +636,7 @@ mod tests {
         AccountComponent,
         AccountIdVersion,
         AccountType,
+        PartialAccount,
         StorageMap,
         StorageMapDelta,
         StorageSlot,
@@ -885,6 +970,23 @@ mod tests {
         // Set nonce to 0 so the account is considered new and provide the original seed, which
         // should be valid.
         Account::new(id, vault.clone(), storage.clone(), code.clone(), Felt::ZERO, seed)?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn incrementing_nonce_should_remove_seed() -> anyhow::Result<()> {
+        let mut account = AccountBuilder::new([5; 32])
+            .with_auth_component(NoopAuthComponent)
+            .with_component(AddComponent)
+            .build()?;
+        account.increment_nonce(Felt::ONE)?;
+
+        assert_matches!(account.seed(), None);
+
+        // Sanity check: We should be able to convert the account into a partial account which will
+        // re-check the internal seed - nonce consistency.
+        let _partial_account = PartialAccount::from(&account);
 
         Ok(())
     }

@@ -1,5 +1,5 @@
 use.miden::asset
-use.miden::account
+use.miden::active_account
 use.miden::kernel_proc_offsets
 
 #! Creates a fungible asset for the faucet the transaction is being executed against.
@@ -12,12 +12,12 @@ use.miden::kernel_proc_offsets
 #! - ASSET is the created fungible asset.
 #!
 #! Panics if:
-#! - the current account is not a fungible faucet.
+#! - the active account is not a fungible faucet.
 #!
 #! Invocation: exec
 export.create_fungible_asset
     # fetch the id of the faucet the transaction is being executed against.
-    exec.account::get_id
+    exec.active_account::get_id
     # => [id_prefix, id_suffix, amount]
 
     # build the fungible asset
@@ -35,12 +35,12 @@ end
 #! - ASSET is the created non-fungible asset.
 #!
 #! Panics if:
-#! - the current account is not a non-fungible faucet.
+#! - the active account is not a non-fungible faucet.
 #!
 #! Invocation: exec
 export.create_non_fungible_asset
     # get the id of the faucet the transaction is being executed against
-    exec.account::get_id swap drop
+    exec.active_account::get_id swap drop
     # => [faucet_id_prefix, DATA_HASH]
 
     # build the non-fungible asset

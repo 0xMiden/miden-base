@@ -2,8 +2,18 @@ use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
 
 use anyhow::Context;
+
+// CONSTANTS
+// ================================================================================================
+
+/// Default number of decimals for faucets created in tests.
+const DEFAULT_FAUCET_DECIMALS: u8 = 10;
+
+// IMPORTS
+// ================================================================================================
+
 use itertools::Itertools;
-use miden_lib::account::faucets::BasicFungibleFaucet;
+use miden_lib::account::faucets::{BasicFungibleFaucet, NetworkFungibleFaucet};
 use miden_lib::account::wallets::BasicWallet;
 use miden_lib::note::{create_p2id_note, create_p2ide_note, create_swap_note};
 use miden_lib::testing::account_component::MockAccountComponent;
@@ -12,14 +22,15 @@ use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{
     Account,
     AccountBuilder,
+    AccountDelta,
     AccountId,
     AccountStorageMode,
     AccountType,
     StorageSlot,
 };
 use miden_objects::asset::{Asset, FungibleAsset, TokenSymbol};
+use miden_objects::block::account_tree::AccountTree;
 use miden_objects::block::{
-    AccountTree,
     BlockAccountUpdate,
     BlockHeader,
     BlockNoteTree,
@@ -30,7 +41,6 @@ use miden_objects::block::{
     OutputNoteBatch,
     ProvenBlock,
 };
-use miden_objects::crypto::rand::FeltRng;
 use miden_objects::note::{Note, NoteDetails, NoteType};
 use miden_objects::testing::account_id::ACCOUNT_ID_NATIVE_ASSET_FAUCET;
 use miden_objects::transaction::{OrderedTransactionHeaders, OutputNote};
@@ -66,22 +76,15 @@ use crate::{AccountState, Auth, MockChain};
 ///     &[FungibleAsset::mock(100)],
 ///     NoteType::Private,
 /// )?;
-/// let new_note = builder.create_p2id_note(
-///     existing_wallet.id(),
-///     new_wallet.id(),
-///     [FungibleAsset::mock(100)],
-///     NoteType::Private,
-/// )?;
 /// let chain = builder.build()?;
 ///
 /// // The existing wallet and note should be part of the chain state.
 /// assert!(chain.committed_account(existing_wallet.id()).is_ok());
 /// assert!(chain.committed_notes().get(&existing_note.id()).is_some());
 ///
-/// // The new wallet and note should *not* be part of the chain state - they must be created in
+/// // The new wallet should *not* be part of the chain state - it must be created in
 /// // a transaction first.
 /// assert!(chain.committed_account(new_wallet.id()).is_err());
-/// assert!(chain.committed_notes().get(&new_note.id()).is_none());
 ///
 /// # Ok(())
 /// # }
@@ -172,11 +175,13 @@ impl MockChainBuilder {
             .accounts
             .into_values()
             .map(|account| {
-                BlockAccountUpdate::new(
-                    account.id(),
-                    account.commitment(),
-                    AccountUpdateDetails::New(account),
-                )
+                let account_id = account.id();
+                let account_commitment = account.commitment();
+                let account_delta = AccountDelta::try_from(account)
+                    .expect("chain builder should only store existing accounts without seeds");
+                let update_details = AccountUpdateDetails::Delta(account_delta);
+
+                BlockAccountUpdate::new(account_id, account_commitment, update_details)
             })
             .collect();
 
@@ -292,8 +297,9 @@ impl MockChainBuilder {
         let max_supply_felt = max_supply.try_into().map_err(|_| {
             anyhow::anyhow!("max supply value cannot be converted to Felt: {max_supply}")
         })?;
-        let basic_faucet = BasicFungibleFaucet::new(token_symbol, 10, max_supply_felt)
-            .context("failed to create BasicFungibleFaucet")?;
+        let basic_faucet =
+            BasicFungibleFaucet::new(token_symbol, DEFAULT_FAUCET_DECIMALS, max_supply_felt)
+                .context("failed to create BasicFungibleFaucet")?;
 
         let account_builder = AccountBuilder::new(self.rng.random())
             .storage_mode(AccountStorageMode::Public)
@@ -303,9 +309,11 @@ impl MockChainBuilder {
         self.add_account_from_builder(auth_method, account_builder, AccountState::New)
     }
 
-    /// Adds an existing public [`BasicFungibleFaucet`] account to the initial chain state and
-    /// registers the authenticator (if the given [`Auth`] results in the creation of one).
-    pub fn add_existing_faucet(
+    /// Adds an existing [`BasicFungibleFaucet`] account to the initial chain state and
+    /// registers the authenticator.
+    ///
+    /// Basic fungible faucets always use `AccountStorageMode::Public` and require authentication.
+    pub fn add_existing_basic_faucet(
         &mut self,
         auth_method: Auth,
         token_symbol: &str,
@@ -313,8 +321,9 @@ impl MockChainBuilder {
         total_issuance: Option<u64>,
     ) -> anyhow::Result<Account> {
         let token_symbol = TokenSymbol::new(token_symbol).context("invalid argument")?;
-        let basic_faucet = BasicFungibleFaucet::new(token_symbol, 10u8, Felt::new(max_supply))
-            .context("invalid argument")?;
+        let basic_faucet =
+            BasicFungibleFaucet::new(token_symbol, DEFAULT_FAUCET_DECIMALS, Felt::new(max_supply))
+                .context("invalid argument")?;
 
         let account_builder = AccountBuilder::new(self.rng.random())
             .storage_mode(AccountStorageMode::Public)
@@ -323,6 +332,50 @@ impl MockChainBuilder {
 
         let mut account =
             self.add_account_from_builder(auth_method, account_builder, AccountState::Exists)?;
+
+        // The faucet's reserved slot is initialized to an empty word by default.
+        // If total_issuance is set, overwrite it and reinsert the account.
+        if let Some(issuance) = total_issuance {
+            account
+                .storage_mut()
+                .set_item(
+                    memory::FAUCET_STORAGE_DATA_SLOT,
+                    Word::from([ZERO, ZERO, ZERO, Felt::new(issuance)]),
+                )
+                .context("failed to set faucet storage")?;
+            self.accounts.insert(account.id(), account.clone());
+        }
+
+        Ok(account)
+    }
+
+    /// Adds an existing [`NetworkFungibleFaucet`] account to the initial chain state.
+    ///
+    /// Network fungible faucets always use `AccountStorageMode::Network` and `Auth::NoAuth`.
+    pub fn add_existing_network_faucet(
+        &mut self,
+        token_symbol: &str,
+        max_supply: u64,
+        owner_account_id: AccountId,
+        total_issuance: Option<u64>,
+    ) -> anyhow::Result<Account> {
+        let token_symbol = TokenSymbol::new(token_symbol).context("invalid argument")?;
+        let network_faucet = NetworkFungibleFaucet::new(
+            token_symbol,
+            DEFAULT_FAUCET_DECIMALS,
+            Felt::new(max_supply),
+            owner_account_id,
+        )
+        .context("invalid argument")?;
+
+        let account_builder = AccountBuilder::new(self.rng.random())
+            .storage_mode(AccountStorageMode::Network)
+            .with_component(network_faucet)
+            .account_type(AccountType::FungibleFaucet);
+
+        // Network faucets always use Noop auth (no authentication)
+        let mut account =
+            self.add_account_from_builder(Auth::IncrNonce, account_builder, AccountState::Exists)?;
 
         // The faucet's reserved slot is initialized to an empty word by default.
         // If total_issuance is set, overwrite it and reinsert the account.
@@ -463,7 +516,7 @@ impl MockChainBuilder {
         note_type: NoteType,
         assets: impl IntoIterator<Item = Asset>,
     ) -> anyhow::Result<Note> {
-        let note = self.create_p2any_note(sender_account_id, note_type, assets)?;
+        let note = create_p2any_note(sender_account_id, note_type, assets, &mut self.rng);
         self.add_output_note(OutputNote::Full(note.clone()));
 
         Ok(note)
@@ -481,11 +534,13 @@ impl MockChainBuilder {
         asset: &[Asset],
         note_type: NoteType,
     ) -> Result<Note, NoteError> {
-        let note = self.create_p2id_note(
+        let note = create_p2id_note(
             sender_account_id,
             target_account_id,
-            asset.iter().copied(),
+            asset.to_vec(),
             note_type,
+            Felt::ZERO,
+            &mut self.rng,
         )?;
         self.add_output_note(OutputNote::Full(note.clone()));
 
@@ -589,49 +644,6 @@ impl MockChainBuilder {
         )?;
 
         Ok(note)
-    }
-
-    // NOTE CREATE METHODS
-    // ----------------------------------------------------------------------------------------
-
-    /// Creates a new P2ID note from the provided parameters.
-    ///
-    /// The note is _not_ added to the list of genesis notes. It must be created by the caller to
-    /// make it available in the mock chain, e.g. using [`Self::add_spawn_note`].
-    ///
-    /// This is a convenience wrapper around [`create_p2id_note`].
-    pub fn create_p2id_note(
-        &mut self,
-        sender_account_id: AccountId,
-        target_account_id: AccountId,
-        assets: impl IntoIterator<Item = Asset>,
-        note_type: NoteType,
-    ) -> Result<Note, NoteError> {
-        let note = create_p2id_note(
-            sender_account_id,
-            target_account_id,
-            assets.into_iter().collect::<Vec<_>>(),
-            note_type,
-            Default::default(),
-            &mut self.rng,
-        )?;
-
-        Ok(note)
-    }
-
-    /// Creates a new P2ANY note from the provided parameters.
-    ///
-    /// This note is similar to a P2ID note but can be consumed by any account.
-    ///
-    /// The note is _not_ added to the list of genesis notes. It must be created by the caller to
-    /// make it available in the mock chain, e.g. using [`Self::add_spawn_note`].
-    pub fn create_p2any_note(
-        &mut self,
-        sender_account_id: AccountId,
-        note_type: NoteType,
-        assets: impl IntoIterator<Item = Asset>,
-    ) -> anyhow::Result<Note> {
-        Ok(create_p2any_note(sender_account_id, note_type, self.rng.draw_word(), assets))
     }
 
     // HELPER FUNCTIONS

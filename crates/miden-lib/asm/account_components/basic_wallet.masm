@@ -2,5 +2,5 @@
 #
 # See the `BasicWallet` Rust type's documentation for more details.
 
-export.::miden::contracts::wallets::basic::receive_asset
-export.::miden::contracts::wallets::basic::move_asset_to_note
+pub proc ::miden::contracts::wallets::basic::receive_asset
+pub proc ::miden::contracts::wallets::basic::move_asset_to_note

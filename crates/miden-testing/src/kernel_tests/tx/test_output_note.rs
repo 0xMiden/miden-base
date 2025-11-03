@@ -51,8 +51,8 @@ use crate::kernel_tests::tx::ExecutionOutputExt;
 use crate::utils::create_public_p2any_note;
 use crate::{Auth, MockChain, TransactionContextBuilder, assert_execution_error};
 
-#[test]
-fn test_create_note() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_create_note() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
     let account_id = tx_context.account().id();
 
@@ -87,7 +87,7 @@ fn test_create_note() -> anyhow::Result<()> {
         tag = tag,
     );
 
-    let exec_output = &tx_context.execute_code_blocking(&code)?;
+    let exec_output = &tx_context.execute_code(&code).await?;
 
     assert_eq!(
         exec_output.get_kernel_mem_word(NUM_OUTPUT_NOTES_PTR),
@@ -124,18 +124,18 @@ fn test_create_note() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[test]
-fn test_create_note_with_invalid_tag() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_create_note_with_invalid_tag() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
     let invalid_tag = Felt::new((NoteType::Public as u64) << 62);
     let valid_tag: Felt = NoteTag::for_local_use_case(0, 0).unwrap().into();
 
     // Test invalid tag
-    assert!(tx_context.execute_code_blocking(&note_creation_script(invalid_tag)).is_err());
+    assert!(tx_context.execute_code(&note_creation_script(invalid_tag)).await.is_err());
 
     // Test valid tag
-    assert!(tx_context.execute_code_blocking(&note_creation_script(valid_tag)).is_ok());
+    assert!(tx_context.execute_code(&note_creation_script(valid_tag)).await.is_ok());
 
     Ok(())
 }
@@ -168,8 +168,8 @@ fn note_creation_script(tag: Felt) -> String {
     )
 }
 
-#[test]
-fn test_create_note_too_many_notes() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_create_note_too_many_notes() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
     let code = format!(
@@ -200,14 +200,14 @@ fn test_create_note_too_many_notes() -> anyhow::Result<()> {
         aux = ZERO,
     );
 
-    let exec_output = tx_context.execute_code_blocking(&code);
+    let exec_output = tx_context.execute_code(&code).await;
 
     assert_execution_error!(exec_output, ERR_TX_NUMBER_OF_OUTPUT_NOTES_EXCEEDS_LIMIT);
     Ok(())
 }
 
-#[test]
-fn test_get_output_notes_commitment() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_get_output_notes_commitment() -> anyhow::Result<()> {
     let tx_context = {
         let account =
             Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, Auth::IncrNonce);
@@ -315,9 +315,6 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
 
             push.{asset_1}
             call.output_note::add_asset
-            # => [ASSET, note_idx]
-
-            dropw drop
             # => []
 
             # create output note 2
@@ -331,9 +328,6 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
 
             push.{asset_2}
             call.output_note::add_asset
-            # => [ASSET, note_idx]
-
-            dropw drop
             # => []
 
             # compute the output notes commitment
@@ -362,7 +356,7 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
         ),
     );
 
-    let exec_output = &tx_context.execute_code_blocking(&code)?;
+    let exec_output = &tx_context.execute_code(&code).await?;
 
     assert_eq!(
         exec_output.get_kernel_mem_word(NUM_OUTPUT_NOTES_PTR),
@@ -391,8 +385,8 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[test]
-fn test_create_note_and_add_asset() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_create_note_and_add_asset() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
     let faucet_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET)?;
@@ -406,7 +400,6 @@ fn test_create_note_and_add_asset() -> anyhow::Result<()> {
         use.miden::output_note
 
         use.$kernel::prologue
-        use.mock::account
 
         begin
             exec.prologue::prepare_transaction
@@ -420,15 +413,18 @@ fn test_create_note_and_add_asset() -> anyhow::Result<()> {
             call.output_note::create
             # => [note_idx]
 
-            push.{asset}
-            call.output_note::add_asset
-            # => [ASSET, note_idx]
-
-            dropw
+            # assert that the index of the created note equals zero
+            dup assertz.err=\"index of the created note should be zero\"
             # => [note_idx]
 
+            push.{asset}
+            # => [ASSET, note_idx]
+
+            call.output_note::add_asset
+            # => []
+
             # truncate the stack
-            swapdw dropw dropw
+            dropw dropw dropw
         end
         ",
         recipient = recipient,
@@ -438,7 +434,7 @@ fn test_create_note_and_add_asset() -> anyhow::Result<()> {
         asset = asset,
     );
 
-    let exec_output = &tx_context.execute_code_blocking(&code)?;
+    let exec_output = &tx_context.execute_code(&code).await?;
 
     assert_eq!(
         exec_output.get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_ASSETS_OFFSET),
@@ -446,16 +442,11 @@ fn test_create_note_and_add_asset() -> anyhow::Result<()> {
         "asset must be stored at the correct memory location",
     );
 
-    assert_eq!(
-        exec_output.get_stack_element(0),
-        ZERO,
-        "top item on the stack is the index to the output note"
-    );
     Ok(())
 }
 
-#[test]
-fn test_create_note_and_add_multiple_assets() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_create_note_and_add_multiple_assets() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
     let faucet = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET)?;
@@ -476,9 +467,7 @@ fn test_create_note_and_add_multiple_assets() -> anyhow::Result<()> {
     let code = format!(
         "
         use.miden::output_note
-
         use.$kernel::prologue
-        use.mock::account
 
         begin
             exec.prologue::prepare_transaction
@@ -491,24 +480,28 @@ fn test_create_note_and_add_multiple_assets() -> anyhow::Result<()> {
             call.output_note::create
             # => [note_idx]
 
-            push.{asset}
-            call.output_note::add_asset dropw
+            # assert that the index of the created note equals zero
+            dup assertz.err=\"index of the created note should be zero\"
             # => [note_idx]
 
-            push.{asset_2}
-            call.output_note::add_asset dropw
+            dup push.{asset}
+            call.output_note::add_asset
             # => [note_idx]
 
-            push.{asset_3}
-            call.output_note::add_asset dropw
+            dup push.{asset_2}
+            call.output_note::add_asset
+            # => [note_idx]
+
+            dup push.{asset_3}
+            call.output_note::add_asset
             # => [note_idx]
 
             push.{nft}
-            call.output_note::add_asset dropw
-            # => [note_idx]
+            call.output_note::add_asset
+            # => []
 
             # truncate the stack
-            swapdw dropw drop drop drop
+            repeat.7 dropw end
         end
         ",
         recipient = recipient,
@@ -520,7 +513,7 @@ fn test_create_note_and_add_multiple_assets() -> anyhow::Result<()> {
         nft = non_fungible_asset_encoded,
     );
 
-    let exec_output = &tx_context.execute_code_blocking(&code)?;
+    let exec_output = &tx_context.execute_code(&code).await?;
 
     assert_eq!(
         exec_output.get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_ASSETS_OFFSET),
@@ -540,16 +533,11 @@ fn test_create_note_and_add_multiple_assets() -> anyhow::Result<()> {
         "non_fungible_asset must be stored at the correct memory location",
     );
 
-    assert_eq!(
-        exec_output.get_stack_element(0),
-        ZERO,
-        "top item on the stack is the index to the output note"
-    );
     Ok(())
 }
 
-#[test]
-fn test_create_note_and_add_same_nft_twice() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_create_note_and_add_same_nft_twice() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
     let recipient = Word::from([0, 1, 2, 3u32]);
@@ -574,18 +562,17 @@ fn test_create_note_and_add_same_nft_twice() -> anyhow::Result<()> {
             push.{tag}
 
             call.output_note::create
-            # => [note_idx, pad(15)]
+            # => [note_idx]
+
+            dup push.{nft}
+            # => [NFT, note_idx, note_idx]
+
+            call.output_note::add_asset
+            # => [note_idx]
 
             push.{nft}
             call.output_note::add_asset
-            # => [NFT, note_idx, pad(15)]
-            dropw
-
-            push.{nft}
-            call.output_note::add_asset
-            # => [NFT, note_idx, pad(15)]
-
-            repeat.5 dropw end
+            # => []
         end
         ",
         recipient = recipient,
@@ -596,7 +583,7 @@ fn test_create_note_and_add_same_nft_twice() -> anyhow::Result<()> {
         nft = encoded,
     );
 
-    let exec_output = tx_context.execute_code_blocking(&code);
+    let exec_output = tx_context.execute_code(&code).await;
 
     assert_execution_error!(exec_output, ERR_NON_FUNGIBLE_ASSET_ALREADY_EXISTS);
     Ok(())
@@ -625,8 +612,8 @@ async fn creating_note_with_fungible_asset_amount_zero_works() -> anyhow::Result
     Ok(())
 }
 
-#[test]
-fn test_build_recipient_hash() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_build_recipient_hash() -> anyhow::Result<()> {
     let tx_context = {
         let account =
             Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, Auth::IncrNonce);
@@ -694,7 +681,7 @@ fn test_build_recipient_hash() -> anyhow::Result<()> {
         aux = aux,
     );
 
-    let exec_output = &tx_context.execute_code_blocking(&code)?;
+    let exec_output = &tx_context.execute_code(&code).await?;
 
     assert_eq!(
         exec_output.get_kernel_mem_word(NUM_OUTPUT_NOTES_PTR),

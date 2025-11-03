@@ -100,8 +100,8 @@ use crate::{
     assert_transaction_executor_error,
 };
 
-#[test]
-fn test_transaction_prologue() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_transaction_prologue() -> anyhow::Result<()> {
     let mut tx_context = {
         let account =
             Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, Auth::IncrNonce);
@@ -155,7 +155,7 @@ fn test_transaction_prologue() -> anyhow::Result<()> {
         .with_note_args(note_args_map);
 
     tx_context.set_tx_args(tx_args);
-    let exec_output = &tx_context.execute_code_blocking(code)?;
+    let exec_output = &tx_context.execute_code(code).await?;
 
     global_input_memory_assertions(exec_output, &tx_context);
     block_data_memory_assertions(exec_output, &tx_context);
@@ -685,7 +685,7 @@ pub async fn create_account_non_fungible_faucet_invalid_initial_reserved_slot() 
     // Create a storage map with a mock asset to make it non-empty.
     let asset = NonFungibleAsset::mock(&[1, 2, 3, 4]);
     let non_fungible_storage_map =
-        StorageMap::with_entries([(asset.vault_key(), asset.into())]).unwrap();
+        StorageMap::with_entries([(asset.vault_key().into(), asset.into())]).unwrap();
     let storage = AccountStorage::new(vec![StorageSlot::Map(non_fungible_storage_map)]).unwrap();
 
     let account = AccountBuilder::new([1; 32])
@@ -752,8 +752,8 @@ pub async fn create_account_invalid_seed() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[test]
-fn test_get_blk_version() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_get_blk_version() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
     let code = "
     use.$kernel::memory
@@ -768,7 +768,7 @@ fn test_get_blk_version() -> anyhow::Result<()> {
     end
     ";
 
-    let exec_output = tx_context.execute_code_blocking(code)?;
+    let exec_output = tx_context.execute_code(code).await?;
 
     assert_eq!(
         exec_output.get_stack_element(0),
@@ -778,8 +778,8 @@ fn test_get_blk_version() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[test]
-fn test_get_blk_timestamp() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_get_blk_timestamp() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
     let code = "
     use.$kernel::memory
@@ -794,7 +794,7 @@ fn test_get_blk_timestamp() -> anyhow::Result<()> {
     end
     ";
 
-    let exec_output = tx_context.execute_code_blocking(code)?;
+    let exec_output = tx_context.execute_code(code).await?;
 
     assert_eq!(
         exec_output.get_stack_element(0),

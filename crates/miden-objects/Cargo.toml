@@ -26,6 +26,7 @@ std = [
   "dep:toml",
   "miden-assembly/std",
   "miden-core/std",
+  "miden-crypto/concurrent",
   "miden-crypto/std",
   "miden-processor/std",
   "miden-verifier/std",
@@ -34,14 +35,15 @@ testing = ["dep:rand_xoshiro", "dep:winter-rand-utils", "miden-air/testing"]
 
 [dependencies]
 # Miden dependencies
-miden-assembly     = { workspace = true }
-miden-core         = { workspace = true }
-miden-crypto       = { workspace = true }
-miden-mast-package = { workspace = true }
-miden-processor    = { workspace = true }
-miden-utils-sync   = { workspace = true }
-miden-verifier     = { workspace = true }
-winter-rand-utils  = { optional = true, version = "0.13" }
+miden-assembly        = { workspace = true }
+miden-assembly-syntax = { workspace = true }
+miden-core            = { workspace = true }
+miden-crypto          = { workspace = true }
+miden-mast-package    = { workspace = true }
+miden-processor       = { workspace = true }
+miden-utils-sync      = { workspace = true }
+miden-verifier        = { workspace = true }
+winter-rand-utils     = { optional = true, version = "0.13" }
 
 # External dependencies
 bech32       = { default-features = false, features = ["alloc"], version = "0.11" }

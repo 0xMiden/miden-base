@@ -61,7 +61,7 @@ impl AccountProcedureIndexMap {
     /// Returns an error if the procedure at the top of the operand stack is not present in this
     /// map.
     pub fn get_proc_index(&self, process: &ProcessState) -> Result<u8, TransactionKernelError> {
-        // get current account code commitment
+        // get active account code commitment
         let code_commitment = {
             let account_stack_top_ptr = process
                 .get_mem_value(process.ctx(), ACCOUNT_STACK_TOP_PTR)
@@ -74,12 +74,12 @@ impl AccountProcedureIndexMap {
                         .try_into()
                         .expect("account stack top pointer should be less than u32::MAX"),
                 )
-                .expect("Current account pointer was not initialized")
+                .expect("active account pointer was not initialized")
                 .as_int();
             process
                 .get_mem_word(process.ctx(), curr_data_ptr as u32 + ACCT_CODE_COMMITMENT_OFFSET)
                 .expect("failed to read a word from memory")
-                .expect("current account code commitment was not initialized")
+                .expect("active account code commitment was not initialized")
         };
 
         let proc_root = process.get_stack_word(1);

@@ -4,21 +4,18 @@ use std::vec::Vec;
 
 use anyhow::Context;
 use miden_block_prover::LocalBlockProver;
-use miden_objects::MIN_PROOF_SECURITY_LEVEL;
+use miden_lib::note::create_p2id_note;
 use miden_objects::asset::FungibleAsset;
 use miden_objects::batch::BatchNoteTree;
-use miden_objects::block::{
-    AccountTree,
-    BlockInputs,
-    BlockNoteIndex,
-    BlockNoteTree,
-    ProposedBlock,
-};
+use miden_objects::block::account_tree::AccountTree;
+use miden_objects::block::{BlockInputs, BlockNoteIndex, BlockNoteTree, ProposedBlock};
 use miden_objects::crypto::merkle::Smt;
 use miden_objects::note::NoteType;
 use miden_objects::transaction::InputNoteCommitment;
+use miden_objects::{MIN_PROOF_SECURITY_LEVEL, ZERO};
 
 use crate::kernel_tests::block::utils::MockChainBlockExt;
+use crate::utils::create_p2any_note;
 use crate::{Auth, MockChain};
 
 /// Tests the outputs of a proven block with transactions that consume notes, create output notes
@@ -37,14 +34,38 @@ async fn proven_block_success() -> anyhow::Result<()> {
     let account2 = builder.add_existing_mock_account_with_assets(Auth::IncrNonce, [asset])?;
     let account3 = builder.add_existing_mock_account_with_assets(Auth::IncrNonce, [asset])?;
 
-    let output_note0 =
-        builder.create_p2id_note(account0.id(), account0.id(), [asset], NoteType::Private)?;
-    let output_note1 =
-        builder.create_p2id_note(account1.id(), account1.id(), [asset], NoteType::Private)?;
-    let output_note2 =
-        builder.create_p2id_note(account2.id(), account2.id(), [asset], NoteType::Private)?;
-    let output_note3 =
-        builder.create_p2id_note(account3.id(), account3.id(), [asset], NoteType::Private)?;
+    let output_note0 = create_p2id_note(
+        account0.id(),
+        account0.id(),
+        vec![asset],
+        NoteType::Private,
+        ZERO,
+        builder.rng_mut(),
+    )?;
+    let output_note1 = create_p2id_note(
+        account1.id(),
+        account1.id(),
+        vec![asset],
+        NoteType::Private,
+        ZERO,
+        builder.rng_mut(),
+    )?;
+    let output_note2 = create_p2id_note(
+        account2.id(),
+        account2.id(),
+        vec![asset],
+        NoteType::Private,
+        ZERO,
+        builder.rng_mut(),
+    )?;
+    let output_note3 = create_p2id_note(
+        account3.id(),
+        account3.id(),
+        vec![asset],
+        NoteType::Private,
+        ZERO,
+        builder.rng_mut(),
+    )?;
 
     let input_note0 = builder.add_spawn_note([&output_note0])?;
     let input_note1 = builder.add_spawn_note([&output_note1])?;
@@ -215,9 +236,9 @@ async fn proven_block_erasing_unauthenticated_notes() -> anyhow::Result<()> {
     // The builder will use an rng which randomizes the note IDs and therefore their position in the
     // output note batches. This is useful to test that the block note tree is correctly
     // computed no matter at what index the erased note ends up in.
-    let output_note0 = builder.create_p2any_note(account0.id(), NoteType::Private, [])?;
-    let output_note2 = builder.create_p2any_note(account2.id(), NoteType::Private, [])?;
-    let output_note3 = builder.create_p2any_note(account3.id(), NoteType::Private, [])?;
+    let output_note0 = create_p2any_note(account0.id(), NoteType::Private, [], builder.rng_mut());
+    let output_note2 = create_p2any_note(account2.id(), NoteType::Private, [], builder.rng_mut());
+    let output_note3 = create_p2any_note(account3.id(), NoteType::Private, [], builder.rng_mut());
 
     // Sanity check that these notes have different IDs.
     assert_ne!(output_note0.id(), output_note2.id());
@@ -372,7 +393,7 @@ async fn proven_block_succeeds_with_empty_batches() -> anyhow::Result<()> {
     assert_eq!(latest_block_header.commitment(), blockx.commitment());
 
     // Sanity check: The account and nullifier tree roots should not be the empty tree roots.
-    assert_ne!(latest_block_header.account_root(), AccountTree::new().root());
+    assert_ne!(latest_block_header.account_root(), AccountTree::<Smt>::default().root());
     assert_ne!(latest_block_header.nullifier_root(), Smt::new().root());
 
     let (_, empty_partial_blockchain) = chain.latest_selective_partial_blockchain([])?;

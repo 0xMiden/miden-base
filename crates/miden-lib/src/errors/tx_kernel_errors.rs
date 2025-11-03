@@ -28,8 +28,8 @@ pub const ERR_ACCOUNT_ID_UNKNOWN_STORAGE_MODE: MasmError = MasmError::from_stati
 pub const ERR_ACCOUNT_ID_UNKNOWN_VERSION: MasmError = MasmError::from_static_str("unknown version in account ID");
 /// Error Message: "storage size can only be zero if storage offset is also zero"
 pub const ERR_ACCOUNT_INVALID_STORAGE_OFFSET_FOR_SIZE: MasmError = MasmError::from_static_str("storage size can only be zero if storage offset is also zero");
-/// Error Message: "the current account is not native"
-pub const ERR_ACCOUNT_IS_NOT_NATIVE: MasmError = MasmError::from_static_str("the current account is not native");
+/// Error Message: "the active account is not native"
+pub const ERR_ACCOUNT_IS_NOT_NATIVE: MasmError = MasmError::from_static_str("the active account is not native");
 /// Error Message: "account nonce is already at its maximum possible value"
 pub const ERR_ACCOUNT_NONCE_AT_MAX: MasmError = MasmError::from_static_str("account nonce is already at its maximum possible value");
 /// Error Message: "account nonce can only be incremented once"
@@ -50,10 +50,12 @@ pub const ERR_ACCOUNT_SETTING_MAP_ITEM_ON_NON_MAP_SLOT: MasmError = MasmError::f
 pub const ERR_ACCOUNT_SETTING_VALUE_ITEM_ON_NON_VALUE_SLOT: MasmError = MasmError::from_static_str("failed to write an account value item to a non-value storage slot");
 /// Error Message: "depth of the nested FPI calls exceeded 64"
 pub const ERR_ACCOUNT_STACK_OVERFLOW: MasmError = MasmError::from_static_str("depth of the nested FPI calls exceeded 64");
-/// Error Message: "failed to end foreign context because the current account is the native account"
-pub const ERR_ACCOUNT_STACK_UNDERFLOW: MasmError = MasmError::from_static_str("failed to end foreign context because the current account is the native account");
+/// Error Message: "failed to end foreign context because the active account is the native account"
+pub const ERR_ACCOUNT_STACK_UNDERFLOW: MasmError = MasmError::from_static_str("failed to end foreign context because the active account is the native account");
 /// Error Message: "computed account storage commitment does not match recorded account storage commitment"
 pub const ERR_ACCOUNT_STORAGE_COMMITMENT_MISMATCH: MasmError = MasmError::from_static_str("computed account storage commitment does not match recorded account storage commitment");
+/// Error Message: "storage map entries provided as advice inputs do not have the same storage map root as the root of the map the new account commits to"
+pub const ERR_ACCOUNT_STORAGE_MAP_ENTRIES_DO_NOT_MATCH_MAP_ROOT: MasmError = MasmError::from_static_str("storage map entries provided as advice inputs do not have the same storage map root as the root of the map the new account commits to");
 /// Error Message: "provided storage slot index is out of bounds"
 pub const ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS: MasmError = MasmError::from_static_str("provided storage slot index is out of bounds");
 /// Error Message: "number of account procedures exceeds the maximum limit of 256"
@@ -63,6 +65,8 @@ pub const ERR_ACCOUNT_TOO_MANY_STORAGE_SLOTS: MasmError = MasmError::from_static
 
 /// Error Message: "executed transaction neither changed the account state, nor consumed any notes"
 pub const ERR_EPILOGUE_EXECUTED_TRANSACTION_IS_EMPTY: MasmError = MasmError::from_static_str("executed transaction neither changed the account state, nor consumed any notes");
+/// Error Message: "nonce cannot be 0 after an account-creating transaction"
+pub const ERR_EPILOGUE_NONCE_CANNOT_BE_0: MasmError = MasmError::from_static_str("nonce cannot be 0 after an account-creating transaction");
 /// Error Message: "total number of assets in the account and all involved notes must stay the same"
 pub const ERR_EPILOGUE_TOTAL_NUMBER_OF_ASSETS_MUST_STAY_THE_SAME: MasmError = MasmError::from_static_str("total number of assets in the account and all involved notes must stay the same");
 

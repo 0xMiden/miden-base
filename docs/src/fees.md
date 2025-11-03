@@ -1,3 +1,7 @@
+---
+sidebar_position: 5.1
+---
+
 # Fees
 
 Miden transactions pay a fee that is computed and charged automatically by the transaction kernel during the epilogue.

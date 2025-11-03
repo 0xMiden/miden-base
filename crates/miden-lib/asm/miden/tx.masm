@@ -241,7 +241,7 @@ export.execute_foreign_procedure.4
     dyncall
     # => [<values returned from the foreign procedure>]
 
-    # reset the current account data offset to the native offset (2048)
+    # reset the active account data offset to the native offset (2048)
     push.0.0.0 padw padw padw
     exec.kernel_proc_offsets::tx_end_foreign_context_offset
     # => [offset, pad(15), <values returned from the foreign procedure>]

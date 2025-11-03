@@ -3,12 +3,13 @@ use alloc::vec::Vec;
 
 use miden_lib::testing::note::NoteBuilder;
 use miden_lib::transaction::TransactionKernel;
-use miden_objects::Word;
 use miden_objects::account::AccountId;
 use miden_objects::asset::Asset;
+use miden_objects::crypto::rand::FeltRng;
 use miden_objects::note::{Note, NoteType};
 use miden_objects::testing::storage::prepare_assets;
 use miden_processor::Felt;
+use miden_processor::crypto::RpoRandomCoin;
 use rand::SeedableRng;
 use rand::rngs::SmallRng;
 
@@ -77,7 +78,8 @@ pub fn create_public_p2any_note(
     sender: AccountId,
     assets: impl IntoIterator<Item = Asset>,
 ) -> Note {
-    create_p2any_note(sender, NoteType::Public, Word::from([1, 2, 3, 4u32]), assets)
+    let mut rng = RpoRandomCoin::new(Default::default());
+    create_p2any_note(sender, NoteType::Public, assets, &mut rng)
 }
 
 /// Creates a `P2ANY` note.
@@ -89,9 +91,10 @@ pub fn create_public_p2any_note(
 pub fn create_p2any_note(
     sender: AccountId,
     note_type: NoteType,
-    serial_number: Word,
     assets: impl IntoIterator<Item = Asset>,
+    rng: &mut RpoRandomCoin,
 ) -> Note {
+    let serial_number = rng.draw_word();
     let assets: Vec<_> = assets.into_iter().collect();
     let mut code_body = String::new();
     for i in 0..assets.len() {
@@ -205,7 +208,7 @@ fn note_script_that_creates_notes<'note>(
 
         // Make sure that the transaction's native account matches the note sender.
         out.push_str(&format!(
-            r#"exec.::miden::account::get_native_id
+            r#"exec.::miden::native_account::get_id
              # => [native_account_id_prefix, native_account_id_suffix]
              push.{sender_prefix} assert_eq.err="sender ID prefix does not match native account ID's prefix"
              # => [native_account_id_suffix]

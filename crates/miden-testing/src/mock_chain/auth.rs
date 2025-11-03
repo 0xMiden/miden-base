@@ -7,6 +7,7 @@ use miden_lib::account::auth::{
     AuthRpoFalcon512Acl,
     AuthRpoFalcon512AclConfig,
     AuthRpoFalcon512Multisig,
+    AuthRpoFalcon512MultisigConfig,
 };
 use miden_lib::testing::account_component::{ConditionalAuthComponent, IncrNonceAuthComponent};
 use miden_objects::Word;
@@ -25,7 +26,11 @@ pub enum Auth {
     BasicAuth,
 
     /// Multisig
-    Multisig { threshold: u32, approvers: Vec<Word> },
+    Multisig {
+        threshold: u32,
+        approvers: Vec<Word>,
+        proc_threshold_map: Vec<(Word, u32)>,
+    },
 
     /// Creates a secret key for the account, and creates a [BasicAuthenticator] used to
     /// authenticate the account with [AuthRpoFalcon512Acl]. Authentication will only be
@@ -66,11 +71,14 @@ impl Auth {
 
                 (component, Some(authenticator))
             },
-            Auth::Multisig { threshold, approvers } => {
+            Auth::Multisig { threshold, approvers, proc_threshold_map } => {
                 let pub_keys: Vec<_> =
                     approvers.iter().map(|word| PublicKeyCommitment::from(*word)).collect();
 
-                let component = AuthRpoFalcon512Multisig::new(*threshold, pub_keys)
+                let config = AuthRpoFalcon512MultisigConfig::new(pub_keys, *threshold)
+                    .and_then(|cfg| cfg.with_proc_thresholds(proc_threshold_map.clone()))
+                    .expect("invalid multisig config");
+                let component = AuthRpoFalcon512Multisig::new(config)
                     .expect("multisig component creation failed")
                     .into();
 

@@ -9,40 +9,94 @@ use crate::account::components::rpo_falcon_512_multisig_library;
 // MULTISIG AUTHENTICATION COMPONENT
 // ================================================================================================
 
-/// An [`AccountComponent`] implementing a multisig based on RpoFalcon512 signatures.
-///
-/// This component requires a threshold number of signatures from a set of approvers.
-///
-/// The storage layout is:
-/// - Slot 0(value): [threshold, num_approvers, 0, 0]
-/// - Slot 1(map): A map with approver public keys (index -> pubkey)
-/// - Slot 2(map): A map which stores executed transactions
-///
-/// This component supports all account types.
-#[derive(Debug)]
-pub struct AuthRpoFalcon512Multisig {
-    threshold: u32,
+/// Configuration for [`AuthRpoFalcon512Multisig`] component.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AuthRpoFalcon512MultisigConfig {
     approvers: Vec<PublicKeyCommitment>,
+    default_threshold: u32,
+    proc_thresholds: Vec<(Word, u32)>,
 }
 
-impl AuthRpoFalcon512Multisig {
-    /// Creates a new [`AuthRpoFalcon512Multisig`] component with the given `threshold` and
-    /// list of approver public keys.
+impl AuthRpoFalcon512MultisigConfig {
+    /// Creates a new configuration with the given approvers and a default threshold.
     ///
-    /// # Errors
-    /// Returns an error if threshold is 0 or greater than the number of approvers.
-    pub fn new(threshold: u32, approvers: Vec<PublicKeyCommitment>) -> Result<Self, AccountError> {
-        if threshold == 0 {
+    /// The `default_threshold` must be at least 1 and at most the number of approvers.
+    pub fn new(
+        approvers: Vec<PublicKeyCommitment>,
+        default_threshold: u32,
+    ) -> Result<Self, AccountError> {
+        if default_threshold == 0 {
             return Err(AccountError::other("threshold must be at least 1"));
         }
-
-        if threshold > approvers.len() as u32 {
+        if default_threshold > approvers.len() as u32 {
             return Err(AccountError::other(
                 "threshold cannot be greater than number of approvers",
             ));
         }
 
-        Ok(Self { threshold, approvers })
+        Ok(Self {
+            approvers,
+            default_threshold,
+            proc_thresholds: vec![],
+        })
+    }
+
+    /// Attaches a per-procedure threshold map. Each procedure threshold must be at least 1 and
+    /// at most the number of approvers.
+    pub fn with_proc_thresholds(
+        mut self,
+        proc_thresholds: Vec<(Word, u32)>,
+    ) -> Result<Self, AccountError> {
+        for (_, threshold) in &proc_thresholds {
+            if *threshold == 0 {
+                return Err(AccountError::other("procedure threshold must be at least 1"));
+            }
+            if *threshold > self.approvers.len() as u32 {
+                return Err(AccountError::other(
+                    "procedure threshold cannot be greater than number of approvers",
+                ));
+            }
+        }
+        self.proc_thresholds = proc_thresholds;
+        Ok(self)
+    }
+
+    pub fn approvers(&self) -> &[PublicKeyCommitment] {
+        &self.approvers
+    }
+
+    pub fn default_threshold(&self) -> u32 {
+        self.default_threshold
+    }
+
+    pub fn proc_thresholds(&self) -> &[(Word, u32)] {
+        &self.proc_thresholds
+    }
+}
+
+/// An [`AccountComponent`] implementing a multisig based on RpoFalcon512 signatures.
+///
+/// It enforces a threshold of approver signatures for every transaction, with optional
+/// per-procedure thresholds overrides. Non-uniform thresholds (especially a threshold of one)
+/// should be used with caution for private multisig accounts, as a single approver could withhold
+///  the new state from other approvers, effectively locking them out.
+///
+/// The storage layout is:
+/// - Slot 0(value): [threshold, num_approvers, 0, 0]
+/// - Slot 1(map): A map with approver public keys (index -> pubkey)
+/// - Slot 2(map): A map which stores executed transactions
+/// - Slot 3(map): A map which stores procedure thresholds (PROC_ROOT -> threshold)
+///
+/// This component supports all account types.
+#[derive(Debug)]
+pub struct AuthRpoFalcon512Multisig {
+    config: AuthRpoFalcon512MultisigConfig,
+}
+
+impl AuthRpoFalcon512Multisig {
+    /// Creates a new [`AuthRpoFalcon512Multisig`] component from the provided configuration.
+    pub fn new(config: AuthRpoFalcon512MultisigConfig) -> Result<Self, AccountError> {
+        Ok(Self { config })
     }
 }
 
@@ -51,9 +105,9 @@ impl From<AuthRpoFalcon512Multisig> for AccountComponent {
         let mut storage_slots = Vec::with_capacity(3);
 
         // Slot 0: [threshold, num_approvers, 0, 0]
-        let num_approvers = multisig.approvers.len() as u32;
+        let num_approvers = multisig.config.approvers().len() as u32;
         storage_slots.push(StorageSlot::Value(Word::from([
-            multisig.threshold,
+            multisig.config.default_threshold(),
             num_approvers,
             0,
             0,
@@ -61,7 +115,8 @@ impl From<AuthRpoFalcon512Multisig> for AccountComponent {
 
         // Slot 1: A map with approver public keys
         let map_entries = multisig
-            .approvers
+            .config
+            .approvers()
             .iter()
             .enumerate()
             .map(|(i, pub_key)| (Word::from([i as u32, 0, 0, 0]), (*pub_key).into()));
@@ -72,6 +127,17 @@ impl From<AuthRpoFalcon512Multisig> for AccountComponent {
         // Slot 2: A map which stores executed transactions
         let executed_transactions = StorageMap::default();
         storage_slots.push(StorageSlot::Map(executed_transactions));
+
+        // Slot 3: A map which stores procedure thresholds (PROC_ROOT -> threshold)
+        let proc_threshold_roots = StorageMap::with_entries(
+            multisig
+                .config
+                .proc_thresholds()
+                .iter()
+                .map(|(proc_root, threshold)| (*proc_root, Word::from([*threshold, 0, 0, 0]))),
+        )
+        .unwrap();
+        storage_slots.push(StorageSlot::Map(proc_threshold_roots));
 
         AccountComponent::new(rpo_falcon_512_multisig_library(), storage_slots)
             .expect("Multisig auth component should satisfy the requirements of a valid account component")
@@ -100,8 +166,11 @@ mod tests {
         let threshold = 2u32;
 
         // Create multisig component
-        let multisig_component = AuthRpoFalcon512Multisig::new(threshold, approvers.clone())
-            .expect("multisig component creation failed");
+        let multisig_component = AuthRpoFalcon512Multisig::new(
+            AuthRpoFalcon512MultisigConfig::new(approvers.clone(), threshold)
+                .expect("invalid multisig config"),
+        )
+        .expect("multisig component creation failed");
 
         // Build account with multisig component
         let account = AccountBuilder::new([0; 32])
@@ -131,8 +200,11 @@ mod tests {
         let approvers = vec![pub_key];
         let threshold = 1u32;
 
-        let multisig_component = AuthRpoFalcon512Multisig::new(threshold, approvers.clone())
-            .expect("multisig component creation failed");
+        let multisig_component = AuthRpoFalcon512Multisig::new(
+            AuthRpoFalcon512MultisigConfig::new(approvers.clone(), threshold)
+                .expect("invalid multisig config"),
+        )
+        .expect("multisig component creation failed");
 
         let account = AccountBuilder::new([0; 32])
             .with_auth_component(multisig_component)
@@ -158,11 +230,11 @@ mod tests {
         let approvers = vec![pub_key];
 
         // Test threshold = 0 (should fail)
-        let result = AuthRpoFalcon512Multisig::new(0, approvers.clone());
+        let result = AuthRpoFalcon512MultisigConfig::new(approvers.clone(), 0);
         assert!(result.unwrap_err().to_string().contains("threshold must be at least 1"));
 
         // Test threshold > number of approvers (should fail)
-        let result = AuthRpoFalcon512Multisig::new(2, approvers);
+        let result = AuthRpoFalcon512MultisigConfig::new(approvers, 2);
         assert!(
             result
                 .unwrap_err()

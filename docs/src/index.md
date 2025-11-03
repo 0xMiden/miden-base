@@ -1,4 +1,9 @@
-# Miden architecture overview
+---
+sidebar_position: 1
+title: Overview
+---
+
+# Miden Architecture Overview
 
 Miden’s architecture departs considerably from typical blockchain designs to support privacy and parallel transaction execution.
 
@@ -8,9 +13,9 @@ However, user generated zero-knowledge proofs allow state transitions, e.g. tran
 
 ## Miden design goals
 
-* High throughput: The ability to process a high number of transactions (state changes) over a given time interval.
-* Privacy: The ability to keep data known to one’s self and anonymous while processing and/or storing it.
-* Asset safety: Maintaining a low risk of mistakes or malicious behavior leading to asset loss.
+- High throughput: The ability to process a high number of transactions (state changes) over a given time interval.
+- Privacy: The ability to keep data known to one’s self and anonymous while processing and/or storing it.
+- Asset safety: Maintaining a low risk of mistakes or malicious behavior leading to asset loss.
 
 ## Actor model
 
@@ -24,23 +29,23 @@ Miden uses _accounts_ and _notes_, both of which hold assets. Accounts consume a
 
 ### Accounts
 
-An [Account](account/overview.md) can hold assets and define rules how assets can be transferred. Accounts can represent users or autonomous smart contracts. The [account chapter](account/overview.md) describes the design of an account, its storage types, and creating an account.
+An [Account](account/index.md) can hold assets and define rules how assets can be transferred. Accounts can represent users or autonomous smart contracts. The [account chapter](account/index.md) describes the design of an account, its storage types, and creating an account.
 
 ### Notes
 
-A [Note](note.md) is a message that accounts send to each other. A note stores assets and a script that defines how the note can be consumed. The [note chapter](note.md) describes the design, the storage types, and the creation of a note.
+A [Note](note) is a message that accounts send to each other. A note stores assets and a script that defines how the note can be consumed. The [note chapter](note) describes the design, the storage types, and the creation of a note.
 
 ### Assets
 
-An [Asset](asset.md) can be fungible and non-fungible. They are stored in the owner’s account itself or in a note. The [asset chapter](asset.md) describes asset issuance, customization, and storage.
+An [Asset](asset) can be fungible and non-fungible. They are stored in the owner's account itself or in a note. The [asset chapter](asset) describes asset issuance, customization, and storage.
 
 ### Transactions
 
-A [Transactions](transaction.md) describe the production and consumption of notes by a single account. 
+A [Transactions](transaction) describe the production and consumption of notes by a single account.
 
-Executing a transaction always results in a STARK proof. 
+Executing a transaction always results in a STARK proof.
 
-The [transaction chapter](transaction.md) describes the transaction design and implementation, including an in-depth discussion of how transaction execution happens in the transaction kernel program.
+The [transaction chapter](transaction) describes the transaction design and implementation, including an in-depth discussion of how transaction execution happens in the transaction kernel program.
 
 #### Accounts produce and consume notes to communicate
 
@@ -54,11 +59,11 @@ Miden's state model captures the individual states of all accounts and notes, an
 
 ### State model
 
-[State](state.md) describes everything that is the case at a certain point in time. Individual states of accounts or notes can be stored on-chain and off-chain. This chapter describes the three different state databases in Miden.
+[State](state) describes everything that is the case at a certain point in time. Individual states of accounts or notes can be stored on-chain and off-chain. This chapter describes the three different state databases in Miden.
 
 ### Blockchain
 
-The [Blockchain](blockchain.md) defines how state progresses as aggregated-state-updates in batches, blocks, and epochs. The [blockchain chapter](blockchain.md) describes the execution model and how blocks are built.
+The [Blockchain](blockchain) defines how state progresses as aggregated-state-updates in batches, blocks, and epochs. The [blockchain chapter](blockchain) describes the execution model and how blocks are built.
 
 ##### Operators capture and progress state
 

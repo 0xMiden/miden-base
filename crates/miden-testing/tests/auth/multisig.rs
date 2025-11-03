@@ -1,5 +1,5 @@
-use assert_matches::assert_matches;
 use miden_lib::account::components::rpo_falcon_512_multisig_library;
+use miden_lib::account::interface::AccountInterface;
 use miden_lib::account::wallets::BasicWallet;
 use miden_lib::errors::tx_kernel_errors::ERR_TX_ALREADY_EXECUTED;
 use miden_lib::note::create_p2id_note;
@@ -20,13 +20,8 @@ use miden_processor::AdviceInputs;
 use miden_processor::crypto::RpoRandomCoin;
 use miden_testing::utils::create_spawn_note;
 use miden_testing::{Auth, MockChainBuilder, assert_transaction_executor_error};
+use miden_tx::TransactionExecutorError;
 use miden_tx::auth::{BasicAuthenticator, SigningInputs, TransactionAuthenticator};
-use miden_tx::{
-    NoteConsumptionChecker,
-    NoteConsumptionStatus,
-    TransactionExecutor,
-    TransactionExecutorError,
-};
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 
@@ -70,11 +65,12 @@ fn create_multisig_account(
     threshold: u32,
     public_keys: &[PublicKey],
     asset_amount: u64,
+    proc_threshold_map: Vec<(Word, u32)>,
 ) -> anyhow::Result<Account> {
     let approvers: Vec<_> = public_keys.iter().map(|pk| pk.to_commitment().into()).collect();
 
     let multisig_account = AccountBuilder::new([0; 32])
-        .with_auth_component(Auth::Multisig { threshold, approvers })
+        .with_auth_component(Auth::Multisig { threshold, approvers, proc_threshold_map })
         .with_component(BasicWallet)
         .account_type(AccountType::RegularAccountUpdatableCode)
         .storage_mode(AccountStorageMode::Public)
@@ -104,7 +100,8 @@ async fn test_multisig_2_of_2_with_note_creation() -> anyhow::Result<()> {
 
     // Create multisig account
     let multisig_starting_balance = 10u64;
-    let mut multisig_account = create_multisig_account(2, &public_keys, multisig_starting_balance)?;
+    let mut multisig_account =
+        create_multisig_account(2, &public_keys, multisig_starting_balance, vec![])?;
 
     let output_note_asset = FungibleAsset::mock(0);
 
@@ -189,7 +186,7 @@ async fn test_multisig_2_of_4_all_signer_combinations() -> anyhow::Result<()> {
     let (_secret_keys, public_keys, authenticators) = setup_keys_and_authenticators(4, 4)?;
 
     // Create multisig account with 4 approvers but threshold of 2
-    let multisig_account = create_multisig_account(2, &public_keys, 10)?;
+    let multisig_account = create_multisig_account(2, &public_keys, 10, vec![])?;
 
     let mut mock_chain = MockChainBuilder::with_accounts([multisig_account.clone()])
         .unwrap()
@@ -267,7 +264,7 @@ async fn test_multisig_replay_protection() -> anyhow::Result<()> {
     let (_secret_keys, public_keys, authenticators) = setup_keys_and_authenticators(3, 2)?;
 
     // Create 2/3 multisig account
-    let multisig_account = create_multisig_account(2, &public_keys, 20)?;
+    let multisig_account = create_multisig_account(2, &public_keys, 20, vec![])?;
 
     let mut mock_chain = MockChainBuilder::with_accounts([multisig_account.clone()])
         .unwrap()
@@ -343,7 +340,7 @@ async fn test_multisig_replay_protection() -> anyhow::Result<()> {
 async fn test_multisig_update_signers() -> anyhow::Result<()> {
     let (_secret_keys, public_keys, authenticators) = setup_keys_and_authenticators(2, 2)?;
 
-    let multisig_account = create_multisig_account(2, &public_keys, 10)?;
+    let multisig_account = create_multisig_account(2, &public_keys, 10, vec![])?;
 
     // SECTION 1: Execute a transaction script to update signers and threshold
     // ================================================================================
@@ -607,7 +604,7 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
 async fn test_multisig_update_signers_remove_owner() -> anyhow::Result<()> {
     // Setup 5 original owners with threshold 4
     let (_secret_keys, public_keys, authenticators) = setup_keys_and_authenticators(5, 5)?;
-    let multisig_account = create_multisig_account(4, &public_keys, 10)?;
+    let multisig_account = create_multisig_account(4, &public_keys, 10, vec![])?;
 
     // Build mock chain
     let mock_chain_builder = MockChainBuilder::with_accounts([multisig_account.clone()]).unwrap();
@@ -778,7 +775,7 @@ async fn test_multisig_new_approvers_cannot_sign_before_update() -> anyhow::Resu
 
     let (_secret_keys, public_keys, _authenticators) = setup_keys_and_authenticators(2, 2)?;
 
-    let multisig_account = create_multisig_account(2, &public_keys, 10)?;
+    let multisig_account = create_multisig_account(2, &public_keys, 10, vec![])?;
 
     let mock_chain = MockChainBuilder::with_accounts([multisig_account.clone()])
         .unwrap()
@@ -894,100 +891,163 @@ async fn test_multisig_new_approvers_cannot_sign_before_update() -> anyhow::Resu
     Ok(())
 }
 
+/// Tests that 1-of-2 approvers can consume a note but 2-of-2 are required to send a note.
+///
+/// This test verifies that a multisig account with 2 approvers and threshold 2, but a procedure
+/// threshold of 1 for note consumption, can:
+/// 1. Consume a note when only one approver signs the transaction
+/// 2. Send a note only when both approvers sign the transaction (default threshold)
 #[tokio::test]
-async fn test_check_note_consumability_multisig() -> anyhow::Result<()> {
+async fn test_multisig_proc_threshold_overrides() -> anyhow::Result<()> {
     // Setup keys and authenticators
     let (_secret_keys, public_keys, authenticators) = setup_keys_and_authenticators(2, 2)?;
 
-    // Create multisig account
-    let multisig_account = create_multisig_account(2, &public_keys, 10)?;
+    let proc_threshold_map = vec![(BasicWallet::receive_asset_digest(), 1)];
 
+    // Create multisig account
+    let multisig_starting_balance = 10u64;
+    let mut multisig_account =
+        create_multisig_account(2, &public_keys, multisig_starting_balance, proc_threshold_map)?;
+
+    // SECTION 1: Test note consumption with 1 signature
+    // ================================================================================
+
+    // 1. create a mock note from some random account
     let mut mock_chain_builder =
         MockChainBuilder::with_accounts([multisig_account.clone()]).unwrap();
 
-    let p2id_note = mock_chain_builder.add_p2id_note(
-        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE.try_into().unwrap(),
+    let note = mock_chain_builder.add_p2id_note(
+        multisig_account.id(),
         multisig_account.id(),
         &[FungibleAsset::mock(1)],
         NoteType::Public,
     )?;
 
-    let mock_chain = mock_chain_builder.build().unwrap();
+    let mut mock_chain = mock_chain_builder.build()?;
 
+    // 2. consume without signatures
     let salt = Word::from([Felt::new(1); 4]);
-
-    // get the transaction context without signatures
-    let tx_context_without_signatures = mock_chain
-        .build_tx_context(multisig_account.id(), &[p2id_note.id()], &[])?
+    let tx_context = mock_chain
+        .build_tx_context(multisig_account.id(), &[note.id()], &[])?
         .auth_args(salt)
         .build()?;
 
-    let block_ref = tx_context_without_signatures.tx_inputs().block_header().block_num();
-    let tx_args = tx_context_without_signatures.tx_args();
-    let tx_executor =
-        TransactionExecutor::<'_, '_, _, BasicAuthenticator>::new(&tx_context_without_signatures);
+    let tx_summary = match tx_context.execute().await.unwrap_err() {
+        TransactionExecutorError::Unauthorized(tx_summary) => tx_summary,
+        error => panic!("expected abort with tx summary: {error:?}"),
+    };
 
-    let notes_checker = NoteConsumptionChecker::new(&tx_executor);
-
-    // this check should return `ConsumableWithAuthorization` variant: the note is consumable, but
-    // authentication is failing
-    let consumable_with_authorization = notes_checker
-        .can_consume(
-            multisig_account.id(),
-            block_ref,
-            miden_objects::transaction::InputNote::Unauthenticated { note: p2id_note.clone() },
-            tx_args.clone(),
-        )
+    // 3. get signature from one approver
+    let msg = tx_summary.as_ref().to_commitment();
+    let tx_summary_signing = SigningInputs::TransactionSummary(tx_summary.clone());
+    let sig = authenticators[0]
+        .get_signature(public_keys[0].to_commitment().into(), &tx_summary_signing)
         .await?;
-    assert_matches!(
-        consumable_with_authorization,
-        NoteConsumptionStatus::ConsumableWithAuthorization
-    );
 
-    // execute the transaction to get the summary
-    let tx_summary = match tx_context_without_signatures.execute().await.unwrap_err() {
+    // 4. execute with signature
+    let tx_result = mock_chain
+        .build_tx_context(multisig_account.id(), &[note.id()], &[])?
+        .add_signature(public_keys[0].clone().into(), msg, sig)
+        .auth_args(salt)
+        .build()?
+        .execute()
+        .await;
+
+    assert!(tx_result.is_ok(), "Note consumption with 1 signature should succeed");
+
+    // Apply the transaction to the account
+    multisig_account.apply_delta(tx_result.as_ref().unwrap().account_delta())?;
+    mock_chain.add_pending_executed_transaction(&tx_result.unwrap())?;
+    mock_chain.prove_next_block()?;
+
+    // SECTION 2: Test note sending requires 2 signatures
+    // ================================================================================
+
+    let salt2 = Word::from([Felt::new(2); 4]);
+
+    // Create output note to send 5 units from the account
+    let output_note = create_p2id_note(
+        multisig_account.id(),
+        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE.try_into().unwrap(),
+        vec![FungibleAsset::mock(5)],
+        NoteType::Public,
+        Default::default(),
+        &mut RpoRandomCoin::new(Word::from([Felt::new(42); 4])),
+    )?;
+    let multisig_account_interface = AccountInterface::from(&multisig_account);
+    let send_note_transaction_script = multisig_account_interface.build_send_notes_script(
+        &[output_note.clone().into()],
+        None,
+        false,
+    )?;
+
+    // Execute transaction without signatures to get tx summary
+    let tx_context_init = mock_chain
+        .build_tx_context(multisig_account.id(), &[], &[])?
+        .extend_expected_output_notes(vec![OutputNote::Full(output_note.clone())])
+        .tx_script(send_note_transaction_script.clone())
+        .auth_args(salt2)
+        .build()?;
+
+    let tx_summary2 = match tx_context_init.execute().await.unwrap_err() {
         TransactionExecutorError::Unauthorized(tx_effects) => tx_effects,
         error => panic!("expected abort with tx effects: {error:?}"),
     };
-
-    // Get signatures from both approvers
-    let msg = tx_summary.as_ref().to_commitment();
-    let tx_summary = SigningInputs::TransactionSummary(tx_summary);
+    // Get signature from only ONE approver
+    let msg2 = tx_summary2.as_ref().to_commitment();
+    let tx_summary2_signing = SigningInputs::TransactionSummary(tx_summary2.clone());
 
     let sig_1 = authenticators[0]
-        .get_signature(public_keys[0].to_commitment(), &tx_summary)
-        .await?;
-    let sig_2 = authenticators[1]
-        .get_signature(public_keys[1].to_commitment(), &tx_summary)
+        .get_signature(public_keys[0].to_commitment().into(), &tx_summary2_signing)
         .await?;
 
-    // get the transaction context with signatures
-    let tx_context_with_signatures = mock_chain
-        .build_tx_context(multisig_account.id(), &[p2id_note.id()], &[])?
-        .extend_expected_output_notes(vec![OutputNote::Full(p2id_note)])
-        .add_signature(public_keys[0].to_commitment(), msg, sig_1)
-        .add_signature(public_keys[1].to_commitment(), msg, sig_2)
-        .auth_args(salt)
+    // Try to execute with only 1 signature - should FAIL
+    let tx_context_one_sig = mock_chain
+        .build_tx_context(multisig_account.id(), &[], &[])?
+        .extend_expected_output_notes(vec![OutputNote::Full(output_note.clone())])
+        .add_signature(public_keys[0].clone().into(), msg2, sig_1)
+        .tx_script(send_note_transaction_script.clone())
+        .auth_args(salt2)
         .build()?;
 
-    let block_num = tx_context_with_signatures.tx_inputs().block_header().block_num();
-    let notes = tx_context_with_signatures.tx_inputs().input_notes().clone();
-    let tx_args = tx_context_with_signatures.tx_args().clone();
-
-    let mut tx_executor = TransactionExecutor::new(&tx_context_with_signatures)
-        .with_source_manager(tx_context_with_signatures.source_manager());
-    if let Some(authenticator) = tx_context_with_signatures.authenticator() {
-        tx_executor = tx_executor.with_authenticator(authenticator);
+    let result = tx_context_one_sig.execute().await;
+    match result {
+        Err(TransactionExecutorError::Unauthorized(_)) => {
+            // Expected: transaction should fail with insufficient signatures
+        },
+        _ => panic!(
+            "Transaction should fail with Unauthorized error when only 1 signature provided for note sending"
+        ),
     }
 
-    let notes_checker = NoteConsumptionChecker::new(&tx_executor);
-
-    // this check should return `Consumable` variant: we provided the signatures, so the transaction
-    // should execute successfully.
-    let consumable_with_authorization = notes_checker
-        .can_consume(multisig_account.id(), block_num, notes.get_note(0).clone(), tx_args)
+    // Now get signatures from BOTH approvers
+    let sig_1 = authenticators[0]
+        .get_signature(public_keys[0].to_commitment().into(), &tx_summary2_signing)
         .await?;
-    assert_matches!(consumable_with_authorization, NoteConsumptionStatus::Consumable);
+    let sig_2 = authenticators[1]
+        .get_signature(public_keys[1].to_commitment().into(), &tx_summary2_signing)
+        .await?;
+
+    // Execute with 2 signatures - should SUCCEED
+    let result = mock_chain
+        .build_tx_context(multisig_account.id(), &[], &[])?
+        .extend_expected_output_notes(vec![OutputNote::Full(output_note)])
+        .add_signature(public_keys[0].clone().into(), msg2, sig_1)
+        .add_signature(public_keys[1].clone().into(), msg2, sig_2)
+        .auth_args(salt2)
+        .tx_script(send_note_transaction_script)
+        .build()?
+        .execute()
+        .await;
+
+    assert!(result.is_ok(), "Transaction should succeed with 2 signatures for note sending");
+
+    // Apply the transaction to the account
+    multisig_account.apply_delta(result.as_ref().unwrap().account_delta())?;
+    mock_chain.add_pending_executed_transaction(&result.unwrap())?;
+    mock_chain.prove_next_block()?;
+
+    assert_eq!(multisig_account.vault().get_balance(FungibleAsset::mock_issuer())?, 6);
 
     Ok(())
 }

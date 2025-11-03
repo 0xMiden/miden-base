@@ -7,7 +7,7 @@ use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::{Account, AccountId, PartialAccount, StorageMapWitness, StorageSlot};
 use miden_objects::assembly::debuginfo::{SourceLanguage, Uri};
 use miden_objects::assembly::{SourceManager, SourceManagerSync};
-use miden_objects::asset::AssetWitness;
+use miden_objects::asset::{AssetVaultKey, AssetWitness};
 use miden_objects::block::{AccountWitness, BlockHeader, BlockNumber};
 use miden_objects::note::{Note, NoteScript};
 use miden_objects::transaction::{
@@ -56,14 +56,6 @@ pub struct TransactionContext {
 }
 
 impl TransactionContext {
-    /// TODO: Remove.
-    pub fn execute_code_blocking(&self, code: &str) -> Result<ExecutionOutput, ExecutionError> {
-        tokio::runtime::Builder::new_current_thread()
-            .build()
-            .unwrap()
-            .block_on(self.execute_code(code))
-    }
-
     /// Executes arbitrary code within the context of a mocked transaction environment and returns
     /// the resulting [`ExecutionOutput`].
     ///
@@ -236,7 +228,7 @@ impl DataStore for TransactionContext {
         &self,
         account_id: AccountId,
         vault_root: Word,
-        vault_key: Word,
+        asset_key: AssetVaultKey,
     ) -> impl FutureMaybeSend<Result<AssetWitness, DataStoreError>> {
         async move {
             if account_id == self.account().id() {
@@ -247,7 +239,7 @@ impl DataStore for TransactionContext {
                     )));
                 }
 
-                Ok(self.account().vault().open(vault_key))
+                Ok(self.account().vault().open(asset_key))
             } else {
                 let (foreign_account, _witness) = self
                     .foreign_account_inputs
@@ -270,7 +262,7 @@ impl DataStore for TransactionContext {
                     )));
                 }
 
-                Ok(foreign_account.vault().open(vault_key))
+                Ok(foreign_account.vault().open(asset_key))
             }
         }
     }
