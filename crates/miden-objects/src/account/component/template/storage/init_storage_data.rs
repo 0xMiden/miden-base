@@ -1,7 +1,9 @@
 use alloc::collections::BTreeMap;
 use alloc::string::String;
+use alloc::vec::Vec;
 
 use super::StorageValueName;
+use crate::Word;
 
 /// Represents the data required to initialize storage entries when instantiating an
 /// [AccountComponent](crate::account::AccountComponent) from a
@@ -12,6 +14,8 @@ use super::StorageValueName;
 pub struct InitStorageData {
     /// A mapping of storage placeholder names to their corresponding storage values.
     storage_placeholders: BTreeMap<StorageValueName, String>,
+    /// A mapping of map placeholder names to their corresponding key/value entries.
+    map_entries: BTreeMap<StorageValueName, Vec<(Word, Word)>>,
 }
 
 impl InitStorageData {
@@ -29,6 +33,7 @@ impl InitStorageData {
                 .into_iter()
                 .filter(|(entry_name, _)| !entry_name.as_str().is_empty())
                 .collect(),
+            map_entries: BTreeMap::new(),
         }
     }
 
@@ -41,5 +46,19 @@ impl InitStorageData {
     /// [`Option::None`] if the placeholder is not present.
     pub fn get(&self, key: &StorageValueName) -> Option<&String> {
         self.storage_placeholders.get(key)
+    }
+
+    /// Inserts fully specified map entries for the given placeholder name.
+    pub(crate) fn insert_map_entries(
+        &mut self,
+        map_name: StorageValueName,
+        entries: Vec<(Word, Word)>,
+    ) {
+        self.map_entries.insert(map_name, entries);
+    }
+
+    /// Returns the map entries associated with the given placeholder name, if any.
+    pub(crate) fn map_entries(&self, key: &StorageValueName) -> Option<&Vec<(Word, Word)>> {
+        self.map_entries.get(key)
     }
 }
