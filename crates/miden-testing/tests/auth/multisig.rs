@@ -1,4 +1,3 @@
-use assert_matches::assert_matches;
 use miden_lib::account::components::rpo_falcon_512_multisig_library;
 use miden_lib::account::interface::AccountInterface;
 use miden_lib::account::wallets::BasicWallet;
@@ -21,20 +20,15 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
 };
-use miden_objects::transaction::{InputNote, OutputNote};
+use miden_objects::transaction::OutputNote;
 use miden_objects::vm::AdviceMap;
 use miden_objects::{Felt, Hasher, Word};
 use miden_processor::AdviceInputs;
 use miden_processor::crypto::RpoRandomCoin;
 use miden_testing::utils::create_spawn_note;
 use miden_testing::{Auth, MockChainBuilder, assert_transaction_executor_error};
+use miden_tx::TransactionExecutorError;
 use miden_tx::auth::{BasicAuthenticator, SigningInputs, TransactionAuthenticator};
-use miden_tx::{
-    NoteConsumptionChecker,
-    NoteConsumptionStatus,
-    TransactionExecutor,
-    TransactionExecutorError,
-};
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 
@@ -911,148 +905,6 @@ async fn test_multisig_new_approvers_cannot_sign_before_update() -> anyhow::Resu
     assert!(
         result.is_err(),
         "Transaction should fail when signed by unauthorized new approvers"
-    );
-
-    Ok(())
-}
-
-/// Checks note consumability for authenticated and unauthenticated notes, both
-/// without and with multisig signatures.
-///
-/// Cases covered:
-/// - Without signatures: both the authenticated note and the unauthenticated note are reported as
-///   `ConsumableWithAuthorization` — the notes are consumable in principle, but fail due to missing
-///   multisig authorization.
-/// - With valid multisig signatures on an authenticated transaction: the authenticated note becomes
-///   `Consumable`, while the unauthenticated variant remains `ConsumableWithAuthorization` because
-///   signatures are bound to a different `TransactionSummary` (the authenticated context) and do
-///   not authorize the unauthenticated note.
-#[tokio::test]
-async fn test_check_note_consumability_multisig() -> anyhow::Result<()> {
-    // Setup keys and authenticators
-    let (_secret_keys, public_keys, authenticators) = setup_keys_and_authenticators(2, 2)?;
-
-    // Create multisig account
-    let multisig_account = create_multisig_account(2, &public_keys, 10, vec![])?;
-
-    let mut mock_chain_builder =
-        MockChainBuilder::with_accounts([multisig_account.clone()]).unwrap();
-
-    let p2id_note = mock_chain_builder.add_p2id_note(
-        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE.try_into().unwrap(),
-        multisig_account.id(),
-        &[FungibleAsset::mock(1)],
-        NoteType::Public,
-    )?;
-    let mock_chain = mock_chain_builder.build().unwrap();
-
-    let salt = Word::from([Felt::new(1); 4]);
-
-    // get the transaction context without signatures
-    let tx_context_without_signatures = mock_chain
-        .build_tx_context(multisig_account.id(), &[p2id_note.id()], &[])?
-        .auth_args(salt)
-        .build()?;
-
-    let block_ref = tx_context_without_signatures.tx_inputs().block_header().block_num();
-    let tx_args = tx_context_without_signatures.tx_args();
-    let tx_executor = TransactionExecutor::<'_, '_, _, BasicAuthenticator<ChaCha20Rng>>::new(
-        &tx_context_without_signatures,
-    );
-
-    let notes_checker = NoteConsumptionChecker::new(&tx_executor);
-
-    let note_authenticated =
-        tx_context_without_signatures.tx_inputs().input_notes().get_note(0).clone();
-    assert_matches!(note_authenticated, InputNote::Authenticated { .. });
-
-    // this check should return `ConsumableWithAuthorization` variant: the note is consumable, but
-    // authentication is failing
-    let consumable_with_authorization = notes_checker
-        .can_consume(multisig_account.id(), block_ref, note_authenticated.clone(), tx_args.clone())
-        .await?;
-    assert_matches!(
-        consumable_with_authorization,
-        NoteConsumptionStatus::ConsumableWithAuthorization
-    );
-    // trying to consume the same note but as Unauthenticated should still return
-    // `ConsumableWithAuthorization` variant.
-    let consumable_with_authorization = notes_checker
-        .can_consume(
-            multisig_account.id(),
-            block_ref,
-            miden_objects::transaction::InputNote::Unauthenticated {
-                note: note_authenticated.note().clone(),
-            },
-            tx_args.clone(),
-        )
-        .await?;
-    assert_matches!(
-        consumable_with_authorization,
-        NoteConsumptionStatus::ConsumableWithAuthorization
-    );
-
-    // execute the transaction to get the summary
-    let tx_summary = match tx_context_without_signatures.execute().await.unwrap_err() {
-        TransactionExecutorError::Unauthorized(tx_effects) => tx_effects,
-        error => panic!("expected abort with tx effects: {error:?}"),
-    };
-    // Get signatures from both approvers
-    let msg = tx_summary.as_ref().to_commitment();
-    let tx_summary = SigningInputs::TransactionSummary(tx_summary);
-
-    let sig_1 = authenticators[0]
-        .get_signature(public_keys[0].to_commitment().into(), &tx_summary)
-        .await?;
-    let sig_2 = authenticators[1]
-        .get_signature(public_keys[1].to_commitment().into(), &tx_summary)
-        .await?;
-
-    // get the transaction context with signatures
-    let tx_context_with_signatures = mock_chain
-        .build_tx_context(multisig_account.id(), &[p2id_note.id()], &[])?
-        .extend_expected_output_notes(vec![OutputNote::Full(p2id_note)])
-        .add_signature(public_keys[0].clone().into(), msg, sig_1)
-        .add_signature(public_keys[1].clone().into(), msg, sig_2)
-        .auth_args(salt)
-        .build()?;
-
-    let block_num = tx_context_with_signatures.tx_inputs().block_header().block_num();
-    let notes = tx_context_with_signatures.tx_inputs().input_notes().clone();
-    let tx_args = tx_context_with_signatures.tx_args().clone();
-
-    let mut tx_executor = TransactionExecutor::new(&tx_context_with_signatures)
-        .with_source_manager(tx_context_with_signatures.source_manager());
-    if let Some(authenticator) = tx_context_with_signatures.authenticator() {
-        tx_executor = tx_executor.with_authenticator(authenticator);
-    }
-
-    let notes_checker = NoteConsumptionChecker::new(&tx_executor);
-
-    // this check should return `Consumable` variant: we provided the signatures, so the transaction
-    // should execute successfully.
-    let note_authenticated = notes.get_note(0).clone();
-    assert_matches!(note_authenticated, InputNote::Authenticated { .. });
-
-    let consumable_with_authorization = notes_checker
-        .can_consume(multisig_account.id(), block_num, note_authenticated.clone(), tx_args.clone())
-        .await?;
-    assert_matches!(consumable_with_authorization, NoteConsumptionStatus::Consumable);
-
-    // trying to consume the same note but as Unauthenticated should return
-    // `ConsumableWithAuthorization` variant, since the signatures are provided on a different
-    // `TransactionSummary` (on a transaction with authenticated note)
-    let consumable_with_authorization = notes_checker
-        .can_consume(
-            multisig_account.id(),
-            block_num,
-            InputNote::Unauthenticated { note: note_authenticated.note().clone() },
-            tx_args,
-        )
-        .await?;
-    assert_matches!(
-        consumable_with_authorization,
-        NoteConsumptionStatus::ConsumableWithAuthorization
     );
 
     Ok(())

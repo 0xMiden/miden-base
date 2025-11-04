@@ -1,7 +1,7 @@
 use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
 
-use miden_lib::note::well_known_note::WellKnownNote;
+use miden_lib::note::{NoteConsumptionStatus, WellKnownNote};
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::AccountId;
 use miden_objects::block::BlockNumber;
@@ -147,7 +147,13 @@ where
         note: InputNote,
         tx_args: TransactionArgs,
     ) -> Result<NoteConsumptionStatus, NoteCheckerError> {
-        // TODO: apply the static analysis before executing the tx
+        // return the consumption status if we manage to determine it from the well-known note
+        if let Some(well_known_note) = WellKnownNote::from_note(note.note())
+            && let Some(consumption_status) =
+                well_known_note.is_consumable(note.note(), target_account_id, block_ref)
+        {
+            return Ok(consumption_status);
+        }
 
         // Prepare transaction inputs.
         let mut tx_inputs = self
@@ -177,7 +183,7 @@ where
                     },
                     // execution failed during the note processing
                     TransactionCheckerError::NoteExecution { .. } => {
-                        Ok(NoteConsumptionStatus::Unconsumable)
+                        Ok(NoteConsumptionStatus::UnconsumableConditions)
                     },
                     // execution failed during the epilogue
                     TransactionCheckerError::EpilogueExecution(epilogue_error) => {
@@ -391,29 +397,6 @@ fn handle_epilogue_error(epilogue_error: TransactionExecutorError) -> NoteConsum
             NoteConsumptionStatus::ConsumableWithAuthorization
         },
         // TODO: apply additional checks to get the verbose error reason
-        _ => NoteConsumptionStatus::Unconsumable,
+        _ => NoteConsumptionStatus::UnconsumableConditions,
     }
-}
-
-// HELPER STRUCTURES
-// ================================================================================================
-
-/// Describes if a note could be consumed under a specific conditions: target account state
-/// and block height.
-///
-/// The status does not account for any authorization that may be required to consume the
-/// note, nor does it indicate whether the account has sufficient fees to consume it.
-#[derive(Debug, PartialEq)]
-pub enum NoteConsumptionStatus {
-    /// The note can be consumed by the account at the specified block height.
-    Consumable,
-    /// The note can be consumed by the account after the required block height is achieved.
-    ConsumableAfter(BlockNumber),
-    /// The note can be consumed by the account if proper authorization is provided.
-    ConsumableWithAuthorization,
-    /// The note cannot be consumed by the account at the specified conditions (i.e., block
-    /// height and account state).
-    Unconsumable,
-    /// The note cannot be consumed by the specified account under any conditions.
-    Incompatible,
 }

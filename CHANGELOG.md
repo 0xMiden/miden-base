@@ -46,6 +46,7 @@
 - [BREAKING] Separate account APIs in `miden::account` into `active_account` and `native_account` ([#2026](https://github.com/0xMiden/miden-base/pull/2026)).
 - [BREAKING] Remove `miden::account::get_native_nonce` procedure ([#2026](https://github.com/0xMiden/miden-base/pull/2026)).
 - [BREAKING] Refactor `PartialVault`, `PartialStorageMap`, `PartialAccountTree` and `PartialNullifierTree` to allow construction from a root ([#2042](https://github.com/0xMiden/miden-base/pull/2042)).
+- [BREAKING] Refactor `Address` to make routing parameters optional ([#2032](https://github.com/0xMiden/miden-base/pull/2032)).
 
 ### Changes
 
