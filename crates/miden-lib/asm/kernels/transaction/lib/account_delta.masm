@@ -731,7 +731,7 @@ export.set_map_item.8
     # => [KEY, PREV_VALUE, NEW_VALUE]
 
     # store KEY in local
-    loc_storew.4
+    loc_storew_be.4
     # => [KEY, PREV_VALUE, NEW_VALUE]
 
     loc_load.0
@@ -762,7 +762,7 @@ export.set_map_item.8
     # => [INITIAL_VALUE, NEW_VALUE]
 
     # load key and index from locals
-    padw loc_loadw.4 loc_load.0
+    padw loc_loadw_be.4 loc_load.0
     # => [account_delta_storage_map_ptr, KEY, INITIAL_VALUE, NEW_VALUE]
 
     exec.link_map::set drop

@@ -200,7 +200,7 @@ async fn test_add_fungible_asset_success() -> anyhow::Result<()> {
     let exec_output = &tx_context.execute_code(&code).await?;
 
     assert_eq!(
-        exec_output.get_stack_word(0),
+        exec_output.get_stack_word_be(0),
         Word::from(account_vault.add_asset(add_fungible_asset).unwrap())
     );
 
@@ -278,7 +278,7 @@ async fn test_add_non_fungible_asset_success() -> anyhow::Result<()> {
     let exec_output = &tx_context.execute_code(&code).await?;
 
     assert_eq!(
-        exec_output.get_stack_word(0),
+        exec_output.get_stack_word_be(0),
         Word::from(account_vault.add_asset(add_non_fungible_asset)?)
     );
 
@@ -357,7 +357,7 @@ async fn test_remove_fungible_asset_success_no_balance_remaining() -> anyhow::Re
     let exec_output = &tx_context.execute_code(&code).await?;
 
     assert_eq!(
-        exec_output.get_stack_word(0),
+        exec_output.get_stack_word_be(0),
         Word::from(account_vault.remove_asset(remove_fungible_asset).unwrap())
     );
 
@@ -441,7 +441,7 @@ async fn test_remove_fungible_asset_success_balance_remaining() -> anyhow::Resul
     let exec_output = &tx_context.execute_code(&code).await?;
 
     assert_eq!(
-        exec_output.get_stack_word(0),
+        exec_output.get_stack_word_be(0),
         Word::from(account_vault.remove_asset(remove_fungible_asset).unwrap())
     );
 
@@ -526,7 +526,7 @@ async fn test_remove_non_fungible_asset_success() -> anyhow::Result<()> {
     let exec_output = &tx_context.execute_code(&code).await?;
 
     assert_eq!(
-        exec_output.get_stack_word(0),
+        exec_output.get_stack_word_be(0),
         Word::from(account_vault.remove_asset(non_fungible_asset).unwrap())
     );
 

@@ -328,7 +328,7 @@ impl TransactionScript {
 impl Serializable for TransactionScript {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         self.mast.write_into(target);
-        target.write_u32(self.entrypoint.as_u32());
+        target.write_u32(u32::from(self.entrypoint));
     }
 }
 

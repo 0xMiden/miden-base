@@ -161,7 +161,7 @@ async fn test_fpi_memory_single_account() -> anyhow::Result<()> {
     let exec_output = tx_context.execute_code(&code).await?;
 
     assert_eq!(
-        exec_output.get_stack_word(0),
+        exec_output.get_stack_word_be(0),
         storage_slots[0].value(),
         "Value at the top of the stack (value in the storage at index 0) should be equal [1, 2, 3, 4]",
     );
@@ -215,7 +215,7 @@ async fn test_fpi_memory_single_account() -> anyhow::Result<()> {
     let exec_output = tx_context.execute_code(&code).await.unwrap();
 
     assert_eq!(
-        exec_output.get_stack_word(0),
+        exec_output.get_stack_word_be(0),
         STORAGE_LEAVES_2[0].1,
         "Value at the top of the stack should be equal [1, 2, 3, 4]",
     );

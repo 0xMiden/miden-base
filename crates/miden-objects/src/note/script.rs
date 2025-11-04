@@ -93,7 +93,7 @@ impl From<&NoteScript> for Vec<Felt> {
         let mut result = Vec::with_capacity(final_size);
 
         // Push the length, this is used to remove the padding later
-        result.push(Felt::from(script.entrypoint.as_u32()));
+        result.push(Felt::from(u32::from(script.entrypoint)));
         result.push(Felt::new(len as u64));
 
         // A Felt can not represent all u64 values, so the data is encoded using u32.
@@ -164,7 +164,7 @@ impl TryFrom<Vec<Felt>> for NoteScript {
 impl Serializable for NoteScript {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         self.mast.write_into(target);
-        target.write_u32(self.entrypoint.as_u32());
+        target.write_u32(u32::from(self.entrypoint));
     }
 }
 
