@@ -2,6 +2,7 @@ use alloc::boxed::Box;
 use alloc::string::ToString;
 use core::fmt;
 
+use super::vault::AssetVaultKey;
 use super::{AccountType, Asset, AssetError, Felt, Word, ZERO, is_not_a_non_fungible_asset};
 use crate::account::{AccountId, AccountIdPrefix};
 use crate::utils::serde::{
@@ -83,8 +84,9 @@ impl FungibleAsset {
     }
 
     /// Returns the key which is used to store this asset in the account vault.
-    pub fn vault_key(&self) -> Word {
-        Self::vault_key_from_faucet(self.faucet_id)
+    pub fn vault_key(&self) -> AssetVaultKey {
+        AssetVaultKey::from_account_id(self.faucet_id)
+            .expect("faucet ID should be of type fungible")
     }
 
     // OPERATIONS
@@ -160,14 +162,6 @@ impl FungibleAsset {
         }
 
         Ok(self)
-    }
-
-    /// Returns the key which is used to store this asset in the account vault.
-    pub(super) fn vault_key_from_faucet(faucet_id: AccountId) -> Word {
-        let mut key = Word::empty();
-        key[2] = faucet_id.suffix();
-        key[3] = faucet_id.prefix().as_felt();
-        key
     }
 }
 

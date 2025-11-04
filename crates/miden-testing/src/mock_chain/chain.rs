@@ -3,11 +3,12 @@ use alloc::vec::Vec;
 
 use anyhow::Context;
 use miden_block_prover::{LocalBlockProver, ProvenBlockError};
+use miden_objects::account::auth::AuthSecretKey;
 use miden_objects::account::delta::AccountUpdateDetails;
-use miden_objects::account::{Account, AccountId, AuthSecretKey, PartialAccount};
+use miden_objects::account::{Account, AccountId, PartialAccount};
 use miden_objects::batch::{ProposedBatch, ProvenBatch};
+use miden_objects::block::account_tree::AccountTree;
 use miden_objects::block::{
-    AccountTree,
     AccountWitness,
     BlockHeader,
     BlockInputs,
@@ -28,13 +29,11 @@ use miden_objects::transaction::{
     ProvenTransaction,
     TransactionInputs,
 };
-use miden_processor::{DeserializationError, Word};
+use miden_processor::DeserializationError;
 use miden_tx::LocalTransactionProver;
 use miden_tx::auth::BasicAuthenticator;
 use miden_tx::utils::{ByteReader, Deserializable, Serializable};
 use miden_tx_batch_prover::LocalBatchProver;
-use rand::SeedableRng;
-use rand_chacha::ChaCha20Rng;
 use winterfell::ByteWriter;
 
 use super::note::MockChainNote;
@@ -866,17 +865,22 @@ impl MockChain {
 
         for account_update in proven_block.updated_accounts() {
             match account_update.details() {
-                AccountUpdateDetails::New(account) => {
-                    self.committed_accounts.insert(account.id(), account.clone());
-                },
                 AccountUpdateDetails::Delta(account_delta) => {
-                    let committed_account =
-                        self.committed_accounts.get_mut(&account_update.account_id()).ok_or_else(
-                            || anyhow::anyhow!("account delta in block for non-existent account"),
-                        )?;
-                    committed_account
-                        .apply_delta(account_delta)
-                        .context("failed to apply account delta")?;
+                    if account_delta.is_full_state() {
+                        let account = Account::try_from(account_delta)
+                            .context("failed to convert full state delta into full account")?;
+                        self.committed_accounts.insert(account.id(), account.clone());
+                    } else {
+                        let committed_account = self
+                            .committed_accounts
+                            .get_mut(&account_update.account_id())
+                            .ok_or_else(|| {
+                                anyhow::anyhow!("account delta in block for non-existent account")
+                            })?;
+                        committed_account
+                            .apply_delta(account_delta)
+                            .context("failed to apply account delta")?;
+                    }
                 },
                 // No state to keep for private accounts other than the commitment on the account
                 // tree
@@ -1041,15 +1045,15 @@ pub enum AccountState {
 /// A wrapper around the authenticator of an account.
 #[derive(Debug, Clone)]
 pub(super) struct AccountAuthenticator {
-    authenticator: Option<BasicAuthenticator<ChaCha20Rng>>,
+    authenticator: Option<BasicAuthenticator>,
 }
 
 impl AccountAuthenticator {
-    pub fn new(authenticator: Option<BasicAuthenticator<ChaCha20Rng>>) -> Self {
+    pub fn new(authenticator: Option<BasicAuthenticator>) -> Self {
         Self { authenticator }
     }
 
-    pub fn authenticator(&self) -> Option<&BasicAuthenticator<ChaCha20Rng>> {
+    pub fn authenticator(&self) -> Option<&BasicAuthenticator> {
         self.authenticator.as_ref()
     }
 }
@@ -1073,17 +1077,16 @@ impl Serializable for AccountAuthenticator {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         self.authenticator
             .as_ref()
-            .map(|auth| auth.keys().iter().collect::<Vec<_>>())
+            .map(|auth| auth.keys().values().collect::<Vec<_>>())
             .write_into(target);
     }
 }
 
 impl Deserializable for AccountAuthenticator {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        let authenticator = Option::<Vec<(Word, AuthSecretKey)>>::read_from(source)?;
+        let authenticator = Option::<Vec<AuthSecretKey>>::read_from(source)?;
 
-        let authenticator = authenticator
-            .map(|keys| BasicAuthenticator::new_with_rng(&keys, ChaCha20Rng::from_os_rng()));
+        let authenticator = authenticator.map(|keys| BasicAuthenticator::new(&keys));
 
         Ok(Self { authenticator })
     }

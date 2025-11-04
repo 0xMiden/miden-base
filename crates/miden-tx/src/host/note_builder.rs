@@ -1,18 +1,7 @@
-use alloc::vec::Vec;
-
 use miden_objects::asset::Asset;
-use miden_objects::note::{
-    Note,
-    NoteAssets,
-    NoteMetadata,
-    NoteRecipient,
-    NoteScript,
-    NoteStorage,
-    PartialNote,
-};
-use miden_processor::AdviceProvider;
+use miden_objects::note::{Note, NoteAssets, NoteMetadata, NoteRecipient, PartialNote};
 
-use super::{Felt, OutputNote, Word};
+use super::{OutputNote, Word};
 use crate::errors::TransactionKernelError;
 
 // OUTPUT NOTE BUILDER
@@ -31,93 +20,35 @@ impl OutputNoteBuilder {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
 
-    /// Returns a new [OutputNoteBuilder] read from the provided stack state and advice provider.
-    ///
-    /// The stack is expected to be in the following state:
-    ///
-    ///   [NOTE_METADATA, RECIPIENT]
-    ///
-    /// Detailed note info such as assets and recipient (when available) are retrieved from the
-    /// advice provider.
+    /// Returns a new [OutputNoteBuilder] from the provided metadata, recipient digest, and optional
+    /// recipient.
     ///
     /// # Errors
-    /// Returns an error if:
-    /// - Note type specified via the stack is malformed.
-    /// - Sender account ID specified via the stack is invalid.
-    /// - A combination of note type, sender account ID, and note tag do not form a valid
-    ///   [NoteMetadata] object.
-    /// - Recipient information in the advice provider is present but is malformed.
-    /// - A non-private note is missing recipient details.
+    /// Returns an error if the note is public but no recipient is provided.
     pub fn new(
-        stack: Vec<Felt>,
-        adv_provider: &AdviceProvider,
+        metadata: NoteMetadata,
+        recipient_digest: Word,
+        recipient: Option<NoteRecipient>,
     ) -> Result<Self, TransactionKernelError> {
-        // read note metadata info from the stack and build the metadata object
-        let metadata_word = Word::from([stack[3], stack[2], stack[1], stack[0]]);
-        let metadata: NoteMetadata = metadata_word
-            .try_into()
-            .map_err(TransactionKernelError::MalformedNoteMetadata)?;
-
-        // read recipient digest from the stack and try to build note recipient object if there is
-        // enough info available in the advice provider
-        let recipient_digest = Word::new([stack[8], stack[7], stack[6], stack[5]]);
-
-        // This method returns an error if the mapped value is not found.
-        let recipient = if let Some(data) = adv_provider.get_mapped_values(&recipient_digest) {
-            if data.len() != 13 {
-                return Err(TransactionKernelError::MalformedRecipientData(data.to_vec()));
-            }
-            let inputs_commitment = Word::new([data[1], data[2], data[3], data[4]]);
-            let script_root = Word::new([data[5], data[6], data[7], data[8]]);
-            let serial_num = Word::from([data[9], data[10], data[11], data[12]]);
-            let script_data = adv_provider.get_mapped_values(&script_root).unwrap_or(&[]);
-
-            let inputs_data = adv_provider.get_mapped_values(&inputs_commitment);
-            let inputs = match inputs_data {
-                None => NoteStorage::default(),
-                Some(inputs) => {
-                    let num_inputs = data[0].as_int() as usize;
-
-                    // There must be at least `num_inputs` elements in the advice provider data,
-                    // otherwise it is an error.
-                    //
-                    // It is possible to have more elements because of padding. The extra elements
-                    // will be discarded below, and later their contents will be validated by
-                    // computing the commitment and checking against the expected value.
-                    if num_inputs > inputs.len() {
-                        return Err(TransactionKernelError::TooFewElementsForNoteStorage {
-                            specified: num_inputs as u64,
-                            actual: inputs.len() as u64,
-                        });
-                    }
-
-                    NoteStorage::new(inputs[0..num_inputs].to_vec())
-                        .map_err(TransactionKernelError::MalformedNoteStorage)?
-                },
-            };
-
-            if inputs.commitment() != inputs_commitment {
-                return Err(TransactionKernelError::InvalidNoteStorage {
-                    expected: inputs_commitment,
-                    actual: inputs.commitment(),
-                });
-            }
-
-            let script = NoteScript::try_from(script_data).map_err(|source| {
-                TransactionKernelError::MalformedNoteScript { data: script_data.to_vec(), source }
-            })?;
-            let recipient = NoteRecipient::new(serial_num, script, inputs);
-
-            Some(recipient)
-        } else if metadata.is_private() {
-            None
-        } else {
-            // if there are no recipient details and the note is not private, return an error
+        // For public notes, we must have a recipient
+        if !metadata.is_private() && recipient.is_none() {
             return Err(TransactionKernelError::PublicNoteMissingDetails(
                 metadata,
                 recipient_digest,
             ));
-        };
+        }
+
+        // If recipient is present, verify its digest matches the provided recipient_digest
+        if let Some(ref recipient) = recipient
+            && recipient.digest() != recipient_digest
+        {
+            return Err(TransactionKernelError::other(format!(
+                "recipient digest mismatch: expected {}, but recipient has digest {}",
+                recipient_digest,
+                recipient.digest()
+            )));
+        }
+
         Ok(Self {
             metadata,
             recipient_digest,

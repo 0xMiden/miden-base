@@ -291,7 +291,7 @@ export.add_assets_to_account.1024
         # => [ptr, EMPTY_WORD, ptr, end_ptr]
 
         # load the asset
-        mem_loadw
+        mem_loadw_be
         # => [ASSET, ptr, end_ptr]
 
         # pad the stack before call

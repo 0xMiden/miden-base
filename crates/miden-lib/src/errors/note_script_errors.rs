@@ -13,8 +13,17 @@ use crate::errors::MasmError;
 /// Error Message: "auth procedure had been called from outside the epilogue"
 pub const ERR_AUTH_PROCEDURE_CALLED_FROM_WRONG_CONTEXT: MasmError = MasmError::from_static_str("auth procedure had been called from outside the epilogue");
 
+/// Error Message: "burn requires exactly 1 note asset"
+pub const ERR_BASIC_FUNGIBLE_BURN_WRONG_NUMBER_OF_ASSETS: MasmError = MasmError::from_static_str("burn requires exactly 1 note asset");
+
 /// Error Message: "number of approvers must be equal to or greater than threshold"
 pub const ERR_MALFORMED_MULTISIG_CONFIG: MasmError = MasmError::from_static_str("number of approvers must be equal to or greater than threshold");
+
+/// Error Message: "MINT script expects storage of length 9"
+pub const ERR_MINT_UNEXPECTED_STORAGE_LENGTH: MasmError = MasmError::from_static_str("MINT script expects storage of length 9");
+
+/// Error Message: "note sender is not the owner of the faucet who can mint assets"
+pub const ERR_ONLY_OWNER_CAN_MINT: MasmError = MasmError::from_static_str("note sender is not the owner of the faucet who can mint assets");
 
 /// Error Message: "failed to reclaim P2IDE note because the reclaiming account is not the sender"
 pub const ERR_P2IDE_RECLAIM_ACCT_IS_NOT_SENDER: MasmError = MasmError::from_static_str("failed to reclaim P2IDE note because the reclaiming account is not the sender");

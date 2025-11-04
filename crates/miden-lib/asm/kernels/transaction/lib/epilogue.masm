@@ -167,7 +167,7 @@ proc.build_output_vault
             #     num_assets, note_data_ptr, output_notes_end_ptr]
 
             # read the output note asset from memory
-            padw dup.5 mem_loadw
+            padw dup.5 mem_loadw_be
             # => [ASSET, output_vault_root_ptr, assets_start_ptr, assets_end_ptr,
             #     output_vault_root_ptr, num_assets, note_data_ptr, output_notes_end_ptr]
 
@@ -215,13 +215,13 @@ proc.execute_auth_procedure
     push.0 exec.memory::get_account_procedure_ptr
     # => [auth_procedure_ptr, AUTH_ARGS, pad(12)]
 
-    padw dup.4 mem_loadw
+    padw dup.4 mem_loadw_be
     # => [AUTH_PROC_ROOT, auth_procedure_ptr, AUTH_ARGS, pad(12)]
 
     # if auth procedure was called already, it must have been called by a user, which is disallowed
     exec.account::was_procedure_called
-    # => [was_auth_called, auth_procedure_ptr, AUTH_ARGS, pad(12)]
     assertz.err=ERR_AUTH_PROCEDURE_CALLED_FROM_WRONG_CONTEXT
+    # => [auth_procedure_ptr, AUTH_ARGS, pad(12)]
 
     # execute the auth procedure
     dyncall
@@ -401,7 +401,7 @@ export.finalize_transaction.12
     # assert no net creation or destruction of assets over the transaction
     exec.memory::get_input_vault_root exec.memory::get_output_vault_root
     assert_eqw.err=ERR_EPILOGUE_TOTAL_NUMBER_OF_ASSETS_MUST_STAY_THE_SAME
-    # => [ACCOUNT_UPDATE_COMMITMENT]
+    # => []
 
     # ------ Compute output notes commitment ------
 
@@ -413,7 +413,7 @@ export.finalize_transaction.12
     # => [OUTPUT_NOTES_COMMITMENT]
 
     # store commitment in local
-    loc_storew.0 dropw
+    loc_storew_be.0 dropw
     # => []
 
     # ------ Compute account delta commitment ------
@@ -422,7 +422,7 @@ export.finalize_transaction.12
     # => [ACCOUNT_DELTA_COMMITMENT]
 
     # store commitment in local
-    loc_storew.8
+    loc_storew_be.8
     # => [ACCOUNT_DELTA_COMMITMENT]
 
     # ------ Assert that account was changed or notes were consumed ------
@@ -451,7 +451,7 @@ export.finalize_transaction.12
     # => [FEE_ASSET]
 
     # store fee asset in local
-    loc_storew.4 dropw
+    loc_storew_be.4 dropw
     # => []
 
     # ------ Insert final account data into advice provider ------
@@ -461,11 +461,11 @@ export.finalize_transaction.12
     # => [acct_data_end_ptr]
 
     # get the offset for the start of the account data section
-    exec.memory::get_current_account_data_ptr
+    exec.memory::get_active_account_data_ptr
     # => [acct_data_ptr, acct_data_end_ptr]
 
     # compute the final account commitment
-    exec.account::compute_current_commitment
+    exec.account::compute_commitment
     # => [FINAL_ACCOUNT_COMMITMENT, acct_data_ptr, acct_data_end_ptr]
 
     # insert final account data into the advice map
@@ -479,7 +479,7 @@ export.finalize_transaction.12
     # ------ Compute and insert account update commitment ------
 
     # load account delta commitment from local
-    padw loc_loadw.8
+    padw loc_loadw_be.8
     # => [ACCOUNT_DELTA_COMMITMENT, FINAL_ACCOUNT_COMMITMENT]
 
     # insert into advice map ACCOUNT_UPDATE_COMMITMENT: (FINAL_ACCOUNT_COMMITMENT, ACCOUNT_DELTA_COMMITMENT),
@@ -496,10 +496,10 @@ export.finalize_transaction.12
     # => [ACCOUNT_UPDATE_COMMITMENT, tx_expiration_block_num]
 
     # load fee asset from local
-    padw loc_loadw.4 swapw
+    padw loc_loadw_be.4 swapw
     # => [ACCOUNT_UPDATE_COMMITMENT, FEE_ASSET, tx_expiration_block_num]
 
     # load output notes commitment from local
-    padw loc_loadw.0
+    padw loc_loadw_be.0
     # => [OUTPUT_NOTES_COMMITMENT, ACCOUNT_UPDATE_COMMITMENT, FEE_ASSET, tx_expiration_block_num]
 end

@@ -151,7 +151,7 @@ async fn test_block_procedures() -> anyhow::Result<()> {
     let exec_output = &tx_context.execute_code(code).await?;
 
     assert_eq!(
-        exec_output.get_stack_word(0),
+        exec_output.get_stack_word_be(0),
         tx_context.tx_inputs().block_header().commitment(),
         "top word on the stack should be equal to the block header commitment"
     );
@@ -422,7 +422,7 @@ async fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
           # => [pad(16)]
 
           push.0.0 exec.tx::get_block_number
-          exec.::miden::account::incr_nonce
+          exec.::miden::native_account::incr_nonce
           # => [[final_nonce, block_num, 0, 0], pad(16)]
           # => [SALT, pad(16)]
 

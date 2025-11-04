@@ -29,13 +29,13 @@ async fn get_balance_returns_correct_amount() -> anyhow::Result<()> {
     let code = format!(
         r#"
         use.$kernel::prologue
-        use.miden::account
+        use.miden::active_account
 
         begin
             exec.prologue::prepare_transaction
 
             push.{suffix} push.{prefix}
-            exec.account::get_balance
+            exec.active_account::get_balance
             # => [balance]
 
             # truncate the stack
@@ -114,12 +114,12 @@ async fn test_get_balance_non_fungible_fails() -> anyhow::Result<()> {
     let code = format!(
         "
         use.$kernel::prologue
-        use.miden::account
+        use.miden::active_account
 
         begin
             exec.prologue::prepare_transaction
             push.{suffix} push.{prefix}
-            exec.account::get_balance
+            exec.active_account::get_balance
         end
         ",
         prefix = faucet_id.prefix().as_felt(),
@@ -145,12 +145,12 @@ async fn test_has_non_fungible_asset() -> anyhow::Result<()> {
     let code = format!(
         "
         use.$kernel::prologue
-        use.miden::account
+        use.miden::active_account
 
         begin
             exec.prologue::prepare_transaction
             push.{non_fungible_asset_key}
-            exec.account::has_non_fungible_asset
+            exec.active_account::has_non_fungible_asset
 
             # truncate the stack
             swap drop
@@ -200,7 +200,7 @@ async fn test_add_fungible_asset_success() -> anyhow::Result<()> {
     let exec_output = &tx_context.execute_code(&code).await?;
 
     assert_eq!(
-        exec_output.get_stack_word(0),
+        exec_output.get_stack_word_be(0),
         Word::from(account_vault.add_asset(add_fungible_asset).unwrap())
     );
 
@@ -278,7 +278,7 @@ async fn test_add_non_fungible_asset_success() -> anyhow::Result<()> {
     let exec_output = &tx_context.execute_code(&code).await?;
 
     assert_eq!(
-        exec_output.get_stack_word(0),
+        exec_output.get_stack_word_be(0),
         Word::from(account_vault.add_asset(add_non_fungible_asset)?)
     );
 
@@ -357,7 +357,7 @@ async fn test_remove_fungible_asset_success_no_balance_remaining() -> anyhow::Re
     let exec_output = &tx_context.execute_code(&code).await?;
 
     assert_eq!(
-        exec_output.get_stack_word(0),
+        exec_output.get_stack_word_be(0),
         Word::from(account_vault.remove_asset(remove_fungible_asset).unwrap())
     );
 
@@ -441,7 +441,7 @@ async fn test_remove_fungible_asset_success_balance_remaining() -> anyhow::Resul
     let exec_output = &tx_context.execute_code(&code).await?;
 
     assert_eq!(
-        exec_output.get_stack_word(0),
+        exec_output.get_stack_word_be(0),
         Word::from(account_vault.remove_asset(remove_fungible_asset).unwrap())
     );
 
@@ -526,7 +526,7 @@ async fn test_remove_non_fungible_asset_success() -> anyhow::Result<()> {
     let exec_output = &tx_context.execute_code(&code).await?;
 
     assert_eq!(
-        exec_output.get_stack_word(0),
+        exec_output.get_stack_word_be(0),
         Word::from(account_vault.remove_asset(non_fungible_asset).unwrap())
     );
 

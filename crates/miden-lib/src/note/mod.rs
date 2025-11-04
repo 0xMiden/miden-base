@@ -17,10 +17,11 @@ use miden_objects::note::{
 };
 use miden_objects::{Felt, NoteError, Word};
 use utils::build_swap_tag;
-use well_known_note::WellKnownNote;
 
 pub mod utils;
-pub mod well_known_note;
+
+mod well_known_note;
+pub use well_known_note::{NoteConsumptionStatus, WellKnownNote};
 
 // STANDARDIZED SCRIPTS
 // ================================================================================================

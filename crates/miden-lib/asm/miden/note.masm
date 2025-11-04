@@ -1,7 +1,6 @@
+use.miden::account_id
 use.std::crypto::hashes::rpo
 use.std::mem
-
-use.miden::account_id
 
 # ERRORS
 # =================================================================================================
@@ -56,7 +55,7 @@ end
 #! - max_inputs_per_note is the max inputs per note.
 export.::miden::util::note::get_max_inputs_per_note
 
-#! Writes the assets data stored in the advice map to the memory specified by the provided 
+#! Writes the assets data stored in the advice map to the memory specified by the provided
 #! destination pointer.
 #!
 #! Inputs:
@@ -91,17 +90,32 @@ end
 #! Builds the recipient hash from note storage, script root, and serial number.
 #!
 #! This procedure computes the commitment of the note storage and then uses it to calculate the note
-#! recipient by hashing this commit, the provided script root, and the serial number.
+#! recipient by hashing this commitment, the provided script root, and the serial number.
 #!
-#! Inputs:  [inputs_ptr, num_inputs, SERIAL_NUM, SCRIPT_ROOT]
-#! Outputs: [RECIPIENT]
+#! Inputs:
+#!   Operand stack: [inputs_ptr, num_inputs, SERIAL_NUM, SCRIPT_ROOT]
+#!   Advice map: {
+#!      INPUTS_COMMITMENT: [INPUTS],
+#!   }
+#! Outputs:
+#!   Operand stack: [RECIPIENT]
+#!   Advice map: {
+#!      INPUTS_COMMITMENT: [INPUTS],
+#!      RECIPIENT: [SERIAL_SCRIPT_HASH, INPUTS_COMMITMENT],
+#!      SERIAL_SCRIPT_HASH: [SERIAL_HASH, SCRIPT_ROOT],
+#!      SERIAL_HASH: [SERIAL_NUM, EMPTY_WORD],
+#!   }
 #!
 #! Where:
 #! - inputs_ptr is the memory address where the note storage are stored.
 #! - num_inputs is the number of input values.
 #! - SCRIPT_ROOT is the script root of the note.
 #! - SERIAL_NUM is the serial number of the note.
-#! - RECIPIENT is the commitment to the input note's script, inputs, the serial number.
+#! - RECIPIENT is the commitment to the input note's script, inputs, and the serial number.
+#!
+#! Locals:
+#! - 0: inputs_ptr
+#! - 1: num_inputs
 #!
 #! Panics if:
 #! - inputs_ptr is not word-aligned (i.e., is not a multiple of 4).
@@ -109,13 +123,37 @@ end
 #!
 #! Invocation: exec
 export.build_recipient
+    dup.1 dup.1
+    # => [inputs_ptr, num_inputs, inputs_ptr, num_inputs, SERIAL_NUM, SCRIPT_ROOT]
+
     exec.compute_inputs_commitment
-    # => [INPUTS_HASH, SERIAL_NUM, SCRIPT_ROOT]
+    # => [INPUTS_COMMITMENT, inputs_ptr, num_inputs, SERIAL_NUM, SCRIPT_ROOT]
+
+    movup.5 movup.5 dup movdn.2
+    # => [inputs_ptr, num_inputs, inputs_ptr, INPUTS_COMMITMENT, SERIAL_NUM, SCRIPT_ROOT]
+
+    add swap
+    # => [inputs_ptr, end_ptr, INPUTS_COMMITMENT, SERIAL_NUM, SCRIPT_ROOT]
+
+    movdn.5 movdn.5
+    # => [INPUTS_COMMITMENT, inputs_ptr, end_ptr, SERIAL_NUM, SCRIPT_ROOT]
+
+    adv.insert_mem
+    # => [INPUTS_COMMITMENT, inputs_ptr, end_ptr, SERIAL_NUM, SCRIPT_ROOT]
+
+    movup.4 drop movup.4 drop
+    # => [INPUTS_COMMITMENT, SERIAL_NUM, SCRIPT_ROOT]
 
     movdnw.2
-    # => [SERIAL_NUM, SCRIPT_ROOT, INPUTS_HASH]
+    # => [SERIAL_NUM, SCRIPT_ROOT, INPUTS_COMMITMENT]
 
-    exec.build_recipient_hash
+    padw adv.insert_hdword hmerge
+    # => [SERIAL_HASH, SCRIPT_ROOT, INPUTS_COMMITMENT]
+
+    swapw adv.insert_hdword hmerge
+    # => [SERIAL_SCRIPT_HASH, INPUTS_COMMITMENT]
+
+    swapw adv.insert_hdword hmerge
     # => [RECIPIENT]
 end
 
@@ -149,7 +187,7 @@ end
 #!
 #! Where:
 #! - METADATA is the metadata of some note.
-#! - sender_{prefix,suffix} are the prefix and suffix felts of the sender ID of the note which 
+#! - sender_{prefix,suffix} are the prefix and suffix felts of the sender ID of the note which
 #!   metadata was provided.
 export.extract_sender_from_metadata
     # => [aux, merged_tag_hint_payload, merged_sender_id_type_hint_tag, sender_id_prefix]

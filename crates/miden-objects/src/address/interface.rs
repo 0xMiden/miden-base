@@ -1,3 +1,5 @@
+use core::fmt::{self, Display, Formatter};
+
 use crate::AddressError;
 
 /// The account interface of an [`Address`](super::Address).
@@ -17,16 +19,13 @@ use crate::AddressError;
 #[repr(u16)]
 #[non_exhaustive]
 pub enum AddressInterface {
-    /// Signals that the account interface is not specified.
-    Unspecified = Self::UNSPECIFIED,
     /// The basic wallet interface.
     BasicWallet = Self::BASIC_WALLET,
 }
 
 impl AddressInterface {
     // Constants for internal use only.
-    const UNSPECIFIED: u16 = 0;
-    const BASIC_WALLET: u16 = 1;
+    const BASIC_WALLET: u16 = 0;
 }
 
 impl TryFrom<u16> for AddressInterface {
@@ -35,9 +34,16 @@ impl TryFrom<u16> for AddressInterface {
     /// Decodes an [`AddressInterface`] from its bytes representation.
     fn try_from(value: u16) -> Result<Self, Self::Error> {
         match value {
-            Self::UNSPECIFIED => Ok(Self::Unspecified),
             Self::BASIC_WALLET => Ok(Self::BasicWallet),
             other => Err(AddressError::UnknownAddressInterface(other)),
+        }
+    }
+}
+
+impl Display for AddressInterface {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::BasicWallet => write!(f, "BasicWallet"),
         }
     }
 }

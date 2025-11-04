@@ -32,6 +32,7 @@ pub use errors::{
     AddressError,
     AssetError,
     AssetVaultError,
+    AuthSchemeError,
     BatchAccountUpdateError,
     FeeError,
     NetworkIdError,
@@ -102,7 +103,14 @@ pub mod vm {
     pub use miden_assembly_syntax::ast::{AttributeSet, QualifiedProcedureName};
     pub use miden_core::sys_events::SystemEvent;
     pub use miden_core::{AdviceMap, Program, ProgramInfo};
-    pub use miden_mast_package::{MastArtifact, Package, PackageExport, PackageManifest};
+    pub use miden_mast_package::{
+        MastArtifact,
+        Package,
+        PackageExport,
+        PackageManifest,
+        Section,
+        SectionId,
+    };
     pub use miden_processor::{AdviceInputs, FutureMaybeSend, RowIndex, StackInputs, StackOutputs};
     pub use miden_verifier::ExecutionProof;
 }
