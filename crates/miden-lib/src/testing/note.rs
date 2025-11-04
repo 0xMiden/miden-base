@@ -66,14 +66,14 @@ impl NoteBuilder {
         }
     }
 
-    /// Set the note's input to `inputs`.
+    /// Set the note's storage to `storage_items`.
     ///
-    /// Note: This overwrite the inputs, the previous input values are discarded.
-    pub fn note_storage_values(
+    /// Note: This overwrite the storage, the previous storage items are discarded.
+    pub fn note_storage(
         mut self,
-        storage_values: impl IntoIterator<Item = Felt>,
+        storage_items: impl IntoIterator<Item = Felt>,
     ) -> Result<Self, NoteError> {
-        let validate = NoteStorage::new(storage_values.into_iter().collect())?;
+        let validate = NoteStorage::new(storage_items.into_iter().collect())?;
         self.inputs = validate.into();
         Ok(self)
     }

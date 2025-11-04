@@ -177,7 +177,7 @@ async fn storage_delta_for_value_slots() -> anyhow::Result<()> {
         .await
         .context("failed to execute transaction")?;
 
-    let storage_values_delta = executed_tx
+    let storage_items_delta = executed_tx
         .account_delta()
         .storage()
         .values()
@@ -186,7 +186,7 @@ async fn storage_delta_for_value_slots() -> anyhow::Result<()> {
         .collect::<Vec<_>>();
 
     // Note that slots 2 and 3 are absent because their values haven't effectively changed.
-    assert_eq!(storage_values_delta, &[(0u8, slot_0_final_value), (1u8, slot_1_final_value)]);
+    assert_eq!(storage_items_delta, &[(0u8, slot_0_final_value), (1u8, slot_1_final_value)]);
 
     Ok(())
 }
@@ -632,7 +632,7 @@ async fn asset_and_storage_delta() -> anyhow::Result<()> {
             # get the index of account storage slot
             push.{STORAGE_INDEX_0}
             # => [idx, 13, 11, 9, 7]
-            # update the storage value
+            # update the storage item
             call.account::set_item dropw
             # => []
 
@@ -650,7 +650,7 @@ async fn asset_and_storage_delta() -> anyhow::Result<()> {
             push.{STORAGE_INDEX_2}
             # => [idx, 14, 15, 16, 17, 18, 19, 20, 21]
 
-            # update the storage value
+            # update the storage item
             call.account::set_map_item dropw dropw dropw
             # => []
 

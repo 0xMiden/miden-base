@@ -161,7 +161,7 @@ impl TransactionArgs {
     /// - script_root |-> script.
     pub fn add_output_note_recipient<T: AsRef<NoteRecipient>>(&mut self, note_recipient: T) {
         let note_recipient = note_recipient.as_ref();
-        let inputs = note_recipient.inputs();
+        let inputs = note_recipient.storage();
         let script = note_recipient.script();
         let script_encoded: Vec<Felt> = script.into();
 

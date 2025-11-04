@@ -5,12 +5,12 @@ use.miden::contracts::wallets::basic->wallet
 # CONSTANTS
 # =================================================================================================
 
-const.SWAP_NOTE_STORAGE_NUMBER=12
+const.SWAP_NOTE_STORAGE_LENGTH=12
 
 # ERRORS
 # =================================================================================================
 
-const.ERR_SWAP_WRONG_STORAGE_LENGTH="SWAP script expects exactly 12 note storage values"
+const.ERR_SWAP_UNEXPECTED_STORAGE_LENGTH="SWAP script expects storage of length 12"
 
 const.ERR_SWAP_WRONG_NUMBER_OF_ASSETS="SWAP script requires exactly 1 note asset"
 
@@ -24,7 +24,7 @@ const.ERR_SWAP_WRONG_NUMBER_OF_ASSETS="SWAP script requires exactly 1 note asset
 #! Inputs:  [ARGS]
 #! Outputs: []
 #!
-#! Note storage values are assumed to be as follows:
+#! Note storage must be laid out as follows:
 #! - REQUESTED_ASSET
 #! - PAYBACK_NOTE_RECIPIENT
 #! - payback_note_execution_hint
@@ -50,7 +50,7 @@ begin
     # => [num_inputs, inputs_ptr]
 
     # make sure the number of inputs is 12
-    eq.SWAP_NOTE_STORAGE_NUMBER assert.err=ERR_SWAP_WRONG_STORAGE_LENGTH
+    eq.SWAP_NOTE_STORAGE_LENGTH assert.err=ERR_SWAP_UNEXPECTED_STORAGE_LENGTH
     # => [inputs_ptr]
 
     # load REQUESTED_ASSET

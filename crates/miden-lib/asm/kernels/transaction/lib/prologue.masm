@@ -568,7 +568,7 @@ end
 #!   Advice stack: [
 #!      SERIAL_NUMBER,
 #!      SCRIPT_ROOT,
-#!      INPUTS_COMMITMENT,
+#!      STORAGE_COMMITMENT,
 #!      ASSETS_COMMITMENT,
 #!   ]
 #! Outputs:
@@ -579,10 +579,10 @@ end
 #! - note_ptr is the memory location for the input note.
 #! - SERIAL_NUMBER is the note's serial.
 #! - SCRIPT_ROOT is the note's script root.
-#! - INPUTS_COMMITMENT is the sequential hash of the padded note's inputs.
+#! - STORAGE_COMMITMENT is the sequential hash of the padded note's storage items.
 #! - ASSETS_COMMITMENT is the sequential hash of the padded note's assets.
 #! - NULLIFIER is the result of
-#!   `hash(SERIAL_NUMBER || SCRIPT_ROOT || INPUTS_COMMITMENT || ASSETS_COMMITMENT)`.
+#!   `hash(SERIAL_NUMBER || SCRIPT_ROOT || STORAGE_COMMITMENT || ASSETS_COMMITMENT)`.
 proc.process_input_note_details
     exec.memory::get_input_note_core_ptr
     # => [note_data_ptr]
@@ -839,7 +839,7 @@ end
 #!   Advice stack: [
 #!      SERIAL_NUMBER,
 #!      SCRIPT_ROOT,
-#!      INPUTS_COMMITMENT,
+#!      STORAGE_COMMITMENT,
 #!      ASSETS_COMMITMENT,
 #!      ARGS,
 #!      NOTE_METADATA,
@@ -862,7 +862,7 @@ end
 #!   notes.
 #! - SERIAL_NUMBER is the note's serial.
 #! - SCRIPT_ROOT is the note's script root.
-#! - INPUTS_COMMITMENT is the sequential hash of the padded note's inputs.
+#! - STORAGE_COMMITMENT is the sequential hash of the padded note's storage items.
 #! - ASSETS_COMMITMENT is the sequential hash of the padded note's assets.
 #! - NOTE_METADATA is the note's metadata.
 #! - ARGS is the user arguments passed to the note.

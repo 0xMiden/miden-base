@@ -5,7 +5,7 @@ use.miden::active_note
 # ERRORS
 # =================================================================================================
 
-const.ERR_P2ID_WRONG_NUMBER_OF_STORAGE_VALUES="P2ID note expects exactly 2 note storage values"
+const.ERR_P2ID_UNEXPECTED_STORAGE_LENGTH="P2ID note expects storage of length 2"
 
 const.ERR_P2ID_TARGET_ACCT_MISMATCH="P2ID's target account address and transaction address do not match"
 
@@ -18,7 +18,7 @@ const.ERR_P2ID_TARGET_ACCT_MISMATCH="P2ID's target account address and transacti
 #! Inputs:  []
 #! Outputs: []
 #!
-#! Note storage values are assumed to be as follows:
+#! Note storage must be laid out as follows:
 #! - target_account_id is the ID of the account for which the note is intended.
 #!
 #! Panics if:
@@ -33,7 +33,7 @@ begin
     # => [num_inputs, inputs_ptr, EMPTY_WORD]
 
     # make sure the number of inputs is 2
-    eq.2 assert.err=ERR_P2ID_WRONG_NUMBER_OF_STORAGE_VALUES
+    eq.2 assert.err=ERR_P2ID_UNEXPECTED_STORAGE_LENGTH
     # => [inputs_ptr, EMPTY_WORD]
 
     # read the target account ID from the note storage

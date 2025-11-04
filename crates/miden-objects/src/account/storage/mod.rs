@@ -188,7 +188,7 @@ impl AccountStorage {
             storage_map.apply_delta(map)?;
         }
 
-        // update storage values
+        // update storage items
         for (&idx, &value) in delta.values().iter() {
             self.set_item(idx, value)?;
         }

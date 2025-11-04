@@ -174,7 +174,7 @@ fn note_setup_stack_assertions(exec_output: &ExecutionOutput, inputs: &Transacti
     note_script_root.reverse();
     expected_stack[..4].copy_from_slice(&note_script_root);
 
-    // assert that the stack contains the note storage values at the end of execution
+    // assert that the stack contains the note storage items at the end of execution
     assert_eq!(exec_output.stack.as_slice(), expected_stack.as_slice())
 }
 
@@ -465,7 +465,7 @@ pub async fn test_timelock() -> anyhow::Result<()> {
     let lock_timestamp = 2_000_000_000;
     let source_manager = Arc::new(DefaultSourceManager::default());
     let timelock_note = NoteBuilder::new(account.id(), &mut ChaCha20Rng::from_os_rng())
-        .note_storage_values([Felt::from(lock_timestamp)])?
+        .note_storage([Felt::from(lock_timestamp)])?
         .source_manager(source_manager.clone())
         .code(code.clone())
         .dynamically_linked_libraries(TransactionKernel::mock_libraries())

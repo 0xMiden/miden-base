@@ -10,7 +10,7 @@ use super::StorageValueName;
 /// An [`InitStorageData`] can be created from a TOML string when the `std` feature flag is set.
 #[derive(Clone, Debug, Default)]
 pub struct InitStorageData {
-    /// A mapping of storage placeholder names to their corresponding storage values.
+    /// A mapping of storage placeholder names to their corresponding storage items.
     storage_placeholders: BTreeMap<StorageValueName, String>,
 }
 

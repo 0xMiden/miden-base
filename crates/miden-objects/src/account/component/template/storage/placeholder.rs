@@ -16,7 +16,7 @@ use crate::utils::sync::LazyLock;
 /// A global registry for template converters.
 ///
 /// It is used during component instantiation to dynamically convert template placeholders into
-/// their respective storage values.
+/// their respective storage items.
 pub static TEMPLATE_REGISTRY: LazyLock<TemplateRegistry> = LazyLock::new(|| {
     let mut registry = TemplateRegistry::new();
     registry.register_felt_type::<u8>();
@@ -52,7 +52,7 @@ pub struct StorageValueName {
 impl StorageValueName {
     /// Creates a new [`StorageValueName`] from the provided string.
     ///
-    /// A [`StorageValueName`] serves as an identifier for storage values that are determined at
+    /// A [`StorageValueName`] serves as an identifier for storage items that are determined at
     /// instantiation time of an [AccountComponentTemplate](super::super::AccountComponentTemplate).
     ///
     /// The key can consist of one or more segments separated by dots (`.`).
@@ -269,7 +269,7 @@ impl Deserializable for TemplateType {
 ///
 /// A `PlaceholderTypeRequirement` specifies the expected type identifier for a storage entry as
 /// well as an optional description. This information is used to validate and provide context for
-/// dynamic storage values.
+/// dynamic storage items.
 #[derive(Debug)]
 pub struct PlaceholderTypeRequirement {
     /// The expected type identifier.

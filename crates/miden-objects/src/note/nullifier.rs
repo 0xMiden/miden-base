@@ -115,7 +115,7 @@ impl From<&NoteDetails> for Nullifier {
     fn from(note: &NoteDetails) -> Self {
         Self::new(
             note.script().root(),
-            note.inputs().commitment(),
+            note.storage().commitment(),
             note.assets().commitment(),
             note.serial_num(),
         )

@@ -322,8 +322,8 @@ async fn test_get_inputs_info() -> anyhow::Result<()> {
             # => []
         end
     "#,
-        INPUTS_COMMITMENT = p2id_note_1_asset.inputs().commitment(),
-        inputs_num = p2id_note_1_asset.inputs().num_values(),
+        INPUTS_COMMITMENT = p2id_note_1_asset.storage().commitment(),
+        inputs_num = p2id_note_1_asset.storage().num_values(),
     );
 
     let tx_script = ScriptBuilder::default().compile_tx_script(code)?;

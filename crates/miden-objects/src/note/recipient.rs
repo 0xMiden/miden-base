@@ -19,7 +19,7 @@ use super::{
 ///
 /// The recipient is not an account address, instead it is a value that describes when a note
 /// can be consumed. Because not all notes have predetermined consumer addresses, e.g. swap
-/// notes can be consumed by anyone, the recipient is defined as the code and its inputs, that
+/// notes can be consumed by anyone, the recipient is defined as the code and its storage, that
 /// when successfully executed results in the note's consumption.
 ///
 /// Recipient is computed as:
@@ -29,14 +29,14 @@ use super::{
 pub struct NoteRecipient {
     serial_num: Word,
     script: NoteScript,
-    inputs: NoteStorage,
+    storage: NoteStorage,
     digest: Word,
 }
 
 impl NoteRecipient {
-    pub fn new(serial_num: Word, script: NoteScript, inputs: NoteStorage) -> Self {
-        let digest = compute_recipient_digest(serial_num, &script, &inputs);
-        Self { serial_num, script, inputs, digest }
+    pub fn new(serial_num: Word, script: NoteScript, storage: NoteStorage) -> Self {
+        let digest = compute_recipient_digest(serial_num, &script, &storage);
+        Self { serial_num, script, storage, digest }
     }
 
     // PUBLIC ACCESSORS
@@ -52,9 +52,9 @@ impl NoteRecipient {
         &self.script
     }
 
-    /// The recipient's inputs which customizes the script's behavior.
-    pub fn inputs(&self) -> &NoteStorage {
-        &self.inputs
+    /// Returns the note recipient's [`NoteStorage`].
+    pub fn storage(&self) -> &NoteStorage {
+        &self.storage
     }
 
     /// The recipient's digest, which commits to its details.
@@ -75,18 +75,18 @@ impl NoteRecipient {
     /// - SERIAL_NUMBER is the recipient's serial number
     pub fn format_for_advice(&self) -> Vec<Felt> {
         let mut result = Vec::with_capacity(13);
-        result.push(self.inputs.num_values().into());
-        result.extend(self.inputs.commitment());
+        result.push(self.storage.num_values().into());
+        result.extend(self.storage.commitment());
         result.extend(self.script.root());
         result.extend(self.serial_num);
         result
     }
 }
 
-fn compute_recipient_digest(serial_num: Word, script: &NoteScript, inputs: &NoteStorage) -> Word {
+fn compute_recipient_digest(serial_num: Word, script: &NoteScript, storage: &NoteStorage) -> Word {
     let serial_num_hash = Hasher::merge(&[serial_num, Word::empty()]);
     let merge_script = Hasher::merge(&[serial_num_hash, script.root()]);
-    Hasher::merge(&[merge_script, inputs.commitment()])
+    Hasher::merge(&[merge_script, storage.commitment()])
 }
 
 // SERIALIZATION
@@ -96,7 +96,7 @@ impl Serializable for NoteRecipient {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         let Self {
             script,
-            inputs,
+            storage,
             serial_num,
 
             // These attributes don't have to be serialized, they can be re-computed from the rest
@@ -105,7 +105,7 @@ impl Serializable for NoteRecipient {
         } = self;
 
         script.write_into(target);
-        inputs.write_into(target);
+        storage.write_into(target);
         serial_num.write_into(target);
     }
 }
@@ -113,9 +113,9 @@ impl Serializable for NoteRecipient {
 impl Deserializable for NoteRecipient {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let script = NoteScript::read_from(source)?;
-        let inputs = NoteStorage::read_from(source)?;
+        let storage = NoteStorage::read_from(source)?;
         let serial_num = Word::read_from(source)?;
 
-        Ok(Self::new(serial_num, script, inputs))
+        Ok(Self::new(serial_num, script, storage))
     }
 }

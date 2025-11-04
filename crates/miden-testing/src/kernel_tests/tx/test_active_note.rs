@@ -318,7 +318,7 @@ async fn test_active_note_get_inputs() -> anyhow::Result<()> {
 
     fn construct_inputs_assertions(note: &Note) -> String {
         let mut code = String::new();
-        for inputs_chunk in note.inputs().values().chunks(WORD_SIZE) {
+        for inputs_chunk in note.storage().items().chunks(WORD_SIZE) {
             let mut inputs_word = EMPTY_WORD;
             inputs_word.as_mut_slice()[..inputs_chunk.len()].copy_from_slice(inputs_chunk);
 
@@ -375,7 +375,7 @@ async fn test_active_note_get_inputs() -> anyhow::Result<()> {
             # => []
         end
         ",
-        num_inputs = note0.inputs().num_values(),
+        num_inputs = note0.storage().num_values(),
         inputs_assertions = construct_inputs_assertions(note0),
         NOTE_0_PTR = 100000000,
     );
@@ -388,7 +388,7 @@ async fn test_active_note_get_inputs() -> anyhow::Result<()> {
 /// script attempts to load the inputs to memory using the `miden::active_note::get_inputs`
 /// procedure.
 ///
-/// Previously this setup was leading to the incorrect number of note storage values computed during
+/// Previously this setup was leading to the incorrect number of note storage items computed during
 /// the `get_inputs` procedure, see the [issue #1363](https://github.com/0xMiden/miden-base/issues/1363)
 /// for more details.
 #[tokio::test]
@@ -416,7 +416,7 @@ async fn test_active_note_get_exactly_8_inputs() -> anyhow::Result<()> {
         .compile_note_script("begin nop end")
         .context("failed to compile note script")?;
 
-    // create a recipient with note storage values, which number divides by 8. For simplicity create
+    // create a recipient with note storage items, which number divides by 8. For simplicity create
     // 8 input values
     let recipient = NoteRecipient::new(
         serial_num,

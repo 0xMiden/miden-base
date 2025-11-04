@@ -352,11 +352,11 @@ pub const NOTE_MEM_SIZE: MemoryAddress = 2048;
 //
 // - NUM_INPUTS is encoded as [num_inputs, 0, 0, 0].
 // - NUM_ASSETS is encoded as [num_assets, 0, 0, 0].
-// - STORAGE_COMMITMENT is the key to look up note storage values in the advice map.
+// - STORAGE_COMMITMENT is the key to look up note storage items in the advice map.
 // - ASSETS_COMMITMENT is the key to look up note assets in the advice map.
 //
-// Notice that note storage values are not loaded to the memory, only their length. In order to obtain
-// the input values the advice map should be used: they are stored there as
+// Notice that note storage items are not loaded to the memory, only their length. In order to obtain
+// the storage items the advice map should be used: they are stored there as
 // `STORAGE_COMMITMENT -> STORAGE || PADDING`.
 //
 // As opposed to the asset values, input values are never used in kernel memory, so their presence

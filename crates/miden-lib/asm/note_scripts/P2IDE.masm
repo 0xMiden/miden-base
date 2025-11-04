@@ -6,7 +6,7 @@ use.miden::tx
 # ERRORS
 # =================================================================================================
 
-const.ERR_P2IDE_WRONG_STORAGE_LENGTH="P2IDE note expects exactly 4 note storage values"
+const.ERR_P2IDE_UNEXPECTED_STORAGE_LENGTH="P2IDE note expects storage of length 4"
 
 const.ERR_P2IDE_RECLAIM_ACCT_IS_NOT_SENDER="failed to reclaim P2IDE note because the reclaiming account is not the sender"
 
@@ -83,7 +83,7 @@ end
 #! Inputs:  []
 #! Outputs: []
 #!
-#! Note storage values are assumed to be as follows:
+#! Note storage must be laid out as follows:
 #! - target_account_id is the ID of the account for which the note is intended.
 #! - reclaim_block_height is the block height at which the note can be reclaimed by the sender.
 #! - timelock_block_height is the block height at which the note can be consumed by the target.
@@ -104,8 +104,8 @@ begin
     push.0 exec.active_note::get_inputs
     # => [num_inputs, inputs_ptr]
 
-    # make sure the number of inputs is 4
-    eq.4 assert.err=ERR_P2IDE_WRONG_STORAGE_LENGTH
+    # check the length of note storage
+    eq.4 assert.err=ERR_P2IDE_UNEXPECTED_STORAGE_LENGTH
     # => [inputs_ptr]
 
     # read the reclaim block height, timelock_block_height, and target account ID from the note storage

@@ -86,7 +86,7 @@ export.get_recipient
     # => [RECIPIENT]
 end
 
-#! Writes the active note's inputs to memory starting at the specified address.
+#! Writes the active note's storage items to memory starting at the specified address.
 #!
 #! Inputs:
 #!   Stack: [dest_ptr]
@@ -96,8 +96,8 @@ end
 #!
 #! Where:
 #! - dest_ptr is the memory address to write the note storage.
-#! - NOTE_STORAGE_COMMITMENT is the sequential hash of the padded note's inputs.
-#! - INPUTS is the data corresponding to the note's inputs.
+#! - NOTE_STORAGE_COMMITMENT is the sequential hash of the padded note's storage items.
+#! - INPUTS is the data corresponding to the note's storage items.
 #!
 #! Panics if:
 #! - no note is currently active.
