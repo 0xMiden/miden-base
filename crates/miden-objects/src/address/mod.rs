@@ -52,7 +52,7 @@ pub use address_id::AddressId;
 /// identifier exactly (e.g. an account ID). This provides compatibility between identifiers and
 /// addresses and gives end-users a hint that an address is only an extension of the identifier
 /// (e.g. their account's ID) that they are likely to recognize.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Address {
     id: AddressId,
     routing_params: Option<RoutingParameters>,

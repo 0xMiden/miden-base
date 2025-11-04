@@ -41,7 +41,7 @@ const RECEIVER_PROFILE_KEY: u8 = 0;
 
 /// Parameters that define how a sender should route a note to the [`AddressId`](super::AddressId)
 /// in an [`Address`](super::Address).
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RoutingParameters {
     interface: AddressInterface,
     note_tag_len: Option<u8>,
