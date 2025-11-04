@@ -77,6 +77,7 @@ pub trait ExecutionOutputExt {
     fn get_stack_word_be(&self, index: usize) -> Word;
 
     /// Reads a [`Word`] from the stack in little-endian (memory) order.
+    #[allow(dead_code)]
     fn get_stack_word_le(&self, index: usize) -> Word;
 
     /// Reads the [`Word`] of the input note's memory identified by the index at the provided

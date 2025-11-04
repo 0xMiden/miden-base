@@ -43,19 +43,27 @@ impl PartialStorageMap {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns a new instance of partial storage map with the specified partial SMT and stored
-    /// entries.
-    pub fn from_witnesses(
+    /// Constructs a [`PartialStorageMap`] from a [`StorageMap`] root.
+    ///
+    /// For conversion from a [`StorageMap`], prefer [`Self::new_minimal`] or [`Self::new_full`] to
+    /// be more explicit.
+    pub fn new(root: Word) -> Self {
+        PartialStorageMap {
+            partial_smt: PartialSmt::new(root),
+            entries: BTreeMap::new(),
+        }
+    }
+
+    /// Returns a new instance of a [`PartialStorageMap`] with all provided witnesses added to it.
+    pub fn with_witnesses(
         witnesses: impl IntoIterator<Item = StorageMapWitness>,
     ) -> Result<Self, MerkleError> {
-        let mut partial_smt = PartialSmt::default();
         let mut map = BTreeMap::new();
 
-        for witness in witnesses.into_iter() {
+        let partial_smt = PartialSmt::from_proofs(witnesses.into_iter().map(|witness| {
             map.extend(witness.entries());
-            let smt_proof = SmtProof::from(witness);
-            partial_smt.add_proof(smt_proof)?;
-        }
+            SmtProof::from(witness)
+        }))?;
 
         Ok(PartialStorageMap { partial_smt, entries: map })
     }
@@ -73,21 +81,11 @@ impl PartialStorageMap {
 
     /// Converts a [`StorageMap`] into a partial storage representation.
     ///
-    /// The resulting [`PartialStorageMap`] will contain only a single, unspecified key-value pair
-    /// in order to have the same root as the original storage map. Is it otherwise the most
-    /// _minimal_ representation of the storage map.
+    /// The resulting [`PartialStorageMap`] will represent the root of the storage map, but not
+    /// track any key-value pairs, which means it is the most _minimal_ representation of the
+    /// storage map.
     pub fn new_minimal(storage_map: &StorageMap) -> Self {
-        let mut partial_map = PartialStorageMap::default();
-
-        // Construct a partial storage map that tracks the empty word, but none of the assets that
-        // are actually in the asset tree. That way, the partial map has the same root as the full
-        // map. This is the most minimal and correct partial map we can build.
-        // TODO: Workaround for https://github.com/0xMiden/miden-base/issues/1966. Fix when implemented.
-        partial_map
-            .add(storage_map.open(&Word::empty()))
-            .expect("adding the first proof should never fail");
-
-        partial_map
+        Self::new(storage_map.root())
     }
 
     // ACCESSORS
