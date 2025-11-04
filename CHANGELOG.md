@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.12.1 (TBD)
+
+### Features
+
+- Add optional recipient public encryption key to `RoutingParameters`; extend address encode/decode to support it.
+- Re-export `PublicEncryptionKey` and `SecretDecryptionKey` (from `crypto_box`) in `miden-objects`.
+- Add helpers: `address::seal_for_address` and `address::unseal_with_secret_key` for sealed box encryption.
+
+### Docs
+
+- Update Address docs to document the `Encryption Key` routing parameter and sealed box usage.
+
 ## 0.12.0 (TBD)
 
 ### Features

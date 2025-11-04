@@ -305,6 +305,8 @@ pub enum AddressError {
     },
     #[error("found unknown routing parameter key {0}")]
     UnknownRoutingParameterKey(u8),
+    #[error("encryption key must be 32 bytes, but got {0}")]
+    InvalidEncryptionKeyLength(usize),
 }
 
 impl AddressError {

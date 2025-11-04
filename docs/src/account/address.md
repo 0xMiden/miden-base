@@ -1,4 +1,3 @@
----
 sidebar_position: 3
 ---
 
@@ -25,9 +24,9 @@ These different address mechanisms provide different levels of privacy and secur
 - `AddressId::PoW`: the receiver is not revealed publicly, but potentially many entities can consume the note. The receiver has an advantage by specifying the salt.
 - `AddressId::PublicKey`: the receiver `AccountId` is not revealed publicly, only their public key. A fresh `AddressId::PublicKey` can be used for receiving each note, resulting in increased privacy.
 
-:::note
+::::note
 The "Pay-to-PoW" and "Pay-to-Public-Key" notes and the corresponding address types are for illustration purposes only. They are not part of the Miden library.
-:::
+::::
 
 ### Communicating channel information
 
@@ -74,17 +73,22 @@ The supported **address types** are:
 - `AddressId::AccountId` (type `232`): An address pointing to an account ID.
   - Choosing `232` as the type byte means that all addresses that encode an account ID start with `mm1a`, where `a` conveniently indicates "account".
 
-:::note
+::::note
 Adding a public key-based address type is planned.
-:::
+::::
 
 ### Routing Parameters
 
 The supported routing parameters are detailed in this section.
 
-:::note
-Adding an encryption key routing parameter is planned.
-:::
+#### Encryption Key
+
+An optional recipient public encryption key can be included in routing parameters. When present, senders can encrypt note payloads to the recipient using a sealed box construction. The recipient decrypts using their corresponding secret key.
+
+- The encryption key is encoded inside routing parameters and preserved through address string round-trips.
+- Helper functions are provided:
+  - `miden_objects::address::seal_for_address(&mut rng, &Address, plaintext)` to encrypt for an address with an encryption key.
+  - `miden_objects::address::unseal_with_secret_key(&SecretDecryptionKey, ciphertext)` to decrypt.
 
 #### Address Interface
 

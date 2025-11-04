@@ -23,6 +23,8 @@ use crate::utils::serde::{ByteWriter, Deserializable, Serializable};
 
 mod address_id;
 pub use address_id::AddressId;
+mod encryption;
+pub use encryption::{seal_for_address, unseal_with_secret_key};
 
 /// A user-facing address in Miden.
 ///
@@ -106,6 +108,17 @@ impl Address {
         Ok(self)
     }
 
+    /// Sets the recipient public encryption key in routing parameters, creating routing params if absent.
+    pub fn with_encryption_key(mut self, key: crate::PublicEncryptionKey) -> Self {
+        let params = match self.routing_params.take() {
+            Some(rp) => rp.with_encryption_key(key),
+            None => RoutingParameters::new(self.interface().unwrap_or(AddressInterface::BasicWallet))
+                .with_encryption_key(key),
+        };
+        self.routing_params = Some(params);
+        self
+    }
+
     // ACCESSORS
     // --------------------------------------------------------------------------------------------
 
@@ -128,6 +141,11 @@ impl Address {
             .as_ref()
             .and_then(RoutingParameters::note_tag_len)
             .unwrap_or(self.id.default_note_tag_len())
+    }
+
+    /// Returns the recipient public encryption key, if present.
+    pub fn encryption_key(&self) -> Option<&crate::PublicEncryptionKey> {
+        self.routing_params.as_ref().and_then(RoutingParameters::encryption_key)
     }
 
     /// Returns a note tag derived from this address.
@@ -308,6 +326,70 @@ mod tests {
                 assert_eq!(account_id, decoded_account_id);
             }
         }
+
+        Ok(())
+    }
+
+    #[test]
+    fn address_with_encryption_key_roundtrip() -> anyhow::Result<()> {
+        use crypto_box::aead::OsRng;
+        use crypto_box::aead::rand_core::RngCore;
+
+        let rng = &mut rand::rng();
+        let account_id = AccountIdBuilder::new()
+            .account_type(AccountType::RegularAccountImmutableCode)
+            .build_with_rng(rng);
+
+        // generate a random keypair
+        let mut sk_bytes = [0u8; 32];
+        OsRng.fill_bytes(&mut sk_bytes);
+        let sk = crate::SecretDecryptionKey::from_bytes(sk_bytes);
+        let pk = crate::PublicEncryptionKey::from(&sk);
+
+        let address = Address::new(account_id)
+            .with_routing_parameters(
+                RoutingParameters::new(AddressInterface::BasicWallet)
+                    .with_note_tag_len(NoteTag::DEFAULT_NETWORK_TAG_LENGTH)?,
+            )?
+            .with_encryption_key(pk);
+
+        let encoded = address.encode(NetworkId::Devnet);
+        let (_, decoded) = Address::decode(&encoded)?;
+        assert_eq!(address, decoded);
+        assert!(decoded.encryption_key().is_some());
+
+        Ok(())
+    }
+
+    #[test]
+    fn seal_and_unseal_roundtrip() -> anyhow::Result<()> {
+        use crypto_box::aead::OsRng;
+        use crypto_box::aead::rand_core::RngCore;
+
+        let rng = &mut rand::rng();
+        let account_id = AccountIdBuilder::new()
+            .account_type(AccountType::RegularAccountImmutableCode)
+            .build_with_rng(rng);
+
+        // generate a random recipient keypair
+        let mut sk_bytes = [0u8; 32];
+        OsRng.fill_bytes(&mut sk_bytes);
+        let sk = crate::SecretDecryptionKey::from_bytes(sk_bytes);
+        let pk = crate::PublicEncryptionKey::from(&sk);
+
+        let address = Address::new(account_id)
+            .with_routing_parameters(
+                RoutingParameters::new(AddressInterface::BasicWallet)
+                    .with_note_tag_len(NoteTag::DEFAULT_NETWORK_TAG_LENGTH)?,
+            )?
+            .with_encryption_key(pk);
+
+        let plaintext = b"hello miden".to_vec();
+        // seal using address and unseal using secret key
+        let sealed = super::seal_for_address(&mut rand::rng(), &address, &plaintext)
+            .expect("encryption key present");
+        let unsealed = super::unseal_with_secret_key(&sk, &sealed)?;
+        assert_eq!(plaintext, unsealed);
 
         Ok(())
     }

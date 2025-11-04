@@ -55,6 +55,8 @@ pub use miden_core::{EMPTY_WORD, Felt, FieldElement, ONE, StarkField, WORD_SIZE,
 pub use miden_crypto::hash::rpo::Rpo256 as Hasher;
 pub use miden_crypto::word;
 pub use miden_crypto::word::{LexicographicWord, Word, WordError};
+// Re-export sealed box key types for ergonomics
+pub use crypto_box::{PublicKey as PublicEncryptionKey, SecretKey as SecretDecryptionKey};
 
 pub mod assembly {
     pub use miden_assembly::ast::{Module, ModuleKind, ProcedureName, QualifiedProcedureName};

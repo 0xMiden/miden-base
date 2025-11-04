@@ -9,6 +9,7 @@ use crate::AddressError;
 use crate::address::AddressInterface;
 use crate::errors::Bech32Error;
 use crate::note::NoteTag;
+use crate::PublicEncryptionKey;
 use crate::utils::serde::{
     ByteReader,
     ByteWriter,
@@ -38,6 +39,8 @@ const ABSENT_NOTE_TAG_LEN: u8 = 1 << 5;
 
 /// The routing parameter key for the receiver profile.
 const RECEIVER_PROFILE_KEY: u8 = 0;
+/// The routing parameter key for the recipient's public encryption key.
+const ENCRYPTION_KEY_KEY: u8 = 1;
 
 /// Parameters that define how a sender should route a note to the [`AddressId`](super::AddressId)
 /// in an [`Address`](super::Address).
@@ -45,6 +48,7 @@ const RECEIVER_PROFILE_KEY: u8 = 0;
 pub struct RoutingParameters {
     interface: AddressInterface,
     note_tag_len: Option<u8>,
+    encryption_key: Option<PublicEncryptionKey>,
 }
 
 impl RoutingParameters {
@@ -54,7 +58,7 @@ impl RoutingParameters {
     /// Creates new [`RoutingParameters`] from an [`AddressInterface`] and all other parameters
     /// initialized to `None`.
     pub fn new(interface: AddressInterface) -> Self {
-        Self { interface, note_tag_len: None }
+        Self { interface, note_tag_len: None, encryption_key: None }
     }
 
     /// Sets the note tag length routing parameter.
@@ -79,6 +83,12 @@ impl RoutingParameters {
         Ok(self)
     }
 
+    /// Sets the recipient public encryption key routing parameter.
+    pub fn with_encryption_key(mut self, key: PublicEncryptionKey) -> Self {
+        self.encryption_key = Some(key);
+        self
+    }
+
     // ACCESSORS
     // --------------------------------------------------------------------------------------------
 
@@ -93,6 +103,11 @@ impl RoutingParameters {
     /// Returns the [`AddressInterface`] of the account to which the address points.
     pub fn interface(&self) -> AddressInterface {
         self.interface
+    }
+
+    /// Returns the recipient public encryption key, if present.
+    pub fn encryption_key(&self) -> Option<&PublicEncryptionKey> {
+        self.encryption_key.as_ref()
     }
 
     // HELPERS
@@ -120,6 +135,14 @@ impl RoutingParameters {
         // Append the receiver profile key and the encoded value to the vector.
         encoded.push(RECEIVER_PROFILE_KEY);
         encoded.extend(receiver_profile);
+
+        // Append the encryption key if present
+        if let Some(pubkey) = &self.encryption_key {
+            let mut key_bytes = [0u8; 32];
+            key_bytes.copy_from_slice(pubkey.as_ref());
+            encoded.push(ENCRYPTION_KEY_KEY);
+            encoded.extend(key_bytes);
+        }
 
         encoded
     }
@@ -170,6 +193,7 @@ impl RoutingParameters {
     ) -> Result<Self, AddressError> {
         let mut interface = None;
         let mut note_tag_len = None;
+        let mut encryption_key: Option<PublicEncryptionKey> = None;
 
         while let Some(key) = byte_iter.next() {
             match key {
@@ -201,6 +225,17 @@ impl RoutingParameters {
                         })?;
                     interface = Some(addr_interface);
                 },
+                ENCRYPTION_KEY_KEY => {
+                    if byte_iter.len() < 32 {
+                        return Err(AddressError::InvalidEncryptionKeyLength(32 - byte_iter.len()));
+                    }
+                    let mut key_bytes = [0u8; 32];
+                    for i in 0..32 {
+                        key_bytes[i] = byte_iter.next().expect("key byte should exist");
+                    }
+                    let pubkey = PublicEncryptionKey::from(key_bytes);
+                    encryption_key = Some(pubkey);
+                },
                 other => {
                     return Err(AddressError::UnknownRoutingParameterKey(other));
                 },
@@ -213,6 +248,7 @@ impl RoutingParameters {
 
         let mut routing_parameters = RoutingParameters::new(interface);
         routing_parameters.note_tag_len = note_tag_len;
+        routing_parameters.encryption_key = encryption_key;
 
         Ok(routing_parameters)
     }
@@ -281,6 +317,29 @@ mod tests {
         let routing_params =
             RoutingParameters::new(AddressInterface::BasicWallet).with_note_tag_len(8)?;
         assert_eq!(routing_params, RoutingParameters::decode(routing_params.encode_to_string())?);
+
+        Ok(())
+    }
+
+    #[test]
+    fn routing_parameters_with_encryption_key_roundtrip() -> anyhow::Result<()> {
+        use crypto_box::aead::OsRng;
+        use crypto_box::aead::rand_core::RngCore;
+        use crate::{PublicEncryptionKey, SecretDecryptionKey};
+
+        // generate a random keypair
+        let mut sk_bytes = [0u8; 32];
+        OsRng.fill_bytes(&mut sk_bytes);
+        let sk = SecretDecryptionKey::from_bytes(sk_bytes);
+        let pk = PublicEncryptionKey::from(&sk);
+
+        let routing_params = RoutingParameters::new(AddressInterface::BasicWallet)
+            .with_note_tag_len(8)?
+            .with_encryption_key(pk);
+
+        let encoded = routing_params.encode_to_string();
+        let decoded = RoutingParameters::decode(encoded)?;
+        assert_eq!(routing_params, decoded);
 
         Ok(())
     }
