@@ -29,23 +29,19 @@ impl InitStorageData {
     /// # Parameters
     ///
     /// - `entries`: An iterable collection of key-value pairs.
-    pub fn new(entries: impl IntoIterator<Item = (StorageValueName, String)>) -> Self {
+    /// - `map_entries`: An iterable collection of storage map entries keyed by placeholder.
+    pub fn new(
+        entries: impl IntoIterator<Item = (StorageValueName, String)>,
+        map_entries: impl IntoIterator<Item = (StorageValueName, Vec<(Word, Word)>)>,
+    ) -> Self {
         let value_entries = entries
             .into_iter()
             .filter(|(entry_name, _)| !entry_name.as_str().is_empty())
             .collect::<BTreeMap<_, _>>();
 
-        InitStorageData::from_parts(value_entries, BTreeMap::new())
-    }
-
-    /// Creates a new instance from the provided placeholder and map data.
-    pub(crate) fn from_parts(
-        storage_placeholders: BTreeMap<StorageValueName, String>,
-        map_entries: BTreeMap<StorageValueName, Vec<(Word, Word)>>,
-    ) -> Self {
         InitStorageData {
-            value_entries: storage_placeholders,
-            map_entries,
+            value_entries,
+            map_entries: map_entries.into_iter().collect(),
         }
     }
 
