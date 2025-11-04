@@ -20,7 +20,7 @@ const RPO_FALCON_512: u8 = 0;
 
 /// Defines standard authentication schemes (i.e., signature schemes) available in the Miden
 /// protocol.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 #[repr(u8)]
 pub enum AuthScheme {
@@ -79,7 +79,7 @@ impl Deserializable for AuthScheme {
 // ================================================================================================
 
 /// Secret keys of the standard [`AuthScheme`]s available in the Miden protocol.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 #[repr(u8)]
 pub enum AuthSecretKey {
@@ -119,15 +119,6 @@ impl AuthSecretKey {
         }
     }
 }
-
-impl PartialEq for AuthSecretKey {
-    fn eq(&self, other: &Self) -> bool {
-        // TODO: compare keys directly once the underlying private key implement Eq and PartialEq
-        self.to_bytes() == other.to_bytes()
-    }
-}
-
-impl Eq for AuthSecretKey {}
 
 impl Serializable for AuthSecretKey {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
