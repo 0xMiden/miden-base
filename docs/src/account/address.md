@@ -4,10 +4,6 @@ sidebar_position: 3
 
 # Address
 
-:::note
-A human-readable identifier for `Account`s or public keys.
-:::
-
 ## Purpose
 
 An address is an extension to account IDs and other identifiers that facilitates sending and receiving of [notes](../note). It serves three main purposes explained in this section.
