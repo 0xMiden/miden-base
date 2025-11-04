@@ -33,6 +33,17 @@ impl AuthRpoFalcon512MultisigConfig {
             ));
         }
 
+        // Check for duplicate approvers
+        for i in 0..approvers.len() {
+            for j in (i + 1)..approvers.len() {
+                if approvers[i] == approvers[j] {
+                    return Err(AccountError::other(
+                        "duplicate approver public keys are not allowed",
+                    ));
+                }
+            }
+        }
+
         Ok(Self {
             approvers,
             default_threshold,
@@ -239,6 +250,35 @@ mod tests {
                 .unwrap_err()
                 .to_string()
                 .contains("threshold cannot be greater than number of approvers")
+        );
+    }
+
+    /// Test multisig component with duplicate approvers (should fail)
+    #[test]
+    fn test_multisig_component_duplicate_approvers() {
+        let pub_key_1 = PublicKeyCommitment::from(Word::from([1u32, 0, 0, 0]));
+        let pub_key_2 = PublicKeyCommitment::from(Word::from([2u32, 0, 0, 0]));
+        let pub_key_1_duplicate = PublicKeyCommitment::from(Word::from([1u32, 0, 0, 0]));
+
+        // Test with duplicate approvers (should fail)
+        let approvers = vec![pub_key_1, pub_key_2, pub_key_1_duplicate];
+        let result = AuthRpoFalcon512MultisigConfig::new(approvers, 2);
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("duplicate approver public keys are not allowed")
+        );
+
+        // Test with all duplicate approvers (should fail)
+        let pub_key = PublicKeyCommitment::from(Word::from([1u32, 0, 0, 0]));
+        let approvers = vec![pub_key, pub_key, pub_key];
+        let result = AuthRpoFalcon512MultisigConfig::new(approvers, 2);
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("duplicate approver public keys are not allowed")
         );
     }
 }
