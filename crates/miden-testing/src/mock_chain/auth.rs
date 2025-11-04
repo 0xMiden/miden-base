@@ -63,7 +63,7 @@ impl Auth {
         match self {
             Auth::BasicAuth => {
                 let mut rng = ChaCha20Rng::from_seed(Default::default());
-                let sec_key = AuthSecretKey::rpo_falcon512_with_rng(&mut rng);
+                let sec_key = AuthSecretKey::new_rpo_falcon512_with_rng(&mut rng);
                 let pub_key = sec_key.public_key().to_commitment();
 
                 let component = AuthRpoFalcon512::new(pub_key).into();
@@ -90,7 +90,7 @@ impl Auth {
                 allow_unauthorized_input_notes,
             } => {
                 let mut rng = ChaCha20Rng::from_seed(Default::default());
-                let sec_key = AuthSecretKey::rpo_falcon512_with_rng(&mut rng);
+                let sec_key = AuthSecretKey::new_rpo_falcon512_with_rng(&mut rng);
                 let pub_key = sec_key.public_key().to_commitment();
 
                 let component = AuthRpoFalcon512Acl::new(

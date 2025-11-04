@@ -247,7 +247,7 @@ mod test {
 
     #[test]
     fn serialize_auth_key() {
-        let auth_key = AuthSecretKey::rpo_falcon512();
+        let auth_key = AuthSecretKey::new_rpo_falcon512();
         let serialized = auth_key.to_bytes();
         let deserialized = AuthSecretKey::read_from_bytes(&serialized).unwrap();
 

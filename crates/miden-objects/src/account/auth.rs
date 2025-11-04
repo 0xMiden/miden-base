@@ -89,12 +89,12 @@ pub enum AuthSecretKey {
 impl AuthSecretKey {
     /// Generates an RpoFalcon512 secret key from the OS-provided randomness.
     #[cfg(feature = "std")]
-    pub fn rpo_falcon512() -> Self {
+    pub fn new_rpo_falcon512() -> Self {
         Self::RpoFalcon512(rpo_falcon512::SecretKey::new())
     }
 
     /// Generates an RpoFalcon512 secrete key using the provided random number generator.
-    pub fn rpo_falcon512_with_rng<R: Rng>(rng: &mut R) -> Self {
+    pub fn new_rpo_falcon512_with_rng<R: Rng>(rng: &mut R) -> Self {
         Self::RpoFalcon512(rpo_falcon512::SecretKey::with_rng(rng))
     }
 
