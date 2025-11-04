@@ -105,34 +105,42 @@ where
     }
 
     fn on_event(&mut self, process: &ProcessState) -> Result<Vec<AdviceMutation>, EventError> {
-        let event_id = EventId::from_felt(process.get_stack_item(0));
+        todo!()
+        // let event_id = EventId::from_felt(process.get_stack_item(0));
 
-        match self.base_host.handle_event(process, event_id)? {
-            TransactionEventHandling::Unhandled(event_data) => {
-                // We match on the event_data here so that if a new
-                // variant is added to the enum, this fails compilation and we can adapt
-                // accordingly.
-                match event_data {
-                    // The base host should have handled this event since the signature should be
-                    // present in the advice map.
-                    TransactionEvent::AuthRequest { .. } => {
-                        Err(EventError::from("base host should have handled auth request event"))
-                    },
-                    // Foreign account data and witnesses should be in the advice provider at
-                    // proving time, so there is nothing to do.
-                    TransactionEvent::ForeignAccount { .. } => Ok(Vec::new()),
-                    TransactionEvent::AccountVaultAssetWitness { .. } => Ok(Vec::new()),
-                    TransactionEvent::AccountStorageMapWitness { .. } => Ok(Vec::new()),
-                    // Note scripts should be in the advice provider at proving time, so there is
-                    // nothing to do.
-                    TransactionEvent::NoteData { .. } => Ok(Vec::new()),
-                    // We don't track enough information to handle this event. Since this just
-                    // improves error messages for users and the error should not be relevant during
-                    // proving, we ignore it.
-                    TransactionEvent::TransactionFeeComputed { .. } => Ok(Vec::new()),
-                }
-            },
-            TransactionEventHandling::Handled(mutations) => Ok(mutations),
-        }
+        // match self.base_host.handle_event(process, event_id)? {
+        //     TransactionEventHandling::Unhandled(event_data) => {
+        //         // We match on the event_data here so that if a new
+        //         // variant is added to the enum, this fails compilation and we can adapt
+        //         // accordingly.
+        //         match event_data {
+        //             // Foreign account data and witnesses should be in the advice provider at
+        //             // proving time, so there is nothing to do.
+        //             TransactionEvent::AccountBeforeForeignLoad { .. } => Ok(Vec::new()),
+        //             TransactionEvent::AccountVaultAfterAddAsset { asset } => {
+        //                 self.base_host.on_account_vault_after_add_asset(asset)
+        //             },
+        //             TransactionEvent::AccountVaultAfterRemoveAsset { asset } => self
+        //                 .base_host
+        //                 .on_account_vault_after_remove_asset(asset)
+        //                 .map_err(EventError::from),
+        //             // The base host should have handled this event since the signature should be
+        //             // present in the advice map.
+        //             TransactionEvent::AuthRequest { .. } => {
+        //                 Err(EventError::from("base host should have handled auth request event"))
+        //             },
+        //             TransactionEvent::AccountVaultAssetAccess { .. } => Ok(Vec::new()),
+        //             TransactionEvent::AccountStorageMapWitness { .. } => Ok(Vec::new()),
+        //             // Note scripts should be in the advice provider at proving time, so there is
+        //             // nothing to do.
+        //             TransactionEvent::NoteData { .. } => Ok(Vec::new()),
+        //             // We don't track enough information to handle this event. Since this just
+        //             // improves error messages for users and the error should not be relevant
+        // during             // proving, we ignore it.
+        //             TransactionEvent::TransactionFeeComputed { .. } => Ok(Vec::new()),
+        //         }
+        //     },
+        //     TransactionEventHandling::Handled(mutations) => Ok(mutations),
+        // }
     }
 }

@@ -2,9 +2,15 @@ use alloc::collections::BTreeMap;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use miden_lib::transaction::{EventId, TransactionAdviceInputs};
+use miden_lib::transaction::TransactionAdviceInputs;
 use miden_objects::account::auth::PublicKeyCommitment;
-use miden_objects::account::{AccountCode, AccountDelta, AccountId, PartialAccount};
+use miden_objects::account::{
+    AccountCode,
+    AccountDelta,
+    AccountId,
+    PartialAccount,
+    StorageSlotType,
+};
 use miden_objects::assembly::debuginfo::Location;
 use miden_objects::assembly::{SourceFile, SourceManagerSync, SourceSpan};
 use miden_objects::asset::{Asset, AssetVaultKey, AssetWitness, FungibleAsset};
@@ -31,7 +37,6 @@ use crate::host::{
     ScriptMastForestStore,
     TransactionBaseHost,
     TransactionEvent,
-    TransactionEventHandling,
     TransactionProgress,
 };
 use crate::{AccountProcedureIndexMap, DataStore, DataStoreError};
@@ -279,14 +284,42 @@ where
     /// [`Self::on_account_vault_asset_witness_requested`] for more on this topic.
     async fn on_account_storage_map_witness_requested(
         &self,
-        current_account_id: AccountId,
-        map_root: Word,
+        active_account_id: AccountId,
+        slot_index: u8,
+        current_map_root: Word,
         map_key: Word,
     ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
+        // For the native account we need to explicitly request the initial map root,
+        // while for foreign accounts the current map root is always
+        // the initial one.
+        let map_root = if active_account_id == self.base_host.initial_account_header().id() {
+            // For native accounts, we have to request witnesses against the initial
+            // root instead of the _current_ one, since the data
+            // store only has witnesses for initial one.
+            let (slot_type, slot_value) = self.base_host
+                    .initial_account_storage_header()
+                    // Slot index should always fit into a usize.
+                    .slot(slot_index as usize)
+                    .map_err(|err| {
+                        TransactionKernelError::other_with_source(
+                            "failed to access storage map in storage header",
+                            err,
+                        )
+                    })?;
+            if *slot_type != StorageSlotType::Map {
+                return Err(TransactionKernelError::other(format!(
+                    "expected map slot type at slot index {slot_index}"
+                )));
+            }
+            *slot_value
+        } else {
+            current_map_root
+        };
+
         let storage_map_witness = self
             .base_host
             .store()
-            .get_storage_map_witness(current_account_id, map_root, map_key)
+            .get_storage_map_witness(active_account_id, map_root, map_key)
             .await
             .map_err(|err| TransactionKernelError::GetStorageMapWitness {
                 map_root,
@@ -341,14 +374,22 @@ where
     /// witnesses for the initial vault root.
     async fn on_account_vault_asset_witness_requested(
         &self,
-        current_account_id: AccountId,
-        vault_root: Word,
+        active_account_id: AccountId,
+        current_vault_root: Word,
         asset_key: AssetVaultKey,
     ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
+        // For the native account we need to explicitly request the initial vault root, while for
+        // foreign accounts the current vault root is always the initial one.
+        let vault_root = if active_account_id == self.base_host.initial_account_header().id() {
+            self.base_host.initial_account_header().vault_root()
+        } else {
+            current_vault_root
+        };
+
         let asset_witness = self
             .base_host
             .store()
-            .get_vault_asset_witness(current_account_id, vault_root, asset_key)
+            .get_vault_asset_witness(active_account_id, vault_root, asset_key)
             .await
             .map_err(|err| TransactionKernelError::GetVaultAssetWitness {
                 vault_root,
@@ -467,53 +508,110 @@ where
         &mut self,
         process: &ProcessState,
     ) -> impl FutureMaybeSend<Result<Vec<AdviceMutation>, EventError>> {
-        let event_id = EventId::from_felt(process.get_stack_item(0));
+        let tx_event = TransactionEvent::extract_from_process(process);
+
+        // let event_id = EventId::from_felt(process.get_stack_item(0));
 
         // TODO: Eventually, refactor this to let TransactionEvent contain the data directly, which
         // should be cleaner.
-        let event_handling_result = self.base_host.handle_event(process, event_id);
+        // let event_handling_result = self.base_host.handle_event(process, event_id);
 
         async move {
-            let event_handling = event_handling_result?;
-            let event_data = match event_handling {
-                TransactionEventHandling::Unhandled(event) => event,
-                TransactionEventHandling::Handled(mutations) => {
-                    return Ok(mutations);
-                },
+            let tx_event = tx_event.map_err(EventError::from)?;
+
+            // None means the event ID does not need any special handling.
+            let Some(tx_event) = tx_event else {
+                return Ok(Vec::new());
             };
 
-            match event_data {
-                TransactionEvent::AuthRequest { pub_key_hash, signing_inputs } => self
-                    .on_auth_requested(pub_key_hash, signing_inputs)
-                    .await
-                    .map_err(EventError::from),
-                TransactionEvent::TransactionFeeComputed { fee_asset } => self
-                    .on_before_tx_fee_removed_from_account(fee_asset)
-                    .await
-                    .map_err(EventError::from),
-                TransactionEvent::ForeignAccount { account_id } => {
-                    self.on_foreign_account_requested(account_id).await.map_err(EventError::from)
+            // let event_handling = event_handling_result?;
+            // let event_data = match event_handling {
+            //     TransactionEventHandling::Unhandled(event) => event,
+            //     TransactionEventHandling::Handled(mutations) => {
+            //         return Ok(mutations);
+            //     },
+            // };
+
+            let result = match tx_event {
+                TransactionEvent::AccountBeforeForeignLoad { foreign_account_id: account_id } => {
+                    self.on_foreign_account_requested(account_id).await
                 },
-                TransactionEvent::AccountVaultAssetWitness {
-                    current_account_id,
-                    vault_root,
+
+                TransactionEvent::AccountVaultAfterAddAsset { asset } => {
+                    self.base_host.on_account_vault_after_add_asset(asset)
+                },
+                TransactionEvent::AccountVaultAfterRemoveAsset { asset } => {
+                    self.base_host.on_account_vault_after_remove_asset(asset)
+                },
+
+                TransactionEvent::AuthRequest { pub_key_hash, signing_inputs } => {
+                    self.on_auth_requested(pub_key_hash, signing_inputs).await
+                },
+                TransactionEvent::TransactionFeeComputed { fee_asset } => {
+                    self.on_before_tx_fee_removed_from_account(fee_asset).await
+                },
+                TransactionEvent::AccountVaultBeforeAssetAccess {
+                    active_account_id,
+                    current_vault_root,
                     asset_key,
-                } => self
-                    .on_account_vault_asset_witness_requested(
-                        current_account_id,
-                        vault_root,
+                    is_witness_present,
+                } => {
+                    // If the merkle path is already in the advice provider there is nothing to do.
+                    if is_witness_present {
+                        return Ok(Vec::new());
+                    }
+
+                    self.on_account_vault_asset_witness_requested(
+                        active_account_id,
+                        current_vault_root,
                         asset_key,
                     )
                     .await
-                    .map_err(EventError::from),
-                TransactionEvent::AccountStorageMapWitness {
-                    current_account_id,
-                    map_root,
+                },
+
+                TransactionEvent::AccountStorageAfterSetItem {
+                    slot_idx,
+                    current_value,
+                    new_value,
+                } => self.base_host.on_account_storage_after_set_item(
+                    slot_idx,
+                    current_value,
+                    new_value,
+                ),
+
+                TransactionEvent::AccountStorageAfterSetMapItem {
+                    slot_index,
+                    key,
+                    prev_map_value,
+                    new_map_value,
+                } => self.base_host.on_account_storage_after_set_map_item(
+                    slot_index,
+                    key,
+                    prev_map_value,
+                    new_map_value,
+                ),
+
+                TransactionEvent::AccountStorageBeforeMapItemAccess {
+                    active_account_id,
+                    slot_index,
+                    current_map_root: map_root,
                     map_key,
-                } => self
-                    .on_account_storage_map_witness_requested(current_account_id, map_root, map_key)
+                    is_witness_present,
+                } => {
+                    // If the merkle path is already in the advice provider there is nothing to do.
+                    if is_witness_present {
+                        return Ok(Vec::new());
+                    }
+
+                    self.on_account_storage_map_witness_requested(
+                        active_account_id,
+                        slot_index,
+                        map_root,
+                        map_key,
+                    )
                     .await
-                    .map_err(EventError::from),
+                },
+
                 TransactionEvent::NoteData {
                     note_idx,
                     metadata,
@@ -521,8 +619,8 @@ where
                     recipient_digest,
                     note_inputs,
                     serial_num,
-                } => self
-                    .on_note_script_requested(
+                } => {
+                    self.on_note_script_requested(
                         script_root,
                         metadata,
                         recipient_digest,
@@ -531,8 +629,10 @@ where
                         serial_num,
                     )
                     .await
-                    .map_err(EventError::from),
-            }
+                },
+            };
+
+            result.map_err(EventError::from)
         }
     }
 }
