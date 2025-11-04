@@ -8,6 +8,7 @@ use miden_crypto::ies::SealingKey;
 
 use crate::AddressError;
 use crate::address::AddressInterface;
+use crate::crypto::dsa::{ecdsa_k256_keccak, eddsa_25519};
 use crate::errors::Bech32Error;
 use crate::note::NoteTag;
 use crate::utils::serde::{
@@ -140,48 +141,14 @@ impl RoutingParameters {
     pub(crate) fn encode_to_bytes(&self) -> Vec<u8> {
         let mut encoded = Vec::new();
 
-        let note_tag_len = self.note_tag_len.unwrap_or(ABSENT_NOTE_TAG_LEN);
-
-        let interface = self.interface as u16;
-        debug_assert_eq!(
-            interface >> 11,
-            0,
-            "address interface should have its upper 5 bits unset"
-        );
-
-        // The interface takes up 11 bits and the tag length 5 bits, so we can merge them
-        // together.
-        let tag_len = (note_tag_len as u16) << 11;
-        let receiver_profile: u16 = tag_len | interface;
-        let receiver_profile: [u8; 2] = receiver_profile.to_be_bytes();
-
         // Append the receiver profile key and the encoded value to the vector.
         encoded.push(RECEIVER_PROFILE_PARAM_KEY);
-        encoded.extend(receiver_profile);
+        encoded.extend(encode_receiver_profile(self.interface, self.note_tag_len));
 
         // Append the encryption key if present.
         if let Some(encryption_key) = &self.encryption_key {
             encoded.push(ENCRYPTION_KEY_PARAM_KEY);
-
-            // Write variant discriminant and key bytes
-            match encryption_key {
-                SealingKey::X25519XChaCha20Poly1305(pk) => {
-                    encoded.push(ENCRYPTION_KEY_X25519_XCHACHA20POLY1305);
-                    encoded.extend(&pk.to_bytes());
-                },
-                SealingKey::K256XChaCha20Poly1305(pk) => {
-                    encoded.push(ENCRYPTION_KEY_K256_XCHACHA20POLY1305);
-                    encoded.extend(&pk.to_bytes());
-                },
-                SealingKey::X25519AeadRpo(pk) => {
-                    encoded.push(ENCRYPTION_KEY_X25519_AEAD_RPO);
-                    encoded.extend(&pk.to_bytes());
-                },
-                SealingKey::K256AeadRpo(pk) => {
-                    encoded.push(ENCRYPTION_KEY_K256_AEAD_RPO);
-                    encoded.extend(&pk.to_bytes());
-                },
-            }
+            encode_encryption_key(encryption_key, &mut encoded);
         }
 
         encoded
@@ -238,145 +205,18 @@ impl RoutingParameters {
         while let Some(key) = byte_iter.next() {
             match key {
                 RECEIVER_PROFILE_PARAM_KEY => {
-                    if byte_iter.len() < 2 {
-                        return Err(AddressError::decode_error(
-                            "expected two bytes to decode receiver profile",
-                        ));
-                    };
-
-                    let byte0 = byte_iter.next().expect("byte0 should exist");
-                    let byte1 = byte_iter.next().expect("byte1 should exist");
-                    let receiver_profile = u16::from_be_bytes([byte0, byte1]);
-
-                    let tag_len = (receiver_profile >> 11) as u8;
-                    note_tag_len = if tag_len == ABSENT_NOTE_TAG_LEN {
-                        None
-                    } else {
-                        Some(tag_len)
-                    };
-
-                    let addr_interface = receiver_profile & 0b0000_0111_1111_1111;
-                    let addr_interface =
-                        AddressInterface::try_from(addr_interface).map_err(|err| {
-                            AddressError::decode_error_with_source(
-                                "failed to decode address interface",
-                                err,
-                            )
-                        })?;
-                    interface = Some(addr_interface);
+                    if interface.is_some() {
+                        return Err(AddressError::decode_error("duplicate receiver profile tag"));
+                    }
+                    let receiver_profile = decode_receiver_profile(&mut byte_iter)?;
+                    interface = Some(receiver_profile.0);
+                    note_tag_len = receiver_profile.1;
                 },
                 ENCRYPTION_KEY_PARAM_KEY => {
-                    // Need at least 1 byte for discriminant
-                    if byte_iter.len() < 1 {
-                        return Err(AddressError::decode_error(
-                            "expected at least 1 byte for encryption key variant",
-                        ));
-                    };
-
-                    // Read variant discriminant
-                    let variant = byte_iter.next().expect("variant byte should exist");
-
-                    // Reconstruct the appropriate PublicEncryptionKey variant
-                    let public_encryption_key = match variant {
-                        ENCRYPTION_KEY_X25519_XCHACHA20POLY1305 => {
-                            if byte_iter.len() < ED25519_PUBLIC_KEY_LENGTH {
-                                return Err(AddressError::decode_error(format!(
-                                    "expected {} bytes to decode Ed25519 public key",
-                                    ED25519_PUBLIC_KEY_LENGTH
-                                )));
-                            }
-                            let mut key_bytes = [0u8; ED25519_PUBLIC_KEY_LENGTH];
-                            for byte in key_bytes.iter_mut() {
-                                *byte = byte_iter.next().expect("encryption key byte should exist");
-                            }
-                            let pk = crate::crypto::dsa::eddsa_25519::PublicKey::read_from_bytes(
-                                &key_bytes,
-                            )
-                            .map_err(|err| {
-                                AddressError::decode_error_with_source(
-                                    "failed to decode Ed25519 public key",
-                                    err,
-                                )
-                            })?;
-                            SealingKey::X25519XChaCha20Poly1305(pk)
-                        },
-                        ENCRYPTION_KEY_K256_XCHACHA20POLY1305 => {
-                            if byte_iter.len() < K256_PUBLIC_KEY_LENGTH {
-                                return Err(AddressError::decode_error(format!(
-                                    "expected {} bytes to decode K256 public key",
-                                    K256_PUBLIC_KEY_LENGTH
-                                )));
-                            }
-                            let mut key_bytes = [0u8; K256_PUBLIC_KEY_LENGTH];
-                            for byte in key_bytes.iter_mut() {
-                                *byte = byte_iter.next().expect("encryption key byte should exist");
-                            }
-                            let pk =
-                                crate::crypto::dsa::ecdsa_k256_keccak::PublicKey::read_from_bytes(
-                                    &key_bytes,
-                                )
-                                .map_err(|err| {
-                                    AddressError::decode_error_with_source(
-                                        "failed to decode K256 public key",
-                                        err,
-                                    )
-                                })?;
-                            SealingKey::K256XChaCha20Poly1305(pk)
-                        },
-                        ENCRYPTION_KEY_X25519_AEAD_RPO => {
-                            if byte_iter.len() < ED25519_PUBLIC_KEY_LENGTH {
-                                return Err(AddressError::decode_error(format!(
-                                    "expected {} bytes to decode Ed25519 public key",
-                                    ED25519_PUBLIC_KEY_LENGTH
-                                )));
-                            }
-                            let mut key_bytes = [0u8; ED25519_PUBLIC_KEY_LENGTH];
-                            for byte in key_bytes.iter_mut() {
-                                *byte = byte_iter.next().expect("encryption key byte should exist");
-                            }
-                            let pk = crate::crypto::dsa::eddsa_25519::PublicKey::read_from_bytes(
-                                &key_bytes,
-                            )
-                            .map_err(|err| {
-                                AddressError::decode_error_with_source(
-                                    "failed to decode Ed25519 public key",
-                                    err,
-                                )
-                            })?;
-                            SealingKey::X25519AeadRpo(pk)
-                        },
-                        ENCRYPTION_KEY_K256_AEAD_RPO => {
-                            if byte_iter.len() < K256_PUBLIC_KEY_LENGTH {
-                                return Err(AddressError::decode_error(format!(
-                                    "expected {} bytes to decode K256 public key",
-                                    K256_PUBLIC_KEY_LENGTH
-                                )));
-                            }
-                            let mut key_bytes = [0u8; K256_PUBLIC_KEY_LENGTH];
-                            for byte in key_bytes.iter_mut() {
-                                *byte = byte_iter.next().expect("encryption key byte should exist");
-                            }
-                            let pk =
-                                crate::crypto::dsa::ecdsa_k256_keccak::PublicKey::read_from_bytes(
-                                    &key_bytes,
-                                )
-                                .map_err(|err| {
-                                    AddressError::decode_error_with_source(
-                                        "failed to decode K256 public key",
-                                        err,
-                                    )
-                                })?;
-                            SealingKey::K256AeadRpo(pk)
-                        },
-                        other => {
-                            return Err(AddressError::decode_error(format!(
-                                "unknown encryption key variant: {}",
-                                other
-                            )));
-                        },
-                    };
-
-                    encryption_key = Some(public_encryption_key);
+                    if encryption_key.is_some() {
+                        return Err(AddressError::decode_error("duplicate encryption key tag"));
+                    }
+                    encryption_key = Some(decode_encryption_key(&mut byte_iter)?);
                 },
                 other => {
                     return Err(AddressError::UnknownRoutingParameterKey(other));
@@ -415,6 +255,150 @@ impl Deserializable for RoutingParameters {
         Self::decode_from_bytes(bytes.into_iter())
             .map_err(|err| DeserializationError::InvalidValue(err.to_string()))
     }
+}
+
+// ENCODING / DECODING HELPERS
+// ================================================================================================
+
+/// Returns receiver profile bytes constructed from the provided interface and note tag length.
+fn encode_receiver_profile(interface: AddressInterface, note_tag_len: Option<u8>) -> [u8; 2] {
+    let note_tag_len = note_tag_len.unwrap_or(ABSENT_NOTE_TAG_LEN);
+
+    let interface = interface as u16;
+    debug_assert_eq!(interface >> 11, 0, "address interface should have its upper 5 bits unset");
+
+    // The interface takes up 11 bits and the tag length 5 bits, so we can merge them
+    // together.
+    let tag_len = (note_tag_len as u16) << 11;
+    let receiver_profile: u16 = tag_len | interface;
+    receiver_profile.to_be_bytes()
+}
+
+/// Reads the receiver profile from the provided bytes.
+fn decode_receiver_profile(
+    byte_iter: &mut impl ExactSizeIterator<Item = u8>,
+) -> Result<(AddressInterface, Option<u8>), AddressError> {
+    if byte_iter.len() < 2 {
+        return Err(AddressError::decode_error("expected two bytes to decode receiver profile"));
+    };
+
+    let byte0 = byte_iter.next().expect("byte0 should exist");
+    let byte1 = byte_iter.next().expect("byte1 should exist");
+    let receiver_profile = u16::from_be_bytes([byte0, byte1]);
+
+    let tag_len = (receiver_profile >> 11) as u8;
+    let note_tag_len = if tag_len == ABSENT_NOTE_TAG_LEN {
+        None
+    } else {
+        Some(tag_len)
+    };
+
+    let addr_interface = receiver_profile & 0b0000_0111_1111_1111;
+    let addr_interface = AddressInterface::try_from(addr_interface).map_err(|err| {
+        AddressError::decode_error_with_source("failed to decode address interface", err)
+    })?;
+
+    Ok((addr_interface, note_tag_len))
+}
+
+/// Append encryption key variant discriminant and key to the provided vector of bytes.
+fn encode_encryption_key(key: &SealingKey, encoded: &mut Vec<u8>) {
+    match key {
+        SealingKey::X25519XChaCha20Poly1305(pk) => {
+            encoded.push(ENCRYPTION_KEY_X25519_XCHACHA20POLY1305);
+            encoded.extend(&pk.to_bytes());
+        },
+        SealingKey::K256XChaCha20Poly1305(pk) => {
+            encoded.push(ENCRYPTION_KEY_K256_XCHACHA20POLY1305);
+            encoded.extend(&pk.to_bytes());
+        },
+        SealingKey::X25519AeadRpo(pk) => {
+            encoded.push(ENCRYPTION_KEY_X25519_AEAD_RPO);
+            encoded.extend(&pk.to_bytes());
+        },
+        SealingKey::K256AeadRpo(pk) => {
+            encoded.push(ENCRYPTION_KEY_K256_AEAD_RPO);
+            encoded.extend(&pk.to_bytes());
+        },
+    }
+}
+
+/// Reads the encryption key from the provided bytes.
+fn decode_encryption_key(
+    byte_iter: &mut impl ExactSizeIterator<Item = u8>,
+) -> Result<SealingKey, AddressError> {
+    // Need at least 1 byte for discriminant
+    if byte_iter.len() < 1 {
+        return Err(AddressError::decode_error(
+            "expected at least 1 byte for encryption key variant",
+        ));
+    };
+
+    // Read variant discriminant
+    let variant = byte_iter.next().expect("variant byte should exist");
+
+    // Reconstruct the appropriate PublicEncryptionKey variant
+    let public_encryption_key = match variant {
+        ENCRYPTION_KEY_X25519_XCHACHA20POLY1305 => {
+            SealingKey::X25519XChaCha20Poly1305(read_x25519_pub_key(byte_iter)?)
+        },
+        ENCRYPTION_KEY_K256_XCHACHA20POLY1305 => {
+            SealingKey::K256XChaCha20Poly1305(read_k256_pub_key(byte_iter)?)
+        },
+        ENCRYPTION_KEY_X25519_AEAD_RPO => {
+            SealingKey::X25519AeadRpo(read_x25519_pub_key(byte_iter)?)
+        },
+        ENCRYPTION_KEY_K256_AEAD_RPO => SealingKey::K256AeadRpo(read_k256_pub_key(byte_iter)?),
+        other => {
+            return Err(AddressError::decode_error(format!(
+                "unknown encryption key variant: {}",
+                other
+            )));
+        },
+    };
+
+    Ok(public_encryption_key)
+}
+
+fn read_x25519_pub_key(
+    byte_iter: &mut impl ExactSizeIterator<Item = u8>,
+) -> Result<eddsa_25519::PublicKey, AddressError> {
+    if byte_iter.len() < ED25519_PUBLIC_KEY_LENGTH {
+        return Err(AddressError::decode_error(format!(
+            "expected {} bytes to decode Ed25519 public key",
+            ED25519_PUBLIC_KEY_LENGTH
+        )));
+    }
+    let key_bytes: [u8; ED25519_PUBLIC_KEY_LENGTH] = read_byte_array(byte_iter);
+    eddsa_25519::PublicKey::read_from_bytes(&key_bytes).map_err(|err| {
+        AddressError::decode_error_with_source("failed to decode Ed25519 public key", err)
+    })
+}
+
+fn read_k256_pub_key(
+    byte_iter: &mut impl ExactSizeIterator<Item = u8>,
+) -> Result<ecdsa_k256_keccak::PublicKey, AddressError> {
+    if byte_iter.len() < K256_PUBLIC_KEY_LENGTH {
+        return Err(AddressError::decode_error(format!(
+            "expected {} bytes to decode K256 public key",
+            K256_PUBLIC_KEY_LENGTH
+        )));
+    }
+    let key_bytes: [u8; K256_PUBLIC_KEY_LENGTH] = read_byte_array(byte_iter);
+    ecdsa_k256_keccak::PublicKey::read_from_bytes(&key_bytes).map_err(|err| {
+        AddressError::decode_error_with_source("failed to decode K256 public key", err)
+    })
+}
+
+/// Reads bytes from the provided iterator into an array of length N and returns this array.
+///
+/// Assumes that there are at last N bytes in the iterator.
+fn read_byte_array<const N: usize>(byte_iter: &mut impl ExactSizeIterator<Item = u8>) -> [u8; N] {
+    let mut array = [0u8; N];
+    for byte in array.iter_mut() {
+        *byte = byte_iter.next().expect("iterator should have enough bytes");
+    }
+    array
 }
 
 // TESTS
