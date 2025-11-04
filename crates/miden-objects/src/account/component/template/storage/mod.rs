@@ -379,7 +379,7 @@ mod tests {
 
     use miden_assembly::Assembler;
     use miden_core::utils::{Deserializable, Serializable};
-    use miden_core::{EMPTY_WORD, Felt, FieldElement, Word};
+    use miden_core::{EMPTY_WORD, Felt, Word};
     use semver::Version;
 
     use crate::account::component::FieldIdentifier;
@@ -663,19 +663,26 @@ mod tests {
         let map_name = StorageValueName::new("procedure_thresholds").unwrap();
         let map_entry = StorageEntry::new_map(0, MapRepresentation::new_template(map_name.clone()));
 
-        let mut init_data = InitStorageData::new([]);
-        init_data.insert_map_entries(
-            map_name,
-            vec![
-                (
-                    Word::from([Felt::new(1u64), Felt::ZERO, Felt::ZERO, Felt::ZERO]),
-                    Word::from([Felt::new(16u64), Felt::ZERO, Felt::ZERO, Felt::ZERO]),
-                ),
-                (
-                    Word::from([Felt::new(2u64), Felt::ZERO, Felt::ZERO, Felt::ZERO]),
-                    Word::from([Felt::new(32u64), Felt::ZERO, Felt::ZERO, Felt::ZERO]),
-                ),
-            ],
+        let init_data = InitStorageData::from_toml(
+            r#"
+            procedure_thresholds = [
+                { key = "0x0000000000000000000000000000000000000000000000000000000000000001", value = "0x0000000000000000000000000000000000000000000000000000000000000010" },
+                { key = "0x0000000000000000000000000000000000000000000000000000000000000002", value = "0x0000000000000000000000000000000000000000000000000000000000000020" }
+            ]
+        "#,
+        )
+        .unwrap();
+
+        let entries = init_data.map_entries(&map_name).expect("map entries missing");
+        assert_eq!(entries.len(), 2);
+        assert_eq!(
+            entries[0],
+            (
+                Word::parse("0x0000000000000000000000000000000000000000000000000000000000000001",)
+                    .unwrap(),
+                Word::parse("0x0000000000000000000000000000000000000000000000000000000000000010",)
+                    .unwrap(),
+            )
         );
 
         let slots = map_entry.try_build_storage_slots(&init_data).unwrap();
@@ -684,9 +691,14 @@ mod tests {
         match &slots[0] {
             StorageSlot::Map(storage_map) => {
                 assert_eq!(storage_map.num_entries(), 2);
-                let main_key = Word::from([Felt::new(1u64), Felt::ZERO, Felt::ZERO, Felt::ZERO]);
-                let main_value_expected =
-                    Word::from([Felt::new(16u64), Felt::ZERO, Felt::ZERO, Felt::ZERO]);
+                let main_key = Word::parse(
+                    "0x0000000000000000000000000000000000000000000000000000000000000001",
+                )
+                .unwrap();
+                let main_value_expected = Word::parse(
+                    "0x0000000000000000000000000000000000000000000000000000000000000010",
+                )
+                .unwrap();
                 assert_eq!(storage_map.get(&main_key), main_value_expected);
             },
             _ => panic!("expected map storage slot"),
@@ -708,8 +720,12 @@ mod tests {
 
         // try with an empty list
 
-        let mut init_data = InitStorageData::new([]);
-        init_data.insert_map_entries(map_name, vec![]);
+        let init_data = InitStorageData::from_toml(
+            r#"
+            procedure_thresholds = []
+        "#,
+        )
+        .unwrap();
 
         let result = map_entry.try_build_storage_slots(&init_data).unwrap();
 

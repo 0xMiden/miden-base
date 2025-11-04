@@ -604,7 +604,7 @@ impl MapRepresentation {
             },
             MapRepresentation::Template { identifier } => {
                 if let Some(entries) = init_storage_data.map_entries(&identifier.name) {
-                    return StorageMap::with_entries(entries.clone().into_iter()).map_err(|err| {
+                    return StorageMap::with_entries(entries.clone()).map_err(|err| {
                         AccountComponentTemplateError::StorageMapHasDuplicateKeys(Box::new(err))
                     });
                 }
