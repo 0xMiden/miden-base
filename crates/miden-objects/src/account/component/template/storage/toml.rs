@@ -465,7 +465,7 @@ impl InitStorageData {
             &mut map_entries,
         )?;
 
-        Ok(InitStorageData::from_parts(value_entries, map_entries))
+        Ok(InitStorageData::new(value_entries, map_entries))
     }
 
     /// Recursively flattens a TOML `Value` into a flat mapping.

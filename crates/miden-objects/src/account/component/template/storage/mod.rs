@@ -372,7 +372,7 @@ impl Deserializable for MapEntry {
 
 #[cfg(test)]
 mod tests {
-    use alloc::collections::BTreeSet;
+    use alloc::collections::{BTreeMap, BTreeSet};
     use alloc::string::ToString;
     use core::error::Error;
     use core::panic;
@@ -570,18 +570,21 @@ mod tests {
         assert_eq!(template, template_deserialized);
 
         // Fail to parse because 2800 > u8
-        let storage_placeholders = InitStorageData::new([
-            (
-                StorageValueName::new("map_entry.map_key_template").unwrap(),
-                "0x123".to_string(),
-            ),
-            (
-                StorageValueName::new("token_metadata.max_supply").unwrap(),
-                20_000u64.to_string(),
-            ),
-            (StorageValueName::new("token_metadata.decimals").unwrap(), "2800".into()),
-            (StorageValueName::new("default_recallable_height").unwrap(), "0".into()),
-        ]);
+        let storage_placeholders = InitStorageData::new(
+            [
+                (
+                    StorageValueName::new("map_entry.map_key_template").unwrap(),
+                    "0x123".to_string(),
+                ),
+                (
+                    StorageValueName::new("token_metadata.max_supply").unwrap(),
+                    20_000u64.to_string(),
+                ),
+                (StorageValueName::new("token_metadata.decimals").unwrap(), "2800".into()),
+                (StorageValueName::new("default_recallable_height").unwrap(), "0".into()),
+            ],
+            BTreeMap::new(),
+        );
 
         let component = AccountComponent::from_template(&template, &storage_placeholders);
         assert_matches::assert_matches!(
@@ -594,18 +597,21 @@ mod tests {
         );
 
         // Instantiate successfully
-        let storage_placeholders = InitStorageData::new([
-            (
-                StorageValueName::new("map_entry.map_key_template").unwrap(),
-                "0x123".to_string(),
-            ),
-            (
-                StorageValueName::new("token_metadata.max_supply").unwrap(),
-                20_000u64.to_string(),
-            ),
-            (StorageValueName::new("token_metadata.decimals").unwrap(), "128".into()),
-            (StorageValueName::new("default_recallable_height").unwrap(), "0x0".into()),
-        ]);
+        let storage_placeholders = InitStorageData::new(
+            [
+                (
+                    StorageValueName::new("map_entry.map_key_template").unwrap(),
+                    "0x123".to_string(),
+                ),
+                (
+                    StorageValueName::new("token_metadata.max_supply").unwrap(),
+                    20_000u64.to_string(),
+                ),
+                (StorageValueName::new("token_metadata.decimals").unwrap(), "128".into()),
+                (StorageValueName::new("default_recallable_height").unwrap(), "0x0".into()),
+            ],
+            BTreeMap::new(),
+        );
 
         let component = AccountComponent::from_template(&template, &storage_placeholders).unwrap();
         assert_eq!(
