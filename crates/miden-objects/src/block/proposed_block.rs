@@ -433,15 +433,6 @@ impl ProposedBlock {
     // STATE MUTATORS
     // --------------------------------------------------------------------------------------------
 
-    /// Adds the commitment of the previous block header to the partial blockchain to compute the
-    /// new chain commitment.
-    pub fn compute_chain_commitment(&mut self) -> Word {
-        // SAFETY: This does not panic as long as the block header we're adding is the next one in
-        // the chain which is validated as part of constructing a `ProposedBlock`.
-        self.partial_blockchain.add_block(&self.prev_block_header, true);
-        self.partial_blockchain.peaks().hash_peaks()
-    }
-
     /// Consumes self and returns the non-[`Copy`] parts of the block.
     #[allow(clippy::type_complexity)]
     pub fn into_parts(
