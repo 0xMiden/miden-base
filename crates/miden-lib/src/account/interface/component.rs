@@ -2,12 +2,8 @@ use alloc::collections::BTreeMap;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
-use miden_objects::account::{
-    AccountId,
-    AccountProcedureInfo,
-    AccountStorage,
-    PublicKeyCommitment,
-};
+use miden_objects::account::auth::PublicKeyCommitment;
+use miden_objects::account::{AccountId, AccountProcedureInfo, AccountStorage};
 use miden_objects::note::PartialNote;
 use miden_objects::{Felt, FieldElement, Word};
 
@@ -29,6 +25,12 @@ pub enum AccountComponentInterface {
     /// Internal value holds the storage slot index where faucet metadata is stored. This metadata
     /// slot has a format of `[max_supply, faucet_decimals, token_symbol, 0]`.
     BasicFungibleFaucet(u8),
+    /// Exposes procedures from the
+    /// [`NetworkFungibleFaucet`][crate::account::faucets::NetworkFungibleFaucet] module.
+    ///
+    /// Internal value holds the storage slot index where faucet metadata is stored. This metadata
+    /// slot has a format of `[max_supply, faucet_decimals, token_symbol, 0]`.
+    NetworkFungibleFaucet(u8),
     /// Exposes procedures from the
     /// [`AuthRpoFalcon512`][crate::account::auth::AuthRpoFalcon512] module.
     ///
@@ -68,6 +70,9 @@ impl AccountComponentInterface {
             AccountComponentInterface::BasicWallet => "Basic Wallet".to_string(),
             AccountComponentInterface::BasicFungibleFaucet(_) => {
                 "Basic Fungible Faucet".to_string()
+            },
+            AccountComponentInterface::NetworkFungibleFaucet(_) => {
+                "Network Fungible Faucet".to_string()
             },
             AccountComponentInterface::AuthRpoFalcon512(_) => "RPO Falcon512".to_string(),
             AccountComponentInterface::AuthRpoFalcon512Acl(_) => "RPO Falcon512 ACL".to_string(),

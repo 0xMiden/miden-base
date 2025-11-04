@@ -22,7 +22,7 @@ const MOCK_UTIL_LIBRARY_CODE: &str = "
     end
 
     # Inputs:  [ASSET]
-    # Outputs: [note_idx]
+    # Outputs: []
     export.create_random_note_with_asset
         exec.create_random_note
         # => [note_idx, ASSET]
@@ -30,8 +30,8 @@ const MOCK_UTIL_LIBRARY_CODE: &str = "
         movdn.4
         # => [ASSET, note_idx]
 
-        exec.output_note::add_asset dropw
-        # => [note_idx]
+        exec.output_note::add_asset
+        # => []
     end
 ";
 

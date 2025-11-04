@@ -11,7 +11,7 @@ pub const ERR_WRONG_ARGS_MSG: &str = "auth procedure args are incorrect";
 static CONDITIONAL_AUTH_CODE: LazyLock<String> = LazyLock::new(|| {
     format!(
         r#"
-        use.miden::account
+        use.miden::native_account
 
         const.WRONG_ARGS="{ERR_WRONG_ARGS_MSG}"
 
@@ -26,7 +26,7 @@ static CONDITIONAL_AUTH_CODE: LazyLock<String> = LazyLock::new(|| {
 
             # Last element is the incr_nonce_flag.
             if.true
-                exec.account::incr_nonce drop
+                exec.native_account::incr_nonce drop
             end
             dropw dropw dropw dropw
         end

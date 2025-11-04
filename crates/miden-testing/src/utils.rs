@@ -104,7 +104,7 @@ pub fn create_p2any_note(
                 "
                 # add first asset
 
-                padw dup.4 mem_loadw
+                padw dup.4 mem_loadw_be
                 padw swapw padw padw swapdw
                 call.wallet::receive_asset
                 dropw movup.12
@@ -117,7 +117,7 @@ pub fn create_p2any_note(
                 # add next asset
 
                 add.4 dup movdn.13
-                padw movup.4 mem_loadw
+                padw movup.4 mem_loadw_be
                 call.wallet::receive_asset
                 dropw movup.12
                 # => [dest_ptr, pad(12)]",
@@ -208,7 +208,7 @@ fn note_script_that_creates_notes<'note>(
 
         // Make sure that the transaction's native account matches the note sender.
         out.push_str(&format!(
-            r#"exec.::miden::account::get_native_id
+            r#"exec.::miden::native_account::get_id
              # => [native_account_id_prefix, native_account_id_suffix]
              push.{sender_prefix} assert_eq.err="sender ID prefix does not match native account ID's prefix"
              # => [native_account_id_suffix]

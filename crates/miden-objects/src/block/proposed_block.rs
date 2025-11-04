@@ -371,7 +371,7 @@ impl ProposedBlock {
             return Ok(self.prev_block_header.nullifier_root());
         }
 
-        let mut partial_nullifier_tree = PartialNullifierTree::new();
+        let mut partial_nullifier_tree = PartialNullifierTree::default();
 
         // First, reconstruct the current nullifier tree with the merkle paths of the nullifiers we
         // want to update.

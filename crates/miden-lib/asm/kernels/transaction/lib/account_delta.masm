@@ -176,8 +176,22 @@ proc.update_value_slot_delta
     dup.4 exec.account::get_initial_item
     # => [INIT_VALUE, CURRENT_VALUE, slot_idx, RATE, RATE, PERM]
 
+    # if account is new, replace INIT_VALUE with EMPTY_WORD
+    # we need to do this specifically for new accounts because for those, get_initial_item returns
+    # the same as get_item but we want the delta for value slots to be from an empty value to the
+    # final value
+    # use get_init_nonce so the delta is still correctly computed when the nonce has already been
+    # incremented
+    padw exec.memory::get_init_nonce eq.0
+    # => [is_account_new, EMPTY_WORD, INIT_VALUE, CURRENT_VALUE, slot_idx, RATE, RATE, PERM]
+
+    # If is_account_new EMPTY_WORD remains.
+    # If !is_account_new INIT_VALUE remains.
+    cdropw
+    # => [INIT_VALUE', CURRENT_VALUE, slot_idx, RATE, RATE, PERM]
+
     exec.word::test_eq not
-    # => [was_changed, INIT_VALUE, CURRENT_VALUE, slot_idx, RATE, RATE, PERM]
+    # => [was_changed, INIT_VALUE', CURRENT_VALUE, slot_idx, RATE, RATE, PERM]
 
     # only include in delta if the slot's value has changed
     if.true
@@ -717,7 +731,7 @@ export.set_map_item.8
     # => [KEY, PREV_VALUE, NEW_VALUE]
 
     # store KEY in local
-    loc_storew.4
+    loc_storew_be.4
     # => [KEY, PREV_VALUE, NEW_VALUE]
 
     loc_load.0
@@ -748,7 +762,7 @@ export.set_map_item.8
     # => [INITIAL_VALUE, NEW_VALUE]
 
     # load key and index from locals
-    padw loc_loadw.4 loc_load.0
+    padw loc_loadw_be.4 loc_load.0
     # => [account_delta_storage_map_ptr, KEY, INITIAL_VALUE, NEW_VALUE]
 
     exec.link_map::set drop

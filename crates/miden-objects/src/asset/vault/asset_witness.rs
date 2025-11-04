@@ -1,6 +1,6 @@
 use miden_crypto::merkle::{InnerNodeInfo, SmtLeaf, SmtProof};
 
-use super::vault_key::VaultKey;
+use super::vault_key::AssetVaultKey;
 use crate::AssetError;
 use crate::asset::Asset;
 
@@ -25,7 +25,7 @@ impl AssetWitness {
         for (vault_key, asset) in smt_proof.leaf().entries() {
             let asset = Asset::try_from(asset)?;
             if *vault_key != asset.vault_key().into() {
-                return Err(AssetError::VaultKeyMismatch {
+                return Err(AssetError::AssetVaultKeyMismatch {
                     actual: *vault_key,
                     expected: asset.vault_key().into(),
                 });
@@ -47,7 +47,7 @@ impl AssetWitness {
     // --------------------------------------------------------------------------------------------
 
     /// Searches for an [`Asset`] in the witness with the given `vault_key`.
-    pub fn find(&self, vault_key: VaultKey) -> Option<Asset> {
+    pub fn find(&self, vault_key: AssetVaultKey) -> Option<Asset> {
         self.assets().find(|asset| asset.vault_key() == vault_key)
     }
 
@@ -121,7 +121,7 @@ mod tests {
 
         let err = AssetWitness::new(proof).unwrap_err();
 
-        assert_matches!(err, AssetError::VaultKeyMismatch { actual, expected } => {
+        assert_matches!(err, AssetError::AssetVaultKeyMismatch { actual, expected } => {
             assert_eq!(actual, fungible_asset.vault_key().into());
             assert_eq!(expected, non_fungible_asset.vault_key().into());
         });

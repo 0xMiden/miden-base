@@ -5,8 +5,9 @@ use core::error::Error;
 
 use miden_lib::transaction::TransactionAdviceMapMismatch;
 use miden_objects::account::AccountId;
+use miden_objects::account::auth::PublicKeyCommitment;
 use miden_objects::assembly::diagnostics::reporting::PrintDiagnostic;
-use miden_objects::asset::VaultKey;
+use miden_objects::asset::AssetVaultKey;
 use miden_objects::block::BlockNumber;
 use miden_objects::crypto::merkle::SmtProofError;
 use miden_objects::note::{NoteId, NoteMetadata};
@@ -292,7 +293,7 @@ pub enum TransactionKernelError {
     )]
     GetVaultAssetWitness {
         vault_root: Word,
-        asset_key: VaultKey,
+        asset_key: AssetVaultKey,
         // thiserror will return this when calling Error::source on TransactionKernelError.
         source: DataStoreError,
     },
@@ -393,10 +394,10 @@ impl DataStoreError {
 pub enum AuthenticationError {
     #[error("signature rejected: {0}")]
     RejectedSignature(String),
-    #[error("unknown public key: {0}")]
-    UnknownPublicKey(String),
+    #[error("public key `{0}` is not contained in the authenticator's keys")]
+    UnknownPublicKey(PublicKeyCommitment),
     /// Custom error variant for implementors of the
-    /// [`TransactionAuthenticatior`](crate::auth::TransactionAuthenticator) trait.
+    /// [`TransactionAuthenticator`](crate::auth::TransactionAuthenticator) trait.
     #[error("{error_msg}")]
     Other {
         error_msg: Box<str>,
