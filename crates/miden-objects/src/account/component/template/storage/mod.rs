@@ -379,7 +379,7 @@ mod tests {
 
     use miden_assembly::Assembler;
     use miden_core::utils::{Deserializable, Serializable};
-    use miden_core::{EMPTY_WORD, Felt, Word};
+    use miden_core::{EMPTY_WORD, Felt, FieldElement, Word};
     use semver::Version;
 
     use crate::account::component::FieldIdentifier;
@@ -656,6 +656,218 @@ mod tests {
 
         let err = AccountComponentMetadata::from_toml(toml_text).unwrap_err();
         assert_matches::assert_matches!(err, AccountComponentTemplateError::InvalidType(_, _))
+    }
+
+    #[test]
+    fn map_template_can_build_from_entries() {
+        let map_name = StorageValueName::new("procedure_thresholds").unwrap();
+        let map_entry = StorageEntry::new_map(0, MapRepresentation::new_template(map_name.clone()));
+
+        let mut init_data = InitStorageData::new([]);
+        init_data.insert_map_entries(
+            map_name,
+            vec![
+                (
+                    Word::from([Felt::new(1u64), Felt::ZERO, Felt::ZERO, Felt::ZERO]),
+                    Word::from([Felt::new(16u64), Felt::ZERO, Felt::ZERO, Felt::ZERO]),
+                ),
+                (
+                    Word::from([Felt::new(2u64), Felt::ZERO, Felt::ZERO, Felt::ZERO]),
+                    Word::from([Felt::new(32u64), Felt::ZERO, Felt::ZERO, Felt::ZERO]),
+                ),
+            ],
+        );
+
+        let slots = map_entry.try_build_storage_slots(&init_data).unwrap();
+        assert_eq!(slots.len(), 1);
+
+        match &slots[0] {
+            StorageSlot::Map(storage_map) => {
+                assert_eq!(storage_map.num_entries(), 2);
+                let main_key = Word::from([Felt::new(1u64), Felt::ZERO, Felt::ZERO, Felt::ZERO]);
+                let main_value_expected =
+                    Word::from([Felt::new(16u64), Felt::ZERO, Felt::ZERO, Felt::ZERO]);
+                assert_eq!(storage_map.get(&main_key), main_value_expected);
+            },
+            _ => panic!("expected map storage slot"),
+        }
+    }
+
+    #[test]
+    fn map_template_requires_entries() {
+        let map_name = StorageValueName::new("procedure_thresholds").unwrap();
+        let map_entry = StorageEntry::new_map(0, MapRepresentation::new_template(map_name.clone()));
+
+        let result = map_entry.try_build_storage_slots(&InitStorageData::default());
+
+        assert_matches::assert_matches!(
+            result,
+            Err(AccountComponentTemplateError::PlaceholderValueNotProvided(name))
+                if name.as_str() == "procedure_thresholds"
+        );
+
+        // try with an empty list
+
+        let mut init_data = InitStorageData::new([]);
+        init_data.insert_map_entries(map_name, vec![]);
+
+        let result = map_entry.try_build_storage_slots(&init_data).unwrap();
+
+        assert_eq!(result.len(), 1);
+        match &result[0] {
+            StorageSlot::Map(storage_map) => assert_eq!(storage_map.num_entries(), 0),
+            _ => panic!("expected map storage slot"),
+        }
+    }
+
+    #[test]
+    fn map_placeholder_requirement_is_reported() {
+        let targets = [AccountType::RegularAccountImmutableCode].into_iter().collect();
+        let map =
+            MapRepresentation::new_template(StorageValueName::new("procedure_thresholds").unwrap())
+                .with_description("Configures procedure thresholds");
+
+        let metadata = AccountComponentMetadata::new(
+            "test".into(),
+            "desc".into(),
+            Version::new(1, 0, 0),
+            targets,
+            vec![StorageEntry::new_map(0, map)],
+        )
+        .unwrap();
+
+        let requirements = metadata.get_placeholder_requirements();
+        let requirement = requirements
+            .get(&StorageValueName::new("procedure_thresholds").unwrap())
+            .expect("map placeholder should be reported");
+
+        assert_eq!(requirement.r#type.as_str(), "map");
+        assert_eq!(requirement.description.as_deref(), Some("Configures procedure thresholds"),);
+    }
+
+    #[test]
+    fn toml_template_map_roundtrip() {
+        let toml_text = r#"
+        name = "Test Component"
+        description = "Component with templated map"
+        version = "1.0.0"
+        supported-types = ["RegularAccountImmutableCode"]
+
+        [[storage]]
+        name = "my_map"
+        description = "Some description"
+        slot = 0
+        type = "map"
+        "#;
+
+        let metadata = AccountComponentMetadata::from_toml(toml_text).unwrap();
+        assert_eq!(metadata.storage_entries().len(), 1);
+        match metadata.storage_entries().first().unwrap() {
+            StorageEntry::Map { map, .. } => match map {
+                MapRepresentation::Template { identifier } => {
+                    assert_eq!(identifier.name.as_str(), "my_map");
+                    assert_eq!(identifier.description.as_deref(), Some("Some description"));
+                },
+                MapRepresentation::Value { .. } => panic!("expected template map"),
+            },
+            _ => panic!("expected map storage entry"),
+        }
+
+        let toml_roundtrip = metadata.as_toml().unwrap();
+        assert!(toml_roundtrip.contains("type = \"map\""));
+    }
+
+    #[test]
+    fn map_placeholder_populated_via_toml_array() {
+        let storage_entry = StorageEntry::new_map(
+            0,
+            MapRepresentation::new_template(StorageValueName::new("my_map").unwrap()),
+        );
+
+        let init_data = InitStorageData::from_toml(
+            r#"
+            my_map = [
+                { key = "0x0000000000000000000000000000000000000000000000000000000000000001", value = "0x0000000000000000000000000000000000000000000000000000000000000090" },
+                { key = "0x0000000000000000000000000000000000000000000000000000000000000002", value = ["1", "2", "3", "4"] }
+            ]
+            other_placeholder = "0xAB"
+        "#,
+        )
+        .unwrap();
+
+        assert_eq!(
+            init_data.get(&StorageValueName::new("other_placeholder").unwrap()).unwrap(),
+            "0xAB"
+        );
+
+        let slots = storage_entry.try_build_storage_slots(&init_data).unwrap();
+        assert_eq!(slots.len(), 1);
+        match &slots[0] {
+            StorageSlot::Map(storage_map) => {
+                assert_eq!(storage_map.num_entries(), 2);
+                let second_value = Word::from([
+                    Felt::new(1u64),
+                    Felt::new(2u64),
+                    Felt::new(3u64),
+                    Felt::new(4u64),
+                ]);
+                let second_key = Word::try_from(
+                    "0x0000000000000000000000000000000000000000000000000000000000000002",
+                )
+                .unwrap();
+                assert_eq!(storage_map.get(&second_key), second_value);
+            },
+            _ => panic!("expected map storage slot"),
+        }
+    }
+
+    #[test]
+    fn toml_map_type_with_values_is_invalid() {
+        let toml_text = r#"
+        name = "Invalid"
+        description = "Invalid map"
+        version = "1.0.0"
+        supported-types = ["RegularAccountImmutableCode"]
+
+        [[storage]]
+        name = "bad_map"
+        slot = 0
+        type = "map"
+        values = [ { key = "0x1", value = "0x2" } ]
+        "#;
+
+        let metadata = AccountComponentMetadata::from_toml(toml_text).unwrap();
+        match metadata.storage_entries().first().unwrap() {
+            StorageEntry::Map { map, .. } => match map {
+                MapRepresentation::Value { entries, .. } => {
+                    assert_eq!(entries.len(), 1);
+                },
+                _ => panic!("expected static map"),
+            },
+            _ => panic!("expected map storage entry"),
+        }
+    }
+
+    #[test]
+    fn toml_map_values_with_non_map_type_is_invalid() {
+        let toml_text = r#"
+        name = "Invalid"
+        description = "Invalid map"
+        version = "1.0.0"
+        supported-types = ["RegularAccountImmutableCode"]
+
+        [[storage]]
+        name = "bad_map"
+        slot = 0
+        type = "word"
+        values = [ { key = "0x1", value = "0x2" } ]
+        "#;
+
+        let result = AccountComponentMetadata::from_toml(toml_text);
+        assert_matches::assert_matches!(
+            result,
+            Err(AccountComponentTemplateError::TomlDeserializationError(_))
+        );
     }
 
     #[test]

@@ -67,8 +67,14 @@ values = [
 ]
 
 [[storage]]
+name = "procedure_thresholds"
+description = "Map which stores procedure thresholds (PROC_ROOT -> signature threshold)"
+slot = 3
+type = "map"
+
+[[storage]]
 name = "multislot_entry"
-slots = [3,4]
+slots = [4,5]
 values = [
     ["0x1","0x2","0x3","0x4"],
     ["50000","60000","70000","80000"]
@@ -137,11 +143,16 @@ In the above example, the first and second storage entries are single-slot value
 Storage map entries can specify the following fields:
 
 - `slot`: Specifies the slot index in which the root of the map will be placed
-- `values`: Contains a list of map entries, defined by a `key` and `value`
+- `values` (optional): Contains a list of map entries, defined by a `key` and `value`. Each entry is
+  interpreted as a word, and keys or values may themselves be expressed via placeholders.
+- `type = "map"` (optional): When provided without `values`, the entry is treated as a templated map
+  whose contents must be provided at instantiation time through [`InitStorageData`](#initializing-placeholder-values).
+  If `values` are present, the entry is interpreted as a static map regardless of the `type` field, so
+  specifying `type = "map"` becomes purely descriptive in that case.
 
-Where keys and values are word values, which can be defined as placeholders.
-
-In the example, the third storage entry defines a storage map.
+In the example, the third storage entry defines a static storage map with two initial entries, while
+the fourth entry (`procedure_thresholds`) is a templated map whose contents are supplied at
+instantiation time.
 
 ##### Multi-slot value
 
@@ -152,4 +163,23 @@ For multi-slot values, the following fields are expected:
 - `slots`: Specifies the list of contiguous slots that the value comprises
 - `values`: Contains the initial storage value for the specified slots
 
-Placeholders can currently not be defined for multi-slot values. In our example, the fourth entry defines a two-slot value.
+Placeholders can currently not be defined for multi-slot values. In our example, the fifth entry defines a two-slot value.
+
+#### Initializing placeholder values
+
+When a storage entry introduces placeholders, an implementation must provide their concrete values
+at instantiation time. This is done through `InitStorageData` (available as `miden_objects::account::InitStorageData`), which can be created programmatically or loaded from TOML using `InitStorageData::from_toml()`.
+
+For example, the templated map entry above can be populated from TOML as follows:
+
+```toml
+procedure_thresholds = [
+    { key = "0xd2d1b6229d7cfb9f2ada31c5cb61453cf464f91828e124437c708eec55b9cd07", value = "0x00000000000000000000000000000000000000000000000000000000000001" },
+    { key = "0x2217cd9963f742fc2d131d86df08f8a2766ed17b73f1519b8d3143ad1c71d32d", value = ["", "0", "0", "2"] }
+]
+```
+
+Each element in the array is a fully specified key/value pair. Keys and values can be written either
+as hexadecimal words or as an array of four field elements (decimal or hexadecimal strings). This
+syntax complements the existing `values = [...]` form used for static maps, and mirrors how map
+entries are provided in component metadata.
