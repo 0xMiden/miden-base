@@ -113,12 +113,12 @@ impl AuthSecretKey {
 
     /// Generates an EcdsaK256Keccak secret key from the OS-provided randomness.
     #[cfg(feature = "std")]
-    pub fn new_ecdsa_ke256_keccak() -> Self {
+    pub fn new_ecdsa_k256_keccak() -> Self {
         Self::EcdsaK256Keccak(ecdsa_k256_keccak::SecretKey::new())
     }
 
-    /// Generates an RpoFalcon512 secrete key using the provided random number generator.
-    pub fn new_ecdsa_ke256_keccak_with_rng<R: Rng + CryptoRng>(rng: &mut R) -> Self {
+    /// Generates an EcdsaK256Keccak secret key using the provided random number generator.
+    pub fn new_ecdsa_k256_keccak_with_rng<R: Rng + CryptoRng>(rng: &mut R) -> Self {
         Self::EcdsaK256Keccak(ecdsa_k256_keccak::SecretKey::with_rng(rng))
     }
 
