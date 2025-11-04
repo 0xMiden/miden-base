@@ -21,7 +21,7 @@ use crate::AccountProcedureIndexMap;
 use crate::host::{
     ScriptMastForestStore,
     TransactionBaseHost,
-    TransactionEventData,
+    TransactionEvent,
     TransactionEventHandling,
     TransactionProgress,
 };
@@ -115,21 +115,21 @@ where
                 match event_data {
                     // The base host should have handled this event since the signature should be
                     // present in the advice map.
-                    TransactionEventData::AuthRequest { .. } => {
+                    TransactionEvent::AuthRequest { .. } => {
                         Err(EventError::from("base host should have handled auth request event"))
                     },
                     // Foreign account data and witnesses should be in the advice provider at
                     // proving time, so there is nothing to do.
-                    TransactionEventData::ForeignAccount { .. } => Ok(Vec::new()),
-                    TransactionEventData::AccountVaultAssetWitness { .. } => Ok(Vec::new()),
-                    TransactionEventData::AccountStorageMapWitness { .. } => Ok(Vec::new()),
+                    TransactionEvent::ForeignAccount { .. } => Ok(Vec::new()),
+                    TransactionEvent::AccountVaultAssetWitness { .. } => Ok(Vec::new()),
+                    TransactionEvent::AccountStorageMapWitness { .. } => Ok(Vec::new()),
                     // Note scripts should be in the advice provider at proving time, so there is
                     // nothing to do.
-                    TransactionEventData::NoteData { .. } => Ok(Vec::new()),
+                    TransactionEvent::NoteData { .. } => Ok(Vec::new()),
                     // We don't track enough information to handle this event. Since this just
                     // improves error messages for users and the error should not be relevant during
                     // proving, we ignore it.
-                    TransactionEventData::TransactionFeeComputed { .. } => Ok(Vec::new()),
+                    TransactionEvent::TransactionFeeComputed { .. } => Ok(Vec::new()),
                 }
             },
             TransactionEventHandling::Handled(mutations) => Ok(mutations),

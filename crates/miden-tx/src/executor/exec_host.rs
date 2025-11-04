@@ -30,7 +30,7 @@ use crate::host::note_builder::OutputNoteBuilder;
 use crate::host::{
     ScriptMastForestStore,
     TransactionBaseHost,
-    TransactionEventData,
+    TransactionEvent,
     TransactionEventHandling,
     TransactionProgress,
 };
@@ -483,18 +483,18 @@ where
             };
 
             match event_data {
-                TransactionEventData::AuthRequest { pub_key_hash, signing_inputs } => self
+                TransactionEvent::AuthRequest { pub_key_hash, signing_inputs } => self
                     .on_auth_requested(pub_key_hash, signing_inputs)
                     .await
                     .map_err(EventError::from),
-                TransactionEventData::TransactionFeeComputed { fee_asset } => self
+                TransactionEvent::TransactionFeeComputed { fee_asset } => self
                     .on_before_tx_fee_removed_from_account(fee_asset)
                     .await
                     .map_err(EventError::from),
-                TransactionEventData::ForeignAccount { account_id } => {
+                TransactionEvent::ForeignAccount { account_id } => {
                     self.on_foreign_account_requested(account_id).await.map_err(EventError::from)
                 },
-                TransactionEventData::AccountVaultAssetWitness {
+                TransactionEvent::AccountVaultAssetWitness {
                     current_account_id,
                     vault_root,
                     asset_key,
@@ -506,7 +506,7 @@ where
                     )
                     .await
                     .map_err(EventError::from),
-                TransactionEventData::AccountStorageMapWitness {
+                TransactionEvent::AccountStorageMapWitness {
                     current_account_id,
                     map_root,
                     map_key,
@@ -514,7 +514,7 @@ where
                     .on_account_storage_map_witness_requested(current_account_id, map_root, map_key)
                     .await
                     .map_err(EventError::from),
-                TransactionEventData::NoteData {
+                TransactionEvent::NoteData {
                     note_idx,
                     metadata,
                     script_root,

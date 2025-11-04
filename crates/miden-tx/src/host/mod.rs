@@ -21,6 +21,7 @@ pub use script_mast_forest_store::ScriptMastForestStore;
 
 mod tx_progress;
 
+mod tx_event;
 use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
 use alloc::sync::Arc;
@@ -38,7 +39,7 @@ use miden_objects::account::{
     StorageSlotType,
 };
 use miden_objects::asset::{Asset, AssetVault, AssetVaultKey, FungibleAsset};
-use miden_objects::note::{NoteId, NoteInputs, NoteMetadata, NoteRecipient, NoteScript};
+use miden_objects::note::{NoteId, NoteMetadata, NoteRecipient, NoteScript};
 use miden_objects::transaction::{
     InputNote,
     InputNotes,
@@ -60,6 +61,7 @@ use miden_processor::{
     MastForestStore,
     ProcessState,
 };
+pub(crate) use tx_event::{TransactionEvent, TransactionEventHandling};
 pub use tx_progress::TransactionProgress;
 
 use crate::auth::SigningInputs;
@@ -419,7 +421,7 @@ where
                 )
             })?;
 
-        Ok(TransactionEventHandling::Unhandled(TransactionEventData::ForeignAccount {
+        Ok(TransactionEventHandling::Unhandled(TransactionEvent::ForeignAccount {
             account_id,
         }))
     }
@@ -462,7 +464,7 @@ where
 
         // If the signature is not present in the advice map, extract the necessary data to handle
         // the event at a later point.
-        Ok(TransactionEventHandling::Unhandled(TransactionEventData::AuthRequest {
+        Ok(TransactionEventHandling::Unhandled(TransactionEvent::AuthRequest {
             pub_key_hash,
             signing_inputs,
         }))
@@ -514,9 +516,9 @@ where
         let fee_asset = FungibleAsset::try_from(fee_asset)
             .map_err(TransactionKernelError::FailedToConvertFeeAsset)?;
 
-        Ok(TransactionEventHandling::Unhandled(
-            TransactionEventData::TransactionFeeComputed { fee_asset },
-        ))
+        Ok(TransactionEventHandling::Unhandled(TransactionEvent::TransactionFeeComputed {
+            fee_asset,
+        }))
     }
 
     /// Handles the note creation event by extracting note data from the stack and advice provider.
@@ -555,7 +557,7 @@ where
             } else {
                 // we couldn't build the full recipient because script root was missing; return the
                 // info that we did read so that we could request the script from the data store
-                return Ok(TransactionEventHandling::Unhandled(TransactionEventData::NoteData {
+                return Ok(TransactionEventHandling::Unhandled(TransactionEvent::NoteData {
                     note_idx,
                     metadata,
                     script_root,
@@ -755,7 +757,7 @@ where
 
             // If the merkle path is not in the store return the data to request it.
             Ok(TransactionEventHandling::Unhandled(
-                TransactionEventData::AccountStorageMapWitness {
+                TransactionEvent::AccountStorageMapWitness {
                     current_account_id,
                     map_root,
                     map_key,
@@ -967,7 +969,7 @@ where
 
             // If the merkle path is not in the store return the data to request it.
             Ok(TransactionEventHandling::Unhandled(
-                TransactionEventData::AccountVaultAssetWitness {
+                TransactionEvent::AccountVaultAssetWitness {
                     current_account_id: active_account_id,
                     vault_root,
                     asset_key: vault_key,
@@ -1050,74 +1052,6 @@ impl<'store, STORE> TransactionBaseHost<'store, STORE> {
     pub fn store(&self) -> &'store STORE {
         self.mast_store
     }
-}
-
-// TRANSACTION EVENT HANDLING
-// ================================================================================================
-
-/// Indicates whether a [`TransactionEvent`] was handled or not.
-///
-/// If it is unhandled, the necessary data to handle it is returned.
-#[derive(Debug)]
-pub(super) enum TransactionEventHandling {
-    Unhandled(TransactionEventData),
-    Handled(Vec<AdviceMutation>),
-}
-
-/// The data necessary to handle an [`TransactionEvent`].
-#[derive(Debug, Clone)]
-pub(super) enum TransactionEventData {
-    /// The data necessary to handle an auth request.
-    AuthRequest {
-        /// The hash of the public key for which a signature was requested.
-        pub_key_hash: Word,
-        /// The signing inputs that summarize what is being signed. The commitment to these inputs
-        /// is the message that is being signed.
-        signing_inputs: SigningInputs,
-    },
-    /// The data necessary to handle a transaction fee computed event.
-    TransactionFeeComputed {
-        /// The fee asset extracted from the stack.
-        fee_asset: FungibleAsset,
-    },
-    /// The data necessary to request a foreign account's data from the data store.
-    ForeignAccount {
-        /// The foreign account's ID.
-        account_id: AccountId,
-    },
-    /// The data necessary to request an asset witness from the data store.
-    AccountVaultAssetWitness {
-        /// The account ID for whose vault a witness is requested.
-        current_account_id: AccountId,
-        /// The vault root identifying the asset vault from which a witness is requested.
-        vault_root: Word,
-        /// The asset for which a witness is requested.
-        asset_key: AssetVaultKey,
-    },
-    /// The data necessary to request a storage map witness from the data store.
-    AccountStorageMapWitness {
-        /// The account ID for whose storage a witness is requested.
-        current_account_id: AccountId,
-        /// The root of the storage map in the account at the beginning of the transaction.
-        map_root: Word,
-        /// The raw map key for which a witness is requested.
-        map_key: Word,
-    },
-    /// The data necessary to request a note script from the data store.
-    NoteData {
-        /// The note index extracted from the stack.
-        note_idx: usize,
-        /// The note metadata extracted from the stack.
-        metadata: NoteMetadata,
-        /// The root of the note script being requested.
-        script_root: Word,
-        /// The recipient digest extracted from the stack.
-        recipient_digest: Word,
-        /// The note inputs extracted from the advice provider.
-        note_inputs: NoteInputs,
-        /// The serial number extracted from the advice provider.
-        serial_num: Word,
-    },
 }
 
 // HELPER FUNCTIONS
