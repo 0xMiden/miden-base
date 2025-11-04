@@ -34,10 +34,13 @@ const BECH32_SEPARATOR: &str = "1";
 ///
 /// The note tag length occupies 5 bits (values 0..=31). Valid tag lengths are 0..=30,
 /// so we reserve the maximum 5-bit value (31) to represent `None`.
+///
+/// If the note tag length is absent from routing parameters, the note tag length for the address
+/// will be set to the default default tag length of the address' ID component.
 const ABSENT_NOTE_TAG_LEN: u8 = (1 << 5) - 1; // 31
 
 /// The routing parameter key for the receiver profile.
-const RECEIVER_PROFILE_KEY: u8 = 0;
+const RECEIVER_PROFILE_PARAM_KEY: u8 = 0;
 
 /// Parameters that define how a sender should route a note to the [`AddressId`](super::AddressId)
 /// in an [`Address`](super::Address).
@@ -118,7 +121,7 @@ impl RoutingParameters {
         let receiver_profile: [u8; 2] = receiver_profile.to_be_bytes();
 
         // Append the receiver profile key and the encoded value to the vector.
-        encoded.push(RECEIVER_PROFILE_KEY);
+        encoded.push(RECEIVER_PROFILE_PARAM_KEY);
         encoded.extend(receiver_profile);
 
         encoded
@@ -173,7 +176,7 @@ impl RoutingParameters {
 
         while let Some(key) = byte_iter.next() {
             match key {
-                RECEIVER_PROFILE_KEY => {
+                RECEIVER_PROFILE_PARAM_KEY => {
                     if byte_iter.len() < 2 {
                         return Err(AddressError::decode_error(
                             "expected two bytes to decode receiver profile",
