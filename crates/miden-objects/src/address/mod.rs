@@ -18,11 +18,15 @@ pub use network_id::{CustomNetworkId, NetworkId};
 
 use crate::AddressError;
 use crate::account::AccountStorageMode;
+use crate::crypto::PublicEncryptionKey;
 use crate::note::NoteTag;
 use crate::utils::serde::{ByteWriter, Deserializable, Serializable};
 
 mod address_id;
 pub use address_id::AddressId;
+
+mod crypto_helpers;
+pub use crypto_helpers::{seal_for_address, unseal_with_secret_key};
 
 /// A user-facing address in Miden.
 ///
@@ -145,6 +149,34 @@ impl Address {
                 }
             },
         }
+    }
+
+    /// Returns the public encryption key for sealed box encryption, if present in routing
+    /// parameters.
+    pub fn encryption_key(&self) -> Option<&PublicEncryptionKey> {
+        self.routing_params.as_ref()?.encryption_key()
+    }
+
+    /// Sets the public encryption key in the routing parameters. If routing parameters are not
+    /// present, creates them with the default interface (BasicWallet).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if setting routing parameters fails validation.
+    pub fn with_encryption_key(
+        mut self,
+        key: PublicEncryptionKey,
+    ) -> Result<Self, AddressError> {
+        if let Some(routing_params) = self.routing_params.take() {
+            // Update existing routing parameters
+            self = self.with_routing_parameters(routing_params.with_encryption_key(key))?;
+        } else {
+            // Create new routing parameters with just the encryption key
+            let routing_params =
+                RoutingParameters::new(AddressInterface::BasicWallet).with_encryption_key(key);
+            self = self.with_routing_parameters(routing_params)?;
+        }
+        Ok(self)
     }
 
     /// Encodes the [`Address`] into a string.
