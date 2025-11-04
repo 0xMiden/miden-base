@@ -43,8 +43,11 @@ const RECEIVER_PROFILE_KEY: u8 = 0;
 /// The routing parameter key for the encryption key.
 const ENCRYPTION_KEY_PARAM_KEY: u8 = 1;
 
-/// The expected length of the encryption key in bytes.
-const ENCRYPTION_KEY_LENGTH: usize = 32;
+/// The expected length of Ed25519/X25519 public keys in bytes.
+const ED25519_PUBLIC_KEY_LENGTH: usize = 32;
+
+/// The expected length of K256 (secp256k1) public keys in bytes (compressed format).
+const K256_PUBLIC_KEY_LENGTH: usize = 33;
 
 /// Discriminants for encryption key variants.
 const ENCRYPTION_KEY_X25519_XCHACHA20POLY1305: u8 = 0;
@@ -58,7 +61,6 @@ const ENCRYPTION_KEY_K256_AEAD_RPO: u8 = 3;
 pub struct RoutingParameters {
     interface: AddressInterface,
     note_tag_len: Option<u8>,
-    /// The public encryption key for sealed box encryption.
     encryption_key: Option<SealingKey>,
 }
 
@@ -261,26 +263,29 @@ impl RoutingParameters {
                     interface = Some(addr_interface);
                 },
                 ENCRYPTION_KEY_PARAM_KEY => {
-                    // Need at least 1 byte for discriminant + ENCRYPTION_KEY_LENGTH bytes for key
-                    if byte_iter.len() < 1 + ENCRYPTION_KEY_LENGTH {
-                        return Err(AddressError::decode_error(format!(
-                            "expected at least {} bytes to decode encryption key",
-                            1 + ENCRYPTION_KEY_LENGTH
-                        )));
+                    // Need at least 1 byte for discriminant
+                    if byte_iter.len() < 1 {
+                        return Err(AddressError::decode_error(
+                            "expected at least 1 byte for encryption key variant",
+                        ));
                     };
 
                     // Read variant discriminant
                     let variant = byte_iter.next().expect("variant byte should exist");
 
-                    // Read key bytes
-                    let mut key_bytes = [0u8; ENCRYPTION_KEY_LENGTH];
-                    for byte in key_bytes.iter_mut().take(ENCRYPTION_KEY_LENGTH) {
-                        *byte = byte_iter.next().expect("encryption key byte should exist");
-                    }
-
                     // Reconstruct the appropriate PublicEncryptionKey variant
                     let public_encryption_key = match variant {
                         ENCRYPTION_KEY_X25519_XCHACHA20POLY1305 => {
+                            if byte_iter.len() < ED25519_PUBLIC_KEY_LENGTH {
+                                return Err(AddressError::decode_error(format!(
+                                    "expected {} bytes to decode Ed25519 public key",
+                                    ED25519_PUBLIC_KEY_LENGTH
+                                )));
+                            }
+                            let mut key_bytes = [0u8; ED25519_PUBLIC_KEY_LENGTH];
+                            for byte in key_bytes.iter_mut() {
+                                *byte = byte_iter.next().expect("encryption key byte should exist");
+                            }
                             let pk = crate::crypto::dsa::eddsa_25519::PublicKey::read_from_bytes(
                                 &key_bytes,
                             )
@@ -293,6 +298,16 @@ impl RoutingParameters {
                             SealingKey::X25519XChaCha20Poly1305(pk)
                         },
                         ENCRYPTION_KEY_K256_XCHACHA20POLY1305 => {
+                            if byte_iter.len() < K256_PUBLIC_KEY_LENGTH {
+                                return Err(AddressError::decode_error(format!(
+                                    "expected {} bytes to decode K256 public key",
+                                    K256_PUBLIC_KEY_LENGTH
+                                )));
+                            }
+                            let mut key_bytes = [0u8; K256_PUBLIC_KEY_LENGTH];
+                            for byte in key_bytes.iter_mut() {
+                                *byte = byte_iter.next().expect("encryption key byte should exist");
+                            }
                             let pk =
                                 crate::crypto::dsa::ecdsa_k256_keccak::PublicKey::read_from_bytes(
                                     &key_bytes,
@@ -306,6 +321,16 @@ impl RoutingParameters {
                             SealingKey::K256XChaCha20Poly1305(pk)
                         },
                         ENCRYPTION_KEY_X25519_AEAD_RPO => {
+                            if byte_iter.len() < ED25519_PUBLIC_KEY_LENGTH {
+                                return Err(AddressError::decode_error(format!(
+                                    "expected {} bytes to decode Ed25519 public key",
+                                    ED25519_PUBLIC_KEY_LENGTH
+                                )));
+                            }
+                            let mut key_bytes = [0u8; ED25519_PUBLIC_KEY_LENGTH];
+                            for byte in key_bytes.iter_mut() {
+                                *byte = byte_iter.next().expect("encryption key byte should exist");
+                            }
                             let pk = crate::crypto::dsa::eddsa_25519::PublicKey::read_from_bytes(
                                 &key_bytes,
                             )
@@ -318,6 +343,16 @@ impl RoutingParameters {
                             SealingKey::X25519AeadRpo(pk)
                         },
                         ENCRYPTION_KEY_K256_AEAD_RPO => {
+                            if byte_iter.len() < K256_PUBLIC_KEY_LENGTH {
+                                return Err(AddressError::decode_error(format!(
+                                    "expected {} bytes to decode K256 public key",
+                                    K256_PUBLIC_KEY_LENGTH
+                                )));
+                            }
+                            let mut key_bytes = [0u8; K256_PUBLIC_KEY_LENGTH];
+                            for byte in key_bytes.iter_mut() {
+                                *byte = byte_iter.next().expect("encryption key byte should exist");
+                            }
                             let pk =
                                 crate::crypto::dsa::ecdsa_k256_keccak::PublicKey::read_from_bytes(
                                     &key_bytes,
