@@ -48,6 +48,7 @@
 - [BREAKING] Refactor `Address` to make routing parameters optional ([#2032](https://github.com/0xMiden/miden-base/pull/2032), [#2047](https://github.com/0xMiden/miden-base/pull/2047)).
 - [BREAKING] Refactor `PartialVault`, `PartialStorageMap`, `PartialAccountTree` and `PartialNullifierTree` to allow construction from a root ([#2042](https://github.com/0xMiden/miden-base/pull/2042)).
 - [BREAKING] Refactor `Address` to make routing parameters optional ([#2032](https://github.com/0xMiden/miden-base/pull/2032)).
+- Added `encryption_key` to `RoutingParameters` ([#2050](https://github.com/0xMiden/miden-base/pull/2050)).
 
 ### Changes
 
