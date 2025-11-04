@@ -1,8 +1,8 @@
 use alloc::vec::Vec;
 
-use rand::Rng;
+use rand::{CryptoRng, Rng};
 
-use crate::crypto::dsa::rpo_falcon512;
+use crate::crypto::dsa::{ecdsa_k256_keccak, rpo_falcon512};
 use crate::utils::serde::{
     ByteReader,
     ByteWriter,
@@ -15,8 +15,9 @@ use crate::{AuthSchemeError, Felt, Hasher, Word};
 // AUTH SCHEME
 // ================================================================================================
 
-/// Identifier of the RpoFalcon512 signature scheme.
+/// Identifier of signature schemes use for transaction authentication
 const RPO_FALCON_512: u8 = 0;
+const ECDSA_K256_KECCAK: u8 = 1;
 
 /// Defines standard authentication schemes (i.e., signature schemes) available in the Miden
 /// protocol.
@@ -24,7 +25,15 @@ const RPO_FALCON_512: u8 = 0;
 #[non_exhaustive]
 #[repr(u8)]
 pub enum AuthScheme {
+    /// A deterministic RPO Falcon512 signature scheme.
+    ///
+    /// This version differs from the reference Falcon512 implementation in its use of the RPO
+    /// algebraic hash function in its hash-to-point algorithm to make signatures very efficient
+    /// to verify inside Miden VM.
     RpoFalcon512 = RPO_FALCON_512,
+
+    /// ECDSA signature scheme over secp256k1 curve using Keccak to hash the messages when signing.
+    EcdsaK256Keccak = ECDSA_K256_KECCAK,
 }
 
 impl AuthScheme {
@@ -38,6 +47,7 @@ impl core::fmt::Display for AuthScheme {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::RpoFalcon512 => f.write_str("RpoFalcon512"),
+            Self::EcdsaK256Keccak => f.write_str("EcdsaK256Keccak"),
         }
     }
 }
@@ -48,6 +58,7 @@ impl TryFrom<u8> for AuthScheme {
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
             RPO_FALCON_512 => Ok(Self::RpoFalcon512),
+            ECDSA_K256_KECCAK => Ok(Self::EcdsaK256Keccak),
             value => Err(AuthSchemeError::InvalidAuthSchemeIdentifier(value)),
         }
     }
@@ -68,6 +79,7 @@ impl Deserializable for AuthScheme {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         match source.read_u8()? {
             RPO_FALCON_512 => Ok(Self::RpoFalcon512),
+            ECDSA_K256_KECCAK => Ok(Self::EcdsaK256Keccak),
             value => Err(DeserializationError::InvalidValue(format!(
                 "auth scheme identifier `{value}` is not valid"
             ))),
@@ -84,6 +96,7 @@ impl Deserializable for AuthScheme {
 #[repr(u8)]
 pub enum AuthSecretKey {
     RpoFalcon512(rpo_falcon512::SecretKey) = RPO_FALCON_512,
+    EcdsaK256Keccak(ecdsa_k256_keccak::SecretKey) = ECDSA_K256_KECCAK,
 }
 
 impl AuthSecretKey {
@@ -98,10 +111,22 @@ impl AuthSecretKey {
         Self::RpoFalcon512(rpo_falcon512::SecretKey::with_rng(rng))
     }
 
+    /// Generates an RpoFalcon512 secret key from the OS-provided randomness.
+    #[cfg(feature = "std")]
+    pub fn new_ecdsa_ke256_keccak() -> Self {
+        Self::EcdsaK256Keccak(ecdsa_k256_keccak::SecretKey::new())
+    }
+
+    /// Generates an RpoFalcon512 secrete key using the provided random number generator.
+    pub fn new_ecdsa_ke256_keccak_with_rng<R: Rng + CryptoRng>(rng: &mut R) -> Self {
+        Self::EcdsaK256Keccak(ecdsa_k256_keccak::SecretKey::with_rng(rng))
+    }
+
     /// Returns the authentication scheme of this secret key.
     pub fn auth_scheme(&self) -> AuthScheme {
         match self {
             AuthSecretKey::RpoFalcon512(_) => AuthScheme::RpoFalcon512,
+            AuthSecretKey::EcdsaK256Keccak(_) => AuthScheme::EcdsaK256Keccak,
         }
     }
 
@@ -109,6 +134,7 @@ impl AuthSecretKey {
     pub fn public_key(&self) -> PublicKey {
         match self {
             AuthSecretKey::RpoFalcon512(key) => PublicKey::RpoFalcon512(key.public_key()),
+            AuthSecretKey::EcdsaK256Keccak(key) => PublicKey::EcdsaK256Keccak(key.public_key()),
         }
     }
 
@@ -116,6 +142,10 @@ impl AuthSecretKey {
     pub fn sign(&self, message: Word) -> Signature {
         match self {
             AuthSecretKey::RpoFalcon512(key) => Signature::RpoFalcon512(key.sign(message)),
+            AuthSecretKey::EcdsaK256Keccak(key) => {
+                // TODO: cloning is not necessary, but this needs to be fixed in miden-crypto first
+                Signature::EcdsaK256Keccak(key.clone().sign(message))
+            },
         }
     }
 }
@@ -124,9 +154,8 @@ impl Serializable for AuthSecretKey {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         self.auth_scheme().write_into(target);
         match self {
-            AuthSecretKey::RpoFalcon512(secret_key) => {
-                secret_key.write_into(target);
-            },
+            AuthSecretKey::RpoFalcon512(key) => key.write_into(target),
+            AuthSecretKey::EcdsaK256Keccak(key) => key.write_into(target),
         }
     }
 }
@@ -137,6 +166,10 @@ impl Deserializable for AuthSecretKey {
             AuthScheme::RpoFalcon512 => {
                 let secret_key = rpo_falcon512::SecretKey::read_from(source)?;
                 Ok(AuthSecretKey::RpoFalcon512(secret_key))
+            },
+            AuthScheme::EcdsaK256Keccak => {
+                let secret_key = ecdsa_k256_keccak::SecretKey::read_from(source)?;
+                Ok(AuthSecretKey::EcdsaK256Keccak(secret_key))
             },
         }
     }
@@ -178,6 +211,7 @@ impl From<Word> for PublicKeyCommitment {
 #[non_exhaustive]
 pub enum PublicKey {
     RpoFalcon512(rpo_falcon512::PublicKey),
+    EcdsaK256Keccak(ecdsa_k256_keccak::PublicKey),
 }
 
 impl PublicKey {
@@ -185,6 +219,7 @@ impl PublicKey {
     pub fn auth_scheme(&self) -> AuthScheme {
         match self {
             PublicKey::RpoFalcon512(_) => AuthScheme::RpoFalcon512,
+            PublicKey::EcdsaK256Keccak(_) => AuthScheme::EcdsaK256Keccak,
         }
     }
 
@@ -192,15 +227,20 @@ impl PublicKey {
     pub fn to_commitment(&self) -> PublicKeyCommitment {
         match self {
             PublicKey::RpoFalcon512(key) => key.to_commitment().into(),
+            PublicKey::EcdsaK256Keccak(key) => key.to_commitment().into(),
         }
     }
 
     /// Verifies the provided signature against the provided message and this public key.
     pub fn verify(&self, message: Word, signature: Signature) -> bool {
         match (self, signature) {
-            (PublicKey::RpoFalcon512(key), Signature::RpoFalcon512(signature)) => {
-                key.verify(message, &signature)
+            (PublicKey::RpoFalcon512(key), Signature::RpoFalcon512(sig)) => {
+                key.verify(message, &sig)
             },
+            (PublicKey::EcdsaK256Keccak(key), Signature::EcdsaK256Keccak(sig)) => {
+                key.verify(message, &sig)
+            },
+            _ => false,
         }
     }
 }
@@ -209,9 +249,8 @@ impl Serializable for PublicKey {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         self.auth_scheme().write_into(target);
         match self {
-            PublicKey::RpoFalcon512(pub_key) => {
-                pub_key.write_into(target);
-            },
+            PublicKey::RpoFalcon512(pub_key) => pub_key.write_into(target),
+            PublicKey::EcdsaK256Keccak(pub_key) => pub_key.write_into(target),
         }
     }
 }
@@ -222,6 +261,10 @@ impl Deserializable for PublicKey {
             AuthScheme::RpoFalcon512 => {
                 let pub_key = rpo_falcon512::PublicKey::read_from(source)?;
                 Ok(PublicKey::RpoFalcon512(pub_key))
+            },
+            AuthScheme::EcdsaK256Keccak => {
+                let pub_key = ecdsa_k256_keccak::PublicKey::read_from(source)?;
+                Ok(PublicKey::EcdsaK256Keccak(pub_key))
             },
         }
     }
@@ -249,6 +292,7 @@ impl Deserializable for PublicKey {
 #[repr(u8)]
 pub enum Signature {
     RpoFalcon512(rpo_falcon512::Signature) = RPO_FALCON_512,
+    EcdsaK256Keccak(ecdsa_k256_keccak::Signature) = ECDSA_K256_KECCAK,
 }
 
 impl Signature {
@@ -256,6 +300,7 @@ impl Signature {
     pub fn auth_scheme(&self) -> AuthScheme {
         match self {
             Signature::RpoFalcon512(_) => AuthScheme::RpoFalcon512,
+            Signature::EcdsaK256Keccak(_) => AuthScheme::EcdsaK256Keccak,
         }
     }
 
@@ -263,7 +308,8 @@ impl Signature {
     /// native verification procedure in the VM.
     pub fn to_prepared_signature(&self) -> Vec<Felt> {
         match self {
-            Signature::RpoFalcon512(signature) => prepare_rpo_falcon512_signature(signature),
+            Signature::RpoFalcon512(sig) => prepare_rpo_falcon512_signature(sig),
+            Signature::EcdsaK256Keccak(sig) => prepare_ecdsa_k256_keccak_signature(sig),
         }
     }
 }
@@ -278,9 +324,8 @@ impl Serializable for Signature {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         self.auth_scheme().write_into(target);
         match self {
-            Signature::RpoFalcon512(signature) => {
-                signature.write_into(target);
-            },
+            Signature::RpoFalcon512(signature) => signature.write_into(target),
+            Signature::EcdsaK256Keccak(signature) => signature.write_into(target),
         }
     }
 }
@@ -291,6 +336,10 @@ impl Deserializable for Signature {
             AuthScheme::RpoFalcon512 => {
                 let signature = rpo_falcon512::Signature::read_from(source)?;
                 Ok(Signature::RpoFalcon512(signature))
+            },
+            AuthScheme::EcdsaK256Keccak => {
+                let signature = ecdsa_k256_keccak::Signature::read_from(source)?;
+                Ok(Signature::EcdsaK256Keccak(signature))
             },
         }
     }
@@ -345,4 +394,22 @@ fn prepare_rpo_falcon512_signature(sig: &rpo_falcon512::Signature) -> Vec<Felt> 
 
     result.reverse();
     result
+}
+
+/// Converts a ECDSA [ecdsa_k256_keccak::Signature] to a vector of values to be pushed to be
+/// written to memory. The values are the ones required for a ECDSA signature precompile inside
+/// the Miden VM.
+fn prepare_ecdsa_k256_keccak_signature(sig: &ecdsa_k256_keccak::Signature) -> Vec<Felt> {
+    const BYTES_PER_U32: usize = size_of::<u32>();
+
+    let bytes = sig.to_bytes();
+    bytes
+        .chunks(BYTES_PER_U32)
+        .map(|chunk| {
+            // Pack up to 4 bytes into a u32 in little-endian format
+            let mut packed = [0u8; BYTES_PER_U32];
+            packed[..chunk.len()].copy_from_slice(chunk);
+            Felt::from(u32::from_le_bytes(packed))
+        })
+        .collect()
 }
