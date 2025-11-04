@@ -4,11 +4,11 @@ use alloc::vec::Vec;
 
 use bech32::primitives::decode::CheckedHrpstring;
 use bech32::{Bech32m, Hrp};
-use miden_crypto::ies::SealingKey;
 
 use crate::AddressError;
 use crate::address::AddressInterface;
 use crate::crypto::dsa::{ecdsa_k256_keccak, eddsa_25519};
+use crate::crypto::ies::SealingKey;
 use crate::errors::Bech32Error;
 use crate::note::NoteTag;
 use crate::utils::serde::{
