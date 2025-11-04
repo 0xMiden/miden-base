@@ -32,9 +32,9 @@ const BECH32_SEPARATOR: &str = "1";
 
 /// The value to encode the absence of a note tag routing parameter (i.e. `None`).
 ///
-/// Note tag length is ensured to be <= [`NoteTag::MAX_LOCAL_TAG_LENGTH`] and so 1 << 5 = 32 is used
-/// to encode `None`.
-const ABSENT_NOTE_TAG_LEN: u8 = 1 << 5;
+/// The note tag length occupies 5 bits (values 0..=31). Valid tag lengths are 0..=30,
+/// so we reserve the maximum 5-bit value (31) to represent `None`.
+const ABSENT_NOTE_TAG_LEN: u8 = (1 << 5) - 1; // 31
 
 /// The routing parameter key for the receiver profile.
 const RECEIVER_PROFILE_KEY: u8 = 0;
