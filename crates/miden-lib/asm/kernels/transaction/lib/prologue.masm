@@ -555,7 +555,7 @@ proc.authenticate_note.8
     # ---------------------------------------------------------------------------------------------
 
     # load the note root from memory
-    loc_loadw.4 swapw
+    loc_loadw_be.4 swapw
     # => [NOTE_COMMITMENT, NOTE_ROOT]
 
     # load the index of the note
@@ -782,7 +782,7 @@ proc.add_input_note_assets_to_vault
         dup.2
         # => [input_vault_root_ptr, assets_start_ptr, assets_end_ptr, input_vault_root_ptr]
 
-        padw dup.5 mem_loadw
+        padw dup.5 mem_loadw_be
         # => [ASSET, input_vault_root_ptr, assets_start_ptr, assets_end_ptr, input_vault_root_ptr]
 
         # TODO: Because the input vault is a copy of the account vault, to mutate the input vault,
@@ -897,7 +897,7 @@ proc.process_input_note
     # => [NULLIFIER, note_ptr, idx, HASHER_CAPACITY]
 
     # save NULLIFIER to memory
-    movup.5 exec.memory::get_input_note_nullifier_ptr mem_storew
+    movup.5 exec.memory::get_input_note_nullifier_ptr mem_storew_be
     # => [NULLIFIER, note_ptr, HASHER_CAPACITY]
 
     # note metadata & args

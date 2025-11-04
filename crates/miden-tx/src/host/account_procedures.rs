@@ -82,7 +82,7 @@ impl AccountProcedureIndexMap {
                 .expect("active account code commitment was not initialized")
         };
 
-        let proc_root = process.get_stack_word(1);
+        let proc_root = process.get_stack_word_be(1);
 
         self.0
             .get(&code_commitment)

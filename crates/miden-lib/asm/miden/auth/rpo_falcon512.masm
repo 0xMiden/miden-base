@@ -111,7 +111,7 @@ export.verify_signatures.16
         exec.active_account::get_initial_map_item
         # => [OWNER_PUB_KEY, i-1, MSG]
 
-        loc_storew.CURRENT_PK_LOC
+        loc_storew_be.CURRENT_PK_LOC
         # => [OWNER_PUB_KEY, i-1, MSG]
 
         # Check if signature exists for this signer.
@@ -142,7 +142,7 @@ export.verify_signatures.16
             # Verify the signature against the public key and message.
             # -----------------------------------------------------------------------------------------
 
-            loc_loadw.CURRENT_PK_LOC
+            loc_loadw_be.CURRENT_PK_LOC
             # => [PK, MSG, MSG, i-1]
 
             swapw

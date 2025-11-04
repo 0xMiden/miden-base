@@ -73,7 +73,7 @@ async fn test_note_setup() -> anyhow::Result<()> {
             exec.prologue::prepare_transaction
             exec.note::prepare_note
             # => [note_script_root_ptr, NOTE_ARGS, pad(11), pad(16)]
-            padw movup.4 mem_loadw
+            padw movup.4 mem_loadw_be
             # => [SCRIPT_ROOT, NOTE_ARGS, pad(11), pad(16)]
 
             # truncate the stack
@@ -161,8 +161,8 @@ async fn test_note_script_and_note_args() -> miette::Result<()> {
     tx_context.set_tx_args(tx_args);
     let exec_output = tx_context.execute_code(code).await.unwrap();
 
-    assert_eq!(exec_output.get_stack_word(0), note_args[0]);
-    assert_eq!(exec_output.get_stack_word(4), note_args[1]);
+    assert_eq!(exec_output.get_stack_word_be(0), note_args[0]);
+    assert_eq!(exec_output.get_stack_word_be(4), note_args[1]);
 
     Ok(())
 }
@@ -210,10 +210,10 @@ async fn test_build_recipient() -> anyhow::Result<()> {
 
         begin
             # put the values that will be hashed into the memory
-            push.{word_1} push.{base_addr} mem_storew dropw
-            push.{word_2} push.{addr_1} mem_storew dropw
-            push.{word_3} push.{addr_2} mem_storew dropw
-            push.{word_4} push.{addr_3} mem_storew dropw
+            push.{word_1} push.{base_addr} mem_storew_be dropw
+            push.{word_2} push.{addr_1} mem_storew_be dropw
+            push.{word_3} push.{addr_2} mem_storew_be dropw
+            push.{word_4} push.{addr_3} mem_storew_be dropw
 
             # Test with 4 values
             push.{script_root}  # SCRIPT_ROOT
@@ -299,10 +299,10 @@ async fn test_compute_inputs_commitment() -> anyhow::Result<()> {
 
         begin
             # put the values that will be hashed into the memory
-            push.{word_1} push.{base_addr} mem_storew dropw
-            push.{word_2} push.{addr_1} mem_storew dropw
-            push.{word_3} push.{addr_2} mem_storew dropw
-            push.{word_4} push.{addr_3} mem_storew dropw
+            push.{word_1} push.{base_addr} mem_storew_be dropw
+            push.{word_2} push.{addr_1} mem_storew_be dropw
+            push.{word_3} push.{addr_2} mem_storew_be dropw
+            push.{word_4} push.{addr_3} mem_storew_be dropw
 
             # push the number of values and pointer to the inputs on the stack
             push.5.4000
@@ -419,7 +419,7 @@ async fn test_build_metadata() -> miette::Result<()> {
 
         let exec_output = tx_context.execute_code(&code).await.unwrap();
 
-        let metadata_word = exec_output.get_stack_word(0);
+        let metadata_word = exec_output.get_stack_word_be(0);
 
         assert_eq!(Word::from(test_metadata), metadata_word, "failed in iteration {iteration}");
     }

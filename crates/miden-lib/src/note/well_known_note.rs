@@ -269,7 +269,6 @@ impl WellKnownNote {
     ///     - check that the target account is either the receiver account or the sender account.
     ///     - check that depending on whether the target account is sender or receiver, it could be
     ///       either consumed, or consumed after timelock height, or consumed after reclaim height.
-    /// ```
     fn is_consumable_inner(
         &self,
         note: &Note,

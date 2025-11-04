@@ -54,7 +54,7 @@ impl<'store> MockHost<'store> {
         let stdlib_handlers = StdLibrary::default()
             .handlers()
             .into_iter()
-            .map(|(handler_event_id, _)| handler_event_id);
+            .map(|(handler_event_name, _)| handler_event_name.to_event_id());
         let mut handled_events = BTreeSet::from_iter(stdlib_handlers);
 
         // The default set of transaction events that are always handled.

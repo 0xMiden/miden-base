@@ -103,14 +103,10 @@ impl fmt::Display for TransactionEvent {
 impl TryFrom<EventId> for TransactionEvent {
     type Error = TransactionEventError;
 
-    fn try_from(value: EventId) -> Result<Self, Self::Error> {
-        let raw = value.as_felt().as_int();
+    fn try_from(event_id: EventId) -> Result<Self, Self::Error> {
+        let raw = event_id.as_felt().as_int();
 
         let name = EVENT_NAME_LUT.get(&raw).copied();
-
-        if value.is_reserved() {
-            return Err(TransactionEventError::ReservedSystemEvent(value));
-        }
 
         match raw {
             ACCOUNT_BEFORE_FOREIGN_LOAD => Ok(TransactionEvent::AccountBeforeForeignLoad),
@@ -184,7 +180,7 @@ impl TryFrom<EventId> for TransactionEvent {
 
             AUTH_UNAUTHORIZED => Ok(TransactionEvent::Unauthorized),
 
-            _ => Err(TransactionEventError::InvalidTransactionEvent(value, name)),
+            _ => Err(TransactionEventError::InvalidTransactionEvent(event_id, name)),
         }
     }
 }
