@@ -45,8 +45,7 @@ impl PartialStorageMap {
 
     /// Constructs a [`PartialStorageMap`] from a [`StorageMap`] root.
     ///
-    /// For conversion from a [`StorageMap`], prefer [`Self::new_minimal`] or [`Self::new_full`] to
-    /// be more explicit.
+    /// For conversion from a [`StorageMap`], prefer [`Self::new_minimal`] to be more explicit.
     pub fn new(root: Word) -> Self {
         PartialStorageMap {
             partial_smt: PartialSmt::new(root),

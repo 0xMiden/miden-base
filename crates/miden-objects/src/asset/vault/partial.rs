@@ -25,8 +25,7 @@ impl PartialVault {
 
     /// Constructs a [`PartialVault`] from an [`AssetVault`] root.
     ///
-    /// For conversion from an [`AssetVault`], prefer [`Self::new_minimal`] or [`Self::new_full`] to
-    /// be more explicit.
+    /// For conversion from an [`AssetVault`], prefer [`Self::new_minimal`] to be more explicit.
     pub fn new(root: Word) -> Self {
         PartialVault { partial_smt: PartialSmt::new(root) }
     }

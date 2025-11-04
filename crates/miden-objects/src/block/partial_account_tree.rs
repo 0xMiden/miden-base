@@ -113,14 +113,14 @@ impl PartialAccountTree {
         let id_prefix = witness.id().prefix();
         let id_key = account_id_to_smt_key(witness.id());
 
-        // If a leaf with the same prefix is already tracked by this partial tree, consider it
-        // an error.
+        // If a leaf with the same prefix is already tracked by this partial tree, consider it an
+        // error.
         //
         // We return an error even for empty leaves, because tracking the same ID prefix twice
-        // indicates that different IDs are attempted to be tracked. It would technically
-        // not violate the invariant of the tree that it only tracks zero or one entries per
-        // leaf, but since tracking the same ID twice should practically never
-        // happen, we return an error, out of an abundance of caution.
+        // indicates that different IDs are attempted to be tracked. It would technically not
+        // violate the invariant of the tree that it only tracks zero or one entries per leaf, but
+        // since tracking the same ID twice should practically never happen, we return an error, out
+        // of an abundance of caution.
         if self.smt.get_leaf(&id_key).is_ok() {
             return Err(AccountTreeError::DuplicateIdPrefix { duplicate_prefix: id_prefix });
         }
