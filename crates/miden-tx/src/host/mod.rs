@@ -26,7 +26,7 @@ use alloc::collections::BTreeMap;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use miden_lib::transaction::{EventId, TransactionEvent, TransactionEventError};
+use miden_lib::transaction::{EventId, TransactionEventError, TransactionEventId};
 use miden_objects::account::{
     AccountCode,
     AccountDelta,
@@ -257,7 +257,7 @@ where
             return Ok(TransactionEventHandling::Handled(mutations));
         }
 
-        let transaction_event = TransactionEvent::try_from(event_id).map_err(EventError::from)?;
+        let transaction_event = TransactionEventId::try_from(event_id).map_err(EventError::from)?;
 
         // Privileged events can only be emitted from the root context.
         if process.ctx() != ContextId::root() && transaction_event.is_privileged() {
@@ -265,134 +265,134 @@ where
         }
 
         let advice_mutations = match transaction_event {
-            TransactionEvent::AccountBeforeForeignLoad => {
+            TransactionEventId::AccountBeforeForeignLoad => {
                 self.on_account_before_foreign_load(process)
             }
 
-            TransactionEvent::AccountVaultBeforeAddAsset => {
+            TransactionEventId::AccountVaultBeforeAddAsset => {
                 self.on_account_vault_before_add_or_remove_asset(process)
             },
-            TransactionEvent::AccountVaultAfterAddAsset => {
+            TransactionEventId::AccountVaultAfterAddAsset => {
                 self.on_account_vault_after_add_asset(process).map(|_| TransactionEventHandling::Handled(Vec::new()))
             },
 
-            TransactionEvent::AccountVaultBeforeRemoveAsset => {
+            TransactionEventId::AccountVaultBeforeRemoveAsset => {
                 self.on_account_vault_before_add_or_remove_asset(process)
             },
-            TransactionEvent::AccountVaultAfterRemoveAsset => {
+            TransactionEventId::AccountVaultAfterRemoveAsset => {
                 self.on_account_vault_after_remove_asset(process).map(|_| TransactionEventHandling::Handled(Vec::new()))
             },
 
-            TransactionEvent::AccountVaultBeforeGetBalance => {
+            TransactionEventId::AccountVaultBeforeGetBalance => {
                 self.on_account_vault_before_get_balance(process)
             },
 
-            TransactionEvent::AccountVaultBeforeHasNonFungibleAsset => {
+            TransactionEventId::AccountVaultBeforeHasNonFungibleAsset => {
                 self.on_account_vault_before_has_non_fungible_asset(process)
             }
 
-            TransactionEvent::AccountStorageBeforeGetMapItem => {
+            TransactionEventId::AccountStorageBeforeGetMapItem => {
                 self.on_account_storage_before_get_map_item(process)
             }
 
-            TransactionEvent::AccountStorageBeforeSetItem => Ok(TransactionEventHandling::Handled(Vec::new())),
-            TransactionEvent::AccountStorageAfterSetItem => {
+            TransactionEventId::AccountStorageBeforeSetItem => Ok(TransactionEventHandling::Handled(Vec::new())),
+            TransactionEventId::AccountStorageAfterSetItem => {
                 self.on_account_storage_after_set_item(process).map(|_| TransactionEventHandling::Handled(Vec::new()))
             },
 
-            TransactionEvent::AccountStorageBeforeSetMapItem => {
+            TransactionEventId::AccountStorageBeforeSetMapItem => {
                 self.on_account_storage_before_set_map_item(process)
             },
-            TransactionEvent::AccountStorageAfterSetMapItem => {
+            TransactionEventId::AccountStorageAfterSetMapItem => {
                 self.on_account_storage_after_set_map_item(process).map(|_| TransactionEventHandling::Handled(Vec::new()))
             },
 
-            TransactionEvent::AccountBeforeIncrementNonce => {
+            TransactionEventId::AccountBeforeIncrementNonce => {
                 Ok(TransactionEventHandling::Handled(Vec::new()))
             },
-            TransactionEvent::AccountAfterIncrementNonce => {
+            TransactionEventId::AccountAfterIncrementNonce => {
                 self.on_account_after_increment_nonce().map(|_| TransactionEventHandling::Handled(Vec::new()))
             },
 
-            TransactionEvent::AccountPushProcedureIndex => {
+            TransactionEventId::AccountPushProcedureIndex => {
                 self.on_account_push_procedure_index(process).map(TransactionEventHandling::Handled)
             },
 
-            TransactionEvent::NoteBeforeCreated => Ok(TransactionEventHandling::Handled(Vec::new())),
-            TransactionEvent::NoteAfterCreated => self.on_note_after_created(process),
+            TransactionEventId::NoteBeforeCreated => Ok(TransactionEventHandling::Handled(Vec::new())),
+            TransactionEventId::NoteAfterCreated => self.on_note_after_created(process),
 
-            TransactionEvent::NoteBeforeAddAsset => self.on_note_before_add_asset(process).map(|_| TransactionEventHandling::Handled(Vec::new())),
-            TransactionEvent::NoteAfterAddAsset => Ok(TransactionEventHandling::Handled(Vec::new())),
+            TransactionEventId::NoteBeforeAddAsset => self.on_note_before_add_asset(process).map(|_| TransactionEventHandling::Handled(Vec::new())),
+            TransactionEventId::NoteAfterAddAsset => Ok(TransactionEventHandling::Handled(Vec::new())),
 
-            TransactionEvent::AuthRequest => self.on_auth_requested(process),
+            TransactionEventId::AuthRequest => self.on_auth_requested(process),
 
-            TransactionEvent::PrologueStart => {
+            TransactionEventId::PrologueStart => {
                 self.tx_progress.start_prologue(process.clk());
                 Ok(TransactionEventHandling::Handled(Vec::new()))
             },
-            TransactionEvent::PrologueEnd => {
+            TransactionEventId::PrologueEnd => {
                 self.tx_progress.end_prologue(process.clk());
                 Ok(TransactionEventHandling::Handled(Vec::new()))
             },
 
-            TransactionEvent::NotesProcessingStart => {
+            TransactionEventId::NotesProcessingStart => {
                 self.tx_progress.start_notes_processing(process.clk());
                 Ok(TransactionEventHandling::Handled(Vec::new()))
             },
-            TransactionEvent::NotesProcessingEnd => {
+            TransactionEventId::NotesProcessingEnd => {
                 self.tx_progress.end_notes_processing(process.clk());
                 Ok(TransactionEventHandling::Handled(Vec::new()))
             },
 
-            TransactionEvent::NoteExecutionStart => {
+            TransactionEventId::NoteExecutionStart => {
                 let note_id = process.get_active_note_id()?.expect(
                     "Note execution interval measurement is incorrect: check the placement of the start and the end of the interval",
                 );
                 self.tx_progress.start_note_execution(process.clk(), note_id);
                 Ok(TransactionEventHandling::Handled(Vec::new()))
             },
-            TransactionEvent::NoteExecutionEnd => {
+            TransactionEventId::NoteExecutionEnd => {
                 self.tx_progress.end_note_execution(process.clk());
                 Ok(TransactionEventHandling::Handled(Vec::new()))
             },
 
-            TransactionEvent::TxScriptProcessingStart => {
+            TransactionEventId::TxScriptProcessingStart => {
                 self.tx_progress.start_tx_script_processing(process.clk());
                 Ok(TransactionEventHandling::Handled(Vec::new()))
             }
-            TransactionEvent::TxScriptProcessingEnd => {
+            TransactionEventId::TxScriptProcessingEnd => {
                 self.tx_progress.end_tx_script_processing(process.clk());
                 Ok(TransactionEventHandling::Handled(Vec::new()))
             }
 
-            TransactionEvent::EpilogueStart => {
+            TransactionEventId::EpilogueStart => {
                 self.tx_progress.start_epilogue(process.clk());
                 Ok(TransactionEventHandling::Handled(Vec::new()))
             }
-            TransactionEvent::EpilogueAuthProcStart => {
+            TransactionEventId::EpilogueAuthProcStart => {
                 self.tx_progress.start_auth_procedure(process.clk());
                 Ok(TransactionEventHandling::Handled(Vec::new()))
             }
-            TransactionEvent::EpilogueAuthProcEnd => {
+            TransactionEventId::EpilogueAuthProcEnd => {
                 self.tx_progress.end_auth_procedure(process.clk());
                 Ok(TransactionEventHandling::Handled(Vec::new()))
             }
-            TransactionEvent::EpilogueAfterTxCyclesObtained => {
+            TransactionEventId::EpilogueAfterTxCyclesObtained => {
                 self.tx_progress.epilogue_after_tx_cycles_obtained(process.clk());
                 Ok(TransactionEventHandling::Handled(vec![]))
             }
-            TransactionEvent::EpilogueBeforeTxFeeRemovedFromAccount => self.on_before_tx_fee_removed_from_account(process),
-            TransactionEvent::EpilogueEnd => {
+            TransactionEventId::EpilogueBeforeTxFeeRemovedFromAccount => self.on_before_tx_fee_removed_from_account(process),
+            TransactionEventId::EpilogueEnd => {
                 self.tx_progress.end_epilogue(process.clk());
                 Ok(TransactionEventHandling::Handled(Vec::new()))
             }
-            TransactionEvent::LinkMapSet => {
+            TransactionEventId::LinkMapSet => {
                 return LinkMap::handle_set_event(process).map(TransactionEventHandling::Handled);
             },
-            TransactionEvent::LinkMapGet => {
+            TransactionEventId::LinkMapGet => {
                 return LinkMap::handle_get_event(process).map(TransactionEventHandling::Handled);
             },
-            TransactionEvent::Unauthorized => {
+            TransactionEventId::Unauthorized => {
               // Note: This always returns an error to abort the transaction.
               Err(self.on_unauthorized(process))
             }
