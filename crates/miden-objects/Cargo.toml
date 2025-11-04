@@ -31,7 +31,7 @@ std = [
   "miden-processor/std",
   "miden-verifier/std",
 ]
-testing = ["dep:rand", "dep:rand_xoshiro", "dep:winter-rand-utils", "miden-air/testing"]
+testing = ["dep:rand_xoshiro", "dep:winter-rand-utils", "miden-air/testing"]
 
 [dependencies]
 # Miden dependencies
@@ -48,7 +48,7 @@ winter-rand-utils     = { optional = true, version = "0.13" }
 # External dependencies
 bech32       = { default-features = false, features = ["alloc"], version = "0.11" }
 log          = { optional = true, version = "0.4" }
-rand         = { optional = true, workspace = true }
+rand         = { workspace = true }
 rand_xoshiro = { default-features = false, optional = true, version = "0.7" }
 semver       = { features = ["serde"], version = "1.0" }
 serde        = { features = ["derive"], optional = true, version = "1.0" }
