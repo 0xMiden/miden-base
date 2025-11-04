@@ -1,3 +1,4 @@
+use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 
 use miden_objects::account::{AccountComponent, PublicKeyCommitment, StorageMap, StorageSlot};
@@ -34,14 +35,10 @@ impl AuthRpoFalcon512MultisigConfig {
         }
 
         // Check for duplicate approvers
-        for i in 0..approvers.len() {
-            for j in (i + 1)..approvers.len() {
-                if approvers[i] == approvers[j] {
-                    return Err(AccountError::other(
-                        "duplicate approver public keys are not allowed",
-                    ));
-                }
-            }
+        if approvers.len()
+            != approvers.iter().map(|&pk| Word::from(pk)).collect::<BTreeSet<_>>().len()
+        {
+            return Err(AccountError::other("duplicate approver public keys are not allowed"));
         }
 
         Ok(Self {
