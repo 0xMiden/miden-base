@@ -5,7 +5,7 @@ use core::fmt;
 use core::hash::Hash;
 
 use bech32::Bech32m;
-use bech32::primitives::decode::CheckedHrpstring;
+use bech32::primitives::decode::{ByteIter, CheckedHrpstring};
 use miden_crypto::utils::hex_to_bytes;
 pub use prefix::AccountIdPrefixV0;
 
@@ -252,6 +252,7 @@ impl AccountIdV0 {
         let network_id = NetworkId::from_hrp(hrp);
 
         let mut byte_iter = checked_string.byte_iter();
+
         // The length must be the serialized size of the account ID plus the address byte.
         if byte_iter.len() != Self::SERIALIZED_SIZE + 1 {
             return Err(AccountIdError::Bech32DecodeError(Bech32Error::InvalidDataLength {
@@ -267,6 +268,19 @@ impl AccountIdV0 {
             )));
         }
 
+        Self::from_bech32_byte_iter(byte_iter).map(|account_id| (network_id, account_id))
+    }
+
+    /// Decodes the data from the bech32 byte iterator into an [`AccountId`].
+    pub(crate) fn from_bech32_byte_iter(byte_iter: ByteIter<'_>) -> Result<Self, AccountIdError> {
+        // The _remaining_ length of the iterator must be the serialized size of the account ID.
+        if byte_iter.len() != Self::SERIALIZED_SIZE {
+            return Err(AccountIdError::Bech32DecodeError(Bech32Error::InvalidDataLength {
+                expected: Self::SERIALIZED_SIZE,
+                actual: byte_iter.len(),
+            }));
+        }
+
         // Every byte is guaranteed to be overwritten since we've checked the length of the
         // iterator.
         let mut id_bytes = [0_u8; Self::SERIALIZED_SIZE];
@@ -276,7 +290,7 @@ impl AccountIdV0 {
 
         let account_id = Self::try_from(id_bytes)?;
 
-        Ok((network_id, account_id))
+        Ok(account_id)
     }
 
     /// Returns the [`AccountIdPrefixV0`] of this account ID.
