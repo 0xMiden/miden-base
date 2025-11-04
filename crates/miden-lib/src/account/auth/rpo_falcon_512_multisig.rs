@@ -255,21 +255,9 @@ mod tests {
     fn test_multisig_component_duplicate_approvers() {
         let pub_key_1 = PublicKeyCommitment::from(Word::from([1u32, 0, 0, 0]));
         let pub_key_2 = PublicKeyCommitment::from(Word::from([2u32, 0, 0, 0]));
-        let pub_key_1_duplicate = PublicKeyCommitment::from(Word::from([1u32, 0, 0, 0]));
 
         // Test with duplicate approvers (should fail)
-        let approvers = vec![pub_key_1, pub_key_2, pub_key_1_duplicate];
-        let result = AuthRpoFalcon512MultisigConfig::new(approvers, 2);
-        assert!(
-            result
-                .unwrap_err()
-                .to_string()
-                .contains("duplicate approver public keys are not allowed")
-        );
-
-        // Test with all duplicate approvers (should fail)
-        let pub_key = PublicKeyCommitment::from(Word::from([1u32, 0, 0, 0]));
-        let approvers = vec![pub_key, pub_key, pub_key];
+        let approvers = vec![pub_key_1, pub_key_2, pub_key_1];
         let result = AuthRpoFalcon512MultisigConfig::new(approvers, 2);
         assert!(
             result
