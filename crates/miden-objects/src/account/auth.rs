@@ -1,8 +1,8 @@
 use alloc::vec::Vec;
 
-use miden_crypto::dsa::rpo_falcon512::PublicKey as RpoFalconPublicKey;
+use rand::Rng;
 
-use crate::crypto::dsa::rpo_falcon512::{self, Polynomial, SecretKey};
+use crate::crypto::dsa::rpo_falcon512;
 use crate::utils::serde::{
     ByteReader,
     ByteWriter,
@@ -10,30 +10,119 @@ use crate::utils::serde::{
     DeserializationError,
     Serializable,
 };
-use crate::{Felt, Hasher, Word};
+use crate::{AuthSchemeError, Felt, Hasher, Word};
+
+// AUTH SCHEME
+// ================================================================================================
+
+/// Identifier of the RpoFalcon512 signature scheme.
+const RPO_FALCON_512: u8 = 0;
+
+/// Defines standard authentication schemes (i.e., signature schemes) available in the Miden
+/// protocol.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+#[repr(u8)]
+pub enum AuthScheme {
+    RpoFalcon512 = RPO_FALCON_512,
+}
+
+impl AuthScheme {
+    /// Returns a numerical value of this auth scheme.
+    pub fn as_u8(&self) -> u8 {
+        *self as u8
+    }
+}
+
+impl core::fmt::Display for AuthScheme {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::RpoFalcon512 => f.write_str("RpoFalcon512"),
+        }
+    }
+}
+
+impl TryFrom<u8> for AuthScheme {
+    type Error = AuthSchemeError;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            RPO_FALCON_512 => Ok(Self::RpoFalcon512),
+            value => Err(AuthSchemeError::InvalidAuthSchemeIdentifier(value)),
+        }
+    }
+}
+
+impl Serializable for AuthScheme {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        target.write_u8(*self as u8);
+    }
+
+    fn get_size_hint(&self) -> usize {
+        // auth scheme is encoded as a single byte
+        size_of::<u8>()
+    }
+}
+
+impl Deserializable for AuthScheme {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        match source.read_u8()? {
+            RPO_FALCON_512 => Ok(Self::RpoFalcon512),
+            value => Err(DeserializationError::InvalidValue(format!(
+                "auth scheme identifier `{value}` is not valid"
+            ))),
+        }
+    }
+}
 
 // AUTH SECRET KEY
 // ================================================================================================
 
-/// Types of secret keys used for signing messages
-#[derive(Clone, Debug)]
+/// Secret keys of the standard [`AuthScheme`]s available in the Miden protocol.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 #[repr(u8)]
 pub enum AuthSecretKey {
-    RpoFalcon512(rpo_falcon512::SecretKey) = 0,
+    RpoFalcon512(rpo_falcon512::SecretKey) = RPO_FALCON_512,
 }
 
 impl AuthSecretKey {
-    /// Identifier for the type of authentication key
-    pub fn auth_scheme_id(&self) -> u8 {
+    /// Generates an RpoFalcon512 secret key from the OS-provided randomness.
+    #[cfg(feature = "std")]
+    pub fn new_rpo_falcon512() -> Self {
+        Self::RpoFalcon512(rpo_falcon512::SecretKey::new())
+    }
+
+    /// Generates an RpoFalcon512 secrete key using the provided random number generator.
+    pub fn new_rpo_falcon512_with_rng<R: Rng>(rng: &mut R) -> Self {
+        Self::RpoFalcon512(rpo_falcon512::SecretKey::with_rng(rng))
+    }
+
+    /// Returns the authentication scheme of this secret key.
+    pub fn auth_scheme(&self) -> AuthScheme {
         match self {
-            AuthSecretKey::RpoFalcon512(_) => 0u8,
+            AuthSecretKey::RpoFalcon512(_) => AuthScheme::RpoFalcon512,
+        }
+    }
+
+    /// Returns a public key associated with this secret key.
+    pub fn public_key(&self) -> PublicKey {
+        match self {
+            AuthSecretKey::RpoFalcon512(key) => PublicKey::RpoFalcon512(key.public_key()),
+        }
+    }
+
+    /// Signs the provided message with this secret key.
+    pub fn sign(&self, message: Word) -> Signature {
+        match self {
+            AuthSecretKey::RpoFalcon512(key) => Signature::RpoFalcon512(key.sign(message)),
         }
     }
 }
 
 impl Serializable for AuthSecretKey {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        target.write_u8(self.auth_scheme_id());
+        self.auth_scheme().write_into(target);
         match self {
             AuthSecretKey::RpoFalcon512(secret_key) => {
                 secret_key.write_into(target);
@@ -44,14 +133,11 @@ impl Serializable for AuthSecretKey {
 
 impl Deserializable for AuthSecretKey {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        let auth_key_id: u8 = source.read_u8()?;
-        match auth_key_id {
-            // RpoFalcon512
-            0u8 => {
-                let secret_key = SecretKey::read_from(source)?;
+        match source.read::<AuthScheme>()? {
+            AuthScheme::RpoFalcon512 => {
+                let secret_key = rpo_falcon512::SecretKey::read_from(source)?;
                 Ok(AuthSecretKey::RpoFalcon512(secret_key))
             },
-            val => Err(DeserializationError::InvalidValue(format!("Invalid auth scheme ID {val}"))),
         }
     }
 }
@@ -60,11 +146,17 @@ impl Deserializable for AuthSecretKey {
 // ================================================================================================
 
 /// Commitment to a public key.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PublicKeyCommitment(Word);
 
-impl From<RpoFalconPublicKey> for PublicKeyCommitment {
-    fn from(value: RpoFalconPublicKey) -> Self {
+impl core::fmt::Display for PublicKeyCommitment {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl From<rpo_falcon512::PublicKey> for PublicKeyCommitment {
+    fn from(value: rpo_falcon512::PublicKey) -> Self {
         Self(value.to_commitment())
     }
 }
@@ -78,6 +170,60 @@ impl From<PublicKeyCommitment> for Word {
 impl From<Word> for PublicKeyCommitment {
     fn from(value: Word) -> Self {
         Self(value)
+    }
+}
+
+/// Public keys of the standard authentication schemes available in the Miden protocol.
+#[derive(Clone, Debug)]
+#[non_exhaustive]
+pub enum PublicKey {
+    RpoFalcon512(rpo_falcon512::PublicKey),
+}
+
+impl PublicKey {
+    /// Returns the authentication scheme of this public key.
+    pub fn auth_scheme(&self) -> AuthScheme {
+        match self {
+            PublicKey::RpoFalcon512(_) => AuthScheme::RpoFalcon512,
+        }
+    }
+
+    /// Returns a commitment to this public key.
+    pub fn to_commitment(&self) -> PublicKeyCommitment {
+        match self {
+            PublicKey::RpoFalcon512(key) => key.to_commitment().into(),
+        }
+    }
+
+    /// Verifies the provided signature against the provided message and this public key.
+    pub fn verify(&self, message: Word, signature: Signature) -> bool {
+        match (self, signature) {
+            (PublicKey::RpoFalcon512(key), Signature::RpoFalcon512(signature)) => {
+                key.verify(message, &signature)
+            },
+        }
+    }
+}
+
+impl Serializable for PublicKey {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        self.auth_scheme().write_into(target);
+        match self {
+            PublicKey::RpoFalcon512(pub_key) => {
+                pub_key.write_into(target);
+            },
+        }
+    }
+}
+
+impl Deserializable for PublicKey {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        match source.read::<AuthScheme>()? {
+            AuthScheme::RpoFalcon512 => {
+                let pub_key = rpo_falcon512::PublicKey::read_from(source)?;
+                Ok(PublicKey::RpoFalcon512(pub_key))
+            },
+        }
     }
 }
 
@@ -102,10 +248,19 @@ impl From<Word> for PublicKeyCommitment {
 #[derive(Clone, Debug)]
 #[repr(u8)]
 pub enum Signature {
-    RpoFalcon512(rpo_falcon512::Signature) = 0,
+    RpoFalcon512(rpo_falcon512::Signature) = RPO_FALCON_512,
 }
 
 impl Signature {
+    /// Returns the authentication scheme of this signature.
+    pub fn auth_scheme(&self) -> AuthScheme {
+        match self {
+            Signature::RpoFalcon512(_) => AuthScheme::RpoFalcon512,
+        }
+    }
+
+    /// Converts this signature to a sequence of field elements in the format expected by the
+    /// native verification procedure in the VM.
     pub fn to_prepared_signature(&self) -> Vec<Felt> {
         match self {
             Signature::RpoFalcon512(signature) => prepare_rpo_falcon512_signature(signature),
@@ -119,18 +274,9 @@ impl From<rpo_falcon512::Signature> for Signature {
     }
 }
 
-impl Signature {
-    /// Identifier for the type of signature scheme
-    pub fn signature_scheme_id(&self) -> u8 {
-        match self {
-            Signature::RpoFalcon512(_) => 0u8,
-        }
-    }
-}
-
 impl Serializable for Signature {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        target.write_u8(self.signature_scheme_id());
+        self.auth_scheme().write_into(target);
         match self {
             Signature::RpoFalcon512(signature) => {
                 signature.write_into(target);
@@ -141,16 +287,11 @@ impl Serializable for Signature {
 
 impl Deserializable for Signature {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        let signature_scheme_id: u8 = source.read_u8()?;
-        match signature_scheme_id {
-            // RpoFalcon512
-            0u8 => {
+        match source.read::<AuthScheme>()? {
+            AuthScheme::RpoFalcon512 => {
                 let signature = rpo_falcon512::Signature::read_from(source)?;
                 Ok(Signature::RpoFalcon512(signature))
             },
-            val => Err(DeserializationError::InvalidValue(format!(
-                "Invalid signature scheme ID {val}"
-            ))),
         }
     }
 }
@@ -170,6 +311,8 @@ impl Deserializable for Signature {
 ///    the Miden field.
 /// 5. The nonce represented as 8 field elements.
 fn prepare_rpo_falcon512_signature(sig: &rpo_falcon512::Signature) -> Vec<Felt> {
+    use rpo_falcon512::Polynomial;
+
     // The signature is composed of a nonce and a polynomial s2
     // The nonce is represented as 8 field elements.
     let nonce = sig.nonce();

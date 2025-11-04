@@ -15,7 +15,8 @@ use super::super::utils::serde::{
     DeserializationError,
     Serializable,
 };
-use super::{Account, AuthSecretKey};
+use super::Account;
+use super::auth::AuthSecretKey;
 
 const MAGIC: &str = "acct";
 
@@ -98,14 +99,14 @@ impl Deserializable for AccountFile {
 
 #[cfg(test)]
 mod tests {
-    use miden_crypto::dsa::rpo_falcon512::SecretKey;
     use miden_crypto::utils::{Deserializable, Serializable};
     use storage::AccountStorage;
     #[cfg(feature = "std")]
     use tempfile::tempdir;
 
     use super::AccountFile;
-    use crate::account::{Account, AccountCode, AccountId, AuthSecretKey, Felt, storage};
+    use crate::account::auth::AuthSecretKey;
+    use crate::account::{Account, AccountCode, AccountId, Felt, storage};
     use crate::asset::AssetVault;
     use crate::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE;
 
@@ -118,8 +119,8 @@ mod tests {
         let storage = AccountStorage::new(vec![]).unwrap();
         let nonce = Felt::new(1);
         let account = Account::new_existing(id, vault, storage, code, nonce);
-        let auth_secret_key = AuthSecretKey::RpoFalcon512(SecretKey::new());
-        let auth_secret_key_2 = AuthSecretKey::RpoFalcon512(SecretKey::new());
+        let auth_secret_key = AuthSecretKey::new_rpo_falcon512();
+        let auth_secret_key_2 = AuthSecretKey::new_rpo_falcon512();
 
         AccountFile::new(account, vec![auth_secret_key, auth_secret_key_2])
     }

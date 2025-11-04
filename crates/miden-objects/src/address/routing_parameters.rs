@@ -33,12 +33,15 @@ const BECH32_SEPARATOR: &str = "1";
 
 /// The value to encode the absence of a note tag routing parameter (i.e. `None`).
 ///
-/// Note tag length is ensured to be <= [`NoteTag::MAX_LOCAL_TAG_LENGTH`] and so 1 << 5 = 32 is used
-/// to encode `None`.
-const ABSENT_NOTE_TAG_LEN: u8 = 1 << 5;
+/// The note tag length occupies 5 bits (values 0..=31). Valid tag lengths are 0..=30,
+/// so we reserve the maximum 5-bit value (31) to represent `None`.
+///
+/// If the note tag length is absent from routing parameters, the note tag length for the address
+/// will be set to the default default tag length of the address' ID component.
+const ABSENT_NOTE_TAG_LEN: u8 = (1 << 5) - 1; // 31
 
 /// The routing parameter key for the receiver profile.
-const RECEIVER_PROFILE_KEY: u8 = 0;
+const RECEIVER_PROFILE_PARAM_KEY: u8 = 0;
 
 /// The routing parameter key for the encryption key.
 const ENCRYPTION_KEY_PARAM_KEY: u8 = 1;
@@ -153,7 +156,7 @@ impl RoutingParameters {
         let receiver_profile: [u8; 2] = receiver_profile.to_be_bytes();
 
         // Append the receiver profile key and the encoded value to the vector.
-        encoded.push(RECEIVER_PROFILE_KEY);
+        encoded.push(RECEIVER_PROFILE_PARAM_KEY);
         encoded.extend(receiver_profile);
 
         // Append the encryption key if present.
@@ -234,7 +237,7 @@ impl RoutingParameters {
 
         while let Some(key) = byte_iter.next() {
             match key {
-                RECEIVER_PROFILE_KEY => {
+                RECEIVER_PROFILE_PARAM_KEY => {
                     if byte_iter.len() < 2 {
                         return Err(AddressError::decode_error(
                             "expected two bytes to decode receiver profile",
@@ -451,25 +454,76 @@ mod tests {
         Ok(())
     }
 
+    /// Tests bech32 encoding and decoding roundtrip with various tag lengths.
     #[test]
     fn routing_parameters_bech32_encode_decode_roundtrip() -> anyhow::Result<()> {
-        let routing_params =
-            RoutingParameters::new(AddressInterface::BasicWallet).with_note_tag_len(8)?;
-        assert_eq!(routing_params, RoutingParameters::decode(routing_params.encode_to_string())?);
+        // Test case 1: No explicit tag length
+        let params_no_tag = RoutingParameters::new(AddressInterface::BasicWallet);
+        let encoded = params_no_tag.encode_to_string();
+        let decoded = RoutingParameters::decode(encoded)?;
+        assert_eq!(params_no_tag, decoded);
+        assert_eq!(decoded.note_tag_len(), None);
+
+        // Test case 2: Explicit tag length 0
+        let params_tag_0 =
+            RoutingParameters::new(AddressInterface::BasicWallet).with_note_tag_len(0)?;
+        let encoded = params_tag_0.encode_to_string();
+        let decoded = RoutingParameters::decode(encoded)?;
+        assert_eq!(params_tag_0, decoded);
+        assert_eq!(decoded.note_tag_len(), Some(0));
+
+        // Test case 3: Explicit tag length 6
+        let params_tag_6 =
+            RoutingParameters::new(AddressInterface::BasicWallet).with_note_tag_len(6)?;
+        let encoded = params_tag_6.encode_to_string();
+        let decoded = RoutingParameters::decode(encoded)?;
+        assert_eq!(params_tag_6, decoded);
+        assert_eq!(decoded.note_tag_len(), Some(6));
+
+        // Test case 4: Explicit tag length set to max
+        let params_tag_max = RoutingParameters::new(AddressInterface::BasicWallet)
+            .with_note_tag_len(NoteTag::MAX_LOCAL_TAG_LENGTH)?;
+        let encoded = params_tag_max.encode_to_string();
+        let decoded = RoutingParameters::decode(encoded)?;
+        assert_eq!(params_tag_max, decoded);
+        assert_eq!(decoded.note_tag_len(), Some(NoteTag::MAX_LOCAL_TAG_LENGTH));
 
         Ok(())
     }
 
-    /// Tests that routing parameters can be serialized and deserialized.
+    /// Tests serialization and deserialization roundtrip with various tag lengths.
     #[test]
     fn routing_parameters_serialization() -> anyhow::Result<()> {
-        let routing_params =
-            RoutingParameters::new(AddressInterface::BasicWallet).with_note_tag_len(6)?;
+        // Test case 1: No explicit tag length
+        let params_no_tag = RoutingParameters::new(AddressInterface::BasicWallet);
+        let serialized = params_no_tag.to_bytes();
+        let deserialized = RoutingParameters::read_from_bytes(&serialized)?;
+        assert_eq!(params_no_tag, deserialized);
+        assert_eq!(deserialized.note_tag_len(), None);
 
-        assert_eq!(
-            routing_params,
-            RoutingParameters::read_from_bytes(&routing_params.to_bytes()).unwrap()
-        );
+        // Test case 2: Explicit tag length 0
+        let params_tag_0 =
+            RoutingParameters::new(AddressInterface::BasicWallet).with_note_tag_len(0)?;
+        let serialized = params_tag_0.to_bytes();
+        let deserialized = RoutingParameters::read_from_bytes(&serialized)?;
+        assert_eq!(params_tag_0, deserialized);
+        assert_eq!(deserialized.note_tag_len(), Some(0));
+
+        // Test case 3: Explicit tag length 6
+        let params_tag_6 =
+            RoutingParameters::new(AddressInterface::BasicWallet).with_note_tag_len(6)?;
+        let serialized = params_tag_6.to_bytes();
+        let deserialized = RoutingParameters::read_from_bytes(&serialized)?;
+        assert_eq!(params_tag_6, deserialized);
+        assert_eq!(deserialized.note_tag_len(), Some(6));
+
+        // Test case 4: Explicit tag length set to max
+        let params_tag_max = RoutingParameters::new(AddressInterface::BasicWallet)
+            .with_note_tag_len(NoteTag::MAX_LOCAL_TAG_LENGTH)?;
+        let serialized = params_tag_max.to_bytes();
+        let deserialized = RoutingParameters::read_from_bytes(&serialized)?;
+        assert_eq!(params_tag_max, deserialized);
+        assert_eq!(deserialized.note_tag_len(), Some(NoteTag::MAX_LOCAL_TAG_LENGTH));
 
         Ok(())
     }
