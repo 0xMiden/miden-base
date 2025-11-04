@@ -35,6 +35,16 @@
 - [BREAKING] Change `Account` to `PartialAccount` conversion to generally track only minimal data ([#1963]https://github.com/0xMiden/miden-base/pull/1963).
 - Added `AccountTree::apply_mutations_with_reversions` ([#2002](https://github.com/0xMiden/miden-base/pull/2002)).
 - Added `Display` trait for `AddressInterface` ([#2016](https://github.com/0xMiden/miden-base/pull/2016)).
+- Added `has_procedure` procedure to the `miden::account` module ([#2017](https://github.com/0xMiden/miden-base/pull/2017)).
+- Re-add bech32 encoding for `AccountId` ([#2018](https://github.com/0xMiden/miden-base/pull/2018)).
+- [BREAKING] Separate account APIs in `miden::account` into `active_account` and `native_account` ([#2026](https://github.com/0xMiden/miden-base/pull/2026)).
+- [BREAKING] Remove `miden::account::get_native_nonce` procedure ([#2026](https://github.com/0xMiden/miden-base/pull/2026)).
+- [BREAKING] Refactor `Address` to make routing parameters optional ([#2032](https://github.com/0xMiden/miden-base/pull/2032), [#2047](https://github.com/0xMiden/miden-base/pull/2047)).
+- [BREAKING] Refactor `PartialVault`, `PartialStorageMap`, `PartialAccountTree` and `PartialNullifierTree` to allow construction from a root ([#2042](https://github.com/0xMiden/miden-base/pull/2042)).
+- [BREAKING] Refactor `Address` to make routing parameters optional ([#2032](https://github.com/0xMiden/miden-base/pull/2032)).
+- Added `encryption_key` to `RoutingParameters` ([#2050](https://github.com/0xMiden/miden-base/pull/2050)).
+- [BREAKING] Added `EcdsaK256Keccak` variant to auth enums ([#2052](https://github.com/0xMiden/miden-base/pull/2052)).
+- Implemented storage map templates, which can be initialized through key/value lists provided via `InitStorageData` TOML ([#2053](https://github.com/0xMiden/miden-base/pull/2053)).
 
 ### Changes
 
