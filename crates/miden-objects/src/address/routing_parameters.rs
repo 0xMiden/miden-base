@@ -32,12 +32,18 @@ const BECH32_SEPARATOR: &str = "1";
 
 /// The value to encode the absence of a note tag routing parameter (i.e. `None`).
 ///
-/// Note tag length is ensured to be <= [`NoteTag::MAX_LOCAL_TAG_LENGTH`] and so 1 << 5 = 32 is used
-/// to encode `None`.
-const ABSENT_NOTE_TAG_LEN: u8 = 1 << 5;
+/// Note tag length is ensured to be <= [`NoteTag::MAX_LOCAL_TAG_LENGTH`] (which is 30) and so 31
+/// is used to encode `None`.
+const ABSENT_NOTE_TAG_LEN: u8 = 31;
 
 /// The routing parameter key for the receiver profile.
 const RECEIVER_PROFILE_KEY: u8 = 0;
+
+/// The routing parameter key for the encryption key.
+const ENCRYPTION_KEY_PARAM_KEY: u8 = 1;
+
+/// The expected length of the encryption key in bytes.
+const ENCRYPTION_KEY_LENGTH: usize = 32;
 
 /// Parameters that define how a sender should route a note to the [`AddressId`](super::AddressId)
 /// in an [`Address`](super::Address).
@@ -45,6 +51,9 @@ const RECEIVER_PROFILE_KEY: u8 = 0;
 pub struct RoutingParameters {
     interface: AddressInterface,
     note_tag_len: Option<u8>,
+    /// The public encryption key stored as raw bytes (32 bytes for Ed25519/X25519).
+    /// This is reconstructed into a `SealingKey` when needed for encryption.
+    encryption_key_bytes: Option<[u8; ENCRYPTION_KEY_LENGTH]>,
 }
 
 impl RoutingParameters {
@@ -54,7 +63,7 @@ impl RoutingParameters {
     /// Creates new [`RoutingParameters`] from an [`AddressInterface`] and all other parameters
     /// initialized to `None`.
     pub fn new(interface: AddressInterface) -> Self {
-        Self { interface, note_tag_len: None }
+        Self { interface, note_tag_len: None, encryption_key_bytes: None }
     }
 
     /// Sets the note tag length routing parameter.
@@ -95,6 +104,47 @@ impl RoutingParameters {
         self.interface
     }
 
+    /// Returns the optional public encryption key for sealed box encryption.
+    ///
+    /// This reconstructs the `SealingKey` from the stored bytes using the X25519XChaCha20Poly1305 variant.
+    pub fn encryption_key(&self) -> Option<crate::crypto::PublicEncryptionKey> {
+        let key_bytes = self.encryption_key_bytes.as_ref()?;
+        // Deserialize the Ed25519 public key from bytes
+        let public_key = crate::crypto::dsa::eddsa_25519::PublicKey::read_from_bytes(key_bytes).ok()?;
+        // Wrap in SealingKey enum
+        Some(crate::crypto::PublicEncryptionKey::X25519XChaCha20Poly1305(public_key))
+    }
+
+    /// Sets the encryption key routing parameter.
+    ///
+    /// This allows senders to encrypt note payloads using sealed box encryption
+    /// for the recipient of this address.
+    pub fn with_encryption_key(mut self, key: crate::crypto::PublicEncryptionKey) -> Self {
+        // Extract the underlying public key bytes based on the variant
+        let key_bytes = match key {
+            crate::crypto::PublicEncryptionKey::X25519XChaCha20Poly1305(ref pk) => {
+                pk.to_bytes()
+            },
+            crate::crypto::PublicEncryptionKey::K256XChaCha20Poly1305(ref pk) => {
+                pk.to_bytes()
+            },
+            crate::crypto::PublicEncryptionKey::X25519AeadRpo(ref pk) => {
+                pk.to_bytes()
+            },
+            crate::crypto::PublicEncryptionKey::K256AeadRpo(ref pk) => {
+                pk.to_bytes()
+            },
+        };
+        
+        // Convert Vec<u8> to [u8; 32]
+        if key_bytes.len() == ENCRYPTION_KEY_LENGTH {
+            let mut bytes = [0u8; ENCRYPTION_KEY_LENGTH];
+            bytes.copy_from_slice(&key_bytes);
+            self.encryption_key_bytes = Some(bytes);
+        }
+        self
+    }
+
     // HELPERS
     // --------------------------------------------------------------------------------------------
 
@@ -120,6 +170,12 @@ impl RoutingParameters {
         // Append the receiver profile key and the encoded value to the vector.
         encoded.push(RECEIVER_PROFILE_KEY);
         encoded.extend(receiver_profile);
+
+        // Append the encryption key if present.
+        if let Some(encryption_key_bytes) = &self.encryption_key_bytes {
+            encoded.push(ENCRYPTION_KEY_PARAM_KEY);
+            encoded.extend(encryption_key_bytes);
+        }
 
         encoded
     }
@@ -170,6 +226,7 @@ impl RoutingParameters {
     ) -> Result<Self, AddressError> {
         let mut interface = None;
         let mut note_tag_len = None;
+        let mut encryption_key = None;
 
         while let Some(key) = byte_iter.next() {
             match key {
@@ -201,6 +258,20 @@ impl RoutingParameters {
                         })?;
                     interface = Some(addr_interface);
                 },
+                ENCRYPTION_KEY_PARAM_KEY => {
+                    if byte_iter.len() < ENCRYPTION_KEY_LENGTH {
+                        return Err(AddressError::decode_error(
+                            format!("expected {} bytes to decode encryption key", ENCRYPTION_KEY_LENGTH),
+                        ));
+                    };
+
+                    let mut key_bytes = [0u8; ENCRYPTION_KEY_LENGTH];
+                    for i in 0..ENCRYPTION_KEY_LENGTH {
+                        key_bytes[i] = byte_iter.next().expect("encryption key byte should exist");
+                    }
+
+                    encryption_key = Some(key_bytes);
+                },
                 other => {
                     return Err(AddressError::UnknownRoutingParameterKey(other));
                 },
@@ -213,6 +284,7 @@ impl RoutingParameters {
 
         let mut routing_parameters = RoutingParameters::new(interface);
         routing_parameters.note_tag_len = note_tag_len;
+        routing_parameters.encryption_key_bytes = encryption_key;
 
         Ok(routing_parameters)
     }
@@ -295,6 +367,84 @@ mod tests {
             routing_params,
             RoutingParameters::read_from_bytes(&routing_params.to_bytes()).unwrap()
         );
+
+        Ok(())
+    }
+
+    /// Tests that routing parameters with encryption key can be encoded and decoded.
+    #[cfg(feature = "testing")]
+    #[test]
+    fn routing_parameters_with_encryption_key() -> anyhow::Result<()> {
+        use crate::crypto::dsa::eddsa_25519::SecretKey;
+        use crate::crypto::PublicEncryptionKey;
+
+        // Generate keypair
+        let secret_key = SecretKey::with_rng(&mut rand::rng());
+        let public_key = secret_key.public_key();
+        let sealing_key = PublicEncryptionKey::X25519XChaCha20Poly1305(public_key);
+
+        let routing_params = RoutingParameters::new(AddressInterface::BasicWallet)
+            .with_encryption_key(sealing_key.clone());
+
+        // Test bech32 encoding/decoding
+        let encoded = routing_params.encode_to_string();
+        let decoded = RoutingParameters::decode(encoded)?;
+        assert_eq!(routing_params, decoded);
+
+        // Verify encryption key is preserved
+        let decoded_key = decoded.encryption_key().expect("encryption key should be present");
+        assert_eq!(decoded_key, sealing_key);
+
+        Ok(())
+    }
+
+    /// Tests that routing parameters with both note tag and encryption key work correctly.
+    #[cfg(feature = "testing")]
+    #[test]
+    fn routing_parameters_with_note_tag_and_encryption_key() -> anyhow::Result<()> {
+        use crate::crypto::dsa::eddsa_25519::SecretKey;
+        use crate::crypto::PublicEncryptionKey;
+
+        // Generate keypair
+        let secret_key = SecretKey::with_rng(&mut rand::rng());
+        let public_key = secret_key.public_key();
+        let sealing_key = PublicEncryptionKey::X25519XChaCha20Poly1305(public_key);
+
+        let routing_params = RoutingParameters::new(AddressInterface::BasicWallet)
+            .with_note_tag_len(8)?
+            .with_encryption_key(sealing_key.clone());
+
+        // Test serialization
+        let serialized = routing_params.to_bytes();
+        let deserialized = RoutingParameters::read_from_bytes(&serialized)?;
+        assert_eq!(routing_params, deserialized);
+
+        // Test bech32 encoding
+        let encoded = routing_params.encode_to_string();
+        let decoded = RoutingParameters::decode(encoded)?;
+        assert_eq!(routing_params, decoded);
+
+        // Verify both parameters are preserved
+        assert_eq!(decoded.note_tag_len(), Some(8));
+        assert!(decoded.encryption_key().is_some());
+
+        Ok(())
+    }
+
+    /// Tests backward compatibility: routing parameters without encryption key still work.
+    #[test]
+    fn routing_parameters_backward_compatibility() -> anyhow::Result<()> {
+        let routing_params =
+            RoutingParameters::new(AddressInterface::BasicWallet).with_note_tag_len(10)?;
+
+        // Should have no encryption key
+        assert!(routing_params.encryption_key().is_none());
+
+        // Should encode/decode correctly
+        let encoded = routing_params.encode_to_string();
+        let decoded = RoutingParameters::decode(encoded)?;
+        assert_eq!(routing_params, decoded);
+        assert!(decoded.encryption_key().is_none());
 
         Ok(())
     }

@@ -147,6 +147,32 @@ impl Address {
         }
     }
 
+    /// Returns the optional public encryption key from routing parameters.
+    ///
+    /// This key can be used for sealed box encryption when sending notes to this address.
+    /// The key is reconstructed from stored bytes, so this returns an owned value.
+    pub fn encryption_key(&self) -> Option<crate::crypto::PublicEncryptionKey> {
+        self.routing_params.as_ref()?.encryption_key()
+    }
+
+    /// Sets the encryption key in the routing parameters.
+    ///
+    /// If routing parameters do not exist, they will be created with the given encryption key.
+    /// This allows senders to encrypt note payloads using sealed box encryption.
+    pub fn with_encryption_key(mut self, key: crate::crypto::PublicEncryptionKey) -> Result<Self, AddressError> {
+        if let Some(routing_params) = self.routing_params.take() {
+            // Routing params already exist, add encryption key to them
+            self.routing_params = Some(routing_params.with_encryption_key(key));
+        } else {
+            // Create new routing params with the encryption key
+            // Use BasicWallet as the default interface
+            let routing_params = RoutingParameters::new(AddressInterface::BasicWallet)
+                .with_encryption_key(key);
+            self = self.with_routing_parameters(routing_params)?;
+        }
+        Ok(self)
+    }
+
     /// Encodes the [`Address`] into a string.
     ///
     /// ## Encoding
@@ -427,6 +453,97 @@ mod tests {
             let deserialized = Address::read_from_bytes(&serialized)?;
             assert_eq!(address, deserialized);
         }
+
+        Ok(())
+    }
+
+    /// Tests that an address with encryption key can be created and used.
+    #[test]
+    fn address_with_encryption_key() -> anyhow::Result<()> {
+        use crate::crypto::{PublicEncryptionKey, SecretDecryptionKey, dsa::eddsa_25519::SecretKey};
+
+        let rng = &mut rand::rng();
+        let account_id = AccountIdBuilder::new()
+            .account_type(AccountType::FungibleFaucet)
+            .build_with_rng(rng);
+
+        // Create keypair using rand::rng()
+        let secret_key = SecretKey::with_rng(rng);
+        let public_key = secret_key.public_key();
+        let sealing_key = PublicEncryptionKey::X25519XChaCha20Poly1305(public_key.clone());
+        let unsealing_key = SecretDecryptionKey::X25519XChaCha20Poly1305(secret_key.clone());
+
+        // Create address with encryption key
+        let address = Address::new(account_id).with_encryption_key(sealing_key.clone())?;
+
+        // Verify encryption key is present
+        let retrieved_key = address.encryption_key().expect("encryption key should be present");
+        assert_eq!(retrieved_key, sealing_key);
+
+        // Test seal/unseal round-trip
+        let plaintext = b"hello world";
+        let sealed_message = retrieved_key.seal_bytes(rng, plaintext)
+            .expect("sealing should succeed");
+        let decrypted = unsealing_key.unseal_bytes(sealed_message)
+            .expect("unsealing should succeed");
+        assert_eq!(decrypted.as_slice(), plaintext);
+
+        Ok(())
+    }
+
+    /// Tests that an address with encryption key can be encoded/decoded.
+    #[test]
+    fn address_encryption_key_encode_decode() -> anyhow::Result<()> {
+        use crate::crypto::{PublicEncryptionKey, dsa::eddsa_25519::SecretKey};
+
+        let rng = &mut rand::rng();
+        // Use a local account type (RegularAccountImmutableCode) instead of network (FungibleFaucet)
+        let account_id = AccountIdBuilder::new()
+            .account_type(AccountType::RegularAccountImmutableCode)
+            .storage_mode(AccountStorageMode::Public)
+            .build_with_rng(rng);
+
+        // Create keypair
+        let secret_key = SecretKey::with_rng(rng);
+        let public_key = secret_key.public_key();
+        let sealing_key = PublicEncryptionKey::X25519XChaCha20Poly1305(public_key);
+
+        // Create address with encryption key
+        let address = Address::new(account_id).with_encryption_key(sealing_key.clone())?;
+
+        // Encode and decode
+        let encoded = address.encode(NetworkId::Mainnet);
+        let (decoded_network, decoded_address) = Address::decode(&encoded)?;
+
+        assert_eq!(decoded_network, NetworkId::Mainnet);
+        assert_eq!(address, decoded_address);
+
+        // Verify encryption key is preserved
+        let decoded_key = decoded_address.encryption_key().expect("encryption key should be present");
+        assert_eq!(decoded_key, sealing_key);
+
+        Ok(())
+    }
+
+    /// Tests backward compatibility: addresses without encryption key still work.
+    #[test]
+    fn address_backward_compatibility_no_encryption() -> anyhow::Result<()> {
+        let rng = &mut rand::rng();
+        let account_id = AccountIdBuilder::new()
+            .account_type(AccountType::FungibleFaucet)
+            .build_with_rng(rng);
+
+        // Create address without encryption key
+        let address = Address::new(account_id);
+
+        // Should have no encryption key
+        assert!(address.encryption_key().is_none());
+
+        // Should encode/decode correctly
+        let encoded = address.encode(NetworkId::Mainnet);
+        let (_, decoded_address) = Address::decode(&encoded)?;
+        assert_eq!(address, decoded_address);
+        assert!(decoded_address.encryption_key().is_none());
 
         Ok(())
     }

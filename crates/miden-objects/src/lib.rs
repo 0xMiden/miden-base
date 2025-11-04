@@ -80,6 +80,13 @@ pub mod assembly {
 
 pub mod crypto {
     pub use miden_crypto::{SequentialCommit, dsa, hash, merkle, rand, utils};
+    
+    // Re-export sealed box encryption types
+    pub use miden_crypto::ies::{
+        SealingKey as PublicEncryptionKey,
+        UnsealingKey as SecretDecryptionKey,
+        SealedMessage,
+    };
 }
 
 pub mod utils {
