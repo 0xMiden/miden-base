@@ -79,7 +79,7 @@ pub mod assembly {
 }
 
 pub mod crypto {
-    pub use miden_crypto::{SequentialCommit, dsa, hash, merkle, rand, utils};
+    pub use miden_crypto::{SequentialCommit, dsa, hash, ies, merkle, rand, utils};
 }
 
 pub mod utils {
