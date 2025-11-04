@@ -181,7 +181,7 @@ pub enum PublicKey {
 }
 
 impl PublicKey {
-    /// Returns the authentication scheme of this secret key.
+    /// Returns the authentication scheme of this public key.
     pub fn auth_scheme(&self) -> AuthScheme {
         match self {
             PublicKey::RpoFalcon512(_) => AuthScheme::RpoFalcon512,
