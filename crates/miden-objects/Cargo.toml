@@ -69,4 +69,4 @@ tempfile       = { version = "3.19" }
 winter-air     = { version = "0.13" }
 # for HashFunction/ExecutionProof::new_dummy
 color-eyre = { version = "0.5" }
-miden-air  = { features = ["std", "testing"], version = "0.18" }
+miden-air  = { features = ["std", "testing"], workspace = true }

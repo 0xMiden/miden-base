@@ -5,13 +5,13 @@ use.std::crypto::hashes::rpo
 #! Inputs:  [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
 #! Outputs: [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
 export.adv_insert_hqword.16
-    loc_storew.0
+    loc_storew_be.0
     movdnw.3
-    loc_storew.4
+    loc_storew_be.4
     movdnw.3
-    loc_storew.8
+    loc_storew_be.8
     movdnw.3
-    loc_storew.12
+    loc_storew_be.12
     movdnw.3
     # => [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
 
@@ -29,10 +29,10 @@ export.adv_insert_hqword.16
     drop drop
     # => [<4 stack elements>]
 
-    loc_loadw.12
-    padw loc_loadw.8
-    padw loc_loadw.4
-    padw loc_loadw.0
+    loc_loadw_be.12
+    padw loc_loadw_be.8
+    padw loc_loadw_be.4
+    padw loc_loadw_be.0
     # => [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
 end
 

@@ -437,22 +437,22 @@ async fn test_get_map_item() -> miette::Result<()> {
 
         let exec_output = &mut tx_context.execute_code(&code).await?;
         assert_eq!(
-            exec_output.get_stack_word(0),
+            exec_output.get_stack_word_be(0),
             value,
             "get_map_item result doesn't match the expected value",
         );
         assert_eq!(
-            exec_output.get_stack_word(4),
+            exec_output.get_stack_word_be(4),
             Word::empty(),
             "The rest of the stack must be cleared",
         );
         assert_eq!(
-            exec_output.get_stack_word(8),
+            exec_output.get_stack_word_be(8),
             Word::empty(),
             "The rest of the stack must be cleared",
         );
         assert_eq!(
-            exec_output.get_stack_word(12),
+            exec_output.get_stack_word_be(12),
             Word::empty(),
             "The rest of the stack must be cleared",
         );
@@ -499,9 +499,21 @@ async fn test_get_storage_slot_type() -> miette::Result<()> {
         assert_eq!(exec_output.get_stack_element(1), ZERO, "the rest of the stack is empty");
         assert_eq!(exec_output.get_stack_element(2), ZERO, "the rest of the stack is empty");
         assert_eq!(exec_output.get_stack_element(3), ZERO, "the rest of the stack is empty");
-        assert_eq!(exec_output.get_stack_word(4), Word::empty(), "the rest of the stack is empty");
-        assert_eq!(exec_output.get_stack_word(8), Word::empty(), "the rest of the stack is empty");
-        assert_eq!(exec_output.get_stack_word(12), Word::empty(), "the rest of the stack is empty");
+        assert_eq!(
+            exec_output.get_stack_word_be(4),
+            Word::empty(),
+            "the rest of the stack is empty"
+        );
+        assert_eq!(
+            exec_output.get_stack_word_be(8),
+            Word::empty(),
+            "the rest of the stack is empty"
+        );
+        assert_eq!(
+            exec_output.get_stack_word_be(12),
+            Word::empty(),
+            "the rest of the stack is empty"
+        );
     }
 
     Ok(())
@@ -595,12 +607,12 @@ async fn test_set_map_item() -> miette::Result<()> {
 
     assert_eq!(
         new_storage_map.root(),
-        exec_output.get_stack_word(0),
+        exec_output.get_stack_word_be(0),
         "get_item must return the new updated value",
     );
     assert_eq!(
         storage_item.slot.value(),
-        exec_output.get_stack_word(4),
+        exec_output.get_stack_word_be(4),
         "The original value stored in the map doesn't match the expected value",
     );
 

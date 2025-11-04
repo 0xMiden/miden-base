@@ -208,17 +208,13 @@ fn compute_nullifiers(
 
     let nullifiers: Vec<Nullifier> = created_nullifiers.keys().copied().collect();
 
-    let mut partial_nullifier_tree = PartialNullifierTree::new();
-
     // First, reconstruct the current nullifier tree with the merkle paths of the nullifiers we want
     // to update.
     // Due to the guarantees of ProposedBlock we can safely assume that each nullifier is mapped to
     // its corresponding nullifier witness, so we don't have to check again whether they match.
-    for witness in created_nullifiers.into_values() {
-        partial_nullifier_tree
-            .track_nullifier(witness)
+    let mut partial_nullifier_tree =
+        PartialNullifierTree::with_witnesses(created_nullifiers.into_values())
             .map_err(ProvenBlockError::NullifierWitnessRootMismatch)?;
-    }
 
     // Check the nullifier tree root in the previous block header matches the reconstructed tree's
     // root.

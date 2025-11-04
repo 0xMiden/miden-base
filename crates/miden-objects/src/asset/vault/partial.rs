@@ -23,18 +23,11 @@ impl PartialVault {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns a new instance of a partial vault from the provided partial SMT.
+    /// Constructs a [`PartialVault`] from an [`AssetVault`] root.
     ///
-    /// # Errors
-    ///
-    /// Returns an error if:
-    /// - the provided SMT does not track only valid [`Asset`]s.
-    /// - the vault key at which the asset is stored does not match the vault key derived from the
-    ///   asset.
-    pub fn new(partial_smt: PartialSmt) -> Result<Self, PartialAssetVaultError> {
-        Self::validate_entries(partial_smt.entries())?;
-
-        Ok(PartialVault { partial_smt })
+    /// For conversion from an [`AssetVault`], prefer [`Self::new_minimal`] to be more explicit.
+    pub fn new(root: Word) -> Self {
+        PartialVault { partial_smt: PartialSmt::new(root) }
     }
 
     /// Converts an [`AssetVault`] into a partial vault representation.
@@ -49,21 +42,10 @@ impl PartialVault {
 
     /// Converts an [`AssetVault`] into a partial vault representation.
     ///
-    /// The resulting [`PartialVault`] will contain only a single, unspecified key-value pair
-    /// in order to have the same root as the original storage map. Is it otherwise the most
-    /// _minimal_ representation of the asset vault.
+    /// The resulting [`PartialVault`] will represent the root of the asset vault, but not track any
+    /// key-value pairs, which means it is the most _minimal_ representation of the asset vault.
     pub fn new_minimal(vault: &AssetVault) -> Self {
-        let mut partial_vault = PartialVault::default();
-
-        // Construct a partial vault that tracks the empty word, but none of the assets that are
-        // actually in the asset tree. That way, the partial vault has the same root as the full
-        // vault. This is the most minimal and correct partial vault we can build.
-        // TODO: Workaround for https://github.com/0xMiden/miden-base/issues/1966. Fix when implemented.
-        partial_vault
-            .add(vault.open(AssetVaultKey::new_unchecked(Word::empty())))
-            .expect("adding the first proof should never fail");
-
-        partial_vault
+        PartialVault::new(vault.root())
     }
 
     // ACCESSORS
@@ -170,6 +152,24 @@ impl PartialVault {
     }
 }
 
+impl TryFrom<PartialSmt> for PartialVault {
+    type Error = PartialAssetVaultError;
+
+    /// Returns a new instance of a partial vault from the provided partial SMT.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - the provided SMT does not track only valid [`Asset`]s.
+    /// - the vault key at which the asset is stored does not match the vault key derived from the
+    ///   asset.
+    fn try_from(partial_smt: PartialSmt) -> Result<Self, Self::Error> {
+        Self::validate_entries(partial_smt.entries())?;
+
+        Ok(PartialVault { partial_smt })
+    }
+}
+
 impl Serializable for PartialVault {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         target.write(&self.partial_smt)
@@ -178,9 +178,9 @@ impl Serializable for PartialVault {
 
 impl Deserializable for PartialVault {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        let vault_partial_smt = source.read()?;
+        let partial_smt: PartialSmt = source.read()?;
 
-        PartialVault::new(vault_partial_smt)
+        PartialVault::try_from(partial_smt)
             .map_err(|err| DeserializationError::InvalidValue(err.to_string()))
     }
 }
@@ -203,7 +203,7 @@ mod tests {
         let proof = smt.open(&invalid_asset);
         let partial_smt = PartialSmt::from_proofs([proof.clone()])?;
 
-        let err = PartialVault::new(partial_smt).unwrap_err();
+        let err = PartialVault::try_from(partial_smt).unwrap_err();
         assert_matches!(err, PartialAssetVaultError::InvalidAssetInSmt { entry, .. } => {
             assert_eq!(entry, invalid_asset);
         });
@@ -219,7 +219,7 @@ mod tests {
         let proof = smt.open(&invalid_vault_key);
         let partial_smt = PartialSmt::from_proofs([proof.clone()])?;
 
-        let err = PartialVault::new(partial_smt).unwrap_err();
+        let err = PartialVault::try_from(partial_smt).unwrap_err();
         assert_matches!(err, PartialAssetVaultError::AssetVaultKeyMismatch { expected, actual } => {
             assert_eq!(actual, invalid_vault_key);
             assert_eq!(expected, asset.vault_key());
