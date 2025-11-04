@@ -155,10 +155,7 @@ impl Address {
     ///
     /// This key can be used for sealed box encryption when sending notes to this address.
     pub fn encryption_key(&self) -> Option<SealingKey> {
-        self.routing_params
-            .as_ref()
-            .and_then(RoutingParameters::encryption_key)
-            .map(SealingKey::from)
+        self.routing_params.as_ref().and_then(RoutingParameters::encryption_key)
     }
 
     /// Encodes the [`Address`] into a string.
