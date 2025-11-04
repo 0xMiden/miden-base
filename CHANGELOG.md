@@ -43,6 +43,7 @@
 - [BREAKING] Change `AccountTree` to be generic over `Smt` implementations ([#2006](https://github.com/0xMiden/miden-base/pull/2006)).
 - [BREAKING] Change `AccountTree` to be generic over `trait AccountTreeBackend` implementations ([#2006](https://github.com/0xMiden/miden-base/pull/2006)).
 - [BREAKING] Added `get_note_script()` method to `DataStore` trait to enable lazy loading of note scripts during transaction execution ([#1995](https://github.com/0xMiden/miden-base/pull/1995)).
+- Added optional sealed-box encryption key routing parameters and helper APIs on addresses for encrypting/decrypting payloads ([#1741](https://github.com/0xMiden/miden-base/issues/1741)).
 - [BREAKING] Separate account APIs in `miden::account` into `active_account` and `native_account` ([#2026](https://github.com/0xMiden/miden-base/pull/2026)).
 - [BREAKING] Remove `miden::account::get_native_nonce` procedure ([#2026](https://github.com/0xMiden/miden-base/pull/2026)).
 - [BREAKING] Refactor `Address` to make routing parameters optional ([#2032](https://github.com/0xMiden/miden-base/pull/2032), [#2047](https://github.com/0xMiden/miden-base/pull/2047)).
@@ -53,6 +54,7 @@
 
 - [BREAKING] Incremented MSRV to 1.89.
 - [BREAKING] Migrated to `miden-vm` v0.18 and `miden-crypto` v0.17 ([#1832](https://github.com/0xMiden/miden-base/pull/1832)).
+- Patched `miden-crypto` to the sealed box release (PR [#514](https://github.com/0xMiden/crypto/pull/514)) to enable the new address encryption helpers.
 - [BREAKING] Removed `MockChain::add_pending_p2id_note` in favor of using `MockChainBuilder` ([#1842](https://github.com/0xMiden/miden-base/pull/#1842)).
 - [BREAKING] Removed versioning of the transaction kernel, leaving only one latest version ([#1793](https://github.com/0xMiden/miden-base/pull/1793)).
 - [BREAKING] Moved `miden::asset::{create_fungible_asset, create_non_fungible_asset}` procedures to `miden::faucet` ([#1850](https://github.com/0xMiden/miden-base/pull/1850)).

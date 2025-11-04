@@ -18,14 +18,8 @@ use super::crypto::merkle::MerkleError;
 use super::note::NoteId;
 use super::{MAX_BATCHES_PER_BLOCK, MAX_OUTPUT_NOTES_PER_BATCH, Word};
 use crate::account::{
-    AccountCode,
-    AccountIdPrefix,
-    AccountStorage,
-    AccountType,
-    SlotName,
-    StorageValueName,
-    StorageValueNameError,
-    TemplateTypeError,
+    AccountCode, AccountIdPrefix, AccountStorage, AccountType, SlotName, StorageValueName,
+    StorageValueNameError, TemplateTypeError,
 };
 use crate::address::AddressType;
 use crate::asset::AssetVaultKey;
@@ -34,12 +28,8 @@ use crate::block::BlockNumber;
 use crate::note::{NoteAssets, NoteExecutionHint, NoteTag, NoteType, Nullifier};
 use crate::transaction::TransactionId;
 use crate::{
-    ACCOUNT_UPDATE_MAX_SIZE,
-    MAX_ACCOUNTS_PER_BATCH,
-    MAX_INPUT_NOTES_PER_BATCH,
-    MAX_INPUT_NOTES_PER_TX,
-    MAX_INPUTS_PER_NOTE,
-    MAX_OUTPUT_NOTES_PER_TX,
+    ACCOUNT_UPDATE_MAX_SIZE, MAX_ACCOUNTS_PER_BATCH, MAX_INPUT_NOTES_PER_BATCH,
+    MAX_INPUT_NOTES_PER_TX, MAX_INPUTS_PER_NOTE, MAX_OUTPUT_NOTES_PER_TX,
 };
 
 // ACCOUNT COMPONENT TEMPLATE ERROR
@@ -303,6 +293,14 @@ pub enum AddressError {
         // thiserror will return this when calling Error::source on NoteError.
         source: Option<Box<dyn Error + Send + Sync + 'static>>,
     },
+    #[error(
+        "encryption key routing parameter must contain exactly {expected} bytes but contained {actual}"
+    )]
+    InvalidEncryptionKeyLength { expected: usize, actual: usize },
+    #[error("encryption key routing parameter cannot appear more than once")]
+    DuplicateEncryptionKey,
+    #[error("unsupported encryption key routing parameter scheme")]
+    UnsupportedEncryptionKeyScheme,
     #[error("found unknown routing parameter key {0}")]
     UnknownRoutingParameterKey(u8),
 }

@@ -82,10 +82,6 @@ Adding a public key-based address type is planned.
 
 The supported routing parameters are detailed in this section.
 
-:::note
-Adding an encryption key routing parameter is planned.
-:::
-
 #### Address Interface
 
 The address interface informs the sender of the capabilities of the [receiver account's interface](./code#interface).
@@ -97,6 +93,29 @@ The supported **address interfaces** are:
 
 The note tag length routing parameter allows specifying the length of the [note tag](../note#note-discovery) that the sender should create. This parameter determines how many bits of the account ID are encoded into note tags of notes targeted to this address. This lets the owner of the account choose their level of privacy. A higher tag length makes the address ID more uniquely identifiable and reduces privacy, while a shorter length increases privacy at the cost of matching more notes published onchain.
 
+#### Public Encryption Key
+
+The `encryption_key` routing parameter carries a 32-byte X25519 public key for the receiving account. When present, senders can seal arbitrary payloads for the receiver using the `seal_for_address` helper from `miden-objects`, and the recipient can recover the plaintext with `unseal_with_secret_key`. Addresses that omit the key continue to parse exactly as before.
+
+```rust
+use miden_crypto::dsa::eddsa_25519::SecretKey as Ed25519SecretKey;
+use miden_objects::address::{seal_for_address, unseal_with_secret_key, Address};
+use miden_objects::crypto::{rand::rngs::StdRng, rand::SeedableRng, PublicEncryptionKey, SecretDecryptionKey};
+
+# // `account_id` omitted for brevity; any valid `AccountId` works here.
+let mut rng = StdRng::from_seed([0u8; 32]);
+let ed_secret = Ed25519SecretKey::with_rng(&mut rng);
+let secret = SecretDecryptionKey::X25519XChaCha20Poly1305(ed_secret.clone());
+let encryption_key = PublicEncryptionKey::X25519XChaCha20Poly1305(ed_secret.public_key());
+let address = Address::new(account_id).with_encryption_key(encryption_key)?;
+
+let ciphertext = seal_for_address(&mut rng, &address, b"sealed message")?
+    .expect("address must carry an encryption key");
+let plaintext = unseal_with_secret_key(&secret, &ciphertext)?;
+assert_eq!(plaintext, b"sealed message");
+# Ok::<(), miden_objects::address::SealedMessageError>(())
+```
+
 ## Encoding
 
 The two parts of an address are encoded as follows:
@@ -104,3 +123,4 @@ The two parts of an address are encoded as follows:
 - The routing parameters are encoded in bech32 as well, but without the HRP or `1` separator.
   - This means the routing parameter string's alphabet is consistent with that of the address ID.
   - It also means the routing parameters have their own checksum, which is important so address ID and routing parameters can be separated at any time without causing validation issues.
+  - The optional `encryption_key` is appended as a dedicated routing parameter key and stores the raw 32-byte public key, so older addresses remain valid and unchanged when the key is absent.

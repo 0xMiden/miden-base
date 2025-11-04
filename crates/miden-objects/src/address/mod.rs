@@ -1,5 +1,6 @@
 mod r#type;
 use alloc::string::ToString;
+use alloc::vec::Vec;
 
 pub use r#type::AddressType;
 
@@ -18,8 +19,13 @@ pub use network_id::{CustomNetworkId, NetworkId};
 
 use crate::AddressError;
 use crate::account::AccountStorageMode;
+use crate::crypto::{PublicEncryptionKey, SealedBoxError, SealedMessage, SecretDecryptionKey};
 use crate::note::NoteTag;
-use crate::utils::serde::{ByteWriter, Deserializable, Serializable};
+use crate::utils::serde::{
+    ByteWriter, Deserializable, DeserializationError as SerdeDeserializationError, Serializable,
+};
+use rand::{CryptoRng, RngCore};
+use thiserror::Error;
 
 mod address_id;
 pub use address_id::AddressId;
@@ -38,6 +44,10 @@ pub use address_id::AddressId;
 /// It can be encoded to a string using [`Self::encode`] and decoded using [`Self::decode`].
 /// If routing parameters are present, the ID and parameters are separated by
 /// [`Address::SEPARATOR`].
+///
+/// Routing parameters may also embed a public encryption key so that payloads can be sealed for
+/// the receiver. The [`seal_for_address`] and [`unseal_with_secret_key`] helpers wrap the sealed box
+/// APIs exposed via `miden-crypto`.
 ///
 /// ## Example
 ///
@@ -106,6 +116,23 @@ impl Address {
         Ok(self)
     }
 
+    /// Sets the public encryption key routing parameter.
+    ///
+    /// If routing parameters are not present yet, they are initialized with the
+    /// [`AddressInterface::BasicWallet`] interface and all other parameters unset.
+    pub fn with_encryption_key(
+        mut self,
+        encryption_key: PublicEncryptionKey,
+    ) -> Result<Self, AddressError> {
+        self.routing_params = Some(match self.routing_params.take() {
+            Some(routing_params) => routing_params.with_encryption_key(encryption_key.clone())?,
+            None => RoutingParameters::new(AddressInterface::BasicWallet)
+                .with_encryption_key(encryption_key)?,
+        });
+
+        Ok(self)
+    }
+
     // ACCESSORS
     // --------------------------------------------------------------------------------------------
 
@@ -128,6 +155,11 @@ impl Address {
             .as_ref()
             .and_then(RoutingParameters::note_tag_len)
             .unwrap_or(self.id.default_note_tag_len())
+    }
+
+    /// Returns the public encryption key routing parameter, if present.
+    pub fn encryption_key(&self) -> Option<&PublicEncryptionKey> {
+        self.routing_params.as_ref().and_then(RoutingParameters::encryption_key)
     }
 
     /// Returns a note tag derived from this address.
@@ -196,6 +228,44 @@ impl Address {
     }
 }
 
+#[derive(Debug, Error)]
+pub enum SealedMessageError {
+    #[error("failed to decode sealed payload: {0}")]
+    Decode(#[from] SerdeDeserializationError),
+    #[error("failed to process sealed payload: {0}")]
+    Crypto(#[from] SealedBoxError),
+}
+
+/// Encrypts `plaintext` for the provided `address` using its public encryption key.
+///
+/// Returns `Ok(None)` if the address does not include an encryption key routing parameter.
+pub fn seal_for_address<R>(
+    rng: &mut R,
+    address: &Address,
+    plaintext: &[u8],
+) -> Result<Option<Vec<u8>>, SealedMessageError>
+where
+    R: RngCore + CryptoRng,
+{
+    let encryption_key = match address.encryption_key() {
+        Some(key) => key,
+        None => return Ok(None),
+    };
+
+    let sealed = encryption_key.seal_bytes(rng, plaintext)?;
+    Ok(Some(sealed.to_bytes()))
+}
+
+/// Attempts to decrypt a sealed box ciphertext using the recipient's secret key.
+pub fn unseal_with_secret_key(
+    secret_key: &SecretDecryptionKey,
+    ciphertext: &[u8],
+) -> Result<Vec<u8>, SealedMessageError> {
+    let sealed_message = SealedMessage::read_from_bytes(ciphertext)?;
+    let plaintext = secret_key.unseal_bytes(sealed_message)?;
+    Ok(plaintext)
+}
+
 impl Serializable for Address {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         self.id.write_into(target);
@@ -237,8 +307,12 @@ mod tests {
     use crate::AccountIdError;
     use crate::account::{AccountId, AccountType};
     use crate::address::CustomNetworkId;
+    use crate::crypto::{PublicEncryptionKey, SecretDecryptionKey};
     use crate::errors::Bech32Error;
     use crate::testing::account_id::{ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, AccountIdBuilder};
+    use miden_crypto::dsa::eddsa_25519::SecretKey as Ed25519SecretKey;
+    use rand::SeedableRng;
+    use rand::rngs::StdRng;
 
     /// Tests that an account ID address can be encoded and decoded.
     #[test]
@@ -310,6 +384,83 @@ mod tests {
         }
 
         Ok(())
+    }
+
+    #[test]
+    fn address_sets_encryption_key_when_missing_routing_params() -> anyhow::Result<()> {
+        let account_id = AccountIdBuilder::new()
+            .account_type(AccountType::RegularAccountImmutableCode)
+            .build_with_rng(&mut rand::rng());
+        let (encryption_key, _) = sample_keypair([5u8; 32]);
+
+        let address = Address::new(account_id).with_encryption_key(encryption_key.clone())?;
+
+        assert_eq!(address.encryption_key(), Some(&encryption_key));
+        assert_eq!(address.interface(), Some(AddressInterface::BasicWallet));
+
+        Ok(())
+    }
+
+    #[test]
+    fn address_with_encryption_key_preserves_existing_routing_params() -> anyhow::Result<()> {
+        let account_id = AccountIdBuilder::new()
+            .account_type(AccountType::RegularAccountUpdatableCode)
+            .build_with_rng(&mut rand::rng());
+        let (encryption_key, _) = sample_keypair([7u8; 32]);
+
+        let routing_params =
+            RoutingParameters::new(AddressInterface::BasicWallet).with_note_tag_len(18)?;
+
+        let address = Address::new(account_id)
+            .with_routing_parameters(routing_params.clone())?
+            .with_encryption_key(encryption_key.clone())?;
+
+        assert_eq!(address.encryption_key(), Some(&encryption_key));
+        assert_eq!(address.note_tag_len(), routing_params.note_tag_len().unwrap());
+
+        Ok(())
+    }
+
+    #[test]
+    fn seal_for_address_returns_none_without_encryption_key() -> anyhow::Result<()> {
+        let account_id = AccountIdBuilder::new()
+            .account_type(AccountType::RegularAccountImmutableCode)
+            .build_with_rng(&mut rand::rng());
+        let mut rng = StdRng::from_seed([3u8; 32]);
+
+        let result = seal_for_address(&mut rng, &Address::new(account_id), b"payload")?;
+        assert!(result.is_none());
+
+        Ok(())
+    }
+
+    #[test]
+    fn seal_for_address_roundtrip() -> anyhow::Result<()> {
+        let account_id = AccountIdBuilder::new()
+            .account_type(AccountType::RegularAccountImmutableCode)
+            .build_with_rng(&mut rand::rng());
+        let (encryption_key, secret_key) = sample_keypair([11u8; 32]);
+
+        let address = Address::new(account_id).with_encryption_key(encryption_key.clone())?;
+
+        let mut rng = StdRng::from_seed([7u8; 32]);
+        let ciphertext =
+            seal_for_address(&mut rng, &address, b"sealed message")?.expect("encryption key");
+        let recovered = unseal_with_secret_key(&secret_key, &ciphertext)?;
+
+        assert_eq!(recovered, b"sealed message");
+
+        Ok(())
+    }
+
+    fn sample_keypair(seed: [u8; 32]) -> (PublicEncryptionKey, SecretDecryptionKey) {
+        let mut rng = StdRng::from_seed(seed);
+        let secret = Ed25519SecretKey::with_rng(&mut rng);
+        let public = secret.public_key();
+        (
+            PublicEncryptionKey::X25519XChaCha20Poly1305(public),
+            SecretDecryptionKey::X25519XChaCha20Poly1305(secret),
+        )
     }
 
     #[test]

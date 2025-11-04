@@ -25,29 +25,11 @@ mod errors;
 
 pub use constants::*;
 pub use errors::{
-    AccountDeltaError,
-    AccountError,
-    AccountIdError,
-    AccountTreeError,
-    AddressError,
-    AssetError,
-    AssetVaultError,
-    BatchAccountUpdateError,
-    FeeError,
-    NetworkIdError,
-    NoteError,
-    NullifierTreeError,
-    PartialBlockchainError,
-    ProposedBatchError,
-    ProposedBlockError,
-    ProvenBatchError,
-    ProvenTransactionError,
-    SlotNameError,
-    StorageMapError,
-    TokenSymbolError,
-    TransactionInputError,
-    TransactionOutputError,
-    TransactionScriptError,
+    AccountDeltaError, AccountError, AccountIdError, AccountTreeError, AddressError, AssetError,
+    AssetVaultError, BatchAccountUpdateError, FeeError, NetworkIdError, NoteError,
+    NullifierTreeError, PartialBlockchainError, ProposedBatchError, ProposedBlockError,
+    ProvenBatchError, ProvenTransactionError, SlotNameError, StorageMapError, TokenSymbolError,
+    TransactionInputError, TransactionOutputError, TransactionScriptError,
 };
 pub use miden_core::mast::{MastForest, MastNodeId};
 pub use miden_core::prettier::PrettyPrint;
@@ -60,25 +42,17 @@ pub mod assembly {
     pub use miden_assembly::ast::{Module, ModuleKind, ProcedureName, QualifiedProcedureName};
     pub use miden_assembly::debuginfo::SourceManagerSync;
     pub use miden_assembly::{
-        Assembler,
-        DefaultSourceManager,
-        KernelLibrary,
-        Library,
-        LibraryNamespace,
-        LibraryPath,
-        Parse,
-        ParseOptions,
-        SourceFile,
-        SourceId,
-        SourceManager,
-        SourceSpan,
-        debuginfo,
-        diagnostics,
-        mast,
+        Assembler, DefaultSourceManager, KernelLibrary, Library, LibraryNamespace, LibraryPath,
+        Parse, ParseOptions, SourceFile, SourceId, SourceManager, SourceSpan, debuginfo,
+        diagnostics, mast,
     };
 }
 
 pub mod crypto {
+    pub use miden_crypto::ies::{
+        IesError as SealedBoxError, SealedMessage, SealingKey as PublicEncryptionKey,
+        UnsealingKey as SecretDecryptionKey,
+    };
     pub use miden_crypto::{SequentialCommit, dsa, hash, merkle, rand, utils};
 }
 
@@ -89,11 +63,7 @@ pub mod utils {
 
     pub mod serde {
         pub use miden_core::utils::{
-            ByteReader,
-            ByteWriter,
-            Deserializable,
-            DeserializationError,
-            Serializable,
+            ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
         };
     }
 }
@@ -103,12 +73,7 @@ pub mod vm {
     pub use miden_core::sys_events::SystemEvent;
     pub use miden_core::{AdviceMap, Program, ProgramInfo};
     pub use miden_mast_package::{
-        MastArtifact,
-        Package,
-        PackageExport,
-        PackageManifest,
-        Section,
-        SectionId,
+        MastArtifact, Package, PackageExport, PackageManifest, Section, SectionId,
     };
     pub use miden_processor::{AdviceInputs, FutureMaybeSend, RowIndex, StackInputs, StackOutputs};
     pub use miden_verifier::ExecutionProof;

@@ -1485,8 +1485,7 @@ dependencies = [
 [[package]]
 name = "miden-crypto"
 version = "0.18.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7ffedb6b42cbc44634c3f9c58ee912b0d585fabdf3a19af56d8f185eb50125ef"
+source = "git+https://github.com/0xMiden/crypto.git?rev=13d01fce67c1c498999c115832a9516068e43f1e#13d01fce67c1c498999c115832a9516068e43f1e"
 dependencies = [
  "blake3",
  "cc",
@@ -1517,8 +1516,7 @@ dependencies = [
 [[package]]
 name = "miden-crypto-derive"
 version = "0.18.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d3b266500c6fe3584dacc773285a6e8c70b367b7ec0316fb17632a47f98b397"
+source = "git+https://github.com/0xMiden/crypto.git?rev=13d01fce67c1c498999c115832a9516068e43f1e#13d01fce67c1c498999c115832a9516068e43f1e"
 dependencies = [
  "quote",
  "syn",
@@ -1651,6 +1649,7 @@ dependencies = [
  "rstest",
  "semver 1.0.27",
  "serde",
+ "serde_json",
  "tempfile",
  "thiserror",
  "toml",

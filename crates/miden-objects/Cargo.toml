@@ -24,6 +24,7 @@ default = ["std"]
 std = [
   "dep:serde",
   "dep:toml",
+  "dep:rand",
   "miden-assembly/std",
   "miden-core/std",
   "miden-crypto/concurrent",
@@ -65,6 +66,7 @@ criterion      = { default-features = false, features = ["html_reports"], versio
 miden-objects  = { features = ["testing"], path = "." }
 pprof          = { default-features = false, features = ["criterion", "flamegraph"], version = "0.15" }
 rstest         = { workspace = true }
+serde_json     = { version = "1.0" }
 tempfile       = { version = "3.19" }
 winter-air     = { version = "0.13" }
 # for HashFunction/ExecutionProof::new_dummy
