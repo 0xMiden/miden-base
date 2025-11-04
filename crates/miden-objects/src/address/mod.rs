@@ -18,6 +18,7 @@ pub use network_id::{CustomNetworkId, NetworkId};
 
 use crate::AddressError;
 use crate::account::AccountStorageMode;
+use crate::crypto::PublicEncryptionKey;
 use crate::note::NoteTag;
 use crate::utils::serde::{ByteWriter, Deserializable, Serializable};
 
@@ -34,6 +35,7 @@ pub use address_id::AddressId;
 /// about various aspects like:
 /// - what kind of note the receiver's account can consume.
 /// - how the receiver discovers the note.
+/// - optional encryption key for sealed box encryption of note payloads.
 ///
 /// It can be encoded to a string using [`Self::encode`] and decoded using [`Self::decode`].
 /// If routing parameters are present, the ID and parameters are separated by
@@ -106,6 +108,17 @@ impl Address {
         Ok(self)
     }
 
+    /// Sets the encryption key for sealed box encryption.
+    ///
+    /// This ensures routing parameters are present and sets the encryption key within them.
+    /// If routing parameters don't exist, they will be created with the BasicWallet interface.
+    pub fn with_encryption_key(mut self, encryption_key: PublicEncryptionKey) -> Result<Self, AddressError> {
+        let routing_params = self.routing_params.unwrap_or_else(|| RoutingParameters::new(AddressInterface::BasicWallet));
+        let routing_params = routing_params.with_encryption_key(encryption_key);
+        self.routing_params = Some(routing_params);
+        Ok(self)
+    }
+
     // ACCESSORS
     // --------------------------------------------------------------------------------------------
 
@@ -128,6 +141,11 @@ impl Address {
             .as_ref()
             .and_then(RoutingParameters::note_tag_len)
             .unwrap_or(self.id.default_note_tag_len())
+    }
+
+    /// Returns the encryption key for sealed box encryption.
+    pub fn encryption_key(&self) -> Option<&PublicEncryptionKey> {
+        self.routing_params.as_ref()?.encryption_key()
     }
 
     /// Returns a note tag derived from this address.
@@ -427,6 +445,29 @@ mod tests {
             let deserialized = Address::read_from_bytes(&serialized)?;
             assert_eq!(address, deserialized);
         }
+
+        Ok(())
+    }
+
+    /// Tests that an Address with encryption key can be encoded and decoded.
+    #[test]
+    fn address_with_encryption_key_encode_decode() -> anyhow::Result<()> {
+        let account_id = AccountIdBuilder::new()
+            .account_type(AccountType::RegularAccountImmutableCode)
+            .build_with_rng(&mut rand::rng());
+
+        let key_bytes = [5u8; 32];
+        let encryption_key = PublicEncryptionKey::from(key_bytes);
+
+        let address = Address::new(account_id).with_encryption_key(encryption_key.clone())?;
+
+        let network_id = NetworkId::Mainnet;
+        let encoded = address.encode(network_id.clone());
+        let (decoded_network_id, decoded_address) = Address::decode(&encoded)?;
+
+        assert_eq!(network_id, decoded_network_id);
+        assert_eq!(address, decoded_address);
+        assert_eq!(address.encryption_key().unwrap(), &encryption_key);
 
         Ok(())
     }

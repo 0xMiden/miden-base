@@ -47,6 +47,7 @@ winter-rand-utils     = { optional = true, version = "0.13" }
 
 # External dependencies
 bech32       = { default-features = false, features = ["alloc"], version = "0.11" }
+crypto_box   = { version = "0.9", default-features = false, features = ["alloc"] }
 log          = { optional = true, version = "0.4" }
 rand         = { optional = true, workspace = true }
 rand_xoshiro = { default-features = false, optional = true, version = "0.7" }

@@ -4,6 +4,7 @@
 
 ### Features
 
+- Added optional encryption key to `RoutingParameters` for sealed box encryption support ([#1741](https://github.com/0xMiden/miden-base/issues/1741)).
 - Removed `create_p2id_note` and `create_p2any_note` methods from `MockChainBuilder`, users should use `add_p2id_note` and `add_p2any_note` instead ([#1990](https://github.com/0xMiden/miden-base/issues/1990)).
 - Added `prove_dummy` APIs on `LocalTransactionProver` ([#1674](https://github.com/0xMiden/miden-base/pull/1674)).
 - Added `add_signature` helper to simplify loading signatures into advice map ([#1725](https://github.com/0xMiden/miden-base/pull/1725)).
