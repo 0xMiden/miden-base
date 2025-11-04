@@ -4,6 +4,7 @@ use alloc::vec::Vec;
 
 use bech32::primitives::decode::CheckedHrpstring;
 use bech32::{Bech32m, Hrp};
+use miden_crypto::ies::SealingKey;
 
 use crate::AddressError;
 use crate::address::AddressInterface;
@@ -39,12 +40,26 @@ const ABSENT_NOTE_TAG_LEN: u8 = 1 << 5;
 /// The routing parameter key for the receiver profile.
 const RECEIVER_PROFILE_KEY: u8 = 0;
 
+/// The routing parameter key for the encryption key.
+const ENCRYPTION_KEY_PARAM_KEY: u8 = 1;
+
+/// The expected length of the encryption key in bytes.
+const ENCRYPTION_KEY_LENGTH: usize = 32;
+
+/// Discriminants for encryption key variants.
+const ENCRYPTION_KEY_X25519_XCHACHA20POLY1305: u8 = 0;
+const ENCRYPTION_KEY_K256_XCHACHA20POLY1305: u8 = 1;
+const ENCRYPTION_KEY_X25519_AEAD_RPO: u8 = 2;
+const ENCRYPTION_KEY_K256_AEAD_RPO: u8 = 3;
+
 /// Parameters that define how a sender should route a note to the [`AddressId`](super::AddressId)
 /// in an [`Address`](super::Address).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RoutingParameters {
     interface: AddressInterface,
     note_tag_len: Option<u8>,
+    /// The public encryption key for sealed box encryption.
+    encryption_key: Option<SealingKey>,
 }
 
 impl RoutingParameters {
@@ -54,7 +69,11 @@ impl RoutingParameters {
     /// Creates new [`RoutingParameters`] from an [`AddressInterface`] and all other parameters
     /// initialized to `None`.
     pub fn new(interface: AddressInterface) -> Self {
-        Self { interface, note_tag_len: None }
+        Self {
+            interface,
+            note_tag_len: None,
+            encryption_key: None,
+        }
     }
 
     /// Sets the note tag length routing parameter.
@@ -95,6 +114,20 @@ impl RoutingParameters {
         self.interface
     }
 
+    /// Returns the public encryption key.
+    pub fn encryption_key(&self) -> Option<SealingKey> {
+        self.encryption_key.clone()
+    }
+
+    /// Sets the encryption key routing parameter.
+    ///
+    /// This allows senders to encrypt note payloads using sealed box encryption
+    /// for the recipient of this address.
+    pub fn with_encryption_key(mut self, key: SealingKey) -> Self {
+        self.encryption_key = Some(key);
+        self
+    }
+
     // HELPERS
     // --------------------------------------------------------------------------------------------
 
@@ -120,6 +153,31 @@ impl RoutingParameters {
         // Append the receiver profile key and the encoded value to the vector.
         encoded.push(RECEIVER_PROFILE_KEY);
         encoded.extend(receiver_profile);
+
+        // Append the encryption key if present.
+        if let Some(encryption_key) = &self.encryption_key {
+            encoded.push(ENCRYPTION_KEY_PARAM_KEY);
+
+            // Write variant discriminant and key bytes
+            match encryption_key {
+                SealingKey::X25519XChaCha20Poly1305(pk) => {
+                    encoded.push(ENCRYPTION_KEY_X25519_XCHACHA20POLY1305);
+                    encoded.extend(&pk.to_bytes());
+                },
+                SealingKey::K256XChaCha20Poly1305(pk) => {
+                    encoded.push(ENCRYPTION_KEY_K256_XCHACHA20POLY1305);
+                    encoded.extend(&pk.to_bytes());
+                },
+                SealingKey::X25519AeadRpo(pk) => {
+                    encoded.push(ENCRYPTION_KEY_X25519_AEAD_RPO);
+                    encoded.extend(&pk.to_bytes());
+                },
+                SealingKey::K256AeadRpo(pk) => {
+                    encoded.push(ENCRYPTION_KEY_K256_AEAD_RPO);
+                    encoded.extend(&pk.to_bytes());
+                },
+            }
+        }
 
         encoded
     }
@@ -170,6 +228,7 @@ impl RoutingParameters {
     ) -> Result<Self, AddressError> {
         let mut interface = None;
         let mut note_tag_len = None;
+        let mut encryption_key = None;
 
         while let Some(key) = byte_iter.next() {
             match key {
@@ -201,6 +260,86 @@ impl RoutingParameters {
                         })?;
                     interface = Some(addr_interface);
                 },
+                ENCRYPTION_KEY_PARAM_KEY => {
+                    // Need at least 1 byte for discriminant + ENCRYPTION_KEY_LENGTH bytes for key
+                    if byte_iter.len() < 1 + ENCRYPTION_KEY_LENGTH {
+                        return Err(AddressError::decode_error(format!(
+                            "expected at least {} bytes to decode encryption key",
+                            1 + ENCRYPTION_KEY_LENGTH
+                        )));
+                    };
+
+                    // Read variant discriminant
+                    let variant = byte_iter.next().expect("variant byte should exist");
+
+                    // Read key bytes
+                    let mut key_bytes = [0u8; ENCRYPTION_KEY_LENGTH];
+                    for byte in key_bytes.iter_mut().take(ENCRYPTION_KEY_LENGTH) {
+                        *byte = byte_iter.next().expect("encryption key byte should exist");
+                    }
+
+                    // Reconstruct the appropriate PublicEncryptionKey variant
+                    let public_encryption_key = match variant {
+                        ENCRYPTION_KEY_X25519_XCHACHA20POLY1305 => {
+                            let pk = crate::crypto::dsa::eddsa_25519::PublicKey::read_from_bytes(
+                                &key_bytes,
+                            )
+                            .map_err(|err| {
+                                AddressError::decode_error_with_source(
+                                    "failed to decode Ed25519 public key",
+                                    err,
+                                )
+                            })?;
+                            SealingKey::X25519XChaCha20Poly1305(pk)
+                        },
+                        ENCRYPTION_KEY_K256_XCHACHA20POLY1305 => {
+                            let pk =
+                                crate::crypto::dsa::ecdsa_k256_keccak::PublicKey::read_from_bytes(
+                                    &key_bytes,
+                                )
+                                .map_err(|err| {
+                                    AddressError::decode_error_with_source(
+                                        "failed to decode K256 public key",
+                                        err,
+                                    )
+                                })?;
+                            SealingKey::K256XChaCha20Poly1305(pk)
+                        },
+                        ENCRYPTION_KEY_X25519_AEAD_RPO => {
+                            let pk = crate::crypto::dsa::eddsa_25519::PublicKey::read_from_bytes(
+                                &key_bytes,
+                            )
+                            .map_err(|err| {
+                                AddressError::decode_error_with_source(
+                                    "failed to decode Ed25519 public key",
+                                    err,
+                                )
+                            })?;
+                            SealingKey::X25519AeadRpo(pk)
+                        },
+                        ENCRYPTION_KEY_K256_AEAD_RPO => {
+                            let pk =
+                                crate::crypto::dsa::ecdsa_k256_keccak::PublicKey::read_from_bytes(
+                                    &key_bytes,
+                                )
+                                .map_err(|err| {
+                                    AddressError::decode_error_with_source(
+                                        "failed to decode K256 public key",
+                                        err,
+                                    )
+                                })?;
+                            SealingKey::K256AeadRpo(pk)
+                        },
+                        other => {
+                            return Err(AddressError::decode_error(format!(
+                                "unknown encryption key variant: {}",
+                                other
+                            )));
+                        },
+                    };
+
+                    encryption_key = Some(public_encryption_key);
+                },
                 other => {
                     return Err(AddressError::UnknownRoutingParameterKey(other));
                 },
@@ -213,6 +352,7 @@ impl RoutingParameters {
 
         let mut routing_parameters = RoutingParameters::new(interface);
         routing_parameters.note_tag_len = note_tag_len;
+        routing_parameters.encryption_key = encryption_key;
 
         Ok(routing_parameters)
     }
@@ -295,6 +435,68 @@ mod tests {
             routing_params,
             RoutingParameters::read_from_bytes(&routing_params.to_bytes()).unwrap()
         );
+
+        Ok(())
+    }
+
+    /// Tests encoding/decoding and serialization for all encryption key variants.
+    #[test]
+    fn routing_parameters_all_encryption_key_variants() -> anyhow::Result<()> {
+        // Helper function to test both encoding/decoding and serialization
+        fn test_encryption_key_roundtrip(encryption_key: SealingKey) -> anyhow::Result<()> {
+            let routing_params = RoutingParameters::new(AddressInterface::BasicWallet)
+                .with_encryption_key(encryption_key.clone());
+
+            // Test bech32 encoding/decoding
+            let encoded = routing_params.encode_to_string();
+            let decoded = RoutingParameters::decode(encoded)?;
+            assert_eq!(routing_params, decoded);
+            assert_eq!(decoded.encryption_key(), Some(encryption_key.clone()));
+
+            // Test serialization/deserialization
+            let serialized = routing_params.to_bytes();
+            let deserialized = RoutingParameters::read_from_bytes(&serialized)?;
+            assert_eq!(routing_params, deserialized);
+            assert_eq!(deserialized.encryption_key(), Some(encryption_key));
+
+            Ok(())
+        }
+
+        // Test X25519XChaCha20Poly1305
+        {
+            use crate::crypto::dsa::eddsa_25519::SecretKey;
+            let secret_key = SecretKey::with_rng(&mut rand::rng());
+            let public_key = secret_key.public_key();
+            let encryption_key = SealingKey::X25519XChaCha20Poly1305(public_key);
+            test_encryption_key_roundtrip(encryption_key)?;
+        }
+
+        // Test K256XChaCha20Poly1305
+        {
+            use crate::crypto::dsa::ecdsa_k256_keccak::SecretKey;
+            let secret_key = SecretKey::with_rng(&mut rand::rng());
+            let public_key = secret_key.public_key();
+            let encryption_key = SealingKey::K256XChaCha20Poly1305(public_key);
+            test_encryption_key_roundtrip(encryption_key)?;
+        }
+
+        // Test X25519AeadRpo
+        {
+            use crate::crypto::dsa::eddsa_25519::SecretKey;
+            let secret_key = SecretKey::with_rng(&mut rand::rng());
+            let public_key = secret_key.public_key();
+            let encryption_key = SealingKey::X25519AeadRpo(public_key);
+            test_encryption_key_roundtrip(encryption_key)?;
+        }
+
+        // Test K256AeadRpo
+        {
+            use crate::crypto::dsa::ecdsa_k256_keccak::SecretKey;
+            let secret_key = SecretKey::with_rng(&mut rand::rng());
+            let public_key = secret_key.public_key();
+            let encryption_key = SealingKey::K256AeadRpo(public_key);
+            test_encryption_key_roundtrip(encryption_key)?;
+        }
 
         Ok(())
     }
