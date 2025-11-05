@@ -37,6 +37,8 @@ Instead, our Miden client connects to a _Note Transport Layer_, which stores enc
 
 With an `Address`, e.g. the [`AddressId::AccountId`](./address#addressaccountid) variant, the receiver could specify how many bits of their `AccountId` they want to disclose to the sender and thus choose their level of privacy.
 
+Additionally, when an address includes an encryption key routing parameter, the sender can use it to encrypt note payloads using sealed box encryption. This ensures that only the intended recipient (who possesses the corresponding private key) can decrypt and read the note contents, even when the encrypted note data is stored on the public Note Transport Layer.
+
 ### Account interface discovery
 
 An address allows the sender of the note to easily discover the interface of the receiving account. As explained in the [account interface](./code#interface) section, every account can have a different set of procedures that note scripts can call, which is the _interface_ of the account. In order for the sender of a note to create a note that the receiver can consume, the sender needs to know the interface of the receiving account. This can be communicated via the address, which encodes a mapping of standard interfaces like the basic wallet.
@@ -55,6 +57,14 @@ The separation between these two parts is represented by an underscore (`_`) in 
 mm1arp0azyk9jugtgpnnhle8daav58nczzr_qpgqqwcfx0p
                |                         |
             account ID            routing parameters
+```
+
+An address with an encryption key will have a longer routing parameter segment:
+
+```text
+mm1apt3l475qemeqqp57xjycfdwcvw0sfhq_qruqqqgqjmsgjsh3687mt2w0qtqunxt3th442j48qwdnezl0fv6qm3x9c8zqsv7pku
+               |                                                     |
+            account ID                                routing parameters (with encryption key)
 ```
 
 ### Relationship to Identifiers
@@ -82,10 +92,6 @@ Adding a public key-based address type is planned.
 
 The supported routing parameters are detailed in this section.
 
-:::note
-Adding an encryption key routing parameter is planned.
-:::
-
 #### Address Interface
 
 The address interface informs the sender of the capabilities of the [receiver account's interface](./code#interface).
@@ -96,6 +102,18 @@ The supported **address interfaces** are:
 #### Note Tag Length
 
 The note tag length routing parameter allows specifying the length of the [note tag](../note#note-discovery) that the sender should create. This parameter determines how many bits of the account ID are encoded into note tags of notes targeted to this address. This lets the owner of the account choose their level of privacy. A higher tag length makes the address ID more uniquely identifiable and reduces privacy, while a shorter length increases privacy at the cost of matching more notes published onchain.
+
+#### Encryption Key
+
+The encryption key routing parameter allows the receiver to include a public encryption key in their address. This enables senders to encrypt note payloads using sealed box encryption for the recipient of this address.
+
+The supported **encryption schemes** are:
+- `X25519XChaCha20Poly1305`: X25519 key exchange with XChaCha20-Poly1305 AEAD
+- `K256XChaCha20Poly1305`: secp256k1 key exchange with XChaCha20-Poly1305 AEAD
+- `X25519AeadRpo`: X25519 key exchange with RPO-based AEAD
+- `K256AeadRpo`: secp256k1 key exchange with RPO-based AEAD
+
+When an address includes an encryption key, senders can use it to encrypt sensitive note data, ensuring only the intended recipient can decrypt and access the note contents. This enhances privacy by preventing third parties from reading note payloads even if they can observe the note metadata.
 
 ## Encoding
 
