@@ -7,6 +7,8 @@ use miden_objects::utils::Deserializable;
 use miden_objects::utils::sync::LazyLock;
 use miden_objects::vm::Program;
 
+pub mod utils;
+
 // AGGLAYER NOTE SCRIPTS
 // ================================================================================================
 
