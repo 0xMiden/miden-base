@@ -236,6 +236,11 @@ impl TemplateType {
         TemplateType::new("word").expect("type is well formed")
     }
 
+    /// Returns the [`TemplateType`] for storage map placeholders.
+    pub fn storage_map() -> TemplateType {
+        TemplateType::new("map").expect("type is well formed")
+    }
+
     /// Returns a reference to the inner string.
     pub fn as_str(&self) -> &str {
         &self.0
