@@ -7,6 +7,8 @@ use bech32::{Bech32m, Hrp};
 
 use crate::AddressError;
 use crate::address::AddressInterface;
+use crate::crypto::dsa::{ecdsa_k256_keccak, eddsa_25519};
+use crate::crypto::ies::SealingKey;
 use crate::errors::Bech32Error;
 use crate::note::NoteTag;
 use crate::utils::serde::{
@@ -32,19 +34,38 @@ const BECH32_SEPARATOR: &str = "1";
 
 /// The value to encode the absence of a note tag routing parameter (i.e. `None`).
 ///
-/// Note tag length is ensured to be <= [`NoteTag::MAX_LOCAL_TAG_LENGTH`] and so 1 << 5 = 32 is used
-/// to encode `None`.
-const ABSENT_NOTE_TAG_LEN: u8 = 1 << 5;
+/// The note tag length occupies 5 bits (values 0..=31). Valid tag lengths are 0..=30,
+/// so we reserve the maximum 5-bit value (31) to represent `None`.
+///
+/// If the note tag length is absent from routing parameters, the note tag length for the address
+/// will be set to the default default tag length of the address' ID component.
+const ABSENT_NOTE_TAG_LEN: u8 = (1 << 5) - 1; // 31
 
 /// The routing parameter key for the receiver profile.
-const RECEIVER_PROFILE_KEY: u8 = 0;
+const RECEIVER_PROFILE_PARAM_KEY: u8 = 0;
+
+/// The routing parameter key for the encryption key.
+const ENCRYPTION_KEY_PARAM_KEY: u8 = 1;
+
+/// The expected length of Ed25519/X25519 public keys in bytes.
+const X25519_PUBLIC_KEY_LENGTH: usize = 32;
+
+/// The expected length of K256 (secp256k1) public keys in bytes (compressed format).
+const K256_PUBLIC_KEY_LENGTH: usize = 33;
+
+/// Discriminants for encryption key variants.
+const ENCRYPTION_KEY_X25519_XCHACHA20POLY1305: u8 = 0;
+const ENCRYPTION_KEY_K256_XCHACHA20POLY1305: u8 = 1;
+const ENCRYPTION_KEY_X25519_AEAD_RPO: u8 = 2;
+const ENCRYPTION_KEY_K256_AEAD_RPO: u8 = 3;
 
 /// Parameters that define how a sender should route a note to the [`AddressId`](super::AddressId)
 /// in an [`Address`](super::Address).
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RoutingParameters {
     interface: AddressInterface,
     note_tag_len: Option<u8>,
+    encryption_key: Option<SealingKey>,
 }
 
 impl RoutingParameters {
@@ -54,7 +75,11 @@ impl RoutingParameters {
     /// Creates new [`RoutingParameters`] from an [`AddressInterface`] and all other parameters
     /// initialized to `None`.
     pub fn new(interface: AddressInterface) -> Self {
-        Self { interface, note_tag_len: None }
+        Self {
+            interface,
+            note_tag_len: None,
+            encryption_key: None,
+        }
     }
 
     /// Sets the note tag length routing parameter.
@@ -95,6 +120,20 @@ impl RoutingParameters {
         self.interface
     }
 
+    /// Returns the public encryption key.
+    pub fn encryption_key(&self) -> Option<&SealingKey> {
+        self.encryption_key.as_ref()
+    }
+
+    /// Sets the encryption key routing parameter.
+    ///
+    /// This allows senders to encrypt note payloads using sealed box encryption
+    /// for the recipient of this address.
+    pub fn with_encryption_key(mut self, key: SealingKey) -> Self {
+        self.encryption_key = Some(key);
+        self
+    }
+
     // HELPERS
     // --------------------------------------------------------------------------------------------
 
@@ -102,24 +141,15 @@ impl RoutingParameters {
     pub(crate) fn encode_to_bytes(&self) -> Vec<u8> {
         let mut encoded = Vec::new();
 
-        let note_tag_len = self.note_tag_len.unwrap_or(ABSENT_NOTE_TAG_LEN);
-
-        let interface = self.interface as u16;
-        debug_assert_eq!(
-            interface >> 11,
-            0,
-            "address interface should have its upper 5 bits unset"
-        );
-
-        // The interface takes up 11 bits and the tag length 5 bits, so we can merge them
-        // together.
-        let tag_len = (note_tag_len as u16) << 11;
-        let receiver_profile: u16 = tag_len | interface;
-        let receiver_profile: [u8; 2] = receiver_profile.to_be_bytes();
-
         // Append the receiver profile key and the encoded value to the vector.
-        encoded.push(RECEIVER_PROFILE_KEY);
-        encoded.extend(receiver_profile);
+        encoded.push(RECEIVER_PROFILE_PARAM_KEY);
+        encoded.extend(encode_receiver_profile(self.interface, self.note_tag_len));
+
+        // Append the encryption key if present.
+        if let Some(encryption_key) = &self.encryption_key {
+            encoded.push(ENCRYPTION_KEY_PARAM_KEY);
+            encode_encryption_key(encryption_key, &mut encoded);
+        }
 
         encoded
     }
@@ -170,36 +200,27 @@ impl RoutingParameters {
     ) -> Result<Self, AddressError> {
         let mut interface = None;
         let mut note_tag_len = None;
+        let mut encryption_key = None;
 
         while let Some(key) = byte_iter.next() {
             match key {
-                RECEIVER_PROFILE_KEY => {
-                    if byte_iter.len() < 2 {
+                RECEIVER_PROFILE_PARAM_KEY => {
+                    if interface.is_some() {
                         return Err(AddressError::decode_error(
-                            "expected two bytes to decode receiver profile",
+                            "duplicate receiver profile routing parameter",
                         ));
-                    };
-
-                    let byte0 = byte_iter.next().expect("byte0 should exist");
-                    let byte1 = byte_iter.next().expect("byte1 should exist");
-                    let receiver_profile = u16::from_be_bytes([byte0, byte1]);
-
-                    let tag_len = (receiver_profile >> 11) as u8;
-                    note_tag_len = if tag_len == ABSENT_NOTE_TAG_LEN {
-                        None
-                    } else {
-                        Some(tag_len)
-                    };
-
-                    let addr_interface = receiver_profile & 0b0000_0111_1111_1111;
-                    let addr_interface =
-                        AddressInterface::try_from(addr_interface).map_err(|err| {
-                            AddressError::decode_error_with_source(
-                                "failed to decode address interface",
-                                err,
-                            )
-                        })?;
-                    interface = Some(addr_interface);
+                    }
+                    let receiver_profile = decode_receiver_profile(&mut byte_iter)?;
+                    interface = Some(receiver_profile.0);
+                    note_tag_len = receiver_profile.1;
+                },
+                ENCRYPTION_KEY_PARAM_KEY => {
+                    if encryption_key.is_some() {
+                        return Err(AddressError::decode_error(
+                            "duplicate encryption key routing parameter",
+                        ));
+                    }
+                    encryption_key = Some(decode_encryption_key(&mut byte_iter)?);
                 },
                 other => {
                     return Err(AddressError::UnknownRoutingParameterKey(other));
@@ -213,6 +234,7 @@ impl RoutingParameters {
 
         let mut routing_parameters = RoutingParameters::new(interface);
         routing_parameters.note_tag_len = note_tag_len;
+        routing_parameters.encryption_key = encryption_key;
 
         Ok(routing_parameters)
     }
@@ -237,6 +259,147 @@ impl Deserializable for RoutingParameters {
         Self::decode_from_bytes(bytes.into_iter())
             .map_err(|err| DeserializationError::InvalidValue(err.to_string()))
     }
+}
+
+// ENCODING / DECODING HELPERS
+// ================================================================================================
+
+/// Returns receiver profile bytes constructed from the provided interface and note tag length.
+fn encode_receiver_profile(interface: AddressInterface, note_tag_len: Option<u8>) -> [u8; 2] {
+    let note_tag_len = note_tag_len.unwrap_or(ABSENT_NOTE_TAG_LEN);
+
+    let interface = interface as u16;
+    debug_assert_eq!(interface >> 11, 0, "address interface should have its upper 5 bits unset");
+
+    // The interface takes up 11 bits and the tag length 5 bits, so we can merge them
+    // together.
+    let tag_len = (note_tag_len as u16) << 11;
+    let receiver_profile: u16 = tag_len | interface;
+    receiver_profile.to_be_bytes()
+}
+
+/// Reads the receiver profile from the provided bytes.
+fn decode_receiver_profile(
+    byte_iter: &mut impl ExactSizeIterator<Item = u8>,
+) -> Result<(AddressInterface, Option<u8>), AddressError> {
+    if byte_iter.len() < 2 {
+        return Err(AddressError::decode_error("expected two bytes to decode receiver profile"));
+    };
+
+    let byte0 = byte_iter.next().expect("byte0 should exist");
+    let byte1 = byte_iter.next().expect("byte1 should exist");
+    let receiver_profile = u16::from_be_bytes([byte0, byte1]);
+
+    let tag_len = (receiver_profile >> 11) as u8;
+    let note_tag_len = if tag_len == ABSENT_NOTE_TAG_LEN {
+        None
+    } else {
+        Some(tag_len)
+    };
+
+    let addr_interface = receiver_profile & 0b0000_0111_1111_1111;
+    let addr_interface = AddressInterface::try_from(addr_interface).map_err(|err| {
+        AddressError::decode_error_with_source("failed to decode address interface", err)
+    })?;
+
+    Ok((addr_interface, note_tag_len))
+}
+
+/// Append encryption key variant discriminant and key to the provided vector of bytes.
+fn encode_encryption_key(key: &SealingKey, encoded: &mut Vec<u8>) {
+    match key {
+        SealingKey::X25519XChaCha20Poly1305(pk) => {
+            encoded.push(ENCRYPTION_KEY_X25519_XCHACHA20POLY1305);
+            encoded.extend(&pk.to_bytes());
+        },
+        SealingKey::K256XChaCha20Poly1305(pk) => {
+            encoded.push(ENCRYPTION_KEY_K256_XCHACHA20POLY1305);
+            encoded.extend(&pk.to_bytes());
+        },
+        SealingKey::X25519AeadRpo(pk) => {
+            encoded.push(ENCRYPTION_KEY_X25519_AEAD_RPO);
+            encoded.extend(&pk.to_bytes());
+        },
+        SealingKey::K256AeadRpo(pk) => {
+            encoded.push(ENCRYPTION_KEY_K256_AEAD_RPO);
+            encoded.extend(&pk.to_bytes());
+        },
+    }
+}
+
+/// Reads the encryption key from the provided bytes.
+fn decode_encryption_key(
+    byte_iter: &mut impl ExactSizeIterator<Item = u8>,
+) -> Result<SealingKey, AddressError> {
+    // Read variant discriminant
+    let Some(variant) = byte_iter.next() else {
+        return Err(AddressError::decode_error(
+            "expected at least 1 byte for encryption key variant",
+        ));
+    };
+
+    // Reconstruct the appropriate PublicEncryptionKey variant
+    let public_encryption_key = match variant {
+        ENCRYPTION_KEY_X25519_XCHACHA20POLY1305 => {
+            SealingKey::X25519XChaCha20Poly1305(read_x25519_pub_key(byte_iter)?)
+        },
+        ENCRYPTION_KEY_K256_XCHACHA20POLY1305 => {
+            SealingKey::K256XChaCha20Poly1305(read_k256_pub_key(byte_iter)?)
+        },
+        ENCRYPTION_KEY_X25519_AEAD_RPO => {
+            SealingKey::X25519AeadRpo(read_x25519_pub_key(byte_iter)?)
+        },
+        ENCRYPTION_KEY_K256_AEAD_RPO => SealingKey::K256AeadRpo(read_k256_pub_key(byte_iter)?),
+        other => {
+            return Err(AddressError::decode_error(format!(
+                "unknown encryption key variant: {}",
+                other
+            )));
+        },
+    };
+
+    Ok(public_encryption_key)
+}
+
+fn read_x25519_pub_key(
+    byte_iter: &mut impl ExactSizeIterator<Item = u8>,
+) -> Result<eddsa_25519::PublicKey, AddressError> {
+    if byte_iter.len() < X25519_PUBLIC_KEY_LENGTH {
+        return Err(AddressError::decode_error(format!(
+            "expected {} bytes to decode X25519 public key",
+            X25519_PUBLIC_KEY_LENGTH
+        )));
+    }
+    let key_bytes: [u8; X25519_PUBLIC_KEY_LENGTH] = read_byte_array(byte_iter);
+    eddsa_25519::PublicKey::read_from_bytes(&key_bytes).map_err(|err| {
+        AddressError::decode_error_with_source("failed to decode X25519 public key", err)
+    })
+}
+
+fn read_k256_pub_key(
+    byte_iter: &mut impl ExactSizeIterator<Item = u8>,
+) -> Result<ecdsa_k256_keccak::PublicKey, AddressError> {
+    if byte_iter.len() < K256_PUBLIC_KEY_LENGTH {
+        return Err(AddressError::decode_error(format!(
+            "expected {} bytes to decode K256 public key",
+            K256_PUBLIC_KEY_LENGTH
+        )));
+    }
+    let key_bytes: [u8; K256_PUBLIC_KEY_LENGTH] = read_byte_array(byte_iter);
+    ecdsa_k256_keccak::PublicKey::read_from_bytes(&key_bytes).map_err(|err| {
+        AddressError::decode_error_with_source("failed to decode K256 public key", err)
+    })
+}
+
+/// Reads bytes from the provided iterator into an array of length N and returns this array.
+///
+/// Assumes that there are at least N bytes in the iterator.
+fn read_byte_array<const N: usize>(byte_iter: &mut impl ExactSizeIterator<Item = u8>) -> [u8; N] {
+    let mut array = [0u8; N];
+    for byte in array.iter_mut() {
+        *byte = byte_iter.next().expect("iterator should have enough bytes");
+    }
+    array
 }
 
 // TESTS
@@ -276,25 +439,138 @@ mod tests {
         Ok(())
     }
 
+    /// Tests bech32 encoding and decoding roundtrip with various tag lengths.
     #[test]
     fn routing_parameters_bech32_encode_decode_roundtrip() -> anyhow::Result<()> {
-        let routing_params =
-            RoutingParameters::new(AddressInterface::BasicWallet).with_note_tag_len(8)?;
-        assert_eq!(routing_params, RoutingParameters::decode(routing_params.encode_to_string())?);
+        // Test case 1: No explicit tag length
+        let params_no_tag = RoutingParameters::new(AddressInterface::BasicWallet);
+        let encoded = params_no_tag.encode_to_string();
+        let decoded = RoutingParameters::decode(encoded)?;
+        assert_eq!(params_no_tag, decoded);
+        assert_eq!(decoded.note_tag_len(), None);
+
+        // Test case 2: Explicit tag length 0
+        let params_tag_0 =
+            RoutingParameters::new(AddressInterface::BasicWallet).with_note_tag_len(0)?;
+        let encoded = params_tag_0.encode_to_string();
+        let decoded = RoutingParameters::decode(encoded)?;
+        assert_eq!(params_tag_0, decoded);
+        assert_eq!(decoded.note_tag_len(), Some(0));
+
+        // Test case 3: Explicit tag length 6
+        let params_tag_6 =
+            RoutingParameters::new(AddressInterface::BasicWallet).with_note_tag_len(6)?;
+        let encoded = params_tag_6.encode_to_string();
+        let decoded = RoutingParameters::decode(encoded)?;
+        assert_eq!(params_tag_6, decoded);
+        assert_eq!(decoded.note_tag_len(), Some(6));
+
+        // Test case 4: Explicit tag length set to max
+        let params_tag_max = RoutingParameters::new(AddressInterface::BasicWallet)
+            .with_note_tag_len(NoteTag::MAX_LOCAL_TAG_LENGTH)?;
+        let encoded = params_tag_max.encode_to_string();
+        let decoded = RoutingParameters::decode(encoded)?;
+        assert_eq!(params_tag_max, decoded);
+        assert_eq!(decoded.note_tag_len(), Some(NoteTag::MAX_LOCAL_TAG_LENGTH));
 
         Ok(())
     }
 
-    /// Tests that routing parameters can be serialized and deserialized.
+    /// Tests serialization and deserialization roundtrip with various tag lengths.
     #[test]
     fn routing_parameters_serialization() -> anyhow::Result<()> {
-        let routing_params =
-            RoutingParameters::new(AddressInterface::BasicWallet).with_note_tag_len(6)?;
+        // Test case 1: No explicit tag length
+        let params_no_tag = RoutingParameters::new(AddressInterface::BasicWallet);
+        let serialized = params_no_tag.to_bytes();
+        let deserialized = RoutingParameters::read_from_bytes(&serialized)?;
+        assert_eq!(params_no_tag, deserialized);
+        assert_eq!(deserialized.note_tag_len(), None);
 
-        assert_eq!(
-            routing_params,
-            RoutingParameters::read_from_bytes(&routing_params.to_bytes()).unwrap()
-        );
+        // Test case 2: Explicit tag length 0
+        let params_tag_0 =
+            RoutingParameters::new(AddressInterface::BasicWallet).with_note_tag_len(0)?;
+        let serialized = params_tag_0.to_bytes();
+        let deserialized = RoutingParameters::read_from_bytes(&serialized)?;
+        assert_eq!(params_tag_0, deserialized);
+        assert_eq!(deserialized.note_tag_len(), Some(0));
+
+        // Test case 3: Explicit tag length 6
+        let params_tag_6 =
+            RoutingParameters::new(AddressInterface::BasicWallet).with_note_tag_len(6)?;
+        let serialized = params_tag_6.to_bytes();
+        let deserialized = RoutingParameters::read_from_bytes(&serialized)?;
+        assert_eq!(params_tag_6, deserialized);
+        assert_eq!(deserialized.note_tag_len(), Some(6));
+
+        // Test case 4: Explicit tag length set to max
+        let params_tag_max = RoutingParameters::new(AddressInterface::BasicWallet)
+            .with_note_tag_len(NoteTag::MAX_LOCAL_TAG_LENGTH)?;
+        let serialized = params_tag_max.to_bytes();
+        let deserialized = RoutingParameters::read_from_bytes(&serialized)?;
+        assert_eq!(params_tag_max, deserialized);
+        assert_eq!(deserialized.note_tag_len(), Some(NoteTag::MAX_LOCAL_TAG_LENGTH));
+
+        Ok(())
+    }
+
+    /// Tests encoding/decoding and serialization for all encryption key variants.
+    #[test]
+    fn routing_parameters_all_encryption_key_variants() -> anyhow::Result<()> {
+        // Helper function to test both encoding/decoding and serialization
+        fn test_encryption_key_roundtrip(encryption_key: SealingKey) -> anyhow::Result<()> {
+            let routing_params = RoutingParameters::new(AddressInterface::BasicWallet)
+                .with_encryption_key(encryption_key.clone());
+
+            // Test bech32 encoding/decoding
+            let encoded = routing_params.encode_to_string();
+            let decoded = RoutingParameters::decode(encoded)?;
+            assert_eq!(routing_params, decoded);
+            assert_eq!(decoded.encryption_key(), Some(&encryption_key));
+
+            // Test serialization/deserialization
+            let serialized = routing_params.to_bytes();
+            let deserialized = RoutingParameters::read_from_bytes(&serialized)?;
+            assert_eq!(routing_params, deserialized);
+            assert_eq!(deserialized.encryption_key(), Some(&encryption_key));
+
+            Ok(())
+        }
+
+        // Test X25519XChaCha20Poly1305
+        {
+            use crate::crypto::dsa::eddsa_25519::SecretKey;
+            let secret_key = SecretKey::with_rng(&mut rand::rng());
+            let public_key = secret_key.public_key();
+            let encryption_key = SealingKey::X25519XChaCha20Poly1305(public_key);
+            test_encryption_key_roundtrip(encryption_key)?;
+        }
+
+        // Test K256XChaCha20Poly1305
+        {
+            use crate::crypto::dsa::ecdsa_k256_keccak::SecretKey;
+            let secret_key = SecretKey::with_rng(&mut rand::rng());
+            let public_key = secret_key.public_key();
+            let encryption_key = SealingKey::K256XChaCha20Poly1305(public_key);
+            test_encryption_key_roundtrip(encryption_key)?;
+        }
+
+        // Test X25519AeadRpo
+        {
+            use crate::crypto::dsa::eddsa_25519::SecretKey;
+            let secret_key = SecretKey::with_rng(&mut rand::rng());
+            let public_key = secret_key.public_key();
+            let encryption_key = SealingKey::X25519AeadRpo(public_key);
+            test_encryption_key_roundtrip(encryption_key)?;
+        }
+
+        // Test K256AeadRpo
+        {
+            use crate::crypto::dsa::ecdsa_k256_keccak::SecretKey;
+            let secret_key = SecretKey::with_rng(&mut rand::rng());
+            let public_key = secret_key.public_key();
+            let encryption_key = SealingKey::K256AeadRpo(public_key);
+            test_encryption_key_roundtrip(encryption_key)?;
+        }
 
         Ok(())
     }
