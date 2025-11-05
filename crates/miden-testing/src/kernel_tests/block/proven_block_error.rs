@@ -10,19 +10,14 @@ use miden_objects::account::{Account, AccountBuilder, AccountComponent, AccountI
 use miden_objects::asset::FungibleAsset;
 use miden_objects::batch::ProvenBatch;
 use miden_objects::block::{BlockInputs, BlockNumber, ProposedBlock};
-use miden_objects::transaction::{ProvenTransaction, ProvenTransactionBuilder};
+use miden_objects::note::NoteType;
+use miden_objects::transaction::ProvenTransactionBuilder;
 use miden_objects::vm::ExecutionProof;
 use miden_objects::{AccountTreeError, NullifierTreeError, Word};
-use winterfell::Proof;
+use miden_tx::LocalTransactionProver;
 
-use super::utils::{
-    TestSetup,
-    generate_batch,
-    generate_executed_tx_with_authenticated_notes,
-    generate_tracked_note,
-    setup_chain,
-};
-use crate::{Auth, MockChain, ProvenTransactionExt, TransactionContextBuilder};
+use crate::kernel_tests::block::utils::MockChainBlockExt;
+use crate::{Auth, MockChain, TransactionContextBuilder};
 
 struct WitnessTestSetup {
     stale_block_inputs: BlockInputs,
@@ -33,21 +28,27 @@ struct WitnessTestSetup {
 /// Setup for a test which returns two inputs for the same block. The valid inputs match the
 /// commitments of the latest block and the stale inputs match the commitments of the latest block
 /// minus 1.
-fn witness_test_setup() -> WitnessTestSetup {
-    let TestSetup { mut chain, mut accounts, mut txs, .. } = setup_chain(4);
+async fn witness_test_setup() -> anyhow::Result<WitnessTestSetup> {
+    let mut builder = MockChain::builder();
 
-    let account0 = accounts.remove(&0).context("failed to remove account 0").unwrap();
-    let account1 = accounts.remove(&1).context("failed to remove account 1").unwrap();
+    let account0 = builder.add_existing_mock_account(Auth::IncrNonce)?;
+    let account1 = builder.add_existing_mock_account(Auth::IncrNonce)?;
+    let account2 = builder.add_existing_mock_account(Auth::IncrNonce)?;
 
-    let note = generate_tracked_note(&mut chain, account1.id(), account0.id());
-    // Add note to chain.
-    chain.prove_next_block().unwrap();
+    let note0 =
+        builder.add_p2any_note(account0.id(), NoteType::Public, [FungibleAsset::mock(100)])?;
+    let note1 =
+        builder.add_p2any_note(account0.id(), NoteType::Public, [FungibleAsset::mock(100)])?;
+    let note2 =
+        builder.add_p2any_note(account0.id(), NoteType::Public, [FungibleAsset::mock(100)])?;
 
-    let tx0 = generate_executed_tx_with_authenticated_notes(&chain, account0.id(), &[note.id()]);
-    let tx1 = txs.remove(&1).context("failed to remove tx 1").unwrap();
-    let tx2 = txs.remove(&2).context("failed to remove tx 2").unwrap();
+    let mut chain = builder.build()?;
 
-    let batch1 = generate_batch(&mut chain, vec![tx1, tx2]);
+    let tx0 = chain.create_authenticated_notes_proven_tx(account0.id(), [note0.id()]).await?;
+    let tx1 = chain.create_authenticated_notes_proven_tx(account1.id(), [note1.id()]).await?;
+    let tx2 = chain.create_authenticated_notes_proven_tx(account2.id(), [note2.id()]).await?;
+
+    let batch1 = chain.create_batch(vec![tx1, tx2])?;
     let batches = vec![batch1];
     let stale_block_inputs = chain.get_block_inputs(&batches).unwrap();
 
@@ -55,7 +56,7 @@ fn witness_test_setup() -> WitnessTestSetup {
     let nullifier_root0 = chain.nullifier_tree().root();
 
     // Apply the executed tx and seal a block. This invalidates the block inputs we've just fetched.
-    chain.add_pending_executed_transaction(&tx0).unwrap();
+    chain.add_pending_proven_transaction(tx0);
     chain.prove_next_block().unwrap();
 
     let valid_block_inputs = chain.get_block_inputs(&batches).unwrap();
@@ -65,17 +66,17 @@ fn witness_test_setup() -> WitnessTestSetup {
     assert_ne!(chain.account_tree().root(), account_root0);
     assert_ne!(chain.nullifier_tree().root(), nullifier_root0);
 
-    WitnessTestSetup {
+    Ok(WitnessTestSetup {
         stale_block_inputs,
         valid_block_inputs,
         batches,
-    }
+    })
 }
 
 /// Tests that a proven block cannot be built if witnesses from a stale account tree are used
 /// (i.e. an account tree whose root is not in the previous block header).
-#[test]
-fn proven_block_fails_on_stale_account_witnesses() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proven_block_fails_on_stale_account_witnesses() -> anyhow::Result<()> {
     // Setup test with stale and valid block inputs.
     // --------------------------------------------------------------------------------------------
 
@@ -83,7 +84,7 @@ fn proven_block_fails_on_stale_account_witnesses() -> anyhow::Result<()> {
         stale_block_inputs,
         valid_block_inputs,
         batches,
-    } = witness_test_setup();
+    } = witness_test_setup().await?;
 
     // Account tree root mismatch.
     // --------------------------------------------------------------------------------------------
@@ -96,9 +97,7 @@ fn proven_block_fails_on_stale_account_witnesses() -> anyhow::Result<()> {
     let proposed_block0 = ProposedBlock::new(invalid_account_tree_block_inputs, batches.clone())
         .context("failed to propose block 0")?;
 
-    let error = LocalBlockProver::new(0)
-        .prove_without_batch_verification(proposed_block0)
-        .unwrap_err();
+    let error = LocalBlockProver::new(0).prove_dummy(proposed_block0).unwrap_err();
 
     assert_matches!(
         error,
@@ -113,8 +112,8 @@ fn proven_block_fails_on_stale_account_witnesses() -> anyhow::Result<()> {
 
 /// Tests that a proven block cannot be built if witnesses from a stale nullifier tree are used
 /// (i.e. a nullifier tree whose root is not in the previous block header).
-#[test]
-fn proven_block_fails_on_stale_nullifier_witnesses() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proven_block_fails_on_stale_nullifier_witnesses() -> anyhow::Result<()> {
     // Setup test with stale and valid block inputs.
     // --------------------------------------------------------------------------------------------
 
@@ -122,7 +121,7 @@ fn proven_block_fails_on_stale_nullifier_witnesses() -> anyhow::Result<()> {
         stale_block_inputs,
         valid_block_inputs,
         batches,
-    } = witness_test_setup();
+    } = witness_test_setup().await?;
 
     // Nullifier tree root mismatch.
     // --------------------------------------------------------------------------------------------
@@ -135,9 +134,7 @@ fn proven_block_fails_on_stale_nullifier_witnesses() -> anyhow::Result<()> {
     let proposed_block2 = ProposedBlock::new(invalid_nullifier_tree_block_inputs, batches.clone())
         .context("failed to propose block 2")?;
 
-    let error = LocalBlockProver::new(0)
-        .prove_without_batch_verification(proposed_block2)
-        .unwrap_err();
+    let error = LocalBlockProver::new(0).prove_dummy(proposed_block2).unwrap_err();
 
     assert_matches!(
         error,
@@ -152,8 +149,8 @@ fn proven_block_fails_on_stale_nullifier_witnesses() -> anyhow::Result<()> {
 
 /// Tests that a proven block cannot be built if both witnesses from a stale account tree and from
 /// the current account tree are used which results in different account tree roots.
-#[test]
-fn proven_block_fails_on_account_tree_root_mismatch() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proven_block_fails_on_account_tree_root_mismatch() -> anyhow::Result<()> {
     // Setup test with stale and valid block inputs.
     // --------------------------------------------------------------------------------------------
 
@@ -161,7 +158,7 @@ fn proven_block_fails_on_account_tree_root_mismatch() -> anyhow::Result<()> {
         mut stale_block_inputs,
         valid_block_inputs,
         batches,
-    } = witness_test_setup();
+    } = witness_test_setup().await?;
 
     // Stale and current account witnesses used together.
     // --------------------------------------------------------------------------------------------
@@ -183,9 +180,7 @@ fn proven_block_fails_on_account_tree_root_mismatch() -> anyhow::Result<()> {
     let proposed_block1 = ProposedBlock::new(stale_account_witness_block_inputs, batches.clone())
         .context("failed to propose block 1")?;
 
-    let error = LocalBlockProver::new(0)
-        .prove_without_batch_verification(proposed_block1)
-        .unwrap_err();
+    let error = LocalBlockProver::new(0).prove_dummy(proposed_block1).unwrap_err();
 
     assert_matches!(
         error,
@@ -200,8 +195,8 @@ fn proven_block_fails_on_account_tree_root_mismatch() -> anyhow::Result<()> {
 
 /// Tests that a proven block cannot be built if both witnesses from a stale nullifier tree and from
 /// the current nullifier tree are used which results in different nullifier tree roots.
-#[test]
-fn proven_block_fails_on_nullifier_tree_root_mismatch() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proven_block_fails_on_nullifier_tree_root_mismatch() -> anyhow::Result<()> {
     // Setup test with stale and valid block inputs.
     // --------------------------------------------------------------------------------------------
 
@@ -209,7 +204,7 @@ fn proven_block_fails_on_nullifier_tree_root_mismatch() -> anyhow::Result<()> {
         mut stale_block_inputs,
         valid_block_inputs,
         batches,
-    } = witness_test_setup();
+    } = witness_test_setup().await?;
 
     // Stale and current nullifier witnesses used together.
     // --------------------------------------------------------------------------------------------
@@ -233,9 +228,7 @@ fn proven_block_fails_on_nullifier_tree_root_mismatch() -> anyhow::Result<()> {
     let proposed_block3 = ProposedBlock::new(invalid_nullifier_witness_block_inputs, batches)
         .context("failed to propose block 3")?;
 
-    let error = LocalBlockProver::new(0)
-        .prove_without_batch_verification(proposed_block3)
-        .unwrap_err();
+    let error = LocalBlockProver::new(0).prove_dummy(proposed_block3).unwrap_err();
 
     assert_matches!(
         error,
@@ -247,8 +240,9 @@ fn proven_block_fails_on_nullifier_tree_root_mismatch() -> anyhow::Result<()> {
 
 /// Tests that creating an account when an existing account with the same account ID prefix exists,
 /// results in an error.
-#[test]
-fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proven_block_fails_on_creating_account_with_existing_account_id_prefix()
+-> anyhow::Result<()> {
     // Construct a new account.
     // --------------------------------------------------------------------------------------------
 
@@ -256,7 +250,7 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
 
     let auth_component: AccountComponent = IncrNonceAuthComponent.into();
 
-    let (account, seed) = AccountBuilder::new([5; 32])
+    let account = AccountBuilder::new([5; 32])
         .with_auth_component(auth_component.clone())
         .with_component(MockAccountComponent::with_slots(vec![StorageSlot::Value(Word::from(
             [5u32; 4],
@@ -286,24 +280,21 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
         existing_id.suffix(),
         "test should work if suffixes are different, so we want to ensure it"
     );
-    assert_eq!(account.init_commitment(), Word::empty());
+    assert_eq!(account.initial_commitment(), Word::empty());
 
     let existing_account = Account::mock(existing_id.into(), auth_component);
     builder.add_account(existing_account.clone())?;
-    let mut mock_chain = builder.build()?;
+    let mock_chain = builder.build()?;
 
     // Execute the account-creating transaction.
     // --------------------------------------------------------------------------------------------
 
-    let tx_inputs = mock_chain.get_transaction_inputs(account.clone(), Some(seed), &[], &[])?;
-    let tx_context = TransactionContextBuilder::new(account)
-        .account_seed(Some(seed))
-        .tx_inputs(tx_inputs)
-        .build()?;
-    let tx = tx_context.execute_blocking().context("failed to execute account creating tx")?;
-    let tx = ProvenTransaction::from_executed_transaction_mocked(tx);
+    let tx_inputs = mock_chain.get_transaction_inputs(&account, &[], &[])?;
+    let tx_context = TransactionContextBuilder::new(account).tx_inputs(tx_inputs).build()?;
+    let tx = tx_context.execute().await.context("failed to execute account creating tx")?;
+    let tx = LocalTransactionProver::default().prove_dummy(tx)?;
 
-    let batch = generate_batch(&mut mock_chain, vec![tx]);
+    let batch = mock_chain.create_batch(vec![tx])?;
     let batches = [batch];
 
     let block_inputs = mock_chain.get_block_inputs(batches.iter())?;
@@ -330,7 +321,7 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
 
     let block = mock_chain.propose_block(batches).context("failed to propose block")?;
 
-    let err = LocalBlockProver::new(0).prove_without_batch_verification(block).unwrap_err();
+    let err = LocalBlockProver::new(0).prove_dummy(block).unwrap_err();
 
     // This should fail when we try to _insert_ the same two prefixes into the partial tree.
     assert_matches!(
@@ -344,12 +335,13 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
 }
 
 /// Tests that creating two accounts in the same block whose ID prefixes match, results in an error.
-#[test]
-fn proven_block_fails_on_creating_account_with_duplicate_account_id_prefix() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proven_block_fails_on_creating_account_with_duplicate_account_id_prefix()
+-> anyhow::Result<()> {
     // Construct a new account.
     // --------------------------------------------------------------------------------------------
-    let mut mock_chain = MockChain::new();
-    let (account, _) = AccountBuilder::new([5; 32])
+    let mock_chain = MockChain::new();
+    let account = AccountBuilder::new([5; 32])
         .with_auth_component(Auth::IncrNonce)
         .with_component(MockAccountComponent::with_slots(vec![StorageSlot::Value(Word::from(
             [5u32; 4],
@@ -391,7 +383,7 @@ fn proven_block_fails_on_creating_account_with_duplicate_account_id_prefix() -> 
                 genesis_block.commitment(),
                 FungibleAsset::mock(500).unwrap_fungible(),
                 BlockNumber::from(u32::MAX),
-                ExecutionProof::new(Proof::new_dummy(), Default::default()),
+                ExecutionProof::new_dummy(),
             )
             .account_update_details(AccountUpdateDetails::Private)
             .build()
@@ -402,7 +394,7 @@ fn proven_block_fails_on_creating_account_with_duplicate_account_id_prefix() -> 
     // Build a batch from these transactions and attempt to prove a block.
     // --------------------------------------------------------------------------------------------
 
-    let batch = generate_batch(&mut mock_chain, vec![tx0, tx1]);
+    let batch = mock_chain.create_batch(vec![tx0, tx1])?;
     let batches = [batch];
 
     // Sanity check: The block inputs should contain two account witnesses that point to the same
@@ -425,7 +417,7 @@ fn proven_block_fails_on_creating_account_with_duplicate_account_id_prefix() -> 
 
     let block = mock_chain.propose_block(batches).context("failed to propose block")?;
 
-    let err = LocalBlockProver::new(0).prove_without_batch_verification(block).unwrap_err();
+    let err = LocalBlockProver::new(0).prove_dummy(block).unwrap_err();
 
     // This should fail when we try to _track_ the same two prefixes in the partial tree.
     assert_matches!(

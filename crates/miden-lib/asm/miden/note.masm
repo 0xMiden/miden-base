@@ -1,189 +1,26 @@
-use.miden::kernel_proc_offsets
+use.miden::account_id
 use.std::crypto::hashes::rpo
 use.std::mem
-use.miden::contracts::wallets::basic->wallet
 
 # ERRORS
 # =================================================================================================
 
-const.ERR_NOTE_DATA_DOES_NOT_MATCH_COMMITMENT="note data does not match the commitment"
+const.ERR_PROLOGUE_NOTE_INPUTS_LEN_EXCEEDED_LIMIT="number of note inputs exceeded the maximum limit of 128"
 
-const.ERR_PROLOGUE_NUMBER_OF_NOTE_INPUTS_EXCEEDED_LIMIT="number of note inputs exceeded the maximum limit of 128"
-
-const.ERR_NOTE_INVALID_NUMBER_OF_NOTE_INPUTS="the specified number of note inputs does not match the actual number"
-
-# PROCEDURES
+# NOTE UTILITY PROCEDURES
 # =================================================================================================
-
-#! Writes the assets of the currently executing note into memory starting at the specified address.
-#!
-#! Inputs:  [dest_ptr]
-#! Outputs: [num_assets, dest_ptr]
-#!
-#! Where:
-#! - dest_ptr is the memory address to write the assets.
-#! - num_assets is the number of assets in the currently executing note.
-#!
-#! Invocation: exec
-export.get_assets
-    # pad the stack
-    padw padw padw push.0.0.0
-    # => [pad(15), dest_ptr]
-
-    exec.kernel_proc_offsets::note_get_assets_info_offset
-    # => [offset, pad(15), dest_ptr]
-
-    syscall.exec_kernel_proc
-    # => [ASSETS_COMMITMENT, num_assets, pad(11), dest_ptr]
-
-    # clean the stack
-    swapdw dropw dropw movup.7 movup.7 movup.7 drop drop drop
-    # => [ASSETS_COMMITMENT, num_assets, dest_ptr]
-
-    # write the assets from the advice map into memory
-    exec.write_assets_to_memory
-    # => [num_assets, dest_ptr]
-end
-
-#! Loads the note's inputs to `dest_ptr`.
-#!
-#! Inputs:
-#!   Stack: [dest_ptr]
-#!   Advice Map: { INPUTS_COMMITMENT: [INPUTS] }
-#! Outputs:
-#!   Stack: [num_inputs, dest_ptr]
-#!
-#! Where:
-#! - dest_ptr is the memory address to write the inputs.
-#! - INPUTS_COMMITMENT is the sequential hash of the padded note's inputs.
-#! - INPUTS is the data corresponding to the note's inputs.
-#!
-#! Invocation: exec
-export.get_inputs
-    # pad the stack
-    padw padw padw push.0.0.0
-    # OS => [pad(15), dest_ptr]
-
-    exec.kernel_proc_offsets::note_get_inputs_commitment_and_len_offset
-    # OS => [offset, pad(15), dest_ptr]
-
-    syscall.exec_kernel_proc
-    # OS => [INPUTS_COMMITMENT, num_inputs, pad(11), dest_ptr]
-
-    # clean the stack
-    swapdw dropw dropw
-    movup.5 drop movup.5 drop movup.5 drop
-    # OS => [INPUTS_COMMITMENT, num_inputs, dest_ptr]
-
-    # load the inputs from the advice map to the advice stack
-    adv.push_mapvaln
-    # OS => [INPUTS_COMMITMENT, num_inputs, dest_ptr]
-    # AS => [advice_num_inputs, [INPUT_VALUES]]
-
-    # move the number of inputs obtained from advice map to the operand stack
-    adv_push.1 dup.5
-    # OS => [num_inputs, advice_num_inputs, INPUTS_COMMITMENT, num_inputs, dest_ptr]
-    # AS => [[INPUT_VALUES]]
-
-    # Validate the note inputs length. Round up the number of inputs to the next multiple of 8: that
-    # value should be equal to the length obtained from the `adv.push_mapvaln` procedure.
-    u32divmod.8 neq.0 add mul.8
-    # OS => [rounded_up_num_inputs, advice_num_inputs, INPUTS_COMMITMENT, num_inputs, dest_ptr]
-    # AS => [[INPUT_VALUES]]
-
-    assert_eq.err=ERR_NOTE_INVALID_NUMBER_OF_NOTE_INPUTS
-    # OS => [INPUTS_COMMITMENT, num_inputs, dest_ptr]
-    # AS => [[INPUT_VALUES]]
-
-    # calculate the number of words required to store the inputs
-    dup.4 u32divmod.4 neq.0 add
-    # OS => [num_words, INPUTS_COMMITMENT, num_inputs, dest_ptr]
-    # AS => [[INPUT_VALUES]]
-
-    # round up the number of words to the next multiple of 2
-    dup is_odd add
-    # OS => [even_num_words, INPUTS_COMMITMENT, num_inputs, dest_ptr]
-    # AS => [[INPUT_VALUES]]
-
-    # prepare the stack for the `pipe_preimage_to_memory` procedure
-    dup.6 swap
-    # OS => [even_num_words, dest_ptr, INPUTS_COMMITMENT, num_inputs, dest_ptr]
-    # AS => [[INPUT_VALUES]]
-
-    # write the input values from the advice stack into memory
-    exec.mem::pipe_preimage_to_memory drop
-    # OS => [num_inputs, dest_ptr]
-    # AS => []
-end
-
-#! Returns the sender of the note currently being processed.
-#!
-#! Inputs:  []
-#! Outputs: [sender_id_prefix, sender_id_suffix]
-#!
-#! Where:
-#! - sender_{prefix,suffix} are the prefix and suffix felts of the sender of the note currently
-#!   being processed.
-#!
-#! Panics if:
-#! - no note is being processed.
-#!
-#! Invocation: exec
-export.get_sender
-    # pad the stack
-    padw padw padw push.0.0.0
-    # => [pad(15)]
-
-    exec.kernel_proc_offsets::note_get_sender_offset
-    # => [offset, pad(15)]
-
-    syscall.exec_kernel_proc
-    # => [sender, pad(15)]
-
-    # clean the stack
-    swapdw dropw dropw swapw dropw movdn.3 movdn.3 drop drop
-    # => [sender_id_prefix, sender_id_suffix]
-end
-
-#! Returns the serial number of the note currently being processed.
-#!
-#! Inputs:  []
-#! Outputs: [SERIAL_NUMBER]
-#!
-#! Where:
-#! - SERIAL_NUMBER is the serial number of the note currently being processed.
-#!
-#! Panics if:
-#! - no note is being processed.
-#!
-#! Invocation: exec
-export.get_serial_number
-    # pad the stack
-    padw padw padw push.0.0.0
-    # => [pad(15)]
-
-    exec.kernel_proc_offsets::note_get_serial_number_offset
-    # => [offset, pad(15)]
-
-    syscall.exec_kernel_proc
-    # => [SERIAL_NUMBER, pad(12)]
-
-    # clean the stack
-    swapdw dropw dropw swapw dropw
-    # => [SERIAL_NUMBER]
-end
 
 #! Computes the commitment to the note inputs starting at the specified memory address.
 #!
-#! This procedure checks that the provided number of inputs is within limits and then computes the
-#! commitment.
+#! This procedure checks that the provided number of note inputs is within limits and then computes
+#! the commitment.
 #!
 #! Notice that the note inputs are padded with zeros in case their number is not a multiple of 8.
 #!
-#! If the number if inputs is 0, procedure returns the empty word: [0, 0, 0, 0].
+#! If the number of note inputs is 0, procedure returns the empty word: [0, 0, 0, 0].
 #!
 #! Inputs:  [inputs_ptr, num_inputs]
-#! Outputs: [COMMITMENT]
+#! Outputs: [INPUTS_COMMITMENT]
 #!
 #! Cycles:
 #! - If number of elements divides by 8: 56 cycles + 3 * words
@@ -196,8 +33,8 @@ end
 #! Invocation: exec
 export.compute_inputs_commitment
     # check that number of inputs is less than 128
-    dup.1 push.128 u32assert2.err=ERR_PROLOGUE_NUMBER_OF_NOTE_INPUTS_EXCEEDED_LIMIT
-    u32lte assert.err=ERR_PROLOGUE_NUMBER_OF_NOTE_INPUTS_EXCEEDED_LIMIT
+    dup.1 push.128 u32assert2.err=ERR_PROLOGUE_NOTE_INPUTS_LEN_EXCEEDED_LIMIT
+    u32lte assert.err=ERR_PROLOGUE_NOTE_INPUTS_LEN_EXCEEDED_LIMIT
     # => [inputs_ptr, num_inputs]
 
     # push 1 as the pad_inputs flag: we should pad the stack while computing the note inputs
@@ -206,37 +43,8 @@ export.compute_inputs_commitment
     # => [inputs_ptr, num_inputs, pad_inputs_flag]
 
     exec.rpo::prepare_hasher_state
-
     exec.rpo::hash_memory_with_state
-    # => [COMMITMENT]
-end
-
-#! Returns the script root of the note currently being processed.
-#!
-#! Inputs:  []
-#! Outputs: [SCRIPT_ROOT]
-#!
-#! Where:
-#! - SCRIPT_ROOT is the script root of the note currently being processed.
-#!
-#! Panics if:
-#! - no note is being processed.
-#!
-#! Invocation: exec
-export.get_script_root
-    # pad the stack
-    padw padw padw push.0.0.0
-    # => [pad(15)]
-
-    exec.kernel_proc_offsets::note_get_script_root_offset
-    # => [offset, pad(15)]
-
-    syscall.exec_kernel_proc
-    # => [SCRIPT_ROOT, pad(12)]
-
-    # clean the stack
-    swapdw dropw dropw swapw dropw
-    # => [SCRIPT_ROOT]
+    # => [INPUTS_COMMITMENT]
 end
 
 #! Returns the max allowed number of input values per note.
@@ -247,64 +55,7 @@ end
 #! - max_inputs_per_note is the max inputs per note.
 export.::miden::util::note::get_max_inputs_per_note
 
-#! Adds all assets from the currently executing note to the account vault.
-#!
-#! Inputs:  []
-#! Outputs: []
-export.add_assets_to_account.1024
-    # write assets to local memory starting at offset 0
-    # we have allocated 4 * MAX_ASSETS_PER_NOTE number of locals so all assets should fit
-    # since the asset memory will be overwritten, we don't have to initialize the locals to zero
-    locaddr.0 exec.get_assets
-    # => [num_of_assets, ptr = 0]
-
-    # compute the pointer at which we should stop iterating
-    mul.4 dup.1 add
-    # => [end_ptr, ptr]
-
-    # pad the stack and move the pointer to the top
-    padw movup.5
-    # => [ptr, EMPTY_WORD, end_ptr]
-
-    # loop if the amount of assets is non-zero
-    dup dup.6 neq
-    # => [should_loop, ptr, EMPTY_WORD, end_ptr]
-
-    while.true
-        # => [ptr, EMPTY_WORD, end_ptr]
-
-        # save the pointer so that we can use it later
-        dup movdn.5
-        # => [ptr, EMPTY_WORD, ptr, end_ptr]
-
-        # load the asset
-        mem_loadw
-        # => [ASSET, ptr, end_ptr]
-
-        # pad the stack before call
-        padw swapw padw padw swapdw
-        # => [ASSET, pad(12), ptr, end_ptr]
-
-        # add asset to the account
-        call.wallet::receive_asset
-        # => [pad(16), ptr, end_ptr]
-
-        # clean the stack after call
-        dropw dropw dropw
-        # => [EMPTY_WORD, ptr, end_ptr]
-
-        # increment the pointer and continue looping if ptr != end_ptr
-        movup.4 add.4 dup dup.6 neq
-        # => [should_loop, ptr+4, EMPTY_WORD, end_ptr]
-    end
-    # => [ptr', EMPTY_WORD, end_ptr]
-
-    # clear the stack
-    drop dropw drop
-    # => []
-end
-
-#! Writes the assets data stored in the advice map to the memory specified by the provided 
+#! Writes the assets data stored in the advice map to the memory specified by the provided
 #! destination pointer.
 #!
 #! Inputs:
@@ -334,4 +85,122 @@ export.write_assets_to_memory
     exec.mem::pipe_preimage_to_memory drop
     # OS => [num_assets, dest_ptr]
     # AS => []
+end
+
+#! Builds the recipient hash from note inputs, script root, and serial number.
+#!
+#! This procedure computes the commitment of the note inputs and then uses it to calculate the note
+#! recipient by hashing this commitment, the provided script root, and the serial number.
+#!
+#! Inputs:
+#!   Operand stack: [inputs_ptr, num_inputs, SERIAL_NUM, SCRIPT_ROOT]
+#!   Advice map: {
+#!      INPUTS_COMMITMENT: [INPUTS],
+#!   }
+#! Outputs:
+#!   Operand stack: [RECIPIENT]
+#!   Advice map: {
+#!      INPUTS_COMMITMENT: [INPUTS],
+#!      RECIPIENT: [SERIAL_SCRIPT_HASH, INPUTS_COMMITMENT],
+#!      SERIAL_SCRIPT_HASH: [SERIAL_HASH, SCRIPT_ROOT],
+#!      SERIAL_HASH: [SERIAL_NUM, EMPTY_WORD],
+#!   }
+#!
+#! Where:
+#! - inputs_ptr is the memory address where the note inputs are stored.
+#! - num_inputs is the number of input values.
+#! - SCRIPT_ROOT is the script root of the note.
+#! - SERIAL_NUM is the serial number of the note.
+#! - RECIPIENT is the commitment to the input note's script, inputs, and the serial number.
+#!
+#! Locals:
+#! - 0: inputs_ptr
+#! - 1: num_inputs
+#!
+#! Panics if:
+#! - inputs_ptr is not word-aligned (i.e., is not a multiple of 4).
+#! - num_inputs is greater than 128.
+#!
+#! Invocation: exec
+export.build_recipient
+    dup.1 dup.1
+    # => [inputs_ptr, num_inputs, inputs_ptr, num_inputs, SERIAL_NUM, SCRIPT_ROOT]
+
+    exec.compute_inputs_commitment
+    # => [INPUTS_COMMITMENT, inputs_ptr, num_inputs, SERIAL_NUM, SCRIPT_ROOT]
+
+    movup.5 movup.5 dup movdn.2
+    # => [inputs_ptr, num_inputs, inputs_ptr, INPUTS_COMMITMENT, SERIAL_NUM, SCRIPT_ROOT]
+
+    add swap
+    # => [inputs_ptr, end_ptr, INPUTS_COMMITMENT, SERIAL_NUM, SCRIPT_ROOT]
+
+    movdn.5 movdn.5
+    # => [INPUTS_COMMITMENT, inputs_ptr, end_ptr, SERIAL_NUM, SCRIPT_ROOT]
+
+    adv.insert_mem
+    # => [INPUTS_COMMITMENT, inputs_ptr, end_ptr, SERIAL_NUM, SCRIPT_ROOT]
+
+    movup.4 drop movup.4 drop
+    # => [INPUTS_COMMITMENT, SERIAL_NUM, SCRIPT_ROOT]
+
+    movdnw.2
+    # => [SERIAL_NUM, SCRIPT_ROOT, INPUTS_COMMITMENT]
+
+    padw adv.insert_hdword hmerge
+    # => [SERIAL_HASH, SCRIPT_ROOT, INPUTS_COMMITMENT]
+
+    swapw adv.insert_hdword hmerge
+    # => [SERIAL_SCRIPT_HASH, INPUTS_COMMITMENT]
+
+    swapw adv.insert_hdword hmerge
+    # => [RECIPIENT]
+end
+
+#! Returns the RECIPIENT for a specified SERIAL_NUM, SCRIPT_ROOT, and inputs commitment.
+#!
+#! Inputs:  [SERIAL_NUM, SCRIPT_ROOT, INPUT_COMMITMENT]
+#! Outputs: [RECIPIENT]
+#!
+#! Where:
+#! - SERIAL_NUM is the serial number of the recipient.
+#! - SCRIPT_ROOT is the commitment of the note script.
+#! - INPUT_COMMITMENT is the commitment of the note inputs.
+#! - RECIPIENT is the recipient of the note.
+#!
+#! Invocation: exec
+export.build_recipient_hash
+    padw hmerge
+    # => [SERIAL_NUM_HASH, SCRIPT_ROOT, INPUT_COMMITMENT]
+
+    swapw hmerge
+    # => [MERGE_SCRIPT, INPUT_COMMITMENT]
+
+    swapw hmerge
+    # [RECIPIENT]
+end
+
+#! Extracts the sender ID from the provided metadata word.
+#!
+#! Inputs:  [METADATA]
+#! Outputs: [sender_id_prefix, sender_id_suffix]
+#!
+#! Where:
+#! - METADATA is the metadata of some note.
+#! - sender_{prefix,suffix} are the prefix and suffix felts of the sender ID of the note which
+#!   metadata was provided.
+export.extract_sender_from_metadata
+    # => [aux, merged_tag_hint_payload, merged_sender_id_type_hint_tag, sender_id_prefix]
+
+    # drop aux felt and the felt containing tag, execution hint and payload
+    drop drop
+    # => [merged_sender_id_type_hint_tag, sender_id_prefix]
+
+    # extract suffix of sender from merged layout, which means clearing the least significant byte
+    exec.account_id::shape_suffix
+    # => [sender_id_suffix, sender_id_prefix]
+
+    # rearrange suffix and prefix
+    swap
+    # => [sender_id_prefix, sender_id_suffix]
 end

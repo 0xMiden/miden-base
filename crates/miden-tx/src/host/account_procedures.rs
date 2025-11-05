@@ -1,13 +1,8 @@
-use alloc::string::ToString;
-
 use miden_lib::transaction::memory::{ACCOUNT_STACK_TOP_PTR, ACCT_CODE_COMMITMENT_OFFSET};
-use miden_lib::transaction::{TransactionAdviceInputs, TransactionKernelError};
-use miden_objects::account::{AccountCode, AccountProcedureInfo};
-use miden_objects::transaction::{TransactionArgs, TransactionInputs};
-use miden_processor::AdviceInputs;
+use miden_objects::account::AccountCode;
 
-use super::{BTreeMap, Felt, ProcessState, Word};
-use crate::errors::TransactionHostError;
+use super::{BTreeMap, ProcessState, Word};
+use crate::errors::{TransactionHostError, TransactionKernelError};
 
 // ACCOUNT PROCEDURE INDEX MAP
 // ================================================================================================
@@ -15,42 +10,48 @@ use crate::errors::TransactionHostError;
 /// A map of maps { acct_code_commitment |-> { proc_root |-> proc_index } } for all known
 /// procedures of account interfaces for all accounts expected to be invoked during transaction
 /// execution.
+#[derive(Debug, Clone, Default)]
 pub struct AccountProcedureIndexMap(BTreeMap<Word, BTreeMap<Word, u8>>);
 
 impl AccountProcedureIndexMap {
-    /// Returns a new [AccountProcedureIndexMap] instantiated with account procedures present in
-    /// the provided advice provider.
-    ///
-    /// Note: `account_code_commitments` iterator should include both native account code and
-    /// foreign account codes commitments
-    pub fn new(
-        account_code_commitments: impl IntoIterator<Item = Word>,
-        adv_provider: &AdviceInputs,
+    /// Returns a new [`AccountProcedureIndexMap`] instantiated with account procedures from the
+    /// provided iterator of [`AccountCode`].
+    pub fn new<'code>(
+        account_codes: impl IntoIterator<Item = &'code AccountCode>,
     ) -> Result<Self, TransactionHostError> {
-        let mut result = BTreeMap::new();
+        let mut index_map = Self::default();
 
-        for code_commitment in account_code_commitments {
-            let account_procs_map = build_account_procedure_map(code_commitment, adv_provider)?;
-            result.insert(code_commitment, account_procs_map);
+        for account_code in account_codes {
+            // Insert each account procedures only once.
+            if !index_map.0.contains_key(&account_code.commitment()) {
+                index_map.insert_code(account_code)?;
+            }
         }
 
-        Ok(Self(result))
+        Ok(index_map)
     }
 
-    /// Builds an [`AccountProcedureIndexMap`] for the specified transaction inputs and arguments.
+    /// Inserts the procedures from the provided [`AccountCode`] into the advice inputs, using
+    /// [`AccountCode::commitment`] as the key.
     ///
-    /// The resulting instance will map all account code commmitments to a mapping of
+    /// The resulting instance will map the account code commitment to a mapping of
     /// `proc_root |-> proc_index` for any account that is expected to be involved in the
-    /// transaction, enabling easy procedure index lookups on runtime.
-    pub fn from_transaction_params(
-        tx_inputs: &TransactionInputs,
-        tx_args: &TransactionArgs,
-        tx_advice_inputs: &TransactionAdviceInputs,
-    ) -> Result<Self, TransactionHostError> {
-        let mut account_code_commitments = tx_args.to_foreign_account_code_commitments();
-        account_code_commitments.insert(tx_inputs.account().code().commitment());
+    /// transaction, enabling fast procedure index lookups at runtime.
+    pub fn insert_code(&mut self, code: &AccountCode) -> Result<(), TransactionHostError> {
+        let mut procedure_map = BTreeMap::new();
+        for (proc_idx, proc_info) in code.procedures().iter().enumerate() {
+            let proc_idx = u8::try_from(proc_idx).map_err(|_| {
+                TransactionHostError::AccountProcedureIndexMapError(
+                    "procedure index out of bounds".into(),
+                )
+            })?;
 
-        Self::new(account_code_commitments, tx_advice_inputs.as_advice_inputs())
+            procedure_map.insert(*proc_info.mast_root(), proc_idx);
+        }
+
+        self.0.insert(code.commitment(), procedure_map);
+
+        Ok(())
     }
 
     /// Returns index of the procedure whose root is currently at the top of the operand stack in
@@ -60,7 +61,7 @@ impl AccountProcedureIndexMap {
     /// Returns an error if the procedure at the top of the operand stack is not present in this
     /// map.
     pub fn get_proc_index(&self, process: &ProcessState) -> Result<u8, TransactionKernelError> {
-        // get current account code commitment
+        // get active account code commitment
         let code_commitment = {
             let account_stack_top_ptr = process
                 .get_mem_value(process.ctx(), ACCOUNT_STACK_TOP_PTR)
@@ -73,15 +74,15 @@ impl AccountProcedureIndexMap {
                         .try_into()
                         .expect("account stack top pointer should be less than u32::MAX"),
                 )
-                .expect("Current account pointer was not initialized")
+                .expect("active account pointer was not initialized")
                 .as_int();
             process
                 .get_mem_word(process.ctx(), curr_data_ptr as u32 + ACCT_CODE_COMMITMENT_OFFSET)
                 .expect("failed to read a word from memory")
-                .expect("current account code commitment was not initialized")
+                .expect("active account code commitment was not initialized")
         };
 
-        let proc_root = process.get_stack_word(0);
+        let proc_root = process.get_stack_word_be(1);
 
         self.0
             .get(&code_commitment)
@@ -90,63 +91,4 @@ impl AccountProcedureIndexMap {
             .cloned()
             .ok_or(TransactionKernelError::UnknownAccountProcedure(proc_root))
     }
-}
-
-// HELPER FUNCTIONS
-// ================================================================================================
-
-fn build_account_procedure_map(
-    code_commitment: Word,
-    advice_inputs: &AdviceInputs,
-) -> Result<BTreeMap<Word, u8>, TransactionHostError> {
-    // get the account procedures from the advice_map
-    let proc_data = advice_inputs.map.get(&code_commitment).ok_or_else(|| {
-        TransactionHostError::AccountProcedureIndexMapError(
-            "failed to read account procedure data from the advice provider".to_string(),
-        )
-    })?;
-
-    let mut account_procs_map = BTreeMap::new();
-
-    // sanity checks
-
-    // check that there are procedures in the account code
-    if proc_data.is_empty() {
-        return Err(TransactionHostError::AccountProcedureIndexMapError(
-            "account code does not contain any procedures.".to_string(),
-        ));
-    }
-
-    // check that procedure data have a correct length
-    if proc_data.len() % AccountProcedureInfo::NUM_ELEMENTS_PER_PROC != 0 {
-        return Err(TransactionHostError::AccountProcedureIndexMapError(
-            "account procedure data has invalid length.".to_string(),
-        ));
-    }
-
-    // One procedure requires 8 values to represent
-    let num_procs = proc_data.len() / AccountProcedureInfo::NUM_ELEMENTS_PER_PROC;
-
-    // check that the account code does not contain too many procedures
-    if num_procs > AccountCode::MAX_NUM_PROCEDURES {
-        return Err(TransactionHostError::AccountProcedureIndexMapError(
-            "account code contains too many procedures.".to_string(),
-        ));
-    }
-
-    for (proc_idx, proc_info) in
-        proc_data.chunks_exact(AccountProcedureInfo::NUM_ELEMENTS_PER_PROC).enumerate()
-    {
-        let proc_info_array: [Felt; AccountProcedureInfo::NUM_ELEMENTS_PER_PROC] =
-            proc_info.try_into().expect("Failed conversion into procedure info array.");
-
-        let procedure = AccountProcedureInfo::try_from(proc_info_array)
-            .map_err(TransactionHostError::AccountProcedureInfoCreationFailed)?;
-
-        let proc_idx = u8::try_from(proc_idx).expect("Invalid procedure index.");
-
-        account_procs_map.insert(*procedure.mast_root(), proc_idx);
-    }
-
-    Ok(account_procs_map)
 }

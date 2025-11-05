@@ -15,13 +15,14 @@ use alloc::boxed::Box;
 pub use fungible::FungibleAsset;
 
 mod nonfungible;
+
 pub use nonfungible::{NonFungibleAsset, NonFungibleAssetDetails};
 
 mod token_symbol;
 pub use token_symbol::TokenSymbol;
 
 mod vault;
-pub use vault::{AssetVault, PartialVault};
+pub use vault::{AssetVault, AssetVaultKey, AssetWitness, PartialVault};
 
 // ASSET
 // ================================================================================================
@@ -136,7 +137,7 @@ impl Asset {
     }
 
     /// Returns the key which is used to store this asset in the account vault.
-    pub fn vault_key(&self) -> Word {
+    pub fn vault_key(&self) -> AssetVaultKey {
         match self {
             Self::Fungible(asset) => asset.vault_key(),
             Self::NonFungible(asset) => asset.vault_key(),
@@ -197,13 +198,14 @@ impl TryFrom<Word> for Asset {
     fn try_from(value: Word) -> Result<Self, Self::Error> {
         // Return an error if element 3 is not a valid account ID prefix, which cannot be checked by
         // is_not_a_non_fungible_asset.
-        AccountIdPrefix::try_from(value[3])
+        // Keep in mind serialized assets do _not_ carry the suffix required to reconstruct the full
+        // account identifier.
+        let prefix = AccountIdPrefix::try_from(value[3])
             .map_err(|err| AssetError::InvalidFaucetAccountId(Box::from(err)))?;
-
-        if is_not_a_non_fungible_asset(value) {
-            FungibleAsset::try_from(value).map(Asset::from)
-        } else {
-            NonFungibleAsset::try_from(value).map(Asset::from)
+        match prefix.account_type() {
+            AccountType::FungibleFaucet => FungibleAsset::try_from(value).map(Asset::from),
+            AccountType::NonFungibleFaucet => NonFungibleAsset::try_from(value).map(Asset::from),
+            _ => Err(AssetError::InvalidFaucetAccountIdPrefix(prefix)),
         }
     }
 }

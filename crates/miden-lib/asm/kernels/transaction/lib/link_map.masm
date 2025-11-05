@@ -1,4 +1,5 @@
 use.std::collections::smt
+use.std::word
 use.$kernel::memory
 
 # A link map is a map data structure based on a sorted linked list.
@@ -166,10 +167,10 @@ const.GET_OPERATION_ABSENT_AT_HEAD=1
 # =================================================================================================
 
 # Event emitted when an entry is set.
-const.LINK_MAP_SET_EVENT=131100
+const.LINK_MAP_SET_EVENT=event("miden::link_map::set")
 
 # Event emitted when an entry is fetched.
-const.LINK_MAP_GET_EVENT=131101
+const.LINK_MAP_GET_EVENT=event("miden::link_map::get")
 
 # LINK MAP PROCEDURES
 # =================================================================================================
@@ -198,7 +199,8 @@ const.LINK_MAP_GET_EVENT=131101
 #! - the host provides faulty advice. See panic sections of assert_entry_ptr_is_valid,
 #!   update_entry, insert_at_head, insert_after_entry.
 export.set
-    emit.LINK_MAP_SET_EVENT adv_push.2
+    emit.LINK_MAP_SET_EVENT
+    adv_push.2
     # => [operation, entry_ptr, map_ptr, KEY, VALUE0, VALUE1]
 
     dup.2 dup.2
@@ -264,7 +266,8 @@ end
 #! - the host provides faulty advice. See panic sections of assert_entry_ptr_is_valid,
 #!   get_existing_value, assert_absent_at_head, assert_absent_after_entry.
 export.get
-    emit.LINK_MAP_GET_EVENT adv_push.2
+    emit.LINK_MAP_GET_EVENT
+    adv_push.2
     # => [get_operation, entry_ptr, map_ptr, KEY]
 
     dup.2 dup.2
@@ -720,10 +723,10 @@ proc.set_value
     dup movdn.5
     # => [entry_ptr, VALUE0, entry_ptr, VALUE1]
 
-    add.VALUE0_OFFSET mem_storew dropw
+    add.VALUE0_OFFSET mem_storew_be dropw
     # => [entry_ptr, VALUE1]
 
-    add.VALUE1_OFFSET mem_storew dropw
+    add.VALUE1_OFFSET mem_storew_be dropw
     # => []
 end
 
@@ -747,7 +750,7 @@ proc.get_value0
     padw movup.4
     # => [entry_ptr, pad(4)]
 
-    add.VALUE0_OFFSET mem_loadw
+    add.VALUE0_OFFSET mem_loadw_be
     # => [VALUE0]
 end
 
@@ -759,7 +762,7 @@ proc.get_value1
     padw movup.4
     # => [entry_ptr, pad(4)]
 
-    add.VALUE1_OFFSET mem_loadw
+    add.VALUE1_OFFSET mem_loadw_be
     # => [VALUE1]
 end
 
@@ -768,7 +771,7 @@ end
 #! Inputs:  [entry_ptr, KEY]
 #! Outputs: []
 proc.set_key
-    add.KEY_OFFSET mem_storew dropw
+    add.KEY_OFFSET mem_storew_be dropw
 end
 
 #! Returns the key of the entry pointer.
@@ -779,7 +782,7 @@ proc.get_key
     padw movup.4
     # => [entry_ptr, pad(4)]
 
-    add.KEY_OFFSET mem_loadw
+    add.KEY_OFFSET mem_loadw_be
     # => [KEY]
 end
 
@@ -835,11 +838,10 @@ end
 #! Inputs:  [entry_ptr, KEY]
 #! Outputs: []
 proc.assert_key_is_greater
-    exec.get_key swapw
-    # => [KEY, ENTRY_KEY]
+    exec.get_key
+    # => [ENTRY_KEY, KEY]
 
-    exec.is_key_greater assert.err=ERR_LINK_MAP_PROVIDED_KEY_NOT_GREATER_THAN_ENTRY_KEY
-    # => []
+    exec.word::gt assert.err=ERR_LINK_MAP_PROVIDED_KEY_NOT_GREATER_THAN_ENTRY_KEY
 end
 
 #! Asserts that the KEY is less than the key in the entry pointer.
@@ -847,10 +849,10 @@ end
 #! Inputs:  [entry_ptr, KEY]
 #! Outputs: []
 proc.assert_key_is_less
-    exec.get_key swapw
-    # => [KEY, ENTRY_KEY]
+    exec.get_key
+    # => [ENTRY_KEY, KEY]
 
-    exec.is_key_less assert.err=ERR_LINK_MAP_PROVIDED_KEY_NOT_LESS_THAN_ENTRY_KEY
+    exec.word::lt assert.err=ERR_LINK_MAP_PROVIDED_KEY_NOT_LESS_THAN_ENTRY_KEY
     # => []
 end
 
@@ -924,144 +926,4 @@ export.assert_entry_ptr_is_valid
 
     # this assertion is always true if is_empty_map is true
     or assert.err=ERR_LINK_MAP_MAP_PTR_IN_ENTRY_DOES_NOT_MATCH_EXPECTED_MAP_PTR
-end
-
-# COMPARISON OPERATIONS
-# -------------------------------------------------------------------------------------------------
-
-#! Returns true if KEY1 is strictly greater than KEY2, false otherwise.
-#!
-#! The implementation avoids branching for performance reasons.
-#! The procedure is exported for testing purposes only.
-#!
-#! For reference, this is equivalent to the following Rust function:
-#!
-#! fn is_key_greater(key1: Word, key2: Word) -> bool {
-#!     let mut result = false;
-#!     let mut cont = true;
-#!
-#!     for i in (0..4).rev() {
-#!         let gt = key1[i].as_int() > key2[i].as_int();
-#!         let eq = key1[i].as_int() == key2[i].as_int();
-#!         result |= gt & cont;
-#!         cont &= eq;
-#!     }
-#!
-#!     result
-#! }
-#!
-#! Inputs:  [KEY1, KEY2]
-#! Outputs: [is_key_greater]
-export.is_key_greater
-    exec.arrange_words_adjacent
-    # => [2_3, 1_3, 2_2, 1_2, 2_1, 1_1, 2_0, 1_0]
-
-    push.1.0
-    # => [is_key_greater, continue, 2_3, 1_3, 2_2, 1_2, 2_1, 1_1, 2_0, 1_0]
-
-    repeat.4
-        movup.3 movup.3
-        # => [2_x, 1_x, is_key_greater, continue, <remaining_felts>]
-
-        # check 1_x == 2_x; if so, we continue
-        dup dup.2 eq
-        # => [is_felt_eq, 2_x, 1_x, is_key_greater, continue, <remaining_felts>]
-
-        movdn.3
-        # => [2_x, 1_x, is_key_greater, is_felt_eq, continue, <remaining_felts>]
-
-        # check 1_x > 2_x
-        gt
-        # => [is_felt_gt, is_key_greater, is_felt_eq, continue, <remaining_felts>]
-
-        dup.3 and
-        # => [is_felt_gt_if_continue, is_key_greater, is_felt_eq, continue, <remaining_felts>]
-
-        or movdn.2
-        # => [is_felt_eq, continue, is_key_greater, <remaining_felts>]
-
-        # keeps continue at 1 if the felts are equal
-        # sets continue to 0 if the felts are not equal
-        and
-        # => [continue, is_key_greater, <remaining_felts>]
-
-        swap
-        # => [is_key_greater, continue, <remaining_felts>]
-    end
-    # => [is_key_greater, continue]
-
-    swap drop
-    # => [is_key_greater]
-end
-
-#! Returns true if KEY1 is strictly less than KEY2, false otherwise.
-#!
-#! The implementation avoids branching for performance reasons.
-#! The procedure is exported for testing purposes only.
-#!
-#! From an implementation standpoint this is exactly the same as `is_key_greater` except it uses
-#! `lt` rather than `gt`. See its docs for details.
-#!
-#! Inputs:  [KEY1, KEY2]
-#! Outputs: [is_key_less]
-export.is_key_less
-    exec.arrange_words_adjacent
-    # => [2_3, 1_3, 2_2, 1_2, 2_1, 1_1, 2_0, 1_0]
-
-    push.1.0
-    # => [is_key_less, continue, 2_3, 1_3, 2_2, 1_2, 2_1, 1_1, 2_0, 1_0]
-
-    repeat.4
-        movup.3 movup.3
-        # => [2_x, 1_x, is_key_less, continue, <remaining_felts>]
-
-        # check 1_x == 2_x; if so, we continue
-        dup dup.2 eq
-        # => [is_felt_eq, 2_x, 1_x, is_key_less, continue, <remaining_felts>]
-
-        movdn.3
-        # => [2_x, 1_x, is_key_less, is_felt_eq, continue, <remaining_felts>]
-
-        # check 1_x < 2_x
-        lt
-        # => [is_felt_lt, is_key_less, is_felt_eq, continue, <remaining_felts>]
-
-        dup.3 and
-        # => [is_felt_lt_if_continue, is_key_less, is_felt_eq, continue, <remaining_felts>]
-
-        or movdn.2
-        # => [is_felt_eq, continue, is_key_less, <remaining_felts>]
-
-        # keeps continue at 1 if the felts are equal
-        # sets continue to 0 if the felts are not equal
-        and
-        # => [continue, is_key_less, <remaining_felts>]
-
-        swap
-        # => [is_key_less, continue, <remaining_felts>]
-    end
-    # => [is_key_less, continue]
-
-    swap drop
-    # => [is_key_less]
-end
-
-#! Arranges the given words such that the corresponding elements are next to each other.
-#!
-#! Inputs:  [KEY1, KEY2]
-#! Outputs: [key2_3, key1_3, key2_2, key1_2, key2_1, key1_1, key2_0, key1_0]
-proc.arrange_words_adjacent
-    # => [1_3, 1_2, 1_1, 1_0, 2_3, 2_2, 2_1, 2_0]
-
-    movup.3 movup.7
-    # => [2_0, 1_0, 1_3, 1_2, 1_1, 2_3, 2_2, 2_1]
-
-    movup.4 movup.7
-    # => [2_1, 1_1, 2_0, 1_0, 1_3, 1_2, 2_3, 2_2]
-
-    movup.5 movup.7
-    # => [2_2, 1_2, 2_1, 1_1, 2_0, 1_0, 1_3, 2_3]
-
-    movup.6 movup.7
-    # => [2_3, 1_3, 2_2, 1_2, 2_1, 1_1, 2_0, 1_0]
 end

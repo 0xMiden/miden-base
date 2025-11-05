@@ -2,15 +2,12 @@ use alloc::vec::Vec;
 
 use miden_objects::account::{AccountHeader, AccountId, PartialAccount};
 use miden_objects::block::AccountWitness;
+use miden_objects::crypto::SequentialCommit;
 use miden_objects::crypto::merkle::InnerNodeInfo;
-use miden_objects::transaction::{
-    InputNote,
-    PartialBlockchain,
-    TransactionArgs,
-    TransactionInputs,
-};
+use miden_objects::transaction::{AccountInputs, InputNote, PartialBlockchain, TransactionInputs};
 use miden_objects::vm::AdviceInputs;
-use miden_objects::{EMPTY_WORD, Felt, FieldElement, WORD_SIZE, Word, ZERO};
+use miden_objects::{EMPTY_WORD, Felt, FieldElement, Word, ZERO};
+use miden_processor::AdviceMutation;
 use thiserror::Error;
 
 use super::TransactionKernel;
@@ -20,31 +17,24 @@ use super::TransactionKernel;
 
 /// Advice inputs wrapper for inputs that are meant to be used exclusively in the transaction
 /// kernel.
-#[derive(Default, Clone, Debug)]
+#[derive(Debug, Clone, Default)]
 pub struct TransactionAdviceInputs(AdviceInputs);
 
 impl TransactionAdviceInputs {
     /// Creates a [`TransactionAdviceInputs`].
     ///
     /// The created advice inputs will be populated with the data required for executing a
-    /// transaction with the specified inputs and arguments. This includes the initial account, an
-    /// optional account seed (required for new accounts), and the input note data, including
-    /// core note data + authentication paths all the way to the root of one of partial
-    /// blockchain peaks.
-    pub fn new(
-        tx_inputs: &TransactionInputs,
-        tx_args: &TransactionArgs,
-    ) -> Result<Self, TransactionAdviceMapMismatch> {
-        let mut inputs = TransactionAdviceInputs::default();
-        let kernel_version = 0; // TODO: replace with user input
+    /// transaction with the specified transaction inputs.
+    pub fn new(tx_inputs: &TransactionInputs) -> Result<Self, TransactionAdviceMapMismatch> {
+        let mut inputs = TransactionAdviceInputs(tx_inputs.advice_inputs().clone());
 
-        inputs.build_stack(tx_inputs, tx_args, kernel_version);
-        inputs.add_kernel_commitments(kernel_version);
+        inputs.build_stack(tx_inputs);
+        inputs.add_kernel_commitment();
         inputs.add_partial_blockchain(tx_inputs.blockchain());
-        inputs.add_input_notes(tx_inputs, tx_args)?;
+        inputs.add_input_notes(tx_inputs)?;
 
-        // Add the script's MAST forest's advice inputs
-        if let Some(tx_script) = tx_args.tx_script() {
+        // Add the script's MAST forest's advice inputs.
+        if let Some(tx_script) = tx_inputs.tx_args().tx_script() {
             inputs.extend_map(
                 tx_script
                     .mast()
@@ -54,35 +44,32 @@ impl TransactionAdviceInputs {
             );
         }
 
-        // --- native account injection ---------------------------------------
+        // Inject native account.
+        let partial_native_acc = tx_inputs.account();
+        inputs.add_account(partial_native_acc)?;
 
-        let native_acc = PartialAccount::from(tx_inputs.account());
-        inputs.add_account(&native_acc)?;
-
-        // if a seed was provided, extend the map appropriately
-        if let Some(seed) = tx_inputs.account_seed() {
+        // If a seed was provided, extend the map appropriately.
+        if let Some(seed) = tx_inputs.account().seed() {
             // ACCOUNT_ID |-> ACCOUNT_SEED
-            let account_id_key = build_account_id_key(native_acc.id());
+            let account_id_key = Self::account_id_map_key(partial_native_acc.id());
             inputs.add_map_entry(account_id_key, seed.to_vec());
         }
 
-        // --- foreign account injection --------------------------------------
-
-        for foreign_acc in tx_args.foreign_account_inputs() {
-            inputs.add_account(foreign_acc.account())?;
-            inputs.add_account_witness(foreign_acc.witness());
-
-            // for foreign accounts, we need to insert the id to state mapping
-            // NOTE: keep this in sync with the start_foreign_context kernel procedure
-            let account_id_key = build_account_id_key(foreign_acc.id());
-            let header = AccountHeader::from(foreign_acc.account());
-
-            // ACCOUNT_ID |-> [ID_AND_NONCE, VAULT_ROOT, STORAGE_COMMITMENT, CODE_COMMITMENT]
-            inputs.add_map_entry(account_id_key, header.as_elements());
+        // if the account is new, insert the storage map entries into the advice provider.
+        if partial_native_acc.is_new() {
+            for storage_map in partial_native_acc.storage().maps() {
+                let map_entries = storage_map
+                    .entries()
+                    .flat_map(|(key, value)| {
+                        value.as_elements().iter().chain(key.as_elements().iter()).copied()
+                    })
+                    .collect();
+                inputs.add_map_entry(storage_map.root(), map_entries);
+            }
         }
 
-        // any extra user-supplied advice
-        inputs.extend(tx_args.advice_inputs().clone());
+        // Extend with extra user-supplied advice.
+        inputs.extend(tx_inputs.tx_args().advice_inputs().clone());
 
         Ok(inputs)
     }
@@ -97,12 +84,45 @@ impl TransactionAdviceInputs {
         self.0
     }
 
+    /// Consumes self and returns an iterator of [`AdviceMutation`]s in arbitrary order.
+    pub fn into_advice_mutations(self) -> impl Iterator<Item = AdviceMutation> {
+        [
+            AdviceMutation::ExtendMap { other: self.0.map },
+            AdviceMutation::ExtendMerkleStore {
+                infos: self.0.store.inner_nodes().collect(),
+            },
+            AdviceMutation::ExtendStack { values: self.0.stack },
+        ]
+        .into_iter()
+    }
+
     // MUTATORS
     // --------------------------------------------------------------------------------------------
 
     /// Extends these advice inputs with the provided advice inputs.
     pub fn extend(&mut self, adv_inputs: AdviceInputs) {
         self.0.extend(adv_inputs);
+    }
+
+    /// Adds the provided account inputs into the advice inputs.
+    pub fn add_foreign_accounts<'inputs>(
+        &mut self,
+        foreign_account_inputs: impl IntoIterator<Item = &'inputs AccountInputs>,
+    ) -> Result<(), TransactionAdviceMapMismatch> {
+        for foreign_acc in foreign_account_inputs {
+            self.add_account(foreign_acc.account())?;
+            self.add_account_witness(foreign_acc.witness());
+
+            // for foreign accounts, we need to insert the id to state mapping
+            // NOTE: keep this in sync with the account::load_from_advice procedure
+            let account_id_key = Self::account_id_map_key(foreign_acc.id());
+            let header = AccountHeader::from(foreign_acc.account());
+
+            // ACCOUNT_ID |-> [ID_AND_NONCE, VAULT_ROOT, STORAGE_COMMITMENT, CODE_COMMITMENT]
+            self.add_map_entry(account_id_key, header.as_elements());
+        }
+
+        Ok(())
     }
 
     /// Extend the advice stack with the transaction inputs.
@@ -131,12 +151,7 @@ impl TransactionAdviceInputs {
     ///     TX_SCRIPT_ARGS,
     ///     AUTH_ARGS,
     /// ]
-    fn build_stack(
-        &mut self,
-        tx_inputs: &TransactionInputs,
-        tx_args: &TransactionArgs,
-        kernel_version: u8,
-    ) {
+    fn build_stack(&mut self, tx_inputs: &TransactionInputs) {
         let header = tx_inputs.block_header();
 
         // --- block header data (keep in sync with kernel's process_block_data) --
@@ -162,9 +177,6 @@ impl TransactionAdviceInputs {
         self.extend_stack([ZERO, ZERO, ZERO, ZERO]);
         self.extend_stack(header.note_root());
 
-        // --- kernel version (keep in sync with process_kernel_data) ---------
-        self.extend_stack([Felt::from(kernel_version)]);
-
         // --- core account items (keep in sync with process_account_data) ----
         let account = tx_inputs.account();
         self.extend_stack([
@@ -179,6 +191,7 @@ impl TransactionAdviceInputs {
 
         // --- number of notes, script root and args --------------------------
         self.extend_stack([Felt::from(tx_inputs.input_notes().num_notes())]);
+        let tx_args = tx_inputs.tx_args();
         self.extend_stack(tx_args.tx_script().map_or(Word::empty(), |script| script.root()));
         self.extend_stack(tx_args.tx_script_args());
 
@@ -217,27 +230,13 @@ impl TransactionAdviceInputs {
     // KERNEL INJECTIONS
     // --------------------------------------------------------------------------------------------
 
-    /// Inserts kernel commitments and hashes of their procedures into the advice inputs.
+    /// Inserts the kernel commitment and its procedure roots into the advice map.
     ///
     /// Inserts the following entries into the advice map:
-    /// - The accumulative hash of all kernels |-> array of each kernel commitment.
-    /// - The hash of the selected kernel |-> array of the kernel's procedure roots.
-    fn add_kernel_commitments(&mut self, kernel_version: u8) {
-        const NUM_KERNELS: usize = TransactionKernel::NUM_VERSIONS;
-
-        // insert kernels root with kernel commitments into the advice map
-        let mut kernel_commitments: Vec<Felt> = Vec::with_capacity(NUM_KERNELS * WORD_SIZE);
-        for version in 0..NUM_KERNELS {
-            let kernel_commitment = TransactionKernel::commitment(version as u8);
-            kernel_commitments.extend_from_slice(kernel_commitment.as_elements());
-        }
-        self.add_map_entry(TransactionKernel::kernel_commitment(), kernel_commitments);
-
-        // insert the selected kernel commitment with its procedure roots into the advice map
-        self.add_map_entry(
-            TransactionKernel::commitment(kernel_version),
-            TransactionKernel::procedures_as_elements(kernel_version),
-        );
+    /// - The commitment of the kernel |-> array of the kernel's procedure roots.
+    fn add_kernel_commitment(&mut self) {
+        // insert the kernel commitment with its procedure roots into the advice map
+        self.add_map_entry(TransactionKernel.to_commitment(), TransactionKernel.to_elements());
     }
 
     // ACCOUNT INJECTION
@@ -332,7 +331,6 @@ impl TransactionAdviceInputs {
     fn add_input_notes(
         &mut self,
         tx_inputs: &TransactionInputs,
-        tx_args: &TransactionArgs,
     ) -> Result<(), TransactionAdviceMapMismatch> {
         if tx_inputs.input_notes().is_empty() {
             return Ok(());
@@ -343,13 +341,10 @@ impl TransactionAdviceInputs {
             let note = input_note.note();
             let assets = note.assets();
             let recipient = note.recipient();
-            let note_arg = tx_args.get_note_args(note.id()).unwrap_or(&EMPTY_WORD);
+            let note_arg = tx_inputs.tx_args().get_note_args(note.id()).unwrap_or(&EMPTY_WORD);
 
             // recipient inputs / assets commitments
-            self.add_map_entry(
-                recipient.inputs().commitment(),
-                recipient.inputs().format_for_advice(),
-            );
+            self.add_map_entry(recipient.inputs().commitment(), recipient.inputs().to_elements());
             self.add_map_entry(assets.commitment(), assets.to_padded_assets());
 
             // note details / metadata
@@ -403,6 +398,7 @@ impl TransactionAdviceInputs {
         }
 
         self.add_map_entry(tx_inputs.input_notes().commitment(), note_data);
+
         Ok(())
     }
 
@@ -428,6 +424,13 @@ impl TransactionAdviceInputs {
     fn extend_merkle_store(&mut self, iter: impl Iterator<Item = InnerNodeInfo>) {
         self.0.store.extend(iter);
     }
+
+    /// Returns the advice map key where:
+    /// - the seed for native accounts is stored.
+    /// - the account header for foreign accounts is stored.
+    fn account_id_map_key(id: AccountId) -> Word {
+        Word::from([id.suffix(), id.prefix().as_felt(), ZERO, ZERO])
+    }
 }
 
 // CONVERSIONS
@@ -443,13 +446,6 @@ impl From<AdviceInputs> for TransactionAdviceInputs {
     fn from(inner: AdviceInputs) -> Self {
         Self(inner)
     }
-}
-
-// HELPER FUNCTIONS
-// ================================================================================================
-
-fn build_account_id_key(id: AccountId) -> Word {
-    Word::from([id.suffix(), id.prefix().as_felt(), ZERO, ZERO])
 }
 
 // CONFLICT ERROR

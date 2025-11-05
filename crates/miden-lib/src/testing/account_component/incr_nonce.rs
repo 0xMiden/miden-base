@@ -5,10 +5,10 @@ use miden_objects::utils::sync::LazyLock;
 use crate::transaction::TransactionKernel;
 
 const INCR_NONCE_AUTH_CODE: &str = "
-    use.miden::account
+    use.miden::native_account
 
-    export.auth__incr_nonce
-        exec.account::incr_nonce drop
+    export.auth_incr_nonce
+        exec.native_account::incr_nonce drop
     end
 ";
 
@@ -20,7 +20,7 @@ static INCR_NONCE_AUTH_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
 
 /// Creates a mock authentication [`AccountComponent`] for testing purposes.
 ///
-/// The component defines an `auth__incr_nonce` procedure that always increments the nonce by 1.
+/// The component defines an `auth_incr_nonce` procedure that always increments the nonce by 1.
 pub struct IncrNonceAuthComponent;
 
 impl From<IncrNonceAuthComponent> for AccountComponent {

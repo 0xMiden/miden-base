@@ -6,6 +6,7 @@ use miden_objects::account::AccountProcedureInfo;
 use miden_objects::assembly::Library;
 use miden_objects::utils::Deserializable;
 use miden_objects::utils::sync::LazyLock;
+use miden_processor::MastNodeExt;
 
 use crate::account::interface::AccountComponentInterface;
 
@@ -30,6 +31,15 @@ static BASIC_FUNGIBLE_FAUCET_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
         "/assets/account_components/basic_fungible_faucet.masl"
     ));
     Library::read_from_bytes(bytes).expect("Shipped Basic Fungible Faucet library is well-formed")
+});
+
+// Initialize the Network Fungible Faucet library only once.
+static NETWORK_FUNGIBLE_FAUCET_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
+    let bytes = include_bytes!(concat!(
+        env!("OUT_DIR"),
+        "/assets/account_components/network_fungible_faucet.masl"
+    ));
+    Library::read_from_bytes(bytes).expect("Shipped Network Fungible Faucet library is well-formed")
 });
 
 // Initialize the Rpo Falcon 512 ACL library only once.
@@ -66,6 +76,11 @@ pub fn basic_fungible_faucet_library() -> Library {
     BASIC_FUNGIBLE_FAUCET_LIBRARY.clone()
 }
 
+/// Returns the Network Fungible Faucet Library.
+pub fn network_fungible_faucet_library() -> Library {
+    NETWORK_FUNGIBLE_FAUCET_LIBRARY.clone()
+}
+
 /// Returns the Rpo Falcon 512 Library.
 pub fn rpo_falcon_512_library() -> Library {
     RPO_FALCON_512_LIBRARY.clone()
@@ -81,8 +96,8 @@ pub fn no_auth_library() -> Library {
     NO_AUTH_LIBRARY.clone()
 }
 
-/// Returns the Multisig Library.
-pub fn multisig_library() -> Library {
+/// Returns the RPO Falcon 512 Multisig Library.
+pub fn rpo_falcon_512_multisig_library() -> Library {
     RPO_FALCON_512_MULTISIG_LIBRARY.clone()
 }
 
@@ -93,6 +108,7 @@ pub fn multisig_library() -> Library {
 pub enum WellKnownComponent {
     BasicWallet,
     BasicFungibleFaucet,
+    NetworkFungibleFaucet,
     AuthRpoFalcon512,
     AuthRpoFalcon512Acl,
     AuthRpoFalcon512Multisig,
@@ -105,6 +121,7 @@ impl WellKnownComponent {
         let library = match self {
             Self::BasicWallet => BASIC_WALLET_LIBRARY.as_ref(),
             Self::BasicFungibleFaucet => BASIC_FUNGIBLE_FAUCET_LIBRARY.as_ref(),
+            Self::NetworkFungibleFaucet => NETWORK_FUNGIBLE_FAUCET_LIBRARY.as_ref(),
             Self::AuthRpoFalcon512 => RPO_FALCON_512_LIBRARY.as_ref(),
             Self::AuthRpoFalcon512Acl => RPO_FALCON_512_ACL_LIBRARY.as_ref(),
             Self::AuthRpoFalcon512Multisig => RPO_FALCON_512_MULTISIG_LIBRARY.as_ref(),
@@ -148,6 +165,8 @@ impl WellKnownComponent {
                 },
                 Self::BasicFungibleFaucet => component_interface_vec
                     .push(AccountComponentInterface::BasicFungibleFaucet(storage_offset)),
+                Self::NetworkFungibleFaucet => component_interface_vec
+                    .push(AccountComponentInterface::NetworkFungibleFaucet(storage_offset)),
                 Self::AuthRpoFalcon512 => component_interface_vec
                     .push(AccountComponentInterface::AuthRpoFalcon512(storage_offset)),
                 Self::AuthRpoFalcon512Acl => component_interface_vec
@@ -169,6 +188,7 @@ impl WellKnownComponent {
     ) {
         Self::BasicWallet.extract_component(procedures_map, component_interface_vec);
         Self::BasicFungibleFaucet.extract_component(procedures_map, component_interface_vec);
+        Self::NetworkFungibleFaucet.extract_component(procedures_map, component_interface_vec);
         Self::AuthRpoFalcon512.extract_component(procedures_map, component_interface_vec);
         Self::AuthRpoFalcon512Acl.extract_component(procedures_map, component_interface_vec);
         Self::AuthRpoFalcon512Multisig.extract_component(procedures_map, component_interface_vec);

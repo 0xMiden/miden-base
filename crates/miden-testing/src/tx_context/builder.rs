@@ -9,29 +9,26 @@ use anyhow::Context;
 use miden_lib::testing::account_component::IncrNonceAuthComponent;
 use miden_lib::testing::mock_account::MockAccountExt;
 use miden_objects::EMPTY_WORD;
-use miden_objects::account::Account;
+use miden_objects::account::auth::{PublicKeyCommitment, Signature};
+use miden_objects::account::{Account, AccountHeader, AccountId};
 use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::assembly::debuginfo::SourceManagerSync;
-use miden_objects::note::{Note, NoteId};
+use miden_objects::block::AccountWitness;
+use miden_objects::note::{Note, NoteId, NoteScript};
 use miden_objects::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE;
 use miden_objects::testing::noop_auth_component::NoopAuthComponent;
 use miden_objects::transaction::{
-    AccountInputs,
     OutputNote,
     TransactionArgs,
     TransactionInputs,
     TransactionScript,
 };
-use miden_objects::vm::AdviceMap;
 use miden_processor::{AdviceInputs, Felt, Word};
 use miden_tx::TransactionMastStore;
 use miden_tx::auth::BasicAuthenticator;
-use rand_chacha::ChaCha20Rng;
 
 use super::TransactionContext;
 use crate::{MockChain, MockChainNote};
-
-pub type MockAuthenticator = BasicAuthenticator<ChaCha20Rng>;
 
 // TRANSACTION CONTEXT BUILDER
 // ================================================================================================
@@ -44,10 +41,14 @@ pub type MockAuthenticator = BasicAuthenticator<ChaCha20Rng>;
 ///
 /// Create a new account and execute code:
 /// ```
+/// # use anyhow::Result;
 /// # use miden_testing::TransactionContextBuilder;
 /// # use miden_objects::{account::AccountBuilder,Felt, FieldElement};
 /// # use miden_lib::transaction::TransactionKernel;
-/// let tx_context = TransactionContextBuilder::with_existing_mock_account().build().unwrap();
+/// #
+/// # #[tokio::main(flavor = "current_thread")]
+/// # async fn main() -> Result<()> {
+/// let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 ///
 /// let code = "
 /// use.$kernel::prologue
@@ -60,23 +61,27 @@ pub type MockAuthenticator = BasicAuthenticator<ChaCha20Rng>;
 /// end
 /// ";
 ///
-/// let process = tx_context.execute_code(code).unwrap();
-/// assert_eq!(process.stack.get(0), Felt::new(5),);
+/// let exec_output = tx_context.execute_code(code).await?;
+/// assert_eq!(exec_output.stack.get(0).unwrap(), &Felt::new(5));
+/// # Ok(())
+/// # }
 /// ```
 pub struct TransactionContextBuilder {
     source_manager: Arc<dyn SourceManagerSync>,
     account: Account,
-    account_seed: Option<Word>,
     advice_inputs: AdviceInputs,
-    authenticator: Option<MockAuthenticator>,
+    authenticator: Option<BasicAuthenticator>,
     expected_output_notes: Vec<Note>,
-    foreign_account_inputs: Vec<AccountInputs>,
+    foreign_account_inputs: BTreeMap<AccountId, (Account, AccountWitness)>,
     input_notes: Vec<Note>,
     tx_script: Option<TransactionScript>,
     tx_script_args: Word,
     note_args: BTreeMap<NoteId, Word>,
-    transaction_inputs: Option<TransactionInputs>,
+    tx_inputs: Option<TransactionInputs>,
     auth_args: Word,
+    signatures: Vec<(PublicKeyCommitment, Word, Signature)>,
+    is_lazy_loading_enabled: bool,
+    note_scripts: BTreeMap<Word, NoteScript>,
 }
 
 impl TransactionContextBuilder {
@@ -84,17 +89,19 @@ impl TransactionContextBuilder {
         Self {
             source_manager: Arc::new(DefaultSourceManager::default()),
             account,
-            account_seed: None,
             input_notes: Vec::new(),
             expected_output_notes: Vec::new(),
             tx_script: None,
             tx_script_args: EMPTY_WORD,
             authenticator: None,
             advice_inputs: Default::default(),
-            transaction_inputs: None,
+            tx_inputs: None,
             note_args: BTreeMap::new(),
-            foreign_account_inputs: vec![],
+            foreign_account_inputs: BTreeMap::new(),
             auth_args: EMPTY_WORD,
+            signatures: Vec::new(),
+            is_lazy_loading_enabled: true,
+            note_scripts: BTreeMap::new(),
         }
     }
 
@@ -134,12 +141,6 @@ impl TransactionContextBuilder {
         Self::new(account)
     }
 
-    /// Override and set the account seed manually
-    pub fn account_seed(mut self, account_seed: Option<Word>) -> Self {
-        self.account_seed = account_seed;
-        self
-    }
-
     /// Extend the advice inputs with the provided [AdviceInputs] instance.
     pub fn extend_advice_inputs(mut self, advice_inputs: AdviceInputs) -> Self {
         self.advice_inputs.extend(advice_inputs);
@@ -156,14 +157,19 @@ impl TransactionContextBuilder {
     }
 
     /// Set the authenticator for the transaction (if needed)
-    pub fn authenticator(mut self, authenticator: Option<MockAuthenticator>) -> Self {
+    pub fn authenticator(mut self, authenticator: Option<BasicAuthenticator>) -> Self {
         self.authenticator = authenticator;
         self
     }
 
     /// Set foreign account codes that are used by the transaction
-    pub fn foreign_accounts(mut self, inputs: Vec<AccountInputs>) -> Self {
-        self.foreign_account_inputs = inputs;
+    pub fn foreign_accounts(
+        mut self,
+        inputs: impl IntoIterator<Item = (Account, AccountWitness)>,
+    ) -> Self {
+        self.foreign_account_inputs.extend(
+            inputs.into_iter().map(|(account, witness)| (account.id(), (account, witness))),
+        );
         self
     }
 
@@ -193,7 +199,21 @@ impl TransactionContextBuilder {
 
     /// Set the desired transaction inputs
     pub fn tx_inputs(mut self, tx_inputs: TransactionInputs) -> Self {
-        self.transaction_inputs = Some(tx_inputs);
+        assert_eq!(
+            AccountHeader::from(&self.account),
+            tx_inputs.account().into(),
+            "account in context and account provided via tx inputs are not the same account"
+        );
+        self.tx_inputs = Some(tx_inputs);
+        self
+    }
+
+    /// Disables lazy loading.
+    ///
+    /// Only affects [`TransactionContext::execute_code`] and causes the host to _not_ handle lazy
+    /// loading events.
+    pub fn disable_lazy_loading(mut self) -> Self {
+        self.is_lazy_loading_enabled = false;
         self
     }
 
@@ -224,21 +244,39 @@ impl TransactionContextBuilder {
         self
     }
 
+    /// Add a new signature for the message and the public key.
+    pub fn add_signature(
+        mut self,
+        pub_key: PublicKeyCommitment,
+        message: Word,
+        signature: Signature,
+    ) -> Self {
+        self.signatures.push((pub_key, message, signature));
+        self
+    }
+
+    /// Add a note script to the context for testing.
+    pub fn add_note_script(mut self, script: NoteScript) -> Self {
+        self.note_scripts.insert(script.root(), script);
+        self
+    }
+
     /// Builds the [TransactionContext].
     ///
     /// If no transaction inputs were provided manually, an ad-hoc MockChain is created in order
     /// to generate valid block data for the required notes.
     pub fn build(self) -> anyhow::Result<TransactionContext> {
-        let tx_inputs = match self.transaction_inputs {
+        let mut tx_inputs = match self.tx_inputs {
             Some(tx_inputs) => tx_inputs,
             None => {
                 // If no specific transaction inputs was provided, initialize an ad-hoc mockchain
                 // to generate valid block header/MMR data
 
-                let mut mock_chain = MockChain::default();
+                let mut builder = MockChain::builder();
                 for i in self.input_notes {
-                    mock_chain.add_pending_note(OutputNote::Full(i));
+                    builder.add_output_note(OutputNote::Full(i));
                 }
+                let mut mock_chain = builder.build()?;
 
                 mock_chain.prove_next_block().context("failed to prove first block")?;
                 mock_chain.prove_next_block().context("failed to prove second block")?;
@@ -247,49 +285,49 @@ impl TransactionContextBuilder {
                     mock_chain.committed_notes().values().map(MockChainNote::id).collect();
 
                 mock_chain
-                    .get_transaction_inputs(
-                        self.account.clone(),
-                        self.account_seed,
-                        &input_note_ids,
-                        &[],
-                    )
+                    .get_transaction_inputs(&self.account, &input_note_ids, &[])
                     .context("failed to get transaction inputs from mock chain")?
             },
         };
 
-        let tx_args = TransactionArgs::new(AdviceMap::default(), self.foreign_account_inputs)
-            .with_note_args(self.note_args);
+        let mut tx_args = TransactionArgs::default().with_note_args(self.note_args);
 
-        let mut tx_args = if let Some(tx_script) = self.tx_script {
+        tx_args = if let Some(tx_script) = self.tx_script {
             tx_args.with_tx_script_and_args(tx_script, self.tx_script_args)
         } else {
             tx_args
         };
-
         tx_args = tx_args.with_auth_args(self.auth_args);
-
         tx_args.extend_advice_inputs(self.advice_inputs.clone());
         tx_args.extend_output_note_recipients(self.expected_output_notes.clone());
+
+        for (public_key_commitment, message, signature) in self.signatures {
+            tx_args.add_signature(public_key_commitment, message, signature);
+        }
+
+        tx_inputs.set_tx_args(tx_args);
 
         let mast_store = {
             let mast_forest_store = TransactionMastStore::new();
             mast_forest_store.load_account_code(tx_inputs.account().code());
 
-            for acc_inputs in tx_args.foreign_account_inputs() {
-                mast_forest_store.insert(acc_inputs.code().mast());
+            for (account, _) in self.foreign_account_inputs.values() {
+                mast_forest_store.insert(account.code().mast());
             }
 
             mast_forest_store
         };
 
         Ok(TransactionContext {
+            account: self.account,
             expected_output_notes: self.expected_output_notes,
-            tx_args,
+            foreign_account_inputs: self.foreign_account_inputs,
             tx_inputs,
             mast_store,
             authenticator: self.authenticator,
-            advice_inputs: self.advice_inputs,
             source_manager: self.source_manager,
+            is_lazy_loading_enabled: self.is_lazy_loading_enabled,
+            note_scripts: self.note_scripts,
         })
     }
 }

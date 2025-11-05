@@ -6,12 +6,6 @@ use.$kernel::memory
 # ERRORS
 # =================================================================================================
 
-const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SENDER_FROM_INCORRECT_CONTEXT="attempted to access note sender from incorrect context"
-
-const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_ASSETS_FROM_INCORRECT_CONTEXT="attempted to access note assets from incorrect context"
-
-const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_INPUTS_FROM_INCORRECT_CONTEXT="attempted to access note inputs from incorrect context"
-
 const.ERR_NOTE_NUM_OF_ASSETS_EXCEED_LIMIT="number of assets in a note exceed 255"
 
 # CONSTANTS
@@ -21,118 +15,38 @@ const.ERR_NOTE_NUM_OF_ASSETS_EXCEED_LIMIT="number of assets in a note exceed 255
 # generating the output notes commitment. Must be NOTE_MEM_SIZE - 8;
 const.OUTPUT_NOTE_HASHING_MEM_DIFF=2040
 
-# CURRENTLY EXECUTING NOTE PROCEDURES
+# ACTIVE NOTE PROCEDURES
 # =================================================================================================
 
-#! Returns the sender of the note currently being processed.
+#! Move the active input note pointer to the next note and returns the pointer value.
 #!
 #! Inputs:  []
-#! Outputs: [sender_id_prefix, sender_id_suffix]
+#! Outputs: [active_input_note_ptr]
 #!
 #! Where:
-#! - sender_{prefix,suffix} are the prefix and suffix felts of the sender of the note currently
-#!   being processed.
-#!
-#! Panics if:
-#! - the note is not being processed.
-export.get_sender
-    # get the current input note pointer
-    exec.memory::get_current_input_note_ptr
-    # => [ptr]
-
-    # assert the pointer is not zero - this would suggest the procedure has been called from an
-    # incorrect context
-    dup neq.0 assert.err=ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SENDER_FROM_INCORRECT_CONTEXT
-    # => [ptr]
-
-    # get the sender from the note pointer
-    exec.memory::get_input_note_sender
-    # => [sender_id_prefix, sender_id_suffix]
-end
-
-#! Returns the number of assets and the assets commitment of the note currently being processed.
-#!
-#! Inputs:  []
-#! Outputs: [ASSETS_COMMITMENT, num_assets]
-#!
-#! Where:
-#! - num_assets is the number of assets in the note currently being processed.
-#! - ASSETS_COMMITMENT is a sequential hash of the assets in the note currently being processed.
-#!
-#! Panics if:
-#! - the note is not being processed.
-export.get_assets_info
-    # get the current input note pointer
-    exec.memory::get_current_input_note_ptr
-    # => [ptr]
-
-    # assert the pointer is not zero - this would suggest the procedure has been called from an
-    # incorrect context
-    dup neq.0 assert.err=ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_ASSETS_FROM_INCORRECT_CONTEXT
-    # => [ptr]
-
-    # get the number of assets in the note
-    dup exec.memory::get_input_note_num_assets
-    # => [num_assets, ptr]
-
-    # get the assets commitment from the note pointer
-    swap exec.memory::get_input_note_assets_commitment
-    # => [ASSETS_COMMITMENT, num_assets]
-end
-
-#! Returns the commitment to the note's inputs.
-#!
-#! Inputs:  []
-#! Outputs: [NOTE_INPUTS_COMMITMENT]
-#!
-#! Where:
-#! - NOTE_INPUTS_COMMITMENT is the note inputs commitment of the note currently being processed.
-#!
-#! Panics if:
-#! - the note is not being processed.
-export.get_note_inputs_commitment
-    exec.memory::get_current_input_note_ptr
-    # => [ptr]
-
-    # The kernel memory is initialized by prologue::process_input_notes_data, and reset by
-    # note_processing_teardown before running the tx_script. If the value is `0` it is likely this
-    # procedure is being called outside of the kernel context.
-    dup neq.0 assert.err=ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_INPUTS_FROM_INCORRECT_CONTEXT
-    # => [ptr]
-
-    exec.memory::get_input_note_inputs_commitment
-    # => [NOTE_INPUTS_COMMITMENT]
-end
-
-#! Move the current input note pointer to the next note and returns the pointer value.
-#!
-#! Inputs:  []
-#! Outputs: [current_input_note_ptr]
-#!
-#! Where:
-#! - current_input_note_ptr is the pointer to the next note to be processed.
-export.increment_current_input_note_ptr
-    # get the current input note pointer
-    exec.memory::get_current_input_note_ptr
+#! - active_input_note_ptr is the pointer to the next note to be processed.
+export.increment_active_input_note_ptr
+    # get the active input note pointer
+    exec.memory::get_active_input_note_ptr
     # => [orig_input_note_ptr]
 
     # increment the pointer
     exec.constants::get_note_mem_size add
-    # => [current_input_note_ptr]
+    # => [active_input_note_ptr]
 
-    # set the current input note pointer to the incremented value
-    dup exec.memory::set_current_input_note_ptr
-    # => [current_input_note_ptr]
+    # set the active input note pointer to the incremented value
+    dup exec.memory::set_active_input_note_ptr
+    # => [active_input_note_ptr]
 end
 
-#! Sets the current input note pointer to 0. This should be called after all input notes have
+#! Sets the active input note pointer to 0. This should be called after all input notes have
 #! been processed.
 #!
 #! Inputs:  []
 #! Outputs: []
 export.note_processing_teardown
-    # set the current input note pointer to 0
-    push.0 exec.memory::set_current_input_note_ptr
+    # set the active input note pointer to 0
+    push.0 exec.memory::set_active_input_note_ptr
     # => []
 end
 
@@ -150,7 +64,7 @@ export.prepare_note
     padw padw push.0.0.0
     # => [pad(11)]
 
-    exec.memory::get_current_input_note_ptr
+    exec.memory::get_active_input_note_ptr
     # => [note_ptr, pad(11)]
 
     dup exec.memory::get_input_note_args movup.4
@@ -280,7 +194,7 @@ proc.compute_output_note_id
     # => [NOTE_ID, note_data_ptr]
 
     # save the output note commitment (note ID) to memory
-    movup.4 mem_storew
+    movup.4 mem_storew_be
     # => [NOTE_ID]
 end
 
@@ -344,40 +258,4 @@ export.compute_output_notes_commitment
     movup.4 drop
     movup.4 drop
     # => [OUTPUT_NOTES_COMMITMENT, ...]
-end
-
-#! Returns the serial number of the note currently being processed.
-#!
-#! Inputs:  []
-#! Outputs: [SERIAL_NUMBER]
-#!
-#! Where:
-#! - SERIAL_NUMBER is the serial number of the note currently being processed.
-#!
-#! Panics if:
-#! - no note is being processed.
-export.get_serial_number
-    exec.memory::get_current_input_note_ptr
-    # => [note_ptr, ...]
-
-    exec.memory::get_input_note_serial_num
-    # => [SERIAL_NUMBER, ...]
-end
-
-#! Returns the script root of the note currently being processed.
-#!
-#! Inputs:  []
-#! Outputs: [SCRIPT_ROOT]
-#!
-#! Where:
-#! - SCRIPT_ROOT is the serial number of the note currently being processed.
-#!
-#! Panics if:
-#! - no note is being processed.
-export.get_script_root
-    exec.memory::get_current_input_note_ptr
-    # => [note_ptr]
-
-    exec.memory::get_input_note_script_root
-    # => [SCRIPT_ROOT]
 end

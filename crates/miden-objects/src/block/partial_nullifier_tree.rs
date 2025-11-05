@@ -12,13 +12,14 @@ use crate::note::Nullifier;
 /// The tree guarantees that once a nullifier has been inserted into the tree, its block number does
 /// not change. Note that inserting the nullifier multiple times with the same block number is
 /// valid.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct PartialNullifierTree(PartialSmt);
 
 impl PartialNullifierTree {
-    /// Creates a new, empty partial nullifier tree.
-    pub fn new() -> Self {
-        PartialNullifierTree(PartialSmt::new())
+    /// Creates a new partial nullifier tree with the provided root that does not track any
+    /// nullifiers.
+    pub fn new(root: Word) -> Self {
+        PartialNullifierTree(PartialSmt::new(root))
     }
 
     /// Returns a new [`PartialNullifierTree`] instantiated with the provided entries.
@@ -30,13 +31,9 @@ impl PartialNullifierTree {
     pub fn with_witnesses(
         witnesses: impl IntoIterator<Item = NullifierWitness>,
     ) -> Result<Self, NullifierTreeError> {
-        let mut tree = Self::new();
-
-        for witness in witnesses {
-            tree.track_nullifier(witness)?;
-        }
-
-        Ok(tree)
+        PartialSmt::from_proofs(witnesses.into_iter().map(NullifierWitness::into_proof))
+            .map_err(NullifierTreeError::TreeRootConflict)
+            .map(Self)
     }
 
     /// Adds the given nullifier witness to the partial tree and tracks it. Once a nullifier has
@@ -100,12 +97,6 @@ impl PartialNullifierTree {
     }
 }
 
-impl Default for PartialNullifierTree {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use assert_matches::assert_matches;
@@ -132,15 +123,15 @@ mod tests {
         let mut full = Smt::with_entries(kv_pairs).unwrap();
         let stale_proof0 = full.open(&key0);
         // Insert a non-empty value so the nullifier tree's root changes.
-        full.insert(key1, value1);
-        full.insert(key2, value2);
+        full.insert(key1, value1).unwrap();
+        full.insert(key2, value2).unwrap();
         let proof2 = full.open(&key2);
 
         assert_ne!(stale_proof0.compute_root(), proof2.compute_root());
 
-        let mut partial = PartialNullifierTree::new();
+        let mut partial =
+            PartialNullifierTree::with_witnesses([NullifierWitness::new(stale_proof0)]).unwrap();
 
-        partial.track_nullifier(NullifierWitness::new(stale_proof0)).unwrap();
         let error = partial.track_nullifier(NullifierWitness::new(proof2)).unwrap_err();
 
         assert_matches!(error, NullifierTreeError::TreeRootConflict(_));
@@ -157,8 +148,7 @@ mod tests {
 
         let witness = tree.open(&nullifier1);
 
-        let mut partial_tree = PartialNullifierTree::new();
-        partial_tree.track_nullifier(witness).unwrap();
+        let mut partial_tree = PartialNullifierTree::with_witnesses([witness]).unwrap();
 
         // Attempt to insert nullifier 1 again at a different block number.
         let err = partial_tree.mark_spent([nullifier1], block2).unwrap_err();
@@ -179,7 +169,7 @@ mod tests {
         let mut tree =
             NullifierTree::with_entries([(nullifier1, block1), (nullifier2, block2)]).unwrap();
 
-        let mut partial_tree = PartialNullifierTree::new();
+        let mut partial_tree = PartialNullifierTree::new(tree.root());
 
         for nullifier in [nullifier1, nullifier2, nullifier3] {
             let witness = tree.open(&nullifier);

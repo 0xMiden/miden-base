@@ -8,19 +8,21 @@ use miden_objects::account::{Account, AccountCode, AccountId, AccountIdPrefix, A
 use miden_objects::assembly::mast::{MastForest, MastNode, MastNodeId};
 use miden_objects::note::{Note, NoteScript, PartialNote};
 use miden_objects::transaction::TransactionScript;
+use miden_processor::MastNodeExt;
 use thiserror::Error;
 
 use crate::AuthScheme;
 use crate::account::components::{
     basic_fungible_faucet_library,
     basic_wallet_library,
-    multisig_library,
+    network_fungible_faucet_library,
     no_auth_library,
     rpo_falcon_512_acl_library,
     rpo_falcon_512_library,
+    rpo_falcon_512_multisig_library,
 };
 use crate::errors::ScriptBuilderError;
-use crate::note::well_known_note::WellKnownNote;
+use crate::note::WellKnownNote;
 use crate::utils::ScriptBuilder;
 
 #[cfg(test)]
@@ -79,12 +81,12 @@ impl AccountInterface {
         self.account_id.is_regular_account()
     }
 
-    /// Returns `true` if the full state of the account is on chain, i.e. if the modes are
+    /// Returns `true` if the full state of the account is public on chain, i.e. if the modes are
     /// [`AccountStorageMode::Public`](miden_objects::account::AccountStorageMode::Public) or
     /// [`AccountStorageMode::Network`](miden_objects::account::AccountStorageMode::Network),
     /// `false` otherwise.
-    pub fn is_onchain(&self) -> bool {
-        self.account_id.is_onchain()
+    pub fn has_public_state(&self) -> bool {
+        self.account_id.has_public_state()
     }
 
     /// Returns `true` if the reference account is a private account, `false` otherwise.
@@ -139,6 +141,11 @@ impl AccountInterface {
                     component_proc_digests
                         .extend(basic_fungible_faucet_library().mast_forest().procedure_digests());
                 },
+                AccountComponentInterface::NetworkFungibleFaucet(_) => {
+                    component_proc_digests.extend(
+                        network_fungible_faucet_library().mast_forest().procedure_digests(),
+                    );
+                },
                 AccountComponentInterface::AuthRpoFalcon512(_) => {
                     component_proc_digests
                         .extend(rpo_falcon_512_library().mast_forest().procedure_digests());
@@ -148,8 +155,9 @@ impl AccountInterface {
                         .extend(rpo_falcon_512_acl_library().mast_forest().procedure_digests());
                 },
                 AccountComponentInterface::AuthRpoFalcon512Multisig(_) => {
-                    component_proc_digests
-                        .extend(multisig_library().mast_forest().procedure_digests());
+                    component_proc_digests.extend(
+                        rpo_falcon_512_multisig_library().mast_forest().procedure_digests(),
+                    );
                 },
                 AccountComponentInterface::AuthNoAuth => {
                     component_proc_digests
@@ -250,6 +258,14 @@ impl AccountInterface {
             matches!(component_interface, AccountComponentInterface::BasicFungibleFaucet(_))
         }) {
             basic_fungible_faucet.send_note_body(*self.id(), output_notes)
+        } else if let Some(_network_fungible_faucet) =
+            self.components().iter().find(|component_interface| {
+                matches!(component_interface, AccountComponentInterface::NetworkFungibleFaucet(_))
+            })
+        {
+            // Network fungible faucet doesn't support send_note_body, because minting
+            // is done via a MINT note.
+            Err(AccountInterfaceError::UnsupportedAccountInterface)
         } else if self.components().contains(&AccountComponentInterface::BasicWallet) {
             AccountComponentInterface::BasicWallet.send_note_body(*self.id(), output_notes)
         } else {

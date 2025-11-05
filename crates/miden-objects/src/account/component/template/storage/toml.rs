@@ -3,7 +3,7 @@ use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::fmt;
 
-use miden_core::Felt;
+use miden_core::{Felt, Word};
 use serde::de::value::MapAccessDeserializer;
 use serde::de::{self, Error, MapAccess, SeqAccess, Visitor};
 use serde::ser::{SerializeMap, SerializeStruct};
@@ -25,7 +25,6 @@ use crate::account::component::FieldIdentifier;
 use crate::account::component::template::storage::placeholder::{TEMPLATE_REGISTRY, TemplateFelt};
 use crate::account::{AccountComponentMetadata, StorageValueName};
 use crate::errors::AccountComponentTemplateError;
-use crate::utils::parse_hex_string_as_word;
 
 // ACCOUNT COMPONENT METADATA TOML FROM/TO
 // ================================================================================================
@@ -48,7 +47,7 @@ impl AccountComponentMetadata {
     }
 
     /// Serializes the account component template into a TOML string.
-    pub fn as_toml(&self) -> Result<String, AccountComponentTemplateError> {
+    pub fn to_toml(&self) -> Result<String, AccountComponentTemplateError> {
         let toml =
             toml::to_string(self).map_err(AccountComponentTemplateError::TomlSerializationError)?;
         Ok(toml)
@@ -105,13 +104,13 @@ impl<'de> Deserialize<'de> for WordRepresentation {
             where
                 E: Error,
             {
-                let parsed_value = parse_hex_string_as_word(value).map_err(|_err| {
+                let parsed_value = Word::parse(value).map_err(|_err| {
                     E::invalid_value(
                         serde::de::Unexpected::Str(value),
                         &"a valid hexadecimal string",
                     )
                 })?;
-                Ok(parsed_value.into())
+                Ok(<[Felt; _]>::from(&parsed_value).into())
             }
 
             fn visit_string<E>(self, value: String) -> Result<Self::Value, E>
@@ -316,14 +315,25 @@ impl From<StorageEntry> for RawStorageEntry {
                     ..Default::default()
                 },
             },
-            StorageEntry::Map { slot, map } => RawStorageEntry {
-                slot: Some(slot),
-                identifier: Some(FieldIdentifier {
-                    name: map.name().clone(),
-                    description: map.description().cloned(),
-                }),
-                values: Some(StorageValues::MapEntries(map.into())),
-                ..Default::default()
+            StorageEntry::Map { slot, map } => match map {
+                MapRepresentation::Value { identifier, entries } => RawStorageEntry {
+                    slot: Some(slot),
+                    identifier: Some(FieldIdentifier {
+                        name: identifier.name,
+                        description: identifier.description,
+                    }),
+                    values: Some(StorageValues::MapEntries(entries)),
+                    ..Default::default()
+                },
+                MapRepresentation::Template { identifier } => RawStorageEntry {
+                    slot: Some(slot),
+                    identifier: Some(FieldIdentifier {
+                        name: identifier.name,
+                        description: identifier.description,
+                    }),
+                    word_type: Some(TemplateType::storage_map()),
+                    ..Default::default()
+                },
             },
             StorageEntry::MultiSlot { slots, word_entries } => match word_entries {
                 MultiWordRepresentation::Value { identifier, values } => RawStorageEntry {
@@ -369,8 +379,27 @@ impl<'de> Deserialize<'de> for StorageEntry {
                 raw.identifier.ok_or_else(|| missing_field_for("identifier", "map entry"))?;
             let name = identifier.name;
             let slot = raw.slot.ok_or_else(|| missing_field_for("slot", "map entry"))?;
-            let mut map = MapRepresentation::new(map_entries, name);
+            if let Some(word_type) = raw.word_type.clone()
+                && word_type != TemplateType::storage_map()
+            {
+                return Err(D::Error::custom(
+                    "map storage entries with `values` must have `type = \"map\"`",
+                ));
+            }
+            let mut map = MapRepresentation::new_value(map_entries, name);
             if let Some(desc) = identifier.description {
+                map = map.with_description(desc);
+            }
+            Ok(StorageEntry::Map { slot, map })
+        } else if let Some(word_type) = raw.word_type.clone()
+            && word_type == TemplateType::storage_map()
+        {
+            let identifier =
+                raw.identifier.ok_or_else(|| missing_field_for("identifier", "map entry"))?;
+            let slot = raw.slot.ok_or_else(|| missing_field_for("slot", "map entry"))?;
+            let FieldIdentifier { name, description } = identifier;
+            let mut map = MapRepresentation::new_template(name);
+            if let Some(desc) = description {
                 map = map.with_description(desc);
             }
             Ok(StorageEntry::Map { slot, map })
@@ -426,10 +455,17 @@ impl InitStorageData {
     /// - If the TOML string includes arrays
     pub fn from_toml(toml_str: &str) -> Result<Self, InitStorageDataError> {
         let value: toml::Value = toml::from_str(toml_str)?;
-        let mut placeholders = BTreeMap::new();
+        let mut value_entries = BTreeMap::new();
+        let mut map_entries = BTreeMap::new();
         // Start with an empty prefix (i.e. the default, which is an empty string)
-        Self::flatten_parse_toml_value(StorageValueName::empty(), &value, &mut placeholders)?;
-        Ok(InitStorageData::new(placeholders))
+        Self::flatten_parse_toml_value(
+            StorageValueName::empty(),
+            value,
+            &mut value_entries,
+            &mut map_entries,
+        )?;
+
+        Ok(InitStorageData::new(value_entries, map_entries))
     }
 
     /// Recursively flattens a TOML `Value` into a flat mapping.
@@ -439,8 +475,9 @@ impl InitStorageData {
     /// an error is returned. Arrays are not supported.
     fn flatten_parse_toml_value(
         prefix: StorageValueName,
-        value: &toml::Value,
-        map: &mut BTreeMap<StorageValueName, String>,
+        value: toml::Value,
+        value_entries: &mut BTreeMap<StorageValueName, String>,
+        map_entries: &mut BTreeMap<StorageValueName, Vec<(Word, Word)>>,
     ) -> Result<(), InitStorageDataError> {
         match value {
             toml::Value::Table(table) => {
@@ -453,19 +490,35 @@ impl InitStorageData {
                     let new_key = StorageValueName::new(key.to_string())
                         .map_err(InitStorageDataError::InvalidStorageValueName)?;
                     let new_prefix = prefix.clone().with_suffix(&new_key);
-                    Self::flatten_parse_toml_value(new_prefix, val, map)?;
+                    Self::flatten_parse_toml_value(new_prefix, val, value_entries, map_entries)?;
                 }
             },
-            toml::Value::Array(_) => {
-                return Err(InitStorageDataError::ArraysNotSupported);
+            toml::Value::Array(items) if items.is_empty() => {
+                if prefix.as_str().is_empty() {
+                    return Err(InitStorageDataError::ArraysNotSupported);
+                }
+                map_entries.insert(prefix, Vec::new());
+            },
+            toml::Value::Array(items) => {
+                if prefix.as_str().is_empty()
+                    || !items.iter().all(|item| matches!(item, toml::Value::Table(_)))
+                {
+                    return Err(InitStorageDataError::ArraysNotSupported);
+                }
+
+                let entries = items
+                    .into_iter()
+                    .map(parse_map_entry_value)
+                    .collect::<Result<Vec<(Word, Word)>, _>>()?;
+                map_entries.insert(prefix, entries);
             },
             toml_value => {
                 // Get the string value, or convert to string if it's some other type
                 let value = match toml_value {
                     toml::Value::String(s) => s.clone(),
-                    _ => value.to_string(),
+                    _ => toml_value.to_string(),
                 };
-                map.insert(prefix, value);
+                value_entries.insert(prefix, value);
             },
         }
         Ok(())
@@ -485,6 +538,9 @@ pub enum InitStorageDataError {
 
     #[error("invalid storage value name")]
     InvalidStorageValueName(#[source] StorageValueNameError),
+
+    #[error("invalid map entry: {0}")]
+    InvalidMapEntry(String),
 }
 
 impl Serialize for FieldIdentifier {
@@ -577,6 +633,34 @@ fn parse_field_identifier<E: serde::de::Error>(
         })
 }
 
+/// Parses a `{ key, value }` TOML table into a `(Word, Word)` pair, rejecting templates.
+fn parse_map_entry_value(item: toml::Value) -> Result<(Word, Word), InitStorageDataError> {
+    // Try to deserialize the user input as a map entry
+    let entry: MapEntry = MapEntry::deserialize(item)
+        .map_err(|err| InitStorageDataError::InvalidMapEntry(err.to_string()))?;
+
+    // Make sure the entry does not contain templates, only static
+    if entry.key().template_requirements(StorageValueName::empty()).next().is_some()
+        || entry.value().template_requirements(StorageValueName::empty()).next().is_some()
+    {
+        return Err(InitStorageDataError::InvalidMapEntry(
+            "map entries cannot contain templates".into(),
+        ));
+    }
+
+    // Interpret the user input as static words
+    let key = entry
+        .key()
+        .try_build_word(&InitStorageData::default(), StorageValueName::empty())
+        .map_err(|err| InitStorageDataError::InvalidMapEntry(err.to_string()))?;
+    let value = entry
+        .value()
+        .try_build_word(&InitStorageData::default(), StorageValueName::empty())
+        .map_err(|err| InitStorageDataError::InvalidMapEntry(err.to_string()))?;
+
+    Ok((key, value))
+}
+
 // TESTS
 // ================================================================================================
 
@@ -643,6 +727,30 @@ mod tests {
             result.unwrap_err(),
             InitStorageDataError::ArraysNotSupported
         );
+    }
+
+    #[test]
+    fn parse_map_entries_from_array() {
+        let toml_str = r#"
+            my_map = [
+                { key = "0x0000000000000000000000000000000000000000000000000000000000000001", value = "0x0000000000000000000000000000000000000000000000000000000000000010" },
+                { key = "0x0000000000000000000000000000000000000000000000000000000000000002", value = ["1", "2", "3", "4"] }
+            ]
+        "#;
+
+        let storage = InitStorageData::from_toml(toml_str).expect("Failed to parse map entries");
+        let map_name = StorageValueName::new("my_map").unwrap();
+        let entries = storage.map_entries(&map_name).expect("map entries missing");
+        assert_eq!(entries.len(), 2);
+
+        let first_key =
+            Word::try_from("0x0000000000000000000000000000000000000000000000000000000000000001")
+                .unwrap();
+        assert_eq!(entries[0].0, first_key);
+
+        let second_value =
+            Word::from([Felt::new(1u64), Felt::new(2u64), Felt::new(3u64), Felt::new(4u64)]);
+        assert_eq!(entries[1].1, second_value);
     }
 
     #[test]

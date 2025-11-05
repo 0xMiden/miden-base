@@ -1,10 +1,12 @@
-use alloc::collections::{BTreeMap, BTreeSet};
+use alloc::collections::BTreeMap;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use miden_crypto::merkle::InnerNodeInfo;
+use miden_processor::MastNodeExt;
 
-use super::{AccountInputs, Felt, Word};
+use super::{Felt, Hasher, Word};
+use crate::account::auth::{PublicKeyCommitment, Signature};
 use crate::note::{NoteId, NoteRecipient};
 use crate::utils::serde::{
     ByteReader,
@@ -37,13 +39,12 @@ use crate::{EMPTY_WORD, MastForest, MastNodeId};
 ///   this argument is not specified, the [`EMPTY_WORD`] would be used as a default value. If the
 ///   [AdviceInputs] are propagated with some user defined map entries, this argument could be used
 ///   as a key to access the corresponding value.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TransactionArgs {
     tx_script: Option<TransactionScript>,
     tx_script_args: Word,
     note_args: BTreeMap<NoteId, Word>,
     advice_inputs: AdviceInputs,
-    foreign_account_inputs: Vec<AccountInputs>,
     auth_args: Word,
 }
 
@@ -53,7 +54,7 @@ impl TransactionArgs {
 
     /// Returns new [TransactionArgs] instantiated with the provided transaction script, advice
     /// map and foreign account inputs.
-    pub fn new(advice_map: AdviceMap, foreign_account_inputs: Vec<AccountInputs>) -> Self {
+    pub fn new(advice_map: AdviceMap) -> Self {
         let advice_inputs = AdviceInputs { map: advice_map, ..Default::default() };
 
         Self {
@@ -61,7 +62,6 @@ impl TransactionArgs {
             tx_script_args: EMPTY_WORD,
             note_args: Default::default(),
             advice_inputs,
-            foreign_account_inputs,
             auth_args: EMPTY_WORD,
         }
     }
@@ -138,19 +138,6 @@ impl TransactionArgs {
         &self.advice_inputs
     }
 
-    /// Returns a reference to the foreign account inputs in the transaction arguments.
-    pub fn foreign_account_inputs(&self) -> &[AccountInputs] {
-        &self.foreign_account_inputs
-    }
-
-    /// Collects and returns a set containing all code commitments from foreign accounts.
-    pub fn to_foreign_account_code_commitments(&self) -> BTreeSet<Word> {
-        self.foreign_account_inputs()
-            .iter()
-            .map(|acc| acc.code().commitment())
-            .collect()
-    }
-
     /// Returns a reference to the authentication procedure argument, or [`EMPTY_WORD`] if the
     /// argument was not specified.
     ///
@@ -167,9 +154,10 @@ impl TransactionArgs {
 
     /// Populates the advice inputs with the expected recipient data for creating output notes.
     ///
-    /// The advice inputs' map is extended with the following keys:
-    ///
-    /// - recipient_digest |-> recipient details (inputs_hash, script_root, serial_num).
+    /// The advice inputs' map is extended with the following entries:
+    /// - RECIPIENT: [SERIAL_SCRIPT_HASH, INPUTS_COMMITMENT]
+    /// - SERIAL_SCRIPT_HASH: [SERIAL_HASH, SCRIPT_ROOT]
+    /// - SERIAL_HASH: [SERIAL_NUM, EMPTY_WORD]
     /// - inputs_commitment |-> inputs.
     /// - script_root |-> script.
     pub fn add_output_note_recipient<T: AsRef<NoteRecipient>>(&mut self, note_recipient: T) {
@@ -178,13 +166,36 @@ impl TransactionArgs {
         let script = note_recipient.script();
         let script_encoded: Vec<Felt> = script.into();
 
-        let new_elements = [
-            (note_recipient.digest(), note_recipient.format_for_advice()),
-            (inputs.commitment(), inputs.format_for_advice()),
+        // Build the advice map entries
+        let sn_hash = Hasher::merge(&[note_recipient.serial_num(), Word::empty()]);
+        let sn_script_hash = Hasher::merge(&[sn_hash, script.root()]);
+
+        let new_elements = vec![
+            (sn_hash, concat_words(note_recipient.serial_num(), Word::empty())),
+            (sn_script_hash, concat_words(sn_hash, script.root())),
+            (note_recipient.digest(), concat_words(sn_script_hash, inputs.commitment())),
+            (inputs.commitment(), inputs.to_elements()),
             (script.root(), script_encoded),
         ];
 
         self.advice_inputs.extend(AdviceInputs::default().with_map(new_elements));
+    }
+
+    /// Adds the `signature` corresponding to `pub_key` on `message` to the advice inputs' map.
+    ///
+    /// The advice inputs' map is extended with the following key:
+    ///
+    /// - hash(pub_key, message) |-> signature (prepared for VM execution).
+    pub fn add_signature(
+        &mut self,
+        pub_key: PublicKeyCommitment,
+        message: Word,
+        signature: Signature,
+    ) {
+        let pk_word: Word = pub_key.into();
+        self.advice_inputs
+            .map
+            .insert(Hasher::merge(&[pk_word, message]), signature.to_prepared_signature());
     }
 
     /// Populates the advice inputs with the specified note recipient details.
@@ -215,9 +226,22 @@ impl TransactionArgs {
     }
 
     /// Extends the advice inputs in self with the provided ones.
-    #[cfg(feature = "testing")]
     pub fn extend_advice_inputs(&mut self, advice_inputs: AdviceInputs) {
         self.advice_inputs.extend(advice_inputs);
+    }
+}
+
+/// Concatenates two [`Word`]s into a [`Vec<Felt>`] containing 8 elements.
+fn concat_words(first: Word, second: Word) -> Vec<Felt> {
+    let mut result = Vec::with_capacity(8);
+    result.extend(first);
+    result.extend(second);
+    result
+}
+
+impl Default for TransactionArgs {
+    fn default() -> Self {
+        Self::new(AdviceMap::default())
     }
 }
 
@@ -227,7 +251,6 @@ impl Serializable for TransactionArgs {
         self.tx_script_args.write_into(target);
         self.note_args.write_into(target);
         self.advice_inputs.write_into(target);
-        self.foreign_account_inputs.write_into(target);
         self.auth_args.write_into(target);
     }
 }
@@ -238,7 +261,6 @@ impl Deserializable for TransactionArgs {
         let tx_script_args = Word::read_from(source)?;
         let note_args = BTreeMap::<NoteId, Word>::read_from(source)?;
         let advice_inputs = AdviceInputs::read_from(source)?;
-        let foreign_account_inputs = Vec::<AccountInputs>::read_from(source)?;
         let auth_args = Word::read_from(source)?;
 
         Ok(Self {
@@ -246,7 +268,6 @@ impl Deserializable for TransactionArgs {
             tx_script_args,
             note_args,
             advice_inputs,
-            foreign_account_inputs,
             auth_args,
         })
     }
@@ -307,7 +328,7 @@ impl TransactionScript {
 impl Serializable for TransactionScript {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         self.mast.write_into(target);
-        target.write_u32(self.entrypoint.as_u32());
+        target.write_u32(u32::from(self.entrypoint));
     }
 }
 
@@ -329,7 +350,7 @@ mod tests {
 
     #[test]
     fn test_tx_args_serialization() {
-        let tx_args = TransactionArgs::new(AdviceMap::default(), std::vec::Vec::default());
+        let tx_args = TransactionArgs::new(AdviceMap::default());
         let bytes: std::vec::Vec<u8> = tx_args.to_bytes();
         let decoded = TransactionArgs::read_from_bytes(&bytes).unwrap();
 

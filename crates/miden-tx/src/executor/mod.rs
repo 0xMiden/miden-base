@@ -1,16 +1,13 @@
 use alloc::collections::BTreeSet;
 use alloc::sync::Arc;
-use alloc::vec::Vec;
 
-use miden_lib::errors::TransactionKernelError;
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::AccountId;
 use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::assembly::debuginfo::SourceManagerSync;
 use miden_objects::asset::Asset;
-use miden_objects::block::{BlockHeader, BlockNumber};
+use miden_objects::block::BlockNumber;
 use miden_objects::transaction::{
-    AccountInputs,
     ExecutedTransaction,
     InputNote,
     InputNotes,
@@ -26,6 +23,7 @@ pub use miden_processor::{ExecutionOptions, MastForestStore};
 
 use super::TransactionExecutorError;
 use crate::auth::TransactionAuthenticator;
+use crate::errors::TransactionKernelError;
 use crate::host::{AccountProcedureIndexMap, ScriptMastForestStore};
 
 mod exec_host;
@@ -37,9 +35,9 @@ pub use data_store::DataStore;
 mod notes_checker;
 pub use notes_checker::{
     FailedNote,
+    MAX_NUM_CHECKER_NOTES,
     NoteConsumptionChecker,
     NoteConsumptionInfo,
-    NoteConsumptionStatus,
 };
 
 // TRANSACTION EXECUTOR
@@ -181,24 +179,27 @@ where
         notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
     ) -> Result<ExecutedTransaction, TransactionExecutorError> {
-        let (mut host, tx_inputs, stack_inputs, advice_inputs) =
-            self.prepare_transaction(account_id, block_ref, notes, &tx_args, None).await?;
+        let tx_inputs = self.prepare_tx_inputs(account_id, block_ref, notes, tx_args).await?;
+
+        let (mut host, stack_inputs, advice_inputs) = self.prepare_transaction(&tx_inputs).await?;
 
         let processor = FastProcessor::new_debug(stack_inputs.as_slice(), advice_inputs);
-        let (stack_outputs, advice_provider) = processor
+        let output = processor
             .execute(&TransactionKernel::main(), &mut host)
             .await
             .map_err(map_execution_error)?;
+        let stack_outputs = output.stack;
+        let advice_provider = output.advice;
 
         // The stack is not necessary since it is being reconstructed when re-executing.
-        let (_stack, advice_map, merkle_store) = advice_provider.into_parts();
+        let (_stack, advice_map, merkle_store, _pc_requests) = advice_provider.into_parts();
         let advice_inputs = AdviceInputs {
             map: advice_map,
             store: merkle_store,
             ..Default::default()
         };
 
-        build_executed_transaction(advice_inputs, tx_args, tx_inputs, stack_outputs, host)
+        build_executed_transaction(advice_inputs, tx_inputs, stack_outputs, host)
     }
 
     // SCRIPT EXECUTION
@@ -218,27 +219,22 @@ where
         block_ref: BlockNumber,
         tx_script: TransactionScript,
         advice_inputs: AdviceInputs,
-        foreign_account_inputs: Vec<AccountInputs>,
     ) -> Result<[Felt; 16], TransactionExecutorError> {
-        let tx_args = TransactionArgs::new(Default::default(), foreign_account_inputs)
-            .with_tx_script(tx_script);
+        let mut tx_args = TransactionArgs::default().with_tx_script(tx_script);
+        tx_args.extend_advice_inputs(advice_inputs);
 
-        let (mut host, _, stack_inputs, advice_inputs) = self
-            .prepare_transaction(
-                account_id,
-                block_ref,
-                InputNotes::default(),
-                &tx_args,
-                Some(advice_inputs),
-            )
-            .await?;
+        let notes = InputNotes::default();
+        let tx_inputs = self.prepare_tx_inputs(account_id, block_ref, notes, tx_args).await?;
+
+        let (mut host, stack_inputs, advice_inputs) = self.prepare_transaction(&tx_inputs).await?;
 
         let processor =
             FastProcessor::new_with_advice_inputs(stack_inputs.as_slice(), advice_inputs);
-        let (stack_outputs, _advice_provider) = processor
+        let output = processor
             .execute(&TransactionKernel::tx_script_main(), &mut host)
             .await
             .map_err(TransactionExecutorError::TransactionProgramExecutionFailed)?;
+        let stack_outputs = output.stack;
 
         Ok(*stack_outputs)
     }
@@ -246,43 +242,47 @@ where
     // HELPER METHODS
     // --------------------------------------------------------------------------------------------
 
+    // Validates input notes and account inputs after retrieving transaction inputs from the store.
+    //
+    // This method has a one-to-many call relationship with the `prepare_transaction` method. This
+    // method needs to be called only once in order to allow many transactions to be prepared based
+    // on the transaction inputs returned by this method.
+    async fn prepare_tx_inputs(
+        &self,
+        account_id: AccountId,
+        block_ref: BlockNumber,
+        input_notes: InputNotes<InputNote>,
+        tx_args: TransactionArgs,
+    ) -> Result<TransactionInputs, TransactionExecutorError> {
+        let mut ref_blocks = validate_input_notes(&input_notes, block_ref)?;
+        ref_blocks.insert(block_ref);
+
+        let (account, block_header, blockchain) = self
+            .data_store
+            .get_transaction_inputs(account_id, ref_blocks)
+            .await
+            .map_err(TransactionExecutorError::FetchTransactionInputsFailed)?;
+
+        let tx_inputs = TransactionInputs::new(account, block_header, blockchain, input_notes)
+            .map_err(TransactionExecutorError::InvalidTransactionInputs)?
+            .with_tx_args(tx_args);
+
+        Ok(tx_inputs)
+    }
+
     /// Prepares the data needed for transaction execution.
     ///
     /// Preparation includes loading transaction inputs from the data store, validating them, and
     /// instantiating a transaction host.
     async fn prepare_transaction(
         &self,
-        account_id: AccountId,
-        block_ref: BlockNumber,
-        notes: InputNotes<InputNote>,
-        tx_args: &TransactionArgs,
-        init_advice_inputs: Option<AdviceInputs>,
+        tx_inputs: &TransactionInputs,
     ) -> Result<
-        (
-            TransactionExecutorHost<'store, 'auth, STORE, AUTH>,
-            TransactionInputs,
-            StackInputs,
-            AdviceInputs,
-        ),
+        (TransactionExecutorHost<'store, 'auth, STORE, AUTH>, StackInputs, AdviceInputs),
         TransactionExecutorError,
     > {
-        let mut ref_blocks = validate_input_notes(&notes, block_ref)?;
-        ref_blocks.insert(block_ref);
-
-        let (account, seed, ref_block, mmr) = self
-            .data_store
-            .get_transaction_inputs(account_id, ref_blocks)
-            .await
-            .map_err(TransactionExecutorError::FetchTransactionInputsFailed)?;
-
-        validate_account_inputs(tx_args, &ref_block)?;
-
-        let tx_inputs = TransactionInputs::new(account, seed, ref_block, mmr, notes)
-            .map_err(TransactionExecutorError::InvalidTransactionInputs)?;
-
-        let (stack_inputs, advice_inputs) =
-            TransactionKernel::prepare_inputs(&tx_inputs, tx_args, init_advice_inputs)
-                .map_err(TransactionExecutorError::ConflictingAdviceMapEntry)?;
+        let (stack_inputs, tx_advice_inputs) = TransactionKernel::prepare_inputs(tx_inputs)
+            .map_err(TransactionExecutorError::ConflictingAdviceMapEntry)?;
 
         // This reverses the stack inputs (even though it doesn't look like it does) because the
         // fast processor expects the reverse order.
@@ -294,28 +294,30 @@ where
         let input_notes = tx_inputs.input_notes();
 
         let script_mast_store = ScriptMastForestStore::new(
-            tx_args.tx_script(),
+            tx_inputs.tx_script(),
             input_notes.iter().map(|n| n.note().script()),
         );
 
-        let acct_procedure_index_map =
-            AccountProcedureIndexMap::from_transaction_params(&tx_inputs, tx_args, &advice_inputs)
+        // To start executing the transaction, the procedure index map only needs to contain the
+        // native account's procedures. Foreign accounts are inserted into the map on first access.
+        let account_procedure_index_map =
+            AccountProcedureIndexMap::new([tx_inputs.account().code()])
                 .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
 
         let host = TransactionExecutorHost::new(
-            &tx_inputs.account().into(),
+            tx_inputs.account(),
             input_notes.clone(),
             self.data_store,
             script_mast_store,
-            acct_procedure_index_map,
+            account_procedure_index_map,
             self.authenticator,
-            tx_inputs.block_header().fee_parameters(),
+            tx_inputs.block_header().block_num(),
             self.source_manager.clone(),
         );
 
-        let advice_inputs = advice_inputs.into_advice_inputs();
+        let advice_inputs = tx_advice_inputs.into_advice_inputs();
 
-        Ok((host, tx_inputs, stack_inputs, advice_inputs))
+        Ok((host, stack_inputs, advice_inputs))
     }
 }
 
@@ -325,15 +327,20 @@ where
 /// Creates a new [ExecutedTransaction] from the provided data.
 fn build_executed_transaction<STORE: DataStore + Sync, AUTH: TransactionAuthenticator + Sync>(
     mut advice_inputs: AdviceInputs,
-    tx_args: TransactionArgs,
     tx_inputs: TransactionInputs,
     stack_outputs: StackOutputs,
     host: TransactionExecutorHost<STORE, AUTH>,
 ) -> Result<ExecutedTransaction, TransactionExecutorError> {
     // Note that the account delta does not contain the removed transaction fee, so it is the
     // "pre-fee" delta of the transaction.
-    let (pre_fee_account_delta, output_notes, generated_signatures, tx_progress) =
-        host.into_parts();
+    let (
+        pre_fee_account_delta,
+        _input_notes,
+        output_notes,
+        accessed_foreign_account_code,
+        generated_signatures,
+        tx_progress,
+    ) = host.into_parts();
 
     let tx_outputs =
         TransactionKernel::from_transaction_parts(&stack_outputs, &advice_inputs, output_notes)
@@ -364,7 +371,7 @@ fn build_executed_transaction<STORE: DataStore + Sync, AUTH: TransactionAuthenti
         });
     }
 
-    // make sure nonce delta was computed correctly
+    // Make sure nonce delta was computed correctly.
     let nonce_delta = final_account.nonce() - initial_account.nonce();
     if nonce_delta != post_fee_account_delta.nonce_delta() {
         return Err(TransactionExecutorError::InconsistentAccountNonceDelta {
@@ -373,36 +380,21 @@ fn build_executed_transaction<STORE: DataStore + Sync, AUTH: TransactionAuthenti
         });
     }
 
-    // introduce generated signatures into the witness inputs
+    // Introduce generated signatures into the witness inputs.
     advice_inputs.map.extend(generated_signatures);
+
+    // Overwrite advice inputs from after the execution on the transaction inputs. This is
+    // guaranteed to be a superset of the original advice inputs.
+    let tx_inputs = tx_inputs
+        .with_foreign_account_code(accessed_foreign_account_code)
+        .with_advice_inputs(advice_inputs);
 
     Ok(ExecutedTransaction::new(
         tx_inputs,
         tx_outputs,
         post_fee_account_delta,
-        tx_args,
-        advice_inputs,
         tx_progress.into(),
     ))
-}
-
-/// Validates the account inputs against the reference block header.
-fn validate_account_inputs(
-    tx_args: &TransactionArgs,
-    ref_block: &BlockHeader,
-) -> Result<(), TransactionExecutorError> {
-    // Validate that foreign account inputs are anchored in the reference block
-    for foreign_account in tx_args.foreign_account_inputs() {
-        let computed_account_root = foreign_account.compute_account_root().map_err(|err| {
-            TransactionExecutorError::InvalidAccountWitness(foreign_account.id(), err)
-        })?;
-        if computed_account_root != ref_block.account_root() {
-            return Err(TransactionExecutorError::ForeignAccountNotAnchoredInReference(
-                foreign_account.id(),
-            ));
-        }
-    }
-    Ok(())
 }
 
 /// Validates that input notes were not created after the reference block.

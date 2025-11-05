@@ -199,87 +199,6 @@ export.get_num_output_notes
     # => [num_output_notes]
 end
 
-#! Creates a new note and returns the index of the note.
-#!
-#! Inputs:  [tag, aux, note_type, execution_hint, RECIPIENT]
-#! Outputs: [note_idx]
-#!
-#! Where:
-#! - tag is the tag to be included in the note.
-#! - aux is the auxiliary metadata to be included in the note.
-#! - note_type is the storage type of the note.
-#! - execution_hint is the note's execution hint.
-#! - RECIPIENT is the recipient of the note.
-#! - note_idx is the index of the created note.
-#!
-#! Invocation: exec
-export.create_note
-    # pad the stack before the syscall to prevent accidental modification of the deeper stack
-    # elements
-    padw padw swapdw movup.8 drop
-    # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
-
-    exec.kernel_proc_offsets::tx_create_note_offset
-    # => [offset, tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
-
-    syscall.exec_kernel_proc
-    # => [note_idx, pad(15)]
-
-    # remove excess PADs from the stack
-    swapdw dropw dropw movdn.7 dropw drop drop drop
-    # => [note_idx]
-end
-
-#! Adds the ASSET to the note specified by the index.
-#!
-#! Inputs:  [ASSET, note_idx]
-#! Outputs: [ASSET, note_idx]
-#!
-#! Where:
-#! - note_idx is the index of the note to which the asset is added.
-#! - ASSET can be a fungible or non-fungible asset.
-#!
-#! Invocation: exec
-export.add_asset_to_note
-    movup.4 exec.kernel_proc_offsets::note_add_asset_offset
-    # => [offset, note_idx, ASSET]
-
-    # pad the stack before the syscall to prevent accidental modification of the deeper stack
-    # elements
-    push.0.0 movdn.7 movdn.7 padw padw swapdw
-    # => [offset, note_idx, ASSET, pad(10)]
-
-    syscall.exec_kernel_proc
-    # => [note_idx, ASSET, pad(11)]
-
-    # remove excess PADs from the stack
-    swapdw dropw dropw swapw movdn.7 drop drop drop movdn.4
-    # => [ASSET, note_idx]
-end
-
-#! Returns the RECIPIENT for a specified SERIAL_NUM, SCRIPT_ROOT, and inputs commitment.
-#!
-#! Inputs:  [SERIAL_NUM, SCRIPT_ROOT, INPUT_COMMITMENT]
-#! Outputs: [RECIPIENT]
-#!
-#! Where:
-#! - SERIAL_NUM is the serial number of the recipient.
-#! - SCRIPT_ROOT is the commitment of the note script.
-#! - INPUT_COMMITMENT is the commitment of the note inputs.
-#! - RECIPIENT is the recipient of the note.
-#!
-#! Invocation: exec
-export.build_recipient_hash
-    padw hmerge
-    # => [SERIAL_NUM_HASH, SCRIPT_ROOT, INPUT_COMMITMENT]
-
-    swapw hmerge
-    # => [MERGE_SCRIPT, INPUT_COMMITMENT]
-
-    swapw hmerge
-    # [RECIPIENT]
-end
-
 #! Executes the provided procedure against the foreign account.
 #!
 #! WARNING: the procedure to be invoked can not have more than 15 inputs and it can not return more
@@ -315,14 +234,14 @@ export.execute_foreign_procedure.4
 
     # store the foreign procedure root to the first local memory slot and get its absolute memory
     # address
-    loc_storew.0 dropw locaddr.0
+    loc_storew_be.0 dropw locaddr.0
     # => [foreign_proc_root_ptr, <foreign account inputs>, pad(n)]
 
     # execute the foreign procedure
     dyncall
     # => [<values returned from the foreign procedure>]
 
-    # reset the current account data offset to the native offset (2048)
+    # reset the active account data offset to the native offset (2048)
     push.0.0.0 padw padw padw
     exec.kernel_proc_offsets::tx_end_foreign_context_offset
     # => [offset, pad(15), <values returned from the foreign procedure>]
@@ -350,7 +269,7 @@ end
 #!
 #! Annotation hint: is not used anywhere
 export.update_expiration_block_delta
-    exec.kernel_proc_offsets::tx_update_expiration_block_num_offset
+    exec.kernel_proc_offsets::tx_update_expiration_block_delta_offset
     # => [offset, expiration_delta, ...]
 
     # pad the stack

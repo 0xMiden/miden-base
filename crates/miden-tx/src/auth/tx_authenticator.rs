@@ -1,18 +1,14 @@
 use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
 use alloc::string::ToString;
-use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use miden_objects::account::AuthSecretKey;
+use miden_objects::account::auth::{AuthSecretKey, PublicKeyCommitment, Signature};
 use miden_objects::crypto::SequentialCommit;
 use miden_objects::transaction::TransactionSummary;
 use miden_objects::{Felt, Hasher, Word};
 use miden_processor::FutureMaybeSend;
-use rand::Rng;
-use tokio::sync::RwLock;
 
-use super::signatures::get_falcon_signature;
 use crate::errors::AuthenticationError;
 use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
@@ -140,9 +136,9 @@ pub trait TransactionAuthenticator {
     ///   signature computation.
     fn get_signature(
         &self,
-        pub_key: Word,
+        pub_key_commitment: PublicKeyCommitment,
         signing_inputs: &SigningInputs,
-    ) -> impl FutureMaybeSend<Result<Vec<Felt>, AuthenticationError>>;
+    ) -> impl FutureMaybeSend<Result<Signature, AuthenticationError>>;
 }
 
 /// A placeholder type for the generic trait bound of `TransactionAuthenticator<'_,'_,_,T>`
@@ -159,9 +155,9 @@ impl TransactionAuthenticator for UnreachableAuth {
     #[allow(clippy::manual_async_fn)]
     fn get_signature(
         &self,
-        _pub_key: Word,
+        _pub_key_commitment: PublicKeyCommitment,
         _signing_inputs: &SigningInputs,
-    ) -> impl FutureMaybeSend<Result<Vec<Felt>, AuthenticationError>> {
+    ) -> impl FutureMaybeSend<Result<Signature, AuthenticationError>> {
         async { unreachable!("Type `UnreachableAuth` must not be instantiated") }
     }
 }
@@ -171,43 +167,34 @@ impl TransactionAuthenticator for UnreachableAuth {
 
 /// Represents a signer for [AuthSecretKey] keys.
 #[derive(Clone, Debug)]
-pub struct BasicAuthenticator<R> {
+pub struct BasicAuthenticator {
     /// pub_key |-> secret_key mapping
-    keys: BTreeMap<Word, AuthSecretKey>,
-    rng: Arc<RwLock<R>>,
+    keys: BTreeMap<PublicKeyCommitment, AuthSecretKey>,
 }
 
-impl<R: Rng> BasicAuthenticator<R> {
-    #[cfg(feature = "std")]
-    pub fn new(keys: &[(Word, AuthSecretKey)]) -> BasicAuthenticator<rand::rngs::StdRng> {
-        use rand::SeedableRng;
-        use rand::rngs::StdRng;
-
-        let rng = StdRng::from_os_rng();
-        BasicAuthenticator::<StdRng>::new_with_rng(keys, rng)
-    }
-
-    pub fn new_with_rng(keys: &[(Word, AuthSecretKey)], rng: R) -> Self {
+impl BasicAuthenticator {
+    pub fn new(keys: &[AuthSecretKey]) -> Self {
         let mut key_map = BTreeMap::new();
-        for (word, secret_key) in keys {
-            key_map.insert(*word, secret_key.clone());
+        for secret_key in keys {
+            let pub_key = secret_key.public_key().to_commitment();
+            key_map.insert(pub_key, secret_key.clone());
         }
 
-        BasicAuthenticator {
-            keys: key_map,
-            rng: Arc::new(RwLock::new(rng)),
-        }
+        BasicAuthenticator { keys: key_map }
     }
 
-    /// Returns a reference to the keys map. Map keys represent the public keys, and values
-    /// represent the secret keys that the authenticator would use to sign messages.
-    pub fn keys(&self) -> &BTreeMap<Word, AuthSecretKey> {
+    /// Returns a reference to the keys map.
+    ///
+    /// Map keys represent the public key commitments, and values represent the secret keys that
+    /// the authenticator would use to sign messages.
+    pub fn keys(&self) -> &BTreeMap<PublicKeyCommitment, AuthSecretKey> {
         &self.keys
     }
 }
 
-impl<R: Rng + Send + Sync> TransactionAuthenticator for BasicAuthenticator<R> {
-    /// Gets a signature over a message, given a public key.
+impl TransactionAuthenticator for BasicAuthenticator {
+    /// Gets a signature over a message, given a public key commitment.
+    ///
     /// The key should be included in the `keys` map and should be a variant of [AuthSecretKey].
     ///
     /// Supported signature schemes:
@@ -218,22 +205,15 @@ impl<R: Rng + Send + Sync> TransactionAuthenticator for BasicAuthenticator<R> {
     /// [`AuthenticationError::UnknownPublicKey`] is returned.
     fn get_signature(
         &self,
-        pub_key: Word,
+        pub_key_commitment: PublicKeyCommitment,
         signing_inputs: &SigningInputs,
-    ) -> impl FutureMaybeSend<Result<Vec<Felt>, AuthenticationError>> {
+    ) -> impl FutureMaybeSend<Result<Signature, AuthenticationError>> {
         let message = signing_inputs.to_commitment();
 
         async move {
-            let mut rng = self.rng.write().await;
-            match self.keys.get(&pub_key) {
-                Some(key) => match key {
-                    AuthSecretKey::RpoFalcon512(falcon_key) => {
-                        get_falcon_signature(falcon_key, message, &mut *rng)
-                    },
-                },
-                None => Err(AuthenticationError::UnknownPublicKey(format!(
-                    "public key {pub_key} is not contained in the authenticator's keys",
-                ))),
+            match self.keys.get(&pub_key_commitment) {
+                Some(key) => Ok(key.sign(message)),
+                None => Err(AuthenticationError::UnknownPublicKey(pub_key_commitment)),
             }
         }
     }
@@ -246,9 +226,9 @@ impl TransactionAuthenticator for () {
     #[allow(clippy::manual_async_fn)]
     fn get_signature(
         &self,
-        _pub_key: Word,
+        _pub_key_commitment: PublicKeyCommitment,
         _signing_inputs: &SigningInputs,
-    ) -> impl FutureMaybeSend<Result<Vec<Felt>, AuthenticationError>> {
+    ) -> impl FutureMaybeSend<Result<Signature, AuthenticationError>> {
         async {
             Err(AuthenticationError::RejectedSignature(
                 "default authenticator cannot provide signatures".to_string(),
@@ -260,22 +240,18 @@ impl TransactionAuthenticator for () {
 #[cfg(test)]
 mod test {
     use miden_lib::utils::{Deserializable, Serializable};
-    use miden_objects::account::AuthSecretKey;
-    use miden_objects::crypto::dsa::rpo_falcon512::SecretKey;
+    use miden_objects::account::auth::AuthSecretKey;
     use miden_objects::{Felt, Word};
 
     use super::SigningInputs;
 
     #[test]
     fn serialize_auth_key() {
-        let secret_key = SecretKey::new();
-        let auth_key = AuthSecretKey::RpoFalcon512(secret_key.clone());
+        let auth_key = AuthSecretKey::new_rpo_falcon512();
         let serialized = auth_key.to_bytes();
         let deserialized = AuthSecretKey::read_from_bytes(&serialized).unwrap();
 
-        match deserialized {
-            AuthSecretKey::RpoFalcon512(key) => assert_eq!(secret_key.to_bytes(), key.to_bytes()),
-        }
+        assert_eq!(auth_key, deserialized);
     }
 
     #[test]

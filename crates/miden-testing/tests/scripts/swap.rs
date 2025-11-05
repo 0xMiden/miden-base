@@ -24,8 +24,8 @@ use miden_testing::{Auth, MockChain};
 use crate::prove_and_verify_transaction;
 
 /// Creates a SWAP note from the transaction script and proves and verifies the transaction.
-#[test]
-pub fn prove_send_swap_note() -> anyhow::Result<()> {
+#[tokio::test]
+pub async fn prove_send_swap_note() -> anyhow::Result<()> {
     let payback_note_type = NoteType::Private;
     let SwapTestSetup {
         mock_chain,
@@ -40,14 +40,14 @@ pub fn prove_send_swap_note() -> anyhow::Result<()> {
 
     let tx_script_src = &format!(
         "
-        use.miden::tx
+        use.miden::output_note
         begin
             push.{recipient}
             push.{note_execution_hint}
             push.{note_type}
             push.0              # aux
             push.{tag}
-            call.tx::create_note
+            call.output_note::create
 
             push.{asset}
             call.::miden::contracts::wallets::basic::move_asset_to_note
@@ -69,7 +69,8 @@ pub fn prove_send_swap_note() -> anyhow::Result<()> {
         .tx_script(tx_script)
         .extend_expected_output_notes(vec![OutputNote::Full(swap_note.clone())])
         .build()?
-        .execute_blocking()?;
+        .execute()
+        .await?;
 
     sender_account
         .apply_delta(create_swap_note_tx.account_delta())
@@ -98,8 +99,8 @@ pub fn prove_send_swap_note() -> anyhow::Result<()> {
 /// payback note. The payback note is consumed by the original sender of the SWAP note.
 ///
 /// Both transactions are proven and verified.
-#[test]
-fn consume_swap_note_private_payback_note() -> anyhow::Result<()> {
+#[tokio::test]
+async fn consume_swap_note_private_payback_note() -> anyhow::Result<()> {
     let payback_note_type = NoteType::Private;
     let SwapTestSetup {
         mock_chain,
@@ -118,7 +119,8 @@ fn consume_swap_note_private_payback_note() -> anyhow::Result<()> {
         .build_tx_context(target_account.id(), &[swap_note.id()], &[])
         .context("failed to build tx context")?
         .build()?
-        .execute_blocking()?;
+        .execute()
+        .await?;
 
     target_account
         .apply_delta(consume_swap_note_tx.account_delta())
@@ -144,7 +146,8 @@ fn consume_swap_note_private_payback_note() -> anyhow::Result<()> {
         .build_tx_context(sender_account.id(), &[], &[full_payback_note])
         .context("failed to build tx context")?
         .build()?
-        .execute_blocking()?;
+        .execute()
+        .await?;
 
     sender_account
         .apply_delta(consume_payback_tx.account_delta())
@@ -163,8 +166,8 @@ fn consume_swap_note_private_payback_note() -> anyhow::Result<()> {
 
 // Creates a swap note with a public payback note, then consumes it to complete the swap
 // The target account receives the offered asset and creates a public payback note for the sender
-#[test]
-fn consume_swap_note_public_payback_note() -> anyhow::Result<()> {
+#[tokio::test]
+async fn consume_swap_note_public_payback_note() -> anyhow::Result<()> {
     let payback_note_type = NoteType::Public;
     let SwapTestSetup {
         mock_chain,
@@ -197,7 +200,8 @@ fn consume_swap_note_public_payback_note() -> anyhow::Result<()> {
         .context("failed to build tx context")?
         .extend_expected_output_notes(vec![OutputNote::Full(payback_p2id_note)])
         .build()?
-        .execute_blocking()?;
+        .execute()
+        .await?;
 
     target_account.apply_delta(consume_swap_note_tx.account_delta())?;
 
@@ -221,7 +225,8 @@ fn consume_swap_note_public_payback_note() -> anyhow::Result<()> {
         .build_tx_context(sender_account.id(), &[], &[full_payback_note])
         .context("failed to build tx context")?
         .build()?
-        .execute_blocking()?;
+        .execute()
+        .await?;
 
     sender_account.apply_delta(consume_payback_tx.account_delta())?;
 
@@ -231,12 +236,12 @@ fn consume_swap_note_public_payback_note() -> anyhow::Result<()> {
 
 /// Tests that a SWAP note offering asset A and requesting asset B can be matched against a SWAP
 /// note offering asset B and requesting asset A.
-#[test]
-fn settle_coincidence_of_wants() -> anyhow::Result<()> {
+#[tokio::test]
+async fn settle_coincidence_of_wants() -> anyhow::Result<()> {
     // Create two different assets for the swap
     let faucet0 = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET)?;
     let faucet1 = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1)?;
-    let asset_a = FungibleAsset::new(faucet0, 10_000)?.into();
+    let asset_a = FungibleAsset::new(faucet0, 10_777)?.into();
     let asset_b = FungibleAsset::new(faucet1, 10)?.into();
 
     let mut builder = MockChain::builder();
@@ -272,7 +277,8 @@ fn settle_coincidence_of_wants() -> anyhow::Result<()> {
         .build_tx_context(matcher_account.id(), &[swap_note_1.id(), swap_note_2.id()], &[])
         .context("failed to build tx context")?
         .build()?
-        .execute_blocking()?;
+        .execute()
+        .await?;
 
     // VERIFY PAYBACK NOTES WERE CREATED CORRECTLY
     // --------------------------------------------------------------------------------------------
@@ -327,7 +333,7 @@ fn setup_swap_test(payback_note_type: NoteType) -> anyhow::Result<SwapTestSetup>
         .add_swap_note(sender_account.id(), offered_asset, requested_asset, payback_note_type)
         .unwrap();
 
-    builder.add_note(OutputNote::Full(swap_note.clone()));
+    builder.add_output_note(OutputNote::Full(swap_note.clone()));
     let mock_chain = builder.build()?;
 
     Ok(SwapTestSetup {

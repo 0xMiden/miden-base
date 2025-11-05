@@ -1,25 +1,23 @@
 use alloc::vec::Vec;
-use core::cmp::Ordering;
 use std::collections::BTreeMap;
 use std::string::String;
 
 use anyhow::Context;
 use miden_objects::{EMPTY_WORD, LexicographicWord, Word};
-use miden_processor::{ONE, ProcessState, ZERO};
-use miden_tx::LinkMap;
+use miden_processor::{ONE, ZERO};
+use miden_tx::{LinkMap, MemoryViewer};
 use rand::seq::IteratorRandom;
 use winter_rand_utils::rand_value;
 
 use crate::TransactionContextBuilder;
-use crate::executor::CodeExecutor;
 
 /// Tests the following properties:
 /// - Insertion into an empty map.
 /// - Insertion after an existing entry.
 /// - Insertion in between two existing entries.
 /// - Insertion before an existing head.
-#[test]
-fn insertion() -> anyhow::Result<()> {
+#[tokio::test]
+async fn insertion() -> anyhow::Result<()> {
     let map_ptr = 8u32;
     // check that using an empty word as key is fine
     let entry0_key = Word::from([0, 0, 0, 0u32]);
@@ -171,22 +169,14 @@ fn insertion() -> anyhow::Result<()> {
           assert_eqw.err="retrieved value1 for key {entry3_key} should be an empty word"
           # => []
       end
-    "#,
-        entry0_key = entry0_key,
-        entry0_value = entry0_value,
-        entry1_key = entry1_key,
-        entry1_value = entry1_value,
-        entry2_key = entry2_key,
-        entry2_value = entry2_value,
-        entry3_key = entry3_key,
-        entry3_value = entry3_value,
+    "#
     );
 
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
-    let mut process = tx_context.execute_code(&code).context("failed to execute code")?;
-    let state = ProcessState::from(&mut process);
+    let exec_output = tx_context.execute_code(&code).await.context("failed to execute code")?;
+    let mem_viewer = MemoryViewer::ExecutionOutputs(&exec_output);
 
-    let map = LinkMap::new(map_ptr.into(), &state);
+    let map = LinkMap::new(map_ptr.into(), &mem_viewer);
     let mut map_iter = map.iter();
 
     let entry0 = map_iter.next().expect("map should have four entries");
@@ -226,8 +216,8 @@ fn insertion() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[test]
-fn insert_and_update() -> anyhow::Result<()> {
+#[tokio::test]
+async fn insert_and_update() -> anyhow::Result<()> {
     const MAP_PTR: u32 = 8;
 
     let value0 = Word::from([1, 2, 3, 4u32]);
@@ -244,11 +234,11 @@ fn insert_and_update() -> anyhow::Result<()> {
         TestOperation::set(MAP_PTR, link_map_key([3, 0, 0, 0]), (value1, value2)),
     ];
 
-    execute_link_map_test(operations)
+    execute_link_map_test(operations).await
 }
 
-#[test]
-fn insert_at_head() -> anyhow::Result<()> {
+#[tokio::test]
+async fn insert_at_head() -> anyhow::Result<()> {
     const MAP_PTR: u32 = 8;
 
     let key3 = link_map_key([3, 0, 0, 0]);
@@ -268,12 +258,12 @@ fn insert_at_head() -> anyhow::Result<()> {
         TestOperation::get(MAP_PTR, key3),
     ];
 
-    execute_link_map_test(operations)
+    execute_link_map_test(operations).await
 }
 
 /// Tests that a get before a set results in the expected returned values and behavior.
-#[test]
-fn get_before_set() -> anyhow::Result<()> {
+#[tokio::test]
+async fn get_before_set() -> anyhow::Result<()> {
     const MAP_PTR: u32 = 8;
 
     let key0 = link_map_key([3, 0, 0, 0]);
@@ -286,11 +276,11 @@ fn get_before_set() -> anyhow::Result<()> {
         TestOperation::get(MAP_PTR, key0),
     ];
 
-    execute_link_map_test(operations)
+    execute_link_map_test(operations).await
 }
 
-#[test]
-fn multiple_link_maps() -> anyhow::Result<()> {
+#[tokio::test]
+async fn multiple_link_maps() -> anyhow::Result<()> {
     const MAP_PTR0: u32 = 8;
     const MAP_PTR1: u32 = 12;
 
@@ -315,11 +305,11 @@ fn multiple_link_maps() -> anyhow::Result<()> {
         TestOperation::get(MAP_PTR1, key3),
     ];
 
-    execute_link_map_test(operations)
+    execute_link_map_test(operations).await
 }
 
-#[test]
-fn iteration() -> anyhow::Result<()> {
+#[tokio::test]
+async fn iteration() -> anyhow::Result<()> {
     const MAP_PTR: u32 = 12;
 
     let entries = generate_entries(100);
@@ -334,11 +324,11 @@ fn iteration() -> anyhow::Result<()> {
     // Iterate the map.
     test_operations.push(TestOperation::iter(MAP_PTR));
 
-    execute_link_map_test(test_operations)
+    execute_link_map_test(test_operations).await
 }
 
-#[test]
-fn set_update_get_random_entries() -> anyhow::Result<()> {
+#[tokio::test]
+async fn set_update_get_random_entries() -> anyhow::Result<()> {
     const MAP_PTR: u32 = 12;
 
     let entries = generate_entries(1000);
@@ -366,70 +356,7 @@ fn set_update_get_random_entries() -> anyhow::Result<()> {
     test_operations.extend(get_ops2);
     test_operations.extend(get_ops3);
 
-    execute_link_map_test(test_operations)
-}
-
-// COMPARISON OPERATIONS TESTS
-// ================================================================================================
-
-#[test]
-fn is_key_greater() -> anyhow::Result<()> {
-    execute_comparison_test(Ordering::Greater)
-}
-
-#[test]
-fn is_key_less() -> anyhow::Result<()> {
-    execute_comparison_test(Ordering::Less)
-}
-
-fn execute_comparison_test(operation: Ordering) -> anyhow::Result<()> {
-    let procedure_name = match operation {
-        Ordering::Less => "is_key_less",
-        Ordering::Equal => anyhow::bail!("unsupported ordering operation for testing"),
-        Ordering::Greater => "is_key_greater",
-    };
-
-    let mut test_code = String::new();
-
-    for _ in 0..1000 {
-        let key0 = rand_value::<Word>();
-        let key1 = rand_value::<Word>();
-
-        let cmp = LexicographicWord::from(key0).cmp(&LexicographicWord::from(key1));
-        let expected = cmp == operation;
-
-        let code = format!(
-            r#"
-        push.{KEY_1}
-        push.{KEY_0}
-        exec.link_map::{proc_name}
-        push.{expected_value}
-        assert_eq.err="failed for procedure {proc_name} with keys {key0:?}, {key1:?}"
-      "#,
-            KEY_0 = key0,
-            KEY_1 = key1,
-            proc_name = procedure_name,
-            expected_value = expected as u8
-        );
-
-        test_code.push_str(&code);
-    }
-
-    let code = format!(
-        r#"
-        use.$kernel::link_map
-
-        begin
-          {test_code}
-        end
-        "#,
-    );
-
-    CodeExecutor::with_default_host()
-        .run(&code)
-        .with_context(|| format!("comparison test for {procedure_name} failed"))?;
-
-    Ok(())
+    execute_link_map_test(test_operations).await
 }
 
 // TEST HELPERS
@@ -472,7 +399,7 @@ impl TestOperation {
     }
 }
 
-fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
+async fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
     let mut test_code = String::new();
     let mut control_maps: BTreeMap<u32, BTreeMap<LexicographicWord, (Word, Word)>> =
         BTreeMap::new();
@@ -485,7 +412,7 @@ fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
 
                 let set_code = format!(
                     r#"
-                  push.{value1}.{value0}.{key}.{map_ptr}
+                  push.{value1} push.{value0} push.{key} push.{map_ptr}
                   # => [map_ptr, KEY, VALUE]
                   exec.link_map::set
                   # => [is_new_key]
@@ -512,7 +439,7 @@ fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
 
                 let get_code = format!(
                     r#"
-                  push.{key}.{map_ptr}
+                  push.{key} push.{map_ptr}
                   # => [map_ptr, KEY]
                   exec.link_map::get
                   # => [contains_key, VALUE0, VALUE1]
@@ -615,11 +542,11 @@ fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
     );
 
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
-    let mut process = tx_context.execute_code(&code).context("failed to execute code")?;
-    let state = ProcessState::from(&mut process);
+    let exec_output = tx_context.execute_code(&code).await.context("failed to execute code")?;
+    let mem_viewer = MemoryViewer::ExecutionOutputs(&exec_output);
 
     for (map_ptr, control_map) in control_maps {
-        let map = LinkMap::new(map_ptr.into(), &state);
+        let map = LinkMap::new(map_ptr.into(), &mem_viewer);
         let actual_map_len = map.iter().count();
         assert_eq!(
             actual_map_len,

@@ -1,4 +1,5 @@
-use.miden::account
+use.miden::active_account
+use.miden::native_account
 use.miden::auth
 use.miden::tx
 use.std::crypto::dsa::rpo_falcon512
@@ -7,7 +8,7 @@ use.std::crypto::dsa::rpo_falcon512
 # =================================================================================================
 
 # The event to request an authentication signature.
-const.AUTH_REQUEST=131087
+const.AUTH_REQUEST_EVENT=event("miden::auth::request")
 
 # The slot in this component's storage layout where the public key is stored.
 const.PUBLIC_KEY_SLOT=0
@@ -38,7 +39,7 @@ export.authenticate_transaction
     # ---------------------------------------------------------------------------------------------
     # This has to happen before computing the delta commitment, otherwise that procedure will abort
     push.0.0 exec.tx::get_block_number
-    exec.account::incr_nonce
+    exec.native_account::incr_nonce
     # => [[final_nonce, ref_block_num, 0, 0], PUB_KEY]
 
     # Compute the message that is signed.
@@ -56,7 +57,7 @@ export.authenticate_transaction
     # Fetch signature from advice provider and verify.
     # ---------------------------------------------------------------------------------------------
     # Emit the authentication request event that pushes a signature for the message to the advice stack
-    emit.AUTH_REQUEST
+    emit.AUTH_REQUEST_EVENT
     swapw
     # OS => [PUB_KEY, MESSAGE]
     # AS => [SIGNATURE]
@@ -74,6 +75,11 @@ end
 #! This procedure iterates through the required number of signers, fetches their public keys from
 #! the provided account storage map slot, verifies their signatures against the transaction message,
 #! and returns the number of successfully verified signatures.
+#!
+#! Note: Calls `active_account::get_initial_map_item` to access the transaction's initial storage
+#! state rather than the current state. This is crucial when validating transactions that update
+#! the owner public key mapping - the previous signers must authorize the change to the new signers,
+#! not the new signers authorizing themselves.
 #!
 #! Inputs:  [pub_key_slot_idx, num_of_approvers, MSG]
 #! Outputs: [num_verified_signatures, MSG]
@@ -101,10 +107,11 @@ export.verify_signatures.16
         sub.1 dup push.0.0.0 loc_load.PUB_KEY_MAP_IDX_LOC
         # => [owner_key_slot, [0, 0, 0, i-1], i-1, MSG]
 
-        exec.account::get_map_item
+        # Get public key from initial storage state
+        exec.active_account::get_initial_map_item
         # => [OWNER_PUB_KEY, i-1, MSG]
 
-        loc_storew.CURRENT_PK_LOC
+        loc_storew_be.CURRENT_PK_LOC
         # => [OWNER_PUB_KEY, i-1, MSG]
 
         # Check if signature exists for this signer.
@@ -135,14 +142,14 @@ export.verify_signatures.16
             # Verify the signature against the public key and message.
             # -----------------------------------------------------------------------------------------
 
-            loc_loadw.CURRENT_PK_LOC
+            loc_loadw_be.CURRENT_PK_LOC
             # => [PK, MSG, MSG, i-1]
 
             swapw
             # => [MSG, PK, MSG, i-1]
 
             # Emit the authentication request event that pushes a signature for the message to the advice stack.
-            emit.AUTH_REQUEST
+            emit.AUTH_REQUEST_EVENT
 
             swapw
             # OS => [PUB_KEY, MSG, MSG, i-1]

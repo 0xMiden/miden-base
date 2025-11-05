@@ -5,10 +5,14 @@ use std::string::String;
 use anyhow::Context;
 use miden_lib::testing::account_component::MockAccountComponent;
 use miden_lib::utils::ScriptBuilder;
+use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{
+    Account,
     AccountBuilder,
+    AccountDelta,
     AccountId,
     AccountStorage,
+    AccountStorageMode,
     AccountType,
     StorageMap,
     StorageSlot,
@@ -34,11 +38,12 @@ use miden_objects::testing::constants::{
 use miden_objects::testing::storage::{STORAGE_INDEX_0, STORAGE_INDEX_2};
 use miden_objects::transaction::TransactionScript;
 use miden_objects::{EMPTY_WORD, Felt, LexicographicWord, Word, ZERO};
+use miden_tx::LocalTransactionProver;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 use winter_rand_utils::rand_value;
 
-use crate::utils::create_p2any_note;
+use crate::utils::create_public_p2any_note;
 use crate::{Auth, MockChain, TransactionContextBuilder};
 
 // ACCOUNT DELTA TESTS
@@ -52,19 +57,20 @@ use crate::{Auth, MockChain, TransactionContextBuilder};
 ///
 /// In order to make the account delta empty but the transaction still legal, we consume a note
 /// without assets.
-#[test]
-fn empty_account_delta_commitment_is_empty_word() -> anyhow::Result<()> {
+#[tokio::test]
+async fn empty_account_delta_commitment_is_empty_word() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let account = builder.add_existing_mock_account(Auth::Noop)?;
     let p2any_note =
-        builder.add_p2any_note(AccountId::try_from(ACCOUNT_ID_SENDER).unwrap(), &[])?;
+        builder.add_p2any_note(AccountId::try_from(ACCOUNT_ID_SENDER)?, NoteType::Public, [])?;
     let mock_chain = builder.build()?;
 
     let executed_tx = mock_chain
         .build_tx_context(account.id(), &[p2any_note.id()], &[])
         .expect("failed to build tx context")
         .build()?
-        .execute_blocking()
+        .execute()
+        .await
         .context("failed to execute transaction")?;
 
     assert_eq!(executed_tx.account_delta().nonce_delta(), ZERO);
@@ -75,15 +81,16 @@ fn empty_account_delta_commitment_is_empty_word() -> anyhow::Result<()> {
 }
 
 /// Tests that a noop transaction with [`Auth::IncrNonce`] results in a nonce delta of 1.
-#[test]
-fn delta_nonce() -> anyhow::Result<()> {
-    let TestSetup { mock_chain, account_id } = setup_test([], [])?;
+#[tokio::test]
+async fn delta_nonce() -> anyhow::Result<()> {
+    let TestSetup { mock_chain, account_id, .. } = setup_test([], [], [])?;
 
     let executed_tx = mock_chain
         .build_tx_context(account_id, &[], &[])
         .expect("failed to build tx context")
         .build()?
-        .execute_blocking()
+        .execute()
+        .await
         .context("failed to execute transaction")?;
 
     assert_eq!(executed_tx.account_delta().nonce_delta(), Felt::new(1));
@@ -97,8 +104,8 @@ fn delta_nonce() -> anyhow::Result<()> {
 /// - Slot 1: EMPTY_WORD -> [3,4,5,6]               -> Delta: [3,4,5,6]
 /// - Slot 2: [1,3,5,7]  -> [1,3,5,7]               -> Delta: None
 /// - Slot 3: [1,3,5,7]  -> [2,3,4,5] -> [1,3,5,7]  -> Delta: None
-#[test]
-fn storage_delta_for_value_slots() -> anyhow::Result<()> {
+#[tokio::test]
+async fn storage_delta_for_value_slots() -> anyhow::Result<()> {
     let slot_0_init_value = Word::from([2, 4, 6, 8u32]);
     let slot_0_tmp_value = Word::from([3, 4, 5, 6u32]);
     let slot_0_final_value = EMPTY_WORD;
@@ -113,7 +120,7 @@ fn storage_delta_for_value_slots() -> anyhow::Result<()> {
     let slot_3_tmp_value = Word::from([2, 3, 4, 5u32]);
     let slot_3_final_value = slot_3_init_value;
 
-    let TestSetup { mock_chain, account_id } = setup_test(
+    let TestSetup { mock_chain, account_id, .. } = setup_test(
         vec![
             StorageSlot::Value(slot_0_init_value),
             StorageSlot::Value(slot_1_init_value),
@@ -121,55 +128,49 @@ fn storage_delta_for_value_slots() -> anyhow::Result<()> {
             StorageSlot::Value(slot_3_init_value),
         ],
         [],
+        [],
     )?;
 
     let tx_script = compile_tx_script(format!(
         "
       begin
-          push.{tmp_slot_0_value}
+          push.{slot_0_tmp_value}
           push.0
           # => [index, VALUE]
           exec.set_item
           # => []
 
-          push.{final_slot_0_value}
+          push.{slot_0_final_value}
           push.0
           # => [index, VALUE]
           exec.set_item
           # => []
 
-          push.{final_slot_1_value}
+          push.{slot_1_final_value}
           push.1
           # => [index, VALUE]
           exec.set_item
           # => []
 
-          push.{final_slot_2_value}
+          push.{slot_2_final_value}
           push.2
           # => [index, VALUE]
           exec.set_item
           # => []
 
-          push.{tmp_slot_3_value}
+          push.{slot_3_tmp_value}
           push.3
           # => [index, VALUE]
           exec.set_item
           # => []
 
-          push.{final_slot_3_value}
+          push.{slot_3_final_value}
           push.3
           # => [index, VALUE]
           exec.set_item
           # => []
       end
-      ",
-        // Set slot 0 to some other value initially.
-        tmp_slot_0_value = slot_0_tmp_value,
-        final_slot_0_value = slot_0_final_value,
-        final_slot_1_value = slot_1_final_value,
-        final_slot_2_value = slot_2_final_value,
-        tmp_slot_3_value = slot_3_tmp_value,
-        final_slot_3_value = slot_3_final_value,
+      "
     ))?;
 
     let executed_tx = mock_chain
@@ -177,7 +178,8 @@ fn storage_delta_for_value_slots() -> anyhow::Result<()> {
         .expect("failed to build tx context")
         .tx_script(tx_script)
         .build()?
-        .execute_blocking()
+        .execute()
+        .await
         .context("failed to execute transaction")?;
 
     let storage_values_delta = executed_tx
@@ -204,8 +206,8 @@ fn storage_delta_for_value_slots() -> anyhow::Result<()> {
 /// - Slot 2: key5: [1,2,3,4]  -> [2,3,4,5] -> [1,2,3,4] -> Delta: None
 ///   - key5 and key4 are the same scenario, but in different slots. In particular, slot 2's delta
 ///     map will be empty after normalization and so it shouldn't be present in the delta at all.
-#[test]
-fn storage_delta_for_map_slots() -> anyhow::Result<()> {
+#[tokio::test]
+async fn storage_delta_for_map_slots() -> anyhow::Result<()> {
     // Test with random keys to make sure the ordering in the MASM and Rust implementations
     // matches.
     let key0 = rand_value::<Word>();
@@ -233,18 +235,18 @@ fn storage_delta_for_map_slots() -> anyhow::Result<()> {
     let key5_final_value = Word::from([1, 2, 3, 4u32]);
 
     let mut map0 = StorageMap::new();
-    map0.insert(key0, key0_init_value);
-    map0.insert(key1, key1_init_value);
+    map0.insert(key0, key0_init_value).unwrap();
+    map0.insert(key1, key1_init_value).unwrap();
 
     let mut map1 = StorageMap::new();
-    map1.insert(key2, key2_init_value);
-    map1.insert(key3, key3_init_value);
-    map1.insert(key4, key4_init_value);
+    map1.insert(key2, key2_init_value).unwrap();
+    map1.insert(key3, key3_init_value).unwrap();
+    map1.insert(key4, key4_init_value).unwrap();
 
     let mut map2 = StorageMap::new();
-    map2.insert(key5, key5_init_value);
+    map2.insert(key5, key5_init_value).unwrap();
 
-    let TestSetup { mock_chain, account_id } = setup_test(
+    let TestSetup { mock_chain, account_id, .. } = setup_test(
         vec![
             StorageSlot::Map(map0),
             StorageSlot::Map(map1),
@@ -255,79 +257,66 @@ fn storage_delta_for_map_slots() -> anyhow::Result<()> {
             StorageSlot::Map(StorageMap::new()),
         ],
         [],
+        [],
     )?;
 
     let tx_script = compile_tx_script(format!(
         "
       begin
-          push.{key0_value}.{key0}.0
+          push.{key0_final_value} push.{key0} push.0
           # => [index, KEY, VALUE]
           exec.set_map_item
           # => []
 
-          push.{key1_tmp_value}.{key1}.0
+          push.{key1_tmp_value} push.{key1} push.0
           # => [index, KEY, VALUE]
           exec.set_map_item
           # => []
 
-          push.{key1_value}.{key1}.0
+          push.{key1_final_value} push.{key1} push.0
           # => [index, KEY, VALUE]
           exec.set_map_item
           # => []
 
-          push.{key2_value}.{key2}.1
+          push.{key2_final_value} push.{key2} push.1
           # => [index, KEY, VALUE]
           exec.set_map_item
           # => []
 
-          push.{key3_value}.{key3}.1
+          push.{key3_final_value} push.{key3} push.1
           # => [index, KEY, VALUE]
           exec.set_map_item
           # => []
 
-          push.{key4_tmp_value}.{key4}.1
+          push.{key4_tmp_value} push.{key4} push.1
           # => [index, KEY, VALUE]
           exec.set_map_item
           # => []
 
-          push.{key4_value}.{key4}.1
+          push.{key4_final_value} push.{key4} push.1
           # => [index, KEY, VALUE]
           exec.set_map_item
           # => []
 
-          push.{key5_tmp_value}.{key5}.2
+          push.{key5_tmp_value} push.{key5} push.2
           # => [index, KEY, VALUE]
           exec.set_map_item
           # => []
 
-          push.{key5_value}.{key5}.2
+          push.{key5_final_value} push.{key5} push.2
           # => [index, KEY, VALUE]
           exec.set_map_item
           # => []
       end
-      ",
-        key0 = key0,
-        key1 = key1,
-        key2 = key2,
-        key3 = key3,
-        key4 = key4,
-        key5 = key5,
-        key0_value = key0_final_value,
-        key1_tmp_value = key1_tmp_value,
-        key1_value = key1_final_value,
-        key2_value = key2_final_value,
-        key3_value = key3_final_value,
-        key4_tmp_value = key4_tmp_value,
-        key4_value = key4_final_value,
-        key5_tmp_value = key5_tmp_value,
-        key5_value = key5_final_value,
+      "
     ))?;
 
     let executed_tx = mock_chain
         .build_tx_context(account_id, &[], &[])?
         .tx_script(tx_script)
         .build()?
-        .execute_blocking()
+        .execute()
+        .await
         .context("failed to execute transaction")?;
     let maps_delta = executed_tx.account_delta().storage().maps();
 
@@ -357,8 +346,8 @@ fn storage_delta_for_map_slots() -> anyhow::Result<()> {
 /// - Asset2 is increased by 200 and decreased by 100 -> Delta: 100.
 /// - Asset3 is decreased by [`FungibleAsset::MAX_AMOUNT`] -> Delta: -MAX_AMOUNT.
 /// - Asset4 is increased by [`FungibleAsset::MAX_AMOUNT`] -> Delta: MAX_AMOUNT.
-#[test]
-fn fungible_asset_delta() -> anyhow::Result<()> {
+#[tokio::test]
+async fn fungible_asset_delta() -> anyhow::Result<()> {
     // Test with random IDs to make sure the ordering in the MASM and Rust implementations
     // matches.
     let faucet0: AccountId = AccountIdBuilder::new()
@@ -392,24 +381,11 @@ fn fungible_asset_delta() -> anyhow::Result<()> {
     let removed_asset2 = FungibleAsset::new(faucet2, 100)?;
     let removed_asset3 = FungibleAsset::new(faucet3, FungibleAsset::MAX_AMOUNT)?;
 
-    let TestSetup { mut mock_chain, account_id } = setup_test(
+    let TestSetup { mock_chain, account_id, notes } = setup_test(
         [],
         [original_asset0, original_asset1, original_asset2, original_asset3].map(Asset::from),
+        [added_asset0, added_asset1, added_asset2, added_asset4].map(Asset::from),
     )?;
-
-    let mut added_notes = vec![];
-    for added_asset in [added_asset0, added_asset1, added_asset2, added_asset4] {
-        let added_note = mock_chain
-            .add_pending_p2id_note(
-                account_id,
-                account_id,
-                &[Asset::from(added_asset)],
-                NoteType::Public,
-            )
-            .context("failed to add note with asset")?;
-        added_notes.push(added_note);
-    }
-    mock_chain.prove_next_block()?;
 
     let tx_script = compile_tx_script(format!(
         "
@@ -431,10 +407,11 @@ fn fungible_asset_delta() -> anyhow::Result<()> {
     ))?;
 
     let executed_tx = mock_chain
-        .build_tx_context(account_id, &added_notes.iter().map(Note::id).collect::<Vec<_>>(), &[])?
+        .build_tx_context(account_id, &notes.iter().map(Note::id).collect::<Vec<_>>(), &[])?
         .tx_script(tx_script)
         .build()?
-        .execute_blocking()
+        .execute()
+        .await
         .context("failed to execute transaction")?;
 
     let mut added_assets = executed_tx
@@ -476,8 +453,8 @@ fn fungible_asset_delta() -> anyhow::Result<()> {
 /// - Asset1 is removed from the vault -> Delta: Remove.
 /// - Asset2 is added and removed -> Delta: No Change.
 /// - Asset3 is removed and added -> Delta: No Change.
-#[test]
-fn non_fungible_asset_delta() -> anyhow::Result<()> {
+#[tokio::test]
+async fn non_fungible_asset_delta() -> anyhow::Result<()> {
     let mut rng = rand::rng();
     // Test with random IDs to make sure the ordering in the MASM and Rust implementations
     // matches.
@@ -499,22 +476,8 @@ fn non_fungible_asset_delta() -> anyhow::Result<()> {
     let asset2 = NonFungibleAssetBuilder::new(faucet2.prefix(), &mut rng)?.build()?;
     let asset3 = NonFungibleAssetBuilder::new(faucet3.prefix(), &mut rng)?.build()?;
 
-    let TestSetup { mut mock_chain, account_id } =
-        setup_test([], [asset1, asset3].map(Asset::from))?;
-
-    let mut added_notes = vec![];
-    for added_asset in [asset0, asset2] {
-        let added_note = mock_chain
-            .add_pending_p2id_note(
-                account_id,
-                account_id,
-                &[Asset::from(added_asset)],
-                NoteType::Public,
-            )
-            .context("failed to add note with asset")?;
-        added_notes.push(added_note);
-    }
-    mock_chain.prove_next_block()?;
+    let TestSetup { mock_chain, account_id, notes } =
+        setup_test([], [asset1, asset3].map(Asset::from), [asset0, asset2].map(Asset::from))?;
 
     let tx_script = compile_tx_script(format!(
         "
@@ -538,10 +501,11 @@ fn non_fungible_asset_delta() -> anyhow::Result<()> {
     ))?;
 
     let executed_tx = mock_chain
-        .build_tx_context(account_id, &added_notes.iter().map(Note::id).collect::<Vec<_>>(), &[])?
+        .build_tx_context(account_id, &notes.iter().map(Note::id).collect::<Vec<_>>(), &[])?
         .tx_script(tx_script)
         .build()?
-        .execute_blocking()
+        .execute()
+        .await
         .context("failed to execute transaction")?;
 
     let mut added_assets = executed_tx
@@ -568,8 +532,8 @@ fn non_fungible_asset_delta() -> anyhow::Result<()> {
 
 /// Tests that adding and removing assets and updating value and map storage slots results in the
 /// correct delta.
-#[test]
-fn asset_and_storage_delta() -> anyhow::Result<()> {
+#[tokio::test]
+async fn asset_and_storage_delta() -> anyhow::Result<()> {
     let account_assets = AssetVault::mock().assets().collect::<Vec<Asset>>();
 
     let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
@@ -637,7 +601,7 @@ fn asset_and_storage_delta() -> anyhow::Result<()> {
             # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
 
             # create the note
-            call.tx::create_note
+            call.output_note::create
             # => [note_idx, pad(15)]
 
             # move an asset to the created note to partially deplete fungible asset balance
@@ -659,7 +623,7 @@ fn asset_and_storage_delta() -> anyhow::Result<()> {
     let tx_script_src = format!(
         "\
         use.mock::account
-        use.miden::tx
+        use.miden::output_note
 
         ## TRANSACTION SCRIPT
         ## ========================================================================================
@@ -667,7 +631,7 @@ fn asset_and_storage_delta() -> anyhow::Result<()> {
             ## Update account storage item
             ## ------------------------------------------------------------------------------------
             # push a new value for the storage slot onto the stack
-            push.{UPDATED_SLOT_VALUE}
+            push.{updated_slot_value}
             # => [13, 11, 9, 7]
 
             # get the index of account storage slot
@@ -680,11 +644,11 @@ fn asset_and_storage_delta() -> anyhow::Result<()> {
             ## Update account storage map
             ## ------------------------------------------------------------------------------------
             # push a new VALUE for the storage map onto the stack
-            push.{UPDATED_MAP_VALUE}
+            push.{updated_map_value}
             # => [18, 19, 20, 21]
 
             # push a new KEY for the storage map onto the stack
-            push.{UPDATED_MAP_KEY}
+            push.{updated_map_key}
             # => [14, 15, 16, 17, 18, 19, 20, 21]
 
             # get the index of account storage slot
@@ -701,10 +665,7 @@ fn asset_and_storage_delta() -> anyhow::Result<()> {
 
             dropw dropw dropw dropw
         end
-    ",
-        UPDATED_SLOT_VALUE = updated_slot_value,
-        UPDATED_MAP_VALUE = updated_map_value,
-        UPDATED_MAP_KEY = updated_map_key,
+    "
     );
 
     let tx_script = ScriptBuilder::with_mock_libraries()?.compile_tx_script(tx_script_src)?;
@@ -720,7 +681,10 @@ fn asset_and_storage_delta() -> anyhow::Result<()> {
             FungibleAsset::new(faucet_id_3, CONSUMED_ASSET_3_AMOUNT)?.into();
         let nonfungible_asset_1: Asset = NonFungibleAsset::mock(&NON_FUNGIBLE_ASSET_DATA_2);
 
-        create_p2any_note(account.id(), &[fungible_asset_1, fungible_asset_3, nonfungible_asset_1])
+        create_public_p2any_note(
+            account.id(),
+            [fungible_asset_1, fungible_asset_3, nonfungible_asset_1],
+        )
     };
 
     let tx_context = TransactionContextBuilder::new(account)
@@ -734,7 +698,7 @@ fn asset_and_storage_delta() -> anyhow::Result<()> {
     // expected delta
     // --------------------------------------------------------------------------------------------
     // execute the transaction and get the witness
-    let executed_transaction = tx_context.execute_blocking()?;
+    let executed_transaction = tx_context.execute().await?;
 
     // nonce delta
     // --------------------------------------------------------------------------------------------
@@ -793,10 +757,122 @@ fn asset_and_storage_delta() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Tests that the storage map updates for a _new public_ account in an executed and proven
+/// transaction match up.
+///
+/// This is an interesting test case because:
+/// - for new accounts in general, the storage map entries must be available in the advice provider
+///   and the resulting delta must be convertible to a full account.
+/// - it creates an account with two identical storage maps.
+/// - The prover mutates the delta to account for fee logic.
+#[tokio::test]
+async fn proven_tx_storage_maps_matches_executed_tx_for_new_account() -> anyhow::Result<()> {
+    // Use two identical maps to test that they are properly handled
+    // (see also https://github.com/0xMiden/miden-base/issues/2037).
+    let map0 = StorageMap::with_entries([(rand_value(), rand_value())])?;
+    let map1 = map0.clone();
+    let mut map2 = StorageMap::with_entries([
+        (rand_value(), rand_value()),
+        (rand_value(), rand_value()),
+        (rand_value(), rand_value()),
+        (rand_value(), rand_value()),
+    ])?;
+
+    // Build a public account so the proven transaction includes the account update.
+    let account = AccountBuilder::new([1; 32])
+        .storage_mode(AccountStorageMode::Public)
+        .with_auth_component(Auth::IncrNonce)
+        .with_component(MockAccountComponent::with_slots(vec![
+            AccountStorage::mock_item_0().slot,
+            StorageSlot::Map(map0.clone()),
+            StorageSlot::Map(map1.clone()),
+            AccountStorage::mock_item_1().slot,
+            StorageSlot::Map(map2.clone()),
+        ]))
+        .build()?;
+
+    let map0_index = 1;
+    let map1_index = 2;
+    let map2_index = 4;
+    // Fetch a random existing key from the map.
+    let existing_key = *map2.entries().next().unwrap().0;
+    let value0 = Word::from([3, 4, 5, 6u32]);
+
+    let code = format!(
+        "
+      use.mock::account
+
+      begin
+          # Update an existing key.
+          push.{value0}
+          push.{existing_key}
+          push.{map2_index}
+          # => [index, KEY, VALUE]
+          call.account::set_map_item
+
+          exec.::std::sys::truncate_stack
+      end
+      "
+    );
+
+    let builder = ScriptBuilder::with_mock_libraries()?;
+    let source_manager = builder.source_manager();
+    let tx_script = builder.compile_tx_script(code)?;
+
+    let tx = TransactionContextBuilder::new(account.clone())
+        .tx_script(tx_script)
+        .with_source_manager(source_manager)
+        .build()?
+        .execute()
+        .await?;
+
+    map2.insert(existing_key, value0)?;
+
+    for (map_index, expected_map) in [(map0_index, map0), (map1_index, map1), (map2_index, map2)] {
+        let map_delta = tx.account_delta().storage().maps().get(&map_index).unwrap();
+        assert_eq!(
+            map_delta
+                .entries()
+                .iter()
+                .map(|(key, value)| (*key.inner(), *value))
+                .collect::<BTreeMap<_, _>>(),
+            expected_map.into_entries()
+        );
+    }
+
+    let proven_tx = LocalTransactionProver::default().prove_dummy(tx.clone())?;
+
+    let AccountUpdateDetails::Delta(proven_tx_delta) = proven_tx.account_update().details() else {
+        panic!("expected delta");
+    };
+
+    let proven_tx_account = Account::try_from(proven_tx_delta)?;
+    let exec_tx_account = Account::try_from(tx.account_delta())?;
+
+    assert_eq!(proven_tx_account.storage(), exec_tx_account.storage());
+
+    // Check the conversion back into a full-state delta works correctly.
+    let proven_tx_delta_converted = AccountDelta::try_from(proven_tx_account)?;
+    let exec_tx_delta_converted = AccountDelta::try_from(exec_tx_account)?;
+
+    // Check that the deltas from proven and executed tx, which were converted from accounts are
+    // identical. This is essentially a roundtrip test.
+    assert_eq!(&proven_tx_delta_converted, proven_tx_delta);
+    assert_eq!(&exec_tx_delta_converted, tx.account_delta());
+    assert_eq!(&proven_tx_delta_converted, tx.account_delta());
+
+    // The commitments should match as well.
+    assert_eq!(proven_tx_delta_converted.to_commitment(), proven_tx_delta.to_commitment());
+    assert_eq!(exec_tx_delta_converted.to_commitment(), tx.account_delta().to_commitment());
+    assert_eq!(proven_tx_delta_converted.to_commitment(), tx.account_delta().to_commitment());
+
+    Ok(())
+}
+
 /// Tests that adding a fungible asset with amount zero to the account vault works and does not
 /// result in an account delta entry.
-#[test]
-fn adding_amount_zero_fungible_asset_to_account_vault_works() -> anyhow::Result<()> {
+#[tokio::test]
+async fn adding_amount_zero_fungible_asset_to_account_vault_works() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let account = builder.add_existing_mock_account(Auth::IncrNonce)?;
     let input_note = builder.add_p2id_note(
@@ -810,7 +886,8 @@ fn adding_amount_zero_fungible_asset_to_account_vault_works() -> anyhow::Result<
     let tx = chain
         .build_tx_context(account, &[input_note.id()], &[])?
         .build()?
-        .execute_blocking()?;
+        .execute()
+        .await?;
 
     assert!(tx.account_delta().vault().is_empty());
 
@@ -823,22 +900,36 @@ fn adding_amount_zero_fungible_asset_to_account_vault_works() -> anyhow::Result<
 struct TestSetup {
     mock_chain: MockChain,
     account_id: AccountId,
+    notes: Vec<Note>,
 }
 
 fn setup_test(
     storage_slots: impl IntoIterator<Item = StorageSlot>,
-    assets: impl IntoIterator<Item = Asset>,
+    vault_assets: impl IntoIterator<Item = Asset>,
+    note_assets: impl IntoIterator<Item = Asset>,
 ) -> anyhow::Result<TestSetup> {
     let mut builder = MockChain::builder();
     let account = builder.add_existing_mock_account_with_storage_and_assets(
         Auth::IncrNonce,
         storage_slots,
-        assets,
+        vault_assets,
     )?;
+
+    let mut notes = vec![];
+    for note_asset in note_assets {
+        let added_note = builder
+            .add_p2id_note(account.id(), account.id(), &[note_asset], NoteType::Public)
+            .context("failed to add note with asset")?;
+        notes.push(added_note);
+    }
 
     let mock_chain = builder.build()?;
 
-    Ok(TestSetup { mock_chain, account_id: account.id() })
+    Ok(TestSetup {
+        mock_chain,
+        account_id: account.id(),
+        notes,
+    })
 }
 
 fn compile_tx_script(code: impl AsRef<str>) -> anyhow::Result<TransactionScript> {
@@ -857,7 +948,7 @@ fn compile_tx_script(code: impl AsRef<str>) -> anyhow::Result<TransactionScript>
 
 const TEST_ACCOUNT_CONVENIENCE_WRAPPERS: &str = "
       use.mock::account
-      use.miden::tx
+      use.miden::output_note
 
       #! Inputs:  [index, VALUE]
       #! Outputs: []
@@ -910,7 +1001,7 @@ const TEST_ACCOUNT_CONVENIENCE_WRAPPERS: &str = "
           repeat.8 push.0 movdn.8 end
           # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
 
-          call.tx::create_note
+          call.output_note::create
           # => [note_idx, pad(15)]
 
           repeat.15 swap drop end

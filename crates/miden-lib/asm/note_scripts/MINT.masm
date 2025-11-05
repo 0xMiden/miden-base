@@ -1,0 +1,61 @@
+use.miden::active_note
+use.miden::contracts::faucets::network_fungible->network_faucet
+
+# CONSTANTS
+# =================================================================================================
+
+const.MINT_NOTE_INPUTS_NUMBER=9
+
+# ERRORS
+# =================================================================================================
+const.ERR_MINT_WRONG_NUMBER_OF_INPUTS="MINT script expects exactly 9 note inputs"
+
+#! Network Faucet MINT script: mints assets by calling the network faucet's distribute function.
+#! This note is intended to be executed against a network fungible faucet account.
+#!
+#! Requires that the account exposes:
+#! - miden::contracts::faucets::network_fungible::distribute procedure.
+#!
+#! Inputs:  [ARGS, pad(12)]
+#! Outputs: [pad(16)]
+#!
+#! Note inputs are assumed to be as follows (in order):
+#! - RECIPIENT: The recipient account ID (4 elements)
+#! - Output note config (4 elements):
+#!   - execution_hint: Execution hint for the output note
+#!   - note_type: Type of the output note
+#!   - aux: Auxiliary data for the output note
+#!   - tag: Note tag for the output note
+#! - amount: The amount to mint
+#!
+#! Panics if:
+#! - account does not expose distribute procedure.
+#! - the number of inputs is not exactly 9.
+begin
+    dropw
+    # => [pad(16)]
+
+    # Load note inputs into memory starting at address 0
+    push.0 exec.active_note::get_inputs
+    # => [num_inputs, inputs_ptr, pad(16)]
+
+    # Verify we have the correct number of inputs
+    eq.MINT_NOTE_INPUTS_NUMBER assert.err=ERR_MINT_WRONG_NUMBER_OF_INPUTS drop
+    # => [pad(16)]
+
+    # Load amount
+    mem_loadw_be.0
+    # => [RECIPIENT, pad(12)]
+
+    swapw mem_loadw_be.4
+    # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
+
+    mem_load.8
+    # => [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
+
+    movup.9 drop
+    # => [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
+
+    call.network_faucet::distribute
+    # => [pad(16)]
+end

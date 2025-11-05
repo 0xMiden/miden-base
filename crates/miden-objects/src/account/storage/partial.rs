@@ -25,6 +25,9 @@ pub struct PartialStorage {
 }
 
 impl PartialStorage {
+    // CONSTRUCTORS
+    // --------------------------------------------------------------------------------------------
+
     /// Returns a new instance of partial storage with the specified header and storage map SMTs.
     ///
     /// The storage commitment is computed during instantiation based on the provided header.
@@ -48,6 +51,47 @@ impl PartialStorage {
         Ok(Self { commitment, header: storage_header, maps })
     }
 
+    /// Converts an [`AccountStorage`] into a partial storage representation.
+    ///
+    /// This creates a partial storage that contains the _full_ proofs for all key-value pairs
+    /// in all map slots of the account storage.
+    pub fn new_full(account_storage: AccountStorage) -> Self {
+        let header: AccountStorageHeader = account_storage.to_header();
+        let commitment = header.compute_commitment();
+
+        let mut maps = BTreeMap::new();
+        for slot in account_storage {
+            if let StorageSlot::Map(storage_map) = slot {
+                let partial_map = PartialStorageMap::new_full(storage_map);
+                maps.insert(partial_map.root(), partial_map);
+            }
+        }
+
+        PartialStorage { header, maps, commitment }
+    }
+
+    /// Converts an [`AccountStorage`] into a partial storage representation.
+    ///
+    /// For every storage map, a single unspecified key-value pair is tracked so that the
+    /// [`PartialStorageMap`] represents the correct root.
+    pub fn new_minimal(account_storage: &AccountStorage) -> Self {
+        let header: AccountStorageHeader = account_storage.to_header();
+        let commitment = header.compute_commitment();
+
+        let mut maps = BTreeMap::new();
+        for slot in account_storage.slots() {
+            if let StorageSlot::Map(storage_map) = slot {
+                let partial_map = PartialStorageMap::new_minimal(storage_map);
+                maps.insert(partial_map.root(), partial_map);
+            }
+        }
+
+        PartialStorage { header, maps, commitment }
+    }
+
+    // ACCESSORS
+    // --------------------------------------------------------------------------------------------
+
     /// Returns a reference to the header of this partial storage.
     pub fn header(&self) -> &AccountStorageHeader {
         &self.header
@@ -56,6 +100,13 @@ impl PartialStorage {
     /// Returns the commitment of this partial storage.
     pub fn commitment(&self) -> Word {
         self.commitment
+    }
+
+    // TODO: Consider removing once no longer needed so we don't commit to the underlying BTreeMap
+    // type.
+    /// Consumes self and returns the underlying parts.
+    pub fn into_parts(self) -> (Word, AccountStorageHeader, BTreeMap<Word, PartialStorageMap>) {
+        (self.commitment, self.header, self.maps)
     }
 
     // TODO: Add from account storage with (slot/[key])?
@@ -77,26 +128,6 @@ impl PartialStorage {
     /// Iterator over all tracked, non‑empty leaves across every map.
     pub fn leaves(&self) -> impl Iterator<Item = &SmtLeaf> + '_ {
         self.maps().flat_map(|map| map.leaves()).map(|(_, leaf)| leaf)
-    }
-}
-
-impl From<&AccountStorage> for PartialStorage {
-    /// Converts a full account storage into a partial storage representation.
-    ///
-    /// This creates a partial storage that contains proofs for all key-value pairs
-    /// in all map slots of the account storage.
-    fn from(account_storage: &AccountStorage) -> Self {
-        let mut map_smts = BTreeMap::new();
-        for slot in account_storage.slots() {
-            if let StorageSlot::Map(map) = slot {
-                let smt: PartialStorageMap = map.clone().into();
-                map_smts.insert(smt.root(), smt);
-            }
-        }
-
-        let header: AccountStorageHeader = account_storage.to_header();
-        let commitment = header.compute_commitment();
-        PartialStorage { header, maps: map_smts, commitment }
     }
 }
 
@@ -124,12 +155,12 @@ impl Deserializable for PartialStorage {
 mod tests {
     use anyhow::Context;
     use miden_core::Word;
-    use miden_crypto::merkle::PartialSmt;
 
     use crate::account::{
         AccountStorage,
         AccountStorageHeader,
         PartialStorage,
+        PartialStorageMap,
         StorageMap,
         StorageSlot,
     };
@@ -140,19 +171,19 @@ mod tests {
         let map_key_absent: Word = [9u64, 12, 18, 3].try_into()?;
 
         let mut map_1 = StorageMap::new();
-        map_1.insert(map_key_absent, Word::try_from([1u64, 2, 3, 2])?);
-        map_1.insert(map_key_present, Word::try_from([5u64, 4, 3, 2])?);
+        map_1.insert(map_key_absent, Word::try_from([1u64, 2, 3, 2])?).unwrap();
+        map_1.insert(map_key_present, Word::try_from([5u64, 4, 3, 2])?).unwrap();
         assert_eq!(map_1.get(&map_key_present), [5u64, 4, 3, 2].try_into()?);
 
         let storage = AccountStorage::new(vec![StorageSlot::Map(map_1.clone())]).unwrap();
 
         // Create partial storage with validation of one map key
         let storage_header = AccountStorageHeader::from(&storage);
-        let proof = map_1.open(&map_key_present);
-        let partial_smt = PartialSmt::from_proofs([proof])?;
+        let witness = map_1.open(&map_key_present);
 
-        let partial_storage = PartialStorage::new(storage_header, [partial_smt.into()])
-            .context("creating partial storage")?;
+        let partial_storage =
+            PartialStorage::new(storage_header, [PartialStorageMap::with_witnesses([witness])?])
+                .context("creating partial storage")?;
 
         let retrieved_map = partial_storage.maps.get(&partial_storage.header.slot(0)?.1).unwrap();
         assert!(retrieved_map.open(&map_key_absent).is_err());

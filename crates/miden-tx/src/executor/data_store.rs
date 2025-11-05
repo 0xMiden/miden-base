@@ -1,8 +1,10 @@
 use alloc::collections::BTreeSet;
 
-use miden_objects::account::{Account, AccountId};
+use miden_objects::account::{AccountId, PartialAccount, StorageMapWitness};
+use miden_objects::asset::{AssetVaultKey, AssetWitness};
 use miden_objects::block::{BlockHeader, BlockNumber};
-use miden_objects::transaction::PartialBlockchain;
+use miden_objects::note::NoteScript;
+use miden_objects::transaction::{AccountInputs, PartialBlockchain};
 use miden_processor::{FutureMaybeSend, MastForestStore, Word};
 
 use crate::DataStoreError;
@@ -30,7 +32,54 @@ pub trait DataStore: MastForestStore {
         &self,
         account_id: AccountId,
         ref_blocks: BTreeSet<BlockNumber>,
-    ) -> impl FutureMaybeSend<
-        Result<(Account, Option<Word>, BlockHeader, PartialBlockchain), DataStoreError>,
-    >;
+    ) -> impl FutureMaybeSend<Result<(PartialAccount, BlockHeader, PartialBlockchain), DataStoreError>>;
+
+    /// Returns a partial foreign account state together with a witness, proving its validity in the
+    /// specified transaction reference block.
+    fn get_foreign_account_inputs(
+        &self,
+        foreign_account_id: AccountId,
+        ref_block: BlockNumber,
+    ) -> impl FutureMaybeSend<Result<AccountInputs, DataStoreError>>;
+
+    /// Returns a witness for an asset in the requested account's vault with the requested vault
+    /// root.
+    ///
+    /// This is the witness that needs to be added to the advice provider's merkle store and advice
+    /// map to make access to the specified asset possible.
+    fn get_vault_asset_witness(
+        &self,
+        account_id: AccountId,
+        vault_root: Word,
+        vault_key: AssetVaultKey,
+    ) -> impl FutureMaybeSend<Result<AssetWitness, DataStoreError>>;
+
+    /// Returns a witness for a storage map item identified by `map_key` in the requested account's
+    /// storage with the requested storage `map_root`.
+    ///
+    /// Note that the `map_key` needs to be hashed in order to get the actual key into the storage
+    /// map.
+    ///
+    /// This is the witness that needs to be added to the advice provider's merkle store and advice
+    /// map to make access to the specified storage map item possible.
+    fn get_storage_map_witness(
+        &self,
+        account_id: AccountId,
+        map_root: Word,
+        map_key: Word,
+    ) -> impl FutureMaybeSend<Result<StorageMapWitness, DataStoreError>>;
+
+    /// Returns a note script with the specified root.
+    ///
+    /// This method will try to find a note script with the specified root in the data store,
+    /// and if not found, return an error.
+    ///
+    /// # Errors
+    /// Returns an error if:
+    /// - The note script with the specified root could not be found in the data store.
+    /// - The data store encountered some internal error.
+    fn get_note_script(
+        &self,
+        script_root: Word,
+    ) -> impl FutureMaybeSend<Result<NoteScript, DataStoreError>>;
 }

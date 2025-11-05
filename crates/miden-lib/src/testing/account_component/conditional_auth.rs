@@ -11,11 +11,11 @@ pub const ERR_WRONG_ARGS_MSG: &str = "auth procedure args are incorrect";
 static CONDITIONAL_AUTH_CODE: LazyLock<String> = LazyLock::new(|| {
     format!(
         r#"
-        use.miden::account
+        use.miden::native_account
 
         const.WRONG_ARGS="{ERR_WRONG_ARGS_MSG}"
 
-        export.auth__conditional
+        export.auth_conditional
             # => [AUTH_ARGS]
 
             # If [97, 98, 99] is passed as an argument, all good.
@@ -26,7 +26,7 @@ static CONDITIONAL_AUTH_CODE: LazyLock<String> = LazyLock::new(|| {
 
             # Last element is the incr_nonce_flag.
             if.true
-                exec.account::incr_nonce drop
+                exec.native_account::incr_nonce drop
             end
             dropw dropw dropw dropw
         end
@@ -42,7 +42,7 @@ static CONDITIONAL_AUTH_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
 
 /// Creates a mock authentication [`AccountComponent`] for testing purposes.
 ///
-/// The component defines an `auth__conditional` procedure that conditionally succeeds and
+/// The component defines an `auth_conditional` procedure that conditionally succeeds and
 /// conditionally increments the nonce based on the authentication arguments.
 ///
 /// The auth procedure expects the first three arguments as [99, 98, 97] to succeed.

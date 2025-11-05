@@ -32,21 +32,21 @@ pub type StorageSlot = u8;
 //
 // Here the "end pointer" is the last memory pointer occupied by the current data
 //
-// | Section           | Start address, pointer (word pointer) | End address, pointer (word pointer) | Comment                             |
-// | ----------------- | :-----------------------------------: | :---------------------------------: | ----------------------------------- |
-// | ID and nonce      | 0 (0)                                 | 3 (0)                               |                                     |
-// | Vault root        | 4 (1)                                 | 7 (1)                               |                                     |
-// | Storage root      | 8 (2)                                 | 11 (2)                              |                                     |
-// | Code root         | 12 (3)                                | 15 (3)                              |                                     |
-// | Padding           | 16 (4)                                | 27 (6)                              |                                     |
-// | Num procedures    | 28 (7)                                | 31 (7)                              |                                     |
-// | Procedures info   | 32 (8)                                | 2_079 (519)                         | 255 procedures max, 8 elements each |
-// | Padding           | 2_080 (520)                           | 2_083 (520)                         |                                     |
-// | Proc tracking     | 2_084 (521)                           | 2_339 (584)                         | 255 procedures max, 1 element each  |
-// | Num storage slots | 2_340 (585)                           | 2_343 (585)                         |                                     |
-// | Storage slot info | 2_344 (586)                           | 4_383 (1095)                        | 255 slots max, 8 elements each      |
-// | Initial slot info | 4_384 (1096)                          | 6_423 (1545)                        | Only present on the native account  |
-// | Padding           | 6_424 (1545)                          | 8_191 (2047)                        |                                     |
+// | Section            | Start address, pointer (word pointer) | End address, pointer (word pointer) | Comment                             |
+// | ------------------ | :-----------------------------------: | :---------------------------------: | ----------------------------------- |
+// | ID and nonce       | 0 (0)                                 | 3 (0)                               |                                     |
+// | Vault root         | 4 (1)                                 | 7 (1)                               |                                     |
+// | Storage commitment | 8 (2)                                 | 11 (2)                              |                                     |
+// | Code commitment    | 12 (3)                                | 15 (3)                              |                                     |
+// | Padding            | 16 (4)                                | 27 (6)                              |                                     |
+// | Num procedures     | 28 (7)                                | 31 (7)                              |                                     |
+// | Procedures info    | 32 (8)                                | 2_079 (519)                         | 255 procedures max, 8 elements each |
+// | Padding            | 2_080 (520)                           | 2_083 (520)                         |                                     |
+// | Proc tracking      | 2_084 (521)                           | 2_339 (584)                         | 255 procedures max, 1 element each  |
+// | Num storage slots  | 2_340 (585)                           | 2_343 (585)                         |                                     |
+// | Storage slot info  | 2_344 (586)                           | 4_383 (1095)                        | 255 slots max, 8 elements each      |
+// | Initial slot info  | 4_384 (1096)                          | 6_423 (1545)                        | Only present on the native account  |
+// | Padding            | 6_424 (1545)                          | 8_191 (2047)                        |                                     |
 
 // Relative layout of the native account's delta.
 //
@@ -73,8 +73,8 @@ pub const FAUCET_STORAGE_DATA_SLOT: StorageSlot = 0;
 // BOOKKEEPING
 // ------------------------------------------------------------------------------------------------
 
-/// The memory address at which a pointer to the input note being executed is stored.
-pub const CURRENT_INPUT_NOTE_PTR: MemoryAddress = 0;
+/// The memory address at which a pointer to the currently active input note is stored.
+pub const ACTIVE_INPUT_NOTE_PTR: MemoryAddress = 0;
 
 /// The memory address at which the number of output notes is stored.
 pub const NUM_OUTPUT_NOTES_PTR: MemoryAddress = 4;
@@ -96,7 +96,7 @@ pub const NATIVE_ACCT_STORAGE_COMMITMENT_DIRTY_FLAG_PTR: MemoryAddress = 16;
 pub const TX_EXPIRATION_BLOCK_NUM_PTR: MemoryAddress = 20;
 
 /// The memory address at which the pointer to the stack element containing the pointer to the
-/// currently active account data is stored.
+/// active account data is stored.
 ///
 /// The stack starts at the address `29`. Stack has a length of `64` elements meaning that the
 /// maximum depth of FPI calls is `63` — the first slot is always occupied by the native account
@@ -215,7 +215,7 @@ pub const PARTIAL_BLOCKCHAIN_PEAKS_PTR: MemoryAddress = 1204;
 // KERNEL DATA
 // ------------------------------------------------------------------------------------------------
 
-/// The memory address at which the number of the procedures of the selected kernel is stored.
+/// The memory address at which the number of the kernel procedures is stored.
 pub const NUM_KERNEL_PROCEDURES_PTR: MemoryAddress = 1600;
 
 /// The memory address at which the section, where the hashes of the kernel procedures are stored,
@@ -415,7 +415,7 @@ pub const INPUT_NOTE_ASSETS_OFFSET: MemoryOffset = 40;
 //
 // Dirty flag is set to 0 after every recomputation of the assets commitment in the
 // `kernel::note::compute_output_note_assets_commitment` procedure. It is set to 1 in the
-// `kernel::tx::add_asset_to_note` procedure after any change was made to the assets data .
+// `kernel::output_note::add_asset` procedure after any change was made to the assets data.
 
 /// The memory address at which the output notes section begins.
 pub const OUTPUT_NOTE_SECTION_OFFSET: MemoryOffset = 16_777_216;
@@ -449,11 +449,11 @@ pub const LINK_MAP_USED_MEMORY_SIZE: MemoryAddress = 33_554_432;
 pub const LINK_MAP_ENTRY_SIZE: MemoryOffset = 16;
 
 const _: () = assert!(
-    LINK_MAP_REGION_START_PTR % LINK_MAP_ENTRY_SIZE == 0,
+    LINK_MAP_REGION_START_PTR.is_multiple_of(LINK_MAP_ENTRY_SIZE),
     "link map region start ptr should be aligned to entry size"
 );
 
 const _: () = assert!(
-    (LINK_MAP_REGION_END_PTR - LINK_MAP_REGION_START_PTR) % LINK_MAP_ENTRY_SIZE == 0,
+    (LINK_MAP_REGION_END_PTR - LINK_MAP_REGION_START_PTR).is_multiple_of(LINK_MAP_ENTRY_SIZE),
     "the link map memory range should cleanly contain a multiple of the entry size"
 );

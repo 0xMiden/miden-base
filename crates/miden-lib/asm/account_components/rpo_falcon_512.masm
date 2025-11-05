@@ -2,14 +2,16 @@
 #
 # See the `AuthRpoFalcon512` Rust type's documentation for more details.
 
-use.miden::auth::rpo_falcon512
-use.miden::account
+use miden::auth::rpo_falcon512
+use miden::active_account
+
+type BeWord = struct @bigendian { a: felt, b: felt, c: felt, d: felt }
 
 # CONSTANTS
 # =================================================================================================
 
 # The slot in this component's storage layout where the public key is stored.
-const.PUBLIC_KEY_SLOT=0
+const PUBLIC_KEY_SLOT = 0
 
 #! Authenticate a transaction using the Falcon signature scheme.
 #!
@@ -26,13 +28,13 @@ const.PUBLIC_KEY_SLOT=0
 #! Outputs: [pad(16)]
 #!
 #! Invocation: call
-export.auth__tx_rpo_falcon512
+pub proc auth_tx_rpo_falcon512(auth_args: BeWord)
     dropw
     # => [pad(16)]
 
     # Fetch public key from storage.
     # ---------------------------------------------------------------------------------------------
-    push.PUBLIC_KEY_SLOT exec.account::get_item
+    push.PUBLIC_KEY_SLOT exec.active_account::get_item
     # => [PUB_KEY, pad(16)]
 
     exec.rpo_falcon512::authenticate_transaction

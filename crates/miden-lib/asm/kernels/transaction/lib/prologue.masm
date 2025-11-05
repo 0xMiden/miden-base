@@ -4,10 +4,10 @@ use.std::crypto::hashes::rpo
 use.std::word
 
 use.$kernel::account
+use.$kernel::account_delta
 use.$kernel::account_id
 use.$kernel::asset_vault
 use.$kernel::constants
-use.$kernel::input_note
 use.$kernel::memory
 
 # CONSTS
@@ -15,6 +15,12 @@ use.$kernel::memory
 
 # Max U32 value, used for initializing the expiration block number
 const.MAX_BLOCK_NUM=0xFFFFFFFF
+
+# EVENTS
+#=================================================================================================
+
+# Emission of an equivalent to `ACCOUNT_VAULT_BEFORE_ADD_ASSET_EVENT`, use in `add_input_note_assets_to_vault`
+const.ACCOUNT_VAULT_BEFORE_ADD_ASSET_EVENT=event("miden::account::vault_before_add_asset")
 
 # ERRORS
 # =================================================================================================
@@ -59,9 +65,7 @@ const.ERR_PROLOGUE_NUMBER_OF_NOTE_INPUTS_EXCEEDED_LIMIT="number of note inputs e
 
 const.ERR_PROLOGUE_NOTE_AUTHENTICATION_FAILED="failed to authenticate note inclusion in block"
 
-const.ERR_PROLOGUE_KERNEL_COMMITMENT_MISMATCH="sequential hash over kernel commitments does not match tx kernel commitment from block"
-
-const.ERR_PROLOGUE_KERNEL_PROCEDURE_COMMITMENT_MISMATCH="sequential hash over kernel procedures does not match kernel commitment"
+const.ERR_PROLOGUE_KERNEL_PROCEDURE_COMMITMENT_MISMATCH="sequential hash over kernel procedures does not match kernel commitment from block"
 
 # PUBLIC INPUTS
 # =================================================================================================
@@ -89,115 +93,62 @@ proc.process_global_inputs
     exec.memory::set_block_commitment dropw
     exec.memory::set_init_account_commitment dropw
     exec.memory::set_nullifier_commitment dropw
-    exec.memory::set_global_acct_id
+    exec.memory::set_global_account_id
 end
 
 # KERNEL DATA
 # =================================================================================================
 
-#! Saves the procedure roots of the chosen kernel to memory. Verifies that kernel commitment and kernel
-#! hash match the sequential hash of all kernels and sequential hash of kernel procedures
-#! respectively.
+#! Saves the kernel procedure roots to the memory. Verifies that the kernel commitment match the
+#! sequential hash of kernel procedures.
 #!
 #! Inputs:
 #!   Operand stack: []
-#!   Advice stack:  [kernel_version]
 #!   Advice map: {
-#!     TX_KERNEL_COMMITMENT: [KERNEL_COMMITMENTS]
-#!     KERNEL_COMMITMENT: [KERNEL_PROCEDURE_ROOTS]
+#!     TX_KERNEL_COMMITMENT: [KERNEL_PROCEDURE_ROOTS]
 #!   }
 #! Outputs:
 #!   Operand stack: []
 #!   Advice stack:  []
 #!
 #! Where:
-#! - kernel_version is the index of the desired kernel in the array of all kernels available for the
-#!   current transaction.
-#! - TX_KERNEL_COMMITMENT is the accumulative hash from all kernel commitments.
-#! - [KERNEL_COMMITMENTS] is the array of each kernel commitment.
-#! - [KERNEL_PROCEDURE_ROOTS] is the array of procedure roots of the current kernel.
+#! - TX_KERNEL_COMMITMENT is the sequential hash of the kernel procedures.
+#! - [KERNEL_PROCEDURE_ROOTS] is the array of the kernel procedure roots.
 proc.process_kernel_data
-    # move the kernel offset to the operand stack
-    adv_push.1
-    # OS => [kernel_version]
-    # AS => []
-
-    # load the tx kernel commitment from memory
+    # load the transaction kernel commitment from memory
     exec.memory::get_tx_kernel_commitment
-    # OS => [TX_KERNEL_COMMITMENT, kernel_version]
+    # OS => [TX_KERNEL_COMMITMENT]
     # AS => []
 
-    # push the kernel commitments from the advice map to the advice stack
+    # push the procedure roots of the transaction kernel from the advice map to the advice stack
     adv.push_mapvaln
-    # OS => [TX_KERNEL_COMMITMENT, kernel_version]
-    # AS => [len_felts, [KERNEL_COMMITMENTS]]
+    # OS => [TX_KERNEL_COMMITMENT]
+    # AS => [len_felts, [KERNEL_PROCEDURE_ROOTS]]
 
-    # move the number of felt elements in the [KERNEL_COMMITMENTS] array to the stack and get the
-    # number of Words from it
+    # move the number of felt elements in the [KERNEL_PROCEDURE_ROOTS] array to the stack and get
+    # the number of procedures from it (which is essentially the number of words)
     adv_push.1 div.4
-    # OS => [len_words, TX_KERNEL_COMMITMENT, kernel_version]
-    # AS => [[KERNEL_COMMITMENTS]]
-
-    # get the pointer to the memory where kernel commitments will be stored
-    # Note: for now we use the same address for kernel commitment and for kernel procedures since there is
-    # only one kernel and its hash will be overwritten by the procedures anyway.
-    exec.memory::get_kernel_procedures_ptr swap
-    # OS => [len_words, kernel_mem_ptr, TX_KERNEL_COMMITMENT, kernel_version]
-    # AS => [[KERNEL_COMMITMENTS]]
-
-    # store the kernel commitments in memory
-    exec.mem::pipe_words_to_memory
-    # OS => [C, B, A, kernel_mem_ptr', TX_KERNEL_COMMITMENT, kernel_version]
-    # AS => []
-
-    # extract the resulting hash
-    exec.rpo::squeeze_digest
-    # OS => [SEQ_HASH, kernel_mem_ptr', TX_KERNEL_COMMITMENT, kernel_version]
-    # AS => []
-
-    # assert that sequential hash matches the precomputed kernel commitment
-    movup.4 drop assert_eqw.err=ERR_PROLOGUE_KERNEL_COMMITMENT_MISMATCH
-    # OS => [kernel_version]
-    # AS => []
-
-    # get the hash of the kernel which will be used in the current transaction
-    exec.memory::get_kernel_procedures_ptr add
-    # OS => [kernel_ptr]
-    # AS => []
-
-    padw movup.4 mem_loadw
-    # OS => [KERNEL_COMMITMENT]
-    # AS => []
-
-    # push the procedure roots of the chosen kernel from the advice map to the advice stack
-    adv.push_mapvaln
-    # OS => [KERNEL_COMMITMENT]
-    # AS => [len_felts, [PROC_HASHES]]
-
-    # move the number of felt elements in the [PROC_HASHES] array to the stack and get the
-    # number of Words from it
-    adv_push.1 div.4
-    # OS => [len_words, KERNEL_COMMITMENT]
-    # AS => [[PROC_HASHES]]
+    # OS => [num_kernel_procedures, TX_KERNEL_COMMITMENT]
+    # AS => [[KERNEL_PROCEDURE_ROOTS]]
 
     # store the number of the procedures of the chosen kernel to the memory
     dup exec.memory::set_num_kernel_procedures
-    # OS => [len_words, KERNEL_COMMITMENT]
-    # AS => [[PROC_HASHES]]
+    # OS => [num_kernel_procedures, TX_KERNEL_COMMITMENT]
+    # AS => [[KERNEL_PROCEDURE_ROOTS]]
 
     # get the pointer to the memory where hashes of the kernel procedures will be stored
     exec.memory::get_kernel_procedures_ptr swap
-    # OS => [len_words, kernel_procs_ptr, KERNEL_COMMITMENT]
-    # AS => [[PROC_HASHES]]
+    # OS => [num_kernel_procedures, kernel_procs_ptr, TX_KERNEL_COMMITMENT]
+    # AS => [[KERNEL_PROCEDURE_ROOTS]]
 
     # store the kernel procedures to the memory
     exec.mem::pipe_words_to_memory
-    # OS => [C, B, A, kernel_procs_ptr', KERNEL_COMMITMENT]
+    # OS => [C, B, A, kernel_procs_ptr', TX_KERNEL_COMMITMENT]
     # AS => []
 
     # extract the resulting hash
     exec.rpo::squeeze_digest
-    # OS => [SEQ_HASH, kernel_procs_ptr', KERNEL_COMMITMENT]
+    # OS => [SEQ_KERNEL_PROC_HASH, kernel_procs_ptr', TX_KERNEL_COMMITMENT]
     # AS => []
 
     # assert that the precomputed hash matches the computed one
@@ -236,7 +187,7 @@ end
 #! - NULLIFIER_ROOT is the root of the tree with nullifiers of all notes that have ever been
 #!   consumed.
 #! - TX_COMMITMENT is a commitment to the set of transaction IDs which affected accounts in the block.
-#! - TX_KERNEL_COMMITMENT is the accumulative hash from all kernel commitments.
+#! - TX_KERNEL_COMMITMENT is the sequential hash of the kernel procedures.
 #! - PROOF_COMMITMENT is the commitment of the block's STARK proof attesting to the correct state transition.
 #! - block_num is the reference block number.
 #! - version is the current protocol version.
@@ -342,13 +293,13 @@ proc.validate_new_account
     # => []
 
     # Assert the account nonce is 0
-    exec.memory::get_acct_nonce eq.0 assert.err=ERR_PROLOGUE_NEW_ACCOUNT_NONCE_MUST_BE_ZERO
+    exec.memory::get_account_nonce eq.0 assert.err=ERR_PROLOGUE_NEW_ACCOUNT_NONCE_MUST_BE_ZERO
     # => []
 
     # Assert the initial vault is empty
     # ---------------------------------------------------------------------------------------------
     # get the account vault root
-    exec.memory::get_acct_vault_root
+    exec.memory::get_account_vault_root
     # => [ACCT_VAULT_ROOT]
 
     # push empty vault root onto stack
@@ -451,14 +402,14 @@ end
 #! - ACCOUNT_STORAGE_COMMITMENT is the account's storage commitment.
 #! - ACCOUNT_CODE_COMMITMENT is the account's code commitment.
 proc.process_account_data
-    # Initialize the current account data pointer in the bookkeeping section with the native offset
+    # Initialize the active account data pointer in the bookkeeping section with the native offset
     # (2048)
-    exec.memory::set_current_account_data_ptr_to_native_account
+    exec.memory::set_active_account_data_ptr_to_native_account
 
     # Copy the account data from the advice provider to memory and hash it
     # ---------------------------------------------------------------------------------------------
 
-    exec.memory::get_current_account_data_ptr
+    exec.memory::get_active_account_data_ptr
     # => [acct_data_ptr]
 
     # read account details and compute its digest. See `Advice stack` above for details.
@@ -472,33 +423,38 @@ proc.process_account_data
     # => [ACCOUNT_COMMITMENT]
 
     # assert the account ID matches the account ID in global inputs
-    exec.memory::get_global_acct_id
+    exec.memory::get_global_account_id
     exec.memory::get_account_id
     exec.account_id::is_equal assert.err=ERR_PROLOGUE_MISMATCH_OF_ACCOUNT_IDS_FROM_GLOBAL_INPUTS_AND_ADVICE_PROVIDER
     # => [ACCOUNT_COMMITMENT]
 
     # store a copy of the initial nonce in global inputs
-    exec.memory::get_acct_nonce
+    exec.memory::get_account_nonce
     exec.memory::set_init_nonce
     # => [ACCOUNT_COMMITMENT]
 
     # validates and stores account storage slots in memory
     # account storage commitment is also stored as an initial one in the global inputs
-    exec.memory::get_acct_storage_commitment
+    exec.memory::get_account_storage_commitment
     exec.memory::set_init_account_storage_commitment
     exec.account::save_account_storage_data
     # => [ACCOUNT_COMMITMENT]
 
     # validates and stores account procedures in memory.
-    exec.memory::get_acct_code_commitment
+    exec.memory::get_account_code_commitment
     exec.account::save_account_procedure_data
+    # => [ACCOUNT_COMMITMENT]
+
+    # duplicate the initial storage slots in memory to enable a diff computation
+    # for the account delta
+    exec.memory::mem_copy_native_account_initial_storage_slots
     # => [ACCOUNT_COMMITMENT]
 
     # copy the initial account vault root to the input vault root to support transaction asset
     # invariant checking
     # this account vault root is also stored as an initial one in the global inputs
-    exec.memory::get_acct_vault_root 
-    exec.memory::set_init_account_vault_root
+    exec.memory::get_account_vault_root
+    exec.memory::set_init_native_account_vault_root
     exec.memory::set_input_vault_root dropw
     # => [ACCOUNT_COMMITMENT]
 
@@ -515,6 +471,13 @@ proc.process_account_data
 
     # process conditional logic depending on whether the account is new or existing
     if.true
+        # insert the initial storage values of the new account into the delta
+        # this is required only for new accounts because the delta at the end of an
+        # account-creating transaction needs to represent the entire account, while
+        # this is not a requirement for existing accounts
+        exec.account::insert_new_storage
+        # => [ACCOUNT_COMMITMENT]
+
         # set the initial account commitment
         exec.memory::set_init_account_commitment dropw
         # => []
@@ -529,7 +492,7 @@ proc.process_account_data
         # => []
 
         # assert the nonce of an existing account is non-zero
-        exec.memory::get_acct_nonce neq.0
+        exec.memory::get_account_nonce neq.0
         assert.err=ERR_PROLOGUE_EXISTING_ACCOUNT_MUST_HAVE_NON_ZERO_NONCE
         # => []
     end
@@ -592,7 +555,7 @@ proc.authenticate_note.8
     # ---------------------------------------------------------------------------------------------
 
     # load the note root from memory
-    loc_loadw.4 swapw
+    loc_loadw_be.4 swapw
     # => [NOTE_COMMITMENT, NOTE_ROOT]
 
     # load the index of the note
@@ -631,7 +594,7 @@ end
 #! - SCRIPT_ROOT is the note's script root.
 #! - INPUTS_COMMITMENT is the sequential hash of the padded note's inputs.
 #! - ASSETS_COMMITMENT is the sequential hash of the padded note's assets.
-#! - NULLIFIER is the result of 
+#! - NULLIFIER is the result of
 #!   `hash(SERIAL_NUMBER || SCRIPT_ROOT || INPUTS_COMMITMENT || ASSETS_COMMITMENT)`.
 proc.process_input_note_details
     exec.memory::get_input_note_core_ptr
@@ -819,7 +782,17 @@ proc.add_input_note_assets_to_vault
         dup.2
         # => [input_vault_root_ptr, assets_start_ptr, assets_end_ptr, input_vault_root_ptr]
 
-        padw dup.5 mem_loadw
+        padw dup.5 mem_loadw_be
+        # => [ASSET, input_vault_root_ptr, assets_start_ptr, assets_end_ptr, input_vault_root_ptr]
+
+        # TODO: Because the input vault is a copy of the account vault, to mutate the input vault,
+        # asset witnesses for the account vault must be requested.
+        # This is a temporary solution. We should avoid loading assets one by one here and instead
+        # pre-load all relevant merkle paths for the note assets before tx execution.
+        #
+        # This emitted event is equivalent to ACCOUNT_VAULT_BEFORE_ADD_ASSET_EVENT.
+
+        emit.ACCOUNT_VAULT_BEFORE_ADD_ASSET_EVENT
         # => [ASSET, input_vault_root_ptr, assets_start_ptr, assets_end_ptr, input_vault_root_ptr]
 
         exec.asset_vault::add_asset dropw
@@ -924,7 +897,7 @@ proc.process_input_note
     # => [NULLIFIER, note_ptr, idx, HASHER_CAPACITY]
 
     # save NULLIFIER to memory
-    movup.5 exec.memory::get_input_note_nullifier_ptr mem_storew
+    movup.5 exec.memory::get_input_note_nullifier_ptr mem_storew_be
     # => [NULLIFIER, note_ptr, HASHER_CAPACITY]
 
     # note metadata & args
@@ -1041,7 +1014,7 @@ proc.process_input_notes_data
     # - On the top of the stack is the hasher state containing the input notes commitment. The
     #   hasher state will be updated by `process_input_note`. After the loop the commitment is
     #   extracted.
-    # - Below the hasher state in the stack is the current note index. This number is used for two
+    # - Below the hasher state in the stack is the active note index. This number is used for two
     #   purposes:
     #   1. Compute the input note's memory addresses, the index works as an offset.
     #   2. Determine the loop condition. The loop below runs until all input notes have been
@@ -1083,10 +1056,10 @@ proc.process_input_notes_data
     assert_eqw.err=ERR_PROLOGUE_INPUT_NOTES_COMMITMENT_MISMATCH
     # => [idx+1, num_notes]
 
-    # set the current input note ptr to the address of the first input note
+    # set the active input note ptr to the address of the first input note
     push.0
     exec.memory::get_input_note_ptr
-    exec.memory::set_current_input_note_ptr
+    exec.memory::set_active_input_note_ptr
     # => [idx+1, num_notes]
 
     drop drop
@@ -1107,7 +1080,7 @@ end
 #!
 #! Where:
 #! - TX_SCRIPT_ROOT is the transaction's script root.
-#! - TX_SCRIPT_ARGS is the word of values which could be used directly or could be used to obtain 
+#! - TX_SCRIPT_ARGS is the word of values which could be used directly or could be used to obtain
 #!   some values associated with it from the advice map.
 proc.process_tx_script_data
     # read the transaction script root from the advice stack
@@ -1205,7 +1178,7 @@ end
 #! - INITIAL_ACCOUNT_COMMITMENT is the account state prior to the transaction, EMPTY_WORD for new
 #!   accounts.
 #! - INPUT_NOTES_COMMITMENT, see `transaction::api::get_input_notes_commitment`.
-#! - TX_KERNEL_COMMITMENT is the accumulative hash from all kernel commitments.
+#! - TX_KERNEL_COMMITMENT is the sequential hash from all kernel commitments.
 #! - PREV_BLOCK_COMMITMENT is the commitment to the previous block.
 #! - PARTIAL_BLOCKCHAIN_COMMITMENT is the sequential hash of the reference MMR.
 #! - ACCOUNT_ROOT is the root of the tree with latest account states for all accounts.

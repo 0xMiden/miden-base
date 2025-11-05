@@ -1,42 +1,27 @@
-use alloc::string::String;
 use alloc::sync::Arc;
-use alloc::vec::Vec;
 
 use anyhow::Context;
 use assert_matches::assert_matches;
 use miden_lib::AuthScheme;
 use miden_lib::account::interface::AccountInterface;
 use miden_lib::account::wallets::BasicWallet;
-use miden_lib::errors::tx_kernel_errors::{
-    ERR_NON_FUNGIBLE_ASSET_ALREADY_EXISTS,
-    ERR_TX_NUMBER_OF_OUTPUT_NOTES_EXCEEDS_LIMIT,
-};
 use miden_lib::note::create_p2id_note;
 use miden_lib::testing::account_component::IncrNonceAuthComponent;
 use miden_lib::testing::mock_account::MockAccountExt;
-use miden_lib::transaction::memory::{
-    NOTE_MEM_SIZE,
-    NUM_OUTPUT_NOTES_PTR,
-    OUTPUT_NOTE_ASSETS_OFFSET,
-    OUTPUT_NOTE_METADATA_OFFSET,
-    OUTPUT_NOTE_RECIPIENT_OFFSET,
-    OUTPUT_NOTE_SECTION_OFFSET,
-};
-use miden_lib::transaction::{TransactionEvent, TransactionKernel};
+use miden_lib::transaction::TransactionKernel;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{
     Account,
     AccountBuilder,
     AccountCode,
     AccountComponent,
-    AccountId,
     AccountStorage,
     AccountStorageMode,
     AccountType,
     StorageSlot,
 };
 use miden_objects::assembly::DefaultSourceManager;
-use miden_objects::assembly::diagnostics::{IntoDiagnostic, NamedSource, miette};
+use miden_objects::assembly::diagnostics::NamedSource;
 use miden_objects::asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset};
 use miden_objects::block::BlockNumber;
 use miden_objects::note::{
@@ -53,20 +38,13 @@ use miden_objects::note::{
     NoteType,
 };
 use miden_objects::testing::account_id::{
-    ACCOUNT_ID_NETWORK_NON_FUNGIBLE_FAUCET,
-    ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET,
     ACCOUNT_ID_PRIVATE_SENDER,
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
-    ACCOUNT_ID_SENDER,
 };
-use miden_objects::testing::constants::{
-    FUNGIBLE_ASSET_AMOUNT,
-    NON_FUNGIBLE_ASSET_DATA,
-    NON_FUNGIBLE_ASSET_DATA_2,
-};
+use miden_objects::testing::constants::{FUNGIBLE_ASSET_AMOUNT, NON_FUNGIBLE_ASSET_DATA};
 use miden_objects::testing::note::DEFAULT_NOTE_CODE;
 use miden_objects::transaction::{
     InputNotes,
@@ -75,63 +53,14 @@ use miden_objects::transaction::{
     TransactionArgs,
     TransactionSummary,
 };
-use miden_objects::{FieldElement, Hasher, Word};
+use miden_objects::{Felt, FieldElement, Hasher, ONE, Word};
 use miden_processor::crypto::RpoRandomCoin;
-use miden_processor::fast::FastProcessor;
-use miden_processor::{AdviceInputs, StackInputs};
 use miden_tx::auth::UnreachableAuth;
-use miden_tx::{
-    AccountProcedureIndexMap,
-    ScriptMastForestStore,
-    TransactionExecutor,
-    TransactionExecutorError,
-    TransactionExecutorHost,
-    TransactionMastStore,
-};
+use miden_tx::{TransactionExecutor, TransactionExecutorError};
 
-use super::{Felt, ONE, ZERO};
-use crate::kernel_tests::tx::ProcessMemoryExt;
-use crate::utils::{create_p2any_note, create_spawn_note};
-use crate::{Auth, MockChain, TransactionContextBuilder, assert_execution_error};
-
-/// Tests that executing a transaction with a foreign account whose inputs are stale fails.
-#[test]
-fn transaction_with_stale_foreign_account_inputs_fails() -> anyhow::Result<()> {
-    // Create a chain with an account
-    let mut builder = MockChain::builder();
-    let native_account = builder.add_existing_wallet(Auth::IncrNonce)?;
-    let foreign_account = builder.add_existing_wallet(Auth::IncrNonce)?;
-    let new_account = builder.create_new_wallet(Auth::IncrNonce)?;
-
-    let mut mock_chain = builder.build()?;
-
-    // Retrieve inputs which will become stale
-    let inputs = mock_chain
-        .get_foreign_account_inputs(foreign_account.id())
-        .expect("failed to get foreign account inputs");
-
-    // Create a new unrelated account to modify the account tree.
-    let tx = mock_chain
-        .build_tx_context(new_account, &[], &[])?
-        .build()?
-        .execute_blocking()?;
-    mock_chain.add_pending_executed_transaction(&tx)?;
-    mock_chain.prove_next_block()?;
-
-    // Attempt to execute with older foreign account inputs. The AccountWitness in the foreign
-    // account's inputs have become stale and so this should fail.
-    let transaction = mock_chain
-        .build_tx_context(native_account.id(), &[], &[])?
-        .foreign_accounts(vec![inputs])
-        .build()?
-        .execute_blocking();
-
-    assert_matches::assert_matches!(
-        transaction,
-        Err(TransactionExecutorError::ForeignAccountNotAnchoredInReference(_))
-    );
-    Ok(())
-}
+use crate::kernel_tests::tx::ExecutionOutputExt;
+use crate::utils::{create_public_p2any_note, create_spawn_note};
+use crate::{Auth, MockChain, TransactionContextBuilder};
 
 /// Tests that consuming a note created in a block that is newer than the reference block of the
 /// transaction fails.
@@ -139,25 +68,31 @@ fn transaction_with_stale_foreign_account_inputs_fails() -> anyhow::Result<()> {
 async fn consuming_note_created_in_future_block_fails() -> anyhow::Result<()> {
     // Create a chain with an account
     let mut builder = MockChain::builder();
-    let account = builder.add_existing_wallet(Auth::BasicAuth)?;
+    let asset = FungibleAsset::mock(400);
+    let account1 = builder.add_existing_wallet_with_assets(Auth::BasicAuth, [asset])?;
+    let account2 = builder.add_existing_wallet_with_assets(Auth::BasicAuth, [asset])?;
+    let output_note = create_public_p2any_note(account1.id(), [asset]);
+    let spawn_note = builder.add_spawn_note([&output_note])?;
     let mut mock_chain = builder.build()?;
     mock_chain.prove_until_block(10u32)?;
 
-    // Create a note that will be contained in block 11.
-    let note = mock_chain
-        .add_pending_p2id_note(
-            account.id(),
-            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
-            &[],
-            NoteType::Private,
-        )
-        .unwrap();
+    // Consume the spawn note which creates a note for account 2 to consume. It will be contained in
+    // block 11. We use account 1 for this, so that account 2 remains unchanged and is still valid
+    // against reference block 1 which we'll use for the later transaction.
+    let tx = mock_chain
+        .build_tx_context(account1.id(), &[spawn_note.id()], &[])?
+        .extend_expected_output_notes(vec![OutputNote::Full(output_note.clone())])
+        .build()?
+        .execute()
+        .await?;
+
+    // Add the transaction to the mock chain's mempool so it will be included in the next block.
+    mock_chain.add_pending_executed_transaction(&tx)?;
     // Create block 11.
     mock_chain.prove_next_block()?;
 
-    // Get as input note, and assert that the note was created after block 1 (which we'll
-    // use as reference)
-    let input_note = mock_chain.get_public_note(&note.id()).expect("note not found");
+    // Get the input note and assert that the note was created after block 11.
+    let input_note = mock_chain.get_public_note(&output_note.id()).expect("note not found");
     assert_eq!(input_note.location().unwrap().block_num().as_u32(), 11);
 
     mock_chain.prove_next_block()?;
@@ -165,7 +100,7 @@ async fn consuming_note_created_in_future_block_fails() -> anyhow::Result<()> {
 
     // Attempt to execute a transaction against reference block 1 with the note created in block 11
     // - which should fail.
-    let tx_context = mock_chain.build_tx_context(account.id(), &[], &[])?.build()?;
+    let tx_context = mock_chain.build_tx_context(account2.id(), &[], &[])?.build()?;
 
     let tx_executor = TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context)
         .with_source_manager(tx_context.source_manager());
@@ -173,7 +108,7 @@ async fn consuming_note_created_in_future_block_fails() -> anyhow::Result<()> {
     // Try to execute with block_ref==1
     let error = tx_executor
         .execute_transaction(
-            account.id(),
+            account2.id(),
             BlockNumber::from(1),
             InputNotes::new(vec![input_note]).unwrap(),
             TransactionArgs::default(),
@@ -188,668 +123,11 @@ async fn consuming_note_created_in_future_block_fails() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[test]
-fn test_create_note() -> anyhow::Result<()> {
-    let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
-    let account_id = tx_context.account().id();
-
-    let recipient = Word::from([0, 1, 2, 3u32]);
-    let aux = Felt::new(27);
-    let tag = NoteTag::from_account_id(account_id);
-
-    let code = format!(
-        "
-        use.miden::tx
-
-        use.$kernel::prologue
-
-        begin
-            exec.prologue::prepare_transaction
-
-            push.{recipient}
-            push.{note_execution_hint}
-            push.{PUBLIC_NOTE}
-            push.{aux}
-            push.{tag}
-
-            call.tx::create_note
-
-            # truncate the stack
-            swapdw dropw dropw
-        end
-        ",
-        recipient = recipient,
-        PUBLIC_NOTE = NoteType::Public as u8,
-        note_execution_hint = Felt::from(NoteExecutionHint::after_block(23.into()).unwrap()),
-        tag = tag,
-    );
-
-    let process = &tx_context.execute_code(&code)?;
-
-    assert_eq!(
-        process.get_kernel_mem_word(NUM_OUTPUT_NOTES_PTR),
-        Word::from([1, 0, 0, 0u32]),
-        "number of output notes must increment by 1",
-    );
-
-    assert_eq!(
-        process.get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_RECIPIENT_OFFSET),
-        recipient,
-        "recipient must be stored at the correct memory location",
-    );
-
-    let expected_note_metadata: Word = NoteMetadata::new(
-        account_id,
-        NoteType::Public,
-        tag,
-        NoteExecutionHint::after_block(23.into())?,
-        Felt::new(27),
-    )?
-    .into();
-
-    assert_eq!(
-        process.get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_METADATA_OFFSET),
-        expected_note_metadata,
-        "metadata must be stored at the correct memory location",
-    );
-
-    assert_eq!(
-        process.stack.get(0),
-        ZERO,
-        "top item on the stack is the index of the output note"
-    );
-    Ok(())
-}
-
-#[test]
-fn test_create_note_with_invalid_tag() -> anyhow::Result<()> {
-    let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
-
-    let invalid_tag = Felt::new((NoteType::Public as u64) << 62);
-    let valid_tag: Felt = NoteTag::for_local_use_case(0, 0).unwrap().into();
-
-    // Test invalid tag
-    assert!(tx_context.execute_code(&note_creation_script(invalid_tag)).is_err());
-
-    // Test valid tag
-    assert!(tx_context.execute_code(&note_creation_script(valid_tag)).is_ok());
-
-    Ok(())
-}
-
-fn note_creation_script(tag: Felt) -> String {
-    format!(
-        "
-            use.miden::tx
-            use.$kernel::prologue
-
-            begin
-                exec.prologue::prepare_transaction
-
-                push.{recipient}
-                push.{execution_hint_always}
-                push.{PUBLIC_NOTE}
-                push.{aux}
-                push.{tag}
-
-                call.tx::create_note
-
-                # clean the stack
-                dropw dropw
-            end
-            ",
-        recipient = Word::from([0, 1, 2, 3u32]),
-        execution_hint_always = Felt::from(NoteExecutionHint::always()),
-        PUBLIC_NOTE = NoteType::Public as u8,
-        aux = Felt::ZERO,
-    )
-}
-
-#[test]
-fn test_create_note_too_many_notes() -> anyhow::Result<()> {
-    let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
-
-    let code = format!(
-        "
-        use.miden::tx
-        use.$kernel::constants
-        use.$kernel::memory
-        use.$kernel::prologue
-
-        begin
-            exec.constants::get_max_num_output_notes
-            exec.memory::set_num_output_notes
-            exec.prologue::prepare_transaction
-
-            push.{recipient}
-            push.{execution_hint_always}
-            push.{PUBLIC_NOTE}
-            push.{aux}
-            push.{tag}
-
-            call.tx::create_note
-        end
-        ",
-        tag = NoteTag::for_local_use_case(1234, 5678).unwrap(),
-        recipient = Word::from([0, 1, 2, 3u32]),
-        execution_hint_always = Felt::from(NoteExecutionHint::always()),
-        PUBLIC_NOTE = NoteType::Public as u8,
-        aux = Felt::ZERO,
-    );
-
-    let process = tx_context.execute_code(&code);
-
-    assert_execution_error!(process, ERR_TX_NUMBER_OF_OUTPUT_NOTES_EXCEEDS_LIMIT);
-    Ok(())
-}
-
-#[test]
-fn test_get_output_notes_commitment() -> anyhow::Result<()> {
-    let tx_context = {
-        let account =
-            Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, Auth::IncrNonce);
-
-        let output_note_1 =
-            create_p2any_note(ACCOUNT_ID_SENDER.try_into()?, &[FungibleAsset::mock(100)]);
-
-        let input_note_1 =
-            create_p2any_note(ACCOUNT_ID_PRIVATE_SENDER.try_into()?, &[FungibleAsset::mock(100)]);
-
-        let input_note_2 =
-            create_p2any_note(ACCOUNT_ID_PRIVATE_SENDER.try_into()?, &[FungibleAsset::mock(200)]);
-
-        TransactionContextBuilder::new(account)
-            .extend_input_notes(vec![input_note_1, input_note_2])
-            .extend_expected_output_notes(vec![OutputNote::Full(output_note_1)])
-            .build()?
-    };
-
-    // extract input note data
-    let input_note_1 = tx_context.tx_inputs().input_notes().get_note(0).note();
-    let input_asset_1 = **input_note_1
-        .assets()
-        .iter()
-        .take(1)
-        .collect::<Vec<_>>()
-        .first()
-        .context("getting first expected input asset")?;
-    let input_note_2 = tx_context.tx_inputs().input_notes().get_note(1).note();
-    let input_asset_2 = **input_note_2
-        .assets()
-        .iter()
-        .take(1)
-        .collect::<Vec<_>>()
-        .first()
-        .context("getting second expected input asset")?;
-
-    // Choose random accounts as the target for the note tag.
-    let network_account = AccountId::try_from(ACCOUNT_ID_NETWORK_NON_FUNGIBLE_FAUCET)?;
-    let local_account = AccountId::try_from(ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET)?;
-
-    // create output note 1
-    let output_serial_no_1 = Word::from([8u32; 4]);
-    let output_tag_1 = NoteTag::from_account_id(network_account);
-    let assets = NoteAssets::new(vec![input_asset_1])?;
-    let metadata = NoteMetadata::new(
-        tx_context.tx_inputs().account().id(),
-        NoteType::Public,
-        output_tag_1,
-        NoteExecutionHint::Always,
-        ZERO,
-    )?;
-    let inputs = NoteInputs::new(vec![])?;
-    let recipient = NoteRecipient::new(output_serial_no_1, input_note_1.script().clone(), inputs);
-    let output_note_1 = Note::new(assets, metadata, recipient);
-
-    // create output note 2
-    let output_serial_no_2 = Word::from([11u32; 4]);
-    let output_tag_2 = NoteTag::from_account_id(local_account);
-    let assets = NoteAssets::new(vec![input_asset_2])?;
-    let metadata = NoteMetadata::new(
-        tx_context.tx_inputs().account().id(),
-        NoteType::Public,
-        output_tag_2,
-        NoteExecutionHint::after_block(123.into())?,
-        ZERO,
-    )?;
-    let inputs = NoteInputs::new(vec![])?;
-    let recipient = NoteRecipient::new(output_serial_no_2, input_note_2.script().clone(), inputs);
-    let output_note_2 = Note::new(assets, metadata, recipient);
-
-    // compute expected output notes commitment
-    let expected_output_notes_commitment = OutputNotes::new(vec![
-        OutputNote::Full(output_note_1.clone()),
-        OutputNote::Full(output_note_2.clone()),
-    ])?
-    .commitment();
-
-    let code = format!(
-        "
-        use.std::sys
-
-        use.miden::tx
-
-        use.$kernel::prologue
-        use.mock::account
-
-        begin
-            # => [BH, acct_id, IAH, NC]
-            exec.prologue::prepare_transaction
-            # => []
-
-            # create output note 1
-            push.{recipient_1}
-            push.{NOTE_EXECUTION_HINT_1}
-            push.{PUBLIC_NOTE}
-            push.{aux_1}
-            push.{tag_1}
-            call.tx::create_note
-            # => [note_idx]
-
-            push.{asset_1}
-            call.tx::add_asset_to_note
-            # => [ASSET, note_idx]
-
-            dropw drop
-            # => []
-
-            # create output note 2
-            push.{recipient_2}
-            push.{NOTE_EXECUTION_HINT_2}
-            push.{PUBLIC_NOTE}
-            push.{aux_2}
-            push.{tag_2}
-            call.tx::create_note
-            # => [note_idx]
-
-            push.{asset_2}
-            call.tx::add_asset_to_note
-            # => [ASSET, note_idx]
-
-            dropw drop
-            # => []
-
-            # compute the output notes commitment
-            exec.tx::get_output_notes_commitment
-            # => [OUTPUT_NOTES_COMMITMENT]
-
-            # truncate the stack
-            exec.sys::truncate_stack
-            # => [OUTPUT_NOTES_COMMITMENT]
-        end
-        ",
-        PUBLIC_NOTE = NoteType::Public as u8,
-        NOTE_EXECUTION_HINT_1 = Felt::from(output_note_1.metadata().execution_hint()),
-        recipient_1 = output_note_1.recipient().digest(),
-        tag_1 = output_note_1.metadata().tag(),
-        aux_1 = output_note_1.metadata().aux(),
-        asset_1 = Word::from(
-            **output_note_1.assets().iter().take(1).collect::<Vec<_>>().first().unwrap()
-        ),
-        recipient_2 = output_note_2.recipient().digest(),
-        NOTE_EXECUTION_HINT_2 = Felt::from(output_note_2.metadata().execution_hint()),
-        tag_2 = output_note_2.metadata().tag(),
-        aux_2 = output_note_2.metadata().aux(),
-        asset_2 = Word::from(
-            **output_note_2.assets().iter().take(1).collect::<Vec<_>>().first().unwrap()
-        ),
-    );
-
-    let process = &tx_context.execute_code(&code)?;
-
-    assert_eq!(
-        process.get_kernel_mem_word(NUM_OUTPUT_NOTES_PTR),
-        Word::from([2u32, 0, 0, 0]),
-        "The test creates two notes",
-    );
-    assert_eq!(
-        NoteMetadata::try_from(
-            process.get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_METADATA_OFFSET)
-        )
-        .unwrap(),
-        *output_note_1.metadata(),
-        "Validate the output note 1 metadata",
-    );
-    assert_eq!(
-        NoteMetadata::try_from(process.get_kernel_mem_word(
-            OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_METADATA_OFFSET + NOTE_MEM_SIZE
-        ))
-        .unwrap(),
-        *output_note_2.metadata(),
-        "Validate the output note 1 metadata",
-    );
-
-    assert_eq!(process.stack.get_word(0), expected_output_notes_commitment);
-    Ok(())
-}
-
-#[test]
-fn test_create_note_and_add_asset() -> anyhow::Result<()> {
-    let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
-
-    let faucet_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET)?;
-    let recipient = Word::from([0, 1, 2, 3u32]);
-    let aux = Felt::new(27);
-    let tag = NoteTag::from_account_id(faucet_id);
-    let asset = Word::from(FungibleAsset::new(faucet_id, 10)?);
-
-    let code = format!(
-        "
-        use.miden::tx
-
-        use.$kernel::prologue
-        use.mock::account
-
-        begin
-            exec.prologue::prepare_transaction
-
-            push.{recipient}
-            push.{NOTE_EXECUTION_HINT}
-            push.{PUBLIC_NOTE}
-            push.{aux}
-            push.{tag}
-
-            call.tx::create_note
-            # => [note_idx]
-
-            push.{asset}
-            call.tx::add_asset_to_note
-            # => [ASSET, note_idx]
-
-            dropw
-            # => [note_idx]
-
-            # truncate the stack
-            swapdw dropw dropw
-        end
-        ",
-        recipient = recipient,
-        PUBLIC_NOTE = NoteType::Public as u8,
-        NOTE_EXECUTION_HINT = Felt::from(NoteExecutionHint::always()),
-        tag = tag,
-        asset = asset,
-    );
-
-    let process = &tx_context.execute_code(&code)?;
-
-    assert_eq!(
-        process.get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_ASSETS_OFFSET),
-        asset,
-        "asset must be stored at the correct memory location",
-    );
-
-    assert_eq!(
-        process.stack.get(0),
-        ZERO,
-        "top item on the stack is the index to the output note"
-    );
-    Ok(())
-}
-
-#[test]
-fn test_create_note_and_add_multiple_assets() -> anyhow::Result<()> {
-    let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
-
-    let faucet = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET)?;
-    let faucet_2 = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2)?;
-
-    let recipient = Word::from([0, 1, 2, 3u32]);
-    let aux = Felt::new(27);
-    let tag = NoteTag::from_account_id(faucet_2);
-
-    let asset = Word::from(FungibleAsset::new(faucet, 10)?);
-    let asset_2 = Word::from(FungibleAsset::new(faucet_2, 20)?);
-    let asset_3 = Word::from(FungibleAsset::new(faucet_2, 30)?);
-    let asset_2_and_3 = Word::from(FungibleAsset::new(faucet_2, 50)?);
-
-    let non_fungible_asset = NonFungibleAsset::mock(&NON_FUNGIBLE_ASSET_DATA_2);
-    let non_fungible_asset_encoded = Word::from(non_fungible_asset);
-
-    let code = format!(
-        "
-        use.miden::tx
-
-        use.$kernel::prologue
-        use.mock::account
-
-        begin
-            exec.prologue::prepare_transaction
-
-            push.{recipient}
-            push.{PUBLIC_NOTE}
-            push.{aux}
-            push.{tag}
-
-            call.tx::create_note
-            # => [note_idx]
-
-            push.{asset}
-            call.tx::add_asset_to_note dropw
-            # => [note_idx]
-
-            push.{asset_2}
-            call.tx::add_asset_to_note dropw
-            # => [note_idx]
-
-            push.{asset_3}
-            call.tx::add_asset_to_note dropw
-            # => [note_idx]
-
-            push.{nft}
-            call.tx::add_asset_to_note dropw
-            # => [note_idx]
-
-            # truncate the stack
-            swapdw dropw drop drop drop
-        end
-        ",
-        recipient = recipient,
-        PUBLIC_NOTE = NoteType::Public as u8,
-        tag = tag,
-        asset = asset,
-        asset_2 = asset_2,
-        asset_3 = asset_3,
-        nft = non_fungible_asset_encoded,
-    );
-
-    let process = &tx_context.execute_code(&code)?;
-
-    assert_eq!(
-        process.get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_ASSETS_OFFSET),
-        asset,
-        "asset must be stored at the correct memory location",
-    );
-
-    assert_eq!(
-        process.get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_ASSETS_OFFSET + 4),
-        asset_2_and_3,
-        "asset_2 and asset_3 must be stored at the same correct memory location",
-    );
-
-    assert_eq!(
-        process.get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_ASSETS_OFFSET + 8),
-        non_fungible_asset_encoded,
-        "non_fungible_asset must be stored at the correct memory location",
-    );
-
-    assert_eq!(
-        process.stack.get(0),
-        ZERO,
-        "top item on the stack is the index to the output note"
-    );
-    Ok(())
-}
-
-#[test]
-fn test_create_note_and_add_same_nft_twice() -> anyhow::Result<()> {
-    let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
-
-    let recipient = Word::from([0, 1, 2, 3u32]);
-    let tag = NoteTag::for_public_use_case(999, 777, NoteExecutionMode::Local).unwrap();
-    let non_fungible_asset = NonFungibleAsset::mock(&[1, 2, 3]);
-    let encoded = Word::from(non_fungible_asset);
-
-    let code = format!(
-        "
-        use.$kernel::prologue
-        use.mock::account
-        use.miden::tx
-
-        begin
-            exec.prologue::prepare_transaction
-            # => []
-
-            padw padw
-            push.{recipient}
-            push.{execution_hint_always}
-            push.{PUBLIC_NOTE}
-            push.{aux}
-            push.{tag}
-
-            call.tx::create_note
-            # => [note_idx, pad(15)]
-
-            push.{nft}
-            call.tx::add_asset_to_note
-            # => [NFT, note_idx, pad(15)]
-            dropw
-
-            push.{nft}
-            call.tx::add_asset_to_note
-            # => [NFT, note_idx, pad(15)]
-
-            repeat.5 dropw end
-        end
-        ",
-        recipient = recipient,
-        PUBLIC_NOTE = NoteType::Public as u8,
-        execution_hint_always = Felt::from(NoteExecutionHint::always()),
-        aux = Felt::new(0),
-        tag = tag,
-        nft = encoded,
-    );
-
-    let process = tx_context.execute_code(&code);
-
-    assert_execution_error!(process, ERR_NON_FUNGIBLE_ASSET_ALREADY_EXISTS);
-    Ok(())
-}
-
-/// Tests that creating a note with a fungible asset with amount zero works.
-#[test]
-fn creating_note_with_fungible_asset_amount_zero_works() -> anyhow::Result<()> {
-    let mut builder = MockChain::builder();
-    let account = builder.add_existing_mock_account(Auth::IncrNonce)?;
-    let output_note = builder.add_p2id_note(
-        account.id(),
-        account.id(),
-        &[FungibleAsset::mock(0)],
-        NoteType::Private,
-    )?;
-    let input_note = builder.add_spawn_note(account.id(), [&output_note])?;
-    let chain = builder.build()?;
-
-    chain
-        .build_tx_context(account, &[input_note.id()], &[])?
-        .build()?
-        .execute_blocking()?;
-
-    Ok(())
-}
-
-#[test]
-fn test_build_recipient_hash() -> anyhow::Result<()> {
-    let tx_context = {
-        let account =
-            Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, Auth::IncrNonce);
-
-        let input_note_1 =
-            create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), &[FungibleAsset::mock(100)]);
-        TransactionContextBuilder::new(account)
-            .extend_input_notes(vec![input_note_1])
-            .build()?
-    };
-    let input_note_1 = tx_context.tx_inputs().input_notes().get_note(0).note();
-
-    // create output note
-    let output_serial_no = Word::from([0, 1, 2, 3u32]);
-    let aux = Felt::new(27);
-    let tag = NoteTag::for_public_use_case(42, 42, NoteExecutionMode::Network).unwrap();
-    let single_input = 2;
-    let inputs = NoteInputs::new(vec![Felt::new(single_input)]).unwrap();
-    let input_commitment = inputs.commitment();
-
-    let recipient = NoteRecipient::new(output_serial_no, input_note_1.script().clone(), inputs);
-    let code = format!(
-        "
-        use.miden::tx
-        use.$kernel::prologue
-
-        proc.build_recipient_hash
-            exec.tx::build_recipient_hash
-        end
-
-        begin
-            exec.prologue::prepare_transaction
-
-            # pad the stack before call
-            padw
-
-            # input
-            push.{input_commitment}
-            # SCRIPT_ROOT
-            push.{script_root}
-            # SERIAL_NUM
-            push.{output_serial_no}
-            # => [SERIAL_NUM, SCRIPT_ROOT, INPUT_COMMITMENT, pad(4)]
-
-            call.build_recipient_hash
-            # => [RECIPIENT, pad(12)]
-
-            push.{execution_hint}
-            push.{PUBLIC_NOTE}
-            push.{aux}
-            push.{tag}
-            # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(12)]
-
-            call.tx::create_note
-            # => [note_idx, pad(19)]
-
-            # clean the stack
-            dropw dropw dropw dropw dropw
-        end
-        ",
-        script_root = input_note_1.script().clone().root(),
-        output_serial_no = output_serial_no,
-        PUBLIC_NOTE = NoteType::Public as u8,
-        tag = tag,
-        execution_hint = Felt::from(NoteExecutionHint::after_block(2.into()).unwrap()),
-        aux = aux,
-    );
-
-    let process = &tx_context.execute_code(&code)?;
-
-    assert_eq!(
-        process.get_kernel_mem_word(NUM_OUTPUT_NOTES_PTR),
-        Word::from([1, 0, 0, 0u32]),
-        "number of output notes must increment by 1",
-    );
-
-    let recipient_digest = recipient.clone().digest();
-
-    assert_eq!(
-        process.get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_RECIPIENT_OFFSET),
-        recipient_digest,
-        "recipient hash not correct",
-    );
-    Ok(())
-}
-
 // BLOCK TESTS
 // ================================================================================================
 
-#[test]
-fn test_block_procedures() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_block_procedures() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
     let code = "
@@ -870,128 +148,30 @@ fn test_block_procedures() -> anyhow::Result<()> {
         end
         ";
 
-    let process = &tx_context.execute_code(code)?;
+    let exec_output = &tx_context.execute_code(code).await?;
 
     assert_eq!(
-        process.stack.get_word(0),
+        exec_output.get_stack_word_be(0),
         tx_context.tx_inputs().block_header().commitment(),
         "top word on the stack should be equal to the block header commitment"
     );
 
     assert_eq!(
-        process.stack.get(4).as_int(),
+        exec_output.get_stack_element(4).as_int(),
         tx_context.tx_inputs().block_header().timestamp() as u64,
         "fifth element on the stack should be equal to the timestamp of the last block creation"
     );
 
     assert_eq!(
-        process.stack.get(5).as_int(),
+        exec_output.get_stack_element(5).as_int(),
         tx_context.tx_inputs().block_header().block_num().as_u64(),
         "sixth element on the stack should be equal to the block number"
     );
     Ok(())
 }
 
-/// Tests that the transaction witness retrieved from an executed transaction contains all necessary
-/// advice input to execute the transaction again.
 #[tokio::test]
-async fn advice_inputs_from_transaction_witness_are_sufficient_to_reexecute_transaction()
--> miette::Result<()> {
-    // Creates a mockchain with an account and a note that it can consume
-    let tx_context = {
-        let mut builder = MockChain::builder();
-        let account = builder
-            .add_existing_wallet(Auth::BasicAuth)
-            .map_err(|err| miette::miette!(err))?;
-        let p2id_note = builder
-            .add_p2id_note(
-                ACCOUNT_ID_SENDER.try_into().unwrap(),
-                account.id(),
-                &[FungibleAsset::mock(100)],
-                NoteType::Public,
-            )
-            .map_err(|err| miette::miette!(err))?;
-        let mock_chain = builder.build().map_err(|err| miette::miette!(err))?;
-
-        mock_chain
-            .build_tx_context(account.id(), &[], &[p2id_note])
-            .unwrap()
-            .build()
-            .unwrap()
-    };
-
-    let executed_transaction = tx_context.execute().await.into_diagnostic()?;
-
-    let tx_inputs = executed_transaction.tx_inputs();
-    let tx_args = executed_transaction.tx_args();
-
-    let scripts_mast_store = ScriptMastForestStore::new(
-        tx_args.tx_script(),
-        tx_inputs.input_notes().iter().map(|n| n.note().script()),
-    );
-
-    // use the witness to execute the transaction again
-    let (stack_inputs, advice_inputs) = TransactionKernel::prepare_inputs(
-        tx_inputs,
-        tx_args,
-        Some(executed_transaction.advice_witness().clone()),
-    )
-    .into_diagnostic()?;
-
-    // load account/note/tx_script MAST to the mast_store
-    let mast_store = Arc::new(TransactionMastStore::new());
-    mast_store.load_account_code(tx_inputs.account().code());
-
-    let mut host = {
-        let acct_procedure_index_map =
-            AccountProcedureIndexMap::from_transaction_params(tx_inputs, tx_args, &advice_inputs)
-                .unwrap();
-
-        TransactionExecutorHost::<'_, '_, _, UnreachableAuth>::new(
-            &tx_inputs.account().into(),
-            tx_inputs.input_notes().clone(),
-            mast_store.as_ref(),
-            scripts_mast_store,
-            acct_procedure_index_map,
-            None,
-            tx_inputs.block_header().fee_parameters(),
-            Arc::new(DefaultSourceManager::default()),
-        )
-    };
-    let advice_inputs = advice_inputs.into_advice_inputs();
-    // This reverses the stack inputs (even though it doesn't look like it does) because the
-    // fast processor expects the reverse order.
-    let stack_inputs = StackInputs::new(stack_inputs.iter().copied().collect()).unwrap();
-
-    let processor = FastProcessor::new_debug(stack_inputs.as_slice(), advice_inputs);
-    let (stack_outputs, advice_provider) = processor
-        .execute(&TransactionKernel::main(), &mut host)
-        .await
-        .map_err(TransactionExecutorError::TransactionProgramExecutionFailed)
-        .into_diagnostic()?;
-
-    // Extract advice map from advice provider.
-    let advice_inputs = AdviceInputs {
-        map: advice_provider.into_parts().1,
-        ..Default::default()
-    };
-
-    let (_, output_notes, _signatures, _tx_progress) = host.into_parts();
-    let tx_outputs =
-        TransactionKernel::from_transaction_parts(&stack_outputs, &advice_inputs, output_notes)
-            .unwrap();
-
-    assert_eq!(
-        executed_transaction.final_account().commitment(),
-        tx_outputs.account.commitment()
-    );
-    assert_eq!(executed_transaction.output_notes(), &tx_outputs.output_notes);
-
-    Ok(())
-}
-
-#[test]
-fn executed_transaction_output_notes() -> anyhow::Result<()> {
+async fn executed_transaction_output_notes() -> anyhow::Result<()> {
     let executor_account =
         Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, IncrNonceAuthComponent);
     let account_id = executor_account.id();
@@ -1064,8 +244,7 @@ fn executed_transaction_output_notes() -> anyhow::Result<()> {
     let tx_script_src = format!(
         "\
         use.miden::contracts::wallets::basic->wallet
-        use.miden::tx
-        use.mock::account
+        use.miden::output_note
 
         # Inputs:  [tag, aux, note_type, execution_hint, RECIPIENT]
         # Outputs: [note_idx]
@@ -1075,7 +254,7 @@ fn executed_transaction_output_notes() -> anyhow::Result<()> {
             padw padw swapdw
             # => [tag, aux, execution_hint, note_type, RECIPIENT, pad(8)]
 
-            call.tx::create_note
+            call.output_note::create
             # => [note_idx, pad(15)]
 
             # remove excess PADs from the stack
@@ -1177,7 +356,7 @@ fn executed_transaction_output_notes() -> anyhow::Result<()> {
         ])
         .build()?;
 
-    let executed_transaction = tx_context.execute_blocking()?;
+    let executed_transaction = tx_context.execute().await?;
 
     // output notes
     // --------------------------------------------------------------------------------------------
@@ -1230,20 +409,20 @@ fn executed_transaction_output_notes() -> anyhow::Result<()> {
 
 /// Tests that a transaction consuming and creating one note can emit an abort event in its auth
 /// component to result in a [`TransactionExecutorError::Unauthorized`] error.
-#[test]
-fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
-    let source_code = format!(
-        "
+#[tokio::test]
+async fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
+    let source_code = r#"
       use.miden::auth
       use.miden::tx
+      const.AUTH_UNAUTHORIZED_EVENT=event("miden::auth::unauthorized")
       #! Inputs:  [AUTH_ARGS, pad(12)]
       #! Outputs: [pad(16)]
-      export.auth__abort_tx
+      export.auth_abort_tx
           dropw
           # => [pad(16)]
 
           push.0.0 exec.tx::get_block_number
-          exec.::miden::account::incr_nonce
+          exec.::miden::native_account::incr_nonce
           # => [[final_nonce, block_num, 0, 0], pad(16)]
           # => [SALT, pad(16)]
 
@@ -1255,11 +434,9 @@ fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
           exec.auth::hash_tx_summary
           # => [MESSAGE, pad(16)]
 
-          emit.{abort_event}
+          emit.AUTH_UNAUTHORIZED_EVENT
       end
-    ",
-        abort_event = TransactionEvent::Unauthorized as u32
-    );
+    "#;
 
     let auth_component =
         AccountComponent::compile(source_code, TransactionKernel::assembler(), vec![])
@@ -1283,12 +460,11 @@ fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
         Felt::ZERO,
         &mut rng,
     )?;
-    let input_note = create_spawn_note(account.id(), vec![&output_note])?;
+    let input_note = create_spawn_note(vec![&output_note])?;
 
-    let mut mock_chain = MockChain::new();
-
-    mock_chain.add_pending_note(OutputNote::Full(input_note.clone()));
-    mock_chain.prove_next_block()?;
+    let mut builder = MockChain::builder();
+    builder.add_output_note(OutputNote::Full(input_note.clone()));
+    let mock_chain = builder.build()?;
 
     let tx_context = mock_chain.build_tx_context(account, &[input_note.id()], &[])?.build()?;
     let ref_block_num = tx_context.tx_inputs().block_header().block_num().as_u32();
@@ -1296,7 +472,7 @@ fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
     let input_notes = tx_context.input_notes().clone();
     let output_notes = OutputNotes::new(vec![OutputNote::Partial(output_note.into())])?;
 
-    let error = tx_context.execute_blocking().unwrap_err();
+    let error = tx_context.execute().await.unwrap_err();
 
     assert_matches!(error, TransactionExecutorError::Unauthorized(tx_summary) => {
         assert!(tx_summary.account_delta().vault().is_empty());
@@ -1314,8 +490,8 @@ fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
 
 /// Tests that a transaction consuming and creating one note with basic authentication correctly
 /// signs the transaction summary.
-#[test]
-fn tx_summary_commitment_is_signed_by_falcon_auth() -> anyhow::Result<()> {
+#[tokio::test]
+async fn tx_summary_commitment_is_signed_by_falcon_auth() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let account = builder.add_existing_mock_account(Auth::BasicAuth)?;
     let mut rng = RpoRandomCoin::new(Word::empty());
@@ -1327,13 +503,14 @@ fn tx_summary_commitment_is_signed_by_falcon_auth() -> anyhow::Result<()> {
         Felt::ZERO,
         &mut rng,
     )?;
-    let spawn_note = builder.add_spawn_note(account.id(), [&p2id_note])?;
+    let spawn_note = builder.add_spawn_note([&p2id_note])?;
     let chain = builder.build()?;
 
     let tx = chain
         .build_tx_context(account.id(), &[spawn_note.id()], &[])?
         .build()?
-        .execute_blocking()?;
+        .execute()
+        .await?;
 
     let summary = TransactionSummary::new(
         tx.account_delta().clone(),
@@ -1412,7 +589,7 @@ async fn execute_tx_view_script() -> anyhow::Result<()> {
         .with_source_manager(source_manager);
 
     let stack_outputs = executor
-        .execute_tx_view_script(account_id, block_ref, tx_script, advice_inputs, Vec::default())
+        .execute_tx_view_script(account_id, block_ref, tx_script, advice_inputs)
         .await?;
 
     assert_eq!(stack_outputs[..3], [Felt::new(7), Felt::new(2), ONE]);
@@ -1424,8 +601,8 @@ async fn execute_tx_view_script() -> anyhow::Result<()> {
 // ================================================================================================
 
 /// Tests transaction script inputs.
-#[test]
-fn test_tx_script_inputs() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_tx_script_inputs() -> anyhow::Result<()> {
     let tx_script_input_key = Word::from([9999, 8888, 9999, 8888u32]);
     let tx_script_input_value = Word::from([9, 8, 7, 6u32]);
     let tx_script_src = format!(
@@ -1434,17 +611,15 @@ fn test_tx_script_inputs() -> anyhow::Result<()> {
 
         begin
             # push the tx script input key onto the stack
-            push.{key}
+            push.{tx_script_input_key}
 
             # load the tx script input value from the map and read it onto the stack
             adv.push_mapval adv_loadw
 
             # assert that the value is correct
-            push.{value} assert_eqw
+            push.{tx_script_input_value} assert_eqw
         end
-        ",
-        key = tx_script_input_key,
-        value = tx_script_input_value
+        "
     );
 
     let tx_script = ScriptBuilder::default().compile_tx_script(tx_script_src)?;
@@ -1454,14 +629,14 @@ fn test_tx_script_inputs() -> anyhow::Result<()> {
         .extend_advice_map([(tx_script_input_key, tx_script_input_value.to_vec())])
         .build()?;
 
-    tx_context.execute_blocking().context("failed to execute transaction")?;
+    tx_context.execute().await.context("failed to execute transaction")?;
 
     Ok(())
 }
 
 /// Tests transaction script arguments.
-#[test]
-fn test_tx_script_args() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_tx_script_args() -> anyhow::Result<()> {
     let tx_script_args = Word::from([1, 2, 3, 4u32]);
 
     let tx_script_src = r#"
@@ -1500,15 +675,15 @@ fn test_tx_script_args() -> anyhow::Result<()> {
         .tx_script_args(tx_script_args)
         .build()?;
 
-    tx_context.execute_blocking()?;
+    tx_context.execute().await?;
 
     Ok(())
 }
 
 // Tests that advice map from the account code and transaction script gets correctly passed as
 // part of the transaction advice inputs
-#[test]
-fn inputs_created_correctly() -> anyhow::Result<()> {
+#[tokio::test]
+async fn inputs_created_correctly() -> anyhow::Result<()> {
     let account_code_script = r#"
             adv_map.A([6,7,8,9])=[10,11,12,13]
 
@@ -1564,7 +739,7 @@ fn inputs_created_correctly() -> anyhow::Result<()> {
             .is_some()
     );
 
-    let account = Account::from_parts(
+    let account = Account::new_existing(
         ACCOUNT_ID_PRIVATE_SENDER.try_into()?,
         AssetVault::mock(),
         AccountStorage::mock(),
@@ -1572,7 +747,7 @@ fn inputs_created_correctly() -> anyhow::Result<()> {
         Felt::new(1u64),
     );
     let tx_context = crate::TransactionContextBuilder::new(account).tx_script(tx_script).build()?;
-    _ = tx_context.execute_blocking()?;
+    _ = tx_context.execute().await?;
 
     Ok(())
 }

@@ -9,13 +9,8 @@ use miden_objects::assembly::debuginfo::SourceManagerSync;
 use miden_objects::assembly::{Assembler, DefaultSourceManager, KernelLibrary};
 use miden_objects::asset::FungibleAsset;
 use miden_objects::block::BlockNumber;
-use miden_objects::transaction::{
-    OutputNote,
-    OutputNotes,
-    TransactionArgs,
-    TransactionInputs,
-    TransactionOutputs,
-};
+use miden_objects::crypto::SequentialCommit;
+use miden_objects::transaction::{OutputNote, OutputNotes, TransactionInputs, TransactionOutputs};
 use miden_objects::utils::serde::Deserializable;
 use miden_objects::utils::sync::LazyLock;
 use miden_objects::vm::{AdviceInputs, Program, ProgramInfo, StackInputs, StackOutputs};
@@ -27,7 +22,7 @@ use super::MidenLib;
 pub mod memory;
 
 mod events;
-pub use events::TransactionEvent;
+pub use events::{EventId, TransactionEvent};
 
 mod inputs;
 pub use inputs::{TransactionAdviceInputs, TransactionAdviceMapMismatch};
@@ -41,13 +36,10 @@ pub use outputs::{
     parse_final_account_header,
 };
 
-pub use crate::errors::{
-    TransactionEventError,
-    TransactionKernelError,
-    TransactionTraceParsingError,
-};
+pub use crate::errors::{TransactionEventError, TransactionTraceParsingError};
 
-mod procedures;
+mod kernel_procedures;
+use kernel_procedures::KERNEL_PROCEDURES;
 
 // CONSTANTS
 // ================================================================================================
@@ -82,6 +74,12 @@ static TX_SCRIPT_MAIN: LazyLock<Program> = LazyLock::new(|| {
 pub struct TransactionKernel;
 
 impl TransactionKernel {
+    // CONSTANTS
+    // --------------------------------------------------------------------------------------------
+
+    /// Array of kernel procedures.
+    pub const PROCEDURES: &'static [Word] = &KERNEL_PROCEDURES;
+
     // KERNEL SOURCE CODE
     // --------------------------------------------------------------------------------------------
 
@@ -121,29 +119,22 @@ impl TransactionKernel {
         ProgramInfo::new(program_hash, kernel)
     }
 
-    /// Transforms the provided [TransactionInputs] and [TransactionArgs] into stack and advice
+    /// Transforms the provided [`TransactionInputs`] into stack and advice
     /// inputs needed to execute a transaction kernel for a specific transaction.
-    ///
-    /// If `init_advice_inputs` is provided, they will be included in the returned advice inputs.
     pub fn prepare_inputs(
         tx_inputs: &TransactionInputs,
-        tx_args: &TransactionArgs,
-        init_advice_inputs: Option<AdviceInputs>,
     ) -> Result<(StackInputs, TransactionAdviceInputs), TransactionAdviceMapMismatch> {
         let account = tx_inputs.account();
 
         let stack_inputs = TransactionKernel::build_input_stack(
             account.id(),
-            account.init_commitment(),
+            account.initial_commitment(),
             tx_inputs.input_notes().commitment(),
             tx_inputs.block_header().commitment(),
             tx_inputs.block_header().block_num(),
         );
 
-        let mut tx_advice_inputs = TransactionAdviceInputs::new(tx_inputs, tx_args)?;
-        if let Some(init_advice_inputs) = init_advice_inputs {
-            tx_advice_inputs.extend(init_advice_inputs);
-        }
+        let tx_advice_inputs = TransactionAdviceInputs::new(tx_inputs)?;
 
         Ok((stack_inputs, tx_advice_inputs))
     }
@@ -196,7 +187,7 @@ impl TransactionKernel {
     /// - INPUT_NOTES_COMMITMENT, see `transaction::api::get_input_notes_commitment`.
     pub fn build_input_stack(
         account_id: AccountId,
-        init_account_commitment: Word,
+        initial_account_commitment: Word,
         input_notes_commitment: Word,
         block_commitment: Word,
         block_num: BlockNumber,
@@ -207,7 +198,7 @@ impl TransactionKernel {
         inputs.push(account_id.suffix());
         inputs.push(account_id.prefix().as_felt());
         inputs.extend(input_notes_commitment);
-        inputs.extend_from_slice(init_account_commitment.as_elements());
+        inputs.extend_from_slice(initial_account_commitment.as_elements());
         inputs.extend_from_slice(block_commitment.as_elements());
         StackInputs::new(inputs)
             .map_err(|e| e.to_string())
@@ -280,18 +271,18 @@ impl TransactionKernel {
     /// - Indices 13..16 on the stack are not zeroes.
     /// - Overflow addresses are not empty.
     pub fn parse_output_stack(
-        stack: &StackOutputs,
+        stack: &StackOutputs, // FIXME TODO add an extension trait for this one
     ) -> Result<(Word, Word, FungibleAsset, BlockNumber), TransactionOutputError> {
         let output_notes_commitment = stack
-            .get_stack_word(OUTPUT_NOTES_COMMITMENT_WORD_IDX * 4)
+            .get_stack_word_be(OUTPUT_NOTES_COMMITMENT_WORD_IDX * 4)
             .expect("output_notes_commitment (first word) missing");
 
         let account_update_commitment = stack
-            .get_stack_word(ACCOUNT_UPDATE_COMMITMENT_WORD_IDX * 4)
+            .get_stack_word_be(ACCOUNT_UPDATE_COMMITMENT_WORD_IDX * 4)
             .expect("account_update_commitment (second word) missing");
 
         let fee = stack
-            .get_stack_word(FEE_ASSET_WORD_IDX * 4)
+            .get_stack_word_be(FEE_ASSET_WORD_IDX * 4)
             .expect("fee_asset (third word) missing");
 
         let expiration_block_num = stack
@@ -308,7 +299,7 @@ impl TransactionKernel {
 
         // Make sure that indices 13, 14 and 15 are zeroes (i.e. the fourth word without the
         // expiration block number).
-        if stack.get_stack_word(12).expect("fourth word missing").as_elements()[..3]
+        if stack.get_stack_word_be(12).expect("fourth word missing").as_elements()[..3]
             != Word::empty().as_elements()[..3]
         {
             return Err(TransactionOutputError::OutputStackInvalid(
@@ -432,6 +423,14 @@ impl TransactionKernel {
 
         Ok((final_account_commitment, account_delta_commitment))
     }
+
+    // UTILITY METHODS
+    // --------------------------------------------------------------------------------------------
+
+    /// Computes the sequential hash of all kernel procedures.
+    pub fn to_commitment(&self) -> Word {
+        <Self as SequentialCommit>::to_commitment(self)
+    }
 }
 
 #[cfg(any(feature = "testing", test))]
@@ -468,16 +467,20 @@ impl TransactionKernel {
             .with_debug_mode(true)
     }
 
-    /// Returns an [`Assembler`] with the mock account and faucet libraries.
+    /// Returns an [`Assembler`] with the `mock::{account, faucet, util}` libraries.
     ///
     /// This assembler is the same as [`TransactionKernel::with_kernel_library`] but additionally
-    /// includes the [`MockAccountCodeExt::mock_account_library`][account_lib]
-    /// and [`MockAccountCodeExt::mock_faucet_library`][faucet_lib], which are the standard
-    /// testing account libraries.
+    /// includes:
+    /// - [`MockAccountCodeExt::mock_account_library`][account_lib],
+    /// - [`MockAccountCodeExt::mock_faucet_library`][faucet_lib],
+    /// - [`mock_util_library`][util_lib]
     ///
     /// [account_lib]: crate::testing::mock_account_code::MockAccountCodeExt::mock_account_library
     /// [faucet_lib]: crate::testing::mock_account_code::MockAccountCodeExt::mock_faucet_library
+    /// [util_lib]: crate::testing::mock_util_lib::mock_util_library
     pub fn with_mock_libraries(source_manager: Arc<dyn SourceManagerSync>) -> Assembler {
+        use crate::testing::mock_util_lib::mock_util_library;
+
         let mut assembler = Self::with_kernel_library(source_manager);
 
         for library in Self::mock_libraries() {
@@ -487,6 +490,19 @@ impl TransactionKernel {
         }
 
         assembler
+            .link_static_library(mock_util_library())
+            .expect("failed to add mock test library");
+
+        assembler
+    }
+}
+
+impl SequentialCommit for TransactionKernel {
+    type Commitment = Word;
+
+    /// Returns kernel procedures as vector of Felts.
+    fn to_elements(&self) -> Vec<Felt> {
+        Word::words_as_elements(Self::PROCEDURES).to_vec()
     }
 }
 

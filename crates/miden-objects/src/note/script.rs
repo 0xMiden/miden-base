@@ -2,6 +2,8 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::fmt::Display;
 
+use miden_processor::MastNodeExt;
+
 use super::Felt;
 use crate::assembly::mast::{MastForest, MastNodeId};
 use crate::utils::serde::{
@@ -84,14 +86,14 @@ impl From<&NoteScript> for Vec<Felt> {
         let len = bytes.len();
 
         // Pad the data so that it can be encoded with u32
-        let missing = if len % 4 > 0 { 4 - (len % 4) } else { 0 };
+        let missing = if !len.is_multiple_of(4) { 4 - (len % 4) } else { 0 };
         bytes.resize(bytes.len() + missing, 0);
 
         let final_size = 2 + bytes.len();
         let mut result = Vec::with_capacity(final_size);
 
         // Push the length, this is used to remove the padding later
-        result.push(Felt::from(script.entrypoint.as_u32()));
+        result.push(Felt::from(u32::from(script.entrypoint)));
         result.push(Felt::new(len as u64));
 
         // A Felt can not represent all u64 values, so the data is encoded using u32.
@@ -162,7 +164,7 @@ impl TryFrom<Vec<Felt>> for NoteScript {
 impl Serializable for NoteScript {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         self.mast.write_into(target);
-        target.write_u32(self.entrypoint.as_u32());
+        target.write_u32(u32::from(self.entrypoint));
     }
 }
 

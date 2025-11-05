@@ -4,26 +4,29 @@ use miden_core::EMPTY_WORD;
 use miden_crypto::merkle::EmptySubtreeRoots;
 
 use super::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable, Word};
-use crate::Hasher;
 use crate::account::StorageMapDelta;
-use crate::crypto::merkle::{InnerNodeInfo, LeafIndex, SMT_DEPTH, Smt, SmtLeaf, SmtProof};
+use crate::crypto::merkle::{InnerNodeInfo, LeafIndex, SMT_DEPTH, Smt, SmtLeaf};
 use crate::errors::StorageMapError;
+use crate::{AccountError, Felt, Hasher};
 
 mod partial;
 pub use partial::PartialStorageMap;
+
+mod witness;
+pub use witness::StorageMapWitness;
 
 // ACCOUNT STORAGE MAP
 // ================================================================================================
 
 /// Empty storage map root.
-pub const EMPTY_STORAGE_MAP_ROOT: Word = *EmptySubtreeRoots::entry(StorageMap::TREE_DEPTH, 0);
+pub const EMPTY_STORAGE_MAP_ROOT: Word = *EmptySubtreeRoots::entry(StorageMap::DEPTH, 0);
 
-/// An account storage map is a sparse merkle tree of depth [`Self::TREE_DEPTH`] (64).
+/// An account storage map is a sparse merkle tree of depth [`Self::DEPTH`].
 ///
 /// It can be used to store a large amount of data in an account than would be otherwise possible
 /// using just the account's storage slots. This works by storing the root of the map's underlying
 /// SMT in one account storage slot. Each map entry is a leaf in the tree and its inclusion is
-/// proven while retrieving it (e.g. via `account::get_map_item`).
+/// proven while retrieving it (e.g. via `active_account::get_map_item`).
 ///
 /// As a side-effect, this also means that _not all_ entries of the map have to be present at
 /// transaction execution time in order to access or modify the map. It is sufficient if _just_ the
@@ -39,19 +42,19 @@ pub const EMPTY_STORAGE_MAP_ROOT: Word = *EmptySubtreeRoots::entry(StorageMap::T
 pub struct StorageMap {
     /// The SMT where each key is the hashed original key.
     smt: Smt,
-    /// The entries of the map where the key is the original user-chosen one.
+    /// The entries of the map where the key is the raw user-chosen one.
     ///
     /// It is an invariant of this type that the map's entries are always consistent with the SMT's
     /// entries and vice-versa.
-    map: BTreeMap<Word, Word>,
+    entries: BTreeMap<Word, Word>,
 }
 
 impl StorageMap {
     // CONSTANTS
     // --------------------------------------------------------------------------------------------
 
-    /// Depth of the storage tree.
-    pub const TREE_DEPTH: u8 = SMT_DEPTH;
+    /// The depth of the SMT that represents the storage map.
+    pub const DEPTH: u8 = SMT_DEPTH;
 
     /// The default value of empty leaves.
     pub const EMPTY_VALUE: Word = Smt::EMPTY_VALUE;
@@ -63,7 +66,10 @@ impl StorageMap {
     ///
     /// All leaves in the returned tree are set to [Self::EMPTY_VALUE].
     pub fn new() -> Self {
-        StorageMap { smt: Smt::new(), map: BTreeMap::new() }
+        StorageMap {
+            smt: Smt::new(),
+            entries: BTreeMap::new(),
+        }
     }
 
     /// Creates a new [`StorageMap`] from the provided key-value entries.
@@ -91,12 +97,12 @@ impl StorageMap {
     }
 
     /// Creates a new [`StorageMap`] from the given map. For internal use.
-    fn from_btree_map(map: BTreeMap<Word, Word>) -> Self {
-        let hashed_keys_iter = map.iter().map(|(key, value)| (Self::hash_key(*key), *value));
+    fn from_btree_map(entries: BTreeMap<Word, Word>) -> Self {
+        let hashed_keys_iter = entries.iter().map(|(key, value)| (Self::hash_key(*key), *value));
         let smt = Smt::with_entries(hashed_keys_iter)
             .expect("btree maps should not contain duplicate keys");
 
-        StorageMap { smt, map }
+        StorageMap { smt, entries }
     }
 
     // PUBLIC ACCESSORS
@@ -107,18 +113,39 @@ impl StorageMap {
         self.smt.root()
     }
 
-    /// Returns the value corresponding to the key or [`Self::EMPTY_VALUE`] if the key is not
-    /// associated with a value.
-    pub fn get(&self, key: &Word) -> Word {
-        self.map.get(key).copied().unwrap_or_default()
+    /// Returns the number of non-empty leaves in this storage map.
+    ///
+    /// Note that this may return a different value from [Self::num_entries()] as a single leaf may
+    /// contain more than one key-value pair.
+    pub fn num_leaves(&self) -> usize {
+        self.smt.num_leaves()
     }
 
-    /// Returns an opening of the leaf associated with `key`.
+    /// Returns the number of key-value pairs with non-default values in this storage map.
+    ///
+    /// Note that this may return a different value from [Self::num_leaves()] as a single leaf may
+    /// contain more than one key-value pair.
+    pub fn num_entries(&self) -> usize {
+        self.smt.num_entries()
+    }
+
+    /// Returns the value corresponding to the key or [`Self::EMPTY_VALUE`] if the key is not
+    /// associated with a value.
+    pub fn get(&self, raw_key: &Word) -> Word {
+        self.entries.get(raw_key).copied().unwrap_or_default()
+    }
+
+    /// Returns an opening of the leaf associated with raw key.
     ///
     /// Conceptually, an opening is a Merkle path to the leaf, as well as the leaf itself.
-    pub fn open(&self, key: &Word) -> SmtProof {
-        let key = Self::hash_key(*key);
-        self.smt.open(&key)
+    pub fn open(&self, raw_key: &Word) -> StorageMapWitness {
+        let hashed_map_key = Self::hash_key(*raw_key);
+        let smt_proof = self.smt.open(&hashed_map_key);
+        let value = self.entries.get(raw_key).copied().unwrap_or_default();
+
+        // SAFETY: The key value pair is guaranteed to be present in the provided proof since we
+        // open its hashed version and because of the guarantees of the storage map.
+        StorageMapWitness::new_unchecked(smt_proof, [(*raw_key, value)])
     }
 
     // ITERATORS
@@ -129,9 +156,11 @@ impl StorageMap {
         self.smt.leaves() // Delegate to Smt's leaves method
     }
 
-    /// Returns an iterator over the key value pairs of the map.
+    /// Returns an iterator over the key-value pairs in this storage map.
+    ///
+    /// Note that the returned key is the raw map key.
     pub fn entries(&self) -> impl Iterator<Item = (&Word, &Word)> {
-        self.map.iter()
+        self.entries.iter()
     }
 
     /// Returns an iterator over the inner nodes of the underlying [`Smt`].
@@ -146,35 +175,44 @@ impl StorageMap {
     /// [`Self::EMPTY_VALUE`] if no entry was previously present.
     ///
     /// If the provided `value` is [`Self::EMPTY_VALUE`] the entry will be removed.
-    pub fn insert(&mut self, key: Word, value: Word) -> Word {
+    pub fn insert(&mut self, raw_key: Word, value: Word) -> Result<Word, AccountError> {
         if value == EMPTY_WORD {
-            self.map.remove(&key);
+            self.entries.remove(&raw_key);
         } else {
-            self.map.insert(key, value);
+            self.entries.insert(raw_key, value);
         }
 
-        let key = Self::hash_key(key);
-        self.smt.insert(key, value) // Delegate to Smt's insert method
+        let hashed_key = Self::hash_key(raw_key);
+        self.smt
+            .insert(hashed_key, value)
+            .map_err(AccountError::MaxNumStorageMapLeavesExceeded)
     }
 
     /// Applies the provided delta to this account storage.
-    pub fn apply_delta(&mut self, delta: &StorageMapDelta) -> Word {
+    pub fn apply_delta(&mut self, delta: &StorageMapDelta) -> Result<Word, AccountError> {
         // apply the updated and cleared leaves to the storage map
         for (&key, &value) in delta.entries().iter() {
-            self.insert(key.into_inner(), value);
+            self.insert(key.into_inner(), value)?;
         }
 
-        self.root()
+        Ok(self.root())
     }
 
     /// Consumes the map and returns the underlying map of entries.
     pub fn into_entries(self) -> BTreeMap<Word, Word> {
-        self.map
+        self.entries
     }
 
     /// Hashes the given key to get the key of the SMT.
-    pub fn hash_key(key: Word) -> Word {
-        Hasher::hash_elements(key.as_elements())
+    pub fn hash_key(raw_key: Word) -> Word {
+        Hasher::hash_elements(raw_key.as_elements())
+    }
+
+    // TODO: Replace with https://github.com/0xMiden/crypto/issues/515 once implemented.
+    /// Returns the leaf index of a map key.
+    pub fn hashed_map_key_to_leaf_index(hashed_map_key: Word) -> Felt {
+        // The third element in an SMT key is the index.
+        hashed_map_key[3]
     }
 }
 
@@ -189,7 +227,7 @@ impl Default for StorageMap {
 
 impl Serializable for StorageMap {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        self.map.write_into(target);
+        self.entries.write_into(target);
     }
 
     fn get_size_hint(&self) -> usize {
@@ -224,6 +262,8 @@ mod tests {
             (Word::from([105, 106, 107, 108u32]), Word::from([5, 6, 7, 8u32])),
         ];
         let storage_map = StorageMap::with_entries(storage_map_leaves_2).unwrap();
+        assert_eq!(storage_map.num_entries(), 2);
+        assert_eq!(storage_map.num_leaves(), 2);
 
         let bytes = storage_map.to_bytes();
         let deserialized_map = StorageMap::read_from_bytes(&bytes).unwrap();

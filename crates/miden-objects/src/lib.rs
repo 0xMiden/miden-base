@@ -32,6 +32,7 @@ pub use errors::{
     AddressError,
     AssetError,
     AssetVaultError,
+    AuthSchemeError,
     BatchAccountUpdateError,
     FeeError,
     NetworkIdError,
@@ -42,6 +43,8 @@ pub use errors::{
     ProposedBlockError,
     ProvenBatchError,
     ProvenTransactionError,
+    SlotNameError,
+    StorageMapError,
     TokenSymbolError,
     TransactionInputError,
     TransactionOutputError,
@@ -77,13 +80,12 @@ pub mod assembly {
 }
 
 pub mod crypto {
-    pub use miden_crypto::{SequentialCommit, dsa, hash, merkle, rand, utils};
+    pub use miden_crypto::{SequentialCommit, dsa, hash, ies, merkle, rand, utils};
 }
 
 pub mod utils {
     pub use miden_core::utils::*;
-    pub use miden_crypto::utils::{HexParseError, bytes_to_hex_string, collections, hex_to_bytes};
-    pub use miden_crypto::word::parse_hex_string_as_word;
+    pub use miden_crypto::utils::{HexParseError, bytes_to_hex_string, hex_to_bytes};
     pub use miden_utils_sync as sync;
 
     pub mod serde {
@@ -98,8 +100,17 @@ pub mod utils {
 }
 
 pub mod vm {
+    pub use miden_assembly_syntax::ast::{AttributeSet, QualifiedProcedureName};
     pub use miden_core::sys_events::SystemEvent;
     pub use miden_core::{AdviceMap, Program, ProgramInfo};
+    pub use miden_mast_package::{
+        MastArtifact,
+        Package,
+        PackageExport,
+        PackageManifest,
+        Section,
+        SectionId,
+    };
     pub use miden_processor::{AdviceInputs, FutureMaybeSend, RowIndex, StackInputs, StackOutputs};
     pub use miden_verifier::ExecutionProof;
 }

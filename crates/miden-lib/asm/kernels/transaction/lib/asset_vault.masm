@@ -1,4 +1,5 @@
 use.std::collections::smt
+use.std::word
 
 use.$kernel::account_id
 use.$kernel::asset
@@ -25,6 +26,14 @@ const.ERR_VAULT_REMOVE_FUNGIBLE_ASSET_FAILED_INITIAL_VALUE_INVALID="failed to re
 
 const.ERR_VAULT_NON_FUNGIBLE_ASSET_TO_REMOVE_NOT_FOUND="failed to remove non-existent non-fungible asset from the vault"
 
+# EVENTS
+# =================================================================================================
+
+# The event is from `stdlib`, visible through the prefix and is _not_ a `TransactionEvent`.
+# Care must be taken it stays in sync with the `miden-stdlib` definition. Note that generally speaking
+# we should not emit `"stdlib"` events, consider this "hijacking", tread carefully.
+const.SMT_PEEK_EVENT=event("stdlib::collections::smt::smt_peek")
+
 # CONSTANTS
 # =================================================================================================
 
@@ -46,7 +55,7 @@ const.INVERSE_FUNGIBLE_BITMASK_U32=0xffffffdf # last byte: 0b1101_1111
 #! - balance is the vault balance of the fungible asset.
 #!
 #! Panics if:
-#! - the asset is not a fungible asset.
+#! - the provided faucet ID is not an ID of a fungible faucet.
 export.get_balance
     # assert that the faucet id is a fungible faucet
     dup exec.account_id::is_fungible_faucet
@@ -54,7 +63,7 @@ export.get_balance
     # => [faucet_id_prefix, faucet_id_suffix, vault_root_ptr]
 
     # load the asset vault root from memory
-    padw movup.6 mem_loadw
+    padw movup.6 mem_loadw_be
     # => [ASSET_VAULT_ROOT, faucet_id_prefix, faucet_id_suffix]
 
     # prepare the key for fungible asset lookup (pad least significant elements with zeros)
@@ -76,6 +85,10 @@ end
 #! manipulation from a malicious host. Therefore this should only be used when the inclusion of the
 #! peeked balance is verified at a later point.
 #!
+#! WARNING: This is a generic vault procedure and so it cannot emit an event to lazy load asset
+#! merkle paths from the merkle store, since this is only possible for the account vault. Ensure
+#! that the merkle paths are present prior to calling.
+#!
 #! To get the verified balance, use get_balance.
 #!
 #! Inputs:  [faucet_id_prefix, faucet_id_suffix, vault_root_ptr]
@@ -96,7 +109,7 @@ export.peek_balance
     # => [faucet_id_prefix, faucet_id_suffix, vault_root_ptr]
 
     # load the asset vault root from memory
-    padw movup.6 mem_loadw
+    padw movup.6 mem_loadw_be
     # => [ASSET_VAULT_ROOT, faucet_id_prefix, faucet_id_suffix]
 
     # prepare the vault key for fungible asset lookup (pad least significant elements with zeros)
@@ -105,7 +118,7 @@ export.peek_balance
     # => [ASSET_KEY, ASSET_VAULT_ROOT]
 
     # lookup asset
-    adv.push_smtpeek
+    emit.SMT_PEEK_EVENT
     # OS => [ASSET_KEY, ASSET_VAULT_ROOT]
     # AS => [ASSET]
 
@@ -146,7 +159,7 @@ export.has_non_fungible_asset
     # => [ASSET_KEY, vault_root_ptr]
 
     # prepare the stack to read non-fungible asset from vault
-    padw movup.8 mem_loadw swapw
+    padw movup.8 mem_loadw_be swapw
     # => [ASSET_KEY, ACCT_VAULT_ROOT]
 
     # lookup asset
@@ -154,11 +167,7 @@ export.has_non_fungible_asset
     # => [ASSET]
 
     # compare with EMPTY_WORD to assess if the asset exists in the vault
-    padw eqw not
-    # => [has_asset, PAD, ASSET]
-
-    # organize the stack for return
-    movdn.4 dropw movdn.4 dropw
+    exec.word::eqz not
     # => [has_asset]
 end
 
@@ -199,10 +208,10 @@ export.add_fungible_asset
 
     # the current asset may be the empty word if it does not exist and so its faucet id would be zeroes
     # we therefore overwrite the faucet id with the faucet id from ASSET to account for this edge case
-    mem_loadw swapw
+    mem_loadw_be swapw
     # => [ASSET_KEY, VAULT_ROOT, faucet_id_prefix, faucet_id_suffix, amount, vault_root_ptr]
-    adv.push_smtpeek
-    adv_loadw
+
+    emit.SMT_PEEK_EVENT adv_loadw
     # => [CUR_VAULT_VALUE, VAULT_ROOT, faucet_id_prefix, faucet_id_suffix, amount, vault_root_ptr]
     swapw
     # => [VAULT_ROOT, CUR_VAULT_VALUE, faucet_id_prefix, faucet_id_suffix, amount, vault_root_ptr]
@@ -270,7 +279,7 @@ export.add_fungible_asset
     # => [VAULT_ROOT', ASSET', vault_root_ptr]
 
     # update the vault root
-    movup.8 mem_storew dropw
+    movup.8 mem_storew_be dropw
     # => [ASSET']
 end
 
@@ -297,7 +306,7 @@ export.add_non_fungible_asset
 
     padw dup.12
     # => [vault_root_ptr, pad(4), ASSET_KEY, ASSET, vault_root_ptr]
-    mem_loadw swapw
+    mem_loadw_be swapw
     # => [ASSET_KEY, VAULT_ROOT, ASSET, vault_root_ptr]
     dupw.2
     # => [ASSET, ASSET_KEY, VAULT_ROOT, ASSET, vault_root_ptr]
@@ -311,7 +320,7 @@ export.add_non_fungible_asset
     # => [VAULT_ROOT', ASSET, vault_root_ptr]
 
     # update the vault root
-    movup.8 mem_storew dropw
+    movup.8 mem_storew_be dropw
     # => [ASSET]
 end
 
@@ -389,7 +398,7 @@ export.remove_fungible_asset.4
     # => [ASSET, ASSET_KEY, PEEKED_ASSET, vault_root_ptr]
 
     # store ASSET so we can return it later
-    loc_storew.0
+    loc_storew_be.0
     # => [ASSET, ASSET_KEY, PEEKED_ASSET, vault_root_ptr]
 
     dup.3 dup.12
@@ -422,7 +431,7 @@ export.remove_fungible_asset.4
     cdropw
     # => [EMPTY_WORD_OR_ASSET', ASSET_KEY, PEEKED_ASSET, vault_root_ptr]
 
-    dup.12 padw movup.4 mem_loadw
+    dup.12 padw movup.4 mem_loadw_be
     # => [VAULT_ROOT, EMPTY_WORD_OR_ASSET', ASSET_KEY, PEEKED_ASSET, vault_root_ptr]
 
     movdnw.2
@@ -438,10 +447,10 @@ export.remove_fungible_asset.4
     # => [NEW_VAULT_ROOT, vault_root_ptr]
 
     # update vault root
-    movup.4 mem_storew
+    movup.4 mem_storew_be
     # => [NEW_VAULT_ROOT]
 
-    loc_loadw.0
+    loc_loadw_be.0
     # => [ASSET]
 end
 
@@ -462,7 +471,7 @@ export.remove_non_fungible_asset
     # => [pad(4), ASSET_KEY, ASSET, vault_root_ptr]
 
     # load vault root
-    dup.12 mem_loadw
+    dup.12 mem_loadw_be
     # => [VAULT_ROOT, ASSET_KEY, ASSET, vault_root_ptr]
 
     # prepare insertion of an EMPTY_WORD into the vault at the asset key to remove the asset
@@ -478,7 +487,7 @@ export.remove_non_fungible_asset
     # => [VAULT_ROOT', ASSET, vault_root_ptr]
 
     # update the vault root
-    movup.8 mem_storew dropw
+    movup.8 mem_storew_be dropw
     # => [ASSET]
 end
 
@@ -527,14 +536,14 @@ end
 #! - asset is the peeked asset from the vault.
 proc.peek_asset
     # load the asset vault root from memory
-    padw movup.8 mem_loadw
+    padw movup.8 mem_loadw_be
     # => [ASSET_VAULT_ROOT, ASSET_KEY]
 
     swapw
     # => [ASSET_KEY, ASSET_VAULT_ROOT]
 
     # lookup asset
-    adv.push_smtpeek
+    emit.SMT_PEEK_EVENT
     # OS => [ASSET_KEY, ASSET_VAULT_ROOT]
     # AS => [ASSET]
 

@@ -3,7 +3,7 @@
 [![LICENSE](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/0xMiden/miden-base/blob/main/LICENSE)
 [![test](https://github.com/0xMiden/miden-base/actions/workflows/test.yml/badge.svg)](https://github.com/0xMiden/miden-base/actions/workflows/test.yml)
 [![build](https://github.com/0xMiden/miden-base/actions/workflows/build.yml/badge.svg)](https://github.com/0xMiden/miden-base/actions/workflows/build.yml)
-[![RUST_VERSION](https://img.shields.io/badge/rustc-1.88+-lightgray.svg)](https://www.rust-lang.org/tools/install)
+[![RUST_VERSION](https://img.shields.io/badge/rustc-1.90+-lightgray.svg)](https://www.rust-lang.org/tools/install)
 [![GitHub Release](https://img.shields.io/github/release/0xMiden/miden-base)](https://github.com/0xMiden/miden-base/releases/)
 
 Description and core structures for the Miden Rollup protocol.
@@ -16,14 +16,14 @@ Miden is a zero-knowledge rollup for high-throughput and private applications. M
 
 If you want to join the technical discussion or learn more about the project, please check out
 
-* the [Documentation](https://0xMiden.github.io/miden-docs).
-* the [Telegram](https://t.me/BuildOnMiden)
-* the [Repo](https://github.com/0xMiden)
-* the [Roadmap](https://miden.xyz/roadmap)
+- the [Documentation](https://0xMiden.github.io/miden-docs).
+- the [Telegram](https://t.me/BuildOnMiden)
+- the [Repo](https://github.com/0xMiden)
+- the [Roadmap](https://miden.xyz/roadmap)
 
 ## Status and features
 
-Miden is currently on release v0.11. This is an early version of the protocol and its components. We expect to keep making changes (including breaking changes) to all components.
+Miden is currently on release v0.12. This is an early version of the protocol and its components. We expect to keep making changes (including breaking changes) to all components.
 
 ### Feature highlights
 
@@ -44,12 +44,12 @@ Miden is currently on release v0.11. This is an early version of the protocol an
 
 ## Project structure
 
-| Crate                                                          | Description                                                                         |
-|----------------------------------------------------------------|-------------------------------------------------------------------------------------|
-| [objects](crates/miden-objects)                                | Contains core components defining the Miden rollup protocol.                        |
-| [miden-lib](crates/miden-lib)                                  | Contains the code of the Miden rollup kernels and standardized smart contracts.     |
-| [miden-tx](crates/miden-tx)                                    | Contains tool for creating, executing, and proving Miden rollup transaction.        |
-| [bench-tx](bin/bench-tx)                                       | Contains transaction execution and proving benchmarks.                              |
+| Crate                           | Description                                                                     |
+| ------------------------------- | ------------------------------------------------------------------------------- |
+| [objects](crates/miden-objects) | Contains core components defining the Miden rollup protocol.                    |
+| [miden-lib](crates/miden-lib)   | Contains the code of the Miden rollup kernels and standardized smart contracts. |
+| [miden-tx](crates/miden-tx)     | Contains tool for creating, executing, and proving Miden rollup transaction.    |
+| [bench-tx](bin/bench-tx)        | Contains transaction execution and proving benchmarks.                          |
 
 ## Make commands
 
@@ -68,6 +68,10 @@ make test
 ```
 
 Some of the functions in this project are computationally intensive and may take a significant amount of time to compile and complete during testing. To ensure optimal results we use the `make test` command. It enables the running of tests in release mode and using specific configurations replicates the test conditions of the development mode and verifies all debug assertions.
+
+## Documentation
+
+The documentation in the `docs/` folder is built using Docusaurus and is automatically absorbed into the main [miden-docs](https://github.com/0xMiden/miden-docs) repository for the main documentation website. Changes to the `next` branch trigger an automated deployment workflow. The docs folder requires npm packages to be installed before building.
 
 ## License
 

@@ -1,4 +1,9 @@
-use crate::asset::AssetVault;
+use alloc::collections::BTreeMap;
+use alloc::string::ToString;
+
+use miden_core::LexicographicWord;
+
+use crate::asset::{Asset, AssetVault};
 use crate::utils::serde::{
     ByteReader,
     ByteWriter,
@@ -17,12 +22,9 @@ pub use account_id::{
     AccountIdVersion,
     AccountStorageMode,
     AccountType,
-    NetworkId,
 };
 
 pub mod auth;
-
-pub use auth::AuthSecretKey;
 
 mod builder;
 pub use builder::AccountBuilder;
@@ -66,7 +68,9 @@ pub use storage::{
     AccountStorageHeader,
     PartialStorage,
     PartialStorageMap,
+    SlotName,
     StorageMap,
+    StorageMapWitness,
     StorageSlot,
     StorageSlotType,
 };
@@ -108,21 +112,50 @@ pub struct Account {
     storage: AccountStorage,
     code: AccountCode,
     nonce: Felt,
+    seed: Option<Word>,
 }
 
 impl Account {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns an [Account] instantiated with the provided components.
-    pub fn from_parts(
+    /// Returns an [`Account`] instantiated with the provided components.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - an account seed is provided but the account's nonce indicates the account already exists.
+    /// - an account seed is not provided but the account's nonce indicates the account is new.
+    /// - an account seed is provided but the account ID derived from it is invalid or does not
+    ///   match the provided account's ID.
+    pub fn new(
         id: AccountId,
         vault: AssetVault,
         storage: AccountStorage,
         code: AccountCode,
         nonce: Felt,
+        seed: Option<Word>,
+    ) -> Result<Self, AccountError> {
+        validate_account_seed(id, code.commitment(), storage.commitment(), seed, nonce)?;
+
+        Ok(Self::new_unchecked(id, vault, storage, code, nonce, seed))
+    }
+
+    /// Returns an [`Account`] instantiated with the provided components.
+    ///
+    /// # Warning
+    ///
+    /// This does not check that the provided seed is valid with respect to the provided components.
+    /// Prefer using [`Account::new`] whenever possible.
+    pub fn new_unchecked(
+        id: AccountId,
+        vault: AssetVault,
+        storage: AccountStorage,
+        code: AccountCode,
+        nonce: Felt,
+        seed: Option<Word>,
     ) -> Self {
-        Self { id, vault, storage, code, nonce }
+        Self { id, vault, storage, code, nonce, seed }
     }
 
     /// Creates an account's [`AccountCode`] and [`AccountStorage`] from the provided components.
@@ -213,7 +246,7 @@ impl Account {
     /// [crate::EMPTY_WORD] to distinguish new accounts from existing accounts. The actual
     /// commitment of the initial account state (and the initial state itself), are provided to
     /// the VM via the advice provider.
-    pub fn init_commitment(&self) -> Word {
+    pub fn initial_commitment(&self) -> Word {
         if self.is_new() {
             Word::empty()
         } else {
@@ -251,6 +284,13 @@ impl Account {
         self.nonce
     }
 
+    /// Returns the seed of the account's ID if the account is new.
+    ///
+    /// That is, if [`Account::is_new`] returns `true`, the seed will be `Some`.
+    pub fn seed(&self) -> Option<Word> {
+        self.seed
+    }
+
     /// Returns true if this account can issue assets.
     pub fn is_faucet(&self) -> bool {
         self.id.is_faucet()
@@ -261,10 +301,10 @@ impl Account {
         self.id.is_regular_account()
     }
 
-    /// Returns `true` if the full state of the account is on chain, i.e. if the storage modes are
+    /// Returns `true` if the full state of the account is public on chain, i.e. if the modes are
     /// [`AccountStorageMode::Public`] or [`AccountStorageMode::Network`], `false` otherwise.
-    pub fn is_onchain(&self) -> bool {
-        self.id().is_onchain()
+    pub fn has_public_state(&self) -> bool {
+        self.id().has_public_state()
     }
 
     /// Returns `true` if the storage mode is [`AccountStorageMode::Public`], `false` otherwise.
@@ -282,14 +322,19 @@ impl Account {
         self.id().is_network()
     }
 
-    /// Returns true if the account is new (i.e. it has not been initialized yet).
+    /// Returns `true` if the account is new, `false` otherwise.
+    ///
+    /// An account is considered new if the account's nonce is zero and it hasn't been registered on
+    /// chain yet.
     pub fn is_new(&self) -> bool {
         self.nonce == ZERO
     }
 
     /// Decomposes the account into the underlying account components.
-    pub fn into_parts(self) -> (AccountId, AssetVault, AccountStorage, AccountCode, Felt) {
-        (self.id, self.vault, self.storage, self.code, self.nonce)
+    pub fn into_parts(
+        self,
+    ) -> (AccountId, AssetVault, AccountStorage, AccountCode, Felt, Option<Word>) {
+        (self.id, self.vault, self.storage, self.code, self.nonce, self.seed)
     }
 
     // DATA MUTATORS
@@ -299,12 +344,19 @@ impl Account {
     /// to the values specified by the delta.
     ///
     /// # Errors
+    ///
     /// Returns an error if:
+    /// - [`AccountDelta::is_full_state`] returns `true`, i.e. represents the state of an entire
+    ///   account. Only partial state deltas can be applied to an account.
     /// - Applying vault sub-delta to the vault of this account fails.
     /// - Applying storage sub-delta to the storage of this account fails.
     /// - The nonce specified in the provided delta smaller than or equal to the current account
     ///   nonce.
     pub fn apply_delta(&mut self, delta: &AccountDelta) -> Result<(), AccountError> {
+        if delta.is_full_state() {
+            return Err(AccountError::ApplyFullStateDeltaToAccount);
+        }
+
         // update vault; we don't check vault delta validity here because `AccountDelta` can contain
         // only valid vault deltas
         self.vault
@@ -339,6 +391,14 @@ impl Account {
 
         self.nonce = new_nonce;
 
+        // Maintain internal consistency of the account, i.e. the seed should not be present for
+        // existing accounts, where existing accounts are defined as having a nonce > 0.
+        // If we've incremented the nonce, then we should remove the seed (if it was present at
+        // all).
+        if !self.is_new() {
+            self.seed = None;
+        }
+
         Ok(())
     }
 
@@ -358,18 +418,93 @@ impl Account {
     }
 }
 
+impl TryFrom<Account> for AccountDelta {
+    type Error = AccountError;
+
+    /// Converts an [`Account`] into an [`AccountDelta`].
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - the account has a seed. Accounts with seeds have a nonce of 0. Representing such accounts
+    ///   as deltas is not possible because deltas with a non-empty state change need a nonce_delta
+    ///   greater than 0.
+    fn try_from(account: Account) -> Result<Self, Self::Error> {
+        let Account { id, vault, storage, code, nonce, seed } = account;
+
+        if seed.is_some() {
+            return Err(AccountError::DeltaFromAccountWithSeed);
+        }
+
+        let mut value_slots = BTreeMap::new();
+        let mut map_slots = BTreeMap::new();
+
+        for (slot_idx, slot) in (0..u8::MAX).zip(storage.into_slots().into_iter()) {
+            match slot {
+                StorageSlot::Value(word) => {
+                    value_slots.insert(slot_idx, word);
+                },
+                StorageSlot::Map(storage_map) => {
+                    let map_delta = StorageMapDelta::new(
+                        storage_map
+                            .into_entries()
+                            .into_iter()
+                            .map(|(key, value)| (LexicographicWord::from(key), value))
+                            .collect(),
+                    );
+                    map_slots.insert(slot_idx, map_delta);
+                },
+            }
+        }
+        let storage_delta = AccountStorageDelta::from_parts(value_slots, map_slots)
+            .expect("value and map slots from account storage should not overlap");
+
+        let mut fungible_delta = FungibleAssetDelta::default();
+        let mut non_fungible_delta = NonFungibleAssetDelta::default();
+        for asset in vault.assets() {
+            // SAFETY: All assets in the account vault should be representable in the delta.
+            match asset {
+                Asset::Fungible(fungible_asset) => {
+                    fungible_delta
+                        .add(fungible_asset)
+                        .expect("delta should allow representing valid fungible assets");
+                },
+                Asset::NonFungible(non_fungible_asset) => {
+                    non_fungible_delta
+                        .add(non_fungible_asset)
+                        .expect("delta should allow representing valid non-fungible assets");
+                },
+            }
+        }
+        let vault_delta = AccountVaultDelta::new(fungible_delta, non_fungible_delta);
+
+        // The nonce of the account is the nonce delta since adding the nonce_delta to 0 would
+        // result in the nonce.
+        let nonce_delta = nonce;
+
+        // SAFETY: As checked earlier, the nonce delta should be greater than 0 allowing for
+        // non-empty state changes.
+        let delta = AccountDelta::new(id, storage_delta, vault_delta, nonce_delta)
+            .expect("nonce_delta should be greater than 0")
+            .with_code(Some(code));
+
+        Ok(delta)
+    }
+}
+
 // SERIALIZATION
 // ================================================================================================
 
 impl Serializable for Account {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        let Account { id, vault, storage, code, nonce } = self;
+        let Account { id, vault, storage, code, nonce, seed } = self;
 
         id.write_into(target);
         vault.write_into(target);
         storage.write_into(target);
         code.write_into(target);
         nonce.write_into(target);
+        seed.write_into(target);
     }
 
     fn get_size_hint(&self) -> usize {
@@ -378,6 +513,7 @@ impl Serializable for Account {
             + self.storage.get_size_hint()
             + self.code.get_size_hint()
             + self.nonce.get_size_hint()
+            + self.seed.get_size_hint()
     }
 }
 
@@ -388,8 +524,10 @@ impl Deserializable for Account {
         let storage = AccountStorage::read_from(source)?;
         let code = AccountCode::read_from(source)?;
         let nonce = Felt::read_from(source)?;
+        let seed = <Option<Word>>::read_from(source)?;
 
-        Ok(Self::from_parts(id, vault, storage, code, nonce))
+        Self::new(id, vault, storage, code, nonce, seed)
+            .map_err(|err| DeserializationError::InvalidValue(err.to_string()))
     }
 }
 
@@ -418,6 +556,40 @@ pub fn hash_account(
     Hasher::hash_elements(&elements)
 }
 
+// HELPER FUNCTIONS
+// ================================================================================================
+
+/// Validates that the provided seed is valid for the provided account components.
+pub(super) fn validate_account_seed(
+    id: AccountId,
+    code_commitment: Word,
+    storage_commitment: Word,
+    seed: Option<Word>,
+    nonce: Felt,
+) -> Result<(), AccountError> {
+    let account_is_new = nonce == ZERO;
+
+    match (account_is_new, seed) {
+        (true, Some(seed)) => {
+            let account_id =
+                AccountId::new(seed, id.version(), code_commitment, storage_commitment)
+                    .map_err(AccountError::SeedConvertsToInvalidAccountId)?;
+
+            if account_id != id {
+                return Err(AccountError::AccountIdSeedMismatch {
+                    expected: id,
+                    actual: account_id,
+                });
+            }
+
+            Ok(())
+        },
+        (true, None) => Err(AccountError::NewAccountMissingSeed),
+        (false, Some(_)) => Err(AccountError::ExistingAccountWithSeed),
+        (false, None) => Ok(()),
+    }
+}
+
 /// Validates that all `components` support the given `account_type`.
 fn validate_components_support_account_type(
     components: &[AccountComponent],
@@ -444,6 +616,7 @@ mod tests {
 
     use assert_matches::assert_matches;
     use miden_assembly::Assembler;
+    use miden_core::FieldElement;
     use miden_crypto::utils::{Deserializable, Serializable};
     use miden_crypto::{Felt, Word};
 
@@ -456,10 +629,14 @@ mod tests {
         AccountVaultDelta,
     };
     use crate::AccountError;
+    use crate::account::AccountStorageMode::Network;
     use crate::account::{
         Account,
+        AccountBuilder,
         AccountComponent,
+        AccountIdVersion,
         AccountType,
+        PartialAccount,
         StorageMap,
         StorageMapDelta,
         StorageSlot,
@@ -469,6 +646,7 @@ mod tests {
         ACCOUNT_ID_PRIVATE_SENDER,
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
     };
+    use crate::testing::add_component::AddComponent;
     use crate::testing::noop_auth_component::NoopAuthComponent;
     use crate::testing::storage::AccountStorageDeltaBuilder;
 
@@ -552,7 +730,7 @@ mod tests {
 
         let updated_map =
             StorageMapDelta::from_iters([], [(new_map_entry.0, new_map_entry.1.into())]);
-        storage_map.insert(new_map_entry.0, new_map_entry.1.into());
+        storage_map.insert(new_map_entry.0, new_map_entry.1.into()).unwrap();
 
         // build account delta
         let final_nonce = Felt::new(2);
@@ -676,7 +854,7 @@ mod tests {
 
         let storage = AccountStorage::new(slots).unwrap();
 
-        Account::from_parts(id, vault, storage, code, nonce)
+        Account::new_existing(id, vault, storage, code, nonce)
     }
 
     /// Tests that initializing code and storage from a component which does not support the given
@@ -728,5 +906,88 @@ mod tests {
         .unwrap_err();
 
         assert_matches!(err, AccountError::AccountComponentDuplicateProcedureRoot(_))
+    }
+
+    /// Tests all cases of account ID seed validation.
+    #[test]
+    fn seed_validation() -> anyhow::Result<()> {
+        let account = AccountBuilder::new([5; 32])
+            .with_auth_component(NoopAuthComponent)
+            .with_component(AddComponent)
+            .build()?;
+        let (id, vault, storage, code, _nonce, seed) = account.into_parts();
+        assert!(seed.is_some());
+
+        let other_seed = AccountId::compute_account_seed(
+            [9; 32],
+            AccountType::FungibleFaucet,
+            Network,
+            AccountIdVersion::Version0,
+            code.commitment(),
+            storage.commitment(),
+        )?;
+
+        // Set nonce to 1 so the account is considered existing and provide the seed.
+        let err = Account::new(id, vault.clone(), storage.clone(), code.clone(), Felt::ONE, seed)
+            .unwrap_err();
+        assert_matches!(err, AccountError::ExistingAccountWithSeed);
+
+        // Set nonce to 0 so the account is considered new but don't provide the seed.
+        let err = Account::new(id, vault.clone(), storage.clone(), code.clone(), Felt::ZERO, None)
+            .unwrap_err();
+        assert_matches!(err, AccountError::NewAccountMissingSeed);
+
+        // Set nonce to 0 so the account is considered new and provide a valid seed that results in
+        // a different ID than the provided one.
+        let err = Account::new(
+            id,
+            vault.clone(),
+            storage.clone(),
+            code.clone(),
+            Felt::ZERO,
+            Some(other_seed),
+        )
+        .unwrap_err();
+        assert_matches!(err, AccountError::AccountIdSeedMismatch { .. });
+
+        // Set nonce to 0 so the account is considered new and provide a seed that results in an
+        // invalid ID.
+        let err = Account::new(
+            id,
+            vault.clone(),
+            storage.clone(),
+            code.clone(),
+            Felt::ZERO,
+            Some(Word::from([1, 2, 3, 4u32])),
+        )
+        .unwrap_err();
+        assert_matches!(err, AccountError::SeedConvertsToInvalidAccountId(_));
+
+        // Set nonce to 1 so the account is considered existing and don't provide the seed, which
+        // should be valid.
+        Account::new(id, vault.clone(), storage.clone(), code.clone(), Felt::ONE, None)?;
+
+        // Set nonce to 0 so the account is considered new and provide the original seed, which
+        // should be valid.
+        Account::new(id, vault.clone(), storage.clone(), code.clone(), Felt::ZERO, seed)?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn incrementing_nonce_should_remove_seed() -> anyhow::Result<()> {
+        let mut account = AccountBuilder::new([5; 32])
+            .with_auth_component(NoopAuthComponent)
+            .with_component(AddComponent)
+            .build()?;
+        account.increment_nonce(Felt::ONE)?;
+
+        assert_matches!(account.seed(), None);
+
+        // Sanity check: We should be able to convert the account into a partial account which will
+        // re-check the internal seed - nonce consistency.
+        let _partial_account = PartialAccount::from(&account);
+
+        Ok(())
     }
 }

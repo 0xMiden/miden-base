@@ -20,8 +20,8 @@ use crate::prove_and_verify_transaction;
 
 /// We test the Pay to script with 2 assets to test the loop inside the script.
 /// So we create a note containing two assets that can only be consumed by the target account.
-#[test]
-fn p2id_script_multiple_assets() -> anyhow::Result<()> {
+#[tokio::test]
+async fn p2id_script_multiple_assets() -> anyhow::Result<()> {
     // Create assets
     let fungible_asset_1: Asset = FungibleAsset::mock(123);
     let fungible_asset_2: Asset =
@@ -50,10 +50,11 @@ fn p2id_script_multiple_assets() -> anyhow::Result<()> {
     let executed_transaction = mock_chain
         .build_tx_context(target_account.id(), &[note.id()], &[])?
         .build()?
-        .execute_blocking()?;
+        .execute()
+        .await?;
 
     // vault delta
-    let target_account_after: Account = Account::from_parts(
+    let target_account_after: Account = Account::new_existing(
         target_account.id(),
         AssetVault::new(&[fungible_asset_1, fungible_asset_2]).unwrap(),
         target_account.storage().clone(),
@@ -74,7 +75,8 @@ fn p2id_script_multiple_assets() -> anyhow::Result<()> {
     let executed_transaction_2 = mock_chain
         .build_tx_context(malicious_account.id(), &[], &[note])?
         .build()?
-        .execute_blocking();
+        .execute()
+        .await;
 
     // Check that we got the expected result - TransactionExecutorError
     assert_transaction_executor_error!(executed_transaction_2, ERR_P2ID_TARGET_ACCT_MISMATCH);
@@ -82,8 +84,8 @@ fn p2id_script_multiple_assets() -> anyhow::Result<()> {
 }
 
 /// Consumes an existing note with a new account
-#[test]
-fn prove_consume_note_with_new_account() -> anyhow::Result<()> {
+#[tokio::test]
+async fn prove_consume_note_with_new_account() -> anyhow::Result<()> {
     // Create assets
     let fungible_asset: Asset = FungibleAsset::mock(123);
 
@@ -110,10 +112,11 @@ fn prove_consume_note_with_new_account() -> anyhow::Result<()> {
     let executed_transaction = mock_chain
         .build_tx_context(target_account.clone(), &[note.id()], &[])?
         .build()?
-        .execute_blocking()?;
+        .execute()
+        .await?;
 
     // Apply delta to the target account to verify it is no longer new
-    let target_account_after: Account = Account::from_parts(
+    let target_account_after: Account = Account::new_existing(
         target_account.id(),
         AssetVault::new(&[fungible_asset]).unwrap(),
         target_account.storage().clone(),
@@ -131,8 +134,8 @@ fn prove_consume_note_with_new_account() -> anyhow::Result<()> {
 
 /// Consumes two existing notes (with an asset from a faucet for a combined total of 123 tokens)
 /// with a basic account
-#[test]
-fn prove_consume_multiple_notes() -> anyhow::Result<()> {
+#[tokio::test]
+async fn prove_consume_multiple_notes() -> anyhow::Result<()> {
     let fungible_asset_1: Asset = FungibleAsset::mock(100);
     let fungible_asset_2: Asset = FungibleAsset::mock(23);
 
@@ -157,7 +160,7 @@ fn prove_consume_multiple_notes() -> anyhow::Result<()> {
         .build_tx_context(account.id(), &[note_1.id(), note_2.id()], &[])?
         .build()?;
 
-    let executed_transaction = tx_context.execute_blocking()?;
+    let executed_transaction = tx_context.execute().await?;
 
     account.apply_delta(executed_transaction.account_delta())?;
     let resulting_asset = account.vault().assets().next().unwrap();
@@ -171,8 +174,8 @@ fn prove_consume_multiple_notes() -> anyhow::Result<()> {
 }
 
 /// Consumes two existing notes and creates two other notes in the same transaction
-#[test]
-fn test_create_consume_multiple_notes() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_create_consume_multiple_notes() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
 
     let mut account =
@@ -219,14 +222,14 @@ fn test_create_consume_multiple_notes() -> anyhow::Result<()> {
 
     let tx_script_src = &format!(
         "
-            use.miden::tx
+            use.miden::output_note
             begin
                 push.{recipient_1}
                 push.{note_execution_hint_1}
                 push.{note_type_1}
                 push.0              # aux
                 push.{tag_1}
-                call.tx::create_note
+                call.output_note::create
 
                 push.{asset_1}
                 call.::miden::contracts::wallets::basic::move_asset_to_note
@@ -237,7 +240,7 @@ fn test_create_consume_multiple_notes() -> anyhow::Result<()> {
                 push.{note_type_2}
                 push.0              # aux
                 push.{tag_2}
-                call.tx::create_note
+                call.output_note::create
 
                 push.{asset_2}
                 call.::miden::contracts::wallets::basic::move_asset_to_note
@@ -267,7 +270,7 @@ fn test_create_consume_multiple_notes() -> anyhow::Result<()> {
         .tx_script(tx_script)
         .build()?;
 
-    let executed_transaction = tx_context.execute_blocking()?;
+    let executed_transaction = tx_context.execute().await?;
 
     assert_eq!(executed_transaction.output_notes().num_notes(), 2);
 

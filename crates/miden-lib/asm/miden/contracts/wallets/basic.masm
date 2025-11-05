@@ -1,11 +1,11 @@
-use.miden::account
-use.miden::tx
+use.miden::native_account
+use.miden::output_note
 
 # CONSTANTS
 # =================================================================================================
 const.PUBLIC_NOTE=1
 
-#! Adds the provided asset to the current account.
+#! Adds the provided asset to the active account.
 #!
 #! Inputs:  [ASSET, pad(12)]
 #! Outputs: [pad(16)]
@@ -20,7 +20,7 @@ const.PUBLIC_NOTE=1
 #!
 #! Invocation: call
 export.receive_asset
-    exec.account::add_asset
+    exec.native_account::add_asset
     # => [ASSET', pad(12)]
 
     # drop the final asset
@@ -50,9 +50,12 @@ end
 #! Invocation: call
 export.move_asset_to_note
     # remove the asset from the account
-    exec.account::remove_asset
+    exec.native_account::remove_asset
     # => [ASSET, note_idx, pad(11)]
 
-    exec.tx::add_asset_to_note
-    # => [ASSET, note_idx, pad(11) ...]
+    dupw dup.8 movdn.4
+    # => [ASSET, note_idx, ASSET, note_idx, pad(11)]
+
+    exec.output_note::add_asset
+    # => [ASSET, note_idx, pad(11)]
 end
