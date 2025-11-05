@@ -63,7 +63,13 @@ name = "map_storage_entry"
 slot = 2
 values = [
     { key = "0x1", value = ["0x0", "249381274", "998123581", "124991023478"] },
-    { key = "0xDE0B1140012A9FD912F18AD9EC85E40F4CB697AE", value = { name = "value_placeholder", description = "This value will be defined at the moment of instantiation" } }
+    {
+      key = "0xDE0B1140012A9FD912F18AD9EC85E40F4CB697AE",
+      value = {
+        name = "value_placeholder",
+        description = "This value will be defined at the moment of instantiation"
+      }
+    }
 ]
 
 [[storage]]
@@ -174,12 +180,15 @@ For example, the templated map entry above can be populated from TOML as follows
 
 ```toml
 procedure_thresholds = [
-    { key = "0xd2d1b6229d7cfb9f2ada31c5cb61453cf464f91828e124437c708eec55b9cd07", value = "0x00000000000000000000000000000000000000000000000000000000000001" },
-    { key = "0x2217cd9963f742fc2d131d86df08f8a2766ed17b73f1519b8d3143ad1c71d32d", value = ["", "0", "0", "2"] }
+    {
+      key = "0xd2d1b6229d7cfb9f2ada31c5cb61453cf464f91828e124437c708eec55b9cd07",
+      value = "0x00000000000000000000000000000000000000000000000000000000000001"
+    },
+    {
+      key = "0x2217cd9963f742fc2d131d86df08f8a2766ed17b73f1519b8d3143ad1c71d32d",
+      value = ["0", "0", "0", "2"]
+    }
 ]
 ```
 
-Each element in the array is a fully specified key/value pair. Keys and values can be written either
-as hexadecimal words or as an array of four field elements (decimal or hexadecimal strings). This
-syntax complements the existing `values = [...]` form used for static maps, and mirrors how map
-entries are provided in component metadata.
+Each element in the array is a fully specified key/value pair. Keys and values can be written either as hexadecimal words or as an array of four field elements (decimal or hexadecimal strings). This syntax complements the existing `values = [...]` form used for static maps, and mirrors how map entries are provided in component metadata.

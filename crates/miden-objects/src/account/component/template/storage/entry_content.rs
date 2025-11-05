@@ -483,7 +483,7 @@ pub enum MapRepresentation {
 
 impl MapRepresentation {
     /// Creates a new `MapRepresentation` from a vector of map entries.
-    pub fn new(entries: Vec<MapEntry>, name: impl Into<StorageValueName>) -> Self {
+    pub fn new_value(entries: Vec<MapEntry>, name: impl Into<StorageValueName>) -> Self {
         MapRepresentation::Value {
             entries,
             identifier: FieldIdentifier::with_name(name.into()),
@@ -647,8 +647,8 @@ impl Serializable for MapRepresentation {
         match self {
             MapRepresentation::Value { identifier, entries } => {
                 target.write_u8(0u8);
-                target.write(entries);
                 target.write(identifier);
+                target.write(entries);
             },
             MapRepresentation::Template { identifier } => {
                 target.write_u8(1u8);
@@ -663,8 +663,8 @@ impl Deserializable for MapRepresentation {
         let tag = source.read_u8()?;
         match tag {
             0 => {
-                let entries = Vec::<MapEntry>::read_from(source)?;
                 let identifier = FieldIdentifier::read_from(source)?;
+                let entries = Vec::<MapEntry>::read_from(source)?;
                 Ok(MapRepresentation::Value { entries, identifier })
             },
             1 => {

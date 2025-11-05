@@ -47,7 +47,7 @@ impl AccountComponentMetadata {
     }
 
     /// Serializes the account component template into a TOML string.
-    pub fn as_toml(&self) -> Result<String, AccountComponentTemplateError> {
+    pub fn to_toml(&self) -> Result<String, AccountComponentTemplateError> {
         let toml =
             toml::to_string(self).map_err(AccountComponentTemplateError::TomlSerializationError)?;
         Ok(toml)
@@ -386,7 +386,7 @@ impl<'de> Deserialize<'de> for StorageEntry {
                     "map storage entries with `values` must have `type = \"map\"`",
                 ));
             }
-            let mut map = MapRepresentation::new(map_entries, name);
+            let mut map = MapRepresentation::new_value(map_entries, name);
             if let Some(desc) = identifier.description {
                 map = map.with_description(desc);
             }
@@ -460,7 +460,7 @@ impl InitStorageData {
         // Start with an empty prefix (i.e. the default, which is an empty string)
         Self::flatten_parse_toml_value(
             StorageValueName::empty(),
-            &value,
+            value,
             &mut value_entries,
             &mut map_entries,
         )?;
@@ -475,7 +475,7 @@ impl InitStorageData {
     /// an error is returned. Arrays are not supported.
     fn flatten_parse_toml_value(
         prefix: StorageValueName,
-        value: &toml::Value,
+        value: toml::Value,
         value_entries: &mut BTreeMap<StorageValueName, String>,
         map_entries: &mut BTreeMap<StorageValueName, Vec<(Word, Word)>>,
     ) -> Result<(), InitStorageDataError> {
@@ -507,7 +507,7 @@ impl InitStorageData {
                 }
 
                 let entries = items
-                    .iter()
+                    .into_iter()
                     .map(parse_map_entry_value)
                     .collect::<Result<Vec<(Word, Word)>, _>>()?;
                 map_entries.insert(prefix, entries);
@@ -516,7 +516,7 @@ impl InitStorageData {
                 // Get the string value, or convert to string if it's some other type
                 let value = match toml_value {
                     toml::Value::String(s) => s.clone(),
-                    _ => value.to_string(),
+                    _ => toml_value.to_string(),
                 };
                 value_entries.insert(prefix, value);
             },
@@ -634,9 +634,9 @@ fn parse_field_identifier<E: serde::de::Error>(
 }
 
 /// Parses a `{ key, value }` TOML table into a `(Word, Word)` pair, rejecting templates.
-fn parse_map_entry_value(item: &toml::Value) -> Result<(Word, Word), InitStorageDataError> {
+fn parse_map_entry_value(item: toml::Value) -> Result<(Word, Word), InitStorageDataError> {
     // Try to deserialize the user input as a map entry
-    let entry: MapEntry = MapEntry::deserialize(item.clone())
+    let entry: MapEntry = MapEntry::deserialize(item)
         .map_err(|err| InitStorageDataError::InvalidMapEntry(err.to_string()))?;
 
     // Make sure the entry does not contain templates, only static

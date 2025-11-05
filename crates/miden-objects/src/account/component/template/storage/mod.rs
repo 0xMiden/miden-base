@@ -421,7 +421,7 @@ mod tests {
         let test_word: Word = word!("0x000001");
         let test_word = test_word.map(FeltRepresentation::from);
 
-        let map_representation = MapRepresentation::new(
+        let map_representation = MapRepresentation::new_value(
             vec![
                 MapEntry {
                     key: WordRepresentation::new_template(
@@ -496,7 +496,7 @@ mod tests {
             supported_types: BTreeSet::from([AccountType::FungibleFaucet]),
             storage,
         };
-        let toml = config.as_toml().unwrap();
+        let toml = config.to_toml().unwrap();
         let deserialized = AccountComponentMetadata::from_toml(&toml).unwrap();
 
         assert_eq!(deserialized, config);
@@ -795,7 +795,7 @@ mod tests {
             _ => panic!("expected map storage entry"),
         }
 
-        let toml_roundtrip = metadata.as_toml().unwrap();
+        let toml_roundtrip = metadata.to_toml().unwrap();
         assert!(toml_roundtrip.contains("type = \"map\""));
     }
 
