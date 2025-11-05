@@ -1,4 +1,5 @@
-use miden_objects::account::{AccountComponent, PublicKeyCommitment, StorageSlot};
+use miden_objects::account::auth::PublicKeyCommitment;
+use miden_objects::account::{AccountComponent, StorageSlot};
 
 use crate::account::components::rpo_falcon_512_library;
 

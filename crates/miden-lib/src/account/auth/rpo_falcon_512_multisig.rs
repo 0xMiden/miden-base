@@ -1,7 +1,8 @@
 use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 
-use miden_objects::account::{AccountComponent, PublicKeyCommitment, StorageMap, StorageSlot};
+use miden_objects::account::auth::PublicKeyCommitment;
+use miden_objects::account::{AccountComponent, StorageMap, StorageSlot};
 use miden_objects::{AccountError, Word};
 
 use crate::account::components::rpo_falcon_512_multisig_library;

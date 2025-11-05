@@ -1061,3 +1061,12 @@ pub enum NullifierTreeError {
     #[error("failed to compute nulifier tree mutations")]
     ComputeMutations(#[source] MerkleError),
 }
+
+// AUTH SCHEME ERROR
+// ================================================================================================
+
+#[derive(Debug, Error)]
+pub enum AuthSchemeError {
+    #[error("auth scheme identifier `{0}` is not valid")]
+    InvalidAuthSchemeIdentifier(u8),
+}

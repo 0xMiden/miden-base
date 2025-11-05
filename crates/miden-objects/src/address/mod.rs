@@ -18,6 +18,7 @@ pub use network_id::{CustomNetworkId, NetworkId};
 
 use crate::AddressError;
 use crate::account::AccountStorageMode;
+use crate::crypto::ies::SealingKey;
 use crate::note::NoteTag;
 use crate::utils::serde::{ByteWriter, Deserializable, Serializable};
 
@@ -34,6 +35,7 @@ pub use address_id::AddressId;
 /// about various aspects like:
 /// - what kind of note the receiver's account can consume.
 /// - how the receiver discovers the note.
+/// - how to encrypt the note for the receiver.
 ///
 /// It can be encoded to a string using [`Self::encode`] and decoded using [`Self::decode`].
 /// If routing parameters are present, the ID and parameters are separated by
@@ -43,16 +45,18 @@ pub use address_id::AddressId;
 ///
 /// ```text
 /// # account ID
-/// mm1apk5f8jqxnadegr46xtklmm78qhdgkwc
-/// # account ID + routing parameters
-/// mm1apk5f8jqxnadegr46xtklmm78qhdgkwc_qrcqzlvsfdp
+/// mm1apt3l475qemeqqp57xjycfdwcvw0sfhq
+/// # account ID + routing parameters (interface & note tag length)
+/// mm1apt3l475qemeqqp57xjycfdwcvw0sfhq_qruqqypuyph
+/// # account ID + routing parameters (interface, note tag length, encryption key)
+/// mm1apt3l475qemeqqp57xjycfdwcvw0sfhq_qruqqqgqjmsgjsh3687mt2w0qtqunxt3th442j48qwdnezl0fv6qm3x9c8zqsv7pku
 /// ```
 ///
 /// The encoding of an address without routing parameters matches the encoding of the underlying
 /// identifier exactly (e.g. an account ID). This provides compatibility between identifiers and
 /// addresses and gives end-users a hint that an address is only an extension of the identifier
 /// (e.g. their account's ID) that they are likely to recognize.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Address {
     id: AddressId,
     routing_params: Option<RoutingParameters>,
@@ -145,6 +149,13 @@ impl Address {
                 }
             },
         }
+    }
+
+    /// Returns the optional public encryption key from routing parameters.
+    ///
+    /// This key can be used for sealed box encryption when sending notes to this address.
+    pub fn encryption_key(&self) -> Option<&SealingKey> {
+        self.routing_params.as_ref().and_then(RoutingParameters::encryption_key)
     }
 
     /// Encodes the [`Address`] into a string.
@@ -427,6 +438,86 @@ mod tests {
             let deserialized = Address::read_from_bytes(&serialized)?;
             assert_eq!(address, deserialized);
         }
+
+        Ok(())
+    }
+
+    /// Tests that an address with encryption key can be created and used.
+    #[test]
+    fn address_with_encryption_key() -> anyhow::Result<()> {
+        use crate::crypto::dsa::eddsa_25519::SecretKey;
+        use crate::crypto::ies::{SealingKey, UnsealingKey};
+
+        let rng = &mut rand::rng();
+        let account_id = AccountIdBuilder::new()
+            .account_type(AccountType::FungibleFaucet)
+            .build_with_rng(rng);
+
+        // Create keypair using rand::rng()
+        let secret_key = SecretKey::with_rng(rng);
+        let public_key = secret_key.public_key();
+        let sealing_key = SealingKey::X25519XChaCha20Poly1305(public_key.clone());
+        let unsealing_key = UnsealingKey::X25519XChaCha20Poly1305(secret_key.clone());
+
+        // Create address with encryption key
+        let address = Address::new(account_id).with_routing_parameters(
+            RoutingParameters::new(AddressInterface::BasicWallet)
+                .with_encryption_key(sealing_key.clone()),
+        )?;
+
+        // Verify encryption key is present
+        let retrieved_key =
+            address.encryption_key().expect("encryption key should be present").clone();
+        assert_eq!(retrieved_key, sealing_key);
+
+        // Test seal/unseal round-trip
+        let plaintext = b"hello world";
+        let sealed_message =
+            retrieved_key.seal_bytes(rng, plaintext).expect("sealing should succeed");
+        let decrypted =
+            unsealing_key.unseal_bytes(sealed_message).expect("unsealing should succeed");
+        assert_eq!(decrypted.as_slice(), plaintext);
+
+        Ok(())
+    }
+
+    /// Tests that an address with encryption key can be encoded/decoded.
+    #[test]
+    fn address_encryption_key_encode_decode() -> anyhow::Result<()> {
+        use crate::crypto::dsa::eddsa_25519::SecretKey;
+
+        let rng = &mut rand::rng();
+        // Use a local account type (RegularAccountImmutableCode) instead of network
+        // (FungibleFaucet)
+        let account_id = AccountIdBuilder::new()
+            .account_type(AccountType::RegularAccountImmutableCode)
+            .storage_mode(AccountStorageMode::Public)
+            .build_with_rng(rng);
+
+        // Create keypair
+        let secret_key = SecretKey::with_rng(rng);
+        let public_key = secret_key.public_key();
+        let sealing_key = SealingKey::X25519XChaCha20Poly1305(public_key);
+
+        // Create address with encryption key
+        let address = Address::new(account_id).with_routing_parameters(
+            RoutingParameters::new(AddressInterface::BasicWallet)
+                .with_encryption_key(sealing_key.clone()),
+        )?;
+
+        // Encode and decode
+        let encoded = address.encode(NetworkId::Mainnet);
+        let (decoded_network, decoded_address) = Address::decode(&encoded)?;
+
+        assert_eq!(decoded_network, NetworkId::Mainnet);
+        assert_eq!(address, decoded_address);
+
+        // Verify encryption key is preserved
+        let decoded_key = decoded_address
+            .encryption_key()
+            .expect("encryption key should be present")
+            .clone();
+        assert_eq!(decoded_key, sealing_key);
 
         Ok(())
     }
