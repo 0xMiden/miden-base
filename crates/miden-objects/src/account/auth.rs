@@ -142,10 +142,7 @@ impl AuthSecretKey {
     pub fn sign(&self, message: Word) -> Signature {
         match self {
             AuthSecretKey::RpoFalcon512(key) => Signature::RpoFalcon512(key.sign(message)),
-            AuthSecretKey::EcdsaK256Keccak(key) => {
-                // TODO: cloning is not necessary, but this needs to be fixed in miden-crypto first
-                Signature::EcdsaK256Keccak(key.clone().sign(message))
-            },
+            AuthSecretKey::EcdsaK256Keccak(key) => Signature::EcdsaK256Keccak(key.sign(message)),
         }
     }
 }
