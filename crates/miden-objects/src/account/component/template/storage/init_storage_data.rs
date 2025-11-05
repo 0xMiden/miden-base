@@ -57,7 +57,7 @@ impl InitStorageData {
     }
 
     /// Returns the map entries associated with the given placeholder name, if any.
-    pub(crate) fn map_entries(&self, key: &StorageValueName) -> Option<&Vec<(Word, Word)>> {
+    pub fn map_entries(&self, key: &StorageValueName) -> Option<&Vec<(Word, Word)>> {
         self.map_entries.get(key)
     }
 }
