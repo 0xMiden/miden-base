@@ -53,6 +53,7 @@
 - Added `encryption_key` to `RoutingParameters` ([#2050](https://github.com/0xMiden/miden-base/pull/2050)).
 - [BREAKING] Added `EcdsaK256Keccak` variant to auth enums ([#2052](https://github.com/0xMiden/miden-base/pull/2052)).
 - Implemented storage map templates, which can be initialized through key/value lists provided via `InitStorageData` TOML ([#2053](https://github.com/0xMiden/miden-base/pull/2053)).
+- Added `create_mint_note` and `create_burn_note` helper functions for creating standardized MINT and BURN notes ([#2061](https://github.com/0xMiden/miden-base/pull/2061)).
 
 ### Changes
 
