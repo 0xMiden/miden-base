@@ -4,27 +4,18 @@ use miden_lib::transaction::memory::{ACCOUNT_STACK_TOP_PTR, ACCT_CODE_COMMITMENT
 use miden_lib::transaction::{EventId, TransactionEventId};
 use miden_objects::account::{AccountId, StorageMap};
 use miden_objects::asset::{Asset, AssetVault, AssetVaultKey, FungibleAsset};
-use miden_objects::note::{NoteInputs, NoteMetadata, NoteScript};
+use miden_objects::note::{NoteId, NoteInputs, NoteMetadata, NoteScript};
 use miden_objects::{Felt, Hasher, Word};
-use miden_processor::{AdviceMutation, ProcessState};
+use miden_processor::{AdviceMutation, ProcessState, RowIndex};
 
-use crate::TransactionKernelError;
 use crate::host::{TransactionKernelProcess, extract_word};
-
-/// Indicates whether a [`TransactionEvent`] was handled or not.
-///
-/// If it is unhandled, the necessary data to handle it is returned.
-#[derive(Debug)]
-pub(crate) enum TransactionEventHandling {
-    Unhandled(TransactionEvent),
-    Handled(Vec<AdviceMutation>),
-}
+use crate::{LinkMap, TransactionKernelError};
 
 // TRANSACTION EVENT
 // ================================================================================================
 
 /// The data necessary to handle a [`TransactionEventId`].
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub(crate) enum TransactionEvent {
     /// The data necessary to request a foreign account's data from the data store.
     AccountBeforeForeignLoad {
@@ -128,26 +119,62 @@ pub(crate) enum TransactionEvent {
         account_delta_commitment: Word,
     },
 
-    /// The data necessary to handle a transaction fee computed event.
-    TransactionFeeComputed {
-        /// The fee asset extracted from the stack.
+    PrologueStart {
+        clk: RowIndex,
+    },
+    PrologueEnd {
+        clk: RowIndex,
+    },
+
+    NotesProcessingStart {
+        clk: RowIndex,
+    },
+    NotesProcessingEnd {
+        clk: RowIndex,
+    },
+
+    NoteExecutionStart {
+        note_id: NoteId,
+        clk: RowIndex,
+    },
+    NoteExecutionEnd {
+        clk: RowIndex,
+    },
+
+    TxScriptProcessingStart {
+        clk: RowIndex,
+    },
+    TxScriptProcessingEnd {
+        clk: RowIndex,
+    },
+
+    EpilogueStart {
+        clk: RowIndex,
+    },
+    EpilogueEnd {
+        clk: RowIndex,
+    },
+
+    EpilogueAuthProcStart {
+        clk: RowIndex,
+    },
+    EpilogueAuthProcEnd {
+        clk: RowIndex,
+    },
+
+    EpilogueAfterTxCyclesObtained {
+        clk: RowIndex,
+    },
+
+    EpilogueBeforeTxFeeRemovedFromAccount {
         fee_asset: FungibleAsset,
     },
 
-    /// The data necessary to request a note script from the data store.
-    NoteData {
-        /// The note index extracted from the stack.
-        note_idx: usize,
-        /// The note metadata extracted from the stack.
-        metadata: NoteMetadata,
-        /// The root of the note script being requested.
-        script_root: Word,
-        /// The recipient digest extracted from the stack.
-        recipient_digest: Word,
-        /// The note inputs extracted from the advice provider.
-        note_inputs: NoteInputs,
-        /// The serial number extracted from the advice provider.
-        serial_num: Word,
+    LinkMapSet {
+        advice_mutation: Vec<AdviceMutation>,
+    },
+    LinkMapGet {
+        advice_mutation: Vec<AdviceMutation>,
     },
 }
 
@@ -160,7 +187,7 @@ impl TransactionEvent {
 
         let tx_event = match tx_event_id {
             TransactionEventId::AccountBeforeForeignLoad => {
-                // Expected stack state: `[event, account_id_prefix, account_id_suffix]`
+                // Expected stack state: [event, account_id_prefix, account_id_suffix]
                 let account_id_word = process.get_stack_word_be(1);
                 let account_id = AccountId::try_from([account_id_word[3], account_id_word[2]])
                     .map_err(|err| {
@@ -174,7 +201,7 @@ impl TransactionEvent {
             },
             TransactionEventId::AccountVaultBeforeAddAsset
             | TransactionEventId::AccountVaultBeforeRemoveAsset => {
-                // Expected stack state: `[event, ASSET, account_vault_root_ptr]`
+                // Expected stack state: [event, ASSET, account_vault_root_ptr]
                 let asset_word = process.get_stack_word_be(1);
                 let asset = Asset::try_from(asset_word).map_err(|source| {
                     TransactionKernelError::MalformedAssetInEventHandler {
@@ -209,7 +236,7 @@ impl TransactionEvent {
                 )?
             },
             TransactionEventId::AccountVaultAfterRemoveAsset => {
-                // Expected stack state: `[event, ASSET]`
+                // Expected stack state: [event, ASSET]
                 let asset: Asset = process.get_stack_word_be(1).try_into().map_err(|source| {
                     TransactionKernelError::MalformedAssetInEventHandler {
                         handler: "on_account_vault_after_remove_asset",
@@ -220,7 +247,7 @@ impl TransactionEvent {
                 TransactionEvent::AccountVaultAfterRemoveAsset { asset }
             },
             TransactionEventId::AccountVaultAfterAddAsset => {
-                // Expected stack state: `[event, ASSET]`
+                // Expected stack state: [event, ASSET]
                 let asset: Asset = process.get_stack_word_be(1).try_into().map_err(|source| {
                     TransactionKernelError::MalformedAssetInEventHandler {
                         handler: "on_account_vault_after_add_asset",
@@ -253,7 +280,7 @@ impl TransactionEvent {
                 Self::on_account_vault_asset_accessed(process, vault_key, vault_root)?
             },
             TransactionEventId::AccountVaultBeforeHasNonFungibleAsset => {
-                // Expected stack state: `[event, ASSET, vault_root_ptr]`
+                // Expected stack state: [event, ASSET, vault_root_ptr]
                 let asset_word = process.get_stack_word_be(1);
                 let asset = Asset::try_from(asset_word).map_err(|err| {
                     TransactionKernelError::other_with_source(
@@ -381,7 +408,7 @@ impl TransactionEvent {
             },
 
             TransactionEventId::AccountPushProcedureIndex => {
-                // Expected stack state: `[event, PROC_ROOT]`
+                // Expected stack state: [event, PROC_ROOT]
 
                 // get active account code commitment
                 let code_commitment = {
@@ -417,7 +444,7 @@ impl TransactionEvent {
             },
 
             TransactionEventId::NoteAfterCreated => {
-                // Expected stack state: `[event, NOTE_METADATA, note_ptr, RECIPIENT, note_idx]`
+                // Expected stack state: [event, NOTE_METADATA, note_ptr, RECIPIENT, note_idx]
 
                 let metadata_word = process.get_stack_word_be(1);
                 let metadata = NoteMetadata::try_from(metadata_word)
@@ -460,7 +487,7 @@ impl TransactionEvent {
             },
 
             TransactionEventId::NoteBeforeAddAsset => {
-                // Expected stack state: `[event, ASSET, note_ptr, num_of_assets, note_idx]`
+                // Expected stack state: [event, ASSET, note_ptr, num_of_assets, note_idx]
 
                 let note_idx = process.get_stack_item(7).as_int() as usize;
 
@@ -480,7 +507,7 @@ impl TransactionEvent {
             },
 
             TransactionEventId::AuthRequest => {
-                // Expected stack state: `[event, MESSAGE, PUB_KEY]`
+                // Expected stack state: [event, MESSAGE, PUB_KEY]
 
                 let message = process.get_stack_word_be(1);
                 let pub_key_hash = process.get_stack_word_be(5);
@@ -510,7 +537,7 @@ impl TransactionEvent {
             },
 
             TransactionEventId::Unauthorized => {
-                // Expected stack state: `[event, MESSAGE]`
+                // Expected stack state: [event, MESSAGE]
                 let message = process.get_stack_word_be(1);
                 let (
                     salt,
@@ -528,7 +555,68 @@ impl TransactionEvent {
                 }
             },
 
-            _ => unimplemented!(),
+            TransactionEventId::PrologueStart => {
+                TransactionEvent::PrologueStart { clk: process.clk() }
+            },
+            TransactionEventId::PrologueEnd => TransactionEvent::PrologueEnd { clk: process.clk() },
+
+            TransactionEventId::NotesProcessingStart => {
+                TransactionEvent::NotesProcessingStart { clk: process.clk() }
+            },
+            TransactionEventId::NotesProcessingEnd => {
+                TransactionEvent::NotesProcessingEnd { clk: process.clk() }
+            },
+
+            TransactionEventId::NoteExecutionStart => {
+                let note_id = process.get_active_note_id()?.ok_or_else(|| TransactionKernelError::other(
+                    "note execution interval measurement is incorrect: check the placement of the start and the end of the interval",
+                ))?;
+
+                TransactionEvent::NoteExecutionStart { note_id, clk: process.clk() }
+            },
+            TransactionEventId::NoteExecutionEnd => {
+                TransactionEvent::NoteExecutionEnd { clk: process.clk() }
+            },
+
+            TransactionEventId::TxScriptProcessingStart => {
+                TransactionEvent::TxScriptProcessingStart { clk: process.clk() }
+            },
+            TransactionEventId::TxScriptProcessingEnd => {
+                TransactionEvent::TxScriptProcessingEnd { clk: process.clk() }
+            },
+
+            TransactionEventId::EpilogueStart => {
+                TransactionEvent::EpilogueStart { clk: process.clk() }
+            },
+            TransactionEventId::EpilogueEnd => TransactionEvent::EpilogueEnd { clk: process.clk() },
+
+            TransactionEventId::EpilogueAuthProcStart => {
+                TransactionEvent::EpilogueAuthProcStart { clk: process.clk() }
+            },
+            TransactionEventId::EpilogueAuthProcEnd => {
+                TransactionEvent::EpilogueAuthProcEnd { clk: process.clk() }
+            },
+
+            TransactionEventId::EpilogueAfterTxCyclesObtained => {
+                TransactionEvent::EpilogueAfterTxCyclesObtained { clk: process.clk() }
+            },
+            TransactionEventId::EpilogueBeforeTxFeeRemovedFromAccount => {
+                // Expected stack state: [event, FEE_ASSET]
+                let fee_asset = process.get_stack_word_be(1);
+                let fee_asset = FungibleAsset::try_from(fee_asset)
+                    .map_err(TransactionKernelError::FailedToConvertFeeAsset)?;
+
+                TransactionEvent::EpilogueBeforeTxFeeRemovedFromAccount { fee_asset }
+            },
+
+            TransactionEventId::LinkMapSet => {
+                let advice_mutation = LinkMap::handle_set_event(process);
+                TransactionEvent::LinkMapSet { advice_mutation }
+            },
+            TransactionEventId::LinkMapGet => {
+                let advice_mutation = LinkMap::handle_get_event(process);
+                TransactionEvent::LinkMapGet { advice_mutation }
+            },
         };
 
         Ok(Some(tx_event))

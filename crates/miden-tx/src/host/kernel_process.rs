@@ -6,7 +6,7 @@ use miden_lib::transaction::memory::{
 use miden_objects::account::AccountId;
 use miden_objects::note::{NoteId, NoteInputs};
 use miden_objects::{Hasher, Word};
-use miden_processor::{EventError, ExecutionError, Felt, ProcessState};
+use miden_processor::{ExecutionError, Felt, ProcessState};
 
 use crate::errors::TransactionKernelError;
 
@@ -20,7 +20,7 @@ pub(super) trait TransactionKernelProcess {
 
     fn get_vault_root(&self, vault_root_ptr: Felt) -> Result<Word, TransactionKernelError>;
 
-    fn get_active_note_id(&self) -> Result<Option<NoteId>, EventError>;
+    fn get_active_note_id(&self) -> Result<Option<NoteId>, TransactionKernelError>;
 
     fn read_note_recipient_info_from_adv_map(
         &self,
@@ -91,7 +91,7 @@ impl<'a> TransactionKernelProcess for ProcessState<'a> {
     /// # Errors
     /// Returns an error if the address of the active note is invalid (e.g., greater than
     /// `u32::MAX`).
-    fn get_active_note_id(&self) -> Result<Option<NoteId>, EventError> {
+    fn get_active_note_id(&self) -> Result<Option<NoteId>, TransactionKernelError> {
         // get the note address in `Felt` or return `None` if the address hasn't been accessed
         // previously.
         let note_address_felt = match self.get_mem_value(self.ctx(), ACTIVE_INPUT_NOTE_PTR) {
@@ -100,7 +100,7 @@ impl<'a> TransactionKernelProcess for ProcessState<'a> {
         };
         // convert note address into u32
         let note_address = u32::try_from(note_address_felt).map_err(|_| {
-            EventError::from(format!(
+            TransactionKernelError::other(format!(
                 "failed to convert {note_address_felt} into a memory address (u32)"
             ))
         })?;
@@ -110,7 +110,12 @@ impl<'a> TransactionKernelProcess for ProcessState<'a> {
         } else {
             Ok(self
                 .get_mem_word(self.ctx(), note_address)
-                .map_err(ExecutionError::MemoryError)?
+                .map_err(|err| {
+                    TransactionKernelError::other_with_source(
+                        "failed to read note address",
+                        ExecutionError::MemoryError(err),
+                    )
+                })?
                 .map(NoteId::from))
         }
     }

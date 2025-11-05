@@ -1,7 +1,6 @@
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use miden_lib::transaction::EventId;
 use miden_objects::Word;
 use miden_objects::account::{AccountDelta, PartialAccount};
 use miden_objects::assembly::debuginfo::Location;
@@ -18,13 +17,7 @@ use miden_processor::{
 };
 
 use crate::AccountProcedureIndexMap;
-use crate::host::{
-    ScriptMastForestStore,
-    TransactionBaseHost,
-    TransactionEvent,
-    TransactionEventHandling,
-    TransactionProgress,
-};
+use crate::host::{ScriptMastForestStore, TransactionBaseHost, TransactionProgress};
 
 /// The transaction prover host is responsible for handling [`SyncHost`] requests made by the
 /// transaction kernel during proving.

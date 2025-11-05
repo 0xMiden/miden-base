@@ -11,6 +11,7 @@ pub use account_procedures::AccountProcedureIndexMap;
 
 pub(crate) mod note_builder;
 use miden_lib::StdLibrary;
+use miden_lib::transaction::EventId;
 use note_builder::OutputNoteBuilder;
 
 mod kernel_process;
@@ -27,18 +28,15 @@ use alloc::collections::BTreeMap;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use miden_lib::transaction::{EventId, TransactionEventError, TransactionEventId};
+use miden_objects::Word;
 use miden_objects::account::{
     AccountCode,
     AccountDelta,
     AccountHeader,
-    AccountId,
     AccountStorageHeader,
     PartialAccount,
-    StorageMap,
-    StorageSlotType,
 };
-use miden_objects::asset::{Asset, AssetVault, AssetVaultKey, FungibleAsset};
+use miden_objects::asset::Asset;
 use miden_objects::note::{NoteId, NoteInputs, NoteMetadata, NoteRecipient, NoteScript};
 use miden_objects::transaction::{
     InputNote,
@@ -49,11 +47,8 @@ use miden_objects::transaction::{
     TransactionSummary,
 };
 use miden_objects::vm::RowIndex;
-use miden_objects::{Hasher, Word};
 use miden_processor::{
-    AdviceError,
     AdviceMutation,
-    ContextId,
     EventError,
     EventHandlerRegistry,
     Felt,
@@ -61,10 +56,9 @@ use miden_processor::{
     MastForestStore,
     ProcessState,
 };
-pub(crate) use tx_event::{TransactionEvent, TransactionEventHandling};
+pub(crate) use tx_event::TransactionEvent;
 pub use tx_progress::TransactionProgress;
 
-use crate::auth::SigningInputs;
 use crate::errors::{TransactionHostError, TransactionKernelError};
 
 // TRANSACTION BASE HOST
@@ -168,6 +162,11 @@ where
         &self.tx_progress
     }
 
+    /// Returns a mutable reference to the `tx_progress` field of this transaction host.
+    pub fn tx_progress_mut(&mut self) -> &mut TransactionProgress {
+        &mut self.tx_progress
+    }
+
     /// Returns a reference to the initial account header of the native account, which represents
     /// the state at the beginning of the transaction.
     pub fn initial_account_header(&self) -> &AccountHeader {
@@ -248,191 +247,16 @@ where
     // EVENT HANDLERS
     // --------------------------------------------------------------------------------------------
 
-    /// Handles the given [`TransactionEvent`], for example by updating the account delta or pushing
-    /// requested advice to the advice stack.
-    pub(super) fn handle_event(
-        &mut self,
+    pub fn handle_stdlib_events(
+        &self,
         process: &ProcessState,
-        event_id: EventId,
-    ) -> Result<TransactionEventHandling, EventError> {
+    ) -> Result<Option<Vec<AdviceMutation>>, EventError> {
+        let event_id = EventId::from_felt(process.get_stack_item(0));
         if let Some(mutations) = self.stdlib_handlers.handle_event(event_id, process)? {
-            return Ok(TransactionEventHandling::Handled(mutations));
+            Ok(Some(mutations))
+        } else {
+            Ok(None)
         }
-
-        let transaction_event = TransactionEventId::try_from(event_id).map_err(EventError::from)?;
-
-        // Privileged events can only be emitted from the root context.
-        if process.ctx() != ContextId::root() && transaction_event.is_privileged() {
-            return Err(Box::new(TransactionEventError::NotRootContext(transaction_event)));
-        }
-
-        let advice_mutations = match transaction_event {
-            // This event is not handled by the base host.
-            TransactionEventId::AccountBeforeForeignLoad => {
-                // Ok(TransactionEventHandling::Handled(Vec::new()))
-                unimplemented!()
-            }
-
-            TransactionEventId::AccountVaultBeforeAddAsset => {
-                // self.on_account_vault_before_add_or_remove_asset(process)
-                unimplemented!()
-            },
-            TransactionEventId::AccountVaultAfterAddAsset => {
-                // self.on_account_vault_after_add_asset(process).map(|_| TransactionEventHandling::Handled(Vec::new()))
-                unimplemented!()
-            },
-
-            TransactionEventId::AccountVaultBeforeRemoveAsset => {
-                // self.on_account_vault_before_add_or_remove_asset(process)
-                unimplemented!()
-            },
-            TransactionEventId::AccountVaultAfterRemoveAsset => {
-                // self.on_account_vault_after_remove_asset(process).map(|_| TransactionEventHandling::Handled(Vec::new()))
-                unimplemented!()
-            },
-
-            TransactionEventId::AccountVaultBeforeGetBalance => {
-                // self.on_account_vault_before_get_balance(process)
-                unimplemented!()
-            },
-
-            TransactionEventId::AccountVaultBeforeHasNonFungibleAsset => {
-                // self.on_account_vault_before_has_non_fungible_asset(process)
-                unimplemented!()
-            }
-
-            TransactionEventId::AccountStorageBeforeGetMapItem => {
-                // self.on_account_storage_before_get_map_item(process)
-                unimplemented!()
-            }
-
-            TransactionEventId::AccountStorageBeforeSetItem => {
-                // Ok(TransactionEventHandling::Handled(Vec::new()))
-                unimplemented!()
-            },
-            TransactionEventId::AccountStorageAfterSetItem => {
-                // self.on_account_storage_after_set_item(process).map(|_| TransactionEventHandling::Handled(Vec::new()))
-                unimplemented!()
-            },
-
-            TransactionEventId::AccountStorageBeforeSetMapItem => {
-                // self.on_account_storage_before_set_map_item(process)
-                unimplemented!()
-            },
-            TransactionEventId::AccountStorageAfterSetMapItem => {
-                // self.on_account_storage_after_set_map_item(process).map(|_| TransactionEventHandling::Handled(Vec::new()))
-                unimplemented!()
-            },
-
-            TransactionEventId::AccountBeforeIncrementNonce => {
-                // Ok(TransactionEventHandling::Handled(Vec::new()))
-                unimplemented!()
-            },
-            TransactionEventId::AccountAfterIncrementNonce => {
-                // self.on_account_after_increment_nonce().map(|_| TransactionEventHandling::Handled(Vec::new()))
-                unimplemented!()
-            },
-
-            TransactionEventId::AccountPushProcedureIndex => {
-                // self.on_account_push_procedure_index(process).map(TransactionEventHandling::Handled)
-                unimplemented!()
-            },
-
-            TransactionEventId::NoteBeforeCreated => Ok(TransactionEventHandling::Handled(Vec::new())),
-            TransactionEventId::NoteAfterCreated => {
-                // self.on_note_after_created(process)
-                unimplemented!()
-            },
-
-            TransactionEventId::NoteBeforeAddAsset => {
-                // self.on_note_before_add_asset(process).map(|_| TransactionEventHandling::Handled(Vec::new()))
-                unimplemented!()
-            },
-            TransactionEventId::NoteAfterAddAsset => {
-                // Ok(TransactionEventHandling::Handled(Vec::new()))
-                unimplemented!()
-            },
-
-            TransactionEventId::AuthRequest => {
-                // self.on_auth_requested(process)
-                unimplemented!()
-            },
-
-            TransactionEventId::PrologueStart => {
-                self.tx_progress.start_prologue(process.clk());
-                Ok(TransactionEventHandling::Handled(Vec::new()))
-            },
-            TransactionEventId::PrologueEnd => {
-                self.tx_progress.end_prologue(process.clk());
-                Ok(TransactionEventHandling::Handled(Vec::new()))
-            },
-
-            TransactionEventId::NotesProcessingStart => {
-                self.tx_progress.start_notes_processing(process.clk());
-                Ok(TransactionEventHandling::Handled(Vec::new()))
-            },
-            TransactionEventId::NotesProcessingEnd => {
-                self.tx_progress.end_notes_processing(process.clk());
-                Ok(TransactionEventHandling::Handled(Vec::new()))
-            },
-
-            TransactionEventId::NoteExecutionStart => {
-                let note_id = process.get_active_note_id()?.expect(
-                    "Note execution interval measurement is incorrect: check the placement of the start and the end of the interval",
-                );
-                self.tx_progress.start_note_execution(process.clk(), note_id);
-                Ok(TransactionEventHandling::Handled(Vec::new()))
-            },
-            TransactionEventId::NoteExecutionEnd => {
-                self.tx_progress.end_note_execution(process.clk());
-                Ok(TransactionEventHandling::Handled(Vec::new()))
-            },
-
-            TransactionEventId::TxScriptProcessingStart => {
-                self.tx_progress.start_tx_script_processing(process.clk());
-                Ok(TransactionEventHandling::Handled(Vec::new()))
-            }
-            TransactionEventId::TxScriptProcessingEnd => {
-                self.tx_progress.end_tx_script_processing(process.clk());
-                Ok(TransactionEventHandling::Handled(Vec::new()))
-            }
-
-            TransactionEventId::EpilogueStart => {
-                self.tx_progress.start_epilogue(process.clk());
-                Ok(TransactionEventHandling::Handled(Vec::new()))
-            }
-            TransactionEventId::EpilogueAuthProcStart => {
-                self.tx_progress.start_auth_procedure(process.clk());
-                Ok(TransactionEventHandling::Handled(Vec::new()))
-            }
-            TransactionEventId::EpilogueAuthProcEnd => {
-                self.tx_progress.end_auth_procedure(process.clk());
-                Ok(TransactionEventHandling::Handled(Vec::new()))
-            }
-            TransactionEventId::EpilogueAfterTxCyclesObtained => {
-                self.tx_progress.epilogue_after_tx_cycles_obtained(process.clk());
-                Ok(TransactionEventHandling::Handled(vec![]))
-            }
-            TransactionEventId::EpilogueBeforeTxFeeRemovedFromAccount => self.on_before_tx_fee_removed_from_account(process),
-            TransactionEventId::EpilogueEnd => {
-                self.tx_progress.end_epilogue(process.clk());
-                Ok(TransactionEventHandling::Handled(Vec::new()))
-            }
-            TransactionEventId::LinkMapSet => {
-                return LinkMap::handle_set_event(process).map(TransactionEventHandling::Handled);
-            },
-            TransactionEventId::LinkMapGet => {
-                return LinkMap::handle_get_event(process).map(TransactionEventHandling::Handled);
-            },
-            TransactionEventId::Unauthorized => {
-              // Note: This always returns an error to abort the transaction.
-              // Err(self.on_unauthorized(process))
-              unimplemented!()
-            }
-        }
-        .map_err(EventError::from)?;
-
-        Ok(advice_mutations)
     }
 
     /// Pushes a signature to the advice stack as a response to the `AuthRequest` event.
@@ -485,27 +309,6 @@ where
         }
 
         TransactionKernelError::Unauthorized(Box::new(tx_summary))
-    }
-
-    /// Extracts all necessary data to handle
-    /// [`TransactionEvent::EpilogueBeforeTxFeeRemovedFromAccount`].
-    ///
-    /// Expected stack state:
-    ///
-    /// ```text
-    /// `[event, FEE_ASSET]`
-    /// ```
-    fn on_before_tx_fee_removed_from_account(
-        &self,
-        process: &ProcessState,
-    ) -> Result<TransactionEventHandling, TransactionKernelError> {
-        let fee_asset = process.get_stack_word_be(1);
-        let fee_asset = FungibleAsset::try_from(fee_asset)
-            .map_err(TransactionKernelError::FailedToConvertFeeAsset)?;
-
-        Ok(TransactionEventHandling::Unhandled(TransactionEvent::TransactionFeeComputed {
-            fee_asset,
-        }))
     }
 
     /// Handles the note creation event by extracting note data from the stack and advice provider.
@@ -930,29 +733,6 @@ impl<'store, STORE> TransactionBaseHost<'store, STORE> {
 
 // HELPER FUNCTIONS
 // ================================================================================================
-
-/// Returns `true` if the advice provider has a merkle path for the provided root and leaf
-/// index, `false` otherwise.
-fn advice_provider_has_merkle_path<const TREE_DEPTH: u8>(
-    process: &ProcessState,
-    root: Word,
-    leaf_index: Felt,
-) -> Result<bool, TransactionKernelError> {
-    match process
-        .advice_provider()
-        .get_merkle_path(root, Felt::from(TREE_DEPTH), leaf_index)
-    {
-        // Merkle path is already in the store; consider the event handled.
-        Ok(_) => Ok(true),
-        // This means the merkle path is missing in the advice provider.
-        Err(AdviceError::MerkleStoreLookupFailed(_)) => Ok(false),
-        // We should never encounter this as long as our inputs to get_merkle_path are correct.
-        Err(err) => Err(TransactionKernelError::other_with_source(
-            "unexpected get_merkle_path error",
-            err,
-        )),
-    }
-}
 
 /// Extracts a word from a slice of field elements.
 #[inline(always)]

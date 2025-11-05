@@ -528,29 +528,21 @@ where
         &mut self,
         process: &ProcessState,
     ) -> impl FutureMaybeSend<Result<Vec<AdviceMutation>, EventError>> {
-        let tx_event = TransactionEvent::extract_from_process(process);
-
-        // let event_id = EventId::from_felt(process.get_stack_item(0));
-
-        // TODO: Eventually, refactor this to let TransactionEvent contain the data directly, which
-        // should be cleaner.
-        // let event_handling_result = self.base_host.handle_event(process, event_id);
-
+        // TODO: We can avoid putting a &ProcessState reference into the future, but it seems to
+        // work and maybe we should try building the web client against this branch to test if we
+        // can do this.
         async move {
-            let tx_event = tx_event.map_err(EventError::from)?;
+            if let Some(advice_mutations) = self.base_host.handle_stdlib_events(process)? {
+                return Ok(advice_mutations);
+            }
 
-            // None means the event ID does not need any special handling.
+            let tx_event =
+                TransactionEvent::extract_from_process(process).map_err(EventError::from)?;
+
+            // None means the event ID does not need to be handled.
             let Some(tx_event) = tx_event else {
                 return Ok(Vec::new());
             };
-
-            // let event_handling = event_handling_result?;
-            // let event_data = match event_handling {
-            //     TransactionEventHandling::Unhandled(event) => event,
-            //     TransactionEventHandling::Handled(mutations) => {
-            //         return Ok(mutations);
-            //     },
-            // };
 
             let result = match tx_event {
                 TransactionEvent::AccountBeforeForeignLoad { foreign_account_id: account_id } => {
@@ -564,9 +556,6 @@ where
                     self.base_host.on_account_vault_after_remove_asset(asset)
                 },
 
-                TransactionEvent::TransactionFeeComputed { fee_asset } => {
-                    self.on_before_tx_fee_removed_from_account(fee_asset).await
-                },
                 TransactionEvent::AccountVaultBeforeAssetAccess {
                     active_account_id,
                     current_vault_root,
@@ -625,25 +614,6 @@ where
                         slot_index,
                         map_root,
                         map_key,
-                    )
-                    .await
-                },
-
-                TransactionEvent::NoteData {
-                    note_idx,
-                    metadata,
-                    script_root,
-                    recipient_digest,
-                    note_inputs,
-                    serial_num,
-                } => {
-                    self.on_note_script_requested(
-                        script_root,
-                        metadata,
-                        recipient_digest,
-                        note_idx,
-                        note_inputs,
-                        serial_num,
                     )
                     .await
                 },
@@ -730,6 +700,72 @@ where
                     input_notes_commitment,
                     account_delta_commitment,
                 )),
+
+                TransactionEvent::PrologueStart { clk } => {
+                    self.base_host.tx_progress_mut().start_prologue(clk);
+                    Ok(Vec::new())
+                },
+                TransactionEvent::PrologueEnd { clk } => {
+                    self.base_host.tx_progress_mut().end_prologue(clk);
+                    Ok(Vec::new())
+                },
+
+                TransactionEvent::NotesProcessingStart { clk } => {
+                    self.base_host.tx_progress_mut().start_notes_processing(clk);
+                    Ok(Vec::new())
+                },
+                TransactionEvent::NotesProcessingEnd { clk } => {
+                    self.base_host.tx_progress_mut().end_notes_processing(clk);
+                    Ok(Vec::new())
+                },
+
+                TransactionEvent::NoteExecutionStart { note_id, clk } => {
+                    self.base_host.tx_progress_mut().start_note_execution(clk, note_id);
+                    Ok(Vec::new())
+                },
+                TransactionEvent::NoteExecutionEnd { clk } => {
+                    self.base_host.tx_progress_mut().end_note_execution(clk);
+                    Ok(Vec::new())
+                },
+
+                TransactionEvent::TxScriptProcessingStart { clk } => {
+                    self.base_host.tx_progress_mut().start_tx_script_processing(clk);
+                    Ok(Vec::new())
+                },
+                TransactionEvent::TxScriptProcessingEnd { clk } => {
+                    self.base_host.tx_progress_mut().end_tx_script_processing(clk);
+                    Ok(Vec::new())
+                },
+
+                TransactionEvent::EpilogueStart { clk } => {
+                    self.base_host.tx_progress_mut().start_epilogue(clk);
+                    Ok(Vec::new())
+                },
+                TransactionEvent::EpilogueEnd { clk } => {
+                    self.base_host.tx_progress_mut().end_epilogue(clk);
+                    Ok(Vec::new())
+                },
+
+                TransactionEvent::EpilogueAuthProcStart { clk } => {
+                    self.base_host.tx_progress_mut().start_auth_procedure(clk);
+                    Ok(Vec::new())
+                },
+                TransactionEvent::EpilogueAuthProcEnd { clk } => {
+                    self.base_host.tx_progress_mut().end_auth_procedure(clk);
+                    Ok(Vec::new())
+                },
+
+                TransactionEvent::EpilogueAfterTxCyclesObtained { clk } => {
+                    self.base_host.tx_progress_mut().epilogue_after_tx_cycles_obtained(clk);
+                    Ok(Vec::new())
+                },
+
+                TransactionEvent::EpilogueBeforeTxFeeRemovedFromAccount { fee_asset } => {
+                    self.on_before_tx_fee_removed_from_account(fee_asset).await
+                },
+
+                TransactionEvent::LinkMapSet { advice_mutation } => Ok(advice_mutation),
+                TransactionEvent::LinkMapGet { advice_mutation } => Ok(advice_mutation),
             };
 
             result.map_err(EventError::from)
