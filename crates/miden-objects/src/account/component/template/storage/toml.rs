@@ -398,7 +398,17 @@ impl<'de> Deserialize<'de> for StorageEntry {
                 raw.identifier.ok_or_else(|| missing_field_for("identifier", "map entry"))?;
             let slot = raw.slot.ok_or_else(|| missing_field_for("slot", "map entry"))?;
             let FieldIdentifier { name, description } = identifier;
-            let mut map = MapRepresentation::new_template(name);
+
+            // If values is specified (even if empty), create a value map.
+            // Due to #[serde(untagged)] on StorageValues, values = [] gets deserialized
+            // as StorageValues::Words(vec![]), so we need to treat it as an empty map.
+            // Otherwise, create a template map.
+            let mut map = if raw.values.is_some() {
+                MapRepresentation::new_value(Vec::new(), name)
+            } else {
+                MapRepresentation::new_template(name)
+            };
+
             if let Some(desc) = description {
                 map = map.with_description(desc);
             }
