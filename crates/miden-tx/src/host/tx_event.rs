@@ -1,5 +1,6 @@
 use alloc::vec::Vec;
 
+use miden_lib::transaction::memory::{ACCOUNT_STACK_TOP_PTR, ACCT_CODE_COMMITMENT_OFFSET};
 use miden_lib::transaction::{EventId, TransactionEventId};
 use miden_objects::account::{AccountId, StorageMap};
 use miden_objects::asset::{Asset, AssetVault, AssetVaultKey, FungibleAsset};
@@ -77,6 +78,15 @@ pub(crate) enum TransactionEvent {
         asset_key: AssetVaultKey,
         /// Indicates whether the witness for this map item is already in the advice provider.
         is_witness_present: bool,
+    },
+
+    AccountAfterIncrementNonce,
+
+    AccountPushProcedureIndex {
+        /// The code commitment of the active account.
+        code_commitment: Word,
+        /// The procedure root whose index is requested.
+        procedure_root: Word,
     },
 
     /// The data necessary to handle an auth request.
@@ -226,6 +236,11 @@ impl TransactionEvent {
 
                 Self::on_account_vault_asset_accessed(process, asset.vault_key(), vault_root)?
             },
+
+            TransactionEventId::AccountStorageBeforeSetItem => {
+                return Ok(None);
+            },
+
             TransactionEventId::AccountStorageAfterSetItem => {
                 // Expected stack state:
                 // [event, slot_index, NEW_SLOT_VALUE, CURRENT_SLOT_VALUE]
@@ -326,9 +341,44 @@ impl TransactionEvent {
                 }
             },
 
-            // Events that do not require handlers.
             TransactionEventId::AccountBeforeIncrementNonce => {
                 return Ok(None);
+            },
+
+            TransactionEventId::AccountAfterIncrementNonce => {
+                TransactionEvent::AccountAfterIncrementNonce
+            },
+
+            TransactionEventId::AccountPushProcedureIndex => {
+                // Expected stack state: `[event, PROC_ROOT]`
+
+                // get active account code commitment
+                let code_commitment = {
+                    let account_stack_top_ptr = process
+                        .get_mem_value(process.ctx(), ACCOUNT_STACK_TOP_PTR)
+                        .expect("Account stack top pointer was not initialized")
+                        .as_int();
+                    let curr_data_ptr = process
+                        .get_mem_value(
+                            process.ctx(),
+                            account_stack_top_ptr
+                                .try_into()
+                                .expect("account stack top pointer should be less than u32::MAX"),
+                        )
+                        .expect("active account pointer was not initialized")
+                        .as_int();
+                    process
+                        .get_mem_word(
+                            process.ctx(),
+                            curr_data_ptr as u32 + ACCT_CODE_COMMITMENT_OFFSET,
+                        )
+                        .expect("failed to read a word from memory")
+                        .expect("active account code commitment was not initialized")
+                };
+
+                let procedure_root = process.get_stack_word_be(1);
+
+                TransactionEvent::AccountPushProcedureIndex { code_commitment, procedure_root }
             },
 
             _ => unimplemented!(),

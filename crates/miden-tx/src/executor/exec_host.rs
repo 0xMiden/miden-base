@@ -630,6 +630,14 @@ where
                     )
                     .await
                 },
+
+                TransactionEvent::AccountAfterIncrementNonce => {
+                    self.base_host.on_account_after_increment_nonce().map(|_| Vec::new())
+                },
+
+                TransactionEvent::AccountPushProcedureIndex { code_commitment, procedure_root } => {
+                    self.base_host.on_account_push_procedure_index(code_commitment, procedure_root)
+                },
             };
 
             result.map_err(EventError::from)

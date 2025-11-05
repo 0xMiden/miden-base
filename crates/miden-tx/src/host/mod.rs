@@ -306,7 +306,10 @@ where
                 unimplemented!()
             }
 
-            TransactionEventId::AccountStorageBeforeSetItem => Ok(TransactionEventHandling::Handled(Vec::new())),
+            TransactionEventId::AccountStorageBeforeSetItem => {
+                // Ok(TransactionEventHandling::Handled(Vec::new()))
+                unimplemented!()
+            },
             TransactionEventId::AccountStorageAfterSetItem => {
                 // self.on_account_storage_after_set_item(process).map(|_| TransactionEventHandling::Handled(Vec::new()))
                 unimplemented!()
@@ -322,14 +325,17 @@ where
             },
 
             TransactionEventId::AccountBeforeIncrementNonce => {
-                Ok(TransactionEventHandling::Handled(Vec::new()))
+                // Ok(TransactionEventHandling::Handled(Vec::new()))
+                unimplemented!()
             },
             TransactionEventId::AccountAfterIncrementNonce => {
-                self.on_account_after_increment_nonce().map(|_| TransactionEventHandling::Handled(Vec::new()))
+                // self.on_account_after_increment_nonce().map(|_| TransactionEventHandling::Handled(Vec::new()))
+                unimplemented!()
             },
 
             TransactionEventId::AccountPushProcedureIndex => {
-                self.on_account_push_procedure_index(process).map(TransactionEventHandling::Handled)
+                // self.on_account_push_procedure_index(process).map(TransactionEventHandling::Handled)
+                unimplemented!()
             },
 
             TransactionEventId::NoteBeforeCreated => Ok(TransactionEventHandling::Handled(Vec::new())),
@@ -601,11 +607,13 @@ where
     /// Loads the index of the procedure root onto the advice stack.
     ///
     /// Expected stack state: `[event, PROC_ROOT, ...]`
-    fn on_account_push_procedure_index(
+    pub fn on_account_push_procedure_index(
         &mut self,
-        process: &ProcessState,
+        code_commitment: Word,
+        procedure_root: Word,
     ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
-        let proc_idx = self.acct_procedure_index_map.get_proc_index(process)?;
+        let proc_idx =
+            self.acct_procedure_index_map.get_proc_index(code_commitment, procedure_root)?;
         Ok(vec![AdviceMutation::extend_stack([Felt::from(proc_idx)])])
     }
 
