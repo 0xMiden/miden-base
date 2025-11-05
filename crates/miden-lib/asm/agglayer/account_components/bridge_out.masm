@@ -1,0 +1,8 @@
+use.miden::contracts::wallets::basic->wallet
+
+export.bridge_out
+    push.111 debug.stack drop
+
+    call.wallet::receive_asset
+
+end
