@@ -379,7 +379,7 @@ mod tests {
             storage,
         };
 
-        let serialized = original_config.as_toml().unwrap();
+        let serialized = original_config.to_toml().unwrap();
         let deserialized = AccountComponentMetadata::from_toml(&serialized).unwrap();
         assert_eq!(deserialized, original_config);
     }
