@@ -6,7 +6,7 @@ sidebar_position: 3
 
 ## Purpose
 
-An address is an extension to account IDs and other identifiers that facilitates sending and receiving of [notes](../note). It serves three main purposes explained in this section.
+An address is an extension to account IDs and other identifiers that facilitates sending and receiving of [notes](../note). It serves four main purposes explained in this section.
 
 ### Communicating receiver information
 
@@ -43,6 +43,10 @@ An address allows the sender of the note to easily discover the interface of the
 
 If a sender wants to create a note, it is up to them to check whether the receiver account has an interface that it compatible with that note. The notion of an address doesn't exist at protocol level and so it is up to wallets or clients to implement this interface compatibility check.
 
+### Note encryption
+
+An address can include a public encryption key that enables senders to securely encrypt note payloads for the receiver. This ensures that only the intended recipient, who holds the corresponding private key, can decrypt and read the note contents.
+
 ## Structure
 
 An address consists of two parts:
@@ -61,12 +65,15 @@ mm1arp0azyk9jugtgpnnhle8daav58nczzr_qpgqqwcfx0p
 
 The routing parameters in an address can encode exactly one account interface, which is a deliberate limitation to keep the size of addresses small. Users can generate multiple addresses for the same identifier like account ID or public key, in order to communicate different interfaces to senders. In other words, there could be multiple different addresses that point to the same account, each encoding a different interface. So, the relationship from addresses to their underlying identifiers is n-to-1.
 
-As an example, these two addresses contain the same account ID but different routing parameters:
+As an example, these addresses contain the same account ID but different routing parameters:
 
 ```text
 mm1arp0azyk9jugtgpnnhle8daav58nczzr_qpgqqwcfx0p
 mm1arp0azyk9jugtgpnnhle8daav58nczzr_qzsqqd4avz7
+mm1arp0azyk9jugtgpnnhle8daav58nczzr_qruqqqgqjmsgjsh3687mt2w0qtqunxt3th442j48qwdnezl0fv6qm3x9c8zqsv7pku
 ```
+
+The third example above includes an encryption key in the routing parameters, which results in a longer encoded address string.
 
 ### Address Types
 
@@ -82,10 +89,6 @@ Adding a public key-based address type is planned.
 
 The supported routing parameters are detailed in this section.
 
-:::note
-Adding an encryption key routing parameter is planned.
-:::
-
 #### Address Interface
 
 The address interface informs the sender of the capabilities of the [receiver account's interface](./code#interface).
@@ -96,6 +99,18 @@ The supported **address interfaces** are:
 #### Note Tag Length
 
 The note tag length routing parameter allows specifying the length of the [note tag](../note#note-discovery) that the sender should create. This parameter determines how many bits of the account ID are encoded into note tags of notes targeted to this address. This lets the owner of the account choose their level of privacy. A higher tag length makes the address ID more uniquely identifiable and reduces privacy, while a shorter length increases privacy at the cost of matching more notes published onchain.
+
+#### Encryption Key
+
+The encryption key routing parameter enables secure note payload encryption by allowing the receiver to provide a public encryption key in their address. When present, senders can use this key to encrypt the note payload using sealed box encryption, ensuring that only the receiver can decrypt and read the note contents.
+
+The supported **encryption schemes** are:
+- `X25519_XChaCha20Poly1305`: Curve25519-based key exchange with XChaCha20-Poly1305 authenticated encryption
+- `K256_XChaCha20Poly1305`: secp256k1-based key exchange with XChaCha20-Poly1305 authenticated encryption
+- `X25519_AeadRpo`: Curve25519-based key exchange with RPO-based authenticated encryption
+- `K256_AeadRpo`: secp256k1-based key exchange with RPO-based authenticated encryption
+
+The encryption key is optional in an address. If not provided, senders may use alternative encryption mechanisms or send unencrypted notes. When an encryption key is included in the address, it is encoded in bech32 format alongside other routing parameters with a 1-byte variant discriminant followed by the public key bytes (32 bytes for Curve25519 keys, 33 bytes for secp256k1 keys in their compressed format).
 
 ## Encoding
 
