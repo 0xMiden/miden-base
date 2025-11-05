@@ -638,6 +638,38 @@ where
                 TransactionEvent::AccountPushProcedureIndex { code_commitment, procedure_root } => {
                     self.base_host.on_account_push_procedure_index(code_commitment, procedure_root)
                 },
+
+                TransactionEvent::NoteAfterCreated {
+                    note_idx,
+                    metadata,
+                    recipient_digest,
+                    note_script,
+                    recipient_data,
+                } => {
+                    let recipient_data = self.base_host.on_note_after_created(
+                        note_idx,
+                        metadata,
+                        recipient_digest,
+                        note_script,
+                        recipient_data,
+                    )?;
+
+                    // A return value of Some means we should request the script.
+                    if let Some((serial_num, script_root, note_inputs)) = recipient_data {
+                        self.on_note_script_requested(
+                            script_root,
+                            metadata,
+                            recipient_digest,
+                            note_idx,
+                            note_inputs,
+                            serial_num,
+                        )
+                        .await
+                    } else {
+                        // A return value of None means the note creation was already handled.
+                        Ok(Vec::new())
+                    }
+                },
             };
 
             result.map_err(EventError::from)

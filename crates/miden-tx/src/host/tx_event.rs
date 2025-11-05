@@ -4,7 +4,7 @@ use miden_lib::transaction::memory::{ACCOUNT_STACK_TOP_PTR, ACCT_CODE_COMMITMENT
 use miden_lib::transaction::{EventId, TransactionEventId};
 use miden_objects::account::{AccountId, StorageMap};
 use miden_objects::asset::{Asset, AssetVault, AssetVaultKey, FungibleAsset};
-use miden_objects::note::{NoteInputs, NoteMetadata};
+use miden_objects::note::{NoteInputs, NoteMetadata, NoteRecipient, NoteScript};
 use miden_objects::{Felt, Word};
 use miden_processor::{AdviceMutation, ProcessState};
 
@@ -87,6 +87,19 @@ pub(crate) enum TransactionEvent {
         code_commitment: Word,
         /// The procedure root whose index is requested.
         procedure_root: Word,
+    },
+
+    NoteAfterCreated {
+        /// The note index extracted from the stack.
+        note_idx: usize,
+        /// The note metadata extracted from the stack.
+        metadata: NoteMetadata,
+        /// The recipient digest extracted from the stack.
+        recipient_digest: Word,
+        /// TODO
+        note_script: Option<NoteScript>,
+        /// The recipient data extracted from the advice inputs.
+        recipient_data: Option<(Word, Word, NoteInputs)>,
     },
 
     /// The data necessary to handle an auth request.
@@ -379,6 +392,53 @@ impl TransactionEvent {
                 let procedure_root = process.get_stack_word_be(1);
 
                 TransactionEvent::AccountPushProcedureIndex { code_commitment, procedure_root }
+            },
+
+            TransactionEventId::NoteBeforeCreated => {
+                return Ok(None);
+            },
+
+            TransactionEventId::NoteAfterCreated => {
+                // Expected stack state: `[event, NOTE_METADATA, note_ptr, RECIPIENT, note_idx]`
+
+                let metadata_word = process.get_stack_word_be(1);
+                let metadata = NoteMetadata::try_from(metadata_word)
+                    .map_err(TransactionKernelError::MalformedNoteMetadata)?;
+
+                let recipient_digest = process.get_stack_word_be(6);
+                let note_idx = process.get_stack_item(10).as_int() as usize;
+
+                // try to read the full recipient from the advice provider
+                let (note_script, recipient_data) =
+                    if process.has_advice_map_entry(recipient_digest) {
+                        let (note_inputs, script_root, serial_num) =
+                            process.read_note_recipient_info_from_adv_map(recipient_digest)?;
+
+                        let note_script = process
+                            .advice_provider()
+                            .get_mapped_values(&script_root)
+                            .map(|script_data| {
+                                NoteScript::try_from(script_data).map_err(|source| {
+                                    TransactionKernelError::MalformedNoteScript {
+                                        data: script_data.to_vec(),
+                                        source,
+                                    }
+                                })
+                            })
+                            .transpose()?;
+
+                        (note_script, Some((serial_num, script_root, note_inputs)))
+                    } else {
+                        (None, None)
+                    };
+
+                TransactionEvent::NoteAfterCreated {
+                    note_idx,
+                    metadata,
+                    recipient_digest,
+                    note_script,
+                    recipient_data,
+                }
             },
 
             _ => unimplemented!(),

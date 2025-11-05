@@ -39,7 +39,7 @@ use miden_objects::account::{
     StorageSlotType,
 };
 use miden_objects::asset::{Asset, AssetVault, AssetVaultKey, FungibleAsset};
-use miden_objects::note::{NoteId, NoteMetadata, NoteRecipient, NoteScript};
+use miden_objects::note::{NoteId, NoteInputs, NoteMetadata, NoteRecipient, NoteScript};
 use miden_objects::transaction::{
     InputNote,
     InputNotes,
@@ -339,7 +339,10 @@ where
             },
 
             TransactionEventId::NoteBeforeCreated => Ok(TransactionEventHandling::Handled(Vec::new())),
-            TransactionEventId::NoteAfterCreated => self.on_note_after_created(process),
+            TransactionEventId::NoteAfterCreated => {
+                // self.on_note_after_created(process)
+                unimplemented!()
+            },
 
             TransactionEventId::NoteBeforeAddAsset => self.on_note_before_add_asset(process).map(|_| TransactionEventHandling::Handled(Vec::new())),
             TransactionEventId::NoteAfterAddAsset => Ok(TransactionEventHandling::Handled(Vec::new())),
@@ -525,51 +528,29 @@ where
     /// request the missing note script from the data store.
     ///
     /// Expected stack state: `[event, NOTE_METADATA, note_ptr, RECIPIENT, note_idx]`
-    fn on_note_after_created(
+    pub fn on_note_after_created(
         &mut self,
-        process: &ProcessState,
-    ) -> Result<TransactionEventHandling, TransactionKernelError> {
-        let metadata_word = process.get_stack_word_be(1);
-        let metadata = NoteMetadata::try_from(metadata_word)
-            .map_err(TransactionKernelError::MalformedNoteMetadata)?;
-
-        let recipient_digest = process.get_stack_word_be(6);
-        let note_idx = process.get_stack_item(10).as_int() as usize;
-
-        // try to read the full recipient from the advice provider
-        let recipient = if process.has_advice_map_entry(recipient_digest) {
-            let (inputs, script_root, serial_num) =
-                process.read_note_recipient_info_from_adv_map(recipient_digest)?;
-
-            if let Some(script_data) = process.advice_provider().get_mapped_values(&script_root) {
-                let script = NoteScript::try_from(script_data).map_err(|source| {
-                    TransactionKernelError::MalformedNoteScript {
-                        data: script_data.to_vec(),
-                        source,
-                    }
-                })?;
-
-                Some(NoteRecipient::new(serial_num, script, inputs))
-            } else {
-                // we couldn't build the full recipient because script root was missing; return the
-                // info that we did read so that we could request the script from the data store
-                return Ok(TransactionEventHandling::Unhandled(TransactionEvent::NoteData {
-                    note_idx,
-                    metadata,
-                    script_root,
-                    recipient_digest,
-                    note_inputs: inputs,
-                    serial_num,
-                }));
-            }
-        } else {
-            None
+        note_idx: usize,
+        metadata: NoteMetadata,
+        recipient_digest: Word,
+        note_script: Option<NoteScript>,
+        recipient_data: Option<(Word, Word, NoteInputs)>,
+    ) -> Result<Option<(Word, Word, NoteInputs)>, TransactionKernelError> {
+        let recipient = match (note_script, recipient_data) {
+            // If recipient data is none, there is no point in requesting the script.
+            (_, None) => None,
+            // If the script is missing, return the recipient data so the script can be requested.
+            (None, recipient_data @ Some(_)) => return Ok(recipient_data),
+            // If both are present, we can build the recipient directly.
+            (Some(note_script), Some((serial_num, _script_root, note_inputs))) => {
+                Some(NoteRecipient::new(serial_num, note_script, note_inputs))
+            },
         };
 
         let note_builder = OutputNoteBuilder::new(metadata, recipient_digest, recipient)?;
         self.insert_output_note_builder(note_idx, note_builder)?;
 
-        Ok(TransactionEventHandling::Handled(Vec::new()))
+        Ok(None)
     }
 
     /// Adds an asset at the top of the [OutputNoteBuilder] identified by the note pointer.
