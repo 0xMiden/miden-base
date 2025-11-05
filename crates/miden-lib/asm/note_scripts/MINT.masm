@@ -4,7 +4,7 @@ use.miden::contracts::faucets::network_fungible->network_faucet
 # CONSTANTS
 # =================================================================================================
 
-const.MINT_NOTE_STORAGE_NUMBER=9
+const.MINT_NOTE_STORAGE_LENGTH=9
 
 # ERRORS
 # =================================================================================================
@@ -30,17 +30,17 @@ const.ERR_MINT_UNEXPECTED_STORAGE_LENGTH="MINT script expects storage of length 
 #!
 #! Panics if:
 #! - account does not expose distribute procedure.
-#! - the number of inputs is not exactly 9.
+#! - the storage length is not exactly 9.
 begin
     dropw
     # => [pad(16)]
 
     # Load note storage values into memory starting at address 0
-    push.0 exec.active_note::get_inputs
-    # => [num_inputs, inputs_ptr, pad(16)]
+    push.0 exec.active_note::get_storage
+    # => [storage_len, storage_ptr, pad(16)]
 
-    # Verify we have the correct number of inputs
-    eq.MINT_NOTE_STORAGE_NUMBER assert.err=ERR_MINT_UNEXPECTED_STORAGE_LENGTH drop
+    # Verify we have the correct storage length
+    eq.MINT_NOTE_STORAGE_LENGTH assert.err=ERR_MINT_UNEXPECTED_STORAGE_LENGTH drop
     # => [pad(16)]
 
     # Load amount

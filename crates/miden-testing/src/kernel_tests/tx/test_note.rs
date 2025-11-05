@@ -218,21 +218,21 @@ async fn test_build_recipient() -> anyhow::Result<()> {
             # Test with 4 values
             push.{script_root}  # SCRIPT_ROOT
             push.{serial_num}   # SERIAL_NUM
-            push.4.4000         # num_inputs, inputs_ptr
+            push.4.4000         # storage_len, storage_ptr
             exec.note::build_recipient
             # => [RECIPIENT_4]
 
             # Test with 5 values
             push.{script_root}  # SCRIPT_ROOT
             push.{serial_num}   # SERIAL_NUM
-            push.5.4000         # num_inputs, inputs_ptr
+            push.5.4000         # storage_len, storage_ptr
             exec.note::build_recipient
             # => [RECIPIENT_5, RECIPIENT_4]
 
             # Test with 13 values
             push.{script_root}  # SCRIPT_ROOT
             push.{serial_num}   # SERIAL_NUM
-            push.13.4000        # num_inputs, inputs_ptr
+            push.13.4000        # storage_len, storage_ptr
             exec.note::build_recipient
             # => [RECIPIENT_13, RECIPIENT_5, RECIPIENT_4]
 
@@ -281,7 +281,7 @@ async fn test_build_recipient() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
-async fn test_compute_inputs_commitment() -> anyhow::Result<()> {
+async fn test_compute_storage_commitment() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
     // Define test values as Words
@@ -306,24 +306,24 @@ async fn test_compute_inputs_commitment() -> anyhow::Result<()> {
 
             # push the number of values and pointer to the inputs on the stack
             push.5.4000
-            # execute the `compute_inputs_commitment` procedure for 5 values
-            exec.note::compute_inputs_commitment
+            # execute the `compute_storage_commitment` procedure for 5 values
+            exec.note::compute_storage_commitment
             # => [HASH_5]
 
             push.8.4000
-            # execute the `compute_inputs_commitment` procedure for 8 values
-            exec.note::compute_inputs_commitment
+            # execute the `compute_storage_commitment` procedure for 8 values
+            exec.note::compute_storage_commitment
             # => [HASH_8, HASH_5]
 
             push.15.4000
-            # execute the `compute_inputs_commitment` procedure for 15 values
-            exec.note::compute_inputs_commitment
+            # execute the `compute_storage_commitment` procedure for 15 values
+            exec.note::compute_storage_commitment
             # => [HASH_15, HASH_8, HASH_5]
 
             push.0.4000
-            # check that calling `compute_inputs_commitment` procedure with 0 elements will result in an
+            # check that calling `compute_storage_commitment` procedure with 0 elements will result in an
             # empty word
-            exec.note::compute_inputs_commitment
+            exec.note::compute_storage_commitment
             # => [0, 0, 0, 0, HASH_15, HASH_8, HASH_5]
 
             # truncate the stack
@@ -438,13 +438,13 @@ pub async fn test_timelock() -> anyhow::Result<()> {
       use.miden::tx
 
       begin
-          # store the note inputs to memory starting at address 0
-          push.0 exec.active_note::get_inputs
-          # => [num_inputs, inputs_ptr]
+          # store the storage length to memory starting at address 0
+          push.0 exec.active_note::get_storage
+          # => [storage_len, storage_ptr]
 
-          # make sure the number of inputs is 1
-          eq.1 assert.err="number of note inputs is not 1"
-          # => [inputs_ptr]
+          # make sure the storage length is 1
+          eq.1 assert.err="number of storage length is not 1"
+          # => [storage_ptr]
 
           # read the timestamp at which the note can be consumed
           mem_load

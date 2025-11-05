@@ -118,20 +118,20 @@ impl WellKnownNote {
     // CONSTANTS
     // --------------------------------------------------------------------------------------------
 
-    /// Expected number of inputs of the P2ID note.
-    const P2ID_NUM_INPUTS: usize = 2;
+    /// Expected storage length of the P2ID note.
+    const P2ID_STORAGE_LEN: usize = 2;
 
-    /// Expected number of inputs of the P2IDE note.
-    const P2IDE_NUM_INPUTS: usize = 4;
+    /// Expected storage length of the P2IDE note.
+    const P2IDE_STORAGE_LEN: usize = 4;
 
-    /// Expected number of inputs of the SWAP note.
-    const SWAP_NUM_INPUTS: usize = 10;
+    /// Expected storage length of the SWAP note.
+    const SWAP_STORAGE_LEN: usize = 10;
 
-    /// Expected number of inputs of the MINT note.
-    const MINT_NUM_INPUTS: usize = 9;
+    /// Expected storage length of the MINT note.
+    const MINT_STORAGE_LEN: usize = 9;
 
-    /// Expected number of inputs of the BURN note.
-    const BURN_NUM_INPUTS: usize = 0;
+    /// Expected storage length of the BURN note.
+    const BURN_STORAGE_LEN: usize = 0;
 
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
@@ -163,14 +163,14 @@ impl WellKnownNote {
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns the expected inputs number of the active note.
+    /// Returns the expected storage length of the active note.
     pub fn num_expected_inputs(&self) -> usize {
         match self {
-            Self::P2ID => Self::P2ID_NUM_INPUTS,
-            Self::P2IDE => Self::P2IDE_NUM_INPUTS,
-            Self::SWAP => Self::SWAP_NUM_INPUTS,
-            Self::MINT => Self::MINT_NUM_INPUTS,
-            Self::BURN => Self::BURN_NUM_INPUTS,
+            Self::P2ID => Self::P2ID_STORAGE_LEN,
+            Self::P2IDE => Self::P2IDE_STORAGE_LEN,
+            Self::SWAP => Self::SWAP_STORAGE_LEN,
+            Self::MINT => Self::MINT_STORAGE_LEN,
+            Self::BURN => Self::BURN_STORAGE_LEN,
         }
     }
 

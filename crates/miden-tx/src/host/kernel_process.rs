@@ -27,9 +27,9 @@ pub(super) trait TransactionKernelProcess {
         recipient_digest: Word,
     ) -> Result<(NoteStorage, Word, Word), TransactionKernelError>;
 
-    fn read_note_inputs_from_adv_map(
+    fn read_note_storage_from_adv_map(
         &self,
-        inputs_commitment: &Word,
+        storage_commitment: &Word,
     ) -> Result<NoteStorage, TransactionKernelError>;
 
     fn has_advice_map_entry(&self, key: Word) -> bool;
@@ -144,20 +144,20 @@ impl<'a> TransactionKernelProcess for ProcessState<'a> {
         let (sn_hash, script_root) = read_double_word_from_adv_map(self, sn_script_hash)?;
         let (serial_num, _) = read_double_word_from_adv_map(self, sn_hash)?;
 
-        let note_storage = self.read_note_inputs_from_adv_map(&storage_commitment)?;
+        let note_storage = self.read_note_storage_from_adv_map(&storage_commitment)?;
 
         Ok((note_storage, script_root, serial_num))
     }
 
-    /// Extracts and validates note inputs from the advice provider using trial unhashing.
+    /// Extracts and validates note storage from the advice provider using trial unhashing.
     ///
-    /// This function tries to determine the correct number of inputs by:
+    /// This function tries to determine the correct storage length by:
     /// 1. Finding the last non-zero element as a starting point
-    /// 2. Building NoteStorage and checking if the hash matches inputs_commitment
-    /// 3. If not, incrementing num_inputs and trying again (up to 6 more times)
-    /// 4. If num_inputs grows to the size of inputs_data and there's still no match, returning an
+    /// 2. Building NoteStorage and checking if the hash matches storage_commitment
+    /// 3. If not, incrementing storage_len and trying again (up to 6 more times)
+    /// 4. If storage_len grows to the size of inputs_data and there's still no match, returning an
     ///    error
-    fn read_note_inputs_from_adv_map(
+    fn read_note_storage_from_adv_map(
         &self,
         storage_commitment: &Word,
     ) -> Result<NoteStorage, TransactionKernelError> {
@@ -167,23 +167,22 @@ impl<'a> TransactionKernelProcess for ProcessState<'a> {
             None => NoteStorage::default(),
             Some(inputs) => {
                 // Start with the last non-zero element as a hint
-                let initial_num_inputs =
+                let initial_storage_len =
                     inputs.iter().rposition(|&x| x != ZERO).map(|pos| pos + 1).unwrap_or(0);
 
                 // Try different input counts using trial unhashing
-                let mut num_inputs = initial_num_inputs;
+                let mut storage_len = initial_storage_len;
 
                 loop {
-                    let candidate_storage_item =
-                        NoteStorage::new(inputs[0..num_inputs].to_vec())
-                            .map_err(TransactionKernelError::MalformedNoteStorage)?;
+                    let candidate_storage_item = NoteStorage::new(inputs[0..storage_len].to_vec())
+                        .map_err(TransactionKernelError::MalformedNoteStorage)?;
 
                     if candidate_storage_item.commitment() == *storage_commitment {
                         return Ok(candidate_storage_item);
                     }
 
-                    num_inputs += 1;
-                    if num_inputs > inputs.len() {
+                    storage_len += 1;
+                    if storage_len > inputs.len() {
                         break;
                     }
                 }
@@ -191,7 +190,7 @@ impl<'a> TransactionKernelProcess for ProcessState<'a> {
                 // If we've exhausted all attempts, return an error
                 return Err(TransactionKernelError::InvalidNoteStorage {
                     expected: *storage_commitment,
-                    actual: NoteStorage::new(inputs[0..num_inputs.min(inputs.len())].to_vec())
+                    actual: NoteStorage::new(inputs[0..storage_len.min(inputs.len())].to_vec())
                         .map(|i| i.commitment())
                         .unwrap_or_default(),
                 });

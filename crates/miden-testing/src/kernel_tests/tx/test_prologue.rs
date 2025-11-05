@@ -27,7 +27,6 @@ use miden_lib::transaction::memory::{
     INPUT_NOTE_ASSETS_COMMITMENT_OFFSET,
     INPUT_NOTE_ASSETS_OFFSET,
     INPUT_NOTE_ID_OFFSET,
-    INPUT_NOTE_INPUTS_COMMITMENT_OFFSET,
     INPUT_NOTE_METADATA_OFFSET,
     INPUT_NOTE_NULLIFIER_SECTION_PTR,
     INPUT_NOTE_NUM_ASSETS_OFFSET,
@@ -35,6 +34,7 @@ use miden_lib::transaction::memory::{
     INPUT_NOTE_SCRIPT_ROOT_OFFSET,
     INPUT_NOTE_SECTION_PTR,
     INPUT_NOTE_SERIAL_NUM_OFFSET,
+    INPUT_NOTE_STORAGE_COMMITMENT_OFFSET,
     INPUT_NOTES_COMMITMENT_PTR,
     KERNEL_PROCEDURES_PTR,
     NATIVE_ACCT_CODE_COMMITMENT_PTR,
@@ -488,7 +488,7 @@ fn input_notes_memory_assertions(
         );
 
         assert_eq!(
-            exec_output.get_note_mem_word(note_idx, INPUT_NOTE_INPUTS_COMMITMENT_OFFSET),
+            exec_output.get_note_mem_word(note_idx, INPUT_NOTE_STORAGE_COMMITMENT_OFFSET),
             note.storage().commitment(),
             "note storage commitment should be stored at the correct offset"
         );

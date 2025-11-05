@@ -520,7 +520,7 @@ async fn test_check_note_consumability_static_analysis_invalid_inputs() -> anyho
         TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context).with_tracing();
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
-    // check the note with invalid number of inputs
+    // check the note with invalid storage length
     // --------------------------------------------------------------------------------------------
     let consumability_info: NoteConsumptionStatus = notes_checker
         .can_consume(
@@ -534,7 +534,7 @@ async fn test_check_note_consumability_static_analysis_invalid_inputs() -> anyho
         assert_eq!(reason.to_string(), format!(
                         "P2IDE note should have {} inputs, but {} was provided",
                         WellKnownNote::P2IDE.num_expected_inputs(),
-                        p2ide_wrong_inputs_number.recipient().storage().num_values()
+                        p2ide_wrong_inputs_number.recipient().storage().num_items()
                     ));
     });
 
@@ -670,7 +670,7 @@ async fn test_check_note_consumability_static_analysis_receiver(
         TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context).with_tracing();
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
-    // check the note with invalid number of inputs
+    // check the note with invalid storage length
     // --------------------------------------------------------------------------------------------
     let consumption_check_result = notes_checker
         .can_consume(
@@ -760,7 +760,7 @@ async fn test_check_note_consumability_static_analysis_sender(
         TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context).with_tracing();
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
-    // check the note with invalid number of inputs
+    // check the note with invalid storage length
     // --------------------------------------------------------------------------------------------
     let consumption_check_result = notes_checker
         .can_consume(

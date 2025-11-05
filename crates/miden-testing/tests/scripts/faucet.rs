@@ -359,14 +359,14 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
             use.miden::note
             
             begin
-                # Build recipient hash from SERIAL_NUM, SCRIPT_ROOT, and INPUTS_COMMITMENT
+                # Build recipient hash from SERIAL_NUM, SCRIPT_ROOT, and STORAGE_COMMITMENT
                 push.{script_root}
                 # => [SCRIPT_ROOT]
                 
                 push.{serial_num}
                 # => [SERIAL_NUM, SCRIPT_ROOT]
 
-                # Store note inputs in memory at address 0
+                # Store storage length in memory at address 0
                 # First word: inputs[0..4]
                 push.{input0}.{input1}.{input2}.{input3}
                 mem_storew_be.0 dropw
@@ -378,7 +378,7 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
                 # Memory[1] = [input4, input5, input6, input7]
 
                 push.8 push.0
-                # => [inputs_ptr, num_inputs, SERIAL_NUM, SCRIPT_ROOT]
+                # => [storage_ptr, storage_len, SERIAL_NUM, SCRIPT_ROOT]
 
                 exec.note::build_recipient
                 # => [RECIPIENT]
@@ -461,7 +461,7 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
     // Verify the note was created by the faucet
     assert_eq!(full_note.metadata().sender(), faucet.id());
 
-    // Verify the note inputs commitment matches the expected commitment
+    // Verify the note storage commitment matches the expected commitment
     assert_eq!(
         full_note.recipient().storage().commitment(),
         note_storage.commitment(),
@@ -537,7 +537,7 @@ async fn network_faucet_mint() -> anyhow::Result<()> {
     // Use the standard MINT note script
     let note_script = WellKnownNote::MINT.script();
 
-    // Create the note inputs for MINT note (reversed order)
+    // Create the note storage for MINT note (reversed order)
     let inputs = NoteStorage::new(vec![
         recipient[0],
         recipient[1],

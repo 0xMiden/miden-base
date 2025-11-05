@@ -29,12 +29,12 @@ const.ERR_P2ID_TARGET_ACCT_MISMATCH="P2ID's target account address and transacti
 #!   greater than 2^63.
 begin
     # store the note storage to memory starting at address 0
-    padw push.0 exec.active_note::get_inputs
-    # => [num_inputs, inputs_ptr, EMPTY_WORD]
+    padw push.0 exec.active_note::get_storage
+    # => [storage_len, storage_ptr, EMPTY_WORD]
 
-    # make sure the number of inputs is 2
+    # make sure the storage length is 2
     eq.2 assert.err=ERR_P2ID_UNEXPECTED_STORAGE_LENGTH
-    # => [inputs_ptr, EMPTY_WORD]
+    # => [storage_ptr, EMPTY_WORD]
 
     # read the target account ID from the note storage
     mem_loadw_be drop drop

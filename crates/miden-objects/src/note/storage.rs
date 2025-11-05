@@ -8,7 +8,7 @@ use crate::utils::serde::{
     DeserializationError,
     Serializable,
 };
-use crate::{Felt, Hasher, MAX_STORAGE_VALUE_PER_NOTE, WORD_SIZE, Word, ZERO};
+use crate::{Felt, Hasher, MAX_NOTE_STORAGE_LENGTH, WORD_SIZE, Word, ZERO};
 
 // NOTE STORAGE
 // ================================================================================================
@@ -31,16 +31,16 @@ impl NoteStorage {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
 
-    /// Returns [NoteStorage] instantiated from the provided values.
+    /// Returns [NoteStorage] instantiated from the provided items.
     ///
     /// # Errors
-    /// Returns an error if the number of provided storage is greater than 128.
-    pub fn new(values: Vec<Felt>) -> Result<Self, NoteError> {
-        if values.len() > MAX_STORAGE_VALUE_PER_NOTE {
-            return Err(NoteError::TooManyStorageValues(values.len()));
+    /// Returns an error if the storage length is greater than 128.
+    pub fn new(items: Vec<Felt>) -> Result<Self, NoteError> {
+        if items.len() > MAX_NOTE_STORAGE_LENGTH {
+            return Err(NoteError::TooManyStorageItems(items.len()));
         }
 
-        Ok(pad_and_build(values))
+        Ok(pad_and_build(items))
     }
 
     // PUBLIC ACCESSORS
@@ -54,10 +54,10 @@ impl NoteStorage {
     /// Returns the number of storage items.
     ///
     /// The returned value is guaranteed to be smaller than or equal to 128.
-    pub fn num_values(&self) -> u8 {
-        const _: () = assert!(MAX_STORAGE_VALUE_PER_NOTE <= u8::MAX as usize);
+    pub fn num_items(&self) -> u8 {
+        const _: () = assert!(MAX_NOTE_STORAGE_LENGTH <= u8::MAX as usize);
         debug_assert!(
-            self.items.len() < MAX_STORAGE_VALUE_PER_NOTE,
+            self.items.len() < MAX_NOTE_STORAGE_LENGTH,
             "The constructor should have checked the number of storage items"
         );
         self.items.len() as u8
@@ -98,8 +98,8 @@ impl Eq for NoteStorage {}
 // ================================================================================================
 
 impl From<NoteStorage> for Vec<Felt> {
-    fn from(value: NoteStorage) -> Self {
-        value.items
+    fn from(storage: NoteStorage) -> Self {
+        storage.items
     }
 }
 

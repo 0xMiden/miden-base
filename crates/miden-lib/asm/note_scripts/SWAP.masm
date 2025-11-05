@@ -46,12 +46,12 @@ begin
     # --- create a payback note with the requested asset ----------------
 
     # store note storage into memory starting at address 0
-    push.0 exec.active_note::get_inputs
-    # => [num_inputs, inputs_ptr]
+    push.0 exec.active_note::get_storage
+    # => [storage_len, storage_ptr]
 
-    # make sure the number of inputs is 12
+    # make sure the storage length is 12
     eq.SWAP_NOTE_STORAGE_LENGTH assert.err=ERR_SWAP_UNEXPECTED_STORAGE_LENGTH
-    # => [inputs_ptr]
+    # => [storage_ptr]
 
     # load REQUESTED_ASSET
     mem_loadw_be

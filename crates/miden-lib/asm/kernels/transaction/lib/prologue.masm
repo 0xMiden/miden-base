@@ -644,26 +644,26 @@ end
 #!
 #! Inputs:
 #!   Operand stack: [note_ptr]
-#!   Advice stack: [inputs_len]
+#!   Advice stack: [storage_len]
 #! Outputs:
 #!   Operand stack: [note_ptr]
 #!   Advice stack: []
 #!
 #! Where:
 #! - note_ptr is the memory location for the input note.
-#! - inputs_len is the note's input count.
+#! - storage_len is the length of the note's storage.
 proc.process_note_storage_length
-    # move the inputs length from the advice stack to the operand stack
+    # move the storage length from the advice stack to the operand stack
     adv_push.1
-    # => [inputs_len, note_ptr]
+    # => [storage_len, note_ptr]
 
     # validate the input length
     dup exec.::$kernel::util::note::get_max_inputs_per_note lte
     assert.err=ERR_PROLOGUE_NOTE_STORAGE_LENGTH_EXCEEDED_LIMIT
-    # => [inputs_len, note_ptr]
+    # => [storage_len, note_ptr]
 
-    # store the inputs length into the memory
-    dup.1 exec.memory::set_input_note_num_inputs
+    # store the storage length into the memory
+    dup.1 exec.memory::set_input_note_storage_len
     # => [note_ptr]
 end
 

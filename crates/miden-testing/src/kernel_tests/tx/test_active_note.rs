@@ -218,7 +218,7 @@ async fn test_active_note_get_assets() -> anyhow::Result<()> {
         use.miden::active_note
 
         proc.process_note_0
-            # drop the note inputs
+            # drop the note storage
             dropw dropw dropw dropw
 
             # set the destination pointer for note 0 assets
@@ -241,7 +241,7 @@ async fn test_active_note_get_assets() -> anyhow::Result<()> {
         end
 
         proc.process_note_1
-            # drop the note inputs
+            # drop the note storage
             dropw dropw dropw dropw
 
             # set the destination pointer for note 1 assets
@@ -297,7 +297,7 @@ async fn test_active_note_get_assets() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
-async fn test_active_note_get_inputs() -> anyhow::Result<()> {
+async fn test_active_note_get_storage() -> anyhow::Result<()> {
     // Creates a mockchain with an account and a note that it can consume
     let tx_context = {
         let mut builder = MockChain::builder();
@@ -357,10 +357,10 @@ async fn test_active_note_get_inputs() -> anyhow::Result<()> {
             dropw dropw dropw dropw
             # => []
 
-            push.{NOTE_0_PTR} exec.active_note::get_inputs
-            # => [num_inputs, dest_ptr]
+            push.{NOTE_0_PTR} exec.active_note::get_storage
+            # => [storage_len, dest_ptr]
 
-            eq.{num_inputs} assert
+            eq.{storage_len} assert
             # => [dest_ptr]
 
             dup eq.{NOTE_0_PTR} assert
@@ -375,7 +375,7 @@ async fn test_active_note_get_inputs() -> anyhow::Result<()> {
             # => []
         end
         ",
-        num_inputs = note0.storage().num_values(),
+        storage_len = note0.storage().num_items(),
         inputs_assertions = construct_inputs_assertions(note0),
         NOTE_0_PTR = 100000000,
     );
@@ -385,14 +385,14 @@ async fn test_active_note_get_inputs() -> anyhow::Result<()> {
 }
 
 /// This test checks the scenario when an input note has exactly 8 inputs, and the transaction
-/// script attempts to load the inputs to memory using the `miden::active_note::get_inputs`
+/// script attempts to load the inputs to memory using the `miden::active_note::get_storage`
 /// procedure.
 ///
 /// Previously this setup was leading to the incorrect number of note storage items computed during
-/// the `get_inputs` procedure, see the [issue #1363](https://github.com/0xMiden/miden-base/issues/1363)
+/// the `get_storage` procedure, see the [issue #1363](https://github.com/0xMiden/miden-base/issues/1363)
 /// for more details.
 #[tokio::test]
-async fn test_active_note_get_exactly_8_inputs() -> anyhow::Result<()> {
+async fn test_active_note_get_exactly_8_storage_items() -> anyhow::Result<()> {
     let sender_id = ACCOUNT_ID_SENDER
         .try_into()
         .context("failed to convert ACCOUNT_ID_SENDER to account ID")?;
@@ -447,12 +447,12 @@ async fn test_active_note_get_exactly_8_inputs() -> anyhow::Result<()> {
             begin
                 exec.prologue::prepare_transaction
 
-                # execute the `get_inputs` procedure to trigger note inputs length assertion
-                push.0 exec.active_note::get_inputs
-                # => [num_inputs, 0]
+                # execute the `get_storage` procedure to trigger storage length assertion
+                push.0 exec.active_note::get_storage
+                # => [storage_len, 0]
 
                 # assert that the inputs length is 8
-                push.8 assert_eq.err=\"number of inputs values should be equal to 8\"
+                push.8 assert_eq.err=\"storage length values should be equal to 8\"
 
                 # clean the stack
                 drop

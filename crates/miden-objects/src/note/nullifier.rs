@@ -43,14 +43,14 @@ impl Nullifier {
     /// Returns a new note [Nullifier] instantiated from the provided digest.
     pub fn new(
         script_root: Word,
-        inputs_commitment: Word,
+        storage_commitment: Word,
         asset_commitment: Word,
         serial_num: Word,
     ) -> Self {
         let mut elements = [ZERO; 4 * WORD_SIZE];
         elements[..4].copy_from_slice(serial_num.as_elements());
         elements[4..8].copy_from_slice(script_root.as_elements());
-        elements[8..12].copy_from_slice(inputs_commitment.as_elements());
+        elements[8..12].copy_from_slice(storage_commitment.as_elements());
         elements[12..].copy_from_slice(asset_commitment.as_elements());
         Self(Hasher::hash_elements(&elements))
     }

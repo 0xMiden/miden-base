@@ -101,12 +101,12 @@ end
 #!   greater than 2^63.
 begin
     # store the note storage to memory starting at address 0
-    push.0 exec.active_note::get_inputs
-    # => [num_inputs, inputs_ptr]
+    push.0 exec.active_note::get_storage
+    # => [storage_len, storage_ptr]
 
     # check the length of note storage
     eq.4 assert.err=ERR_P2IDE_UNEXPECTED_STORAGE_LENGTH
-    # => [inputs_ptr]
+    # => [storage_ptr]
 
     # read the reclaim block height, timelock_block_height, and target account ID from the note storage
     mem_loadw_be

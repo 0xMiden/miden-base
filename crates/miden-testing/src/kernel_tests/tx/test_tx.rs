@@ -393,15 +393,15 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
     let resulting_note_2_recipient =
         resulting_output_note_2.recipient().expect("output note 2 is not full");
     assert_eq!(
-        resulting_note_2_recipient.storage().num_values(),
-        expected_output_note_2.storage().num_values()
+        resulting_note_2_recipient.storage().num_items(),
+        expected_output_note_2.storage().num_items()
     );
 
     let resulting_note_3_recipient =
         resulting_output_note_3.recipient().expect("output note 3 is not full");
     assert_eq!(
-        resulting_note_3_recipient.storage().num_values(),
-        expected_output_note_3.storage().num_values()
+        resulting_note_3_recipient.storage().num_items(),
+        expected_output_note_3.storage().num_items()
     );
 
     Ok(())

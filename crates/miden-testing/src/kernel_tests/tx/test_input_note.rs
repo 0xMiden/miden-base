@@ -289,9 +289,9 @@ async fn test_get_assets() -> anyhow::Result<()> {
 }
 
 /// Check that the number of the inputs and their commitment of a note with one asset
-/// obtained from the `input_note::get_inputs_info` procedure is correct.
+/// obtained from the `input_note::get_storage_info` procedure is correct.
 #[tokio::test]
-async fn test_get_inputs_info() -> anyhow::Result<()> {
+async fn test_get_storage_info() -> anyhow::Result<()> {
     let TestSetup {
         mock_chain,
         account,
@@ -308,11 +308,11 @@ async fn test_get_inputs_info() -> anyhow::Result<()> {
             # get the inputs commitment and length from the input note with index 0 (the only one
             # we have)
             push.0
-            exec.input_note::get_inputs_info
-            # => [NOTE_INPUTS_COMMITMENT, inputs_num]
+            exec.input_note::get_storage_info
+            # => [NOTE_STORAGE_COMMITMENT, inputs_num]
 
             # assert the correctness of the inputs commitment
-            push.{INPUTS_COMMITMENT}
+            push.{STORAGE_COMMITMENT}
             assert_eqw.err="note 0 has incorrect inputs commitment"
             # => [inputs_num]
 
@@ -322,8 +322,8 @@ async fn test_get_inputs_info() -> anyhow::Result<()> {
             # => []
         end
     "#,
-        INPUTS_COMMITMENT = p2id_note_1_asset.storage().commitment(),
-        inputs_num = p2id_note_1_asset.storage().num_values(),
+        STORAGE_COMMITMENT = p2id_note_1_asset.storage().commitment(),
+        inputs_num = p2id_note_1_asset.storage().num_items(),
     );
 
     let tx_script = ScriptBuilder::default().compile_tx_script(code)?;
