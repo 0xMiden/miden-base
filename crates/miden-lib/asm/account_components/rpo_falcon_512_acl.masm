@@ -140,6 +140,15 @@ pub proc auth_tx_rpo_falcon512_acl.2(auth_args: BeWord)
         exec.word::eq not
         # => [has_account_state_changed, pad(16)]
 
+        exec.active_account::get_nonce
+        # => [current_nonce, has_account_state_changed, pad(16)]
+
+        eq.0
+        # => [is_nonce_zero, has_account_state_changed, pad(16)]
+
+        or
+        # => [should_increment_nonce, pad(16)]
+
         if.true
             exec.native_account::incr_nonce drop
         end
