@@ -77,6 +77,11 @@ impl NoteInputs {
     pub fn to_elements(&self) -> Vec<Felt> {
         pad_inputs(&self.values)
     }
+
+    /// Returns the note's inputs formatted for storing in the advice map.
+    pub fn format_for_advice(&self) -> Vec<Felt> {
+        self.to_elements()
+    }
 }
 
 impl Default for NoteInputs {

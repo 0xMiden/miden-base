@@ -155,10 +155,9 @@ impl TransactionArgs {
     /// Populates the advice inputs with the expected recipient data for creating output notes.
     ///
     /// The advice inputs' map is extended with the following entries:
-    /// - RECIPIENT: [SERIAL_SCRIPT_HASH, INPUTS_COMMITMENT]
-    /// - SERIAL_SCRIPT_HASH: [SERIAL_HASH, SCRIPT_ROOT]
-    /// - SERIAL_HASH: [SERIAL_NUM, EMPTY_WORD]
-    /// - inputs_commitment |-> inputs.
+    /// - recipient_digest |-> recipient details (inputs length, inputs commitment, script root,
+    ///   serial number).
+    /// - inputs_commitment |-> inputs formatted for advice.
     /// - script_root |-> script.
     pub fn add_output_note_recipient<T: AsRef<NoteRecipient>>(&mut self, note_recipient: T) {
         let note_recipient = note_recipient.as_ref();
@@ -166,15 +165,9 @@ impl TransactionArgs {
         let script = note_recipient.script();
         let script_encoded: Vec<Felt> = script.into();
 
-        // Build the advice map entries
-        let sn_hash = Hasher::merge(&[note_recipient.serial_num(), Word::empty()]);
-        let sn_script_hash = Hasher::merge(&[sn_hash, script.root()]);
-
-        let new_elements = vec![
-            (sn_hash, concat_words(note_recipient.serial_num(), Word::empty())),
-            (sn_script_hash, concat_words(sn_hash, script.root())),
-            (note_recipient.digest(), concat_words(sn_script_hash, inputs.commitment())),
-            (inputs.commitment(), inputs.to_elements()),
+        let new_elements = [
+            (note_recipient.digest(), note_recipient.format_for_advice()),
+            (inputs.commitment(), inputs.format_for_advice()),
             (script.root(), script_encoded),
         ];
 
@@ -202,8 +195,9 @@ impl TransactionArgs {
     ///
     /// The advice inputs' map is extended with the following keys:
     ///
-    /// - recipient |-> recipient details (inputs_hash, script_root, serial_num).
-    /// - inputs_commitment |-> inputs.
+    /// - recipient_digest |-> recipient details (inputs length, inputs commitment, script root,
+    ///   serial number).
+    /// - inputs_commitment |-> inputs formatted for advice.
     /// - script_root |-> script.
     pub fn extend_output_note_recipients<T, L>(&mut self, notes: L)
     where
@@ -229,14 +223,6 @@ impl TransactionArgs {
     pub fn extend_advice_inputs(&mut self, advice_inputs: AdviceInputs) {
         self.advice_inputs.extend(advice_inputs);
     }
-}
-
-/// Concatenates two [`Word`]s into a [`Vec<Felt>`] containing 8 elements.
-fn concat_words(first: Word, second: Word) -> Vec<Felt> {
-    let mut result = Vec::with_capacity(8);
-    result.extend(first);
-    result.extend(second);
-    result
 }
 
 impl Default for TransactionArgs {

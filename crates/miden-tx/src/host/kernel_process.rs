@@ -1,11 +1,13 @@
+use alloc::vec::Vec;
+
 use miden_lib::transaction::memory::{
     ACCOUNT_STACK_TOP_PTR,
     ACTIVE_INPUT_NOTE_PTR,
     NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR,
 };
+use miden_objects::Word;
 use miden_objects::account::AccountId;
 use miden_objects::note::{NoteId, NoteInputs};
-use miden_objects::{Word, ZERO};
 use miden_processor::{EventError, ExecutionError, Felt, ProcessState};
 
 use crate::errors::TransactionKernelError;
@@ -30,6 +32,7 @@ pub(super) trait TransactionKernelProcess {
     fn read_note_inputs_from_adv_map(
         &self,
         inputs_commitment: &Word,
+        num_inputs: usize,
     ) -> Result<NoteInputs, TransactionKernelError>;
 
     fn has_advice_map_entry(&self, key: Word) -> bool;
@@ -139,95 +142,63 @@ impl<'a> TransactionKernelProcess for ProcessState<'a> {
         &self,
         recipient_digest: Word,
     ) -> Result<(NoteInputs, Word, Word), TransactionKernelError> {
-        let (sn_script_hash, inputs_commitment) =
-            read_double_word_from_adv_map(self, recipient_digest)?;
-        let (sn_hash, script_root) = read_double_word_from_adv_map(self, sn_script_hash)?;
-        let (serial_num, _) = read_double_word_from_adv_map(self, sn_hash)?;
+        let recipient_data = self
+            .advice_provider()
+            .get_mapped_values(&recipient_digest)
+            .ok_or_else(|| TransactionKernelError::MalformedRecipientData(Vec::new()))?;
 
-        let inputs = self.read_note_inputs_from_adv_map(&inputs_commitment)?;
+        if recipient_data.len() != 13 {
+            return Err(TransactionKernelError::MalformedRecipientData(recipient_data.to_vec()));
+        }
+
+        let num_inputs = recipient_data[0].as_int() as usize;
+        let inputs_commitment =
+            Word::new([recipient_data[1], recipient_data[2], recipient_data[3], recipient_data[4]]);
+        let script_root =
+            Word::new([recipient_data[5], recipient_data[6], recipient_data[7], recipient_data[8]]);
+        let serial_num = Word::new([
+            recipient_data[9],
+            recipient_data[10],
+            recipient_data[11],
+            recipient_data[12],
+        ]);
+
+        let inputs = self.read_note_inputs_from_adv_map(&inputs_commitment, num_inputs)?;
+
+        if inputs.commitment() != inputs_commitment {
+            return Err(TransactionKernelError::InvalidNoteInputs {
+                expected: inputs_commitment,
+                actual: inputs.commitment(),
+            });
+        }
 
         Ok((inputs, script_root, serial_num))
     }
 
-    /// Extracts and validates note inputs from the advice provider using trial unhashing.
-    ///
-    /// This function tries to determine the correct number of inputs by:
-    /// 1. Finding the last non-zero element as a starting point
-    /// 2. Building NoteInputs and checking if the hash matches inputs_commitment
-    /// 3. If not, incrementing num_inputs and trying again (up to 6 more times)
-    /// 4. If num_inputs grows to the size of inputs_data and there's still no match, returning an
-    ///    error
+    /// Extracts and validates note inputs from the advice provider using the stored input length.
     fn read_note_inputs_from_adv_map(
         &self,
         inputs_commitment: &Word,
+        num_inputs: usize,
     ) -> Result<NoteInputs, TransactionKernelError> {
-        let inputs_data = self.advice_provider().get_mapped_values(inputs_commitment);
-
-        let inputs = match inputs_data {
-            None => NoteInputs::default(),
+        match self.advice_provider().get_mapped_values(inputs_commitment) {
+            None => Ok(NoteInputs::default()),
             Some(inputs) => {
-                // Start with the last non-zero element as a hint
-                let initial_num_inputs =
-                    inputs.iter().rposition(|&x| x != ZERO).map(|pos| pos + 1).unwrap_or(0);
-
-                // Try different input counts using trial unhashing
-                let mut num_inputs = initial_num_inputs;
-
-                loop {
-                    let candidate_inputs = NoteInputs::new(inputs[0..num_inputs].to_vec())
-                        .map_err(TransactionKernelError::MalformedNoteInputs)?;
-
-                    if candidate_inputs.commitment() == *inputs_commitment {
-                        return Ok(candidate_inputs);
-                    }
-
-                    num_inputs += 1;
-                    if num_inputs > inputs.len() {
-                        break;
-                    }
+                if num_inputs > inputs.len() {
+                    return Err(TransactionKernelError::TooFewElementsForNoteInputs {
+                        specified: num_inputs as u64,
+                        actual: inputs.len() as u64,
+                    });
                 }
 
-                // If we've exhausted all attempts, return an error
-                return Err(TransactionKernelError::InvalidNoteInputs {
-                    expected: *inputs_commitment,
-                    actual: NoteInputs::new(inputs[0..num_inputs.min(inputs.len())].to_vec())
-                        .map(|i| i.commitment())
-                        .unwrap_or_default(),
-                });
-            },
-        };
+                let values = inputs[0..num_inputs].to_vec();
 
-        Ok(inputs)
+                NoteInputs::new(values).map_err(TransactionKernelError::MalformedNoteInputs)
+            },
+        }
     }
 
     fn has_advice_map_entry(&self, key: Word) -> bool {
         self.advice_provider().get_mapped_values(&key).is_some()
     }
-}
-
-// HELPER FUNCTIONS
-// ================================================================================================
-
-/// Reads a double word (two [`Word`]s, 8 [`Felt`]s total) from the advice map.
-///
-/// # Errors
-/// Returns an error if the key is not present in the advice map or if the data is malformed
-/// (not exactly 8 elements).
-fn read_double_word_from_adv_map(
-    process: &ProcessState,
-    key: Word,
-) -> Result<(Word, Word), TransactionKernelError> {
-    let data = process
-        .advice_provider()
-        .get_mapped_values(&key)
-        .ok_or_else(|| TransactionKernelError::MalformedRecipientData(vec![]))?;
-
-    if data.len() != 8 {
-        return Err(TransactionKernelError::MalformedRecipientData(data.to_vec()));
-    }
-
-    let first_word = Word::new([data[0], data[1], data[2], data[3]]);
-    let second_word = Word::new([data[4], data[5], data[6], data[7]]);
-
-    Ok((first_word, second_word))
 }

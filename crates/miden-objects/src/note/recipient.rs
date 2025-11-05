@@ -1,3 +1,4 @@
+use alloc::vec::Vec;
 use core::fmt::Debug;
 
 use super::{
@@ -11,6 +12,7 @@ use super::{
     Serializable,
     Word,
 };
+use crate::Felt;
 
 /// Value that describes under which condition a note can be consumed.
 ///
@@ -59,6 +61,18 @@ impl NoteRecipient {
     /// This is the public data required to create a note.
     pub fn digest(&self) -> Word {
         self.digest
+    }
+
+    /// Returns the recipient formatted for storing in the advice map.
+    ///
+    /// The format is `inputs_length || INPUTS_COMMITMENT || SCRIPT_ROOT || SERIAL_NUMBER`.
+    pub fn format_for_advice(&self) -> Vec<Felt> {
+        let mut result = Vec::with_capacity(13);
+        result.push(Felt::new(self.inputs.num_values() as u64));
+        result.extend(self.inputs.commitment());
+        result.extend(*self.script.root());
+        result.extend(self.serial_num);
+        result
     }
 }
 
