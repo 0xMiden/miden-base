@@ -140,6 +140,17 @@ pub proc auth_tx_rpo_falcon512_acl.2(auth_args: BeWord)
         exec.word::eq not
         # => [has_account_state_changed, pad(16)]
 
+        # check if this is a new account (i.e., nonce == 0); this check is needed because new
+        # accounts are initialized with a non-empty state, and thus, unless the account was
+        # modified during the transaction, the initial and current state commitments will be
+        # the same
+
+        exec.active_account::get_nonce eq.0
+        # => [is_new_account, has_account_state_changed, pad(16)]
+
+        or
+        # => [should_increment_nonce, pad(16)]
+
         if.true
             exec.native_account::incr_nonce drop
         end
