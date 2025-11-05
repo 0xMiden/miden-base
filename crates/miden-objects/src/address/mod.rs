@@ -154,7 +154,7 @@ impl Address {
     /// Returns the optional public encryption key from routing parameters.
     ///
     /// This key can be used for sealed box encryption when sending notes to this address.
-    pub fn encryption_key(&self) -> Option<SealingKey> {
+    pub fn encryption_key(&self) -> Option<&SealingKey> {
         self.routing_params.as_ref().and_then(RoutingParameters::encryption_key)
     }
 
@@ -466,7 +466,8 @@ mod tests {
         )?;
 
         // Verify encryption key is present
-        let retrieved_key = address.encryption_key().expect("encryption key should be present");
+        let retrieved_key =
+            address.encryption_key().expect("encryption key should be present").clone();
         assert_eq!(retrieved_key, sealing_key);
 
         // Test seal/unseal round-trip
@@ -512,8 +513,10 @@ mod tests {
         assert_eq!(address, decoded_address);
 
         // Verify encryption key is preserved
-        let decoded_key =
-            decoded_address.encryption_key().expect("encryption key should be present");
+        let decoded_key = decoded_address
+            .encryption_key()
+            .expect("encryption key should be present")
+            .clone();
         assert_eq!(decoded_key, sealing_key);
 
         Ok(())

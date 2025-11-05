@@ -48,7 +48,7 @@ const RECEIVER_PROFILE_PARAM_KEY: u8 = 0;
 const ENCRYPTION_KEY_PARAM_KEY: u8 = 1;
 
 /// The expected length of Ed25519/X25519 public keys in bytes.
-const ED25519_PUBLIC_KEY_LENGTH: usize = 32;
+const X25519_PUBLIC_KEY_LENGTH: usize = 32;
 
 /// The expected length of K256 (secp256k1) public keys in bytes (compressed format).
 const K256_PUBLIC_KEY_LENGTH: usize = 33;
@@ -121,8 +121,8 @@ impl RoutingParameters {
     }
 
     /// Returns the public encryption key.
-    pub fn encryption_key(&self) -> Option<SealingKey> {
-        self.encryption_key.clone()
+    pub fn encryption_key(&self) -> Option<&SealingKey> {
+        self.encryption_key.as_ref()
     }
 
     /// Sets the encryption key routing parameter.
@@ -206,7 +206,9 @@ impl RoutingParameters {
             match key {
                 RECEIVER_PROFILE_PARAM_KEY => {
                     if interface.is_some() {
-                        return Err(AddressError::decode_error("duplicate receiver profile tag"));
+                        return Err(AddressError::decode_error(
+                            "duplicate receiver profile routing parameter",
+                        ));
                     }
                     let receiver_profile = decode_receiver_profile(&mut byte_iter)?;
                     interface = Some(receiver_profile.0);
@@ -214,7 +216,9 @@ impl RoutingParameters {
                 },
                 ENCRYPTION_KEY_PARAM_KEY => {
                     if encryption_key.is_some() {
-                        return Err(AddressError::decode_error("duplicate encryption key tag"));
+                        return Err(AddressError::decode_error(
+                            "duplicate encryption key routing parameter",
+                        ));
                     }
                     encryption_key = Some(decode_encryption_key(&mut byte_iter)?);
                 },
@@ -327,15 +331,12 @@ fn encode_encryption_key(key: &SealingKey, encoded: &mut Vec<u8>) {
 fn decode_encryption_key(
     byte_iter: &mut impl ExactSizeIterator<Item = u8>,
 ) -> Result<SealingKey, AddressError> {
-    // Need at least 1 byte for discriminant
-    if byte_iter.len() < 1 {
+    // Read variant discriminant
+    let Some(variant) = byte_iter.next() else {
         return Err(AddressError::decode_error(
             "expected at least 1 byte for encryption key variant",
         ));
     };
-
-    // Read variant discriminant
-    let variant = byte_iter.next().expect("variant byte should exist");
 
     // Reconstruct the appropriate PublicEncryptionKey variant
     let public_encryption_key = match variant {
@@ -363,15 +364,15 @@ fn decode_encryption_key(
 fn read_x25519_pub_key(
     byte_iter: &mut impl ExactSizeIterator<Item = u8>,
 ) -> Result<eddsa_25519::PublicKey, AddressError> {
-    if byte_iter.len() < ED25519_PUBLIC_KEY_LENGTH {
+    if byte_iter.len() < X25519_PUBLIC_KEY_LENGTH {
         return Err(AddressError::decode_error(format!(
-            "expected {} bytes to decode Ed25519 public key",
-            ED25519_PUBLIC_KEY_LENGTH
+            "expected {} bytes to decode X25519 public key",
+            X25519_PUBLIC_KEY_LENGTH
         )));
     }
-    let key_bytes: [u8; ED25519_PUBLIC_KEY_LENGTH] = read_byte_array(byte_iter);
+    let key_bytes: [u8; X25519_PUBLIC_KEY_LENGTH] = read_byte_array(byte_iter);
     eddsa_25519::PublicKey::read_from_bytes(&key_bytes).map_err(|err| {
-        AddressError::decode_error_with_source("failed to decode Ed25519 public key", err)
+        AddressError::decode_error_with_source("failed to decode X25519 public key", err)
     })
 }
 
@@ -392,7 +393,7 @@ fn read_k256_pub_key(
 
 /// Reads bytes from the provided iterator into an array of length N and returns this array.
 ///
-/// Assumes that there are at last N bytes in the iterator.
+/// Assumes that there are at least N bytes in the iterator.
 fn read_byte_array<const N: usize>(byte_iter: &mut impl ExactSizeIterator<Item = u8>) -> [u8; N] {
     let mut array = [0u8; N];
     for byte in array.iter_mut() {
@@ -524,13 +525,13 @@ mod tests {
             let encoded = routing_params.encode_to_string();
             let decoded = RoutingParameters::decode(encoded)?;
             assert_eq!(routing_params, decoded);
-            assert_eq!(decoded.encryption_key(), Some(encryption_key.clone()));
+            assert_eq!(decoded.encryption_key(), Some(&encryption_key));
 
             // Test serialization/deserialization
             let serialized = routing_params.to_bytes();
             let deserialized = RoutingParameters::read_from_bytes(&serialized)?;
             assert_eq!(routing_params, deserialized);
-            assert_eq!(deserialized.encryption_key(), Some(encryption_key));
+            assert_eq!(deserialized.encryption_key(), Some(&encryption_key));
 
             Ok(())
         }
