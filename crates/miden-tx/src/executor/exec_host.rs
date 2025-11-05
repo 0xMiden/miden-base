@@ -1,3 +1,4 @@
+use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
@@ -183,9 +184,28 @@ where
     /// The signature is requested from the host's authenticator.
     pub async fn on_auth_requested(
         &mut self,
+        message: Word,
         pub_key_hash: Word,
-        signing_inputs: SigningInputs,
+        salt: Word,
+        output_notes_commitment: Word,
+        input_notes_commitment: Word,
+        account_delta_commitment: Word,
     ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
+        let tx_summary = self.base_host.build_tx_summary(
+            salt,
+            output_notes_commitment,
+            input_notes_commitment,
+            account_delta_commitment,
+        )?;
+
+        if message != tx_summary.to_commitment() {
+            return Err(TransactionKernelError::TransactionSummaryConstructionFailed(
+                "transaction summary doesn't commit to the expected message".into(),
+            ));
+        }
+
+        let signing_inputs = SigningInputs::TransactionSummary(Box::new(tx_summary));
+
         let authenticator =
             self.authenticator.ok_or(TransactionKernelError::MissingAuthenticator)?;
 
@@ -544,9 +564,6 @@ where
                     self.base_host.on_account_vault_after_remove_asset(asset)
                 },
 
-                TransactionEvent::AuthRequest { pub_key_hash, signing_inputs } => {
-                    self.on_auth_requested(pub_key_hash, signing_inputs).await
-                },
                 TransactionEvent::TransactionFeeComputed { fee_asset } => {
                     self.on_before_tx_fee_removed_from_account(fee_asset).await
                 },
@@ -670,6 +687,49 @@ where
                         Ok(Vec::new())
                     }
                 },
+
+                TransactionEvent::NoteBeforeAddAsset { note_idx, asset } => {
+                    self.base_host.on_note_before_add_asset(note_idx, asset).map(|_| Vec::new())
+                },
+
+                TransactionEvent::AuthRequest {
+                    message,
+                    pub_key_hash,
+                    signature,
+                    salt,
+                    output_notes_commitment,
+                    input_notes_commitment,
+                    account_delta_commitment,
+                } => {
+                    if let Some(signature) = signature {
+                        Ok(self.base_host.on_auth_requested(signature))
+                    } else {
+                        self.on_auth_requested(
+                            message,
+                            pub_key_hash,
+                            salt,
+                            output_notes_commitment,
+                            input_notes_commitment,
+                            account_delta_commitment,
+                        )
+                        .await
+                    }
+                },
+
+                // Note: This always returns an error to abort the transaction.
+                TransactionEvent::Unauthorized {
+                    message,
+                    salt,
+                    output_notes_commitment,
+                    input_notes_commitment,
+                    account_delta_commitment,
+                } => Err(self.base_host.on_unauthorized(
+                    message,
+                    salt,
+                    output_notes_commitment,
+                    input_notes_commitment,
+                    account_delta_commitment,
+                )),
             };
 
             result.map_err(EventError::from)

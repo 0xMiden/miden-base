@@ -344,10 +344,19 @@ where
                 unimplemented!()
             },
 
-            TransactionEventId::NoteBeforeAddAsset => self.on_note_before_add_asset(process).map(|_| TransactionEventHandling::Handled(Vec::new())),
-            TransactionEventId::NoteAfterAddAsset => Ok(TransactionEventHandling::Handled(Vec::new())),
+            TransactionEventId::NoteBeforeAddAsset => {
+                // self.on_note_before_add_asset(process).map(|_| TransactionEventHandling::Handled(Vec::new()))
+                unimplemented!()
+            },
+            TransactionEventId::NoteAfterAddAsset => {
+                // Ok(TransactionEventHandling::Handled(Vec::new()))
+                unimplemented!()
+            },
 
-            TransactionEventId::AuthRequest => self.on_auth_requested(process),
+            TransactionEventId::AuthRequest => {
+                // self.on_auth_requested(process)
+                unimplemented!()
+            },
 
             TransactionEventId::PrologueStart => {
                 self.tx_progress.start_prologue(process.clk());
@@ -417,7 +426,8 @@ where
             },
             TransactionEventId::Unauthorized => {
               // Note: This always returns an error to abort the transaction.
-              Err(self.on_unauthorized(process))
+              // Err(self.on_unauthorized(process))
+              unimplemented!()
             }
         }
         .map_err(EventError::from)?;
@@ -433,40 +443,8 @@ where
     /// not present in the advice map [`TransactionEventHandling::Unhandled`] is returned with the
     /// data required to request a signature from a
     /// [`TransactionAuthenticator`](crate::auth::TransactionAuthenticator).
-    fn on_auth_requested(
-        &self,
-        process: &ProcessState,
-    ) -> Result<TransactionEventHandling, TransactionKernelError> {
-        let message = process.get_stack_word_be(1);
-        let pub_key_hash = process.get_stack_word_be(5);
-        let signature_key = Hasher::merge(&[pub_key_hash, message]);
-
-        let tx_summary = self.build_tx_summary(process, message)?;
-
-        if message != tx_summary.to_commitment() {
-            return Err(TransactionKernelError::TransactionSummaryConstructionFailed(
-                "transaction summary doesn't commit to the expected message".into(),
-            ));
-        }
-
-        let signing_inputs = SigningInputs::TransactionSummary(Box::new(tx_summary));
-
-        if let Some(signature) = process
-            .advice_provider()
-            .get_mapped_values(&signature_key)
-            .map(|slice| slice.to_vec())
-        {
-            return Ok(TransactionEventHandling::Handled(vec![AdviceMutation::extend_stack(
-                signature,
-            )]));
-        }
-
-        // If the signature is not present in the advice map, extract the necessary data to handle
-        // the event at a later point.
-        Ok(TransactionEventHandling::Unhandled(TransactionEvent::AuthRequest {
-            pub_key_hash,
-            signing_inputs,
-        }))
+    pub fn on_auth_requested(&self, signature: Vec<Felt>) -> Vec<AdviceMutation> {
+        vec![AdviceMutation::extend_stack(signature)]
     }
 
     /// Aborts the transaction by building the
@@ -482,15 +460,25 @@ where
     /// ```text
     /// MESSAGE -> [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
     /// ```
-    fn on_unauthorized(&self, process: &ProcessState) -> TransactionKernelError {
-        let msg = process.get_stack_word_be(1);
-
-        let tx_summary = match self.build_tx_summary(process, msg) {
-            Ok(s) => s,
+    pub fn on_unauthorized(
+        &self,
+        message: Word,
+        salt: Word,
+        output_notes_commitment: Word,
+        input_notes_commitment: Word,
+        account_delta_commitment: Word,
+    ) -> TransactionKernelError {
+        let tx_summary = match self.build_tx_summary(
+            salt,
+            output_notes_commitment,
+            input_notes_commitment,
+            account_delta_commitment,
+        ) {
+            Ok(tx_summary) => tx_summary,
             Err(err) => return err,
         };
 
-        if msg != tx_summary.to_commitment() {
+        if message != tx_summary.to_commitment() {
             return TransactionKernelError::TransactionSummaryConstructionFailed(
                 "transaction summary doesn't commit to the expected message".into(),
             );
@@ -553,32 +541,15 @@ where
         Ok(None)
     }
 
-    /// Adds an asset at the top of the [OutputNoteBuilder] identified by the note pointer.
-    ///
-    /// Expected stack state: `[event, ASSET, note_ptr, num_of_assets, note_idx]`
-    fn on_note_before_add_asset(
+    /// Adds an asset to the output note identified by the note index.
+    pub fn on_note_before_add_asset(
         &mut self,
-        process: &ProcessState,
+        note_idx: usize,
+        asset: Asset,
     ) -> Result<(), TransactionKernelError> {
-        let stack = process.get_stack_state();
-        //# => [ASSET, note_ptr, num_of_assets, note_idx]
-
-        let note_idx = stack[7].as_int();
-        assert!(note_idx < self.output_notes.len() as u64);
-        let node_idx = note_idx as usize;
-
-        let asset_word = process.get_stack_word_be(1);
-        let asset = Asset::try_from(asset_word).map_err(|source| {
-            TransactionKernelError::MalformedAssetInEventHandler {
-                handler: "on_note_before_add_asset",
-                source,
-            }
+        let note_builder = self.output_notes.get_mut(&note_idx).ok_or_else(|| {
+            TransactionKernelError::other(format!("failed to find output note {note_idx}"))
         })?;
-
-        let note_builder = self
-            .output_notes
-            .get_mut(&node_idx)
-            .ok_or_else(|| TransactionKernelError::MissingNote(note_idx))?;
 
         note_builder.add_asset(asset)?;
 
@@ -903,26 +874,11 @@ where
     /// commitments against the host's state.
     pub(crate) fn build_tx_summary(
         &self,
-        process: &ProcessState,
-        msg: Word,
+        salt: Word,
+        output_notes_commitment: Word,
+        input_notes_commitment: Word,
+        account_delta_commitment: Word,
     ) -> Result<TransactionSummary, TransactionKernelError> {
-        let Some(commitments) = process.advice_provider().get_mapped_values(&msg) else {
-            return Err(TransactionKernelError::TransactionSummaryConstructionFailed(
-                "Expected message to exist in advice provider".into(),
-            ));
-        };
-
-        if commitments.len() != 16 {
-            return Err(TransactionKernelError::TransactionSummaryConstructionFailed(
-                "Expected 4 words for transaction summary commitments".into(),
-            ));
-        }
-
-        let salt = extract_word(commitments, 0);
-        let output_notes_commitment = extract_word(commitments, 4);
-        let input_notes_commitment = extract_word(commitments, 8);
-        let account_delta_commitment = extract_word(commitments, 12);
-
         let account_delta = self.build_account_delta();
         let input_notes = self.input_notes();
         let output_notes_vec = self.build_output_notes();

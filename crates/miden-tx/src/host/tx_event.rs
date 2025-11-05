@@ -4,13 +4,12 @@ use miden_lib::transaction::memory::{ACCOUNT_STACK_TOP_PTR, ACCT_CODE_COMMITMENT
 use miden_lib::transaction::{EventId, TransactionEventId};
 use miden_objects::account::{AccountId, StorageMap};
 use miden_objects::asset::{Asset, AssetVault, AssetVaultKey, FungibleAsset};
-use miden_objects::note::{NoteInputs, NoteMetadata, NoteRecipient, NoteScript};
-use miden_objects::{Felt, Word};
+use miden_objects::note::{NoteInputs, NoteMetadata, NoteScript};
+use miden_objects::{Felt, Hasher, Word};
 use miden_processor::{AdviceMutation, ProcessState};
 
 use crate::TransactionKernelError;
-use crate::auth::SigningInputs;
-use crate::host::TransactionKernelProcess;
+use crate::host::{TransactionKernelProcess, extract_word};
 
 /// Indicates whether a [`TransactionEvent`] was handled or not.
 ///
@@ -102,14 +101,33 @@ pub(crate) enum TransactionEvent {
         recipient_data: Option<(Word, Word, NoteInputs)>,
     },
 
+    NoteBeforeAddAsset {
+        /// The note index to which the asset is added.
+        note_idx: usize,
+        /// The asset that is added to the output note.
+        asset: Asset,
+    },
+
     /// The data necessary to handle an auth request.
     AuthRequest {
+        message: Word,
         /// The hash of the public key for which a signature was requested.
         pub_key_hash: Word,
-        /// The signing inputs that summarize what is being signed. The commitment to these inputs
-        /// is the message that is being signed.
-        signing_inputs: SigningInputs,
+        signature: Option<Vec<Felt>>,
+        salt: Word,
+        output_notes_commitment: Word,
+        input_notes_commitment: Word,
+        account_delta_commitment: Word,
     },
+
+    Unauthorized {
+        message: Word,
+        salt: Word,
+        output_notes_commitment: Word,
+        input_notes_commitment: Word,
+        account_delta_commitment: Word,
+    },
+
     /// The data necessary to handle a transaction fee computed event.
     TransactionFeeComputed {
         /// The fee asset extracted from the stack.
@@ -441,6 +459,75 @@ impl TransactionEvent {
                 }
             },
 
+            TransactionEventId::NoteBeforeAddAsset => {
+                // Expected stack state: `[event, ASSET, note_ptr, num_of_assets, note_idx]`
+
+                let note_idx = process.get_stack_item(7).as_int() as usize;
+
+                let asset_word = process.get_stack_word_be(1);
+                let asset = Asset::try_from(asset_word).map_err(|source| {
+                    TransactionKernelError::MalformedAssetInEventHandler {
+                        handler: "on_note_before_add_asset",
+                        source,
+                    }
+                })?;
+
+                TransactionEvent::NoteBeforeAddAsset { note_idx, asset }
+            },
+
+            TransactionEventId::NoteAfterAddAsset => {
+                return Ok(None);
+            },
+
+            TransactionEventId::AuthRequest => {
+                // Expected stack state: `[event, MESSAGE, PUB_KEY]`
+
+                let message = process.get_stack_word_be(1);
+                let pub_key_hash = process.get_stack_word_be(5);
+                let signature_key = Hasher::merge(&[pub_key_hash, message]);
+
+                let signature = process
+                    .advice_provider()
+                    .get_mapped_values(&signature_key)
+                    .map(|slice| slice.to_vec());
+
+                let (
+                    salt,
+                    output_notes_commitment,
+                    input_notes_commitment,
+                    account_delta_commitment,
+                ) = Self::extract_tx_summary_data(process, message)?;
+
+                TransactionEvent::AuthRequest {
+                    message,
+                    pub_key_hash,
+                    signature,
+                    salt,
+                    output_notes_commitment,
+                    input_notes_commitment,
+                    account_delta_commitment,
+                }
+            },
+
+            TransactionEventId::Unauthorized => {
+                // Expected stack state: `[event, MESSAGE]`
+                let message = process.get_stack_word_be(1);
+                let (
+                    salt,
+                    output_notes_commitment,
+                    input_notes_commitment,
+                    account_delta_commitment,
+                ) = Self::extract_tx_summary_data(process, message)?;
+
+                TransactionEvent::Unauthorized {
+                    message,
+                    salt,
+                    output_notes_commitment,
+                    input_notes_commitment,
+                    account_delta_commitment,
+                }
+            },
+
             _ => unimplemented!(),
         };
 
@@ -504,6 +591,30 @@ impl TransactionEvent {
             map_key,
             is_witness_present,
         })
+    }
+
+    fn extract_tx_summary_data(
+        process: &ProcessState,
+        message: Word,
+    ) -> Result<(Word, Word, Word, Word), TransactionKernelError> {
+        let Some(commitments) = process.advice_provider().get_mapped_values(&message) else {
+            return Err(TransactionKernelError::TransactionSummaryConstructionFailed(
+                "Expected message to exist in advice provider".into(),
+            ));
+        };
+
+        if commitments.len() != 16 {
+            return Err(TransactionKernelError::TransactionSummaryConstructionFailed(
+                "Expected 4 words for transaction summary commitments".into(),
+            ));
+        }
+
+        let salt = extract_word(commitments, 0);
+        let output_notes_commitment = extract_word(commitments, 4);
+        let input_notes_commitment = extract_word(commitments, 8);
+        let account_delta_commitment = extract_word(commitments, 12);
+
+        Ok((salt, output_notes_commitment, input_notes_commitment, account_delta_commitment))
     }
 }
 
