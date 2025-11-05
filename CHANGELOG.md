@@ -2,6 +2,8 @@
 
 ## 0.13.0 (TBD)
 
+- [BREAKING] Changed auth components to increment nonce if it is zero ([#2060](https://github.com/0xMiden/miden-base/pull/2060)).
+
 ## 0.12.0 (11-05-2025)
 
 ### Features
