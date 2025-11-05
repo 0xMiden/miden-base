@@ -113,6 +113,7 @@ The supported **encryption schemes** are:
 The encryption key is optional in an address. If not provided, senders may use alternative encryption mechanisms or send unencrypted notes.
 
 When an encryption key is included in the address, it is encoded in bech32 format alongside other routing parameters. The encoding consists of a 1-byte variant discriminant followed by the public key bytes (32 bytes for Curve25519 keys, 33 bytes for secp256k1 keys in their compressed format).
+
 ## Encoding
 
 The two parts of an address are encoded as follows:
