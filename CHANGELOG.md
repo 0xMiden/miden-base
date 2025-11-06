@@ -1,12 +1,13 @@
 # Changelog
 
-## 0.12.1 (11-05-2025)
+## 0.12.1 (2025-11-06)
 
+- Fixed incorrect detection of note inputs length during note creation ([#2066](https://github.com/0xMiden/miden-base/pull/2066)).
 - Made `InitStorageData::map_entries()` public ([#2055](https://github.com/0xMiden/miden-base/pull/2055)).
 - Enabled handling of empty maps in account component templates ([#2056](https://github.com/0xMiden/miden-base/pull/2056)).
 - Changed auth components to increment nonce if it is zero ([#2060](https://github.com/0xMiden/miden-base/pull/2060)).
 
-## 0.12.0 (11-05-2025)
+## 0.12.0 (2025-11-05)
 
 ### Features
 
