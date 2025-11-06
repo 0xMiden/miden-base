@@ -33,6 +33,14 @@ pub(super) trait TransactionKernelProcess {
     ) -> Result<NoteInputs, TransactionKernelError>;
 
     fn has_advice_map_entry(&self, key: Word) -> bool;
+
+    /// Returns `true` if the advice provider has a merkle path for the provided root and leaf
+    /// index, `false` otherwise.
+    fn has_merkle_path<const TREE_DEPTH: u8>(
+        &self,
+        root: Word,
+        leaf_index: Felt,
+    ) -> Result<bool, TransactionKernelError>;
 }
 
 impl<'a> TransactionKernelProcess for ProcessState<'a> {
@@ -197,6 +205,21 @@ impl<'a> TransactionKernelProcess for ProcessState<'a> {
 
     fn has_advice_map_entry(&self, key: Word) -> bool {
         self.advice_provider().get_mapped_values(&key).is_some()
+    }
+
+    fn has_merkle_path<const TREE_DEPTH: u8>(
+        &self,
+        root: Word,
+        leaf_index: Felt,
+    ) -> Result<bool, TransactionKernelError> {
+        self.advice_provider()
+            .has_merkle_path(root, Felt::from(TREE_DEPTH), leaf_index)
+            .map_err(|err| {
+                TransactionKernelError::other_with_source(
+                    "failed to check for merkle path presence in advice provider",
+                    err,
+                )
+            })
     }
 }
 

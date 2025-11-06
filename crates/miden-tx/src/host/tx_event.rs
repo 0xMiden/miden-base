@@ -8,7 +8,7 @@ use miden_objects::note::{NoteId, NoteInputs, NoteMetadata, NoteScript};
 use miden_objects::{Felt, Hasher, Word};
 use miden_processor::{AdviceMutation, ProcessState, RowIndex};
 
-use crate::host::{TransactionKernelProcess, extract_word};
+use crate::host::TransactionKernelProcess;
 use crate::{LinkMap, TransactionKernelError};
 
 // TRANSACTION EVENT
@@ -635,11 +635,8 @@ impl TransactionEvent {
         // necessarily for the root we are going to request. This is because the end goal is to
         // enable access to an asset against the current vault root, and so if this
         // condition is already satisfied, there is nothing to request.
-        let is_witness_present = advice_provider_has_merkle_path::<{ AssetVault::DEPTH }>(
-            process,
-            current_vault_root,
-            leaf_index,
-        )?;
+        let is_witness_present =
+            process.has_merkle_path::<{ AssetVault::DEPTH }>(current_vault_root, leaf_index)?;
 
         Ok(TransactionEvent::AccountVaultBeforeAssetAccess {
             active_account_id,
@@ -665,11 +662,8 @@ impl TransactionEvent {
             TransactionKernelError::other(format!("failed to convert slot index into u8: {err}"))
         })?;
 
-        let is_witness_present = advice_provider_has_merkle_path::<{ AssetVault::DEPTH }>(
-            process,
-            current_map_root,
-            leaf_index,
-        )?;
+        let is_witness_present =
+            process.has_merkle_path::<{ AssetVault::DEPTH }>(current_map_root, leaf_index)?;
 
         Ok(TransactionEvent::AccountStorageBeforeMapItemAccess {
             active_account_id,
@@ -680,6 +674,16 @@ impl TransactionEvent {
         })
     }
 
+    /// Extracts the transaction summary data from the advice map using the provided `message` as
+    /// the key.
+    ///
+    /// ```text
+    /// Expected advice map state: {
+    ///     MESSAGE: [
+    ///         SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT
+    ///     ]
+    /// }
+    /// ```
     fn extract_tx_summary_data(
         process: &ProcessState,
         message: Word,
@@ -705,20 +709,16 @@ impl TransactionEvent {
     }
 }
 
-/// Returns `true` if the advice provider has a merkle path for the provided root and leaf
-/// index, `false` otherwise.
-fn advice_provider_has_merkle_path<const TREE_DEPTH: u8>(
-    process: &ProcessState,
-    root: Word,
-    leaf_index: Felt,
-) -> Result<bool, TransactionKernelError> {
-    process
-        .advice_provider()
-        .has_merkle_path(root, Felt::from(TREE_DEPTH), leaf_index)
-        .map_err(|err| {
-            TransactionKernelError::other_with_source(
-                "failed to check for merkle path presence in advice provider",
-                err,
-            )
-        })
+// HELPER FUNCTIONS
+// ================================================================================================
+
+/// Extracts a word from a slice of field elements.
+#[inline(always)]
+fn extract_word(commitments: &[Felt], start: usize) -> Word {
+    Word::from([
+        commitments[start],
+        commitments[start + 1],
+        commitments[start + 2],
+        commitments[start + 3],
+    ])
 }
