@@ -92,7 +92,10 @@ impl<'a> TransactionKernelProcess for ProcessState<'a> {
         let code_commitment = self
             .get_mem_word(self.ctx(), active_account_ptr + ACCT_CODE_COMMITMENT_OFFSET)
             .map_err(|err| {
-                TransactionKernelError::other_with_source("failed to read a word from memory", err)
+                TransactionKernelError::other_with_source(
+                    "failed to read code commitment from memory",
+                    err,
+                )
             })?
             .ok_or_else(|| {
                 TransactionKernelError::other("active account code commitment was not initialized")

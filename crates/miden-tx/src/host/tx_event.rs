@@ -585,8 +585,8 @@ impl TransactionEvent {
         Ok(Some(tx_event))
     }
 
-    /// Checks if the necessary witness for accessing the provided asset is already in the merkle
-    /// store, and if not, extracts all necessary data for requesting it.
+    /// Checks if the necessary witness for accessing the asset is already in the merkle store, and
+    /// extracts all necessary data for requesting it.
     fn on_account_vault_asset_accessed(
         process: &ProcessState,
         vault_key: AssetVaultKey,
@@ -611,7 +611,7 @@ impl TransactionEvent {
     }
 
     /// Checks if the necessary witness for accessing the map item is already in the merkle store,
-    /// and if not, extracts all necessary data for requesting it.
+    /// and extracts all necessary data for requesting it.
     fn on_account_storage_map_item_accessed(
         process: &ProcessState,
         slot_index: Felt,
@@ -654,13 +654,13 @@ impl TransactionEvent {
     ) -> Result<(Word, Word, Word, Word), TransactionKernelError> {
         let Some(commitments) = process.advice_provider().get_mapped_values(&message) else {
             return Err(TransactionKernelError::TransactionSummaryConstructionFailed(
-                "Expected message to exist in advice provider".into(),
+                "expected message to exist in advice provider".into(),
             ));
         };
 
         if commitments.len() != 16 {
             return Err(TransactionKernelError::TransactionSummaryConstructionFailed(
-                "Expected 4 words for transaction summary commitments".into(),
+                "expected 4 words for transaction summary commitments".into(),
             ));
         }
 

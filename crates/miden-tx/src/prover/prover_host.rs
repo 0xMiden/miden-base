@@ -187,8 +187,6 @@ where
                 self.base_host.on_note_before_add_asset(note_idx, asset).map(|_| Vec::new())
             },
 
-            // The base host should have handled this event since the signature should be
-            // present in the advice map.
             TransactionEvent::AuthRequest { signature, .. } => {
                 if let Some(signature) = signature {
                     Ok(self.base_host.on_auth_requested(signature))

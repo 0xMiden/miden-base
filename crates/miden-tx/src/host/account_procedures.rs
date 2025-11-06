@@ -53,7 +53,7 @@ impl AccountProcedureIndexMap {
         Ok(())
     }
 
-    /// Returns the index of the requested procedue root in the account code identified by the
+    /// Returns the index of the requested procedure root in the account code identified by the
     /// provided commitment.
     ///
     /// # Errors
