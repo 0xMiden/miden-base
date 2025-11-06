@@ -1,5 +1,6 @@
 use miden_lib::transaction::memory::{
     ACCOUNT_STACK_TOP_PTR,
+    ACCT_CODE_COMMITMENT_OFFSET,
     ACTIVE_INPUT_NOTE_PTR,
     NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR,
 };
@@ -14,7 +15,14 @@ use crate::errors::TransactionKernelError;
 // ================================================================================================
 
 pub(super) trait TransactionKernelProcess {
+    /// Returns the pointer to the active account.
+    fn get_active_account_ptr(&self) -> Result<u32, TransactionKernelError>;
+
+    /// Returns the [`AccountId`] of the active account.
     fn get_active_account_id(&self) -> Result<AccountId, TransactionKernelError>;
+
+    /// Returns the account code commitment of the active account.
+    fn get_active_account_code_commitment(&self) -> Result<Word, TransactionKernelError>;
 
     fn get_num_storage_slots(&self) -> Result<u64, TransactionKernelError>;
 
@@ -44,8 +52,7 @@ pub(super) trait TransactionKernelProcess {
 }
 
 impl<'a> TransactionKernelProcess for ProcessState<'a> {
-    /// Returns the ID of the currently active account.
-    fn get_active_account_id(&self) -> Result<AccountId, TransactionKernelError> {
+    fn get_active_account_ptr(&self) -> Result<u32, TransactionKernelError> {
         let account_stack_top_ptr =
             self.get_mem_value(self.ctx(), ACCOUNT_STACK_TOP_PTR).ok_or_else(|| {
                 TransactionKernelError::other("account stack top ptr should be initialized")
@@ -57,10 +64,12 @@ impl<'a> TransactionKernelProcess for ProcessState<'a> {
         let active_account_ptr = self
             .get_mem_value(self.ctx(), account_stack_top_ptr)
             .ok_or_else(|| TransactionKernelError::other("account id should be initialized"))?;
-        let active_account_ptr = u32::try_from(active_account_ptr).map_err(|_| {
-            TransactionKernelError::other("active account ptr should fit into a u32")
-        })?;
+        u32::try_from(active_account_ptr)
+            .map_err(|_| TransactionKernelError::other("active account ptr should fit into a u32"))
+    }
 
+    fn get_active_account_id(&self) -> Result<AccountId, TransactionKernelError> {
+        let active_account_ptr = self.get_active_account_ptr()?;
         let active_account_id_and_nonce = self
             .get_mem_word(self.ctx(), active_account_ptr)
             .map_err(|_| {
@@ -76,6 +85,20 @@ impl<'a> TransactionKernelProcess for ProcessState<'a> {
                     "active account id ptr should point to a valid account ID",
                 )
             })
+    }
+
+    fn get_active_account_code_commitment(&self) -> Result<Word, TransactionKernelError> {
+        let active_account_ptr = self.get_active_account_ptr()?;
+        let code_commitment = self
+            .get_mem_word(self.ctx(), active_account_ptr + ACCT_CODE_COMMITMENT_OFFSET)
+            .map_err(|err| {
+                TransactionKernelError::other_with_source("failed to read a word from memory", err)
+            })?
+            .ok_or_else(|| {
+                TransactionKernelError::other("active account code commitment was not initialized")
+            })?;
+
+        Ok(code_commitment)
     }
 
     /// Returns the number of storage slots initialized for the active account.

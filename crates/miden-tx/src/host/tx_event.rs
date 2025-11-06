@@ -1,6 +1,5 @@
 use alloc::vec::Vec;
 
-use miden_lib::transaction::memory::{ACCOUNT_STACK_TOP_PTR, ACCT_CODE_COMMITMENT_OFFSET};
 use miden_lib::transaction::{EventId, TransactionEventId};
 use miden_objects::account::{AccountId, StorageMap};
 use miden_objects::asset::{Asset, AssetVault, AssetVaultKey, FungibleAsset};
@@ -222,23 +221,7 @@ impl TransactionEvent {
                 })?;
 
                 let vault_root_ptr = process.get_stack_item(5);
-                let vault_root_ptr = u32::try_from(vault_root_ptr).map_err(|_err| {
-                    TransactionKernelError::other(format!(
-                        "vault root ptr should fit into a u32, but was {vault_root_ptr}"
-                    ))
-                })?;
-                let current_vault_root = process
-                    .get_mem_word(process.ctx(), vault_root_ptr)
-                    .map_err(|_err| {
-                        TransactionKernelError::other(format!(
-                            "vault root ptr {vault_root_ptr} is not word-aligned"
-                        ))
-                    })?
-                    .ok_or_else(|| {
-                        TransactionKernelError::other(format!(
-                            "vault root ptr {vault_root_ptr} was not initialized"
-                        ))
-                    })?;
+                let current_vault_root = process.get_vault_root(vault_root_ptr)?;
 
                 Self::on_account_vault_asset_accessed(
                     process,
@@ -417,31 +400,8 @@ impl TransactionEvent {
 
             TransactionEventId::AccountPushProcedureIndex => {
                 // Expected stack state: [event, PROC_ROOT]
-                // get active account code commitment
-                let code_commitment = {
-                    let account_stack_top_ptr = process
-                        .get_mem_value(process.ctx(), ACCOUNT_STACK_TOP_PTR)
-                        .expect("Account stack top pointer was not initialized")
-                        .as_int();
-                    let curr_data_ptr = process
-                        .get_mem_value(
-                            process.ctx(),
-                            account_stack_top_ptr
-                                .try_into()
-                                .expect("account stack top pointer should be less than u32::MAX"),
-                        )
-                        .expect("active account pointer was not initialized")
-                        .as_int();
-                    process
-                        .get_mem_word(
-                            process.ctx(),
-                            curr_data_ptr as u32 + ACCT_CODE_COMMITMENT_OFFSET,
-                        )
-                        .expect("failed to read a word from memory")
-                        .expect("active account code commitment was not initialized")
-                };
-
                 let procedure_root = process.get_stack_word_be(1);
+                let code_commitment = process.get_active_account_code_commitment()?;
 
                 TransactionEvent::AccountPushProcedureIndex { code_commitment, procedure_root }
             },
