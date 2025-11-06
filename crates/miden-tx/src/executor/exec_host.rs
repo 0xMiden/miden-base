@@ -565,6 +565,7 @@ where
                     current_value,
                     new_value,
                 ),
+
                 TransactionEvent::AccountStorageAfterSetMapItem {
                     slot_index,
                     key,
@@ -576,6 +577,7 @@ where
                     prev_map_value,
                     new_map_value,
                 ),
+
                 TransactionEvent::AccountVaultBeforeAssetAccess {
                     active_account_id,
                     current_vault_root,
@@ -640,14 +642,14 @@ where
                     )?;
 
                     // A return value of Some means we should request the script.
-                    if let Some((serial_num, script_root, note_inputs)) = recipient_data {
+                    if let Some(recipient_data) = recipient_data {
                         self.on_note_script_requested(
-                            script_root,
+                            recipient_data.script_root,
                             metadata,
                             recipient_digest,
                             note_idx,
-                            note_inputs,
-                            serial_num,
+                            recipient_data.note_inputs,
+                            recipient_data.serial_num,
                         )
                         .await
                     } else {

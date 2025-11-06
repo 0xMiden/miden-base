@@ -90,7 +90,7 @@ pub(crate) enum TransactionEvent {
         /// provider.
         note_script: Option<NoteScript>,
         /// The recipient data extracted from the advice inputs.
-        recipient_data: Option<(Word, Word, NoteInputs)>,
+        recipient_data: Option<RecipientData>,
     },
 
     NoteBeforeAddAsset {
@@ -478,7 +478,7 @@ impl TransactionEvent {
                             })
                             .transpose()?;
 
-                        (note_script, Some((serial_num, script_root, note_inputs)))
+                        (note_script, Some(RecipientData { serial_num, script_root, note_inputs }))
                     } else {
                         (None, None)
                     };
@@ -713,6 +713,17 @@ impl TransactionEvent {
 
         Ok((salt, output_notes_commitment, input_notes_commitment, account_delta_commitment))
     }
+}
+
+// RECIPIENT DATA
+// ================================================================================================
+
+/// The partial data to construct a note recipient.
+#[derive(Debug)]
+pub(crate) struct RecipientData {
+    pub(crate) serial_num: Word,
+    pub(crate) script_root: Word,
+    pub(crate) note_inputs: NoteInputs,
 }
 
 // HELPER FUNCTIONS

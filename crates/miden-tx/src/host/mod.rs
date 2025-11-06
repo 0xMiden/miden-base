@@ -37,7 +37,7 @@ use miden_objects::account::{
     PartialAccount,
 };
 use miden_objects::asset::Asset;
-use miden_objects::note::{NoteId, NoteInputs, NoteMetadata, NoteRecipient, NoteScript};
+use miden_objects::note::{NoteId, NoteMetadata, NoteRecipient, NoteScript};
 use miden_objects::transaction::{
     InputNote,
     InputNotes,
@@ -60,6 +60,7 @@ pub(crate) use tx_event::TransactionEvent;
 pub use tx_progress::TransactionProgress;
 
 use crate::errors::{TransactionHostError, TransactionKernelError};
+use crate::host::tx_event::RecipientData;
 
 // TRANSACTION BASE HOST
 // ================================================================================================
@@ -313,17 +314,19 @@ where
         metadata: NoteMetadata,
         recipient_digest: Word,
         note_script: Option<NoteScript>,
-        recipient_data: Option<(Word, Word, NoteInputs)>,
-    ) -> Result<Option<(Word, Word, NoteInputs)>, TransactionKernelError> {
+        recipient_data: Option<RecipientData>,
+    ) -> Result<Option<RecipientData>, TransactionKernelError> {
         let recipient = match (note_script, recipient_data) {
             // If recipient data is none, there is no point in requesting the script.
             (_, None) => None,
             // If the script is missing, return the recipient data so the script can be requested.
             (None, recipient_data @ Some(_)) => return Ok(recipient_data),
             // If both are present, we can build the recipient directly.
-            (Some(note_script), Some((serial_num, _script_root, note_inputs))) => {
-                Some(NoteRecipient::new(serial_num, note_script, note_inputs))
-            },
+            (Some(note_script), Some(recipient_data)) => Some(NoteRecipient::new(
+                recipient_data.serial_num,
+                note_script,
+                recipient_data.note_inputs,
+            )),
         };
 
         let note_builder = OutputNoteBuilder::new(metadata, recipient_digest, recipient)?;
