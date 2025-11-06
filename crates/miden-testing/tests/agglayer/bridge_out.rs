@@ -91,7 +91,6 @@ async fn test_bridge_out_consumes_b2agg_note() -> anyhow::Result<()> {
     println!("inputs length: {:?}", inputs.to_elements().len());
     println!("inputs: {:?}", inputs.to_elements());
 
-
     // Create the B2AGG note with assets from the faucet
     let b2agg_note_metadata =
         NoteMetadata::new(faucet.id(), note_type, tag, note_execution_hint, aux)?;

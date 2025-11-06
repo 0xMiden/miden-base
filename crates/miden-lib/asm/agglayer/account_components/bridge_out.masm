@@ -9,7 +9,8 @@ const.PUBLIC_NOTE=1
 const.AUX=0
 const.DEFAULT_FAUCET_TAG=0
 
-# => [ASSET]
+#! Inputs: [ASSET]
+#! Outputs: []
 proc create_burn_note.4
     loc_storew_be.0 dropw
 
@@ -50,18 +51,19 @@ end
 #! Inputs: [ASSET, INPUTS[1], INPUTS[0]]
 #! Outputs: [LEAF]
 proc mmr_frontier_keccak_add
-  hmerge hmerge
-  # => [LEAF]
+  hmerge hmerge dupw dupw hmerge
+  # => [LEAF[1], LEAF[0]]
 end
 
 # Stubbed out
 #! Inputs: []
-#! Output: [ROOT]
+#! Output: [ROOT[1], ROOT[0]]
 pub proc mmr_frontier_keccak_get_root
-  nop
+  padw padw hmerge dupw dupw hmerge
 end
 
-# => [ASSET, INPUTS[1], INPUTS[0]]
+#! Inputs: [ASSET, INPUTS[1], INPUTS[0]]
+#! Outputs: []
 pub proc bridge_out.4
     loc_storew_be.0
     # => [ASSET, INPUTS[1], INPUTS[0]]
@@ -69,16 +71,18 @@ pub proc bridge_out.4
     push.111 debug.stack drop
 
     exec.mmr_frontier_keccak_add
-    # => [LEAF]
+    # => [LEAF[1], LEAF[0]]
 
     exec.mmr_frontier_keccak_get_root
-    # => [ROOT]
+    # => [ROOT[1], ROOT[0], LEAF[1], LEAF[0]]
+
+    push.222 debug.stack drop
 
     loc_loadw_be.0
-    # => [ASSET]
+    # => [ASSET, ROOT[1], ROOT[0], LEAF[1], LEAF[0]]
 
     exec.create_burn_note
-    # => []
+    # => [ROOT[1], ROOT[0], LEAF[1], LEAF[0]]
     
-    dropw dropw dropw dropw dropw
+    dropw dropw dropw dropw
 end
