@@ -1046,7 +1046,7 @@ pub enum ProposedBlockError {
     },
 
     #[error("nullifier witness has a different root than the current nullifier tree root")]
-    NullifierWitnessRootMismatch(#[from] NullifierTreeError),
+    NullifierWitnessRootMismatch(NullifierTreeError),
 }
 
 // FEE ERROR

@@ -377,7 +377,8 @@ impl ProposedBlock {
         // to its corresponding nullifier witness, so we don't have to check again whether
         // they match.
         let mut partial_nullifier_tree =
-            PartialNullifierTree::with_witnesses(self.created_nullifiers().values().cloned())?;
+            PartialNullifierTree::with_witnesses(self.created_nullifiers().values().cloned())
+                .map_err(ProposedBlockError::NullifierWitnessRootMismatch)?;
 
         // Check the nullifier tree root in the previous block header matches the reconstructed
         // tree's root.
