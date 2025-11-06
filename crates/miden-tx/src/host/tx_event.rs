@@ -180,6 +180,11 @@ pub(crate) enum TransactionEvent {
 }
 
 impl TransactionEvent {
+    /// Extracts the [`TransactionEventId`] from the stack as well as the data necessary to handle
+    /// it.
+    ///
+    /// Returns `Some` if the extracted [`TransactionEventId`] resulted in an event that needs to be
+    /// handled, `None` otherwise.
     pub fn extract_from_process(
         process: &ProcessState,
     ) -> Result<Option<TransactionEvent>, TransactionKernelError> {
@@ -308,7 +313,6 @@ impl TransactionEvent {
             TransactionEventId::AccountStorageAfterSetItem => {
                 // Expected stack state:
                 // [event, slot_index, NEW_SLOT_VALUE, CURRENT_SLOT_VALUE]
-
                 // get slot index from the stack and make sure it is valid
                 let slot_index = process.get_stack_item(1);
                 let slot_index = u8::try_from(slot_index).map_err(|err| {
@@ -341,7 +345,6 @@ impl TransactionEvent {
 
             TransactionEventId::AccountStorageBeforeGetMapItem => {
                 // Expected stack state: [event, KEY, ROOT, index]
-
                 let map_key = process.get_stack_word_be(1);
                 let current_map_root = process.get_stack_word_be(5);
                 let slot_index = process.get_stack_item(9);
@@ -370,7 +373,6 @@ impl TransactionEvent {
 
             TransactionEventId::AccountStorageAfterSetMapItem => {
                 // Expected stack state: [event, slot_index, KEY, PREV_MAP_VALUE, NEW_MAP_VALUE]
-
                 // get slot index from the stack and make sure it is valid
                 let slot_index = process.get_stack_item(1);
                 let slot_index = u8::try_from(slot_index).map_err(|err| {
@@ -415,7 +417,6 @@ impl TransactionEvent {
 
             TransactionEventId::AccountPushProcedureIndex => {
                 // Expected stack state: [event, PROC_ROOT]
-
                 // get active account code commitment
                 let code_commitment = {
                     let account_stack_top_ptr = process
@@ -451,7 +452,6 @@ impl TransactionEvent {
 
             TransactionEventId::NoteAfterCreated => {
                 // Expected stack state: [event, NOTE_METADATA, note_ptr, RECIPIENT, note_idx]
-
                 let metadata_word = process.get_stack_word_be(1);
                 let metadata = NoteMetadata::try_from(metadata_word)
                     .map_err(TransactionKernelError::MalformedNoteMetadata)?;
@@ -494,7 +494,6 @@ impl TransactionEvent {
 
             TransactionEventId::NoteBeforeAddAsset => {
                 // Expected stack state: [event, ASSET, note_ptr, num_of_assets, note_idx]
-
                 let note_idx = process.get_stack_item(7).as_int() as usize;
 
                 let asset_word = process.get_stack_word_be(1);
@@ -514,7 +513,6 @@ impl TransactionEvent {
 
             TransactionEventId::AuthRequest => {
                 // Expected stack state: [event, MESSAGE, PUB_KEY]
-
                 let message = process.get_stack_word_be(1);
                 let pub_key_hash = process.get_stack_word_be(5);
                 let signature_key = Hasher::merge(&[pub_key_hash, message]);

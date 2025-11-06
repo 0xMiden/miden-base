@@ -253,9 +253,7 @@ where
     /// Handles the event if the stdlib event handler registry contains a handler with the emitted
     /// event ID.
     ///
-    /// Returns:
-    /// - `Some` if the event was handled.
-    /// - `None` if the event was not handled.
+    /// Returns `Some` if the event was handled, `None` otherwise.
     pub fn handle_stdlib_events(
         &self,
         process: &ProcessState,
@@ -305,9 +303,8 @@ where
 
     /// Handles a note creation event.
     ///
-    /// Returns:
-    /// - `Some` with the recipient data to request the missing note script.
-    /// - `None` if the event was handled.
+    /// Returns `Some` with the recipient data to request the missing note script, or `None` if the
+    /// event was handled.
     pub fn on_note_after_created(
         &mut self,
         note_idx: usize,
