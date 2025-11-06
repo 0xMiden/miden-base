@@ -528,9 +528,9 @@ where
         &mut self,
         process: &ProcessState,
     ) -> impl FutureMaybeSend<Result<Vec<AdviceMutation>, EventError>> {
-        // TODO: We can avoid putting a &ProcessState reference into the future, but it seems to
-        // work and maybe we should try building the web client against this branch to test if we
-        // can do this.
+        // TODO: We can technically avoid putting the &ProcessState reference here into the future,
+        // but it seems to work and maybe we should try building the web client against this branch
+        // to test if we can do this, as it does result in more readable code.
         async move {
             if let Some(advice_mutations) = self.base_host.handle_stdlib_events(process)? {
                 return Ok(advice_mutations);

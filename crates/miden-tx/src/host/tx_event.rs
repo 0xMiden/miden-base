@@ -86,7 +86,8 @@ pub(crate) enum TransactionEvent {
         metadata: NoteMetadata,
         /// The recipient digest extracted from the stack.
         recipient_digest: Word,
-        /// TODO
+        /// The note script of the note being created, which is present if it existed in the advice
+        /// provider.
         note_script: Option<NoteScript>,
         /// The recipient data extracted from the advice inputs.
         recipient_data: Option<(Word, Word, NoteInputs)>,
@@ -183,7 +184,12 @@ impl TransactionEvent {
         process: &ProcessState,
     ) -> Result<Option<TransactionEvent>, TransactionKernelError> {
         let event_id = EventId::from_felt(process.get_stack_item(0));
-        let tx_event_id = TransactionEventId::try_from(event_id).expect("TODO");
+        let tx_event_id = TransactionEventId::try_from(event_id).map_err(|err| {
+            TransactionKernelError::other_with_source(
+                "failed to convert event ID into transaction event ID",
+                err,
+            )
+        })?;
 
         let tx_event = match tx_event_id {
             TransactionEventId::AccountBeforeForeignLoad => {
