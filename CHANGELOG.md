@@ -7,6 +7,9 @@
 ### Changes
 
 - [BREAKING] Renamed `TransactionEvent` into `TransactionEventId` and split event handling into data extraction and handling logic ([#2070](https://github.com/0xMiden/miden-base/pull/2070)).
+## 0.12.2 (unreleased)
+
+- Added `create_mint_note` and `create_burn_note` helper functions for creating standardized MINT and BURN notes ([#2061](https://github.com/0xMiden/miden-base/pull/2061)).
 
 ## 0.12.1 (2025-11-06)
 
