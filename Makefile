@@ -60,6 +60,7 @@ lint: ## Runs all linting tasks at once (Clippy, fixing, formatting, typos)
 	@$(BUILD_GENERATED_FILES_IN_SRC) $(MAKE) clippy-no-std
 	@$(BUILD_GENERATED_FILES_IN_SRC) $(MAKE) typos-check
 	@$(BUILD_GENERATED_FILES_IN_SRC) $(MAKE) toml
+	cargo machete
 
 # --- docs ----------------------------------------------------------------------------------------
 
