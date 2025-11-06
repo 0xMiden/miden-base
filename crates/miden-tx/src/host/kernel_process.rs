@@ -5,7 +5,7 @@ use miden_lib::transaction::memory::{
 };
 use miden_objects::account::AccountId;
 use miden_objects::note::{NoteId, NoteInputs};
-use miden_objects::{Word, ZERO};
+use miden_objects::{Hasher, Word};
 use miden_processor::{EventError, ExecutionError, Felt, ProcessState};
 
 use crate::errors::TransactionKernelError;
@@ -149,55 +149,43 @@ impl<'a> TransactionKernelProcess for ProcessState<'a> {
         Ok((inputs, script_root, serial_num))
     }
 
-    /// Extracts and validates note inputs from the advice provider using trial unhashing.
-    ///
-    /// This function tries to determine the correct number of inputs by:
-    /// 1. Finding the last non-zero element as a starting point
-    /// 2. Building NoteInputs and checking if the hash matches inputs_commitment
-    /// 3. If not, incrementing num_inputs and trying again (up to 6 more times)
-    /// 4. If num_inputs grows to the size of inputs_data and there's still no match, returning an
-    ///    error
+    /// Extracts and validates note inputs from the advice provider.
     fn read_note_inputs_from_adv_map(
         &self,
         inputs_commitment: &Word,
     ) -> Result<NoteInputs, TransactionKernelError> {
         let inputs_data = self.advice_provider().get_mapped_values(inputs_commitment);
+        let inputs_commitment_hash = Hasher::hash_elements(inputs_commitment.as_elements());
+        let num_inputs = self.advice_provider().get_mapped_values(&inputs_commitment_hash);
 
-        let inputs = match inputs_data {
-            None => NoteInputs::default(),
+        match inputs_data {
+            None => Ok(NoteInputs::default()),
             Some(inputs) => {
-                // Start with the last non-zero element as a hint
-                let initial_num_inputs =
-                    inputs.iter().rposition(|&x| x != ZERO).map(|pos| pos + 1).unwrap_or(0);
-
-                // Try different input counts using trial unhashing
-                let mut num_inputs = initial_num_inputs;
-
-                loop {
-                    let candidate_inputs = NoteInputs::new(inputs[0..num_inputs].to_vec())
-                        .map_err(TransactionKernelError::MalformedNoteInputs)?;
-
-                    if candidate_inputs.commitment() == *inputs_commitment {
-                        return Ok(candidate_inputs);
-                    }
-
-                    num_inputs += 1;
-                    if num_inputs > inputs.len() {
-                        break;
-                    }
+                let num_inputs = num_inputs.ok_or_else(|| {
+                    TransactionKernelError::other(
+                        "expected num_inputs to be present in advice provider",
+                    )
+                })?;
+                if num_inputs.len() != 1 {
+                    return Err(TransactionKernelError::other(
+                        "expected num_inputs advice entry to contain exactly one element",
+                    ));
                 }
+                let num_inputs = num_inputs[0].as_int() as usize;
 
-                // If we've exhausted all attempts, return an error
-                return Err(TransactionKernelError::InvalidNoteInputs {
-                    expected: *inputs_commitment,
-                    actual: NoteInputs::new(inputs[0..num_inputs.min(inputs.len())].to_vec())
-                        .map(|i| i.commitment())
-                        .unwrap_or_default(),
-                });
+                let note_inputs = NoteInputs::new(inputs[0..num_inputs].to_vec())
+                    .map_err(TransactionKernelError::MalformedNoteInputs)?;
+
+                if &note_inputs.commitment() == inputs_commitment {
+                    Ok(note_inputs)
+                } else {
+                    Err(TransactionKernelError::InvalidNoteInputs {
+                        expected: *inputs_commitment,
+                        actual: note_inputs.commitment(),
+                    })
+                }
             },
-        };
-
-        Ok(inputs)
+        }
     }
 
     fn has_advice_map_entry(&self, key: Word) -> bool {
