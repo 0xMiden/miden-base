@@ -349,14 +349,14 @@ where
         &mut self,
         note_idx: usize,
         asset: Asset,
-    ) -> Result<(), TransactionKernelError> {
+    ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
         let note_builder = self.output_notes.get_mut(&note_idx).ok_or_else(|| {
             TransactionKernelError::other(format!("failed to find output note {note_idx}"))
         })?;
 
         note_builder.add_asset(asset)?;
 
-        Ok(())
+        Ok(Vec::new())
     }
 
     /// Loads the index of the procedure root onto the advice stack.
@@ -373,13 +373,16 @@ where
     }
 
     /// Handles the increment nonce event by incrementing the nonce delta by one.
-    pub fn on_account_after_increment_nonce(&mut self) -> Result<(), TransactionKernelError> {
+    pub fn on_account_after_increment_nonce(
+        &mut self,
+    ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
         if self.account_delta.was_nonce_incremented() {
             return Err(TransactionKernelError::NonceCanOnlyIncrementOnce);
         }
 
         self.account_delta.increment_nonce();
-        Ok(())
+
+        Ok(Vec::new())
     }
 
     // ACCOUNT STORAGE UPDATE HANDLERS

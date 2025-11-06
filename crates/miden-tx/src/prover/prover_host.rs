@@ -16,8 +16,13 @@ use miden_processor::{
     SyncHost,
 };
 
-use crate::AccountProcedureIndexMap;
-use crate::host::{ScriptMastForestStore, TransactionBaseHost, TransactionProgress};
+use crate::host::{
+    ScriptMastForestStore,
+    TransactionBaseHost,
+    TransactionEvent,
+    TransactionProgress,
+};
+use crate::{AccountProcedureIndexMap, TransactionKernelError};
 
 /// The transaction prover host is responsible for handling [`SyncHost`] requests made by the
 /// transaction kernel during proving.
@@ -98,42 +103,184 @@ where
     }
 
     fn on_event(&mut self, process: &ProcessState) -> Result<Vec<AdviceMutation>, EventError> {
-        todo!()
-        // let event_id = EventId::from_felt(process.get_stack_item(0));
+        if let Some(advice_mutations) = self.base_host.handle_stdlib_events(process)? {
+            return Ok(advice_mutations);
+        }
 
-        // match self.base_host.handle_event(process, event_id)? {
-        //     TransactionEventHandling::Unhandled(event_data) => {
-        //         // We match on the event_data here so that if a new
-        //         // variant is added to the enum, this fails compilation and we can adapt
-        //         // accordingly.
-        //         match event_data {
-        //             // Foreign account data and witnesses should be in the advice provider at
-        //             // proving time, so there is nothing to do.
-        //             TransactionEvent::AccountBeforeForeignLoad { .. } => Ok(Vec::new()),
-        //             TransactionEvent::AccountVaultAfterAddAsset { asset } => {
-        //                 self.base_host.on_account_vault_after_add_asset(asset)
-        //             },
-        //             TransactionEvent::AccountVaultAfterRemoveAsset { asset } => self
-        //                 .base_host
-        //                 .on_account_vault_after_remove_asset(asset)
-        //                 .map_err(EventError::from),
-        //             // The base host should have handled this event since the signature should be
-        //             // present in the advice map.
-        //             TransactionEvent::AuthRequest { .. } => {
-        //                 Err(EventError::from("base host should have handled auth request event"))
-        //             },
-        //             TransactionEvent::AccountVaultAssetAccess { .. } => Ok(Vec::new()),
-        //             TransactionEvent::AccountStorageMapWitness { .. } => Ok(Vec::new()),
-        //             // Note scripts should be in the advice provider at proving time, so there is
-        //             // nothing to do.
-        //             TransactionEvent::NoteData { .. } => Ok(Vec::new()),
-        //             // We don't track enough information to handle this event. Since this just
-        //             // improves error messages for users and the error should not be relevant
-        // during             // proving, we ignore it.
-        //             TransactionEvent::TransactionFeeComputed { .. } => Ok(Vec::new()),
-        //         }
-        //     },
-        //     TransactionEventHandling::Handled(mutations) => Ok(mutations),
-        // }
+        let tx_event = TransactionEvent::extract_from_process(process).map_err(EventError::from)?;
+
+        // None means the event ID does not need to be handled.
+        let Some(tx_event) = tx_event else {
+            return Ok(Vec::new());
+        };
+
+        let result = match tx_event {
+            // Foreign account data and witnesses should be in the advice provider at
+            // proving time, so there is nothing to do.
+            TransactionEvent::AccountBeforeForeignLoad { .. } => Ok(Vec::new()),
+
+            TransactionEvent::AccountVaultAfterRemoveAsset { asset } => {
+                self.base_host.on_account_vault_after_remove_asset(asset)
+            },
+            TransactionEvent::AccountVaultAfterAddAsset { asset } => {
+                self.base_host.on_account_vault_after_add_asset(asset)
+            },
+
+            TransactionEvent::AccountStorageAfterSetItem { slot_idx, current_value, new_value } => {
+                self.base_host
+                    .on_account_storage_after_set_item(slot_idx, current_value, new_value)
+            },
+
+            TransactionEvent::AccountStorageAfterSetMapItem {
+                slot_index,
+                key,
+                prev_map_value,
+                new_map_value,
+            } => self.base_host.on_account_storage_after_set_map_item(
+                slot_index,
+                key,
+                prev_map_value,
+                new_map_value,
+            ),
+
+            // Access witnesses should be in the advice provider at proving time.
+            TransactionEvent::AccountVaultBeforeAssetAccess { .. } => Ok(Vec::new()),
+            TransactionEvent::AccountStorageBeforeMapItemAccess { .. } => Ok(Vec::new()),
+
+            TransactionEvent::AccountAfterIncrementNonce => {
+                self.base_host.on_account_after_increment_nonce()
+            },
+
+            TransactionEvent::AccountPushProcedureIndex { code_commitment, procedure_root } => {
+                self.base_host.on_account_push_procedure_index(code_commitment, procedure_root)
+            },
+
+            TransactionEvent::NoteAfterCreated {
+                note_idx,
+                metadata,
+                recipient_digest,
+                note_script,
+                recipient_data,
+            } => {
+                let recipient_data = self.base_host.on_note_after_created(
+                    note_idx,
+                    metadata,
+                    recipient_digest,
+                    note_script,
+                    recipient_data,
+                )?;
+
+                // A return value of Some means recipient data was present, but the script was not
+                // and this should not happen at proving time.
+                if recipient_data.is_some() {
+                    Err(TransactionKernelError::other(
+                        "note script should be in the advice provider at proving time",
+                    ))
+                } else {
+                    // A return value of None means the note creation was handled.
+                    Ok(Vec::new())
+                }
+            },
+
+            TransactionEvent::NoteBeforeAddAsset { note_idx, asset } => {
+                self.base_host.on_note_before_add_asset(note_idx, asset).map(|_| Vec::new())
+            },
+
+            // The base host should have handled this event since the signature should be
+            // present in the advice map.
+            TransactionEvent::AuthRequest { signature, .. } => {
+                if let Some(signature) = signature {
+                    Ok(self.base_host.on_auth_requested(signature))
+                } else {
+                    Err(TransactionKernelError::other(
+                        "signatures should be in the advice provider at proving time",
+                    ))
+                }
+            },
+
+            // This always returns an error to abort the transaction.
+            TransactionEvent::Unauthorized {
+                message,
+                salt,
+                output_notes_commitment,
+                input_notes_commitment,
+                account_delta_commitment,
+            } => Err(self.base_host.on_unauthorized(
+                message,
+                salt,
+                output_notes_commitment,
+                input_notes_commitment,
+                account_delta_commitment,
+            )),
+
+            TransactionEvent::PrologueStart { clk } => {
+                self.base_host.tx_progress_mut().start_prologue(clk);
+                Ok(Vec::new())
+            },
+            TransactionEvent::PrologueEnd { clk } => {
+                self.base_host.tx_progress_mut().end_prologue(clk);
+                Ok(Vec::new())
+            },
+
+            TransactionEvent::NotesProcessingStart { clk } => {
+                self.base_host.tx_progress_mut().start_notes_processing(clk);
+                Ok(Vec::new())
+            },
+            TransactionEvent::NotesProcessingEnd { clk } => {
+                self.base_host.tx_progress_mut().end_notes_processing(clk);
+                Ok(Vec::new())
+            },
+
+            TransactionEvent::NoteExecutionStart { note_id, clk } => {
+                self.base_host.tx_progress_mut().start_note_execution(clk, note_id);
+                Ok(Vec::new())
+            },
+            TransactionEvent::NoteExecutionEnd { clk } => {
+                self.base_host.tx_progress_mut().end_note_execution(clk);
+                Ok(Vec::new())
+            },
+
+            TransactionEvent::TxScriptProcessingStart { clk } => {
+                self.base_host.tx_progress_mut().start_tx_script_processing(clk);
+                Ok(Vec::new())
+            },
+            TransactionEvent::TxScriptProcessingEnd { clk } => {
+                self.base_host.tx_progress_mut().end_tx_script_processing(clk);
+                Ok(Vec::new())
+            },
+
+            TransactionEvent::EpilogueStart { clk } => {
+                self.base_host.tx_progress_mut().start_epilogue(clk);
+                Ok(Vec::new())
+            },
+            TransactionEvent::EpilogueEnd { clk } => {
+                self.base_host.tx_progress_mut().end_epilogue(clk);
+                Ok(Vec::new())
+            },
+
+            TransactionEvent::EpilogueAuthProcStart { clk } => {
+                self.base_host.tx_progress_mut().start_auth_procedure(clk);
+                Ok(Vec::new())
+            },
+            TransactionEvent::EpilogueAuthProcEnd { clk } => {
+                self.base_host.tx_progress_mut().end_auth_procedure(clk);
+                Ok(Vec::new())
+            },
+
+            TransactionEvent::EpilogueAfterTxCyclesObtained { clk } => {
+                self.base_host.tx_progress_mut().epilogue_after_tx_cycles_obtained(clk);
+                Ok(Vec::new())
+            },
+
+            // We don't track enough information to handle this event. Since this just improves
+            // error messages for users and the error should not be relevant during proving, we
+            // ignore it.
+            TransactionEvent::EpilogueBeforeTxFeeRemovedFromAccount { .. } => Ok(Vec::new()),
+
+            TransactionEvent::LinkMapSet { advice_mutation } => Ok(advice_mutation),
+            TransactionEvent::LinkMapGet { advice_mutation } => Ok(advice_mutation),
+        };
+
+        result.map_err(EventError::from)
     }
 }

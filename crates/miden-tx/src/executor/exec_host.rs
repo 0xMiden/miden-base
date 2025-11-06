@@ -549,13 +549,33 @@ where
                     self.on_foreign_account_requested(account_id).await
                 },
 
-                TransactionEvent::AccountVaultAfterAddAsset { asset } => {
-                    self.base_host.on_account_vault_after_add_asset(asset)
-                },
                 TransactionEvent::AccountVaultAfterRemoveAsset { asset } => {
                     self.base_host.on_account_vault_after_remove_asset(asset)
                 },
+                TransactionEvent::AccountVaultAfterAddAsset { asset } => {
+                    self.base_host.on_account_vault_after_add_asset(asset)
+                },
 
+                TransactionEvent::AccountStorageAfterSetItem {
+                    slot_idx,
+                    current_value,
+                    new_value,
+                } => self.base_host.on_account_storage_after_set_item(
+                    slot_idx,
+                    current_value,
+                    new_value,
+                ),
+                TransactionEvent::AccountStorageAfterSetMapItem {
+                    slot_index,
+                    key,
+                    prev_map_value,
+                    new_map_value,
+                } => self.base_host.on_account_storage_after_set_map_item(
+                    slot_index,
+                    key,
+                    prev_map_value,
+                    new_map_value,
+                ),
                 TransactionEvent::AccountVaultBeforeAssetAccess {
                     active_account_id,
                     current_vault_root,
@@ -574,28 +594,6 @@ where
                     )
                     .await
                 },
-
-                TransactionEvent::AccountStorageAfterSetItem {
-                    slot_idx,
-                    current_value,
-                    new_value,
-                } => self.base_host.on_account_storage_after_set_item(
-                    slot_idx,
-                    current_value,
-                    new_value,
-                ),
-
-                TransactionEvent::AccountStorageAfterSetMapItem {
-                    slot_index,
-                    key,
-                    prev_map_value,
-                    new_map_value,
-                } => self.base_host.on_account_storage_after_set_map_item(
-                    slot_index,
-                    key,
-                    prev_map_value,
-                    new_map_value,
-                ),
 
                 TransactionEvent::AccountStorageBeforeMapItemAccess {
                     active_account_id,
@@ -619,7 +617,7 @@ where
                 },
 
                 TransactionEvent::AccountAfterIncrementNonce => {
-                    self.base_host.on_account_after_increment_nonce().map(|_| Vec::new())
+                    self.base_host.on_account_after_increment_nonce()
                 },
 
                 TransactionEvent::AccountPushProcedureIndex { code_commitment, procedure_root } => {
@@ -653,13 +651,13 @@ where
                         )
                         .await
                     } else {
-                        // A return value of None means the note creation was already handled.
+                        // A return value of None means the note creation was handled.
                         Ok(Vec::new())
                     }
                 },
 
                 TransactionEvent::NoteBeforeAddAsset { note_idx, asset } => {
-                    self.base_host.on_note_before_add_asset(note_idx, asset).map(|_| Vec::new())
+                    self.base_host.on_note_before_add_asset(note_idx, asset)
                 },
 
                 TransactionEvent::AuthRequest {
@@ -686,7 +684,7 @@ where
                     }
                 },
 
-                // Note: This always returns an error to abort the transaction.
+                // This always returns an error to abort the transaction.
                 TransactionEvent::Unauthorized {
                     message,
                     salt,
