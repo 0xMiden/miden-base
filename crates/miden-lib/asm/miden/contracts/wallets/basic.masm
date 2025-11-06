@@ -5,7 +5,7 @@ use.miden::output_note
 # =================================================================================================
 const.PUBLIC_NOTE=1
 
-#! Adds the provided asset to the current account.
+#! Adds the provided asset to the active account.
 #!
 #! Inputs:  [ASSET, pad(12)]
 #! Outputs: [pad(16)]
@@ -53,6 +53,9 @@ export.move_asset_to_note
     exec.native_account::remove_asset
     # => [ASSET, note_idx, pad(11)]
 
+    dupw dup.8 movdn.4
+    # => [ASSET, note_idx, ASSET, note_idx, pad(11)]
+
     exec.output_note::add_asset
-    # => [ASSET, note_idx, pad(11) ...]
+    # => [ASSET, note_idx, pad(11)]
 end

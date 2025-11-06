@@ -74,9 +74,6 @@ export.distribute
 
     # load the ASSET and add it to the note
     movdn.4 exec.output_note::add_asset
-    # => [ASSET, note_idx]
-
-    dropw drop
     # => []
 end
 
@@ -108,7 +105,7 @@ export.burn
     assert.err=ERR_BASIC_FUNGIBLE_BURN_WRONG_NUMBER_OF_ASSETS
     # => [dest_ptr, pad(16)]
 
-    mem_loadw
+    mem_loadw_be
     # => [ASSET, pad(16)]
 
     # burning the asset

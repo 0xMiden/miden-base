@@ -182,7 +182,7 @@ mod tests {
         let witness = map_1.open(&map_key_present);
 
         let partial_storage =
-            PartialStorage::new(storage_header, [PartialStorageMap::from_witnesses([witness])?])
+            PartialStorage::new(storage_header, [PartialStorageMap::with_witnesses([witness])?])
                 .context("creating partial storage")?;
 
         let retrieved_map =

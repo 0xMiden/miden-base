@@ -12,20 +12,20 @@ use.miden::kernel_proc_offsets
 #! Outputs: [account_id_prefix, account_id_suffix]
 #!
 #! Where:
-#! - account_id_{prefix,suffix} are the prefix and suffix felts of the account ID of the currently
-#!   accessing account.
+#! - account_id_{prefix,suffix} are the prefix and suffix felts of the ID of the active account.
 #!
 #! Invocation: exec
 export.get_id
-    # start padding the stack
-    push.0.0.0
+    # pad the stack
+    padw padw padw push.0.0
+    # => [pad(14)]
+
+    # push the flag indicating that the ID of the current account was requested
+    push.0
+    # => [is_native = 0, pad(14)]
 
     exec.kernel_proc_offsets::account_get_id_offset
-    # => [offset, 0, 0, 0]
-
-    # pad the stack
-    padw swapw padw padw swapdw
-    # => [offset, pad(15)]
+    # => [offset, is_native = 0, pad(14)]
 
     syscall.exec_kernel_proc
     # => [account_id_prefix, account_id_suffix, pad(14)]
@@ -49,14 +49,11 @@ end
 #!
 #! Invocation: exec
 export.get_nonce
-    # start padding the stack
-    push.0.0.0
+    # pad the stack
+    padw padw padw push.0.0.0
+    # => [pad(15)]
 
     exec.kernel_proc_offsets::account_get_nonce_offset
-    # => [offset, 0, 0, 0]
-
-    # pad the stack
-    padw swapw padw padw swapdw
     # => [offset, pad(15)]
 
     syscall.exec_kernel_proc
@@ -95,7 +92,7 @@ export.get_initial_commitment
     # => [INIT_COMMITMENT]
 end
 
-#! Computes and returns the active account commitment from account data stored in memory.
+#! Computes and returns commitment to the state of the active account.
 #!
 #! Inputs:  []
 #! Outputs: [ACCOUNT_COMMITMENT]
@@ -109,7 +106,7 @@ export.compute_commitment
     padw padw padw push.0.0.0
     # => [pad(15)]
 
-    exec.kernel_proc_offsets::account_compute_current_commitment_offset
+    exec.kernel_proc_offsets::account_compute_commitment_offset
     # => [offset, pad(15)]
 
     syscall.exec_kernel_proc
@@ -143,11 +140,11 @@ end
 #!
 #! Invocation: exec
 export.get_code_commitment
-    exec.kernel_proc_offsets::account_get_code_commitment_offset
-    # => [offset]
-
     # pad the stack
-    push.0.0.0 movup.3 padw swapw padw padw swapdw
+    padw padw padw push.0.0.0
+    # => [pad(15)]
+
+    exec.kernel_proc_offsets::account_get_code_commitment_offset
     # => [offset, pad(15)]
 
     syscall.exec_kernel_proc
@@ -188,7 +185,7 @@ export.get_initial_storage_commitment
     # => [INIT_STORAGE_COMMITMENT]
 end
 
-#! Computes the latest account storage commitment of the current account.
+#! Computes the latest storage commitment of the active account.
 #!
 #! Notice that this procedure always returns the latest commitment, but it doesn't actually always
 #! recompute it: recomputation is performed only if the account's storage has been changed,
@@ -207,11 +204,11 @@ end
 #!
 #! Invocation: exec
 export.compute_storage_commitment
-    exec.kernel_proc_offsets::account_compute_storage_commitment_offset
-    # => [offset]
-
     # pad the stack
-    push.0.0.0 movup.3 padw swapw padw padw swapdw
+    padw padw padw push.0.0.0
+    # => [pad(15)]
+
+    exec.kernel_proc_offsets::account_compute_storage_commitment_offset
     # => [offset, pad(15)]
 
     syscall.exec_kernel_proc
@@ -504,7 +501,7 @@ end
 #! Outputs: [num_procedures]
 #!
 #! Where:
-#! - num_procedures is the number of procedures in the current account.
+#! - num_procedures is the number of procedures in the active account.
 #!
 #! Invocation: exec
 export.get_num_procedures

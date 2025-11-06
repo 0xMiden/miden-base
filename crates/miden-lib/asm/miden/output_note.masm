@@ -110,7 +110,7 @@ end
 #! Adds the ASSET to the note specified by the index.
 #!
 #! Inputs:  [ASSET, note_idx]
-#! Outputs: [ASSET, note_idx]
+#! Outputs: []
 #!
 #! Where:
 #! - note_idx is the index of the note to which the asset is added.
@@ -127,11 +127,11 @@ export.add_asset
     # => [offset, note_idx, ASSET, pad(10)]
 
     syscall.exec_kernel_proc
-    # => [note_idx, ASSET, pad(11)]
+    # => [pad(16)]
 
     # remove excess PADs from the stack
-    swapdw dropw dropw swapw movdn.7 drop drop drop movdn.4
-    # => [ASSET, note_idx]
+    dropw dropw dropw dropw
+    # => []
 end
 
 #! Returns the recipient of the output note with the specified index.

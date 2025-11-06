@@ -8,8 +8,6 @@ use crate::transaction::TransactionEvent;
 
 #[derive(Debug, Error)]
 pub enum TransactionEventError {
-    #[error("event id {0} is reserved for system events")]
-    ReservedSystemEvent(EventId),
     #[error("event id {0} is not a valid transaction event")]
     InvalidTransactionEvent(EventId, Option<&'static str>),
     #[error("event id {0} is not a transaction kernel event")]

@@ -28,7 +28,7 @@ use crate::account::{
     TemplateTypeError,
 };
 use crate::address::AddressType;
-use crate::asset::VaultKey;
+use crate::asset::AssetVaultKey;
 use crate::batch::BatchId;
 use crate::block::BlockNumber;
 use crate::note::{NoteAssets, NoteExecutionHint, NoteTag, NoteType, Nullifier};
@@ -120,7 +120,7 @@ pub enum AccountError {
     FinalAccountHeaderIdParsingFailed(#[source] AccountIdError),
     #[error("account header data has length {actual} but it must be of length {expected}")]
     HeaderDataIncorrectLength { actual: usize, expected: usize },
-    #[error("current account nonce {current} plus increment {increment} overflows a felt to {new}")]
+    #[error("active account nonce {current} plus increment {increment} overflows a felt to {new}")]
     NonceOverflow {
         current: Felt,
         increment: Felt,
@@ -285,16 +285,51 @@ pub enum AccountTreeError {
 
 #[derive(Debug, Error)]
 pub enum AddressError {
-    #[error("tag length {0} should be {expected} bits for network accounts", expected = crate::note::NoteTag::DEFAULT_NETWORK_TAG_LENGTH)]
+    #[error("tag length {0} should be {expected} bits for network accounts",
+        expected = NoteTag::DEFAULT_NETWORK_TAG_LENGTH
+    )]
     CustomTagLengthNotAllowedForNetworkAccounts(u8),
-    #[error("tag length {0} is too large, must be less than or equal to {max}", max = crate::note::NoteTag::MAX_LOCAL_TAG_LENGTH)]
+    #[error("tag length {0} is too large, must be less than or equal to {max}",
+        max = NoteTag::MAX_LOCAL_TAG_LENGTH
+    )]
     TagLengthTooLarge(u8),
     #[error("unknown address interface `{0}`")]
     UnknownAddressInterface(u16),
     #[error("failed to decode account ID")]
     AccountIdDecodeError(#[source] AccountIdError),
+    #[error("address separator must not be included without routing parameters")]
+    TrailingSeparator,
     #[error("failed to decode bech32 string into an address")]
     Bech32DecodeError(#[source] Bech32Error),
+    #[error("{error_msg}")]
+    DecodeError {
+        error_msg: Box<str>,
+        // thiserror will return this when calling Error::source on NoteError.
+        source: Option<Box<dyn Error + Send + Sync + 'static>>,
+    },
+    #[error("found unknown routing parameter key {0}")]
+    UnknownRoutingParameterKey(u8),
+}
+
+impl AddressError {
+    /// Creates an [`AddressError::DecodeError`] variant from an error message.
+    pub fn decode_error(message: impl Into<String>) -> Self {
+        let message: String = message.into();
+        Self::DecodeError { error_msg: message.into(), source: None }
+    }
+
+    /// Creates an [`AddressError::DecodeError`] variant from an error message and
+    /// a source error.
+    pub fn decode_error_with_source(
+        message: impl Into<String>,
+        source: impl Error + Send + Sync + 'static,
+    ) -> Self {
+        let message: String = message.into();
+        Self::DecodeError {
+            error_msg: message.into(),
+            source: Some(Box::new(source)),
+        }
+    }
 }
 
 // BECH32 ERROR
@@ -439,8 +474,8 @@ pub enum AssetError {
       expected_ty = AccountType::NonFungibleFaucet
     )]
     NonFungibleFaucetIdTypeMismatch(AccountIdPrefix),
-    #[error("vault key {actual} does not match expected vault key {expected}")]
-    VaultKeyMismatch { actual: Word, expected: Word },
+    #[error("asset vault key {actual} does not match expected asset vault key {expected}")]
+    AssetVaultKeyMismatch { actual: Word, expected: Word },
 }
 
 // TOKEN SYMBOL ERROR
@@ -489,7 +524,7 @@ pub enum PartialAssetVaultError {
     #[error("provided SMT entry {entry} is not a valid asset")]
     InvalidAssetInSmt { entry: Word, source: AssetError },
     #[error("expected asset vault key to be {expected} but it was {actual}")]
-    VaultKeyMismatch { expected: VaultKey, actual: Word },
+    AssetVaultKeyMismatch { expected: AssetVaultKey, actual: Word },
     #[error("failed to add asset proof")]
     FailedToAddProof(#[source] MerkleError),
     #[error("asset is not tracked in the partial vault")]
@@ -1029,4 +1064,13 @@ pub enum NullifierTreeError {
 
     #[error("failed to compute nulifier tree mutations")]
     ComputeMutations(#[source] MerkleError),
+}
+
+// AUTH SCHEME ERROR
+// ================================================================================================
+
+#[derive(Debug, Error)]
+pub enum AuthSchemeError {
+    #[error("auth scheme identifier `{0}` is not valid")]
+    InvalidAuthSchemeIdentifier(u8),
 }

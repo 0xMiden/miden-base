@@ -211,45 +211,30 @@ end
 # PROCEDURES
 # =================================================================================================
 
-#! Computes the commitment of the active account.
-#!
-#! Notice that there is no caching (and, hence, dirty flag) for the commitment of the entire
-#! account. Assuming that the storage commitment is current, computing account commitment is
-#! relatively cheap — essentially is consists of just 2 permutations of the hash function and takes
-#! relatively small number of cycles, so it would not be worth adding a separate caching mechanism
-#! for this.
+# ID AND NONCE
+# -------------------------------------------------------------------------------------------------
+
+#! Returns the id of the active account.
 #!
 #! Inputs:  []
-#! Outputs: [ACCOUNT_COMMITMENT]
+#! Outputs: [act_acct_id_prefix, act_acct_id_suffix]
 #!
 #! Where:
-#! - ACCOUNT_COMMITMENT is the commitment of the account data.
-export.compute_current_commitment
-    # if outdated, recompute the storage commitment and store it in the memory
-    exec.refresh_storage_commitment
-    # => []
+#! - act_acct_id_{prefix,suffix} are the prefix and suffix felts of the ID of the active account.
+export.memory::get_account_id->get_id
 
-    # prepare the stack for computing the account commitment
-    exec.memory::get_current_account_data_ptr padw padw padw
-    # => [RATE, RATE, PERM, account_data_ptr]
-
-    # stream account data and compute sequential hash. We perform two `mem_stream` operations
-    # because the account data consists of exactly 4 words.
-    mem_stream hperm mem_stream hperm
-    # => [RATE, RATE, PERM, account_data_ptr']
-
-    # extract account commitment
-    exec.rpo::squeeze_digest
-    # => [ACCOUNT_COMMITMENT, account_data_ptr']
-
-    # drop account_data_ptr
-    movup.4 drop
-    # => [ACCOUNT_COMMITMENT]
-end
+#! Returns the nonce of the active account.
+#!
+#! Inputs:  []
+#! Outputs: [nonce]
+#!
+#! Where:
+#! - nonce is the account nonce.
+export.memory::get_account_nonce->get_nonce
 
 #! Increments the account nonce by one and returns the new nonce.
 #!
-#! Assumes that it is executed only when the current account is the native account.
+#! Assumes that it is executed only when the active account is the native account.
 #!
 #! Inputs:  []
 #! Outputs: [new_nonce]
@@ -285,24 +270,10 @@ export.incr_nonce
     # => [new_nonce]
 end
 
-#! Returns the id of the current account.
-#!
-#! Inputs:  []
-#! Outputs: [curr_acct_id_prefix, curr_acct_id_suffix]
-#!
-#! Where:
-#! - curr_acct_id_{prefix,suffix} are the prefix and suffix felts of the account ID of the currently
-#!   accessing account.
-export.memory::get_account_id->get_id
+# COMMITMENTS
+# -------------------------------------------------------------------------------------------------
 
-#! Returns the account nonce.
-#!
-#! Inputs:  []
-#! Outputs: [nonce]
-#!
-#! Where:
-#! - nonce is the account nonce.
-export.memory::get_account_nonce->get_nonce
+### ACCOUNT COMMITMENT ###################################################
 
 #! Returns the commitment of the active account at the beginning of the transaction.
 #!
@@ -320,37 +291,59 @@ export.get_initial_commitment
         exec.memory::get_init_account_commitment
     else
         # for the foreign account current commitment equals to initial
-        exec.compute_current_commitment
+        exec.compute_commitment
     end
     # => [INIT_COMMITMENT]
 end
 
-#! Returns the vault root of the active account at the beginning of the transaction.
+#! Computes commitment to the state of the active account.
+#!
+#! Notice that there is no caching (and, hence, dirty flag) for the commitment of the entire
+#! account. If the storage commitment is up-to-date (which is ensured by this procedure), computing 
+#! account commitment is relatively cheap — essentially is consists of just 2 permutations of the 
+#! hash function and takes relatively small number of cycles, so it would not be worth adding a 
+#! separate caching mechanism for this.
 #!
 #! Inputs:  []
-#! Outputs: [INIT_ACCOUNT_VAULT_ROOT]
+#! Outputs: [ACCOUNT_COMMITMENT]
 #!
 #! Where:
-#! - INIT_ACCOUNT_VAULT_ROOT is the initial account vault root.
-export.get_initial_vault_root
-    # Get the vault root of the active account. For the foreign account this root will be equal to 
-    # the initial one.
-    exec.memory::get_account_vault_root
-    # => [ACTIVE_ACCOUNT_VAULT_ROOT]
+#! - ACCOUNT_COMMITMENT is the commitment of the account data.
+export.compute_commitment
+    # if outdated, recompute the storage commitment and store it in the memory
+    exec.refresh_storage_commitment
+    # => []
 
-    # get the initial vault root of the native account
-    exec.memory::get_init_native_account_vault_root
-    # => [INIT_NATIVE_ACCOUNT_VAULT_ROOT, ACTIVE_ACCOUNT_VAULT_ROOT]
+    # prepare the stack for computing the account commitment
+    exec.memory::get_active_account_data_ptr padw padw padw
+    # => [RATE, RATE, PERM, account_data_ptr]
 
-    # check whether the active account is native
-    exec.memory::is_native_account
-    # => [is_native_account, INIT_NATIVE_ACCOUNT_VAULT_ROOT, ACTIVE_ACCOUNT_VAULT_ROOT]
+    # stream account data and compute sequential hash. We perform two `mem_stream` operations
+    # because the account data consists of exactly 4 words.
+    mem_stream hperm mem_stream hperm
+    # => [RATE, RATE, PERM, account_data_ptr']
 
-    # if the active account is native, keep the INIT_NATIVE_ACCOUNT_VAULT_ROOT, or
-    # ACTIVE_ACCOUNT_VAULT_ROOT otherwise
-    cdropw
-    # => [INIT_ACCOUNT_VAULT_ROOT]
+    # extract account commitment
+    exec.rpo::squeeze_digest
+    # => [ACCOUNT_COMMITMENT, account_data_ptr']
+
+    # drop account_data_ptr
+    movup.4 drop
+    # => [ACCOUNT_COMMITMENT]
 end
+
+### CODE COMMITMENT ######################################################
+
+#! Gets the code commitment of the active account.
+#!
+#! Inputs:  []
+#! Outputs: [CODE_COMMITMENT]
+#!
+#! Where:
+#! - CODE_COMMITMENT is the commitment of the account code.
+export.memory::get_account_code_commitment->get_code_commitment
+
+### STORAGE COMMITMENT ###################################################
 
 #! Returns the storage commitment of the active account at the beginning of the transaction.
 #!
@@ -379,22 +372,13 @@ export.get_initial_storage_commitment
     # => [INIT_ACCOUNT_STORAGE_COMMITMENT]
 end
 
-#! Gets the code commitment of the current account.
-#!
-#! Inputs:  []
-#! Outputs: [CODE_COMMITMENT]
-#!
-#! Where:
-#! - CODE_COMMITMENT is the commitment of the account code.
-export.memory::get_account_code_commitment->get_code_commitment
-
-#! Computes the storage commitment of the current account.
+#! Computes the storage commitment of the active account.
 #!
 #! Inputs:  []
 #! Outputs: [STORAGE_COMMITMENT]
 #!
 #! Where:
-#! - STORAGE_COMMITMENT is the current commitment of the account storage.
+#! - STORAGE_COMMITMENT is the commitment of the active account storage.
 export.compute_storage_commitment
     # if outdated, recompute the storage commitment and store it in the memory
     exec.refresh_storage_commitment
@@ -404,112 +388,37 @@ export.compute_storage_commitment
     # => [STORAGE_COMMITMENT]
 end
 
-#! Applies storage offset to provided storage slot index for storage access.
-#!
-#! Inputs:  [storage_offset, storage_size, slot_index]
-#! Outputs: [offset_slot_index]
-#!
-#! Where:
-#! - storage_offset is the offset of the storage for this account component.
-#! - storage_size is the number of storage slots accessible from this account component.
-#! - slot_index is the index of the storage slot to be accessed.
-#! - offset_slot_index is the final index of the storage slot with the storage offset applied to it.
-#!
-#! Panics if:
-#! - the computed index is out of bounds
-export.apply_storage_offset
-    # offset index
-    dup movup.3 add
-    # => [offset_slot_index, storage_offset, storage_size]
+### VAULT ROOT ###########################################################
 
-    # verify that slot_index is in bounds
-    movdn.2 add dup.1 gt assert.err=ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS
-    # => [offset_slot_index]
-end
-
-#! Validates all account procedure's storage metadata.
+#! Returns the vault root of the active account at the beginning of the transaction.
 #!
 #! Inputs:  []
-#! Outputs: []
+#! Outputs: [INIT_ACCOUNT_VAULT_ROOT]
 #!
-#! Panics if:
-#! - Storage offset + storage size > number of storage slots.
-#! - Storage size is zero and storage offset is non-zero.
-#!   - This is validated to ensure users do not accidentally set a non-zero offset with a
-#!     zero size which would prevent any access to storage.
-#! - The storage offset of a faucet account's procedure is 0 with a size != 0.
-#!   - This prevents access to the reserved storage slot.
-export.validate_procedure_metadata
-    # get number of account procedures and number of storage slots
-    exec.memory::get_num_account_procedures exec.memory::get_num_storage_slots
-    # => [num_storage_slots, num_account_procedures]
+#! Where:
+#! - INIT_ACCOUNT_VAULT_ROOT is the initial account vault root.
+export.get_initial_vault_root
+    # Get the vault root of the active account. For the foreign account this root will be equal to 
+    # the initial one.
+    exec.memory::get_account_vault_root
+    # => [ACTIVE_ACCOUNT_VAULT_ROOT]
 
-    # prepare stack for looping
-    push.0.1
-    # => [start_loop, index, num_storage_slots, num_account_procedures]
+    # get the initial vault root of the native account
+    exec.memory::get_init_native_account_vault_root
+    # => [INIT_NATIVE_ACCOUNT_VAULT_ROOT, ACTIVE_ACCOUNT_VAULT_ROOT]
 
-    # check if the account is a faucet
-    exec.get_id swap drop exec.account_id::is_faucet
-    # => [is_faucet, start_loop, index, num_storage_slots, num_account_procedures]
+    # check whether the active account is native
+    exec.memory::is_native_account
+    # => [is_native_account, INIT_NATIVE_ACCOUNT_VAULT_ROOT, ACTIVE_ACCOUNT_VAULT_ROOT]
 
-    # we do not check if num_account_procedures == 0 here because a valid
-    # account has between 1 and 256 procedures with associated offsets
-    if.true
-        # This branch handles procedures from faucet accounts.
-        while.true
-            # get storage offset and size from memory
-            dup exec.get_procedure_metadata
-            # => [storage_offset, storage_size, index, num_storage_slots, num_account_procedures]
-
-            # Procedures that do not access storage are defined with (offset, size) = (0, 0).
-            # But we want to fail on tuples defined with a zero size but non-zero offset, since that
-            # is a logic error.
-            # We assert this with: (size == 0 && offset != 0) == 0.
-            dup.1 eq.0 dup.1 eq.0 not and assertz.err=ERR_ACCOUNT_INVALID_STORAGE_OFFSET_FOR_SIZE
-            # => [storage_offset, storage_size, index, num_storage_slots, num_account_procedures]
-
-            # No procedure should access the reserved faucet slot (slot 0). However (0, 0) should
-            # still be allowed per the above.
-            # We assert this with: (offset == 0 && size != 0) == 0.
-            dup.1 eq.0 not dup.1 eq.0 and assertz.err=ERR_FAUCET_INVALID_STORAGE_OFFSET
-            # => [storage_offset, storage_size, index, num_storage_slots, num_account_procedures]
-
-            # assert that storage limit is in bounds
-            add dup.2 lte assert.err=ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS
-            # => [index, num_storage_slots, num_account_procedures]
-
-            # check if we should continue looping
-            add.1 dup dup.3 lt
-            # => [should_loop, index, num_storage_slots, num_account_procedures]
-        end
-    else
-        # This branch handles procedures from regular accounts.
-        while.true
-            # get storage offset and size from memory
-            dup exec.get_procedure_metadata
-            # => [storage_offset, storage_size, index, num_storage_slots, num_account_procedures]
-
-            # Procedures that do not access storage are defined with (offset, size) = (0, 0).
-            # But we want to fail on tuples defined with a zero size but non-zero offset, since that
-            # is a logic error.
-            # We assert this with: (size == 0 && offset != 0) == 0.
-            dup.1 eq.0 dup.1 eq.0 not and assertz.err=ERR_ACCOUNT_INVALID_STORAGE_OFFSET_FOR_SIZE
-            # => [storage_offset, storage_size, index, num_storage_slots, num_account_procedures]
-
-            # assert that storage limit is in bounds
-            add dup.2 lte assert.err=ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS
-            # => [index, num_storage_slots, num_account_procedures]
-
-            # check if we should continue looping
-            add.1 dup dup.3 lt
-            # => [should_loop, index, num_storage_slots, num_account_procedures]
-        end
-    end
-
-    # clean stack
-    drop drop drop
-    # => []
+    # if the active account is native, keep the INIT_NATIVE_ACCOUNT_VAULT_ROOT, or
+    # ACTIVE_ACCOUNT_VAULT_ROOT otherwise
+    cdropw
+    # => [INIT_ACCOUNT_VAULT_ROOT]
 end
+
+# STORAGE
+# -------------------------------------------------------------------------------------------------
 
 #! Gets an item from the account storage.
 #!
@@ -703,13 +612,13 @@ export.set_map_item.12
     # => [OLD_MAP_VALUE, NEW_ROOT, KEY, NEW_VALUE]
 
     # store OLD_MAP_VALUE and NEW_ROOT until the end of the procedure
-    loc_storew.4 dropw loc_storew.8 dropw
+    loc_storew_be.4 dropw loc_storew_be.8 dropw
     # => [KEY, NEW_VALUE]
 
     dupw.1
     # => [NEW_VALUE, KEY, NEW_VALUE]
 
-    padw loc_loadw.4
+    padw loc_loadw_be.4
     # => [OLD_MAP_VALUE, NEW_VALUE, KEY, NEW_VALUE]
 
     dupw.2
@@ -726,7 +635,7 @@ export.set_map_item.12
     # => [KEY, NEW_VALUE]
 
     # load OLD_MAP_VALUE and NEW_ROOT on the top of the stack
-    loc_loadw.8 swapw loc_loadw.4 swapw
+    loc_loadw_be.8 swapw loc_loadw_be.4 swapw
     # => [NEW_ROOT, OLD_MAP_VALUE, ...]
 
     # set the root of the map in the respective account storage slot
@@ -734,8 +643,29 @@ export.set_map_item.12
     # => [OLD_MAP_ROOT, OLD_MAP_VALUE, ...]
 end
 
-#! TODO(named_slots): Refactor to take name instead.
+#! Applies storage offset to provided storage slot index for storage access.
 #!
+#! Inputs:  [storage_offset, storage_size, slot_index]
+#! Outputs: [offset_slot_index]
+#!
+#! Where:
+#! - storage_offset is the offset of the storage for this account component.
+#! - storage_size is the number of storage slots accessible from this account component.
+#! - slot_index is the index of the storage slot to be accessed.
+#! - offset_slot_index is the final index of the storage slot with the storage offset applied to it.
+#!
+#! Panics if:
+#! - the computed index is out of bounds
+export.apply_storage_offset
+    # offset index
+    dup movup.3 add
+    # => [offset_slot_index, storage_offset, storage_size]
+
+    # verify that slot_index is in bounds
+    movdn.2 add dup.1 gt assert.err=ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS
+    # => [offset_slot_index]
+end
+
 #! Returns the type of the requested storage slot.
 #!
 #! Inputs:  [index]
@@ -781,182 +711,8 @@ export.get_storage_slot_type
     # => [slot_type]
 end
 
-#! Returns the procedure information.
-#!
-#! Inputs:  [index]
-#! Outputs: [PROC_ROOT, storage_offset, storage_size]
-#!
-#! Where:
-#! - PROC_ROOT is the hash of the procedure.
-#! - storage_offset is the procedure storage offset.
-#! - storage_size is the number of storage slots the procedure is allowed to access.
-#!
-#! Panics if:
-#! - the procedure index is out of bounds.
-export.get_procedure_info
-    # check that index < number of procedures contained in the account code
-    dup exec.memory::get_num_account_procedures
-    u32assert2.err=ERR_ACCOUNT_PROC_INDEX_OUT_OF_BOUNDS u32lt assert.err=ERR_ACCOUNT_PROC_INDEX_OUT_OF_BOUNDS
-    # => [index]
-
-    # get procedure pointer
-    exec.memory::get_account_procedure_ptr
-    # => [proc_ptr]
-
-    # get metadata pointer
-    dup add.4 swap
-    # => [proc_ptr, metadata_ptr]
-
-    # load procedure information from memory
-    padw movup.4 mem_loadw padw movup.8 mem_loadw
-    # => [METADATA, PROC_ROOT]
-    # more explicitly:
-    # => [0, 0, storage_size, storage_offset, PROC_ROOT]
-
-    # keep relevant data
-    drop drop
-    # => [storage_size, storage_offset, PROC_ROOT]
-
-    swap movdn.5 movdn.5
-    # => [PROC_ROOT, storage_offset, storage_size]
-end
-
-#! Verifies that the procedure root is part of the account code and tracks whether it has been
-#! called.
-#!
-#! Inputs:  [PROC_ROOT]
-#! Outputs: [storage_offset, storage_size]
-#!
-#! Where:
-#! - PROC_ROOT is the hash of the procedure to authenticate.
-#! - storage_offset is the procedure storage offset.
-#! - storage_size is the number of storage slots the procedure is allowed to access.
-#!
-#! Panics if:
-#! - the procedure root is not part of the account code.
-export.authenticate_and_track_procedure
-    # load procedure index
-    emit.ACCOUNT_PUSH_PROCEDURE_INDEX_EVENT adv_push.1
-    # => [index, PROC_ROOT]
-
-    dup movdn.5
-    # get procedure info (PROC_ROOT, storage_offset, storage_size) from memory stored at index
-    exec.get_procedure_info
-    # => [MEM_PROC_ROOT, storage_offset, storage_size, PROC_ROOT, index]
-
-    # verify that PROC_ROOT exists in memory at index
-    movup.4 movdn.9 movup.4 movdn.9 assert_eqw.err=ERR_ACCOUNT_PROC_NOT_PART_OF_ACCOUNT_CODE
-    # => [storage_offset, storage_size, index]
-
-    # Set the was_called flag to 1 for this procedure
-    movup.2 exec.set_was_procedure_called
-
-    # => [storage_offset, storage_size]
-end
-
-#! Asserts that the specified procedure root is the root of the authentication procedure for an
-#! account. This procedure is assumed to be invoked after asserting the account is a native account.
-#!
-#! Inputs:  [PROC_ROOT]
-#! Outputs: []
-#!
-#! Where:
-#! - PROC_ROOT is the hash of the procedure to authenticate.
-#!
-#! Panics if:
-#! - the procedure root is not the authentication procedure.
-export.assert_auth_procedure
-    # authentication procedure is always at index 0
-    push.0
-    # => [index, PROC_ROOT]
-
-    # set was_called for the the auth procedure to true
-    dup exec.set_was_procedure_called
-    # => [index, PROC_ROOT]
-
-    # get procedure info (PROC_ROOT, storage_offset, storage_size) from memory stored at index
-    exec.get_procedure_root
-    # => [MEM_PROC_ROOT, PROC_ROOT]
-
-    # verify that PROC_ROOT exists in memory at index
-    assert_eqw.err=ERR_ACCOUNT_PROC_NOT_AUTH_PROC
-    # => []
-end
-
-#! Validates that the account seed, provided via the advice map, satisfies the seed requirements.
-#!
-#! Validation is performed via the following steps:
-#! 1. Compute the hash of (SEED, CODE_COMMITMENT, STORAGE_COMMITMENT, EMPTY_WORD).
-#! 2. Assert the two least significant elements of the digest are equal to the account ID of the
-#!    account the transaction is being executed against.
-#!
-#! Inputs:  []
-#! Outputs: []
-export.validate_seed
-    # Compute the hash of (SEED, CODE_COMMITMENT, STORAGE_COMMITMENT, EMPTY_WORD).
-    # ---------------------------------------------------------------------------------------------
-
-    # push an empty word as padding for account ID hashing
-    padw
-    # => [EMPTY_WORD]
-
-    # push the advice map key at which the seed is located
-    exec.memory::get_account_id push.0.0
-    # => [0, 0, account_id_prefix, account_id_suffix, EMPTY_WORD]
-
-    # populate first four elements of the rate with the account ID seed
-    adv.push_mapval adv_loadw
-    # => [SEED, EMPTY_WORD]
-
-    # pad capacity element of hasher
-    padw swapw
-    # => [SEED, 0, 0, 0, 0, EMPTY_WORD]
-
-    # populate last four elements of the hasher rate with the code commitment
-    exec.memory::get_account_code_commitment
-    # => [CODE_COMMITMENT, SEED, 0, 0, 0, 0, EMPTY_WORD]
-
-    # perform first permutation of seed and code_commitment (from advice stack)
-    # perm(seed, code_commitment)
-    hperm
-    # => [RATE, RATE, PERM, EMPTY_WORD]
-
-    # clear rate elements
-    dropw dropw
-    # => [PERM, EMPTY_WORD]
-
-    # perform second permutation perm(storage_commitment, 0, 0, 0, 0)
-    swapw exec.memory::get_account_storage_commitment swapw
-    # => [EMPTY_WORD, STORAGE_COMMITMENT, PERM]
-
-    hperm
-    # => [RATE, RATE, CAP]
-
-    # extract digest
-    exec.rpo::squeeze_digest
-    # => [DIGEST]
-
-    # Shape suffix to set the lower 8 bits to zero and compare the computed and provided ID.
-    # ---------------------------------------------------------------------------------------------
-
-    # extract account ID from digest
-    drop drop swap
-    # => [hashed_account_id_prefix, hashed_account_id_suffix]
-
-    exec.memory::get_account_id movdn.3 movdn.3
-    # => [hashed_account_id_prefix, hashed_account_id_suffix, account_id_prefix, account_id_suffix]
-
-    # shape suffix of hashed id by setting the lower 8 bits to zero
-    swap exec.account_id::shape_suffix swap
-    # => [hashed_account_id_prefix, hashed_account_id_suffix, account_id_prefix, account_id_suffix]
-
-    # assert the account ID matches the account ID of the new account
-    exec.account_id::is_equal assert.err=ERR_ACCOUNT_SEED_AND_COMMITMENT_DIGEST_MISMATCH
-    # => []
-end
-
-# ACCOUNT VAULT
-# =================================================================================================
+# VAULT
+# -------------------------------------------------------------------------------------------------
 
 #! Adds the specified asset to the account vault.
 #!
@@ -1115,11 +871,274 @@ export.has_non_fungible_asset
     # => [has_asset]
 end
 
+# CODE
+# -------------------------------------------------------------------------------------------------
+
+#! Validates all account procedure's storage metadata.
+#!
+#! Inputs:  []
+#! Outputs: []
+#!
+#! Panics if:
+#! - Storage offset + storage size > number of storage slots.
+#! - Storage size is zero and storage offset is non-zero.
+#!   - This is validated to ensure users do not accidentally set a non-zero offset with a
+#!     zero size which would prevent any access to storage.
+#! - The storage offset of a faucet account's procedure is 0 with a size != 0.
+#!   - This prevents access to the reserved storage slot.
+export.validate_procedure_metadata
+    # get number of account procedures and number of storage slots
+    exec.memory::get_num_account_procedures exec.memory::get_num_storage_slots
+    # => [num_storage_slots, num_account_procedures]
+
+    # prepare stack for looping
+    push.0.1
+    # => [start_loop, index, num_storage_slots, num_account_procedures]
+
+    # check if the account is a faucet
+    exec.get_id swap drop exec.account_id::is_faucet
+    # => [is_faucet, start_loop, index, num_storage_slots, num_account_procedures]
+
+    # we do not check if num_account_procedures == 0 here because a valid
+    # account has between 1 and 256 procedures with associated offsets
+    if.true
+        # This branch handles procedures from faucet accounts.
+        while.true
+            # get storage offset and size from memory
+            dup exec.get_procedure_metadata
+            # => [storage_offset, storage_size, index, num_storage_slots, num_account_procedures]
+
+            # Procedures that do not access storage are defined with (offset, size) = (0, 0).
+            # But we want to fail on tuples defined with a zero size but non-zero offset, since that
+            # is a logic error.
+            # We assert this with: (size == 0 && offset != 0) == 0.
+            dup.1 eq.0 dup.1 eq.0 not and assertz.err=ERR_ACCOUNT_INVALID_STORAGE_OFFSET_FOR_SIZE
+            # => [storage_offset, storage_size, index, num_storage_slots, num_account_procedures]
+
+            # No procedure should access the reserved faucet slot (slot 0). However (0, 0) should
+            # still be allowed per the above.
+            # We assert this with: (offset == 0 && size != 0) == 0.
+            dup.1 eq.0 not dup.1 eq.0 and assertz.err=ERR_FAUCET_INVALID_STORAGE_OFFSET
+            # => [storage_offset, storage_size, index, num_storage_slots, num_account_procedures]
+
+            # assert that storage limit is in bounds
+            add dup.2 lte assert.err=ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS
+            # => [index, num_storage_slots, num_account_procedures]
+
+            # check if we should continue looping
+            add.1 dup dup.3 lt
+            # => [should_loop, index, num_storage_slots, num_account_procedures]
+        end
+    else
+        # This branch handles procedures from regular accounts.
+        while.true
+            # get storage offset and size from memory
+            dup exec.get_procedure_metadata
+            # => [storage_offset, storage_size, index, num_storage_slots, num_account_procedures]
+
+            # Procedures that do not access storage are defined with (offset, size) = (0, 0).
+            # But we want to fail on tuples defined with a zero size but non-zero offset, since that
+            # is a logic error.
+            # We assert this with: (size == 0 && offset != 0) == 0.
+            dup.1 eq.0 dup.1 eq.0 not and assertz.err=ERR_ACCOUNT_INVALID_STORAGE_OFFSET_FOR_SIZE
+            # => [storage_offset, storage_size, index, num_storage_slots, num_account_procedures]
+
+            # assert that storage limit is in bounds
+            add dup.2 lte assert.err=ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS
+            # => [index, num_storage_slots, num_account_procedures]
+
+            # check if we should continue looping
+            add.1 dup dup.3 lt
+            # => [should_loop, index, num_storage_slots, num_account_procedures]
+        end
+    end
+
+    # clean stack
+    drop drop drop
+    # => []
+end
+
+#! Returns the procedure information.
+#!
+#! Inputs:  [index]
+#! Outputs: [PROC_ROOT, storage_offset, storage_size]
+#!
+#! Where:
+#! - PROC_ROOT is the hash of the procedure.
+#! - storage_offset is the procedure storage offset.
+#! - storage_size is the number of storage slots the procedure is allowed to access.
+#!
+#! Panics if:
+#! - the procedure index is out of bounds.
+export.get_procedure_info
+    # check that index < number of procedures contained in the account code
+    dup exec.memory::get_num_account_procedures
+    u32assert2.err=ERR_ACCOUNT_PROC_INDEX_OUT_OF_BOUNDS u32lt assert.err=ERR_ACCOUNT_PROC_INDEX_OUT_OF_BOUNDS
+    # => [index]
+
+    # get procedure pointer
+    exec.memory::get_account_procedure_ptr
+    # => [proc_ptr]
+
+    # get metadata pointer
+    dup add.4 swap
+    # => [proc_ptr, metadata_ptr]
+
+    # load procedure information from memory
+    padw movup.4 mem_loadw_be padw movup.8 mem_loadw_be
+    # => [METADATA, PROC_ROOT]
+    # more explicitly:
+    # => [0, 0, storage_size, storage_offset, PROC_ROOT]
+
+    # keep relevant data
+    drop drop
+    # => [storage_size, storage_offset, PROC_ROOT]
+
+    swap movdn.5 movdn.5
+    # => [PROC_ROOT, storage_offset, storage_size]
+end
+
+#! Verifies that the procedure root is part of the account code and tracks whether it has been
+#! called.
+#!
+#! Inputs:  [PROC_ROOT]
+#! Outputs: [storage_offset, storage_size]
+#!
+#! Where:
+#! - PROC_ROOT is the hash of the procedure to authenticate.
+#! - storage_offset is the procedure storage offset.
+#! - storage_size is the number of storage slots the procedure is allowed to access.
+#!
+#! Panics if:
+#! - the procedure root is not part of the account code.
+export.authenticate_and_track_procedure
+    # load procedure index
+    emit.ACCOUNT_PUSH_PROCEDURE_INDEX_EVENT adv_push.1
+    # => [index, PROC_ROOT]
+
+    dup movdn.5
+    # get procedure info (PROC_ROOT, storage_offset, storage_size) from memory stored at index
+    exec.get_procedure_info
+    # => [MEM_PROC_ROOT, storage_offset, storage_size, PROC_ROOT, index]
+
+    # verify that PROC_ROOT exists in memory at index
+    movup.4 movdn.9 movup.4 movdn.9 assert_eqw.err=ERR_ACCOUNT_PROC_NOT_PART_OF_ACCOUNT_CODE
+    # => [storage_offset, storage_size, index]
+
+    # Set the was_called flag to 1 for this procedure
+    movup.2 exec.set_was_procedure_called
+
+    # => [storage_offset, storage_size]
+end
+
+#! Asserts that the specified procedure root is the root of the authentication procedure for an
+#! account. This procedure is assumed to be invoked after asserting the account is a native account.
+#!
+#! Inputs:  [PROC_ROOT]
+#! Outputs: []
+#!
+#! Where:
+#! - PROC_ROOT is the hash of the procedure to authenticate.
+#!
+#! Panics if:
+#! - the procedure root is not the authentication procedure.
+export.assert_auth_procedure
+    # authentication procedure is always at index 0
+    push.0
+    # => [index, PROC_ROOT]
+
+    # set was_called for the the auth procedure to true
+    dup exec.set_was_procedure_called
+    # => [index, PROC_ROOT]
+
+    # get procedure info (PROC_ROOT, storage_offset, storage_size) from memory stored at index
+    exec.get_procedure_root
+    # => [MEM_PROC_ROOT, PROC_ROOT]
+
+    # verify that PROC_ROOT exists in memory at index
+    assert_eqw.err=ERR_ACCOUNT_PROC_NOT_AUTH_PROC
+    # => []
+end
+
+# VALIDATION
+# -------------------------------------------------------------------------------------------------
+
+#! Validates that the account seed, provided via the advice map, satisfies the seed requirements.
+#!
+#! Validation is performed via the following steps:
+#! 1. Compute the hash of (SEED, CODE_COMMITMENT, STORAGE_COMMITMENT, EMPTY_WORD).
+#! 2. Assert the two least significant elements of the digest are equal to the account ID of the
+#!    account the transaction is being executed against.
+#!
+#! Inputs:  []
+#! Outputs: []
+export.validate_seed
+    # Compute the hash of (SEED, CODE_COMMITMENT, STORAGE_COMMITMENT, EMPTY_WORD).
+    # ---------------------------------------------------------------------------------------------
+
+    # push an empty word as padding for account ID hashing
+    padw
+    # => [EMPTY_WORD]
+
+    # push the advice map key at which the seed is located
+    exec.memory::get_account_id push.0.0
+    # => [0, 0, account_id_prefix, account_id_suffix, EMPTY_WORD]
+
+    # populate first four elements of the rate with the account ID seed
+    adv.push_mapval adv_loadw
+    # => [SEED, EMPTY_WORD]
+
+    # pad capacity element of hasher
+    padw swapw
+    # => [SEED, 0, 0, 0, 0, EMPTY_WORD]
+
+    # populate last four elements of the hasher rate with the code commitment
+    exec.memory::get_account_code_commitment
+    # => [CODE_COMMITMENT, SEED, 0, 0, 0, 0, EMPTY_WORD]
+
+    # perform first permutation of seed and code_commitment (from advice stack)
+    # perm(seed, code_commitment)
+    hperm
+    # => [RATE, RATE, PERM, EMPTY_WORD]
+
+    # clear rate elements
+    dropw dropw
+    # => [PERM, EMPTY_WORD]
+
+    # perform second permutation perm(storage_commitment, 0, 0, 0, 0)
+    swapw exec.memory::get_account_storage_commitment swapw
+    # => [EMPTY_WORD, STORAGE_COMMITMENT, PERM]
+
+    hperm
+    # => [RATE, RATE, CAP]
+
+    # extract digest
+    exec.rpo::squeeze_digest
+    # => [DIGEST]
+
+    # Shape suffix to set the lower 8 bits to zero and compare the computed and provided ID.
+    # ---------------------------------------------------------------------------------------------
+
+    # extract account ID from digest
+    drop drop swap
+    # => [hashed_account_id_prefix, hashed_account_id_suffix]
+
+    exec.memory::get_account_id movdn.3 movdn.3
+    # => [hashed_account_id_prefix, hashed_account_id_suffix, account_id_prefix, account_id_suffix]
+
+    # shape suffix of hashed id by setting the lower 8 bits to zero
+    swap exec.account_id::shape_suffix swap
+    # => [hashed_account_id_prefix, hashed_account_id_suffix, account_id_prefix, account_id_suffix]
+
+    # assert the account ID matches the account ID of the new account
+    exec.account_id::is_equal assert.err=ERR_ACCOUNT_SEED_AND_COMMITMENT_DIGEST_MISMATCH
+    # => []
+end
 
 # DATA LOADERS
-# =================================================================================================
+# -------------------------------------------------------------------------------------------------
 
-#! Loads account data from the advice inputs into the _current_ account's memory section.
+#! Loads account data from the advice inputs into the _active_ account's memory section.
 #!
 #! Inputs:
 #!   Operand stack: [account_id_prefix, account_id_suffix]
@@ -1212,7 +1231,7 @@ end
 #!   Operand stack: []
 #!
 #! Where:
-#! - STORAGE_COMMITMENT is the commitment of the current account's storage.
+#! - STORAGE_COMMITMENT is the commitment of the active account's storage.
 #! - STORAGE_SLOT_DATA is the data contained in the storage slot which is constructed as follows:
 #!   [SLOT_VALUE, slot_type, 0, 0, 0]
 #!
@@ -1281,7 +1300,7 @@ end
 #!   Operand stack: []
 #!
 #! Where:
-#! - CODE_COMMITMENT is the commitment of the current account's code.
+#! - CODE_COMMITMENT is the commitment of the active account's code.
 #! - ACCOUNT_PROCEDURE_DATA is the information about account procedure which is constructed as
 #!   follows: [PROCEDURE_MAST_ROOT, storage_offset, storage_size, 0, 0]
 #!
@@ -1500,7 +1519,7 @@ export.get_item_raw
     # => [slot_value_ptr]
 
     # load the item from storage
-    padw movup.4 mem_loadw
+    padw movup.4 mem_loadw_be
     # => [VALUE]
 end
 
@@ -1565,7 +1584,7 @@ proc.get_item_by_index_raw
     # => [slot_value_ptr]
 
     # load the item from storage
-    padw movup.4 mem_loadw
+    padw movup.4 mem_loadw_be
     # => [VALUE]
 end
 
@@ -1636,13 +1655,13 @@ proc.set_item_raw
     # => [NEW_VALUE, slot_value_ptr]
 
     # load the item from storage
-    padw dup.8 mem_loadw
+    padw dup.8 mem_loadw_be
     # => [OLD_VALUE, NEW_VALUE, slot_value_ptr]
 
     swapw movup.8
     # => [slot_value_ptr, NEW_VALUE, OLD_VALUE]
 
-    mem_storew dropw
+    mem_storew_be dropw
     # => [OLD_VALUE]
 
     # update the storage commitment dirty flag, indicating that the commitment is outdated
@@ -1721,7 +1740,7 @@ proc.get_procedure_root
     # => [proc_ptr]
 
     # load procedure root from memory
-    padw movup.4 mem_loadw
+    padw movup.4 mem_loadw_be
     # => [PROC_ROOT]
 end
 
@@ -1742,7 +1761,7 @@ proc.get_procedure_metadata
     # => [storage_offset_ptr, EMPTY_WORD]
 
     # load procedure metadata from memory and keep relevant data
-    mem_loadw drop drop swap
+    mem_loadw_be drop drop swap
     # => [storage_offset, storage_size]
 end
 
@@ -1787,7 +1806,7 @@ export.get_account_data_ptr
         # => [curr_account_ptr', foreign_account_id_prefix, foreign_account_id_suffix]
 
         # load the first data word at the current account pointer
-        padw dup.4 mem_loadw
+        padw dup.4 mem_loadw_be
         # => [FIRST_DATA_WORD, curr_account_ptr', foreign_account_id_prefix, foreign_account_id_suffix]
 
         # check whether the last value in the word equals zero
@@ -1817,30 +1836,30 @@ export.get_account_data_ptr
     # => [was_loaded, curr_account_ptr, foreign_account_id_prefix, foreign_account_id_suffix]
 end
 
-#! Checks that the state of the current foreign account is valid.
+#! Checks that the state of the active foreign account is valid.
 #!
 #! Inputs:  []
 #! Outputs: []
 #!
 #! Panics if:
-#! - the hash of the current account is not represented in the account database.
-export.validate_current_foreign_account
+#! - the hash of the active account is not represented in the account database.
+export.validate_active_foreign_account
     # get the account database root
     exec.memory::get_account_db_root
     # => [ACCOUNT_DB_ROOT]
 
-    # get the current account ID
+    # get the active account ID
     push.0.0 exec.memory::get_account_id
     # => [account_id_prefix, account_id_suffix, 0, 0, ACCOUNT_DB_ROOT]
 
-    # retrieve the commitment of the foreign account from the current account tree
+    # retrieve the commitment of the foreign account from the active account tree
     # this would abort if the proof for the commitment was invalid for the account root,
     # so this implicitly verifies its correctness
     exec.smt::get
     # => [FOREIGN_ACCOUNT_COMMITMENT, ACCOUNT_DB_ROOT]
 
     # get the foreign account's commitment from memory and compare with the verified commitment
-    exec.compute_current_commitment assert_eqw.err=ERR_FOREIGN_ACCOUNT_INVALID_COMMITMENT
+    exec.compute_commitment assert_eqw.err=ERR_FOREIGN_ACCOUNT_INVALID_COMMITMENT
     # => [ACCOUNT_DB_ROOT]
 
     # clean the stack
@@ -1871,7 +1890,7 @@ end
 #! Outputs: []
 proc.refresh_storage_commitment
     # First we should determine whether the storage commitment should be recomputed. We should do so
-    # if the current account is native and the storage commitment is outdated (the dirty flag equals
+    # if the active account is native and the storage commitment is outdated (the dirty flag equals
     # 1). Otherwise the commitment value is guaranteed to be up-to-date.
     exec.memory::get_recompute_storage_commitment_flag
     # => [should_recompute_storage_commitment]

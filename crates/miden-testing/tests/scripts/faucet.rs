@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use miden_lib::account::faucets::{BasicFungibleFaucet, FungibleFaucetExt, NetworkFungibleFaucet};
 use miden_lib::errors::tx_kernel_errors::ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED;
-use miden_lib::note::well_known_note::WellKnownNote;
+use miden_lib::note::{create_burn_note, create_mint_note};
 use miden_lib::testing::note::NoteBuilder;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{
@@ -333,16 +333,16 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
     let target_account_suffix = recipient_account_id.suffix();
     let target_account_prefix = recipient_account_id.prefix().as_felt();
 
-    // Adding extra 0 values to inputs to test trial unhashing in extract_note_inputs fn
+    // Use a length that is not a multiple of 8 (double word size) to make sure note inputs padding
+    // is correctly handled
     let note_inputs = NoteInputs::new(vec![
         target_account_suffix,
         target_account_prefix,
         Felt::new(0),
         Felt::new(0),
         Felt::new(0),
-        Felt::new(0),
-        Felt::new(0),
         Felt::new(1),
+        Felt::new(0),
     ])?;
 
     let note_recipient =
@@ -362,23 +362,21 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
                 # Build recipient hash from SERIAL_NUM, SCRIPT_ROOT, and INPUTS_COMMITMENT
                 push.{script_root}
                 # => [SCRIPT_ROOT]
-                
+
                 push.{serial_num}
                 # => [SERIAL_NUM, SCRIPT_ROOT]
 
-                # Store note inputs in memory at address 0
-                # First word: inputs[0..4]
-                push.{input0}.{input1}.{input2}.{input3}
-                mem_storew.0 dropw
-                # Memory[0] = [input0, input1, input2, input3]
+                # Store note inputs in memory
+                push.{input0} mem_store.0
+                push.{input1} mem_store.1
+                push.{input2} mem_store.2
+                push.{input3} mem_store.3
+                push.{input4} mem_store.4
+                push.{input5} mem_store.5
+                push.{input6} mem_store.6
 
-                # Second word: inputs[4..8]
-                push.{input4}.{input5}.{input6}.{input7}
-                mem_storew.4 dropw
-                # Memory[1] = [input4, input5, input6, input7]
-
-                push.8 push.0
-                # => [inputs_ptr, num_inputs, SERIAL_NUM, SCRIPT_ROOT]
+                push.7 push.0
+                # => [inputs_ptr, num_inputs = 7, SERIAL_NUM, SCRIPT_ROOT]
 
                 exec.note::build_recipient
                 # => [RECIPIENT]
@@ -406,7 +404,6 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
         input4 = note_inputs.values()[4],
         input5 = note_inputs.values()[5],
         input6 = note_inputs.values()[6],
-        input7 = note_inputs.values()[7],
         script_root = output_script_root,
         serial_num = serial_num,
         aux = aux,
@@ -467,6 +464,11 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
         note_inputs.commitment(),
         "Output note inputs commitment should match expected inputs commitment"
     );
+    assert_eq!(
+        full_note.recipient().inputs().num_values(),
+        note_inputs.num_values(),
+        "Output note inputs length should match expected inputs length"
+    );
 
     // Verify the output note ID matches the expected note ID
     assert_eq!(full_note.id(), expected_note.id());
@@ -517,46 +519,33 @@ async fn network_faucet_mint() -> anyhow::Result<()> {
 
     let amount = Felt::new(75);
     let mint_asset: Asset = FungibleAsset::new(faucet.id(), amount.into()).unwrap().into();
-    let tag = NoteTag::for_local_use_case(0, 0).unwrap();
     let aux = Felt::new(27);
-    let note_execution_hint = NoteExecutionHint::on_block_slot(5, 6, 7);
-    let note_type = NoteType::Private;
     let serial_num = Word::default();
 
+    let output_note_tag = NoteTag::from_account_id(target_account.id());
     let p2id_mint_output_note = create_p2id_note_exact(
         faucet.id(),
         target_account.id(),
         vec![mint_asset],
-        note_type,
+        NoteType::Private,
         aux,
         serial_num,
     )
     .unwrap();
     let recipient = p2id_mint_output_note.recipient().digest();
 
-    // Use the standard MINT note script
-    let note_script = WellKnownNote::MINT.script();
-
-    // Create the note inputs for MINT note (reversed order)
-    let inputs = NoteInputs::new(vec![
-        recipient[0],
-        recipient[1],
-        recipient[2],
-        recipient[3],
-        note_execution_hint.into(),
-        note_type.into(),
-        aux,
-        tag.into(),
+    // Create the MINT note using the helper function
+    let mut rng = RpoRandomCoin::new([Felt::from(42u32); 4].into());
+    let mint_note = create_mint_note(
+        faucet.id(),
+        faucet_owner_account_id,
+        recipient,
+        output_note_tag.into(),
         amount,
-    ])?;
-
-    // Create the MINT note using the standard script
-    let mint_note_metadata =
-        NoteMetadata::new(faucet_owner_account_id, note_type, tag, note_execution_hint, aux)?;
-    let mint_note_assets = NoteAssets::new(vec![])?; // Empty assets for mint note
-    let serial_num = Word::from([1, 2, 3, 4u32]); // Random serial number
-    let mint_note_recipient = NoteRecipient::new(serial_num, note_script, inputs);
-    let mint_note = Note::new(mint_note_assets, mint_note_metadata, mint_note_recipient);
+        aux,
+        aux,
+        &mut rng,
+    )?;
 
     // Add the MINT note to the mock chain
     builder.add_output_note(OutputNote::Full(mint_note.clone()));
@@ -635,24 +624,16 @@ async fn network_faucet_burn() -> anyhow::Result<()> {
     let burn_amount = 100u64;
     let fungible_asset = FungibleAsset::new(faucet.id(), burn_amount).unwrap();
 
-    // CREATE BURN NOTE USING STANDARD NOTE SCRIPT
+    // CREATE BURN NOTE
     // --------------------------------------------------------------------------------------------
-    // Use the standard BURN note script
-    let note_script = WellKnownNote::BURN.script();
-
-    // Create the burn note using the standard script
-    let burn_note_metadata = NoteMetadata::new(
+    let mut rng = RpoRandomCoin::new([Felt::from(99u32); 4].into());
+    let note = create_burn_note(
         faucet_owner_account_id,
-        NoteType::Public,
-        NoteTag::for_local_use_case(0, 0)?,
-        NoteExecutionHint::Always,
+        faucet.id(),
+        fungible_asset.into(),
         Felt::new(0),
+        &mut rng,
     )?;
-    let burn_note_assets = NoteAssets::new(vec![fungible_asset.into()])?;
-    let serial_num = Word::from([5, 6, 7, 8u32]);
-    let inputs = NoteInputs::new(vec![]).unwrap();
-    let burn_note_recipient = NoteRecipient::new(serial_num, note_script, inputs);
-    let note = Note::new(burn_note_assets, burn_note_metadata, burn_note_recipient);
 
     builder.add_output_note(OutputNote::Full(note.clone()));
     let mut mock_chain = builder.build()?;

@@ -122,11 +122,32 @@ end
 #! - num_inputs is greater than 128.
 #!
 #! Invocation: exec
-export.build_recipient
+export.build_recipient.1
     dup.1 dup.1
     # => [inputs_ptr, num_inputs, inputs_ptr, num_inputs, SERIAL_NUM, SCRIPT_ROOT]
 
     exec.compute_inputs_commitment
+    # => [INPUTS_COMMITMENT, inputs_ptr, num_inputs, SERIAL_NUM, SCRIPT_ROOT]
+
+    # store num_inputs into local memory
+    dup.5 loc_store.0
+    # => [INPUTS_COMMITMENT, inputs_ptr, num_inputs, SERIAL_NUM, SCRIPT_ROOT]
+
+    locaddr.0 add.1
+    locaddr.0
+    # => [num_inputs_start_ptr, num_inputs_end_ptr, INPUTS_COMMITMENT, inputs_ptr, num_inputs, SERIAL_NUM, SCRIPT_ROOT]
+
+    dup.5 dup.5 dup.5 dup.5
+    # => [INPUTS_COMMITMENT, num_inputs_start_ptr, num_inputs_end_ptr,
+    #     INPUTS_COMMITMENT, inputs_ptr, num_inputs, SERIAL_NUM, SCRIPT_ROOT]
+
+    # compute the advice map key for num_inputs by hashing the inputs commitment
+    hash
+    # => [hash(INPUTS_COMMITMENT), num_inputs_start_ptr, num_inputs_end_ptr,
+    #     INPUTS_COMMITMENT, inputs_ptr, num_inputs, SERIAL_NUM, SCRIPT_ROOT]
+
+    adv.insert_mem
+    dropw drop drop
     # => [INPUTS_COMMITMENT, inputs_ptr, num_inputs, SERIAL_NUM, SCRIPT_ROOT]
 
     movup.5 movup.5 dup movdn.2

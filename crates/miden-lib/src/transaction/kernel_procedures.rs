@@ -6,15 +6,13 @@ use miden_objects::{Word, word};
 // ================================================================================================
 
 /// Hashes of all dynamically executed kernel procedures.
-pub const KERNEL_PROCEDURES: [Word; 53] = [
+pub const KERNEL_PROCEDURES: [Word; 52] = [
     // account_get_initial_commitment
     word!("0x1c95a0386ebf3645c6271253a4ae49ea4be8610dea7b4436c58951277a75f0c1"),
-    // account_compute_current_commitment
+    // account_compute_commitment
     word!("0x1aed40e2cc4d3798448f4efdce1a14c9598611da065eebe58432f144c3bca9de"),
     // account_get_id
-    word!("0xc9f7e71b294e16d7a297ba283afb2f8c864817e40e73b6ef1d64efc310937fc7"),
-    // account_get_native_id
-    word!("0x05eb568956d0174066a1277442cc4602fcbbc6790bd64975416958d28274cb73"),
+    word!("0xd76288f2e94b9e6a8f7eeee45c4ee0a23997d78496f6132e3f55681efea809c4"),
     // account_get_nonce
     word!("0x4a1f11db21ddb1f0ebf7c9fd244f896a95e99bb136008185da3e7d6aa85827a3"),
     // account_incr_nonce
@@ -26,33 +24,33 @@ pub const KERNEL_PROCEDURES: [Word; 53] = [
     // account_compute_storage_commitment
     word!("0xa87008550383e1a88dde5d0adefc68ee3bf477aec07e4700f9101241aa1e868f"),
     // account_get_item
-    word!("0xf8a4fa2eb94e7fed0d465c56ff37d6395d2b7201cb7cda09dc444d2d43e28249"),
+    word!("0x045ba56f6e0f788fc4cd5b41a9ba9635bad9cf5e735d06c74372a208fd7ca1b1"),
     // account_get_initial_item
-    word!("0xd3a3707d89502fce38695df50bf910fc933ded694d326a9f62d1fd1b7ce50d25"),
+    word!("0x0662d55068a44158e8061bfdfe753fd57d53102e8861c71f36ec9481b14d7e8b"),
     // account_set_item
-    word!("0x0e455482c8dc7f08932f4b9147aec503b5a009513f36b6d174a2984d3d0fe478"),
+    word!("0xfe6b96a09db2e04d9f800248742f4a8db33c909c8cc918071f8396277ab6ee90"),
     // account_get_map_item
-    word!("0x412514230387d28cb3085b8bede48d38bfd2a4ff851eb777f62bb0391806cebe"),
+    word!("0x4c61bfaa1c5f0e873c1df7be501b57de8b7c1ddb64b862f0cfb58917f857b656"),
     // account_get_initial_map_item
-    word!("0x0499113f4a6d200bed65014083089db87133290363a1150e5311cf2de248622f"),
+    word!("0xd586c7ff2bf430c8389e797db93363862796a2f696997a8491303b5b7f13d028"),
     // account_set_map_item
-    word!("0xa827a370d5a6334bc8820a3dd35983f74d8b062fdf5dbc7f9e25576e127a6c98"),
+    word!("0xdcc1d1357ea68b6a9bdb7fb29b2b66e442bda92b0fcbd05f3ec599187b013221"),
     // account_get_initial_vault_root
     word!("0x46297d9ac95afd60c7ef1a065e024ad49aa4c019f6b3924191905449b244d4ec"),
     // account_get_vault_root
     word!("0x42a2bfb8eac4fce9bbf75ea15215b00729faeeaf7fff784692948d3f618a9bb7"),
     // account_add_asset
-    word!("0xcc3f09332303fc856a05fe2ec176a19e8e9e69213e380f7ac019fbd67ca42552"),
+    word!("0x11890564573ff2ad0916b1a8ca12a9d2546f4c3dcf09fa4bfb6d72d701a3d7ff"),
     // account_remove_asset
-    word!("0x7b965e458a962667a9cdc54a6677fd0c5a573bd7b265ccc33775a8a985aeead5"),
+    word!("0xcb3118521acfe552030b988439713717fdee54d9e7cb54116d4034cf89ce8a34"),
     // account_get_balance
-    word!("0x52233827fc91ef50a5dc09f74d3176011d244fd80e291ae751b64bdaa2c6cf75"),
+    word!("0x1ed792cc7775aa1ce2f32367a3d430561ec9bceb33f5bb222691c49a6bde8112"),
     // account_get_initial_balance
-    word!("0x9758302462328d6557153655562e6a419def7992997c0abbcec412cbb4f9351f"),
+    word!("0xdc1320d6f044c40d37e5e835a584b643d6e77e3fc1136f498815298e28c912b8"),
     // account_has_non_fungible_asset
-    word!("0xf975c799cffebf8565a8479475fe04c1832ef2a7484c4a2a42bbf7d8a340d649"),
+    word!("0xfaad11de0c026551df15231790c2364cc598e891444bf826da01b524b1a8ca8f"),
     // account_compute_delta_commitment
-    word!("0x952e679bcfcc1ed2b2134ca7f01d9482cf2b9845298f422688f2bcbb40c99dce"),
+    word!("0x2105d5d8a26f0552dae334c2ba30ca27b709114a37213197ba79add56949d761"),
     // account_get_num_procedures
     word!("0x53b5ec38b7841948762c258010e6e07ad93963bcaac2d83813f8edb6710dc720"),
     // account_get_procedure_root
@@ -62,13 +60,13 @@ pub const KERNEL_PROCEDURES: [Word; 53] = [
     // account_has_procedure
     word!("0x667d5ce1b7a54c3b8965666ce90e59085c97775b82eba25dddfe218db5fe137d"),
     // faucet_mint_asset
-    word!("0x8e34e99fd782b64322d8c446aabce89ba43adf2be69ebbc24f5b22dc358cfe85"),
+    word!("0x2d15f1f80b81e45d407902f80ab5ca1775040c334844da1ac59f6207c2f3b482"),
     // faucet_burn_asset
-    word!("0x4fbda1009faf2b75283a88e5a7dd3854d0739c8b33ea232580cfe245abd6b184"),
+    word!("0xabd9fbce8de124afbb543b40609ab79c10f52d502ee0fb18de4644735445a198"),
     // faucet_get_total_fungible_asset_issuance
-    word!("0x9fd36b19b7f1d3d119d927299403c0d75b55c0ff45673c97b23c3ab90371fcda"),
+    word!("0xd361b7554245e8a414771e95ef53b427d53fb4990846d8c376c7e0f744d15b87"),
     // faucet_is_non_fungible_asset_issued
-    word!("0x9a23cb2078a38fd41b037d010d4e2b277acff2f2dc5303a9d655eb7ebc19533e"),
+    word!("0xdeb2a32f89ce0015fcb12f3c17b2eb63652586728e26e160b56d11c79b40703b"),
     // input_note_get_metadata
     word!("0x7ad3e94585e7a397ee27443c98b376ed8d4ba762122af6413fde9314c00a6219"),
     // input_note_get_assets_info
@@ -86,11 +84,11 @@ pub const KERNEL_PROCEDURES: [Word; 53] = [
     // output_note_get_metadata
     word!("0xde4a5b57f9d53692459383e6cf6302ef3602a348896ed6ab6fdf67e07fa483ff"),
     // output_note_get_assets_info
-    word!("0xc1af8e03d4672761fab05e742cc267a03d090d43f1348721eeb00881ebcfead8"),
+    word!("0x7e5d726b5f25f6cfd533bd0294853f3fceea62c41e5f2fd68919d8d53a48b3f8"),
     // output_note_get_recipient
     word!("0xc824115ed79a2e1670daed8c18fba1bc15f54c5ec0ec6699de69a00b21d9df92"),
     // output_note_add_asset
-    word!("0x70bed5d5bdd012db2dc3f47a72b4d1f4c58d2be9b7b86e63c95076ebb7a80a94"),
+    word!("0x9b6929d1ce24b3a97c6fb098f2fa8d0958beb15f91e268b9c787194b0a977a0d"),
     // tx_get_num_input_notes
     word!("0xfcc186d4b65c584f3126dda1460b01eef977efd76f9e36f972554af28e33c685"),
     // tx_get_input_notes_commitment
@@ -106,7 +104,7 @@ pub const KERNEL_PROCEDURES: [Word; 53] = [
     // tx_get_block_timestamp
     word!("0x7903185b847517debb6c2072364e3e757b99ee623e97c2bd0a4661316c5c5418"),
     // tx_start_foreign_context
-    word!("0x17bd522cf79f5cb2b09362d328c517c25efab6f1b778cfc566eb7c732622ccaf"),
+    word!("0x4bfde60ab4b1e42148ceea2845ecf9aae061a577972baf348379701760d476d7"),
     // tx_end_foreign_context
     word!("0xaa0018aa8da890b73511879487f65553753fb7df22de380dd84c11e6f77eec6f"),
     // tx_get_expiration_delta

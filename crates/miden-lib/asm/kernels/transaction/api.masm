@@ -86,9 +86,10 @@ end
 # KERNEL PROCEDURES
 # =================================================================================================
 
-### ACCOUNT #####################################
+# ACCOUNT
+# -------------------------------------------------------------------------------------------------
 
-#! Returns the native account commitment at the beginning of the transaction.
+#! Returns the active account commitment at the beginning of the transaction.
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [INIT_COMMITMENT, pad(12)]
@@ -107,7 +108,7 @@ export.account_get_initial_commitment
     # => [INIT_COMMITMENT, pad(12)]
 end
 
-#! Computes the account commitment of the current account.
+#! Computes commitment to the state of the active account.
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [ACCOUNT_COMMITMENT, pad(12)]
@@ -116,9 +117,9 @@ end
 #! - ACCOUNT_COMMITMENT is the commitment of the account data.
 #!
 #! Invocation: dynexec
-export.account_compute_current_commitment
-    # compute the current account commitment
-    exec.account::compute_current_commitment
+export.account_compute_commitment
+    # compute the active account commitment
+    exec.account::compute_commitment
     # => [ACCOUNT_COMMITMENT, pad(16)]
 
     # truncate the stack
@@ -157,53 +158,61 @@ export.account_compute_delta_commitment
     # => [ACCOUNT_COMMITMENT, pad(12)]
 end
 
-#! Returns the ID of the current account.
+#! Returns the ID of the specified account.
 #!
-#! Inputs:  [pad(16)]
+#! Inputs:  [is_native, pad(15)]
 #! Outputs: [account_id_prefix, account_id_suffix, pad(14)]
 #!
 #! Where:
-#! - account_id_{prefix,suffix} are the prefix and suffix felts of the account ID of the currently
-#!   accessing account.
+#! - is_native is a boolean flag that indicates whether the account ID was requested for the native
+#!   or the active account.
+#! - account_id_{prefix,suffix} are the prefix and suffix felts of the ID of the active account.
 #!
 #! Invocation: dynexec
 export.account_get_id
-    # get the current account ID
-    exec.account::get_id
-    # => [account_id_prefix, account_id_suffix, pad(16)]
-
-    # truncate the stack
-    movup.2 drop movup.2 drop
-    # => [account_id_prefix, account_id_suffix, pad(14)]
-end
-
-#! Returns the native account ID.
-#!
-#! Inputs:  [pad(16)]
-#! Outputs: [account_id_prefix, account_id_suffix, pad(14)]
-#!
-#! Where:
-#! - account_id_{prefix,suffix} are the prefix and suffix felts of the native account ID of the
-#!   transaction.
-#!
-#! Invocation: dynexec
-export.account_get_native_id
     # get the native account ID
     exec.memory::get_native_account_id
-    # => [account_id_prefix, account_id_suffix, pad(16)]
+    # => [native_account_id_prefix, native_account_id_suffix, is_native, pad(15)]
 
-    # truncate the stack
-    movup.2 drop movup.2 drop
+    # get the active account ID
+    exec.account::get_id
+    # => [
+    #        active_account_id_prefix, active_account_id_suffix, 
+    #        native_account_id_prefix, native_account_id_suffix, 
+    #        is_native, pad(15)
+    #    ]
+
+    # prepare the stack for the first cdrop
+    movup.2 dup.4
+    # => [
+    #        is_native, native_account_id_prefix, active_account_id_prefix,
+    #        active_account_id_suffix, native_account_id_suffix, is_native, pad(15)
+    #    ]
+
+    # drop the prefix corresponding to the is_native flag
+    cdrop
+    # => [account_id_prefix, active_account_id_suffix, native_account_id_suffix, is_native, pad(15)]
+
+    # prepare the stack for the second cdrop
+    movdn.3 swap movup.2
+    # => [is_native, native_account_id_suffix, active_account_id_suffix, account_id_prefix, pad(15)]
+
+    # drop the suffix corresponding to the is_native flag
+    cdrop
+    # => [account_id_suffix, account_id_prefix, pad(15)]
+
+    # rearrange the ID parts and truncate the stack 
+    swap movup.2 drop
     # => [account_id_prefix, account_id_suffix, pad(14)]
 end
 
-#! Returns the current account nonce.
+#! Returns the active account nonce.
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [nonce, pad(15)]
 #!
 #! Where:
-#! - nonce is the current account's nonce.
+#! - nonce is the active account's nonce.
 #!
 #! Invocation: dynexec
 export.account_get_nonce
@@ -250,7 +259,7 @@ export.account_incr_nonce
     # => [final_nonce, pad(15)]
 end
 
-#! Gets the account code commitment of the current account.
+#! Gets the account code commitment of the active account.
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [CODE_COMMITMENT, pad(12)]
@@ -273,7 +282,7 @@ export.account_get_code_commitment
     # => [CODE_COMMITMENT, pad(12)]
 end
 
-#! Returns the storage commitment of the native account at the beginning of the transaction.
+#! Returns the storage commitment of the active account at the beginning of the transaction.
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [INIT_STORAGE_COMMITMENT, pad(12)]
@@ -292,7 +301,7 @@ export.account_get_initial_storage_commitment
     # => [INIT_STORAGE_COMMITMENT, pad(12)]
 end
 
-#! Computes the latest account storage commitment of the current account.
+#! Computes the latest account storage commitment of the active account.
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [STORAGE_COMMITMENT, pad(12)]
@@ -513,7 +522,7 @@ export.account_set_map_item
     # => [OLD_MAP_ROOT, OLD_VALUE, pad(8)]
 end
 
-#! Returns the vault root of the native account at the beginning of the transaction.
+#! Returns the vault root of the active account at the beginning of the transaction.
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [INIT_VAULT_ROOT, pad(12)]
@@ -614,7 +623,7 @@ export.account_remove_asset
     # => [ASSET, pad(12)]
 end
 
-#! Returns the balance of the fungible asset associated with the provided faucet_id in the current
+#! Returns the balance of the fungible asset associated with the provided faucet_id in the active
 #! account's vault.
 #!
 #! Inputs:  [faucet_id_prefix, faucet_id_suffix, pad(14)]
@@ -634,7 +643,7 @@ export.account_get_balance
     # => [balance, pad(15)]
 end
 
-#! Returns the balance of the fungible asset associated with the provided faucet_id in the current 
+#! Returns the balance of the fungible asset associated with the provided faucet_id in the active 
 #! account's vault at the beginning of the transaction.
 #!
 #! Inputs:  [faucet_id_prefix, faucet_id_suffix, pad(14)]
@@ -654,7 +663,8 @@ export.account_get_initial_balance
     # => [init_balance, pad(15)]
 end
 
-#! Returns a boolean indicating whether the non-fungible asset is present in the current account's vault.
+#! Returns a boolean indicating whether the non-fungible asset is present in the active account's
+#! vault.
 #!
 #! Inputs:  [ASSET, pad(12)]
 #! Outputs: [has_asset, pad(15)]
@@ -672,7 +682,7 @@ export.account_has_non_fungible_asset
     # => [has_asset, pad(15)]
 end
 
-#! Returns 1 if a procedure was called during transaction execution, and 0 otherwise.
+#! Returns 1 if a native account procedure was called during transaction execution, and 0 otherwise.
 #!
 #! Inputs:  [PROC_ROOT, pad(12)]
 #! Outputs: [was_called, pad(15)]
@@ -695,13 +705,13 @@ export.account_was_procedure_called
     # => [was_called, pad(15)]
 end
 
-#! Returns the number of procedures in the current account.
+#! Returns the number of procedures in the active account.
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [num_procedures, pad(15)]
 #!
 #! Where:
-#! - num_procedures is the number of procedures in the current account.
+#! - num_procedures is the number of procedures in the active account.
 #!
 #! Invocation: dynexec
 export.account_get_num_procedures
@@ -714,7 +724,7 @@ export.account_get_num_procedures
     # => [num_procedures, pad(15)]
 end
 
-#! Returns the procedure root for the procedure at the specified index.
+#! Returns the procedure root for the active account procedure at the specified index.
 #!
 #! Inputs:  [index, pad(15)]
 #! Outputs: [PROC_ROOT, pad(12)]
@@ -759,7 +769,8 @@ export.account_has_procedure
     # => [is_procedure_available, pad(15)]
 end
 
-### FAUCET ######################################
+# FAUCET
+# -------------------------------------------------------------------------------------------------
 
 #! Mint an asset from the faucet the transaction is being executed against.
 #!
@@ -888,7 +899,8 @@ export.faucet_is_non_fungible_asset_issued
     # => [is_issued, pad(15)]
 end
 
-### INPUT NOTE ##################################
+# INPUT NOTE
+# -------------------------------------------------------------------------------------------------
 
 #! Returns the assets information of the specified input note.
 #!
@@ -1130,7 +1142,8 @@ export.input_note_get_script_root
     # => [SCRIPT_ROOT, pad(12)]
 end
 
-### OUTPUT NOTE #################################
+# OUTPUT NOTE
+# -------------------------------------------------------------------------------------------------
 
 #! Creates a new note and returns its index.
 #!
@@ -1158,14 +1171,14 @@ end
 #! Adds the ASSET to the note specified by the index.
 #!
 #! Inputs:  [note_idx, ASSET, pad(11)]
-#! Outputs: [note_idx, ASSET, pad(11)]
+#! Outputs: [pad(16)]
 #!
 #! Where:
 #! - note_idx is the index of the note to which the asset is added.
 #! - ASSET can be a fungible or non-fungible asset.
 #!
 #! Panics if:
-#! - the procedure is called when the current account is not the native one.
+#! - the procedure is called when the active account is not the native one.
 #!
 #! Invocation: dynexec
 export.output_note_add_asset
@@ -1173,12 +1186,8 @@ export.output_note_add_asset
     exec.memory::assert_native_account
     # => [note_idx, ASSET, pad(11)]
 
-    # duplicate the asset word to be able to return it
-    movdn.4 dupw movup.8
-    # => [note_idx, ASSET, ASSET, pad(11)]
-
     exec.output_note::add_asset
-    # => [note_idx, ASSET, pad(11)]
+    # => [pad(16)]
 end
 
 #! Returns the information about assets in the output note with the specified index.
@@ -1273,7 +1282,8 @@ export.output_note_get_metadata
     # => [METADATA, pad(12)]
 end
 
-### TRANSACTION #################################
+# TRANSACTION
+# -------------------------------------------------------------------------------------------------
 
 #! Returns the input notes commitment.
 #!
@@ -1415,7 +1425,7 @@ end
 #!
 #! This allows calling procedures on an account different from the native account. It loads the
 #! foreign account into memory, unless already loaded. It pushes the foreign account onto the
-#! account stack, which makes the foreign account the current account.
+#! account stack, which makes the foreign account the active account.
 #!
 #! Inputs:
 #!   Operand stack: [foreign_account_id_prefix, foreign_account_id_suffix, pad(14)]
@@ -1458,25 +1468,25 @@ export.tx_start_foreign_context
         exec.memory::push_ptr_to_account_stack
         # OS => [foreign_account_id_prefix, foreign_account_id_suffix, pad(14)]
 
-        # load the advice data into the current account memory section
+        # load the advice data into the active account memory section
         exec.account::load_foreign_account
     end
 
     # make sure that the state of the loaded foreign account corresponds to this commitment in the
     # account database
-    exec.account::validate_current_foreign_account
+    exec.account::validate_active_foreign_account
     # => [pad(16)]
 end
 
 #! Ends a foreign account context.
 #!
-#! This pops the top of the account stack, making the previous account the current account.
+#! This pops the top of the account stack, making the previous account the active account.
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [pad(16)]
 #!
 #! Panics if:
-#! - the current account is the native account.
+#! - the active account is the native account.
 #!
 #! Invocation: dynexec
 export.tx_end_foreign_context

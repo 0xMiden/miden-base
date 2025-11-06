@@ -6,7 +6,7 @@ use miden_crypto::merkle::InnerNodeInfo;
 use miden_processor::MastNodeExt;
 
 use super::{Felt, Hasher, Word};
-use crate::account::{PublicKeyCommitment, Signature};
+use crate::account::auth::{PublicKeyCommitment, Signature};
 use crate::note::{NoteId, NoteRecipient};
 use crate::utils::serde::{
     ByteReader,
@@ -175,6 +175,10 @@ impl TransactionArgs {
             (sn_script_hash, concat_words(sn_hash, script.root())),
             (note_recipient.digest(), concat_words(sn_script_hash, inputs.commitment())),
             (inputs.commitment(), inputs.to_elements()),
+            (
+                Hasher::hash_elements(inputs.commitment().as_elements()),
+                vec![Felt::from(inputs.num_values())],
+            ),
             (script.root(), script_encoded),
         ];
 
@@ -328,7 +332,7 @@ impl TransactionScript {
 impl Serializable for TransactionScript {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         self.mast.write_into(target);
-        target.write_u32(self.entrypoint.as_u32());
+        target.write_u32(u32::from(self.entrypoint));
     }
 }
 

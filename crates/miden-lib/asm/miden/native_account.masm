@@ -17,15 +17,16 @@ use.miden::kernel_proc_offsets
 #!
 #! Invocation: exec
 export.get_id
-    # start padding the stack
-    push.0.0.0
-
-    exec.kernel_proc_offsets::account_get_native_id_offset
-    # => [offset, 0, 0, 0]
-
     # pad the stack
-    padw swapw padw padw swapdw
-    # => [offset, pad(15)]
+    padw padw padw push.0.0
+    # => [pad(14)]
+
+    # push the flag indicating that the ID of the native account was requested
+    push.1
+    # => [is_native = 1, pad(14)]
+
+    exec.kernel_proc_offsets::account_get_id_offset
+    # => [offset, is_native = 0, pad(14)]
 
     syscall.exec_kernel_proc
     # => [account_id_prefix, account_id_suffix, pad(14)]

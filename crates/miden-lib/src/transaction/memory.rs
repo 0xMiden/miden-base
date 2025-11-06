@@ -96,7 +96,7 @@ pub const NATIVE_ACCT_STORAGE_COMMITMENT_DIRTY_FLAG_PTR: MemoryAddress = 16;
 pub const TX_EXPIRATION_BLOCK_NUM_PTR: MemoryAddress = 20;
 
 /// The memory address at which the pointer to the stack element containing the pointer to the
-/// currently active account data is stored.
+/// active account data is stored.
 ///
 /// The stack starts at the address `29`. Stack has a length of `64` elements meaning that the
 /// maximum depth of FPI calls is `63` — the first slot is always occupied by the native account

@@ -8,16 +8,18 @@ The Miden protocol library provides a set of procedures that wrap transaction ke
 
 ## Contexts
 
+Here and in other places we use the notion of _active account_: it is the account which is currently being accessed.
+
 The Miden VM contexts from which procedures can be called are:
 
 - **Account**: Can only be called from native or foreign accounts.
-  - **Native**: Can only be called when the current account is the native account.
+  - **Native**: Can only be called when the active account is the native account.
   - **Auth**: Can only be called from the authentication procedure. Since it is called on the native account, it implies **Native** and **Account**.
-  - **Faucet**: Can only be called when the current account is a faucet.
+  - **Faucet**: Can only be called when the active account is a faucet.
 - **Note**: Can only be called from a note script.
 - **Any**: Can be called from any context.
 
-If a procedure has multiple context requirements they are combined using `&`. For instance, "Native & Account" means the procedure can only be called when the current account is the native one _and_ only from the account context.
+If a procedure has multiple context requirements they are combined using `&`. For instance, "Native & Account" means the procedure can only be called when the active account is the native one _and_ only from the account context.
 
 ## Implementation
 
@@ -42,9 +44,9 @@ Active account procedures can be used to read from storage, fetch or compute com
 | `get_initial_item`               | Gets the initial item from the account storage slot as it was at the beginning of the transaction.<br/><br/>**Inputs:** `[index]`<br/>**Outputs:** `[VALUE]`                                              | Account          |
 | `get_map_item`                   | Returns the VALUE located under the specified KEY within the map contained in the given account storage slot.<br/><br/>**Inputs:** `[index, KEY]`<br/>**Outputs:** `[VALUE]`                              | Account          |
 | `get_initial_map_item`           | Gets the initial VALUE from the account storage map as it was at the beginning of the transaction.<br/><br/>**Inputs:** `[index, KEY]`<br/>**Outputs:** `[VALUE]`                                         | Account          |
-| `get_balance`                    | Returns the balance of the fungible asset associated with the provided faucet_id in the current account's vault.<br/><br/>**Inputs:** `[faucet_id_prefix, faucet_id_suffix]`<br/>**Outputs:** `[balance]` | Any              |
-| `get_initial_balance`            | Returns the balance of the fungible asset associated with the provided faucet_id in the current account's vault at the beginning of the transaction.<br/><br/>**Inputs:** `[faucet_id_prefix, faucet_id_suffix]`<br/>**Outputs:** `[init_balance]` | Any              |
-| `has_non_fungible_asset`         | Returns a boolean indicating whether the non-fungible asset is present in the current account's vault.<br/><br/>**Inputs:** `[ASSET]`<br/>**Outputs:** `[has_asset]`                                      | Any              |
+| `get_balance`                    | Returns the balance of the fungible asset associated with the provided faucet_id in the active account's vault.<br/><br/>**Inputs:** `[faucet_id_prefix, faucet_id_suffix]`<br/>**Outputs:** `[balance]` | Any              |
+| `get_initial_balance`            | Returns the balance of the fungible asset associated with the provided faucet_id in the active account's vault at the beginning of the transaction.<br/><br/>**Inputs:** `[faucet_id_prefix, faucet_id_suffix]`<br/>**Outputs:** `[init_balance]` | Any              |
+| `has_non_fungible_asset`         | Returns a boolean indicating whether the non-fungible asset is present in the active account's vault.<br/><br/>**Inputs:** `[ASSET]`<br/>**Outputs:** `[has_asset]`                                      | Any              |
 | `get_initial_vault_root`         | Returns the vault root of the active account at the beginning of the transaction.<br/><br/>**Inputs:** `[]`<br/>**Outputs:** `[INIT_VAULT_ROOT]`                                                          | Any              |
 | `get_vault_root`                 | Returns the vault root of the active account.<br/><br/>**Inputs:** `[]`<br/>**Outputs:** `[VAULT_ROOT]`                                                                                                  | Any              |
 | `get_num_procedures`             | Returns the number of procedures in the active account.<br/><br/>**Inputs:** `[]`<br/>**Outputs:** `[num_procedures]`                                                                                     | Any              |
@@ -105,7 +107,7 @@ Output note procedures can be used to fetch data on output notes created by the 
 | `create`          | Creates a new output note and returns its index.<br/><br/>**Inputs:** `[tag, aux, note_type, execution_hint, RECIPIENT]`<br/>**Outputs:** `[note_idx]`                                                           | Native & Account |
 | `get_assets_info` | Returns the information about assets in the output note with the specified index.<br/><br/>**Inputs:** `[note_index]`<br/>**Outputs:** `[ASSETS_COMMITMENT, num_assets]`                                         | Any              |
 | `get_assets`      | Writes the assets of the output note with the specified index into memory starting at the specified address.<br/><br/>**Inputs:** `[dest_ptr, note_index]`<br/>**Outputs:** `[num_assets, dest_ptr, note_index]` | Any              |
-| `add_asset`       | Adds the `ASSET` to the output note specified by the index.<br/><br/>**Inputs:** `[ASSET, note_idx]`<br/>**Outputs:** `[ASSET, note_idx]`                                                                        | Native           |
+| `add_asset`       | Adds the `ASSET` to the output note specified by the index.<br/><br/>**Inputs:** `[ASSET, note_idx]`<br/>**Outputs:** `[]`                                                                        | Native           |
 | `get_recipient`   | Returns the [recipient](note#note-recipient-restricting-consumption) of the output note with the specified index.<br/><br/>**Inputs:** `[note_index]`<br/>**Outputs:** `[RECIPIENT]`                             | Any              |
 | `get_metadata`    | Returns the [metadata](note#metadata) of the output note with the specified index.<br/><br/>**Inputs:** `[note_index]`<br/>**Outputs:** `[METADATA]`                                                             | Any              |
 

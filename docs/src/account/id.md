@@ -45,13 +45,17 @@ Users can choose whether their accounts are stored publicly or privately. The pr
 
 ## Encoding
 
+:::info
+Bech32 is the preferred encoding format and should be used for user-facing applications like wallets or websites.
+:::
+
 An `Account` ID can be encoded in different formats:
 
 1. [**Bech32**](https://github.com/bitcoin/bips/blob/master/bip-0173.mediawiki) (user-facing):
-  - Example: `mm1qrt4skk6t26a9vquwlad3rq2usul8fy2`
+  - Example: `mm1apk5f8jqxnadegr46xtklmm78qhdgkwc`
   - **Benefits**:
     - Built-in error detection via checksum algorithm
-    - Human-readable prefix indicates network type
+    - Human-readable prefix indicates network ID
     - Less prone to transcription errors
   - **Structure**:
     - [Human-readable prefix](https://github.com/satoshilabs/slips/blob/master/slip-0173.md) that

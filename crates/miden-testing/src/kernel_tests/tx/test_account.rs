@@ -71,7 +71,7 @@ use crate::{
 // ================================================================================================
 
 #[tokio::test]
-pub async fn compute_current_commitment() -> miette::Result<()> {
+pub async fn compute_commitment() -> miette::Result<()> {
     let account = Account::mock(ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE, Auth::IncrNonce);
 
     // Precompute a commitment to a changed account so we can assert it during tx script execution.
@@ -130,7 +130,7 @@ pub async fn compute_current_commitment() -> miette::Result<()> {
 
             # assert that the commitment has changed
             exec.word::eq
-            assertz.err="storage commitment should have been updated by compute_current_commitment"
+            assertz.err="storage commitment should have been updated by compute_commitment"
             # => []
         end
     "#,
@@ -438,22 +438,22 @@ async fn test_get_map_item() -> miette::Result<()> {
 
         let exec_output = &mut tx_context.execute_code(&code).await?;
         assert_eq!(
-            exec_output.get_stack_word(0),
+            exec_output.get_stack_word_be(0),
             value,
             "get_map_item result doesn't match the expected value",
         );
         assert_eq!(
-            exec_output.get_stack_word(4),
+            exec_output.get_stack_word_be(4),
             Word::empty(),
             "The rest of the stack must be cleared",
         );
         assert_eq!(
-            exec_output.get_stack_word(8),
+            exec_output.get_stack_word_be(8),
             Word::empty(),
             "The rest of the stack must be cleared",
         );
         assert_eq!(
-            exec_output.get_stack_word(12),
+            exec_output.get_stack_word_be(12),
             Word::empty(),
             "The rest of the stack must be cleared",
         );
@@ -506,9 +506,21 @@ async fn test_get_storage_slot_type() -> miette::Result<()> {
         assert_eq!(exec_output.get_stack_element(1), ZERO, "the rest of the stack is empty");
         assert_eq!(exec_output.get_stack_element(2), ZERO, "the rest of the stack is empty");
         assert_eq!(exec_output.get_stack_element(3), ZERO, "the rest of the stack is empty");
-        assert_eq!(exec_output.get_stack_word(4), Word::empty(), "the rest of the stack is empty");
-        assert_eq!(exec_output.get_stack_word(8), Word::empty(), "the rest of the stack is empty");
-        assert_eq!(exec_output.get_stack_word(12), Word::empty(), "the rest of the stack is empty");
+        assert_eq!(
+            exec_output.get_stack_word_be(4),
+            Word::empty(),
+            "the rest of the stack is empty"
+        );
+        assert_eq!(
+            exec_output.get_stack_word_be(8),
+            Word::empty(),
+            "the rest of the stack is empty"
+        );
+        assert_eq!(
+            exec_output.get_stack_word_be(12),
+            Word::empty(),
+            "the rest of the stack is empty"
+        );
     }
 
     Ok(())
@@ -602,12 +614,12 @@ async fn test_set_map_item() -> miette::Result<()> {
 
     assert_eq!(
         new_storage_map.root(),
-        exec_output.get_stack_word(0),
+        exec_output.get_stack_word_be(0),
         "get_item must return the new updated value",
     );
     assert_eq!(
         storage_item.slot.value(),
-        exec_output.get_stack_word(4),
+        exec_output.get_stack_word_be(4),
         "The original value stored in the map doesn't match the expected value",
     );
 
@@ -990,82 +1002,6 @@ async fn test_compute_storage_commitment() -> anyhow::Result<()> {
         "#,
     );
     tx_context.execute_code(&code).await?;
-
-    Ok(())
-}
-
-/// Tests that the storage map updates for a _new public_ account in an executed and proven
-/// transaction match up.
-///
-/// This is an interesting test case because for new public accounts the prover converts the partial
-/// account into a full account as a temporary measure. Because of the additional hashing of map
-/// keys in storage maps, this test ensures that the partial storage map is correctly converted into
-/// a full storage map. If we end up representing new public accounts as account deltas, this test
-/// can likely go away.
-#[tokio::test]
-async fn proven_tx_storage_map_matches_executed_tx_for_new_account() -> anyhow::Result<()> {
-    // Build a public account so the proven transaction includes the account update.
-    let mock_slots = AccountStorage::mock_storage_slots();
-    let account = AccountBuilder::new([1; 32])
-        .storage_mode(AccountStorageMode::Public)
-        .with_auth_component(Auth::IncrNonce)
-        .with_component(MockAccountComponent::with_slots(mock_slots.clone()))
-        .build()?;
-
-    // The index of the mock map in account storage is 2.
-    let map_index = 2u8;
-    // Fetch a random existing key from the map.
-    let StorageSlot::Map(mock_map) = &mock_slots[map_index as usize] else {
-        panic!("expected map");
-    };
-    let existing_key = mock_map.entries().next().unwrap().0;
-
-    let value0 = Word::from([3, 4, 5, 6u32]);
-
-    let code = format!(
-        "
-      use.mock::account
-
-      begin
-          # Update an existing key.
-          push.{value0}
-          push.{existing_key}
-          push.{map_index}
-          # => [index, KEY, VALUE]
-          call.account::set_map_item
-
-          exec.::std::sys::truncate_stack
-      end
-      "
-    );
-
-    let builder = ScriptBuilder::with_mock_libraries()?;
-    let source_manager = builder.source_manager();
-    let tx_script = builder.compile_tx_script(code)?;
-
-    let tx = TransactionContextBuilder::new(account.clone())
-        .tx_script(tx_script)
-        .with_source_manager(source_manager)
-        .build()?
-        .execute()
-        .await?;
-
-    let map_delta = tx.account_delta().storage().maps().get(&map_index).unwrap();
-    assert_eq!(
-        map_delta.entries().get(&LexicographicWord::new(*existing_key)).unwrap(),
-        &value0
-    );
-
-    let proven_tx = LocalTransactionProver::default().prove_dummy(tx.clone())?;
-
-    let AccountUpdateDetails::Delta(delta) = proven_tx.account_update().details() else {
-        panic!("expected delta");
-    };
-
-    let proven_tx_account = Account::try_from(delta)?;
-    let exec_tx_account = Account::try_from(tx.account_delta())?;
-
-    assert_eq!(proven_tx_account.storage(), exec_tx_account.storage());
 
     Ok(())
 }
