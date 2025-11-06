@@ -69,10 +69,11 @@ where
     }
 
     /// Consumes `self` and returns the account delta, output notes and transaction progress.
-    pub fn into_parts(
-        self,
-    ) -> (AccountDelta, InputNotes<InputNote>, Vec<OutputNote>, TransactionProgress) {
-        self.base_host.into_parts()
+    pub fn into_parts(self) -> (AccountDelta, InputNotes<InputNote>, Vec<OutputNote>) {
+        // Transaction Progress does not contain any meaningful data in the prover host.
+        let (pre_fee_account_delta, input_notes, output_notes, _tx_progress) =
+            self.base_host.into_parts();
+        (pre_fee_account_delta, input_notes, output_notes)
     }
 }
 
@@ -213,65 +214,6 @@ where
                 account_delta_commitment,
             )),
 
-            TransactionEvent::PrologueStart { clk } => {
-                self.base_host.tx_progress_mut().start_prologue(clk);
-                Ok(Vec::new())
-            },
-            TransactionEvent::PrologueEnd { clk } => {
-                self.base_host.tx_progress_mut().end_prologue(clk);
-                Ok(Vec::new())
-            },
-
-            TransactionEvent::NotesProcessingStart { clk } => {
-                self.base_host.tx_progress_mut().start_notes_processing(clk);
-                Ok(Vec::new())
-            },
-            TransactionEvent::NotesProcessingEnd { clk } => {
-                self.base_host.tx_progress_mut().end_notes_processing(clk);
-                Ok(Vec::new())
-            },
-
-            TransactionEvent::NoteExecutionStart { note_id, clk } => {
-                self.base_host.tx_progress_mut().start_note_execution(clk, note_id);
-                Ok(Vec::new())
-            },
-            TransactionEvent::NoteExecutionEnd { clk } => {
-                self.base_host.tx_progress_mut().end_note_execution(clk);
-                Ok(Vec::new())
-            },
-
-            TransactionEvent::TxScriptProcessingStart { clk } => {
-                self.base_host.tx_progress_mut().start_tx_script_processing(clk);
-                Ok(Vec::new())
-            },
-            TransactionEvent::TxScriptProcessingEnd { clk } => {
-                self.base_host.tx_progress_mut().end_tx_script_processing(clk);
-                Ok(Vec::new())
-            },
-
-            TransactionEvent::EpilogueStart { clk } => {
-                self.base_host.tx_progress_mut().start_epilogue(clk);
-                Ok(Vec::new())
-            },
-            TransactionEvent::EpilogueEnd { clk } => {
-                self.base_host.tx_progress_mut().end_epilogue(clk);
-                Ok(Vec::new())
-            },
-
-            TransactionEvent::EpilogueAuthProcStart { clk } => {
-                self.base_host.tx_progress_mut().start_auth_procedure(clk);
-                Ok(Vec::new())
-            },
-            TransactionEvent::EpilogueAuthProcEnd { clk } => {
-                self.base_host.tx_progress_mut().end_auth_procedure(clk);
-                Ok(Vec::new())
-            },
-
-            TransactionEvent::EpilogueAfterTxCyclesObtained { clk } => {
-                self.base_host.tx_progress_mut().epilogue_after_tx_cycles_obtained(clk);
-                Ok(Vec::new())
-            },
-
             // We don't track enough information to handle this event. Since this just improves
             // error messages for users and the error should not be relevant during proving, we
             // ignore it.
@@ -279,6 +221,21 @@ where
 
             TransactionEvent::LinkMapSet { advice_mutation } => Ok(advice_mutation),
             TransactionEvent::LinkMapGet { advice_mutation } => Ok(advice_mutation),
+
+            // We do not track tx progress during proving.
+            TransactionEvent::PrologueStart { .. }
+            | TransactionEvent::PrologueEnd { .. }
+            | TransactionEvent::NotesProcessingStart { .. }
+            | TransactionEvent::NotesProcessingEnd { .. }
+            | TransactionEvent::NoteExecutionStart { .. }
+            | TransactionEvent::NoteExecutionEnd { .. }
+            | TransactionEvent::TxScriptProcessingStart { .. }
+            | TransactionEvent::TxScriptProcessingEnd { .. }
+            | TransactionEvent::EpilogueStart { .. }
+            | TransactionEvent::EpilogueEnd { .. }
+            | TransactionEvent::EpilogueAuthProcStart { .. }
+            | TransactionEvent::EpilogueAuthProcEnd { .. }
+            | TransactionEvent::EpilogueAfterTxCyclesObtained { .. } => Ok(Vec::new()),
         };
 
         result.map_err(EventError::from)

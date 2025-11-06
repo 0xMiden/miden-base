@@ -119,6 +119,17 @@ pub(crate) enum TransactionEvent {
         account_delta_commitment: Word,
     },
 
+    EpilogueBeforeTxFeeRemovedFromAccount {
+        fee_asset: FungibleAsset,
+    },
+
+    LinkMapSet {
+        advice_mutation: Vec<AdviceMutation>,
+    },
+    LinkMapGet {
+        advice_mutation: Vec<AdviceMutation>,
+    },
+
     PrologueStart {
         clk: RowIndex,
     },
@@ -164,17 +175,6 @@ pub(crate) enum TransactionEvent {
 
     EpilogueAfterTxCyclesObtained {
         clk: RowIndex,
-    },
-
-    EpilogueBeforeTxFeeRemovedFromAccount {
-        fee_asset: FungibleAsset,
-    },
-
-    LinkMapSet {
-        advice_mutation: Vec<AdviceMutation>,
-    },
-    LinkMapGet {
-        advice_mutation: Vec<AdviceMutation>,
     },
 }
 
@@ -555,6 +555,22 @@ impl TransactionEvent {
                 }
             },
 
+            TransactionEventId::EpilogueBeforeTxFeeRemovedFromAccount => {
+                // Expected stack state: [event, FEE_ASSET]
+                let fee_asset = process.get_stack_word_be(1);
+                let fee_asset = FungibleAsset::try_from(fee_asset)
+                    .map_err(TransactionKernelError::FailedToConvertFeeAsset)?;
+
+                TransactionEvent::EpilogueBeforeTxFeeRemovedFromAccount { fee_asset }
+            },
+
+            TransactionEventId::LinkMapSet => TransactionEvent::LinkMapSet {
+                advice_mutation: LinkMap::handle_set_event(process),
+            },
+            TransactionEventId::LinkMapGet => TransactionEvent::LinkMapGet {
+                advice_mutation: LinkMap::handle_get_event(process),
+            },
+
             TransactionEventId::PrologueStart => {
                 TransactionEvent::PrologueStart { clk: process.clk() }
             },
@@ -599,23 +615,6 @@ impl TransactionEvent {
 
             TransactionEventId::EpilogueAfterTxCyclesObtained => {
                 TransactionEvent::EpilogueAfterTxCyclesObtained { clk: process.clk() }
-            },
-            TransactionEventId::EpilogueBeforeTxFeeRemovedFromAccount => {
-                // Expected stack state: [event, FEE_ASSET]
-                let fee_asset = process.get_stack_word_be(1);
-                let fee_asset = FungibleAsset::try_from(fee_asset)
-                    .map_err(TransactionKernelError::FailedToConvertFeeAsset)?;
-
-                TransactionEvent::EpilogueBeforeTxFeeRemovedFromAccount { fee_asset }
-            },
-
-            TransactionEventId::LinkMapSet => {
-                let advice_mutation = LinkMap::handle_set_event(process);
-                TransactionEvent::LinkMapSet { advice_mutation }
-            },
-            TransactionEventId::LinkMapGet => {
-                let advice_mutation = LinkMap::handle_get_event(process);
-                TransactionEvent::LinkMapGet { advice_mutation }
             },
         };
 

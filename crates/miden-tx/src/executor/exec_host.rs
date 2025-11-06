@@ -699,6 +699,13 @@ where
                     account_delta_commitment,
                 )),
 
+                TransactionEvent::EpilogueBeforeTxFeeRemovedFromAccount { fee_asset } => {
+                    self.on_before_tx_fee_removed_from_account(fee_asset).await
+                },
+
+                TransactionEvent::LinkMapSet { advice_mutation } => Ok(advice_mutation),
+                TransactionEvent::LinkMapGet { advice_mutation } => Ok(advice_mutation),
+
                 TransactionEvent::PrologueStart { clk } => {
                     self.base_host.tx_progress_mut().start_prologue(clk);
                     Ok(Vec::new())
@@ -757,13 +764,6 @@ where
                     self.base_host.tx_progress_mut().epilogue_after_tx_cycles_obtained(clk);
                     Ok(Vec::new())
                 },
-
-                TransactionEvent::EpilogueBeforeTxFeeRemovedFromAccount { fee_asset } => {
-                    self.on_before_tx_fee_removed_from_account(fee_asset).await
-                },
-
-                TransactionEvent::LinkMapSet { advice_mutation } => Ok(advice_mutation),
-                TransactionEvent::LinkMapGet { advice_mutation } => Ok(advice_mutation),
             };
 
             result.map_err(EventError::from)
