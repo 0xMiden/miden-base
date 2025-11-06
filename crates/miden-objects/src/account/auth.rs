@@ -303,10 +303,13 @@ impl Signature {
 
     /// Converts this signature to a sequence of field elements in the format expected by the
     /// native verification procedure in the VM.
-    pub fn to_prepared_signature(&self) -> Vec<Felt> {
+    pub fn to_prepared_signature(&self, msg: Word) -> Vec<Felt> {
+        // TODO: the `expect()` should be changed to an error; but that will be a part of a bigger
+        // refactoring
         match self {
             Signature::RpoFalcon512(sig) => prepare_rpo_falcon512_signature(sig),
-            Signature::EcdsaK256Keccak(sig) => prepare_ecdsa_k256_keccak_signature(sig),
+            Signature::EcdsaK256Keccak(sig) => miden_stdlib::prepare_ecdsa_signature(msg, sig)
+                .expect("inferring public key from signature and message should succeed"),
         }
     }
 }
@@ -391,22 +394,4 @@ fn prepare_rpo_falcon512_signature(sig: &rpo_falcon512::Signature) -> Vec<Felt> 
 
     result.reverse();
     result
-}
-
-/// Converts a ECDSA [ecdsa_k256_keccak::Signature] to a vector of values to be pushed to be
-/// written to memory. The values are the ones required for a ECDSA signature precompile inside
-/// the Miden VM.
-fn prepare_ecdsa_k256_keccak_signature(sig: &ecdsa_k256_keccak::Signature) -> Vec<Felt> {
-    const BYTES_PER_U32: usize = size_of::<u32>();
-
-    let bytes = sig.to_bytes();
-    bytes
-        .chunks(BYTES_PER_U32)
-        .map(|chunk| {
-            // Pack up to 4 bytes into a u32 in little-endian format
-            let mut packed = [0u8; BYTES_PER_U32];
-            packed[..chunk.len()].copy_from_slice(chunk);
-            Felt::from(u32::from_le_bytes(packed))
-        })
-        .collect()
 }
