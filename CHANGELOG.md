@@ -3,6 +3,7 @@
 ## 0.12.2 (unreleased)
 
 - Added `create_mint_note` and `create_burn_note` helper functions for creating standardized MINT and BURN notes ([#2061](https://github.com/0xMiden/miden-base/pull/2061)).
+- [BREAKING] Fix ECDSA signature preparation in `Signature::to_prepared_signature()` method  ([#2074](https://github.com/0xMiden/miden-base/pull/2074)).
 
 ## 0.12.1 (2025-11-06)
 
