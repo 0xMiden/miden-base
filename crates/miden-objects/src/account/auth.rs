@@ -283,7 +283,7 @@ impl Deserializable for PublicKey {
 /// let secret_key = SecretKey::new();
 /// let message = Word::default();
 /// let signature: Signature = secret_key.sign(message).into();
-/// let prepared_signature: Vec<Felt> = signature.to_prepared_signature();
+/// let prepared_signature: Vec<Felt> = signature.to_prepared_signature(message);
 /// ```
 #[derive(Clone, Debug)]
 #[repr(u8)]
