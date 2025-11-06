@@ -361,7 +361,7 @@ mod tests {
         let script1_code = "begin push.1 end";
         let program1 = assembler1
             .assemble_program(script1_code)
-            .expect("Failed to assemble note script 1");
+            .expect("failed to assemble note script 1");
         let note_script1 = NoteScript::new(program1);
         let script_root1 = note_script1.root();
 
@@ -369,7 +369,7 @@ mod tests {
         let script2_code = "begin push.2 push.3 add end";
         let program2 = assembler2
             .assemble_program(script2_code)
-            .expect("Failed to assemble note script 2");
+            .expect("failed to assemble note script 2");
         let note_script2 = NoteScript::new(program2);
         let script_root2 = note_script2.root();
 
@@ -378,21 +378,21 @@ mod tests {
             .add_note_script(note_script1.clone())
             .add_note_script(note_script2.clone())
             .build()
-            .expect("Failed to build transaction context");
+            .expect("failed to build transaction context");
 
         // Assert that fetching both note scripts works
         let retrieved_script1 = tx_context
             .get_note_script(script_root1)
             .await
-            .expect("Failed to get note script 1")
-            .expect("Note script 1 should exist");
+            .expect("failed to get note script 1")
+            .expect("note script 1 should exist");
         assert_eq!(retrieved_script1, note_script1);
 
         let retrieved_script2 = tx_context
             .get_note_script(script_root2)
             .await
-            .expect("Failed to get note script 2")
-            .expect("Note script 2 should exist");
+            .expect("failed to get note script 2")
+            .expect("note script 2 should exist");
         assert_eq!(retrieved_script2, note_script2);
 
         // Fetching a non-existent one returns None
