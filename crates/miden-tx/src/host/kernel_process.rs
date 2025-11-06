@@ -155,17 +155,19 @@ impl<'a> TransactionKernelProcess for ProcessState<'a> {
         inputs_commitment: &Word,
     ) -> Result<NoteInputs, TransactionKernelError> {
         let inputs_data = self.advice_provider().get_mapped_values(inputs_commitment);
-        let inputs_commitment_hash = Hasher::hash_elements(inputs_commitment.as_elements());
-        let num_inputs = self.advice_provider().get_mapped_values(&inputs_commitment_hash);
 
         match inputs_data {
             None => Ok(NoteInputs::default()),
             Some(inputs) => {
-                let num_inputs = num_inputs.ok_or_else(|| {
-                    TransactionKernelError::other(
-                        "expected num_inputs to be present in advice provider",
-                    )
-                })?;
+                let inputs_commitment_hash = Hasher::hash_elements(inputs_commitment.as_elements());
+                let num_inputs = self
+                    .advice_provider()
+                    .get_mapped_values(&inputs_commitment_hash)
+                    .ok_or_else(|| {
+                        TransactionKernelError::other(
+                            "expected num_inputs to be present in advice provider",
+                        )
+                    })?;
                 if num_inputs.len() != 1 {
                     return Err(TransactionKernelError::other(
                         "expected num_inputs advice entry to contain exactly one element",
