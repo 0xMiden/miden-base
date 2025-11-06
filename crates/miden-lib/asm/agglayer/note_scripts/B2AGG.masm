@@ -17,7 +17,6 @@ const.ERR_B2AGG_WRONG_NUMBER_OF_ASSETS="B2AGG script requires exactly 1 note ass
 #! - destination_address_4: bytes 16-19
 #!
 begin
-
     # Check if reclaim
     exec.active_account::get_id
     # => [account_id_prefix, account_id_suffix]
@@ -32,6 +31,17 @@ begin
         exec.active_note::add_assets_to_account
         # => []
     else
+        push.0 exec.active_note::get_inputs
+        # => [num_inputs, dest_ptr]
+
+        # do check that inputs.len() == 8
+
+        drop drop
+        # => []
+
+        mem_loadw_be.0 padw mem_loadw_be.4
+        # => [INPUTS[1], INPUTS[0]]
+
         # Store number of note assets -> mem[0]
         push.0 exec.active_note::get_assets
         # => [num_assets, ptr]
@@ -41,13 +51,13 @@ begin
         # => [ptr]
 
         # Load ASSET onto the stack
-        mem_loadw_be.0
-        # => [ASSET, destination_network, DESTINATION_ADDRESS]
+        padw mem_loadw_be.0
+        # => [ASSET, INPUTS[1], INPUTS[0]]
 
         call.agglayer::bridge_out
         # => []
     end
     # => []
 
-    dropw dropw
+    dropw dropw dropw
 end
