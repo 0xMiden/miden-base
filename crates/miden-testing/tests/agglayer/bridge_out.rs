@@ -1,7 +1,6 @@
 extern crate alloc;
 
 use miden_lib::account::faucets::FungibleFaucetExt;
-use miden_lib::account::wallets::BasicWallet;
 use miden_lib::agglayer::utils::ethereum_address_string_to_felts;
 use miden_lib::agglayer::{b2agg_script, bridge_out_component};
 use miden_lib::note::WellKnownNote;
@@ -57,7 +56,7 @@ async fn test_bridge_out_consumes_b2agg_note() -> anyhow::Result<()> {
     let bridge_component = bridge_out_component(vec![]);
     let account_builder = Account::builder(builder.rng_mut().random())
         .storage_mode(AccountStorageMode::Public)
-        .with_component(BasicWallet)
+        // .with_component(BasicWallet)
         .with_component(bridge_component);
     let mut bridge_account =
         builder.add_account_from_builder(Auth::IncrNonce, account_builder, AccountState::Exists)?;
@@ -88,6 +87,10 @@ async fn test_bridge_out_consumes_b2agg_note() -> anyhow::Result<()> {
     input_felts.extend(address_felts);
 
     let inputs = NoteInputs::new(input_felts)?;
+
+    println!("inputs length: {:?}", inputs.to_elements().len());
+    println!("inputs: {:?}", inputs.to_elements());
+
 
     // Create the B2AGG note with assets from the faucet
     let b2agg_note_metadata =
