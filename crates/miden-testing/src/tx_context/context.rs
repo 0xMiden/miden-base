@@ -331,13 +331,8 @@ impl DataStore for TransactionContext {
     fn get_note_script(
         &self,
         script_root: Word,
-    ) -> impl FutureMaybeSend<Result<NoteScript, DataStoreError>> {
-        async move {
-            self.note_scripts
-                .get(&script_root)
-                .cloned()
-                .ok_or_else(|| DataStoreError::NoteScriptNotFound(script_root))
-        }
+    ) -> impl FutureMaybeSend<Result<Option<NoteScript>, DataStoreError>> {
+        async move { Ok(self.note_scripts.get(&script_root).cloned()) }
     }
 }
 
@@ -389,19 +384,21 @@ mod tests {
         let retrieved_script1 = tx_context
             .get_note_script(script_root1)
             .await
-            .expect("Failed to get note script 1");
+            .expect("Failed to get note script 1")
+            .expect("Note script 1 should exist");
         assert_eq!(retrieved_script1, note_script1);
 
         let retrieved_script2 = tx_context
             .get_note_script(script_root2)
             .await
-            .expect("Failed to get note script 2");
+            .expect("Failed to get note script 2")
+            .expect("Note script 2 should exist");
         assert_eq!(retrieved_script2, note_script2);
 
-        // Fetching a non-existent one fails
+        // Fetching a non-existent one returns None
         let non_existent_root =
             Word::from([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]);
         let result = tx_context.get_note_script(non_existent_root).await;
-        assert!(matches!(result, Err(DataStoreError::NoteScriptNotFound(_))));
+        assert!(matches!(result, Ok(None)));
     }
 }
