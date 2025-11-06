@@ -333,16 +333,16 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
     let target_account_suffix = recipient_account_id.suffix();
     let target_account_prefix = recipient_account_id.prefix().as_felt();
 
-    // Adding extra 0 values to inputs to test trial unhashing in extract_note_inputs fn
+    // Use a length that is not a multiple of 8 (double word size) to make sure note inputs padding
+    // is correctly handled
     let note_inputs = NoteInputs::new(vec![
         target_account_suffix,
         target_account_prefix,
         Felt::new(0),
         Felt::new(0),
         Felt::new(0),
-        Felt::new(0),
-        Felt::new(0),
         Felt::new(1),
+        Felt::new(0),
     ])?;
 
     let note_recipient =
@@ -362,23 +362,21 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
                 # Build recipient hash from SERIAL_NUM, SCRIPT_ROOT, and INPUTS_COMMITMENT
                 push.{script_root}
                 # => [SCRIPT_ROOT]
-                
+
                 push.{serial_num}
                 # => [SERIAL_NUM, SCRIPT_ROOT]
 
-                # Store note inputs in memory at address 0
-                # First word: inputs[0..4]
-                push.{input0}.{input1}.{input2}.{input3}
-                mem_storew_be.0 dropw
-                # Memory[0] = [input0, input1, input2, input3]
+                # Store note inputs in memory
+                push.{input0} mem_store.0
+                push.{input1} mem_store.1
+                push.{input2} mem_store.2
+                push.{input3} mem_store.3
+                push.{input4} mem_store.4
+                push.{input5} mem_store.5
+                push.{input6} mem_store.6
 
-                # Second word: inputs[4..8]
-                push.{input4}.{input5}.{input6}.{input7}
-                mem_storew_be.4 dropw
-                # Memory[1] = [input4, input5, input6, input7]
-
-                push.8 push.0
-                # => [inputs_ptr, num_inputs, SERIAL_NUM, SCRIPT_ROOT]
+                push.7 push.0
+                # => [inputs_ptr, num_inputs = 7, SERIAL_NUM, SCRIPT_ROOT]
 
                 exec.note::build_recipient
                 # => [RECIPIENT]
@@ -406,7 +404,6 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
         input4 = note_inputs.values()[4],
         input5 = note_inputs.values()[5],
         input6 = note_inputs.values()[6],
-        input7 = note_inputs.values()[7],
         script_root = output_script_root,
         serial_num = serial_num,
         aux = aux,
@@ -466,6 +463,11 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
         full_note.recipient().inputs().commitment(),
         note_inputs.commitment(),
         "Output note inputs commitment should match expected inputs commitment"
+    );
+    assert_eq!(
+        full_note.recipient().inputs().num_values(),
+        note_inputs.num_values(),
+        "Output note inputs length should match expected inputs length"
     );
 
     // Verify the output note ID matches the expected note ID
