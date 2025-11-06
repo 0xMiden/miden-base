@@ -2,6 +2,12 @@
 
 ## 0.13.0 (TBD)
 
+### Features
+
+### Changes
+
+- [BREAKING] Renamed `TransactionEvent` into `TransactionEventId` and split event handling into data extraction and handling logic ([#2070](https://github.com/0xMiden/miden-base/pull/2070)).
+
 ## 0.12.1 (2025-11-06)
 
 - Made `InitStorageData::map_entries()` public ([#2055](https://github.com/0xMiden/miden-base/pull/2055)).
