@@ -40,7 +40,7 @@ use crate::host::{
     TransactionEvent,
     TransactionProgress,
 };
-use crate::{AccountProcedureIndexMap, DataStore, DataStoreError};
+use crate::{AccountProcedureIndexMap, DataStore};
 
 // TRANSACTION EXECUTOR HOST
 // ================================================================================================
@@ -437,7 +437,7 @@ where
         let note_script_result = self.base_host.store().get_note_script(script_root).await;
 
         let (recipient, mutations) = match note_script_result {
-            Ok(note_script) => {
+            Ok(Some(note_script)) => {
                 let script_felts: Vec<Felt> = (&note_script).into();
                 let recipient = NoteRecipient::new(serial_num, note_script, note_inputs);
                 let mutations = vec![AdviceMutation::extend_map(AdviceMap::from_iter([(
@@ -447,10 +447,8 @@ where
 
                 (Some(recipient), mutations)
             },
-            Err(DataStoreError::NoteScriptNotFound(_)) if metadata.is_private() => {
-                (None, Vec::new())
-            },
-            Err(DataStoreError::NoteScriptNotFound(_)) => {
+            Ok(None) if metadata.is_private() => (None, Vec::new()),
+            Ok(None) => {
                 return Err(TransactionKernelError::other(format!(
                     "note script with root {script_root} not found in data store for public note"
                 )));
