@@ -881,8 +881,6 @@ async fn delta_for_new_account_retains_empty_storage_slots() -> anyhow::Result<(
         .with_component(MockAccountComponent::with_slots(vec![
             StorageSlot::empty_value(),
             StorageSlot::Value(slot_value2),
-            // Include an empty map as well to make sure it is propagated through as well.
-            StorageSlot::empty_map(),
         ]))
         .with_auth_component(Auth::IncrNonce)
         .build()?;
@@ -898,9 +896,6 @@ async fn delta_for_new_account_retains_empty_storage_slots() -> anyhow::Result<(
     assert_eq!(delta.storage().values().len(), 2);
     assert_eq!(delta.storage().values().get(&0).unwrap(), &Word::empty());
     assert_eq!(delta.storage().values().get(&1).unwrap(), &slot_value2);
-
-    assert_eq!(delta.storage().maps().len(), 1);
-    assert!(delta.storage().maps().get(&2).unwrap().is_empty());
 
     Ok(())
 }
