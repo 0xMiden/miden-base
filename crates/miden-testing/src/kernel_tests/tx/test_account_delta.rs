@@ -869,6 +869,42 @@ async fn proven_tx_storage_maps_matches_executed_tx_for_new_account() -> anyhow:
     Ok(())
 }
 
+/// Tests that creating a new account with a slot whose value is empty is correctly included in the
+/// delta and not normalized away.
+#[tokio::test]
+async fn delta_for_new_account_retains_empty_storage_slots() -> anyhow::Result<()> {
+    let init_seed: [u8; 32] = rand::random();
+    let slot_value2 = Word::from([1, 2, 3, 4u32]);
+    let account = AccountBuilder::new(init_seed)
+        .account_type(AccountType::RegularAccountUpdatableCode)
+        .storage_mode(AccountStorageMode::Network)
+        .with_component(MockAccountComponent::with_slots(vec![
+            StorageSlot::empty_value(),
+            StorageSlot::Value(slot_value2),
+            // Include an empty map as well to make sure it is propagated through as well.
+            StorageSlot::empty_map(),
+        ]))
+        .with_auth_component(Auth::IncrNonce)
+        .build()?;
+
+    let tx = TransactionContextBuilder::new(account.clone()).build()?.execute().await?;
+
+    let proven_tx = LocalTransactionProver::default().prove_dummy(tx.clone())?;
+
+    let AccountUpdateDetails::Delta(delta) = proven_tx.account_update().details() else {
+        panic!("expected delta");
+    };
+
+    assert_eq!(delta.storage().values().len(), 2);
+    assert_eq!(delta.storage().values().get(&0).unwrap(), &Word::empty());
+    assert_eq!(delta.storage().values().get(&1).unwrap(), &slot_value2);
+
+    assert_eq!(delta.storage().maps().len(), 1);
+    assert!(delta.storage().maps().get(&2).unwrap().is_empty());
+
+    Ok(())
+}
+
 /// Tests that adding a fungible asset with amount zero to the account vault works and does not
 /// result in an account delta entry.
 #[tokio::test]
