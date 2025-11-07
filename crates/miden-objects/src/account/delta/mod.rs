@@ -318,7 +318,7 @@ impl AccountDelta {
     ///
     /// The number of changed entries of a storage map can be validly zero when an empty storage map
     /// is added to a new account. In such cases, the number of changed key-value pairs is 0, but
-    /// the map must still be commited to, in order to differentiate between a slot being an empty
+    /// the map must still be committed to, in order to differentiate between a slot being an empty
     /// map or not being present at all.
     pub fn to_commitment(&self) -> Word {
         <Self as SequentialCommit>::to_commitment(self)
