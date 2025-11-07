@@ -303,14 +303,22 @@ impl Signature {
 
     /// Converts this signature to a sequence of field elements in the format expected by the
     /// native verification procedure in the VM.
+    ///
+    /// The order of elements in the returned vector is reversed because it is expected that the
+    /// data will be pushed into the advice stack
     pub fn to_prepared_signature(&self, msg: Word) -> Vec<Felt> {
         // TODO: the `expect()` should be changed to an error; but that will be a part of a bigger
         // refactoring
-        match self {
+        let mut result = match self {
             Signature::RpoFalcon512(sig) => prepare_rpo_falcon512_signature(sig),
             Signature::EcdsaK256Keccak(sig) => miden_stdlib::prepare_ecdsa_signature(msg, sig)
                 .expect("inferring public key from signature and message should succeed"),
-        }
+        };
+
+        // reverse the signature data so that when it is pushed onto the advice stack, the first
+        // element of the vector is at the top of the stack
+        result.reverse();
+        result
     }
 }
 
@@ -392,6 +400,5 @@ fn prepare_rpo_falcon512_signature(sig: &rpo_falcon512::Signature) -> Vec<Felt> 
     result.extend_from_slice(&polynomials);
     result.extend_from_slice(&nonce.to_elements());
 
-    result.reverse();
     result
 }
