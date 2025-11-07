@@ -37,7 +37,7 @@ use miden_objects::testing::constants::{
 };
 use miden_objects::testing::storage::{STORAGE_INDEX_0, STORAGE_INDEX_2};
 use miden_objects::transaction::TransactionScript;
-use miden_objects::{EMPTY_WORD, Felt, LexicographicWord, Word, ZERO};
+use miden_objects::{EMPTY_WORD, Felt, FieldElement, LexicographicWord, Word, ZERO};
 use miden_tx::LocalTransactionProver;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
@@ -872,10 +872,9 @@ async fn proven_tx_storage_maps_matches_executed_tx_for_new_account() -> anyhow:
 /// Tests that creating a new account with a slot whose value is empty is correctly included in the
 /// delta and not normalized away.
 #[tokio::test]
-async fn delta_for_new_account_retains_empty_storage_slots() -> anyhow::Result<()> {
-    let init_seed: [u8; 32] = rand::random();
+async fn delta_for_new_account_retains_empty_value_storage_slots() -> anyhow::Result<()> {
     let slot_value2 = Word::from([1, 2, 3, 4u32]);
-    let account = AccountBuilder::new(init_seed)
+    let mut account = AccountBuilder::new(rand::random())
         .account_type(AccountType::RegularAccountUpdatableCode)
         .storage_mode(AccountStorageMode::Network)
         .with_component(MockAccountComponent::with_slots(vec![
@@ -896,6 +895,12 @@ async fn delta_for_new_account_retains_empty_storage_slots() -> anyhow::Result<(
     assert_eq!(delta.storage().values().len(), 2);
     assert_eq!(delta.storage().values().get(&0).unwrap(), &Word::empty());
     assert_eq!(delta.storage().values().get(&1).unwrap(), &slot_value2);
+
+    let recreated_account = Account::try_from(delta)?;
+    // The recreated account should match the original account with the nonce incremented (and the
+    // seed removed).
+    account.increment_nonce(Felt::ONE)?;
+    assert_eq!(recreated_account, account);
 
     Ok(())
 }
