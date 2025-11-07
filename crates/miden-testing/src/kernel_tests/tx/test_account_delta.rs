@@ -905,6 +905,37 @@ async fn delta_for_new_account_retains_empty_value_storage_slots() -> anyhow::Re
     Ok(())
 }
 
+/// Tests that creating a new account with a slot whose map is empty is correctly included in the
+/// delta.
+#[tokio::test]
+async fn delta_for_new_account_retains_empty_map_storage_slots() -> anyhow::Result<()> {
+    let mut account = AccountBuilder::new(rand::random())
+        .account_type(AccountType::RegularAccountUpdatableCode)
+        .storage_mode(AccountStorageMode::Network)
+        .with_component(MockAccountComponent::with_slots(vec![StorageSlot::empty_map()]))
+        .with_auth_component(Auth::IncrNonce)
+        .build()?;
+
+    let tx = TransactionContextBuilder::new(account.clone()).build()?.execute().await?;
+
+    let proven_tx = LocalTransactionProver::default().prove_dummy(tx.clone())?;
+
+    let AccountUpdateDetails::Delta(delta) = proven_tx.account_update().details() else {
+        panic!("expected delta");
+    };
+
+    assert_eq!(delta.storage().maps().len(), 1);
+    assert!(delta.storage().maps().get(&0).unwrap().is_empty());
+
+    let recreated_account = Account::try_from(delta)?;
+    // The recreated account should match the original account with the nonce incremented (and the
+    // seed removed).
+    account.increment_nonce(Felt::ONE)?;
+    assert_eq!(recreated_account, account);
+
+    Ok(())
+}
+
 /// Tests that adding a fungible asset with amount zero to the account vault works and does not
 /// result in an account delta entry.
 #[tokio::test]

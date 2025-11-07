@@ -318,6 +318,11 @@ proc.update_map_slot_delta.4
     loc_load.3 neq.0
     # => [is_num_changed_entries_non_zero, RATE, RATE, PERM]
 
+    # if the account is new (nonce == 0) include the map header even if it is an empty map
+    # in order to have the delta commit to this initial storage slot.
+    exec.memory::get_init_nonce eq.0 or
+    # => [should_include_map_header, RATE, RATE, PERM]
+
     if.true
         # drop the previous RATE elements
         dropw dropw

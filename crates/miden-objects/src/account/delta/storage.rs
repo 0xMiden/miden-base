@@ -95,6 +95,13 @@ impl AccountStorageDelta {
         self.maps.entry(slot_index).or_default().insert(key, new_value);
     }
 
+    /// Inserts an empty storage map delta for the provided slot index.
+    ///
+    /// This is useful for full state deltas to represent an empty map in the delta.
+    pub fn insert_empty_map_delta(&mut self, slot_index: u8) {
+        self.maps.entry(slot_index).or_default();
+    }
+
     /// Merges another delta into this one, overwriting any existing values.
     pub fn merge(&mut self, other: Self) -> Result<(), AccountDeltaError> {
         self.values.extend(other.values);
@@ -162,10 +169,6 @@ impl AccountStorageDelta {
                 },
                 None => {
                     if let Some(map_delta) = self.maps().get(&slot_idx) {
-                        if map_delta.is_empty() {
-                            continue;
-                        }
-
                         for (key, value) in map_delta.entries() {
                             elements.extend_from_slice(key.inner().as_elements());
                             elements.extend_from_slice(value.as_elements());
