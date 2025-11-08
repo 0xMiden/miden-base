@@ -199,7 +199,7 @@ impl TransactionArgs {
         let pk_word: Word = pub_key.into();
         self.advice_inputs
             .map
-            .insert(Hasher::merge(&[pk_word, message]), signature.to_prepared_signature());
+            .insert(Hasher::merge(&[pk_word, message]), signature.to_prepared_signature(message));
     }
 
     /// Populates the advice inputs with the specified note recipient details.

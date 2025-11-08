@@ -182,7 +182,7 @@ impl AccountDelta {
 
     /// Computes the commitment to the account delta.
     ///
-    /// # Computation
+    /// ## Computation
     ///
     /// The delta is a sequential hash over a vector of field elements which starts out empty and
     /// is appended to in the following way. Whenever sorting is expected, it is that of a
@@ -213,11 +213,12 @@ impl AccountDelta {
     ///     - For each key-value pair, sorted by key, whose new value is different from the previous
     ///       value in the map:
     ///       - Append `[KEY, NEW_VALUE]`.
-    ///     - Append `[[domain = 3, slot_idx, num_changed_entries, 0], 0, 0, 0, 0]`, except if
-    ///       `num_changed_entries` is 0, where slot_idx is the index of the slot and
-    ///       `num_changed_entries` is the number of changed key-value pairs in the map.
+    ///     - Append `[[domain = 3, slot_idx, num_changed_entries, 0], 0, 0, 0, 0]`.
+    ///         - For partial state deltas, the map header must only be included if
+    ///           `num_changed_entries` is not zero.
+    ///         - For full state deltas, the map header must always be included.
     ///
-    /// # Rationale
+    /// ## Rationale
     ///
     /// The rationale for this layout is that hashing in the VM should be as efficient as possible
     /// and minimize the number of branches to be as efficient as possible. Every high-level section
@@ -225,7 +226,14 @@ impl AccountDelta {
     /// on double words. In the VM, each permutation is done immediately, so adding an uneven
     /// number of words in a given step will result in more difficulty in the MASM implementation.
     ///
-    /// # Security
+    /// ### New Accounts
+    ///
+    /// The delta for new accounts (a full state delta) must commit to all the storage slots of the
+    /// account, even if the storage slots have a default value (e.g. the empty word for value slots
+    /// or an empty storage map). This ensures the full state delta commits to the exact storage
+    /// slots that are contained in the account.
+    ///
+    /// ## Security
     ///
     /// The general concern with the commitment is that two distinct deltas must never hash to the
     /// same commitment. E.g. a commitment of a delta that changes a key-value pair in a storage
@@ -249,7 +257,7 @@ impl AccountDelta {
     ///   - Two distinct storage map slots use the same domain but are disambiguated due to
     ///     inclusion of the slot index.
     ///
-    /// **Domain Separators**
+    /// ### Domain Separators
     ///
     /// As an example for ambiguity, consider these two deltas:
     ///
@@ -276,38 +284,42 @@ impl AccountDelta {
     /// importance of placing the domain separators in the same index within each word's layout
     /// which makes it easy to see that this value cannot be crafted to be the same.
     ///
-    /// **Number of Changed Entries**
+    /// ### Number of Changed Entries
     ///
     /// As an example for ambiguity, consider these two deltas:
     ///
     /// ```text
     /// [
-    ///   EMPTY_WORD, ID_AND_NONCE,
+    ///   ID_AND_NONCE, EMPTY_WORD,
     ///   [/* no fungible asset delta */],
-    ///   [[domain = 1, was_added = 1, 0, 0], NON_FUNGIBLE_ASSET],
-    ///   [/* no storage delta */],
+    ///   [/* no non-fungible asset delta */],
+    ///   [domain = 3, slot_idx = 0, num_changed_entries = 0, 0, 0, 0, 0, 0]
+    ///   [domain = 3, slot_idx = 1, num_changed_entries = 0, 0, 0, 0, 0, 0]
     /// ]
     /// ```
     ///
     /// ```text
     /// [
-    ///    ID_AND_NONCE, EMPTY_WORD,
+    ///   ID_AND_NONCE, EMPTY_WORD,
     ///   [/* no fungible asset delta */],
     ///   [/* no non-fungible asset delta */],
     ///   [KEY0, VALUE0],
-    ///   [KEY1, VALUE1],
-    ///   [domain = 3, slot_idx = 0, num_changed_entries = 2, 0, 0, 0, 0, 0]
+    ///   [domain = 3, slot_idx = 1, num_changed_entries = 1, 0, 0, 0, 0, 0]
     /// ]
     /// ```
     ///
-    /// The keys and values of map slots are user-controllable so `KEY0` and `VALUE0` can be crafted
-    /// to match `NON_FUNGIBLE_ASSET` and its metadata. Including the header of the map slot
-    /// additionally hashes the map domain into the delta, but if the header was included whenever
-    /// _any_ value in the map has changed, it would cause ambiguity about whether `KEY0`/`VALUE0`
-    /// are in fact map keys or a non-fungible asset (or any asset or a value storage slot more
-    /// generally). Including `num_changed_entries` disambiguates this situation, by ensuring
-    /// that the delta commitment is different when, e.g. 1) a non-fungible asset and one key-value
-    /// pair have changed and 2) when two key-value pairs have changed.
+    /// The keys and values of map slots are user-controllable so `KEY0` and `VALUE0` could be
+    /// crafted to match the first map header in the first delta. So, _without_ having
+    /// `num_changed_entries` included in the commitment, these deltas would be ambiguous. A delta
+    /// with two empty maps could have the same commitment as a delta with one map entry where one
+    /// key-value pair has changed.
+    ///
+    /// #### New Accounts
+    ///
+    /// The number of changed entries of a storage map can be validly zero when an empty storage map
+    /// is added to a new account. In such cases, the number of changed key-value pairs is 0, but
+    /// the map must still be committed to, in order to differentiate between a slot being an empty
+    /// map or not being present at all.
     pub fn to_commitment(&self) -> Word {
         <Self as SequentialCommit>::to_commitment(self)
     }
