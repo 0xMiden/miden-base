@@ -193,7 +193,16 @@ proc.update_value_slot_delta
     exec.word::test_eq not
     # => [was_changed, INIT_VALUE', CURRENT_VALUE, slot_idx, RATE, RATE, PERM]
 
-    # only include in delta if the slot's value has changed
+    # set was_changed to true if the account is new
+    # this means a storage slot initialized with an empty word is included in the commitment for
+    # new accounts
+    # more generally, we want the delta for a new account to include all its newly added values,
+    # regardless of the exact value, because the initial delta for an account must represent its
+    # full state
+    exec.memory::get_init_nonce eq.0 or
+    # => [was_changed, INIT_VALUE', CURRENT_VALUE, slot_idx, RATE, RATE, PERM]
+
+    # only include in delta if the slot's value has changed or the account is new
     if.true
         # drop init value
         dropw
