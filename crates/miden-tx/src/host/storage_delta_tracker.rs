@@ -72,6 +72,9 @@ impl StorageDeltaTracker {
                             .find(|map| map.root() == *value)
                             .expect("storage map should be present in partial storage");
 
+                        // Make sure each map is represented by at least an empty storage map delta.
+                        storage_delta_tracker.delta.insert_empty_map_delta(slot_idx);
+
                         storage_map.entries().for_each(|(key, value)| {
                             storage_delta_tracker.set_map_item(
                                 slot_idx,
@@ -153,7 +156,7 @@ impl StorageDeltaTracker {
         // On the key-value level: Keep only the key-value pairs whose new value is different from
         // the initial value.
         // On the map level: Keep only the maps that are non-empty after its key-value pairs have
-        // been normalized.
+        // been normalized, or if the account is new.
         map_slots.retain(|slot_idx, map_delta| {
             let init_map = init_maps.get(slot_idx);
 
@@ -166,8 +169,9 @@ impl StorageDeltaTracker {
                 });
             }
 
-            // Only retain the map delta if it still contains values after normalization.
-            !map_delta.is_empty()
+            // Only retain the map delta if the account is new or if it still contains values after
+            // normalization.
+            self.is_account_new || !map_delta.is_empty()
         });
 
         AccountStorageDelta::from_parts(value_slots, map_slots)
