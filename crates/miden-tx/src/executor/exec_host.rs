@@ -184,14 +184,16 @@ where
         let authenticator =
             self.authenticator.ok_or(TransactionKernelError::MissingAuthenticator)?;
 
+        // get the message that will be signed by the authenticator
+        let message = signing_inputs.to_commitment();
+
         let signature: Vec<Felt> = authenticator
             .get_signature(PublicKeyCommitment::from(pub_key_hash), &signing_inputs)
             .await
             .map_err(TransactionKernelError::SignatureGenerationFailed)?
-            .to_prepared_signature();
+            .to_prepared_signature(message);
 
-        let signature_key = Hasher::merge(&[pub_key_hash, signing_inputs.to_commitment()]);
-
+        let signature_key = Hasher::merge(&[pub_key_hash, message]);
         self.generated_signatures.insert(signature_key, signature.clone());
 
         Ok(vec![AdviceMutation::extend_stack(signature)])
