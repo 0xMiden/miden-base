@@ -19,6 +19,9 @@ use crate::block::{
 use crate::note::Nullifier;
 use crate::transaction::{OrderedTransactionHeaders, OutputNote};
 
+// BLOCK BODY
+// ================================================================================================
+
 /// Body of a block in the chain which contains data pertaining to all relevant state changes.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BlockBody {
@@ -37,6 +40,9 @@ pub struct BlockBody {
 }
 
 impl BlockBody {
+    // CONSTRUCTOR
+    // --------------------------------------------------------------------------------------------
+
     /// Creates a new [`BlockBody`] without performing any validation.
     ///
     /// # Warning
@@ -57,6 +63,9 @@ impl BlockBody {
         }
     }
 
+    // PUBLIC ACCESSORS
+    // --------------------------------------------------------------------------------------------
+
     /// Returns the slice of [`BlockAccountUpdate`]s for all accounts updated in the block.
     pub fn updated_accounts(&self) -> &[BlockAccountUpdate] {
         &self.updated_accounts
@@ -75,24 +84,6 @@ impl BlockBody {
     /// Returns the [`OrderedTransactionHeaders`] of all transactions included in this block.
     pub fn transactions(&self) -> &OrderedTransactionHeaders {
         &self.transactions
-    }
-
-    /// Returns a mutable reference to the block's account updates for testing purposes.
-    #[cfg(any(feature = "testing", test))]
-    pub fn updated_accounts_mut(&mut self) -> &mut Vec<BlockAccountUpdate> {
-        &mut self.updated_accounts
-    }
-
-    /// Returns a mutable reference to the block's nullifiers for testing purposes.
-    #[cfg(any(feature = "testing", test))]
-    pub fn created_nullifiers_mut(&mut self) -> &mut Vec<Nullifier> {
-        &mut self.created_nullifiers
-    }
-
-    /// Returns a mutable reference to the block's output note batches for testing purposes.
-    #[cfg(any(feature = "testing", test))]
-    pub fn output_note_batches_mut(&mut self) -> &mut Vec<OutputNoteBatch> {
-        &mut self.output_note_batches
     }
 
     /// Returns the commitment of all transactions included in this block.
@@ -132,6 +123,9 @@ impl BlockBody {
         BlockNoteTree::with_entries(entries)
                 .expect("the output notes of the block should not contain duplicates and contain at most the allowed maximum")
     }
+
+    // DESTRUCTURING
+    // --------------------------------------------------------------------------------------------
 
     /// Consumes the block body and returns its parts.
     pub fn into_parts(
@@ -204,5 +198,28 @@ impl Deserializable for BlockBody {
             transactions: OrderedTransactionHeaders::read_from(source)?,
         };
         Ok(block)
+    }
+}
+
+// TESTING
+// ================================================================================================
+
+impl BlockBody {
+    /// Returns a mutable reference to the block's account updates for testing purposes.
+    #[cfg(any(feature = "testing", test))]
+    pub fn updated_accounts_mut(&mut self) -> &mut Vec<BlockAccountUpdate> {
+        &mut self.updated_accounts
+    }
+
+    /// Returns a mutable reference to the block's nullifiers for testing purposes.
+    #[cfg(any(feature = "testing", test))]
+    pub fn created_nullifiers_mut(&mut self) -> &mut Vec<Nullifier> {
+        &mut self.created_nullifiers
+    }
+
+    /// Returns a mutable reference to the block's output note batches for testing purposes.
+    #[cfg(any(feature = "testing", test))]
+    pub fn output_note_batches_mut(&mut self) -> &mut Vec<OutputNoteBatch> {
+        &mut self.output_note_batches
     }
 }
