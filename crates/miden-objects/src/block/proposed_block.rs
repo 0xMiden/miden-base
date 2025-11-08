@@ -271,29 +271,11 @@ impl ProposedBlock {
     // ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns an iterator over all transactions in the block.
-    pub fn transactions(&self) -> impl Iterator<Item = &TransactionHeader> {
-        self.batches
-            .as_slice()
-            .iter()
-            .flat_map(|batch| batch.transactions().as_slice().iter())
-    }
-
     /// Returns the block number of this proposed block.
     pub fn block_num(&self) -> BlockNumber {
         // The chain length is the length at the state of the previous block header, so we have to
         // add one.
         self.partial_blockchain().chain_length() + 1
-    }
-
-    /// Returns a reference to the slice of batches in this block.
-    pub fn batches(&self) -> &OrderedBatches {
-        &self.batches
-    }
-
-    /// Returns the map of nullifiers to their proofs from the proposed block.
-    pub fn created_nullifiers(&self) -> &BTreeMap<Nullifier, NullifierWitness> {
-        &self.created_nullifiers
     }
 
     /// Returns a reference to the previous block header that this block builds on top of.
@@ -306,9 +288,32 @@ impl ProposedBlock {
         &self.partial_blockchain
     }
 
+    /// Returns a reference to the slice of transaction batches in this block.
+    pub fn batches(&self) -> &OrderedBatches {
+        &self.batches
+    }
+
+    /// Returns an iterator over all transactions in the block.
+    pub fn transactions(&self) -> impl Iterator<Item = &TransactionHeader> {
+        self.batches
+            .as_slice()
+            .iter()
+            .flat_map(|batch| batch.transactions().as_slice().iter())
+    }
+
+    /// Returns the map of nullifiers to their proofs from the proposed block.
+    pub fn created_nullifiers(&self) -> &BTreeMap<Nullifier, NullifierWitness> {
+        &self.created_nullifiers
+    }
+
     /// Returns a reference to the slice of accounts updated in this block.
     pub fn updated_accounts(&self) -> &[(AccountId, AccountUpdateWitness)] {
         &self.account_updated_witnesses
+    }
+
+    /// Returns a slice of the [`OutputNoteBatch`] of each batch in this block.
+    pub fn output_note_batches(&self) -> &[OutputNoteBatch] {
+        &self.output_note_batches
     }
 
     /// Returns the timestamp of this block.
@@ -316,10 +321,8 @@ impl ProposedBlock {
         self.timestamp
     }
 
-    /// Returns a slice of the [`OutputNoteBatch`] of each batch in this block.
-    pub fn output_note_batches(&self) -> &[OutputNoteBatch] {
-        &self.output_note_batches
-    }
+    // COMMITMENT COMPUTATIONS
+    // --------------------------------------------------------------------------------------------
 
     /// Computes the new account tree root after the given updates.
     pub fn compute_account_root(&self) -> Result<Word, ProposedBlockError> {
