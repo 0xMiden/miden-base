@@ -25,7 +25,12 @@ check_command "awk"
 # Portable in-place sed (GNU/macOS); usage: sed_i 's/foo/bar/' file
 # shellcheck disable=SC2329  # used quoted
 sed_i() {
-  if sed --version >/dev/null 2>&1; then
+  set +e
+  sed --version >/dev/null 2>&1
+  local is_gnu=$?
+  set -e
+
+  if [[ $is_gnu -eq 0 ]]; then
     sed -i "$@"
   else
     sed -i '' "$@"
