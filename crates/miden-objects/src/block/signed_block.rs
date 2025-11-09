@@ -8,6 +8,13 @@ use miden_core::utils::{
 
 use crate::block::{BlockBody, BlockHeader};
 
+/// Represents a block in the Miden blockchain that has been signed by the designated validator.
+///
+/// Blocks transition from proposed, signed, and proven states. This struct represents the signed
+/// state of a block which can be used to then create a proven block.
+///
+/// Signed blocks are intended to be treated as finalized blocks in the chain. If the network cannot
+/// proven a previously signed block, it is treated as a re-org event.
 #[derive(Debug, Clone)]
 pub struct SignedBlock {
     header: BlockHeader,
