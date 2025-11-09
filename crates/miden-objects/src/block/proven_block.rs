@@ -18,14 +18,17 @@ use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError,
 /// - A [`BlockHeader`] committing to the current state of the chain and against which account, note
 ///   or nullifier inclusion or absence can be proven. See its documentation for details on what it
 ///   commits to. Eventually, it will also contain a ZK proof of the validity of the block.
-/// - A list of account updates for all accounts updated in this block. For private accounts, the
-///   update contains only the new account state commitments while for public accounts, the update
-///   also includes the delta which can be applied to the previous account state to get the new
-///   account state.
-/// - A list of new notes created in this block. For private notes, the block contains only note IDs
-///   and note metadata while for public notes the full note details are included.
-/// - A list of new nullifiers created for all notes that were consumed in the block.
-/// - A list of transaction headers that were included in the block.
+/// - A [`BlockBody`] containing the transactions and state updates.
+///   - A list of account updates for all accounts updated in this block. For private accounts, the
+///     update contains only the new account state commitments while for public accounts, the update
+///     also includes the delta which can be applied to the previous account state to get the new
+///     account state.
+///   - A list of new notes created in this block. For private notes, the block contains only note
+///     IDs and note metadata while for public notes the full note details are included.
+///   - A list of new nullifiers created for all notes that were consumed in the block.
+///   - A list of transaction headers that were included in the block.
+///
+/// Note: Proven blocks do not yet contain an actual proof.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProvenBlock {
     /// The header of the block, committing to the current state of the chain.
