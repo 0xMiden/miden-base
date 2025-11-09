@@ -1,2 +1,109 @@
-mod header;
-pub use header::construct_block;
+use miden_core::Word;
+use miden_objects::ProposedBlockError;
+use miden_objects::block::{BlockBody, BlockHeader, BlockNumber, ProposedBlock};
+use miden_objects::transaction::PartialBlockchain;
+
+use crate::transaction::TransactionKernel;
+
+/// Constructs a new [`BlockHeader`] and [`BlockBody`] from the given [`ProposedBlock`].
+///
+/// Construction of these types is handled here because the block header requires
+/// [`TransactionKernel`] for its various commitment fields.
+pub fn construct_block(
+    proposed_block: ProposedBlock,
+) -> Result<(BlockHeader, BlockBody), ProposedBlockError> {
+    // Get fields from the proposed block before it is consumed.
+    let block_num = proposed_block.block_num();
+    let timestamp = proposed_block.timestamp();
+    let prev_block_header = proposed_block.prev_block_header().clone();
+
+    // Insert the state commitments of updated accounts into the account tree to compute its new
+    // root.
+    let new_account_root = proposed_block.compute_account_root()?;
+
+    // Insert the created nullifiers into the nullifier tree to compute its new root.
+    let new_nullifier_root = proposed_block.compute_nullifier_root()?;
+
+    // Compute the root of the block note tree.
+    let note_tree = proposed_block.compute_block_note_tree();
+    let note_root = note_tree.root();
+
+    // Insert the previous block header into the block partial blockchain to get the new chain
+    // commitment.
+    let new_chain_commitment =
+        compute_chain_commitment(proposed_block.partial_blockchain().clone(), &prev_block_header);
+
+    // Construct the block body from the proposed block.
+    let body = BlockBody::from(proposed_block);
+
+    // Construct the header.
+    let tx_commitment = body.transaction_commitment();
+    let header = construct_block_header(
+        block_num,
+        timestamp,
+        prev_block_header,
+        tx_commitment,
+        new_chain_commitment,
+        new_account_root,
+        new_nullifier_root,
+        note_root,
+    );
+
+    Ok((header, body))
+}
+
+// HELPERS
+// ================================================================================================
+
+/// Adds the commitment of the previous block header to the partial blockchain to compute the
+/// new chain commitment.
+pub fn compute_chain_commitment(
+    mut partial_blockchain: PartialBlockchain,
+    prev_block_header: &BlockHeader,
+) -> Word {
+    // SAFETY: This does not panic as long as the block header we're adding is the next one in
+    // the chain which is validated as part of constructing a `ProposedBlock`.
+    partial_blockchain.add_block(prev_block_header, true);
+    partial_blockchain.peaks().hash_peaks()
+}
+
+fn construct_block_header(
+    block_num: BlockNumber,
+    timestamp: u32,
+    prev_block_header: BlockHeader,
+    tx_commitment: Word,
+    new_chain_commitment: Word,
+    new_account_root: Word,
+    new_nullifier_root: Word,
+    note_root: Word,
+) -> BlockHeader {
+    let prev_block_commitment = prev_block_header.commitment();
+
+    // For now we copy the parameters of the previous header, which means the parameters set on
+    // the genesis block will be passed through. Eventually, the contained base fees will be
+    // updated based on the demand in the currently proposed block.
+    let fee_parameters = prev_block_header.fee_parameters().clone();
+
+    // Currently undefined and reserved for future use.
+    // See miden-base/1155.
+    let version = 0;
+    let tx_kernel_commitment = TransactionKernel.to_commitment();
+
+    // TODO(serge): remove proof commitment when block header is updated to no longer have it.
+    let proof_commitment = Word::empty();
+
+    BlockHeader::new(
+        version,
+        prev_block_commitment,
+        block_num,
+        new_chain_commitment,
+        new_account_root,
+        new_nullifier_root,
+        note_root,
+        tx_commitment,
+        tx_kernel_commitment,
+        proof_commitment,
+        fee_parameters,
+        timestamp,
+    )
+}
