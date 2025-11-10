@@ -127,9 +127,8 @@ where
                 self.base_host.on_account_vault_after_add_asset(asset)
             },
 
-            TransactionEvent::AccountStorageAfterSetItem { slot_idx, current_value, new_value } => {
-                self.base_host
-                    .on_account_storage_after_set_item(slot_idx, current_value, new_value)
+            TransactionEvent::AccountStorageAfterSetItem { slot_idx, new_value } => {
+                self.base_host.on_account_storage_after_set_item(slot_idx, new_value)
             },
 
             TransactionEvent::AccountStorageAfterSetMapItem {

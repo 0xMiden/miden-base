@@ -209,14 +209,16 @@ where
         let authenticator =
             self.authenticator.ok_or(TransactionKernelError::MissingAuthenticator)?;
 
+        // get the message that will be signed by the authenticator
+        let message = signing_inputs.to_commitment();
+
         let signature: Vec<Felt> = authenticator
             .get_signature(PublicKeyCommitment::from(pub_key_hash), &signing_inputs)
             .await
             .map_err(TransactionKernelError::SignatureGenerationFailed)?
-            .to_prepared_signature();
+            .to_prepared_signature(message);
 
-        let signature_key = Hasher::merge(&[pub_key_hash, signing_inputs.to_commitment()]);
-
+        let signature_key = Hasher::merge(&[pub_key_hash, message]);
         self.generated_signatures.insert(signature_key, signature.clone());
 
         Ok(vec![AdviceMutation::extend_stack(signature)])
@@ -554,15 +556,9 @@ where
                     self.base_host.on_account_vault_after_add_asset(asset)
                 },
 
-                TransactionEvent::AccountStorageAfterSetItem {
-                    slot_idx,
-                    current_value,
-                    new_value,
-                } => self.base_host.on_account_storage_after_set_item(
-                    slot_idx,
-                    current_value,
-                    new_value,
-                ),
+                TransactionEvent::AccountStorageAfterSetItem { slot_idx, new_value } => {
+                    self.base_host.on_account_storage_after_set_item(slot_idx, new_value)
+                },
 
                 TransactionEvent::AccountStorageAfterSetMapItem {
                     slot_index,

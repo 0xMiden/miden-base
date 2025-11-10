@@ -379,12 +379,9 @@ where
     pub fn on_account_storage_after_set_item(
         &mut self,
         slot_index: u8,
-        current_slot_value: Word,
         new_slot_value: Word,
     ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
-        self.account_delta
-            .storage()
-            .set_item(slot_index, current_slot_value, new_slot_value);
+        self.account_delta.storage().set_item(slot_index, new_slot_value);
 
         Ok(Vec::new())
     }

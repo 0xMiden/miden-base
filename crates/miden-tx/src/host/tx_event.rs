@@ -32,7 +32,6 @@ pub(crate) enum TransactionEvent {
 
     AccountStorageAfterSetItem {
         slot_idx: u8,
-        current_value: Word,
         new_value: Word,
     },
 
@@ -295,7 +294,7 @@ impl TransactionEvent {
 
             TransactionEventId::AccountStorageAfterSetItem => {
                 // Expected stack state:
-                // [event, slot_index, NEW_SLOT_VALUE, CURRENT_SLOT_VALUE]
+                // [event, slot_index, NEW_SLOT_VALUE]
                 // get slot index from the stack and make sure it is valid
                 let slot_index = process.get_stack_item(1);
                 let slot_index = u8::try_from(slot_index).map_err(|err| {
@@ -316,12 +315,8 @@ impl TransactionEvent {
                 // get the value to which the slot is being updated
                 let new_slot_value = process.get_stack_word_be(2);
 
-                // get the current value for the slot
-                let current_slot_value = process.get_stack_word_be(6);
-
                 TransactionEvent::AccountStorageAfterSetItem {
                     slot_idx: slot_index,
-                    current_value: current_slot_value,
                     new_value: new_slot_value,
                 }
             },
