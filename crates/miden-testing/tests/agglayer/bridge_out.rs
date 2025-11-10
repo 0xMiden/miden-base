@@ -56,7 +56,6 @@ async fn test_bridge_out_consumes_b2agg_note() -> anyhow::Result<()> {
     let bridge_component = bridge_out_component(vec![]);
     let account_builder = Account::builder(builder.rng_mut().random())
         .storage_mode(AccountStorageMode::Public)
-        // .with_component(BasicWallet)
         .with_component(bridge_component);
     let mut bridge_account =
         builder.add_account_from_builder(Auth::IncrNonce, account_builder, AccountState::Exists)?;
