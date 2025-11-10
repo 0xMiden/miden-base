@@ -5,6 +5,9 @@
 ## 0.12.2 (unreleased)
 
 - Added `create_mint_note` and `create_burn_note` helper functions for creating standardized MINT and BURN notes ([#2061](https://github.com/0xMiden/miden-base/pull/2061)).
+- [BREAKING] Fix ECDSA signature preparation in `Signature::to_prepared_signature()` method  ([#2074](https://github.com/0xMiden/miden-base/pull/2074)).
+- Skip value slot normalization for new account's deltas ([#2075](https://github.com/0xMiden/miden-base/pull/2075)).
+- Skip value and map slot normalization for new account's deltas ([#2075](https://github.com/0xMiden/miden-base/pull/2075), [#2077](https://github.com/0xMiden/miden-base/pull/2077)).
 
 ## 0.12.1 (2025-11-06)
 
