@@ -2,7 +2,7 @@ use alloc::vec::Vec;
 
 use anyhow::Context;
 use assert_matches::assert_matches;
-use miden_lib::block::render_proposed_block;
+use miden_lib::block::build_block;
 use miden_lib::testing::account_component::{IncrNonceAuthComponent, MockAccountComponent};
 use miden_lib::testing::mock_account::MockAccountExt;
 use miden_objects::account::delta::AccountUpdateDetails;
@@ -97,7 +97,7 @@ async fn block_header_fails_on_stale_account_witnesses() -> anyhow::Result<()> {
     let proposed_block0 = ProposedBlock::new(invalid_account_tree_block_inputs, batches.clone())
         .context("failed to propose block 0")?;
 
-    let error = render_proposed_block(proposed_block0).unwrap_err();
+    let error = build_block(proposed_block0).unwrap_err();
 
     assert_matches!(
         error,
@@ -134,7 +134,7 @@ async fn block_header_fails_on_stale_nullifier_witnesses() -> anyhow::Result<()>
     let proposed_block2 = ProposedBlock::new(invalid_nullifier_tree_block_inputs, batches.clone())
         .context("failed to propose block 2")?;
 
-    let error = render_proposed_block(proposed_block2).unwrap_err();
+    let error = build_block(proposed_block2).unwrap_err();
 
     assert_matches!(
         error,
@@ -180,7 +180,7 @@ async fn block_header_fails_on_account_tree_root_mismatch() -> anyhow::Result<()
     let proposed_block1 = ProposedBlock::new(stale_account_witness_block_inputs, batches.clone())
         .context("failed to propose block 1")?;
 
-    let error = render_proposed_block(proposed_block1).unwrap_err();
+    let error = build_block(proposed_block1).unwrap_err();
 
     assert_matches!(
         error,
@@ -228,7 +228,7 @@ async fn block_header_fails_on_nullifier_tree_root_mismatch() -> anyhow::Result<
     let proposed_block3 = ProposedBlock::new(invalid_nullifier_witness_block_inputs, batches)
         .context("failed to propose block 3")?;
 
-    let error = render_proposed_block(proposed_block3).unwrap_err();
+    let error = build_block(proposed_block3).unwrap_err();
 
     assert_matches!(
         error,
@@ -321,7 +321,7 @@ async fn block_header_fails_on_creating_account_with_existing_account_id_prefix(
 
     let block = mock_chain.propose_block(batches).context("failed to propose block")?;
 
-    let err = render_proposed_block(block).unwrap_err();
+    let err = build_block(block).unwrap_err();
 
     // This should fail when we try to _insert_ the same two prefixes into the partial tree.
     assert_matches!(
@@ -417,7 +417,7 @@ async fn block_header_fails_on_creating_account_with_duplicate_account_id_prefix
 
     let block = mock_chain.propose_block(batches).context("failed to propose block")?;
 
-    let err = render_proposed_block(block).unwrap_err();
+    let err = build_block(block).unwrap_err();
 
     // This should fail when we try to _track_ the same two prefixes in the partial tree.
     assert_matches!(

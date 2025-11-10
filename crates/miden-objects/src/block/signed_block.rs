@@ -14,7 +14,7 @@ use crate::block::{BlockBody, BlockHeader};
 /// state of a block which can be used to then create a proven block.
 ///
 /// Signed blocks are intended to be treated as finalized blocks in the chain. If the network cannot
-/// proven a previously signed block, it is treated as a re-org event.
+/// prove a previously signed block, it is treated as a re-org event.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SignedBlock {
     header: BlockHeader,

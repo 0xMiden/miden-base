@@ -1,5 +1,5 @@
 use crate::MIN_PROOF_SECURITY_LEVEL;
-use crate::block::{BlockBody, BlockHeader, BlockProof, SignedBlock};
+use crate::block::{BlockBody, BlockHeader, BlockProof};
 use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
 // PROVEN BLOCK
@@ -13,11 +13,14 @@ use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError,
 /// Proven blocks are the final, canonical blocks in the chain.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProvenBlock {
-    /// The signed block that the [`BlockProof`] is based on.
-    signed_block: SignedBlock,
+    /// The header of the proven block.
+    header: BlockHeader,
+
+    /// The body of the proven block.
+    body: BlockBody,
 
     /// The proof of the block.
-    block_proof: BlockProof,
+    proof: BlockProof,
 }
 
 impl ProvenBlock {
@@ -27,8 +30,8 @@ impl ProvenBlock {
     ///
     /// This constructor does not do any validation, so passing incorrect values may lead to later
     /// panics.
-    pub fn new_unchecked(signed_block: SignedBlock, block_proof: BlockProof) -> Self {
-        Self { signed_block, block_proof }
+    pub fn new_unchecked(header: BlockHeader, body: BlockBody, proof: BlockProof) -> Self {
+        Self { header, body, proof }
     }
 
     /// Returns the proof security level of the block.
@@ -38,12 +41,17 @@ impl ProvenBlock {
 
     /// Returns the header of the block.
     pub fn header(&self) -> &BlockHeader {
-        self.signed_block.header()
+        &self.header
     }
 
     /// Returns the body of the block.
     pub fn body(&self) -> &BlockBody {
-        self.signed_block.body()
+        &self.body
+    }
+
+    /// Returns the proof of the block.
+    pub fn proof(&self) -> &BlockProof {
+        &self.proof
     }
 }
 
@@ -52,16 +60,18 @@ impl ProvenBlock {
 
 impl Serializable for ProvenBlock {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        self.signed_block.write_into(target);
-        self.block_proof.write_into(target);
+        self.header.write_into(target);
+        self.body.write_into(target);
+        self.proof.write_into(target);
     }
 }
 
 impl Deserializable for ProvenBlock {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let block = Self {
-            signed_block: SignedBlock::read_from(source)?,
-            block_proof: BlockProof::read_from(source)?,
+            header: BlockHeader::read_from(source)?,
+            body: BlockBody::read_from(source)?,
+            proof: BlockProof::read_from(source)?,
         };
 
         Ok(block)

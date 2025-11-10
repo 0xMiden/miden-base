@@ -244,7 +244,8 @@ impl MockChainBuilder {
         );
         let signed_block = SignedBlock::new_unchecked(header, body);
         let block_proof = LocalBlockProver::new(0).prove(&signed_block)?;
-        let genesis_block = ProvenBlock::new_unchecked(signed_block, block_proof);
+        let (header, body) = signed_block.into_parts();
+        let genesis_block = ProvenBlock::new_unchecked(header, body, block_proof);
 
         MockChain::from_genesis_block(genesis_block, account_tree, self.account_authenticators)
     }
