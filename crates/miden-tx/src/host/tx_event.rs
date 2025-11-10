@@ -622,7 +622,7 @@ impl TransactionEvent {
         })?;
 
         let is_witness_present =
-            process.has_merkle_path::<{ AssetVault::DEPTH }>(current_map_root, leaf_index)?;
+            process.has_merkle_path::<{ StorageMap::DEPTH }>(current_map_root, leaf_index)?;
 
         Ok(TransactionEvent::AccountStorageBeforeMapItemAccess {
             active_account_id,
