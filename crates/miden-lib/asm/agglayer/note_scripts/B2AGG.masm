@@ -56,7 +56,7 @@ begin
         # => [num_assets, ptr, pad(16)]
         
         # Must be exactly 1 asset
-        assert.err=ERR_B2AGG_WRONG_NUMBER_OF_ASSETS drop drop
+        push.1 assert_eq.err=ERR_B2AGG_WRONG_NUMBER_OF_ASSETS drop
         # => [pad(16)]
 
         mem_loadw_be.8 padw mem_loadw_be.12
