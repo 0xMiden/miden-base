@@ -466,30 +466,52 @@ impl Deserializable for FeltRepresentation {
 /// Supported map representations for a component's storage entries.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(::serde::Deserialize, ::serde::Serialize))]
-pub struct MapRepresentation {
-    /// The human-readable name of the map slot.
-    /// An optional description for the slot, explaining its purpose.
-    identifier: FieldIdentifier,
-    /// Storage map entries, consisting of a list of keys associated with their values.
-    entries: Vec<MapEntry>,
+pub enum MapRepresentation {
+    /// A map whose contents are provided during instantiation via placeholders.
+    Template {
+        /// The human-readable identifier of the map slot.
+        identifier: FieldIdentifier,
+    },
+    /// A map with statically defined key/value pairs.
+    Value {
+        /// The human-readable identifier of the map slot.
+        identifier: FieldIdentifier,
+        /// Storage map entries, consisting of a list of keys associated with their values.
+        entries: Vec<MapEntry>,
+    },
 }
 
 impl MapRepresentation {
     /// Creates a new `MapRepresentation` from a vector of map entries.
-    pub fn new(entries: Vec<MapEntry>, name: impl Into<StorageValueName>) -> Self {
-        Self {
+    pub fn new_value(entries: Vec<MapEntry>, name: impl Into<StorageValueName>) -> Self {
+        MapRepresentation::Value {
             entries,
+            identifier: FieldIdentifier::with_name(name.into()),
+        }
+    }
+
+    /// Creates a new templated map representation.
+    pub fn new_template(name: impl Into<StorageValueName>) -> Self {
+        MapRepresentation::Template {
             identifier: FieldIdentifier::with_name(name.into()),
         }
     }
 
     /// Sets the description of the [`MapRepresentation`] and returns `self`.
     pub fn with_description(self, description: impl Into<String>) -> Self {
-        MapRepresentation {
-            entries: self.entries,
-            identifier: FieldIdentifier {
-                name: self.identifier.name,
-                description: Some(description.into()),
+        match self {
+            MapRepresentation::Template { identifier } => MapRepresentation::Template {
+                identifier: FieldIdentifier {
+                    name: identifier.name,
+                    description: Some(description.into()),
+                },
+            },
+            MapRepresentation::Value { identifier, entries } => MapRepresentation::Value {
+                entries,
+                identifier: FieldIdentifier {
+                    name: identifier.name,
+                    description: Some(description.into()),
+                },
             },
         }
     }
@@ -497,36 +519,60 @@ impl MapRepresentation {
     /// Returns an iterator over all of the storage entries' placeholder keys, alongside their
     /// expected type.
     pub fn template_requirements(&self) -> TemplateRequirementsIter<'_> {
-        Box::new(
-            self.entries
-                .iter()
-                .flat_map(move |entry| entry.template_requirements(self.identifier.name.clone())),
-        )
+        match self {
+            MapRepresentation::Template { identifier } => Box::new(iter::once((
+                identifier.name.clone(),
+                PlaceholderTypeRequirement {
+                    description: identifier.description.clone(),
+                    r#type: TemplateType::storage_map(),
+                },
+            ))),
+            MapRepresentation::Value { identifier, entries } => Box::new(
+                entries
+                    .iter()
+                    .flat_map(move |entry| entry.template_requirements(identifier.name.clone())),
+            ),
+        }
     }
 
     /// Returns a reference to map entries.
     pub fn entries(&self) -> &[MapEntry] {
-        &self.entries
+        match self {
+            MapRepresentation::Value { entries, .. } => entries,
+            MapRepresentation::Template { .. } => &[],
+        }
     }
 
     /// Returns a reference to the map's name within the storage metadata.
     pub fn name(&self) -> &StorageValueName {
-        &self.identifier.name
+        match self {
+            MapRepresentation::Template { identifier }
+            | MapRepresentation::Value { identifier, .. } => &identifier.name,
+        }
     }
 
     /// Returns a reference to the field's description.
     pub fn description(&self) -> Option<&String> {
-        self.identifier.description.as_ref()
+        match self {
+            MapRepresentation::Template { identifier }
+            | MapRepresentation::Value { identifier, .. } => identifier.description.as_ref(),
+        }
     }
 
-    /// Returns the number of key-value pairs in the map.
+    /// Returns the number of statically defined key-value pairs in the map.
     pub fn len(&self) -> usize {
-        self.entries.len()
+        match self {
+            MapRepresentation::Value { entries, .. } => entries.len(),
+            MapRepresentation::Template { .. } => 0,
+        }
     }
 
-    /// Returns `true` if there are no entries in the map.
+    /// Returns `true` if there are no statically defined entries in the map.
     pub fn is_empty(&self) -> bool {
-        self.entries.is_empty()
+        match self {
+            MapRepresentation::Value { entries, .. } => entries.is_empty(),
+            MapRepresentation::Template { .. } => true,
+        }
     }
 
     /// Attempts to convert the [MapRepresentation] into a [StorageMap].
@@ -537,66 +583,98 @@ impl MapRepresentation {
         &self,
         init_storage_data: &InitStorageData,
     ) -> Result<StorageMap, AccountComponentTemplateError> {
-        let entries = self
-            .entries
-            .iter()
-            .map(|map_entry| {
-                let key = map_entry
-                    .key()
-                    .try_build_word(init_storage_data, self.identifier.name.clone())?;
-                let value = map_entry
-                    .value()
-                    .try_build_word(init_storage_data, self.identifier.name.clone())?;
-                Ok((key, value))
-            })
-            .collect::<Result<Vec<(Word, Word)>, _>>()?;
+        match self {
+            MapRepresentation::Value { identifier, entries } => {
+                let entries = entries
+                    .iter()
+                    .map(|map_entry| {
+                        let key = map_entry
+                            .key()
+                            .try_build_word(init_storage_data, identifier.name.clone())?;
+                        let value = map_entry
+                            .value()
+                            .try_build_word(init_storage_data, identifier.name.clone())?;
+                        Ok((key, value))
+                    })
+                    .collect::<Result<Vec<(Word, Word)>, _>>()?;
 
-        StorageMap::with_entries(entries)
-            .map_err(|err| AccountComponentTemplateError::StorageMapHasDuplicateKeys(Box::new(err)))
-    }
+                StorageMap::with_entries(entries).map_err(|err| {
+                    AccountComponentTemplateError::StorageMapHasDuplicateKeys(Box::new(err))
+                })
+            },
+            MapRepresentation::Template { identifier } => {
+                if let Some(entries) = init_storage_data.map_entries(&identifier.name) {
+                    return StorageMap::with_entries(entries.clone()).map_err(|err| {
+                        AccountComponentTemplateError::StorageMapHasDuplicateKeys(Box::new(err))
+                    });
+                }
 
-    /// Validates map keys by checking for duplicates.
-    ///
-    /// Because keys can be represented in a variety of ways, the `to_string()` implementation is
-    /// used to check for duplicates.
-    pub(crate) fn validate(&self) -> Result<(), AccountComponentTemplateError> {
-        let mut seen_keys = BTreeSet::new();
-        for entry in self.entries() {
-            entry.key().validate()?;
-            entry.value().validate()?;
-            if let Ok(key) = entry
-                .key()
-                .try_build_word(&InitStorageData::default(), StorageValueName::empty())
-                && !seen_keys.insert(key)
-            {
-                return Err(AccountComponentTemplateError::StorageMapHasDuplicateKeys(Box::from(
-                    format!("key `{key}` is duplicated"),
-                )));
-            }
+                Err(AccountComponentTemplateError::PlaceholderValueNotProvided(
+                    identifier.name.clone(),
+                ))
+            },
         }
-
-        Ok(())
     }
-}
 
-impl From<MapRepresentation> for Vec<MapEntry> {
-    fn from(value: MapRepresentation) -> Self {
-        value.entries
+    /// Validates the map representation by checking for duplicate keys and placeholder validity.
+    pub(crate) fn validate(&self) -> Result<(), AccountComponentTemplateError> {
+        match self {
+            MapRepresentation::Template { .. } => Ok(()),
+            MapRepresentation::Value { entries, .. } => {
+                let mut seen_keys = BTreeSet::new();
+                for entry in entries.iter() {
+                    entry.key().validate()?;
+                    entry.value().validate()?;
+                    if let Ok(key) = entry
+                        .key()
+                        .try_build_word(&InitStorageData::default(), StorageValueName::empty())
+                        && !seen_keys.insert(key)
+                    {
+                        return Err(AccountComponentTemplateError::StorageMapHasDuplicateKeys(
+                            Box::from(format!("key `{key}` is duplicated")),
+                        ));
+                    }
+                }
+
+                Ok(())
+            },
+        }
     }
 }
 
 impl Serializable for MapRepresentation {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        self.entries.write_into(target);
-        target.write(&self.identifier);
+        match self {
+            MapRepresentation::Value { identifier, entries } => {
+                target.write_u8(0u8);
+                target.write(identifier);
+                target.write(entries);
+            },
+            MapRepresentation::Template { identifier } => {
+                target.write_u8(1u8);
+                target.write(identifier);
+            },
+        }
     }
 }
 
 impl Deserializable for MapRepresentation {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        let entries = Vec::<MapEntry>::read_from(source)?;
-        let identifier = FieldIdentifier::read_from(source)?;
-        Ok(Self { entries, identifier })
+        let tag = source.read_u8()?;
+        match tag {
+            0 => {
+                let identifier = FieldIdentifier::read_from(source)?;
+                let entries = Vec::<MapEntry>::read_from(source)?;
+                Ok(MapRepresentation::Value { entries, identifier })
+            },
+            1 => {
+                let identifier = FieldIdentifier::read_from(source)?;
+                Ok(MapRepresentation::Template { identifier })
+            },
+            other => Err(DeserializationError::InvalidValue(format!(
+                "unknown tag '{other}' for MapRepresentation"
+            ))),
+        }
     }
 }
 

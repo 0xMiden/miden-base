@@ -19,7 +19,7 @@ homepage     = "https://miden.xyz"
 license      = "MIT"
 repository   = "https://github.com/0xMiden/miden-base"
 rust-version = "1.90"
-version      = "0.12.0"
+version      = "0.13.0"
 
 [profile.release]
 codegen-units = 1
@@ -40,12 +40,12 @@ lto           = true
 
 [workspace.dependencies]
 # Workspace crates
-miden-block-prover    = { default-features = false, path = "crates/miden-block-prover", version = "0.12" }
-miden-lib             = { default-features = false, path = "crates/miden-lib", version = "0.12" }
-miden-objects         = { default-features = false, path = "crates/miden-objects", version = "0.12" }
-miden-testing         = { default-features = false, path = "crates/miden-testing", version = "0.12" }
-miden-tx              = { default-features = false, path = "crates/miden-tx", version = "0.12" }
-miden-tx-batch-prover = { default-features = false, path = "crates/miden-tx-batch-prover", version = "0.12" }
+miden-block-prover    = { default-features = false, path = "crates/miden-block-prover", version = "0.13" }
+miden-lib             = { default-features = false, path = "crates/miden-lib", version = "0.13" }
+miden-objects         = { default-features = false, path = "crates/miden-objects", version = "0.13" }
+miden-testing         = { default-features = false, path = "crates/miden-testing", version = "0.13" }
+miden-tx              = { default-features = false, path = "crates/miden-tx", version = "0.13" }
+miden-tx-batch-prover = { default-features = false, path = "crates/miden-tx-batch-prover", version = "0.13" }
 
 # Miden dependencies
 miden-air             = { default-features = false, version = "0.19" }

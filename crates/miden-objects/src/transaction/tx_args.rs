@@ -175,6 +175,10 @@ impl TransactionArgs {
             (sn_script_hash, concat_words(sn_hash, script.root())),
             (note_recipient.digest(), concat_words(sn_script_hash, inputs.commitment())),
             (inputs.commitment(), inputs.to_elements()),
+            (
+                Hasher::hash_elements(inputs.commitment().as_elements()),
+                vec![Felt::from(inputs.num_values())],
+            ),
             (script.root(), script_encoded),
         ];
 
@@ -195,7 +199,7 @@ impl TransactionArgs {
         let pk_word: Word = pub_key.into();
         self.advice_inputs
             .map
-            .insert(Hasher::merge(&[pk_word, message]), signature.to_prepared_signature());
+            .insert(Hasher::merge(&[pk_word, message]), signature.to_prepared_signature(message));
     }
 
     /// Populates the advice inputs with the specified note recipient details.
