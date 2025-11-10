@@ -573,8 +573,10 @@ pub(crate) enum RecipientData {
     },
 }
 
-/// Checks if the necessary witness for accessing the asset is already in the merkle store, and
-/// extracts all necessary data for requesting it.
+/// Checks if the necessary witness for accessing the asset identified by the vault key is already
+/// in the merkle store, and:
+/// - If so, returns `None`.
+/// - If not, returns `Some` with all necessary data for requesting it.
 fn on_account_vault_asset_accessed<'store, STORE>(
     base_host: &TransactionBaseHost<'store, STORE>,
     process: &ProcessState,
@@ -608,8 +610,10 @@ fn on_account_vault_asset_accessed<'store, STORE>(
     }
 }
 
-/// Checks if the necessary witness for accessing the map item is already in the merkle store,
-/// and extracts all necessary data for requesting it.
+/// Checks if the necessary witness for accessing the map item identified by the map key is already
+/// in the merkle store, and:
+/// - If so, returns `None`.
+/// - If not, returns `Some` with all necessary data for requesting it.
 fn on_account_storage_map_item_accessed<'store, STORE>(
     base_host: &TransactionBaseHost<'store, STORE>,
     process: &ProcessState,
