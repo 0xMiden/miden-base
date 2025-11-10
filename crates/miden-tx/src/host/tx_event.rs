@@ -573,9 +573,6 @@ pub(crate) enum RecipientData {
     },
 }
 
-// HELPER FUNCTIONS
-// ================================================================================================
-
 /// Checks if the necessary witness for accessing the asset is already in the merkle store, and
 /// extracts all necessary data for requesting it.
 fn on_account_vault_asset_accessed<'store, STORE>(
