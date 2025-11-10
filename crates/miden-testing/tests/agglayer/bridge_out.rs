@@ -86,10 +86,7 @@ async fn test_bridge_out_consumes_b2agg_note() -> anyhow::Result<()> {
     let mut input_felts = vec![destination_network];
     input_felts.extend(address_felts);
 
-    let inputs = NoteInputs::new(input_felts)?;
-
-    println!("inputs length: {:?}", inputs.to_elements().len());
-    println!("inputs: {:?}", inputs.to_elements());
+    let inputs = NoteInputs::new(input_felts.clone())?;
 
     // Create the B2AGG note with assets from the faucet
     let b2agg_note_metadata =
