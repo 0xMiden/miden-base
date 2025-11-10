@@ -199,7 +199,7 @@ fn global_input_memory_assertions(exec_output: &ExecutionOutput, inputs: &Transa
 
     assert_eq!(
         exec_output.get_kernel_mem_word(INIT_NATIVE_ACCT_STORAGE_COMMITMENT_PTR),
-        inputs.account().storage().commitment(),
+        inputs.account().storage().to_commitment(),
         "The initial native account storage commitment should be stored at the INIT_ACCT_STORAGE_COMMITMENT_PTR"
     );
 
@@ -393,7 +393,7 @@ fn account_data_memory_assertions(exec_output: &ExecutionOutput, inputs: &Transa
 
     assert_eq!(
         exec_output.get_kernel_mem_word(NATIVE_ACCT_STORAGE_COMMITMENT_PTR),
-        inputs.account().storage().commitment(),
+        inputs.account().storage().to_commitment(),
         "The account storage commitment should be stored at NATIVE_ACCT_STORAGE_COMMITMENT_PTR"
     );
 
@@ -412,7 +412,7 @@ fn account_data_memory_assertions(exec_output: &ExecutionOutput, inputs: &Transa
     for (i, elements) in inputs
         .account()
         .storage()
-        .as_elements()
+        .to_elements()
         .chunks(StorageSlot::NUM_ELEMENTS_PER_STORAGE_SLOT / 2)
         .enumerate()
     {
@@ -592,7 +592,9 @@ pub async fn create_multiple_accounts_test(storage_mode: AccountStorageMode) -> 
                 [255u32; WORD_SIZE],
             ))]))
             .build()
-            .context("account build failed")?;
+            .with_context(|| {
+                format!("account build for {account_type} and {storage_mode} failed")
+            })?;
 
         accounts.push(account);
     }
@@ -627,7 +629,7 @@ fn compute_valid_account_id(account: Account) -> Account {
         AccountStorageMode::Public,
         AccountIdVersion::Version0,
         account.code().commitment(),
-        account.storage().commitment(),
+        account.storage().to_commitment(),
     )
     .unwrap();
 
@@ -635,7 +637,7 @@ fn compute_valid_account_id(account: Account) -> Account {
         seed,
         AccountIdVersion::Version0,
         account.code().commitment(),
-        account.storage().commitment(),
+        account.storage().to_commitment(),
     )
     .unwrap();
 

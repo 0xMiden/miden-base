@@ -66,9 +66,11 @@ mod storage;
 pub use storage::{
     AccountStorage,
     AccountStorageHeader,
+    NamedStorageSlot,
     PartialStorage,
     PartialStorageMap,
     SlotName,
+    SlotNameId,
     StorageMap,
     StorageMapWitness,
     StorageSlot,
@@ -136,7 +138,7 @@ impl Account {
         nonce: Felt,
         seed: Option<Word>,
     ) -> Result<Self, AccountError> {
-        validate_account_seed(id, code.commitment(), storage.commitment(), seed, nonce)?;
+        validate_account_seed(id, code.commitment(), storage.to_commitment(), seed, nonce)?;
 
         Ok(Self::new_unchecked(id, vault, storage, code, nonce, seed))
     }
@@ -232,7 +234,7 @@ impl Account {
             self.id,
             self.nonce,
             self.vault.root(),
-            self.storage.commitment(),
+            self.storage.to_commitment(),
             self.code.commitment(),
         )
     }
@@ -440,6 +442,7 @@ impl TryFrom<Account> for AccountDelta {
         let mut map_slots = BTreeMap::new();
 
         for (slot_idx, slot) in (0..u8::MAX).zip(storage.into_slots().into_iter()) {
+            let (_, _, slot) = slot.into_parts();
             match slot {
                 StorageSlot::Value(word) => {
                     value_slots.insert(slot_idx, word);
@@ -924,7 +927,7 @@ mod tests {
             Network,
             AccountIdVersion::Version0,
             code.commitment(),
-            storage.commitment(),
+            storage.to_commitment(),
         )?;
 
         // Set nonce to 1 so the account is considered existing and provide the seed.

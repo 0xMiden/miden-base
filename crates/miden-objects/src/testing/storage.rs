@@ -67,6 +67,7 @@ impl AccountStorageDeltaBuilder {
 // ACCOUNT STORAGE UTILS
 // ================================================================================================
 
+#[derive(Debug)]
 pub struct SlotWithIndex {
     pub slot: StorageSlot,
     pub index: u8,

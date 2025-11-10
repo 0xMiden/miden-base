@@ -59,17 +59,17 @@ impl StorageDeltaTracker {
         // Insert account storage into delta if it is new to match the kernel behavior.
         if account.is_new() {
             (0..u8::MAX).zip(account.storage().header().slots()).for_each(
-                |(slot_idx, (slot_type, value))| match slot_type {
+                |(slot_idx, (_, slot_type, slot_value))| match slot_type {
                     StorageSlotType::Value => {
                         // For new accounts, all values should be added to the delta, even empty
                         // words, so that the final delta includes the storage slot.
-                        storage_delta_tracker.set_item(slot_idx, *value);
+                        storage_delta_tracker.set_item(slot_idx, *slot_value);
                     },
                     StorageSlotType::Map => {
                         let storage_map = account
                             .storage()
                             .maps()
-                            .find(|map| map.root() == *value)
+                            .find(|map| map.root() == *slot_value)
                             .expect("storage map should be present in partial storage");
 
                         // Make sure each map is represented by at least an empty storage map delta.
@@ -147,8 +147,9 @@ impl StorageDeltaTracker {
                 // SAFETY: The header in the initial storage is the one from the account against
                 // which the transaction is executed, so accessing that slot index
                 // should be fine.
-                let (_, initial_value) =
-                    storage_header.slot(*slot_idx as usize).expect("index should be in bounds");
+                let (_, _, initial_value) = storage_header
+                    .slot_header(*slot_idx as usize)
+                    .expect("index should be in bounds");
                 new_value != initial_value
             });
         }
@@ -185,9 +186,9 @@ fn empty_storage_header_from_account(account: &PartialAccount) -> AccountStorage
         .storage()
         .header()
         .slots()
-        .map(|(slot_type, _)| match slot_type {
-            StorageSlotType::Value => (*slot_type, Word::empty()),
-            StorageSlotType::Map => (*slot_type, StorageMap::new().root()),
+        .map(|(slot_name, slot_type, _)| match slot_type {
+            StorageSlotType::Value => (slot_name.clone(), *slot_type, Word::empty()),
+            StorageSlotType::Map => (slot_name.clone(), *slot_type, StorageMap::new().root()),
         })
         .collect();
     AccountStorageHeader::new(slots)

@@ -24,6 +24,8 @@ pub const ERR_ACCOUNT_ID_SUFFIX_LEAST_SIGNIFICANT_BYTE_MUST_BE_ZERO: MasmError =
 pub const ERR_ACCOUNT_ID_SUFFIX_MOST_SIGNIFICANT_BIT_MUST_BE_ZERO: MasmError = MasmError::from_static_str("most significant bit of the account ID suffix must be zero");
 /// Error Message: "unknown account storage mode in account ID"
 pub const ERR_ACCOUNT_ID_UNKNOWN_STORAGE_MODE: MasmError = MasmError::from_static_str("unknown account storage mode in account ID");
+/// Error Message: "storage slot with the provided name does not exist"
+pub const ERR_ACCOUNT_ID_UNKNOWN_STORAGE_SLOT_NAME: MasmError = MasmError::from_static_str("storage slot with the provided name does not exist");
 /// Error Message: "unknown version in account ID"
 pub const ERR_ACCOUNT_ID_UNKNOWN_VERSION: MasmError = MasmError::from_static_str("unknown version in account ID");
 /// Error Message: "storage size can only be zero if storage offset is also zero"

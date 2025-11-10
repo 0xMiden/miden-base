@@ -281,7 +281,7 @@ impl DataStore for TransactionContext {
                     .storage()
                     .slots()
                     .iter()
-                    .find_map(|slot| match slot {
+                    .find_map(|named_slot| match named_slot.storage_slot() {
                         StorageSlot::Map(storage_map) if storage_map.root() == map_root => {
                             Some(storage_map)
                         },
@@ -313,7 +313,7 @@ impl DataStore for TransactionContext {
                     .storage()
                     .slots()
                     .iter()
-                    .find_map(|slot| match slot {
+                    .find_map(|named_slot| match named_slot.storage_slot() {
                         StorageSlot::Map(storage_map) if storage_map.root() == map_root => {Some(storage_map)},
                         _ => None,
                     })
