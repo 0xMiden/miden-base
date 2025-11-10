@@ -8,7 +8,7 @@ use.miden::active_note
 
 const.B2AGG_NOTE_INPUTS_NUMBER=6
 
-# ERRORS
+# ERRORS
 # =================================================================================================
 
 const.ERR_B2AGG_WRONG_NUMBER_OF_ASSETS="B2AGG script requires exactly 1 note asset"
@@ -19,12 +19,14 @@ const.ERR_B2AGG_WRONG_NUMBER_OF_INPUTS="B2AGG script expects exactly 6 note inpu
 #!           destination_address_2(u32), destination_address_3(u32), destination_address_4(u32)]
 #! Outputs: []
 #!
-#! The destination_address is split into 5 u32 values representing a 20-byte Ethereum address:
-#! - destination_address_0: bytes 0-3
-#! - destination_address_1: bytes 4-7
-#! - destination_address_2: bytes 8-11
-#! - destination_address_3: bytes 12-15
-#! - destination_address_4: bytes 16-19
+#! Note inputs:
+#! - destination_network: u32 value representing the target chain ID
+#! - destination_address: split into 5 u32 values representing a 20-byte Ethereum address:
+#!   - destination_address_0: bytes 0-3
+#!   - destination_address_1: bytes 4-7
+#!   - destination_address_2: bytes 8-11
+#!   - destination_address_3: bytes 12-15
+#!   - destination_address_4: bytes 16-19
 #!
 begin
     dropw
