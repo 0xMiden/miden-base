@@ -37,7 +37,7 @@ use miden_objects::account::{
     PartialAccount,
 };
 use miden_objects::asset::Asset;
-use miden_objects::note::{NoteId, NoteMetadata, NoteRecipient, NoteScript};
+use miden_objects::note::{NoteId, NoteMetadata, NoteRecipient};
 use miden_objects::transaction::{
     InputNote,
     InputNotes,
@@ -56,11 +56,10 @@ use miden_processor::{
     MastForestStore,
     ProcessState,
 };
-pub(crate) use tx_event::TransactionEvent;
+pub(crate) use tx_event::{RecipientData, TransactionEvent};
 pub use tx_progress::TransactionProgress;
 
 use crate::errors::{TransactionHostError, TransactionKernelError};
-use crate::host::tx_event::RecipientData;
 
 // TRANSACTION BASE HOST
 // ================================================================================================
@@ -227,6 +226,34 @@ impl<'store, STORE> TransactionBaseHost<'store, STORE> {
         Ok(())
     }
 
+    /// Inserts an [`OutputNoteBuilder`] into the output notes created from only the recipient
+    /// digest.
+    pub(super) fn output_note_from_recipient_digest(
+        &mut self,
+        note_idx: usize,
+        metadata: NoteMetadata,
+        recipient_digest: Word,
+    ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
+        let note_builder = OutputNoteBuilder::from_recipient_digest(metadata, recipient_digest)?;
+        self.insert_output_note_builder(note_idx, note_builder)?;
+
+        Ok(Vec::new())
+    }
+
+    /// Inserts an [`OutputNoteBuilder`] into the output notes created from the full
+    /// [`NoteRecipient`] object.
+    pub(super) fn output_note_from_recipient(
+        &mut self,
+        note_idx: usize,
+        metadata: NoteMetadata,
+        recipient: NoteRecipient,
+    ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
+        let note_builder = OutputNoteBuilder::from_recipient(metadata, recipient);
+        self.insert_output_note_builder(note_idx, note_builder)?;
+
+        Ok(Vec::new())
+    }
+
     /// Loads the provided [`AccountCode`] into the host's [`AccountProcedureIndexMap`].
     pub fn load_foreign_account_code(
         &mut self,
@@ -258,37 +285,6 @@ impl<'store, STORE> TransactionBaseHost<'store, STORE> {
     /// as a response to an `AuthRequest` event.
     pub fn on_auth_requested(&self, signature: Vec<Felt>) -> Vec<AdviceMutation> {
         vec![AdviceMutation::extend_stack(signature)]
-    }
-
-    /// Handles a note creation event.
-    ///
-    /// Returns `Some` with the recipient data to request the missing note script, or `None` if the
-    /// event was handled.
-    pub fn on_note_after_created(
-        &mut self,
-        note_idx: usize,
-        metadata: NoteMetadata,
-        recipient_digest: Word,
-        note_script: Option<NoteScript>,
-        recipient_data: Option<RecipientData>,
-    ) -> Result<Option<RecipientData>, TransactionKernelError> {
-        let recipient = match (note_script, recipient_data) {
-            // If recipient data is none, there is no point in requesting the script.
-            (_, None) => None,
-            // If the script is missing, return the recipient data so the script can be requested.
-            (None, recipient_data @ Some(_)) => return Ok(recipient_data),
-            // If both are present, we can build the recipient directly.
-            (Some(note_script), Some(recipient_data)) => Some(NoteRecipient::new(
-                recipient_data.serial_num,
-                note_script,
-                recipient_data.note_inputs,
-            )),
-        };
-
-        let note_builder = OutputNoteBuilder::new(metadata, recipient_digest, recipient)?;
-        self.insert_output_note_builder(note_idx, note_builder)?;
-
-        Ok(None)
     }
 
     /// Adds an asset to the output note identified by the note index.

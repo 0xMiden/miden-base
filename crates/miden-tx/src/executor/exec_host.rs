@@ -33,8 +33,8 @@ use miden_processor::{
 
 use crate::auth::{SigningInputs, TransactionAuthenticator};
 use crate::errors::TransactionKernelError;
-use crate::host::note_builder::OutputNoteBuilder;
 use crate::host::{
+    RecipientData,
     ScriptMastForestStore,
     TransactionBaseHost,
     TransactionEvent,
@@ -412,44 +412,51 @@ where
     /// where the script is not already available in the advice provider.
     async fn on_note_script_requested(
         &mut self,
+        note_idx: usize,
+        recipient_digest: Word,
         script_root: Word,
         metadata: NoteMetadata,
-        recipient_digest: Word,
-        note_idx: usize,
         note_inputs: NoteInputs,
         serial_num: Word,
     ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
         let note_script_result = self.base_host.store().get_note_script(script_root).await;
 
-        let (recipient, mutations) = match note_script_result {
+        match note_script_result {
             Ok(Some(note_script)) => {
                 let script_felts: Vec<Felt> = (&note_script).into();
                 let recipient = NoteRecipient::new(serial_num, note_script, note_inputs);
-                let mutations = vec![AdviceMutation::extend_map(AdviceMap::from_iter([(
+
+                if recipient.digest() != recipient_digest {
+                    return Err(TransactionKernelError::other(format!(
+                        "recipient digest is {recipient_digest}, but recipient constructed from raw inputs has digest {}",
+                        recipient.digest()
+                    )));
+                }
+
+                self.base_host.output_note_from_recipient(note_idx, metadata, recipient)?;
+
+                Ok(vec![AdviceMutation::extend_map(AdviceMap::from_iter([(
                     script_root,
                     script_felts,
-                )]))];
-
-                (Some(recipient), mutations)
+                )]))])
             },
-            Ok(None) if metadata.is_private() => (None, Vec::new()),
-            Ok(None) => {
-                return Err(TransactionKernelError::other(format!(
-                    "note script with root {script_root} not found in data store for public note"
-                )));
-            },
-            Err(err) => {
-                return Err(TransactionKernelError::other_with_source(
-                    "failed to retrieve note script from data store",
-                    err,
-                ));
-            },
-        };
+            Ok(None) if metadata.is_private() => {
+                self.base_host.output_note_from_recipient_digest(
+                    note_idx,
+                    metadata,
+                    recipient_digest,
+                )?;
 
-        let note_builder = OutputNoteBuilder::new(metadata, recipient_digest, recipient)?;
-        self.base_host.insert_output_note_builder(note_idx, note_builder)?;
-
-        Ok(mutations)
+                Ok(Vec::new())
+            },
+            Ok(None) => Err(TransactionKernelError::other(format!(
+                "note script with root {script_root} not found in data store for public note"
+            ))),
+            Err(err) => Err(TransactionKernelError::other_with_source(
+                "failed to retrieve note script from data store",
+                err,
+            )),
+        }
     }
 
     /// Consumes `self` and returns the account delta, output notes, generated signatures and
@@ -591,35 +598,34 @@ where
                     self.base_host.on_account_push_procedure_index(code_commitment, procedure_root)
                 },
 
-                TransactionEvent::NoteAfterCreated {
-                    note_idx,
-                    metadata,
-                    recipient_digest,
-                    note_script,
-                    recipient_data,
-                } => {
-                    let recipient_data = self.base_host.on_note_after_created(
-                        note_idx,
-                        metadata,
-                        recipient_digest,
-                        note_script,
-                        recipient_data,
-                    )?;
-
-                    // A return value of Some means we should request the script.
-                    if let Some(recipient_data) = recipient_data {
-                        self.on_note_script_requested(
-                            recipient_data.script_root,
-                            metadata,
+                TransactionEvent::NoteAfterCreated { note_idx, metadata, recipient_data } => {
+                    match recipient_data {
+                        RecipientData::Digest(recipient_digest) => {
+                            self.base_host.output_note_from_recipient_digest(
+                                note_idx,
+                                metadata,
+                                recipient_digest,
+                            )
+                        },
+                        RecipientData::Recipient(note_recipient) => self
+                            .base_host
+                            .output_note_from_recipient(note_idx, metadata, note_recipient),
+                        RecipientData::ScriptMissing {
                             recipient_digest,
-                            note_idx,
-                            recipient_data.note_inputs,
-                            recipient_data.serial_num,
-                        )
-                        .await
-                    } else {
-                        // A return value of None means the note creation was handled.
-                        Ok(Vec::new())
+                            serial_num,
+                            script_root,
+                            note_inputs,
+                        } => {
+                            self.on_note_script_requested(
+                                note_idx,
+                                recipient_digest,
+                                script_root,
+                                metadata,
+                                note_inputs,
+                                serial_num,
+                            )
+                            .await
+                        },
                     }
                 },
 

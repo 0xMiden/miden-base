@@ -3,7 +3,7 @@ use alloc::vec::Vec;
 use miden_lib::transaction::{EventId, TransactionEventId};
 use miden_objects::account::{AccountId, StorageMap};
 use miden_objects::asset::{Asset, AssetVault, AssetVaultKey, FungibleAsset};
-use miden_objects::note::{NoteId, NoteInputs, NoteMetadata, NoteScript};
+use miden_objects::note::{NoteId, NoteInputs, NoteMetadata, NoteRecipient, NoteScript};
 use miden_objects::transaction::TransactionSummary;
 use miden_objects::{Felt, Hasher, Word};
 use miden_processor::{AdviceMutation, ProcessState, RowIndex};
@@ -79,13 +79,8 @@ pub(crate) enum TransactionEvent {
         note_idx: usize,
         /// The note metadata extracted from the stack.
         metadata: NoteMetadata,
-        /// The recipient digest extracted from the stack.
-        recipient_digest: Word,
-        /// The note script of the note being created, which is present if it existed in the advice
-        /// provider.
-        note_script: Option<NoteScript>,
         /// The recipient data extracted from the advice inputs.
-        recipient_data: Option<RecipientData>,
+        recipient_data: RecipientData,
     },
 
     NoteBeforeAddAsset {
@@ -401,36 +396,49 @@ impl TransactionEvent {
                 let note_idx = process.get_stack_item(10).as_int() as usize;
 
                 // try to read the full recipient from the advice provider
-                let (note_script, recipient_data) =
-                    if process.has_advice_map_entry(recipient_digest) {
-                        let (note_inputs, script_root, serial_num) =
-                            process.read_note_recipient_info_from_adv_map(recipient_digest)?;
+                let recipient_data = if process.has_advice_map_entry(recipient_digest) {
+                    let (note_inputs, script_root, serial_num) =
+                        process.read_note_recipient_info_from_adv_map(recipient_digest)?;
 
-                        let note_script = process
-                            .advice_provider()
-                            .get_mapped_values(&script_root)
-                            .map(|script_data| {
-                                NoteScript::try_from(script_data).map_err(|source| {
-                                    TransactionKernelError::MalformedNoteScript {
-                                        data: script_data.to_vec(),
-                                        source,
-                                    }
-                                })
+                    let note_script = process
+                        .advice_provider()
+                        .get_mapped_values(&script_root)
+                        .map(|script_data| {
+                            NoteScript::try_from(script_data).map_err(|source| {
+                                TransactionKernelError::MalformedNoteScript {
+                                    data: script_data.to_vec(),
+                                    source,
+                                }
                             })
-                            .transpose()?;
+                        })
+                        .transpose()?;
 
-                        (note_script, Some(RecipientData { serial_num, script_root, note_inputs }))
-                    } else {
-                        (None, None)
-                    };
+                    match note_script {
+                        Some(note_script) => {
+                            let recipient =
+                                NoteRecipient::new(serial_num, note_script, note_inputs);
 
-                Some(TransactionEvent::NoteAfterCreated {
-                    note_idx,
-                    metadata,
-                    recipient_digest,
-                    note_script,
-                    recipient_data,
-                })
+                            if recipient.digest() != recipient_digest {
+                                return Err(TransactionKernelError::other(format!(
+                                    "recipient digest is {recipient_digest}, but recipient constructed from raw inputs has digest {}",
+                                    recipient.digest()
+                                )));
+                            }
+
+                            RecipientData::Recipient(recipient)
+                        },
+                        None => RecipientData::ScriptMissing {
+                            recipient_digest,
+                            serial_num,
+                            script_root,
+                            note_inputs,
+                        },
+                    }
+                } else {
+                    RecipientData::Digest(recipient_digest)
+                };
+
+                Some(TransactionEvent::NoteAfterCreated { note_idx, metadata, recipient_data })
             },
 
             TransactionEventId::NoteBeforeAddAsset => {
@@ -653,10 +661,18 @@ impl TransactionEvent {
 
 /// The partial data to construct a note recipient.
 #[derive(Debug)]
-pub(crate) struct RecipientData {
-    pub(crate) serial_num: Word,
-    pub(crate) script_root: Word,
-    pub(crate) note_inputs: NoteInputs,
+pub(crate) enum RecipientData {
+    // Only recipient digest is available
+    Digest(Word),
+    // We have the full note recipient
+    Recipient(NoteRecipient),
+    // Similar to `RecipientData` now - we have everything but the note script
+    ScriptMissing {
+        recipient_digest: Word,
+        serial_num: Word,
+        script_root: Word,
+        note_inputs: NoteInputs,
+    },
 }
 
 // HELPER FUNCTIONS

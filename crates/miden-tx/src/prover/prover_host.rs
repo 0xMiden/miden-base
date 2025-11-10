@@ -17,6 +17,7 @@ use miden_processor::{
 };
 
 use crate::host::{
+    RecipientData,
     ScriptMastForestStore,
     TransactionBaseHost,
     TransactionEvent,
@@ -156,30 +157,17 @@ where
                 self.base_host.on_account_push_procedure_index(code_commitment, procedure_root)
             },
 
-            TransactionEvent::NoteAfterCreated {
-                note_idx,
-                metadata,
-                recipient_digest,
-                note_script,
-                recipient_data,
-            } => {
-                let recipient_data = self.base_host.on_note_after_created(
-                    note_idx,
-                    metadata,
-                    recipient_digest,
-                    note_script,
-                    recipient_data,
-                )?;
-
-                // A return value of Some means recipient data was present, but the script was not
-                // and this should not happen at proving time.
-                if recipient_data.is_some() {
-                    Err(TransactionKernelError::other(
+            TransactionEvent::NoteAfterCreated { note_idx, metadata, recipient_data } => {
+                match recipient_data {
+                    RecipientData::Digest(recipient_digest) => self
+                        .base_host
+                        .output_note_from_recipient_digest(note_idx, metadata, recipient_digest),
+                    RecipientData::Recipient(note_recipient) => self
+                        .base_host
+                        .output_note_from_recipient(note_idx, metadata, note_recipient),
+                    RecipientData::ScriptMissing { .. } => Err(TransactionKernelError::other(
                         "note script should be in the advice provider at proving time",
-                    ))
-                } else {
-                    // A return value of None means the note creation was handled.
-                    Ok(Vec::new())
+                    )),
                 }
             },
 
