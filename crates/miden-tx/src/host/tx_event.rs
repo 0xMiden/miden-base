@@ -560,11 +560,11 @@ impl TransactionEvent {
 /// The partial data to construct a note recipient.
 #[derive(Debug)]
 pub(crate) enum RecipientData {
-    // Only recipient digest is available
+    /// Only the recipient digest is available.
     Digest(Word),
-    // We have the full note recipient
+    /// The full [`NoteRecipient`] is available.
     Recipient(NoteRecipient),
-    // Similar to `RecipientData` now - we have everything but the note script
+    /// Everything but the note script is available.
     ScriptMissing {
         recipient_digest: Word,
         serial_num: Word,
