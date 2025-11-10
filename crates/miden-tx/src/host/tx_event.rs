@@ -58,7 +58,7 @@ pub(crate) enum TransactionEvent {
         /// The account ID for whose vault a witness is requested.
         active_account_id: AccountId,
         /// The vault root identifying the asset vault from which a witness is requested.
-        current_vault_root: Word,
+        vault_root: Word,
         /// The asset for which a witness is requested.
         asset_key: AssetVaultKey,
     },
@@ -205,6 +205,7 @@ impl TransactionEvent {
                 let current_vault_root = process.get_vault_root(vault_root_ptr)?;
 
                 Self::on_account_vault_asset_accessed(
+                    base_host,
                     process,
                     asset.vault_key(),
                     current_vault_root,
@@ -252,7 +253,7 @@ impl TransactionEvent {
                     ))
                 })?;
 
-                Self::on_account_vault_asset_accessed(process, vault_key, vault_root)?
+                Self::on_account_vault_asset_accessed(base_host, process, vault_key, vault_root)?
             },
             TransactionEventId::AccountVaultBeforeHasNonFungibleAsset => {
                 // Expected stack state: [event, ASSET, vault_root_ptr]
@@ -267,7 +268,12 @@ impl TransactionEvent {
                 let vault_root_ptr = process.get_stack_item(5);
                 let vault_root = process.get_vault_root(vault_root_ptr)?;
 
-                Self::on_account_vault_asset_accessed(process, asset.vault_key(), vault_root)?
+                Self::on_account_vault_asset_accessed(
+                    base_host,
+                    process,
+                    asset.vault_key(),
+                    vault_root,
+                )?
             },
 
             TransactionEventId::AccountStorageBeforeSetItem => None,
@@ -554,25 +560,34 @@ impl TransactionEvent {
 
     /// Checks if the necessary witness for accessing the asset is already in the merkle store, and
     /// extracts all necessary data for requesting it.
-    fn on_account_vault_asset_accessed(
+    fn on_account_vault_asset_accessed<'store, STORE>(
+        base_host: &TransactionBaseHost<'store, STORE>,
         process: &ProcessState,
         vault_key: AssetVaultKey,
-        current_vault_root: Word,
+        vault_root: Word,
     ) -> Result<Option<TransactionEvent>, TransactionKernelError> {
         let leaf_index = Felt::new(vault_key.to_leaf_index().value());
         let active_account_id = process.get_active_account_id()?;
+
+        // For the native account we need to explicitly request the initial vault root, while for
+        // foreign accounts the current vault root is always the initial one.
+        let vault_root = if active_account_id == base_host.native_account_id() {
+            base_host.initial_account_header().vault_root()
+        } else {
+            vault_root
+        };
 
         // Note that we check whether a merkle path for the current vault root is present, not
         // necessarily for the root we are going to request. This is because the end goal is to
         // enable access to an asset against the current vault root, and so if this
         // condition is already satisfied, there is nothing to request.
-        if process.has_merkle_path::<{ AssetVault::DEPTH }>(current_vault_root, leaf_index)? {
+        if process.has_merkle_path::<{ AssetVault::DEPTH }>(vault_root, leaf_index)? {
             // If the witness already exists, the event does not need to be handled.
             Ok(None)
         } else {
             Ok(Some(TransactionEvent::AccountVaultBeforeAssetAccess {
                 active_account_id,
-                current_vault_root,
+                vault_root,
                 asset_key: vault_key,
             }))
         }

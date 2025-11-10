@@ -346,17 +346,9 @@ where
     async fn on_account_vault_asset_witness_requested(
         &self,
         active_account_id: AccountId,
-        current_vault_root: Word,
+        vault_root: Word,
         asset_key: AssetVaultKey,
     ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
-        // For the native account we need to explicitly request the initial vault root, while for
-        // foreign accounts the current vault root is always the initial one.
-        let vault_root = if active_account_id == self.base_host.initial_account_header().id() {
-            self.base_host.initial_account_header().vault_root()
-        } else {
-            current_vault_root
-        };
-
         let asset_witness = self
             .base_host
             .store()
@@ -530,12 +522,12 @@ where
 
                 TransactionEvent::AccountVaultBeforeAssetAccess {
                     active_account_id,
-                    current_vault_root,
+                    vault_root,
                     asset_key,
                 } => {
                     self.on_account_vault_asset_witness_requested(
                         active_account_id,
-                        current_vault_root,
+                        vault_root,
                         asset_key,
                     )
                     .await
