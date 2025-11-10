@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.13.0 (TBD)
+- Added `AuthEcdsaK256Keccak` and `AuthEcdsaK256KeccakMultisig` auth components ([#2083](https://github.com/0xMiden/miden-base/pull/2083)).
+
 ## 0.12.2 (unreleased)
 
 - Added `create_mint_note` and `create_burn_note` helper functions for creating standardized MINT and BURN notes ([#2061](https://github.com/0xMiden/miden-base/pull/2061)).
