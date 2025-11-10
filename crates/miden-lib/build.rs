@@ -9,12 +9,7 @@ use fs_err as fs;
 use miden_assembly::diagnostics::{IntoDiagnostic, Result, WrapErr, miette};
 use miden_assembly::utils::Serializable;
 use miden_assembly::{
-    Assembler,
-    DefaultSourceManager,
-    KernelLibrary,
-    Library,
-    LibraryNamespace,
-    Report,
+    Assembler, DefaultSourceManager, KernelLibrary, Library, LibraryNamespace, Report,
 };
 use regex::Regex;
 use walkdir::WalkDir;

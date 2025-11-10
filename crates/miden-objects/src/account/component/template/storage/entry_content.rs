@@ -6,11 +6,7 @@ use core::iter;
 
 use super::placeholder::{PlaceholderTypeRequirement, TEMPLATE_REGISTRY, TemplateType};
 use super::{
-    FieldIdentifier,
-    InitStorageData,
-    MapEntry,
-    StorageValueName,
-    TemplateRequirementsIter,
+    FieldIdentifier, InitStorageData, MapEntry, StorageValueName, TemplateRequirementsIter,
 };
 use crate::account::StorageMap;
 use crate::account::component::template::AccountComponentTemplateError;

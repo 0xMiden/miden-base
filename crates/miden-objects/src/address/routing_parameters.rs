@@ -12,11 +12,7 @@ use crate::crypto::ies::SealingKey;
 use crate::errors::Bech32Error;
 use crate::note::NoteTag;
 use crate::utils::serde::{
-    ByteReader,
-    ByteWriter,
-    Deserializable,
-    DeserializationError,
-    Serializable,
+    ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
 };
 use crate::utils::sync::LazyLock;
 

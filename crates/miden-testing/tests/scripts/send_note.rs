@@ -7,15 +7,8 @@ use miden_objects::Word;
 use miden_objects::asset::{Asset, FungibleAsset};
 use miden_objects::crypto::rand::{FeltRng, RpoRandomCoin};
 use miden_objects::note::{
-    Note,
-    NoteAssets,
-    NoteExecutionHint,
-    NoteInputs,
-    NoteMetadata,
-    NoteRecipient,
-    NoteTag,
-    NoteType,
-    PartialNote,
+    Note, NoteAssets, NoteExecutionHint, NoteInputs, NoteMetadata, NoteRecipient, NoteTag,
+    NoteType, PartialNote,
 };
 use miden_objects::transaction::OutputNote;
 use miden_testing::{Auth, MockChain};

@@ -5,12 +5,9 @@ use std::collections::BTreeMap;
 use anyhow::Context;
 use miden_lib::errors::tx_kernel_errors::{
     ERR_ACCOUNT_ID_SUFFIX_LEAST_SIGNIFICANT_BYTE_MUST_BE_ZERO,
-    ERR_ACCOUNT_ID_SUFFIX_MOST_SIGNIFICANT_BIT_MUST_BE_ZERO,
-    ERR_ACCOUNT_ID_UNKNOWN_STORAGE_MODE,
-    ERR_ACCOUNT_ID_UNKNOWN_VERSION,
-    ERR_ACCOUNT_NONCE_AT_MAX,
-    ERR_ACCOUNT_NONCE_CAN_ONLY_BE_INCREMENTED_ONCE,
-    ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS,
+    ERR_ACCOUNT_ID_SUFFIX_MOST_SIGNIFICANT_BIT_MUST_BE_ZERO, ERR_ACCOUNT_ID_UNKNOWN_STORAGE_MODE,
+    ERR_ACCOUNT_ID_UNKNOWN_VERSION, ERR_ACCOUNT_NONCE_AT_MAX,
+    ERR_ACCOUNT_NONCE_CAN_ONLY_BE_INCREMENTED_ONCE, ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS,
     ERR_FAUCET_INVALID_STORAGE_OFFSET,
 };
 use miden_lib::testing::account_component::MockAccountComponent;
@@ -19,30 +16,17 @@ use miden_lib::transaction::TransactionKernel;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{
-    Account,
-    AccountBuilder,
-    AccountCode,
-    AccountComponent,
-    AccountId,
-    AccountIdVersion,
-    AccountProcedureInfo,
-    AccountStorage,
-    AccountStorageMode,
-    AccountType,
-    StorageMap,
-    StorageSlot,
+    Account, AccountBuilder, AccountCode, AccountComponent, AccountId, AccountIdVersion,
+    AccountProcedureInfo, AccountStorage, AccountStorageMode, AccountType, StorageMap, StorageSlot,
 };
 use miden_objects::assembly::diagnostics::{IntoDiagnostic, NamedSource, Report, WrapErr, miette};
 use miden_objects::assembly::{DefaultSourceManager, Library};
 use miden_objects::asset::{Asset, AssetVault, FungibleAsset};
 use miden_objects::note::NoteType;
 use miden_objects::testing::account_id::{
-    ACCOUNT_ID_PRIVATE_NON_FUNGIBLE_FAUCET,
-    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
-    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
-    ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
-    ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
-    ACCOUNT_ID_SENDER,
+    ACCOUNT_ID_PRIVATE_NON_FUNGIBLE_FAUCET, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1, ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
+    ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE, ACCOUNT_ID_SENDER,
 };
 use miden_objects::testing::storage::STORAGE_LEAVES_2;
 use miden_objects::transaction::{ExecutedTransaction, OutputNote, TransactionScript};
@@ -58,11 +42,7 @@ use crate::executor::CodeExecutor;
 use crate::kernel_tests::tx::ExecutionOutputExt;
 use crate::utils::create_public_p2any_note;
 use crate::{
-    Auth,
-    MockChain,
-    TransactionContextBuilder,
-    TxContextInput,
-    assert_execution_error,
+    Auth, MockChain, TransactionContextBuilder, TxContextInput, assert_execution_error,
     assert_transaction_executor_error,
 };
 

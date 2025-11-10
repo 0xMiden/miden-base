@@ -7,33 +7,20 @@ use miden_lib::testing::account_component::MockAccountComponent;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{
-    Account,
-    AccountBuilder,
-    AccountDelta,
-    AccountId,
-    AccountStorage,
-    AccountStorageMode,
-    AccountType,
-    StorageMap,
-    StorageSlot,
+    Account, AccountBuilder, AccountDelta, AccountId, AccountStorage, AccountStorageMode,
+    AccountType, StorageMap, StorageSlot,
 };
 use miden_objects::asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset};
 use miden_objects::note::{Note, NoteExecutionHint, NoteTag, NoteType};
 use miden_objects::testing::account_id::{
-    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
-    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
-    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_3,
-    ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
-    ACCOUNT_ID_SENDER,
-    AccountIdBuilder,
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_3, ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
+    ACCOUNT_ID_SENDER, AccountIdBuilder,
 };
 use miden_objects::testing::asset::NonFungibleAssetBuilder;
 use miden_objects::testing::constants::{
-    CONSUMED_ASSET_1_AMOUNT,
-    CONSUMED_ASSET_3_AMOUNT,
-    FUNGIBLE_ASSET_AMOUNT,
-    NON_FUNGIBLE_ASSET_DATA,
-    NON_FUNGIBLE_ASSET_DATA_2,
+    CONSUMED_ASSET_1_AMOUNT, CONSUMED_ASSET_3_AMOUNT, FUNGIBLE_ASSET_AMOUNT,
+    NON_FUNGIBLE_ASSET_DATA, NON_FUNGIBLE_ASSET_DATA_2,
 };
 use miden_objects::testing::storage::{STORAGE_INDEX_0, STORAGE_INDEX_2};
 use miden_objects::transaction::TransactionScript;

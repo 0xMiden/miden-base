@@ -2,11 +2,7 @@ use alloc::vec::Vec;
 
 use super::{AccountStorage, Felt, Hasher, StorageSlot, StorageSlotType, Word};
 use crate::utils::serde::{
-    ByteReader,
-    ByteWriter,
-    Deserializable,
-    DeserializationError,
-    Serializable,
+    ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
 };
 use crate::{AccountError, ZERO};
 

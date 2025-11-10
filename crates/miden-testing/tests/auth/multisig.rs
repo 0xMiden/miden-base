@@ -10,8 +10,7 @@ use miden_objects::account::{Account, AccountBuilder, AccountId, AccountStorageM
 use miden_objects::asset::FungibleAsset;
 use miden_objects::note::NoteType;
 use miden_objects::testing::account_id::{
-    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
-    ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
 };
 use miden_objects::transaction::OutputNote;
 use miden_objects::vm::AdviceMap;

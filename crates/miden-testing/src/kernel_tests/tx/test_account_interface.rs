@@ -10,20 +10,12 @@ use miden_objects::account::{Account, AccountId};
 use miden_objects::asset::{Asset, FungibleAsset};
 use miden_objects::crypto::rand::FeltRng;
 use miden_objects::note::{
-    Note,
-    NoteAssets,
-    NoteExecutionHint,
-    NoteInputs,
-    NoteMetadata,
-    NoteRecipient,
-    NoteTag,
-    NoteType,
+    Note, NoteAssets, NoteExecutionHint, NoteInputs, NoteMetadata, NoteRecipient, NoteTag, NoteType,
 };
 use miden_objects::testing::account_id::{
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE_2,
-    ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
-    ACCOUNT_ID_SENDER,
+    ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, ACCOUNT_ID_SENDER,
 };
 use miden_objects::transaction::{InputNote, OutputNote};
 use miden_objects::{Felt, StarkField, Word, ZERO};
@@ -31,10 +23,7 @@ use miden_processor::ExecutionError;
 use miden_processor::crypto::RpoRandomCoin;
 use miden_tx::auth::UnreachableAuth;
 use miden_tx::{
-    FailedNote,
-    NoteConsumptionChecker,
-    NoteConsumptionInfo,
-    TransactionExecutor,
+    FailedNote, NoteConsumptionChecker, NoteConsumptionInfo, TransactionExecutor,
     TransactionExecutorError,
 };
 use rand::{Rng, SeedableRng};

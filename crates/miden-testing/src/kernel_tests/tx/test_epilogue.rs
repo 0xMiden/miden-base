@@ -3,18 +3,14 @@ use alloc::vec::Vec;
 
 use miden_lib::errors::tx_kernel_errors::{
     ERR_ACCOUNT_DELTA_NONCE_MUST_BE_INCREMENTED_IF_VAULT_OR_STORAGE_CHANGED,
-    ERR_EPILOGUE_EXECUTED_TRANSACTION_IS_EMPTY,
-    ERR_EPILOGUE_NONCE_CANNOT_BE_0,
-    ERR_EPILOGUE_TOTAL_NUMBER_OF_ASSETS_MUST_STAY_THE_SAME,
-    ERR_TX_INVALID_EXPIRATION_DELTA,
+    ERR_EPILOGUE_EXECUTED_TRANSACTION_IS_EMPTY, ERR_EPILOGUE_NONCE_CANNOT_BE_0,
+    ERR_EPILOGUE_TOTAL_NUMBER_OF_ASSETS_MUST_STAY_THE_SAME, ERR_TX_INVALID_EXPIRATION_DELTA,
 };
 use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::testing::note::NoteBuilder;
 use miden_lib::transaction::EXPIRATION_BLOCK_ELEMENT_IDX;
 use miden_lib::transaction::memory::{
-    NOTE_MEM_SIZE,
-    OUTPUT_NOTE_ASSET_COMMITMENT_OFFSET,
-    OUTPUT_NOTE_SECTION_OFFSET,
+    NOTE_MEM_SIZE, OUTPUT_NOTE_ASSET_COMMITMENT_OFFSET, OUTPUT_NOTE_SECTION_OFFSET,
 };
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::Word;
@@ -22,10 +18,8 @@ use miden_objects::account::{Account, AccountDelta, AccountStorageDelta, Account
 use miden_objects::asset::{Asset, FungibleAsset};
 use miden_objects::note::{NoteTag, NoteType};
 use miden_objects::testing::account_id::{
-    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
-    ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
-    ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
-    ACCOUNT_ID_SENDER,
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1, ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
+    ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, ACCOUNT_ID_SENDER,
 };
 use miden_objects::transaction::{OutputNote, OutputNotes};
 use miden_processor::{Felt, ONE};
@@ -34,11 +28,7 @@ use super::{ZERO, create_mock_notes_procedure};
 use crate::kernel_tests::tx::ExecutionOutputExt;
 use crate::utils::{create_public_p2any_note, create_spawn_note};
 use crate::{
-    Auth,
-    MockChain,
-    TransactionContextBuilder,
-    TxContextInput,
-    assert_execution_error,
+    Auth, MockChain, TransactionContextBuilder, TxContextInput, assert_execution_error,
     assert_transaction_executor_error,
 };
 

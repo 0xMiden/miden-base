@@ -8,21 +8,12 @@ use miden_objects::assembly::debuginfo::Location;
 use miden_objects::assembly::{SourceFile, SourceSpan};
 use miden_objects::transaction::{InputNote, InputNotes, OutputNote};
 use miden_processor::{
-    AdviceMutation,
-    BaseHost,
-    EventError,
-    MastForest,
-    MastForestStore,
-    ProcessState,
-    SyncHost,
+    AdviceMutation, BaseHost, EventError, MastForest, MastForestStore, ProcessState, SyncHost,
 };
 
 use crate::AccountProcedureIndexMap;
 use crate::host::{
-    ScriptMastForestStore,
-    TransactionBaseHost,
-    TransactionEventData,
-    TransactionEventHandling,
+    ScriptMastForestStore, TransactionBaseHost, TransactionEventData, TransactionEventHandling,
     TransactionProgress,
 };
 

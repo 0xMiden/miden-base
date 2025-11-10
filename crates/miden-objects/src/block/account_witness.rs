@@ -1,13 +1,7 @@
 use alloc::string::ToString;
 
 use miden_crypto::merkle::{
-    InnerNodeInfo,
-    LeafIndex,
-    SMT_DEPTH,
-    SmtLeaf,
-    SmtProof,
-    SmtProofError,
-    SparseMerklePath,
+    InnerNodeInfo, LeafIndex, SMT_DEPTH, SmtLeaf, SmtProof, SmtProofError, SparseMerklePath,
 };
 
 use crate::account::AccountId;

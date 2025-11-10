@@ -7,15 +7,8 @@ use miden_objects::assembly::debuginfo::{SourceLanguage, SourceManagerSync, Uri}
 use miden_objects::assembly::{DefaultSourceManager, Library};
 use miden_objects::asset::Asset;
 use miden_objects::note::{
-    Note,
-    NoteAssets,
-    NoteExecutionHint,
-    NoteInputs,
-    NoteMetadata,
-    NoteRecipient,
-    NoteScript,
-    NoteTag,
-    NoteType,
+    Note, NoteAssets, NoteExecutionHint, NoteInputs, NoteMetadata, NoteRecipient, NoteScript,
+    NoteTag, NoteType,
 };
 use miden_objects::testing::note::DEFAULT_NOTE_CODE;
 use miden_objects::{Felt, NoteError, Word, ZERO};

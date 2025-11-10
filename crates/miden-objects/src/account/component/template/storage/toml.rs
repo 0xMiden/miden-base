@@ -12,14 +12,8 @@ use thiserror::Error;
 
 use super::placeholder::TemplateType;
 use super::{
-    FeltRepresentation,
-    InitStorageData,
-    MapEntry,
-    MapRepresentation,
-    MultiWordRepresentation,
-    StorageEntry,
-    StorageValueNameError,
-    WordRepresentation,
+    FeltRepresentation, InitStorageData, MapEntry, MapRepresentation, MultiWordRepresentation,
+    StorageEntry, StorageValueNameError, WordRepresentation,
 };
 use crate::account::component::FieldIdentifier;
 use crate::account::component::template::storage::placeholder::{TEMPLATE_REGISTRY, TemplateFelt};

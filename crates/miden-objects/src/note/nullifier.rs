@@ -4,17 +4,8 @@ use core::fmt::{Debug, Display, Formatter};
 use miden_crypto::WordError;
 
 use super::{
-    ByteReader,
-    ByteWriter,
-    Deserializable,
-    DeserializationError,
-    Felt,
-    Hasher,
-    NoteDetails,
-    Serializable,
-    WORD_SIZE,
-    Word,
-    ZERO,
+    ByteReader, ByteWriter, Deserializable, DeserializationError, Felt, Hasher, NoteDetails,
+    Serializable, WORD_SIZE, Word, ZERO,
 };
 
 // CONSTANTS

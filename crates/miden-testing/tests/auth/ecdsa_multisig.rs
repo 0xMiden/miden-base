@@ -69,7 +69,11 @@ fn create_multisig_account(
     let approvers: Vec<_> = public_keys.iter().map(|pk| pk.to_commitment().into()).collect();
 
     let multisig_account = AccountBuilder::new([0; 32])
-        .with_auth_component(Auth::EcdsaK256KeccakMultisig { threshold, approvers, proc_threshold_map })
+        .with_auth_component(Auth::EcdsaK256KeccakMultisig {
+            threshold,
+            approvers,
+            proc_threshold_map,
+        })
         .with_component(BasicWallet)
         .account_type(AccountType::RegularAccountUpdatableCode)
         .storage_mode(AccountStorageMode::Public)

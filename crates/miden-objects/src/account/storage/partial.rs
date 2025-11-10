@@ -157,11 +157,7 @@ mod tests {
     use miden_core::Word;
 
     use crate::account::{
-        AccountStorage,
-        AccountStorageHeader,
-        PartialStorage,
-        PartialStorageMap,
-        StorageMap,
+        AccountStorage, AccountStorageHeader, PartialStorage, PartialStorageMap, StorageMap,
         StorageSlot,
     };
 

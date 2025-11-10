@@ -3,44 +3,28 @@ use alloc::vec::Vec;
 
 use anyhow::Context;
 use miden_lib::errors::tx_kernel_errors::{
-    ERR_NON_FUNGIBLE_ASSET_ALREADY_EXISTS,
-    ERR_TX_NUMBER_OF_OUTPUT_NOTES_EXCEEDS_LIMIT,
+    ERR_NON_FUNGIBLE_ASSET_ALREADY_EXISTS, ERR_TX_NUMBER_OF_OUTPUT_NOTES_EXCEEDS_LIMIT,
 };
 use miden_lib::note::create_p2id_note;
 use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::transaction::memory::{
-    NOTE_MEM_SIZE,
-    NUM_OUTPUT_NOTES_PTR,
-    OUTPUT_NOTE_ASSETS_OFFSET,
-    OUTPUT_NOTE_METADATA_OFFSET,
-    OUTPUT_NOTE_RECIPIENT_OFFSET,
-    OUTPUT_NOTE_SECTION_OFFSET,
+    NOTE_MEM_SIZE, NUM_OUTPUT_NOTES_PTR, OUTPUT_NOTE_ASSETS_OFFSET, OUTPUT_NOTE_METADATA_OFFSET,
+    OUTPUT_NOTE_RECIPIENT_OFFSET, OUTPUT_NOTE_SECTION_OFFSET,
 };
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{Account, AccountId};
 use miden_objects::asset::{Asset, FungibleAsset, NonFungibleAsset};
 use miden_objects::crypto::rand::RpoRandomCoin;
 use miden_objects::note::{
-    Note,
-    NoteAssets,
-    NoteExecutionHint,
-    NoteExecutionMode,
-    NoteInputs,
-    NoteMetadata,
-    NoteRecipient,
-    NoteTag,
-    NoteType,
+    Note, NoteAssets, NoteExecutionHint, NoteExecutionMode, NoteInputs, NoteMetadata,
+    NoteRecipient, NoteTag, NoteType,
 };
 use miden_objects::testing::account_id::{
-    ACCOUNT_ID_NETWORK_NON_FUNGIBLE_FAUCET,
-    ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET,
-    ACCOUNT_ID_PRIVATE_SENDER,
-    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
-    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
-    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
+    ACCOUNT_ID_NETWORK_NON_FUNGIBLE_FAUCET, ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET,
+    ACCOUNT_ID_PRIVATE_SENDER, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
-    ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
-    ACCOUNT_ID_SENDER,
+    ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, ACCOUNT_ID_SENDER,
 };
 use miden_objects::testing::constants::NON_FUNGIBLE_ASSET_DATA_2;
 use miden_objects::transaction::{OutputNote, OutputNotes};

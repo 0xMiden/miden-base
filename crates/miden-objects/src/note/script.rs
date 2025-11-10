@@ -7,11 +7,7 @@ use miden_processor::MastNodeExt;
 use super::Felt;
 use crate::assembly::mast::{MastForest, MastNodeId};
 use crate::utils::serde::{
-    ByteReader,
-    ByteWriter,
-    Deserializable,
-    DeserializationError,
-    Serializable,
+    ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
 };
 use crate::vm::Program;
 use crate::{NoteError, PrettyPrint, Word};

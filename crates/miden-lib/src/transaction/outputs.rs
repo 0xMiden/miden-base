@@ -2,13 +2,8 @@ use miden_objects::account::{AccountHeader, AccountId};
 use miden_objects::{AccountError, Felt, WORD_SIZE, Word, WordError};
 
 use super::memory::{
-    ACCT_CODE_COMMITMENT_OFFSET,
-    ACCT_DATA_MEM_SIZE,
-    ACCT_ID_AND_NONCE_OFFSET,
-    ACCT_NONCE_IDX,
-    ACCT_STORAGE_COMMITMENT_OFFSET,
-    ACCT_VAULT_ROOT_OFFSET,
-    MemoryOffset,
+    ACCT_CODE_COMMITMENT_OFFSET, ACCT_DATA_MEM_SIZE, ACCT_ID_AND_NONCE_OFFSET, ACCT_NONCE_IDX,
+    ACCT_STORAGE_COMMITMENT_OFFSET, ACCT_VAULT_ROOT_OFFSET, MemoryOffset,
 };
 use crate::transaction::memory::{ACCT_ID_PREFIX_IDX, ACCT_ID_SUFFIX_IDX};
 

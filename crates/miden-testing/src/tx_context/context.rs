@@ -11,26 +11,15 @@ use miden_objects::asset::{AssetVaultKey, AssetWitness};
 use miden_objects::block::{AccountWitness, BlockHeader, BlockNumber};
 use miden_objects::note::{Note, NoteScript};
 use miden_objects::transaction::{
-    AccountInputs,
-    ExecutedTransaction,
-    InputNote,
-    InputNotes,
-    PartialBlockchain,
-    TransactionArgs,
+    AccountInputs, ExecutedTransaction, InputNote, InputNotes, PartialBlockchain, TransactionArgs,
     TransactionInputs,
 };
 use miden_processor::fast::ExecutionOutput;
 use miden_processor::{ExecutionError, FutureMaybeSend, MastForest, MastForestStore, Word};
 use miden_tx::auth::{BasicAuthenticator, UnreachableAuth};
 use miden_tx::{
-    AccountProcedureIndexMap,
-    DataStore,
-    DataStoreError,
-    ScriptMastForestStore,
-    TransactionExecutor,
-    TransactionExecutorError,
-    TransactionExecutorHost,
-    TransactionMastStore,
+    AccountProcedureIndexMap, DataStore, DataStoreError, ScriptMastForestStore,
+    TransactionExecutor, TransactionExecutorError, TransactionExecutorHost, TransactionMastStore,
 };
 
 use crate::executor::CodeExecutor;

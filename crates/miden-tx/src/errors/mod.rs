@@ -13,15 +13,8 @@ use miden_objects::crypto::merkle::SmtProofError;
 use miden_objects::note::{NoteId, NoteMetadata};
 use miden_objects::transaction::TransactionSummary;
 use miden_objects::{
-    AccountDeltaError,
-    AccountError,
-    AssetError,
-    Felt,
-    NoteError,
-    ProvenTransactionError,
-    TransactionInputError,
-    TransactionOutputError,
-    Word,
+    AccountDeltaError, AccountError, AssetError, Felt, NoteError, ProvenTransactionError,
+    TransactionInputError, TransactionOutputError, Word,
 };
 use miden_processor::{DeserializationError, ExecutionError};
 use miden_verifier::VerificationError;

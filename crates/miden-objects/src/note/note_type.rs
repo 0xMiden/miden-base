@@ -2,11 +2,7 @@ use core::fmt::Display;
 use core::str::FromStr;
 
 use crate::utils::serde::{
-    ByteReader,
-    ByteWriter,
-    Deserializable,
-    DeserializationError,
-    Serializable,
+    ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
 };
 use crate::{Felt, NoteError};
 

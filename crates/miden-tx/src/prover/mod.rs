@@ -7,13 +7,8 @@ use miden_objects::account::{AccountDelta, PartialAccount};
 use miden_objects::asset::Asset;
 use miden_objects::block::BlockNumber;
 use miden_objects::transaction::{
-    InputNote,
-    InputNotes,
-    OutputNote,
-    ProvenTransaction,
-    ProvenTransactionBuilder,
-    TransactionInputs,
-    TransactionOutputs,
+    InputNote, InputNotes, OutputNote, ProvenTransaction, ProvenTransactionBuilder,
+    TransactionInputs, TransactionOutputs,
 };
 pub use miden_prover::ProvingOptions;
 use miden_prover::{ExecutionProof, Word, prove};

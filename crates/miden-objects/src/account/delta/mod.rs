@@ -2,12 +2,7 @@ use alloc::string::ToString;
 use alloc::vec::Vec;
 
 use crate::account::{
-    Account,
-    AccountCode,
-    AccountId,
-    AccountStorage,
-    StorageSlot,
-    StorageSlotType,
+    Account, AccountCode, AccountId, AccountStorage, StorageSlot, StorageSlotType,
 };
 use crate::asset::AssetVault;
 use crate::crypto::SequentialCommit;
@@ -19,10 +14,7 @@ pub use storage::{AccountStorageDelta, StorageMapDelta};
 
 mod vault;
 pub use vault::{
-    AccountVaultDelta,
-    FungibleAssetDelta,
-    NonFungibleAssetDelta,
-    NonFungibleDeltaAction,
+    AccountVaultDelta, FungibleAssetDelta, NonFungibleAssetDelta, NonFungibleDeltaAction,
 };
 
 // ACCOUNT DELTA
@@ -590,24 +582,14 @@ mod tests {
     use super::{AccountDelta, AccountStorageDelta, AccountVaultDelta};
     use crate::account::delta::AccountUpdateDetails;
     use crate::account::{
-        Account,
-        AccountCode,
-        AccountId,
-        AccountStorage,
-        AccountStorageMode,
-        AccountType,
+        Account, AccountCode, AccountId, AccountStorage, AccountStorageMode, AccountType,
         StorageMapDelta,
     };
     use crate::asset::{
-        Asset,
-        AssetVault,
-        FungibleAsset,
-        NonFungibleAsset,
-        NonFungibleAssetDetails,
+        Asset, AssetVault, FungibleAsset, NonFungibleAsset, NonFungibleAssetDetails,
     };
     use crate::testing::account_id::{
-        ACCOUNT_ID_PRIVATE_SENDER,
-        ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
+        ACCOUNT_ID_PRIVATE_SENDER, ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
         AccountIdBuilder,
     };
     use crate::{AccountDeltaError, ONE, Word, ZERO};

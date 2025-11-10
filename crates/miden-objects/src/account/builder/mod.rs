@@ -4,15 +4,8 @@ use alloc::vec::Vec;
 use miden_core::FieldElement;
 
 use crate::account::{
-    Account,
-    AccountCode,
-    AccountComponent,
-    AccountId,
-    AccountIdV0,
-    AccountIdVersion,
-    AccountStorage,
-    AccountStorageMode,
-    AccountType,
+    Account, AccountCode, AccountComponent, AccountId, AccountIdV0, AccountIdVersion,
+    AccountStorage, AccountStorageMode, AccountType,
 };
 use crate::asset::AssetVault;
 use crate::{AccountError, Felt, Word};

@@ -20,7 +20,8 @@ use miden_objects::{AccountError, Felt, NoteError, Word, ZERO};
 
 use crate::AuthScheme;
 use crate::account::auth::{
-    AuthEcdsaK256Keccak, AuthRpoFalcon512, AuthRpoFalcon512Multisig, AuthRpoFalcon512MultisigConfig, NoAuth
+    AuthEcdsaK256Keccak, AuthRpoFalcon512, AuthRpoFalcon512Multisig,
+    AuthRpoFalcon512MultisigConfig, NoAuth,
 };
 use crate::account::faucets::BasicFungibleFaucet;
 use crate::account::interface::{

@@ -3,11 +3,7 @@ use alloc::sync::Arc;
 
 use miden_objects::assembly::diagnostics::NamedSource;
 use miden_objects::assembly::{
-    Assembler,
-    DefaultSourceManager,
-    Library,
-    LibraryPath,
-    SourceManagerSync,
+    Assembler, DefaultSourceManager, Library, LibraryPath, SourceManagerSync,
 };
 use miden_objects::note::NoteScript;
 use miden_objects::transaction::TransactionScript;

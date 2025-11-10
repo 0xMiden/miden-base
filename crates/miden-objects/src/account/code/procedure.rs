@@ -7,11 +7,7 @@ use miden_processor::{MastNode, MastNodeExt, MastNodeId};
 
 use super::Felt;
 use crate::utils::serde::{
-    ByteReader,
-    ByteWriter,
-    Deserializable,
-    DeserializationError,
-    Serializable,
+    ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
 };
 use crate::{AccountError, FieldElement, Word};
 

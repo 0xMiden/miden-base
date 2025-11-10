@@ -6,13 +6,7 @@ use miden_lib::StdLibrary;
 use miden_lib::transaction::{EventId, TransactionEvent};
 use miden_objects::Word;
 use miden_processor::{
-    AdviceMutation,
-    AsyncHost,
-    BaseHost,
-    EventError,
-    FutureMaybeSend,
-    MastForest,
-    ProcessState,
+    AdviceMutation, AsyncHost, BaseHost, EventError, FutureMaybeSend, MastForest, ProcessState,
 };
 use miden_tx::TransactionExecutorHost;
 use miden_tx::auth::UnreachableAuth;

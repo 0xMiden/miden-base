@@ -3,13 +3,7 @@ use alloc::collections::BTreeMap;
 use miden_core::utils::{Deserializable, Serializable};
 use miden_crypto::Word;
 use miden_crypto::merkle::{
-    InnerNodeInfo,
-    LeafIndex,
-    MerkleError,
-    PartialSmt,
-    SMT_DEPTH,
-    SmtLeaf,
-    SmtProof,
+    InnerNodeInfo, LeafIndex, MerkleError, PartialSmt, SMT_DEPTH, SmtLeaf, SmtProof,
 };
 
 use crate::account::{StorageMap, StorageMapWitness};

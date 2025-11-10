@@ -28,37 +28,19 @@ use alloc::vec::Vec;
 
 use miden_lib::transaction::{EventId, TransactionEvent, TransactionEventError};
 use miden_objects::account::{
-    AccountCode,
-    AccountDelta,
-    AccountHeader,
-    AccountId,
-    AccountStorageHeader,
-    PartialAccount,
-    StorageMap,
-    StorageSlotType,
+    AccountCode, AccountDelta, AccountHeader, AccountId, AccountStorageHeader, PartialAccount,
+    StorageMap, StorageSlotType,
 };
 use miden_objects::asset::{Asset, AssetVault, AssetVaultKey, FungibleAsset};
 use miden_objects::note::{NoteId, NoteInputs, NoteMetadata, NoteRecipient, NoteScript};
 use miden_objects::transaction::{
-    InputNote,
-    InputNotes,
-    OutputNote,
-    OutputNotes,
-    TransactionMeasurements,
-    TransactionSummary,
+    InputNote, InputNotes, OutputNote, OutputNotes, TransactionMeasurements, TransactionSummary,
 };
 use miden_objects::vm::RowIndex;
 use miden_objects::{Hasher, Word};
 use miden_processor::{
-    AdviceError,
-    AdviceMutation,
-    ContextId,
-    EventError,
-    EventHandlerRegistry,
-    Felt,
-    MastForest,
-    MastForestStore,
-    ProcessState,
+    AdviceError, AdviceMutation, ContextId, EventError, EventHandlerRegistry, Felt, MastForest,
+    MastForestStore, ProcessState,
 };
 pub use tx_progress::TransactionProgress;
 

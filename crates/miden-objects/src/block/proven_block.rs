@@ -1,11 +1,7 @@
 use alloc::vec::Vec;
 
 use crate::block::{
-    BlockAccountUpdate,
-    BlockHeader,
-    BlockNoteIndex,
-    BlockNoteTree,
-    OutputNoteBatch,
+    BlockAccountUpdate, BlockHeader, BlockNoteIndex, BlockNoteTree, OutputNoteBatch,
 };
 use crate::note::Nullifier;
 use crate::transaction::{OrderedTransactionHeaders, OutputNote};

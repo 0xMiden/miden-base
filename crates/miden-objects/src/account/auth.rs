@@ -4,11 +4,7 @@ use rand::{CryptoRng, Rng};
 
 use crate::crypto::dsa::{ecdsa_k256_keccak, rpo_falcon512};
 use crate::utils::serde::{
-    ByteReader,
-    ByteWriter,
-    Deserializable,
-    DeserializationError,
-    Serializable,
+    ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
 };
 use crate::{AuthSchemeError, Felt, Hasher, Word};
 

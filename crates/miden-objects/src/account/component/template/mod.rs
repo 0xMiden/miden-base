@@ -343,9 +343,7 @@ mod tests {
     use crate::account::component::FieldIdentifier;
     use crate::account::component::template::storage::StorageEntry;
     use crate::account::component::template::{
-        AccountComponentMetadata,
-        AccountComponentTemplate,
-        InitStorageData,
+        AccountComponentMetadata, AccountComponentTemplate, InitStorageData,
     };
     use crate::account::{AccountComponent, StorageValueName};
     use crate::errors::AccountComponentTemplateError;

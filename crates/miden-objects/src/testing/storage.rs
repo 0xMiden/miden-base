@@ -7,11 +7,7 @@ use miden_crypto::EMPTY_WORD;
 
 use crate::AccountDeltaError;
 use crate::account::{
-    AccountStorage,
-    AccountStorageDelta,
-    StorageMap,
-    StorageMapDelta,
-    StorageSlot,
+    AccountStorage, AccountStorageDelta, StorageMap, StorageMapDelta, StorageSlot,
 };
 use crate::note::NoteAssets;
 
