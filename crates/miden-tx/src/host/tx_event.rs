@@ -204,7 +204,7 @@ impl TransactionEvent {
                 let vault_root_ptr = process.get_stack_item(5);
                 let current_vault_root = process.get_vault_root(vault_root_ptr)?;
 
-                Self::on_account_vault_asset_accessed(
+                on_account_vault_asset_accessed(
                     base_host,
                     process,
                     asset.vault_key(),
@@ -253,7 +253,7 @@ impl TransactionEvent {
                     ))
                 })?;
 
-                Self::on_account_vault_asset_accessed(base_host, process, vault_key, vault_root)?
+                on_account_vault_asset_accessed(base_host, process, vault_key, vault_root)?
             },
             TransactionEventId::AccountVaultBeforeHasNonFungibleAsset => {
                 // Expected stack state: [event, ASSET, vault_root_ptr]
@@ -268,12 +268,7 @@ impl TransactionEvent {
                 let vault_root_ptr = process.get_stack_item(5);
                 let vault_root = process.get_vault_root(vault_root_ptr)?;
 
-                Self::on_account_vault_asset_accessed(
-                    base_host,
-                    process,
-                    asset.vault_key(),
-                    vault_root,
-                )?
+                on_account_vault_asset_accessed(base_host, process, asset.vault_key(), vault_root)?
             },
 
             TransactionEventId::AccountStorageBeforeSetItem => None,
@@ -313,7 +308,7 @@ impl TransactionEvent {
                 let current_map_root = process.get_stack_word_be(5);
                 let slot_index = process.get_stack_item(9);
 
-                Self::on_account_storage_map_item_accessed(
+                on_account_storage_map_item_accessed(
                     base_host,
                     process,
                     slot_index,
@@ -328,7 +323,7 @@ impl TransactionEvent {
                 let map_key = process.get_stack_word_be(2);
                 let current_map_root = process.get_stack_word_be(10);
 
-                Self::on_account_storage_map_item_accessed(
+                on_account_storage_map_item_accessed(
                     base_host,
                     process,
                     slot_index,
@@ -475,7 +470,7 @@ impl TransactionEvent {
                     .get_mapped_values(&signature_key)
                     .map(|slice| slice.to_vec());
 
-                let tx_summary = Self::extract_tx_summary(base_host, process, message)?;
+                let tx_summary = extract_tx_summary(base_host, process, message)?;
 
                 Some(TransactionEvent::AuthRequest { pub_key_hash, tx_summary, signature })
             },
@@ -483,7 +478,7 @@ impl TransactionEvent {
             TransactionEventId::Unauthorized => {
                 // Expected stack state: [event, MESSAGE]
                 let message = process.get_stack_word_be(1);
-                let tx_summary = Self::extract_tx_summary(base_host, process, message)?;
+                let tx_summary = extract_tx_summary(base_host, process, message)?;
 
                 Some(TransactionEvent::Unauthorized { tx_summary })
             },
@@ -557,144 +552,6 @@ impl TransactionEvent {
 
         Ok(tx_event)
     }
-
-    /// Checks if the necessary witness for accessing the asset is already in the merkle store, and
-    /// extracts all necessary data for requesting it.
-    fn on_account_vault_asset_accessed<'store, STORE>(
-        base_host: &TransactionBaseHost<'store, STORE>,
-        process: &ProcessState,
-        vault_key: AssetVaultKey,
-        vault_root: Word,
-    ) -> Result<Option<TransactionEvent>, TransactionKernelError> {
-        let leaf_index = Felt::new(vault_key.to_leaf_index().value());
-        let active_account_id = process.get_active_account_id()?;
-
-        // For the native account we need to explicitly request the initial vault root, while for
-        // foreign accounts the current vault root is always the initial one.
-        let vault_root = if active_account_id == base_host.native_account_id() {
-            base_host.initial_account_header().vault_root()
-        } else {
-            vault_root
-        };
-
-        // Note that we check whether a merkle path for the current vault root is present, not
-        // necessarily for the root we are going to request. This is because the end goal is to
-        // enable access to an asset against the current vault root, and so if this
-        // condition is already satisfied, there is nothing to request.
-        if process.has_merkle_path::<{ AssetVault::DEPTH }>(vault_root, leaf_index)? {
-            // If the witness already exists, the event does not need to be handled.
-            Ok(None)
-        } else {
-            Ok(Some(TransactionEvent::AccountVaultBeforeAssetAccess {
-                active_account_id,
-                vault_root,
-                asset_key: vault_key,
-            }))
-        }
-    }
-
-    /// Checks if the necessary witness for accessing the map item is already in the merkle store,
-    /// and extracts all necessary data for requesting it.
-    fn on_account_storage_map_item_accessed<'store, STORE>(
-        base_host: &TransactionBaseHost<'store, STORE>,
-        process: &ProcessState,
-        slot_index: Felt,
-        current_map_root: Word,
-        map_key: Word,
-    ) -> Result<Option<TransactionEvent>, TransactionKernelError> {
-        let active_account_id = process.get_active_account_id()?;
-        let hashed_map_key = StorageMap::hash_key(map_key);
-        let leaf_index = StorageMap::hashed_map_key_to_leaf_index(hashed_map_key);
-
-        let slot_index = u8::try_from(slot_index).map_err(|err| {
-            TransactionKernelError::other(format!("failed to convert slot index into u8: {err}"))
-        })?;
-
-        // For the native account we need to explicitly request the initial map root,
-        // while for foreign accounts the current map root is always the initial one.
-        let map_root = if active_account_id == base_host.native_account_id() {
-            // For native accounts, we have to request witnesses against the initial
-            // root instead of the _current_ one, since the data
-            // store only has witnesses for initial one.
-            let (slot_type, slot_value) = base_host
-                    .initial_account_storage_header()
-                    // Slot index should always fit into a usize.
-                    .slot(slot_index as usize)
-                    .map_err(|err| {
-                        TransactionKernelError::other_with_source(
-                            "failed to access storage map in storage header",
-                            err,
-                        )
-                    })?;
-            if *slot_type != StorageSlotType::Map {
-                return Err(TransactionKernelError::other(format!(
-                    "expected map slot type at slot index {slot_index}"
-                )));
-            }
-            *slot_value
-        } else {
-            current_map_root
-        };
-
-        if process.has_merkle_path::<{ StorageMap::DEPTH }>(current_map_root, leaf_index)? {
-            // If the witness already exists, the event does not need to be handled.
-            Ok(None)
-        } else {
-            Ok(Some(TransactionEvent::AccountStorageBeforeMapItemAccess {
-                active_account_id,
-                map_root,
-                map_key,
-            }))
-        }
-    }
-
-    /// Extracts the transaction summary from the advice map using the provided `message` as the
-    /// key.
-    ///
-    /// ```text
-    /// Expected advice map state: {
-    ///     MESSAGE: [
-    ///         SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT
-    ///     ]
-    /// }
-    /// ```
-    fn extract_tx_summary<'store, STORE>(
-        base_host: &TransactionBaseHost<'store, STORE>,
-        process: &ProcessState,
-        message: Word,
-    ) -> Result<TransactionSummary, TransactionKernelError> {
-        let Some(commitments) = process.advice_provider().get_mapped_values(&message) else {
-            return Err(TransactionKernelError::TransactionSummaryConstructionFailed(
-                "expected message to exist in advice provider".into(),
-            ));
-        };
-
-        if commitments.len() != 16 {
-            return Err(TransactionKernelError::TransactionSummaryConstructionFailed(
-                "expected 4 words for transaction summary commitments".into(),
-            ));
-        }
-
-        let salt = extract_word(commitments, 0);
-        let output_notes_commitment = extract_word(commitments, 4);
-        let input_notes_commitment = extract_word(commitments, 8);
-        let account_delta_commitment = extract_word(commitments, 12);
-
-        let tx_summary = base_host.build_tx_summary(
-            salt,
-            output_notes_commitment,
-            input_notes_commitment,
-            account_delta_commitment,
-        )?;
-
-        if tx_summary.to_commitment() != message {
-            return Err(TransactionKernelError::TransactionSummaryConstructionFailed(
-                "transaction summary doesn't commit to the expected message".into(),
-            ));
-        }
-
-        Ok(tx_summary)
-    }
 }
 
 // RECIPIENT DATA
@@ -714,6 +571,147 @@ pub(crate) enum RecipientData {
         script_root: Word,
         note_inputs: NoteInputs,
     },
+}
+
+// HELPER FUNCTIONS
+// ================================================================================================
+
+/// Checks if the necessary witness for accessing the asset is already in the merkle store, and
+/// extracts all necessary data for requesting it.
+fn on_account_vault_asset_accessed<'store, STORE>(
+    base_host: &TransactionBaseHost<'store, STORE>,
+    process: &ProcessState,
+    vault_key: AssetVaultKey,
+    vault_root: Word,
+) -> Result<Option<TransactionEvent>, TransactionKernelError> {
+    let leaf_index = Felt::new(vault_key.to_leaf_index().value());
+    let active_account_id = process.get_active_account_id()?;
+
+    // For the native account we need to explicitly request the initial vault root, while for
+    // foreign accounts the current vault root is always the initial one.
+    let vault_root = if active_account_id == base_host.native_account_id() {
+        base_host.initial_account_header().vault_root()
+    } else {
+        vault_root
+    };
+
+    // Note that we check whether a merkle path for the current vault root is present, not
+    // necessarily for the root we are going to request. This is because the end goal is to
+    // enable access to an asset against the current vault root, and so if this
+    // condition is already satisfied, there is nothing to request.
+    if process.has_merkle_path::<{ AssetVault::DEPTH }>(vault_root, leaf_index)? {
+        // If the witness already exists, the event does not need to be handled.
+        Ok(None)
+    } else {
+        Ok(Some(TransactionEvent::AccountVaultBeforeAssetAccess {
+            active_account_id,
+            vault_root,
+            asset_key: vault_key,
+        }))
+    }
+}
+
+/// Checks if the necessary witness for accessing the map item is already in the merkle store,
+/// and extracts all necessary data for requesting it.
+fn on_account_storage_map_item_accessed<'store, STORE>(
+    base_host: &TransactionBaseHost<'store, STORE>,
+    process: &ProcessState,
+    slot_index: Felt,
+    current_map_root: Word,
+    map_key: Word,
+) -> Result<Option<TransactionEvent>, TransactionKernelError> {
+    let active_account_id = process.get_active_account_id()?;
+    let hashed_map_key = StorageMap::hash_key(map_key);
+    let leaf_index = StorageMap::hashed_map_key_to_leaf_index(hashed_map_key);
+
+    let slot_index = u8::try_from(slot_index).map_err(|err| {
+        TransactionKernelError::other(format!("failed to convert slot index into u8: {err}"))
+    })?;
+
+    // For the native account we need to explicitly request the initial map root,
+    // while for foreign accounts the current map root is always the initial one.
+    let map_root = if active_account_id == base_host.native_account_id() {
+        // For native accounts, we have to request witnesses against the initial
+        // root instead of the _current_ one, since the data
+        // store only has witnesses for initial one.
+        let (slot_type, slot_value) = base_host
+                    .initial_account_storage_header()
+                    // Slot index should always fit into a usize.
+                    .slot(slot_index as usize)
+                    .map_err(|err| {
+                        TransactionKernelError::other_with_source(
+                            "failed to access storage map in storage header",
+                            err,
+                        )
+                    })?;
+        if *slot_type != StorageSlotType::Map {
+            return Err(TransactionKernelError::other(format!(
+                "expected map slot type at slot index {slot_index}"
+            )));
+        }
+        *slot_value
+    } else {
+        current_map_root
+    };
+
+    if process.has_merkle_path::<{ StorageMap::DEPTH }>(current_map_root, leaf_index)? {
+        // If the witness already exists, the event does not need to be handled.
+        Ok(None)
+    } else {
+        Ok(Some(TransactionEvent::AccountStorageBeforeMapItemAccess {
+            active_account_id,
+            map_root,
+            map_key,
+        }))
+    }
+}
+
+/// Extracts the transaction summary from the advice map using the provided `message` as the
+/// key.
+///
+/// ```text
+/// Expected advice map state: {
+///     MESSAGE: [
+///         SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT
+///     ]
+/// }
+/// ```
+fn extract_tx_summary<'store, STORE>(
+    base_host: &TransactionBaseHost<'store, STORE>,
+    process: &ProcessState,
+    message: Word,
+) -> Result<TransactionSummary, TransactionKernelError> {
+    let Some(commitments) = process.advice_provider().get_mapped_values(&message) else {
+        return Err(TransactionKernelError::TransactionSummaryConstructionFailed(
+            "expected message to exist in advice provider".into(),
+        ));
+    };
+
+    if commitments.len() != 16 {
+        return Err(TransactionKernelError::TransactionSummaryConstructionFailed(
+            "expected 4 words for transaction summary commitments".into(),
+        ));
+    }
+
+    let salt = extract_word(commitments, 0);
+    let output_notes_commitment = extract_word(commitments, 4);
+    let input_notes_commitment = extract_word(commitments, 8);
+    let account_delta_commitment = extract_word(commitments, 12);
+
+    let tx_summary = base_host.build_tx_summary(
+        salt,
+        output_notes_commitment,
+        input_notes_commitment,
+        account_delta_commitment,
+    )?;
+
+    if tx_summary.to_commitment() != message {
+        return Err(TransactionKernelError::TransactionSummaryConstructionFailed(
+            "transaction summary doesn't commit to the expected message".into(),
+        ));
+    }
+
+    Ok(tx_summary)
 }
 
 // HELPER FUNCTIONS
