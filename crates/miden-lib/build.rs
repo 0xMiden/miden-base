@@ -347,11 +347,6 @@ fn compile_agglayer_lib(
 ) -> Result<Library> {
     let agglayer_components_dir = source_dir.join("agglayer").join(ASM_ACCOUNT_COMPONENTS_DIR);
 
-    // Return an empty library if the directory doesn't exist
-    if !agglayer_components_dir.exists() {
-        return Err(Report::msg("agglayer account_components directory does not exist"));
-    }
-
     let agglayer_namespace =
         "agglayer".parse::<LibraryNamespace>().expect("invalid agglayer namespace");
     let agglayer_lib =
