@@ -1,7 +1,7 @@
 use alloc::vec::Vec;
 
 use miden_lib::transaction::{EventId, TransactionEventId};
-use miden_objects::account::{AccountId, StorageMap};
+use miden_objects::account::{AccountId, StorageMap, StorageSlotType};
 use miden_objects::asset::{Asset, AssetVault, AssetVaultKey, FungibleAsset};
 use miden_objects::note::{NoteId, NoteInputs, NoteMetadata, NoteRecipient, NoteScript};
 use miden_objects::transaction::TransactionSummary;
@@ -47,10 +47,8 @@ pub(crate) enum TransactionEvent {
     AccountStorageBeforeMapItemAccess {
         /// The account ID for whose storage a witness is requested.
         active_account_id: AccountId,
-        /// The slot index of the map.
-        slot_index: u8,
-        /// The root of the storage map in the account at the beginning of the transaction.
-        current_map_root: Word,
+        /// The root of the storage map for which a witness is requested.
+        map_root: Word,
         /// The raw map key for which a witness is requested.
         map_key: Word,
     },
@@ -310,6 +308,7 @@ impl TransactionEvent {
                 let slot_index = process.get_stack_item(9);
 
                 Self::on_account_storage_map_item_accessed(
+                    base_host,
                     process,
                     slot_index,
                     current_map_root,
@@ -324,6 +323,7 @@ impl TransactionEvent {
                 let current_map_root = process.get_stack_word_be(10);
 
                 Self::on_account_storage_map_item_accessed(
+                    base_host,
                     process,
                     slot_index,
                     current_map_root,
@@ -580,7 +580,8 @@ impl TransactionEvent {
 
     /// Checks if the necessary witness for accessing the map item is already in the merkle store,
     /// and extracts all necessary data for requesting it.
-    fn on_account_storage_map_item_accessed(
+    fn on_account_storage_map_item_accessed<'store, STORE>(
+        base_host: &TransactionBaseHost<'store, STORE>,
         process: &ProcessState,
         slot_index: Felt,
         current_map_root: Word,
@@ -594,14 +595,39 @@ impl TransactionEvent {
             TransactionKernelError::other(format!("failed to convert slot index into u8: {err}"))
         })?;
 
+        // For the native account we need to explicitly request the initial map root,
+        // while for foreign accounts the current map root is always the initial one.
+        let map_root = if active_account_id == base_host.native_account_id() {
+            // For native accounts, we have to request witnesses against the initial
+            // root instead of the _current_ one, since the data
+            // store only has witnesses for initial one.
+            let (slot_type, slot_value) = base_host
+                    .initial_account_storage_header()
+                    // Slot index should always fit into a usize.
+                    .slot(slot_index as usize)
+                    .map_err(|err| {
+                        TransactionKernelError::other_with_source(
+                            "failed to access storage map in storage header",
+                            err,
+                        )
+                    })?;
+            if *slot_type != StorageSlotType::Map {
+                return Err(TransactionKernelError::other(format!(
+                    "expected map slot type at slot index {slot_index}"
+                )));
+            }
+            *slot_value
+        } else {
+            current_map_root
+        };
+
         if process.has_merkle_path::<{ StorageMap::DEPTH }>(current_map_root, leaf_index)? {
             // If the witness already exists, the event does not need to be handled.
             Ok(None)
         } else {
             Ok(Some(TransactionEvent::AccountStorageBeforeMapItemAccess {
                 active_account_id,
-                slot_index,
-                current_map_root,
+                map_root,
                 map_key,
             }))
         }

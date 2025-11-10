@@ -33,6 +33,7 @@ use miden_objects::account::{
     AccountCode,
     AccountDelta,
     AccountHeader,
+    AccountId,
     AccountStorageHeader,
     PartialAccount,
 };
@@ -153,6 +154,11 @@ impl<'store, STORE> TransactionBaseHost<'store, STORE> {
     /// Returns a mutable reference to the `tx_progress` field of this transaction host.
     pub fn tx_progress_mut(&mut self) -> &mut TransactionProgress {
         &mut self.tx_progress
+    }
+
+    /// Returns the ID of the native account.
+    pub fn native_account_id(&self) -> AccountId {
+        self.initial_account_header().id()
     }
 
     /// Returns a reference to the initial account header of the native account, which represents
