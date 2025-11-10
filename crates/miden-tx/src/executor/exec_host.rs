@@ -129,11 +129,6 @@ where
         &self.tx_progress
     }
 
-    /// Returns a mutable reference to the `tx_progress` field of this transaction host.
-    pub(super) fn tx_progress_mut(&mut self) -> &mut TransactionProgress {
-        &mut self.tx_progress
-    }
-
     // EVENT HANDLERS
     // --------------------------------------------------------------------------------------------
 
@@ -618,61 +613,61 @@ where
                 TransactionEvent::LinkMapGet { advice_mutation } => Ok(advice_mutation),
 
                 TransactionEvent::PrologueStart { clk } => {
-                    self.tx_progress_mut().start_prologue(clk);
+                    self.tx_progress.start_prologue(clk);
                     Ok(Vec::new())
                 },
                 TransactionEvent::PrologueEnd { clk } => {
-                    self.tx_progress_mut().end_prologue(clk);
+                    self.tx_progress.end_prologue(clk);
                     Ok(Vec::new())
                 },
 
                 TransactionEvent::NotesProcessingStart { clk } => {
-                    self.tx_progress_mut().start_notes_processing(clk);
+                    self.tx_progress.start_notes_processing(clk);
                     Ok(Vec::new())
                 },
                 TransactionEvent::NotesProcessingEnd { clk } => {
-                    self.tx_progress_mut().end_notes_processing(clk);
+                    self.tx_progress.end_notes_processing(clk);
                     Ok(Vec::new())
                 },
 
                 TransactionEvent::NoteExecutionStart { note_id, clk } => {
-                    self.tx_progress_mut().start_note_execution(clk, note_id);
+                    self.tx_progress.start_note_execution(clk, note_id);
                     Ok(Vec::new())
                 },
                 TransactionEvent::NoteExecutionEnd { clk } => {
-                    self.tx_progress_mut().end_note_execution(clk);
+                    self.tx_progress.end_note_execution(clk);
                     Ok(Vec::new())
                 },
 
                 TransactionEvent::TxScriptProcessingStart { clk } => {
-                    self.tx_progress_mut().start_tx_script_processing(clk);
+                    self.tx_progress.start_tx_script_processing(clk);
                     Ok(Vec::new())
                 },
                 TransactionEvent::TxScriptProcessingEnd { clk } => {
-                    self.tx_progress_mut().end_tx_script_processing(clk);
+                    self.tx_progress.end_tx_script_processing(clk);
                     Ok(Vec::new())
                 },
 
                 TransactionEvent::EpilogueStart { clk } => {
-                    self.tx_progress_mut().start_epilogue(clk);
+                    self.tx_progress.start_epilogue(clk);
                     Ok(Vec::new())
                 },
                 TransactionEvent::EpilogueEnd { clk } => {
-                    self.tx_progress_mut().end_epilogue(clk);
+                    self.tx_progress.end_epilogue(clk);
                     Ok(Vec::new())
                 },
 
                 TransactionEvent::EpilogueAuthProcStart { clk } => {
-                    self.tx_progress_mut().start_auth_procedure(clk);
+                    self.tx_progress.start_auth_procedure(clk);
                     Ok(Vec::new())
                 },
                 TransactionEvent::EpilogueAuthProcEnd { clk } => {
-                    self.tx_progress_mut().end_auth_procedure(clk);
+                    self.tx_progress.end_auth_procedure(clk);
                     Ok(Vec::new())
                 },
 
                 TransactionEvent::EpilogueAfterTxCyclesObtained { clk } => {
-                    self.tx_progress_mut().epilogue_after_tx_cycles_obtained(clk);
+                    self.tx_progress.epilogue_after_tx_cycles_obtained(clk);
                     Ok(Vec::new())
                 },
             };
