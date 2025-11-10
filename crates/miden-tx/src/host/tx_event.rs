@@ -4,10 +4,11 @@ use miden_lib::transaction::{EventId, TransactionEventId};
 use miden_objects::account::{AccountId, StorageMap};
 use miden_objects::asset::{Asset, AssetVault, AssetVaultKey, FungibleAsset};
 use miden_objects::note::{NoteId, NoteInputs, NoteMetadata, NoteScript};
+use miden_objects::transaction::TransactionSummary;
 use miden_objects::{Felt, Hasher, Word};
 use miden_processor::{AdviceMutation, ProcessState, RowIndex};
 
-use crate::host::TransactionKernelProcess;
+use crate::host::{TransactionBaseHost, TransactionKernelProcess};
 use crate::{LinkMap, TransactionKernelError};
 
 // TRANSACTION EVENT
@@ -100,22 +101,13 @@ pub(crate) enum TransactionEvent {
 
     /// The data necessary to handle an auth request.
     AuthRequest {
-        message: Word,
-        /// The hash of the public key for which a signature was requested.
         pub_key_hash: Word,
+        tx_summary: TransactionSummary,
         signature: Option<Vec<Felt>>,
-        salt: Word,
-        output_notes_commitment: Word,
-        input_notes_commitment: Word,
-        account_delta_commitment: Word,
     },
 
     Unauthorized {
-        message: Word,
-        salt: Word,
-        output_notes_commitment: Word,
-        input_notes_commitment: Word,
-        account_delta_commitment: Word,
+        tx_summary: TransactionSummary,
     },
 
     EpilogueBeforeTxFeeRemovedFromAccount {
@@ -183,7 +175,8 @@ impl TransactionEvent {
     ///
     /// Returns `Some` if the extracted [`TransactionEventId`] resulted in an event that needs to be
     /// handled, `None` otherwise.
-    pub fn extract_from_process(
+    pub fn extract<'store, STORE>(
+        base_host: &TransactionBaseHost<'store, STORE>,
         process: &ProcessState,
     ) -> Result<Option<TransactionEvent>, TransactionKernelError> {
         let event_id = EventId::from_felt(process.get_stack_item(0));
@@ -477,41 +470,17 @@ impl TransactionEvent {
                     .get_mapped_values(&signature_key)
                     .map(|slice| slice.to_vec());
 
-                let (
-                    salt,
-                    output_notes_commitment,
-                    input_notes_commitment,
-                    account_delta_commitment,
-                ) = Self::extract_tx_summary_data(process, message)?;
+                let tx_summary = Self::extract_tx_summary(base_host, process, message)?;
 
-                TransactionEvent::AuthRequest {
-                    message,
-                    pub_key_hash,
-                    signature,
-                    salt,
-                    output_notes_commitment,
-                    input_notes_commitment,
-                    account_delta_commitment,
-                }
+                TransactionEvent::AuthRequest { pub_key_hash, tx_summary, signature }
             },
 
             TransactionEventId::Unauthorized => {
                 // Expected stack state: [event, MESSAGE]
                 let message = process.get_stack_word_be(1);
-                let (
-                    salt,
-                    output_notes_commitment,
-                    input_notes_commitment,
-                    account_delta_commitment,
-                ) = Self::extract_tx_summary_data(process, message)?;
+                let tx_summary = Self::extract_tx_summary(base_host, process, message)?;
 
-                TransactionEvent::Unauthorized {
-                    message,
-                    salt,
-                    output_notes_commitment,
-                    input_notes_commitment,
-                    account_delta_commitment,
-                }
+                TransactionEvent::Unauthorized { tx_summary }
             },
 
             TransactionEventId::EpilogueBeforeTxFeeRemovedFromAccount => {
@@ -633,8 +602,8 @@ impl TransactionEvent {
         })
     }
 
-    /// Extracts the transaction summary data from the advice map using the provided `message` as
-    /// the key.
+    /// Extracts the transaction summary from the advice map using the provided `message` as the
+    /// key.
     ///
     /// ```text
     /// Expected advice map state: {
@@ -643,10 +612,11 @@ impl TransactionEvent {
     ///     ]
     /// }
     /// ```
-    fn extract_tx_summary_data(
+    fn extract_tx_summary<'store, STORE>(
+        base_host: &TransactionBaseHost<'store, STORE>,
         process: &ProcessState,
         message: Word,
-    ) -> Result<(Word, Word, Word, Word), TransactionKernelError> {
+    ) -> Result<TransactionSummary, TransactionKernelError> {
         let Some(commitments) = process.advice_provider().get_mapped_values(&message) else {
             return Err(TransactionKernelError::TransactionSummaryConstructionFailed(
                 "expected message to exist in advice provider".into(),
@@ -664,7 +634,20 @@ impl TransactionEvent {
         let input_notes_commitment = extract_word(commitments, 8);
         let account_delta_commitment = extract_word(commitments, 12);
 
-        Ok((salt, output_notes_commitment, input_notes_commitment, account_delta_commitment))
+        let tx_summary = base_host.build_tx_summary(
+            salt,
+            output_notes_commitment,
+            input_notes_commitment,
+            account_delta_commitment,
+        )?;
+
+        if tx_summary.to_commitment() != message {
+            return Err(TransactionKernelError::TransactionSummaryConstructionFailed(
+                "transaction summary doesn't commit to the expected message".into(),
+            ));
+        }
+
+        Ok(tx_summary)
     }
 }
 

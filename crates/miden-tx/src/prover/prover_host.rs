@@ -108,7 +108,8 @@ where
             return Ok(advice_mutations);
         }
 
-        let tx_event = TransactionEvent::extract_from_process(process).map_err(EventError::from)?;
+        let tx_event =
+            TransactionEvent::extract(&self.base_host, process).map_err(EventError::from)?;
 
         // None means the event ID does not need to be handled.
         let Some(tx_event) = tx_event else {
@@ -196,20 +197,12 @@ where
                 }
             },
 
-            // This always returns an error to abort the transaction.
-            TransactionEvent::Unauthorized {
-                message,
-                salt,
-                output_notes_commitment,
-                input_notes_commitment,
-                account_delta_commitment,
-            } => Err(self.base_host.on_unauthorized(
-                message,
-                salt,
-                output_notes_commitment,
-                input_notes_commitment,
-                account_delta_commitment,
-            )),
+            TransactionEvent::Unauthorized { tx_summary } => {
+                Err(TransactionKernelError::other(format!(
+                    "unexpected unauthorized event during proving with tx summary commitment {}",
+                    tx_summary.to_commitment()
+                )))
+            },
 
             // We don't track enough information to handle this event. Since this just improves
             // error messages for users and the error should not be relevant during proving, we

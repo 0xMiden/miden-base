@@ -18,7 +18,7 @@ use miden_objects::asset::{Asset, AssetVaultKey, AssetWitness, FungibleAsset};
 use miden_objects::block::BlockNumber;
 use miden_objects::crypto::merkle::SmtProof;
 use miden_objects::note::{NoteInputs, NoteMetadata, NoteRecipient};
-use miden_objects::transaction::{InputNote, InputNotes, OutputNote};
+use miden_objects::transaction::{InputNote, InputNotes, OutputNote, TransactionSummary};
 use miden_objects::vm::AdviceMap;
 use miden_objects::{Felt, Hasher, Word};
 use miden_processor::{
@@ -184,26 +184,9 @@ where
     /// The signature is requested from the host's authenticator.
     pub async fn on_auth_requested(
         &mut self,
-        message: Word,
         pub_key_hash: Word,
-        salt: Word,
-        output_notes_commitment: Word,
-        input_notes_commitment: Word,
-        account_delta_commitment: Word,
+        tx_summary: TransactionSummary,
     ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
-        let tx_summary = self.base_host.build_tx_summary(
-            salt,
-            output_notes_commitment,
-            input_notes_commitment,
-            account_delta_commitment,
-        )?;
-
-        if message != tx_summary.to_commitment() {
-            return Err(TransactionKernelError::TransactionSummaryConstructionFailed(
-                "transaction summary doesn't commit to the expected message".into(),
-            ));
-        }
-
         let signing_inputs = SigningInputs::TransactionSummary(Box::new(tx_summary));
 
         let authenticator =
@@ -537,7 +520,7 @@ where
             }
 
             let tx_event =
-                TransactionEvent::extract_from_process(process).map_err(EventError::from)?;
+                TransactionEvent::extract(&self.base_host, process).map_err(EventError::from)?;
 
             // None means the event ID does not need to be handled.
             let Some(tx_event) = tx_event else {
@@ -656,44 +639,18 @@ where
                     self.base_host.on_note_before_add_asset(note_idx, asset)
                 },
 
-                TransactionEvent::AuthRequest {
-                    message,
-                    pub_key_hash,
-                    signature,
-                    salt,
-                    output_notes_commitment,
-                    input_notes_commitment,
-                    account_delta_commitment,
-                } => {
+                TransactionEvent::AuthRequest { pub_key_hash, tx_summary, signature } => {
                     if let Some(signature) = signature {
                         Ok(self.base_host.on_auth_requested(signature))
                     } else {
-                        self.on_auth_requested(
-                            message,
-                            pub_key_hash,
-                            salt,
-                            output_notes_commitment,
-                            input_notes_commitment,
-                            account_delta_commitment,
-                        )
-                        .await
+                        self.on_auth_requested(pub_key_hash, tx_summary).await
                     }
                 },
 
                 // This always returns an error to abort the transaction.
-                TransactionEvent::Unauthorized {
-                    message,
-                    salt,
-                    output_notes_commitment,
-                    input_notes_commitment,
-                    account_delta_commitment,
-                } => Err(self.base_host.on_unauthorized(
-                    message,
-                    salt,
-                    output_notes_commitment,
-                    input_notes_commitment,
-                    account_delta_commitment,
-                )),
+                TransactionEvent::Unauthorized { tx_summary } => {
+                    Err(TransactionKernelError::Unauthorized(Box::new(tx_summary)))
+                },
 
                 TransactionEvent::EpilogueBeforeTxFeeRemovedFromAccount { fee_asset } => {
                     self.on_before_tx_fee_removed_from_account(fee_asset).await

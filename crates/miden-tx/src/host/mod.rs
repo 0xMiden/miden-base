@@ -106,10 +106,7 @@ pub struct TransactionBaseHost<'store, STORE> {
     stdlib_handlers: EventHandlerRegistry,
 }
 
-impl<'store, STORE> TransactionBaseHost<'store, STORE>
-where
-    STORE: MastForestStore,
-{
+impl<'store, STORE> TransactionBaseHost<'store, STORE> {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
@@ -148,15 +145,6 @@ where
 
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
-
-    /// Returns the [`MastForest`] that contains the procedure with the given `procedure_root`.
-    pub fn get_mast_forest(&self, procedure_root: &Word) -> Option<Arc<MastForest>> {
-        // Search in the note MAST forest store, otherwise fall back to the user-provided store
-        match self.scripts_mast_store.get(procedure_root) {
-            Some(forest) => Some(forest),
-            None => self.mast_store.get(procedure_root),
-        }
-    }
 
     /// Returns a reference to the `tx_progress` field of this transaction host.
     pub fn tx_progress(&self) -> &TransactionProgress {
@@ -270,35 +258,6 @@ where
     /// as a response to an `AuthRequest` event.
     pub fn on_auth_requested(&self, signature: Vec<Felt>) -> Vec<AdviceMutation> {
         vec![AdviceMutation::extend_stack(signature)]
-    }
-
-    /// Aborts the transaction by building the [`TransactionSummary`] based on the provided
-    /// commitments.
-    pub fn on_unauthorized(
-        &self,
-        message: Word,
-        salt: Word,
-        output_notes_commitment: Word,
-        input_notes_commitment: Word,
-        account_delta_commitment: Word,
-    ) -> TransactionKernelError {
-        let tx_summary = match self.build_tx_summary(
-            salt,
-            output_notes_commitment,
-            input_notes_commitment,
-            account_delta_commitment,
-        ) {
-            Ok(tx_summary) => tx_summary,
-            Err(err) => return err,
-        };
-
-        if message != tx_summary.to_commitment() {
-            return TransactionKernelError::TransactionSummaryConstructionFailed(
-                "transaction summary doesn't commit to the expected message".into(),
-            );
-        }
-
-        TransactionKernelError::Unauthorized(Box::new(tx_summary))
     }
 
     /// Handles a note creation event.
@@ -482,11 +441,23 @@ where
 
         Ok(TransactionSummary::new(account_delta, input_notes, output_notes, salt))
     }
-}
 
-impl<'store, STORE> TransactionBaseHost<'store, STORE> {
     /// Returns the underlying store of the base host.
     pub fn store(&self) -> &'store STORE {
         self.mast_store
+    }
+}
+
+impl<'store, STORE> TransactionBaseHost<'store, STORE>
+where
+    STORE: MastForestStore,
+{
+    /// Returns the [`MastForest`] that contains the procedure with the given `procedure_root`.
+    pub fn get_mast_forest(&self, procedure_root: &Word) -> Option<Arc<MastForest>> {
+        // Search in the note MAST forest store, otherwise fall back to the user-provided store
+        match self.scripts_mast_store.get(procedure_root) {
+            Some(forest) => Some(forest),
+            None => self.mast_store.get(procedure_root),
+        }
     }
 }
