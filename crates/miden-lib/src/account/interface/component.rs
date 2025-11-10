@@ -37,8 +37,8 @@ pub enum AccountComponentInterface {
     /// Internal value holds the storage slot index where the public key for the EcdsaK256Keccak
     /// authentication scheme is stored.
     AuthEcdsaK256Keccak(u8),
-    /// Internal value holds the storage slot index where the multisig for EcdsaK256Keccak configuration is stored.
-    /// configuration is stored.
+    /// Internal value holds the storage slot index where the multisig for EcdsaK256Keccak
+    /// configuration is stored. configuration is stored.
     AuthEcdsaK256KeccakMultisig(u8),
     ///
     /// Internal value holds the storage slot index where the public key for the RpoFalcon512

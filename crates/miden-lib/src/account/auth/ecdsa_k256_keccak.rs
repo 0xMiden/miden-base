@@ -10,8 +10,8 @@ use crate::account::components::ecdsa_k256_keccak_library;
 /// component, the `miden` library (i.e. [`MidenLib`](crate::MidenLib)) must be available to the
 /// assembler which is the case when using [`TransactionKernel::assembler()`][kasm]. The procedures
 /// of this component are:
-/// - `auth_tx_ecdsa_k256_keccak`, which can be used to verify a signature provided via the advice stack
-///   to authenticate a transaction.
+/// - `auth_tx_ecdsa_k256_keccak`, which can be used to verify a signature provided via the advice
+///   stack to authenticate a transaction.
 ///
 /// This component supports all account types.
 ///

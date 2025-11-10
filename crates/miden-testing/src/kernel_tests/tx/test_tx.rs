@@ -531,8 +531,8 @@ async fn tx_summary_commitment_is_signed_by_falcon_auth() -> anyhow::Result<()> 
     Ok(())
 }
 
-/// Tests that a transaction consuming and creating one note with EcdsaK256Keccak authentication correctly
-/// signs the transaction summary.
+/// Tests that a transaction consuming and creating one note with EcdsaK256Keccak authentication
+/// correctly signs the transaction summary.
 #[tokio::test]
 async fn tx_summary_commitment_is_signed_by_ecdsa_auth() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
