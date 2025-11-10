@@ -487,19 +487,16 @@ where
         &mut self,
         process: &ProcessState,
     ) -> impl FutureMaybeSend<Result<Vec<AdviceMutation>, EventError>> {
-        // TODO: We can technically avoid putting the &ProcessState reference here into the future,
-        // but it seems to work and maybe we should try building the web client against this branch
-        // to test if we can do this, as it does result in more readable code.
+        let stdlib_event_result = self.base_host.handle_stdlib_events(process);
+        let tx_event_result = TransactionEvent::extract(&self.base_host, process);
+
         async move {
-            if let Some(advice_mutations) = self.base_host.handle_stdlib_events(process)? {
-                return Ok(advice_mutations);
+            if let Some(mutations) = stdlib_event_result? {
+                return Ok(mutations);
             }
 
-            let tx_event =
-                TransactionEvent::extract(&self.base_host, process).map_err(EventError::from)?;
-
             // None means the event ID does not need to be handled.
-            let Some(tx_event) = tx_event else {
+            let Some(tx_event) = tx_event_result? else {
                 return Ok(Vec::new());
             };
 
