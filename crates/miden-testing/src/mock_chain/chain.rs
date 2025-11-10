@@ -3,7 +3,7 @@ use alloc::vec::Vec;
 
 use anyhow::Context;
 use miden_block_prover::LocalBlockProver;
-use miden_lib::block::construct_block;
+use miden_lib::block::render_proposed_block;
 use miden_objects::account::auth::AuthSecretKey;
 use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{Account, AccountId, PartialAccount};
@@ -515,7 +515,7 @@ impl MockChain {
 
     /// Mock-proves a proposed block into a proven block and returns it.
     pub fn prove_block(&self, proposed_block: ProposedBlock) -> ProvenBlock {
-        let (header, body) = construct_block(proposed_block).unwrap();
+        let (header, body) = render_proposed_block(proposed_block).unwrap();
         let signed_block = SignedBlock::new_unchecked(header, body);
         let block_proof = LocalBlockProver::new(0).prove_dummy(&signed_block).unwrap();
         ProvenBlock::new_unchecked(signed_block, block_proof)

@@ -4,7 +4,7 @@ use std::vec::Vec;
 
 use anyhow::Context;
 use miden_block_prover::LocalBlockProver;
-use miden_lib::block::construct_block;
+use miden_lib::block::render_proposed_block;
 use miden_lib::note::create_p2id_note;
 use miden_objects::asset::FungibleAsset;
 use miden_objects::batch::BatchNoteTree;
@@ -155,7 +155,7 @@ async fn proven_block_success() -> anyhow::Result<()> {
     // Prove block.
     // --------------------------------------------------------------------------------------------
 
-    let (header, body) = construct_block(proposed_block)?;
+    let (header, body) = render_proposed_block(proposed_block)?;
     let signed_block = SignedBlock::new_unchecked(header, body);
     let block_proof = LocalBlockProver::new(MIN_PROOF_SECURITY_LEVEL).prove_dummy(&signed_block)?;
     let proven_block = ProvenBlock::new_unchecked(signed_block, block_proof);
@@ -352,7 +352,7 @@ async fn proven_block_erasing_unauthenticated_notes() -> anyhow::Result<()> {
     assert_eq!(output_notes_batch0.len(), 2);
     assert_eq!(output_notes_batch0, &expected_output_notes_batch0);
 
-    let (header, body) = construct_block(proposed_block)?;
+    let (header, body) = render_proposed_block(proposed_block)?;
     let signed_block = SignedBlock::new_unchecked(header, body);
     let block_proof = LocalBlockProver::new(MIN_PROOF_SECURITY_LEVEL).prove_dummy(&signed_block)?;
     let proven_block = ProvenBlock::new_unchecked(signed_block, block_proof);
@@ -421,7 +421,7 @@ async fn proven_block_succeeds_with_empty_batches() -> anyhow::Result<()> {
     let proposed_block =
         ProposedBlock::new(block_inputs, Vec::new()).context("failed to propose block")?;
 
-    let (header, body) = construct_block(proposed_block)?;
+    let (header, body) = render_proposed_block(proposed_block)?;
     let signed_block = SignedBlock::new_unchecked(header, body);
     let block_proof = LocalBlockProver::new(MIN_PROOF_SECURITY_LEVEL).prove_dummy(&signed_block)?;
     let proven_block = ProvenBlock::new_unchecked(signed_block, block_proof);

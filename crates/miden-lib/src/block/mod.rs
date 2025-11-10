@@ -5,11 +5,17 @@ use miden_objects::transaction::PartialBlockchain;
 
 use crate::transaction::TransactionKernel;
 
-/// Constructs a new [`BlockHeader`] and [`BlockBody`] from the given [`ProposedBlock`].
+/// Renders a [`BlockHeader`] and [`BlockBody`] by computing the following from the state updates
+/// encapsulated by the provided [`ProposedBlock`]:
+/// - the account root;
+/// - the nullifier root;
+/// - the note root;
+/// - the transaction commitment; and
+/// - the chain commitment.
 ///
-/// Construction of these types is handled here because the block header requires
-/// [`TransactionKernel`] for its various commitment fields.
-pub fn construct_block(
+/// This rendering process is handled here because the block header requires [`TransactionKernel`]
+/// for its various commitment fields.
+pub fn render_proposed_block(
     proposed_block: ProposedBlock,
 ) -> Result<(BlockHeader, BlockBody), ProposedBlockError> {
     // Get fields from the proposed block before it is consumed.
