@@ -1,6 +1,12 @@
 use miden_objects::account::{
-    Account, AccountBuilder, AccountComponent, AccountId, AccountStorage, AccountStorageMode,
-    AccountType, StorageSlot,
+    Account,
+    AccountBuilder,
+    AccountComponent,
+    AccountId,
+    AccountStorage,
+    AccountStorageMode,
+    AccountType,
+    StorageSlot,
 };
 use miden_objects::asset::TokenSymbol;
 use miden_objects::{Felt, FieldElement, Word};

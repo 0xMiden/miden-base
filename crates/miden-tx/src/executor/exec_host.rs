@@ -15,14 +15,23 @@ use miden_objects::transaction::{InputNote, InputNotes, OutputNote};
 use miden_objects::vm::AdviceMap;
 use miden_objects::{Felt, Hasher, Word};
 use miden_processor::{
-    AdviceMutation, AsyncHost, BaseHost, EventError, FutureMaybeSend, MastForest, ProcessState,
+    AdviceMutation,
+    AsyncHost,
+    BaseHost,
+    EventError,
+    FutureMaybeSend,
+    MastForest,
+    ProcessState,
 };
 
 use crate::auth::{SigningInputs, TransactionAuthenticator};
 use crate::errors::TransactionKernelError;
 use crate::host::note_builder::OutputNoteBuilder;
 use crate::host::{
-    ScriptMastForestStore, TransactionBaseHost, TransactionEventData, TransactionEventHandling,
+    ScriptMastForestStore,
+    TransactionBaseHost,
+    TransactionEventData,
+    TransactionEventHandling,
     TransactionProgress,
 };
 use crate::{AccountProcedureIndexMap, DataStore, DataStoreError};

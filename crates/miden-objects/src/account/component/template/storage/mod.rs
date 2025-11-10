@@ -16,7 +16,10 @@ use crate::account::StorageSlot;
 
 mod placeholder;
 pub use placeholder::{
-    PlaceholderTypeRequirement, StorageValueName, StorageValueNameError, TemplateType,
+    PlaceholderTypeRequirement,
+    StorageValueName,
+    StorageValueNameError,
+    TemplateType,
     TemplateTypeError,
 };
 
@@ -382,11 +385,21 @@ mod tests {
     use crate::account::component::FieldIdentifier;
     use crate::account::component::template::storage::placeholder::TemplateType;
     use crate::account::component::template::{
-        AccountComponentMetadata, InitStorageData, MapEntry, MapRepresentation, StorageValueName,
+        AccountComponentMetadata,
+        InitStorageData,
+        MapEntry,
+        MapRepresentation,
+        StorageValueName,
     };
     use crate::account::{
-        AccountComponent, AccountComponentTemplate, AccountType, FeltRepresentation, StorageEntry,
-        StorageSlot, TemplateTypeError, WordRepresentation,
+        AccountComponent,
+        AccountComponentTemplate,
+        AccountType,
+        FeltRepresentation,
+        StorageEntry,
+        StorageSlot,
+        TemplateTypeError,
+        WordRepresentation,
     };
     use crate::errors::AccountComponentTemplateError;
     use crate::testing::account_code::CODE;

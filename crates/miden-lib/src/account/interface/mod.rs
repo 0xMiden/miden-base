@@ -13,9 +13,15 @@ use thiserror::Error;
 
 use crate::AuthScheme;
 use crate::account::components::{
-    basic_fungible_faucet_library, basic_wallet_library, ecdsa_k256_keccak_library,
-    ecdsa_k256_keccak_multisig_library, network_fungible_faucet_library, no_auth_library,
-    rpo_falcon_512_acl_library, rpo_falcon_512_library, rpo_falcon_512_multisig_library,
+    basic_fungible_faucet_library,
+    basic_wallet_library,
+    ecdsa_k256_keccak_library,
+    ecdsa_k256_keccak_multisig_library,
+    network_fungible_faucet_library,
+    no_auth_library,
+    rpo_falcon_512_acl_library,
+    rpo_falcon_512_library,
+    rpo_falcon_512_multisig_library,
 };
 use crate::errors::ScriptBuilderError;
 use crate::note::WellKnownNote;

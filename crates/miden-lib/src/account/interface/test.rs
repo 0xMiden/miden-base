@@ -10,7 +10,14 @@ use miden_objects::assembly::{Assembler, DefaultSourceManager};
 use miden_objects::asset::{FungibleAsset, NonFungibleAsset, TokenSymbol};
 use miden_objects::crypto::rand::{FeltRng, RpoRandomCoin};
 use miden_objects::note::{
-    Note, NoteAssets, NoteExecutionHint, NoteInputs, NoteMetadata, NoteRecipient, NoteTag, NoteType,
+    Note,
+    NoteAssets,
+    NoteExecutionHint,
+    NoteInputs,
+    NoteMetadata,
+    NoteRecipient,
+    NoteTag,
+    NoteType,
 };
 use miden_objects::testing::account_id::{
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
@@ -20,12 +27,17 @@ use miden_objects::{AccountError, Felt, NoteError, Word, ZERO};
 
 use crate::AuthScheme;
 use crate::account::auth::{
-    AuthEcdsaK256Keccak, AuthRpoFalcon512, AuthRpoFalcon512Multisig,
-    AuthRpoFalcon512MultisigConfig, NoAuth,
+    AuthEcdsaK256Keccak,
+    AuthRpoFalcon512,
+    AuthRpoFalcon512Multisig,
+    AuthRpoFalcon512MultisigConfig,
+    NoAuth,
 };
 use crate::account::faucets::BasicFungibleFaucet;
 use crate::account::interface::{
-    AccountComponentInterface, AccountInterface, NoteAccountCompatibility,
+    AccountComponentInterface,
+    AccountInterface,
+    NoteAccountCompatibility,
 };
 use crate::account::wallets::BasicWallet;
 use crate::note::{create_p2id_note, create_p2ide_note, create_swap_note};

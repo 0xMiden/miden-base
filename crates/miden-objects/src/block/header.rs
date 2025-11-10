@@ -4,7 +4,11 @@ use alloc::vec::Vec;
 use crate::account::{AccountId, AccountType};
 use crate::block::BlockNumber;
 use crate::utils::serde::{
-    ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    Serializable,
 };
 use crate::{FeeError, Felt, Hasher, Word, ZERO};
 

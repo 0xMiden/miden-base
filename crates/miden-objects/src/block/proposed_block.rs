@@ -5,18 +5,30 @@ use alloc::vec::Vec;
 use crate::account::AccountId;
 use crate::account::delta::AccountUpdateDetails;
 use crate::batch::{
-    BatchAccountUpdate, BatchId, InputOutputNoteTracker, OrderedBatches, ProvenBatch,
+    BatchAccountUpdate,
+    BatchId,
+    InputOutputNoteTracker,
+    OrderedBatches,
+    ProvenBatch,
 };
 use crate::block::block_inputs::BlockInputs;
 use crate::block::{
-    AccountUpdateWitness, AccountWitness, BlockHeader, BlockNumber, NullifierWitness,
+    AccountUpdateWitness,
+    AccountWitness,
+    BlockHeader,
+    BlockNumber,
+    NullifierWitness,
     OutputNoteBatch,
 };
 use crate::errors::ProposedBlockError;
 use crate::note::{NoteId, Nullifier};
 use crate::transaction::{InputNoteCommitment, OutputNote, PartialBlockchain, TransactionHeader};
 use crate::utils::serde::{
-    ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    Serializable,
 };
 use crate::{EMPTY_WORD, MAX_BATCHES_PER_BLOCK, Word};
 

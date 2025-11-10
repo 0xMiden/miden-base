@@ -1,5 +1,7 @@
 use miden_lib::transaction::memory::{
-    ACCOUNT_STACK_TOP_PTR, ACTIVE_INPUT_NOTE_PTR, NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR,
+    ACCOUNT_STACK_TOP_PTR,
+    ACTIVE_INPUT_NOTE_PTR,
+    NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR,
 };
 use miden_objects::account::AccountId;
 use miden_objects::note::{NoteId, NoteInputs};

@@ -5,9 +5,18 @@ use miden_lib::transaction::TransactionKernel;
 use miden_objects::Word;
 use miden_objects::account::AccountId;
 use miden_objects::block::{
-    AccountUpdateWitness, BlockAccountUpdate, BlockHeader, BlockNoteIndex, BlockNoteTree,
-    BlockNumber, NullifierWitness, OutputNoteBatch, PartialAccountTree, PartialNullifierTree,
-    ProposedBlock, ProvenBlock,
+    AccountUpdateWitness,
+    BlockAccountUpdate,
+    BlockHeader,
+    BlockNoteIndex,
+    BlockNoteTree,
+    BlockNumber,
+    NullifierWitness,
+    OutputNoteBatch,
+    PartialAccountTree,
+    PartialNullifierTree,
+    ProposedBlock,
+    ProvenBlock,
 };
 use miden_objects::note::Nullifier;
 use miden_objects::transaction::PartialBlockchain;

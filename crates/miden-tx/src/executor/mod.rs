@@ -8,7 +8,11 @@ use miden_objects::assembly::debuginfo::SourceManagerSync;
 use miden_objects::asset::Asset;
 use miden_objects::block::BlockNumber;
 use miden_objects::transaction::{
-    ExecutedTransaction, InputNote, InputNotes, TransactionArgs, TransactionInputs,
+    ExecutedTransaction,
+    InputNote,
+    InputNotes,
+    TransactionArgs,
+    TransactionInputs,
     TransactionScript,
 };
 use miden_objects::vm::StackOutputs;
@@ -30,7 +34,10 @@ pub use data_store::DataStore;
 
 mod notes_checker;
 pub use notes_checker::{
-    FailedNote, MAX_NUM_CHECKER_NOTES, NoteConsumptionChecker, NoteConsumptionInfo,
+    FailedNote,
+    MAX_NUM_CHECKER_NOTES,
+    NoteConsumptionChecker,
+    NoteConsumptionInfo,
 };
 
 // TRANSACTION EXECUTOR

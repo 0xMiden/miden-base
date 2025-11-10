@@ -3,27 +3,41 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use miden_lib::errors::tx_kernel_errors::{
-    ERR_FOREIGN_ACCOUNT_CONTEXT_AGAINST_NATIVE_ACCOUNT, ERR_FOREIGN_ACCOUNT_INVALID_COMMITMENT,
+    ERR_FOREIGN_ACCOUNT_CONTEXT_AGAINST_NATIVE_ACCOUNT,
+    ERR_FOREIGN_ACCOUNT_INVALID_COMMITMENT,
     ERR_FOREIGN_ACCOUNT_MAX_NUMBER_EXCEEDED,
 };
 use miden_lib::testing::account_component::MockAccountComponent;
 use miden_lib::transaction::TransactionKernel;
 use miden_lib::transaction::memory::{
-    ACCOUNT_DATA_LENGTH, ACCT_CODE_COMMITMENT_OFFSET, ACCT_ID_AND_NONCE_OFFSET,
-    ACCT_PROCEDURES_SECTION_OFFSET, ACCT_STORAGE_COMMITMENT_OFFSET,
-    ACCT_STORAGE_SLOTS_SECTION_OFFSET, ACCT_VAULT_ROOT_OFFSET, NATIVE_ACCOUNT_DATA_PTR,
-    NUM_ACCT_PROCEDURES_OFFSET, NUM_ACCT_STORAGE_SLOTS_OFFSET,
+    ACCOUNT_DATA_LENGTH,
+    ACCT_CODE_COMMITMENT_OFFSET,
+    ACCT_ID_AND_NONCE_OFFSET,
+    ACCT_PROCEDURES_SECTION_OFFSET,
+    ACCT_STORAGE_COMMITMENT_OFFSET,
+    ACCT_STORAGE_SLOTS_SECTION_OFFSET,
+    ACCT_VAULT_ROOT_OFFSET,
+    NATIVE_ACCOUNT_DATA_PTR,
+    NUM_ACCT_PROCEDURES_OFFSET,
+    NUM_ACCT_STORAGE_SLOTS_OFFSET,
 };
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{
-    Account, AccountBuilder, AccountComponent, AccountId, AccountProcedureInfo, AccountStorage,
-    AccountStorageMode, StorageSlot,
+    Account,
+    AccountBuilder,
+    AccountComponent,
+    AccountId,
+    AccountProcedureInfo,
+    AccountStorage,
+    AccountStorageMode,
+    StorageSlot,
 };
 use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::assembly::diagnostics::NamedSource;
 use miden_objects::asset::{Asset, FungibleAsset, NonFungibleAsset, NonFungibleAssetDetails};
 use miden_objects::testing::account_id::{
-    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1, ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET,
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
+    ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET,
 };
 use miden_objects::testing::storage::STORAGE_LEAVES_2;
 use miden_objects::{FieldElement, Word, ZERO};

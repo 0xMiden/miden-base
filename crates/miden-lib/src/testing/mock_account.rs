@@ -1,5 +1,11 @@
 use miden_objects::account::{
-    Account, AccountBuilder, AccountComponent, AccountId, AccountStorage, AccountType, StorageMap,
+    Account,
+    AccountBuilder,
+    AccountComponent,
+    AccountId,
+    AccountStorage,
+    AccountType,
+    StorageMap,
     StorageSlot,
 };
 use miden_objects::asset::{AssetVault, NonFungibleAsset};

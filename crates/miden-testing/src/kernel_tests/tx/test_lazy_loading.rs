@@ -8,7 +8,8 @@ use miden_objects::LexicographicWord;
 use miden_objects::account::{AccountId, AccountStorage};
 use miden_objects::asset::{Asset, FungibleAsset};
 use miden_objects::testing::account_id::{
-    ACCOUNT_ID_NATIVE_ASSET_FAUCET, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
+    ACCOUNT_ID_NATIVE_ASSET_FAUCET,
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
 };
 use miden_objects::testing::constants::FUNGIBLE_ASSET_AMOUNT;

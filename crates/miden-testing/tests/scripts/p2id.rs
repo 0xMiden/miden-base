@@ -6,9 +6,11 @@ use miden_objects::asset::{Asset, AssetVault, FungibleAsset};
 use miden_objects::crypto::rand::RpoRandomCoin;
 use miden_objects::note::NoteType;
 use miden_objects::testing::account_id::{
-    ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
+    ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET,
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
-    ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE_2, ACCOUNT_ID_SENDER,
+    ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE_2,
+    ACCOUNT_ID_SENDER,
 };
 use miden_objects::transaction::OutputNote;
 use miden_objects::{Felt, Word};

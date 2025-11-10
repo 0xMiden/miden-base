@@ -5,7 +5,12 @@ use miden_lib::testing::account_component::MockAccountComponent;
 use miden_lib::testing::note::NoteBuilder;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{
-    Account, AccountBuilder, AccountComponent, AccountStorage, AccountStorageMode, AccountType,
+    Account,
+    AccountBuilder,
+    AccountComponent,
+    AccountStorage,
+    AccountStorageMode,
+    AccountType,
 };
 use miden_objects::note::Note;
 use miden_objects::transaction::OutputNote;

@@ -5,7 +5,12 @@ use miden_processor::DeserializationError;
 use crate::Word;
 use crate::note::NoteHeader;
 use crate::transaction::{
-    AccountId, InputNoteCommitment, InputNotes, OutputNotes, ProvenTransaction, TransactionId,
+    AccountId,
+    InputNoteCommitment,
+    InputNotes,
+    OutputNotes,
+    ProvenTransaction,
+    TransactionId,
 };
 use crate::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
 

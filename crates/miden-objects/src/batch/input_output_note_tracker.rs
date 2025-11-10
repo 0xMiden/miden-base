@@ -7,7 +7,11 @@ use crate::crypto::merkle::MerkleError;
 use crate::errors::ProposedBatchError;
 use crate::note::{NoteHeader, NoteId, NoteInclusionProof, Nullifier};
 use crate::transaction::{
-    InputNoteCommitment, OutputNote, PartialBlockchain, ProvenTransaction, TransactionId,
+    InputNoteCommitment,
+    OutputNote,
+    PartialBlockchain,
+    ProvenTransaction,
+    TransactionId,
 };
 use crate::{ProposedBlockError, Word};
 

@@ -3,8 +3,13 @@
 use alloc::vec::Vec;
 
 use miden_lib::account::auth::{
-    AuthEcdsaK256Keccak, AuthEcdsaK256KeccakMultisig, AuthEcdsaK256KeccakMultisigConfig,
-    AuthRpoFalcon512, AuthRpoFalcon512Acl, AuthRpoFalcon512AclConfig, AuthRpoFalcon512Multisig,
+    AuthEcdsaK256Keccak,
+    AuthEcdsaK256KeccakMultisig,
+    AuthEcdsaK256KeccakMultisigConfig,
+    AuthRpoFalcon512,
+    AuthRpoFalcon512Acl,
+    AuthRpoFalcon512AclConfig,
+    AuthRpoFalcon512Multisig,
     AuthRpoFalcon512MultisigConfig,
 };
 use miden_lib::testing::account_component::{ConditionalAuthComponent, IncrNonceAuthComponent};

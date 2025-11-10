@@ -9,12 +9,24 @@ use miden_objects::account::{Account, AccountId, PartialAccount};
 use miden_objects::batch::{ProposedBatch, ProvenBatch};
 use miden_objects::block::account_tree::AccountTree;
 use miden_objects::block::{
-    AccountWitness, BlockHeader, BlockInputs, BlockNumber, Blockchain, NullifierTree,
-    NullifierWitness, ProposedBlock, ProvenBlock,
+    AccountWitness,
+    BlockHeader,
+    BlockInputs,
+    BlockNumber,
+    Blockchain,
+    NullifierTree,
+    NullifierWitness,
+    ProposedBlock,
+    ProvenBlock,
 };
 use miden_objects::note::{Note, NoteHeader, NoteId, NoteInclusionProof, Nullifier};
 use miden_objects::transaction::{
-    ExecutedTransaction, InputNote, InputNotes, OutputNote, PartialBlockchain, ProvenTransaction,
+    ExecutedTransaction,
+    InputNote,
+    InputNotes,
+    OutputNote,
+    PartialBlockchain,
+    ProvenTransaction,
     TransactionInputs,
 };
 use miden_processor::DeserializationError;
@@ -1124,7 +1136,9 @@ mod tests {
     use miden_objects::asset::{Asset, FungibleAsset};
     use miden_objects::note::NoteType;
     use miden_objects::testing::account_id::{
-        ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_SENDER,
+        ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET,
+        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
+        ACCOUNT_ID_SENDER,
     };
 
     use super::*;

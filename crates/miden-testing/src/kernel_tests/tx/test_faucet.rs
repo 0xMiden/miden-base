@@ -2,8 +2,10 @@ use alloc::sync::Arc;
 
 use miden_lib::errors::tx_kernel_errors::{
     ERR_FAUCET_NEW_TOTAL_SUPPLY_WOULD_EXCEED_MAX_ASSET_AMOUNT,
-    ERR_FAUCET_NON_FUNGIBLE_ASSET_ALREADY_ISSUED, ERR_FAUCET_NON_FUNGIBLE_ASSET_TO_BURN_NOT_FOUND,
-    ERR_FUNGIBLE_ASSET_FAUCET_IS_NOT_ORIGIN, ERR_NON_FUNGIBLE_ASSET_FAUCET_IS_NOT_ORIGIN,
+    ERR_FAUCET_NON_FUNGIBLE_ASSET_ALREADY_ISSUED,
+    ERR_FAUCET_NON_FUNGIBLE_ASSET_TO_BURN_NOT_FOUND,
+    ERR_FUNGIBLE_ASSET_FAUCET_IS_NOT_ORIGIN,
+    ERR_NON_FUNGIBLE_ASSET_FAUCET_IS_NOT_ORIGIN,
     ERR_VAULT_FUNGIBLE_ASSET_AMOUNT_LESS_THAN_AMOUNT_TO_WITHDRAW,
 };
 use miden_lib::testing::mock_account::MockAccountExt;
@@ -11,17 +13,27 @@ use miden_lib::transaction::TransactionKernel;
 use miden_lib::transaction::memory::NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{
-    Account, AccountBuilder, AccountComponent, AccountId, AccountType, StorageMap,
+    Account,
+    AccountBuilder,
+    AccountComponent,
+    AccountId,
+    AccountType,
+    StorageMap,
 };
 use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::asset::{FungibleAsset, NonFungibleAsset};
 use miden_objects::testing::account_id::{
-    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
-    ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET_1, ACCOUNT_ID_SENDER,
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
+    ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET_1,
+    ACCOUNT_ID_SENDER,
 };
 use miden_objects::testing::constants::{
-    CONSUMED_ASSET_1_AMOUNT, FUNGIBLE_ASSET_AMOUNT, FUNGIBLE_FAUCET_INITIAL_BALANCE,
-    NON_FUNGIBLE_ASSET_DATA, NON_FUNGIBLE_ASSET_DATA_2,
+    CONSUMED_ASSET_1_AMOUNT,
+    FUNGIBLE_ASSET_AMOUNT,
+    FUNGIBLE_FAUCET_INITIAL_BALANCE,
+    NON_FUNGIBLE_ASSET_DATA,
+    NON_FUNGIBLE_ASSET_DATA_2,
 };
 use miden_objects::testing::noop_auth_component::NoopAuthComponent;
 use miden_objects::testing::storage::FAUCET_STORAGE_DATA_SLOT;

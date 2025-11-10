@@ -1,15 +1,23 @@
 use alloc::string::String;
 
 use miden_objects::account::{
-    Account, AccountBuilder, AccountComponent, AccountStorageMode, AccountType,
+    Account,
+    AccountBuilder,
+    AccountComponent,
+    AccountStorageMode,
+    AccountType,
 };
 use miden_objects::{AccountError, Word};
 use thiserror::Error;
 
 use super::AuthScheme;
 use crate::account::auth::{
-    AuthEcdsaK256Keccak, AuthEcdsaK256KeccakMultisig, AuthEcdsaK256KeccakMultisigConfig,
-    AuthRpoFalcon512, AuthRpoFalcon512Multisig, AuthRpoFalcon512MultisigConfig,
+    AuthEcdsaK256Keccak,
+    AuthEcdsaK256KeccakMultisig,
+    AuthEcdsaK256KeccakMultisigConfig,
+    AuthRpoFalcon512,
+    AuthRpoFalcon512Multisig,
+    AuthRpoFalcon512MultisigConfig,
 };
 use crate::account::components::basic_wallet_library;
 use crate::procedure_digest;

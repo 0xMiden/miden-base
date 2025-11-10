@@ -2,7 +2,9 @@ use miden_objects::account::AccountId;
 use miden_objects::asset::NonFungibleAsset;
 use miden_objects::testing::account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET;
 use miden_objects::testing::constants::{
-    FUNGIBLE_ASSET_AMOUNT, FUNGIBLE_FAUCET_INITIAL_BALANCE, NON_FUNGIBLE_ASSET_DATA,
+    FUNGIBLE_ASSET_AMOUNT,
+    FUNGIBLE_FAUCET_INITIAL_BALANCE,
+    NON_FUNGIBLE_ASSET_DATA,
 };
 use miden_objects::{Felt, Hasher, Word};
 

@@ -1,5 +1,10 @@
 use miden_objects::account::{
-    Account, AccountBuilder, AccountComponent, AccountStorage, AccountStorageMode, AccountType,
+    Account,
+    AccountBuilder,
+    AccountComponent,
+    AccountStorage,
+    AccountStorageMode,
+    AccountType,
     StorageSlot,
 };
 use miden_objects::asset::{FungibleAsset, TokenSymbol};
@@ -289,8 +294,15 @@ mod tests {
     use miden_objects::{FieldElement, ONE, Word};
 
     use super::{
-        AccountBuilder, AccountStorageMode, AccountType, AuthScheme, BasicFungibleFaucet, Felt,
-        FungibleFaucetError, TokenSymbol, create_basic_fungible_faucet,
+        AccountBuilder,
+        AccountStorageMode,
+        AccountType,
+        AuthScheme,
+        BasicFungibleFaucet,
+        Felt,
+        FungibleFaucetError,
+        TokenSymbol,
+        create_basic_fungible_faucet,
     };
     use crate::account::auth::AuthRpoFalcon512;
     use crate::account::wallets::BasicWallet;

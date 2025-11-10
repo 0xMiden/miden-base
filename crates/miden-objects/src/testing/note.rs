@@ -3,8 +3,15 @@ use alloc::vec::Vec;
 use crate::assembly::Assembler;
 use crate::asset::FungibleAsset;
 use crate::note::{
-    Note, NoteAssets, NoteExecutionHint, NoteInputs, NoteMetadata, NoteRecipient, NoteScript,
-    NoteTag, NoteType,
+    Note,
+    NoteAssets,
+    NoteExecutionHint,
+    NoteInputs,
+    NoteMetadata,
+    NoteRecipient,
+    NoteScript,
+    NoteTag,
+    NoteType,
 };
 use crate::testing::account_id::ACCOUNT_ID_SENDER;
 use crate::{Word, ZERO};

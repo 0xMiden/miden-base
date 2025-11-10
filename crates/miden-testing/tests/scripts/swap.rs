@@ -4,10 +4,18 @@ use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{Account, AccountId, AccountStorageMode, AccountType};
 use miden_objects::asset::{Asset, FungibleAsset, NonFungibleAsset};
 use miden_objects::note::{
-    Note, NoteAssets, NoteDetails, NoteExecutionHint, NoteMetadata, NoteTag, NoteType,
+    Note,
+    NoteAssets,
+    NoteDetails,
+    NoteExecutionHint,
+    NoteMetadata,
+    NoteTag,
+    NoteType,
 };
 use miden_objects::testing::account_id::{
-    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1, AccountIdBuilder,
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
+    AccountIdBuilder,
 };
 use miden_objects::transaction::OutputNote;
 use miden_objects::{Felt, NoteError, Word};

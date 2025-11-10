@@ -1,5 +1,9 @@
 use miden_objects::account::{
-    AccountCode, AccountDelta, AccountId, AccountVaultDelta, PartialAccount,
+    AccountCode,
+    AccountDelta,
+    AccountId,
+    AccountVaultDelta,
+    PartialAccount,
 };
 use miden_objects::{Felt, FieldElement, ZERO};
 

@@ -4,7 +4,12 @@ use alloc::string::ToString;
 use alloc::vec::Vec;
 
 use super::{
-    AccountDeltaError, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
+    AccountDeltaError,
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    Serializable,
     Word,
 };
 use crate::account::{StorageMap, StorageSlotType};

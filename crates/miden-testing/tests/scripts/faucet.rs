@@ -9,13 +9,25 @@ use miden_lib::note::{create_burn_note, create_mint_note};
 use miden_lib::testing::note::NoteBuilder;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{
-    Account, AccountId, AccountIdVersion, AccountStorageMode, AccountType,
+    Account,
+    AccountId,
+    AccountIdVersion,
+    AccountStorageMode,
+    AccountType,
 };
 use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::asset::{Asset, FungibleAsset};
 use miden_objects::note::{
-    Note, NoteAssets, NoteExecutionHint, NoteExecutionMode, NoteId, NoteInputs, NoteMetadata,
-    NoteRecipient, NoteTag, NoteType,
+    Note,
+    NoteAssets,
+    NoteExecutionHint,
+    NoteExecutionMode,
+    NoteId,
+    NoteInputs,
+    NoteMetadata,
+    NoteRecipient,
+    NoteTag,
+    NoteType,
 };
 use miden_objects::testing::account_id::ACCOUNT_ID_PRIVATE_SENDER;
 use miden_objects::transaction::{ExecutedTransaction, OutputNote};

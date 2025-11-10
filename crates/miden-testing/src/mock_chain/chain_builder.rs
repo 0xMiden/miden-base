@@ -20,13 +20,26 @@ use miden_lib::testing::account_component::MockAccountComponent;
 use miden_lib::transaction::{TransactionKernel, memory};
 use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{
-    Account, AccountBuilder, AccountDelta, AccountId, AccountStorageMode, AccountType, StorageSlot,
+    Account,
+    AccountBuilder,
+    AccountDelta,
+    AccountId,
+    AccountStorageMode,
+    AccountType,
+    StorageSlot,
 };
 use miden_objects::asset::{Asset, FungibleAsset, TokenSymbol};
 use miden_objects::block::account_tree::AccountTree;
 use miden_objects::block::{
-    BlockAccountUpdate, BlockHeader, BlockNoteTree, BlockNumber, Blockchain, FeeParameters,
-    NullifierTree, OutputNoteBatch, ProvenBlock,
+    BlockAccountUpdate,
+    BlockHeader,
+    BlockNoteTree,
+    BlockNumber,
+    Blockchain,
+    FeeParameters,
+    NullifierTree,
+    OutputNoteBatch,
+    ProvenBlock,
 };
 use miden_objects::note::{Note, NoteDetails, NoteType};
 use miden_objects::testing::account_id::ACCOUNT_ID_NATIVE_ASSET_FAUCET;

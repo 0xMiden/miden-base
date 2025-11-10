@@ -6,7 +6,8 @@ pub use ecdsa_k256_keccak::AuthEcdsaK256Keccak;
 
 mod ecdsa_k256_keccak_multisig;
 pub use ecdsa_k256_keccak_multisig::{
-    AuthEcdsaK256KeccakMultisig, AuthEcdsaK256KeccakMultisigConfig,
+    AuthEcdsaK256KeccakMultisig,
+    AuthEcdsaK256KeccakMultisigConfig,
 };
 
 mod rpo_falcon_512;

@@ -18,8 +18,14 @@ use super::crypto::merkle::MerkleError;
 use super::note::NoteId;
 use super::{MAX_BATCHES_PER_BLOCK, MAX_OUTPUT_NOTES_PER_BATCH, Word};
 use crate::account::{
-    AccountCode, AccountIdPrefix, AccountStorage, AccountType, SlotName, StorageValueName,
-    StorageValueNameError, TemplateTypeError,
+    AccountCode,
+    AccountIdPrefix,
+    AccountStorage,
+    AccountType,
+    SlotName,
+    StorageValueName,
+    StorageValueNameError,
+    TemplateTypeError,
 };
 use crate::address::AddressType;
 use crate::asset::AssetVaultKey;
@@ -28,8 +34,12 @@ use crate::block::BlockNumber;
 use crate::note::{NoteAssets, NoteExecutionHint, NoteTag, NoteType, Nullifier};
 use crate::transaction::TransactionId;
 use crate::{
-    ACCOUNT_UPDATE_MAX_SIZE, MAX_ACCOUNTS_PER_BATCH, MAX_INPUT_NOTES_PER_BATCH,
-    MAX_INPUT_NOTES_PER_TX, MAX_INPUTS_PER_NOTE, MAX_OUTPUT_NOTES_PER_TX,
+    ACCOUNT_UPDATE_MAX_SIZE,
+    MAX_ACCOUNTS_PER_BATCH,
+    MAX_INPUT_NOTES_PER_BATCH,
+    MAX_INPUT_NOTES_PER_TX,
+    MAX_INPUTS_PER_NOTE,
+    MAX_OUTPUT_NOTES_PER_TX,
 };
 
 // ACCOUNT COMPONENT TEMPLATE ERROR

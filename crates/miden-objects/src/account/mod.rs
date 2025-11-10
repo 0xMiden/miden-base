@@ -5,14 +5,23 @@ use miden_core::LexicographicWord;
 
 use crate::asset::{Asset, AssetVault};
 use crate::utils::serde::{
-    ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    Serializable,
 };
 use crate::{AccountError, Felt, Hasher, Word, ZERO};
 
 mod account_id;
 pub use account_id::{
-    AccountId, AccountIdPrefix, AccountIdPrefixV0, AccountIdV0, AccountIdVersion,
-    AccountStorageMode, AccountType,
+    AccountId,
+    AccountIdPrefix,
+    AccountIdPrefixV0,
+    AccountIdV0,
+    AccountIdVersion,
+    AccountStorageMode,
+    AccountType,
 };
 
 pub mod auth;
@@ -26,21 +35,44 @@ pub use code::procedure::AccountProcedureInfo;
 
 pub mod component;
 pub use component::{
-    AccountComponent, AccountComponentMetadata, AccountComponentTemplate, FeltRepresentation,
-    InitStorageData, MapEntry, MapRepresentation, PlaceholderTypeRequirement, StorageEntry,
-    StorageValueName, StorageValueNameError, TemplateType, TemplateTypeError, WordRepresentation,
+    AccountComponent,
+    AccountComponentMetadata,
+    AccountComponentTemplate,
+    FeltRepresentation,
+    InitStorageData,
+    MapEntry,
+    MapRepresentation,
+    PlaceholderTypeRequirement,
+    StorageEntry,
+    StorageValueName,
+    StorageValueNameError,
+    TemplateType,
+    TemplateTypeError,
+    WordRepresentation,
 };
 
 pub mod delta;
 pub use delta::{
-    AccountDelta, AccountStorageDelta, AccountVaultDelta, FungibleAssetDelta,
-    NonFungibleAssetDelta, NonFungibleDeltaAction, StorageMapDelta,
+    AccountDelta,
+    AccountStorageDelta,
+    AccountVaultDelta,
+    FungibleAssetDelta,
+    NonFungibleAssetDelta,
+    NonFungibleDeltaAction,
+    StorageMapDelta,
 };
 
 mod storage;
 pub use storage::{
-    AccountStorage, AccountStorageHeader, PartialStorage, PartialStorageMap, SlotName, StorageMap,
-    StorageMapWitness, StorageSlot, StorageSlotType,
+    AccountStorage,
+    AccountStorageHeader,
+    PartialStorage,
+    PartialStorageMap,
+    SlotName,
+    StorageMap,
+    StorageMapWitness,
+    StorageSlot,
+    StorageSlotType,
 };
 
 mod header;
@@ -589,18 +621,30 @@ mod tests {
     use miden_crypto::{Felt, Word};
 
     use super::{
-        AccountCode, AccountDelta, AccountId, AccountStorage, AccountStorageDelta,
+        AccountCode,
+        AccountDelta,
+        AccountId,
+        AccountStorage,
+        AccountStorageDelta,
         AccountVaultDelta,
     };
     use crate::AccountError;
     use crate::account::AccountStorageMode::Network;
     use crate::account::{
-        Account, AccountBuilder, AccountComponent, AccountIdVersion, AccountType, PartialAccount,
-        StorageMap, StorageMapDelta, StorageSlot,
+        Account,
+        AccountBuilder,
+        AccountComponent,
+        AccountIdVersion,
+        AccountType,
+        PartialAccount,
+        StorageMap,
+        StorageMapDelta,
+        StorageSlot,
     };
     use crate::asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset};
     use crate::testing::account_id::{
-        ACCOUNT_ID_PRIVATE_SENDER, ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
+        ACCOUNT_ID_PRIVATE_SENDER,
+        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
     };
     use crate::testing::add_component::AddComponent;
     use crate::testing::noop_auth_component::NoopAuthComponent;

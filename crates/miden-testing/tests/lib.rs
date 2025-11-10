@@ -14,7 +14,10 @@ use miden_objects::transaction::{ExecutedTransaction, ProvenTransaction};
 use miden_objects::{Word, ZERO};
 use miden_processor::utils::Deserializable;
 use miden_tx::{
-    LocalTransactionProver, ProvingOptions, TransactionVerifier, TransactionVerifierError,
+    LocalTransactionProver,
+    ProvingOptions,
+    TransactionVerifier,
+    TransactionVerifierError,
 };
 
 // HELPER FUNCTIONS

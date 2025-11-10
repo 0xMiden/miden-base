@@ -18,7 +18,10 @@ use miden_objects::note::{Note, NoteId, NoteScript};
 use miden_objects::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE;
 use miden_objects::testing::noop_auth_component::NoopAuthComponent;
 use miden_objects::transaction::{
-    OutputNote, TransactionArgs, TransactionInputs, TransactionScript,
+    OutputNote,
+    TransactionArgs,
+    TransactionInputs,
+    TransactionScript,
 };
 use miden_processor::{AdviceInputs, Felt, Word};
 use miden_tx::TransactionMastStore;

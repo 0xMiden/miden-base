@@ -29,8 +29,11 @@ pub use inputs::{TransactionAdviceInputs, TransactionAdviceMapMismatch};
 
 mod outputs;
 pub use outputs::{
-    ACCOUNT_UPDATE_COMMITMENT_WORD_IDX, EXPIRATION_BLOCK_ELEMENT_IDX, FEE_ASSET_WORD_IDX,
-    OUTPUT_NOTES_COMMITMENT_WORD_IDX, parse_final_account_header,
+    ACCOUNT_UPDATE_COMMITMENT_WORD_IDX,
+    EXPIRATION_BLOCK_ELEMENT_IDX,
+    FEE_ASSET_WORD_IDX,
+    OUTPUT_NOTES_COMMITMENT_WORD_IDX,
+    parse_final_account_header,
 };
 
 pub use crate::errors::{TransactionEventError, TransactionTraceParsingError};
