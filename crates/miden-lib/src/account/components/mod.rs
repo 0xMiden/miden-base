@@ -17,6 +17,25 @@ static BASIC_WALLET_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
     Library::read_from_bytes(bytes).expect("Shipped Basic Wallet library is well-formed")
 });
 
+/// Initialize the Ecdsa K256 Keccak library only once.
+static ECDSA_K256_KECCAK_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
+    let bytes = include_bytes!(concat!(
+        env!("OUT_DIR"),
+        "/assets/account_components/ecdsa_k256_keccak.masl"
+    ));
+    Library::read_from_bytes(bytes).expect("Shipped Ecdsa K256 Keccak library is well-formed")
+});
+
+/// Initialize the Ecdsa K256 Keccak Multisig library only once.
+static ECDSA_K256_KECCAK_MULTISIG_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
+    let bytes = include_bytes!(concat!(
+        env!("OUT_DIR"),
+        "/assets/account_components/multisig_ecdsa_k256_keccak.masl"
+    ));
+    Library::read_from_bytes(bytes)
+        .expect("Shipped Multisig Ecdsa K256 Keccak library is well-formed")
+});
+
 // Initialize the Rpo Falcon 512 library only once.
 static RPO_FALCON_512_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
     let bytes =
@@ -81,6 +100,16 @@ pub fn network_fungible_faucet_library() -> Library {
     NETWORK_FUNGIBLE_FAUCET_LIBRARY.clone()
 }
 
+/// Returns the Ecdsa K256 Keccak Library.
+pub fn ecdsa_k256_keccak_library() -> Library {
+    ECDSA_K256_KECCAK_LIBRARY.clone()
+}
+
+/// Returns the Ecdsa K256 Keccak Multisig Library.
+pub fn ecdsa_k256_keccak_multisig_library() -> Library {
+    ECDSA_K256_KECCAK_MULTISIG_LIBRARY.clone()
+}
+
 /// Returns the Rpo Falcon 512 Library.
 pub fn rpo_falcon_512_library() -> Library {
     RPO_FALCON_512_LIBRARY.clone()
@@ -109,6 +138,8 @@ pub enum WellKnownComponent {
     BasicWallet,
     BasicFungibleFaucet,
     NetworkFungibleFaucet,
+    AuthEcdsaK256Keccak,
+    AuthEcdsaK256KeccakMultisig,
     AuthRpoFalcon512,
     AuthRpoFalcon512Acl,
     AuthRpoFalcon512Multisig,
@@ -122,6 +153,8 @@ impl WellKnownComponent {
             Self::BasicWallet => BASIC_WALLET_LIBRARY.as_ref(),
             Self::BasicFungibleFaucet => BASIC_FUNGIBLE_FAUCET_LIBRARY.as_ref(),
             Self::NetworkFungibleFaucet => NETWORK_FUNGIBLE_FAUCET_LIBRARY.as_ref(),
+            Self::AuthEcdsaK256Keccak => ECDSA_K256_KECCAK_LIBRARY.as_ref(),
+            Self::AuthEcdsaK256KeccakMultisig => ECDSA_K256_KECCAK_MULTISIG_LIBRARY.as_ref(),
             Self::AuthRpoFalcon512 => RPO_FALCON_512_LIBRARY.as_ref(),
             Self::AuthRpoFalcon512Acl => RPO_FALCON_512_ACL_LIBRARY.as_ref(),
             Self::AuthRpoFalcon512Multisig => RPO_FALCON_512_MULTISIG_LIBRARY.as_ref(),
@@ -167,6 +200,10 @@ impl WellKnownComponent {
                     .push(AccountComponentInterface::BasicFungibleFaucet(storage_offset)),
                 Self::NetworkFungibleFaucet => component_interface_vec
                     .push(AccountComponentInterface::NetworkFungibleFaucet(storage_offset)),
+                Self::AuthEcdsaK256Keccak => component_interface_vec
+                    .push(AccountComponentInterface::AuthEcdsaK256Keccak(storage_offset)),
+                Self::AuthEcdsaK256KeccakMultisig => component_interface_vec
+                    .push(AccountComponentInterface::AuthEcdsaK256KeccakMultisig(storage_offset)),
                 Self::AuthRpoFalcon512 => component_interface_vec
                     .push(AccountComponentInterface::AuthRpoFalcon512(storage_offset)),
                 Self::AuthRpoFalcon512Acl => component_interface_vec
@@ -189,6 +226,9 @@ impl WellKnownComponent {
         Self::BasicWallet.extract_component(procedures_map, component_interface_vec);
         Self::BasicFungibleFaucet.extract_component(procedures_map, component_interface_vec);
         Self::NetworkFungibleFaucet.extract_component(procedures_map, component_interface_vec);
+        Self::AuthEcdsaK256Keccak.extract_component(procedures_map, component_interface_vec);
+        Self::AuthEcdsaK256KeccakMultisig
+            .extract_component(procedures_map, component_interface_vec);
         Self::AuthRpoFalcon512.extract_component(procedures_map, component_interface_vec);
         Self::AuthRpoFalcon512Acl.extract_component(procedures_map, component_interface_vec);
         Self::AuthRpoFalcon512Multisig.extract_component(procedures_map, component_interface_vec);

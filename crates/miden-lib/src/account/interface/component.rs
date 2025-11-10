@@ -34,6 +34,13 @@ pub enum AccountComponentInterface {
     /// Exposes procedures from the
     /// [`AuthRpoFalcon512`][crate::account::auth::AuthRpoFalcon512] module.
     ///
+    /// Internal value holds the storage slot index where the public key for the EcdsaK256Keccak
+    /// authentication scheme is stored.
+    AuthEcdsaK256Keccak(u8),
+    /// Internal value holds the storage slot index where the multisig for EcdsaK256Keccak configuration is stored.
+    /// configuration is stored.
+    AuthEcdsaK256KeccakMultisig(u8),
+    ///
     /// Internal value holds the storage slot index where the public key for the RpoFalcon512
     /// authentication scheme is stored.
     AuthRpoFalcon512(u8),
@@ -74,10 +81,14 @@ impl AccountComponentInterface {
             AccountComponentInterface::NetworkFungibleFaucet(_) => {
                 "Network Fungible Faucet".to_string()
             },
+            AccountComponentInterface::AuthEcdsaK256Keccak(_) => "ECDSA K256 Keccak".to_string(),
             AccountComponentInterface::AuthRpoFalcon512(_) => "RPO Falcon512".to_string(),
             AccountComponentInterface::AuthRpoFalcon512Acl(_) => "RPO Falcon512 ACL".to_string(),
             AccountComponentInterface::AuthRpoFalcon512Multisig(_) => {
                 "RPO Falcon512 Multisig".to_string()
+            },
+            AccountComponentInterface::AuthEcdsaK256KeccakMultisig(_) => {
+                "ECDSA K256 Keccak Multisig".to_string()
             },
             AccountComponentInterface::AuthNoAuth => "No Auth".to_string(),
             AccountComponentInterface::Custom(proc_info_vec) => {
@@ -97,7 +108,9 @@ impl AccountComponentInterface {
     pub fn is_auth_component(&self) -> bool {
         matches!(
             self,
-            AccountComponentInterface::AuthRpoFalcon512(_)
+            AccountComponentInterface::AuthEcdsaK256Keccak(_)
+                | AccountComponentInterface::AuthEcdsaK256KeccakMultisig(_)
+                | AccountComponentInterface::AuthRpoFalcon512(_)
                 | AccountComponentInterface::AuthRpoFalcon512Acl(_)
                 | AccountComponentInterface::AuthRpoFalcon512Multisig(_)
                 | AccountComponentInterface::AuthNoAuth
@@ -107,6 +120,18 @@ impl AccountComponentInterface {
     /// Returns the authentication schemes associated with this component interface.
     pub fn get_auth_schemes(&self, storage: &AccountStorage) -> Vec<AuthScheme> {
         match self {
+            AccountComponentInterface::AuthEcdsaK256Keccak(storage_index) => {
+                vec![AuthScheme::EcdsaK256Keccak {
+                    pub_key: PublicKeyCommitment::from(
+                        storage
+                            .get_item(*storage_index)
+                            .expect("invalid storage index of the public key"),
+                    ),
+                }]
+            },
+            AccountComponentInterface::AuthEcdsaK256KeccakMultisig(storage_index) => {
+                vec![extract_multisig_auth_scheme(storage, *storage_index)]
+            },
             AccountComponentInterface::AuthRpoFalcon512(storage_index)
             | AccountComponentInterface::AuthRpoFalcon512Acl(storage_index) => {
                 vec![AuthScheme::RpoFalcon512 {

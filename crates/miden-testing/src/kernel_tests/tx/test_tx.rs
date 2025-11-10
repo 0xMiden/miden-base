@@ -11,47 +11,26 @@ use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::transaction::TransactionKernel;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{
-    Account,
-    AccountBuilder,
-    AccountCode,
-    AccountComponent,
-    AccountStorage,
-    AccountStorageMode,
-    AccountType,
-    StorageSlot,
+    Account, AccountBuilder, AccountCode, AccountComponent, AccountStorage, AccountStorageMode,
+    AccountType, StorageSlot,
 };
 use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::assembly::diagnostics::NamedSource;
 use miden_objects::asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset};
 use miden_objects::block::BlockNumber;
 use miden_objects::note::{
-    Note,
-    NoteAssets,
-    NoteExecutionHint,
-    NoteExecutionMode,
-    NoteHeader,
-    NoteId,
-    NoteInputs,
-    NoteMetadata,
-    NoteRecipient,
-    NoteTag,
-    NoteType,
+    Note, NoteAssets, NoteExecutionHint, NoteExecutionMode, NoteHeader, NoteId, NoteInputs,
+    NoteMetadata, NoteRecipient, NoteTag, NoteType,
 };
 use miden_objects::testing::account_id::{
-    ACCOUNT_ID_PRIVATE_SENDER,
-    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
-    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
-    ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
+    ACCOUNT_ID_PRIVATE_SENDER, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2, ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
 };
 use miden_objects::testing::constants::{FUNGIBLE_ASSET_AMOUNT, NON_FUNGIBLE_ASSET_DATA};
 use miden_objects::testing::note::DEFAULT_NOTE_CODE;
 use miden_objects::transaction::{
-    InputNotes,
-    OutputNote,
-    OutputNotes,
-    TransactionArgs,
-    TransactionSummary,
+    InputNotes, OutputNote, OutputNotes, TransactionArgs, TransactionSummary,
 };
 use miden_objects::{Felt, FieldElement, Hasher, ONE, Word};
 use miden_processor::crypto::RpoRandomCoin;
@@ -530,9 +509,79 @@ async fn tx_summary_commitment_is_signed_by_falcon_auth() -> anyhow::Result<()> 
         AuthScheme::RpoFalcon512 { pub_key } => pub_key,
         AuthScheme::NoAuth => panic!("Expected RpoFalcon512 auth scheme, got NoAuth"),
         AuthScheme::RpoFalcon512Multisig { .. } => {
-            panic!("Expected RpoFalcon512 auth scheme, got Multisig")
+            panic!("Expected RpoFalcon512 auth scheme, got RpoFalcon512Multisig")
         },
         AuthScheme::Unknown => panic!("Expected RpoFalcon512 auth scheme, got Unknown"),
+        AuthScheme::EcdsaK256Keccak { .. } => {
+            panic!("Expected RpoFalcon512 auth scheme, got EcdsaK256Keccak")
+        },
+        AuthScheme::EcdsaK256KeccakMultisig { .. } => {
+            panic!("Expected RpoFalcon512 auth scheme, got EcdsaK256KeccakMultisig")
+        },
+    };
+
+    // This is in an internal detail of the tx executor host, but this is the easiest way to check
+    // for the presence of the signature in the advice map.
+    let signature_key = Hasher::merge(&[Word::from(*pub_key), summary_commitment]);
+
+    // The summary commitment should have been signed as part of transaction execution and inserted
+    // into the advice map.
+    tx.advice_witness().map.get(&signature_key).unwrap();
+
+    Ok(())
+}
+
+/// Tests that a transaction consuming and creating one note with EcdsaK256Keccak authentication correctly
+/// signs the transaction summary.
+#[tokio::test]
+async fn tx_summary_commitment_is_signed_by_ecdsa_auth() -> anyhow::Result<()> {
+    let mut builder = MockChain::builder();
+    let account = builder.add_existing_mock_account(Auth::EcdsaK256KeccakAuth)?;
+    let mut rng = RpoRandomCoin::new(Word::empty());
+    let p2id_note = create_p2id_note(
+        account.id(),
+        account.id(),
+        vec![],
+        NoteType::Private,
+        Felt::ZERO,
+        &mut rng,
+    )?;
+    let spawn_note = builder.add_spawn_note([&p2id_note])?;
+    let chain = builder.build()?;
+
+    let tx = chain
+        .build_tx_context(account.id(), &[spawn_note.id()], &[])?
+        .build()?
+        .execute()
+        .await?;
+
+    let summary = TransactionSummary::new(
+        tx.account_delta().clone(),
+        tx.input_notes().clone(),
+        tx.output_notes().clone(),
+        Word::from([
+            0,
+            0,
+            tx.block_header().block_num().as_u32(),
+            tx.final_account().nonce().as_int() as u32,
+        ]),
+    );
+    let summary_commitment = summary.to_commitment();
+
+    let account_interface = AccountInterface::from(&account);
+    let pub_key = match account_interface.auth().first().unwrap() {
+        AuthScheme::EcdsaK256Keccak { pub_key } => pub_key,
+        AuthScheme::EcdsaK256KeccakMultisig { .. } => {
+            panic!("Expected EcdsaK256Keccak auth scheme, got EcdsaK256KeccakMultisig")
+        },
+        AuthScheme::NoAuth => panic!("Expected EcdsaK256Keccak auth scheme, got NoAuth"),
+        AuthScheme::RpoFalcon512Multisig { .. } => {
+            panic!("Expected EcdsaK256Keccak auth scheme, got RpoFalcon512Multisig")
+        },
+        AuthScheme::Unknown => panic!("Expected EcdsaK256Keccak auth scheme, got Unknown"),
+        AuthScheme::RpoFalcon512 { .. } => {
+            panic!("Expected EcdsaK256Keccak auth scheme, got RpoFalcon512")
+        },
     };
 
     // This is in an internal detail of the tx executor host, but this is the easiest way to check

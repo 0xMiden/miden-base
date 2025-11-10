@@ -10,14 +10,7 @@ use miden_objects::assembly::{Assembler, DefaultSourceManager};
 use miden_objects::asset::{FungibleAsset, NonFungibleAsset, TokenSymbol};
 use miden_objects::crypto::rand::{FeltRng, RpoRandomCoin};
 use miden_objects::note::{
-    Note,
-    NoteAssets,
-    NoteExecutionHint,
-    NoteInputs,
-    NoteMetadata,
-    NoteRecipient,
-    NoteTag,
-    NoteType,
+    Note, NoteAssets, NoteExecutionHint, NoteInputs, NoteMetadata, NoteRecipient, NoteTag, NoteType,
 };
 use miden_objects::testing::account_id::{
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
@@ -27,16 +20,11 @@ use miden_objects::{AccountError, Felt, NoteError, Word, ZERO};
 
 use crate::AuthScheme;
 use crate::account::auth::{
-    AuthRpoFalcon512,
-    AuthRpoFalcon512Multisig,
-    AuthRpoFalcon512MultisigConfig,
-    NoAuth,
+    AuthEcdsaK256Keccak, AuthRpoFalcon512, AuthRpoFalcon512Multisig, AuthRpoFalcon512MultisigConfig, NoAuth
 };
 use crate::account::faucets::BasicFungibleFaucet;
 use crate::account::interface::{
-    AccountComponentInterface,
-    AccountInterface,
-    NoteAccountCompatibility,
+    AccountComponentInterface, AccountInterface, NoteAccountCompatibility,
 };
 use crate::account::wallets::BasicWallet;
 use crate::note::{create_p2id_note, create_p2ide_note, create_swap_note};
@@ -715,8 +703,45 @@ fn get_mock_auth_component() -> AuthRpoFalcon512 {
     AuthRpoFalcon512::new(mock_public_key)
 }
 
+/// Helper function to create a mock Ecdsa auth component for testing
+fn get_mock_ecdsa_auth_component() -> AuthEcdsaK256Keccak {
+    let mock_word = Word::from([0, 1, 2, 3u32]);
+    let mock_public_key = PublicKeyCommitment::from(mock_word);
+    AuthEcdsaK256Keccak::new(mock_public_key)
+}
+
 // GET AUTH SCHEME TESTS
 // ================================================================================================
+
+#[test]
+fn test_get_auth_scheme_ecdsa_k256_keccak() {
+    let mock_seed = Word::from([0, 1, 2, 3u32]).as_bytes();
+    let wallet_account = AccountBuilder::new(mock_seed)
+        .with_auth_component(get_mock_ecdsa_auth_component())
+        .with_component(BasicWallet)
+        .build_existing()
+        .expect("failed to create wallet account");
+
+    let wallet_account_interface = AccountInterface::from(&wallet_account);
+
+    // Find the EcdsaK256Keccak component interface
+    let ecdsa_k256_keccak_component = wallet_account_interface
+        .components()
+        .iter()
+        .find(|component| matches!(component, AccountComponentInterface::AuthEcdsaK256Keccak(_)))
+        .expect("should have EcdsaK256Keccak component");
+
+    // Test get_auth_schemes method
+    let auth_schemes = ecdsa_k256_keccak_component.get_auth_schemes(wallet_account.storage());
+    assert_eq!(auth_schemes.len(), 1);
+    let auth_scheme = &auth_schemes[0];
+    match auth_scheme {
+        AuthScheme::EcdsaK256Keccak { pub_key } => {
+            assert_eq!(*pub_key, PublicKeyCommitment::from(Word::from([0, 1, 2, 3u32])));
+        },
+        _ => panic!("Expected EcdsaK256Keccak auth scheme"),
+    }
+}
 
 #[test]
 fn test_get_auth_scheme_rpo_falcon512() {

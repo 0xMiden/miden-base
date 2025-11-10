@@ -1,10 +1,5 @@
 use miden_objects::account::{
-    Account,
-    AccountBuilder,
-    AccountComponent,
-    AccountStorage,
-    AccountStorageMode,
-    AccountType,
+    Account, AccountBuilder, AccountComponent, AccountStorage, AccountStorageMode, AccountType,
     StorageSlot,
 };
 use miden_objects::asset::{FungibleAsset, TokenSymbol};
@@ -260,6 +255,17 @@ pub fn create_basic_fungible_faucet(
                     .into(),
             ));
         },
+        AuthScheme::EcdsaK256Keccak { pub_key: _ } => {
+            return Err(FungibleFaucetError::UnsupportedAuthScheme(
+                "basic fungible faucets do not support EcdsaK256Keccak authentication".into(),
+            ));
+        },
+        AuthScheme::EcdsaK256KeccakMultisig { threshold: _, pub_keys: _ } => {
+            return Err(FungibleFaucetError::UnsupportedAuthScheme(
+                "basic fungible faucets do not support EcdsaK256KeccakMultisig authentication"
+                    .into(),
+            ));
+        },
     };
 
     let account = AccountBuilder::new(init_seed)
@@ -283,15 +289,8 @@ mod tests {
     use miden_objects::{FieldElement, ONE, Word};
 
     use super::{
-        AccountBuilder,
-        AccountStorageMode,
-        AccountType,
-        AuthScheme,
-        BasicFungibleFaucet,
-        Felt,
-        FungibleFaucetError,
-        TokenSymbol,
-        create_basic_fungible_faucet,
+        AccountBuilder, AccountStorageMode, AccountType, AuthScheme, BasicFungibleFaucet, Felt,
+        FungibleFaucetError, TokenSymbol, create_basic_fungible_faucet,
     };
     use crate::account::auth::AuthRpoFalcon512;
     use crate::account::wallets::BasicWallet;

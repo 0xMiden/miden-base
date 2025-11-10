@@ -3,10 +3,8 @@
 use alloc::vec::Vec;
 
 use miden_lib::account::auth::{
-    AuthRpoFalcon512,
-    AuthRpoFalcon512Acl,
-    AuthRpoFalcon512AclConfig,
-    AuthRpoFalcon512Multisig,
+    AuthEcdsaK256Keccak, AuthEcdsaK256KeccakMultisig, AuthEcdsaK256KeccakMultisigConfig,
+    AuthRpoFalcon512, AuthRpoFalcon512Acl, AuthRpoFalcon512AclConfig, AuthRpoFalcon512Multisig,
     AuthRpoFalcon512MultisigConfig,
 };
 use miden_lib::testing::account_component::{ConditionalAuthComponent, IncrNonceAuthComponent};
@@ -24,6 +22,17 @@ pub enum Auth {
     /// Creates a secret key for the account and creates a [BasicAuthenticator] used to
     /// authenticate the account with [AuthRpoFalcon512].
     BasicAuth,
+
+    /// Creates a secret key for the account and creates a [BasicAuthenticator] used to
+    /// authenticate the account with [AuthEcdsaK256Keccak].
+    EcdsaK256KeccakAuth,
+
+    // Ecsda Multisig
+    EcdsaK256KeccakMultisig {
+        threshold: u32,
+        approvers: Vec<Word>,
+        proc_threshold_map: Vec<(Word, u32)>,
+    },
 
     /// Multisig
     Multisig {
@@ -70,6 +79,29 @@ impl Auth {
                 let authenticator = BasicAuthenticator::new(&[sec_key]);
 
                 (component, Some(authenticator))
+            },
+            Auth::EcdsaK256KeccakAuth => {
+                let mut rng = ChaCha20Rng::from_seed(Default::default());
+                let sec_key = AuthSecretKey::new_ecdsa_k256_keccak_with_rng(&mut rng);
+                let pub_key = sec_key.public_key().to_commitment();
+
+                let component = AuthEcdsaK256Keccak::new(pub_key).into();
+                let authenticator = BasicAuthenticator::new(&[sec_key]);
+
+                (component, Some(authenticator))
+            },
+            Auth::EcdsaK256KeccakMultisig { threshold, approvers, proc_threshold_map } => {
+                let pub_keys: Vec<_> =
+                    approvers.iter().map(|word| PublicKeyCommitment::from(*word)).collect();
+
+                let config = AuthEcdsaK256KeccakMultisigConfig::new(pub_keys, *threshold)
+                    .and_then(|cfg| cfg.with_proc_thresholds(proc_threshold_map.clone()))
+                    .expect("invalid multisig config");
+                let component = AuthEcdsaK256KeccakMultisig::new(config)
+                    .expect("multisig component creation failed")
+                    .into();
+
+                (component, None)
             },
             Auth::Multisig { threshold, approvers, proc_threshold_map } => {
                 let pub_keys: Vec<_> =
