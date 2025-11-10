@@ -559,13 +559,7 @@ where
                     active_account_id,
                     current_vault_root,
                     asset_key,
-                    is_witness_present,
                 } => {
-                    // If the merkle path is already in the advice provider there is nothing to do.
-                    if is_witness_present {
-                        return Ok(Vec::new());
-                    }
-
                     self.on_account_vault_asset_witness_requested(
                         active_account_id,
                         current_vault_root,
@@ -579,13 +573,7 @@ where
                     slot_index,
                     current_map_root: map_root,
                     map_key,
-                    is_witness_present,
                 } => {
-                    // If the merkle path is already in the advice provider there is nothing to do.
-                    if is_witness_present {
-                        return Ok(Vec::new());
-                    }
-
                     self.on_account_storage_map_witness_requested(
                         active_account_id,
                         slot_index,

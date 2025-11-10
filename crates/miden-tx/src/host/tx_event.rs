@@ -53,8 +53,6 @@ pub(crate) enum TransactionEvent {
         current_map_root: Word,
         /// The raw map key for which a witness is requested.
         map_key: Word,
-        /// Indicates whether the witness for this map item is already in the advice provider.
-        is_witness_present: bool,
     },
 
     /// The data necessary to request an asset witness from the data store.
@@ -65,8 +63,6 @@ pub(crate) enum TransactionEvent {
         current_vault_root: Word,
         /// The asset for which a witness is requested.
         asset_key: AssetVaultKey,
-        /// Indicates whether the witness for this map item is already in the advice provider.
-        is_witness_present: bool,
     },
 
     AccountAfterIncrementNonce,
@@ -199,7 +195,7 @@ impl TransactionEvent {
                         )
                     })?;
 
-                TransactionEvent::AccountBeforeForeignLoad { foreign_account_id: account_id }
+                Some(TransactionEvent::AccountBeforeForeignLoad { foreign_account_id: account_id })
             },
             TransactionEventId::AccountVaultBeforeAddAsset
             | TransactionEventId::AccountVaultBeforeRemoveAsset => {
@@ -230,7 +226,7 @@ impl TransactionEvent {
                     }
                 })?;
 
-                TransactionEvent::AccountVaultAfterRemoveAsset { asset }
+                Some(TransactionEvent::AccountVaultAfterRemoveAsset { asset })
             },
             TransactionEventId::AccountVaultAfterAddAsset => {
                 // Expected stack state: [event, ASSET]
@@ -241,7 +237,7 @@ impl TransactionEvent {
                     }
                 })?;
 
-                TransactionEvent::AccountVaultAfterAddAsset { asset }
+                Some(TransactionEvent::AccountVaultAfterAddAsset { asset })
             },
             TransactionEventId::AccountVaultBeforeGetBalance => {
                 // Expected stack state:
@@ -281,9 +277,7 @@ impl TransactionEvent {
                 Self::on_account_vault_asset_accessed(process, asset.vault_key(), vault_root)?
             },
 
-            TransactionEventId::AccountStorageBeforeSetItem => {
-                return Ok(None);
-            },
+            TransactionEventId::AccountStorageBeforeSetItem => None,
 
             TransactionEventId::AccountStorageAfterSetItem => {
                 // Expected stack state:
@@ -308,10 +302,10 @@ impl TransactionEvent {
                 // get the value to which the slot is being updated
                 let new_slot_value = process.get_stack_word_be(2);
 
-                TransactionEvent::AccountStorageAfterSetItem {
+                Some(TransactionEvent::AccountStorageAfterSetItem {
                     slot_idx: slot_index,
                     new_value: new_slot_value,
-                }
+                })
             },
 
             TransactionEventId::AccountStorageBeforeGetMapItem => {
@@ -370,20 +364,18 @@ impl TransactionEvent {
                 // get the VALUE to which the slot is being updated
                 let new_map_value = process.get_stack_word_be(10);
 
-                TransactionEvent::AccountStorageAfterSetMapItem {
+                Some(TransactionEvent::AccountStorageAfterSetMapItem {
                     slot_index,
                     key,
                     prev_map_value,
                     new_map_value,
-                }
+                })
             },
 
-            TransactionEventId::AccountBeforeIncrementNonce => {
-                return Ok(None);
-            },
+            TransactionEventId::AccountBeforeIncrementNonce => None,
 
             TransactionEventId::AccountAfterIncrementNonce => {
-                TransactionEvent::AccountAfterIncrementNonce
+                Some(TransactionEvent::AccountAfterIncrementNonce)
             },
 
             TransactionEventId::AccountPushProcedureIndex => {
@@ -391,12 +383,13 @@ impl TransactionEvent {
                 let procedure_root = process.get_stack_word_be(1);
                 let code_commitment = process.get_active_account_code_commitment()?;
 
-                TransactionEvent::AccountPushProcedureIndex { code_commitment, procedure_root }
+                Some(TransactionEvent::AccountPushProcedureIndex {
+                    code_commitment,
+                    procedure_root,
+                })
             },
 
-            TransactionEventId::NoteBeforeCreated => {
-                return Ok(None);
-            },
+            TransactionEventId::NoteBeforeCreated => None,
 
             TransactionEventId::NoteAfterCreated => {
                 // Expected stack state: [event, NOTE_METADATA, note_ptr, RECIPIENT, note_idx]
@@ -431,13 +424,13 @@ impl TransactionEvent {
                         (None, None)
                     };
 
-                TransactionEvent::NoteAfterCreated {
+                Some(TransactionEvent::NoteAfterCreated {
                     note_idx,
                     metadata,
                     recipient_digest,
                     note_script,
                     recipient_data,
-                }
+                })
             },
 
             TransactionEventId::NoteBeforeAddAsset => {
@@ -452,12 +445,10 @@ impl TransactionEvent {
                     }
                 })?;
 
-                TransactionEvent::NoteBeforeAddAsset { note_idx, asset }
+                Some(TransactionEvent::NoteBeforeAddAsset { note_idx, asset })
             },
 
-            TransactionEventId::NoteAfterAddAsset => {
-                return Ok(None);
-            },
+            TransactionEventId::NoteAfterAddAsset => None,
 
             TransactionEventId::AuthRequest => {
                 // Expected stack state: [event, MESSAGE, PUB_KEY]
@@ -472,7 +463,7 @@ impl TransactionEvent {
 
                 let tx_summary = Self::extract_tx_summary(base_host, process, message)?;
 
-                TransactionEvent::AuthRequest { pub_key_hash, tx_summary, signature }
+                Some(TransactionEvent::AuthRequest { pub_key_hash, tx_summary, signature })
             },
 
             TransactionEventId::Unauthorized => {
@@ -480,7 +471,7 @@ impl TransactionEvent {
                 let message = process.get_stack_word_be(1);
                 let tx_summary = Self::extract_tx_summary(base_host, process, message)?;
 
-                TransactionEvent::Unauthorized { tx_summary }
+                Some(TransactionEvent::Unauthorized { tx_summary })
             },
 
             TransactionEventId::EpilogueBeforeTxFeeRemovedFromAccount => {
@@ -489,26 +480,28 @@ impl TransactionEvent {
                 let fee_asset = FungibleAsset::try_from(fee_asset)
                     .map_err(TransactionKernelError::FailedToConvertFeeAsset)?;
 
-                TransactionEvent::EpilogueBeforeTxFeeRemovedFromAccount { fee_asset }
+                Some(TransactionEvent::EpilogueBeforeTxFeeRemovedFromAccount { fee_asset })
             },
 
-            TransactionEventId::LinkMapSet => TransactionEvent::LinkMapSet {
+            TransactionEventId::LinkMapSet => Some(TransactionEvent::LinkMapSet {
                 advice_mutation: LinkMap::handle_set_event(process),
-            },
-            TransactionEventId::LinkMapGet => TransactionEvent::LinkMapGet {
+            }),
+            TransactionEventId::LinkMapGet => Some(TransactionEvent::LinkMapGet {
                 advice_mutation: LinkMap::handle_get_event(process),
-            },
+            }),
 
             TransactionEventId::PrologueStart => {
-                TransactionEvent::PrologueStart { clk: process.clk() }
+                Some(TransactionEvent::PrologueStart { clk: process.clk() })
             },
-            TransactionEventId::PrologueEnd => TransactionEvent::PrologueEnd { clk: process.clk() },
+            TransactionEventId::PrologueEnd => {
+                Some(TransactionEvent::PrologueEnd { clk: process.clk() })
+            },
 
             TransactionEventId::NotesProcessingStart => {
-                TransactionEvent::NotesProcessingStart { clk: process.clk() }
+                Some(TransactionEvent::NotesProcessingStart { clk: process.clk() })
             },
             TransactionEventId::NotesProcessingEnd => {
-                TransactionEvent::NotesProcessingEnd { clk: process.clk() }
+                Some(TransactionEvent::NotesProcessingEnd { clk: process.clk() })
             },
 
             TransactionEventId::NoteExecutionStart => {
@@ -516,37 +509,39 @@ impl TransactionEvent {
                     "note execution interval measurement is incorrect: check the placement of the start and the end of the interval",
                 ))?;
 
-                TransactionEvent::NoteExecutionStart { note_id, clk: process.clk() }
+                Some(TransactionEvent::NoteExecutionStart { note_id, clk: process.clk() })
             },
             TransactionEventId::NoteExecutionEnd => {
-                TransactionEvent::NoteExecutionEnd { clk: process.clk() }
+                Some(TransactionEvent::NoteExecutionEnd { clk: process.clk() })
             },
 
             TransactionEventId::TxScriptProcessingStart => {
-                TransactionEvent::TxScriptProcessingStart { clk: process.clk() }
+                Some(TransactionEvent::TxScriptProcessingStart { clk: process.clk() })
             },
             TransactionEventId::TxScriptProcessingEnd => {
-                TransactionEvent::TxScriptProcessingEnd { clk: process.clk() }
+                Some(TransactionEvent::TxScriptProcessingEnd { clk: process.clk() })
             },
 
             TransactionEventId::EpilogueStart => {
-                TransactionEvent::EpilogueStart { clk: process.clk() }
+                Some(TransactionEvent::EpilogueStart { clk: process.clk() })
             },
-            TransactionEventId::EpilogueEnd => TransactionEvent::EpilogueEnd { clk: process.clk() },
+            TransactionEventId::EpilogueEnd => {
+                Some(TransactionEvent::EpilogueEnd { clk: process.clk() })
+            },
 
             TransactionEventId::EpilogueAuthProcStart => {
-                TransactionEvent::EpilogueAuthProcStart { clk: process.clk() }
+                Some(TransactionEvent::EpilogueAuthProcStart { clk: process.clk() })
             },
             TransactionEventId::EpilogueAuthProcEnd => {
-                TransactionEvent::EpilogueAuthProcEnd { clk: process.clk() }
+                Some(TransactionEvent::EpilogueAuthProcEnd { clk: process.clk() })
             },
 
             TransactionEventId::EpilogueAfterTxCyclesObtained => {
-                TransactionEvent::EpilogueAfterTxCyclesObtained { clk: process.clk() }
+                Some(TransactionEvent::EpilogueAfterTxCyclesObtained { clk: process.clk() })
             },
         };
 
-        Ok(Some(tx_event))
+        Ok(tx_event)
     }
 
     /// Checks if the necessary witness for accessing the asset is already in the merkle store, and
@@ -555,7 +550,7 @@ impl TransactionEvent {
         process: &ProcessState,
         vault_key: AssetVaultKey,
         current_vault_root: Word,
-    ) -> Result<TransactionEvent, TransactionKernelError> {
+    ) -> Result<Option<TransactionEvent>, TransactionKernelError> {
         let leaf_index = Felt::new(vault_key.to_leaf_index().value());
         let active_account_id = process.get_active_account_id()?;
 
@@ -563,15 +558,16 @@ impl TransactionEvent {
         // necessarily for the root we are going to request. This is because the end goal is to
         // enable access to an asset against the current vault root, and so if this
         // condition is already satisfied, there is nothing to request.
-        let is_witness_present =
-            process.has_merkle_path::<{ AssetVault::DEPTH }>(current_vault_root, leaf_index)?;
-
-        Ok(TransactionEvent::AccountVaultBeforeAssetAccess {
-            active_account_id,
-            current_vault_root,
-            asset_key: vault_key,
-            is_witness_present,
-        })
+        if process.has_merkle_path::<{ AssetVault::DEPTH }>(current_vault_root, leaf_index)? {
+            // If the witness already exists, the event does not need to be handled.
+            Ok(None)
+        } else {
+            Ok(Some(TransactionEvent::AccountVaultBeforeAssetAccess {
+                active_account_id,
+                current_vault_root,
+                asset_key: vault_key,
+            }))
+        }
     }
 
     /// Checks if the necessary witness for accessing the map item is already in the merkle store,
@@ -581,7 +577,7 @@ impl TransactionEvent {
         slot_index: Felt,
         current_map_root: Word,
         map_key: Word,
-    ) -> Result<TransactionEvent, TransactionKernelError> {
+    ) -> Result<Option<TransactionEvent>, TransactionKernelError> {
         let active_account_id = process.get_active_account_id()?;
         let hashed_map_key = StorageMap::hash_key(map_key);
         let leaf_index = StorageMap::hashed_map_key_to_leaf_index(hashed_map_key);
@@ -590,16 +586,17 @@ impl TransactionEvent {
             TransactionKernelError::other(format!("failed to convert slot index into u8: {err}"))
         })?;
 
-        let is_witness_present =
-            process.has_merkle_path::<{ StorageMap::DEPTH }>(current_map_root, leaf_index)?;
-
-        Ok(TransactionEvent::AccountStorageBeforeMapItemAccess {
-            active_account_id,
-            slot_index,
-            current_map_root,
-            map_key,
-            is_witness_present,
-        })
+        if process.has_merkle_path::<{ StorageMap::DEPTH }>(current_map_root, leaf_index)? {
+            // If the witness already exists, the event does not need to be handled.
+            Ok(None)
+        } else {
+            Ok(Some(TransactionEvent::AccountStorageBeforeMapItemAccess {
+                active_account_id,
+                slot_index,
+                current_map_root,
+                map_key,
+            }))
+        }
     }
 
     /// Extracts the transaction summary from the advice map using the provided `message` as the
