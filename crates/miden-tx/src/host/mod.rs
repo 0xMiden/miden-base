@@ -97,11 +97,6 @@ pub struct TransactionBaseHost<'store, STORE> {
     /// map.
     output_notes: BTreeMap<usize, OutputNoteBuilder>,
 
-    /// Tracks the number of cycles for each of the transaction execution stages.
-    ///
-    /// The progress is updated event handlers.
-    tx_progress: TransactionProgress,
-
     /// Handle the VM default events _before_ passing it to user defined ones.
     stdlib_handlers: EventHandlerRegistry,
 }
@@ -138,23 +133,12 @@ impl<'store, STORE> TransactionBaseHost<'store, STORE> {
             acct_procedure_index_map,
             output_notes: BTreeMap::default(),
             input_notes,
-            tx_progress: TransactionProgress::default(),
             stdlib_handlers,
         }
     }
 
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
-
-    /// Returns a reference to the `tx_progress` field of this transaction host.
-    pub fn tx_progress(&self) -> &TransactionProgress {
-        &self.tx_progress
-    }
-
-    /// Returns a mutable reference to the `tx_progress` field of this transaction host.
-    pub fn tx_progress_mut(&mut self) -> &mut TransactionProgress {
-        &mut self.tx_progress
-    }
 
     /// Returns the ID of the native account.
     pub fn native_account_id(&self) -> AccountId {
@@ -194,18 +178,11 @@ impl<'store, STORE> TransactionBaseHost<'store, STORE> {
         self.output_notes.values().cloned().map(|builder| builder.build()).collect()
     }
 
-    /// Consumes `self` and returns the account delta, output notes and transaction progress.
-    pub fn into_parts(
-        self,
-    ) -> (AccountDelta, InputNotes<InputNote>, Vec<OutputNote>, TransactionProgress) {
+    /// Consumes `self` and returns the account delta, input and output notes.
+    pub fn into_parts(self) -> (AccountDelta, InputNotes<InputNote>, Vec<OutputNote>) {
         let output_notes = self.output_notes.into_values().map(|builder| builder.build()).collect();
 
-        (
-            self.account_delta.into_delta(),
-            self.input_notes,
-            output_notes,
-            self.tx_progress,
-        )
+        (self.account_delta.into_delta(), self.input_notes, output_notes)
     }
 
     // MUTATORS

@@ -16,13 +16,7 @@ use miden_processor::{
     SyncHost,
 };
 
-use crate::host::{
-    RecipientData,
-    ScriptMastForestStore,
-    TransactionBaseHost,
-    TransactionEvent,
-    TransactionProgress,
-};
+use crate::host::{RecipientData, ScriptMastForestStore, TransactionBaseHost, TransactionEvent};
 use crate::{AccountProcedureIndexMap, TransactionKernelError};
 
 /// The transaction prover host is responsible for handling [`SyncHost`] requests made by the
@@ -64,17 +58,9 @@ where
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns a reference to the `tx_progress` field of this transaction host.
-    pub fn tx_progress(&self) -> &TransactionProgress {
-        self.base_host.tx_progress()
-    }
-
-    /// Consumes `self` and returns the account delta, output notes and transaction progress.
+    /// Consumes `self` and returns the account delta, input and output notes.
     pub fn into_parts(self) -> (AccountDelta, InputNotes<InputNote>, Vec<OutputNote>) {
-        // Transaction Progress does not contain any meaningful data in the prover host.
-        let (pre_fee_account_delta, input_notes, output_notes, _tx_progress) =
-            self.base_host.into_parts();
-        (pre_fee_account_delta, input_notes, output_notes)
+        self.base_host.into_parts()
     }
 }
 
