@@ -20,4 +20,4 @@ testing = []
 
 [dependencies]
 miden-objects = { workspace = true }
-thiserror = { workspace = true }
+thiserror     = { workspace = true }
