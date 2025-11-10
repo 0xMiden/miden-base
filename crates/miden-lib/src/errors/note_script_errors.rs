@@ -15,6 +15,8 @@ pub const ERR_AUTH_PROCEDURE_CALLED_FROM_WRONG_CONTEXT: MasmError = MasmError::f
 
 /// Error Message: "B2AGG script requires exactly 1 note asset"
 pub const ERR_B2AGG_WRONG_NUMBER_OF_ASSETS: MasmError = MasmError::from_static_str("B2AGG script requires exactly 1 note asset");
+/// Error Message: "B2AGG script expects exactly 6 note inputs"
+pub const ERR_B2AGG_WRONG_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_str("B2AGG script expects exactly 6 note inputs");
 
 /// Error Message: "burn requires exactly 1 note asset"
 pub const ERR_BASIC_FUNGIBLE_BURN_WRONG_NUMBER_OF_ASSETS: MasmError = MasmError::from_static_str("burn requires exactly 1 note asset");

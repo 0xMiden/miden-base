@@ -31,27 +31,28 @@ proc create_burn_note.4
     push.PUBLIC_NOTE
     push.AUX
     push.DEFAULT_FAUCET_TAG
-    # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(12)]
+    # => [tag, aux, note_type, execution_hint, RECIPIENT]
 
     call.output_note::create
-    # => [note_idx]
+    # => [note_idx, 0,0,0]
 
     padw loc_loadw_be.0
-    # => [ASSET, note_idx]
+    # => [ASSET, note_idx, 0,0,0]
 
-    # call.wallet::move_asset_to_note
     exec.output_note::add_asset
-    # => [REQUESTED_ASSET, note_idx]
+    # => [REQUESTED_ASSET, note_idx, 0,0,0]
 
-    dropw drop
+    dropw dropw
     # => []
 end
 
 #! Stubbed out
 #! Inputs: [ASSET, INPUTS[1], INPUTS[0]]
-#! Outputs: [LEAF]
+#! Outputs: [LEAF[1], LEAF[0]]
 proc mmr_frontier_keccak_add
-  hmerge hmerge dupw dupw hmerge
+  dropw dropw dropw
+  push.1.1.1.1
+  push.2.2.2.2 
   # => [LEAF[1], LEAF[0]]
 end
 
@@ -59,7 +60,8 @@ end
 #! Inputs: []
 #! Output: [ROOT[1], ROOT[0]]
 pub proc mmr_frontier_keccak_get_root
-  padw padw hmerge dupw dupw hmerge
+  push.3.3.3.3
+  push.4.4.4.4
 end
 
 #! Inputs: [ASSET, INPUTS[1], INPUTS[0]]
@@ -68,21 +70,18 @@ pub proc bridge_out.4
     loc_storew_be.0
     # => [ASSET, INPUTS[1], INPUTS[0]]
 
-    push.111 debug.stack drop
-
     exec.mmr_frontier_keccak_add
     # => [LEAF[1], LEAF[0]]
 
     exec.mmr_frontier_keccak_get_root
     # => [ROOT[1], ROOT[0], LEAF[1], LEAF[0]]
 
-    push.222 debug.stack drop
+    dropw dropw dropw dropw
+    # => []
 
     loc_loadw_be.0
-    # => [ASSET, ROOT[1], ROOT[0], LEAF[1], LEAF[0]]
+    # => [ASSET]
 
     exec.create_burn_note
-    # => [ROOT[1], ROOT[0], LEAF[1], LEAF[0]]
-    
-    dropw dropw dropw dropw
+    # => []
 end
