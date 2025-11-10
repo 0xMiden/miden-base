@@ -483,14 +483,21 @@ where
         process: &ProcessState,
     ) -> impl FutureMaybeSend<Result<Vec<AdviceMutation>, EventError>> {
         let stdlib_event_result = self.base_host.handle_stdlib_events(process);
-        let tx_event_result = TransactionEvent::extract(&self.base_host, process);
+        let tx_event_result = match stdlib_event_result {
+            Ok(None) => Some(TransactionEvent::extract(&self.base_host, process)),
+            _ => None,
+        };
 
         async move {
             if let Some(mutations) = stdlib_event_result? {
                 return Ok(mutations);
             }
 
-            // None means the event ID does not need to be handled.
+            // The outer None means the event was handled by stdlib handlers.
+            let Some(tx_event_result) = tx_event_result else {
+                return Ok(Vec::new());
+            };
+            // The inner None means the transaction event ID does not need to be handled.
             let Some(tx_event) = tx_event_result? else {
                 return Ok(Vec::new());
             };
