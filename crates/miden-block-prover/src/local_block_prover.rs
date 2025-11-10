@@ -1,9 +1,11 @@
-use miden_objects::block::{ProvenBlock, SignedBlock};
+use miden_objects::block::{BlockProof, SignedBlock};
+
+use crate::BlockProverError;
 
 // LOCAL BLOCK PROVER
 // ================================================================================================
 
-/// A local prover for blocks, proving a [`SignedBlock`] and returning a [`ProvenBlock`].
+/// A local prover for blocks in the chain.
 #[derive(Clone)]
 pub struct LocalBlockProver {}
 
@@ -15,43 +17,19 @@ impl LocalBlockProver {
         Self {}
     }
 
-    /// Proves the provided [`SignedBlock`] into a [`ProvenBlock`].
+    /// Executes a proof of a block in the chain based on the given header and inputs.
     ///
-    /// For now this does not actually verify the batches or create a block proof, but will be added
-    /// in the future.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if:
-    /// - the account witnesses provided in the signed block result in a different account tree root
-    ///   than the contained previous block header commits to.
-    /// - the nullifier witnesses provided in the signed block result in a different nullifier tree
-    ///   root than the contained previous block header commits to.
-    /// - the account tree root in the previous block header does not match the root of the tree
-    ///   computed from the account witnesses.
-    /// - the nullifier tree root in the previous block header does not match the root of the tree
-    ///   computed from the nullifier witnesses.
-    pub fn prove(&self, signed_block: SignedBlock) -> ProvenBlock {
-        self.prove_without_batch_verification_inner(signed_block)
+    /// NOTE: Block proving is not yet implemented. This is a placeholder struct.
+    pub fn prove(&self, _signed_block: &SignedBlock) -> Result<BlockProof, BlockProverError> {
+        Ok(BlockProof {})
     }
 
-    /// Proves the provided [`SignedBlock`] into a [`ProvenBlock`], **without verifying batches
-    /// and proving the block**.
+    /// A mock implementation of the execution of a proof of a block in the chain based on the given
+    /// header and inputs.
     ///
     /// This is exposed for testing purposes.
     #[cfg(any(feature = "testing", test))]
-    pub fn prove_dummy(&self, signed_block: SignedBlock) -> ProvenBlock {
-        self.prove_without_batch_verification_inner(signed_block)
-    }
-
-    /// Proves the provided [`SignedBlock`] into a [`ProvenBlock`].
-    ///
-    /// See [`Self::prove`] for more details.
-    fn prove_without_batch_verification_inner(&self, signed_block: SignedBlock) -> ProvenBlock {
-        // Deconstruct signed block into its components.
-        let (header, body) = signed_block.into_parts();
-
-        // For now, we're not actually proving the block. Just return the block.
-        ProvenBlock::new_unchecked(header, body)
+    pub fn prove_dummy(&self, _signed_block: &SignedBlock) -> Result<BlockProof, BlockProverError> {
+        Ok(BlockProof {})
     }
 }

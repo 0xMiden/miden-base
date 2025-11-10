@@ -517,7 +517,8 @@ impl MockChain {
     pub fn prove_block(&self, proposed_block: ProposedBlock) -> ProvenBlock {
         let (header, body) = construct_block(proposed_block).unwrap();
         let signed_block = SignedBlock::new_unchecked(header, body);
-        LocalBlockProver::new(0).prove_dummy(signed_block)
+        let block_proof = LocalBlockProver::new(0).prove_dummy(&signed_block).unwrap();
+        ProvenBlock::new_unchecked(signed_block, block_proof)
     }
 
     // TRANSACTION APIS

@@ -1460,6 +1460,7 @@ name = "miden-block-prover"
 version = "0.12.0"
 dependencies = [
  "miden-objects",
+ "thiserror",
 ]
 
 [[package]]

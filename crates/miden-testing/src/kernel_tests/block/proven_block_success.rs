@@ -14,6 +14,7 @@ use miden_objects::block::{
     BlockNoteIndex,
     BlockNoteTree,
     ProposedBlock,
+    ProvenBlock,
     SignedBlock,
 };
 use miden_objects::crypto::merkle::Smt;
@@ -156,7 +157,8 @@ async fn proven_block_success() -> anyhow::Result<()> {
 
     let (header, body) = construct_block(proposed_block)?;
     let signed_block = SignedBlock::new_unchecked(header, body);
-    let proven_block = LocalBlockProver::new(MIN_PROOF_SECURITY_LEVEL).prove_dummy(signed_block);
+    let block_proof = LocalBlockProver::new(MIN_PROOF_SECURITY_LEVEL).prove_dummy(&signed_block)?;
+    let proven_block = ProvenBlock::new_unchecked(signed_block, block_proof);
 
     // Check tree/chain commitments against expected values.
     // --------------------------------------------------------------------------------------------
@@ -352,7 +354,8 @@ async fn proven_block_erasing_unauthenticated_notes() -> anyhow::Result<()> {
 
     let (header, body) = construct_block(proposed_block)?;
     let signed_block = SignedBlock::new_unchecked(header, body);
-    let proven_block = LocalBlockProver::new(0).prove_dummy(signed_block);
+    let block_proof = LocalBlockProver::new(MIN_PROOF_SECURITY_LEVEL).prove_dummy(&signed_block)?;
+    let proven_block = ProvenBlock::new_unchecked(signed_block, block_proof);
     let actual_block_note_tree = proven_block.body().compute_block_note_tree();
 
     // Remove the erased note to get the expected batch note tree.
@@ -420,7 +423,8 @@ async fn proven_block_succeeds_with_empty_batches() -> anyhow::Result<()> {
 
     let (header, body) = construct_block(proposed_block)?;
     let signed_block = SignedBlock::new_unchecked(header, body);
-    let proven_block = LocalBlockProver::new(MIN_PROOF_SECURITY_LEVEL).prove_dummy(signed_block);
+    let block_proof = LocalBlockProver::new(MIN_PROOF_SECURITY_LEVEL).prove_dummy(&signed_block)?;
+    let proven_block = ProvenBlock::new_unchecked(signed_block, block_proof);
 
     // Nothing should be created or updated.
     assert_eq!(proven_block.body().updated_accounts().len(), 0);

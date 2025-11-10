@@ -15,7 +15,7 @@ use crate::block::{BlockBody, BlockHeader};
 ///
 /// Signed blocks are intended to be treated as finalized blocks in the chain. If the network cannot
 /// proven a previously signed block, it is treated as a re-org event.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SignedBlock {
     header: BlockHeader,
     body: BlockBody,
@@ -30,6 +30,16 @@ impl SignedBlock {
     /// panics.
     pub fn new_unchecked(header: BlockHeader, body: BlockBody) -> Self {
         SignedBlock { header, body }
+    }
+
+    /// Returns the header of the signed block.
+    pub fn header(&self) -> &BlockHeader {
+        &self.header
+    }
+
+    /// Returns the body of the signed block.
+    pub fn body(&self) -> &BlockBody {
+        &self.body
     }
 
     /// Consumes the signed block and returns its parts.
