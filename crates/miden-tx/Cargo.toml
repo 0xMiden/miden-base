@@ -29,9 +29,7 @@ miden-prover    = { workspace = true }
 miden-verifier  = { workspace = true }
 
 # External dependencies
-rand      = { workspace = true }
 thiserror = { workspace = true }
-tokio     = { features = ["rt"], workspace = true }
 
 [dev-dependencies]
 anyhow         = { features = ["backtrace", "std"], workspace = true }

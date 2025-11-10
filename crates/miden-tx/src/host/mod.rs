@@ -633,7 +633,7 @@ where
     /// Extracts information from the process state about the storage slot being updated and
     /// records the latest value of this storage slot.
     ///
-    /// Expected stack state: `[event, slot_index, NEW_SLOT_VALUE, CURRENT_SLOT_VALUE, ...]`
+    /// Expected stack state: `[event, slot_index, NEW_SLOT_VALUE]`
     pub fn on_account_storage_after_set_item(
         &mut self,
         process: &ProcessState,
@@ -654,14 +654,7 @@ where
         // get the value to which the slot is being updated
         let new_slot_value = process.get_stack_word_be(2);
 
-        // get the current value for the slot
-        let current_slot_value = process.get_stack_word_be(6);
-
-        self.account_delta.storage().set_item(
-            slot_index.as_int() as u8,
-            current_slot_value,
-            new_slot_value,
-        );
+        self.account_delta.storage().set_item(slot_index.as_int() as u8, new_slot_value);
 
         Ok(())
     }

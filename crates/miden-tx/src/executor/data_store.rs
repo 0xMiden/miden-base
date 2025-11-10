@@ -69,17 +69,17 @@ pub trait DataStore: MastForestStore {
         map_key: Word,
     ) -> impl FutureMaybeSend<Result<StorageMapWitness, DataStoreError>>;
 
-    /// Returns a note script with the specified root.
+    /// Returns a note script with the specified root, or `None` if not found.
     ///
-    /// This method will try to find a note script with the specified root in the data store,
-    /// and if not found, return an error.
+    /// This method will try to find a note script with the specified root in the data store.
+    /// If the script is not found, it returns `Ok(None)` rather than an error, as "not found"
+    /// is a valid, expected outcome.
     ///
     /// # Errors
-    /// Returns an error if:
-    /// - The note script with the specified root could not be found in the data store.
-    /// - The data store encountered some internal error.
+    /// Returns an error if the data store encountered an internal error while attempting to
+    /// retrieve the script.
     fn get_note_script(
         &self,
         script_root: Word,
-    ) -> impl FutureMaybeSend<Result<NoteScript, DataStoreError>>;
+    ) -> impl FutureMaybeSend<Result<Option<NoteScript>, DataStoreError>>;
 }

@@ -354,8 +354,6 @@ pub enum DataStoreError {
     AccountNotFound(AccountId),
     #[error("block with number {0} not found in data store")]
     BlockNotFound(BlockNumber),
-    #[error("note script with root {0} not found in data store")]
-    NoteScriptNotFound(Word),
     /// Custom error variant for implementors of the [`DataStore`](crate::executor::DataStore)
     /// trait.
     #[error("{error_msg}")]

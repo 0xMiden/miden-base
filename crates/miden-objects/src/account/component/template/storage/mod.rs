@@ -800,6 +800,45 @@ mod tests {
     }
 
     #[test]
+    fn toml_map_with_empty_values_creates_value_map() {
+        // Test that when type = "map" and values = [] is specified,
+        // it creates a MapRepresentation::Value with empty entries,
+        // not a MapRepresentation::Template
+        let toml_text = r#"
+        name = "Test Component"
+        description = "Component with map having empty values"
+        version = "1.0.0"
+        supported-types = ["RegularAccountImmutableCode"]
+
+        [[storage]]
+        name = "executed_transactions"
+        description = "Map which stores executed transactions"
+        slot = 0
+        type = "map"
+        values = []
+        "#;
+
+        let metadata = AccountComponentMetadata::from_toml(toml_text).unwrap();
+        assert_eq!(metadata.storage_entries().len(), 1);
+        match metadata.storage_entries().first().unwrap() {
+            StorageEntry::Map { map, .. } => match map {
+                MapRepresentation::Value { identifier, entries } => {
+                    assert_eq!(identifier.name.as_str(), "executed_transactions");
+                    assert_eq!(
+                        identifier.description.as_deref(),
+                        Some("Map which stores executed transactions")
+                    );
+                    assert!(entries.is_empty(), "Expected empty entries for map with values = []");
+                },
+                MapRepresentation::Template { .. } => {
+                    panic!("expected value map with empty entries, not template map")
+                },
+            },
+            _ => panic!("expected map storage entry"),
+        }
+    }
+
+    #[test]
     fn map_placeholder_populated_via_toml_array() {
         let storage_entry = StorageEntry::new_map(
             0,

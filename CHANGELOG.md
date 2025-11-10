@@ -2,7 +2,21 @@
 
 ## 0.13.0 (TBD)
 
-## 0.12.0 (11-05-2025)
+## 0.12.2 (unreleased)
+
+- Added `create_mint_note` and `create_burn_note` helper functions for creating standardized MINT and BURN notes ([#2061](https://github.com/0xMiden/miden-base/pull/2061)).
+- [BREAKING] Fix ECDSA signature preparation in `Signature::to_prepared_signature()` method  ([#2074](https://github.com/0xMiden/miden-base/pull/2074)).
+- Skip value slot normalization for new account's deltas ([#2075](https://github.com/0xMiden/miden-base/pull/2075)).
+- Skip value and map slot normalization for new account's deltas ([#2075](https://github.com/0xMiden/miden-base/pull/2075), [#2077](https://github.com/0xMiden/miden-base/pull/2077)).
+
+## 0.12.1 (2025-11-06)
+
+- Made `InitStorageData::map_entries()` public ([#2055](https://github.com/0xMiden/miden-base/pull/2055)).
+- Enabled handling of empty maps in account component templates ([#2056](https://github.com/0xMiden/miden-base/pull/2056)).
+- Changed auth components to increment nonce if it is zero ([#2060](https://github.com/0xMiden/miden-base/pull/2060)).
+- Fixed incorrect detection of note inputs length during note creation ([#2066](https://github.com/0xMiden/miden-base/pull/2066)).
+
+## 0.12.0 (2025-11-05)
 
 ### Features
 
