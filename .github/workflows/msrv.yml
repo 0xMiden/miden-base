@@ -25,7 +25,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Install cargo-msrv
-        run: cargo install cargo-msrv
+        run: cargo binstall cargo-msrv
       - name: Check MSRV for each workspace member
         run: |
           ./scripts/check-msrv.sh
