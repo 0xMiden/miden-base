@@ -15,13 +15,14 @@ use crate::AuthScheme;
 use crate::account::components::{
     basic_fungible_faucet_library,
     basic_wallet_library,
+    network_fungible_faucet_library,
     no_auth_library,
     rpo_falcon_512_acl_library,
     rpo_falcon_512_library,
     rpo_falcon_512_multisig_library,
 };
 use crate::errors::ScriptBuilderError;
-use crate::note::well_known_note::WellKnownNote;
+use crate::note::WellKnownNote;
 use crate::utils::ScriptBuilder;
 
 #[cfg(test)]
@@ -140,6 +141,11 @@ impl AccountInterface {
                     component_proc_digests
                         .extend(basic_fungible_faucet_library().mast_forest().procedure_digests());
                 },
+                AccountComponentInterface::NetworkFungibleFaucet => {
+                    component_proc_digests.extend(
+                        network_fungible_faucet_library().mast_forest().procedure_digests(),
+                    );
+                },
                 AccountComponentInterface::AuthRpoFalcon512 => {
                     component_proc_digests
                         .extend(rpo_falcon_512_library().mast_forest().procedure_digests());
@@ -252,6 +258,14 @@ impl AccountInterface {
             matches!(component_interface, AccountComponentInterface::BasicFungibleFaucet)
         }) {
             basic_fungible_faucet.send_note_body(*self.id(), output_notes)
+        } else if let Some(_network_fungible_faucet) =
+            self.components().iter().find(|component_interface| {
+                matches!(component_interface, AccountComponentInterface::NetworkFungibleFaucet)
+            })
+        {
+            // Network fungible faucet doesn't support send_note_body, because minting
+            // is done via a MINT note.
+            Err(AccountInterfaceError::UnsupportedAccountInterface)
         } else if self.components().contains(&AccountComponentInterface::BasicWallet) {
             AccountComponentInterface::BasicWallet.send_note_body(*self.id(), output_notes)
         } else {

@@ -1,10 +1,10 @@
 use alloc::vec::Vec;
 
+use miden_objects::account::auth::PublicKeyCommitment;
 use miden_objects::account::{
     AccountCode,
     AccountComponent,
     NamedStorageSlot,
-    PublicKeyCommitment,
     SlotName,
     StorageMap,
 };

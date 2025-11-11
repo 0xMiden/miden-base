@@ -62,13 +62,13 @@ async fn test_fpi_memory_single_account() -> anyhow::Result<()> {
     let mock_value_slot0 = AccountStorage::mock_value_slot0();
     let mock_map_slot = AccountStorage::mock_map_slot();
     let foreign_account_code_source = "
-        use.miden::account
+        use.miden::active_account
 
         export.get_item_foreign
             # make this foreign procedure unique to make sure that we invoke the procedure of the
             # foreign account, not the native one
             push.1 drop
-            exec.account::get_item
+            exec.active_account::get_item
 
             # truncate the stack
             movup.6 movup.6 drop drop
@@ -78,7 +78,7 @@ async fn test_fpi_memory_single_account() -> anyhow::Result<()> {
             # make this foreign procedure unique to make sure that we invoke the procedure of the
             # foreign account, not the native one
             push.2 drop
-            exec.account::get_map_item
+            exec.active_account::get_map_item
         end
     ";
 
@@ -165,7 +165,7 @@ async fn test_fpi_memory_single_account() -> anyhow::Result<()> {
     let exec_output = tx_context.execute_code(&code).await?;
 
     assert_eq!(
-        exec_output.get_stack_word(0),
+        exec_output.get_stack_word_be(0),
         mock_value_slot0.storage_slot().value(),
         "Value at the top of the stack should be equal to [1, 2, 3, 4]",
     );
@@ -223,7 +223,7 @@ async fn test_fpi_memory_single_account() -> anyhow::Result<()> {
     let exec_output = tx_context.execute_code(&code).await?;
 
     assert_eq!(
-        exec_output.get_stack_word(0),
+        exec_output.get_stack_word_be(0),
         STORAGE_LEAVES_2[0].1,
         "Value at the top of the stack should be equal [1, 2, 3, 4]",
     );
@@ -318,26 +318,26 @@ async fn test_fpi_memory_two_accounts() -> anyhow::Result<()> {
     let mock_value_slot1 = AccountStorage::mock_value_slot1();
 
     let foreign_account_code_source_1 = "
-        use.miden::account
+        use.miden::active_account
 
         export.get_item_foreign_1
             # make this foreign procedure unique to make sure that we invoke the procedure of the
             # foreign account, not the native one
             push.1 drop
-            exec.account::get_item
+            exec.active_account::get_item
 
             # truncate the stack
             movup.6 movup.6 drop drop
         end
     ";
     let foreign_account_code_source_2 = "
-        use.miden::account
+        use.miden::active_account
 
         export.get_item_foreign_2
             # make this foreign procedure unique to make sure that we invoke the procedure of the
             # foreign account, not the native one
             push.2 drop
-            exec.account::get_item
+            exec.active_account::get_item
 
             # truncate the stack
             movup.6 movup.6 drop drop
@@ -537,13 +537,13 @@ async fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
     let mock_map_slot = AccountStorage::mock_map_slot();
 
     let foreign_account_code_source = "
-        use.miden::account
+        use.miden::active_account
 
         export.get_item_foreign
             # make this foreign procedure unique to make sure that we invoke the procedure of the
             # foreign account, not the native one
             push.1 drop
-            exec.account::get_item
+            exec.active_account::get_item
 
             # truncate the stack
             movup.6 movup.6 drop drop
@@ -553,7 +553,7 @@ async fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
             # make this foreign procedure unique to make sure that we invoke the procedure of the
             # foreign account, not the native one
             push.2 drop
-            exec.account::get_map_item
+            exec.active_account::get_map_item
         end
     ";
 
@@ -586,7 +586,6 @@ async fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
         use.std::sys
 
         use.miden::tx
-        use.miden::account
 
         const MOCK_VALUE_SLOT0 = word("{mock_value_slot0}")
         const MOCK_MAP_SLOT = word("{mock_map_slot}")
@@ -689,17 +688,17 @@ async fn foreign_account_can_get_balance_and_presence_of_asset() -> anyhow::Resu
 
     let foreign_account_code_source = format!(
         "
-        use.miden::account
+        use.miden::active_account
 
         export.get_asset_balance
             # get balance of first asset
             push.{fungible_faucet_id_suffix} push.{fungible_faucet_id_prefix}
-            exec.account::get_balance
+            exec.active_account::get_balance
             # => [balance]
 
             # check presence of non fungible asset
             push.{non_fungible_asset_word}
-            exec.account::has_non_fungible_asset
+            exec.active_account::has_non_fungible_asset
             # => [has_asset, balance]
 
             # add the balance and the bool
@@ -802,14 +801,14 @@ async fn foreign_account_get_initial_balance() -> anyhow::Result<()> {
 
     let foreign_account_code_source = format!(
         "
-        use.miden::account
+        use.miden::active_account
 
         export.get_initial_balance
             # push the faucet ID on the stack
             push.{fungible_faucet_id_suffix} push.{fungible_faucet_id_prefix}
 
             # get the initial balance of the asset associated with the provided faucet ID
-            exec.account::get_balance
+            exec.active_account::get_balance
             # => [initial_balance]
 
             # truncate the stack
@@ -918,7 +917,7 @@ async fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
     let second_foreign_account_code_source = format!(
         r#"
         use.miden::tx
-        use.miden::account
+        use.miden::active_account
 
         use.std::sys
 
@@ -950,7 +949,7 @@ async fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
 
             # get the first element of the value0 storage slot (it should be 1) and add it to the
             # obtained foreign value.
-            push.MOCK_VALUE_SLOT0[0..2] exec.account::get_item
+            push.MOCK_VALUE_SLOT0[0..2] exec.active_account::get_item
             drop drop drop
             add
 
@@ -981,7 +980,7 @@ async fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
     let first_foreign_account_code_source = format!(
         r#"
         use.miden::tx
-        use.miden::account
+        use.miden::active_account
 
         use.std::sys
 
@@ -1004,7 +1003,7 @@ async fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
 
             # get the second element of the value0 storage slot (it should be 2) and add it to the
             # obtained foreign value.
-            push.MOCK_VALUE_SLOT0[0..2] exec.account::get_item
+            push.MOCK_VALUE_SLOT0[0..2] exec.active_account::get_item
             drop drop swap drop
             add
 
@@ -1018,7 +1017,7 @@ async fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
             # make this foreign procedure unique to make sure that we invoke the procedure of the
             # foreign account, not the native one
             push.1 drop
-            exec.account::get_item
+            exec.active_account::get_item
 
             # return the first element of the resulting word
             drop drop drop
@@ -1149,7 +1148,7 @@ async fn test_nested_fpi_stack_overflow() -> anyhow::Result<()> {
 
     let last_foreign_account_code_source = format!(
         r#"
-                use.miden::account
+                use.miden::active_account
 
                 const MOCK_VALUE_SLOT0 = word("{mock_value_slot0}")
 
@@ -1161,7 +1160,7 @@ async fn test_nested_fpi_stack_overflow() -> anyhow::Result<()> {
                     # push the index of desired storage item
                     push.MOCK_VALUE_SLOT0[0..2]
 
-                    exec.account::get_item
+                    exec.active_account::get_item
 
                     # return the first element of the resulting word
                     drop drop drop
@@ -1424,12 +1423,12 @@ async fn test_nested_fpi_native_account_invocation() -> anyhow::Result<()> {
 async fn test_fpi_stale_account() -> anyhow::Result<()> {
     // Prepare the test data
     let foreign_account_code_source = "
-        use.miden::account
+        use.miden::native_account
 
         # code is not used in this test
         export.set_some_item_foreign
             push.34.1
-            exec.account::set_item
+            exec.native_account::set_item
         end
     ";
 
@@ -1524,15 +1523,16 @@ async fn test_fpi_stale_account() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_fpi_get_account_id() -> anyhow::Result<()> {
     let foreign_account_code_source = "
-        use.miden::account
+        use.miden::active_account
+        use.miden::native_account
 
         export.get_current_and_native_ids
             # get the ID of the current (foreign) account
-            exec.account::get_id
+            exec.active_account::get_id
             # => [acct_id_prefix, acct_id_suffix, pad(16)]
 
             # get the ID of the native account
-            exec.account::get_native_id
+            exec.native_account::get_id
             # => [native_acct_id_prefix, native_acct_id_suffix, acct_id_prefix, acct_id_suffix, pad(16)]
 
             # truncate the stack
@@ -1569,7 +1569,6 @@ async fn test_fpi_get_account_id() -> anyhow::Result<()> {
         use.std::sys
 
         use.miden::tx
-        use.miden::account
         use.miden::account_id
 
         begin
@@ -1615,117 +1614,6 @@ async fn test_fpi_get_account_id() -> anyhow::Result<()> {
     let tx_script = ScriptBuilder::default()
         .with_dynamically_linked_library(foreign_account_component.library())?
         .compile_tx_script(code)?;
-
-    let foreign_account_inputs = mock_chain
-        .get_foreign_account_inputs(foreign_account.id())
-        .expect("failed to get foreign account inputs");
-
-    mock_chain
-        .build_tx_context(native_account.id(), &[], &[])
-        .expect("failed to build tx context")
-        .foreign_accounts(vec![foreign_account_inputs])
-        .tx_script(tx_script)
-        .build()?
-        .execute()
-        .await?;
-
-    Ok(())
-}
-
-/// This test checks that our `miden::get_nonce` and `miden::get_native_nonce` procedures return
-/// nonce values of the current and native account respectively while being called from the foreign
-/// account.
-#[tokio::test]
-async fn test_fpi_get_account_nonce() -> anyhow::Result<()> {
-    let foreign_account_code_source = "
-        use.miden::account
-
-        export.get_current_and_native_nonce_values
-            # get the nonce of the current (foreign) account
-            exec.account::get_nonce
-            # => [nonce, pad(16)]
-
-            # get the nonce of the native account
-            exec.account::get_native_nonce
-            # => [native_nonce, nonce, pad(16)]
-
-            # truncate the stack
-            movdn.3 movdn.3 drop drop
-            # => [native_nonce, nonce, pad(14)]
-        end
-    ";
-
-    let foreign_account_component = AccountComponent::compile(
-        foreign_account_code_source,
-        TransactionKernel::with_kernel_library(Arc::new(DefaultSourceManager::default())),
-        Vec::new(),
-    )?
-    .with_supports_all_types();
-
-    let foreign_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
-        .with_auth_component(Auth::IncrNonce)
-        .with_component(foreign_account_component)
-        .build_existing()?;
-
-    let native_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
-        .with_auth_component(Auth::IncrNonce)
-        .with_component(MockAccountComponent::with_empty_slots())
-        .storage_mode(AccountStorageMode::Public)
-        .nonce(Felt::new(2))
-        .build_existing()?;
-
-    let mut mock_chain =
-        MockChainBuilder::with_accounts([native_account.clone(), foreign_account.clone()])?
-            .build()?;
-    mock_chain.prove_next_block()?;
-
-    let code = format!(
-        r#"
-        use.std::sys
-
-        use.miden::tx
-        use.miden::account
-
-        begin
-            # get the nonce values of the foreign and native accounts
-            # pad the stack for the `execute_foreign_procedure` execution
-            padw padw padw push.0.0.0
-            # => [pad(15)]
-
-            # get the hash of the `get_current_and_native_nonce_values` foreign account procedure
-            push.{get_current_and_native_nonce_values}
-
-            # push the foreign account ID
-            push.{foreign_suffix} push.{foreign_prefix}
-            # => [foreign_account_id_prefix, foreign_account_id_suffix, FOREIGN_PROC_ROOT, pad(15)]
-
-            exec.tx::execute_foreign_procedure
-            # => [native_nonce, foreign_nonce]
-
-            # push the expected native account nonce and check that it is equal to the one returned
-            # from the FPI
-            push.{expected_native_nonce}
-            assert_eq.err="native account nonce returned from the FPI is not equal to the expected one"
-            # => [foreign_nonce]
-
-            # push the expected foreign account nonce and check that it is equal to the one returned
-            # from the FPI
-            push.{expected_foreign_nonce}
-            assert_eq.err="foreign account nonce returned from the FPI is not equal to the expected one"
-            # => []
-
-            # truncate the stack
-            exec.sys::truncate_stack
-        end
-        "#,
-        get_current_and_native_nonce_values = foreign_account.code().procedures()[1].mast_root(),
-        foreign_suffix = foreign_account.id().suffix(),
-        foreign_prefix = foreign_account.id().prefix().as_felt(),
-        expected_native_nonce = native_account.nonce(),
-        expected_foreign_nonce = foreign_account.nonce(),
-    );
-
-    let tx_script = ScriptBuilder::default().compile_tx_script(code)?;
 
     let foreign_account_inputs = mock_chain
         .get_foreign_account_inputs(foreign_account.id())
@@ -1834,19 +1722,19 @@ async fn test_get_initial_item_and_get_initial_map_item_with_foreign_account() -
     // Create foreign procedures that test get_initial_item and get_initial_map_item
     let foreign_account_code_source = format!(
         r#"
-        use.miden::account
+        use.miden::active_account
         use.std::sys
 
         const MOCK_VALUE_SLOT0 = word("{mock_value_slot0}")
 
         export.test_get_initial_item
             push.MOCK_VALUE_SLOT0[0..2]
-            exec.account::get_initial_item
+            exec.active_account::get_initial_item
             exec.sys::truncate_stack
         end
 
         export.test_get_initial_map_item
-            exec.account::get_initial_map_item
+            exec.active_account::get_initial_map_item
             exec.sys::truncate_stack
         end
     "#,

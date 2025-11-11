@@ -1,28 +1,31 @@
 use.miden::kernel_proc_offsets
 
-# NATIVE ACCOUNT PROCEDURES
+# ACTIVE ACCOUNT PROCEDURES
 # =================================================================================================
 
-#! Returns the ID of the current account.
+# ID AND NONCE
+# -------------------------------------------------------------------------------------------------
+
+#! Returns the ID of the active account.
 #!
 #! Inputs:  []
 #! Outputs: [account_id_prefix, account_id_suffix]
 #!
 #! Where:
-#! - account_id_{prefix,suffix} are the prefix and suffix felts of the account ID of the currently
-#!   accessing account.
+#! - account_id_{prefix,suffix} are the prefix and suffix felts of the ID of the active account.
 #!
 #! Invocation: exec
 export.get_id
-    # start padding the stack
-    push.0.0.0
+    # pad the stack
+    padw padw padw push.0.0
+    # => [pad(14)]
+
+    # push the flag indicating that the ID of the current account was requested
+    push.0
+    # => [is_native = 0, pad(14)]
 
     exec.kernel_proc_offsets::account_get_id_offset
-    # => [offset, 0, 0, 0]
-
-    # pad the stack
-    padw swapw padw padw swapdw
-    # => [offset, pad(15)]
+    # => [offset, is_native = 0, pad(14)]
 
     syscall.exec_kernel_proc
     # => [account_id_prefix, account_id_suffix, pad(14)]
@@ -32,36 +35,7 @@ export.get_id
     # => [account_id_prefix, account_id_suffix]
 end
 
-#! Returns the ID of the native account of the transaction.
-#!
-#! Inputs:  []
-#! Outputs: [account_id_prefix, account_id_suffix]
-#!
-#! Where:
-#! - account_id_{prefix,suffix} are the prefix and suffix felts of the native account ID of the
-#!   transaction.
-#!
-#! Invocation: exec
-export.get_native_id
-    # start padding the stack
-    push.0.0.0
-
-    exec.kernel_proc_offsets::account_get_native_id_offset
-    # => [offset, 0, 0, 0]
-
-    # pad the stack
-    padw swapw padw padw swapdw
-    # => [offset, pad(15)]
-
-    syscall.exec_kernel_proc
-    # => [account_id_prefix, account_id_suffix, pad(14)]
-
-    # clean the stack
-    swapdw dropw dropw swapw dropw movdn.3 movdn.3 drop drop
-    # => [account_id_prefix, account_id_suffix]
-end
-
-#! Returns the nonce of the current account.
+#! Returns the nonce of the active account.
 #!
 #! This procedure always returns the initial account nonce, as the nonce can only be incremented
 #! in the authentication procedure when signing the transaction after all user code has been
@@ -71,88 +45,29 @@ end
 #! Outputs: [nonce]
 #!
 #! Where:
-#! - nonce is the current account's nonce.
+#! - nonce is the active account's nonce.
 #!
 #! Invocation: exec
 export.get_nonce
-    # start padding the stack
-    push.0.0.0
-
-    exec.kernel_proc_offsets::account_get_nonce_offset
-    # => [offset, 0, 0, 0]
-
-    # pad the stack
-    padw swapw padw padw swapdw
-    # => [offset, pad(15)]
-
-    syscall.exec_kernel_proc
-    # => [nonce, pad(15)]
-
-    # clean the stack
-    swapdw dropw dropw swapw dropw movdn.3 drop drop drop
-    # => [nonce]
-end
-
-#! Returns the nonce of the native account of the transaction.
-#!
-#! Inputs:  []
-#! Outputs: [nonce]
-#!
-#! Where:
-#! - nonce is the nonce of the native account of the transaction.
-#!
-#! Invocation: exec
-export.get_native_nonce
-    # start padding the stack
-    push.0.0.0
-
-    exec.kernel_proc_offsets::account_get_native_nonce_offset
-    # => [offset, 0, 0, 0]
-
-    # pad the stack
-    padw swapw padw padw swapdw
-    # => [offset, pad(15)]
-
-    syscall.exec_kernel_proc
-    # => [nonce, pad(15)]
-
-    # clean the stack
-    swapdw dropw dropw swapw dropw movdn.3 drop drop drop
-    # => [nonce]
-end
-
-#! Increments the account nonce by one and returns the new nonce.
-#!
-#! Inputs:  []
-#! Outputs: [final_nonce]
-#!
-#! Where:
-#! - final_nonce is the new nonce of the account. Since it cannot be incremented again, this will
-#!   also be the final nonce of the account after transaction execution.
-#!
-#! Panics if:
-#! - the invocation of this procedure does not originate from the native account.
-#! - the invocation of this procedure does not originate from the authentication procedure
-#!   of the account.
-#! - the nonce has already been incremented.
-#!
-#! Invocation: exec
-export.incr_nonce
     # pad the stack
     padw padw padw push.0.0.0
     # => [pad(15)]
 
-    exec.kernel_proc_offsets::account_incr_nonce_offset
+    exec.kernel_proc_offsets::account_get_nonce_offset
     # => [offset, pad(15)]
 
     syscall.exec_kernel_proc
-    # => [final_nonce, pad(15)]
+    # => [nonce, pad(15)]
 
-    swap.15 dropw dropw dropw drop drop drop
-    # => [final_nonce]
+    # clean the stack
+    swapdw dropw dropw swapw dropw movdn.3 drop drop drop
+    # => [nonce]
 end
 
-#! Returns the native account commitment at the beginning of the transaction.
+# COMMITMENTS
+# -------------------------------------------------------------------------------------------------
+
+#! Returns the commitment of the active account at the beginning of the transaction.
 #!
 #! Inputs:  []
 #! Outputs: [INIT_COMMITMENT]
@@ -177,7 +92,7 @@ export.get_initial_commitment
     # => [INIT_COMMITMENT]
 end
 
-#! Computes and returns the account commitment from account data stored in memory.
+#! Computes and returns commitment to the state of the active account.
 #!
 #! Inputs:  []
 #! Outputs: [ACCOUNT_COMMITMENT]
@@ -186,12 +101,12 @@ end
 #! - ACCOUNT_COMMITMENT is the commitment of the account data.
 #!
 #! Invocation: exec
-export.compute_current_commitment
+export.compute_commitment
     # pad the stack
     padw padw padw push.0.0.0
     # => [pad(15)]
 
-    exec.kernel_proc_offsets::account_compute_current_commitment_offset
+    exec.kernel_proc_offsets::account_compute_commitment_offset
     # => [offset, pad(15)]
 
     syscall.exec_kernel_proc
@@ -202,37 +117,162 @@ export.compute_current_commitment
     # => [ACCOUNT_COMMITMENT]
 end
 
-#! Computes the commitment to the native account's delta.
+#! Gets the code commitment of the active account.
 #!
-#! Note that if the account state has changed, the nonce must be incremented before this procedure
-#! is called, otherwise it will panic. This means it can only be called from an auth procedure,
-#! since only auth procedures are allowed to increment the nonce.
+#! Notice that the account code cannot be changed during the user code execution, so the code
+#! commitment doesn't change during transaction execution: commitment returned by this procedure
+#! could be used as both the initial and the current.
+#!
+#! The commitment to an empty delta is defined as the empty word.
+#!
+#! During an account-creating transaction (when the initial nonce is 0), this procedure will not
+#! return the empty word even if the initial storage commitment and the current storage commitment
+#! are identical (storage hasn't changed). This is because the delta for a new account must
+#! represent its entire newly created state, and the initial storage in a transaction is
+#! initialized to the the storage that the account ID commits to, which may be non-empty. This
+#! does not have any consequences other than being inconsistent in this edge case.
 #!
 #! Inputs:  []
-#! Outputs: [DELTA_COMMITMENT]
+#! Outputs: [CODE_COMMITMENT]
 #!
 #! Where:
-#! - DELTA_COMMITMENT is the commitment to the account delta.
+#! - CODE_COMMITMENT is the commitment of the account code.
 #!
-#! Panics if:
-#! - the vault or storage delta is not empty but the nonce increment is zero.
-export.compute_delta_commitment
+#! Invocation: exec
+export.get_code_commitment
     # pad the stack
     padw padw padw push.0.0.0
     # => [pad(15)]
 
-    exec.kernel_proc_offsets::account_compute_delta_commitment_offset
+    exec.kernel_proc_offsets::account_get_code_commitment_offset
     # => [offset, pad(15)]
 
     syscall.exec_kernel_proc
-    # => [DELTA_COMMITMENT, pad(12)]
+    # => [CODE_COMMITMENT, pad(12)]
 
     # clean the stack
     swapdw dropw dropw swapw dropw
-    # => [DELTA_COMMITMENT]
+    # => [CODE_COMMITMENT]
 end
 
-#! Gets an item from the account storage. Panics if the index is out of bounds.
+#! Returns the storage commitment of the active account at the beginning of the transaction.
+#!
+#! During an account-creating transaction (when the initial nonce is 0), this procedure and
+#! compute_storage_commitment will return the same value at the beginning of the transaction
+#! (before any note or transaction scripts were executed). Despite that, the account delta may
+#! not be empty. See account::compute_delta_commitment for more.
+#!
+#! Inputs:  []
+#! Outputs: [INIT_STORAGE_COMMITMENT]
+#!
+#! Where:
+#! - INIT_STORAGE_COMMITMENT is the initial account storage commitment.
+#!
+#! Invocation: exec
+export.get_initial_storage_commitment
+    # pad the stack
+    padw padw padw push.0.0.0
+    # => [pad(15)]
+
+    exec.kernel_proc_offsets::account_get_initial_storage_commitment_offset
+    # => [offset, pad(15)]
+
+    syscall.exec_kernel_proc
+    # => [INIT_STORAGE_COMMITMENT, pad(12)]
+
+    # clean the stack
+    swapdw dropw dropw swapw dropw
+    # => [INIT_STORAGE_COMMITMENT]
+end
+
+#! Computes the latest storage commitment of the active account.
+#!
+#! Notice that this procedure always returns the latest commitment, but it doesn't actually always
+#! recompute it: recomputation is performed only if the account's storage has been changed,
+#! otherwise the cached value is returned.
+#!
+#! During an account-creating transaction (when the initial nonce is 0), this procedure and
+#! get_initial_storage_commitment will return the same value at the beginning of the transaction
+#! (before any note or transaction scripts were executed). Despite that, the account delta may
+#! not be empty. See account::compute_delta_commitment for more.
+#!
+#! Inputs:  []
+#! Outputs: [STORAGE_COMMITMENT]
+#!
+#! Where:
+#! - STORAGE_COMMITMENT is the commitment of the account storage.
+#!
+#! Invocation: exec
+export.compute_storage_commitment
+    # pad the stack
+    padw padw padw push.0.0.0
+    # => [pad(15)]
+
+    exec.kernel_proc_offsets::account_compute_storage_commitment_offset
+    # => [offset, pad(15)]
+
+    syscall.exec_kernel_proc
+    # => [STORAGE_COMMITMENT, pad(12)]
+
+    # clean the stack
+    swapdw dropw dropw swapw dropw
+    # => [STORAGE_COMMITMENT]
+end
+
+#! Returns the vault root of the active account at the beginning of the transaction.
+#!
+#! Inputs:  []
+#! Outputs: [INIT_VAULT_ROOT]
+#!
+#! Where:
+#! - INIT_VAULT_ROOT is the initial account vault root.
+#!
+#! Invocation: exec
+export.get_initial_vault_root
+    # pad the stack
+    padw padw padw push.0.0.0
+    # => [pad(15)]
+
+    exec.kernel_proc_offsets::account_get_initial_vault_root_offset
+    # => [offset, pad(15)]
+
+    syscall.exec_kernel_proc
+    # => [INIT_VAULT_ROOT, pad(12)]
+
+    # clean the stack
+    swapdw dropw dropw swapw dropw
+    # => [INIT_VAULT_ROOT]
+end
+
+#! Returns the vault root of the active account.
+#!
+#! Inputs:  []
+#! Outputs: [VAULT_ROOT]
+#!
+#! Where:
+#! - VAULT_ROOT is the root of the account vault.
+#!
+#! Invocation: exec
+export.get_vault_root
+    # pad the stack for syscall invocation
+    padw padw padw push.0.0.0
+    # => [pad(15)]
+
+    exec.kernel_proc_offsets::account_get_vault_root_offset
+    # => [offset, pad(15)]
+
+    syscall.exec_kernel_proc
+    # => [VAULT_ROOT, pad(12)]
+
+    # clean the stack
+    swapdw dropw dropw swapw dropw
+    # => [VAULT_ROOT]
+end
+
+# STORAGE
+# -------------------------------------------------------------------------------------------------
+
+#! Gets an item from the active account storage. Panics if the index is out of bounds.
 #!
 #! Inputs:  [name_id_prefix, name_id_suffix]
 #! Outputs: [VALUE]
@@ -265,7 +305,7 @@ export.get_item
     # => [VALUE]
 end
 
-#! Gets the initial item from the account storage slot as it was at the beginning of the
+#! Gets the initial item from the active account storage slot as it was at the beginning of the
 #! transaction.
 #!
 #! Inputs:  [name_id_prefix, name_id_suffix]
@@ -332,7 +372,7 @@ export.set_item
     # => [OLD_VALUE]
 end
 
-#! Gets a map item from the account storage.
+#! Gets a map item from the active account storage.
 #!
 #! Inputs:  [name_id_prefix, name_id_suffix, KEY]
 #! Outputs: [VALUE]
@@ -408,7 +448,7 @@ export.set_map_item
     # => [OLD_MAP_ROOT, OLD_MAP_VALUE]
 end
 
-#! Gets the initial VALUE from the account storage map as it was at the beginning of the
+#! Gets the initial VALUE from the active account storage map as it was at the beginning of the
 #! transaction.
 #!
 #! Inputs:  [name_id_prefix, name_id_suffix, KEY]
@@ -440,90 +480,10 @@ export.get_initial_map_item
     # => [INIT_VALUE]
 end
 
-#! Gets the account code commitment of the current account.
-#!
-#! Notice that the account code cannot be changed during the user code execution, so the code
-#! commitment doesn't change during transaction execution: commitment returned by this procedure
-#! could be used as both the initial and the current.
-#!
-#! Inputs:  []
-#! Outputs: [CODE_COMMITMENT]
-#!
-#! Where:
-#! - CODE_COMMITMENT is the commitment of the account code.
-#!
-#! Invocation: exec
-export.get_code_commitment
-    exec.kernel_proc_offsets::account_get_code_commitment_offset
-    # => [offset]
+# VAULT
+# -------------------------------------------------------------------------------------------------
 
-    # pad the stack
-    push.0.0.0 movup.3 padw swapw padw padw swapdw
-    # => [offset, pad(15)]
-
-    syscall.exec_kernel_proc
-    # => [CODE_COMMITMENT, pad(12)]
-
-    # clean the stack
-    swapdw dropw dropw swapw dropw
-    # => [CODE_COMMITMENT]
-end
-
-#! Returns the storage commitment of the native account at the beginning of the transaction.
-#!
-#! Inputs:  []
-#! Outputs: [INIT_STORAGE_COMMITMENT]
-#!
-#! Where:
-#! - INIT_STORAGE_COMMITMENT is the initial account storage commitment.
-#!
-#! Invocation: exec
-export.get_initial_storage_commitment
-    # pad the stack
-    padw padw padw push.0.0.0
-    # => [pad(15)]
-
-    exec.kernel_proc_offsets::account_get_initial_storage_commitment_offset
-    # => [offset, pad(15)]
-
-    syscall.exec_kernel_proc
-    # => [INIT_STORAGE_COMMITMENT, pad(12)]
-
-    # clean the stack
-    swapdw dropw dropw swapw dropw
-    # => [INIT_STORAGE_COMMITMENT]
-end
-
-#! Computes the latest account storage commitment of the current account.
-#!
-#! Notice that this procedure always returns the latest commitment, but it doesn't actually always
-#! recompute it: recomputation is performed only if the account's storage has been changed,
-#! otherwise the cached value is returned.
-#!
-#! Inputs:  []
-#! Outputs: [STORAGE_COMMITMENT]
-#!
-#! Where:
-#! - STORAGE_COMMITMENT is the commitment of the account storage.
-#!
-#! Invocation: exec
-export.compute_storage_commitment
-    exec.kernel_proc_offsets::account_compute_storage_commitment_offset
-    # => [offset]
-
-    # pad the stack
-    push.0.0.0 movup.3 padw swapw padw padw swapdw
-    # => [offset, pad(15)]
-
-    syscall.exec_kernel_proc
-    # => [STORAGE_COMMITMENT, pad(12)]
-
-    # clean the stack
-    swapdw dropw dropw swapw dropw
-    # => [STORAGE_COMMITMENT]
-end
-
-#! Returns the balance of the fungible asset associated with the provided faucet_id in the current
+#! Returns the balance of the fungible asset associated with the provided faucet_id in the active
 #! account's vault.
 #!
 #! Inputs:  [faucet_id_prefix, faucet_id_suffix]
@@ -554,7 +514,7 @@ export.get_balance
     # => [balance]
 end
 
-#! Returns the balance of the fungible asset associated with the provided faucet_id in the current 
+#! Returns the balance of the fungible asset associated with the provided faucet_id in the active 
 #! account's vault at the beginning of the transaction.
 #!
 #! Inputs:  [faucet_id_prefix, faucet_id_suffix]
@@ -585,7 +545,7 @@ export.get_initial_balance
     # => [init_balance]
 end
 
-#! Returns a boolean indicating whether the non-fungible asset is present in the current account's
+#! Returns a boolean indicating whether the non-fungible asset is present in the active account's
 #! vault.
 #!
 #! Inputs:  [ASSET]
@@ -615,156 +575,13 @@ export.has_non_fungible_asset
     # => [has_asset]
 end
 
-#! Add the specified asset to the vault.
-#!
-#! Inputs:  [ASSET]
-#! Outputs: [ASSET']
-#!
-#! Where:
-#! - ASSET' is a final asset in the account vault defined as follows:
-#!   - If ASSET is a non-fungible asset, then ASSET' is the same as ASSET.
-#!   - If ASSET is a fungible asset, then ASSET' is the total fungible asset in the account vault
-#!     after ASSET was added to it.
-#!
-#! Panics if:
-#! - the asset is not valid.
-#! - the total value of two fungible assets is greater than or equal to 2^63.
-#! - the vault already contains the same non-fungible asset.
-#!
-#! Invocation: exec
-export.add_asset
-    exec.kernel_proc_offsets::account_add_asset_offset
-    # => [offset, ASSET]
-
-    # pad the stack
-    push.0.0.0 movdn.7 movdn.7 movdn.7 padw padw swapdw
-    # => [offset, ASSET, pad(11)]
-
-    syscall.exec_kernel_proc
-    # => [ASSET', pad(12)]
-
-    # clean the stack
-    swapdw dropw dropw swapw dropw
-    # => [ASSET']
-end
-
-#! Remove the specified asset from the vault.
-#!
-#! Inputs:  [ASSET]
-#! Outputs: [ASSET]
-#!
-#! Where:
-#! - ASSET is the asset to remove from the vault.
-#!
-#! Panics if:
-#! - the fungible asset is not found in the vault.
-#! - the amount of the fungible asset in the vault is less than the amount to be removed.
-#! - the non-fungible asset is not found in the vault.
-#!
-#! Invocation: exec
-export.remove_asset
-    exec.kernel_proc_offsets::account_remove_asset_offset
-    # => [offset, ASSET]
-
-    # pad the stack
-    push.0.0.0 movdn.7 movdn.7 movdn.7 padw padw swapdw
-    # => [offset, ASSET, pad(11)]
-
-    syscall.exec_kernel_proc
-    # => [ASSET, pad(12)]
-
-    # clean the stack
-    swapdw dropw dropw swapw dropw
-    # => [ASSET]
-end
-
-#! Returns the vault root of the native account at the beginning of the transaction.
-#!
-#! Inputs:  []
-#! Outputs: [INIT_VAULT_ROOT]
-#!
-#! Where:
-#! - INIT_VAULT_ROOT is the initial account vault root.
-#!
-#! Invocation: exec
-export.get_initial_vault_root
-    # pad the stack
-    padw padw padw push.0.0.0
-    # => [pad(15)]
-
-    exec.kernel_proc_offsets::account_get_initial_vault_root_offset
-    # => [offset, pad(15)]
-
-    syscall.exec_kernel_proc
-    # => [INIT_VAULT_ROOT, pad(12)]
-
-    # clean the stack
-    swapdw dropw dropw swapw dropw
-    # => [INIT_VAULT_ROOT]
-end
-
-#! Returns the vault root of the current account.
-#!
-#! Inputs:  []
-#! Outputs: [VAULT_ROOT]
-#!
-#! Where:
-#! - VAULT_ROOT is the root of the account vault.
-#!
-#! Invocation: exec
-export.get_vault_root
-    # pad the stack for syscall invocation
-    padw padw padw push.0.0.0
-    # => [pad(15)]
-
-    exec.kernel_proc_offsets::account_get_vault_root_offset
-    # => [offset, pad(15)]
-
-    syscall.exec_kernel_proc
-    # => [VAULT_ROOT, pad(12)]
-
-    # clean the stack
-    swapdw dropw dropw swapw dropw
-    # => [VAULT_ROOT]
-end
-
-#! Returns 1 if a procedure was called during transaction execution, and 0 otherwise.
-#!
-#! Note: This returns 1 only if the procedure invoked account-restricted kernel APIs (e.g.,
-#! `exec.faucet::mint`) which trigger `authenticate_and_track_procedure`. Procedures that execute
-#! only local MASM instructions will return 0 even if they were executed.
-#!
-#! Inputs:  [PROC_ROOT]
-#! Outputs: [was_called]
-#!
-#! Where:
-#! - PROC_ROOT is the hash of the procedure to check.
-#! - was_called is 1 if the procedure was called, 0 otherwise.
-#!
-#! Invocation: exec
-export.was_procedure_called
-    exec.kernel_proc_offsets::account_was_procedure_called_offset
-    # => [offset, PROC_ROOT]
-
-    # pad the stack
-    push.0.0.0 movdn.7 movdn.7 movdn.7 padw padw swapdw
-    # => [offset, PROC_ROOT, pad(11)]
-
-    syscall.exec_kernel_proc
-    # => [was_called, pad(15)]
-
-    # clean the stack
-    swapdw dropw dropw swapw dropw movdn.3 drop drop drop
-    # => [was_called]
-end
-
-#! Returns the number of procedures in the current account.
+#! Returns the number of procedures in the active account.
 #!
 #! Inputs:  []
 #! Outputs: [num_procedures]
 #!
 #! Where:
-#! - num_procedures is the number of procedures in the current account.
+#! - num_procedures is the number of procedures in the active account.
 #!
 #! Invocation: exec
 export.get_num_procedures
@@ -783,7 +600,7 @@ export.get_num_procedures
     # => [num_procedures]
 end
 
-#! Returns the procedure root for the procedure at the specified index.
+#! Returns the procedure root for the procedure at the specified index in the active account.
 #!
 #! Inputs:  [index]
 #! Outputs: [PROC_ROOT]
@@ -813,4 +630,34 @@ export.get_procedure_root
     # clean the stack
     swapdw dropw dropw swapw dropw
     # => [PROC_ROOT]
+end
+
+#! Returns the binary flag indicating whether the procedure with the provided root is available on
+#! the active account.
+#!
+#! Returns 1 if the procedure is available on the active account and 0 otherwise.
+#!
+#! Inputs:  [PROC_ROOT]
+#! Outputs: [is_procedure_available]
+#!
+#! Where:
+#! - PROC_ROOT is the hash of the procedure of interest.
+#! - is_procedure_available is the binary flag indicating whether the procedure with PROC_ROOT is 
+#!   available on the active account.
+#!
+#! Invocation: exec
+export.has_procedure
+    exec.kernel_proc_offsets::account_has_procedure_offset
+    # => [offset, PROC_ROOT]
+
+    # pad the stack
+    push.0.0.0 movdn.7 movdn.7 movdn.7 padw padw swapdw
+    # => [offset, PROC_ROOT, pad(11)]
+
+    syscall.exec_kernel_proc
+    # => [is_procedure_available, pad(15)]
+
+    # clean the stack
+    swapdw dropw dropw swapw dropw movdn.3 drop drop drop
+    # => [is_procedure_available]
 end

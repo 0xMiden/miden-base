@@ -12,7 +12,7 @@ use super::{
     Serializable,
     Word,
 };
-use crate::account::{SlotName, StorageMap};
+use crate::account::{SlotName, StorageMap, StorageSlotType};
 use crate::{EMPTY_WORD, Felt, LexicographicWord, ZERO};
 
 // ACCOUNT STORAGE DELTA
@@ -59,6 +59,14 @@ impl AccountStorageDelta {
         Ok(delta)
     }
 
+    /// Returns an iterator over the slot names and types tracked by this delta.
+    pub(crate) fn slots(&self) -> impl Iterator<Item = (&SlotName, StorageSlotType)> {
+        self.values()
+            .keys()
+            .map(|slot_name| (slot_name, StorageSlotType::Value))
+            .chain(self.maps.keys().map(|slot_name| (slot_name, StorageSlotType::Map)))
+    }
+
     /// Returns a reference to the updated values in this storage delta.
     pub fn values(&self) -> &BTreeMap<SlotName, Word> {
         &self.values
@@ -82,6 +90,13 @@ impl AccountStorageDelta {
     /// Tracks a map item change
     pub fn set_map_item(&mut self, slot_name: SlotName, key: Word, new_value: Word) {
         self.maps.entry(slot_name).or_default().insert(key, new_value);
+    }
+
+    /// Inserts an empty storage map delta for the provided slot index.
+    ///
+    /// This is useful for full state deltas to represent an empty map in the delta.
+    pub fn insert_empty_map_delta(&mut self, slot_name: SlotName) {
+        self.maps.entry(slot_name).or_default();
     }
 
     /// Merges another delta into this one, overwriting any existing values.
@@ -164,10 +179,6 @@ impl AccountStorageDelta {
                     elements.extend_from_slice(new_value.as_elements());
                 },
                 StorageSlotDelta::Map(map_delta) => {
-                    if map_delta.is_empty() {
-                        continue;
-                    }
-
                     for (key, value) in map_delta.entries() {
                         elements.extend_from_slice(key.inner().as_elements());
                         elements.extend_from_slice(value.as_elements());

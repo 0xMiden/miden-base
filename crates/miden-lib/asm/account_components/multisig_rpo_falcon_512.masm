@@ -2,7 +2,8 @@
 #
 # See the `AuthRpoFalcon512Multisig` Rust type's documentation for more details.
 
-use miden::account
+use miden::active_account
+use miden::native_account
 use miden::auth
 
 type BeWord = struct @bigendian { a: felt, b: felt, c: felt, d: felt }
@@ -72,7 +73,7 @@ proc assert_new_tx(msg: BeWord)
     # => [txs_slot_prefix, txs_slot_suffix, MSG, IS_EXECUTED_FLAG]
 
     # Set the key value pair in the map to mark transaction as executed
-    exec.account::set_map_item
+    exec.native_account::set_map_item
     # => [OLD_MAP_ROOT, [0, 0, 0, is_executed]]
 
     dropw drop drop drop
@@ -117,7 +118,7 @@ proc cleanup_pubkey_mapping(init_num_of_approvers: u32, new_num_of_approvers: u3
         push.APPROVER_PUBLIC_KEYS_SLOT[0..2]
         # => [pub_key_slot_prefix, pub_key_slot_suffix, [0, 0, 0, i-1], EMPTY_WORD, i-1, new_num_of_approvers]
 
-        exec.account::set_map_item
+        exec.native_account::set_map_item
         # => [OLD_MAP_ROOT, OLD_MAP_VALUE, i-1, new_num_of_approvers]
 
         dropw dropw
@@ -180,7 +181,7 @@ pub proc update_signers_and_threshold.2(multisig_config_hash: BeWord)
     push.THRESHOLD_CONFIG_SLOT[0..2]
     # => [config_slot_prefix, config_slot_suffix, MULTISIG_CONFIG, pad(12)]
 
-    exec.account::set_item
+    exec.native_account::set_item
     # => [OLD_THRESHOLD_CONFIG, pad(12)]
 
     # store init_num_of_approvers for later
@@ -207,7 +208,7 @@ pub proc update_signers_and_threshold.2(multisig_config_hash: BeWord)
         push.APPROVER_PUBLIC_KEYS_SLOT[0..2]
         # => [pub_key_slot_prefix, pub_key_slot_suffix, [0, 0, 0, i-1], PUB_KEY, i-1, pad(12)]
 
-        exec.account::set_map_item
+        exec.native_account::set_map_item
         # => [OLD_MAP_ROOT, OLD_MAP_VALUE, i-1, pad(12)]
 
         dropw dropw
@@ -254,7 +255,7 @@ proc compute_transaction_threshold.1(default_threshold: u32) -> u32
     # => [transaction_threshold]
 
     # get the number of account procedures
-    exec.account::get_num_procedures
+    exec.active_account::get_num_procedures
     # => [num_procedures, transaction_threshold]
 
     # 2. iterate through all account procedures
@@ -265,11 +266,11 @@ proc compute_transaction_threshold.1(default_threshold: u32) -> u32
         # => [num_procedures-1, num_procedures-1, transaction_threshold]
 
         # get procedure root of the procedure with index i
-        exec.account::get_procedure_root dupw
+        exec.active_account::get_procedure_root dupw
         # => [PROC_ROOT, PROC_ROOT, num_procedures-1, transaction_threshold]
 
         # 2a. check if this procedure has been called in the transaction
-        exec.account::was_procedure_called
+        exec.native_account::was_procedure_called
         # => [was_called, PROC_ROOT, num_procedures-1, transaction_threshold]
 
         # if it has been called, get the override threshold of that procedure
@@ -281,7 +282,7 @@ proc compute_transaction_threshold.1(default_threshold: u32) -> u32
 
             # 2b. get the override proc_threshold of that procedure
             # if the procedure has no override threshold, the returned map item will be [0, 0, 0, 0]
-            exec.account::get_initial_map_item
+            exec.active_account::get_initial_map_item
             # => [[0, 0, 0, proc_threshold], num_procedures-1, transaction_threshold]
 
             drop drop drop dup dup.3
@@ -353,7 +354,7 @@ end
 #!
 #! Invocation: call
 pub proc auth_tx_rpo_falcon512_multisig.1(salt: BeWord)
-    exec.account::incr_nonce drop
+    exec.native_account::incr_nonce drop
     # => [SALT]
 
     # ------ Computing transaction summary ------
@@ -374,7 +375,7 @@ pub proc auth_tx_rpo_falcon512_multisig.1(salt: BeWord)
     push.THRESHOLD_CONFIG_SLOT[0..2]
     # => [config_slot_prefix, config_slot_suffix, TX_SUMMARY_COMMITMENT]
 
-    exec.account::get_initial_item
+    exec.active_account::get_initial_item
     # => [0, 0, num_of_approvers, default_threshold, TX_SUMMARY_COMMITMENT]
 
     drop drop

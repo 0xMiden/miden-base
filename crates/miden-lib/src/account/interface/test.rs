@@ -3,13 +3,8 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use assert_matches::assert_matches;
-use miden_objects::account::{
-    AccountBuilder,
-    AccountComponent,
-    AccountType,
-    NamedStorageSlot,
-    PublicKeyCommitment,
-};
+use miden_objects::account::auth::PublicKeyCommitment;
+use miden_objects::account::{AccountBuilder, AccountComponent, AccountType, NamedStorageSlot};
 use miden_objects::assembly::diagnostics::NamedSource;
 use miden_objects::assembly::{Assembler, DefaultSourceManager};
 use miden_objects::asset::{FungibleAsset, NonFungibleAsset, TokenSymbol};

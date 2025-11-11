@@ -1,12 +1,8 @@
+use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 
-use miden_objects::account::{
-    AccountComponent,
-    NamedStorageSlot,
-    PublicKeyCommitment,
-    SlotName,
-    StorageMap,
-};
+use miden_objects::account::auth::PublicKeyCommitment;
+use miden_objects::account::{AccountComponent, NamedStorageSlot, SlotName, StorageMap};
 use miden_objects::utils::sync::LazyLock;
 use miden_objects::{AccountError, Word};
 
@@ -58,6 +54,13 @@ impl AuthRpoFalcon512MultisigConfig {
             return Err(AccountError::other(
                 "threshold cannot be greater than number of approvers",
             ));
+        }
+
+        // Check for duplicate approvers
+        if approvers.len()
+            != approvers.iter().map(|&pk| Word::from(pk)).collect::<BTreeSet<_>>().len()
+        {
+            return Err(AccountError::other("duplicate approver public keys are not allowed"));
         }
 
         Ok(Self {
@@ -307,6 +310,23 @@ mod tests {
                 .unwrap_err()
                 .to_string()
                 .contains("threshold cannot be greater than number of approvers")
+        );
+    }
+
+    /// Test multisig component with duplicate approvers (should fail)
+    #[test]
+    fn test_multisig_component_duplicate_approvers() {
+        let pub_key_1 = PublicKeyCommitment::from(Word::from([1u32, 0, 0, 0]));
+        let pub_key_2 = PublicKeyCommitment::from(Word::from([2u32, 0, 0, 0]));
+
+        // Test with duplicate approvers (should fail)
+        let approvers = vec![pub_key_1, pub_key_2, pub_key_1];
+        let result = AuthRpoFalcon512MultisigConfig::new(approvers, 2);
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("duplicate approver public keys are not allowed")
         );
     }
 }

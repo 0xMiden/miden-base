@@ -1,4 +1,5 @@
-use.miden::account
+use.miden::active_account
+use.miden::native_account
 use.miden::auth
 use.miden::tx
 use.std::crypto::dsa::rpo_falcon512
@@ -36,7 +37,7 @@ export.authenticate_transaction
     # ---------------------------------------------------------------------------------------------
     # This has to happen before computing the delta commitment, otherwise that procedure will abort
     push.0.0 exec.tx::get_block_number
-    exec.account::incr_nonce
+    exec.native_account::incr_nonce
     # => [[final_nonce, ref_block_num, 0, 0], PUB_KEY]
 
     # Compute the message that is signed.
@@ -73,10 +74,10 @@ end
 #! the provided account storage map slot, verifies their signatures against the transaction message,
 #! and returns the number of successfully verified signatures.
 #!
-#! Note: Calls `account::get_initial_map_item` to access the transaction's initial storage state
-#! rather than the current state. This is crucial when validating transactions that update
-#! the owner public key mapping - the previous signers must authorize the change to
-#! the new signers, not the new signers authorizing themselves.
+#! Note: Calls `active_account::get_initial_map_item` to access the transaction's initial storage
+#! state rather than the current state. This is crucial when validating transactions that update
+#! the owner public key mapping - the previous signers must authorize the change to the new signers,
+#! not the new signers authorizing themselves.
 #!
 #! Inputs:  [pub_key_slot_prefix, pub_key_slot_suffix, num_of_approvers, MSG]
 #! Outputs: [num_verified_signatures, MSG]
@@ -107,10 +108,10 @@ export.verify_signatures.16
         # => [owner_key_slot_prefix, owner_key_slot_suffix, [0, 0, 0, i-1], i-1, MSG]
 
         # Get public key from initial storage state
-        exec.account::get_initial_map_item
+        exec.active_account::get_initial_map_item
         # => [OWNER_PUB_KEY, i-1, MSG]
 
-        loc_storew.CURRENT_PK_LOC
+        loc_storew_be.CURRENT_PK_LOC
         # => [OWNER_PUB_KEY, i-1, MSG]
 
         # Check if signature exists for this signer.
@@ -141,7 +142,7 @@ export.verify_signatures.16
             # Verify the signature against the public key and message.
             # -----------------------------------------------------------------------------------------
 
-            loc_loadw.CURRENT_PK_LOC
+            loc_loadw_be.CURRENT_PK_LOC
             # => [PK, MSG, MSG, i-1]
 
             swapw

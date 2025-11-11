@@ -233,7 +233,7 @@ async fn epilogue_fails_when_num_output_assets_exceed_num_input_assets() -> anyh
       begin
           # create a note with the output asset
           push.{OUTPUT_ASSET}
-          exec.util::create_random_note_with_asset drop
+          exec.util::create_random_note_with_asset
           # => []
       end
       ",
@@ -286,7 +286,7 @@ async fn epilogue_fails_when_num_input_assets_exceed_num_output_assets() -> anyh
       begin
           # create a note with the output asset
           push.{OUTPUT_ASSET}
-          exec.util::create_random_note_with_asset drop
+          exec.util::create_random_note_with_asset
           # => []
       end
       ",

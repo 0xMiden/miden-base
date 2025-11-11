@@ -234,14 +234,14 @@ export.execute_foreign_procedure.4
 
     # store the foreign procedure root to the first local memory slot and get its absolute memory
     # address
-    loc_storew.0 dropw locaddr.0
+    loc_storew_be.0 dropw locaddr.0
     # => [foreign_proc_root_ptr, <foreign account inputs>, pad(n)]
 
     # execute the foreign procedure
     dyncall
     # => [<values returned from the foreign procedure>]
 
-    # reset the current account data offset to the native offset (2048)
+    # reset the active account data offset to the native offset (2048)
     push.0.0.0 padw padw padw
     exec.kernel_proc_offsets::tx_end_foreign_context_offset
     # => [offset, pad(15), <values returned from the foreign procedure>]

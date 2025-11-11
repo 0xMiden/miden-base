@@ -3,18 +3,14 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use miden_lib::transaction::{EventId, TransactionAdviceInputs};
-use miden_objects::account::{
-    AccountCode,
-    AccountDelta,
-    AccountId,
-    PartialAccount,
-    PublicKeyCommitment,
-};
+use miden_objects::account::auth::PublicKeyCommitment;
+use miden_objects::account::{AccountCode, AccountDelta, AccountId, PartialAccount};
 use miden_objects::assembly::debuginfo::Location;
 use miden_objects::assembly::{SourceFile, SourceManagerSync, SourceSpan};
-use miden_objects::asset::{Asset, AssetWitness, FungibleAsset, VaultKey};
+use miden_objects::asset::{Asset, AssetVaultKey, AssetWitness, FungibleAsset};
 use miden_objects::block::BlockNumber;
 use miden_objects::crypto::merkle::SmtProof;
+use miden_objects::note::{NoteInputs, NoteMetadata, NoteRecipient};
 use miden_objects::transaction::{InputNote, InputNotes, OutputNote};
 use miden_objects::vm::AdviceMap;
 use miden_objects::{Felt, Hasher, Word};
@@ -30,6 +26,7 @@ use miden_processor::{
 
 use crate::auth::{SigningInputs, TransactionAuthenticator};
 use crate::errors::TransactionKernelError;
+use crate::host::note_builder::OutputNoteBuilder;
 use crate::host::{
     ScriptMastForestStore,
     TransactionBaseHost,
@@ -187,14 +184,16 @@ where
         let authenticator =
             self.authenticator.ok_or(TransactionKernelError::MissingAuthenticator)?;
 
+        // get the message that will be signed by the authenticator
+        let message = signing_inputs.to_commitment();
+
         let signature: Vec<Felt> = authenticator
             .get_signature(PublicKeyCommitment::from(pub_key_hash), &signing_inputs)
             .await
             .map_err(TransactionKernelError::SignatureGenerationFailed)?
-            .to_prepared_signature();
+            .to_prepared_signature(message);
 
-        let signature_key = Hasher::merge(&[pub_key_hash, signing_inputs.to_commitment()]);
-
+        let signature_key = Hasher::merge(&[pub_key_hash, message]);
         self.generated_signatures.insert(signature_key, signature.clone());
 
         Ok(vec![AdviceMutation::extend_stack(signature)])
@@ -346,7 +345,7 @@ where
         &self,
         current_account_id: AccountId,
         vault_root: Word,
-        asset_key: VaultKey,
+        asset_key: AssetVaultKey,
     ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
         let asset_witness = self
             .base_host
@@ -360,6 +359,53 @@ where
             })?;
 
         Ok(asset_witness_to_advice_mutation(asset_witness))
+    }
+
+    /// Handles a request for a [`NoteScript`] by querying the [`DataStore`].
+    ///
+    /// The script is fetched from the data store and used to build a [`NoteRecipient`], which is
+    /// then used to create an [`OutputNoteBuilder`]. This function is only called for public notes
+    /// where the script is not already available in the advice provider.
+    async fn on_note_script_requested(
+        &mut self,
+        script_root: Word,
+        metadata: NoteMetadata,
+        recipient_digest: Word,
+        note_idx: usize,
+        note_inputs: NoteInputs,
+        serial_num: Word,
+    ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
+        let note_script_result = self.base_host.store().get_note_script(script_root).await;
+
+        let (recipient, mutations) = match note_script_result {
+            Ok(Some(note_script)) => {
+                let script_felts: Vec<Felt> = (&note_script).into();
+                let recipient = NoteRecipient::new(serial_num, note_script, note_inputs);
+                let mutations = vec![AdviceMutation::extend_map(AdviceMap::from_iter([(
+                    script_root,
+                    script_felts,
+                )]))];
+
+                (Some(recipient), mutations)
+            },
+            Ok(None) if metadata.is_private() => (None, Vec::new()),
+            Ok(None) => {
+                return Err(TransactionKernelError::other(format!(
+                    "note script with root {script_root} not found in data store for public note"
+                )));
+            },
+            Err(err) => {
+                return Err(TransactionKernelError::other_with_source(
+                    "failed to retrieve note script from data store",
+                    err,
+                ));
+            },
+        };
+
+        let note_builder = OutputNoteBuilder::new(metadata, recipient_digest, recipient)?;
+        self.base_host.insert_output_note_builder(note_idx, note_builder)?;
+
+        Ok(mutations)
     }
 
     /// Consumes `self` and returns the account delta, output notes, generated signatures and
@@ -466,6 +512,24 @@ where
                     map_key,
                 } => self
                     .on_account_storage_map_witness_requested(current_account_id, map_root, map_key)
+                    .await
+                    .map_err(EventError::from),
+                TransactionEventData::NoteData {
+                    note_idx,
+                    metadata,
+                    script_root,
+                    recipient_digest,
+                    note_inputs,
+                    serial_num,
+                } => self
+                    .on_note_script_requested(
+                        script_root,
+                        metadata,
+                        recipient_digest,
+                        note_idx,
+                        note_inputs,
+                        serial_num,
+                    )
                     .await
                     .map_err(EventError::from),
             }

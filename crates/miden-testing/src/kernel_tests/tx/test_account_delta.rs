@@ -5,10 +5,14 @@ use std::string::String;
 use anyhow::Context;
 use miden_lib::testing::account_component::MockAccountComponent;
 use miden_lib::utils::ScriptBuilder;
+use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{
+    Account,
     AccountBuilder,
+    AccountDelta,
     AccountId,
     AccountStorage,
+    AccountStorageMode,
     AccountType,
     NamedStorageSlot,
     SlotName,
@@ -34,7 +38,8 @@ use miden_objects::testing::constants::{
 };
 use miden_objects::testing::storage::{MOCK_MAP_SLOT, MOCK_VALUE_SLOT0};
 use miden_objects::transaction::TransactionScript;
-use miden_objects::{EMPTY_WORD, Felt, LexicographicWord, Word, ZERO};
+use miden_objects::{EMPTY_WORD, Felt, FieldElement, LexicographicWord, Word, ZERO};
+use miden_tx::LocalTransactionProver;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 use winter_rand_utils::rand_value;
@@ -789,6 +794,198 @@ async fn asset_and_storage_delta() -> anyhow::Result<()> {
         removed_assets.len(),
         executed_transaction.account_delta().vault().removed_assets().count()
     );
+    Ok(())
+}
+
+/// Tests that the storage map updates for a _new public_ account in an executed and proven
+/// transaction match up.
+///
+/// This is an interesting test case because:
+/// - for new accounts in general, the storage map entries must be available in the advice provider
+///   and the resulting delta must be convertible to a full account.
+/// - it creates an account with two identical storage maps.
+/// - The prover mutates the delta to account for fee logic.
+#[tokio::test]
+async fn proven_tx_storage_maps_matches_executed_tx_for_new_account() -> anyhow::Result<()> {
+    // Use two identical maps to test that they are properly handled
+    // (see also https://github.com/0xMiden/miden-base/issues/2037).
+    let map0 = StorageMap::with_entries([(rand_value(), rand_value())])?;
+    let map1 = map0.clone();
+    let mut map2 = StorageMap::with_entries([
+        (rand_value(), rand_value()),
+        (rand_value(), rand_value()),
+        (rand_value(), rand_value()),
+        (rand_value(), rand_value()),
+    ])?;
+
+    let map0_slot_name = SlotName::mock(1);
+    let map1_slot_name = SlotName::mock(2);
+    let map2_slot_name = SlotName::mock(4);
+
+    // Build a public account so the proven transaction includes the account update.
+    let account = AccountBuilder::new([1; 32])
+        .storage_mode(AccountStorageMode::Public)
+        .with_auth_component(Auth::IncrNonce)
+        .with_component(MockAccountComponent::with_slots(vec![
+            AccountStorage::mock_value_slot0(),
+            NamedStorageSlot::with_map(map0_slot_name.clone(), map0.clone()),
+            NamedStorageSlot::with_map(map1_slot_name.clone(), map1.clone()),
+            AccountStorage::mock_value_slot1(),
+            NamedStorageSlot::with_map(map2_slot_name.clone(), map2.clone()),
+        ]))
+        .build()?;
+
+    // Fetch a random existing key from the map.
+    let existing_key = *map2.entries().next().unwrap().0;
+    let value0 = Word::from([3, 4, 5, 6u32]);
+
+    let code = format!(
+        r#"
+      use.mock::account
+
+      const.MAP_SLOT=word("{map2_slot_name}")
+
+      begin
+          # Update an existing key.
+          push.{value0}
+          push.{existing_key}
+          push.MAP_SLOT[0..2]
+          # => [name_id_prefix, name_id_suffix, KEY, VALUE]
+          call.account::set_map_item
+
+          exec.::std::sys::truncate_stack
+      end
+      "#
+    );
+
+    let builder = ScriptBuilder::with_mock_libraries()?;
+    let source_manager = builder.source_manager();
+    let tx_script = builder.compile_tx_script(code)?;
+
+    let tx = TransactionContextBuilder::new(account.clone())
+        .tx_script(tx_script)
+        .with_source_manager(source_manager)
+        .build()?
+        .execute()
+        .await?;
+
+    map2.insert(existing_key, value0)?;
+
+    for (slot_name, expected_map) in
+        [(map0_slot_name, map0), (map1_slot_name, map1), (map2_slot_name, map2)]
+    {
+        let map_delta = tx.account_delta().storage().maps().get(&slot_name).unwrap();
+        assert_eq!(
+            map_delta
+                .entries()
+                .iter()
+                .map(|(key, value)| (key.inner(), value))
+                .collect::<BTreeMap<_, _>>(),
+            expected_map.entries().collect(),
+            "map delta does not match for slot {slot_name}",
+        );
+    }
+
+    let proven_tx = LocalTransactionProver::default().prove_dummy(tx.clone())?;
+
+    let AccountUpdateDetails::Delta(proven_tx_delta) = proven_tx.account_update().details() else {
+        panic!("expected delta");
+    };
+
+    let proven_tx_account = Account::try_from(proven_tx_delta)?;
+    let exec_tx_account = Account::try_from(tx.account_delta())?;
+
+    assert_eq!(proven_tx_account.storage(), exec_tx_account.storage());
+
+    // Check the conversion back into a full-state delta works correctly.
+    let proven_tx_delta_converted = AccountDelta::try_from(proven_tx_account)?;
+    let exec_tx_delta_converted = AccountDelta::try_from(exec_tx_account)?;
+
+    // Check that the deltas from proven and executed tx, which were converted from accounts are
+    // identical. This is essentially a roundtrip test.
+    assert_eq!(&proven_tx_delta_converted, proven_tx_delta);
+    assert_eq!(&exec_tx_delta_converted, tx.account_delta());
+    assert_eq!(&proven_tx_delta_converted, tx.account_delta());
+
+    // The commitments should match as well.
+    assert_eq!(proven_tx_delta_converted.to_commitment(), proven_tx_delta.to_commitment());
+    assert_eq!(exec_tx_delta_converted.to_commitment(), tx.account_delta().to_commitment());
+    assert_eq!(proven_tx_delta_converted.to_commitment(), tx.account_delta().to_commitment());
+
+    Ok(())
+}
+
+/// Tests that creating a new account with a slot whose value is empty is correctly included in the
+/// delta and not normalized away.
+#[tokio::test]
+async fn delta_for_new_account_retains_empty_value_storage_slots() -> anyhow::Result<()> {
+    let slot_name0 = SlotName::mock(0);
+    let slot_name1 = SlotName::mock(1);
+
+    let slot_value2 = Word::from([1, 2, 3, 4u32]);
+    let mut account = AccountBuilder::new(rand::random())
+        .account_type(AccountType::RegularAccountUpdatableCode)
+        .storage_mode(AccountStorageMode::Network)
+        .with_component(MockAccountComponent::with_slots(vec![
+            NamedStorageSlot::with_empty_value(slot_name0.clone()),
+            NamedStorageSlot::with_value(slot_name1.clone(), slot_value2),
+        ]))
+        .with_auth_component(Auth::IncrNonce)
+        .build()?;
+
+    let tx = TransactionContextBuilder::new(account.clone()).build()?.execute().await?;
+
+    let proven_tx = LocalTransactionProver::default().prove_dummy(tx.clone())?;
+
+    let AccountUpdateDetails::Delta(delta) = proven_tx.account_update().details() else {
+        panic!("expected delta");
+    };
+
+    assert_eq!(delta.storage().values().len(), 2);
+    assert_eq!(delta.storage().values().get(&slot_name0).unwrap(), &Word::empty());
+    assert_eq!(delta.storage().values().get(&slot_name1).unwrap(), &slot_value2);
+
+    let recreated_account = Account::try_from(delta)?;
+    // The recreated account should match the original account with the nonce incremented (and the
+    // seed removed).
+    account.increment_nonce(Felt::ONE)?;
+    assert_eq!(recreated_account, account);
+
+    Ok(())
+}
+
+/// Tests that creating a new account with a slot whose map is empty is correctly included in the
+/// delta.
+#[tokio::test]
+async fn delta_for_new_account_retains_empty_map_storage_slots() -> anyhow::Result<()> {
+    let slot_name0 = SlotName::mock(0);
+
+    let mut account = AccountBuilder::new(rand::random())
+        .account_type(AccountType::RegularAccountUpdatableCode)
+        .storage_mode(AccountStorageMode::Network)
+        .with_component(MockAccountComponent::with_slots(vec![NamedStorageSlot::with_empty_map(
+            slot_name0.clone(),
+        )]))
+        .with_auth_component(Auth::IncrNonce)
+        .build()?;
+
+    let tx = TransactionContextBuilder::new(account.clone()).build()?.execute().await?;
+
+    let proven_tx = LocalTransactionProver::default().prove_dummy(tx.clone())?;
+
+    let AccountUpdateDetails::Delta(delta) = proven_tx.account_update().details() else {
+        panic!("expected delta");
+    };
+
+    assert_eq!(delta.storage().maps().len(), 1);
+    assert!(delta.storage().maps().get(&slot_name0).unwrap().is_empty());
+
+    let recreated_account = Account::try_from(delta)?;
+    // The recreated account should match the original account with the nonce incremented (and the
+    // seed removed).
+    account.increment_nonce(Felt::ONE)?;
+    assert_eq!(recreated_account, account);
+
     Ok(())
 }
 

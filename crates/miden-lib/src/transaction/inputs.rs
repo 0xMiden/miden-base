@@ -55,6 +55,19 @@ impl TransactionAdviceInputs {
             inputs.add_map_entry(account_id_key, seed.to_vec());
         }
 
+        // if the account is new, insert the storage map entries into the advice provider.
+        if partial_native_acc.is_new() {
+            for storage_map in partial_native_acc.storage().maps() {
+                let map_entries = storage_map
+                    .entries()
+                    .flat_map(|(key, value)| {
+                        value.as_elements().iter().chain(key.as_elements().iter()).copied()
+                    })
+                    .collect();
+                inputs.add_map_entry(storage_map.root(), map_entries);
+            }
+        }
+
         // Extend with extra user-supplied advice.
         inputs.extend(tx_inputs.tx_args().advice_inputs().clone());
 
@@ -331,10 +344,7 @@ impl TransactionAdviceInputs {
             let note_arg = tx_inputs.tx_args().get_note_args(note.id()).unwrap_or(&EMPTY_WORD);
 
             // recipient inputs / assets commitments
-            self.add_map_entry(
-                recipient.inputs().commitment(),
-                recipient.inputs().format_for_advice(),
-            );
+            self.add_map_entry(recipient.inputs().commitment(), recipient.inputs().to_elements());
             self.add_map_entry(assets.commitment(), assets.to_padded_assets());
 
             // note details / metadata

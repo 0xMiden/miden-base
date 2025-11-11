@@ -65,6 +65,15 @@ impl NamedStorageSlot {
         self.name_id
     }
 
+    /// Returns this storage slot value as a [Word]
+    ///
+    /// Returns:
+    /// - For [`StorageSlot::Value`] the value.
+    /// - For [`StorageSlot::Map`] the root of the [StorageMap].
+    pub fn value(&self) -> Word {
+        self.storage_slot().value()
+    }
+
     /// Returns a reference to the [`StorageSlot`] contained in this [`NamedStorageSlot`].
     pub fn storage_slot(&self) -> &StorageSlot {
         &self.slot

@@ -75,8 +75,12 @@ pub trait ExecutionOutputExt {
     /// Reads an element from the stack.
     fn get_stack_element(&self, idx: usize) -> Felt;
 
-    /// Reads a [`Word`] from the stack.
-    fn get_stack_word(&self, index: usize) -> Word;
+    /// Reads a [`Word`] from the stack in big-endian (reversed) order.
+    fn get_stack_word_be(&self, index: usize) -> Word;
+
+    /// Reads a [`Word`] from the stack in little-endian (memory) order.
+    #[allow(dead_code)]
+    fn get_stack_word_le(&self, index: usize) -> Word;
 
     /// Reads the [`Word`] of the input note's memory identified by the index at the provided
     /// `offset`.
@@ -100,8 +104,12 @@ impl ExecutionOutputExt for ExecutionOutput {
         *self.stack.get(index).expect("index must be in bounds")
     }
 
-    fn get_stack_word(&self, index: usize) -> Word {
-        self.stack.get_stack_word(index).expect("index must be in bounds")
+    fn get_stack_word_be(&self, index: usize) -> Word {
+        self.stack.get_stack_word_be(index).expect("index must be in bounds")
+    }
+
+    fn get_stack_word_le(&self, index: usize) -> Word {
+        self.stack.get_stack_word_le(index).expect("index must be in bounds")
     }
 }
 
@@ -136,10 +144,10 @@ pub fn create_mock_notes_procedure(notes: &[Note]) -> String {
             "
                 # populate note {idx}
                 push.{metadata}
-                push.{OUTPUT_NOTE_SECTION_OFFSET} push.{note_offset} push.{OUTPUT_NOTE_METADATA_OFFSET} add add mem_storew dropw
+                push.{OUTPUT_NOTE_SECTION_OFFSET} push.{note_offset} push.{OUTPUT_NOTE_METADATA_OFFSET} add add mem_storew_be dropw
 
                 push.{recipient}
-                push.{OUTPUT_NOTE_SECTION_OFFSET} push.{note_offset} push.{OUTPUT_NOTE_RECIPIENT_OFFSET} add add mem_storew dropw
+                push.{OUTPUT_NOTE_SECTION_OFFSET} push.{note_offset} push.{OUTPUT_NOTE_RECIPIENT_OFFSET} add add mem_storew_be dropw
 
                 push.{num_assets}
                 push.{OUTPUT_NOTE_SECTION_OFFSET} push.{note_offset} push.{OUTPUT_NOTE_NUM_ASSETS_OFFSET} add add mem_store
@@ -148,7 +156,7 @@ pub fn create_mock_notes_procedure(notes: &[Note]) -> String {
                 push.{OUTPUT_NOTE_SECTION_OFFSET} push.{note_offset} push.{OUTPUT_NOTE_DIRTY_FLAG_OFFSET} add add mem_store
 
                 push.{first_asset}
-                push.{OUTPUT_NOTE_SECTION_OFFSET} push.{note_offset} push.{OUTPUT_NOTE_ASSETS_OFFSET} add add mem_storew dropw
+                push.{OUTPUT_NOTE_SECTION_OFFSET} push.{note_offset} push.{OUTPUT_NOTE_ASSETS_OFFSET} add add mem_storew_be dropw
                 ",
             idx = idx,
             metadata = metadata,

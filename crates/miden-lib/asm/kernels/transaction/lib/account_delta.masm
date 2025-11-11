@@ -171,7 +171,16 @@ proc.update_value_slot_delta
     exec.word::test_eq not
     # => [was_changed, INIT_VALUE, CURRENT_VALUE, name_id_prefix, name_id_suffix, RATE, RATE, PERM]
 
-    # only include in delta if the slot's value has changed
+    # set was_changed to true if the account is new
+    # this means a storage slot initialized with an empty word is included in the commitment for
+    # new accounts
+    # more generally, we want the delta for a new account to include all its newly added values,
+    # regardless of the exact value, because the initial delta for an account must represent its
+    # full state
+    exec.memory::get_init_nonce eq.0 or
+    # => [was_changed, INIT_VALUE, CURRENT_VALUE, name_id_prefix, name_id_suffix, RATE, RATE, PERM]
+
+    # only include in delta if the slot's value has changed or the account is new
     if.true
         # drop init value
         dropw
@@ -290,6 +299,11 @@ proc.update_map_slot_delta.5
     # update to the hasher state
     loc_load.4 neq.0
     # => [is_num_changed_entries_non_zero, RATE, RATE, PERM]
+
+    # if the account is new (nonce == 0) include the map header even if it is an empty map
+    # in order to have the delta commit to this initial storage slot.
+    exec.memory::get_init_nonce eq.0 or
+    # => [should_include_map_header, RATE, RATE, PERM]
 
     if.true
         # drop the previous RATE elements
@@ -713,7 +727,7 @@ export.set_map_item.8
     # => [KEY, PREV_VALUE, NEW_VALUE]
 
     # store KEY in local
-    loc_storew.4
+    loc_storew_be.4
     # => [KEY, PREV_VALUE, NEW_VALUE]
 
     loc_load.0
@@ -744,7 +758,7 @@ export.set_map_item.8
     # => [INITIAL_VALUE, NEW_VALUE]
 
     # load key and index from locals
-    padw loc_loadw.4 loc_load.0
+    padw loc_loadw_be.4 loc_load.0
     # => [account_delta_storage_map_ptr, KEY, INITIAL_VALUE, NEW_VALUE]
 
     exec.link_map::set drop

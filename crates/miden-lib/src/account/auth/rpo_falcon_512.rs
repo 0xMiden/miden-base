@@ -1,4 +1,5 @@
-use miden_objects::account::{AccountComponent, NamedStorageSlot, PublicKeyCommitment, SlotName};
+use miden_objects::account::auth::PublicKeyCommitment;
+use miden_objects::account::{AccountComponent, NamedStorageSlot, SlotName};
 use miden_objects::utils::sync::LazyLock;
 
 use crate::account::components::rpo_falcon_512_library;

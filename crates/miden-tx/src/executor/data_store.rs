@@ -1,7 +1,7 @@
 use alloc::collections::BTreeSet;
 
 use miden_objects::account::{AccountId, PartialAccount, StorageMapWitness};
-use miden_objects::asset::{AssetWitness, VaultKey};
+use miden_objects::asset::{AssetVaultKey, AssetWitness};
 use miden_objects::block::{BlockHeader, BlockNumber};
 use miden_objects::note::NoteScript;
 use miden_objects::transaction::{AccountInputs, PartialBlockchain};
@@ -51,7 +51,7 @@ pub trait DataStore: MastForestStore {
         &self,
         account_id: AccountId,
         vault_root: Word,
-        vault_key: VaultKey,
+        vault_key: AssetVaultKey,
     ) -> impl FutureMaybeSend<Result<AssetWitness, DataStoreError>>;
 
     /// Returns a witness for a storage map item identified by `map_key` in the requested account's
@@ -69,17 +69,17 @@ pub trait DataStore: MastForestStore {
         map_key: Word,
     ) -> impl FutureMaybeSend<Result<StorageMapWitness, DataStoreError>>;
 
-    /// Returns a note script with the specified root.
+    /// Returns a note script with the specified root, or `None` if not found.
     ///
-    /// This method will try to find a note script with the specified root in the data store,
-    /// and if not found, return an error.
+    /// This method will try to find a note script with the specified root in the data store.
+    /// If the script is not found, it returns `Ok(None)` rather than an error, as "not found"
+    /// is a valid, expected outcome.
     ///
     /// # Errors
-    /// Returns an error if:
-    /// - The note script with the specified root could not be found in the data store.
-    /// - The data store encountered some internal error.
+    /// Returns an error if the data store encountered an internal error while attempting to
+    /// retrieve the script.
     fn get_note_script(
         &self,
         script_root: Word,
-    ) -> impl FutureMaybeSend<Result<NoteScript, DataStoreError>>;
+    ) -> impl FutureMaybeSend<Result<Option<NoteScript>, DataStoreError>>;
 }

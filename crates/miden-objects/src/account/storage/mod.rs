@@ -48,7 +48,7 @@ static FAUCET_METADATA_SLOT_NAME: LazyLock<SlotName> =
 ///
 /// Slots are sorted by [`SlotName`] (or [`SlotNameId`] equivalently). This order is necessary to
 /// compute a consistent commitment over the slots.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct AccountStorage {
     slots: Vec<NamedStorageSlot>,
 }
@@ -164,6 +164,11 @@ impl AccountStorage {
     /// Returns a reference to the storage slots.
     pub fn slots(&self) -> &[NamedStorageSlot] {
         &self.slots
+    }
+
+    /// Consumes self and returns the storage slots of the account storage.
+    pub fn into_slots(self) -> Vec<NamedStorageSlot> {
+        self.slots
     }
 
     /// Returns an [AccountStorageHeader] for this account storage.

@@ -3,7 +3,7 @@ use alloc::string::ToString;
 use alloc::vec::Vec;
 use core::fmt;
 
-use super::vault::VaultKey;
+use super::vault::AssetVaultKey;
 use super::{AccountIdPrefix, AccountType, Asset, AssetError, Felt, Hasher, Word};
 use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 use crate::{FieldElement, WORD_SIZE};
@@ -107,7 +107,7 @@ impl NonFungibleAsset {
     /// It also ensures that there is never any collision in the leaf index between a non-fungible
     /// asset and a fungible asset, as the former's vault key always has the fungible bit set to `0`
     /// and the latter's vault key always has the bit set to `1`.
-    pub fn vault_key(&self) -> VaultKey {
+    pub fn vault_key(&self) -> AssetVaultKey {
         let mut vault_key = self.0;
 
         // Swap prefix of faucet ID with hash0.
@@ -117,7 +117,7 @@ impl NonFungibleAsset {
         vault_key[3] =
             AccountIdPrefix::clear_fungible_bit(self.faucet_id_prefix().version(), vault_key[3]);
 
-        VaultKey::new_unchecked(vault_key)
+        AssetVaultKey::new_unchecked(vault_key)
     }
 
     /// Return ID prefix of the faucet which issued this asset.
