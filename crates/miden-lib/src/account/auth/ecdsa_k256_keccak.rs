@@ -3,7 +3,7 @@ use miden_objects::account::{AccountComponent, StorageSlot};
 
 use crate::account::components::ecdsa_k256_keccak_library;
 
-/// An [`AccountComponent`] implementing the EcdsaK256Keccak signature scheme for authentication of
+/// An [`AccountComponent`] implementing the ECDSA K256 Keccak signature scheme for authentication of
 /// transactions.
 ///
 /// It reexports the procedures from `miden::contracts::auth::basic`. When linking against this

@@ -19,7 +19,7 @@ const.PUB_KEY_MAP_IDX_LOC=4
 const.CURRENT_PK_LOC=8
 const.SUCCESSFUL_VERIFICATIONS_LOC=12
 
-#! Authenticate a transaction using the Ecdsa signature scheme.
+#! Authenticate a transaction using the ECDSA signature scheme.
 #!
 #! It first increments the nonce of the account, independent of whether the account's state has
 #! changed or not. Then it computes and signs the following message (in memory order):

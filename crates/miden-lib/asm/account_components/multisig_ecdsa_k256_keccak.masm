@@ -1,4 +1,4 @@
-# The MASM code of the Multi-Signature Ecdsa K256 Keccak Authentication Component.
+# The MASM code of the Multi-Signature ECDSA K256 Keccak Authentication Component.
 #
 # See the `AuthEcdsaK256KeccakMultisig` Rust type's documentation for more details.
 
@@ -322,7 +322,7 @@ proc compute_transaction_threshold.1(default_threshold: u32) -> u32
     # => [effective_transaction_threshold]
 end
 
-#! Authenticate a transaction using the Ecdsa signature scheme with multi-signature support.
+#! Authenticate a transaction using the ECDSA signature scheme with multi-signature support.
 #!
 #! This procedure implements multi-signature authentication by:
 #! 1. Computing the transaction summary message that needs to be signed

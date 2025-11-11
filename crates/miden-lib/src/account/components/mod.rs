@@ -17,7 +17,7 @@ static BASIC_WALLET_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
     Library::read_from_bytes(bytes).expect("Shipped Basic Wallet library is well-formed")
 });
 
-/// Initialize the Ecdsa K256 Keccak library only once.
+/// Initialize the ECDSA K256 Keccak library only once.
 static ECDSA_K256_KECCAK_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
     let bytes = include_bytes!(concat!(
         env!("OUT_DIR"),
@@ -26,7 +26,7 @@ static ECDSA_K256_KECCAK_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
     Library::read_from_bytes(bytes).expect("Shipped Ecdsa K256 Keccak library is well-formed")
 });
 
-/// Initialize the Ecdsa K256 Keccak Multisig library only once.
+/// Initialize the ECDSA K256 Keccak Multisig library only once.
 static ECDSA_K256_KECCAK_MULTISIG_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
     let bytes = include_bytes!(concat!(
         env!("OUT_DIR"),
@@ -100,12 +100,12 @@ pub fn network_fungible_faucet_library() -> Library {
     NETWORK_FUNGIBLE_FAUCET_LIBRARY.clone()
 }
 
-/// Returns the Ecdsa K256 Keccak Library.
+/// Returns the ECDSA K256 Keccak Library.
 pub fn ecdsa_k256_keccak_library() -> Library {
     ECDSA_K256_KECCAK_LIBRARY.clone()
 }
 
-/// Returns the Ecdsa K256 Keccak Multisig Library.
+/// Returns the ECDSA K256 Keccak Multisig Library.
 pub fn ecdsa_k256_keccak_multisig_library() -> Library {
     ECDSA_K256_KECCAK_MULTISIG_LIBRARY.clone()
 }

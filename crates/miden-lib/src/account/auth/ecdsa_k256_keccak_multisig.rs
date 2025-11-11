@@ -82,7 +82,7 @@ impl AuthEcdsaK256KeccakMultisigConfig {
     }
 }
 
-/// An [`AccountComponent`] implementing a multisig based on Ecdsa signatures.
+/// An [`AccountComponent`] implementing a multisig based on ECDSA signatures.
 ///
 /// It enforces a threshold of approver signatures for every transaction, with optional
 /// per-procedure thresholds overrides. Non-uniform thresholds (especially a threshold of one)

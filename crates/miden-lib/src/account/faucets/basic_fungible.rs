@@ -12,7 +12,7 @@ use miden_objects::{Felt, FieldElement, Word};
 
 use super::FungibleFaucetError;
 use crate::account::AuthScheme;
-use crate::account::auth::{AuthRpoFalcon512Acl, AuthRpoFalcon512AclConfig};
+use crate::account::auth::{AuthEcdsaK256Keccak, AuthRpoFalcon512Acl, AuthRpoFalcon512AclConfig};
 use crate::account::components::basic_fungible_faucet_library;
 use crate::account::interface::{AccountComponentInterface, AccountInterface};
 use crate::procedure_digest;
@@ -244,6 +244,7 @@ pub fn create_basic_fungible_faucet(
         )
         .map_err(FungibleFaucetError::AccountError)?
         .into(),
+        AuthScheme::EcdsaK256Keccak { pub_key } => AuthEcdsaK256Keccak::new(pub_key).into(),
         AuthScheme::NoAuth => {
             return Err(FungibleFaucetError::UnsupportedAuthScheme(
                 "basic fungible faucets cannot be created with NoAuth authentication scheme".into(),
@@ -258,11 +259,6 @@ pub fn create_basic_fungible_faucet(
             return Err(FungibleFaucetError::UnsupportedAuthScheme(
                 "basic fungible faucets cannot be created with Unknown authentication scheme"
                     .into(),
-            ));
-        },
-        AuthScheme::EcdsaK256Keccak { pub_key: _ } => {
-            return Err(FungibleFaucetError::UnsupportedAuthScheme(
-                "basic fungible faucets do not support EcdsaK256Keccak authentication".into(),
             ));
         },
         AuthScheme::EcdsaK256KeccakMultisig { threshold: _, pub_keys: _ } => {

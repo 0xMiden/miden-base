@@ -10,9 +10,9 @@ pub enum AuthScheme {
     /// execution, avoiding unnecessary nonce increments for transactions that don't modify the
     /// account state.
     NoAuth,
-    /// A single-key authentication scheme which relies on Ecdsa signatures.
+    /// A single-key authentication scheme which relies on ECDSA signatures.
     EcdsaK256Keccak { pub_key: PublicKeyCommitment },
-    /// A multi-signature authentication scheme using Ecdsa signatures.
+    /// A multi-signature authentication scheme using ECDSA signatures.
     ///
     /// Requires a threshold number of signatures from the provided public keys.
     EcdsaK256KeccakMultisig {

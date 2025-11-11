@@ -1,4 +1,4 @@
-# The MASM code of the Ecdsa K256 Keccak authentication Account Component.
+# The MASM code of the ECDSA K256 Keccak authentication Account Component.
 #
 # See the `AuthEcdsaK256Keccak` Rust type's documentation for more details.
 
@@ -13,7 +13,7 @@ type BeWord = struct @bigendian { a: felt, b: felt, c: felt, d: felt }
 # The slot in this component's storage layout where the public key is stored.
 const PUBLIC_KEY_SLOT = 0
 
-#! Authenticate a transaction using the Ecdsa signature scheme.
+#! Authenticate a transaction using the ECDSA signature scheme.
 #!
 #! It first increments the nonce of the account, independent of whether the account's state has
 #! changed or not. Then it computes and signs the following message (in memory order):
