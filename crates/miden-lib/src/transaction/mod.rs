@@ -134,7 +134,7 @@ impl TransactionKernel {
             tx_inputs.block_header().block_num(),
         );
 
-        let tx_advice_inputs = TransactionAdviceInputs::new(tx_inputs)?;
+        let tx_advice_inputs = TransactionAdviceInputs::new(tx_inputs);
 
         Ok((stack_inputs, tx_advice_inputs))
     }
