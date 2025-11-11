@@ -12,7 +12,12 @@ use miden_objects::{Felt, FieldElement, Word};
 
 use super::FungibleFaucetError;
 use crate::account::AuthScheme;
-use crate::account::auth::{AuthEcdsaK256KeccakAcl, AuthEcdsaK256KeccakAclConfig, AuthRpoFalcon512Acl, AuthRpoFalcon512AclConfig};
+use crate::account::auth::{
+    AuthEcdsaK256KeccakAcl,
+    AuthEcdsaK256KeccakAclConfig,
+    AuthRpoFalcon512Acl,
+    AuthRpoFalcon512AclConfig,
+};
 use crate::account::components::basic_fungible_faucet_library;
 use crate::account::interface::{AccountComponentInterface, AccountInterface};
 use crate::procedure_digest;
@@ -274,7 +279,6 @@ pub fn create_basic_fungible_faucet(
                     .into(),
             ));
         },
-
     };
 
     let account = AccountBuilder::new(init_seed)

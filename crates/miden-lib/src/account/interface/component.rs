@@ -85,7 +85,9 @@ impl AccountComponentInterface {
                 "Network Fungible Faucet".to_string()
             },
             AccountComponentInterface::AuthEcdsaK256Keccak(_) => "ECDSA K256 Keccak".to_string(),
-            AccountComponentInterface::AuthEcdsaK256KeccakAcl(_) => "ECDSA K256 Keccak ACL".to_string(),
+            AccountComponentInterface::AuthEcdsaK256KeccakAcl(_) => {
+                "ECDSA K256 Keccak ACL".to_string()
+            },
             AccountComponentInterface::AuthEcdsaK256KeccakMultisig(_) => {
                 "ECDSA K256 Keccak Multisig".to_string()
             },
@@ -94,7 +96,7 @@ impl AccountComponentInterface {
             AccountComponentInterface::AuthRpoFalcon512Multisig(_) => {
                 "RPO Falcon512 Multisig".to_string()
             },
-            
+
             AccountComponentInterface::AuthNoAuth => "No Auth".to_string(),
             AccountComponentInterface::Custom(proc_info_vec) => {
                 let result = proc_info_vec

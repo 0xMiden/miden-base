@@ -32,8 +32,7 @@ static ECDSA_K256_KECCAK_ACL_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
         env!("OUT_DIR"),
         "/assets/account_components/ecdsa_k256_keccak_acl.masl"
     ));
-    Library::read_from_bytes(bytes)
-        .expect("Shipped Ecdsa K256 Keccak ACL library is well-formed")
+    Library::read_from_bytes(bytes).expect("Shipped Ecdsa K256 Keccak ACL library is well-formed")
 });
 
 /// Initialize the ECDSA K256 Keccak Multisig library only once.

@@ -15,8 +15,8 @@ use crate::AuthScheme;
 use crate::account::components::{
     basic_fungible_faucet_library,
     basic_wallet_library,
-    ecdsa_k256_keccak_library,
     ecdsa_k256_keccak_acl_library,
+    ecdsa_k256_keccak_library,
     ecdsa_k256_keccak_multisig_library,
     network_fungible_faucet_library,
     no_auth_library,
