@@ -652,7 +652,6 @@ where
                 ))
             })?;
         let slot_name = slot_name.clone();
-        std::println!("{slot_name} -> {new_value:?}",);
 
         if !slot_type.is_value() {
             return Err(TransactionKernelError::other(format!(
