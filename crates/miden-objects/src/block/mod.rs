@@ -16,9 +16,6 @@ pub use proposed_block::ProposedBlock;
 mod proven_block;
 pub use proven_block::ProvenBlock;
 
-mod signed_block;
-pub use signed_block::SignedBlock;
-
 mod nullifier_witness;
 pub use nullifier_witness::NullifierWitness;
 

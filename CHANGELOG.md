@@ -2,7 +2,7 @@
 
 ## 0.13.0 (TBD)
 
-- [BREAKING] Added `SignedBlock`, `BlockBody`, and `BlockProof` structs in preparation for validator signatures and deferred block proving ([#2012](https://github.com/0xMiden/miden-base/pull/2012)).
+- [BREAKING] Added `BlockBody` and `BlockProof` structs in preparation for validator signatures and deferred block proving ([#2012](https://github.com/0xMiden/miden-base/pull/2012)).
 
 ## 0.12.2 (unreleased)
 

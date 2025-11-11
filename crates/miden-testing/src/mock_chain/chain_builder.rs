@@ -30,11 +30,13 @@ use miden_objects::account::{
     StorageSlot,
 };
 use miden_objects::asset::{Asset, FungibleAsset, TokenSymbol};
+use miden_objects::batch::OrderedBatches;
 use miden_objects::block::account_tree::AccountTree;
 use miden_objects::block::{
     BlockAccountUpdate,
     BlockBody,
     BlockHeader,
+    BlockInputs,
     BlockNoteTree,
     BlockNumber,
     Blockchain,
@@ -42,11 +44,10 @@ use miden_objects::block::{
     NullifierTree,
     OutputNoteBatch,
     ProvenBlock,
-    SignedBlock,
 };
 use miden_objects::note::{Note, NoteDetails, NoteType};
 use miden_objects::testing::account_id::ACCOUNT_ID_NATIVE_ASSET_FAUCET;
-use miden_objects::transaction::{OrderedTransactionHeaders, OutputNote};
+use miden_objects::transaction::{OrderedTransactionHeaders, OutputNote, PartialBlockchain};
 use miden_objects::{Felt, FieldElement, MAX_OUTPUT_NOTES_PER_BATCH, NoteError, Word, ZERO};
 use miden_processor::crypto::RpoRandomCoin;
 use rand::Rng;
@@ -242,9 +243,19 @@ impl MockChainBuilder {
             created_nullifiers,
             transactions,
         );
-        let signed_block = SignedBlock::new_unchecked(header, body);
-        let block_proof = LocalBlockProver::new(0).prove(&signed_block)?;
-        let (header, body) = signed_block.into_parts();
+
+        // For genesis block, we need empty batches and minimal block inputs.
+        let empty_batches = OrderedBatches::new(Vec::new());
+        let block_inputs = BlockInputs::new(
+            header.clone(),
+            PartialBlockchain::default(),
+            BTreeMap::default(),
+            BTreeMap::default(),
+            BTreeMap::default(),
+        );
+
+        let block_proof =
+            LocalBlockProver::new(0).prove(empty_batches, header.clone(), block_inputs)?;
         let genesis_block = ProvenBlock::new_unchecked(header, body, block_proof);
 
         MockChain::from_genesis_block(genesis_block, account_tree, self.account_authenticators)

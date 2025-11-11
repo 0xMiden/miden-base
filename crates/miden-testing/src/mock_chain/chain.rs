@@ -7,7 +7,7 @@ use miden_lib::block::build_block;
 use miden_objects::account::auth::AuthSecretKey;
 use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{Account, AccountId, PartialAccount};
-use miden_objects::batch::{ProposedBatch, ProvenBatch};
+use miden_objects::batch::{OrderedBatches, ProposedBatch, ProvenBatch};
 use miden_objects::block::account_tree::AccountTree;
 use miden_objects::block::{
     AccountWitness,
@@ -19,7 +19,6 @@ use miden_objects::block::{
     NullifierWitness,
     ProposedBlock,
     ProvenBlock,
-    SignedBlock,
 };
 use miden_objects::note::{Note, NoteHeader, NoteId, NoteInclusionProof, Nullifier};
 use miden_objects::transaction::{
@@ -513,15 +512,6 @@ impl MockChain {
         self.propose_block_at(batches, timestamp)
     }
 
-    /// Mock-proves a proposed block into a proven block and returns it.
-    pub fn prove_block(&self, proposed_block: ProposedBlock) -> ProvenBlock {
-        let (header, body) = build_block(proposed_block).unwrap();
-        let signed_block = SignedBlock::new_unchecked(header, body);
-        let block_proof = LocalBlockProver::new(0).prove_dummy(&signed_block).unwrap();
-        let (header, body) = signed_block.into_parts();
-        ProvenBlock::new_unchecked(header, body, block_proof)
-    }
-
     // TRANSACTION APIS
     // ----------------------------------------------------------------------------------------
 
@@ -970,9 +960,14 @@ impl MockChain {
             timestamp.unwrap_or(self.latest_block_header().timestamp() + Self::TIMESTAMP_STEP_SECS);
 
         let proposed_block = self
-            .propose_block_at(batches, block_timestamp)
+            .propose_block_at(batches.clone(), block_timestamp)
             .context("failed to create proposed block")?;
-        let proven_block = self.prove_block(proposed_block);
+        let (header, body) = build_block(proposed_block.clone())?;
+        let inputs = self.get_block_inputs(batches.iter()).unwrap();
+        let ordered_batches = OrderedBatches::new(batches);
+        let block_proof =
+            LocalBlockProver::new(0).prove_dummy(ordered_batches, header.clone(), inputs)?;
+        let proven_block = ProvenBlock::new_unchecked(header, body, block_proof);
 
         // Apply block.
         // ----------------------------------------------------------------------------------------

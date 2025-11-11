@@ -1,4 +1,5 @@
-use miden_objects::block::{BlockProof, SignedBlock};
+use miden_objects::batch::OrderedBatches;
+use miden_objects::block::{BlockHeader, BlockInputs, BlockProof};
 
 use crate::BlockProverError;
 
@@ -20,7 +21,12 @@ impl LocalBlockProver {
     /// Executes a proof of a block in the chain based on the given header and inputs.
     ///
     /// NOTE: Block proving is not yet implemented. This is a placeholder struct.
-    pub fn prove(&self, _signed_block: &SignedBlock) -> Result<BlockProof, BlockProverError> {
+    pub fn prove(
+        &self,
+        _tx_batches: OrderedBatches,
+        _block_header: BlockHeader,
+        _block_inputs: BlockInputs,
+    ) -> Result<BlockProof, BlockProverError> {
         Ok(BlockProof {})
     }
 
@@ -29,7 +35,12 @@ impl LocalBlockProver {
     ///
     /// This is exposed for testing purposes.
     #[cfg(any(feature = "testing", test))]
-    pub fn prove_dummy(&self, _signed_block: &SignedBlock) -> Result<BlockProof, BlockProverError> {
+    pub fn prove_dummy(
+        &self,
+        _tx_batches: OrderedBatches,
+        _block_header: BlockHeader,
+        _block_inputs: BlockInputs,
+    ) -> Result<BlockProof, BlockProverError> {
         Ok(BlockProof {})
     }
 }
