@@ -36,9 +36,7 @@ impl AuthEcdsaK256KeccakMultisigConfig {
         }
 
         // Check for duplicate approvers
-        if approvers.len()
-            != approvers.iter().map(|&pk| Word::from(pk)).collect::<BTreeSet<_>>().len()
-        {
+        if approvers.len() != approvers.iter().collect::<BTreeSet<_>>().len() {
             return Err(AccountError::other("duplicate approver public keys are not allowed"));
         }
 
