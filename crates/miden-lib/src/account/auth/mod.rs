@@ -4,6 +4,9 @@ pub use no_auth::NoAuth;
 mod ecdsa_k256_keccak;
 pub use ecdsa_k256_keccak::AuthEcdsaK256Keccak;
 
+mod ecdsa_k256_keccak_acl;
+pub use ecdsa_k256_keccak_acl::{AuthEcdsaK256KeccakAcl, AuthEcdsaK256KeccakAclConfig};
+
 mod ecdsa_k256_keccak_multisig;
 pub use ecdsa_k256_keccak_multisig::{
     AuthEcdsaK256KeccakMultisig,

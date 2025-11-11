@@ -16,6 +16,7 @@ use crate::account::components::{
     basic_fungible_faucet_library,
     basic_wallet_library,
     ecdsa_k256_keccak_library,
+    ecdsa_k256_keccak_acl_library,
     ecdsa_k256_keccak_multisig_library,
     network_fungible_faucet_library,
     no_auth_library,
@@ -151,6 +152,10 @@ impl AccountInterface {
                 AccountComponentInterface::AuthEcdsaK256Keccak(_) => {
                     component_proc_digests
                         .extend(ecdsa_k256_keccak_library().mast_forest().procedure_digests());
+                },
+                AccountComponentInterface::AuthEcdsaK256KeccakAcl(_) => {
+                    component_proc_digests
+                        .extend(ecdsa_k256_keccak_acl_library().mast_forest().procedure_digests());
                 },
                 AccountComponentInterface::AuthEcdsaK256KeccakMultisig(_) => {
                     component_proc_digests.extend(

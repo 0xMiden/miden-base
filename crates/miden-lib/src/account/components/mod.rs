@@ -26,6 +26,16 @@ static ECDSA_K256_KECCAK_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
     Library::read_from_bytes(bytes).expect("Shipped Ecdsa K256 Keccak library is well-formed")
 });
 
+// Initialize the ECDSA K256 Keccak ACL library only once.
+static ECDSA_K256_KECCAK_ACL_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
+    let bytes = include_bytes!(concat!(
+        env!("OUT_DIR"),
+        "/assets/account_components/ecdsa_k256_keccak_acl.masl"
+    ));
+    Library::read_from_bytes(bytes)
+        .expect("Shipped Ecdsa K256 Keccak ACL library is well-formed")
+});
+
 /// Initialize the ECDSA K256 Keccak Multisig library only once.
 static ECDSA_K256_KECCAK_MULTISIG_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
     let bytes = include_bytes!(concat!(
@@ -105,6 +115,11 @@ pub fn ecdsa_k256_keccak_library() -> Library {
     ECDSA_K256_KECCAK_LIBRARY.clone()
 }
 
+/// Returns the ECDSA K256 Keccak ACL Library.
+pub fn ecdsa_k256_keccak_acl_library() -> Library {
+    ECDSA_K256_KECCAK_ACL_LIBRARY.clone()
+}
+
 /// Returns the ECDSA K256 Keccak Multisig Library.
 pub fn ecdsa_k256_keccak_multisig_library() -> Library {
     ECDSA_K256_KECCAK_MULTISIG_LIBRARY.clone()
@@ -139,6 +154,7 @@ pub enum WellKnownComponent {
     BasicFungibleFaucet,
     NetworkFungibleFaucet,
     AuthEcdsaK256Keccak,
+    AuthEcdsaK256KeccakAcl,
     AuthEcdsaK256KeccakMultisig,
     AuthRpoFalcon512,
     AuthRpoFalcon512Acl,
@@ -154,6 +170,7 @@ impl WellKnownComponent {
             Self::BasicFungibleFaucet => BASIC_FUNGIBLE_FAUCET_LIBRARY.as_ref(),
             Self::NetworkFungibleFaucet => NETWORK_FUNGIBLE_FAUCET_LIBRARY.as_ref(),
             Self::AuthEcdsaK256Keccak => ECDSA_K256_KECCAK_LIBRARY.as_ref(),
+            Self::AuthEcdsaK256KeccakAcl => ECDSA_K256_KECCAK_ACL_LIBRARY.as_ref(),
             Self::AuthEcdsaK256KeccakMultisig => ECDSA_K256_KECCAK_MULTISIG_LIBRARY.as_ref(),
             Self::AuthRpoFalcon512 => RPO_FALCON_512_LIBRARY.as_ref(),
             Self::AuthRpoFalcon512Acl => RPO_FALCON_512_ACL_LIBRARY.as_ref(),
@@ -202,6 +219,8 @@ impl WellKnownComponent {
                     .push(AccountComponentInterface::NetworkFungibleFaucet(storage_offset)),
                 Self::AuthEcdsaK256Keccak => component_interface_vec
                     .push(AccountComponentInterface::AuthEcdsaK256Keccak(storage_offset)),
+                Self::AuthEcdsaK256KeccakAcl => component_interface_vec
+                    .push(AccountComponentInterface::AuthEcdsaK256KeccakAcl(storage_offset)),
                 Self::AuthEcdsaK256KeccakMultisig => component_interface_vec
                     .push(AccountComponentInterface::AuthEcdsaK256KeccakMultisig(storage_offset)),
                 Self::AuthRpoFalcon512 => component_interface_vec
@@ -227,6 +246,7 @@ impl WellKnownComponent {
         Self::BasicFungibleFaucet.extract_component(procedures_map, component_interface_vec);
         Self::NetworkFungibleFaucet.extract_component(procedures_map, component_interface_vec);
         Self::AuthEcdsaK256Keccak.extract_component(procedures_map, component_interface_vec);
+        Self::AuthEcdsaK256KeccakAcl.extract_component(procedures_map, component_interface_vec);
         Self::AuthEcdsaK256KeccakMultisig
             .extract_component(procedures_map, component_interface_vec);
         Self::AuthRpoFalcon512.extract_component(procedures_map, component_interface_vec);

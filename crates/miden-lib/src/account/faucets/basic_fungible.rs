@@ -12,7 +12,7 @@ use miden_objects::{Felt, FieldElement, Word};
 
 use super::FungibleFaucetError;
 use crate::account::AuthScheme;
-use crate::account::auth::{AuthEcdsaK256Keccak, AuthRpoFalcon512Acl, AuthRpoFalcon512AclConfig};
+use crate::account::auth::{AuthEcdsaK256KeccakAcl, AuthEcdsaK256KeccakAclConfig, AuthRpoFalcon512Acl, AuthRpoFalcon512AclConfig};
 use crate::account::components::basic_fungible_faucet_library;
 use crate::account::interface::{AccountComponentInterface, AccountInterface};
 use crate::procedure_digest;
@@ -244,7 +244,14 @@ pub fn create_basic_fungible_faucet(
         )
         .map_err(FungibleFaucetError::AccountError)?
         .into(),
-        AuthScheme::EcdsaK256Keccak { pub_key } => AuthEcdsaK256Keccak::new(pub_key).into(),
+        AuthScheme::EcdsaK256Keccak { pub_key } => AuthEcdsaK256KeccakAcl::new(
+            pub_key,
+            AuthEcdsaK256KeccakAclConfig::new()
+                .with_auth_trigger_procedures(vec![distribute_proc_root])
+                .with_allow_unauthorized_input_notes(true),
+        )
+        .map_err(FungibleFaucetError::AccountError)?
+        .into(),
         AuthScheme::NoAuth => {
             return Err(FungibleFaucetError::UnsupportedAuthScheme(
                 "basic fungible faucets cannot be created with NoAuth authentication scheme".into(),
@@ -267,6 +274,7 @@ pub fn create_basic_fungible_faucet(
                     .into(),
             ));
         },
+
     };
 
     let account = AccountBuilder::new(init_seed)
