@@ -1,5 +1,6 @@
 use alloc::collections::BTreeMap;
 use alloc::string::ToString;
+use alloc::vec::Vec;
 
 use miden_core::LexicographicWord;
 
@@ -36,19 +37,20 @@ pub use code::procedure::AccountProcedureInfo;
 pub mod component;
 pub use component::{
     AccountComponent,
-    AccountComponentMetadata,
-    AccountComponentTemplate,
-    FeltRepresentation,
-    InitStorageData,
-    MapEntry,
-    MapRepresentation,
-    PlaceholderTypeRequirement,
-    StorageEntry,
-    StorageValueName,
-    StorageValueNameError,
-    TemplateType,
-    TemplateTypeError,
-    WordRepresentation,
+    // TODO(named_slots): Uncomment when refactored.
+    // AccountComponentMetadata,
+    // AccountComponentTemplate,
+    // FeltRepresentation,
+    // InitStorageData,
+    // MapEntry,
+    // MapRepresentation,
+    // PlaceholderTypeRequirement,
+    // StorageEntry,
+    // StorageValueName,
+    // StorageValueNameError,
+    // TemplateType,
+    // TemplateTypeError,
+    // WordRepresentation,
 };
 
 pub mod delta;
@@ -203,11 +205,11 @@ impl Account {
     /// - [`MastForest::merge`](miden_processor::MastForest::merge) fails on all libraries.
     pub(super) fn initialize_from_components(
         account_type: AccountType,
-        components: &[AccountComponent],
+        components: Vec<AccountComponent>,
     ) -> Result<(AccountCode, AccountStorage), AccountError> {
-        validate_components_support_account_type(components, account_type)?;
+        validate_components_support_account_type(&components, account_type)?;
 
-        let code = AccountCode::from_components_unchecked(components, account_type)?;
+        let code = AccountCode::from_components_unchecked(&components, account_type)?;
         let storage = AccountStorage::from_components(components, account_type)?;
 
         Ok((code, storage))
@@ -441,11 +443,11 @@ impl TryFrom<Account> for AccountDelta {
         let mut value_slots = BTreeMap::new();
         let mut map_slots = BTreeMap::new();
 
-        for (slot_idx, slot) in (0..u8::MAX).zip(storage.into_slots().into_iter()) {
-            let (_, _, slot) = slot.into_parts();
+        for slot in storage.into_slots() {
+            let (slot_name, _, slot) = slot.into_parts();
             match slot {
                 StorageSlot::Value(word) => {
-                    value_slots.insert(slot_idx, word);
+                    value_slots.insert(slot_name, word);
                 },
                 StorageSlot::Map(storage_map) => {
                     let map_delta = StorageMapDelta::new(
@@ -455,7 +457,7 @@ impl TryFrom<Account> for AccountDelta {
                             .map(|(key, value)| (LexicographicWord::from(key), value))
                             .collect(),
                     );
-                    map_slots.insert(slot_idx, map_delta);
+                    map_slots.insert(slot_name, map_delta);
                 },
             }
         }
@@ -639,7 +641,9 @@ mod tests {
         AccountComponent,
         AccountIdVersion,
         AccountType,
+        NamedStorageSlot,
         PartialAccount,
+        SlotName,
         StorageMap,
         StorageMapDelta,
         StorageSlot,
@@ -673,8 +677,8 @@ mod tests {
         let asset_0 = FungibleAsset::mock(15);
         let asset_1 = NonFungibleAsset::mock(&[5, 5, 5]);
         let storage_delta = AccountStorageDeltaBuilder::new()
-            .add_cleared_items([0])
-            .add_updated_values([(1_u8, Word::from([1, 2, 3, 4u32]))])
+            .add_cleared_items([SlotName::mock(0)])
+            .add_updated_values([(SlotName::mock(1), Word::from([1, 2, 3, 4u32]))])
             .build()
             .unwrap();
         let account_delta = build_account_delta(
@@ -738,9 +742,9 @@ mod tests {
         // build account delta
         let final_nonce = Felt::new(2);
         let storage_delta = AccountStorageDeltaBuilder::new()
-            .add_cleared_items([0])
-            .add_updated_values([(1, Word::from([1, 2, 3, 4u32]))])
-            .add_updated_maps([(2, updated_map)])
+            .add_cleared_items([SlotName::mock(0)])
+            .add_updated_values([(SlotName::mock(1), Word::from([1, 2, 3, 4u32]))])
+            .add_updated_maps([(SlotName::mock(2), updated_map)])
             .build()
             .unwrap();
         let account_delta = build_account_delta(
@@ -780,8 +784,8 @@ mod tests {
 
         // build account delta
         let storage_delta = AccountStorageDeltaBuilder::new()
-            .add_cleared_items([0])
-            .add_updated_values([(1_u8, Word::from([1, 2, 3, 4u32]))])
+            .add_cleared_items([SlotName::mock(0)])
+            .add_updated_values([(SlotName::mock(1), Word::from([1, 2, 3, 4u32]))])
             .build()
             .unwrap();
         let account_delta =
@@ -804,8 +808,8 @@ mod tests {
         // build account delta
         let final_nonce = Felt::new(1);
         let storage_delta = AccountStorageDeltaBuilder::new()
-            .add_cleared_items([0])
-            .add_updated_values([(1_u8, Word::from([1, 2, 3, 4u32]))])
+            .add_cleared_items([SlotName::mock(0)])
+            .add_updated_values([(SlotName::mock(1), Word::from([1, 2, 3, 4u32]))])
             .build()
             .unwrap();
         let account_delta =
@@ -855,6 +859,12 @@ mod tests {
 
         let vault = AssetVault::new(&assets).unwrap();
 
+        let slots = slots
+            .into_iter()
+            .enumerate()
+            .map(|(idx, slot)| NamedStorageSlot::new(SlotName::mock(idx), slot))
+            .collect();
+
         let storage = AccountStorage::new(slots).unwrap();
 
         Account::new_existing(id, vault, storage, code, nonce)
@@ -876,7 +886,7 @@ mod tests {
 
         let err = Account::initialize_from_components(
             AccountType::RegularAccountUpdatableCode,
-            &[component1],
+            vec![component1],
         )
         .unwrap_err();
 
@@ -904,7 +914,7 @@ mod tests {
 
         let err = Account::initialize_from_components(
             AccountType::RegularAccountUpdatableCode,
-            &[NoopAuthComponent.into(), component1, component2],
+            vec![NoopAuthComponent.into(), component1, component2],
         )
         .unwrap_err();
 

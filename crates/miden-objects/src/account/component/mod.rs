@@ -3,53 +3,16 @@ use alloc::vec::Vec;
 
 use miden_assembly::ast::QualifiedProcedureName;
 use miden_assembly::{Assembler, Library, Parse};
-use miden_core::utils::Deserializable;
-use miden_mast_package::{Package, SectionId};
 use miden_processor::MastForest;
 
-mod template;
-pub use template::*;
-
-use crate::account::{AccountType, StorageSlot};
+// TODO(named_slots): Decide how to refactor templates.
+// mod template;
+// pub use template::*;
+use crate::account::{AccountType, NamedStorageSlot};
 use crate::{AccountError, Word};
 
-// IMPLEMENTATIONS
-// ================================================================================================
-
-impl TryFrom<Package> for AccountComponentTemplate {
-    type Error = AccountError;
-
-    fn try_from(package: Package) -> Result<Self, Self::Error> {
-        let library = package.unwrap_library().as_ref().clone();
-
-        // Look for account component metadata in sections
-        let metadata = package
-            .sections
-            .iter()
-            .find_map(|section| {
-                (section.id == SectionId::ACCOUNT_COMPONENT_METADATA).then(|| {
-                        AccountComponentMetadata::read_from_bytes(&section.data)
-                            .map_err(|err| {
-                                AccountError::other_with_source(
-                                    "failed to deserialize account component metadata",
-                                    err,
-                                )
-                            })
-                })
-            })
-            .transpose()?
-            .ok_or_else(|| {
-                AccountError::other(
-                    "package does not contain account component metadata section - packages without explicit metadata may be intended for other purposes (e.g., note scripts, transaction scripts)",
-                )
-            })?;
-
-        Ok(AccountComponentTemplate::new(metadata, library))
-    }
-}
-
 /// An [`AccountComponent`] defines a [`Library`] of code and the initial value and types of
-/// the [`StorageSlot`]s it accesses.
+/// the [`NamedStorageSlot`]s it accesses.
 ///
 /// One or more components can be used to built [`AccountCode`](crate::account::AccountCode) and
 /// [`AccountStorage`](crate::account::AccountStorage).
@@ -66,7 +29,7 @@ impl TryFrom<Package> for AccountComponentTemplate {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AccountComponent {
     pub(super) library: Library,
-    pub(super) storage_slots: Vec<StorageSlot>,
+    pub(super) storage_slots: Vec<NamedStorageSlot>,
     pub(super) supported_types: BTreeSet<AccountType>,
 }
 
@@ -87,8 +50,8 @@ impl AccountComponent {
     /// or in their fallible constructors.
     ///
     /// Returns an error if:
-    /// - The number of given [`StorageSlot`]s exceeds 255.
-    pub fn new(code: Library, storage_slots: Vec<StorageSlot>) -> Result<Self, AccountError> {
+    /// - The number of given [`NamedStorageSlot`]s exceeds 255.
+    pub fn new(code: Library, storage_slots: Vec<NamedStorageSlot>) -> Result<Self, AccountError> {
         // Check that we have less than 256 storage slots.
         u8::try_from(storage_slots.len())
             .map_err(|_| AccountError::StorageTooManySlots(storage_slots.len() as u64))?;
@@ -114,7 +77,7 @@ impl AccountComponent {
     pub fn compile(
         source_code: impl Parse,
         assembler: Assembler,
-        storage_slots: Vec<StorageSlot>,
+        storage_slots: Vec<NamedStorageSlot>,
     ) -> Result<Self, AccountError> {
         let library = assembler
             .assemble_library([source_code])
@@ -123,6 +86,8 @@ impl AccountComponent {
         Self::new(library, storage_slots)
     }
 
+    // TODO(named_slots): Refactor.
+    /*
     /// Instantiates an [AccountComponent] from the [AccountComponentTemplate].
     ///
     /// The template's component metadata might contain placeholders, which can be replaced by
@@ -144,7 +109,6 @@ impl AccountComponent {
                 .map_err(AccountError::AccountComponentTemplateInstantiationError)?;
             storage_slots.extend(entry_storage_slots);
         }
-
         Ok(AccountComponent::new(template.library().clone(), storage_slots)?
             .with_supported_types(template.metadata().supported_types().clone()))
     }
@@ -173,6 +137,7 @@ impl AccountComponent {
         let template = AccountComponentTemplate::try_from(package.clone())?;
         Self::from_template(&template, init_storage_data)
     }
+    */
 
     // ACCESSORS
     // --------------------------------------------------------------------------------------------
@@ -193,8 +158,8 @@ impl AccountComponent {
         self.library.mast_forest().as_ref()
     }
 
-    /// Returns a slice of the underlying [`StorageSlot`]s of this component.
-    pub fn storage_slots(&self) -> &[StorageSlot] {
+    /// Returns a slice of the underlying [`NamedStorageSlot`]s of this component.
+    pub fn storage_slots(&self) -> &[NamedStorageSlot] {
         self.storage_slots.as_slice()
     }
 
@@ -268,6 +233,8 @@ impl From<AccountComponent> for Library {
     }
 }
 
+// TODO(named_slots): Reactivate tests once template is refactored.
+/*
 #[cfg(test)]
 mod tests {
     use alloc::collections::BTreeSet;
@@ -396,3 +363,4 @@ mod tests {
         assert!(error_msg.contains("package does not contain account component metadata"));
     }
 }
+*/

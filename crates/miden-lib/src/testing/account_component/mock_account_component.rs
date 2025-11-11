@@ -1,6 +1,6 @@
 use alloc::vec::Vec;
 
-use miden_objects::account::{AccountCode, AccountComponent, AccountStorage, StorageSlot};
+use miden_objects::account::{AccountCode, AccountComponent, AccountStorage, NamedStorageSlot};
 
 use crate::testing::mock_account_code::MockAccountCodeExt;
 
@@ -18,7 +18,7 @@ use crate::testing::mock_account_code::MockAccountCodeExt;
 ///
 /// [account_lib]: crate::testing::mock_account_code::MockAccountCodeExt::mock_account_library
 pub struct MockAccountComponent {
-    storage_slots: Vec<StorageSlot>,
+    storage_slots: Vec<NamedStorageSlot>,
 }
 
 impl MockAccountComponent {
@@ -35,14 +35,14 @@ impl MockAccountComponent {
     /// # Panics
     ///
     /// Panics if the number of slots exceeds [`AccountStorage::MAX_NUM_STORAGE_SLOTS`].
-    pub fn with_slots(storage_slots: Vec<StorageSlot>) -> Self {
+    pub fn with_slots(storage_slots: Vec<NamedStorageSlot>) -> Self {
         Self::new(storage_slots)
     }
 
     // HELPERS
     // --------------------------------------------------------------------------------------------
 
-    fn new(storage_slots: Vec<StorageSlot>) -> Self {
+    fn new(storage_slots: Vec<NamedStorageSlot>) -> Self {
         debug_assert!(
             storage_slots.len() <= AccountStorage::MAX_NUM_STORAGE_SLOTS,
             "too many storage slots passed to MockAccountComponent"

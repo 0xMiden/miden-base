@@ -1,9 +1,13 @@
 use miden_lib::transaction::memory::{
     ACCOUNT_STACK_TOP_PTR,
+    ACCT_STORAGE_SLOT_NAME_ID_PREFIX_OFFSET,
+    ACCT_STORAGE_SLOT_NAME_ID_SUFFIX_OFFSET,
+    ACCT_STORAGE_SLOT_TYPE_OFFSET,
+    ACCT_STORAGE_SLOT_VALUE_OFFSET,
     ACTIVE_INPUT_NOTE_PTR,
     NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR,
 };
-use miden_objects::account::AccountId;
+use miden_objects::account::{AccountId, SlotNameId, StorageSlotType};
 use miden_objects::note::{NoteId, NoteInputs};
 use miden_objects::{Hasher, Word};
 use miden_processor::{EventError, ExecutionError, Felt, ProcessState};
@@ -16,11 +20,18 @@ use crate::errors::TransactionKernelError;
 pub(super) trait TransactionKernelProcess {
     fn get_active_account_id(&self) -> Result<AccountId, TransactionKernelError>;
 
+    #[allow(dead_code)]
     fn get_num_storage_slots(&self) -> Result<u64, TransactionKernelError>;
 
     fn get_vault_root(&self, vault_root_ptr: Felt) -> Result<Word, TransactionKernelError>;
 
     fn get_active_note_id(&self) -> Result<Option<NoteId>, EventError>;
+
+    fn get_storage_slot(
+        &self,
+        process: &ProcessState,
+        slot_ptr: Felt,
+    ) -> Result<(SlotNameId, StorageSlotType, Word), TransactionKernelError>;
 
     fn read_note_recipient_info_from_adv_map(
         &self,
@@ -133,6 +144,62 @@ impl<'a> TransactionKernelProcess for ProcessState<'a> {
                     "vault root ptr {vault_root_ptr} was not initialized"
                 ))
             })
+    }
+
+    fn get_storage_slot(
+        &self,
+        process: &ProcessState,
+        slot_ptr: Felt,
+    ) -> Result<(SlotNameId, StorageSlotType, Word), TransactionKernelError> {
+        let slot_ptr = u32::try_from(slot_ptr).map_err(|_err| {
+            TransactionKernelError::other(format!(
+                "slot ptr should fit into a u32, but was {slot_ptr}"
+            ))
+        })?;
+
+        let slot_metadata = process
+            .get_mem_word(process.ctx(), slot_ptr)
+            .map_err(|err| {
+                TransactionKernelError::other_with_source(
+                    format!("misaligned slot ptr {slot_ptr}"),
+                    err,
+                )
+            })?
+            .ok_or_else(|| {
+                TransactionKernelError::other(format!("slot ptr {slot_ptr} is uninitialized"))
+            })?;
+
+        let slot_value_ptr = slot_ptr + ACCT_STORAGE_SLOT_VALUE_OFFSET as u32;
+        let slot_value = process
+            .get_mem_word(process.ctx(), slot_value_ptr)
+            .map_err(|err| {
+                TransactionKernelError::other_with_source(
+                    format!("misaligned slot value ptr {slot_value_ptr}"),
+                    err,
+                )
+            })?
+            .ok_or_else(|| {
+                TransactionKernelError::other(format!(
+                    "slot value ptr {slot_value_ptr} is uninitialized"
+                ))
+            })?;
+
+        let slot_type = slot_metadata[ACCT_STORAGE_SLOT_TYPE_OFFSET as usize];
+        let slot_type = u8::try_from(slot_type).map_err(|err| {
+            TransactionKernelError::other(format!("failed to convert {slot_type} into u8: {err}"))
+        })?;
+        let slot_type = StorageSlotType::try_from(slot_type).map_err(|err| {
+            TransactionKernelError::other_with_source(
+                format!("failed to convert {slot_type} into storage slot type",),
+                err,
+            )
+        })?;
+
+        let suffix = slot_metadata[ACCT_STORAGE_SLOT_NAME_ID_SUFFIX_OFFSET as usize];
+        let prefix = slot_metadata[ACCT_STORAGE_SLOT_NAME_ID_PREFIX_OFFSET as usize];
+        let slot_name_id = SlotNameId::new(suffix, prefix);
+
+        Ok((slot_name_id, slot_type, slot_value))
     }
 
     fn read_note_recipient_info_from_adv_map(

@@ -450,12 +450,11 @@ mod tests {
 
     use assert_matches::assert_matches;
     use miden_assembly::Assembler;
-    use miden_core::Word;
 
     use super::{AccountCode, Deserializable, Serializable};
     use crate::AccountError;
     use crate::account::code::build_procedure_commitment;
-    use crate::account::{AccountComponent, AccountType, StorageSlot};
+    use crate::account::{AccountComponent, AccountType};
     use crate::testing::account_code::CODE;
     use crate::testing::noop_auth_component::NoopAuthComponent;
 
@@ -472,43 +471,6 @@ mod tests {
         let code = AccountCode::mock();
         let procedure_root = build_procedure_commitment(code.procedures());
         assert_eq!(procedure_root, code.commitment())
-    }
-
-    #[test]
-    fn test_account_code_procedure_offset_out_of_bounds() {
-        let code1 = "export.foo add end";
-        let library1 = Assembler::default().assemble_library([code1]).unwrap();
-        let code2 = "export.bar sub end";
-        let library2 = Assembler::default().assemble_library([code2]).unwrap();
-
-        let auth_component: AccountComponent = NoopAuthComponent.into();
-
-        let component1 =
-            AccountComponent::new(library1, vec![StorageSlot::Value(Word::empty()); 250])
-                .unwrap()
-                .with_supports_all_types();
-        let mut component2 =
-            AccountComponent::new(library2, vec![StorageSlot::Value(Word::empty()); 5])
-                .unwrap()
-                .with_supports_all_types();
-
-        // This is fine as the offset+size for component 2 is <= 255.
-        AccountCode::from_components(
-            &[auth_component.clone(), component1.clone(), component2.clone()],
-            AccountType::RegularAccountUpdatableCode,
-        )
-        .unwrap();
-
-        // Push one more slot so offset+size exceeds 255.
-        component2.storage_slots.push(StorageSlot::Value(Word::empty()));
-
-        let err = AccountCode::from_components(
-            &[auth_component, component1, component2],
-            AccountType::RegularAccountUpdatableCode,
-        )
-        .unwrap_err();
-
-        assert_matches!(err, AccountError::StorageOffsetPlusSizeOutOfBounds(256))
     }
 
     #[test]

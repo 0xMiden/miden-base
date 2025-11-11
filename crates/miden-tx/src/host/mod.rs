@@ -633,28 +633,33 @@ where
     /// Extracts information from the process state about the storage slot being updated and
     /// records the latest value of this storage slot.
     ///
-    /// Expected stack state: `[event, slot_index, NEW_SLOT_VALUE]`
+    /// Expected stack state: `[event, slot_ptr, VALUE]`
     pub fn on_account_storage_after_set_item(
         &mut self,
         process: &ProcessState,
     ) -> Result<(), TransactionKernelError> {
-        // get slot index from the stack and make sure it is valid
-        let slot_index = process.get_stack_item(1);
+        let slot_ptr = process.get_stack_item(1);
+        let new_value = process.get_stack_word_be(2);
 
-        // get number of storage slots initialized by the account
-        let num_storage_slot = process.get_num_storage_slots()?;
+        let (slot_name_id, slot_type, _old_value) = process.get_storage_slot(process, slot_ptr)?;
 
-        if slot_index.as_int() >= num_storage_slot {
-            return Err(TransactionKernelError::InvalidStorageSlotIndex {
-                max: num_storage_slot,
-                actual: slot_index.as_int(),
-            });
+        let (slot_name, ..) = self
+            .initial_account_storage_header()
+            .find_slot_header_by_id(slot_name_id)
+            .ok_or_else(|| {
+                TransactionKernelError::other(format!(
+                    "failed to find slot header with name ID {slot_name_id}"
+                ))
+            })?;
+        let slot_name = slot_name.clone();
+
+        if !slot_type.is_value() {
+            return Err(TransactionKernelError::other(format!(
+                "expected slot to be of type value, found {slot_type}"
+            )));
         }
 
-        // get the value to which the slot is being updated
-        let new_slot_value = process.get_stack_word_be(2);
-
-        self.account_delta.storage().set_item(slot_index.as_int() as u8, new_slot_value);
+        self.account_delta.storage().set_item(slot_name.clone(), new_value);
 
         Ok(())
     }
@@ -662,52 +667,48 @@ where
     /// Checks if the necessary witness for accessing the map item is already in the merkle store,
     /// and if not, extracts all necessary data for requesting it.
     ///
-    /// Expected stack state: `[event, KEY, ROOT, index]`
+    /// Expected stack state: `[event, slot_ptr, KEY]`
     pub fn on_account_storage_before_get_map_item(
         &self,
         process: &ProcessState,
     ) -> Result<TransactionEventHandling, TransactionKernelError> {
-        let map_key = process.get_stack_word_be(1);
-        let current_map_root = process.get_stack_word_be(5);
-        let slot_index = process.get_stack_item(9);
+        let slot_ptr = process.get_stack_item(1);
+        let map_key = process.get_stack_word_be(2);
 
-        self.on_account_storage_before_get_or_set_map_item(
-            slot_index,
-            current_map_root,
-            map_key,
-            process,
-        )
+        self.on_account_storage_before_get_or_set_map_item(slot_ptr, map_key, process)
     }
 
     /// Checks if the necessary witness for accessing the map item is already in the merkle store,
     /// and if not, extracts all necessary data for requesting it.
     ///
-    /// Expected stack state: `[event, index, KEY, NEW_VALUE, OLD_ROOT]`
+    /// Expected stack state: `[event, slot_ptr, KEY]`
     pub fn on_account_storage_before_set_map_item(
         &self,
         process: &ProcessState,
     ) -> Result<TransactionEventHandling, TransactionKernelError> {
-        let slot_index = process.get_stack_item(1);
+        let slot_ptr = process.get_stack_item(1);
         let map_key = process.get_stack_word_be(2);
-        let current_map_root = process.get_stack_word_be(10);
 
-        self.on_account_storage_before_get_or_set_map_item(
-            slot_index,
-            current_map_root,
-            map_key,
-            process,
-        )
+        self.on_account_storage_before_get_or_set_map_item(slot_ptr, map_key, process)
     }
 
     /// Checks if the necessary witness for accessing the map item is already in the merkle store,
     /// and if not, extracts all necessary data for requesting it.
     fn on_account_storage_before_get_or_set_map_item(
         &self,
-        slot_index: Felt,
-        current_map_root: Word,
+        slot_ptr: Felt,
         map_key: Word,
         process: &ProcessState,
     ) -> Result<TransactionEventHandling, TransactionKernelError> {
+        let (slot_name_id, slot_type, current_map_root) =
+            process.get_storage_slot(process, slot_ptr)?;
+
+        if !slot_type.is_map() {
+            return Err(TransactionKernelError::other(format!(
+                "expected slot to be of type map, found {slot_type}"
+            )));
+        }
+
         let current_account_id = process.get_active_account_id()?;
         let hashed_map_key = StorageMap::hash_key(map_key);
         let leaf_index = StorageMap::hashed_map_key_to_leaf_index(hashed_map_key);
@@ -725,20 +726,18 @@ where
             let map_root = if current_account_id == self.initial_account_header().id() {
                 // For native accounts, we have to request witnesses against the initial root
                 // instead of the _current_ one, since the data store only has
-                // witnesses for initial one.
+                // witnesses for the initial one.
                 let (_slot_name, slot_type, slot_value) = self
                     .initial_account_storage_header()
-                    // Slot index should always fit into a usize.
-                    .slot_header(slot_index.as_int() as usize)
-                    .map_err(|err| {
-                        TransactionKernelError::other_with_source(
-                            "failed to access storage map in storage header",
-                            err,
-                        )
+                    .find_slot_header_by_id(slot_name_id)
+                    .ok_or_else(|| {
+                        TransactionKernelError::other(format!(
+                            "failed to find storage map with name {slot_name_id} in storage header"
+                        ))
                     })?;
                 if *slot_type != StorageSlotType::Map {
                     return Err(TransactionKernelError::other(format!(
-                        "expected map slot type at slot index {slot_index}"
+                        "expected slot {slot_name_id} to be of type map"
                     )));
                 }
                 *slot_value
@@ -760,39 +759,34 @@ where
     /// Extracts information from the process state about the storage map being updated and
     /// records the latest values of this storage map.
     ///
-    /// Expected stack state: `[event, slot_index, KEY, PREV_MAP_VALUE, NEW_MAP_VALUE]`
+    /// Expected stack state:
+    /// ```text
+    /// [event, slot_ptr, KEY, OLD_MAP_VALUE, NEW_VALUE]
+    /// ```
     pub fn on_account_storage_after_set_map_item(
         &mut self,
         process: &ProcessState,
     ) -> Result<(), TransactionKernelError> {
-        // get slot index from the stack and make sure it is valid
-        let slot_index = process.get_stack_item(1);
-
-        // get number of storage slots initialized by the account
-        let num_storage_slot = process.get_num_storage_slots()?;
-
-        if slot_index.as_int() >= num_storage_slot {
-            return Err(TransactionKernelError::InvalidStorageSlotIndex {
-                max: num_storage_slot,
-                actual: slot_index.as_int(),
-            });
-        }
-
-        // get the KEY to which the slot is being updated
+        let slot_ptr = process.get_stack_item(1);
         let key = process.get_stack_word_be(2);
-
-        // get the previous VALUE of the slot
-        let prev_map_value = process.get_stack_word_be(6);
-
-        // get the VALUE to which the slot is being updated
+        let old_map_value = process.get_stack_word_be(6);
         let new_map_value = process.get_stack_word_be(10);
 
-        self.account_delta.storage().set_map_item(
-            slot_index.as_int() as u8,
-            key,
-            prev_map_value,
-            new_map_value,
-        );
+        let (slot_name_id, ..) = process.get_storage_slot(process, slot_ptr)?;
+
+        let (slot_name, ..) = self
+            .initial_account_storage_header()
+            .find_slot_header_by_id(slot_name_id)
+            .ok_or_else(|| {
+                TransactionKernelError::other(format!(
+                    "failed to resolve slot name ID {slot_name_id} to slot name"
+                ))
+            })?;
+        let slot_name = slot_name.clone();
+
+        self.account_delta
+            .storage()
+            .set_map_item(slot_name, key, old_map_value, new_map_value);
 
         Ok(())
     }

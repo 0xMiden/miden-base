@@ -5,10 +5,12 @@ use core::str::FromStr;
 
 use miden_assembly::Library;
 use miden_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
+use miden_mast_package::{Package, SectionId};
 use miden_processor::DeserializationError;
 use semver::Version;
 
 use super::AccountType;
+use crate::AccountError;
 use crate::errors::AccountComponentTemplateError;
 
 mod storage;
@@ -73,6 +75,38 @@ impl Deserializable for AccountComponentTemplate {
         // Read and deserialize the configuration from a TOML string.
         let metadata: AccountComponentMetadata = source.read()?;
         let library = Library::read_from(source)?;
+
+        Ok(AccountComponentTemplate::new(metadata, library))
+    }
+}
+
+impl TryFrom<Package> for AccountComponentTemplate {
+    type Error = AccountError;
+
+    fn try_from(package: Package) -> Result<Self, Self::Error> {
+        let library = package.unwrap_library().as_ref().clone();
+
+        // Look for account component metadata in sections
+        let metadata = package
+            .sections
+            .iter()
+            .find_map(|section| {
+                (section.id == SectionId::ACCOUNT_COMPONENT_METADATA).then(|| {
+                        AccountComponentMetadata::read_from_bytes(&section.data)
+                            .map_err(|err| {
+                                AccountError::other_with_source(
+                                    "failed to deserialize account component metadata",
+                                    err,
+                                )
+                            })
+                })
+            })
+            .transpose()?
+            .ok_or_else(|| {
+                AccountError::other(
+                    "package does not contain account component metadata section - packages without explicit metadata may be intended for other purposes (e.g., note scripts, transaction scripts)",
+                )
+            })?;
 
         Ok(AccountComponentTemplate::new(metadata, library))
     }

@@ -60,16 +60,6 @@ pub type StorageSlot = u8;
 // | Non-Fungible Asset Delta Ptr | 4 (1)                        | 7 (1)                      |                                     |
 // | Storage Map Delta Ptrs       | 8 (2)                        | 263 (65)                   | Max 255 storage map deltas          |
 
-// RESERVED ACCOUNT STORAGE SLOTS
-// ------------------------------------------------------------------------------------------------
-
-/// The account storage slot at which faucet data is stored.
-///
-/// - Fungible faucet: The faucet data consists of [0, 0, 0, total_issuance].
-/// - Non-fungible faucet: The faucet data consists of SMT root containing minted non-fungible
-///   assets.
-pub const FAUCET_STORAGE_DATA_SLOT: StorageSlot = 0;
-
 // BOOKKEEPING
 // ------------------------------------------------------------------------------------------------
 
@@ -314,6 +304,18 @@ pub const ACCT_STORAGE_SLOTS_SECTION_OFFSET: MemoryAddress = 2344;
 
 /// The number of elements that each storage slot takes up in memory.
 pub const ACCT_STORAGE_SLOT_NUM_ELEMENTS: u8 = 8;
+
+/// The offset of the slot type in the storage slot.
+pub const ACCT_STORAGE_SLOT_TYPE_OFFSET: u8 = 1;
+
+/// The offset of the slot's name ID suffix in the storage slot.
+pub const ACCT_STORAGE_SLOT_NAME_ID_SUFFIX_OFFSET: u8 = 2;
+
+/// The offset of the slot's name ID prefix in the storage slot.
+pub const ACCT_STORAGE_SLOT_NAME_ID_PREFIX_OFFSET: u8 = 3;
+
+/// The offset of the slot value in the storage slot.
+pub const ACCT_STORAGE_SLOT_VALUE_OFFSET: u8 = 4;
 
 /// The memory address at which the account storage slots section begins in the native account.
 pub const NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR: MemoryAddress =

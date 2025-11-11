@@ -1,7 +1,7 @@
 extern crate alloc;
 
+use alloc::sync::Arc;
 use core::slice;
-use std::sync::Arc;
 
 use miden_lib::account::faucets::{BasicFungibleFaucet, FungibleFaucetExt, NetworkFungibleFaucet};
 use miden_lib::errors::tx_kernel_errors::ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED;
@@ -276,10 +276,12 @@ async fn prove_burning_fungible_asset_on_existing_faucet_succeeds() -> anyhow::R
     builder.add_output_note(OutputNote::Full(note.clone()));
     let mock_chain = builder.build()?;
 
-    // The Fungible Faucet component is added as the second component after auth, so it's storage
-    // slot offset will be 2. Check that max_supply at the word's index 0 is 200. The remainder of
-    // the word is initialized with the metadata of the faucet which we don't need to check.
-    assert_eq!(faucet.storage().get_item(2).unwrap()[0], Felt::new(200));
+    // Check that max_supply at the word's index 0 is 200. The remainder of the word is initialized
+    // with the metadata of the faucet which we don't need to check.
+    assert_eq!(
+        faucet.storage().get_item(BasicFungibleFaucet::metadata_slot_name()).unwrap()[0],
+        Felt::new(200)
+    );
 
     // Check that the faucet reserved slot has been correctly initialized.
     // The already issued amount should be 100.
@@ -502,11 +504,15 @@ async fn network_faucet_mint() -> anyhow::Result<()> {
 
     // The Network Fungible Faucet component is added as the second component after auth, so its
     // storage slot offset will be 2. Check that max_supply at the word's index 0 is 200.
-    assert_eq!(faucet.storage().get_item(1).unwrap()[0], Felt::new(1000));
+    assert_eq!(
+        faucet.storage().get_item(NetworkFungibleFaucet::metadata_slot()).unwrap()[0],
+        Felt::new(1000)
+    );
 
     // Check that the creator account ID is stored in slot 2 (second storage slot of the component)
     // The owner_account_id is stored as Word [0, 0, suffix, prefix]
-    let stored_owner_id = faucet.storage().get_item(2).unwrap();
+    let stored_owner_id =
+        faucet.storage().get_item(NetworkFungibleFaucet::owner_config_slot()).unwrap();
     assert_eq!(stored_owner_id[3], faucet_owner_account_id.prefix().as_felt());
     assert_eq!(stored_owner_id[2], Felt::new(faucet_owner_account_id.suffix().as_int()));
 

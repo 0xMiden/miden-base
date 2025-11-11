@@ -148,7 +148,7 @@ proc.mint_non_fungible_asset
 
     # get the faucet storage data slot
     exec.account::get_faucet_storage_data_slot
-    # => [faucet_storage_data_slot, ASSET_KEY, ASSET, ASSET]
+    # => [faucet_slot_name_prefix, faucet_slot_name_suffix, ASSET_KEY, ASSET, ASSET]
 
     # insert the non-fungible asset into the tracking SMT
     exec.account::set_map_item dropw
