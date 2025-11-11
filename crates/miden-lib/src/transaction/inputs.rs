@@ -8,7 +8,6 @@ use miden_objects::transaction::{AccountInputs, InputNote, PartialBlockchain, Tr
 use miden_objects::vm::AdviceInputs;
 use miden_objects::{EMPTY_WORD, Felt, FieldElement, Word, ZERO};
 use miden_processor::AdviceMutation;
-use thiserror::Error;
 
 use super::TransactionKernel;
 
@@ -414,17 +413,4 @@ impl From<AdviceInputs> for TransactionAdviceInputs {
     fn from(inner: AdviceInputs) -> Self {
         Self(inner)
     }
-}
-
-// CONFLICT ERROR
-// ================================================================================================
-
-#[derive(Debug, Error)]
-#[error(
-    "conflicting map entry for key {key}: existing={existing_val:?}, incoming={incoming_val:?}"
-)]
-pub struct TransactionAdviceMapMismatch {
-    pub key: Word,
-    pub existing_val: Vec<Felt>,
-    pub incoming_val: Vec<Felt>,
 }

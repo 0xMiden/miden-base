@@ -25,7 +25,7 @@ mod events;
 pub use events::{EventId, TransactionEvent};
 
 mod inputs;
-pub use inputs::{TransactionAdviceInputs, TransactionAdviceMapMismatch};
+pub use inputs::TransactionAdviceInputs;
 
 mod outputs;
 pub use outputs::{
@@ -121,9 +121,7 @@ impl TransactionKernel {
 
     /// Transforms the provided [`TransactionInputs`] into stack and advice
     /// inputs needed to execute a transaction kernel for a specific transaction.
-    pub fn prepare_inputs(
-        tx_inputs: &TransactionInputs,
-    ) -> Result<(StackInputs, TransactionAdviceInputs), TransactionAdviceMapMismatch> {
+    pub fn prepare_inputs(tx_inputs: &TransactionInputs) -> (StackInputs, TransactionAdviceInputs) {
         let account = tx_inputs.account();
 
         let stack_inputs = TransactionKernel::build_input_stack(
@@ -136,7 +134,7 @@ impl TransactionKernel {
 
         let tx_advice_inputs = TransactionAdviceInputs::new(tx_inputs);
 
-        Ok((stack_inputs, tx_advice_inputs))
+        (stack_inputs, tx_advice_inputs)
     }
 
     // ASSEMBLER CONSTRUCTOR
