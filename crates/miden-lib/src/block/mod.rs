@@ -1,7 +1,6 @@
 use miden_core::Word;
 use miden_objects::ProposedBlockError;
 use miden_objects::block::{BlockBody, BlockHeader, BlockNumber, ProposedBlock};
-use miden_objects::transaction::PartialBlockchain;
 
 use crate::transaction::TransactionKernel;
 
@@ -36,8 +35,7 @@ pub fn build_block(
 
     // Insert the previous block header into the block partial blockchain to get the new chain
     // commitment.
-    let new_chain_commitment =
-        compute_chain_commitment(proposed_block.partial_blockchain().clone(), &prev_block_header);
+    let new_chain_commitment = proposed_block.compute_chain_commitment();
 
     // Construct the block body from the proposed block.
     let body = BlockBody::from(proposed_block);
@@ -60,18 +58,6 @@ pub fn build_block(
 
 // HELPERS
 // ================================================================================================
-
-/// Adds the commitment of the previous block header to the partial blockchain to compute the
-/// new chain commitment.
-pub fn compute_chain_commitment(
-    mut partial_blockchain: PartialBlockchain,
-    prev_block_header: &BlockHeader,
-) -> Word {
-    // SAFETY: This does not panic as long as the block header we're adding is the next one in
-    // the chain which is validated as part of constructing a `ProposedBlock`.
-    partial_blockchain.add_block(prev_block_header, true);
-    partial_blockchain.peaks().hash_peaks()
-}
 
 fn construct_block_header(
     block_num: BlockNumber,

@@ -431,6 +431,16 @@ impl ProposedBlock {
             .expect("the output notes of the block should not contain duplicates and contain at most the allowed maximum")
     }
 
+    /// Adds the commitment of the previous block header to the partial blockchain to compute the
+    /// new chain commitment.
+    pub fn compute_chain_commitment(&self) -> Word {
+        let mut partial_blockchain = self.partial_blockchain.clone();
+        // SAFETY: This does not panic as long as the block header we're adding is the next one in
+        // the chain which is validated as part of constructing a `ProposedBlock`.
+        partial_blockchain.add_block(&self.prev_block_header, true);
+        partial_blockchain.peaks().hash_peaks()
+    }
+
     // STATE MUTATORS
     // --------------------------------------------------------------------------------------------
 
