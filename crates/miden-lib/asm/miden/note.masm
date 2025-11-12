@@ -122,11 +122,32 @@ end
 #! - storage_len is greater than 128.
 #!
 #! Invocation: exec
-export.build_recipient
+export.build_recipient.1
     dup.1 dup.1
     # => [storage_ptr, storage_len, storage_ptr, storage_len, SERIAL_NUM, SCRIPT_ROOT]
 
     exec.compute_storage_commitment
+    # => [STORAGE_COMMITMENT, storage_ptr, storage_len, SERIAL_NUM, SCRIPT_ROOT]
+
+    # store storage_len into local memory
+    dup.5 loc_store.0
+    # => [STORAGE_COMMITMENT, storage_ptr, storage_len, SERIAL_NUM, SCRIPT_ROOT]
+
+    locaddr.0 add.1
+    locaddr.0
+    # => [storage_len_start_ptr, storage_len_end_ptr, STORAGE_COMMITMENT, storage_ptr, storage_len, SERIAL_NUM, SCRIPT_ROOT]
+
+    dup.5 dup.5 dup.5 dup.5
+    # => [STORAGE_COMMITMENT, storage_len_start_ptr, storage_len_end_ptr,
+    #     STORAGE_COMMITMENT, storage_ptr, storage_len, SERIAL_NUM, SCRIPT_ROOT]
+
+    # compute the advice map key for storage_len by hashing the storage commitment
+    hash
+    # => [hash(STORAGE_COMMITMENT), storage_len_start_ptr, storage_len_end_ptr,
+    #     STORAGE_COMMITMENT, storage_ptr, storage_len, SERIAL_NUM, SCRIPT_ROOT]
+
+    adv.insert_mem
+    dropw drop drop
     # => [STORAGE_COMMITMENT, storage_ptr, storage_len, SERIAL_NUM, SCRIPT_ROOT]
 
     movup.5 movup.5 dup movdn.2
@@ -157,7 +178,7 @@ export.build_recipient
     # => [RECIPIENT]
 end
 
-#! Returns the RECIPIENT for a specified SERIAL_NUM, SCRIPT_ROOT, and inputs commitment.
+#! Returns the RECIPIENT for a specified SERIAL_NUM, SCRIPT_ROOT, and storage commitment.
 #!
 #! Inputs:  [SERIAL_NUM, SCRIPT_ROOT, STORAGE_COMMITMENT]
 #! Outputs: [RECIPIENT]

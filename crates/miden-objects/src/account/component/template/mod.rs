@@ -104,7 +104,7 @@ impl Deserializable for AccountComponentTemplate {
 ///
 /// ```
 /// # use semver::Version;
-/// # use std::collections::BTreeSet;
+/// # use std::collections::{BTreeMap, BTreeSet};
 /// # use miden_objects::{testing::account_code::CODE, account::{
 /// #     AccountComponent, AccountComponentMetadata, StorageEntry,
 /// #     StorageValueName,
@@ -126,8 +126,10 @@ impl Deserializable for AccountComponentTemplate {
 /// .with_description("this is the first entry in the storage layout");
 /// let storage_entry = StorageEntry::new_value(0, word_representation);
 ///
-/// let init_storage_data =
-///     InitStorageData::new([(StorageValueName::new("test_value.foo")?, "300".to_string())]);
+/// let init_storage_data = InitStorageData::new(
+///     [(StorageValueName::new("test_value.foo")?, "300".to_string())],
+///     BTreeMap::new(),
+/// );
 ///
 /// let component_template = AccountComponentMetadata::new(
 ///     "test name".into(),
@@ -327,7 +329,7 @@ impl Deserializable for AccountComponentMetadata {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeSet;
+    use std::collections::{BTreeMap, BTreeSet};
     use std::string::ToString;
 
     use assert_matches::assert_matches;
@@ -377,7 +379,7 @@ mod tests {
             storage,
         };
 
-        let serialized = original_config.as_toml().unwrap();
+        let serialized = original_config.to_toml().unwrap();
         let deserialized = AccountComponentMetadata::from_toml(&serialized).unwrap();
         assert_eq!(deserialized, original_config);
     }
@@ -500,10 +502,13 @@ mod tests {
 
         // Fail to instantiate on a duplicate key
 
-        let init_storage_data = InitStorageData::new([(
-            StorageValueName::new("map.duplicate_key").unwrap(),
-            "0x0000000000000000000000000000000000000000000000000100000000000000".to_string(),
-        )]);
+        let init_storage_data = InitStorageData::new(
+            [(
+                StorageValueName::new("map.duplicate_key").unwrap(),
+                "0x0000000000000000000000000000000000000000000000000100000000000000".to_string(),
+            )],
+            BTreeMap::new(),
+        );
         let account_component = AccountComponent::from_template(&template, &init_storage_data);
         assert_matches!(
             account_component,
@@ -513,10 +518,10 @@ mod tests {
         );
 
         // Successfully instantiate a map (keys are not duplicate)
-        let valid_init_storage_data = InitStorageData::new([(
-            StorageValueName::new("map.duplicate_key").unwrap(),
-            "0x30".to_string(),
-        )]);
+        let valid_init_storage_data = InitStorageData::new(
+            [(StorageValueName::new("map.duplicate_key").unwrap(), "0x30".to_string())],
+            BTreeMap::new(),
+        );
         AccountComponent::from_template(&template, &valid_init_storage_data).unwrap();
     }
 }

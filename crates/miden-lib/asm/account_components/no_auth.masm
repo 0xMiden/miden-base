@@ -24,7 +24,17 @@ pub proc auth_no_auth
     exec.word::eq not
     # => [has_account_state_changed, pad(16)]
 
-    # if the account has been updated, increment the nonce
+    # check if this is a new account (i.e., nonce == 0); this check is needed because new
+    # accounts are initialized with a non-empty state, and thus, unless the account was modified
+    # during the transaction, the initial and current state commitments will be the same
+
+    exec.active_account::get_nonce eq.0
+    # => [is_new_account, has_account_state_changed, pad(16)]
+
+    or
+    # => [should_increment_nonce, pad(16)]
+
+    # if the account has been updated or we are creating a new account, increment the nonce
     if.true
         exec.native_account::incr_nonce drop
     end

@@ -34,7 +34,7 @@ use crate::host::{
     TransactionEventHandling,
     TransactionProgress,
 };
-use crate::{AccountProcedureIndexMap, DataStore, DataStoreError};
+use crate::{AccountProcedureIndexMap, DataStore};
 
 // TRANSACTION EXECUTOR HOST
 // ================================================================================================
@@ -184,14 +184,16 @@ where
         let authenticator =
             self.authenticator.ok_or(TransactionKernelError::MissingAuthenticator)?;
 
+        // get the message that will be signed by the authenticator
+        let message = signing_inputs.to_commitment();
+
         let signature: Vec<Felt> = authenticator
             .get_signature(PublicKeyCommitment::from(pub_key_hash), &signing_inputs)
             .await
             .map_err(TransactionKernelError::SignatureGenerationFailed)?
-            .to_prepared_signature();
+            .to_prepared_signature(message);
 
-        let signature_key = Hasher::merge(&[pub_key_hash, signing_inputs.to_commitment()]);
-
+        let signature_key = Hasher::merge(&[pub_key_hash, message]);
         self.generated_signatures.insert(signature_key, signature.clone());
 
         Ok(vec![AdviceMutation::extend_stack(signature)])
@@ -376,7 +378,7 @@ where
         let note_script_result = self.base_host.store().get_note_script(script_root).await;
 
         let (recipient, mutations) = match note_script_result {
-            Ok(note_script) => {
+            Ok(Some(note_script)) => {
                 let script_felts: Vec<Felt> = (&note_script).into();
                 let recipient = NoteRecipient::new(serial_num, note_script, note_storage);
                 let mutations = vec![AdviceMutation::extend_map(AdviceMap::from_iter([(
@@ -386,10 +388,8 @@ where
 
                 (Some(recipient), mutations)
             },
-            Err(DataStoreError::NoteScriptNotFound(_)) if metadata.is_private() => {
-                (None, Vec::new())
-            },
-            Err(DataStoreError::NoteScriptNotFound(_)) => {
+            Ok(None) if metadata.is_private() => (None, Vec::new()),
+            Ok(None) => {
                 return Err(TransactionKernelError::other(format!(
                     "note script with root {script_root} not found in data store for public note"
                 )));

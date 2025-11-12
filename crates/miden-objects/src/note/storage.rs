@@ -150,8 +150,8 @@ impl Serializable for NoteStorage {
 
 impl Deserializable for NoteStorage {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        let num_values = source.read_u8()? as usize;
-        let values = source.read_many::<Felt>(num_values)?;
+        let num_items = source.read_u8()? as usize;
+        let values = source.read_many::<Felt>(num_items)?;
         Self::new(values).map_err(|v| DeserializationError::InvalidValue(format!("{v}")))
     }
 }

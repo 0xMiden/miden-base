@@ -5,7 +5,7 @@ use miden_lib::transaction::memory::{
 };
 use miden_objects::account::AccountId;
 use miden_objects::note::{NoteId, NoteStorage};
-use miden_objects::{Word, ZERO};
+use miden_objects::{Hasher, Word};
 use miden_processor::{EventError, ExecutionError, Felt, ProcessState};
 
 use crate::errors::TransactionKernelError;
@@ -149,55 +149,46 @@ impl<'a> TransactionKernelProcess for ProcessState<'a> {
         Ok((note_storage, script_root, serial_num))
     }
 
-    /// Extracts and validates note storage from the advice provider using trial unhashing.
-    ///
-    /// This function tries to determine the correct storage length by:
-    /// 1. Finding the last non-zero element as a starting point
-    /// 2. Building NoteStorage and checking if the hash matches storage_commitment
-    /// 3. If not, incrementing storage_len and trying again (up to 6 more times)
-    /// 4. If storage_len grows to the size of inputs_data and there's still no match, returning an
-    ///    error
+    /// Extracts and validates note storage from the advice provider.
     fn read_note_storage_from_adv_map(
         &self,
         storage_commitment: &Word,
     ) -> Result<NoteStorage, TransactionKernelError> {
         let storage_data = self.advice_provider().get_mapped_values(storage_commitment);
 
-        let storage = match storage_data {
-            None => NoteStorage::default(),
-            Some(inputs) => {
-                // Start with the last non-zero element as a hint
-                let initial_storage_len =
-                    inputs.iter().rposition(|&x| x != ZERO).map(|pos| pos + 1).unwrap_or(0);
-
-                // Try different input counts using trial unhashing
-                let mut storage_len = initial_storage_len;
-
-                loop {
-                    let candidate_storage_item = NoteStorage::new(inputs[0..storage_len].to_vec())
-                        .map_err(TransactionKernelError::MalformedNoteStorage)?;
-
-                    if candidate_storage_item.commitment() == *storage_commitment {
-                        return Ok(candidate_storage_item);
-                    }
-
-                    storage_len += 1;
-                    if storage_len > inputs.len() {
-                        break;
-                    }
+        match storage_data {
+            None => Ok(NoteStorage::default()),
+            Some(storage_items) => {
+                let storage_commitment_hash =
+                    Hasher::hash_elements(storage_commitment.as_elements());
+                let num_items = self
+                    .advice_provider()
+                    .get_mapped_values(&storage_commitment_hash)
+                    .ok_or_else(|| {
+                        TransactionKernelError::other(
+                            "expected num_items to be present in advice provider",
+                        )
+                    })?;
+                if num_items.len() != 1 {
+                    return Err(TransactionKernelError::other(
+                        "expected num_items advice entry to contain exactly one element",
+                    ));
                 }
+                let num_items = num_items[0].as_int() as usize;
 
-                // If we've exhausted all attempts, return an error
-                return Err(TransactionKernelError::InvalidNoteStorage {
-                    expected: *storage_commitment,
-                    actual: NoteStorage::new(inputs[0..storage_len.min(inputs.len())].to_vec())
-                        .map(|i| i.commitment())
-                        .unwrap_or_default(),
-                });
+                let note_storage = NoteStorage::new(storage_items[0..num_items].to_vec())
+                    .map_err(TransactionKernelError::MalformedNoteStorage)?;
+
+                if &note_storage.commitment() == storage_commitment {
+                    Ok(note_storage)
+                } else {
+                    Err(TransactionKernelError::InvalidNoteStorage {
+                        expected: *storage_commitment,
+                        actual: note_storage.commitment(),
+                    })
+                }
             },
-        };
-
-        Ok(storage)
+        }
     }
 
     fn has_advice_map_entry(&self, key: Word) -> bool {
