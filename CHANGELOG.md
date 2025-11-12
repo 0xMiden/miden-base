@@ -6,6 +6,7 @@
 - [BREAKING] Fix ECDSA signature preparation in `Signature::to_prepared_signature()` method  ([#2074](https://github.com/0xMiden/miden-base/pull/2074)).
 - Skip value slot normalization for new account's deltas ([#2075](https://github.com/0xMiden/miden-base/pull/2075)).
 - Skip value and map slot normalization for new account's deltas ([#2075](https://github.com/0xMiden/miden-base/pull/2075), [#2077](https://github.com/0xMiden/miden-base/pull/2077)).
+- Added `AuthEcdsaK256Keccak` and `AuthEcdsaK256KeccakMultisig` auth components ([#2083](https://github.com/0xMiden/miden-base/pull/2083)).
 
 ## 0.12.1 (2025-11-06)
 
