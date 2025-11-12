@@ -29,8 +29,7 @@ pub fn block_num_to_leaf_value(block: BlockNumber) -> Word {
 /// absence of a value.
 #[cfg(test)]
 pub(super) fn leaf_value_to_block_num(value: Word) -> BlockNumber {
-    let block_num: u32 =
-        value[0].as_int().try_into().expect("invalid block number found in store");
+    let block_num: u32 = value[0].as_int().try_into().expect("invalid block number found in store");
 
     block_num.into()
 }
@@ -140,7 +139,9 @@ where
     type Error = MerkleError;
 
     fn num_entries(&self) -> usize {
-        LargeSmt::num_entries(self).map_err(large_smt_error_to_merkle_error).unwrap_or(0)
+        LargeSmt::num_entries(self)
+            .map_err(large_smt_error_to_merkle_error)
+            .unwrap_or(0)
     }
 
     fn entries(&self) -> Box<dyn Iterator<Item = (Word, Word)> + '_> {
@@ -635,9 +636,8 @@ mod tests {
         .map(NullifierTree::new)
         .unwrap();
 
-        let mutations = tree
-            .compute_mutations([(nullifier2, block2), (nullifier3, block3)])
-            .unwrap();
+        let mutations =
+            tree.compute_mutations([(nullifier2, block2), (nullifier3, block3)]).unwrap();
 
         tree.apply_mutations(mutations).unwrap();
 
@@ -670,16 +670,15 @@ mod tests {
         .unwrap();
 
         // Create tree with regular Smt backend
-        let regular_tree = NullifierTree::with_entries([(nullifier1, block1), (nullifier2, block2)]).unwrap();
+        let regular_tree =
+            NullifierTree::with_entries([(nullifier1, block1), (nullifier2, block2)]).unwrap();
 
         // Both should have the same root
         assert_eq!(large_tree.root(), regular_tree.root());
 
         // Both should have the same nullifier entries
-        let large_entries: std::collections::BTreeMap<_, _> =
-            large_tree.entries().collect();
-        let regular_entries: std::collections::BTreeMap<_, _> =
-            regular_tree.entries().collect();
+        let large_entries: std::collections::BTreeMap<_, _> = large_tree.entries().collect();
+        let regular_entries: std::collections::BTreeMap<_, _> = regular_tree.entries().collect();
 
         assert_eq!(large_entries, regular_entries);
     }
