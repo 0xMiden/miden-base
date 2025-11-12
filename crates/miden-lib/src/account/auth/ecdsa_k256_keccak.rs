@@ -1,0 +1,39 @@
+use miden_objects::account::auth::PublicKeyCommitment;
+use miden_objects::account::{AccountComponent, StorageSlot};
+
+use crate::account::components::ecdsa_k256_keccak_library;
+
+/// An [`AccountComponent`] implementing the ECDSA K256 Keccak signature scheme for authentication
+/// of transactions.
+///
+/// It reexports the procedures from `miden::contracts::auth::basic`. When linking against this
+/// component, the `miden` library (i.e. [`MidenLib`](crate::MidenLib)) must be available to the
+/// assembler which is the case when using [`TransactionKernel::assembler()`][kasm]. The procedures
+/// of this component are:
+/// - `auth_tx_ecdsa_k256_keccak`, which can be used to verify a signature provided via the advice
+///   stack to authenticate a transaction.
+///
+/// This component supports all account types.
+///
+/// [kasm]: crate::transaction::TransactionKernel::assembler
+pub struct AuthEcdsaK256Keccak {
+    pub_key: PublicKeyCommitment,
+}
+
+impl AuthEcdsaK256Keccak {
+    /// Creates a new [`AuthEcdsaK256Keccak`] component with the given `public_key`.
+    pub fn new(pub_key: PublicKeyCommitment) -> Self {
+        Self { pub_key }
+    }
+}
+
+impl From<AuthEcdsaK256Keccak> for AccountComponent {
+    fn from(ecdsa: AuthEcdsaK256Keccak) -> Self {
+        AccountComponent::new(
+            ecdsa_k256_keccak_library(),
+            vec![StorageSlot::Value(ecdsa.pub_key.into())],
+        )
+        .expect("ecdsa component should satisfy the requirements of a valid account component")
+        .with_supports_all_types()
+    }
+}
