@@ -12,6 +12,9 @@ use thiserror::Error;
 
 use super::AuthScheme;
 use crate::account::auth::{
+    AuthEcdsaK256Keccak,
+    AuthEcdsaK256KeccakMultisig,
+    AuthEcdsaK256KeccakMultisigConfig,
     AuthRpoFalcon512,
     AuthRpoFalcon512Multisig,
     AuthRpoFalcon512MultisigConfig,
@@ -117,6 +120,17 @@ pub fn create_basic_wallet(
     }
 
     let auth_component: AccountComponent = match auth_scheme {
+        AuthScheme::EcdsaK256Keccak { pub_key } => AuthEcdsaK256Keccak::new(pub_key).into(),
+        AuthScheme::EcdsaK256KeccakMultisig { threshold, pub_keys } => {
+            let config = AuthEcdsaK256KeccakMultisigConfig::new(pub_keys, threshold)
+                .and_then(|cfg| {
+                    cfg.with_proc_thresholds(vec![(BasicWallet::receive_asset_digest(), 1)])
+                })
+                .map_err(BasicWalletError::AccountError)?;
+            AuthEcdsaK256KeccakMultisig::new(config)
+                .map_err(BasicWalletError::AccountError)?
+                .into()
+        },
         AuthScheme::RpoFalcon512 { pub_key } => AuthRpoFalcon512::new(pub_key).into(),
         AuthScheme::RpoFalcon512Multisig { threshold, pub_keys } => {
             let config = AuthRpoFalcon512MultisigConfig::new(pub_keys, threshold)

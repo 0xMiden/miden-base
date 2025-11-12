@@ -10,6 +10,15 @@ pub enum AuthScheme {
     /// execution, avoiding unnecessary nonce increments for transactions that don't modify the
     /// account state.
     NoAuth,
+    /// A single-key authentication scheme which relies on ECDSA signatures.
+    EcdsaK256Keccak { pub_key: PublicKeyCommitment },
+    /// A multi-signature authentication scheme using ECDSA signatures.
+    ///
+    /// Requires a threshold number of signatures from the provided public keys.
+    EcdsaK256KeccakMultisig {
+        threshold: u32,
+        pub_keys: Vec<PublicKeyCommitment>,
+    },
     /// A single-key authentication scheme which relies RPO Falcon512 signatures.
     ///
     /// RPO Falcon512 is a variant of the [Falcon](https://falcon-sign.info/) signature scheme.
@@ -35,6 +44,8 @@ impl AuthScheme {
     pub fn get_public_key_commitments(&self) -> Vec<PublicKeyCommitment> {
         match self {
             AuthScheme::NoAuth => Vec::new(),
+            AuthScheme::EcdsaK256Keccak { pub_key } => vec![*pub_key],
+            AuthScheme::EcdsaK256KeccakMultisig { pub_keys, .. } => pub_keys.clone(),
             AuthScheme::RpoFalcon512 { pub_key } => vec![*pub_key],
             AuthScheme::RpoFalcon512Multisig { pub_keys, .. } => pub_keys.clone(),
             AuthScheme::Unknown => Vec::new(),
