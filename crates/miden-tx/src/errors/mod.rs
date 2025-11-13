@@ -260,7 +260,7 @@ pub enum TransactionKernelError {
     #[error("recipient data `{0:?}` in the advice provider is not well formed")]
     MalformedRecipientData(Vec<Felt>),
     #[error("cannot add asset to note with index {0}, note does not exist in the advice provider")]
-    MissingNote(u64),
+    MissingNote(usize),
     #[error(
         "public note with metadata {0:?} and recipient digest {1} is missing details in the advice provider"
     )]
@@ -354,8 +354,6 @@ pub enum DataStoreError {
     AccountNotFound(AccountId),
     #[error("block with number {0} not found in data store")]
     BlockNotFound(BlockNumber),
-    #[error("note script with root {0} not found in data store")]
-    NoteScriptNotFound(Word),
     /// Custom error variant for implementors of the [`DataStore`](crate::executor::DataStore)
     /// trait.
     #[error("{error_msg}")]

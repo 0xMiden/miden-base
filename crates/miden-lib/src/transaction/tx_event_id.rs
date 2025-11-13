@@ -19,7 +19,7 @@ include!(concat!(env!("OUT_DIR"), "/assets/transaction_events.rs"));
 /// by the transaction kernel are in the `miden` namespace.
 #[repr(u64)]
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub enum TransactionEvent {
+pub enum TransactionEventId {
     AccountBeforeForeignLoad = ACCOUNT_BEFORE_FOREIGN_LOAD,
 
     AccountVaultBeforeAddAsset = ACCOUNT_VAULT_BEFORE_ADD_ASSET,
@@ -80,7 +80,7 @@ pub enum TransactionEvent {
     Unauthorized = AUTH_UNAUTHORIZED,
 }
 
-impl TransactionEvent {
+impl TransactionEventId {
     /// Returns `true` if the event is privileged, i.e. it is only allowed to be emitted from the
     /// root context of the VM, which is where the transaction kernel executes.
     pub fn is_privileged(&self) -> bool {
@@ -94,13 +94,13 @@ impl TransactionEvent {
     }
 }
 
-impl fmt::Display for TransactionEvent {
+impl fmt::Display for TransactionEventId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{self:?}")
     }
 }
 
-impl TryFrom<EventId> for TransactionEvent {
+impl TryFrom<EventId> for TransactionEventId {
     type Error = TransactionEventError;
 
     fn try_from(event_id: EventId) -> Result<Self, Self::Error> {
@@ -109,76 +109,80 @@ impl TryFrom<EventId> for TransactionEvent {
         let name = EVENT_NAME_LUT.get(&raw).copied();
 
         match raw {
-            ACCOUNT_BEFORE_FOREIGN_LOAD => Ok(TransactionEvent::AccountBeforeForeignLoad),
+            ACCOUNT_BEFORE_FOREIGN_LOAD => Ok(TransactionEventId::AccountBeforeForeignLoad),
 
-            ACCOUNT_VAULT_BEFORE_ADD_ASSET => Ok(TransactionEvent::AccountVaultBeforeAddAsset),
-            ACCOUNT_VAULT_AFTER_ADD_ASSET => Ok(TransactionEvent::AccountVaultAfterAddAsset),
+            ACCOUNT_VAULT_BEFORE_ADD_ASSET => Ok(TransactionEventId::AccountVaultBeforeAddAsset),
+            ACCOUNT_VAULT_AFTER_ADD_ASSET => Ok(TransactionEventId::AccountVaultAfterAddAsset),
 
             ACCOUNT_VAULT_BEFORE_REMOVE_ASSET => {
-                Ok(TransactionEvent::AccountVaultBeforeRemoveAsset)
+                Ok(TransactionEventId::AccountVaultBeforeRemoveAsset)
             },
-            ACCOUNT_VAULT_AFTER_REMOVE_ASSET => Ok(TransactionEvent::AccountVaultAfterRemoveAsset),
+            ACCOUNT_VAULT_AFTER_REMOVE_ASSET => {
+                Ok(TransactionEventId::AccountVaultAfterRemoveAsset)
+            },
 
-            ACCOUNT_VAULT_BEFORE_GET_BALANCE => Ok(TransactionEvent::AccountVaultBeforeGetBalance),
+            ACCOUNT_VAULT_BEFORE_GET_BALANCE => {
+                Ok(TransactionEventId::AccountVaultBeforeGetBalance)
+            },
 
             ACCOUNT_VAULT_BEFORE_HAS_NON_FUNGIBLE_ASSET => {
-                Ok(TransactionEvent::AccountVaultBeforeHasNonFungibleAsset)
+                Ok(TransactionEventId::AccountVaultBeforeHasNonFungibleAsset)
             },
 
-            ACCOUNT_STORAGE_BEFORE_SET_ITEM => Ok(TransactionEvent::AccountStorageBeforeSetItem),
-            ACCOUNT_STORAGE_AFTER_SET_ITEM => Ok(TransactionEvent::AccountStorageAfterSetItem),
+            ACCOUNT_STORAGE_BEFORE_SET_ITEM => Ok(TransactionEventId::AccountStorageBeforeSetItem),
+            ACCOUNT_STORAGE_AFTER_SET_ITEM => Ok(TransactionEventId::AccountStorageAfterSetItem),
 
             ACCOUNT_STORAGE_BEFORE_GET_MAP_ITEM => {
-                Ok(TransactionEvent::AccountStorageBeforeGetMapItem)
+                Ok(TransactionEventId::AccountStorageBeforeGetMapItem)
             },
 
             ACCOUNT_STORAGE_BEFORE_SET_MAP_ITEM => {
-                Ok(TransactionEvent::AccountStorageBeforeSetMapItem)
+                Ok(TransactionEventId::AccountStorageBeforeSetMapItem)
             },
             ACCOUNT_STORAGE_AFTER_SET_MAP_ITEM => {
-                Ok(TransactionEvent::AccountStorageAfterSetMapItem)
+                Ok(TransactionEventId::AccountStorageAfterSetMapItem)
             },
 
-            ACCOUNT_BEFORE_INCREMENT_NONCE => Ok(TransactionEvent::AccountBeforeIncrementNonce),
-            ACCOUNT_AFTER_INCREMENT_NONCE => Ok(TransactionEvent::AccountAfterIncrementNonce),
+            ACCOUNT_BEFORE_INCREMENT_NONCE => Ok(TransactionEventId::AccountBeforeIncrementNonce),
+            ACCOUNT_AFTER_INCREMENT_NONCE => Ok(TransactionEventId::AccountAfterIncrementNonce),
 
-            ACCOUNT_PUSH_PROCEDURE_INDEX => Ok(TransactionEvent::AccountPushProcedureIndex),
+            ACCOUNT_PUSH_PROCEDURE_INDEX => Ok(TransactionEventId::AccountPushProcedureIndex),
 
-            NOTE_BEFORE_CREATED => Ok(TransactionEvent::NoteBeforeCreated),
-            NOTE_AFTER_CREATED => Ok(TransactionEvent::NoteAfterCreated),
+            NOTE_BEFORE_CREATED => Ok(TransactionEventId::NoteBeforeCreated),
+            NOTE_AFTER_CREATED => Ok(TransactionEventId::NoteAfterCreated),
 
-            NOTE_BEFORE_ADD_ASSET => Ok(TransactionEvent::NoteBeforeAddAsset),
-            NOTE_AFTER_ADD_ASSET => Ok(TransactionEvent::NoteAfterAddAsset),
+            NOTE_BEFORE_ADD_ASSET => Ok(TransactionEventId::NoteBeforeAddAsset),
+            NOTE_AFTER_ADD_ASSET => Ok(TransactionEventId::NoteAfterAddAsset),
 
-            AUTH_REQUEST => Ok(TransactionEvent::AuthRequest),
+            AUTH_REQUEST => Ok(TransactionEventId::AuthRequest),
 
-            PROLOGUE_START => Ok(TransactionEvent::PrologueStart),
-            PROLOGUE_END => Ok(TransactionEvent::PrologueEnd),
+            PROLOGUE_START => Ok(TransactionEventId::PrologueStart),
+            PROLOGUE_END => Ok(TransactionEventId::PrologueEnd),
 
-            NOTES_PROCESSING_START => Ok(TransactionEvent::NotesProcessingStart),
-            NOTES_PROCESSING_END => Ok(TransactionEvent::NotesProcessingEnd),
+            NOTES_PROCESSING_START => Ok(TransactionEventId::NotesProcessingStart),
+            NOTES_PROCESSING_END => Ok(TransactionEventId::NotesProcessingEnd),
 
-            NOTE_EXECUTION_START => Ok(TransactionEvent::NoteExecutionStart),
-            NOTE_EXECUTION_END => Ok(TransactionEvent::NoteExecutionEnd),
+            NOTE_EXECUTION_START => Ok(TransactionEventId::NoteExecutionStart),
+            NOTE_EXECUTION_END => Ok(TransactionEventId::NoteExecutionEnd),
 
-            TX_SCRIPT_PROCESSING_START => Ok(TransactionEvent::TxScriptProcessingStart),
-            TX_SCRIPT_PROCESSING_END => Ok(TransactionEvent::TxScriptProcessingEnd),
+            TX_SCRIPT_PROCESSING_START => Ok(TransactionEventId::TxScriptProcessingStart),
+            TX_SCRIPT_PROCESSING_END => Ok(TransactionEventId::TxScriptProcessingEnd),
 
-            EPILOGUE_START => Ok(TransactionEvent::EpilogueStart),
-            EPILOGUE_AUTH_PROC_START => Ok(TransactionEvent::EpilogueAuthProcStart),
-            EPILOGUE_AUTH_PROC_END => Ok(TransactionEvent::EpilogueAuthProcEnd),
+            EPILOGUE_START => Ok(TransactionEventId::EpilogueStart),
+            EPILOGUE_AUTH_PROC_START => Ok(TransactionEventId::EpilogueAuthProcStart),
+            EPILOGUE_AUTH_PROC_END => Ok(TransactionEventId::EpilogueAuthProcEnd),
             EPILOGUE_AFTER_TX_CYCLES_OBTAINED => {
-                Ok(TransactionEvent::EpilogueAfterTxCyclesObtained)
+                Ok(TransactionEventId::EpilogueAfterTxCyclesObtained)
             },
             EPILOGUE_BEFORE_TX_FEE_REMOVED_FROM_ACCOUNT => {
-                Ok(TransactionEvent::EpilogueBeforeTxFeeRemovedFromAccount)
+                Ok(TransactionEventId::EpilogueBeforeTxFeeRemovedFromAccount)
             },
-            EPILOGUE_END => Ok(TransactionEvent::EpilogueEnd),
+            EPILOGUE_END => Ok(TransactionEventId::EpilogueEnd),
 
-            LINK_MAP_SET => Ok(TransactionEvent::LinkMapSet),
-            LINK_MAP_GET => Ok(TransactionEvent::LinkMapGet),
+            LINK_MAP_SET => Ok(TransactionEventId::LinkMapSet),
+            LINK_MAP_GET => Ok(TransactionEventId::LinkMapGet),
 
-            AUTH_UNAUTHORIZED => Ok(TransactionEvent::Unauthorized),
+            AUTH_UNAUTHORIZED => Ok(TransactionEventId::Unauthorized),
 
             _ => Err(TransactionEventError::InvalidTransactionEvent(event_id, name)),
         }
