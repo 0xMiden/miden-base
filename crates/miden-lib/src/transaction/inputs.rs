@@ -8,7 +8,6 @@ use miden_objects::transaction::{AccountInputs, InputNote, PartialBlockchain, Tr
 use miden_objects::vm::AdviceInputs;
 use miden_objects::{EMPTY_WORD, Felt, FieldElement, Word, ZERO};
 use miden_processor::AdviceMutation;
-use thiserror::Error;
 
 use super::TransactionKernel;
 
@@ -25,13 +24,13 @@ impl TransactionAdviceInputs {
     ///
     /// The created advice inputs will be populated with the data required for executing a
     /// transaction with the specified transaction inputs.
-    pub fn new(tx_inputs: &TransactionInputs) -> Result<Self, TransactionAdviceMapMismatch> {
+    pub fn new(tx_inputs: &TransactionInputs) -> Self {
         let mut inputs = TransactionAdviceInputs(tx_inputs.advice_inputs().clone());
 
         inputs.build_stack(tx_inputs);
         inputs.add_kernel_commitment();
         inputs.add_partial_blockchain(tx_inputs.blockchain());
-        inputs.add_input_notes(tx_inputs)?;
+        inputs.add_input_notes(tx_inputs);
 
         // Add the script's MAST forest's advice inputs.
         if let Some(tx_script) = tx_inputs.tx_args().tx_script() {
@@ -46,7 +45,7 @@ impl TransactionAdviceInputs {
 
         // Inject native account.
         let partial_native_acc = tx_inputs.account();
-        inputs.add_account(partial_native_acc)?;
+        inputs.add_account(partial_native_acc);
 
         // If a seed was provided, extend the map appropriately.
         if let Some(seed) = tx_inputs.account().seed() {
@@ -71,7 +70,7 @@ impl TransactionAdviceInputs {
         // Extend with extra user-supplied advice.
         inputs.extend(tx_inputs.tx_args().advice_inputs().clone());
 
-        Ok(inputs)
+        inputs
     }
 
     /// Returns a reference to the underlying advice inputs.
@@ -108,9 +107,9 @@ impl TransactionAdviceInputs {
     pub fn add_foreign_accounts<'inputs>(
         &mut self,
         foreign_account_inputs: impl IntoIterator<Item = &'inputs AccountInputs>,
-    ) -> Result<(), TransactionAdviceMapMismatch> {
+    ) {
         for foreign_acc in foreign_account_inputs {
-            self.add_account(foreign_acc.account())?;
+            self.add_account(foreign_acc.account());
             self.add_account_witness(foreign_acc.witness());
 
             // for foreign accounts, we need to insert the id to state mapping
@@ -121,8 +120,6 @@ impl TransactionAdviceInputs {
             // ACCOUNT_ID |-> [ID_AND_NONCE, VAULT_ROOT, STORAGE_COMMITMENT, CODE_COMMITMENT]
             self.add_map_entry(account_id_key, header.as_elements());
         }
-
-        Ok(())
     }
 
     /// Extend the advice stack with the transaction inputs.
@@ -253,27 +250,12 @@ impl TransactionAdviceInputs {
     /// - The account code commitment |-> procedures vector.
     /// - The leaf hash |-> (key, value), for all leaves of the partial vault.
     /// - If present, the Merkle leaves associated with the account storage maps.
-    fn add_account(
-        &mut self,
-        account: &PartialAccount,
-    ) -> Result<(), TransactionAdviceMapMismatch> {
+    fn add_account(&mut self, account: &PartialAccount) {
         // --- account code -------------------------------------------------------
 
         // CODE_COMMITMENT -> [[ACCOUNT_PROCEDURE_DATA]]
         let code = account.code();
         self.add_map_entry(code.commitment(), code.as_elements());
-
-        // Extend the advice map with the account code's advice inputs.
-        // This ensures that the advice map is available during the note script execution when it
-        // calls the account's code that relies on the it's advice map data (data segments) loaded
-        // into the advice provider
-        self.0.map.merge(account.code().mast().advice_map()).map_err(
-            |((key, existing_val), incoming_val)| TransactionAdviceMapMismatch {
-                key,
-                existing_val: existing_val.to_vec(),
-                incoming_val: incoming_val.to_vec(),
-            },
-        )?;
 
         // --- account storage ----------------------------------------------------
 
@@ -290,8 +272,6 @@ impl TransactionAdviceInputs {
         // populate Merkle store and advice map with nodes info needed to access vault assets
         self.extend_merkle_store(account.vault().inner_nodes());
         self.extend_map(account.vault().leaves().map(|leaf| (leaf.hash(), leaf.to_elements())));
-
-        Ok(())
     }
 
     /// Adds an account witness to the advice inputs.
@@ -328,12 +308,9 @@ impl TransactionAdviceInputs {
     ///         - The note's position in the note tree
     ///
     /// The data above is processed by `prologue::process_input_notes_data`.
-    fn add_input_notes(
-        &mut self,
-        tx_inputs: &TransactionInputs,
-    ) -> Result<(), TransactionAdviceMapMismatch> {
+    fn add_input_notes(&mut self, tx_inputs: &TransactionInputs) {
         if tx_inputs.input_notes().is_empty() {
-            return Ok(());
+            return;
         }
 
         let mut note_data = Vec::new();
@@ -387,19 +364,9 @@ impl TransactionAdviceInputs {
                     note_data.push(Felt::ZERO)
                 },
             }
-
-            self.0.map.merge(note.script().mast().advice_map()).map_err(
-                |((key, existing_val), incoming_val)| TransactionAdviceMapMismatch {
-                    key,
-                    existing_val: existing_val.to_vec(),
-                    incoming_val: incoming_val.to_vec(),
-                },
-            )?;
         }
 
         self.add_map_entry(tx_inputs.input_notes().commitment(), note_data);
-
-        Ok(())
     }
 
     // HELPER METHODS
@@ -446,17 +413,4 @@ impl From<AdviceInputs> for TransactionAdviceInputs {
     fn from(inner: AdviceInputs) -> Self {
         Self(inner)
     }
-}
-
-// CONFLICT ERROR
-// ================================================================================================
-
-#[derive(Debug, Error)]
-#[error(
-    "conflicting map entry for key {key}: existing={existing_val:?}, incoming={incoming_val:?}"
-)]
-pub struct TransactionAdviceMapMismatch {
-    pub key: Word,
-    pub existing_val: Vec<Felt>,
-    pub incoming_val: Vec<Felt>,
 }
