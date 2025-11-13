@@ -1,8 +1,9 @@
+use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use miden_lib::transaction::{EventId, TransactionAdviceInputs};
+use miden_lib::transaction::TransactionAdviceInputs;
 use miden_objects::account::auth::PublicKeyCommitment;
 use miden_objects::account::{AccountCode, AccountDelta, AccountId, PartialAccount};
 use miden_objects::assembly::debuginfo::Location;
@@ -11,7 +12,7 @@ use miden_objects::asset::{Asset, AssetVaultKey, AssetWitness, FungibleAsset};
 use miden_objects::block::BlockNumber;
 use miden_objects::crypto::merkle::SmtProof;
 use miden_objects::note::{NoteInputs, NoteMetadata, NoteRecipient};
-use miden_objects::transaction::{InputNote, InputNotes, OutputNote};
+use miden_objects::transaction::{InputNote, InputNotes, OutputNote, TransactionSummary};
 use miden_objects::vm::AdviceMap;
 use miden_objects::{Felt, Hasher, Word};
 use miden_processor::{
@@ -26,12 +27,11 @@ use miden_processor::{
 
 use crate::auth::{SigningInputs, TransactionAuthenticator};
 use crate::errors::TransactionKernelError;
-use crate::host::note_builder::OutputNoteBuilder;
 use crate::host::{
+    RecipientData,
     ScriptMastForestStore,
     TransactionBaseHost,
-    TransactionEventData,
-    TransactionEventHandling,
+    TransactionEvent,
     TransactionProgress,
 };
 use crate::{AccountProcedureIndexMap, DataStore};
@@ -53,6 +53,11 @@ where
 {
     /// The underlying base transaction host.
     base_host: TransactionBaseHost<'store, STORE>,
+
+    /// Tracks the number of cycles for each of the transaction execution stages.
+    ///
+    /// The progress is updated event handlers.
+    tx_progress: TransactionProgress,
 
     /// Serves signature generation requests from the transaction runtime for signatures which are
     /// not present in the `generated_signatures` field.
@@ -107,6 +112,7 @@ where
 
         Self {
             base_host,
+            tx_progress: TransactionProgress::default(),
             authenticator,
             ref_block,
             accessed_foreign_account_code: Vec::new(),
@@ -120,7 +126,7 @@ where
 
     /// Returns a reference to the `tx_progress` field of this transaction host.
     pub fn tx_progress(&self) -> &TransactionProgress {
-        self.base_host.tx_progress()
+        &self.tx_progress
     }
 
     // EVENT HANDLERS
@@ -179,8 +185,10 @@ where
     pub async fn on_auth_requested(
         &mut self,
         pub_key_hash: Word,
-        signing_inputs: SigningInputs,
+        tx_summary: TransactionSummary,
     ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
+        let signing_inputs = SigningInputs::TransactionSummary(Box::new(tx_summary));
+
         let authenticator =
             self.authenticator.ok_or(TransactionKernelError::MissingAuthenticator)?;
 
@@ -281,14 +289,14 @@ where
     /// [`Self::on_account_vault_asset_witness_requested`] for more on this topic.
     async fn on_account_storage_map_witness_requested(
         &self,
-        current_account_id: AccountId,
+        active_account_id: AccountId,
         map_root: Word,
         map_key: Word,
     ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
         let storage_map_witness = self
             .base_host
             .store()
-            .get_storage_map_witness(current_account_id, map_root, map_key)
+            .get_storage_map_witness(active_account_id, map_root, map_key)
             .await
             .map_err(|err| TransactionKernelError::GetStorageMapWitness {
                 map_root,
@@ -343,14 +351,14 @@ where
     /// witnesses for the initial vault root.
     async fn on_account_vault_asset_witness_requested(
         &self,
-        current_account_id: AccountId,
+        active_account_id: AccountId,
         vault_root: Word,
         asset_key: AssetVaultKey,
     ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
         let asset_witness = self
             .base_host
             .store()
-            .get_vault_asset_witness(current_account_id, vault_root, asset_key)
+            .get_vault_asset_witness(active_account_id, vault_root, asset_key)
             .await
             .map_err(|err| TransactionKernelError::GetVaultAssetWitness {
                 vault_root,
@@ -368,44 +376,51 @@ where
     /// where the script is not already available in the advice provider.
     async fn on_note_script_requested(
         &mut self,
+        note_idx: usize,
+        recipient_digest: Word,
         script_root: Word,
         metadata: NoteMetadata,
-        recipient_digest: Word,
-        note_idx: usize,
         note_inputs: NoteInputs,
         serial_num: Word,
     ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
         let note_script_result = self.base_host.store().get_note_script(script_root).await;
 
-        let (recipient, mutations) = match note_script_result {
+        match note_script_result {
             Ok(Some(note_script)) => {
                 let script_felts: Vec<Felt> = (&note_script).into();
                 let recipient = NoteRecipient::new(serial_num, note_script, note_inputs);
-                let mutations = vec![AdviceMutation::extend_map(AdviceMap::from_iter([(
+
+                if recipient.digest() != recipient_digest {
+                    return Err(TransactionKernelError::other(format!(
+                        "recipient digest is {recipient_digest}, but recipient constructed from raw inputs has digest {}",
+                        recipient.digest()
+                    )));
+                }
+
+                self.base_host.output_note_from_recipient(note_idx, metadata, recipient)?;
+
+                Ok(vec![AdviceMutation::extend_map(AdviceMap::from_iter([(
                     script_root,
                     script_felts,
-                )]))];
-
-                (Some(recipient), mutations)
+                )]))])
             },
-            Ok(None) if metadata.is_private() => (None, Vec::new()),
-            Ok(None) => {
-                return Err(TransactionKernelError::other(format!(
-                    "note script with root {script_root} not found in data store for public note"
-                )));
-            },
-            Err(err) => {
-                return Err(TransactionKernelError::other_with_source(
-                    "failed to retrieve note script from data store",
-                    err,
-                ));
-            },
-        };
+            Ok(None) if metadata.is_private() => {
+                self.base_host.output_note_from_recipient_digest(
+                    note_idx,
+                    metadata,
+                    recipient_digest,
+                )?;
 
-        let note_builder = OutputNoteBuilder::new(metadata, recipient_digest, recipient)?;
-        self.base_host.insert_output_note_builder(note_idx, note_builder)?;
-
-        Ok(mutations)
+                Ok(Vec::new())
+            },
+            Ok(None) => Err(TransactionKernelError::other(format!(
+                "note script with root {script_root} not found in data store for public note"
+            ))),
+            Err(err) => Err(TransactionKernelError::other_with_source(
+                "failed to retrieve note script from data store",
+                err,
+            )),
+        }
     }
 
     /// Consumes `self` and returns the account delta, output notes, generated signatures and
@@ -421,7 +436,7 @@ where
         BTreeMap<Word, Vec<Felt>>,
         TransactionProgress,
     ) {
-        let (account_delta, input_notes, output_notes, tx_progress) = self.base_host.into_parts();
+        let (account_delta, input_notes, output_notes) = self.base_host.into_parts();
 
         (
             account_delta,
@@ -429,7 +444,7 @@ where
             output_notes,
             self.accessed_foreign_account_code,
             self.generated_signatures,
-            tx_progress,
+            self.tx_progress,
         )
     }
 }
@@ -467,72 +482,208 @@ where
         &mut self,
         process: &ProcessState,
     ) -> impl FutureMaybeSend<Result<Vec<AdviceMutation>, EventError>> {
-        let event_id = EventId::from_felt(process.get_stack_item(0));
+        let stdlib_event_result = self.base_host.handle_stdlib_events(process);
 
-        // TODO: Eventually, refactor this to let TransactionEvent contain the data directly, which
-        // should be cleaner.
-        let event_handling_result = self.base_host.handle_event(process, event_id);
+        // If the event was handled by a stdlib handler (Ok(Some)), we will return the result from
+        // within the async block below. So, we only need to extract th tx event if the event was
+        // not yet handled (Ok(None)).
+        let tx_event_result = match stdlib_event_result {
+            Ok(None) => Some(TransactionEvent::extract(&self.base_host, process)),
+            _ => None,
+        };
 
         async move {
-            let event_handling = event_handling_result?;
-            let event_data = match event_handling {
-                TransactionEventHandling::Unhandled(event) => event,
-                TransactionEventHandling::Handled(mutations) => {
-                    return Ok(mutations);
-                },
+            if let Some(mutations) = stdlib_event_result? {
+                return Ok(mutations);
+            }
+
+            // The outer None means the event was handled by stdlib handlers.
+            let Some(tx_event_result) = tx_event_result else {
+                return Ok(Vec::new());
+            };
+            // The inner None means the transaction event ID does not need to be handled.
+            let Some(tx_event) = tx_event_result? else {
+                return Ok(Vec::new());
             };
 
-            match event_data {
-                TransactionEventData::AuthRequest { pub_key_hash, signing_inputs } => self
-                    .on_auth_requested(pub_key_hash, signing_inputs)
-                    .await
-                    .map_err(EventError::from),
-                TransactionEventData::TransactionFeeComputed { fee_asset } => self
-                    .on_before_tx_fee_removed_from_account(fee_asset)
-                    .await
-                    .map_err(EventError::from),
-                TransactionEventData::ForeignAccount { account_id } => {
-                    self.on_foreign_account_requested(account_id).await.map_err(EventError::from)
+            let result = match tx_event {
+                TransactionEvent::AccountBeforeForeignLoad { foreign_account_id: account_id } => {
+                    self.on_foreign_account_requested(account_id).await
                 },
-                TransactionEventData::AccountVaultAssetWitness {
-                    current_account_id,
+
+                TransactionEvent::AccountVaultAfterRemoveAsset { asset } => {
+                    self.base_host.on_account_vault_after_remove_asset(asset)
+                },
+                TransactionEvent::AccountVaultAfterAddAsset { asset } => {
+                    self.base_host.on_account_vault_after_add_asset(asset)
+                },
+
+                TransactionEvent::AccountStorageAfterSetItem { slot_idx, new_value } => {
+                    self.base_host.on_account_storage_after_set_item(slot_idx, new_value)
+                },
+
+                TransactionEvent::AccountStorageAfterSetMapItem {
+                    slot_index,
+                    key,
+                    prev_map_value,
+                    new_map_value,
+                } => self.base_host.on_account_storage_after_set_map_item(
+                    slot_index,
+                    key,
+                    prev_map_value,
+                    new_map_value,
+                ),
+
+                TransactionEvent::AccountVaultBeforeAssetAccess {
+                    active_account_id,
                     vault_root,
                     asset_key,
-                } => self
-                    .on_account_vault_asset_witness_requested(
-                        current_account_id,
+                } => {
+                    self.on_account_vault_asset_witness_requested(
+                        active_account_id,
                         vault_root,
                         asset_key,
                     )
                     .await
-                    .map_err(EventError::from),
-                TransactionEventData::AccountStorageMapWitness {
-                    current_account_id,
+                },
+
+                TransactionEvent::AccountStorageBeforeMapItemAccess {
+                    active_account_id,
                     map_root,
                     map_key,
-                } => self
-                    .on_account_storage_map_witness_requested(current_account_id, map_root, map_key)
-                    .await
-                    .map_err(EventError::from),
-                TransactionEventData::NoteData {
-                    note_idx,
-                    metadata,
-                    script_root,
-                    recipient_digest,
-                    note_inputs,
-                    serial_num,
-                } => self
-                    .on_note_script_requested(
-                        script_root,
-                        metadata,
-                        recipient_digest,
-                        note_idx,
-                        note_inputs,
-                        serial_num,
+                } => {
+                    self.on_account_storage_map_witness_requested(
+                        active_account_id,
+                        map_root,
+                        map_key,
                     )
                     .await
-                    .map_err(EventError::from),
-            }
+                },
+
+                TransactionEvent::AccountAfterIncrementNonce => {
+                    self.base_host.on_account_after_increment_nonce()
+                },
+
+                TransactionEvent::AccountPushProcedureIndex { code_commitment, procedure_root } => {
+                    self.base_host.on_account_push_procedure_index(code_commitment, procedure_root)
+                },
+
+                TransactionEvent::NoteAfterCreated { note_idx, metadata, recipient_data } => {
+                    match recipient_data {
+                        RecipientData::Digest(recipient_digest) => {
+                            self.base_host.output_note_from_recipient_digest(
+                                note_idx,
+                                metadata,
+                                recipient_digest,
+                            )
+                        },
+                        RecipientData::Recipient(note_recipient) => self
+                            .base_host
+                            .output_note_from_recipient(note_idx, metadata, note_recipient),
+                        RecipientData::ScriptMissing {
+                            recipient_digest,
+                            serial_num,
+                            script_root,
+                            note_inputs,
+                        } => {
+                            self.on_note_script_requested(
+                                note_idx,
+                                recipient_digest,
+                                script_root,
+                                metadata,
+                                note_inputs,
+                                serial_num,
+                            )
+                            .await
+                        },
+                    }
+                },
+
+                TransactionEvent::NoteBeforeAddAsset { note_idx, asset } => {
+                    self.base_host.on_note_before_add_asset(note_idx, asset)
+                },
+
+                TransactionEvent::AuthRequest { pub_key_hash, tx_summary, signature } => {
+                    if let Some(signature) = signature {
+                        Ok(self.base_host.on_auth_requested(signature))
+                    } else {
+                        self.on_auth_requested(pub_key_hash, tx_summary).await
+                    }
+                },
+
+                // This always returns an error to abort the transaction.
+                TransactionEvent::Unauthorized { tx_summary } => {
+                    Err(TransactionKernelError::Unauthorized(Box::new(tx_summary)))
+                },
+
+                TransactionEvent::EpilogueBeforeTxFeeRemovedFromAccount { fee_asset } => {
+                    self.on_before_tx_fee_removed_from_account(fee_asset).await
+                },
+
+                TransactionEvent::LinkMapSet { advice_mutation } => Ok(advice_mutation),
+                TransactionEvent::LinkMapGet { advice_mutation } => Ok(advice_mutation),
+
+                TransactionEvent::PrologueStart { clk } => {
+                    self.tx_progress.start_prologue(clk);
+                    Ok(Vec::new())
+                },
+                TransactionEvent::PrologueEnd { clk } => {
+                    self.tx_progress.end_prologue(clk);
+                    Ok(Vec::new())
+                },
+
+                TransactionEvent::NotesProcessingStart { clk } => {
+                    self.tx_progress.start_notes_processing(clk);
+                    Ok(Vec::new())
+                },
+                TransactionEvent::NotesProcessingEnd { clk } => {
+                    self.tx_progress.end_notes_processing(clk);
+                    Ok(Vec::new())
+                },
+
+                TransactionEvent::NoteExecutionStart { note_id, clk } => {
+                    self.tx_progress.start_note_execution(clk, note_id);
+                    Ok(Vec::new())
+                },
+                TransactionEvent::NoteExecutionEnd { clk } => {
+                    self.tx_progress.end_note_execution(clk);
+                    Ok(Vec::new())
+                },
+
+                TransactionEvent::TxScriptProcessingStart { clk } => {
+                    self.tx_progress.start_tx_script_processing(clk);
+                    Ok(Vec::new())
+                },
+                TransactionEvent::TxScriptProcessingEnd { clk } => {
+                    self.tx_progress.end_tx_script_processing(clk);
+                    Ok(Vec::new())
+                },
+
+                TransactionEvent::EpilogueStart { clk } => {
+                    self.tx_progress.start_epilogue(clk);
+                    Ok(Vec::new())
+                },
+                TransactionEvent::EpilogueEnd { clk } => {
+                    self.tx_progress.end_epilogue(clk);
+                    Ok(Vec::new())
+                },
+
+                TransactionEvent::EpilogueAuthProcStart { clk } => {
+                    self.tx_progress.start_auth_procedure(clk);
+                    Ok(Vec::new())
+                },
+                TransactionEvent::EpilogueAuthProcEnd { clk } => {
+                    self.tx_progress.end_auth_procedure(clk);
+                    Ok(Vec::new())
+                },
+
+                TransactionEvent::EpilogueAfterTxCyclesObtained { clk } => {
+                    self.tx_progress.epilogue_after_tx_cycles_obtained(clk);
+                    Ok(Vec::new())
+                },
+            };
+
+            result.map_err(EventError::from)
         }
     }
 }
