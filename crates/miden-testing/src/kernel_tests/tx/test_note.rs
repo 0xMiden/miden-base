@@ -20,9 +20,9 @@ use miden_objects::note::{
     NoteAssets,
     NoteExecutionHint,
     NoteExecutionMode,
-    NoteInputs,
     NoteMetadata,
     NoteRecipient,
+    NoteStorage,
     NoteTag,
     NoteType,
 };
@@ -175,7 +175,7 @@ fn note_setup_stack_assertions(exec_output: &ExecutionOutput, inputs: &Transacti
     note_script_root.reverse();
     expected_stack[..4].copy_from_slice(&note_script_root);
 
-    // assert that the stack contains the note inputs at the end of execution
+    // assert that the stack contains the note storage items at the end of execution
     assert_eq!(exec_output.stack.as_slice(), expected_stack.as_slice())
 }
 
@@ -218,21 +218,21 @@ async fn test_build_recipient() -> anyhow::Result<()> {
             # Test with 4 values
             push.{script_root}  # SCRIPT_ROOT
             push.{serial_num}   # SERIAL_NUM
-            push.4.4000         # num_inputs, inputs_ptr
+            push.4.4000         # storage_len, storage_ptr
             exec.note::build_recipient
             # => [RECIPIENT_4]
 
             # Test with 5 values
             push.{script_root}  # SCRIPT_ROOT
             push.{serial_num}   # SERIAL_NUM
-            push.5.4000         # num_inputs, inputs_ptr
+            push.5.4000         # storage_len, storage_ptr
             exec.note::build_recipient
             # => [RECIPIENT_5, RECIPIENT_4]
 
             # Test with 13 values
             push.{script_root}  # SCRIPT_ROOT
             push.{serial_num}   # SERIAL_NUM
-            push.13.4000        # num_inputs, inputs_ptr
+            push.13.4000        # storage_len, storage_ptr
             exec.note::build_recipient
             # => [RECIPIENT_13, RECIPIENT_5, RECIPIENT_4]
 
@@ -255,20 +255,20 @@ async fn test_build_recipient() -> anyhow::Result<()> {
     let exec_output = &tx_context.execute_code(&code).await?;
 
     // Create expected recipients and get their digests
-    let note_inputs_4 = NoteInputs::new(word_1.to_vec())?;
-    let recipient_4 = NoteRecipient::new(serial_num, note_script.clone(), note_inputs_4);
+    let note_storage_4 = NoteStorage::new(word_1.to_vec())?;
+    let recipient_4 = NoteRecipient::new(serial_num, note_script.clone(), note_storage_4);
 
     let mut inputs_5 = word_1.to_vec();
     inputs_5.push(word_2[0]);
-    let note_inputs_5 = NoteInputs::new(inputs_5)?;
-    let recipient_5 = NoteRecipient::new(serial_num, note_script.clone(), note_inputs_5);
+    let note_storage_5 = NoteStorage::new(inputs_5)?;
+    let recipient_5 = NoteRecipient::new(serial_num, note_script.clone(), note_storage_5);
 
     let mut inputs_13 = word_1.to_vec();
     inputs_13.extend_from_slice(&word_2.to_vec());
     inputs_13.extend_from_slice(&word_3.to_vec());
     inputs_13.push(word_4[0]);
-    let note_inputs_13 = NoteInputs::new(inputs_13)?;
-    let recipient_13 = NoteRecipient::new(serial_num, note_script, note_inputs_13);
+    let note_storage_13 = NoteStorage::new(inputs_13)?;
+    let recipient_13 = NoteRecipient::new(serial_num, note_script, note_storage_13);
 
     let mut expected_stack = alloc::vec::Vec::new();
     expected_stack.extend_from_slice(recipient_4.digest().as_elements());
@@ -281,7 +281,7 @@ async fn test_build_recipient() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
-async fn test_compute_inputs_commitment() -> anyhow::Result<()> {
+async fn test_compute_storage_commitment() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
     // Define test values as Words
@@ -306,24 +306,24 @@ async fn test_compute_inputs_commitment() -> anyhow::Result<()> {
 
             # push the number of values and pointer to the inputs on the stack
             push.5.4000
-            # execute the `compute_inputs_commitment` procedure for 5 values
-            exec.note::compute_inputs_commitment
+            # execute the `compute_storage_commitment` procedure for 5 values
+            exec.note::compute_storage_commitment
             # => [HASH_5]
 
             push.8.4000
-            # execute the `compute_inputs_commitment` procedure for 8 values
-            exec.note::compute_inputs_commitment
+            # execute the `compute_storage_commitment` procedure for 8 values
+            exec.note::compute_storage_commitment
             # => [HASH_8, HASH_5]
 
             push.15.4000
-            # execute the `compute_inputs_commitment` procedure for 15 values
-            exec.note::compute_inputs_commitment
+            # execute the `compute_storage_commitment` procedure for 15 values
+            exec.note::compute_storage_commitment
             # => [HASH_15, HASH_8, HASH_5]
 
             push.0.4000
-            # check that calling `compute_inputs_commitment` procedure with 0 elements will result in an
+            # check that calling `compute_storage_commitment` procedure with 0 elements will result in an
             # empty word
-            exec.note::compute_inputs_commitment
+            exec.note::compute_storage_commitment
             # => [0, 0, 0, 0, HASH_15, HASH_8, HASH_5]
 
             # truncate the stack
@@ -344,23 +344,23 @@ async fn test_compute_inputs_commitment() -> anyhow::Result<()> {
 
     let mut inputs_5 = word_1.to_vec();
     inputs_5.push(word_2[0]);
-    let note_inputs_5_hash = NoteInputs::new(inputs_5)?.commitment();
+    let note_storage_5_hash = NoteStorage::new(inputs_5)?.commitment();
 
     let mut inputs_8 = word_1.to_vec();
     inputs_8.extend_from_slice(&word_2.to_vec());
-    let note_inputs_8_hash = NoteInputs::new(inputs_8)?.commitment();
+    let note_storage_8_hash = NoteStorage::new(inputs_8)?.commitment();
 
     let mut inputs_15 = word_1.to_vec();
     inputs_15.extend_from_slice(&word_2.to_vec());
     inputs_15.extend_from_slice(&word_3.to_vec());
     inputs_15.extend_from_slice(&word_4[0..3]);
-    let note_inputs_15_hash = NoteInputs::new(inputs_15)?.commitment();
+    let note_storage_15_hash = NoteStorage::new(inputs_15)?.commitment();
 
     let mut expected_stack = alloc::vec::Vec::new();
 
-    expected_stack.extend_from_slice(note_inputs_5_hash.as_elements());
-    expected_stack.extend_from_slice(note_inputs_8_hash.as_elements());
-    expected_stack.extend_from_slice(note_inputs_15_hash.as_elements());
+    expected_stack.extend_from_slice(note_storage_5_hash.as_elements());
+    expected_stack.extend_from_slice(note_storage_8_hash.as_elements());
+    expected_stack.extend_from_slice(note_storage_15_hash.as_elements());
     expected_stack.extend_from_slice(Word::empty().as_elements());
     expected_stack.reverse();
 
@@ -438,13 +438,13 @@ pub async fn test_timelock() -> anyhow::Result<()> {
       use.miden::tx
 
       begin
-          # store the note inputs to memory starting at address 0
-          push.0 exec.active_note::get_inputs
-          # => [num_inputs, inputs_ptr]
+          # store the storage length to memory starting at address 0
+          push.0 exec.active_note::get_storage
+          # => [storage_len, storage_ptr]
 
-          # make sure the number of inputs is 1
-          eq.1 assert.err="number of note inputs is not 1"
-          # => [inputs_ptr]
+          # make sure the storage length is 1
+          eq.1 assert.err="number of storage length is not 1"
+          # => [storage_ptr]
 
           # read the timestamp at which the note can be consumed
           mem_load
@@ -466,7 +466,7 @@ pub async fn test_timelock() -> anyhow::Result<()> {
     let lock_timestamp = 2_000_000_000;
     let source_manager = Arc::new(DefaultSourceManager::default());
     let timelock_note = NoteBuilder::new(account.id(), &mut ChaCha20Rng::from_os_rng())
-        .note_inputs([Felt::from(lock_timestamp)])?
+        .note_storage([Felt::from(lock_timestamp)])?
         .source_manager(source_manager.clone())
         .code(code.clone())
         .dynamically_linked_libraries(TransactionKernel::mock_libraries())
@@ -508,7 +508,7 @@ pub async fn test_timelock() -> anyhow::Result<()> {
 /// Previously this setup was leading to the values collision in the advice map, see the
 /// [issue #1267](https://github.com/0xMiden/miden-base/issues/1267) for more details.
 #[tokio::test]
-async fn test_public_key_as_note_input() -> anyhow::Result<()> {
+async fn test_public_key_as_note_storage() -> anyhow::Result<()> {
     let mut rng = ChaCha20Rng::from_seed(Default::default());
     let sec_key = SecretKey::with_rng(&mut rng);
     // this value will be used both as public key in the RPO component of the target account and as
@@ -543,7 +543,7 @@ async fn test_public_key_as_note_input() -> anyhow::Result<()> {
     let vault = NoteAssets::new(vec![])?;
     let note_script = ScriptBuilder::default().compile_note_script("begin nop end")?;
     let recipient =
-        NoteRecipient::new(serial_num, note_script, NoteInputs::new(public_key_value.to_vec())?);
+        NoteRecipient::new(serial_num, note_script, NoteStorage::new(public_key_value.to_vec())?);
     let note_with_pub_key = Note::new(vault.clone(), metadata, recipient);
 
     let tx_context = TransactionContextBuilder::new(target_account)

@@ -107,6 +107,7 @@
 - [BREAKING] Renamed `get_item_init` and `get_map_item_init` to `get_initial_item` and `get_initial_map_item` respectively ([#1959](https://github.com/0xMiden/miden-base/pull/1959)).
 - Update the type signature syntax in the `account_components` module ([#1971](https://github.com/0xMiden/miden-base/pull/1971)).
 - [BREAKING] Assert nonce is non-zero after the auth procedure ([#1982](https://github.com/0xMiden/miden-base/pull/1982)).
+- [BREAKING] Rename `NoteInputs` to `NoteStorage` ([#2008](https://github.com/0xMiden/miden-base/pull/2008)).
 - [BREAKING] Removed `Rng` from `BasicAuthenticator` ([#1994](https://github.com/0xMiden/miden-base/pull/1994)).
 - [BREAKING] Changed the outputs of the `output_note::add_asset` procedure: now the values that are the same as the passed parameters are dropped ([#2031](https://github.com/0xMiden/miden-base/pull/2031)).
 - [BREAKING] Upgraded VM to 0.19 ([#2042](https://github.com/0xMiden/miden-base/pull/2042)).

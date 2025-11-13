@@ -350,14 +350,14 @@ pub const NOTE_MEM_SIZE: MemoryAddress = 2048;
 // ├──────┼────────┼────────┼────────┼────────────┼───────────┼──────┼───────┼────────┼────────┼───────┼─────┼───────┼─────────┤
 // 0      4        8        12       16           20          24     28      32       36       40 + 4n
 //
-// - NUM_INPUTS is encoded as [num_inputs, 0, 0, 0].
+// - STORAGE_LEN is encoded as [storage_len, 0, 0, 0].
 // - NUM_ASSETS is encoded as [num_assets, 0, 0, 0].
-// - INPUTS_COMMITMENT is the key to look up note inputs in the advice map.
+// - STORAGE_COMMITMENT is the key to look up note storage items in the advice map.
 // - ASSETS_COMMITMENT is the key to look up note assets in the advice map.
 //
-// Notice that note input values are not loaded to the memory, only their length. In order to obtain
-// the input values the advice map should be used: they are stored there as
-// `INPUTS_COMMITMENT -> INPUTS || PADDING`.
+// Notice that note storage items are not loaded to the memory, only their length. In order to obtain
+// the storage items the advice map should be used: they are stored there as
+// `STORAGE_COMMITMENT -> STORAGE || PADDING`.
 //
 // As opposed to the asset values, input values are never used in kernel memory, so their presence
 // there is unnecessary.
@@ -378,12 +378,12 @@ pub const NUM_INPUT_NOTES_PTR: MemoryAddress = INPUT_NOTE_SECTION_PTR;
 pub const INPUT_NOTE_ID_OFFSET: MemoryOffset = 0;
 pub const INPUT_NOTE_SERIAL_NUM_OFFSET: MemoryOffset = 4;
 pub const INPUT_NOTE_SCRIPT_ROOT_OFFSET: MemoryOffset = 8;
-pub const INPUT_NOTE_INPUTS_COMMITMENT_OFFSET: MemoryOffset = 12;
+pub const INPUT_NOTE_STORAGE_COMMITMENT_OFFSET: MemoryOffset = 12;
 pub const INPUT_NOTE_ASSETS_COMMITMENT_OFFSET: MemoryOffset = 16;
 pub const INPUT_NOTE_RECIPIENT_OFFSET: MemoryOffset = 20;
 pub const INPUT_NOTE_METADATA_OFFSET: MemoryOffset = 24;
 pub const INPUT_NOTE_ARGS_OFFSET: MemoryOffset = 28;
-pub const INPUT_NOTE_NUM_INPUTS_OFFSET: MemoryOffset = 32;
+pub const INPUT_NOTE_STORAGE_LEN_OFFSET: MemoryOffset = 32;
 pub const INPUT_NOTE_NUM_ASSETS_OFFSET: MemoryOffset = 36;
 pub const INPUT_NOTE_ASSETS_OFFSET: MemoryOffset = 40;
 

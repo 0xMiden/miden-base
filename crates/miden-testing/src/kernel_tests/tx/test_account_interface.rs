@@ -13,9 +13,9 @@ use miden_objects::note::{
     Note,
     NoteAssets,
     NoteExecutionHint,
-    NoteInputs,
     NoteMetadata,
     NoteRecipient,
+    NoteStorage,
     NoteTag,
     NoteType,
 };
@@ -520,7 +520,7 @@ async fn test_check_note_consumability_static_analysis_invalid_inputs() -> anyho
         TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context).with_tracing();
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
-    // check the note with invalid number of inputs
+    // check the note with invalid storage length
     // --------------------------------------------------------------------------------------------
     let consumability_info: NoteConsumptionStatus = notes_checker
         .can_consume(
@@ -534,7 +534,7 @@ async fn test_check_note_consumability_static_analysis_invalid_inputs() -> anyho
         assert_eq!(reason.to_string(), format!(
                         "P2IDE note should have {} inputs, but {} was provided",
                         WellKnownNote::P2IDE.num_expected_inputs(),
-                        p2ide_wrong_inputs_number.recipient().inputs().num_values()
+                        p2ide_wrong_inputs_number.recipient().storage().num_items()
                     ));
     });
 
@@ -549,7 +549,7 @@ async fn test_check_note_consumability_static_analysis_invalid_inputs() -> anyho
         )
         .await?;
     assert_matches!(consumability_info, NoteConsumptionStatus::NeverConsumable(reason) => {
-        assert_eq!(reason.to_string(), "failed to create an account ID from the first two note inputs");
+        assert_eq!(reason.to_string(), "failed to create an account ID from the first two note storage items");
     });
 
     // check the note with a wrong target account ID (target is neither the sender nor the receiver)
@@ -670,7 +670,7 @@ async fn test_check_note_consumability_static_analysis_receiver(
         TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context).with_tracing();
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
-    // check the note with invalid number of inputs
+    // check the note with invalid storage length
     // --------------------------------------------------------------------------------------------
     let consumption_check_result = notes_checker
         .can_consume(
@@ -760,7 +760,7 @@ async fn test_check_note_consumability_static_analysis_sender(
         TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context).with_tracing();
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
-    // check the note with invalid number of inputs
+    // check the note with invalid storage length
     // --------------------------------------------------------------------------------------------
     let consumption_check_result = notes_checker
         .can_consume(
@@ -779,14 +779,14 @@ async fn test_check_note_consumability_static_analysis_sender(
 // HELPER FUNCTIONS
 // ================================================================================================
 
-/// Creates a mock P2IDE note with the specified note inputs.
+/// Creates a mock P2IDE note with the specified note storage items.
 fn create_p2ide_note_with_inputs(inputs: impl IntoIterator<Item = u64>, sender: AccountId) -> Note {
     let serial_num = RpoRandomCoin::new(Default::default()).draw_word();
     let note_script = WellKnownNote::P2IDE.script();
     let recipient = NoteRecipient::new(
         serial_num,
         note_script,
-        NoteInputs::new(inputs.into_iter().map(Felt::new).collect()).unwrap(),
+        NoteStorage::new(inputs.into_iter().map(Felt::new).collect()).unwrap(),
     );
 
     let tag = NoteTag::from_account_id(sender);

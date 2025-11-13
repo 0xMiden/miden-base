@@ -9,9 +9,9 @@ use miden_objects::note::{
     NoteAssets,
     NoteDetails,
     NoteExecutionHint,
-    NoteInputs,
     NoteMetadata,
     NoteRecipient,
+    NoteStorage,
     NoteTag,
     NoteType,
 };
@@ -126,7 +126,7 @@ pub fn create_swap_note<R: FeltRng>(
     let requested_asset_word: Word = requested_asset.into();
     let payback_tag = NoteTag::from_account_id(sender);
 
-    let inputs = NoteInputs::new(vec![
+    let inputs = NoteStorage::new(vec![
         requested_asset_word[0],
         requested_asset_word[1],
         requested_asset_word[2],
@@ -205,7 +205,7 @@ pub fn create_mint_note<R: FeltRng>(
 
     let execution_hint = NoteExecutionHint::always();
 
-    let inputs = NoteInputs::new(vec![
+    let inputs = NoteStorage::new(vec![
         target_recipient[0],
         target_recipient[1],
         target_recipient[2],
@@ -262,7 +262,7 @@ pub fn create_burn_note<R: FeltRng>(
     // Use always execution hint for BURN notes
     let execution_hint = NoteExecutionHint::always();
 
-    let inputs = NoteInputs::new(vec![])?;
+    let inputs = NoteStorage::new(vec![])?;
     let tag = NoteTag::from_account_id(faucet_id);
 
     let metadata = NoteMetadata::new(sender, note_type, tag, execution_hint, aux)?;

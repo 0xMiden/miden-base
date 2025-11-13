@@ -11,9 +11,9 @@ use miden_objects::note::{
     Note,
     NoteAssets,
     NoteExecutionHint,
-    NoteInputs,
     NoteMetadata,
     NoteRecipient,
+    NoteStorage,
     NoteTag,
     NoteType,
 };
@@ -218,7 +218,7 @@ async fn test_active_note_get_assets() -> anyhow::Result<()> {
         use.miden::active_note
 
         proc.process_note_0
-            # drop the note inputs
+            # drop the note storage
             dropw dropw dropw dropw
 
             # set the destination pointer for note 0 assets
@@ -241,7 +241,7 @@ async fn test_active_note_get_assets() -> anyhow::Result<()> {
         end
 
         proc.process_note_1
-            # drop the note inputs
+            # drop the note storage
             dropw dropw dropw dropw
 
             # set the destination pointer for note 1 assets
@@ -297,7 +297,7 @@ async fn test_active_note_get_assets() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
-async fn test_active_note_get_inputs() -> anyhow::Result<()> {
+async fn test_active_note_get_storage() -> anyhow::Result<()> {
     // Creates a mockchain with an account and a note that it can consume
     let tx_context = {
         let mut builder = MockChain::builder();
@@ -318,7 +318,7 @@ async fn test_active_note_get_inputs() -> anyhow::Result<()> {
 
     fn construct_inputs_assertions(note: &Note) -> String {
         let mut code = String::new();
-        for inputs_chunk in note.inputs().values().chunks(WORD_SIZE) {
+        for inputs_chunk in note.storage().items().chunks(WORD_SIZE) {
             let mut inputs_word = EMPTY_WORD;
             inputs_word.as_mut_slice()[..inputs_chunk.len()].copy_from_slice(inputs_chunk);
 
@@ -357,10 +357,10 @@ async fn test_active_note_get_inputs() -> anyhow::Result<()> {
             dropw dropw dropw dropw
             # => []
 
-            push.{NOTE_0_PTR} exec.active_note::get_inputs
-            # => [num_inputs, dest_ptr]
+            push.{NOTE_0_PTR} exec.active_note::get_storage
+            # => [storage_len, dest_ptr]
 
-            eq.{num_inputs} assert
+            eq.{storage_len} assert
             # => [dest_ptr]
 
             dup eq.{NOTE_0_PTR} assert
@@ -375,7 +375,7 @@ async fn test_active_note_get_inputs() -> anyhow::Result<()> {
             # => []
         end
         ",
-        num_inputs = note0.inputs().num_values(),
+        storage_len = note0.storage().num_items(),
         inputs_assertions = construct_inputs_assertions(note0),
         NOTE_0_PTR = 100000000,
     );
@@ -385,14 +385,14 @@ async fn test_active_note_get_inputs() -> anyhow::Result<()> {
 }
 
 /// This test checks the scenario when an input note has exactly 8 inputs, and the transaction
-/// script attempts to load the inputs to memory using the `miden::active_note::get_inputs`
+/// script attempts to load the inputs to memory using the `miden::active_note::get_storage`
 /// procedure.
 ///
-/// Previously this setup was leading to the incorrect number of note inputs computed during the
-/// `get_inputs` procedure, see the [issue #1363](https://github.com/0xMiden/miden-base/issues/1363)
+/// Previously this setup was leading to the incorrect number of note storage items computed during
+/// the `get_storage` procedure, see the [issue #1363](https://github.com/0xMiden/miden-base/issues/1363)
 /// for more details.
 #[tokio::test]
-async fn test_active_note_get_exactly_8_inputs() -> anyhow::Result<()> {
+async fn test_active_note_get_exactly_8_storage_items() -> anyhow::Result<()> {
     let sender_id = ACCOUNT_ID_SENDER
         .try_into()
         .context("failed to convert ACCOUNT_ID_SENDER to account ID")?;
@@ -416,12 +416,12 @@ async fn test_active_note_get_exactly_8_inputs() -> anyhow::Result<()> {
         .compile_note_script("begin nop end")
         .context("failed to compile note script")?;
 
-    // create a recipient with note inputs, which number divides by 8. For simplicity create 8 input
-    // values
+    // create a recipient with note storage items, which number divides by 8. For simplicity create
+    // 8 input values
     let recipient = NoteRecipient::new(
         serial_num,
         note_script,
-        NoteInputs::new(vec![
+        NoteStorage::new(vec![
             ONE,
             Felt::new(2),
             Felt::new(3),
@@ -431,7 +431,7 @@ async fn test_active_note_get_exactly_8_inputs() -> anyhow::Result<()> {
             Felt::new(7),
             Felt::new(8),
         ])
-        .context("failed to create note inputs")?,
+        .context("failed to create note storage")?,
     );
     let input_note = Note::new(vault.clone(), metadata, recipient);
 
@@ -447,12 +447,12 @@ async fn test_active_note_get_exactly_8_inputs() -> anyhow::Result<()> {
             begin
                 exec.prologue::prepare_transaction
 
-                # execute the `get_inputs` procedure to trigger note inputs length assertion
-                push.0 exec.active_note::get_inputs
-                # => [num_inputs, 0]
+                # execute the `get_storage` procedure to trigger storage length assertion
+                push.0 exec.active_note::get_storage
+                # => [storage_len, 0]
 
                 # assert that the inputs length is 8
-                push.8 assert_eq.err=\"number of inputs values should be equal to 8\"
+                push.8 assert_eq.err=\"storage length values should be equal to 8\"
 
                 # clean the stack
                 drop

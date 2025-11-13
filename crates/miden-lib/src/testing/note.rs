@@ -10,10 +10,10 @@ use miden_objects::note::{
     Note,
     NoteAssets,
     NoteExecutionHint,
-    NoteInputs,
     NoteMetadata,
     NoteRecipient,
     NoteScript,
+    NoteStorage,
     NoteTag,
     NoteType,
 };
@@ -66,14 +66,14 @@ impl NoteBuilder {
         }
     }
 
-    /// Set the note's input to `inputs`.
+    /// Set the note's storage to `storage_items`.
     ///
-    /// Note: This overwrite the inputs, the previous input values are discarded.
-    pub fn note_inputs(
+    /// Note: This overwrite the storage, the previous storage items are discarded.
+    pub fn note_storage(
         mut self,
-        inputs: impl IntoIterator<Item = Felt>,
+        storage_items: impl IntoIterator<Item = Felt>,
     ) -> Result<Self, NoteError> {
-        let validate = NoteInputs::new(inputs.into_iter().collect())?;
+        let validate = NoteStorage::new(storage_items.into_iter().collect())?;
         self.inputs = validate.into();
         Ok(self)
     }
@@ -167,7 +167,7 @@ impl NoteBuilder {
             self.note_execution_hint,
             self.aux,
         )?;
-        let inputs = NoteInputs::new(self.inputs)?;
+        let inputs = NoteStorage::new(self.inputs)?;
         let recipient = NoteRecipient::new(self.serial_num, note_script, inputs);
 
         Ok(Note::new(vault, metadata, recipient))

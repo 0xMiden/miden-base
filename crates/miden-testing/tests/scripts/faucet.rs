@@ -23,9 +23,9 @@ use miden_objects::note::{
     NoteExecutionHint,
     NoteExecutionMode,
     NoteId,
-    NoteInputs,
     NoteMetadata,
     NoteRecipient,
+    NoteStorage,
     NoteTag,
     NoteType,
 };
@@ -333,9 +333,9 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
     let target_account_suffix = recipient_account_id.suffix();
     let target_account_prefix = recipient_account_id.prefix().as_felt();
 
-    // Use a length that is not a multiple of 8 (double word size) to make sure note inputs padding
+    // Use a length that is not a multiple of 8 (double word size) to make sure note storage padding
     // is correctly handled
-    let note_inputs = NoteInputs::new(vec![
+    let note_storage = NoteStorage::new(vec![
         target_account_suffix,
         target_account_prefix,
         Felt::new(0),
@@ -346,7 +346,7 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
     ])?;
 
     let note_recipient =
-        NoteRecipient::new(serial_num, output_note_script.clone(), note_inputs.clone());
+        NoteRecipient::new(serial_num, output_note_script.clone(), note_storage.clone());
 
     let output_script_root = note_recipient.script().root();
 
@@ -359,14 +359,14 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
             use.miden::note
             
             begin
-                # Build recipient hash from SERIAL_NUM, SCRIPT_ROOT, and INPUTS_COMMITMENT
+                # Build recipient hash from SERIAL_NUM, SCRIPT_ROOT, and STORAGE_COMMITMENT
                 push.{script_root}
                 # => [SCRIPT_ROOT]
 
                 push.{serial_num}
                 # => [SERIAL_NUM, SCRIPT_ROOT]
 
-                # Store note inputs in memory
+                # Store storage length in memory
                 push.{input0} mem_store.0
                 push.{input1} mem_store.1
                 push.{input2} mem_store.2
@@ -376,7 +376,7 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
                 push.{input6} mem_store.6
 
                 push.7 push.0
-                # => [inputs_ptr, num_inputs = 7, SERIAL_NUM, SCRIPT_ROOT]
+                # => [storage_ptr, storage_len = 7, SERIAL_NUM, SCRIPT_ROOT]
 
                 exec.note::build_recipient
                 # => [RECIPIENT]
@@ -397,13 +397,13 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
             end
             ",
         note_type = note_type as u8,
-        input0 = note_inputs.values()[0],
-        input1 = note_inputs.values()[1],
-        input2 = note_inputs.values()[2],
-        input3 = note_inputs.values()[3],
-        input4 = note_inputs.values()[4],
-        input5 = note_inputs.values()[5],
-        input6 = note_inputs.values()[6],
+        input0 = note_storage.items()[0],
+        input1 = note_storage.items()[1],
+        input2 = note_storage.items()[2],
+        input3 = note_storage.items()[3],
+        input4 = note_storage.items()[4],
+        input5 = note_storage.items()[5],
+        input6 = note_storage.items()[6],
         script_root = output_script_root,
         serial_num = serial_num,
         aux = aux,
@@ -458,16 +458,21 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
     // Verify the note was created by the faucet
     assert_eq!(full_note.metadata().sender(), faucet.id());
 
-    // Verify the note inputs commitment matches the expected commitment
+    // Verify the note storage commitment matches the expected commitment
     assert_eq!(
-        full_note.recipient().inputs().commitment(),
-        note_inputs.commitment(),
-        "Output note inputs commitment should match expected inputs commitment"
+        full_note.recipient().storage().commitment(),
+        note_storage.commitment(),
+        "Output note storage commitment should match expected storage commitment"
     );
     assert_eq!(
-        full_note.recipient().inputs().num_values(),
-        note_inputs.num_values(),
-        "Output note inputs length should match expected inputs length"
+        full_note.recipient().storage().num_items(),
+        note_storage.num_items(),
+        "Output note storage length should match expected storage length"
+    );
+    assert_eq!(
+        full_note.recipient().storage().num_items(),
+        note_storage.num_items(),
+        "Output note storage length should match expected storage length"
     );
 
     // Verify the output note ID matches the expected note ID

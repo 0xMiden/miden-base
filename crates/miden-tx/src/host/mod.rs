@@ -38,7 +38,7 @@ use miden_objects::account::{
     StorageSlotType,
 };
 use miden_objects::asset::{Asset, AssetVault, AssetVaultKey, FungibleAsset};
-use miden_objects::note::{NoteId, NoteInputs, NoteMetadata, NoteRecipient, NoteScript};
+use miden_objects::note::{NoteId, NoteMetadata, NoteRecipient, NoteScript, NoteStorage};
 use miden_objects::transaction::{
     InputNote,
     InputNotes,
@@ -560,7 +560,7 @@ where
                     metadata,
                     script_root,
                     recipient_digest,
-                    note_inputs: inputs,
+                    note_storage: inputs,
                     serial_num,
                 }));
             }
@@ -1106,8 +1106,8 @@ pub(super) enum TransactionEventData {
         script_root: Word,
         /// The recipient digest extracted from the stack.
         recipient_digest: Word,
-        /// The note inputs extracted from the advice provider.
-        note_inputs: NoteInputs,
+        /// The note storage extracted from the advice provider.
+        note_storage: NoteStorage,
         /// The serial number extracted from the advice provider.
         serial_num: Word,
     },

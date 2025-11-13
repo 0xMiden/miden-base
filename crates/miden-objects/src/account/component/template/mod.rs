@@ -29,7 +29,7 @@ pub use storage::*;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AccountComponentTemplate {
     /// The component's metadata. This describes the component and how the storage is laid out,
-    /// alongside how storage values are initialized.
+    /// alongside how storage items are initialized.
     metadata: AccountComponentMetadata,
     /// The account component's assembled code. This defines all functionality related to the
     /// component.

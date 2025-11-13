@@ -14,7 +14,7 @@ use crate::Word;
 pub struct InitStorageData {
     // TODO: Both the below fields could be a single field with a two variant enum
     // (eg, BTreeMap<StorageValueName, StorageTemplateValue>)
-    /// A mapping of storage placeholder names to their corresponding storage values.
+    /// A mapping of storage placeholder names to their corresponding storage items.
     value_entries: BTreeMap<StorageValueName, String>,
     /// A mapping of map placeholder names to their corresponding key/value entries.
     map_entries: BTreeMap<StorageValueName, Vec<(Word, Word)>>,
