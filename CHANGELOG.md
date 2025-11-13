@@ -2,14 +2,20 @@
 
 ## 0.13.0 (TBD)
 
-- [BREAKING] Added `BlockBody` and `BlockProof` structs in preparation for validator signatures and deferred block proving ([#2012](https://github.com/0xMiden/miden-base/pull/2012)).
+### Features
 
-## 0.12.2 (unreleased)
+### Changes
+
+- [BREAKING] Added `BlockBody` and `BlockProof` structs in preparation for validator signatures and deferred block proving ([#2012](https://github.com/0xMiden/miden-base/pull/2012)).
+- [BREAKING] Renamed `TransactionEvent` into `TransactionEventId` and split event handling into data extraction and handling logic ([#2071](https://github.com/0xMiden/miden-base/pull/2071)).
+
+## 0.12.2 (2025-11-12)
 
 - Added `create_mint_note` and `create_burn_note` helper functions for creating standardized MINT and BURN notes ([#2061](https://github.com/0xMiden/miden-base/pull/2061)).
 - [BREAKING] Fix ECDSA signature preparation in `Signature::to_prepared_signature()` method  ([#2074](https://github.com/0xMiden/miden-base/pull/2074)).
 - Skip value slot normalization for new account's deltas ([#2075](https://github.com/0xMiden/miden-base/pull/2075)).
 - Skip value and map slot normalization for new account's deltas ([#2075](https://github.com/0xMiden/miden-base/pull/2075), [#2077](https://github.com/0xMiden/miden-base/pull/2077)).
+- Added `AuthEcdsaK256Keccak` and `AuthEcdsaK256KeccakMultisig` auth components ([#2083](https://github.com/0xMiden/miden-base/pull/2083)).
 
 ## 0.12.1 (2025-11-06)
 

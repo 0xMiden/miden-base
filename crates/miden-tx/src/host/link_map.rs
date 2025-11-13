@@ -3,7 +3,7 @@ use core::cmp::Ordering;
 
 use miden_objects::{Felt, LexicographicWord, Word, ZERO};
 use miden_processor::fast::ExecutionOutput;
-use miden_processor::{AdviceMutation, ContextId, EventError, ProcessState};
+use miden_processor::{AdviceMutation, ContextId, ProcessState};
 
 // LINK MAP
 // ================================================================================================
@@ -42,7 +42,7 @@ impl<'process> LinkMap<'process> {
     ///
     /// Expected operand stack state before: [map_ptr, KEY, NEW_VALUE]
     /// Advice stack state after: [set_operation, entry_ptr]
-    pub fn handle_set_event(process: &ProcessState<'_>) -> Result<Vec<AdviceMutation>, EventError> {
+    pub fn handle_set_event(process: &ProcessState<'_>) -> Vec<AdviceMutation> {
         let map_ptr = process.get_stack_item(1);
         let map_key = process.get_stack_word_be(2);
 
@@ -51,17 +51,14 @@ impl<'process> LinkMap<'process> {
 
         let (set_op, entry_ptr) = link_map.compute_set_operation(LexicographicWord::from(map_key));
 
-        Ok(vec![AdviceMutation::extend_stack([
-            Felt::from(set_op as u8),
-            Felt::from(entry_ptr),
-        ])])
+        vec![AdviceMutation::extend_stack([Felt::from(set_op as u8), Felt::from(entry_ptr)])]
     }
 
     /// Handles a `LINK_MAP_GET_EVENT` emitted from a VM.
     ///
     /// Expected operand stack state before: [map_ptr, KEY]
     /// Advice stack state after: [get_operation, entry_ptr]
-    pub fn handle_get_event(process: &ProcessState<'_>) -> Result<Vec<AdviceMutation>, EventError> {
+    pub fn handle_get_event(process: &ProcessState<'_>) -> Vec<AdviceMutation> {
         let map_ptr = process.get_stack_item(1);
         let map_key = process.get_stack_word_be(2);
 
@@ -69,10 +66,7 @@ impl<'process> LinkMap<'process> {
         let link_map = LinkMap::new(map_ptr, &mem_viewer);
         let (get_op, entry_ptr) = link_map.compute_get_operation(LexicographicWord::from(map_key));
 
-        Ok(vec![AdviceMutation::extend_stack([
-            Felt::from(get_op as u8),
-            Felt::from(entry_ptr),
-        ])])
+        vec![AdviceMutation::extend_stack([Felt::from(get_op as u8), Felt::from(entry_ptr)])]
     }
 
     /// Returns `true` if the map is empty, `false` otherwise.
