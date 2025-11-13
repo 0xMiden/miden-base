@@ -12,6 +12,9 @@ use crate::utils::serde::{
 };
 use crate::{FeeError, Felt, Hasher, Word, ZERO};
 
+// BLOCK HEADER
+// ================================================================================================
+
 /// The header of a block. It contains metadata about the block, commitments to the current
 /// state of the chain and the hash of the proof that attests to the integrity of the chain.
 ///
@@ -46,7 +49,7 @@ pub struct BlockHeader {
     note_root: Word,
     tx_commitment: Word,
     tx_kernel_commitment: Word,
-    proof_commitment: Word,
+    proof_commitment: Word, // TODO(serge): remove this field as proofs are constructed later.
     fee_parameters: FeeParameters,
     timestamp: u32,
     sub_commitment: Word,
@@ -370,6 +373,7 @@ impl Deserializable for FeeParameters {
             .map_err(|err| DeserializationError::InvalidValue(err.to_string()))
     }
 }
+
 // TESTS
 // ================================================================================================
 

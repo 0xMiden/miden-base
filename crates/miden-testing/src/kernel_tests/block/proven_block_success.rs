@@ -4,11 +4,18 @@ use std::vec::Vec;
 
 use anyhow::Context;
 use miden_block_prover::LocalBlockProver;
+use miden_lib::block::build_block;
 use miden_lib::note::create_p2id_note;
 use miden_objects::asset::FungibleAsset;
-use miden_objects::batch::BatchNoteTree;
+use miden_objects::batch::{BatchNoteTree, OrderedBatches};
 use miden_objects::block::account_tree::AccountTree;
-use miden_objects::block::{BlockInputs, BlockNoteIndex, BlockNoteTree, ProposedBlock};
+use miden_objects::block::{
+    BlockInputs,
+    BlockNoteIndex,
+    BlockNoteTree,
+    ProposedBlock,
+    ProvenBlock,
+};
 use miden_objects::crypto::merkle::Smt;
 use miden_objects::note::NoteType;
 use miden_objects::transaction::InputNoteCommitment;
@@ -94,10 +101,9 @@ async fn proven_block_success() -> anyhow::Result<()> {
     // Sanity check: Batches should have two output notes each.
     assert_eq!(batch0.output_notes().len(), 2);
     assert_eq!(batch1.output_notes().len(), 2);
+    let batches = vec![batch0.clone(), batch1.clone()];
 
-    let proposed_block = chain
-        .propose_block([batch0.clone(), batch1.clone()])
-        .context("failed to propose block")?;
+    let proposed_block = chain.propose_block(batches.clone()).context("failed to propose block")?;
 
     // Compute expected block note tree.
     // --------------------------------------------------------------------------------------------
@@ -147,9 +153,15 @@ async fn proven_block_success() -> anyhow::Result<()> {
     // Prove block.
     // --------------------------------------------------------------------------------------------
 
-    let proven_block = LocalBlockProver::new(MIN_PROOF_SECURITY_LEVEL)
-        .prove_dummy(proposed_block)
-        .context("failed to prove proposed block")?;
+    let (header, body) = build_block(proposed_block.clone())?;
+    let inputs = chain.get_block_inputs(batches.iter()).unwrap();
+    let ordered_batches = OrderedBatches::new(batches);
+    let block_proof = LocalBlockProver::new(MIN_PROOF_SECURITY_LEVEL).prove_dummy(
+        ordered_batches,
+        header.clone(),
+        inputs,
+    )?;
+    let proven_block = ProvenBlock::new_unchecked(header, body, block_proof);
 
     // Check tree/chain commitments against expected values.
     // --------------------------------------------------------------------------------------------
@@ -168,27 +180,27 @@ async fn proven_block_success() -> anyhow::Result<()> {
 
     assert_eq!(proven_block.header().note_root(), expected_block_note_tree.root());
     // Assert that the block note tree can be reconstructed.
-    assert_eq!(proven_block.build_output_note_tree(), expected_block_note_tree);
+    assert_eq!(proven_block.body().compute_block_note_tree(), expected_block_note_tree);
 
     // Check input notes / nullifiers.
     // --------------------------------------------------------------------------------------------
 
-    assert_eq!(proven_block.created_nullifiers().len(), 4);
-    assert!(proven_block.created_nullifiers().contains(&input_note0.nullifier()));
-    assert!(proven_block.created_nullifiers().contains(&input_note1.nullifier()));
-    assert!(proven_block.created_nullifiers().contains(&input_note2.nullifier()));
-    assert!(proven_block.created_nullifiers().contains(&input_note3.nullifier()));
+    assert_eq!(proven_block.body().created_nullifiers().len(), 4);
+    assert!(proven_block.body().created_nullifiers().contains(&input_note0.nullifier()));
+    assert!(proven_block.body().created_nullifiers().contains(&input_note1.nullifier()));
+    assert!(proven_block.body().created_nullifiers().contains(&input_note2.nullifier()));
+    assert!(proven_block.body().created_nullifiers().contains(&input_note3.nullifier()));
 
     // Check output notes.
     // --------------------------------------------------------------------------------------------
 
-    assert_eq!(proven_block.output_note_batches().len(), 2);
+    assert_eq!(proven_block.body().output_note_batches().len(), 2);
     assert_eq!(
-        proven_block.output_note_batches()[0],
+        proven_block.body().output_note_batches()[0],
         batch0.output_notes().iter().cloned().enumerate().collect::<Vec<_>>()
     );
     assert_eq!(
-        proven_block.output_note_batches()[1],
+        proven_block.body().output_note_batches()[1],
         batch1.output_notes().iter().cloned().enumerate().collect::<Vec<_>>()
     );
 
@@ -199,6 +211,7 @@ async fn proven_block_success() -> anyhow::Result<()> {
     for (tx, batch) in [(&tx0, &batch0), (&tx1, &batch0), (&tx2, &batch1), (&tx3, &batch1)] {
         let updated_account = tx.account_id();
         let block_account_update = proven_block
+            .body()
             .updated_accounts()
             .iter()
             .find(|update| update.account_id() == updated_account)
@@ -342,10 +355,16 @@ async fn proven_block_erasing_unauthenticated_notes() -> anyhow::Result<()> {
     assert_eq!(output_notes_batch0.len(), 2);
     assert_eq!(output_notes_batch0, &expected_output_notes_batch0);
 
-    let proven_block = LocalBlockProver::new(0)
-        .prove_dummy(proposed_block)
-        .context("failed to prove block")?;
-    let actual_block_note_tree = proven_block.build_output_note_tree();
+    let (header, body) = build_block(proposed_block.clone())?;
+    let inputs = chain.get_block_inputs(batches.iter()).unwrap();
+    let ordered_batches = OrderedBatches::new(batches.to_vec());
+    let block_proof = LocalBlockProver::new(MIN_PROOF_SECURITY_LEVEL).prove_dummy(
+        ordered_batches,
+        header.clone(),
+        inputs,
+    )?;
+    let proven_block = ProvenBlock::new_unchecked(header, body, block_proof);
+    let actual_block_note_tree = proven_block.body().compute_block_note_tree();
 
     // Remove the erased note to get the expected batch note tree.
     let mut batch_tree = BatchNoteTree::with_contiguous_leaves(
@@ -390,7 +409,7 @@ async fn proven_block_succeeds_with_empty_batches() -> anyhow::Result<()> {
     // --------------------------------------------------------------------------------------------
 
     let latest_block_header = chain.latest_block_header();
-    assert_eq!(latest_block_header.commitment(), blockx.commitment());
+    assert_eq!(latest_block_header.commitment(), blockx.header().commitment());
 
     // Sanity check: The account and nullifier tree roots should not be the empty tree roots.
     assert_ne!(latest_block_header.account_root(), AccountTree::<Smt>::default().root());
@@ -407,18 +426,25 @@ async fn proven_block_succeeds_with_empty_batches() -> anyhow::Result<()> {
         BTreeMap::default(),
     );
 
+    let batches = Vec::new();
     let proposed_block =
-        ProposedBlock::new(block_inputs, Vec::new()).context("failed to propose block")?;
+        ProposedBlock::new(block_inputs, batches.clone()).context("failed to propose block")?;
 
-    let proven_block = LocalBlockProver::new(MIN_PROOF_SECURITY_LEVEL)
-        .prove_dummy(proposed_block)
-        .context("failed to prove proposed block")?;
+    let (header, body) = build_block(proposed_block.clone())?;
+    let inputs = chain.get_block_inputs(batches.iter()).unwrap();
+    let ordered_batches = OrderedBatches::new(batches);
+    let block_proof = LocalBlockProver::new(MIN_PROOF_SECURITY_LEVEL).prove_dummy(
+        ordered_batches,
+        header.clone(),
+        inputs,
+    )?;
+    let proven_block = ProvenBlock::new_unchecked(header, body, block_proof);
 
     // Nothing should be created or updated.
-    assert_eq!(proven_block.updated_accounts().len(), 0);
-    assert_eq!(proven_block.output_note_batches().len(), 0);
-    assert_eq!(proven_block.created_nullifiers().len(), 0);
-    assert!(proven_block.build_output_note_tree().is_empty());
+    assert_eq!(proven_block.body().updated_accounts().len(), 0);
+    assert_eq!(proven_block.body().output_note_batches().len(), 0);
+    assert_eq!(proven_block.body().created_nullifiers().len(), 0);
+    assert!(proven_block.body().compute_block_note_tree().is_empty());
 
     // Account and nullifier root should match the previous block header's roots, since nothing has
     // changed.

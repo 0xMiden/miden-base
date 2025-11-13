@@ -293,20 +293,30 @@ async fn unauthenticated_note_converted_to_authenticated() -> anyhow::Result<()>
     let block2 = chain.prove_next_block()?;
     let block3 = chain.prove_next_block()?;
 
-    assert_eq!(block1.output_notes().count(), 2, "block 1 should contain note1 and note2");
+    assert_eq!(
+        block1.body().output_notes().count(),
+        2,
+        "block 1 should contain note1 and note2"
+    );
     assert!(
-        block1.output_notes().any(|(_, note)| note.commitment() == note1.commitment()),
+        block1
+            .body()
+            .output_notes()
+            .any(|(_, note)| note.commitment() == note1.commitment()),
         "block 1 should contain note1"
     );
     assert!(
-        block1.output_notes().any(|(_, note)| note.commitment() == note2.commitment()),
+        block1
+            .body()
+            .output_notes()
+            .any(|(_, note)| note.commitment() == note2.commitment()),
         "block 1 should contain note2"
     );
 
     // Consume the authenticated note as an unauthenticated one in the transaction.
     let tx1 =
         MockProvenTxBuilder::with_account(account1.id(), Word::empty(), account1.commitment())
-            .ref_block_commitment(block2.commitment())
+            .ref_block_commitment(block2.header().commitment())
             .unauthenticated_notes(vec![note2.clone()])
             .build()?;
 

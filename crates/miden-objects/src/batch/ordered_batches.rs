@@ -17,7 +17,7 @@ pub struct OrderedBatches(Vec<ProvenBatch>);
 
 impl OrderedBatches {
     /// Creates a new set of ordered batches from the provided vector.
-    pub(crate) fn new(batches: Vec<ProvenBatch>) -> Self {
+    pub fn new(batches: Vec<ProvenBatch>) -> Self {
         Self(batches)
     }
 

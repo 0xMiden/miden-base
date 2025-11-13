@@ -13,6 +13,7 @@ const DEFAULT_FAUCET_DECIMALS: u8 = 10;
 // ================================================================================================
 
 use itertools::Itertools;
+use miden_block_prover::LocalBlockProver;
 use miden_lib::account::faucets::{BasicFungibleFaucet, NetworkFungibleFaucet};
 use miden_lib::account::wallets::BasicWallet;
 use miden_lib::note::{create_p2id_note, create_p2ide_note, create_swap_note};
@@ -29,10 +30,13 @@ use miden_objects::account::{
     StorageSlot,
 };
 use miden_objects::asset::{Asset, FungibleAsset, TokenSymbol};
+use miden_objects::batch::OrderedBatches;
 use miden_objects::block::account_tree::AccountTree;
 use miden_objects::block::{
     BlockAccountUpdate,
+    BlockBody,
     BlockHeader,
+    BlockInputs,
     BlockNoteTree,
     BlockNumber,
     Blockchain,
@@ -43,7 +47,7 @@ use miden_objects::block::{
 };
 use miden_objects::note::{Note, NoteDetails, NoteType};
 use miden_objects::testing::account_id::ACCOUNT_ID_NATIVE_ASSET_FAUCET;
-use miden_objects::transaction::{OrderedTransactionHeaders, OutputNote};
+use miden_objects::transaction::{OrderedTransactionHeaders, OutputNote, PartialBlockchain};
 use miden_objects::{Felt, FieldElement, MAX_OUTPUT_NOTES_PER_BATCH, NoteError, Word, ZERO};
 use miden_processor::crypto::RpoRandomCoin;
 use rand::Rng;
@@ -233,13 +237,26 @@ impl MockChainBuilder {
             timestamp,
         );
 
-        let genesis_block = ProvenBlock::new_unchecked(
-            header,
+        let body = BlockBody::new_unchecked(
             block_account_updates,
             output_note_batches,
             created_nullifiers,
             transactions,
         );
+
+        // For genesis block, we need empty batches and minimal block inputs.
+        let empty_batches = OrderedBatches::new(Vec::new());
+        let block_inputs = BlockInputs::new(
+            header.clone(),
+            PartialBlockchain::default(),
+            BTreeMap::default(),
+            BTreeMap::default(),
+            BTreeMap::default(),
+        );
+
+        let block_proof =
+            LocalBlockProver::new(0).prove(empty_batches, header.clone(), block_inputs)?;
+        let genesis_block = ProvenBlock::new_unchecked(header, body, block_proof);
 
         MockChain::from_genesis_block(genesis_block, account_tree, self.account_authenticators)
     }
