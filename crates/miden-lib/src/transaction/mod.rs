@@ -21,8 +21,8 @@ use super::MidenLib;
 
 pub mod memory;
 
-mod events;
-pub use events::{EventId, TransactionEvent};
+mod tx_event_id;
+pub use tx_event_id::{EventId, TransactionEventId};
 
 mod inputs;
 pub use inputs::{TransactionAdviceInputs, TransactionAdviceMapMismatch};
