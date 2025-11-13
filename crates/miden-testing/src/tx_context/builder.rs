@@ -17,12 +17,7 @@ use miden_objects::block::AccountWitness;
 use miden_objects::note::{Note, NoteId, NoteScript};
 use miden_objects::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE;
 use miden_objects::testing::noop_auth_component::NoopAuthComponent;
-use miden_objects::transaction::{
-    OutputNote,
-    TransactionArgs,
-    TransactionInputs,
-    TransactionScript,
-};
+use miden_objects::transaction::{OutputNote, TransactionInputs, TransactionScript};
 use miden_processor::{AdviceInputs, Felt, Word};
 use miden_tx::TransactionMastStore;
 use miden_tx::auth::BasicAuthenticator;
@@ -290,7 +285,7 @@ impl TransactionContextBuilder {
             },
         };
 
-        let mut tx_args = TransactionArgs::default().with_note_args(self.note_args);
+        let mut tx_args = tx_inputs.tx_args().clone().with_note_args(self.note_args);
 
         tx_args = if let Some(tx_script) = self.tx_script {
             tx_args.with_tx_script_and_args(tx_script, self.tx_script_args)

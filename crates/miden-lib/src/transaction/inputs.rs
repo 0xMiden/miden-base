@@ -26,7 +26,8 @@ impl TransactionAdviceInputs {
     /// The created advice inputs will be populated with the data required for executing a
     /// transaction with the specified transaction inputs.
     pub fn new(tx_inputs: &TransactionInputs) -> Result<Self, TransactionAdviceMapMismatch> {
-        let mut inputs = TransactionAdviceInputs(tx_inputs.advice_inputs().clone());
+        // Start with empty advice inputs so the advice stack is correctly build.
+        let mut inputs = TransactionAdviceInputs(AdviceInputs::default());
 
         inputs.build_stack(tx_inputs);
         inputs.add_kernel_commitment();
@@ -69,7 +70,7 @@ impl TransactionAdviceInputs {
         }
 
         // Extend with extra user-supplied advice.
-        inputs.extend(tx_inputs.tx_args().advice_inputs().clone());
+        inputs.extend(tx_inputs.advice_inputs().clone());
 
         Ok(inputs)
     }

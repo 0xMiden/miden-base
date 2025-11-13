@@ -219,6 +219,11 @@ impl TransactionArgs {
         }
     }
 
+    /// Replaces the advice inputs for the transaction args.
+    pub(crate) fn set_advice_inputs(&mut self, new_advice_inputs: AdviceInputs) {
+        self.advice_inputs = new_advice_inputs;
+    }
+
     /// Extends the internal advice inputs' map with the provided key-value pairs.
     pub fn extend_advice_map<T: IntoIterator<Item = (Word, Vec<Felt>)>>(&mut self, iter: T) {
         self.advice_inputs.map.extend(iter);

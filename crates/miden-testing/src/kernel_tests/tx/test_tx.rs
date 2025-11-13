@@ -43,6 +43,7 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
+    ACCOUNT_ID_SENDER,
 };
 use miden_objects::testing::constants::{FUNGIBLE_ASSET_AMOUNT, NON_FUNGIBLE_ASSET_DATA};
 use miden_objects::testing::note::DEFAULT_NOTE_CODE;
@@ -818,6 +819,39 @@ async fn inputs_created_correctly() -> anyhow::Result<()> {
     );
     let tx_context = crate::TransactionContextBuilder::new(account).tx_script(tx_script).build()?;
     _ = tx_context.execute().await?;
+
+    Ok(())
+}
+
+/// Test that reexecuting a transaction with no authenticator and the tx inputs from a first
+/// successful execution is possible. This ensures that the signature generated in the first
+/// execution is present during re-execution.
+#[tokio::test]
+async fn tx_can_be_reexecuted() -> anyhow::Result<()> {
+    let mut builder = MockChain::builder();
+    // Use basic auth so the tx requires a signature for successful execution.
+    let account = builder.add_existing_mock_account(Auth::BasicAuth)?;
+    let note = builder.add_p2id_note(
+        ACCOUNT_ID_SENDER.try_into()?,
+        account.id(),
+        &[FungibleAsset::mock(3)],
+        NoteType::Public,
+    )?;
+    let chain = builder.build()?;
+
+    let tx = chain
+        .build_tx_context(account.id(), &[note.id()], &[])?
+        .build()?
+        .execute()
+        .await?;
+
+    let _reexecuted_tx = chain
+        .build_tx_context(account.id(), &[note.id()], &[])?
+        .authenticator(None)
+        .tx_inputs(tx.tx_inputs().clone())
+        .build()?
+        .execute()
+        .await?;
 
     Ok(())
 }

@@ -28,7 +28,6 @@ pub struct TransactionInputs {
     blockchain: PartialBlockchain,
     input_notes: InputNotes<InputNote>,
     tx_args: TransactionArgs,
-    advice_inputs: AdviceInputs,
     foreign_account_code: Vec<AccountCode>,
 }
 
@@ -83,7 +82,6 @@ impl TransactionInputs {
             blockchain,
             input_notes,
             tx_args: TransactionArgs::default(),
-            advice_inputs: AdviceInputs::default(),
             foreign_account_code: Vec::new(),
         })
     }
@@ -102,7 +100,7 @@ impl TransactionInputs {
 
     /// Replaces the transaction inputs and assigns the given advice inputs.
     pub fn with_advice_inputs(mut self, advice_inputs: AdviceInputs) -> Self {
-        self.advice_inputs = advice_inputs;
+        self.tx_args.set_advice_inputs(advice_inputs);
         self
     }
 
@@ -116,7 +114,7 @@ impl TransactionInputs {
 
     /// Replaces the advice inputs for the transaction.
     pub fn set_advice_inputs(&mut self, new_advice_inputs: AdviceInputs) {
-        self.advice_inputs = new_advice_inputs;
+        self.tx_args.set_advice_inputs(new_advice_inputs);
     }
 
     /// Updates the transaction arguments of the inputs.
@@ -166,7 +164,7 @@ impl TransactionInputs {
 
     /// Returns the advice inputs to be consumed in the transaction.
     pub fn advice_inputs(&self) -> &AdviceInputs {
-        &self.advice_inputs
+        self.tx_args().advice_inputs()
     }
 
     /// Returns the transaction arguments to be consumed in the transaction.
@@ -198,7 +196,6 @@ impl Serializable for TransactionInputs {
         self.blockchain.write_into(target);
         self.input_notes.write_into(target);
         self.tx_args.write_into(target);
-        self.advice_inputs.write_into(target);
         self.foreign_account_code.write_into(target);
     }
 }
@@ -212,7 +209,6 @@ impl Deserializable for TransactionInputs {
         let blockchain = PartialBlockchain::read_from(source)?;
         let input_notes = InputNotes::read_from(source)?;
         let tx_args = TransactionArgs::read_from(source)?;
-        let advice_inputs = AdviceInputs::read_from(source)?;
         let foreign_account_code = Vec::<AccountCode>::read_from(source)?;
 
         Ok(TransactionInputs {
@@ -221,7 +217,6 @@ impl Deserializable for TransactionInputs {
             blockchain,
             input_notes,
             tx_args,
-            advice_inputs,
             foreign_account_code,
         })
     }
