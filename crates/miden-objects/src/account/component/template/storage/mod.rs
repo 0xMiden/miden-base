@@ -681,10 +681,7 @@ mod tests {
 
         let metadata = AccountComponentMetadata::from_toml(toml).unwrap();
         assert_eq!(metadata.storage_entries().len(), 1);
-        assert_eq!(
-            metadata.storage_entries()[0].name().unwrap().as_str(),
-            "ecdsa_pubkey"
-        );
+        assert_eq!(metadata.storage_entries()[0].name().unwrap().as_str(), "ecdsa_pubkey");
 
         let library = Assembler::default().assemble_library([CODE]).unwrap();
         let template = AccountComponentTemplate::new(metadata, library);
@@ -707,7 +704,6 @@ mod tests {
             _ => panic!("expected value storage slot"),
         }
     }
-
 
     #[test]
     fn map_template_can_build_from_entries() {
