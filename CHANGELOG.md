@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.12.3 (2025-11-14)
+
+- Added `ecdsa_k256_keccak::PublicKey` as a valid template type ([#2097](https://github.com/0xMiden/miden-base/pull/2097)).
+
 ## 0.12.2 (2025-11-12)
 
 - Added `create_mint_note` and `create_burn_note` helper functions for creating standardized MINT and BURN notes ([#2061](https://github.com/0xMiden/miden-base/pull/2061)).
