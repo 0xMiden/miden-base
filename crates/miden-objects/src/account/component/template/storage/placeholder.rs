@@ -6,7 +6,7 @@ use core::fmt::{self, Display};
 
 use miden_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
 use miden_core::{Felt, Word};
-use miden_crypto::dsa::rpo_falcon512::{self};
+use miden_crypto::dsa::{ecdsa_k256_keccak, rpo_falcon512};
 use miden_processor::DeserializationError;
 use thiserror::Error;
 
@@ -26,6 +26,7 @@ pub static TEMPLATE_REGISTRY: LazyLock<TemplateRegistry> = LazyLock::new(|| {
     registry.register_felt_type::<TokenSymbol>();
     registry.register_word_type::<Word>();
     registry.register_word_type::<rpo_falcon512::PublicKey>();
+    registry.register_word_type::<ecdsa_k256_keccak::PublicKey>();
     registry
 });
 
@@ -420,6 +421,23 @@ impl TemplateWord for rpo_falcon512::PublicKey {
         Word::try_from(padded_input.as_str()).map_err(|err| {
             TemplateTypeError::parse(
                 input.to_string(), // Use original input in error
+                Self::type_name(),
+                WordParseError(err.to_string()),
+            )
+        })
+    }
+}
+
+impl TemplateWord for ecdsa_k256_keccak::PublicKey {
+    fn type_name() -> TemplateType {
+        TemplateType::new("auth::ecdsa_k256_keccak::pub_key").expect("type is well formed")
+    }
+    fn parse_word(input: &str) -> Result<Word, TemplateTypeError> {
+        let padded_input = pad_hex_string(input);
+
+        Word::try_from(padded_input.as_str()).map_err(|err| {
+            TemplateTypeError::parse(
+                input.to_string(),
                 Self::type_name(),
                 WordParseError(err.to_string()),
             )
