@@ -96,7 +96,7 @@ impl TransactionInputs {
 
     /// Replaces the transaction inputs and assigns the given transaction arguments.
     pub fn with_tx_args(mut self, tx_args: TransactionArgs) -> Self {
-        self.set_tx_args(tx_args);
+        self.set_tx_args_inner(tx_args);
         self
     }
 
@@ -126,8 +126,7 @@ impl TransactionInputs {
     /// Updates the transaction arguments of the inputs.
     #[cfg(feature = "testing")]
     pub fn set_tx_args(&mut self, tx_args: TransactionArgs) {
-        self.tx_args = tx_args;
-        self.tx_args.extend_advice_inputs(self.advice_inputs.clone());
+        self.set_tx_args_inner(tx_args);
     }
 
     // PUBLIC ACCESSORS
@@ -193,6 +192,18 @@ impl TransactionInputs {
         TransactionArgs,
     ) {
         (self.account, self.block_header, self.blockchain, self.input_notes, self.tx_args)
+    }
+
+    // HELPER METHODS
+    // --------------------------------------------------------------------------------------------
+
+    /// Replaces the current tx_args with the provided value.
+    ///
+    /// This also appends advice inputs from these transaction inputs to the advice inputs of the
+    /// tx args.
+    fn set_tx_args_inner(&mut self, tx_args: TransactionArgs) {
+        self.tx_args = tx_args;
+        self.tx_args.extend_advice_inputs(self.advice_inputs.clone());
     }
 }
 
