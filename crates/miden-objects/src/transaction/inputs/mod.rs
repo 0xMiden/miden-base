@@ -115,14 +115,19 @@ impl TransactionInputs {
     }
 
     /// Replaces the advice inputs for the transaction.
+    ///
+    /// Note: the advice stack from the provided advice inputs is discarded.
     pub fn set_advice_inputs(&mut self, new_advice_inputs: AdviceInputs) {
-        self.advice_inputs = new_advice_inputs;
+        let AdviceInputs { map, store, .. } = new_advice_inputs;
+        self.advice_inputs = AdviceInputs { stack: Default::default(), map, store };
+        self.tx_args.extend_advice_inputs(self.advice_inputs.clone());
     }
 
     /// Updates the transaction arguments of the inputs.
     #[cfg(feature = "testing")]
     pub fn set_tx_args(&mut self, tx_args: TransactionArgs) {
         self.tx_args = tx_args;
+        self.tx_args.extend_advice_inputs(self.advice_inputs.clone());
     }
 
     // PUBLIC ACCESSORS
