@@ -100,7 +100,7 @@ impl TransactionInputs {
 
     /// Replaces the transaction inputs and assigns the given advice inputs.
     pub fn with_advice_inputs(mut self, advice_inputs: AdviceInputs) -> Self {
-        self.tx_args.set_advice_inputs(advice_inputs);
+        self.tx_args.extend_advice_inputs(advice_inputs);
         self
     }
 

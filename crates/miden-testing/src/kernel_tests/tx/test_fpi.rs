@@ -881,7 +881,6 @@ async fn foreign_account_get_initial_balance() -> anyhow::Result<()> {
 /// The call chain in this test looks like so:
 /// `Native -> First FA -> Second FA -> First FA`
 #[tokio::test]
-#[ignore = "currently fails due to failed advice stack read"]
 async fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
     // ------ SECOND FOREIGN ACCOUNT ---------------------------------------------------------------
     let storage_slots = vec![AccountStorage::mock_item_0().slot];
