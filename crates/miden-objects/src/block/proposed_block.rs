@@ -393,7 +393,7 @@ impl ProposedBlock {
         }
 
         // Second, mark each nullifier as spent in the tree. Note that checking whether each
-        // nullifier is unspent is checked as part of the proposed block.
+        // nullifier is unspent is checked as part of constructing the proposed block.
 
         // SAFETY: As mentioned above, we can safely assume that each nullifier's witness was
         // added and every nullifier should be tracked by the partial tree and

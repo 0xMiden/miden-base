@@ -73,7 +73,7 @@ async fn witness_test_setup() -> anyhow::Result<WitnessTestSetup> {
     })
 }
 
-/// Tests that a block header cannot be built if witnesses from a stale account tree are used
+/// Tests that a block cannot be built if witnesses from a stale account tree are used
 /// (i.e. an account tree whose root is not in the previous block header).
 #[tokio::test]
 async fn block_building_fails_on_stale_account_witnesses() -> anyhow::Result<()> {
@@ -110,7 +110,7 @@ async fn block_building_fails_on_stale_account_witnesses() -> anyhow::Result<()>
     Ok(())
 }
 
-/// Tests that a block header cannot be built if witnesses from a stale nullifier tree are used
+/// Tests that a block cannot be built if witnesses from a stale nullifier tree are used
 /// (i.e. a nullifier tree whose root is not in the previous block header).
 #[tokio::test]
 async fn block_building_fails_on_stale_nullifier_witnesses() -> anyhow::Result<()> {
@@ -147,7 +147,7 @@ async fn block_building_fails_on_stale_nullifier_witnesses() -> anyhow::Result<(
     Ok(())
 }
 
-/// Tests that a block header cannot be built if both witnesses from a stale account tree and from
+/// Tests that a block cannot be built if both witnesses from a stale account tree and from
 /// the current account tree are used which results in different account tree roots.
 #[tokio::test]
 async fn block_building_fails_on_account_tree_root_mismatch() -> anyhow::Result<()> {

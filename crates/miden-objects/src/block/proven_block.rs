@@ -7,7 +7,7 @@ use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError,
 
 /// Represents a block in the Miden blockchain that has been signed and proven.
 ///
-/// Blocks transition from proposed, signed, and proven states. This struct represents the final,
+/// Blocks transition through proposed, signed, and proven states. This struct represents the final,
 /// proven state of a block.
 ///
 /// Proven blocks are the final, canonical blocks in the chain.

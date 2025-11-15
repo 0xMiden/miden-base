@@ -18,7 +18,7 @@ impl LocalBlockProver {
         Self {}
     }
 
-    /// Executes a proof of a block in the chain based on the given header and inputs.
+    /// Generates a proof of a block in the chain based on the given header and inputs.
     ///
     /// NOTE: Block proving is not yet implemented. This is a placeholder struct.
     pub fn prove(
