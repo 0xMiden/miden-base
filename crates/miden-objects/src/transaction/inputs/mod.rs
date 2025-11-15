@@ -96,13 +96,13 @@ impl TransactionInputs {
 
     /// Replaces the transaction inputs and assigns the given transaction arguments.
     pub fn with_tx_args(mut self, tx_args: TransactionArgs) -> Self {
-        self.tx_args = tx_args;
+        self.set_tx_args(tx_args);
         self
     }
 
     /// Replaces the transaction inputs and assigns the given advice inputs.
     pub fn with_advice_inputs(mut self, advice_inputs: AdviceInputs) -> Self {
-        self.advice_inputs = advice_inputs;
+        self.set_advice_inputs(advice_inputs);
         self
     }
 
