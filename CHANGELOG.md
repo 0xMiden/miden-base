@@ -3,7 +3,7 @@
 ## 0.12.3 (2025-11-14)
 
 - Added `ecdsa_k256_keccak::PublicKey` as a valid template type ([#2097](https://github.com/0xMiden/miden-base/pull/2097)).
-- Fix advice inputs in transaction inputs not being propagated through ([#2094](https://github.com/0xMiden/miden-base/pull/2094)).
+- [BREAKING] Fix advice inputs in transaction inputs not being propagated through ([#2094](https://github.com/0xMiden/miden-base/pull/2094)).
 
 ## 0.12.2 (2025-11-12)
 
