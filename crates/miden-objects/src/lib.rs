@@ -38,6 +38,7 @@ pub use errors::{
     NetworkIdError,
     NoteError,
     NullifierTreeError,
+    PartialAssetVaultError,
     PartialBlockchainError,
     ProposedBatchError,
     ProposedBlockError,

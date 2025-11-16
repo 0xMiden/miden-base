@@ -24,37 +24,37 @@ impl OutputNoteBuilder {
     /// recipient.
     ///
     /// # Errors
-    /// Returns an error if the note is public but no recipient is provided.
-    pub fn new(
+    ///
+    /// Returns an error if:
+    /// - the note is public.
+    pub fn from_recipient_digest(
         metadata: NoteMetadata,
         recipient_digest: Word,
-        recipient: Option<NoteRecipient>,
     ) -> Result<Self, TransactionKernelError> {
-        // For public notes, we must have a recipient
-        if !metadata.is_private() && recipient.is_none() {
+        // For public notes, we must have a recipient.
+        if !metadata.is_private() {
             return Err(TransactionKernelError::PublicNoteMissingDetails(
                 metadata,
                 recipient_digest,
             ));
         }
 
-        // If recipient is present, verify its digest matches the provided recipient_digest
-        if let Some(ref recipient) = recipient
-            && recipient.digest() != recipient_digest
-        {
-            return Err(TransactionKernelError::other(format!(
-                "recipient digest mismatch: expected {}, but recipient has digest {}",
-                recipient_digest,
-                recipient.digest()
-            )));
-        }
-
         Ok(Self {
             metadata,
             recipient_digest,
-            recipient,
+            recipient: None,
             assets: NoteAssets::default(),
         })
+    }
+
+    /// Returns a new [`OutputNoteBuilder`] from the provided metadata and recipient.
+    pub fn from_recipient(metadata: NoteMetadata, recipient: NoteRecipient) -> Self {
+        Self {
+            metadata,
+            recipient_digest: recipient.digest(),
+            recipient: Some(recipient),
+            assets: NoteAssets::default(),
+        }
     }
 
     // STATE MUTATORS
