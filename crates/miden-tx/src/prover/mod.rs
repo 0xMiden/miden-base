@@ -99,8 +99,7 @@ impl LocalTransactionProver {
         tx_inputs: impl Into<TransactionInputs>,
     ) -> Result<ProvenTransaction, TransactionProverError> {
         let tx_inputs = tx_inputs.into();
-        let (stack_inputs, advice_inputs) = TransactionKernel::prepare_inputs(&tx_inputs)
-            .map_err(TransactionProverError::ConflictingAdviceMapEntry)?;
+        let (stack_inputs, advice_inputs) = TransactionKernel::prepare_inputs(&tx_inputs);
 
         self.mast_store.load_account_code(tx_inputs.account().code());
         for account_code in tx_inputs.foreign_account_code() {
