@@ -182,7 +182,7 @@ impl PartialBlockchain {
     /// # Panics
     /// Panics if the `block_header.block_num` is not equal to the current chain length (i.e., the
     /// provided block header is not the next block in the chain).
-    pub fn add_block(&mut self, block_header: BlockHeader, track: bool) {
+    pub fn add_block(&mut self, block_header: &BlockHeader, track: bool) {
         assert_eq!(block_header.block_num(), self.chain_length());
         self.mmr.add(block_header.commitment(), track);
     }
@@ -298,9 +298,9 @@ mod tests {
 
         // add a new block to the partial blockchain, this reduces the number of peaks to 1
         let block_num = 3;
-        let bock_header = int_to_block_header(block_num);
-        mmr.add(bock_header.commitment());
-        partial_blockchain.add_block(bock_header, true);
+        let block_header = int_to_block_header(block_num);
+        mmr.add(block_header.commitment());
+        partial_blockchain.add_block(&block_header, true);
 
         assert_eq!(
             mmr.open(block_num as usize).unwrap(),
@@ -309,9 +309,9 @@ mod tests {
 
         // add one more block to the partial blockchain, the number of peaks is again 2
         let block_num = 4;
-        let bock_header = int_to_block_header(block_num);
-        mmr.add(bock_header.commitment());
-        partial_blockchain.add_block(bock_header, true);
+        let block_header = int_to_block_header(block_num);
+        mmr.add(block_header.commitment());
+        partial_blockchain.add_block(&block_header, true);
 
         assert_eq!(
             mmr.open(block_num as usize).unwrap(),
@@ -320,9 +320,9 @@ mod tests {
 
         // add one more block to the partial blockchain, the number of peaks is still 2
         let block_num = 5;
-        let bock_header = int_to_block_header(block_num);
-        mmr.add(bock_header.commitment());
-        partial_blockchain.add_block(bock_header, true);
+        let block_header = int_to_block_header(block_num);
+        mmr.add(block_header.commitment());
+        partial_blockchain.add_block(&block_header, true);
 
         assert_eq!(
             mmr.open(block_num as usize).unwrap(),

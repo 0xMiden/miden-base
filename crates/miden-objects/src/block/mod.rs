@@ -1,8 +1,14 @@
 mod header;
 pub use header::{BlockHeader, FeeParameters};
 
+mod block_body;
+pub use block_body::BlockBody;
+
 mod block_number;
 pub use block_number::BlockNumber;
+
+mod block_proof;
+pub use block_proof::BlockProof;
 
 mod proposed_block;
 pub use proposed_block::ProposedBlock;
