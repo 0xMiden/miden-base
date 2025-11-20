@@ -5,20 +5,20 @@ use miden_objects::account::auth::PublicKeyCommitment;
 use miden_objects::account::{AccountComponent, StorageMap, StorageSlot};
 use miden_objects::{AccountError, Word};
 
-use crate::account::components::rpo_falcon_512_multisig_library;
+use crate::account::components::ecdsa_k256_keccak_multisig_library;
 
 // MULTISIG AUTHENTICATION COMPONENT
 // ================================================================================================
 
-/// Configuration for [`AuthRpoFalcon512Multisig`] component.
+/// Configuration for [`AuthEcdsaK256KeccakMultisig`] component.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct AuthRpoFalcon512MultisigConfig {
+pub struct AuthEcdsaK256KeccakMultisigConfig {
     approvers: Vec<PublicKeyCommitment>,
     default_threshold: u32,
     proc_thresholds: Vec<(Word, u32)>,
 }
 
-impl AuthRpoFalcon512MultisigConfig {
+impl AuthEcdsaK256KeccakMultisigConfig {
     /// Creates a new configuration with the given approvers and a default threshold.
     ///
     /// The `default_threshold` must be at least 1 and at most the number of approvers.
@@ -80,7 +80,7 @@ impl AuthRpoFalcon512MultisigConfig {
     }
 }
 
-/// An [`AccountComponent`] implementing a multisig based on RpoFalcon512 signatures.
+/// An [`AccountComponent`] implementing a multisig based on ECDSA signatures.
 ///
 /// It enforces a threshold of approver signatures for every transaction, with optional
 /// per-procedure thresholds overrides. Non-uniform thresholds (especially a threshold of one)
@@ -95,19 +95,19 @@ impl AuthRpoFalcon512MultisigConfig {
 ///
 /// This component supports all account types.
 #[derive(Debug)]
-pub struct AuthRpoFalcon512Multisig {
-    config: AuthRpoFalcon512MultisigConfig,
+pub struct AuthEcdsaK256KeccakMultisig {
+    config: AuthEcdsaK256KeccakMultisigConfig,
 }
 
-impl AuthRpoFalcon512Multisig {
-    /// Creates a new [`AuthRpoFalcon512Multisig`] component from the provided configuration.
-    pub fn new(config: AuthRpoFalcon512MultisigConfig) -> Result<Self, AccountError> {
+impl AuthEcdsaK256KeccakMultisig {
+    /// Creates a new [`AuthEcdsaK256KeccakMultisig`] component from the provided configuration.
+    pub fn new(config: AuthEcdsaK256KeccakMultisigConfig) -> Result<Self, AccountError> {
         Ok(Self { config })
     }
 }
 
-impl From<AuthRpoFalcon512Multisig> for AccountComponent {
-    fn from(multisig: AuthRpoFalcon512Multisig) -> Self {
+impl From<AuthEcdsaK256KeccakMultisig> for AccountComponent {
+    fn from(multisig: AuthEcdsaK256KeccakMultisig) -> Self {
         let mut storage_slots = Vec::with_capacity(3);
 
         // Slot 0: [threshold, num_approvers, 0, 0]
@@ -145,7 +145,7 @@ impl From<AuthRpoFalcon512Multisig> for AccountComponent {
         .unwrap();
         storage_slots.push(StorageSlot::Map(proc_threshold_roots));
 
-        AccountComponent::new(rpo_falcon_512_multisig_library(), storage_slots)
+        AccountComponent::new(ecdsa_k256_keccak_multisig_library(), storage_slots)
             .expect("Multisig auth component should satisfy the requirements of a valid account component")
             .with_supports_all_types()
     }
@@ -172,8 +172,8 @@ mod tests {
         let threshold = 2u32;
 
         // Create multisig component
-        let multisig_component = AuthRpoFalcon512Multisig::new(
-            AuthRpoFalcon512MultisigConfig::new(approvers.clone(), threshold)
+        let multisig_component = AuthEcdsaK256KeccakMultisig::new(
+            AuthEcdsaK256KeccakMultisigConfig::new(approvers.clone(), threshold)
                 .expect("invalid multisig config"),
         )
         .expect("multisig component creation failed");
@@ -206,8 +206,8 @@ mod tests {
         let approvers = vec![pub_key];
         let threshold = 1u32;
 
-        let multisig_component = AuthRpoFalcon512Multisig::new(
-            AuthRpoFalcon512MultisigConfig::new(approvers.clone(), threshold)
+        let multisig_component = AuthEcdsaK256KeccakMultisig::new(
+            AuthEcdsaK256KeccakMultisigConfig::new(approvers.clone(), threshold)
                 .expect("invalid multisig config"),
         )
         .expect("multisig component creation failed");
@@ -236,11 +236,11 @@ mod tests {
         let approvers = vec![pub_key];
 
         // Test threshold = 0 (should fail)
-        let result = AuthRpoFalcon512MultisigConfig::new(approvers.clone(), 0);
+        let result = AuthEcdsaK256KeccakMultisigConfig::new(approvers.clone(), 0);
         assert!(result.unwrap_err().to_string().contains("threshold must be at least 1"));
 
         // Test threshold > number of approvers (should fail)
-        let result = AuthRpoFalcon512MultisigConfig::new(approvers, 2);
+        let result = AuthEcdsaK256KeccakMultisigConfig::new(approvers, 2);
         assert!(
             result
                 .unwrap_err()
@@ -257,7 +257,7 @@ mod tests {
 
         // Test with duplicate approvers (should fail)
         let approvers = vec![pub_key_1, pub_key_2, pub_key_1];
-        let result = AuthRpoFalcon512MultisigConfig::new(approvers, 2);
+        let result = AuthEcdsaK256KeccakMultisigConfig::new(approvers, 2);
         assert!(
             result
                 .unwrap_err()
