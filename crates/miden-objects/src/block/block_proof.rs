@@ -6,6 +6,14 @@ use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError,
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BlockProof {}
 
+impl BlockProof {
+    /// Creates a dummy `BlockProof` for testing purposes only.
+    #[cfg(any(test, feature = "testing"))]
+    pub fn new_dummy() -> Self {
+        Self {}
+    }
+}
+
 // SERIALIZATION
 // ================================================================================================
 

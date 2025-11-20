@@ -4,10 +4,11 @@ use alloc::vec::Vec;
 use anyhow::Context;
 use miden_block_prover::LocalBlockProver;
 use miden_lib::block::build_block;
+use miden_objects::MIN_PROOF_SECURITY_LEVEL;
 use miden_objects::account::auth::AuthSecretKey;
 use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{Account, AccountId, PartialAccount};
-use miden_objects::batch::{OrderedBatches, ProposedBatch, ProvenBatch};
+use miden_objects::batch::{ProposedBatch, ProvenBatch};
 use miden_objects::block::account_tree::AccountTree;
 use miden_objects::block::{
     AccountWitness,
@@ -962,12 +963,7 @@ impl MockChain {
         let proposed_block = self
             .propose_block_at(batches.clone(), block_timestamp)
             .context("failed to create proposed block")?;
-        let (header, body) = build_block(proposed_block.clone())?;
-        let inputs = self.get_block_inputs(batches.iter()).unwrap();
-        let ordered_batches = OrderedBatches::new(batches);
-        let block_proof =
-            LocalBlockProver::new(0).prove_dummy(ordered_batches, header.clone(), inputs)?;
-        let proven_block = ProvenBlock::new_unchecked(header, body, block_proof);
+        let proven_block = self.prove_block(proposed_block.clone())?;
 
         // Apply block.
         // ----------------------------------------------------------------------------------------
@@ -975,6 +971,18 @@ impl MockChain {
         self.apply_block(proven_block.clone()).context("failed to apply block")?;
 
         Ok(proven_block)
+    }
+
+    /// Proves proposed block alongside a corresponding list of batches.
+    pub fn prove_block(&self, proposed_block: ProposedBlock) -> anyhow::Result<ProvenBlock> {
+        let (header, body) = build_block(proposed_block.clone())?;
+        let inputs = self.get_block_inputs(proposed_block.batches().as_slice())?;
+        let block_proof = LocalBlockProver::new(MIN_PROOF_SECURITY_LEVEL).prove_dummy(
+            proposed_block.batches().clone(),
+            header.clone(),
+            inputs,
+        )?;
+        Ok(ProvenBlock::new_unchecked(header, body, block_proof))
     }
 }
 
