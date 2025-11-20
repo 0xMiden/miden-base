@@ -153,7 +153,7 @@ async fn proven_block_success() -> anyhow::Result<()> {
     // Prove block.
     // --------------------------------------------------------------------------------------------
 
-    let proven_block = chain.prove_block(proposed_block.clone(), batches)?;
+    let proven_block = chain.prove_block(proposed_block.clone())?;
 
     // Check tree/chain commitments against expected values.
     // --------------------------------------------------------------------------------------------
@@ -422,7 +422,7 @@ async fn proven_block_succeeds_with_empty_batches() -> anyhow::Result<()> {
     let proposed_block =
         ProposedBlock::new(block_inputs, batches.clone()).context("failed to propose block")?;
 
-    let proven_block = chain.prove_block(proposed_block.clone(), batches)?;
+    let proven_block = chain.prove_block(proposed_block.clone())?;
 
     // Nothing should be created or updated.
     assert_eq!(proven_block.body().updated_accounts().len(), 0);
