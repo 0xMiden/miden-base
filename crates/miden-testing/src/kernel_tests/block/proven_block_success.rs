@@ -153,15 +153,7 @@ async fn proven_block_success() -> anyhow::Result<()> {
     // Prove block.
     // --------------------------------------------------------------------------------------------
 
-    let (header, body) = build_block(proposed_block.clone())?;
-    let inputs = chain.get_block_inputs(batches.iter()).unwrap();
-    let ordered_batches = OrderedBatches::new(batches);
-    let block_proof = LocalBlockProver::new(MIN_PROOF_SECURITY_LEVEL).prove_dummy(
-        ordered_batches,
-        header.clone(),
-        inputs,
-    )?;
-    let proven_block = ProvenBlock::new_unchecked(header, body, block_proof);
+    let proven_block = chain.prove_block(proposed_block.clone(), batches)?;
 
     // Check tree/chain commitments against expected values.
     // --------------------------------------------------------------------------------------------
@@ -430,15 +422,7 @@ async fn proven_block_succeeds_with_empty_batches() -> anyhow::Result<()> {
     let proposed_block =
         ProposedBlock::new(block_inputs, batches.clone()).context("failed to propose block")?;
 
-    let (header, body) = build_block(proposed_block.clone())?;
-    let inputs = chain.get_block_inputs(batches.iter()).unwrap();
-    let ordered_batches = OrderedBatches::new(batches);
-    let block_proof = LocalBlockProver::new(MIN_PROOF_SECURITY_LEVEL).prove_dummy(
-        ordered_batches,
-        header.clone(),
-        inputs,
-    )?;
-    let proven_block = ProvenBlock::new_unchecked(header, body, block_proof);
+    let proven_block = chain.prove_block(proposed_block.clone(), batches)?;
 
     // Nothing should be created or updated.
     assert_eq!(proven_block.body().updated_accounts().len(), 0);
