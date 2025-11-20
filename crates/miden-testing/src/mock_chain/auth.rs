@@ -3,6 +3,11 @@
 use alloc::vec::Vec;
 
 use miden_lib::account::auth::{
+    AuthEcdsaK256Keccak,
+    AuthEcdsaK256KeccakAcl,
+    AuthEcdsaK256KeccakAclConfig,
+    AuthEcdsaK256KeccakMultisig,
+    AuthEcdsaK256KeccakMultisigConfig,
     AuthRpoFalcon512,
     AuthRpoFalcon512Acl,
     AuthRpoFalcon512AclConfig,
@@ -24,6 +29,26 @@ pub enum Auth {
     /// Creates a secret key for the account and creates a [BasicAuthenticator] used to
     /// authenticate the account with [AuthRpoFalcon512].
     BasicAuth,
+
+    /// Creates a secret key for the account and creates a [BasicAuthenticator] used to
+    /// authenticate the account with [AuthEcdsaK256Keccak].
+    EcdsaK256KeccakAuth,
+
+    /// Creates a secret key for the account, and creates a [BasicAuthenticator] used to
+    /// authenticate the account with [AuthEcdsaK256KeccakAcl]. Authentication will only be
+    /// triggered if any of the procedures specified in the list are called during execution.
+    EcdsaK256KeccakAcl {
+        auth_trigger_procedures: Vec<Word>,
+        allow_unauthorized_output_notes: bool,
+        allow_unauthorized_input_notes: bool,
+    },
+
+    // Ecsda Multisig
+    EcdsaK256KeccakMultisig {
+        threshold: u32,
+        approvers: Vec<Word>,
+        proc_threshold_map: Vec<(Word, u32)>,
+    },
 
     /// Multisig
     Multisig {
@@ -71,6 +96,29 @@ impl Auth {
 
                 (component, Some(authenticator))
             },
+            Auth::EcdsaK256KeccakAuth => {
+                let mut rng = ChaCha20Rng::from_seed(Default::default());
+                let sec_key = AuthSecretKey::new_ecdsa_k256_keccak_with_rng(&mut rng);
+                let pub_key = sec_key.public_key().to_commitment();
+
+                let component = AuthEcdsaK256Keccak::new(pub_key).into();
+                let authenticator = BasicAuthenticator::new(&[sec_key]);
+
+                (component, Some(authenticator))
+            },
+            Auth::EcdsaK256KeccakMultisig { threshold, approvers, proc_threshold_map } => {
+                let pub_keys: Vec<_> =
+                    approvers.iter().map(|word| PublicKeyCommitment::from(*word)).collect();
+
+                let config = AuthEcdsaK256KeccakMultisigConfig::new(pub_keys, *threshold)
+                    .and_then(|cfg| cfg.with_proc_thresholds(proc_threshold_map.clone()))
+                    .expect("invalid multisig config");
+                let component = AuthEcdsaK256KeccakMultisig::new(config)
+                    .expect("multisig component creation failed")
+                    .into();
+
+                (component, None)
+            },
             Auth::Multisig { threshold, approvers, proc_threshold_map } => {
                 let pub_keys: Vec<_> =
                     approvers.iter().map(|word| PublicKeyCommitment::from(*word)).collect();
@@ -96,6 +144,28 @@ impl Auth {
                 let component = AuthRpoFalcon512Acl::new(
                     pub_key,
                     AuthRpoFalcon512AclConfig::new()
+                        .with_auth_trigger_procedures(auth_trigger_procedures.clone())
+                        .with_allow_unauthorized_output_notes(*allow_unauthorized_output_notes)
+                        .with_allow_unauthorized_input_notes(*allow_unauthorized_input_notes),
+                )
+                .expect("component creation failed")
+                .into();
+                let authenticator = BasicAuthenticator::new(&[sec_key]);
+
+                (component, Some(authenticator))
+            },
+            Auth::EcdsaK256KeccakAcl {
+                auth_trigger_procedures,
+                allow_unauthorized_output_notes,
+                allow_unauthorized_input_notes,
+            } => {
+                let mut rng = ChaCha20Rng::from_seed(Default::default());
+                let sec_key = AuthSecretKey::new_ecdsa_k256_keccak_with_rng(&mut rng);
+                let pub_key = sec_key.public_key().to_commitment();
+
+                let component = AuthEcdsaK256KeccakAcl::new(
+                    pub_key,
+                    AuthEcdsaK256KeccakAclConfig::new()
                         .with_auth_trigger_procedures(auth_trigger_procedures.clone())
                         .with_allow_unauthorized_output_notes(*allow_unauthorized_output_notes)
                         .with_allow_unauthorized_input_notes(*allow_unauthorized_input_notes),
