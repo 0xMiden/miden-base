@@ -584,14 +584,14 @@ where
                             recipient_digest,
                             serial_num,
                             script_root,
-                            note_storage: note_inputs,
+                            note_storage,
                         } => {
                             self.on_note_script_requested(
                                 note_idx,
                                 recipient_digest,
                                 script_root,
                                 metadata,
-                                note_inputs,
+                                note_storage,
                                 serial_num,
                             )
                             .await
