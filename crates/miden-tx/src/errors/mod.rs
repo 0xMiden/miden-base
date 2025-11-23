@@ -260,7 +260,7 @@ pub enum TransactionKernelError {
     #[error("recipient data `{0:?}` in the advice provider is not well formed")]
     MalformedRecipientData(Vec<Felt>),
     #[error("cannot add asset to note with index {0}, note does not exist in the advice provider")]
-    MissingNote(u64),
+    MissingNote(usize),
     #[error(
         "public note with metadata {0:?} and recipient digest {1} is missing details in the advice provider"
     )]

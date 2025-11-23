@@ -140,7 +140,7 @@ impl LocalTransactionProver {
         // Extract transaction outputs and process transaction data.
         // Note that the account delta does not contain the removed transaction fee, so it is the
         // "pre-fee" delta of the transaction.
-        let (pre_fee_account_delta, input_notes, output_notes, _tx_progress) = host.into_parts();
+        let (pre_fee_account_delta, input_notes, output_notes) = host.into_parts();
         let tx_outputs =
             TransactionKernel::from_transaction_parts(&stack_outputs, &advice_inputs, output_notes)
                 .map_err(TransactionProverError::TransactionOutputConstructionFailed)?;

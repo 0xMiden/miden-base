@@ -1,7 +1,7 @@
 use miden_core::EventId;
 use thiserror::Error;
 
-use crate::transaction::TransactionEvent;
+use crate::transaction::TransactionEventId;
 
 // TRANSACTION EVENT PARSING ERROR
 // ================================================================================================
@@ -13,7 +13,7 @@ pub enum TransactionEventError {
     #[error("event id {0} is not a transaction kernel event")]
     NotTransactionEvent(EventId, Option<&'static str>),
     #[error("event id {0} can only be emitted from the root context")]
-    NotRootContext(TransactionEvent),
+    NotRootContext(TransactionEventId),
 }
 
 // TRANSACTION TRACE PARSING ERROR
