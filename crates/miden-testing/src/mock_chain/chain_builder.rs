@@ -32,9 +32,11 @@ use miden_objects::asset::{Asset, FungibleAsset, TokenSymbol};
 use miden_objects::block::account_tree::AccountTree;
 use miden_objects::block::{
     BlockAccountUpdate,
+    BlockBody,
     BlockHeader,
     BlockNoteTree,
     BlockNumber,
+    BlockProof,
     Blockchain,
     FeeParameters,
     NullifierTree,
@@ -233,13 +235,15 @@ impl MockChainBuilder {
             timestamp,
         );
 
-        let genesis_block = ProvenBlock::new_unchecked(
-            header,
+        let body = BlockBody::new_unchecked(
             block_account_updates,
             output_note_batches,
             created_nullifiers,
             transactions,
         );
+
+        let block_proof = BlockProof::new_dummy();
+        let genesis_block = ProvenBlock::new_unchecked(header, body, block_proof);
 
         MockChain::from_genesis_block(genesis_block, account_tree, self.account_authenticators)
     }

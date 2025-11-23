@@ -1447,7 +1447,6 @@ dependencies = [
 name = "miden-block-prover"
 version = "0.13.0"
 dependencies = [
- "miden-lib",
  "miden-objects",
  "thiserror",
 ]
