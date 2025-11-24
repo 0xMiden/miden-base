@@ -277,7 +277,7 @@ impl WellKnownNote {
     ) -> Result<Option<NoteConsumptionStatus>, StaticAnalysisError> {
         match self {
             WellKnownNote::P2ID => {
-                let input_account_id = parse_p2id_inputs(note.storage().items())?;
+                let input_account_id = parse_p2id_storage(note.storage().items())?;
 
                 if input_account_id == target_account_id {
                     Ok(Some(NoteConsumptionStatus::ConsumableWithAuthorization))
@@ -287,7 +287,7 @@ impl WellKnownNote {
             },
             WellKnownNote::P2IDE => {
                 let (receiver_account_id, reclaim_height, timelock_height) =
-                    parse_p2ide_inputs(note.storage().items())?;
+                    parse_p2ide_storage(note.storage().items())?;
 
                 let current_block_height = block_ref.as_u32();
 
@@ -336,24 +336,23 @@ impl WellKnownNote {
 // HELPER FUNCTIONS
 // ================================================================================================
 
-/// Returns the receiver account ID parsed from the provided P2ID check that note storage has
-/// correct length..
+/// Returns the receiver account ID parsed from the provided P2ID note storage.
 ///
 /// # Errors
 ///
 /// Returns an error if:
 /// - the provided note storage length is not equal to the expected inputs number of the P2ID note.
-/// - first two elements of the note storage array does not form the valid account ID.
-fn parse_p2id_inputs(note_storage: &[Felt]) -> Result<AccountId, StaticAnalysisError> {
+/// - first two elements of the note storage is not a valid account ID.
+fn parse_p2id_storage(note_storage: &[Felt]) -> Result<AccountId, StaticAnalysisError> {
     if note_storage.len() != WellKnownNote::P2ID.num_expected_inputs() {
         return Err(StaticAnalysisError::new(format!(
-            "P2ID note should have {} inputs, but {} was provided",
+            "P2ID note should have {} storage items, but {} was provided",
             WellKnownNote::P2ID.num_expected_inputs(),
             note_storage.len()
         )));
     }
 
-    try_read_account_id_from_inputs(note_storage)
+    try_read_account_id_from_storage(note_storage)
 }
 
 /// Returns the receiver account ID, reclaim height and timelock height parsed from the provided
@@ -363,10 +362,12 @@ fn parse_p2id_inputs(note_storage: &[Felt]) -> Result<AccountId, StaticAnalysisE
 ///
 /// Returns an error if:
 /// - the note storage length is not equal to the expected inputs number of the P2IDE note.
-/// - first two elements of the note storage array does not form the valid account ID.
-/// - third note storage array element (reclaim height) is not a valid u32 value.
-/// - fourth note storage array element (timelock height) is not a valid u32 value.
-fn parse_p2ide_inputs(note_storage: &[Felt]) -> Result<(AccountId, u32, u32), StaticAnalysisError> {
+/// - first two elements of the note storage are not a valid account ID.
+/// - third note storage element (reclaim height) is not a valid u32 value.
+/// - fourth note storage element (timelock height) is not a valid u32 value.
+fn parse_p2ide_storage(
+    note_storage: &[Felt],
+) -> Result<(AccountId, u32, u32), StaticAnalysisError> {
     if note_storage.len() != WellKnownNote::P2IDE.num_expected_inputs() {
         return Err(StaticAnalysisError::new(format!(
             "P2IDE note should have {} inputs, but {} was provided",
@@ -375,7 +376,7 @@ fn parse_p2ide_inputs(note_storage: &[Felt]) -> Result<(AccountId, u32, u32), St
         )));
     }
 
-    let receiver_account_id = try_read_account_id_from_inputs(note_storage)?;
+    let receiver_account_id = try_read_account_id_from_storage(note_storage)?;
 
     let reclaim_height = u32::try_from(note_storage[2])
         .map_err(|_err| StaticAnalysisError::new("reclaim block height should be a u32"))?;
@@ -388,8 +389,8 @@ fn parse_p2ide_inputs(note_storage: &[Felt]) -> Result<(AccountId, u32, u32), St
 
 /// Reads the account ID from the first two note storage items.
 ///
-/// Returns None if the note storage items used to construct the account ID are invalid.
-fn try_read_account_id_from_inputs(
+/// Returns an error if the note storage items used to construct the account ID are invalid.
+fn try_read_account_id_from_storage(
     note_storage: &[Felt],
 ) -> Result<AccountId, StaticAnalysisError> {
     if note_storage.len() < 2 {

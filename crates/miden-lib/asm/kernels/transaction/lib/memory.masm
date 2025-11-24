@@ -1591,7 +1591,7 @@ export.get_input_note_script_root_ptr
     add.INPUT_NOTE_SCRIPT_ROOT_OFFSET
 end
 
-#! Returns the inputs commitment of an input note located at the specified memory address.
+#! Returns the note storage commitment of an input note located at the specified memory address.
 #!
 #! Inputs:  [note_ptr]
 #! Outputs: [STORAGE_COMMITMENT]

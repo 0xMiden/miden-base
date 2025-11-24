@@ -1057,7 +1057,7 @@ export.input_note_get_serial_number
     # => [SERIAL_NUMBER, pad(12)]
 end
 
-#! Returns the inputs commitment and length of the specified input note.
+#! Returns the note storage commitment and storage length of the specified note storage.
 #!
 #! Inputs:  [is_active_note, note_index, pad(14)]
 #! Outputs: [NOTE_STORAGE_COMMITMENT, storage_len, pad(11)]
@@ -1227,7 +1227,7 @@ end
 #!
 #! Where:
 #! - note_index is the index of the output note whose recipient should be returned.
-#! - RECIPIENT is the commitment to the input note's script, storage, the serial number.
+#! - RECIPIENT is the commitment to the output note's script, storage, the serial number.
 #!
 #! Panics if:
 #! - the note index is greater or equal to the total number of output notes.

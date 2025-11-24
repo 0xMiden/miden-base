@@ -357,7 +357,7 @@ pub const NOTE_MEM_SIZE: MemoryAddress = 2048;
 //
 // Notice that note storage items are not loaded to the memory, only their length. In order to obtain
 // the storage items the advice map should be used: they are stored there as
-// `STORAGE_COMMITMENT -> STORAGE || PADDING`.
+// `STORAGE_COMMITMENT -> STORAGE_ITEMS || PADDING`.
 //
 // As opposed to the asset values, input values are never used in kernel memory, so their presence
 // there is unnecessary.

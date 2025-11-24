@@ -326,45 +326,45 @@ end
 #! Inputs:
 #!   Operand stack: [NOTE_STORAGE_COMMITMENT, storage_len, dest_ptr]
 #!   Advice map: {
-#!     NOTE_STORAGE_COMMITMENT: [[INPUT_VALUES]]
+#!     NOTE_STORAGE_COMMITMENT: [[STORAGE_ITEMS]]
 #!   }
 #! Outputs:
 #!   Operand stack: [storage_len, dest_ptr]
 proc.write_storage_to_memory
-    # load the inputs from the advice map to the advice stack
+    # load the storage items from the advice map to the advice stack
     adv.push_mapvaln
     # OS => [NOTE_STORAGE_COMMITMENT, storage_len, dest_ptr]
-    # AS => [advice_storage_len, [INPUT_VALUES]]
+    # AS => [advice_storage_len, [STORAGE_ITEMS]]
 
     # move the storage length obtained from advice map to the operand stack
     adv_push.1 dup.5
     # OS => [storage_len, advice_storage_len, NOTE_STORAGE_COMMITMENT, storage_len, dest_ptr]
-    # AS => [[INPUT_VALUES]]
+    # AS => [[STORAGE_ITEMS]]
 
     # Validate the note storage length. Round up the storage length to the next multiple of 8: that
     # value should be equal to the length obtained from the `adv.push_mapvaln` procedure.
     u32divmod.8 neq.0 add mul.8
     # OS => [rounded_up_storage_len, advice_storage_len, NOTE_STORAGE_COMMITMENT, storage_len, dest_ptr]
-    # AS => [[INPUT_VALUES]]
+    # AS => [[STORAGE_ITEMS]]
 
     assert_eq.err=ERR_NOTE_INVALID_STORAGE_LENGTH
     # OS => [NOTE_STORAGE_COMMITMENT, storage_len, dest_ptr]
-    # AS => [[INPUT_VALUES]]
+    # AS => [[STORAGE_ITEMS]]
 
     # calculate the number of words required to store the inputs
     dup.4 u32divmod.4 neq.0 add
     # OS => [num_words, NOTE_STORAGE_COMMITMENT, storage_len, dest_ptr]
-    # AS => [[INPUT_VALUES]]
+    # AS => [[STORAGE_ITEMS]]
 
     # round up the number of words to the next multiple of 2
     dup is_odd add
     # OS => [even_num_words, NOTE_STORAGE_COMMITMENT, storage_len, dest_ptr]
-    # AS => [[INPUT_VALUES]]
+    # AS => [[STORAGE_ITEMS]]
 
     # prepare the stack for the `pipe_preimage_to_memory` procedure
     dup.6 swap
     # OS => [even_num_words, dest_ptr, NOTE_STORAGE_COMMITMENT, storage_len, dest_ptr]
-    # AS => [[INPUT_VALUES]]
+    # AS => [[STORAGE_ITEMS]]
 
     # write the inputs from the advice stack into memory
     exec.mem::pipe_preimage_to_memory drop

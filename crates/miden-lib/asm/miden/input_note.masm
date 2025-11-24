@@ -199,7 +199,7 @@ export.get_sender
     # => [sender_id_prefix, sender_id_suffix]
 end
 
-#! Returns the inputs commitment and length of the input note with the specified index.
+#! Returns the note storage commitment and storage length with the specified index.
 #!
 #! Inputs:  [note_index]
 #! Outputs: [NOTE_STORAGE_COMMITMENT, storage_len]

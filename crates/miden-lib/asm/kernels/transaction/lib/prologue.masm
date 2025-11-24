@@ -856,6 +856,7 @@ end
 #!      ASSETS_COMMITMENT,
 #!      ARGS,
 #!      NOTE_METADATA,
+#!      storage_len,
 #!      assets_count,
 #!      ASSET_0, ..., ASSET_N,
 #!      is_authenticated,

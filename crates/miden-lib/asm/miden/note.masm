@@ -95,12 +95,12 @@ end
 #! Inputs:
 #!   Operand stack: [storage_ptr, storage_len, SERIAL_NUM, SCRIPT_ROOT]
 #!   Advice map: {
-#!      STORAGE_COMMITMENT: [STORAGE],
+#!      STORAGE_COMMITMENT: [STORAGE_ITEMS],
 #!   }
 #! Outputs:
 #!   Operand stack: [RECIPIENT]
 #!   Advice map: {
-#!      STORAGE_COMMITMENT: [STORAGE],
+#!      STORAGE_COMMITMENT: [STORAGE_ITEMS],
 #!      RECIPIENT: [SERIAL_SCRIPT_HASH, STORAGE_COMMITMENT],
 #!      SERIAL_SCRIPT_HASH: [SERIAL_HASH, SCRIPT_ROOT],
 #!      SERIAL_HASH: [SERIAL_NUM, EMPTY_WORD],
@@ -114,8 +114,7 @@ end
 #! - RECIPIENT is the commitment to the input note's script, storage, and the serial number.
 #!
 #! Locals:
-#! - 0: storage_ptr
-#! - 1: storage_len
+#! - 0: storage_len
 #!
 #! Panics if:
 #! - storage_ptr is not word-aligned (i.e., is not a multiple of 4).

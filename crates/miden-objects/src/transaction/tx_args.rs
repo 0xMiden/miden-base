@@ -158,8 +158,8 @@ impl TransactionArgs {
     /// - RECIPIENT: [SERIAL_SCRIPT_HASH, STORAGE_COMMITMENT]
     /// - SERIAL_SCRIPT_HASH: [SERIAL_HASH, SCRIPT_ROOT]
     /// - SERIAL_HASH: [SERIAL_NUM, EMPTY_WORD]
-    /// - storage_commitment |-> inputs.
-    /// - script_root |-> script.
+    /// - storage_commitment |-> storage_items.
+    /// - script_root |-> script_data.
     pub fn add_output_note_recipient<T: AsRef<NoteRecipient>>(&mut self, note_recipient: T) {
         let note_recipient = note_recipient.as_ref();
         let note_storage = note_recipient.storage();
@@ -207,8 +207,8 @@ impl TransactionArgs {
     /// The advice inputs' map is extended with the following keys:
     ///
     /// - recipient |-> recipient details (inputs_hash, script_root, serial_num).
-    /// - storage_commitment |-> inputs.
-    /// - script_root |-> script.
+    /// - storage_commitment |-> storage_items.
+    /// - script_root |-> script_data.
     pub fn extend_output_note_recipients<T, L>(&mut self, notes: L)
     where
         L: IntoIterator<Item = T>,
