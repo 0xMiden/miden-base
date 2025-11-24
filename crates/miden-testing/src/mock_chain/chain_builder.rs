@@ -30,6 +30,7 @@ use miden_objects::account::{
 };
 use miden_objects::asset::{Asset, FungibleAsset, TokenSymbol};
 use miden_objects::block::account_tree::AccountTree;
+use miden_objects::block::nullifier_tree::NullifierTree;
 use miden_objects::block::{
     BlockAccountUpdate,
     BlockHeader,
@@ -37,7 +38,6 @@ use miden_objects::block::{
     BlockNumber,
     Blockchain,
     FeeParameters,
-    NullifierTree,
     OutputNoteBatch,
     ProvenBlock,
 };

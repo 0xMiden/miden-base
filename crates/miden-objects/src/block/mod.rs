@@ -19,7 +19,6 @@ pub use partial_account_tree::PartialAccountTree;
 pub mod account_tree;
 
 pub mod nullifier_tree;
-pub use nullifier_tree::NullifierTree;
 
 mod blockchain;
 pub use blockchain::Blockchain;
