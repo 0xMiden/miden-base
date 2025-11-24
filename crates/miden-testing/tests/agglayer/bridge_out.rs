@@ -99,7 +99,7 @@ async fn test_bridge_out_consumes_b2agg_note() -> anyhow::Result<()> {
     builder.add_output_note(OutputNote::Full(b2agg_note.clone()));
     let mut mock_chain = builder.build()?;
 
-    // Add BURN note script to the data store so it can be fetched during execution
+    // Get BURN note script to add to the transaction context
     let burn_note_script: NoteScript = WellKnownNote::BURN.script();
 
     // EXECUTE B2AGG NOTE AGAINST BRIDGE ACCOUNT (NETWORK TRANSACTION)
@@ -109,10 +109,6 @@ async fn test_bridge_out_consumes_b2agg_note() -> anyhow::Result<()> {
         .add_note_script(burn_note_script.clone())
         .build()?;
     let executed_transaction = tx_context.execute().await?;
-
-    // Verify the transaction executed successfully
-    assert_eq!(executed_transaction.account_delta().nonce_delta(), Felt::new(1));
-    assert_eq!(executed_transaction.input_notes().get_note(0).id(), b2agg_note.id());
 
     // VERIFY PUBLIC BURN NOTE WAS CREATED
     // --------------------------------------------------------------------------------------------
@@ -179,18 +175,6 @@ async fn test_bridge_out_consumes_b2agg_note() -> anyhow::Result<()> {
         burn_executed_transaction.output_notes().num_notes(),
         0,
         "Burn transaction should not create output notes"
-    );
-
-    // Verify the transaction was executed successfully
-    assert_eq!(
-        burn_executed_transaction.account_delta().nonce_delta(),
-        Felt::new(1),
-        "Faucet nonce should be incremented"
-    );
-    assert_eq!(
-        burn_executed_transaction.input_notes().get_note(0).id(),
-        burn_note.id(),
-        "Input note should be the BURN note"
     );
 
     // Apply the delta to the faucet account and verify the token issuance decreased

@@ -377,8 +377,11 @@ fn compile_note_scripts(source_dir: &Path, target_dir: &Path, assembler: Assembl
         .into_diagnostic()
         .wrap_err("failed to create note_scripts directory")?;
 
-    // Check if the source directory exists before trying to read it
+    // Create the source directory if it doesn't exist
     if !source_dir.exists() {
+        fs::create_dir_all(source_dir)
+            .into_diagnostic()
+            .wrap_err("failed to create source directory")?;
         return Ok(());
     }
 
