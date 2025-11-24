@@ -665,6 +665,47 @@ mod tests {
     }
 
     #[test]
+    fn parses_and_instantiates_ecdsa_template() {
+        let toml = r#"
+        name = "ecdsa_auth"
+        description = "Ecdsa authentication component, for verifying ECDSA K256 Keccak signatures."
+        version = "0.1.0"
+        supported-types = ["RegularAccountUpdatableCode", "RegularAccountImmutableCode", "FungibleFaucet", "NonFungibleFaucet"]
+
+        [[storage]]
+        name = "ecdsa_pubkey"
+        description = "ecdsa public key"
+        slot = 0
+        type = "auth::ecdsa_k256_keccak::pub_key"
+        "#;
+
+        let metadata = AccountComponentMetadata::from_toml(toml).unwrap();
+        assert_eq!(metadata.storage_entries().len(), 1);
+        assert_eq!(metadata.storage_entries()[0].name().unwrap().as_str(), "ecdsa_pubkey");
+
+        let library = Assembler::default().assemble_library([CODE]).unwrap();
+        let template = AccountComponentTemplate::new(metadata, library);
+
+        let init_storage = InitStorageData::new(
+            [(StorageValueName::new("ecdsa_pubkey").unwrap(), "0x1234".into())],
+            BTreeMap::new(),
+        );
+
+        let component = AccountComponent::from_template(&template, &init_storage).unwrap();
+        let slot = component.storage_slots().first().expect("missing storage slot");
+        match slot {
+            StorageSlot::Value(word) => {
+                let expected = Word::parse(
+                    "0x0000000000000000000000000000000000000000000000000000000000001234",
+                )
+                .unwrap();
+                assert_eq!(word, &expected);
+            },
+            _ => panic!("expected value storage slot"),
+        }
+    }
+
+    #[test]
     fn map_template_can_build_from_entries() {
         let map_name = StorageValueName::new("procedure_thresholds").unwrap();
         let map_entry = StorageEntry::new_map(0, MapRepresentation::new_template(map_name.clone()));

@@ -3,7 +3,7 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use miden_lib::StdLibrary;
-use miden_lib::transaction::{EventId, TransactionEvent};
+use miden_lib::transaction::{EventId, TransactionEventId};
 use miden_objects::Word;
 use miden_processor::{
     AdviceMutation,
@@ -60,14 +60,14 @@ impl<'store> MockHost<'store> {
         // The default set of transaction events that are always handled.
         handled_events.extend(
             [
-                &TransactionEvent::AccountPushProcedureIndex,
-                &TransactionEvent::LinkMapSet,
-                &TransactionEvent::LinkMapGet,
+                &TransactionEventId::AccountPushProcedureIndex,
+                &TransactionEventId::LinkMapSet,
+                &TransactionEventId::LinkMapGet,
                 // TODO: It should be possible to remove this after implementing
                 // https://github.com/0xMiden/miden-base/issues/1852.
-                &TransactionEvent::EpilogueBeforeTxFeeRemovedFromAccount,
+                &TransactionEventId::EpilogueBeforeTxFeeRemovedFromAccount,
             ]
-            .map(TransactionEvent::event_id),
+            .map(TransactionEventId::event_id),
         );
 
         Self { exec_host, handled_events }
@@ -77,15 +77,15 @@ impl<'store> MockHost<'store> {
     pub fn enable_lazy_loading(&mut self) {
         self.handled_events.extend(
             [
-                &TransactionEvent::AccountBeforeForeignLoad,
-                &TransactionEvent::AccountVaultBeforeGetBalance,
-                &TransactionEvent::AccountVaultBeforeHasNonFungibleAsset,
-                &TransactionEvent::AccountVaultBeforeAddAsset,
-                &TransactionEvent::AccountVaultBeforeRemoveAsset,
-                &TransactionEvent::AccountStorageBeforeSetMapItem,
-                &TransactionEvent::AccountStorageBeforeGetMapItem,
+                &TransactionEventId::AccountBeforeForeignLoad,
+                &TransactionEventId::AccountVaultBeforeGetBalance,
+                &TransactionEventId::AccountVaultBeforeHasNonFungibleAsset,
+                &TransactionEventId::AccountVaultBeforeAddAsset,
+                &TransactionEventId::AccountVaultBeforeRemoveAsset,
+                &TransactionEventId::AccountStorageBeforeSetMapItem,
+                &TransactionEventId::AccountStorageBeforeGetMapItem,
             ]
-            .map(TransactionEvent::event_id),
+            .map(TransactionEventId::event_id),
         );
     }
 }

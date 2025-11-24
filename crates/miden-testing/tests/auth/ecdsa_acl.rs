@@ -1,8 +1,7 @@
 use core::slice;
 
-use anyhow::Context;
 use assert_matches::assert_matches;
-use miden_lib::account::auth::AuthRpoFalcon512Acl;
+use miden_lib::account::auth::AuthEcdsaK256KeccakAcl;
 use miden_lib::testing::account_component::MockAccountComponent;
 use miden_lib::testing::note::NoteBuilder;
 use miden_lib::utils::ScriptBuilder;
@@ -35,9 +34,9 @@ const TX_SCRIPT_NO_TRIGGER: &str = r#"
 // HELPER FUNCTIONS
 // ================================================================================================
 
-/// Sets up the basic components needed for RPO Falcon ACL tests.
+/// Sets up the basic components needed for ECDSA ACL tests.
 /// Returns (account, mock_chain, note).
-fn setup_rpo_falcon_acl_test(
+fn setup_ecdsa_acl_test(
     allow_unauthorized_output_notes: bool,
     allow_unauthorized_input_notes: bool,
 ) -> anyhow::Result<(Account, MockChain, Note)> {
@@ -52,7 +51,7 @@ fn setup_rpo_falcon_acl_test(
         .expect("set_item procedure should exist");
     let auth_trigger_procedures = vec![get_item_proc_root, set_item_proc_root];
 
-    let (auth_component, _authenticator) = Auth::Acl {
+    let (auth_component, _authenticator) = Auth::EcdsaK256KeccakAcl {
         auth_trigger_procedures: auth_trigger_procedures.clone(),
         allow_unauthorized_output_notes,
         allow_unauthorized_input_notes,
@@ -79,8 +78,8 @@ fn setup_rpo_falcon_acl_test(
 }
 
 #[tokio::test]
-async fn test_rpo_falcon_acl() -> anyhow::Result<()> {
-    let (account, mock_chain, note) = setup_rpo_falcon_acl_test(false, true)?;
+async fn test_ecdsa_acl() -> anyhow::Result<()> {
+    let (account, mock_chain, note) = setup_ecdsa_acl_test(false, true)?;
 
     // We need to get the authenticator separately for this test
     let component: AccountComponent =
@@ -94,7 +93,7 @@ async fn test_rpo_falcon_acl() -> anyhow::Result<()> {
         .expect("set_item procedure should exist");
     let auth_trigger_procedures = vec![get_item_proc_root, set_item_proc_root];
 
-    let (_, authenticator) = Auth::Acl {
+    let (_, authenticator) = Auth::EcdsaK256KeccakAcl {
         auth_trigger_procedures: auth_trigger_procedures.clone(),
         allow_unauthorized_output_notes: false,
         allow_unauthorized_input_notes: true,
@@ -151,7 +150,7 @@ async fn test_rpo_falcon_acl() -> anyhow::Result<()> {
     tx_context_with_auth_1
         .execute()
         .await
-        .context("trigger 1 with auth should succeed")?;
+        .expect("trigger 1 with auth should succeed");
 
     // Test 2: Transaction WITH authenticator calling trigger procedure 2 (should succeed)
     let tx_context_with_auth_2 = mock_chain
@@ -163,7 +162,7 @@ async fn test_rpo_falcon_acl() -> anyhow::Result<()> {
     tx_context_with_auth_2
         .execute()
         .await
-        .context("trigger 2 with auth should succeed")?;
+        .expect("trigger 2 with auth should succeed");
 
     // Test 3: Transaction WITHOUT authenticator calling trigger procedure (should fail)
     let tx_context_no_auth = mock_chain
@@ -186,7 +185,7 @@ async fn test_rpo_falcon_acl() -> anyhow::Result<()> {
     let executed = tx_context_no_trigger
         .execute()
         .await
-        .context("no trigger, no auth should succeed")?;
+        .expect("no trigger, no auth should succeed");
     assert_eq!(
         executed.account_delta().nonce_delta(),
         Felt::ZERO,
@@ -197,13 +196,13 @@ async fn test_rpo_falcon_acl() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
-async fn test_rpo_falcon_acl_with_allow_unauthorized_output_notes() -> anyhow::Result<()> {
-    let (account, mock_chain, note) = setup_rpo_falcon_acl_test(true, true)?;
+async fn test_ecdsa_acl_with_allow_unauthorized_output_notes() -> anyhow::Result<()> {
+    let (account, mock_chain, note) = setup_ecdsa_acl_test(true, true)?;
 
     // Verify the storage layout includes both authorization flags
     let config_slot = account
         .storage()
-        .get_item(AuthRpoFalcon512Acl::config_slot())
+        .get_item(AuthEcdsaK256KeccakAcl::config_slot())
         .expect("config storage slot access failed");
     // Config Slot should be [num_tracked_procs, allow_unauthorized_output_notes,
     // allow_unauthorized_input_notes, 0] With 2 procedures,
@@ -237,13 +236,13 @@ async fn test_rpo_falcon_acl_with_allow_unauthorized_output_notes() -> anyhow::R
 }
 
 #[tokio::test]
-async fn test_rpo_falcon_acl_with_disallow_unauthorized_input_notes() -> anyhow::Result<()> {
-    let (account, mock_chain, note) = setup_rpo_falcon_acl_test(true, false)?;
+async fn test_ecdsa_acl_with_disallow_unauthorized_input_notes() -> anyhow::Result<()> {
+    let (account, mock_chain, note) = setup_ecdsa_acl_test(true, false)?;
 
     // Verify the storage layout includes both flags
     let config_slot = account
         .storage()
-        .get_item(AuthRpoFalcon512Acl::config_slot())
+        .get_item(AuthEcdsaK256KeccakAcl::config_slot())
         .expect("config storage slot access failed");
     // Config Slot should be [num_tracked_procs, allow_unauthorized_output_notes,
     // allow_unauthorized_input_notes, 0] With 2 procedures,

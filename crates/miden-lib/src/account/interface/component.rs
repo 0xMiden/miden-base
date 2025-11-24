@@ -3,12 +3,19 @@ use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
 use miden_objects::account::auth::PublicKeyCommitment;
-use miden_objects::account::{AccountId, AccountProcedureInfo, AccountStorage};
+use miden_objects::account::{AccountId, AccountProcedureInfo, AccountStorage, SlotName};
 use miden_objects::note::PartialNote;
 use miden_objects::{Felt, FieldElement, Word};
 
 use crate::AuthScheme;
-use crate::account::auth::{AuthRpoFalcon512, AuthRpoFalcon512Acl, AuthRpoFalcon512Multisig};
+use crate::account::auth::{
+    AuthEcdsaK256Keccak,
+    AuthEcdsaK256KeccakAcl,
+    AuthEcdsaK256KeccakMultisig,
+    AuthRpoFalcon512,
+    AuthRpoFalcon512Acl,
+    AuthRpoFalcon512Multisig,
+};
 use crate::account::components::WellKnownComponent;
 use crate::account::interface::AccountInterfaceError;
 
@@ -34,6 +41,16 @@ pub enum AccountComponentInterface {
     NetworkFungibleFaucet,
     /// Exposes procedures from the
     /// [`AuthRpoFalcon512`][crate::account::auth::AuthRpoFalcon512] module.
+    ///
+    /// Internal value holds the storage slot index where the public key for the EcdsaK256Keccak
+    /// authentication scheme is stored.
+    AuthEcdsaK256Keccak,
+    /// Internal value holds the storage slot index where the public key for the EcdsaK256Keccak
+    /// authentication scheme is stored.
+    AuthEcdsaK256KeccakAcl,
+    /// Internal value holds the storage slot index where the multisig for EcdsaK256Keccak
+    /// configuration is stored.
+    AuthEcdsaK256KeccakMultisig,
     ///
     /// Internal value holds the storage slot index where the public key for the RpoFalcon512
     /// authentication scheme is stored.
@@ -73,11 +90,19 @@ impl AccountComponentInterface {
             AccountComponentInterface::NetworkFungibleFaucet => {
                 "Network Fungible Faucet".to_string()
             },
+            AccountComponentInterface::AuthEcdsaK256Keccak => "ECDSA K256 Keccak".to_string(),
+            AccountComponentInterface::AuthEcdsaK256KeccakAcl => {
+                "ECDSA K256 Keccak ACL".to_string()
+            },
+            AccountComponentInterface::AuthEcdsaK256KeccakMultisig => {
+                "ECDSA K256 Keccak Multisig".to_string()
+            },
             AccountComponentInterface::AuthRpoFalcon512 => "RPO Falcon512".to_string(),
             AccountComponentInterface::AuthRpoFalcon512Acl => "RPO Falcon512 ACL".to_string(),
             AccountComponentInterface::AuthRpoFalcon512Multisig => {
                 "RPO Falcon512 Multisig".to_string()
             },
+
             AccountComponentInterface::AuthNoAuth => "No Auth".to_string(),
             AccountComponentInterface::Custom(proc_info_vec) => {
                 let result = proc_info_vec
@@ -96,7 +121,10 @@ impl AccountComponentInterface {
     pub fn is_auth_component(&self) -> bool {
         matches!(
             self,
-            AccountComponentInterface::AuthRpoFalcon512
+            AccountComponentInterface::AuthEcdsaK256Keccak
+                | AccountComponentInterface::AuthEcdsaK256KeccakAcl
+                | AccountComponentInterface::AuthEcdsaK256KeccakMultisig
+                | AccountComponentInterface::AuthRpoFalcon512
                 | AccountComponentInterface::AuthRpoFalcon512Acl
                 | AccountComponentInterface::AuthRpoFalcon512Multisig
                 | AccountComponentInterface::AuthNoAuth
@@ -106,6 +134,31 @@ impl AccountComponentInterface {
     /// Returns the authentication schemes associated with this component interface.
     pub fn get_auth_schemes(&self, storage: &AccountStorage) -> Vec<AuthScheme> {
         match self {
+            AccountComponentInterface::AuthEcdsaK256Keccak => {
+                vec![AuthScheme::EcdsaK256Keccak {
+                    pub_key: PublicKeyCommitment::from(
+                        storage
+                            .get_item(AuthEcdsaK256Keccak::public_key_slot())
+                            .expect("invalid storage index of the public key"),
+                    ),
+                }]
+            },
+            AccountComponentInterface::AuthEcdsaK256KeccakAcl => {
+                vec![AuthScheme::EcdsaK256Keccak {
+                    pub_key: PublicKeyCommitment::from(
+                        storage
+                            .get_item(AuthEcdsaK256KeccakAcl::public_key_slot())
+                            .expect("invalid storage index of the public key"),
+                    ),
+                }]
+            },
+            AccountComponentInterface::AuthEcdsaK256KeccakMultisig => {
+                vec![extract_multisig_auth_scheme(
+                    storage,
+                    AuthEcdsaK256KeccakMultisig::threshold_config_slot(),
+                    AuthEcdsaK256KeccakMultisig::approver_public_keys_slot(),
+                )]
+            },
             AccountComponentInterface::AuthRpoFalcon512 => {
                 vec![AuthScheme::RpoFalcon512 {
                     pub_key: PublicKeyCommitment::from(
@@ -125,7 +178,11 @@ impl AccountComponentInterface {
                 }]
             },
             AccountComponentInterface::AuthRpoFalcon512Multisig => {
-                vec![extract_multisig_auth_scheme(storage)]
+                vec![extract_multisig_auth_scheme(
+                    storage,
+                    AuthRpoFalcon512Multisig::threshold_config_slot(),
+                    AuthRpoFalcon512Multisig::approver_public_keys_slot(),
+                )]
             },
             AccountComponentInterface::AuthNoAuth => vec![AuthScheme::NoAuth],
             _ => vec![], // Non-auth components return empty vector
@@ -295,17 +352,19 @@ impl AccountComponentInterface {
 // ================================================================================================
 
 /// Extracts authentication scheme from a multisig component.
-fn extract_multisig_auth_scheme(storage: &AccountStorage) -> AuthScheme {
+fn extract_multisig_auth_scheme(
+    storage: &AccountStorage,
+    config_slot: &SlotName,
+    approver_public_keys_slot: &SlotName,
+) -> AuthScheme {
     // Read the multisig configuration from the config slot
     // Format: [threshold, num_approvers, 0, 0]
     let config = storage
-        .get_item(AuthRpoFalcon512Multisig::threshold_config_slot())
+        .get_item(config_slot)
         .expect("invalid slot name of the multisig configuration");
 
     let threshold = config[0].as_int() as u32;
     let num_approvers = config[1].as_int() as u8;
-
-    let approver_public_keys_slot = AuthRpoFalcon512Multisig::approver_public_keys_slot();
 
     let mut pub_keys = Vec::new();
 

@@ -199,6 +199,7 @@ impl TransactionAuthenticator for BasicAuthenticator {
     ///
     /// Supported signature schemes:
     /// - RpoFalcon512
+    /// - EcdsaK256Keccak
     ///
     /// # Errors
     /// If the public key is not contained in the `keys` map,
