@@ -4,6 +4,7 @@ members = [
   "bin/bench-transaction",
   "crates/miden-block-prover",
   "crates/miden-lib",
+  "crates/miden-macros",
   "crates/miden-objects",
   "crates/miden-testing",
   "crates/miden-tx",
@@ -42,6 +43,7 @@ lto           = true
 # Workspace crates
 miden-block-prover    = { default-features = false, path = "crates/miden-block-prover", version = "0.13" }
 miden-lib             = { default-features = false, path = "crates/miden-lib", version = "0.13" }
+miden-macros          = { default-features = false, path = "crates/miden-macros", version = "0.13" }
 miden-objects         = { default-features = false, path = "crates/miden-objects", version = "0.13" }
 miden-testing         = { default-features = false, path = "crates/miden-testing", version = "0.13" }
 miden-tx              = { default-features = false, path = "crates/miden-tx", version = "0.13" }

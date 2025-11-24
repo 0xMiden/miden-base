@@ -1557,6 +1557,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "miden-macros"
+version = "0.13.0"
+dependencies = [
+ "miden-objects",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "miden-mast-package"
 version = "0.19.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1625,6 +1635,7 @@ dependencies = [
  "miden-assembly-syntax",
  "miden-core",
  "miden-crypto",
+ "miden-macros",
  "miden-mast-package",
  "miden-objects",
  "miden-processor",

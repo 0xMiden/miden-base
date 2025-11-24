@@ -1,6 +1,8 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 
+use miden_macros::WordWrapper;
+
 use crate::account::AccountId;
 use crate::transaction::{ProvenTransaction, TransactionId};
 use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
@@ -15,7 +17,7 @@ use crate::{Felt, Hasher, Word, ZERO};
 /// This is a sequential hash of the tuple `(TRANSACTION_ID || [account_id_prefix,
 /// account_id_suffix, 0, 0])` of all transactions and the accounts their executed against in the
 /// batch.
-#[derive(Debug, Copy, Clone, Eq, Ord, PartialEq, PartialOrd, Hash)]
+#[derive(Debug, Copy, Clone, Eq, Ord, PartialEq, PartialOrd, Hash, WordWrapper)]
 pub struct BatchId(Word);
 
 impl BatchId {
@@ -37,21 +39,6 @@ impl BatchId {
         }
 
         Self(Hasher::hash_elements(&elements))
-    }
-
-    /// Returns the elements representation of this batch ID.
-    pub fn as_elements(&self) -> &[Felt] {
-        self.0.as_elements()
-    }
-
-    /// Returns the byte representation of this batch ID.
-    pub fn as_bytes(&self) -> [u8; 32] {
-        self.0.as_bytes()
-    }
-
-    /// Returns a big-endian, hex-encoded string.
-    pub fn to_hex(&self) -> String {
-        self.0.to_hex()
     }
 }
 
