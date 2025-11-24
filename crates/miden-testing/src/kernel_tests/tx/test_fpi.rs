@@ -1117,7 +1117,7 @@ async fn test_prove_fpi_two_foreign_accounts_chain() -> anyhow::Result<()> {
 
     let source_manager = Arc::new(DefaultSourceManager::default());
     let second_foreign_account_component = AccountComponent::compile(
-        second_foreign_account_code_source,
+        NamedSource::new("foreign_account", second_foreign_account_code_source),
         TransactionKernel::with_kernel_library(source_manager.clone()),
         vec![],
     )?
@@ -1125,12 +1125,13 @@ async fn test_prove_fpi_two_foreign_accounts_chain() -> anyhow::Result<()> {
 
     let second_foreign_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(Auth::IncrNonce)
-        .with_component(second_foreign_account_component)
+        .with_component(second_foreign_account_component.clone())
         .build_existing()?;
 
     // ------ FIRST FOREIGN ACCOUNT ---------------------------------------------------------------
     // unique procedure which calls the second foreign account via FPI and then returns
-    let first_foreign_account_code_source = r#"
+    let first_foreign_account_code_source = format!(
+        r#"
         use.miden::tx
         use.std::sys
 
@@ -1139,11 +1140,11 @@ async fn test_prove_fpi_two_foreign_accounts_chain() -> anyhow::Result<()> {
             padw padw padw push.0.0.0
             # => [pad(15)]
 
-            # get the hash of the `second_account_foreign_proc` from the advice stack
-            adv_push.4
+            # get the hash of the `second_account_foreign_proc` using procref
+            procref.::foreign_account::second_account_foreign_proc
 
-            # push the ID of the second foreign account from the advice stack
-            adv_push.2
+            # push the ID of the second foreign account
+            push.{second_foreign_suffix} push.{second_foreign_prefix}
             # => [foreign_account_id_prefix, foreign_account_id_suffix, FOREIGN_PROC_ROOT, pad(15)]
 
             # call the second foreign account
@@ -1153,11 +1154,17 @@ async fn test_prove_fpi_two_foreign_accounts_chain() -> anyhow::Result<()> {
             # keep the result and drop any padding if present
             exec.sys::truncate_stack
         end
-    "#;
+        "#,
+        second_foreign_prefix = second_foreign_account.id().prefix().as_felt(),
+        second_foreign_suffix = second_foreign_account.id().suffix(),
+    );
 
+    // Link against the second foreign account.
     let first_foreign_account_component = AccountComponent::compile(
         NamedSource::new("first_foreign_account", first_foreign_account_code_source),
-        TransactionKernel::with_kernel_library(source_manager.clone()),
+        TransactionKernel::with_kernel_library(source_manager.clone())
+            .with_dynamic_library(second_foreign_account_component.library())
+            .map_err(|e| anyhow::anyhow!("Failed to link dynamic library: {}", e))?,
         vec![],
     )?
     .with_supports_all_types();
@@ -1190,17 +1197,6 @@ async fn test_prove_fpi_two_foreign_accounts_chain() -> anyhow::Result<()> {
             .get_foreign_account_inputs(second_foreign_account.id())
             .expect("failed to get foreign account inputs"),
     ];
-
-    // push the hash of the second foreign procedure and the second account ID onto the advice stack
-    // so the first foreign account can call it dynamically
-    let mut advice_inputs = AdviceInputs::default();
-    advice_inputs
-        .stack
-        .extend(*second_foreign_account.code().procedures()[1].mast_root());
-    advice_inputs.stack.extend([
-        second_foreign_account.id().suffix(),
-        second_foreign_account.id().prefix().as_felt(),
-    ]);
 
     // ------ TRANSACTION SCRIPT (Native) ----------------------------------------------------------
     // Call the first foreign account's procedure. It will call into the second FA via FPI.
@@ -1243,7 +1239,6 @@ async fn test_prove_fpi_two_foreign_accounts_chain() -> anyhow::Result<()> {
         .build_tx_context(native_account.id(), &[], &[])
         .expect("failed to build tx context")
         .foreign_accounts(foreign_account_inputs)
-        .extend_advice_inputs(advice_inputs)
         .tx_script(tx_script)
         .with_source_manager(source_manager)
         .build()?
