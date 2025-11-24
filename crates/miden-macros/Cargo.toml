@@ -1,20 +1,23 @@
 [package]
-name = "miden-macros"
-version = "0.13.0"
-authors.workspace = true
-edition.workspace = true
+authors.workspace      = true
+edition.workspace      = true
+homepage.workspace     = true
+license.workspace      = true
+name                   = "miden-macros"
+repository.workspace   = true
 rust-version.workspace = true
-license.workspace = true
-homepage.workspace = true
-repository.workspace = true
+version                = "0.13.0"
 
 [lib]
 proc-macro = true
 
 [dependencies]
-quote = "1.0"
-syn = { version = "2.0", features = ["full", "extra-traits"] }
 proc-macro2 = "1.0"
+quote       = "1.0"
+syn         = { features = ["extra-traits", "full"], version = "2.0" }
 
 [dev-dependencies]
 miden-objects = { path = "../miden-objects" }
+
+[package.metadata.cargo-machete]
+ignored = ["proc-macro2"]
