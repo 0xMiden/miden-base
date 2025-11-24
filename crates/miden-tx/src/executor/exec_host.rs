@@ -624,6 +624,14 @@ where
                 TransactionEvent::LinkMapSet { advice_mutation } => Ok(advice_mutation),
                 TransactionEvent::LinkMapGet { advice_mutation } => Ok(advice_mutation),
                 TransactionEvent::Progress(tx_progress) => match tx_progress {
+                    TransactionProgressEvent::PrologueStart(clk) => {
+                        self.tx_progress.start_prologue(clk);
+                        Ok(Vec::new())
+                    },
+                    TransactionProgressEvent::PrologueEnd(clk) => {
+                        self.tx_progress.end_prologue(clk);
+                        Ok(Vec::new())
+                    },
                     TransactionProgressEvent::NotesProcessingStart(clk) => {
                         self.tx_progress.start_notes_processing(clk);
                         Ok(Vec::new())
@@ -638,14 +646,6 @@ where
                     },
                     TransactionProgressEvent::NoteExecutionEnd(clk) => {
                         self.tx_progress.end_note_execution(clk);
-                        Ok(Vec::new())
-                    },
-                    TransactionProgressEvent::PrologueStart(clk) => {
-                        self.tx_progress.start_prologue(clk);
-                        Ok(Vec::new())
-                    },
-                    TransactionProgressEvent::PrologueEnd(clk) => {
-                        self.tx_progress.end_prologue(clk);
                         Ok(Vec::new())
                     },
                     TransactionProgressEvent::TxScriptProcessingStart(clk) => {
