@@ -19,6 +19,5 @@ bench = false
 testing = []
 
 [dependencies]
-miden-lib     = { workspace = true }
 miden-objects = { workspace = true }
 thiserror     = { workspace = true }

@@ -77,8 +77,7 @@ impl TransactionContext {
     ///
     /// - If the provided `code` is not a valid program.
     pub async fn execute_code(&self, code: &str) -> Result<ExecutionOutput, ExecutionError> {
-        let (stack_inputs, advice_inputs) = TransactionKernel::prepare_inputs(&self.tx_inputs)
-            .expect("error initializing transaction inputs");
+        let (stack_inputs, advice_inputs) = TransactionKernel::prepare_inputs(&self.tx_inputs);
 
         // Virtual file name should be unique.
         let virtual_source_file = self.source_manager.load(
