@@ -4,11 +4,10 @@ use alloc::vec::Vec;
 
 use miden_core::EMPTY_WORD;
 use miden_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
-use miden_crypto::merkle::{MerkleError, MutationSet, Smt, SmtProof};
-use miden_processor::{DeserializationError, SMT_DEPTH};
-
 #[cfg(feature = "std")]
 use miden_crypto::merkle::{LargeSmt, LargeSmtError, SmtStorage};
+use miden_crypto::merkle::{MerkleError, MutationSet, Smt, SmtProof};
+use miden_processor::{DeserializationError, SMT_DEPTH};
 
 use crate::Word;
 use crate::block::{BlockNumber, NullifierWitness};
@@ -184,7 +183,9 @@ where
         // SAFETY: We expect here as storage errors are considered unrecoverable. This maintains
         // API compatibility with the non-fallible Smt::root().
         // See issue #2010 for future improvements to error handling.
-        LargeSmt::root(self).map_err(large_smt_error_to_merkle_error).expect("Storage I/O error accessing root")
+        LargeSmt::root(self)
+            .map_err(large_smt_error_to_merkle_error)
+            .expect("Storage I/O error accessing root")
     }
 }
 
@@ -255,7 +256,7 @@ where
     /// Returns an iterator over the nullifiers and their block numbers in the tree.
     pub fn entries(&self) -> impl Iterator<Item = (Nullifier, BlockNumber)> {
         self.smt.entries().map(|(nullifier, block_num)| {
-            (Nullifier::from(nullifier), leaf_value_to_block_num(block_num))
+            (Nullifier::from(nullifier), nullifier_leaf_value_to_block_num(block_num))
         })
     }
 
@@ -277,7 +278,7 @@ where
             return None;
         }
 
-        Some(leaf_value_to_block_num(value))
+        Some(nullifier_leaf_value_to_block_num(value))
     }
 
     /// Computes a mutation set resulting from inserting the provided nullifiers into this nullifier
@@ -356,7 +357,6 @@ where
             .apply_mutations(mutations.into_mutation_set())
             .map_err(NullifierTreeError::TreeRootConflict)
     }
-
 }
 
 // CONVENIENCE METHODS
@@ -375,9 +375,9 @@ impl NullifierTree<Smt> {
     pub fn with_entries(
         entries: impl IntoIterator<Item = (Nullifier, BlockNumber)>,
     ) -> Result<Self, NullifierTreeError> {
-        let leaves = entries
-            .into_iter()
-            .map(|(nullifier, block_num)| (nullifier.as_word(), block_num_to_nullifier_leaf_value(block_num)));
+        let leaves = entries.into_iter().map(|(nullifier, block_num)| {
+            (nullifier.as_word(), block_num_to_nullifier_leaf_value(block_num))
+        });
 
         let smt = Smt::with_entries(leaves)
             .map_err(NullifierTreeError::DuplicateNullifierBlockNumbers)?;
@@ -460,7 +460,7 @@ mod tests {
     fn leaf_value_encode_decode() {
         let block_num = BlockNumber::from(0xffff_ffff_u32);
         let leaf = super::block_num_to_nullifier_leaf_value(block_num);
-        let block_num_recovered = super::leaf_value_to_block_num(leaf);
+        let block_num_recovered = super::nullifier_leaf_value_to_block_num(leaf);
         assert_eq!(block_num, block_num_recovered);
     }
 
@@ -475,7 +475,7 @@ mod tests {
     fn leaf_value_decoding() {
         let block_num = 123;
         let nullifier_value = Word::from([block_num, 0, 0, 0u32]);
-        let decoded_block_num = super::leaf_value_to_block_num(nullifier_value);
+        let decoded_block_num = super::nullifier_leaf_value_to_block_num(nullifier_value);
 
         assert_eq!(decoded_block_num, block_num.into());
     }
