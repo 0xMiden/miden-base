@@ -29,7 +29,6 @@ pub fn block_num_to_nullifier_leaf_value(block: BlockNumber) -> Word {
 ///
 /// There are no nullifiers in the genesis block. The value zero is instead used to signal
 /// absence of a value.
-#[cfg(test)]
 pub(super) fn nullifier_leaf_value_to_block_num(value: Word) -> BlockNumber {
     let block_num: u32 = value[0].as_int().try_into().expect("invalid block number found in store");
 
@@ -42,9 +41,15 @@ pub(super) fn nullifier_leaf_value_to_block_num(value: Word) -> BlockNumber {
 /// This trait abstracts over different SMT backends (e.g., `Smt` and `LargeSmt`) to allow
 /// the `NullifierTree` to work with either implementation transparently.
 ///
-/// Users should
-/// instantiate the backend directly (potentially with entries) and then pass it to
-/// [`NullifierTree::new_unchecked`].
+/// Users should instantiate the backend directly (potentially with entries) and then
+/// pass it to [`NullifierTree::new_unchecked`].
+///
+/// # Invariants
+///
+/// Assumes the provided SMT upholds the guarantees of the [`NullifierTree`]. Specifically:
+/// - Nullifiers are only spent once and their block numbers do not change.
+/// - Nullifier entries must follow the format `Word([block_num, 0, 0, 0])` with `block_num` a valid
+///   block number.
 pub trait NullifierTreeBackend: Sized {
     type Error: core::error::Error + Send + 'static;
 
@@ -229,13 +234,11 @@ where
 
     /// Creates a new `NullifierTree` from its inner representation.
     ///
-    /// # Warning
+    /// # Invariants
     ///
-    /// Assumes the provided SMT upholds the guarantees of the [`NullifierTree`]. Specifically:
-    /// - Nullifiers should only be spent once and their block numbers should not change
-    ///
-    /// See type-level documentation for more details on these invariants. Using this constructor
-    /// with an SMT that violates these guarantees may lead to undefined behavior.
+    /// Invariants must be upheld by the `Backend` implementation! If the backend fails to uphold
+    /// the required invariants, behaviour
+    /// unexpected behaviour may
     pub fn new_unchecked(backend: Backend) -> Self {
         NullifierTree { smt: backend }
     }
