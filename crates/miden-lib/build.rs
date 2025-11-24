@@ -166,7 +166,7 @@ fn compile_tx_kernel(source_dir: &Path, target_dir: &Path) -> Result<Assembler> 
     let shared_utils_path = Path::new(ASM_DIR).join(SHARED_UTILS_DIR);
     let kernel_namespace = LibraryNamespace::Kernel;
 
-    let mut assembler = build_assembler(None)?;
+    let mut assembler = build_assembler(None)?.with_debug_mode(true);
     // add the shared util modules to the kernel lib under the kernel::util namespace
     assembler.compile_and_statically_link_from_dir(kernel_namespace.clone(), &shared_utils_path)?;
 
