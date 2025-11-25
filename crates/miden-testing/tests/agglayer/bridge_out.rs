@@ -10,6 +10,7 @@ use miden_objects::account::{
     AccountIdVersion,
     AccountStorageMode,
     AccountType,
+    StorageSlot,
 };
 use miden_objects::asset::{Asset, FungibleAsset};
 use miden_objects::note::{
@@ -53,7 +54,9 @@ async fn test_bridge_out_consumes_b2agg_note() -> anyhow::Result<()> {
         builder.add_existing_network_faucet("AGG", 1000, faucet_owner_account_id, Some(100))?;
 
     // Create a bridge account with the bridge_out component using network (public) storage
-    let bridge_component = bridge_out_component(vec![]);
+    // Add a storage map for the bridge component to store MMR frontier data
+    let storage_slots = vec![StorageSlot::empty_map()];
+    let bridge_component = bridge_out_component(storage_slots);
     let account_builder = Account::builder(builder.rng_mut().random())
         .storage_mode(AccountStorageMode::Public)
         .with_component(bridge_component);
@@ -86,10 +89,6 @@ async fn test_bridge_out_consumes_b2agg_note() -> anyhow::Result<()> {
     input_felts.extend(address_felts);
 
     let inputs = NoteInputs::new(input_felts.clone())?;
-
-    let burn_note_tag = NoteTag::from_account_id(faucet.id());
-
-    println!("burn note tag: {}", burn_note_tag);
 
     // Create the B2AGG note with assets from the faucet
     let b2agg_note_metadata =

@@ -1,10 +1,19 @@
 use.miden::note
 use.miden::output_note
 use.miden::active_note
+
+use.miden::active_account
+use.miden::native_account
+use.std::sys
+
 use.std::math::u64
+use std::crypto::hashes::keccak256
 
+const.MMR_PTR=42
+const.STORAGE_MAP_INDEX=0
+
+const.BURN_ASSET_MEM_PTR=16
 const.BURN_NOTE_ROOT=[6407337173854817345,5626358912819151014,703918618794810515,17401169215223723177]
-
 const.EXECUTION_HINT_ALWAYS=1
 const.PUBLIC_NOTE=1
 const.AUX=0
@@ -87,14 +96,39 @@ proc create_burn_note.8
     # => []
 end
 
-#! Stubbed out
 #! Inputs: [ASSET, INPUTS[1], INPUTS[0]]
-#! Outputs: [LEAF[1], LEAF[0]]
+#! Outputs: [prefix_hi, prefix_lo, suffix_hi, suffix_lo, 
+#!           amount_hi, amount_lo, 0, 0, INPUTS[1], INPUTS[0]]
+proc convert_b2agg_to_u32
+    # add padding
+    push.0 movdn.4
+    # => [prefix, suffix, 0, amount, 0]
+
+    movup.3
+    # => [amount, prefix, suffix, 0, 0, INPUTS[1], INPUTS[0]]
+
+    u32split
+    # => [amount_hi, amount_lo, prefix, suffix, 0, 0, INPUTS[1], INPUTS[0]]
+
+    movup.4
+    # => [suffix, amount_hi, amount_lo, prefix, 0, 0, INPUTS[1], INPUTS[0]]
+
+    u32split
+    # => [suffix_hi, suffix_lo, amount_hi, amount_lo, prefix, 0, 0, INPUTS[1], INPUTS[0]]
+
+    movup.4
+    # => [prefix, suffix_hi, suffix_lo, amount_hi, amount_lo, 0, 0, INPUTS[1], INPUTS[0]]
+
+    u32split
+    # => [prefix_hi, prefix_lo, suffix_hi, suffix_lo, amount_hi, amount_lo, 0, 0, INPUTS[1], INPUTS[0]]
+end
+
+#! Stubbed out
+#! Inputs: [LEAF[1], LEAF[0], mmr_ptr]
+#! Outputs: []
 proc mmr_frontier_keccak_add
-  dropw dropw dropw
-  push.1.1.1.1
-  push.2.2.2.2 
-  # => [LEAF[1], LEAF[0]]
+  dropw dropw drop
+  # => []
 end
 
 # Stubbed out
@@ -107,20 +141,64 @@ end
 
 #! Inputs: [ASSET, INPUTS[1], INPUTS[0]]
 #! Outputs: []
-pub proc bridge_out.4
-    loc_storew_be.0
-    # => [ASSET, INPUTS[1], INPUTS[0]]
+pub proc bridge_out
+    mem_storew_be.BURN_ASSET_MEM_PTR
 
+    exec.convert_b2agg_to_u32
+    # => [prefix_hi, prefix_lo, suffix_hi, suffix_lo, amount_hi, amount_lo, 0, 0, INPUTS[1], INPUTS[0]]
+
+    mem_storew_be.0 dropw
+    # => [amount_hi, amount_lo, 0, 0, INPUTS[1], INPUTS[0]]
+
+    mem_storew_be.4 dropw
+    # => [INPUTS[1], INPUTS[0]]
+    
+    mem_storew_be.8 dropw
+    # => [INPUTS[1], INPUTS[0]]
+
+    mem_storew_be.12 dropw
+    # => [INPUTS[0]]
+
+    push.MMR_PTR
+    # => [mmr_ptr]
+
+    push.16 push.0
+    # => [ptr, len_bytes, mmr_ptr]
+
+    exec.keccak256::hash_memory
+    # => [DIGEST_U32[8], mmr_ptr]
+
+    # adding double word leaf to mmr frontier
     exec.mmr_frontier_keccak_add
-    # => [LEAF[1], LEAF[0]]
-
-    exec.mmr_frontier_keccak_get_root
-    # => [ROOT[1], ROOT[0], LEAF[1], LEAF[0]]
-
-    dropw dropw dropw dropw
     # => []
 
-    loc_loadw_be.0
+    push.MMR_PTR
+    # => [MMR_PTR]
+
+    # getting mmr frontier root
+    exec.mmr_frontier_keccak_get_root
+    # => [ROOT[1], ROOT[0]]
+
+    # writing double word root to map keys [0,0,0,0] & [0,0,0,1]
+    push.0.0.0.0 push.STORAGE_MAP_INDEX
+    # => [index, KEY, ROOT[1], ROOT[0]]
+
+    exec.native_account::set_map_item
+    # => [OLD_MAP_ROOT, OLD_MAP_VALUE, ROOT[0]]
+
+    dropw dropw
+    # => [ROOT[0]]
+
+    push.1.0.0.0 push.STORAGE_MAP_INDEX
+    # => [index, KEY, ROOT[0]]
+
+    exec.native_account::set_map_item
+    # => [OLD_MAP_ROOT, OLD_MAP_VALUE]
+
+    dropw dropw
+    # => []
+
+    mem_loadw_be.BURN_ASSET_MEM_PTR
     # => [ASSET]
 
     exec.create_burn_note
