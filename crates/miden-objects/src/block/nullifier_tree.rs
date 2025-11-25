@@ -545,15 +545,16 @@ mod tests {
         let block3 = BlockNumber::from(3);
 
         // Create NullifierTree with LargeSmt backend
-        let tree = LargeSmt::with_entries(
-            MemoryStorage::default(),
-            [
-                (nullifier1.as_word(), super::block_num_to_nullifier_leaf_value(block1)),
-                (nullifier2.as_word(), super::block_num_to_nullifier_leaf_value(block2)),
-            ],
-        )
-        .map(NullifierTree::new_unchecked)
-        .unwrap();
+        let mut tree = NullifierTree::new_unchecked(
+            LargeSmt::with_entries(
+                MemoryStorage::default(),
+                [
+                    (nullifier1.as_word(), super::block_num_to_nullifier_leaf_value(block1)),
+                    (nullifier2.as_word(), super::block_num_to_nullifier_leaf_value(block2)),
+                ],
+            )
+            .unwrap(),
+        );
 
         // Test basic operations
         assert_eq!(tree.num_nullifiers(), 2);
@@ -563,25 +564,10 @@ mod tests {
         // Test opening
         let _witness1 = tree.open(&nullifier1);
 
-        // Test mutations: We create a separate tree instance with a new MemoryStorage backend
-        // because MemoryStorage doesn't support cloning. This allows us to test that mutations
-        // work correctly with LargeSmt while also verifying that the original tree remains
-        // unchanged (demonstrating storage isolation).
-        let mut tree_mut = LargeSmt::with_entries(
-            MemoryStorage::default(),
-            [
-                (nullifier1.as_word(), super::block_num_to_nullifier_leaf_value(block1)),
-                (nullifier2.as_word(), super::block_num_to_nullifier_leaf_value(block2)),
-            ],
-        )
-        .map(NullifierTree::new_unchecked)
-        .unwrap();
-        tree_mut.mark_spent(nullifier3, block3).unwrap();
-        assert_eq!(tree_mut.num_nullifiers(), 3);
-        assert_eq!(tree_mut.get_block_num(&nullifier3).unwrap(), block3);
-
-        // Verify original tree unchanged (demonstrates storage isolation)
-        assert_eq!(tree.num_nullifiers(), 2);
+        // Test mutations
+        tree.mark_spent(nullifier3, block3).unwrap();
+        assert_eq!(tree.num_nullifiers(), 3);
+        assert_eq!(tree.get_block_num(&nullifier3).unwrap(), block3);
     }
 
     #[cfg(feature = "std")]
@@ -602,21 +588,15 @@ mod tests {
             .unwrap(),
         );
 
-        assert_eq!(tree.get_block_num(&nullifier1).unwrap(), block1);
-
-        // We create separate tree instances for testing because LargeSmt's MemoryStorage backend
-        // doesn't support cloning. Each test needs a fresh instance to verify the error handling.
-        let mut tree_test1 = NullifierTree::new_unchecked(
-            LargeSmt::with_entries(
-                MemoryStorage::default(),
-                [(nullifier1.as_word(), super::block_num_to_nullifier_leaf_value(block1))],
-            )
-            .unwrap(),
-        );
-        let err = tree_test1.mark_spent(nullifier1, block1).unwrap_err();
+        let err = tree.mark_spent(nullifier1, block2).unwrap_err();
         assert_matches!(err, NullifierTreeError::NullifierAlreadySpent(nullifier) if nullifier == nullifier1);
 
-        let err = tree.mark_spent(nullifier1, block2).unwrap_err();
+        assert_eq!(tree.get_block_num(&nullifier1).unwrap(), block1);
+
+        let mutations = tree.compute_mutations([(nullifier1, block1)]).unwrap();
+        tree.apply_mutations(mutations).unwrap();
+
+        let err = tree.mark_spent(nullifier1, block1).unwrap_err();
         assert_matches!(err, NullifierTreeError::NullifierAlreadySpent(nullifier) if nullifier == nullifier1);
     }
 
