@@ -51,9 +51,9 @@ impl AccountIdPrefix {
     ///
     /// Panics if the prefix does not contain a known account ID version.
     ///
-    /// If debug_assertions are enabled (e.g. in debug mode), this function panics if the given
-    /// felt is invalid according to the constraints in the
-    /// [`AccountId`](crate::account::AccountId) documentation.
+    /// If `debug_assertions` are enabled (e.g. in debug mode), this function panics if the given
+    /// felt is invalid according to the constraints in the [`AccountId`](crate::account::AccountId)
+    /// documentation.
     pub fn new_unchecked(prefix: Felt) -> Self {
         // The prefix contains the metadata.
         // If we add more versions in the future, we may need to generalize this.
