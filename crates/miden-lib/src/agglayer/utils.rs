@@ -7,11 +7,11 @@ use miden_objects::Felt;
 ///
 /// An Ethereum address is 20 bytes, which we split into 5 u32 values (4 bytes each).
 /// The address bytes are distributed as follows:
-/// - u32[0]: bytes 0-3
-/// - u32[1]: bytes 4-7
-/// - u32[2]: bytes 8-11
-/// - u32[3]: bytes 12-15
-/// - u32[4]: bytes 16-19
+/// - u32\[0\]: bytes 0-3
+/// - u32\[1\]: bytes 4-7
+/// - u32\[2\]: bytes 8-11
+/// - u32\[3\]: bytes 12-15
+/// - u32\[4\]: bytes 16-19
 ///
 /// # Arguments
 /// * `address` - A 20-byte Ethereum address
