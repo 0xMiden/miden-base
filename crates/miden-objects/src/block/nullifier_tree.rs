@@ -21,7 +21,7 @@ use crate::note::Nullifier;
 pub(super) const UNSPENT_NULLIFIER: Word = EMPTY_WORD;
 
 /// Returns the nullifier's leaf value in the SMT by its block number.
-pub fn block_num_to_nullifier_leaf_value(block: BlockNumber) -> Word {
+pub(super) fn block_num_to_nullifier_leaf_value(block: BlockNumber) -> Word {
     Word::from([block.as_u32(), 0, 0, 0])
 }
 
@@ -236,9 +236,7 @@ where
     ///
     /// # Invariants
     ///
-    /// Invariants must be upheld by the `Backend` implementation! If the backend fails to uphold
-    /// the required invariants, behaviour
-    /// unexpected behaviour may
+    /// See the documentation on [`NullifierTreeBackend`] trait documentation.
     pub fn new_unchecked(backend: Backend) -> Self {
         NullifierTree { smt: backend }
     }
@@ -565,7 +563,10 @@ mod tests {
         // Test opening
         let _witness1 = tree.open(&nullifier1);
 
-        // Test mutations
+        // Test mutations: We create a separate tree instance with a new MemoryStorage backend
+        // because MemoryStorage doesn't support cloning. This allows us to test that mutations
+        // work correctly with LargeSmt while also verifying that the original tree remains
+        // unchanged (demonstrating storage isolation).
         let mut tree_mut = LargeSmt::with_entries(
             MemoryStorage::default(),
             [
@@ -579,7 +580,7 @@ mod tests {
         assert_eq!(tree_mut.num_nullifiers(), 3);
         assert_eq!(tree_mut.get_block_num(&nullifier3).unwrap(), block3);
 
-        // Verify original tree unchanged
+        // Verify original tree unchanged (demonstrates storage isolation)
         assert_eq!(tree.num_nullifiers(), 2);
     }
 
@@ -603,7 +604,8 @@ mod tests {
 
         assert_eq!(tree.get_block_num(&nullifier1).unwrap(), block1);
 
-        // Create a new tree for the first test
+        // We create separate tree instances for testing because LargeSmt's MemoryStorage backend
+        // doesn't support cloning. Each test needs a fresh instance to verify the error handling.
         let mut tree_test1 = NullifierTree::new_unchecked(
             LargeSmt::with_entries(
                 MemoryStorage::default(),
