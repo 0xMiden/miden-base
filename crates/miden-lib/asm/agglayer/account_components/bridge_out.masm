@@ -8,7 +8,7 @@ const.BURN_NOTE_ROOT=[6407337173854817345,5626358912819151014,703918618794810515
 const.EXECUTION_HINT_ALWAYS=1
 const.PUBLIC_NOTE=1
 const.AUX=0
-const.DEFAULT_FAUCET_TAG=0
+const.NUM_BURN_NOTE_INPUTS=0
 
 # Computes the tag of the BURN note such that it is picked
 # up by the network transaction builder
@@ -31,7 +31,6 @@ proc compute_network_faucet_tag
   drop
   # => [network_faucet_tag]
 end
-
 
 # Computes the SERIAL_NUM of the outputted BURN note
 #   hash(B2AGG_SERIAL_NUM, ASSET) 
@@ -63,7 +62,7 @@ proc create_burn_note.8
     push.BURN_NOTE_ROOT swapw
     # => [SERIAL_NUM, SCRIPT_ROOT]
 
-    push.0 push.0
+    push.NUM_BURN_NOTE_INPUTS push.0
     # => [inputs_ptr, num_inputs, SERIAL_NUM, SCRIPT_ROOT]
 
     exec.note::build_recipient
