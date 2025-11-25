@@ -191,3 +191,110 @@ async fn test_bridge_out_consumes_b2agg_note() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+/// Tests the B2AGG (Bridge to AggLayer) note script reclaim functionality.
+///
+/// This test covers the "reclaim" branch where the note creator consumes their own B2AGG note.
+/// In this scenario, the assets are simply added back to the account without creating a BURN note.
+///
+/// Test flow:
+/// 1. Creates a network faucet to provide assets
+/// 2. Creates a user account that will create and consume the B2AGG note
+/// 3. Creates a B2AGG note with the user account as sender
+/// 4. The same user account consumes the B2AGG note (triggering reclaim branch)
+/// 5. Verifies that assets are added back to the account and no BURN note is created
+#[tokio::test]
+async fn test_b2agg_note_reclaim_scenario() -> anyhow::Result<()> {
+    let mut builder = MockChain::builder();
+
+    // Create a network faucet owner account
+    let faucet_owner_account_id = AccountId::dummy(
+        [1; 15],
+        AccountIdVersion::Version0,
+        AccountType::RegularAccountImmutableCode,
+        AccountStorageMode::Private,
+    );
+
+    // Create a network faucet to provide assets for the B2AGG note
+    let faucet =
+        builder.add_existing_network_faucet("AGG", 1000, faucet_owner_account_id, Some(100))?;
+
+    // Create a user account that will create and consume the B2AGG note
+    let mut user_account = builder.add_existing_wallet(Auth::BasicAuth)?;
+
+    // CREATE B2AGG NOTE WITH USER ACCOUNT AS SENDER
+    // --------------------------------------------------------------------------------------------
+
+    let amount = Felt::new(50);
+    let bridge_asset: Asset = FungibleAsset::new(faucet.id(), amount.into()).unwrap().into();
+    let tag = NoteTag::for_local_use_case(0, 0).unwrap();
+    let aux = Felt::new(0);
+    let note_execution_hint = NoteExecutionHint::always();
+    let note_type = NoteType::Public;
+
+    // Get the B2AGG note script
+    let b2agg_script = b2agg_script();
+
+    // Create note inputs with destination network and address
+    let destination_network = Felt::new(1);
+    let destination_address = "0x1234567890abcdef1122334455667788990011aa";
+    let address_felts =
+        ethereum_address_string_to_felts(destination_address).expect("Valid Ethereum address");
+
+    // Combine network ID and address felts into note inputs (6 felts total)
+    let mut input_felts = vec![destination_network];
+    input_felts.extend(address_felts);
+
+    let inputs = NoteInputs::new(input_felts.clone())?;
+
+    // Create the B2AGG note with the USER ACCOUNT as the sender
+    // This is the key difference - the note sender will be the same as the consuming account
+    let b2agg_note_metadata =
+        NoteMetadata::new(user_account.id(), note_type, tag, note_execution_hint, aux)?;
+    let b2agg_note_assets = NoteAssets::new(vec![bridge_asset])?;
+    let serial_num = Word::from([1, 2, 3, 4u32]);
+    let b2agg_note_recipient = NoteRecipient::new(serial_num, b2agg_script, inputs);
+    let b2agg_note = Note::new(b2agg_note_assets, b2agg_note_metadata, b2agg_note_recipient);
+
+    // Add the B2AGG note to the mock chain
+    builder.add_output_note(OutputNote::Full(b2agg_note.clone()));
+    let mut mock_chain = builder.build()?;
+
+    // Store the initial asset balance of the user account
+    let initial_balance = user_account.vault().get_balance(faucet.id()).unwrap_or(0u64.into());
+
+    // EXECUTE B2AGG NOTE WITH THE SAME USER ACCOUNT (RECLAIM SCENARIO)
+    // --------------------------------------------------------------------------------------------
+    let tx_context = mock_chain
+        .build_tx_context(user_account.id(), &[b2agg_note.id()], &[])?
+        .build()?;
+    let executed_transaction = tx_context.execute().await?;
+
+    // VERIFY NO BURN NOTE WAS CREATED (RECLAIM BRANCH)
+    // --------------------------------------------------------------------------------------------
+    // In the reclaim scenario, no BURN note should be created
+    assert_eq!(
+        executed_transaction.output_notes().num_notes(),
+        0,
+        "Reclaim scenario should not create any output notes"
+    );
+
+    // Apply the delta to the user account
+    user_account.apply_delta(executed_transaction.account_delta())?;
+
+    // VERIFY ASSETS WERE ADDED BACK TO THE ACCOUNT
+    // --------------------------------------------------------------------------------------------
+    let final_balance = user_account.vault().get_balance(faucet.id()).unwrap_or(0u64.into());
+    let expected_balance = initial_balance + amount.as_int();
+
+    assert_eq!(
+        final_balance, expected_balance,
+        "User account should have received the assets back from the B2AGG note"
+    );
+
+    // Apply the transaction to the mock chain
+    mock_chain.add_pending_executed_transaction(&executed_transaction)?;
+    mock_chain.prove_next_block()?;
+
+    Ok(())
+}
