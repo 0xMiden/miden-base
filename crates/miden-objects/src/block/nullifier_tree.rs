@@ -21,7 +21,7 @@ use crate::note::Nullifier;
 pub(super) const UNSPENT_NULLIFIER: Word = EMPTY_WORD;
 
 /// Returns the nullifier's leaf value in the SMT by its block number.
-pub(super) fn block_num_to_nullifier_leaf_value(block: BlockNumber) -> Word {
+pub fn block_num_to_nullifier_leaf_value(block: BlockNumber) -> Word {
     Word::from([block.as_u32(), 0, 0, 0])
 }
 
