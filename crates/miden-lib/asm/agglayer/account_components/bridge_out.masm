@@ -12,18 +12,25 @@ use std::crypto::hashes::keccak256
 const.MMR_PTR=42
 const.STORAGE_MAP_INDEX=0
 
-const.BURN_ASSET_MEM_PTR=16
 const.BURN_NOTE_ROOT=[6407337173854817345,5626358912819151014,703918618794810515,17401169215223723177]
 const.EXECUTION_HINT_ALWAYS=1
 const.PUBLIC_NOTE=1
 const.AUX=0
 const.NUM_BURN_NOTE_INPUTS=0
+const.BURN_ASSET_MEM_PTR=16
 
-# Computes the tag of the BURN note such that it is picked
-# up by the network transaction builder
-# same logic as in Rust in NoteTag::from_network_account_id()
-#! Inputs: [ASSET]
-#! Output: [network_faucet_tag]
+#! Computes the tag of the BURN note such that it is picked up by the network transaction builder.
+#!
+#! This procedure implements the same logic as in Rust in NoteTag::from_network_account_id().
+#!
+#! Inputs:  [ASSET]
+#! Outputs: [network_faucet_tag]
+#!
+#! Where:
+#! - ASSET is the asset to compute the network faucet tag for.
+#! - network_faucet_tag is the computed tag for the BURN note.
+#!
+#! Invocation: exec
 proc compute_network_faucet_tag
   movdn.3 drop drop drop
   # => [account_id_prefix]
@@ -41,10 +48,18 @@ proc compute_network_faucet_tag
   # => [network_faucet_tag]
 end
 
-# Computes the SERIAL_NUM of the outputted BURN note
-#   hash(B2AGG_SERIAL_NUM, ASSET) 
-#! Inputs: [ASSET]
-#! Output: [SERIAL_NUM]
+#! Computes the SERIAL_NUM of the outputted BURN note.
+#!
+#! The serial number is computed as hash(B2AGG_SERIAL_NUM, ASSET).
+#!
+#! Inputs:  [ASSET]
+#! Outputs: [SERIAL_NUM]
+#!
+#! Where:
+#! - ASSET is the asset for which to compute the burn note serial number.
+#! - SERIAL_NUM is the computed serial number for the BURN note.
+#!
+#! Invocation: exec
 proc compute_burn_note_serial_num
   exec.active_note::get_serial_number
   # => [B2AGG_SERIAL_NUM, ASSET]
@@ -53,8 +68,18 @@ proc compute_burn_note_serial_num
   # => [SERIAL_NUM]
 end
 
-#! Inputs: [ASSET]
+#! Creates a BURN note for the specified asset.
+#!
+#! This procedure creates an output note that represents a burn operation for the given asset.
+#! The note is configured with the appropriate recipient, tag, and execution hint.
+#!
+#! Inputs:  [ASSET]
 #! Outputs: []
+#!
+#! Where:
+#! - ASSET is the asset to be burned.
+#!
+#! Invocation: exec
 proc create_burn_note.8
     loc_storew_be.0 dupw
     # => [ASSET]
@@ -96,9 +121,22 @@ proc create_burn_note.8
     # => []
 end
 
-#! Inputs: [ASSET, INPUTS[1], INPUTS[0]]
-#! Outputs: [prefix_hi, prefix_lo, suffix_hi, suffix_lo, 
-#!           amount_hi, amount_lo, 0, 0, INPUTS[1], INPUTS[0]]
+#! Converts B2AGG asset data to u32 format.
+#!
+#! This procedure converts the asset and input data into a format suitable for u32 operations,
+#! splitting the asset components into high and low parts.
+#!
+#! Inputs:  [ASSET, INPUTS[1], INPUTS[0]]
+#! Outputs: [prefix_hi, prefix_lo, suffix_hi, suffix_lo, amount_hi, amount_lo, 0, 0, INPUTS[1], INPUTS[0]]
+#!
+#! Where:
+#! - ASSET is the asset to be converted.
+#! - INPUTS[1], INPUTS[0] are additional input data.
+#! - prefix_hi, prefix_lo are the high and low parts of the asset prefix.
+#! - suffix_hi, suffix_lo are the high and low parts of the asset suffix.
+#! - amount_hi, amount_lo are the high and low parts of the asset amount.
+#!
+#! Invocation: exec
 proc convert_b2agg_to_u32
     # add padding
     push.0 movdn.4
@@ -123,24 +161,58 @@ proc convert_b2agg_to_u32
     # => [prefix_hi, prefix_lo, suffix_hi, suffix_lo, amount_hi, amount_lo, 0, 0, INPUTS[1], INPUTS[0]]
 end
 
-#! Stubbed out
-#! Inputs: [LEAF[1], LEAF[0], mmr_ptr]
+#! Adds a leaf to the MMR frontier using Keccak hashing (stubbed implementation).
+#!
+#! This is a stubbed implementation that currently drops all inputs without performing
+#! the actual MMR frontier addition operation.
+#!
+#! Inputs:  [LEAF[1], LEAF[0], mmr_ptr]
 #! Outputs: []
+#!
+#! Where:
+#! - LEAF[1], LEAF[0] are the leaf data to add to the MMR frontier.
+#! - mmr_ptr is the pointer to the MMR frontier data structure.
+#!
+#! Invocation: exec
 proc mmr_frontier_keccak_add
   dropw dropw drop
   # => []
 end
 
-# Stubbed out
-#! Inputs: []
-#! Output: [ROOT[1], ROOT[0]]
+#! Gets the root of the MMR frontier using Keccak hashing (stubbed implementation).
+#!
+#! This is a stubbed implementation that returns placeholder values instead of
+#! computing the actual MMR frontier root.
+#!
+#! Inputs:  []
+#! Outputs: [ROOT[1], ROOT[0]]
+#!
+#! Where:
+#! - ROOT[1], ROOT[0] are the root hash components of the MMR frontier.
+#!
+#! Invocation: exec
 pub proc mmr_frontier_keccak_get_root
   push.3.3.3.3
   push.4.4.4.4
 end
 
-#! Inputs: [ASSET, INPUTS[1], INPUTS[0]]
+#! Bridges an asset out to the aggregation layer.
+#!
+#! This procedure handles the complete bridge-out operation, including:
+#! - Converting asset data to u32 format
+#! - Computing Keccak hash of the data
+#! - Adding the hash to the MMR frontier
+#! - Storing the MMR root in account storage
+#! - Creating a BURN note for the asset
+#!
+#! Inputs:  [ASSET, INPUTS[1], INPUTS[0]]
 #! Outputs: []
+#!
+#! Where:
+#! - ASSET is the asset to be bridged out.
+#! - INPUTS[1], INPUTS[0] are additional input data for the bridge operation.
+#!
+#! Invocation: call
 pub proc bridge_out
     mem_storew_be.BURN_ASSET_MEM_PTR
 
