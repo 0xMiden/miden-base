@@ -87,6 +87,10 @@ async fn test_bridge_out_consumes_b2agg_note() -> anyhow::Result<()> {
 
     let inputs = NoteInputs::new(input_felts.clone())?;
 
+    let burn_note_tag = NoteTag::from_account_id(faucet.id());
+
+    println!("burn note tag: {}", burn_note_tag);
+
     // Create the B2AGG note with assets from the faucet
     let b2agg_note_metadata =
         NoteMetadata::new(faucet.id(), note_type, tag, note_execution_hint, aux)?;
@@ -138,11 +142,10 @@ async fn test_bridge_out_consumes_b2agg_note() -> anyhow::Result<()> {
         "BURN note should contain the bridged asset"
     );
 
-    // Verify the BURN note is addressed to the faucet
     assert_eq!(
-        burn_note.metadata().sender(),
-        bridge_account.id(),
-        "BURN note should be sent by the bridge account"
+        burn_note.metadata().tag(),
+        NoteTag::from_account_id(faucet.id()),
+        "BURN note should have the correct tag"
     );
 
     // Verify the BURN note uses the correct script
