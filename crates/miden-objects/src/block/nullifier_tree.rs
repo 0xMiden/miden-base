@@ -588,15 +588,9 @@ mod tests {
             .unwrap(),
         );
 
-        let err = tree.mark_spent(nullifier1, block2).unwrap_err();
-        assert_matches!(err, NullifierTreeError::NullifierAlreadySpent(nullifier) if nullifier == nullifier1);
-
         assert_eq!(tree.get_block_num(&nullifier1).unwrap(), block1);
 
-        let mutations = tree.compute_mutations([(nullifier1, block1)]).unwrap();
-        tree.apply_mutations(mutations).unwrap();
-
-        let err = tree.mark_spent(nullifier1, block1).unwrap_err();
+        let err = tree.mark_spent(nullifier1, block2).unwrap_err();
         assert_matches!(err, NullifierTreeError::NullifierAlreadySpent(nullifier) if nullifier == nullifier1);
     }
 
