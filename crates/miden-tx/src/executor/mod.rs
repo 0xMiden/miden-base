@@ -5,7 +5,7 @@ use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::AccountId;
 use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::assembly::debuginfo::SourceManagerSync;
-use miden_objects::asset::Asset;
+use miden_objects::asset::{Asset, AssetVaultKey};
 use miden_objects::block::BlockNumber;
 use miden_objects::transaction::{
     ExecutedTransaction,
@@ -254,12 +254,12 @@ where
         input_notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
     ) -> Result<TransactionInputs, TransactionExecutorError> {
-        let mut ref_blocks = validate_input_notes(&input_notes, block_ref)?;
+        let (asset_vault_keys, mut ref_blocks) = validate_input_notes(&input_notes, block_ref)?;
         ref_blocks.insert(block_ref);
 
-        let (account, block_header, blockchain) = self
+        let (account, block_header, blockchain, asset_witnesses) = self
             .data_store
-            .get_transaction_inputs(account_id, ref_blocks)
+            .get_transaction_inputs(account_id, asset_vault_keys, ref_blocks)
             .await
             .map_err(TransactionExecutorError::FetchTransactionInputsFailed)?;
 
@@ -398,27 +398,32 @@ fn build_executed_transaction<STORE: DataStore + Sync, AUTH: TransactionAuthenti
 
 /// Validates that input notes were not created after the reference block.
 ///
-/// Returns the set of block numbers required to execute the provided notes.
+/// Returns the set of block numbers required to execute the provided notes and the set of asset
+/// vault keys that will be needed in the transaction prologue.
 fn validate_input_notes(
     notes: &InputNotes<InputNote>,
     block_ref: BlockNumber,
-) -> Result<BTreeSet<BlockNumber>, TransactionExecutorError> {
-    // Validate that notes were not created after the reference, and build the set of required
-    // block numbers
+) -> Result<(BTreeSet<AssetVaultKey>, BTreeSet<BlockNumber>), TransactionExecutorError> {
     let mut ref_blocks: BTreeSet<BlockNumber> = BTreeSet::new();
-    for note in notes.iter() {
-        if let Some(location) = note.location() {
+    let mut asset_vault_keys: BTreeSet<AssetVaultKey> = BTreeSet::new();
+
+    for input_note in notes.iter() {
+        // Validate that notes were not created after the reference, and build the set of required
+        // block numbers
+        if let Some(location) = input_note.location() {
             if location.block_num() > block_ref {
                 return Err(TransactionExecutorError::NoteBlockPastReferenceBlock(
-                    note.id(),
+                    input_note.id(),
                     block_ref,
                 ));
             }
             ref_blocks.insert(location.block_num());
         }
+
+        asset_vault_keys.extend(input_note.note().assets().iter().map(Asset::vault_key));
     }
 
-    Ok(ref_blocks)
+    Ok((asset_vault_keys, ref_blocks))
 }
 
 /// Validates that the number of cycles specified is within the allowed range.

@@ -189,16 +189,33 @@ impl DataStore for TransactionContext {
     fn get_transaction_inputs(
         &self,
         account_id: AccountId,
-        _ref_blocks: BTreeSet<BlockNumber>,
-    ) -> impl FutureMaybeSend<Result<(PartialAccount, BlockHeader, PartialBlockchain), DataStoreError>>
-    {
+        asset_vault_keys: BTreeSet<AssetVaultKey>,
+        ref_blocks: BTreeSet<BlockNumber>,
+    ) -> impl FutureMaybeSend<
+        Result<(PartialAccount, BlockHeader, PartialBlockchain, Vec<AssetWitness>), DataStoreError>,
+    > {
+        // Sanity checks
         assert_eq!(account_id, self.account().id());
         assert_eq!(account_id, self.tx_inputs.account().id());
+        assert_eq!(
+            ref_blocks
+                .last()
+                .copied()
+                .expect("at least the tx ref block should be provided"),
+            self.tx_inputs().blockchain().chain_length(),
+            "tx reference block should match partial blockchain length"
+        );
 
         let account = self.tx_inputs.account().clone();
         let block_header = self.tx_inputs.block_header().clone();
         let blockchain = self.tx_inputs.blockchain().clone();
-        async move { Ok((account, block_header, blockchain)) }
+
+        let asset_witnesses = asset_vault_keys
+            .into_iter()
+            .map(|asset_vault_key| self.account().vault().open(asset_vault_key))
+            .collect();
+
+        async move { Ok((account, block_header, blockchain, asset_witnesses)) }
     }
 
     fn get_foreign_account_inputs(
