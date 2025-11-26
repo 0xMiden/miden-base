@@ -57,7 +57,7 @@ use miden_processor::{
     MastForestStore,
     ProcessState,
 };
-pub(crate) use tx_event::{RecipientData, TransactionEvent};
+pub(crate) use tx_event::{RecipientData, TransactionEvent, TransactionProgressEvent};
 pub use tx_progress::TransactionProgress;
 
 use crate::errors::{TransactionHostError, TransactionKernelError};
