@@ -5,7 +5,7 @@ use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::AccountId;
 use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::assembly::debuginfo::SourceManagerSync;
-use miden_objects::asset::{Asset, AssetVaultKey};
+use miden_objects::asset::{Asset, AssetVaultKey, AssetWitness};
 use miden_objects::block::BlockNumber;
 use miden_objects::transaction::{
     ExecutedTransaction,
@@ -262,6 +262,19 @@ where
             .get_transaction_inputs(account_id, asset_vault_keys, ref_blocks)
             .await
             .map_err(TransactionExecutorError::FetchTransactionInputsFailed)?;
+
+        // Sanity check that the data store returned an asset witness for the fee asset.
+        // This is not strictly necessary, but without the asset witness, transaction execution
+        // would fail with an obscure error.
+        let fee_asset_vault_key =
+            AssetVaultKey::from_account_id(block_header.fee_parameters().native_asset_id())
+                .expect("fee asset should be a fungible asset");
+        let contains_fee_asset_witness = asset_witnesses
+            .iter()
+            .any(|witness| witness.find(fee_asset_vault_key).is_some());
+        if !contains_fee_asset_witness {
+            return Err(TransactionExecutorError::FetchFeeAssetWitnessFailed(fee_asset_vault_key));
+        }
 
         let tx_inputs = TransactionInputs::new(account, block_header, blockchain, input_notes)
             .map_err(TransactionExecutorError::InvalidTransactionInputs)?

@@ -28,6 +28,9 @@ pub trait DataStore: MastForestStore {
     /// throughout transaction execution and so can be pre-fetched instead of lazily fetched
     /// one-by-one via [`DataStore::get_vault_asset_witness`].
     ///
+    /// The returned asset witnesses should additionally contain a witness for the fee asset fetched
+    /// from the transaction reference block.
+    ///
     /// # Errors
     /// Returns an error if:
     /// - The account with the specified ID could not be found in the data store.

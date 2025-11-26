@@ -210,10 +210,15 @@ impl DataStore for TransactionContext {
         let block_header = self.tx_inputs.block_header().clone();
         let blockchain = self.tx_inputs.blockchain().clone();
 
-        let asset_witnesses = asset_vault_keys
+        let mut asset_witnesses = asset_vault_keys
             .into_iter()
             .map(|asset_vault_key| self.account().vault().open(asset_vault_key))
-            .collect();
+            .collect::<Vec<AssetWitness>>();
+
+        let fee_asset_vault_key =
+            AssetVaultKey::from_account_id(block_header.fee_parameters().native_asset_id())
+                .expect("fee asset should be a fungible asset");
+        asset_witnesses.extend([self.account().vault().open(fee_asset_vault_key)]);
 
         async move { Ok((account, block_header, blockchain, asset_witnesses)) }
     }
