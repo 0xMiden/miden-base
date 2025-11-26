@@ -1,4 +1,4 @@
-use std::string::ToString;
+use alloc::string::ToString;
 
 use miden_crypto::merkle::{InnerNodeInfo, SmtLeaf, SmtProof};
 

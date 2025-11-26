@@ -140,6 +140,9 @@ impl TransactionContext {
             account_procedure_idx_map,
             None,
             ref_block,
+            // We don't need to set the initial balance in this context under the assumption that
+            // fees are zero.
+            0u64,
             self.source_manager(),
         );
 

@@ -318,6 +318,20 @@ where
             AccountProcedureIndexMap::new([tx_inputs.account().code()])
                 .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
 
+        let initial_fee_asset_balance = {
+            let native_asset_id = tx_inputs.block_header().fee_parameters().native_asset_id();
+            let fee_asset_vault_key = AssetVaultKey::from_account_id(native_asset_id)
+                .expect("fee asset should be a fungible asset");
+
+            let fee_asset_witness = tx_inputs
+                .asset_witnesses()
+                .iter()
+                .find_map(|witness| witness.find(fee_asset_vault_key));
+
+            // SAFETY: We can assume the fee asset is fungible.
+            fee_asset_witness.map(|asset| asset.unwrap_fungible().amount()).unwrap_or(0)
+        };
+
         let host = TransactionExecutorHost::new(
             tx_inputs.account(),
             input_notes.clone(),
@@ -326,6 +340,7 @@ where
             account_procedure_index_map,
             self.authenticator,
             tx_inputs.block_header().block_num(),
+            initial_fee_asset_balance,
             self.source_manager.clone(),
         );
 
