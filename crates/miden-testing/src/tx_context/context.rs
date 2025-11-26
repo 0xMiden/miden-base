@@ -7,7 +7,7 @@ use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::{Account, AccountId, PartialAccount, StorageMapWitness, StorageSlot};
 use miden_objects::assembly::debuginfo::{SourceLanguage, Uri};
 use miden_objects::assembly::{SourceManager, SourceManagerSync};
-use miden_objects::asset::{AssetVaultKey, AssetWitness};
+use miden_objects::asset::{Asset, AssetVaultKey, AssetWitness};
 use miden_objects::block::{AccountWitness, BlockHeader, BlockNumber};
 use miden_objects::note::{Note, NoteScript};
 use miden_objects::transaction::{
@@ -77,7 +77,30 @@ impl TransactionContext {
     ///
     /// - If the provided `code` is not a valid program.
     pub async fn execute_code(&self, code: &str) -> Result<ExecutionOutput, ExecutionError> {
-        let (stack_inputs, advice_inputs) = TransactionKernel::prepare_inputs(&self.tx_inputs);
+        // Fetch all witnesses for note assets and the fee asset.
+        let mut asset_vault_keys = self
+            .tx_inputs
+            .input_notes()
+            .iter()
+            .flat_map(|note| note.note().assets().iter().map(Asset::vault_key))
+            .collect::<BTreeSet<_>>();
+        let fee_asset_vault_key = AssetVaultKey::from_account_id(
+            self.tx_inputs().block_header().fee_parameters().native_asset_id(),
+        )
+        .expect("fee asset should be a fungible asset");
+        asset_vault_keys.extend([fee_asset_vault_key]);
+
+        let (_account, _header, _blockchain, asset_witnesses) = self
+            .get_transaction_inputs(
+                self.tx_inputs.account().id(),
+                asset_vault_keys,
+                BTreeSet::from_iter([self.tx_inputs.block_header().block_num()]),
+            )
+            .await
+            .expect("failed to fetch asset witnesses");
+
+        let tx_inputs = self.tx_inputs.clone().with_asset_witnesses(asset_witnesses);
+        let (stack_inputs, advice_inputs) = TransactionKernel::prepare_inputs(&tx_inputs);
 
         // Virtual file name should be unique.
         let virtual_source_file = self.source_manager.load(
@@ -100,18 +123,18 @@ impl TransactionContext {
         self.mast_store.insert(program.mast_forest().clone());
 
         let account_procedure_idx_map = AccountProcedureIndexMap::new(
-            [self.tx_inputs().account().code()]
+            [tx_inputs.account().code()]
                 .into_iter()
                 .chain(self.foreign_account_inputs.values().map(|(account, _)| account.code())),
         )
         .expect("constructing account procedure index map should work");
 
         // The ref block is unimportant when using execute_code so we can set it to any value.
-        let ref_block = self.tx_inputs().block_header().block_num();
+        let ref_block = tx_inputs.block_header().block_num();
 
         let exec_host = TransactionExecutorHost::<'_, '_, _, UnreachableAuth>::new(
             &PartialAccount::from(self.account()),
-            self.tx_inputs().input_notes().clone(),
+            tx_inputs.input_notes().clone(),
             self,
             ScriptMastForestStore::default(),
             account_procedure_idx_map,

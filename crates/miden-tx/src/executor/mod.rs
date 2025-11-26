@@ -5,7 +5,7 @@ use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::AccountId;
 use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::assembly::debuginfo::SourceManagerSync;
-use miden_objects::asset::{Asset, AssetVaultKey, AssetWitness};
+use miden_objects::asset::{Asset, AssetVaultKey};
 use miden_objects::block::BlockNumber;
 use miden_objects::transaction::{
     ExecutedTransaction,
@@ -269,16 +269,18 @@ where
         let fee_asset_vault_key =
             AssetVaultKey::from_account_id(block_header.fee_parameters().native_asset_id())
                 .expect("fee asset should be a fungible asset");
+
         let contains_fee_asset_witness = asset_witnesses
             .iter()
-            .any(|witness| witness.find(fee_asset_vault_key).is_some());
+            .any(|witness| witness.authenticates_asset_vault_key(fee_asset_vault_key));
         if !contains_fee_asset_witness {
             return Err(TransactionExecutorError::FetchFeeAssetWitnessFailed(fee_asset_vault_key));
         }
 
         let tx_inputs = TransactionInputs::new(account, block_header, blockchain, input_notes)
             .map_err(TransactionExecutorError::InvalidTransactionInputs)?
-            .with_tx_args(tx_args);
+            .with_tx_args(tx_args)
+            .with_asset_witnesses(asset_witnesses);
 
         Ok(tx_inputs)
     }
@@ -413,6 +415,10 @@ fn build_executed_transaction<STORE: DataStore + Sync, AUTH: TransactionAuthenti
 ///
 /// Returns the set of block numbers required to execute the provided notes and the set of asset
 /// vault keys that will be needed in the transaction prologue.
+///
+/// The transaction input vault is a copy of the account vault and to mutate the input vault (during
+/// the prologue, for asset preservation), witnesses for the note assets against the account vault
+/// must be requested.
 fn validate_input_notes(
     notes: &InputNotes<InputNote>,
     block_ref: BlockNumber,
