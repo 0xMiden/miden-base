@@ -257,7 +257,10 @@ where
     /// Returns an iterator over the nullifiers and their block numbers in the tree.
     pub fn entries(&self) -> impl Iterator<Item = (Nullifier, BlockNumber)> {
         self.smt.entries().map(|(nullifier, block_num)| {
-            (Nullifier::new_unchecked(nullifier), nullifier_leaf_value_to_block_num(block_num))
+            (
+                Nullifier::new_unchecked(nullifier),
+                nullifier_leaf_value_to_block_num(block_num),
+            )
         })
     }
 
