@@ -226,7 +226,7 @@ pub proc bridge_out
     # => [INPUTS[1], INPUTS[0]]
     
     mem_storew_be.8 dropw
-    # => [INPUTS[1], INPUTS[0]]
+    # => [INPUTS[0]]
 
     mem_storew_be.12 dropw
     # => [INPUTS[0]]
