@@ -572,8 +572,7 @@ async fn test_get_network_account_tag() -> anyhow::Result<()> {
         use.miden::note
 
         begin
-            push.{suffix}  # account_id_prefix
-            push.{prefix}  # account_id_suffix
+            push.{suffix}.{prefix} 
 
             exec.note::get_network_account_tag
             # => [network_account_tag]
