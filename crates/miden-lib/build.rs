@@ -33,6 +33,7 @@ const BUILD_GENERATED_FILES_IN_SRC: bool = option_env!("BUILD_GENERATED_FILES_IN
 const ASSETS_DIR: &str = "assets";
 const ASM_DIR: &str = "asm";
 const ASM_MIDEN_DIR: &str = "miden";
+const ASM_AGGLAYER_DIR: &str = "agglayer";
 const ASM_NOTE_SCRIPTS_DIR: &str = "note_scripts";
 const ASM_ACCOUNT_COMPONENTS_DIR: &str = "account_components";
 const SHARED_UTILS_DIR: &str = "shared_utils";
@@ -113,8 +114,8 @@ fn main() -> Result<()> {
 
     // compile agglayer note scripts
     compile_note_scripts(
-        &source_dir.join("agglayer").join(ASM_NOTE_SCRIPTS_DIR),
-        &target_dir.join("agglayer").join(ASM_NOTE_SCRIPTS_DIR),
+        &source_dir.join(ASM_AGGLAYER_DIR).join(ASM_NOTE_SCRIPTS_DIR),
+        &target_dir.join(ASM_AGGLAYER_DIR).join(ASM_NOTE_SCRIPTS_DIR),
         assembler.clone(),
     )?;
 
@@ -127,8 +128,8 @@ fn main() -> Result<()> {
 
     // compile agglayer account components
     compile_account_components(
-        &source_dir.join("agglayer").join(ASM_ACCOUNT_COMPONENTS_DIR),
-        &target_dir.join("agglayer").join(ASM_ACCOUNT_COMPONENTS_DIR),
+        &source_dir.join(ASM_AGGLAYER_DIR).join(ASM_ACCOUNT_COMPONENTS_DIR),
+        &target_dir.join(ASM_AGGLAYER_DIR).join(ASM_ACCOUNT_COMPONENTS_DIR),
         assembler,
     )?;
 
@@ -345,14 +346,15 @@ fn compile_agglayer_lib(
     target_dir: &Path,
     assembler: Assembler,
 ) -> Result<Library> {
-    let agglayer_components_dir = source_dir.join("agglayer").join(ASM_ACCOUNT_COMPONENTS_DIR);
+    let agglayer_namespace = ASM_AGGLAYER_DIR
+        .parse::<LibraryNamespace>()
+        .expect("invalid agglayer namespace");
+    let agglayer_lib = assembler.assemble_library_from_dir(
+        source_dir.join(ASM_AGGLAYER_DIR).join(ASM_ACCOUNT_COMPONENTS_DIR),
+        agglayer_namespace,
+    )?;
 
-    let agglayer_namespace =
-        "agglayer".parse::<LibraryNamespace>().expect("invalid agglayer namespace");
-    let agglayer_lib =
-        assembler.assemble_library_from_dir(agglayer_components_dir, agglayer_namespace)?;
-
-    let output_file = target_dir.join("agglayer").with_extension(Library::LIBRARY_EXTENSION);
+    let output_file = target_dir.join(ASM_AGGLAYER_DIR).with_extension(Library::LIBRARY_EXTENSION);
     agglayer_lib.write_to_file(output_file).into_diagnostic()?;
 
     Ok(agglayer_lib)
