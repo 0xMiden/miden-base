@@ -23,7 +23,7 @@ async fn test_convert_to_u256_scaled() -> anyhow::Result<()> {
     let mock_chain = builder.build()?;
 
     let usdc_amount = Felt::new(1_000_000_000);
-    let usdc_scale = Felt::new(1_000_000); // 1e6
+    let usdc_target_scale = Felt::new(1_000_000); // 1e6 (USDC has 6 decimals)
 
     let binding = asset_conversion_component(vec![]);
     let asset_conversion_lib = binding.library();
@@ -39,11 +39,11 @@ async fn test_convert_to_u256_scaled() -> anyhow::Result<()> {
         end
         ",
         usdc_amount.as_int(),
-        usdc_scale.as_int()
+        usdc_target_scale.as_int()
     );
 
     let tx_script = ScriptBuilder::new(false)
-        .with_dynamically_linked_library(&asset_conversion_lib)?
+        .with_dynamically_linked_library(asset_conversion_lib)?
         .compile_tx_script(&tx_script_code)?;
 
     let tx_context = mock_chain
@@ -55,7 +55,7 @@ async fn test_convert_to_u256_scaled() -> anyhow::Result<()> {
 
     assert_eq!(executed_transaction.account_delta().nonce_delta(), Felt::new(1));
 
-    let expected_result = 1_000_000_000u64 * 1_000_000u64;
+    let expected_result = 1_000_000_000u64; // 1e6 / 1e6 = 1, so result = amount * 1
     println!("Expected USDC result: {}", expected_result);
 
     Ok(())
@@ -77,7 +77,7 @@ async fn test_convert_to_u256_scaled_eth() -> anyhow::Result<()> {
     let mock_chain = builder.build()?;
 
     let eth_miden_amount = Felt::new(10_000_000_000); // 10^10
-    let eth_scale = Felt::new(100_000_000); // 1e8
+    let eth_target_scale = Felt::new(1_000_000_000_000_000_000); // 1e18 (ETH has 18 decimals)
 
     let asset_conversion_comp = asset_conversion_component(vec![]);
     let asset_conversion_lib = asset_conversion_comp.library();
@@ -93,11 +93,11 @@ async fn test_convert_to_u256_scaled_eth() -> anyhow::Result<()> {
         end
         ",
         eth_miden_amount.as_int(),
-        eth_scale.as_int()
+        eth_target_scale.as_int()
     );
 
     let tx_script = ScriptBuilder::new(false)
-        .with_dynamically_linked_library(&asset_conversion_lib)?
+        .with_dynamically_linked_library(asset_conversion_lib)?
         .compile_tx_script(&tx_script_code)?;
 
     // Build transaction context to call convert_to_u256_scaled
@@ -110,7 +110,7 @@ async fn test_convert_to_u256_scaled_eth() -> anyhow::Result<()> {
 
     assert_eq!(executed_transaction.account_delta().nonce_delta(), Felt::new(1));
 
-    let expected_result = 10_000_000_000u64 * 100_000_000u64;
+    let expected_result = 10_000_000_000u128 * 1_000_000_000_000u128; // 1e18 / 1e6 = 1e12, so result = amount * 1e12
     println!("Expected ETH result: {}", expected_result);
 
     Ok(())
@@ -132,7 +132,7 @@ async fn test_convert_to_u256_scaled_tiny_amount() -> anyhow::Result<()> {
     let mock_chain = builder.build()?;
 
     let tiny_amount = Felt::new(1);
-    let eth_scale = Felt::new(100_000_000); // 1e8
+    let eth_target_scale = Felt::new(1_000_000_000_000_000_000); // 1e18 (ETH has 18 decimals)
 
     let asset_conversion_comp = asset_conversion_component(vec![]);
     let asset_conversion_lib = asset_conversion_comp.library();
@@ -148,11 +148,11 @@ async fn test_convert_to_u256_scaled_tiny_amount() -> anyhow::Result<()> {
         end
         ",
         tiny_amount.as_int(),
-        eth_scale.as_int()
+        eth_target_scale.as_int()
     );
 
     let tx_script = ScriptBuilder::new(false)
-        .with_dynamically_linked_library(&asset_conversion_lib)?
+        .with_dynamically_linked_library(asset_conversion_lib)?
         .compile_tx_script(&tx_script_code)?;
 
     // Build transaction context to call convert_to_u256_scaled
@@ -165,7 +165,7 @@ async fn test_convert_to_u256_scaled_tiny_amount() -> anyhow::Result<()> {
 
     assert_eq!(executed_transaction.account_delta().nonce_delta(), Felt::new(1));
 
-    let expected_result = 1u64 * 100_000_000u64;
+    let expected_result = 100_000_000u64;
     println!("Expected tiny amount result: {}", expected_result);
 
     Ok(())

@@ -2,16 +2,29 @@ use.std::math::u64
 use.std::math::u256
 use.std::sys
 
-#! Convert a single-Felt Miden `amount` to Ethereum's u256 amount as double word
+const.MIDEN_BASE_SCALE=1000000
+
+#! Convert a Miden amount (1e6 base) to Ethereum's u256 amount with target decimals
 #!
-#! Input: [amount, scale]
+#! Input: [amount, target_scale]
 #! Output: [lo0, lo1, lo2, lo3, hi0, hi1, hi2, hi3]
 #!
 #! Where:
-#! - each limb must fit in u32
-#! - scale is determined per token based on its total supply and Ethereum's decimals
-#! - scale is expected to be a power of 10 from 1e6 to 1e18
+#! - amount is in Miden's standard 1e6 base
+#! - target_scale is 10^target_decimals (e.g., 1e6 for USDC, 1e18 for ETH)
+#! - each output limb fits in u32
 export.convert_to_u256_scaled
+    # => [amount, target_scale]
+
+    swap
+    # => [target_scale, amount]
+    
+    # Calculate scale = target_scale / MIDEN_BASE_SCALE
+    push.MIDEN_BASE_SCALE div
+    # => [scale, amount]
+    
+    # Swap to get [amount, scale] for existing logic
+    swap
     # => [amount, scale]
     
     # Split both amount and scale into u32 pairs for u64 multiplication
