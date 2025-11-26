@@ -6,12 +6,19 @@
 
 ### Changes
 
+- [BREAKING] Added `BlockBody` and `BlockProof` structs in preparation for validator signatures and deferred block proving ([#2012](https://github.com/0xMiden/miden-base/pull/2012)).
 - [BREAKING] Renamed `TransactionEvent` into `TransactionEventId` and split event handling into data extraction and handling logic ([#2071](https://github.com/0xMiden/miden-base/pull/2071)).
+- Split tx progress events out into a separate enum ([#2103](https://github.com/0xMiden/miden-base/pull/2103)).
+
+## 0.12.4 (2025-11-26)
+
+- Added the standard library's precompile registry to `TransactionVerifier` ([#2116](https://github.com/0xMiden/miden-base/pull/2116)).
 
 ## 0.12.3 (2025-11-15)
 
 - Added `ecdsa_k256_keccak::PublicKey` as a valid template type ([#2097](https://github.com/0xMiden/miden-base/pull/2097)).
 - [BREAKING] Fix advice inputs in transaction inputs not being propagated through ([#2099](https://github.com/0xMiden/miden-base/pull/2099)).
+- Add `S` generic to `NullifierTree` to allow usage with `LargeSmt`s ([#1353](https://github.com/0xMiden/miden-node/issues/1353)).
 
 ## 0.12.2 (2025-11-12)
 

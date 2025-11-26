@@ -281,8 +281,7 @@ where
         (TransactionExecutorHost<'store, 'auth, STORE, AUTH>, StackInputs, AdviceInputs),
         TransactionExecutorError,
     > {
-        let (stack_inputs, tx_advice_inputs) = TransactionKernel::prepare_inputs(tx_inputs)
-            .map_err(TransactionExecutorError::ConflictingAdviceMapEntry)?;
+        let (stack_inputs, tx_advice_inputs) = TransactionKernel::prepare_inputs(tx_inputs);
 
         // This reverses the stack inputs (even though it doesn't look like it does) because the
         // fast processor expects the reverse order.
