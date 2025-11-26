@@ -6,7 +6,7 @@ use core::error::Error;
 use miden_objects::account::AccountId;
 use miden_objects::account::auth::PublicKeyCommitment;
 use miden_objects::assembly::diagnostics::reporting::PrintDiagnostic;
-use miden_objects::asset::{Asset, AssetVaultKey};
+use miden_objects::asset::AssetVaultKey;
 use miden_objects::block::BlockNumber;
 use miden_objects::crypto::merkle::SmtProofError;
 use miden_objects::note::{NoteId, NoteMetadata};
