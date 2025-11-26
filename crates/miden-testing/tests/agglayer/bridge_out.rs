@@ -261,7 +261,7 @@ async fn test_b2agg_note_reclaim_scenario() -> anyhow::Result<()> {
     let mut mock_chain = builder.build()?;
 
     // Store the initial asset balance of the user account
-    let initial_balance = user_account.vault().get_balance(faucet.id()).unwrap_or(0u64.into());
+    let initial_balance = user_account.vault().get_balance(faucet.id()).unwrap_or(0u64);
 
     // EXECUTE B2AGG NOTE WITH THE SAME USER ACCOUNT (RECLAIM SCENARIO)
     // --------------------------------------------------------------------------------------------
@@ -284,7 +284,7 @@ async fn test_b2agg_note_reclaim_scenario() -> anyhow::Result<()> {
 
     // VERIFY ASSETS WERE ADDED BACK TO THE ACCOUNT
     // --------------------------------------------------------------------------------------------
-    let final_balance = user_account.vault().get_balance(faucet.id()).unwrap_or(0u64.into());
+    let final_balance = user_account.vault().get_balance(faucet.id()).unwrap_or(0u64);
     let expected_balance = initial_balance + amount.as_int();
 
     assert_eq!(
