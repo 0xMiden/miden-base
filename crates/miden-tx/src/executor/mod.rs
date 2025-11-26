@@ -328,8 +328,14 @@ where
                 .iter()
                 .find_map(|witness| witness.find(fee_asset_vault_key));
 
-            // SAFETY: We can assume the fee asset is fungible.
-            fee_asset_witness.map(|asset| asset.unwrap_fungible().amount()).unwrap_or(0)
+            match fee_asset_witness {
+                Some(Asset::Fungible(fee_asset)) => fee_asset.amount(),
+                Some(Asset::NonFungible(_)) => {
+                    return Err(TransactionExecutorError::FeeAssetMustBeFungible);
+                },
+                // If the witness does not contain the asset, its balance is zero.
+                None => 0,
+            }
         };
 
         let host = TransactionExecutorHost::new(

@@ -6,7 +6,7 @@ use core::error::Error;
 use miden_objects::account::AccountId;
 use miden_objects::account::auth::PublicKeyCommitment;
 use miden_objects::assembly::diagnostics::reporting::PrintDiagnostic;
-use miden_objects::asset::AssetVaultKey;
+use miden_objects::asset::{Asset, AssetVaultKey};
 use miden_objects::block::BlockNumber;
 use miden_objects::crypto::merkle::SmtProofError;
 use miden_objects::note::{NoteId, NoteMetadata};
@@ -77,6 +77,8 @@ pub enum TransactionExecutorError {
     FetchTransactionInputsFailed(#[source] DataStoreError),
     #[error("data store failed to return asset witness for fee asset with asset vault key {0}")]
     FetchFeeAssetWitnessFailed(AssetVaultKey),
+    #[error("fee asset must be fungible but was non-fungible")]
+    FeeAssetMustBeFungible,
     #[error("foreign account inputs for ID {0} are not anchored on reference block")]
     ForeignAccountNotAnchoredInReference(AccountId),
     #[error(
