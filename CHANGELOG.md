@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.12.4 (2025-11-26)
+
+- Added the standard library's precompile registry to `TransactionVerifier` ([#2116](https://github.com/0xMiden/miden-base/pull/2116)).
+
 ## 0.12.3 (2025-11-15)
 
 - Added `ecdsa_k256_keccak::PublicKey` as a valid template type ([#2097](https://github.com/0xMiden/miden-base/pull/2097)).
