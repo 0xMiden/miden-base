@@ -1,5 +1,6 @@
 use.std::math::u64
 use.std::math::u256
+use.std::sys
 
 #! Convert a single-Felt Miden `amount` to Ethereum's u256 amount as double word
 #!
@@ -9,12 +10,32 @@ use.std::math::u256
 #! Where:
 #! - each limb must fit in u32
 #! - scale is determined per token based on its total supply and Ethereum's decimals
+#! - scale is expected to be a power of 10 from 1e6 to 1e18
 export.convert_to_u256_scaled
-    # Compute amount * 10**scale
-    # Format as 8 x u32
-
-    nop
-
     # => [amount, scale]
     
+    # Split both amount and scale into u32 pairs for u64 multiplication
+    # Split scale first
+    u32split
+    # => [scale_hi, scale_lo, amount]
+    
+    # Split amount
+    movup.2 u32split
+    # => [amount_hi, amount_lo, scale_hi, scale_lo]
+    
+    # Perform u64 multiplication: amount * scale
+    exec.u64::wrapping_mul
+    # => [result_hi, result_lo]
+    
+    # Convert to u256 format (8 u32 limbs)
+    # Create the full u256: [lo0, lo1, lo2, lo3, hi0, hi1, hi2, hi3]
+    # where lo0 = result_lo, lo1 = result_hi, and the rest are 0
+    push.0 push.0 push.0 push.0 push.0 push.0
+    # => [0, 0, 0, 0, 0, 0, result_hi, result_lo]
+    
+    # Rearrange to match expected output format [lo0, lo1, lo2, lo3, hi0, hi1, hi2, hi3]
+    movup.7 movup.7
+    # => [result_lo, result_hi, 0, 0, 0, 0, 0, 0]
+
+    exec.sys::truncate_stack
 end
