@@ -366,8 +366,6 @@ fn compile_agglayer_lib(
 /// file, and stores the compiled files into the "{target_dir}".
 ///
 /// The source files are expected to contain executable programs.
-/// The assembler parameter should already have the miden library linked for note scripts to access
-/// it.
 fn compile_note_scripts(source_dir: &Path, target_dir: &Path, assembler: Assembler) -> Result<()> {
     fs::create_dir_all(target_dir)
         .into_diagnostic()
