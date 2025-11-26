@@ -229,7 +229,7 @@ pub proc bridge_out
     # => [INPUTS[0]]
 
     mem_storew_be.12 dropw
-    # => [INPUTS[0]]
+    # => []
 
     push.MMR_PTR
     # => [mmr_ptr]
