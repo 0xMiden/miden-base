@@ -33,6 +33,7 @@ const BUILD_GENERATED_FILES_IN_SRC: bool = option_env!("BUILD_GENERATED_FILES_IN
 const ASSETS_DIR: &str = "assets";
 const ASM_DIR: &str = "asm";
 const ASM_MIDEN_DIR: &str = "miden";
+const ASM_AGGLAYER_DIR: &str = "agglayer";
 const ASM_NOTE_SCRIPTS_DIR: &str = "note_scripts";
 const ASM_ACCOUNT_COMPONENTS_DIR: &str = "account_components";
 const SHARED_UTILS_DIR: &str = "shared_utils";
@@ -93,8 +94,7 @@ fn main() -> Result<()> {
 
     // compile transaction kernel
     let mut assembler =
-        compile_tx_kernel(&source_dir.join(ASM_TX_KERNEL_DIR), &target_dir.join("kernels"))?
-            .with_debug_mode(true);
+        compile_tx_kernel(&source_dir.join(ASM_TX_KERNEL_DIR), &target_dir.join("kernels"))?;
 
     // compile miden library
     let miden_lib = compile_miden_lib(&source_dir, &target_dir, assembler.clone())?;
@@ -113,8 +113,8 @@ fn main() -> Result<()> {
 
     // compile agglayer note scripts
     compile_note_scripts(
-        &source_dir.join("agglayer").join(ASM_NOTE_SCRIPTS_DIR),
-        &target_dir.join("agglayer").join(ASM_NOTE_SCRIPTS_DIR),
+        &source_dir.join(ASM_AGGLAYER_DIR).join(ASM_NOTE_SCRIPTS_DIR),
+        &target_dir.join(ASM_AGGLAYER_DIR).join(ASM_NOTE_SCRIPTS_DIR),
         assembler.clone(),
     )?;
 
@@ -127,8 +127,8 @@ fn main() -> Result<()> {
 
     // compile agglayer account components
     compile_account_components(
-        &source_dir.join("agglayer").join(ASM_ACCOUNT_COMPONENTS_DIR),
-        &target_dir.join("agglayer").join(ASM_ACCOUNT_COMPONENTS_DIR),
+        &source_dir.join(ASM_AGGLAYER_DIR).join(ASM_ACCOUNT_COMPONENTS_DIR),
+        &target_dir.join(ASM_AGGLAYER_DIR).join(ASM_ACCOUNT_COMPONENTS_DIR),
         assembler,
     )?;
 
@@ -319,14 +319,14 @@ fn compile_miden_lib(
     target_dir: &Path,
     mut assembler: Assembler,
 ) -> Result<Library> {
-    let miden_source_dir = source_dir.join(ASM_MIDEN_DIR);
+    let source_dir = source_dir.join(ASM_MIDEN_DIR);
     let shared_path = Path::new(ASM_DIR).join(SHARED_UTILS_DIR);
 
     let miden_namespace = "miden".parse::<LibraryNamespace>().expect("invalid base namespace");
     // add the shared modules to the kernel lib under the miden::util namespace
     assembler.compile_and_statically_link_from_dir(miden_namespace.clone(), &shared_path)?;
 
-    let miden_lib = assembler.assemble_library_from_dir(miden_source_dir, miden_namespace)?;
+    let miden_lib = assembler.assemble_library_from_dir(source_dir, miden_namespace)?;
 
     let output_file = target_dir.join("miden").with_extension(Library::LIBRARY_EXTENSION);
     miden_lib.write_to_file(output_file).into_diagnostic()?;
@@ -345,19 +345,15 @@ fn compile_agglayer_lib(
     target_dir: &Path,
     assembler: Assembler,
 ) -> Result<Library> {
-    let agglayer_components_dir = source_dir.join("agglayer").join(ASM_ACCOUNT_COMPONENTS_DIR);
+    let agglayer_namespace = ASM_AGGLAYER_DIR
+        .parse::<LibraryNamespace>()
+        .expect("invalid agglayer namespace");
+    let agglayer_lib = assembler.assemble_library_from_dir(
+        source_dir.join(ASM_AGGLAYER_DIR).join(ASM_ACCOUNT_COMPONENTS_DIR),
+        agglayer_namespace,
+    )?;
 
-    // Return an empty library if the directory doesn't exist
-    if !agglayer_components_dir.exists() {
-        return Err(Report::msg("agglayer account_components directory does not exist"));
-    }
-
-    let agglayer_namespace =
-        "agglayer".parse::<LibraryNamespace>().expect("invalid agglayer namespace");
-    let agglayer_lib =
-        assembler.assemble_library_from_dir(agglayer_components_dir, agglayer_namespace)?;
-
-    let output_file = target_dir.join("agglayer").with_extension(Library::LIBRARY_EXTENSION);
+    let output_file = target_dir.join(ASM_AGGLAYER_DIR).with_extension(Library::LIBRARY_EXTENSION);
     agglayer_lib.write_to_file(output_file).into_diagnostic()?;
 
     Ok(agglayer_lib)
@@ -376,14 +372,6 @@ fn compile_note_scripts(source_dir: &Path, target_dir: &Path, assembler: Assembl
     fs::create_dir_all(target_dir)
         .into_diagnostic()
         .wrap_err("failed to create note_scripts directory")?;
-
-    // Create the source directory if it doesn't exist
-    if !source_dir.exists() {
-        fs::create_dir_all(source_dir)
-            .into_diagnostic()
-            .wrap_err("failed to create source directory")?;
-        return Ok(());
-    }
 
     for masm_file_path in get_masm_files(source_dir).unwrap() {
         // read the MASM file, parse it, and serialize the parsed AST to bytes
