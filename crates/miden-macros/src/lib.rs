@@ -21,7 +21,6 @@ use syn::{Data, DeriveInput, Fields, Type, parse_macro_input};
 /// - `as_bytes(&self) -> [u8; 32]` - Returns the byte representation
 /// - `to_hex(&self) -> String` - Returns a big-endian, hex-encoded string
 /// - `as_word(&self) -> Word` - Returns the underlying Word
-/// - `From<Word>` - Convert from Word
 /// - `From<Self> for Word` - Convert to Word
 /// - `From<&Self> for Word` - Convert reference to Word
 /// - `From<Self> for [u8; 32]` - Convert to byte array
@@ -55,12 +54,6 @@ use syn::{Data, DeriveInput, Fields, Type, parse_macro_input};
 ///
 ///     pub fn as_word(&self) -> Word {
 ///         self.0
-///     }
-/// }
-///
-/// impl From<Word> for NoteId {
-///     fn from(digest: Word) -> Self {
-///         Self(digest)
 ///     }
 /// }
 ///
@@ -171,15 +164,9 @@ pub fn word_wrapper_derive(input: TokenStream) -> TokenStream {
                 self.0.to_hex()
             }
 
-            /// Returns the digest defining this value.
+            /// Returns the underlying word of this value.
             pub fn as_word(&self) -> Word {
                 self.0
-            }
-        }
-
-        impl #impl_generics From<Word> for #name #ty_generics #where_clause {
-            fn from(digest: Word) -> Self {
-                Self(digest)
             }
         }
 

@@ -38,6 +38,14 @@ impl NoteId {
     pub fn new(recipient: Word, asset_commitment: Word) -> Self {
         Self(Hasher::merge(&[recipient, asset_commitment]))
     }
+
+    /// Creates a new [NoteId] from a [Word] without validation.
+    ///
+    /// This is intended for use when deserializing from trusted sources or when the caller
+    /// can ensure the Word represents a valid NoteId.
+    pub fn new_unchecked(word: Word) -> Self {
+        Self(word)
+    }
 }
 
 impl Display for NoteId {
@@ -58,7 +66,7 @@ impl From<&NoteDetails> for NoteId {
 impl NoteId {
     /// Attempts to convert from a hexadecimal string to [NoteId].
     pub fn try_from_hex(hex_value: &str) -> Result<NoteId, WordError> {
-        Word::try_from(hex_value).map(NoteId::from)
+        Word::try_from(hex_value).map(NoteId::new_unchecked)
     }
 }
 

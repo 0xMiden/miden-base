@@ -56,6 +56,14 @@ impl Nullifier {
         Self(Hasher::hash_elements(&elements))
     }
 
+    /// Creates a new [Nullifier] from a [Word] without validation.
+    ///
+    /// This is intended for use when deserializing from trusted sources or when the caller
+    /// can ensure the Word represents a valid Nullifier.
+    pub fn new_unchecked(word: Word) -> Self {
+        Self(word)
+    }
+
     /// Returns the most significant felt (the last element in array)
     pub fn most_significant_felt(&self) -> Felt {
         self.as_elements()[3]
@@ -71,7 +79,7 @@ impl Nullifier {
     /// Creates a Nullifier from a hex string. Assumes that the string starts with "0x" and
     /// that the hexadecimal characters are big-endian encoded.
     pub fn from_hex(hex_value: &str) -> Result<Self, WordError> {
-        Word::try_from(hex_value).map(Self::from)
+        Word::try_from(hex_value).map(Self::new_unchecked)
     }
 
     #[cfg(any(feature = "testing", test))]
