@@ -574,7 +574,7 @@ async fn test_get_network_account_tag() -> anyhow::Result<()> {
         begin
             push.{suffix}.{prefix} 
 
-            exec.note::get_network_account_tag
+            exec.note::build_note_tag_for_network_account
             # => [network_account_tag]
 
             exec.sys::truncate_stack
