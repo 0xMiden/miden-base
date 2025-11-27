@@ -1,12 +1,11 @@
+use.miden::active_account
+use.miden::active_note
+use.miden::native_account
 use.miden::note
 use.miden::output_note
-use.miden::active_note
-
-use.miden::active_account
-use.miden::native_account
+use.std::math::u64
 use.std::sys
 
-use.std::math::u64
 use std::crypto::hashes::keccak256
 
 const.MMR_PTR=42
@@ -18,35 +17,6 @@ const.PUBLIC_NOTE=1
 const.AUX=0
 const.NUM_BURN_NOTE_INPUTS=0
 const.BURN_ASSET_MEM_PTR=16
-
-#! Computes the tag of the BURN note such that it is picked up by the network transaction builder.
-#!
-#! This procedure implements the same logic as in Rust in NoteTag::from_network_account_id().
-#!
-#! Inputs:  [ASSET]
-#! Outputs: [network_faucet_tag]
-#!
-#! Where:
-#! - ASSET is the asset to compute the network faucet tag for.
-#! - network_faucet_tag is the computed tag for the BURN note.
-#!
-#! Invocation: exec
-proc compute_network_faucet_tag
-  movdn.3 drop drop drop
-  # => [account_id_prefix]
-
-  u32split
-  # => [a_hi, a_lo]
-
-  push.34
-  # => [b, a_hi, a_lo]
-
-  exec.u64::shr
-  # => [c_hi, c_lo]
-
-  drop
-  # => [network_faucet_tag]
-end
 
 #! Computes the SERIAL_NUM of the outputted BURN note.
 #!
@@ -61,11 +31,11 @@ end
 #!
 #! Invocation: exec
 proc compute_burn_note_serial_num
-  exec.active_note::get_serial_number
-  # => [B2AGG_SERIAL_NUM, ASSET]
+    exec.active_note::get_serial_number
+    # => [B2AGG_SERIAL_NUM, ASSET]
 
-  hmerge
-  # => [SERIAL_NUM]
+    hmerge
+    # => [SERIAL_NUM]
 end
 
 #! Creates a BURN note for the specified asset.
@@ -84,7 +54,7 @@ proc create_burn_note.8
     loc_storew_be.0 dupw
     # => [ASSET]
 
-    exec.compute_network_faucet_tag
+    exec.note::build_note_tag_for_network_account
     # => [network_faucet_tag, ASSET]
 
     loc_store.5
@@ -175,8 +145,8 @@ end
 #!
 #! Invocation: exec
 proc mmr_frontier_keccak_add
-  dropw dropw drop
-  # => []
+    dropw dropw drop
+    # => []
 end
 
 #! Gets the root of the MMR frontier using Keccak hashing (stubbed implementation).
@@ -192,8 +162,8 @@ end
 #!
 #! Invocation: exec
 pub proc mmr_frontier_keccak_get_root
-  push.3.3.3.3
-  push.4.4.4.4
+    push.3.3.3.3
+    push.4.4.4.4
 end
 
 #! Bridges an asset out to the aggregation layer.
@@ -224,7 +194,7 @@ pub proc bridge_out
 
     mem_storew_be.4 dropw
     # => [INPUTS[1], INPUTS[0]]
-    
+
     mem_storew_be.8 dropw
     # => [INPUTS[0]]
 
