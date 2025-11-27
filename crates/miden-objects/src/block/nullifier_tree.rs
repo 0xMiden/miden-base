@@ -1,15 +1,198 @@
+use alloc::boxed::Box;
 use alloc::string::ToString;
 use alloc::vec::Vec;
 
 use miden_core::EMPTY_WORD;
 use miden_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
-use miden_processor::DeserializationError;
+#[cfg(feature = "std")]
+use miden_crypto::merkle::{LargeSmt, LargeSmtError, SmtStorage};
+use miden_crypto::merkle::{MerkleError, MutationSet, Smt, SmtProof};
+use miden_processor::{DeserializationError, SMT_DEPTH};
 
 use crate::Word;
 use crate::block::{BlockNumber, NullifierWitness};
-use crate::crypto::merkle::{MutationSet, SMT_DEPTH, Smt};
 use crate::errors::NullifierTreeError;
 use crate::note::Nullifier;
+
+// FREE HELPER FUNCTIONS AND CONSTANTS
+// ================================================================================================
+
+/// The value of an unspent nullifier in the tree.
+pub(super) const UNSPENT_NULLIFIER: Word = EMPTY_WORD;
+
+/// Returns the nullifier's leaf value in the SMT by its block number.
+pub(super) fn block_num_to_nullifier_leaf_value(block: BlockNumber) -> Word {
+    Word::from([block.as_u32(), 0, 0, 0])
+}
+
+/// Given the leaf value of the nullifier SMT, returns the nullifier's block number.
+///
+/// There are no nullifiers in the genesis block. The value zero is instead used to signal
+/// absence of a value.
+pub(super) fn nullifier_leaf_value_to_block_num(value: Word) -> BlockNumber {
+    let block_num: u32 = value[0].as_int().try_into().expect("invalid block number found in store");
+
+    block_num.into()
+}
+
+// NULLIFIER TREE BACKEND TRAIT
+// ================================================================================================
+
+/// This trait abstracts over different SMT backends (e.g., `Smt` and `LargeSmt`) to allow
+/// the `NullifierTree` to work with either implementation transparently.
+///
+/// Users should instantiate the backend directly (potentially with entries) and then
+/// pass it to [`NullifierTree::new_unchecked`].
+///
+/// # Invariants
+///
+/// Assumes the provided SMT upholds the guarantees of the [`NullifierTree`]. Specifically:
+/// - Nullifiers are only spent once and their block numbers do not change.
+/// - Nullifier entries must follow the format `Word([block_num, 0, 0, 0])` with `block_num` a valid
+///   block number.
+pub trait NullifierTreeBackend: Sized {
+    type Error: core::error::Error + Send + 'static;
+
+    /// Returns the number of entries in the SMT.
+    fn num_entries(&self) -> usize;
+
+    /// Returns all entries in the SMT as an iterator over key-value pairs.
+    fn entries(&self) -> Box<dyn Iterator<Item = (Word, Word)> + '_>;
+
+    /// Opens the leaf at the given key, returning a Merkle proof.
+    fn open(&self, key: &Word) -> SmtProof;
+
+    /// Applies the given mutation set to the SMT.
+    fn apply_mutations(
+        &mut self,
+        set: MutationSet<SMT_DEPTH, Word, Word>,
+    ) -> Result<(), Self::Error>;
+
+    /// Computes the mutation set required to apply the given updates to the SMT.
+    fn compute_mutations(
+        &self,
+        updates: impl IntoIterator<Item = (Word, Word)>,
+    ) -> Result<MutationSet<SMT_DEPTH, Word, Word>, Self::Error>;
+
+    /// Inserts a key-value pair into the SMT, returning the previous value at that key.
+    fn insert(&mut self, key: Word, value: Word) -> Result<Word, Self::Error>;
+
+    /// Returns the value associated with the given key.
+    fn get_value(&self, key: &Word) -> Word;
+
+    /// Returns the root of the SMT.
+    fn root(&self) -> Word;
+}
+
+impl NullifierTreeBackend for Smt {
+    type Error = MerkleError;
+
+    fn num_entries(&self) -> usize {
+        Smt::num_entries(self)
+    }
+
+    fn entries(&self) -> Box<dyn Iterator<Item = (Word, Word)> + '_> {
+        Box::new(Smt::entries(self).map(|(k, v)| (*k, *v)))
+    }
+
+    fn open(&self, key: &Word) -> SmtProof {
+        Smt::open(self, key)
+    }
+
+    fn apply_mutations(
+        &mut self,
+        set: MutationSet<SMT_DEPTH, Word, Word>,
+    ) -> Result<(), Self::Error> {
+        Smt::apply_mutations(self, set)
+    }
+
+    fn compute_mutations(
+        &self,
+        updates: impl IntoIterator<Item = (Word, Word)>,
+    ) -> Result<MutationSet<SMT_DEPTH, Word, Word>, Self::Error> {
+        Smt::compute_mutations(self, updates)
+    }
+
+    fn insert(&mut self, key: Word, value: Word) -> Result<Word, Self::Error> {
+        Smt::insert(self, key, value)
+    }
+
+    fn get_value(&self, key: &Word) -> Word {
+        Smt::get_value(self, key)
+    }
+
+    fn root(&self) -> Word {
+        Smt::root(self)
+    }
+}
+
+#[cfg(feature = "std")]
+fn large_smt_error_to_merkle_error(err: LargeSmtError) -> MerkleError {
+    match err {
+        LargeSmtError::Storage(storage_err) => {
+            panic!("Storage error encountered: {:?}", storage_err)
+        },
+        LargeSmtError::Merkle(merkle_err) => merkle_err,
+    }
+}
+
+#[cfg(feature = "std")]
+impl<Backend> NullifierTreeBackend for LargeSmt<Backend>
+where
+    Backend: SmtStorage,
+{
+    type Error = MerkleError;
+
+    fn num_entries(&self) -> usize {
+        // SAFETY: We panic on storage errors here as they represent unrecoverable I/O failures.
+        // This maintains API compatibility with the non-fallible Smt::num_entries().
+        // See issue #2010 for future improvements to error handling.
+        LargeSmt::num_entries(self)
+            .map_err(large_smt_error_to_merkle_error)
+            .expect("Storage I/O error accessing num_entries")
+    }
+
+    fn entries(&self) -> Box<dyn Iterator<Item = (Word, Word)> + '_> {
+        // SAFETY: We expect here as only I/O errors can occur. Storage failures are considered
+        // unrecoverable at this layer. See issue #2010 for future error handling improvements.
+        Box::new(LargeSmt::entries(self).expect("Storage I/O error accessing entries"))
+    }
+
+    fn open(&self, key: &Word) -> SmtProof {
+        LargeSmt::open(self, key)
+    }
+
+    fn apply_mutations(
+        &mut self,
+        set: MutationSet<SMT_DEPTH, Word, Word>,
+    ) -> Result<(), Self::Error> {
+        LargeSmt::apply_mutations(self, set).map_err(large_smt_error_to_merkle_error)
+    }
+
+    fn compute_mutations(
+        &self,
+        updates: impl IntoIterator<Item = (Word, Word)>,
+    ) -> Result<MutationSet<SMT_DEPTH, Word, Word>, Self::Error> {
+        LargeSmt::compute_mutations(self, updates).map_err(large_smt_error_to_merkle_error)
+    }
+
+    fn insert(&mut self, key: Word, value: Word) -> Result<Word, Self::Error> {
+        LargeSmt::insert(self, key, value)
+    }
+
+    fn get_value(&self, key: &Word) -> Word {
+        LargeSmt::get_value(self, key)
+    }
+
+    fn root(&self) -> Word {
+        // SAFETY: We expect here as storage errors are considered unrecoverable. This maintains
+        // API compatibility with the non-fallible Smt::root().
+        // See issue #2010 for future improvements to error handling.
+        LargeSmt::root(self)
+            .map_err(large_smt_error_to_merkle_error)
+            .expect("Storage I/O error accessing root")
+    }
+}
 
 /// The sparse merkle tree of all nullifiers in the blockchain.
 ///
@@ -20,11 +203,23 @@ use crate::note::Nullifier;
 /// not change. Note that inserting the nullifier multiple times with the same block number is
 /// valid.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct NullifierTree {
-    smt: Smt,
+pub struct NullifierTree<Backend = Smt> {
+    smt: Backend,
 }
 
-impl NullifierTree {
+impl<Backend> Default for NullifierTree<Backend>
+where
+    Backend: Default,
+{
+    fn default() -> Self {
+        Self { smt: Default::default() }
+    }
+}
+
+impl<Backend> NullifierTree<Backend>
+where
+    Backend: NullifierTreeBackend<Error = MerkleError>,
+{
     // CONSTANTS
     // --------------------------------------------------------------------------------------------
 
@@ -37,28 +232,13 @@ impl NullifierTree {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
-    /// Creates a new, empty nullifier tree.
-    pub fn new() -> Self {
-        Self { smt: Smt::new() }
-    }
-
-    /// Construct a new nullifier tree from the provided entries.
+    /// Creates a new `NullifierTree` from its inner representation.
     ///
-    /// # Errors
+    /// # Invariants
     ///
-    /// Returns an error if:
-    /// - the provided entries contain multiple block numbers for the same nullifier.
-    pub fn with_entries(
-        entries: impl IntoIterator<Item = (Nullifier, BlockNumber)>,
-    ) -> Result<Self, NullifierTreeError> {
-        let leaves = entries.into_iter().map(|(nullifier, block_num)| {
-            (nullifier.as_word(), Self::block_num_to_leaf_value(block_num))
-        });
-
-        let smt = Smt::with_entries(leaves)
-            .map_err(NullifierTreeError::DuplicateNullifierBlockNumbers)?;
-
-        Ok(Self { smt })
+    /// See the documentation on [`NullifierTreeBackend`] trait documentation.
+    pub fn new_unchecked(backend: Backend) -> Self {
+        NullifierTree { smt: backend }
     }
 
     // PUBLIC ACCESSORS
@@ -77,7 +257,7 @@ impl NullifierTree {
     /// Returns an iterator over the nullifiers and their block numbers in the tree.
     pub fn entries(&self) -> impl Iterator<Item = (Nullifier, BlockNumber)> {
         self.smt.entries().map(|(nullifier, block_num)| {
-            (Nullifier::from(*nullifier), Self::leaf_value_to_block_num(*block_num))
+            (Nullifier::from(nullifier), nullifier_leaf_value_to_block_num(block_num))
         })
     }
 
@@ -99,7 +279,7 @@ impl NullifierTree {
             return None;
         }
 
-        Some(Self::leaf_value_to_block_num(value))
+        Some(nullifier_leaf_value_to_block_num(value))
     }
 
     /// Computes a mutation set resulting from inserting the provided nullifiers into this nullifier
@@ -125,9 +305,14 @@ impl NullifierTree {
 
         let mutation_set = self
             .smt
-            .compute_mutations(nullifiers.into_iter().map(|(nullifier, block_num)| {
-                (nullifier.as_word(), Self::block_num_to_leaf_value(block_num))
-            }))
+            .compute_mutations(
+                nullifiers
+                    .into_iter()
+                    .map(|(nullifier, block_num)| {
+                        (nullifier.as_word(), block_num_to_nullifier_leaf_value(block_num))
+                    })
+                    .collect::<Vec<_>>(),
+            )
             .map_err(NullifierTreeError::ComputeMutations)?;
 
         Ok(NullifierMutationSet::new(mutation_set))
@@ -149,7 +334,7 @@ impl NullifierTree {
     ) -> Result<(), NullifierTreeError> {
         let prev_nullifier_value = self
             .smt
-            .insert(nullifier.as_word(), Self::block_num_to_leaf_value(block_num))
+            .insert(nullifier.as_word(), block_num_to_nullifier_leaf_value(block_num))
             .map_err(NullifierTreeError::MaxLeafEntriesExceeded)?;
 
         if prev_nullifier_value != Self::UNSPENT_NULLIFIER {
@@ -173,30 +358,32 @@ impl NullifierTree {
             .apply_mutations(mutations.into_mutation_set())
             .map_err(NullifierTreeError::TreeRootConflict)
     }
-
-    // HELPER FUNCTIONS
-    // --------------------------------------------------------------------------------------------
-
-    /// Returns the nullifier's leaf value in the SMT by its block number.
-    pub(super) fn block_num_to_leaf_value(block: BlockNumber) -> Word {
-        Word::from([block.as_u32(), 0, 0, 0])
-    }
-
-    /// Given the leaf value of the nullifier SMT, returns the nullifier's block number.
-    ///
-    /// There are no nullifiers in the genesis block. The value zero is instead used to signal
-    /// absence of a value.
-    fn leaf_value_to_block_num(value: Word) -> BlockNumber {
-        let block_num: u32 =
-            value[0].as_int().try_into().expect("invalid block number found in store");
-
-        block_num.into()
-    }
 }
 
-impl Default for NullifierTree {
-    fn default() -> Self {
-        Self::new()
+// CONVENIENCE METHODS
+// ================================================================================================
+
+impl NullifierTree<Smt> {
+    /// Creates a new nullifier tree from the provided entries.
+    ///
+    /// This is a convenience method that creates an SMT backend with the provided entries and
+    /// wraps it in a NullifierTree.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - the provided entries contain multiple block numbers for the same nullifier.
+    pub fn with_entries(
+        entries: impl IntoIterator<Item = (Nullifier, BlockNumber)>,
+    ) -> Result<Self, NullifierTreeError> {
+        let leaves = entries.into_iter().map(|(nullifier, block_num)| {
+            (nullifier.as_word(), block_num_to_nullifier_leaf_value(block_num))
+        });
+
+        let smt = Smt::with_entries(leaves)
+            .map_err(NullifierTreeError::DuplicateNullifierBlockNumbers)?;
+
+        Ok(Self::new_unchecked(smt))
     }
 }
 
@@ -229,15 +416,15 @@ impl Deserializable for NullifierTree {
 /// It is returned by and used in methods on the [`NullifierTree`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NullifierMutationSet {
-    mutation_set: MutationSet<{ NullifierTree::DEPTH }, Word, Word>,
+    mutation_set: MutationSet<SMT_DEPTH, Word, Word>,
 }
 
 impl NullifierMutationSet {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
-    /// Creates a new [`AccountMutationSet`] from the provided raw mutation set.
-    fn new(mutation_set: MutationSet<{ NullifierTree::DEPTH }, Word, Word>) -> Self {
+    /// Creates a new [`NullifierMutationSet`] from the provided raw mutation set.
+    fn new(mutation_set: MutationSet<SMT_DEPTH, Word, Word>) -> Self {
         Self { mutation_set }
     }
 
@@ -245,7 +432,7 @@ impl NullifierMutationSet {
     // --------------------------------------------------------------------------------------------
 
     /// Returns a reference to the underlying [`MutationSet`].
-    pub fn as_mutation_set(&self) -> &MutationSet<{ NullifierTree::DEPTH }, Word, Word> {
+    pub fn as_mutation_set(&self) -> &MutationSet<SMT_DEPTH, Word, Word> {
         &self.mutation_set
     }
 
@@ -253,7 +440,7 @@ impl NullifierMutationSet {
     // --------------------------------------------------------------------------------------------
 
     /// Consumes self and returns the underlying [`MutationSet`].
-    pub fn into_mutation_set(self) -> MutationSet<{ NullifierTree::DEPTH }, Word, Word> {
+    pub fn into_mutation_set(self) -> MutationSet<SMT_DEPTH, Word, Word> {
         self.mutation_set
     }
 }
@@ -271,9 +458,17 @@ mod tests {
     use crate::{NullifierTreeError, Word};
 
     #[test]
+    fn leaf_value_encode_decode() {
+        let block_num = BlockNumber::from(0xffff_ffff_u32);
+        let leaf = super::block_num_to_nullifier_leaf_value(block_num);
+        let block_num_recovered = super::nullifier_leaf_value_to_block_num(leaf);
+        assert_eq!(block_num, block_num_recovered);
+    }
+
+    #[test]
     fn leaf_value_encoding() {
         let block_num = 123;
-        let nullifier_value = NullifierTree::block_num_to_leaf_value(block_num.into());
+        let nullifier_value = super::block_num_to_nullifier_leaf_value(block_num.into());
         assert_eq!(nullifier_value, Word::from([block_num, 0, 0, 0u32]));
     }
 
@@ -281,7 +476,7 @@ mod tests {
     fn leaf_value_decoding() {
         let block_num = 123;
         let nullifier_value = Word::from([block_num, 0, 0, 0u32]);
-        let decoded_block_num = NullifierTree::leaf_value_to_block_num(nullifier_value);
+        let decoded_block_num = super::nullifier_leaf_value_to_block_num(nullifier_value);
 
         assert_eq!(decoded_block_num, block_num.into());
     }
@@ -333,5 +528,136 @@ mod tests {
 
         let err = tree.mark_spent(nullifier1, block2).unwrap_err();
         assert_matches!(err, NullifierTreeError::NullifierAlreadySpent(nullifier) if nullifier == nullifier1);
+    }
+
+    #[cfg(feature = "std")]
+    #[test]
+    fn large_smt_backend_basic_operations() {
+        use miden_crypto::merkle::{LargeSmt, MemoryStorage};
+
+        // Create test data
+        let nullifier1 = Nullifier::dummy(1);
+        let nullifier2 = Nullifier::dummy(2);
+        let nullifier3 = Nullifier::dummy(3);
+
+        let block1 = BlockNumber::from(1);
+        let block2 = BlockNumber::from(2);
+        let block3 = BlockNumber::from(3);
+
+        // Create NullifierTree with LargeSmt backend
+        let mut tree = NullifierTree::new_unchecked(
+            LargeSmt::with_entries(
+                MemoryStorage::default(),
+                [
+                    (nullifier1.as_word(), super::block_num_to_nullifier_leaf_value(block1)),
+                    (nullifier2.as_word(), super::block_num_to_nullifier_leaf_value(block2)),
+                ],
+            )
+            .unwrap(),
+        );
+
+        // Test basic operations
+        assert_eq!(tree.num_nullifiers(), 2);
+        assert_eq!(tree.get_block_num(&nullifier1).unwrap(), block1);
+        assert_eq!(tree.get_block_num(&nullifier2).unwrap(), block2);
+
+        // Test opening
+        let _witness1 = tree.open(&nullifier1);
+
+        // Test mutations
+        tree.mark_spent(nullifier3, block3).unwrap();
+        assert_eq!(tree.num_nullifiers(), 3);
+        assert_eq!(tree.get_block_num(&nullifier3).unwrap(), block3);
+    }
+
+    #[cfg(feature = "std")]
+    #[test]
+    fn large_smt_backend_nullifier_already_spent() {
+        use miden_crypto::merkle::{LargeSmt, MemoryStorage};
+
+        let nullifier1 = Nullifier::dummy(1);
+
+        let block1 = BlockNumber::from(1);
+        let block2 = BlockNumber::from(2);
+
+        let mut tree = NullifierTree::new_unchecked(
+            LargeSmt::with_entries(
+                MemoryStorage::default(),
+                [(nullifier1.as_word(), super::block_num_to_nullifier_leaf_value(block1))],
+            )
+            .unwrap(),
+        );
+
+        assert_eq!(tree.get_block_num(&nullifier1).unwrap(), block1);
+
+        let err = tree.mark_spent(nullifier1, block2).unwrap_err();
+        assert_matches!(err, NullifierTreeError::NullifierAlreadySpent(nullifier) if nullifier == nullifier1);
+    }
+
+    #[cfg(feature = "std")]
+    #[test]
+    fn large_smt_backend_apply_mutations() {
+        use miden_crypto::merkle::{LargeSmt, MemoryStorage};
+
+        let nullifier1 = Nullifier::dummy(1);
+        let nullifier2 = Nullifier::dummy(2);
+        let nullifier3 = Nullifier::dummy(3);
+
+        let block1 = BlockNumber::from(1);
+        let block2 = BlockNumber::from(2);
+        let block3 = BlockNumber::from(3);
+
+        let mut tree = LargeSmt::with_entries(
+            MemoryStorage::default(),
+            [(nullifier1.as_word(), super::block_num_to_nullifier_leaf_value(block1))],
+        )
+        .map(NullifierTree::new_unchecked)
+        .unwrap();
+
+        let mutations =
+            tree.compute_mutations([(nullifier2, block2), (nullifier3, block3)]).unwrap();
+
+        tree.apply_mutations(mutations).unwrap();
+
+        assert_eq!(tree.num_nullifiers(), 3);
+        assert_eq!(tree.get_block_num(&nullifier1).unwrap(), block1);
+        assert_eq!(tree.get_block_num(&nullifier2).unwrap(), block2);
+        assert_eq!(tree.get_block_num(&nullifier3).unwrap(), block3);
+    }
+
+    #[cfg(feature = "std")]
+    #[test]
+    fn large_smt_backend_same_root_as_regular_smt() {
+        use miden_crypto::merkle::{LargeSmt, MemoryStorage};
+
+        let nullifier1 = Nullifier::dummy(1);
+        let nullifier2 = Nullifier::dummy(2);
+
+        let block1 = BlockNumber::from(1);
+        let block2 = BlockNumber::from(2);
+
+        // Create tree with LargeSmt backend
+        let large_tree = LargeSmt::with_entries(
+            MemoryStorage::default(),
+            [
+                (nullifier1.as_word(), super::block_num_to_nullifier_leaf_value(block1)),
+                (nullifier2.as_word(), super::block_num_to_nullifier_leaf_value(block2)),
+            ],
+        )
+        .map(NullifierTree::new_unchecked)
+        .unwrap();
+
+        // Create tree with regular Smt backend
+        let regular_tree =
+            NullifierTree::with_entries([(nullifier1, block1), (nullifier2, block2)]).unwrap();
+
+        // Both should have the same root
+        assert_eq!(large_tree.root(), regular_tree.root());
+
+        // Both should have the same nullifier entries
+        let large_entries: std::collections::BTreeMap<_, _> = large_tree.entries().collect();
+        let regular_entries: std::collections::BTreeMap<_, _> = regular_tree.entries().collect();
+
+        assert_eq!(large_entries, regular_entries);
     }
 }

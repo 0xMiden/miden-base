@@ -18,6 +18,8 @@ use miden_objects::{Felt, FieldElement, Word};
 use miden_testing::{Auth, MockChain};
 use miden_tx::TransactionExecutorError;
 
+use crate::prove_and_verify_transaction;
+
 // CONSTANTS
 // ================================================================================================
 
@@ -134,10 +136,11 @@ async fn test_ecdsa_acl() -> anyhow::Result<()> {
         .tx_script(tx_script_trigger_1.clone())
         .build()?;
 
-    tx_context_with_auth_1
+    let executed_tx_with_auth_1 = tx_context_with_auth_1
         .execute()
         .await
         .expect("trigger 1 with auth should succeed");
+    prove_and_verify_transaction(executed_tx_with_auth_1)?;
 
     // Test 2: Transaction WITH authenticator calling trigger procedure 2 (should succeed)
     let tx_context_with_auth_2 = mock_chain
