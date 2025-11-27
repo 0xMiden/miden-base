@@ -557,7 +557,7 @@ async fn test_public_key_as_note_input() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
-async fn test_get_network_account_tag() -> anyhow::Result<()> {
+async fn test_build_note_tag_for_network_account() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
     let account_id = AccountId::try_from(ACCOUNT_ID_NETWORK_FUNGIBLE_FAUCET)?;
