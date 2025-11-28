@@ -21,7 +21,7 @@ use crate::note::Nullifier;
 pub(super) const UNSPENT_NULLIFIER: Word = EMPTY_WORD;
 
 /// Returns the nullifier's leaf value in the SMT by its block number.
-pub fn block_num_to_nullifier_leaf_value(block: BlockNumber) -> Word {
+pub(super) fn block_num_to_nullifier_leaf_value(block: BlockNumber) -> Word {
     Word::from([block.as_u32(), 0, 0, 0])
 }
 
@@ -382,6 +382,43 @@ impl NullifierTree<Smt> {
 
         let smt = Smt::with_entries(leaves)
             .map_err(NullifierTreeError::DuplicateNullifierBlockNumbers)?;
+
+        Ok(Self::new_unchecked(smt))
+    }
+}
+
+impl<Backend> NullifierTree<LargeSmt<Backend>>
+where
+    Backend: SmtStorage,
+{
+    /// Creates a new nullifier tree from the provided entries using the given storage backend
+    ///
+    /// This is a convenience method that creates an SMT on the provided storage backend using the
+    /// provided entries and wraps it in a NullifierTree.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - the provided entries contain multiple block numbers for the same nullifier.
+    /// - a storage error is encountered.
+    pub fn with_storage_from_entries(
+        storage: Backend,
+        entries: impl IntoIterator<Item = (Nullifier, BlockNumber)>,
+    ) -> Result<Self, NullifierTreeError> {
+        let leaves = entries.into_iter().map(|(nullifier, block_num)| {
+            (nullifier.as_word(), block_num_to_nullifier_leaf_value(block_num))
+        });
+
+        let smt = LargeSmt::<Backend>::with_entries(storage, leaves).map_err(|e| match e {
+            LargeSmtError::Merkle(merkle) => {
+                NullifierTreeError::DuplicateNullifierBlockNumbers(merkle)
+            },
+            LargeSmtError::Storage(storage) => {
+                // this one isn't `+Sync`, hence we need to do the conversion
+                // TODO add backtrace/error chain OR fix the miden-crypto error type
+                NullifierTreeError::LargeSmt(storage.to_string())
+            },
+        })?;
 
         Ok(Self::new_unchecked(smt))
     }
