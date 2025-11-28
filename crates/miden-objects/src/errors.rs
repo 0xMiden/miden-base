@@ -1085,9 +1085,6 @@ pub enum NullifierTreeError {
 
     #[error("failed to compute nullifier tree mutations")]
     ComputeMutations(#[source] MerkleError),
-
-    #[error("storage error {0}")]
-    LargeSmt(String),
 }
 
 // AUTH SCHEME ERROR

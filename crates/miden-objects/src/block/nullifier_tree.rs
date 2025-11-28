@@ -387,6 +387,7 @@ impl NullifierTree<Smt> {
     }
 }
 
+#[cfg(feature = "std")]
 impl<Backend> NullifierTree<LargeSmt<Backend>>
 where
     Backend: SmtStorage,
@@ -409,16 +410,9 @@ where
             (nullifier.as_word(), block_num_to_nullifier_leaf_value(block_num))
         });
 
-        let smt = LargeSmt::<Backend>::with_entries(storage, leaves).map_err(|e| match e {
-            LargeSmtError::Merkle(merkle) => {
-                NullifierTreeError::DuplicateNullifierBlockNumbers(merkle)
-            },
-            LargeSmtError::Storage(storage) => {
-                // this one isn't `+Sync`, hence we need to do the conversion
-                // TODO add backtrace/error chain OR fix the miden-crypto error type
-                NullifierTreeError::LargeSmt(storage.to_string())
-            },
-        })?;
+        let smt = LargeSmt::<Backend>::with_entries(storage, leaves)
+            .map_err(large_smt_error_to_merkle_error)
+            .map_err(NullifierTreeError::DuplicateNullifierBlockNumbers)?;
 
         Ok(Self::new_unchecked(smt))
     }
