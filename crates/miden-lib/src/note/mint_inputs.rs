@@ -62,19 +62,17 @@ impl MintNoteInputs {
         let mut padded_inputs = input_values;
         padded_inputs.resize(4, Felt::new(0));
 
-        let inputs =
-            Word::from([padded_inputs[3], padded_inputs[2], padded_inputs[1], padded_inputs[0]]);
-
-        // Reverse word order to match the expected order in the MINT script
         let script_root_be =
             Word::from([script_root[3], script_root[2], script_root[1], script_root[0]]);
         let serial_num_be =
             Word::from([serial_num[3], serial_num[2], serial_num[1], serial_num[0]]);
+        let inputs_be =
+            Word::from([padded_inputs[3], padded_inputs[2], padded_inputs[1], padded_inputs[0]]);
 
         Ok(Self::Public {
             script_root: script_root_be,
             serial_num: serial_num_be,
-            inputs,
+            inputs: inputs_be,
             amount,
             tag,
             execution_hint,
