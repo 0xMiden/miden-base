@@ -127,8 +127,8 @@ impl WellKnownNote {
     /// Expected number of inputs of the SWAP note.
     const SWAP_NUM_INPUTS: usize = 10;
 
-    /// Expected number of inputs of the MINT note.
-    const MINT_NUM_INPUTS: usize = 9;
+    /// Expected number of inputs of the MINT note (private mode).
+    const MINT_NUM_INPUTS_PRIVATE: usize = 8;
 
     /// Expected number of inputs of the BURN note.
     const BURN_NUM_INPUTS: usize = 0;
@@ -169,7 +169,8 @@ impl WellKnownNote {
             Self::P2ID => Self::P2ID_NUM_INPUTS,
             Self::P2IDE => Self::P2IDE_NUM_INPUTS,
             Self::SWAP => Self::SWAP_NUM_INPUTS,
-            Self::MINT => Self::MINT_NUM_INPUTS,
+            Self::MINT => Self::MINT_NUM_INPUTS_PRIVATE, /* Default to private for backward */
+            // compatibility
             Self::BURN => Self::BURN_NUM_INPUTS,
         }
     }

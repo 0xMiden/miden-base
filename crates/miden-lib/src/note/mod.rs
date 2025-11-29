@@ -18,9 +18,11 @@ use miden_objects::note::{
 use miden_objects::{Felt, NoteError, Word};
 use utils::build_swap_tag;
 
+pub mod mint_inputs;
 pub mod utils;
 
 mod well_known_note;
+pub use mint_inputs::MintNoteInputs;
 pub use well_known_note::{NoteConsumptionStatus, WellKnownNote};
 
 // STANDARDIZED SCRIPTS
@@ -162,12 +164,60 @@ pub fn create_swap_note<R: FeltRng>(
 /// Generates a MINT note - a note that instructs a network faucet to mint fungible assets.
 ///
 /// This script enables the creation of a PUBLIC note that, when consumed by a network faucet,
+/// will mint the specified amount of fungible assets and create either a PRIVATE or PUBLIC
+/// output note depending on the input configuration. The MINT note uses note-based authentication,
+/// checking if the note sender equals the faucet owner to authorize minting.
+///
+/// MINT notes are always PUBLIC (for network execution). Output notes can be either PRIVATE
+/// or PUBLIC depending on the MintNoteInputs variant used.
+///
+/// The passed-in `rng` is used to generate a serial number for the note. The note's tag
+/// is automatically set to the faucet's account ID for proper routing.
+///
+/// # Parameters
+/// - `faucet_id`: The account ID of the network faucet that will mint the assets
+/// - `sender`: The account ID of the note creator (must be the faucet owner)
+/// - `mint_inputs`: The input configuration specifying private or public output mode
+/// - `aux`: Auxiliary data for the MINT note
+/// - `rng`: Random number generator for creating the serial number
+///
+/// # Errors
+/// Returns an error if note creation fails.
+pub fn create_mint_note_with_inputs<R: FeltRng>(
+    faucet_id: AccountId,
+    sender: AccountId,
+    mint_inputs: MintNoteInputs,
+    aux: Felt,
+    rng: &mut R,
+) -> Result<Note, NoteError> {
+    let note_script = WellKnownNote::MINT.script();
+    let serial_num = rng.draw_word();
+
+    // MINT notes are always public for network execution
+    let note_type = NoteType::Public;
+    let execution_hint = NoteExecutionHint::always();
+
+    // Convert MintNoteInputs to NoteInputs
+    let inputs = NoteInputs::try_from(mint_inputs)?;
+
+    let tag = NoteTag::from_account_id(faucet_id);
+
+    let metadata = NoteMetadata::new(sender, note_type, tag, execution_hint, aux)?;
+    let assets = NoteAssets::new(vec![])?; // MINT notes have no assets
+    let recipient = NoteRecipient::new(serial_num, note_script, inputs);
+
+    Ok(Note::new(assets, metadata, recipient))
+}
+
+/// Generates a MINT note - a note that instructs a network faucet to mint fungible assets.
+///
+/// This script enables the creation of a PUBLIC note that, when consumed by a network faucet,
 /// will mint the specified amount of fungible assets and create a PRIVATE note with the given
 /// RECIPIENT. The MINT note uses note-based authentication, checking if the note sender equals
 /// the faucet owner to authorize minting.
 ///
 /// MINT notes are always PUBLIC (for network execution) and output notes are always PRIVATE
-/// (TODO: enable public output note creation from MINT note consumption).
+/// (legacy behavior - use create_mint_note_with_inputs for public output support).
 ///
 /// The passed-in `rng` is used to generate a serial number for the note. The note's tag
 /// is automatically set to the faucet's account ID for proper routing.
@@ -195,35 +245,16 @@ pub fn create_mint_note<R: FeltRng>(
     output_note_aux: Felt,
     rng: &mut R,
 ) -> Result<Note, NoteError> {
-    let note_script = WellKnownNote::MINT.script();
-    let serial_num = rng.draw_word();
-
-    // MINT notes are always public for network execution
-    let note_type = NoteType::Public;
-    // Output notes are always private (for now)
-    let output_note_type = NoteType::Private;
-
-    let execution_hint = NoteExecutionHint::always();
-
-    let inputs = NoteInputs::new(vec![
-        target_recipient[0],
-        target_recipient[1],
-        target_recipient[2],
-        target_recipient[3],
-        execution_hint.into(),
-        output_note_type.into(),
-        output_note_aux,
-        output_note_tag,
+    // Use the legacy private mode for backward compatibility
+    let mint_inputs = MintNoteInputs::new_private(
+        target_recipient,
         amount,
-    ])?;
+        output_note_tag,
+        NoteExecutionHint::always(),
+        output_note_aux,
+    );
 
-    let tag = NoteTag::from_account_id(faucet_id);
-
-    let metadata = NoteMetadata::new(sender, note_type, tag, execution_hint, aux)?;
-    let assets = NoteAssets::new(vec![])?; // MINT notes have no assets
-    let recipient = NoteRecipient::new(serial_num, note_script, inputs);
-
-    Ok(Note::new(assets, metadata, recipient))
+    create_mint_note_with_inputs(faucet_id, sender, mint_inputs, aux, rng)
 }
 
 /// Generates a BURN note - a note that instructs a faucet to burn a fungible asset.

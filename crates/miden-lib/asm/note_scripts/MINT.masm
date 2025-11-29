@@ -1,14 +1,23 @@
 use.miden::active_note
 use.miden::contracts::faucets::network_fungible->network_faucet
+use.miden::note
+use.std::sys
 
 # CONSTANTS
 # =================================================================================================
 
-const.MINT_NOTE_INPUTS_NUMBER=9
+const.MINT_NOTE_INPUTS_PRIVATE=8
+const.MINT_NOTE_INPUTS_PUBLIC=16
+
+const.OUTPUT_NOTE_TYPE_PUBLIC=1
+const.OUTPUT_NOTE_TYPE_PRIVATE=2
+
+const.OUTPUT_PUBLIC_NOTE_INPUTS_ADDR=12
+const.OUTPUT_PUBLIC_NOTE_INPUTS_LEN=4
 
 # ERRORS
 # =================================================================================================
-const.ERR_MINT_WRONG_NUMBER_OF_INPUTS="MINT script expects exactly 9 note inputs"
+const.ERR_MINT_WRONG_NUMBER_OF_INPUTS="MINT script expects exactly 8 or 16 note inputs"
 
 #! Network Faucet MINT script: mints assets by calling the network faucet's distribute function.
 #! This note is intended to be executed against a network fungible faucet account.
@@ -19,18 +28,27 @@ const.ERR_MINT_WRONG_NUMBER_OF_INPUTS="MINT script expects exactly 9 note inputs
 #! Inputs:  [ARGS, pad(12)]
 #! Outputs: [pad(16)]
 #!
-#! Note inputs are assumed to be as follows (in order):
-#! - RECIPIENT: The recipient account ID (4 elements)
-#! - Output note config (4 elements):
-#!   - execution_hint: Execution hint for the output note
-#!   - note_type: Type of the output note
-#!   - aux: Auxiliary data for the output note
-#!   - tag: Note tag for the output note
+#! Note inputs support two modes:
+#!
+#! Private mode (8 inputs):
+#! - execution_hint: Execution hint for the output note
+#! - aux: Auxiliary data for the output note
+#! - tag: Note tag for the output note
 #! - amount: The amount to mint
+#! - RECIPIENT: The recipient digest (4 elements)
+#!
+#! Public mode (16 inputs):
+#! - execution_hint: Execution hint for the output note
+#! - aux: Auxiliary data for the output note
+#! - tag: Note tag for the output note
+#! - amount: The amount to mint
+#! - SCRIPT_ROOT: Script root of the output note (4 elements)
+#! - SERIAL_NUM: Serial number of the output note (4 elements)
+#! - INPUTS: Input commitment of the output note (4 elements)
 #!
 #! Panics if:
 #! - account does not expose distribute procedure.
-#! - the number of inputs is not exactly 9.
+#! - the number of inputs is not exactly 8 or 16.
 begin
     dropw
     # => [pad(16)]
@@ -39,23 +57,66 @@ begin
     push.0 exec.active_note::get_inputs
     # => [num_inputs, inputs_ptr, pad(16)]
 
-    # Verify we have the correct number of inputs
-    eq.MINT_NOTE_INPUTS_NUMBER assert.err=ERR_MINT_WRONG_NUMBER_OF_INPUTS drop
-    # => [pad(16)]
+    dup
+    # => [num_inputs, num_inputs, inputs_ptr, pad(16)]
 
-    # Load amount
-    mem_loadw_be.0
-    # => [RECIPIENT, pad(12)]
+    eq.MINT_NOTE_INPUTS_PUBLIC
+    # => [is_public_output_note, num_inputs, inputs_ptr, pad(16)]
 
-    swapw mem_loadw_be.4
-    # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
+    if.true
+        # public output note creation
 
-    mem_load.8
-    # => [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
+        drop drop
+        # => [pad(16)]
 
-    movup.9 drop
-    # => [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
+        mem_loadw_be.4
+        # => [SCRIPT_ROOT, pad(12)]
+
+        padw mem_loadw_be.8
+        # => [SERIAL_NUM, SCRIPT_ROOT, pad(12)]
+
+        push.OUTPUT_PUBLIC_NOTE_INPUTS_LEN.OUTPUT_PUBLIC_NOTE_INPUTS_ADDR
+        # => [inputs_ptr = 12, num_inputs = 4, SERIAL_NUM, SCRIPT_ROOT, pad(12)]
+
+        exec.note::build_recipient
+        # => [RECIPIENT, pad(12)]
+
+        padw mem_loadw_be.0
+        # => [amount, tag, aux, execution_hint, RECIPIENT, pad(12)]
+
+        push.OUTPUT_NOTE_TYPE_PUBLIC
+        # => [note_type, amount, tag, aux, execution_hint, RECIPIENT, pad(12)]
+
+        movdn.3
+        # => [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(12)]
+
+    else
+        # private output note creation
+
+        eq.MINT_NOTE_INPUTS_PRIVATE assert.err=ERR_MINT_WRONG_NUMBER_OF_INPUTS drop
+        # => [inputs_ptr, pad(16)]
+
+        drop
+        # => [pad(16)]
+
+        mem_loadw_be.4
+        # => [RECIPIENT, pad(12)]
+
+        padw mem_loadw_be.0
+        # => [amount, tag, aux, execution_hint, RECIPIENT, pad(12)]
+
+        push.OUTPUT_NOTE_TYPE_PRIVATE
+        # => [note_type, amount, tag, aux, execution_hint, RECIPIENT, pad(12)]
+
+        movdn.3
+        # => [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(12)]
+
+    end
+    # => [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(12)]
 
     call.network_faucet::distribute
+    # => [pad(21))]
+
+    dropw drop
     # => [pad(16)]
 end
