@@ -381,7 +381,7 @@ impl From<StorageMap> for StorageMapDelta {
         StorageMapDelta::new(
             map.into_entries()
                 .into_iter()
-                .map(|(key, value)| (LexicographicWord::new(key), value))
+                .map(|(key, value)| (LexicographicWord::from(key), value))
                 .collect(),
         )
     }

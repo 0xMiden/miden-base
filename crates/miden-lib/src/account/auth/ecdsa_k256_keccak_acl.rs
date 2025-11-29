@@ -159,7 +159,7 @@ impl From<AuthEcdsaK256KeccakAcl> for AccountComponent {
             .auth_trigger_procedures
             .iter()
             .enumerate()
-            .map(|(i, proc_root)| (Word::from([i as u32, 0, 0, 0]), *proc_root));
+            .map(|(i, proc_root)| (Word::from([i as u32, 0, 0, 0]).into(), *proc_root));
 
         // Safe to unwrap because we know that the map keys are unique.
         storage_slots.push(StorageSlot::Map(StorageMap::with_entries(map_entries).unwrap()));
@@ -242,7 +242,7 @@ mod tests {
             for (i, expected_proc_root) in auth_trigger_procedures.iter().enumerate() {
                 let proc_root = account
                     .storage()
-                    .get_map_item(2, Word::from([i as u32, 0, 0, 0]))
+                    .get_map_item(2, Word::from([i as u32, 0, 0, 0]).into())
                     .expect("storage map access failed");
                 assert_eq!(proc_root, *expected_proc_root);
             }
@@ -250,7 +250,7 @@ mod tests {
             // When no procedures, the map should return empty for key [0,0,0,0]
             let proc_root = account
                 .storage()
-                .get_map_item(2, Word::empty())
+                .get_map_item(2, Word::empty().into())
                 .expect("storage map access failed");
             assert_eq!(proc_root, Word::empty());
         }

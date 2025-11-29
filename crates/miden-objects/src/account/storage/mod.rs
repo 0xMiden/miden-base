@@ -19,7 +19,7 @@ mod slot;
 pub use slot::{SlotName, StorageSlot, StorageSlotType};
 
 mod map;
-pub use map::{PartialStorageMap, StorageMap, StorageMapWitness};
+pub use map::{PartialStorageMap, StorageMap, StorageMapKey, StorageMapWitness};
 
 mod header;
 pub use header::{AccountStorageHeader, StorageSlotHeader};
@@ -147,7 +147,7 @@ impl AccountStorage {
     /// # Errors:
     /// - If the index is out of bounds
     /// - If the [StorageSlot] is not [StorageSlotType::Map]
-    pub fn get_map_item(&self, index: u8, key: Word) -> Result<Word, AccountError> {
+    pub fn get_map_item(&self, index: u8, key: StorageMapKey) -> Result<Word, AccountError> {
         match self.slots.get(index as usize).ok_or(AccountError::StorageIndexOutOfBounds {
             slots_len: self.slots.len() as u8,
             index,
@@ -243,7 +243,7 @@ impl AccountStorage {
     pub fn set_map_item(
         &mut self,
         index: u8,
-        key: Word,
+        key: StorageMapKey,
         value: Word,
     ) -> Result<(Word, Word), AccountError> {
         // check if index is in bounds

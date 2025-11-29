@@ -11,6 +11,7 @@ use crate::account::{
     AccountStorageDelta,
     StorageMap,
     StorageMapDelta,
+    StorageMapKey,
     StorageSlot,
 };
 use crate::note::NoteAssets;
@@ -85,13 +86,23 @@ pub const STORAGE_VALUE_0: Word =
     Word::new([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]);
 pub const STORAGE_VALUE_1: Word =
     Word::new([Felt::new(5), Felt::new(6), Felt::new(7), Felt::new(8)]);
-pub const STORAGE_LEAVES_2: [(Word, Word); 2] = [
+pub const STORAGE_LEAVES_2: [(StorageMapKey, Word); 2] = [
     (
-        Word::new([Felt::new(101), Felt::new(102), Felt::new(103), Felt::new(104)]),
+        StorageMapKey::new_unchecked(Word::new([
+            Felt::new(101),
+            Felt::new(102),
+            Felt::new(103),
+            Felt::new(104),
+        ])),
         Word::new([Felt::new(1_u64), Felt::new(2_u64), Felt::new(3_u64), Felt::new(4_u64)]),
     ),
     (
-        Word::new([Felt::new(105), Felt::new(106), Felt::new(107), Felt::new(108)]),
+        StorageMapKey::new_unchecked(Word::new([
+            Felt::new(105),
+            Felt::new(106),
+            Felt::new(107),
+            Felt::new(108),
+        ])),
         Word::new([Felt::new(5_u64), Felt::new(6_u64), Felt::new(7_u64), Felt::new(8_u64)]),
     ),
 ];

@@ -1,7 +1,7 @@
 use alloc::vec::Vec;
 
 use miden_lib::transaction::{EventId, TransactionEventId};
-use miden_objects::account::{AccountId, StorageMap, StorageSlotType};
+use miden_objects::account::{AccountId, StorageMap, StorageMapKey, StorageSlotType};
 use miden_objects::asset::{Asset, AssetVault, AssetVaultKey, FungibleAsset};
 use miden_objects::note::{NoteId, NoteInputs, NoteMetadata, NoteRecipient, NoteScript};
 use miden_objects::transaction::TransactionSummary;
@@ -75,7 +75,7 @@ pub(crate) enum TransactionEvent {
         /// The root of the storage map for which a witness is requested.
         map_root: Word,
         /// The raw map key for which a witness is requested.
-        map_key: Word,
+        map_key: StorageMapKey,
     },
 
     /// The data necessary to request an asset witness from the data store.
@@ -293,7 +293,7 @@ impl TransactionEvent {
                     process,
                     slot_index,
                     current_map_root,
-                    map_key,
+                    map_key.into(),
                 )?
             },
 
@@ -308,7 +308,7 @@ impl TransactionEvent {
                     process,
                     slot_index,
                     current_map_root,
-                    map_key,
+                    map_key.into(),
                 )?
             },
 
@@ -602,11 +602,11 @@ fn on_account_storage_map_item_accessed<'store, STORE>(
     process: &ProcessState,
     slot_index: Felt,
     current_map_root: Word,
-    map_key: Word,
+    map_key: StorageMapKey,
 ) -> Result<Option<TransactionEvent>, TransactionKernelError> {
     let active_account_id = process.get_active_account_id()?;
-    let hashed_map_key = StorageMap::hash_key(map_key);
-    let leaf_index = StorageMap::hashed_map_key_to_leaf_index(hashed_map_key);
+    let hashed_map_key = map_key.hash();
+    let leaf_index = hashed_map_key.hashed_map_key_to_leaf_index();
 
     let slot_index = u8::try_from(slot_index).map_err(|err| {
         TransactionKernelError::other(format!("failed to convert slot index into u8: {err}"))

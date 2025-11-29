@@ -2,7 +2,7 @@ use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 
 use miden_objects::account::auth::PublicKeyCommitment;
-use miden_objects::account::{AccountComponent, StorageMap, StorageSlot};
+use miden_objects::account::{AccountComponent, StorageMap, StorageMapKey, StorageSlot};
 use miden_objects::{AccountError, Word};
 
 use crate::account::components::rpo_falcon_512_multisig_library;
@@ -125,7 +125,7 @@ impl From<AuthRpoFalcon512Multisig> for AccountComponent {
             .approvers()
             .iter()
             .enumerate()
-            .map(|(i, pub_key)| (Word::from([i as u32, 0, 0, 0]), (*pub_key).into()));
+            .map(|(i, pub_key)| (Word::from([i as u32, 0, 0, 0]).into(), (*pub_key).into()));
 
         // Safe to unwrap because we know that the map keys are unique.
         storage_slots.push(StorageSlot::Map(StorageMap::with_entries(map_entries).unwrap()));
@@ -136,11 +136,9 @@ impl From<AuthRpoFalcon512Multisig> for AccountComponent {
 
         // Slot 3: A map which stores procedure thresholds (PROC_ROOT -> threshold)
         let proc_threshold_roots = StorageMap::with_entries(
-            multisig
-                .config
-                .proc_thresholds()
-                .iter()
-                .map(|(proc_root, threshold)| (*proc_root, Word::from([*threshold, 0, 0, 0]))),
+            multisig.config.proc_thresholds().iter().map(|(proc_root, threshold)| {
+                (StorageMapKey::from(*proc_root), Word::from([*threshold, 0, 0, 0]))
+            }),
         )
         .unwrap();
         storage_slots.push(StorageSlot::Map(proc_threshold_roots));
@@ -193,7 +191,7 @@ mod tests {
         for (i, expected_pub_key) in approvers.iter().enumerate() {
             let stored_pub_key = account
                 .storage()
-                .get_map_item(1, Word::from([i as u32, 0, 0, 0]))
+                .get_map_item(1, Word::from([i as u32, 0, 0, 0]).into())
                 .expect("storage map access failed");
             assert_eq!(stored_pub_key, Word::from(*expected_pub_key));
         }
@@ -224,7 +222,7 @@ mod tests {
 
         let stored_pub_key = account
             .storage()
-            .get_map_item(1, Word::from([0u32, 0, 0, 0]))
+            .get_map_item(1, Word::from([0u32, 0, 0, 0]).into())
             .expect("storage map access failed");
         assert_eq!(stored_pub_key, Word::from(pub_key));
     }

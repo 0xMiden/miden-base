@@ -12,6 +12,7 @@ use miden_crypto::merkle::{
     SmtProof,
 };
 
+use super::StorageMapKey;
 use crate::account::{StorageMap, StorageMapWitness};
 use crate::utils::serde::{ByteReader, DeserializationError};
 
@@ -36,7 +37,7 @@ pub struct PartialStorageMap {
     ///
     /// It is an invariant of this type that the map's entries are always consistent with the
     /// partial SMT's entries and vice-versa.
-    entries: BTreeMap<Word, Word>,
+    entries: BTreeMap<StorageMapKey, Word>,
 }
 
 impl PartialStorageMap {
@@ -104,8 +105,8 @@ impl PartialStorageMap {
     /// - a non-empty [`Word`] if the key is tracked by this map and exists in it,
     /// - [`Word::empty`] if the key is tracked by this map and does not exist,
     /// - `None` if the key is not tracked by this map.
-    pub fn get(&self, raw_key: &Word) -> Option<Word> {
-        let hashed_key = StorageMap::hash_key(*raw_key);
+    pub fn get(&self, raw_key: &StorageMapKey) -> Option<Word> {
+        let hashed_key = raw_key.hash().inner();
         // This returns an error if the key is not tracked which we map to a `None`.
         self.partial_smt.get_value(&hashed_key).ok()
     }
@@ -118,8 +119,8 @@ impl PartialStorageMap {
     ///
     /// Returns an error if:
     /// - the key is not tracked by this partial storage map.
-    pub fn open(&self, raw_key: &Word) -> Result<StorageMapWitness, MerkleError> {
-        let hashed_key = StorageMap::hash_key(*raw_key);
+    pub fn open(&self, raw_key: &StorageMapKey) -> Result<StorageMapWitness, MerkleError> {
+        let hashed_key = raw_key.hash().inner();
         let smt_proof = self.partial_smt.open(&hashed_key)?;
         let value = self.entries.get(raw_key).copied().unwrap_or_default();
 
@@ -139,7 +140,7 @@ impl PartialStorageMap {
     /// Returns an iterator over the key-value pairs in this storage map.
     ///
     /// Note that the returned key is the raw map key.
-    pub fn entries(&self) -> impl Iterator<Item = (&Word, &Word)> {
+    pub fn entries(&self) -> impl Iterator<Item = (&StorageMapKey, &Word)> {
         self.entries.iter()
     }
 
@@ -174,8 +175,8 @@ impl Deserializable for PartialStorageMap {
         let num_entries: usize = source.read()?;
 
         for _ in 0..num_entries {
-            let key: Word = source.read()?;
-            let hashed_map_key = StorageMap::hash_key(key);
+            let key: StorageMapKey = StorageMapKey::new_unchecked(source.read()?);
+            let hashed_map_key = key.hash().inner();
             let value = partial_smt.get_value(&hashed_map_key).map_err(|err| {
                 DeserializationError::InvalidValue(format!(
                     "failed to find map key {key} in partial SMT: {err}"

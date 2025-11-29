@@ -23,6 +23,7 @@ use crate::account::{
     AccountStorage,
     AccountType,
     SlotName,
+    StorageMapKey,
     StorageValueName,
     StorageValueNameError,
     TemplateTypeError,
@@ -407,9 +408,13 @@ pub enum AccountDeltaError {
 #[derive(Debug, Error)]
 pub enum StorageMapError {
     #[error("map entries contain key {key} twice with values {value0} and {value1}")]
-    DuplicateKey { key: Word, value0: Word, value1: Word },
+    DuplicateKey {
+        key: StorageMapKey,
+        value0: Word,
+        value1: Word,
+    },
     #[error("map key {raw_key} is not present in provided SMT proof")]
-    MissingKey { raw_key: Word },
+    MissingKey { raw_key: StorageMapKey },
 }
 
 // BATCH ACCOUNT UPDATE ERROR

@@ -12,8 +12,8 @@ use super::{
     StorageValueName,
     TemplateRequirementsIter,
 };
-use crate::account::StorageMap;
 use crate::account::component::template::AccountComponentTemplateError;
+use crate::account::{StorageMap, StorageMapKey};
 use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 use crate::{Felt, FieldElement, Word};
 
@@ -588,15 +588,17 @@ impl MapRepresentation {
                 let entries = entries
                     .iter()
                     .map(|map_entry| {
-                        let key = map_entry
-                            .key()
-                            .try_build_word(init_storage_data, identifier.name.clone())?;
+                        let key = StorageMapKey::new_unchecked(
+                            map_entry
+                                .key()
+                                .try_build_word(init_storage_data, identifier.name.clone())?,
+                        );
                         let value = map_entry
                             .value()
                             .try_build_word(init_storage_data, identifier.name.clone())?;
                         Ok((key, value))
                     })
-                    .collect::<Result<Vec<(Word, Word)>, _>>()?;
+                    .collect::<Result<Vec<(StorageMapKey, Word)>, _>>()?;
 
                 StorageMap::with_entries(entries).map_err(|err| {
                     AccountComponentTemplateError::StorageMapHasDuplicateKeys(Box::new(err))
@@ -604,7 +606,11 @@ impl MapRepresentation {
             },
             MapRepresentation::Template { identifier } => {
                 if let Some(entries) = init_storage_data.map_entries(&identifier.name) {
-                    return StorageMap::with_entries(entries.clone()).map_err(|err| {
+                    return StorageMap::with_entries(entries.into_iter().map(|map_entry| {
+                        let key = StorageMapKey::new_unchecked(map_entry.0);
+                        (key, map_entry.1)
+                    }))
+                    .map_err(|err| {
                         AccountComponentTemplateError::StorageMapHasDuplicateKeys(Box::new(err))
                     });
                 }

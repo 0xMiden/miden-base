@@ -172,7 +172,8 @@ async fn setting_map_item_with_lazy_loading_succeeds() -> anyhow::Result<()> {
 
     let non_existent_key = Word::from([5, 5, 5, 5u32]);
     assert!(
-        mock_map.open(&non_existent_key).get(&non_existent_key).unwrap() == Word::empty(),
+        mock_map.open(&non_existent_key.into()).get(&non_existent_key.into()).unwrap()
+            == Word::empty(),
         "test setup requires that the non existent key does not exist"
     );
 
@@ -218,7 +219,10 @@ async fn setting_map_item_with_lazy_loading_succeeds() -> anyhow::Result<()> {
         .await?;
 
     let map_delta = tx.account_delta().storage().maps().get(&map_index).unwrap();
-    assert_eq!(map_delta.entries().get(&LexicographicWord::new(existing_key)).unwrap(), &value0);
+    assert_eq!(
+        map_delta.entries().get(&LexicographicWord::new(existing_key.inner())).unwrap(),
+        &value0
+    );
     assert_eq!(
         map_delta.entries().get(&LexicographicWord::new(non_existent_key)).unwrap(),
         &value1
@@ -236,7 +240,8 @@ async fn getting_map_item_with_lazy_loading_succeeds() -> anyhow::Result<()> {
 
     let non_existent_key = Word::from([5, 5, 5, 5u32]);
     assert!(
-        mock_map.open(&non_existent_key).get(&non_existent_key).unwrap() == Word::empty(),
+        mock_map.open(&non_existent_key.into()).get(&non_existent_key.into()).unwrap()
+            == Word::empty(),
         "test setup requires that the non existent key does not exist"
     );
 

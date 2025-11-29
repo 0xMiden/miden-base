@@ -78,7 +78,7 @@ impl StorageDeltaTracker {
                         storage_map.entries().for_each(|(key, value)| {
                             storage_delta_tracker.set_map_item(
                                 slot_idx,
-                                *key,
+                                (*key).into(),
                                 Word::empty(),
                                 *value,
                             );

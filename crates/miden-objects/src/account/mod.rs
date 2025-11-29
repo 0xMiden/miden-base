@@ -70,6 +70,7 @@ pub use storage::{
     PartialStorageMap,
     SlotName,
     StorageMap,
+    StorageMapKey,
     StorageMapWitness,
     StorageSlot,
     StorageSlotType,
@@ -449,7 +450,7 @@ impl TryFrom<Account> for AccountDelta {
                         storage_map
                             .into_entries()
                             .into_iter()
-                            .map(|(key, value)| (LexicographicWord::from(key), value))
+                            .map(|(key, value)| (LexicographicWord::from(key.inner()), value))
                             .collect(),
                     );
                     map_slots.insert(slot_idx, map_delta);
@@ -639,6 +640,7 @@ mod tests {
         PartialAccount,
         StorageMap,
         StorageMapDelta,
+        StorageMapKey,
         StorageSlot,
     };
     use crate::asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset};
@@ -700,7 +702,12 @@ mod tests {
         let storage_slot_value_1 = StorageSlot::Value(Word::from([5, 6, 7, 8u32]));
         let mut storage_map = StorageMap::with_entries([
             (
-                Word::new([Felt::new(101), Felt::new(102), Felt::new(103), Felt::new(104)]),
+                StorageMapKey::from(Word::new([
+                    Felt::new(101),
+                    Felt::new(102),
+                    Felt::new(103),
+                    Felt::new(104),
+                ])),
                 Word::from([
                     Felt::new(1_u64),
                     Felt::new(2_u64),
@@ -709,7 +716,12 @@ mod tests {
                 ]),
             ),
             (
-                Word::new([Felt::new(105), Felt::new(106), Felt::new(107), Felt::new(108)]),
+                StorageMapKey::from(Word::new([
+                    Felt::new(105),
+                    Felt::new(106),
+                    Felt::new(107),
+                    Felt::new(108),
+                ])),
                 Word::new([Felt::new(5_u64), Felt::new(6_u64), Felt::new(7_u64), Felt::new(8_u64)]),
             ),
         ])
@@ -730,7 +742,7 @@ mod tests {
 
         let updated_map =
             StorageMapDelta::from_iters([], [(new_map_entry.0, new_map_entry.1.into())]);
-        storage_map.insert(new_map_entry.0, new_map_entry.1.into()).unwrap();
+        storage_map.insert(new_map_entry.0.into(), new_map_entry.1.into()).unwrap();
 
         // build account delta
         let final_nonce = Felt::new(2);

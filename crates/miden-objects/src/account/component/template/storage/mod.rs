@@ -746,7 +746,7 @@ mod tests {
                     "0x0000000000000000000000000000000000000000000000000000000000000010",
                 )
                 .unwrap();
-                assert_eq!(storage_map.get(&main_key), main_value_expected);
+                assert_eq!(storage_map.get(&main_key.into()), main_value_expected);
             },
             _ => panic!("expected map storage slot"),
         }
@@ -917,7 +917,7 @@ mod tests {
                     "0x0000000000000000000000000000000000000000000000000000000000000002",
                 )
                 .unwrap();
-                assert_eq!(storage_map.get(&second_key), second_value);
+                assert_eq!(storage_map.get(&second_key.into()), second_value);
             },
             _ => panic!("expected map storage slot"),
         }

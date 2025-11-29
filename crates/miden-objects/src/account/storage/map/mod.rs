@@ -7,7 +7,13 @@ use super::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serial
 use crate::account::StorageMapDelta;
 use crate::crypto::merkle::{InnerNodeInfo, LeafIndex, SMT_DEPTH, Smt, SmtLeaf};
 use crate::errors::StorageMapError;
-use crate::{AccountError, Felt, Hasher};
+use crate::{AccountError, Felt};
+
+mod storage_map_key;
+pub use storage_map_key::StorageMapKey;
+
+mod hashed_storage_map_key;
+pub use hashed_storage_map_key::HashedStorageMapKey;
 
 mod partial;
 pub use partial::PartialStorageMap;
@@ -46,7 +52,7 @@ pub struct StorageMap {
     ///
     /// It is an invariant of this type that the map's entries are always consistent with the SMT's
     /// entries and vice-versa.
-    entries: BTreeMap<Word, Word>,
+    entries: BTreeMap<StorageMapKey, Word>,
 }
 
 impl StorageMap {
@@ -78,8 +84,8 @@ impl StorageMap {
     ///
     /// Returns an error if:
     /// - the provided entries contain multiple values for the same key.
-    pub fn with_entries<I: ExactSizeIterator<Item = (Word, Word)>>(
-        entries: impl IntoIterator<Item = (Word, Word), IntoIter = I>,
+    pub fn with_entries<I: ExactSizeIterator<Item = (StorageMapKey, Word)>>(
+        entries: impl IntoIterator<Item = (StorageMapKey, Word), IntoIter = I>,
     ) -> Result<Self, StorageMapError> {
         let mut map = BTreeMap::new();
 
@@ -97,8 +103,8 @@ impl StorageMap {
     }
 
     /// Creates a new [`StorageMap`] from the given map. For internal use.
-    fn from_btree_map(entries: BTreeMap<Word, Word>) -> Self {
-        let hashed_keys_iter = entries.iter().map(|(key, value)| (Self::hash_key(*key), *value));
+    fn from_btree_map(entries: BTreeMap<StorageMapKey, Word>) -> Self {
+        let hashed_keys_iter = entries.iter().map(|(key, value)| (key.hash().inner(), *value));
         let smt = Smt::with_entries(hashed_keys_iter)
             .expect("btree maps should not contain duplicate keys");
 
@@ -131,15 +137,15 @@ impl StorageMap {
 
     /// Returns the value corresponding to the key or [`Self::EMPTY_VALUE`] if the key is not
     /// associated with a value.
-    pub fn get(&self, raw_key: &Word) -> Word {
+    pub fn get(&self, raw_key: &StorageMapKey) -> Word {
         self.entries.get(raw_key).copied().unwrap_or_default()
     }
 
     /// Returns an opening of the leaf associated with raw key.
     ///
     /// Conceptually, an opening is a Merkle path to the leaf, as well as the leaf itself.
-    pub fn open(&self, raw_key: &Word) -> StorageMapWitness {
-        let hashed_map_key = Self::hash_key(*raw_key);
+    pub fn open(&self, raw_key: &StorageMapKey) -> StorageMapWitness {
+        let hashed_map_key = raw_key.hash().inner();
         let smt_proof = self.smt.open(&hashed_map_key);
         let value = self.entries.get(raw_key).copied().unwrap_or_default();
 
@@ -159,7 +165,7 @@ impl StorageMap {
     /// Returns an iterator over the key-value pairs in this storage map.
     ///
     /// Note that the returned key is the raw map key.
-    pub fn entries(&self) -> impl Iterator<Item = (&Word, &Word)> {
+    pub fn entries(&self) -> impl Iterator<Item = (&StorageMapKey, &Word)> {
         self.entries.iter()
     }
 
@@ -175,14 +181,14 @@ impl StorageMap {
     /// [`Self::EMPTY_VALUE`] if no entry was previously present.
     ///
     /// If the provided `value` is [`Self::EMPTY_VALUE`] the entry will be removed.
-    pub fn insert(&mut self, raw_key: Word, value: Word) -> Result<Word, AccountError> {
+    pub fn insert(&mut self, raw_key: StorageMapKey, value: Word) -> Result<Word, AccountError> {
         if value == EMPTY_WORD {
             self.entries.remove(&raw_key);
         } else {
             self.entries.insert(raw_key, value);
         }
 
-        let hashed_key = Self::hash_key(raw_key);
+        let hashed_key = raw_key.hash().inner();
         self.smt
             .insert(hashed_key, value)
             .map_err(AccountError::MaxNumStorageMapLeavesExceeded)
@@ -192,27 +198,15 @@ impl StorageMap {
     pub fn apply_delta(&mut self, delta: &StorageMapDelta) -> Result<Word, AccountError> {
         // apply the updated and cleared leaves to the storage map
         for (&key, &value) in delta.entries().iter() {
-            self.insert(key.into_inner(), value)?;
+            self.insert(StorageMapKey::new_unchecked(key.into_inner()), value)?;
         }
 
         Ok(self.root())
     }
 
     /// Consumes the map and returns the underlying map of entries.
-    pub fn into_entries(self) -> BTreeMap<Word, Word> {
+    pub fn into_entries(self) -> BTreeMap<StorageMapKey, Word> {
         self.entries
-    }
-
-    /// Hashes the given key to get the key of the SMT.
-    pub fn hash_key(raw_key: Word) -> Word {
-        Hasher::hash_elements(raw_key.as_elements())
-    }
-
-    // TODO: Replace with https://github.com/0xMiden/crypto/issues/515 once implemented.
-    /// Returns the leaf index of a map key.
-    pub fn hashed_map_key_to_leaf_index(hashed_map_key: Word) -> Felt {
-        // The third element in an SMT key is the index.
-        hashed_map_key[3]
     }
 }
 
@@ -247,6 +241,7 @@ mod tests {
     use assert_matches::assert_matches;
 
     use super::{Deserializable, EMPTY_STORAGE_MAP_ROOT, Serializable, StorageMap, Word};
+    use crate::account::StorageMapKey;
     use crate::errors::StorageMapError;
 
     #[test]
@@ -257,9 +252,9 @@ mod tests {
         assert_eq!(storage_map_default, StorageMap::read_from_bytes(&bytes).unwrap());
 
         // StorageMap with values
-        let storage_map_leaves_2: [(Word, Word); 2] = [
-            (Word::from([101, 102, 103, 104u32]), Word::from([1, 2, 3, 4u32])),
-            (Word::from([105, 106, 107, 108u32]), Word::from([5, 6, 7, 8u32])),
+        let storage_map_leaves_2: [(StorageMapKey, Word); 2] = [
+            (Word::from([101, 102, 103, 104u32]).into(), Word::from([1, 2, 3, 4u32])),
+            (Word::from([105, 106, 107, 108u32]).into(), Word::from([5, 6, 7, 8u32])),
         ];
         let storage_map = StorageMap::with_entries(storage_map_leaves_2).unwrap();
         assert_eq!(storage_map.num_entries(), 2);
@@ -282,9 +277,9 @@ mod tests {
     #[test]
     fn account_storage_map_fails_on_duplicate_entries() {
         // StorageMap with values
-        let storage_map_leaves_2: [(Word, Word); 2] = [
-            (Word::from([101, 102, 103, 104u32]), Word::from([1, 2, 3, 4u32])),
-            (Word::from([101, 102, 103, 104u32]), Word::from([5, 6, 7, 8u32])),
+        let storage_map_leaves_2: [(StorageMapKey, Word); 2] = [
+            (Word::from([101, 102, 103, 104u32]).into(), Word::from([1, 2, 3, 4u32])),
+            (Word::from([101, 102, 103, 104u32]).into(), Word::from([5, 6, 7, 8u32])),
         ];
 
         let error = StorageMap::with_entries(storage_map_leaves_2).unwrap_err();

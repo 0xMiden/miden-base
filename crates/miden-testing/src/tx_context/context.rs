@@ -292,7 +292,7 @@ impl DataStore for TransactionContext {
                         ))
                     })?;
 
-                Ok(storage_map.open(&map_key))
+                Ok(storage_map.open(&map_key.into()))
             } else {
                 let (foreign_account, _witness) = self
                     .foreign_account_inputs
@@ -322,7 +322,7 @@ impl DataStore for TransactionContext {
                         ))
                     })?;
 
-                Ok(map.open(&map_key))
+                Ok(map.open(&map_key.into()))
             }
         }
     }

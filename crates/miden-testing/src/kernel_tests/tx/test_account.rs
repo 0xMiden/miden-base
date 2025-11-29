@@ -30,6 +30,7 @@ use miden_objects::account::{
     AccountStorageMode,
     AccountType,
     StorageMap,
+    StorageMapKey,
     StorageSlot,
 };
 use miden_objects::assembly::diagnostics::{IntoDiagnostic, NamedSource, Report, WrapErr, miette};
@@ -77,7 +78,7 @@ pub async fn compute_commitment() -> miette::Result<()> {
     let mut account_clone = account.clone();
     let key = Word::from([1, 2, 3, 4u32]);
     let value = Word::from([2, 3, 4, 5u32]);
-    account_clone.storage_mut().set_map_item(2, key, value).unwrap();
+    account_clone.storage_mut().set_map_item(2, key.into(), value).unwrap();
     let expected_commitment = account_clone.commitment();
 
     let tx_script = format!(
@@ -603,7 +604,7 @@ async fn test_set_map_item() -> miette::Result<()> {
     let exec_output = &tx_context.execute_code(&code).await.unwrap();
 
     let mut new_storage_map = AccountStorage::mock_map();
-    new_storage_map.insert(new_key, new_value).unwrap();
+    new_storage_map.insert(new_key.into(), new_value).unwrap();
 
     assert_eq!(
         new_storage_map.root(),
@@ -1009,7 +1010,7 @@ async fn prove_account_creation_with_non_empty_storage() -> anyhow::Result<()> {
     let slot1 = StorageSlot::Value(Word::from([10, 20, 30, 40u32]));
     let mut map_entries = Vec::new();
     for _ in 0..10 {
-        map_entries.push((rand_value::<Word>(), rand_value::<Word>()));
+        map_entries.push((StorageMapKey::from(rand_value::<Word>()), rand_value::<Word>()));
     }
     let map_slot = StorageSlot::Map(StorageMap::with_entries(map_entries.clone())?);
 

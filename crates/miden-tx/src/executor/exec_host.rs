@@ -546,7 +546,7 @@ where
                     self.on_account_storage_map_witness_requested(
                         active_account_id,
                         map_root,
-                        map_key,
+                        map_key.into(),
                     )
                     .await
                 },
