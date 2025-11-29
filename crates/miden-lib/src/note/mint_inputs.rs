@@ -79,49 +79,6 @@ impl MintNoteInputs {
             aux,
         })
     }
-
-    pub fn amount(&self) -> Felt {
-        match self {
-            Self::Private { amount, .. } => *amount,
-            Self::Public { amount, .. } => *amount,
-        }
-    }
-
-    pub fn tag(&self) -> Felt {
-        match self {
-            Self::Private { tag, .. } => *tag,
-            Self::Public { tag, .. } => *tag,
-        }
-    }
-
-    pub fn execution_hint(&self) -> NoteExecutionHint {
-        match self {
-            Self::Private { execution_hint, .. } => *execution_hint,
-            Self::Public { execution_hint, .. } => *execution_hint,
-        }
-    }
-
-    pub fn aux(&self) -> Felt {
-        match self {
-            Self::Private { aux, .. } => *aux,
-            Self::Public { aux, .. } => *aux,
-        }
-    }
-
-    pub fn is_private(&self) -> bool {
-        matches!(self, Self::Private { .. })
-    }
-
-    pub fn is_public(&self) -> bool {
-        matches!(self, Self::Public { .. })
-    }
-
-    pub fn num_inputs(&self) -> usize {
-        match self {
-            Self::Private { .. } => 8,
-            Self::Public { .. } => 16,
-        }
-    }
 }
 
 impl TryFrom<MintNoteInputs> for NoteInputs {

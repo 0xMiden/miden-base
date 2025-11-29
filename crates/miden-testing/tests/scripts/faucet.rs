@@ -725,8 +725,6 @@ async fn test_mint_note_private_output_mode() -> anyhow::Result<()> {
     )?;
 
     assert_eq!(mint_note.inputs().num_values(), 8);
-    assert!(mint_inputs.is_private());
-    assert!(!mint_inputs.is_public());
 
     builder.add_output_note(OutputNote::Full(mint_note.clone()));
     let mut mock_chain = builder.build()?;
@@ -820,8 +818,6 @@ async fn test_mint_note_public_output_mode() -> anyhow::Result<()> {
     )?;
 
     assert_eq!(mint_note.inputs().num_values(), 16);
-    assert!(!mint_inputs.is_private());
-    assert!(mint_inputs.is_public());
 
     builder.add_output_note(OutputNote::Full(mint_note.clone()));
     let mut mock_chain = builder.build()?;
