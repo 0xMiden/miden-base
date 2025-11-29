@@ -5,7 +5,6 @@ use.miden::note
 use.miden::output_note
 use.std::math::u64
 use.std::sys
-
 use std::crypto::hashes::keccak256
 
 const.MMR_PTR=42
@@ -91,7 +90,7 @@ proc create_burn_note.8
     # => []
 end
 
-#! Converts B2AGG asset data to u32 format.
+#! Converts B2AGG asset data to u32 format prior to keccak256 hashing.
 #!
 #! This procedure converts the asset and input data into a format suitable for u32 operations,
 #! splitting the asset components into high and low parts.
