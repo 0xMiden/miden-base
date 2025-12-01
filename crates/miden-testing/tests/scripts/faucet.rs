@@ -668,7 +668,7 @@ async fn network_faucet_burn() -> anyhow::Result<()> {
 
 /// Tests creating a MINT note with private output mode (8 inputs)
 #[tokio::test]
-async fn test_mint_note_private_output_mode() -> anyhow::Result<()> {
+async fn test_mint_note_private_output_note() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
 
     let faucet_owner_account_id = AccountId::dummy(
