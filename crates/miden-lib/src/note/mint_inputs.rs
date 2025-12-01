@@ -4,8 +4,10 @@ use miden_objects::note::{NoteExecutionHint, NoteInputs};
 use miden_objects::{Felt, NoteError, Word};
 
 /// Represents the different input formats for MINT notes.
-/// - Private: Creates a private output note using a precomputed recipient digest (8 inputs)
-/// - Public: Creates a public output note by providing script root, serial number, and inputs (16
+/// - Private: Creates a private output note using a precomputed recipient digest (8 MINT note
+///   inputs)
+/// - Public: Creates a public output note by providing script root, serial number, and
+///   variable-length inputs (12+ MINT note inputs: 12 fixed + variable number of output note
 ///   inputs)
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MintNoteInputs {
@@ -19,7 +21,7 @@ pub enum MintNoteInputs {
     Public {
         script_root: Word,
         serial_num: Word,
-        inputs: Word,
+        inputs: Vec<Felt>,
         amount: Felt,
         tag: Felt,
         execution_hint: NoteExecutionHint,
@@ -53,21 +55,13 @@ impl MintNoteInputs {
         execution_hint: NoteExecutionHint,
         aux: Felt,
     ) -> Result<Self, NoteError> {
-        if input_values.len() > 4 {
-            return Err(NoteError::other(
-                "public output note inputs cannot have more than 4 elements",
-            ));
-        }
-
-        let mut padded_inputs = input_values;
-        padded_inputs.resize(4, Felt::new(0));
-        let inputs =
-            Word::from([padded_inputs[0], padded_inputs[1], padded_inputs[2], padded_inputs[3]]);
+        // No limit on input_values length since inputs are at the end of MINT note inputs
+        // The MINT note will compute NOTE_INPUTS - 12 to determine the number of output note inputs
 
         Ok(Self::Public {
             script_root,
             serial_num,
-            inputs,
+            inputs: input_values,
             amount,
             tag,
             execution_hint,
@@ -104,7 +98,7 @@ impl TryFrom<MintNoteInputs> for NoteInputs {
                 let mut input_values = vec![execution_hint.into(), aux, tag, amount];
                 input_values.extend_from_slice(script_root.as_elements());
                 input_values.extend_from_slice(serial_num.as_elements());
-                input_values.extend_from_slice(inputs.as_elements());
+                input_values.extend(inputs);
                 NoteInputs::new(input_values)
             },
         }
