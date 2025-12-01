@@ -22,7 +22,7 @@ use crate::{Felt, FieldElement};
 /// structure:
 ///
 /// ```text
-/// organization_name::component_name::slot_name
+/// project_name::component_name::slot_name
 /// ```
 ///
 /// ## Requirements
