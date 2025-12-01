@@ -2,7 +2,7 @@ use alloc::string::String;
 use core::fmt::{Debug, Display, Formatter};
 
 use miden_crypto::WordError;
-use miden_macros::WordWrapper;
+use miden_protocol_macros::WordWrapper;
 
 use super::{
     ByteReader,
@@ -54,14 +54,6 @@ impl Nullifier {
         elements[8..12].copy_from_slice(inputs_commitment.as_elements());
         elements[12..].copy_from_slice(asset_commitment.as_elements());
         Self(Hasher::hash_elements(&elements))
-    }
-
-    /// Creates a new [Nullifier] from a [Word] without validation.
-    ///
-    /// This is intended for use when deserializing from trusted sources or when the caller
-    /// can ensure the Word represents a valid Nullifier.
-    pub fn new_unchecked(word: Word) -> Self {
-        Self(word)
     }
 
     /// Returns the most significant felt (the last element in array)

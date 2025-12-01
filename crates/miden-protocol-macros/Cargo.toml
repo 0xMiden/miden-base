@@ -1,12 +1,12 @@
 [package]
 authors.workspace      = true
 categories             = ["development-tools::procedural-macro-helpers"]
-description            = "Procedural macros for Miden"
+description            = "Procedural macros for Miden protocol"
 edition.workspace      = true
 homepage.workspace     = true
-keywords               = ["macros", "miden"]
+keywords               = ["macros", "miden", "protocol"]
 license.workspace      = true
-name                   = "miden-macros"
+name                   = "miden-protocol-macros"
 readme                 = "README.md"
 repository.workspace   = true
 rust-version.workspace = true

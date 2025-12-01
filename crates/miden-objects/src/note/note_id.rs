@@ -1,7 +1,7 @@
 use alloc::string::String;
 use core::fmt::Display;
 
-use miden_macros::WordWrapper;
+use miden_protocol_macros::WordWrapper;
 
 use super::{Felt, Hasher, NoteDetails, Word};
 use crate::WordError;
@@ -37,14 +37,6 @@ impl NoteId {
     /// Returns a new [NoteId] instantiated from the provided note components.
     pub fn new(recipient: Word, asset_commitment: Word) -> Self {
         Self(Hasher::merge(&[recipient, asset_commitment]))
-    }
-
-    /// Creates a new [NoteId] from a [Word] without validation.
-    ///
-    /// This is intended for use when deserializing from trusted sources or when the caller
-    /// can ensure the Word represents a valid NoteId.
-    pub fn new_unchecked(word: Word) -> Self {
-        Self(word)
     }
 }
 

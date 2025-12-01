@@ -17,19 +17,19 @@ use syn::{Data, DeriveInput, Fields, Type, parse_macro_input};
 /// Generates accessor methods for tuple structs wrapping a `Word` type.
 ///
 /// Automatically implements:
+/// - `new_unchecked(Word) -> Self` - Construct without further checks
 /// - `as_elements(&self) -> &[Felt]` - Returns the elements representation
 /// - `as_bytes(&self) -> [u8; 32]` - Returns the byte representation
 /// - `to_hex(&self) -> String` - Returns a big-endian, hex-encoded string
 /// - `as_word(&self) -> Word` - Returns the underlying Word
-/// - `From<Self> for Word` - Convert to Word
-/// - `From<&Self> for Word` - Convert reference to Word
-/// - `From<Self> for [u8; 32]` - Convert to byte array
-/// - `From<&Self> for [u8; 32]` - Convert reference to byte array
+///
+/// Note: This macro does NOT generate `From` trait implementations. If you need conversions
+/// to/from `Word` or `[u8; 32]`, implement them manually for your type.
 ///
 /// # Example
 ///
 /// ```ignore
-/// use miden_macros::WordWrapper;
+/// use miden_protocol_macros::WordWrapper;
 /// use miden_crypto::word::Word;
 ///
 /// #[derive(WordWrapper)]
@@ -40,6 +40,10 @@ use syn::{Data, DeriveInput, Fields, Type, parse_macro_input};
 ///
 /// ```ignore
 /// impl NoteId {
+///     pub fn new_unchecked(word: Word) -> Self {
+///         Self(word)
+///     }
+///
 ///     pub fn as_elements(&self) -> &[Felt] {
 ///         self.0.as_elements()
 ///     }
@@ -54,30 +58,6 @@ use syn::{Data, DeriveInput, Fields, Type, parse_macro_input};
 ///
 ///     pub fn as_word(&self) -> Word {
 ///         self.0
-///     }
-/// }
-///
-/// impl From<NoteId> for Word {
-///     fn from(id: NoteId) -> Self {
-///         id.0
-///     }
-/// }
-///
-/// impl From<&NoteId> for Word {
-///     fn from(id: &NoteId) -> Self {
-///         id.0
-///     }
-/// }
-///
-/// impl From<NoteId> for [u8; 32] {
-///     fn from(id: NoteId) -> Self {
-///         id.0.into()
-///     }
-/// }
-///
-/// impl From<&NoteId> for [u8; 32] {
-///     fn from(id: &NoteId) -> Self {
-///         id.0.into()
 ///     }
 /// }
 /// ```
@@ -149,6 +129,11 @@ pub fn word_wrapper_derive(input: TokenStream) -> TokenStream {
 
     let expanded = quote! {
         impl #impl_generics #name #ty_generics #where_clause {
+            /// Construct without further checks from a given `Word`
+            pub fn new_unchecked(word: Word) -> Self {
+                Self(word)
+            }
+
             /// Returns the elements representation of this value.
             pub fn as_elements(&self) -> &[Felt] {
                 self.0.as_elements()
@@ -167,30 +152,6 @@ pub fn word_wrapper_derive(input: TokenStream) -> TokenStream {
             /// Returns the underlying word of this value.
             pub fn as_word(&self) -> Word {
                 self.0
-            }
-        }
-
-        impl #impl_generics From<#name #ty_generics> for Word #where_clause {
-            fn from(value: #name #ty_generics) -> Self {
-                value.0
-            }
-        }
-
-        impl #impl_generics From<&#name #ty_generics> for Word #where_clause {
-            fn from(value: &#name #ty_generics) -> Self {
-                value.0
-            }
-        }
-
-        impl #impl_generics From<#name #ty_generics> for [u8; 32] #where_clause {
-            fn from(value: #name #ty_generics) -> Self {
-                value.0.into()
-            }
-        }
-
-        impl #impl_generics From<&#name #ty_generics> for [u8; 32] #where_clause {
-            fn from(value: &#name #ty_generics) -> Self {
-                value.0.into()
             }
         }
     };
