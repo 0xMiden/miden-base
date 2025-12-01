@@ -785,8 +785,8 @@ proc.add_input_note_assets_to_vault
         padw dup.5 mem_loadw_be
         # => [ASSET, input_vault_root_ptr, assets_start_ptr, assets_end_ptr, input_vault_root_ptr]
 
-        # the witnesses for the note assets should have been added prior to transaction execution
-        # and so there should be no need to fetch them lazily via an event.
+        # the witnesses for the note assets should be added prior to transaction execution and so
+        # there should be no need to fetch them lazily via an event.
         exec.asset_vault::add_asset dropw
         # => [assets_start_ptr, assets_end_ptr, input_vault_root_ptr]
 
