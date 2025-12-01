@@ -1,5 +1,5 @@
 use alloc::boxed::Box;
-use alloc::collections::BTreeMap;
+use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
@@ -8,7 +8,7 @@ use miden_objects::account::auth::PublicKeyCommitment;
 use miden_objects::account::{AccountCode, AccountDelta, AccountId, PartialAccount};
 use miden_objects::assembly::debuginfo::Location;
 use miden_objects::assembly::{SourceFile, SourceManagerSync, SourceSpan};
-use miden_objects::asset::{Asset, AssetVaultKey, AssetWitness, FungibleAsset};
+use miden_objects::asset::{AssetVaultKey, AssetWitness, FungibleAsset};
 use miden_objects::block::BlockNumber;
 use miden_objects::crypto::merkle::SmtProof;
 use miden_objects::note::{NoteInputs, NoteMetadata, NoteRecipient};
@@ -33,6 +33,7 @@ use crate::host::{
     TransactionBaseHost,
     TransactionEvent,
     TransactionProgress,
+    TransactionProgressEvent,
 };
 use crate::{AccountProcedureIndexMap, DataStore};
 
@@ -78,6 +79,9 @@ where
     /// authenticator that produced it.
     generated_signatures: BTreeMap<Word, Vec<Felt>>,
 
+    /// The initial balance of the fee asset in the native account's vault.
+    initial_fee_asset_balance: u64,
+
     /// The source manager to track source code file span information, improving any MASM related
     /// error messages.
     source_manager: Arc<dyn SourceManagerSync>,
@@ -92,6 +96,7 @@ where
     // --------------------------------------------------------------------------------------------
 
     /// Creates a new [`TransactionExecutorHost`] instance from the provided inputs.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         account: &PartialAccount,
         input_notes: InputNotes<InputNote>,
@@ -100,6 +105,7 @@ where
         acct_procedure_index_map: AccountProcedureIndexMap,
         authenticator: Option<&'auth AUTH>,
         ref_block: BlockNumber,
+        initial_fee_asset_balance: u64,
         source_manager: Arc<dyn SourceManagerSync>,
     ) -> Self {
         let base_host = TransactionBaseHost::new(
@@ -117,6 +123,7 @@ where
             ref_block,
             accessed_foreign_account_code: Vec::new(),
             generated_signatures: BTreeMap::new(),
+            initial_fee_asset_balance,
             source_manager,
         }
     }
@@ -149,17 +156,7 @@ where
             })?;
 
         let mut tx_advice_inputs = TransactionAdviceInputs::default();
-        tx_advice_inputs
-            .add_foreign_accounts([&foreign_account_inputs])
-            .map_err(|err| {
-                TransactionKernelError::other_with_source(
-                    format!(
-                        "failed to construct advice inputs for foreign account {}",
-                        foreign_account_inputs.id()
-                    ),
-                    err,
-                )
-            })?;
+        tx_advice_inputs.add_foreign_accounts([&foreign_account_inputs]);
 
         self.base_host
             .load_foreign_account_code(foreign_account_inputs.code())
@@ -213,32 +210,10 @@ where
         &self,
         fee_asset: FungibleAsset,
     ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
-        let asset_witness = self
-            .base_host
-            .store()
-            .get_vault_asset_witness(
-                self.base_host.initial_account_header().id(),
-                self.base_host.initial_account_header().vault_root(),
-                fee_asset.vault_key(),
-            )
-            .await
-            .map_err(|err| TransactionKernelError::GetVaultAssetWitness {
-                vault_root: self.base_host.initial_account_header().vault_root(),
-                asset_key: fee_asset.vault_key(),
-                source: err,
-            })?;
-
-        // Find fee asset in the witness or default to 0 if it isn't present.
-        let initial_fee_asset = asset_witness
-            .find(fee_asset.vault_key())
-            .and_then(|asset| match asset {
-                Asset::Fungible(fungible_asset) => Some(fungible_asset),
-                _ => None,
-            })
-            .unwrap_or(
-                FungibleAsset::new(fee_asset.faucet_id(), 0)
-                    .expect("fungible asset created from fee asset should be valid"),
-            );
+        // Construct initial fee asset.
+        let initial_fee_asset =
+            FungibleAsset::new(fee_asset.faucet_id(), self.initial_fee_asset_balance)
+                .expect("fungible asset created from fee asset should be valid");
 
         // Compute the current balance of the native asset in the account based on the initial value
         // and the delta.
@@ -280,7 +255,7 @@ where
             });
         }
 
-        Ok(asset_witness_to_advice_mutation(asset_witness))
+        Ok(Vec::new())
     }
 
     /// Handles a request for a storage map witness by querying the data store for a merkle path.
@@ -355,10 +330,14 @@ where
         vault_root: Word,
         asset_key: AssetVaultKey,
     ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
-        let asset_witness = self
+        let asset_witnesses = self
             .base_host
             .store()
-            .get_vault_asset_witness(active_account_id, vault_root, asset_key)
+            .get_vault_asset_witnesses(
+                active_account_id,
+                vault_root,
+                BTreeSet::from_iter([asset_key]),
+            )
             .await
             .map_err(|err| TransactionKernelError::GetVaultAssetWitness {
                 vault_root,
@@ -366,7 +345,7 @@ where
                 source: err,
             })?;
 
-        Ok(asset_witness_to_advice_mutation(asset_witness))
+        Ok(asset_witnesses.into_iter().flat_map(asset_witness_to_advice_mutation).collect())
     }
 
     /// Handles a request for a [`NoteScript`] by querying the [`DataStore`].
@@ -622,64 +601,59 @@ where
 
                 TransactionEvent::LinkMapSet { advice_mutation } => Ok(advice_mutation),
                 TransactionEvent::LinkMapGet { advice_mutation } => Ok(advice_mutation),
-
-                TransactionEvent::PrologueStart { clk } => {
-                    self.tx_progress.start_prologue(clk);
-                    Ok(Vec::new())
-                },
-                TransactionEvent::PrologueEnd { clk } => {
-                    self.tx_progress.end_prologue(clk);
-                    Ok(Vec::new())
-                },
-
-                TransactionEvent::NotesProcessingStart { clk } => {
-                    self.tx_progress.start_notes_processing(clk);
-                    Ok(Vec::new())
-                },
-                TransactionEvent::NotesProcessingEnd { clk } => {
-                    self.tx_progress.end_notes_processing(clk);
-                    Ok(Vec::new())
-                },
-
-                TransactionEvent::NoteExecutionStart { note_id, clk } => {
-                    self.tx_progress.start_note_execution(clk, note_id);
-                    Ok(Vec::new())
-                },
-                TransactionEvent::NoteExecutionEnd { clk } => {
-                    self.tx_progress.end_note_execution(clk);
-                    Ok(Vec::new())
-                },
-
-                TransactionEvent::TxScriptProcessingStart { clk } => {
-                    self.tx_progress.start_tx_script_processing(clk);
-                    Ok(Vec::new())
-                },
-                TransactionEvent::TxScriptProcessingEnd { clk } => {
-                    self.tx_progress.end_tx_script_processing(clk);
-                    Ok(Vec::new())
-                },
-
-                TransactionEvent::EpilogueStart { clk } => {
-                    self.tx_progress.start_epilogue(clk);
-                    Ok(Vec::new())
-                },
-                TransactionEvent::EpilogueEnd { clk } => {
-                    self.tx_progress.end_epilogue(clk);
-                    Ok(Vec::new())
-                },
-
-                TransactionEvent::EpilogueAuthProcStart { clk } => {
-                    self.tx_progress.start_auth_procedure(clk);
-                    Ok(Vec::new())
-                },
-                TransactionEvent::EpilogueAuthProcEnd { clk } => {
-                    self.tx_progress.end_auth_procedure(clk);
-                    Ok(Vec::new())
-                },
-
-                TransactionEvent::EpilogueAfterTxCyclesObtained { clk } => {
-                    self.tx_progress.epilogue_after_tx_cycles_obtained(clk);
-                    Ok(Vec::new())
+                TransactionEvent::Progress(tx_progress) => match tx_progress {
+                    TransactionProgressEvent::PrologueStart(clk) => {
+                        self.tx_progress.start_prologue(clk);
+                        Ok(Vec::new())
+                    },
+                    TransactionProgressEvent::PrologueEnd(clk) => {
+                        self.tx_progress.end_prologue(clk);
+                        Ok(Vec::new())
+                    },
+                    TransactionProgressEvent::NotesProcessingStart(clk) => {
+                        self.tx_progress.start_notes_processing(clk);
+                        Ok(Vec::new())
+                    },
+                    TransactionProgressEvent::NotesProcessingEnd(clk) => {
+                        self.tx_progress.end_notes_processing(clk);
+                        Ok(Vec::new())
+                    },
+                    TransactionProgressEvent::NoteExecutionStart { note_id, clk } => {
+                        self.tx_progress.start_note_execution(clk, note_id);
+                        Ok(Vec::new())
+                    },
+                    TransactionProgressEvent::NoteExecutionEnd(clk) => {
+                        self.tx_progress.end_note_execution(clk);
+                        Ok(Vec::new())
+                    },
+                    TransactionProgressEvent::TxScriptProcessingStart(clk) => {
+                        self.tx_progress.start_tx_script_processing(clk);
+                        Ok(Vec::new())
+                    },
+                    TransactionProgressEvent::TxScriptProcessingEnd(clk) => {
+                        self.tx_progress.end_tx_script_processing(clk);
+                        Ok(Vec::new())
+                    },
+                    TransactionProgressEvent::EpilogueStart(clk) => {
+                        self.tx_progress.start_epilogue(clk);
+                        Ok(Vec::new())
+                    },
+                    TransactionProgressEvent::EpilogueEnd(clk) => {
+                        self.tx_progress.end_epilogue(clk);
+                        Ok(Vec::new())
+                    },
+                    TransactionProgressEvent::EpilogueAuthProcStart(clk) => {
+                        self.tx_progress.start_auth_procedure(clk);
+                        Ok(Vec::new())
+                    },
+                    TransactionProgressEvent::EpilogueAuthProcEnd(clk) => {
+                        self.tx_progress.end_auth_procedure(clk);
+                        Ok(Vec::new())
+                    },
+                    TransactionProgressEvent::EpilogueAfterTxCyclesObtained(clk) => {
+                        self.tx_progress.epilogue_after_tx_cycles_obtained(clk);
+                        Ok(Vec::new())
+                    },
                 },
             };
 
@@ -693,7 +667,7 @@ where
 
 /// Converts an [`AssetWitness`] into the set of advice mutations that need to be inserted in order
 /// to access the asset.
-fn asset_witness_to_advice_mutation(asset_witness: AssetWitness) -> Vec<AdviceMutation> {
+fn asset_witness_to_advice_mutation(asset_witness: AssetWitness) -> [AdviceMutation; 2] {
     // Get the nodes in the proof and insert them into the merkle store.
     let merkle_store_ext = AdviceMutation::extend_merkle_store(asset_witness.authenticated_nodes());
 
@@ -703,5 +677,5 @@ fn asset_witness_to_advice_mutation(asset_witness: AssetWitness) -> Vec<AdviceMu
         smt_proof.leaf().to_elements(),
     )]));
 
-    vec![merkle_store_ext, map_ext]
+    [merkle_store_ext, map_ext]
 }
