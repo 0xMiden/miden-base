@@ -61,18 +61,13 @@ impl MintNoteInputs {
 
         let mut padded_inputs = input_values;
         padded_inputs.resize(4, Felt::new(0));
-
-        let script_root_be =
-            Word::from([script_root[3], script_root[2], script_root[1], script_root[0]]);
-        let serial_num_be =
-            Word::from([serial_num[3], serial_num[2], serial_num[1], serial_num[0]]);
-        let inputs_be =
-            Word::from([padded_inputs[3], padded_inputs[2], padded_inputs[1], padded_inputs[0]]);
+        let inputs =
+            Word::from([padded_inputs[0], padded_inputs[1], padded_inputs[2], padded_inputs[3]]);
 
         Ok(Self::Public {
-            script_root: script_root_be,
-            serial_num: serial_num_be,
-            inputs: inputs_be,
+            script_root,
+            serial_num,
+            inputs,
             amount,
             tag,
             execution_hint,
@@ -93,17 +88,9 @@ impl TryFrom<MintNoteInputs> for NoteInputs {
                 execution_hint,
                 aux,
             } => {
-                let inputs = vec![
-                    execution_hint.into(),
-                    aux,
-                    tag,
-                    amount,
-                    recipient_digest[0],
-                    recipient_digest[1],
-                    recipient_digest[2],
-                    recipient_digest[3],
-                ];
-                NoteInputs::new(inputs)
+                let mut input_values = vec![execution_hint.into(), aux, tag, amount];
+                input_values.extend_from_slice(recipient_digest.as_elements());
+                NoteInputs::new(input_values)
             },
             MintNoteInputs::Public {
                 script_root,
@@ -114,24 +101,10 @@ impl TryFrom<MintNoteInputs> for NoteInputs {
                 execution_hint,
                 aux,
             } => {
-                let input_values = vec![
-                    execution_hint.into(),
-                    aux,
-                    tag,
-                    amount,
-                    script_root[3],
-                    script_root[2],
-                    script_root[1],
-                    script_root[0],
-                    serial_num[3],
-                    serial_num[2],
-                    serial_num[1],
-                    serial_num[0],
-                    inputs[3],
-                    inputs[2],
-                    inputs[1],
-                    inputs[0],
-                ];
+                let mut input_values = vec![execution_hint.into(), aux, tag, amount];
+                input_values.extend_from_slice(script_root.as_elements());
+                input_values.extend_from_slice(serial_num.as_elements());
+                input_values.extend_from_slice(inputs.as_elements());
                 NoteInputs::new(input_values)
             },
         }
