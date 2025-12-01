@@ -169,8 +169,7 @@ impl WellKnownNote {
             Self::P2ID => Self::P2ID_NUM_INPUTS,
             Self::P2IDE => Self::P2IDE_NUM_INPUTS,
             Self::SWAP => Self::SWAP_NUM_INPUTS,
-            Self::MINT => Self::MINT_NUM_INPUTS_PRIVATE, /* Default to private for backward */
-            // compatibility
+            Self::MINT => Self::MINT_NUM_INPUTS_PRIVATE,
             Self::BURN => Self::BURN_NUM_INPUTS,
         }
     }

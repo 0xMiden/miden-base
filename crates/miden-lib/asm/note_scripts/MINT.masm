@@ -28,9 +28,10 @@ const.ERR_MINT_WRONG_NUMBER_OF_INPUTS="MINT script expects exactly 8 or 16 note 
 #! Inputs:  [ARGS, pad(12)]
 #! Outputs: [pad(16)]
 #!
-#! Note inputs support two modes:
+#! Note inputs support two modes. Depending on the number of note inputs,
+#! a private or public note is created on consumption of the MINT note:
 #!
-#! Private mode (8 inputs):
+#! Private mode (8 inputs) - creates a private note:
 #! - execution_hint: Execution hint for the output note
 #! - aux: Auxiliary data for the output note
 #! - tag: Note tag for the output note

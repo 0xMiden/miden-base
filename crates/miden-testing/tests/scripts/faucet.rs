@@ -5,13 +5,7 @@ use std::sync::Arc;
 
 use miden_lib::account::faucets::{BasicFungibleFaucet, FungibleFaucetExt, NetworkFungibleFaucet};
 use miden_lib::errors::tx_kernel_errors::ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED;
-use miden_lib::note::{
-    MintNoteInputs,
-    WellKnownNote,
-    create_burn_note,
-    create_mint_note,
-    create_mint_note_with_inputs,
-};
+use miden_lib::note::{MintNoteInputs, WellKnownNote, create_burn_note, create_mint_note};
 use miden_lib::testing::note::NoteBuilder;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{
@@ -541,17 +535,17 @@ async fn network_faucet_mint() -> anyhow::Result<()> {
     let recipient = p2id_mint_output_note.recipient().digest();
 
     // Create the MINT note using the helper function
-    let mut rng = RpoRandomCoin::new([Felt::from(42u32); 4].into());
-    let mint_note = create_mint_note(
-        faucet.id(),
-        faucet_owner_account_id,
+    let mint_inputs = MintNoteInputs::new_private(
         recipient,
-        output_note_tag.into(),
         amount,
+        output_note_tag.into(),
+        NoteExecutionHint::always(),
         aux,
-        aux,
-        &mut rng,
-    )?;
+    );
+
+    let mut rng = RpoRandomCoin::new([Felt::from(42u32); 4].into());
+    let mint_note =
+        create_mint_note(faucet.id(), faucet_owner_account_id, mint_inputs, aux, &mut rng)?;
 
     // Add the MINT note to the mock chain
     builder.add_output_note(OutputNote::Full(mint_note.clone()));
@@ -716,13 +710,8 @@ async fn test_mint_note_private_output_mode() -> anyhow::Result<()> {
     );
 
     let mut rng = RpoRandomCoin::new([Felt::from(42u32); 4].into());
-    let mint_note = create_mint_note_with_inputs(
-        faucet.id(),
-        faucet_owner_account_id,
-        mint_inputs.clone(),
-        aux,
-        &mut rng,
-    )?;
+    let mint_note =
+        create_mint_note(faucet.id(), faucet_owner_account_id, mint_inputs.clone(), aux, &mut rng)?;
 
     assert_eq!(mint_note.inputs().num_values(), 8);
 
@@ -809,13 +798,8 @@ async fn test_mint_note_public_output_mode() -> anyhow::Result<()> {
     )?;
 
     let mut rng = RpoRandomCoin::new([Felt::from(42u32); 4].into());
-    let mint_note = create_mint_note_with_inputs(
-        faucet.id(),
-        faucet_owner_account_id,
-        mint_inputs.clone(),
-        aux,
-        &mut rng,
-    )?;
+    let mint_note =
+        create_mint_note(faucet.id(), faucet_owner_account_id, mint_inputs.clone(), aux, &mut rng)?;
 
     assert_eq!(mint_note.inputs().num_values(), 16);
 
