@@ -1,5 +1,6 @@
 use alloc::collections::BTreeSet;
 use alloc::sync::Arc;
+use std::vec::Vec;
 
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::AccountId;
@@ -254,27 +255,31 @@ where
         input_notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
     ) -> Result<TransactionInputs, TransactionExecutorError> {
-        let (asset_vault_keys, mut ref_blocks) = validate_input_notes(&input_notes, block_ref)?;
+        let (mut asset_vault_keys, mut ref_blocks) = validate_input_notes(&input_notes, block_ref)?;
         ref_blocks.insert(block_ref);
 
-        let (account, block_header, blockchain, asset_witnesses) = self
+        let (account, block_header, blockchain) = self
             .data_store
-            .get_transaction_inputs(account_id, asset_vault_keys, ref_blocks)
+            .get_transaction_inputs(account_id, ref_blocks)
             .await
             .map_err(TransactionExecutorError::FetchTransactionInputsFailed)?;
 
-        // Sanity check that the data store returned an asset witness for the fee asset.
-        // This is not strictly necessary, but without the asset witness, transaction execution
-        // would fail with an obscure error.
+        // Add the vault key for the fee asset to the list of asset vault keys which will need to be
+        // accessed at the end of the transaction.
         let fee_asset_vault_key =
             AssetVaultKey::from_account_id(block_header.fee_parameters().native_asset_id())
                 .expect("fee asset should be a fungible asset");
+        asset_vault_keys.insert(fee_asset_vault_key);
 
-        let contains_fee_asset_witness = asset_witnesses
-            .iter()
-            .any(|witness| witness.authenticates_asset_vault_key(fee_asset_vault_key));
-        if !contains_fee_asset_witness {
-            return Err(TransactionExecutorError::FetchFeeAssetWitnessFailed(fee_asset_vault_key));
+        // Fetch the witnesses for all asset vault keys.
+        let mut asset_witnesses = Vec::with_capacity(asset_vault_keys.len());
+        for asset_vault_key in asset_vault_keys {
+            let asset_witness = self
+                .data_store
+                .get_vault_asset_witness(account_id, account.vault().root(), asset_vault_key)
+                .await
+                .map_err(TransactionExecutorError::FetchAssetWitnessFailed)?;
+            asset_witnesses.push(asset_witness);
         }
 
         let tx_inputs = TransactionInputs::new(account, block_header, blockchain, input_notes)

@@ -1,5 +1,4 @@
 use alloc::collections::BTreeSet;
-use alloc::vec::Vec;
 
 use miden_objects::account::{AccountId, PartialAccount, StorageMapWitness};
 use miden_objects::asset::{AssetVaultKey, AssetWitness};
@@ -23,14 +22,6 @@ pub trait DataStore: MastForestStore {
     /// general, it is recommended that the reference corresponds to the latest block available
     /// in the data store.
     ///
-    /// [`AssetWitness`]es for the provided [`AssetVaultKey`]s should be fetched against the asset
-    /// vault of the account at beginning of the transaction. These assets are known to be accessed
-    /// throughout transaction execution and so can be pre-fetched instead of lazily fetched
-    /// one-by-one via [`DataStore::get_vault_asset_witness`].
-    ///
-    /// The returned asset witnesses should additionally contain a witness for the fee asset fetched
-    /// from the transaction reference block.
-    ///
     /// # Errors
     /// Returns an error if:
     /// - The account with the specified ID could not be found in the data store.
@@ -40,11 +31,8 @@ pub trait DataStore: MastForestStore {
     fn get_transaction_inputs(
         &self,
         account_id: AccountId,
-        asset_vault_keys: BTreeSet<AssetVaultKey>,
         ref_blocks: BTreeSet<BlockNumber>,
-    ) -> impl FutureMaybeSend<
-        Result<(PartialAccount, BlockHeader, PartialBlockchain, Vec<AssetWitness>), DataStoreError>,
-    >;
+    ) -> impl FutureMaybeSend<Result<(PartialAccount, BlockHeader, PartialBlockchain), DataStoreError>>;
 
     /// Returns a partial foreign account state together with a witness, proving its validity in the
     /// specified transaction reference block.

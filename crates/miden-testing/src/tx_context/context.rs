@@ -90,14 +90,30 @@ impl TransactionContext {
         .expect("fee asset should be a fungible asset");
         asset_vault_keys.extend([fee_asset_vault_key]);
 
-        let (_account, _header, _blockchain, asset_witnesses) = self
+        let (account, block_header, _blockchain) = self
             .get_transaction_inputs(
                 self.tx_inputs.account().id(),
-                asset_vault_keys,
                 BTreeSet::from_iter([self.tx_inputs.block_header().block_num()]),
             )
             .await
-            .expect("failed to fetch asset witnesses");
+            .expect("failed to fetch transaction inputs");
+
+        // Add the vault key for the fee asset to the list of asset vault keys which may need to be
+        // accessed at the end of the transaction.
+        let fee_asset_vault_key =
+            AssetVaultKey::from_account_id(block_header.fee_parameters().native_asset_id())
+                .expect("fee asset should be a fungible asset");
+        asset_vault_keys.insert(fee_asset_vault_key);
+
+        // Fetch the witnesses for all asset vault keys.
+        let mut asset_witnesses = Vec::with_capacity(asset_vault_keys.len());
+        for asset_vault_key in asset_vault_keys {
+            let asset_witness = self
+                .get_vault_asset_witness(account.id(), account.vault().root(), asset_vault_key)
+                .await
+                .expect("failed to fetch asset witnesses");
+            asset_witnesses.push(asset_witness);
+        }
 
         let tx_inputs = self.tx_inputs.clone().with_asset_witnesses(asset_witnesses);
         let (stack_inputs, advice_inputs) = TransactionKernel::prepare_inputs(&tx_inputs);
@@ -215,11 +231,9 @@ impl DataStore for TransactionContext {
     fn get_transaction_inputs(
         &self,
         account_id: AccountId,
-        asset_vault_keys: BTreeSet<AssetVaultKey>,
         ref_blocks: BTreeSet<BlockNumber>,
-    ) -> impl FutureMaybeSend<
-        Result<(PartialAccount, BlockHeader, PartialBlockchain, Vec<AssetWitness>), DataStoreError>,
-    > {
+    ) -> impl FutureMaybeSend<Result<(PartialAccount, BlockHeader, PartialBlockchain), DataStoreError>>
+    {
         // Sanity checks
         assert_eq!(account_id, self.account().id());
         assert_eq!(account_id, self.tx_inputs.account().id());
@@ -236,17 +250,7 @@ impl DataStore for TransactionContext {
         let block_header = self.tx_inputs.block_header().clone();
         let blockchain = self.tx_inputs.blockchain().clone();
 
-        let mut asset_witnesses = asset_vault_keys
-            .into_iter()
-            .map(|asset_vault_key| self.account().vault().open(asset_vault_key))
-            .collect::<Vec<AssetWitness>>();
-
-        let fee_asset_vault_key =
-            AssetVaultKey::from_account_id(block_header.fee_parameters().native_asset_id())
-                .expect("fee asset should be a fungible asset");
-        asset_witnesses.extend([self.account().vault().open(fee_asset_vault_key)]);
-
-        async move { Ok((account, block_header, blockchain, asset_witnesses)) }
+        async move { Ok((account, block_header, blockchain)) }
     }
 
     fn get_foreign_account_inputs(
