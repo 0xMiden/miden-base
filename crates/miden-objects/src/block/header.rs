@@ -30,7 +30,6 @@ use crate::{FeeError, Felt, Hasher, Word, ZERO};
 /// - `tx_commitment` is a commitment to the set of transaction IDs which affected accounts in the
 ///   block.
 /// - `tx_kernel_commitment` a commitment to all transaction kernels supported by this block.
-/// - `proof_commitment` is the commitment of the block's STARK proof attesting to the correct state
 ///   transition.
 /// - `fee_parameters` are the parameters defining the base fees and the native asset, see
 ///   [`FeeParameters`] for more details.
@@ -49,7 +48,6 @@ pub struct BlockHeader {
     note_root: Word,
     tx_commitment: Word,
     tx_kernel_commitment: Word,
-    proof_commitment: Word, // TODO(serge): remove this field as proofs are constructed later.
     fee_parameters: FeeParameters,
     timestamp: u32,
     sub_commitment: Word,
@@ -69,7 +67,6 @@ impl BlockHeader {
         note_root: Word,
         tx_commitment: Word,
         tx_kernel_commitment: Word,
-        proof_commitment: Word,
         fee_parameters: FeeParameters,
         timestamp: u32,
     ) -> Self {
@@ -82,7 +79,6 @@ impl BlockHeader {
             nullifier_root,
             tx_commitment,
             tx_kernel_commitment,
-            proof_commitment,
             &fee_parameters,
             timestamp,
             block_num,
@@ -104,7 +100,6 @@ impl BlockHeader {
             note_root,
             tx_commitment,
             tx_kernel_commitment,
-            proof_commitment,
             fee_parameters,
             timestamp,
             sub_commitment,
@@ -189,11 +184,6 @@ impl BlockHeader {
         self.tx_kernel_commitment
     }
 
-    /// Returns the proof commitment.
-    pub fn proof_commitment(&self) -> Word {
-        self.proof_commitment
-    }
-
     /// Returns a reference to the [`FeeParameters`] in this header.
     pub fn fee_parameters(&self) -> &FeeParameters {
         &self.fee_parameters
@@ -216,7 +206,7 @@ impl BlockHeader {
     ///
     /// The sub commitment is computed as a sequential hash of the following fields:
     /// `prev_block_commitment`, `chain_commitment`, `account_root`, `nullifier_root`, `note_root`,
-    /// `tx_commitment`, `tx_kernel_commitment`, `proof_commitment`, `version`, `timestamp`,
+    /// `tx_commitment`, `tx_kernel_commitment`, `version`, `timestamp`,
     /// `block_num`, `native_asset_id`, `verification_base_fee` (all fields except the `note_root`).
     #[allow(clippy::too_many_arguments)]
     fn compute_sub_commitment(
@@ -227,7 +217,6 @@ impl BlockHeader {
         nullifier_root: Word,
         tx_commitment: Word,
         tx_kernel_commitment: Word,
-        proof_commitment: Word,
         fee_parameters: &FeeParameters,
         timestamp: u32,
         block_num: BlockNumber,
@@ -239,7 +228,6 @@ impl BlockHeader {
         elements.extend_from_slice(nullifier_root.as_elements());
         elements.extend_from_slice(tx_commitment.as_elements());
         elements.extend_from_slice(tx_kernel_commitment.as_elements());
-        elements.extend_from_slice(proof_commitment.as_elements());
         elements.extend([block_num.into(), version.into(), timestamp.into(), ZERO]);
         elements.extend([
             fee_parameters.native_asset_id().suffix(),
@@ -266,7 +254,6 @@ impl Serializable for BlockHeader {
         self.note_root.write_into(target);
         self.tx_commitment.write_into(target);
         self.tx_kernel_commitment.write_into(target);
-        self.proof_commitment.write_into(target);
         self.fee_parameters.write_into(target);
         self.timestamp.write_into(target);
     }
@@ -283,7 +270,6 @@ impl Deserializable for BlockHeader {
         let note_root = source.read()?;
         let tx_commitment = source.read()?;
         let tx_kernel_commitment = source.read()?;
-        let proof_commitment = source.read()?;
         let fee_parameters = source.read()?;
         let timestamp = source.read()?;
 
@@ -297,7 +283,6 @@ impl Deserializable for BlockHeader {
             note_root,
             tx_commitment,
             tx_kernel_commitment,
-            proof_commitment,
             fee_parameters,
             timestamp,
         ))

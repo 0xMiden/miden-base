@@ -41,7 +41,6 @@ impl BlockHeader {
             nullifier_root,
             note_root,
             tx_commitment,
-            proof_commitment,
             timestamp,
         ) = {
             let prev_block_commitment = rand_value::<Word>();
@@ -49,7 +48,6 @@ impl BlockHeader {
             let nullifier_root = rand_value::<Word>();
             let note_root = note_root.unwrap_or(rand_value::<Word>());
             let tx_commitment = rand_value::<Word>();
-            let proof_commitment = rand_value::<Word>();
             let timestamp = rand_value();
 
             (
@@ -58,7 +56,6 @@ impl BlockHeader {
                 nullifier_root,
                 note_root,
                 tx_commitment,
-                proof_commitment,
                 timestamp,
             )
         };
@@ -70,7 +67,6 @@ impl BlockHeader {
             nullifier_root,
             note_root,
             tx_commitment,
-            proof_commitment,
             timestamp,
         ) = {
             (
@@ -94,7 +90,6 @@ impl BlockHeader {
             note_root,
             tx_commitment,
             tx_kernel_commitment,
-            proof_commitment,
             fee_parameters,
             timestamp,
         )

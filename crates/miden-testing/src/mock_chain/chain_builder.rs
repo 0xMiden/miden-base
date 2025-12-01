@@ -216,7 +216,6 @@ impl MockChainBuilder {
         let note_root = note_tree.root();
         let tx_commitment = transactions.commitment();
         let tx_kernel_commitment = TransactionKernel.to_commitment();
-        let proof_commitment = Word::empty();
         let timestamp = MockChain::TIMESTAMP_START_SECS;
         let fee_parameters = FeeParameters::new(self.native_asset_id, self.verification_base_fee)
             .context("failed to construct fee parameters")?;
@@ -231,7 +230,6 @@ impl MockChainBuilder {
             note_root,
             tx_commitment,
             tx_kernel_commitment,
-            proof_commitment,
             fee_parameters,
             timestamp,
         );

@@ -437,7 +437,6 @@ mod tests {
             Word::empty(),
             Word::empty(),
             Word::empty(),
-            Word::empty(),
             fee_parameters,
             0,
         )
