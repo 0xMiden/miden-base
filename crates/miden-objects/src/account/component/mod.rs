@@ -16,25 +16,21 @@ use crate::{AccountError, Word};
 // IMPLEMENTATIONS
 // ================================================================================================
 
-impl TryFrom<Package> for AccountComponentTemplate {
+impl TryFrom<&Package> for AccountComponentMetadata {
     type Error = AccountError;
 
-    fn try_from(package: Package) -> Result<Self, Self::Error> {
-        let library = package.unwrap_library().as_ref().clone();
-
-        // Look for account component metadata in sections
-        let metadata = package
+    fn try_from(package: &Package) -> Result<Self, Self::Error> {
+        package
             .sections
             .iter()
             .find_map(|section| {
                 (section.id == SectionId::ACCOUNT_COMPONENT_METADATA).then(|| {
-                        AccountComponentMetadata::read_from_bytes(&section.data)
-                            .map_err(|err| {
-                                AccountError::other_with_source(
-                                    "failed to deserialize account component metadata",
-                                    err,
-                                )
-                            })
+                    AccountComponentMetadata::read_from_bytes(&section.data).map_err(|err| {
+                        AccountError::other_with_source(
+                            "failed to deserialize account component metadata",
+                            err,
+                        )
+                    })
                 })
             })
             .transpose()?
@@ -42,9 +38,15 @@ impl TryFrom<Package> for AccountComponentTemplate {
                 AccountError::other(
                     "package does not contain account component metadata section - packages without explicit metadata may be intended for other purposes (e.g., note scripts, transaction scripts)",
                 )
-            })?;
+            })
+    }
+}
 
-        Ok(AccountComponentTemplate::new(metadata, library))
+impl TryFrom<Package> for AccountComponentMetadata {
+    type Error = AccountError;
+
+    fn try_from(package: Package) -> Result<Self, Self::Error> {
+        AccountComponentMetadata::try_from(&package)
     }
 }
 
@@ -123,32 +125,6 @@ impl AccountComponent {
         Self::new(library, storage_slots)
     }
 
-    /// Instantiates an [AccountComponent] from the [AccountComponentTemplate].
-    ///
-    /// The template's component metadata might contain placeholders, which can be replaced by
-    /// mapping storage placeholders to values through the `init_storage_data` parameter.
-    ///
-    /// # Errors
-    ///
-    /// - If any of the component's storage entries cannot be transformed into a valid storage slot.
-    ///   This could be because the metadata is invalid, or storage values were not provided (or
-    ///   they are not of a valid type)
-    pub fn from_template(
-        template: &AccountComponentTemplate,
-        init_storage_data: &InitStorageData,
-    ) -> Result<AccountComponent, AccountError> {
-        let mut storage_slots = vec![];
-        for storage_entry in template.metadata().storage_entries() {
-            let entry_storage_slots = storage_entry
-                .try_build_storage_slots(init_storage_data)
-                .map_err(AccountError::AccountComponentTemplateInstantiationError)?;
-            storage_slots.extend(entry_storage_slots);
-        }
-
-        Ok(AccountComponent::new(template.library().clone(), storage_slots)?
-            .with_supported_types(template.metadata().supported_types().clone()))
-    }
-
     /// Creates an [`AccountComponent`] from a [`Package`] using [`InitStorageData`].
     ///
     /// This method provides type safety by leveraging the component's metadata to validate
@@ -163,15 +139,17 @@ impl AccountComponent {
     ///
     /// Returns an error if:
     /// - The package does not contain account component metadata
-    /// - The package cannot be converted to an [`AccountComponentTemplate`]
+    /// - The metadata cannot be deserialized from the package
     /// - The storage initialization fails due to invalid or missing data
     /// - The component creation fails
-    pub fn from_package_with_init_data(
+    pub fn from_package(
         package: &Package,
         init_storage_data: &InitStorageData,
     ) -> Result<Self, AccountError> {
-        let template = AccountComponentTemplate::try_from(package.clone())?;
-        Self::from_template(&template, init_storage_data)
+        let metadata = AccountComponentMetadata::try_from(package)?;
+        let library = package.unwrap_library().as_ref().clone();
+
+        build_component_from_metadata(&metadata, &library, init_storage_data)
     }
 
     // ACCESSORS
@@ -262,6 +240,23 @@ impl AccountComponent {
     }
 }
 
+fn build_component_from_metadata(
+    metadata: &AccountComponentMetadata,
+    library: &Library,
+    init_storage_data: &InitStorageData,
+) -> Result<AccountComponent, AccountError> {
+    let mut storage_slots = vec![];
+    for storage_entry in metadata.storage_entries() {
+        let entry_storage_slots = storage_entry
+            .try_build_storage_slots(init_storage_data)
+            .map_err(AccountError::AccountComponentTemplateInstantiationError)?;
+        storage_slots.extend(entry_storage_slots);
+    }
+
+    Ok(AccountComponent::new(library.clone(), storage_slots)?
+        .with_supported_types(metadata.supported_types().clone()))
+}
+
 impl From<AccountComponent> for Library {
     fn from(component: AccountComponent) -> Self {
         component.library
@@ -283,7 +278,7 @@ mod tests {
     use crate::testing::account_code::CODE;
 
     #[test]
-    fn test_try_from_package_for_template() {
+    fn test_extract_metadata_from_package() {
         // Create a simple library for testing
         let library = Assembler::default().assemble_library([CODE]).unwrap();
 
@@ -311,11 +306,11 @@ mod tests {
             description: None,
         };
 
-        let template = AccountComponentTemplate::try_from(package_with_metadata).unwrap();
-        assert_eq!(template.metadata().name(), "test_component");
+        let extracted_metadata =
+            AccountComponentMetadata::try_from(&package_with_metadata).unwrap();
+        assert_eq!(extracted_metadata.name(), "test_component");
         assert!(
-            template
-                .metadata()
+            extracted_metadata
                 .supported_types()
                 .contains(&AccountType::RegularAccountImmutableCode)
         );
@@ -330,7 +325,7 @@ mod tests {
             description: None,
         };
 
-        let result = AccountComponentTemplate::try_from(package_without_metadata);
+        let result = AccountComponentMetadata::try_from(&package_without_metadata);
         assert!(result.is_err());
         let error_msg = result.unwrap_err().to_string();
         assert!(error_msg.contains("package does not contain account component metadata"));
@@ -368,10 +363,9 @@ mod tests {
         };
 
         // Test with empty init data - this tests the complete workflow:
-        // Package -> AccountComponentTemplate -> AccountComponent
+        // Package -> AccountComponent
         let init_data = InitStorageData::default();
-        let component =
-            AccountComponent::from_package_with_init_data(&package, &init_data).unwrap();
+        let component = AccountComponent::from_package(&package, &init_data).unwrap();
 
         // Verify the component was created correctly
         assert_eq!(component.storage_size(), 0);
@@ -389,8 +383,7 @@ mod tests {
             description: None,
         };
 
-        let result =
-            AccountComponent::from_package_with_init_data(&package_without_metadata, &init_data);
+        let result = AccountComponent::from_package(&package_without_metadata, &init_data);
         assert!(result.is_err());
         let error_msg = result.unwrap_err().to_string();
         assert!(error_msg.contains("package does not contain account component metadata"));
