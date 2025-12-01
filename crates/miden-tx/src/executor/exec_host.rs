@@ -1,5 +1,5 @@
 use alloc::boxed::Box;
-use alloc::collections::BTreeMap;
+use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
@@ -330,10 +330,14 @@ where
         vault_root: Word,
         asset_key: AssetVaultKey,
     ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
-        let asset_witness = self
+        let asset_witnesses = self
             .base_host
             .store()
-            .get_vault_asset_witness(active_account_id, vault_root, asset_key)
+            .get_vault_asset_witnesses(
+                active_account_id,
+                vault_root,
+                BTreeSet::from_iter([asset_key]),
+            )
             .await
             .map_err(|err| TransactionKernelError::GetVaultAssetWitness {
                 vault_root,
@@ -341,7 +345,7 @@ where
                 source: err,
             })?;
 
-        Ok(asset_witness_to_advice_mutation(asset_witness))
+        Ok(asset_witnesses.into_iter().flat_map(asset_witness_to_advice_mutation).collect())
     }
 
     /// Handles a request for a [`NoteScript`] by querying the [`DataStore`].
@@ -663,7 +667,7 @@ where
 
 /// Converts an [`AssetWitness`] into the set of advice mutations that need to be inserted in order
 /// to access the asset.
-fn asset_witness_to_advice_mutation(asset_witness: AssetWitness) -> Vec<AdviceMutation> {
+fn asset_witness_to_advice_mutation(asset_witness: AssetWitness) -> [AdviceMutation; 2] {
     // Get the nodes in the proof and insert them into the merkle store.
     let merkle_store_ext = AdviceMutation::extend_merkle_store(asset_witness.authenticated_nodes());
 
@@ -673,5 +677,5 @@ fn asset_witness_to_advice_mutation(asset_witness: AssetWitness) -> Vec<AdviceMu
         smt_proof.leaf().to_elements(),
     )]));
 
-    vec![merkle_store_ext, map_ext]
+    [merkle_store_ext, map_ext]
 }

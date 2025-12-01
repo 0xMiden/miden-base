@@ -1,6 +1,5 @@
 use alloc::collections::BTreeSet;
 use alloc::sync::Arc;
-use std::vec::Vec;
 
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::AccountId;
@@ -272,15 +271,11 @@ where
         asset_vault_keys.insert(fee_asset_vault_key);
 
         // Fetch the witnesses for all asset vault keys.
-        let mut asset_witnesses = Vec::with_capacity(asset_vault_keys.len());
-        for asset_vault_key in asset_vault_keys {
-            let asset_witness = self
-                .data_store
-                .get_vault_asset_witness(account_id, account.vault().root(), asset_vault_key)
-                .await
-                .map_err(TransactionExecutorError::FetchAssetWitnessFailed)?;
-            asset_witnesses.push(asset_witness);
-        }
+        let asset_witnesses = self
+            .data_store
+            .get_vault_asset_witnesses(account_id, account.vault().root(), asset_vault_keys)
+            .await
+            .map_err(TransactionExecutorError::FetchAssetWitnessFailed)?;
 
         let tx_inputs = TransactionInputs::new(account, block_header, blockchain, input_notes)
             .map_err(TransactionExecutorError::InvalidTransactionInputs)?

@@ -106,14 +106,10 @@ impl TransactionContext {
         asset_vault_keys.insert(fee_asset_vault_key);
 
         // Fetch the witnesses for all asset vault keys.
-        let mut asset_witnesses = Vec::with_capacity(asset_vault_keys.len());
-        for asset_vault_key in asset_vault_keys {
-            let asset_witness = self
-                .get_vault_asset_witness(account.id(), account.vault().root(), asset_vault_key)
-                .await
-                .expect("failed to fetch asset witnesses");
-            asset_witnesses.push(asset_witness);
-        }
+        let asset_witnesses = self
+            .get_vault_asset_witnesses(account.id(), account.vault().root(), asset_vault_keys)
+            .await
+            .expect("failed to fetch asset witnesses");
 
         let tx_inputs = self.tx_inputs.clone().with_asset_witnesses(asset_witnesses);
         let (stack_inputs, advice_inputs) = TransactionKernel::prepare_inputs(&tx_inputs);
@@ -275,22 +271,21 @@ impl DataStore for TransactionContext {
         }
     }
 
-    fn get_vault_asset_witness(
+    fn get_vault_asset_witnesses(
         &self,
         account_id: AccountId,
         vault_root: Word,
-        asset_key: AssetVaultKey,
-    ) -> impl FutureMaybeSend<Result<AssetWitness, DataStoreError>> {
+        vault_keys: BTreeSet<AssetVaultKey>,
+    ) -> impl FutureMaybeSend<Result<Vec<AssetWitness>, DataStoreError>> {
         async move {
-            if account_id == self.account().id() {
+            let asset_vault = if account_id == self.account().id() {
                 if self.account().vault().root() != vault_root {
                     return Err(DataStoreError::other(format!(
                         "native account {account_id} has vault root {} but {vault_root} was requested",
                         self.account().vault().root()
                     )));
                 }
-
-                Ok(self.account().vault().open(asset_key))
+                self.account().vault()
             } else {
                 let (foreign_account, _witness) = self
                     .foreign_account_inputs
@@ -312,9 +307,10 @@ impl DataStore for TransactionContext {
                         foreign_account.vault().root()
                     )));
                 }
+                foreign_account.vault()
+            };
 
-                Ok(foreign_account.vault().open(asset_key))
-            }
+            Ok(vault_keys.into_iter().map(|vault_key| asset_vault.open(vault_key)).collect())
         }
     }
 
