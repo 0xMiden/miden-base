@@ -39,9 +39,9 @@ miden-assembly        = { workspace = true }
 miden-assembly-syntax = { workspace = true }
 miden-core            = { workspace = true }
 miden-crypto          = { workspace = true }
-miden-protocol-macros = { workspace = true }
 miden-mast-package    = { workspace = true }
 miden-processor       = { workspace = true }
+miden-protocol-macros = { workspace = true }
 miden-stdlib          = { workspace = true }
 miden-utils-sync      = { workspace = true }
 miden-verifier        = { workspace = true }
