@@ -11,6 +11,31 @@ use miden_processor::{AdviceMutation, ProcessState, RowIndex};
 use crate::host::{TransactionBaseHost, TransactionKernelProcess};
 use crate::{LinkMap, TransactionKernelError};
 
+// TRANSACTION PROGRESS EVENT
+// ================================================================================================
+#[derive(Debug)]
+pub(crate) enum TransactionProgressEvent {
+    PrologueStart(RowIndex),
+    PrologueEnd(RowIndex),
+
+    NotesProcessingStart(RowIndex),
+    NotesProcessingEnd(RowIndex),
+
+    NoteExecutionStart { note_id: NoteId, clk: RowIndex },
+    NoteExecutionEnd(RowIndex),
+
+    TxScriptProcessingStart(RowIndex),
+    TxScriptProcessingEnd(RowIndex),
+
+    EpilogueStart(RowIndex),
+    EpilogueEnd(RowIndex),
+
+    EpilogueAuthProcStart(RowIndex),
+    EpilogueAuthProcEnd(RowIndex),
+
+    EpilogueAfterTxCyclesObtained(RowIndex),
+}
+
 // TRANSACTION EVENT
 // ================================================================================================
 
@@ -110,52 +135,7 @@ pub(crate) enum TransactionEvent {
         advice_mutation: Vec<AdviceMutation>,
     },
 
-    PrologueStart {
-        clk: RowIndex,
-    },
-    PrologueEnd {
-        clk: RowIndex,
-    },
-
-    NotesProcessingStart {
-        clk: RowIndex,
-    },
-    NotesProcessingEnd {
-        clk: RowIndex,
-    },
-
-    NoteExecutionStart {
-        note_id: NoteId,
-        clk: RowIndex,
-    },
-    NoteExecutionEnd {
-        clk: RowIndex,
-    },
-
-    TxScriptProcessingStart {
-        clk: RowIndex,
-    },
-    TxScriptProcessingEnd {
-        clk: RowIndex,
-    },
-
-    EpilogueStart {
-        clk: RowIndex,
-    },
-    EpilogueEnd {
-        clk: RowIndex,
-    },
-
-    EpilogueAuthProcStart {
-        clk: RowIndex,
-    },
-    EpilogueAuthProcEnd {
-        clk: RowIndex,
-    },
-
-    EpilogueAfterTxCyclesObtained {
-        clk: RowIndex,
-    },
+    Progress(TransactionProgressEvent),
 }
 
 impl TransactionEvent {
@@ -476,55 +456,58 @@ impl TransactionEvent {
                 advice_mutation: LinkMap::handle_get_event(process),
             }),
 
-            TransactionEventId::PrologueStart => {
-                Some(TransactionEvent::PrologueStart { clk: process.clk() })
-            },
-            TransactionEventId::PrologueEnd => {
-                Some(TransactionEvent::PrologueEnd { clk: process.clk() })
-            },
+            TransactionEventId::PrologueStart => Some(TransactionEvent::Progress(
+                TransactionProgressEvent::PrologueStart(process.clk()),
+            )),
+            TransactionEventId::PrologueEnd => Some(TransactionEvent::Progress(
+                TransactionProgressEvent::PrologueEnd(process.clk()),
+            )),
 
-            TransactionEventId::NotesProcessingStart => {
-                Some(TransactionEvent::NotesProcessingStart { clk: process.clk() })
-            },
-            TransactionEventId::NotesProcessingEnd => {
-                Some(TransactionEvent::NotesProcessingEnd { clk: process.clk() })
-            },
+            TransactionEventId::NotesProcessingStart => Some(TransactionEvent::Progress(
+                TransactionProgressEvent::NotesProcessingStart(process.clk()),
+            )),
+            TransactionEventId::NotesProcessingEnd => Some(TransactionEvent::Progress(
+                TransactionProgressEvent::NotesProcessingEnd(process.clk()),
+            )),
 
             TransactionEventId::NoteExecutionStart => {
                 let note_id = process.get_active_note_id()?.ok_or_else(|| TransactionKernelError::other(
                     "note execution interval measurement is incorrect: check the placement of the start and the end of the interval",
                 ))?;
 
-                Some(TransactionEvent::NoteExecutionStart { note_id, clk: process.clk() })
+                Some(TransactionEvent::Progress(TransactionProgressEvent::NoteExecutionStart {
+                    note_id,
+                    clk: process.clk(),
+                }))
             },
-            TransactionEventId::NoteExecutionEnd => {
-                Some(TransactionEvent::NoteExecutionEnd { clk: process.clk() })
-            },
+            TransactionEventId::NoteExecutionEnd => Some(TransactionEvent::Progress(
+                TransactionProgressEvent::NoteExecutionEnd(process.clk()),
+            )),
 
-            TransactionEventId::TxScriptProcessingStart => {
-                Some(TransactionEvent::TxScriptProcessingStart { clk: process.clk() })
-            },
-            TransactionEventId::TxScriptProcessingEnd => {
-                Some(TransactionEvent::TxScriptProcessingEnd { clk: process.clk() })
-            },
+            TransactionEventId::TxScriptProcessingStart => Some(TransactionEvent::Progress(
+                TransactionProgressEvent::TxScriptProcessingStart(process.clk()),
+            )),
+            TransactionEventId::TxScriptProcessingEnd => Some(TransactionEvent::Progress(
+                TransactionProgressEvent::TxScriptProcessingEnd(process.clk()),
+            )),
 
-            TransactionEventId::EpilogueStart => {
-                Some(TransactionEvent::EpilogueStart { clk: process.clk() })
-            },
-            TransactionEventId::EpilogueEnd => {
-                Some(TransactionEvent::EpilogueEnd { clk: process.clk() })
-            },
+            TransactionEventId::EpilogueStart => Some(TransactionEvent::Progress(
+                TransactionProgressEvent::EpilogueStart(process.clk()),
+            )),
+            TransactionEventId::EpilogueEnd => Some(TransactionEvent::Progress(
+                TransactionProgressEvent::EpilogueEnd(process.clk()),
+            )),
 
-            TransactionEventId::EpilogueAuthProcStart => {
-                Some(TransactionEvent::EpilogueAuthProcStart { clk: process.clk() })
-            },
-            TransactionEventId::EpilogueAuthProcEnd => {
-                Some(TransactionEvent::EpilogueAuthProcEnd { clk: process.clk() })
-            },
+            TransactionEventId::EpilogueAuthProcStart => Some(TransactionEvent::Progress(
+                TransactionProgressEvent::EpilogueAuthProcStart(process.clk()),
+            )),
+            TransactionEventId::EpilogueAuthProcEnd => Some(TransactionEvent::Progress(
+                TransactionProgressEvent::EpilogueAuthProcEnd(process.clk()),
+            )),
 
-            TransactionEventId::EpilogueAfterTxCyclesObtained => {
-                Some(TransactionEvent::EpilogueAfterTxCyclesObtained { clk: process.clk() })
-            },
+            TransactionEventId::EpilogueAfterTxCyclesObtained => Some(TransactionEvent::Progress(
+                TransactionProgressEvent::EpilogueAfterTxCyclesObtained(process.clk()),
+            )),
         };
 
         Ok(tx_event)

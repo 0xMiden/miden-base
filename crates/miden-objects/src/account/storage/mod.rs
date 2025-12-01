@@ -1,4 +1,4 @@
-use alloc::collections::BTreeMap;
+use alloc::collections::BTreeSet;
 use alloc::string::ToString;
 use alloc::vec::Vec;
 
@@ -76,10 +76,11 @@ impl AccountStorage {
             return Err(AccountError::StorageTooManySlots(num_slots as u64));
         }
 
-        let mut names = BTreeMap::new();
+        let mut names = BTreeSet::new();
         for slot in &slots {
-            if let Some(name) = names.insert(slot.name_id(), slot.name()) {
-                return Err(AccountError::DuplicateStorageSlotName(name.clone()));
+            if !names.insert(slot.name()) {
+                // TODO(named_slots): Add test for this new error.
+                return Err(AccountError::DuplicateStorageSlotName(slot.name().clone()));
             }
         }
 

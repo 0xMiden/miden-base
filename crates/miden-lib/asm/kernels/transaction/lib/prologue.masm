@@ -782,16 +782,8 @@ proc.add_input_note_assets_to_vault
         padw dup.5 mem_loadw_be
         # => [ASSET, input_vault_root_ptr, assets_start_ptr, assets_end_ptr, input_vault_root_ptr]
 
-        # TODO: Because the input vault is a copy of the account vault, to mutate the input vault,
-        # asset witnesses for the account vault must be requested.
-        # This is a temporary solution. We should avoid loading assets one by one here and instead
-        # pre-load all relevant merkle paths for the note assets before tx execution.
-        #
-        # This emitted event is equivalent to ACCOUNT_VAULT_BEFORE_ADD_ASSET_EVENT.
-
-        emit.ACCOUNT_VAULT_BEFORE_ADD_ASSET_EVENT
-        # => [ASSET, input_vault_root_ptr, assets_start_ptr, assets_end_ptr, input_vault_root_ptr]
-
+        # the witnesses for the note assets should be added prior to transaction execution and so
+        # there should be no need to fetch them lazily via an event.
         exec.asset_vault::add_asset dropw
         # => [assets_start_ptr, assets_end_ptr, input_vault_root_ptr]
 

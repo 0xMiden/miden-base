@@ -23,15 +23,15 @@ use crate::{AccountError, FieldElement, ZERO};
 /// - [`StorageSlotType::Map`]: The root of the SMT that represents the storage map.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct StorageSlotHeader {
-    name_id: SlotNameId,
+    id: SlotNameId,
     r#type: StorageSlotType,
     value: Word,
 }
 
 impl StorageSlotHeader {
     /// Returns a new instance of storage slot header from the provided storage slot type and value.
-    pub(crate) fn new(name_id: SlotNameId, r#type: StorageSlotType, value: Word) -> Self {
-        Self { name_id, r#type, value }
+    pub(crate) fn new(id: SlotNameId, r#type: StorageSlotType, value: Word) -> Self {
+        Self { id, r#type, value }
     }
 
     /// Returns this storage slot header as field elements.
@@ -45,8 +45,8 @@ impl StorageSlotHeader {
         elements[0..4].copy_from_slice(&[
             Felt::ZERO,
             self.r#type.as_felt(),
-            self.name_id.suffix(),
-            self.name_id.prefix(),
+            self.id.suffix(),
+            self.id.prefix(),
         ]);
         elements[4..8].copy_from_slice(self.value.as_elements());
         elements

@@ -333,7 +333,7 @@ fn partial_blockchain_memory_assertions(
     // update the partial blockchain to point to the block against which this transaction is being
     // executed
     let mut partial_blockchain = prepared_tx.tx_inputs().blockchain().clone();
-    partial_blockchain.add_block(prepared_tx.tx_inputs().block_header().clone(), true);
+    partial_blockchain.add_block(prepared_tx.tx_inputs().block_header(), true);
 
     assert_eq!(
         exec_output.get_kernel_mem_word(PARTIAL_BLOCKCHAIN_NUM_LEAVES_PTR)[0],

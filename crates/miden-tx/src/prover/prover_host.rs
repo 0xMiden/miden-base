@@ -187,19 +187,7 @@ where
             TransactionEvent::LinkMapGet { advice_mutation } => Ok(advice_mutation),
 
             // We do not track tx progress during proving.
-            TransactionEvent::PrologueStart { .. }
-            | TransactionEvent::PrologueEnd { .. }
-            | TransactionEvent::NotesProcessingStart { .. }
-            | TransactionEvent::NotesProcessingEnd { .. }
-            | TransactionEvent::NoteExecutionStart { .. }
-            | TransactionEvent::NoteExecutionEnd { .. }
-            | TransactionEvent::TxScriptProcessingStart { .. }
-            | TransactionEvent::TxScriptProcessingEnd { .. }
-            | TransactionEvent::EpilogueStart { .. }
-            | TransactionEvent::EpilogueEnd { .. }
-            | TransactionEvent::EpilogueAuthProcStart { .. }
-            | TransactionEvent::EpilogueAuthProcEnd { .. }
-            | TransactionEvent::EpilogueAfterTxCyclesObtained { .. } => Ok(Vec::new()),
+            TransactionEvent::Progress(_) => Ok(Vec::new()),
         };
 
         result.map_err(EventError::from)

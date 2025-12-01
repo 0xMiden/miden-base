@@ -1120,7 +1120,7 @@ async fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
         .with_dynamically_linked_library(first_foreign_account_component.library())?
         .compile_tx_script(code)?;
 
-    let executed_transaction = mock_chain
+    mock_chain
         .build_tx_context(native_account.id(), &[], &[])
         .expect("failed to build tx context")
         .foreign_accounts(foreign_account_inputs)
@@ -1131,7 +1131,164 @@ async fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
         .execute()
         .await?;
 
-    // TODO: Remove later and add a integration test using FPI.
+    Ok(())
+}
+
+/// Proves a transaction that uses FPI with two foreign accounts.
+///
+/// Call chain:
+/// `Native -> First FA -> Second FA`
+///
+/// Each foreign account has unique code. The first foreign account calls a procedure on the second
+/// foreign account via FPI. We then prove the executed transaction to ensure code for multiple
+/// foreign accounts is correctly loaded into the prover host's MAST store.
+#[tokio::test]
+async fn test_prove_fpi_two_foreign_accounts_chain() -> anyhow::Result<()> {
+    // ------ SECOND FOREIGN ACCOUNT ---------------------------------------------------------------
+    // unique procedure which just leaves a constant on the stack
+    let second_foreign_account_code_source = r#"
+        use.std::sys
+
+        export.second_account_foreign_proc
+            # leave a constant result on the stack
+            push.3
+
+            # truncate any padding
+            exec.sys::truncate_stack
+        end
+    "#;
+
+    let source_manager = Arc::new(DefaultSourceManager::default());
+    let second_foreign_account_component = AccountComponent::compile(
+        NamedSource::new("foreign_account", second_foreign_account_code_source),
+        TransactionKernel::with_kernel_library(source_manager.clone()),
+        vec![],
+    )?
+    .with_supports_all_types();
+
+    let second_foreign_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
+        .with_auth_component(Auth::IncrNonce)
+        .with_component(second_foreign_account_component.clone())
+        .build_existing()?;
+
+    // ------ FIRST FOREIGN ACCOUNT ---------------------------------------------------------------
+    // unique procedure which calls the second foreign account via FPI and then returns
+    let first_foreign_account_code_source = format!(
+        r#"
+        use.miden::tx
+        use.std::sys
+
+        export.first_account_foreign_proc
+            # pad the stack for the `execute_foreign_procedure` execution
+            padw padw padw push.0.0.0
+            # => [pad(15)]
+
+            # get the hash of the `second_account_foreign_proc` using procref
+            procref.::foreign_account::second_account_foreign_proc
+
+            # push the ID of the second foreign account
+            push.{second_foreign_suffix} push.{second_foreign_prefix}
+            # => [foreign_account_id_prefix, foreign_account_id_suffix, FOREIGN_PROC_ROOT, pad(15)]
+
+            # call the second foreign account
+            exec.tx::execute_foreign_procedure
+            # => [result_from_second]
+
+            # keep the result and drop any padding if present
+            exec.sys::truncate_stack
+        end
+        "#,
+        second_foreign_prefix = second_foreign_account.id().prefix().as_felt(),
+        second_foreign_suffix = second_foreign_account.id().suffix(),
+    );
+
+    // Link against the second foreign account.
+    let first_foreign_account_component = AccountComponent::compile(
+        NamedSource::new("first_foreign_account", first_foreign_account_code_source),
+        TransactionKernel::with_kernel_library(source_manager.clone())
+            .with_dynamic_library(second_foreign_account_component.library())
+            .map_err(|e| anyhow::anyhow!("Failed to link dynamic library: {}", e))?,
+        vec![],
+    )?
+    .with_supports_all_types();
+
+    let first_foreign_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
+        .with_auth_component(Auth::IncrNonce)
+        .with_component(first_foreign_account_component.clone())
+        .build_existing()?;
+
+    // ------ NATIVE ACCOUNT ---------------------------------------------------------------
+    let native_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
+        .with_auth_component(Auth::IncrNonce)
+        .with_component(MockAccountComponent::with_empty_slots())
+        .storage_mode(AccountStorageMode::Public)
+        .build_existing()?;
+
+    let mut mock_chain = MockChainBuilder::with_accounts([
+        native_account.clone(),
+        first_foreign_account.clone(),
+        second_foreign_account.clone(),
+    ])?
+    .build()?;
+    mock_chain.prove_next_block()?;
+
+    let foreign_account_inputs = vec![
+        mock_chain
+            .get_foreign_account_inputs(first_foreign_account.id())
+            .expect("failed to get foreign account inputs"),
+        mock_chain
+            .get_foreign_account_inputs(second_foreign_account.id())
+            .expect("failed to get foreign account inputs"),
+    ];
+
+    // ------ TRANSACTION SCRIPT (Native) ----------------------------------------------------------
+    // Call the first foreign account's procedure. It will call into the second FA via FPI.
+    let code = format!(
+        r#"
+        use.std::sys
+        use.miden::tx
+
+        begin
+            # pad the stack for the `execute_foreign_procedure` execution
+            padw padw padw push.0.0.0
+            # => [pad(15)]
+
+            # get the hash of the `first_account_foreign_proc` procedure
+            procref.::first_foreign_account::first_account_foreign_proc
+
+            # push the first foreign account ID
+            push.{foreign_suffix} push.{foreign_prefix}
+            # => [foreign_account_id_prefix, foreign_account_id_suffix, FOREIGN_PROC_ROOT, pad(15)]
+
+            exec.tx::execute_foreign_procedure
+            # => [result_from_second]
+
+            # assert the result returned from the second FA is 3
+            dup push.3 assert_eq.err="result from second foreign account should be 3"
+
+            # truncate any remaining stack items
+            exec.sys::truncate_stack
+        end
+        "#,
+        foreign_prefix = first_foreign_account.id().prefix().as_felt(),
+        foreign_suffix = first_foreign_account.id().suffix(),
+    );
+
+    let tx_script = ScriptBuilder::with_source_manager(source_manager.clone())
+        .with_dynamically_linked_library(first_foreign_account_component.library())?
+        .compile_tx_script(code)?;
+
+    let executed_transaction = mock_chain
+        .build_tx_context(native_account.id(), &[], &[])
+        .expect("failed to build tx context")
+        .foreign_accounts(foreign_account_inputs)
+        .tx_script(tx_script)
+        .with_source_manager(source_manager)
+        .build()?
+        .execute()
+        .await?;
+
+    // Prove the executed transaction which uses FPI across two foreign accounts.
     LocalTransactionProver::default().prove(executed_transaction)?;
 
     Ok(())

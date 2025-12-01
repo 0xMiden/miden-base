@@ -23,7 +23,7 @@ use crate::utils::serde::{ByteWriter, Deserializable, DeserializationError, Seri
 /// structure:
 ///
 /// ```text
-/// organization_name::component_name::slot_name
+/// project_name::component_name::slot_name
 /// ```
 ///
 /// ## Requirements
@@ -97,20 +97,16 @@ impl SlotName {
     }
 
     /// Returns the slot name as a string slice.
+    // allow is_empty to be missing because it would always return false since slot names are
+    // enforced to have a length greater than zero, so it does not have much use.
+    #[allow(clippy::len_without_is_empty)]
     pub fn len(&self) -> u8 {
         // SAFETY: Slot name validation should enforce length fits into a u8.
         debug_assert!(self.name.len() <= Self::MAX_LENGTH);
         self.name.len() as u8
     }
 
-    /// Returns `true` if the slot name has a length of zero.
-    pub fn is_empty(&self) -> bool {
-        self.name.is_empty()
-    }
-
-    /// Computes the [`SlotNameId`] of this [`SlotName`].
-    ///
-    /// See the ID's docs for details.
+    // TODO(named_slots): Docs.
     pub fn compute_id(&self) -> SlotNameId {
         let hashed_word = hash_string_to_word(self.as_str());
         let suffix = hashed_word[0];
