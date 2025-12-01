@@ -40,6 +40,12 @@ use syn::{Data, DeriveInput, Fields, Type, parse_macro_input};
 ///
 /// ```ignore
 /// impl NoteId {
+///     /// Construct without further checks from a given `Word`
+///     ///
+///     /// # Warning
+///     ///
+///     /// This requires the caller to uphold the guarantees/invariants of this type (if any).
+///     /// Check the type-level documentation for guarantees/invariants.
 ///     pub fn new_unchecked(word: Word) -> Self {
 ///         Self(word)
 ///     }
@@ -130,6 +136,11 @@ pub fn word_wrapper_derive(input: TokenStream) -> TokenStream {
     let expanded = quote! {
         impl #impl_generics #name #ty_generics #where_clause {
             /// Construct without further checks from a given `Word`
+            ///
+            /// # Warning
+            ///
+            /// This requires the caller to uphold the guarantees/invariants of this type (if any).
+            /// Check the type-level documentation for guarantees/invariants.
             pub fn new_unchecked(word: Word) -> Self {
                 Self(word)
             }
