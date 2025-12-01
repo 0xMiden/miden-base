@@ -28,13 +28,13 @@ pub const KERNEL_PROCEDURES: [Word; 52] = [
     // account_get_initial_item
     word!("0x0662d55068a44158e8061bfdfe753fd57d53102e8861c71f36ec9481b14d7e8b"),
     // account_set_item
-    word!("0xfe6b96a09db2e04d9f800248742f4a8db33c909c8cc918071f8396277ab6ee90"),
+    word!("0xe2ac03d4fb2ed9d0e756a774476c97e4b7197cdcf4a0d8de302a47344f7ce211"),
     // account_get_map_item
-    word!("0x4c61bfaa1c5f0e873c1df7be501b57de8b7c1ddb64b862f0cfb58917f857b656"),
+    word!("0xd8449285da87d27e78eec95466cd9ac05506eab757c8561de21362cc1a2e9e1a"),
     // account_get_initial_map_item
-    word!("0xd586c7ff2bf430c8389e797db93363862796a2f696997a8491303b5b7f13d028"),
+    word!("0x6a8ca612d462a2ef1e3bf778de57827cbd66eb83dbd596a4746a716da15d8c51"),
     // account_set_map_item
-    word!("0xdcc1d1357ea68b6a9bdb7fb29b2b66e442bda92b0fcbd05f3ec599187b013221"),
+    word!("0x2d6684f7ad6b051b8c5d3476f01dfac55f4d27ff0b3f4d359238acb1bdfc400b"),
     // account_get_initial_vault_root
     word!("0x46297d9ac95afd60c7ef1a065e024ad49aa4c019f6b3924191905449b244d4ec"),
     // account_get_vault_root
@@ -60,13 +60,13 @@ pub const KERNEL_PROCEDURES: [Word; 52] = [
     // account_has_procedure
     word!("0x667d5ce1b7a54c3b8965666ce90e59085c97775b82eba25dddfe218db5fe137d"),
     // faucet_mint_asset
-    word!("0x2d15f1f80b81e45d407902f80ab5ca1775040c334844da1ac59f6207c2f3b482"),
+    word!("0xa0c038cba851e70f1d08141006fbffebe7283aa8f5af7b27dd5328c89309bde4"),
     // faucet_burn_asset
-    word!("0xabd9fbce8de124afbb543b40609ab79c10f52d502ee0fb18de4644735445a198"),
+    word!("0x9c22302e6505e55b805d0a0ec1328653065e31980368a09f40e0528e3a2fdb54"),
     // faucet_get_total_fungible_asset_issuance
     word!("0xd361b7554245e8a414771e95ef53b427d53fb4990846d8c376c7e0f744d15b87"),
     // faucet_is_non_fungible_asset_issued
-    word!("0xdeb2a32f89ce0015fcb12f3c17b2eb63652586728e26e160b56d11c79b40703b"),
+    word!("0x64aae9fa0550d5224b4bd765a42d7e1b9ec4e66dad636f11ba54b00ff03a2af0"),
     // input_note_get_metadata
     word!("0x7ad3e94585e7a397ee27443c98b376ed8d4ba762122af6413fde9314c00a6219"),
     // input_note_get_assets_info
