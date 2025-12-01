@@ -689,11 +689,7 @@ async fn test_mint_note_output_note_types(#[case] note_type: NoteType) -> anyhow
     let amount = Felt::new(75);
     let mint_asset: Asset = FungibleAsset::new(faucet.id(), amount.into()).unwrap().into();
     let aux = Felt::new(27);
-    let serial_num = match note_type {
-        NoteType::Private => Word::default(),
-        NoteType::Public => Word::from([1, 2, 3, 4u32]),
-        NoteType::Encrypted => unreachable!("Encrypted note type not used in this test"),
-    };
+    let serial_num = Word::from([1, 2, 3, 4u32]);
 
     // Create the expected P2ID output note
     let p2id_mint_output_note = create_p2id_note_exact(
@@ -737,26 +733,16 @@ async fn test_mint_note_output_note_types(#[case] note_type: NoteType) -> anyhow
         NoteType::Encrypted => unreachable!("Encrypted note type not used in this test"),
     };
 
-    // Use different RNG seeds for different test cases to avoid advice map conflicts
-    let rng_seed = match note_type {
-        NoteType::Private => 42u32,
-        NoteType::Public => 43u32,
-        NoteType::Encrypted => unreachable!("Encrypted note type not used in this test"),
-    };
-    let mut rng = RpoRandomCoin::new([Felt::from(rng_seed); 4].into());
+    let mut rng = RpoRandomCoin::new([Felt::from(42u32); 4].into());
     let mint_note =
         create_mint_note(faucet.id(), faucet_owner_account_id, mint_inputs.clone(), aux, &mut rng)?;
-
-    // assert_eq!(mint_note.inputs().num_values(), expected_num_mint_inputs);
 
     builder.add_output_note(OutputNote::Full(mint_note.clone()));
     let mut mock_chain = builder.build()?;
 
-    // Execute MINT note to create P2ID output note
     let mut tx_context_builder =
         mock_chain.build_tx_context(faucet.id(), &[mint_note.id()], &[])?;
 
-    // For public notes, we still need to add the P2ID script
     if note_type == NoteType::Public {
         let p2id_script = WellKnownNote::P2ID.script();
         tx_context_builder = tx_context_builder.add_note_script(p2id_script);
@@ -768,7 +754,6 @@ async fn test_mint_note_output_note_types(#[case] note_type: NoteType) -> anyhow
     assert_eq!(executed_transaction.output_notes().num_notes(), 1);
     let output_note = executed_transaction.output_notes().get_note(0);
 
-    // Check that the expected note equals the output note from the transaction
     match note_type {
         NoteType::Private => {
             // For private notes, we can only compare basic properties since we get
@@ -789,24 +774,6 @@ async fn test_mint_note_output_note_types(#[case] note_type: NoteType) -> anyhow
             };
 
             assert_eq!(created_note, &p2id_mint_output_note);
-
-            // Compare the essential properties that should match
-            assert_eq!(created_note.id(), p2id_mint_output_note.id());
-            assert_eq!(created_note.metadata().sender(), p2id_mint_output_note.metadata().sender());
-            assert_eq!(
-                created_note.metadata().note_type(),
-                p2id_mint_output_note.metadata().note_type()
-            );
-            assert_eq!(created_note.metadata().aux(), p2id_mint_output_note.metadata().aux());
-            assert_eq!(created_note.assets(), p2id_mint_output_note.assets());
-            assert_eq!(
-                created_note.recipient().serial_num(),
-                p2id_mint_output_note.recipient().serial_num()
-            );
-            assert_eq!(
-                created_note.recipient().script().root(),
-                p2id_mint_output_note.recipient().script().root()
-            );
         },
         NoteType::Encrypted => unreachable!("Encrypted note type not used in this test"),
     }
