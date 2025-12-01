@@ -75,6 +75,10 @@ impl From<TransactionCheckerError> for TransactionExecutorError {
 pub enum TransactionExecutorError {
     #[error("failed to fetch transaction inputs from the data store")]
     FetchTransactionInputsFailed(#[source] DataStoreError),
+    #[error("failed to fetch asset witnesses from the data store")]
+    FetchAssetWitnessFailed(#[source] DataStoreError),
+    #[error("fee asset must be fungible but was non-fungible")]
+    FeeAssetMustBeFungible,
     #[error("foreign account inputs for ID {0} are not anchored on reference block")]
     ForeignAccountNotAnchoredInReference(AccountId),
     #[error(
