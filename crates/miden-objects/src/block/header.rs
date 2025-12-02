@@ -1,6 +1,8 @@
 use alloc::string::ToString;
 use alloc::vec::Vec;
 
+use miden_crypto::dsa::ecdsa_k256_keccak::PublicKey;
+
 use crate::account::{AccountId, AccountType};
 use crate::block::BlockNumber;
 use crate::utils::serde::{
@@ -30,8 +32,7 @@ use crate::{FeeError, Felt, Hasher, Word, ZERO};
 /// - `tx_commitment` is a commitment to the set of transaction IDs which affected accounts in the
 ///   block.
 /// - `tx_kernel_commitment` a commitment to all transaction kernels supported by this block.
-/// - `proof_commitment` is the commitment of the block's STARK proof attesting to the correct state
-///   transition.
+/// - `public_key_commitment` is the commitment of the block's public key.
 /// - `fee_parameters` are the parameters defining the base fees and the native asset, see
 ///   [`FeeParameters`] for more details.
 /// - `timestamp` is the time when the block was created, in seconds since UNIX epoch. Current
@@ -49,7 +50,7 @@ pub struct BlockHeader {
     note_root: Word,
     tx_commitment: Word,
     tx_kernel_commitment: Word,
-    proof_commitment: Word, // TODO(serge): remove this field as proofs are constructed later.
+    public_key: PublicKey,
     fee_parameters: FeeParameters,
     timestamp: u32,
     sub_commitment: Word,
@@ -69,7 +70,7 @@ impl BlockHeader {
         note_root: Word,
         tx_commitment: Word,
         tx_kernel_commitment: Word,
-        proof_commitment: Word,
+        public_key: PublicKey,
         fee_parameters: FeeParameters,
         timestamp: u32,
     ) -> Self {
@@ -82,7 +83,7 @@ impl BlockHeader {
             nullifier_root,
             tx_commitment,
             tx_kernel_commitment,
-            proof_commitment,
+            &public_key,
             &fee_parameters,
             timestamp,
             block_num,
@@ -104,7 +105,7 @@ impl BlockHeader {
             note_root,
             tx_commitment,
             tx_kernel_commitment,
-            proof_commitment,
+            public_key,
             fee_parameters,
             timestamp,
             sub_commitment,
@@ -172,6 +173,11 @@ impl BlockHeader {
         self.note_root
     }
 
+    /// Returns the public key of the block's validator.
+    pub fn public_key(&self) -> &PublicKey {
+        &self.public_key
+    }
+
     /// Returns the commitment to all transactions in this block.
     ///
     /// The commitment is computed as sequential hash of (`transaction_id`, `account_id`) tuples.
@@ -187,11 +193,6 @@ impl BlockHeader {
     /// hashes.
     pub fn tx_kernel_commitment(&self) -> Word {
         self.tx_kernel_commitment
-    }
-
-    /// Returns the proof commitment.
-    pub fn proof_commitment(&self) -> Word {
-        self.proof_commitment
     }
 
     /// Returns a reference to the [`FeeParameters`] in this header.
@@ -216,7 +217,7 @@ impl BlockHeader {
     ///
     /// The sub commitment is computed as a sequential hash of the following fields:
     /// `prev_block_commitment`, `chain_commitment`, `account_root`, `nullifier_root`, `note_root`,
-    /// `tx_commitment`, `tx_kernel_commitment`, `proof_commitment`, `version`, `timestamp`,
+    /// `tx_commitment`, `tx_kernel_commitment`, `public_key_commitment`, `version`, `timestamp`,
     /// `block_num`, `native_asset_id`, `verification_base_fee` (all fields except the `note_root`).
     #[allow(clippy::too_many_arguments)]
     fn compute_sub_commitment(
@@ -227,7 +228,7 @@ impl BlockHeader {
         nullifier_root: Word,
         tx_commitment: Word,
         tx_kernel_commitment: Word,
-        proof_commitment: Word,
+        public_key: &PublicKey,
         fee_parameters: &FeeParameters,
         timestamp: u32,
         block_num: BlockNumber,
@@ -239,7 +240,7 @@ impl BlockHeader {
         elements.extend_from_slice(nullifier_root.as_elements());
         elements.extend_from_slice(tx_commitment.as_elements());
         elements.extend_from_slice(tx_kernel_commitment.as_elements());
-        elements.extend_from_slice(proof_commitment.as_elements());
+        elements.extend(public_key.to_commitment());
         elements.extend([block_num.into(), version.into(), timestamp.into(), ZERO]);
         elements.extend([
             fee_parameters.native_asset_id().suffix(),
@@ -266,7 +267,7 @@ impl Serializable for BlockHeader {
         self.note_root.write_into(target);
         self.tx_commitment.write_into(target);
         self.tx_kernel_commitment.write_into(target);
-        self.proof_commitment.write_into(target);
+        self.public_key.write_into(target);
         self.fee_parameters.write_into(target);
         self.timestamp.write_into(target);
     }
@@ -283,7 +284,7 @@ impl Deserializable for BlockHeader {
         let note_root = source.read()?;
         let tx_commitment = source.read()?;
         let tx_kernel_commitment = source.read()?;
-        let proof_commitment = source.read()?;
+        let public_key = source.read()?;
         let fee_parameters = source.read()?;
         let timestamp = source.read()?;
 
@@ -297,7 +298,7 @@ impl Deserializable for BlockHeader {
             note_root,
             tx_commitment,
             tx_kernel_commitment,
-            proof_commitment,
+            public_key,
             fee_parameters,
             timestamp,
         ))

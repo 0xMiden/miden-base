@@ -277,6 +277,7 @@ impl Default for PartialBlockchain {
 mod tests {
     use assert_matches::assert_matches;
     use miden_core::utils::{Deserializable, Serializable};
+    use miden_crypto::dsa::ecdsa_k256_keccak::SecretKey;
 
     use super::PartialBlockchain;
     use crate::alloc::vec::Vec;
@@ -437,7 +438,7 @@ mod tests {
             Word::empty(),
             Word::empty(),
             Word::empty(),
-            Word::empty(),
+            SecretKey::new().public_key(),
             fee_parameters,
             0,
         )

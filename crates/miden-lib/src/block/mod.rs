@@ -81,9 +81,6 @@ fn construct_block_header(
     let version = 0;
     let tx_kernel_commitment = TransactionKernel.to_commitment();
 
-    // TODO(serge): remove proof commitment when block header is updated to no longer have it.
-    let proof_commitment = Word::empty();
-
     BlockHeader::new(
         version,
         prev_block_commitment,
@@ -94,7 +91,7 @@ fn construct_block_header(
         note_root,
         tx_commitment,
         tx_kernel_commitment,
-        proof_commitment,
+        prev_block_header.public_key().clone(),
         fee_parameters,
         timestamp,
     )
