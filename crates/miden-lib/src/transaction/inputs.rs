@@ -138,6 +138,7 @@ impl TransactionAdviceInputs {
     ///     NULLIFIER_ROOT,
     ///     TX_COMMITMENT,
     ///     TX_KERNEL_COMMITMENT
+    ///     PROOF_COMMITMENT,
     ///     [block_num, version, timestamp, 0],
     ///     [native_asset_id_suffix, native_asset_id_prefix, verification_base_fee, 0]
     ///     [0, 0, 0, 0]
@@ -162,6 +163,7 @@ impl TransactionAdviceInputs {
         self.extend_stack(header.nullifier_root());
         self.extend_stack(header.tx_commitment());
         self.extend_stack(header.tx_kernel_commitment());
+        self.extend_stack(header.proof_commitment());
         self.extend_stack([
             header.block_num().into(),
             header.version().into(),

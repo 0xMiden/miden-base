@@ -54,6 +54,7 @@ use miden_lib::transaction::memory::{
     PARTIAL_BLOCKCHAIN_NUM_LEAVES_PTR,
     PARTIAL_BLOCKCHAIN_PEAKS_PTR,
     PREV_BLOCK_COMMITMENT_PTR,
+    PROOF_COMMITMENT_PTR,
     PROTOCOL_VERSION_IDX,
     TIMESTAMP_IDX,
     TX_COMMITMENT_PTR,
@@ -262,6 +263,12 @@ fn block_data_memory_assertions(exec_output: &ExecutionOutput, inputs: &Transact
         exec_output.get_kernel_mem_word(TX_KERNEL_COMMITMENT_PTR),
         inputs.tx_inputs().block_header().tx_kernel_commitment(),
         "The kernel commitment should be stored at the TX_KERNEL_COMMITMENT_PTR"
+    );
+
+    assert_eq!(
+        exec_output.get_kernel_mem_word(PROOF_COMMITMENT_PTR),
+        inputs.tx_inputs().block_header().proof_commitment(),
+        "The proof commitment should be stored at the PROOF_COMMITMENT_PTR"
     );
 
     assert_eq!(

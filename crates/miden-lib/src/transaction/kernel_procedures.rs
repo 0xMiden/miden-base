@@ -100,15 +100,15 @@ pub const KERNEL_PROCEDURES: [Word; 52] = [
     // tx_get_block_commitment
     word!("0xe474b491a64d222397fcf83ee5db7b048061988e5e83ce99b91bae6fd75a3522"),
     // tx_get_block_number
-    word!("0xfbf26eb716914d02d1c9a14ccf575a33aed995810ee8d194619676bb88f45b25"),
+    word!("0x297797dff54b8108dd2df254b95d43895d3f917ab10399efc62adaf861c905ae"),
     // tx_get_block_timestamp
-    word!("0x28d417d376fd5e5eca04c5da4c2b754dfef25e71695697df143d1c3d83c03c9a"),
+    word!("0x7903185b847517debb6c2072364e3e757b99ee623e97c2bd0a4661316c5c5418"),
     // tx_start_foreign_context
     word!("0x4bfde60ab4b1e42148ceea2845ecf9aae061a577972baf348379701760d476d7"),
     // tx_end_foreign_context
     word!("0xaa0018aa8da890b73511879487f65553753fb7df22de380dd84c11e6f77eec6f"),
     // tx_get_expiration_delta
-    word!("0x90c7025284bb44f6c5fa3fea484f5373e78ff21825229883d7a023c87c8781b7"),
+    word!("0xa60286e820a755128b2269db5057b0e2d9b79fef6f813bf3fe3337553a8fbb53"),
     // tx_update_expiration_block_delta
-    word!("0x2c4586e5cd27755e774edc28f613627b84690394b7f5bc08a5ec6b95c5bc91f7"),
+    word!("0xa16440a9a8cd2a6d0ff7f5c3bcce2958976e5d3e6e8a6935ff40ae1863c324f0"),
 ];

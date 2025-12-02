@@ -171,6 +171,7 @@ end
 #!     NULLIFIER_ROOT,
 #!     TX_COMMITMENT,
 #!     TX_KERNEL_COMMITMENT
+#!     PROOF_COMMITMENT,
 #!     [block_num, version, timestamp, 0],
 #!     [native_asset_id_suffix, native_asset_id_prefix, verification_base_fee, 0],
 #!     [0, 0, 0, 0],
@@ -187,6 +188,7 @@ end
 #!   consumed.
 #! - TX_COMMITMENT is a commitment to the set of transaction IDs which affected accounts in the block.
 #! - TX_KERNEL_COMMITMENT is the sequential hash of the kernel procedures.
+#! - PROOF_COMMITMENT is the commitment of the block's STARK proof attesting to the correct state transition.
 #! - block_num is the reference block number.
 #! - version is the current protocol version.
 #! - timestamp is the current timestamp.
@@ -1136,6 +1138,7 @@ end
 #!     NULLIFIER_ROOT,
 #!     TX_COMMITMENT,
 #!     TX_KERNEL_COMMITMENT
+#!     PROOF_COMMITMENT,
 #!     [block_num, version, timestamp, 0],
 #!     NOTE_ROOT,
 #!     kernel_version
@@ -1174,6 +1177,7 @@ end
 #! - NULLIFIER_ROOT is the root of the tree with nullifiers of all notes that have ever been
 #!   consumed.
 #! - TX_COMMITMENT is a commitment to the set of transaction IDs which affected accounts in the block.
+#! - PROOF_COMMITMENT is the commitment of the block's STARK proof attesting to the correct state transition.
 #! - block_num is the reference block number.
 #! - version is the current protocol version.
 #! - timestamp is the current timestamp.

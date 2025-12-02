@@ -170,8 +170,11 @@ pub const TX_COMMITMENT_PTR: MemoryAddress = 816;
 /// The memory address at which the transaction kernel commitment is stored
 pub const TX_KERNEL_COMMITMENT_PTR: MemoryAddress = 820;
 
+/// The memory address at which the proof commitment is stored
+pub const PROOF_COMMITMENT_PTR: MemoryAddress = 824;
+
 /// The memory address at which the block number is stored
-pub const BLOCK_METADATA_PTR: MemoryAddress = 824;
+pub const BLOCK_METADATA_PTR: MemoryAddress = 828;
 
 /// The index of the block number within the block metadata
 pub const BLOCK_NUMBER_IDX: DataIndex = 0;
@@ -183,7 +186,7 @@ pub const PROTOCOL_VERSION_IDX: DataIndex = 1;
 pub const TIMESTAMP_IDX: DataIndex = 2;
 
 /// The memory address at which the fee parameters are stored. These occupy a double word.
-pub const FEE_PARAMETERS_PTR: MemoryAddress = 828;
+pub const FEE_PARAMETERS_PTR: MemoryAddress = 832;
 
 /// The index of the native asset ID suffix within the block fee parameters.
 pub const NATIVE_ASSET_ID_SUFFIX_IDX: DataIndex = 0;
@@ -195,7 +198,7 @@ pub const NATIVE_ASSET_ID_PREFIX_IDX: DataIndex = 1;
 pub const VERIFICATION_BASE_FEE_IDX: DataIndex = 2;
 
 /// The memory address at which the note root is stored
-pub const NOTE_ROOT_PTR: MemoryAddress = 836;
+pub const NOTE_ROOT_PTR: MemoryAddress = 840;
 
 // CHAIN DATA
 // ------------------------------------------------------------------------------------------------
