@@ -28,7 +28,7 @@ jobs:
         with:
           tool: cargo-binstall
       - name: Install cargo-msrv
-        run: cargo binstall cargo-msrv
+        run: cargo binstall --no-confirm cargo-msrv
       - name: Check MSRV for each workspace member
         run: |
           ./scripts/check-msrv.sh
