@@ -60,7 +60,7 @@ begin
     # => [total_inputs, inputs_ptr, pad(16)]
 
     dup
-    # => [total_inputs, total_inputs, inputs_ptr, pad(16)]
+    # => [num_inputs, num_inputs, inputs_ptr, pad(16)]
 
     gte.MINT_NOTE_BASE_CASE_INPUTS_PUBLIC
     # => [is_public_output_note, total_inputs, inputs_ptr, pad(16)]
