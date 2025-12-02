@@ -18,15 +18,14 @@ yanked = "warn"
 # License configuration
 [licenses]
 allow = [
-    "MIT",
-    "Apache-2.0",
-    "Apache-2.0 WITH LLVM-exception",
-    "BSD-2-Clause",
-    "BSD-3-Clause",
-    "CC0-1.0",
-    "ISC",
-    "Zlib",
-    "Unicode-3.0",
+  "Apache-2.0 WITH LLVM-exception",
+  "Apache-2.0",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "ISC",
+  "MIT",
+  "Unicode-3.0",
+  "Zlib",
 ]
 exceptions = [
   # Each entry is the crate and version constraint, and its specific allowed licenses
@@ -47,19 +46,19 @@ skip = [
   #{ name = "ansi_term", version = "=0.11.0" },
 ]
 skip-tree = [
-    # Allow getrandom v0.2.x for now - will be phased out with nanorand
-    { name = "getrandom", version = "=0.2.*" },
-    # Allow rand_core v0.6.x for now - legacy dependency
-    { name = "rand_core", version = "=0.6.*" },
-    # Allow rustc_version v0.2.x - build dependency
-    { name = "rustc_version", version = "=0.2.*" },
-    # Allow windows-targets v0.48.x - older Windows target
-    { name = "windows-targets", version = "=0.48.*" },
-    # Allow unicode-width v0.1.x - conflicting dependencies in ecosystem
-    { name = "unicode-width", version = "=0.1.*" },
-    # Allow windows-sys v0.48.x/v0.59.x - multiple Windows system libraries (hard to converge)
-    { name = "windows-sys", version = "=0.48.*" },
-    { name = "windows-sys", version = "=0.59.*" },
+  # Allow getrandom v0.2.x - legacy version used by nanorand
+  { name = "getrandom", version = "=0.2.*" },
+  # Allow rand_core v0.6.x - legacy version used by winterfell crates
+  { name = "rand_core", version = "=0.6.*" },
+  # Allow rustc_version v0.2.x - build dependency version
+  { name = "rustc_version", version = "=0.2.*" },
+  # Allow unicode-width v0.1.x - used by miden-formatting vs textwrap conflict
+  { name = "unicode-width", version = "=0.1.*" },
+  # Allow windows-targets v0.48.x - older Windows target version
+  { name = "windows-targets", version = "=0.48.*" },
+  # Allow windows-sys v0.48.x/v0.59.x - multiple Windows system libraries
+  { name = "windows-sys", version = "=0.48.*" },
+  { name = "windows-sys", version = "=0.59.*" },
 ]
 wildcards = "allow"
 
