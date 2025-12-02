@@ -4,7 +4,7 @@ use alloc::vec::Vec;
 use miden_assembly::ast::QualifiedProcedureName;
 use miden_assembly::{Assembler, Library, Parse};
 use miden_core::utils::Deserializable;
-use miden_mast_package::{Package, SectionId};
+use miden_mast_package::{MastArtifact, Package, SectionId};
 use miden_processor::MastForest;
 
 mod template;
@@ -138,6 +138,7 @@ impl AccountComponent {
     /// # Errors
     ///
     /// Returns an error if:
+    /// - The package does not contain a library artifact
     /// - The package does not contain account component metadata
     /// - The metadata cannot be deserialized from the package
     /// - The storage initialization fails due to invalid or missing data
@@ -147,7 +148,14 @@ impl AccountComponent {
         init_storage_data: &InitStorageData,
     ) -> Result<Self, AccountError> {
         let metadata = AccountComponentMetadata::try_from(package)?;
-        let library = package.unwrap_library().as_ref().clone();
+        let library = match &package.mast {
+            MastArtifact::Library(library) => library.as_ref().clone(),
+            MastArtifact::Executable(_) => {
+                return Err(AccountError::other(
+                    "expected Package to contain a library, but got an executable",
+                ))
+            },
+        };
 
         build_component_from_metadata(&metadata, &library, init_storage_data)
     }
