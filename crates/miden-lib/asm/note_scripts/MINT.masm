@@ -46,7 +46,7 @@ const.ERR_MINT_WRONG_NUMBER_OF_INPUTS="MINT script expects exactly 8 inputs for 
 #! - SCRIPT_ROOT: Script root of the output note (4 elements)
 #! - SERIAL_NUM: Serial number of the output note (4 elements)
 #! - [INPUTS]: Variable-length inputs for the output note (Vec<Felt>)
-#!             The number of output note inputs = total_inputs - 12
+#!             The number of output note inputs = num_mint_note_inputs - 12
 #!
 #! Panics if:
 #! - account does not expose distribute procedure.
