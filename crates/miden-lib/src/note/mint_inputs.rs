@@ -1,7 +1,7 @@
 use alloc::vec::Vec;
 
 use miden_objects::note::{NoteExecutionHint, NoteInputs};
-use miden_objects::{Felt, NoteError, Word};
+use miden_objects::{Felt, MAX_INPUTS_PER_NOTE, NoteError, Word};
 
 /// Represents the different input formats for MINT notes.
 /// - Private: Creates a private output note using a precomputed recipient digest (8 MINT note
@@ -55,8 +55,15 @@ impl MintNoteInputs {
         execution_hint: NoteExecutionHint,
         aux: Felt,
     ) -> Result<Self, NoteError> {
-        // No limit on input_values length since inputs are at the end of MINT note inputs
-        // The MINT note will compute NOTE_INPUTS - 12 to determine the number of output note inputs
+        // Calculate total number of inputs that will be created:
+        // 12 fixed inputs (execution_hint, aux, tag, amount, SCRIPT_ROOT, SERIAL_NUM) +
+        // variable input_values length
+        const FIXED_PUBLIC_INPUTS: usize = 12;
+        let total_inputs = FIXED_PUBLIC_INPUTS + input_values.len();
+
+        if total_inputs > MAX_INPUTS_PER_NOTE {
+            return Err(NoteError::TooManyInputs(total_inputs));
+        }
 
         Ok(Self::Public {
             script_root,
@@ -70,10 +77,8 @@ impl MintNoteInputs {
     }
 }
 
-impl TryFrom<MintNoteInputs> for NoteInputs {
-    type Error = NoteError;
-
-    fn try_from(mint_inputs: MintNoteInputs) -> Result<Self, Self::Error> {
+impl From<MintNoteInputs> for NoteInputs {
+    fn from(mint_inputs: MintNoteInputs) -> Self {
         match mint_inputs {
             MintNoteInputs::Private {
                 recipient_digest,
@@ -85,6 +90,7 @@ impl TryFrom<MintNoteInputs> for NoteInputs {
                 let mut input_values = vec![execution_hint.into(), aux, tag, amount];
                 input_values.extend_from_slice(recipient_digest.as_elements());
                 NoteInputs::new(input_values)
+                    .expect("number of inputs should not exceed max inputs")
             },
             MintNoteInputs::Public {
                 script_root,
@@ -100,6 +106,7 @@ impl TryFrom<MintNoteInputs> for NoteInputs {
                 input_values.extend_from_slice(serial_num.as_elements());
                 input_values.extend(inputs);
                 NoteInputs::new(input_values)
+                    .expect("number of inputs should not exceed max inputs")
             },
         }
     }

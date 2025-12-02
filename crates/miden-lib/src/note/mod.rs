@@ -198,7 +198,7 @@ pub fn create_mint_note<R: FeltRng>(
     let execution_hint = NoteExecutionHint::always();
 
     // Convert MintNoteInputs to NoteInputs
-    let inputs = NoteInputs::try_from(mint_inputs)?;
+    let inputs = NoteInputs::from(mint_inputs);
 
     let tag = NoteTag::from_account_id(faucet_id);
 
