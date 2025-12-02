@@ -6,8 +6,8 @@ use.std::sys
 # CONSTANTS
 # =================================================================================================
 
-const.MINT_NOTE_INPUTS_PRIVATE=8
-const.MINT_NOTE_BASE_CASE_INPUTS_PUBLIC=12
+const.MINT_NOTE_NUM_INPUTS_PRIVATE=8
+const.MINT_NOTE_MIN_NUM_INPUTS_PUBLIC=12
 
 const.OUTPUT_NOTE_TYPE_PUBLIC=1
 const.OUTPUT_NOTE_TYPE_PRIVATE=2
