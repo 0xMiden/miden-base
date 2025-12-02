@@ -1,7 +1,6 @@
 use.miden::active_note
 use.miden::contracts::faucets::network_fungible->network_faucet
 use.miden::note
-use.std::sys
 
 # CONSTANTS
 # =================================================================================================
@@ -62,7 +61,8 @@ begin
     dup
     # => [num_inputs, num_inputs, inputs_ptr, pad(16)]
 
-    gte.MINT_NOTE_BASE_CASE_INPUTS_PUBLIC
+    u32assert2.err=ERR_MINT_WRONG_NUMBER_OF_INPUTS
+    u32gte.MINT_NOTE_MIN_NUM_INPUTS_PUBLIC
     # => [is_public_output_note, total_inputs, inputs_ptr, pad(16)]
 
     if.true
@@ -77,7 +77,8 @@ begin
         padw mem_loadw_be.8
         # => [SERIAL_NUM, SCRIPT_ROOT, total_inputs, pad(12)]
 
-        movup.8 sub.MINT_NOTE_BASE_CASE_INPUTS_PUBLIC
+        # compute variable length note inputs for the output note
+        movup.8 sub.MINT_NOTE_MIN_NUM_INPUTS_PUBLIC
         # => [num_inputs_output, SERIAL_NUM, SCRIPT_ROOT, pad(12)]
 
         push.OUTPUT_PUBLIC_NOTE_INPUTS_ADDR
@@ -98,7 +99,7 @@ begin
     else
         # private output note creation
 
-        eq.MINT_NOTE_INPUTS_PRIVATE assert.err=ERR_MINT_WRONG_NUMBER_OF_INPUTS drop
+        eq.MINT_NOTE_NUM_INPUTS_PRIVATE assert.err=ERR_MINT_WRONG_NUMBER_OF_INPUTS drop
         # => [inputs_ptr, pad(16)]
 
         drop
