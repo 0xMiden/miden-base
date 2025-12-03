@@ -1,6 +1,5 @@
 use miden_objects::ProposedBlockError;
 use miden_objects::block::{BlockBody, BlockHeader, ProposedBlock};
-use miden_objects::ecdsa_signer::EcdsaSigner;
 
 use crate::transaction::TransactionKernel;
 
@@ -28,7 +27,6 @@ pub enum BuildBlockError {
 /// its various commitment fields.
 pub fn build_block(
     proposed_block: ProposedBlock,
-    signer: impl EcdsaSigner,
 ) -> Result<(BlockHeader, BlockBody), BuildBlockError> {
     // Get fields from the proposed block before it is consumed.
     let block_num = proposed_block.block_num();
@@ -80,9 +78,9 @@ pub fn build_block(
         note_root,
         tx_commitment,
         tx_kernel_commitment,
+        prev_block_header.public_key().clone(),
         fee_parameters,
         timestamp,
-        signer,
     );
     Ok((header, body))
 }

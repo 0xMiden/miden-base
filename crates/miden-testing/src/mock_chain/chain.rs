@@ -21,7 +21,6 @@ use miden_objects::block::{
     ProposedBlock,
     ProvenBlock,
 };
-use miden_objects::ecdsa_signer::LocalEcdsaSigner;
 use miden_objects::note::{Note, NoteHeader, NoteId, NoteInclusionProof, Nullifier};
 use miden_objects::transaction::{
     ExecutedTransaction,
@@ -976,7 +975,7 @@ impl MockChain {
 
     /// Proves proposed block alongside a corresponding list of batches.
     pub fn prove_block(&self, proposed_block: ProposedBlock) -> anyhow::Result<ProvenBlock> {
-        let (header, body) = build_block(proposed_block.clone(), LocalEcdsaSigner::dummy())?;
+        let (header, body) = build_block(proposed_block.clone())?;
         let inputs = self.get_block_inputs(proposed_block.batches().as_slice())?;
         let block_proof = LocalBlockProver::new(MIN_PROOF_SECURITY_LEVEL).prove_dummy(
             proposed_block.batches().clone(),

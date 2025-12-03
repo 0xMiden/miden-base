@@ -1,11 +1,10 @@
 use alloc::string::ToString;
 use alloc::vec::Vec;
 
-use miden_crypto::dsa::ecdsa_k256_keccak::{PublicKey, Signature};
+use miden_crypto::dsa::ecdsa_k256_keccak::PublicKey;
 
 use crate::account::{AccountId, AccountType};
 use crate::block::BlockNumber;
-use crate::ecdsa_signer::EcdsaSigner;
 use crate::utils::serde::{
     ByteReader,
     ByteWriter,
@@ -56,7 +55,6 @@ pub struct BlockHeader {
     timestamp: u32,
     sub_commitment: Word,
     commitment: Word,
-    signature: Signature,
 }
 
 impl BlockHeader {
@@ -72,12 +70,11 @@ impl BlockHeader {
         note_root: Word,
         tx_commitment: Word,
         tx_kernel_commitment: Word,
+        public_key: PublicKey,
         fee_parameters: FeeParameters,
         timestamp: u32,
-        signer: impl EcdsaSigner,
     ) -> Self {
         // Compute block sub commitment.
-        let public_key = signer.public_key();
         let sub_commitment = Self::compute_sub_commitment(
             version,
             prev_block_commitment,
@@ -98,7 +95,6 @@ impl BlockHeader {
         // accessible is useful when authenticating notes.
         let commitment = Hasher::merge(&[sub_commitment, note_root]);
 
-        let signature = signer.sign(commitment);
         Self {
             version,
             prev_block_commitment,
@@ -114,7 +110,6 @@ impl BlockHeader {
             timestamp,
             sub_commitment,
             commitment,
-            signature,
         }
     }
 
@@ -278,7 +273,6 @@ impl Serializable for BlockHeader {
             timestamp,
             sub_commitment,
             commitment,
-            signature,
         } = self;
 
         version.write_into(target);
@@ -295,7 +289,6 @@ impl Serializable for BlockHeader {
         timestamp.write_into(target);
         sub_commitment.write_into(target);
         commitment.write_into(target);
-        signature.write_into(target);
     }
 }
 
@@ -316,7 +309,6 @@ impl Deserializable for BlockHeader {
             timestamp: source.read()?,
             sub_commitment: source.read()?,
             commitment: source.read()?,
-            signature: source.read()?,
         })
     }
 }

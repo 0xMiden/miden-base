@@ -6,6 +6,7 @@ use crate::Word;
 use crate::account::Account;
 use crate::block::account_tree::{AccountTree, account_id_to_smt_key};
 use crate::block::{BlockHeader, BlockNumber, FeeParameters};
+use crate::ecdsa_signer::{EcdsaSigner, LocalEcdsaSigner};
 use crate::testing::account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET;
 
 impl BlockHeader {
@@ -33,6 +34,7 @@ impl BlockHeader {
         let fee_parameters =
             FeeParameters::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET.try_into().unwrap(), 500)
                 .expect("native asset ID should be a fungible faucet ID");
+        let public_key = LocalEcdsaSigner::dummy().public_key();
 
         #[cfg(not(target_family = "wasm"))]
         let (
@@ -42,17 +44,13 @@ impl BlockHeader {
             note_root,
             tx_commitment,
             timestamp,
-            signer,
         ) = {
-            use crate::ecdsa_signer::LocalEcdsaSigner;
-
             let prev_block_commitment = rand_value::<Word>();
             let chain_commitment = chain_commitment.unwrap_or(rand_value::<Word>());
             let nullifier_root = rand_value::<Word>();
             let note_root = note_root.unwrap_or(rand_value::<Word>());
             let tx_commitment = rand_value::<Word>();
             let timestamp = rand_value();
-            let signer = LocalEcdsaSigner::dummy();
 
             (
                 prev_block_commitment,
@@ -61,7 +59,6 @@ impl BlockHeader {
                 note_root,
                 tx_commitment,
                 timestamp,
-                signer,
             )
         };
 
@@ -73,7 +70,6 @@ impl BlockHeader {
             note_root,
             tx_commitment,
             timestamp,
-            signer,
         ) = {
             (
                 Default::default(),
@@ -82,7 +78,6 @@ impl BlockHeader {
                 note_root.unwrap_or_default(),
                 Default::default(),
                 Default::default(),
-                LocalEcdsaSigner::default(),
             )
         };
 
@@ -96,9 +91,9 @@ impl BlockHeader {
             note_root,
             tx_commitment,
             tx_kernel_commitment,
+            public_key,
             fee_parameters,
             timestamp,
-            signer,
         )
     }
 }

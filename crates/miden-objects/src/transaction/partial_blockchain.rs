@@ -282,7 +282,7 @@ mod tests {
     use crate::alloc::vec::Vec;
     use crate::block::{BlockHeader, BlockNumber, FeeParameters};
     use crate::crypto::merkle::{Mmr, PartialMmr};
-    use crate::ecdsa_signer::LocalEcdsaSigner;
+    use crate::ecdsa_signer::{EcdsaSigner, LocalEcdsaSigner};
     use crate::testing::account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET;
     use crate::{PartialBlockchainError, Word};
 
@@ -427,6 +427,7 @@ mod tests {
         let fee_parameters =
             FeeParameters::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET.try_into().unwrap(), 500)
                 .expect("native asset ID should be a fungible faucet ID");
+        let public_key = LocalEcdsaSigner::dummy().public_key();
 
         BlockHeader::new(
             0,
@@ -438,9 +439,9 @@ mod tests {
             Word::empty(),
             Word::empty(),
             Word::empty(),
+            public_key,
             fee_parameters,
             0,
-            LocalEcdsaSigner::dummy(),
         )
     }
 
