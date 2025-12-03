@@ -42,14 +42,6 @@ impl TryFrom<&Package> for AccountComponentMetadata {
     }
 }
 
-impl TryFrom<Package> for AccountComponentMetadata {
-    type Error = AccountError;
-
-    fn try_from(package: Package) -> Result<Self, Self::Error> {
-        AccountComponentMetadata::try_from(&package)
-    }
-}
-
 /// An [`AccountComponent`] defines a [`Library`] of code and the initial value and types of
 /// the [`StorageSlot`]s it accesses.
 ///
@@ -158,6 +150,34 @@ impl AccountComponent {
         };
 
         build_component_from_metadata(&metadata, &library, init_storage_data)
+    }
+
+    /// Creates an [`AccountComponent`] from a [`Library`] and [`AccountComponentMetadata`].
+    ///
+    /// This method provides type safety by leveraging the component's metadata to validate
+    /// the passed storage initialization data ([`InitStorageData`]).
+    ///
+    /// # Arguments
+    ///
+    /// * `library` - The component's assembled code
+    /// * `account_component_metadata` - The component's metadata, which describes the storage
+    ///   layout
+    /// * `init_storage_data` - The initialization data for storage slots
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The package does not contain a library artifact
+    /// - The package does not contain account component metadata
+    /// - The metadata cannot be deserialized from the package
+    /// - The storage initialization fails due to invalid or missing data
+    /// - The component creation fails
+    pub fn from_library(
+        library: &Library,
+        account_component_metadata: &AccountComponentMetadata,
+        init_storage_data: &InitStorageData,
+    ) -> Result<Self, AccountError> {
+        build_component_from_metadata(account_component_metadata, library, init_storage_data)
     }
 
     // ACCESSORS
@@ -340,7 +360,7 @@ mod tests {
     }
 
     #[test]
-    fn test_from_package_with_init_data() {
+    fn test_from_library_with_init_data() {
         // Create a simple library for testing
         let library = Assembler::default().assemble_library([CODE]).unwrap();
 
@@ -357,23 +377,10 @@ mod tests {
         )
         .unwrap();
 
-        // Create a package with metadata
-        let package = Package {
-            name: "test_package_init_data".to_string(),
-            mast: MastArtifact::Library(Arc::new(library.clone())),
-            manifest: PackageManifest::new(None),
-            sections: vec![Section::new(
-                SectionId::ACCOUNT_COMPONENT_METADATA,
-                metadata.to_bytes(),
-            )],
-            version: Default::default(),
-            description: None,
-        };
-
         // Test with empty init data - this tests the complete workflow:
-        // Package -> AccountComponent
+        // Library + Metadata -> AccountComponent
         let init_data = InitStorageData::default();
-        let component = AccountComponent::from_package(&package, &init_data).unwrap();
+        let component = AccountComponent::from_library(&library, &metadata, &init_data).unwrap();
 
         // Verify the component was created correctly
         assert_eq!(component.storage_size(), 0);
