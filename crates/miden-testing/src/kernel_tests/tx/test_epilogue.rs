@@ -197,7 +197,7 @@ async fn test_compute_output_note_id() -> anyhow::Result<()> {
         );
 
         assert_eq!(
-            Word::from(note.id()),
+            note.id().as_word(),
             exec_output.get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + i * NOTE_MEM_SIZE),
             "NOTE_ID didn't match expected value",
         );
