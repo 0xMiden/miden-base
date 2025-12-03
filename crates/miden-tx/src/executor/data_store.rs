@@ -1,4 +1,5 @@
 use alloc::collections::BTreeSet;
+use alloc::vec::Vec;
 
 use miden_objects::account::{AccountId, PartialAccount, StorageMapWitness};
 use miden_objects::asset::{AssetVaultKey, AssetWitness};
@@ -42,17 +43,17 @@ pub trait DataStore: MastForestStore {
         ref_block: BlockNumber,
     ) -> impl FutureMaybeSend<Result<AccountInputs, DataStoreError>>;
 
-    /// Returns a witness for an asset in the requested account's vault with the requested vault
-    /// root.
+    /// Returns witnesses for the asset vault keys in the requested account's vault with the
+    /// requested vault root.
     ///
-    /// This is the witness that needs to be added to the advice provider's merkle store and advice
-    /// map to make access to the specified asset possible.
-    fn get_vault_asset_witness(
+    /// These are the witnesses that need to be added to the advice provider's merkle store and
+    /// advice map to make access to the corresponding assets possible.
+    fn get_vault_asset_witnesses(
         &self,
         account_id: AccountId,
         vault_root: Word,
-        vault_key: AssetVaultKey,
-    ) -> impl FutureMaybeSend<Result<AssetWitness, DataStoreError>>;
+        vault_keys: BTreeSet<AssetVaultKey>,
+    ) -> impl FutureMaybeSend<Result<Vec<AssetWitness>, DataStoreError>>;
 
     /// Returns a witness for a storage map item identified by `map_key` in the requested account's
     /// storage with the requested storage `map_root`.
