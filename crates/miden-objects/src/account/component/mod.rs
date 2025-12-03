@@ -153,7 +153,7 @@ impl AccountComponent {
             MastArtifact::Executable(_) => {
                 return Err(AccountError::other(
                     "expected Package to contain a library, but got an executable",
-                ))
+                ));
             },
         };
 
