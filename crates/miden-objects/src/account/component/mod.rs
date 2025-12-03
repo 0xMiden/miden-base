@@ -149,7 +149,7 @@ impl AccountComponent {
             },
         };
 
-        build_component(&metadata, &library, init_storage_data)
+        AccountComponent::from_library(&library, &metadata, init_storage_data)
     }
 
     /// Creates an [`AccountComponent`] from a [`Library`] and [`AccountComponentMetadata`].
@@ -177,7 +177,16 @@ impl AccountComponent {
         account_component_metadata: &AccountComponentMetadata,
         init_storage_data: &InitStorageData,
     ) -> Result<Self, AccountError> {
-        build_component(account_component_metadata, library, init_storage_data)
+        let mut storage_slots = vec![];
+        for storage_entry in account_component_metadata.storage_entries() {
+            let entry_storage_slots = storage_entry
+                .try_build_storage_slots(init_storage_data)
+                .map_err(AccountError::AccountComponentTemplateInstantiationError)?;
+            storage_slots.extend(entry_storage_slots);
+        }
+
+        Ok(AccountComponent::new(library.clone(), storage_slots)?
+            .with_supported_types(account_component_metadata.supported_types().clone()))
     }
 
     // ACCESSORS
@@ -266,23 +275,6 @@ impl AccountComponent {
         ]);
         self
     }
-}
-
-fn build_component(
-    metadata: &AccountComponentMetadata,
-    library: &Library,
-    init_storage_data: &InitStorageData,
-) -> Result<AccountComponent, AccountError> {
-    let mut storage_slots = vec![];
-    for storage_entry in metadata.storage_entries() {
-        let entry_storage_slots = storage_entry
-            .try_build_storage_slots(init_storage_data)
-            .map_err(AccountError::AccountComponentTemplateInstantiationError)?;
-        storage_slots.extend(entry_storage_slots);
-    }
-
-    Ok(AccountComponent::new(library.clone(), storage_slots)?
-        .with_supported_types(metadata.supported_types().clone()))
 }
 
 impl From<AccountComponent> for Library {
