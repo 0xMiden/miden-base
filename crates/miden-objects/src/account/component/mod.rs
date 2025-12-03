@@ -149,7 +149,7 @@ impl AccountComponent {
             },
         };
 
-        build_component_from_metadata(&metadata, &library, init_storage_data)
+        build_component(&metadata, &library, init_storage_data)
     }
 
     /// Creates an [`AccountComponent`] from a [`Library`] and [`AccountComponentMetadata`].
@@ -177,7 +177,7 @@ impl AccountComponent {
         account_component_metadata: &AccountComponentMetadata,
         init_storage_data: &InitStorageData,
     ) -> Result<Self, AccountError> {
-        build_component_from_metadata(account_component_metadata, library, init_storage_data)
+        build_component(account_component_metadata, library, init_storage_data)
     }
 
     // ACCESSORS
@@ -268,7 +268,7 @@ impl AccountComponent {
     }
 }
 
-fn build_component_from_metadata(
+fn build_component(
     metadata: &AccountComponentMetadata,
     library: &Library,
     init_storage_data: &InitStorageData,

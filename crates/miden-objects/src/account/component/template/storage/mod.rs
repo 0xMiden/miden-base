@@ -376,12 +376,10 @@ mod tests {
     use alloc::string::ToString;
     use core::error::Error;
     use core::panic;
-    use std::sync::Arc;
 
     use miden_assembly::Assembler;
     use miden_core::utils::{Deserializable, Serializable};
     use miden_core::{EMPTY_WORD, Felt, Word};
-    use miden_mast_package::{MastArtifact, Package, PackageManifest, Section, SectionId};
     use semver::Version;
 
     use crate::account::component::FieldIdentifier;
@@ -392,6 +390,7 @@ mod tests {
         MapEntry,
         MapRepresentation,
         StorageValueName,
+        test_package_with_metadata,
     };
     use crate::account::{
         AccountComponent,
@@ -585,17 +584,8 @@ mod tests {
             BTreeMap::new(),
         );
 
-        let package = Package {
-            name: "component_with_templates".into(),
-            mast: MastArtifact::Library(Arc::new(library.clone())),
-            manifest: PackageManifest::new(None),
-            sections: vec![Section::new(
-                SectionId::ACCOUNT_COMPONENT_METADATA,
-                component_metadata.to_bytes(),
-            )],
-            version: Default::default(),
-            description: None,
-        };
+        let package =
+            test_package_with_metadata("component_with_templates", &library, &component_metadata);
 
         let component = AccountComponent::from_package(&package, &storage_placeholders);
         assert_matches::assert_matches!(
@@ -695,17 +685,7 @@ mod tests {
         assert_eq!(metadata.storage_entries()[0].name().unwrap().as_str(), "ecdsa_pubkey");
 
         let library = Assembler::default().assemble_library([CODE]).unwrap();
-        let package = Package {
-            name: "ecdsa_auth_package".into(),
-            mast: MastArtifact::Library(Arc::new(library)),
-            manifest: PackageManifest::new(None),
-            sections: vec![Section::new(
-                SectionId::ACCOUNT_COMPONENT_METADATA,
-                metadata.to_bytes(),
-            )],
-            version: Default::default(),
-            description: None,
-        };
+        let package = test_package_with_metadata("ecdsa_auth_package", &library, &metadata);
 
         let init_storage = InitStorageData::new(
             [(StorageValueName::new("ecdsa_pubkey").unwrap(), "0x1234".into())],

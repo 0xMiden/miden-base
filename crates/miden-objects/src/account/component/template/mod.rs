@@ -270,6 +270,26 @@ impl Deserializable for AccountComponentMetadata {
     }
 }
 
+#[cfg(test)]
+pub(crate) fn test_package_with_metadata(
+    name: impl Into<String>,
+    library: &miden_assembly::Library,
+    metadata: &AccountComponentMetadata,
+) -> miden_mast_package::Package {
+    use std::sync::Arc;
+
+    use miden_mast_package::{MastArtifact, Package, PackageManifest, Section, SectionId};
+
+    Package {
+        name: name.into(),
+        mast: MastArtifact::Library(Arc::new(library.clone())),
+        manifest: PackageManifest::new(None),
+        sections: vec![Section::new(SectionId::ACCOUNT_COMPONENT_METADATA, metadata.to_bytes())],
+        version: Default::default(),
+        description: None,
+    }
+}
+
 // TESTS
 // ================================================================================================
 
@@ -277,16 +297,14 @@ impl Deserializable for AccountComponentMetadata {
 mod tests {
     use std::collections::{BTreeMap, BTreeSet};
     use std::string::ToString;
-    use std::sync::Arc;
 
     use assert_matches::assert_matches;
     use miden_assembly::Assembler;
     use miden_core::utils::{Deserializable, Serializable};
     use miden_core::{Felt, FieldElement};
-    use miden_mast_package::{MastArtifact, Package, PackageManifest, Section, SectionId};
     use semver::Version;
 
-    use super::FeltRepresentation;
+    use super::{FeltRepresentation, test_package_with_metadata};
     use crate::AccountError;
     use crate::account::component::FieldIdentifier;
     use crate::account::component::template::storage::StorageEntry;
@@ -365,17 +383,7 @@ mod tests {
         };
 
         let library = Assembler::default().assemble_library([CODE]).unwrap();
-        let package = Package {
-            name: "test_package".into(),
-            mast: MastArtifact::Library(Arc::new(library)),
-            manifest: PackageManifest::new(None),
-            sections: vec![Section::new(
-                SectionId::ACCOUNT_COMPONENT_METADATA,
-                component_metadata.to_bytes(),
-            )],
-            version: Default::default(),
-            description: None,
-        };
+        let package = test_package_with_metadata("test_package", &library, &component_metadata);
         let _ = AccountComponent::from_package(&package, &InitStorageData::default()).unwrap();
 
         let serialized = component_metadata.to_bytes();
@@ -453,17 +461,7 @@ mod tests {
         let metadata = AccountComponentMetadata::from_toml(toml_text).unwrap();
         let library = Assembler::default().assemble_library([CODE]).unwrap();
 
-        let package = Package {
-            name: "test_package".into(),
-            mast: MastArtifact::Library(Arc::new(library.clone())),
-            manifest: PackageManifest::new(None),
-            sections: vec![Section::new(
-                SectionId::ACCOUNT_COMPONENT_METADATA,
-                metadata.to_bytes(),
-            )],
-            version: Default::default(),
-            description: None,
-        };
+        let package = test_package_with_metadata("test_package", &library, &metadata);
 
         // Fail to instantiate on a duplicate key
 
