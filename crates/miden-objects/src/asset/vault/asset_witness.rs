@@ -1,8 +1,11 @@
+use alloc::string::ToString;
+
 use miden_crypto::merkle::{InnerNodeInfo, SmtLeaf, SmtProof};
 
 use super::vault_key::AssetVaultKey;
 use crate::AssetError;
 use crate::asset::Asset;
+use crate::utils::serde::{Deserializable, DeserializationError, Serializable};
 
 /// A witness of an asset in an [`AssetVault`](super::AssetVault).
 ///
@@ -46,6 +49,12 @@ impl AssetWitness {
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
+    /// Returns `true` if this [`AssetWitness`] authenticates the provided [`AssetVaultKey`], i.e.
+    /// if its leaf index matches, `false` otherwise.
+    pub fn authenticates_asset_vault_key(&self, vault_key: AssetVaultKey) -> bool {
+        self.0.leaf().index() == vault_key.to_leaf_index()
+    }
+
     /// Searches for an [`Asset`] in the witness with the given `vault_key`.
     pub fn find(&self, vault_key: AssetVaultKey) -> Option<Asset> {
         self.assets().find(|asset| asset.vault_key() == vault_key)
@@ -82,6 +91,21 @@ impl From<AssetWitness> for SmtProof {
     }
 }
 
+impl Serializable for AssetWitness {
+    fn write_into<W: miden_core::utils::ByteWriter>(&self, target: &mut W) {
+        self.0.write_into(target);
+    }
+}
+
+impl Deserializable for AssetWitness {
+    fn read_from<R: miden_core::utils::ByteReader>(
+        source: &mut R,
+    ) -> Result<Self, DeserializationError> {
+        let proof = SmtProof::read_from(source)?;
+        Self::new(proof).map_err(|err| DeserializationError::InvalidValue(err.to_string()))
+    }
+}
+
 // TESTS
 // ================================================================================================
 
@@ -92,7 +116,11 @@ mod tests {
 
     use super::*;
     use crate::Word;
-    use crate::asset::{FungibleAsset, NonFungibleAsset};
+    use crate::asset::{AssetVault, FungibleAsset, NonFungibleAsset};
+    use crate::testing::account_id::{
+        ACCOUNT_ID_NETWORK_FUNGIBLE_FAUCET,
+        ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET,
+    };
 
     /// Tests that constructing an asset witness fails if any asset in the smt proof is invalid.
     #[test]
@@ -125,6 +153,22 @@ mod tests {
             assert_eq!(actual, fungible_asset.vault_key().into());
             assert_eq!(expected, non_fungible_asset.vault_key().into());
         });
+
+        Ok(())
+    }
+
+    #[test]
+    fn asset_witness_authenticates_asset_vault_key() -> anyhow::Result<()> {
+        let fungible_asset0 =
+            FungibleAsset::new(ACCOUNT_ID_NETWORK_FUNGIBLE_FAUCET.try_into()?, 200)?;
+        let fungible_asset1 =
+            FungibleAsset::new(ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET.try_into()?, 100)?;
+
+        let vault = AssetVault::new(&[fungible_asset0.into()])?;
+        let witness0 = vault.open(fungible_asset0.vault_key());
+
+        assert!(witness0.authenticates_asset_vault_key(fungible_asset0.vault_key()));
+        assert!(!witness0.authenticates_asset_vault_key(fungible_asset1.vault_key()));
 
         Ok(())
     }

@@ -1,9 +1,10 @@
 use alloc::vec::Vec;
 
 use miden_objects::account::{AccountHeader, AccountId, PartialAccount};
+use miden_objects::asset::AssetWitness;
 use miden_objects::block::AccountWitness;
 use miden_objects::crypto::SequentialCommit;
-use miden_objects::crypto::merkle::InnerNodeInfo;
+use miden_objects::crypto::merkle::{InnerNodeInfo, SmtProof};
 use miden_objects::transaction::{AccountInputs, InputNote, PartialBlockchain, TransactionInputs};
 use miden_objects::vm::AdviceInputs;
 use miden_objects::{EMPTY_WORD, Felt, FieldElement, Word, ZERO};
@@ -66,6 +67,10 @@ impl TransactionAdviceInputs {
                 inputs.add_map_entry(storage_map.root(), map_entries);
             }
         }
+
+        tx_inputs.asset_witnesses().iter().for_each(|asset_witness| {
+            inputs.add_asset_witness(asset_witness.clone());
+        });
 
         // Extend with extra user-supplied advice.
         inputs.extend(tx_inputs.tx_args().advice_inputs().clone());
@@ -285,6 +290,14 @@ impl TransactionAdviceInputs {
 
         // extend the merkle store and map with account witnesses merkle path
         self.extend_merkle_store(witness.authenticated_nodes());
+    }
+
+    /// Adds an asset witness to the advice inputs.
+    fn add_asset_witness(&mut self, witness: AssetWitness) {
+        self.extend_merkle_store(witness.authenticated_nodes());
+
+        let smt_proof = SmtProof::from(witness);
+        self.extend_map([(smt_proof.leaf().hash(), smt_proof.leaf().to_elements())]);
     }
 
     // NOTE INJECTION

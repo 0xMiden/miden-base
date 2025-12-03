@@ -4,6 +4,8 @@
 
 ### Features
 
+- Add proc-macro `WordWrapper` to ease implementation of `Word`-wrapping types ([#2071](https://github.com/0xMiden/miden-base/pull/2108)).
+
 ### Changes
 
 - [BREAKING] Added `BlockBody` and `BlockProof` structs in preparation for validator signatures and deferred block proving ([#2012](https://github.com/0xMiden/miden-base/pull/2012)).
@@ -20,6 +22,7 @@
 - Added `ecdsa_k256_keccak::PublicKey` as a valid template type ([#2097](https://github.com/0xMiden/miden-base/pull/2097)).
 - [BREAKING] Fix advice inputs in transaction inputs not being propagated through ([#2099](https://github.com/0xMiden/miden-base/pull/2099)).
 - Add `S` generic to `NullifierTree` to allow usage with `LargeSmt`s ([#1353](https://github.com/0xMiden/miden-node/issues/1353)).
+- [BREAKING] Pre-fetch note and fee asset witnesses before transaction execution ([#2113](https://github.com/0xMiden/miden-base/pull/2113)).
 
 ## 0.12.2 (2025-11-12)
 
