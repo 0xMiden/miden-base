@@ -2,7 +2,7 @@ use alloc::vec::Vec;
 
 use anyhow::Context;
 use assert_matches::assert_matches;
-use miden_lib::block::build_block;
+use miden_lib::block::{BuildBlockError, build_block};
 use miden_lib::testing::account_component::{IncrNonceAuthComponent, MockAccountComponent};
 use miden_lib::testing::mock_account::MockAccountExt;
 use miden_objects::account::delta::AccountUpdateDetails;
@@ -10,6 +10,7 @@ use miden_objects::account::{Account, AccountBuilder, AccountComponent, AccountI
 use miden_objects::asset::FungibleAsset;
 use miden_objects::batch::ProvenBatch;
 use miden_objects::block::{BlockInputs, BlockNumber, ProposedBlock};
+use miden_objects::ecdsa_signer::LocalEcdsaSigner;
 use miden_objects::note::NoteType;
 use miden_objects::transaction::ProvenTransactionBuilder;
 use miden_objects::vm::ExecutionProof;
@@ -97,15 +98,20 @@ async fn block_building_fails_on_stale_account_witnesses() -> anyhow::Result<()>
     let proposed_block0 = ProposedBlock::new(invalid_account_tree_block_inputs, batches.clone())
         .context("failed to propose block 0")?;
 
-    let error = build_block(proposed_block0).unwrap_err();
+    let error = build_block(proposed_block0, LocalEcdsaSigner::dummy()).unwrap_err();
 
-    assert_matches!(
-        error,
-        ProposedBlockError::StaleAccountTreeRoot {
+    match error {
+        BuildBlockError::ProposedBlockError(ProposedBlockError::StaleAccountTreeRoot {
             prev_block_account_root,
             ..
-        } if prev_block_account_root == valid_block_inputs.prev_block_header().account_root()
-    );
+        }) => {
+            assert_eq!(
+                prev_block_account_root,
+                valid_block_inputs.prev_block_header().account_root()
+            );
+        },
+        _ => panic!("expected StaleAccountTreeRoot error, got: {:?}", error),
+    }
 
     Ok(())
 }
@@ -134,15 +140,20 @@ async fn block_building_fails_on_stale_nullifier_witnesses() -> anyhow::Result<(
     let proposed_block2 = ProposedBlock::new(invalid_nullifier_tree_block_inputs, batches.clone())
         .context("failed to propose block 2")?;
 
-    let error = build_block(proposed_block2).unwrap_err();
+    let error = build_block(proposed_block2, LocalEcdsaSigner::dummy()).unwrap_err();
 
-    assert_matches!(
-        error,
-        ProposedBlockError::StaleNullifierTreeRoot {
-          prev_block_nullifier_root,
-          ..
-        } if prev_block_nullifier_root == valid_block_inputs.prev_block_header().nullifier_root()
-    );
+    match error {
+        BuildBlockError::ProposedBlockError(ProposedBlockError::StaleNullifierTreeRoot {
+            prev_block_nullifier_root,
+            ..
+        }) => {
+            assert_eq!(
+                prev_block_nullifier_root,
+                valid_block_inputs.prev_block_header().nullifier_root()
+            );
+        },
+        _ => panic!("Expected StaleNullifierTreeRoot error, got: {:?}", error),
+    }
 
     Ok(())
 }
@@ -180,14 +191,14 @@ async fn block_building_fails_on_account_tree_root_mismatch() -> anyhow::Result<
     let proposed_block1 = ProposedBlock::new(stale_account_witness_block_inputs, batches.clone())
         .context("failed to propose block 1")?;
 
-    let error = build_block(proposed_block1).unwrap_err();
+    let error = build_block(proposed_block1, LocalEcdsaSigner::dummy()).unwrap_err();
 
     assert_matches!(
         error,
-        ProposedBlockError::AccountWitnessTracking {
+        BuildBlockError::ProposedBlockError(ProposedBlockError::AccountWitnessTracking {
             source: AccountTreeError::TreeRootConflict { .. },
             ..
-        }
+        })
     );
 
     Ok(())
@@ -228,11 +239,13 @@ async fn block_building_fails_on_nullifier_tree_root_mismatch() -> anyhow::Resul
     let proposed_block3 = ProposedBlock::new(invalid_nullifier_witness_block_inputs, batches)
         .context("failed to propose block 3")?;
 
-    let error = build_block(proposed_block3).unwrap_err();
+    let error = build_block(proposed_block3, LocalEcdsaSigner::dummy()).unwrap_err();
 
     assert_matches!(
         error,
-        ProposedBlockError::NullifierWitnessRootMismatch(NullifierTreeError::TreeRootConflict(_))
+        BuildBlockError::ProposedBlockError(ProposedBlockError::NullifierWitnessRootMismatch(
+            NullifierTreeError::TreeRootConflict(_)
+        ))
     );
 
     Ok(())
@@ -321,15 +334,17 @@ async fn block_building_fails_on_creating_account_with_existing_account_id_prefi
 
     let block = mock_chain.propose_block(batches).context("failed to propose block")?;
 
-    let err = build_block(block).unwrap_err();
+    let err = build_block(block, LocalEcdsaSigner::dummy()).unwrap_err();
 
     // This should fail when we try to _insert_ the same two prefixes into the partial tree.
-    assert_matches!(
-        err,
-        ProposedBlockError::AccountIdPrefixDuplicate {
-            source: AccountTreeError::DuplicateIdPrefix { duplicate_prefix }
-        } if duplicate_prefix == new_id.prefix()
-    );
+    match err {
+        BuildBlockError::ProposedBlockError(ProposedBlockError::AccountIdPrefixDuplicate {
+            source: AccountTreeError::DuplicateIdPrefix { duplicate_prefix },
+        }) => {
+            assert_eq!(duplicate_prefix, new_id.prefix());
+        },
+        _ => panic!("Expected AccountIdPrefixDuplicate error, got: {:?}", err),
+    }
 
     Ok(())
 }
@@ -417,15 +432,17 @@ async fn block_building_fails_on_creating_account_with_duplicate_account_id_pref
 
     let block = mock_chain.propose_block(batches).context("failed to propose block")?;
 
-    let err = build_block(block).unwrap_err();
+    let err = build_block(block, LocalEcdsaSigner::dummy()).unwrap_err();
 
     // This should fail when we try to _track_ the same two prefixes in the partial tree.
-    assert_matches!(
-        err,
-        ProposedBlockError::AccountWitnessTracking {
-            source: AccountTreeError::DuplicateIdPrefix { duplicate_prefix }
-        } if duplicate_prefix == id0.prefix()
-    );
+    match err {
+        BuildBlockError::ProposedBlockError(ProposedBlockError::AccountWitnessTracking {
+            source: AccountTreeError::DuplicateIdPrefix { duplicate_prefix },
+        }) => {
+            assert_eq!(duplicate_prefix, id0.prefix());
+        },
+        _ => panic!("Expected AccountWitnessTracking error, got: {:?}", err),
+    }
 
     Ok(())
 }

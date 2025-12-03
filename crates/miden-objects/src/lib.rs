@@ -11,6 +11,7 @@ pub mod address;
 pub mod asset;
 pub mod batch;
 pub mod block;
+pub mod ecdsa_signer;
 pub mod note;
 pub mod transaction;
 

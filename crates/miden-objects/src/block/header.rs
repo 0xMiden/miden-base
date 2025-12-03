@@ -1,10 +1,11 @@
 use alloc::string::ToString;
 use alloc::vec::Vec;
 
-use miden_crypto::dsa::ecdsa_k256_keccak::PublicKey;
+use miden_crypto::dsa::ecdsa_k256_keccak::{PublicKey, Signature};
 
 use crate::account::{AccountId, AccountType};
 use crate::block::BlockNumber;
+use crate::ecdsa_signer::EcdsaSigner;
 use crate::utils::serde::{
     ByteReader,
     ByteWriter,
@@ -55,10 +56,11 @@ pub struct BlockHeader {
     timestamp: u32,
     sub_commitment: Word,
     commitment: Word,
+    signature: Signature,
 }
 
 impl BlockHeader {
-    /// Creates a new block header.
+    /// Creates a new block header, signed by the provided secret key.
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         version: u32,
@@ -70,11 +72,12 @@ impl BlockHeader {
         note_root: Word,
         tx_commitment: Word,
         tx_kernel_commitment: Word,
-        public_key: PublicKey,
         fee_parameters: FeeParameters,
         timestamp: u32,
+        signer: impl EcdsaSigner,
     ) -> Self {
-        // compute block sub commitment
+        // Compute block sub commitment.
+        let public_key = signer.public_key();
         let sub_commitment = Self::compute_sub_commitment(
             version,
             prev_block_commitment,
@@ -95,6 +98,7 @@ impl BlockHeader {
         // accessible is useful when authenticating notes.
         let commitment = Hasher::merge(&[sub_commitment, note_root]);
 
+        let signature = signer.sign(commitment);
         Self {
             version,
             prev_block_commitment,
@@ -110,6 +114,7 @@ impl BlockHeader {
             timestamp,
             sub_commitment,
             commitment,
+            signature,
         }
     }
 
@@ -258,37 +263,7 @@ impl BlockHeader {
 
 impl Serializable for BlockHeader {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        self.version.write_into(target);
-        self.prev_block_commitment.write_into(target);
-        self.block_num.write_into(target);
-        self.chain_commitment.write_into(target);
-        self.account_root.write_into(target);
-        self.nullifier_root.write_into(target);
-        self.note_root.write_into(target);
-        self.tx_commitment.write_into(target);
-        self.tx_kernel_commitment.write_into(target);
-        self.public_key.write_into(target);
-        self.fee_parameters.write_into(target);
-        self.timestamp.write_into(target);
-    }
-}
-
-impl Deserializable for BlockHeader {
-    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        let version = source.read()?;
-        let prev_block_commitment = source.read()?;
-        let block_num = source.read()?;
-        let chain_commitment = source.read()?;
-        let account_root = source.read()?;
-        let nullifier_root = source.read()?;
-        let note_root = source.read()?;
-        let tx_commitment = source.read()?;
-        let tx_kernel_commitment = source.read()?;
-        let public_key = source.read()?;
-        let fee_parameters = source.read()?;
-        let timestamp = source.read()?;
-
-        Ok(Self::new(
+        let Self {
             version,
             prev_block_commitment,
             block_num,
@@ -301,7 +276,48 @@ impl Deserializable for BlockHeader {
             public_key,
             fee_parameters,
             timestamp,
-        ))
+            sub_commitment,
+            commitment,
+            signature,
+        } = self;
+
+        version.write_into(target);
+        prev_block_commitment.write_into(target);
+        block_num.write_into(target);
+        chain_commitment.write_into(target);
+        account_root.write_into(target);
+        nullifier_root.write_into(target);
+        note_root.write_into(target);
+        tx_commitment.write_into(target);
+        tx_kernel_commitment.write_into(target);
+        public_key.write_into(target);
+        fee_parameters.write_into(target);
+        timestamp.write_into(target);
+        sub_commitment.write_into(target);
+        commitment.write_into(target);
+        signature.write_into(target);
+    }
+}
+
+impl Deserializable for BlockHeader {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        Ok(Self {
+            version: source.read()?,
+            prev_block_commitment: source.read()?,
+            block_num: source.read()?,
+            chain_commitment: source.read()?,
+            account_root: source.read()?,
+            nullifier_root: source.read()?,
+            note_root: source.read()?,
+            tx_commitment: source.read()?,
+            tx_kernel_commitment: source.read()?,
+            public_key: source.read()?,
+            fee_parameters: source.read()?,
+            timestamp: source.read()?,
+            sub_commitment: source.read()?,
+            commitment: source.read()?,
+            signature: source.read()?,
+        })
     }
 }
 

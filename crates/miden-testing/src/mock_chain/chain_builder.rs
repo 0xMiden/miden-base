@@ -43,8 +43,8 @@ use miden_objects::block::{
     OutputNoteBatch,
     ProvenBlock,
 };
-use miden_objects::crypto::dsa::ecdsa_k256_keccak::SecretKey;
 use miden_objects::crypto::merkle::Smt;
+use miden_objects::ecdsa_signer::LocalEcdsaSigner;
 use miden_objects::note::{Note, NoteDetails, NoteType};
 use miden_objects::testing::account_id::ACCOUNT_ID_NATIVE_ASSET_FAUCET;
 use miden_objects::transaction::{OrderedTransactionHeaders, OutputNote};
@@ -217,7 +217,6 @@ impl MockChainBuilder {
         let note_root = note_tree.root();
         let tx_commitment = transactions.commitment();
         let tx_kernel_commitment = TransactionKernel.to_commitment();
-        let public_key = SecretKey::new().public_key();
         let timestamp = MockChain::TIMESTAMP_START_SECS;
         let fee_parameters = FeeParameters::new(self.native_asset_id, self.verification_base_fee)
             .context("failed to construct fee parameters")?;
@@ -232,9 +231,9 @@ impl MockChainBuilder {
             note_root,
             tx_commitment,
             tx_kernel_commitment,
-            public_key,
             fee_parameters,
             timestamp,
+            LocalEcdsaSigner::dummy(),
         );
 
         let body = BlockBody::new_unchecked(

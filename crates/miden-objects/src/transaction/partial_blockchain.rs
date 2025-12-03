@@ -277,12 +277,12 @@ impl Default for PartialBlockchain {
 mod tests {
     use assert_matches::assert_matches;
     use miden_core::utils::{Deserializable, Serializable};
-    use miden_crypto::dsa::ecdsa_k256_keccak::SecretKey;
 
     use super::PartialBlockchain;
     use crate::alloc::vec::Vec;
     use crate::block::{BlockHeader, BlockNumber, FeeParameters};
     use crate::crypto::merkle::{Mmr, PartialMmr};
+    use crate::ecdsa_signer::LocalEcdsaSigner;
     use crate::testing::account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET;
     use crate::{PartialBlockchainError, Word};
 
@@ -438,9 +438,9 @@ mod tests {
             Word::empty(),
             Word::empty(),
             Word::empty(),
-            SecretKey::new().public_key(),
             fee_parameters,
             0,
+            LocalEcdsaSigner::dummy(),
         )
     }
 

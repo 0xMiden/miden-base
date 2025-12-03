@@ -1,8 +1,17 @@
-use miden_core::Word;
 use miden_objects::ProposedBlockError;
-use miden_objects::block::{BlockBody, BlockHeader, BlockNumber, ProposedBlock};
+use miden_objects::block::{BlockBody, BlockHeader, ProposedBlock};
+use miden_objects::ecdsa_signer::EcdsaSigner;
 
 use crate::transaction::TransactionKernel;
+
+/// Block building errors.
+#[derive(Debug, thiserror::Error)]
+pub enum BuildBlockError {
+    #[error("processing of proposed block failed")]
+    ProposedBlockError(#[source] ProposedBlockError),
+    #[error("provided secret key does not match previous block header's public key")]
+    KeyMismatch,
+}
 
 /// Builds a [`BlockHeader`] and [`BlockBody`] by computing the following from the state updates
 /// encapsulated by the provided [`ProposedBlock`]:
@@ -12,11 +21,15 @@ use crate::transaction::TransactionKernel;
 /// - the transaction commitment; and
 /// - the chain commitment.
 ///
+/// The block header is signed by the provided secret key. The secret key must correspond to the
+/// previous header's public key.
+///
 /// This functionality is handled here because the block header requires [`TransactionKernel`] for
 /// its various commitment fields.
 pub fn build_block(
     proposed_block: ProposedBlock,
-) -> Result<(BlockHeader, BlockBody), ProposedBlockError> {
+    signer: impl EcdsaSigner,
+) -> Result<(BlockHeader, BlockBody), BuildBlockError> {
     // Get fields from the proposed block before it is consumed.
     let block_num = proposed_block.block_num();
     let timestamp = proposed_block.timestamp();
@@ -24,10 +37,14 @@ pub fn build_block(
 
     // Insert the state commitments of updated accounts into the account tree to compute its new
     // root.
-    let new_account_root = proposed_block.compute_account_root()?;
+    let new_account_root = proposed_block
+        .compute_account_root()
+        .map_err(BuildBlockError::ProposedBlockError)?;
 
     // Insert the created nullifiers into the nullifier tree to compute its new root.
-    let new_nullifier_root = proposed_block.compute_nullifier_root()?;
+    let new_nullifier_root = proposed_block
+        .compute_nullifier_root()
+        .map_err(BuildBlockError::ProposedBlockError)?;
 
     // Compute the root of the block note tree.
     let note_tree = proposed_block.compute_block_note_tree();
@@ -42,33 +59,6 @@ pub fn build_block(
 
     // Construct the header.
     let tx_commitment = body.transaction_commitment();
-    let header = construct_block_header(
-        block_num,
-        timestamp,
-        prev_block_header,
-        tx_commitment,
-        new_chain_commitment,
-        new_account_root,
-        new_nullifier_root,
-        note_root,
-    );
-
-    Ok((header, body))
-}
-
-// HELPERS
-// ================================================================================================
-
-fn construct_block_header(
-    block_num: BlockNumber,
-    timestamp: u32,
-    prev_block_header: BlockHeader,
-    tx_commitment: Word,
-    new_chain_commitment: Word,
-    new_account_root: Word,
-    new_nullifier_root: Word,
-    note_root: Word,
-) -> BlockHeader {
     let prev_block_commitment = prev_block_header.commitment();
 
     // For now we copy the parameters of the previous header, which means the parameters set on
@@ -80,8 +70,7 @@ fn construct_block_header(
     // See miden-base/1155.
     let version = 0;
     let tx_kernel_commitment = TransactionKernel.to_commitment();
-
-    BlockHeader::new(
+    let header = BlockHeader::new(
         version,
         prev_block_commitment,
         block_num,
@@ -91,8 +80,9 @@ fn construct_block_header(
         note_root,
         tx_commitment,
         tx_kernel_commitment,
-        prev_block_header.public_key().clone(),
         fee_parameters,
         timestamp,
-    )
+        signer,
+    );
+    Ok((header, body))
 }
