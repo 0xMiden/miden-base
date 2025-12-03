@@ -2,27 +2,60 @@ use.std::math::u64
 use.std::math::u256
 use.std::sys
 
-const.MIDEN_BASE_SCALE=1000000
+#! Calculate 10^scale where scale is a u8 exponent
+#!
+#! Input: [scale]
+#! Output: [10^scale]
+#!
+#! Where scale is expected to be a small integer (0-18 typical for crypto decimals)
+proc pow10
+    # => [scale]
 
-#! Convert a Miden amount (1e6 base) to Ethereum's u256 amount with target decimals
+    push.1 swap
+    # => [scale, result]
+
+    push.1
+    # => [true, scale, result]
+
+    # Loop to calculate 10^scale
+    while.true
+        # => [scale, result]
+
+        # result *= 10
+        swap mul.10 swap
+        # => [scale, result*10]
+        
+        # scale -= 1
+        sub.1
+        # => [scale-1, result*10]
+
+        dup neq.0
+        # => [is_zero, scale-1, result*10]
+    end
+    # => [0, result]
+
+    drop
+    # => [result]
+end
+
+#! Convert a Miden amount (1e6 base) to target scale using scale exponent
 #!
 #! Input: [amount, target_scale]
 #! Output: [lo0, lo1, lo2, lo3, hi0, hi1, hi2, hi3]
 #!
 #! Where:
 #! - amount is in Miden's standard 1e6 base
-#! - target_scale is 10^target_decimals (e.g., 1e6 for USDC, 1e18 for ETH)
+#! - target_scale is the difference in target_decimals
 #! - each output limb fits in u32
-export.convert_to_u256_scaled
+pub proc convert_to_u256_scaled
     # => [amount, target_scale]
 
     swap
     # => [target_scale, amount]
     
-    # Calculate scale = target_scale / MIDEN_BASE_SCALE
-    push.MIDEN_BASE_SCALE div
+    exec.pow10
     # => [scale, amount]
-    
+
     # Swap to get [amount, scale] for existing logic
     swap
     # => [amount, scale]
@@ -46,9 +79,6 @@ export.convert_to_u256_scaled
     push.0 push.0 push.0 push.0 push.0 push.0
     # => [0, 0, 0, 0, 0, 0, result_hi, result_lo]
     
-    # Rearrange to match expected output format [lo0, lo1, lo2, lo3, hi0, hi1, hi2, hi3]
-    movup.7 movup.7
-    # => [result_lo, result_hi, 0, 0, 0, 0, 0, 0]
-
     exec.sys::truncate_stack
 end
+
