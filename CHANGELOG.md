@@ -7,6 +7,8 @@
 - [BREAKING] Refactor storage slots to be accessed by names instead of indices ([#1987](https://github.com/0xMiden/miden-base/pull/1987)).
 
 ## 0.12.2 (unreleased)
+- Add proc-macro `WordWrapper` to ease implementation of `Word`-wrapping types ([#2071](https://github.com/0xMiden/miden-base/pull/2108)).
+
 ### Changes
 
 - [BREAKING] Added `BlockBody` and `BlockProof` structs in preparation for validator signatures and deferred block proving ([#2012](https://github.com/0xMiden/miden-base/pull/2012)).

@@ -1087,7 +1087,7 @@ pub enum NullifierTreeError {
     #[error("new tree root after nullifier witness insertion does not match previous tree root")]
     TreeRootConflict(#[source] MerkleError),
 
-    #[error("failed to compute nulifier tree mutations")]
+    #[error("failed to compute nullifier tree mutations")]
     ComputeMutations(#[source] MerkleError),
 }
 
