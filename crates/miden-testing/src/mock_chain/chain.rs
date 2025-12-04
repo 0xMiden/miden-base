@@ -2,19 +2,21 @@ use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::vec::Vec;
 
 use anyhow::Context;
-use miden_block_prover::{LocalBlockProver, ProvenBlockError};
+use miden_block_prover::LocalBlockProver;
+use miden_lib::block::build_block;
+use miden_objects::MIN_PROOF_SECURITY_LEVEL;
 use miden_objects::account::auth::AuthSecretKey;
 use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{Account, AccountId, PartialAccount};
 use miden_objects::batch::{ProposedBatch, ProvenBatch};
 use miden_objects::block::account_tree::AccountTree;
+use miden_objects::block::nullifier_tree::NullifierTree;
 use miden_objects::block::{
     AccountWitness,
     BlockHeader,
     BlockInputs,
     BlockNumber,
     Blockchain,
-    NullifierTree,
     NullifierWitness,
     ProposedBlock,
     ProvenBlock,
@@ -511,16 +513,6 @@ impl MockChain {
         self.propose_block_at(batches, timestamp)
     }
 
-    /// Mock-proves a proposed block into a proven block and returns it.
-    ///
-    /// This method does not modify the chain state.
-    pub fn prove_block(
-        &self,
-        proposed_block: ProposedBlock,
-    ) -> Result<ProvenBlock, ProvenBlockError> {
-        LocalBlockProver::new(0).prove_dummy(proposed_block)
-    }
-
     // TRANSACTION APIS
     // ----------------------------------------------------------------------------------------
 
@@ -847,13 +839,13 @@ impl MockChain {
     /// - Consumed notes are removed from the committed notes.
     /// - The block is appended to the [`BlockChain`] and the list of proven blocks.
     fn apply_block(&mut self, proven_block: ProvenBlock) -> anyhow::Result<()> {
-        for account_update in proven_block.updated_accounts() {
+        for account_update in proven_block.body().updated_accounts() {
             self.account_tree
                 .insert(account_update.account_id(), account_update.final_state_commitment())
                 .context("failed to insert account update into account tree")?;
         }
 
-        for nullifier in proven_block.created_nullifiers() {
+        for nullifier in proven_block.body().created_nullifiers() {
             self.nullifier_tree
                 .mark_spent(*nullifier, proven_block.header().block_num())
                 .context("failed to mark block nullifier as spent")?;
@@ -863,7 +855,7 @@ impl MockChain {
             // nullifiers, so we'll have to create a second index to do this.
         }
 
-        for account_update in proven_block.updated_accounts() {
+        for account_update in proven_block.body().updated_accounts() {
             match account_update.details() {
                 AccountUpdateDetails::Delta(account_delta) => {
                     if account_delta.is_full_state() {
@@ -888,8 +880,8 @@ impl MockChain {
             }
         }
 
-        let notes_tree = proven_block.build_output_note_tree();
-        for (block_note_index, created_note) in proven_block.output_notes() {
+        let notes_tree = proven_block.body().compute_block_note_tree();
+        for (block_note_index, created_note) in proven_block.body().output_notes() {
             let note_path = notes_tree.open(block_note_index);
             let note_inclusion_proof = NoteInclusionProof::new(
                 proven_block.header().block_num(),
@@ -969,9 +961,9 @@ impl MockChain {
             timestamp.unwrap_or(self.latest_block_header().timestamp() + Self::TIMESTAMP_STEP_SECS);
 
         let proposed_block = self
-            .propose_block_at(batches, block_timestamp)
+            .propose_block_at(batches.clone(), block_timestamp)
             .context("failed to create proposed block")?;
-        let proven_block = self.prove_block(proposed_block).context("failed to prove block")?;
+        let proven_block = self.prove_block(proposed_block.clone())?;
 
         // Apply block.
         // ----------------------------------------------------------------------------------------
@@ -979,6 +971,18 @@ impl MockChain {
         self.apply_block(proven_block.clone()).context("failed to apply block")?;
 
         Ok(proven_block)
+    }
+
+    /// Proves proposed block alongside a corresponding list of batches.
+    pub fn prove_block(&self, proposed_block: ProposedBlock) -> anyhow::Result<ProvenBlock> {
+        let (header, body) = build_block(proposed_block.clone())?;
+        let inputs = self.get_block_inputs(proposed_block.batches().as_slice())?;
+        let block_proof = LocalBlockProver::new(MIN_PROOF_SECURITY_LEVEL).prove_dummy(
+            proposed_block.batches().clone(),
+            header.clone(),
+            inputs,
+        )?;
+        Ok(ProvenBlock::new_unchecked(header, body, block_proof))
     }
 }
 

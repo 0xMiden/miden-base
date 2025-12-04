@@ -1,5 +1,6 @@
 use.miden::account_id
 use.std::crypto::hashes::rpo
+use.std::math::u64
 use.std::mem
 
 # ERRORS
@@ -223,4 +224,35 @@ export.extract_sender_from_metadata
     # rearrange suffix and prefix
     swap
     # => [sender_id_prefix, sender_id_suffix]
+end
+
+#! Computes the tag for a network note for a given network account such that it is
+#! picked up by the network transaction builder.
+#!
+#! This procedure implements the same logic as in Rust in NoteTag::from_network_account_id().
+#! Note: This procedure does not check if the account id is a network account id.
+#!
+#! Inputs:  [account_id_prefix, account_id_suffix]
+#! Outputs: [network_account_tag]
+#!
+#! Where:
+#! - account_id_prefix, account_id_suffix is the account id to compute the note tag for.
+#! - network_account_tag is the computed network note tag.
+#!
+#! Invocation: exec
+export.build_note_tag_for_network_account
+    swap drop
+    # => [account_id_prefix]
+
+    u32split
+    # => [a_hi, a_lo]
+
+    push.34
+    # => [b, a_hi, a_lo]
+
+    exec.u64::shr
+    # => [c_hi, c_lo]
+
+    drop
+    # => [network_account_tag]
 end

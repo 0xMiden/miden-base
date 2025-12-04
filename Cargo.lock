@@ -1447,7 +1447,6 @@ dependencies = [
 name = "miden-block-prover"
 version = "0.13.0"
 dependencies = [
- "miden-lib",
  "miden-objects",
  "thiserror",
 ]
@@ -1629,6 +1628,7 @@ dependencies = [
  "miden-mast-package",
  "miden-objects",
  "miden-processor",
+ "miden-protocol-macros",
  "miden-stdlib",
  "miden-utils-sync",
  "miden-verifier",
@@ -1663,6 +1663,16 @@ dependencies = [
  "tokio",
  "tracing",
  "winter-prover",
+]
+
+[[package]]
+name = "miden-protocol-macros"
+version = "0.13.0"
+dependencies = [
+ "miden-objects",
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]

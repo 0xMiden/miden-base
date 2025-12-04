@@ -150,7 +150,7 @@ impl<'a> TransactionKernelProcess for ProcessState<'a> {
                         ExecutionError::MemoryError(err),
                     )
                 })?
-                .map(NoteId::from))
+                .map(NoteId::from_raw))
         }
     }
 

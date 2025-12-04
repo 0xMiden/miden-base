@@ -2,6 +2,7 @@ use alloc::string::String;
 use core::fmt::{Debug, Display, Formatter};
 
 use miden_crypto::WordError;
+use miden_protocol_macros::WordWrapper;
 
 use super::{
     ByteReader,
@@ -29,14 +30,14 @@ const NULLIFIER_PREFIX_SHIFT: u8 = 48;
 ///
 /// A note's nullifier is computed as:
 ///
-/// > hash(serial_num, script_root, input_commitment, asset_commitment).
+/// > hash(serial_num, script_root, storage_commitment, asset_commitment).
 ///
 /// This achieves the following properties:
 /// - Every note can be reduced to a single unique nullifier.
 /// - We cannot derive a note's commitment from its nullifier, or a note's nullifier from its hash.
 /// - To compute the nullifier we must know all components of the note: serial_num, script_root,
-///   input_commitment and asset_commitment.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+///   storage_commitment and asset_commitment.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, WordWrapper)]
 pub struct Nullifier(Word);
 
 impl Nullifier {
@@ -55,19 +56,9 @@ impl Nullifier {
         Self(Hasher::hash_elements(&elements))
     }
 
-    /// Returns the elements of this nullifier.
-    pub fn as_elements(&self) -> &[Felt] {
-        self.0.as_elements()
-    }
-
     /// Returns the most significant felt (the last element in array)
     pub fn most_significant_felt(&self) -> Felt {
         self.as_elements()[3]
-    }
-
-    /// Returns the digest defining this nullifier.
-    pub fn as_word(&self) -> Word {
-        self.0
     }
 
     /// Returns the prefix of this nullifier.
@@ -79,13 +70,10 @@ impl Nullifier {
 
     /// Creates a Nullifier from a hex string. Assumes that the string starts with "0x" and
     /// that the hexadecimal characters are big-endian encoded.
+    ///
+    /// Callers must ensure the provided value is an actual [`Nullifier`].
     pub fn from_hex(hex_value: &str) -> Result<Self, WordError> {
-        Word::try_from(hex_value).map(Self::from)
-    }
-
-    /// Returns a big-endian, hex-encoded string.
-    pub fn to_hex(&self) -> String {
-        self.0.to_hex()
+        Word::try_from(hex_value).map(Self::from_raw)
     }
 
     #[cfg(any(feature = "testing", test))]
@@ -119,39 +107,6 @@ impl From<&NoteDetails> for Nullifier {
             note.assets().commitment(),
             note.serial_num(),
         )
-    }
-}
-
-impl From<Word> for Nullifier {
-    fn from(digest: Word) -> Self {
-        Self(digest)
-    }
-}
-
-// CONVERSIONS FROM NULLIFIER
-// ================================================================================================
-
-impl From<Nullifier> for Word {
-    fn from(nullifier: Nullifier) -> Self {
-        nullifier.0
-    }
-}
-
-impl From<Nullifier> for [u8; 32] {
-    fn from(nullifier: Nullifier) -> Self {
-        nullifier.0.into()
-    }
-}
-
-impl From<&Nullifier> for Word {
-    fn from(nullifier: &Nullifier) -> Self {
-        nullifier.0
-    }
-}
-
-impl From<&Nullifier> for [u8; 32] {
-    fn from(nullifier: &Nullifier) -> Self {
-        nullifier.0.into()
     }
 }
 

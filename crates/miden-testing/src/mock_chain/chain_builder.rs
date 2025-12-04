@@ -30,17 +30,20 @@ use miden_objects::account::{
 };
 use miden_objects::asset::{Asset, FungibleAsset, TokenSymbol};
 use miden_objects::block::account_tree::AccountTree;
+use miden_objects::block::nullifier_tree::NullifierTree;
 use miden_objects::block::{
     BlockAccountUpdate,
+    BlockBody,
     BlockHeader,
     BlockNoteTree,
     BlockNumber,
+    BlockProof,
     Blockchain,
     FeeParameters,
-    NullifierTree,
     OutputNoteBatch,
     ProvenBlock,
 };
+use miden_objects::crypto::merkle::Smt;
 use miden_objects::note::{Note, NoteDetails, NoteType};
 use miden_objects::testing::account_id::ACCOUNT_ID_NATIVE_ASSET_FAUCET;
 use miden_objects::transaction::{OrderedTransactionHeaders, OutputNote};
@@ -209,7 +212,7 @@ impl MockChainBuilder {
         let block_num = BlockNumber::from(0u32);
         let chain_commitment = Blockchain::new().commitment();
         let account_root = account_tree.root();
-        let nullifier_root = NullifierTree::new().root();
+        let nullifier_root = NullifierTree::<Smt>::default().root();
         let note_root = note_tree.root();
         let tx_commitment = transactions.commitment();
         let tx_kernel_commitment = TransactionKernel.to_commitment();
@@ -233,13 +236,15 @@ impl MockChainBuilder {
             timestamp,
         );
 
-        let genesis_block = ProvenBlock::new_unchecked(
-            header,
+        let body = BlockBody::new_unchecked(
             block_account_updates,
             output_note_batches,
             created_nullifiers,
             transactions,
         );
+
+        let block_proof = BlockProof::new_dummy();
+        let genesis_block = ProvenBlock::new_unchecked(header, body, block_proof);
 
         MockChain::from_genesis_block(genesis_block, account_tree, self.account_authenticators)
     }

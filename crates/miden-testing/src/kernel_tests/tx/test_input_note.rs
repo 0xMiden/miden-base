@@ -309,21 +309,21 @@ async fn test_get_storage_info() -> anyhow::Result<()> {
             # we have)
             push.0
             exec.input_note::get_storage_info
-            # => [NOTE_STORAGE_COMMITMENT, inputs_num]
+            # => [NOTE_STORAGE_COMMITMENT, storage_len]
 
             # assert the correctness of the inputs commitment
             push.{STORAGE_COMMITMENT}
-            assert_eqw.err="note 0 has incorrect inputs commitment"
-            # => [inputs_num]
+            assert_eqw.err="note 0 has incorrect storage commitment"
+            # => [storage_len]
 
             # assert the inputs have correct length
-            push.{inputs_num}
-            assert_eq.err="note 0 has incorrect inputs length"
+            push.{storage_len}
+            assert_eq.err="note 0 has incorrect storage length"
             # => []
         end
     "#,
         STORAGE_COMMITMENT = p2id_note_1_asset.storage().commitment(),
-        inputs_num = p2id_note_1_asset.storage().num_items(),
+        storage_len = p2id_note_1_asset.storage().num_items(),
     );
 
     let tx_script = ScriptBuilder::default().compile_tx_script(code)?;

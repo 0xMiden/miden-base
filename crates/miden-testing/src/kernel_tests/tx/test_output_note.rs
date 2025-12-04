@@ -633,10 +633,11 @@ async fn test_build_recipient_hash() -> anyhow::Result<()> {
     let aux = Felt::new(27);
     let tag = NoteTag::for_public_use_case(42, 42, NoteExecutionMode::Network).unwrap();
     let single_input = 2;
-    let inputs = NoteStorage::new(vec![Felt::new(single_input)]).unwrap();
-    let input_commitment = inputs.commitment();
+    let note_storage = NoteStorage::new(vec![Felt::new(single_input)]).unwrap();
+    let storage_commitment = note_storage.commitment();
 
-    let recipient = NoteRecipient::new(output_serial_no, input_note_1.script().clone(), inputs);
+    let recipient =
+        NoteRecipient::new(output_serial_no, input_note_1.script().clone(), note_storage);
     let code = format!(
         "
         use.miden::output_note
@@ -650,12 +651,12 @@ async fn test_build_recipient_hash() -> anyhow::Result<()> {
             padw
 
             # input
-            push.{input_commitment}
+            push.{storage_commitment}
             # SCRIPT_ROOT
             push.{script_root}
             # SERIAL_NUM
             push.{output_serial_no}
-            # => [SERIAL_NUM, SCRIPT_ROOT, INPUT_COMMITMENT, pad(4)]
+            # => [SERIAL_NUM, SCRIPT_ROOT, STORAGE_COMMITMENT, pad(4)]
 
             exec.note::build_recipient_hash
             # => [RECIPIENT, pad(12)]

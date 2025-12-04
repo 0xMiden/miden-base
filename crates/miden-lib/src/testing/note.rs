@@ -167,8 +167,8 @@ impl NoteBuilder {
             self.note_execution_hint,
             self.aux,
         )?;
-        let inputs = NoteStorage::new(self.inputs)?;
-        let recipient = NoteRecipient::new(self.serial_num, note_script, inputs);
+        let storage = NoteStorage::new(self.inputs)?;
+        let recipient = NoteRecipient::new(self.serial_num, note_script, storage);
 
         Ok(Note::new(vault, metadata, recipient))
     }

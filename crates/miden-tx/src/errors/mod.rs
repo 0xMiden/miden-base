@@ -3,7 +3,6 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use core::error::Error;
 
-use miden_lib::transaction::TransactionAdviceMapMismatch;
 use miden_objects::account::AccountId;
 use miden_objects::account::auth::PublicKeyCommitment;
 use miden_objects::assembly::diagnostics::reporting::PrintDiagnostic;
@@ -74,10 +73,12 @@ impl From<TransactionCheckerError> for TransactionExecutorError {
 
 #[derive(Debug, Error)]
 pub enum TransactionExecutorError {
-    #[error("the advice map contains conflicting map entries")]
-    ConflictingAdviceMapEntry(#[source] TransactionAdviceMapMismatch),
     #[error("failed to fetch transaction inputs from the data store")]
     FetchTransactionInputsFailed(#[source] DataStoreError),
+    #[error("failed to fetch asset witnesses from the data store")]
+    FetchAssetWitnessFailed(#[source] DataStoreError),
+    #[error("fee asset must be fungible but was non-fungible")]
+    FeeAssetMustBeFungible,
     #[error("foreign account inputs for ID {0} are not anchored on reference block")]
     ForeignAccountNotAnchoredInReference(AccountId),
     #[error(
@@ -149,8 +150,6 @@ pub enum TransactionProverError {
     TransactionOutputConstructionFailed(#[source] TransactionOutputError),
     #[error("failed to build proven transaction")]
     ProvenTransactionBuildFailed(#[source] ProvenTransactionError),
-    #[error("the advice map contains conflicting map entries")]
-    ConflictingAdviceMapEntry(#[source] TransactionAdviceMapMismatch),
     // Print the diagnostic directly instead of returning the source error. In the source error
     // case, the diagnostic is lost if the execution error is not explicitly unwrapped.
     #[error("failed to execute transaction kernel program:\n{}", PrintDiagnostic::new(.0))]

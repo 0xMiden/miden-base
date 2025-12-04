@@ -786,13 +786,13 @@ async fn inputs_created_correctly() -> anyhow::Result<()> {
             adv_map.A([1,2,3,4])=[5,6,7,8]
 
             begin
+                call.{assert_adv_map_proc_root}
+
                 # test account code advice map
                 push.[6,7,8,9]
                 adv.push_mapval adv_loadw
                 push.[10,11,12,13]
                 assert_eqw.err="account code adv map not found"
-
-                call.{assert_adv_map_proc_root}
             end
         "#,
         assert_adv_map_proc_root =
