@@ -157,7 +157,7 @@ end
 #! Outputs: [ROOT[1], ROOT[0]]
 #!
 #! Where:
-#! - ROOT[1], ROOT[0] are the root hash components of the MMR frontier.
+#! - ROOT[1], ROOT[0] are the root hash components of the MMR frontier whose memory location starts at mmr_ptr
 #!
 #! Invocation: exec
 pub proc mmr_frontier_keccak_get_root
