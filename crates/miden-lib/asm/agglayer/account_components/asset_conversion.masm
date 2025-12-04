@@ -1,5 +1,5 @@
-use.std::math::u64
 use.std::math::u256
+use.std::math::u64
 use.std::sys
 
 #! Calculate 10^scale where scale is a u8 exponent
@@ -14,7 +14,7 @@ proc pow10
     push.1 swap
     # => [scale, result]
 
-    push.1
+    dup neq.0
     # => [true, scale, result]
 
     # Loop to calculate 10^scale
@@ -24,7 +24,7 @@ proc pow10
         # result *= 10
         swap mul.10 swap
         # => [scale, result*10]
-        
+
         # scale -= 1
         sub.1
         # => [scale-1, result*10]
@@ -38,47 +38,57 @@ proc pow10
     # => [result]
 end
 
-#! Convert a Miden amount (1e6 base) to target scale using scale exponent
+#! Convert an asset amount to a scaled U256 representation for bridging to L1.
 #!
-#! Input: [amount, target_scale]
-#! Output: [lo0, lo1, lo2, lo3, hi0, hi1, hi2, hi3]
+#! This procedure performs dynamic scaling conversion to bridge assets to L1 chains
+#! like Ethereum. It multiplies the input amount by 10^target_scale to adjust for decimal
+#! differences between the current representation and the target chain's native decimals.
+#!
+#! The scaling approach minimizes precision loss while ensuring the result fits within
+#! Ethereum's U256 format as 8 u32 limbs for efficient keccak hashing in precompiles.
+#! The result is formatted as a double word where each element is representable as u32.
+#!
+#! The procedure first calculates 10^target_scale using the pow10 helper, then converts
+#! both the amount and scale factor to U256 format, performs U256 multiplication, and
+#! returns the result as 8 u32 limbs ready for L1 bridging operations.
+#!
+#! Inputs:  [amount, target_scale]
+#! Outputs: [lo0, lo1, lo2, lo3, hi0, hi1, hi2, hi3]
 #!
 #! Where:
-#! - amount is in Miden's standard 1e6 base
-#! - target_scale is the difference in target_decimals
-#! - each output limb fits in u32
+#! - amount: The asset amount to be converted
+#! - target_scale: Exponent for scaling factor (10^target_scale)
+#! - lo0-lo3: Lower 128 bits as 4 u32 limbs in little-endian order
+#! - hi0-hi3: Upper 128 bits as 4 u32 limbs in little-endian order
+#!
+#! Examples:
+#! - USDC: amount=1000000000, target_scale=0 → 1000000000 (no scaling)
+#! - ETH: amount=1, target_scale=8 → 100000000 (1 wei scaled by 10^8)
+#!
+#! Invocation: call
 pub proc convert_to_u256_scaled
     # => [amount, target_scale]
 
     swap
     # => [target_scale, amount]
-    
+
     exec.pow10
     # => [scale, amount]
 
-    # Swap to get [amount, scale] for existing logic
-    swap
-    # => [amount, scale]
-    
-    # Split both amount and scale into u32 pairs for u64 multiplication
-    # Split scale first
     u32split
     # => [scale_hi, scale_lo, amount]
-    
-    # Split amount
-    movup.2 u32split
-    # => [amount_hi, amount_lo, scale_hi, scale_lo]
-    
+
+    push.0.0.0.0.0.0
+    # => [SCALE_U256[1], SCALE_U256[0], amount]
+
+    movup.8 u32split
+    # => [amount_hi, amount_lo, SCALE_U256[1], SCALE_U256[0]]
+
+    push.0.0.0.0.0.0
+    # => [AMOUNT_U256[1], AMOUNT_U256[0], SCALE_U256[1], SCALE_U256[0]]
+
     # Perform u64 multiplication: amount * scale
-    exec.u64::wrapping_mul
-    # => [result_hi, result_lo]
-    
-    # Convert to u256 format (8 u32 limbs)
-    # Create the full u256: [lo0, lo1, lo2, lo3, hi0, hi1, hi2, hi3]
-    # where lo0 = result_lo, lo1 = result_hi, and the rest are 0
-    push.0 push.0 push.0 push.0 push.0 push.0
-    # => [0, 0, 0, 0, 0, 0, result_hi, result_lo]
-    
+    exec.u256::mul_unsafe
+
     exec.sys::truncate_stack
 end
-
