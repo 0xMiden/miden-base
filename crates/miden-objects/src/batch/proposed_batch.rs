@@ -5,7 +5,7 @@ use alloc::vec::Vec;
 
 use crate::account::AccountId;
 use crate::batch::{BatchAccountUpdate, BatchId, InputOutputNoteTracker};
-use crate::block::{BlockHeader, BlockNumber};
+use crate::block::{BlockNumber, UnsignedBlockHeader};
 use crate::errors::ProposedBatchError;
 use crate::note::{NoteId, NoteInclusionProof};
 use crate::transaction::{
@@ -30,7 +30,7 @@ pub struct ProposedBatch {
     /// The transactions of this batch.
     transactions: Vec<Arc<ProvenTransaction>>,
     /// The header is boxed as it has a large stack size.
-    reference_block_header: BlockHeader,
+    reference_block_header: UnsignedBlockHeader,
     /// The partial blockchain used to authenticate:
     /// - all unauthenticated notes that can be authenticated,
     /// - all block commitments referenced by the transactions in the batch.
@@ -117,7 +117,7 @@ impl ProposedBatch {
     ///   reference block.
     pub fn new(
         transactions: Vec<Arc<ProvenTransaction>>,
-        reference_block_header: BlockHeader,
+        reference_block_header: UnsignedBlockHeader,
         partial_blockchain: PartialBlockchain,
         unauthenticated_note_proofs: BTreeMap<NoteId, NoteInclusionProof>,
     ) -> Result<Self, ProposedBatchError> {
@@ -358,7 +358,7 @@ impl ProposedBatch {
         self,
     ) -> (
         Vec<Arc<ProvenTransaction>>,
-        BlockHeader,
+        UnsignedBlockHeader,
         PartialBlockchain,
         BTreeMap<NoteId, NoteInclusionProof>,
         BatchId,
@@ -405,7 +405,7 @@ impl Deserializable for ProposedBatch {
             .map(Arc::new)
             .collect::<Vec<Arc<ProvenTransaction>>>();
 
-        let block_header = BlockHeader::read_from(source)?;
+        let block_header = UnsignedBlockHeader::read_from(source)?;
         let partial_blockchain = PartialBlockchain::read_from(source)?;
         let unauthenticated_note_proofs =
             BTreeMap::<NoteId, NoteInclusionProof>::read_from(source)?;
@@ -440,7 +440,7 @@ mod tests {
         // create partial blockchain with 3 blocks - i.e., 2 peaks
         let mut mmr = Mmr::default();
         for i in 0..3 {
-            let block_header = BlockHeader::mock(i, None, None, &[], Word::empty());
+            let block_header = UnsignedBlockHeader::mock(i, None, None, &[], Word::empty());
             mmr.add(block_header.commitment());
         }
         let partial_mmr: PartialMmr = mmr.peaks().into();
@@ -449,7 +449,7 @@ mod tests {
         let chain_commitment = partial_blockchain.peaks().hash_peaks();
         let note_root = rand_value::<Word>();
         let tx_kernel_commitment = rand_value::<Word>();
-        let reference_block_header = BlockHeader::mock(
+        let reference_block_header = UnsignedBlockHeader::mock(
             3,
             Some(chain_commitment),
             Some(note_root),

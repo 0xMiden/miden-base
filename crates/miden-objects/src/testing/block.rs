@@ -5,11 +5,11 @@ use winter_rand_utils::rand_value;
 use crate::Word;
 use crate::account::Account;
 use crate::block::account_tree::{AccountTree, account_id_to_smt_key};
-use crate::block::{BlockHeader, BlockNumber, FeeParameters};
+use crate::block::{BlockNumber, FeeParameters, UnsignedBlockHeader};
 use crate::ecdsa_signer::{EcdsaSigner, LocalEcdsaSigner};
 use crate::testing::account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET;
 
-impl BlockHeader {
+impl UnsignedBlockHeader {
     /// Creates a mock block. The account tree is formed from the provided `accounts`,
     /// and the chain commitment and note root are set to the provided `chain_commitment` and
     /// `note_root` values respectively.
@@ -81,7 +81,7 @@ impl BlockHeader {
             )
         };
 
-        BlockHeader::new(
+        UnsignedBlockHeader::new(
             0,
             prev_block_commitment,
             block_num.into(),

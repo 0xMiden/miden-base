@@ -15,7 +15,6 @@ use crate::block::block_inputs::BlockInputs;
 use crate::block::{
     AccountUpdateWitness,
     AccountWitness,
-    BlockHeader,
     BlockNoteIndex,
     BlockNoteTree,
     BlockNumber,
@@ -23,6 +22,7 @@ use crate::block::{
     OutputNoteBatch,
     PartialAccountTree,
     PartialNullifierTree,
+    UnsignedBlockHeader,
 };
 use crate::errors::ProposedBlockError;
 use crate::note::{NoteId, Nullifier};
@@ -72,7 +72,7 @@ pub struct ProposedBlock {
     /// The previous block's header which this block builds on top of.
     ///
     /// As part of proving the block, this header will be added to the next partial blockchain.
-    prev_block_header: BlockHeader,
+    prev_block_header: UnsignedBlockHeader,
 }
 
 impl ProposedBlock {
@@ -279,7 +279,7 @@ impl ProposedBlock {
     }
 
     /// Returns a reference to the previous block header that this block builds on top of.
-    pub fn prev_block_header(&self) -> &BlockHeader {
+    pub fn prev_block_header(&self) -> &UnsignedBlockHeader {
         &self.prev_block_header
     }
 
@@ -454,7 +454,7 @@ impl ProposedBlock {
         Vec<OutputNoteBatch>,
         BTreeMap<Nullifier, NullifierWitness>,
         PartialBlockchain,
-        BlockHeader,
+        UnsignedBlockHeader,
     ) {
         (
             self.batches,
@@ -491,7 +491,7 @@ impl Deserializable for ProposedBlock {
             output_note_batches: <Vec<OutputNoteBatch>>::read_from(source)?,
             created_nullifiers: <BTreeMap<Nullifier, NullifierWitness>>::read_from(source)?,
             partial_blockchain: PartialBlockchain::read_from(source)?,
-            prev_block_header: BlockHeader::read_from(source)?,
+            prev_block_header: UnsignedBlockHeader::read_from(source)?,
         };
 
         Ok(block)
@@ -515,7 +515,7 @@ fn check_duplicate_batches(batches: &[ProvenBatch]) -> Result<(), ProposedBlockE
 
 fn check_timestamp_increases_monotonically(
     provided_timestamp: u32,
-    prev_block_header: &BlockHeader,
+    prev_block_header: &UnsignedBlockHeader,
 ) -> Result<(), ProposedBlockError> {
     if provided_timestamp <= prev_block_header.timestamp() {
         Err(ProposedBlockError::TimestampDoesNotIncreaseMonotonically {
@@ -533,7 +533,7 @@ fn check_timestamp_increases_monotonically(
 /// expires at block 5 then it can still be included in block 5.
 fn check_batch_expiration(
     batches: &[ProvenBatch],
-    prev_block_header: &BlockHeader,
+    prev_block_header: &UnsignedBlockHeader,
 ) -> Result<(), ProposedBlockError> {
     let current_block_num = prev_block_header.block_num() + 1;
 
@@ -599,7 +599,7 @@ fn remove_erased_nullifiers(
 ///   header.
 fn check_reference_block_partial_blockchain_consistency(
     partial_blockchain: &PartialBlockchain,
-    prev_block_header: &BlockHeader,
+    prev_block_header: &UnsignedBlockHeader,
 ) -> Result<(), ProposedBlockError> {
     // Make sure that the current partial blockchain has blocks up to prev_block_header - 1, i.e.
     // its chain length is equal to the block number of the previous block header.
@@ -626,7 +626,7 @@ fn check_reference_block_partial_blockchain_consistency(
 /// except if the referenced block is the same as the previous block, referenced by the block.
 fn check_batch_reference_blocks(
     partial_blockchain: &PartialBlockchain,
-    prev_block_header: &BlockHeader,
+    prev_block_header: &UnsignedBlockHeader,
     batches: &[ProvenBatch],
 ) -> Result<(), ProposedBlockError> {
     for batch in batches {

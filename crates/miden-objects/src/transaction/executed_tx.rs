@@ -5,7 +5,7 @@ use super::{
     AccountHeader,
     AccountId,
     AdviceInputs,
-    BlockHeader,
+    UnsignedBlockHeader,
     InputNote,
     InputNotes,
     NoteId,
@@ -132,7 +132,7 @@ impl ExecutedTransaction {
     }
 
     /// Returns the block header for the block against which the transaction was executed.
-    pub fn block_header(&self) -> &BlockHeader {
+    pub fn block_header(&self) -> &UnsignedBlockHeader {
         self.tx_inputs.block_header()
     }
 

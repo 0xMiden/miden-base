@@ -34,7 +34,6 @@ use miden_objects::block::nullifier_tree::NullifierTree;
 use miden_objects::block::{
     BlockAccountUpdate,
     BlockBody,
-    BlockHeader,
     BlockNoteTree,
     BlockNumber,
     BlockProof,
@@ -42,6 +41,7 @@ use miden_objects::block::{
     FeeParameters,
     OutputNoteBatch,
     ProvenBlock,
+    UnsignedBlockHeader,
 };
 use miden_objects::crypto::merkle::Smt;
 use miden_objects::ecdsa_signer::{EcdsaSigner, LocalEcdsaSigner};
@@ -222,7 +222,7 @@ impl MockChainBuilder {
             .context("failed to construct fee parameters")?;
         let public_key = LocalEcdsaSigner::dummy().public_key();
 
-        let header = BlockHeader::new(
+        let header = UnsignedBlockHeader::new(
             version,
             prev_block_commitment,
             block_num,

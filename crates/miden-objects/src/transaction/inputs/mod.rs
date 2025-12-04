@@ -7,7 +7,7 @@ use super::PartialBlockchain;
 use crate::TransactionInputError;
 use crate::account::{AccountCode, PartialAccount};
 use crate::asset::AssetWitness;
-use crate::block::{BlockHeader, BlockNumber};
+use crate::block::{BlockNumber, UnsignedBlockHeader};
 use crate::note::{Note, NoteInclusionProof};
 use crate::transaction::{TransactionArgs, TransactionScript};
 
@@ -25,7 +25,7 @@ pub use notes::{InputNote, InputNotes, ToInputNoteCommitments};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TransactionInputs {
     account: PartialAccount,
-    block_header: BlockHeader,
+    block_header: UnsignedBlockHeader,
     blockchain: PartialBlockchain,
     input_notes: InputNotes<InputNote>,
     tx_args: TransactionArgs,
@@ -48,7 +48,7 @@ impl TransactionInputs {
     ///   authenticated input note.
     pub fn new(
         account: PartialAccount,
-        block_header: BlockHeader,
+        block_header: UnsignedBlockHeader,
         blockchain: PartialBlockchain,
         input_notes: InputNotes<InputNote>,
     ) -> Result<Self, TransactionInputError> {
@@ -148,7 +148,7 @@ impl TransactionInputs {
     }
 
     /// Returns block header for the block referenced by the transaction.
-    pub fn block_header(&self) -> &BlockHeader {
+    pub fn block_header(&self) -> &UnsignedBlockHeader {
         &self.block_header
     }
 
@@ -201,7 +201,7 @@ impl TransactionInputs {
         self,
     ) -> (
         PartialAccount,
-        BlockHeader,
+        UnsignedBlockHeader,
         PartialBlockchain,
         InputNotes<InputNote>,
         TransactionArgs,
@@ -240,7 +240,7 @@ impl Deserializable for TransactionInputs {
         source: &mut R,
     ) -> Result<Self, miden_core::utils::DeserializationError> {
         let account = PartialAccount::read_from(source)?;
-        let block_header = BlockHeader::read_from(source)?;
+        let block_header = UnsignedBlockHeader::read_from(source)?;
         let blockchain = PartialBlockchain::read_from(source)?;
         let input_notes = InputNotes::read_from(source)?;
         let tx_args = TransactionArgs::read_from(source)?;
@@ -268,7 +268,7 @@ impl Deserializable for TransactionInputs {
 fn validate_is_in_block(
     note: &Note,
     proof: &NoteInclusionProof,
-    block_header: &BlockHeader,
+    block_header: &UnsignedBlockHeader,
 ) -> Result<(), TransactionInputError> {
     let note_index = proof.location().node_index_in_block().into();
     let note_commitment = note.commitment();
