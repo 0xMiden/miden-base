@@ -153,7 +153,7 @@ end
 #! This is a stubbed implementation that returns placeholder values instead of
 #! computing the actual MMR frontier root.
 #!
-#! Inputs:  []
+#! Inputs:  [mmr_ptr]
 #! Outputs: [ROOT[1], ROOT[0]]
 #!
 #! Where:
