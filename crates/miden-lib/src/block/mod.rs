@@ -12,8 +12,8 @@ pub enum BuildBlockError {
     KeyMismatch,
 }
 
-/// Builds a [`BlockHeader`] and [`BlockBody`] by computing the following from the state updates
-/// encapsulated by the provided [`ProposedBlock`]:
+/// Builds a [`UnsignedBlockHeader`] and [`BlockBody`] by computing the following from the state
+/// updates encapsulated by the provided [`ProposedBlock`]:
 /// - the account root;
 /// - the nullifier root;
 /// - the note root;

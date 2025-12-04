@@ -360,19 +360,19 @@ impl MockChain {
         proofs
     }
 
-    /// Returns the genesis [`BlockHeader`] of the chain.
+    /// Returns the genesis [`UnsignedBlockHeader`] of the chain.
     pub fn genesis_block_header(&self) -> UnsignedBlockHeader {
         self.block_header(BlockNumber::GENESIS.as_usize())
     }
 
-    /// Returns the latest [`BlockHeader`] in the chain.
+    /// Returns the latest [`UnsignedBlockHeader`] in the chain.
     pub fn latest_block_header(&self) -> UnsignedBlockHeader {
         let chain_tip =
             self.chain.chain_tip().expect("chain should contain at least the genesis block");
         self.blocks[chain_tip.as_usize()].header().clone()
     }
 
-    /// Returns the [`BlockHeader`] with the specified `block_number`.
+    /// Returns the [`UnsignedBlockHeader`] with the specified `block_number`.
     ///
     /// # Panics
     ///
