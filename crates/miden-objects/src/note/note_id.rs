@@ -57,6 +57,8 @@ impl From<&NoteDetails> for NoteId {
 
 impl NoteId {
     /// Attempts to convert from a hexadecimal string to [NoteId].
+    ///
+    /// Callers must ensure the provided value is an actual [`NoteId`].
     pub fn try_from_hex(hex_value: &str) -> Result<NoteId, WordError> {
         Word::try_from(hex_value).map(NoteId::from_raw)
     }
