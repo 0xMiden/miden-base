@@ -45,12 +45,6 @@ impl TransactionId {
     }
 }
 
-impl From<Word> for TransactionId {
-    fn from(word: Word) -> Self {
-        TransactionId(word)
-    }
-}
-
 impl Debug for TransactionId {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.to_hex())

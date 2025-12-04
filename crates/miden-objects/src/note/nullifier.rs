@@ -70,8 +70,10 @@ impl Nullifier {
 
     /// Creates a Nullifier from a hex string. Assumes that the string starts with "0x" and
     /// that the hexadecimal characters are big-endian encoded.
+    ///
+    /// Callers must ensure the provided value is an actual [`Nullifier`].
     pub fn from_hex(hex_value: &str) -> Result<Self, WordError> {
-        Word::try_from(hex_value).map(Self::new_unchecked)
+        Word::try_from(hex_value).map(Self::from_raw)
     }
 
     #[cfg(any(feature = "testing", test))]
@@ -79,12 +81,6 @@ impl Nullifier {
         use miden_core::FieldElement;
 
         Self(Word::new([Felt::ZERO, Felt::ZERO, Felt::ZERO, Felt::new(n)]))
-    }
-}
-
-impl From<Word> for Nullifier {
-    fn from(word: Word) -> Self {
-        Nullifier(word)
     }
 }
 

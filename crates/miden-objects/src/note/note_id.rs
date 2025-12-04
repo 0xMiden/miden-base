@@ -40,12 +40,6 @@ impl NoteId {
     }
 }
 
-impl From<Word> for NoteId {
-    fn from(word: Word) -> Self {
-        NoteId(word)
-    }
-}
-
 impl Display for NoteId {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.to_hex())
@@ -64,7 +58,7 @@ impl From<&NoteDetails> for NoteId {
 impl NoteId {
     /// Attempts to convert from a hexadecimal string to [NoteId].
     pub fn try_from_hex(hex_value: &str) -> Result<NoteId, WordError> {
-        Word::try_from(hex_value).map(NoteId::new_unchecked)
+        Word::try_from(hex_value).map(NoteId::from_raw)
     }
 }
 
