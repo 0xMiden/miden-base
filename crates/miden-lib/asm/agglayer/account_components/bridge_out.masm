@@ -172,7 +172,7 @@ end
 #! - Computing Keccak hash of the data
 #! - Adding the hash to the MMR frontier
 #! - Storing the MMR root in account storage
-#! - Creating a BURN note for the asset
+#! - Creating a BURN note with the bridged out asset
 #!
 #! Inputs:  [ASSET, INPUTS[1], INPUTS[0]]
 #! Outputs: []
