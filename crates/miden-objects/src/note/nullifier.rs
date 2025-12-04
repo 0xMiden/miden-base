@@ -82,6 +82,12 @@ impl Nullifier {
     }
 }
 
+impl From<Word> for Nullifier {
+    fn from(word: Word) -> Self {
+        Nullifier(word)
+    }
+}
+
 impl Display for Nullifier {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         f.write_str(&self.to_hex())
