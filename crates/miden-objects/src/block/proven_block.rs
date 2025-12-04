@@ -1,5 +1,5 @@
 use crate::MIN_PROOF_SECURITY_LEVEL;
-use crate::block::{BlockBody, UnsignedBlockHeader, BlockProof};
+use crate::block::{BlockBody, BlockProof, UnsignedBlockHeader};
 use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
 // PROVEN BLOCK

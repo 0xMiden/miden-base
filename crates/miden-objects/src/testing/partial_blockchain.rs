@@ -1,7 +1,7 @@
 use alloc::vec::Vec;
 
 use crate::PartialBlockchainError;
-use crate::block::{UnsignedBlockHeader, BlockNumber, Blockchain};
+use crate::block::{BlockNumber, Blockchain, UnsignedBlockHeader};
 use crate::transaction::PartialBlockchain;
 
 impl PartialBlockchain {

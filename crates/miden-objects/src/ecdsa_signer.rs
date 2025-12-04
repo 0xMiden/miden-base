@@ -25,7 +25,13 @@ impl LocalEcdsaSigner {
 
     #[cfg(any(feature = "testing", test))]
     pub fn dummy() -> Self {
-        LocalEcdsaSigner { secret_key: ecdsa::SecretKey::new() }
+        use rand::SeedableRng;
+        use rand_chacha::ChaCha20Rng;
+
+        let mut rng = ChaCha20Rng::from_os_rng();
+        LocalEcdsaSigner {
+            secret_key: ecdsa::SecretKey::with_rng(&mut rng),
+        }
     }
 }
 

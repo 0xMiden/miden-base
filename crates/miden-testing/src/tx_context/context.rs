@@ -8,7 +8,7 @@ use miden_objects::account::{Account, AccountId, PartialAccount, StorageMapWitne
 use miden_objects::assembly::debuginfo::{SourceLanguage, Uri};
 use miden_objects::assembly::{SourceManager, SourceManagerSync};
 use miden_objects::asset::{Asset, AssetVaultKey, AssetWitness};
-use miden_objects::block::{AccountWitness, UnsignedBlockHeader, BlockNumber};
+use miden_objects::block::{AccountWitness, BlockNumber, UnsignedBlockHeader};
 use miden_objects::note::{Note, NoteScript};
 use miden_objects::transaction::{
     AccountInputs,
@@ -228,8 +228,9 @@ impl DataStore for TransactionContext {
         &self,
         account_id: AccountId,
         ref_blocks: BTreeSet<BlockNumber>,
-    ) -> impl FutureMaybeSend<Result<(PartialAccount, UnsignedBlockHeader, PartialBlockchain), DataStoreError>>
-    {
+    ) -> impl FutureMaybeSend<
+        Result<(PartialAccount, UnsignedBlockHeader, PartialBlockchain), DataStoreError>,
+    > {
         // Sanity checks
         assert_eq!(account_id, self.account().id());
         assert_eq!(account_id, self.tx_inputs.account().id());

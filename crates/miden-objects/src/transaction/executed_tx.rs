@@ -5,7 +5,6 @@ use super::{
     AccountHeader,
     AccountId,
     AdviceInputs,
-    UnsignedBlockHeader,
     InputNote,
     InputNotes,
     NoteId,
@@ -13,6 +12,7 @@ use super::{
     TransactionArgs,
     TransactionId,
     TransactionOutputs,
+    UnsignedBlockHeader,
 };
 use crate::account::PartialAccount;
 use crate::asset::FungibleAsset;

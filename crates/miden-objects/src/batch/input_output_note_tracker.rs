@@ -2,7 +2,7 @@ use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
 
 use crate::batch::{BatchId, ProvenBatch};
-use crate::block::{UnsignedBlockHeader, BlockNumber};
+use crate::block::{BlockNumber, UnsignedBlockHeader};
 use crate::crypto::merkle::MerkleError;
 use crate::errors::ProposedBatchError;
 use crate::note::{NoteHeader, NoteId, NoteInclusionProof, Nullifier};

@@ -55,6 +55,8 @@ semver       = { features = ["serde"], version = "1.0" }
 serde        = { features = ["derive"], optional = true, version = "1.0" }
 thiserror    = { workspace = true }
 toml         = { optional = true, version = "0.9" }
+# for LocalEcdsaSigner::dummy
+rand_chacha = { workspace = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { features = ["wasm_js"], version = "0.3" }
