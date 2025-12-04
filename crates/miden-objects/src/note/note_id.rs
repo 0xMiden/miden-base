@@ -40,6 +40,12 @@ impl NoteId {
     }
 }
 
+impl From<Word> for NoteId {
+    fn from(word: Word) -> Self {
+        NoteId(word)
+    }
+}
+
 impl Display for NoteId {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.to_hex())
