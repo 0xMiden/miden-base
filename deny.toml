@@ -1,4 +1,4 @@
-# cargo-deny configuration for DeepProve workspace
+# cargo-deny configuration, see https://github.com/EmbarkStudios/cargo-deny
 
 # Graph configuration
 [graph]
