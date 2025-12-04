@@ -91,7 +91,7 @@ pub struct UnsignedBlockHeader {
 }
 
 impl UnsignedBlockHeader {
-    /// Creates a new block header, signed by the provided secret key.
+    /// Creates a new block header that is not yet signed by the validator.
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         version: u32,

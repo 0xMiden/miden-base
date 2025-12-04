@@ -20,8 +20,8 @@ pub enum BuildBlockError {
 /// - the transaction commitment; and
 /// - the chain commitment.
 ///
-/// The block header is signed by the provided secret key. The secret key must correspond to the
-/// previous header's public key.
+/// The returned block header contains the same public key as the previous block, as provided by the
+/// proposed block.
 ///
 /// This functionality is handled here because the block header requires [`TransactionKernel`] for
 /// its various commitment fields.

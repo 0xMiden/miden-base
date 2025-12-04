@@ -775,7 +775,7 @@ end
 #! Outputs: [PUBLIC_KEY_COMMITMENT]
 #!
 #! Where:
-#! - PUBLIC_KEY_COMMITMENT is the proof commitment of the transaction reference block.
+#! - PUBLIC_KEY_COMMITMENT is the public key commitment of the transaction reference block.
 export.get_public_key_commitment
     padw mem_loadw_be.PUBLIC_KEY_COMMITMENT_PTR
 end
