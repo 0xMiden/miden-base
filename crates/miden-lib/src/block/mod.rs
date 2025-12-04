@@ -3,15 +3,6 @@ use miden_objects::block::{BlockBody, ProposedBlock, UnsignedBlockHeader};
 
 use crate::transaction::TransactionKernel;
 
-/// Block building errors.
-#[derive(Debug, thiserror::Error)]
-pub enum BuildBlockError {
-    #[error("processing of proposed block failed")]
-    ProposedBlockError(#[source] ProposedBlockError),
-    #[error("provided secret key does not match previous block header's public key")]
-    KeyMismatch,
-}
-
 /// Builds a [`UnsignedBlockHeader`] and [`BlockBody`] by computing the following from the state
 /// updates encapsulated by the provided [`ProposedBlock`]:
 /// - the account root;
@@ -27,7 +18,7 @@ pub enum BuildBlockError {
 /// its various commitment fields.
 pub fn build_block(
     proposed_block: ProposedBlock,
-) -> Result<(UnsignedBlockHeader, BlockBody), BuildBlockError> {
+) -> Result<(UnsignedBlockHeader, BlockBody), ProposedBlockError> {
     // Get fields from the proposed block before it is consumed.
     let block_num = proposed_block.block_num();
     let timestamp = proposed_block.timestamp();
@@ -35,14 +26,10 @@ pub fn build_block(
 
     // Insert the state commitments of updated accounts into the account tree to compute its new
     // root.
-    let new_account_root = proposed_block
-        .compute_account_root()
-        .map_err(BuildBlockError::ProposedBlockError)?;
+    let new_account_root = proposed_block.compute_account_root()?;
 
     // Insert the created nullifiers into the nullifier tree to compute its new root.
-    let new_nullifier_root = proposed_block
-        .compute_nullifier_root()
-        .map_err(BuildBlockError::ProposedBlockError)?;
+    let new_nullifier_root = proposed_block.compute_nullifier_root()?;
 
     // Compute the root of the block note tree.
     let note_tree = proposed_block.compute_block_note_tree();

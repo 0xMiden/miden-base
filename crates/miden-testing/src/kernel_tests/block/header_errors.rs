@@ -2,7 +2,7 @@ use alloc::vec::Vec;
 
 use anyhow::Context;
 use assert_matches::assert_matches;
-use miden_lib::block::{BuildBlockError, build_block};
+use miden_lib::block::build_block;
 use miden_lib::testing::account_component::{IncrNonceAuthComponent, MockAccountComponent};
 use miden_lib::testing::mock_account::MockAccountExt;
 use miden_objects::account::delta::AccountUpdateDetails;
@@ -100,10 +100,7 @@ async fn block_building_fails_on_stale_account_witnesses() -> anyhow::Result<()>
     let error = build_block(proposed_block0).unwrap_err();
 
     match error {
-        BuildBlockError::ProposedBlockError(ProposedBlockError::StaleAccountTreeRoot {
-            prev_block_account_root,
-            ..
-        }) => {
+        ProposedBlockError::StaleAccountTreeRoot { prev_block_account_root, .. } => {
             assert_eq!(
                 prev_block_account_root,
                 valid_block_inputs.prev_block_header().account_root()
@@ -142,10 +139,7 @@ async fn block_building_fails_on_stale_nullifier_witnesses() -> anyhow::Result<(
     let error = build_block(proposed_block2).unwrap_err();
 
     match error {
-        BuildBlockError::ProposedBlockError(ProposedBlockError::StaleNullifierTreeRoot {
-            prev_block_nullifier_root,
-            ..
-        }) => {
+        ProposedBlockError::StaleNullifierTreeRoot { prev_block_nullifier_root, .. } => {
             assert_eq!(
                 prev_block_nullifier_root,
                 valid_block_inputs.prev_block_header().nullifier_root()
@@ -194,10 +188,10 @@ async fn block_building_fails_on_account_tree_root_mismatch() -> anyhow::Result<
 
     assert_matches!(
         error,
-        BuildBlockError::ProposedBlockError(ProposedBlockError::AccountWitnessTracking {
+        ProposedBlockError::AccountWitnessTracking {
             source: AccountTreeError::TreeRootConflict { .. },
             ..
-        })
+        }
     );
 
     Ok(())
@@ -242,9 +236,7 @@ async fn block_building_fails_on_nullifier_tree_root_mismatch() -> anyhow::Resul
 
     assert_matches!(
         error,
-        BuildBlockError::ProposedBlockError(ProposedBlockError::NullifierWitnessRootMismatch(
-            NullifierTreeError::TreeRootConflict(_)
-        ))
+        ProposedBlockError::NullifierWitnessRootMismatch(NullifierTreeError::TreeRootConflict(_))
     );
 
     Ok(())
@@ -337,9 +329,9 @@ async fn block_building_fails_on_creating_account_with_existing_account_id_prefi
 
     // This should fail when we try to _insert_ the same two prefixes into the partial tree.
     match err {
-        BuildBlockError::ProposedBlockError(ProposedBlockError::AccountIdPrefixDuplicate {
+        ProposedBlockError::AccountIdPrefixDuplicate {
             source: AccountTreeError::DuplicateIdPrefix { duplicate_prefix },
-        }) => {
+        } => {
             assert_eq!(duplicate_prefix, new_id.prefix());
         },
         _ => panic!("Expected AccountIdPrefixDuplicate error, got: {:?}", err),
@@ -435,9 +427,9 @@ async fn block_building_fails_on_creating_account_with_duplicate_account_id_pref
 
     // This should fail when we try to _track_ the same two prefixes in the partial tree.
     match err {
-        BuildBlockError::ProposedBlockError(ProposedBlockError::AccountWitnessTracking {
+        ProposedBlockError::AccountWitnessTracking {
             source: AccountTreeError::DuplicateIdPrefix { duplicate_prefix },
-        }) => {
+        } => {
             assert_eq!(duplicate_prefix, id0.prefix());
         },
         _ => panic!("Expected AccountWitnessTracking error, got: {:?}", err),
