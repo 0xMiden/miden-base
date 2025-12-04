@@ -220,7 +220,8 @@ impl MockChainBuilder {
         let timestamp = MockChain::TIMESTAMP_START_SECS;
         let fee_parameters = FeeParameters::new(self.native_asset_id, self.verification_base_fee)
             .context("failed to construct fee parameters")?;
-        let public_key = LocalEcdsaSigner::dummy().public_key();
+        let signer = LocalEcdsaSigner::dummy();
+        let public_key = signer.public_key();
 
         let header = UnsignedBlockHeader::new(
             version,
@@ -244,6 +245,7 @@ impl MockChainBuilder {
             transactions,
         );
 
+        let header = header.sign(signer);
         let block_proof = BlockProof::new_dummy();
         let genesis_block = ProvenBlock::new_unchecked(header, body, block_proof);
 

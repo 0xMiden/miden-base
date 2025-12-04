@@ -20,6 +20,7 @@ use crate::{FeeError, Felt, Hasher, Word, ZERO};
 // ================================================================================================
 
 /// The header of a block that has been signed by the validator.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BlockHeader {
     unsigned_header: UnsignedBlockHeader,
     signature: Signature,
@@ -43,6 +44,24 @@ impl BlockHeader {
     /// Returns a reference to the signature of the block header.
     pub fn signature(&self) -> &Signature {
         &self.signature
+    }
+}
+
+// SERIALIZATION
+// ================================================================================================
+
+impl Serializable for BlockHeader {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        self.unsigned_header.write_into(target);
+        self.signature.write_into(target);
+    }
+}
+
+impl Deserializable for BlockHeader {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let unsigned_header = UnsignedBlockHeader::read_from(source)?;
+        let signature = Signature::read_from(source)?;
+        Ok(BlockHeader { unsigned_header, signature })
     }
 }
 

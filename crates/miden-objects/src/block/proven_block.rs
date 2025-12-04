@@ -1,5 +1,5 @@
 use crate::MIN_PROOF_SECURITY_LEVEL;
-use crate::block::{BlockBody, BlockProof, UnsignedBlockHeader};
+use crate::block::{BlockBody, BlockHeader, BlockProof, UnsignedBlockHeader};
 use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
 // PROVEN BLOCK
@@ -14,7 +14,7 @@ use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError,
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProvenBlock {
     /// The header of the proven block.
-    header: UnsignedBlockHeader,
+    header: BlockHeader,
 
     /// The body of the proven block.
     body: BlockBody,
@@ -30,7 +30,7 @@ impl ProvenBlock {
     ///
     /// This constructor does not do any validation, so passing incorrect values may lead to later
     /// panics.
-    pub fn new_unchecked(header: UnsignedBlockHeader, body: BlockBody, proof: BlockProof) -> Self {
+    pub fn new_unchecked(header: BlockHeader, body: BlockBody, proof: BlockProof) -> Self {
         Self { header, body, proof }
     }
 
@@ -69,7 +69,7 @@ impl Serializable for ProvenBlock {
 impl Deserializable for ProvenBlock {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let block = Self {
-            header: UnsignedBlockHeader::read_from(source)?,
+            header: BlockHeader::read_from(source)?,
             body: BlockBody::read_from(source)?,
             proof: BlockProof::read_from(source)?,
         };

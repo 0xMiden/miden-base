@@ -21,6 +21,7 @@ use miden_objects::block::{
     ProvenBlock,
     UnsignedBlockHeader,
 };
+use miden_objects::ecdsa_signer::LocalEcdsaSigner;
 use miden_objects::note::{Note, NoteHeader, NoteId, NoteInclusionProof, Nullifier};
 use miden_objects::transaction::{
     ExecutedTransaction,
@@ -985,6 +986,7 @@ impl MockChain {
             header.clone(),
             inputs,
         )?;
+        let header = header.sign(LocalEcdsaSigner::dummy());
         Ok(ProvenBlock::new_unchecked(header, body, block_proof))
     }
 }
