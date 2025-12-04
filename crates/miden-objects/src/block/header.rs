@@ -41,6 +41,40 @@ impl DerefMut for BlockHeader {
 }
 
 impl BlockHeader {
+    /// Creates a new block header.
+    #[allow(clippy::too_many_arguments)]
+    pub fn new_unchecked(
+        version: u32,
+        prev_block_commitment: Word,
+        block_num: BlockNumber,
+        chain_commitment: Word,
+        account_root: Word,
+        nullifier_root: Word,
+        note_root: Word,
+        tx_commitment: Word,
+        tx_kernel_commitment: Word,
+        public_key: PublicKey,
+        fee_parameters: FeeParameters,
+        timestamp: u32,
+        signature: Signature,
+    ) -> Self {
+        let unsigned_header = UnsignedBlockHeader::new(
+            version,
+            prev_block_commitment,
+            block_num,
+            chain_commitment,
+            account_root,
+            nullifier_root,
+            note_root,
+            tx_commitment,
+            tx_kernel_commitment,
+            public_key,
+            fee_parameters,
+            timestamp,
+        );
+        Self { unsigned_header, signature }
+    }
+
     /// Returns a reference to the signature of the block header.
     pub fn signature(&self) -> &Signature {
         &self.signature
