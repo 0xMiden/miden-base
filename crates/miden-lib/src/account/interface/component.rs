@@ -29,41 +29,27 @@ pub enum AccountComponentInterface {
     BasicWallet,
     /// Exposes procedures from the
     /// [`BasicFungibleFaucet`][crate::account::faucets::BasicFungibleFaucet] module.
-    ///
-    /// Internal value holds the storage slot index where faucet metadata is stored. This metadata
-    /// slot has a format of `[max_supply, faucet_decimals, token_symbol, 0]`.
     BasicFungibleFaucet,
     /// Exposes procedures from the
     /// [`NetworkFungibleFaucet`][crate::account::faucets::NetworkFungibleFaucet] module.
-    ///
-    /// Internal value holds the storage slot index where faucet metadata is stored. This metadata
-    /// slot has a format of `[max_supply, faucet_decimals, token_symbol, 0]`.
     NetworkFungibleFaucet,
     /// Exposes procedures from the
-    /// [`AuthRpoFalcon512`][crate::account::auth::AuthRpoFalcon512] module.
-    ///
-    /// Internal value holds the storage slot index where the public key for the EcdsaK256Keccak
-    /// authentication scheme is stored.
+    /// [`AuthEcdsaK256Keccak`][crate::account::auth::AuthEcdsaK256Keccak] module.
     AuthEcdsaK256Keccak,
-    /// Internal value holds the storage slot index where the public key for the EcdsaK256Keccak
-    /// authentication scheme is stored.
+    /// Exposes procedures from the
+    /// [`AuthEcdsaK256KeccakAcl`][crate::account::auth::AuthEcdsaK256KeccakAcl] module.
     AuthEcdsaK256KeccakAcl,
-    /// Internal value holds the storage slot index where the multisig for EcdsaK256Keccak
-    /// configuration is stored.
+    /// Exposes procedures from the
+    /// [`AuthEcdsaK256KeccakMultisig`][crate::account::auth::AuthEcdsaK256KeccakMultisig] module.
     AuthEcdsaK256KeccakMultisig,
-    ///
-    /// Internal value holds the storage slot index where the public key for the RpoFalcon512
-    /// authentication scheme is stored.
+    /// Exposes procedures from the
+    /// [`AuthRpoFalcon512`][crate::account::auth::AuthRpoFalcon512] module.
     AuthRpoFalcon512,
     /// Exposes procedures from the
     /// [`AuthRpoFalcon512Acl`][crate::account::auth::AuthRpoFalcon512Acl] module.
-    ///
-    /// Internal value holds the storage slot index where the public key for the RpoFalcon512
-    /// authentication scheme is stored.
     AuthRpoFalcon512Acl,
-    /// Exposes procedures from the multisig RpoFalcon512 authentication module.
-    ///
-    /// Internal value holds the storage slot index where the multisig configuration is stored.
+    /// Exposes procedures from the
+    /// [`AuthRpoFalcon512Multisig`][crate::account::auth::AuthRpoFalcon512Multisig] module.
     AuthRpoFalcon512Multisig,
     /// Exposes procedures from the [`NoAuth`][crate::account::auth::NoAuth] module.
     ///
