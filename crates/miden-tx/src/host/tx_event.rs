@@ -262,14 +262,7 @@ impl TransactionEvent {
                 let (slot_name_id, slot_type, _old_value) =
                     process.get_storage_slot(process, slot_ptr)?;
 
-                let (slot_name, ..) = base_host
-                    .initial_account_storage_header()
-                    .find_slot_header_by_id(slot_name_id)
-                    .ok_or_else(|| {
-                        TransactionKernelError::other(format!(
-                            "failed to find slot header with name ID {slot_name_id}"
-                        ))
-                    })?;
+                let (slot_name, ..) = base_host.initial_account_storage_slot(slot_name_id)?;
                 let slot_name = slot_name.clone();
 
                 if !slot_type.is_value() {
@@ -307,14 +300,8 @@ impl TransactionEvent {
 
                 // Resolve slot name ID to slot name.
                 let (slot_name_id, ..) = process.get_storage_slot(process, slot_ptr)?;
-                let (slot_name, ..) = base_host
-                    .initial_account_storage_header()
-                    .find_slot_header_by_id(slot_name_id)
-                    .ok_or_else(|| {
-                        TransactionKernelError::other(format!(
-                            "failed to resolve slot name ID {slot_name_id} to slot name"
-                        ))
-                    })?;
+                let (slot_name, ..) = base_host.initial_account_storage_slot(slot_name_id)?;
+
                 let slot_name = slot_name.clone();
 
                 Some(TransactionEvent::AccountStorageAfterSetMapItem {
@@ -599,14 +586,9 @@ fn on_account_storage_map_item_accessed<'store, STORE>(
         // For native accounts, we have to request witnesses against the initial
         // root instead of the _current_ one, since the data
         // store only has witnesses for initial one.
-        let (_slot_name, slot_type, slot_value) = base_host
-            .initial_account_storage_header()
-            .find_slot_header_by_id(slot_name_id)
-            .ok_or_else(|| {
-                TransactionKernelError::other(format!(
-                    "failed to find storage map with name {slot_name_id} in storage header"
-                ))
-            })?;
+        let (_slot_name, slot_type, slot_value) =
+            base_host.initial_account_storage_slot(slot_name_id)?;
+
         if *slot_type != StorageSlotType::Map {
             return Err(TransactionKernelError::other(format!(
                 "expected slot {slot_name_id} to be of type map"

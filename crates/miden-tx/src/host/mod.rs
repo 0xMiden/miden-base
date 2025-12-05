@@ -37,6 +37,8 @@ use miden_objects::account::{
     AccountStorageHeader,
     PartialAccount,
     SlotName,
+    SlotNameId,
+    StorageSlotType,
 };
 use miden_objects::asset::Asset;
 use miden_objects::note::{NoteId, NoteMetadata, NoteRecipient};
@@ -156,6 +158,21 @@ impl<'store, STORE> TransactionBaseHost<'store, STORE> {
     /// the state at the beginning of the transaction.
     pub fn initial_account_storage_header(&self) -> &AccountStorageHeader {
         &self.initial_account_storage_header
+    }
+
+    /// Returns the initial storage slot of the native account identified by [`SlotNameId`], which
+    /// represents the state at the beginning of the transaction.
+    pub fn initial_account_storage_slot(
+        &self,
+        slot_id: SlotNameId,
+    ) -> Result<(&SlotName, &StorageSlotType, &Word), TransactionKernelError> {
+        self.initial_account_storage_header()
+            .find_slot_header_by_id(slot_id)
+            .ok_or_else(|| {
+                TransactionKernelError::other(format!(
+                    "failed to find storage map with name {slot_id} in storage header"
+                ))
+            })
     }
 
     /// Returns a reference to the account delta tracker of this transaction host.
