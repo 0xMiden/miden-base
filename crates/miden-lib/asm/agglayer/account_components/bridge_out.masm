@@ -1,12 +1,11 @@
-use.miden::active_account
 use.miden::active_note
 use.miden::native_account
 use.miden::note
 use.miden::output_note
-use.std::math::u64
-use.std::sys
-
 use std::crypto::hashes::keccak256
+
+# CONSTANTS
+# =================================================================================================
 
 const.MMR_PTR=42
 const.STORAGE_MAP_INDEX=0
