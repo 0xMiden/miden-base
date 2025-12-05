@@ -193,7 +193,7 @@ pub proc bridge_out
     # -> return amount from here: https://github.com/0xMiden/miden-base/pull/2141
 
     # Converting SCALED_ASSET, INPUTS[1], & INPUTS[0] to u32 representation
-    # in preperation for keccak256 hashing
+    # in preparation for keccak256 hashing
 
     # Store ASSET as u32 limbs in memory starting at address 0
     push.0 movdn.4 exec.store_word_u32s_le
