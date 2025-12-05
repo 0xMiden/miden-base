@@ -111,10 +111,7 @@ impl AccountStorageHeader {
 
     /// Returns a slot contained in the storage header at a given index.
     ///
-    /// # Errors
-    ///
-    /// Returns an error if:
-    /// - a slot with the provided name ID does not exist.
+    /// Returns `None` if a slot with the provided name ID does not exist.
     pub fn find_slot_header_by_name(
         &self,
         slot_name: &SlotName,
@@ -125,8 +122,7 @@ impl AccountStorageHeader {
 
     /// Returns a slot contained in the storage header at a given index.
     ///
-    /// # Errors
-    /// - If the index is out of bounds.
+    /// Returns `None` if a slot with the provided name ID does not exist.
     pub fn find_slot_header_by_id(
         &self,
         name_id: SlotNameId,
@@ -138,6 +134,23 @@ impl AccountStorageHeader {
                 (name, r#type, value)
             })
             .ok()
+    }
+
+    /// Indicates whether the slot with the given `name` is a map slot.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - a slot with the provided name does not exist.
+    pub fn is_map_slot(&self, name: &SlotName) -> Result<bool, AccountError> {
+        match self
+            .find_slot_header_by_name(name)
+            .ok_or(AccountError::StorageSlotNameNotFound { slot_name: name.clone() })?
+            .0
+        {
+            StorageSlotType::Map => Ok(true),
+            StorageSlotType::Value => Ok(false),
+        }
     }
 
     /// Converts storage slots of this account storage header into a vector of field elements.
