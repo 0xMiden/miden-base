@@ -39,7 +39,6 @@ pub use component::{
     AccountComponent,
     // TODO(named_slots): Uncomment when refactored.
     // AccountComponentMetadata,
-    // AccountComponentTemplate,
     // FeltRepresentation,
     // InitStorageData,
     // MapEntry,

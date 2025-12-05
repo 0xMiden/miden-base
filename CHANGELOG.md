@@ -9,6 +9,7 @@
 
 ## 0.12.2 (unreleased)
 - Add proc-macro `WordWrapper` to ease implementation of `Word`-wrapping types ([#2071](https://github.com/0xMiden/miden-base/pull/2108)).
+- [BREAKING] Added fee to `TransactionHeader` ([#2131](https://github.com/0xMiden/miden-base/pull/2131)).
 
 ### Changes
 
@@ -16,6 +17,7 @@
 - [BREAKING] Renamed `TransactionEvent` into `TransactionEventId` and split event handling into data extraction and handling logic ([#2071](https://github.com/0xMiden/miden-base/pull/2071)).
 - Split tx progress events out into a separate enum ([#2103](https://github.com/0xMiden/miden-base/pull/2103)).
 - Added `note::get_network_account_tag` procedure ([#2120](https://github.com/0xMiden/miden-base/pull/2120)).
+- [BREAKING] Removed `AccountComponentTemplate` in favor of instantiating components via `AccountComponent::from_package` ([#2127](https://github.com/0xMiden/miden-base/pull/2127)).
 
 ## 0.12.4 (2025-11-26)
 

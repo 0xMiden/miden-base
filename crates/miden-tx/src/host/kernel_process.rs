@@ -161,7 +161,7 @@ impl<'a> TransactionKernelProcess for ProcessState<'a> {
                         ExecutionError::MemoryError(err),
                     )
                 })?
-                .map(NoteId::new_unchecked))
+                .map(NoteId::from_raw))
         }
     }
 

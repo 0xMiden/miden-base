@@ -3,6 +3,7 @@ use alloc::vec::Vec;
 use miden_processor::DeserializationError;
 
 use crate::Word;
+use crate::asset::FungibleAsset;
 use crate::note::NoteHeader;
 use crate::transaction::{
     AccountId,
@@ -29,6 +30,7 @@ pub struct TransactionHeader {
     final_state_commitment: Word,
     input_notes: InputNotes<InputNoteCommitment>,
     output_notes: Vec<NoteHeader>,
+    fee: FungibleAsset,
 }
 
 impl TransactionHeader {
@@ -42,14 +44,15 @@ impl TransactionHeader {
     /// The input notes and output notes must be in the same order as they appeared in the
     /// transaction that this header represents, otherwise an incorrect ID will be computed.
     ///
-    /// Note that this cannot validate that the [`AccountId`] is valid with respect to the other
-    /// data. This must be validated outside of this type.
+    /// Note that this cannot validate that the [`AccountId`] or the fee asset is valid with respect
+    /// to the other data. This must be validated outside of this type.
     pub fn new(
         account_id: AccountId,
         initial_state_commitment: Word,
         final_state_commitment: Word,
         input_notes: InputNotes<InputNoteCommitment>,
         output_notes: Vec<NoteHeader>,
+        fee: FungibleAsset,
     ) -> Self {
         let input_notes_commitment = input_notes.commitment();
         let output_notes_commitment = OutputNotes::compute_commitment(output_notes.iter().copied());
@@ -68,6 +71,7 @@ impl TransactionHeader {
             final_state_commitment,
             input_notes,
             output_notes,
+            fee,
         }
     }
 
@@ -84,6 +88,7 @@ impl TransactionHeader {
         final_state_commitment: Word,
         input_notes: InputNotes<InputNoteCommitment>,
         output_notes: Vec<NoteHeader>,
+        fee: FungibleAsset,
     ) -> Self {
         Self {
             id,
@@ -92,6 +97,7 @@ impl TransactionHeader {
             final_state_commitment,
             input_notes,
             output_notes,
+            fee,
         }
     }
 
@@ -141,6 +147,11 @@ impl TransactionHeader {
     pub fn output_notes(&self) -> &[NoteHeader] {
         &self.output_notes
     }
+
+    /// Returns the fee paid by this transaction.
+    pub fn fee(&self) -> FungibleAsset {
+        self.fee
+    }
 }
 
 impl From<&ProvenTransaction> for TransactionHeader {
@@ -155,6 +166,7 @@ impl From<&ProvenTransaction> for TransactionHeader {
             tx.account_update().final_state_commitment(),
             tx.input_notes().clone(),
             tx.output_notes().iter().map(NoteHeader::from).collect(),
+            tx.fee(),
         )
     }
 }
@@ -164,11 +176,22 @@ impl From<&ProvenTransaction> for TransactionHeader {
 
 impl Serializable for TransactionHeader {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        self.account_id.write_into(target);
-        self.initial_state_commitment.write_into(target);
-        self.final_state_commitment.write_into(target);
-        self.input_notes.write_into(target);
-        self.output_notes.write_into(target);
+        let Self {
+            id: _,
+            account_id,
+            initial_state_commitment,
+            final_state_commitment,
+            input_notes,
+            output_notes,
+            fee,
+        } = self;
+
+        account_id.write_into(target);
+        initial_state_commitment.write_into(target);
+        final_state_commitment.write_into(target);
+        input_notes.write_into(target);
+        output_notes.write_into(target);
+        fee.write_into(target);
     }
 }
 
@@ -179,6 +202,7 @@ impl Deserializable for TransactionHeader {
         let final_state_commitment = <Word>::read_from(source)?;
         let input_notes = <InputNotes<InputNoteCommitment>>::read_from(source)?;
         let output_notes = <Vec<NoteHeader>>::read_from(source)?;
+        let fee = FungibleAsset::read_from(source)?;
 
         let tx_header = Self::new(
             account_id,
@@ -186,6 +210,7 @@ impl Deserializable for TransactionHeader {
             final_state_commitment,
             input_notes,
             output_notes,
+            fee,
         );
 
         Ok(tx_header)
