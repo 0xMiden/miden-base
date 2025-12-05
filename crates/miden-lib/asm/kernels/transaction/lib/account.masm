@@ -1533,8 +1533,17 @@ end
 # HELPER PROCEDURES
 # =================================================================================================
 
-# Inputs:  [name_id_prefix, name_id_suffix]
-# Outputs: [is_faucet_storage_data_slot]
+#! Returns 1 if the provided slot ID is equal to the reserved faucet storage data slot, 0
+#! otherwise.
+#!
+#! Inputs:  [name_id_prefix, name_id_suffix]
+#! Outputs: [is_faucet_storage_data_slot]
+#!
+#! Where:
+#! - name_id_{prefix, suffix} are the prefix and suffix felts of the name identifier, which are
+#!   the first two felts of the hashed slot name.
+#! - is_faucet_storage_data_slot is a boolean value indicating whether the provided slot is the
+#!   reserved faucet data slot.
 export.is_faucet_storage_data_slot
     exec.get_faucet_storage_data_slot
     # => [faucet_name_id_prefix, faucet_name_id_suffix, name_id_prefix, name_id_suffix]
