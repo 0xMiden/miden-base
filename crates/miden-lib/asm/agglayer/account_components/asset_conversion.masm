@@ -80,7 +80,7 @@ pub proc convert_to_u256_scaled
     push.0.0.0.0.0.0
     # => [AMOUNT_U256[1], AMOUNT_U256[0], SCALE_U256[1], SCALE_U256[0]]
 
-    # Perform u64 multiplication: amount * scale
+    # Perform U256 multiplication: amount * scale
     exec.u256::mul_unsafe
     # => [RESULT_U256[1], RESULT_U256[0], EMPTY_WORD, EMPTY_WORD]
 
