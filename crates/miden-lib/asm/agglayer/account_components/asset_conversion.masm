@@ -13,7 +13,7 @@ proc pow10
     # => [scale, result]
 
     dup neq.0
-    # => [true, scale, result]
+    # => [is_not_zero, scale, result]
 
     # Loop to calculate 10^scale
     while.true
