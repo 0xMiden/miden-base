@@ -28,7 +28,7 @@ proc pow10
         # => [scale-1, result*10]
 
         dup neq.0
-        # => [is_zero, scale-1, result*10]
+        # => [is_not_zero, scale-1, result*10]
     end
     # => [0, result]
 
