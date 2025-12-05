@@ -236,9 +236,9 @@ impl<'a> TransactionKernelProcess for ProcessState<'a> {
 
         let suffix = slot_metadata[ACCT_STORAGE_SLOT_NAME_ID_SUFFIX_OFFSET as usize];
         let prefix = slot_metadata[ACCT_STORAGE_SLOT_NAME_ID_PREFIX_OFFSET as usize];
-        let slot_name_id = SlotNameId::new(suffix, prefix);
+        let slot_id = SlotNameId::new(suffix, prefix);
 
-        Ok((slot_name_id, slot_type, slot_value))
+        Ok((slot_id, slot_type, slot_value))
     }
 
     fn read_note_recipient_info_from_adv_map(
