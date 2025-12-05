@@ -1,0 +1,89 @@
+use.std::math::u256
+
+#! Calculate 10^scale where scale is a u8 exponent
+#!
+#! Input: [scale]
+#! Output: [10^scale]
+#!
+#! Where scale is expected to be a small integer (0-18 typical for crypto decimals)
+proc pow10
+    # => [scale]
+
+    push.1 swap
+    # => [scale, result]
+
+    dup neq.0
+    # => [true, scale, result]
+
+    # Loop to calculate 10^scale
+    while.true
+        # => [scale, result]
+
+        # result *= 10
+        swap mul.10 swap
+        # => [scale, result*10]
+
+        # scale -= 1
+        sub.1
+        # => [scale-1, result*10]
+
+        dup neq.0
+        # => [is_zero, scale-1, result*10]
+    end
+    # => [0, result]
+
+    drop
+    # => [result]
+end
+
+#! Convert an asset amount to a scaled U256 representation for bridging to Agglayer.
+#!
+#! This procedure is used to convert Miden asset amounts to EVM asset amounts.
+#! It multiplies the input amount by 10^target_scale to adjust for decimal differences
+#! between the current representation and the target chain's native decimals.
+#!
+#! The procedure first calculates 10^target_scale using the pow10 helper, then converts
+#! both the amount and scale factor to U256 format, performs U256 multiplication, and
+#! returns the result as 8 u32 limbs ready for Agglayer bridging operations.
+#!
+#! Inputs:  [amount, target_scale]
+#! Outputs: [RESULT_U256[1], RESULT_U256[0]]
+#!
+#! Where:
+#! - amount: The asset amount to be converted
+#! - target_scale: Exponent for scaling factor (10^target_scale)
+#! - c7-c0: U256 value as 8 u32 limbs in big-endian order
+#!
+#! Examples:
+#! - USDC: amount=1000000000, target_scale=0 → 1000000000 (no scaling)
+#! - ETH: amount=1, target_scale=8 → 100000000 (1 wei scaled by 10^8)
+#!
+#! Invocation: exec
+pub proc convert_to_u256_scaled
+    # => [amount, target_scale]
+
+    swap
+    # => [target_scale, amount]
+
+    exec.pow10
+    # => [scale, amount]
+
+    u32split
+    # => [scale_hi, scale_lo, amount]
+
+    push.0.0.0.0.0.0
+    # => [SCALE_U256[1], SCALE_U256[0], amount]
+
+    movup.8 u32split
+    # => [amount_hi, amount_lo, SCALE_U256[1], SCALE_U256[0]]
+
+    push.0.0.0.0.0.0
+    # => [AMOUNT_U256[1], AMOUNT_U256[0], SCALE_U256[1], SCALE_U256[0]]
+
+    # Perform u64 multiplication: amount * scale
+    exec.u256::mul_unsafe
+    # => [RESULT_U256[1], RESULT_U256[0], EMPTY_WORD, EMPTY_WORD]
+
+    movupw.3 dropw movupw.3 dropw
+    # => [RESULT_U256[1], RESULT_U256[0]]
+end

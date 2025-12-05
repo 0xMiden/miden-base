@@ -33,6 +33,7 @@ const BUILD_GENERATED_FILES_IN_SRC: bool = option_env!("BUILD_GENERATED_FILES_IN
 const ASSETS_DIR: &str = "assets";
 const ASM_DIR: &str = "asm";
 const ASM_MIDEN_DIR: &str = "miden";
+const ASM_AGGLAYER_DIR: &str = "agglayer";
 const ASM_NOTE_SCRIPTS_DIR: &str = "note_scripts";
 const ASM_ACCOUNT_COMPONENTS_DIR: &str = "account_components";
 const SHARED_UTILS_DIR: &str = "shared_utils";
@@ -110,6 +111,13 @@ fn main() -> Result<()> {
     compile_account_components(
         &source_dir.join(ASM_ACCOUNT_COMPONENTS_DIR),
         &target_dir.join(ASM_ACCOUNT_COMPONENTS_DIR),
+        assembler.clone(),
+    )?;
+
+    // compile agglayer account components
+    compile_account_components(
+        &source_dir.join(ASM_AGGLAYER_DIR).join(ASM_ACCOUNT_COMPONENTS_DIR),
+        &target_dir.join(ASM_AGGLAYER_DIR).join(ASM_ACCOUNT_COMPONENTS_DIR),
         assembler,
     )?;
 

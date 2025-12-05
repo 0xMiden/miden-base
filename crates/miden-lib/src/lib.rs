@@ -24,6 +24,9 @@ pub mod transaction;
 pub mod utils;
 
 #[cfg(any(feature = "testing", test))]
+pub mod agglayer;
+
+#[cfg(any(feature = "testing", test))]
 pub mod testing;
 
 // RE-EXPORTS
