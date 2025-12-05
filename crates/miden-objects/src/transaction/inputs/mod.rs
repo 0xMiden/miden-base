@@ -7,7 +7,7 @@ use super::PartialBlockchain;
 use crate::TransactionInputError;
 use crate::account::{AccountCode, PartialAccount};
 use crate::asset::AssetWitness;
-use crate::block::{BlockNumber, UnsignedBlockHeader};
+use crate::block::{BlockHeader, BlockNumber, UnsignedBlockHeader};
 use crate::note::{Note, NoteInclusionProof};
 use crate::transaction::{TransactionArgs, TransactionScript};
 
@@ -25,7 +25,7 @@ pub use notes::{InputNote, InputNotes, ToInputNoteCommitments};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TransactionInputs {
     account: PartialAccount,
-    block_header: UnsignedBlockHeader,
+    block_header: BlockHeader,
     blockchain: PartialBlockchain,
     input_notes: InputNotes<InputNote>,
     tx_args: TransactionArgs,
@@ -48,7 +48,7 @@ impl TransactionInputs {
     ///   authenticated input note.
     pub fn new(
         account: PartialAccount,
-        block_header: UnsignedBlockHeader,
+        block_header: BlockHeader,
         blockchain: PartialBlockchain,
         input_notes: InputNotes<InputNote>,
     ) -> Result<Self, TransactionInputError> {
@@ -148,7 +148,7 @@ impl TransactionInputs {
     }
 
     /// Returns block header for the block referenced by the transaction.
-    pub fn block_header(&self) -> &UnsignedBlockHeader {
+    pub fn block_header(&self) -> &BlockHeader {
         &self.block_header
     }
 
@@ -201,7 +201,7 @@ impl TransactionInputs {
         self,
     ) -> (
         PartialAccount,
-        UnsignedBlockHeader,
+        BlockHeader,
         PartialBlockchain,
         InputNotes<InputNote>,
         TransactionArgs,
@@ -240,7 +240,7 @@ impl Deserializable for TransactionInputs {
         source: &mut R,
     ) -> Result<Self, miden_core::utils::DeserializationError> {
         let account = PartialAccount::read_from(source)?;
-        let block_header = UnsignedBlockHeader::read_from(source)?;
+        let block_header = BlockHeader::read_from(source)?;
         let blockchain = PartialBlockchain::read_from(source)?;
         let input_notes = InputNotes::read_from(source)?;
         let tx_args = TransactionArgs::read_from(source)?;

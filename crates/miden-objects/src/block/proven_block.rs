@@ -1,5 +1,5 @@
 use crate::MIN_PROOF_SECURITY_LEVEL;
-use crate::block::{BlockBody, BlockHeader, BlockProof, UnsignedBlockHeader};
+use crate::block::{BlockBody, BlockHeader, BlockProof};
 use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
 // PROVEN BLOCK
@@ -40,7 +40,7 @@ impl ProvenBlock {
     }
 
     /// Returns the header of the block.
-    pub fn header(&self) -> &UnsignedBlockHeader {
+    pub fn header(&self) -> &BlockHeader {
         &self.header
     }
 

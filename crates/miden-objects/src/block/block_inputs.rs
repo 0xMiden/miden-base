@@ -3,7 +3,7 @@ use alloc::collections::BTreeMap;
 use miden_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
 
 use crate::account::AccountId;
-use crate::block::{AccountWitness, NullifierWitness, UnsignedBlockHeader};
+use crate::block::{AccountWitness, BlockHeader, NullifierWitness, UnsignedBlockHeader};
 use crate::note::{NoteId, NoteInclusionProof, Nullifier};
 use crate::transaction::PartialBlockchain;
 use crate::utils::serde::DeserializationError;
@@ -15,7 +15,7 @@ use crate::utils::serde::DeserializationError;
 #[derive(Clone, Debug)]
 pub struct BlockInputs {
     /// The previous block header that the block should reference.
-    prev_block_header: UnsignedBlockHeader,
+    prev_block_header: BlockHeader,
 
     /// The chain state at the previous block with authentication paths for:
     /// - each block referenced by a batch in the block,
@@ -36,7 +36,7 @@ pub struct BlockInputs {
 impl BlockInputs {
     /// Creates new [`BlockInputs`] from the provided parts.
     pub fn new(
-        prev_block_header: UnsignedBlockHeader,
+        prev_block_header: BlockHeader,
         partial_blockchain: PartialBlockchain,
         account_witnesses: BTreeMap<AccountId, AccountWitness>,
         nullifier_witnesses: BTreeMap<Nullifier, NullifierWitness>,
@@ -81,7 +81,7 @@ impl BlockInputs {
     pub fn into_parts(
         self,
     ) -> (
-        UnsignedBlockHeader,
+        BlockHeader,
         PartialBlockchain,
         BTreeMap<AccountId, AccountWitness>,
         BTreeMap<Nullifier, NullifierWitness>,
@@ -147,7 +147,7 @@ impl Serializable for BlockInputs {
 
 impl Deserializable for BlockInputs {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        let prev_block_header = UnsignedBlockHeader::read_from(source)?;
+        let prev_block_header = BlockHeader::read_from(source)?;
         let partial_blockchain = PartialBlockchain::read_from(source)?;
         let account_witnesses = BTreeMap::<AccountId, AccountWitness>::read_from(source)?;
         let nullifier_witnesses = BTreeMap::<Nullifier, NullifierWitness>::read_from(source)?;

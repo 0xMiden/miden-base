@@ -15,6 +15,7 @@ use crate::block::block_inputs::BlockInputs;
 use crate::block::{
     AccountUpdateWitness,
     AccountWitness,
+    BlockHeader,
     BlockNoteIndex,
     BlockNoteTree,
     BlockNumber,
@@ -72,7 +73,7 @@ pub struct ProposedBlock {
     /// The previous block's header which this block builds on top of.
     ///
     /// As part of proving the block, this header will be added to the next partial blockchain.
-    prev_block_header: UnsignedBlockHeader,
+    prev_block_header: BlockHeader,
 }
 
 impl ProposedBlock {
@@ -454,7 +455,7 @@ impl ProposedBlock {
         Vec<OutputNoteBatch>,
         BTreeMap<Nullifier, NullifierWitness>,
         PartialBlockchain,
-        UnsignedBlockHeader,
+        BlockHeader,
     ) {
         (
             self.batches,
@@ -491,7 +492,7 @@ impl Deserializable for ProposedBlock {
             output_note_batches: <Vec<OutputNoteBatch>>::read_from(source)?,
             created_nullifiers: <BTreeMap<Nullifier, NullifierWitness>>::read_from(source)?,
             partial_blockchain: PartialBlockchain::read_from(source)?,
-            prev_block_header: UnsignedBlockHeader::read_from(source)?,
+            prev_block_header: BlockHeader::read_from(source)?,
         };
 
         Ok(block)

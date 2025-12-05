@@ -1,7 +1,7 @@
 use alloc::vec::Vec;
 
 use crate::PartialBlockchainError;
-use crate::block::{BlockNumber, Blockchain, UnsignedBlockHeader};
+use crate::block::{BlockHeader, BlockNumber, Blockchain};
 use crate::transaction::PartialBlockchain;
 
 impl PartialBlockchain {
@@ -19,7 +19,7 @@ impl PartialBlockchain {
     /// genesis block.
     pub fn from_blockchain(
         chain: &Blockchain,
-        blocks: impl IntoIterator<Item = UnsignedBlockHeader>,
+        blocks: impl IntoIterator<Item = BlockHeader>,
     ) -> Result<PartialBlockchain, PartialBlockchainError> {
         // We take the state at the latest block which will be used as the reference block by
         // transaction or batch kernels. That way, the returned partial mmr's hash peaks will match
@@ -45,13 +45,13 @@ impl PartialBlockchain {
     pub fn from_blockchain_at(
         chain: &Blockchain,
         ref_block: BlockNumber,
-        blocks: impl IntoIterator<Item = UnsignedBlockHeader>,
+        blocks: impl IntoIterator<Item = BlockHeader>,
     ) -> Result<PartialBlockchain, PartialBlockchainError> {
         let block_headers: Vec<_> = blocks.into_iter().collect();
 
         let partial_mmr = chain
             .partial_mmr_from_blocks(
-                &block_headers.iter().map(UnsignedBlockHeader::block_num).collect(),
+                &block_headers.iter().map(|header| header.block_num()).collect(),
                 ref_block,
             )
             .expect("reference block should be in the chain and set of blocks should be valid");

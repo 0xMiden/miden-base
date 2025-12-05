@@ -81,6 +81,28 @@ impl BlockHeader {
     }
 }
 
+#[cfg(any(feature = "testing", test))]
+impl BlockHeader {
+    pub fn mock(
+        block_num: impl Into<BlockNumber>,
+        chain_commitment: Option<Word>,
+        note_root: Option<Word>,
+        accounts: &[crate::account::Account],
+        tx_kernel_commitment: Word,
+    ) -> Self {
+        let unsigned_header = UnsignedBlockHeader::mock(
+            block_num,
+            chain_commitment,
+            note_root,
+            accounts,
+            tx_kernel_commitment,
+        );
+        let signature =
+            crate::ecdsa_signer::LocalEcdsaSigner::dummy().sign(unsigned_header.commitment());
+        Self { unsigned_header, signature }
+    }
+}
+
 // SERIALIZATION
 // ================================================================================================
 

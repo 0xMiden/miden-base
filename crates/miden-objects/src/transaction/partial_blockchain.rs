@@ -3,7 +3,7 @@ use alloc::vec::Vec;
 use core::ops::RangeTo;
 
 use crate::PartialBlockchainError;
-use crate::block::{BlockNumber, UnsignedBlockHeader};
+use crate::block::{BlockHeader, BlockNumber, UnsignedBlockHeader};
 use crate::crypto::merkle::{InnerNodeInfo, MmrPeaks, PartialMmr};
 use crate::utils::serde::{Deserializable, Serializable};
 
@@ -38,7 +38,7 @@ pub struct PartialBlockchain {
     mmr: PartialMmr,
     /// A map of block_num |-> block_header for all blocks for which the partial MMR contains
     /// authentication paths.
-    blocks: BTreeMap<BlockNumber, UnsignedBlockHeader>,
+    blocks: BTreeMap<BlockNumber, BlockHeader>,
 }
 
 impl PartialBlockchain {
@@ -58,7 +58,7 @@ impl PartialBlockchain {
     ///   inclusion cannot be verified.
     pub fn new(
         mmr: PartialMmr,
-        blocks: impl IntoIterator<Item = UnsignedBlockHeader>,
+        blocks: impl IntoIterator<Item = BlockHeader>,
     ) -> Result<Self, PartialBlockchainError> {
         let partial_chain = Self::new_unchecked(mmr, blocks)?;
 
@@ -102,7 +102,7 @@ impl PartialBlockchain {
     /// - The partial MMR does not track authentication paths for any of the specified blocks.
     pub fn new_unchecked(
         mmr: PartialMmr,
-        blocks: impl IntoIterator<Item = UnsignedBlockHeader>,
+        blocks: impl IntoIterator<Item = BlockHeader>,
     ) -> Result<Self, PartialBlockchainError> {
         let chain_length = mmr.forest().num_leaves();
         let mut block_map = BTreeMap::new();
@@ -161,12 +161,12 @@ impl PartialBlockchain {
 
     /// Returns the block header for the specified block, or None if the block is not present in
     /// this partial blockchain.
-    pub fn get_block(&self, block_num: BlockNumber) -> Option<&UnsignedBlockHeader> {
+    pub fn get_block(&self, block_num: BlockNumber) -> Option<&BlockHeader> {
         self.blocks.get(&block_num)
     }
 
     /// Returns an iterator over the block headers in this partial blockchain.
-    pub fn block_headers(&self) -> impl Iterator<Item = &UnsignedBlockHeader> {
+    pub fn block_headers(&self) -> impl Iterator<Item = &BlockHeader> {
         self.blocks.values()
     }
 
@@ -233,7 +233,7 @@ impl PartialBlockchain {
     ///
     /// Allows mutating the inner map for testing purposes.
     #[cfg(any(feature = "testing", test))]
-    pub fn block_headers_mut(&mut self) -> &mut BTreeMap<BlockNumber, UnsignedBlockHeader> {
+    pub fn block_headers_mut(&mut self) -> &mut BTreeMap<BlockNumber, BlockHeader> {
         &mut self.blocks
     }
 
@@ -258,7 +258,7 @@ impl Deserializable for PartialBlockchain {
         source: &mut R,
     ) -> Result<Self, miden_crypto::utils::DeserializationError> {
         let mmr = PartialMmr::read_from(source)?;
-        let blocks = BTreeMap::<BlockNumber, UnsignedBlockHeader>::read_from(source)?;
+        let blocks = BTreeMap::<BlockNumber, BlockHeader>::read_from(source)?;
         Ok(Self { mmr, blocks })
     }
 }
@@ -280,7 +280,7 @@ mod tests {
 
     use super::PartialBlockchain;
     use crate::alloc::vec::Vec;
-    use crate::block::{BlockNumber, FeeParameters, UnsignedBlockHeader};
+    use crate::block::{BlockHeader, BlockNumber, FeeParameters, UnsignedBlockHeader};
     use crate::crypto::merkle::{Mmr, PartialMmr};
     use crate::ecdsa_signer::{EcdsaSigner, LocalEcdsaSigner};
     use crate::testing::account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET;
@@ -349,7 +349,7 @@ mod tests {
                 .unwrap();
         }
 
-        let fake_block_header2 = UnsignedBlockHeader::mock(2, None, None, &[], Word::empty());
+        let fake_block_header2 = BlockHeader::mock(2, None, None, &[], Word::empty());
 
         assert_ne!(block_header2.commitment(), fake_block_header2.commitment());
 
@@ -423,13 +423,14 @@ mod tests {
         assert_eq!(partial_blockchain, deserialized);
     }
 
-    fn int_to_block_header(block_num: impl Into<BlockNumber>) -> UnsignedBlockHeader {
+    fn int_to_block_header(block_num: impl Into<BlockNumber>) -> BlockHeader {
         let fee_parameters =
             FeeParameters::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET.try_into().unwrap(), 500)
                 .expect("native asset ID should be a fungible faucet ID");
-        let public_key = LocalEcdsaSigner::dummy().public_key();
+        let signer = LocalEcdsaSigner::dummy();
+        let public_key = signer.public_key();
 
-        UnsignedBlockHeader::new(
+        let unsigned_header = UnsignedBlockHeader::new(
             0,
             Word::empty(),
             block_num.into(),
@@ -442,7 +443,8 @@ mod tests {
             public_key,
             fee_parameters,
             0,
-        )
+        );
+        unsigned_header.sign(signer)
     }
 
     #[test]

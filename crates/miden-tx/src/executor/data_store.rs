@@ -3,7 +3,7 @@ use alloc::vec::Vec;
 
 use miden_objects::account::{AccountId, PartialAccount, StorageMapWitness};
 use miden_objects::asset::{AssetVaultKey, AssetWitness};
-use miden_objects::block::{BlockNumber, UnsignedBlockHeader};
+use miden_objects::block::{BlockHeader, BlockNumber};
 use miden_objects::note::NoteScript;
 use miden_objects::transaction::{AccountInputs, PartialBlockchain};
 use miden_processor::{FutureMaybeSend, MastForestStore, Word};
@@ -33,9 +33,7 @@ pub trait DataStore: MastForestStore {
         &self,
         account_id: AccountId,
         ref_blocks: BTreeSet<BlockNumber>,
-    ) -> impl FutureMaybeSend<
-        Result<(PartialAccount, UnsignedBlockHeader, PartialBlockchain), DataStoreError>,
-    >;
+    ) -> impl FutureMaybeSend<Result<(PartialAccount, BlockHeader, PartialBlockchain), DataStoreError>>;
 
     /// Returns a partial foreign account state together with a witness, proving its validity in the
     /// specified transaction reference block.

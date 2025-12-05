@@ -13,13 +13,13 @@ use miden_objects::block::account_tree::AccountTree;
 use miden_objects::block::nullifier_tree::NullifierTree;
 use miden_objects::block::{
     AccountWitness,
+    BlockHeader,
     BlockInputs,
     BlockNumber,
     Blockchain,
     NullifierWitness,
     ProposedBlock,
     ProvenBlock,
-    UnsignedBlockHeader,
 };
 use miden_objects::ecdsa_signer::LocalEcdsaSigner;
 use miden_objects::note::{Note, NoteHeader, NoteId, NoteInclusionProof, Nullifier};
@@ -269,7 +269,7 @@ impl MockChain {
     pub fn latest_selective_partial_blockchain(
         &self,
         reference_blocks: impl IntoIterator<Item = BlockNumber>,
-    ) -> anyhow::Result<(UnsignedBlockHeader, PartialBlockchain)> {
+    ) -> anyhow::Result<(BlockHeader, PartialBlockchain)> {
         let latest_block_header = self.latest_block_header();
 
         self.selective_partial_blockchain(latest_block_header.block_num(), reference_blocks)
@@ -284,7 +284,7 @@ impl MockChain {
         &self,
         reference_block: BlockNumber,
         reference_blocks: impl IntoIterator<Item = BlockNumber>,
-    ) -> anyhow::Result<(UnsignedBlockHeader, PartialBlockchain)> {
+    ) -> anyhow::Result<(BlockHeader, PartialBlockchain)> {
         let reference_block_header = self.block_header(reference_block.as_usize());
         // Deduplicate block numbers so each header will be included just once. This is required so
         // PartialBlockchain::from_blockchain does not panic.
@@ -362,12 +362,12 @@ impl MockChain {
     }
 
     /// Returns the genesis [`UnsignedBlockHeader`] of the chain.
-    pub fn genesis_block_header(&self) -> UnsignedBlockHeader {
+    pub fn genesis_block_header(&self) -> BlockHeader {
         self.block_header(BlockNumber::GENESIS.as_usize())
     }
 
     /// Returns the latest [`UnsignedBlockHeader`] in the chain.
-    pub fn latest_block_header(&self) -> UnsignedBlockHeader {
+    pub fn latest_block_header(&self) -> BlockHeader {
         let chain_tip =
             self.chain.chain_tip().expect("chain should contain at least the genesis block");
         self.blocks[chain_tip.as_usize()].header().clone()
@@ -378,7 +378,7 @@ impl MockChain {
     /// # Panics
     ///
     /// - If the block number does not exist in the chain.
-    pub fn block_header(&self, block_number: usize) -> UnsignedBlockHeader {
+    pub fn block_header(&self, block_number: usize) -> BlockHeader {
         self.blocks[block_number].header().clone()
     }
 
@@ -609,7 +609,7 @@ impl MockChain {
         let ref_block = self.block_header(reference_block.as_usize());
 
         let mut input_notes = vec![];
-        let mut block_headers_map: BTreeMap<BlockNumber, UnsignedBlockHeader> = BTreeMap::new();
+        let mut block_headers_map: BTreeMap<BlockNumber, BlockHeader> = BTreeMap::new();
         for note in notes {
             let input_note: InputNote = self
                 .committed_notes
@@ -653,7 +653,7 @@ impl MockChain {
         let block_headers = block_headers_map.values();
         let (_, partial_blockchain) = self.selective_partial_blockchain(
             reference_block,
-            block_headers.map(UnsignedBlockHeader::block_num),
+            block_headers.map(|header| header.block_num()),
         )?;
 
         let input_notes = InputNotes::new(input_notes)?;
@@ -683,11 +683,8 @@ impl MockChain {
         &self,
         tx_reference_blocks: impl IntoIterator<Item = BlockNumber>,
         unauthenticated_notes: impl Iterator<Item = NoteId>,
-    ) -> anyhow::Result<(
-        UnsignedBlockHeader,
-        PartialBlockchain,
-        BTreeMap<NoteId, NoteInclusionProof>,
-    )> {
+    ) -> anyhow::Result<(BlockHeader, PartialBlockchain, BTreeMap<NoteId, NoteInclusionProof>)>
+    {
         // Fetch note proofs for notes that exist in the chain.
         let unauthenticated_note_proofs = self.unauthenticated_note_proofs(unauthenticated_notes);
 
