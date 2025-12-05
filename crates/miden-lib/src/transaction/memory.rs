@@ -47,6 +47,8 @@ pub type StorageSlot = u8;
 // | Storage slot info  | 2_344 (586)                           | 4_383 (1095)                        | 255 slots max, 8 elements each      |
 // | Initial slot info  | 4_384 (1096)                          | 6_423 (1545)                        | Only present on the native account  |
 // | Padding            | 6_424 (1545)                          | 8_191 (2047)                        |                                     |
+//
+// Storage slot info is laid out as [[0, slot_type, slot_id_suffix, slot_id_prefix], SLOT_VALUE].
 
 // Relative layout of the native account's delta.
 //
