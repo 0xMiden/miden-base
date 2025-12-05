@@ -127,7 +127,7 @@ async fn test_convert_to_u256_scaled_large_amount() -> anyhow::Result<()> {
     let expected_result = U256::from(100_000_000_000_000u64);
     let actual_result = stack_to_u256(&exec_output);
 
-    assert_eq!(actual_result, expected_result,);
+    assert_eq!(actual_result, expected_result);
 
     Ok(())
 }
