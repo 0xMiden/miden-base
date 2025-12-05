@@ -90,7 +90,7 @@ proc create_burn_note.8
     # => []
 end
 
-#! @dev TODO: once miden-vm `0.19.0` is released remove this procedure and import it instead
+#! @dev TODO: once miden-vm `0.20.x` is released remove this procedure and import it instead from stdlib
 #! https://github.com/0xMiden/miden-vm/blob/190480c5b441af5b3aeab1aa4085e0d6424924b3/libcore/asm/word.masm#L27
 #!
 #! Writes the components of a word to memory as eight u32 limbs in little-endian order.
