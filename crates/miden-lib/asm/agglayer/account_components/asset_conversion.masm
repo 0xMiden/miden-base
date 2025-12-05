@@ -38,34 +38,29 @@ proc pow10
     # => [result]
 end
 
-#! Convert an asset amount to a scaled U256 representation for bridging to L1.
+#! Convert an asset amount to a scaled U256 representation for bridging to Agglayer.
 #!
-#! This procedure performs dynamic scaling conversion to bridge assets to L1 chains
-#! like Ethereum. It multiplies the input amount by 10^target_scale to adjust for decimal
-#! differences between the current representation and the target chain's native decimals.
-#!
-#! The scaling approach minimizes precision loss while ensuring the result fits within
-#! Ethereum's U256 format as 8 u32 limbs for efficient keccak hashing in precompiles.
-#! The result is formatted as a double word where each element is representable as u32.
+#! This procedure is used to convert Miden asset amounts to EVM asset amounts.
+#! It multiplies the input amount by 10^target_scale to adjust for decimal differences
+#! between the current representation and the target chain's native decimals.
 #!
 #! The procedure first calculates 10^target_scale using the pow10 helper, then converts
 #! both the amount and scale factor to U256 format, performs U256 multiplication, and
-#! returns the result as 8 u32 limbs ready for L1 bridging operations.
+#! returns the result as 8 u32 limbs ready for Agglayer bridging operations.
 #!
 #! Inputs:  [amount, target_scale]
-#! Outputs: [lo0, lo1, lo2, lo3, hi0, hi1, hi2, hi3]
+#! Outputs: [RESULT_U256[1], RESULT_U256[0]]
 #!
 #! Where:
 #! - amount: The asset amount to be converted
 #! - target_scale: Exponent for scaling factor (10^target_scale)
-#! - lo0-lo3: Lower 128 bits as 4 u32 limbs in little-endian order
-#! - hi0-hi3: Upper 128 bits as 4 u32 limbs in little-endian order
+#! - c7-c0: U256 value as 8 u32 limbs in big-endian order
 #!
 #! Examples:
 #! - USDC: amount=1000000000, target_scale=0 → 1000000000 (no scaling)
 #! - ETH: amount=1, target_scale=8 → 100000000 (1 wei scaled by 10^8)
 #!
-#! Invocation: call
+#! Invocation: exec
 pub proc convert_to_u256_scaled
     # => [amount, target_scale]
 
@@ -89,6 +84,8 @@ pub proc convert_to_u256_scaled
 
     # Perform u64 multiplication: amount * scale
     exec.u256::mul_unsafe
+    # => [RESULT_U256[1], RESULT_U256[0], EMPTY_WORD, EMPTY_WORD]
 
-    exec.sys::truncate_stack
+    movupw.3 dropw movupw.3 dropw
+    # => [RESULT_U256[1], RESULT_U256[0]]
 end

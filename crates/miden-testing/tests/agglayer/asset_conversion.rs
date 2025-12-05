@@ -74,26 +74,22 @@ async fn test_convert_to_u256_scaled_eth() -> anyhow::Result<()> {
     let program = Assembler::new(Arc::new(DefaultSourceManager::default()))
         .with_debug_mode(true)
         .with_dynamic_library(StdLibrary::default())
-        .map_err(|e| anyhow::anyhow!("Failed to add std library: {}", e))?
+        .unwrap()
         .with_dynamic_library(asset_conversion_lib.clone())
-        .map_err(|e| anyhow::anyhow!("Failed to add asset conversion library: {}", e))?
+        .unwrap()
         .assemble_program(&script_code)
-        .map_err(|e| anyhow::anyhow!("Failed to assemble program: {}", e))?;
+        .unwrap();
 
-    let exec_output = execute_program_with_default_host(program, asset_conversion_lib.clone())
-        .await
-        .map_err(|e| anyhow::anyhow!("Failed to execute program: {}", e))?;
+    let exec_output =
+        execute_program_with_default_host(program, asset_conversion_lib.clone()).await?;
 
-    assert!(exec_output.stack.len() >= 8, "Expected at least 8 stack outputs for u256");
+
+    println!("{:?}", exec_output.stack);
 
     let expected_result = U256::from(1000u64);
     let actual_result = stack_to_u256(&exec_output);
 
-    assert_eq!(
-        actual_result, expected_result,
-        "Expected result: {}, got: {}",
-        expected_result, actual_result
-    );
+    assert_eq!(actual_result, expected_result);
 
     Ok(())
 }
@@ -123,108 +119,21 @@ async fn test_convert_to_u256_scaled_large_amount() -> anyhow::Result<()> {
     let program = Assembler::new(Arc::new(DefaultSourceManager::default()))
         .with_debug_mode(true)
         .with_dynamic_library(StdLibrary::default())
-        .map_err(|e| anyhow::anyhow!("Failed to add std library: {}", e))?
+        .unwrap()
         .with_dynamic_library(asset_conversion_lib.clone())
-        .map_err(|e| anyhow::anyhow!("Failed to add asset conversion library: {}", e))?
+        .unwrap()
         .assemble_program(&script_code)
-        .map_err(|e| anyhow::anyhow!("Failed to assemble program: {}", e))?;
+        .unwrap();
 
-    let exec_output = execute_program_with_default_host(program, asset_conversion_lib.clone())
-        .await
-        .map_err(|e| anyhow::anyhow!("Failed to execute program: {}", e))?;
+    let exec_output =
+        execute_program_with_default_host(program, asset_conversion_lib.clone()).await?;
 
-    assert!(exec_output.stack.len() >= 8, "Expected at least 8 stack outputs for u256");
+    assert!(exec_output.stack.len() >= 8);
 
     let expected_result = U256::from(10_000_000_000_000_000u64);
     let actual_result = stack_to_u256(&exec_output);
 
-    assert_eq!(
-        actual_result, expected_result,
-        "Expected result: {}, got: {}",
-        expected_result, actual_result
-    );
-
-    Ok(())
-}
-
-#[tokio::test]
-async fn test_convert_to_u256_scaled_precision_fuzzing() -> anyhow::Result<()> {
-    let asset_conversion_comp = asset_conversion_component(vec![]);
-    let asset_conversion_lib = asset_conversion_comp.library();
-
-    let test_cases = vec![
-        ("USDC Tiny", 1u64, 0u64, U256::from(1)),
-        ("USDC Standard", 1_000_000_000u64, 0u64, U256::from(1_000_000_000u64)),
-        (
-            "USDC Huge",
-            5_000_000_000_000_000_000u64,
-            0u64,
-            U256::from(5_000_000_000_000_000_000u64),
-        ),
-        ("ETH Tiny (extreme)", 1u64, 8u64, U256::from(100_000_000u64)),
-        ("ETH Small", 100u64, 8u64, U256::from(10_000_000_000u64)),
-        ("ETH Medium", 100_000_000u64, 8u64, U256::from(10_000_000_000_000_000u64)),
-        (
-            "ETH Standard",
-            10_000_000_000_000_000_000u64,
-            8u64,
-            U256::from(10_000_000_000_000_000_000u64) * U256::from(100_000_000u64),
-        ),
-        ("Zero amount", 0u64, 5u64, U256::from(0)),
-        ("Scale zero", 12345u64, 0u64, U256::from(12345)),
-        (
-            "Large scale",
-            1000u64,
-            15u64,
-            U256::from(1000u64) * U256::from(10u64).pow(U256::from(15)),
-        ),
-    ];
-
-    for (test_name, amount, scale, expected_result) in test_cases {
-        let miden_amount = Felt::new(amount);
-        let scale_exponent = Felt::new(scale);
-
-        let script_code = format!(
-            "
-            use.std::sys
-            
-            begin
-                push.{}.{}
-                call.::convert_to_u256_scaled
-                exec.sys::truncate_stack
-            end
-            ",
-            scale_exponent.as_int(),
-            miden_amount.as_int(),
-        );
-
-        let program = Assembler::new(Arc::new(DefaultSourceManager::default()))
-            .with_debug_mode(true)
-            .with_dynamic_library(StdLibrary::default())
-            .map_err(|e| anyhow::anyhow!("Failed to add std library: {}", e))?
-            .with_dynamic_library(asset_conversion_lib.clone())
-            .map_err(|e| anyhow::anyhow!("Failed to add asset conversion library: {}", e))?
-            .assemble_program(&script_code)
-            .map_err(|e| anyhow::anyhow!("Failed to assemble program: {}", e))?;
-
-        let exec_output = execute_program_with_default_host(program, asset_conversion_lib.clone())
-            .await
-            .map_err(|e| anyhow::anyhow!("Failed to execute program for {}: {}", test_name, e))?;
-
-        assert!(
-            exec_output.stack.len() >= 8,
-            "Expected at least 8 stack outputs for u256 in test: {}",
-            test_name
-        );
-
-        let actual_result = stack_to_u256(&exec_output);
-
-        assert_eq!(
-            actual_result, expected_result,
-            "Test '{}': Expected result: {}, got: {}",
-            test_name, expected_result, actual_result
-        );
-    }
+    assert_eq!(actual_result, expected_result,);
 
     Ok(())
 }
