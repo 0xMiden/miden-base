@@ -65,12 +65,12 @@ end
 #! returns the result as 8 u32 limbs ready for Agglayer bridging operations.
 #!
 #! Inputs:  [amount, target_scale]
-#! Outputs: [RESULT_U256[1], RESULT_U256[0]]
+#! Outputs: [[RESULT_U256[1], RESULT_U256[0]]]
 #!
 #! Where:
 #! - amount: The asset amount to be converted
 #! - target_scale: Exponent for scaling factor (10^target_scale)
-#! - c7-c0: U256 value as 8 u32 limbs in big-endian order
+#! - [RESULT_U256[1], RESULT_U256[0]]: U256 value as 8 u32 limbs in big-endian order
 #!
 #! Examples:
 #! - USDC: amount=1000000000, target_scale=0 → 1000000000 (no scaling)
