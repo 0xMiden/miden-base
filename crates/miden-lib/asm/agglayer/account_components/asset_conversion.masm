@@ -56,7 +56,7 @@ end
 #!
 #! Examples:
 #! - USDC: amount=1000000000, target_scale=0 → 1000000000 (no scaling)
-#! - ETH: amount=1, target_scale=8 → 100000000 (1 wei scaled by 10^8)
+#! - ETH: amount=1e10, target_scale=8 → 1e18
 #!
 #! Invocation: exec
 pub proc convert_to_u256_scaled
