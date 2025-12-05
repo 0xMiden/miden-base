@@ -46,8 +46,12 @@ static FAUCET_METADATA_SLOT_NAME: LazyLock<SlotName> =
 ///   values are [Word]s. The value of a storage slot containing a map is the commitment to the
 ///   underlying map.
 ///
-/// Slots are sorted by [`SlotName`] (or [`SlotNameId`] equivalently). This order is necessary to
-/// compute a consistent commitment over the slots.
+/// Slots are sorted by [`SlotName`] (or [`SlotNameId`] equivalently). This order is necessary to:
+/// - Simplify lookups of slots in the transaction kernel (using `std::collections::sorted_array`
+///   from the miden core library)
+/// - Allow the [`AccountStorageDelta`] to work only with slot names instead of slot indices.
+/// - Make it simple to check for duplicates by iterating the slots and checking that no two
+///   adjacent items have the same slot name.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct AccountStorage {
     slots: Vec<NamedStorageSlot>,
@@ -76,6 +80,8 @@ impl AccountStorage {
             return Err(AccountError::StorageTooManySlots(num_slots as u64));
         }
 
+        // TODO(named_slots): Optimization: If we keep slots sorted, iterate slots instead and
+        // compare adjacent elements.
         let mut names = BTreeSet::new();
         for slot in &slots {
             if !names.insert(slot.name()) {
