@@ -1,12 +1,30 @@
 use.std::math::u256
 
-#! Calculate 10^scale where scale is a u8 exponent
+# CONSTANTS
+# =================================================================================================
+
+const.MAX_SCALING_FACTOR=18
+
+# ERRORS
+# =================================================================================================
+
+const.ERR_SCALE_AMOUNT_EXCEEDED_LIMIT="maximum scaling factor is 18"
+
+#! Calculate 10^scale where scale is a u8 exponent.
 #!
-#! Input: [scale]
-#! Output: [10^scale]
+#! Inputs:  [scale]
+#! Outputs: [10^scale]
 #!
-#! Where scale is expected to be a small integer (0-18 typical for crypto decimals)
+#! Where:
+#! - scale is expected to be a small integer (0-18 typical for crypto decimals)
+#!
+#! Panics if:
+#! - scale > 18 (overflow protection)
 proc pow10
+    u32assert2.err=ERR_SCALE_AMOUNT_EXCEEDED_LIMIT
+    # => [scale]
+    
+    dup u32lte.MAX_SCALING_FACTOR assert.err=ERR_SCALE_AMOUNT_EXCEEDED_LIMIT
     # => [scale]
 
     push.1 swap
