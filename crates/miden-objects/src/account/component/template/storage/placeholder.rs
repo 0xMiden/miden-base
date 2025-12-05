@@ -54,7 +54,7 @@ impl StorageValueName {
     /// Creates a new [`StorageValueName`] from the provided string.
     ///
     /// A [`StorageValueName`] serves as an identifier for storage values that are determined at
-    /// instantiation time of an [AccountComponentTemplate](super::super::AccountComponentTemplate).
+    /// instantiation time of an [`AccountComponent`](crate::account::AccountComponent).
     ///
     /// The key can consist of one or more segments separated by dots (`.`).
     /// Each segment must be non-empty and may contain only alphanumeric characters, underscores
