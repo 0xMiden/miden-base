@@ -5,6 +5,7 @@ use.miden::note
 use.miden::output_note
 use.std::math::u64
 use.std::sys
+
 use std::crypto::hashes::keccak256
 
 const.MMR_PTR=42
@@ -15,7 +16,7 @@ const.EXECUTION_HINT_ALWAYS=1
 const.PUBLIC_NOTE=1
 const.AUX=0
 const.NUM_BURN_NOTE_INPUTS=0
-const.BURN_ASSET_MEM_PTR=16
+const.BURN_ASSET_MEM_PTR=24
 
 #! Computes the SERIAL_NUM of the outputted BURN note.
 #!
@@ -90,44 +91,43 @@ proc create_burn_note.8
     # => []
 end
 
-#! Converts B2AGG asset data to u32 format prior to keccak256 hashing.
+#! @dev TODO: once miden-vm `0.19.0` is released remove this procedure and import it instead
+#! https://github.com/0xMiden/miden-vm/blob/190480c5b441af5b3aeab1aa4085e0d6424924b3/libcore/asm/word.masm#L27
 #!
-#! This procedure converts the asset and input data into a format suitable for u32 operations,
-#! splitting the asset components into high and low parts.
+#! Writes the components of a word to memory as eight u32 limbs in little-endian order.
 #!
-#! Inputs:  [ASSET, INPUTS[1], INPUTS[0]]
-#! Outputs: [prefix_hi, prefix_lo, suffix_hi, suffix_lo, amount_hi, amount_lo, 0, 0, INPUTS[1], INPUTS[0]]
+#! Inputs:  [w3, w2, w1, w0, out_ptr, ...]
+#! Outputs: [...]
 #!
 #! Where:
-#! - ASSET is the asset to be converted.
-#! - INPUTS[1], INPUTS[0] are additional input data.
-#! - prefix_hi, prefix_lo are the high and low parts of the asset prefix.
-#! - suffix_hi, suffix_lo are the high and low parts of the asset suffix.
-#! - amount_hi, amount_lo are the high and low parts of the asset amount.
+#! - `w*` are the felts of the input word. Each felt is split into a low and high 32-bit limb.
+#! - `out_ptr` is an element address in memory.
+#! - Memory layout after the call: `[w0_lo, w0_hi, w1_lo, w1_hi, w2_lo, w2_hi, w3_lo, w3_hi]`.
 #!
-#! Invocation: exec
-proc convert_b2agg_to_u32
-    # add padding
-    push.0 movdn.4
-    # => [prefix, suffix, 0, amount, 0]
-
-    movup.3
-    # => [amount, prefix, suffix, 0, 0, INPUTS[1], INPUTS[0]]
+#! Cycles: 8 * (split + store pair) ~= 176
+pub proc store_word_u32s_le
+    reversew
+    # => [w0, w1, w2, w3, out_ptr, ...]
 
     u32split
-    # => [amount_hi, amount_lo, prefix, suffix, 0, 0, INPUTS[1], INPUTS[0]]
+    # => [w0_hi, w0_lo, w1, w2, w3, out_ptr, ...]
 
-    movup.4
-    # => [suffix, amount_hi, amount_lo, prefix, 0, 0, INPUTS[1], INPUTS[0]]
+    movup.2 u32split
+    # => [w1_hi, w1_lo, w0_hi, w0_lo, w2, w3, out_ptr, ...]
 
-    u32split
-    # => [suffix_hi, suffix_lo, amount_hi, amount_lo, prefix, 0, 0, INPUTS[1], INPUTS[0]]
-
-    movup.4
-    # => [prefix, suffix_hi, suffix_lo, amount_hi, amount_lo, 0, 0, INPUTS[1], INPUTS[0]]
+    # Store w0 and w1 limbs, then drop them from the stack
+    dup.6 mem_storew_be dropw
+    # => [w2, w3, out_ptr, ...]
 
     u32split
-    # => [prefix_hi, prefix_lo, suffix_hi, suffix_lo, amount_hi, amount_lo, 0, 0, INPUTS[1], INPUTS[0]]
+    # => [w2_hi, w2_lo, w3, out_ptr, ...]
+
+    movup.2 u32split
+    # => [w3_hi, w3_lo, w2_hi, w2_lo, out_ptr, ...]
+
+    # Store w2 and w3 limbs at out_ptr+4
+    movup.4 add.4 mem_storew_be dropw
+    # => [...]
 end
 
 #! Adds a leaf to the MMR frontier using Keccak hashing (stubbed implementation).
@@ -184,32 +184,39 @@ end
 #! Invocation: call
 pub proc bridge_out
     mem_storew_be.BURN_ASSET_MEM_PTR
+    # => [ASSET, INPUTS[1], INPUTS[0]]
 
-    exec.convert_b2agg_to_u32
-    # => [prefix_hi, prefix_lo, suffix_hi, suffix_lo, amount_hi, amount_lo, 0, 0, INPUTS[1], INPUTS[0]]
+    # @dev TODO: Look up asset faucet id in asset registry
+    # -> return scaling factor
 
-    mem_storew_be.0 dropw
-    # => [amount_hi, amount_lo, 0, 0, INPUTS[1], INPUTS[0]]
+    # @dev TODO: Convert ASSET amount to EVM amount using scaling factor
+    # -> return amount from here: https://github.com/0xMiden/miden-base/pull/2141
 
-    mem_storew_be.4 dropw
+    # Converting SCALED_ASSET, INPUTS[1], & INPUTS[0] to u32 representation
+    # in preperation for keccak256 hashing
+
+    # Store ASSET as u32 limbs in memory starting at address 0
+    push.0 movdn.4 exec.store_word_u32s_le
     # => [INPUTS[1], INPUTS[0]]
 
-    mem_storew_be.8 dropw
+    # Store INPUTS[1] as u32 limbs in memory starting at address 8
+    push.8 movdn.4 exec.store_word_u32s_le
     # => [INPUTS[0]]
 
-    mem_storew_be.12 dropw
+    # Store INPUTS[0] as u32 limbs in memory starting at address 16
+    push.16 movdn.4 exec.store_word_u32s_le
     # => []
 
     push.MMR_PTR
     # => [mmr_ptr]
 
-    push.16 push.0
+    push.96 push.0
     # => [ptr, len_bytes, mmr_ptr]
 
     exec.keccak256::hash_memory
     # => [DIGEST_U32[8], mmr_ptr]
 
-    # adding double word leaf to mmr frontier
+    # adding DIGEST_U32 double word leaf to mmr frontier
     exec.mmr_frontier_keccak_add
     # => []
 
@@ -239,6 +246,7 @@ pub proc bridge_out
     dropw dropw
     # => []
 
+    # creating BURN output note for ASSET
     mem_loadw_be.BURN_ASSET_MEM_PTR
     # => [ASSET]
 
