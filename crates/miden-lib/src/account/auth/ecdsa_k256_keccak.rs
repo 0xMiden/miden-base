@@ -5,7 +5,8 @@ use miden_objects::utils::sync::LazyLock;
 use crate::account::components::ecdsa_k256_keccak_library;
 
 static ECDSA_PUBKEY_SLOT_NAME: LazyLock<SlotName> = LazyLock::new(|| {
-    SlotName::new("miden::ecdsa_k256_keccak::public_key").expect("slot name should be valid")
+    SlotName::new("miden::standards::auth::ecdsa_k256_keccak::public_key")
+        .expect("slot name should be valid")
 });
 
 /// An [`AccountComponent`] implementing the ECDSA K256 Keccak signature scheme for authentication

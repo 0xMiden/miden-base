@@ -13,13 +13,13 @@ type BeWord = struct @bigendian { a: felt, b: felt, c: felt, d: felt }
 # ================================================================================================
 
 # The slot in this component's storage layout where the public key is stored.
-const PUBLIC_KEY_SLOT = word("miden::ecdsa_k256_keccak_acl::public_key")
+const PUBLIC_KEY_SLOT = word("miden::standards::auth::ecdsa_k256_keccak_acl::public_key")
 
 # The slot where the authentication configuration is stored.
-const AUTH_CONFIG_SLOT = word("miden::ecdsa_k256_keccak_acl::config")
+const AUTH_CONFIG_SLOT = word("miden::standards::auth::ecdsa_k256_keccak_acl::config")
 
 # The slot where the map of auth trigger procedure roots is stored.
-const AUTH_TRIGGER_PROCS_MAP_SLOT = word("miden::ecdsa_k256_keccak_acl::tracked_procedure_roots")
+const AUTH_TRIGGER_PROCS_MAP_SLOT = word("miden::standards::auth::ecdsa_k256_keccak_acl::tracked_procedure_roots")
 
 #! Authenticate a transaction using the ECDSA signature scheme based on procedure calls and note usage.
 #!

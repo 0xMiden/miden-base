@@ -9,22 +9,22 @@ use miden_objects::{AccountError, Word};
 use crate::account::components::ecdsa_k256_keccak_multisig_library;
 
 static THRESHOLD_CONFIG_SLOT_NAME: LazyLock<SlotName> = LazyLock::new(|| {
-    SlotName::new("miden::ecdsa_k256_keccak_multisig::threshold_config")
+    SlotName::new("miden::standards::auth::ecdsa_k256_keccak_multisig::threshold_config")
         .expect("slot name should be valid")
 });
 
 static APPROVER_PUBKEYS_SLOT_NAME: LazyLock<SlotName> = LazyLock::new(|| {
-    SlotName::new("miden::ecdsa_k256_keccak_multisig::approver_public_keys")
+    SlotName::new("miden::standards::auth::ecdsa_k256_keccak_multisig::approver_public_keys")
         .expect("slot name should be valid")
 });
 
 static EXECUTED_TRANSACTIONS_SLOT_NAME: LazyLock<SlotName> = LazyLock::new(|| {
-    SlotName::new("miden::ecdsa_k256_keccak_multisig::executed_transactions")
+    SlotName::new("miden::standards::auth::ecdsa_k256_keccak_multisig::executed_transactions")
         .expect("slot name should be valid")
 });
 
 static PROCEDURE_THRESHOLDS_SLOT_NAME: LazyLock<SlotName> = LazyLock::new(|| {
-    SlotName::new("miden::ecdsa_k256_keccak_multisig::procedure_thresholds")
+    SlotName::new("miden::standards::auth::ecdsa_k256_keccak_multisig::procedure_thresholds")
         .expect("slot name should be valid")
 });
 
