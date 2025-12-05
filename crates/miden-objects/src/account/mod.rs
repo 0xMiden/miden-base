@@ -37,7 +37,6 @@ pub mod component;
 pub use component::{
     AccountComponent,
     AccountComponentMetadata,
-    AccountComponentTemplate,
     FeltRepresentation,
     InitStorageData,
     MapEntry,
