@@ -5,6 +5,10 @@ use crate::crypto::dsa::ecdsa_k256_keccak as ecdsa;
 // ECDSA SIGNER
 // ================================================================================================
 
+/// Trait which abstracts the signing of ECDSA signatures. Used for signing block headers.
+///
+/// Production-level implementations will involve some sort of secure remote backend. The trait also
+/// allows for testing with local and ephemeral signers.
 pub trait EcdsaSigner {
     fn sign(&self, message: Word) -> ecdsa::Signature;
     fn public_key(&self) -> ecdsa::PublicKey;
@@ -13,6 +17,9 @@ pub trait EcdsaSigner {
 // IN MEMORY ECDSA SIGNER
 // ================================================================================================
 
+/// A local ECDSA signer that uses an in-memory secret key to sign messages.
+///
+/// Not intended for production use.
 #[derive(Debug, Clone)]
 pub struct LocalEcdsaSigner {
     secret_key: ecdsa::SecretKey,
