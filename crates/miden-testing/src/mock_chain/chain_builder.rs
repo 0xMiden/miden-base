@@ -34,6 +34,7 @@ use miden_objects::block::nullifier_tree::NullifierTree;
 use miden_objects::block::{
     BlockAccountUpdate,
     BlockBody,
+    BlockHeader,
     BlockNoteTree,
     BlockNumber,
     BlockProof,
@@ -41,7 +42,6 @@ use miden_objects::block::{
     FeeParameters,
     OutputNoteBatch,
     ProvenBlock,
-    UnsignedBlockHeader,
 };
 use miden_objects::crypto::merkle::Smt;
 use miden_objects::ecdsa_signer::{EcdsaSigner, LocalEcdsaSigner};
@@ -223,7 +223,7 @@ impl MockChainBuilder {
         let signer = LocalEcdsaSigner::dummy();
         let public_key = signer.public_key();
 
-        let header = UnsignedBlockHeader::new(
+        let header = BlockHeader::new(
             version,
             prev_block_commitment,
             block_num,
@@ -245,9 +245,9 @@ impl MockChainBuilder {
             transactions,
         );
 
-        let header = header.sign(&signer);
+        let signature = signer.sign(header.commitment());
         let block_proof = BlockProof::new_dummy();
-        let genesis_block = ProvenBlock::new_unchecked(header, body, block_proof);
+        let genesis_block = ProvenBlock::new_unchecked(header, signature, body, block_proof);
 
         MockChain::from_genesis_block(
             genesis_block,

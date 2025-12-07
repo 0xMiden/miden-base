@@ -3,7 +3,7 @@ use alloc::collections::BTreeMap;
 use miden_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
 
 use crate::account::AccountId;
-use crate::block::{AccountWitness, BlockHeader, NullifierWitness, UnsignedBlockHeader};
+use crate::block::{AccountWitness, BlockHeader, NullifierWitness};
 use crate::note::{NoteId, NoteInclusionProof, Nullifier};
 use crate::transaction::PartialBlockchain;
 use crate::utils::serde::DeserializationError;
@@ -52,7 +52,7 @@ impl BlockInputs {
     }
 
     /// Returns a reference to the previous block header.
-    pub fn prev_block_header(&self) -> &UnsignedBlockHeader {
+    pub fn prev_block_header(&self) -> &BlockHeader {
         &self.prev_block_header
     }
 

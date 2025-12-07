@@ -23,7 +23,6 @@ use crate::block::{
     OutputNoteBatch,
     PartialAccountTree,
     PartialNullifierTree,
-    UnsignedBlockHeader,
 };
 use crate::errors::ProposedBlockError;
 use crate::note::{NoteId, Nullifier};
@@ -280,7 +279,7 @@ impl ProposedBlock {
     }
 
     /// Returns a reference to the previous block header that this block builds on top of.
-    pub fn prev_block_header(&self) -> &UnsignedBlockHeader {
+    pub fn prev_block_header(&self) -> &BlockHeader {
         &self.prev_block_header
     }
 
@@ -516,7 +515,7 @@ fn check_duplicate_batches(batches: &[ProvenBatch]) -> Result<(), ProposedBlockE
 
 fn check_timestamp_increases_monotonically(
     provided_timestamp: u32,
-    prev_block_header: &UnsignedBlockHeader,
+    prev_block_header: &BlockHeader,
 ) -> Result<(), ProposedBlockError> {
     if provided_timestamp <= prev_block_header.timestamp() {
         Err(ProposedBlockError::TimestampDoesNotIncreaseMonotonically {
@@ -534,7 +533,7 @@ fn check_timestamp_increases_monotonically(
 /// expires at block 5 then it can still be included in block 5.
 fn check_batch_expiration(
     batches: &[ProvenBatch],
-    prev_block_header: &UnsignedBlockHeader,
+    prev_block_header: &BlockHeader,
 ) -> Result<(), ProposedBlockError> {
     let current_block_num = prev_block_header.block_num() + 1;
 
@@ -600,7 +599,7 @@ fn remove_erased_nullifiers(
 ///   header.
 fn check_reference_block_partial_blockchain_consistency(
     partial_blockchain: &PartialBlockchain,
-    prev_block_header: &UnsignedBlockHeader,
+    prev_block_header: &BlockHeader,
 ) -> Result<(), ProposedBlockError> {
     // Make sure that the current partial blockchain has blocks up to prev_block_header - 1, i.e.
     // its chain length is equal to the block number of the previous block header.
@@ -627,7 +626,7 @@ fn check_reference_block_partial_blockchain_consistency(
 /// except if the referenced block is the same as the previous block, referenced by the block.
 fn check_batch_reference_blocks(
     partial_blockchain: &PartialBlockchain,
-    prev_block_header: &UnsignedBlockHeader,
+    prev_block_header: &BlockHeader,
     batches: &[ProvenBatch],
 ) -> Result<(), ProposedBlockError> {
     for batch in batches {

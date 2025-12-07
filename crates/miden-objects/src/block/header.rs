@@ -1,12 +1,10 @@
 use alloc::string::ToString;
 use alloc::vec::Vec;
-use core::ops::{Deref, DerefMut};
 
-use miden_crypto::dsa::ecdsa_k256_keccak::{PublicKey, Signature};
+use miden_crypto::dsa::ecdsa_k256_keccak::PublicKey;
 
 use crate::account::{AccountId, AccountType};
 use crate::block::BlockNumber;
-use crate::ecdsa_signer::EcdsaSigner;
 use crate::utils::serde::{
     ByteReader,
     ByteWriter,
@@ -19,116 +17,10 @@ use crate::{FeeError, Felt, Hasher, Word, ZERO};
 // BLOCK HEADER
 // ================================================================================================
 
-/// The header of a block that has been signed by the validator.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BlockHeader {
-    unsigned_header: UnsignedBlockHeader,
-    signature: Signature,
-}
-
-impl Deref for BlockHeader {
-    type Target = UnsignedBlockHeader;
-
-    fn deref(&self) -> &Self::Target {
-        &self.unsigned_header
-    }
-}
-
-impl DerefMut for BlockHeader {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.unsigned_header
-    }
-}
-
-impl BlockHeader {
-    /// Creates a new block header.
-    #[allow(clippy::too_many_arguments)]
-    pub fn new_unchecked(
-        version: u32,
-        prev_block_commitment: Word,
-        block_num: BlockNumber,
-        chain_commitment: Word,
-        account_root: Word,
-        nullifier_root: Word,
-        note_root: Word,
-        tx_commitment: Word,
-        tx_kernel_commitment: Word,
-        public_key: PublicKey,
-        fee_parameters: FeeParameters,
-        timestamp: u32,
-        signature: Signature,
-    ) -> Self {
-        let unsigned_header = UnsignedBlockHeader::new(
-            version,
-            prev_block_commitment,
-            block_num,
-            chain_commitment,
-            account_root,
-            nullifier_root,
-            note_root,
-            tx_commitment,
-            tx_kernel_commitment,
-            public_key,
-            fee_parameters,
-            timestamp,
-        );
-        Self { unsigned_header, signature }
-    }
-
-    /// Returns a reference to the signature of the block header.
-    pub fn signature(&self) -> &Signature {
-        &self.signature
-    }
-}
-
-#[cfg(any(feature = "testing", test))]
-impl BlockHeader {
-    pub fn mock(
-        block_num: impl Into<BlockNumber>,
-        chain_commitment: Option<Word>,
-        note_root: Option<Word>,
-        accounts: &[crate::account::Account],
-        tx_kernel_commitment: Word,
-    ) -> Self {
-        let unsigned_header = UnsignedBlockHeader::mock(
-            block_num,
-            chain_commitment,
-            note_root,
-            accounts,
-            tx_kernel_commitment,
-        );
-        let signature =
-            crate::ecdsa_signer::LocalEcdsaSigner::dummy().sign(unsigned_header.commitment());
-        Self { unsigned_header, signature }
-    }
-}
-
-// SERIALIZATION
-// ================================================================================================
-
-impl Serializable for BlockHeader {
-    fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        self.unsigned_header.write_into(target);
-        self.signature.write_into(target);
-    }
-}
-
-impl Deserializable for BlockHeader {
-    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        let unsigned_header = UnsignedBlockHeader::read_from(source)?;
-        let signature = Signature::read_from(source)?;
-        Ok(BlockHeader { unsigned_header, signature })
-    }
-}
-
-// UNSIGNED BLOCK HEADER
-// ================================================================================================
-
-/// The header of a block which has not yet been signed by the validator. It contains metadata about
-/// the block, commitments to the current state of the chain and the hash of the proof that attests
-/// to the integrity of the chain.
+/// The header of a block. It contains metadata about the block, commitments to the current state of
+/// the chain and the hash of the proof that attests to the integrity of the chain.
 ///
-/// An unsigned block header includes the following fields:
+/// A block header includes the following fields:
 ///
 /// - `version` specifies the version of the protocol.
 /// - `prev_block_commitment` is the hash of the previous block header.
@@ -148,7 +40,7 @@ impl Deserializable for BlockHeader {
 /// - `sub_commitment` is a sequential hash of all fields except the note_root.
 /// - `commitment` is a 2-to-1 hash of the sub_commitment and the note_root.
 #[derive(Debug, Eq, PartialEq, Clone)]
-pub struct UnsignedBlockHeader {
+pub struct BlockHeader {
     version: u32,
     prev_block_commitment: Word,
     block_num: BlockNumber,
@@ -165,7 +57,7 @@ pub struct UnsignedBlockHeader {
     commitment: Word,
 }
 
-impl UnsignedBlockHeader {
+impl BlockHeader {
     /// Creates a new block header that is not yet signed by the validator.
     #[allow(clippy::too_many_arguments)]
     pub fn new(
@@ -219,13 +111,6 @@ impl UnsignedBlockHeader {
             sub_commitment,
             commitment,
         }
-    }
-
-    /// Signs the block header and consumes it, returning a signed block header.
-    pub fn sign(self, signer: &impl EcdsaSigner) -> BlockHeader {
-        let signature = signer.sign(self.commitment);
-        let unsigned_header = self;
-        BlockHeader { unsigned_header, signature }
     }
 
     // ACCESSORS
@@ -371,7 +256,7 @@ impl UnsignedBlockHeader {
 // SERIALIZATION
 // ================================================================================================
 
-impl Serializable for UnsignedBlockHeader {
+impl Serializable for BlockHeader {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         let Self {
             version,
@@ -407,7 +292,7 @@ impl Serializable for UnsignedBlockHeader {
     }
 }
 
-impl Deserializable for UnsignedBlockHeader {
+impl Deserializable for BlockHeader {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         Ok(Self {
             version: source.read()?,
@@ -515,7 +400,7 @@ mod tests {
         let chain_commitment = rand_value::<Word>();
         let note_root = rand_value::<Word>();
         let tx_kernel_commitment = rand_value::<Word>();
-        let header = UnsignedBlockHeader::mock(
+        let header = BlockHeader::mock(
             0,
             Some(chain_commitment),
             Some(note_root),
@@ -523,7 +408,7 @@ mod tests {
             tx_kernel_commitment,
         );
         let serialized = header.to_bytes();
-        let deserialized = UnsignedBlockHeader::read_from_bytes(&serialized).unwrap();
+        let deserialized = BlockHeader::read_from_bytes(&serialized).unwrap();
 
         assert_eq!(deserialized, header);
     }

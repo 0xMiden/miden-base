@@ -1,5 +1,5 @@
 mod header;
-pub use header::{BlockHeader, FeeParameters, UnsignedBlockHeader};
+pub use header::{BlockHeader, FeeParameters};
 
 mod block_body;
 pub use block_body::BlockBody;

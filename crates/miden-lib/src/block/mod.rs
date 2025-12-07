@@ -1,5 +1,5 @@
 use miden_objects::ProposedBlockError;
-use miden_objects::block::{BlockBody, ProposedBlock, UnsignedBlockHeader};
+use miden_objects::block::{BlockBody, BlockHeader, ProposedBlock};
 
 use crate::transaction::TransactionKernel;
 
@@ -18,7 +18,7 @@ use crate::transaction::TransactionKernel;
 /// its various commitment fields.
 pub fn build_block(
     proposed_block: ProposedBlock,
-) -> Result<(UnsignedBlockHeader, BlockBody), ProposedBlockError> {
+) -> Result<(BlockHeader, BlockBody), ProposedBlockError> {
     // Get fields from the proposed block before it is consumed.
     let block_num = proposed_block.block_num();
     let timestamp = proposed_block.timestamp();
@@ -55,7 +55,7 @@ pub fn build_block(
     // See miden-base/1155.
     let version = 0;
     let tx_kernel_commitment = TransactionKernel.to_commitment();
-    let header = UnsignedBlockHeader::new(
+    let header = BlockHeader::new(
         version,
         prev_block_commitment,
         block_num,

@@ -3,7 +3,7 @@ use alloc::vec::Vec;
 use core::ops::RangeTo;
 
 use crate::PartialBlockchainError;
-use crate::block::{BlockHeader, BlockNumber, UnsignedBlockHeader};
+use crate::block::{BlockHeader, BlockNumber};
 use crate::crypto::merkle::{InnerNodeInfo, MmrPeaks, PartialMmr};
 use crate::utils::serde::{Deserializable, Serializable};
 
@@ -182,7 +182,7 @@ impl PartialBlockchain {
     /// # Panics
     /// Panics if the `block_header.block_num` is not equal to the current chain length (i.e., the
     /// provided block header is not the next block in the chain).
-    pub fn add_block(&mut self, block_header: &UnsignedBlockHeader, track: bool) {
+    pub fn add_block(&mut self, block_header: &BlockHeader, track: bool) {
         assert_eq!(block_header.block_num(), self.chain_length());
         self.mmr.add(block_header.commitment(), track);
     }
@@ -280,7 +280,7 @@ mod tests {
 
     use super::PartialBlockchain;
     use crate::alloc::vec::Vec;
-    use crate::block::{BlockHeader, BlockNumber, FeeParameters, UnsignedBlockHeader};
+    use crate::block::{BlockHeader, BlockNumber, FeeParameters};
     use crate::crypto::merkle::{Mmr, PartialMmr};
     use crate::ecdsa_signer::{EcdsaSigner, LocalEcdsaSigner};
     use crate::testing::account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET;
@@ -430,7 +430,7 @@ mod tests {
         let signer = LocalEcdsaSigner::dummy();
         let public_key = signer.public_key();
 
-        let unsigned_header = UnsignedBlockHeader::new(
+        BlockHeader::new(
             0,
             Word::empty(),
             block_num.into(),
@@ -443,8 +443,7 @@ mod tests {
             public_key,
             fee_parameters,
             0,
-        );
-        unsigned_header.sign(&signer)
+        )
     }
 
     #[test]

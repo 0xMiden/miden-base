@@ -2,7 +2,7 @@ use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
 
 use crate::batch::{BatchId, ProvenBatch};
-use crate::block::{BlockNumber, UnsignedBlockHeader};
+use crate::block::{BlockHeader, BlockNumber};
 use crate::crypto::merkle::MerkleError;
 use crate::errors::ProposedBatchError;
 use crate::note::{NoteHeader, NoteId, NoteInclusionProof, Nullifier};
@@ -59,7 +59,7 @@ impl InputOutputNoteTracker<TransactionId> {
         txs: impl Iterator<Item = &'a ProvenTransaction> + Clone,
         unauthenticated_note_proofs: &BTreeMap<NoteId, NoteInclusionProof>,
         partial_blockchain: &PartialBlockchain,
-        batch_reference_block: &UnsignedBlockHeader,
+        batch_reference_block: &BlockHeader,
     ) -> Result<(BatchInputNotes, BatchOutputNotes), ProposedBatchError> {
         let input_notes_iter = txs.clone().flat_map(|tx| {
             tx.input_notes()
@@ -99,7 +99,7 @@ impl InputOutputNoteTracker<BatchId> {
         batches: impl Iterator<Item = &'a ProvenBatch> + Clone,
         unauthenticated_note_proofs: &BTreeMap<NoteId, NoteInclusionProof>,
         partial_blockchain: &PartialBlockchain,
-        prev_block: &UnsignedBlockHeader,
+        prev_block: &BlockHeader,
     ) -> Result<(BlockInputNotes, ErasedNotes, BlockOutputNotes), ProposedBlockError> {
         let input_notes_iter = batches.clone().flat_map(|batch| {
             batch
@@ -139,7 +139,7 @@ impl<ContainerId: Copy> InputOutputNoteTracker<ContainerId> {
         output_notes_iter: impl Iterator<Item = (OutputNote, ContainerId)>,
         unauthenticated_note_proofs: &BTreeMap<NoteId, NoteInclusionProof>,
         partial_blockchain: &PartialBlockchain,
-        reference_block: &UnsignedBlockHeader,
+        reference_block: &BlockHeader,
     ) -> Result<Self, InputOutputNoteTrackerError<ContainerId>> {
         let mut input_notes = BTreeMap::new();
         let mut output_notes = BTreeMap::new();
@@ -276,7 +276,7 @@ impl<ContainerId: Copy> InputOutputNoteTracker<ContainerId> {
         note_header: &NoteHeader,
         proof: &NoteInclusionProof,
         partial_blockchain: &PartialBlockchain,
-        reference_block: &UnsignedBlockHeader,
+        reference_block: &BlockHeader,
     ) -> Result<InputNoteCommitment, InputOutputNoteTrackerError<ContainerId>> {
         let proof_reference_block = proof.location().block_num();
         let note_block_header = if reference_block.block_num() == proof_reference_block {

@@ -7,7 +7,7 @@ use super::PartialBlockchain;
 use crate::TransactionInputError;
 use crate::account::{AccountCode, PartialAccount};
 use crate::asset::AssetWitness;
-use crate::block::{BlockHeader, BlockNumber, UnsignedBlockHeader};
+use crate::block::{BlockHeader, BlockNumber};
 use crate::note::{Note, NoteInclusionProof};
 use crate::transaction::{TransactionArgs, TransactionScript};
 
@@ -268,7 +268,7 @@ impl Deserializable for TransactionInputs {
 fn validate_is_in_block(
     note: &Note,
     proof: &NoteInclusionProof,
-    block_header: &UnsignedBlockHeader,
+    block_header: &BlockHeader,
 ) -> Result<(), TransactionInputError> {
     let note_index = proof.location().node_index_in_block().into();
     let note_commitment = note.commitment();
