@@ -12,11 +12,10 @@ use super::{
     TransactionArgs,
     TransactionId,
     TransactionOutputs,
-    UnsignedBlockHeader,
 };
 use crate::account::PartialAccount;
 use crate::asset::FungibleAsset;
-use crate::block::BlockNumber;
+use crate::block::{BlockHeader, BlockNumber};
 use crate::transaction::TransactionInputs;
 use crate::utils::serde::{
     ByteReader,
@@ -132,7 +131,7 @@ impl ExecutedTransaction {
     }
 
     /// Returns the block header for the block against which the transaction was executed.
-    pub fn block_header(&self) -> &UnsignedBlockHeader {
+    pub fn block_header(&self) -> &BlockHeader {
         self.tx_inputs.block_header()
     }
 
