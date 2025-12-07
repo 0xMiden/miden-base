@@ -3,7 +3,7 @@ use alloc::collections::BTreeMap;
 use alloc::string::ToString;
 use alloc::vec::Vec;
 
-use miden_objects::account::auth::{AuthSecretKey, PublicKeyCommitment, Signature};
+use miden_objects::account::auth::{AuthSecretKey, PublicKey, PublicKeyCommitment, Signature};
 use miden_objects::crypto::SequentialCommit;
 use miden_objects::transaction::TransactionSummary;
 use miden_objects::{Felt, Hasher, Word};
@@ -139,6 +139,11 @@ pub trait TransactionAuthenticator {
         pub_key_commitment: PublicKeyCommitment,
         signing_inputs: &SigningInputs,
     ) -> impl FutureMaybeSend<Result<Signature, AuthenticationError>>;
+
+    fn get_public_key(
+        &self,
+        pub_key_commitment: PublicKeyCommitment,
+    ) -> impl FutureMaybeSend<Option<PublicKey>>;
 }
 
 /// A placeholder type for the generic trait bound of `TransactionAuthenticator<'_,'_,_,T>`
@@ -158,6 +163,13 @@ impl TransactionAuthenticator for UnreachableAuth {
         _pub_key_commitment: PublicKeyCommitment,
         _signing_inputs: &SigningInputs,
     ) -> impl FutureMaybeSend<Result<Signature, AuthenticationError>> {
+        async { unreachable!("Type `UnreachableAuth` must not be instantiated") }
+    }
+
+    fn get_public_key(
+        &self,
+        _pub_key_commitment: PublicKeyCommitment,
+    ) -> impl FutureMaybeSend<Option<PublicKey>> {
         async { unreachable!("Type `UnreachableAuth` must not be instantiated") }
     }
 }
@@ -218,6 +230,20 @@ impl TransactionAuthenticator for BasicAuthenticator {
             }
         }
     }
+
+    /// Returns the public key associated with the given public key commitment.
+    ///
+    /// Supported signature schemes:
+    /// - RpoFalcon512
+    /// - EcdsaK256Keccak
+    ///
+    /// If the public key commitment is not contained in the `keys` map, `None` is returned.
+    fn get_public_key(
+        &self,
+        pub_key_commitment: PublicKeyCommitment,
+    ) -> impl FutureMaybeSend<Option<PublicKey>> {
+        async move { self.keys.get(&pub_key_commitment).map(|key| key.public_key()) }
+    }
 }
 
 // HELPER FUNCTIONS
@@ -235,6 +261,13 @@ impl TransactionAuthenticator for () {
                 "default authenticator cannot provide signatures".to_string(),
             ))
         }
+    }
+
+    fn get_public_key(
+        &self,
+        _pub_key_commitment: PublicKeyCommitment,
+    ) -> impl FutureMaybeSend<Option<PublicKey>> {
+        async { None }
     }
 }
 
