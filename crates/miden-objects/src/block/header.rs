@@ -222,7 +222,7 @@ impl UnsignedBlockHeader {
     }
 
     /// Signs the block header and consumes it, returning a signed block header.
-    pub fn sign(self, signer: impl EcdsaSigner) -> BlockHeader {
+    pub fn sign(self, signer: &impl EcdsaSigner) -> BlockHeader {
         let signature = signer.sign(self.commitment);
         let unsigned_header = self;
         BlockHeader { unsigned_header, signature }

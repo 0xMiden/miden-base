@@ -1,4 +1,11 @@
 use miden_core::Word;
+use miden_core::utils::{
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    Serializable,
+};
 
 use crate::crypto::dsa::ecdsa_k256_keccak as ecdsa;
 
@@ -49,5 +56,21 @@ impl EcdsaSigner for LocalEcdsaSigner {
 
     fn public_key(&self) -> ecdsa::PublicKey {
         self.secret_key.public_key()
+    }
+}
+
+// SERIALIZATION
+// ================================================================================================
+
+impl Serializable for LocalEcdsaSigner {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        self.secret_key.write_into(target);
+    }
+}
+
+impl Deserializable for LocalEcdsaSigner {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let secret_key = ecdsa::SecretKey::read_from(source)?;
+        Ok(LocalEcdsaSigner { secret_key })
     }
 }

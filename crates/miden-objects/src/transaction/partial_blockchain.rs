@@ -444,7 +444,7 @@ mod tests {
             fee_parameters,
             0,
         );
-        unsigned_header.sign(signer)
+        unsigned_header.sign(&signer)
     }
 
     #[test]

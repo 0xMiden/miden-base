@@ -186,6 +186,8 @@ pub struct MockChain {
     /// AccountId |-> AccountAuthenticator mapping to store the authenticator for accounts to
     /// simplify transaction creation.
     account_authenticators: BTreeMap<AccountId, AccountAuthenticator>,
+
+    signer: LocalEcdsaSigner,
 }
 
 impl MockChain {
@@ -217,6 +219,7 @@ impl MockChain {
         genesis_block: ProvenBlock,
         account_tree: AccountTree,
         account_authenticators: BTreeMap<AccountId, AccountAuthenticator>,
+        signer: LocalEcdsaSigner,
     ) -> anyhow::Result<Self> {
         let mut chain = MockChain {
             chain: Blockchain::default(),
@@ -227,6 +230,7 @@ impl MockChain {
             committed_notes: BTreeMap::new(),
             committed_accounts: BTreeMap::new(),
             account_authenticators,
+            signer,
         };
 
         // We do not have to apply the tree changes, because the account tree is already initialized
@@ -983,7 +987,7 @@ impl MockChain {
             header.clone(),
             inputs,
         )?;
-        let header = header.sign(LocalEcdsaSigner::dummy());
+        let header = header.sign(&self.signer);
         Ok(ProvenBlock::new_unchecked(header, body, block_proof))
     }
 }
@@ -1007,6 +1011,7 @@ impl Serializable for MockChain {
         self.committed_accounts.write_into(target);
         self.committed_notes.write_into(target);
         self.account_authenticators.write_into(target);
+        self.signer.write_into(target);
     }
 }
 
@@ -1021,6 +1026,7 @@ impl Deserializable for MockChain {
         let committed_notes = BTreeMap::<NoteId, MockChainNote>::read_from(source)?;
         let account_authenticators =
             BTreeMap::<AccountId, AccountAuthenticator>::read_from(source)?;
+        let signer = LocalEcdsaSigner::read_from(source)?;
 
         Ok(Self {
             chain,
@@ -1031,6 +1037,7 @@ impl Deserializable for MockChain {
             committed_notes,
             committed_accounts,
             account_authenticators,
+            signer,
         })
     }
 }
@@ -1261,5 +1268,36 @@ mod tests {
         assert_eq!(chain.committed_accounts, deserialized.committed_accounts);
         assert_eq!(chain.committed_notes, deserialized.committed_notes);
         assert_eq!(chain.account_authenticators, deserialized.account_authenticators);
+    }
+
+    #[test]
+    fn mock_chain_block_signature() -> anyhow::Result<()> {
+        let mut builder = MockChain::builder();
+        builder.add_existing_mock_account(Auth::IncrNonce)?;
+        let mut chain = builder.build()?;
+
+        // Verify the genesis block signature.
+        let genesis_header = chain.latest_block_header();
+        assert!(
+            genesis_header
+                .signature()
+                .verify(genesis_header.commitment(), genesis_header.public_key())
+        );
+
+        // Add another block.
+        chain.prove_next_block()?;
+
+        // Verify the next block signature.
+        let latest_header = chain.latest_block_header();
+        assert!(
+            latest_header
+                .signature()
+                .verify(latest_header.commitment(), latest_header.public_key())
+        );
+
+        // Public keys should be carried through from the genesis header to the next.
+        assert_eq!(latest_header.public_key(), genesis_header.public_key());
+
+        Ok(())
     }
 }

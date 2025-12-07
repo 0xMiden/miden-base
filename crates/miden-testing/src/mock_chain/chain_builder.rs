@@ -245,11 +245,16 @@ impl MockChainBuilder {
             transactions,
         );
 
-        let header = header.sign(signer);
+        let header = header.sign(&signer);
         let block_proof = BlockProof::new_dummy();
         let genesis_block = ProvenBlock::new_unchecked(header, body, block_proof);
 
-        MockChain::from_genesis_block(genesis_block, account_tree, self.account_authenticators)
+        MockChain::from_genesis_block(
+            genesis_block,
+            account_tree,
+            self.account_authenticators,
+            signer,
+        )
     }
 
     // ACCOUNT METHODS
