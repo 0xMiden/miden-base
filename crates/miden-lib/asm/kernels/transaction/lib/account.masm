@@ -1562,7 +1562,7 @@ end
 #! Outputs: []
 #!
 #! Where:
-#! - slot_ptr is the pointer to the storage slots section.
+#! - slot_ptr is the pointer to a slot.
 #! - VALUE is the new value of the item.
 proc.set_item_raw
     add.ACCOUNT_SLOT_VALUE_OFFSET mem_storew_be dropw
@@ -1654,7 +1654,8 @@ proc set_map_item_raw.12
     # => [OLD_MAP_ROOT, OLD_MAP_VALUE]
 end
 
-#! Gets the value of the provided slot pointer.
+#! Gets the value of the storage slot located at the memory address specified by the provided
+#! pointer.
 #!
 #! The provided pointer must be a valid pointer into the initial or current storage slot section.
 #!
@@ -1662,7 +1663,7 @@ end
 #! Outputs: [VALUE]
 #!
 #! Where:
-#! - slot_ptr is the pointer to the storage slots section.
+#! - slot_ptr is the pointer to a slot.
 #! - VALUE is the value of the item.
 proc get_item_raw
     # offset the pointer to point to the VALUE in the slot
