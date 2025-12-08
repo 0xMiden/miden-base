@@ -1760,8 +1760,8 @@ end
 
 #! Computes the slot index from a given slot ptr.
 #!
-#! WARNING: The slot ptr is assumed to be a valid pointer to a slot in the native account's storage
-#! slots section (not the initial one). In particular, this means the slot_ptr must be a valid u32.
+#! WARNING: The slot ptr is assumed to be a valid pointer to a slot in an account's storage slots
+#! section (**not** the initial one). In particular, this means the slot_ptr must be a valid u32.
 #!
 #! Inputs:  [slot_ptr]
 #! Outputs: [slot_idx]
