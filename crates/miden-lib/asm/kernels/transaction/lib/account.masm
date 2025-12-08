@@ -481,7 +481,7 @@ export.get_typed_item
 
     # load the value
     swap exec.get_item_raw
-    # => [VALUE, slot_ptr]
+    # => [VALUE, slot_type]
 end
 
 #! Gets an item from the account storage at its initial state (beginning of transaction).
