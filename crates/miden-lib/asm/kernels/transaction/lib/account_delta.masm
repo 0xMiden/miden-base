@@ -227,7 +227,7 @@ proc.update_map_slot_delta.5
     push.0 loc_store.4
     # => [slot_idx, RATE, RATE, PERM]
 
-    dup exec.account::get_slot_name
+    dup exec.account::get_slot_id
     # => [name_id_prefix, name_id_suffix, slot_idx, RATE, RATE, PERM]
 
     loc_store.1 loc_store.0

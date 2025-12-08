@@ -1526,7 +1526,7 @@ export.get_item_delta
     # => [INITIAL_VALUE, CURRENT_VALUE, name_id_prefix, name_id_suffix]
 end
 
-#! Gets the name of the storage slot at the provided index.
+#! Gets the slot ID of the storage slot at the provided index.
 #!
 #! WARNING: The index must be in bounds.
 #!
@@ -1537,7 +1537,7 @@ end
 #! - index is the index of the slot.
 #! - name_id_{prefix, suffix} are the prefix and suffix felts of the name identifier, which are
 #!   the first two felts of the hashed slot name.
-export.get_slot_name
+export.get_slot_id
     # convert the index into a memory offset
     mul.ACCOUNT_STORAGE_SLOT_DATA_LENGTH
     # => [offset]
@@ -1558,6 +1558,8 @@ end
 #!
 #! The provided pointer must be a valid pointer into the current storage slot section.
 #!
+#! WARNING: This must only be used on the native account.
+#!
 #! Inputs:  [slot_ptr, VALUE]
 #! Outputs: []
 #!
@@ -1577,6 +1579,7 @@ end
 #! Stores NEW_VALUE under the specified KEY within the map contained in the given account storage slot.
 #!
 #! WARNING: The slot ptr must point to a map slot.
+#! WARNING: This must only be used on the native account.
 #!
 #! Inputs:  [slot_ptr, KEY, NEW_VALUE]
 #! Outputs: [OLD_MAP_ROOT, OLD_MAP_VALUE]
