@@ -1721,8 +1721,8 @@ proc.get_map_item_raw
     # => [VALUE]
 end
 
-#! Finds the slot identified by the key constructed from the name ID and slot type and returns the
-#! pointer to that slot.
+#! Finds the slot identified by the key [name_id_prefix, name_id_suffix, 0, 0] (stack order) and
+#! returns the pointer to that slot.
 #!
 #! Inputs:  [storage_slots_ptr, name_id_prefix, name_id_suffix]
 #! Outputs: [slot_ptr]
