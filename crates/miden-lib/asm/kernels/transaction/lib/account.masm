@@ -1769,7 +1769,7 @@ end
 #! Where:
 #! - slot_ptr is the pointer to a "current" storage slot in the native account's memory section.
 #! - slot_idx is the index of the storage slot.
-proc.slot_ptr_to_index
+proc slot_ptr_to_index
     exec.memory::get_account_storage_slots_section_ptr
     sub
     # => [slot_offset]
