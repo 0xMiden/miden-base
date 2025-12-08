@@ -172,12 +172,10 @@ proc.update_value_slot_delta
     # => [was_changed, INIT_VALUE, CURRENT_VALUE, name_id_prefix, name_id_suffix, RATE, RATE, PERM]
 
     # set was_changed to true if the account is new
-    # this means a storage slot initialized with an empty word is included in the commitment for
-    # new accounts
-    # more generally, we want the delta for a new account to include all its newly added values,
-    # regardless of the exact value, because the initial delta for an account must represent its
-    # full state
-    exec.memory::get_init_nonce eq.0 or
+    # generally, the delta for a new account must include all its storage slots, regardless of the
+    # initial value and even if it is an empty word, because the initial delta for an account must
+    # represent its full state
+    exec.memory::is_new_account or
     # => [was_changed, INIT_VALUE, CURRENT_VALUE, name_id_prefix, name_id_suffix, RATE, RATE, PERM]
 
     # only include in delta if the slot's value has changed or the account is new
@@ -302,7 +300,7 @@ proc.update_map_slot_delta.5
 
     # if the account is new (nonce == 0) include the map header even if it is an empty map
     # in order to have the delta commit to this initial storage slot.
-    exec.memory::get_init_nonce eq.0 or
+    exec.memory::is_new_account or
     # => [should_include_map_header, RATE, RATE, PERM]
 
     if.true

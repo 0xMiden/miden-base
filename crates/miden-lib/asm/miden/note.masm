@@ -6,7 +6,7 @@ use.std::mem
 # ERRORS
 # =================================================================================================
 
-const.ERR_PROLOGUE_NOTE_INPUTS_LEN_EXCEEDED_LIMIT="number of note inputs exceeded the maximum limit of 128"
+const.ERR_PROLOGUE_NOTE_INPUTS_LEN_EXCEEDED_LIMIT="number of note inputs exceeded the maximum limit of 1024"
 
 # NOTE UTILITY PROCEDURES
 # =================================================================================================
@@ -29,12 +29,12 @@ const.ERR_PROLOGUE_NOTE_INPUTS_LEN_EXCEEDED_LIMIT="number of note inputs exceede
 #!
 #! Panics if:
 #! - inputs_ptr is not word-aligned (i.e., is not a multiple of 4).
-#! - num_inputs is greater than 128.
+#! - num_inputs is greater than 1024.
 #!
 #! Invocation: exec
 export.compute_inputs_commitment
-    # check that number of inputs is less than 128
-    dup.1 push.128 u32assert2.err=ERR_PROLOGUE_NOTE_INPUTS_LEN_EXCEEDED_LIMIT
+    # check that number of inputs is less than or equal to 1024
+    dup.1 push.1024 u32assert2.err=ERR_PROLOGUE_NOTE_INPUTS_LEN_EXCEEDED_LIMIT
     u32lte assert.err=ERR_PROLOGUE_NOTE_INPUTS_LEN_EXCEEDED_LIMIT
     # => [inputs_ptr, num_inputs]
 
@@ -120,7 +120,7 @@ end
 #!
 #! Panics if:
 #! - inputs_ptr is not word-aligned (i.e., is not a multiple of 4).
-#! - num_inputs is greater than 128.
+#! - num_inputs is greater than 1024.
 #!
 #! Invocation: exec
 export.build_recipient.1
