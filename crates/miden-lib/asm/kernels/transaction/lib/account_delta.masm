@@ -176,31 +176,15 @@ proc.update_value_slot_delta
     dup.4 exec.account::get_initial_item_by_index
     # => [INIT_VALUE, CURRENT_VALUE, slot_idx, RATE, RATE, PERM]
 
-    # if account is new, replace INIT_VALUE with EMPTY_WORD
-    # we need to do this specifically for new accounts because for those, get_initial_item returns
-    # the same as get_item but we want the delta for value slots to be from an empty value to the
-    # final value
-    # use get_init_nonce so the delta is still correctly computed when the nonce has already been
-    # incremented
-    padw exec.memory::get_init_nonce eq.0
-    # => [is_account_new, EMPTY_WORD, INIT_VALUE, CURRENT_VALUE, slot_idx, RATE, RATE, PERM]
-
-    # If is_account_new EMPTY_WORD remains.
-    # If !is_account_new INIT_VALUE remains.
-    cdropw
-    # => [INIT_VALUE', CURRENT_VALUE, slot_idx, RATE, RATE, PERM]
-
     exec.word::test_eq not
-    # => [was_changed, INIT_VALUE', CURRENT_VALUE, slot_idx, RATE, RATE, PERM]
+    # => [was_changed, INIT_VALUE, CURRENT_VALUE, slot_idx, RATE, RATE, PERM]
 
     # set was_changed to true if the account is new
-    # this means a storage slot initialized with an empty word is included in the commitment for
-    # new accounts
-    # more generally, we want the delta for a new account to include all its newly added values,
-    # regardless of the exact value, because the initial delta for an account must represent its
-    # full state
-    exec.memory::get_init_nonce eq.0 or
-    # => [was_changed, INIT_VALUE', CURRENT_VALUE, slot_idx, RATE, RATE, PERM]
+    # generally, the delta for a new account must include all its storage slots, regardless of the
+    # initial value and even if it is an empty word, because the initial delta for an account must
+    # represent its full state
+    exec.memory::is_new_account or
+    # => [was_changed, INIT_VALUE, CURRENT_VALUE, slot_idx, RATE, RATE, PERM]
 
     # only include in delta if the slot's value has changed or the account is new
     if.true
@@ -320,7 +304,7 @@ proc.update_map_slot_delta.4
 
     # if the account is new (nonce == 0) include the map header even if it is an empty map
     # in order to have the delta commit to this initial storage slot.
-    exec.memory::get_init_nonce eq.0 or
+    exec.memory::is_new_account or
     # => [should_include_map_header, RATE, RATE, PERM]
 
     if.true
