@@ -15,7 +15,7 @@
 - Split tx progress events out into a separate enum ([#2103](https://github.com/0xMiden/miden-base/pull/2103)).
 - Added `note::get_network_account_tag` procedure ([#2120](https://github.com/0xMiden/miden-base/pull/2120)).
 - [BREAKING] Removed `AccountComponentTemplate` in favor of instantiating components via `AccountComponent::from_package` ([#2127](https://github.com/0xMiden/miden-base/pull/2127)).
-- [BREAKING] Add public key `BlockHeader` and signing functionality through `EcdsaSigner` trait and `LocalEcdsaSigner` impl  ([#2128](https://github.com/0xMiden/miden-base/pull/2128)).
+- [BREAKING] Add public key to, remove proof commitment from, `BlockHeader` add and signing functionality through `EcdsaSigner` trait ([#2128](https://github.com/0xMiden/miden-base/pull/2128)).
 
 ## 0.12.4 (2025-11-26)
 

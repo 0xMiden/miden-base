@@ -3,7 +3,7 @@ use miden_objects::block::{BlockBody, BlockHeader, ProposedBlock};
 
 use crate::transaction::TransactionKernel;
 
-/// Builds a [`UnsignedBlockHeader`] and [`BlockBody`] by computing the following from the state
+/// Builds a [`BlockHeader`] and [`BlockBody`] by computing the following from the state
 /// updates encapsulated by the provided [`ProposedBlock`]:
 /// - the account root;
 /// - the nullifier root;

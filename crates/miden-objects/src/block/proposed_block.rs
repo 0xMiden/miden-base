@@ -102,7 +102,7 @@ impl ProposedBlock {
     /// - The length of the [`PartialBlockchain`] in the block inputs is not equal to the previous
     ///   block header in the block inputs.
     /// - The [`PartialBlockchain`]'s chain commitment is not equal to the
-    ///   [`UnsignedBlockHeader::chain_commitment`] of the previous block header.
+    ///   [`BlockHeader::chain_commitment`] of the previous block header.
     ///
     /// ## Notes
     ///

@@ -10,7 +10,7 @@ use crate::block::BlockNumber;
 /// The [Merkle Mountain Range](Mmr) defining the Miden blockchain.
 ///
 /// The values of the leaves in the MMR are the commitments of blocks, i.e.
-/// [`UnsignedBlockHeader::commitment`](crate::block::UnsignedBlockHeader::commitment).
+/// [`BlockHeader::commitment`](crate::block::BlockHeader::commitment).
 ///
 /// Each new block updates the blockchain by adding **the previous block's commitment** to the MMR.
 /// This means the chain commitment found in block 10's header commits to all blocks 0..=9, but not

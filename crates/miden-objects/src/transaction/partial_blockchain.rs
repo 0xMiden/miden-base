@@ -28,7 +28,7 @@ use crate::utils::serde::{Deserializable, Serializable};
 ///
 /// # Guarantees
 ///
-/// The [`PartialBlockchain`] contains the full authenticated [`UnsignedBlockHeader`]s of all blocks
+/// The [`PartialBlockchain`] contains the full authenticated [`BlockHeader`]s of all blocks
 /// it tracks in its partial MMR and users of this type can make this assumption. This is ensured
 /// when using [`PartialBlockchain::new`]. [`PartialBlockchain::new_unchecked`] should only be used
 /// whenever this guarantee can be upheld.
