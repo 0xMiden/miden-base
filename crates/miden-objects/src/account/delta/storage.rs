@@ -82,12 +82,18 @@ impl AccountStorageDelta {
         self.values.is_empty() && self.maps.is_empty()
     }
 
-    /// Tracks a slot change
+    /// Tracks a slot change.
+    ///
+    /// This does not (and cannot) validate that the slot name _exists_ or that it points to a
+    /// _value_ slot in the corresponding account.
     pub fn set_item(&mut self, slot_name: SlotName, new_slot_value: Word) {
         self.values.insert(slot_name, new_slot_value);
     }
 
-    /// Tracks a map item change
+    /// Tracks a map item change.
+    ///
+    /// This does not (and cannot) validate that the slot name _exists_ or that it points to a
+    /// _map_ slot in the corresponding account.
     pub fn set_map_item(&mut self, slot_name: SlotName, key: Word, new_value: Word) {
         self.maps.entry(slot_name).or_default().insert(key, new_value);
     }
