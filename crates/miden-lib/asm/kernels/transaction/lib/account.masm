@@ -1663,7 +1663,7 @@ end
 #! Where:
 #! - slot_ptr is the pointer to the storage slots section.
 #! - VALUE is the value of the item.
-proc.get_item_raw
+proc get_item_raw
     # offset the pointer to point to the VALUE in the slot
     add.ACCOUNT_SLOT_VALUE_OFFSET
     # => [slot_value_ptr]
