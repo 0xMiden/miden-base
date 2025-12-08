@@ -21,7 +21,7 @@ use miden_objects::block::{
     ProposedBlock,
     ProvenBlock,
 };
-use miden_objects::crypto::dsa::ecdsa_k256_keccak::{SecretKey, Signature};
+use miden_objects::crypto::dsa::ecdsa_k256_keccak::SecretKey;
 use miden_objects::note::{Note, NoteHeader, NoteId, NoteInclusionProof, Nullifier};
 use miden_objects::transaction::{
     ExecutedTransaction,
@@ -378,13 +378,11 @@ impl MockChain {
         self.blocks[chain_tip.as_usize()].header().clone()
     }
 
-    /// Returns the latest [`BlockHeader`] and its signature.
-    pub fn latest_block_header_with_signature(&self) -> (BlockHeader, Signature) {
+    /// Returns the latest [`ProvenBlock`] in the chain.
+    pub fn latest_block(&self) -> ProvenBlock {
         let chain_tip =
             self.chain.chain_tip().expect("chain should contain at least the genesis block");
-        let header = self.blocks[chain_tip.as_usize()].header().clone();
-        let signature = self.blocks[chain_tip.as_usize()].signature().clone();
-        (header, signature)
+        self.blocks[chain_tip.as_usize()].clone()
     }
 
     /// Returns the [`BlockHeader`] with the specified `block_number`.
@@ -1287,18 +1285,26 @@ mod tests {
         let mut chain = builder.build()?;
 
         // Verify the genesis block signature.
-        let (genesis_header, signature) = chain.latest_block_header_with_signature();
-        assert!(signature.verify(genesis_header.commitment(), genesis_header.public_key()));
+        let genesis_block = chain.latest_block();
+        assert!(
+            genesis_block
+                .signature()
+                .verify(genesis_block.header().commitment(), genesis_block.header().public_key())
+        );
 
         // Add another block.
         chain.prove_next_block()?;
 
         // Verify the next block signature.
-        let (latest_header, signature) = chain.latest_block_header_with_signature();
-        assert!(signature.verify(latest_header.commitment(), latest_header.public_key()));
+        let next_block = chain.latest_block();
+        assert!(
+            next_block
+                .signature()
+                .verify(next_block.header().commitment(), next_block.header().public_key())
+        );
 
         // Public keys should be carried through from the genesis header to the next.
-        assert_eq!(latest_header.public_key(), genesis_header.public_key());
+        assert_eq!(next_block.header().public_key(), next_block.header().public_key());
 
         Ok(())
     }

@@ -18,7 +18,7 @@ pub struct ProvenBlock {
     /// The header of the proven block.
     header: BlockHeader,
 
-    /// Signature of the block header.
+    /// Signature of [`BlockHeader::commitment`].
     signature: Signature,
 
     /// The body of the proven block.
