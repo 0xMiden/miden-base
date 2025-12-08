@@ -4,7 +4,7 @@ use miden_objects::Felt;
 
 /// Convert 8 Felt values (u32 limbs in big-endian order) to U256 bytes in little-endian format.
 pub fn felts_to_u256_bytes(limbs: Vec<Felt>) -> Vec<u8> {
-    assert_eq!(limbs.len(), 8, "Expected exactly 8 u32 limbs for U256 conversion");
+    assert_eq!(limbs.len(), 8, "expected exactly 8 u32 limbs for U256 conversion");
 
     let mut bytes = Vec::with_capacity(32);
 
@@ -14,9 +14,4 @@ pub fn felts_to_u256_bytes(limbs: Vec<Felt>) -> Vec<u8> {
     }
 
     bytes
-}
-
-/// Convert Felt values to u32 values.
-pub fn felts_to_u32_slice(felts: &[Felt]) -> Vec<u32> {
-    felts.iter().map(|f| f.as_int() as u32).collect()
 }
