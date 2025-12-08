@@ -47,6 +47,7 @@ use miden_objects::crypto::dsa::ecdsa_k256_keccak::SecretKey;
 use miden_objects::crypto::merkle::Smt;
 use miden_objects::note::{Note, NoteDetails, NoteType};
 use miden_objects::testing::account_id::ACCOUNT_ID_NATIVE_ASSET_FAUCET;
+use miden_objects::testing::random_signer::RandomEcdsaSigner;
 use miden_objects::transaction::{OrderedTransactionHeaders, OutputNote};
 use miden_objects::{Felt, FieldElement, MAX_OUTPUT_NOTES_PER_BATCH, NoteError, Word, ZERO};
 use miden_processor::crypto::RpoRandomCoin;
@@ -220,7 +221,7 @@ impl MockChainBuilder {
         let timestamp = MockChain::TIMESTAMP_START_SECS;
         let fee_parameters = FeeParameters::new(self.native_asset_id, self.verification_base_fee)
             .context("failed to construct fee parameters")?;
-        let secret_key = SecretKey::new();
+        let secret_key = SecretKey::random();
         let public_key = secret_key.public_key();
 
         let header = BlockHeader::new(

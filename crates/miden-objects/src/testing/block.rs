@@ -8,6 +8,7 @@ use crate::account::Account;
 use crate::block::account_tree::{AccountTree, account_id_to_smt_key};
 use crate::block::{BlockHeader, BlockNumber, FeeParameters};
 use crate::testing::account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET;
+use crate::testing::random_signer::RandomEcdsaSigner;
 
 impl BlockHeader {
     /// Creates a mock block. The account tree is formed from the provided `accounts`,
@@ -34,7 +35,7 @@ impl BlockHeader {
         let fee_parameters =
             FeeParameters::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET.try_into().unwrap(), 500)
                 .expect("native asset ID should be a fungible faucet ID");
-        let public_key = SecretKey::new().public_key();
+        let public_key = SecretKey::random().public_key();
 
         #[cfg(not(target_family = "wasm"))]
         let (
