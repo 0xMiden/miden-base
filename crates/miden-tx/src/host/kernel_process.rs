@@ -37,7 +37,6 @@ pub(super) trait TransactionKernelProcess {
 
     fn get_storage_slot(
         &self,
-        process: &ProcessState,
         slot_ptr: Felt,
     ) -> Result<(SlotNameId, StorageSlotType, Word), TransactionKernelError>;
 
@@ -187,7 +186,6 @@ impl<'a> TransactionKernelProcess for ProcessState<'a> {
 
     fn get_storage_slot(
         &self,
-        process: &ProcessState,
         slot_ptr: Felt,
     ) -> Result<(SlotNameId, StorageSlotType, Word), TransactionKernelError> {
         let slot_ptr = u32::try_from(slot_ptr).map_err(|_err| {
@@ -196,8 +194,8 @@ impl<'a> TransactionKernelProcess for ProcessState<'a> {
             ))
         })?;
 
-        let slot_metadata = process
-            .get_mem_word(process.ctx(), slot_ptr)
+        let slot_metadata = self
+            .get_mem_word(self.ctx(), slot_ptr)
             .map_err(|err| {
                 TransactionKernelError::other_with_source(
                     format!("misaligned slot ptr {slot_ptr}"),
@@ -209,8 +207,8 @@ impl<'a> TransactionKernelProcess for ProcessState<'a> {
             })?;
 
         let slot_value_ptr = slot_ptr + ACCT_STORAGE_SLOT_VALUE_OFFSET as u32;
-        let slot_value = process
-            .get_mem_word(process.ctx(), slot_value_ptr)
+        let slot_value = self
+            .get_mem_word(self.ctx(), slot_value_ptr)
             .map_err(|err| {
                 TransactionKernelError::other_with_source(
                     format!("misaligned slot value ptr {slot_value_ptr}"),
