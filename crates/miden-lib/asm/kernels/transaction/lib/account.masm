@@ -1553,7 +1553,8 @@ export.get_slot_name
     # => [name_id_prefix, name_id_suffix]
 end
 
-#! Sets the value of the provided slot pointer to the provided value.
+#! Sets the value of the storage slot located at the memory address specified by the provided
+#! pointer.
 #!
 #! The provided pointer must be a valid pointer into the current storage slot section.
 #!
@@ -1674,7 +1675,7 @@ proc get_item_raw
 end
 
 #! Finds the storage map root in the storage slot with the provided name in the provided storage
-#! slots section and returns the KEY in that map.
+#! slots section and returns the VALUE associated with the KEY in the corresponding map.
 #!
 #! Inputs:  [storage_slots_ptr, name_id_prefix, name_id_suffix, KEY]
 #! Outputs: [VALUE]
