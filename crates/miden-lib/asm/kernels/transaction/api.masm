@@ -349,14 +349,11 @@ export.account_get_item
 
     # fetch the account storage item
     exec.account::get_item
-    # => [VALUE, pad(14)]
+    # => [VALUE, pad(15)]
 
     # truncate the stack
-    movup.4 drop movup.4 drop
+    movup.4 drop movup.4 drop movup.4 drop
     # => [VALUE, pad(12)]
-
-    # Drop extraneous elements that get_item pushed onto the stack.
-    movup.4 drop
 end
 
 #! Sets an item in the account storage.
@@ -449,14 +446,10 @@ export.account_get_initial_item
 
     # fetch the initial account storage item
     exec.account::get_initial_item
-    # => [INIT_VALUE, pad(14)]
+    # => [INIT_VALUE, pad(15)]
 
     # truncate the stack
-    movup.4 drop movup.4 drop
-    # => [INIT_VALUE, pad(12)]
-
-    # Drop extraneous elements that get_initial_item pushed onto the stack.
-    movup.4 drop
+    movup.4 drop movup.4 drop movup.4 drop
     # => [INIT_VALUE, pad(12)]
 end
 
@@ -520,9 +513,9 @@ export.account_set_map_item
 
     # set the new map item
     exec.account::set_map_item
-    # => [OLD_MAP_ROOT, OLD_VALUE, pad(8)]
+    # => [OLD_MAP_ROOT, OLD_VALUE, pad(16)]
 
-    # Drop extraneous elements that set_map_item pushed onto the stack.
+    # truncate the stack
     movupw.2 dropw movupw.2 dropw
     # => [OLD_MAP_ROOT, OLD_VALUE, pad(8)]
 end
