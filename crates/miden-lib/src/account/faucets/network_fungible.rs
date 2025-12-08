@@ -128,9 +128,9 @@ impl NetworkFungibleFaucet {
 
                 // obtain owner account ID from the next storage slot
                 let owner_account_id_word: Word = storage
-                    .get_item(NetworkFungibleFaucet::metadata_slot())
+                    .get_item(NetworkFungibleFaucet::owner_config_slot())
                     .map_err(|err| FungibleFaucetError::StorageLookupFailed {
-                        slot_name: NetworkFungibleFaucet::metadata_slot().clone(),
+                        slot_name: NetworkFungibleFaucet::owner_config_slot().clone(),
                         source: err,
                     })?;
 
