@@ -15,8 +15,8 @@ use crate::{Felt, Hasher, MAX_INPUTS_PER_NOTE, WORD_SIZE, Word, ZERO};
 
 /// A container for note inputs.
 ///
-/// A note can be associated with up to 128 input values. Each value is represented by a single
-/// field element. Thus, note input values can contain up to ~1 KB of data.
+/// A note can be associated with up to 1024 input values. Each value is represented by a single
+/// field element. Thus, note input values can contain up to ~8 KB of data.
 ///
 /// All inputs associated with a note can be reduced to a single commitment which is computed by
 /// first padding the inputs with ZEROs to the next multiple of 8, and then by computing a
@@ -34,7 +34,7 @@ impl NoteInputs {
     /// Returns [NoteInputs] instantiated from the provided values.
     ///
     /// # Errors
-    /// Returns an error if the number of provided inputs is greater than 128.
+    /// Returns an error if the number of provided inputs is greater than 1024.
     pub fn new(values: Vec<Felt>) -> Result<Self, NoteError> {
         if values.len() > MAX_INPUTS_PER_NOTE {
             return Err(NoteError::TooManyInputs(values.len()));
@@ -53,14 +53,14 @@ impl NoteInputs {
 
     /// Returns the number of input values.
     ///
-    /// The returned value is guaranteed to be smaller than or equal to 128.
-    pub fn num_values(&self) -> u8 {
-        const _: () = assert!(MAX_INPUTS_PER_NOTE <= u8::MAX as usize);
+    /// The returned value is guaranteed to be smaller than or equal to 1024.
+    pub fn num_values(&self) -> u16 {
+        const _: () = assert!(MAX_INPUTS_PER_NOTE <= u16::MAX as usize);
         debug_assert!(
-            self.values.len() < MAX_INPUTS_PER_NOTE,
+            self.values.len() <= MAX_INPUTS_PER_NOTE,
             "The constructor should have checked the number of inputs"
         );
-        self.values.len() as u8
+        self.values.len() as u16
     }
 
     /// Returns a reference to the input values.
@@ -142,14 +142,14 @@ fn pad_and_build(values: Vec<Felt>) -> NoteInputs {
 impl Serializable for NoteInputs {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         let NoteInputs { values, commitment: _commitment } = self;
-        target.write_u8(values.len().try_into().expect("inputs len is not a u8 value"));
+        target.write_u16(values.len().try_into().expect("inputs len is not a u16 value"));
         target.write_many(values);
     }
 }
 
 impl Deserializable for NoteInputs {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        let num_values = source.read_u8()? as usize;
+        let num_values = source.read_u16()? as usize;
         let values = source.read_many::<Felt>(num_values)?;
         Self::new(values).map_err(|v| DeserializationError::InvalidValue(format!("{v}")))
     }
