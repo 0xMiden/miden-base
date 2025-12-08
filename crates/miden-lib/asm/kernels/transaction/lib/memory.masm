@@ -987,6 +987,17 @@ export.is_native_account
     # => [is_native_account]
 end
 
+#! Returns 1 if the native account is new, i.e. its nonce is zero, 0 otherwise.
+#!
+#! Inputs:  []
+#! Outputs: [is_new_account]
+export.is_new_account
+    # the account is new if its nonce is zero
+    # use get_init_nonce so this procedure works correctly even after the account's nonce was
+    # incremented
+    exec.get_init_nonce eq.0
+end
+
 #! Returns a pointer to the end of the core account data section.
 #!
 #! Inputs:  []
