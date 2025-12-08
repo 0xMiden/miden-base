@@ -390,10 +390,10 @@ mod tests {
         MapEntry,
         MapRepresentation,
         StorageValueName,
+        test_package_with_metadata,
     };
     use crate::account::{
         AccountComponent,
-        AccountComponentTemplate,
         AccountType,
         FeltRepresentation,
         StorageEntry,
@@ -562,12 +562,10 @@ mod tests {
         assert_eq!(map_key_template.r#type.as_str(), "word");
 
         let library = Assembler::default().assemble_library([CODE]).unwrap();
-        let template = AccountComponentTemplate::new(component_metadata, library);
-
-        let template_bytes = template.to_bytes();
-        let template_deserialized =
-            AccountComponentTemplate::read_from_bytes(&template_bytes).unwrap();
-        assert_eq!(template, template_deserialized);
+        let metadata_bytes = component_metadata.to_bytes();
+        let metadata_deserialized =
+            AccountComponentMetadata::read_from_bytes(&metadata_bytes).unwrap();
+        assert_eq!(component_metadata, metadata_deserialized);
 
         // Fail to parse because 2800 > u8
         let storage_placeholders = InitStorageData::new(
@@ -586,7 +584,10 @@ mod tests {
             BTreeMap::new(),
         );
 
-        let component = AccountComponent::from_template(&template, &storage_placeholders);
+        let package =
+            test_package_with_metadata("component_with_templates", &library, &component_metadata);
+
+        let component = AccountComponent::from_package(&package, &storage_placeholders);
         assert_matches::assert_matches!(
             component,
             Err(AccountError::AccountComponentTemplateInstantiationError(
@@ -613,7 +614,7 @@ mod tests {
             BTreeMap::new(),
         );
 
-        let component = AccountComponent::from_template(&template, &storage_placeholders).unwrap();
+        let component = AccountComponent::from_package(&package, &storage_placeholders).unwrap();
         assert_eq!(
             component.supported_types(),
             &[AccountType::FungibleFaucet, AccountType::RegularAccountImmutableCode]
@@ -636,7 +637,7 @@ mod tests {
         }
 
         let failed_instantiation =
-            AccountComponent::from_template(&template, &InitStorageData::default());
+            AccountComponent::from_package(&package, &InitStorageData::default());
 
         assert_matches::assert_matches!(
             failed_instantiation,
@@ -684,14 +685,14 @@ mod tests {
         assert_eq!(metadata.storage_entries()[0].name().unwrap().as_str(), "ecdsa_pubkey");
 
         let library = Assembler::default().assemble_library([CODE]).unwrap();
-        let template = AccountComponentTemplate::new(metadata, library);
+        let package = test_package_with_metadata("ecdsa_auth_package", &library, &metadata);
 
         let init_storage = InitStorageData::new(
             [(StorageValueName::new("ecdsa_pubkey").unwrap(), "0x1234".into())],
             BTreeMap::new(),
         );
 
-        let component = AccountComponent::from_template(&template, &init_storage).unwrap();
+        let component = AccountComponent::from_package(&package, &init_storage).unwrap();
         let slot = component.storage_slots().first().expect("missing storage slot");
         match slot {
             StorageSlot::Value(word) => {
