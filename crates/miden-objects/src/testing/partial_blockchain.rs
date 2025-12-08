@@ -51,7 +51,7 @@ impl PartialBlockchain {
 
         let partial_mmr = chain
             .partial_mmr_from_blocks(
-                &block_headers.iter().map(|header| header.block_num()).collect(),
+                &block_headers.iter().map(BlockHeader::block_num).collect(),
                 ref_block,
             )
             .expect("reference block should be in the chain and set of blocks should be valid");

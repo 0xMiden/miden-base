@@ -58,7 +58,7 @@ pub struct BlockHeader {
 }
 
 impl BlockHeader {
-    /// Creates a new block header that is not yet signed by the validator.
+    /// Creates a new block header.
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         version: u32,

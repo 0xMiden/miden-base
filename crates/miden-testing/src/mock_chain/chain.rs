@@ -667,7 +667,7 @@ impl MockChain {
         let block_headers = block_headers_map.values();
         let (_, partial_blockchain) = self.selective_partial_blockchain(
             reference_block,
-            block_headers.map(|header| header.block_num()),
+            block_headers.map(BlockHeader::block_num),
         )?;
 
         let input_notes = InputNotes::new(input_notes)?;

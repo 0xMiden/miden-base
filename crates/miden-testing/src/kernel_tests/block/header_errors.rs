@@ -99,15 +99,13 @@ async fn block_building_fails_on_stale_account_witnesses() -> anyhow::Result<()>
 
     let error = build_block(proposed_block0).unwrap_err();
 
-    match error {
-        ProposedBlockError::StaleAccountTreeRoot { prev_block_account_root, .. } => {
-            assert_eq!(
-                prev_block_account_root,
-                valid_block_inputs.prev_block_header().account_root()
-            );
-        },
-        _ => panic!("expected StaleAccountTreeRoot error, got: {:?}", error),
-    }
+    assert_matches!(
+        error,
+        ProposedBlockError::StaleAccountTreeRoot {
+            prev_block_account_root,
+            ..
+        } if prev_block_account_root == valid_block_inputs.prev_block_header().account_root()
+    );
 
     Ok(())
 }
@@ -138,15 +136,13 @@ async fn block_building_fails_on_stale_nullifier_witnesses() -> anyhow::Result<(
 
     let error = build_block(proposed_block2).unwrap_err();
 
-    match error {
-        ProposedBlockError::StaleNullifierTreeRoot { prev_block_nullifier_root, .. } => {
-            assert_eq!(
-                prev_block_nullifier_root,
-                valid_block_inputs.prev_block_header().nullifier_root()
-            );
-        },
-        _ => panic!("Expected StaleNullifierTreeRoot error, got: {:?}", error),
-    }
+    assert_matches!(
+        error,
+        ProposedBlockError::StaleNullifierTreeRoot {
+          prev_block_nullifier_root,
+          ..
+        } if prev_block_nullifier_root == valid_block_inputs.prev_block_header().nullifier_root()
+    );
 
     Ok(())
 }
@@ -328,14 +324,12 @@ async fn block_building_fails_on_creating_account_with_existing_account_id_prefi
     let err = build_block(block).unwrap_err();
 
     // This should fail when we try to _insert_ the same two prefixes into the partial tree.
-    match err {
+    assert_matches!(
+        err,
         ProposedBlockError::AccountIdPrefixDuplicate {
-            source: AccountTreeError::DuplicateIdPrefix { duplicate_prefix },
-        } => {
-            assert_eq!(duplicate_prefix, new_id.prefix());
-        },
-        _ => panic!("Expected AccountIdPrefixDuplicate error, got: {:?}", err),
-    }
+            source: AccountTreeError::DuplicateIdPrefix { duplicate_prefix }
+        } if duplicate_prefix == new_id.prefix()
+    );
 
     Ok(())
 }
@@ -426,14 +420,12 @@ async fn block_building_fails_on_creating_account_with_duplicate_account_id_pref
     let err = build_block(block).unwrap_err();
 
     // This should fail when we try to _track_ the same two prefixes in the partial tree.
-    match err {
+    assert_matches!(
+        err,
         ProposedBlockError::AccountWitnessTracking {
-            source: AccountTreeError::DuplicateIdPrefix { duplicate_prefix },
-        } => {
-            assert_eq!(duplicate_prefix, id0.prefix());
-        },
-        _ => panic!("Expected AccountWitnessTracking error, got: {:?}", err),
-    }
+            source: AccountTreeError::DuplicateIdPrefix { duplicate_prefix }
+        } if duplicate_prefix == id0.prefix()
+    );
 
     Ok(())
 }
