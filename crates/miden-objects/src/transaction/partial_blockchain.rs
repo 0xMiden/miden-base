@@ -277,12 +277,12 @@ impl Default for PartialBlockchain {
 mod tests {
     use assert_matches::assert_matches;
     use miden_core::utils::{Deserializable, Serializable};
+    use miden_crypto::dsa::ecdsa_k256_keccak::SecretKey;
 
     use super::PartialBlockchain;
     use crate::alloc::vec::Vec;
     use crate::block::{BlockHeader, BlockNumber, FeeParameters};
     use crate::crypto::merkle::{Mmr, PartialMmr};
-    use crate::ecdsa_signer::{EcdsaSigner, LocalEcdsaSigner};
     use crate::testing::account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET;
     use crate::{PartialBlockchainError, Word};
 
@@ -427,8 +427,7 @@ mod tests {
         let fee_parameters =
             FeeParameters::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET.try_into().unwrap(), 500)
                 .expect("native asset ID should be a fungible faucet ID");
-        let signer = LocalEcdsaSigner::dummy();
-        let public_key = signer.public_key();
+        let public_key = SecretKey::new().public_key();
 
         BlockHeader::new(
             0,

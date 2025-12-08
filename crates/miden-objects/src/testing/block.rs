@@ -1,3 +1,4 @@
+use miden_crypto::dsa::ecdsa_k256_keccak::SecretKey;
 use miden_crypto::merkle::Smt;
 #[cfg(not(target_family = "wasm"))]
 use winter_rand_utils::rand_value;
@@ -6,7 +7,6 @@ use crate::Word;
 use crate::account::Account;
 use crate::block::account_tree::{AccountTree, account_id_to_smt_key};
 use crate::block::{BlockHeader, BlockNumber, FeeParameters};
-use crate::ecdsa_signer::{EcdsaSigner, LocalEcdsaSigner};
 use crate::testing::account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET;
 
 impl BlockHeader {
@@ -34,7 +34,7 @@ impl BlockHeader {
         let fee_parameters =
             FeeParameters::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET.try_into().unwrap(), 500)
                 .expect("native asset ID should be a fungible faucet ID");
-        let public_key = LocalEcdsaSigner::dummy().public_key();
+        let public_key = SecretKey::new().public_key();
 
         #[cfg(not(target_family = "wasm"))]
         let (

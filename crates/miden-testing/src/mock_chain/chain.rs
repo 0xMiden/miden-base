@@ -21,8 +21,7 @@ use miden_objects::block::{
     ProposedBlock,
     ProvenBlock,
 };
-use miden_objects::crypto::dsa::ecdsa_k256_keccak::Signature;
-use miden_objects::ecdsa_signer::{EcdsaSigner, LocalEcdsaSigner};
+use miden_objects::crypto::dsa::ecdsa_k256_keccak::{SecretKey, Signature};
 use miden_objects::note::{Note, NoteHeader, NoteId, NoteInclusionProof, Nullifier};
 use miden_objects::transaction::{
     ExecutedTransaction,
@@ -188,7 +187,8 @@ pub struct MockChain {
     /// simplify transaction creation.
     account_authenticators: BTreeMap<AccountId, AccountAuthenticator>,
 
-    signer: LocalEcdsaSigner,
+    /// Key representing validator key that would usually be used to sign blocks.
+    secret_key: SecretKey,
 }
 
 impl MockChain {
@@ -220,7 +220,7 @@ impl MockChain {
         genesis_block: ProvenBlock,
         account_tree: AccountTree,
         account_authenticators: BTreeMap<AccountId, AccountAuthenticator>,
-        signer: LocalEcdsaSigner,
+        secret_key: SecretKey,
     ) -> anyhow::Result<Self> {
         let mut chain = MockChain {
             chain: Blockchain::default(),
@@ -231,7 +231,7 @@ impl MockChain {
             committed_notes: BTreeMap::new(),
             committed_accounts: BTreeMap::new(),
             account_authenticators,
-            signer,
+            secret_key,
         };
 
         // We do not have to apply the tree changes, because the account tree is already initialized
@@ -997,7 +997,7 @@ impl MockChain {
             header.clone(),
             inputs,
         )?;
-        let signature = self.signer.sign(header.commitment());
+        let signature = self.secret_key.sign(header.commitment());
         Ok(ProvenBlock::new_unchecked(header, signature, body, block_proof))
     }
 }
@@ -1021,7 +1021,7 @@ impl Serializable for MockChain {
         self.committed_accounts.write_into(target);
         self.committed_notes.write_into(target);
         self.account_authenticators.write_into(target);
-        self.signer.write_into(target);
+        self.secret_key.write_into(target);
     }
 }
 
@@ -1036,7 +1036,7 @@ impl Deserializable for MockChain {
         let committed_notes = BTreeMap::<NoteId, MockChainNote>::read_from(source)?;
         let account_authenticators =
             BTreeMap::<AccountId, AccountAuthenticator>::read_from(source)?;
-        let signer = LocalEcdsaSigner::read_from(source)?;
+        let secret_key = SecretKey::read_from(source)?;
 
         Ok(Self {
             chain,
@@ -1047,7 +1047,7 @@ impl Deserializable for MockChain {
             committed_notes,
             committed_accounts,
             account_authenticators,
-            signer,
+            secret_key,
         })
     }
 }
