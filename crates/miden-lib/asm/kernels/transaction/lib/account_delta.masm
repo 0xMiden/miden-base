@@ -213,14 +213,14 @@ end
 #!
 #! Inputs:  [slot_idx, RATE, RATE, PERM]
 #! Outputs: [RATE, RATE, PERM]
+#!
+#! Locals:
+#! - 0: name_id_suffix
+#! - 1: name_id_prefix
+#! - 2: has_next
+#! - 3: iter
+#! - 4: num_changed_entries
 proc.update_map_slot_delta.5
-    # Locals:
-    # - 0: name_id_suffix
-    # - 1: name_id_prefix
-    # - 2: has_next
-    # - 3: iter
-    # - 4: num_changed_entries
-
     # initialize num_changed_entries = 0
     # this is necessary because this procedure can be called multiple times and the second
     # invocation shouldn't reuse the first invocation's value
