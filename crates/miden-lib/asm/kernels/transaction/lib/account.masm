@@ -192,7 +192,7 @@ const.ACCOUNT_PUSH_PROCEDURE_INDEX_EVENT=event("miden::account::push_procedure_i
 #!
 #! Where:
 #! - faucet_storage_data_slot is the account storage slot at which faucet data is stored.
-export.get_faucet_storage_data_slot
+export.get_faucet_storage_slot_id
     push.FAUCET_STORAGE_DATA_SLOT[0..2]
 end
 
@@ -1545,7 +1545,7 @@ end
 #! - is_faucet_storage_data_slot is a boolean value indicating whether the provided slot is the
 #!   reserved faucet data slot.
 export.is_faucet_storage_data_slot
-    exec.get_faucet_storage_data_slot
+    exec.get_faucet_storage_slot_id
     # => [faucet_name_id_prefix, faucet_name_id_suffix, name_id_prefix, name_id_suffix]
 
     movup.2 eq
