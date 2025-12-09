@@ -2,7 +2,10 @@ use crate::Word;
 use crate::account::storage::slot::SlotNameId;
 use crate::account::{SlotName, StorageMap, StorageSlot, StorageSlotType};
 
-/// A [`StorageSlot`] identified by a [`SlotName`].
+/// An individual storage slot in [`AccountStorage`](crate::account::AccountStorage).
+///
+/// This consists of a [`SlotName`] that uniquely identifies the slot and its [`StorageSlot`]
+/// content.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NamedStorageSlot {
     /// The name of the storage slot.
