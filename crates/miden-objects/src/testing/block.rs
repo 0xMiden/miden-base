@@ -8,7 +8,7 @@ use crate::account::Account;
 use crate::block::account_tree::{AccountTree, account_id_to_smt_key};
 use crate::block::{BlockHeader, BlockNumber, FeeParameters};
 use crate::testing::account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET;
-use crate::testing::random_signer::RandomEcdsaSigner;
+use crate::testing::random_signer::RandomBlockSigner;
 
 impl BlockHeader {
     /// Creates a mock block. The account tree is formed from the provided `accounts`,

@@ -1,26 +1,26 @@
-use miden_core::Word;
 use miden_crypto::dsa::ecdsa_k256_keccak::SecretKey;
 
+use crate::block::BlockHeader;
 use crate::crypto::dsa::ecdsa_k256_keccak as ecdsa;
 
-// ECDSA SIGNER
+// BLOCK SIGNER
 // ================================================================================================
 
-/// Trait which abstracts the signing of ECDSA signatures. Used for signing block headers.
+/// Trait which abstracts the signing of block headers with ECDSA signatures.
 ///
 /// Production-level implementations will involve some sort of secure remote backend. The trait also
 /// allows for testing with local and ephemeral signers.
-pub trait EcdsaSigner {
-    fn sign(&self, message: Word) -> ecdsa::Signature;
+pub trait BlockSigner {
+    fn sign(&self, header: &BlockHeader) -> ecdsa::Signature;
     fn public_key(&self) -> ecdsa::PublicKey;
 }
 
-// SECRET KEY SIGNER
+// SECRET KEY BLOCK SIGNER
 // ================================================================================================
 
-impl EcdsaSigner for SecretKey {
-    fn sign(&self, message: Word) -> ecdsa::Signature {
-        self.sign(message)
+impl BlockSigner for SecretKey {
+    fn sign(&self, header: &BlockHeader) -> ecdsa::Signature {
+        self.sign(header.commitment())
     }
 
     fn public_key(&self) -> ecdsa::PublicKey {

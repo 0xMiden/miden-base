@@ -3,16 +3,17 @@
 
 use miden_crypto::dsa::ecdsa_k256_keccak::SecretKey;
 
-use crate::ecdsa_signer::EcdsaSigner;
+use crate::block::BlockSigner;
 
-pub trait RandomEcdsaSigner: EcdsaSigner {
+/// An insecure, random block signer for testing purposes.
+pub trait RandomBlockSigner: BlockSigner {
     fn random() -> Self;
 }
 
-// NO STD SECRET KEY SIGNER
+// NO STD SECRET KEY BLOCK SIGNER
 // ================================================================================================
 
-impl RandomEcdsaSigner for SecretKey {
+impl RandomBlockSigner for SecretKey {
     fn random() -> Self {
         use rand::SeedableRng;
         use rand_chacha::ChaCha20Rng;
