@@ -23,9 +23,9 @@ use crate::account::{
     AccountStorage,
     AccountType,
     StorageSlotId,
-    // StorageValueName,
-    // StorageValueNameError,
-    // TemplateTypeError,
+    StorageValueName,
+    StorageValueNameError,
+    TemplateTypeError,
     StorageSlotName,
 };
 use crate::address::AddressType;
@@ -46,7 +46,6 @@ use crate::{
 // ACCOUNT COMPONENT TEMPLATE ERROR
 // ================================================================================================
 
-/*
 #[derive(Debug, Error)]
 pub enum AccountComponentTemplateError {
     #[error("storage slot name `{0}` is duplicate")]
@@ -82,7 +81,6 @@ pub enum AccountComponentTemplateError {
     #[error("error trying to deserialize from toml")]
     TomlSerializationError(#[source] toml::ser::Error),
 }
-*/
 
 // ACCOUNT ERROR
 // ================================================================================================
@@ -111,8 +109,8 @@ pub enum AccountError {
     AccountComponentMastForestMergeError(#[source] MastForestError),
     #[error("procedure with MAST root {0} is present in multiple account components")]
     AccountComponentDuplicateProcedureRoot(Word),
-    // #[error("failed to create account component")]
-    // AccountComponentTemplateInstantiationError(#[source] AccountComponentTemplateError),
+    #[error("failed to create account component")]
+    AccountComponentTemplateInstantiationError(#[source] AccountComponentTemplateError),
     #[error("account component contains multiple authentication procedures")]
     AccountComponentMultipleAuthProcedures,
     #[error("failed to update asset vault")]

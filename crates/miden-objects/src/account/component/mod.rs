@@ -3,9 +3,10 @@ use alloc::vec::Vec;
 
 use miden_assembly::{Assembler, Library, Parse};
 
-// TODO(named_slots): Refactor templates.
-// mod template;
-// pub use template::*;
+mod template;
+use miden_mast_package::{MastArtifact, Package};
+pub use template::*;
+
 use crate::account::{AccountType, StorageSlot};
 use crate::assembly::QualifiedProcedureName;
 use crate::{AccountError, MastForest, Word};
@@ -88,7 +89,6 @@ impl AccountComponent {
         Self::new(library, storage_slots)
     }
 
-    /*
     /// Creates an [`AccountComponent`] from a [`Package`] using [`InitStorageData`].
     ///
     /// This method provides type safety by leveraging the component's metadata to validate
@@ -160,7 +160,6 @@ impl AccountComponent {
         Ok(AccountComponent::new(library.clone(), storage_slots)?
             .with_supported_types(account_component_metadata.supported_types().clone()))
     }
-    */
 
     // ACCESSORS
     // --------------------------------------------------------------------------------------------
@@ -256,8 +255,6 @@ impl From<AccountComponent> for Library {
     }
 }
 
-// TODO(named_slots): Reactivate tests once template is refactored.
-/*
 #[cfg(test)]
 mod tests {
     use alloc::collections::BTreeSet;
@@ -266,7 +263,7 @@ mod tests {
 
     use miden_assembly::Assembler;
     use miden_core::utils::Serializable;
-    use miden_mast_package::{MastArtifact, Package, PackageManifest, Section};
+    use miden_mast_package::{MastArtifact, Package, PackageManifest, Section, SectionId};
     use semver::Version;
 
     use super::*;
@@ -371,4 +368,3 @@ mod tests {
         assert!(error_msg.contains("package does not contain account component metadata"));
     }
 }
-*/

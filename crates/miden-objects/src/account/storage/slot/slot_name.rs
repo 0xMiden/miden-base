@@ -4,8 +4,9 @@ use core::fmt::Display;
 
 use miden_core::utils::hash_string_to_word;
 
+use crate::account::StorageValueName;
 use crate::account::storage::slot::StorageSlotId;
-use crate::errors::SlotNameError;
+use crate::errors::{AccountComponentTemplateError, SlotNameError};
 use crate::utils::serde::{ByteWriter, Deserializable, DeserializationError, Serializable};
 
 /// The name of an account storage slot.
@@ -35,7 +36,8 @@ use crate::utils::serde::{ByteWriter, Deserializable, DeserializationError, Seri
 /// - Each component must only consist of the characters `a` to `z`, `A` to `Z`, `0` to `9` or `_`
 ///   (underscore).
 /// - Each component must not start with an underscore.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+// TODO: Validate slot name during serde deserialization.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
 pub struct StorageSlotName {
     name: Cow<'static, str>,
 }
@@ -252,6 +254,14 @@ impl Deserializable for StorageSlotName {
             .and_then(|name| {
                 Self::new(name).map_err(|err| DeserializationError::InvalidValue(err.to_string()))
             })
+    }
+}
+
+impl TryFrom<StorageValueName> for StorageSlotName {
+    type Error = AccountComponentTemplateError;
+
+    fn try_from(value_name: StorageValueName) -> Result<Self, Self::Error> {
+        Ok(StorageSlotName::new(String::from(value_name)).expect("TODO: map error"))
     }
 }
 

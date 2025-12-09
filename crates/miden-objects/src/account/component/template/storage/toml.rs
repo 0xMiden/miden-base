@@ -23,7 +23,7 @@ use super::{
 };
 use crate::account::component::FieldIdentifier;
 use crate::account::component::template::storage::placeholder::{TEMPLATE_REGISTRY, TemplateFelt};
-use crate::account::{AccountComponentMetadata, StorageValueName};
+use crate::account::{AccountComponentMetadata, StorageSlotName, StorageValueName};
 use crate::errors::AccountComponentTemplateError;
 
 // ACCOUNT COMPONENT METADATA TOML FROM/TO
@@ -290,8 +290,7 @@ enum StorageValues {
 struct RawStorageEntry {
     #[serde(flatten)]
     identifier: Option<FieldIdentifier>,
-    slot: Option<u8>,
-    slots: Option<Vec<u8>>,
+    size: Option<u8>,
     #[serde(rename = "type")]
     word_type: Option<TemplateType>,
     value: Option<[FeltRepresentation; 4]>,
@@ -301,23 +300,20 @@ struct RawStorageEntry {
 impl From<StorageEntry> for RawStorageEntry {
     fn from(entry: StorageEntry) -> Self {
         match entry {
-            StorageEntry::Value { slot, word_entry } => match word_entry {
+            StorageEntry::Value { word_entry } => match word_entry {
                 WordRepresentation::Value { identifier, value } => RawStorageEntry {
-                    slot: Some(slot),
                     identifier,
                     value: Some(value),
                     ..Default::default()
                 },
                 WordRepresentation::Template { identifier, r#type } => RawStorageEntry {
-                    slot: Some(slot),
                     identifier: Some(identifier),
                     word_type: Some(r#type),
                     ..Default::default()
                 },
             },
-            StorageEntry::Map { slot, map } => match map {
+            StorageEntry::Map { map } => match map {
                 MapRepresentation::Value { identifier, entries } => RawStorageEntry {
-                    slot: Some(slot),
                     identifier: Some(FieldIdentifier {
                         name: identifier.name,
                         description: identifier.description,
@@ -326,7 +322,6 @@ impl From<StorageEntry> for RawStorageEntry {
                     ..Default::default()
                 },
                 MapRepresentation::Template { identifier } => RawStorageEntry {
-                    slot: Some(slot),
                     identifier: Some(FieldIdentifier {
                         name: identifier.name,
                         description: identifier.description,
@@ -335,11 +330,10 @@ impl From<StorageEntry> for RawStorageEntry {
                     ..Default::default()
                 },
             },
-            StorageEntry::MultiSlot { slots, word_entries } => match word_entries {
+            StorageEntry::MultiSlot { size, word_entries } => match word_entries {
                 MultiWordRepresentation::Value { identifier, values } => RawStorageEntry {
-                    slot: None,
                     identifier: Some(identifier),
-                    slots: Some(slots.collect()),
+                    size: Some(size),
                     values: Some(StorageValues::Words(values)),
                     ..Default::default()
                 },
@@ -367,10 +361,8 @@ impl<'de> Deserialize<'de> for StorageEntry {
 
         if let Some(word_entry) = raw.value {
             // If a value was provided, this is a WordRepresentation::Value entry
-            let slot = raw.slot.ok_or_else(|| missing_field_for("slot", "value entry"))?;
             let identifier = raw.identifier;
             Ok(StorageEntry::Value {
-                slot,
                 word_entry: WordRepresentation::Value { value: word_entry, identifier },
             })
         } else if let Some(StorageValues::MapEntries(map_entries)) = raw.values {
@@ -378,7 +370,6 @@ impl<'de> Deserialize<'de> for StorageEntry {
             let identifier =
                 raw.identifier.ok_or_else(|| missing_field_for("identifier", "map entry"))?;
             let name = identifier.name;
-            let slot = raw.slot.ok_or_else(|| missing_field_for("slot", "map entry"))?;
             if let Some(word_type) = raw.word_type.clone()
                 && word_type != TemplateType::storage_map()
             {
@@ -390,13 +381,12 @@ impl<'de> Deserialize<'de> for StorageEntry {
             if let Some(desc) = identifier.description {
                 map = map.with_description(desc);
             }
-            Ok(StorageEntry::Map { slot, map })
+            Ok(StorageEntry::Map { map })
         } else if let Some(word_type) = raw.word_type.clone()
             && word_type == TemplateType::storage_map()
         {
             let identifier =
                 raw.identifier.ok_or_else(|| missing_field_for("identifier", "map entry"))?;
-            let slot = raw.slot.ok_or_else(|| missing_field_for("slot", "map entry"))?;
             let FieldIdentifier { name, description } = identifier;
 
             // If values is specified (even if empty), create a value map.
@@ -412,36 +402,21 @@ impl<'de> Deserialize<'de> for StorageEntry {
             if let Some(desc) = description {
                 map = map.with_description(desc);
             }
-            Ok(StorageEntry::Map { slot, map })
+            Ok(StorageEntry::Map { map })
         } else if let Some(StorageValues::Words(values)) = raw.values {
             let identifier = raw
                 .identifier
                 .ok_or_else(|| missing_field_for("identifier", "multislot entry"))?;
+            let size = raw.size.ok_or_else(|| missing_field_for("size", "multislot entry"))?;
 
-            let mut slots =
-                raw.slots.ok_or_else(|| missing_field_for("slots", "multislot entry"))?;
-
-            // Sort so we can check contiguity
-            slots.sort_unstable();
-            for pair in slots.windows(2) {
-                if pair[1] != pair[0] + 1 {
-                    return Err(serde::de::Error::custom(format!(
-                        "`slots` in the `{}` storage entry are not contiguous",
-                        identifier.name
-                    )));
-                }
-            }
-            let start = slots[0];
-            let end = slots.last().expect("checked validity") + 1;
-            Ok(StorageEntry::new_multislot(identifier, start..end, values))
+            Ok(StorageEntry::new_multislot(identifier, size, values))
         } else if let Some(word_type) = raw.word_type {
             // If a type was provided instead, this is a WordRepresentation::Template entry
-            let slot = raw.slot.ok_or_else(|| missing_field_for("slot", "single-slot entry"))?;
             let identifier = raw
                 .identifier
                 .ok_or_else(|| missing_field_for("identifier", "single-slot entry"))?;
             let word_entry = WordRepresentation::Template { r#type: word_type, identifier };
-            Ok(StorageEntry::Value { slot, word_entry })
+            Ok(StorageEntry::Value { word_entry })
         } else {
             Err(D::Error::custom("placeholder storage entries require the `type` field"))
         }

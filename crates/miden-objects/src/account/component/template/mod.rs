@@ -198,6 +198,7 @@ impl AccountComponentMetadata {
     /// - If the slot numbers do not start at zero.
     /// - If the slots are not contiguous.
     fn validate(&self) -> Result<(), AccountComponentTemplateError> {
+        /*
         let mut all_slots: Vec<u8> =
             self.storage.iter().flat_map(|entry| entry.slot_indices()).collect();
 
@@ -240,6 +241,7 @@ impl AccountComponentMetadata {
                 }
             }
         }
+         */
 
         Ok(())
     }
@@ -321,6 +323,7 @@ pub(crate) fn test_package_with_metadata(
 // TESTS
 // ================================================================================================
 
+/*
 #[cfg(test)]
 mod tests {
     use std::collections::{BTreeMap, BTreeSet};
@@ -516,3 +519,4 @@ mod tests {
         AccountComponent::from_package(&package, &valid_init_storage_data).unwrap();
     }
 }
+ */

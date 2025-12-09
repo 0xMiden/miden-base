@@ -10,6 +10,7 @@ use miden_crypto::dsa::{ecdsa_k256_keccak, rpo_falcon512};
 use miden_processor::DeserializationError;
 use thiserror::Error;
 
+use crate::account::StorageSlotName;
 use crate::asset::TokenSymbol;
 use crate::utils::sync::LazyLock;
 
@@ -101,8 +102,9 @@ impl StorageValueName {
         if segment.is_empty() {
             return Err(StorageValueNameError::EmptySegment);
         }
+
         if let Some(offending_char) =
-            segment.chars().find(|&c| !(c.is_ascii_alphanumeric() || c == '_' || c == '-'))
+            segment.chars().find(|&c| !(c.is_ascii_alphanumeric() || c == '_' || c == ':'))
         {
             return Err(StorageValueNameError::InvalidCharacter {
                 part: segment.to_string(),
@@ -117,6 +119,12 @@ impl StorageValueName {
 impl Display for StorageValueName {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(self.as_str())
+    }
+}
+
+impl From<StorageValueName> for String {
+    fn from(value_name: StorageValueName) -> Self {
+        value_name.fully_qualified_name
     }
 }
 
