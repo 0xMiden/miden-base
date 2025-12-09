@@ -111,7 +111,7 @@ impl AccountStorageHeader {
 
     /// Returns a slot contained in the storage header at a given index.
     ///
-    /// Returns `None` if a slot with the provided name ID does not exist.
+    /// Returns `None` if a slot with the provided slot ID does not exist.
     pub fn find_slot_header_by_name(
         &self,
         slot_name: &SlotName,
@@ -122,7 +122,7 @@ impl AccountStorageHeader {
 
     /// Returns a slot contained in the storage header at a given index.
     ///
-    /// Returns `None` if a slot with the provided name ID does not exist.
+    /// Returns `None` if a slot with the provided slot ID does not exist.
     pub fn find_slot_header_by_id(
         &self,
         slot_id: SlotId,

@@ -283,7 +283,7 @@ end
 #! - VALUE is the value of the item.
 #!
 #! Panics if:
-#! - a slot with the provided name ID does not exist in account storage.
+#! - a slot with the provided slot ID does not exist in account storage.
 #!
 #! Invocation: exec
 export.get_item
@@ -317,7 +317,7 @@ end
 #! - INIT_VALUE is the initial value of the item at the beginning of the transaction.
 #!
 #! Panics if:
-#! - a slot with the provided name ID does not exist in account storage.
+#! - a slot with the provided slot ID does not exist in account storage.
 #!
 #! Invocation: exec
 export.get_initial_item
@@ -352,7 +352,7 @@ end
 #! - VALUE is the value of the item.
 #!
 #! Panics if:
-#! - a slot with the provided name ID does not exist in account storage.
+#! - a slot with the provided slot ID does not exist in account storage.
 #! - the slot item at index is not a map.
 #!
 #! Invocation: exec
@@ -385,7 +385,7 @@ end
 #! - INIT_VALUE is the initial value of the item at the beginning of the transaction.
 #!
 #! Panics if:
-#! - a slot with the provided name ID does not exist in account storage.
+#! - a slot with the provided slot ID does not exist in account storage.
 #! - the slot item at index is not a map.
 #!
 #! Invocation: exec

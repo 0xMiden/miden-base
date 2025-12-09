@@ -124,9 +124,9 @@ end
 #! - OLD_VALUE is the previous value of the item.
 #!
 #! Panics if:
-#! - a slot with the provided name ID does not exist in account storage.
+#! - a slot with the provided slot ID does not exist in account storage.
 #! - the invocation of this procedure does not originate from the native account.
-#! - the native account is a faucet and the provided name ID points to the reserved faucet storage slot.
+#! - the native account is a faucet and the provided slot ID points to the reserved faucet storage slot.
 #!
 #! Invocation: exec
 export.set_item
@@ -160,7 +160,7 @@ end
 #! - OLD_MAP_VALUE is the old value at KEY.
 #!
 #! Panics if:
-#! - a slot with the provided name ID does not exist in account storage.
+#! - a slot with the provided slot ID does not exist in account storage.
 #! - the requested storage slot type is not map.
 #! - the procedure is called from a non-account context.
 #! - the invocation of this procedure does not originate from the native account.

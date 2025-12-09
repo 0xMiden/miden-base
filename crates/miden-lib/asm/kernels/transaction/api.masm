@@ -339,7 +339,7 @@ end
 #! - VALUE is the value of the item.
 #!
 #! Panics if:
-#! - a slot with the provided name ID does not exist in account storage.
+#! - a slot with the provided slot ID does not exist in account storage.
 #!
 #! Invocation: dynexec
 export.account_get_item
@@ -368,9 +368,9 @@ end
 #! - OLD_VALUE is the previous value of the item.
 #!
 #! Panics if:
-#! - a slot with the provided name ID does not exist in account storage.
+#! - a slot with the provided slot ID does not exist in account storage.
 #! - the invocation of this procedure does not originate from the native account.
-#! - the native account is a faucet and the provided name ID points to the reserved faucet storage slot.
+#! - the native account is a faucet and the provided slot ID points to the reserved faucet storage slot.
 #!
 #! Invocation: dynexec
 export.account_set_item
@@ -411,7 +411,7 @@ end
 #! - VALUE is the value of the map item at KEY.
 #!
 #! Panics if:
-#! - a slot with the provided name ID does not exist in account storage.
+#! - a slot with the provided slot ID does not exist in account storage.
 #! - the requested storage slot type is not map.
 #!
 #! Invocation: dynexec
@@ -436,7 +436,7 @@ end
 #! - INIT_VALUE is the initial value of the item at the beginning of the transaction.
 #!
 #! Panics if:
-#! - a slot with the provided name ID does not exist in account storage.
+#! - a slot with the provided slot ID does not exist in account storage.
 #!
 #! Invocation: dynexec
 export.account_get_initial_item
@@ -466,7 +466,7 @@ end
 #! - INIT_VALUE is the initial value of the map item at KEY at the beginning of the transaction.
 #!
 #! Panics if:
-#! - a slot with the provided name ID does not exist in account storage.
+#! - a slot with the provided slot ID does not exist in account storage.
 #! - the requested storage slot type is not map.
 #!
 #! Invocation: dynexec
@@ -496,7 +496,7 @@ end
 #! - OLD_MAP_ROOT is the root of the old map before insertion
 #!
 #! Panics if:
-#! - a slot with the provided name ID does not exist in account storage.
+#! - a slot with the provided slot ID does not exist in account storage.
 #! - the requested storage slot type is not map.
 #! - the procedure is called from a non-account context.
 #! - the invocation of this procedure does not originate from the native account.

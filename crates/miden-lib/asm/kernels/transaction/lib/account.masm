@@ -441,7 +441,7 @@ end
 #! - VALUE is the value of the item.
 #!
 #! Panics if:
-#! - a slot with the provided name ID does not exist in account storage.
+#! - a slot with the provided slot ID does not exist in account storage.
 export.get_item
     # get account storage slots section offset
     exec.memory::get_account_storage_slots_section_ptr
@@ -467,7 +467,7 @@ end
 #! - slot_type is the type of the slot.
 #!
 #! Panics if:
-#! - a slot with the provided name ID does not exist in account storage.
+#! - a slot with the provided slot ID does not exist in account storage.
 export.get_typed_item
     # get account storage slots section offset
     exec.memory::get_account_storage_slots_section_ptr
@@ -495,7 +495,7 @@ end
 #! - INIT_VALUE is the initial value of the item at the beginning of the transaction.
 #!
 #! Panics if:
-#! - a slot with the provided name ID does not exist in account storage.
+#! - a slot with the provided slot ID does not exist in account storage.
 export.get_initial_item
     # get account initial storage slots section offset
     exec.memory::get_account_initial_storage_slots_ptr
@@ -521,7 +521,7 @@ end
 #! - OLD_VALUE is the previous value of the item.
 #!
 #! Panics if:
-#! - a slot with the provided name ID does not exist in account storage.
+#! - a slot with the provided slot ID does not exist in account storage.
 #! - the storage slot type is not value.
 export.set_item
     emit.ACCOUNT_STORAGE_BEFORE_SET_ITEM_EVENT
@@ -572,7 +572,7 @@ end
 #! - VALUE is the value of the map item at KEY.
 #!
 #! Panics if:
-#! - a slot with the provided name ID does not exist in account storage.
+#! - a slot with the provided slot ID does not exist in account storage.
 #! - the requested storage slot type is not map.
 export.get_map_item
     exec.memory::get_account_storage_slots_section_ptr
@@ -593,7 +593,7 @@ end
 #! - INIT_VALUE is the initial value of the map item at KEY at the beginning of the transaction.
 #!
 #! Panics if:
-#! - a slot with the provided name ID does not exist in account storage.
+#! - a slot with the provided slot ID does not exist in account storage.
 #! - the requested storage slot type is not map.
 export.get_initial_map_item
     exec.memory::get_account_initial_storage_slots_ptr
@@ -617,7 +617,7 @@ end
 #! - OLD_MAP_ROOT is the root of the old map before insertion
 #!
 #! Panics if:
-#! - a slot with the provided name ID does not exist in account storage.
+#! - a slot with the provided slot ID does not exist in account storage.
 #! - the storage slot type is not map.
 #! - no map with the root of the slot is found.
 export.set_map_item
@@ -1592,7 +1592,7 @@ end
 #! - OLD_MAP_ROOT is the root of the old map before insertion
 #!
 #! Panics if:
-#! - a slot with the provided name ID does not exist in account storage.
+#! - a slot with the provided slot ID does not exist in account storage.
 #! - no map with the root of the slot is found.
 #!
 #! Locals:
@@ -1691,7 +1691,7 @@ end
 #! - VALUE is the value of the map item at KEY.
 #!
 #! Panics if:
-#! - a slot with the provided name ID does not exist in account storage.
+#! - a slot with the provided slot ID does not exist in account storage.
 #! - the requested storage slot type is not map.
 proc.get_map_item_raw
     exec.find_storage_slot
@@ -1739,7 +1739,7 @@ end
 #!   the first two felts of the hashed slot name.
 #!
 #! Panics if:
-#! - a slot with the provided name ID does not exist in account storage.
+#! - a slot with the provided slot ID does not exist in account storage.
 proc.find_storage_slot
     # construct the start and end pointers of the storage slot section in which we will search
     dup exec.memory::get_num_storage_slots mul.ACCOUNT_STORAGE_SLOT_DATA_LENGTH add
