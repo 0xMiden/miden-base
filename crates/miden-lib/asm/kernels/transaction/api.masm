@@ -334,7 +334,7 @@ end
 #! Outputs: [VALUE, pad(12)]
 #!
 #! Where:
-#! - slot_id_{prefix, suffix} are the prefix and suffix felts of the name identifier, which are
+#! - slot_id_{prefix, suffix} are the prefix and suffix felts of the slot identifier, which are
 #!   the first two felts of the hashed slot name.
 #! - VALUE is the value of the item.
 #!
@@ -362,7 +362,7 @@ end
 #! Outputs: [OLD_VALUE, pad(12)]
 #!
 #! Where:
-#! - slot_id_{prefix, suffix} are the prefix and suffix felts of the name identifier, which are
+#! - slot_id_{prefix, suffix} are the prefix and suffix felts of the slot identifier, which are
 #!   the first two felts of the hashed slot name.
 #! - VALUE is the value to set.
 #! - OLD_VALUE is the previous value of the item.
@@ -405,7 +405,7 @@ end
 #! Outputs: [VALUE, pad(12)]
 #!
 #! Where:
-#! - slot_id_{prefix, suffix} are the prefix and suffix felts of the name identifier, which are
+#! - slot_id_{prefix, suffix} are the prefix and suffix felts of the slot identifier, which are
 #!   the first two felts of the hashed slot name.
 #!    - the slot must point to the root of the storage map.
 #! - VALUE is the value of the map item at KEY.
@@ -431,7 +431,7 @@ end
 #! Outputs: [INIT_VALUE, pad(12)]
 #!
 #! Where:
-#! - slot_id_{prefix, suffix} are the prefix and suffix felts of the name identifier, which are
+#! - slot_id_{prefix, suffix} are the prefix and suffix felts of the slot identifier, which are
 #!   the first two felts of the hashed slot name.
 #! - INIT_VALUE is the initial value of the item at the beginning of the transaction.
 #!
@@ -460,7 +460,7 @@ end
 #! Outputs: [INIT_VALUE, pad(12)]
 #!
 #! Where:
-#! - slot_id_{prefix, suffix} are the prefix and suffix felts of the name identifier, which are
+#! - slot_id_{prefix, suffix} are the prefix and suffix felts of the slot identifier, which are
 #!   the first two felts of the hashed slot name.
 #!    - the slot must point to the root of the storage map.
 #! - INIT_VALUE is the initial value of the map item at KEY at the beginning of the transaction.
@@ -487,7 +487,7 @@ end
 #! Outputs: [OLD_MAP_ROOT, OLD_MAP_VALUE, pad(8)]
 #!
 #! Where:
-#! - slot_id_{prefix, suffix} are the prefix and suffix felts of the name identifier, which are
+#! - slot_id_{prefix, suffix} are the prefix and suffix felts of the slot identifier, which are
 #!   the first two felts of the hashed slot name.
 #!    - the slot must point to the root of the storage map.
 #! - NEW_VALUE is the value of the new map item for the respective KEY.

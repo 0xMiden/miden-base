@@ -118,7 +118,7 @@ end
 #! Outputs: [OLD_VALUE]
 #!
 #! Where:
-#! - slot_id_{prefix, suffix} are the prefix and suffix felts of the name identifier, which are
+#! - slot_id_{prefix, suffix} are the prefix and suffix felts of the slot identifier, which are
 #!   the first two felts of the hashed slot name.
 #! - VALUE is the value to set.
 #! - OLD_VALUE is the previous value of the item.
@@ -151,7 +151,7 @@ end
 #! Outputs: [OLD_MAP_ROOT, OLD_MAP_VALUE]
 #!
 #! Where:
-#! - slot_id_{prefix, suffix} are the prefix and suffix felts of the name identifier, which are
+#! - slot_id_{prefix, suffix} are the prefix and suffix felts of the slot identifier, which are
 #!   the first two felts of the hashed slot name.
 #!    - the slot must point to the root of the storage map.
 #! - KEY is the key to set at VALUE.
