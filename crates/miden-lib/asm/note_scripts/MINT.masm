@@ -53,7 +53,6 @@ const.ERR_MINT_WRONG_NUMBER_OF_INPUTS="MINT script expects exactly 8 inputs for 
 begin
     dropw
     # => [pad(16)]
-
     # Load note inputs into memory starting at address 0
     push.0 exec.active_note::get_inputs
     # => [total_inputs, inputs_ptr, pad(16)]
@@ -67,34 +66,35 @@ begin
 
     if.true
         # public output note creation
+        # => [total_inputs, inputs_ptr, pad(16)]
 
-        movdn.5 drop
-        # => [EMPTY_WORD, total_inputs, pad(16)]
+        movdn.9 drop
+        # => [EMPTY_WORD, EMPTY_WORD, total_inputs, pad(8)]
 
         mem_loadw_be.4
-        # => [SCRIPT_ROOT, total_inputs, pad(12)]
+        # => [SCRIPT_ROOT, EMPTY_WORD, total_inputs, pad(8)]
 
-        padw mem_loadw_be.8
-        # => [SERIAL_NUM, SCRIPT_ROOT, total_inputs, pad(12)]
+        swapw mem_loadw_be.8
+        # => [SERIAL_NUM, SCRIPT_ROOT, total_inputs, pad(8)]
 
         # compute variable length note inputs for the output note
         movup.8 sub.MINT_NOTE_MIN_NUM_INPUTS_PUBLIC
-        # => [num_inputs_output, SERIAL_NUM, SCRIPT_ROOT, pad(12)]
+        # => [num_output_note_inputs, SERIAL_NUM, SCRIPT_ROOT, pad(8)]
 
         push.OUTPUT_PUBLIC_NOTE_INPUTS_ADDR
-        # => [inputs_ptr = 12, num_inputs_output, SERIAL_NUM, SCRIPT_ROOT, pad(12)]
+        # => [inputs_ptr = 12, num_output_note_inputs, SERIAL_NUM, SCRIPT_ROOT, pad(8)]
 
         exec.note::build_recipient
         # => [RECIPIENT, pad(12)]
 
-        padw mem_loadw_be.0
-        # => [amount, tag, aux, execution_hint, RECIPIENT, pad(12)]
+        swapw mem_loadw_be.0
+        # => [amount, tag, aux, execution_hint, RECIPIENT, pad(8)]
 
         push.OUTPUT_NOTE_TYPE_PUBLIC
-        # => [note_type, amount, tag, aux, execution_hint, RECIPIENT, pad(12)]
+        # => [note_type, amount, tag, aux, execution_hint, RECIPIENT, pad(8)]
 
         movdn.3
-        # => [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(12)]
+        # => [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
 
     else
         # private output note creation
@@ -108,21 +108,21 @@ begin
         mem_loadw_be.4
         # => [RECIPIENT, pad(12)]
 
-        padw mem_loadw_be.0
-        # => [amount, tag, aux, execution_hint, RECIPIENT, pad(12)]
+        swapw mem_loadw_be.0
+        # => [amount, tag, aux, execution_hint, RECIPIENT, pad(8)]
 
         push.OUTPUT_NOTE_TYPE_PRIVATE
-        # => [note_type, amount, tag, aux, execution_hint, RECIPIENT, pad(12)]
+        # => [note_type, amount, tag, aux, execution_hint, RECIPIENT, pad(8)]
 
         movdn.3
-        # => [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(12)]
+        # => [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
 
     end
-    # => [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(12)]
+    # => [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
 
     call.network_faucet::distribute
-    # => [pad(21))]
+    # => [pad(17))]
 
-    dropw drop
+    drop
     # => [pad(16)]
 end
