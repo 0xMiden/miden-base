@@ -115,7 +115,7 @@ const.TX_COMMITMENT_PTR=816
 const.TX_KERNEL_COMMITMENT_PTR=820
 
 # The memory address at which the proof commitment is stored
-const.PUBLIC_KEY_COMMITMENT_PTR=824
+const.VALIDATOR_KEY_COMMITMENT_PTR=824
 
 # The memory address at which the block metadata is stored [block_number, version, timestamp, 0]
 const.BLOCK_METADATA_PTR=828
@@ -772,12 +772,12 @@ end
 #! Returns the public key commitment of the transaction reference block.
 #!
 #! Inputs:  []
-#! Outputs: [PUBLIC_KEY_COMMITMENT]
+#! Outputs: [VALIDATOR_KEY_COMMITMENT]
 #!
 #! Where:
-#! - PUBLIC_KEY_COMMITMENT is the public key commitment of the transaction reference block.
-export.get_public_key_commitment
-    padw mem_loadw_be.PUBLIC_KEY_COMMITMENT_PTR
+#! - VALIDATOR_KEY_COMMITMENT is the public key commitment of the transaction reference block.
+export.get_validator_key_commitment
+    padw mem_loadw_be.VALIDATOR_KEY_COMMITMENT_PTR
 end
 
 #! Returns the note root of the transaction reference block.

@@ -138,7 +138,7 @@ impl TransactionAdviceInputs {
     ///     NULLIFIER_ROOT,
     ///     TX_COMMITMENT,
     ///     TX_KERNEL_COMMITMENT
-    ///     PUBLIC_KEY_COMMITMENT,
+    ///     VALIDATOR_KEY_COMMITMENT,
     ///     [block_num, version, timestamp, 0],
     ///     [native_asset_id_suffix, native_asset_id_prefix, verification_base_fee, 0]
     ///     [0, 0, 0, 0]

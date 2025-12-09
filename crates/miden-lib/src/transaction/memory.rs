@@ -163,7 +163,7 @@ pub const TX_COMMITMENT_PTR: MemoryAddress = 816;
 pub const TX_KERNEL_COMMITMENT_PTR: MemoryAddress = 820;
 
 /// The memory address at which the public key is stored.
-pub const PUBLIC_KEY_COMMITMENT_PTR: MemoryAddress = 824;
+pub const VALIDATOR_KEY_COMMITMENT_PTR: MemoryAddress = 824;
 
 /// The memory address at which the block number is stored.
 pub const BLOCK_METADATA_PTR: MemoryAddress = 828;
