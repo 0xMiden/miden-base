@@ -399,7 +399,7 @@ export.account_set_item
 end
 
 #! Returns the VALUE located under the specified KEY within the map contained in the account
-#! storage slot identified by the name ID.
+#! storage slot identified by the slot ID.
 #!
 #! Inputs:  [slot_id_prefix, slot_id_suffix, KEY, pad(10)]
 #! Outputs: [VALUE, pad(12)]
@@ -454,7 +454,7 @@ export.account_get_initial_item
 end
 
 #! Returns the initial VALUE located under the specified KEY within the map contained in the
-#! account storage slot identified by the name ID at the beginning of the transaction.
+#! account storage slot identified by the slot ID at the beginning of the transaction.
 #!
 #! Inputs:  [slot_id_prefix, slot_id_suffix, KEY, pad(10)]
 #! Outputs: [INIT_VALUE, pad(12)]

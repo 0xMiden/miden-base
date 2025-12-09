@@ -162,7 +162,7 @@ pub enum AccountError {
     StorageSlotNameNotFound { slot_name: SlotName },
     #[error("storage does not contain a slot with ID {slot_id}")]
     StorageSlotIdNotFound { slot_id: SlotId },
-    #[error("storage slots must be sorted by slot name ID")]
+    #[error("storage slots must be sorted by slot ID")]
     UnsortedStorageSlots,
     #[error("number of storage slots is {0} but max possible number is {max}", max = AccountStorage::MAX_NUM_STORAGE_SLOTS)]
     StorageTooManySlots(u64),

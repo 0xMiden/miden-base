@@ -561,7 +561,7 @@ export.set_item
 end
 
 #! Returns the VALUE located under the specified KEY within the map contained in the account
-#! storage slot identified by the name ID.
+#! storage slot identified by the slot ID.
 #!
 #! Inputs:  [slot_id_prefix, slot_id_suffix, KEY]
 #! Outputs: [VALUE]
@@ -1504,7 +1504,7 @@ export.get_item_delta
     dup.1 add dup
     # => [slot_ptr, slot_ptr, offset]
 
-    # load the name ID
+    # load the slot ID
     add.ACCOUNT_SLOT_ID_SUFFIX_OFFSET mem_load
     # => [slot_id_suffix, slot_ptr, offset]
 

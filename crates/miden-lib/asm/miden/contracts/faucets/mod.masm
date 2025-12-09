@@ -18,7 +18,7 @@ const.ERR_BASIC_FUNGIBLE_BURN_WRONG_NUMBER_OF_ASSETS="burn requires exactly 1 no
 # =================================================================================================
 
 # The slot in this component's storage where the metadata is stored.
-# TODO(named_slots): Unify slot name or make distribute take name ID as a parameter to allow for
+# TODO(named_slots): Unify slot name or make distribute take slot ID as a parameter to allow for
 # different slot names per fungible faucet?
 const.METADATA_SLOT=word("miden::basic_fungible_faucet::metadata")
 

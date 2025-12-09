@@ -13,7 +13,7 @@ pub struct NamedStorageSlot {
     /// The cached [`SlotId`] of the slot name. This field must always be consistent with the
     /// slot name.
     ///
-    /// This is cached so that the `Ord` implementation can use the computed name ID instead of
+    /// This is cached so that the `Ord` implementation can use the computed slot ID instead of
     /// having to hash the slot name on every comparison operation.
     slot_id: SlotId,
     /// The underlying storage slot.

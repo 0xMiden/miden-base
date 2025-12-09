@@ -205,18 +205,18 @@ impl AccountDelta {
     ///       assets since `faucet_id_prefix` is at the same position in the layout for both assets,
     ///       and, by design, it is never the same for fungible and non-fungible assets.
     ///     - Append `[hash0, hash1, hash2, faucet_id_prefix]`, i.e. the non-fungible asset.
-    /// - Storage Slots are sorted by slot name ID and are iterated in this order. For each slot
-    ///   **whose value has changed**, depending on the slot type:
+    /// - Storage Slots are sorted by slot ID and are iterated in this order. For each slot **whose
+    ///   value has changed**, depending on the slot type:
     ///   - Value Slot
     ///     - Append `[[domain = 2, 0, slot_id_suffix, slot_id_prefix], NEW_VALUE]` where
     ///       `NEW_VALUE` is the new value of the slot and `slot_id_{suffix, prefix}` are the slot
-    ///       name identifiers of the slot.
+    ///       slot identifiers of the slot.
     ///   - Map Slot
     ///     - For each key-value pair, sorted by key, whose new value is different from the previous
     ///       value in the map:
     ///       - Append `[KEY, NEW_VALUE]`.
     ///     - Append `[[domain = 3, num_changed_entries, slot_id_suffix, slot_id_prefix], 0, 0, 0,
-    ///       0]`, where `slot_id_{suffix, prefix}` are the slot name identifiers and
+    ///       0]`, where `slot_id_{suffix, prefix}` are the slot identifiers and
     ///       `num_changed_entries` is the number of changed key-value pairs in the map.
     ///         - For partial state deltas, the map header must only be included if
     ///           `num_changed_entries` is not zero.

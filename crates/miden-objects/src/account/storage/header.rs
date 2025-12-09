@@ -16,7 +16,7 @@ use crate::{AccountError, FieldElement, ZERO};
 // ACCOUNT STORAGE HEADER
 // ================================================================================================
 
-/// The header of a [`StorageSlot`], storing only the name ID, slot type and value of the slot.
+/// The header of a [`StorageSlot`], storing only the slot ID, slot type and value of the slot.
 ///
 /// The stored value differs based on the slot type:
 /// - [`StorageSlotType::Value`]: The value of the slot itself.

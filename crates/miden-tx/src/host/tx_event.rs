@@ -297,7 +297,7 @@ impl TransactionEvent {
                 let old_map_value = process.get_stack_word_be(6);
                 let new_map_value = process.get_stack_word_be(10);
 
-                // Resolve slot name ID to slot name.
+                // Resolve slot ID to slot name.
                 let (slot_id, ..) = process.get_storage_slot(slot_ptr)?;
                 let (slot_name, ..) = base_host.initial_account_storage_slot(slot_id)?;
 
