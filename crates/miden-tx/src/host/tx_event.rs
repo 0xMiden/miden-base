@@ -1,7 +1,7 @@
 use alloc::vec::Vec;
 
 use miden_lib::transaction::{EventId, TransactionEventId};
-use miden_objects::account::{AccountId, StorageMap, StorageSlotType};
+use miden_objects::account::{AccountId, SlotName, StorageMap, StorageSlotType};
 use miden_objects::asset::{Asset, AssetVault, AssetVaultKey, FungibleAsset};
 use miden_objects::note::{NoteId, NoteInputs, NoteMetadata, NoteRecipient, NoteScript};
 use miden_objects::transaction::TransactionSummary;
@@ -57,14 +57,14 @@ pub(crate) enum TransactionEvent {
     },
 
     AccountStorageAfterSetItem {
-        slot_idx: u8,
+        slot_name: SlotName,
         new_value: Word,
     },
 
     AccountStorageAfterSetMapItem {
-        slot_index: u8,
+        slot_name: SlotName,
         key: Word,
-        prev_map_value: Word,
+        old_map_value: Word,
         new_map_value: Word,
     },
 
@@ -254,96 +254,59 @@ impl TransactionEvent {
             TransactionEventId::AccountStorageBeforeSetItem => None,
 
             TransactionEventId::AccountStorageAfterSetItem => {
-                // Expected stack state:
-                // [event, slot_index, NEW_SLOT_VALUE]
+                // Expected stack state: [event, slot_ptr, VALUE]
                 // get slot index from the stack and make sure it is valid
-                let slot_index = process.get_stack_item(1);
-                let slot_index = u8::try_from(slot_index).map_err(|err| {
-                    TransactionKernelError::other(format!(
-                        "failed to convert slot index into u8: {err}"
-                    ))
-                })?;
+                let slot_ptr = process.get_stack_item(1);
+                let new_value = process.get_stack_word_be(2);
 
-                // get number of storage slots initialized by the account
-                let num_storage_slot = process.get_num_storage_slots()?;
-                if slot_index as u64 >= num_storage_slot {
-                    return Err(TransactionKernelError::InvalidStorageSlotIndex {
-                        max: num_storage_slot,
-                        actual: slot_index as u64,
-                    });
+                let (slot_name_id, slot_type, _old_value) = process.get_storage_slot(slot_ptr)?;
+
+                let (slot_name, ..) = base_host.initial_account_storage_slot(slot_name_id)?;
+                let slot_name = slot_name.clone();
+
+                if !slot_type.is_value() {
+                    return Err(TransactionKernelError::other(format!(
+                        "expected slot to be of type value, found {slot_type}"
+                    )));
                 }
 
-                // get the value to which the slot is being updated
-                let new_slot_value = process.get_stack_word_be(2);
-
-                Some(TransactionEvent::AccountStorageAfterSetItem {
-                    slot_idx: slot_index,
-                    new_value: new_slot_value,
-                })
+                Some(TransactionEvent::AccountStorageAfterSetItem { slot_name, new_value })
             },
 
             TransactionEventId::AccountStorageBeforeGetMapItem => {
-                // Expected stack state: [event, KEY, ROOT, index]
-                let map_key = process.get_stack_word_be(1);
-                let current_map_root = process.get_stack_word_be(5);
-                let slot_index = process.get_stack_item(9);
+                // Expected stack state: [event, slot_ptr, KEY]
+                let slot_ptr = process.get_stack_item(1);
+                let map_key = process.get_stack_word_be(2);
 
-                on_account_storage_map_item_accessed(
-                    base_host,
-                    process,
-                    slot_index,
-                    current_map_root,
-                    map_key,
-                )?
+                on_account_storage_map_item_accessed(base_host, process, slot_ptr, map_key)?
             },
 
             TransactionEventId::AccountStorageBeforeSetMapItem => {
-                // Expected stack state: [event, index, KEY, NEW_VALUE, OLD_ROOT]
-                let slot_index = process.get_stack_item(1);
+                // Expected stack state: [event, slot_ptr, KEY]
+                let slot_ptr = process.get_stack_item(1);
                 let map_key = process.get_stack_word_be(2);
-                let current_map_root = process.get_stack_word_be(10);
 
-                on_account_storage_map_item_accessed(
-                    base_host,
-                    process,
-                    slot_index,
-                    current_map_root,
-                    map_key,
-                )?
+                on_account_storage_map_item_accessed(base_host, process, slot_ptr, map_key)?
             },
 
             TransactionEventId::AccountStorageAfterSetMapItem => {
-                // Expected stack state: [event, slot_index, KEY, PREV_MAP_VALUE, NEW_MAP_VALUE]
+                // Expected stack state: [event, slot_ptr, KEY, OLD_MAP_VALUE, NEW_VALUE]
                 // get slot index from the stack and make sure it is valid
-                let slot_index = process.get_stack_item(1);
-                let slot_index = u8::try_from(slot_index).map_err(|err| {
-                    TransactionKernelError::other(format!(
-                        "failed to convert slot index into u8: {err}"
-                    ))
-                })?;
-
-                // get number of storage slots initialized by the account
-                let num_storage_slot = process.get_num_storage_slots()?;
-                if slot_index as u64 >= num_storage_slot {
-                    return Err(TransactionKernelError::InvalidStorageSlotIndex {
-                        max: num_storage_slot,
-                        actual: slot_index as u64,
-                    });
-                }
-
-                // get the KEY to which the slot is being updated
+                let slot_ptr = process.get_stack_item(1);
                 let key = process.get_stack_word_be(2);
-
-                // get the previous VALUE of the slot
-                let prev_map_value = process.get_stack_word_be(6);
-
-                // get the VALUE to which the slot is being updated
+                let old_map_value = process.get_stack_word_be(6);
                 let new_map_value = process.get_stack_word_be(10);
 
+                // Resolve slot name ID to slot name.
+                let (slot_name_id, ..) = process.get_storage_slot(slot_ptr)?;
+                let (slot_name, ..) = base_host.initial_account_storage_slot(slot_name_id)?;
+
+                let slot_name = slot_name.clone();
+
                 Some(TransactionEvent::AccountStorageAfterSetMapItem {
-                    slot_index,
+                    slot_name,
                     key,
-                    prev_map_value,
+                    old_map_value,
                     new_map_value,
                 })
             },
@@ -600,17 +563,20 @@ fn on_account_vault_asset_accessed<'store, STORE>(
 fn on_account_storage_map_item_accessed<'store, STORE>(
     base_host: &TransactionBaseHost<'store, STORE>,
     process: &ProcessState,
-    slot_index: Felt,
-    current_map_root: Word,
+    slot_ptr: Felt,
     map_key: Word,
 ) -> Result<Option<TransactionEvent>, TransactionKernelError> {
+    let (slot_name_id, slot_type, current_map_root) = process.get_storage_slot(slot_ptr)?;
+
+    if !slot_type.is_map() {
+        return Err(TransactionKernelError::other(format!(
+            "expected slot to be of type map, found {slot_type}"
+        )));
+    }
+
     let active_account_id = process.get_active_account_id()?;
     let hashed_map_key = StorageMap::hash_key(map_key);
     let leaf_index = StorageMap::hashed_map_key_to_leaf_index(hashed_map_key);
-
-    let slot_index = u8::try_from(slot_index).map_err(|err| {
-        TransactionKernelError::other(format!("failed to convert slot index into u8: {err}"))
-    })?;
 
     // For the native account we need to explicitly request the initial map root,
     // while for foreign accounts the current map root is always the initial one.
@@ -618,19 +584,12 @@ fn on_account_storage_map_item_accessed<'store, STORE>(
         // For native accounts, we have to request witnesses against the initial
         // root instead of the _current_ one, since the data
         // store only has witnesses for initial one.
-        let (_slot_name, slot_type, slot_value) = base_host
-                    .initial_account_storage_header()
-                    // Slot index should always fit into a usize.
-                    .slot_header(slot_index as usize)
-                    .map_err(|err| {
-                        TransactionKernelError::other_with_source(
-                            "failed to access storage map in storage header",
-                            err,
-                        )
-                    })?;
+        let (_slot_name, slot_type, slot_value) =
+            base_host.initial_account_storage_slot(slot_name_id)?;
+
         if *slot_type != StorageSlotType::Map {
             return Err(TransactionKernelError::other(format!(
-                "expected map slot type at slot index {slot_index}"
+                "expected slot {slot_name_id} to be of type map"
             )));
         }
         *slot_value

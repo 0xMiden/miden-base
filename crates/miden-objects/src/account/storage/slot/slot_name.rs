@@ -2,10 +2,11 @@ use alloc::borrow::Cow;
 use alloc::string::{String, ToString};
 use core::fmt::Display;
 
+use miden_core::utils::hash_string_to_word;
+
 use crate::account::storage::slot::SlotNameId;
 use crate::errors::SlotNameError;
 use crate::utils::serde::{ByteWriter, Deserializable, DeserializationError, Serializable};
-use crate::{Felt, FieldElement};
 
 /// The name of an account storage slot.
 ///
@@ -34,7 +35,7 @@ use crate::{Felt, FieldElement};
 /// - Each component must only consist of the characters `a` to `z`, `A` to `Z`, `0` to `9` or `_`
 ///   (underscore).
 /// - Each component must not start with an underscore.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SlotName {
     name: Cow<'static, str>,
 }
@@ -87,11 +88,6 @@ impl SlotName {
         Ok(Self { name: Cow::Owned(name) })
     }
 
-    // TODO(named_slots): Temporary. Remove later.
-    pub fn new_index(slot_idx: usize) -> Self {
-        SlotName::new(format!("miden::{slot_idx}")).expect("slot name should be valid")
-    }
-
     // ACCESSORS
     // --------------------------------------------------------------------------------------------
 
@@ -112,23 +108,10 @@ impl SlotName {
 
     // TODO(named_slots): Docs.
     pub fn compute_id(&self) -> SlotNameId {
-        // let hashed_word = hash_string_to_word(self.as_str());
-        // let prefix = hashed_word[0];
-        // let suffix = hashed_word[1];
-        // SlotNameId::new(prefix, suffix)
-
-        // TODO: Temporary, replace later with the above.
-        let mut split = self.as_str().split("::");
-
-        let namespace = split.next().unwrap();
-        assert_eq!(namespace, "miden");
-
-        let slot_idx = split.next().unwrap();
-        let slot_index: u32 = slot_idx.parse().expect(
-            "named storage slots should for now have the slot index as the second component",
-        );
-
-        SlotNameId::new(Felt::from(slot_index), Felt::ZERO)
+        let hashed_word = hash_string_to_word(self.as_str());
+        let suffix = hashed_word[0];
+        let prefix = hashed_word[1];
+        SlotNameId::new(suffix, prefix)
     }
 
     // HELPERS
@@ -223,6 +206,19 @@ impl SlotName {
     /// Returns `true` if the given byte is a valid slot name character, `false` otherwise.
     const fn is_valid_char(byte: u8) -> bool {
         byte.is_ascii_alphanumeric() || byte == b'_'
+    }
+}
+
+impl Ord for SlotName {
+    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+        // TODO(named_slots): Cache ID in SlotName for efficiency.
+        self.compute_id().cmp(&other.compute_id())
+    }
+}
+
+impl PartialOrd for SlotName {
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+        Some(self.cmp(other))
     }
 }
 

@@ -1,10 +1,32 @@
 use alloc::vec::Vec;
 
 use miden_objects::account::auth::PublicKeyCommitment;
-use miden_objects::account::{AccountCode, AccountComponent, StorageMap, StorageSlot};
+use miden_objects::account::{
+    AccountCode,
+    AccountComponent,
+    NamedStorageSlot,
+    SlotName,
+    StorageMap,
+};
+use miden_objects::utils::sync::LazyLock;
 use miden_objects::{AccountError, Word};
 
 use crate::account::components::ecdsa_k256_keccak_acl_library;
+
+static PUBKEY_SLOT_NAME: LazyLock<SlotName> = LazyLock::new(|| {
+    SlotName::new("miden::standards::auth::ecdsa_k256_keccak_acl::public_key")
+        .expect("slot name should be valid")
+});
+
+static CONFIG_SLOT_NAME: LazyLock<SlotName> = LazyLock::new(|| {
+    SlotName::new("miden::standards::auth::ecdsa_k256_keccak_acl::config")
+        .expect("slot name should be valid")
+});
+
+static TRACKED_PROCEDURE_ROOT_SLOT_NAME: LazyLock<SlotName> = LazyLock::new(|| {
+    SlotName::new("miden::standards::auth::ecdsa_k256_keccak_acl::tracked_procedure_roots")
+        .expect("slot name should be valid")
+});
 
 /// Configuration for [`AuthEcdsaK256KeccakAcl`] component.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -133,25 +155,46 @@ impl AuthEcdsaK256KeccakAcl {
 
         Ok(Self { pub_key, config })
     }
+
+    /// Returns the [`SlotName`] where the public key is stored.
+    pub fn public_key_slot() -> &'static SlotName {
+        &PUBKEY_SLOT_NAME
+    }
+
+    /// Returns the [`SlotName`] where the component's configuration is stored.
+    pub fn config_slot() -> &'static SlotName {
+        &CONFIG_SLOT_NAME
+    }
+
+    /// Returns the [`SlotName`] where the tracked procedure roots are stored.
+    pub fn tracked_procedure_roots_slot() -> &'static SlotName {
+        &TRACKED_PROCEDURE_ROOT_SLOT_NAME
+    }
 }
 
 impl From<AuthEcdsaK256KeccakAcl> for AccountComponent {
     fn from(ecdsa: AuthEcdsaK256KeccakAcl) -> Self {
         let mut storage_slots = Vec::with_capacity(3);
 
-        // Slot 0: Public key
-        storage_slots.push(StorageSlot::Value(ecdsa.pub_key.into()));
-        // Slot 1: [num_tracked_procs, allow_unauthorized_output_notes,
-        // allow_unauthorized_input_notes, 0]
-        let num_procs = ecdsa.config.auth_trigger_procedures.len() as u32;
-        storage_slots.push(StorageSlot::Value(Word::from([
-            num_procs,
-            u32::from(ecdsa.config.allow_unauthorized_output_notes),
-            u32::from(ecdsa.config.allow_unauthorized_input_notes),
-            0,
-        ])));
+        // Public key slot
+        storage_slots.push(NamedStorageSlot::with_value(
+            AuthEcdsaK256KeccakAcl::public_key_slot().clone(),
+            ecdsa.pub_key.into(),
+        ));
 
-        // Slot 2: A map with tracked procedure roots
+        // Config slot
+        let num_procs = ecdsa.config.auth_trigger_procedures.len() as u32;
+        storage_slots.push(NamedStorageSlot::with_value(
+            AuthEcdsaK256KeccakAcl::config_slot().clone(),
+            Word::from([
+                num_procs,
+                u32::from(ecdsa.config.allow_unauthorized_output_notes),
+                u32::from(ecdsa.config.allow_unauthorized_input_notes),
+                0,
+            ]),
+        ));
+
+        // Tracked procedure roots slot
         // We add the map even if there are no trigger procedures, to always maintain the same
         // storage layout.
         let map_entries = ecdsa
@@ -162,7 +205,10 @@ impl From<AuthEcdsaK256KeccakAcl> for AccountComponent {
             .map(|(i, proc_root)| (Word::from([i as u32, 0, 0, 0]), *proc_root));
 
         // Safe to unwrap because we know that the map keys are unique.
-        storage_slots.push(StorageSlot::Map(StorageMap::with_entries(map_entries).unwrap()));
+        storage_slots.push(NamedStorageSlot::with_map(
+            AuthEcdsaK256KeccakAcl::tracked_procedure_roots_slot().clone(),
+            StorageMap::with_entries(map_entries).unwrap(),
+        ));
 
         AccountComponent::new(ecdsa_k256_keccak_acl_library(), storage_slots)
             .expect(
@@ -189,8 +235,8 @@ mod tests {
         allow_unauthorized_output_notes: bool,
         /// Allow unauthorized input notes flag
         allow_unauthorized_input_notes: bool,
-        /// Expected slot 1 value [num_procs, allow_output, allow_input, 0]
-        expected_slot_1: Word,
+        /// Expected config slot value [num_procs, allow_output, allow_input, 0]
+        expected_config_slot: Word,
     }
 
     /// Helper function to get the basic wallet procedures for testing
@@ -229,20 +275,29 @@ mod tests {
             .build()
             .expect("account building failed");
 
-        // Assert public key in slot 0
-        let public_key_slot = account.storage().get_item(0).expect("storage slot 0 access failed");
+        // Check public key storage
+        let public_key_slot = account
+            .storage()
+            .get_item(AuthEcdsaK256KeccakAcl::public_key_slot())
+            .expect("public key storage slot access failed");
         assert_eq!(public_key_slot, public_key.into());
 
-        // Assert configuration in slot 1
-        let slot_1 = account.storage().get_item(1).expect("storage slot 1 access failed");
-        assert_eq!(slot_1, config.expected_slot_1);
+        // Check configuration storage
+        let config_slot = account
+            .storage()
+            .get_item(AuthEcdsaK256KeccakAcl::config_slot())
+            .expect("config storage slot access failed");
+        assert_eq!(config_slot, config.expected_config_slot);
 
-        // Assert procedure roots in map (slot 2)
+        // Check procedure roots
         if config.with_procedures {
             for (i, expected_proc_root) in auth_trigger_procedures.iter().enumerate() {
                 let proc_root = account
                     .storage()
-                    .get_map_item(2, Word::from([i as u32, 0, 0, 0]))
+                    .get_map_item(
+                        AuthEcdsaK256KeccakAcl::tracked_procedure_roots_slot(),
+                        Word::from([i as u32, 0, 0, 0]),
+                    )
                     .expect("storage map access failed");
                 assert_eq!(proc_root, *expected_proc_root);
             }
@@ -250,7 +305,7 @@ mod tests {
             // When no procedures, the map should return empty for key [0,0,0,0]
             let proc_root = account
                 .storage()
-                .get_map_item(2, Word::empty())
+                .get_map_item(AuthEcdsaK256KeccakAcl::tracked_procedure_roots_slot(), Word::empty())
                 .expect("storage map access failed");
             assert_eq!(proc_root, Word::empty());
         }
@@ -263,7 +318,7 @@ mod tests {
             with_procedures: false,
             allow_unauthorized_output_notes: false,
             allow_unauthorized_input_notes: false,
-            expected_slot_1: Word::empty(), // [0, 0, 0, 0]
+            expected_config_slot: Word::empty(), // [0, 0, 0, 0]
         });
     }
 
@@ -274,7 +329,7 @@ mod tests {
             with_procedures: true,
             allow_unauthorized_output_notes: false,
             allow_unauthorized_input_notes: false,
-            expected_slot_1: Word::from([2u32, 0, 0, 0]),
+            expected_config_slot: Word::from([2u32, 0, 0, 0]),
         });
     }
 
@@ -285,7 +340,7 @@ mod tests {
             with_procedures: false,
             allow_unauthorized_output_notes: true,
             allow_unauthorized_input_notes: false,
-            expected_slot_1: Word::from([0u32, 1, 0, 0]),
+            expected_config_slot: Word::from([0u32, 1, 0, 0]),
         });
     }
 
@@ -296,7 +351,7 @@ mod tests {
             with_procedures: true,
             allow_unauthorized_output_notes: true,
             allow_unauthorized_input_notes: false,
-            expected_slot_1: Word::from([2u32, 1, 0, 0]),
+            expected_config_slot: Word::from([2u32, 1, 0, 0]),
         });
     }
 
@@ -307,7 +362,7 @@ mod tests {
             with_procedures: false,
             allow_unauthorized_output_notes: false,
             allow_unauthorized_input_notes: true,
-            expected_slot_1: Word::from([0u32, 0, 1, 0]),
+            expected_config_slot: Word::from([0u32, 0, 1, 0]),
         });
     }
 
@@ -318,7 +373,7 @@ mod tests {
             with_procedures: true,
             allow_unauthorized_output_notes: true,
             allow_unauthorized_input_notes: true,
-            expected_slot_1: Word::from([2u32, 1, 1, 0]),
+            expected_config_slot: Word::from([2u32, 1, 1, 0]),
         });
     }
 }

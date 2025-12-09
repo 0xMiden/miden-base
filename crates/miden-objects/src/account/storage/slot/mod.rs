@@ -65,8 +65,8 @@ impl StorageSlot {
     /// Returns this storage slot value as a [Word]
     ///
     /// Returns:
-    /// - For [StorageSlot::Value] the value
-    /// - For [StorageSlot::Map] the root of the [StorageMap]
+    /// - For [`StorageSlot::Value`] the value.
+    /// - For [`StorageSlot::Map`] the root of the [StorageMap].
     pub fn value(&self) -> Word {
         match self {
             Self::Value(value) => *value,

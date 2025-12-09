@@ -1,3 +1,4 @@
+use alloc::string::ToString;
 use alloc::vec::Vec;
 
 use super::{AccountStorage, Felt, StorageSlot, StorageSlotType, Word};
@@ -69,11 +70,21 @@ impl AccountStorageHeader {
 
     /// Returns a new instance of account storage header initialized with the provided slots.
     ///
-    /// # Panics
-    /// - If the number of provided slots is greater than [AccountStorage::MAX_NUM_STORAGE_SLOTS].
-    pub fn new(slots: Vec<(SlotName, StorageSlotType, Word)>) -> Self {
-        assert!(slots.len() <= AccountStorage::MAX_NUM_STORAGE_SLOTS);
-        Self { slots }
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The number of provided slots is greater than [`AccountStorage::MAX_NUM_STORAGE_SLOTS`].
+    /// - The slots are not sorted by [`SlotNameId`].
+    pub fn new(slots: Vec<(SlotName, StorageSlotType, Word)>) -> Result<Self, AccountError> {
+        if slots.len() > AccountStorage::MAX_NUM_STORAGE_SLOTS {
+            return Err(AccountError::StorageTooManySlots(slots.len() as u64));
+        }
+
+        if !slots.is_sorted_by_key(|(slot_name, ..)| slot_name.compute_id()) {
+            return Err(AccountError::UnsortedStorageSlots);
+        }
+
+        Ok(Self { slots })
     }
 
     // PUBLIC ACCESSORS
@@ -100,33 +111,43 @@ impl AccountStorageHeader {
 
     /// Returns a slot contained in the storage header at a given index.
     ///
-    /// # Errors
-    /// - If the index is out of bounds.
-    pub fn slot_header(
+    /// Returns `None` if a slot with the provided name ID does not exist.
+    pub fn find_slot_header_by_name(
         &self,
-        index: usize,
-    ) -> Result<(&SlotName, &StorageSlotType, &Word), AccountError> {
-        let slot_name = SlotName::new_index(index);
+        slot_name: &SlotName,
+    ) -> Option<(&StorageSlotType, &Word)> {
+        self.find_slot_header_by_id(slot_name.compute_id())
+            .map(|(_slot_name, slot_type, slot_value)| (slot_type, slot_value))
+    }
 
+    /// Returns a slot contained in the storage header at a given index.
+    ///
+    /// Returns `None` if a slot with the provided name ID does not exist.
+    pub fn find_slot_header_by_id(
+        &self,
+        name_id: SlotNameId,
+    ) -> Option<(&SlotName, &StorageSlotType, &Word)> {
         self.slots
-            .binary_search_by_key(&slot_name.compute_id(), |(name, ..)| name.compute_id())
+            .binary_search_by_key(&name_id, |(name, ..)| name.compute_id())
             .map(|slot_idx| {
                 let (name, r#type, value) = &self.slots[slot_idx];
                 (name, r#type, value)
             })
             .ok()
-            .ok_or(AccountError::StorageIndexOutOfBounds {
-                slots_len: self.slots.len() as u8,
-                index: index as u8,
-            })
     }
 
-    /// Indicates whether the slot at `index` is a map slot.
+    /// Indicates whether the slot with the given `name` is a map slot.
     ///
     /// # Errors
-    /// - If `index` exceeds the slot count.
-    pub fn is_map_slot(&self, index: usize) -> Result<bool, AccountError> {
-        match self.slot_header(index)?.1 {
+    ///
+    /// Returns an error if:
+    /// - a slot with the provided name does not exist.
+    pub fn is_map_slot(&self, name: &SlotName) -> Result<bool, AccountError> {
+        match self
+            .find_slot_header_by_name(name)
+            .ok_or(AccountError::StorageSlotNameNotFound { slot_name: name.clone() })?
+            .0
+        {
             StorageSlotType::Map => Ok(true),
             StorageSlotType::Value => Ok(false),
         }
@@ -188,8 +209,7 @@ impl Deserializable for AccountStorageHeader {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let len = source.read_u8()?;
         let slots = source.read_many(len as usize)?;
-        // number of storage slots is guaranteed to be smaller than or equal to 255
-        Ok(Self::new(slots))
+        Self::new(slots).map_err(|err| DeserializationError::InvalidValue(err.to_string()))
     }
 }
 
@@ -203,22 +223,24 @@ mod tests {
 
     use super::AccountStorageHeader;
     use crate::Word;
-    use crate::account::{AccountStorage, SlotName, StorageSlotType};
+    use crate::account::{AccountStorage, StorageSlotType};
+    use crate::testing::storage::{MOCK_MAP_SLOT, MOCK_VALUE_SLOT0, MOCK_VALUE_SLOT1};
 
     #[test]
     fn test_from_account_storage() {
         let storage_map = AccountStorage::mock_map();
 
         // create new storage header from AccountStorage
-        let slots = vec![
-            (SlotName::new_index(0), StorageSlotType::Value, Word::from([1, 2, 3, 4u32])),
+        let mut slots = vec![
+            (MOCK_VALUE_SLOT0.clone(), StorageSlotType::Value, Word::from([1, 2, 3, 4u32])),
             (
-                SlotName::new_index(1),
+                MOCK_VALUE_SLOT1.clone(),
                 StorageSlotType::Value,
                 Word::from([Felt::new(5), Felt::new(6), Felt::new(7), Felt::new(8)]),
             ),
-            (SlotName::new_index(2), StorageSlotType::Map, storage_map.root()),
+            (MOCK_MAP_SLOT.clone(), StorageSlotType::Map, storage_map.root()),
         ];
+        slots.sort_unstable_by_key(|(slot_name, ..)| slot_name.compute_id());
 
         let expected_header = AccountStorageHeader { slots };
         let account_storage = AccountStorage::mock();

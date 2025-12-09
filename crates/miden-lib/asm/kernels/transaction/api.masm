@@ -46,7 +46,7 @@ const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SERIAL_NUMBER_WHILE_NO_NOTE_BEING_PROCESSE
 #! Authenticates that the invocation of a kernel procedure originates from the account context.
 #!
 #! Inputs:  []
-#! Outputs: [storage_offset, storage_size]
+#! Outputs: []
 #!
 #! Panics if:
 #! - the invocation of the kernel procedure does not originate from the account context.
@@ -60,6 +60,10 @@ proc.authenticate_account_origin
     # assert that the caller is from the user context
     exec.account::authenticate_and_track_procedure
     # => [storage_offset, storage_size]
+
+    # TODO(named_slots): Remove storage offset and size from procedure info.
+    drop drop
+    # => []
 end
 
 #! Asserts that the invocation of a kernel procedure originates from the authentication procedure of
@@ -270,7 +274,7 @@ end
 #! Invocation: dynexec
 export.account_get_code_commitment
     # authenticate that the procedure invocation originates from the account context
-    exec.authenticate_account_origin drop drop
+    exec.authenticate_account_origin
     # => [pad(16)]
 
     # get the account code commitment
@@ -312,7 +316,7 @@ end
 #! Invocation: dynexec
 export.account_compute_storage_commitment
     # authenticate that the procedure invocation originates from the account context
-    exec.authenticate_account_origin drop drop
+    exec.authenticate_account_origin
     # => [pad(16)]
 
     # compute the account storage commitment
@@ -326,25 +330,22 @@ end
 
 #! Gets an item from the account storage.
 #!
-#! Inputs:  [index, pad(15)]
+#! Inputs:  [name_id_prefix, name_id_suffix, pad(14)]
 #! Outputs: [VALUE, pad(12)]
 #!
 #! Where:
-#! - index is the index of the item to get.
+#! - name_id_{prefix, suffix} are the prefix and suffix felts of the name identifier, which are
+#!   the first two felts of the hashed slot name.
 #! - VALUE is the value of the item.
 #!
 #! Panics if:
-#! - the index is out of bounds.
+#! - a slot with the provided name ID does not exist in account storage.
 #!
 #! Invocation: dynexec
 export.account_get_item
     # authenticate that the procedure invocation originates from the account context
     exec.authenticate_account_origin
-    # => [storage_offset, storage_size, index, pad(15)]
-
-    # apply offset to storage slot index
-    exec.account::apply_storage_offset
-    # => [index_with_offset, pad(15)]
+    # => [name_id_prefix, name_id_suffix, pad(14)]
 
     # fetch the account storage item
     exec.account::get_item
@@ -357,67 +358,67 @@ end
 
 #! Sets an item in the account storage.
 #!
-#! Inputs:  [index, VALUE, pad(11)]
+#! Inputs:  [name_id_prefix, name_id_suffix, VALUE, pad(10)]
 #! Outputs: [OLD_VALUE, pad(12)]
 #!
 #! Where:
-#! - index is the index of the item to set.
+#! - name_id_{prefix, suffix} are the prefix and suffix felts of the name identifier, which are
+#!   the first two felts of the hashed slot name.
 #! - VALUE is the value to set.
 #! - OLD_VALUE is the previous value of the item.
 #!
 #! Panics if:
-#! - the index is out of bounds.
+#! - a slot with the provided name ID does not exist in account storage.
 #! - the invocation of this procedure does not originate from the native account.
+#! - the native account is a faucet and the provided name ID points to the reserved faucet storage slot.
 #!
 #! Invocation: dynexec
 export.account_set_item
     # check that this procedure was executed against the native account
     exec.memory::assert_native_account
-    # => [index, VALUE, pad(11)]
+    # => [name_id_prefix, name_id_suffix, VALUE, pad(10)]
 
     # if the transaction is being executed against a faucet account then assert
-    # index != FAUCET_STORAGE_DATA_SLOT (reserved slot)
-    dup exec.account::get_faucet_storage_data_slot eq
+    # the slot that is being written to is not the reserved faucet slot.
+    dup.1 dup.1 exec.account::is_faucet_storage_data_slot
+    # => [is_faucet_storage_data_slot, name_id_prefix, name_id_suffix, VALUE, pad(10)]
+
     exec.account::get_id swap drop exec.account_id::is_faucet
+    # => [is_faucet_account, is_faucet_storage_data_slot, name_id_prefix, name_id_suffix, VALUE, pad(10)]
+
     and assertz.err=ERR_FAUCET_STORAGE_DATA_SLOT_IS_RESERVED
-    # => [index, VALUE, pad(11)]
+    # => [name_id_prefix, name_id_suffix, VALUE, pad(10)]
 
     # authenticate that the procedure invocation originates from the account context
     exec.authenticate_account_origin
-    # => [storage_offset, storage_size, index, VALUE, pad(11)]
-
-    # apply offset to storage slot index
-    exec.account::apply_storage_offset
-    # => [index_with_offset, VALUE, pad(11)]
+    # => [name_id_prefix, name_id_suffix, VALUE, pad(10)]
 
     # set the account storage item
     exec.account::set_item
     # => [OLD_VALUE, pad(12)]
 end
 
-#! Returns the VALUE located under the specified KEY within the map contained in the given
-#! account storage slot.
+#! Returns the VALUE located under the specified KEY within the map contained in the account
+#! storage slot identified by the name ID.
 #!
-#! Inputs:  [index, KEY, pad(11)]
+#! Inputs:  [name_id_prefix, name_id_suffix, KEY, pad(10)]
 #! Outputs: [VALUE, pad(12)]
 #!
 #! Where:
-#! - index is the index of the storage slot that contains the map root.
+#! - name_id_{prefix, suffix} are the prefix and suffix felts of the name identifier, which are
+#!   the first two felts of the hashed slot name.
+#!    - the slot must point to the root of the storage map.
 #! - VALUE is the value of the map item at KEY.
 #!
 #! Panics if:
-#! - the index is out of bounds (>255).
+#! - a slot with the provided name ID does not exist in account storage.
 #! - the requested storage slot type is not map.
 #!
 #! Invocation: dynexec
 export.account_get_map_item
     # authenticate that the procedure invocation originates from the account context
     exec.authenticate_account_origin
-    # => [storage_offset, storage_size, index, KEY, pad(11)]
-
-    # apply offset to storage slot index
-    exec.account::apply_storage_offset
-    # => [index_with_offset, KEY, pad(11)]
+    # => [name_id_prefix, name_id_suffix, KEY, pad(10)]
 
     # fetch the map item from account storage
     exec.account::get_map_item
@@ -426,25 +427,22 @@ end
 
 #! Gets an item from the account storage at its initial state (beginning of transaction).
 #!
-#! Inputs:  [index, pad(15)]
+#! Inputs:  [name_id_prefix, name_id_suffix, pad(14)]
 #! Outputs: [INIT_VALUE, pad(12)]
 #!
 #! Where:
-#! - index is the index of the item to get.
+#! - name_id_{prefix, suffix} are the prefix and suffix felts of the name identifier, which are
+#!   the first two felts of the hashed slot name.
 #! - INIT_VALUE is the initial value of the item at the beginning of the transaction.
 #!
 #! Panics if:
-#! - the index is out of bounds.
+#! - a slot with the provided name ID does not exist in account storage.
 #!
 #! Invocation: dynexec
 export.account_get_initial_item
     # authenticate that the procedure invocation originates from the account context
     exec.authenticate_account_origin
-    # => [storage_offset, storage_size, index, pad(15)]
-
-    # apply offset to storage slot index
-    exec.account::apply_storage_offset
-    # => [index_with_offset, pad(15)]
+    # => [name_id_prefix, name_id_suffix, pad(14)]
 
     # fetch the initial account storage item
     exec.account::get_initial_item
@@ -455,29 +453,27 @@ export.account_get_initial_item
     # => [INIT_VALUE, pad(12)]
 end
 
-#! Returns the initial VALUE located under the specified KEY within the map contained in the given
-#! account storage slot at the beginning of the transaction.
+#! Returns the initial VALUE located under the specified KEY within the map contained in the
+#! account storage slot identified by the name ID at the beginning of the transaction.
 #!
-#! Inputs:  [index, KEY, pad(11)]
+#! Inputs:  [name_id_prefix, name_id_suffix, KEY, pad(10)]
 #! Outputs: [INIT_VALUE, pad(12)]
 #!
 #! Where:
-#! - index is the index of the storage slot that contains the map root.
+#! - name_id_{prefix, suffix} are the prefix and suffix felts of the name identifier, which are
+#!   the first two felts of the hashed slot name.
+#!    - the slot must point to the root of the storage map.
 #! - INIT_VALUE is the initial value of the map item at KEY at the beginning of the transaction.
 #!
 #! Panics if:
-#! - the index is out of bounds (>255).
+#! - a slot with the provided name ID does not exist in account storage.
 #! - the requested storage slot type is not map.
 #!
 #! Invocation: dynexec
 export.account_get_initial_map_item
     # authenticate that the procedure invocation originates from the account context
     exec.authenticate_account_origin
-    # => [storage_offset, storage_size, index, KEY, pad(11)]
-
-    # apply offset to storage slot index
-    exec.account::apply_storage_offset
-    # => [index_with_offset, KEY, pad(11)]
+    # => [name_id_prefix, name_id_suffix, KEY, pad(10)]
 
     # fetch the initial map item from account storage
     exec.account::get_initial_map_item
@@ -487,18 +483,20 @@ end
 #! Stores NEW_VALUE under the specified KEY within the map contained in the given account storage 
 #! slot.
 #!
-#! Inputs:  [index, KEY, NEW_VALUE, pad(7)]
+#! Inputs:  [name_id_prefix, name_id_suffix, KEY, NEW_VALUE, pad(6)]
 #! Outputs: [OLD_MAP_ROOT, OLD_MAP_VALUE, pad(8)]
 #!
 #! Where:
-#! - index is the index of the storage slot which contains the map root.
+#! - name_id_{prefix, suffix} are the prefix and suffix felts of the name identifier, which are
+#!   the first two felts of the hashed slot name.
+#!    - the slot must point to the root of the storage map.
 #! - NEW_VALUE is the value of the new map item for the respective KEY.
 #! - OLD_VALUE is the value of the old map item for the respective KEY.
 #! - KEY is the key of the new item.
 #! - OLD_MAP_ROOT is the root of the old map before insertion
 #!
 #! Panics if:
-#! - the index is out of bounds (>255).
+#! - a slot with the provided name ID does not exist in account storage.
 #! - the requested storage slot type is not map.
 #! - the procedure is called from a non-account context.
 #! - the invocation of this procedure does not originate from the native account.
@@ -507,18 +505,18 @@ end
 export.account_set_map_item
     # check that this procedure was executed against the native account
     exec.memory::assert_native_account
-    # => [index, KEY, NEW_VALUE, pad(7)]
+    # => [name_id_prefix, name_id_suffix, KEY, NEW_VALUE, pad(6)]
 
     # authenticate that the procedure invocation originates from the account context
     exec.authenticate_account_origin
-    # => [storage_offset, storage_size, index, KEY, NEW_VALUE, pad(7)]
-
-    # apply offset to storage slot index
-    exec.account::apply_storage_offset
-    # => [index_with_offset, KEY, NEW_VALUE, pad(7)]
+    # => [name_id_prefix, name_id_suffix, KEY, NEW_VALUE, pad(6)]
 
     # set the new map item
     exec.account::set_map_item
+    # => [OLD_MAP_ROOT, OLD_VALUE, pad(16)]
+
+    # truncate the stack
+    movupw.2 dropw movupw.2 dropw
     # => [OLD_MAP_ROOT, OLD_VALUE, pad(8)]
 end
 
@@ -586,7 +584,7 @@ export.account_add_asset
     # => [ASSET, pad(12)]
 
     # authenticate that the procedure invocation originates from the account context
-    exec.authenticate_account_origin drop drop
+    exec.authenticate_account_origin
     # => [ASSET, pad(12)]
 
     # add the specified asset to the account vault, emitting the corresponding events
@@ -615,7 +613,7 @@ export.account_remove_asset
     # => [ASSET, pad(12)]
 
     # authenticate that the procedure invocation originates from the account context
-    exec.authenticate_account_origin drop drop
+    exec.authenticate_account_origin
     # => [ASSET, pad(12)]
 
     # remove the specified asset from the account vault, emitting the corresponding events
@@ -798,7 +796,7 @@ export.faucet_mint_asset
     # => [ASSET, pad(12)]
 
     # authenticate that the procedure invocation originates from the account context
-    exec.authenticate_account_origin drop drop
+    exec.authenticate_account_origin
     # => [ASSET, pad(12)]
 
     # mint the asset
@@ -833,7 +831,7 @@ export.faucet_burn_asset
     # => [ASSET, pad(12)]
 
     # authenticate that the procedure invocation originates from the account context
-    exec.authenticate_account_origin drop drop
+    exec.authenticate_account_origin
     # => [ASSET, pad(12)]
 
     # burn the asset

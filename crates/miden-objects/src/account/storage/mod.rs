@@ -16,6 +16,7 @@ use super::{
 use crate::account::storage::header::StorageSlotHeader;
 use crate::account::{AccountComponent, AccountType};
 use crate::crypto::SequentialCommit;
+use crate::utils::sync::LazyLock;
 
 mod slot;
 pub use slot::{NamedStorageSlot, SlotName, SlotNameId, StorageSlot, StorageSlotType};
@@ -29,18 +30,28 @@ pub use header::AccountStorageHeader;
 mod partial;
 pub use partial::PartialStorage;
 
+static FAUCET_METADATA_SLOT_NAME: LazyLock<SlotName> =
+    LazyLock::new(|| SlotName::new("miden::faucet::metadata").expect("slot name should be valid"));
+
 // ACCOUNT STORAGE
 // ================================================================================================
 
-/// Account storage is composed of a variable number of index-addressable [StorageSlot]s up to
+/// Account storage is composed of a variable number of name-addressable [`NamedStorageSlot`]s up to
 /// 255 slots in total.
 ///
 /// Each slot has a type which defines its size and structure. Currently, the following types are
 /// supported:
-/// - [StorageSlot::Value]: contains a single [Word] of data (i.e., 32 bytes).
-/// - [StorageSlot::Map]: contains a [StorageMap] which is a key-value map where both keys and
+/// - [`StorageSlot::Value`]: contains a single [`Word`] of data (i.e., 32 bytes).
+/// - [`StorageSlot::Map`]: contains a [`StorageMap`] which is a key-value map where both keys and
 ///   values are [Word]s. The value of a storage slot containing a map is the commitment to the
 ///   underlying map.
+///
+/// Slots are sorted by [`SlotName`] (or [`SlotNameId`] equivalently). This order is necessary to:
+/// - Simplify lookups of slots in the transaction kernel (using `std::collections::sorted_array`
+///   from the miden core library)
+/// - Allow the [`AccountStorageDelta`] to work only with slot names instead of slot indices.
+/// - Make it simple to check for duplicates by iterating the slots and checking that no two
+///   adjacent items have the same slot name.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct AccountStorage {
     slots: Vec<NamedStorageSlot>,
@@ -53,38 +64,29 @@ impl AccountStorage {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
 
-    /// TODO(named_slots): Remove this temporary API.
+    /// Returns a new instance of account storage initialized with the provided storage slots.
     ///
-    /// Returns a new instance of account storage initialized with the provided items.
+    /// This function sorts the slots by [`SlotName`].
     ///
     /// # Errors
     ///
     /// Returns an error if:
     /// - The number of [`StorageSlot`]s exceeds 255.
-    pub fn new(slots: Vec<StorageSlot>) -> Result<AccountStorage, AccountError> {
-        let slots = slots
-            .into_iter()
-            .enumerate()
-            .map(|(idx, slot)| NamedStorageSlot::new(SlotName::new_index(idx), slot))
-            .collect();
-
-        Self::new_named(slots)
-    }
-
-    /// TODO(named_slots): Rename to new.
-    pub fn new_named(mut slots: Vec<NamedStorageSlot>) -> Result<AccountStorage, AccountError> {
+    /// - There are multiple storage slots with the same [`SlotName`].
+    pub fn new(mut slots: Vec<NamedStorageSlot>) -> Result<AccountStorage, AccountError> {
         let num_slots = slots.len();
 
         if num_slots > Self::MAX_NUM_STORAGE_SLOTS {
             return Err(AccountError::StorageTooManySlots(num_slots as u64));
         }
 
+        // TODO(named_slots): Optimization: If we keep slots sorted, iterate slots instead and
+        // compare adjacent elements.
         let mut names = BTreeSet::new();
         for slot in &slots {
             if !names.insert(slot.name()) {
-                // TODO(named_slots): Return error.
                 // TODO(named_slots): Add test for this new error.
-                todo!("error: storage slot name {} is assigned to more than one slot", slot.name())
+                return Err(AccountError::DuplicateStorageSlotName(slot.name().clone()));
             }
         }
 
@@ -108,36 +110,40 @@ impl AccountStorage {
     /// Returns an error if:
     /// - The number of [`StorageSlot`]s of all components exceeds 255.
     pub(super) fn from_components(
-        components: &[AccountComponent],
+        components: Vec<AccountComponent>,
         account_type: AccountType,
     ) -> Result<AccountStorage, AccountError> {
         let mut storage_slots = match account_type {
             AccountType::FungibleFaucet => {
-                vec![NamedStorageSlot::new(SlotName::new_index(0), StorageSlot::empty_value())]
+                vec![NamedStorageSlot::with_empty_value(Self::faucet_metadata_slot().clone())]
             },
             AccountType::NonFungibleFaucet => {
-                vec![NamedStorageSlot::new(SlotName::new_index(0), StorageSlot::empty_map())]
+                vec![NamedStorageSlot::with_empty_map(Self::faucet_metadata_slot().clone())]
             },
             _ => vec![],
         };
 
-        let offset = storage_slots.len();
+        for component_slot in components.into_iter().flat_map(|component| {
+            let AccountComponent { storage_slots, .. } = component;
+            storage_slots.into_iter()
+        }) {
+            if component_slot.name() == Self::faucet_metadata_slot() {
+                return Err(AccountError::StorageSlotNameMustNotBeFaucetMetadata);
+            }
 
-        for (slot_idx, slot) in components
-            .iter()
-            .flat_map(|component| component.storage_slots())
-            .cloned()
-            .enumerate()
-        {
-            let name = SlotName::new_index(slot_idx + offset);
-            storage_slots.push(NamedStorageSlot::new(name, slot));
+            storage_slots.push(component_slot);
         }
 
-        Self::new_named(storage_slots)
+        Self::new(storage_slots)
     }
 
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
+
+    /// Returns the [`SlotName`] of the faucet's protocol metadata.
+    pub fn faucet_metadata_slot() -> &'static SlotName {
+        &FAUCET_METADATA_SLOT_NAME
+    }
 
     /// Converts storage slots of this account storage into a vector of field elements.
     ///
@@ -186,8 +192,11 @@ impl AccountStorage {
                 })
                 .collect(),
         )
+        .expect("slots should be valid as ensured by AccountStorage")
     }
 
+    /// Returns a reference to the storage slot with the provided name, if it exists, `None`
+    /// otherwise.
     pub fn get(&self, slot_name: &SlotName) -> Option<&NamedStorageSlot> {
         debug_assert!(self.slots.is_sorted());
 
@@ -206,29 +215,31 @@ impl AccountStorage {
             .ok()
     }
 
-    /// Returns an item from the storage at the specified index.
+    /// Returns an item from the storage slot with the given name.
     ///
-    /// # Errors:
-    /// - If the index is out of bounds
-    pub fn get_item(&self, index: u8) -> Result<Word, AccountError> {
-        let slot_name = SlotName::new_index(index as usize);
-        self.get(&slot_name)
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - A slot with the provided name does not exist.
+    pub fn get_item(&self, slot_name: &SlotName) -> Result<Word, AccountError> {
+        self.get(slot_name)
             .map(|named_slot| named_slot.storage_slot().value())
             .ok_or_else(|| AccountError::StorageSlotNameNotFound { slot_name: slot_name.clone() })
     }
 
-    /// Returns a map item from a map located in storage at the specified index.
+    /// Returns a map item from the map in the storage slot with the given name.
     ///
-    /// # Errors:
-    /// - If the index is out of bounds
-    /// - If the [StorageSlot] is not [StorageSlotType::Map]
-    pub fn get_map_item(&self, index: u8, key: Word) -> Result<Word, AccountError> {
-        let slot_name = SlotName::new_index(index as usize);
-        self.get(&slot_name)
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - A slot with the provided name does not exist.
+    /// - If the [`StorageSlot`] is not [`StorageSlotType::Map`].
+    pub fn get_map_item(&self, slot_name: &SlotName, key: Word) -> Result<Word, AccountError> {
+        self.get(slot_name)
             .ok_or_else(|| AccountError::StorageSlotNameNotFound { slot_name: slot_name.clone() })
             .and_then(|named_slot| match named_slot.storage_slot() {
                 StorageSlot::Map(map) => Ok(map.get(&key)),
-                _ => Err(AccountError::StorageSlotNotMap(index)),
+                _ => Err(AccountError::StorageSlotNotMap(slot_name.clone())),
             })
     }
 
@@ -237,49 +248,50 @@ impl AccountStorage {
 
     /// Applies the provided delta to this account storage.
     ///
-    /// # Errors:
-    /// - If the updates violate storage constraints.
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The updates violate storage constraints.
     pub(super) fn apply_delta(&mut self, delta: &AccountStorageDelta) -> Result<(), AccountError> {
-        let len = self.slots.len() as u8;
+        // Update storage values
+        for (slot_name, &value) in delta.values().iter() {
+            self.set_item(slot_name, value)?;
+        }
 
-        // update storage maps
-        for (&idx, map) in delta.maps().iter() {
+        // Update storage maps
+        for (slot_name, map_delta) in delta.maps().iter() {
             let named_slot = self
-                .get_mut(&SlotName::new_index(idx as usize))
-                .ok_or(AccountError::StorageIndexOutOfBounds { slots_len: len, index: idx })?;
+                .get_mut(slot_name)
+                .ok_or(AccountError::StorageSlotNameNotFound { slot_name: slot_name.clone() })?;
 
             let storage_map = match named_slot.storage_slot_mut() {
                 StorageSlot::Map(map) => map,
-                _ => return Err(AccountError::StorageSlotNotMap(idx)),
+                _ => return Err(AccountError::StorageSlotNotMap(slot_name.clone())),
             };
 
-            storage_map.apply_delta(map)?;
-        }
-
-        // update storage values
-        for (&idx, &value) in delta.values().iter() {
-            self.set_item(idx, value)?;
+            storage_map.apply_delta(map_delta)?;
         }
 
         Ok(())
     }
 
-    /// Updates the value of the storage slot at the specified index.
+    /// Updates the value of the storage slot with the given name.
     ///
     /// This method should be used only to update value slots. For updating values
-    /// in storage maps, please see [AccountStorage::set_map_item()].
+    /// in storage maps, please see [`AccountStorage::set_map_item`].
     ///
-    /// # Errors:
-    /// - If the index is out of bounds
-    /// - If the [StorageSlot] is not [StorageSlotType::Value]
-    pub fn set_item(&mut self, index: u8, value: Word) -> Result<Word, AccountError> {
-        let slot_name = SlotName::new_index(index as usize);
-        let slot = self.get_mut(&slot_name).ok_or_else(|| {
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - A slot with the provided name does not exist.
+    /// - The [`StorageSlot`] is not [`StorageSlotType::Value`].
+    pub fn set_item(&mut self, slot_name: &SlotName, value: Word) -> Result<Word, AccountError> {
+        let slot = self.get_mut(slot_name).ok_or_else(|| {
             AccountError::StorageSlotNameNotFound { slot_name: slot_name.clone() }
         })?;
 
         let StorageSlot::Value(old_value) = slot.storage_slot() else {
-            return Err(AccountError::StorageSlotNotValue(index));
+            return Err(AccountError::StorageSlotNotValue(slot_name.clone()));
         };
         let old_value = *old_value;
 
@@ -289,27 +301,28 @@ impl AccountStorage {
         Ok(old_value)
     }
 
-    /// Updates the value of a key-value pair of a storage map at the specified index.
+    /// Updates the value of a key-value pair of a storage map with the given name.
     ///
     /// This method should be used only to update storage maps. For updating values
     /// in storage slots, please see [AccountStorage::set_item()].
     ///
-    /// # Errors:
-    /// - If the index is out of bounds
-    /// - If the [StorageSlot] is not [StorageSlotType::Map]
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - A slot with the provided name does not exist.
+    /// - If the [`StorageSlot`] is not [`StorageSlotType::Map`].
     pub fn set_map_item(
         &mut self,
-        index: u8,
+        slot_name: &SlotName,
         raw_key: Word,
         value: Word,
     ) -> Result<(Word, Word), AccountError> {
-        let slot_name = SlotName::new_index(index as usize);
-        let slot = self.get_mut(&slot_name).ok_or_else(|| {
+        let slot = self.get_mut(slot_name).ok_or_else(|| {
             AccountError::StorageSlotNameNotFound { slot_name: slot_name.clone() }
         })?;
 
         let StorageSlot::Map(storage_map) = slot.storage_slot_mut() else {
-            return Err(AccountError::StorageSlotNotMap(index));
+            return Err(AccountError::StorageSlotNotMap(slot_name.clone()));
         };
 
         let old_root = storage_map.root();
@@ -380,7 +393,7 @@ impl Deserializable for AccountStorage {
         let num_slots = source.read_u8()? as usize;
         let slots = source.read_many::<NamedStorageSlot>(num_slots)?;
 
-        Self::new_named(slots).map_err(|err| DeserializationError::InvalidValue(err.to_string()))
+        Self::new(slots).map_err(|err| DeserializationError::InvalidValue(err.to_string()))
     }
 }
 
@@ -389,11 +402,11 @@ impl Deserializable for AccountStorage {
 
 #[cfg(test)]
 mod tests {
-    use super::{AccountStorage, Deserializable, Serializable, StorageMap, Word};
-    use crate::account::{NamedStorageSlot, SlotName, StorageSlot};
+    use super::{AccountStorage, Deserializable, Serializable};
+    use crate::account::{NamedStorageSlot, SlotName};
 
     #[test]
-    fn test_serde_account_storage() {
+    fn test_serde_account_storage() -> anyhow::Result<()> {
         // empty storage
         let storage = AccountStorage::new(vec![]).unwrap();
         let bytes = storage.to_bytes();
@@ -401,30 +414,29 @@ mod tests {
 
         // storage with values for default types
         let storage = AccountStorage::new(vec![
-            StorageSlot::Value(Word::empty()),
-            StorageSlot::Map(StorageMap::default()),
+            NamedStorageSlot::with_empty_value(SlotName::new("miden::test::value")?),
+            NamedStorageSlot::with_empty_map(SlotName::new("miden::test::map")?),
         ])
         .unwrap();
         let bytes = storage.to_bytes();
         assert_eq!(storage, AccountStorage::read_from_bytes(&bytes).unwrap());
+
+        Ok(())
     }
 
     #[test]
     fn test_get_slot_by_name() -> anyhow::Result<()> {
-        // TODO(named_slots): Use proper names.
-        // const COUNTER_SLOT: SlotName = SlotName::from_static_str("miden::test::counter");
-        // const MAP_SLOT: SlotName = SlotName::from_static_str("miden::test::map");
-        const COUNTER_SLOT: SlotName = SlotName::from_static_str("miden::0");
-        const MAP_SLOT: SlotName = SlotName::from_static_str("miden::4");
+        let counter_slot = SlotName::new("miden::test::counter")?;
+        let map_slot = SlotName::new("miden::test::map")?;
 
         let slots = vec![
-            NamedStorageSlot::new(COUNTER_SLOT, StorageSlot::empty_value()),
-            NamedStorageSlot::new(MAP_SLOT, StorageSlot::empty_map()),
+            NamedStorageSlot::with_empty_value(counter_slot.clone()),
+            NamedStorageSlot::with_empty_map(map_slot.clone()),
         ];
-        let storage = AccountStorage::new_named(slots.clone())?;
+        let storage = AccountStorage::new(slots.clone())?;
 
-        assert_eq!(storage.get(&COUNTER_SLOT).unwrap(), &slots[0]);
-        assert_eq!(storage.get(&MAP_SLOT).unwrap(), &slots[1]);
+        assert_eq!(storage.get(&counter_slot).unwrap(), &slots[0]);
+        assert_eq!(storage.get(&map_slot).unwrap(), &slots[1]);
 
         Ok(())
     }
