@@ -1,9 +1,8 @@
 // NO STD ECDSA SIGNER
 // ================================================================================================
 
-use miden_crypto::dsa::ecdsa_k256_keccak::SecretKey;
-
 use crate::block::BlockSigner;
+use crate::crypto::dsa::ecdsa_k256_keccak::SecretKey;
 
 /// An insecure, random block signer for testing purposes.
 pub trait RandomBlockSigner: BlockSigner {

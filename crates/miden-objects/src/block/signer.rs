@@ -1,7 +1,6 @@
-use miden_crypto::dsa::ecdsa_k256_keccak::SecretKey;
-
 use crate::block::BlockHeader;
 use crate::crypto::dsa::ecdsa_k256_keccak as ecdsa;
+use crate::crypto::dsa::ecdsa_k256_keccak::SecretKey;
 
 // BLOCK SIGNER
 // ================================================================================================

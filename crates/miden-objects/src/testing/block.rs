@@ -1,4 +1,3 @@
-use miden_crypto::dsa::ecdsa_k256_keccak::SecretKey;
 use miden_crypto::merkle::Smt;
 #[cfg(not(target_family = "wasm"))]
 use winter_rand_utils::rand_value;
@@ -7,6 +6,7 @@ use crate::Word;
 use crate::account::Account;
 use crate::block::account_tree::{AccountTree, account_id_to_smt_key};
 use crate::block::{BlockHeader, BlockNumber, FeeParameters};
+use crate::crypto::dsa::ecdsa_k256_keccak::SecretKey;
 use crate::testing::account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET;
 use crate::testing::random_signer::RandomBlockSigner;
 
