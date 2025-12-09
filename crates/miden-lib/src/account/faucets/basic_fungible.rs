@@ -131,8 +131,6 @@ impl BasicFungibleFaucet {
     ) -> Result<Self, FungibleFaucetError> {
         for component in interface.components().iter() {
             if let AccountComponentInterface::BasicFungibleFaucet = component {
-                // obtain metadata from storage using offset provided by BasicFungibleFaucet
-                // interface
                 let faucet_metadata = storage
                     .get_item(BasicFungibleFaucet::metadata_slot_name())
                     .map_err(|err| FungibleFaucetError::StorageLookupFailed {

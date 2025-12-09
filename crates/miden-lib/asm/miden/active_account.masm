@@ -272,7 +272,7 @@ end
 # STORAGE
 # -------------------------------------------------------------------------------------------------
 
-#! Gets an item from the active account storage. Panics if the index is out of bounds.
+#! Gets an item from the active account storage.
 #!
 #! Inputs:  [name_id_prefix, name_id_suffix]
 #! Outputs: [VALUE]
