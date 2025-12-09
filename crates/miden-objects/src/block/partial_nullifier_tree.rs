@@ -1,4 +1,4 @@
-use super::nullifier_tree::NullifierLeafValue;
+use super::nullifier_tree::NullifierBlock;
 use crate::Word;
 use crate::block::{BlockNumber, NullifierWitness, nullifier_tree};
 use crate::crypto::merkle::PartialSmt;
@@ -87,7 +87,7 @@ impl PartialNullifierTree {
     ) -> Result<(), NullifierTreeError> {
         let prev_nullifier_value = self
             .0
-            .insert(nullifier.as_word(), NullifierLeafValue::from_block_number(block_num).as_word())
+            .insert(nullifier.as_word(), NullifierBlock::from(block_num).into())
             .map_err(|source| NullifierTreeError::UntrackedNullifier { nullifier, source })?;
 
         if prev_nullifier_value != nullifier_tree::UNSPENT_NULLIFIER {
