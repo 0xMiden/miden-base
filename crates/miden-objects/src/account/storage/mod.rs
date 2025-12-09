@@ -150,7 +150,7 @@ impl AccountStorage {
     /// Each storage slot is represented by exactly 8 elements:
     ///
     /// ```text
-    /// [[0, slot_type, name_id_suffix, name_id_prefix], SLOT_VALUE]
+    /// [[0, slot_type, slot_id_suffix, slot_id_prefix], SLOT_VALUE]
     /// ```
     pub fn to_elements(&self) -> Vec<Felt> {
         <Self as SequentialCommit>::to_elements(self)
@@ -200,17 +200,17 @@ impl AccountStorage {
     pub fn get(&self, slot_name: &SlotName) -> Option<&NamedStorageSlot> {
         debug_assert!(self.slots.is_sorted());
 
-        let name_id = slot_name.compute_id();
+        let slot_id = slot_name.compute_id();
         self.slots
-            .binary_search_by_key(&name_id, |named_slot| named_slot.name_id())
+            .binary_search_by_key(&slot_id, |named_slot| named_slot.slot_id())
             .map(|idx| &self.slots[idx])
             .ok()
     }
 
     fn get_mut(&mut self, slot_name: &SlotName) -> Option<&mut NamedStorageSlot> {
-        let name_id = slot_name.compute_id();
+        let slot_id = slot_name.compute_id();
         self.slots
-            .binary_search_by_key(&name_id, |named_slot| named_slot.name_id())
+            .binary_search_by_key(&slot_id, |named_slot| named_slot.slot_id())
             .map(|idx| &mut self.slots[idx])
             .ok()
     }
@@ -356,7 +356,7 @@ impl SequentialCommit for AccountStorage {
             .iter()
             .flat_map(|named_slot| {
                 StorageSlotHeader::new(
-                    named_slot.name_id(),
+                    named_slot.slot_id(),
                     named_slot.storage_slot().slot_type(),
                     named_slot.storage_slot().value(),
                 )

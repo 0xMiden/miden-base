@@ -15,7 +15,7 @@ pub struct NamedStorageSlot {
     ///
     /// This is cached so that the `Ord` implementation can use the computed name ID instead of
     /// having to hash the slot name on every comparison operation.
-    name_id: SlotId,
+    slot_id: SlotId,
     /// The underlying storage slot.
     slot: StorageSlot,
 }
@@ -26,9 +26,9 @@ impl NamedStorageSlot {
 
     /// Creates a new [`NamedStorageSlot`] with the given [`SlotName`] and [`StorageSlot`].
     pub fn new(name: SlotName, slot: StorageSlot) -> Self {
-        let name_id = name.compute_id();
+        let slot_id = name.compute_id();
 
-        Self { name, name_id, slot }
+        Self { name, slot_id, slot }
     }
 
     /// Creates a new [`NamedStorageSlot`] with the given [`SlotName`] and the `value` wrapped into
@@ -64,8 +64,8 @@ impl NamedStorageSlot {
     }
 
     /// Returns the [`SlotId`] by which the [`NamedStorageSlot`] is identified.
-    pub fn name_id(&self) -> SlotId {
-        self.name_id
+    pub fn slot_id(&self) -> SlotId {
+        self.slot_id
     }
 
     /// Returns this storage slot value as a [Word]
@@ -97,13 +97,13 @@ impl NamedStorageSlot {
 
     /// Consumes self and returns the underlying parts.
     pub fn into_parts(self) -> (SlotName, SlotId, StorageSlot) {
-        (self.name, self.name_id, self.slot)
+        (self.name, self.slot_id, self.slot)
     }
 }
 
 impl Ord for NamedStorageSlot {
     fn cmp(&self, other: &Self) -> core::cmp::Ordering {
-        self.name_id.cmp(&other.name_id)
+        self.slot_id.cmp(&other.slot_id)
     }
 }
 

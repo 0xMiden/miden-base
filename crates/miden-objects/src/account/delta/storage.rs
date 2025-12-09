@@ -172,15 +172,15 @@ impl AccountStorageDelta {
         debug_assert_eq!(sorted_slots.len(), self.values.len() + self.maps.len());
 
         for (slot_name, slot_delta) in sorted_slots {
-            let name_id = slot_name.compute_id();
+            let slot_id = slot_name.compute_id();
 
             match slot_delta {
                 StorageSlotDelta::Value(new_value) => {
                     elements.extend_from_slice(&[
                         DOMAIN_VALUE,
                         ZERO,
-                        name_id.suffix(),
-                        name_id.prefix(),
+                        slot_id.suffix(),
+                        slot_id.prefix(),
                     ]);
                     elements.extend_from_slice(new_value.as_elements());
                 },
@@ -197,8 +197,8 @@ impl AccountStorageDelta {
                     elements.extend_from_slice(&[
                         DOMAIN_MAP,
                         num_changed_entries,
-                        name_id.suffix(),
-                        name_id.prefix(),
+                        slot_id.suffix(),
+                        slot_id.prefix(),
                     ]);
                     elements.extend_from_slice(EMPTY_WORD.as_elements());
                 },

@@ -35,14 +35,14 @@ const MOCK_ACCOUNT_CODE: &str = "
     # is assumed that the operand stack at the beginning of their execution is pad'ed and
     # does not have any other valuable information.
 
-    #! Inputs:  [name_id_prefix, name_id_suffix, VALUE, pad(10)]
+    #! Inputs:  [slot_id_prefix, slot_id_suffix, VALUE, pad(10)]
     #! Outputs: [OLD_VALUE, pad(12)]
     export.set_item
         exec.native_account::set_item
         # => [OLD_VALUE, pad(12)]
     end
 
-    #! Inputs:  [name_id_prefix, name_id_suffix, pad(14)]
+    #! Inputs:  [slot_id_prefix, slot_id_suffix, pad(14)]
     #! Outputs: [VALUE, pad(12)]
     export.get_item
         exec.active_account::get_item
@@ -53,7 +53,7 @@ const MOCK_ACCOUNT_CODE: &str = "
         # => [VALUE, pad(12)]
     end
 
-    #! Inputs:  [name_id_prefix, name_id_suffix, pad(14)]
+    #! Inputs:  [slot_id_prefix, slot_id_suffix, pad(14)]
     #! Outputs: [VALUE, pad(12)]
     export.get_initial_item
         exec.active_account::get_initial_item
@@ -64,21 +64,21 @@ const MOCK_ACCOUNT_CODE: &str = "
         # => [VALUE, pad(12)]
     end
 
-    #! Inputs:  [name_id_prefix, name_id_suffix, KEY, NEW_VALUE, pad(6)]
+    #! Inputs:  [slot_id_prefix, slot_id_suffix, KEY, NEW_VALUE, pad(6)]
     #! Outputs: [OLD_MAP_ROOT, OLD_MAP_VALUE, pad(8)]
     export.set_map_item
         exec.native_account::set_map_item
         # => [OLD_MAP_ROOT, OLD_MAP_VALUE, pad(8)]
     end
 
-    #! Inputs:  [name_id_prefix, name_id_suffix, KEY, pad(10)]
+    #! Inputs:  [slot_id_prefix, slot_id_suffix, KEY, pad(10)]
     #! Outputs: [VALUE, pad(12)]
     export.get_map_item
         exec.active_account::get_map_item
         # => [VALUE, pad(12)]
     end
 
-    #! Inputs:  [name_id_prefix, name_id_suffix, KEY, pad(10)]
+    #! Inputs:  [slot_id_prefix, slot_id_suffix, KEY, pad(10)]
     #! Outputs: [INIT_VALUE, pad(12)]
     export.get_initial_map_item
         exec.active_account::get_initial_map_item

@@ -82,8 +82,8 @@ mod tests {
     fn test_slot_id_as_u128() {
         let suffix = 5;
         let prefix = 3;
-        let name_id = SlotId::new(Felt::from(suffix as u32), Felt::from(prefix as u32));
-        assert_eq!(name_id.as_u128(), (prefix << 64) + suffix);
-        assert_eq!(format!("{name_id}"), "0x00000000000000030000000000000005");
+        let slot_id = SlotId::new(Felt::from(suffix as u32), Felt::from(prefix as u32));
+        assert_eq!(slot_id.as_u128(), (prefix << 64) + suffix);
+        assert_eq!(format!("{slot_id}"), "0x00000000000000030000000000000005");
     }
 }

@@ -38,7 +38,7 @@ impl StorageSlotHeader {
     ///
     /// This is done by converting this storage slot into 8 field elements as follows:
     /// ```text
-    /// [[0, slot_type, name_id_suffix, name_id_prefix], SLOT_VALUE]
+    /// [[0, slot_type, slot_id_suffix, slot_id_prefix], SLOT_VALUE]
     /// ```
     pub(crate) fn to_elements(&self) -> [Felt; StorageSlot::NUM_ELEMENTS_PER_STORAGE_SLOT] {
         let mut elements = [ZERO; StorageSlot::NUM_ELEMENTS_PER_STORAGE_SLOT];
@@ -125,10 +125,10 @@ impl AccountStorageHeader {
     /// Returns `None` if a slot with the provided name ID does not exist.
     pub fn find_slot_header_by_id(
         &self,
-        name_id: SlotId,
+        slot_id: SlotId,
     ) -> Option<(&SlotName, &StorageSlotType, &Word)> {
         self.slots
-            .binary_search_by_key(&name_id, |(name, ..)| name.compute_id())
+            .binary_search_by_key(&slot_id, |(name, ..)| name.compute_id())
             .map(|slot_idx| {
                 let (name, r#type, value) = &self.slots[slot_idx];
                 (name, r#type, value)
@@ -158,7 +158,7 @@ impl AccountStorageHeader {
     /// This is done by first converting each storage slot into exactly 8 elements as follows:
     ///
     /// ```text
-    /// [[0, slot_type, name_id_suffix, name_id_prefix], SLOT_VALUE]
+    /// [[0, slot_type, slot_id_suffix, slot_id_prefix], SLOT_VALUE]
     /// ```
     ///
     /// And then concatenating the resulting elements into a single vector.
