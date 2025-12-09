@@ -277,6 +277,8 @@ impl Default for PartialBlockchain {
 mod tests {
     use assert_matches::assert_matches;
     use miden_core::utils::{Deserializable, Serializable};
+    use rand::SeedableRng;
+    use rand_chacha::ChaCha20Rng;
 
     use super::PartialBlockchain;
     use crate::alloc::vec::Vec;
@@ -427,7 +429,8 @@ mod tests {
         let fee_parameters =
             FeeParameters::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET.try_into().unwrap(), 500)
                 .expect("native asset ID should be a fungible faucet ID");
-        let public_key = SecretKey::new().public_key();
+        let mut rng = ChaCha20Rng::from_seed([0u8; 32]);
+        let public_key = SecretKey::with_rng(&mut rng).public_key();
 
         BlockHeader::new(
             0,
