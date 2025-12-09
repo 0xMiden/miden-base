@@ -6,7 +6,7 @@ use.miden::active_note
 # CONSTANTS
 # =================================================================================================
 
-const.B2AGG_NOTE_INPUTS_NUMBER=6
+const.B2AGG_NOTE_INPUTS_COUNT=6
 
 # ERRORS
 # =================================================================================================
@@ -50,7 +50,7 @@ begin
         push.8 exec.active_note::get_inputs
         # => [num_inputs, dest_ptr, pad(16)]
 
-        push.B2AGG_NOTE_INPUTS_NUMBER assert_eq.err=ERR_B2AGG_WRONG_NUMBER_OF_INPUTS drop
+        push.B2AGG_NOTE_INPUTS_COUNT assert_eq.err=ERR_B2AGG_WRONG_NUMBER_OF_INPUTS drop
         # => [pad(16)]
 
         # Store number of note assets -> mem[0]
