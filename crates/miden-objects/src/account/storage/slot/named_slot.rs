@@ -1,5 +1,5 @@
 use crate::Word;
-use crate::account::storage::slot::SlotNameId;
+use crate::account::storage::slot::SlotId;
 use crate::account::{SlotName, StorageMap, StorageSlot, StorageSlotType};
 
 /// An individual storage slot in [`AccountStorage`](crate::account::AccountStorage).
@@ -10,12 +10,12 @@ use crate::account::{SlotName, StorageMap, StorageSlot, StorageSlotType};
 pub struct NamedStorageSlot {
     /// The name of the storage slot.
     name: SlotName,
-    /// The cached [`SlotNameId`] of the slot name. This field must always be consistent with the
+    /// The cached [`SlotId`] of the slot name. This field must always be consistent with the
     /// slot name.
     ///
     /// This is cached so that the `Ord` implementation can use the computed name ID instead of
     /// having to hash the slot name on every comparison operation.
-    name_id: SlotNameId,
+    name_id: SlotId,
     /// The underlying storage slot.
     slot: StorageSlot,
 }
@@ -63,8 +63,8 @@ impl NamedStorageSlot {
         &self.name
     }
 
-    /// Returns the [`SlotNameId`] by which the [`NamedStorageSlot`] is identified.
-    pub fn name_id(&self) -> SlotNameId {
+    /// Returns the [`SlotId`] by which the [`NamedStorageSlot`] is identified.
+    pub fn name_id(&self) -> SlotId {
         self.name_id
     }
 
@@ -96,7 +96,7 @@ impl NamedStorageSlot {
     }
 
     /// Consumes self and returns the underlying parts.
-    pub fn into_parts(self) -> (SlotName, SlotNameId, StorageSlot) {
+    pub fn into_parts(self) -> (SlotName, SlotId, StorageSlot) {
         (self.name, self.name_id, self.slot)
     }
 }

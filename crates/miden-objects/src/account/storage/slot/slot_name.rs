@@ -4,7 +4,7 @@ use core::fmt::Display;
 
 use miden_core::utils::hash_string_to_word;
 
-use crate::account::storage::slot::SlotNameId;
+use crate::account::storage::slot::SlotId;
 use crate::errors::SlotNameError;
 use crate::utils::serde::{ByteWriter, Deserializable, DeserializationError, Serializable};
 
@@ -107,11 +107,11 @@ impl SlotName {
     }
 
     // TODO(named_slots): Docs.
-    pub fn compute_id(&self) -> SlotNameId {
+    pub fn compute_id(&self) -> SlotId {
         let hashed_word = hash_string_to_word(self.as_str());
         let suffix = hashed_word[0];
         let prefix = hashed_word[1];
-        SlotNameId::new(suffix, prefix)
+        SlotId::new(suffix, prefix)
     }
 
     // HELPERS

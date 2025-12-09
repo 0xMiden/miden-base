@@ -2,7 +2,7 @@ use alloc::string::ToString;
 use alloc::vec::Vec;
 
 use super::{AccountStorage, Felt, StorageSlot, StorageSlotType, Word};
-use crate::account::{SlotName, SlotNameId};
+use crate::account::{SlotId, SlotName};
 use crate::crypto::SequentialCommit;
 use crate::utils::serde::{
     ByteReader,
@@ -23,14 +23,14 @@ use crate::{AccountError, FieldElement, ZERO};
 /// - [`StorageSlotType::Map`]: The root of the SMT that represents the storage map.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct StorageSlotHeader {
-    id: SlotNameId,
+    id: SlotId,
     r#type: StorageSlotType,
     value: Word,
 }
 
 impl StorageSlotHeader {
     /// Returns a new instance of storage slot header from the provided storage slot type and value.
-    pub(crate) fn new(id: SlotNameId, r#type: StorageSlotType, value: Word) -> Self {
+    pub(crate) fn new(id: SlotId, r#type: StorageSlotType, value: Word) -> Self {
         Self { id, r#type, value }
     }
 
@@ -74,7 +74,7 @@ impl AccountStorageHeader {
     ///
     /// Returns an error if:
     /// - The number of provided slots is greater than [`AccountStorage::MAX_NUM_STORAGE_SLOTS`].
-    /// - The slots are not sorted by [`SlotNameId`].
+    /// - The slots are not sorted by [`SlotId`].
     pub fn new(slots: Vec<(SlotName, StorageSlotType, Word)>) -> Result<Self, AccountError> {
         if slots.len() > AccountStorage::MAX_NUM_STORAGE_SLOTS {
             return Err(AccountError::StorageTooManySlots(slots.len() as u64));
@@ -125,7 +125,7 @@ impl AccountStorageHeader {
     /// Returns `None` if a slot with the provided name ID does not exist.
     pub fn find_slot_header_by_id(
         &self,
-        name_id: SlotNameId,
+        name_id: SlotId,
     ) -> Option<(&SlotName, &StorageSlotType, &Word)> {
         self.slots
             .binary_search_by_key(&name_id, |(name, ..)| name.compute_id())

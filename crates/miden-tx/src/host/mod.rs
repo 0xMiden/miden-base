@@ -37,7 +37,7 @@ use miden_objects::account::{
     AccountStorageHeader,
     PartialAccount,
     SlotName,
-    SlotNameId,
+    SlotId,
     StorageSlotType,
 };
 use miden_objects::asset::Asset;
@@ -160,11 +160,11 @@ impl<'store, STORE> TransactionBaseHost<'store, STORE> {
         &self.initial_account_storage_header
     }
 
-    /// Returns the initial storage slot of the native account identified by [`SlotNameId`], which
+    /// Returns the initial storage slot of the native account identified by [`SlotId`], which
     /// represents the state at the beginning of the transaction.
     pub fn initial_account_storage_slot(
         &self,
-        slot_id: SlotNameId,
+        slot_id: SlotId,
     ) -> Result<(&SlotName, &StorageSlotType, &Word), TransactionKernelError> {
         self.initial_account_storage_header()
             .find_slot_header_by_id(slot_id)

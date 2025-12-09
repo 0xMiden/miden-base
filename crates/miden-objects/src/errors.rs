@@ -23,7 +23,7 @@ use crate::account::{
     AccountStorage,
     AccountType,
     SlotName,
-    SlotNameId,
+    SlotId,
     // StorageValueName,
     // StorageValueNameError,
     // TemplateTypeError,
@@ -161,7 +161,7 @@ pub enum AccountError {
     #[error("storage does not contain a slot with name {slot_name}")]
     StorageSlotNameNotFound { slot_name: SlotName },
     #[error("storage does not contain a slot with ID {slot_name_id}")]
-    StorageSlotNameIdNotFound { slot_name_id: SlotNameId },
+    StorageSlotNameIdNotFound { slot_name_id: SlotId },
     #[error("storage slots must be sorted by slot name ID")]
     UnsortedStorageSlots,
     #[error("number of storage slots is {0} but max possible number is {max}", max = AccountStorage::MAX_NUM_STORAGE_SLOTS)]
