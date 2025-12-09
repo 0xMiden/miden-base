@@ -59,7 +59,8 @@ impl StorageSlotName {
     ///
     /// ```rust
     /// # use miden_objects::account::StorageSlotName;
-    /// const SLOT_NAME: StorageSlotName = StorageSlotName::from_static_str("miden::basic_fungible_faucet::metadata");
+    /// const SLOT_NAME: StorageSlotName =
+    ///     StorageSlotName::from_static_str("miden::basic_fungible_faucet::metadata");
     /// ```
     ///
     /// This is convenient because using a string that is not a valid slot name fails to compile.
