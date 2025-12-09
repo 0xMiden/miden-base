@@ -61,18 +61,17 @@ begin
         push.1 assert_eq.err=ERR_B2AGG_WRONG_NUMBER_OF_ASSETS drop
         # => [pad(16)]
 
-        mem_loadw_be.8 padw mem_loadw_be.12
-        # => [INPUTS[1], INPUTS[0], pad(12)]
+        mem_loadw_be.8 swapw.3 mem_loadw_be.12
+        # => [INPUTS[1], INPUTS[0], pad(8)]
         
         # Load ASSET onto the stack
-        padw mem_loadw_be.0
-        # => [ASSET, INPUTS[1], INPUTS[0], pad(12)]
+        swapw mem_loadw_be.0
+        # => [ASSET, INPUTS[1], INPUTS[0], pad(4)]
 
         call.agglayer::bridge_out
-        # => [pad(24)]
+        # => [pad(16)]
     end
-    # => [pad(24)]
+    # => [pad(16)]
 
-    dropw dropw
     # => [pad(16)]
 end
