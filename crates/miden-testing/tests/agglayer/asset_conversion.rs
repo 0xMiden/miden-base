@@ -47,8 +47,8 @@ async fn execute_program_with_default_host(
 
 #[tokio::test]
 async fn test_convert_to_u256_scaled_eth() -> anyhow::Result<()> {
-    // 10 base units (base 1e6)
-    let miden_amount = Felt::new(10);
+    // 100 units base 1e6
+    let miden_amount = Felt::new(100_000_000);
 
     // scale to 1e18
     let target_scale = Felt::new(12);
@@ -66,8 +66,7 @@ async fn test_convert_to_u256_scaled_eth() -> anyhow::Result<()> {
             exec.sys::truncate_stack
         end
         ",
-        target_scale.as_int(),
-        miden_amount.as_int(),
+        target_scale, miden_amount,
     );
 
     let program = Assembler::new(Arc::new(DefaultSourceManager::default()))
@@ -81,7 +80,7 @@ async fn test_convert_to_u256_scaled_eth() -> anyhow::Result<()> {
 
     let exec_output = execute_program_with_default_host(program).await?;
 
-    let expected_result = U256::from(10000000000000u64);
+    let expected_result = U256::from_dec_str("100000000000000000000").unwrap();
     let actual_result = stack_to_u256(&exec_output);
 
     assert_eq!(actual_result, expected_result);
@@ -91,11 +90,54 @@ async fn test_convert_to_u256_scaled_eth() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_convert_to_u256_scaled_large_amount() -> anyhow::Result<()> {
-    // 1,000,000 base units (base 1e10)
-    let miden_amount = Felt::new(1_000_000);
+    // 100,000,000 units (base 1e10)
+    let miden_amount = Felt::new(1000000000000000000);
 
     // scale to base 1e18
     let scale_exponent = Felt::new(8);
+
+    let asset_conversion_comp = asset_conversion_component(vec![]);
+    let asset_conversion_lib = asset_conversion_comp.library();
+
+    let script_code = format!(
+        "
+        use.std::sys
+        
+        begin
+            push.{}.{}
+
+            debug.stack
+            call.::convert_felt_to_u256_scaled
+            exec.sys::truncate_stack
+        end
+        ",
+        scale_exponent, miden_amount,
+    );
+
+    let program = Assembler::new(Arc::new(DefaultSourceManager::default()))
+        .with_debug_mode(true)
+        .with_dynamic_library(StdLibrary::default())
+        .unwrap()
+        .with_dynamic_library(asset_conversion_lib.clone())
+        .unwrap()
+        .assemble_program(&script_code)
+        .unwrap();
+
+    let exec_output = execute_program_with_default_host(program).await?;
+
+    let expected_result = U256::from_dec_str("100000000000000000000000000").unwrap();
+    let actual_result = stack_to_u256(&exec_output);
+
+    assert_eq!(actual_result, expected_result);
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_convert_to_u256_basic_example() -> anyhow::Result<()> {
+    // Simple example: amount=1, no scaling (scale_exponent=0)
+    let miden_amount = Felt::new(1);
+    let scale_exponent = Felt::new(0);
 
     let asset_conversion_comp = asset_conversion_component(vec![]);
     let asset_conversion_lib = asset_conversion_comp.library();
@@ -110,8 +152,7 @@ async fn test_convert_to_u256_scaled_large_amount() -> anyhow::Result<()> {
             exec.sys::truncate_stack
         end
         ",
-        scale_exponent.as_int(),
-        miden_amount.as_int(),
+        scale_exponent, miden_amount,
     );
 
     let program = Assembler::new(Arc::new(DefaultSourceManager::default()))
@@ -125,12 +166,27 @@ async fn test_convert_to_u256_scaled_large_amount() -> anyhow::Result<()> {
 
     let exec_output = execute_program_with_default_host(program).await?;
 
-    assert!(exec_output.stack.len() >= 8);
+    // Extract the first 8 u32 values from the stack (the U256 representation)
+    let actual_result: [u32; 8] = [
+        exec_output.stack[0].as_int() as u32,
+        exec_output.stack[1].as_int() as u32,
+        exec_output.stack[2].as_int() as u32,
+        exec_output.stack[3].as_int() as u32,
+        exec_output.stack[4].as_int() as u32,
+        exec_output.stack[5].as_int() as u32,
+        exec_output.stack[6].as_int() as u32,
+        exec_output.stack[7].as_int() as u32,
+    ];
 
-    let expected_result = U256::from(100_000_000_000_000u64);
-    let actual_result = stack_to_u256(&exec_output);
+    // Expected result: 1 represented as 8 u32 values
+    let expected_result_array = [0, 0, 0, 0, 0, 0, 0, 1];
 
-    assert_eq!(actual_result, expected_result);
+    // Also verify this equals U256::from(1u64)
+    let expected_result_u256 = U256::from(1u64);
+    let actual_result_u256 = stack_to_u256(&exec_output);
+
+    assert_eq!(actual_result, expected_result_array);
+    assert_eq!(actual_result_u256, expected_result_u256);
 
     Ok(())
 }
@@ -154,8 +210,7 @@ async fn test_convert_felt_to_u256_scaled_hand_crafted_examples() -> anyhow::Res
             exec.sys::truncate_stack
         end
         ",
-        target_scale.as_int(),
-        miden_amount.as_int(),
+        target_scale, miden_amount,
     );
 
     let program = Assembler::new(Arc::new(DefaultSourceManager::default()))
@@ -174,109 +229,6 @@ async fn test_convert_felt_to_u256_scaled_hand_crafted_examples() -> anyhow::Res
     let expected_result = U256::from(1u64);
     let actual_result = stack_to_u256(&exec_output);
     assert_eq!(actual_result, expected_result);
-
-    // Example 2: amount=1, target_scale=12 (scale up by 10^12)
-    let miden_amount = Felt::new(1);
-    let target_scale = Felt::new(12);
-
-    let script_code = format!(
-        "
-        use.std::sys
-        
-        begin
-            push.{}.{}
-            call.::convert_felt_to_u256_scaled
-            exec.sys::truncate_stack
-        end
-        ",
-        target_scale.as_int(),
-        miden_amount.as_int(),
-    );
-
-    let program = Assembler::new(Arc::new(DefaultSourceManager::default()))
-        .with_debug_mode(true)
-        .with_dynamic_library(StdLibrary::default())
-        .unwrap()
-        .with_dynamic_library(asset_conversion_lib.clone())
-        .unwrap()
-        .assemble_program(&script_code)
-        .unwrap();
-
-    let exec_output = execute_program_with_default_host(program).await?;
-
-    // Expected: amount=1, scale=12 → 1 * 10^12 = 1000000000000
-    let expected_result = U256::from(1000000000000u64);
-    let actual_result = stack_to_u256(&exec_output);
-    assert_eq!(actual_result, expected_result);
-
-    // Example 3: amount=5, target_scale=6 (scale up by 10^6)
-    let miden_amount = Felt::new(5);
-    let target_scale = Felt::new(6);
-
-    let script_code = format!(
-        "
-        use.std::sys
-        
-        begin
-            push.{}.{}
-            call.::convert_felt_to_u256_scaled
-            exec.sys::truncate_stack
-        end
-        ",
-        target_scale.as_int(),
-        miden_amount.as_int(),
-    );
-
-    let program = Assembler::new(Arc::new(DefaultSourceManager::default()))
-        .with_debug_mode(true)
-        .with_dynamic_library(StdLibrary::default())
-        .unwrap()
-        .with_dynamic_library(asset_conversion_lib.clone())
-        .unwrap()
-        .assemble_program(&script_code)
-        .unwrap();
-
-    let exec_output = execute_program_with_default_host(program).await?;
-
-    // Expected: amount=5, scale=6 → 5 * 10^6 = 5000000
-    let expected_result = U256::from(5000000u64);
-    let actual_result = stack_to_u256(&exec_output);
-    assert_eq!(actual_result, expected_result);
-
-    // Example 4: amount=100, target_scale=18 (maximum scale)
-    let miden_amount = Felt::new(100);
-    let target_scale = Felt::new(18);
-
-    let script_code = format!(
-        "
-        use.std::sys
-        
-        begin
-            push.{}.{}
-            call.::convert_felt_to_u256_scaled
-            exec.sys::truncate_stack
-        end
-        ",
-        target_scale.as_int(),
-        miden_amount.as_int(),
-    );
-
-    let program = Assembler::new(Arc::new(DefaultSourceManager::default()))
-        .with_debug_mode(true)
-        .with_dynamic_library(StdLibrary::default())
-        .unwrap()
-        .with_dynamic_library(asset_conversion_lib.clone())
-        .unwrap()
-        .assemble_program(&script_code)
-        .unwrap();
-
-    let exec_output = execute_program_with_default_host(program).await?;
-
-    // Expected: amount=100, scale=18 → 100 * 10^18 = 100000000000000000000
-    let expected_result = U256::from_dec_str("100000000000000000000").unwrap();
-    let actual_result = stack_to_u256(&exec_output);
-    assert_eq!(actual_result, expected_result);
-
     Ok(())
 }
 

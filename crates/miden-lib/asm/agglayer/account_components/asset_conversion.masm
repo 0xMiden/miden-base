@@ -7,7 +7,6 @@ const.MAX_SCALING_FACTOR=18
 
 # ERRORS
 # =================================================================================================
-
 const.ERR_SCALE_AMOUNT_EXCEEDED_LIMIT="maximum scaling factor is 18"
 
 #! Calculate 10^scale where scale is a u8 exponent.
@@ -21,9 +20,9 @@ const.ERR_SCALE_AMOUNT_EXCEEDED_LIMIT="maximum scaling factor is 18"
 #! Panics if:
 #! - scale > 18 (overflow protection)
 proc pow10
-    u32assert2.err=ERR_SCALE_AMOUNT_EXCEEDED_LIMIT
+    u32assert.err=ERR_SCALE_AMOUNT_EXCEEDED_LIMIT
     # => [scale]
-    
+
     dup u32lte.MAX_SCALING_FACTOR assert.err=ERR_SCALE_AMOUNT_EXCEEDED_LIMIT
     # => [scale]
 
@@ -78,8 +77,6 @@ end
 #!
 #! Invocation: exec
 pub proc convert_felt_to_u256_scaled
-    # => [amount, target_scale]
-
     swap
     # => [target_scale, amount]
 
@@ -99,6 +96,8 @@ pub proc convert_felt_to_u256_scaled
     # => [AMOUNT_U256[1], AMOUNT_U256[0], SCALE_U256[1], SCALE_U256[0]]
 
     # Perform U256 multiplication: amount * scale
+    # This is safe because both the scaling factor and amount are guaranteed to be smaller
+    # than 2^64, so we will never overflow a 256-bit value.
     exec.u256::mul_unsafe
     # => [RESULT_U256[1], RESULT_U256[0], EMPTY_WORD, EMPTY_WORD]
 
