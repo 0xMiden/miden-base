@@ -9,9 +9,9 @@ use crate::AccountDeltaError;
 use crate::account::{
     AccountStorage,
     AccountStorageDelta,
-    NamedStorageSlot,
     StorageMap,
     StorageMapDelta,
+    StorageSlot,
     StorageSlotName,
 };
 use crate::note::NoteAssets;
@@ -102,20 +102,20 @@ impl AccountStorage {
         AccountStorage::new(Self::mock_storage_slots()).unwrap()
     }
 
-    pub fn mock_storage_slots() -> Vec<NamedStorageSlot> {
+    pub fn mock_storage_slots() -> Vec<StorageSlot> {
         vec![Self::mock_value_slot0(), Self::mock_value_slot1(), Self::mock_map_slot()]
     }
 
-    pub fn mock_value_slot0() -> NamedStorageSlot {
-        NamedStorageSlot::with_value(MOCK_VALUE_SLOT0.clone(), STORAGE_VALUE_0)
+    pub fn mock_value_slot0() -> StorageSlot {
+        StorageSlot::with_value(MOCK_VALUE_SLOT0.clone(), STORAGE_VALUE_0)
     }
 
-    pub fn mock_value_slot1() -> NamedStorageSlot {
-        NamedStorageSlot::with_value(MOCK_VALUE_SLOT1.clone(), STORAGE_VALUE_1)
+    pub fn mock_value_slot1() -> StorageSlot {
+        StorageSlot::with_value(MOCK_VALUE_SLOT1.clone(), STORAGE_VALUE_1)
     }
 
-    pub fn mock_map_slot() -> NamedStorageSlot {
-        NamedStorageSlot::with_map(MOCK_MAP_SLOT.clone(), Self::mock_map())
+    pub fn mock_map_slot() -> StorageSlot {
+        StorageSlot::with_map(MOCK_MAP_SLOT.clone(), Self::mock_map())
     }
 
     pub fn mock_map() -> StorageMap {

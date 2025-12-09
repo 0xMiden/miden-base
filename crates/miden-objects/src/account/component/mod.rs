@@ -6,7 +6,7 @@ use miden_assembly::{Assembler, Library, Parse};
 // TODO(named_slots): Refactor templates.
 // mod template;
 // pub use template::*;
-use crate::account::{AccountType, NamedStorageSlot};
+use crate::account::{AccountType, StorageSlot};
 use crate::assembly::QualifiedProcedureName;
 use crate::{AccountError, MastForest, Word};
 
@@ -14,7 +14,7 @@ use crate::{AccountError, MastForest, Word};
 // ================================================================================================
 
 /// An [`AccountComponent`] defines a [`Library`] of code and the initial value and types of
-/// the [`NamedStorageSlot`]s it accesses.
+/// the [`StorageSlot`]s it accesses.
 ///
 /// One or more components can be used to built [`AccountCode`](crate::account::AccountCode) and
 /// [`AccountStorage`](crate::account::AccountStorage).
@@ -31,7 +31,7 @@ use crate::{AccountError, MastForest, Word};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AccountComponent {
     pub(super) library: Library,
-    pub(super) storage_slots: Vec<NamedStorageSlot>,
+    pub(super) storage_slots: Vec<StorageSlot>,
     pub(super) supported_types: BTreeSet<AccountType>,
 }
 
@@ -52,8 +52,8 @@ impl AccountComponent {
     /// or in their fallible constructors.
     ///
     /// Returns an error if:
-    /// - The number of given [`NamedStorageSlot`]s exceeds 255.
-    pub fn new(code: Library, storage_slots: Vec<NamedStorageSlot>) -> Result<Self, AccountError> {
+    /// - The number of given [`StorageSlot`]s exceeds 255.
+    pub fn new(code: Library, storage_slots: Vec<StorageSlot>) -> Result<Self, AccountError> {
         // Check that we have less than 256 storage slots.
         u8::try_from(storage_slots.len())
             .map_err(|_| AccountError::StorageTooManySlots(storage_slots.len() as u64))?;
@@ -79,7 +79,7 @@ impl AccountComponent {
     pub fn compile(
         source_code: impl Parse,
         assembler: Assembler,
-        storage_slots: Vec<NamedStorageSlot>,
+        storage_slots: Vec<StorageSlot>,
     ) -> Result<Self, AccountError> {
         let library = assembler
             .assemble_library([source_code])
@@ -181,8 +181,8 @@ impl AccountComponent {
         self.library.mast_forest().as_ref()
     }
 
-    /// Returns a slice of the underlying [`NamedStorageSlot`]s of this component.
-    pub fn storage_slots(&self) -> &[NamedStorageSlot] {
+    /// Returns a slice of the underlying [`StorageSlot`]s of this component.
+    pub fn storage_slots(&self) -> &[StorageSlot] {
         self.storage_slots.as_slice()
     }
 

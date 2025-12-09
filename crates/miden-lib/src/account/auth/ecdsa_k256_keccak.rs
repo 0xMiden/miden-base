@@ -1,5 +1,5 @@
 use miden_objects::account::auth::PublicKeyCommitment;
-use miden_objects::account::{AccountComponent, NamedStorageSlot, StorageSlotName};
+use miden_objects::account::{AccountComponent, StorageSlot, StorageSlotName};
 use miden_objects::utils::sync::LazyLock;
 
 use crate::account::components::ecdsa_k256_keccak_library;
@@ -42,7 +42,7 @@ impl From<AuthEcdsaK256Keccak> for AccountComponent {
     fn from(ecdsa: AuthEcdsaK256Keccak) -> Self {
         AccountComponent::new(
             ecdsa_k256_keccak_library(),
-            vec![NamedStorageSlot::with_value(
+            vec![StorageSlot::with_value(
                 AuthEcdsaK256Keccak::public_key_slot().clone(),
                 ecdsa.pub_key.into(),
             )],

@@ -4,7 +4,7 @@ use alloc::vec::Vec;
 
 use assert_matches::assert_matches;
 use miden_objects::account::auth::PublicKeyCommitment;
-use miden_objects::account::{AccountBuilder, AccountComponent, AccountType, NamedStorageSlot};
+use miden_objects::account::{AccountBuilder, AccountComponent, AccountType, StorageSlot};
 use miden_objects::assembly::diagnostics::NamedSource;
 use miden_objects::assembly::{Assembler, DefaultSourceManager};
 use miden_objects::asset::{FungibleAsset, NonFungibleAsset, TokenSymbol};
@@ -676,7 +676,7 @@ trait AccountComponentExt {
     fn compile_with_path(
         source_code: impl ToString,
         assembler: Assembler,
-        storage_slots: Vec<NamedStorageSlot>,
+        storage_slots: Vec<StorageSlot>,
         library_path: impl AsRef<str>,
     ) -> Result<AccountComponent, AccountError>;
 }
@@ -697,7 +697,7 @@ impl AccountComponentExt for AccountComponent {
     fn compile_with_path(
         source_code: impl ToString,
         assembler: Assembler,
-        storage_slots: Vec<NamedStorageSlot>,
+        storage_slots: Vec<StorageSlot>,
         library_path: impl AsRef<str>,
     ) -> Result<Self, AccountError> {
         let source = NamedSource::new(library_path, source_code.to_string());

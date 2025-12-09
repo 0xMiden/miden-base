@@ -4,8 +4,8 @@ use miden_objects::account::auth::PublicKeyCommitment;
 use miden_objects::account::{
     AccountCode,
     AccountComponent,
-    NamedStorageSlot,
     StorageMap,
+    StorageSlot,
     StorageSlotName,
 };
 use miden_objects::utils::sync::LazyLock;
@@ -177,14 +177,14 @@ impl From<AuthEcdsaK256KeccakAcl> for AccountComponent {
         let mut storage_slots = Vec::with_capacity(3);
 
         // Public key slot
-        storage_slots.push(NamedStorageSlot::with_value(
+        storage_slots.push(StorageSlot::with_value(
             AuthEcdsaK256KeccakAcl::public_key_slot().clone(),
             ecdsa.pub_key.into(),
         ));
 
         // Config slot
         let num_procs = ecdsa.config.auth_trigger_procedures.len() as u32;
-        storage_slots.push(NamedStorageSlot::with_value(
+        storage_slots.push(StorageSlot::with_value(
             AuthEcdsaK256KeccakAcl::config_slot().clone(),
             Word::from([
                 num_procs,
@@ -205,7 +205,7 @@ impl From<AuthEcdsaK256KeccakAcl> for AccountComponent {
             .map(|(i, proc_root)| (Word::from([i as u32, 0, 0, 0]), *proc_root));
 
         // Safe to unwrap because we know that the map keys are unique.
-        storage_slots.push(NamedStorageSlot::with_map(
+        storage_slots.push(StorageSlot::with_map(
             AuthEcdsaK256KeccakAcl::tracked_procedure_roots_slot().clone(),
             StorageMap::with_entries(map_entries).unwrap(),
         ));

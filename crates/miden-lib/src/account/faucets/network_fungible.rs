@@ -6,7 +6,7 @@ use miden_objects::account::{
     AccountStorage,
     AccountStorageMode,
     AccountType,
-    NamedStorageSlot,
+    StorageSlot,
     StorageSlotName,
 };
 use miden_objects::asset::TokenSymbol;
@@ -226,8 +226,8 @@ impl From<NetworkFungibleFaucet> for AccountComponent {
         .into();
 
         let metadata_slot =
-            NamedStorageSlot::with_value(NetworkFungibleFaucet::metadata_slot().clone(), metadata);
-        let owner_slot = NamedStorageSlot::with_value(
+            StorageSlot::with_value(NetworkFungibleFaucet::metadata_slot().clone(), metadata);
+        let owner_slot = StorageSlot::with_value(
             NetworkFungibleFaucet::owner_config_slot().clone(),
             owner_account_id_word,
         );

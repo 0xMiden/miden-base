@@ -9,7 +9,7 @@ use crate::account::storage::{StorageMap, Word};
 // STORAGE SLOT CONTENT
 // ================================================================================================
 
-/// Represents the contents of a [`NamedStorageSlot`](super::NamedStorageSlot).
+/// Represents the contents of a [`StorageSlot`](super::StorageSlot).
 ///
 /// The content of a storage slot can be of two types:
 /// - A simple value which contains a single word (4 field elements or ~32 bytes).

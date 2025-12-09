@@ -159,10 +159,10 @@ mod tests {
     use crate::account::{
         AccountStorage,
         AccountStorageHeader,
-        NamedStorageSlot,
         PartialStorage,
         PartialStorageMap,
         StorageMap,
+        StorageSlot,
         StorageSlotName,
     };
 
@@ -179,7 +179,7 @@ mod tests {
         let slot_name = StorageSlotName::new("miden::test_map")?;
 
         let storage =
-            AccountStorage::new(vec![NamedStorageSlot::with_map(slot_name.clone(), map_1.clone())])
+            AccountStorage::new(vec![StorageSlot::with_map(slot_name.clone(), map_1.clone())])
                 .unwrap();
 
         // Create partial storage with validation of one map key

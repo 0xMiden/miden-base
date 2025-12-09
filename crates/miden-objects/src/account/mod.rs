@@ -67,14 +67,14 @@ mod storage;
 pub use storage::{
     AccountStorage,
     AccountStorageHeader,
-    NamedStorageSlot,
     PartialStorage,
     PartialStorageMap,
     StorageMap,
     StorageMapWitness,
+    StorageSlot,
+    StorageSlotContent,
     StorageSlotId,
     StorageSlotName,
-    StorageSlotContent,
     StorageSlotType,
 };
 
@@ -171,8 +171,8 @@ impl Account {
     /// To illustrate, given two components with one and two storage slots respectively:
     ///
     /// - RpoFalcon512 Component: Component slot 0 stores the public key.
-    /// - Custom Component: Component slot 0 stores a custom [`StorageSlot::Value`] and component
-    ///   slot 1 stores a custom [`StorageSlot::Map`].
+    /// - Custom Component: Component slot 0 stores a custom [`StorageSlotContent::Value`] and
+    ///   component slot 1 stores a custom [`StorageSlotContent::Map`].
     ///
     /// When combined, their assigned slots in the [`AccountStorage`] would be:
     ///
@@ -640,12 +640,12 @@ mod tests {
         AccountComponent,
         AccountIdVersion,
         AccountType,
-        NamedStorageSlot,
         PartialAccount,
         StorageMap,
         StorageMapDelta,
-        StorageSlotName,
+        StorageSlot,
         StorageSlotContent,
+        StorageSlotName,
     };
     use crate::asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset};
     use crate::testing::account_id::{
@@ -865,7 +865,7 @@ mod tests {
         let slots = slots
             .into_iter()
             .enumerate()
-            .map(|(idx, slot)| NamedStorageSlot::new(StorageSlotName::mock(idx), slot))
+            .map(|(idx, slot)| StorageSlot::new(StorageSlotName::mock(idx), slot))
             .collect();
 
         let storage = AccountStorage::new(slots).unwrap();

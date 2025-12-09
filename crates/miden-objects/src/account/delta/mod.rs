@@ -6,7 +6,7 @@ use crate::account::{
     AccountCode,
     AccountId,
     AccountStorage,
-    NamedStorageSlot,
+    StorageSlot,
     StorageSlotType,
 };
 use crate::asset::AssetVault;
@@ -362,8 +362,8 @@ impl TryFrom<&AccountDelta> for Account {
         let mut empty_storage_slots = Vec::new();
         for (slot_name, slot_type) in delta.storage().slots() {
             let slot = match slot_type {
-                StorageSlotType::Value => NamedStorageSlot::with_empty_value(slot_name.clone()),
-                StorageSlotType::Map => NamedStorageSlot::with_empty_map(slot_name.clone()),
+                StorageSlotType::Value => StorageSlot::with_empty_value(slot_name.clone()),
+                StorageSlotType::Map => StorageSlot::with_empty_map(slot_name.clone()),
             };
             empty_storage_slots.push(slot);
         }

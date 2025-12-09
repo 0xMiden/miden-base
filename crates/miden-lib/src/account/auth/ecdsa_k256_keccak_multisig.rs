@@ -2,7 +2,7 @@ use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 
 use miden_objects::account::auth::PublicKeyCommitment;
-use miden_objects::account::{AccountComponent, NamedStorageSlot, StorageMap, StorageSlotName};
+use miden_objects::account::{AccountComponent, StorageMap, StorageSlot, StorageSlotName};
 use miden_objects::utils::sync::LazyLock;
 use miden_objects::{AccountError, Word};
 
@@ -155,7 +155,7 @@ impl From<AuthEcdsaK256KeccakMultisig> for AccountComponent {
 
         // Threshold config slot (value: [threshold, num_approvers, 0, 0])
         let num_approvers = multisig.config.approvers().len() as u32;
-        storage_slots.push(NamedStorageSlot::with_value(
+        storage_slots.push(StorageSlot::with_value(
             AuthEcdsaK256KeccakMultisig::threshold_config_slot().clone(),
             Word::from([multisig.config.default_threshold(), num_approvers, 0, 0]),
         ));
@@ -169,14 +169,14 @@ impl From<AuthEcdsaK256KeccakMultisig> for AccountComponent {
             .map(|(i, pub_key)| (Word::from([i as u32, 0, 0, 0]), (*pub_key).into()));
 
         // Safe to unwrap because we know that the map keys are unique.
-        storage_slots.push(NamedStorageSlot::with_map(
+        storage_slots.push(StorageSlot::with_map(
             AuthEcdsaK256KeccakMultisig::approver_public_keys_slot().clone(),
             StorageMap::with_entries(map_entries).unwrap(),
         ));
 
         // Executed transactions slot (map)
         let executed_transactions = StorageMap::default();
-        storage_slots.push(NamedStorageSlot::with_map(
+        storage_slots.push(StorageSlot::with_map(
             AuthEcdsaK256KeccakMultisig::executed_transactions_slot().clone(),
             executed_transactions,
         ));
@@ -190,7 +190,7 @@ impl From<AuthEcdsaK256KeccakMultisig> for AccountComponent {
                 .map(|(proc_root, threshold)| (*proc_root, Word::from([*threshold, 0, 0, 0]))),
         )
         .unwrap();
-        storage_slots.push(NamedStorageSlot::with_map(
+        storage_slots.push(StorageSlot::with_map(
             AuthEcdsaK256KeccakMultisig::procedure_thresholds_slot().clone(),
             proc_threshold_roots,
         ));
