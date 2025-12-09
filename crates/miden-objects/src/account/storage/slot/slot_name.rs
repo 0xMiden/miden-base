@@ -58,8 +58,8 @@ impl StorageSlotName {
     /// This function is `const` and can be used to define slot names as constants, e.g.:
     ///
     /// ```rust
-    /// # use miden_objects::account::SlotName;
-    /// const SLOT_NAME: SlotName = SlotName::from_static_str("miden::basic_fungible_faucet::metadata");
+    /// # use miden_objects::account::StorageSlotName;
+    /// const SLOT_NAME: StorageSlotName = StorageSlotName::from_static_str("miden::basic_fungible_faucet::metadata");
     /// ```
     ///
     /// This is convenient because using a string that is not a valid slot name fails to compile.
