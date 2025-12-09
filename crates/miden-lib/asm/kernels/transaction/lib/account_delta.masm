@@ -150,7 +150,7 @@ proc.update_slot_delta
     dup exec.memory::get_native_account_storage_slots_ptr
     # => [native_account_storage_slots_section_ptr, slot_idx, slot_idx, RATE, RATE, PERM]
 
-    exec.memory::get_storage_slot_type
+    exec.account::get_storage_slot_type
     # => [storage_slot_type, slot_idx, RATE, RATE, PERM]
 
     # check if type == slot
@@ -170,10 +170,10 @@ end
 #! Inputs:  [slot_idx, RATE, RATE, PERM]
 #! Outputs: [RATE, RATE, PERM]
 proc.update_value_slot_delta
-    dup exec.account::get_item
+    dup exec.account::get_item_by_index
     # => [CURRENT_VALUE, slot_idx, RATE, RATE, PERM]
 
-    dup.4 exec.account::get_initial_item
+    dup.4 exec.account::get_initial_item_by_index
     # => [INIT_VALUE, CURRENT_VALUE, slot_idx, RATE, RATE, PERM]
 
     exec.word::test_eq not

@@ -8,8 +8,14 @@ use super::{StorageMap, Word};
 mod slot_name;
 pub use slot_name::SlotName;
 
+mod slot_name_id;
+pub use slot_name_id::SlotNameId;
+
 mod r#type;
 pub use r#type::StorageSlotType;
+
+mod named_slot;
+pub use named_slot::NamedStorageSlot;
 
 // STORAGE SLOT
 // ================================================================================================

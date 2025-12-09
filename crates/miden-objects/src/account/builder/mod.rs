@@ -209,14 +209,14 @@ impl AccountBuilder {
             self.init_seed,
             self.id_version,
             code.commitment(),
-            storage.commitment(),
+            storage.to_commitment(),
         )?;
 
         let account_id = AccountId::new(
             seed,
             AccountIdVersion::Version0,
             code.commitment(),
-            storage.commitment(),
+            storage.to_commitment(),
         )
         .expect("get_account_seed should provide a suitable seed");
 
@@ -373,7 +373,7 @@ mod tests {
             account.seed().unwrap(),
             AccountIdVersion::Version0,
             account.code.commitment(),
-            account.storage.commitment(),
+            account.storage.to_commitment(),
         )
         .unwrap();
         assert_eq!(account.id(), computed_id);

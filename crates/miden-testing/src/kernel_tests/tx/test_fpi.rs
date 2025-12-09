@@ -1764,7 +1764,7 @@ fn foreign_account_data_memory_assertions(
 
     assert_eq!(
         exec_output.get_kernel_mem_word(foreign_account_data_ptr + ACCT_STORAGE_COMMITMENT_OFFSET),
-        foreign_account.storage().commitment(),
+        foreign_account.storage().to_commitment(),
     );
 
     assert_eq!(
@@ -1779,7 +1779,7 @@ fn foreign_account_data_memory_assertions(
 
     for (i, elements) in foreign_account
         .storage()
-        .as_elements()
+        .to_elements()
         .chunks(StorageSlot::NUM_ELEMENTS_PER_STORAGE_SLOT / 2)
         .enumerate()
     {

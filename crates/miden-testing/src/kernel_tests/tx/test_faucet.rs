@@ -88,7 +88,7 @@ async fn test_mint_fungible_asset_succeeds() -> anyhow::Result<()> {
     let expected_final_storage_amount = FUNGIBLE_FAUCET_INITIAL_BALANCE + FUNGIBLE_ASSET_AMOUNT;
     let faucet_reserved_slot_storage_location =
         FAUCET_STORAGE_DATA_SLOT as u32 + NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR;
-    let faucet_storage_amount_location = faucet_reserved_slot_storage_location + 3;
+    let faucet_storage_amount_location = faucet_reserved_slot_storage_location + 7;
 
     let faucet_storage_amount =
         exec_output.get_kernel_mem_element(faucet_storage_amount_location).as_int();
@@ -381,7 +381,7 @@ async fn test_burn_fungible_asset_succeeds() -> anyhow::Result<()> {
     let expected_final_storage_amount = FUNGIBLE_FAUCET_INITIAL_BALANCE - FUNGIBLE_ASSET_AMOUNT;
     let faucet_reserved_slot_storage_location =
         FAUCET_STORAGE_DATA_SLOT as u32 + NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR;
-    let faucet_storage_amount_location = faucet_reserved_slot_storage_location + 3;
+    let faucet_storage_amount_location = faucet_reserved_slot_storage_location + 7;
 
     let faucet_storage_amount =
         exec_output.get_kernel_mem_element(faucet_storage_amount_location).as_int();

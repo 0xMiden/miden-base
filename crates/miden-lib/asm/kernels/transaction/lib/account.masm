@@ -3,8 +3,8 @@ use.$kernel::account_id
 use.$kernel::asset_vault
 use.$kernel::constants
 use.$kernel::memory
-
 use.std::collections::smt
+use.std::collections::sorted_array
 use.std::crypto::hashes::rpo
 use.std::mem
 use.std::word
@@ -30,7 +30,10 @@ const.ERR_ACCOUNT_PROC_INDEX_OUT_OF_BOUNDS="provided procedure index is out of b
 
 const.ERR_ACCOUNT_PROC_NOT_AUTH_PROC="account procedure is not the authentication procedure; some procedures (e.g. `incr_nonce`) can be called only from the authentication procedure"
 
+# TODO(named_slots): Remove along with index APIs.
 const.ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS="provided storage slot index is out of bounds"
+
+const.ERR_ACCOUNT_ID_UNKNOWN_STORAGE_SLOT_NAME="storage slot with the provided name does not exist"
 
 const.ERR_FAUCET_INVALID_STORAGE_OFFSET="storage offset is invalid for a faucet account (0 is prohibited as it is the reserved data slot for faucets)"
 
@@ -119,6 +122,9 @@ const.ACCOUNT_STORAGE_SLOT_DATA_LENGTH=8
 
 # The number of field elements it takes to store one account procedure.
 const.ACCOUNT_PROCEDURE_DATA_LENGTH=8
+
+# The offset of the slot type in the storage slot.
+const.ACCOUNT_SLOT_TYPE_OFFSET=1
 
 # EVENTS
 # =================================================================================================
@@ -476,7 +482,7 @@ export.set_item
     # => [index, VALUE]
 
     # get storage slot type
-    dup exec.get_storage_slot_type
+    dup exec.get_storage_slot_type_by_index
     # => [storage_slot_type, index, VALUE]
 
     # check if type == slot
@@ -583,7 +589,7 @@ export.set_map_item.12
     # => [index, KEY, NEW_VALUE, OLD_ROOT, ...]
 
     # check if storage type is map
-    exec.get_storage_slot_type
+    exec.get_storage_slot_type_by_index
     # => [slot_type, KEY, NEW_VALUE, OLD_ROOT]
 
     # check if slot_type == map
@@ -671,7 +677,7 @@ end
 #!
 #! Panics if:
 #! - the slot index is out of bounds.
-export.get_storage_slot_type
+export.get_storage_slot_type_by_index
     # check that index is in bounds
     dup exec.memory::get_num_storage_slots lt assert.err=ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS
     # => [index]
@@ -679,7 +685,25 @@ export.get_storage_slot_type
     exec.memory::get_account_storage_slots_section_ptr
     # => [curr_account_storage_slots_section_ptr, index]
 
-    exec.memory::get_storage_slot_type
+    exec.get_storage_slot_type
+    # => [slot_type]
+end
+
+#! Returns the type of the requested storage slot.
+#!
+#! Inputs:  [account_storage_slots_section_ptr, index]
+#! Outputs: [slot_type]
+#!
+#! Where:
+#! - index is the location in memory of the storage slot.
+#! - slot_type is the type of the storage slot.
+export.get_storage_slot_type
+    # compute storage slot ptr
+    swap mul.8 add
+    # => [storage_slot_ptr]
+
+    # load the slot type
+    add.ACCOUNT_SLOT_TYPE_OFFSET mem_load
     # => [slot_type]
 end
 
@@ -1350,7 +1374,7 @@ export.insert_new_storage
         sub.1
         # => [slot_idx]
 
-        dup exec.get_storage_slot_type
+        dup exec.get_storage_slot_type_by_index
         # => [slot_type, slot_idx]
 
         exec.constants::get_storage_slot_type_map eq
@@ -1482,8 +1506,81 @@ end
 #! - index is the index of the item to get.
 #! - VALUE is the value of the item.
 export.get_item_raw
+    # TODO(named_slots): pass in name
+    exec.find_indexed_storage_slot
+    # => [slot_ptr]
+
+    # offset the pointer to point to the VALUE in the slot
+    add.4
+    # => [slot_value_ptr]
+
+    # load the item from storage
+    padw movup.4 mem_loadw_be
+    # => [VALUE]
+end
+
+#! Gets an item from the storage slot at the provided index.
+#!
+#! WARNING: The index must be in bounds.
+#!
+#! Inputs:  [index]
+#! Outputs: [VALUE]
+#!
+#! Where:
+#! - storage_slots_ptr is the pointer to the storage slots section.
+#! - index is the index of the item to get.
+#! - VALUE is the value of the item.
+export.get_item_by_index
+    # get account storage slots section offset
+    exec.memory::get_account_storage_slots_section_ptr
+    # => [acct_storage_slots_section_offset, index]
+
+    exec.get_item_by_index_raw
+    # => [VALUE]
+end
+
+#! Gets the initial item from the storage slot at the provided index.
+#!
+#! WARNING: The index must be in bounds.
+#!
+#! Inputs:  [index]
+#! Outputs: [VALUE]
+#!
+#! Where:
+#! - storage_slots_ptr is the pointer to the storage slots section.
+#! - index is the index of the item to get.
+#! - VALUE is the value of the item.
+export.get_initial_item_by_index
+    # get account initial storage slots section offset
+    exec.memory::get_account_initial_storage_slots_ptr
+    # => [account_initial_storage_slots_ptr, index]
+
+    exec.get_item_by_index_raw
+    # => [VALUE]
+end
+
+#! Gets an item from storage using the provided storage slots pointer and index.
+#!
+#! WARNING: The index must be in bounds.
+#!
+#! Inputs:  [storage_slots_ptr, index]
+#! Outputs: [VALUE]
+#!
+#! Where:
+#! - storage_slots_ptr is the pointer to the storage slots section.
+#! - index is the index of the item to get.
+#! - VALUE is the value of the item.
+proc.get_item_by_index_raw
     # get the item from storage
-    swap mul.8 add padw movup.4 mem_loadw_be
+    swap mul.8 add
+    # => [storage_slot_ptr]
+
+    # offset the pointer to point to the VALUE in the slot
+    add.4
+    # => [slot_value_ptr]
+
+    # load the item from storage
+    padw movup.4 mem_loadw_be
     # => [VALUE]
 end
 
@@ -1503,29 +1600,29 @@ end
 #! Panics if:
 #! - the requested storage slot type is not map.
 proc.get_map_item_raw
+    emit.ACCOUNT_STORAGE_BEFORE_GET_MAP_ITEM_EVENT
+    # => [KEY, ROOT, index]
+
     # check storage slot type
-    dup.8 exec.get_storage_slot_type
-    # => [slot_type, KEY, ROOT, index]
+    movup.8 exec.get_storage_slot_type_by_index
+    # => [slot_type, KEY, ROOT]
 
     # check if storage slot type is map
     exec.constants::get_storage_slot_type_map eq
     assert.err=ERR_ACCOUNT_READING_MAP_VALUE_FROM_NON_MAP_SLOT
-    # => [KEY, ROOT, index]
-
-    emit.ACCOUNT_STORAGE_BEFORE_GET_MAP_ITEM_EVENT
-    # => [KEY, ROOT, index]
+    # => [KEY, ROOT]
 
     # see hash_map_key's docs for why this is done
     exec.hash_map_key
-    # => [HASHED_KEY, ROOT, index]
+    # => [HASHED_KEY, ROOT]
 
     # fetch the VALUE located under HASHED_KEY in the tree
     exec.smt::get
-    # => [VALUE, ROOT, index]
+    # => [VALUE, ROOT]
 
     # remove the ROOT from the stack
     swapw dropw
-    # => [VALUE, index]
+    # => [VALUE]
 
     movup.4 drop
     # => [VALUE]
@@ -1541,30 +1638,82 @@ end
 #! - NEW_VALUE is the value to set.
 #! - OLD_VALUE is the previous value of the item.
 proc.set_item_raw
-    # get old value from storage
-    dup movdn.5 exec.get_item
-    # => [OLD_VALUE, NEW_VALUE, index]
+    # TODO(named_slots): pass in name
 
-    # arrange stack for storage update
-    swapw movup.8
-    # => [index, NEW_VALUE, OLD_VALUE]
-
-    # get account storage slots section offset
     exec.memory::get_account_storage_slots_section_ptr
-    # => [acct_storage_slots_section_offset, index, NEW_VALUE, OLD_VALUE]
+    # => [storage_slots_ptr, index, NEW_VALUE]
 
-    # update storage
-    swap mul.8 add mem_storew_be
-    # => [NEW_VALUE, OLD_VALUE]
+    exec.find_indexed_storage_slot
+    # => [slot_ptr, NEW_VALUE]
+
+    # offset the pointer to point to the VALUE in the slot
+    add.4 movdn.4
+    # => [NEW_VALUE, slot_value_ptr]
+
+    # load the item from storage
+    padw dup.8 mem_loadw_be
+    # => [OLD_VALUE, NEW_VALUE, slot_value_ptr]
+
+    swapw movup.8
+    # => [slot_value_ptr, NEW_VALUE, OLD_VALUE]
+
+    mem_storew_be dropw
+    # => [OLD_VALUE]
 
     # update the storage commitment dirty flag, indicating that the commitment is outdated
     push.1
     exec.memory::set_native_account_storage_commitment_dirty_flag
-    # => [NEW_VALUE, OLD_VALUE]
-
-    # drop value
-    dropw
     # => [OLD_VALUE]
+end
+
+#! TODO(named_slots): Remove this API.
+#!
+#! Inputs:  [storage_slots_ptr, index]
+#! Outputs: [slot_ptr]
+proc.find_indexed_storage_slot
+    # set the suffix to 0
+    push.0 movup.2
+    # => [name_id_prefix = index, name_id_suffix = 0, storage_slots_ptr]
+
+    movup.2
+    # => [storage_slots_ptr, name_id_prefix = index, name_id_suffix = 0]
+
+    exec.find_storage_slot
+    # => [slot_ptr]
+end
+
+#! Finds the slot identified by the key constructed from the name ID and slot type and returns the
+#! pointer to that slot.
+#!
+#! Inputs:  [storage_slots_ptr, name_id_prefix, name_id_suffix]
+#! Outputs: [slot_ptr]
+#!
+#! Where:
+#! - storage_slots_ptr is the pointer to the storage slots section.
+#! - slot_ptr is the pointer to the resolved storage slot.
+#! - name_id_{prefix, suffix} are the prefix and suffix felts of the name identifier, which are
+#!   the first two felts of the hashed slot name.
+proc.find_storage_slot
+    # construct the start and end pointers of the storage slot section in which we will search
+    dup exec.memory::get_num_storage_slots mul.8 add
+    # => [storage_slots_end_ptr, storage_slots_start_ptr, name_id_prefix, name_id_suffix]
+
+    # TODO: Check if we can get here if num_storage_slots == 0. If so, return a better error than
+    # what find_key_value returns.
+
+    movdn.3 movdn.2
+    # => [name_id_prefix, name_id_suffix, storage_slots_start_ptr, storage_slots_end_ptr]
+
+    # find the slot whose slot key matches [name_id_prefix, name_id_suffix, 0, 0]
+    # if the slot key does not exist, this procedure will validate its absence
+    exec.sorted_array::find_half_key_value
+    # => [is_slot_found, slot_ptr, storage_slots_start_ptr, storage_slots_end_ptr]
+
+    assert.err=ERR_ACCOUNT_ID_UNKNOWN_STORAGE_SLOT_NAME
+    # => [slot_ptr, storage_slots_start_ptr, storage_slots_end_ptr]
+
+    swap.2 drop drop
+    # => [slot_ptr]
 end
 
 #! Returns the procedure root.

@@ -618,10 +618,10 @@ fn on_account_storage_map_item_accessed<'store, STORE>(
         // For native accounts, we have to request witnesses against the initial
         // root instead of the _current_ one, since the data
         // store only has witnesses for initial one.
-        let (slot_type, slot_value) = base_host
+        let (_slot_name, slot_type, slot_value) = base_host
                     .initial_account_storage_header()
                     // Slot index should always fit into a usize.
-                    .slot(slot_index as usize)
+                    .slot_header(slot_index as usize)
                     .map_err(|err| {
                         TransactionKernelError::other_with_source(
                             "failed to access storage map in storage header",

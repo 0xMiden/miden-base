@@ -31,6 +31,7 @@ use miden_objects::account::{
     AccountType,
     StorageMap,
     StorageSlot,
+    StorageSlotType,
 };
 use miden_objects::assembly::diagnostics::{IntoDiagnostic, NamedSource, Report, WrapErr, miette};
 use miden_objects::assembly::{DefaultSourceManager, Library};
@@ -482,7 +483,7 @@ async fn test_get_storage_slot_type() -> miette::Result<()> {
                 push.{item_index}
 
                 # get the type of the respective storage slot
-                exec.account::get_storage_slot_type
+                exec.account::get_storage_slot_type_by_index
 
                 # truncate the stack
                 swap drop
@@ -495,7 +496,13 @@ async fn test_get_storage_slot_type() -> miette::Result<()> {
 
         let storage_slot_type = storage_item.slot.slot_type();
 
-        assert_eq!(storage_slot_type, exec_output.get_stack_element(0).try_into().unwrap());
+        assert_eq!(
+            storage_slot_type,
+            StorageSlotType::try_from(
+                u8::try_from(exec_output.get_stack_element(0).as_int()).unwrap()
+            )
+            .unwrap()
+        );
         assert_eq!(exec_output.get_stack_element(1), ZERO, "the rest of the stack is empty");
         assert_eq!(exec_output.get_stack_element(2), ZERO, "the rest of the stack is empty");
         assert_eq!(exec_output.get_stack_element(3), ZERO, "the rest of the stack is empty");
@@ -818,10 +825,10 @@ async fn create_procedure_metadata_test_account(
         AccountStorageMode::Private,
         version,
         code.commitment(),
-        storage.commitment(),
+        storage.to_commitment(),
     )
     .context("failed to compute seed")?;
-    let id = AccountId::new(seed, version, code.commitment(), storage.commitment())
+    let id = AccountId::new(seed, version, code.commitment(), storage.to_commitment())
         .context("failed to compute ID")?;
 
     let account =
@@ -918,7 +925,7 @@ async fn test_get_initial_storage_commitment() -> anyhow::Result<()> {
             assert_eqw.err="actual storage commitment is not equal to the expected one"
         end
         "#,
-        expected_storage_commitment = &tx_context.account().storage().commitment(),
+        expected_storage_commitment = &tx_context.account().storage().to_commitment(),
     );
     tx_context.execute_code(&code).await?;
 
@@ -940,17 +947,17 @@ async fn test_compute_storage_commitment() -> anyhow::Result<()> {
     let mut account_clone = tx_context.account().clone();
     let account_storage = account_clone.storage_mut();
 
-    let init_storage_commitment = account_storage.commitment();
+    let init_storage_commitment = account_storage.to_commitment();
 
     account_storage.set_item(0, [9, 10, 11, 12].map(Felt::new).into())?;
-    let storage_commitment_0 = account_storage.commitment();
+    let storage_commitment_0 = account_storage.to_commitment();
 
     account_storage.set_map_item(
         2,
         [101, 102, 103, 104].map(Felt::new).into(),
         [5, 6, 7, 8].map(Felt::new).into(),
     )?;
-    let storage_commitment_2 = account_storage.commitment();
+    let storage_commitment_2 = account_storage.to_commitment();
 
     let code = format!(
         r#"
