@@ -183,7 +183,6 @@ async fn test_convert_to_u256_scaled_large_amount() -> anyhow::Result<()> {
         begin
             push.{}.{}
 
-            debug.stack
             call.::convert_felt_to_u256_scaled
             exec.sys::truncate_stack
         end
