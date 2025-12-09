@@ -19,7 +19,7 @@ use crate::crypto::SequentialCommit;
 use crate::utils::sync::LazyLock;
 
 mod slot;
-pub use slot::{NamedStorageSlot, SlotId, SlotName, StorageSlot, StorageSlotType};
+pub use slot::{NamedStorageSlot, SlotName, StorageSlot, StorageSlotId, StorageSlotType};
 
 mod map;
 pub use map::{PartialStorageMap, StorageMap, StorageMapWitness};
@@ -46,7 +46,8 @@ static FAUCET_METADATA_SLOT_NAME: LazyLock<SlotName> =
 ///   values are [Word]s. The value of a storage slot containing a map is the commitment to the
 ///   underlying map.
 ///
-/// Slots are sorted by [`SlotName`] (or [`SlotId`] equivalently). This order is necessary to:
+/// Slots are sorted by [`SlotName`] (or [`StorageSlotId`] equivalently). This order is necessary
+/// to:
 /// - Simplify lookups of slots in the transaction kernel (using `std::collections::sorted_array`
 ///   from the miden core library)
 /// - Allow the [`AccountStorageDelta`] to work only with slot names instead of slot indices.

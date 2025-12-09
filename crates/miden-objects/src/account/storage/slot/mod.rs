@@ -9,7 +9,7 @@ mod slot_name;
 pub use slot_name::SlotName;
 
 mod slot_id;
-pub use slot_id::SlotId;
+pub use slot_id::StorageSlotId;
 
 mod r#type;
 pub use r#type::StorageSlotType;

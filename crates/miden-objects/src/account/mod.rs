@@ -70,11 +70,11 @@ pub use storage::{
     NamedStorageSlot,
     PartialStorage,
     PartialStorageMap,
-    SlotId,
     SlotName,
     StorageMap,
     StorageMapWitness,
     StorageSlot,
+    StorageSlotId,
     StorageSlotType,
 };
 
