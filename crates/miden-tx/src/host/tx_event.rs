@@ -259,9 +259,9 @@ impl TransactionEvent {
                 let slot_ptr = process.get_stack_item(1);
                 let new_value = process.get_stack_word_be(2);
 
-                let (slot_name_id, slot_type, _old_value) = process.get_storage_slot(slot_ptr)?;
+                let (slot_id, slot_type, _old_value) = process.get_storage_slot(slot_ptr)?;
 
-                let (slot_name, ..) = base_host.initial_account_storage_slot(slot_name_id)?;
+                let (slot_name, ..) = base_host.initial_account_storage_slot(slot_id)?;
                 let slot_name = slot_name.clone();
 
                 if !slot_type.is_value() {
@@ -298,8 +298,8 @@ impl TransactionEvent {
                 let new_map_value = process.get_stack_word_be(10);
 
                 // Resolve slot name ID to slot name.
-                let (slot_name_id, ..) = process.get_storage_slot(slot_ptr)?;
-                let (slot_name, ..) = base_host.initial_account_storage_slot(slot_name_id)?;
+                let (slot_id, ..) = process.get_storage_slot(slot_ptr)?;
+                let (slot_name, ..) = base_host.initial_account_storage_slot(slot_id)?;
 
                 let slot_name = slot_name.clone();
 
@@ -566,7 +566,7 @@ fn on_account_storage_map_item_accessed<'store, STORE>(
     slot_ptr: Felt,
     map_key: Word,
 ) -> Result<Option<TransactionEvent>, TransactionKernelError> {
-    let (slot_name_id, slot_type, current_map_root) = process.get_storage_slot(slot_ptr)?;
+    let (slot_id, slot_type, current_map_root) = process.get_storage_slot(slot_ptr)?;
 
     if !slot_type.is_map() {
         return Err(TransactionKernelError::other(format!(
@@ -585,11 +585,11 @@ fn on_account_storage_map_item_accessed<'store, STORE>(
         // root instead of the _current_ one, since the data
         // store only has witnesses for initial one.
         let (_slot_name, slot_type, slot_value) =
-            base_host.initial_account_storage_slot(slot_name_id)?;
+            base_host.initial_account_storage_slot(slot_id)?;
 
         if *slot_type != StorageSlotType::Map {
             return Err(TransactionKernelError::other(format!(
-                "expected slot {slot_name_id} to be of type map"
+                "expected slot {slot_id} to be of type map"
             )));
         }
         *slot_value

@@ -36,8 +36,8 @@ use miden_objects::account::{
     AccountId,
     AccountStorageHeader,
     PartialAccount,
-    SlotName,
     SlotId,
+    SlotName,
     StorageSlotType,
 };
 use miden_objects::asset::Asset;

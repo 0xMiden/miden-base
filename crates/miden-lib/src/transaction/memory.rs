@@ -310,11 +310,11 @@ pub const ACCT_STORAGE_SLOT_NUM_ELEMENTS: u8 = 8;
 /// The offset of the slot type in the storage slot.
 pub const ACCT_STORAGE_SLOT_TYPE_OFFSET: u8 = 1;
 
-/// The offset of the slot's name ID suffix in the storage slot.
-pub const ACCT_STORAGE_SLOT_NAME_ID_SUFFIX_OFFSET: u8 = 2;
+/// The offset of the slot's ID suffix in the storage slot.
+pub const ACCT_STORAGE_SLOT_ID_SUFFIX_OFFSET: u8 = 2;
 
-/// The offset of the slot's name ID prefix in the storage slot.
-pub const ACCT_STORAGE_SLOT_NAME_ID_PREFIX_OFFSET: u8 = 3;
+/// The offset of the slot's ID prefix in the storage slot.
+pub const ACCT_STORAGE_SLOT_ID_PREFIX_OFFSET: u8 = 3;
 
 /// The offset of the slot value in the storage slot.
 pub const ACCT_STORAGE_SLOT_VALUE_OFFSET: u8 = 4;

@@ -147,7 +147,7 @@ async fn test_fpi_memory_single_account() -> anyhow::Result<()> {
             # push the foreign account ID
             push.{foreign_suffix} push.{foreign_prefix}
             # => [foreign_account_id_prefix, foreign_account_id_suffix, FOREIGN_PROC_ROOT,
-            #     slot_name_id_prefix, slot_name_id_suffix, pad(8)]
+            #     slot_id_prefix, slot_id_suffix, pad(8)]
 
             exec.tx::execute_foreign_procedure
             # => [STORAGE_VALUE_1]
@@ -204,7 +204,7 @@ async fn test_fpi_memory_single_account() -> anyhow::Result<()> {
             # push the foreign account ID
             push.{foreign_suffix} push.{foreign_prefix}
             # => [foreign_account_id_prefix, foreign_account_id_suffix, FOREIGN_PROC_ROOT,
-            #     slot_name_id_prefix, slot_name_id_suffix, MAP_KEY, pad(4)]
+            #     slot_id_prefix, slot_id_suffix, MAP_KEY, pad(4)]
 
             exec.tx::execute_foreign_procedure
             # => [MAP_VALUE]
@@ -262,7 +262,7 @@ async fn test_fpi_memory_single_account() -> anyhow::Result<()> {
             # push the foreign account ID
             push.{foreign_suffix} push.{foreign_prefix}
             # => [foreign_account_id_prefix, foreign_account_id_suffix, FOREIGN_PROC_ROOT,
-            #     slot_name_id_prefix, slot_name_id_suffix, pad(8)]
+            #     slot_id_prefix, slot_id_suffix, pad(8)]
 
             exec.tx::execute_foreign_procedure dropw
             # => []
@@ -281,7 +281,7 @@ async fn test_fpi_memory_single_account() -> anyhow::Result<()> {
             # push the foreign account ID
             push.{foreign_suffix} push.{foreign_prefix}
             # => [foreign_account_id_prefix, foreign_account_id_suffix, FOREIGN_PROC_ROOT,
-            #     slot_name_id_prefix, slot_name_id_suffix, pad(8)]
+            #     slot_id_prefix, slot_id_suffix, pad(8)]
 
             exec.tx::execute_foreign_procedure
 
@@ -427,7 +427,7 @@ async fn test_fpi_memory_two_accounts() -> anyhow::Result<()> {
             # push the foreign account ID
             push.{foreign_1_suffix} push.{foreign_1_prefix}
             # => [foreign_account_1_id_prefix, foreign_account_1_id_suffix, FOREIGN_PROC_ROOT,
-            #     slot_name_id_prefix, slot_name_id_suffix, pad(8)]
+            #     slot_id_prefix, slot_id_suffix, pad(8)]
 
             exec.tx::execute_foreign_procedure dropw
             # => []
@@ -446,7 +446,7 @@ async fn test_fpi_memory_two_accounts() -> anyhow::Result<()> {
             # push the foreign account ID
             push.{foreign_2_suffix} push.{foreign_2_prefix}
             # => [foreign_account_2_id_prefix, foreign_account_2_id_suffix, FOREIGN_PROC_ROOT,
-            #     slot_name_id_prefix, slot_name_id_suffix, pad(8)]
+            #     slot_id_prefix, slot_id_suffix, pad(8)]
 
             exec.tx::execute_foreign_procedure dropw
             # => []
@@ -465,7 +465,7 @@ async fn test_fpi_memory_two_accounts() -> anyhow::Result<()> {
             # push the foreign account ID
             push.{foreign_1_suffix} push.{foreign_1_prefix}
             # => [foreign_account_1_id_prefix, foreign_account_1_id_suffix, FOREIGN_PROC_ROOT,
-            #     slot_name_id_prefix, slot_name_id_suffix, pad(8)]
+            #     slot_id_prefix, slot_id_suffix, pad(8)]
 
             exec.tx::execute_foreign_procedure
 
@@ -606,7 +606,7 @@ async fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
             # push the foreign account ID
             push.{foreign_suffix} push.{foreign_prefix}
             # => [foreign_account_id_prefix, foreign_account_id_suffix, FOREIGN_PROC_ROOT
-            #     slot_name_id_prefix, slot_name_id_suffix, pad(8)]]
+            #     slot_id_prefix, slot_id_suffix, pad(8)]]
 
             exec.tx::execute_foreign_procedure
             # => [STORAGE_VALUE]
@@ -632,7 +632,7 @@ async fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
             # push the foreign account ID
             push.{foreign_suffix} push.{foreign_prefix}
             # => [foreign_account_id_prefix, foreign_account_id_suffix, FOREIGN_PROC_ROOT,
-            #     slot_name_id_prefix, slot_name_id_suffix, MAP_ITEM_KEY, pad(4)]
+            #     slot_id_prefix, slot_id_suffix, MAP_ITEM_KEY, pad(4)]
 
             exec.tx::execute_foreign_procedure
             # => [MAP_VALUE]
@@ -939,7 +939,7 @@ async fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
             # push the foreign account ID from the advice stack
             adv_push.2
             # => [foreign_account_id_prefix, foreign_account_id_suffix, FOREIGN_PROC_ROOT,
-            #     slot_name_id_prefix, slot_name_id_suffix, pad(8)]
+            #     slot_id_prefix, slot_id_suffix, pad(8)]
 
             exec.tx::execute_foreign_procedure
             # => [storage_value]

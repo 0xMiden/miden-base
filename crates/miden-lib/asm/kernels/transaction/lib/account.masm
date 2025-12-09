@@ -127,11 +127,11 @@ const.ACCOUNT_PROCEDURE_DATA_LENGTH=8
 # The offset of the slot type in the storage slot.
 const.ACCOUNT_SLOT_TYPE_OFFSET=1
 
-# The offset of the slot's name ID suffix in the storage slot.
-const.ACCOUNT_SLOT_NAME_ID_SUFFIX_OFFSET=2
+# The offset of the slot's ID suffix in the storage slot.
+const.ACCOUNT_SLOT_ID_SUFFIX_OFFSET=2
 
-# The offset of the slot's name ID prefix in the storage slot.
-const.ACCOUNT_SLOT_NAME_ID_PREFIX_OFFSET=3
+# The offset of the slot's ID prefix in the storage slot.
+const.ACCOUNT_SLOT_ID_PREFIX_OFFSET=3
 
 # The offset of the slot value in the storage slot.
 const.ACCOUNT_SLOT_VALUE_OFFSET=4
@@ -1505,10 +1505,10 @@ export.get_item_delta
     # => [slot_ptr, slot_ptr, offset]
 
     # load the name ID
-    add.ACCOUNT_SLOT_NAME_ID_SUFFIX_OFFSET mem_load
+    add.ACCOUNT_SLOT_ID_SUFFIX_OFFSET mem_load
     # => [name_id_suffix, slot_ptr, offset]
 
-    dup.1 add.ACCOUNT_SLOT_NAME_ID_PREFIX_OFFSET mem_load
+    dup.1 add.ACCOUNT_SLOT_ID_PREFIX_OFFSET mem_load
     # => [name_id_prefix, name_id_suffix, slot_ptr, offset]
 
     # load the current value
@@ -1546,10 +1546,10 @@ export.get_slot_id
     add
     # => [slot_ptr]
 
-    dup add.ACCOUNT_SLOT_NAME_ID_SUFFIX_OFFSET mem_load
+    dup add.ACCOUNT_SLOT_ID_SUFFIX_OFFSET mem_load
     # => [name_id_suffix, slot_ptr]
 
-    swap add.ACCOUNT_SLOT_NAME_ID_PREFIX_OFFSET mem_load
+    swap add.ACCOUNT_SLOT_ID_PREFIX_OFFSET mem_load
     # => [name_id_prefix, name_id_suffix]
 end
 

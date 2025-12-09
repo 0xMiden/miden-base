@@ -1,8 +1,8 @@
 use miden_lib::transaction::memory::{
     ACCOUNT_STACK_TOP_PTR,
     ACCT_CODE_COMMITMENT_OFFSET,
-    ACCT_STORAGE_SLOT_NAME_ID_PREFIX_OFFSET,
-    ACCT_STORAGE_SLOT_NAME_ID_SUFFIX_OFFSET,
+    ACCT_STORAGE_SLOT_ID_PREFIX_OFFSET,
+    ACCT_STORAGE_SLOT_ID_SUFFIX_OFFSET,
     ACCT_STORAGE_SLOT_TYPE_OFFSET,
     ACCT_STORAGE_SLOT_VALUE_OFFSET,
     ACTIVE_INPUT_NOTE_PTR,
@@ -232,8 +232,8 @@ impl<'a> TransactionKernelProcess for ProcessState<'a> {
             )
         })?;
 
-        let suffix = slot_metadata[ACCT_STORAGE_SLOT_NAME_ID_SUFFIX_OFFSET as usize];
-        let prefix = slot_metadata[ACCT_STORAGE_SLOT_NAME_ID_PREFIX_OFFSET as usize];
+        let suffix = slot_metadata[ACCT_STORAGE_SLOT_ID_SUFFIX_OFFSET as usize];
+        let prefix = slot_metadata[ACCT_STORAGE_SLOT_ID_PREFIX_OFFSET as usize];
         let slot_id = SlotId::new(suffix, prefix);
 
         Ok((slot_id, slot_type, slot_value))

@@ -22,11 +22,11 @@ use crate::account::{
     AccountIdPrefix,
     AccountStorage,
     AccountType,
-    SlotName,
     SlotId,
     // StorageValueName,
     // StorageValueNameError,
     // TemplateTypeError,
+    SlotName,
 };
 use crate::address::AddressType;
 use crate::asset::AssetVaultKey;
@@ -160,8 +160,8 @@ pub enum AccountError {
     StorageSlotNameMustNotBeFaucetMetadata,
     #[error("storage does not contain a slot with name {slot_name}")]
     StorageSlotNameNotFound { slot_name: SlotName },
-    #[error("storage does not contain a slot with ID {slot_name_id}")]
-    StorageSlotNameIdNotFound { slot_name_id: SlotId },
+    #[error("storage does not contain a slot with ID {slot_id}")]
+    StorageSlotIdNotFound { slot_id: SlotId },
     #[error("storage slots must be sorted by slot name ID")]
     UnsortedStorageSlots,
     #[error("number of storage slots is {0} but max possible number is {max}", max = AccountStorage::MAX_NUM_STORAGE_SLOTS)]
