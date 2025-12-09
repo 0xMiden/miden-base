@@ -19,7 +19,7 @@ use crate::note::Nullifier;
 /// The value of an unspent nullifier in the tree.
 pub(super) const UNSPENT_NULLIFIER: Word = EMPTY_WORD;
 
-/// A nullifier leaf value in the nullifier SMT.
+/// A nullifier block value in the [`NullifierTree`].
 ///
 /// # Invariants
 ///
@@ -38,15 +38,15 @@ impl NullifierBlock {
         {
             return Ok(Self(BlockNumber::from(value[0].as_int() as u32)));
         }
-        Err(NullifierTreeError::InvalidValue)
+        Err(NullifierTreeError::InvalidNullifierBlockNumber)
     }
 
     pub fn is_spent(&self) -> bool {
-        todo!("implement is_spent")
+        *self != Self::UNSPENT
     }
 
     pub fn is_consumed(&self) -> bool {
-        *self != Self::UNSPENT
+        self.0 != BlockNumber::GENESIS
     }
 }
 
