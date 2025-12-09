@@ -1,6 +1,6 @@
 use anyhow::Context;
 use assert_matches::assert_matches;
-use miden_objects::account::{AccountId, NamedStorageSlot, StorageMap, StorageSlotName};
+use miden_objects::account::{AccountId, StorageMap, StorageSlot, StorageSlotName};
 use miden_objects::asset::{Asset, FungibleAsset, NonFungibleAsset};
 use miden_objects::note::NoteType;
 use miden_objects::testing::account_id::ACCOUNT_ID_NATIVE_ASSET_FAUCET;
@@ -132,8 +132,8 @@ async fn mutate_account_with_storage() -> anyhow::Result<ExecutedTransaction> {
     let account = builder.add_existing_mock_account_with_storage_and_assets(
         Auth::IncrNonce,
         [
-            NamedStorageSlot::with_value(StorageSlotName::mock(0), rand_value()),
-            NamedStorageSlot::with_map(
+            StorageSlot::with_value(StorageSlotName::mock(0), rand_value()),
+            StorageSlot::with_map(
                 StorageSlotName::mock(1),
                 StorageMap::with_entries([(rand_value(), rand_value())])?,
             ),
@@ -164,11 +164,11 @@ async fn create_output_notes() -> anyhow::Result<ExecutedTransaction> {
     let account = builder.add_existing_mock_account_with_storage_and_assets(
         Auth::IncrNonce,
         [
-            NamedStorageSlot::with_map(
+            StorageSlot::with_map(
                 StorageSlotName::mock(0),
                 StorageMap::with_entries([(rand_value(), rand_value())])?,
             ),
-            NamedStorageSlot::with_value(StorageSlotName::mock(1), rand_value()),
+            StorageSlot::with_value(StorageSlotName::mock(1), rand_value()),
         ],
         [Asset::from(native_asset), NonFungibleAsset::mock(&[1, 2, 3, 4])],
     )?;

@@ -11,7 +11,7 @@ use miden_objects::account::{
     AccountBuilder,
     AccountComponent,
     AccountId,
-    NamedStorageSlot,
+    StorageSlot,
     StorageSlotName,
 };
 use miden_objects::asset::FungibleAsset;
@@ -259,7 +259,7 @@ async fn block_building_fails_on_creating_account_with_existing_account_id_prefi
 
     let account = AccountBuilder::new([5; 32])
         .with_auth_component(auth_component.clone())
-        .with_component(MockAccountComponent::with_slots(vec![NamedStorageSlot::with_value(
+        .with_component(MockAccountComponent::with_slots(vec![StorageSlot::with_value(
             StorageSlotName::new("miden::test_slot")?,
             Word::from([5u32; 4]),
         )]))
@@ -351,7 +351,7 @@ async fn block_building_fails_on_creating_account_with_duplicate_account_id_pref
     let mock_chain = MockChain::new();
     let account = AccountBuilder::new([5; 32])
         .with_auth_component(Auth::IncrNonce)
-        .with_component(MockAccountComponent::with_slots(vec![NamedStorageSlot::with_value(
+        .with_component(MockAccountComponent::with_slots(vec![StorageSlot::with_value(
             StorageSlotName::new("miden::test_slot")?,
             Word::from([5u32; 4]),
         )]))

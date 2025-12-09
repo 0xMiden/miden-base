@@ -291,7 +291,7 @@ mod tests {
     use miden_processor::MastNodeExt;
 
     use super::*;
-    use crate::account::{NamedStorageSlot, StorageSlotName};
+    use crate::account::{StorageSlot, StorageSlotName};
     use crate::testing::noop_auth_component::NoopAuthComponent;
 
     const CUSTOM_CODE1: &str = "
@@ -339,7 +339,7 @@ mod tests {
 
             AccountComponent::new(
                 CUSTOM_LIBRARY1.clone(),
-                vec![NamedStorageSlot::with_value(CUSTOM_COMPONENT1_SLOT_NAME.clone(), value)],
+                vec![StorageSlot::with_value(CUSTOM_COMPONENT1_SLOT_NAME.clone(), value)],
             )
             .expect("component should be valid")
             .with_supports_all_types()
@@ -360,8 +360,8 @@ mod tests {
             AccountComponent::new(
                 CUSTOM_LIBRARY2.clone(),
                 vec![
-                    NamedStorageSlot::with_value(CUSTOM_COMPONENT2_SLOT_NAME0.clone(), value0),
-                    NamedStorageSlot::with_value(CUSTOM_COMPONENT2_SLOT_NAME1.clone(), value1),
+                    StorageSlot::with_value(CUSTOM_COMPONENT2_SLOT_NAME0.clone(), value0),
+                    StorageSlot::with_value(CUSTOM_COMPONENT2_SLOT_NAME1.clone(), value1),
                 ],
             )
             .expect("component should be valid")

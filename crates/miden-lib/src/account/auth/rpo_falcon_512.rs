@@ -1,5 +1,5 @@
 use miden_objects::account::auth::PublicKeyCommitment;
-use miden_objects::account::{AccountComponent, NamedStorageSlot, StorageSlotName};
+use miden_objects::account::{AccountComponent, StorageSlot, StorageSlotName};
 use miden_objects::utils::sync::LazyLock;
 
 use crate::account::components::rpo_falcon_512_library;
@@ -46,7 +46,7 @@ impl From<AuthRpoFalcon512> for AccountComponent {
     fn from(falcon: AuthRpoFalcon512) -> Self {
         AccountComponent::new(
             rpo_falcon_512_library(),
-            vec![NamedStorageSlot::with_value(
+            vec![StorageSlot::with_value(
                 AuthRpoFalcon512::public_key_slot().clone(),
                 falcon.pub_key.into(),
             )],

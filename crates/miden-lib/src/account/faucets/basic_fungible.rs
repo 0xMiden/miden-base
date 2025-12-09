@@ -5,7 +5,7 @@ use miden_objects::account::{
     AccountStorage,
     AccountStorageMode,
     AccountType,
-    NamedStorageSlot,
+    StorageSlot,
     StorageSlotName,
 };
 use miden_objects::asset::{FungibleAsset, TokenSymbol};
@@ -201,10 +201,8 @@ impl From<BasicFungibleFaucet> for AccountComponent {
             faucet.symbol.into(),
             Felt::ZERO,
         ]);
-        let storage_slot = NamedStorageSlot::with_value(
-            BasicFungibleFaucet::metadata_slot_name().clone(),
-            metadata,
-        );
+        let storage_slot =
+            StorageSlot::with_value(BasicFungibleFaucet::metadata_slot_name().clone(), metadata);
 
         AccountComponent::new(basic_fungible_faucet_library(), vec![storage_slot])
             .expect("basic fungible faucet component should satisfy the requirements of a valid account component")

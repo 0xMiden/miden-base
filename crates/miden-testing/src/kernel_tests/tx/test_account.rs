@@ -25,10 +25,10 @@ use miden_objects::account::{
     AccountStorage,
     AccountStorageMode,
     AccountType,
-    NamedStorageSlot,
     StorageMap,
-    StorageSlotName,
+    StorageSlot,
     StorageSlotContent,
+    StorageSlotName,
     StorageSlotType,
 };
 use miden_objects::assembly::DefaultSourceManager;
@@ -780,16 +780,14 @@ async fn prove_account_creation_with_non_empty_storage() -> anyhow::Result<()> {
     let slot_name1 = StorageSlotName::mock(1);
     let slot_name2 = StorageSlotName::mock(2);
 
-    let slot0 = NamedStorageSlot::with_value(slot_name0.clone(), Word::from([1, 2, 3, 4u32]));
-    let slot1 = NamedStorageSlot::with_value(slot_name1.clone(), Word::from([10, 20, 30, 40u32]));
+    let slot0 = StorageSlot::with_value(slot_name0.clone(), Word::from([1, 2, 3, 4u32]));
+    let slot1 = StorageSlot::with_value(slot_name1.clone(), Word::from([10, 20, 30, 40u32]));
     let mut map_entries = Vec::new();
     for _ in 0..10 {
         map_entries.push((rand_value::<Word>(), rand_value::<Word>()));
     }
-    let map_slot = NamedStorageSlot::with_map(
-        slot_name2.clone(),
-        StorageMap::with_entries(map_entries.clone())?,
-    );
+    let map_slot =
+        StorageSlot::with_map(slot_name2.clone(), StorageMap::with_entries(map_entries.clone())?);
 
     let account = AccountBuilder::new([6; 32])
         .storage_mode(AccountStorageMode::Public)

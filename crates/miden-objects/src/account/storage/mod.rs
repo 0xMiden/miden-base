@@ -19,13 +19,7 @@ use crate::crypto::SequentialCommit;
 use crate::utils::sync::LazyLock;
 
 mod slot;
-pub use slot::{
-    NamedStorageSlot,
-    StorageSlotContent,
-    StorageSlotId,
-    StorageSlotName,
-    StorageSlotType,
-};
+pub use slot::{StorageSlot, StorageSlotContent, StorageSlotId, StorageSlotName, StorageSlotType};
 
 mod map;
 pub use map::{PartialStorageMap, StorageMap, StorageMapWitness};
@@ -43,15 +37,15 @@ static FAUCET_METADATA_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
 // ACCOUNT STORAGE
 // ================================================================================================
 
-/// Account storage is composed of a variable number of name-addressable [`NamedStorageSlot`]s up to
+/// Account storage is composed of a variable number of name-addressable [`StorageSlot`]s up to
 /// 255 slots in total.
 ///
-/// Each slot has a type which defines its size and structure. Currently, the following types are
-/// supported:
-/// - [`StorageSlot::Value`]: contains a single [`Word`] of data (i.e., 32 bytes).
-/// - [`StorageSlot::Map`]: contains a [`StorageMap`] which is a key-value map where both keys and
-///   values are [Word]s. The value of a storage slot containing a map is the commitment to the
-///   underlying map.
+/// Each slot consists of a [`StorageSlotName`] and [`StorageSlotContent`] which defines its size
+/// and structure. Currently, the following content types are supported:
+/// - [`StorageSlotContent::Value`]: contains a single [`Word`] of data (i.e., 32 bytes).
+/// - [`StorageSlotContent::Map`]: contains a [`StorageMap`] which is a key-value map where both
+///   keys and values are [Word]s. The value of a storage slot containing a map is the commitment to
+///   the underlying map.
 ///
 /// Slots are sorted by [`StorageSlotName`] (or [`StorageSlotId`] equivalently). This order is
 /// necessary to:
@@ -62,7 +56,7 @@ static FAUCET_METADATA_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
 ///   adjacent items have the same slot name.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct AccountStorage {
-    slots: Vec<NamedStorageSlot>,
+    slots: Vec<StorageSlot>,
 }
 
 impl AccountStorage {
@@ -81,7 +75,7 @@ impl AccountStorage {
     /// Returns an error if:
     /// - The number of [`StorageSlot`]s exceeds 255.
     /// - There are multiple storage slots with the same [`StorageSlotName`].
-    pub fn new(mut slots: Vec<NamedStorageSlot>) -> Result<AccountStorage, AccountError> {
+    pub fn new(mut slots: Vec<StorageSlot>) -> Result<AccountStorage, AccountError> {
         let num_slots = slots.len();
 
         if num_slots > Self::MAX_NUM_STORAGE_SLOTS {
@@ -123,10 +117,10 @@ impl AccountStorage {
     ) -> Result<AccountStorage, AccountError> {
         let mut storage_slots = match account_type {
             AccountType::FungibleFaucet => {
-                vec![NamedStorageSlot::with_empty_value(Self::faucet_metadata_slot().clone())]
+                vec![StorageSlot::with_empty_value(Self::faucet_metadata_slot().clone())]
             },
             AccountType::NonFungibleFaucet => {
-                vec![NamedStorageSlot::with_empty_map(Self::faucet_metadata_slot().clone())]
+                vec![StorageSlot::with_empty_map(Self::faucet_metadata_slot().clone())]
             },
             _ => vec![],
         };
@@ -177,12 +171,12 @@ impl AccountStorage {
     }
 
     /// Returns a reference to the storage slots.
-    pub fn slots(&self) -> &[NamedStorageSlot] {
+    pub fn slots(&self) -> &[StorageSlot] {
         &self.slots
     }
 
     /// Consumes self and returns the storage slots of the account storage.
-    pub fn into_slots(self) -> Vec<NamedStorageSlot> {
+    pub fn into_slots(self) -> Vec<StorageSlot> {
         self.slots
     }
 
@@ -205,7 +199,7 @@ impl AccountStorage {
 
     /// Returns a reference to the storage slot with the provided name, if it exists, `None`
     /// otherwise.
-    pub fn get(&self, slot_name: &StorageSlotName) -> Option<&NamedStorageSlot> {
+    pub fn get(&self, slot_name: &StorageSlotName) -> Option<&StorageSlot> {
         debug_assert!(self.slots.is_sorted());
 
         let slot_id = slot_name.compute_id();
@@ -215,7 +209,7 @@ impl AccountStorage {
             .ok()
     }
 
-    fn get_mut(&mut self, slot_name: &StorageSlotName) -> Option<&mut NamedStorageSlot> {
+    fn get_mut(&mut self, slot_name: &StorageSlotName) -> Option<&mut StorageSlot> {
         let slot_id = slot_name.compute_id();
         self.slots
             .binary_search_by_key(&slot_id, |named_slot| named_slot.slot_id())
@@ -353,8 +347,8 @@ impl AccountStorage {
 // ================================================================================================
 
 impl IntoIterator for AccountStorage {
-    type Item = NamedStorageSlot;
-    type IntoIter = alloc::vec::IntoIter<NamedStorageSlot>;
+    type Item = StorageSlot;
+    type IntoIter = alloc::vec::IntoIter<StorageSlot>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.slots.into_iter()
@@ -407,7 +401,7 @@ impl Serializable for AccountStorage {
 impl Deserializable for AccountStorage {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let num_slots = source.read_u8()? as usize;
-        let slots = source.read_many::<NamedStorageSlot>(num_slots)?;
+        let slots = source.read_many::<StorageSlot>(num_slots)?;
 
         Self::new(slots).map_err(|err| DeserializationError::InvalidValue(err.to_string()))
     }
@@ -419,7 +413,7 @@ impl Deserializable for AccountStorage {
 #[cfg(test)]
 mod tests {
     use super::{AccountStorage, Deserializable, Serializable};
-    use crate::account::{NamedStorageSlot, StorageSlotName};
+    use crate::account::{StorageSlot, StorageSlotName};
 
     #[test]
     fn test_serde_account_storage() -> anyhow::Result<()> {
@@ -430,8 +424,8 @@ mod tests {
 
         // storage with values for default types
         let storage = AccountStorage::new(vec![
-            NamedStorageSlot::with_empty_value(StorageSlotName::new("miden::test::value")?),
-            NamedStorageSlot::with_empty_map(StorageSlotName::new("miden::test::map")?),
+            StorageSlot::with_empty_value(StorageSlotName::new("miden::test::value")?),
+            StorageSlot::with_empty_map(StorageSlotName::new("miden::test::map")?),
         ])
         .unwrap();
         let bytes = storage.to_bytes();
@@ -446,8 +440,8 @@ mod tests {
         let map_slot = StorageSlotName::new("miden::test::map")?;
 
         let slots = vec![
-            NamedStorageSlot::with_empty_value(counter_slot.clone()),
-            NamedStorageSlot::with_empty_map(map_slot.clone()),
+            StorageSlot::with_empty_value(counter_slot.clone()),
+            StorageSlot::with_empty_map(map_slot.clone()),
         ];
         let storage = AccountStorage::new(slots.clone())?;
 

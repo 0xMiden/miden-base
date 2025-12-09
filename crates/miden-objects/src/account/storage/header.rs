@@ -1,8 +1,8 @@
 use alloc::string::ToString;
 use alloc::vec::Vec;
 
-use crate::account::{StorageSlotId, StorageSlotName};
 use super::{AccountStorage, Felt, StorageSlotContent, StorageSlotType, Word};
+use crate::account::{StorageSlotId, StorageSlotName};
 use crate::crypto::SequentialCommit;
 use crate::utils::serde::{
     ByteReader,

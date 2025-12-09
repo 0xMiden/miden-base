@@ -14,8 +14,8 @@ use miden_objects::account::{
     AccountStorage,
     AccountStorageMode,
     AccountType,
-    NamedStorageSlot,
     StorageMap,
+    StorageSlot,
     StorageSlotName,
 };
 use miden_objects::asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset};
@@ -127,10 +127,10 @@ async fn storage_delta_for_value_slots() -> anyhow::Result<()> {
 
     let TestSetup { mock_chain, account_id, .. } = setup_test(
         vec![
-            NamedStorageSlot::with_value(slot_0_name.clone(), slot_0_init_value),
-            NamedStorageSlot::with_value(slot_1_name.clone(), slot_1_init_value),
-            NamedStorageSlot::with_value(slot_2_name.clone(), slot_2_init_value),
-            NamedStorageSlot::with_value(slot_3_name.clone(), slot_3_init_value),
+            StorageSlot::with_value(slot_0_name.clone(), slot_0_init_value),
+            StorageSlot::with_value(slot_1_name.clone(), slot_1_init_value),
+            StorageSlot::with_value(slot_2_name.clone(), slot_2_init_value),
+            StorageSlot::with_value(slot_3_name.clone(), slot_3_init_value),
         ],
         [],
         [],
@@ -264,13 +264,13 @@ async fn storage_delta_for_map_slots() -> anyhow::Result<()> {
 
     let TestSetup { mock_chain, account_id, .. } = setup_test(
         vec![
-            NamedStorageSlot::with_map(slot_0_name.clone(), map0),
-            NamedStorageSlot::with_map(slot_1_name.clone(), map1),
-            NamedStorageSlot::with_map(slot_2_name.clone(), map2),
+            StorageSlot::with_map(slot_0_name.clone(), map0),
+            StorageSlot::with_map(slot_1_name.clone(), map1),
+            StorageSlot::with_map(slot_2_name.clone(), map2),
             // Include an empty map which does not receive any updates, to test that the "metadata
             // header" in the delta commitment is not appended if there are no updates to a map
             // slot.
-            NamedStorageSlot::with_map(StorageSlotName::mock(3), StorageMap::new()),
+            StorageSlot::with_map(StorageSlotName::mock(3), StorageMap::new()),
         ],
         [],
         [],
@@ -828,10 +828,10 @@ async fn proven_tx_storage_maps_matches_executed_tx_for_new_account() -> anyhow:
         .with_auth_component(Auth::IncrNonce)
         .with_component(MockAccountComponent::with_slots(vec![
             AccountStorage::mock_value_slot0(),
-            NamedStorageSlot::with_map(map0_slot_name.clone(), map0.clone()),
-            NamedStorageSlot::with_map(map1_slot_name.clone(), map1.clone()),
+            StorageSlot::with_map(map0_slot_name.clone(), map0.clone()),
+            StorageSlot::with_map(map1_slot_name.clone(), map1.clone()),
             AccountStorage::mock_value_slot1(),
-            NamedStorageSlot::with_map(map2_slot_name.clone(), map2.clone()),
+            StorageSlot::with_map(map2_slot_name.clone(), map2.clone()),
         ]))
         .build()?;
 
@@ -927,8 +927,8 @@ async fn delta_for_new_account_retains_empty_value_storage_slots() -> anyhow::Re
         .account_type(AccountType::RegularAccountUpdatableCode)
         .storage_mode(AccountStorageMode::Network)
         .with_component(MockAccountComponent::with_slots(vec![
-            NamedStorageSlot::with_empty_value(slot_name0.clone()),
-            NamedStorageSlot::with_value(slot_name1.clone(), slot_value2),
+            StorageSlot::with_empty_value(slot_name0.clone()),
+            StorageSlot::with_value(slot_name1.clone(), slot_value2),
         ]))
         .with_auth_component(Auth::IncrNonce)
         .build()?;
@@ -963,7 +963,7 @@ async fn delta_for_new_account_retains_empty_map_storage_slots() -> anyhow::Resu
     let mut account = AccountBuilder::new(rand::random())
         .account_type(AccountType::RegularAccountUpdatableCode)
         .storage_mode(AccountStorageMode::Network)
-        .with_component(MockAccountComponent::with_slots(vec![NamedStorageSlot::with_empty_map(
+        .with_component(MockAccountComponent::with_slots(vec![StorageSlot::with_empty_map(
             slot_name0.clone(),
         )]))
         .with_auth_component(Auth::IncrNonce)
@@ -1024,7 +1024,7 @@ struct TestSetup {
 }
 
 fn setup_test(
-    storage_slots: impl IntoIterator<Item = NamedStorageSlot>,
+    storage_slots: impl IntoIterator<Item = StorageSlot>,
     vault_assets: impl IntoIterator<Item = Asset>,
     note_assets: impl IntoIterator<Item = Asset>,
 ) -> anyhow::Result<TestSetup> {

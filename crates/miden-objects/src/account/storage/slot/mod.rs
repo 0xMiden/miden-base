@@ -7,8 +7,8 @@ pub use slot_id::StorageSlotId;
 mod r#type;
 pub use r#type::StorageSlotType;
 
-mod named_slot;
-pub use named_slot::NamedStorageSlot;
+mod storage_slot;
+pub use storage_slot::StorageSlot;
 
 mod slot_content;
 pub use slot_content::StorageSlotContent;

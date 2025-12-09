@@ -4,10 +4,10 @@ use crate::account::{StorageMap, StorageSlotContent, StorageSlotName, StorageSlo
 
 /// An individual storage slot in [`AccountStorage`](crate::account::AccountStorage).
 ///
-/// This consists of a [`StorageSlotName`] that uniquely identifies the slot and its [`StorageSlot`]
-/// content.
+/// This consists of a [`StorageSlotName`] that uniquely identifies the slot and its
+/// [`StorageSlotContent`] content.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct NamedStorageSlot {
+pub struct StorageSlot {
     /// The name of the storage slot.
     name: StorageSlotName,
     /// The cached [`StorageSlotId`] of the slot name. This field must always be consistent with
@@ -17,40 +17,40 @@ pub struct NamedStorageSlot {
     /// having to hash the slot name on every comparison operation.
     slot_id: StorageSlotId,
     /// The underlying storage slot.
-    slot: StorageSlotContent,
+    content: StorageSlotContent,
 }
 
-impl NamedStorageSlot {
+impl StorageSlot {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
-    /// Creates a new [`NamedStorageSlot`] with the given [`StorageSlotName`] and
+    /// Creates a new [`StorageSlot`] with the given [`StorageSlotName`] and
     /// [`StorageSlotContent`].
-    pub fn new(name: StorageSlotName, slot: StorageSlotContent) -> Self {
+    pub fn new(name: StorageSlotName, content: StorageSlotContent) -> Self {
         let slot_id = name.compute_id();
 
-        Self { name, slot_id, slot }
+        Self { name, slot_id, content }
     }
 
-    /// Creates a new [`NamedStorageSlot`] with the given [`StorageSlotName`] and the `value`
+    /// Creates a new [`StorageSlot`] with the given [`StorageSlotName`] and the `value`
     /// wrapped into a [`StorageSlotContent::Value`].
     pub fn with_value(name: StorageSlotName, value: Word) -> Self {
         Self::new(name, StorageSlotContent::Value(value))
     }
 
-    /// Creates a new [`NamedStorageSlot`] with the given [`StorageSlotName`] and
+    /// Creates a new [`StorageSlot`] with the given [`StorageSlotName`] and
     /// [`StorageSlotContent::empty_value`].
     pub fn with_empty_value(name: StorageSlotName) -> Self {
         Self::new(name, StorageSlotContent::empty_value())
     }
 
-    /// Creates a new [`NamedStorageSlot`] with the given [`StorageSlotName`] and the `map` wrapped
+    /// Creates a new [`StorageSlot`] with the given [`StorageSlotName`] and the `map` wrapped
     /// into a [`StorageSlotContent::Map`]
     pub fn with_map(name: StorageSlotName, map: StorageMap) -> Self {
         Self::new(name, StorageSlotContent::Map(map))
     }
 
-    /// Creates a new [`NamedStorageSlot`] with the given [`StorageSlotName`] and
+    /// Creates a new [`StorageSlot`] with the given [`StorageSlotName`] and
     /// [`StorageSlotContent::empty_map`].
     pub fn with_empty_map(name: StorageSlotName) -> Self {
         Self::new(name, StorageSlotContent::empty_map())
@@ -59,12 +59,12 @@ impl NamedStorageSlot {
     // ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns the [`StorageSlotName`] by which the [`NamedStorageSlot`] is identified.
+    /// Returns the [`StorageSlotName`] by which the [`StorageSlot`] is identified.
     pub fn name(&self) -> &StorageSlotName {
         &self.name
     }
 
-    /// Returns the [`StorageSlotId`] by which the [`NamedStorageSlot`] is identified.
+    /// Returns the [`StorageSlotId`] by which the [`StorageSlot`] is identified.
     pub fn slot_id(&self) -> StorageSlotId {
         self.slot_id
     }
@@ -72,43 +72,45 @@ impl NamedStorageSlot {
     /// Returns this storage slot value as a [Word]
     ///
     /// Returns:
-    /// - For [`StorageSlot::Value`] the value.
-    /// - For [`StorageSlot::Map`] the root of the [StorageMap].
+    /// - For [`StorageSlotContent::Value`] the value.
+    /// - For [`StorageSlotContent::Map`] the root of the [StorageMap].
     pub fn value(&self) -> Word {
         self.storage_slot().value()
     }
 
-    /// Returns a reference to the [`StorageSlot`] contained in this [`NamedStorageSlot`].
+    /// TODO: Rename to content.
+    /// Returns a reference to the [`StorageSlotContent`] contained in this [`StorageSlot`].
     pub fn storage_slot(&self) -> &StorageSlotContent {
-        &self.slot
+        &self.content
     }
 
-    /// Returns the [`StorageSlotType`] of this [`NamedStorageSlot`].
+    /// Returns the [`StorageSlotType`] of this [`StorageSlot`].
     pub fn slot_type(&self) -> StorageSlotType {
-        self.slot.slot_type()
+        self.content.slot_type()
     }
 
     // MUTATORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns a mutable reference to the [`StorageSlot`] contained in this [`NamedStorageSlot`].
+    /// Returns a mutable reference to the [`StorageSlotContent`] contained in this
+    /// [`StorageSlot`].
     pub fn storage_slot_mut(&mut self) -> &mut StorageSlotContent {
-        &mut self.slot
+        &mut self.content
     }
 
     /// Consumes self and returns the underlying parts.
     pub fn into_parts(self) -> (StorageSlotName, StorageSlotId, StorageSlotContent) {
-        (self.name, self.slot_id, self.slot)
+        (self.name, self.slot_id, self.content)
     }
 }
 
-impl Ord for NamedStorageSlot {
+impl Ord for StorageSlot {
     fn cmp(&self, other: &Self) -> core::cmp::Ordering {
         self.slot_id.cmp(&other.slot_id)
     }
 }
 
-impl PartialOrd for NamedStorageSlot {
+impl PartialOrd for StorageSlot {
     fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
         Some(self.cmp(other))
     }
@@ -117,10 +119,10 @@ impl PartialOrd for NamedStorageSlot {
 // SERIALIZATION
 // ================================================================================================
 
-impl crate::utils::serde::Serializable for NamedStorageSlot {
+impl crate::utils::serde::Serializable for StorageSlot {
     fn write_into<W: crate::utils::serde::ByteWriter>(&self, target: &mut W) {
         target.write(&self.name);
-        target.write(&self.slot);
+        target.write(&self.content);
     }
 
     fn get_size_hint(&self) -> usize {
@@ -128,7 +130,7 @@ impl crate::utils::serde::Serializable for NamedStorageSlot {
     }
 }
 
-impl crate::utils::serde::Deserializable for NamedStorageSlot {
+impl crate::utils::serde::Deserializable for StorageSlot {
     fn read_from<R: miden_core::utils::ByteReader>(
         source: &mut R,
     ) -> Result<Self, crate::utils::serde::DeserializationError> {
