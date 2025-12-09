@@ -45,6 +45,83 @@ async fn execute_program_with_default_host(
     processor.execute(&program, &mut host).await
 }
 
+/// Helper function to test convert_felt_to_u256_scaled with given parameters
+async fn test_convert_to_u256_helper(
+    miden_amount: Felt,
+    scale_exponent: Felt,
+    expected_result_array: [u32; 8],
+    expected_result_u256: U256,
+) -> anyhow::Result<()> {
+    let asset_conversion_comp = asset_conversion_component(vec![]);
+    let asset_conversion_lib = asset_conversion_comp.library();
+
+    let script_code = format!(
+        "
+        use.std::sys
+        
+        begin
+            push.{}.{}
+            call.::convert_felt_to_u256_scaled
+            exec.sys::truncate_stack
+        end
+        ",
+        scale_exponent, miden_amount,
+    );
+
+    let program = Assembler::new(Arc::new(DefaultSourceManager::default()))
+        .with_debug_mode(true)
+        .with_dynamic_library(StdLibrary::default())
+        .unwrap()
+        .with_dynamic_library(asset_conversion_lib.clone())
+        .unwrap()
+        .assemble_program(&script_code)
+        .unwrap();
+
+    let exec_output = execute_program_with_default_host(program).await?;
+
+    // Extract the first 8 u32 values from the stack (the U256 representation)
+    let actual_result: [u32; 8] = [
+        exec_output.stack[0].as_int() as u32,
+        exec_output.stack[1].as_int() as u32,
+        exec_output.stack[2].as_int() as u32,
+        exec_output.stack[3].as_int() as u32,
+        exec_output.stack[4].as_int() as u32,
+        exec_output.stack[5].as_int() as u32,
+        exec_output.stack[6].as_int() as u32,
+        exec_output.stack[7].as_int() as u32,
+    ];
+
+    let actual_result_u256 = stack_to_u256(&exec_output);
+
+    assert_eq!(actual_result, expected_result_array);
+    assert_eq!(actual_result_u256, expected_result_u256);
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_convert_to_u256_basic_examples() -> anyhow::Result<()> {
+    // Test case 1: amount=1, no scaling (scale_exponent=0)
+    test_convert_to_u256_helper(
+        Felt::new(1),
+        Felt::new(0),
+        [0, 0, 0, 0, 0, 0, 0, 1],
+        U256::from(1u64),
+    )
+    .await?;
+
+    // Test case 2: amount=1, scale to 1e18 (scale_exponent=18)
+    test_convert_to_u256_helper(
+        Felt::new(1),
+        Felt::new(18),
+        [0, 0, 0, 0, 0, 0, 232830643, 2808348672],
+        U256::from_dec_str("1000000000000000000").unwrap(),
+    )
+    .await?;
+
+    Ok(())
+}
+
 #[tokio::test]
 async fn test_convert_to_u256_scaled_eth() -> anyhow::Result<()> {
     // 100 units base 1e6
@@ -130,105 +207,6 @@ async fn test_convert_to_u256_scaled_large_amount() -> anyhow::Result<()> {
 
     assert_eq!(actual_result, expected_result);
 
-    Ok(())
-}
-
-#[tokio::test]
-async fn test_convert_to_u256_basic_example() -> anyhow::Result<()> {
-    // Simple example: amount=1, no scaling (scale_exponent=0)
-    let miden_amount = Felt::new(1);
-    let scale_exponent = Felt::new(0);
-
-    let asset_conversion_comp = asset_conversion_component(vec![]);
-    let asset_conversion_lib = asset_conversion_comp.library();
-
-    let script_code = format!(
-        "
-        use.std::sys
-        
-        begin
-            push.{}.{}
-            call.::convert_felt_to_u256_scaled
-            exec.sys::truncate_stack
-        end
-        ",
-        scale_exponent, miden_amount,
-    );
-
-    let program = Assembler::new(Arc::new(DefaultSourceManager::default()))
-        .with_debug_mode(true)
-        .with_dynamic_library(StdLibrary::default())
-        .unwrap()
-        .with_dynamic_library(asset_conversion_lib.clone())
-        .unwrap()
-        .assemble_program(&script_code)
-        .unwrap();
-
-    let exec_output = execute_program_with_default_host(program).await?;
-
-    // Extract the first 8 u32 values from the stack (the U256 representation)
-    let actual_result: [u32; 8] = [
-        exec_output.stack[0].as_int() as u32,
-        exec_output.stack[1].as_int() as u32,
-        exec_output.stack[2].as_int() as u32,
-        exec_output.stack[3].as_int() as u32,
-        exec_output.stack[4].as_int() as u32,
-        exec_output.stack[5].as_int() as u32,
-        exec_output.stack[6].as_int() as u32,
-        exec_output.stack[7].as_int() as u32,
-    ];
-
-    // Expected result: 1 represented as 8 u32 values
-    let expected_result_array = [0, 0, 0, 0, 0, 0, 0, 1];
-
-    // Also verify this equals U256::from(1u64)
-    let expected_result_u256 = U256::from(1u64);
-    let actual_result_u256 = stack_to_u256(&exec_output);
-
-    assert_eq!(actual_result, expected_result_array);
-    assert_eq!(actual_result_u256, expected_result_u256);
-
-    Ok(())
-}
-
-#[tokio::test]
-async fn test_convert_felt_to_u256_scaled_hand_crafted_examples() -> anyhow::Result<()> {
-    // Example 1: amount=1, target_scale=0 (no scaling)
-    let miden_amount = Felt::new(1);
-    let target_scale = Felt::new(0);
-
-    let asset_conversion_comp = asset_conversion_component(vec![]);
-    let asset_conversion_lib = asset_conversion_comp.library();
-
-    let script_code = format!(
-        "
-        use.std::sys
-        
-        begin
-            push.{}.{}
-            call.::convert_felt_to_u256_scaled
-            exec.sys::truncate_stack
-        end
-        ",
-        target_scale, miden_amount,
-    );
-
-    let program = Assembler::new(Arc::new(DefaultSourceManager::default()))
-        .with_debug_mode(true)
-        .with_dynamic_library(StdLibrary::default())
-        .unwrap()
-        .with_dynamic_library(asset_conversion_lib.clone())
-        .unwrap()
-        .assemble_program(&script_code)
-        .unwrap();
-
-    let exec_output = execute_program_with_default_host(program).await?;
-
-    // Expected: amount=1, scale=0 → 1 * 10^0 = 1
-    // In U256 format: [[0, 0, 0, 0], [0, 0, 0, 1]]
-    let expected_result = U256::from(1u64);
-    let actual_result = stack_to_u256(&exec_output);
-    assert_eq!(actual_result, expected_result);
     Ok(())
 }
 
