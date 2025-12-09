@@ -27,8 +27,8 @@ use miden_objects::account::{
     AccountType,
     NamedStorageSlot,
     StorageMap,
-    StorageSlot,
     StorageSlotName,
+    StorageSlotContent,
     StorageSlotType,
 };
 use miden_objects::assembly::DefaultSourceManager;
@@ -419,7 +419,7 @@ async fn test_get_map_item() -> miette::Result<()> {
 
     let tx_context = TransactionContextBuilder::new(account).build().unwrap();
 
-    let StorageSlot::Map(map) = named_slot.storage_slot() else {
+    let StorageSlotContent::Map(map) = named_slot.storage_slot() else {
         panic!("expected map")
     };
 
@@ -1525,7 +1525,7 @@ async fn test_get_initial_map_item() -> miette::Result<()> {
     let tx_context = TransactionContextBuilder::new(account).build().unwrap();
 
     // Use the first key-value pair from the mock storage
-    let StorageSlot::Map(map) = map_slot.storage_slot() else {
+    let StorageSlotContent::Map(map) = map_slot.storage_slot() else {
         panic!("expected map");
     };
 
