@@ -720,10 +720,10 @@ async fn test_mint_note_output_note_types(#[case] note_type: NoteType) -> anyhow
             let p2id_script = WellKnownNote::P2ID.script();
             let p2id_inputs =
                 vec![target_account.id().suffix(), target_account.id().prefix().as_felt()];
+            let note_inputs = NoteInputs::new(p2id_inputs)?;
+            let recipient = NoteRecipient::new(serial_num, p2id_script, note_inputs);
             MintNoteInputs::new_public(
-                p2id_script.root(),
-                serial_num,
-                p2id_inputs,
+                recipient,
                 amount,
                 output_note_tag.into(),
                 NoteExecutionHint::always(),

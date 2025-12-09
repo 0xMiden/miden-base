@@ -1,6 +1,4 @@
-use alloc::vec::Vec;
-
-use miden_objects::note::{NoteExecutionHint, NoteInputs};
+use miden_objects::note::{NoteExecutionHint, NoteInputs, NoteRecipient};
 use miden_objects::{Felt, MAX_INPUTS_PER_NOTE, NoteError, Word};
 
 /// Represents the different input formats for MINT notes.
@@ -19,9 +17,7 @@ pub enum MintNoteInputs {
         aux: Felt,
     },
     Public {
-        script_root: Word,
-        serial_num: Word,
-        inputs: Vec<Felt>,
+        recipient: NoteRecipient,
         amount: Felt,
         tag: Felt,
         execution_hint: NoteExecutionHint,
@@ -47,9 +43,7 @@ impl MintNoteInputs {
     }
 
     pub fn new_public(
-        script_root: Word,
-        serial_num: Word,
-        input_values: Vec<Felt>,
+        recipient: NoteRecipient,
         amount: Felt,
         tag: Felt,
         execution_hint: NoteExecutionHint,
@@ -57,18 +51,16 @@ impl MintNoteInputs {
     ) -> Result<Self, NoteError> {
         // Calculate total number of inputs that will be created:
         // 12 fixed inputs (execution_hint, aux, tag, amount, SCRIPT_ROOT, SERIAL_NUM) +
-        // variable input_values length
+        // variable recipient inputs length
         const FIXED_PUBLIC_INPUTS: usize = 12;
-        let total_inputs = FIXED_PUBLIC_INPUTS + input_values.len();
+        let total_inputs = FIXED_PUBLIC_INPUTS + recipient.inputs().num_values() as usize;
 
         if total_inputs > MAX_INPUTS_PER_NOTE {
             return Err(NoteError::TooManyInputs(total_inputs));
         }
 
         Ok(Self::Public {
-            script_root,
-            serial_num,
-            inputs: input_values,
+            recipient,
             amount,
             tag,
             execution_hint,
@@ -93,18 +85,16 @@ impl From<MintNoteInputs> for NoteInputs {
                     .expect("number of inputs should not exceed max inputs")
             },
             MintNoteInputs::Public {
-                script_root,
-                serial_num,
-                inputs,
+                recipient,
                 amount,
                 tag,
                 execution_hint,
                 aux,
             } => {
                 let mut input_values = vec![execution_hint.into(), aux, tag, amount];
-                input_values.extend_from_slice(script_root.as_elements());
-                input_values.extend_from_slice(serial_num.as_elements());
-                input_values.extend(inputs);
+                input_values.extend_from_slice(recipient.script().root().as_elements());
+                input_values.extend_from_slice(recipient.serial_num().as_elements());
+                input_values.extend_from_slice(recipient.inputs().values());
                 NoteInputs::new(input_values)
                     .expect("number of inputs should not exceed max inputs")
             },
