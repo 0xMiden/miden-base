@@ -4,7 +4,7 @@ use miden_core::utils::{Deserializable, Serializable};
 use miden_crypto::Word;
 use miden_crypto::merkle::{InnerNodeInfo, SmtLeaf};
 
-use super::{AccountStorage, AccountStorageHeader, StorageSlot};
+use super::{AccountStorage, AccountStorageHeader, StorageSlotContent};
 use crate::AccountError;
 use crate::account::PartialStorageMap;
 
@@ -61,7 +61,7 @@ impl PartialStorage {
 
         let mut maps = BTreeMap::new();
         for slot in account_storage {
-            if let StorageSlot::Map(storage_map) = slot.into_parts().2 {
+            if let StorageSlotContent::Map(storage_map) = slot.into_parts().2 {
                 let partial_map = PartialStorageMap::new_full(storage_map);
                 maps.insert(partial_map.root(), partial_map);
             }
@@ -80,7 +80,7 @@ impl PartialStorage {
 
         let mut maps = BTreeMap::new();
         for slot in account_storage.slots() {
-            if let StorageSlot::Map(storage_map) = slot.storage_slot() {
+            if let StorageSlotContent::Map(storage_map) = slot.storage_slot() {
                 let partial_map = PartialStorageMap::new_minimal(storage_map);
                 maps.insert(partial_map.root(), partial_map);
             }

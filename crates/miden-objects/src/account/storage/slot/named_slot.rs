@@ -1,6 +1,6 @@
 use crate::Word;
 use crate::account::storage::slot::StorageSlotId;
-use crate::account::{StorageMap, StorageSlot, StorageSlotName, StorageSlotType};
+use crate::account::{StorageMap, StorageSlotContent, StorageSlotName, StorageSlotType};
 
 /// An individual storage slot in [`AccountStorage`](crate::account::AccountStorage).
 ///
@@ -17,42 +17,43 @@ pub struct NamedStorageSlot {
     /// having to hash the slot name on every comparison operation.
     slot_id: StorageSlotId,
     /// The underlying storage slot.
-    slot: StorageSlot,
+    slot: StorageSlotContent,
 }
 
 impl NamedStorageSlot {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
-    /// Creates a new [`NamedStorageSlot`] with the given [`StorageSlotName`] and [`StorageSlot`].
-    pub fn new(name: StorageSlotName, slot: StorageSlot) -> Self {
+    /// Creates a new [`NamedStorageSlot`] with the given [`StorageSlotName`] and
+    /// [`StorageSlotContent`].
+    pub fn new(name: StorageSlotName, slot: StorageSlotContent) -> Self {
         let slot_id = name.compute_id();
 
         Self { name, slot_id, slot }
     }
 
     /// Creates a new [`NamedStorageSlot`] with the given [`StorageSlotName`] and the `value`
-    /// wrapped into a [`StorageSlot::Value`].
+    /// wrapped into a [`StorageSlotContent::Value`].
     pub fn with_value(name: StorageSlotName, value: Word) -> Self {
-        Self::new(name, StorageSlot::Value(value))
+        Self::new(name, StorageSlotContent::Value(value))
     }
 
     /// Creates a new [`NamedStorageSlot`] with the given [`StorageSlotName`] and
-    /// [`StorageSlot::empty_value`].
+    /// [`StorageSlotContent::empty_value`].
     pub fn with_empty_value(name: StorageSlotName) -> Self {
-        Self::new(name, StorageSlot::empty_value())
+        Self::new(name, StorageSlotContent::empty_value())
     }
 
     /// Creates a new [`NamedStorageSlot`] with the given [`StorageSlotName`] and the `map` wrapped
-    /// into a [`StorageSlot::Map`]
+    /// into a [`StorageSlotContent::Map`]
     pub fn with_map(name: StorageSlotName, map: StorageMap) -> Self {
-        Self::new(name, StorageSlot::Map(map))
+        Self::new(name, StorageSlotContent::Map(map))
     }
 
     /// Creates a new [`NamedStorageSlot`] with the given [`StorageSlotName`] and
-    /// [`StorageSlot::empty_map`].
+    /// [`StorageSlotContent::empty_map`].
     pub fn with_empty_map(name: StorageSlotName) -> Self {
-        Self::new(name, StorageSlot::empty_map())
+        Self::new(name, StorageSlotContent::empty_map())
     }
 
     // ACCESSORS
@@ -78,7 +79,7 @@ impl NamedStorageSlot {
     }
 
     /// Returns a reference to the [`StorageSlot`] contained in this [`NamedStorageSlot`].
-    pub fn storage_slot(&self) -> &StorageSlot {
+    pub fn storage_slot(&self) -> &StorageSlotContent {
         &self.slot
     }
 
@@ -91,12 +92,12 @@ impl NamedStorageSlot {
     // --------------------------------------------------------------------------------------------
 
     /// Returns a mutable reference to the [`StorageSlot`] contained in this [`NamedStorageSlot`].
-    pub fn storage_slot_mut(&mut self) -> &mut StorageSlot {
+    pub fn storage_slot_mut(&mut self) -> &mut StorageSlotContent {
         &mut self.slot
     }
 
     /// Consumes self and returns the underlying parts.
-    pub fn into_parts(self) -> (StorageSlotName, StorageSlotId, StorageSlot) {
+    pub fn into_parts(self) -> (StorageSlotName, StorageSlotId, StorageSlotContent) {
         (self.name, self.slot_id, self.slot)
     }
 }
@@ -132,7 +133,7 @@ impl crate::utils::serde::Deserializable for NamedStorageSlot {
         source: &mut R,
     ) -> Result<Self, crate::utils::serde::DeserializationError> {
         let name: StorageSlotName = source.read()?;
-        let slot: StorageSlot = source.read()?;
+        let slot: StorageSlotContent = source.read()?;
 
         Ok(Self::new(name, slot))
     }

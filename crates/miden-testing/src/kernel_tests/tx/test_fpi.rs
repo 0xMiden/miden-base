@@ -30,7 +30,7 @@ use miden_objects::account::{
     AccountProcedureInfo,
     AccountStorage,
     AccountStorageMode,
-    StorageSlot,
+    StorageSlotContent,
 };
 use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::assembly::diagnostics::NamedSource;
@@ -1830,7 +1830,7 @@ fn foreign_account_data_memory_assertions(
     for (i, elements) in foreign_account
         .storage()
         .to_elements()
-        .chunks(StorageSlot::NUM_ELEMENTS_PER_STORAGE_SLOT / 2)
+        .chunks(StorageSlotContent::NUM_ELEMENTS_PER_STORAGE_SLOT / 2)
         .enumerate()
     {
         assert_eq!(

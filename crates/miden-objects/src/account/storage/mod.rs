@@ -19,7 +19,13 @@ use crate::crypto::SequentialCommit;
 use crate::utils::sync::LazyLock;
 
 mod slot;
-pub use slot::{NamedStorageSlot, StorageSlot, StorageSlotId, StorageSlotName, StorageSlotType};
+pub use slot::{
+    NamedStorageSlot,
+    StorageSlotContent,
+    StorageSlotId,
+    StorageSlotName,
+    StorageSlotType,
+};
 
 mod map;
 pub use map::{PartialStorageMap, StorageMap, StorageMapWitness};
@@ -244,7 +250,7 @@ impl AccountStorage {
         self.get(slot_name)
             .ok_or_else(|| AccountError::StorageSlotNameNotFound { slot_name: slot_name.clone() })
             .and_then(|named_slot| match named_slot.storage_slot() {
-                StorageSlot::Map(map) => Ok(map.get(&key)),
+                StorageSlotContent::Map(map) => Ok(map.get(&key)),
                 _ => Err(AccountError::StorageSlotNotMap(slot_name.clone())),
             })
     }
@@ -271,7 +277,7 @@ impl AccountStorage {
                 .ok_or(AccountError::StorageSlotNameNotFound { slot_name: slot_name.clone() })?;
 
             let storage_map = match named_slot.storage_slot_mut() {
-                StorageSlot::Map(map) => map,
+                StorageSlotContent::Map(map) => map,
                 _ => return Err(AccountError::StorageSlotNotMap(slot_name.clone())),
             };
 
@@ -300,12 +306,12 @@ impl AccountStorage {
             AccountError::StorageSlotNameNotFound { slot_name: slot_name.clone() }
         })?;
 
-        let StorageSlot::Value(old_value) = slot.storage_slot() else {
+        let StorageSlotContent::Value(old_value) = slot.storage_slot() else {
             return Err(AccountError::StorageSlotNotValue(slot_name.clone()));
         };
         let old_value = *old_value;
 
-        let mut new_slot = StorageSlot::Value(value);
+        let mut new_slot = StorageSlotContent::Value(value);
         core::mem::swap(slot.storage_slot_mut(), &mut new_slot);
 
         Ok(old_value)
@@ -331,7 +337,7 @@ impl AccountStorage {
             AccountError::StorageSlotNameNotFound { slot_name: slot_name.clone() }
         })?;
 
-        let StorageSlot::Map(storage_map) = slot.storage_slot_mut() else {
+        let StorageSlotContent::Map(storage_map) = slot.storage_slot_mut() else {
             return Err(AccountError::StorageSlotNotMap(slot_name.clone()));
         };
 

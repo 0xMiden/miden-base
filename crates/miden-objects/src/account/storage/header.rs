@@ -1,8 +1,8 @@
 use alloc::string::ToString;
 use alloc::vec::Vec;
 
-use super::{AccountStorage, Felt, StorageSlot, StorageSlotType, Word};
 use crate::account::{StorageSlotId, StorageSlotName};
+use super::{AccountStorage, Felt, StorageSlotContent, StorageSlotType, Word};
 use crate::crypto::SequentialCommit;
 use crate::utils::serde::{
     ByteReader,
@@ -41,8 +41,8 @@ impl StorageSlotHeader {
     /// ```text
     /// [[0, slot_type, slot_id_suffix, slot_id_prefix], SLOT_VALUE]
     /// ```
-    pub(crate) fn to_elements(&self) -> [Felt; StorageSlot::NUM_ELEMENTS_PER_STORAGE_SLOT] {
-        let mut elements = [ZERO; StorageSlot::NUM_ELEMENTS_PER_STORAGE_SLOT];
+    pub(crate) fn to_elements(&self) -> [Felt; StorageSlotContent::NUM_ELEMENTS_PER_STORAGE_SLOT] {
+        let mut elements = [ZERO; StorageSlotContent::NUM_ELEMENTS_PER_STORAGE_SLOT];
         elements[0..4].copy_from_slice(&[
             Felt::ZERO,
             self.r#type.as_felt(),
