@@ -75,12 +75,11 @@ impl StorageSlot {
     /// - For [`StorageSlotContent::Value`] the value.
     /// - For [`StorageSlotContent::Map`] the root of the [StorageMap].
     pub fn value(&self) -> Word {
-        self.storage_slot().value()
+        self.content().value()
     }
 
-    /// TODO: Rename to content.
     /// Returns a reference to the [`StorageSlotContent`] contained in this [`StorageSlot`].
-    pub fn storage_slot(&self) -> &StorageSlotContent {
+    pub fn content(&self) -> &StorageSlotContent {
         &self.content
     }
 
@@ -94,7 +93,7 @@ impl StorageSlot {
 
     /// Returns a mutable reference to the [`StorageSlotContent`] contained in this
     /// [`StorageSlot`].
-    pub fn storage_slot_mut(&mut self) -> &mut StorageSlotContent {
+    pub fn content_mut(&mut self) -> &mut StorageSlotContent {
         &mut self.content
     }
 
@@ -126,7 +125,7 @@ impl crate::utils::serde::Serializable for StorageSlot {
     }
 
     fn get_size_hint(&self) -> usize {
-        self.name.get_size_hint() + self.storage_slot().get_size_hint()
+        self.name.get_size_hint() + self.content().get_size_hint()
     }
 }
 

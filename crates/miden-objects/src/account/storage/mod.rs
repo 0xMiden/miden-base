@@ -186,11 +186,7 @@ impl AccountStorage {
             self.slots
                 .iter()
                 .map(|slot| {
-                    (
-                        slot.name().clone(),
-                        slot.storage_slot().slot_type(),
-                        slot.storage_slot().value(),
-                    )
+                    (slot.name().clone(), slot.content().slot_type(), slot.content().value())
                 })
                 .collect(),
         )
@@ -204,7 +200,7 @@ impl AccountStorage {
 
         let slot_id = slot_name.compute_id();
         self.slots
-            .binary_search_by_key(&slot_id, |named_slot| named_slot.slot_id())
+            .binary_search_by_key(&slot_id, |slot| slot.slot_id())
             .map(|idx| &self.slots[idx])
             .ok()
     }
@@ -212,7 +208,7 @@ impl AccountStorage {
     fn get_mut(&mut self, slot_name: &StorageSlotName) -> Option<&mut StorageSlot> {
         let slot_id = slot_name.compute_id();
         self.slots
-            .binary_search_by_key(&slot_id, |named_slot| named_slot.slot_id())
+            .binary_search_by_key(&slot_id, |slot| slot.slot_id())
             .map(|idx| &mut self.slots[idx])
             .ok()
     }
@@ -225,7 +221,7 @@ impl AccountStorage {
     /// - A slot with the provided name does not exist.
     pub fn get_item(&self, slot_name: &StorageSlotName) -> Result<Word, AccountError> {
         self.get(slot_name)
-            .map(|named_slot| named_slot.storage_slot().value())
+            .map(|slot| slot.content().value())
             .ok_or_else(|| AccountError::StorageSlotNameNotFound { slot_name: slot_name.clone() })
     }
 
@@ -243,7 +239,7 @@ impl AccountStorage {
     ) -> Result<Word, AccountError> {
         self.get(slot_name)
             .ok_or_else(|| AccountError::StorageSlotNameNotFound { slot_name: slot_name.clone() })
-            .and_then(|named_slot| match named_slot.storage_slot() {
+            .and_then(|slot| match slot.content() {
                 StorageSlotContent::Map(map) => Ok(map.get(&key)),
                 _ => Err(AccountError::StorageSlotNotMap(slot_name.clone())),
             })
@@ -266,11 +262,11 @@ impl AccountStorage {
 
         // Update storage maps
         for (slot_name, map_delta) in delta.maps().iter() {
-            let named_slot = self
+            let slot = self
                 .get_mut(slot_name)
                 .ok_or(AccountError::StorageSlotNameNotFound { slot_name: slot_name.clone() })?;
 
-            let storage_map = match named_slot.storage_slot_mut() {
+            let storage_map = match slot.content_mut() {
                 StorageSlotContent::Map(map) => map,
                 _ => return Err(AccountError::StorageSlotNotMap(slot_name.clone())),
             };
@@ -300,13 +296,13 @@ impl AccountStorage {
             AccountError::StorageSlotNameNotFound { slot_name: slot_name.clone() }
         })?;
 
-        let StorageSlotContent::Value(old_value) = slot.storage_slot() else {
+        let StorageSlotContent::Value(old_value) = slot.content() else {
             return Err(AccountError::StorageSlotNotValue(slot_name.clone()));
         };
         let old_value = *old_value;
 
         let mut new_slot = StorageSlotContent::Value(value);
-        core::mem::swap(slot.storage_slot_mut(), &mut new_slot);
+        core::mem::swap(slot.content_mut(), &mut new_slot);
 
         Ok(old_value)
     }
@@ -331,7 +327,7 @@ impl AccountStorage {
             AccountError::StorageSlotNameNotFound { slot_name: slot_name.clone() }
         })?;
 
-        let StorageSlotContent::Map(storage_map) = slot.storage_slot_mut() else {
+        let StorageSlotContent::Map(storage_map) = slot.content_mut() else {
             return Err(AccountError::StorageSlotNotMap(slot_name.clone()));
         };
 
@@ -364,11 +360,11 @@ impl SequentialCommit for AccountStorage {
     fn to_elements(&self) -> Vec<Felt> {
         self.slots()
             .iter()
-            .flat_map(|named_slot| {
+            .flat_map(|slot| {
                 StorageSlotHeader::new(
-                    named_slot.slot_id(),
-                    named_slot.storage_slot().slot_type(),
-                    named_slot.storage_slot().value(),
+                    slot.slot_id(),
+                    slot.content().slot_type(),
+                    slot.content().value(),
                 )
                 .to_elements()
             })
