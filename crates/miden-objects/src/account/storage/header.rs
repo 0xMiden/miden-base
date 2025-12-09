@@ -2,7 +2,7 @@ use alloc::string::ToString;
 use alloc::vec::Vec;
 
 use super::{AccountStorage, Felt, StorageSlot, StorageSlotType, Word};
-use crate::account::{SlotName, StorageSlotId};
+use crate::account::{StorageSlotId, StorageSlotName};
 use crate::crypto::SequentialCommit;
 use crate::utils::serde::{
     ByteReader,
@@ -61,7 +61,7 @@ impl StorageSlotHeader {
 /// - [`StorageSlotType::Map`]: The root of the SMT that represents the storage map.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AccountStorageHeader {
-    slots: Vec<(SlotName, StorageSlotType, Word)>,
+    slots: Vec<(StorageSlotName, StorageSlotType, Word)>,
 }
 
 impl AccountStorageHeader {
@@ -75,7 +75,7 @@ impl AccountStorageHeader {
     /// Returns an error if:
     /// - The number of provided slots is greater than [`AccountStorage::MAX_NUM_STORAGE_SLOTS`].
     /// - The slots are not sorted by [`StorageSlotId`].
-    pub fn new(slots: Vec<(SlotName, StorageSlotType, Word)>) -> Result<Self, AccountError> {
+    pub fn new(slots: Vec<(StorageSlotName, StorageSlotType, Word)>) -> Result<Self, AccountError> {
         if slots.len() > AccountStorage::MAX_NUM_STORAGE_SLOTS {
             return Err(AccountError::StorageTooManySlots(slots.len() as u64));
         }
@@ -91,7 +91,7 @@ impl AccountStorageHeader {
     // --------------------------------------------------------------------------------------------
 
     /// Returns an iterator over the storage header slots.
-    pub fn slots(&self) -> impl Iterator<Item = (&SlotName, &StorageSlotType, &Word)> {
+    pub fn slots(&self) -> impl Iterator<Item = (&StorageSlotName, &StorageSlotType, &Word)> {
         self.slots.iter().map(|(name, r#type, value)| (name, r#type, value))
     }
 
@@ -114,7 +114,7 @@ impl AccountStorageHeader {
     /// Returns `None` if a slot with the provided slot ID does not exist.
     pub fn find_slot_header_by_name(
         &self,
-        slot_name: &SlotName,
+        slot_name: &StorageSlotName,
     ) -> Option<(&StorageSlotType, &Word)> {
         self.find_slot_header_by_id(slot_name.compute_id())
             .map(|(_slot_name, slot_type, slot_value)| (slot_type, slot_value))
@@ -126,7 +126,7 @@ impl AccountStorageHeader {
     pub fn find_slot_header_by_id(
         &self,
         slot_id: StorageSlotId,
-    ) -> Option<(&SlotName, &StorageSlotType, &Word)> {
+    ) -> Option<(&StorageSlotName, &StorageSlotType, &Word)> {
         self.slots
             .binary_search_by_key(&slot_id, |(name, ..)| name.compute_id())
             .map(|slot_idx| {
@@ -142,7 +142,7 @@ impl AccountStorageHeader {
     ///
     /// Returns an error if:
     /// - a slot with the provided name does not exist.
-    pub fn is_map_slot(&self, name: &SlotName) -> Result<bool, AccountError> {
+    pub fn is_map_slot(&self, name: &StorageSlotName) -> Result<bool, AccountError> {
         match self
             .find_slot_header_by_name(name)
             .ok_or(AccountError::StorageSlotNameNotFound { slot_name: name.clone() })?

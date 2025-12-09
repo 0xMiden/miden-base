@@ -1,6 +1,6 @@
 use alloc::string::String;
 
-use miden_objects::account::{Account, AccountStorage, AccountType, SlotName};
+use miden_objects::account::{Account, AccountStorage, AccountType, StorageSlotName};
 use miden_objects::{AccountError, Felt, TokenSymbolError};
 use thiserror::Error;
 
@@ -60,7 +60,7 @@ pub enum FungibleFaucetError {
     NoAvailableInterface,
     #[error("failed to retrieve slot with name {slot_name}")]
     StorageLookupFailed {
-        slot_name: SlotName,
+        slot_name: StorageSlotName,
         source: AccountError,
     },
     #[error("invalid token symbol")]

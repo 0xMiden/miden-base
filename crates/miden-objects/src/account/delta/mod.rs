@@ -599,8 +599,8 @@ mod tests {
         AccountStorage,
         AccountStorageMode,
         AccountType,
-        SlotName,
         StorageMapDelta,
+        StorageSlotName,
     };
     use crate::asset::{
         Asset,
@@ -627,7 +627,7 @@ mod tests {
         AccountDelta::new(account_id, storage_delta.clone(), vault_delta.clone(), ONE).unwrap();
 
         // non-empty delta
-        let storage_delta = AccountStorageDelta::from_iters([SlotName::mock(1)], [], []);
+        let storage_delta = AccountStorageDelta::from_iters([StorageSlotName::mock(1)], [], []);
 
         assert_matches!(
             AccountDelta::new(account_id, storage_delta.clone(), vault_delta.clone(), ZERO)
@@ -675,13 +675,13 @@ mod tests {
         assert_eq!(account_delta.to_bytes().len(), account_delta.get_size_hint());
 
         let storage_delta = AccountStorageDelta::from_iters(
-            [SlotName::mock(1)],
+            [StorageSlotName::mock(1)],
             [
-                (SlotName::mock(2), Word::from([1, 1, 1, 1u32])),
-                (SlotName::mock(3), Word::from([1, 1, 0, 1u32])),
+                (StorageSlotName::mock(2), Word::from([1, 1, 1, 1u32])),
+                (StorageSlotName::mock(3), Word::from([1, 1, 0, 1u32])),
             ],
             [(
-                SlotName::mock(4),
+                StorageSlotName::mock(4),
                 StorageMapDelta::from_iters(
                     [Word::from([1, 1, 1, 0u32]), Word::from([0, 1, 1, 1u32])],
                     [(Word::from([1, 1, 1, 1u32]), Word::from([1, 1, 1, 1u32]))],

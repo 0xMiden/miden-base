@@ -5,26 +5,26 @@ use miden_objects::account::{
     AccountCode,
     AccountComponent,
     NamedStorageSlot,
-    SlotName,
     StorageMap,
+    StorageSlotName,
 };
 use miden_objects::utils::sync::LazyLock;
 use miden_objects::{AccountError, Word};
 
 use crate::account::components::rpo_falcon_512_acl_library;
 
-static PUBKEY_SLOT_NAME: LazyLock<SlotName> = LazyLock::new(|| {
-    SlotName::new("miden::standards::auth::rpo_falcon512_acl::public_key")
+static PUBKEY_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
+    StorageSlotName::new("miden::standards::auth::rpo_falcon512_acl::public_key")
         .expect("slot name should be valid")
 });
 
-static CONFIG_SLOT_NAME: LazyLock<SlotName> = LazyLock::new(|| {
-    SlotName::new("miden::standards::auth::rpo_falcon512_acl::config")
+static CONFIG_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
+    StorageSlotName::new("miden::standards::auth::rpo_falcon512_acl::config")
         .expect("slot name should be valid")
 });
 
-static TRACKED_PROCEDURE_ROOT_SLOT_NAME: LazyLock<SlotName> = LazyLock::new(|| {
-    SlotName::new("miden::standards::auth::rpo_falcon512_acl::tracked_procedure_roots")
+static TRACKED_PROCEDURE_ROOT_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
+    StorageSlotName::new("miden::standards::auth::rpo_falcon512_acl::tracked_procedure_roots")
         .expect("slot name should be valid")
 });
 
@@ -157,18 +157,18 @@ impl AuthRpoFalcon512Acl {
         Ok(Self { pub_key, config })
     }
 
-    /// Returns the [`SlotName`] where the public key is stored.
-    pub fn public_key_slot() -> &'static SlotName {
+    /// Returns the [`StorageSlotName`] where the public key is stored.
+    pub fn public_key_slot() -> &'static StorageSlotName {
         &PUBKEY_SLOT_NAME
     }
 
-    /// Returns the [`SlotName`] where the component's configuration is stored.
-    pub fn config_slot() -> &'static SlotName {
+    /// Returns the [`StorageSlotName`] where the component's configuration is stored.
+    pub fn config_slot() -> &'static StorageSlotName {
         &CONFIG_SLOT_NAME
     }
 
-    /// Returns the [`SlotName`] where the tracked procedure roots are stored.
-    pub fn tracked_procedure_roots_slot() -> &'static SlotName {
+    /// Returns the [`StorageSlotName`] where the tracked procedure roots are stored.
+    pub fn tracked_procedure_roots_slot() -> &'static StorageSlotName {
         &TRACKED_PROCEDURE_ROOT_SLOT_NAME
     }
 }

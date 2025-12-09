@@ -3,7 +3,7 @@ use core::fmt::Display;
 
 use crate::Felt;
 
-/// The partial hash of a [`SlotName`](super::SlotName).
+/// The partial hash of a [`StorageSlotName`](super::StorageSlotName).
 ///
 /// The ID of a slot are the first (`suffix`) and second (`prefix`) field elements of the
 /// blake3-hashed slot name.

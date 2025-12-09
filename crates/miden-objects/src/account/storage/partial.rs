@@ -162,8 +162,8 @@ mod tests {
         NamedStorageSlot,
         PartialStorage,
         PartialStorageMap,
-        SlotName,
         StorageMap,
+        StorageSlotName,
     };
 
     #[test]
@@ -176,7 +176,7 @@ mod tests {
         map_1.insert(map_key_present, Word::try_from([5u64, 4, 3, 2])?).unwrap();
         assert_eq!(map_1.get(&map_key_present), [5u64, 4, 3, 2].try_into()?);
 
-        let slot_name = SlotName::new("miden::test_map")?;
+        let slot_name = StorageSlotName::new("miden::test_map")?;
 
         let storage =
             AccountStorage::new(vec![NamedStorageSlot::with_map(slot_name.clone(), map_1.clone())])

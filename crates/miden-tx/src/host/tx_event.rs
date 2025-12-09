@@ -1,7 +1,7 @@
 use alloc::vec::Vec;
 
 use miden_lib::transaction::{EventId, TransactionEventId};
-use miden_objects::account::{AccountId, SlotName, StorageMap, StorageSlotType};
+use miden_objects::account::{AccountId, StorageMap, StorageSlotName, StorageSlotType};
 use miden_objects::asset::{Asset, AssetVault, AssetVaultKey, FungibleAsset};
 use miden_objects::note::{NoteId, NoteInputs, NoteMetadata, NoteRecipient, NoteScript};
 use miden_objects::transaction::TransactionSummary;
@@ -57,12 +57,12 @@ pub(crate) enum TransactionEvent {
     },
 
     AccountStorageAfterSetItem {
-        slot_name: SlotName,
+        slot_name: StorageSlotName,
         new_value: Word,
     },
 
     AccountStorageAfterSetMapItem {
-        slot_name: SlotName,
+        slot_name: StorageSlotName,
         key: Word,
         old_map_value: Word,
         new_map_value: Word,

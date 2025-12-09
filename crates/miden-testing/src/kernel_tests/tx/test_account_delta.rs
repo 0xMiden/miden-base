@@ -15,8 +15,8 @@ use miden_objects::account::{
     AccountStorageMode,
     AccountType,
     NamedStorageSlot,
-    SlotName,
     StorageMap,
+    StorageSlotName,
 };
 use miden_objects::asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset};
 use miden_objects::note::{Note, NoteExecutionHint, NoteTag, NoteType};
@@ -107,20 +107,20 @@ async fn delta_nonce() -> anyhow::Result<()> {
 /// - Slot 3: [1,3,5,7]  -> [2,3,4,5] -> [1,3,5,7]  -> Delta: None
 #[tokio::test]
 async fn storage_delta_for_value_slots() -> anyhow::Result<()> {
-    let slot_0_name = SlotName::mock(0);
+    let slot_0_name = StorageSlotName::mock(0);
     let slot_0_init_value = Word::from([2, 4, 6, 8u32]);
     let slot_0_tmp_value = Word::from([3, 4, 5, 6u32]);
     let slot_0_final_value = EMPTY_WORD;
 
-    let slot_1_name = SlotName::mock(1);
+    let slot_1_name = StorageSlotName::mock(1);
     let slot_1_init_value = EMPTY_WORD;
     let slot_1_final_value = Word::from([3, 4, 5, 6u32]);
 
-    let slot_2_name = SlotName::mock(2);
+    let slot_2_name = StorageSlotName::mock(2);
     let slot_2_init_value = Word::from([1, 3, 5, 7u32]);
     let slot_2_final_value = slot_2_init_value;
 
-    let slot_3_name = SlotName::mock(3);
+    let slot_3_name = StorageSlotName::mock(3);
     let slot_3_init_value = Word::from([1, 3, 5, 7u32]);
     let slot_3_tmp_value = Word::from([2, 3, 4, 5u32]);
     let slot_3_final_value = slot_3_init_value;
@@ -247,18 +247,18 @@ async fn storage_delta_for_map_slots() -> anyhow::Result<()> {
     let key5_tmp_value = Word::from([2, 3, 4, 5u32]);
     let key5_final_value = Word::from([1, 2, 3, 4u32]);
 
-    let slot_0_name = SlotName::mock(0);
+    let slot_0_name = StorageSlotName::mock(0);
     let mut map0 = StorageMap::new();
     map0.insert(key0, key0_init_value).unwrap();
     map0.insert(key1, key1_init_value).unwrap();
 
-    let slot_1_name = SlotName::mock(1);
+    let slot_1_name = StorageSlotName::mock(1);
     let mut map1 = StorageMap::new();
     map1.insert(key2, key2_init_value).unwrap();
     map1.insert(key3, key3_init_value).unwrap();
     map1.insert(key4, key4_init_value).unwrap();
 
-    let slot_2_name = SlotName::mock(2);
+    let slot_2_name = StorageSlotName::mock(2);
     let mut map2 = StorageMap::new();
     map2.insert(key5, key5_init_value).unwrap();
 
@@ -270,7 +270,7 @@ async fn storage_delta_for_map_slots() -> anyhow::Result<()> {
             // Include an empty map which does not receive any updates, to test that the "metadata
             // header" in the delta commitment is not appended if there are no updates to a map
             // slot.
-            NamedStorageSlot::with_map(SlotName::mock(3), StorageMap::new()),
+            NamedStorageSlot::with_map(StorageSlotName::mock(3), StorageMap::new()),
         ],
         [],
         [],
@@ -818,9 +818,9 @@ async fn proven_tx_storage_maps_matches_executed_tx_for_new_account() -> anyhow:
         (rand_value(), rand_value()),
     ])?;
 
-    let map0_slot_name = SlotName::mock(1);
-    let map1_slot_name = SlotName::mock(2);
-    let map2_slot_name = SlotName::mock(4);
+    let map0_slot_name = StorageSlotName::mock(1);
+    let map1_slot_name = StorageSlotName::mock(2);
+    let map2_slot_name = StorageSlotName::mock(4);
 
     // Build a public account so the proven transaction includes the account update.
     let account = AccountBuilder::new([1; 32])
@@ -919,8 +919,8 @@ async fn proven_tx_storage_maps_matches_executed_tx_for_new_account() -> anyhow:
 /// delta and not normalized away.
 #[tokio::test]
 async fn delta_for_new_account_retains_empty_value_storage_slots() -> anyhow::Result<()> {
-    let slot_name0 = SlotName::mock(0);
-    let slot_name1 = SlotName::mock(1);
+    let slot_name0 = StorageSlotName::mock(0);
+    let slot_name1 = StorageSlotName::mock(1);
 
     let slot_value2 = Word::from([1, 2, 3, 4u32]);
     let mut account = AccountBuilder::new(rand::random())
@@ -958,7 +958,7 @@ async fn delta_for_new_account_retains_empty_value_storage_slots() -> anyhow::Re
 /// delta.
 #[tokio::test]
 async fn delta_for_new_account_retains_empty_map_storage_slots() -> anyhow::Result<()> {
-    let slot_name0 = SlotName::mock(0);
+    let slot_name0 = StorageSlotName::mock(0);
 
     let mut account = AccountBuilder::new(rand::random())
         .account_type(AccountType::RegularAccountUpdatableCode)

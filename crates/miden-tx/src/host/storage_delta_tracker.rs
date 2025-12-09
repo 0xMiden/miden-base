@@ -6,8 +6,8 @@ use miden_objects::account::{
     AccountStorageDelta,
     AccountStorageHeader,
     PartialAccount,
-    SlotName,
     StorageMap,
+    StorageSlotName,
     StorageSlotType,
 };
 
@@ -31,7 +31,7 @@ pub struct StorageDeltaTracker {
     storage_header: AccountStorageHeader,
     /// A map from slot index to a map of key-value pairs where the key is a storage map key and
     /// the value represents the value of that key at the beginning of transaction execution.
-    init_maps: BTreeMap<SlotName, BTreeMap<Word, Word>>,
+    init_maps: BTreeMap<StorageSlotName, BTreeMap<Word, Word>>,
     /// The account storage delta.
     delta: AccountStorageDelta,
 }
@@ -99,14 +99,14 @@ impl StorageDeltaTracker {
     // --------------------------------------------------------------------------------------------
 
     /// Updates a value slot.
-    pub fn set_item(&mut self, slot_name: SlotName, new_value: Word) {
+    pub fn set_item(&mut self, slot_name: StorageSlotName, new_value: Word) {
         self.delta.set_item(slot_name, new_value);
     }
 
     /// Updates a map slot.
     pub fn set_map_item(
         &mut self,
-        slot_name: SlotName,
+        slot_name: StorageSlotName,
         key: Word,
         prev_value: Word,
         new_value: Word,
@@ -128,7 +128,7 @@ impl StorageDeltaTracker {
 
     /// Sets the initial value of the given key in the given slot to the given value, if no value is
     /// already tracked for that key.
-    fn set_init_map_item(&mut self, slot_name: SlotName, key: Word, prev_value: Word) {
+    fn set_init_map_item(&mut self, slot_name: StorageSlotName, key: Word, prev_value: Word) {
         let slot_map = self.init_maps.entry(slot_name).or_default();
         slot_map.entry(key).or_insert(prev_value);
     }
@@ -192,7 +192,7 @@ impl StorageDeltaTracker {
 
 /// Creates empty slots of the same slot types as the to-be-created account.
 fn empty_storage_header_from_account(account: &PartialAccount) -> AccountStorageHeader {
-    let mut slots: Vec<(SlotName, StorageSlotType, Word)> = account
+    let mut slots: Vec<(StorageSlotName, StorageSlotType, Word)> = account
         .storage()
         .header()
         .slots()

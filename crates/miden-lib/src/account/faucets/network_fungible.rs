@@ -7,7 +7,7 @@ use miden_objects::account::{
     AccountStorageMode,
     AccountType,
     NamedStorageSlot,
-    SlotName,
+    StorageSlotName,
 };
 use miden_objects::asset::TokenSymbol;
 use miden_objects::utils::sync::LazyLock;
@@ -36,8 +36,8 @@ procedure_digest!(
     network_fungible_faucet_library
 );
 
-static OWNER_CONFIG_SLOT_NAME: LazyLock<SlotName> = LazyLock::new(|| {
-    SlotName::new("miden::network_fungible_faucet::owner_config")
+static OWNER_CONFIG_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
+    StorageSlotName::new("miden::network_fungible_faucet::owner_config")
         .expect("slot name should be valid")
 });
 
@@ -162,15 +162,15 @@ impl NetworkFungibleFaucet {
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns the [`SlotName`] where the [`NetworkFungibleFaucet`]'s metadata is stored.
-    pub fn metadata_slot() -> &'static SlotName {
+    /// Returns the [`StorageSlotName`] where the [`NetworkFungibleFaucet`]'s metadata is stored.
+    pub fn metadata_slot() -> &'static StorageSlotName {
         // TODO(named_slots): Rename to metadata_slot.
         BasicFungibleFaucet::metadata_slot_name()
     }
 
-    /// Returns the [`SlotName`] where the [`NetworkFungibleFaucet`]'s owner configuration is
+    /// Returns the [`StorageSlotName`] where the [`NetworkFungibleFaucet`]'s owner configuration is
     /// stored.
-    pub fn owner_config_slot() -> &'static SlotName {
+    pub fn owner_config_slot() -> &'static StorageSlotName {
         &OWNER_CONFIG_SLOT_NAME
     }
 
