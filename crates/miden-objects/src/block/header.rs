@@ -1,10 +1,9 @@
 use alloc::string::ToString;
 use alloc::vec::Vec;
 
-use miden_crypto::dsa::ecdsa_k256_keccak::PublicKey;
-
 use crate::account::{AccountId, AccountType};
 use crate::block::BlockNumber;
+use crate::crypto::dsa::ecdsa_k256_keccak::PublicKey;
 use crate::utils::serde::{
     ByteReader,
     ByteWriter,
