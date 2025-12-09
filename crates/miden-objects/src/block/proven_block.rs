@@ -18,11 +18,11 @@ pub struct ProvenBlock {
     /// The header of the proven block.
     header: BlockHeader,
 
-    /// Signature of [`BlockHeader::commitment`].
-    signature: Signature,
-
     /// The body of the proven block.
     body: BlockBody,
+
+    /// Signature of [`BlockHeader::commitment`].
+    signature: Signature,
 
     /// The proof of the block.
     proof: BlockProof,
