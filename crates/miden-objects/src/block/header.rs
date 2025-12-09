@@ -270,8 +270,9 @@ impl Serializable for BlockHeader {
             public_key,
             fee_parameters,
             timestamp,
-            sub_commitment,
-            commitment,
+            // Don't serialize sub commitment and commitment as they can be derived.
+            sub_commitment: _,
+            commitment: _,
         } = self;
 
         version.write_into(target);
@@ -286,29 +287,38 @@ impl Serializable for BlockHeader {
         public_key.write_into(target);
         fee_parameters.write_into(target);
         timestamp.write_into(target);
-        sub_commitment.write_into(target);
-        commitment.write_into(target);
     }
 }
 
 impl Deserializable for BlockHeader {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        Ok(Self {
-            version: source.read()?,
-            prev_block_commitment: source.read()?,
-            block_num: source.read()?,
-            chain_commitment: source.read()?,
-            account_root: source.read()?,
-            nullifier_root: source.read()?,
-            note_root: source.read()?,
-            tx_commitment: source.read()?,
-            tx_kernel_commitment: source.read()?,
-            public_key: source.read()?,
-            fee_parameters: source.read()?,
-            timestamp: source.read()?,
-            sub_commitment: source.read()?,
-            commitment: source.read()?,
-        })
+        let version = source.read()?;
+        let prev_block_commitment = source.read()?;
+        let block_num = source.read()?;
+        let chain_commitment = source.read()?;
+        let account_root = source.read()?;
+        let nullifier_root = source.read()?;
+        let note_root = source.read()?;
+        let tx_commitment = source.read()?;
+        let tx_kernel_commitment = source.read()?;
+        let public_key = source.read()?;
+        let fee_parameters = source.read()?;
+        let timestamp = source.read()?;
+
+        Ok(Self::new(
+            version,
+            prev_block_commitment,
+            block_num,
+            chain_commitment,
+            account_root,
+            nullifier_root,
+            note_root,
+            tx_commitment,
+            tx_kernel_commitment,
+            public_key,
+            fee_parameters,
+            timestamp,
+        ))
     }
 }
 
