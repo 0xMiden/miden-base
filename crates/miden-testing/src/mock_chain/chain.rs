@@ -5,7 +5,7 @@ use anyhow::Context;
 use miden_block_prover::LocalBlockProver;
 use miden_lib::block::build_block;
 use miden_objects::MIN_PROOF_SECURITY_LEVEL;
-use miden_objects::account::auth::AuthSecretKey;
+use miden_objects::account::auth::{AuthSecretKey, PublicKey};
 use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{Account, AccountId, PartialAccount};
 use miden_objects::batch::{ProposedBatch, ProvenBatch};
@@ -1088,9 +1088,9 @@ impl Serializable for AccountAuthenticator {
 
 impl Deserializable for AccountAuthenticator {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        let authenticator = Option::<Vec<AuthSecretKey>>::read_from(source)?;
+        let authenticator = Option::<Vec<(AuthSecretKey, PublicKey)>>::read_from(source)?;
 
-        let authenticator = authenticator.map(|keys| BasicAuthenticator::new(&keys));
+        let authenticator = authenticator.map(|keys| BasicAuthenticator::from(&keys));
 
         Ok(Self { authenticator })
     }

@@ -180,16 +180,25 @@ impl TransactionAuthenticator for UnreachableAuth {
 /// Represents a signer for [AuthSecretKey] keys.
 #[derive(Clone, Debug)]
 pub struct BasicAuthenticator {
-    /// pub_key |-> secret_key mapping
-    keys: BTreeMap<PublicKeyCommitment, AuthSecretKey>,
+    /// pub_key |-> (secret_key, public_key) mapping
+    keys: BTreeMap<PublicKeyCommitment, (AuthSecretKey, PublicKey)>,
 }
 
 impl BasicAuthenticator {
     pub fn new(keys: &[AuthSecretKey]) -> Self {
         let mut key_map = BTreeMap::new();
         for secret_key in keys {
-            let pub_key = secret_key.public_key().to_commitment();
-            key_map.insert(pub_key, secret_key.clone());
+            let pub_key = secret_key.public_key();
+            key_map.insert(pub_key.to_commitment(), (secret_key.clone(), pub_key));
+        }
+
+        BasicAuthenticator { keys: key_map }
+    }
+
+    pub fn from(keys: &[(AuthSecretKey, PublicKey)]) -> Self {
+        let mut key_map = BTreeMap::new();
+        for (secret_key, public_key) in keys {
+            key_map.insert(public_key.to_commitment(), (secret_key.clone(), public_key.clone()));
         }
 
         BasicAuthenticator { keys: key_map }
@@ -197,9 +206,9 @@ impl BasicAuthenticator {
 
     /// Returns a reference to the keys map.
     ///
-    /// Map keys represent the public key commitments, and values represent the secret keys that
-    /// the authenticator would use to sign messages.
-    pub fn keys(&self) -> &BTreeMap<PublicKeyCommitment, AuthSecretKey> {
+    /// Map keys represent the public key commitments, and values represent the (secret_key,
+    /// public_key) pair that the authenticator would use to sign messages.
+    pub fn keys(&self) -> &BTreeMap<PublicKeyCommitment, (AuthSecretKey, PublicKey)> {
         &self.keys
     }
 }
@@ -225,7 +234,7 @@ impl TransactionAuthenticator for BasicAuthenticator {
 
         async move {
             match self.keys.get(&pub_key_commitment) {
-                Some(key) => Ok(key.sign(message)),
+                Some((auth_key, _)) => Ok(auth_key.sign(message)),
                 None => Err(AuthenticationError::UnknownPublicKey(pub_key_commitment)),
             }
         }
@@ -242,7 +251,7 @@ impl TransactionAuthenticator for BasicAuthenticator {
         &self,
         pub_key_commitment: PublicKeyCommitment,
     ) -> impl FutureMaybeSend<Option<PublicKey>> {
-        async move { self.keys.get(&pub_key_commitment).map(|key| key.public_key()) }
+        async move { self.keys.get(&pub_key_commitment).map(|(_, pub_key)| pub_key.clone()) }
     }
 }
 
