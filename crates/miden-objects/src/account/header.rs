@@ -141,7 +141,7 @@ impl From<&Account> for AccountHeader {
             id: account.id(),
             nonce: account.nonce(),
             vault_root: account.vault().root(),
-            storage_commitment: account.storage().commitment(),
+            storage_commitment: account.storage().to_commitment(),
             code_commitment: account.code().commitment(),
         }
     }

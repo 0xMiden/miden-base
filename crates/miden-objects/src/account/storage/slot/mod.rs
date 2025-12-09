@@ -8,8 +8,14 @@ use super::{StorageMap, Word};
 mod slot_name;
 pub use slot_name::SlotName;
 
+mod slot_name_id;
+pub use slot_name_id::SlotNameId;
+
 mod r#type;
 pub use r#type::StorageSlotType;
+
+mod named_slot;
+pub use named_slot::NamedStorageSlot;
 
 // STORAGE SLOT
 // ================================================================================================
@@ -59,8 +65,8 @@ impl StorageSlot {
     /// Returns this storage slot value as a [Word]
     ///
     /// Returns:
-    /// - For [StorageSlot::Value] the value
-    /// - For [StorageSlot::Map] the root of the [StorageMap]
+    /// - For [`StorageSlot::Value`] the value.
+    /// - For [`StorageSlot::Map`] the root of the [StorageMap].
     pub fn value(&self) -> Word {
         match self {
             Self::Value(value) => *value,

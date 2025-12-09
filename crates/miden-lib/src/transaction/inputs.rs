@@ -266,7 +266,7 @@ impl TransactionAdviceInputs {
 
         // STORAGE_COMMITMENT |-> [[STORAGE_SLOT_DATA]]
         let storage_header = account.storage().header();
-        self.add_map_entry(storage_header.compute_commitment(), storage_header.as_elements());
+        self.add_map_entry(storage_header.to_commitment(), storage_header.to_elements());
 
         // populate Merkle store and advice map with nodes info needed to access storage map entries
         self.extend_merkle_store(account.storage().inner_nodes());

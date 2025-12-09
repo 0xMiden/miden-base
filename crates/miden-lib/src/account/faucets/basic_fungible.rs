@@ -5,9 +5,11 @@ use miden_objects::account::{
     AccountStorage,
     AccountStorageMode,
     AccountType,
-    StorageSlot,
+    NamedStorageSlot,
+    SlotName,
 };
 use miden_objects::asset::{FungibleAsset, TokenSymbol};
+use miden_objects::utils::sync::LazyLock;
 use miden_objects::{Felt, FieldElement, Word};
 
 use super::FungibleFaucetError;
@@ -39,6 +41,10 @@ procedure_digest!(
     basic_fungible_faucet_library
 );
 
+static METADATA_SLOT_NAME: LazyLock<SlotName> = LazyLock::new(|| {
+    SlotName::new("miden::basic_fungible_faucet::metadata").expect("slot name should be valid")
+});
+
 /// An [`AccountComponent`] implementing a basic fungible faucet.
 ///
 /// It reexports the procedures from `miden::contracts::faucets::basic_fungible`. When linking
@@ -54,6 +60,10 @@ procedure_digest!(
 /// This component must be combined with an authentication component.
 ///
 /// This component supports accounts of type [`AccountType::FungibleFaucet`].
+///
+/// ## Storage Layout
+///
+/// - [`Self::metadata_slot_name`]: Basic fungible faucet's metadata
 ///
 /// [kasm]: crate::transaction::TransactionKernel::assembler
 pub struct BasicFungibleFaucet {
@@ -120,12 +130,13 @@ impl BasicFungibleFaucet {
         storage: &AccountStorage,
     ) -> Result<Self, FungibleFaucetError> {
         for component in interface.components().iter() {
-            if let AccountComponentInterface::BasicFungibleFaucet(offset) = component {
-                // obtain metadata from storage using offset provided by BasicFungibleFaucet
-                // interface
+            if let AccountComponentInterface::BasicFungibleFaucet = component {
                 let faucet_metadata = storage
-                    .get_item(*offset)
-                    .map_err(|_| FungibleFaucetError::InvalidStorageOffset(*offset))?;
+                    .get_item(BasicFungibleFaucet::metadata_slot_name())
+                    .map_err(|err| FungibleFaucetError::StorageLookupFailed {
+                    slot_name: BasicFungibleFaucet::metadata_slot_name().clone(),
+                    source: err,
+                })?;
                 let [max_supply, decimals, token_symbol, _] = *faucet_metadata;
 
                 // verify metadata values
@@ -147,6 +158,11 @@ impl BasicFungibleFaucet {
 
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
+
+    /// Returns the [`SlotName`] where the [`BasicFungibleFaucet`]'s metadata is stored.
+    pub fn metadata_slot_name() -> &'static SlotName {
+        &METADATA_SLOT_NAME
+    }
 
     /// Returns the symbol of the faucet.
     pub fn symbol(&self) -> TokenSymbol {
@@ -184,8 +200,12 @@ impl From<BasicFungibleFaucet> for AccountComponent {
             faucet.symbol.into(),
             Felt::ZERO,
         ]);
+        let storage_slot = NamedStorageSlot::with_value(
+            BasicFungibleFaucet::metadata_slot_name().clone(),
+            metadata,
+        );
 
-        AccountComponent::new(basic_fungible_faucet_library(), vec![StorageSlot::Value(metadata)])
+        AccountComponent::new(basic_fungible_faucet_library(), vec![storage_slot])
             .expect("basic fungible faucet component should satisfy the requirements of a valid account component")
             .with_supported_type(AccountType::FungibleFaucet)
     }
@@ -298,6 +318,7 @@ pub fn create_basic_fungible_faucet(
 #[cfg(test)]
 mod tests {
     use assert_matches::assert_matches;
+    use miden_objects::account::AccountStorage;
     use miden_objects::account::auth::PublicKeyCommitment;
     use miden_objects::{FieldElement, ONE, Word};
 
@@ -312,7 +333,7 @@ mod tests {
         TokenSymbol,
         create_basic_fungible_faucet,
     };
-    use crate::account::auth::AuthRpoFalcon512;
+    use crate::account::auth::{AuthRpoFalcon512, AuthRpoFalcon512Acl};
     use crate::account::wallets::BasicWallet;
 
     #[test]
@@ -343,35 +364,52 @@ mod tests {
         .unwrap();
 
         // The reserved faucet slot should be initialized to an empty word.
-        assert_eq!(faucet_account.storage().get_item(0).unwrap(), Word::empty());
-
-        // The falcon auth component is added first so its assigned storage slot for the public key
-        // will be 1.
-        assert_eq!(faucet_account.storage().get_item(1).unwrap(), pub_key_word);
-
-        // Slot 2 stores [num_tracked_procs, allow_unauthorized_output_notes,
-        // allow_unauthorized_input_notes, 0]. With 1 tracked procedure (distribute),
-        // allow_unauthorized_output_notes=false, and allow_unauthorized_input_notes=true,
-        // this should be [1, 0, 1, 0].
         assert_eq!(
-            faucet_account.storage().get_item(2).unwrap(),
+            faucet_account
+                .storage()
+                .get_item(AccountStorage::faucet_metadata_slot())
+                .unwrap(),
+            Word::empty()
+        );
+
+        // The falcon auth component's public key should be present.
+        assert_eq!(
+            faucet_account
+                .storage()
+                .get_item(AuthRpoFalcon512Acl::public_key_slot())
+                .unwrap(),
+            pub_key_word
+        );
+
+        // The config slot of the auth component stores:
+        // [num_tracked_procs, allow_unauthorized_output_notes, allow_unauthorized_input_notes, 0].
+        //
+        // With 1 tracked procedure (distribute), allow_unauthorized_output_notes=false, and
+        // allow_unauthorized_input_notes=true, this should be [1, 0, 1, 0].
+        assert_eq!(
+            faucet_account.storage().get_item(AuthRpoFalcon512Acl::config_slot()).unwrap(),
             [Felt::ONE, Felt::ZERO, Felt::ONE, Felt::ZERO].into()
         );
 
-        // The procedure root map in slot 3 should contain the distribute procedure root.
+        // The procedure root map should contain the distribute procedure root.
         let distribute_root = BasicFungibleFaucet::distribute_digest();
         assert_eq!(
             faucet_account
                 .storage()
-                .get_map_item(3, [Felt::ZERO, Felt::ZERO, Felt::ZERO, Felt::ZERO].into())
+                .get_map_item(
+                    AuthRpoFalcon512Acl::tracked_procedure_roots_slot(),
+                    [Felt::ZERO, Felt::ZERO, Felt::ZERO, Felt::ZERO].into()
+                )
                 .unwrap(),
             distribute_root
         );
 
-        // Check that faucet metadata was initialized to the given values. The faucet component is
-        // added second, so its assigned storage slot for the metadata will be 2.
+        // Check that faucet metadata was initialized to the given values.
         assert_eq!(
-            faucet_account.storage().get_item(4).unwrap(),
+            faucet_account
+                .storage()
+                .get_item(BasicFungibleFaucet::metadata_slot_name())
+                .unwrap(),
             [Felt::new(123), Felt::new(2), token_symbol.into(), Felt::ZERO].into()
         );
 
@@ -407,9 +445,9 @@ mod tests {
 
         let basic_ff = BasicFungibleFaucet::try_from(faucet_account)
             .expect("basic fungible faucet creation failed");
-        assert_eq!(basic_ff.symbol(), token_symbol);
-        assert_eq!(basic_ff.decimals(), 10);
-        assert_eq!(basic_ff.max_supply(), Felt::new(100));
+        assert_eq!(basic_ff.symbol, token_symbol);
+        assert_eq!(basic_ff.decimals, 10);
+        assert_eq!(basic_ff.max_supply, Felt::new(100));
 
         // invalid account: basic fungible faucet component is missing
         let invalid_faucet_account = AccountBuilder::new(mock_seed)

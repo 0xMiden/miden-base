@@ -47,7 +47,7 @@ impl PartialStorage {
             maps.insert(smt.root(), smt);
         }
 
-        let commitment = storage_header.compute_commitment();
+        let commitment = storage_header.to_commitment();
         Ok(Self { commitment, header: storage_header, maps })
     }
 
@@ -57,11 +57,11 @@ impl PartialStorage {
     /// in all map slots of the account storage.
     pub fn new_full(account_storage: AccountStorage) -> Self {
         let header: AccountStorageHeader = account_storage.to_header();
-        let commitment = header.compute_commitment();
+        let commitment = header.to_commitment();
 
         let mut maps = BTreeMap::new();
         for slot in account_storage {
-            if let StorageSlot::Map(storage_map) = slot {
+            if let StorageSlot::Map(storage_map) = slot.into_parts().2 {
                 let partial_map = PartialStorageMap::new_full(storage_map);
                 maps.insert(partial_map.root(), partial_map);
             }
@@ -76,11 +76,11 @@ impl PartialStorage {
     /// [`PartialStorageMap`] represents the correct root.
     pub fn new_minimal(account_storage: &AccountStorage) -> Self {
         let header: AccountStorageHeader = account_storage.to_header();
-        let commitment = header.compute_commitment();
+        let commitment = header.to_commitment();
 
         let mut maps = BTreeMap::new();
         for slot in account_storage.slots() {
-            if let StorageSlot::Map(storage_map) = slot {
+            if let StorageSlot::Map(storage_map) = slot.storage_slot() {
                 let partial_map = PartialStorageMap::new_minimal(storage_map);
                 maps.insert(partial_map.root(), partial_map);
             }
@@ -145,7 +145,7 @@ impl Deserializable for PartialStorage {
         let header: AccountStorageHeader = source.read()?;
         let map_smts: BTreeMap<Word, PartialStorageMap> = source.read()?;
 
-        let commitment = header.compute_commitment();
+        let commitment = header.to_commitment();
 
         Ok(PartialStorage { header, maps: map_smts, commitment })
     }
@@ -159,10 +159,11 @@ mod tests {
     use crate::account::{
         AccountStorage,
         AccountStorageHeader,
+        NamedStorageSlot,
         PartialStorage,
         PartialStorageMap,
+        SlotName,
         StorageMap,
-        StorageSlot,
     };
 
     #[test]
@@ -175,7 +176,11 @@ mod tests {
         map_1.insert(map_key_present, Word::try_from([5u64, 4, 3, 2])?).unwrap();
         assert_eq!(map_1.get(&map_key_present), [5u64, 4, 3, 2].try_into()?);
 
-        let storage = AccountStorage::new(vec![StorageSlot::Map(map_1.clone())]).unwrap();
+        let slot_name = SlotName::new("miden::test_map")?;
+
+        let storage =
+            AccountStorage::new(vec![NamedStorageSlot::with_map(slot_name.clone(), map_1.clone())])
+                .unwrap();
 
         // Create partial storage with validation of one map key
         let storage_header = AccountStorageHeader::from(&storage);
@@ -185,7 +190,8 @@ mod tests {
             PartialStorage::new(storage_header, [PartialStorageMap::with_witnesses([witness])?])
                 .context("creating partial storage")?;
 
-        let retrieved_map = partial_storage.maps.get(&partial_storage.header.slot(0)?.1).unwrap();
+        let (_, map_root) = partial_storage.header.find_slot_header_by_name(&slot_name).unwrap();
+        let retrieved_map = partial_storage.maps.get(map_root).unwrap();
         assert!(retrieved_map.open(&map_key_absent).is_err());
         assert!(retrieved_map.open(&map_key_present).is_ok());
         Ok(())

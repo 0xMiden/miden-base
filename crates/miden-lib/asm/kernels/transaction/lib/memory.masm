@@ -1358,20 +1358,6 @@ export.set_num_storage_slots
     mem_store
 end
 
-#! Returns the type of the requested storage slot.
-#!
-#! Inputs:  [account_storage_slots_section_ptr, index]
-#! Outputs: [slot_type]
-#!
-#! Where:
-#! - index is the location in memory of the storage slot.
-#! - slot_type is the type of the storage slot.
-export.get_storage_slot_type
-    # get storage slot type
-    swap mul.8 add add.4 mem_load
-    # => [slot_type]
-end
-
 #! Returns the memory pointer to the account storage slots section.
 #!
 #! Inputs:  []

@@ -59,8 +59,8 @@ use crate::{Auth, MockChainBuilder, assert_execution_error, assert_transaction_e
 #[tokio::test]
 async fn test_fpi_memory_single_account() -> anyhow::Result<()> {
     // Prepare the test data
-    let storage_slots =
-        vec![AccountStorage::mock_item_0().slot, AccountStorage::mock_item_2().slot];
+    let mock_value_slot0 = AccountStorage::mock_value_slot0();
+    let mock_map_slot = AccountStorage::mock_map_slot();
     let foreign_account_code_source = "
         use.miden::active_account
 
@@ -71,7 +71,7 @@ async fn test_fpi_memory_single_account() -> anyhow::Result<()> {
             exec.active_account::get_item
 
             # truncate the stack
-            movup.6 movup.6 movup.6 drop drop drop
+            movup.6 movup.6 drop drop
         end
 
         export.get_map_item_foreign
@@ -86,7 +86,7 @@ async fn test_fpi_memory_single_account() -> anyhow::Result<()> {
     let foreign_account_component = AccountComponent::compile(
         foreign_account_code_source,
         TransactionKernel::with_kernel_library(source_manager.clone()),
-        storage_slots.clone(),
+        vec![mock_value_slot0.clone(), mock_map_slot.clone()],
     )?
     .with_supports_all_types();
 
@@ -97,7 +97,7 @@ async fn test_fpi_memory_single_account() -> anyhow::Result<()> {
 
     let native_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(Auth::IncrNonce)
-        .with_component(MockAccountComponent::with_slots(vec![AccountStorage::mock_item_2().slot]))
+        .with_component(MockAccountComponent::with_slots(vec![AccountStorage::mock_map_slot()]))
         .storage_mode(AccountStorageMode::Public)
         .build_existing()?;
 
@@ -123,28 +123,31 @@ async fn test_fpi_memory_single_account() -> anyhow::Result<()> {
     // invocation
 
     let code = format!(
-        "
+        r#"
         use.std::sys
 
         use.$kernel::prologue
         use.miden::tx
 
+        const MOCK_VALUE_SLOT0 = word("{mock_value_slot0}")
+
         begin
             exec.prologue::prepare_transaction
 
             # pad the stack for the `execute_foreign_procedure` execution
-            padw padw padw push.0.0
-            # => [pad(14)]
+            padw padw
+            # => [pad(8)]
 
-            # push the index of desired storage item
-            push.0
+            # push the slot name of desired storage item
+            push.MOCK_VALUE_SLOT0[0..2]
 
             # get the hash of the `get_item_foreign` procedure of the foreign account
             push.{get_item_foreign_hash}
 
             # push the foreign account ID
             push.{foreign_suffix} push.{foreign_prefix}
-            # => [foreign_account_id_prefix, foreign_account_id_suffix, FOREIGN_PROC_ROOT, storage_item_index, pad(11)]
+            # => [foreign_account_id_prefix, foreign_account_id_suffix, FOREIGN_PROC_ROOT,
+            #     slot_name_id_prefix, slot_name_id_suffix, pad(8)]
 
             exec.tx::execute_foreign_procedure
             # => [STORAGE_VALUE_1]
@@ -152,7 +155,8 @@ async fn test_fpi_memory_single_account() -> anyhow::Result<()> {
             # truncate the stack
             exec.sys::truncate_stack
             end
-            ",
+            "#,
+        mock_value_slot0 = mock_value_slot0.name(),
         foreign_prefix = foreign_account.id().prefix().as_felt(),
         foreign_suffix = foreign_account.id().suffix(),
         get_item_foreign_hash = foreign_account.code().procedures()[1].mast_root(),
@@ -162,8 +166,8 @@ async fn test_fpi_memory_single_account() -> anyhow::Result<()> {
 
     assert_eq!(
         exec_output.get_stack_word_be(0),
-        storage_slots[0].value(),
-        "Value at the top of the stack (value in the storage at index 0) should be equal [1, 2, 3, 4]",
+        mock_value_slot0.storage_slot().value(),
+        "Value at the top of the stack should be equal to [1, 2, 3, 4]",
     );
 
     foreign_account_data_memory_assertions(&foreign_account, &exec_output);
@@ -173,31 +177,34 @@ async fn test_fpi_memory_single_account() -> anyhow::Result<()> {
     // Check the correctness of the memory layout after `get_map_item` account procedure invocation
 
     let code = format!(
-        "
+        r#"
         use.std::sys
 
         use.$kernel::prologue
         use.miden::tx
 
+        const MOCK_MAP_SLOT = word("{mock_map_slot}")
+
         begin
             exec.prologue::prepare_transaction
 
             # pad the stack for the `execute_foreign_procedure` execution
-            padw padw push.0.0
-            # => [pad(10)]
+            padw
+            # => [pad(4)]
 
             # push the key of desired storage item
             push.{map_key}
 
-            # push the index of desired storage item
-            push.1
+            # push the slot name of the desired storage item
+            push.MOCK_MAP_SLOT[0..2]
 
             # get the hash of the `get_map_item_foreign` account procedure
             push.{get_map_item_foreign_hash}
 
             # push the foreign account ID
             push.{foreign_suffix} push.{foreign_prefix}
-            # => [foreign_account_id_prefix, foreign_account_id_suffix, FOREIGN_PROC_ROOT, storage_item_index, MAP_ITEM_KEY, pad(10)]
+            # => [foreign_account_id_prefix, foreign_account_id_suffix, FOREIGN_PROC_ROOT,
+            #     slot_name_id_prefix, slot_name_id_suffix, MAP_KEY, pad(4)]
 
             exec.tx::execute_foreign_procedure
             # => [MAP_VALUE]
@@ -205,14 +212,15 @@ async fn test_fpi_memory_single_account() -> anyhow::Result<()> {
             # truncate the stack
             exec.sys::truncate_stack
         end
-        ",
+        "#,
+        mock_map_slot = mock_map_slot.name(),
         foreign_prefix = foreign_account.id().prefix().as_felt(),
         foreign_suffix = foreign_account.id().suffix(),
         map_key = STORAGE_LEAVES_2[0].0,
         get_map_item_foreign_hash = foreign_account.code().procedures()[2].mast_root(),
     );
 
-    let exec_output = tx_context.execute_code(&code).await.unwrap();
+    let exec_output = tx_context.execute_code(&code).await?;
 
     assert_eq!(
         exec_output.get_stack_word_be(0),
@@ -229,54 +237,59 @@ async fn test_fpi_memory_single_account() -> anyhow::Result<()> {
     // result in reuse of the loaded account.
 
     let code = format!(
-        "
+        r#"
         use.std::sys
 
         use.$kernel::prologue
         use.miden::tx
+
+        const MOCK_VALUE_SLOT0 = word("{mock_value_slot0}")
 
         begin
             exec.prologue::prepare_transaction
 
             ### Get the storage item at index 0 #####################
             # pad the stack for the `execute_foreign_procedure` execution
-            padw padw padw push.0.0
-            # => [pad(14)]
+            padw padw
+            # => [pad(8)]
 
-            # push the index of desired storage item
-            push.0
+            # push the slot name of desired storage item
+            push.MOCK_VALUE_SLOT0[0..2]
 
             # get the hash of the `get_item_foreign` procedure of the foreign account
             push.{get_item_foreign_hash}
 
             # push the foreign account ID
             push.{foreign_suffix} push.{foreign_prefix}
-            # => [foreign_account_id_prefix, foreign_account_id_suffix, FOREIGN_PROC_ROOT, storage_item_index, pad(14)]
+            # => [foreign_account_id_prefix, foreign_account_id_suffix, FOREIGN_PROC_ROOT,
+            #     slot_name_id_prefix, slot_name_id_suffix, pad(8)]
 
             exec.tx::execute_foreign_procedure dropw
             # => []
 
             ### Get the storage item at index 0 again ###############
             # pad the stack for the `execute_foreign_procedure` execution
-            padw padw padw push.0.0
-            # => [pad(14)]
+            padw padw
+            # => [pad(8)]
 
-            # push the index of desired storage item
-            push.0
+            # push the slot name of the desired storage item
+            push.MOCK_VALUE_SLOT0[0..2]
 
             # get the hash of the `get_item_foreign` procedure of the foreign account
             push.{get_item_foreign_hash}
 
             # push the foreign account ID
             push.{foreign_suffix} push.{foreign_prefix}
-            # => [foreign_account_id_prefix, foreign_account_id_suffix, FOREIGN_PROC_ROOT, storage_item_index, pad(14)]
+            # => [foreign_account_id_prefix, foreign_account_id_suffix, FOREIGN_PROC_ROOT,
+            #     slot_name_id_prefix, slot_name_id_suffix, pad(8)]
 
             exec.tx::execute_foreign_procedure
 
             # truncate the stack
             exec.sys::truncate_stack
         end
-        ",
+        "#,
+        mock_value_slot0 = mock_value_slot0.name(),
         foreign_prefix = foreign_account.id().prefix().as_felt(),
         foreign_suffix = foreign_account.id().suffix(),
         get_item_foreign_hash = foreign_account.code().procedures()[1].mast_root(),
@@ -301,8 +314,8 @@ async fn test_fpi_memory_single_account() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_fpi_memory_two_accounts() -> anyhow::Result<()> {
     // Prepare the test data
-    let storage_slots_1 = vec![AccountStorage::mock_item_0().slot];
-    let storage_slots_2 = vec![AccountStorage::mock_item_1().slot];
+    let mock_value_slot0 = AccountStorage::mock_value_slot0();
+    let mock_value_slot1 = AccountStorage::mock_value_slot1();
 
     let foreign_account_code_source_1 = "
         use.miden::active_account
@@ -314,7 +327,7 @@ async fn test_fpi_memory_two_accounts() -> anyhow::Result<()> {
             exec.active_account::get_item
 
             # truncate the stack
-            movup.6 movup.6 movup.6 drop drop drop
+            movup.6 movup.6 drop drop
         end
     ";
     let foreign_account_code_source_2 = "
@@ -327,21 +340,21 @@ async fn test_fpi_memory_two_accounts() -> anyhow::Result<()> {
             exec.active_account::get_item
 
             # truncate the stack
-            movup.6 movup.6 movup.6 drop drop drop
+            movup.6 movup.6 drop drop
         end
     ";
 
     let foreign_account_component_1 = AccountComponent::compile(
         foreign_account_code_source_1,
         TransactionKernel::with_kernel_library(Arc::new(DefaultSourceManager::default())),
-        storage_slots_1.clone(),
+        vec![mock_value_slot0.clone()],
     )?
     .with_supports_all_types();
 
     let foreign_account_component_2 = AccountComponent::compile(
         foreign_account_code_source_2,
         TransactionKernel::with_kernel_library(Arc::new(DefaultSourceManager::default())),
-        storage_slots_2.clone(),
+        vec![mock_value_slot1.clone()],
     )?
     .with_supports_all_types();
 
@@ -388,78 +401,84 @@ async fn test_fpi_memory_two_accounts() -> anyhow::Result<()> {
     // two foreign procedures from the same account should result in reuse of the loaded account.
 
     let code = format!(
-        "
+        r#"
         use.std::sys
 
         use.$kernel::prologue
         use.miden::tx
 
+        const MOCK_VALUE_SLOT0 = word("{mock_value_slot0}")
+        const MOCK_VALUE_SLOT1 = word("{mock_value_slot1}")
+
         begin
             exec.prologue::prepare_transaction
 
-            ### Get the storage item at index 0 from the first account
+            ### Get the storage item from the first account
             # pad the stack for the `execute_foreign_procedure` execution
-            padw padw padw push.0.0
-            # => [pad(14)]
+            padw padw
+            # => [pad(8)]
 
-            # push the index of desired storage item
-            push.0
+            # push the slot name of desired storage item
+            push.MOCK_VALUE_SLOT0[0..2]
 
-            # get the hash of the `get_item_foreign_1` procedure of the foreign account 1
+            # get the hash of the `get_item_foreign` procedure of the foreign account
             push.{get_item_foreign_1_hash}
 
             # push the foreign account ID
             push.{foreign_1_suffix} push.{foreign_1_prefix}
-            # => [foreign_account_1_id_prefix, foreign_account_1_id_suffix, FOREIGN_PROC_ROOT, storage_item_index, pad(14)]
+            # => [foreign_account_1_id_prefix, foreign_account_1_id_suffix, FOREIGN_PROC_ROOT,
+            #     slot_name_id_prefix, slot_name_id_suffix, pad(8)]
 
             exec.tx::execute_foreign_procedure dropw
             # => []
 
-            ### Get the storage item at index 0 from the second account
+            ### Get the storage item from the second account
             # pad the stack for the `execute_foreign_procedure` execution
-            padw padw padw push.0.0
-            # => [pad(14)]
+            padw padw
+            # => [pad(8)]
 
-            # push the index of desired storage item
-            push.0
+            # push the slot name of desired storage item
+            push.MOCK_VALUE_SLOT1[0..2]
 
             # get the hash of the `get_item_foreign_2` procedure of the foreign account 2
             push.{get_item_foreign_2_hash}
 
             # push the foreign account ID
             push.{foreign_2_suffix} push.{foreign_2_prefix}
-            # => [foreign_account_2_id_prefix, foreign_account_2_id_suffix, FOREIGN_PROC_ROOT, storage_item_index, pad(14)]
+            # => [foreign_account_2_id_prefix, foreign_account_2_id_suffix, FOREIGN_PROC_ROOT,
+            #     slot_name_id_prefix, slot_name_id_suffix, pad(8)]
 
             exec.tx::execute_foreign_procedure dropw
             # => []
 
-            ### Get the storage item at index 0 from the first account again
+            ### Get the storage item from the first account again
             # pad the stack for the `execute_foreign_procedure` execution
-            padw padw padw push.0.0
-            # => [pad(14)]
+            padw padw
+            # => [pad(8)]
 
-            # push the index of desired storage item
-            push.0
+            # push the slot name of desired storage item
+            push.MOCK_VALUE_SLOT0[0..2]
 
             # get the hash of the `get_item_foreign_1` procedure of the foreign account 1
             push.{get_item_foreign_1_hash}
 
             # push the foreign account ID
             push.{foreign_1_suffix} push.{foreign_1_prefix}
-            # => [foreign_account_1_id_prefix, foreign_account_1_id_suffix, FOREIGN_PROC_ROOT, storage_item_index, pad(14)]
+            # => [foreign_account_1_id_prefix, foreign_account_1_id_suffix, FOREIGN_PROC_ROOT,
+            #     slot_name_id_prefix, slot_name_id_suffix, pad(8)]
 
             exec.tx::execute_foreign_procedure
 
             # truncate the stack
             exec.sys::truncate_stack
         end
-        ",
+        "#,
+        mock_value_slot0 = mock_value_slot0.name(),
+        mock_value_slot1 = mock_value_slot1.name(),
         get_item_foreign_1_hash = foreign_account_1.code().procedures()[1].mast_root(),
         get_item_foreign_2_hash = foreign_account_2.code().procedures()[1].mast_root(),
-
         foreign_1_prefix = foreign_account_1.id().prefix().as_felt(),
         foreign_1_suffix = foreign_account_1.id().suffix(),
-
         foreign_2_prefix = foreign_account_2.id().prefix().as_felt(),
         foreign_2_suffix = foreign_account_2.id().suffix(),
     );
@@ -514,8 +533,9 @@ async fn test_fpi_memory_two_accounts() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
     // Prepare the test data
-    let storage_slots =
-        vec![AccountStorage::mock_item_0().slot, AccountStorage::mock_item_2().slot];
+    let mock_value_slot0 = AccountStorage::mock_value_slot0();
+    let mock_map_slot = AccountStorage::mock_map_slot();
+
     let foreign_account_code_source = "
         use.miden::active_account
 
@@ -526,7 +546,7 @@ async fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
             exec.active_account::get_item
 
             # truncate the stack
-            movup.6 movup.6 movup.6 drop drop drop
+            movup.6 movup.6 drop drop
         end
 
         export.get_map_item_foreign
@@ -541,7 +561,7 @@ async fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
     let foreign_account_component = AccountComponent::compile(
         NamedSource::new("foreign_account", foreign_account_code_source),
         TransactionKernel::with_kernel_library(source_manager.clone()),
-        storage_slots,
+        vec![mock_value_slot0.clone(), mock_map_slot.clone()],
     )?
     .with_supports_all_types();
 
@@ -562,26 +582,31 @@ async fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
     mock_chain.prove_next_block()?;
 
     let code = format!(
-        "
+        r#"
         use.std::sys
 
         use.miden::tx
 
-        begin
-            # get the storage item at index 0
-            # pad the stack for the `execute_foreign_procedure` execution
-            padw padw padw push.0.0
-            # => [pad(14)]
+        const MOCK_VALUE_SLOT0 = word("{mock_value_slot0}")
+        const MOCK_MAP_SLOT = word("{mock_map_slot}")
 
-            # push the index of desired storage item
-            push.0
+        begin
+            # get the storage item
+            # pad the stack for the `execute_foreign_procedure` execution
+            # pad the stack for the `execute_foreign_procedure` execution
+            padw padw
+            # => [pad(8)]
+
+            # push the slot name of desired storage item
+            push.MOCK_VALUE_SLOT0[0..2]
 
             # get the hash of the `get_item_foreign` account procedure
             procref.::foreign_account::get_item_foreign
 
             # push the foreign account ID
             push.{foreign_suffix} push.{foreign_prefix}
-            # => [foreign_account_id_prefix, foreign_account_id_suffix, FOREIGN_PROC_ROOT, storage_item_index, pad(14)]
+            # => [foreign_account_id_prefix, foreign_account_id_suffix, FOREIGN_PROC_ROOT
+            #     slot_name_id_prefix, slot_name_id_suffix, pad(8)]]
 
             exec.tx::execute_foreign_procedure
             # => [STORAGE_VALUE]
@@ -590,23 +615,24 @@ async fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
             push.1.2.3.4 assert_eqw
             # => []
 
-            # get the storage map at index 1
+            # get an item from the storage map
             # pad the stack for the `execute_foreign_procedure` execution
-            padw padw push.0.0
-            # => [pad(10)]
+            padw
+            # => [pad(4)]
 
             # push the key of desired storage item
             push.{map_key}
 
-            # push the index of desired storage item
-            push.1
+            # push the slot name of the desired storage map
+            push.MOCK_MAP_SLOT[0..2]
 
             # get the hash of the `get_map_item_foreign` account procedure
             procref.::foreign_account::get_map_item_foreign
 
             # push the foreign account ID
             push.{foreign_suffix} push.{foreign_prefix}
-            # => [foreign_account_id_prefix, foreign_account_id_suffix, FOREIGN_PROC_ROOT, storage_item_index, MAP_ITEM_KEY, pad(10)]
+            # => [foreign_account_id_prefix, foreign_account_id_suffix, FOREIGN_PROC_ROOT,
+            #     slot_name_id_prefix, slot_name_id_suffix, MAP_ITEM_KEY, pad(4)]
 
             exec.tx::execute_foreign_procedure
             # => [MAP_VALUE]
@@ -618,7 +644,9 @@ async fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
             # truncate the stack
             exec.sys::truncate_stack
         end
-        ",
+        "#,
+        mock_value_slot0 = mock_value_slot0.name(),
+        mock_map_slot = mock_map_slot.name(),
         foreign_prefix = foreign_account.id().prefix().as_felt(),
         foreign_suffix = foreign_account.id().suffix(),
         map_key = STORAGE_LEAVES_2[0].0,
@@ -883,28 +911,35 @@ async fn foreign_account_get_initial_balance() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
     // ------ SECOND FOREIGN ACCOUNT ---------------------------------------------------------------
-    let storage_slots = vec![AccountStorage::mock_item_0().slot];
-    let second_foreign_account_code_source = r#"
+    let mock_value_slot0 = AccountStorage::mock_value_slot0();
+    let mock_value_slot1 = AccountStorage::mock_value_slot1();
+
+    let second_foreign_account_code_source = format!(
+        r#"
         use.miden::tx
         use.miden::active_account
 
         use.std::sys
 
+        const MOCK_VALUE_SLOT0 = word("{mock_value_slot0}")
+        const MOCK_VALUE_SLOT1 = word("{mock_value_slot1}")
+
         export.second_account_foreign_proc
-            # get the storage item at index 1
+            # get the storage item at value1
             # pad the stack for the `execute_foreign_procedure` execution
-            padw padw padw push.0.0
-            # => [pad(14)]
+            padw padw
+            # => [pad(8)]
 
             # push the index of desired storage item
-            push.1
+            push.MOCK_VALUE_SLOT1[0..2]
 
             # get the hash of the `get_item_foreign` account procedure from the advice stack
             adv_push.4
 
             # push the foreign account ID from the advice stack
             adv_push.2
-            # => [foreign_account_id_prefix, foreign_account_id_suffix, FOREIGN_PROC_ROOT, storage_item_index, pad(14)]
+            # => [foreign_account_id_prefix, foreign_account_id_suffix, FOREIGN_PROC_ROOT,
+            #     slot_name_id_prefix, slot_name_id_suffix, pad(8)]
 
             exec.tx::execute_foreign_procedure
             # => [storage_value]
@@ -912,9 +947,10 @@ async fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
             # make sure that the resulting value equals 5
             dup push.5 assert_eq.err="value should have been 5"
 
-            # get the first element of the 0'th storage slot (it should be 1) and add it to the
+            # get the first element of the value0 storage slot (it should be 1) and add it to the
             # obtained foreign value.
-            push.0 exec.active_account::get_item drop drop drop
+            push.MOCK_VALUE_SLOT0[0..2] exec.active_account::get_item
+            drop drop drop
             add
 
             # assert that the resulting value equals 6
@@ -922,13 +958,16 @@ async fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
 
             exec.sys::truncate_stack
         end
-    "#;
+    "#,
+        mock_value_slot0 = mock_value_slot0.name(),
+        mock_value_slot1 = mock_value_slot1.name(),
+    );
 
     let source_manager = Arc::new(DefaultSourceManager::default());
     let second_foreign_account_component = AccountComponent::compile(
         second_foreign_account_code_source,
         TransactionKernel::with_kernel_library(source_manager.clone()),
-        storage_slots,
+        vec![mock_value_slot0.clone()],
     )?
     .with_supports_all_types();
 
@@ -938,13 +977,14 @@ async fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
         .build_existing()?;
 
     // ------ FIRST FOREIGN ACCOUNT ---------------------------------------------------------------
-    let storage_slots =
-        vec![AccountStorage::mock_item_0().slot, AccountStorage::mock_item_1().slot];
-    let first_foreign_account_code_source = r#"
+    let first_foreign_account_code_source = format!(
+        r#"
         use.miden::tx
         use.miden::active_account
 
         use.std::sys
+
+        const MOCK_VALUE_SLOT0 = word("{mock_value_slot0}")
 
         export.first_account_foreign_proc
             # pad the stack for the `execute_foreign_procedure` execution
@@ -961,9 +1001,10 @@ async fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
             exec.tx::execute_foreign_procedure
             # => [storage_value]
 
-            # get the second element of the 0'th storage slot (it should be 2) and add it to the
+            # get the second element of the value0 storage slot (it should be 2) and add it to the
             # obtained foreign value.
-            push.0 exec.active_account::get_item drop drop swap drop
+            push.MOCK_VALUE_SLOT0[0..2] exec.active_account::get_item
+            drop drop swap drop
             add
 
             # assert that the resulting value equals 8
@@ -981,12 +1022,14 @@ async fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
             # return the first element of the resulting word
             drop drop drop
         end
-    "#;
+    "#,
+        mock_value_slot0 = mock_value_slot0.name(),
+    );
 
     let first_foreign_account_component = AccountComponent::compile(
         NamedSource::new("first_foreign_account", first_foreign_account_code_source),
         TransactionKernel::with_kernel_library(source_manager.clone()),
-        storage_slots,
+        vec![mock_value_slot0.clone(), mock_value_slot1.clone()],
     )?
     .with_supports_all_types();
 
@@ -1258,9 +1301,13 @@ async fn test_prove_fpi_two_foreign_accounts_chain() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_nested_fpi_stack_overflow() -> anyhow::Result<()> {
     let mut foreign_accounts = Vec::new();
+    let mock_value_slot0 = AccountStorage::mock_value_slot0();
 
-    let last_foreign_account_code_source = "
+    let last_foreign_account_code_source = format!(
+        r#"
                 use.miden::active_account
+
+                const MOCK_VALUE_SLOT0 = word("{mock_value_slot0}")
 
                 export.get_item_foreign
                     # make this foreign procedure unique to make sure that we invoke the procedure
@@ -1268,7 +1315,7 @@ async fn test_nested_fpi_stack_overflow() -> anyhow::Result<()> {
                     push.1 drop
 
                     # push the index of desired storage item
-                    push.0
+                    push.MOCK_VALUE_SLOT0[0..2]
 
                     exec.active_account::get_item
 
@@ -1278,13 +1325,14 @@ async fn test_nested_fpi_stack_overflow() -> anyhow::Result<()> {
                     # make sure that the resulting value equals 1
                     assert
                 end
-        ";
+        "#,
+        mock_value_slot0 = mock_value_slot0.name(),
+    );
 
-    let storage_slots = vec![AccountStorage::mock_item_0().slot];
     let last_foreign_account_component = AccountComponent::compile(
         last_foreign_account_code_source,
         TransactionKernel::with_kernel_library(Arc::new(DefaultSourceManager::default())),
-        storage_slots,
+        vec![mock_value_slot0.clone()],
     )
     .unwrap()
     .with_supports_all_types();
@@ -1541,10 +1589,11 @@ async fn test_fpi_stale_account() -> anyhow::Result<()> {
         end
     ";
 
+    let mock_value_slot0 = AccountStorage::mock_value_slot0();
     let foreign_account_component = AccountComponent::compile(
         foreign_account_code_source,
         TransactionKernel::with_kernel_library(Arc::new(DefaultSourceManager::default())),
-        vec![AccountStorage::mock_item_0().slot],
+        vec![mock_value_slot0.clone()],
     )?
     .with_supports_all_types();
 
@@ -1555,7 +1604,7 @@ async fn test_fpi_stale_account() -> anyhow::Result<()> {
 
     let native_account = AccountBuilder::new([4; 32])
         .with_auth_component(Auth::IncrNonce)
-        .with_component(MockAccountComponent::with_slots(vec![AccountStorage::mock_item_2().slot]))
+        .with_component(MockAccountComponent::with_slots(vec![AccountStorage::mock_map_slot()]))
         .build_existing()?;
 
     let mut mock_chain =
@@ -1568,9 +1617,10 @@ async fn test_fpi_stale_account() -> anyhow::Result<()> {
 
     // Modify the account's storage to change its storage commitment and in turn the account
     // commitment.
-    foreign_account
-        .storage_mut()
-        .set_item(0, Word::from([Felt::ONE, Felt::ONE, Felt::ONE, Felt::ONE]))?;
+    foreign_account.storage_mut().set_item(
+        mock_value_slot0.name(),
+        Word::from([Felt::ONE, Felt::ONE, Felt::ONE, Felt::ONE]),
+    )?;
 
     // We pass the modified foreign account with a witness that is valid against the ref block. This
     // means the foreign account's commitment does not match the commitment that the account witness
@@ -1764,7 +1814,7 @@ fn foreign_account_data_memory_assertions(
 
     assert_eq!(
         exec_output.get_kernel_mem_word(foreign_account_data_ptr + ACCT_STORAGE_COMMITMENT_OFFSET),
-        foreign_account.storage().commitment(),
+        foreign_account.storage().to_commitment(),
     );
 
     assert_eq!(
@@ -1779,7 +1829,7 @@ fn foreign_account_data_memory_assertions(
 
     for (i, elements) in foreign_account
         .storage()
-        .as_elements()
+        .to_elements()
         .chunks(StorageSlot::NUM_ELEMENTS_PER_STORAGE_SLOT / 2)
         .enumerate()
     {
@@ -1822,15 +1872,20 @@ async fn test_get_initial_item_and_get_initial_map_item_with_foreign_account() -
         .storage_mode(AccountStorageMode::Public)
         .build_existing()?;
 
+    let mock_value_slot0 = AccountStorage::mock_value_slot0();
+    let mock_map_slot = AccountStorage::mock_map_slot();
     let (map_key, map_value) = STORAGE_LEAVES_2[0];
 
     // Create foreign procedures that test get_initial_item and get_initial_map_item
-    let foreign_account_code_source = "
+    let foreign_account_code_source = format!(
+        r#"
         use.miden::active_account
         use.std::sys
 
+        const MOCK_VALUE_SLOT0 = word("{mock_value_slot0}")
+
         export.test_get_initial_item
-            push.0
+            push.MOCK_VALUE_SLOT0[0..2]
             exec.active_account::get_initial_item
             exec.sys::truncate_stack
         end
@@ -1839,12 +1894,14 @@ async fn test_get_initial_item_and_get_initial_map_item_with_foreign_account() -
             exec.active_account::get_initial_map_item
             exec.sys::truncate_stack
         end
-    ";
+    "#,
+        mock_value_slot0 = mock_value_slot0.name()
+    );
 
     let foreign_account_component = AccountComponent::compile(
         NamedSource::new("foreign_account", foreign_account_code_source),
-        TransactionKernel::assembler(),
-        vec![AccountStorage::mock_item_0().slot, AccountStorage::mock_item_2().slot],
+        TransactionKernel::assembler().with_debug_mode(true),
+        vec![mock_value_slot0.clone(), mock_map_slot.clone()],
     )?
     .with_supports_all_types();
 
@@ -1862,37 +1919,39 @@ async fn test_get_initial_item_and_get_initial_map_item_with_foreign_account() -
     let foreign_account_inputs = mock_chain.get_foreign_account_inputs(foreign_account.id())?;
 
     let code = format!(
-        "
+        r#"
         use.std::sys
         use.miden::tx
 
-        begin
+        const MOCK_MAP_SLOT = word("{mock_map_slot}")
 
+        begin
             # Test get_initial_item on foreign account
             padw padw padw push.0.0.0
-            # => [ pad(4), pad(4), pad(4), 0, 0, 0 ]
+            # => [pad(15)]
             procref.::foreign_account::test_get_initial_item
             push.{foreign_account_id_suffix} push.{foreign_account_id_prefix}
             exec.tx::execute_foreign_procedure
             push.{expected_value_slot_0}
-            assert_eqw.err=\"foreign account get_initial_item should work\"
+            assert_eqw.err="foreign account get_initial_item should work"
 
             # Test get_initial_map_item on foreign account
             padw padw push.0.0
             push.{map_key}
-            push.1
+            push.MOCK_MAP_SLOT[0..2]
             procref.::foreign_account::test_get_initial_map_item
             push.{foreign_account_id_suffix} push.{foreign_account_id_prefix}
             exec.tx::execute_foreign_procedure
             push.{map_value}
-            assert_eqw.err=\"foreign account get_initial_map_item should work\"
+            assert_eqw.err="foreign account get_initial_map_item should work"
 
             exec.sys::truncate_stack
         end
-        ",
+        "#,
+        mock_map_slot = mock_map_slot.name(),
         foreign_account_id_prefix = foreign_account.id().prefix().as_felt(),
         foreign_account_id_suffix = foreign_account.id().suffix(),
-        expected_value_slot_0 = &AccountStorage::mock_item_0().slot.value(),
+        expected_value_slot_0 = mock_value_slot0.storage_slot().value(),
         map_key = &map_key,
         map_value = &map_value,
     );
