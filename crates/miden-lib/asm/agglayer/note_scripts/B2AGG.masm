@@ -14,11 +14,16 @@ const.ERR_B2AGG_WRONG_NUMBER_OF_ASSETS="B2AGG script requires exactly 1 note ass
 
 const.ERR_B2AGG_WRONG_NUMBER_OF_INPUTS="B2AGG script expects exactly 6 note inputs"
 
-#! Inputs:  [destination_network(u32), destination_address_0(u32), destination_address_1(u32),
-#!           destination_address_2(u32), destination_address_3(u32), destination_address_4(u32)]
+#! Bridge-to-AggLayer (B2AGG) note script: bridges assets from Miden to an AggLayer-connected chain.
+#!
+#! This note can be consumed in two ways:
+#! - If the consuming account is the sender (reclaim): adds all assets from the note back to the account.
+#! - Otherwise: bridges the note's assets to the specified destination network and address via AggLayer.
+#!
+#! Inputs:  []
 #! Outputs: []
 #!
-#! Note inputs:
+#! Note inputs are assumed to be as follows:
 #! - destination_network: u32 value representing the target chain ID
 #! - destination_address: split into 5 u32 values representing a 20-byte Ethereum address:
 #!   - destination_address_0: bytes 0-3
@@ -26,6 +31,14 @@ const.ERR_B2AGG_WRONG_NUMBER_OF_INPUTS="B2AGG script expects exactly 6 note inpu
 #!   - destination_address_2: bytes 8-11
 #!   - destination_address_3: bytes 12-15
 #!   - destination_address_4: bytes 16-19
+#!
+#! Stack layout after loading inputs:
+#! - INPUTS[1]: [destination_network, destination_address_4, destination_address_3, destination_address_2]
+#! - INPUTS[0]: [destination_address_1, destination_address_0, 0, 0]
+#!
+#! Panics if:
+#! - The note does not contain exactly 6 inputs.
+#! - The note does not contain exactly 1 asset.
 #!
 begin
     dropw
