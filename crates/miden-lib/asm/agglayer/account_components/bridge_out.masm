@@ -50,8 +50,11 @@ end
 #!
 #! Invocation: exec
 proc create_burn_note.8
-    loc_storew_be.0
-    # => [ASSET]
+    loc_storew_be.0 dupw
+    # => [ASSET, ASSET]
+
+    movup.2 drop movup.2 drop
+    # => [faucet_id_prefix, faucet_id_suffix, ASSET]
 
     exec.note::build_note_tag_for_network_account
     # => [network_faucet_tag, ASSET]
