@@ -15,8 +15,8 @@ use miden_objects::account::{
     AccountStorageMode,
     AccountType,
     NamedStorageSlot,
-    SlotName,
     StorageMap,
+    StorageSlotName,
 };
 use miden_objects::asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset};
 use miden_objects::note::{Note, NoteExecutionHint, NoteTag, NoteType};
@@ -107,20 +107,20 @@ async fn delta_nonce() -> anyhow::Result<()> {
 /// - Slot 3: [1,3,5,7]  -> [2,3,4,5] -> [1,3,5,7]  -> Delta: None
 #[tokio::test]
 async fn storage_delta_for_value_slots() -> anyhow::Result<()> {
-    let slot_0_name = SlotName::mock(0);
+    let slot_0_name = StorageSlotName::mock(0);
     let slot_0_init_value = Word::from([2, 4, 6, 8u32]);
     let slot_0_tmp_value = Word::from([3, 4, 5, 6u32]);
     let slot_0_final_value = EMPTY_WORD;
 
-    let slot_1_name = SlotName::mock(1);
+    let slot_1_name = StorageSlotName::mock(1);
     let slot_1_init_value = EMPTY_WORD;
     let slot_1_final_value = Word::from([3, 4, 5, 6u32]);
 
-    let slot_2_name = SlotName::mock(2);
+    let slot_2_name = StorageSlotName::mock(2);
     let slot_2_init_value = Word::from([1, 3, 5, 7u32]);
     let slot_2_final_value = slot_2_init_value;
 
-    let slot_3_name = SlotName::mock(3);
+    let slot_3_name = StorageSlotName::mock(3);
     let slot_3_init_value = Word::from([1, 3, 5, 7u32]);
     let slot_3_tmp_value = Word::from([2, 3, 4, 5u32]);
     let slot_3_final_value = slot_3_init_value;
@@ -146,37 +146,37 @@ async fn storage_delta_for_value_slots() -> anyhow::Result<()> {
       begin
           push.{slot_0_tmp_value}
           push.SLOT_0_NAME[0..2]
-          # => [name_id_prefix, name_id_suffix, VALUE]
+          # => [slot_id_prefix, slot_id_suffix, VALUE]
           exec.set_item
           # => []
 
           push.{slot_0_final_value}
           push.SLOT_0_NAME[0..2]
-          # => [name_id_prefix, name_id_suffix, VALUE]
+          # => [slot_id_prefix, slot_id_suffix, VALUE]
           exec.set_item
           # => []
 
           push.{slot_1_final_value}
           push.SLOT_1_NAME[0..2]
-          # => [name_id_prefix, name_id_suffix, VALUE]
+          # => [slot_id_prefix, slot_id_suffix, VALUE]
           exec.set_item
           # => []
 
           push.{slot_2_final_value}
           push.SLOT_2_NAME[0..2]
-          # => [name_id_prefix, name_id_suffix, VALUE]
+          # => [slot_id_prefix, slot_id_suffix, VALUE]
           exec.set_item
           # => []
 
           push.{slot_3_tmp_value}
           push.SLOT_3_NAME[0..2]
-          # => [name_id_prefix, name_id_suffix, VALUE]
+          # => [slot_id_prefix, slot_id_suffix, VALUE]
           exec.set_item
           # => []
 
           push.{slot_3_final_value}
           push.SLOT_3_NAME[0..2]
-          # => [name_id_prefix, name_id_suffix, VALUE]
+          # => [slot_id_prefix, slot_id_suffix, VALUE]
           exec.set_item
           # => []
       end
@@ -247,18 +247,18 @@ async fn storage_delta_for_map_slots() -> anyhow::Result<()> {
     let key5_tmp_value = Word::from([2, 3, 4, 5u32]);
     let key5_final_value = Word::from([1, 2, 3, 4u32]);
 
-    let slot_0_name = SlotName::mock(0);
+    let slot_0_name = StorageSlotName::mock(0);
     let mut map0 = StorageMap::new();
     map0.insert(key0, key0_init_value).unwrap();
     map0.insert(key1, key1_init_value).unwrap();
 
-    let slot_1_name = SlotName::mock(1);
+    let slot_1_name = StorageSlotName::mock(1);
     let mut map1 = StorageMap::new();
     map1.insert(key2, key2_init_value).unwrap();
     map1.insert(key3, key3_init_value).unwrap();
     map1.insert(key4, key4_init_value).unwrap();
 
-    let slot_2_name = SlotName::mock(2);
+    let slot_2_name = StorageSlotName::mock(2);
     let mut map2 = StorageMap::new();
     map2.insert(key5, key5_init_value).unwrap();
 
@@ -270,7 +270,7 @@ async fn storage_delta_for_map_slots() -> anyhow::Result<()> {
             // Include an empty map which does not receive any updates, to test that the "metadata
             // header" in the delta commitment is not appended if there are no updates to a map
             // slot.
-            NamedStorageSlot::with_map(SlotName::mock(3), StorageMap::new()),
+            NamedStorageSlot::with_map(StorageSlotName::mock(3), StorageMap::new()),
         ],
         [],
         [],
@@ -285,55 +285,55 @@ async fn storage_delta_for_map_slots() -> anyhow::Result<()> {
       begin
           push.{key0_final_value} push.{key0}
           push.SLOT_0_NAME[0..2]
-          # => [name_id_prefix, name_id_suffix, KEY, VALUE]
+          # => [slot_id_prefix, slot_id_suffix, KEY, VALUE]
           exec.set_map_item
           # => []
 
           push.{key1_tmp_value} push.{key1}
           push.SLOT_0_NAME[0..2]
-          # => [name_id_prefix, name_id_suffix, KEY, VALUE]
+          # => [slot_id_prefix, slot_id_suffix, KEY, VALUE]
           exec.set_map_item
           # => []
 
           push.{key1_final_value} push.{key1}
           push.SLOT_0_NAME[0..2]
-          # => [name_id_prefix, name_id_suffix, KEY, VALUE]
+          # => [slot_id_prefix, slot_id_suffix, KEY, VALUE]
           exec.set_map_item
           # => []
 
           push.{key2_final_value} push.{key2}
           push.SLOT_1_NAME[0..2]
-          # => [name_id_prefix, name_id_suffix, KEY, VALUE]
+          # => [slot_id_prefix, slot_id_suffix, KEY, VALUE]
           exec.set_map_item
           # => []
 
           push.{key3_final_value} push.{key3}
           push.SLOT_1_NAME[0..2]
-          # => [name_id_prefix, name_id_suffix, KEY, VALUE]
+          # => [slot_id_prefix, slot_id_suffix, KEY, VALUE]
           exec.set_map_item
           # => []
 
           push.{key4_tmp_value} push.{key4}
           push.SLOT_1_NAME[0..2]
-          # => [name_id_prefix, name_id_suffix, KEY, VALUE]
+          # => [slot_id_prefix, slot_id_suffix, KEY, VALUE]
           exec.set_map_item
           # => []
 
           push.{key4_final_value} push.{key4}
           push.SLOT_1_NAME[0..2]
-          # => [name_id_prefix, name_id_suffix, KEY, VALUE]
+          # => [slot_id_prefix, slot_id_suffix, KEY, VALUE]
           exec.set_map_item
           # => []
 
           push.{key5_tmp_value} push.{key5}
           push.SLOT_2_NAME[0..2]
-          # => [name_id_prefix, name_id_suffix, KEY, VALUE]
+          # => [slot_id_prefix, slot_id_suffix, KEY, VALUE]
           exec.set_map_item
           # => []
 
           push.{key5_final_value} push.{key5}
           push.SLOT_2_NAME[0..2]
-          # => [name_id_prefix, name_id_suffix, KEY, VALUE]
+          # => [slot_id_prefix, slot_id_suffix, KEY, VALUE]
           exec.set_map_item
           # => []
       end
@@ -674,7 +674,7 @@ async fn asset_and_storage_delta() -> anyhow::Result<()> {
 
             # get the index of account storage slot
             push.MOCK_VALUE_SLOT0[0..2]
-            # => [name_id_prefix, name_id_suffix, 13, 11, 9, 7]
+            # => [slot_id_prefix, slot_id_suffix, 13, 11, 9, 7]
             # update the storage value
             call.account::set_item dropw
             # => []
@@ -691,7 +691,7 @@ async fn asset_and_storage_delta() -> anyhow::Result<()> {
 
             # get the index of account storage slot
             push.MOCK_MAP_SLOT[0..2]
-            # => [name_id_prefix, name_id_suffix, 14, 15, 16, 17, 18, 19, 20, 21]
+            # => [slot_id_prefix, slot_id_suffix, 14, 15, 16, 17, 18, 19, 20, 21]
 
             # update the storage value
             call.account::set_map_item dropw dropw dropw
@@ -818,9 +818,9 @@ async fn proven_tx_storage_maps_matches_executed_tx_for_new_account() -> anyhow:
         (rand_value(), rand_value()),
     ])?;
 
-    let map0_slot_name = SlotName::mock(1);
-    let map1_slot_name = SlotName::mock(2);
-    let map2_slot_name = SlotName::mock(4);
+    let map0_slot_name = StorageSlotName::mock(1);
+    let map1_slot_name = StorageSlotName::mock(2);
+    let map2_slot_name = StorageSlotName::mock(4);
 
     // Build a public account so the proven transaction includes the account update.
     let account = AccountBuilder::new([1; 32])
@@ -850,7 +850,7 @@ async fn proven_tx_storage_maps_matches_executed_tx_for_new_account() -> anyhow:
           push.{value0}
           push.{existing_key}
           push.MAP_SLOT[0..2]
-          # => [name_id_prefix, name_id_suffix, KEY, VALUE]
+          # => [slot_id_prefix, slot_id_suffix, KEY, VALUE]
           call.account::set_map_item
 
           exec.::std::sys::truncate_stack
@@ -919,8 +919,8 @@ async fn proven_tx_storage_maps_matches_executed_tx_for_new_account() -> anyhow:
 /// delta and not normalized away.
 #[tokio::test]
 async fn delta_for_new_account_retains_empty_value_storage_slots() -> anyhow::Result<()> {
-    let slot_name0 = SlotName::mock(0);
-    let slot_name1 = SlotName::mock(1);
+    let slot_name0 = StorageSlotName::mock(0);
+    let slot_name1 = StorageSlotName::mock(1);
 
     let slot_value2 = Word::from([1, 2, 3, 4u32]);
     let mut account = AccountBuilder::new(rand::random())
@@ -958,7 +958,7 @@ async fn delta_for_new_account_retains_empty_value_storage_slots() -> anyhow::Re
 /// delta.
 #[tokio::test]
 async fn delta_for_new_account_retains_empty_map_storage_slots() -> anyhow::Result<()> {
-    let slot_name0 = SlotName::mock(0);
+    let slot_name0 = StorageSlotName::mock(0);
 
     let mut account = AccountBuilder::new(rand::random())
         .account_type(AccountType::RegularAccountUpdatableCode)
@@ -1070,11 +1070,11 @@ const TEST_ACCOUNT_CONVENIENCE_WRAPPERS: &str = "
       use.mock::account
       use.miden::output_note
 
-      #! Inputs:  [name_id_prefix, name_id_suffix, VALUE]
+      #! Inputs:  [slot_id_prefix, slot_id_suffix, VALUE]
       #! Outputs: []
       proc.set_item
           repeat.10 push.0 movdn.6 end
-          # => [name_id_prefix, name_id_suffix, VALUE, pad(10)]
+          # => [slot_id_prefix, slot_id_suffix, VALUE, pad(10)]
 
           call.account::set_item
           # => [OLD_VALUE, pad(12)]
@@ -1082,7 +1082,7 @@ const TEST_ACCOUNT_CONVENIENCE_WRAPPERS: &str = "
           dropw dropw dropw dropw
       end
 
-      #! Inputs:  [name_id_prefix, name_id_suffix, KEY, VALUE]
+      #! Inputs:  [slot_id_prefix, slot_id_suffix, KEY, VALUE]
       #! Outputs: []
       proc.set_map_item
           repeat.6 push.0 movdn.10 end

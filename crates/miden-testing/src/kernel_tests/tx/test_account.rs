@@ -26,9 +26,9 @@ use miden_objects::account::{
     AccountStorageMode,
     AccountType,
     NamedStorageSlot,
-    SlotName,
     StorageMap,
     StorageSlot,
+    StorageSlotName,
     StorageSlotType,
 };
 use miden_objects::assembly::DefaultSourceManager;
@@ -109,7 +109,7 @@ pub async fn compute_commitment() -> miette::Result<()> {
             push.{value}
             push.{key}
             push.MOCK_MAP_SLOT[0..2]
-            # => [name_id_prefix, name_id_suffix, KEY, VALUE, pad(7)]
+            # => [slot_id_prefix, slot_id_suffix, KEY, VALUE, pad(7)]
             call.mock_account::set_map_item
             dropw dropw dropw dropw
             # => [STORAGE_COMMITMENT0]
@@ -390,7 +390,7 @@ async fn test_get_item() -> miette::Result<()> {
 
                 # push the account storage item index
                 push.SLOT_NAME[0..2]
-                # => [name_id_prefix, name_id_suffix]
+                # => [slot_id_prefix, slot_id_suffix]
 
                 # assert the item value is correct
                 exec.account::get_item
@@ -545,7 +545,7 @@ async fn test_set_item() -> anyhow::Result<()> {
             # set the storage item
             push.{new_value}
             push.MOCK_VALUE_SLOT0[0..2]
-            # => [name_id_prefix, name_id_suffix, NEW_VALUE]
+            # => [slot_id_prefix, slot_id_suffix, NEW_VALUE]
 
             exec.account::set_item
 
@@ -555,7 +555,7 @@ async fn test_set_item() -> anyhow::Result<()> {
 
             # assert new value has been correctly set
             push.MOCK_VALUE_SLOT0[0..2]
-            # => [name_id_prefix, name_id_suffix]
+            # => [slot_id_prefix, slot_id_suffix]
 
             exec.account::get_item
             push.{new_value}
@@ -603,11 +603,11 @@ async fn test_set_map_item() -> miette::Result<()> {
 
             # double check that the storage slot is indeed the new map
             push.SLOT_NAME[0..2]
-            # => [name_id_prefix, name_id_suffix, OLD_VALUE, OLD_MAP_ROOT]
+            # => [slot_id_prefix, slot_id_suffix, OLD_VALUE, OLD_MAP_ROOT]
 
             # pad the stack
             repeat.14 push.0 movdn.2 end
-            # => [name_id_prefix, name_id_suffix, pad(14), OLD_VALUE, OLD_MAP_ROOT]
+            # => [slot_id_prefix, slot_id_suffix, pad(14), OLD_VALUE, OLD_MAP_ROOT]
 
             call.mock_account::get_item
             # => [MAP_ROOT, pad(12), OLD_VALUE, OLD_MAP_ROOT]
@@ -752,7 +752,7 @@ async fn test_compute_storage_commitment() -> anyhow::Result<()> {
             # update the map storage slot
             push.5.6.7.8.101.102.103.104
             push.MOCK_MAP_SLOT[0..2]
-            # => [name_id_prefix, name_id_suffix, KEY, VALUE]
+            # => [slot_id_prefix, slot_id_suffix, KEY, VALUE]
 
             call.mock_account::set_map_item dropw dropw
             # => []
@@ -776,9 +776,9 @@ async fn test_compute_storage_commitment() -> anyhow::Result<()> {
 /// accounts.
 #[tokio::test]
 async fn prove_account_creation_with_non_empty_storage() -> anyhow::Result<()> {
-    let slot_name0 = SlotName::mock(0);
-    let slot_name1 = SlotName::mock(1);
-    let slot_name2 = SlotName::mock(2);
+    let slot_name0 = StorageSlotName::mock(0);
+    let slot_name1 = StorageSlotName::mock(1);
+    let slot_name2 = StorageSlotName::mock(2);
 
     let slot0 = NamedStorageSlot::with_value(slot_name0.clone(), Word::from([1, 2, 3, 4u32]));
     let slot1 = NamedStorageSlot::with_value(slot_name1.clone(), Word::from([10, 20, 30, 40u32]));

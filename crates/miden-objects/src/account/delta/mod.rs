@@ -205,18 +205,18 @@ impl AccountDelta {
     ///       assets since `faucet_id_prefix` is at the same position in the layout for both assets,
     ///       and, by design, it is never the same for fungible and non-fungible assets.
     ///     - Append `[hash0, hash1, hash2, faucet_id_prefix]`, i.e. the non-fungible asset.
-    /// - Storage Slots are sorted by slot name ID and are iterated in this order. For each slot
-    ///   **whose value has changed**, depending on the slot type:
+    /// - Storage Slots are sorted by slot ID and are iterated in this order. For each slot **whose
+    ///   value has changed**, depending on the slot type:
     ///   - Value Slot
-    ///     - Append `[[domain = 2, 0, name_id_suffix, name_id_prefix], NEW_VALUE]` where
-    ///       `NEW_VALUE` is the new value of the slot and `name_id_{suffix, prefix}` are the slot
-    ///       name identifiers of the slot.
+    ///     - Append `[[domain = 2, 0, slot_id_suffix, slot_id_prefix], NEW_VALUE]` where
+    ///       `NEW_VALUE` is the new value of the slot and `slot_id_{suffix, prefix}` is the
+    ///       identifier of the slot.
     ///   - Map Slot
     ///     - For each key-value pair, sorted by key, whose new value is different from the previous
     ///       value in the map:
     ///       - Append `[KEY, NEW_VALUE]`.
-    ///     - Append `[[domain = 3, num_changed_entries, name_id_suffix, name_id_prefix], 0, 0, 0,
-    ///       0]`, where `name_id_{suffix, prefix}` are the slot name identifiers and
+    ///     - Append `[[domain = 3, num_changed_entries, slot_id_suffix, slot_id_prefix], 0, 0, 0,
+    ///       0]`, where `slot_id_{suffix, prefix}` are the slot identifiers and
     ///       `num_changed_entries` is the number of changed key-value pairs in the map.
     ///         - For partial state deltas, the map header must only be included if
     ///           `num_changed_entries` is not zero.
@@ -279,7 +279,7 @@ impl AccountDelta {
     ///   ID_AND_NONCE, EMPTY_WORD,
     ///   [/* no fungible asset delta */],
     ///   [/* no non-fungible asset delta */],
-    ///   [[domain = 2, 0, name_id_suffix = 0, name_id_prefix = 0], NEW_VALUE]
+    ///   [[domain = 2, 0, slot_id_suffix = 0, slot_id_prefix = 0], NEW_VALUE]
     /// ]
     /// ```
     ///
@@ -297,8 +297,8 @@ impl AccountDelta {
     ///   ID_AND_NONCE, EMPTY_WORD,
     ///   [/* no fungible asset delta */],
     ///   [/* no non-fungible asset delta */],
-    ///   [domain = 3, num_changed_entries = 0, name_id_suffix = 20, name_id_prefix = 21, 0, 0, 0, 0]
-    ///   [domain = 3, num_changed_entries = 0, name_id_suffix = 42, name_id_prefix = 43, 0, 0, 0, 0]
+    ///   [domain = 3, num_changed_entries = 0, slot_id_suffix = 20, slot_id_prefix = 21, 0, 0, 0, 0]
+    ///   [domain = 3, num_changed_entries = 0, slot_id_suffix = 42, slot_id_prefix = 43, 0, 0, 0, 0]
     /// ]
     /// ```
     ///
@@ -308,7 +308,7 @@ impl AccountDelta {
     ///   [/* no fungible asset delta */],
     ///   [/* no non-fungible asset delta */],
     ///   [KEY0, VALUE0],
-    ///   [domain = 3, num_changed_entries = 1, name_id_suffix = 42, name_id_prefix = 43, 0, 0, 0, 0]
+    ///   [domain = 3, num_changed_entries = 1, slot_id_suffix = 42, slot_id_prefix = 43, 0, 0, 0, 0]
     /// ]
     /// ```
     ///
@@ -599,8 +599,8 @@ mod tests {
         AccountStorage,
         AccountStorageMode,
         AccountType,
-        SlotName,
         StorageMapDelta,
+        StorageSlotName,
     };
     use crate::asset::{
         Asset,
@@ -627,7 +627,7 @@ mod tests {
         AccountDelta::new(account_id, storage_delta.clone(), vault_delta.clone(), ONE).unwrap();
 
         // non-empty delta
-        let storage_delta = AccountStorageDelta::from_iters([SlotName::mock(1)], [], []);
+        let storage_delta = AccountStorageDelta::from_iters([StorageSlotName::mock(1)], [], []);
 
         assert_matches!(
             AccountDelta::new(account_id, storage_delta.clone(), vault_delta.clone(), ZERO)
@@ -675,13 +675,13 @@ mod tests {
         assert_eq!(account_delta.to_bytes().len(), account_delta.get_size_hint());
 
         let storage_delta = AccountStorageDelta::from_iters(
-            [SlotName::mock(1)],
+            [StorageSlotName::mock(1)],
             [
-                (SlotName::mock(2), Word::from([1, 1, 1, 1u32])),
-                (SlotName::mock(3), Word::from([1, 1, 0, 1u32])),
+                (StorageSlotName::mock(2), Word::from([1, 1, 1, 1u32])),
+                (StorageSlotName::mock(3), Word::from([1, 1, 0, 1u32])),
             ],
             [(
-                SlotName::mock(4),
+                StorageSlotName::mock(4),
                 StorageMapDelta::from_iters(
                     [Word::from([1, 1, 1, 0u32]), Word::from([0, 1, 1, 1u32])],
                     [(Word::from([1, 1, 1, 1u32]), Word::from([1, 1, 1, 1u32]))],

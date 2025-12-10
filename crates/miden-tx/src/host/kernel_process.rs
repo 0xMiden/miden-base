@@ -1,14 +1,14 @@
 use miden_lib::transaction::memory::{
     ACCOUNT_STACK_TOP_PTR,
     ACCT_CODE_COMMITMENT_OFFSET,
-    ACCT_STORAGE_SLOT_NAME_ID_PREFIX_OFFSET,
-    ACCT_STORAGE_SLOT_NAME_ID_SUFFIX_OFFSET,
+    ACCT_STORAGE_SLOT_ID_PREFIX_OFFSET,
+    ACCT_STORAGE_SLOT_ID_SUFFIX_OFFSET,
     ACCT_STORAGE_SLOT_TYPE_OFFSET,
     ACCT_STORAGE_SLOT_VALUE_OFFSET,
     ACTIVE_INPUT_NOTE_PTR,
     NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR,
 };
-use miden_objects::account::{AccountId, SlotNameId, StorageSlotType};
+use miden_objects::account::{AccountId, StorageSlotId, StorageSlotType};
 use miden_objects::note::{NoteId, NoteInputs};
 use miden_objects::{Hasher, Word};
 use miden_processor::{ExecutionError, Felt, ProcessState};
@@ -38,7 +38,7 @@ pub(super) trait TransactionKernelProcess {
     fn get_storage_slot(
         &self,
         slot_ptr: Felt,
-    ) -> Result<(SlotNameId, StorageSlotType, Word), TransactionKernelError>;
+    ) -> Result<(StorageSlotId, StorageSlotType, Word), TransactionKernelError>;
 
     fn read_note_recipient_info_from_adv_map(
         &self,
@@ -187,7 +187,7 @@ impl<'a> TransactionKernelProcess for ProcessState<'a> {
     fn get_storage_slot(
         &self,
         slot_ptr: Felt,
-    ) -> Result<(SlotNameId, StorageSlotType, Word), TransactionKernelError> {
+    ) -> Result<(StorageSlotId, StorageSlotType, Word), TransactionKernelError> {
         let slot_ptr = u32::try_from(slot_ptr).map_err(|_err| {
             TransactionKernelError::other(format!(
                 "slot ptr should fit into a u32, but was {slot_ptr}"
@@ -232,9 +232,9 @@ impl<'a> TransactionKernelProcess for ProcessState<'a> {
             )
         })?;
 
-        let suffix = slot_metadata[ACCT_STORAGE_SLOT_NAME_ID_SUFFIX_OFFSET as usize];
-        let prefix = slot_metadata[ACCT_STORAGE_SLOT_NAME_ID_PREFIX_OFFSET as usize];
-        let slot_id = SlotNameId::new(suffix, prefix);
+        let suffix = slot_metadata[ACCT_STORAGE_SLOT_ID_SUFFIX_OFFSET as usize];
+        let prefix = slot_metadata[ACCT_STORAGE_SLOT_ID_PREFIX_OFFSET as usize];
+        let slot_id = StorageSlotId::new(suffix, prefix);
 
         Ok((slot_id, slot_type, slot_value))
     }

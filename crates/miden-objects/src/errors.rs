@@ -22,11 +22,11 @@ use crate::account::{
     AccountIdPrefix,
     AccountStorage,
     AccountType,
-    SlotName,
-    SlotNameId,
+    StorageSlotId,
     // StorageValueName,
     // StorageValueNameError,
     // TemplateTypeError,
+    StorageSlotName,
 };
 use crate::address::AddressType;
 use crate::asset::AssetVaultKey;
@@ -148,21 +148,21 @@ pub enum AccountError {
     #[error("storage map root {0} not found in the account storage")]
     StorageMapRootNotFound(Word),
     #[error("storage slot {0} is not of type map")]
-    StorageSlotNotMap(SlotName),
+    StorageSlotNotMap(StorageSlotName),
     #[error("storage slot {0} is not of type value")]
-    StorageSlotNotValue(SlotName),
+    StorageSlotNotValue(StorageSlotName),
     #[error("storage slot name {0} is assigned to more than one slot")]
-    DuplicateStorageSlotName(SlotName),
+    DuplicateStorageSlotName(StorageSlotName),
     #[error(
         "account storage cannot contain a user-provided slot with name {} as it is reserved by the protocol",
         AccountStorage::faucet_metadata_slot()
     )]
     StorageSlotNameMustNotBeFaucetMetadata,
     #[error("storage does not contain a slot with name {slot_name}")]
-    StorageSlotNameNotFound { slot_name: SlotName },
-    #[error("storage does not contain a slot with ID {slot_name_id}")]
-    StorageSlotNameIdNotFound { slot_name_id: SlotNameId },
-    #[error("storage slots must be sorted by slot name ID")]
+    StorageSlotNameNotFound { slot_name: StorageSlotName },
+    #[error("storage does not contain a slot with ID {slot_id}")]
+    StorageSlotIdNotFound { slot_id: StorageSlotId },
+    #[error("storage slots must be sorted by slot ID")]
     UnsortedStorageSlots,
     #[error("number of storage slots is {0} but max possible number is {max}", max = AccountStorage::MAX_NUM_STORAGE_SLOTS)]
     StorageTooManySlots(u64),
@@ -258,10 +258,10 @@ pub enum SlotNameError {
     UnexpectedUnderscore,
     #[error(
         "slot names must contain at least {} components separated by double colons",
-        SlotName::MIN_NUM_COMPONENTS
+        StorageSlotName::MIN_NUM_COMPONENTS
     )]
     TooShort,
-    #[error("slot names must contain at most {} characters", SlotName::MAX_LENGTH)]
+    #[error("slot names must contain at most {} characters", StorageSlotName::MAX_LENGTH)]
     TooLong,
 }
 
@@ -374,7 +374,7 @@ pub enum NetworkIdError {
 #[derive(Debug, Error)]
 pub enum AccountDeltaError {
     #[error("storage slot {0} was updated as a value and as a map")]
-    StorageSlotUsedAsDifferentTypes(SlotName),
+    StorageSlotUsedAsDifferentTypes(StorageSlotName),
     #[error("non fungible vault can neither be added nor removed twice")]
     DuplicateNonFungibleVaultUpdate(NonFungibleAsset),
     #[error(

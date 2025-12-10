@@ -1,7 +1,7 @@
 use alloc::vec::Vec;
 
 use miden_lib::transaction::{EventId, TransactionEventId};
-use miden_objects::account::{AccountId, SlotName, StorageMap, StorageSlotType};
+use miden_objects::account::{AccountId, StorageMap, StorageSlotName, StorageSlotType};
 use miden_objects::asset::{Asset, AssetVault, AssetVaultKey, FungibleAsset};
 use miden_objects::note::{NoteId, NoteInputs, NoteMetadata, NoteRecipient, NoteScript};
 use miden_objects::transaction::TransactionSummary;
@@ -57,12 +57,12 @@ pub(crate) enum TransactionEvent {
     },
 
     AccountStorageAfterSetItem {
-        slot_name: SlotName,
+        slot_name: StorageSlotName,
         new_value: Word,
     },
 
     AccountStorageAfterSetMapItem {
-        slot_name: SlotName,
+        slot_name: StorageSlotName,
         key: Word,
         old_map_value: Word,
         new_map_value: Word,
@@ -259,9 +259,9 @@ impl TransactionEvent {
                 let slot_ptr = process.get_stack_item(1);
                 let new_value = process.get_stack_word_be(2);
 
-                let (slot_name_id, slot_type, _old_value) = process.get_storage_slot(slot_ptr)?;
+                let (slot_id, slot_type, _old_value) = process.get_storage_slot(slot_ptr)?;
 
-                let (slot_name, ..) = base_host.initial_account_storage_slot(slot_name_id)?;
+                let (slot_name, ..) = base_host.initial_account_storage_slot(slot_id)?;
                 let slot_name = slot_name.clone();
 
                 if !slot_type.is_value() {
@@ -297,9 +297,9 @@ impl TransactionEvent {
                 let old_map_value = process.get_stack_word_be(6);
                 let new_map_value = process.get_stack_word_be(10);
 
-                // Resolve slot name ID to slot name.
-                let (slot_name_id, ..) = process.get_storage_slot(slot_ptr)?;
-                let (slot_name, ..) = base_host.initial_account_storage_slot(slot_name_id)?;
+                // Resolve slot ID to slot name.
+                let (slot_id, ..) = process.get_storage_slot(slot_ptr)?;
+                let (slot_name, ..) = base_host.initial_account_storage_slot(slot_id)?;
 
                 let slot_name = slot_name.clone();
 
@@ -566,7 +566,7 @@ fn on_account_storage_map_item_accessed<'store, STORE>(
     slot_ptr: Felt,
     map_key: Word,
 ) -> Result<Option<TransactionEvent>, TransactionKernelError> {
-    let (slot_name_id, slot_type, current_map_root) = process.get_storage_slot(slot_ptr)?;
+    let (slot_id, slot_type, current_map_root) = process.get_storage_slot(slot_ptr)?;
 
     if !slot_type.is_map() {
         return Err(TransactionKernelError::other(format!(
@@ -585,11 +585,11 @@ fn on_account_storage_map_item_accessed<'store, STORE>(
         // root instead of the _current_ one, since the data
         // store only has witnesses for initial one.
         let (_slot_name, slot_type, slot_value) =
-            base_host.initial_account_storage_slot(slot_name_id)?;
+            base_host.initial_account_storage_slot(slot_id)?;
 
         if *slot_type != StorageSlotType::Map {
             return Err(TransactionKernelError::other(format!(
-                "expected slot {slot_name_id} to be of type map"
+                "expected slot {slot_id} to be of type map"
             )));
         }
         *slot_value

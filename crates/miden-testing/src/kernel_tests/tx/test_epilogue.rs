@@ -469,7 +469,7 @@ async fn epilogue_fails_on_account_state_change_without_nonce_increment() -> any
             push.91.92.93.94
             push.MOCK_VALUE_SLOT0[0..2]
             repeat.5 movup.5 drop end
-            # => [name_id_prefix, name_id_suffix, VALUE]
+            # => [slot_id_prefix, slot_id_suffix, VALUE]
             call.account::set_item
             # => [PREV_VALUE]
             dropw

@@ -291,7 +291,7 @@ mod tests {
     use miden_processor::MastNodeExt;
 
     use super::*;
-    use crate::account::{NamedStorageSlot, SlotName};
+    use crate::account::{NamedStorageSlot, StorageSlotName};
     use crate::testing::noop_auth_component::NoopAuthComponent;
 
     const CUSTOM_CODE1: &str = "
@@ -316,14 +316,17 @@ mod tests {
             .expect("code should be valid")
     });
 
-    static CUSTOM_COMPONENT1_SLOT_NAME: LazyLock<SlotName> = LazyLock::new(|| {
-        SlotName::new("custom::component1::slot0").expect("slot name should be valid")
+    static CUSTOM_COMPONENT1_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
+        StorageSlotName::new("custom::component1::slot0")
+            .expect("storage slot name should be valid")
     });
-    static CUSTOM_COMPONENT2_SLOT_NAME0: LazyLock<SlotName> = LazyLock::new(|| {
-        SlotName::new("custom::component2::slot0").expect("slot name should be valid")
+    static CUSTOM_COMPONENT2_SLOT_NAME0: LazyLock<StorageSlotName> = LazyLock::new(|| {
+        StorageSlotName::new("custom::component2::slot0")
+            .expect("storage slot name should be valid")
     });
-    static CUSTOM_COMPONENT2_SLOT_NAME1: LazyLock<SlotName> = LazyLock::new(|| {
-        SlotName::new("custom::component2::slot1").expect("slot name should be valid")
+    static CUSTOM_COMPONENT2_SLOT_NAME1: LazyLock<StorageSlotName> = LazyLock::new(|| {
+        StorageSlotName::new("custom::component2::slot1")
+            .expect("storage slot name should be valid")
     });
 
     struct CustomComponent1 {

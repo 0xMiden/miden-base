@@ -3,24 +3,24 @@ use core::fmt::Display;
 
 use crate::Felt;
 
-/// The partial hash of a [`SlotName`](super::SlotName).
+/// The partial hash of a [`StorageSlotName`](super::StorageSlotName).
 ///
-/// The ID of a slot name are the first (`suffix`) and second (`prefix`) field elements of the
+/// The ID of a slot are the first (`suffix`) and second (`prefix`) field elements of the
 /// blake3-hashed slot name.
 ///
-/// The slot name ID is used to uniquely identify a storage slot and is used to sort slots in
-/// account storage.
+/// The slot ID is used to uniquely identify a storage slot and is used to sort slots in account
+/// storage.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct SlotNameId {
+pub struct StorageSlotId {
     suffix: Felt,
     prefix: Felt,
 }
 
-impl SlotNameId {
+impl StorageSlotId {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
-    /// Creates a new [`SlotNameId`] from the provided felts.
+    /// Creates a new [`StorageSlotId`] from the provided felts.
     pub fn new(suffix: Felt, prefix: Felt) -> Self {
         Self { suffix, prefix }
     }
@@ -28,17 +28,17 @@ impl SlotNameId {
     // ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns the suffix of the [`SlotNameId`].
+    /// Returns the suffix of the [`StorageSlotId`].
     pub fn suffix(&self) -> Felt {
         self.suffix
     }
 
-    /// Returns the prefix of the [`SlotNameId`].
+    /// Returns the prefix of the [`StorageSlotId`].
     pub fn prefix(&self) -> Felt {
         self.prefix
     }
 
-    /// Returns the [`SlotNameId`]'s felts encoded into a u128.
+    /// Returns the [`StorageSlotId`]'s felts encoded into a u128.
     fn as_u128(&self) -> u128 {
         let mut le_bytes = [0_u8; 16];
         le_bytes[..8].copy_from_slice(&self.suffix().as_int().to_le_bytes());
@@ -47,7 +47,7 @@ impl SlotNameId {
     }
 }
 
-impl Ord for SlotNameId {
+impl Ord for StorageSlotId {
     fn cmp(&self, other: &Self) -> Ordering {
         match self.prefix.as_int().cmp(&other.prefix.as_int()) {
             ord @ Ordering::Less | ord @ Ordering::Greater => ord,
@@ -56,13 +56,13 @@ impl Ord for SlotNameId {
     }
 }
 
-impl PartialOrd for SlotNameId {
+impl PartialOrd for StorageSlotId {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl Display for SlotNameId {
+impl Display for StorageSlotId {
     /// Returns a big-endian, hex-encoded string of length 34, including the `0x` prefix.
     ///
     /// This means it encodes 16 bytes.
@@ -79,11 +79,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_name_id_as_u128() {
+    fn test_slot_id_as_u128() {
         let suffix = 5;
         let prefix = 3;
-        let name_id = SlotNameId::new(Felt::from(suffix as u32), Felt::from(prefix as u32));
-        assert_eq!(name_id.as_u128(), (prefix << 64) + suffix);
-        assert_eq!(format!("{name_id}"), "0x00000000000000030000000000000005");
+        let slot_id = StorageSlotId::new(Felt::from(suffix as u32), Felt::from(prefix as u32));
+        assert_eq!(slot_id.as_u128(), (prefix << 64) + suffix);
+        assert_eq!(format!("{slot_id}"), "0x00000000000000030000000000000005");
     }
 }

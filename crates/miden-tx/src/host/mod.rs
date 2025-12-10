@@ -36,8 +36,8 @@ use miden_objects::account::{
     AccountId,
     AccountStorageHeader,
     PartialAccount,
-    SlotName,
-    SlotNameId,
+    StorageSlotId,
+    StorageSlotName,
     StorageSlotType,
 };
 use miden_objects::asset::Asset;
@@ -160,12 +160,12 @@ impl<'store, STORE> TransactionBaseHost<'store, STORE> {
         &self.initial_account_storage_header
     }
 
-    /// Returns the initial storage slot of the native account identified by [`SlotNameId`], which
-    /// represents the state at the beginning of the transaction.
+    /// Returns the initial storage slot of the native account identified by [`StorageSlotId`],
+    /// which represents the state at the beginning of the transaction.
     pub fn initial_account_storage_slot(
         &self,
-        slot_id: SlotNameId,
-    ) -> Result<(&SlotName, &StorageSlotType, &Word), TransactionKernelError> {
+        slot_id: StorageSlotId,
+    ) -> Result<(&StorageSlotName, &StorageSlotType, &Word), TransactionKernelError> {
         self.initial_account_storage_header()
             .find_slot_header_by_id(slot_id)
             .ok_or_else(|| {
@@ -334,7 +334,7 @@ impl<'store, STORE> TransactionBaseHost<'store, STORE> {
     /// Tracks the insertion of an item in the account delta.
     pub fn on_account_storage_after_set_item(
         &mut self,
-        slot_name: SlotName,
+        slot_name: StorageSlotName,
         new_value: Word,
     ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
         self.account_delta.storage().set_item(slot_name, new_value);
@@ -345,7 +345,7 @@ impl<'store, STORE> TransactionBaseHost<'store, STORE> {
     /// Tracks the insertion of a storage map item in the account delta.
     pub fn on_account_storage_after_set_map_item(
         &mut self,
-        slot_name: SlotName,
+        slot_name: StorageSlotName,
         key: Word,
         old_map_value: Word,
         new_map_value: Word,

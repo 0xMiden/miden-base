@@ -274,28 +274,28 @@ end
 
 #! Gets an item from the active account storage.
 #!
-#! Inputs:  [name_id_prefix, name_id_suffix]
+#! Inputs:  [slot_id_prefix, slot_id_suffix]
 #! Outputs: [VALUE]
 #!
 #! Where:
-#! - name_id_{prefix, suffix} are the prefix and suffix felts of the name identifier, which are
+#! - slot_id_{prefix, suffix} are the prefix and suffix felts of the slot identifier, which are
 #!   the first two felts of the hashed slot name.
 #! - VALUE is the value of the item.
 #!
 #! Panics if:
-#! - a slot with the provided name ID does not exist in account storage.
+#! - a slot with the provided slot ID does not exist in account storage.
 #!
 #! Invocation: exec
 export.get_item
     push.0 movdn.2
-    # => [name_id_prefix, name_id_suffix, 0]
+    # => [slot_id_prefix, slot_id_suffix, 0]
 
     exec.kernel_proc_offsets::account_get_item_offset
-    # => [offset, name_id_prefix, name_id_suffix, 0]
+    # => [offset, slot_id_prefix, slot_id_suffix, 0]
 
     # pad the stack
     padw swapw padw padw swapdw
-    # => [offset, name_id_prefix, name_id_suffix, pad(13)]
+    # => [offset, slot_id_prefix, slot_id_suffix, pad(13)]
 
     syscall.exec_kernel_proc
     # => [VALUE, pad(12)]
@@ -308,28 +308,28 @@ end
 #! Gets the initial item from the active account storage slot as it was at the beginning of the
 #! transaction.
 #!
-#! Inputs:  [name_id_prefix, name_id_suffix]
+#! Inputs:  [slot_id_prefix, slot_id_suffix]
 #! Outputs: [INIT_VALUE]
 #!
 #! Where:
-#! - name_id_{prefix, suffix} are the prefix and suffix felts of the name identifier, which are
+#! - slot_id_{prefix, suffix} are the prefix and suffix felts of the slot identifier, which are
 #!   the first two felts of the hashed slot name.
 #! - INIT_VALUE is the initial value of the item at the beginning of the transaction.
 #!
 #! Panics if:
-#! - a slot with the provided name ID does not exist in account storage.
+#! - a slot with the provided slot ID does not exist in account storage.
 #!
 #! Invocation: exec
 export.get_initial_item
     push.0 movdn.2
-    # => [name_id_prefix, name_id_suffix, 0]
+    # => [slot_id_prefix, slot_id_suffix, 0]
 
     exec.kernel_proc_offsets::account_get_initial_item_offset
-    # => [offset, name_id_prefix, name_id_suffix, 0]
+    # => [offset, slot_id_prefix, slot_id_suffix, 0]
 
     # pad the stack
     padw swapw padw padw swapdw
-    # => [offset, name_id_prefix, name_id_suffix, pad(13)]
+    # => [offset, slot_id_prefix, slot_id_suffix, pad(13)]
 
     syscall.exec_kernel_proc
     # => [INIT_VALUE, pad(12)]
@@ -341,28 +341,28 @@ end
 
 #! Gets a map item from the active account storage.
 #!
-#! Inputs:  [name_id_prefix, name_id_suffix, KEY]
+#! Inputs:  [slot_id_prefix, slot_id_suffix, KEY]
 #! Outputs: [VALUE]
 #!
 #! Where:
-#! - name_id_{prefix, suffix} are the prefix and suffix felts of the name identifier, which are
+#! - slot_id_{prefix, suffix} are the prefix and suffix felts of the slot identifier, which are
 #!   the first two felts of the hashed slot name.
 #!    - the slot must point to the root of the storage map.
 #! - KEY is the key of the item to get.
 #! - VALUE is the value of the item.
 #!
 #! Panics if:
-#! - a slot with the provided name ID does not exist in account storage.
+#! - a slot with the provided slot ID does not exist in account storage.
 #! - the slot item at index is not a map.
 #!
 #! Invocation: exec
 export.get_map_item
     exec.kernel_proc_offsets::account_get_map_item_offset
-    # => [offset, name_id_prefix, name_id_suffix, KEY]
+    # => [offset, slot_id_prefix, slot_id_suffix, KEY]
 
     # pad the stack
     push.0 movdn.7 padw padw swapdw
-    # => [0, offset, name_id_prefix, name_id_suffix, KEY, pad(9)]
+    # => [0, offset, slot_id_prefix, slot_id_suffix, KEY, pad(9)]
 
     syscall.exec_kernel_proc
     # => [VALUE, pad(12)]
@@ -375,26 +375,26 @@ end
 #! Gets the initial VALUE from the active account storage map as it was at the beginning of the
 #! transaction.
 #!
-#! Inputs:  [name_id_prefix, name_id_suffix, KEY]
+#! Inputs:  [slot_id_prefix, slot_id_suffix, KEY]
 #! Outputs: [INIT_VALUE]
 #!
 #! Where:
-#! - name_id_{prefix, suffix} are the prefix and suffix felts of the name identifier, which are
+#! - slot_id_{prefix, suffix} are the prefix and suffix felts of the slot identifier, which are
 #!   the first two felts of the hashed slot name.
 #! - KEY is the key of the item to get.
 #! - INIT_VALUE is the initial value of the item at the beginning of the transaction.
 #!
 #! Panics if:
-#! - a slot with the provided name ID does not exist in account storage.
+#! - a slot with the provided slot ID does not exist in account storage.
 #! - the slot item at index is not a map.
 #!
 #! Invocation: exec
 export.get_initial_map_item
     exec.kernel_proc_offsets::account_get_initial_map_item_offset
-    # => [offset, name_id_prefix, name_id_suffix, KEY]
+    # => [offset, slot_id_prefix, slot_id_suffix, KEY]
 
     push.0 movdn.7 padw padw swapdw
-    # => [0, offset, name_id_prefix, name_id_suffix, KEY, pad(9)]
+    # => [0, offset, slot_id_prefix, slot_id_suffix, KEY, pad(9)]
 
     syscall.exec_kernel_proc
     # => [INIT_VALUE, pad(12)]

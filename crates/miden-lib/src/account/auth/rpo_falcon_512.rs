@@ -1,12 +1,12 @@
 use miden_objects::account::auth::PublicKeyCommitment;
-use miden_objects::account::{AccountComponent, NamedStorageSlot, SlotName};
+use miden_objects::account::{AccountComponent, NamedStorageSlot, StorageSlotName};
 use miden_objects::utils::sync::LazyLock;
 
 use crate::account::components::rpo_falcon_512_library;
 
-static FALCON_PUBKEY_SLOT_NAME: LazyLock<SlotName> = LazyLock::new(|| {
-    SlotName::new("miden::standards::auth::rpo_falcon512::public_key")
-        .expect("slot name should be valid")
+static FALCON_PUBKEY_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
+    StorageSlotName::new("miden::standards::auth::rpo_falcon512::public_key")
+        .expect("storage slot name should be valid")
 });
 
 /// An [`AccountComponent`] implementing the RpoFalcon512 signature scheme for authentication of
@@ -36,8 +36,8 @@ impl AuthRpoFalcon512 {
         Self { pub_key }
     }
 
-    /// Returns the [`SlotName`] where the public key is stored.
-    pub fn public_key_slot() -> &'static SlotName {
+    /// Returns the [`StorageSlotName`] where the public key is stored.
+    pub fn public_key_slot() -> &'static StorageSlotName {
         &FALCON_PUBKEY_SLOT_NAME
     }
 }

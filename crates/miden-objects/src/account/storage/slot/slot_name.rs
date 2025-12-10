@@ -4,7 +4,7 @@ use core::fmt::Display;
 
 use miden_core::utils::hash_string_to_word;
 
-use crate::account::storage::slot::SlotNameId;
+use crate::account::storage::slot::StorageSlotId;
 use crate::errors::SlotNameError;
 use crate::utils::serde::{ByteWriter, Deserializable, DeserializationError, Serializable};
 
@@ -36,11 +36,11 @@ use crate::utils::serde::{ByteWriter, Deserializable, DeserializationError, Seri
 ///   (underscore).
 /// - Each component must not start with an underscore.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct SlotName {
+pub struct StorageSlotName {
     name: Cow<'static, str>,
 }
 
-impl SlotName {
+impl StorageSlotName {
     // CONSTANTS
     // --------------------------------------------------------------------------------------------
 
@@ -53,13 +53,14 @@ impl SlotName {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
-    /// Constructs a new [`SlotName`] from a static string.
+    /// Constructs a new [`StorageSlotName`] from a static string.
     ///
     /// This function is `const` and can be used to define slot names as constants, e.g.:
     ///
     /// ```rust
-    /// # use miden_objects::account::SlotName;
-    /// const SLOT_NAME: SlotName = SlotName::from_static_str("miden::basic_fungible_faucet::metadata");
+    /// # use miden_objects::account::StorageSlotName;
+    /// const SLOT_NAME: StorageSlotName =
+    ///     StorageSlotName::from_static_str("miden::basic_fungible_faucet::metadata");
     /// ```
     ///
     /// This is convenient because using a string that is not a valid slot name fails to compile.
@@ -76,7 +77,7 @@ impl SlotName {
         }
     }
 
-    /// Constructs a new [`SlotName`] from a string.
+    /// Constructs a new [`StorageSlotName`] from a string.
     ///
     /// # Errors
     ///
@@ -107,11 +108,11 @@ impl SlotName {
     }
 
     // TODO(named_slots): Docs.
-    pub fn compute_id(&self) -> SlotNameId {
+    pub fn compute_id(&self) -> StorageSlotId {
         let hashed_word = hash_string_to_word(self.as_str());
         let suffix = hashed_word[0];
         let prefix = hashed_word[1];
-        SlotNameId::new(suffix, prefix)
+        StorageSlotId::new(suffix, prefix)
     }
 
     // HELPERS
@@ -209,26 +210,26 @@ impl SlotName {
     }
 }
 
-impl Ord for SlotName {
+impl Ord for StorageSlotName {
     fn cmp(&self, other: &Self) -> core::cmp::Ordering {
         // TODO(named_slots): Cache ID in SlotName for efficiency.
         self.compute_id().cmp(&other.compute_id())
     }
 }
 
-impl PartialOrd for SlotName {
+impl PartialOrd for StorageSlotName {
     fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl Display for SlotName {
+impl Display for StorageSlotName {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.write_str(self.as_str())
     }
 }
 
-impl Serializable for SlotName {
+impl Serializable for StorageSlotName {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         target.write_u8(self.len());
         target.write_many(self.as_str().as_bytes())
@@ -240,7 +241,7 @@ impl Serializable for SlotName {
     }
 }
 
-impl Deserializable for SlotName {
+impl Deserializable for StorageSlotName {
     fn read_from<R: miden_core::utils::ByteReader>(
         source: &mut R,
     ) -> Result<Self, DeserializationError> {
@@ -271,32 +272,32 @@ mod tests {
     // Const function tests
     // --------------------------------------------------------------------------------------------
 
-    const _NAME0: SlotName = SlotName::from_static_str("name::component");
-    const _NAME1: SlotName = SlotName::from_static_str("one::two::three::four::five");
-    const _NAME2: SlotName = SlotName::from_static_str("one::two_three::four");
+    const _NAME0: StorageSlotName = StorageSlotName::from_static_str("name::component");
+    const _NAME1: StorageSlotName = StorageSlotName::from_static_str("one::two::three::four::five");
+    const _NAME2: StorageSlotName = StorageSlotName::from_static_str("one::two_three::four");
 
     #[test]
     #[should_panic(expected = "invalid slot name")]
     fn slot_name_panics_on_invalid_character() {
-        SlotName::from_static_str("miden!::component");
+        StorageSlotName::from_static_str("miden!::component");
     }
 
     #[test]
     #[should_panic(expected = "invalid slot name")]
     fn slot_name_panics_on_invalid_character2() {
-        SlotName::from_static_str("miden_ö::component");
+        StorageSlotName::from_static_str("miden_ö::component");
     }
 
     #[test]
     #[should_panic(expected = "invalid slot name")]
     fn slot_name_panics_when_too_short() {
-        SlotName::from_static_str("one");
+        StorageSlotName::from_static_str("one");
     }
 
     #[test]
     #[should_panic(expected = "invalid slot name")]
     fn slot_name_panics_on_component_starting_with_underscores() {
-        SlotName::from_static_str("one::_two");
+        StorageSlotName::from_static_str("one::_two");
     }
 
     // Invalid colon or underscore tests
@@ -305,31 +306,49 @@ mod tests {
     #[test]
     fn slot_name_fails_on_invalid_colon_placement() {
         // Single colon.
-        assert_matches!(SlotName::new(":").unwrap_err(), SlotNameError::UnexpectedColon);
-        assert_matches!(SlotName::new("0::1:").unwrap_err(), SlotNameError::UnexpectedColon);
-        assert_matches!(SlotName::new(":0::1").unwrap_err(), SlotNameError::UnexpectedColon);
-        assert_matches!(SlotName::new("0::1:2").unwrap_err(), SlotNameError::UnexpectedColon);
+        assert_matches!(StorageSlotName::new(":").unwrap_err(), SlotNameError::UnexpectedColon);
+        assert_matches!(StorageSlotName::new("0::1:").unwrap_err(), SlotNameError::UnexpectedColon);
+        assert_matches!(StorageSlotName::new(":0::1").unwrap_err(), SlotNameError::UnexpectedColon);
+        assert_matches!(
+            StorageSlotName::new("0::1:2").unwrap_err(),
+            SlotNameError::UnexpectedColon
+        );
 
         // Double colon (placed invalidly).
-        assert_matches!(SlotName::new("::").unwrap_err(), SlotNameError::UnexpectedColon);
-        assert_matches!(SlotName::new("1::2::").unwrap_err(), SlotNameError::UnexpectedColon);
-        assert_matches!(SlotName::new("::1::2").unwrap_err(), SlotNameError::UnexpectedColon);
+        assert_matches!(StorageSlotName::new("::").unwrap_err(), SlotNameError::UnexpectedColon);
+        assert_matches!(
+            StorageSlotName::new("1::2::").unwrap_err(),
+            SlotNameError::UnexpectedColon
+        );
+        assert_matches!(
+            StorageSlotName::new("::1::2").unwrap_err(),
+            SlotNameError::UnexpectedColon
+        );
 
         // Triple colon.
-        assert_matches!(SlotName::new(":::").unwrap_err(), SlotNameError::UnexpectedColon);
-        assert_matches!(SlotName::new("1::2:::").unwrap_err(), SlotNameError::UnexpectedColon);
-        assert_matches!(SlotName::new(":::1::2").unwrap_err(), SlotNameError::UnexpectedColon);
-        assert_matches!(SlotName::new("1::2:::3").unwrap_err(), SlotNameError::UnexpectedColon);
+        assert_matches!(StorageSlotName::new(":::").unwrap_err(), SlotNameError::UnexpectedColon);
+        assert_matches!(
+            StorageSlotName::new("1::2:::").unwrap_err(),
+            SlotNameError::UnexpectedColon
+        );
+        assert_matches!(
+            StorageSlotName::new(":::1::2").unwrap_err(),
+            SlotNameError::UnexpectedColon
+        );
+        assert_matches!(
+            StorageSlotName::new("1::2:::3").unwrap_err(),
+            SlotNameError::UnexpectedColon
+        );
     }
 
     #[test]
     fn slot_name_fails_on_invalid_underscore_placement() {
         assert_matches!(
-            SlotName::new("_one::two").unwrap_err(),
+            StorageSlotName::new("_one::two").unwrap_err(),
             SlotNameError::UnexpectedUnderscore
         );
         assert_matches!(
-            SlotName::new("one::_two").unwrap_err(),
+            StorageSlotName::new("one::_two").unwrap_err(),
             SlotNameError::UnexpectedUnderscore
         );
     }
@@ -339,19 +358,22 @@ mod tests {
 
     #[test]
     fn slot_name_fails_on_empty_string() {
-        assert_matches!(SlotName::new("").unwrap_err(), SlotNameError::TooShort);
+        assert_matches!(StorageSlotName::new("").unwrap_err(), SlotNameError::TooShort);
     }
 
     #[test]
     fn slot_name_fails_on_single_component() {
-        assert_matches!(SlotName::new("single_component").unwrap_err(), SlotNameError::TooShort);
+        assert_matches!(
+            StorageSlotName::new("single_component").unwrap_err(),
+            SlotNameError::TooShort
+        );
     }
 
     #[test]
     fn slot_name_fails_on_string_whose_length_exceeds_max_length() {
         let mut string = get_max_length_slot_name();
         string.push('a');
-        assert_matches!(SlotName::new(string).unwrap_err(), SlotNameError::TooLong);
+        assert_matches!(StorageSlotName::new(string).unwrap_err(), SlotNameError::TooLong);
     }
 
     // Alphabet validation tests
@@ -360,7 +382,7 @@ mod tests {
     #[test]
     fn slot_name_allows_ascii_alphanumeric_and_underscore() -> anyhow::Result<()> {
         let name = format!("{FULL_ALPHABET}::second");
-        let slot_name = SlotName::new(&name)?;
+        let slot_name = StorageSlotName::new(&name)?;
         assert_eq!(slot_name.as_str(), name);
 
         Ok(())
@@ -369,15 +391,15 @@ mod tests {
     #[test]
     fn slot_name_fails_on_invalid_character() {
         assert_matches!(
-            SlotName::new("na#me::second").unwrap_err(),
+            StorageSlotName::new("na#me::second").unwrap_err(),
             SlotNameError::InvalidCharacter
         );
         assert_matches!(
-            SlotName::new("first_entry::secönd").unwrap_err(),
+            StorageSlotName::new("first_entry::secönd").unwrap_err(),
             SlotNameError::InvalidCharacter
         );
         assert_matches!(
-            SlotName::new("first::sec::th!rd").unwrap_err(),
+            StorageSlotName::new("first::sec::th!rd").unwrap_err(),
             SlotNameError::InvalidCharacter
         );
     }
@@ -387,19 +409,19 @@ mod tests {
 
     #[test]
     fn slot_name_with_min_components_is_valid() -> anyhow::Result<()> {
-        SlotName::new("miden::component")?;
+        StorageSlotName::new("miden::component")?;
         Ok(())
     }
 
     #[test]
     fn slot_name_with_many_components_is_valid() -> anyhow::Result<()> {
-        SlotName::new("miden::faucet0::fungible_1::b4sic::metadata")?;
+        StorageSlotName::new("miden::faucet0::fungible_1::b4sic::metadata")?;
         Ok(())
     }
 
     #[test]
     fn slot_name_with_max_length_is_valid() -> anyhow::Result<()> {
-        SlotName::new(get_max_length_slot_name())?;
+        StorageSlotName::new(get_max_length_slot_name())?;
         Ok(())
     }
 
@@ -408,15 +430,15 @@ mod tests {
 
     #[test]
     fn serde_slot_name() -> anyhow::Result<()> {
-        let slot_name = SlotName::new("miden::faucet0::fungible_1::b4sic::metadata")?;
-        assert_eq!(slot_name, SlotName::read_from_bytes(&slot_name.to_bytes())?);
+        let slot_name = StorageSlotName::new("miden::faucet0::fungible_1::b4sic::metadata")?;
+        assert_eq!(slot_name, StorageSlotName::read_from_bytes(&slot_name.to_bytes())?);
         Ok(())
     }
 
     #[test]
     fn serde_max_length_slot_name() -> anyhow::Result<()> {
-        let slot_name = SlotName::new(get_max_length_slot_name())?;
-        assert_eq!(slot_name, SlotName::read_from_bytes(&slot_name.to_bytes())?);
+        let slot_name = StorageSlotName::new(get_max_length_slot_name())?;
+        assert_eq!(slot_name, StorageSlotName::read_from_bytes(&slot_name.to_bytes())?);
         Ok(())
     }
 
@@ -425,10 +447,10 @@ mod tests {
 
     fn get_max_length_slot_name() -> String {
         const MIDEN_STR: &str = "miden::";
-        let remainder = ['a'; SlotName::MAX_LENGTH - MIDEN_STR.len()];
+        let remainder = ['a'; StorageSlotName::MAX_LENGTH - MIDEN_STR.len()];
         let mut string = MIDEN_STR.to_owned();
         string.extend(remainder);
-        assert_eq!(string.len(), SlotName::MAX_LENGTH);
+        assert_eq!(string.len(), StorageSlotName::MAX_LENGTH);
         string
     }
 }

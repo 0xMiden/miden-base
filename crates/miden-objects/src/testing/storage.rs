@@ -10,9 +10,9 @@ use crate::account::{
     AccountStorage,
     AccountStorageDelta,
     NamedStorageSlot,
-    SlotName,
     StorageMap,
     StorageMapDelta,
+    StorageSlotName,
 };
 use crate::note::NoteAssets;
 use crate::utils::sync::LazyLock;
@@ -22,8 +22,8 @@ use crate::utils::sync::LazyLock;
 
 #[derive(Clone, Debug, Default)]
 pub struct AccountStorageDeltaBuilder {
-    values: BTreeMap<SlotName, Word>,
-    maps: BTreeMap<SlotName, StorageMapDelta>,
+    values: BTreeMap<StorageSlotName, Word>,
+    maps: BTreeMap<StorageSlotName, StorageMapDelta>,
 }
 
 impl AccountStorageDeltaBuilder {
@@ -40,19 +40,22 @@ impl AccountStorageDeltaBuilder {
     // MODIFIERS
     // -------------------------------------------------------------------------------------------
 
-    pub fn add_cleared_items(mut self, items: impl IntoIterator<Item = SlotName>) -> Self {
+    pub fn add_cleared_items(mut self, items: impl IntoIterator<Item = StorageSlotName>) -> Self {
         self.values.extend(items.into_iter().map(|slot| (slot, EMPTY_WORD)));
         self
     }
 
-    pub fn add_updated_values(mut self, items: impl IntoIterator<Item = (SlotName, Word)>) -> Self {
+    pub fn add_updated_values(
+        mut self,
+        items: impl IntoIterator<Item = (StorageSlotName, Word)>,
+    ) -> Self {
         self.values.extend(items);
         self
     }
 
     pub fn add_updated_maps(
         mut self,
-        items: impl IntoIterator<Item = (SlotName, StorageMapDelta)>,
+        items: impl IntoIterator<Item = (StorageSlotName, StorageMapDelta)>,
     ) -> Self {
         self.maps.extend(items);
         self
@@ -69,12 +72,15 @@ impl AccountStorageDeltaBuilder {
 // CONSTANTS
 // ================================================================================================
 
-pub static MOCK_VALUE_SLOT0: LazyLock<SlotName> =
-    LazyLock::new(|| SlotName::new("miden::test::value0").expect("slot name should be valid"));
-pub static MOCK_VALUE_SLOT1: LazyLock<SlotName> =
-    LazyLock::new(|| SlotName::new("miden::test::value1").expect("slot name should be valid"));
-pub static MOCK_MAP_SLOT: LazyLock<SlotName> =
-    LazyLock::new(|| SlotName::new("miden::test::map").expect("slot name should be valid"));
+pub static MOCK_VALUE_SLOT0: LazyLock<StorageSlotName> = LazyLock::new(|| {
+    StorageSlotName::new("miden::test::value0").expect("storage slot name should be valid")
+});
+pub static MOCK_VALUE_SLOT1: LazyLock<StorageSlotName> = LazyLock::new(|| {
+    StorageSlotName::new("miden::test::value1").expect("storage slot name should be valid")
+});
+pub static MOCK_MAP_SLOT: LazyLock<StorageSlotName> = LazyLock::new(|| {
+    StorageSlotName::new("miden::test::map").expect("storage slot name should be valid")
+});
 
 pub const STORAGE_VALUE_0: Word =
     Word::new([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]);

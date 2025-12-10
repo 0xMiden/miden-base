@@ -2,7 +2,7 @@ use alloc::string::ToString;
 use alloc::vec::Vec;
 
 use super::{AccountStorage, Felt, StorageSlot, StorageSlotType, Word};
-use crate::account::{SlotName, SlotNameId};
+use crate::account::{StorageSlotId, StorageSlotName};
 use crate::crypto::SequentialCommit;
 use crate::utils::serde::{
     ByteReader,
@@ -16,21 +16,22 @@ use crate::{AccountError, FieldElement, ZERO};
 // ACCOUNT STORAGE HEADER
 // ================================================================================================
 
-/// The header of a [`StorageSlot`], storing only the name ID, slot type and value of the slot.
+/// The header of a [`StorageSlot`], storing only the slot ID, slot type and value of the slot.
 ///
 /// The stored value differs based on the slot type:
 /// - [`StorageSlotType::Value`]: The value of the slot itself.
 /// - [`StorageSlotType::Map`]: The root of the SMT that represents the storage map.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct StorageSlotHeader {
-    id: SlotNameId,
+    id: StorageSlotId,
     r#type: StorageSlotType,
     value: Word,
 }
 
 impl StorageSlotHeader {
-    /// Returns a new instance of storage slot header from the provided storage slot type and value.
-    pub(crate) fn new(id: SlotNameId, r#type: StorageSlotType, value: Word) -> Self {
+    /// Returns a new instance of storage slot header from the provided storage slot ID, type and
+    /// value.
+    pub(crate) fn new(id: StorageSlotId, r#type: StorageSlotType, value: Word) -> Self {
         Self { id, r#type, value }
     }
 
@@ -38,7 +39,7 @@ impl StorageSlotHeader {
     ///
     /// This is done by converting this storage slot into 8 field elements as follows:
     /// ```text
-    /// [[0, slot_type, name_id_suffix, name_id_prefix], SLOT_VALUE]
+    /// [[0, slot_type, slot_id_suffix, slot_id_prefix], SLOT_VALUE]
     /// ```
     pub(crate) fn to_elements(&self) -> [Felt; StorageSlot::NUM_ELEMENTS_PER_STORAGE_SLOT] {
         let mut elements = [ZERO; StorageSlot::NUM_ELEMENTS_PER_STORAGE_SLOT];
@@ -61,7 +62,7 @@ impl StorageSlotHeader {
 /// - [`StorageSlotType::Map`]: The root of the SMT that represents the storage map.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AccountStorageHeader {
-    slots: Vec<(SlotName, StorageSlotType, Word)>,
+    slots: Vec<(StorageSlotName, StorageSlotType, Word)>,
 }
 
 impl AccountStorageHeader {
@@ -74,8 +75,8 @@ impl AccountStorageHeader {
     ///
     /// Returns an error if:
     /// - The number of provided slots is greater than [`AccountStorage::MAX_NUM_STORAGE_SLOTS`].
-    /// - The slots are not sorted by [`SlotNameId`].
-    pub fn new(slots: Vec<(SlotName, StorageSlotType, Word)>) -> Result<Self, AccountError> {
+    /// - The slots are not sorted by [`StorageSlotId`].
+    pub fn new(slots: Vec<(StorageSlotName, StorageSlotType, Word)>) -> Result<Self, AccountError> {
         if slots.len() > AccountStorage::MAX_NUM_STORAGE_SLOTS {
             return Err(AccountError::StorageTooManySlots(slots.len() as u64));
         }
@@ -91,7 +92,7 @@ impl AccountStorageHeader {
     // --------------------------------------------------------------------------------------------
 
     /// Returns an iterator over the storage header slots.
-    pub fn slots(&self) -> impl Iterator<Item = (&SlotName, &StorageSlotType, &Word)> {
+    pub fn slots(&self) -> impl Iterator<Item = (&StorageSlotName, &StorageSlotType, &Word)> {
         self.slots.iter().map(|(name, r#type, value)| (name, r#type, value))
     }
 
@@ -111,10 +112,10 @@ impl AccountStorageHeader {
 
     /// Returns a slot contained in the storage header at a given index.
     ///
-    /// Returns `None` if a slot with the provided name ID does not exist.
+    /// Returns `None` if a slot with the provided slot ID does not exist.
     pub fn find_slot_header_by_name(
         &self,
-        slot_name: &SlotName,
+        slot_name: &StorageSlotName,
     ) -> Option<(&StorageSlotType, &Word)> {
         self.find_slot_header_by_id(slot_name.compute_id())
             .map(|(_slot_name, slot_type, slot_value)| (slot_type, slot_value))
@@ -122,13 +123,13 @@ impl AccountStorageHeader {
 
     /// Returns a slot contained in the storage header at a given index.
     ///
-    /// Returns `None` if a slot with the provided name ID does not exist.
+    /// Returns `None` if a slot with the provided slot ID does not exist.
     pub fn find_slot_header_by_id(
         &self,
-        name_id: SlotNameId,
-    ) -> Option<(&SlotName, &StorageSlotType, &Word)> {
+        slot_id: StorageSlotId,
+    ) -> Option<(&StorageSlotName, &StorageSlotType, &Word)> {
         self.slots
-            .binary_search_by_key(&name_id, |(name, ..)| name.compute_id())
+            .binary_search_by_key(&slot_id, |(name, ..)| name.compute_id())
             .map(|slot_idx| {
                 let (name, r#type, value) = &self.slots[slot_idx];
                 (name, r#type, value)
@@ -142,7 +143,7 @@ impl AccountStorageHeader {
     ///
     /// Returns an error if:
     /// - a slot with the provided name does not exist.
-    pub fn is_map_slot(&self, name: &SlotName) -> Result<bool, AccountError> {
+    pub fn is_map_slot(&self, name: &StorageSlotName) -> Result<bool, AccountError> {
         match self
             .find_slot_header_by_name(name)
             .ok_or(AccountError::StorageSlotNameNotFound { slot_name: name.clone() })?
@@ -158,7 +159,7 @@ impl AccountStorageHeader {
     /// This is done by first converting each storage slot into exactly 8 elements as follows:
     ///
     /// ```text
-    /// [[0, slot_type, name_id_suffix, name_id_prefix], SLOT_VALUE]
+    /// [[0, slot_type, slot_id_suffix, slot_id_prefix], SLOT_VALUE]
     /// ```
     ///
     /// And then concatenating the resulting elements into a single vector.

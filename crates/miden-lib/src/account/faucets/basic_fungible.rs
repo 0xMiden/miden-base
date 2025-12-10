@@ -6,7 +6,7 @@ use miden_objects::account::{
     AccountStorageMode,
     AccountType,
     NamedStorageSlot,
-    SlotName,
+    StorageSlotName,
 };
 use miden_objects::asset::{FungibleAsset, TokenSymbol};
 use miden_objects::utils::sync::LazyLock;
@@ -41,8 +41,9 @@ procedure_digest!(
     basic_fungible_faucet_library
 );
 
-static METADATA_SLOT_NAME: LazyLock<SlotName> = LazyLock::new(|| {
-    SlotName::new("miden::basic_fungible_faucet::metadata").expect("slot name should be valid")
+static METADATA_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
+    StorageSlotName::new("miden::basic_fungible_faucet::metadata")
+        .expect("storage slot name should be valid")
 });
 
 /// An [`AccountComponent`] implementing a basic fungible faucet.
@@ -159,8 +160,8 @@ impl BasicFungibleFaucet {
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns the [`SlotName`] where the [`BasicFungibleFaucet`]'s metadata is stored.
-    pub fn metadata_slot_name() -> &'static SlotName {
+    /// Returns the [`StorageSlotName`] where the [`BasicFungibleFaucet`]'s metadata is stored.
+    pub fn metadata_slot_name() -> &'static StorageSlotName {
         &METADATA_SLOT_NAME
     }
 

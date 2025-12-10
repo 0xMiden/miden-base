@@ -3,7 +3,7 @@ use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
 use miden_objects::account::auth::PublicKeyCommitment;
-use miden_objects::account::{AccountId, AccountProcedureInfo, AccountStorage, SlotName};
+use miden_objects::account::{AccountId, AccountProcedureInfo, AccountStorage, StorageSlotName};
 use miden_objects::note::PartialNote;
 use miden_objects::{Felt, FieldElement, Word};
 
@@ -340,8 +340,8 @@ impl AccountComponentInterface {
 /// Extracts authentication scheme from a multisig component.
 fn extract_multisig_auth_scheme(
     storage: &AccountStorage,
-    config_slot: &SlotName,
-    approver_public_keys_slot: &SlotName,
+    config_slot: &StorageSlotName,
+    approver_public_keys_slot: &StorageSlotName,
 ) -> AuthScheme {
     // Read the multisig configuration from the config slot
     // Format: [threshold, num_approvers, 0, 0]

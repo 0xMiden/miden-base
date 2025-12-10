@@ -2,30 +2,30 @@ use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 
 use miden_objects::account::auth::PublicKeyCommitment;
-use miden_objects::account::{AccountComponent, NamedStorageSlot, SlotName, StorageMap};
+use miden_objects::account::{AccountComponent, NamedStorageSlot, StorageMap, StorageSlotName};
 use miden_objects::utils::sync::LazyLock;
 use miden_objects::{AccountError, Word};
 
 use crate::account::components::rpo_falcon_512_multisig_library;
 
-static THRESHOLD_CONFIG_SLOT_NAME: LazyLock<SlotName> = LazyLock::new(|| {
-    SlotName::new("miden::standards::auth::rpo_falcon512_multisig::threshold_config")
-        .expect("slot name should be valid")
+static THRESHOLD_CONFIG_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
+    StorageSlotName::new("miden::standards::auth::rpo_falcon512_multisig::threshold_config")
+        .expect("storage slot name should be valid")
 });
 
-static APPROVER_PUBKEYS_SLOT_NAME: LazyLock<SlotName> = LazyLock::new(|| {
-    SlotName::new("miden::standards::auth::rpo_falcon512_multisig::approver_public_keys")
-        .expect("slot name should be valid")
+static APPROVER_PUBKEYS_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
+    StorageSlotName::new("miden::standards::auth::rpo_falcon512_multisig::approver_public_keys")
+        .expect("storage slot name should be valid")
 });
 
-static EXECUTED_TRANSACTIONS_SLOT_NAME: LazyLock<SlotName> = LazyLock::new(|| {
-    SlotName::new("miden::standards::auth::rpo_falcon512_multisig::executed_transactions")
-        .expect("slot name should be valid")
+static EXECUTED_TRANSACTIONS_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
+    StorageSlotName::new("miden::standards::auth::rpo_falcon512_multisig::executed_transactions")
+        .expect("storage slot name should be valid")
 });
 
-static PROCEDURE_THRESHOLDS_SLOT_NAME: LazyLock<SlotName> = LazyLock::new(|| {
-    SlotName::new("miden::standards::auth::rpo_falcon512_multisig::procedure_thresholds")
-        .expect("slot name should be valid")
+static PROCEDURE_THRESHOLDS_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
+    StorageSlotName::new("miden::standards::auth::rpo_falcon512_multisig::procedure_thresholds")
+        .expect("storage slot name should be valid")
 });
 
 // MULTISIG AUTHENTICATION COMPONENT
@@ -128,23 +128,23 @@ impl AuthRpoFalcon512Multisig {
         Ok(Self { config })
     }
 
-    /// Returns the [`SlotName`] where the threshold configuration is stored.
-    pub fn threshold_config_slot() -> &'static SlotName {
+    /// Returns the [`StorageSlotName`] where the threshold configuration is stored.
+    pub fn threshold_config_slot() -> &'static StorageSlotName {
         &THRESHOLD_CONFIG_SLOT_NAME
     }
 
-    /// Returns the [`SlotName`] where the approver public keys are stored.
-    pub fn approver_public_keys_slot() -> &'static SlotName {
+    /// Returns the [`StorageSlotName`] where the approver public keys are stored.
+    pub fn approver_public_keys_slot() -> &'static StorageSlotName {
         &APPROVER_PUBKEYS_SLOT_NAME
     }
 
-    /// Returns the [`SlotName`] where the executed transactions are stored.
-    pub fn executed_transactions_slot() -> &'static SlotName {
+    /// Returns the [`StorageSlotName`] where the executed transactions are stored.
+    pub fn executed_transactions_slot() -> &'static StorageSlotName {
         &EXECUTED_TRANSACTIONS_SLOT_NAME
     }
 
-    /// Returns the [`SlotName`] where the procedure thresholds are stored.
-    pub fn procedure_thresholds_slot() -> &'static SlotName {
+    /// Returns the [`StorageSlotName`] where the procedure thresholds are stored.
+    pub fn procedure_thresholds_slot() -> &'static StorageSlotName {
         &PROCEDURE_THRESHOLDS_SLOT_NAME
     }
 }
