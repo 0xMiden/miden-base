@@ -59,6 +59,8 @@ pub trait ExecutionOutputExt {
 
     /// Reads an element from transaction kernel memory or returns [`ZERO`] if that location is not
     /// initialized.
+    // Unused for now, but may become useful in the future.
+    #[allow(dead_code)]
     fn get_kernel_mem_element(&self, addr: u32) -> Felt {
         // TODO: Use Memory::read_element once it no longer requires &mut self.
         // https://github.com/0xMiden/miden-vm/issues/2237

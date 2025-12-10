@@ -62,6 +62,8 @@ pub const ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS: MasmError = MasmError::f
 pub const ERR_ACCOUNT_TOO_MANY_PROCEDURES: MasmError = MasmError::from_static_str("number of account procedures exceeds the maximum limit of 256");
 /// Error Message: "number of account storage slots exceeds the maximum limit of 255"
 pub const ERR_ACCOUNT_TOO_MANY_STORAGE_SLOTS: MasmError = MasmError::from_static_str("number of account storage slots exceeds the maximum limit of 255");
+/// Error Message: "storage slot with the provided name does not exist"
+pub const ERR_ACCOUNT_UNKNOWN_STORAGE_SLOT_NAME: MasmError = MasmError::from_static_str("storage slot with the provided name does not exist");
 
 /// Error Message: "executed transaction neither changed the account state, nor consumed any notes"
 pub const ERR_EPILOGUE_EXECUTED_TRANSACTION_IS_EMPTY: MasmError = MasmError::from_static_str("executed transaction neither changed the account state, nor consumed any notes");

@@ -17,13 +17,14 @@ use miden_lib::account::faucets::{BasicFungibleFaucet, NetworkFungibleFaucet};
 use miden_lib::account::wallets::BasicWallet;
 use miden_lib::note::{create_p2id_note, create_p2ide_note, create_swap_note};
 use miden_lib::testing::account_component::MockAccountComponent;
-use miden_lib::transaction::{TransactionKernel, memory};
+use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{
     Account,
     AccountBuilder,
     AccountDelta,
     AccountId,
+    AccountStorage,
     AccountStorageMode,
     AccountType,
     StorageSlot,
@@ -344,7 +345,7 @@ impl MockChainBuilder {
             account
                 .storage_mut()
                 .set_item(
-                    memory::FAUCET_STORAGE_DATA_SLOT,
+                    AccountStorage::faucet_metadata_slot(),
                     Word::from([ZERO, ZERO, ZERO, Felt::new(issuance)]),
                 )
                 .context("failed to set faucet storage")?;
@@ -388,7 +389,7 @@ impl MockChainBuilder {
             account
                 .storage_mut()
                 .set_item(
-                    memory::FAUCET_STORAGE_DATA_SLOT,
+                    AccountStorage::faucet_metadata_slot(),
                     Word::from([ZERO, ZERO, ZERO, Felt::new(issuance)]),
                 )
                 .context("failed to set faucet storage")?;

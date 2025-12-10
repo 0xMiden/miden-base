@@ -1,6 +1,7 @@
 use core::slice;
 
 use assert_matches::assert_matches;
+use miden_lib::account::auth::AuthEcdsaK256KeccakAcl;
 use miden_lib::testing::account_component::MockAccountComponent;
 use miden_lib::testing::note::NoteBuilder;
 use miden_lib::utils::ScriptBuilder;
@@ -13,6 +14,7 @@ use miden_objects::account::{
     AccountType,
 };
 use miden_objects::note::Note;
+use miden_objects::testing::storage::MOCK_VALUE_SLOT0;
 use miden_objects::transaction::OutputNote;
 use miden_objects::{Felt, FieldElement, Word};
 use miden_testing::{Auth, MockChain};
@@ -100,25 +102,36 @@ async fn test_ecdsa_acl() -> anyhow::Result<()> {
     }
     .build_component();
 
-    let tx_script_with_trigger_1 = r#"
+    let tx_script_with_trigger_1 = format!(
+        r#"
         use.mock::account
 
+        const MOCK_VALUE_SLOT0 = word("{mock_value_slot0}")
+
         begin
-            push.0
+            push.MOCK_VALUE_SLOT0[0..2]
             call.account::get_item
             dropw
         end
-        "#;
+        "#,
+        mock_value_slot0 = &*MOCK_VALUE_SLOT0,
+    );
 
-    let tx_script_with_trigger_2 = r#"
+    let tx_script_with_trigger_2 = format!(
+        r#"
         use.mock::account
 
+        const MOCK_VALUE_SLOT0 = word("{mock_value_slot0}")
+
         begin
-            push.1.2.3.4 push.0
+            push.1.2.3.4
+            push.MOCK_VALUE_SLOT0[0..2]
             call.account::set_item
             dropw dropw
         end
-        "#;
+        "#,
+        mock_value_slot0 = &*MOCK_VALUE_SLOT0,
+    );
 
     let tx_script_trigger_1 =
         ScriptBuilder::with_mock_libraries()?.compile_tx_script(tx_script_with_trigger_1)?;
@@ -190,12 +203,15 @@ async fn test_ecdsa_acl_with_allow_unauthorized_output_notes() -> anyhow::Result
     let (account, mock_chain, note) = setup_ecdsa_acl_test(true, true)?;
 
     // Verify the storage layout includes both authorization flags
-    let slot_1 = account.storage().get_item(1).expect("storage slot 1 access failed");
-    // Slot 1 should be [num_tracked_procs, allow_unauthorized_output_notes,
+    let config_slot = account
+        .storage()
+        .get_item(AuthEcdsaK256KeccakAcl::config_slot())
+        .expect("config storage slot access failed");
+    // Config Slot should be [num_tracked_procs, allow_unauthorized_output_notes,
     // allow_unauthorized_input_notes, 0] With 2 procedures,
     // allow_unauthorized_output_notes=true, and allow_unauthorized_input_notes=true, this should be
     // [2, 1, 1, 0]
-    assert_eq!(slot_1, Word::from([2u32, 1, 1, 0]));
+    assert_eq!(config_slot, Word::from([2u32, 1, 1, 0]));
 
     let tx_script_no_trigger =
         ScriptBuilder::with_mock_libraries()?.compile_tx_script(TX_SCRIPT_NO_TRIGGER)?;
@@ -227,12 +243,15 @@ async fn test_ecdsa_acl_with_disallow_unauthorized_input_notes() -> anyhow::Resu
     let (account, mock_chain, note) = setup_ecdsa_acl_test(true, false)?;
 
     // Verify the storage layout includes both flags
-    let slot_1 = account.storage().get_item(1).expect("storage slot 1 access failed");
-    // Slot 1 should be [num_tracked_procs, allow_unauthorized_output_notes,
+    let config_slot = account
+        .storage()
+        .get_item(AuthEcdsaK256KeccakAcl::config_slot())
+        .expect("config storage slot access failed");
+    // Config Slot should be [num_tracked_procs, allow_unauthorized_output_notes,
     // allow_unauthorized_input_notes, 0] With 2 procedures,
     // allow_unauthorized_output_notes=true, and allow_unauthorized_input_notes=false, this should
     // be [2, 1, 0, 0]
-    assert_eq!(slot_1, Word::from([2u32, 1, 0, 0]));
+    assert_eq!(config_slot, Word::from([2u32, 1, 0, 0]));
 
     let tx_script_no_trigger =
         ScriptBuilder::with_mock_libraries()?.compile_tx_script(TX_SCRIPT_NO_TRIGGER)?;
