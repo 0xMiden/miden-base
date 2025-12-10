@@ -65,7 +65,7 @@ pub fn build_block(
         note_root,
         tx_commitment,
         tx_kernel_commitment,
-        prev_block_header.public_key().clone(),
+        prev_block_header.validator_key().clone(),
         fee_parameters,
         timestamp,
     );

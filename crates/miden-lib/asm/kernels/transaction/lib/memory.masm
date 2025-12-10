@@ -769,7 +769,7 @@ export.get_tx_kernel_commitment
     padw mem_loadw_be.TX_KERNEL_COMMITMENT_PTR
 end
 
-#! Returns the public key commitment of the transaction reference block.
+#! Returns the validator key commitment of the transaction reference block.
 #!
 #! Inputs:  []
 #! Outputs: [VALIDATOR_KEY_COMMITMENT]

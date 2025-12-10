@@ -249,7 +249,7 @@ impl MockChainBuilder {
 
         let signature = secret_key.sign(header.commitment());
         let block_proof = BlockProof::new_dummy();
-        let genesis_block = ProvenBlock::new_unchecked(header, signature, body, block_proof);
+        let genesis_block = ProvenBlock::new_unchecked(header, body, signature, block_proof);
 
         MockChain::from_genesis_block(
             genesis_block,

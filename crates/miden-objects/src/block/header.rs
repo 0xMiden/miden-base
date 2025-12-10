@@ -31,7 +31,7 @@ use crate::{FeeError, Felt, Hasher, Word, ZERO};
 /// - `tx_commitment` is a commitment to the set of transaction IDs which affected accounts in the
 ///   block.
 /// - `tx_kernel_commitment` a commitment to all transaction kernels supported by this block.
-/// - `public_key` is the public key of the validator that is expected to sign the block.
+/// - `validator_key` is the public key of the validator that is expected to sign the block.
 /// - `fee_parameters` are the parameters defining the base fees and the native asset, see
 ///   [`FeeParameters`] for more details.
 /// - `timestamp` is the time when the block was created, in seconds since UNIX epoch. Current
@@ -49,7 +49,7 @@ pub struct BlockHeader {
     note_root: Word,
     tx_commitment: Word,
     tx_kernel_commitment: Word,
-    public_key: PublicKey,
+    validator_key: PublicKey,
     fee_parameters: FeeParameters,
     timestamp: u32,
     sub_commitment: Word,
@@ -69,7 +69,7 @@ impl BlockHeader {
         note_root: Word,
         tx_commitment: Word,
         tx_kernel_commitment: Word,
-        public_key: PublicKey,
+        validator_key: PublicKey,
         fee_parameters: FeeParameters,
         timestamp: u32,
     ) -> Self {
@@ -82,7 +82,7 @@ impl BlockHeader {
             nullifier_root,
             tx_commitment,
             tx_kernel_commitment,
-            &public_key,
+            &validator_key,
             &fee_parameters,
             timestamp,
             block_num,
@@ -104,7 +104,7 @@ impl BlockHeader {
             note_root,
             tx_commitment,
             tx_kernel_commitment,
-            public_key,
+            validator_key,
             fee_parameters,
             timestamp,
             sub_commitment,
@@ -173,8 +173,8 @@ impl BlockHeader {
     }
 
     /// Returns the public key of the block's validator.
-    pub fn public_key(&self) -> &PublicKey {
-        &self.public_key
+    pub fn validator_key(&self) -> &PublicKey {
+        &self.validator_key
     }
 
     /// Returns the commitment to all transactions in this block.
@@ -227,7 +227,7 @@ impl BlockHeader {
         nullifier_root: Word,
         tx_commitment: Word,
         tx_kernel_commitment: Word,
-        public_key: &PublicKey,
+        validator_key: &PublicKey,
         fee_parameters: &FeeParameters,
         timestamp: u32,
         block_num: BlockNumber,
@@ -239,7 +239,7 @@ impl BlockHeader {
         elements.extend_from_slice(nullifier_root.as_elements());
         elements.extend_from_slice(tx_commitment.as_elements());
         elements.extend_from_slice(tx_kernel_commitment.as_elements());
-        elements.extend(public_key.to_commitment());
+        elements.extend(validator_key.to_commitment());
         elements.extend([block_num.into(), version.into(), timestamp.into(), ZERO]);
         elements.extend([
             fee_parameters.native_asset_id().suffix(),
@@ -267,7 +267,7 @@ impl Serializable for BlockHeader {
             note_root,
             tx_commitment,
             tx_kernel_commitment,
-            public_key,
+            validator_key,
             fee_parameters,
             timestamp,
             // Don't serialize sub commitment and commitment as they can be derived.
@@ -284,7 +284,7 @@ impl Serializable for BlockHeader {
         note_root.write_into(target);
         tx_commitment.write_into(target);
         tx_kernel_commitment.write_into(target);
-        public_key.write_into(target);
+        validator_key.write_into(target);
         fee_parameters.write_into(target);
         timestamp.write_into(target);
     }
@@ -301,7 +301,7 @@ impl Deserializable for BlockHeader {
         let note_root = source.read()?;
         let tx_commitment = source.read()?;
         let tx_kernel_commitment = source.read()?;
-        let public_key = source.read()?;
+        let validator_key = source.read()?;
         let fee_parameters = source.read()?;
         let timestamp = source.read()?;
 
@@ -315,7 +315,7 @@ impl Deserializable for BlockHeader {
             note_root,
             tx_commitment,
             tx_kernel_commitment,
-            public_key,
+            validator_key,
             fee_parameters,
             timestamp,
         ))

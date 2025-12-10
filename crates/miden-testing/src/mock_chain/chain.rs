@@ -996,7 +996,7 @@ impl MockChain {
             inputs,
         )?;
         let signature = self.secret_key.sign(header.commitment());
-        Ok(ProvenBlock::new_unchecked(header, signature, body, block_proof))
+        Ok(ProvenBlock::new_unchecked(header, body, signature, block_proof))
     }
 }
 
@@ -1287,9 +1287,10 @@ mod tests {
         // Verify the genesis block signature.
         let genesis_block = chain.latest_block();
         assert!(
-            genesis_block
-                .signature()
-                .verify(genesis_block.header().commitment(), genesis_block.header().public_key())
+            genesis_block.signature().verify(
+                genesis_block.header().commitment(),
+                genesis_block.header().validator_key()
+            )
         );
 
         // Add another block.
@@ -1300,11 +1301,11 @@ mod tests {
         assert!(
             next_block
                 .signature()
-                .verify(next_block.header().commitment(), next_block.header().public_key())
+                .verify(next_block.header().commitment(), next_block.header().validator_key())
         );
 
         // Public keys should be carried through from the genesis header to the next.
-        assert_eq!(next_block.header().public_key(), next_block.header().public_key());
+        assert_eq!(next_block.header().validator_key(), next_block.header().validator_key());
 
         Ok(())
     }

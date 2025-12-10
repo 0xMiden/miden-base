@@ -268,7 +268,7 @@ fn block_data_memory_assertions(exec_output: &ExecutionOutput, inputs: &Transact
 
     assert_eq!(
         exec_output.get_kernel_mem_word(VALIDATOR_KEY_COMMITMENT_PTR),
-        inputs.tx_inputs().block_header().public_key().to_commitment(),
+        inputs.tx_inputs().block_header().validator_key().to_commitment(),
         "The public key commitment should be stored at the VALIDATOR_KEY_COMMITMENT_PTR"
     );
 

@@ -37,8 +37,8 @@ impl ProvenBlock {
     /// panics.
     pub fn new_unchecked(
         header: BlockHeader,
-        signature: Signature,
         body: BlockBody,
+        signature: Signature,
         proof: BlockProof,
     ) -> Self {
         Self { header, signature, body, proof }
@@ -54,7 +54,7 @@ impl ProvenBlock {
         &self.header
     }
 
-    /// Returns the signature of the block header.
+    /// Returns the validator's signature over the block header.
     pub fn signature(&self) -> &Signature {
         &self.signature
     }

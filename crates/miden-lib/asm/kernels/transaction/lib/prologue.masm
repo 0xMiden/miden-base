@@ -188,7 +188,7 @@ end
 #!   consumed.
 #! - TX_COMMITMENT is a commitment to the set of transaction IDs which affected accounts in the block.
 #! - TX_KERNEL_COMMITMENT is the sequential hash of the kernel procedures.
-#! - VALIDATOR_KEY_COMMITMENT is the commitment of the block's public key.
+#! - VALIDATOR_KEY_COMMITMENT is the commitment of the validator's public key.
 #! - block_num is the reference block number.
 #! - version is the current protocol version.
 #! - timestamp is the current timestamp.
@@ -1174,7 +1174,7 @@ end
 #! - NULLIFIER_ROOT is the root of the tree with nullifiers of all notes that have ever been
 #!   consumed.
 #! - TX_COMMITMENT is a commitment to the set of transaction IDs which affected accounts in the block.
-#! - VALIDATOR_KEY_COMMITMENT is the commitment of the block's public key.
+#! - VALIDATOR_KEY_COMMITMENT is the commitment of the validator's public key.
 #! - block_num is the reference block number.
 #! - version is the current protocol version.
 #! - timestamp is the current timestamp.
