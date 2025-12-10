@@ -61,7 +61,7 @@ impl PartialStorage {
 
         let mut maps = BTreeMap::new();
         for slot in account_storage {
-            if let StorageSlotContent::Map(storage_map) = slot.into_parts().2 {
+            if let StorageSlotContent::Map(storage_map) = slot.into_parts().1 {
                 let partial_map = PartialStorageMap::new_full(storage_map);
                 maps.insert(partial_map.root(), partial_map);
             }

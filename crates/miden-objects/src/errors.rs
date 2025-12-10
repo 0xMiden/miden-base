@@ -249,8 +249,8 @@ pub enum AccountIdError {
 // ================================================================================================
 
 #[derive(Debug, Error)]
-pub enum SlotNameError {
-    #[error("slot names must only contain characters a..z, A..Z, 0..9 or underscore")]
+pub enum StorageSlotNameError {
+    #[error("slot name must only contain characters a..z, A..Z, 0..9, double colon or underscore")]
     InvalidCharacter,
     #[error("slot names must be separated by double colons")]
     UnexpectedColon,

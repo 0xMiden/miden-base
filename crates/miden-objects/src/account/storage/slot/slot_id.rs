@@ -1,5 +1,8 @@
 use core::cmp::Ordering;
 use core::fmt::Display;
+use core::hash::Hash;
+
+use miden_core::utils::hash_string_to_word;
 
 use crate::Felt;
 
@@ -23,6 +26,16 @@ impl StorageSlotId {
     /// Creates a new [`StorageSlotId`] from the provided felts.
     pub fn new(suffix: Felt, prefix: Felt) -> Self {
         Self { suffix, prefix }
+    }
+
+    /// Computes the [`StorageSlotId`] from a slot name.
+    ///
+    /// The provided `name`'s validity is **not** checked.
+    pub(super) fn from_str(name: &str) -> StorageSlotId {
+        let hashed_word = hash_string_to_word(name);
+        let suffix = hashed_word[0];
+        let prefix = hashed_word[1];
+        StorageSlotId::new(suffix, prefix)
     }
 
     // ACCESSORS
@@ -59,6 +72,13 @@ impl Ord for StorageSlotId {
 impl PartialOrd for StorageSlotId {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
+    }
+}
+
+impl Hash for StorageSlotId {
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+        self.suffix.inner().hash(state);
+        self.prefix.inner().hash(state);
     }
 }
 
