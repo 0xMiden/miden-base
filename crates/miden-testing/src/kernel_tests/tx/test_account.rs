@@ -525,6 +525,41 @@ async fn test_get_storage_slot_type() -> miette::Result<()> {
 }
 
 #[tokio::test]
+async fn test_is_slot_id_lt() -> miette::Result<()> {
+    for i in 0..100 {
+        let prev_slot = StorageSlotName::mock(i);
+        let curr_slot = StorageSlotName::mock(i + 1);
+
+        let code = format!(
+            r#"
+            use.$kernel::account
+
+            begin
+                push.{curr_suffix}.{curr_prefix}.{prev_suffix}.{prev_prefix}
+                # => [prev_slot_id_prefix, prev_slot_id_suffix, curr_slot_id_prefix, curr_slot_id_suffix]
+
+                exec.account::is_slot_id_lt
+                # => [is_slot_id_lt]
+
+                push.{is_lt}
+                assert_eq.err="is_slot_id_lt was not {is_lt}"
+                # => []
+            end
+            "#,
+            prev_prefix = prev_slot.id().prefix(),
+            prev_suffix = prev_slot.id().suffix(),
+            curr_prefix = curr_slot.id().prefix(),
+            curr_suffix = curr_slot.id().suffix(),
+            is_lt = u8::from(prev_slot < curr_slot)
+        );
+
+        CodeExecutor::with_default_host().run(&code).await?;
+    }
+
+    Ok(())
+}
+
+#[tokio::test]
 async fn test_set_item() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build().unwrap();
 

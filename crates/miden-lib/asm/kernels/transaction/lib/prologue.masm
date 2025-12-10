@@ -363,6 +363,11 @@ proc.validate_new_account
     exec.account::validate_seed
     # => []
 
+    # Assert the storage slots are sorted and unique.
+    # ---------------------------------------------------------------------------------------------
+    exec.account::validate_storage
+    # => []
+
     # Assert the provided procedures offsets and sizes satisfy storage requirements
     # ---------------------------------------------------------------------------------------------
     exec.account::validate_procedure_metadata
