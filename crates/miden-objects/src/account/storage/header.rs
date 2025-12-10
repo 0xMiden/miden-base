@@ -81,7 +81,7 @@ impl AccountStorageHeader {
             return Err(AccountError::StorageTooManySlots(slots.len() as u64));
         }
 
-        if !slots.is_sorted_by_key(|(slot_name, ..)| slot_name.compute_id()) {
+        if !slots.is_sorted_by_key(|(slot_name, ..)| slot_name.id()) {
             return Err(AccountError::UnsortedStorageSlots);
         }
 
@@ -117,7 +117,7 @@ impl AccountStorageHeader {
         &self,
         slot_name: &StorageSlotName,
     ) -> Option<(&StorageSlotType, &Word)> {
-        self.find_slot_header_by_id(slot_name.compute_id())
+        self.find_slot_header_by_id(slot_name.id())
             .map(|(_slot_name, slot_type, slot_value)| (slot_type, slot_value))
     }
 
@@ -129,7 +129,7 @@ impl AccountStorageHeader {
         slot_id: StorageSlotId,
     ) -> Option<(&StorageSlotName, &StorageSlotType, &Word)> {
         self.slots
-            .binary_search_by_key(&slot_id, |(name, ..)| name.compute_id())
+            .binary_search_by_key(&slot_id, |(name, ..)| name.id())
             .map(|slot_idx| {
                 let (name, r#type, value) = &self.slots[slot_idx];
                 (name, r#type, value)
@@ -188,8 +188,7 @@ impl SequentialCommit for AccountStorageHeader {
     fn to_elements(&self) -> Vec<Felt> {
         self.slots()
             .flat_map(|(slot_name, slot_type, slot_value)| {
-                StorageSlotHeader::new(slot_name.compute_id(), *slot_type, *slot_value)
-                    .to_elements()
+                StorageSlotHeader::new(slot_name.id(), *slot_type, *slot_value).to_elements()
             })
             .collect()
     }
@@ -241,7 +240,7 @@ mod tests {
             ),
             (MOCK_MAP_SLOT.clone(), StorageSlotType::Map, storage_map.root()),
         ];
-        slots.sort_unstable_by_key(|(slot_name, ..)| slot_name.compute_id());
+        slots.sort_unstable_by_key(|(slot_name, ..)| slot_name.id());
 
         let expected_header = AccountStorageHeader { slots };
         let account_storage = AccountStorage::mock();

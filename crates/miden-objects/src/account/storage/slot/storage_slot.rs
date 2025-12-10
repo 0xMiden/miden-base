@@ -33,7 +33,7 @@ impl StorageSlot {
     /// Creates a new [`StorageSlot`] with the given [`StorageSlotName`] and
     /// [`StorageSlotContent`].
     pub fn new(name: StorageSlotName, content: StorageSlotContent) -> Self {
-        let slot_id = name.compute_id();
+        let slot_id = name.id();
 
         Self { name, slot_id, content }
     }

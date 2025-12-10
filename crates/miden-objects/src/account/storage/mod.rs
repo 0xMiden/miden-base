@@ -198,7 +198,7 @@ impl AccountStorage {
     pub fn get(&self, slot_name: &StorageSlotName) -> Option<&StorageSlot> {
         debug_assert!(self.slots.is_sorted());
 
-        let slot_id = slot_name.compute_id();
+        let slot_id = slot_name.id();
         self.slots
             .binary_search_by_key(&slot_id, |slot| slot.slot_id())
             .map(|idx| &self.slots[idx])
@@ -206,7 +206,7 @@ impl AccountStorage {
     }
 
     fn get_mut(&mut self, slot_name: &StorageSlotName) -> Option<&mut StorageSlot> {
-        let slot_id = slot_name.compute_id();
+        let slot_id = slot_name.id();
         self.slots
             .binary_search_by_key(&slot_id, |slot| slot.slot_id())
             .map(|idx| &mut self.slots[idx])

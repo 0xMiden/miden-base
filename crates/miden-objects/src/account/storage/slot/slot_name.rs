@@ -2,8 +2,6 @@ use alloc::string::{String, ToString};
 use core::fmt::Display;
 use core::str::FromStr;
 
-use miden_core::utils::hash_string_to_word;
-
 use crate::account::storage::slot::StorageSlotId;
 use crate::errors::StorageSlotNameError;
 use crate::utils::serde::{ByteWriter, Deserializable, DeserializationError, Serializable};
@@ -38,6 +36,7 @@ use crate::utils::serde::{ByteWriter, Deserializable, DeserializationError, Seri
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct StorageSlotName {
     name: String,
+    id: StorageSlotId,
 }
 
 impl StorageSlotName {
@@ -62,7 +61,8 @@ impl StorageSlotName {
     pub fn new(name: impl Into<String>) -> Result<Self, StorageSlotNameError> {
         let name = name.into();
         Self::validate(&name)?;
-        Ok(Self { name })
+        let id = StorageSlotId::compute(name.as_str());
+        Ok(Self { name, id })
     }
 
     // ACCESSORS
@@ -83,13 +83,9 @@ impl StorageSlotName {
         self.name.len() as u8
     }
 
-    /// Computes the [`StorageSlotId`] from the slot name by taking the first two felts of the
-    /// name's BLAKE3 hash.
-    pub fn compute_id(&self) -> StorageSlotId {
-        let hashed_word = hash_string_to_word(self.as_str());
-        let suffix = hashed_word[0];
-        let prefix = hashed_word[1];
-        StorageSlotId::new(suffix, prefix)
+    /// Returns the [`StorageSlotId`] derived from the slot name.
+    pub fn id(&self) -> StorageSlotId {
+        self.id
     }
 
     // HELPERS
@@ -179,8 +175,7 @@ impl StorageSlotName {
 
 impl Ord for StorageSlotName {
     fn cmp(&self, other: &Self) -> core::cmp::Ordering {
-        // TODO(named_slots): Cache ID in SlotName for efficiency.
-        self.compute_id().cmp(&other.compute_id())
+        self.id().cmp(&other.id())
     }
 }
 

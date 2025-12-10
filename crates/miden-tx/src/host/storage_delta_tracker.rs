@@ -202,7 +202,7 @@ fn empty_storage_header_from_account(account: &PartialAccount) -> AccountStorage
         })
         .collect();
 
-    slots.sort_by_key(|(slot_name, ..)| slot_name.compute_id());
+    slots.sort_by_key(|(slot_name, ..)| slot_name.id());
 
     // SAFETY: We have sorted the slots and the max number of slots should not be exceeded as
     // enforced by the storage header in partial storage.

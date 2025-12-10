@@ -172,7 +172,7 @@ impl AccountStorageDelta {
         debug_assert_eq!(sorted_slots.len(), self.values.len() + self.maps.len());
 
         for (slot_name, slot_delta) in sorted_slots {
-            let slot_id = slot_name.compute_id();
+            let slot_id = slot_name.id();
 
             match slot_delta {
                 StorageSlotDelta::Value(new_value) => {
