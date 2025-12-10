@@ -67,12 +67,12 @@ mod storage;
 pub use storage::{
     AccountStorage,
     AccountStorageHeader,
-    NamedStorageSlot,
     PartialStorage,
     PartialStorageMap,
     StorageMap,
     StorageMapWitness,
     StorageSlot,
+    StorageSlotContent,
     StorageSlotId,
     StorageSlotName,
     StorageSlotType,
@@ -171,8 +171,8 @@ impl Account {
     /// To illustrate, given two components with one and two storage slots respectively:
     ///
     /// - RpoFalcon512 Component: Component slot 0 stores the public key.
-    /// - Custom Component: Component slot 0 stores a custom [`StorageSlot::Value`] and component
-    ///   slot 1 stores a custom [`StorageSlot::Map`].
+    /// - Custom Component: Component slot 0 stores a custom [`StorageSlotContent::Value`] and
+    ///   component slot 1 stores a custom [`StorageSlotContent::Map`].
     ///
     /// When combined, their assigned slots in the [`AccountStorage`] would be:
     ///
@@ -445,10 +445,10 @@ impl TryFrom<Account> for AccountDelta {
         for slot in storage.into_slots() {
             let (slot_name, _, slot_content) = slot.into_parts();
             match slot_content {
-                StorageSlot::Value(word) => {
+                StorageSlotContent::Value(word) => {
                     value_slots.insert(slot_name, word);
                 },
-                StorageSlot::Map(storage_map) => {
+                StorageSlotContent::Map(storage_map) => {
                     let map_delta = StorageMapDelta::new(
                         storage_map
                             .into_entries()
@@ -640,11 +640,11 @@ mod tests {
         AccountComponent,
         AccountIdVersion,
         AccountType,
-        NamedStorageSlot,
         PartialAccount,
         StorageMap,
         StorageMapDelta,
         StorageSlot,
+        StorageSlotContent,
         StorageSlotName,
     };
     use crate::asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset};
@@ -661,7 +661,7 @@ mod tests {
         let init_nonce = Felt::new(1);
         let asset_0 = FungibleAsset::mock(99);
         let word = Word::from([1, 2, 3, 4u32]);
-        let storage_slot = StorageSlot::Value(word);
+        let storage_slot = StorageSlotContent::Value(word);
         let account = build_account(vec![asset_0], init_nonce, vec![storage_slot]);
 
         let serialized = account.to_bytes();
@@ -702,8 +702,8 @@ mod tests {
         let asset_1 = NonFungibleAsset::mock(&[1, 2, 3]);
 
         // build storage slots
-        let storage_slot_value_0 = StorageSlot::Value(Word::from([1, 2, 3, 4u32]));
-        let storage_slot_value_1 = StorageSlot::Value(Word::from([5, 6, 7, 8u32]));
+        let storage_slot_value_0 = StorageSlotContent::Value(Word::from([1, 2, 3, 4u32]));
+        let storage_slot_value_1 = StorageSlotContent::Value(Word::from([5, 6, 7, 8u32]));
         let mut storage_map = StorageMap::with_entries([
             (
                 Word::new([Felt::new(101), Felt::new(102), Felt::new(103), Felt::new(104)]),
@@ -720,7 +720,7 @@ mod tests {
             ),
         ])
         .unwrap();
-        let storage_slot_map = StorageSlot::Map(storage_map.clone());
+        let storage_slot_map = StorageSlotContent::Map(storage_map.clone());
 
         let mut account = build_account(
             vec![asset_0],
@@ -761,9 +761,9 @@ mod tests {
             vec![asset_1],
             final_nonce,
             vec![
-                StorageSlot::Value(Word::empty()),
-                StorageSlot::Value(Word::from([1, 2, 3, 4u32])),
-                StorageSlot::Map(storage_map),
+                StorageSlotContent::Value(Word::empty()),
+                StorageSlotContent::Value(Word::from([1, 2, 3, 4u32])),
+                StorageSlotContent::Map(storage_map),
             ],
         );
 
@@ -779,7 +779,7 @@ mod tests {
         let init_nonce = Felt::new(1);
         let asset = FungibleAsset::mock(110);
         let mut account =
-            build_account(vec![asset], init_nonce, vec![StorageSlot::Value(Word::empty())]);
+            build_account(vec![asset], init_nonce, vec![StorageSlotContent::Value(Word::empty())]);
 
         // build account delta
         let storage_delta = AccountStorageDeltaBuilder::new()
@@ -802,7 +802,7 @@ mod tests {
         let init_nonce = Felt::new(2);
         let asset = FungibleAsset::mock(100);
         let mut account =
-            build_account(vec![asset], init_nonce, vec![StorageSlot::Value(Word::empty())]);
+            build_account(vec![asset], init_nonce, vec![StorageSlotContent::Value(Word::empty())]);
 
         // build account delta
         let final_nonce = Felt::new(1);
@@ -824,7 +824,7 @@ mod tests {
         let account_id = AccountId::try_from(ACCOUNT_ID_PRIVATE_SENDER).unwrap();
         let init_nonce = Felt::new(1);
         let word = Word::from([1, 2, 3, 4u32]);
-        let storage_slot = StorageSlot::Value(word);
+        let storage_slot = StorageSlotContent::Value(word);
         let mut account = build_account(vec![], init_nonce, vec![storage_slot]);
 
         // build account delta
@@ -852,7 +852,11 @@ mod tests {
         AccountDelta::new(account_id, storage_delta, vault_delta, nonce_delta).unwrap()
     }
 
-    pub fn build_account(assets: Vec<Asset>, nonce: Felt, slots: Vec<StorageSlot>) -> Account {
+    pub fn build_account(
+        assets: Vec<Asset>,
+        nonce: Felt,
+        slots: Vec<StorageSlotContent>,
+    ) -> Account {
         let id = AccountId::try_from(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE).unwrap();
         let code = AccountCode::mock();
 
@@ -861,7 +865,7 @@ mod tests {
         let slots = slots
             .into_iter()
             .enumerate()
-            .map(|(idx, slot)| NamedStorageSlot::new(StorageSlotName::mock(idx), slot))
+            .map(|(idx, slot)| StorageSlot::new(StorageSlotName::mock(idx), slot))
             .collect();
 
         let storage = AccountStorage::new(slots).unwrap();

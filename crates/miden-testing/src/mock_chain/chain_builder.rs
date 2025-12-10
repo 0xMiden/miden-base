@@ -27,7 +27,7 @@ use miden_objects::account::{
     AccountStorage,
     AccountStorageMode,
     AccountType,
-    NamedStorageSlot,
+    StorageSlot,
 };
 use miden_objects::asset::{Asset, FungibleAsset, TokenSymbol};
 use miden_objects::block::account_tree::AccountTree;
@@ -420,7 +420,7 @@ impl MockChainBuilder {
     pub fn add_existing_mock_account_with_storage(
         &mut self,
         auth_method: Auth,
-        slots: impl IntoIterator<Item = NamedStorageSlot>,
+        slots: impl IntoIterator<Item = StorageSlot>,
     ) -> anyhow::Result<Account> {
         self.add_existing_mock_account_with_storage_and_assets(auth_method, slots, [])
     }
@@ -440,7 +440,7 @@ impl MockChainBuilder {
     pub fn add_existing_mock_account_with_storage_and_assets(
         &mut self,
         auth_method: Auth,
-        slots: impl IntoIterator<Item = NamedStorageSlot>,
+        slots: impl IntoIterator<Item = StorageSlot>,
         assets: impl IntoIterator<Item = Asset>,
     ) -> anyhow::Result<Account> {
         let account_builder = Account::builder(self.rng.random())

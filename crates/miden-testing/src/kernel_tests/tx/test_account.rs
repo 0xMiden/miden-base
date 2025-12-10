@@ -25,9 +25,9 @@ use miden_objects::account::{
     AccountStorage,
     AccountStorageMode,
     AccountType,
-    NamedStorageSlot,
     StorageMap,
     StorageSlot,
+    StorageSlotContent,
     StorageSlotName,
     StorageSlotType,
 };
@@ -399,7 +399,7 @@ async fn test_get_item() -> miette::Result<()> {
             end
             "#,
             slot_name = storage_item.name(),
-            item_value = &storage_item.storage_slot().value(),
+            item_value = &storage_item.content().value(),
         );
 
         tx_context.execute_code(&code).await.unwrap();
@@ -410,16 +410,16 @@ async fn test_get_item() -> miette::Result<()> {
 
 #[tokio::test]
 async fn test_get_map_item() -> miette::Result<()> {
-    let named_slot = AccountStorage::mock_map_slot();
+    let slot = AccountStorage::mock_map_slot();
     let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(Auth::IncrNonce)
-        .with_component(MockAccountComponent::with_slots(vec![named_slot.clone()]))
+        .with_component(MockAccountComponent::with_slots(vec![slot.clone()]))
         .build_existing()
         .unwrap();
 
     let tx_context = TransactionContextBuilder::new(account).build().unwrap();
 
-    let StorageSlot::Map(map) = named_slot.storage_slot() else {
+    let StorageSlotContent::Map(map) = slot.content() else {
         panic!("expected map")
     };
 
@@ -446,7 +446,7 @@ async fn test_get_map_item() -> miette::Result<()> {
                 exec.::std::sys::truncate_stack
             end
             "#,
-            slot_name = named_slot.name(),
+            slot_name = slot.name(),
         );
 
         tx_context.execute_code(&code).await?;
@@ -574,10 +574,10 @@ async fn test_set_map_item() -> miette::Result<()> {
     let (new_key, new_value) =
         (Word::from([109, 110, 111, 112u32]), Word::from([9, 10, 11, 12u32]));
 
-    let named_slot = AccountStorage::mock_map_slot();
+    let slot = AccountStorage::mock_map_slot();
     let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(Auth::IncrNonce)
-        .with_component(MockAccountComponent::with_slots(vec![named_slot.clone()]))
+        .with_component(MockAccountComponent::with_slots(vec![slot.clone()]))
         .build_existing()
         .unwrap();
 
@@ -619,7 +619,7 @@ async fn test_set_map_item() -> miette::Result<()> {
             exec.sys::truncate_stack
         end
         "#,
-        slot_name = named_slot.name(),
+        slot_name = slot.name(),
         new_key = &new_key,
         new_value = &new_value,
     );
@@ -635,7 +635,7 @@ async fn test_set_map_item() -> miette::Result<()> {
         "get_item should return the updated root",
     );
     assert_eq!(
-        named_slot.storage_slot().value(),
+        slot.content().value(),
         exec_output.get_stack_word_be(4),
         "get_item must return the new updated value",
     );
@@ -780,16 +780,14 @@ async fn prove_account_creation_with_non_empty_storage() -> anyhow::Result<()> {
     let slot_name1 = StorageSlotName::mock(1);
     let slot_name2 = StorageSlotName::mock(2);
 
-    let slot0 = NamedStorageSlot::with_value(slot_name0.clone(), Word::from([1, 2, 3, 4u32]));
-    let slot1 = NamedStorageSlot::with_value(slot_name1.clone(), Word::from([10, 20, 30, 40u32]));
+    let slot0 = StorageSlot::with_value(slot_name0.clone(), Word::from([1, 2, 3, 4u32]));
+    let slot1 = StorageSlot::with_value(slot_name1.clone(), Word::from([10, 20, 30, 40u32]));
     let mut map_entries = Vec::new();
     for _ in 0..10 {
         map_entries.push((rand_value::<Word>(), rand_value::<Word>()));
     }
-    let map_slot = NamedStorageSlot::with_map(
-        slot_name2.clone(),
-        StorageMap::with_entries(map_entries.clone())?,
-    );
+    let map_slot =
+        StorageSlot::with_map(slot_name2.clone(), StorageMap::with_entries(map_entries.clone())?);
 
     let account = AccountBuilder::new([6; 32])
         .storage_mode(AccountStorageMode::Public)
@@ -1505,7 +1503,7 @@ async fn test_get_initial_item() -> miette::Result<()> {
         end
         "#,
         mock_value_slot0 = &*MOCK_VALUE_SLOT0,
-        expected_initial_value = &AccountStorage::mock_value_slot0().storage_slot().value(),
+        expected_initial_value = &AccountStorage::mock_value_slot0().content().value(),
     );
 
     tx_context.execute_code(&code).await?;
@@ -1525,7 +1523,7 @@ async fn test_get_initial_map_item() -> miette::Result<()> {
     let tx_context = TransactionContextBuilder::new(account).build().unwrap();
 
     // Use the first key-value pair from the mock storage
-    let StorageSlot::Map(map) = map_slot.storage_slot() else {
+    let StorageSlotContent::Map(map) = map_slot.content() else {
         panic!("expected map");
     };
 

@@ -70,7 +70,6 @@ use miden_objects::account::{
     AccountStorage,
     AccountStorageMode,
     AccountType,
-    NamedStorageSlot,
     StorageMap,
     StorageSlot,
     StorageSlotName,
@@ -414,7 +413,7 @@ fn account_data_memory_assertions(exec_output: &ExecutionOutput, inputs: &Transa
         .account()
         .storage()
         .to_elements()
-        .chunks(StorageSlot::NUM_ELEMENTS_PER_STORAGE_SLOT / 2)
+        .chunks(StorageSlot::NUM_ELEMENTS / 2)
         .enumerate()
     {
         assert_eq!(
@@ -589,7 +588,7 @@ pub async fn create_multiple_accounts_test(storage_mode: AccountStorageMode) -> 
             .account_type(account_type)
             .storage_mode(storage_mode)
             .with_auth_component(Auth::IncrNonce)
-            .with_component(MockAccountComponent::with_slots(vec![NamedStorageSlot::with_value(
+            .with_component(MockAccountComponent::with_slots(vec![StorageSlot::with_value(
                 StorageSlotName::mock(0),
                 Word::from([255u32; WORD_SIZE]),
             )]))
@@ -692,7 +691,7 @@ pub async fn create_account_non_fungible_faucet_invalid_initial_reserved_slot() 
     let asset = NonFungibleAsset::mock(&[1, 2, 3, 4]);
     let non_fungible_storage_map =
         StorageMap::with_entries([(asset.vault_key().into(), asset.into())]).unwrap();
-    let storage = AccountStorage::new(vec![NamedStorageSlot::with_map(
+    let storage = AccountStorage::new(vec![StorageSlot::with_map(
         AccountStorage::faucet_metadata_slot().clone(),
         non_fungible_storage_map,
     )])

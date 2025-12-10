@@ -4,7 +4,13 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use miden_lib::transaction::TransactionKernel;
-use miden_objects::account::{Account, AccountId, PartialAccount, StorageMapWitness, StorageSlot};
+use miden_objects::account::{
+    Account,
+    AccountId,
+    PartialAccount,
+    StorageMapWitness,
+    StorageSlotContent,
+};
 use miden_objects::assembly::debuginfo::{SourceLanguage, Uri};
 use miden_objects::assembly::{SourceManager, SourceManagerSync};
 use miden_objects::asset::{Asset, AssetVaultKey, AssetWitness};
@@ -328,8 +334,8 @@ impl DataStore for TransactionContext {
                     .storage()
                     .slots()
                     .iter()
-                    .find_map(|named_slot| match named_slot.storage_slot() {
-                        StorageSlot::Map(storage_map) if storage_map.root() == map_root => {
+                    .find_map(|slot| match slot.content() {
+                        StorageSlotContent::Map(storage_map) if storage_map.root() == map_root => {
                             Some(storage_map)
                         },
                         _ => None,
@@ -360,8 +366,8 @@ impl DataStore for TransactionContext {
                     .storage()
                     .slots()
                     .iter()
-                    .find_map(|named_slot| match named_slot.storage_slot() {
-                        StorageSlot::Map(storage_map) if storage_map.root() == map_root => {Some(storage_map)},
+                    .find_map(|slot| match slot.content() {
+                        StorageSlotContent::Map(storage_map) if storage_map.root() == map_root => {Some(storage_map)},
                         _ => None,
                     })
                     .ok_or_else(|| {
