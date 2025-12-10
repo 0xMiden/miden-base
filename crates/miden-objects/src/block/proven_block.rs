@@ -76,8 +76,8 @@ impl ProvenBlock {
 impl Serializable for ProvenBlock {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         self.header.write_into(target);
-        self.signature.write_into(target);
         self.body.write_into(target);
+        self.signature.write_into(target);
         self.proof.write_into(target);
     }
 }
@@ -86,8 +86,8 @@ impl Deserializable for ProvenBlock {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let block = Self {
             header: BlockHeader::read_from(source)?,
-            signature: Signature::read_from(source)?,
             body: BlockBody::read_from(source)?,
+            signature: Signature::read_from(source)?,
             proof: BlockProof::read_from(source)?,
         };
 
