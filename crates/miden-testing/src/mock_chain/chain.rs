@@ -1090,7 +1090,7 @@ impl Deserializable for AccountAuthenticator {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let authenticator = Option::<Vec<(AuthSecretKey, PublicKey)>>::read_from(source)?;
 
-        let authenticator = authenticator.map(|keys| BasicAuthenticator::from(&keys));
+        let authenticator = authenticator.map(|keys| BasicAuthenticator::from_key_pairs(&keys));
 
         Ok(Self { authenticator })
     }
