@@ -50,7 +50,7 @@ end
 #!
 #! Invocation: exec
 proc create_burn_note.8
-    loc_storew_be.0 dupw
+    loc_storew_be.0
     # => [ASSET]
 
     exec.note::build_note_tag_for_network_account
@@ -78,15 +78,12 @@ proc create_burn_note.8
     # => [tag, aux, note_type, execution_hint, RECIPIENT]
 
     call.output_note::create
-    # => [note_idx, 0,0,0]
+    # => [note_idx]
 
-    padw loc_loadw_be.0
-    # => [ASSET, note_idx, 0,0,0]
+    movdn.4 loc_loadw_be.0
+    # => [ASSET, note_idx]
 
     exec.output_note::add_asset
-    # => [REQUESTED_ASSET, note_idx, 0,0,0]
-
-    dropw dropw
     # => []
 end
 
