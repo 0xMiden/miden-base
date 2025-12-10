@@ -30,10 +30,7 @@ pub fn b2agg_script() -> NoteScript {
 
 // Initialize the unified AggLayer library only once
 static AGGLAYER_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
-    let bytes = include_bytes!(concat!(
-        env!("OUT_DIR"),
-        "/assets/agglayer.masl"
-    ));
+    let bytes = include_bytes!(concat!(env!("OUT_DIR"), "/assets/agglayer.masl"));
     Library::read_from_bytes(bytes).expect("Shipped AggLayer library is well-formed")
 });
 
@@ -82,12 +79,15 @@ pub fn bridge_out_component(storage_slots: Vec<StorageSlot>) -> AccountComponent
         .with_supports_all_types()
 }
 
-/// Creates a combined Bridge Out component that includes both bridge_out and local_exit_tree modules.
+/// Creates a combined Bridge Out component that includes both bridge_out and local_exit_tree
+/// modules.
 ///
 /// This is a convenience function that creates a component with multiple modules.
 /// For more fine-grained control, use the individual component functions and combine them
 /// using the AccountBuilder pattern.
-pub fn bridge_out_with_local_exit_tree_component(storage_slots: Vec<StorageSlot>) -> Vec<AccountComponent> {
+pub fn bridge_out_with_local_exit_tree_component(
+    storage_slots: Vec<StorageSlot>,
+) -> Vec<AccountComponent> {
     vec![
         bridge_out_component(storage_slots.clone()),
         local_exit_tree_component(vec![]), // local_exit_tree typically doesn't need storage slots
