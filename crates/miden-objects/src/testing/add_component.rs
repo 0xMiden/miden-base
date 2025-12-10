@@ -6,7 +6,7 @@ use crate::utils::sync::LazyLock;
 // ================================================================================================
 
 const ADD_CODE: &str = "
-    export.add5
+    pub proc add5
         add.5
     end
 ";

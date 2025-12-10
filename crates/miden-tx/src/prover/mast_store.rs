@@ -2,7 +2,7 @@ use alloc::collections::BTreeMap;
 use alloc::sync::Arc;
 
 use miden_lib::transaction::TransactionKernel;
-use miden_lib::{MidenLib, StdLibrary};
+use miden_lib::{CoreLibrary, MidenLib};
 use miden_objects::Word;
 use miden_objects::account::AccountCode;
 use miden_objects::assembly::mast::MastForest;
@@ -40,8 +40,8 @@ impl TransactionMastStore {
         store.insert(kernels_forest);
 
         // load miden-core-lib MAST forest
-        let miden_stdlib_forest = StdLibrary::default().mast_forest().clone();
-        store.insert(miden_stdlib_forest);
+        let miden_core_lib_forest = CoreLibrary::default().mast_forest().clone();
+        store.insert(miden_core_lib_forest);
 
         // load miden lib MAST forest
         let miden_lib_forest = MidenLib::default().mast_forest().clone();

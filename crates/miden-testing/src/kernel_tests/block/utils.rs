@@ -101,7 +101,7 @@ impl MockChainBlockExt for MockChain {
 fn update_expiration_tx_script(expiration_delta: u16) -> TransactionScript {
     let code = format!(
         "
-        use.miden::tx
+        use miden::tx
 
         begin
             push.{expiration_delta}

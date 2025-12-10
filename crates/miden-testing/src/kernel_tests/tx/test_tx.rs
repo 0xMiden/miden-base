@@ -133,8 +133,8 @@ async fn test_block_procedures() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
     let code = "
-        use.miden::tx
-        use.$kernel::prologue
+        use miden::tx
+        use $kernel::prologue
 
         begin
             exec.prologue::prepare_transaction
@@ -245,12 +245,12 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
 
     let tx_script_src = format!(
         "\
-        use.miden::contracts::wallets::basic->wallet
-        use.miden::output_note
+        use miden::contracts::wallets::basic->wallet
+        use miden::output_note
 
         # Inputs:  [tag, aux, note_type, execution_hint, RECIPIENT]
         # Outputs: [note_idx]
-        proc.create_note
+        proc create_note
             # pad the stack before the call to prevent accidental modification of the deeper stack
             # elements
             padw padw swapdw
@@ -266,7 +266,7 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
 
         # Inputs:  [ASSET, note_idx]
         # Outputs: [ASSET, note_idx]
-        proc.move_asset_to_note
+        proc move_asset_to_note
             # pad the stack before call
             push.0.0.0 movdn.7 movdn.7 movdn.7 padw padw swapdw
             # => [ASSET, note_idx, pad(11)]
@@ -414,12 +414,12 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
 #[tokio::test]
 async fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
     let source_code = r#"
-      use.miden::auth
-      use.miden::tx
-      const.AUTH_UNAUTHORIZED_EVENT=event("miden::auth::unauthorized")
+      use miden::auth
+      use miden::tx
+      const AUTH_UNAUTHORIZED_EVENT=event("miden::auth::unauthorized")
       #! Inputs:  [AUTH_ARGS, pad(12)]
       #! Outputs: [pad(16)]
-      export.auth_abort_tx
+      pub proc auth_abort_tx
           dropw
           # => [pad(16)]
 
@@ -622,7 +622,7 @@ async fn tx_summary_commitment_is_signed_by_ecdsa_auth() -> anyhow::Result<()> {
 #[tokio::test]
 async fn execute_tx_view_script() -> anyhow::Result<()> {
     let test_module_source = "
-        export.foo
+        pub proc foo
             push.3.4
             add
             swapw dropw
@@ -636,8 +636,8 @@ async fn execute_tx_view_script() -> anyhow::Result<()> {
     let library = assembler.assemble_library([source]).unwrap();
 
     let source = "
-    use.test::module_1
-    use.std::sys
+    use test::module_1
+    use std::sys
 
     begin
         push.1.2
@@ -679,7 +679,7 @@ async fn test_tx_script_inputs() -> anyhow::Result<()> {
     let tx_script_input_value = Word::from([9, 8, 7, 6u32]);
     let tx_script_src = format!(
         "
-        use.miden::account
+        use miden::account
 
         begin
             # push the tx script input key onto the stack
@@ -712,7 +712,7 @@ async fn test_tx_script_args() -> anyhow::Result<()> {
     let tx_script_args = Word::from([1, 2, 3, 4u32]);
 
     let tx_script_src = r#"
-        use.miden::account
+        use miden::account
 
         begin
             # => [TX_SCRIPT_ARGS]
@@ -759,7 +759,7 @@ async fn inputs_created_correctly() -> anyhow::Result<()> {
     let account_code_script = r#"
             adv_map.A([6,7,8,9])=[10,11,12,13]
 
-            export.assert_adv_map
+            pub proc assert_adv_map
                 # test tx script advice map
                 push.[1,2,3,4]
                 adv.push_mapval adv_loadw
@@ -782,7 +782,7 @@ async fn inputs_created_correctly() -> anyhow::Result<()> {
 
     let script = format!(
         r#"
-            use.miden::account
+            use miden::account
 
             adv_map.A([1,2,3,4])=[5,6,7,8]
 
@@ -797,7 +797,7 @@ async fn inputs_created_correctly() -> anyhow::Result<()> {
             end
         "#,
         assert_adv_map_proc_root =
-            component.library().get_procedure_root_by_name("$anon::assert_adv_map").unwrap()
+            component.library().get_procedure_root_by_path("$anon::assert_adv_map").unwrap()
     );
 
     let tx_script = ScriptBuilder::default().compile_tx_script(script)?;

@@ -1,6 +1,6 @@
-use.miden::asset
-use.miden::active_account
-use.miden::kernel_proc_offsets
+use miden::asset
+use miden::active_account
+use miden::kernel_proc_offsets
 
 #! Creates a fungible asset for the faucet the transaction is being executed against.
 #!
@@ -15,7 +15,7 @@ use.miden::kernel_proc_offsets
 #! - the active account is not a fungible faucet.
 #!
 #! Invocation: exec
-export.create_fungible_asset
+pub proc create_fungible_asset
     # fetch the id of the faucet the transaction is being executed against.
     exec.active_account::get_id
     # => [id_prefix, id_suffix, amount]
@@ -38,7 +38,7 @@ end
 #! - the active account is not a non-fungible faucet.
 #!
 #! Invocation: exec
-export.create_non_fungible_asset
+pub proc create_non_fungible_asset
     # get the id of the faucet the transaction is being executed against
     exec.active_account::get_id swap drop
     # => [faucet_id_prefix, DATA_HASH]
@@ -66,7 +66,7 @@ end
 #! - for non-fungible faucets if the non-fungible asset being minted already exists.
 #!
 #! Invocation: exec
-export.mint
+pub proc mint
     exec.kernel_proc_offsets::faucet_mint_asset_offset
     # => [offset, ASSET]
 
@@ -101,7 +101,7 @@ end
 #!   provided as input to the transaction via a note or the accounts vault.
 #!
 #! Invocation: exec
-export.burn
+pub proc burn
     exec.kernel_proc_offsets::faucet_burn_asset_offset
     # => [offset, ASSET]
 
@@ -130,7 +130,7 @@ end
 #! - the transaction is not being executed against a fungible faucet.
 #!
 #! Invocation: exec
-export.get_total_issuance
+pub proc get_total_issuance
     # pad the stack
     padw padw padw push.0.0.0
     # => [pad(15)]
@@ -161,7 +161,7 @@ end
 #! - the ASSET is not associated with the faucet the transaction is being executed against.
 #!
 #! Invocation: exec
-export.is_non_fungible_asset_issued
+pub proc is_non_fungible_asset_issued
     exec.kernel_proc_offsets::faucet_is_non_fungible_asset_issued_offset
     # => [offset, ASSET]
 

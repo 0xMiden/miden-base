@@ -657,8 +657,8 @@ async fn asset_and_storage_delta() -> anyhow::Result<()> {
 
     let tx_script_src = format!(
         r#"
-        use.mock::account
-        use.miden::output_note
+        use mock::account
+        use miden::output_note
 
         const MOCK_VALUE_SLOT0 = word("{mock_value_slot0}")
         const MOCK_MAP_SLOT = word("{mock_map_slot}")
@@ -841,9 +841,9 @@ async fn proven_tx_storage_maps_matches_executed_tx_for_new_account() -> anyhow:
 
     let code = format!(
         r#"
-      use.mock::account
+      use mock::account
 
-      const.MAP_SLOT=word("{map2_slot_name}")
+      const MAP_SLOT=word("{map2_slot_name}")
 
       begin
           # Update an existing key.
@@ -1067,12 +1067,12 @@ fn compile_tx_script(code: impl AsRef<str>) -> anyhow::Result<TransactionScript>
 }
 
 const TEST_ACCOUNT_CONVENIENCE_WRAPPERS: &str = "
-      use.mock::account
-      use.miden::output_note
+      use mock::account
+      use miden::output_note
 
       #! Inputs:  [slot_id_prefix, slot_id_suffix, VALUE]
       #! Outputs: []
-      proc.set_item
+      proc set_item
           repeat.10 push.0 movdn.6 end
           # => [slot_id_prefix, slot_id_suffix, VALUE, pad(10)]
 
@@ -1084,7 +1084,7 @@ const TEST_ACCOUNT_CONVENIENCE_WRAPPERS: &str = "
 
       #! Inputs:  [slot_id_prefix, slot_id_suffix, KEY, VALUE]
       #! Outputs: []
-      proc.set_map_item
+      proc set_map_item
           repeat.6 push.0 movdn.10 end
           # => [index, KEY, VALUE, pad(6)]
 
@@ -1097,7 +1097,7 @@ const TEST_ACCOUNT_CONVENIENCE_WRAPPERS: &str = "
 
       #! Inputs:  [ASSET]
       #! Outputs: []
-      proc.create_note_with_asset
+      proc create_note_with_asset
           push.0.1.2.3           # recipient
           push.1                 # note_execution_hint
           push.2                 # note_type private
@@ -1117,7 +1117,7 @@ const TEST_ACCOUNT_CONVENIENCE_WRAPPERS: &str = "
 
       #! Inputs:  [tag, aux, note_type, execution_hint, RECIPIENT]
       #! Outputs: [note_idx]
-      proc.create_note
+      proc create_note
           repeat.8 push.0 movdn.8 end
           # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
 
@@ -1130,7 +1130,7 @@ const TEST_ACCOUNT_CONVENIENCE_WRAPPERS: &str = "
 
       #! Inputs:  [ASSET, note_idx]
       #! Outputs: []
-      proc.move_asset_to_note
+      proc move_asset_to_note
           repeat.11 push.0 movdn.5 end
           # => [ASSET, note_idx, pad(11)]
 
@@ -1142,7 +1142,7 @@ const TEST_ACCOUNT_CONVENIENCE_WRAPPERS: &str = "
 
       #! Inputs:  [ASSET]
       #! Outputs: [ASSET']
-      proc.add_asset
+      proc add_asset
           repeat.12 push.0 movdn.4 end
           # => [ASSET, pad(12)]
 
@@ -1155,7 +1155,7 @@ const TEST_ACCOUNT_CONVENIENCE_WRAPPERS: &str = "
 
       #! Inputs:  [ASSET]
       #! Outputs: [ASSET]
-      proc.remove_asset
+      proc remove_asset
           repeat.12 push.0 movdn.4 end
           # => [ASSET, pad(12)]
 

@@ -1,9 +1,9 @@
-use.$kernel::memory
+use $kernel::memory
 
 # ERRORS
 # =================================================================================================
 
-const.ERR_INPUT_NOTE_INDEX_OUT_OF_BOUNDS="requested input note index should be less than the total number of input notes"
+const ERR_INPUT_NOTE_INDEX_OUT_OF_BOUNDS="requested input note index should be less than the total number of input notes"
 
 # INPUT NOTE PROCEDURES
 # =================================================================================================
@@ -17,7 +17,7 @@ const.ERR_INPUT_NOTE_INDEX_OUT_OF_BOUNDS="requested input note index should be l
 #! - input_note_ptr is the memory address of the data segment for the requested input note.
 #! - num_assets is the number of assets in the specified note.
 #! - ASSETS_COMMITMENT is a sequential hash of the assets in the specified note.
-export.get_assets_info
+pub proc get_assets_info
     # get the number of assets in the note
     dup exec.memory::get_input_note_num_assets
     # => [num_assets, input_note_ptr]
@@ -31,7 +31,7 @@ end
 #!
 #! Inputs:  [note_index]
 #! Outputs: [note_index]
-export.assert_note_index_in_bounds
+pub proc assert_note_index_in_bounds
     # assert that the provided note index is less than the total number of notes
     dup exec.memory::get_num_input_notes 
     # => [input_notes_num, note_index, note_index]
@@ -53,7 +53,7 @@ end
 #!
 #! Panics if:
 #! - the note index is greater or equal to the total number of input notes.
-export.get_input_note_ptr
+pub proc get_input_note_ptr
     # asset that the provided input note index is valid
     exec.assert_note_index_in_bounds
     # => [idx]

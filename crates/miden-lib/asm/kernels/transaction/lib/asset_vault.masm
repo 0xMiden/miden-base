@@ -1,30 +1,30 @@
-use.std::collections::smt
-use.std::word
+use miden::core::collections::smt
+use miden::core::word
 
-use.$kernel::account_id
-use.$kernel::asset
-use.$kernel::memory
+use $kernel::account_id
+use $kernel::asset
+use $kernel::memory
 
 # ERRORS
 # =================================================================================================
 
-const.ERR_VAULT_GET_BALANCE_CAN_ONLY_BE_CALLED_ON_FUNGIBLE_ASSET="get_balance can only be called on a fungible asset"
+const ERR_VAULT_GET_BALANCE_CAN_ONLY_BE_CALLED_ON_FUNGIBLE_ASSET="get_balance can only be called on a fungible asset"
 
-const.ERR_VAULT_PEEK_BALANCE_CAN_ONLY_BE_CALLED_ON_FUNGIBLE_ASSET="peek_balance can only be called on a fungible asset"
+const ERR_VAULT_PEEK_BALANCE_CAN_ONLY_BE_CALLED_ON_FUNGIBLE_ASSET="peek_balance can only be called on a fungible asset"
 
-const.ERR_VAULT_HAS_NON_FUNGIBLE_ASSET_PROC_CAN_BE_CALLED_ONLY_WITH_NON_FUNGIBLE_ASSET="the has_non_fungible_asset procedure can only be called on a non-fungible faucet"
+const ERR_VAULT_HAS_NON_FUNGIBLE_ASSET_PROC_CAN_BE_CALLED_ONLY_WITH_NON_FUNGIBLE_ASSET="the has_non_fungible_asset procedure can only be called on a non-fungible faucet"
 
-const.ERR_VAULT_FUNGIBLE_MAX_AMOUNT_EXCEEDED="adding the fungible asset to the vault would exceed the max amount of 9223372036854775807"
+const ERR_VAULT_FUNGIBLE_MAX_AMOUNT_EXCEEDED="adding the fungible asset to the vault would exceed the max amount of 9223372036854775807"
 
-const.ERR_VAULT_ADD_FUNGIBLE_ASSET_FAILED_INITIAL_VALUE_INVALID="failed to add fungible asset to the asset vault due to the initial value being invalid"
+const ERR_VAULT_ADD_FUNGIBLE_ASSET_FAILED_INITIAL_VALUE_INVALID="failed to add fungible asset to the asset vault due to the initial value being invalid"
 
-const.ERR_VAULT_NON_FUNGIBLE_ASSET_ALREADY_EXISTS="the non-fungible asset already exists in the asset vault"
+const ERR_VAULT_NON_FUNGIBLE_ASSET_ALREADY_EXISTS="the non-fungible asset already exists in the asset vault"
 
-const.ERR_VAULT_FUNGIBLE_ASSET_AMOUNT_LESS_THAN_AMOUNT_TO_WITHDRAW="failed to remove the fungible asset from the vault since the amount of the asset in the vault is less than the amount to remove"
+const ERR_VAULT_FUNGIBLE_ASSET_AMOUNT_LESS_THAN_AMOUNT_TO_WITHDRAW="failed to remove the fungible asset from the vault since the amount of the asset in the vault is less than the amount to remove"
 
-const.ERR_VAULT_REMOVE_FUNGIBLE_ASSET_FAILED_INITIAL_VALUE_INVALID="failed to remove fungible asset from the asset vault due to the initial value being invalid"
+const ERR_VAULT_REMOVE_FUNGIBLE_ASSET_FAILED_INITIAL_VALUE_INVALID="failed to remove fungible asset from the asset vault due to the initial value being invalid"
 
-const.ERR_VAULT_NON_FUNGIBLE_ASSET_TO_REMOVE_NOT_FOUND="failed to remove non-existent non-fungible asset from the vault"
+const ERR_VAULT_NON_FUNGIBLE_ASSET_TO_REMOVE_NOT_FOUND="failed to remove non-existent non-fungible asset from the vault"
 
 # EVENTS
 # =================================================================================================
@@ -32,13 +32,13 @@ const.ERR_VAULT_NON_FUNGIBLE_ASSET_TO_REMOVE_NOT_FOUND="failed to remove non-exi
 # The event is from `stdlib`, visible through the prefix and is _not_ a `TransactionEvent`.
 # Care must be taken it stays in sync with the `miden-stdlib` definition. Note that generally speaking
 # we should not emit `"stdlib"` events, consider this "hijacking", tread carefully.
-const.SMT_PEEK_EVENT=event("stdlib::collections::smt::smt_peek")
+const SMT_PEEK_EVENT=event("stdlib::collections::smt::smt_peek")
 
 # CONSTANTS
 # =================================================================================================
 
 # The bitmask that when applied will set the fungible bit to zero.
-const.INVERSE_FUNGIBLE_BITMASK_U32=0xffffffdf # last byte: 0b1101_1111
+const INVERSE_FUNGIBLE_BITMASK_U32=0xffffffdf # last byte: 0b1101_1111
 
 # ACCESSORS
 # =================================================================================================
@@ -56,7 +56,7 @@ const.INVERSE_FUNGIBLE_BITMASK_U32=0xffffffdf # last byte: 0b1101_1111
 #!
 #! Panics if:
 #! - the provided faucet ID is not an ID of a fungible faucet.
-export.get_balance
+pub proc get_balance
     # assert that the faucet id is a fungible faucet
     dup exec.account_id::is_fungible_faucet
     assert.err=ERR_VAULT_GET_BALANCE_CAN_ONLY_BE_CALLED_ON_FUNGIBLE_ASSET
@@ -102,7 +102,7 @@ end
 #!
 #! Panics if:
 #! - the asset is not a fungible asset.
-export.peek_balance
+pub proc peek_balance
     # assert that the faucet id is a fungible faucet
     dup exec.account_id::is_fungible_faucet
     assert.err=ERR_VAULT_PEEK_BALANCE_CAN_ONLY_BE_CALLED_ON_FUNGIBLE_ASSET
@@ -148,7 +148,7 @@ end
 #!
 #! Panics if:
 #! - the ASSET is a fungible asset.
-export.has_non_fungible_asset
+pub proc has_non_fungible_asset
     # check if the asset is a non-fungible asset
     exec.asset::is_non_fungible_asset
     assert.err=ERR_VAULT_HAS_NON_FUNGIBLE_ASSET_PROC_CAN_BE_CALLED_ONLY_WITH_NON_FUNGIBLE_ASSET
@@ -190,7 +190,7 @@ end
 #!
 #! Panics if:
 #! - the total value of assets is greater than or equal to 2^63.
-export.add_fungible_asset
+pub proc add_fungible_asset
     # Create the asset key from the asset.
     # ---------------------------------------------------------------------------------------------
 
@@ -294,7 +294,7 @@ end
 #!
 #! Panics if:
 #! - the vault already contains the same non-fungible asset.
-export.add_non_fungible_asset
+pub proc add_non_fungible_asset
     # Build the asset key from the non-fungible asset.
     # ---------------------------------------------------------------------------------------------
 
@@ -341,7 +341,7 @@ end
 #! - the asset is not valid.
 #! - the total value of two fungible assets is greater than or equal to 2^63.
 #! - the vault already contains the same non-fungible asset.
-export.add_asset
+pub proc add_asset
     # check if the asset is a fungible asset
     exec.asset::is_fungible_asset
     # => [is_fungible_asset, ASSET]
@@ -381,7 +381,8 @@ end
 #!
 #! Panics if:
 #! - the amount of the asset in the vault is less than the amount to be removed.
-export.remove_fungible_asset.4
+@locals(4)
+pub proc remove_fungible_asset
     exec.build_fungible_asset_vault_key
     # => [ASSET_KEY, ASSET, vault_root_ptr]
 
@@ -465,7 +466,7 @@ end
 #!
 #! Panics if:
 #! - the non-fungible asset is not found in the vault.
-export.remove_non_fungible_asset
+pub proc remove_non_fungible_asset
     # build non-fungible asset key
     dupw exec.build_non_fungible_asset_vault_key padw
     # => [pad(4), ASSET_KEY, ASSET, vault_root_ptr]
@@ -504,7 +505,7 @@ end
 #! - the fungible asset is not found in the vault.
 #! - the amount of the fungible asset in the vault is less than the amount to be removed.
 #! - the non-fungible asset is not found in the vault.
-export.remove_asset
+pub proc remove_asset
     # check if the asset is a fungible asset
     exec.asset::is_fungible_asset
     # => [is_fungible_asset, ASSET, vault_root_ptr]
@@ -534,7 +535,7 @@ end
 #! - faucet_id_{prefix, suffix} are the prefix and suffix felts of the faucet id of the fungible
 #!   asset of interest.
 #! - asset is the peeked asset from the vault.
-proc.peek_asset
+proc peek_asset
     # load the asset vault root from memory
     padw movup.8 mem_loadw_be
     # => [ASSET_VAULT_ROOT, ASSET_KEY]
@@ -566,7 +567,7 @@ end
 #! Where:
 #! - ASSET is the non-fungible asset for which the vault key is built.
 #! - ASSET_KEY is the vault key of the non-fungible asset.
-export.build_non_fungible_asset_vault_key
+pub proc build_non_fungible_asset_vault_key
     # create the asset key from the non-fungible asset by swapping hash0 with the faucet id
     # => [faucet_id_prefix, hash2, hash1, hash0]
     swap.3
@@ -596,7 +597,7 @@ end
 #! Where:
 #! - ASSET is the fungible asset for which the vault key is built.
 #! - ASSET_KEY is the vault key of the fungible asset.
-export.build_fungible_asset_vault_key
+pub proc build_fungible_asset_vault_key
   # => [faucet_id_prefix, faucet_id_suffix, 0, amount]
 
   push.0.0

@@ -28,7 +28,7 @@ pub mod testing;
 
 // RE-EXPORTS
 // ================================================================================================
-pub use miden_stdlib::StdLibrary;
+pub use miden_core_lib::CoreLibrary;
 
 // CONSTANTS
 // ================================================================================================
@@ -77,18 +77,18 @@ impl Default for MidenLib {
 // NOTE: Most kernel-related tests can be found under /miden-tx/kernel_tests
 #[cfg(all(test, feature = "std"))]
 mod tests {
-    use miden_objects::assembly::LibraryPath;
+    use miden_objects::assembly::Path;
 
     use super::MidenLib;
 
     #[test]
     fn test_compile() {
-        let path = "miden::active_account::get_id".parse::<LibraryPath>().unwrap();
+        let path = Path::new("miden::active_account::get_id");
         let miden = MidenLib::default();
         let exists = miden.0.module_infos().any(|module| {
             module
                 .procedures()
-                .any(|(_, proc)| module.path().clone().append(&proc.name).unwrap() == path)
+                .any(|(_, proc)| module.path().join(&proc.name).as_path() == path)
         });
 
         assert!(exists);

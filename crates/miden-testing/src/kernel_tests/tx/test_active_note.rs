@@ -49,7 +49,7 @@ async fn test_active_note_get_sender_fails_from_tx_script() -> anyhow::Result<()
     mock_chain.prove_next_block()?;
 
     let code = "
-        use.miden::active_note
+        use miden::active_note
 
         begin
             # try to get the sender from transaction script
@@ -90,9 +90,9 @@ async fn test_active_note_get_metadata() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-        use.$kernel::prologue
-        use.$kernel::note->note_internal
-        use.miden::active_note
+        use $kernel::prologue
+        use $kernel::note->note_internal
+        use miden::active_note
 
         begin
             exec.prologue::prepare_transaction
@@ -135,9 +135,9 @@ async fn test_active_note_get_sender() -> anyhow::Result<()> {
 
     // calling get_sender should return sender of the active note
     let code = "
-        use.$kernel::prologue
-        use.$kernel::note->note_internal
-        use.miden::active_note
+        use $kernel::prologue
+        use $kernel::note->note_internal
+        use miden::active_note
 
         begin
             exec.prologue::prepare_transaction
@@ -211,13 +211,13 @@ async fn test_active_note_get_assets() -> anyhow::Result<()> {
     // calling get_assets should return assets at the specified address
     let code = format!(
         "
-        use.std::sys
+        use std::sys
 
-        use.$kernel::prologue
-        use.$kernel::note->note_internal
-        use.miden::active_note
+        use $kernel::prologue
+        use $kernel::note->note_internal
+        use miden::active_note
 
-        proc.process_note_0
+        proc process_note_0
             # drop the note inputs
             dropw dropw dropw dropw
 
@@ -240,7 +240,7 @@ async fn test_active_note_get_assets() -> anyhow::Result<()> {
             drop
         end
 
-        proc.process_note_1
+        proc process_note_1
             # drop the note inputs
             dropw dropw dropw dropw
 
@@ -341,9 +341,9 @@ async fn test_active_note_get_inputs() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.$kernel::prologue
-        use.$kernel::note->note_internal
-        use.miden::active_note
+        use $kernel::prologue
+        use $kernel::note->note_internal
+        use miden::active_note
 
         begin
             # => [BH, acct_id, IAH, NC]
@@ -441,8 +441,8 @@ async fn test_active_note_get_exactly_8_inputs() -> anyhow::Result<()> {
         .build()?;
 
     let tx_code = "
-            use.$kernel::prologue
-            use.miden::active_note
+            use $kernel::prologue
+            use miden::active_note
 
             begin
                 exec.prologue::prepare_transaction
@@ -484,8 +484,8 @@ async fn test_active_note_get_serial_number() -> anyhow::Result<()> {
 
     // calling get_serial_number should return the serial number of the active note
     let code = "
-        use.$kernel::prologue
-        use.miden::active_note
+        use $kernel::prologue
+        use miden::active_note
 
         begin
             exec.prologue::prepare_transaction
@@ -523,8 +523,8 @@ async fn test_active_note_get_script_root() -> anyhow::Result<()> {
 
     // calling get_script_root should return script root of the active note
     let code = "
-    use.$kernel::prologue
-    use.miden::active_note
+    use $kernel::prologue
+    use miden::active_note
 
     begin
         exec.prologue::prepare_transaction

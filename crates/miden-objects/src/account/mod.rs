@@ -877,7 +877,7 @@ mod tests {
     /// account type returns an error.
     #[test]
     fn test_account_unsupported_component_type() {
-        let code1 = "export.foo add end";
+        let code1 = "pub proc foo add end";
         let library1 = Assembler::default().assemble_library([code1]).unwrap();
 
         // This component support all account types except the regular account with updatable code.
@@ -906,8 +906,8 @@ mod tests {
     /// code and storage.
     #[test]
     fn test_account_duplicate_exported_mast_root() {
-        let code1 = "export.foo add eq.1 end";
-        let code2 = "export.bar add eq.1 end";
+        let code1 = "pub proc foo add eq.1 end";
+        let code2 = "pub proc bar add eq.1 end";
 
         let library1 = Assembler::default().assemble_library([code1]).unwrap();
         let library2 = Assembler::default().assemble_library([code2]).unwrap();

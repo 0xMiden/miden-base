@@ -2,7 +2,7 @@ use alloc::collections::BTreeSet;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use miden_lib::StdLibrary;
+use miden_lib::CoreLibrary;
 use miden_lib::transaction::{EventId, TransactionEventId};
 use miden_objects::Word;
 use miden_processor::{
@@ -50,12 +50,12 @@ impl<'store> MockHost<'store> {
     pub fn new(
         exec_host: TransactionExecutorHost<'store, 'static, TransactionContext, UnreachableAuth>,
     ) -> Self {
-        // StdLibrary events are always handled.
-        let stdlib_handlers = StdLibrary::default()
+        // CoreLibrary events are always handled.
+        let core_lib_handlers = CoreLibrary::default()
             .handlers()
             .into_iter()
             .map(|(handler_event_name, _)| handler_event_name.to_event_id());
-        let mut handled_events = BTreeSet::from_iter(stdlib_handlers);
+        let mut handled_events = BTreeSet::from_iter(core_lib_handlers);
 
         // The default set of transaction events that are always handled.
         handled_events.extend(

@@ -44,7 +44,7 @@ use miden_objects::block::{
     OutputNoteBatch,
     ProvenBlock,
 };
-use miden_objects::crypto::merkle::Smt;
+use miden_objects::crypto::merkle::smt::Smt;
 use miden_objects::note::{Note, NoteDetails, NoteType};
 use miden_objects::testing::account_id::ACCOUNT_ID_NATIVE_ASSET_FAUCET;
 use miden_objects::transaction::{OrderedTransactionHeaders, OutputNote};

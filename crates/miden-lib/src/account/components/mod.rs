@@ -3,7 +3,7 @@ use alloc::vec::Vec;
 
 use miden_objects::Word;
 use miden_objects::account::AccountProcedureInfo;
-use miden_objects::assembly::Library;
+use miden_objects::assembly::{Library, LibraryExport};
 use miden_objects::utils::Deserializable;
 use miden_objects::utils::sync::LazyLock;
 use miden_processor::MastNodeExt;
@@ -177,13 +177,16 @@ impl WellKnownComponent {
             Self::AuthNoAuth => NO_AUTH_LIBRARY.as_ref(),
         };
 
-        library.exports().map(|export| {
-            library
-                .mast_forest()
-                .get_node_by_id(export.node)
-                .expect("export node not in the forest")
-                .digest()
-        })
+        library
+            .exports()
+            .filter(|export| matches!(export, LibraryExport::Procedure(_)))
+            .map(|proc_export| {
+                library
+                    .mast_forest()
+                    .get_node_by_id(proc_export.unwrap_procedure().node)
+                    .expect("export node not in the forest")
+                    .digest()
+            })
     }
 
     /// Checks whether procedures from the current component are present in the procedures map

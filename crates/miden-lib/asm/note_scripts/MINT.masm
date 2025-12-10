@@ -1,14 +1,14 @@
-use.miden::active_note
-use.miden::contracts::faucets::network_fungible->network_faucet
+use miden::active_note
+use miden::contracts::faucets::network_fungible->network_faucet
 
 # CONSTANTS
 # =================================================================================================
 
-const.MINT_NOTE_INPUTS_NUMBER=9
+const MINT_NOTE_INPUTS_NUMBER=9
 
 # ERRORS
 # =================================================================================================
-const.ERR_MINT_WRONG_NUMBER_OF_INPUTS="MINT script expects exactly 9 note inputs"
+const ERR_MINT_WRONG_NUMBER_OF_INPUTS="MINT script expects exactly 9 note inputs"
 
 #! Network Faucet MINT script: mints assets by calling the network faucet's distribute function.
 #! This note is intended to be executed against a network fungible faucet account.

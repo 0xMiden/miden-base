@@ -10,7 +10,7 @@ mod account_procedures;
 pub use account_procedures::AccountProcedureIndexMap;
 
 pub(crate) mod note_builder;
-use miden_lib::StdLibrary;
+use miden_lib::CoreLibrary;
 use miden_lib::transaction::EventId;
 use note_builder::OutputNoteBuilder;
 
@@ -119,11 +119,11 @@ impl<'store, STORE> TransactionBaseHost<'store, STORE> {
         let stdlib_handlers = {
             let mut registry = EventHandlerRegistry::new();
 
-            let stdlib = StdLibrary::default();
-            for (event_id, handler) in stdlib.handlers() {
+            let core_lib = CoreLibrary::default();
+            for (event_id, handler) in core_lib.handlers() {
                 registry
                     .register(event_id, handler)
-                    .expect("There are no duplicates in the stdlibrary handlers");
+                    .expect("There are no duplicates in the core library handlers");
             }
             registry
         };

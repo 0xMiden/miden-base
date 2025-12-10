@@ -1,21 +1,21 @@
-use.miden::active_account
-use.miden::native_account
-use.miden::auth
-use.miden::tx
-use.std::crypto::dsa::ecdsa::secp256k1
+use miden::active_account
+use miden::native_account
+use miden::auth
+use miden::tx
+use miden::core::crypto::dsa::ecdsa_k256_keccak
 
 # CONSTANTS
 # =================================================================================================
 
 # The event to request an authentication signature.
-const.AUTH_REQUEST_EVENT=event("miden::auth::request")
+const AUTH_REQUEST_EVENT=event("miden::auth::request")
 
 # Local Memory Addresses for multisig operations
-const.NUM_OF_APPROVERS_LOC=0
-const.PUB_KEY_SLOT_SUFFIX_LOC=4
-const.PUB_KEY_SLOT_PREFIX_LOC=5
-const.CURRENT_PK_LOC=8
-const.SUCCESSFUL_VERIFICATIONS_LOC=12
+const NUM_OF_APPROVERS_LOC=0
+const PUB_KEY_SLOT_SUFFIX_LOC=4
+const PUB_KEY_SLOT_PREFIX_LOC=5
+const CURRENT_PK_LOC=8
+const SUCCESSFUL_VERIFICATIONS_LOC=12
 
 #! Authenticate a transaction using the ECDSA signature scheme.
 #!
@@ -32,7 +32,7 @@ const.SUCCESSFUL_VERIFICATIONS_LOC=12
 #! Outputs: []
 #!
 #! Invocation: exec
-export.authenticate_transaction
+pub proc authenticate_transaction
     # Increment the account's nonce.
     # ---------------------------------------------------------------------------------------------
     # This has to happen before computing the delta commitment, otherwise that procedure will abort
@@ -63,7 +63,7 @@ export.authenticate_transaction
     # Verify the signature against the public key and the message. The procedure gets as inputs the
     # hash of the public key and the message via the operand stack. The signature is provided via
     # the advice stack. The signature is valid if and only if the procedure returns.
-    exec.secp256k1::verify_ecdsa_k256_keccak
+    exec.ecdsa_k256_keccak::verify
     # OS => []
     # AS => []
 end
@@ -81,7 +81,8 @@ end
 #!
 #! Inputs:  [pub_key_slot_prefix, pub_key_slot_suffix, num_of_approvers, MSG]
 #! Outputs: [num_verified_signatures, MSG]
-export.verify_signatures.16
+@locals(16)
+pub proc verify_signatures
     loc_store.PUB_KEY_SLOT_PREFIX_LOC
     loc_store.PUB_KEY_SLOT_SUFFIX_LOC
     # => [num_of_approvers, MSG]
@@ -155,7 +156,7 @@ export.verify_signatures.16
             # OS => [PUB_KEY, MSG, MSG, i-1]
             # AS => [SIGNATURE]
 
-            exec.secp256k1::verify_ecdsa_k256_keccak
+            exec.ecdsa_k256_keccak::verify
             # => [MSG, i-1]
 
             loc_load.SUCCESSFUL_VERIFICATIONS_LOC

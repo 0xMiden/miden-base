@@ -144,19 +144,14 @@ impl NoteBuilder {
             self.code,
         );
 
-        let mut assembler = TransactionKernel::assembler_with_source_manager(self.source_manager)
-            .with_debug_mode(true);
+        let mut assembler = TransactionKernel::assembler_with_source_manager(self.source_manager);
         for dyn_library in self.dyn_libraries {
             assembler
                 .link_dynamic_library(dyn_library)
                 .expect("library should link successfully");
         }
 
-        let code = assembler
-            .clone()
-            .with_debug_mode(true)
-            .assemble_program(virtual_source_file)
-            .unwrap();
+        let code = assembler.clone().assemble_program(virtual_source_file).unwrap();
 
         let note_script = NoteScript::new(code);
         let vault = NoteAssets::new(self.assets)?;

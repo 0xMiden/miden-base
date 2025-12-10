@@ -26,7 +26,7 @@ use crate::prove_and_verify_transaction;
 // ================================================================================================
 
 const TX_SCRIPT_NO_TRIGGER: &str = r#"
-    use.mock::account
+    use mock::account
     begin
         call.account::account_procedure_1
         drop
@@ -104,7 +104,7 @@ async fn test_ecdsa_acl() -> anyhow::Result<()> {
 
     let tx_script_with_trigger_1 = format!(
         r#"
-        use.mock::account
+        use mock::account
 
         const MOCK_VALUE_SLOT0 = word("{mock_value_slot0}")
 
@@ -119,7 +119,7 @@ async fn test_ecdsa_acl() -> anyhow::Result<()> {
 
     let tx_script_with_trigger_2 = format!(
         r#"
-        use.mock::account
+        use mock::account
 
         const MOCK_VALUE_SLOT0 = word("{mock_value_slot0}")
 

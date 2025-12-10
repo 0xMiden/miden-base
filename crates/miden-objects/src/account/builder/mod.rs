@@ -295,12 +295,12 @@ mod tests {
     use crate::testing::noop_auth_component::NoopAuthComponent;
 
     const CUSTOM_CODE1: &str = "
-          export.foo
+          pub proc foo
             push.2.2 add eq.4
           end
         ";
     const CUSTOM_CODE2: &str = "
-            export.bar
+            pub proc bar
               push.4.4 add eq.8
             end
           ";
@@ -401,10 +401,10 @@ mod tests {
         assert_eq!(account.code.procedure_roots().count(), 3);
 
         let foo_root = CUSTOM_LIBRARY1.mast_forest()
-            [CUSTOM_LIBRARY1.get_export_node_id(&CUSTOM_LIBRARY1.exports().next().unwrap().path())]
+            [CUSTOM_LIBRARY1.get_export_node_id(CUSTOM_LIBRARY1.exports().next().unwrap().path())]
         .digest();
         let bar_root = CUSTOM_LIBRARY2.mast_forest()
-            [CUSTOM_LIBRARY2.get_export_node_id(&CUSTOM_LIBRARY2.exports().next().unwrap().path())]
+            [CUSTOM_LIBRARY2.get_export_node_id(CUSTOM_LIBRARY2.exports().next().unwrap().path())]
         .digest();
 
         let foo_procedure_info = &account

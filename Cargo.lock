@@ -1401,6 +1401,7 @@ version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "93e599a4a3bc1fd0f0ae58cdbbd2066dee02f3e44e89d171fe11368d00c6ee13"
 dependencies = [
+ "env_logger",
  "log",
  "miden-assembly-syntax",
  "miden-core",
@@ -1416,6 +1417,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ce36d9ecb7bb60184b07742ba8c905962886c74a749909c4b5c1f5d6a00d6f21"
 dependencies = [
  "aho-corasick",
+ "env_logger",
  "lalrpop",
  "lalrpop-util",
  "log",
@@ -1424,6 +1426,7 @@ dependencies = [
  "miden-utils-diagnostics",
  "midenc-hir-type",
  "proptest",
+ "proptest-derive",
  "regex",
  "rustc_version 0.4.1",
  "semver 1.0.27",
@@ -1454,6 +1457,8 @@ dependencies = [
  "miden-utils-indexing",
  "num-derive",
  "num-traits",
+ "proptest",
+ "proptest-derive",
  "thiserror",
  "winter-math",
  "winter-utils",
@@ -2189,6 +2194,17 @@ dependencies = [
  "rand_xorshift",
  "regex-syntax",
  "unarray",
+]
+
+[[package]]
+name = "proptest-derive"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fb6dc647500e84a25a85b100e76c85b8ace114c209432dc174f20aac11d4ed6c"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.110",
 ]
 
 [[package]]

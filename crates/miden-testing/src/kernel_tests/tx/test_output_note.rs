@@ -62,9 +62,9 @@ async fn test_create_note() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.miden::output_note
+        use miden::output_note
 
-        use.$kernel::prologue
+        use $kernel::prologue
 
         begin
             exec.prologue::prepare_transaction
@@ -143,8 +143,8 @@ async fn test_create_note_with_invalid_tag() -> anyhow::Result<()> {
 fn note_creation_script(tag: Felt) -> String {
     format!(
         "
-            use.miden::output_note
-            use.$kernel::prologue
+            use miden::output_note
+            use $kernel::prologue
 
             begin
                 exec.prologue::prepare_transaction
@@ -174,10 +174,10 @@ async fn test_create_note_too_many_notes() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.miden::output_note
-        use.$kernel::constants
-        use.$kernel::memory
-        use.$kernel::prologue
+        use miden::output_note
+        use $kernel::constants
+        use $kernel::memory
+        use $kernel::prologue
 
         begin
             exec.constants::get_max_num_output_notes
@@ -292,12 +292,12 @@ async fn test_get_output_notes_commitment() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.std::sys
+        use std::sys
 
-        use.miden::tx
-        use.miden::output_note
+        use miden::tx
+        use miden::output_note
 
-        use.$kernel::prologue
+        use $kernel::prologue
 
         begin
             # => [BH, acct_id, IAH, NC]
@@ -397,9 +397,9 @@ async fn test_create_note_and_add_asset() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.miden::output_note
+        use miden::output_note
 
-        use.$kernel::prologue
+        use $kernel::prologue
 
         begin
             exec.prologue::prepare_transaction
@@ -466,8 +466,8 @@ async fn test_create_note_and_add_multiple_assets() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.miden::output_note
-        use.$kernel::prologue
+        use miden::output_note
+        use $kernel::prologue
 
         begin
             exec.prologue::prepare_transaction
@@ -547,8 +547,8 @@ async fn test_create_note_and_add_same_nft_twice() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.$kernel::prologue
-        use.miden::output_note
+        use $kernel::prologue
+        use miden::output_note
 
         begin
             exec.prologue::prepare_transaction
@@ -639,9 +639,9 @@ async fn test_build_recipient_hash() -> anyhow::Result<()> {
     let recipient = NoteRecipient::new(output_serial_no, input_note_1.script().clone(), inputs);
     let code = format!(
         "
-        use.miden::output_note
-        use.miden::note
-        use.$kernel::prologue
+        use miden::output_note
+        use miden::note
+        use $kernel::prologue
 
         begin
             exec.prologue::prepare_transaction
@@ -754,8 +754,8 @@ async fn test_get_asset_info() -> anyhow::Result<()> {
 
     let tx_script_src = &format!(
         r#"
-        use.miden::output_note
-        use.std::sys
+        use miden::output_note
+        use std::sys
 
         begin
             # create an output note with fungible asset 0
@@ -870,8 +870,8 @@ async fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
 
     let tx_script_src = &format!(
         r#"
-        use.miden::output_note
-        use.std::sys
+        use miden::output_note
+        use std::sys
 
         begin
             # create an output note with one asset
@@ -984,8 +984,8 @@ async fn test_get_assets() -> anyhow::Result<()> {
 
     let tx_script_src = &format!(
         "
-        use.miden::output_note
-        use.std::sys
+        use miden::output_note
+        use std::sys
 
         begin
             {create_note_0}

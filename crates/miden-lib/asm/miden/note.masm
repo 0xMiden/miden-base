@@ -1,12 +1,12 @@
-use.miden::account_id
-use.std::crypto::hashes::rpo
-use.std::math::u64
-use.std::mem
+use miden::account_id
+use miden::core::crypto::hashes::rpo256
+use miden::core::math::u64
+use miden::core::mem
 
 # ERRORS
 # =================================================================================================
 
-const.ERR_PROLOGUE_NOTE_INPUTS_LEN_EXCEEDED_LIMIT="number of note inputs exceeded the maximum limit of 1024"
+const ERR_PROLOGUE_NOTE_INPUTS_LEN_EXCEEDED_LIMIT="number of note inputs exceeded the maximum limit of 1024"
 
 # NOTE UTILITY PROCEDURES
 # =================================================================================================
@@ -32,19 +32,14 @@ const.ERR_PROLOGUE_NOTE_INPUTS_LEN_EXCEEDED_LIMIT="number of note inputs exceede
 #! - num_inputs is greater than 1024.
 #!
 #! Invocation: exec
-export.compute_inputs_commitment
+pub proc compute_inputs_commitment
     # check that number of inputs is less than or equal to 1024
     dup.1 push.1024 u32assert2.err=ERR_PROLOGUE_NOTE_INPUTS_LEN_EXCEEDED_LIMIT
     u32lte assert.err=ERR_PROLOGUE_NOTE_INPUTS_LEN_EXCEEDED_LIMIT
     # => [inputs_ptr, num_inputs]
 
-    # push 1 as the pad_inputs flag: we should pad the stack while computing the note inputs
-    # commitment
-    push.1 movdn.2
-    # => [inputs_ptr, num_inputs, pad_inputs_flag]
-
-    exec.rpo::prepare_hasher_state
-    exec.rpo::hash_memory_with_state
+    # compute the inputs commitment
+    exec.rpo256::pad_and_hash_elements
     # => [INPUTS_COMMITMENT]
 end
 
@@ -54,7 +49,7 @@ end
 #! Output: [max_inputs_per_note]
 #!
 #! - max_inputs_per_note is the max inputs per note.
-export.::miden::util::note::get_max_inputs_per_note
+pub use ::miden::util::note::get_max_inputs_per_note
 
 #! Writes the assets data stored in the advice map to the memory specified by the provided
 #! destination pointer.
@@ -66,7 +61,7 @@ export.::miden::util::note::get_max_inputs_per_note
 #!   }
 #! Outputs:
 #!   Operand stack: [num_assets, dest_ptr]
-export.write_assets_to_memory
+pub proc write_assets_to_memory
     # load the asset data from the advice map to the advice stack
     adv.push_mapval
     # OS => [ASSETS_COMMITMENT, num_assets, dest_ptr]
@@ -123,7 +118,8 @@ end
 #! - num_inputs is greater than 1024.
 #!
 #! Invocation: exec
-export.build_recipient.1
+@locals(1)
+pub proc build_recipient
     dup.1 dup.1
     # => [inputs_ptr, num_inputs, inputs_ptr, num_inputs, SERIAL_NUM, SCRIPT_ROOT]
 
@@ -191,7 +187,7 @@ end
 #! - RECIPIENT is the recipient of the note.
 #!
 #! Invocation: exec
-export.build_recipient_hash
+pub proc build_recipient_hash
     padw hmerge
     # => [SERIAL_NUM_HASH, SCRIPT_ROOT, INPUT_COMMITMENT]
 
@@ -211,7 +207,7 @@ end
 #! - METADATA is the metadata of some note.
 #! - sender_{prefix,suffix} are the prefix and suffix felts of the sender ID of the note which
 #!   metadata was provided.
-export.extract_sender_from_metadata
+pub proc extract_sender_from_metadata
     # => [aux, merged_tag_hint_payload, merged_sender_id_type_hint_tag, sender_id_prefix]
 
     # drop aux felt and the felt containing tag, execution hint and payload
@@ -241,7 +237,7 @@ end
 #! - network_account_tag is the computed network note tag.
 #!
 #! Invocation: exec
-export.build_note_tag_for_network_account
+pub proc build_note_tag_for_network_account
     swap drop
     # => [account_id_prefix]
 

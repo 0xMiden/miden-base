@@ -151,7 +151,8 @@ end
 #! Locals:
 #! 0: new_num_of_approvers
 #! 1: init_num_of_approvers
-pub proc update_signers_and_threshold.2(multisig_config_hash: BeWord)
+@locals(2)
+pub proc update_signers_and_threshold(multisig_config_hash: BeWord)
     adv.push_mapval
     # => [MULTISIG_CONFIG_HASH, pad(12)]
 
@@ -238,7 +239,8 @@ end
 #
 #! Inputs:  [default_threshold]
 #! Outputs: [transaction_threshold]
-proc compute_transaction_threshold.1(default_threshold: u32) -> u32
+@locals(1)
+proc compute_transaction_threshold(default_threshold: u32) -> u32
     # 1. initialize transaction_threshold = 0
     # 2. iterate through all account procedures
     #   a. check if the procedure was called during the transaction
@@ -353,7 +355,8 @@ end
 #! - the same transaction has already been executed (replay protection).
 #!
 #! Invocation: call
-pub proc auth_tx_ecdsa_k256_keccak_multisig.1(salt: BeWord)
+@locals(1)
+pub proc auth_tx_ecdsa_k256_keccak_multisig(salt: BeWord)
     exec.native_account::incr_nonce drop
     # => [SALT]
 

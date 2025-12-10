@@ -45,7 +45,7 @@ fn setup_keys_and_authenticators(
     let mut authenticators = Vec::new();
 
     for _ in 0..num_approvers {
-        let sec_key = AuthSecretKey::new_rpo_falcon512_with_rng(&mut rng);
+        let sec_key = AuthSecretKey::new_falcon512_rpo_with_rng(&mut rng);
         let pub_key = sec_key.public_key();
 
         secret_keys.push(sec_key);

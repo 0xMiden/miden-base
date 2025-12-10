@@ -13,7 +13,7 @@ use miden_objects::account::{AccountBuilder, AccountId};
 use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::assembly::diagnostics::miette::{self, miette};
 use miden_objects::asset::FungibleAsset;
-use miden_objects::crypto::dsa::rpo_falcon512::SecretKey;
+use miden_objects::crypto::dsa::falcon512_rpo::SecretKey;
 use miden_objects::crypto::rand::{FeltRng, RpoRandomCoin};
 use miden_objects::note::{
     Note,
@@ -67,8 +67,8 @@ async fn test_note_setup() -> anyhow::Result<()> {
     };
 
     let code = "
-        use.$kernel::prologue
-        use.$kernel::note
+        use $kernel::prologue
+        use $kernel::note
 
         begin
             exec.prologue::prepare_transaction
@@ -125,9 +125,9 @@ async fn test_note_script_and_note_args() -> miette::Result<()> {
     };
 
     let code = "
-        use.$kernel::prologue
-        use.$kernel::memory
-        use.$kernel::note
+        use $kernel::prologue
+        use $kernel::memory
+        use $kernel::note
 
         begin
             exec.prologue::prepare_transaction
@@ -205,9 +205,9 @@ async fn test_build_recipient() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.std::sys
+        use std::sys
 
-        use.miden::note
+        use miden::note
 
         begin
             # put the values that will be hashed into the memory
@@ -294,9 +294,9 @@ async fn test_compute_inputs_commitment() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.std::sys
+        use std::sys
 
-        use.miden::note
+        use miden::note
 
         begin
             # put the values that will be hashed into the memory
@@ -400,8 +400,8 @@ async fn test_build_metadata() -> miette::Result<()> {
     for (iteration, test_metadata) in [test_metadata1, test_metadata2].into_iter().enumerate() {
         let code = format!(
             "
-        use.$kernel::prologue
-        use.$kernel::output_note
+        use $kernel::prologue
+        use $kernel::output_note
 
         begin
           exec.prologue::prepare_transaction
@@ -435,8 +435,8 @@ pub async fn test_timelock() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-      use.miden::active_note
-      use.miden::tx
+      use miden::active_note
+      use miden::tx
 
       begin
           # store the note inputs to memory starting at address 0
@@ -568,8 +568,8 @@ async fn test_build_note_tag_for_network_account() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.std::sys
-        use.miden::note
+        use std::sys
+        use miden::note
 
         begin
             push.{suffix}.{prefix} 

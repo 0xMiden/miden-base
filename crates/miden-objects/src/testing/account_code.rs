@@ -7,11 +7,11 @@ use crate::account::{AccountCode, AccountComponent, AccountType};
 use crate::testing::noop_auth_component::NoopAuthComponent;
 
 pub const CODE: &str = "
-    export.foo
+    pub proc foo
         push.1.2 mul
     end
 
-    export.bar
+    pub proc bar
         push.1.2 add
     end
 ";

@@ -8,18 +8,18 @@
 # - decimals are the decimals of the token.
 # - token_symbol as three chars encoded in a Felt.
 
-use.miden::contracts::faucets
+use miden::contracts::faucets
 
 # CONSTANTS
 # =================================================================================================
 
-const.PRIVATE_NOTE=2
+const PRIVATE_NOTE=2
 
 # ERRORS
 # =================================================================================================
-const.ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED="distribute would cause the maximum supply to be exceeded"
+const ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED="distribute would cause the maximum supply to be exceeded"
 
-const.ERR_BASIC_FUNGIBLE_BURN_WRONG_NUMBER_OF_ASSETS="burn requires exactly 1 note asset"
+const ERR_BASIC_FUNGIBLE_BURN_WRONG_NUMBER_OF_ASSETS="burn requires exactly 1 note asset"
 
 # CONSTANTS
 # =================================================================================================
@@ -43,7 +43,7 @@ const.ERR_BASIC_FUNGIBLE_BURN_WRONG_NUMBER_OF_ASSETS="burn requires exactly 1 no
 #! - the total issuance after minting is greater than the maximum allowed supply.
 #!
 #! Invocation: call
-export.distribute
+pub proc distribute
     exec.faucets::distribute
     # => [pad(16)]
 end
@@ -64,4 +64,4 @@ end
 #! - the transaction is executed against an account which is not a fungible asset faucet.
 #! - the transaction is executed against a faucet which is not the origin of the specified asset.
 #! - the amount about to be burned is greater than the outstanding supply of the asset.
-export.faucets::burn
+pub use faucets::burn
