@@ -122,7 +122,7 @@ pub proc mmr_frontier_keccak_get_root
     push.4.4.4.4
 end
 
-#! Bridges an asset out to the aggregation layer.
+#! Bridges an asset out to the AggLayer
 #!
 #! This procedure handles the complete bridge-out operation, including:
 #! - Converting asset data to u32 format
@@ -131,12 +131,13 @@ end
 #! - Storing the updated MMR root in account storage
 #! - Creating a BURN note with the bridged out asset
 #!
-#! Inputs:  [ASSET, INPUTS[1], INPUTS[0]]
+#! Inputs:  [ASSET, dest_network, dest_address(5)]
 #! Outputs: []
 #!
 #! Where:
 #! - ASSET is the asset to be bridged out.
-#! - INPUTS[1], INPUTS[0] are additional input data for the bridge operation.
+#! - dest_network is the u32 destination network/chain ID.
+#! - dest_address(5) are 5 u32 values representing a 20-byte Ethereum address.
 #!
 #! Invocation: call
 pub proc bridge_out
