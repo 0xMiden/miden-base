@@ -73,13 +73,14 @@ impl AccountStorageDeltaBuilder {
 // ================================================================================================
 
 pub static MOCK_VALUE_SLOT0: LazyLock<StorageSlotName> = LazyLock::new(|| {
-    StorageSlotName::new("miden::test::value0").expect("slot name should be valid")
+    StorageSlotName::new("miden::test::value0").expect("storage slot name should be valid")
 });
 pub static MOCK_VALUE_SLOT1: LazyLock<StorageSlotName> = LazyLock::new(|| {
-    StorageSlotName::new("miden::test::value1").expect("slot name should be valid")
+    StorageSlotName::new("miden::test::value1").expect("storage slot name should be valid")
 });
-pub static MOCK_MAP_SLOT: LazyLock<StorageSlotName> =
-    LazyLock::new(|| StorageSlotName::new("miden::test::map").expect("slot name should be valid"));
+pub static MOCK_MAP_SLOT: LazyLock<StorageSlotName> = LazyLock::new(|| {
+    StorageSlotName::new("miden::test::map").expect("storage slot name should be valid")
+});
 
 pub const STORAGE_VALUE_0: Word =
     Word::new([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]);

@@ -6,7 +6,7 @@ use crate::account::components::rpo_falcon_512_library;
 
 static FALCON_PUBKEY_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
     StorageSlotName::new("miden::standards::auth::rpo_falcon512::public_key")
-        .expect("slot name should be valid")
+        .expect("storage slot name should be valid")
 });
 
 /// An [`AccountComponent`] implementing the RpoFalcon512 signature scheme for authentication of

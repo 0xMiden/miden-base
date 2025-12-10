@@ -407,7 +407,6 @@ end
 #! Where:
 #! - slot_id_{prefix, suffix} are the prefix and suffix felts of the slot identifier, which are
 #!   the first two felts of the hashed slot name.
-#!    - the slot must point to the root of the storage map.
 #! - VALUE is the value of the map item at KEY.
 #!
 #! Panics if:

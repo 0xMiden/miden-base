@@ -10,22 +10,22 @@ use crate::account::components::rpo_falcon_512_multisig_library;
 
 static THRESHOLD_CONFIG_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
     StorageSlotName::new("miden::standards::auth::rpo_falcon512_multisig::threshold_config")
-        .expect("slot name should be valid")
+        .expect("storage slot name should be valid")
 });
 
 static APPROVER_PUBKEYS_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
     StorageSlotName::new("miden::standards::auth::rpo_falcon512_multisig::approver_public_keys")
-        .expect("slot name should be valid")
+        .expect("storage slot name should be valid")
 });
 
 static EXECUTED_TRANSACTIONS_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
     StorageSlotName::new("miden::standards::auth::rpo_falcon512_multisig::executed_transactions")
-        .expect("slot name should be valid")
+        .expect("storage slot name should be valid")
 });
 
 static PROCEDURE_THRESHOLDS_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
     StorageSlotName::new("miden::standards::auth::rpo_falcon512_multisig::procedure_thresholds")
-        .expect("slot name should be valid")
+        .expect("storage slot name should be valid")
 });
 
 // MULTISIG AUTHENTICATION COMPONENT

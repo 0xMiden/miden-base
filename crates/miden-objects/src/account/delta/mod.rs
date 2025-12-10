@@ -209,8 +209,8 @@ impl AccountDelta {
     ///   value has changed**, depending on the slot type:
     ///   - Value Slot
     ///     - Append `[[domain = 2, 0, slot_id_suffix, slot_id_prefix], NEW_VALUE]` where
-    ///       `NEW_VALUE` is the new value of the slot and `slot_id_{suffix, prefix}` are the slot
-    ///       slot identifiers of the slot.
+    ///       `NEW_VALUE` is the new value of the slot and `slot_id_{suffix, prefix}` is the
+    ///       identifier of the slot.
     ///   - Map Slot
     ///     - For each key-value pair, sorted by key, whose new value is different from the previous
     ///       value in the map:

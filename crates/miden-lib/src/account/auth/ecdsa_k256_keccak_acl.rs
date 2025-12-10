@@ -15,17 +15,17 @@ use crate::account::components::ecdsa_k256_keccak_acl_library;
 
 static PUBKEY_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
     StorageSlotName::new("miden::standards::auth::ecdsa_k256_keccak_acl::public_key")
-        .expect("slot name should be valid")
+        .expect("storage slot name should be valid")
 });
 
 static CONFIG_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
     StorageSlotName::new("miden::standards::auth::ecdsa_k256_keccak_acl::config")
-        .expect("slot name should be valid")
+        .expect("storage slot name should be valid")
 });
 
 static TRACKED_PROCEDURE_ROOT_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
     StorageSlotName::new("miden::standards::auth::ecdsa_k256_keccak_acl::tracked_procedure_roots")
-        .expect("slot name should be valid")
+        .expect("storage slot name should be valid")
 });
 
 /// Configuration for [`AuthEcdsaK256KeccakAcl`] component.

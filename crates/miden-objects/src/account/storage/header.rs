@@ -29,7 +29,8 @@ pub(crate) struct StorageSlotHeader {
 }
 
 impl StorageSlotHeader {
-    /// Returns a new instance of storage slot header from the provided storage slot type and value.
+    /// Returns a new instance of storage slot header from the provided storage slot ID, type and
+    /// value.
     pub(crate) fn new(id: StorageSlotId, r#type: StorageSlotType, value: Word) -> Self {
         Self { id, r#type, value }
     }

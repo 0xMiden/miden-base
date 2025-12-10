@@ -58,7 +58,7 @@ pub enum FungibleFaucetError {
         "account interface provided for faucet creation does not have basic fungible faucet component"
     )]
     NoAvailableInterface,
-    #[error("failed to retrieve slot with name {slot_name}")]
+    #[error("failed to retrieve storage slot with name {slot_name}")]
     StorageLookupFailed {
         slot_name: StorageSlotName,
         source: AccountError,

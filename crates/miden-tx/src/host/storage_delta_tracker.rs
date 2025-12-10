@@ -29,7 +29,7 @@ pub struct StorageDeltaTracker {
     /// executed. This is only used to look up the initial values of storage _value_ slots, while
     /// the map slots are unused.
     storage_header: AccountStorageHeader,
-    /// A map from slot index to a map of key-value pairs where the key is a storage map key and
+    /// A map from slot name to a map of key-value pairs where the key is a storage map key and
     /// the value represents the value of that key at the beginning of transaction execution.
     init_maps: BTreeMap<StorageSlotName, BTreeMap<Word, Word>>,
     /// The account storage delta.

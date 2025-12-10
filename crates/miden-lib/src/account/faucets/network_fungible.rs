@@ -38,7 +38,7 @@ procedure_digest!(
 
 static OWNER_CONFIG_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
     StorageSlotName::new("miden::network_fungible_faucet::owner_config")
-        .expect("slot name should be valid")
+        .expect("storage slot name should be valid")
 });
 
 /// An [`AccountComponent`] implementing a network fungible faucet.

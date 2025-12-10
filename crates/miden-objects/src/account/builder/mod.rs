@@ -317,13 +317,16 @@ mod tests {
     });
 
     static CUSTOM_COMPONENT1_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
-        StorageSlotName::new("custom::component1::slot0").expect("slot name should be valid")
+        StorageSlotName::new("custom::component1::slot0")
+            .expect("storage slot name should be valid")
     });
     static CUSTOM_COMPONENT2_SLOT_NAME0: LazyLock<StorageSlotName> = LazyLock::new(|| {
-        StorageSlotName::new("custom::component2::slot0").expect("slot name should be valid")
+        StorageSlotName::new("custom::component2::slot0")
+            .expect("storage slot name should be valid")
     });
     static CUSTOM_COMPONENT2_SLOT_NAME1: LazyLock<StorageSlotName> = LazyLock::new(|| {
-        StorageSlotName::new("custom::component2::slot1").expect("slot name should be valid")
+        StorageSlotName::new("custom::component2::slot1")
+            .expect("storage slot name should be valid")
     });
 
     struct CustomComponent1 {
