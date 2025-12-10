@@ -53,30 +53,6 @@ impl StorageSlotName {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
-    /// Constructs a new [`StorageSlotName`] from a static string.
-    ///
-    /// This function is `const` and can be used to define slot names as constants, e.g.:
-    ///
-    /// ```rust
-    /// # use miden_objects::account::StorageSlotName;
-    /// const SLOT_NAME: StorageSlotName =
-    ///     StorageSlotName::from_static_str("miden::basic_fungible_faucet::metadata");
-    /// ```
-    ///
-    /// This is convenient because using a string that is not a valid slot name fails to compile.
-    ///
-    /// # Panics
-    ///
-    /// Panics if:
-    /// - the slot name is invalid (see the type-level docs for the requirements).
-    pub const fn from_static_str(name: &'static str) -> Self {
-        match Self::validate(name) {
-            Ok(()) => Self { name: Cow::Borrowed(name) },
-            // We cannot format the error in a const context.
-            Err(_) => panic!("invalid slot name"),
-        }
-    }
-
     /// Constructs a new [`StorageSlotName`] from a string.
     ///
     /// # Errors
@@ -107,7 +83,8 @@ impl StorageSlotName {
         self.name.len() as u8
     }
 
-    // TODO(named_slots): Docs.
+    /// Computes the [`StorageSlotId`] from the slot name by taking the first two felts of the
+    /// name's BLAKE3 hash.
     pub fn compute_id(&self) -> StorageSlotId {
         let hashed_word = hash_string_to_word(self.as_str());
         let suffix = hashed_word[0];
@@ -121,76 +98,66 @@ impl StorageSlotName {
     /// Validates a slot name.
     ///
     /// This checks that components are separated by double colons, that each component contains
-    /// only valid characters and that the name is not empty or starts or ends with a colon.
-    ///
-    /// We must check the validity of a slot name against the raw bytes of the UTF-8 string because
-    /// typical character APIs are not available in a const version. We can do this because any byte
-    /// in a UTF-8 string that is an ASCII character never represents anything other than such a
-    /// character, even though UTF-8 can contain multibyte sequences:
-    ///
-    /// > UTF-8, the object of this memo, has a one-octet encoding unit. It uses all bits of an
-    /// > octet, but has the quality of preserving the full US-ASCII range: US-ASCII characters
-    /// > are encoded in one octet having the normal US-ASCII value, and any octet with such a value
-    /// > can only stand for a US-ASCII character, and nothing else.
-    /// > https://www.rfc-editor.org/rfc/rfc3629
-    const fn validate(name: &str) -> Result<(), StorageSlotNameError> {
-        let bytes = name.as_bytes();
-        let mut idx = 0;
+    /// only valid characters, that the name is not empty, starts or ends with a colon or starts
+    /// with an underscore.
+    fn validate(name: &str) -> Result<(), StorageSlotNameError> {
         let mut num_components = 0;
 
-        if bytes.is_empty() {
+        if name.is_empty() {
             return Err(StorageSlotNameError::TooShort);
         }
 
-        if bytes.len() > Self::MAX_LENGTH {
+        if name.len() > Self::MAX_LENGTH {
             return Err(StorageSlotNameError::TooLong);
         }
 
         // Slot names must not start with a colon or underscore.
         // SAFETY: We just checked that we're not dealing with an empty slice.
-        if bytes[0] == b':' {
+        if name.starts_with(':') {
             return Err(StorageSlotNameError::UnexpectedColon);
-        } else if bytes[0] == b'_' {
+        } else if name.starts_with('_') {
             return Err(StorageSlotNameError::UnexpectedUnderscore);
         }
 
-        while idx < bytes.len() {
-            let byte = bytes[idx];
+        let mut chars_iter = name.chars().peekable();
 
-            let is_colon = byte == b':';
+        while let Some(character) = chars_iter.next() {
+            let is_colon = character == ':';
 
             if is_colon {
                 // A colon must always be followed by another colon. In other words, we
                 // expect a double colon.
-                if (idx + 1) < bytes.len() {
-                    if bytes[idx + 1] != b':' {
+                match chars_iter.next() {
+                    Some(next_char) if next_char != ':' => {
                         return Err(StorageSlotNameError::UnexpectedColon);
-                    }
-                } else {
-                    return Err(StorageSlotNameError::UnexpectedColon);
+                    },
+                    None => {
+                        return Err(StorageSlotNameError::UnexpectedColon);
+                    },
+                    _ => (),
                 }
 
                 // A component cannot end with a colon, so this allows us to validate the start of a
                 // component: It must not start with a colon or an underscore.
-                if (idx + 2) < bytes.len() {
-                    if bytes[idx + 2] == b':' {
+                match chars_iter.peek() {
+                    Some(next_char) => match next_char {
+                        ':' => {
+                            return Err(StorageSlotNameError::UnexpectedColon);
+                        },
+                        '_' => {
+                            return Err(StorageSlotNameError::UnexpectedUnderscore);
+                        },
+                        _ => (),
+                    },
+                    None => {
                         return Err(StorageSlotNameError::UnexpectedColon);
-                    } else if bytes[idx + 2] == b'_' {
-                        return Err(StorageSlotNameError::UnexpectedUnderscore);
-                    }
-                } else {
-                    return Err(StorageSlotNameError::UnexpectedColon);
+                    },
                 }
-
-                // Advance past the double colon.
-                idx += 2;
 
                 // A double colon completes a slot name component.
                 num_components += 1;
-            } else if Self::is_valid_char(byte) {
-                idx += 1;
-            } else {
-                return Err(StorageSlotNameError::InvalidCharacter);
+            } else if !Self::is_valid_char(character) {
+                return Err(StorageSlotNameError::InvalidCharacter(character));
             }
         }
 
@@ -204,9 +171,9 @@ impl StorageSlotName {
         Ok(())
     }
 
-    /// Returns `true` if the given byte is a valid slot name character, `false` otherwise.
-    const fn is_valid_char(byte: u8) -> bool {
-        byte.is_ascii_alphanumeric() || byte == b'_'
+    /// Returns `true` if the given character is a valid slot name character, `false` otherwise.
+    fn is_valid_char(character: char) -> bool {
+        character.is_ascii_alphanumeric() || character == '_'
     }
 }
 
@@ -268,37 +235,6 @@ mod tests {
 
     // A string containing all allowed characters of a slot name.
     const FULL_ALPHABET: &str = "abcdefghijklmnopqrstuvwxyz_ABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789";
-
-    // Const function tests
-    // --------------------------------------------------------------------------------------------
-
-    const _NAME0: StorageSlotName = StorageSlotName::from_static_str("name::component");
-    const _NAME1: StorageSlotName = StorageSlotName::from_static_str("one::two::three::four::five");
-    const _NAME2: StorageSlotName = StorageSlotName::from_static_str("one::two_three::four");
-
-    #[test]
-    #[should_panic(expected = "invalid slot name")]
-    fn slot_name_panics_on_invalid_character() {
-        StorageSlotName::from_static_str("miden!::component");
-    }
-
-    #[test]
-    #[should_panic(expected = "invalid slot name")]
-    fn slot_name_panics_on_invalid_character2() {
-        StorageSlotName::from_static_str("miden_ö::component");
-    }
-
-    #[test]
-    #[should_panic(expected = "invalid slot name")]
-    fn slot_name_panics_when_too_short() {
-        StorageSlotName::from_static_str("one");
-    }
-
-    #[test]
-    #[should_panic(expected = "invalid slot name")]
-    fn slot_name_panics_on_component_starting_with_underscores() {
-        StorageSlotName::from_static_str("one::_two");
-    }
 
     // Invalid colon or underscore tests
     // --------------------------------------------------------------------------------------------
@@ -407,15 +343,15 @@ mod tests {
     fn slot_name_fails_on_invalid_character() {
         assert_matches!(
             StorageSlotName::new("na#me::second").unwrap_err(),
-            StorageSlotNameError::InvalidCharacter
+            StorageSlotNameError::InvalidCharacter('#')
         );
         assert_matches!(
             StorageSlotName::new("first_entry::secönd").unwrap_err(),
-            StorageSlotNameError::InvalidCharacter
+            StorageSlotNameError::InvalidCharacter('ö')
         );
         assert_matches!(
             StorageSlotName::new("first::sec::th!rd").unwrap_err(),
-            StorageSlotNameError::InvalidCharacter
+            StorageSlotNameError::InvalidCharacter('!')
         );
     }
 
