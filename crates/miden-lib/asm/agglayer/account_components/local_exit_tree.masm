@@ -1,4 +1,6 @@
 use.miden::native_account
+use.miden::active_account
+
 
 # CONSTANTS
 # =================================================================================================
@@ -19,7 +21,7 @@ const.LOCAL_EXIT_TREE_SLOT=word("miden::agglayer::let")
 #! - mmr_ptr is the pointer to the MMR frontier data structure.
 #!
 #! Invocation: exec
-pub proc mmr_frontier_keccak_add
+proc mmr_frontier_keccak_add
     dropw dropw drop
     # => []
 end
@@ -37,12 +39,35 @@ end
 #!
 #! Invocation: exec
 pub proc mmr_frontier_keccak_get_root
-    push.3.3.3.3
-    push.4.4.4.4
+  # stubbed out for now
+  drop
+  # => []
+
+  push.0.0.0.1 push.LOCAL_EXIT_TREE_SLOT[0..2]
+  # => [slot_id_prefix, slot_id_suffix, KEY]
+
+  exec.active_account::get_map_item
+  # => [ROOT[0]]
+
+  push.0.0.0.0 push.LOCAL_EXIT_TREE_SLOT[0..2]
+  # => [slot_id_prefix, slot_id_suffix, KEY, ROOT[0]]
+ 
+  exec.active_account::get_map_item
+  # => [ROOT[1], ROOT[0]] 
 end
 
-#! Inputs: []
-pub proc write_mmr_frontier_root
+#! Writes the MMR frontier root to account storage.
+#!
+#! This procedure retrieves the current MMR frontier root and stores it as a double word
+#! in the account's storage map. The root is split across two storage keys:
+#! - Key [0,0,0,0] stores ROOT[1] (high part)
+#! - Key [0,0,0,1] stores ROOT[0] (low part)
+#!
+#! Inputs:  []
+#! Outputs: []
+#!
+#! Invocation: exec
+proc write_mmr_frontier_root
     push.MMR_PTR
     # => [MMR_PTR]
 
@@ -68,4 +93,28 @@ pub proc write_mmr_frontier_root
 
     dropw dropw
     # => []
+end
+
+#! Adds an asset message to the MMR frontier and updates the stored root.
+#!
+#! This procedure takes a Keccak digest (represented as 8 u32 values) and adds it
+#! as a leaf to the MMR frontier. After adding the leaf, it updates the MMR root
+#! in the account's storage to reflect the new state.
+#!
+#! Inputs:  [DIGEST_U32[8]]
+#! Outputs: []
+#!
+#! Where:
+#! - DIGEST_U32[8] is a Keccak256 hash represented as 8 u32 values (256 bits total).
+#!
+#! Invocation: exec
+pub proc add_asset_message
+  push.MMR_PTR movdn.8
+  # => [LEAF[1], LEAF[0], mmr_ptr]
+
+  exec.mmr_frontier_keccak_add
+  # => []
+
+  exec.write_mmr_frontier_root
+  # => []
 end
