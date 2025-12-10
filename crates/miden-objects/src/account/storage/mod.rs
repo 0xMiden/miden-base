@@ -196,21 +196,13 @@ impl AccountStorage {
     /// Returns a reference to the storage slot with the provided name, if it exists, `None`
     /// otherwise.
     pub fn get(&self, slot_name: &StorageSlotName) -> Option<&StorageSlot> {
-        debug_assert!(self.slots.is_sorted());
-
-        let slot_id = slot_name.id();
-        self.slots
-            .binary_search_by_key(&slot_id, |slot| slot.id())
-            .map(|idx| &self.slots[idx])
-            .ok()
+        self.slots.iter().find(|slot| slot.name().id() == slot_name.id())
     }
 
+    /// Returns a mutable reference to the storage slot with the provided name, if it exists, `None`
+    /// otherwise.
     fn get_mut(&mut self, slot_name: &StorageSlotName) -> Option<&mut StorageSlot> {
-        let slot_id = slot_name.id();
-        self.slots
-            .binary_search_by_key(&slot_id, |slot| slot.id())
-            .map(|idx| &mut self.slots[idx])
-            .ok()
+        self.slots.iter_mut().find(|slot| slot.name().id() == slot_name.id())
     }
 
     /// Returns an item from the storage slot with the given name.

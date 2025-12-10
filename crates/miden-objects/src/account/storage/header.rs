@@ -128,13 +128,13 @@ impl AccountStorageHeader {
         &self,
         slot_id: StorageSlotId,
     ) -> Option<(&StorageSlotName, &StorageSlotType, &Word)> {
-        self.slots
-            .binary_search_by_key(&slot_id, |(name, ..)| name.id())
-            .map(|slot_idx| {
-                let (name, r#type, value) = &self.slots[slot_idx];
-                (name, r#type, value)
-            })
-            .ok()
+        self.slots.iter().find_map(|(slot_name, slot_type, slot_value)| {
+            if slot_name.id() == slot_id {
+                Some((slot_name, slot_type, slot_value))
+            } else {
+                None
+            }
+        })
     }
 
     /// Indicates whether the slot with the given `name` is a map slot.
