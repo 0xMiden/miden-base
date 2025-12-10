@@ -1,4 +1,5 @@
-use alloc::string::{String, ToString};
+use alloc::string::ToString;
+use core::fmt::Display;
 
 use crate::utils::serde::{
     ByteReader,
@@ -7,27 +8,27 @@ use crate::utils::serde::{
     DeserializationError,
     Serializable,
 };
-use crate::{Felt, Word};
+use crate::{AccountError, Felt};
 
 // STORAGE SLOT TYPE
 // ================================================================================================
 
-/// An object that represents the type of a storage slot.
+/// The type of a storage slot.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
 pub enum StorageSlotType {
     /// Represents a slot that contains a value.
-    Value,
+    Value = Self::VALUE_TYPE,
     /// Represents a slot that contains a commitment to a map with key-value pairs.
-    Map,
+    Map = Self::MAP_TYPE,
 }
 
 impl StorageSlotType {
-    /// Returns storage slot type as a [Word]
-    pub fn as_word(&self) -> Word {
-        match self {
-            StorageSlotType::Value => Word::empty(),
-            StorageSlotType::Map => Word::from([1, 0, 0, 0u32]),
-        }
+    const VALUE_TYPE: u8 = 0;
+    const MAP_TYPE: u8 = 1;
+
+    pub fn as_felt(&self) -> Felt {
+        Felt::from(*self as u8)
     }
 
     /// Returns `true` if the slot is a value slot, `false` otherwise.
@@ -41,16 +42,23 @@ impl StorageSlotType {
     }
 }
 
-impl TryFrom<Felt> for StorageSlotType {
-    type Error = String;
+impl TryFrom<u8> for StorageSlotType {
+    type Error = AccountError;
 
-    fn try_from(value: Felt) -> Result<Self, Self::Error> {
-        let value = value.as_int();
-
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
-            0 => Ok(StorageSlotType::Value),
-            1 => Ok(StorageSlotType::Map),
-            _ => Err("No storage slot type exists for this field element.".to_string()),
+            Self::VALUE_TYPE => Ok(StorageSlotType::Value),
+            Self::MAP_TYPE => Ok(StorageSlotType::Map),
+            _ => Err(AccountError::other(format!("unsupported storage slot type {value}"))),
+        }
+    }
+}
+
+impl Display for StorageSlotType {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            StorageSlotType::Value => f.write_str("value"),
+            StorageSlotType::Map => f.write_str("map"),
         }
     }
 }
@@ -77,8 +85,8 @@ impl Deserializable for StorageSlotType {
         let storage_slot_type = source.read_u8()?;
 
         match storage_slot_type {
-            0 => Ok(Self::Value),
-            1 => Ok(Self::Map),
+            Self::VALUE_TYPE => Ok(Self::Value),
+            Self::MAP_TYPE => Ok(Self::Map),
             _ => Err(DeserializationError::InvalidValue(storage_slot_type.to_string())),
         }
     }

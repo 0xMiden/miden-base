@@ -1,3 +1,4 @@
+use miden_lib::account::auth::AuthEcdsaK256KeccakMultisig;
 use miden_lib::account::components::ecdsa_k256_keccak_multisig_library;
 use miden_lib::account::interface::AccountInterface;
 use miden_lib::account::wallets::BasicWallet;
@@ -136,7 +137,7 @@ async fn test_multisig_2_of_2_with_note_creation() -> anyhow::Result<()> {
 
     let tx_summary = match tx_context_init.execute().await.unwrap_err() {
         TransactionExecutorError::Unauthorized(tx_effects) => tx_effects,
-        error => panic!("expected abort with tx effects: {error:?}"),
+        error => anyhow::bail!("expected abort with tx effects: {error}"),
     };
 
     // Get signatures from both approvers
@@ -466,15 +467,21 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
     // Verify that the public keys were actually updated in storage
     for (i, expected_key) in new_public_keys.iter().enumerate() {
         let storage_key = [Felt::new(i as u64), Felt::new(0), Felt::new(0), Felt::new(0)].into();
-        let storage_item = updated_multisig_account.storage().get_map_item(1, storage_key).unwrap();
+        let storage_item = updated_multisig_account
+            .storage()
+            .get_map_item(AuthEcdsaK256KeccakMultisig::approver_public_keys_slot(), storage_key)
+            .unwrap();
 
         let expected_word: Word = expected_key.to_commitment().into();
 
         assert_eq!(storage_item, expected_word, "Public key {} doesn't match expected value", i);
     }
 
-    // Verify the threshold was updated by checking storage slot 0
-    let threshold_config_storage = updated_multisig_account.storage().get_item(0).unwrap();
+    // Verify the threshold was updated by checking the config storage slot
+    let threshold_config_storage = updated_multisig_account
+        .storage()
+        .get_item(AuthEcdsaK256KeccakMultisig::threshold_config_slot())
+        .unwrap();
 
     assert_eq!(
         threshold_config_storage[0],
@@ -703,13 +710,19 @@ async fn test_multisig_update_signers_remove_owner() -> anyhow::Result<()> {
     // Verify public keys were updated
     for (i, expected_key) in new_public_keys.iter().enumerate() {
         let storage_key = [Felt::new(i as u64), Felt::new(0), Felt::new(0), Felt::new(0)].into();
-        let storage_item = updated_multisig_account.storage().get_map_item(1, storage_key).unwrap();
+        let storage_item = updated_multisig_account
+            .storage()
+            .get_map_item(AuthEcdsaK256KeccakMultisig::approver_public_keys_slot(), storage_key)
+            .unwrap();
         let expected_word: Word = expected_key.to_commitment().into();
         assert_eq!(storage_item, expected_word, "Public key {} doesn't match", i);
     }
 
     // Verify threshold and num_approvers
-    let threshold_config = updated_multisig_account.storage().get_item(0).unwrap();
+    let threshold_config = updated_multisig_account
+        .storage()
+        .get_item(AuthEcdsaK256KeccakMultisig::threshold_config_slot())
+        .unwrap();
     assert_eq!(threshold_config[0], Felt::new(threshold), "Threshold not updated");
     assert_eq!(threshold_config[1], Felt::new(num_of_approvers), "Num approvers not updated");
 
@@ -729,8 +742,13 @@ async fn test_multisig_update_signers_remove_owner() -> anyhow::Result<()> {
     for removed_idx in 2..5 {
         let removed_owner_key =
             [Felt::new(removed_idx), Felt::new(0), Felt::new(0), Felt::new(0)].into();
-        let removed_owner_slot =
-            updated_multisig_account.storage().get_map_item(1, removed_owner_key).unwrap();
+        let removed_owner_slot = updated_multisig_account
+            .storage()
+            .get_map_item(
+                AuthEcdsaK256KeccakMultisig::approver_public_keys_slot(),
+                removed_owner_key,
+            )
+            .unwrap();
         assert_eq!(
             removed_owner_slot,
             Word::empty(),
@@ -743,7 +761,10 @@ async fn test_multisig_update_signers_remove_owner() -> anyhow::Result<()> {
     let mut non_empty_count = 0;
     for i in 0..5 {
         let storage_key = [Felt::new(i as u64), Felt::new(0), Felt::new(0), Felt::new(0)].into();
-        let storage_item = updated_multisig_account.storage().get_map_item(1, storage_key).unwrap();
+        let storage_item = updated_multisig_account
+            .storage()
+            .get_map_item(AuthEcdsaK256KeccakMultisig::approver_public_keys_slot(), storage_key)
+            .unwrap();
 
         if storage_item != Word::empty() {
             non_empty_count += 1;

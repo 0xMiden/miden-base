@@ -11,7 +11,7 @@ type BeWord = struct @bigendian { a: felt, b: felt, c: felt, d: felt }
 # =================================================================================================
 
 # The slot in this component's storage layout where the public key is stored.
-const PUBLIC_KEY_SLOT = 0
+const PUBLIC_KEY_SLOT = word("miden::standards::auth::rpo_falcon512::public_key")
 
 #! Authenticate a transaction using the Falcon signature scheme.
 #!
@@ -34,7 +34,8 @@ pub proc auth_tx_rpo_falcon512(auth_args: BeWord)
 
     # Fetch public key from storage.
     # ---------------------------------------------------------------------------------------------
-    push.PUBLIC_KEY_SLOT exec.active_account::get_item
+
+    push.PUBLIC_KEY_SLOT[0..2] exec.active_account::get_item
     # => [PUB_KEY, pad(16)]
 
     exec.rpo_falcon512::authenticate_transaction

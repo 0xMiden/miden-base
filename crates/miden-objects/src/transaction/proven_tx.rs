@@ -701,6 +701,7 @@ mod tests {
         AccountType,
         AccountVaultDelta,
         StorageMapDelta,
+        StorageSlotName,
     };
     use crate::asset::FungibleAsset;
     use crate::block::BlockNumber;
@@ -776,7 +777,8 @@ mod tests {
         let storage_delta = StorageMapDelta::new(map);
 
         // A delta that exceeds the limit returns an error.
-        let storage_delta = AccountStorageDelta::from_iters([], [], [(4, storage_delta)]);
+        let storage_delta =
+            AccountStorageDelta::from_iters([], [], [(StorageSlotName::mock(4), storage_delta)]);
         let delta = AccountDelta::new(account_id, storage_delta, AccountVaultDelta::default(), ONE)
             .unwrap();
         let details = AccountUpdateDetails::Delta(delta);

@@ -13,13 +13,13 @@ type BeWord = struct @bigendian { a: felt, b: felt, c: felt, d: felt }
 # ================================================================================================
 
 # The slot in this component's storage layout where the public key is stored.
-const PUBLIC_KEY_SLOT = 0
+const PUBLIC_KEY_SLOT = word("miden::standards::auth::rpo_falcon512_acl::public_key")
 
 # The slot where the authentication configuration is stored.
-const AUTH_CONFIG_SLOT = 1
+const AUTH_CONFIG_SLOT = word("miden::standards::auth::rpo_falcon512_acl::config")
 
 # The slot where the map of auth trigger procedure roots is stored.
-const AUTH_TRIGGER_PROCS_MAP_SLOT = 2
+const AUTH_TRIGGER_PROCS_MAP_SLOT = word("miden::standards::auth::rpo_falcon512_acl::tracked_procedure_roots")
 
 #! Authenticate a transaction using the Falcon signature scheme based on procedure calls and note usage.
 #!
@@ -40,7 +40,7 @@ pub proc auth_tx_rpo_falcon512_acl.2(auth_args: BeWord)
     # => [pad(16)]
 
     # Get the authentication configuration
-    push.AUTH_CONFIG_SLOT exec.active_account::get_item
+    push.AUTH_CONFIG_SLOT[0..2] exec.active_account::get_item
     # => [0, allow_unauthorized_input_notes, allow_unauthorized_output_notes, num_auth_trigger_procs, pad(16)]
 
     drop
@@ -62,8 +62,8 @@ pub proc auth_tx_rpo_falcon512_acl.2(auth_args: BeWord)
         # => [require_acl_auth, i, pad(16)]
 
         # Get the procedure root from storage
-        dup.1 sub.1 push.0.0.0 push.AUTH_TRIGGER_PROCS_MAP_SLOT
-        # => [AUTH_TRIGGER_PROCS_MAP_SLOT, [0, 0, 0, i-1], require_acl_auth, i, pad(16)]
+        dup.1 sub.1 push.0.0.0 push.AUTH_TRIGGER_PROCS_MAP_SLOT[0..2]
+        # => [trigger_proc_slot_prefix, trigger_proc_slot_suffix, [0, 0, 0, i-1], require_acl_auth, i, pad(16)]
 
         exec.active_account::get_map_item
         # => [AUTH_TRIGGER_PROC_ROOT, require_acl_auth, i, pad(16)]
@@ -124,7 +124,7 @@ pub proc auth_tx_rpo_falcon512_acl.2(auth_args: BeWord)
     # If authentication is required, perform signature verification
     if.true
         # Fetch public key from storage.
-        push.PUBLIC_KEY_SLOT exec.active_account::get_item
+        push.PUBLIC_KEY_SLOT[0..2] exec.active_account::get_item
         # => [PUB_KEY, pad(16)]
 
         exec.::miden::auth::rpo_falcon512::authenticate_transaction

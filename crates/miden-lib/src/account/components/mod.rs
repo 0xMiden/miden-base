@@ -212,22 +212,28 @@ impl WellKnownComponent {
                 Self::BasicWallet => {
                     component_interface_vec.push(AccountComponentInterface::BasicWallet)
                 },
-                Self::BasicFungibleFaucet => component_interface_vec
-                    .push(AccountComponentInterface::BasicFungibleFaucet(storage_offset)),
-                Self::NetworkFungibleFaucet => component_interface_vec
-                    .push(AccountComponentInterface::NetworkFungibleFaucet(storage_offset)),
-                Self::AuthEcdsaK256Keccak => component_interface_vec
-                    .push(AccountComponentInterface::AuthEcdsaK256Keccak(storage_offset)),
-                Self::AuthEcdsaK256KeccakAcl => component_interface_vec
-                    .push(AccountComponentInterface::AuthEcdsaK256KeccakAcl(storage_offset)),
+                Self::BasicFungibleFaucet => {
+                    component_interface_vec.push(AccountComponentInterface::BasicFungibleFaucet)
+                },
+                Self::NetworkFungibleFaucet => {
+                    component_interface_vec.push(AccountComponentInterface::NetworkFungibleFaucet)
+                },
+                Self::AuthEcdsaK256Keccak => {
+                    component_interface_vec.push(AccountComponentInterface::AuthEcdsaK256Keccak)
+                },
+                Self::AuthEcdsaK256KeccakAcl => {
+                    component_interface_vec.push(AccountComponentInterface::AuthEcdsaK256KeccakAcl)
+                },
                 Self::AuthEcdsaK256KeccakMultisig => component_interface_vec
-                    .push(AccountComponentInterface::AuthEcdsaK256KeccakMultisig(storage_offset)),
-                Self::AuthRpoFalcon512 => component_interface_vec
-                    .push(AccountComponentInterface::AuthRpoFalcon512(storage_offset)),
-                Self::AuthRpoFalcon512Acl => component_interface_vec
-                    .push(AccountComponentInterface::AuthRpoFalcon512Acl(storage_offset)),
+                    .push(AccountComponentInterface::AuthEcdsaK256KeccakMultisig),
+                Self::AuthRpoFalcon512 => {
+                    component_interface_vec.push(AccountComponentInterface::AuthRpoFalcon512)
+                },
+                Self::AuthRpoFalcon512Acl => {
+                    component_interface_vec.push(AccountComponentInterface::AuthRpoFalcon512Acl)
+                },
                 Self::AuthRpoFalcon512Multisig => component_interface_vec
-                    .push(AccountComponentInterface::AuthRpoFalcon512Multisig(storage_offset)),
+                    .push(AccountComponentInterface::AuthRpoFalcon512Multisig),
                 Self::AuthNoAuth => {
                     component_interface_vec.push(AccountComponentInterface::AuthNoAuth)
                 },

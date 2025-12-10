@@ -4,10 +4,12 @@ use alloc::vec::Vec;
 use core::str::FromStr;
 
 use miden_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
+use miden_mast_package::{Package, SectionId};
 use miden_processor::DeserializationError;
 use semver::Version;
 
 use super::AccountType;
+use crate::AccountError;
 use crate::errors::AccountComponentTemplateError;
 
 mod storage;
@@ -240,6 +242,32 @@ impl AccountComponentMetadata {
         }
 
         Ok(())
+    }
+}
+
+impl TryFrom<&Package> for AccountComponentMetadata {
+    type Error = AccountError;
+
+    fn try_from(package: &Package) -> Result<Self, Self::Error> {
+        package
+            .sections
+            .iter()
+            .find_map(|section| {
+                (section.id == SectionId::ACCOUNT_COMPONENT_METADATA).then(|| {
+                    AccountComponentMetadata::read_from_bytes(&section.data).map_err(|err| {
+                        AccountError::other_with_source(
+                            "failed to deserialize account component metadata",
+                            err,
+                        )
+                    })
+                })
+            })
+            .transpose()?
+            .ok_or_else(|| {
+                AccountError::other(
+                    "package does not contain account component metadata section - packages without explicit metadata may be intended for other purposes (e.g., note scripts, transaction scripts)",
+                )
+            })
     }
 }
 

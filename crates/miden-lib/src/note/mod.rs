@@ -18,9 +18,11 @@ use miden_objects::note::{
 use miden_objects::{Felt, NoteError, Word};
 use utils::build_swap_tag;
 
+pub mod mint_inputs;
 pub mod utils;
 
 mod well_known_note;
+pub use mint_inputs::MintNoteInputs;
 pub use well_known_note::{NoteConsumptionStatus, WellKnownNote};
 
 // STANDARDIZED SCRIPTS
@@ -162,12 +164,12 @@ pub fn create_swap_note<R: FeltRng>(
 /// Generates a MINT note - a note that instructs a network faucet to mint fungible assets.
 ///
 /// This script enables the creation of a PUBLIC note that, when consumed by a network faucet,
-/// will mint the specified amount of fungible assets and create a PRIVATE note with the given
-/// RECIPIENT. The MINT note uses note-based authentication, checking if the note sender equals
-/// the faucet owner to authorize minting.
+/// will mint the specified amount of fungible assets and create either a PRIVATE or PUBLIC
+/// output note depending on the input configuration. The MINT note uses note-based authentication,
+/// checking if the note sender equals the faucet owner to authorize minting.
 ///
-/// MINT notes are always PUBLIC (for network execution) and output notes are always PRIVATE
-/// (TODO: enable public output note creation from MINT note consumption).
+/// MINT notes are always PUBLIC (for network execution). Output notes can be either PRIVATE
+/// or PUBLIC depending on the MintNoteInputs variant used.
 ///
 /// The passed-in `rng` is used to generate a serial number for the note. The note's tag
 /// is automatically set to the faucet's account ID for proper routing.
@@ -175,12 +177,8 @@ pub fn create_swap_note<R: FeltRng>(
 /// # Parameters
 /// - `faucet_id`: The account ID of the network faucet that will mint the assets
 /// - `sender`: The account ID of the note creator (must be the faucet owner)
-/// - `target_recipient`: The recipient digest for the output P2ID note that will receive the minted
-///   assets
-/// - `output_note_tag`: The tag for the output P2ID note
-/// - `amount`: The amount of fungible assets to mint
+/// - `mint_inputs`: The input configuration specifying private or public output mode
 /// - `aux`: Auxiliary data for the MINT note
-/// - `output_note_aux`: Auxiliary data for the output P2ID note
 /// - `rng`: Random number generator for creating the serial number
 ///
 /// # Errors
@@ -188,11 +186,8 @@ pub fn create_swap_note<R: FeltRng>(
 pub fn create_mint_note<R: FeltRng>(
     faucet_id: AccountId,
     sender: AccountId,
-    target_recipient: Word,
-    output_note_tag: Felt,
-    amount: Felt,
+    mint_inputs: MintNoteInputs,
     aux: Felt,
-    output_note_aux: Felt,
     rng: &mut R,
 ) -> Result<Note, NoteError> {
     let note_script = WellKnownNote::MINT.script();
@@ -200,22 +195,10 @@ pub fn create_mint_note<R: FeltRng>(
 
     // MINT notes are always public for network execution
     let note_type = NoteType::Public;
-    // Output notes are always private (for now)
-    let output_note_type = NoteType::Private;
-
     let execution_hint = NoteExecutionHint::always();
 
-    let inputs = NoteInputs::new(vec![
-        target_recipient[0],
-        target_recipient[1],
-        target_recipient[2],
-        target_recipient[3],
-        execution_hint.into(),
-        output_note_type.into(),
-        output_note_aux,
-        output_note_tag,
-        amount,
-    ])?;
+    // Convert MintNoteInputs to NoteInputs
+    let inputs = NoteInputs::from(mint_inputs);
 
     let tag = NoteTag::from_account_id(faucet_id);
 
