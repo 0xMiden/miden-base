@@ -783,6 +783,8 @@ fn generate_event_constants(asm_source_dir: &Path, target_dir: &Path) -> Result<
     // Extract all event definitions from MASM files
     let events = extract_all_event_definitions(asm_source_dir)?;
 
+    std::println!("{:?}", events);
+
     // Generate the events file in OUT_DIR
     let event_file_content = generate_event_file_content(&events).into_diagnostic()?;
     let event_file_path = target_dir.join("transaction_events.rs");

@@ -101,7 +101,7 @@ pub struct TransactionBaseHost<'store, STORE> {
     output_notes: BTreeMap<usize, OutputNoteBuilder>,
 
     /// Handle the VM default events _before_ passing it to user defined ones.
-    stdlib_handlers: EventHandlerRegistry,
+    core_lib_handlers: EventHandlerRegistry,
 }
 
 impl<'store, STORE> TransactionBaseHost<'store, STORE> {
@@ -116,7 +116,7 @@ impl<'store, STORE> TransactionBaseHost<'store, STORE> {
         scripts_mast_store: ScriptMastForestStore,
         acct_procedure_index_map: AccountProcedureIndexMap,
     ) -> Self {
-        let stdlib_handlers = {
+        let core_lib_handlers = {
             let mut registry = EventHandlerRegistry::new();
 
             let core_lib = CoreLibrary::default();
@@ -136,7 +136,7 @@ impl<'store, STORE> TransactionBaseHost<'store, STORE> {
             acct_procedure_index_map,
             output_notes: BTreeMap::default(),
             input_notes,
-            stdlib_handlers,
+            core_lib_handlers,
         }
     }
 
@@ -266,16 +266,16 @@ impl<'store, STORE> TransactionBaseHost<'store, STORE> {
     // EVENT HANDLERS
     // --------------------------------------------------------------------------------------------
 
-    /// Handles the event if the stdlib event handler registry contains a handler with the emitted
+    /// Handles the event if the core lib event handler registry contains a handler with the emitted
     /// event ID.
     ///
     /// Returns `Some` if the event was handled, `None` otherwise.
-    pub fn handle_stdlib_events(
+    pub fn handle_core_lib_events(
         &self,
         process: &ProcessState,
     ) -> Result<Option<Vec<AdviceMutation>>, EventError> {
         let event_id = EventId::from_felt(process.get_stack_item(0));
-        if let Some(mutations) = self.stdlib_handlers.handle_event(event_id, process)? {
+        if let Some(mutations) = self.core_lib_handlers.handle_event(event_id, process)? {
             Ok(Some(mutations))
         } else {
             Ok(None)

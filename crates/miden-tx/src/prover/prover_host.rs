@@ -91,7 +91,7 @@ where
     }
 
     fn on_event(&mut self, process: &ProcessState) -> Result<Vec<AdviceMutation>, EventError> {
-        if let Some(advice_mutations) = self.base_host.handle_stdlib_events(process)? {
+        if let Some(advice_mutations) = self.base_host.handle_core_lib_events(process)? {
             return Ok(advice_mutations);
         }
 

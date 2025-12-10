@@ -461,18 +461,18 @@ where
         &mut self,
         process: &ProcessState,
     ) -> impl FutureMaybeSend<Result<Vec<AdviceMutation>, EventError>> {
-        let stdlib_event_result = self.base_host.handle_stdlib_events(process);
+        let core_lib_event_result = self.base_host.handle_core_lib_events(process);
 
-        // If the event was handled by a stdlib handler (Ok(Some)), we will return the result from
+        // If the event was handled by a core lib handler (Ok(Some)), we will return the result from
         // within the async block below. So, we only need to extract th tx event if the event was
         // not yet handled (Ok(None)).
-        let tx_event_result = match stdlib_event_result {
+        let tx_event_result = match core_lib_event_result {
             Ok(None) => Some(TransactionEvent::extract(&self.base_host, process)),
             _ => None,
         };
 
         async move {
-            if let Some(mutations) = stdlib_event_result? {
+            if let Some(mutations) = core_lib_event_result? {
                 return Ok(mutations);
             }
 
