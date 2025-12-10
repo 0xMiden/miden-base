@@ -2,7 +2,7 @@ use crate::Word;
 use crate::account::{AccountCode, AccountId, PartialAccount, PartialStorage};
 use crate::asset::PartialVault;
 use crate::block::AccountWitness;
-use crate::crypto::merkle::{SmtProof, SmtProofError};
+use crate::crypto::merkle::smt::{SmtProof, SmtProofError};
 use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
 // ACCOUNT INPUTS

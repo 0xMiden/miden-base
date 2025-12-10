@@ -2,7 +2,8 @@ use alloc::collections::{BTreeMap, BTreeSet};
 
 use miden_core::utils::{Deserializable, Serializable};
 use miden_crypto::Word;
-use miden_crypto::merkle::{InnerNodeInfo, SmtLeaf};
+use miden_crypto::merkle::InnerNodeInfo;
+use miden_crypto::merkle::smt::SmtLeaf;
 
 use super::{AccountStorage, AccountStorageHeader, StorageSlotContent};
 use crate::AccountError;

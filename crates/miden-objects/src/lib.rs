@@ -66,8 +66,6 @@ pub mod assembly {
         DefaultSourceManager,
         KernelLibrary,
         Library,
-        LibraryNamespace,
-        LibraryPath,
         Parse,
         ParseOptions,
         SourceFile,

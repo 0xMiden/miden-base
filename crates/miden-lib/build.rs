@@ -8,14 +8,7 @@ use std::sync::Arc;
 use fs_err as fs;
 use miden_assembly::diagnostics::{IntoDiagnostic, Result, WrapErr, miette};
 use miden_assembly::utils::Serializable;
-use miden_assembly::{
-    Assembler,
-    DefaultSourceManager,
-    KernelLibrary,
-    Library,
-    LibraryNamespace,
-    Report,
-};
+use miden_assembly::{Assembler, DefaultSourceManager, KernelLibrary, Library, Report};
 use regex::Regex;
 use walkdir::WalkDir;
 
@@ -144,12 +137,11 @@ fn main() -> Result<()> {
 ///   tx_script_main.masm.
 /// - src/transaction/procedures/kernel_v0.rs -> contains the kernel procedures table.
 fn compile_tx_kernel(source_dir: &Path, target_dir: &Path) -> Result<Assembler> {
-    let shared_utils_path = Path::new(ASM_DIR).join(SHARED_UTILS_DIR);
-    let kernel_namespace = LibraryNamespace::Kernel;
+    let shared_utils_path = std::path::Path::new(ASM_DIR).join(SHARED_UTILS_DIR);
 
     let mut assembler = build_assembler(None)?;
     // add the shared util modules to the kernel lib under the kernel::util namespace
-    assembler.compile_and_statically_link_from_dir(kernel_namespace.clone(), &shared_utils_path)?;
+    assembler.compile_and_statically_link_from_dir(&shared_utils_path, "$kernel::util")?;
 
     // assemble the kernel library and write it to the "tx_kernel.masl" file
     let kernel_lib = assembler
@@ -166,10 +158,8 @@ fn compile_tx_kernel(source_dir: &Path, target_dir: &Path) -> Result<Assembler> 
     // assemble the kernel program and write it to the "tx_kernel.masb" file
     let mut main_assembler = assembler.clone();
     // add the shared util modules to the kernel lib under the kernel::util namespace
-    main_assembler
-        .compile_and_statically_link_from_dir(kernel_namespace.clone(), &shared_utils_path)?;
-    main_assembler
-        .compile_and_statically_link_from_dir(kernel_namespace.clone(), source_dir.join("lib"))?;
+    main_assembler.compile_and_statically_link_from_dir(&shared_utils_path, "$kernel::util")?;
+    main_assembler.compile_and_statically_link_from_dir(source_dir.join("lib"), "$kernel")?;
 
     let main_file_path = source_dir.join("main.masm");
     let kernel_main = main_assembler.clone().assemble_program(main_file_path)?;
@@ -189,10 +179,10 @@ fn compile_tx_kernel(source_dir: &Path, target_dir: &Path) -> Result<Assembler> 
 
         // add the shared util modules to the kernel lib under the kernel::util namespace
         kernel_lib_assembler
-            .compile_and_statically_link_from_dir(kernel_namespace.clone(), &shared_utils_path)?;
+            .compile_and_statically_link_from_dir(&shared_utils_path, "$kernel::util")?;
 
         let test_lib = kernel_lib_assembler
-            .assemble_library_from_dir(source_dir.join("lib"), kernel_namespace)
+            .assemble_library_from_dir(source_dir.join("lib"), "$kernel")
             .unwrap();
 
         let masb_file_path =
@@ -303,11 +293,10 @@ fn compile_miden_lib(
     let source_dir = source_dir.join(ASM_MIDEN_DIR);
     let shared_path = Path::new(ASM_DIR).join(SHARED_UTILS_DIR);
 
-    let miden_namespace = "miden".parse::<LibraryNamespace>().expect("invalid base namespace");
     // add the shared modules to the kernel lib under the miden::util namespace
-    assembler.compile_and_statically_link_from_dir(miden_namespace.clone(), &shared_path)?;
+    assembler.compile_and_statically_link_from_dir(&shared_path, "miden::util")?;
 
-    let miden_lib = assembler.assemble_library_from_dir(source_dir, miden_namespace)?;
+    let miden_lib = assembler.assemble_library_from_dir(source_dir, "miden")?;
 
     let output_file = target_dir.join("miden").with_extension(Library::LIBRARY_EXTENSION);
     miden_lib.write_to_file(output_file).into_diagnostic()?;
@@ -389,15 +378,14 @@ fn compile_account_components(
 // HELPER FUNCTIONS
 // ================================================================================================
 
-/// Returns a new [Assembler] loaded with miden-stdlib and the specified kernel, if provided.
+/// Returns a new [Assembler] loaded with miden-core-lib and the specified kernel, if provided.
 ///
 /// The returned assembler will be in the `debug` mode if the `with-debug-info` feature is enabled.
 fn build_assembler(kernel: Option<KernelLibrary>) -> Result<Assembler> {
     kernel
         .map(|kernel| Assembler::with_kernel(Arc::new(DefaultSourceManager::default()), kernel))
         .unwrap_or_default()
-        .with_debug_mode(cfg!(feature = "with-debug-info"))
-        .with_dynamic_library(miden_stdlib::StdLibrary::default())
+        .with_dynamic_library(miden_core_lib::CoreLibrary::default())
 }
 
 /// Recursively copies `src` into `dst`.

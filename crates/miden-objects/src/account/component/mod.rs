@@ -1,13 +1,12 @@
 use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 
-use miden_assembly::{Assembler, Library, Parse};
+use miden_assembly::{Assembler, Library, Parse, Path};
 
 // TODO(named_slots): Refactor templates.
 // mod template;
 // pub use template::*;
 use crate::account::{AccountType, StorageSlot};
-use crate::assembly::QualifiedProcedureName;
 use crate::{AccountError, MastForest, Word};
 
 // ACCOUNT COMPONENT
@@ -210,11 +209,8 @@ impl AccountComponent {
 
     /// Returns the digest of the procedure with the specified name, or `None` if it was not found
     /// in this component's library or its library path is malformed.
-    pub fn get_procedure_root_by_name(
-        &self,
-        proc_name: impl TryInto<QualifiedProcedureName>,
-    ) -> Option<Word> {
-        self.library.get_procedure_root_by_name(proc_name)
+    pub fn get_procedure_root_by_name(&self, proc_name: impl AsRef<Path>) -> Option<Word> {
+        self.library.get_procedure_root_by_path(proc_name)
     }
 
     // MUTATORS

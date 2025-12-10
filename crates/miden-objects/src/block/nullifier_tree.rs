@@ -4,9 +4,9 @@ use alloc::vec::Vec;
 
 use miden_core::EMPTY_WORD;
 use miden_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
+use miden_crypto::merkle::MerkleError;
 #[cfg(feature = "std")]
-use miden_crypto::merkle::{LargeSmt, LargeSmtError, SmtStorage};
-use miden_crypto::merkle::{MerkleError, MutationSet, Smt, SmtProof};
+use miden_crypto::merkle::smt::{LargeSmt, LargeSmtError, MutationSet, Smt, SmtProof, SmtStorage};
 use miden_processor::{DeserializationError, SMT_DEPTH};
 
 use crate::Word;
@@ -185,12 +185,7 @@ where
     }
 
     fn root(&self) -> Word {
-        // SAFETY: We expect here as storage errors are considered unrecoverable. This maintains
-        // API compatibility with the non-fallible Smt::root().
-        // See issue #2010 for future improvements to error handling.
         LargeSmt::root(self)
-            .map_err(large_smt_error_to_merkle_error)
-            .expect("Storage I/O error accessing root")
     }
 }
 
@@ -564,7 +559,7 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn large_smt_backend_basic_operations() {
-        use miden_crypto::merkle::{LargeSmt, MemoryStorage};
+        use miden_crypto::merkle::smt::{LargeSmt, MemoryStorage};
 
         // Create test data
         let nullifier1 = Nullifier::dummy(1);
@@ -604,7 +599,7 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn large_smt_backend_nullifier_already_spent() {
-        use miden_crypto::merkle::{LargeSmt, MemoryStorage};
+        use miden_crypto::merkle::smt::{LargeSmt, MemoryStorage};
 
         let nullifier1 = Nullifier::dummy(1);
 
@@ -628,7 +623,7 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn large_smt_backend_apply_mutations() {
-        use miden_crypto::merkle::{LargeSmt, MemoryStorage};
+        use miden_crypto::merkle::smt::{LargeSmt, MemoryStorage};
 
         let nullifier1 = Nullifier::dummy(1);
         let nullifier2 = Nullifier::dummy(2);
@@ -659,7 +654,7 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn large_smt_backend_same_root_as_regular_smt() {
-        use miden_crypto::merkle::{LargeSmt, MemoryStorage};
+        use miden_crypto::merkle::smt::{LargeSmt, MemoryStorage};
 
         let nullifier1 = Nullifier::dummy(1);
         let nullifier2 = Nullifier::dummy(2);

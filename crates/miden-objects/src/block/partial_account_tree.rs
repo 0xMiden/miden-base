@@ -1,10 +1,9 @@
-use miden_crypto::merkle::SmtLeaf;
+use miden_crypto::merkle::smt::{PartialSmt, SmtLeaf};
 
 use crate::Word;
 use crate::account::AccountId;
 use crate::block::AccountWitness;
 use crate::block::account_tree::account_id_to_smt_key;
-use crate::crypto::merkle::PartialSmt;
 use crate::errors::AccountTreeError;
 
 /// The partial sparse merkle tree containing the state commitments of accounts in the chain.
@@ -192,7 +191,7 @@ impl PartialAccountTree {
 #[cfg(test)]
 mod tests {
     use assert_matches::assert_matches;
-    use miden_crypto::merkle::Smt;
+    use miden_crypto::merkle::smt::Smt;
 
     use super::*;
     use crate::block::account_tree::AccountTree;

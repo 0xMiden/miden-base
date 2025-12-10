@@ -1,6 +1,7 @@
 use alloc::collections::BTreeMap;
 
-use miden_crypto::merkle::{InnerNodeInfo, SmtProof};
+use miden_crypto::merkle::InnerNodeInfo;
+use miden_crypto::merkle::smt::SmtProof;
 
 use crate::Word;
 use crate::account::StorageMap;

@@ -16,16 +16,16 @@ version.workspace      = true
 
 [features]
 default         = ["std"]
-std             = ["miden-assembly/std", "miden-objects/std", "miden-processor/std", "miden-stdlib/std"]
+std             = ["miden-assembly/std", "miden-objects/std", "miden-processor/std", "miden-core-lib/std"]
 testing         = ["dep:rand", "miden-objects/testing"]
-with-debug-info = ["miden-stdlib/with-debug-info"]
+with-debug-info = ["miden-core-lib/with-debug-info"]
 
 [dependencies]
 # Miden dependencies
 miden-core      = { workspace = true }
 miden-objects   = { workspace = true }
 miden-processor = { workspace = true }
-miden-stdlib    = { workspace = true }
+miden-core-lib  = { workspace = true }
 
 # External dependencies
 rand      = { optional = true, workspace = true }
@@ -35,7 +35,7 @@ thiserror = { workspace = true }
 fs-err         = { version = "3" }
 miden-assembly = { workspace = true }
 miden-core     = { workspace = true }
-miden-stdlib   = { workspace = true }
+miden-core-lib = { workspace = true }
 regex          = { version = "1.11" }
 walkdir        = { version = "2.5" }
 

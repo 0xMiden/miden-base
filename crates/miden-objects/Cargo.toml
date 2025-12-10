@@ -42,7 +42,7 @@ miden-crypto          = { workspace = true }
 miden-mast-package    = { workspace = true }
 miden-processor       = { workspace = true }
 miden-protocol-macros = { workspace = true }
-miden-stdlib          = { workspace = true }
+miden-core-lib        = { workspace = true }
 miden-utils-sync      = { workspace = true }
 miden-verifier        = { workspace = true }
 winter-rand-utils     = { optional = true, version = "0.13" }

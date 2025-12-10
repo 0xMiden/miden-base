@@ -445,7 +445,7 @@ mod tests {
     /// Tests that an address with encryption key can be created and used.
     #[test]
     fn address_with_encryption_key() -> anyhow::Result<()> {
-        use crate::crypto::dsa::eddsa_25519::SecretKey;
+        use crate::crypto::dsa::eddsa_25519_sha512::SecretKey;
         use crate::crypto::ies::{SealingKey, UnsealingKey};
 
         let rng = &mut rand::rng();
@@ -484,7 +484,7 @@ mod tests {
     /// Tests that an address with encryption key can be encoded/decoded.
     #[test]
     fn address_encryption_key_encode_decode() -> anyhow::Result<()> {
-        use crate::crypto::dsa::eddsa_25519::SecretKey;
+        use crate::crypto::dsa::eddsa_25519_sha512::SecretKey;
 
         let rng = &mut rand::rng();
         // Use a local account type (RegularAccountImmutableCode) instead of network

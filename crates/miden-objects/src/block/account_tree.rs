@@ -3,7 +3,8 @@ use alloc::string::ToString;
 use alloc::vec::Vec;
 
 use miden_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
-use miden_crypto::merkle::{LeafIndex, MerkleError, MutationSet, Smt, SmtLeaf, SmtProof};
+use miden_crypto::merkle::MerkleError;
+use miden_crypto::merkle::smt::{LeafIndex, MutationSet, Smt, SmtLeaf, SmtProof};
 use miden_processor::{DeserializationError, SMT_DEPTH};
 
 use crate::Word;
@@ -148,7 +149,7 @@ impl AccountTreeBackend for Smt {
 }
 
 #[cfg(feature = "std")]
-use miden_crypto::merkle::{LargeSmt, LargeSmtError, SmtStorage};
+use miden_crypto::merkle::smt::{LargeSmt, LargeSmtError, SmtStorage};
 #[cfg(feature = "std")]
 fn large_smt_error_to_merkle_error(err: LargeSmtError) -> MerkleError {
     match err {
@@ -214,7 +215,7 @@ where
     }
 
     fn root(&self) -> Word {
-        LargeSmt::root(self).map_err(large_smt_error_to_merkle_error).unwrap()
+        LargeSmt::root(self)
     }
 }
 
@@ -816,7 +817,7 @@ pub(super) mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn large_smt_backend_basic_operations() {
-        use miden_crypto::merkle::{LargeSmt, MemoryStorage};
+        use miden_crypto::merkle::smt::{LargeSmt, MemoryStorage};
 
         // Create test data
         let id0 = AccountIdBuilder::new().build_with_seed([5; 32]);
@@ -862,7 +863,7 @@ pub(super) mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn large_smt_backend_duplicate_prefix_check() {
-        use miden_crypto::merkle::{LargeSmt, MemoryStorage};
+        use miden_crypto::merkle::smt::{LargeSmt, MemoryStorage};
 
         let [(id0, commitment0), (id1, commitment1)] = setup_duplicate_prefix_ids();
 
@@ -883,7 +884,7 @@ pub(super) mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn large_smt_backend_apply_mutations() {
-        use miden_crypto::merkle::{LargeSmt, MemoryStorage};
+        use miden_crypto::merkle::smt::{LargeSmt, MemoryStorage};
 
         let id0 = AccountIdBuilder::new().build_with_seed([5; 32]);
         let id1 = AccountIdBuilder::new().build_with_seed([6; 32]);
@@ -916,7 +917,7 @@ pub(super) mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn large_smt_backend_same_root_as_regular_smt() {
-        use miden_crypto::merkle::{LargeSmt, MemoryStorage};
+        use miden_crypto::merkle::smt::{LargeSmt, MemoryStorage};
 
         let id0 = AccountIdBuilder::new().build_with_seed([5; 32]);
         let id1 = AccountIdBuilder::new().build_with_seed([6; 32]);

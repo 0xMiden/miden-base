@@ -28,7 +28,7 @@ impl TransactionMastStore {
     /// Returns a new [TransactionMastStore] instantiated with the default libraries.
     ///
     /// The default libraries include:
-    /// - Miden standard library (miden-stdlib).
+    /// - Miden core library (miden-core-lib).
     /// - Miden protocol library (miden-lib).
     /// - Transaction kernel.
     pub fn new() -> Self {
@@ -39,7 +39,7 @@ impl TransactionMastStore {
         let kernels_forest = TransactionKernel::kernel().mast_forest().clone();
         store.insert(kernels_forest);
 
-        // load miden-stdlib MAST forest
+        // load miden-core-lib MAST forest
         let miden_stdlib_forest = StdLibrary::default().mast_forest().clone();
         store.insert(miden_stdlib_forest);
 
