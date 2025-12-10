@@ -783,8 +783,7 @@ async fn inputs_created_correctly() -> anyhow::Result<()> {
         AccountType::RegularAccountUpdatableCode,
     )?;
 
-    let script = format!(
-        r#"
+    let script = r#"
             use.miden::account
 
             adv_map.A([1,2,3,4])=[5,6,7,8]
@@ -798,8 +797,7 @@ async fn inputs_created_correctly() -> anyhow::Result<()> {
                 push.[10,11,12,13]
                 assert_eqw.err="account code adv map not found"
             end
-        "#
-    );
+        "#;
 
     let tx_script = ProtocolAssembler::default()
         .with_dynamically_linked_library(component_code.as_library())?
