@@ -987,6 +987,17 @@ export.is_native_account
     # => [is_native_account]
 end
 
+#! Returns 1 if the native account is new, i.e. its nonce is zero, 0 otherwise.
+#!
+#! Inputs:  []
+#! Outputs: [is_new_account]
+export.is_new_account
+    # the account is new if its nonce is zero
+    # use get_init_nonce so this procedure works correctly even after the account's nonce was
+    # incremented
+    exec.get_init_nonce eq.0
+end
+
 #! Returns a pointer to the end of the core account data section.
 #!
 #! Inputs:  []
@@ -1345,20 +1356,6 @@ end
 export.set_num_storage_slots
     exec.get_active_account_data_ptr add.NUM_ACCT_STORAGE_SLOTS_OFFSET
     mem_store
-end
-
-#! Returns the type of the requested storage slot.
-#!
-#! Inputs:  [account_storage_slots_section_ptr, index]
-#! Outputs: [slot_type]
-#!
-#! Where:
-#! - index is the location in memory of the storage slot.
-#! - slot_type is the type of the storage slot.
-export.get_storage_slot_type
-    # get storage slot type
-    swap mul.8 add add.4 mem_load
-    # => [slot_type]
 end
 
 #! Returns the memory pointer to the account storage slots section.

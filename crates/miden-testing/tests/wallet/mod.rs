@@ -40,7 +40,10 @@ fn wallet_creation() {
 
     assert!(wallet.is_regular_account());
     assert_eq!(wallet.code().commitment(), expected_code_commitment);
-    assert_eq!(wallet.storage().get_item(0).unwrap(), Word::from(pub_key));
+    assert_eq!(
+        wallet.storage().get_item(AuthRpoFalcon512::public_key_slot()).unwrap(),
+        Word::from(pub_key)
+    );
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -77,5 +80,8 @@ fn wallet_creation_2() {
 
     assert!(wallet.is_regular_account());
     assert_eq!(wallet.code().commitment(), expected_code_commitment);
-    assert_eq!(wallet.storage().get_item(0).unwrap(), Word::from(pub_key));
+    assert_eq!(
+        wallet.storage().get_item(AuthEcdsaK256Keccak::public_key_slot()).unwrap(),
+        Word::from(pub_key)
+    );
 }

@@ -145,15 +145,10 @@ end
 #! Inputs:  [slot_idx, RATE, RATE, PERM]
 #! Outputs: [RATE, RATE, PERM]
 proc.update_slot_delta
-    # we use memory::get_storage_slot_type instead of the procedure in account to
-    # avoid the assertion overhead
-    dup exec.memory::get_native_account_storage_slots_ptr
-    # => [native_account_storage_slots_section_ptr, slot_idx, slot_idx, RATE, RATE, PERM]
-
-    exec.memory::get_storage_slot_type
+    dup exec.account::get_storage_slot_type
     # => [storage_slot_type, slot_idx, RATE, RATE, PERM]
 
-    # check if type == slot
+    # check if slot is of type value
     exec.constants::get_storage_slot_type_value eq
     # => [is_value_slot_type, slot_idx, RATE, RATE, PERM]
 
@@ -170,64 +165,45 @@ end
 #! Inputs:  [slot_idx, RATE, RATE, PERM]
 #! Outputs: [RATE, RATE, PERM]
 proc.update_value_slot_delta
-    dup exec.account::get_item
-    # => [CURRENT_VALUE, slot_idx, RATE, RATE, PERM]
-
-    dup.4 exec.account::get_initial_item
-    # => [INIT_VALUE, CURRENT_VALUE, slot_idx, RATE, RATE, PERM]
-
-    # if account is new, replace INIT_VALUE with EMPTY_WORD
-    # we need to do this specifically for new accounts because for those, get_initial_item returns
-    # the same as get_item but we want the delta for value slots to be from an empty value to the
-    # final value
-    # use get_init_nonce so the delta is still correctly computed when the nonce has already been
-    # incremented
-    padw exec.memory::get_init_nonce eq.0
-    # => [is_account_new, EMPTY_WORD, INIT_VALUE, CURRENT_VALUE, slot_idx, RATE, RATE, PERM]
-
-    # If is_account_new EMPTY_WORD remains.
-    # If !is_account_new INIT_VALUE remains.
-    cdropw
-    # => [INIT_VALUE', CURRENT_VALUE, slot_idx, RATE, RATE, PERM]
+    exec.account::get_item_delta
+    # => [INIT_VALUE, CURRENT_VALUE, slot_id_prefix, slot_id_suffix, RATE, RATE, PERM]
 
     exec.word::test_eq not
-    # => [was_changed, INIT_VALUE', CURRENT_VALUE, slot_idx, RATE, RATE, PERM]
+    # => [was_changed, INIT_VALUE, CURRENT_VALUE, slot_id_prefix, slot_id_suffix, RATE, RATE, PERM]
 
     # set was_changed to true if the account is new
-    # this means a storage slot initialized with an empty word is included in the commitment for
-    # new accounts
-    # more generally, we want the delta for a new account to include all its newly added values,
-    # regardless of the exact value, because the initial delta for an account must represent its
-    # full state
-    exec.memory::get_init_nonce eq.0 or
-    # => [was_changed, INIT_VALUE', CURRENT_VALUE, slot_idx, RATE, RATE, PERM]
+    # generally, the delta for a new account must include all its storage slots, regardless of the
+    # initial value and even if it is an empty word, because the initial delta for an account must
+    # represent its full state
+    exec.memory::is_new_account or
+    # => [was_changed, INIT_VALUE, CURRENT_VALUE, slot_id_prefix, slot_id_suffix, RATE, RATE, PERM]
 
     # only include in delta if the slot's value has changed or the account is new
     if.true
         # drop init value
         dropw
-        # => [CURRENT_VALUE, slot_idx, RATE, RATE, PERM]
+        # => [CURRENT_VALUE, slot_id_prefix, slot_id_suffix, RATE, RATE, PERM]
 
         # build value slot metadata
-        push.DOMAIN_VALUE
-        # => [domain, CURRENT_VALUE, slot_idx, RATE, RATE, PERM]
+        push.DOMAIN_VALUE push.0
+        # => [0, domain, CURRENT_VALUE, slot_id_prefix, slot_id_suffix, RATE, RATE, PERM]
 
-        movup.5 push.0.0
-        # => [0, 0, slot_idx, domain, CURRENT_VALUE, RATE, RATE, PERM]
+        movup.7 movup.7
+        # => [slot_id_prefix, slot_id_suffix, 0, domain, CURRENT_VALUE, RATE, RATE, PERM]
 
         # clear rate elements
         swapdw dropw dropw
-        # => [0, 0, slot_idx, domain, CURRENT_VALUE, PERM]
+        # => [slot_id_prefix, slot_id_suffix, 0, domain, CURRENT_VALUE, PERM]
 
         # arrange rate words in correct order
         swapw
-        # => [CURRENT_VALUE, 0, 0, slot_idx, domain, PERM]
+        # => [CURRENT_VALUE, slot_id_prefix, slot_id_suffix, 0, domain, PERM]
 
         hperm
         # => [RATE, RATE, PERM]
     else
-        # drop init value, current value and slot idx
-        dropw dropw drop
+        # drop init value, current value and slot name
+        dropw dropw drop drop
         # => [RATE, RATE, PERM]
     end
     # => [RATE, RATE, PERM]
@@ -239,18 +215,22 @@ end
 #! Outputs: [RATE, RATE, PERM]
 #!
 #! Locals:
-#!   0: slot_idx
-#!   1: has_next
-#!   2: iter
-#!   3: num_changed_entries
-proc.update_map_slot_delta.4
+#! - 0: slot_id_suffix
+#! - 1: slot_id_prefix
+#! - 2: has_next
+#! - 3: iter
+#! - 4: num_changed_entries
+proc.update_map_slot_delta.5
     # initialize num_changed_entries = 0
     # this is necessary because this procedure can be called multiple times and the second
     # invocation shouldn't reuse the first invocation's value
-    push.0 loc_store.3
+    push.0 loc_store.4
     # => [slot_idx, RATE, RATE, PERM]
 
-    dup loc_store.0
+    dup exec.account::get_slot_id
+    # => [slot_id_prefix, slot_id_suffix, slot_idx, RATE, RATE, PERM]
+
+    loc_store.1 loc_store.0
     # => [slot_idx, RATE, RATE, PERM]
 
     exec.memory::get_account_delta_storage_map_ptr
@@ -265,11 +245,11 @@ proc.update_map_slot_delta.4
         # => [KEY, INIT_VALUE, NEW_VALUE, has_next, iter, ...]
 
         # store has_next
-        movup.12 loc_store.1
+        movup.12 loc_store.2
         # => [KEY, INIT_VALUE, NEW_VALUE, iter, ...]
 
         # store iter
-        movup.12 loc_store.2
+        movup.12 loc_store.3
         # => [KEY, INIT_VALUE, NEW_VALUE, ...]
 
         swapw.2
@@ -284,8 +264,8 @@ proc.update_map_slot_delta.4
             swapw dropw
             # => [NEW_VALUE, KEY, RATE, RATE, PERM]
 
-            # increment number of changed entries in local 3
-            loc_load.3 add.1 loc_store.3
+            # increment number of changed entries in local
+            loc_load.4 add.1 loc_store.4
             # => [NEW_VALUE, KEY, RATE, RATE, PERM]
 
             # drop previous RATE elements
@@ -302,10 +282,10 @@ proc.update_map_slot_delta.4
         # => [RATE, RATE, PERM]
 
         # load iter and has_next
-        loc_load.2
+        loc_load.3
         # => [iter, RATE, RATE, PERM]
 
-        loc_load.1
+        loc_load.2
         # => [has_next, iter, RATE, RATE, PERM]
     end
 
@@ -315,12 +295,12 @@ proc.update_map_slot_delta.4
 
     # only include the map slot metadata if there were entries in the map that resulted in an
     # update to the hasher state
-    loc_load.3 neq.0
+    loc_load.4 neq.0
     # => [is_num_changed_entries_non_zero, RATE, RATE, PERM]
 
     # if the account is new (nonce == 0) include the map header even if it is an empty map
     # in order to have the delta commit to this initial storage slot.
-    exec.memory::get_init_nonce eq.0 or
+    exec.memory::is_new_account or
     # => [should_include_map_header, RATE, RATE, PERM]
 
     if.true
@@ -328,8 +308,8 @@ proc.update_map_slot_delta.4
         dropw dropw
         # => [PERM]
 
-        push.DOMAIN_MAP loc_load.0 loc_load.3 push.0 padw
-        # => [EMPTY_WORD, [0, num_changed_entries, slot_idx, domain], PERM]
+        push.DOMAIN_MAP loc_load.4 loc_load.0 loc_load.1 padw
+        # => [EMPTY_WORD, [slot_id_prefix, slot_id_suffix, num_changed_entries, domain], PERM]
 
         hperm
         # => [RATE, RATE, PERM]

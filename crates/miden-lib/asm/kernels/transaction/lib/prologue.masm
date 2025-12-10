@@ -61,7 +61,7 @@ const.ERR_PROLOGUE_INPUT_NOTES_COMMITMENT_MISMATCH="note commitment computed fro
 
 const.ERR_PROLOGUE_NEW_ACCOUNT_NONCE_MUST_BE_ZERO="new account must have a zero nonce"
 
-const.ERR_PROLOGUE_NUMBER_OF_NOTE_INPUTS_EXCEEDED_LIMIT="number of note inputs exceeded the maximum limit of 128"
+const.ERR_PROLOGUE_NUMBER_OF_NOTE_INPUTS_EXCEEDED_LIMIT="number of note inputs exceeded the maximum limit of 1024"
 
 const.ERR_PROLOGUE_NOTE_AUTHENTICATION_FAILED="failed to authenticate note inclusion in block"
 
@@ -276,6 +276,11 @@ end
 # ACCOUNT DATA
 # =================================================================================================
 
+#! TODO(named_slots): Validate that slot names are unique.
+#! This should only be necessary whenever the slots of an account "change", which is essentially
+#! the case when it is created, or when slots are added or removed (currently unimplemented).
+#! So, it should be sufficient to do this here instead of in save_account_storage_data.
+#!
 #! Validates that the account the transaction is being executed against satisfies the criteria
 #! for a new account.
 #!
@@ -318,21 +323,17 @@ proc.validate_new_account
     # process conditional logic depending on whether the account is a faucet
     if.true
         # get the faucet reserved slot
-        exec.account::get_faucet_storage_data_slot exec.account::get_item
-        # => [FAUCET_RESERVED_SLOT, acct_id_prefix]
+        exec.account::get_faucet_storage_slot_id exec.account::get_typed_item
+        # => [FAUCET_RESERVED_SLOT, slot_type, acct_id_prefix]
 
         # check if the account is a fungible faucet
-        movup.4 exec.account_id::is_fungible_faucet
-        # => [is_fungible_faucet, FAUCET_RESERVED_SLOT]
+        movup.5 exec.account_id::is_fungible_faucet
+        # => [is_fungible_faucet, FAUCET_RESERVED_SLOT, slot_type]
 
         if.true
             # assert the fungible faucet reserved slot is initialized correctly (EMPTY_WORD)
             exec.word::eqz not
             assertz.err=ERR_PROLOGUE_NEW_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_EMPTY
-            # => []
-
-            # get the faucet reserved storage data slot type
-            exec.account::get_faucet_storage_data_slot exec.account::get_storage_slot_type
             # => [slot_type]
 
             # assert the fungible faucet reserved slot type == value
@@ -344,10 +345,6 @@ proc.validate_new_account
             # empty SMT)
             exec.constants::get_empty_smt_root
             assert_eqw.err=ERR_PROLOGUE_NEW_NON_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_VALID_EMPTY_SMT
-            # => []
-
-            # get the faucet reserved storage data slot type
-            exec.account::get_faucet_storage_data_slot exec.account::get_storage_slot_type
             # => [slot_type]
 
             # assert the non-fungible faucet reserved slot type == map
