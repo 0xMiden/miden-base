@@ -1,6 +1,6 @@
-use alloc::borrow::Cow;
 use alloc::string::{String, ToString};
 use core::fmt::Display;
+use core::str::FromStr;
 
 use miden_core::utils::hash_string_to_word;
 
@@ -37,7 +37,7 @@ use crate::utils::serde::{ByteWriter, Deserializable, DeserializationError, Seri
 /// - Each component must not start with an underscore.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct StorageSlotName {
-    name: Cow<'static, str>,
+    name: String,
 }
 
 impl StorageSlotName {
@@ -62,7 +62,7 @@ impl StorageSlotName {
     pub fn new(name: impl Into<String>) -> Result<Self, StorageSlotNameError> {
         let name = name.into();
         Self::validate(&name)?;
-        Ok(Self { name: Cow::Owned(name) })
+        Ok(Self { name })
     }
 
     // ACCESSORS
@@ -193,6 +193,20 @@ impl PartialOrd for StorageSlotName {
 impl Display for StorageSlotName {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.write_str(self.as_str())
+    }
+}
+
+impl FromStr for StorageSlotName {
+    type Err = StorageSlotNameError;
+
+    fn from_str(string: &str) -> Result<Self, Self::Err> {
+        StorageSlotName::new(string)
+    }
+}
+
+impl From<StorageSlotName> for String {
+    fn from(slot_name: StorageSlotName) -> Self {
+        slot_name.name
     }
 }
 
