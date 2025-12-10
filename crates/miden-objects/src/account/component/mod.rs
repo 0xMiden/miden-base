@@ -1,8 +1,6 @@
 use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 
-use miden_assembly::{Assembler, Parse};
-
 // TODO(named_slots): Refactor templates.
 // mod template;
 // pub use template::*;
@@ -69,29 +67,6 @@ impl AccountComponent {
             storage_slots,
             supported_types: BTreeSet::new(),
         })
-    }
-
-    /// Returns a new [`AccountComponent`] whose library is compiled from the provided `source_code`
-    /// using the specified `assembler` and with the given `storage_slots`.
-    ///
-    /// All procedures exported from the provided code will become members of the account's public
-    /// interface when added to an [`AccountCode`](crate::account::AccountCode).
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if:
-    /// - the compilation of the provided source code fails.
-    /// - The number of storage slots exceeds 255.
-    pub fn compile(
-        source_code: impl Parse,
-        assembler: Assembler,
-        storage_slots: Vec<StorageSlot>,
-    ) -> Result<Self, AccountError> {
-        let library = assembler
-            .assemble_library([source_code])
-            .map_err(AccountError::AccountComponentAssemblyError)?;
-
-        Self::new(library, storage_slots)
     }
 
     /*

@@ -758,7 +758,7 @@ async fn test_tx_script_args() -> anyhow::Result<()> {
 // part of the transaction advice inputs
 #[tokio::test]
 async fn inputs_created_correctly() -> anyhow::Result<()> {
-    let account_code_script = r#"
+    let account_component_masm = r#"
             adv_map.A([6,7,8,9])=[10,11,12,13]
 
             export.assert_adv_map
@@ -769,10 +769,11 @@ async fn inputs_created_correctly() -> anyhow::Result<()> {
                 assert_eqw.err="script adv map not found"
             end
         "#;
+    let component_code = ProtocolAssembler::default()
+        .compile_component_code("test::adv_map_component", account_component_masm)?;
 
-    let component = AccountComponent::compile(
-        account_code_script,
-        TransactionKernel::assembler(),
+    let component = AccountComponent::new(
+        component_code.clone(),
         vec![StorageSlot::with_value(StorageSlotName::mock(0), Word::default())],
     )?
     .with_supports_all_types();
@@ -789,7 +790,7 @@ async fn inputs_created_correctly() -> anyhow::Result<()> {
             adv_map.A([1,2,3,4])=[5,6,7,8]
 
             begin
-                call.{assert_adv_map_proc_root}
+                call.::test::adv_map_component::assert_adv_map
 
                 # test account code advice map
                 push.[6,7,8,9]
@@ -797,15 +798,12 @@ async fn inputs_created_correctly() -> anyhow::Result<()> {
                 push.[10,11,12,13]
                 assert_eqw.err="account code adv map not found"
             end
-        "#,
-        assert_adv_map_proc_root = component
-            .component_code()
-            .as_library()
-            .get_procedure_root_by_name("test::adv_map_component::assert_adv_map")
-            .unwrap()
+        "#
     );
 
-    let tx_script = ProtocolAssembler::default().compile_tx_script(script)?;
+    let tx_script = ProtocolAssembler::default()
+        .with_dynamically_linked_library(component_code.as_library())?
+        .compile_tx_script(script)?;
 
     assert!(tx_script.mast().advice_map().get(&Word::try_from([1u64, 2, 3, 4])?).is_some());
     assert!(
