@@ -21,6 +21,7 @@ use miden_objects::block::{
     ProposedBlock,
     ProvenBlock,
 };
+use miden_objects::crypto::dsa::ecdsa_k256_keccak::SecretKey;
 use miden_objects::note::{Note, NoteHeader, NoteId, NoteInclusionProof, Nullifier};
 use miden_objects::transaction::{
     ExecutedTransaction,
@@ -185,6 +186,9 @@ pub struct MockChain {
     /// AccountId |-> AccountAuthenticator mapping to store the authenticator for accounts to
     /// simplify transaction creation.
     account_authenticators: BTreeMap<AccountId, AccountAuthenticator>,
+
+    /// Validator secret key used for signing blocks.
+    validator_secret_key: SecretKey,
 }
 
 impl MockChain {
@@ -216,6 +220,7 @@ impl MockChain {
         genesis_block: ProvenBlock,
         account_tree: AccountTree,
         account_authenticators: BTreeMap<AccountId, AccountAuthenticator>,
+        secret_key: SecretKey,
     ) -> anyhow::Result<Self> {
         let mut chain = MockChain {
             chain: Blockchain::default(),
@@ -226,6 +231,7 @@ impl MockChain {
             committed_notes: BTreeMap::new(),
             committed_accounts: BTreeMap::new(),
             account_authenticators,
+            validator_secret_key: secret_key,
         };
 
         // We do not have to apply the tree changes, because the account tree is already initialized
@@ -370,6 +376,13 @@ impl MockChain {
         let chain_tip =
             self.chain.chain_tip().expect("chain should contain at least the genesis block");
         self.blocks[chain_tip.as_usize()].header().clone()
+    }
+
+    /// Returns the latest [`ProvenBlock`] in the chain.
+    pub fn latest_block(&self) -> ProvenBlock {
+        let chain_tip =
+            self.chain.chain_tip().expect("chain should contain at least the genesis block");
+        self.blocks[chain_tip.as_usize()].clone()
     }
 
     /// Returns the [`BlockHeader`] with the specified `block_number`.
@@ -982,7 +995,8 @@ impl MockChain {
             header.clone(),
             inputs,
         )?;
-        Ok(ProvenBlock::new_unchecked(header, body, block_proof))
+        let signature = self.validator_secret_key.sign(header.commitment());
+        Ok(ProvenBlock::new_unchecked(header, body, signature, block_proof))
     }
 }
 
@@ -1005,6 +1019,7 @@ impl Serializable for MockChain {
         self.committed_accounts.write_into(target);
         self.committed_notes.write_into(target);
         self.account_authenticators.write_into(target);
+        self.validator_secret_key.write_into(target);
     }
 }
 
@@ -1019,6 +1034,7 @@ impl Deserializable for MockChain {
         let committed_notes = BTreeMap::<NoteId, MockChainNote>::read_from(source)?;
         let account_authenticators =
             BTreeMap::<AccountId, AccountAuthenticator>::read_from(source)?;
+        let secret_key = SecretKey::read_from(source)?;
 
         Ok(Self {
             chain,
@@ -1029,6 +1045,7 @@ impl Deserializable for MockChain {
             committed_notes,
             committed_accounts,
             account_authenticators,
+            validator_secret_key: secret_key,
         })
     }
 }
@@ -1259,5 +1276,37 @@ mod tests {
         assert_eq!(chain.committed_accounts, deserialized.committed_accounts);
         assert_eq!(chain.committed_notes, deserialized.committed_notes);
         assert_eq!(chain.account_authenticators, deserialized.account_authenticators);
+    }
+
+    #[test]
+    fn mock_chain_block_signature() -> anyhow::Result<()> {
+        let mut builder = MockChain::builder();
+        builder.add_existing_mock_account(Auth::IncrNonce)?;
+        let mut chain = builder.build()?;
+
+        // Verify the genesis block signature.
+        let genesis_block = chain.latest_block();
+        assert!(
+            genesis_block.signature().verify(
+                genesis_block.header().commitment(),
+                genesis_block.header().validator_key()
+            )
+        );
+
+        // Add another block.
+        chain.prove_next_block()?;
+
+        // Verify the next block signature.
+        let next_block = chain.latest_block();
+        assert!(
+            next_block
+                .signature()
+                .verify(next_block.header().commitment(), next_block.header().validator_key())
+        );
+
+        // Public keys should be carried through from the genesis header to the next.
+        assert_eq!(next_block.header().validator_key(), next_block.header().validator_key());
+
+        Ok(())
     }
 }
