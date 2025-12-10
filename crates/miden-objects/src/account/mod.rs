@@ -37,6 +37,7 @@ pub use code::procedure::AccountProcedureInfo;
 pub mod component;
 pub use component::{
     AccountComponent,
+    AccountComponentCode,
     // TODO(named_slots): Uncomment when refactored.
     // AccountComponentMetadata,
     // FeltRepresentation,

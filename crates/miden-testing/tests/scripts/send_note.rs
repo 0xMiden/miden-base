@@ -2,7 +2,7 @@ use core::slice;
 use std::collections::BTreeMap;
 
 use miden_lib::account::interface::AccountInterface;
-use miden_lib::utils::ScriptBuilder;
+use miden_lib::utils::ProtocolAssembler;
 use miden_objects::Word;
 use miden_objects::asset::{Asset, FungibleAsset};
 use miden_objects::crypto::rand::{FeltRng, RpoRandomCoin};
@@ -44,7 +44,7 @@ async fn test_send_note_script_basic_wallet() -> anyhow::Result<()> {
         Default::default(),
     )?;
     let assets = NoteAssets::new(vec![sent_asset]).unwrap();
-    let note_script = ScriptBuilder::default().compile_note_script("begin nop end").unwrap();
+    let note_script = ProtocolAssembler::default().compile_note_script("begin nop end").unwrap();
     let serial_num = RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])).draw_word();
     let recipient = NoteRecipient::new(serial_num, note_script, NoteInputs::default());
 
@@ -108,7 +108,7 @@ async fn test_send_note_script_basic_fungible_faucet() -> anyhow::Result<()> {
     let assets = NoteAssets::new(vec![Asset::Fungible(
         FungibleAsset::new(sender_basic_fungible_faucet_account.id(), 10).unwrap(),
     )])?;
-    let note_script = ScriptBuilder::default().compile_note_script("begin nop end").unwrap();
+    let note_script = ProtocolAssembler::default().compile_note_script("begin nop end").unwrap();
     let serial_num = RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])).draw_word();
     let recipient = NoteRecipient::new(serial_num, note_script, NoteInputs::default());
 

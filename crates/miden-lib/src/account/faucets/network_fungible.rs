@@ -46,7 +46,7 @@ static OWNER_CONFIG_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
 /// It reexports the procedures from `miden::contracts::faucets::network_fungible`. When linking
 /// against this component, the `miden` library (i.e. [`MidenLib`](crate::MidenLib)) must be
 /// available to the assembler which is the case when using
-/// [`TransactionKernel::assembler()`][kasm]. The procedures of this component are:
+/// [`ProtocolAssembler`][builder]. The procedures of this component are:
 /// - `distribute`, which mints an assets and create a note for the provided recipient.
 /// - `burn`, which burns the provided asset.
 ///
@@ -60,7 +60,7 @@ static OWNER_CONFIG_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
 /// - First slot: Token metadata `[max_supply, decimals, token_symbol, 0]`
 /// - Second slot: Owner account ID as a single Word
 ///
-/// [kasm]: crate::transaction::TransactionKernel::assembler
+/// [builder]: crate::utils::ProtocolAssembler
 pub struct NetworkFungibleFaucet {
     faucet: BasicFungibleFaucet,
     owner_account_id: AccountId,

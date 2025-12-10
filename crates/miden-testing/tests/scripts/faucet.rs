@@ -7,7 +7,7 @@ use miden_lib::account::faucets::{BasicFungibleFaucet, FungibleFaucetExt, Networ
 use miden_lib::errors::tx_kernel_errors::ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED;
 use miden_lib::note::{create_burn_note, create_mint_note};
 use miden_lib::testing::note::NoteBuilder;
-use miden_lib::utils::ScriptBuilder;
+use miden_lib::utils::ProtocolAssembler;
 use miden_objects::account::{
     Account,
     AccountId,
@@ -91,7 +91,7 @@ pub async fn execute_mint_transaction(
 ) -> anyhow::Result<ExecutedTransaction> {
     let source_manager = Arc::new(DefaultSourceManager::default());
     let tx_script_code = create_mint_script_code(params);
-    let tx_script = ScriptBuilder::with_source_manager(source_manager.clone())
+    let tx_script = ProtocolAssembler::with_source_manager(source_manager.clone())
         .compile_tx_script(tx_script_code)?;
     let tx_context = mock_chain
         .build_tx_context(faucet, &[], &[])?
@@ -198,7 +198,7 @@ async fn faucet_contract_mint_fungible_asset_fails_exceeds_max_supply() -> anyho
         recipient = recipient,
     );
 
-    let tx_script = ScriptBuilder::default().compile_tx_script(tx_script_code)?;
+    let tx_script = ProtocolAssembler::default().compile_tx_script(tx_script_code)?;
     let tx = mock_chain
         .build_tx_context(faucet.id(), &[], &[])?
         .tx_script(tx_script)
@@ -328,7 +328,7 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
     // Create a simple output note script
     let output_note_script_code = "begin push.1 drop end";
     let source_manager = Arc::new(DefaultSourceManager::default());
-    let output_note_script = ScriptBuilder::with_source_manager(source_manager.clone())
+    let output_note_script = ProtocolAssembler::with_source_manager(source_manager.clone())
         .compile_note_script(output_note_script_code)?;
 
     let serial_num = Word::default();

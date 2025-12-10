@@ -5,20 +5,20 @@ use core::error::Error;
 use miden_objects::assembly::diagnostics::Report;
 use miden_objects::assembly::diagnostics::reporting::PrintDiagnostic;
 
-// SCRIPT BUILDER ERROR
+// PROTOCOL ASSEMBLER ERROR
 // ================================================================================================
 
 #[derive(Debug, thiserror::Error)]
 #[error("failed to build script: {message}")]
-pub struct ScriptBuilderError {
+pub struct ProtocolAssemblerError {
     /// Stack size of `Box<str>` is smaller than String.
     message: Box<str>,
-    /// thiserror will return this when calling Error::source on ScriptBuilderError.
+    /// thiserror will return this when calling Error::source on ProtocolAssemblerError.
     source: Option<Box<dyn Error + Send + Sync + 'static>>,
 }
 
-impl ScriptBuilderError {
-    /// Creates a script builder error from an error message and a source error.
+impl ProtocolAssemblerError {
+    /// Creates a code builder error from an error message and a source error.
     pub fn build_error_with_source(
         message: impl Into<String>,
         source: impl Error + Send + Sync + 'static,
@@ -30,7 +30,7 @@ impl ScriptBuilderError {
         }
     }
 
-    /// Creates a script builder error from a context message and a Report.
+    /// Creates a code builder error from a context message and a Report.
     ///
     /// This method uses PrintDiagnostic to stringify the Report since Report doesn't
     /// implement core::error::Error and cannot be returned as a source error.
@@ -48,7 +48,7 @@ mod error_assertions {
     /// Asserts at compile time that the passed error has Send + Sync + 'static bounds.
     fn _assert_error_is_send_sync_static<E: core::error::Error + Send + Sync + 'static>(_: E) {}
 
-    fn _assert_script_builder_error_bounds(err: ScriptBuilderError) {
+    fn _assert_protocol_assembler_error_bounds(err: ProtocolAssemblerError) {
         _assert_error_is_send_sync_static(err);
     }
 }

@@ -245,6 +245,9 @@ impl AccountComponentMetadata {
     }
 }
 
+// CONVERSIONS
+// ================================================================================================
+
 impl TryFrom<&Package> for AccountComponentMetadata {
     type Error = AccountError;
 

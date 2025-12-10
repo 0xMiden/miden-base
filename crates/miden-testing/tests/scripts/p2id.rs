@@ -1,6 +1,6 @@
 use miden_lib::errors::note_script_errors::ERR_P2ID_TARGET_ACCT_MISMATCH;
 use miden_lib::note::create_p2id_note;
-use miden_lib::utils::ScriptBuilder;
+use miden_lib::utils::ProtocolAssembler;
 use miden_objects::account::Account;
 use miden_objects::asset::{Asset, AssetVault, FungibleAsset};
 use miden_objects::crypto::rand::RpoRandomCoin;
@@ -259,7 +259,7 @@ async fn test_create_consume_multiple_notes() -> anyhow::Result<()> {
         note_execution_hint_2 = Felt::from(output_note_2.metadata().execution_hint())
     );
 
-    let tx_script = ScriptBuilder::default().compile_tx_script(tx_script_src)?;
+    let tx_script = ProtocolAssembler::default().compile_tx_script(tx_script_src)?;
 
     let tx_context = mock_chain
         .build_tx_context(account.id(), &[input_note_1.id(), input_note_2.id()], &[])?

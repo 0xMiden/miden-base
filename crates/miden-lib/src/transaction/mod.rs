@@ -505,7 +505,7 @@ impl SequentialCommit for TransactionKernel {
 }
 
 #[cfg(all(any(feature = "testing", test), feature = "std"))]
-mod source_manager_ext {
+pub(crate) mod source_manager_ext {
     use std::path::{Path, PathBuf};
     use std::vec::Vec;
     use std::{fs, io};

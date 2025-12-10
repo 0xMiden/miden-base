@@ -486,9 +486,8 @@ mod tests {
 
     #[test]
     fn test_account_code_no_auth_component() {
-        let component = AccountComponent::compile(CODE, Assembler::default(), vec![])
-            .unwrap()
-            .with_supports_all_types();
+        let library = Assembler::default().assemble_library([CODE]).unwrap();
+        let component = AccountComponent::new(library, vec![]).unwrap().with_supports_all_types();
 
         let err =
             AccountCode::from_components(&[component], AccountType::RegularAccountUpdatableCode)
@@ -524,10 +523,8 @@ mod tests {
             end
         ";
 
-        let component =
-            AccountComponent::compile(code_with_multiple_auth, Assembler::default(), vec![])
-                .unwrap()
-                .with_supports_all_types();
+        let library = Assembler::default().assemble_library([code_with_multiple_auth]).unwrap();
+        let component = AccountComponent::new(library, vec![]).unwrap().with_supports_all_types();
 
         let err =
             AccountCode::from_components(&[component], AccountType::RegularAccountUpdatableCode)

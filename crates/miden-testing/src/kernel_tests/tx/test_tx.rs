@@ -9,7 +9,7 @@ use miden_lib::note::create_p2id_note;
 use miden_lib::testing::account_component::IncrNonceAuthComponent;
 use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::transaction::TransactionKernel;
-use miden_lib::utils::ScriptBuilder;
+use miden_lib::utils::ProtocolAssembler;
 use miden_objects::account::{
     Account,
     AccountBuilder,
@@ -220,7 +220,7 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
 
     // Create the expected output note for Note 2 which is public
     let serial_num_2 = Word::from([1, 2, 3, 4u32]);
-    let note_script_2 = ScriptBuilder::default().compile_note_script(DEFAULT_NOTE_CODE)?;
+    let note_script_2 = ProtocolAssembler::default().compile_note_script(DEFAULT_NOTE_CODE)?;
     let inputs_2 = NoteInputs::new(vec![ONE])?;
     let metadata_2 =
         NoteMetadata::new(account_id, note_type2, tag2, NoteExecutionHint::none(), aux2)?;
@@ -230,7 +230,7 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
 
     // Create the expected output note for Note 3 which is public
     let serial_num_3 = Word::from([Felt::new(5), Felt::new(6), Felt::new(7), Felt::new(8)]);
-    let note_script_3 = ScriptBuilder::default().compile_note_script(DEFAULT_NOTE_CODE)?;
+    let note_script_3 = ProtocolAssembler::default().compile_note_script(DEFAULT_NOTE_CODE)?;
     let inputs_3 = NoteInputs::new(vec![ONE, Felt::new(2)])?;
     let metadata_3 = NoteMetadata::new(
         account_id,
@@ -344,7 +344,7 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
         EXECUTION_HINT_3 = Felt::from(NoteExecutionHint::on_block_slot(11, 22, 33)),
     );
 
-    let tx_script = ScriptBuilder::default().compile_tx_script(tx_script_src)?;
+    let tx_script = ProtocolAssembler::default().compile_tx_script(tx_script_src)?;
 
     // expected delta
     // --------------------------------------------------------------------------------------------
@@ -440,10 +440,12 @@ async fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
       end
     "#;
 
-    let auth_component =
-        AccountComponent::compile(source_code, TransactionKernel::assembler(), vec![])
-            .context("failed to compile auth component")?
-            .with_supports_all_types();
+    let auth_code = ProtocolAssembler::default()
+        .compile_component_code("test::auth_component", source_code)
+        .context("failed to compile auth component")?;
+    let auth_component = AccountComponent::new(auth_code, vec![])
+        .context("failed to compile auth component")?
+        .with_supports_all_types();
 
     let account = AccountBuilder::new([42; 32])
         .storage_mode(AccountStorageMode::Private)
@@ -646,7 +648,7 @@ async fn execute_tx_view_script() -> anyhow::Result<()> {
     end
     ";
 
-    let tx_script = ScriptBuilder::new(false)
+    let tx_script = ProtocolAssembler::new(false)
         .with_statically_linked_library(&library)?
         .compile_tx_script(source)?;
     let tx_context = TransactionContextBuilder::with_existing_mock_account()
@@ -694,7 +696,7 @@ async fn test_tx_script_inputs() -> anyhow::Result<()> {
         "
     );
 
-    let tx_script = ScriptBuilder::default().compile_tx_script(tx_script_src)?;
+    let tx_script = ProtocolAssembler::default().compile_tx_script(tx_script_src)?;
 
     let tx_context = TransactionContextBuilder::with_existing_mock_account()
         .tx_script(tx_script)
@@ -732,7 +734,7 @@ async fn test_tx_script_args() -> anyhow::Result<()> {
             push.5.6.7.8 assert_eqw.err="obtained advice map value doesn't match the expected one"
         end"#;
 
-    let tx_script = ScriptBuilder::default()
+    let tx_script = ProtocolAssembler::default()
         .compile_tx_script(tx_script_src)
         .context("failed to compile transaction script")?;
 
@@ -796,11 +798,14 @@ async fn inputs_created_correctly() -> anyhow::Result<()> {
                 assert_eqw.err="account code adv map not found"
             end
         "#,
-        assert_adv_map_proc_root =
-            component.library().get_procedure_root_by_name("$anon::assert_adv_map").unwrap()
+        assert_adv_map_proc_root = component
+            .component_code()
+            .as_library()
+            .get_procedure_root_by_name("test::adv_map_component::assert_adv_map")
+            .unwrap()
     );
 
-    let tx_script = ScriptBuilder::default().compile_tx_script(script)?;
+    let tx_script = ProtocolAssembler::default().compile_tx_script(script)?;
 
     assert!(tx_script.mast().advice_map().get(&Word::try_from([1u64, 2, 3, 4])?).is_some());
     assert!(

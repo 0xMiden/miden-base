@@ -1,11 +1,14 @@
 use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 
-use miden_assembly::{Assembler, Library, Parse};
+use miden_assembly::{Assembler, Parse};
 
 // TODO(named_slots): Refactor templates.
 // mod template;
 // pub use template::*;
+mod code;
+pub use code::AccountComponentCode;
+
 use crate::account::{AccountType, StorageSlot};
 use crate::assembly::QualifiedProcedureName;
 use crate::{AccountError, MastForest, Word};
@@ -13,8 +16,8 @@ use crate::{AccountError, MastForest, Word};
 // ACCOUNT COMPONENT
 // ================================================================================================
 
-/// An [`AccountComponent`] defines a [`Library`] of code and the initial value and types of
-/// the [`StorageSlot`]s it accesses.
+/// An [`AccountComponent`] defines a [`Library`](miden_assembly::Library) of code and the initial
+/// value and types of the [`StorageSlot`]s it accesses.
 ///
 /// One or more components can be used to built [`AccountCode`](crate::account::AccountCode) and
 /// [`AccountStorage`](crate::account::AccountStorage).
@@ -30,7 +33,7 @@ use crate::{AccountError, MastForest, Word};
 /// is forced to explicitly define what it supports.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AccountComponent {
-    pub(super) library: Library,
+    pub(super) code: AccountComponentCode,
     pub(super) storage_slots: Vec<StorageSlot>,
     pub(super) supported_types: BTreeSet<AccountType>,
 }
@@ -53,13 +56,16 @@ impl AccountComponent {
     ///
     /// Returns an error if:
     /// - The number of given [`StorageSlot`]s exceeds 255.
-    pub fn new(code: Library, storage_slots: Vec<StorageSlot>) -> Result<Self, AccountError> {
+    pub fn new(
+        code: impl Into<AccountComponentCode>,
+        storage_slots: Vec<StorageSlot>,
+    ) -> Result<Self, AccountError> {
         // Check that we have less than 256 storage slots.
         u8::try_from(storage_slots.len())
             .map_err(|_| AccountError::StorageTooManySlots(storage_slots.len() as u64))?;
 
         Ok(Self {
-            library: code,
+            code: code.into(),
             storage_slots,
             supported_types: BTreeSet::new(),
         })
@@ -96,7 +102,8 @@ impl AccountComponent {
     ///
     /// # Arguments
     ///
-    /// * `package` - The package containing the library and account component metadata
+    /// * `package` - The package containing the [`Library`](miden_assembly::Library) and account
+    ///   component metadata
     /// * `init_storage_data` - The initialization data for storage slots
     ///
     /// # Errors
@@ -121,10 +128,13 @@ impl AccountComponent {
             },
         };
 
-        AccountComponent::from_library(&library, &metadata, init_storage_data)
+        let component_code = AccountComponentCode::from(library);
+
+        AccountComponent::from_library(&component_code, &metadata, init_storage_data)
     }
 
-    /// Creates an [`AccountComponent`] from a [`Library`] and [`AccountComponentMetadata`].
+    /// Creates an [`AccountComponent`] from an [`AccountComponentCode`] and
+    /// [`AccountComponentMetadata`].
     ///
     /// This method provides type safety by leveraging the component's metadata to validate
     /// the passed storage initialization data ([`InitStorageData`]).
@@ -145,7 +155,7 @@ impl AccountComponent {
     /// - The storage initialization fails due to invalid or missing data
     /// - The component creation fails
     pub fn from_library(
-        library: &Library,
+        library: &AccountComponentCode,
         account_component_metadata: &AccountComponentMetadata,
         init_storage_data: &InitStorageData,
     ) -> Result<Self, AccountError> {
@@ -171,14 +181,14 @@ impl AccountComponent {
             .expect("storage slots len should fit in u8 per the constructor")
     }
 
-    /// Returns a reference to the underlying [`Library`] of this component.
-    pub fn library(&self) -> &Library {
-        &self.library
+    /// Returns a reference to the underlying [`AccountComponentCode`] of this component.
+    pub fn component_code(&self) -> &AccountComponentCode {
+        &self.code
     }
 
     /// Returns a reference to the underlying [`MastForest`] of this component.
     pub fn mast_forest(&self) -> &MastForest {
-        self.library.mast_forest().as_ref()
+        self.code.mast_forest()
     }
 
     /// Returns a slice of the underlying [`StorageSlot`]s of this component.
@@ -199,7 +209,7 @@ impl AccountComponent {
     /// Returns a vector of tuples (digest, is_auth) for all procedures in this component.
     pub fn get_procedures(&self) -> Vec<(Word, bool)> {
         let mut procedures = Vec::new();
-        for module in self.library.module_infos() {
+        for module in self.code.as_library().module_infos() {
             for (_, procedure_info) in module.procedures() {
                 let is_auth = procedure_info.name.starts_with("auth_");
                 procedures.push((procedure_info.digest, is_auth));
@@ -214,7 +224,7 @@ impl AccountComponent {
         &self,
         proc_name: impl TryInto<QualifiedProcedureName>,
     ) -> Option<Word> {
-        self.library.get_procedure_root_by_name(proc_name)
+        self.code.as_library().get_procedure_root_by_name(proc_name)
     }
 
     // MUTATORS
@@ -250,9 +260,9 @@ impl AccountComponent {
     }
 }
 
-impl From<AccountComponent> for Library {
+impl From<AccountComponent> for AccountComponentCode {
     fn from(component: AccountComponent) -> Self {
-        component.library
+        component.code
     }
 }
 
@@ -266,7 +276,7 @@ mod tests {
 
     use miden_assembly::Assembler;
     use miden_core::utils::Serializable;
-    use miden_mast_package::{MastArtifact, Package, PackageManifest, Section};
+    use miden_mast_package::{MastArtifact, Package, PackageManifest, Section, SectionId};
     use semver::Version;
 
     use super::*;
@@ -330,6 +340,7 @@ mod tests {
     fn test_from_library_with_init_data() {
         // Create a simple library for testing
         let library = Assembler::default().assemble_library([CODE]).unwrap();
+        let component_code = AccountComponentCode::from(library.clone());
 
         // Create metadata for the component
         let metadata = AccountComponentMetadata::new(
@@ -347,7 +358,8 @@ mod tests {
         // Test with empty init data - this tests the complete workflow:
         // Library + Metadata -> AccountComponent
         let init_data = InitStorageData::default();
-        let component = AccountComponent::from_library(&library, &metadata, &init_data).unwrap();
+        let component =
+            AccountComponent::from_library(&component_code, &metadata, &init_data).unwrap();
 
         // Verify the component was created correctly
         assert_eq!(component.storage_size(), 0);
