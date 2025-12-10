@@ -430,7 +430,7 @@ mod tests {
             FeeParameters::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET.try_into().unwrap(), 500)
                 .expect("native asset ID should be a fungible faucet ID");
         let mut rng = ChaCha20Rng::from_seed([0u8; 32]);
-        let public_key = SecretKey::with_rng(&mut rng).public_key();
+        let validator_key = SecretKey::with_rng(&mut rng).public_key();
 
         BlockHeader::new(
             0,
@@ -442,7 +442,7 @@ mod tests {
             Word::empty(),
             Word::empty(),
             Word::empty(),
-            public_key,
+            validator_key,
             fee_parameters,
             0,
         )

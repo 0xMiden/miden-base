@@ -35,7 +35,7 @@ impl BlockHeader {
         let fee_parameters =
             FeeParameters::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET.try_into().unwrap(), 500)
                 .expect("native asset ID should be a fungible faucet ID");
-        let public_key = SecretKey::random().public_key();
+        let validator_key = SecretKey::random().public_key();
 
         #[cfg(not(target_family = "wasm"))]
         let (
@@ -92,7 +92,7 @@ impl BlockHeader {
             note_root,
             tx_commitment,
             tx_kernel_commitment,
-            public_key,
+            validator_key,
             fee_parameters,
             timestamp,
         )
