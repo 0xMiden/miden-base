@@ -76,6 +76,7 @@ impl AccountStorageHeader {
     /// Returns an error if:
     /// - The number of provided slots is greater than [`AccountStorage::MAX_NUM_STORAGE_SLOTS`].
     /// - The slots are not sorted by [`StorageSlotId`].
+    /// - There are multiple storage slots with the same [`StorageSlotName`].
     pub fn new(slots: Vec<(StorageSlotName, StorageSlotType, Word)>) -> Result<Self, AccountError> {
         if slots.len() > AccountStorage::MAX_NUM_STORAGE_SLOTS {
             return Err(AccountError::StorageTooManySlots(slots.len() as u64));
@@ -83,6 +84,14 @@ impl AccountStorageHeader {
 
         if !slots.is_sorted_by_key(|(slot_name, ..)| slot_name.id()) {
             return Err(AccountError::UnsortedStorageSlots);
+        }
+
+        // Check for slot name uniqueness by checking each neighboring slot's IDs. This is
+        // sufficient because the slots are sorted.
+        for slots in slots.windows(2) {
+            if slots[0].0.id() == slots[1].0.id() {
+                return Err(AccountError::DuplicateStorageSlotName(slots[0].0.clone()));
+            }
         }
 
         Ok(Self { slots })
