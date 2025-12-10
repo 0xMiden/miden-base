@@ -28,6 +28,16 @@ impl StorageSlotId {
         Self { suffix, prefix }
     }
 
+    /// Computes the [`StorageSlotId`] from a slot name.
+    ///
+    /// The provided `name`'s validity is **not** checked.
+    pub(super) fn from_str(name: &str) -> StorageSlotId {
+        let hashed_word = hash_string_to_word(name);
+        let suffix = hashed_word[0];
+        let prefix = hashed_word[1];
+        StorageSlotId::new(suffix, prefix)
+    }
+
     // ACCESSORS
     // --------------------------------------------------------------------------------------------
 
@@ -39,16 +49,6 @@ impl StorageSlotId {
     /// Returns the prefix of the [`StorageSlotId`].
     pub fn prefix(&self) -> Felt {
         self.prefix
-    }
-
-    /// Computes the [`StorageSlotId`] from a slot name.
-    ///
-    /// The provided `name`'s validity is **not** checked.
-    pub(super) fn compute(name: &str) -> StorageSlotId {
-        let hashed_word = hash_string_to_word(name);
-        let suffix = hashed_word[0];
-        let prefix = hashed_word[1];
-        StorageSlotId::new(suffix, prefix)
     }
 
     /// Returns the [`StorageSlotId`]'s felts encoded into a u128.

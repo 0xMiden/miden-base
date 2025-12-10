@@ -61,7 +61,7 @@ impl StorageSlotName {
     pub fn new(name: impl Into<String>) -> Result<Self, StorageSlotNameError> {
         let name = name.into();
         Self::validate(&name)?;
-        let id = StorageSlotId::compute(name.as_str());
+        let id = StorageSlotId::from_str(name.as_str());
         Ok(Self { name, id })
     }
 
