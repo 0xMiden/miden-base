@@ -94,66 +94,76 @@ impl StorageSlotName {
     /// Validates a slot name.
     ///
     /// This checks that components are separated by double colons, that each component contains
-    /// only valid characters, that the name is not empty, starts or ends with a colon or starts
-    /// with an underscore.
-    fn validate(name: &str) -> Result<(), StorageSlotNameError> {
+    /// only valid characters and that the name is not empty or starts or ends with a colon.
+    ///
+    /// We must check the validity of a slot name against the raw bytes of the UTF-8 string because
+    /// typical character APIs are not available in a const version. We can do this because any byte
+    /// in a UTF-8 string that is an ASCII character never represents anything other than such a
+    /// character, even though UTF-8 can contain multibyte sequences:
+    ///
+    /// > UTF-8, the object of this memo, has a one-octet encoding unit. It uses all bits of an
+    /// > octet, but has the quality of preserving the full US-ASCII range: US-ASCII characters
+    /// > are encoded in one octet having the normal US-ASCII value, and any octet with such a value
+    /// > can only stand for a US-ASCII character, and nothing else.
+    /// > https://www.rfc-editor.org/rfc/rfc3629
+    const fn validate(name: &str) -> Result<(), StorageSlotNameError> {
+        let bytes = name.as_bytes();
+        let mut idx = 0;
         let mut num_components = 0;
 
-        if name.is_empty() {
+        if bytes.is_empty() {
             return Err(StorageSlotNameError::TooShort);
         }
 
-        if name.len() > Self::MAX_LENGTH {
+        if bytes.len() > Self::MAX_LENGTH {
             return Err(StorageSlotNameError::TooLong);
         }
 
         // Slot names must not start with a colon or underscore.
         // SAFETY: We just checked that we're not dealing with an empty slice.
-        if name.starts_with(':') {
+        if bytes[0] == b':' {
             return Err(StorageSlotNameError::UnexpectedColon);
-        } else if name.starts_with('_') {
+        } else if bytes[0] == b'_' {
             return Err(StorageSlotNameError::UnexpectedUnderscore);
         }
 
-        let mut chars_iter = name.chars().peekable();
+        while idx < bytes.len() {
+            let byte = bytes[idx];
 
-        while let Some(character) = chars_iter.next() {
-            let is_colon = character == ':';
+            let is_colon = byte == b':';
 
             if is_colon {
                 // A colon must always be followed by another colon. In other words, we
                 // expect a double colon.
-                match chars_iter.next() {
-                    Some(next_char) if next_char != ':' => {
+                if (idx + 1) < bytes.len() {
+                    if bytes[idx + 1] != b':' {
                         return Err(StorageSlotNameError::UnexpectedColon);
-                    },
-                    None => {
-                        return Err(StorageSlotNameError::UnexpectedColon);
-                    },
-                    _ => (),
+                    }
+                } else {
+                    return Err(StorageSlotNameError::UnexpectedColon);
                 }
 
                 // A component cannot end with a colon, so this allows us to validate the start of a
                 // component: It must not start with a colon or an underscore.
-                match chars_iter.peek() {
-                    Some(next_char) => match next_char {
-                        ':' => {
-                            return Err(StorageSlotNameError::UnexpectedColon);
-                        },
-                        '_' => {
-                            return Err(StorageSlotNameError::UnexpectedUnderscore);
-                        },
-                        _ => (),
-                    },
-                    None => {
+                if (idx + 2) < bytes.len() {
+                    if bytes[idx + 2] == b':' {
                         return Err(StorageSlotNameError::UnexpectedColon);
-                    },
+                    } else if bytes[idx + 2] == b'_' {
+                        return Err(StorageSlotNameError::UnexpectedUnderscore);
+                    }
+                } else {
+                    return Err(StorageSlotNameError::UnexpectedColon);
                 }
+
+                // Advance past the double colon.
+                idx += 2;
 
                 // A double colon completes a slot name component.
                 num_components += 1;
-            } else if !Self::is_valid_char(character) {
-                return Err(StorageSlotNameError::InvalidCharacter(character));
+            } else if Self::is_valid_char(byte) {
+                idx += 1;
+            } else {
+                return Err(StorageSlotNameError::InvalidCharacter);
             }
         }
 
@@ -167,9 +177,9 @@ impl StorageSlotName {
         Ok(())
     }
 
-    /// Returns `true` if the given character is a valid slot name character, `false` otherwise.
-    fn is_valid_char(character: char) -> bool {
-        character.is_ascii_alphanumeric() || character == '_'
+    /// Returns `true` if the given byte is a valid slot name character, `false` otherwise.
+    const fn is_valid_char(byte: u8) -> bool {
+        byte.is_ascii_alphanumeric() || byte == b'_'
     }
 }
 
@@ -352,15 +362,15 @@ mod tests {
     fn slot_name_fails_on_invalid_character() {
         assert_matches!(
             StorageSlotName::new("na#me::second").unwrap_err(),
-            StorageSlotNameError::InvalidCharacter('#')
+            StorageSlotNameError::InvalidCharacter
         );
         assert_matches!(
             StorageSlotName::new("first_entry::secönd").unwrap_err(),
-            StorageSlotNameError::InvalidCharacter('ö')
+            StorageSlotNameError::InvalidCharacter
         );
         assert_matches!(
             StorageSlotName::new("first::sec::th!rd").unwrap_err(),
-            StorageSlotNameError::InvalidCharacter('!')
+            StorageSlotNameError::InvalidCharacter
         );
     }
 
