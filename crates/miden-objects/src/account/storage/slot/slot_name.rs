@@ -5,7 +5,7 @@ use core::fmt::Display;
 use miden_core::utils::hash_string_to_word;
 
 use crate::account::storage::slot::StorageSlotId;
-use crate::errors::SlotNameError;
+use crate::errors::StorageSlotNameError;
 use crate::utils::serde::{ByteWriter, Deserializable, DeserializationError, Serializable};
 
 /// The name of an account storage slot.
@@ -83,7 +83,7 @@ impl StorageSlotName {
     ///
     /// Returns an error if:
     /// - the slot name is invalid (see the type-level docs for the requirements).
-    pub fn new(name: impl Into<String>) -> Result<Self, SlotNameError> {
+    pub fn new(name: impl Into<String>) -> Result<Self, StorageSlotNameError> {
         let name = name.into();
         Self::validate(&name)?;
         Ok(Self { name: Cow::Owned(name) })
@@ -133,25 +133,25 @@ impl StorageSlotName {
     /// > are encoded in one octet having the normal US-ASCII value, and any octet with such a value
     /// > can only stand for a US-ASCII character, and nothing else.
     /// > https://www.rfc-editor.org/rfc/rfc3629
-    const fn validate(name: &str) -> Result<(), SlotNameError> {
+    const fn validate(name: &str) -> Result<(), StorageSlotNameError> {
         let bytes = name.as_bytes();
         let mut idx = 0;
         let mut num_components = 0;
 
         if bytes.is_empty() {
-            return Err(SlotNameError::TooShort);
+            return Err(StorageSlotNameError::TooShort);
         }
 
         if bytes.len() > Self::MAX_LENGTH {
-            return Err(SlotNameError::TooLong);
+            return Err(StorageSlotNameError::TooLong);
         }
 
         // Slot names must not start with a colon or underscore.
         // SAFETY: We just checked that we're not dealing with an empty slice.
         if bytes[0] == b':' {
-            return Err(SlotNameError::UnexpectedColon);
+            return Err(StorageSlotNameError::UnexpectedColon);
         } else if bytes[0] == b'_' {
-            return Err(SlotNameError::UnexpectedUnderscore);
+            return Err(StorageSlotNameError::UnexpectedUnderscore);
         }
 
         while idx < bytes.len() {
@@ -164,22 +164,22 @@ impl StorageSlotName {
                 // expect a double colon.
                 if (idx + 1) < bytes.len() {
                     if bytes[idx + 1] != b':' {
-                        return Err(SlotNameError::UnexpectedColon);
+                        return Err(StorageSlotNameError::UnexpectedColon);
                     }
                 } else {
-                    return Err(SlotNameError::UnexpectedColon);
+                    return Err(StorageSlotNameError::UnexpectedColon);
                 }
 
                 // A component cannot end with a colon, so this allows us to validate the start of a
                 // component: It must not start with a colon or an underscore.
                 if (idx + 2) < bytes.len() {
                     if bytes[idx + 2] == b':' {
-                        return Err(SlotNameError::UnexpectedColon);
+                        return Err(StorageSlotNameError::UnexpectedColon);
                     } else if bytes[idx + 2] == b'_' {
-                        return Err(SlotNameError::UnexpectedUnderscore);
+                        return Err(StorageSlotNameError::UnexpectedUnderscore);
                     }
                 } else {
-                    return Err(SlotNameError::UnexpectedColon);
+                    return Err(StorageSlotNameError::UnexpectedColon);
                 }
 
                 // Advance past the double colon.
@@ -190,7 +190,7 @@ impl StorageSlotName {
             } else if Self::is_valid_char(byte) {
                 idx += 1;
             } else {
-                return Err(SlotNameError::InvalidCharacter);
+                return Err(StorageSlotNameError::InvalidCharacter);
             }
         }
 
@@ -198,7 +198,7 @@ impl StorageSlotName {
         num_components += 1;
 
         if num_components < Self::MIN_NUM_COMPONENTS {
-            return Err(SlotNameError::TooShort);
+            return Err(StorageSlotNameError::TooShort);
         }
 
         Ok(())
@@ -306,38 +306,53 @@ mod tests {
     #[test]
     fn slot_name_fails_on_invalid_colon_placement() {
         // Single colon.
-        assert_matches!(StorageSlotName::new(":").unwrap_err(), SlotNameError::UnexpectedColon);
-        assert_matches!(StorageSlotName::new("0::1:").unwrap_err(), SlotNameError::UnexpectedColon);
-        assert_matches!(StorageSlotName::new(":0::1").unwrap_err(), SlotNameError::UnexpectedColon);
+        assert_matches!(
+            StorageSlotName::new(":").unwrap_err(),
+            StorageSlotNameError::UnexpectedColon
+        );
+        assert_matches!(
+            StorageSlotName::new("0::1:").unwrap_err(),
+            StorageSlotNameError::UnexpectedColon
+        );
+        assert_matches!(
+            StorageSlotName::new(":0::1").unwrap_err(),
+            StorageSlotNameError::UnexpectedColon
+        );
         assert_matches!(
             StorageSlotName::new("0::1:2").unwrap_err(),
-            SlotNameError::UnexpectedColon
+            StorageSlotNameError::UnexpectedColon
         );
 
         // Double colon (placed invalidly).
-        assert_matches!(StorageSlotName::new("::").unwrap_err(), SlotNameError::UnexpectedColon);
+        assert_matches!(
+            StorageSlotName::new("::").unwrap_err(),
+            StorageSlotNameError::UnexpectedColon
+        );
         assert_matches!(
             StorageSlotName::new("1::2::").unwrap_err(),
-            SlotNameError::UnexpectedColon
+            StorageSlotNameError::UnexpectedColon
         );
         assert_matches!(
             StorageSlotName::new("::1::2").unwrap_err(),
-            SlotNameError::UnexpectedColon
+            StorageSlotNameError::UnexpectedColon
         );
 
         // Triple colon.
-        assert_matches!(StorageSlotName::new(":::").unwrap_err(), SlotNameError::UnexpectedColon);
+        assert_matches!(
+            StorageSlotName::new(":::").unwrap_err(),
+            StorageSlotNameError::UnexpectedColon
+        );
         assert_matches!(
             StorageSlotName::new("1::2:::").unwrap_err(),
-            SlotNameError::UnexpectedColon
+            StorageSlotNameError::UnexpectedColon
         );
         assert_matches!(
             StorageSlotName::new(":::1::2").unwrap_err(),
-            SlotNameError::UnexpectedColon
+            StorageSlotNameError::UnexpectedColon
         );
         assert_matches!(
             StorageSlotName::new("1::2:::3").unwrap_err(),
-            SlotNameError::UnexpectedColon
+            StorageSlotNameError::UnexpectedColon
         );
     }
 
@@ -345,11 +360,11 @@ mod tests {
     fn slot_name_fails_on_invalid_underscore_placement() {
         assert_matches!(
             StorageSlotName::new("_one::two").unwrap_err(),
-            SlotNameError::UnexpectedUnderscore
+            StorageSlotNameError::UnexpectedUnderscore
         );
         assert_matches!(
             StorageSlotName::new("one::_two").unwrap_err(),
-            SlotNameError::UnexpectedUnderscore
+            StorageSlotNameError::UnexpectedUnderscore
         );
     }
 
@@ -358,14 +373,14 @@ mod tests {
 
     #[test]
     fn slot_name_fails_on_empty_string() {
-        assert_matches!(StorageSlotName::new("").unwrap_err(), SlotNameError::TooShort);
+        assert_matches!(StorageSlotName::new("").unwrap_err(), StorageSlotNameError::TooShort);
     }
 
     #[test]
     fn slot_name_fails_on_single_component() {
         assert_matches!(
             StorageSlotName::new("single_component").unwrap_err(),
-            SlotNameError::TooShort
+            StorageSlotNameError::TooShort
         );
     }
 
@@ -373,7 +388,7 @@ mod tests {
     fn slot_name_fails_on_string_whose_length_exceeds_max_length() {
         let mut string = get_max_length_slot_name();
         string.push('a');
-        assert_matches!(StorageSlotName::new(string).unwrap_err(), SlotNameError::TooLong);
+        assert_matches!(StorageSlotName::new(string).unwrap_err(), StorageSlotNameError::TooLong);
     }
 
     // Alphabet validation tests
@@ -392,15 +407,15 @@ mod tests {
     fn slot_name_fails_on_invalid_character() {
         assert_matches!(
             StorageSlotName::new("na#me::second").unwrap_err(),
-            SlotNameError::InvalidCharacter
+            StorageSlotNameError::InvalidCharacter
         );
         assert_matches!(
             StorageSlotName::new("first_entry::secönd").unwrap_err(),
-            SlotNameError::InvalidCharacter
+            StorageSlotNameError::InvalidCharacter
         );
         assert_matches!(
             StorageSlotName::new("first::sec::th!rd").unwrap_err(),
-            SlotNameError::InvalidCharacter
+            StorageSlotNameError::InvalidCharacter
         );
     }
 
