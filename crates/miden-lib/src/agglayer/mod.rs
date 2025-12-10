@@ -28,18 +28,46 @@ pub fn b2agg_script() -> NoteScript {
 // AGGLAYER ACCOUNT COMPONENTS
 // ================================================================================================
 
-// Initialize the Bridge Out library only once
-static BRIDGE_OUT_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
+// Initialize the unified AggLayer library only once
+static AGGLAYER_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
     let bytes = include_bytes!(concat!(
         env!("OUT_DIR"),
-        "/assets/agglayer/account_components/bridge_out.masl"
+        "/assets/agglayer.masl"
     ));
-    Library::read_from_bytes(bytes).expect("Shipped Bridge Out library is well-formed")
+    Library::read_from_bytes(bytes).expect("Shipped AggLayer library is well-formed")
 });
 
+/// Returns the unified AggLayer Library containing all agglayer modules.
+pub fn agglayer_library() -> Library {
+    AGGLAYER_LIBRARY.clone()
+}
+
 /// Returns the Bridge Out Library.
+///
+/// Note: This is now the same as agglayer_library() since all agglayer components
+/// are compiled into a single library.
 pub fn bridge_out_library() -> Library {
-    BRIDGE_OUT_LIBRARY.clone()
+    agglayer_library()
+}
+
+/// Returns the Local Exit Tree Library.
+///
+/// Note: This is now the same as agglayer_library() since all agglayer components
+/// are compiled into a single library.
+pub fn local_exit_tree_library() -> Library {
+    agglayer_library()
+}
+
+/// Creates a Local Exit Tree component with the specified storage slots.
+///
+/// This component uses the local_exit_tree library and can be added to accounts
+/// that need to manage local exit tree functionality.
+pub fn local_exit_tree_component(storage_slots: Vec<StorageSlot>) -> AccountComponent {
+    let library = local_exit_tree_library();
+
+    AccountComponent::new(library, storage_slots)
+        .expect("local_exit_tree component should satisfy the requirements of a valid account component")
+        .with_supports_all_types()
 }
 
 /// Creates a Bridge Out component with the specified storage slots.
@@ -52,4 +80,16 @@ pub fn bridge_out_component(storage_slots: Vec<StorageSlot>) -> AccountComponent
     AccountComponent::new(library, storage_slots)
         .expect("bridge_out component should satisfy the requirements of a valid account component")
         .with_supports_all_types()
+}
+
+/// Creates a combined Bridge Out component that includes both bridge_out and local_exit_tree modules.
+///
+/// This is a convenience function that creates a component with multiple modules.
+/// For more fine-grained control, use the individual component functions and combine them
+/// using the AccountBuilder pattern.
+pub fn bridge_out_with_local_exit_tree_component(storage_slots: Vec<StorageSlot>) -> Vec<AccountComponent> {
+    vec![
+        bridge_out_component(storage_slots.clone()),
+        local_exit_tree_component(vec![]), // local_exit_tree typically doesn't need storage slots
+    ]
 }

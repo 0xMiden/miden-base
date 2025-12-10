@@ -4,11 +4,12 @@ use.miden::note
 use.miden::output_note
 use std::crypto::hashes::keccak256
 use std::word
+use.agglayer::local_exit_tree
 
 # CONSTANTS
 # =================================================================================================
 const.MMR_PTR=42
-const.STORAGE_MAP_INDEX=0
+const.LOCAL_EXIT_TREE_SLOT=word("miden::agglayer::let")
 
 const.BURN_NOTE_ROOT=[6407337173854817345,5626358912819151014,703918618794810515,17401169215223723177]
 const.EXECUTION_HINT_ALWAYS=1
@@ -90,42 +91,7 @@ proc create_burn_note.8
     # => []
 end
 
-#! Adds a leaf to the MMR frontier using Keccak hashing (stubbed implementation).
-#!
-#! This is a stubbed implementation that currently drops all inputs without performing
-#! the actual MMR frontier addition operation.
-#!
-#! Inputs:  [LEAF[1], LEAF[0], mmr_ptr]
-#! Outputs: []
-#!
-#! Where:
-#! - LEAF[1], LEAF[0] are the leaf data to add to the MMR frontier.
-#! - mmr_ptr is the pointer to the MMR frontier data structure.
-#!
-#! Invocation: exec
-proc mmr_frontier_keccak_add
-    dropw dropw drop
-    # => []
-end
-
-#! Gets the root of the MMR frontier using Keccak hashing (stubbed implementation).
-#!
-#! This is a stubbed implementation that returns placeholder values instead of
-#! computing the actual MMR frontier root.
-#!
-#! Inputs:  [mmr_ptr]
-#! Outputs: [ROOT[1], ROOT[0]]
-#!
-#! Where:
-#! - ROOT[1], ROOT[0] are the root hash components of the MMR frontier whose memory location starts at mmr_ptr
-#!
-#! Invocation: exec
-pub proc mmr_frontier_keccak_get_root
-    push.3.3.3.3
-    push.4.4.4.4
-end
-
-#! Bridges an asset out to the AggLayer
+#! Bridges an asset out via the AggLayer
 #!
 #! This procedure handles the complete bridge-out operation, including:
 #! - Converting asset data to u32 format
@@ -168,43 +134,18 @@ pub proc bridge_out
     push.16 movdn.4 exec.word::store_word_u32s_le
     # => []
 
-    push.MMR_PTR
-    # => [mmr_ptr]
-
     push.96 push.0
-    # => [ptr, len_bytes, mmr_ptr]
+    # => [ptr, len_bytes]
 
     exec.keccak256::hash_memory
-    # => [DIGEST_U32[8], mmr_ptr]
+    # => [DIGEST_U32[8]]
 
     # adding DIGEST_U32 double word leaf to mmr frontier
-    exec.mmr_frontier_keccak_add
+    exec.local_exit_tree::mmr_frontier_keccak_add
     # => []
 
-    push.MMR_PTR
-    # => [MMR_PTR]
-
-    # getting mmr frontier root
-    exec.mmr_frontier_keccak_get_root
-    # => [ROOT[1], ROOT[0]]
-
-    # writing double word root to map keys [0,0,0,0] & [0,0,0,1]
-    push.0.0.0.0 push.STORAGE_MAP_INDEX
-    # => [index, KEY, ROOT[1], ROOT[0]]
-
-    exec.native_account::set_map_item
-    # => [OLD_MAP_ROOT, OLD_MAP_VALUE, ROOT[0]]
-
-    dropw dropw
-    # => [ROOT[0]]
-
-    push.1.0.0.0 push.STORAGE_MAP_INDEX
-    # => [index, KEY, ROOT[0]]
-
-    exec.native_account::set_map_item
-    # => [OLD_MAP_ROOT, OLD_MAP_VALUE]
-
-    dropw dropw
+    # writing MMR root to storage
+    exec.local_exit_tree::write_mmr_frontier_root
     # => []
 
     # creating BURN output note for ASSET

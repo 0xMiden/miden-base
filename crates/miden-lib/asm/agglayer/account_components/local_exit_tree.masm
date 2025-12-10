@@ -1,0 +1,71 @@
+use.miden::native_account
+
+# CONSTANTS
+# =================================================================================================
+
+const.MMR_PTR=42
+const.LOCAL_EXIT_TREE_SLOT=word("miden::agglayer::let")
+
+#! Adds a leaf to the MMR frontier using Keccak hashing (stubbed implementation).
+#!
+#! This is a stubbed implementation that currently drops all inputs without performing
+#! the actual MMR frontier addition operation.
+#!
+#! Inputs:  [LEAF[1], LEAF[0], mmr_ptr]
+#! Outputs: []
+#!
+#! Where:
+#! - LEAF[1], LEAF[0] are the leaf data to add to the MMR frontier.
+#! - mmr_ptr is the pointer to the MMR frontier data structure.
+#!
+#! Invocation: exec
+pub proc mmr_frontier_keccak_add
+    dropw dropw drop
+    # => []
+end
+
+#! Gets the root of the MMR frontier using Keccak hashing (stubbed implementation).
+#!
+#! This is a stubbed implementation that returns placeholder values instead of
+#! computing the actual MMR frontier root.
+#!
+#! Inputs:  [mmr_ptr]
+#! Outputs: [ROOT[1], ROOT[0]]
+#!
+#! Where:
+#! - ROOT[1], ROOT[0] are the root hash components of the MMR frontier whose memory location starts at mmr_ptr
+#!
+#! Invocation: exec
+pub proc mmr_frontier_keccak_get_root
+    push.3.3.3.3
+    push.4.4.4.4
+end
+
+#! Inputs: []
+pub proc write_mmr_frontier_root
+    push.MMR_PTR
+    # => [MMR_PTR]
+
+    # getting mmr frontier root
+    exec.mmr_frontier_keccak_get_root
+    # => [ROOT[1], ROOT[0]]
+
+    # writing double word root to map keys [0,0,0,0] & [0,0,0,1]
+    push.0.0.0.0 push.LOCAL_EXIT_TREE_SLOT[0..2]
+    # => [index, KEY, ROOT[1], ROOT[0]]
+
+    exec.native_account::set_map_item
+    # => [OLD_MAP_ROOT, OLD_MAP_VALUE, ROOT[0]]
+
+    dropw dropw
+    # => [ROOT[0]]
+
+    push.1.0.0.0 push.LOCAL_EXIT_TREE_SLOT[0..2]
+    # => [index, KEY, ROOT[0]]
+
+    exec.native_account::set_map_item
+    # => [OLD_MAP_ROOT, OLD_MAP_VALUE]
+
+    dropw dropw
+    # => []
+end

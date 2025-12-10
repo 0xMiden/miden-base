@@ -11,6 +11,7 @@ use miden_objects::account::{
     AccountStorageMode,
     AccountType,
     StorageSlot,
+    StorageSlotName,
 };
 use miden_objects::asset::{Asset, FungibleAsset};
 use miden_objects::note::{
@@ -55,7 +56,8 @@ async fn test_bridge_out_consumes_b2agg_note() -> anyhow::Result<()> {
 
     // Create a bridge account with the bridge_out component using network (public) storage
     // Add a storage map for the bridge component to store MMR frontier data
-    let storage_slots = vec![StorageSlot::empty_map()];
+    let storage_slot_name = StorageSlotName::new("miden::agglayer::let").unwrap();
+    let storage_slots = vec![StorageSlot::with_empty_map(storage_slot_name)];
     let bridge_component = bridge_out_component(storage_slots);
     let account_builder = Account::builder(builder.rng_mut().random())
         .storage_mode(AccountStorageMode::Public)
