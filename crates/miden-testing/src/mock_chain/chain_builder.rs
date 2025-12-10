@@ -222,8 +222,8 @@ impl MockChainBuilder {
         let timestamp = MockChain::TIMESTAMP_START_SECS;
         let fee_parameters = FeeParameters::new(self.native_asset_id, self.verification_base_fee)
             .context("failed to construct fee parameters")?;
-        let secret_key = SecretKey::random();
-        let public_key = secret_key.public_key();
+        let validator_secret_key = SecretKey::random();
+        let validator_public_key = validator_secret_key.public_key();
 
         let header = BlockHeader::new(
             version,
@@ -235,7 +235,7 @@ impl MockChainBuilder {
             note_root,
             tx_commitment,
             tx_kernel_commitment,
-            public_key,
+            validator_public_key,
             fee_parameters,
             timestamp,
         );
@@ -247,7 +247,7 @@ impl MockChainBuilder {
             transactions,
         );
 
-        let signature = secret_key.sign(header.commitment());
+        let signature = validator_secret_key.sign(header.commitment());
         let block_proof = BlockProof::new_dummy();
         let genesis_block = ProvenBlock::new_unchecked(header, body, signature, block_proof);
 
@@ -255,7 +255,7 @@ impl MockChainBuilder {
             genesis_block,
             account_tree,
             self.account_authenticators,
-            secret_key,
+            validator_secret_key,
         )
     }
 

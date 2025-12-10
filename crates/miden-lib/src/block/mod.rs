@@ -11,8 +11,8 @@ use crate::transaction::TransactionKernel;
 /// - the transaction commitment; and
 /// - the chain commitment.
 ///
-/// The returned block header contains the same public key as the previous block, as provided by the
-/// proposed block.
+/// The returned block header contains the same validator public key as the previous block, as
+/// provided by the proposed block.
 ///
 /// This functionality is handled here because the block header requires [`TransactionKernel`] for
 /// its various commitment fields.
