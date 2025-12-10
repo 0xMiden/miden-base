@@ -10,12 +10,6 @@ use crate::account::{StorageMap, StorageSlotContent, StorageSlotName, StorageSlo
 pub struct StorageSlot {
     /// The name of the storage slot.
     name: StorageSlotName,
-    /// The cached [`StorageSlotId`] of the slot name. This field must always be consistent with
-    /// the slot name.
-    ///
-    /// This is cached so that the `Ord` implementation can use the computed slot ID instead of
-    /// having to hash the slot name on every comparison operation.
-    slot_id: StorageSlotId,
     /// The content of the storage slot.
     content: StorageSlotContent,
 }
@@ -33,9 +27,7 @@ impl StorageSlot {
     /// Creates a new [`StorageSlot`] with the given [`StorageSlotName`] and
     /// [`StorageSlotContent`].
     pub fn new(name: StorageSlotName, content: StorageSlotContent) -> Self {
-        let slot_id = name.id();
-
-        Self { name, slot_id, content }
+        Self { name, content }
     }
 
     /// Creates a new [`StorageSlot`] with the given [`StorageSlotName`] and the `value`
@@ -71,8 +63,8 @@ impl StorageSlot {
     }
 
     /// Returns the [`StorageSlotId`] by which the [`StorageSlot`] is identified.
-    pub fn slot_id(&self) -> StorageSlotId {
-        self.slot_id
+    pub fn id(&self) -> StorageSlotId {
+        self.name.id()
     }
 
     /// Returns this storage slot value as a [Word]
@@ -104,14 +96,14 @@ impl StorageSlot {
     }
 
     /// Consumes self and returns the underlying parts.
-    pub fn into_parts(self) -> (StorageSlotName, StorageSlotId, StorageSlotContent) {
-        (self.name, self.slot_id, self.content)
+    pub fn into_parts(self) -> (StorageSlotName, StorageSlotContent) {
+        (self.name, self.content)
     }
 }
 
 impl Ord for StorageSlot {
     fn cmp(&self, other: &Self) -> core::cmp::Ordering {
-        self.slot_id.cmp(&other.slot_id)
+        self.name().cmp(&other.name)
     }
 }
 

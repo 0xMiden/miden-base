@@ -200,7 +200,7 @@ impl AccountStorage {
 
         let slot_id = slot_name.id();
         self.slots
-            .binary_search_by_key(&slot_id, |slot| slot.slot_id())
+            .binary_search_by_key(&slot_id, |slot| slot.id())
             .map(|idx| &self.slots[idx])
             .ok()
     }
@@ -208,7 +208,7 @@ impl AccountStorage {
     fn get_mut(&mut self, slot_name: &StorageSlotName) -> Option<&mut StorageSlot> {
         let slot_id = slot_name.id();
         self.slots
-            .binary_search_by_key(&slot_id, |slot| slot.slot_id())
+            .binary_search_by_key(&slot_id, |slot| slot.id())
             .map(|idx| &mut self.slots[idx])
             .ok()
     }
@@ -362,7 +362,7 @@ impl SequentialCommit for AccountStorage {
             .iter()
             .flat_map(|slot| {
                 StorageSlotHeader::new(
-                    slot.slot_id(),
+                    slot.id(),
                     slot.content().slot_type(),
                     slot.content().value(),
                 )
