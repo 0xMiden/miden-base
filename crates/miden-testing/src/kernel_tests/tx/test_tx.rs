@@ -637,7 +637,7 @@ async fn execute_tx_view_script() -> anyhow::Result<()> {
 
     let source = "
     use test::module_1
-    use std::sys
+    use miden::core::sys
 
     begin
         push.1.2

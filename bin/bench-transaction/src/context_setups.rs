@@ -26,7 +26,7 @@ pub fn tx_create_single_p2id_note() -> Result<TransactionContext> {
     let tx_note_creation_script = format!(
         "
         use miden::output_note
-        use std::sys
+        use miden::core::sys
 
         begin
             # create an output note with fungible asset

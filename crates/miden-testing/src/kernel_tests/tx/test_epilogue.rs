@@ -534,7 +534,7 @@ async fn test_epilogue_empty_transaction_with_empty_output_note() -> anyhow::Res
     // create an empty output note in the transaction script
     let tx_script_source = format!(
         r#"
-        use std::word
+        use miden::core::word
         use miden::output_note
         use $kernel::prologue
         use $kernel::epilogue

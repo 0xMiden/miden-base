@@ -247,7 +247,7 @@ async fn getting_map_item_with_lazy_loading_succeeds() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-      use std::word
+      use miden::core::word
       use mock::account
 
       const MOCK_MAP_SLOT = word("{mock_map_slot}")

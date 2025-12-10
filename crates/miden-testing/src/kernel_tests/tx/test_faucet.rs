@@ -195,7 +195,7 @@ async fn test_mint_non_fungible_asset_succeeds() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-        use std::collections::smt
+        use miden::core::collections::smt
 
         use $kernel::account
         use $kernel::asset_vault
@@ -734,8 +734,8 @@ async fn test_get_total_issuance_succeeds() -> anyhow::Result<()> {
 fn setup_non_faucet_account() -> anyhow::Result<Account> {
     // Build a custom non-faucet account that (invalidly) exposes faucet procedures.
     let faucet_component = AccountComponent::compile(
-        "pub proc ::miden::faucet::mint
-         pub proc ::miden::faucet::burn",
+        "pub use ::miden::faucet::mint
+         pub use ::miden::faucet::burn",
         TransactionKernel::with_mock_libraries(Arc::new(DefaultSourceManager::default())),
         vec![],
     )?

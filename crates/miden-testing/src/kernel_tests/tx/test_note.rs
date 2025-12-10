@@ -205,7 +205,7 @@ async fn test_build_recipient() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use std::sys
+        use miden::core::sys
 
         use miden::note
 
@@ -294,7 +294,7 @@ async fn test_compute_inputs_commitment() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use std::sys
+        use miden::core::sys
 
         use miden::note
 
@@ -568,7 +568,7 @@ async fn test_build_note_tag_for_network_account() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use std::sys
+        use miden::core::sys
         use miden::note
 
         begin

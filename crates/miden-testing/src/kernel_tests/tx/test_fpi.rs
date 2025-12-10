@@ -124,7 +124,7 @@ async fn test_fpi_memory_single_account() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-        use std::sys
+        use miden::core::sys
 
         use $kernel::prologue
         use miden::tx
@@ -178,7 +178,7 @@ async fn test_fpi_memory_single_account() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-        use std::sys
+        use miden::core::sys
 
         use $kernel::prologue
         use miden::tx
@@ -238,7 +238,7 @@ async fn test_fpi_memory_single_account() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-        use std::sys
+        use miden::core::sys
 
         use $kernel::prologue
         use miden::tx
@@ -402,7 +402,7 @@ async fn test_fpi_memory_two_accounts() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-        use std::sys
+        use miden::core::sys
 
         use $kernel::prologue
         use miden::tx
@@ -583,7 +583,7 @@ async fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-        use std::sys
+        use miden::core::sys
 
         use miden::tx
 
@@ -742,7 +742,7 @@ async fn foreign_account_can_get_balance_and_presence_of_asset() -> anyhow::Resu
 
     let code = format!(
         "
-        use std::sys
+        use miden::core::sys
 
         use miden::tx
 
@@ -847,7 +847,7 @@ async fn foreign_account_get_initial_balance() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use std::sys
+        use miden::core::sys
 
         use miden::tx
 
@@ -919,7 +919,7 @@ async fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
         use miden::tx
         use miden::active_account
 
-        use std::sys
+        use miden::core::sys
 
         const MOCK_VALUE_SLOT0 = word("{mock_value_slot0}")
         const MOCK_VALUE_SLOT1 = word("{mock_value_slot1}")
@@ -982,7 +982,7 @@ async fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
         use miden::tx
         use miden::active_account
 
-        use std::sys
+        use miden::core::sys
 
         const MOCK_VALUE_SLOT0 = word("{mock_value_slot0}")
 
@@ -1082,7 +1082,7 @@ async fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-        use std::sys
+        use miden::core::sys
 
         use miden::tx
         use miden::account
@@ -1147,7 +1147,7 @@ async fn test_prove_fpi_two_foreign_accounts_chain() -> anyhow::Result<()> {
     // ------ SECOND FOREIGN ACCOUNT ---------------------------------------------------------------
     // unique procedure which just leaves a constant on the stack
     let second_foreign_account_code_source = r#"
-        use std::sys
+        use miden::core::sys
 
         pub proc second_account_foreign_proc
             # leave a constant result on the stack
@@ -1176,7 +1176,7 @@ async fn test_prove_fpi_two_foreign_accounts_chain() -> anyhow::Result<()> {
     let first_foreign_account_code_source = format!(
         r#"
         use miden::tx
-        use std::sys
+        use miden::core::sys
 
         pub proc first_account_foreign_proc
             # pad the stack for the `execute_foreign_procedure` execution
@@ -1245,7 +1245,7 @@ async fn test_prove_fpi_two_foreign_accounts_chain() -> anyhow::Result<()> {
     // Call the first foreign account's procedure. It will call into the second FA via FPI.
     let code = format!(
         r#"
-        use std::sys
+        use miden::core::sys
         use miden::tx
 
         begin
@@ -1351,7 +1351,7 @@ async fn test_nested_fpi_stack_overflow() -> anyhow::Result<()> {
         let foreign_account_code_source = format!(
                     "
                 use miden::tx
-                use std::sys
+                use miden::core::sys
 
                 pub proc read_first_foreign_storage_slot_{foreign_account_index}
                     # pad the stack for the `execute_foreign_procedure` execution
@@ -1421,7 +1421,7 @@ async fn test_nested_fpi_stack_overflow() -> anyhow::Result<()> {
 
     let code = format!(
                 "
-            use std::sys
+            use miden::core::sys
 
             use miden::tx
 
@@ -1470,7 +1470,7 @@ async fn test_nested_fpi_native_account_invocation() -> anyhow::Result<()> {
     let foreign_account_code_source = "
         use miden::tx
 
-        use std::sys
+        use miden::core::sys
 
         pub proc first_account_foreign_proc
             # pad the stack for the `execute_foreign_procedure` execution
@@ -1517,7 +1517,7 @@ async fn test_nested_fpi_native_account_invocation() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use std::sys
+        use miden::core::sys
 
         use miden::tx
 
@@ -1642,7 +1642,7 @@ async fn test_fpi_stale_account() -> anyhow::Result<()> {
 
     let code = format!(
         "
-      use std::sys
+      use miden::core::sys
 
       use $kernel::prologue
       use miden::tx
@@ -1723,7 +1723,7 @@ async fn test_fpi_get_account_id() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-        use std::sys
+        use miden::core::sys
 
         use miden::tx
         use miden::account_id
@@ -1880,7 +1880,7 @@ async fn test_get_initial_item_and_get_initial_map_item_with_foreign_account() -
     let foreign_account_code_source = format!(
         r#"
         use miden::active_account
-        use std::sys
+        use miden::core::sys
 
         const MOCK_VALUE_SLOT0 = word("{mock_value_slot0}")
 
@@ -1920,7 +1920,7 @@ async fn test_get_initial_item_and_get_initial_map_item_with_foreign_account() -
 
     let code = format!(
         r#"
-        use std::sys
+        use miden::core::sys
         use miden::tx
 
         const MOCK_MAP_SLOT = word("{mock_map_slot}")

@@ -292,7 +292,7 @@ async fn test_get_output_notes_commitment() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use std::sys
+        use miden::core::sys
 
         use miden::tx
         use miden::output_note
@@ -755,7 +755,7 @@ async fn test_get_asset_info() -> anyhow::Result<()> {
     let tx_script_src = &format!(
         r#"
         use miden::output_note
-        use std::sys
+        use miden::core::sys
 
         begin
             # create an output note with fungible asset 0
@@ -871,7 +871,7 @@ async fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
     let tx_script_src = &format!(
         r#"
         use miden::output_note
-        use std::sys
+        use miden::core::sys
 
         begin
             # create an output note with one asset
@@ -985,7 +985,7 @@ async fn test_get_assets() -> anyhow::Result<()> {
     let tx_script_src = &format!(
         "
         use miden::output_note
-        use std::sys
+        use miden::core::sys
 
         begin
             {create_note_0}

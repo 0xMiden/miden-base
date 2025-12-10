@@ -81,9 +81,8 @@ pub async fn compute_commitment() -> miette::Result<()> {
 
     let tx_script = format!(
         r#"
-        use std::word
+        use miden::core::word
 
-        use miden::prologue
         use miden::active_account
         use mock::account->mock_account
 
@@ -585,7 +584,7 @@ async fn test_set_map_item() -> miette::Result<()> {
 
     let code = format!(
         r#"
-        use std::sys
+        use miden::core::sys
 
         use $kernel::prologue
         use mock::account->mock_account

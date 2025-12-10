@@ -211,7 +211,7 @@ async fn test_active_note_get_assets() -> anyhow::Result<()> {
     // calling get_assets should return assets at the specified address
     let code = format!(
         "
-        use std::sys
+        use miden::core::sys
 
         use $kernel::prologue
         use $kernel::note->note_internal

@@ -347,7 +347,7 @@ mod tests {
         let account_code = "
             use miden::active_account
             use miden::native_account
-            use std::sys
+            use miden::core::sys
 
             pub proc increment
                 push.0
@@ -385,7 +385,7 @@ mod tests {
         let account_code = "
             use miden::active_account
             use miden::native_account
-            use std::sys
+            use miden::core::sys
 
             pub proc increment
                 push.0
@@ -436,7 +436,7 @@ mod tests {
         let account_code = "
             use miden::active_account
             use miden::native_account
-            use std::sys
+            use miden::core::sys
 
             pub proc increment
                 push.0
@@ -490,7 +490,7 @@ mod tests {
         let account_code_1 = "
             use miden::active_account
             use miden::native_account
-            use std::sys
+            use miden::core::sys
 
             pub proc increment_1
                 push.0
@@ -505,7 +505,7 @@ mod tests {
         let account_code_2 = "
             use miden::active_account
             use miden::native_account
-            use std::sys
+            use miden::core::sys
 
             pub proc increment_2
                 push.0
