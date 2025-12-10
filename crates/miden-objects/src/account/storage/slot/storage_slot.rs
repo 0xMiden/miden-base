@@ -5,7 +5,7 @@ use crate::account::{StorageMap, StorageSlotContent, StorageSlotName, StorageSlo
 /// An individual storage slot in [`AccountStorage`](crate::account::AccountStorage).
 ///
 /// This consists of a [`StorageSlotName`] that uniquely identifies the slot and its
-/// [`StorageSlotContent`] content.
+/// [`StorageSlotContent`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StorageSlot {
     /// The name of the storage slot.
@@ -16,11 +16,17 @@ pub struct StorageSlot {
     /// This is cached so that the `Ord` implementation can use the computed slot ID instead of
     /// having to hash the slot name on every comparison operation.
     slot_id: StorageSlotId,
-    /// The underlying storage slot.
+    /// The content of the storage slot.
     content: StorageSlotContent,
 }
 
 impl StorageSlot {
+    // CONSTANTS
+    // --------------------------------------------------------------------------------------------
+
+    /// The number of field elements that represent a [`StorageSlot`] in kernel memory.
+    pub const NUM_ELEMENTS: usize = 8;
+
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
@@ -134,8 +140,8 @@ impl crate::utils::serde::Deserializable for StorageSlot {
         source: &mut R,
     ) -> Result<Self, crate::utils::serde::DeserializationError> {
         let name: StorageSlotName = source.read()?;
-        let slot: StorageSlotContent = source.read()?;
+        let content: StorageSlotContent = source.read()?;
 
-        Ok(Self::new(name, slot))
+        Ok(Self::new(name, content))
     }
 }

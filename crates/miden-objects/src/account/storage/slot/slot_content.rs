@@ -22,10 +22,6 @@ pub enum StorageSlotContent {
 }
 
 impl StorageSlotContent {
-    /// The number of field elements needed to represent a [`StorageSlotContent`] in kernel
-    /// memory. TODO: Move to StorageSlot.
-    pub const NUM_ELEMENTS_PER_STORAGE_SLOT: usize = 8;
-
     /// Returns true if this storage slot has a value equal to the default of its type.
     pub fn is_default(&self) -> bool {
         match self {

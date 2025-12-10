@@ -72,7 +72,6 @@ use miden_objects::account::{
     AccountType,
     StorageMap,
     StorageSlot,
-    StorageSlotContent,
     StorageSlotName,
 };
 use miden_objects::asset::{FungibleAsset, NonFungibleAsset};
@@ -414,7 +413,7 @@ fn account_data_memory_assertions(exec_output: &ExecutionOutput, inputs: &Transa
         .account()
         .storage()
         .to_elements()
-        .chunks(StorageSlotContent::NUM_ELEMENTS_PER_STORAGE_SLOT / 2)
+        .chunks(StorageSlot::NUM_ELEMENTS / 2)
         .enumerate()
     {
         assert_eq!(
