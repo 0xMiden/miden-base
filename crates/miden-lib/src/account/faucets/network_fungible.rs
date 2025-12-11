@@ -279,9 +279,9 @@ impl TryFrom<&Account> for NetworkFungibleFaucet {
 /// The storage layout of the network faucet account is:
 /// - Slot 0: Reserved slot for faucets.
 /// - Slot 1: Public Key of the authentication component.
-/// - Slot 2: [num_tracked_procs, allow_unauthorized_output_notes, allow_unauthorized_input_notes,
+/// - Slot 2: [num_trigger_procs, allow_unauthorized_output_notes, allow_unauthorized_input_notes,
 ///   0].
-/// - Slot 3: A map with tracked procedure roots.
+/// - Slot 3: A map with trigger procedure roots.
 /// - Slot 4: Token metadata of the faucet.
 /// - Slot 5: Owner account ID.
 pub fn create_network_fungible_faucet(
