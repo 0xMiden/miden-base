@@ -66,7 +66,7 @@ use miden_objects::account::{
     AccountBuilder,
     AccountId,
     AccountIdVersion,
-    AccountProcedureInfo,
+    AccountProcedureRoot,
     AccountStorage,
     AccountStorageMode,
     AccountType,
@@ -435,7 +435,7 @@ fn account_data_memory_assertions(exec_output: &ExecutionOutput, inputs: &Transa
         .account()
         .code()
         .as_elements()
-        .chunks(AccountProcedureInfo::NUM_ELEMENTS)
+        .chunks(AccountProcedureRoot::NUM_ELEMENTS)
         .enumerate()
     {
         assert_eq!(

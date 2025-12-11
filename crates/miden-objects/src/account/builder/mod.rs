@@ -291,7 +291,7 @@ mod tests {
     use miden_processor::MastNodeExt;
 
     use super::*;
-    use crate::account::{AccountProcedureInfo, StorageSlot, StorageSlotName};
+    use crate::account::{AccountProcedureRoot, StorageSlot, StorageSlotName};
     use crate::testing::noop_auth_component::NoopAuthComponent;
 
     const CUSTOM_CODE1: &str = "
@@ -407,8 +407,8 @@ mod tests {
             [CUSTOM_LIBRARY2.get_export_node_id(&CUSTOM_LIBRARY2.exports().next().unwrap().name)]
         .digest();
 
-        assert!(account.code().procedures().contains(&AccountProcedureInfo::new(foo_root)));
-        assert!(account.code().procedures().contains(&AccountProcedureInfo::new(bar_root)));
+        assert!(account.code().procedures().contains(&AccountProcedureRoot::from_raw(foo_root)));
+        assert!(account.code().procedures().contains(&AccountProcedureRoot::from_raw(bar_root)));
 
         assert_eq!(
             account.storage().get_item(&CUSTOM_COMPONENT1_SLOT_NAME).unwrap(),

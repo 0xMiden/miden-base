@@ -3,7 +3,7 @@ use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
 use miden_objects::account::auth::PublicKeyCommitment;
-use miden_objects::account::{AccountId, AccountProcedureInfo, AccountStorage, StorageSlotName};
+use miden_objects::account::{AccountId, AccountProcedureRoot, AccountStorage, StorageSlotName};
 use miden_objects::note::PartialNote;
 use miden_objects::{Felt, FieldElement, Word};
 
@@ -60,7 +60,7 @@ pub enum AccountComponentInterface {
     ///
     /// Custom interface holds procedures which are not part of some standard interface which is
     /// used by this account. Each custom interface holds procedures with the same storage offset.
-    Custom(Vec<AccountProcedureInfo>),
+    Custom(Vec<AccountProcedureRoot>),
 }
 
 impl AccountComponentInterface {
@@ -177,7 +177,7 @@ impl AccountComponentInterface {
 
     /// Creates a vector of [AccountComponentInterface] instances. This vector specifies the
     /// components which were used to create an account with the provided procedures info array.
-    pub fn from_procedures(procedures: &[AccountProcedureInfo]) -> Vec<Self> {
+    pub fn from_procedures(procedures: &[AccountProcedureRoot]) -> Vec<Self> {
         let mut component_interface_vec = Vec::new();
 
         let mut procedures: BTreeMap<_, _> = procedures

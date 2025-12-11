@@ -32,7 +32,7 @@ pub use builder::AccountBuilder;
 
 pub mod code;
 pub use code::AccountCode;
-pub use code::procedure::AccountProcedureInfo;
+pub use code::procedure::AccountProcedureRoot;
 
 pub mod component;
 pub use component::{

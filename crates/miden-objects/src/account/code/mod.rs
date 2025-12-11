@@ -19,7 +19,7 @@ use crate::Word;
 use crate::account::{AccountComponent, AccountType};
 
 pub mod procedure;
-use procedure::{AccountProcedureInfo, PrintableProcedure};
+use procedure::{AccountProcedureRoot, PrintableProcedure};
 
 // ACCOUNT CODE
 // ================================================================================================
@@ -41,7 +41,7 @@ use procedure::{AccountProcedureInfo, PrintableProcedure};
 #[derive(Debug, Clone)]
 pub struct AccountCode {
     mast: Arc<MastForest>,
-    procedures: Vec<AccountProcedureInfo>,
+    procedures: Vec<AccountProcedureRoot>,
     commitment: Word,
 }
 
@@ -126,7 +126,7 @@ impl AccountCode {
     /// - The number of procedures is smaller than 1 or greater than 256.
     /// - If some any of the provided procedures does not have a corresponding root in the provided
     ///   MAST forest.
-    pub fn from_parts(mast: Arc<MastForest>, procedures: Vec<AccountProcedureInfo>) -> Self {
+    pub fn from_parts(mast: Arc<MastForest>, procedures: Vec<AccountProcedureRoot>) -> Self {
         assert!(!procedures.is_empty(), "no account procedures");
         assert!(procedures.len() <= Self::MAX_NUM_PROCEDURES, "too many account procedures");
 
@@ -151,7 +151,7 @@ impl AccountCode {
     }
 
     /// Returns a reference to the account procedures.
-    pub fn procedures(&self) -> &[AccountProcedureInfo] {
+    pub fn procedures(&self) -> &[AccountProcedureRoot] {
         &self.procedures
     }
 
@@ -174,7 +174,7 @@ impl AccountCode {
     ///
     /// # Panics
     /// Panics if the provided index is out of bounds.
-    pub fn get_procedure_by_index(&self, index: usize) -> &AccountProcedureInfo {
+    pub fn get_procedure_by_index(&self, index: usize) -> &AccountProcedureRoot {
         &self.procedures[index]
     }
 
@@ -218,7 +218,7 @@ impl AccountCode {
     /// Returns an error if no procedure with the specified root exists in this account code.
     fn printable_procedure(
         &self,
-        proc_info: &AccountProcedureInfo,
+        proc_info: &AccountProcedureRoot,
     ) -> Result<PrintableProcedure, AccountError> {
         let node_id = self
             .mast
@@ -286,7 +286,7 @@ impl Deserializable for AccountCode {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let module = Arc::new(MastForest::read_from(source)?);
         let num_procedures = (source.read_u8()? as usize) + 1;
-        let procedures = source.read_many::<AccountProcedureInfo>(num_procedures)?;
+        let procedures = source.read_many::<AccountProcedureRoot>(num_procedures)?;
 
         Ok(Self::from_parts(module, procedures))
     }
@@ -324,7 +324,7 @@ impl PrettyPrint for AccountCode {
 // ================================================================================================
 
 struct ProcedureInfoBuilder {
-    procedures: Vec<AccountProcedureInfo>,
+    procedures: Vec<AccountProcedureRoot>,
     proc_root_set: BTreeSet<Word>,
 }
 
@@ -376,12 +376,12 @@ impl ProcedureInfoBuilder {
             return Err(AccountError::AccountComponentDuplicateProcedureRoot(proc_mast_root));
         }
 
-        self.procedures.push(AccountProcedureInfo::new(proc_mast_root));
+        self.procedures.push(AccountProcedureRoot::from_raw(proc_mast_root));
 
         Ok(())
     }
 
-    fn build(self) -> Result<Vec<AccountProcedureInfo>, AccountError> {
+    fn build(self) -> Result<Vec<AccountProcedureRoot>, AccountError> {
         if self.procedures.len() < AccountCode::MIN_NUM_PROCEDURES {
             Err(AccountError::AccountCodeNoProcedures)
         } else if self.procedures.len() > AccountCode::MAX_NUM_PROCEDURES {
@@ -396,14 +396,14 @@ impl ProcedureInfoBuilder {
 // ================================================================================================
 
 /// Computes the commitment to the given procedures
-pub(crate) fn build_procedure_commitment(procedures: &[AccountProcedureInfo]) -> Word {
+pub(crate) fn build_procedure_commitment(procedures: &[AccountProcedureRoot]) -> Word {
     let elements = procedures_as_elements(procedures);
     Hasher::hash_elements(&elements)
 }
 
 /// Converts given procedures into field elements
-pub(crate) fn procedures_as_elements(procedures: &[AccountProcedureInfo]) -> Vec<Felt> {
-    procedures.iter().flat_map(AccountProcedureInfo::as_elements).copied().collect()
+pub(crate) fn procedures_as_elements(procedures: &[AccountProcedureRoot]) -> Vec<Felt> {
+    procedures.iter().flat_map(AccountProcedureRoot::as_elements).copied().collect()
 }
 
 // TESTS

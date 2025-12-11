@@ -2,7 +2,7 @@ use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
 
 use miden_objects::Word;
-use miden_objects::account::AccountProcedureInfo;
+use miden_objects::account::AccountProcedureRoot;
 use miden_objects::assembly::Library;
 use miden_objects::utils::Deserializable;
 use miden_objects::utils::sync::LazyLock;
@@ -191,7 +191,7 @@ impl WellKnownComponent {
     /// interface to the component interface vector.
     fn extract_component(
         &self,
-        procedures_map: &mut BTreeMap<Word, &AccountProcedureInfo>,
+        procedures_map: &mut BTreeMap<Word, &AccountProcedureRoot>,
         component_interface_vec: &mut Vec<AccountComponentInterface>,
     ) {
         // Determine if this component should be extracted based on procedure matching
@@ -241,7 +241,7 @@ impl WellKnownComponent {
     /// Gets all well known components which could be constructed from the provided procedures map
     /// and pushes them to the `component_interface_vec`.
     pub fn extract_well_known_components(
-        procedures_map: &mut BTreeMap<Word, &AccountProcedureInfo>,
+        procedures_map: &mut BTreeMap<Word, &AccountProcedureRoot>,
         component_interface_vec: &mut Vec<AccountComponentInterface>,
     ) {
         Self::BasicWallet.extract_component(procedures_map, component_interface_vec);

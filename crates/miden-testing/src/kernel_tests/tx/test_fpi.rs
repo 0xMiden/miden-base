@@ -27,7 +27,7 @@ use miden_objects::account::{
     AccountBuilder,
     AccountComponent,
     AccountId,
-    AccountProcedureInfo,
+    AccountProcedureRoot,
     AccountStorage,
     AccountStorageMode,
     StorageSlot,
@@ -1849,7 +1849,7 @@ fn foreign_account_data_memory_assertions(
     for (i, elements) in foreign_account
         .code()
         .as_elements()
-        .chunks(AccountProcedureInfo::NUM_ELEMENTS)
+        .chunks(AccountProcedureRoot::NUM_ELEMENTS)
         .enumerate()
     {
         assert_eq!(
