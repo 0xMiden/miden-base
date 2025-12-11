@@ -64,7 +64,7 @@ static METADATA_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
 ///
 /// ## Storage Layout
 ///
-/// - [`Self::metadata_slot_name`]: Basic fungible faucet's metadata
+/// - [`Self::metadata_slot`]: Fungible faucet metadata
 ///
 /// [kasm]: crate::transaction::TransactionKernel::assembler
 pub struct BasicFungibleFaucet {
