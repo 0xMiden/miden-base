@@ -24,19 +24,17 @@ use procedure::{AccountProcedureRoot, PrintableProcedure};
 // ACCOUNT CODE
 // ================================================================================================
 
-/// A public interface of an account.
+/// The public interface of an account.
 ///
-/// Account's public interface consists of a set of account procedures, each procedure being a
-/// Miden VM program. Thus, MAST root of each procedure commits to the underlying program.
+/// An account's public interface consists of a set of account procedures, each of which is
+/// identified and committed to by a MAST root. They are represented by [`AccountProcedureRoot`].
 ///
-/// Each exported procedure is associated with a storage offset and a storage size.
-///
-/// We commit to the entire account interface by building a sequential hash of all procedure MAST
-/// roots and associated storage_offset's. Specifically, each procedure contributes exactly 8 field
-/// elements to the sequence of elements to be hashed. These elements are defined as follows:
+/// The code commits to the entire account interface by building a sequential hash of all procedure
+/// MAST roots. Specifically, each procedure contributes exactly 4 field elements to the sequence of
+/// elements to be hashed. Each procedure is represented by its MAST root:
 ///
 /// ```text
-/// [PROCEDURE_MAST_ROOT, storage_offset, 0, 0, storage_size]
+/// [PROCEDURE_MAST_ROOT]
 /// ```
 #[derive(Debug, Clone)]
 pub struct AccountCode {
@@ -46,10 +44,14 @@ pub struct AccountCode {
 }
 
 impl AccountCode {
-    /// The maximum number of account interface procedures.
-    pub const MAX_NUM_PROCEDURES: usize = 256;
+    // CONSTANTS
+    // --------------------------------------------------------------------------------------------
+
     /// The minimum number of account interface procedures (one auth and at least one non-auth).
     pub const MIN_NUM_PROCEDURES: usize = 2;
+
+    /// The maximum number of account interface procedures.
+    pub const MAX_NUM_PROCEDURES: usize = 256;
 
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
@@ -118,16 +120,15 @@ impl AccountCode {
         Self::read_from_bytes(bytes).map_err(AccountError::AccountCodeDeserializationError)
     }
 
-    /// Returns a new definition of an account's interface instantiated from the provided
-    /// [MastForest] and a list of [AccountProcedureInfo]s.
+    /// Returns a new [`AccountCode`] instantiated from the provided [`MastForest`] and a list of
+    /// [`AccountProcedureRoot`]s.
     ///
     /// # Panics
+    ///
     /// Panics if:
-    /// - The number of procedures is smaller than 1 or greater than 256.
-    /// - If some any of the provided procedures does not have a corresponding root in the provided
-    ///   MAST forest.
+    /// - The number of procedures is smaller than 2 or greater than 256.
     pub fn from_parts(mast: Arc<MastForest>, procedures: Vec<AccountProcedureRoot>) -> Self {
-        assert!(!procedures.is_empty(), "no account procedures");
+        assert!(procedures.len() >= Self::MIN_NUM_PROCEDURES, "not enough account procedures");
         assert!(procedures.len() <= Self::MAX_NUM_PROCEDURES, "too many account procedures");
 
         Self {
@@ -150,7 +151,7 @@ impl AccountCode {
         self.mast.clone()
     }
 
-    /// Returns a reference to the account procedures.
+    /// Returns a reference to the account procedure roots.
     pub fn procedures(&self) -> &[AccountProcedureRoot] {
         &self.procedures
     }
@@ -170,29 +171,19 @@ impl AccountCode {
         self.procedures.iter().any(|procedure| procedure.mast_root() == &mast_root)
     }
 
-    /// Returns information about the procedure at the specified index.
-    ///
-    /// # Panics
-    /// Panics if the provided index is out of bounds.
-    pub fn get_procedure_by_index(&self, index: usize) -> &AccountProcedureRoot {
-        &self.procedures[index]
+    /// Returns the procedure root at the specified index.
+    pub fn get(&self, index: usize) -> Option<&AccountProcedureRoot> {
+        self.procedures.get(index)
     }
 
-    /// Returns the procedure index for the procedure with the specified MAST root or None if such
-    /// procedure is not defined in this [AccountCode].
-    pub fn get_procedure_index_by_root(&self, root: Word) -> Option<usize> {
-        self.procedures
-            .iter()
-            .map(|procedure| procedure.mast_root())
-            .position(|r| r == &root)
-    }
-
-    /// Converts procedure information in this [AccountCode] into a vector of field elements.
+    /// Converts the procedure root in this [`AccountCode`] into a vector of field elements.
     ///
-    /// This is done by first converting each procedure into 8 field elements as follows:
+    /// This is done by first converting each procedure into 4 field elements as follows:
+    ///
     /// ```text
-    /// [PROCEDURE_MAST_ROOT, storage_offset, storage_size, 0, 0]
+    /// [PROCEDURE_MAST_ROOT]
     /// ```
+    ///
     /// And then concatenating the resulting elements into a single vector.
     pub fn as_elements(&self) -> Vec<Felt> {
         procedures_as_elements(self.procedures())
@@ -201,6 +192,7 @@ impl AccountCode {
     /// Returns an iterator of printable representations for all procedures in this account code.
     ///
     /// # Returns
+    ///
     /// An iterator yielding [`PrintableProcedure`] instances for all procedures in this account
     /// code.
     pub fn printable_procedures(&self) -> impl Iterator<Item = PrintableProcedure> {
@@ -259,7 +251,7 @@ impl Eq for AccountCode {}
 impl Serializable for AccountCode {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         self.mast.write_into(target);
-        // since the number of procedures is guaranteed to be between 1 and 256, we can store the
+        // since the number of procedures is guaranteed to be between 2 and 256, we can store the
         // number as a single byte - but we do have to subtract 1 to store 256 as 255.
         target.write_u8((self.procedures.len() - 1) as u8);
         target.write_many(self.procedures());

@@ -19,7 +19,7 @@ use crate::utils::serde::{
 // ACCOUNT PROCEDURE ROOT
 // ================================================================================================
 
-/// The root of a public procedure in an account's interface.
+/// The MAST root of a public procedure in an account's interface.
 #[derive(Debug, PartialEq, Eq, Clone, Copy, WordWrapper)]
 pub struct AccountProcedureRoot(Word);
 

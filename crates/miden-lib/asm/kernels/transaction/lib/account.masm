@@ -1082,8 +1082,7 @@ end
 #! - STORAGE_SLOT_DATA is the data contained in the storage slot which is constructed as follows:
 #!   [SLOT_VALUE, slot_type, 0, 0, 0].
 #! - CODE_COMMITMENT is the commitment to the account's code.
-#! - ACCOUNT_PROCEDURE_DATA is the information about account procedures which is constructed as
-#!   follows: [PROCEDURE_MAST_ROOT, storage_offset, 0, 0, 0].
+#! - ACCOUNT_PROCEDURE_DATA are the roots of the public procedures of the foreign account.
 #!
 #! Panics if:
 #! - the number of account procedures exceeded the maximum limit of 256.
@@ -1223,8 +1222,8 @@ end
 #!
 #! Where:
 #! - CODE_COMMITMENT is the commitment of the active account's code.
-#! - ACCOUNT_PROCEDURE_DATA is the information about account procedure which is constructed as
-#!   follows: [PROCEDURE_MAST_ROOT, storage_offset, storage_size, 0, 0]
+#! - ACCOUNT_PROCEDURE_DATA are the roots of the public procedures of the account laid out as
+#!   [ACCOUNT_PROCEDURE_DATA].
 #!
 #! Panics if:
 #! - the number of account procedures exceeded the maximum limit of 256.
