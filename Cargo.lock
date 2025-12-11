@@ -1648,6 +1648,7 @@ dependencies = [
  "miden-verifier",
  "pprof",
  "rand",
+ "rand_chacha",
  "rand_xoshiro",
  "rstest",
  "semver 1.0.27",

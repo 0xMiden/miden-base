@@ -44,9 +44,11 @@ use miden_objects::block::{
     OutputNoteBatch,
     ProvenBlock,
 };
+use miden_objects::crypto::dsa::ecdsa_k256_keccak::SecretKey;
 use miden_objects::crypto::merkle::smt::Smt;
 use miden_objects::note::{Note, NoteDetails, NoteType};
 use miden_objects::testing::account_id::ACCOUNT_ID_NATIVE_ASSET_FAUCET;
+use miden_objects::testing::random_signer::RandomBlockSigner;
 use miden_objects::transaction::{OrderedTransactionHeaders, OutputNote};
 use miden_objects::{Felt, FieldElement, MAX_OUTPUT_NOTES_PER_BATCH, NoteError, Word, ZERO};
 use miden_processor::crypto::RpoRandomCoin;
@@ -217,10 +219,11 @@ impl MockChainBuilder {
         let note_root = note_tree.root();
         let tx_commitment = transactions.commitment();
         let tx_kernel_commitment = TransactionKernel.to_commitment();
-        let proof_commitment = Word::empty();
         let timestamp = MockChain::TIMESTAMP_START_SECS;
         let fee_parameters = FeeParameters::new(self.native_asset_id, self.verification_base_fee)
             .context("failed to construct fee parameters")?;
+        let validator_secret_key = SecretKey::random();
+        let validator_public_key = validator_secret_key.public_key();
 
         let header = BlockHeader::new(
             version,
@@ -232,7 +235,7 @@ impl MockChainBuilder {
             note_root,
             tx_commitment,
             tx_kernel_commitment,
-            proof_commitment,
+            validator_public_key,
             fee_parameters,
             timestamp,
         );
@@ -244,10 +247,16 @@ impl MockChainBuilder {
             transactions,
         );
 
+        let signature = validator_secret_key.sign(header.commitment());
         let block_proof = BlockProof::new_dummy();
-        let genesis_block = ProvenBlock::new_unchecked(header, body, block_proof);
+        let genesis_block = ProvenBlock::new_unchecked(header, body, signature, block_proof);
 
-        MockChain::from_genesis_block(genesis_block, account_tree, self.account_authenticators)
+        MockChain::from_genesis_block(
+            genesis_block,
+            account_tree,
+            self.account_authenticators,
+            validator_secret_key,
+        )
     }
 
     // ACCOUNT METHODS

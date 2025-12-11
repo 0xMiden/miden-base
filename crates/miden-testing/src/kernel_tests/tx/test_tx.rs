@@ -640,7 +640,7 @@ async fn execute_tx_view_script() -> anyhow::Result<()> {
     use miden::core::sys
 
     begin
-        push.1.2 drop drop
+        push.1.2
         call.module_1::foo
         exec.sys::truncate_stack
     end
@@ -664,8 +664,8 @@ async fn execute_tx_view_script() -> anyhow::Result<()> {
         .execute_tx_view_script(account_id, block_ref, tx_script, advice_inputs)
         .await?;
 
-    // assert_eq!(stack_outputs[..3], [Felt::new(7), Felt::new(2), ONE]);
-    assert_eq!(stack_outputs[..3], [Felt::new(7), miden_objects::ZERO, miden_objects::ZERO]);
+    assert_eq!(stack_outputs[..3], [Felt::new(7), Felt::new(2), ONE]);
+    // assert_eq!(stack_outputs[..3], [Felt::new(7), miden_objects::ZERO, miden_objects::ZERO]);
 
     Ok(())
 }

@@ -53,12 +53,12 @@ use miden_lib::transaction::memory::{
     PARTIAL_BLOCKCHAIN_NUM_LEAVES_PTR,
     PARTIAL_BLOCKCHAIN_PEAKS_PTR,
     PREV_BLOCK_COMMITMENT_PTR,
-    PROOF_COMMITMENT_PTR,
     PROTOCOL_VERSION_IDX,
     TIMESTAMP_IDX,
     TX_COMMITMENT_PTR,
     TX_KERNEL_COMMITMENT_PTR,
     TX_SCRIPT_ROOT_PTR,
+    VALIDATOR_KEY_COMMITMENT_PTR,
     VERIFICATION_BASE_FEE_IDX,
 };
 use miden_objects::account::{
@@ -264,9 +264,9 @@ fn block_data_memory_assertions(exec_output: &ExecutionOutput, inputs: &Transact
     );
 
     assert_eq!(
-        exec_output.get_kernel_mem_word(PROOF_COMMITMENT_PTR),
-        inputs.tx_inputs().block_header().proof_commitment(),
-        "The proof commitment should be stored at the PROOF_COMMITMENT_PTR"
+        exec_output.get_kernel_mem_word(VALIDATOR_KEY_COMMITMENT_PTR),
+        inputs.tx_inputs().block_header().validator_key().to_commitment(),
+        "The public key commitment should be stored at the VALIDATOR_KEY_COMMITMENT_PTR"
     );
 
     assert_eq!(

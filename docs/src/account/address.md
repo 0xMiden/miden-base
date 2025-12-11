@@ -17,11 +17,11 @@ The receiver can choose to disclose various pieces of information that control h
 Consider a few examples that use different address mechanisms:
 
 - The [Pay-to-ID note](../note#p2id-pay-to-id): the note itself can only be consumed if the account ID encoded in the note details matches the ID of the account that tries to consume it. To receive a P2ID note, the receiver should communicate an `AddressId::AccountId` type to the sender.
-- A "Pay-to-PoW" note that can only be consumed if the receiver can provide a valid seed such that the hash of the seed results in a value with n leading zero bits. The receiver communicates an `AddressId::PoW` type to the sender, which encodes the target number of leading zero bits (and a salt to avoid re-use of the same seed).*
-- A "Pay-to-Public-Key" note that stores a public (signature) key and checks if the receiver can provide a valid cryptographic signature for that key. The `AddressId::PublicKey` type must encode the public key.*
+- A "Pay-to-PoW" note that can only be consumed if the receiver can provide a valid seed such that the hash of the seed results in a value with n leading zero bits. The receiver communicates an `AddressId::PoW` type to the sender, which encodes the target number of leading zero bits (and a salt to avoid re-use of the same seed).
+- A "Pay-to-Public-Key" note that stores a public (signature) key and checks if the receiver can provide a valid cryptographic signature for that key. The `AddressId::PublicKey` type must encode the public key.
 
 These different address mechanisms provide different levels of privacy and security:
-- `AddressId::AccountId`: the receiver is uniquely identifiable, but they are the only ones who can consume the note.
+- `AddressId::AccountId`: the receiver is uniquely identifiable, but they are the only one who can consume the note.
 - `AddressId::PoW`: the receiver is not revealed publicly, but potentially many entities can consume the note. The receiver has an advantage by specifying the salt.
 - `AddressId::PublicKey`: the receiver `AccountId` is not revealed publicly, only their public key. A fresh `AddressId::PublicKey` can be used for receiving each note, resulting in increased privacy.
 
@@ -35,13 +35,13 @@ For notes which are sent privately, the sender needs to communicate the full not
 
 Instead, our Miden client connects to a _Note Transport Layer_, which stores encrypted note details together with the associated public metadata for each note. The receiver can query the Note Transport Layer for `NoteTag`s they are interested in. Typically, a `NoteTag` encodes a few leading bits (14 by default) of the receiver's `AccountId`. Querying the Note Transport Layer for 14-bit `NoteTag`s reduces the receiver's privacy, but at the same time allows them to perform less work downloading and trial-decrypting the notes than if fewer bits were encoded.
 
-With an `Address`, e.g. the [`AddressId::AccountId`](./address#addressaccountid) variant, the receiver could specify how many bits of their `AccountId` they want to disclose to the sender and thus choose their level of privacy.
+With an `Address`, e.g. the [`AddressId::AccountId`](./address#address-types) variant, the receiver could specify how many bits of their `AccountId` they want to disclose to the sender and thus choose their level of privacy.
 
 ### Account interface discovery
 
 An address allows the sender of the note to easily discover the interface of the receiving account. As explained in the [account interface](./code#interface) section, every account can have a different set of procedures that note scripts can call, which is the _interface_ of the account. In order for the sender of a note to create a note that the receiver can consume, the sender needs to know the interface of the receiving account. This can be communicated via the address, which encodes a mapping of standard interfaces like the basic wallet.
 
-If a sender wants to create a note, it is up to them to check whether the receiver account has an interface that it compatible with that note. The notion of an address doesn't exist at protocol level and so it is up to wallets or clients to implement this interface compatibility check.
+If a sender wants to create a note, it is up to them to check whether the receiver account has an interface that is compatible with that note. The notion of an address doesn't exist at protocol level and so it is up to wallets or clients to implement this interface compatibility check.
 
 ### Note encryption
 

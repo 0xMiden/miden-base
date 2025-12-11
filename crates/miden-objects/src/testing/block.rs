@@ -6,7 +6,9 @@ use crate::Word;
 use crate::account::Account;
 use crate::block::account_tree::{AccountTree, account_id_to_smt_key};
 use crate::block::{BlockHeader, BlockNumber, FeeParameters};
+use crate::crypto::dsa::ecdsa_k256_keccak::SecretKey;
 use crate::testing::account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET;
+use crate::testing::random_signer::RandomBlockSigner;
 
 impl BlockHeader {
     /// Creates a mock block. The account tree is formed from the provided `accounts`,
@@ -33,6 +35,7 @@ impl BlockHeader {
         let fee_parameters =
             FeeParameters::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET.try_into().unwrap(), 500)
                 .expect("native asset ID should be a fungible faucet ID");
+        let validator_key = SecretKey::random().public_key();
 
         #[cfg(not(target_family = "wasm"))]
         let (
@@ -41,7 +44,6 @@ impl BlockHeader {
             nullifier_root,
             note_root,
             tx_commitment,
-            proof_commitment,
             timestamp,
         ) = {
             let prev_block_commitment = rand_value::<Word>();
@@ -49,7 +51,6 @@ impl BlockHeader {
             let nullifier_root = rand_value::<Word>();
             let note_root = note_root.unwrap_or(rand_value::<Word>());
             let tx_commitment = rand_value::<Word>();
-            let proof_commitment = rand_value::<Word>();
             let timestamp = rand_value();
 
             (
@@ -58,7 +59,6 @@ impl BlockHeader {
                 nullifier_root,
                 note_root,
                 tx_commitment,
-                proof_commitment,
                 timestamp,
             )
         };
@@ -70,7 +70,6 @@ impl BlockHeader {
             nullifier_root,
             note_root,
             tx_commitment,
-            proof_commitment,
             timestamp,
         ) = {
             (
@@ -78,7 +77,6 @@ impl BlockHeader {
                 chain_commitment.unwrap_or_default(),
                 Default::default(),
                 note_root.unwrap_or_default(),
-                Default::default(),
                 Default::default(),
                 Default::default(),
             )
@@ -94,7 +92,7 @@ impl BlockHeader {
             note_root,
             tx_commitment,
             tx_kernel_commitment,
-            proof_commitment,
+            validator_key,
             fee_parameters,
             timestamp,
         )

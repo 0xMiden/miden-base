@@ -29,9 +29,9 @@ use crate::utils::serde::{Deserializable, Serializable};
 ///
 /// # Guarantees
 ///
-/// The [`PartialBlockchain`] contains the full authenticated [`BlockHeader`]s of all blocks it
-/// tracks in its partial MMR and users of this type can make this assumption. This is ensured when
-/// using [`PartialBlockchain::new`]. [`PartialBlockchain::new_unchecked`] should only be used
+/// The [`PartialBlockchain`] contains the full authenticated [`BlockHeader`]s of all blocks
+/// it tracks in its partial MMR and users of this type can make this assumption. This is ensured
+/// when using [`PartialBlockchain::new`]. [`PartialBlockchain::new_unchecked`] should only be used
 /// whenever this guarantee can be upheld.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PartialBlockchain {
@@ -278,10 +278,13 @@ impl Default for PartialBlockchain {
 mod tests {
     use assert_matches::assert_matches;
     use miden_core::utils::{Deserializable, Serializable};
+    use rand::SeedableRng;
+    use rand_chacha::ChaCha20Rng;
 
     use super::PartialBlockchain;
     use crate::alloc::vec::Vec;
     use crate::block::{BlockHeader, BlockNumber, FeeParameters};
+    use crate::crypto::dsa::ecdsa_k256_keccak::SecretKey;
     use crate::crypto::merkle::mmr::{Mmr, PartialMmr};
     use crate::testing::account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET;
     use crate::{PartialBlockchainError, Word};
@@ -427,6 +430,8 @@ mod tests {
         let fee_parameters =
             FeeParameters::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET.try_into().unwrap(), 500)
                 .expect("native asset ID should be a fungible faucet ID");
+        let mut rng = ChaCha20Rng::from_seed([0u8; 32]);
+        let validator_key = SecretKey::with_rng(&mut rng).public_key();
 
         BlockHeader::new(
             0,
@@ -438,7 +443,7 @@ mod tests {
             Word::empty(),
             Word::empty(),
             Word::empty(),
-            Word::empty(),
+            validator_key,
             fee_parameters,
             0,
         )
