@@ -32,10 +32,6 @@ const.ERR_B2AGG_WRONG_NUMBER_OF_INPUTS="B2AGG script expects exactly 6 note inpu
 #!   - destination_address_3: bytes 12-15
 #!   - destination_address_4: bytes 16-19
 #!
-#! Stack layout after loading inputs:
-#! - INPUTS[0]: [destination_network, destination_address_0, destination_address_1, destination_address_2]
-#! - INPUTS[1]: [destination_address_3, destination_address_4, 0, 0]
-#!
 #! Panics if:
 #! - The note does not contain exactly 6 inputs.
 #! - The note does not contain exactly 1 asset.
@@ -76,11 +72,11 @@ begin
 
         # load the 6 B2AGG note input felts as two words
         mem_loadw_be.12 swapw.2 mem_loadw_be.8 swapw
-        # => [EMPTY_WORD, INPUTS[1], INPUTS[0], pad(4)]
+        # => [EMPTY_WORD, dest_network, dest_address(5), pad(6)]
 
         # Load ASSET onto the stack
         mem_loadw_be.0
-        # => [ASSET, INPUTS[0], INPUTS[1], pad(4)]
+        # => [ASSET, dest_network, dest_address(5), pad(6)]
 
         call.agglayer::bridge_out
         # => [pad(16)]
