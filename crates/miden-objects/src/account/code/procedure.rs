@@ -24,7 +24,7 @@ use crate::utils::serde::{
 pub struct AccountProcedureRoot(Word);
 
 impl AccountProcedureRoot {
-    /// The number of field elements that represent an [`AccountProcedureInfo`] in kernel memory.
+    /// The number of field elements that represent an [`AccountProcedureRoot`] in kernel memory.
     pub const NUM_ELEMENTS: usize = 4;
 
     // PUBLIC ACCESSORS
