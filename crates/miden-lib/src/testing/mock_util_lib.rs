@@ -36,7 +36,7 @@ const MOCK_UTIL_LIBRARY_CODE: &str = "
 
 static MOCK_UTIL_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
     ProtocolAssembler::new(false)
-        .compile_component_code("mock::util", MOCK_UTIL_LIBRARY_CODE)
+        .parse_component_code("mock::util", MOCK_UTIL_LIBRARY_CODE)
         .expect("mock util library should be valid")
         .into_library()
 });

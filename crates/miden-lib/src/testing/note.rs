@@ -151,7 +151,7 @@ impl NoteBuilder {
         }
 
         let note_script = builder
-            .compile_note_script(virtual_source_file)
+            .parse_note_script(virtual_source_file)
             .expect("note script should compile");
         let vault = NoteAssets::new(self.assets)?;
         let metadata = NoteMetadata::new(

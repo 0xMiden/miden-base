@@ -83,7 +83,7 @@ async fn test_fpi_memory_single_account() -> anyhow::Result<()> {
     let source_manager = Arc::new(DefaultSourceManager::default());
     let foreign_account_component = AccountComponent::new(
         ProtocolAssembler::with_kernel_library(source_manager.clone())
-            .compile_component_code("test::foreign_account", foreign_account_code_source)?,
+            .parse_component_code("test::foreign_account", foreign_account_code_source)?,
         vec![mock_value_slot0.clone(), mock_map_slot.clone()],
     )?
     .with_supports_all_types();
@@ -344,14 +344,14 @@ async fn test_fpi_memory_two_accounts() -> anyhow::Result<()> {
 
     let foreign_account_component_1 = AccountComponent::new(
         ProtocolAssembler::with_kernel_library(Arc::new(DefaultSourceManager::default()))
-            .compile_component_code("test::foreign_account_1", foreign_account_code_source_1)?,
+            .parse_component_code("test::foreign_account_1", foreign_account_code_source_1)?,
         vec![mock_value_slot0.clone()],
     )?
     .with_supports_all_types();
 
     let foreign_account_component_2 = AccountComponent::new(
         ProtocolAssembler::with_kernel_library(Arc::new(DefaultSourceManager::default()))
-            .compile_component_code("test::foreign_account_2", foreign_account_code_source_2)?,
+            .parse_component_code("test::foreign_account_2", foreign_account_code_source_2)?,
         vec![mock_value_slot1.clone()],
     )?
     .with_supports_all_types();
@@ -558,7 +558,7 @@ async fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
     let source_manager = Arc::new(DefaultSourceManager::default());
     let foreign_account_component = AccountComponent::new(
         ProtocolAssembler::with_kernel_library(source_manager.clone())
-            .compile_component_code("foreign_account", foreign_account_code_source)?,
+            .parse_component_code("foreign_account", foreign_account_code_source)?,
         vec![mock_value_slot0.clone(), mock_map_slot.clone()],
     )?
     .with_supports_all_types();
@@ -652,7 +652,7 @@ async fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
 
     let tx_script = ProtocolAssembler::with_source_manager(source_manager.clone())
         .with_dynamically_linked_library(foreign_account_component.component_code())?
-        .compile_tx_script(code)?;
+        .parse_tx_script(code)?;
 
     let foreign_account_inputs = mock_chain
         .get_foreign_account_inputs(foreign_account.id())
@@ -716,7 +716,7 @@ async fn foreign_account_can_get_balance_and_presence_of_asset() -> anyhow::Resu
     let source_manager = Arc::new(DefaultSourceManager::default());
     let foreign_account_component = AccountComponent::new(
         ProtocolAssembler::with_source_manager(source_manager.clone())
-            .compile_component_code("foreign_account_code", foreign_account_code_source)?,
+            .parse_component_code("foreign_account_code", foreign_account_code_source)?,
         vec![],
     )?
     .with_supports_all_types();
@@ -774,7 +774,7 @@ async fn foreign_account_can_get_balance_and_presence_of_asset() -> anyhow::Resu
 
     let tx_script = ProtocolAssembler::with_source_manager(source_manager.clone())
         .with_dynamically_linked_library(foreign_account_component.component_code())?
-        .compile_tx_script(code)?;
+        .parse_tx_script(code)?;
 
     let foreign_account_inputs = mock_chain.get_foreign_account_inputs(foreign_account.id())?;
 
@@ -821,7 +821,7 @@ async fn foreign_account_get_initial_balance() -> anyhow::Result<()> {
     let source_manager = Arc::new(DefaultSourceManager::default());
     let foreign_account_component = AccountComponent::new(
         ProtocolAssembler::with_source_manager(source_manager.clone())
-            .compile_component_code("foreign_account_code", foreign_account_code_source)?,
+            .parse_component_code("foreign_account_code", foreign_account_code_source)?,
         vec![],
     )?
     .with_supports_all_types();
@@ -880,7 +880,7 @@ async fn foreign_account_get_initial_balance() -> anyhow::Result<()> {
 
     let tx_script = ProtocolAssembler::with_source_manager(source_manager.clone())
         .with_dynamically_linked_library(foreign_account_component.component_code())?
-        .compile_tx_script(code)?;
+        .parse_tx_script(code)?;
 
     let foreign_account_inputs = mock_chain.get_foreign_account_inputs(foreign_account.id())?;
 
@@ -963,7 +963,7 @@ async fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
 
     let source_manager = Arc::new(DefaultSourceManager::default());
     let second_foreign_account_component = AccountComponent::new(
-        ProtocolAssembler::with_kernel_library(source_manager.clone()).compile_component_code(
+        ProtocolAssembler::with_kernel_library(source_manager.clone()).parse_component_code(
             "test::second_foreign_account",
             second_foreign_account_code_source,
         )?,
@@ -1028,7 +1028,7 @@ async fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
 
     let first_foreign_account_component = AccountComponent::new(
         ProtocolAssembler::with_kernel_library(source_manager.clone())
-            .compile_component_code("first_foreign_account", first_foreign_account_code_source)?,
+            .parse_component_code("first_foreign_account", first_foreign_account_code_source)?,
         vec![mock_value_slot0.clone(), mock_value_slot1.clone()],
     )?
     .with_supports_all_types();
@@ -1118,7 +1118,7 @@ async fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
 
     let tx_script = ProtocolAssembler::with_source_manager(source_manager.clone())
         .with_dynamically_linked_library(first_foreign_account_component.component_code())?
-        .compile_tx_script(code)?;
+        .parse_tx_script(code)?;
 
     mock_chain
         .build_tx_context(native_account.id(), &[], &[])
@@ -1161,7 +1161,7 @@ async fn test_prove_fpi_two_foreign_accounts_chain() -> anyhow::Result<()> {
     let source_manager = Arc::new(DefaultSourceManager::default());
     let second_foreign_account_component = AccountComponent::new(
         ProtocolAssembler::with_kernel_library(source_manager.clone())
-            .compile_component_code("foreign_account", second_foreign_account_code_source)?,
+            .parse_component_code("foreign_account", second_foreign_account_code_source)?,
         vec![],
     )?
     .with_supports_all_types();
@@ -1205,7 +1205,7 @@ async fn test_prove_fpi_two_foreign_accounts_chain() -> anyhow::Result<()> {
     // Link against the second foreign account.
     let first_foreign_account_code = ProtocolAssembler::with_kernel_library(source_manager.clone())
         .with_dynamically_linked_library(second_foreign_account_component.component_code())?
-        .compile_component_code("first_foreign_account", first_foreign_account_code_source)?;
+        .parse_component_code("first_foreign_account", first_foreign_account_code_source)?;
     let first_foreign_account_component =
         AccountComponent::new(first_foreign_account_code, vec![])?.with_supports_all_types();
 
@@ -1273,7 +1273,7 @@ async fn test_prove_fpi_two_foreign_accounts_chain() -> anyhow::Result<()> {
 
     let tx_script = ProtocolAssembler::with_source_manager(source_manager.clone())
         .with_dynamically_linked_library(first_foreign_account_component.component_code())?
-        .compile_tx_script(code)?;
+        .parse_tx_script(code)?;
 
     let executed_transaction = mock_chain
         .build_tx_context(native_account.id(), &[], &[])
@@ -1328,7 +1328,7 @@ async fn test_nested_fpi_stack_overflow() -> anyhow::Result<()> {
 
     let last_foreign_account_code =
         ProtocolAssembler::with_kernel_library(Arc::new(DefaultSourceManager::default()))
-            .compile_component_code("test::last_foreign_account", last_foreign_account_code_source)
+            .parse_component_code("test::last_foreign_account", last_foreign_account_code_source)
             .unwrap();
     let last_foreign_account_component =
         AccountComponent::new(last_foreign_account_code, vec![mock_value_slot0.clone()])
@@ -1376,7 +1376,7 @@ async fn test_nested_fpi_stack_overflow() -> anyhow::Result<()> {
 
         let foreign_account_code =
             ProtocolAssembler::with_kernel_library(Arc::new(DefaultSourceManager::default()))
-                .compile_component_code(
+                .parse_component_code(
                     format!("test::foreign_account_chain_{foreign_account_index}"),
                     foreign_account_code_source,
                 )
@@ -1450,7 +1450,7 @@ async fn test_nested_fpi_stack_overflow() -> anyhow::Result<()> {
                 foreign_suffix = foreign_accounts.last().unwrap().0.id().suffix(),
             );
 
-    let tx_script = ProtocolAssembler::default().compile_tx_script(code).unwrap();
+    let tx_script = ProtocolAssembler::default().parse_tx_script(code).unwrap();
 
     let tx_context = mock_chain
         .build_tx_context(native_account.id(), &[], &[])?
@@ -1494,7 +1494,7 @@ async fn test_nested_fpi_native_account_invocation() -> anyhow::Result<()> {
 
     let foreign_account_component = AccountComponent::new(
         ProtocolAssembler::with_kernel_library(Arc::new(DefaultSourceManager::default()))
-            .compile_component_code("foreign_account", foreign_account_code_source)?,
+            .parse_component_code("foreign_account", foreign_account_code_source)?,
         vec![],
     )?
     .with_supports_all_types();
@@ -1547,7 +1547,7 @@ async fn test_nested_fpi_native_account_invocation() -> anyhow::Result<()> {
 
     let tx_script = ProtocolAssembler::default()
         .with_dynamically_linked_library(foreign_account_component.component_code())?
-        .compile_tx_script(code)?;
+        .parse_tx_script(code)?;
 
     let foreign_account_inputs = mock_chain
         .get_foreign_account_inputs(foreign_account.id())
@@ -1593,7 +1593,7 @@ async fn test_fpi_stale_account() -> anyhow::Result<()> {
     let mock_value_slot0 = AccountStorage::mock_value_slot0();
     let foreign_account_component = AccountComponent::new(
         ProtocolAssembler::with_kernel_library(Arc::new(DefaultSourceManager::default()))
-            .compile_component_code("foreign_account_invalid", foreign_account_code_source)?,
+            .parse_component_code("foreign_account_invalid", foreign_account_code_source)?,
         vec![mock_value_slot0.clone()],
     )?
     .with_supports_all_types();
@@ -1701,7 +1701,7 @@ async fn test_fpi_get_account_id() -> anyhow::Result<()> {
 
     let foreign_account_component = AccountComponent::new(
         ProtocolAssembler::with_kernel_library(Arc::new(DefaultSourceManager::default()))
-            .compile_component_code("foreign_account", foreign_account_code_source)?,
+            .parse_component_code("foreign_account", foreign_account_code_source)?,
         Vec::new(),
     )?
     .with_supports_all_types();
@@ -1771,7 +1771,7 @@ async fn test_fpi_get_account_id() -> anyhow::Result<()> {
 
     let tx_script = ProtocolAssembler::default()
         .with_dynamically_linked_library(foreign_account_component.component_code())?
-        .compile_tx_script(code)?;
+        .parse_tx_script(code)?;
 
     let foreign_account_inputs = mock_chain
         .get_foreign_account_inputs(foreign_account.id())
@@ -1900,8 +1900,8 @@ async fn test_get_initial_item_and_get_initial_map_item_with_foreign_account() -
     );
 
     let foreign_account_component = AccountComponent::new(
-        ProtocolAssembler::new(true)
-            .compile_component_code("foreign_account", foreign_account_code_source)?,
+        ProtocolAssembler::default()
+            .parse_component_code("foreign_account", foreign_account_code_source)?,
         vec![mock_value_slot0.clone(), mock_map_slot.clone()],
     )?
     .with_supports_all_types();
@@ -1959,7 +1959,7 @@ async fn test_get_initial_item_and_get_initial_map_item_with_foreign_account() -
 
     let tx_script = ProtocolAssembler::with_mock_libraries()
         .with_dynamically_linked_library(foreign_account_component.component_code())?
-        .compile_tx_script(code)?;
+        .parse_tx_script(code)?;
 
     mock_chain
         .build_tx_context(native_account.id(), &[], &[])?

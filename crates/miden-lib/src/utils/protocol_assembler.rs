@@ -17,12 +17,12 @@ use miden_objects::transaction::TransactionScript;
 use crate::errors::ProtocolAssemblerError;
 use crate::transaction::TransactionKernel;
 
-// CODE BUILDER
+// PROTOCOL ASSEMBLER
 // ================================================================================================
 
 /// A builder for compiling note scripts and transaction scripts with optional library dependencies.
 ///
-/// The ProtocolAssembler simplifies the process of creating transaction scripts by providing:
+/// The [`ProtocolAssembler`] simplifies the process of creating transaction scripts by providing:
 /// - A clean API for adding multiple libraries with static or dynamic linking
 /// - Automatic assembler configuration with all added libraries
 /// - Debug mode support
@@ -46,9 +46,9 @@ use crate::transaction::TransactionKernel;
 /// 1. Create a new ProtocolAssembler with debug mode preference
 /// 2. Add any required modules using `link_module()` or `with_linked_module()`
 /// 3. Add libraries using `link_static_library()` / `link_dynamic_library()` as appropriate
-/// 4. Compile your script with `compile_note_script()` or `compile_tx_script()`
+/// 4. Parse your script with `parse_note_script()` or `parse_tx_script()`
 ///
-/// Note that the compilation methods consume the ProtocolAssembler, so if you need to compile
+/// Note that the parsing methods consume the ProtocolAssembler, so if you need to parse
 /// multiple scripts with the same configuration, you should clone the builder first.
 ///
 /// ## Builder Pattern Example
@@ -68,7 +68,7 @@ use crate::transaction::TransactionKernel;
 ///     .with_linked_module("my::module", module_code).context("failed to link module")?
 ///     .with_statically_linked_library(&my_lib).context("failed to link static library")?
 ///     .with_dynamically_linked_library(&fpi_lib).context("failed to link dynamic library")?  // For FPI calls
-///     .compile_tx_script(script_code).context("failed to compile tx script")?;
+///     .parse_tx_script(script_code).context("failed to parse tx script")?;
 /// # Ok(())
 /// # }
 /// ```
@@ -244,8 +244,8 @@ impl ProtocolAssembler {
     // SCRIPT COMPILATION
     // --------------------------------------------------------------------------------------------
 
-    /// Compiles an [`AccountComponentCode`] with the provided module path and MASM code.
-    /// The compiled code can be used to create account components.
+    /// Parses the provided module path and MASM code into an [`AccountComponentCode`].
+    /// The resulting code can be used to create account components.
     ///
     /// # Arguments
     /// * `component_path` - The path to the account code module (e.g., `my_account::my_module`)
@@ -253,9 +253,9 @@ impl ProtocolAssembler {
     ///
     /// # Errors
     /// Returns an error if:
-    /// - The transaction script compilation fails
+    /// - Parsing the account component code fails
     /// - If `component_path` is not a valid [`LibraryPath`]
-    pub fn compile_component_code(
+    pub fn parse_component_code(
         self,
         component_path: impl AsRef<str>,
         component_code: impl AsRef<str>,
@@ -276,7 +276,7 @@ impl ProtocolAssembler {
             )])
             .map_err(|err| {
                 ProtocolAssemblerError::build_error_with_report(
-                    "failed to compile component code",
+                    "failed to parse component code",
                     err,
                 )
             })?;
@@ -284,17 +284,17 @@ impl ProtocolAssembler {
         Ok(AccountComponentCode::from(library))
     }
 
-    /// Compiles a transaction script with the provided program code.
+    /// Parses a transaction script from the provided MASM code.
     ///
-    /// The compiled script will have access to all modules that have been added to this builder.
+    /// The parsed script will have access to all modules that have been added to this builder.
     ///
     /// # Arguments
     /// * `tx_script` - The transaction script source code
     ///
     /// # Errors
     /// Returns an error if:
-    /// - The transaction script compilation fails
-    pub fn compile_tx_script(
+    /// - The transaction script parsing fails
+    pub fn parse_tx_script(
         self,
         tx_script: impl Parse,
     ) -> Result<TransactionScript, ProtocolAssemblerError> {
@@ -302,31 +302,31 @@ impl ProtocolAssembler {
 
         let program = assembler.assemble_program(tx_script).map_err(|err| {
             ProtocolAssemblerError::build_error_with_report(
-                "failed to compile transaction script",
+                "failed to parse transaction script",
                 err,
             )
         })?;
         Ok(TransactionScript::new(program))
     }
 
-    /// Compiles a note script with the provided program code.
+    /// Parses a note script from the provided MASM code.
     ///
-    /// The compiled script will have access to all modules that have been added to this builder.
+    /// The parsed script will have access to all modules that have been added to this builder.
     ///
     /// # Arguments
     /// * `program` - The note script source code
     ///
     /// # Errors
     /// Returns an error if:
-    /// - The note script compilation fails
-    pub fn compile_note_script(
+    /// - The note script parsing fails
+    pub fn parse_note_script(
         self,
         program: impl Parse,
     ) -> Result<NoteScript, ProtocolAssemblerError> {
         let assembler = self.assembler;
 
         let program = assembler.assemble_program(program).map_err(|err| {
-            ProtocolAssemblerError::build_error_with_report("failed to compile note script", err)
+            ProtocolAssemblerError::build_error_with_report("failed to parse note script", err)
         })?;
         Ok(NoteScript::new(program))
     }
@@ -422,11 +422,11 @@ mod tests {
     }
 
     #[test]
-    fn test_protocol_assembler_basic_script_compilation() -> anyhow::Result<()> {
+    fn test_protocol_assembler_basic_script_parsing() -> anyhow::Result<()> {
         let builder = ProtocolAssembler::default();
         builder
-            .compile_tx_script("begin nop end")
-            .context("failed to compile basic tx script")?;
+            .parse_tx_script("begin nop end")
+            .context("failed to parse basic tx script")?;
         Ok(())
     }
 
@@ -462,14 +462,14 @@ mod tests {
             .link_module(library_path, account_code)
             .context("failed to link module")?;
         builder_with_lib
-            .compile_tx_script(script_code)
-            .context("failed to compile tx script")?;
+            .parse_tx_script(script_code)
+            .context("failed to parse tx script")?;
 
         Ok(())
     }
 
     #[test]
-    fn test_compile_library_and_add_to_builder() -> anyhow::Result<()> {
+    fn test_parse_library_and_add_to_builder() -> anyhow::Result<()> {
         let script_code = "
             use.external_contract::counter_contract
 
@@ -501,8 +501,8 @@ mod tests {
             .link_module(library_path, account_code)
             .context("failed to link module")?;
         builder_with_lib
-            .compile_tx_script(script_code)
-            .context("failed to compile tx script")?;
+            .parse_tx_script(script_code)
+            .context("failed to parse tx script")?;
 
         // Test multiple libraries
         let mut builder_with_libs = ProtocolAssembler::default();
@@ -513,8 +513,8 @@ mod tests {
             .link_module("test::lib", "export.test nop end")
             .context("failed to link second module")?;
         builder_with_libs
-            .compile_tx_script(script_code)
-            .context("failed to compile tx script with multiple libraries")?;
+            .parse_tx_script(script_code)
+            .context("failed to parse tx script with multiple libraries")?;
 
         Ok(())
     }
@@ -549,7 +549,7 @@ mod tests {
             .with_linked_module("external_contract::counter_contract", account_code)
             .context("failed to link module")?;
 
-        builder.compile_tx_script(script_code).context("failed to compile tx script")?;
+        builder.parse_tx_script(script_code).context("failed to parse tx script")?;
 
         Ok(())
     }
@@ -566,7 +566,7 @@ mod tests {
             .with_linked_module("test::lib2", "export.test2 push.2 add end")
             .context("failed to link second module")?;
 
-        builder.compile_tx_script(script_code).context("failed to compile tx script")?;
+        builder.parse_tx_script(script_code).context("failed to parse tx script")?;
 
         Ok(())
     }
@@ -613,8 +613,8 @@ mod tests {
             .context("failed to link dynamic library")?;
 
         builder
-            .compile_tx_script(script_code)
-            .context("failed to compile tx script with static and dynamic libraries")?;
+            .parse_tx_script(script_code)
+            .context("failed to parse tx script with static and dynamic libraries")?;
 
         Ok(())
     }

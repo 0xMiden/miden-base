@@ -57,8 +57,8 @@ async fn test_active_note_get_sender_fails_from_tx_script() -> anyhow::Result<()
         end
         ";
     let tx_script = ProtocolAssembler::default()
-        .compile_tx_script(code)
-        .context("failed to compile tx script")?;
+        .parse_tx_script(code)
+        .context("failed to parse tx script")?;
 
     let tx_context = mock_chain
         .build_tx_context(TxContextInput::AccountId(account.id()), &[p2id_note.id()], &[])?
@@ -413,8 +413,8 @@ async fn test_active_note_get_exactly_8_inputs() -> anyhow::Result<()> {
     .context("failed to create metadata")?;
     let vault = NoteAssets::new(vec![]).context("failed to create input note assets")?;
     let note_script = ProtocolAssembler::default()
-        .compile_note_script("begin nop end")
-        .context("failed to compile note script")?;
+        .parse_note_script("begin nop end")
+        .context("failed to parse note script")?;
 
     // create a recipient with note inputs, which number divides by 8. For simplicity create 8 input
     // values

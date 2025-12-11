@@ -242,7 +242,7 @@ async fn epilogue_fails_when_num_output_assets_exceed_num_input_assets() -> anyh
 
     let builder = ProtocolAssembler::with_mock_libraries();
     let source_manager = builder.source_manager();
-    let tx_script = builder.compile_tx_script(code)?;
+    let tx_script = builder.parse_tx_script(code)?;
 
     let tx_context = mock_chain
         .build_tx_context(TxContextInput::AccountId(account.id()), &[], &[input_note])?
@@ -295,7 +295,7 @@ async fn epilogue_fails_when_num_input_assets_exceed_num_output_assets() -> anyh
 
     let builder = ProtocolAssembler::with_mock_libraries();
     let source_manager = builder.source_manager();
-    let tx_script = builder.compile_tx_script(code)?;
+    let tx_script = builder.parse_tx_script(code)?;
 
     let tx_context = mock_chain
         .build_tx_context(TxContextInput::AccountId(account.id()), &[], &[input_note])?
@@ -478,7 +478,7 @@ async fn epilogue_fails_on_account_state_change_without_nonce_increment() -> any
         mock_value_slot0 = &*MOCK_VALUE_SLOT0,
     );
 
-    let tx_script = ProtocolAssembler::with_mock_libraries().compile_tx_script(code)?;
+    let tx_script = ProtocolAssembler::with_mock_libraries().parse_tx_script(code)?;
 
     let result = TransactionContextBuilder::with_noop_auth_account()
         .tx_script(tx_script)

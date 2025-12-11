@@ -110,5 +110,5 @@ fn update_expiration_tx_script(expiration_delta: u16) -> TransactionScript {
         "
     );
 
-    ProtocolAssembler::default().compile_tx_script(code).unwrap()
+    ProtocolAssembler::default().parse_tx_script(code).unwrap()
 }

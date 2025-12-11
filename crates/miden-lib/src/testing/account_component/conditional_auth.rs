@@ -35,7 +35,7 @@ static CONDITIONAL_AUTH_CODE: LazyLock<String> = LazyLock::new(|| {
 
 static CONDITIONAL_AUTH_LIBRARY: LazyLock<AccountComponentCode> = LazyLock::new(|| {
     ProtocolAssembler::default()
-        .compile_component_code("mock::conditional_auth", CONDITIONAL_AUTH_CODE.as_str())
+        .parse_component_code("mock::conditional_auth", CONDITIONAL_AUTH_CODE.as_str())
         .expect("conditional auth code should be valid")
 });
 

@@ -13,8 +13,8 @@ const INCR_NONCE_AUTH_CODE: &str = "
 ";
 
 static INCR_NONCE_AUTH_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
-    ProtocolAssembler::new(true)
-        .compile_component_code("incr_nonce", INCR_NONCE_AUTH_CODE)
+    ProtocolAssembler::default()
+        .parse_component_code("incr_nonce", INCR_NONCE_AUTH_CODE)
         .expect("incr nonce code should be valid")
         .into_library()
 });

@@ -403,9 +403,9 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
         end
     ";
 
-    let tx_script = ProtocolAssembler::new(true)
+    let tx_script = ProtocolAssembler::default()
         .with_dynamically_linked_library(ecdsa_k256_keccak_multisig_library())?
-        .compile_tx_script(tx_script_code)?;
+        .parse_tx_script(tx_script_code)?;
 
     let advice_inputs = AdviceInputs {
         map: advice_map.clone(),
@@ -642,9 +642,9 @@ async fn test_multisig_update_signers_remove_owner() -> anyhow::Result<()> {
     advice_map.insert(multisig_config_hash, config_and_pubkeys_vector);
 
     // Create transaction script
-    let tx_script = ProtocolAssembler::new(true)
+    let tx_script = ProtocolAssembler::default()
         .with_dynamically_linked_library(ecdsa_k256_keccak_multisig_library())?
-        .compile_tx_script("begin\n    call.::update_signers_and_threshold\nend")?;
+        .parse_tx_script("begin\n    call.::update_signers_and_threshold\nend")?;
 
     let advice_inputs = AdviceInputs { map: advice_map, ..Default::default() };
 
@@ -850,9 +850,9 @@ async fn test_multisig_new_approvers_cannot_sign_before_update() -> anyhow::Resu
         end
     ";
 
-    let tx_script = ProtocolAssembler::new(true)
+    let tx_script = ProtocolAssembler::default()
         .with_dynamically_linked_library(ecdsa_k256_keccak_multisig_library())?
-        .compile_tx_script(tx_script_code)?;
+        .parse_tx_script(tx_script_code)?;
 
     let advice_inputs = AdviceInputs {
         map: advice_map.clone(),

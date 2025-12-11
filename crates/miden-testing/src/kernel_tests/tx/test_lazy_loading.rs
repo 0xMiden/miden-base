@@ -56,7 +56,7 @@ async fn adding_fungible_assets_with_lazy_loading_succeeds() -> anyhow::Result<(
 
     let builder = ProtocolAssembler::with_mock_libraries();
     let source_manager = builder.source_manager();
-    let tx_script = builder.compile_tx_script(code)?;
+    let tx_script = builder.parse_tx_script(code)?;
     let tx_context = TransactionContextBuilder::with_existing_mock_account()
         .tx_script(tx_script)
         .extend_input_notes(vec![asset_note])
@@ -114,7 +114,7 @@ async fn removing_fungible_assets_with_lazy_loading_succeeds() -> anyhow::Result
 
     let builder = ProtocolAssembler::with_mock_libraries();
     let source_manager = builder.source_manager();
-    let tx_script = builder.compile_tx_script(code)?;
+    let tx_script = builder.parse_tx_script(code)?;
 
     let mut builder = MockChain::builder();
     let account = builder.add_existing_mock_account_with_assets(
@@ -211,7 +211,7 @@ async fn setting_map_item_with_lazy_loading_succeeds() -> anyhow::Result<()> {
 
     let builder = ProtocolAssembler::with_mock_libraries();
     let source_manager = builder.source_manager();
-    let tx_script = builder.compile_tx_script(code)?;
+    let tx_script = builder.parse_tx_script(code)?;
 
     let tx = TransactionContextBuilder::with_existing_mock_account()
         .tx_script(tx_script)
@@ -277,7 +277,7 @@ async fn getting_map_item_with_lazy_loading_succeeds() -> anyhow::Result<()> {
 
     let builder = ProtocolAssembler::with_mock_libraries();
     let source_manager = builder.source_manager();
-    let tx_script = builder.compile_tx_script(code)?;
+    let tx_script = builder.parse_tx_script(code)?;
 
     TransactionContextBuilder::with_existing_mock_account()
         .tx_script(tx_script)
