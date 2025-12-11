@@ -279,7 +279,7 @@ async fn prove_burning_fungible_asset_on_existing_faucet_succeeds() -> anyhow::R
     // Check that max_supply at the word's index 0 is 200. The remainder of the word is initialized
     // with the metadata of the faucet which we don't need to check.
     assert_eq!(
-        faucet.storage().get_item(BasicFungibleFaucet::metadata_slot_name()).unwrap()[0],
+        faucet.storage().get_item(BasicFungibleFaucet::metadata_slot()).unwrap()[0],
         Felt::new(200)
     );
 

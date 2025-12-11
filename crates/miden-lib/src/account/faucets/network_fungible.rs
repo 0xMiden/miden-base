@@ -164,8 +164,7 @@ impl NetworkFungibleFaucet {
 
     /// Returns the [`StorageSlotName`] where the [`NetworkFungibleFaucet`]'s metadata is stored.
     pub fn metadata_slot() -> &'static StorageSlotName {
-        // TODO(named_slots): Rename to metadata_slot.
-        BasicFungibleFaucet::metadata_slot_name()
+        BasicFungibleFaucet::metadata_slot()
     }
 
     /// Returns the [`StorageSlotName`] where the [`NetworkFungibleFaucet`]'s owner configuration is

@@ -133,11 +133,11 @@ impl BasicFungibleFaucet {
         for component in interface.components().iter() {
             if let AccountComponentInterface::BasicFungibleFaucet = component {
                 let faucet_metadata = storage
-                    .get_item(BasicFungibleFaucet::metadata_slot_name())
+                    .get_item(BasicFungibleFaucet::metadata_slot())
                     .map_err(|err| FungibleFaucetError::StorageLookupFailed {
-                    slot_name: BasicFungibleFaucet::metadata_slot_name().clone(),
-                    source: err,
-                })?;
+                        slot_name: BasicFungibleFaucet::metadata_slot().clone(),
+                        source: err,
+                    })?;
                 let [max_supply, decimals, token_symbol, _] = *faucet_metadata;
 
                 // verify metadata values
@@ -161,7 +161,7 @@ impl BasicFungibleFaucet {
     // --------------------------------------------------------------------------------------------
 
     /// Returns the [`StorageSlotName`] where the [`BasicFungibleFaucet`]'s metadata is stored.
-    pub fn metadata_slot_name() -> &'static StorageSlotName {
+    pub fn metadata_slot() -> &'static StorageSlotName {
         &METADATA_SLOT_NAME
     }
 
@@ -202,7 +202,7 @@ impl From<BasicFungibleFaucet> for AccountComponent {
             Felt::ZERO,
         ]);
         let storage_slot =
-            StorageSlot::with_value(BasicFungibleFaucet::metadata_slot_name().clone(), metadata);
+            StorageSlot::with_value(BasicFungibleFaucet::metadata_slot().clone(), metadata);
 
         AccountComponent::new(basic_fungible_faucet_library(), vec![storage_slot])
             .expect("basic fungible faucet component should satisfy the requirements of a valid account component")
@@ -405,10 +405,7 @@ mod tests {
 
         // Check that faucet metadata was initialized to the given values.
         assert_eq!(
-            faucet_account
-                .storage()
-                .get_item(BasicFungibleFaucet::metadata_slot_name())
-                .unwrap(),
+            faucet_account.storage().get_item(BasicFungibleFaucet::metadata_slot()).unwrap(),
             [Felt::new(123), Felt::new(2), token_symbol.into(), Felt::ZERO].into()
         );
 
