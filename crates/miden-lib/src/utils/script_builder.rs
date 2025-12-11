@@ -54,8 +54,8 @@ use crate::transaction::TransactionKernel;
 /// # let module_code = "pub proc test push.1 add end";
 /// # let script_code = "begin nop end";
 /// # // Create sample libraries for the example
-/// # let my_lib = StdLibrary::default().into(); // Convert StdLibrary to Library
-/// # let fpi_lib = StdLibrary::default().into();
+/// # let my_lib = CoreLibrary::default().into(); // Convert CoreLibrary to Library
+/// # let fpi_lib = CoreLibrary::default().into();
 /// let script = ScriptBuilder::default()
 ///     .with_linked_module("my::module", module_code).context("failed to link module")?
 ///     .with_statically_linked_library(&my_lib).context("failed to link static library")?

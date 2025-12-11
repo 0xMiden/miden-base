@@ -16,9 +16,9 @@ use crate::errors::StorageMapError;
 /// This type guarantees that the raw key-value pairs it contains are all present in the
 /// contained SMT proof. Note that the inverse is not necessarily true. The proof may contain more
 /// entries than the map because to prove inclusion of a given raw key A an
-/// [`SmtLeaf::Multiple`](miden_crypto::merkle::SmtLeaf::Multiple) may be present that contains both
-/// keys hash(A) and hash(B). However, B may not be present in the key-value pairs and this is a
-/// valid state.
+/// [`SmtLeaf::Multiple`](miden_crypto::merkle::smt::SmtLeaf::Multiple) may be present that contains
+/// both keys hash(A) and hash(B). However, B may not be present in the key-value pairs and this is
+/// a valid state.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StorageMapWitness {
     proof: SmtProof,
