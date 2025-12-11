@@ -17,8 +17,9 @@ const.ERR_B2AGG_WRONG_NUMBER_OF_INPUTS="B2AGG script expects exactly 6 note inpu
 #! Bridge-to-AggLayer (B2AGG) note script: bridges assets from Miden to an AggLayer-connected chain.
 #!
 #! This note can be consumed in two ways:
-#! - If the consuming account is the sender (reclaim): adds all assets from the note back to the account.
-#! - Otherwise: bridges the note's assets to the specified destination network and address via AggLayer.
+#! - If the consuming account is the sender (reclaim): the note's assets are added back to the consuming account.
+#! - If the consuming account is the Agglayer Bridge: the B2AGG details are hashed and committed to the Agglayer 
+#!   global exit root (GER) merkle tree structure.
 #!
 #! Inputs:  []
 #! Outputs: []
