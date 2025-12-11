@@ -6,7 +6,8 @@ use miden_core::EMPTY_WORD;
 use miden_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
 use miden_crypto::merkle::MerkleError;
 #[cfg(feature = "std")]
-use miden_crypto::merkle::smt::{LargeSmt, LargeSmtError, MutationSet, Smt, SmtProof, SmtStorage};
+use miden_crypto::merkle::smt::{LargeSmt, LargeSmtError, SmtStorage};
+use miden_crypto::merkle::smt::{MutationSet, Smt, SmtProof};
 use miden_processor::{DeserializationError, SMT_DEPTH};
 
 use crate::Word;

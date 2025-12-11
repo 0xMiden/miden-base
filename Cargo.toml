@@ -54,11 +54,11 @@ miden-air             = { default-features = false, version = "0.20" }
 miden-assembly        = { default-features = false, version = "0.20" }
 miden-assembly-syntax = { default-features = false, version = "0.20" }
 miden-core            = { default-features = false, version = "0.20" }
+miden-core-lib        = { default-features = false, version = "0.20" }
 miden-crypto          = { default-features = false, version = "0.19" }
 miden-mast-package    = { default-features = false, version = "0.20" }
 miden-processor       = { default-features = false, version = "0.20" }
 miden-prover          = { default-features = false, version = "0.20" }
-miden-core-lib        = { default-features = false, version = "0.20" }
 miden-utils-sync      = { default-features = false, version = "0.20" }
 miden-verifier        = { default-features = false, version = "0.20" }
 

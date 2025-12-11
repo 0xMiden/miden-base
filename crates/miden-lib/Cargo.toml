@@ -15,16 +15,16 @@ version.workspace      = true
 [lib]
 
 [features]
-default         = ["std"]
-std             = ["miden-assembly/std", "miden-objects/std", "miden-processor/std", "miden-core-lib/std"]
-testing         = ["dep:rand", "miden-objects/testing", "miden-assembly/testing"]
+default = ["std"]
+std     = ["miden-assembly/std", "miden-core-lib/std", "miden-objects/std", "miden-processor/std"]
+testing = ["dep:rand", "miden-assembly/testing", "miden-objects/testing"]
 
 [dependencies]
 # Miden dependencies
 miden-core      = { workspace = true }
+miden-core-lib  = { workspace = true }
 miden-objects   = { workspace = true }
 miden-processor = { workspace = true }
-miden-core-lib  = { workspace = true }
 
 # External dependencies
 rand      = { optional = true, workspace = true }
