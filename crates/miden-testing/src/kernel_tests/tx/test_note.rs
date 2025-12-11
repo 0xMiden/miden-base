@@ -5,7 +5,6 @@ use anyhow::Context;
 use miden_lib::account::wallets::BasicWallet;
 use miden_lib::errors::MasmError;
 use miden_lib::testing::note::NoteBuilder;
-use miden_lib::transaction::TransactionKernel;
 use miden_lib::transaction::memory::ACTIVE_INPUT_NOTE_PTR;
 use miden_lib::utils::ProtocolAssembler;
 use miden_objects::account::auth::PublicKeyCommitment;
@@ -470,7 +469,7 @@ pub async fn test_timelock() -> anyhow::Result<()> {
         .note_inputs([Felt::from(lock_timestamp)])?
         .source_manager(source_manager.clone())
         .code(code.clone())
-        .dynamically_linked_libraries(TransactionKernel::mock_libraries())
+        .dynamically_linked_libraries(ProtocolAssembler::mock_libraries())
         .build()?;
 
     builder.add_output_note(OutputNote::Full(timelock_note.clone()));

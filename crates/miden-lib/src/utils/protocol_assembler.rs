@@ -284,7 +284,7 @@ impl ProtocolAssembler {
         Ok(AccountComponentCode::from(library))
     }
 
-    /// Parses a transaction script from the provided MASM code.
+    /// Parses the provided MASM code into a [`TransactionScript`].
     ///
     /// The parsed script will have access to all modules that have been added to this builder.
     ///
@@ -309,7 +309,7 @@ impl ProtocolAssembler {
         Ok(TransactionScript::new(program))
     }
 
-    /// Parses a note script from the provided MASM code.
+    /// Parses the provided MASM code into a [`NoteScript`].
     ///
     /// The parsed script will have access to all modules that have been added to this builder.
     ///
@@ -342,6 +342,13 @@ impl ProtocolAssembler {
     // TESTING CONVENIENCE FUNCTIONS
     // --------------------------------------------------------------------------------------------
 
+    /// Returns a [`ProtocolAssembler`] with the transaction kernel as a library.
+    ///
+    /// This assembler is the same as [`TransactionKernel::assembler`] but additionally includes the
+    /// kernel library on the namespace of `$kernel`. The `$kernel` library is added separately
+    /// because even though the library (`api.masm`) and the kernel binary (`main.masm`) include
+    /// this code, it is not otherwise accessible. By adding it separately, we can invoke procedures
+    /// from the kernel library to test them individually.
     #[cfg(any(feature = "testing", test))]
     pub fn with_kernel_library(source_manager: Arc<dyn SourceManagerSync>) -> Self {
         let mut builder = Self::with_source_manager(source_manager);
@@ -366,13 +373,20 @@ impl ProtocolAssembler {
         Self::with_mock_libraries_with_source_manager(Arc::new(DefaultSourceManager::default()))
     }
 
+    /// Returns the mock account and faucet libraries used in testing.
+    #[cfg(any(feature = "testing", test))]
+    pub fn mock_libraries() -> impl Iterator<Item = Library> {
+        use miden_objects::account::AccountCode;
+
+        use crate::testing::mock_account_code::MockAccountCodeExt;
+
+        vec![AccountCode::mock_account_library(), AccountCode::mock_faucet_library()].into_iter()
+    }
+
     #[cfg(any(feature = "testing", test))]
     pub fn with_mock_libraries_with_source_manager(
         source_manager: Arc<dyn SourceManagerSync>,
     ) -> Self {
-        use miden_objects::account::AccountCode;
-
-        use crate::testing::mock_account_code::MockAccountCodeExt;
         use crate::testing::mock_util_lib::mock_util_library;
 
         // Start from the full kernel-aware assembler (includes stdlib and miden-lib).
@@ -386,12 +400,11 @@ impl ProtocolAssembler {
             .expect("failed to link kernel library");
 
         // Add mock account/faucet libs (built in debug mode) and mock util.
-        assembler
-            .link_dynamic_library(AccountCode::mock_account_library())
-            .expect("failed to link mock account library");
-        assembler
-            .link_dynamic_library(AccountCode::mock_faucet_library())
-            .expect("failed to link mock faucet library");
+        for library in Self::mock_libraries() {
+            assembler
+                .link_dynamic_library(library)
+                .expect("failed to link mock account libraries");
+        }
         assembler
             .link_static_library(mock_util_library())
             .expect("failed to link mock util library");
@@ -403,6 +416,12 @@ impl ProtocolAssembler {
 impl Default for ProtocolAssembler {
     fn default() -> Self {
         Self::new(true)
+    }
+}
+
+impl From<ProtocolAssembler> for Assembler {
+    fn from(builder: ProtocolAssembler) -> Self {
+        builder.assembler
     }
 }
 

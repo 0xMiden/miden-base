@@ -1322,8 +1322,11 @@ async fn transaction_executor_account_code_using_custom_library() -> miette::Res
     let external_library =
         TransactionKernel::assembler().assemble_library([external_library_source])?;
 
-    let mut assembler =
-        TransactionKernel::with_mock_libraries(Arc::new(DefaultSourceManager::default()));
+    let mut assembler: miden_objects::assembly::Assembler =
+        ProtocolAssembler::with_mock_libraries_with_source_manager(Arc::new(
+            DefaultSourceManager::default(),
+        ))
+        .into();
     assembler.link_static_library(&external_library)?;
 
     let account_component_source =

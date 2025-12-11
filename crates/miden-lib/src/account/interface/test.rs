@@ -1,9 +1,6 @@
-use alloc::sync::Arc;
-
 use assert_matches::assert_matches;
 use miden_objects::account::auth::PublicKeyCommitment;
 use miden_objects::account::{AccountBuilder, AccountComponent, AccountType};
-use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::asset::{FungibleAsset, NonFungibleAsset, TokenSymbol};
 use miden_objects::crypto::rand::{FeltRng, RpoRandomCoin};
 use miden_objects::note::{
@@ -151,10 +148,9 @@ fn test_custom_account_default_note() {
         export.basic::receive_asset
     ";
 
-    let account_code =
-        ProtocolAssembler::with_kernel_library(Arc::new(DefaultSourceManager::default()))
-            .parse_component_code("test::account_custom", account_custom_code_source)
-            .unwrap();
+    let account_code = ProtocolAssembler::default()
+        .parse_component_code("test::account_custom", account_custom_code_source)
+        .unwrap();
     let account_component =
         AccountComponent::new(account_code, vec![]).unwrap().with_supports_all_types();
 
@@ -437,10 +433,9 @@ fn test_custom_account_custom_notes() {
         end
     ";
 
-    let account_code =
-        ProtocolAssembler::with_kernel_library(Arc::new(DefaultSourceManager::default()))
-            .parse_component_code("test::account::component_1", account_custom_code_source)
-            .unwrap();
+    let account_code = ProtocolAssembler::default()
+        .parse_component_code("test::account::component_1", account_custom_code_source)
+        .unwrap();
     let account_component =
         AccountComponent::new(account_code, vec![]).unwrap().with_supports_all_types();
 
@@ -548,10 +543,9 @@ fn test_custom_account_multiple_components_custom_notes() {
         end
     ";
 
-    let custom_code =
-        ProtocolAssembler::with_kernel_library(Arc::new(DefaultSourceManager::default()))
-            .parse_component_code("test::account::component_1", account_custom_code_source)
-            .unwrap();
+    let custom_code = ProtocolAssembler::default()
+        .parse_component_code("test::account::component_1", account_custom_code_source)
+        .unwrap();
     let custom_component =
         AccountComponent::new(custom_code, vec![]).unwrap().with_supports_all_types();
 
