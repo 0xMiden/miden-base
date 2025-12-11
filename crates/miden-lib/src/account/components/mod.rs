@@ -200,11 +200,8 @@ impl WellKnownComponent {
             .all(|proc_digest| procedures_map.contains_key(&proc_digest))
         {
             // Extract the storage offset from any matching procedure
-            let mut storage_offset = 0u8;
             self.procedure_digests().for_each(|component_procedure| {
-                if let Some(proc_info) = procedures_map.remove(&component_procedure) {
-                    storage_offset = proc_info.storage_offset();
-                }
+                procedures_map.remove(&component_procedure);
             });
 
             // Create the appropriate component interface

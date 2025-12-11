@@ -198,21 +198,9 @@ impl AccountComponentInterface {
         // Custom component interfaces
         // ----------------------------------------------------------------------------------------
 
-        let mut custom_interface_procs_map = BTreeMap::<u8, Vec<AccountProcedureInfo>>::new();
-        procedures.into_iter().for_each(|(_, proc_info)| {
-            match custom_interface_procs_map.get_mut(&proc_info.storage_offset()) {
-                Some(proc_vec) => proc_vec.push(*proc_info),
-                None => {
-                    custom_interface_procs_map.insert(proc_info.storage_offset(), vec![*proc_info]);
-                },
-            }
-        });
-
-        if !custom_interface_procs_map.is_empty() {
-            for proc_vec in custom_interface_procs_map.into_values() {
-                component_interface_vec.push(AccountComponentInterface::Custom(proc_vec));
-            }
-        }
+        // All remaining procedures are put into the custom bucket.
+        component_interface_vec
+            .push(AccountComponentInterface::Custom(procedures.into_values().copied().collect()));
 
         component_interface_vec
     }

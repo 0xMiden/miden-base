@@ -63,7 +63,7 @@ impl AccountCode {
         account_type: AccountType,
     ) -> Result<Self, AccountError> {
         super::validate_components_support_account_type(components, account_type)?;
-        Self::from_components_unchecked(components, account_type)
+        Self::from_components_unchecked(components)
     }
 
     /// Creates a new [`AccountCode`] from the provided components' libraries.
@@ -85,13 +85,12 @@ impl AccountCode {
     /// - [`MastForest::merge`] fails on all libraries.
     pub(super) fn from_components_unchecked(
         components: &[AccountComponent],
-        account_type: AccountType,
     ) -> Result<Self, AccountError> {
         let (merged_mast_forest, _) =
             MastForest::merge(components.iter().map(|component| component.mast_forest()))
                 .map_err(AccountError::AccountComponentMastForestMergeError)?;
 
-        let mut builder = ProcedureInfoBuilder::new(account_type);
+        let mut builder = ProcedureInfoBuilder::new();
         let mut components_iter = components.iter();
 
         let first_component =
@@ -307,13 +306,7 @@ impl PrettyPrint for AccountCode {
                 0,
                 indent(
                     4,
-                    text(format!("proc.{}", printable_procedure.mast_root()))
-                        + nl()
-                        + text(format!(
-                            "storage.{}.{}",
-                            printable_procedure.storage_offset(),
-                            printable_procedure.storage_size()
-                        ))
+                    text(format!("proc {}", printable_procedure.mast_root()))
                         + nl()
                         + printable_procedure.render(),
                 ) + nl()
@@ -333,17 +326,13 @@ impl PrettyPrint for AccountCode {
 struct ProcedureInfoBuilder {
     procedures: Vec<AccountProcedureInfo>,
     proc_root_set: BTreeSet<Word>,
-    storage_offset: u8,
 }
 
 impl ProcedureInfoBuilder {
-    fn new(account_type: AccountType) -> Self {
-        let storage_offset = if account_type.is_faucet() { 1 } else { 0 };
-
+    fn new() -> Self {
         Self {
             procedures: Vec::new(),
             proc_root_set: BTreeSet::new(),
-            storage_offset,
         }
     }
 
@@ -351,7 +340,8 @@ impl ProcedureInfoBuilder {
         let mut auth_proc_count = 0;
 
         for (proc_root, is_auth) in component.get_procedures() {
-            self.add_procedure(proc_root, component.storage_size())?;
+            self.add_procedure(proc_root)?;
+
             if is_auth {
                 let auth_proc_idx = self.procedures.len() - 1;
                 self.procedures.swap(0, auth_proc_idx);
@@ -365,10 +355,6 @@ impl ProcedureInfoBuilder {
             return Err(AccountError::AccountComponentMultipleAuthProcedures);
         }
 
-        self.storage_offset = self.storage_offset.checked_add(component.storage_size()).expect(
-            "account procedure info constructor should return an error if the addition overflows",
-        );
-
         Ok(())
     }
 
@@ -377,42 +363,20 @@ impl ProcedureInfoBuilder {
             if is_auth {
                 return Err(AccountError::AccountCodeMultipleAuthComponents);
             }
-            self.add_procedure(proc_mast_root, component.storage_size())?;
+            self.add_procedure(proc_mast_root)?;
         }
-
-        self.storage_offset = self.storage_offset.checked_add(component.storage_size()).expect(
-            "account procedure info constructor should return an error if the addition overflows",
-        );
 
         Ok(())
     }
 
-    fn add_procedure(
-        &mut self,
-        proc_mast_root: Word,
-        component_storage_size: u8,
-    ) -> Result<(), AccountError> {
-        // We cannot support procedures from multiple components with the same MAST root
-        // since storage offsets/sizes are set per MAST root. Setting them again for
-        // procedures where the offset has already been inserted would cause that
-        // procedure of the earlier component to write to the wrong slot.
+    fn add_procedure(&mut self, proc_mast_root: Word) -> Result<(), AccountError> {
+        // TODO: Check if we can now safely allow this.
+        // Disallow procedures with the same MAST root from different components.
         if !self.proc_root_set.insert(proc_mast_root) {
             return Err(AccountError::AccountComponentDuplicateProcedureRoot(proc_mast_root));
         }
 
-        // Components that do not access storage need to have offset and size set to 0.
-        let (storage_offset, storage_size) = if component_storage_size == 0 {
-            (0, 0)
-        } else {
-            (self.storage_offset, component_storage_size)
-        };
-
-        // Note: Offset and size are validated in `AccountProcedureInfo::new`.
-        self.procedures.push(AccountProcedureInfo::new(
-            proc_mast_root,
-            storage_offset,
-            storage_size,
-        )?);
+        self.procedures.push(AccountProcedureInfo::new(proc_mast_root));
 
         Ok(())
     }

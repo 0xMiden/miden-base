@@ -1,4 +1,3 @@
-use alloc::string::ToString;
 use alloc::sync::Arc;
 
 use miden_core::mast::MastForest;
@@ -6,6 +5,7 @@ use miden_core::prettier::PrettyPrint;
 use miden_processor::{MastNode, MastNodeExt, MastNodeId};
 
 use super::Felt;
+use crate::Word;
 use crate::utils::serde::{
     ByteReader,
     ByteWriter,
@@ -13,7 +13,6 @@ use crate::utils::serde::{
     DeserializationError,
     Serializable,
 };
-use crate::{AccountError, Word};
 
 // ACCOUNT PROCEDURE INFO
 // ================================================================================================
@@ -36,8 +35,6 @@ use crate::{AccountError, Word};
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct AccountProcedureInfo {
     mast_root: Word,
-    storage_offset: u8,
-    storage_size: u8,
 }
 
 impl AccountProcedureInfo {
@@ -52,24 +49,8 @@ impl AccountProcedureInfo {
     /// # Errors
     /// - If `storage_size` is 0 and `storage_offset` is not 0.
     /// - If `storage_size + storage_offset` is greater than `MAX_NUM_STORAGE_SLOTS`.
-    pub fn new(
-        mast_root: Word,
-        storage_offset: u8,
-        storage_size: u8,
-    ) -> Result<Self, AccountError> {
-        if storage_size == 0 && storage_offset != 0 {
-            return Err(AccountError::PureProcedureWithStorageOffset);
-        }
-
-        // Check if the addition would exceed AccountStorage::MAX_NUM_STORAGE_SLOTS (= 255) which is
-        // the case if the addition overflows.
-        if storage_offset.checked_add(storage_size).is_none() {
-            return Err(AccountError::StorageOffsetPlusSizeOutOfBounds(
-                storage_offset as u16 + storage_size as u16,
-            ));
-        }
-
-        Ok(Self { mast_root, storage_offset, storage_size })
+    pub fn new(mast_root: Word) -> Self {
+        Self { mast_root }
     }
 
     // PUBLIC ACCESSORS
@@ -84,16 +65,6 @@ impl AccountProcedureInfo {
     pub fn as_elements(&self) -> &[Felt] {
         self.mast_root.as_elements()
     }
-
-    /// Returns the procedure's storage offset.
-    pub fn storage_offset(&self) -> u8 {
-        self.storage_offset
-    }
-
-    /// Returns the procedure's storage size.
-    pub fn storage_size(&self) -> u8 {
-        self.storage_size
-    }
 }
 
 impl From<AccountProcedureInfo> for Word {
@@ -105,24 +76,17 @@ impl From<AccountProcedureInfo> for Word {
 impl Serializable for AccountProcedureInfo {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         target.write(self.mast_root);
-        target.write_u8(self.storage_offset);
-        target.write_u8(self.storage_size)
     }
 
     fn get_size_hint(&self) -> usize {
         self.mast_root.get_size_hint()
-            + self.storage_offset.get_size_hint()
-            + self.storage_size.get_size_hint()
     }
 }
 
 impl Deserializable for AccountProcedureInfo {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let mast_root: Word = source.read()?;
-        let storage_offset = source.read_u8()?;
-        let storage_size = source.read_u8()?;
-        Self::new(mast_root, storage_offset, storage_size)
-            .map_err(|err| DeserializationError::InvalidValue(err.to_string()))
+        Ok(Self::new(mast_root))
     }
 }
 
@@ -149,14 +113,6 @@ impl PrintableProcedure {
 
     fn entrypoint(&self) -> &MastNode {
         &self.mast[self.entrypoint]
-    }
-
-    pub(crate) fn storage_offset(&self) -> u8 {
-        self.procedure_info.storage_offset()
-    }
-
-    pub(crate) fn storage_size(&self) -> u8 {
-        self.procedure_info.storage_size()
     }
 
     pub(crate) fn mast_root(&self) -> &Word {
