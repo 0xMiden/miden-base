@@ -731,7 +731,7 @@ end
 #!
 #! Invocation: dynexec
 export.account_get_procedure_root
-    # get the procedure information
+    # get the procedure root
     exec.account::get_procedure_root
     # => [PROC_ROOT, pad(15)]
 

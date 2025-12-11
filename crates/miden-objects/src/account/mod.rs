@@ -164,31 +164,23 @@ impl Account {
     /// Creates an account's [`AccountCode`] and [`AccountStorage`] from the provided components.
     ///
     /// This merges all libraries of the components into a single
-    /// [`MastForest`](miden_processor::MastForest) to produce the [`AccountCode`]. For each
-    /// procedure in the resulting forest, the storage offset and size are set so that the
-    /// procedure can only access the storage slots of the component in which it was defined and
-    /// each component's storage offset is the total number of slots in the previous components.
-    /// To illustrate, given two components with one and two storage slots respectively:
+    /// [`MastForest`](miden_processor::MastForest) to produce the [`AccountCode`].
     ///
-    /// - RpoFalcon512 Component: Component slot 0 stores the public key.
-    /// - Custom Component: Component slot 0 stores a custom [`StorageSlotContent::Value`] and
-    ///   component slot 1 stores a custom [`StorageSlotContent::Map`].
-    ///
-    /// When combined, their assigned slots in the [`AccountStorage`] would be:
-    ///
-    /// - The RpoFalcon512 Component has offset 0 and size 1: Account slot 0 stores the public key.
-    /// - The Custom Component has offset 1 and size 2: Account slot 1 stores the value and account
-    ///   slot 2 stores the map.
+    /// The storage slots of all components are merged into a single [`AccountStorage`], where the
+    /// slots are sorted by their [`StorageSlotName`].
     ///
     /// The resulting commitments from code and storage can then be used to construct an
     /// [`AccountId`]. Finally, a new account can then be instantiated from those parts using
     /// [`Account::new`].
     ///
-    /// If the account type is faucet the reserved slot (slot 0) will be initialized.
-    /// - For Fungible Faucets the value is [`StorageSlot::empty_value`].
-    /// - For Non-Fungible Faucets the value is [`StorageSlot::empty_map`].
+    /// If the account type is faucet the reserved slot ([`AccountStorage::faucet_metadata_slot`])
+    /// will be initialized as follows:
+    /// - For [`AccountType::FungibleFaucet`] the value is set to
+    ///   [`StorageSlotContent::empty_value`].
+    /// - For [`AccountType::NonFungibleFaucet`] the value is set to
+    ///   [`StorageSlotContent::empty_map`].
     ///
-    /// If the storage needs to be initialized with certain values in that slot, those can be added
+    /// If the storage needs to be initialized with certain values in that slot, those must be added
     /// after construction with the standard set methods for items and maps.
     ///
     /// # Errors

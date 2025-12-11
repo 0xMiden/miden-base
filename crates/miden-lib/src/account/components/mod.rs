@@ -199,7 +199,7 @@ impl WellKnownComponent {
             .procedure_digests()
             .all(|proc_digest| procedures_map.contains_key(&proc_digest))
         {
-            // Extract the storage offset from any matching procedure
+            // Remove the procedure root of any matching procedure.
             self.procedure_digests().for_each(|component_procedure| {
                 procedures_map.remove(&component_procedure);
             });

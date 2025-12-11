@@ -58,8 +58,8 @@ pub enum AccountComponentInterface {
     AuthNoAuth,
     /// A non-standard, custom interface which exposes the contained procedures.
     ///
-    /// Custom interface holds procedures which are not part of some standard interface which is
-    /// used by this account. Each custom interface holds procedures with the same storage offset.
+    /// Custom interface holds all procedures which are not part of some standard interface which is
+    /// used by this account.
     Custom(Vec<AccountProcedureRoot>),
 }
 
