@@ -9,7 +9,7 @@ use miden_lib::note::create_p2id_note;
 use miden_lib::testing::account_component::IncrNonceAuthComponent;
 use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::transaction::TransactionKernel;
-use miden_lib::utils::ProtocolAssembler;
+use miden_lib::utils::CodeBuilder;
 use miden_objects::account::{
     Account,
     AccountBuilder,
@@ -220,7 +220,7 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
 
     // Create the expected output note for Note 2 which is public
     let serial_num_2 = Word::from([1, 2, 3, 4u32]);
-    let note_script_2 = ProtocolAssembler::default().parse_note_script(DEFAULT_NOTE_CODE)?;
+    let note_script_2 = CodeBuilder::default().parse_note_script(DEFAULT_NOTE_CODE)?;
     let inputs_2 = NoteInputs::new(vec![ONE])?;
     let metadata_2 =
         NoteMetadata::new(account_id, note_type2, tag2, NoteExecutionHint::none(), aux2)?;
@@ -230,7 +230,7 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
 
     // Create the expected output note for Note 3 which is public
     let serial_num_3 = Word::from([Felt::new(5), Felt::new(6), Felt::new(7), Felt::new(8)]);
-    let note_script_3 = ProtocolAssembler::default().parse_note_script(DEFAULT_NOTE_CODE)?;
+    let note_script_3 = CodeBuilder::default().parse_note_script(DEFAULT_NOTE_CODE)?;
     let inputs_3 = NoteInputs::new(vec![ONE, Felt::new(2)])?;
     let metadata_3 = NoteMetadata::new(
         account_id,
@@ -344,7 +344,7 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
         EXECUTION_HINT_3 = Felt::from(NoteExecutionHint::on_block_slot(11, 22, 33)),
     );
 
-    let tx_script = ProtocolAssembler::default().parse_tx_script(tx_script_src)?;
+    let tx_script = CodeBuilder::default().parse_tx_script(tx_script_src)?;
 
     // expected delta
     // --------------------------------------------------------------------------------------------
@@ -440,7 +440,7 @@ async fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
       end
     "#;
 
-    let auth_code = ProtocolAssembler::default()
+    let auth_code = CodeBuilder::default()
         .parse_component_code("test::auth_component", source_code)
         .context("failed to parse auth component")?;
     let auth_component = AccountComponent::new(auth_code, vec![])
@@ -648,7 +648,7 @@ async fn execute_tx_view_script() -> anyhow::Result<()> {
     end
     ";
 
-    let tx_script = ProtocolAssembler::new(false)
+    let tx_script = CodeBuilder::new(false)
         .with_statically_linked_library(&library)?
         .parse_tx_script(source)?;
     let tx_context = TransactionContextBuilder::with_existing_mock_account()
@@ -696,7 +696,7 @@ async fn test_tx_script_inputs() -> anyhow::Result<()> {
         "
     );
 
-    let tx_script = ProtocolAssembler::default().parse_tx_script(tx_script_src)?;
+    let tx_script = CodeBuilder::default().parse_tx_script(tx_script_src)?;
 
     let tx_context = TransactionContextBuilder::with_existing_mock_account()
         .tx_script(tx_script)
@@ -734,7 +734,7 @@ async fn test_tx_script_args() -> anyhow::Result<()> {
             push.5.6.7.8 assert_eqw.err="obtained advice map value doesn't match the expected one"
         end"#;
 
-    let tx_script = ProtocolAssembler::default()
+    let tx_script = CodeBuilder::default()
         .parse_tx_script(tx_script_src)
         .context("failed to parse transaction script")?;
 
@@ -769,7 +769,7 @@ async fn inputs_created_correctly() -> anyhow::Result<()> {
                 assert_eqw.err="script adv map not found"
             end
         "#;
-    let component_code = ProtocolAssembler::default()
+    let component_code = CodeBuilder::default()
         .parse_component_code("test::adv_map_component", account_component_masm)?;
 
     let component = AccountComponent::new(
@@ -799,7 +799,7 @@ async fn inputs_created_correctly() -> anyhow::Result<()> {
             end
         "#;
 
-    let tx_script = ProtocolAssembler::default()
+    let tx_script = CodeBuilder::default()
         .with_dynamically_linked_library(component_code.as_library())?
         .parse_tx_script(script)?;
 

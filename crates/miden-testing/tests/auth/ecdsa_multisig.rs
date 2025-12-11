@@ -5,7 +5,7 @@ use miden_lib::account::wallets::BasicWallet;
 use miden_lib::errors::tx_kernel_errors::ERR_TX_ALREADY_EXECUTED;
 use miden_lib::note::create_p2id_note;
 use miden_lib::testing::account_interface::get_public_keys_from_account;
-use miden_lib::utils::ProtocolAssembler;
+use miden_lib::utils::CodeBuilder;
 use miden_objects::account::auth::{AuthSecretKey, PublicKey};
 use miden_objects::account::{Account, AccountBuilder, AccountId, AccountStorageMode, AccountType};
 use miden_objects::asset::FungibleAsset;
@@ -403,7 +403,7 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
         end
     ";
 
-    let tx_script = ProtocolAssembler::default()
+    let tx_script = CodeBuilder::default()
         .with_dynamically_linked_library(ecdsa_k256_keccak_multisig_library())?
         .parse_tx_script(tx_script_code)?;
 
@@ -642,7 +642,7 @@ async fn test_multisig_update_signers_remove_owner() -> anyhow::Result<()> {
     advice_map.insert(multisig_config_hash, config_and_pubkeys_vector);
 
     // Create transaction script
-    let tx_script = ProtocolAssembler::default()
+    let tx_script = CodeBuilder::default()
         .with_dynamically_linked_library(ecdsa_k256_keccak_multisig_library())?
         .parse_tx_script("begin\n    call.::update_signers_and_threshold\nend")?;
 
@@ -850,7 +850,7 @@ async fn test_multisig_new_approvers_cannot_sign_before_update() -> anyhow::Resu
         end
     ";
 
-    let tx_script = ProtocolAssembler::default()
+    let tx_script = CodeBuilder::default()
         .with_dynamically_linked_library(ecdsa_k256_keccak_multisig_library())?
         .parse_tx_script(tx_script_code)?;
 

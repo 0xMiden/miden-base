@@ -61,7 +61,7 @@ use miden_lib::transaction::memory::{
     TX_SCRIPT_ROOT_PTR,
     VERIFICATION_BASE_FEE_IDX,
 };
-use miden_lib::utils::ProtocolAssembler;
+use miden_lib::utils::CodeBuilder;
 use miden_objects::account::{
     Account,
     AccountBuilder,
@@ -137,7 +137,7 @@ async fn test_transaction_prologue() -> anyhow::Result<()> {
         end
         ";
 
-    let tx_script = ProtocolAssembler::default().parse_tx_script(mock_tx_script_code).unwrap();
+    let tx_script = CodeBuilder::default().parse_tx_script(mock_tx_script_code).unwrap();
 
     let note_args = [Word::from([91u32; 4]), Word::from([92u32; 4])];
 

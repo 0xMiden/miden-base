@@ -5,19 +5,19 @@ use core::error::Error;
 use miden_objects::assembly::diagnostics::Report;
 use miden_objects::assembly::diagnostics::reporting::PrintDiagnostic;
 
-// PROTOCOL ASSEMBLER ERROR
+// CODE BUILDER ERROR
 // ================================================================================================
 
 #[derive(Debug, thiserror::Error)]
 #[error("failed to build script: {message}")]
-pub struct ProtocolAssemblerError {
+pub struct CodeBuilderError {
     /// Stack size of `Box<str>` is smaller than String.
     message: Box<str>,
-    /// thiserror will return this when calling Error::source on ProtocolAssemblerError.
+    /// thiserror will return this when calling Error::source on CodeBuilderError.
     source: Option<Box<dyn Error + Send + Sync + 'static>>,
 }
 
-impl ProtocolAssemblerError {
+impl CodeBuilderError {
     /// Creates a code builder error from an error message and a source error.
     pub fn build_error_with_source(
         message: impl Into<String>,
@@ -48,7 +48,7 @@ mod error_assertions {
     /// Asserts at compile time that the passed error has Send + Sync + 'static bounds.
     fn _assert_error_is_send_sync_static<E: core::error::Error + Send + Sync + 'static>(_: E) {}
 
-    fn _assert_protocol_assembler_error_bounds(err: ProtocolAssemblerError) {
+    fn _assert_code_builder_error_bounds(err: CodeBuilderError) {
         _assert_error_is_send_sync_static(err);
     }
 }

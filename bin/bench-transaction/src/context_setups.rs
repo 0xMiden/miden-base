@@ -1,5 +1,5 @@
 use anyhow::Result;
-use miden_lib::utils::ProtocolAssembler;
+use miden_lib::utils::CodeBuilder;
 use miden_objects::asset::{Asset, FungibleAsset};
 use miden_objects::note::NoteType;
 use miden_objects::testing::account_id::ACCOUNT_ID_SENDER;
@@ -55,7 +55,7 @@ pub fn tx_create_single_p2id_note() -> Result<TransactionContext> {
         asset = Word::from(fungible_asset),
     );
 
-    let tx_script = ProtocolAssembler::default().parse_tx_script(tx_note_creation_script)?;
+    let tx_script = CodeBuilder::default().parse_tx_script(tx_note_creation_script)?;
 
     // construct the transaction context
     mock_chain

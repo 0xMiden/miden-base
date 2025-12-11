@@ -6,7 +6,7 @@ use miden_lib::account::wallets::BasicWallet;
 use miden_lib::errors::MasmError;
 use miden_lib::testing::note::NoteBuilder;
 use miden_lib::transaction::memory::ACTIVE_INPUT_NOTE_PTR;
-use miden_lib::utils::ProtocolAssembler;
+use miden_lib::utils::CodeBuilder;
 use miden_objects::account::auth::PublicKeyCommitment;
 use miden_objects::account::{AccountBuilder, AccountId};
 use miden_objects::assembly::DefaultSourceManager;
@@ -192,7 +192,7 @@ async fn test_build_recipient() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
     // Create test script and serial number
-    let note_script = ProtocolAssembler::default().parse_note_script("begin nop end")?;
+    let note_script = CodeBuilder::default().parse_note_script("begin nop end")?;
     let serial_num = Word::default();
 
     // Define test values as Words
@@ -469,7 +469,7 @@ pub async fn test_timelock() -> anyhow::Result<()> {
         .note_inputs([Felt::from(lock_timestamp)])?
         .source_manager(source_manager.clone())
         .code(code.clone())
-        .dynamically_linked_libraries(ProtocolAssembler::mock_libraries())
+        .dynamically_linked_libraries(CodeBuilder::mock_libraries())
         .build()?;
 
     builder.add_output_note(OutputNote::Full(timelock_note.clone()));
@@ -541,7 +541,7 @@ async fn test_public_key_as_note_input() -> anyhow::Result<()> {
         Default::default(),
     )?;
     let vault = NoteAssets::new(vec![])?;
-    let note_script = ProtocolAssembler::default().parse_note_script("begin nop end")?;
+    let note_script = CodeBuilder::default().parse_note_script("begin nop end")?;
     let recipient =
         NoteRecipient::new(serial_num, note_script, NoteInputs::new(public_key_value.to_vec())?);
     let note_with_pub_key = Note::new(vault.clone(), metadata, recipient);

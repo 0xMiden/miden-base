@@ -9,7 +9,7 @@ use miden_lib::errors::tx_kernel_errors::{
     ERR_VAULT_FUNGIBLE_ASSET_AMOUNT_LESS_THAN_AMOUNT_TO_WITHDRAW,
 };
 use miden_lib::testing::mock_account::MockAccountExt;
-use miden_lib::utils::ProtocolAssembler;
+use miden_lib::utils::CodeBuilder;
 use miden_objects::account::{
     Account,
     AccountBuilder,
@@ -109,7 +109,7 @@ async fn mint_fungible_asset_fails_on_non_faucet_account() -> anyhow::Result<()>
       ",
         asset = Word::from(FungibleAsset::mock(50))
     );
-    let tx_script = ProtocolAssembler::with_mock_libraries().parse_tx_script(code)?;
+    let tx_script = CodeBuilder::with_mock_libraries().parse_tx_script(code)?;
 
     let result = TransactionContextBuilder::new(account)
         .tx_script(tx_script)
@@ -162,7 +162,7 @@ async fn test_mint_fungible_asset_fails_saturate_max_amount() -> anyhow::Result<
     ",
         asset = Word::from(FungibleAsset::mock(FungibleAsset::MAX_AMOUNT))
     );
-    let tx_script = ProtocolAssembler::with_mock_libraries().parse_tx_script(code)?;
+    let tx_script = CodeBuilder::with_mock_libraries().parse_tx_script(code)?;
 
     let result = TransactionContextBuilder::with_fungible_faucet(
         FungibleAsset::mock_issuer().into(),
@@ -284,7 +284,7 @@ async fn mint_non_fungible_asset_fails_on_non_faucet_account() -> anyhow::Result
       ",
         asset = Word::from(FungibleAsset::mock(50))
     );
-    let tx_script = ProtocolAssembler::with_mock_libraries().parse_tx_script(code)?;
+    let tx_script = CodeBuilder::with_mock_libraries().parse_tx_script(code)?;
 
     let result = TransactionContextBuilder::new(account)
         .tx_script(tx_script)
@@ -404,7 +404,7 @@ async fn burn_fungible_asset_fails_on_non_faucet_account() -> anyhow::Result<()>
       ",
         asset = Word::from(FungibleAsset::mock(50))
     );
-    let tx_script = ProtocolAssembler::with_mock_libraries().parse_tx_script(code)?;
+    let tx_script = CodeBuilder::with_mock_libraries().parse_tx_script(code)?;
 
     let result = TransactionContextBuilder::new(account)
         .tx_script(tx_script)
@@ -602,7 +602,7 @@ async fn burn_non_fungible_asset_fails_on_non_faucet_account() -> anyhow::Result
       ",
         asset = Word::from(FungibleAsset::mock(50))
     );
-    let tx_script = ProtocolAssembler::with_mock_libraries().parse_tx_script(code)?;
+    let tx_script = CodeBuilder::with_mock_libraries().parse_tx_script(code)?;
 
     let result = TransactionContextBuilder::new(account)
         .tx_script(tx_script)
@@ -732,7 +732,7 @@ async fn test_get_total_issuance_succeeds() -> anyhow::Result<()> {
 /// This is used to test that calling these procedures fails as expected.
 fn setup_non_faucet_account() -> anyhow::Result<Account> {
     // Build a custom non-faucet account that (invalidly) exposes faucet procedures.
-    let faucet_code = ProtocolAssembler::with_mock_libraries_with_source_manager(Arc::new(
+    let faucet_code = CodeBuilder::with_mock_libraries_with_source_manager(Arc::new(
         DefaultSourceManager::default(),
     ))
     .parse_component_code(

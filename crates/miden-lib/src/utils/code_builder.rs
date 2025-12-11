@@ -14,15 +14,15 @@ use miden_objects::assembly::{
 use miden_objects::note::NoteScript;
 use miden_objects::transaction::TransactionScript;
 
-use crate::errors::ProtocolAssemblerError;
+use crate::errors::CodeBuilderError;
 use crate::transaction::TransactionKernel;
 
-// PROTOCOL ASSEMBLER
+// CODE BUILDER
 // ================================================================================================
 
 /// A builder for compiling note scripts and transaction scripts with optional library dependencies.
 ///
-/// The [`ProtocolAssembler`] simplifies the process of creating transaction scripts by providing:
+/// The [`CodeBuilder`] simplifies the process of creating transaction scripts by providing:
 /// - A clean API for adding multiple libraries with static or dynamic linking
 /// - Automatic assembler configuration with all added libraries
 /// - Debug mode support
@@ -43,19 +43,19 @@ use crate::transaction::TransactionKernel;
 ///
 /// ## Typical Workflow
 ///
-/// 1. Create a new ProtocolAssembler with debug mode preference
+/// 1. Create a new CodeBuilder with debug mode preference
 /// 2. Add any required modules using `link_module()` or `with_linked_module()`
 /// 3. Add libraries using `link_static_library()` / `link_dynamic_library()` as appropriate
 /// 4. Parse your script with `parse_note_script()` or `parse_tx_script()`
 ///
-/// Note that the parsing methods consume the ProtocolAssembler, so if you need to parse
+/// Note that the parsing methods consume the CodeBuilder, so if you need to parse
 /// multiple scripts with the same configuration, you should clone the builder first.
 ///
 /// ## Builder Pattern Example
 ///
 /// ```no_run
 /// # use anyhow::Context;
-/// # use miden_lib::utils::ProtocolAssembler;
+/// # use miden_lib::utils::CodeBuilder;
 /// # use miden_objects::assembly::Library;
 /// # use miden_stdlib::StdLibrary;
 /// # fn example() -> anyhow::Result<()> {
@@ -64,7 +64,7 @@ use crate::transaction::TransactionKernel;
 /// # // Create sample libraries for the example
 /// # let my_lib: Library = StdLibrary::default().into(); // Convert StdLibrary to Library
 /// # let fpi_lib: Library = StdLibrary::default().into();
-/// let script = ProtocolAssembler::default()
+/// let script = CodeBuilder::default()
 ///     .with_linked_module("my::module", module_code).context("failed to link module")?
 ///     .with_statically_linked_library(&my_lib).context("failed to link static library")?
 ///     .with_dynamically_linked_library(&fpi_lib).context("failed to link dynamic library")?  // For FPI calls
@@ -74,20 +74,20 @@ use crate::transaction::TransactionKernel;
 /// ```
 ///
 /// # Note
-/// The ProtocolAssembler automatically includes the `miden` and `std` libraries, which
+/// The CodeBuilder automatically includes the `miden` and `std` libraries, which
 /// provide access to transaction kernel procedures. Due to being available on-chain
 /// these libraries are linked dynamically and do not add to the size of built script.
 #[derive(Clone)]
-pub struct ProtocolAssembler {
+pub struct CodeBuilder {
     assembler: Assembler,
     source_manager: Arc<dyn SourceManagerSync>,
 }
 
-impl ProtocolAssembler {
+impl CodeBuilder {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
-    /// Creates a new ProtocolAssembler with the specified debug mode.
+    /// Creates a new CodeBuilder with the specified debug mode.
     ///
     /// # Arguments
     /// * `in_debug_mode` - Whether to enable debug mode in the assembler
@@ -98,7 +98,7 @@ impl ProtocolAssembler {
         Self { assembler, source_manager }
     }
 
-    /// Creates a new ProtocolAssembler with the specified source manager.
+    /// Creates a new CodeBuilder with the specified source manager.
     ///
     /// The returned builder is instantiated with debug mode enabled.
     ///
@@ -113,7 +113,7 @@ impl ProtocolAssembler {
     // LIBRARY MANAGEMENT
     // --------------------------------------------------------------------------------------------
 
-    /// Compiles and links a module to the protocol assembler.
+    /// Compiles and links a module to the code builder.
     ///
     /// This method compiles the provided module code and adds it directly to the assembler
     /// for use in script compilation.
@@ -131,10 +131,10 @@ impl ProtocolAssembler {
         &mut self,
         module_path: impl AsRef<str>,
         module_code: impl AsRef<str>,
-    ) -> Result<(), ProtocolAssemblerError> {
+    ) -> Result<(), CodeBuilderError> {
         // Parse the library path
         let lib_path = LibraryPath::new(module_path.as_ref()).map_err(|err| {
-            ProtocolAssemblerError::build_error_with_source(
+            CodeBuilderError::build_error_with_source(
                 format!("invalid module path: {}", module_path.as_ref()),
                 err,
             )
@@ -143,7 +143,7 @@ impl ProtocolAssembler {
         let module = NamedSource::new(format!("{lib_path}"), String::from(module_code.as_ref()));
 
         self.assembler.compile_and_statically_link(module).map_err(|err| {
-            ProtocolAssemblerError::build_error_with_report("failed to assemble module", err)
+            CodeBuilderError::build_error_with_report("failed to assemble module", err)
         })?;
 
         Ok(())
@@ -160,9 +160,9 @@ impl ProtocolAssembler {
     /// # Errors
     /// Returns an error if:
     /// - adding the library to the assembler failed
-    pub fn link_static_library(&mut self, library: &Library) -> Result<(), ProtocolAssemblerError> {
+    pub fn link_static_library(&mut self, library: &Library) -> Result<(), CodeBuilderError> {
         self.assembler.link_static_library(library).map_err(|err| {
-            ProtocolAssemblerError::build_error_with_report("failed to add static library", err)
+            CodeBuilderError::build_error_with_report("failed to add static library", err)
         })
     }
 
@@ -179,12 +179,9 @@ impl ProtocolAssembler {
     ///
     /// # Errors
     /// Returns an error if the library cannot be added to the assembler
-    pub fn link_dynamic_library(
-        &mut self,
-        library: &Library,
-    ) -> Result<(), ProtocolAssemblerError> {
+    pub fn link_dynamic_library(&mut self, library: &Library) -> Result<(), CodeBuilderError> {
         self.assembler.link_dynamic_library(library).map_err(|err| {
-            ProtocolAssemblerError::build_error_with_report("failed to add dynamic library", err)
+            CodeBuilderError::build_error_with_report("failed to add dynamic library", err)
         })
     }
 
@@ -200,7 +197,7 @@ impl ProtocolAssembler {
     pub fn with_statically_linked_library(
         mut self,
         library: &Library,
-    ) -> Result<Self, ProtocolAssemblerError> {
+    ) -> Result<Self, CodeBuilderError> {
         self.link_static_library(library)?;
         Ok(self)
     }
@@ -217,7 +214,7 @@ impl ProtocolAssembler {
     pub fn with_dynamically_linked_library(
         mut self,
         library: impl AsRef<Library>,
-    ) -> Result<Self, ProtocolAssemblerError> {
+    ) -> Result<Self, CodeBuilderError> {
         self.link_dynamic_library(library.as_ref())?;
         Ok(self)
     }
@@ -236,7 +233,7 @@ impl ProtocolAssembler {
         mut self,
         module_path: impl AsRef<str>,
         module_code: impl AsRef<str>,
-    ) -> Result<Self, ProtocolAssemblerError> {
+    ) -> Result<Self, CodeBuilderError> {
         self.link_module(module_path, module_code)?;
         Ok(self)
     }
@@ -259,11 +256,11 @@ impl ProtocolAssembler {
         self,
         component_path: impl AsRef<str>,
         component_code: impl AsRef<str>,
-    ) -> Result<AccountComponentCode, ProtocolAssemblerError> {
+    ) -> Result<AccountComponentCode, CodeBuilderError> {
         let assembler = self.assembler;
         let component_path = component_path.as_ref();
         let lib_path = LibraryPath::new(component_path).map_err(|err| {
-            ProtocolAssemblerError::build_error_with_source(
+            CodeBuilderError::build_error_with_source(
                 format!("invalid component path: {component_path}"),
                 err,
             )
@@ -275,10 +272,7 @@ impl ProtocolAssembler {
                 String::from(component_code.as_ref()),
             )])
             .map_err(|err| {
-                ProtocolAssemblerError::build_error_with_report(
-                    "failed to parse component code",
-                    err,
-                )
+                CodeBuilderError::build_error_with_report("failed to parse component code", err)
             })?;
 
         Ok(AccountComponentCode::from(library))
@@ -297,14 +291,11 @@ impl ProtocolAssembler {
     pub fn parse_tx_script(
         self,
         tx_script: impl Parse,
-    ) -> Result<TransactionScript, ProtocolAssemblerError> {
+    ) -> Result<TransactionScript, CodeBuilderError> {
         let assembler = self.assembler;
 
         let program = assembler.assemble_program(tx_script).map_err(|err| {
-            ProtocolAssemblerError::build_error_with_report(
-                "failed to parse transaction script",
-                err,
-            )
+            CodeBuilderError::build_error_with_report("failed to parse transaction script", err)
         })?;
         Ok(TransactionScript::new(program))
     }
@@ -319,14 +310,11 @@ impl ProtocolAssembler {
     /// # Errors
     /// Returns an error if:
     /// - The note script parsing fails
-    pub fn parse_note_script(
-        self,
-        program: impl Parse,
-    ) -> Result<NoteScript, ProtocolAssemblerError> {
+    pub fn parse_note_script(self, program: impl Parse) -> Result<NoteScript, CodeBuilderError> {
         let assembler = self.assembler;
 
         let program = assembler.assemble_program(program).map_err(|err| {
-            ProtocolAssemblerError::build_error_with_report("failed to parse note script", err)
+            CodeBuilderError::build_error_with_report("failed to parse note script", err)
         })?;
         Ok(NoteScript::new(program))
     }
@@ -342,7 +330,7 @@ impl ProtocolAssembler {
     // TESTING CONVENIENCE FUNCTIONS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns a [`ProtocolAssembler`] with the transaction kernel as a library.
+    /// Returns a [`CodeBuilder`] with the transaction kernel as a library.
     ///
     /// This assembler is the same as [`TransactionKernel::assembler`] but additionally includes the
     /// kernel library on the namespace of `$kernel`. The `$kernel` library is added separately
@@ -358,7 +346,7 @@ impl ProtocolAssembler {
         builder
     }
 
-    /// Returns a [`ProtocolAssembler`] with the `mock::{account, faucet, util}` libraries.
+    /// Returns a [`CodeBuilder`] with the `mock::{account, faucet, util}` libraries.
     ///
     /// This assembler includes:
     /// - [`MockAccountCodeExt::mock_account_library`][account_lib],
@@ -413,14 +401,14 @@ impl ProtocolAssembler {
     }
 }
 
-impl Default for ProtocolAssembler {
+impl Default for CodeBuilder {
     fn default() -> Self {
         Self::new(true)
     }
 }
 
-impl From<ProtocolAssembler> for Assembler {
-    fn from(builder: ProtocolAssembler) -> Self {
+impl From<CodeBuilder> for Assembler {
+    fn from(builder: CodeBuilder) -> Self {
         builder.assembler
     }
 }
@@ -435,14 +423,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_protocol_assembler_new() {
-        let _builder = ProtocolAssembler::default();
+    fn test_code_builder_new() {
+        let _builder = CodeBuilder::default();
         // Test that the builder can be created successfully
     }
 
     #[test]
-    fn test_protocol_assembler_basic_script_parsing() -> anyhow::Result<()> {
-        let builder = ProtocolAssembler::default();
+    fn test_code_builder_basic_script_parsing() -> anyhow::Result<()> {
+        let builder = CodeBuilder::default();
         builder
             .parse_tx_script("begin nop end")
             .context("failed to parse basic tx script")?;
@@ -476,7 +464,7 @@ mod tests {
 
         let library_path = "external_contract::counter_contract";
 
-        let mut builder_with_lib = ProtocolAssembler::default();
+        let mut builder_with_lib = CodeBuilder::default();
         builder_with_lib
             .link_module(library_path, account_code)
             .context("failed to link module")?;
@@ -515,7 +503,7 @@ mod tests {
         let library_path = "external_contract::counter_contract";
 
         // Test single library
-        let mut builder_with_lib = ProtocolAssembler::default();
+        let mut builder_with_lib = CodeBuilder::default();
         builder_with_lib
             .link_module(library_path, account_code)
             .context("failed to link module")?;
@@ -524,7 +512,7 @@ mod tests {
             .context("failed to parse tx script")?;
 
         // Test multiple libraries
-        let mut builder_with_libs = ProtocolAssembler::default();
+        let mut builder_with_libs = CodeBuilder::default();
         builder_with_libs
             .link_module(library_path, account_code)
             .context("failed to link first module")?;
@@ -564,7 +552,7 @@ mod tests {
         ";
 
         // Test builder-style chaining with modules
-        let builder = ProtocolAssembler::default()
+        let builder = CodeBuilder::default()
             .with_linked_module("external_contract::counter_contract", account_code)
             .context("failed to link module")?;
 
@@ -579,7 +567,7 @@ mod tests {
             "use.test::lib1 use.test::lib2 begin exec.lib1::test1 exec.lib2::test2 end";
 
         // Test chaining multiple modules
-        let builder = ProtocolAssembler::default()
+        let builder = CodeBuilder::default()
             .with_linked_module("test::lib1", "export.test1 push.1 add end")
             .context("failed to link first module")?
             .with_linked_module("test::lib2", "export.test2 push.2 add end")
@@ -625,7 +613,7 @@ mod tests {
             .map_err(|e| anyhow::anyhow!("failed to assemble dynamic library: {}", e))?;
 
         // Test linking both static and dynamic libraries
-        let builder = ProtocolAssembler::default()
+        let builder = CodeBuilder::default()
             .with_statically_linked_library(&static_lib)
             .context("failed to link static library")?
             .with_dynamically_linked_library(&dynamic_lib)

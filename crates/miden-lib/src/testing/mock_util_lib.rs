@@ -1,7 +1,7 @@
 use miden_objects::assembly::Library;
 use miden_objects::utils::sync::LazyLock;
 
-use crate::utils::ProtocolAssembler;
+use crate::utils::CodeBuilder;
 
 const MOCK_UTIL_LIBRARY_CODE: &str = "
     use.miden::output_note
@@ -35,7 +35,7 @@ const MOCK_UTIL_LIBRARY_CODE: &str = "
 ";
 
 static MOCK_UTIL_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
-    ProtocolAssembler::new(false)
+    CodeBuilder::new(false)
         .parse_component_code("mock::util", MOCK_UTIL_LIBRARY_CODE)
         .expect("mock util library should be valid")
         .into_library()

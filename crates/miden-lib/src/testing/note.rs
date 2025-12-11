@@ -20,7 +20,7 @@ use miden_objects::testing::note::DEFAULT_NOTE_CODE;
 use miden_objects::{Felt, NoteError, Word, ZERO};
 use rand::Rng;
 
-use crate::utils::ProtocolAssembler;
+use crate::utils::CodeBuilder;
 
 // NOTE BUILDER
 // ================================================================================================
@@ -143,7 +143,7 @@ impl NoteBuilder {
             self.code,
         );
 
-        let mut builder = ProtocolAssembler::with_source_manager(self.source_manager.clone());
+        let mut builder = CodeBuilder::with_source_manager(self.source_manager.clone());
         for dyn_library in self.dyn_libraries {
             builder
                 .link_dynamic_library(&dyn_library)

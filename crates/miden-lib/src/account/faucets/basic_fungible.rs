@@ -51,7 +51,7 @@ static METADATA_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
 /// It reexports the procedures from `miden::contracts::faucets::basic_fungible`. When linking
 /// against this component, the `miden` library (i.e. [`MidenLib`](crate::MidenLib)) must be
 /// available to the assembler which is the case when using
-/// [`ProtocolAssembler`][builder]. The procedures of this component are:
+/// [`CodeBuilder`][builder]. The procedures of this component are:
 /// - `distribute`, which mints an assets and create a note for the provided recipient.
 /// - `burn`, which burns the provided asset.
 ///
@@ -66,7 +66,7 @@ static METADATA_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
 ///
 /// - [`Self::metadata_slot_name`]: Basic fungible faucet's metadata
 ///
-/// [builder]: crate::utils::ProtocolAssembler
+/// [builder]: crate::utils::CodeBuilder
 pub struct BasicFungibleFaucet {
     symbol: TokenSymbol,
     decimals: u8,

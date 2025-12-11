@@ -14,14 +14,14 @@ static ECDSA_PUBKEY_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
 ///
 /// It reexports the procedures from `miden::contracts::auth::basic`. When linking against this
 /// component, the `miden` library (i.e. [`MidenLib`](crate::MidenLib)) must be available to the
-/// assembler which is the case when using [`ProtocolAssembler`][builder]. The procedures
+/// assembler which is the case when using [`CodeBuilder`][builder]. The procedures
 /// of this component are:
 /// - `auth_tx_ecdsa_k256_keccak`, which can be used to verify a signature provided via the advice
 ///   stack to authenticate a transaction.
 ///
 /// This component supports all account types.
 ///
-/// [builder]: crate::utils::ProtocolAssembler
+/// [builder]: crate::utils::CodeBuilder
 pub struct AuthEcdsaK256Keccak {
     pub_key: PublicKeyCommitment,
 }

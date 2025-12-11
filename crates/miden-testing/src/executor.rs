@@ -45,13 +45,12 @@ impl<H: AsyncHost> CodeExecutor<H> {
         use alloc::borrow::ToOwned;
         use alloc::sync::Arc;
 
-        use miden_lib::utils::ProtocolAssembler;
+        use miden_lib::utils::CodeBuilder;
         use miden_objects::assembly::debuginfo::{SourceLanguage, Uri};
         use miden_objects::assembly::{DefaultSourceManager, SourceManagerSync};
 
         let source_manager: Arc<dyn SourceManagerSync> = Arc::new(DefaultSourceManager::default());
-        let assembler: Assembler =
-            ProtocolAssembler::with_kernel_library(source_manager.clone()).into();
+        let assembler: Assembler = CodeBuilder::with_kernel_library(source_manager.clone()).into();
 
         // Virtual file name should be unique.
         let virtual_source_file =

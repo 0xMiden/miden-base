@@ -2,7 +2,7 @@ use miden_objects::account::AccountComponent;
 use miden_objects::assembly::Library;
 use miden_objects::utils::sync::LazyLock;
 
-use crate::utils::ProtocolAssembler;
+use crate::utils::CodeBuilder;
 
 const INCR_NONCE_AUTH_CODE: &str = "
     use.miden::native_account
@@ -13,7 +13,7 @@ const INCR_NONCE_AUTH_CODE: &str = "
 ";
 
 static INCR_NONCE_AUTH_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
-    ProtocolAssembler::default()
+    CodeBuilder::default()
         .parse_component_code("incr_nonce", INCR_NONCE_AUTH_CODE)
         .expect("incr nonce code should be valid")
         .into_library()

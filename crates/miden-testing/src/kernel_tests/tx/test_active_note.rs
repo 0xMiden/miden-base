@@ -3,7 +3,7 @@ use alloc::string::String;
 use anyhow::Context;
 use miden_lib::errors::tx_kernel_errors::ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_METADATA_WHILE_NO_NOTE_BEING_PROCESSED;
 use miden_lib::testing::mock_account::MockAccountExt;
-use miden_lib::utils::ProtocolAssembler;
+use miden_lib::utils::CodeBuilder;
 use miden_objects::account::Account;
 use miden_objects::asset::FungibleAsset;
 use miden_objects::crypto::rand::{FeltRng, RpoRandomCoin};
@@ -56,7 +56,7 @@ async fn test_active_note_get_sender_fails_from_tx_script() -> anyhow::Result<()
             exec.active_note::get_sender
         end
         ";
-    let tx_script = ProtocolAssembler::default()
+    let tx_script = CodeBuilder::default()
         .parse_tx_script(code)
         .context("failed to parse tx script")?;
 
@@ -412,7 +412,7 @@ async fn test_active_note_get_exactly_8_inputs() -> anyhow::Result<()> {
     )
     .context("failed to create metadata")?;
     let vault = NoteAssets::new(vec![]).context("failed to create input note assets")?;
-    let note_script = ProtocolAssembler::default()
+    let note_script = CodeBuilder::default()
         .parse_note_script("begin nop end")
         .context("failed to parse note script")?;
 

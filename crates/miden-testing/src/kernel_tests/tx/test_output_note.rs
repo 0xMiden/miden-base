@@ -16,7 +16,7 @@ use miden_lib::transaction::memory::{
     OUTPUT_NOTE_RECIPIENT_OFFSET,
     OUTPUT_NOTE_SECTION_OFFSET,
 };
-use miden_lib::utils::ProtocolAssembler;
+use miden_lib::utils::CodeBuilder;
 use miden_objects::account::{Account, AccountId};
 use miden_objects::asset::{Asset, FungibleAsset, NonFungibleAsset};
 use miden_objects::crypto::rand::RpoRandomCoin;
@@ -835,7 +835,7 @@ async fn test_get_asset_info() -> anyhow::Result<()> {
         assets_number_1 = output_note_1.assets().num_assets(),
     );
 
-    let tx_script = ProtocolAssembler::default().parse_tx_script(tx_script_src)?;
+    let tx_script = CodeBuilder::default().parse_tx_script(tx_script_src)?;
 
     let tx_context = mock_chain
         .build_tx_context(account.id(), &[], &[])?
@@ -907,7 +907,7 @@ async fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
         METADATA = Word::from(output_note.metadata()),
     );
 
-    let tx_script = ProtocolAssembler::default().parse_tx_script(tx_script_src)?;
+    let tx_script = CodeBuilder::default().parse_tx_script(tx_script_src)?;
 
     let tx_context = mock_chain
         .build_tx_context(account.id(), &[], &[])?
@@ -1009,7 +1009,7 @@ async fn test_get_assets() -> anyhow::Result<()> {
         check_note_2 = check_assets_code(2, 8, &p2id_note_2_assets),
     );
 
-    let tx_script = ProtocolAssembler::default().parse_tx_script(tx_script_src)?;
+    let tx_script = CodeBuilder::default().parse_tx_script(tx_script_src)?;
 
     let tx_context = mock_chain
         .build_tx_context(account.id(), &[], &[])?

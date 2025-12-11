@@ -3,7 +3,7 @@ use alloc::string::String;
 use miden_objects::account::{AccountComponent, AccountComponentCode};
 use miden_objects::utils::sync::LazyLock;
 
-use crate::utils::ProtocolAssembler;
+use crate::utils::CodeBuilder;
 
 pub const ERR_WRONG_ARGS_MSG: &str = "auth procedure args are incorrect";
 
@@ -34,7 +34,7 @@ static CONDITIONAL_AUTH_CODE: LazyLock<String> = LazyLock::new(|| {
 });
 
 static CONDITIONAL_AUTH_LIBRARY: LazyLock<AccountComponentCode> = LazyLock::new(|| {
-    ProtocolAssembler::default()
+    CodeBuilder::default()
         .parse_component_code("mock::conditional_auth", CONDITIONAL_AUTH_CODE.as_str())
         .expect("conditional auth code should be valid")
 });

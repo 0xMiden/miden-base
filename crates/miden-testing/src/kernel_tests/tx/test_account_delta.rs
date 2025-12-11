@@ -4,7 +4,7 @@ use std::string::String;
 
 use anyhow::Context;
 use miden_lib::testing::account_component::MockAccountComponent;
-use miden_lib::utils::ProtocolAssembler;
+use miden_lib::utils::CodeBuilder;
 use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{
     Account,
@@ -708,7 +708,7 @@ async fn asset_and_storage_delta() -> anyhow::Result<()> {
         mock_map_slot = &*MOCK_MAP_SLOT,
     );
 
-    let tx_script = ProtocolAssembler::with_mock_libraries().parse_tx_script(tx_script_src)?;
+    let tx_script = CodeBuilder::with_mock_libraries().parse_tx_script(tx_script_src)?;
 
     // Create the input note that carries the assets that we will assert later
     let input_note = {
@@ -858,7 +858,7 @@ async fn proven_tx_storage_maps_matches_executed_tx_for_new_account() -> anyhow:
       "#
     );
 
-    let builder = ProtocolAssembler::with_mock_libraries();
+    let builder = CodeBuilder::with_mock_libraries();
     let source_manager = builder.source_manager();
     let tx_script = builder.parse_tx_script(code)?;
 
@@ -1061,7 +1061,7 @@ fn parse_tx_script(code: impl AsRef<str>) -> anyhow::Result<TransactionScript> {
         code = code.as_ref()
     );
 
-    ProtocolAssembler::with_mock_libraries()
+    CodeBuilder::with_mock_libraries()
         .parse_tx_script(&code)
         .context("failed to parse tx script")
 }
