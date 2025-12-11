@@ -366,11 +366,6 @@ proc.validate_new_account
     # ---------------------------------------------------------------------------------------------
     exec.account::validate_storage
     # => []
-
-    # Assert the provided procedures offsets and sizes satisfy storage requirements
-    # ---------------------------------------------------------------------------------------------
-    exec.account::validate_procedure_metadata
-    # => []
 end
 
 #! Saves the account data to memory and validates it.

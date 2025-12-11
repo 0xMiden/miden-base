@@ -59,10 +59,6 @@ proc.authenticate_account_origin
 
     # assert that the caller is from the user context
     exec.account::authenticate_and_track_procedure
-    # => [storage_offset, storage_size]
-
-    # TODO(named_slots): Remove storage offset and size from procedure info.
-    drop drop
     # => []
 end
 
@@ -736,13 +732,11 @@ end
 #! Invocation: dynexec
 export.account_get_procedure_root
     # get the procedure information
-    exec.account::get_procedure_info
-    # => [PROC_ROOT, storage_offset, storage_size, pad(15)]
+    exec.account::get_procedure_root
+    # => [PROC_ROOT, pad(15)]
 
-    swapw dropw
-    # => [PROC_ROOT, pad(13)]
-
-    movup.4 drop
+    # truncate the stack
+    movup.4 drop movup.4 drop movup.4 drop
     # => [PROC_ROOT, pad(12)]
 end
 

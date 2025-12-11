@@ -1849,7 +1849,7 @@ fn foreign_account_data_memory_assertions(
     for (i, elements) in foreign_account
         .code()
         .as_elements()
-        .chunks(AccountProcedureInfo::NUM_ELEMENTS_PER_PROC / 2)
+        .chunks(AccountProcedureInfo::NUM_ELEMENTS)
         .enumerate()
     {
         assert_eq!(

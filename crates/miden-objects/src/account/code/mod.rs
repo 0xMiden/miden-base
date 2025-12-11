@@ -439,7 +439,7 @@ pub(crate) fn build_procedure_commitment(procedures: &[AccountProcedureInfo]) ->
 
 /// Converts given procedures into field elements
 pub(crate) fn procedures_as_elements(procedures: &[AccountProcedureInfo]) -> Vec<Felt> {
-    procedures.iter().flat_map(|procedure| <[Felt; 8]>::from(*procedure)).collect()
+    procedures.iter().flat_map(AccountProcedureInfo::as_elements).copied().collect()
 }
 
 // TESTS

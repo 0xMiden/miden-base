@@ -13,7 +13,7 @@ use crate::utils::serde::{
     DeserializationError,
     Serializable,
 };
-use crate::{AccountError, FieldElement, Word};
+use crate::{AccountError, Word};
 
 // ACCOUNT PROCEDURE INFO
 // ================================================================================================
@@ -41,8 +41,8 @@ pub struct AccountProcedureInfo {
 }
 
 impl AccountProcedureInfo {
-    /// The number of field elements needed to represent an [AccountProcedureInfo] in kernel memory.
-    pub const NUM_ELEMENTS_PER_PROC: usize = 8;
+    /// The number of field elements that represent an [`AccountProcedureInfo`] in kernel memory.
+    pub const NUM_ELEMENTS: usize = 4;
 
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
@@ -80,6 +80,11 @@ impl AccountProcedureInfo {
         &self.mast_root
     }
 
+    /// Returns the procedure root as a slice of field elements.
+    pub fn as_elements(&self) -> &[Felt] {
+        self.mast_root.as_elements()
+    }
+
     /// Returns the procedure's storage offset.
     pub fn storage_offset(&self) -> u8 {
         self.storage_offset
@@ -91,46 +96,9 @@ impl AccountProcedureInfo {
     }
 }
 
-impl From<AccountProcedureInfo> for [Felt; 8] {
-    fn from(value: AccountProcedureInfo) -> Self {
-        let mut result = [Felt::ZERO; 8];
-
-        // copy mast_root into first 4 elements
-        result[0..4].copy_from_slice(value.mast_root().as_elements());
-
-        // copy the storage offset into value[4]
-        result[4] = Felt::from(value.storage_offset);
-
-        // copy the storage size into value[5]
-        result[5] = Felt::from(value.storage_size);
-
-        result
-    }
-}
-
-impl TryFrom<[Felt; 8]> for AccountProcedureInfo {
-    type Error = AccountError;
-
-    fn try_from(value: [Felt; 8]) -> Result<Self, Self::Error> {
-        // get mast_root from first 4 elements
-        let mast_root = Word::from(<[Felt; 4]>::try_from(&value[0..4]).unwrap());
-
-        // get storage_offset form value[4]
-        let storage_offset: u8 = value[4].try_into().map_err(|_| {
-            AccountError::AccountCodeProcedureStorageOffsetTooLarge(mast_root, value[4])
-        })?;
-
-        // get storage_size form value[5]
-        let storage_size: u8 = value[5].try_into().map_err(|_| {
-            AccountError::AccountCodeProcedureStorageSizeTooLarge(mast_root, value[5])
-        })?;
-
-        // Check if the remaining values are 0
-        if value[6] != Felt::ZERO || value[7] != Felt::ZERO {
-            return Err(AccountError::AccountCodeProcedureInvalidPadding(mast_root));
-        }
-
-        Ok(Self { mast_root, storage_offset, storage_size })
+impl From<AccountProcedureInfo> for Word {
+    fn from(root: AccountProcedureInfo) -> Self {
+        *root.mast_root()
     }
 }
 
@@ -214,25 +182,9 @@ impl PrettyPrint for PrintableProcedure {
 #[cfg(test)]
 mod tests {
 
-    use miden_core::Felt;
     use miden_crypto::utils::{Deserializable, Serializable};
 
     use crate::account::{AccountCode, AccountProcedureInfo};
-
-    #[test]
-    fn test_from_to_account_procedure() {
-        let account_code = AccountCode::mock();
-
-        let procedure = account_code.procedures()[0];
-
-        // from procedure to [Felt; 8]
-        let felts: [Felt; 8] = procedure.into();
-
-        // try_from [Felt; 8] to procedure
-        let final_procedure: AccountProcedureInfo = felts.try_into().unwrap();
-
-        assert_eq!(procedure, final_procedure);
-    }
 
     #[test]
     fn test_serde_account_procedure() {

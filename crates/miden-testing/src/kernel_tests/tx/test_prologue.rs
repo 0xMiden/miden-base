@@ -435,7 +435,7 @@ fn account_data_memory_assertions(exec_output: &ExecutionOutput, inputs: &Transa
         .account()
         .code()
         .as_elements()
-        .chunks(AccountProcedureInfo::NUM_ELEMENTS_PER_PROC / 2)
+        .chunks(AccountProcedureInfo::NUM_ELEMENTS)
         .enumerate()
     {
         assert_eq!(

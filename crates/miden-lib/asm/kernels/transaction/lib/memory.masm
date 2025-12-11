@@ -1,4 +1,5 @@
 use.$kernel::constants
+use.$kernel::account
 use.std::mem
 
 # ERRORS
@@ -165,6 +166,10 @@ const.NATIVE_ACCOUNT_DATA_PTR=8192
 
 # The length of the memory interval that the account data occupies.
 const.ACCOUNT_DATA_LENGTH=8192
+
+# The number of field elements it takes to store one account procedure.
+# TODO: Duplicated in account.masm, can we remove that?
+const.ACCOUNT_PROCEDURE_DATA_LENGTH=4
 
 # The offsets at which the account data is stored relative to the start of the account data segment.
 const.ACCT_ID_AND_NONCE_OFFSET=0
@@ -1265,7 +1270,7 @@ end
 #! - proc_idx is the index of the account procedure.
 #! - proc_ptr is the memory pointer to the account procedure at the specified index.
 export.get_account_procedure_ptr
-    mul.8 exec.get_account_procedures_section_ptr add
+    mul.ACCOUNT_PROCEDURE_DATA_LENGTH exec.get_account_procedures_section_ptr add
 end
 
 ### ACCOUNT STORAGE #################################################

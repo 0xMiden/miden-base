@@ -99,6 +99,7 @@ pub enum AccountError {
     AccountCodeNoProcedures,
     #[error("account code contains {0} procedures but it may contain at most {max} procedures", max = AccountCode::MAX_NUM_PROCEDURES)]
     AccountCodeTooManyProcedures(usize),
+    // TODO(named_slots): Remove.
     #[error("account procedure {0}'s storage offset {1} does not fit into u8")]
     AccountCodeProcedureStorageOffsetTooLarge(Word, Felt),
     #[error("account procedure {0}'s storage size {1} does not fit into u8")]
