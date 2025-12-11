@@ -853,7 +853,7 @@ async fn proven_tx_storage_maps_matches_executed_tx_for_new_account() -> anyhow:
           # => [slot_id_prefix, slot_id_suffix, KEY, VALUE]
           call.account::set_map_item
 
-          exec.::std::sys::truncate_stack
+          exec.::miden::core::sys::truncate_stack
       end
       "#
     );

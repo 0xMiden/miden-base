@@ -204,7 +204,7 @@ async fn setting_map_item_with_lazy_loading_succeeds() -> anyhow::Result<()> {
           # => [slot_id_prefix, slot_id_suffix, KEY, VALUE]
           call.account::set_map_item
 
-          exec.::std::sys::truncate_stack
+          exec.::miden::core::sys::truncate_stack
       end
       "#
     );
@@ -270,7 +270,7 @@ async fn getting_map_item_with_lazy_loading_succeeds() -> anyhow::Result<()> {
 
           padw assert_eqw.err="non-existent value should be the empty word"
 
-          exec.::std::sys::truncate_stack
+          exec.::miden::core::sys::truncate_stack
       end
       "#
     );

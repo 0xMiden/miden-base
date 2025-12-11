@@ -82,7 +82,7 @@ impl ScriptBuilder {
     /// Creates a new ScriptBuilder.
     ///
     /// TODO: remove `in_debug_mode` argument
-    pub fn new(in_debug_mode: bool) -> Self {
+    pub fn new(_in_debug_mode: bool) -> Self {
         let source_manager = Arc::new(DefaultSourceManager::default());
         let assembler = TransactionKernel::assembler_with_source_manager(source_manager.clone());
         Self { assembler, source_manager }

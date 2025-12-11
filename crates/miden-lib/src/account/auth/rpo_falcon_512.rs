@@ -12,10 +12,10 @@ static FALCON_PUBKEY_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
 /// An [`AccountComponent`] implementing the RpoFalcon512 signature scheme for authentication of
 /// transactions.
 ///
-/// It reexports the procedures from `miden::contracts::auth::basic`. When linking against this
-/// component, the `miden` library (i.e. [`MidenLib`](crate::MidenLib)) must be available to the
-/// assembler which is the case when using [`TransactionKernel::assembler()`][kasm]. The procedures
-/// of this component are:
+/// It reexports the procedures from `miden::contracts::auth::rpo_falcon512`. When linking against
+/// this component, the `miden` library (i.e. [`MidenLib`](crate::MidenLib)) must be available to
+/// the assembler which is the case when using [`TransactionKernel::assembler()`][kasm]. The
+/// procedures of this component are:
 /// - `auth_tx_rpo_falcon512`, which can be used to verify a signature provided via the advice stack
 ///   to authenticate a transaction.
 ///

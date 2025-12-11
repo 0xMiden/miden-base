@@ -67,7 +67,6 @@ async fn peek_balance_returns_correct_amount() -> anyhow::Result<()> {
         use $kernel::prologue
         use $kernel::memory
         use $kernel::asset_vault
-        use miden::account
 
         begin
             exec.prologue::prepare_transaction

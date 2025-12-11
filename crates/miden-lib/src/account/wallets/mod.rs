@@ -60,8 +60,8 @@ pub struct BasicWallet;
 impl BasicWallet {
     // CONSTANTS
     // --------------------------------------------------------------------------------------------
-    const RECEIVE_ASSET_PROC_NAME: &str = "receive_asset";
-    const MOVE_ASSET_TO_NOTE_PROC_NAME: &str = "move_asset_to_note";
+    const RECEIVE_ASSET_PROC_NAME: &str = "nofile::receive_asset";
+    const MOVE_ASSET_TO_NOTE_PROC_NAME: &str = "nofile::move_asset_to_note";
 
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------

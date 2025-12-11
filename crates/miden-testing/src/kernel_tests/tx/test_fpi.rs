@@ -1083,9 +1083,7 @@ async fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
     let code = format!(
         r#"
         use miden::core::sys
-
         use miden::tx
-        use miden::account
 
         begin
             # pad the stack for the `execute_foreign_procedure` execution

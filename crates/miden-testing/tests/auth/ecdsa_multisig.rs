@@ -399,7 +399,7 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
     // Create a transaction script that calls the update_signers procedure
     let tx_script_code = "
         begin
-            call.::update_signers_and_threshold
+            call.::nofile::update_signers_and_threshold
         end
     ";
 
@@ -644,7 +644,7 @@ async fn test_multisig_update_signers_remove_owner() -> anyhow::Result<()> {
     // Create transaction script
     let tx_script = ScriptBuilder::new(true)
         .with_dynamically_linked_library(&ecdsa_k256_keccak_multisig_library())?
-        .compile_tx_script("begin\n    call.::update_signers_and_threshold\nend")?;
+        .compile_tx_script("begin\n    call.::nofile::update_signers_and_threshold\nend")?;
 
     let advice_inputs = AdviceInputs { map: advice_map, ..Default::default() };
 
@@ -846,7 +846,7 @@ async fn test_multisig_new_approvers_cannot_sign_before_update() -> anyhow::Resu
     // Create a transaction script that calls the update_signers procedure
     let tx_script_code = "
         begin
-            call.::update_signers_and_threshold
+            call.::nofile::update_signers_and_threshold
         end
     ";
 

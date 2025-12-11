@@ -442,7 +442,7 @@ async fn test_get_map_item() -> miette::Result<()> {
                 push.{expected_value}
                 assert_eqw.err="value did not match {expected_value}"
 
-                exec.::std::sys::truncate_stack
+                exec.::miden::core::sys::truncate_stack
             end
             "#,
             slot_name = slot.name(),
@@ -716,7 +716,6 @@ async fn test_compute_storage_commitment() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-        use miden::account
         use $kernel::prologue
         use mock::account->mock_account
 

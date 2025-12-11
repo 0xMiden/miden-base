@@ -513,8 +513,6 @@ mod tests {
         use miden_assembly::Assembler;
 
         let code_with_multiple_auth = "
-            use miden::account
-
             pub proc auth_basic
                 push.1 drop
             end

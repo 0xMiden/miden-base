@@ -32,7 +32,7 @@ const ERR_VAULT_NON_FUNGIBLE_ASSET_TO_REMOVE_NOT_FOUND="failed to remove non-exi
 # The event is from `stdlib`, visible through the prefix and is _not_ a `TransactionEvent`.
 # Care must be taken it stays in sync with the `miden-stdlib` definition. Note that generally speaking
 # we should not emit `"stdlib"` events, consider this "hijacking", tread carefully.
-const SMT_PEEK_EVENT=event("stdlib::collections::smt::smt_peek")
+const SMT_PEEK_EVENT=event("miden::core::collections::smt::smt_peek")
 
 # CONSTANTS
 # =================================================================================================
