@@ -5,7 +5,6 @@ use super::{
     AccountHeader,
     AccountId,
     AdviceInputs,
-    BlockHeader,
     InputNote,
     InputNotes,
     NoteId,
@@ -16,7 +15,7 @@ use super::{
 };
 use crate::account::PartialAccount;
 use crate::asset::FungibleAsset;
-use crate::block::BlockNumber;
+use crate::block::{BlockHeader, BlockNumber};
 use crate::transaction::TransactionInputs;
 use crate::utils::serde::{
     ByteReader,

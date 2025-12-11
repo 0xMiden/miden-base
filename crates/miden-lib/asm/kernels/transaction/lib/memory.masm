@@ -115,7 +115,7 @@ const.TX_COMMITMENT_PTR=816
 const.TX_KERNEL_COMMITMENT_PTR=820
 
 # The memory address at which the proof commitment is stored
-const.PROOF_COMMITMENT_PTR=824
+const.VALIDATOR_KEY_COMMITMENT_PTR=824
 
 # The memory address at which the block metadata is stored [block_number, version, timestamp, 0]
 const.BLOCK_METADATA_PTR=828
@@ -502,14 +502,14 @@ export.get_init_native_account_vault_root
     padw mem_loadw_be.INIT_NATIVE_ACCOUNT_VAULT_ROOT_PTR
 end
 
-#! Returns the memory address of the vault root of the native account at the beginning of the 
+#! Returns the memory address of the vault root of the native account at the beginning of the
 #! transaction.
 #!
 #! Inputs:  []
 #! Outputs: [native_account_initial_vault_root_ptr]
 #!
 #! Where:
-#! - native_account_initial_vault_root_ptr is the memory pointer to the initial vault root of the 
+#! - native_account_initial_vault_root_ptr is the memory pointer to the initial vault root of the
 #!   native account.
 export.get_init_native_account_vault_root_ptr
     push.INIT_NATIVE_ACCOUNT_VAULT_ROOT_PTR
@@ -769,15 +769,15 @@ export.get_tx_kernel_commitment
     padw mem_loadw_be.TX_KERNEL_COMMITMENT_PTR
 end
 
-#! Returns the proof commitment of the transaction reference block.
+#! Returns the validator key commitment of the transaction reference block.
 #!
 #! Inputs:  []
-#! Outputs: [PROOF_COMMITMENT]
+#! Outputs: [VALIDATOR_KEY_COMMITMENT]
 #!
 #! Where:
-#! - PROOF_COMMITMENT is the proof commitment of the transaction reference block.
-export.get_proof_commitment
-    padw mem_loadw_be.PROOF_COMMITMENT_PTR
+#! - VALIDATOR_KEY_COMMITMENT is the public key commitment of the transaction reference block.
+export.get_validator_key_commitment
+    padw mem_loadw_be.VALIDATOR_KEY_COMMITMENT_PTR
 end
 
 #! Returns the note root of the transaction reference block.
@@ -1143,7 +1143,7 @@ end
 #! Where:
 #! - account_initial_vault_root_ptr is the memory pointer to the initial vault root.
 export.get_account_initial_vault_root_ptr
-    # For foreign account, use the regular vault root pointer since foreign accounts are read-only 
+    # For foreign account, use the regular vault root pointer since foreign accounts are read-only
     # and initial == current
     exec.get_account_vault_root_ptr
     # => [account_vault_root_ptr]
@@ -1403,7 +1403,7 @@ end
 #! Where:
 #! - account_initial_storage_slots_ptr is the memory pointer to the initial storage slot values.
 export.get_account_initial_storage_slots_ptr
-    # For foreign account, use the regular storage slots pointer since foreign accounts are 
+    # For foreign account, use the regular storage slots pointer since foreign accounts are
     # read-only and initial == current
     exec.get_account_storage_slots_section_ptr
     # => [account_storage_slots_ptr]
