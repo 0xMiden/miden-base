@@ -28,6 +28,7 @@ use miden_objects::account::{
     StorageMap,
     StorageSlot,
     StorageSlotContent,
+    StorageSlotId,
     StorageSlotName,
     StorageSlotType,
 };
@@ -526,10 +527,37 @@ async fn test_get_storage_slot_type() -> miette::Result<()> {
 
 #[tokio::test]
 async fn test_is_slot_id_lt() -> miette::Result<()> {
-    for i in 0..100 {
-        let prev_slot = StorageSlotName::mock(i);
-        let curr_slot = StorageSlotName::mock(i + 1);
+    // Note that the slot IDs derived from the names are essentially randomly sorted, so these cover
+    // "less than" and "greater than" outcomes.
+    let mut test_cases = (0..100)
+        .map(|i| {
+            let prev_slot = StorageSlotName::mock(i).id();
+            let curr_slot = StorageSlotName::mock(i + 1).id();
+            (prev_slot, curr_slot)
+        })
+        .collect::<Vec<_>>();
 
+    // Extend with special case where prefix matches and suffix determines the outcome.
+    let prefix = Felt::from(100u32);
+    test_cases.extend([
+        // prev_slot == curr_slot
+        (
+            StorageSlotId::new(Felt::from(50u32), prefix),
+            StorageSlotId::new(Felt::from(50u32), prefix),
+        ),
+        // prev_slot < curr_slot
+        (
+            StorageSlotId::new(Felt::from(50u32), prefix),
+            StorageSlotId::new(Felt::from(51u32), prefix),
+        ),
+        // prev_slot > curr_slot
+        (
+            StorageSlotId::new(Felt::from(51u32), prefix),
+            StorageSlotId::new(Felt::from(50u32), prefix),
+        ),
+    ]);
+
+    for (prev_slot, curr_slot) in test_cases {
         let code = format!(
             r#"
             use.$kernel::account
@@ -546,10 +574,10 @@ async fn test_is_slot_id_lt() -> miette::Result<()> {
                 # => []
             end
             "#,
-            prev_prefix = prev_slot.id().prefix(),
-            prev_suffix = prev_slot.id().suffix(),
-            curr_prefix = curr_slot.id().prefix(),
-            curr_suffix = curr_slot.id().suffix(),
+            prev_prefix = prev_slot.prefix(),
+            prev_suffix = prev_slot.suffix(),
+            curr_prefix = curr_slot.prefix(),
+            curr_suffix = curr_slot.suffix(),
             is_lt = u8::from(prev_slot < curr_slot)
         );
 
