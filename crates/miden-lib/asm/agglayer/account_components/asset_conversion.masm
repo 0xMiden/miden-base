@@ -76,7 +76,7 @@ end
 #! - ETH: amount=1e10, target_scale=8 → 1e18
 #!
 #! Invocation: exec
-pub proc convert_felt_to_u256_scaled
+pub proc convert_amount_to_u256_scaled
     swap
     # => [target_scale, amount]
 
