@@ -35,6 +35,6 @@ Such an authentication procedure typically inspects the transaction and then dec
 
 Recall that an [account's nonce](index.md#nonce) must be incremented whenever its state changes. Only authentication procedures are allowed to do so, to prevent accidental or unintended authorization of state changes.
 
-### Procedure tracking
+### Trigger procedures
 
-The authentication procedure can base its authentication decision on whether a specific account procedure was called during the transaction (procedure tracking). A procedure is considered "tracked" only if it invokes account-restricted kernel APIs (procedures that are only allowed to be called from the account context, e.g. `exec.faucet::mint`). Procedures that execute only local instructions (e.g., a noop `push.0 drop`) will not be marked as tracked.
+The authentication procedure can base its authentication decision on whether a specific account procedure was called during the transaction. A procedure triggers authentication only if it invokes account-restricted kernel APIs (procedures that are only allowed to be called from the account context, e.g. `exec.faucet::mint`). Procedures that execute only local instructions (e.g., a noop `push.0 drop`) will not trigger this authentication.
