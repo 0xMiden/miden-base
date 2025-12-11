@@ -42,7 +42,7 @@ procedure_digest!(
 );
 
 static METADATA_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
-    StorageSlotName::new("miden::basic_fungible_faucet::metadata")
+    StorageSlotName::new("miden::standards::faucets::metadata")
         .expect("storage slot name should be valid")
 });
 

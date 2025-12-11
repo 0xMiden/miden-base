@@ -17,10 +17,8 @@ const.ERR_BASIC_FUNGIBLE_BURN_WRONG_NUMBER_OF_ASSETS="burn requires exactly 1 no
 # CONSTANTS
 # =================================================================================================
 
-# The slot in this component's storage where the metadata is stored.
-# TODO(named_slots): Unify slot name or make distribute take slot ID as a parameter to allow for
-# different slot names per fungible faucet?
-const.METADATA_SLOT=word("miden::basic_fungible_faucet::metadata")
+# The standard slot where faucet metadata like token symbol or decimals are stored.
+const.METADATA_SLOT=word("miden::standards::faucets::metadata")
 
 #! Distributes freshly minted fungible assets to the provided recipient by creating a note.
 #!
