@@ -1848,9 +1848,6 @@ proc.find_storage_slot
     dup exec.memory::get_num_storage_slots mul.ACCOUNT_STORAGE_SLOT_DATA_LENGTH add
     # => [storage_slots_end_ptr, storage_slots_start_ptr, slot_id_prefix, slot_id_suffix]
 
-    # TODO(named_slots): Check if we can get here if num_storage_slots == 0. If so, return a better
-    # error than what find_key_value returns.
-
     movdn.3 movdn.2
     # => [slot_id_prefix, slot_id_suffix, storage_slots_start_ptr, storage_slots_end_ptr]
 

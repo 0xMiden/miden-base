@@ -10,6 +10,7 @@ use miden_lib::errors::tx_kernel_errors::{
     ERR_ACCOUNT_ID_UNKNOWN_VERSION,
     ERR_ACCOUNT_NONCE_AT_MAX,
     ERR_ACCOUNT_NONCE_CAN_ONLY_BE_INCREMENTED_ONCE,
+    ERR_ACCOUNT_UNKNOWN_STORAGE_SLOT_NAME,
 };
 use miden_lib::testing::account_component::MockAccountComponent;
 use miden_lib::testing::mock_account::MockAccountExt;
@@ -62,6 +63,7 @@ use crate::{
     MockChain,
     TransactionContextBuilder,
     TxContextInput,
+    assert_execution_error,
     assert_transaction_executor_error,
 };
 
@@ -521,6 +523,52 @@ async fn test_get_storage_slot_type() -> miette::Result<()> {
             "the rest of the stack is empty"
         );
     }
+
+    Ok(())
+}
+
+/// Tests that accessing an unknown slot fails with the expected error message.
+///
+/// This tests both accounts with empty storage and non-empty storage.
+#[tokio::test]
+async fn test_account_get_item_fails_on_unknown_slot() -> anyhow::Result<()> {
+    let mut builder = MockChain::builder();
+
+    let account_empty_storage = builder.add_existing_wallet(Auth::IncrNonce)?;
+    assert_eq!(account_empty_storage.storage().num_slots(), 0);
+
+    let account_non_empty_storage = builder.add_existing_wallet(Auth::BasicAuth)?;
+    assert_eq!(account_non_empty_storage.storage().num_slots(), 1);
+
+    let chain = builder.build()?;
+
+    let code = r#"
+            use.$kernel::account
+            use.$kernel::prologue
+
+            const.UNKNOWN_SLOT_NAME = word("unknown::slot::name")
+
+            begin
+                exec.prologue::prepare_transaction
+
+                push.UNKNOWN_SLOT_NAME[0..2]
+                exec.account::get_item
+            end
+            "#;
+
+    let result = chain
+        .build_tx_context(account_empty_storage, &[], &[])?
+        .build()?
+        .execute_code(code)
+        .await;
+    assert_execution_error!(result, ERR_ACCOUNT_UNKNOWN_STORAGE_SLOT_NAME);
+
+    let result = chain
+        .build_tx_context(account_non_empty_storage, &[], &[])?
+        .build()?
+        .execute_code(code)
+        .await;
+    assert_execution_error!(result, ERR_ACCOUNT_UNKNOWN_STORAGE_SLOT_NAME);
 
     Ok(())
 }
