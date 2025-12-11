@@ -1,6 +1,7 @@
 use alloc::string::String;
 
 use miden_objects::account::{Account, AccountStorage, AccountType, StorageSlotName};
+use miden_objects::utils::sync::LazyLock;
 use miden_objects::{AccountError, Felt, TokenSymbolError};
 use thiserror::Error;
 
@@ -9,6 +10,11 @@ mod network_fungible;
 
 pub use basic_fungible::{BasicFungibleFaucet, create_basic_fungible_faucet};
 pub use network_fungible::{NetworkFungibleFaucet, create_network_fungible_faucet};
+
+static METADATA_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
+    StorageSlotName::new("miden::standards::faucets::metadata")
+        .expect("storage slot name should be valid")
+});
 
 // FUNGIBLE FAUCET
 // ================================================================================================
