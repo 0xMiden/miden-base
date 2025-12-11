@@ -452,7 +452,7 @@ mod tests {
             StorageSlot::with_empty_value(slot_name2.clone()),
         ];
 
-        // Set up a test where the slots we pass are are not already sorted
+        // Set up a test where the slots we pass are not already sorted
         // This ensures the duplicate is correctly found
         let err = AccountStorage::new(slots.clone()).unwrap_err();
 
