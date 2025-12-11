@@ -61,7 +61,7 @@ async fn test_convert_to_u256_helper(
         
         begin
             push.{}.{}
-            call.::convert_felt_to_u256_scaled
+            call.::convert_amount_to_u256_scaled
             exec.sys::truncate_stack
         end
         ",
@@ -139,7 +139,7 @@ async fn test_convert_to_u256_scaled_eth() -> anyhow::Result<()> {
         
         begin
             push.{}.{}
-            call.::convert_felt_to_u256_scaled
+            call.::convert_amount_to_u256_scaled
             exec.sys::truncate_stack
         end
         ",
@@ -183,7 +183,7 @@ async fn test_convert_to_u256_scaled_large_amount() -> anyhow::Result<()> {
         begin
             push.{}.{}
 
-            call.::convert_felt_to_u256_scaled
+            call.::convert_amount_to_u256_scaled
             exec.sys::truncate_stack
         end
         ",
@@ -210,8 +210,7 @@ async fn test_convert_to_u256_scaled_large_amount() -> anyhow::Result<()> {
 }
 
 #[test]
-fn test_felts_to_u256_bytes_hand_encoded_values() {
-    // Test case 1: Simple sequential values 1,2,3,4,5,6,7,8
+fn test_felts_to_u256_bytes_sequential_values() {
     let limbs = vec![
         Felt::new(1),
         Felt::new(2),
@@ -225,9 +224,12 @@ fn test_felts_to_u256_bytes_hand_encoded_values() {
     let result = utils::felts_to_u256_bytes(limbs);
     assert_eq!(result.len(), 32);
 
-    // Verify first and last limbs are in correct positions (little-endian, reversed order)
-    assert_eq!(result[0], 8); // limbs[7] = 8 in little-endian (reversed order)
-    assert_eq!(result[28], 1); // limbs[0] = 1 in little-endian (reversed order)
+    // Verify the byte layout: limbs are processed in reverse order, each as little-endian u32
+    // First byte should be 8 (limbs[7] = 8, most significant limb, least significant byte)
+    assert_eq!(result[0], 8);
+    // Byte at position 28 should be 1 (limbs[0] = 1, least significant limb, least significant
+    // byte)
+    assert_eq!(result[28], 1);
 }
 
 #[test]
