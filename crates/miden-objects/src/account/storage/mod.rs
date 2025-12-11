@@ -351,8 +351,9 @@ impl SequentialCommit for AccountStorage {
         self.slots()
             .iter()
             .flat_map(|slot| {
-                StorageSlotHeader::new(
-                    slot.id(),
+                // Use borrowed name to avoid cloning
+                StorageSlotHeader::with_borrowed_name(
+                    slot.name(),
                     slot.content().slot_type(),
                     slot.content().value(),
                 )

@@ -1,3 +1,4 @@
+use alloc::borrow::Cow;
 use alloc::string::ToString;
 use alloc::vec::Vec;
 
@@ -13,26 +14,81 @@ use crate::utils::serde::{
 };
 use crate::{AccountError, FieldElement, ZERO};
 
-// ACCOUNT STORAGE HEADER
+// STORAGE SLOT HEADER
 // ================================================================================================
 
-/// The header of a [`StorageSlot`], storing only the slot ID, slot type and value of the slot.
+/// The header of a [`StorageSlot`], storing only the slot name (or ID), slot type and value of the
+/// slot.
 ///
 /// The stored value differs based on the slot type:
 /// - [`StorageSlotType::Value`]: The value of the slot itself.
 /// - [`StorageSlotType::Map`]: The root of the SMT that represents the storage map.
+///
+/// The `'name` lifetime parameter allows efficient borrowing of the slot name without cloning.
+/// When the name is borrowed from a static string or another source, no allocation is needed.
+/// When owned, the name is stored in an allocated [`StorageSlotName`].
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct StorageSlotHeader {
-    id: StorageSlotId,
+pub(crate) struct StorageSlotHeader<'name> {
+    id: Cow<'name, StorageSlotName>,
     r#type: StorageSlotType,
     value: Word,
 }
 
-impl StorageSlotHeader {
-    /// Returns a new instance of storage slot header from the provided storage slot ID, type and
-    /// value.
-    pub(crate) fn new(id: StorageSlotId, r#type: StorageSlotType, value: Word) -> Self {
-        Self { id, r#type, value }
+impl<'name> StorageSlotHeader<'name> {
+    // CONSTRUCTORS
+    // --------------------------------------------------------------------------------------------
+
+    /// Returns a new instance of storage slot header with a borrowed slot name.
+    pub(crate) fn with_borrowed_name(
+        name: &'name StorageSlotName,
+        r#type: StorageSlotType,
+        value: Word,
+    ) -> Self {
+        Self {
+            id: Cow::Borrowed(name),
+            r#type,
+            value,
+        }
+    }
+
+    /// Returns a new instance of storage slot header with an owned slot name.
+    #[allow(dead_code)]
+    pub(crate) fn with_owned_name(
+        name: StorageSlotName,
+        r#type: StorageSlotType,
+        value: Word,
+    ) -> Self {
+        Self {
+            id: Cow::Owned(name),
+            r#type,
+            value,
+        }
+    }
+
+    // ACCESSORS
+    // --------------------------------------------------------------------------------------------
+
+    /// Returns a reference to the slot name.
+    #[allow(dead_code)]
+    pub(crate) fn name(&self) -> &StorageSlotName {
+        &self.id
+    }
+
+    /// Returns the slot ID.
+    pub(crate) fn id(&self) -> StorageSlotId {
+        self.id.id()
+    }
+
+    /// Returns the slot type.
+    #[allow(dead_code)]
+    pub(crate) fn slot_type(&self) -> StorageSlotType {
+        self.r#type
+    }
+
+    /// Returns the slot value.
+    #[allow(dead_code)]
+    pub(crate) fn value(&self) -> Word {
+        self.value
     }
 
     /// Returns this storage slot header as field elements.
@@ -42,17 +98,31 @@ impl StorageSlotHeader {
     /// [[0, slot_type, slot_id_suffix, slot_id_prefix], SLOT_VALUE]
     /// ```
     pub(crate) fn to_elements(&self) -> [Felt; StorageSlot::NUM_ELEMENTS] {
+        let id = self.id();
         let mut elements = [ZERO; StorageSlot::NUM_ELEMENTS];
         elements[0..4].copy_from_slice(&[
             Felt::ZERO,
             self.r#type.as_felt(),
-            self.id.suffix(),
-            self.id.prefix(),
+            id.suffix(),
+            id.prefix(),
         ]);
         elements[4..8].copy_from_slice(self.value.as_elements());
         elements
     }
+
+    /// Converts this storage slot header into an owned version with `'static` lifetime.
+    #[allow(dead_code)]
+    pub(crate) fn into_owned(self) -> StorageSlotHeader<'static> {
+        StorageSlotHeader {
+            id: Cow::Owned(self.id.into_owned()),
+            r#type: self.r#type,
+            value: self.value,
+        }
+    }
 }
+
+// ACCOUNT STORAGE HEADER
+// ================================================================================================
 
 /// The header of an [`AccountStorage`], storing only the slot name, slot type and value of each
 /// storage slot.
@@ -197,7 +267,9 @@ impl SequentialCommit for AccountStorageHeader {
     fn to_elements(&self) -> Vec<Felt> {
         self.slots()
             .flat_map(|(slot_name, slot_type, slot_value)| {
-                StorageSlotHeader::new(slot_name.id(), *slot_type, *slot_value).to_elements()
+                // Use borrowed name to avoid cloning
+                StorageSlotHeader::with_borrowed_name(slot_name, *slot_type, *slot_value)
+                    .to_elements()
             })
             .collect()
     }
