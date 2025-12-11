@@ -1,14 +1,13 @@
-use alloc::string::{String, ToString};
 use alloc::sync::Arc;
 
 use miden_objects::account::AccountComponentCode;
-use miden_objects::assembly::diagnostics::NamedSource;
 use miden_objects::assembly::{
     Assembler,
     DefaultSourceManager,
     Library,
     LibraryPath,
     Parse,
+    ParseOptions,
     SourceManagerSync,
 };
 use miden_objects::note::NoteScript;
@@ -113,7 +112,7 @@ impl CodeBuilder {
     // LIBRARY MANAGEMENT
     // --------------------------------------------------------------------------------------------
 
-    /// Compiles and links a module to the code builder.
+    /// Parses and links a module to the code builder.
     ///
     /// This method compiles the provided module code and adds it directly to the assembler
     /// for use in script compilation.
@@ -130,7 +129,7 @@ impl CodeBuilder {
     pub fn link_module(
         &mut self,
         module_path: impl AsRef<str>,
-        module_code: impl AsRef<str>,
+        module_code: impl Parse,
     ) -> Result<(), CodeBuilderError> {
         // Parse the library path
         let lib_path = LibraryPath::new(module_path.as_ref()).map_err(|err| {
@@ -140,7 +139,14 @@ impl CodeBuilder {
             )
         })?;
 
-        let module = NamedSource::new(format!("{lib_path}"), String::from(module_code.as_ref()));
+        let mut parse_options = ParseOptions::for_library();
+        parse_options.path = Some(lib_path);
+
+        let module = module_code
+            .parse_with_options(self.source_manager.as_ref(), parse_options)
+            .map_err(|err| {
+                CodeBuilderError::build_error_with_report("failed to parse module code", err)
+            })?;
 
         self.assembler.compile_and_statically_link(module).map_err(|err| {
             CodeBuilderError::build_error_with_report("failed to assemble module", err)
@@ -232,7 +238,7 @@ impl CodeBuilder {
     pub fn with_linked_module(
         mut self,
         module_path: impl AsRef<str>,
-        module_code: impl AsRef<str>,
+        module_code: impl Parse,
     ) -> Result<Self, CodeBuilderError> {
         self.link_module(module_path, module_code)?;
         Ok(self)
@@ -255,9 +261,9 @@ impl CodeBuilder {
     pub fn parse_component_code(
         self,
         component_path: impl AsRef<str>,
-        component_code: impl AsRef<str>,
+        component_code: impl Parse,
     ) -> Result<AccountComponentCode, CodeBuilderError> {
-        let assembler = self.assembler;
+        let CodeBuilder { assembler, source_manager } = self;
         let component_path = component_path.as_ref();
         let lib_path = LibraryPath::new(component_path).map_err(|err| {
             CodeBuilderError::build_error_with_source(
@@ -266,14 +272,18 @@ impl CodeBuilder {
             )
         })?;
 
-        let library = assembler
-            .assemble_library([NamedSource::new(
-                lib_path.to_string(),
-                String::from(component_code.as_ref()),
-            )])
+        let mut parse_options = ParseOptions::for_library();
+        parse_options.path = Some(lib_path);
+
+        let module = component_code
+            .parse_with_options(source_manager.as_ref(), parse_options)
             .map_err(|err| {
                 CodeBuilderError::build_error_with_report("failed to parse component code", err)
             })?;
+
+        let library = assembler.assemble_library([module]).map_err(|err| {
+            CodeBuilderError::build_error_with_report("failed to parse component code", err)
+        })?;
 
         Ok(AccountComponentCode::from(library))
     }
@@ -419,6 +429,7 @@ impl From<CodeBuilder> for Assembler {
 #[cfg(test)]
 mod tests {
     use anyhow::Context;
+    use miden_objects::assembly::diagnostics::NamedSource;
 
     use super::*;
 
