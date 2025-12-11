@@ -29,7 +29,7 @@ use crate::{MAX_ACCOUNTS_PER_BATCH, MAX_INPUT_NOTES_PER_BATCH, MAX_OUTPUT_NOTES_
 pub struct ProposedBatch {
     /// The transactions of this batch.
     transactions: Vec<Arc<ProvenTransaction>>,
-    /// The header is boxed as it has a large stack size.
+    /// The header of the reference block that this batch is proposed for.
     reference_block_header: BlockHeader,
     /// The partial blockchain used to authenticate:
     /// - all unauthenticated notes that can be authenticated,

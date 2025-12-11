@@ -1,16 +1,18 @@
-use miden_core::Word;
 use miden_objects::ProposedBlockError;
-use miden_objects::block::{BlockBody, BlockHeader, BlockNumber, ProposedBlock};
+use miden_objects::block::{BlockBody, BlockHeader, ProposedBlock};
 
 use crate::transaction::TransactionKernel;
 
-/// Builds a [`BlockHeader`] and [`BlockBody`] by computing the following from the state updates
-/// encapsulated by the provided [`ProposedBlock`]:
+/// Builds a [`BlockHeader`] and [`BlockBody`] by computing the following from the state
+/// updates encapsulated by the provided [`ProposedBlock`]:
 /// - the account root;
 /// - the nullifier root;
 /// - the note root;
 /// - the transaction commitment; and
 /// - the chain commitment.
+///
+/// The returned block header contains the same validator public key as the previous block, as
+/// provided by the proposed block.
 ///
 /// This functionality is handled here because the block header requires [`TransactionKernel`] for
 /// its various commitment fields.
@@ -42,33 +44,6 @@ pub fn build_block(
 
     // Construct the header.
     let tx_commitment = body.transaction_commitment();
-    let header = construct_block_header(
-        block_num,
-        timestamp,
-        prev_block_header,
-        tx_commitment,
-        new_chain_commitment,
-        new_account_root,
-        new_nullifier_root,
-        note_root,
-    );
-
-    Ok((header, body))
-}
-
-// HELPERS
-// ================================================================================================
-
-fn construct_block_header(
-    block_num: BlockNumber,
-    timestamp: u32,
-    prev_block_header: BlockHeader,
-    tx_commitment: Word,
-    new_chain_commitment: Word,
-    new_account_root: Word,
-    new_nullifier_root: Word,
-    note_root: Word,
-) -> BlockHeader {
     let prev_block_commitment = prev_block_header.commitment();
 
     // For now we copy the parameters of the previous header, which means the parameters set on
@@ -80,11 +55,7 @@ fn construct_block_header(
     // See miden-base/1155.
     let version = 0;
     let tx_kernel_commitment = TransactionKernel.to_commitment();
-
-    // TODO(serge): remove proof commitment when block header is updated to no longer have it.
-    let proof_commitment = Word::empty();
-
-    BlockHeader::new(
+    let header = BlockHeader::new(
         version,
         prev_block_commitment,
         block_num,
@@ -94,8 +65,9 @@ fn construct_block_header(
         note_root,
         tx_commitment,
         tx_kernel_commitment,
-        proof_commitment,
+        prev_block_header.validator_key().clone(),
         fee_parameters,
         timestamp,
-    )
+    );
+    Ok((header, body))
 }
