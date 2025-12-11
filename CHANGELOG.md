@@ -7,6 +7,10 @@
 - [BREAKING] Refactor storage slots to be accessed by names instead of indices ([#1987](https://github.com/0xMiden/miden-base/pull/1987)).
 - [BREAKING] Refactor storage slots to be accessed by names instead of indices ([#1987](https://github.com/0xMiden/miden-base/pull/1987), [#2025](https://github.com/0xMiden/miden-base/pull/2025), [#2149](https://github.com/0xMiden/miden-base/pull/2149), [#2150](https://github.com/0xMiden/miden-base/pull/2150), [#2153](https://github.com/0xMiden/miden-base/pull/2153)).
 
+### Changes
+
+- [BREAKING] Make `AccountProcedureIndexMap` construction infallible ([#2163](https://github.com/0xMiden/miden-base/pull/2163)).
+
 ## 0.12.2 (unreleased)
 - Add proc-macro `WordWrapper` to ease implementation of `Word`-wrapping types ([#2071](https://github.com/0xMiden/miden-base/pull/2108)).
 - [BREAKING] Added fee to `TransactionHeader` ([#2131](https://github.com/0xMiden/miden-base/pull/2131)).
