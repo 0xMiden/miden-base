@@ -68,7 +68,7 @@ Let's assume account A wants to create a P2ID note. P2ID notes are pay-to-ID not
 
 In this example, account A uses the basic wallet and the authentication component provided by `miden-lib`. The basic wallet component defines the methods `wallets::basic::create_note` and `wallets::basic::move_asset_to_note` to create notes with assets, and `wallets::basic::receive_asset` to receive assets. The authentication component exposes `auth::basic::auth_tx_rpo_falcon512` which allows for signing a transaction. Some account methods like `active_account::get_id` are always exposed.
 
-The executor inputs to the Miden VM a `Transaction` script in which he places on the stack the data (tag, aux, note_type, execution_hint, RECIPIENT) of the note(s) that he wants to create using `wallets::basic::create_note` during the said `Transaction`. The [`NoteRecipient`](https://github.com/0xMiden/miden-base/blob/main/crates/miden-objects/src/note/recipient.rs) is a value that describes under which condition a note can be consumed and is built using a `serial_number`, the `note_script` (in this case P2ID script) and the `note_inputs`. The Miden VM will execute the `Transaction` script and create the note(s). After having been created, the executor can use `wallets::basic::move_asset_to_note` to move assets from the account's vault to the notes vault.
+The executor inputs to the Miden VM a `Transaction` script in which it places on the stack the data (tag, aux, note_type, execution_hint, RECIPIENT) of the note(s) that it wants to create using `wallets::basic::create_note` during the said `Transaction`. The [`NoteRecipient`](https://github.com/0xMiden/miden-base/blob/main/crates/miden-objects/src/note/recipient.rs) is a value that describes under which condition a note can be consumed and is built using a `serial_number`, the `note_script` (in this case P2ID script) and the `note_inputs`. The Miden VM will execute the `Transaction` script and create the note(s). After having been created, the executor can use `wallets::basic::move_asset_to_note` to move assets from the account's vault to the notes vault.
 
 After finalizing the `Transaction` the updated state and created note(s) can now be submitted to the Miden operator to be recorded on-chain.
 
@@ -128,7 +128,7 @@ The ability to facilitate both, local and network transactions, **is one of the 
 
 - Not all transactions require notes. For example, the owner of a faucet can mint new tokens using only a `Transaction` script, without interacting with external notes.
 
-- In Miden executors can choose arbitrary reference blocks to execute against their state. Hence it is possible to set `Transaction` expiration heights and in doing so, to define a block height until a `Transaction` should be included into a block. If the `Transaction` is expired, the resulting account state change is not valid and the `Transaction` cannot be verified anymore.
+- In Miden, executors can choose arbitrary reference blocks to execute against their state. Hence it is possible to set `Transaction` expiration heights and in doing so, to define a block height until a `Transaction` should be included into a block. If the `Transaction` is expired, the resulting account state change is not valid and the `Transaction` cannot be verified anymore.
 
 - Note and `Transaction` scripts can read the state of foreign accounts during execution. This is called foreign procedure invocation. For example, the price of an asset for the **Swap** script might depend on a certain value stored in the oracle account.
 

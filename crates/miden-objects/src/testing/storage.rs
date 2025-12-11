@@ -12,16 +12,18 @@ use crate::account::{
     StorageMap,
     StorageMapDelta,
     StorageSlot,
+    StorageSlotName,
 };
 use crate::note::NoteAssets;
+use crate::utils::sync::LazyLock;
 
 // ACCOUNT STORAGE DELTA BUILDER
 // ================================================================================================
 
 #[derive(Clone, Debug, Default)]
 pub struct AccountStorageDeltaBuilder {
-    values: BTreeMap<u8, Word>,
-    maps: BTreeMap<u8, StorageMapDelta>,
+    values: BTreeMap<StorageSlotName, Word>,
+    maps: BTreeMap<StorageSlotName, StorageMapDelta>,
 }
 
 impl AccountStorageDeltaBuilder {
@@ -38,19 +40,22 @@ impl AccountStorageDeltaBuilder {
     // MODIFIERS
     // -------------------------------------------------------------------------------------------
 
-    pub fn add_cleared_items(mut self, items: impl IntoIterator<Item = u8>) -> Self {
+    pub fn add_cleared_items(mut self, items: impl IntoIterator<Item = StorageSlotName>) -> Self {
         self.values.extend(items.into_iter().map(|slot| (slot, EMPTY_WORD)));
         self
     }
 
-    pub fn add_updated_values(mut self, items: impl IntoIterator<Item = (u8, Word)>) -> Self {
+    pub fn add_updated_values(
+        mut self,
+        items: impl IntoIterator<Item = (StorageSlotName, Word)>,
+    ) -> Self {
         self.values.extend(items);
         self
     }
 
     pub fn add_updated_maps(
         mut self,
-        items: impl IntoIterator<Item = (u8, StorageMapDelta)>,
+        items: impl IntoIterator<Item = (StorageSlotName, StorageMapDelta)>,
     ) -> Self {
         self.maps.extend(items);
         self
@@ -64,22 +69,18 @@ impl AccountStorageDeltaBuilder {
     }
 }
 
-// ACCOUNT STORAGE UTILS
-// ================================================================================================
-
-pub struct SlotWithIndex {
-    pub slot: StorageSlot,
-    pub index: u8,
-}
-
 // CONSTANTS
 // ================================================================================================
 
-pub const FAUCET_STORAGE_DATA_SLOT: u8 = 0;
-
-pub const STORAGE_INDEX_0: u8 = 0;
-pub const STORAGE_INDEX_1: u8 = 1;
-pub const STORAGE_INDEX_2: u8 = 2;
+pub static MOCK_VALUE_SLOT0: LazyLock<StorageSlotName> = LazyLock::new(|| {
+    StorageSlotName::new("miden::test::value0").expect("storage slot name should be valid")
+});
+pub static MOCK_VALUE_SLOT1: LazyLock<StorageSlotName> = LazyLock::new(|| {
+    StorageSlotName::new("miden::test::value1").expect("storage slot name should be valid")
+});
+pub static MOCK_MAP_SLOT: LazyLock<StorageSlotName> = LazyLock::new(|| {
+    StorageSlotName::new("miden::test::map").expect("storage slot name should be valid")
+});
 
 pub const STORAGE_VALUE_0: Word =
     Word::new([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]);
@@ -97,34 +98,25 @@ pub const STORAGE_LEAVES_2: [(Word, Word); 2] = [
 ];
 
 impl AccountStorage {
-    /// Create account storage:
+    /// Create account storage.
     pub fn mock() -> Self {
         AccountStorage::new(Self::mock_storage_slots()).unwrap()
     }
 
     pub fn mock_storage_slots() -> Vec<StorageSlot> {
-        vec![Self::mock_item_0().slot, Self::mock_item_1().slot, Self::mock_item_2().slot]
+        vec![Self::mock_value_slot0(), Self::mock_value_slot1(), Self::mock_map_slot()]
     }
 
-    pub fn mock_item_0() -> SlotWithIndex {
-        SlotWithIndex {
-            slot: StorageSlot::Value(STORAGE_VALUE_0),
-            index: STORAGE_INDEX_0,
-        }
+    pub fn mock_value_slot0() -> StorageSlot {
+        StorageSlot::with_value(MOCK_VALUE_SLOT0.clone(), STORAGE_VALUE_0)
     }
 
-    pub fn mock_item_1() -> SlotWithIndex {
-        SlotWithIndex {
-            slot: StorageSlot::Value(STORAGE_VALUE_1),
-            index: STORAGE_INDEX_1,
-        }
+    pub fn mock_value_slot1() -> StorageSlot {
+        StorageSlot::with_value(MOCK_VALUE_SLOT1.clone(), STORAGE_VALUE_1)
     }
 
-    pub fn mock_item_2() -> SlotWithIndex {
-        SlotWithIndex {
-            slot: StorageSlot::Map(Self::mock_map()),
-            index: STORAGE_INDEX_2,
-        }
+    pub fn mock_map_slot() -> StorageSlot {
+        StorageSlot::with_map(MOCK_MAP_SLOT.clone(), Self::mock_map())
     }
 
     pub fn mock_map() -> StorageMap {

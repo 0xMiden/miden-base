@@ -2,10 +2,33 @@ use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 
 use miden_objects::account::auth::PublicKeyCommitment;
-use miden_objects::account::{AccountComponent, StorageMap, StorageSlot};
+use miden_objects::account::{AccountComponent, StorageMap, StorageSlot, StorageSlotName};
+use miden_objects::utils::sync::LazyLock;
 use miden_objects::{AccountError, Word};
 
 use crate::account::components::ecdsa_k256_keccak_multisig_library;
+
+static THRESHOLD_CONFIG_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
+    StorageSlotName::new("miden::standards::auth::ecdsa_k256_keccak_multisig::threshold_config")
+        .expect("storage slot name should be valid")
+});
+
+static APPROVER_PUBKEYS_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
+    StorageSlotName::new("miden::standards::auth::ecdsa_k256_keccak_multisig::approver_public_keys")
+        .expect("storage slot name should be valid")
+});
+
+static EXECUTED_TRANSACTIONS_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
+    StorageSlotName::new(
+        "miden::standards::auth::ecdsa_k256_keccak_multisig::executed_transactions",
+    )
+    .expect("storage slot name should be valid")
+});
+
+static PROCEDURE_THRESHOLDS_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
+    StorageSlotName::new("miden::standards::auth::ecdsa_k256_keccak_multisig::procedure_thresholds")
+        .expect("storage slot name should be valid")
+});
 
 // MULTISIG AUTHENTICATION COMPONENT
 // ================================================================================================
@@ -104,22 +127,40 @@ impl AuthEcdsaK256KeccakMultisig {
     pub fn new(config: AuthEcdsaK256KeccakMultisigConfig) -> Result<Self, AccountError> {
         Ok(Self { config })
     }
+
+    /// Returns the [`StorageSlotName`] where the threshold configuration is stored.
+    pub fn threshold_config_slot() -> &'static StorageSlotName {
+        &THRESHOLD_CONFIG_SLOT_NAME
+    }
+
+    /// Returns the [`StorageSlotName`] where the approver public keys are stored.
+    pub fn approver_public_keys_slot() -> &'static StorageSlotName {
+        &APPROVER_PUBKEYS_SLOT_NAME
+    }
+
+    /// Returns the [`StorageSlotName`] where the executed transactions are stored.
+    pub fn executed_transactions_slot() -> &'static StorageSlotName {
+        &EXECUTED_TRANSACTIONS_SLOT_NAME
+    }
+
+    /// Returns the [`StorageSlotName`] where the procedure thresholds are stored.
+    pub fn procedure_thresholds_slot() -> &'static StorageSlotName {
+        &PROCEDURE_THRESHOLDS_SLOT_NAME
+    }
 }
 
 impl From<AuthEcdsaK256KeccakMultisig> for AccountComponent {
     fn from(multisig: AuthEcdsaK256KeccakMultisig) -> Self {
         let mut storage_slots = Vec::with_capacity(3);
 
-        // Slot 0: [threshold, num_approvers, 0, 0]
+        // Threshold config slot (value: [threshold, num_approvers, 0, 0])
         let num_approvers = multisig.config.approvers().len() as u32;
-        storage_slots.push(StorageSlot::Value(Word::from([
-            multisig.config.default_threshold(),
-            num_approvers,
-            0,
-            0,
-        ])));
+        storage_slots.push(StorageSlot::with_value(
+            AuthEcdsaK256KeccakMultisig::threshold_config_slot().clone(),
+            Word::from([multisig.config.default_threshold(), num_approvers, 0, 0]),
+        ));
 
-        // Slot 1: A map with approver public keys
+        // Approver public keys slot (map)
         let map_entries = multisig
             .config
             .approvers()
@@ -128,13 +169,19 @@ impl From<AuthEcdsaK256KeccakMultisig> for AccountComponent {
             .map(|(i, pub_key)| (Word::from([i as u32, 0, 0, 0]), (*pub_key).into()));
 
         // Safe to unwrap because we know that the map keys are unique.
-        storage_slots.push(StorageSlot::Map(StorageMap::with_entries(map_entries).unwrap()));
+        storage_slots.push(StorageSlot::with_map(
+            AuthEcdsaK256KeccakMultisig::approver_public_keys_slot().clone(),
+            StorageMap::with_entries(map_entries).unwrap(),
+        ));
 
-        // Slot 2: A map which stores executed transactions
+        // Executed transactions slot (map)
         let executed_transactions = StorageMap::default();
-        storage_slots.push(StorageSlot::Map(executed_transactions));
+        storage_slots.push(StorageSlot::with_map(
+            AuthEcdsaK256KeccakMultisig::executed_transactions_slot().clone(),
+            executed_transactions,
+        ));
 
-        // Slot 3: A map which stores procedure thresholds (PROC_ROOT -> threshold)
+        // Procedure thresholds slot (map: PROC_ROOT -> threshold)
         let proc_threshold_roots = StorageMap::with_entries(
             multisig
                 .config
@@ -143,7 +190,10 @@ impl From<AuthEcdsaK256KeccakMultisig> for AccountComponent {
                 .map(|(proc_root, threshold)| (*proc_root, Word::from([*threshold, 0, 0, 0]))),
         )
         .unwrap();
-        storage_slots.push(StorageSlot::Map(proc_threshold_roots));
+        storage_slots.push(StorageSlot::with_map(
+            AuthEcdsaK256KeccakMultisig::procedure_thresholds_slot().clone(),
+            proc_threshold_roots,
+        ));
 
         AccountComponent::new(ecdsa_k256_keccak_multisig_library(), storage_slots)
             .expect("Multisig auth component should satisfy the requirements of a valid account component")
@@ -185,16 +235,22 @@ mod tests {
             .build()
             .expect("account building failed");
 
-        // Verify slot 0: [threshold, num_approvers, 0, 0]
-        let threshold_slot = account.storage().get_item(0).expect("storage slot 0 access failed");
-        assert_eq!(threshold_slot, Word::from([threshold, approvers.len() as u32, 0, 0]));
+        // Verify config slot: [threshold, num_approvers, 0, 0]
+        let config_slot = account
+            .storage()
+            .get_item(AuthEcdsaK256KeccakMultisig::threshold_config_slot())
+            .expect("config storage slot access failed");
+        assert_eq!(config_slot, Word::from([threshold, approvers.len() as u32, 0, 0]));
 
-        // Verify slot 1: Approver public keys in map
+        // Verify approver pub keys slot
         for (i, expected_pub_key) in approvers.iter().enumerate() {
             let stored_pub_key = account
                 .storage()
-                .get_map_item(1, Word::from([i as u32, 0, 0, 0]))
-                .expect("storage map access failed");
+                .get_map_item(
+                    AuthEcdsaK256KeccakMultisig::approver_public_keys_slot(),
+                    Word::from([i as u32, 0, 0, 0]),
+                )
+                .expect("approver public key storage map access failed");
             assert_eq!(stored_pub_key, Word::from(*expected_pub_key));
         }
     }
@@ -219,13 +275,19 @@ mod tests {
             .expect("account building failed");
 
         // Verify storage layout
-        let threshold_slot = account.storage().get_item(0).expect("storage slot 0 access failed");
-        assert_eq!(threshold_slot, Word::from([threshold, approvers.len() as u32, 0, 0]));
+        let config_slot = account
+            .storage()
+            .get_item(AuthEcdsaK256KeccakMultisig::threshold_config_slot())
+            .expect("config storage slot access failed");
+        assert_eq!(config_slot, Word::from([threshold, approvers.len() as u32, 0, 0]));
 
         let stored_pub_key = account
             .storage()
-            .get_map_item(1, Word::from([0u32, 0, 0, 0]))
-            .expect("storage map access failed");
+            .get_map_item(
+                AuthEcdsaK256KeccakMultisig::approver_public_keys_slot(),
+                Word::from([0u32, 0, 0, 0]),
+            )
+            .expect("approver pub keys storage map access failed");
         assert_eq!(stored_pub_key, Word::from(pub_key));
     }
 

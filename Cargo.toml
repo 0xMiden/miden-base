@@ -54,7 +54,7 @@ miden-air             = { default-features = false, version = "0.19" }
 miden-assembly        = { default-features = false, version = "0.19" }
 miden-assembly-syntax = { default-features = false, version = "0.19" }
 miden-core            = { default-features = false, version = "0.19" }
-miden-crypto          = { default-features = false, version = "0.18" }
+miden-crypto          = { default-features = false, version = "0.18.5" }
 miden-mast-package    = { default-features = false, version = "0.19" }
 miden-processor       = { default-features = false, version = "0.19" }
 miden-prover          = { default-features = false, version = "0.19" }
@@ -67,6 +67,7 @@ anyhow          = { default-features = false, features = ["backtrace", "std"], v
 assert_matches  = { default-features = false, version = "1.5" }
 primitive-types = { default-features = false, version = "0.14" }
 rand            = { default-features = false, version = "0.9" }
+rand_chacha    = { default-features = false, version = "0.9" }
 rstest          = { version = "0.26" }
 thiserror       = { default-features = false, version = "2.0" }
 tokio           = { default-features = false, features = ["sync"], version = "1" }

@@ -141,7 +141,7 @@ impl From<&Account> for AccountHeader {
             id: account.id(),
             nonce: account.nonce(),
             vault_root: account.vault().root(),
-            storage_commitment: account.storage().commitment(),
+            storage_commitment: account.storage().to_commitment(),
             code_commitment: account.code().commitment(),
         }
     }
@@ -187,7 +187,7 @@ mod tests {
 
     use super::AccountHeader;
     use crate::Word;
-    use crate::account::StorageSlot;
+    use crate::account::StorageSlotContent;
     use crate::account::tests::build_account;
     use crate::asset::FungibleAsset;
 
@@ -196,7 +196,7 @@ mod tests {
         let init_nonce = Felt::new(1);
         let asset_0 = FungibleAsset::mock(99);
         let word = Word::from([1, 2, 3, 4u32]);
-        let storage_slot = StorageSlot::Value(word);
+        let storage_slot = StorageSlotContent::Value(word);
         let account = build_account(vec![asset_0], init_nonce, vec![storage_slot]);
 
         let account_header: AccountHeader = account.into();

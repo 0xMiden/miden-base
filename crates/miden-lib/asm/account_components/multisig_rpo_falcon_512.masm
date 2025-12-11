@@ -29,19 +29,19 @@ const AUTH_UNAUTHORIZED_EVENT = event("miden::auth::unauthorized")
 # number of approvers are stored as:
 # [default_threshold, num_approvers, 0, 0].
 # The threshold is guaranteed to be less than or equal to num_approvers.
-const THRESHOLD_CONFIG_SLOT = 0
+const THRESHOLD_CONFIG_SLOT = word("miden::standards::auth::rpo_falcon512_multisig::threshold_config")
 
 # The slot in this component's storage layout where the public keys map is stored.
 # Map entries: [key_index, 0, 0, 0] => APPROVER_PUBLIC_KEY
-const PUBLIC_KEYS_MAP_SLOT = 1
+const APPROVER_PUBLIC_KEYS_SLOT = word("miden::standards::auth::rpo_falcon512_multisig::approver_public_keys")
 
 # The slot in this component's storage layout where executed transactions are stored.
 # Map entries: transaction_message => [is_executed, 0, 0, 0]
-const EXECUTED_TXS_SLOT = 2
+const EXECUTED_TXS_SLOT = word("miden::standards::auth::rpo_falcon512_multisig::executed_transactions")
 
 # The slot in this component's storage layout where procedure thresholds are stored.
 # Map entries: PROC_ROOT => [proc_threshold, 0, 0, 0]
-const.PROC_THRESHOLD_ROOTS_SLOT=3
+const PROC_THRESHOLD_ROOTS_SLOT = word("miden::standards::auth::rpo_falcon512_multisig::procedure_thresholds")
 
 # Executed Transaction Flag Constant
 const IS_EXECUTED_FLAG = [1, 0, 0, 0]
@@ -69,8 +69,8 @@ proc assert_new_tx(msg: BeWord)
     swapw
     # => [MSG, IS_EXECUTED_FLAG]
 
-    push.EXECUTED_TXS_SLOT
-    # => [index, MSG, IS_EXECUTED_FLAG]
+    push.EXECUTED_TXS_SLOT[0..2]
+    # => [txs_slot_prefix, txs_slot_suffix, MSG, IS_EXECUTED_FLAG]
 
     # Set the key value pair in the map to mark transaction as executed
     exec.native_account::set_map_item
@@ -115,8 +115,8 @@ proc cleanup_pubkey_mapping(init_num_of_approvers: u32, new_num_of_approvers: u3
         padw swapw
         # => [[0, 0, 0, i-1], EMPTY_WORD, i-1, new_num_of_approvers]
 
-        push.PUBLIC_KEYS_MAP_SLOT
-        # => [pub_key_slot_idx, [0, 0, 0, i-1], EMPTY_WORD, i-1, new_num_of_approvers]
+        push.APPROVER_PUBLIC_KEYS_SLOT[0..2]
+        # => [pub_key_slot_prefix, pub_key_slot_suffix, [0, 0, 0, i-1], EMPTY_WORD, i-1, new_num_of_approvers]
 
         exec.native_account::set_map_item
         # => [OLD_MAP_ROOT, OLD_MAP_VALUE, i-1, new_num_of_approvers]
@@ -178,8 +178,8 @@ pub proc update_signers_and_threshold.2(multisig_config_hash: BeWord)
     eq.0 assertz.err=ERR_ZERO_IN_MULTISIG_CONFIG
     # => [MULTISIG_CONFIG, pad(12)]
 
-    push.THRESHOLD_CONFIG_SLOT
-    # => [slot, MULTISIG_CONFIG, pad(12)]
+    push.THRESHOLD_CONFIG_SLOT[0..2]
+    # => [config_slot_prefix, config_slot_suffix, MULTISIG_CONFIG, pad(12)]
 
     exec.native_account::set_item
     # => [OLD_THRESHOLD_CONFIG, pad(12)]
@@ -205,8 +205,8 @@ pub proc update_signers_and_threshold.2(multisig_config_hash: BeWord)
         swapw
         # => [[0, 0, 0, i-1], PUB_KEY, i-1, pad(12)]
 
-        push.PUBLIC_KEYS_MAP_SLOT
-        # => [pub_key_slot_idx, [0, 0, 0, i-1], PUB_KEY, i-1, pad(12)]
+        push.APPROVER_PUBLIC_KEYS_SLOT[0..2]
+        # => [pub_key_slot_prefix, pub_key_slot_suffix, [0, 0, 0, i-1], PUB_KEY, i-1, pad(12)]
 
         exec.native_account::set_map_item
         # => [OLD_MAP_ROOT, OLD_MAP_VALUE, i-1, pad(12)]
@@ -277,8 +277,8 @@ proc compute_transaction_threshold.1(default_threshold: u32) -> u32
         if.true
             # => [PROC_ROOT, num_procedures-1, transaction_threshold]
 
-            push.PROC_THRESHOLD_ROOTS_SLOT
-            # => [PROC_THRESHOLD_ROOTS_SLOT, PROC_ROOT, num_procedures-1, transaction_threshold]
+            push.PROC_THRESHOLD_ROOTS_SLOT[0..2]
+            # => [proc_roots_slot_prefix, proc_roots_slot_suffix, PROC_ROOT, num_procedures-1, transaction_threshold]
 
             # 2b. get the override proc_threshold of that procedure
             # if the procedure has no override threshold, the returned map item will be [0, 0, 0, 0]
@@ -372,8 +372,8 @@ pub proc auth_tx_rpo_falcon512_multisig.1(salt: BeWord)
 
     # ------ Verifying approver signatures ------
 
-    push.THRESHOLD_CONFIG_SLOT
-    # => [index, TX_SUMMARY_COMMITMENT]
+    push.THRESHOLD_CONFIG_SLOT[0..2]
+    # => [config_slot_prefix, config_slot_suffix, TX_SUMMARY_COMMITMENT]
 
     exec.active_account::get_initial_item
     # => [0, 0, num_of_approvers, default_threshold, TX_SUMMARY_COMMITMENT]
@@ -384,8 +384,8 @@ pub proc auth_tx_rpo_falcon512_multisig.1(salt: BeWord)
     swap movdn.5
     # => [num_of_approvers, TX_SUMMARY_COMMITMENT, default_threshold]
 
-    push.PUBLIC_KEYS_MAP_SLOT
-    # => [pub_key_slot_idx, num_of_approvers, TX_SUMMARY_COMMITMENT, default_threshold]
+    push.APPROVER_PUBLIC_KEYS_SLOT[0..2]
+    # => [pub_key_slot_prefix, pub_key_slot_suffix, num_of_approvers, TX_SUMMARY_COMMITMENT, default_threshold]
 
     exec.::miden::auth::rpo_falcon512::verify_signatures
     # => [num_verified_signatures, TX_SUMMARY_COMMITMENT, default_threshold]

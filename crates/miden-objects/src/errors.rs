@@ -22,10 +22,11 @@ use crate::account::{
     AccountIdPrefix,
     AccountStorage,
     AccountType,
-    SlotName,
-    StorageValueName,
-    StorageValueNameError,
-    TemplateTypeError,
+    StorageSlotId,
+    // StorageValueName,
+    // StorageValueNameError,
+    // TemplateTypeError,
+    StorageSlotName,
 };
 use crate::address::AddressType;
 use crate::asset::AssetVaultKey;
@@ -45,6 +46,7 @@ use crate::{
 // ACCOUNT COMPONENT TEMPLATE ERROR
 // ================================================================================================
 
+/*
 #[derive(Debug, Error)]
 pub enum AccountComponentTemplateError {
     #[error("storage slot name `{0}` is duplicate")]
@@ -80,6 +82,7 @@ pub enum AccountComponentTemplateError {
     #[error("error trying to deserialize from toml")]
     TomlSerializationError(#[source] toml::ser::Error),
 }
+*/
 
 // ACCOUNT ERROR
 // ================================================================================================
@@ -108,8 +111,8 @@ pub enum AccountError {
     AccountComponentMastForestMergeError(#[source] MastForestError),
     #[error("procedure with MAST root {0} is present in multiple account components")]
     AccountComponentDuplicateProcedureRoot(Word),
-    #[error("failed to create account component")]
-    AccountComponentTemplateInstantiationError(#[source] AccountComponentTemplateError),
+    // #[error("failed to create account component")]
+    // AccountComponentTemplateInstantiationError(#[source] AccountComponentTemplateError),
     #[error("account component contains multiple authentication procedures")]
     AccountComponentMultipleAuthProcedures,
     #[error("failed to update asset vault")]
@@ -144,12 +147,23 @@ pub enum AccountError {
     SeedConvertsToInvalidAccountId(#[source] AccountIdError),
     #[error("storage map root {0} not found in the account storage")]
     StorageMapRootNotFound(Word),
-    #[error("storage slot at index {0} is not of type map")]
-    StorageSlotNotMap(u8),
-    #[error("storage slot at index {0} is not of type value")]
-    StorageSlotNotValue(u8),
-    #[error("storage slot index is {index} but the slots length is {slots_len}")]
-    StorageIndexOutOfBounds { slots_len: u8, index: u8 },
+    #[error("storage slot {0} is not of type map")]
+    StorageSlotNotMap(StorageSlotName),
+    #[error("storage slot {0} is not of type value")]
+    StorageSlotNotValue(StorageSlotName),
+    #[error("storage slot name {0} is assigned to more than one slot")]
+    DuplicateStorageSlotName(StorageSlotName),
+    #[error(
+        "account storage cannot contain a user-provided slot with name {} as it is reserved by the protocol",
+        AccountStorage::faucet_metadata_slot()
+    )]
+    StorageSlotNameMustNotBeFaucetMetadata,
+    #[error("storage does not contain a slot with name {slot_name}")]
+    StorageSlotNameNotFound { slot_name: StorageSlotName },
+    #[error("storage does not contain a slot with ID {slot_id}")]
+    StorageSlotIdNotFound { slot_id: StorageSlotId },
+    #[error("storage slots must be sorted by slot ID")]
+    UnsortedStorageSlots,
     #[error("number of storage slots is {0} but max possible number is {max}", max = AccountStorage::MAX_NUM_STORAGE_SLOTS)]
     StorageTooManySlots(u64),
     #[error("procedure storage offset + size is {0} which exceeds the maximum value of {max}",
@@ -235,8 +249,8 @@ pub enum AccountIdError {
 // ================================================================================================
 
 #[derive(Debug, Error)]
-pub enum SlotNameError {
-    #[error("slot names must only contain characters a..z, A..Z, 0..9 or underscore")]
+pub enum StorageSlotNameError {
+    #[error("slot name must only contain characters a..z, A..Z, 0..9, double colon or underscore")]
     InvalidCharacter,
     #[error("slot names must be separated by double colons")]
     UnexpectedColon,
@@ -244,9 +258,11 @@ pub enum SlotNameError {
     UnexpectedUnderscore,
     #[error(
         "slot names must contain at least {} components separated by double colons",
-        SlotName::MIN_NUM_COMPONENTS
+        StorageSlotName::MIN_NUM_COMPONENTS
     )]
     TooShort,
+    #[error("slot names must contain at most {} characters", StorageSlotName::MAX_LENGTH)]
+    TooLong,
 }
 
 // ACCOUNT TREE ERROR
@@ -357,12 +373,8 @@ pub enum NetworkIdError {
 
 #[derive(Debug, Error)]
 pub enum AccountDeltaError {
-    #[error(
-        "storage slot index {slot_index} is greater than or equal to the number of slots {num_slots}"
-    )]
-    StorageSlotIndexOutOfBounds { slot_index: u8, num_slots: u8 },
     #[error("storage slot {0} was updated as a value and as a map")]
-    StorageSlotUsedAsDifferentTypes(u8),
+    StorageSlotUsedAsDifferentTypes(StorageSlotName),
     #[error("non fungible vault can neither be added nor removed twice")]
     DuplicateNonFungibleVaultUpdate(NonFungibleAsset),
     #[error(

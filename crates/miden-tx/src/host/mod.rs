@@ -36,6 +36,9 @@ use miden_objects::account::{
     AccountId,
     AccountStorageHeader,
     PartialAccount,
+    StorageSlotId,
+    StorageSlotName,
+    StorageSlotType,
 };
 use miden_objects::asset::Asset;
 use miden_objects::note::{NoteId, NoteMetadata, NoteRecipient};
@@ -155,6 +158,21 @@ impl<'store, STORE> TransactionBaseHost<'store, STORE> {
     /// the state at the beginning of the transaction.
     pub fn initial_account_storage_header(&self) -> &AccountStorageHeader {
         &self.initial_account_storage_header
+    }
+
+    /// Returns the initial storage slot of the native account identified by [`StorageSlotId`],
+    /// which represents the state at the beginning of the transaction.
+    pub fn initial_account_storage_slot(
+        &self,
+        slot_id: StorageSlotId,
+    ) -> Result<(&StorageSlotName, &StorageSlotType, &Word), TransactionKernelError> {
+        self.initial_account_storage_header()
+            .find_slot_header_by_id(slot_id)
+            .ok_or_else(|| {
+                TransactionKernelError::other(format!(
+                    "failed to find storage map with name {slot_id} in storage header"
+                ))
+            })
     }
 
     /// Returns a reference to the account delta tracker of this transaction host.
@@ -316,10 +334,10 @@ impl<'store, STORE> TransactionBaseHost<'store, STORE> {
     /// Tracks the insertion of an item in the account delta.
     pub fn on_account_storage_after_set_item(
         &mut self,
-        slot_index: u8,
-        new_slot_value: Word,
+        slot_name: StorageSlotName,
+        new_value: Word,
     ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
-        self.account_delta.storage().set_item(slot_index, new_slot_value);
+        self.account_delta.storage().set_item(slot_name, new_value);
 
         Ok(Vec::new())
     }
@@ -327,14 +345,14 @@ impl<'store, STORE> TransactionBaseHost<'store, STORE> {
     /// Tracks the insertion of a storage map item in the account delta.
     pub fn on_account_storage_after_set_map_item(
         &mut self,
-        slot_index: u8,
+        slot_name: StorageSlotName,
         key: Word,
-        prev_map_value: Word,
+        old_map_value: Word,
         new_map_value: Word,
     ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
         self.account_delta
             .storage()
-            .set_map_item(slot_index, key, prev_map_value, new_map_value);
+            .set_map_item(slot_name, key, old_map_value, new_map_value);
 
         Ok(Vec::new())
     }
