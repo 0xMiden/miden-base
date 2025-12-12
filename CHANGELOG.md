@@ -9,9 +9,6 @@
 ### Changes
 
 - [BREAKING] Make `AccountProcedureIndexMap` construction infallible ([#2163](https://github.com/0xMiden/miden-base/pull/2163)).
-
-### Changes
-
 - [BREAKING] Rename `AccountProcedureInfo` into `AccountProcedureRoot` and remove storage offset and size ([#2162](https://github.com/0xMiden/miden-base/pull/2162)).
 
 ## 0.12.2 (unreleased)
