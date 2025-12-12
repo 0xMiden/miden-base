@@ -9,7 +9,6 @@ use miden_objects::account::{
     StorageSlotName,
 };
 use miden_objects::asset::{FungibleAsset, TokenSymbol};
-use miden_objects::utils::sync::LazyLock;
 use miden_objects::{Felt, FieldElement, Word};
 
 use super::FungibleFaucetError;
@@ -40,11 +39,6 @@ procedure_digest!(
     BasicFungibleFaucet::BURN_PROC_NAME,
     basic_fungible_faucet_library
 );
-
-static METADATA_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
-    StorageSlotName::new("miden::standards::faucets::metadata")
-        .expect("storage slot name should be valid")
-});
 
 /// An [`AccountComponent`] implementing a basic fungible faucet.
 ///
@@ -162,7 +156,7 @@ impl BasicFungibleFaucet {
 
     /// Returns the [`StorageSlotName`] where the [`BasicFungibleFaucet`]'s metadata is stored.
     pub fn metadata_slot() -> &'static StorageSlotName {
-        &METADATA_SLOT_NAME
+        &super::METADATA_SLOT_NAME
     }
 
     /// Returns the symbol of the faucet.
@@ -362,11 +356,11 @@ mod tests {
         )
         .unwrap();
 
-        // The reserved faucet slot should be initialized to an empty word.
+        // The faucet sysdata slot should be initialized to an empty word.
         assert_eq!(
             faucet_account
                 .storage()
-                .get_item(AccountStorage::faucet_metadata_slot())
+                .get_item(AccountStorage::faucet_sysdata_slot())
                 .unwrap(),
             Word::empty()
         );

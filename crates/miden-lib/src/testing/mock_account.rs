@@ -48,9 +48,9 @@ pub trait MockAccountExt {
             .expect("account should be valid");
         let (_id, vault, mut storage, code, nonce, _seed) = account.into_parts();
 
-        let faucet_data_slot = Word::from([ZERO, ZERO, ZERO, initial_balance]);
+        let faucet_sysdata_slot = Word::from([ZERO, ZERO, ZERO, initial_balance]);
         storage
-            .set_item(AccountStorage::faucet_metadata_slot(), faucet_data_slot)
+            .set_item(AccountStorage::faucet_sysdata_slot(), faucet_sysdata_slot)
             .unwrap();
 
         Account::new_existing(account_id, vault, storage, code, nonce)
@@ -73,7 +73,7 @@ pub trait MockAccountExt {
         let non_fungible_storage_map =
             StorageMap::with_entries([(asset.vault_key().into(), asset.into())]).unwrap();
         let storage = AccountStorage::new(vec![StorageSlot::with_map(
-            AccountStorage::faucet_metadata_slot().clone(),
+            AccountStorage::faucet_sysdata_slot().clone(),
             non_fungible_storage_map,
         )])
         .unwrap();
