@@ -20,7 +20,7 @@ use crate::utils::serde::{
 // ================================================================================================
 
 /// The MAST root of a public procedure in an account's interface.
-#[derive(Debug, PartialEq, Eq, Clone, Copy, WordWrapper)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, WordWrapper)]
 pub struct AccountProcedureRoot(Word);
 
 impl AccountProcedureRoot {

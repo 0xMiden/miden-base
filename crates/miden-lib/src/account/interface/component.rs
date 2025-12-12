@@ -1,6 +1,6 @@
-use alloc::collections::BTreeMap;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
+use std::collections::BTreeSet;
 
 use miden_objects::account::auth::PublicKeyCommitment;
 use miden_objects::account::{AccountId, AccountProcedureRoot, AccountStorage, StorageSlotName};
@@ -180,10 +180,7 @@ impl AccountComponentInterface {
     pub fn from_procedures(procedures: &[AccountProcedureRoot]) -> Vec<Self> {
         let mut component_interface_vec = Vec::new();
 
-        let mut procedures: BTreeMap<_, _> = procedures
-            .iter()
-            .map(|procedure_info| (*procedure_info.mast_root(), procedure_info))
-            .collect();
+        let mut procedures = BTreeSet::from_iter(procedures.iter().copied());
 
         // Well known component interfaces
         // ----------------------------------------------------------------------------------------
@@ -200,7 +197,7 @@ impl AccountComponentInterface {
 
         // All remaining procedures are put into the custom bucket.
         component_interface_vec
-            .push(AccountComponentInterface::Custom(procedures.into_values().copied().collect()));
+            .push(AccountComponentInterface::Custom(procedures.into_iter().collect()));
 
         component_interface_vec
     }
