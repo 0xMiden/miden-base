@@ -1,6 +1,6 @@
+use alloc::collections::BTreeSet;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
-use std::collections::BTreeSet;
 
 use miden_objects::account::auth::PublicKeyCommitment;
 use miden_objects::account::{AccountId, AccountProcedureRoot, AccountStorage, StorageSlotName};
