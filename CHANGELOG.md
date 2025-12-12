@@ -9,6 +9,7 @@
 ### Changes
 
 - [BREAKING] Make `AccountProcedureIndexMap` construction infallible ([#2163](https://github.com/0xMiden/miden-base/pull/2163)).
+- [BREAKING] Enforce minimum number of account procedures in tx kernel ([#2171](https://github.com/0xMiden/miden-base/pull/2171)).
 
 ## 0.12.2 (unreleased)
 - Add proc-macro `WordWrapper` to ease implementation of `Word`-wrapping types ([#2071](https://github.com/0xMiden/miden-base/pull/2108)).
