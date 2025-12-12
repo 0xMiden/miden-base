@@ -1250,7 +1250,7 @@ export.save_account_procedure_data
     # OS => [num_procs, CODE_COMMITMENT]
     # AS => [[ACCOUNT_PROCEDURE_DATA]]
 
-    # setup acct_proc_offset and end_ptr for reading from advice stack
+    # setup start ptr and num procedures for reading from advice stack
     exec.memory::get_account_procedures_section_ptr swap
     # OS => [num_procs, account_proc_ptr, CODE_COMMITMENT]
     # AS => [[ACCOUNT_PROCEDURE_DATA]]
