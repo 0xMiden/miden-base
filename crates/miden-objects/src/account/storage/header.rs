@@ -115,6 +115,12 @@ impl<'name> StorageSlotHeader<'name> {
     }
 }
 
+impl<'name> From<&'name StorageSlot> for StorageSlotHeader<'name> {
+    fn from(slot: &'name StorageSlot) -> Self {
+        StorageSlotHeader::with_borrowed_name(slot.name(), slot.slot_type(), slot.value())
+    }
+}
+
 // SERIALIZATION
 // ================================================================================================
 
@@ -132,12 +138,6 @@ impl Deserializable for StorageSlotHeader<'static> {
         let slot_type = StorageSlotType::read_from(source)?;
         let value = Word::read_from(source)?;
         Ok(Self::with_owned_name(name, slot_type, value))
-    }
-}
-
-impl<'name> From<&'name StorageSlot> for StorageSlotHeader<'name> {
-    fn from(slot: &'name StorageSlot) -> Self {
-        StorageSlotHeader::with_borrowed_name(slot.name(), slot.slot_type(), slot.value())
     }
 }
 
