@@ -11,7 +11,7 @@ use crate::utils::serde::{ByteWriter, Deserializable, DeserializationError, Seri
 /// A typical slot name looks like this:
 ///
 /// ```text
-/// miden::standards::faucets::metadata
+/// miden::standards::fungible_faucets::metadata
 /// ```
 ///
 /// The double-colon (`::`) serves as a separator and the strings in between the separators are
