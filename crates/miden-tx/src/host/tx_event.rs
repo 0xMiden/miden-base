@@ -160,6 +160,7 @@ impl TransactionEvent {
             TransactionEventId::AccountBeforeForeignLoad => {
                 // Expected stack state: [event, account_id_prefix, account_id_suffix]
                 let account_id_word = process.get_stack_word_be(1);
+
                 let account_id = AccountId::try_from([account_id_word[3], account_id_word[2]])
                     .map_err(|err| {
                         TransactionKernelError::other_with_source(

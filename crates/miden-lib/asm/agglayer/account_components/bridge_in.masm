@@ -1,0 +1,35 @@
+use.miden::native_account
+use.miden::active_account
+
+const.GLOBAL_EXIT_ROOT_MAP=word("miden::agglayer::GER")
+
+#! Update Global Exit Root procedure
+#! This procedure handles updating the Global Exit Root in the bridge
+#! For now, this is a placeholder implementation
+#!
+#! Inputs: [INPUTS[0], INPUTS[1]]
+pub proc update_ger
+
+    # TODO: assert note sender == owner
+
+    push.111 debug.stack drop
+
+    # writing double word root to map keys [0,0,0,0] & [0,0,0,1]
+    push.0.0.0.0 push.GLOBAL_EXIT_ROOT_MAP[0..2]
+    # => [index, KEY, INPUTS[0], INPUTS[1]]
+
+    exec.native_account::set_map_item
+    # => [OLD_MAP_ROOT, OLD_MAP_VALUE, INPUTS[1]]
+
+    dropw dropw
+    # => [INPUTS[1]]
+
+    push.1.0.0.0 push.GLOBAL_EXIT_ROOT_MAP[0..2]
+    # => [index, KEY, INPUTS[1]]]
+
+    exec.native_account::set_map_item
+    # => [OLD_MAP_ROOT, OLD_MAP_VALUE]
+
+    dropw dropw
+    # => []
+end

@@ -25,6 +25,33 @@ pub fn b2agg_script() -> NoteScript {
     B2AGG_SCRIPT.clone()
 }
 
+// Initialize the CLAIM note script only once
+static CLAIM_SCRIPT: LazyLock<NoteScript> = LazyLock::new(|| {
+    let bytes =
+        include_bytes!(concat!(env!("OUT_DIR"), "/assets/agglayer/note_scripts/CLAIM.masb"));
+    let program = Program::read_from_bytes(bytes).expect("Shipped CLAIM script is well-formed");
+    NoteScript::new(program)
+});
+
+/// Returns the CLAIM (Bridge from AggLayer) note script.
+pub fn claim_script() -> NoteScript {
+    CLAIM_SCRIPT.clone()
+}
+
+// Initialize the UPDATE_GER note script only once
+static UPDATE_GER_SCRIPT: LazyLock<NoteScript> = LazyLock::new(|| {
+    let bytes =
+        include_bytes!(concat!(env!("OUT_DIR"), "/assets/agglayer/note_scripts/UPDATE_GER.masb"));
+    let program =
+        Program::read_from_bytes(bytes).expect("Shipped UPDATE_GER script is well-formed");
+    NoteScript::new(program)
+});
+
+/// Returns the UPDATE_GER (Update Global Exit Root) note script.
+pub fn update_ger_script() -> NoteScript {
+    UPDATE_GER_SCRIPT.clone()
+}
+
 // AGGLAYER ACCOUNT COMPONENTS
 // ================================================================================================
 
@@ -76,6 +103,59 @@ pub fn bridge_out_component(storage_slots: Vec<StorageSlot>) -> AccountComponent
 
     AccountComponent::new(library, storage_slots)
         .expect("bridge_out component should satisfy the requirements of a valid account component")
+        .with_supports_all_types()
+}
+
+// Initialize the Bridge In library only once
+static BRIDGE_IN_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
+    let bytes = include_bytes!(concat!(
+        env!("OUT_DIR"),
+        "/assets/agglayer/account_components/bridge_in.masl"
+    ));
+    Library::read_from_bytes(bytes).expect("Shipped Bridge In library is well-formed")
+});
+
+/// Returns the Bridge In Library.
+pub fn bridge_in_library() -> Library {
+    BRIDGE_IN_LIBRARY.clone()
+}
+
+/// Creates a Bridge In component with the specified storage slots.
+///
+/// This component uses the bridge_in library and can be added to accounts
+/// that need to bridge assets in from the AggLayer.
+pub fn bridge_in_component(storage_slots: Vec<StorageSlot>) -> AccountComponent {
+    let library = bridge_in_library();
+
+    AccountComponent::new(library, storage_slots)
+        .expect("bridge_in component should satisfy the requirements of a valid account component")
+        .with_supports_all_types()
+}
+
+// Initialize the Agglayer Faucet library only once
+static AGGLAYER_FAUCET_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
+    let bytes = include_bytes!(concat!(
+        env!("OUT_DIR"),
+        "/assets/agglayer/account_components/agglayer_faucet.masl"
+    ));
+    Library::read_from_bytes(bytes).expect("Shipped Agglayer Faucet library is well-formed")
+});
+
+/// Returns the Agglayer Faucet Library.
+pub fn agglayer_faucet_library() -> Library {
+    AGGLAYER_FAUCET_LIBRARY.clone()
+}
+
+/// Creates an Agglayer Faucet component with the specified storage slots.
+///
+/// This component combines network faucet functionality with bridge validation
+/// via Foreign Procedure Invocation (FPI). It provides a "claim" procedure that
+/// validates CLAIM notes against a bridge MMR account before minting assets.
+pub fn agglayer_faucet_component(storage_slots: Vec<StorageSlot>) -> AccountComponent {
+    let library = agglayer_faucet_library();
+
+    AccountComponent::new(library, storage_slots)
+        .expect("agglayer_faucet component should satisfy the requirements of a valid account component")
         .with_supports_all_types()
 }
 
