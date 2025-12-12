@@ -126,6 +126,9 @@ pub proc bridge_out
     # => [ASSET, dest_network, dest_address(5)]
     # TODO we should convert Miden->Ethereum asset values, incl. amount conversion etc.
 
+    # TODO: make building bridge message a separate procedure
+    # TODO: match Agglayer addLeafBridge logic
+    # TODO: convert Miden asset amount to Ethereum amount
     # Store ASSET as u32 limbs in memory starting at address 0
     push.0 movdn.4 exec.word::store_word_u32s_le
     # => [dest_network, dest_address(5)]
