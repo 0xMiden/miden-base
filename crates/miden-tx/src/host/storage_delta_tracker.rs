@@ -192,7 +192,7 @@ impl StorageDeltaTracker {
 
 /// Creates empty slots of the same slot types as the to-be-created account.
 fn empty_storage_header_from_account(account: &PartialAccount) -> AccountStorageHeader {
-    let mut slots: Vec<(StorageSlotName, StorageSlotType, Word)> = account
+    let slots: Vec<(StorageSlotName, StorageSlotType, Word)> = account
         .storage()
         .header()
         .slots()
@@ -202,9 +202,7 @@ fn empty_storage_header_from_account(account: &PartialAccount) -> AccountStorage
         })
         .collect();
 
-    slots.sort_by_key(|(slot_name, ..)| slot_name.id());
-
-    // SAFETY: We have sorted the slots and the max number of slots should not be exceeded as
-    // enforced by the storage header in partial storage.
+    // SAFETY: We are recreating a valid storage header with different values, which should not
+    // violate any constraints of the storage header.
     AccountStorageHeader::new(slots).expect("storage header should be valid")
 }
