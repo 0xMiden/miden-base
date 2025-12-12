@@ -551,7 +551,7 @@ async fn test_account_get_item_fails_on_unknown_slot() -> anyhow::Result<()> {
                 call.account::get_item
             end
             "#;
-    let tx_script = ScriptBuilder::with_mock_libraries()?.compile_tx_script(code)?;
+    let tx_script = CodeBuilder::with_mock_libraries().compile_tx_script(code)?;
 
     let result = chain
         .build_tx_context(account_empty_storage, &[], &[])?
@@ -586,7 +586,7 @@ async fn test_account_set_item_fails_on_reserved_faucet_metadata_slot() -> anyho
                 exec.native_account::set_item
             end
             "#;
-    let tx_script = ScriptBuilder::default().compile_tx_script(code)?;
+    let tx_script = CodeBuilder::default().compile_tx_script(code)?;
 
     let tx_context = TransactionContextBuilder::with_fungible_faucet(
         ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
