@@ -36,9 +36,9 @@ use miden_objects::account::{
     AccountId,
     AccountStorageHeader,
     PartialAccount,
+    StorageSlotHeader,
     StorageSlotId,
     StorageSlotName,
-    StorageSlotType,
 };
 use miden_objects::asset::Asset;
 use miden_objects::note::{NoteId, NoteMetadata, NoteRecipient};
@@ -165,7 +165,7 @@ impl<'store, STORE> TransactionBaseHost<'store, STORE> {
     pub fn initial_account_storage_slot(
         &self,
         slot_id: StorageSlotId,
-    ) -> Result<(&StorageSlotName, &StorageSlotType, &Word), TransactionKernelError> {
+    ) -> Result<&StorageSlotHeader<'static>, TransactionKernelError> {
         self.initial_account_storage_header()
             .find_slot_header_by_id(slot_id)
             .ok_or_else(|| {

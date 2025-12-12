@@ -6,7 +6,7 @@ use miden_objects::account::{
     AccountStorageDelta,
     AccountStorageHeader,
     PartialAccount,
-    StorageMap,
+    StorageSlotHeader,
     StorageSlotName,
     StorageSlotType,
 };
@@ -60,36 +60,37 @@ impl StorageDeltaTracker {
 
         // Insert account storage into delta if it is new to match the kernel behavior.
         if account.is_new() {
-            account
-                .storage()
-                .header()
-                .slots()
-                .for_each(|(slot_name, slot_type, slot_value)| match slot_type {
+            account.storage().header().slots().for_each(|slot_header| {
+                match slot_header.slot_type() {
                     StorageSlotType::Value => {
                         // For new accounts, all values should be added to the delta, even empty
                         // words, so that the final delta includes the storage slot.
-                        storage_delta_tracker.set_item(slot_name.clone(), *slot_value);
+                        storage_delta_tracker
+                            .set_item(slot_header.name().clone(), slot_header.value());
                     },
                     StorageSlotType::Map => {
                         let storage_map = account
                             .storage()
                             .maps()
-                            .find(|map| map.root() == *slot_value)
+                            .find(|map| map.root() == slot_header.value())
                             .expect("storage map should be present in partial storage");
 
                         // Make sure each map is represented by at least an empty storage map delta.
-                        storage_delta_tracker.delta.insert_empty_map_delta(slot_name.clone());
+                        storage_delta_tracker
+                            .delta
+                            .insert_empty_map_delta(slot_header.name().clone());
 
                         storage_map.entries().for_each(|(key, value)| {
                             storage_delta_tracker.set_map_item(
-                                slot_name.clone(),
+                                slot_header.name().clone(),
                                 *key,
                                 Word::empty(),
                                 *value,
                             );
                         });
                     },
-                });
+                }
+            });
         }
 
         storage_delta_tracker
@@ -156,10 +157,10 @@ impl StorageDeltaTracker {
             value_slots.retain(|slot_name, new_value| {
                 // SAFETY: The header in the initial storage is the one from the account against
                 // which the transaction is executed, so accessing that slot name should be fine.
-                let (_slot_type, initial_value) = storage_header
+                let slot_header = storage_header
                     .find_slot_header_by_name(slot_name)
                     .expect("slot name should exist");
-                new_value != initial_value
+                *new_value != slot_header.value()
             });
         }
 
@@ -191,17 +192,17 @@ impl StorageDeltaTracker {
 
 /// Creates empty slots of the same slot types as the to-be-created account.
 fn empty_storage_header_from_account(account: &PartialAccount) -> AccountStorageHeader {
-    let slots: Vec<(StorageSlotName, StorageSlotType, Word)> = account
+    let slots: Vec<StorageSlotHeader<'static>> = account
         .storage()
         .header()
         .slots()
-        .map(|(slot_name, slot_type, _)| match slot_type {
-            StorageSlotType::Value => (slot_name.clone(), *slot_type, Word::empty()),
-            StorageSlotType::Map => (slot_name.clone(), *slot_type, StorageMap::new().root()),
+        .map(|slot_header| match slot_header.slot_type() {
+            StorageSlotType::Value => {
+                StorageSlotHeader::with_empty_value(slot_header.name().clone())
+            },
+            StorageSlotType::Map => StorageSlotHeader::with_empty_map(slot_header.name().clone()),
         })
         .collect();
 
-    // SAFETY: We are recreating a valid storage header with different values, which should not
-    // violate any constraints of the storage header.
     AccountStorageHeader::new(slots).expect("storage header should be valid")
 }

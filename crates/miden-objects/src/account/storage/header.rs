@@ -2,6 +2,7 @@ use alloc::borrow::Cow;
 use alloc::string::ToString;
 use alloc::vec::Vec;
 
+use super::map::EMPTY_STORAGE_MAP_ROOT;
 use super::{AccountStorage, Felt, StorageSlotType, Word};
 use crate::account::{StorageSlot, StorageSlotId, StorageSlotName};
 use crate::crypto::SequentialCommit;
@@ -28,7 +29,7 @@ use crate::{AccountError, FieldElement, ZERO};
 /// When the name is borrowed from a static string or another source, no allocation is needed.
 /// When owned, the name is stored in an allocated [`StorageSlotName`].
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct StorageSlotHeader<'name> {
+pub struct StorageSlotHeader<'name> {
     id: Cow<'name, StorageSlotName>,
     r#type: StorageSlotType,
     value: Word,
@@ -39,55 +40,49 @@ impl<'name> StorageSlotHeader<'name> {
     // --------------------------------------------------------------------------------------------
 
     /// Returns a new instance of storage slot header with a borrowed slot name.
-    pub(crate) fn with_borrowed_name(
+    pub fn with_borrowed_name(
         name: &'name StorageSlotName,
         r#type: StorageSlotType,
         value: Word,
     ) -> Self {
-        Self {
-            id: Cow::Borrowed(name),
-            r#type,
-            value,
-        }
+        Self { id: Cow::Borrowed(name), r#type, value }
     }
 
     /// Returns a new instance of storage slot header with an owned slot name.
-    #[allow(dead_code)]
-    pub(crate) fn with_owned_name(
-        name: StorageSlotName,
-        r#type: StorageSlotType,
-        value: Word,
-    ) -> Self {
-        Self {
-            id: Cow::Owned(name),
-            r#type,
-            value,
-        }
+    pub fn with_owned_name(name: StorageSlotName, r#type: StorageSlotType, value: Word) -> Self {
+        Self { id: Cow::Owned(name), r#type, value }
+    }
+
+    /// Returns a new instance of storage slot header with an empty value slot.
+    pub fn with_empty_value(name: StorageSlotName) -> StorageSlotHeader<'static> {
+        StorageSlotHeader::with_owned_name(name, StorageSlotType::Value, Word::default())
+    }
+
+    /// Returns a new instance of storage slot header with an empty map slot.
+    pub fn with_empty_map(name: StorageSlotName) -> StorageSlotHeader<'static> {
+        StorageSlotHeader::with_owned_name(name, StorageSlotType::Map, EMPTY_STORAGE_MAP_ROOT)
     }
 
     // ACCESSORS
     // --------------------------------------------------------------------------------------------
 
     /// Returns a reference to the slot name.
-    #[allow(dead_code)]
-    pub(crate) fn name(&self) -> &StorageSlotName {
+    pub fn name(&self) -> &StorageSlotName {
         &self.id
     }
 
     /// Returns the slot ID.
-    pub(crate) fn id(&self) -> StorageSlotId {
+    pub fn id(&self) -> StorageSlotId {
         self.id.id()
     }
 
     /// Returns the slot type.
-    #[allow(dead_code)]
-    pub(crate) fn slot_type(&self) -> StorageSlotType {
+    pub fn slot_type(&self) -> StorageSlotType {
         self.r#type
     }
 
     /// Returns the slot value.
-    #[allow(dead_code)]
-    pub(crate) fn value(&self) -> Word {
+    pub fn value(&self) -> Word {
         self.value
     }
 
@@ -111,13 +106,38 @@ impl<'name> StorageSlotHeader<'name> {
     }
 
     /// Converts this storage slot header into an owned version with `'static` lifetime.
-    #[allow(dead_code)]
-    pub(crate) fn into_owned(self) -> StorageSlotHeader<'static> {
+    pub fn into_owned(self) -> StorageSlotHeader<'static> {
         StorageSlotHeader {
             id: Cow::Owned(self.id.into_owned()),
             r#type: self.r#type,
             value: self.value,
         }
+    }
+}
+
+// SERIALIZATION
+// ================================================================================================
+
+impl Serializable for StorageSlotHeader<'_> {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        self.id.write_into(target);
+        self.r#type.write_into(target);
+        self.value.write_into(target);
+    }
+}
+
+impl Deserializable for StorageSlotHeader<'static> {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let name = StorageSlotName::read_from(source)?;
+        let slot_type = StorageSlotType::read_from(source)?;
+        let value = Word::read_from(source)?;
+        Ok(Self::with_owned_name(name, slot_type, value))
+    }
+}
+
+impl<'name> From<&'name StorageSlot> for StorageSlotHeader<'name> {
+    fn from(slot: &'name StorageSlot) -> Self {
+        StorageSlotHeader::with_borrowed_name(slot.name(), slot.slot_type(), slot.value())
     }
 }
 
@@ -132,7 +152,7 @@ impl<'name> StorageSlotHeader<'name> {
 /// - [`StorageSlotType::Map`]: The root of the SMT that represents the storage map.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AccountStorageHeader {
-    slots: Vec<(StorageSlotName, StorageSlotType, Word)>,
+    slots: Vec<StorageSlotHeader<'static>>,
 }
 
 impl AccountStorageHeader {
@@ -147,39 +167,62 @@ impl AccountStorageHeader {
     /// - The number of provided slots is greater than [`AccountStorage::MAX_NUM_STORAGE_SLOTS`].
     /// - The slots are not sorted by [`StorageSlotId`].
     /// - There are multiple storage slots with the same [`StorageSlotName`].
-    pub fn new(slots: Vec<(StorageSlotName, StorageSlotType, Word)>) -> Result<Self, AccountError> {
+    pub fn new(slots: Vec<StorageSlotHeader<'static>>) -> Result<Self, AccountError> {
         if slots.len() > AccountStorage::MAX_NUM_STORAGE_SLOTS {
             return Err(AccountError::StorageTooManySlots(slots.len() as u64));
         }
 
-        if !slots.is_sorted_by_key(|(slot_name, ..)| slot_name.id()) {
+        if !slots.is_sorted_by_key(|slot| slot.id()) {
             return Err(AccountError::UnsortedStorageSlots);
         }
 
         // Check for slot name uniqueness by checking each neighboring slot's IDs. This is
         // sufficient because the slots are sorted.
         for slots in slots.windows(2) {
-            if slots[0].0.id() == slots[1].0.id() {
-                return Err(AccountError::DuplicateStorageSlotName(slots[0].0.clone()));
+            if slots[0].id() == slots[1].id() {
+                return Err(AccountError::DuplicateStorageSlotName(slots[0].name().clone()));
             }
         }
 
         Ok(Self { slots })
     }
 
+    /// Returns a new instance of account storage header initialized with the provided slot tuples.
+    ///
+    /// This is a convenience method that converts tuples to [`StorageSlotHeader`]s.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The number of provided slots is greater than [`AccountStorage::MAX_NUM_STORAGE_SLOTS`].
+    /// - The slots are not sorted by [`StorageSlotId`].
+    #[cfg(any(feature = "testing", test))]
+    pub fn from_tuples(
+        slots: Vec<(StorageSlotName, StorageSlotType, Word)>,
+    ) -> Result<Self, AccountError> {
+        let slots = slots
+            .into_iter()
+            .map(|(name, slot_type, value)| {
+                StorageSlotHeader::with_owned_name(name, slot_type, value)
+            })
+            .collect();
+
+        Self::new(slots)
+    }
+
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
     /// Returns an iterator over the storage header slots.
-    pub fn slots(&self) -> impl Iterator<Item = (&StorageSlotName, &StorageSlotType, &Word)> {
-        self.slots.iter().map(|(name, r#type, value)| (name, r#type, value))
+    pub fn slots(&self) -> impl Iterator<Item = &StorageSlotHeader<'static>> {
+        self.slots.iter()
     }
 
     /// Returns an iterator over the storage header map slots.
-    pub fn map_slot_roots(&self) -> impl Iterator<Item = Word> {
-        self.slots.iter().filter_map(|(_, slot_type, value)| match slot_type {
+    pub fn map_slot_roots(&self) -> impl Iterator<Item = Word> + '_ {
+        self.slots.iter().filter_map(|slot| match slot.slot_type() {
             StorageSlotType::Value => None,
-            StorageSlotType::Map => Some(*value),
+            StorageSlotType::Map => Some(slot.value()),
         })
     }
 
@@ -189,31 +232,24 @@ impl AccountStorageHeader {
         self.slots.len() as u8
     }
 
-    /// Returns a slot contained in the storage header at a given index.
+    /// Returns the storage slot header for the slot with the given name.
     ///
-    /// Returns `None` if a slot with the provided slot ID does not exist.
+    /// Returns `None` if a slot with the provided name does not exist.
     pub fn find_slot_header_by_name(
         &self,
         slot_name: &StorageSlotName,
-    ) -> Option<(&StorageSlotType, &Word)> {
+    ) -> Option<&StorageSlotHeader<'static>> {
         self.find_slot_header_by_id(slot_name.id())
-            .map(|(_slot_name, slot_type, slot_value)| (slot_type, slot_value))
     }
 
-    /// Returns a slot contained in the storage header at a given index.
+    /// Returns the storage slot header for the slot with the given ID.
     ///
     /// Returns `None` if a slot with the provided slot ID does not exist.
     pub fn find_slot_header_by_id(
         &self,
         slot_id: StorageSlotId,
-    ) -> Option<(&StorageSlotName, &StorageSlotType, &Word)> {
-        self.slots.iter().find_map(|(slot_name, slot_type, slot_value)| {
-            if slot_name.id() == slot_id {
-                Some((slot_name, slot_type, slot_value))
-            } else {
-                None
-            }
-        })
+    ) -> Option<&StorageSlotHeader<'static>> {
+        self.slots.iter().find(|slot| slot.id() == slot_id)
     }
 
     /// Indicates whether the slot with the given `name` is a map slot.
@@ -226,7 +262,7 @@ impl AccountStorageHeader {
         match self
             .find_slot_header_by_name(name)
             .ok_or(AccountError::StorageSlotNameNotFound { slot_name: name.clone() })?
-            .0
+            .slot_type()
         {
             StorageSlotType::Map => Ok(true),
             StorageSlotType::Value => Ok(false),
@@ -265,13 +301,7 @@ impl SequentialCommit for AccountStorageHeader {
     type Commitment = Word;
 
     fn to_elements(&self) -> Vec<Felt> {
-        self.slots()
-            .flat_map(|(slot_name, slot_type, slot_value)| {
-                // Use borrowed name to avoid cloning
-                StorageSlotHeader::with_borrowed_name(slot_name, *slot_type, *slot_value)
-                    .to_elements()
-            })
-            .collect()
+        self.slots().flat_map(|slot| slot.to_elements()).collect()
     }
 }
 
@@ -289,7 +319,7 @@ impl Serializable for AccountStorageHeader {
 impl Deserializable for AccountStorageHeader {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let len = source.read_u8()?;
-        let slots = source.read_many(len as usize)?;
+        let slots: Vec<StorageSlotHeader<'static>> = source.read_many(len as usize)?;
         Self::new(slots).map_err(|err| DeserializationError::InvalidValue(err.to_string()))
     }
 }
@@ -323,7 +353,7 @@ mod tests {
         ];
         slots.sort_unstable_by_key(|(slot_name, ..)| slot_name.id());
 
-        let expected_header = AccountStorageHeader { slots };
+        let expected_header = AccountStorageHeader::from_tuples(slots).unwrap();
         let account_storage = AccountStorage::mock();
 
         assert_eq!(expected_header, AccountStorageHeader::from(&account_storage))

@@ -12,7 +12,6 @@ use super::{
     Serializable,
     Word,
 };
-use crate::account::storage::header::StorageSlotHeader;
 use crate::account::{AccountComponent, AccountType};
 use crate::crypto::SequentialCommit;
 use crate::utils::sync::LazyLock;
@@ -24,7 +23,7 @@ mod map;
 pub use map::{PartialStorageMap, StorageMap, StorageMapWitness};
 
 mod header;
-pub use header::AccountStorageHeader;
+pub use header::{AccountStorageHeader, StorageSlotHeader};
 
 mod partial;
 pub use partial::PartialStorage;
@@ -183,9 +182,8 @@ impl AccountStorage {
         AccountStorageHeader::new(
             self.slots
                 .iter()
-                .map(|slot| {
-                    (slot.name().clone(), slot.content().slot_type(), slot.content().value())
-                })
+                .map(StorageSlotHeader::from)
+                .map(StorageSlotHeader::into_owned)
                 .collect(),
         )
         .expect("slots should be valid as ensured by AccountStorage")
@@ -403,7 +401,7 @@ mod tests {
 
     use super::{AccountStorage, Deserializable, Serializable};
     use crate::AccountError;
-    use crate::account::{AccountStorageHeader, StorageSlot, StorageSlotName};
+    use crate::account::{AccountStorageHeader, StorageSlot, StorageSlotHeader, StorageSlotName};
 
     #[test]
     fn test_serde_account_storage() -> anyhow::Result<()> {
@@ -466,7 +464,8 @@ mod tests {
         let err = AccountStorageHeader::new(
             slots
                 .iter()
-                .map(|slot| (slot.name().clone(), slot.slot_type(), slot.value()))
+                .map(StorageSlotHeader::from)
+                .map(StorageSlotHeader::into_owned)
                 .collect(),
         )
         .unwrap_err();
