@@ -356,11 +356,11 @@ mod tests {
         )
         .unwrap();
 
-        // The reserved faucet slot should be initialized to an empty word.
+        // The faucet sysdata slot should be initialized to an empty word.
         assert_eq!(
             faucet_account
                 .storage()
-                .get_item(AccountStorage::faucet_metadata_slot())
+                .get_item(AccountStorage::faucet_sysdata_slot())
                 .unwrap(),
             Word::empty()
         );

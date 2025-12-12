@@ -40,9 +40,9 @@ impl FungibleFaucetExt for Account {
         }
 
         let slot =
-            self.storage().get_item(AccountStorage::faucet_metadata_slot()).map_err(|err| {
+            self.storage().get_item(AccountStorage::faucet_sysdata_slot()).map_err(|err| {
                 FungibleFaucetError::StorageLookupFailed {
-                    slot_name: AccountStorage::faucet_metadata_slot().clone(),
+                    slot_name: AccountStorage::faucet_sysdata_slot().clone(),
                     source: err,
                 }
             })?;

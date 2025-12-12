@@ -322,7 +322,7 @@ proc.validate_new_account
     # process conditional logic depending on whether the account is a faucet
     if.true
         # get the faucet reserved slot
-        exec.account::get_faucet_metadata_slot_id exec.account::get_typed_item
+        exec.account::get_faucet_sysdata_slot_id exec.account::get_typed_item
         # => [FAUCET_RESERVED_SLOT, slot_type, acct_id_prefix]
 
         # check if the account is a fungible faucet

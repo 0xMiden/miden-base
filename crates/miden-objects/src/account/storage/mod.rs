@@ -29,8 +29,8 @@ pub use header::AccountStorageHeader;
 mod partial;
 pub use partial::PartialStorage;
 
-static FAUCET_METADATA_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
-    StorageSlotName::new("miden::faucet::metadata").expect("storage slot name should be valid")
+static FAUCET_SYSDATA_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
+    StorageSlotName::new("miden::faucet::sysdata").expect("storage slot name should be valid")
 });
 
 // ACCOUNT STORAGE
@@ -108,16 +108,17 @@ impl AccountStorage {
     ///
     /// Returns an error if:
     /// - The number of [`StorageSlot`]s of all components exceeds 255.
+    /// - Any component accesses [`AccountStorage::faucet_sysdata_slot`].
     pub(super) fn from_components(
         components: Vec<AccountComponent>,
         account_type: AccountType,
     ) -> Result<AccountStorage, AccountError> {
         let mut storage_slots = match account_type {
             AccountType::FungibleFaucet => {
-                vec![StorageSlot::with_empty_value(Self::faucet_metadata_slot().clone())]
+                vec![StorageSlot::with_empty_value(Self::faucet_sysdata_slot().clone())]
             },
             AccountType::NonFungibleFaucet => {
-                vec![StorageSlot::with_empty_map(Self::faucet_metadata_slot().clone())]
+                vec![StorageSlot::with_empty_map(Self::faucet_sysdata_slot().clone())]
             },
             _ => vec![],
         };
@@ -126,8 +127,8 @@ impl AccountStorage {
             let AccountComponent { storage_slots, .. } = component;
             storage_slots.into_iter()
         }) {
-            if component_slot.name() == Self::faucet_metadata_slot() {
-                return Err(AccountError::StorageSlotNameMustNotBeFaucetMetadata);
+            if component_slot.name() == Self::faucet_sysdata_slot() {
+                return Err(AccountError::StorageSlotNameMustNotBeFaucetSysdata);
             }
 
             storage_slots.push(component_slot);
@@ -139,9 +140,9 @@ impl AccountStorage {
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns the [`StorageSlotName`] of the faucet's protocol metadata.
-    pub fn faucet_metadata_slot() -> &'static StorageSlotName {
-        &FAUCET_METADATA_SLOT_NAME
+    /// Returns the [`StorageSlotName`] of the faucet's protocol system data.
+    pub fn faucet_sysdata_slot() -> &'static StorageSlotName {
+        &FAUCET_SYSDATA_SLOT_NAME
     }
 
     /// Converts storage slots of this account storage into a vector of field elements.
