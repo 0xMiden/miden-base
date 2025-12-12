@@ -315,8 +315,7 @@ where
         // To start executing the transaction, the procedure index map only needs to contain the
         // native account's procedures. Foreign accounts are inserted into the map on first access.
         let account_procedure_index_map =
-            AccountProcedureIndexMap::new([tx_inputs.account().code()])
-                .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
+            AccountProcedureIndexMap::new([tx_inputs.account().code()]);
 
         let initial_fee_asset_balance = {
             let native_asset_id = tx_inputs.block_header().fee_parameters().native_asset_id();
