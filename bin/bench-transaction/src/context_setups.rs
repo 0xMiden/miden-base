@@ -55,7 +55,7 @@ pub fn tx_create_single_p2id_note() -> Result<TransactionContext> {
         asset = Word::from(fungible_asset),
     );
 
-    let tx_script = CodeBuilder::default().parse_tx_script(tx_note_creation_script)?;
+    let tx_script = CodeBuilder::default().compile_tx_script(tx_note_creation_script)?;
 
     // construct the transaction context
     mock_chain

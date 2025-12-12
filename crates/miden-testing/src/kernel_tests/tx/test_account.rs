@@ -141,7 +141,7 @@ pub async fn compute_commitment() -> miette::Result<()> {
 
     let tx_context_builder = TransactionContextBuilder::new(account);
     let tx_script = CodeBuilder::with_mock_libraries()
-        .parse_tx_script(tx_script)
+        .compile_tx_script(tx_script)
         .into_diagnostic()?;
     let tx_context = tx_context_builder
         .tx_script(tx_script)
@@ -988,7 +988,7 @@ async fn test_get_init_balance_addition() -> anyhow::Result<()> {
             initial_balance + fungible_asset_for_note_existing.unwrap_fungible().amount(),
     );
 
-    let tx_script = CodeBuilder::default().parse_tx_script(add_existing_source)?;
+    let tx_script = CodeBuilder::default().compile_tx_script(add_existing_source)?;
 
     let tx_context = mock_chain
         .build_tx_context(
@@ -1041,7 +1041,7 @@ async fn test_get_init_balance_addition() -> anyhow::Result<()> {
         final_balance = initial_balance + fungible_asset_for_note_new.unwrap_fungible().amount(),
     );
 
-    let tx_script = CodeBuilder::default().parse_tx_script(add_new_source)?;
+    let tx_script = CodeBuilder::default().compile_tx_script(add_new_source)?;
 
     let tx_context = mock_chain
         .build_tx_context(TxContextInput::AccountId(account.id()), &[], &[p2id_note_new_asset])?
@@ -1145,7 +1145,7 @@ async fn test_get_init_balance_subtraction() -> anyhow::Result<()> {
             initial_balance - fungible_asset_for_note_existing.unwrap_fungible().amount(),
     );
 
-    let tx_script = CodeBuilder::with_mock_libraries().parse_tx_script(remove_existing_source)?;
+    let tx_script = CodeBuilder::with_mock_libraries().compile_tx_script(remove_existing_source)?;
 
     let tx_context = mock_chain
         .build_tx_context(TxContextInput::AccountId(account.id()), &[], &[])?
@@ -1272,7 +1272,7 @@ async fn test_was_procedure_called() -> miette::Result<()> {
 
     // Compile the transaction script using the testing assembler with mock account
     let tx_script = CodeBuilder::with_mock_libraries()
-        .parse_tx_script(tx_script_code)
+        .compile_tx_script(tx_script_code)
         .into_diagnostic()?;
 
     // Create transaction context and execute
@@ -1355,7 +1355,7 @@ async fn transaction_executor_account_code_using_custom_library() -> miette::Res
     let tx_script = CodeBuilder::default()
         .with_dynamically_linked_library(&account_component_lib)
         .into_diagnostic()?
-        .parse_tx_script(tx_script_src)
+        .compile_tx_script(tx_script_src)
         .into_diagnostic()?;
 
     let tx_context = TransactionContextBuilder::new(native_account.clone())
@@ -1389,7 +1389,7 @@ async fn incrementing_nonce_twice_fails() -> anyhow::Result<()> {
     ";
 
     let faulty_auth_code =
-        CodeBuilder::default().parse_component_code("test::faulty_auth", source_code)?;
+        CodeBuilder::default().compile_component_code("test::faulty_auth", source_code)?;
     let faulty_auth_component =
         AccountComponent::new(faulty_auth_code, vec![])?.with_supports_all_types();
     let account = AccountBuilder::new([5; 32])
@@ -1443,7 +1443,7 @@ async fn test_has_procedure() -> miette::Result<()> {
 
     // Compile the transaction script using the testing assembler with mock account
     let tx_script = CodeBuilder::with_mock_libraries()
-        .parse_tx_script(tx_script_code)
+        .compile_tx_script(tx_script_code)
         .into_diagnostic()?;
 
     // Create transaction context and execute

@@ -248,7 +248,7 @@ impl AccountInterface {
         );
 
         let tx_script = CodeBuilder::new(in_debug_mode)
-            .parse_tx_script(script)
+            .compile_tx_script(script)
             .map_err(AccountInterfaceError::InvalidTransactionScript)?;
 
         Ok(tx_script)

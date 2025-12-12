@@ -109,7 +109,7 @@ async fn mint_fungible_asset_fails_on_non_faucet_account() -> anyhow::Result<()>
       ",
         asset = Word::from(FungibleAsset::mock(50))
     );
-    let tx_script = CodeBuilder::with_mock_libraries().parse_tx_script(code)?;
+    let tx_script = CodeBuilder::with_mock_libraries().compile_tx_script(code)?;
 
     let result = TransactionContextBuilder::new(account)
         .tx_script(tx_script)
@@ -162,7 +162,7 @@ async fn test_mint_fungible_asset_fails_saturate_max_amount() -> anyhow::Result<
     ",
         asset = Word::from(FungibleAsset::mock(FungibleAsset::MAX_AMOUNT))
     );
-    let tx_script = CodeBuilder::with_mock_libraries().parse_tx_script(code)?;
+    let tx_script = CodeBuilder::with_mock_libraries().compile_tx_script(code)?;
 
     let result = TransactionContextBuilder::with_fungible_faucet(
         FungibleAsset::mock_issuer().into(),
@@ -284,7 +284,7 @@ async fn mint_non_fungible_asset_fails_on_non_faucet_account() -> anyhow::Result
       ",
         asset = Word::from(FungibleAsset::mock(50))
     );
-    let tx_script = CodeBuilder::with_mock_libraries().parse_tx_script(code)?;
+    let tx_script = CodeBuilder::with_mock_libraries().compile_tx_script(code)?;
 
     let result = TransactionContextBuilder::new(account)
         .tx_script(tx_script)
@@ -404,7 +404,7 @@ async fn burn_fungible_asset_fails_on_non_faucet_account() -> anyhow::Result<()>
       ",
         asset = Word::from(FungibleAsset::mock(50))
     );
-    let tx_script = CodeBuilder::with_mock_libraries().parse_tx_script(code)?;
+    let tx_script = CodeBuilder::with_mock_libraries().compile_tx_script(code)?;
 
     let result = TransactionContextBuilder::new(account)
         .tx_script(tx_script)
@@ -602,7 +602,7 @@ async fn burn_non_fungible_asset_fails_on_non_faucet_account() -> anyhow::Result
       ",
         asset = Word::from(FungibleAsset::mock(50))
     );
-    let tx_script = CodeBuilder::with_mock_libraries().parse_tx_script(code)?;
+    let tx_script = CodeBuilder::with_mock_libraries().compile_tx_script(code)?;
 
     let result = TransactionContextBuilder::new(account)
         .tx_script(tx_script)
@@ -735,7 +735,7 @@ fn setup_non_faucet_account() -> anyhow::Result<Account> {
     let faucet_code = CodeBuilder::with_mock_libraries_with_source_manager(Arc::new(
         DefaultSourceManager::default(),
     ))
-    .parse_component_code(
+    .compile_component_code(
         "test::non_faucet_component",
         "export.::miden::faucet::mint
          export.::miden::faucet::burn",

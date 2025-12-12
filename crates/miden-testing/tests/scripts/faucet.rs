@@ -91,8 +91,8 @@ pub async fn execute_mint_transaction(
 ) -> anyhow::Result<ExecutedTransaction> {
     let source_manager = Arc::new(DefaultSourceManager::default());
     let tx_script_code = create_mint_script_code(params);
-    let tx_script =
-        CodeBuilder::with_source_manager(source_manager.clone()).parse_tx_script(tx_script_code)?;
+    let tx_script = CodeBuilder::with_source_manager(source_manager.clone())
+        .compile_tx_script(tx_script_code)?;
     let tx_context = mock_chain
         .build_tx_context(faucet, &[], &[])?
         .tx_script(tx_script)
@@ -198,7 +198,7 @@ async fn faucet_contract_mint_fungible_asset_fails_exceeds_max_supply() -> anyho
         recipient = recipient,
     );
 
-    let tx_script = CodeBuilder::default().parse_tx_script(tx_script_code)?;
+    let tx_script = CodeBuilder::default().compile_tx_script(tx_script_code)?;
     let tx = mock_chain
         .build_tx_context(faucet.id(), &[], &[])?
         .tx_script(tx_script)
@@ -329,7 +329,7 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
     let output_note_script_code = "begin push.1 drop end";
     let source_manager = Arc::new(DefaultSourceManager::default());
     let output_note_script = CodeBuilder::with_source_manager(source_manager.clone())
-        .parse_note_script(output_note_script_code)?;
+        .compile_note_script(output_note_script_code)?;
 
     let serial_num = Word::default();
     let target_account_suffix = recipient_account_id.suffix();

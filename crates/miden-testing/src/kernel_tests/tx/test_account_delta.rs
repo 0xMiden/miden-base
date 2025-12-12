@@ -708,7 +708,7 @@ async fn asset_and_storage_delta() -> anyhow::Result<()> {
         mock_map_slot = &*MOCK_MAP_SLOT,
     );
 
-    let tx_script = CodeBuilder::with_mock_libraries().parse_tx_script(tx_script_src)?;
+    let tx_script = CodeBuilder::with_mock_libraries().compile_tx_script(tx_script_src)?;
 
     // Create the input note that carries the assets that we will assert later
     let input_note = {
@@ -860,7 +860,7 @@ async fn proven_tx_storage_maps_matches_executed_tx_for_new_account() -> anyhow:
 
     let builder = CodeBuilder::with_mock_libraries();
     let source_manager = builder.source_manager();
-    let tx_script = builder.parse_tx_script(code)?;
+    let tx_script = builder.compile_tx_script(code)?;
 
     let tx = TransactionContextBuilder::new(account.clone())
         .tx_script(tx_script)
@@ -1062,7 +1062,7 @@ fn parse_tx_script(code: impl AsRef<str>) -> anyhow::Result<TransactionScript> {
     );
 
     CodeBuilder::with_mock_libraries()
-        .parse_tx_script(&code)
+        .compile_tx_script(&code)
         .context("failed to parse tx script")
 }
 

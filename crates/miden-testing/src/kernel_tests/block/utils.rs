@@ -110,5 +110,5 @@ fn update_expiration_tx_script(expiration_delta: u16) -> TransactionScript {
         "
     );
 
-    CodeBuilder::default().parse_tx_script(code).unwrap()
+    CodeBuilder::default().compile_tx_script(code).unwrap()
 }

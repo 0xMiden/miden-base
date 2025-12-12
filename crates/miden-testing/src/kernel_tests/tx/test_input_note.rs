@@ -74,7 +74,7 @@ async fn test_get_asset_info() -> anyhow::Result<()> {
         ),
     );
 
-    let tx_script = CodeBuilder::default().parse_tx_script(code)?;
+    let tx_script = CodeBuilder::default().compile_tx_script(code)?;
 
     let tx_context = mock_chain
         .build_tx_context(
@@ -132,7 +132,7 @@ async fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
         METADATA = Word::from(p2id_note_1_asset.metadata()),
     );
 
-    let tx_script = CodeBuilder::default().parse_tx_script(code)?;
+    let tx_script = CodeBuilder::default().compile_tx_script(code)?;
 
     let tx_context = mock_chain
         .build_tx_context(TxContextInput::AccountId(account.id()), &[], &[p2id_note_1_asset])?
@@ -181,7 +181,7 @@ async fn test_get_sender() -> anyhow::Result<()> {
         sender_suffix = p2id_note_1_asset.metadata().sender().suffix(),
     );
 
-    let tx_script = CodeBuilder::default().parse_tx_script(code)?;
+    let tx_script = CodeBuilder::default().compile_tx_script(code)?;
 
     let tx_context = mock_chain
         .build_tx_context(TxContextInput::AccountId(account.id()), &[], &[p2id_note_1_asset])?
@@ -272,7 +272,7 @@ async fn test_get_assets() -> anyhow::Result<()> {
         check_note_2 = check_assets_code(2, 8, &p2id_note_2_assets),
     );
 
-    let tx_script = CodeBuilder::default().parse_tx_script(code)?;
+    let tx_script = CodeBuilder::default().compile_tx_script(code)?;
 
     let tx_context = mock_chain
         .build_tx_context(
@@ -326,7 +326,7 @@ async fn test_get_inputs_info() -> anyhow::Result<()> {
         inputs_num = p2id_note_1_asset.inputs().num_values(),
     );
 
-    let tx_script = CodeBuilder::default().parse_tx_script(code)?;
+    let tx_script = CodeBuilder::default().compile_tx_script(code)?;
 
     let tx_context = mock_chain
         .build_tx_context(TxContextInput::AccountId(account.id()), &[], &[p2id_note_1_asset])?
@@ -369,7 +369,7 @@ async fn test_get_script_root() -> anyhow::Result<()> {
         SCRIPT_ROOT = p2id_note_1_asset.script().root(),
     );
 
-    let tx_script = CodeBuilder::default().parse_tx_script(code)?;
+    let tx_script = CodeBuilder::default().compile_tx_script(code)?;
 
     let tx_context = mock_chain
         .build_tx_context(TxContextInput::AccountId(account.id()), &[], &[p2id_note_1_asset])?
@@ -412,7 +412,7 @@ async fn test_get_serial_number() -> anyhow::Result<()> {
         SERIAL_NUMBER = p2id_note_1_asset.serial_num(),
     );
 
-    let tx_script = CodeBuilder::default().parse_tx_script(code)?;
+    let tx_script = CodeBuilder::default().compile_tx_script(code)?;
 
     let tx_context = mock_chain
         .build_tx_context(TxContextInput::AccountId(account.id()), &[], &[p2id_note_1_asset])?

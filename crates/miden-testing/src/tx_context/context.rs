@@ -3,12 +3,10 @@ use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use miden_lib::testing::mock_account_code::MockAccountCodeExt;
 use miden_lib::transaction::TransactionKernel;
 use miden_lib::utils::CodeBuilder;
 use miden_objects::account::{
     Account,
-    AccountCode,
     AccountId,
     PartialAccount,
     StorageMapWitness,
@@ -132,7 +130,6 @@ impl TransactionContext {
         let assembler: Assembler =
             CodeBuilder::with_mock_libraries_with_source_manager(self.source_manager.clone())
                 .into();
-        let assembler = assembler.with_debug_mode(true);
 
         let program = assembler
             .with_debug_mode(true)
@@ -143,11 +140,6 @@ impl TransactionContext {
         // Note that native and foreign account's code are already loaded by the
         // TransactionContextBuilder.
         self.mast_store.insert(TransactionKernel::library().mast_forest().clone());
-        self.mast_store.insert(miden_lib::StdLibrary::default().mast_forest().clone());
-        self.mast_store.insert(miden_lib::MidenLib::default().mast_forest().clone());
-        self.mast_store
-            .insert(AccountCode::mock_account_library().mast_forest().clone());
-        self.mast_store.insert(AccountCode::mock_faucet_library().mast_forest().clone());
         self.mast_store.insert(program.mast_forest().clone());
 
         let account_procedure_idx_map = AccountProcedureIndexMap::new(

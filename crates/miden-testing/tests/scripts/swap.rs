@@ -61,7 +61,7 @@ pub async fn prove_send_swap_note() -> anyhow::Result<()> {
         note_execution_hint = Felt::from(swap_note.metadata().execution_hint())
     );
 
-    let tx_script = CodeBuilder::default().parse_tx_script(tx_script_src)?;
+    let tx_script = CodeBuilder::default().compile_tx_script(tx_script_src)?;
 
     let create_swap_note_tx = mock_chain
         .build_tx_context(sender_account.id(), &[], &[])

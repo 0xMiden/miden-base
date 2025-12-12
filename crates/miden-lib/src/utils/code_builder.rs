@@ -47,7 +47,7 @@ use crate::transaction::TransactionKernel;
 /// 3. Add libraries using `link_static_library()` / `link_dynamic_library()` as appropriate
 /// 4. Parse your script with `parse_note_script()` or `parse_tx_script()`
 ///
-/// Note that the parsing methods consume the CodeBuilder, so if you need to parse
+/// Note that the Compiling methods consume the CodeBuilder, so if you need to parse
 /// multiple scripts with the same configuration, you should clone the builder first.
 ///
 /// ## Builder Pattern Example
@@ -67,7 +67,7 @@ use crate::transaction::TransactionKernel;
 ///     .with_linked_module("my::module", module_code).context("failed to link module")?
 ///     .with_statically_linked_library(&my_lib).context("failed to link static library")?
 ///     .with_dynamically_linked_library(&fpi_lib).context("failed to link dynamic library")?  // For FPI calls
-///     .parse_tx_script(script_code).context("failed to parse tx script")?;
+///     .compile_tx_script(script_code).context("failed to parse tx script")?;
 /// # Ok(())
 /// # }
 /// ```
@@ -244,10 +244,10 @@ impl CodeBuilder {
         Ok(self)
     }
 
-    // SCRIPT COMPILATION
+    // COMPILATION
     // --------------------------------------------------------------------------------------------
 
-    /// Parses the provided module path and MASM code into an [`AccountComponentCode`].
+    /// Compiles the provided module path and MASM code into an [`AccountComponentCode`].
     /// The resulting code can be used to create account components.
     ///
     /// # Arguments
@@ -256,9 +256,9 @@ impl CodeBuilder {
     ///
     /// # Errors
     /// Returns an error if:
-    /// - Parsing the account component code fails
+    /// - Compiling the account component code fails
     /// - If `component_path` is not a valid [`LibraryPath`]
-    pub fn parse_component_code(
+    pub fn compile_component_code(
         self,
         component_path: impl AsRef<str>,
         component_code: impl Parse,
@@ -288,7 +288,7 @@ impl CodeBuilder {
         Ok(AccountComponentCode::from(library))
     }
 
-    /// Parses the provided MASM code into a [`TransactionScript`].
+    /// Compiles the provided MASM code into a [`TransactionScript`].
     ///
     /// The parsed script will have access to all modules that have been added to this builder.
     ///
@@ -297,8 +297,8 @@ impl CodeBuilder {
     ///
     /// # Errors
     /// Returns an error if:
-    /// - The transaction script parsing fails
-    pub fn parse_tx_script(
+    /// - The transaction script compiling fails
+    pub fn compile_tx_script(
         self,
         tx_script: impl Parse,
     ) -> Result<TransactionScript, CodeBuilderError> {
@@ -310,7 +310,7 @@ impl CodeBuilder {
         Ok(TransactionScript::new(program))
     }
 
-    /// Parses the provided MASM code into a [`NoteScript`].
+    /// Compiles the provided MASM code into a [`NoteScript`].
     ///
     /// The parsed script will have access to all modules that have been added to this builder.
     ///
@@ -319,8 +319,8 @@ impl CodeBuilder {
     ///
     /// # Errors
     /// Returns an error if:
-    /// - The note script parsing fails
-    pub fn parse_note_script(self, program: impl Parse) -> Result<NoteScript, CodeBuilderError> {
+    /// - The note script compiling fails
+    pub fn compile_note_script(self, program: impl Parse) -> Result<NoteScript, CodeBuilderError> {
         let assembler = self.assembler;
 
         let program = assembler.assemble_program(program).map_err(|err| {
@@ -440,10 +440,10 @@ mod tests {
     }
 
     #[test]
-    fn test_code_builder_basic_script_parsing() -> anyhow::Result<()> {
+    fn test_code_builder_basic_script_compiling() -> anyhow::Result<()> {
         let builder = CodeBuilder::default();
         builder
-            .parse_tx_script("begin nop end")
+            .compile_tx_script("begin nop end")
             .context("failed to parse basic tx script")?;
         Ok(())
     }
@@ -480,7 +480,7 @@ mod tests {
             .link_module(library_path, account_code)
             .context("failed to link module")?;
         builder_with_lib
-            .parse_tx_script(script_code)
+            .compile_tx_script(script_code)
             .context("failed to parse tx script")?;
 
         Ok(())
@@ -519,7 +519,7 @@ mod tests {
             .link_module(library_path, account_code)
             .context("failed to link module")?;
         builder_with_lib
-            .parse_tx_script(script_code)
+            .compile_tx_script(script_code)
             .context("failed to parse tx script")?;
 
         // Test multiple libraries
@@ -531,7 +531,7 @@ mod tests {
             .link_module("test::lib", "export.test nop end")
             .context("failed to link second module")?;
         builder_with_libs
-            .parse_tx_script(script_code)
+            .compile_tx_script(script_code)
             .context("failed to parse tx script with multiple libraries")?;
 
         Ok(())
@@ -567,7 +567,7 @@ mod tests {
             .with_linked_module("external_contract::counter_contract", account_code)
             .context("failed to link module")?;
 
-        builder.parse_tx_script(script_code).context("failed to parse tx script")?;
+        builder.compile_tx_script(script_code).context("failed to parse tx script")?;
 
         Ok(())
     }
@@ -584,7 +584,7 @@ mod tests {
             .with_linked_module("test::lib2", "export.test2 push.2 add end")
             .context("failed to link second module")?;
 
-        builder.parse_tx_script(script_code).context("failed to parse tx script")?;
+        builder.compile_tx_script(script_code).context("failed to parse tx script")?;
 
         Ok(())
     }
@@ -631,7 +631,7 @@ mod tests {
             .context("failed to link dynamic library")?;
 
         builder
-            .parse_tx_script(script_code)
+            .compile_tx_script(script_code)
             .context("failed to parse tx script with static and dynamic libraries")?;
 
         Ok(())

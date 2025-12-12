@@ -149,7 +149,7 @@ fn test_custom_account_default_note() {
     ";
 
     let account_code = CodeBuilder::default()
-        .parse_component_code("test::account_custom", account_custom_code_source)
+        .compile_component_code("test::account_custom", account_custom_code_source)
         .unwrap();
     let account_component =
         AccountComponent::new(account_code, vec![]).unwrap().with_supports_all_types();
@@ -283,7 +283,7 @@ fn test_basic_wallet_custom_notes() {
             end
         end
     ";
-    let note_script = CodeBuilder::default().parse_note_script(compatible_source_code).unwrap();
+    let note_script = CodeBuilder::default().compile_note_script(compatible_source_code).unwrap();
     let recipient = NoteRecipient::new(serial_num, note_script, NoteInputs::default());
     let compatible_custom_note = Note::new(vault.clone(), metadata, recipient);
     assert_eq!(
@@ -311,7 +311,7 @@ fn test_basic_wallet_custom_notes() {
             end
         end
     ";
-    let note_script = CodeBuilder::default().parse_note_script(incompatible_source_code).unwrap();
+    let note_script = CodeBuilder::default().compile_note_script(incompatible_source_code).unwrap();
     let recipient = NoteRecipient::new(serial_num, note_script, NoteInputs::default());
     let incompatible_custom_note = Note::new(vault, metadata, recipient);
     assert_eq!(
@@ -371,7 +371,7 @@ fn test_basic_fungible_faucet_custom_notes() {
             end
         end
     ";
-    let note_script = CodeBuilder::default().parse_note_script(compatible_source_code).unwrap();
+    let note_script = CodeBuilder::default().compile_note_script(compatible_source_code).unwrap();
     let recipient = NoteRecipient::new(serial_num, note_script, NoteInputs::default());
     let compatible_custom_note = Note::new(vault.clone(), metadata, recipient);
     assert_eq!(
@@ -401,7 +401,7 @@ fn test_basic_fungible_faucet_custom_notes() {
             end
         end
     ";
-    let note_script = CodeBuilder::default().parse_note_script(incompatible_source_code).unwrap();
+    let note_script = CodeBuilder::default().compile_note_script(incompatible_source_code).unwrap();
     let recipient = NoteRecipient::new(serial_num, note_script, NoteInputs::default());
     let incompatible_custom_note = Note::new(vault, metadata, recipient);
     assert_eq!(
@@ -428,7 +428,7 @@ fn test_custom_account_custom_notes() {
     ";
 
     let account_code = CodeBuilder::default()
-        .parse_component_code("test::account::component_1", account_custom_code_source)
+        .compile_component_code("test::account::component_1", account_custom_code_source)
         .unwrap();
     let account_component =
         AccountComponent::new(account_code, vec![]).unwrap().with_supports_all_types();
@@ -483,7 +483,7 @@ fn test_custom_account_custom_notes() {
     let note_script = CodeBuilder::default()
         .with_dynamically_linked_library(account_component.component_code())
         .unwrap()
-        .parse_note_script(compatible_source_code)
+        .compile_note_script(compatible_source_code)
         .unwrap();
     let recipient = NoteRecipient::new(serial_num, note_script, NoteInputs::default());
     let compatible_custom_note = Note::new(vault.clone(), metadata, recipient);
@@ -510,7 +510,7 @@ fn test_custom_account_custom_notes() {
     let note_script = CodeBuilder::default()
         .with_dynamically_linked_library(account_component.component_code())
         .unwrap()
-        .parse_note_script(incompatible_source_code)
+        .compile_note_script(incompatible_source_code)
         .unwrap();
     let recipient = NoteRecipient::new(serial_num, note_script, NoteInputs::default());
     let incompatible_custom_note = Note::new(vault, metadata, recipient);
@@ -538,7 +538,7 @@ fn test_custom_account_multiple_components_custom_notes() {
     ";
 
     let custom_code = CodeBuilder::default()
-        .parse_component_code("test::account::component_1", account_custom_code_source)
+        .compile_component_code("test::account::component_1", account_custom_code_source)
         .unwrap();
     let custom_component =
         AccountComponent::new(custom_code, vec![]).unwrap().with_supports_all_types();
@@ -601,7 +601,7 @@ fn test_custom_account_multiple_components_custom_notes() {
     let note_script = CodeBuilder::default()
         .with_dynamically_linked_library(custom_component.component_code())
         .unwrap()
-        .parse_note_script(compatible_source_code)
+        .compile_note_script(compatible_source_code)
         .unwrap();
     let recipient = NoteRecipient::new(serial_num, note_script, NoteInputs::default());
     let compatible_custom_note = Note::new(vault.clone(), metadata, recipient);
@@ -640,7 +640,7 @@ fn test_custom_account_multiple_components_custom_notes() {
     let note_script = CodeBuilder::default()
         .with_dynamically_linked_library(custom_component.component_code())
         .unwrap()
-        .parse_note_script(incompatible_source_code)
+        .compile_note_script(incompatible_source_code)
         .unwrap();
     let recipient = NoteRecipient::new(serial_num, note_script, NoteInputs::default());
     let incompatible_custom_note = Note::new(vault.clone(), metadata, recipient);

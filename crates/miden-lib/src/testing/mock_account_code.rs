@@ -140,14 +140,14 @@ const MOCK_ACCOUNT_CODE: &str = "
 
 static MOCK_FAUCET_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
     CodeBuilder::default()
-        .parse_component_code("mock::faucet", MOCK_FAUCET_CODE)
+        .compile_component_code("mock::faucet", MOCK_FAUCET_CODE)
         .expect("mock faucet code should be valid")
         .into_library()
 });
 
 static MOCK_ACCOUNT_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
     CodeBuilder::default()
-        .parse_component_code("mock::account", MOCK_ACCOUNT_CODE)
+        .compile_component_code("mock::account", MOCK_ACCOUNT_CODE)
         .expect("mock account code should be valid")
         .into_library()
 });
