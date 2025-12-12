@@ -198,7 +198,7 @@ impl AccountCode {
     pub fn printable_procedures(&self) -> impl Iterator<Item = PrintableProcedure> {
         self.procedures()
             .iter()
-            .filter_map(move |procedure_info| self.printable_procedure(procedure_info).ok())
+            .filter_map(move |proc_root| self.printable_procedure(proc_root).ok())
     }
 
     // HELPER FUNCTIONS
@@ -210,14 +210,14 @@ impl AccountCode {
     /// Returns an error if no procedure with the specified root exists in this account code.
     fn printable_procedure(
         &self,
-        proc_info: &AccountProcedureRoot,
+        proc_root: &AccountProcedureRoot,
     ) -> Result<PrintableProcedure, AccountError> {
         let node_id = self
             .mast
-            .find_procedure_root(*proc_info.mast_root())
+            .find_procedure_root(*proc_root.mast_root())
             .expect("procedure root should be present in the mast forest");
 
-        Ok(PrintableProcedure::new(self.mast.clone(), *proc_info, node_id))
+        Ok(PrintableProcedure::new(self.mast.clone(), *proc_root, node_id))
     }
 }
 

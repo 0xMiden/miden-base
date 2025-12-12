@@ -90,10 +90,10 @@ impl AccountComponentInterface {
             },
 
             AccountComponentInterface::AuthNoAuth => "No Auth".to_string(),
-            AccountComponentInterface::Custom(proc_info_vec) => {
-                let result = proc_info_vec
+            AccountComponentInterface::Custom(proc_root_vec) => {
+                let result = proc_root_vec
                     .iter()
-                    .map(|proc_info| proc_info.mast_root().to_hex()[..9].to_string())
+                    .map(|proc_root| proc_root.mast_root().to_hex()[..9].to_string())
                     .collect::<Vec<_>>()
                     .join(", ");
                 format!("Custom([{result}])")

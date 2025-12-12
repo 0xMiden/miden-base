@@ -36,12 +36,12 @@ impl AccountProcedureIndexMap {
     /// transaction, enabling fast procedure index lookups at runtime.
     pub fn insert_code(&mut self, code: &AccountCode) {
         let mut procedure_map = BTreeMap::new();
-        for (proc_idx, proc_info) in code.procedures().iter().enumerate() {
+        for (proc_idx, proc_root) in code.procedures().iter().enumerate() {
             // SAFETY: AccountCode::MAX_NUM_PROCEDURES is 256 and so the highest possible index is
             // 255.
             let proc_idx =
                 u8::try_from(proc_idx).expect("account code should contain at most 256 procedures");
-            procedure_map.insert(*proc_info.mast_root(), proc_idx);
+            procedure_map.insert(*proc_root.mast_root(), proc_idx);
         }
 
         self.0.insert(code.commitment(), procedure_map);
