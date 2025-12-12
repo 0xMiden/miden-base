@@ -155,8 +155,7 @@ impl StorageDeltaTracker {
             // Keep only the values whose new value is different from the initial value.
             value_slots.retain(|slot_name, new_value| {
                 // SAFETY: The header in the initial storage is the one from the account against
-                // which the transaction is executed, so accessing that slot index
-                // should be fine.
+                // which the transaction is executed, so accessing that slot name should be fine.
                 let (_slot_type, initial_value) = storage_header
                     .find_slot_header_by_name(slot_name)
                     .expect("slot name should exist");
