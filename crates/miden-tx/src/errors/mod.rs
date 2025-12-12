@@ -119,8 +119,6 @@ pub enum TransactionExecutorError {
         "input note {0} was created in a block past the transaction reference block number ({1})"
     )]
     NoteBlockPastReferenceBlock(NoteId, BlockNumber),
-    #[error("failed to create transaction host")]
-    TransactionHostCreationFailed(#[source] TransactionHostError),
     #[error("failed to construct transaction outputs")]
     TransactionOutputConstructionFailed(#[source] TransactionOutputError),
     // Print the diagnostic directly instead of returning the source error. In the source error
@@ -154,10 +152,6 @@ pub enum TransactionProverError {
     // case, the diagnostic is lost if the execution error is not explicitly unwrapped.
     #[error("failed to execute transaction kernel program:\n{}", PrintDiagnostic::new(.0))]
     TransactionProgramExecutionFailed(ExecutionError),
-    #[error("failed to create account procedure index map")]
-    CreateAccountProcedureIndexMap(#[source] TransactionHostError),
-    #[error("failed to create transaction host")]
-    TransactionHostCreationFailed(#[source] TransactionHostError),
     /// Custom error variant for errors not covered by the other variants.
     #[error("{error_msg}")]
     Other {
@@ -198,17 +192,6 @@ pub enum TransactionVerifierError {
     TransactionVerificationFailed(#[source] VerificationError),
     #[error("transaction proof security level is {actual} but must be at least {expected_minimum}")]
     InsufficientProofSecurityLevel { actual: u32, expected_minimum: u32 },
-}
-
-// TRANSACTION HOST ERROR
-// ================================================================================================
-
-#[derive(Debug, Error)]
-pub enum TransactionHostError {
-    #[error("{0}")]
-    AccountProcedureIndexMapError(String),
-    #[error("failed to create account procedure info")]
-    AccountProcedureInfoCreationFailed(#[source] AccountError),
 }
 
 // TRANSACTION KERNEL ERROR

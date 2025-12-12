@@ -60,6 +60,10 @@ static OWNER_CONFIG_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
 /// - First slot: Token metadata `[max_supply, decimals, token_symbol, 0]`
 /// - Second slot: Owner account ID as a single Word
 ///
+/// ## Storage Layout
+///
+/// - [`Self::metadata_slot`]: Fungible faucet metadata
+///
 /// [kasm]: crate::transaction::TransactionKernel::assembler
 pub struct NetworkFungibleFaucet {
     faucet: BasicFungibleFaucet,
@@ -164,8 +168,7 @@ impl NetworkFungibleFaucet {
 
     /// Returns the [`StorageSlotName`] where the [`NetworkFungibleFaucet`]'s metadata is stored.
     pub fn metadata_slot() -> &'static StorageSlotName {
-        // TODO(named_slots): Rename to metadata_slot.
-        BasicFungibleFaucet::metadata_slot_name()
+        &super::METADATA_SLOT_NAME
     }
 
     /// Returns the [`StorageSlotName`] where the [`NetworkFungibleFaucet`]'s owner configuration is
