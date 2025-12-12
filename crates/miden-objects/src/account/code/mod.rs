@@ -28,6 +28,10 @@ use procedure::{AccountProcedureRoot, PrintableProcedure};
 /// An account's public interface consists of a set of account procedures, each of which is
 /// identified and committed to by a MAST root. They are represented by [`AccountProcedureRoot`].
 ///
+/// The set of procedures has an arbitrary order, i.e. they are not sorted. The only exception is
+/// the authentication procedure of the account, which is always at index 0. This procedure is
+/// automatically called at the end of a transaction to validate an account's state transition.
+///
 /// The code commits to the entire account interface by building a sequential hash of all procedure
 /// MAST roots. Specifically, each procedure contributes exactly 4 field elements to the sequence of
 /// elements to be hashed. Each procedure is represented by its MAST root:
