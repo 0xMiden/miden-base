@@ -318,6 +318,9 @@ impl PrettyPrint for AccountCode {
 // ACCOUNT PROCEDURE BUILDER
 // ================================================================================================
 
+/// A helper type for building the set of account procedures from account components.
+///
+/// In particular, this ensures that the auth procedure ends up at index 0.
 struct AccountProcedureBuilder {
     procedures: Vec<AccountProcedureRoot>,
 }
@@ -327,6 +330,7 @@ impl AccountProcedureBuilder {
         Self { procedures: Vec::new() }
     }
 
+    /// This method must be called before add_component is called.
     fn add_auth_component(&mut self, component: &AccountComponent) -> Result<(), AccountError> {
         let mut auth_proc_count = 0;
 
