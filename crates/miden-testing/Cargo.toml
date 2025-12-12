@@ -30,7 +30,7 @@ miden-processor = { workspace = true }
 anyhow      = { workspace = true }
 itertools   = { default-features = false, features = ["use_alloc"], version = "0.14" }
 rand        = { features = ["os_rng", "small_rng"], workspace = true }
-rand_chacha = { default-features = false, version = "0.9" }
+rand_chacha = { workspace = true }
 winterfell  = { version = "0.13" }
 
 [dev-dependencies]
