@@ -580,10 +580,10 @@ async fn test_account_set_item_fails_on_reserved_faucet_metadata_slot() -> anyho
     let code = r#"
             use.miden::native_account
 
-            const.FAUCET_METADATA_SLOT=word("miden::faucet::metadata")
+            const.FAUCET_SYSDATA_SLOT=word("miden::faucet::sysdata")
 
             begin
-                push.FAUCET_METADATA_SLOT[0..2]
+                push.FAUCET_SYSDATA_SLOT[0..2]
                 exec.native_account::set_item
             end
             "#;
