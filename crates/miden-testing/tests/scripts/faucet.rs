@@ -553,8 +553,6 @@ async fn network_faucet_mint() -> anyhow::Result<()> {
     let mint_note =
         create_mint_note(faucet.id(), faucet_owner_account_id, mint_inputs, aux, &mut rng)?;
 
-    println!("mint note script: {:?}", mint_note.script().root().to_vec());
-
     // Add the MINT note to the mock chain
     builder.add_output_note(OutputNote::Full(mint_note.clone()));
     let mut mock_chain = builder.build()?;
