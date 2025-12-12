@@ -1,11 +1,11 @@
 extern crate alloc;
 
+use alloc::sync::Arc;
 use core::slice;
-use std::sync::Arc;
 
 use miden_lib::account::faucets::{BasicFungibleFaucet, FungibleFaucetExt, NetworkFungibleFaucet};
 use miden_lib::errors::tx_kernel_errors::ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED;
-use miden_lib::note::{create_burn_note, create_mint_note};
+use miden_lib::note::{MintNoteInputs, WellKnownNote, create_burn_note, create_mint_note};
 use miden_lib::testing::note::NoteBuilder;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{
@@ -276,10 +276,12 @@ async fn prove_burning_fungible_asset_on_existing_faucet_succeeds() -> anyhow::R
     builder.add_output_note(OutputNote::Full(note.clone()));
     let mock_chain = builder.build()?;
 
-    // The Fungible Faucet component is added as the second component after auth, so it's storage
-    // slot offset will be 2. Check that max_supply at the word's index 0 is 200. The remainder of
-    // the word is initialized with the metadata of the faucet which we don't need to check.
-    assert_eq!(faucet.storage().get_item(2).unwrap()[0], Felt::new(200));
+    // Check that max_supply at the word's index 0 is 200. The remainder of the word is initialized
+    // with the metadata of the faucet which we don't need to check.
+    assert_eq!(
+        faucet.storage().get_item(BasicFungibleFaucet::metadata_slot()).unwrap()[0],
+        Felt::new(200)
+    );
 
     // Check that the faucet reserved slot has been correctly initialized.
     // The already issued amount should be 100.
@@ -502,11 +504,15 @@ async fn network_faucet_mint() -> anyhow::Result<()> {
 
     // The Network Fungible Faucet component is added as the second component after auth, so its
     // storage slot offset will be 2. Check that max_supply at the word's index 0 is 200.
-    assert_eq!(faucet.storage().get_item(1).unwrap()[0], Felt::new(1000));
+    assert_eq!(
+        faucet.storage().get_item(NetworkFungibleFaucet::metadata_slot()).unwrap()[0],
+        Felt::new(1000)
+    );
 
     // Check that the creator account ID is stored in slot 2 (second storage slot of the component)
     // The owner_account_id is stored as Word [0, 0, suffix, prefix]
-    let stored_owner_id = faucet.storage().get_item(2).unwrap();
+    let stored_owner_id =
+        faucet.storage().get_item(NetworkFungibleFaucet::owner_config_slot()).unwrap();
     assert_eq!(stored_owner_id[3], faucet_owner_account_id.prefix().as_felt());
     assert_eq!(stored_owner_id[2], Felt::new(faucet_owner_account_id.suffix().as_int()));
 
@@ -535,17 +541,17 @@ async fn network_faucet_mint() -> anyhow::Result<()> {
     let recipient = p2id_mint_output_note.recipient().digest();
 
     // Create the MINT note using the helper function
-    let mut rng = RpoRandomCoin::new([Felt::from(42u32); 4].into());
-    let mint_note = create_mint_note(
-        faucet.id(),
-        faucet_owner_account_id,
+    let mint_inputs = MintNoteInputs::new_private(
         recipient,
-        output_note_tag.into(),
         amount,
+        output_note_tag.into(),
+        NoteExecutionHint::always(),
         aux,
-        aux,
-        &mut rng,
-    )?;
+    );
+
+    let mut rng = RpoRandomCoin::new([Felt::from(42u32); 4].into());
+    let mint_note =
+        create_mint_note(faucet.id(), faucet_owner_account_id, mint_inputs, aux, &mut rng)?;
 
     // Add the MINT note to the mock chain
     builder.add_output_note(OutputNote::Full(mint_note.clone()));
@@ -659,6 +665,140 @@ async fn network_faucet_burn() -> anyhow::Result<()> {
     faucet.apply_delta(executed_transaction.account_delta())?;
     let final_issuance = faucet.get_token_issuance().unwrap();
     assert_eq!(final_issuance, Felt::new(initial_issuance.as_int() - burn_amount));
+
+    Ok(())
+}
+
+// TESTS FOR MINT NOTE WITH PRIVATE AND PUBLIC OUTPUT MODES
+// ================================================================================================
+
+/// Tests creating a MINT note with different output note types (private/public)
+/// The MINT note can create output notes with variable-length inputs for public notes.
+#[rstest::rstest]
+#[case::private(NoteType::Private)]
+#[case::public(NoteType::Public)]
+#[tokio::test]
+async fn test_mint_note_output_note_types(#[case] note_type: NoteType) -> anyhow::Result<()> {
+    let mut builder = MockChain::builder();
+
+    let faucet_owner_account_id = AccountId::dummy(
+        [1; 15],
+        AccountIdVersion::Version0,
+        AccountType::RegularAccountImmutableCode,
+        AccountStorageMode::Private,
+    );
+
+    let faucet =
+        builder.add_existing_network_faucet("NET", 1000, faucet_owner_account_id, Some(50))?;
+    let target_account = builder.add_existing_wallet(Auth::IncrNonce)?;
+
+    let amount = Felt::new(75);
+    let mint_asset: Asset = FungibleAsset::new(faucet.id(), amount.into()).unwrap().into();
+    let aux = Felt::new(27);
+    let serial_num = Word::from([1, 2, 3, 4u32]);
+
+    // Create the expected P2ID output note
+    let p2id_mint_output_note = create_p2id_note_exact(
+        faucet.id(),
+        target_account.id(),
+        vec![mint_asset],
+        note_type,
+        aux,
+        serial_num,
+    )
+    .unwrap();
+
+    // Create MINT note based on note type
+    let mint_inputs = match note_type {
+        NoteType::Private => {
+            let output_note_tag = NoteTag::from_account_id(target_account.id());
+            let recipient = p2id_mint_output_note.recipient().digest();
+            MintNoteInputs::new_private(
+                recipient,
+                amount,
+                output_note_tag.into(),
+                NoteExecutionHint::always(),
+                aux,
+            )
+        },
+        NoteType::Public => {
+            let output_note_tag = NoteTag::from_account_id(target_account.id());
+            let p2id_script = WellKnownNote::P2ID.script();
+            let p2id_inputs =
+                vec![target_account.id().suffix(), target_account.id().prefix().as_felt()];
+            let note_inputs = NoteInputs::new(p2id_inputs)?;
+            let recipient = NoteRecipient::new(serial_num, p2id_script, note_inputs);
+            MintNoteInputs::new_public(
+                recipient,
+                amount,
+                output_note_tag.into(),
+                NoteExecutionHint::always(),
+                aux,
+            )?
+        },
+        NoteType::Encrypted => unreachable!("Encrypted note type not used in this test"),
+    };
+
+    let mut rng = RpoRandomCoin::new([Felt::from(42u32); 4].into());
+    let mint_note =
+        create_mint_note(faucet.id(), faucet_owner_account_id, mint_inputs.clone(), aux, &mut rng)?;
+
+    builder.add_output_note(OutputNote::Full(mint_note.clone()));
+    let mut mock_chain = builder.build()?;
+
+    let mut tx_context_builder =
+        mock_chain.build_tx_context(faucet.id(), &[mint_note.id()], &[])?;
+
+    if note_type == NoteType::Public {
+        let p2id_script = WellKnownNote::P2ID.script();
+        tx_context_builder = tx_context_builder.add_note_script(p2id_script);
+    }
+
+    let tx_context = tx_context_builder.build()?;
+    let executed_transaction = tx_context.execute().await?;
+
+    assert_eq!(executed_transaction.output_notes().num_notes(), 1);
+    let output_note = executed_transaction.output_notes().get_note(0);
+
+    match note_type {
+        NoteType::Private => {
+            // For private notes, we can only compare basic properties since we get
+            // OutputNote::Partial
+            assert_eq!(output_note.id(), p2id_mint_output_note.id());
+            assert_eq!(output_note.metadata().sender(), p2id_mint_output_note.metadata().sender());
+            assert_eq!(
+                output_note.metadata().note_type(),
+                p2id_mint_output_note.metadata().note_type()
+            );
+            assert_eq!(output_note.metadata().aux(), p2id_mint_output_note.metadata().aux());
+        },
+        NoteType::Public => {
+            // For public notes, we get OutputNote::Full and can compare key properties
+            let created_note = match output_note {
+                OutputNote::Full(note) => note,
+                _ => panic!("Expected OutputNote::Full variant for public note"),
+            };
+
+            assert_eq!(created_note, &p2id_mint_output_note);
+        },
+        NoteType::Encrypted => unreachable!("Encrypted note type not used in this test"),
+    }
+
+    mock_chain.add_pending_executed_transaction(&executed_transaction)?;
+    mock_chain.prove_next_block()?;
+
+    // Consume the output note with target account
+    let mut target_account_mut = target_account.clone();
+    let consume_tx_context = mock_chain
+        .build_tx_context(target_account.id(), &[], slice::from_ref(&p2id_mint_output_note))?
+        .build()?;
+    let consume_executed_transaction = consume_tx_context.execute().await?;
+
+    target_account_mut.apply_delta(consume_executed_transaction.account_delta())?;
+
+    let expected_asset = FungibleAsset::new(faucet.id(), amount.into())?;
+    let balance = target_account_mut.vault().get_balance(faucet.id())?;
+    assert_eq!(balance, expected_asset.amount());
 
     Ok(())
 }

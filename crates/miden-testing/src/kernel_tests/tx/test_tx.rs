@@ -19,6 +19,7 @@ use miden_objects::account::{
     AccountStorageMode,
     AccountType,
     StorageSlot,
+    StorageSlotName,
 };
 use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::assembly::diagnostics::NamedSource;
@@ -770,7 +771,7 @@ async fn inputs_created_correctly() -> anyhow::Result<()> {
     let component = AccountComponent::compile(
         account_code_script,
         TransactionKernel::assembler(),
-        vec![StorageSlot::Value(Word::default())],
+        vec![StorageSlot::with_value(StorageSlotName::mock(0), Word::default())],
     )?
     .with_supports_all_types();
 

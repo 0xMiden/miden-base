@@ -34,6 +34,8 @@ pub const ERR_ACCOUNT_IS_NOT_NATIVE: MasmError = MasmError::from_static_str("the
 pub const ERR_ACCOUNT_NONCE_AT_MAX: MasmError = MasmError::from_static_str("account nonce is already at its maximum possible value");
 /// Error Message: "account nonce can only be incremented once"
 pub const ERR_ACCOUNT_NONCE_CAN_ONLY_BE_INCREMENTED_ONCE: MasmError = MasmError::from_static_str("account nonce can only be incremented once");
+/// Error Message: "number of account procedures must be at least 2"
+pub const ERR_ACCOUNT_NOT_ENOUGH_PROCEDURES: MasmError = MasmError::from_static_str("number of account procedures must be at least 2");
 /// Error Message: "provided procedure index is out of bounds"
 pub const ERR_ACCOUNT_PROC_INDEX_OUT_OF_BOUNDS: MasmError = MasmError::from_static_str("provided procedure index is out of bounds");
 /// Error Message: "account procedure is not the authentication procedure; some procedures (e.g. `incr_nonce`) can be called only from the authentication procedure"
@@ -56,12 +58,16 @@ pub const ERR_ACCOUNT_STACK_UNDERFLOW: MasmError = MasmError::from_static_str("f
 pub const ERR_ACCOUNT_STORAGE_COMMITMENT_MISMATCH: MasmError = MasmError::from_static_str("computed account storage commitment does not match recorded account storage commitment");
 /// Error Message: "storage map entries provided as advice inputs do not have the same storage map root as the root of the map the new account commits to"
 pub const ERR_ACCOUNT_STORAGE_MAP_ENTRIES_DO_NOT_MATCH_MAP_ROOT: MasmError = MasmError::from_static_str("storage map entries provided as advice inputs do not have the same storage map root as the root of the map the new account commits to");
+/// Error Message: "slot IDs must be unique and sorted in ascending order"
+pub const ERR_ACCOUNT_STORAGE_SLOTS_MUST_BE_SORTED_AND_UNIQUE: MasmError = MasmError::from_static_str("slot IDs must be unique and sorted in ascending order");
 /// Error Message: "provided storage slot index is out of bounds"
 pub const ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS: MasmError = MasmError::from_static_str("provided storage slot index is out of bounds");
 /// Error Message: "number of account procedures exceeds the maximum limit of 256"
 pub const ERR_ACCOUNT_TOO_MANY_PROCEDURES: MasmError = MasmError::from_static_str("number of account procedures exceeds the maximum limit of 256");
 /// Error Message: "number of account storage slots exceeds the maximum limit of 255"
 pub const ERR_ACCOUNT_TOO_MANY_STORAGE_SLOTS: MasmError = MasmError::from_static_str("number of account storage slots exceeds the maximum limit of 255");
+/// Error Message: "storage slot with the provided name does not exist"
+pub const ERR_ACCOUNT_UNKNOWN_STORAGE_SLOT_NAME: MasmError = MasmError::from_static_str("storage slot with the provided name does not exist");
 
 /// Error Message: "executed transaction neither changed the account state, nor consumed any notes"
 pub const ERR_EPILOGUE_EXECUTED_TRANSACTION_IS_EMPTY: MasmError = MasmError::from_static_str("executed transaction neither changed the account state, nor consumed any notes");

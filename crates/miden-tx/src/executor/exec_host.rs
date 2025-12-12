@@ -158,17 +158,7 @@ where
         let mut tx_advice_inputs = TransactionAdviceInputs::default();
         tx_advice_inputs.add_foreign_accounts([&foreign_account_inputs]);
 
-        self.base_host
-            .load_foreign_account_code(foreign_account_inputs.code())
-            .map_err(|err| {
-                TransactionKernelError::other_with_source(
-                    format!(
-                        "failed to insert account procedures for foreign account {}",
-                        foreign_account_inputs.id()
-                    ),
-                    err,
-                )
-            })?;
+        self.base_host.load_foreign_account_code(foreign_account_inputs.code());
 
         // Add the foreign account's code to the list of accessed code.
         self.accessed_foreign_account_code.push(foreign_account_inputs.code().clone());
@@ -497,17 +487,17 @@ where
                     self.base_host.on_account_vault_after_add_asset(asset)
                 },
 
-                TransactionEvent::AccountStorageAfterSetItem { slot_idx, new_value } => {
-                    self.base_host.on_account_storage_after_set_item(slot_idx, new_value)
+                TransactionEvent::AccountStorageAfterSetItem { slot_name, new_value } => {
+                    self.base_host.on_account_storage_after_set_item(slot_name, new_value)
                 },
 
                 TransactionEvent::AccountStorageAfterSetMapItem {
-                    slot_index,
+                    slot_name,
                     key,
-                    prev_map_value,
+                    old_map_value: prev_map_value,
                     new_map_value,
                 } => self.base_host.on_account_storage_after_set_map_item(
-                    slot_index,
+                    slot_name,
                     key,
                     prev_map_value,
                     new_map_value,

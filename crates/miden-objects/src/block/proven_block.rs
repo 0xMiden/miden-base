@@ -1,3 +1,5 @@
+use miden_crypto::dsa::ecdsa_k256_keccak::Signature;
+
 use crate::MIN_PROOF_SECURITY_LEVEL;
 use crate::block::{BlockBody, BlockHeader, BlockProof};
 use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
@@ -19,6 +21,9 @@ pub struct ProvenBlock {
     /// The body of the proven block.
     body: BlockBody,
 
+    /// The validator's signature over the block header.
+    signature: Signature,
+
     /// The proof of the block.
     proof: BlockProof,
 }
@@ -30,8 +35,13 @@ impl ProvenBlock {
     ///
     /// This constructor does not do any validation, so passing incorrect values may lead to later
     /// panics.
-    pub fn new_unchecked(header: BlockHeader, body: BlockBody, proof: BlockProof) -> Self {
-        Self { header, body, proof }
+    pub fn new_unchecked(
+        header: BlockHeader,
+        body: BlockBody,
+        signature: Signature,
+        proof: BlockProof,
+    ) -> Self {
+        Self { header, signature, body, proof }
     }
 
     /// Returns the proof security level of the block.
@@ -42,6 +52,11 @@ impl ProvenBlock {
     /// Returns the header of the block.
     pub fn header(&self) -> &BlockHeader {
         &self.header
+    }
+
+    /// Returns the validator's signature over the block header.
+    pub fn signature(&self) -> &Signature {
+        &self.signature
     }
 
     /// Returns the body of the block.
@@ -62,6 +77,7 @@ impl Serializable for ProvenBlock {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         self.header.write_into(target);
         self.body.write_into(target);
+        self.signature.write_into(target);
         self.proof.write_into(target);
     }
 }
@@ -71,6 +87,7 @@ impl Deserializable for ProvenBlock {
         let block = Self {
             header: BlockHeader::read_from(source)?,
             body: BlockBody::read_from(source)?,
+            signature: Signature::read_from(source)?,
             proof: BlockProof::read_from(source)?,
         };
 

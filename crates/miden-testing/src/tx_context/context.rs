@@ -4,7 +4,13 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use miden_lib::transaction::TransactionKernel;
-use miden_objects::account::{Account, AccountId, PartialAccount, StorageMapWitness, StorageSlot};
+use miden_objects::account::{
+    Account,
+    AccountId,
+    PartialAccount,
+    StorageMapWitness,
+    StorageSlotContent,
+};
 use miden_objects::assembly::debuginfo::{SourceLanguage, Uri};
 use miden_objects::assembly::{SourceManager, SourceManagerSync};
 use miden_objects::asset::{Asset, AssetVaultKey, AssetWitness};
@@ -138,8 +144,7 @@ impl TransactionContext {
             [tx_inputs.account().code()]
                 .into_iter()
                 .chain(self.foreign_account_inputs.values().map(|(account, _)| account.code())),
-        )
-        .expect("constructing account procedure index map should work");
+        );
 
         // The ref block is unimportant when using execute_code so we can set it to any value.
         let ref_block = tx_inputs.block_header().block_num();
@@ -328,8 +333,8 @@ impl DataStore for TransactionContext {
                     .storage()
                     .slots()
                     .iter()
-                    .find_map(|slot| match slot {
-                        StorageSlot::Map(storage_map) if storage_map.root() == map_root => {
+                    .find_map(|slot| match slot.content() {
+                        StorageSlotContent::Map(storage_map) if storage_map.root() == map_root => {
                             Some(storage_map)
                         },
                         _ => None,
@@ -360,8 +365,8 @@ impl DataStore for TransactionContext {
                     .storage()
                     .slots()
                     .iter()
-                    .find_map(|slot| match slot {
-                        StorageSlot::Map(storage_map) if storage_map.root() == map_root => {Some(storage_map)},
+                    .find_map(|slot| match slot.content() {
+                        StorageSlotContent::Map(storage_map) if storage_map.root() == map_root => {Some(storage_map)},
                         _ => None,
                     })
                     .ok_or_else(|| {

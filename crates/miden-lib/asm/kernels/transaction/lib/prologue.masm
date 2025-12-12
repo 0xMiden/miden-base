@@ -171,7 +171,7 @@ end
 #!     NULLIFIER_ROOT,
 #!     TX_COMMITMENT,
 #!     TX_KERNEL_COMMITMENT
-#!     PROOF_COMMITMENT,
+#!     VALIDATOR_KEY_COMMITMENT,
 #!     [block_num, version, timestamp, 0],
 #!     [native_asset_id_suffix, native_asset_id_prefix, verification_base_fee, 0],
 #!     [0, 0, 0, 0],
@@ -188,7 +188,7 @@ end
 #!   consumed.
 #! - TX_COMMITMENT is a commitment to the set of transaction IDs which affected accounts in the block.
 #! - TX_KERNEL_COMMITMENT is the sequential hash of the kernel procedures.
-#! - PROOF_COMMITMENT is the commitment of the block's STARK proof attesting to the correct state transition.
+#! - VALIDATOR_KEY_COMMITMENT is the commitment to the validator's public key.
 #! - block_num is the reference block number.
 #! - version is the current protocol version.
 #! - timestamp is the current timestamp.
@@ -276,6 +276,10 @@ end
 # ACCOUNT DATA
 # =================================================================================================
 
+#! This should only be necessary whenever the slots of an account "change", which is essentially
+#! the case when it is created, or when slots are added or removed (currently unimplemented).
+#! So, it should be sufficient to do this here instead of in save_account_storage_data.
+#!
 #! Validates that the account the transaction is being executed against satisfies the criteria
 #! for a new account.
 #!
@@ -318,21 +322,17 @@ proc.validate_new_account
     # process conditional logic depending on whether the account is a faucet
     if.true
         # get the faucet reserved slot
-        exec.account::get_faucet_storage_data_slot exec.account::get_item
-        # => [FAUCET_RESERVED_SLOT, acct_id_prefix]
+        exec.account::get_faucet_sysdata_slot_id exec.account::get_typed_item
+        # => [FAUCET_RESERVED_SLOT, slot_type, acct_id_prefix]
 
         # check if the account is a fungible faucet
-        movup.4 exec.account_id::is_fungible_faucet
-        # => [is_fungible_faucet, FAUCET_RESERVED_SLOT]
+        movup.5 exec.account_id::is_fungible_faucet
+        # => [is_fungible_faucet, FAUCET_RESERVED_SLOT, slot_type]
 
         if.true
             # assert the fungible faucet reserved slot is initialized correctly (EMPTY_WORD)
             exec.word::eqz not
             assertz.err=ERR_PROLOGUE_NEW_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_EMPTY
-            # => []
-
-            # get the faucet reserved storage data slot type
-            exec.account::get_faucet_storage_data_slot exec.account::get_storage_slot_type
             # => [slot_type]
 
             # assert the fungible faucet reserved slot type == value
@@ -344,10 +344,6 @@ proc.validate_new_account
             # empty SMT)
             exec.constants::get_empty_smt_root
             assert_eqw.err=ERR_PROLOGUE_NEW_NON_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_VALID_EMPTY_SMT
-            # => []
-
-            # get the faucet reserved storage data slot type
-            exec.account::get_faucet_storage_data_slot exec.account::get_storage_slot_type
             # => [slot_type]
 
             # assert the non-fungible faucet reserved slot type == map
@@ -364,6 +360,11 @@ proc.validate_new_account
     # Assert the provided account seed satisfies the seed requirements
     # ---------------------------------------------------------------------------------------------
     exec.account::validate_seed
+    # => []
+
+    # Assert the storage slots are sorted and unique.
+    # ---------------------------------------------------------------------------------------------
+    exec.account::validate_storage
     # => []
 
     # Assert the provided procedures offsets and sizes satisfy storage requirements
@@ -1138,7 +1139,7 @@ end
 #!     NULLIFIER_ROOT,
 #!     TX_COMMITMENT,
 #!     TX_KERNEL_COMMITMENT
-#!     PROOF_COMMITMENT,
+#!     VALIDATOR_KEY_COMMITMENT,
 #!     [block_num, version, timestamp, 0],
 #!     NOTE_ROOT,
 #!     kernel_version
@@ -1177,7 +1178,7 @@ end
 #! - NULLIFIER_ROOT is the root of the tree with nullifiers of all notes that have ever been
 #!   consumed.
 #! - TX_COMMITMENT is a commitment to the set of transaction IDs which affected accounts in the block.
-#! - PROOF_COMMITMENT is the commitment of the block's STARK proof attesting to the correct state transition.
+#! - VALIDATOR_KEY_COMMITMENT is the commitment to the validator's public key.
 #! - block_num is the reference block number.
 #! - version is the current protocol version.
 #! - timestamp is the current timestamp.

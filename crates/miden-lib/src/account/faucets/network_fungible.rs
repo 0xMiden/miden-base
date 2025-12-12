@@ -7,8 +7,10 @@ use miden_objects::account::{
     AccountStorageMode,
     AccountType,
     StorageSlot,
+    StorageSlotName,
 };
 use miden_objects::asset::TokenSymbol;
+use miden_objects::utils::sync::LazyLock;
 use miden_objects::{Felt, FieldElement, Word};
 
 use super::{BasicFungibleFaucet, FungibleFaucetError};
@@ -34,6 +36,11 @@ procedure_digest!(
     network_fungible_faucet_library
 );
 
+static OWNER_CONFIG_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
+    StorageSlotName::new("miden::network_fungible_faucet::owner_config")
+        .expect("storage slot name should be valid")
+});
+
 /// An [`AccountComponent`] implementing a network fungible faucet.
 ///
 /// It reexports the procedures from `miden::contracts::faucets::network_fungible`. When linking
@@ -52,6 +59,10 @@ procedure_digest!(
 /// Unlike [`super::BasicFungibleFaucet`], this component uses two storage slots:
 /// - First slot: Token metadata `[max_supply, decimals, token_symbol, 0]`
 /// - Second slot: Owner account ID as a single Word
+///
+/// ## Storage Layout
+///
+/// - [`Self::metadata_slot`]: Fungible faucet metadata
 ///
 /// [kasm]: crate::transaction::TransactionKernel::assembler
 pub struct NetworkFungibleFaucet {
@@ -108,18 +119,24 @@ impl NetworkFungibleFaucet {
         storage: &AccountStorage,
     ) -> Result<Self, FungibleFaucetError> {
         for component in interface.components().iter() {
-            if let AccountComponentInterface::NetworkFungibleFaucet(offset) = component {
+            if let AccountComponentInterface::NetworkFungibleFaucet = component {
                 // obtain metadata from storage using offset provided by NetworkFungibleFaucet
                 // interface
                 let faucet_metadata = storage
-                    .get_item(*offset)
-                    .map_err(|_| FungibleFaucetError::InvalidStorageOffset(*offset))?;
+                    .get_item(NetworkFungibleFaucet::metadata_slot())
+                    .map_err(|err| FungibleFaucetError::StorageLookupFailed {
+                        slot_name: NetworkFungibleFaucet::metadata_slot().clone(),
+                        source: err,
+                    })?;
                 let [max_supply, decimals, token_symbol, _] = *faucet_metadata;
 
                 // obtain owner account ID from the next storage slot
                 let owner_account_id_word: Word = storage
-                    .get_item(*offset + 1)
-                    .map_err(|_| FungibleFaucetError::InvalidStorageOffset(*offset + 1))?;
+                    .get_item(NetworkFungibleFaucet::owner_config_slot())
+                    .map_err(|err| FungibleFaucetError::StorageLookupFailed {
+                        slot_name: NetworkFungibleFaucet::owner_config_slot().clone(),
+                        source: err,
+                    })?;
 
                 // Convert Word back to AccountId
                 // Storage format: [0, 0, suffix, prefix]
@@ -148,6 +165,17 @@ impl NetworkFungibleFaucet {
 
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
+
+    /// Returns the [`StorageSlotName`] where the [`NetworkFungibleFaucet`]'s metadata is stored.
+    pub fn metadata_slot() -> &'static StorageSlotName {
+        &super::METADATA_SLOT_NAME
+    }
+
+    /// Returns the [`StorageSlotName`] where the [`NetworkFungibleFaucet`]'s owner configuration is
+    /// stored.
+    pub fn owner_config_slot() -> &'static StorageSlotName {
+        &OWNER_CONFIG_SLOT_NAME
+    }
 
     /// Returns the symbol of the faucet.
     pub fn symbol(&self) -> TokenSymbol {
@@ -200,12 +228,16 @@ impl From<NetworkFungibleFaucet> for AccountComponent {
         ]
         .into();
 
-        // Second storage slot stores the owner account ID
-        let owner_slot = StorageSlot::Value(owner_account_id_word);
+        let metadata_slot =
+            StorageSlot::with_value(NetworkFungibleFaucet::metadata_slot().clone(), metadata);
+        let owner_slot = StorageSlot::with_value(
+            NetworkFungibleFaucet::owner_config_slot().clone(),
+            owner_account_id_word,
+        );
 
         AccountComponent::new(
             network_fungible_faucet_library(),
-            vec![StorageSlot::Value(metadata), owner_slot]
+            vec![metadata_slot, owner_slot]
         )
             .expect("network fungible faucet component should satisfy the requirements of a valid account component")
             .with_supported_type(AccountType::FungibleFaucet)

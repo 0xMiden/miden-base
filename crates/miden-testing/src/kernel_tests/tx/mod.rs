@@ -59,16 +59,9 @@ pub trait ExecutionOutputExt {
 
     /// Reads an element from transaction kernel memory or returns [`ZERO`] if that location is not
     /// initialized.
-    fn get_kernel_mem_element(&self, addr: u32) -> Felt {
-        // TODO: Use Memory::read_element once it no longer requires &mut self.
-        // https://github.com/0xMiden/miden-vm/issues/2237
-
-        // Copy of how Memory::read_element is implemented in Miden VM.
-        let idx = addr % miden_objects::WORD_SIZE as u32;
-        let word_addr = addr - idx;
-
-        self.get_kernel_mem_word(word_addr)[idx as usize]
-    }
+    // Unused for now, but may become useful in the future.
+    #[allow(dead_code)]
+    fn get_kernel_mem_element(&self, addr: u32) -> Felt;
 
     /// Reads an element from the stack.
     fn get_stack_element(&self, idx: usize) -> Felt;
@@ -108,6 +101,15 @@ impl ExecutionOutputExt for ExecutionOutput {
 
     fn get_stack_word_le(&self, index: usize) -> Word {
         self.stack.get_stack_word_le(index).expect("index must be in bounds")
+    }
+
+    fn get_kernel_mem_element(&self, addr: u32) -> Felt {
+        let tx_kernel_context = ContextId::root();
+        let err_ctx = ();
+
+        self.memory
+            .read_element(tx_kernel_context, Felt::from(addr), &err_ctx)
+            .expect("address converted from u32 should be in bounds")
     }
 }
 
