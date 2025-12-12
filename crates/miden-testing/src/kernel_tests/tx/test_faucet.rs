@@ -203,7 +203,7 @@ async fn test_mint_non_fungible_asset_succeeds() -> anyhow::Result<()> {
         use.$kernel::prologue
         use.mock::faucet->mock_faucet
 
-        const FAUCET_METADATA_SLOT_NAME = word("{faucet_metadata_slot_name}")
+        const FAUCET_SYSDATA_SLOT_NAME = word("{faucet_sysdata_slot_name}")
 
         begin
             # mint asset
@@ -222,7 +222,7 @@ async fn test_mint_non_fungible_asset_succeeds() -> anyhow::Result<()> {
             assert.err="vault should contain asset"
 
             # assert the non-fungible asset has been added to the faucet smt
-            push.FAUCET_METADATA_SLOT_NAME[0..2]
+            push.FAUCET_SYSDATA_SLOT_NAME[0..2]
             exec.account::get_item
             push.{asset_vault_key}
             exec.smt::get
@@ -231,7 +231,7 @@ async fn test_mint_non_fungible_asset_succeeds() -> anyhow::Result<()> {
             dropw
         end
         "#,
-        faucet_metadata_slot_name = AccountStorage::faucet_metadata_slot(),
+        faucet_sysdata_slot_name = AccountStorage::faucet_sysdata_slot(),
         non_fungible_asset = Word::from(non_fungible_asset),
         asset_vault_key = StorageMap::hash_key(asset_vault_key.into()),
     );
@@ -503,7 +503,7 @@ async fn test_burn_non_fungible_asset_succeeds() -> anyhow::Result<()> {
         use.$kernel::prologue
         use.mock::faucet->mock_faucet
 
-        const FAUCET_METADATA_SLOT_NAME = word("{faucet_metadata_slot_name}")
+        const FAUCET_SYSDATA_SLOT_NAME = word("{faucet_sysdata_slot_name}")
 
         begin
             exec.prologue::prepare_transaction
@@ -520,7 +520,7 @@ async fn test_burn_non_fungible_asset_succeeds() -> anyhow::Result<()> {
 
             # check that the non-fungible asset is in the account map
             push.{burnt_asset_vault_key}
-            push.FAUCET_METADATA_SLOT_NAME[0..2]
+            push.FAUCET_SYSDATA_SLOT_NAME[0..2]
             exec.account::get_map_item
             push.{non_fungible_asset}
             assert_eqw.err="non-fungible asset should be in the account map"
@@ -542,14 +542,14 @@ async fn test_burn_non_fungible_asset_succeeds() -> anyhow::Result<()> {
 
             # assert that the non-fungible asset is no longer in the account map
             push.{burnt_asset_vault_key}
-            push.FAUCET_METADATA_SLOT_NAME[0..2]
+            push.FAUCET_SYSDATA_SLOT_NAME[0..2]
             exec.account::get_map_item
             padw
             assert_eqw.err="burnt asset should have been removed from map"
             dropw
         end
         "#,
-        faucet_metadata_slot_name = AccountStorage::faucet_metadata_slot(),
+        faucet_sysdata_slot_name = AccountStorage::faucet_sysdata_slot(),
         non_fungible_asset = Word::from(non_fungible_asset_burnt),
         burnt_asset_vault_key = burnt_asset_vault_key,
     );

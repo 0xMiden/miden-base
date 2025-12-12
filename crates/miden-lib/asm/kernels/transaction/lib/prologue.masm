@@ -276,7 +276,6 @@ end
 # ACCOUNT DATA
 # =================================================================================================
 
-#! TODO(named_slots): Validate that slot names are unique.
 #! This should only be necessary whenever the slots of an account "change", which is essentially
 #! the case when it is created, or when slots are added or removed (currently unimplemented).
 #! So, it should be sufficient to do this here instead of in save_account_storage_data.
@@ -323,7 +322,7 @@ proc.validate_new_account
     # process conditional logic depending on whether the account is a faucet
     if.true
         # get the faucet reserved slot
-        exec.account::get_faucet_storage_slot_id exec.account::get_typed_item
+        exec.account::get_faucet_sysdata_slot_id exec.account::get_typed_item
         # => [FAUCET_RESERVED_SLOT, slot_type, acct_id_prefix]
 
         # check if the account is a fungible faucet
@@ -361,6 +360,11 @@ proc.validate_new_account
     # Assert the provided account seed satisfies the seed requirements
     # ---------------------------------------------------------------------------------------------
     exec.account::validate_seed
+    # => []
+
+    # Assert the storage slots are sorted and unique.
+    # ---------------------------------------------------------------------------------------------
+    exec.account::validate_storage
     # => []
 
     # Assert the provided procedures offsets and sizes satisfy storage requirements
