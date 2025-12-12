@@ -95,7 +95,7 @@ impl AccountCode {
             MastForest::merge(components.iter().map(|component| component.mast_forest()))
                 .map_err(AccountError::AccountComponentMastForestMergeError)?;
 
-        let mut builder = ProcedureInfoBuilder::new();
+        let mut builder = AccountProcedureBuilder::new();
         let mut components_iter = components.iter();
 
         let first_component =
@@ -318,11 +318,11 @@ impl PrettyPrint for AccountCode {
 // ACCOUNT PROCEDURE BUILDER
 // ================================================================================================
 
-struct ProcedureInfoBuilder {
+struct AccountProcedureBuilder {
     procedures: Vec<AccountProcedureRoot>,
 }
 
-impl ProcedureInfoBuilder {
+impl AccountProcedureBuilder {
     fn new() -> Self {
         Self { procedures: Vec::new() }
     }
