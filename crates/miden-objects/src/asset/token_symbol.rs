@@ -1,4 +1,4 @@
-use alloc::string::{String, ToString};
+use alloc::string::String;
 
 use super::{Felt, TokenSymbolError};
 
@@ -38,7 +38,7 @@ impl TokenSymbol {
     /// - The length of the provided string is less than 1 or greater than 6.
     /// - The provided token string contains characters that are not uppercase ASCII.
     pub const fn from_static_str(symbol: &'static str) -> Self {
-        match const_encode_symbol_to_felt(symbol) {
+        match encode_symbol_to_felt(symbol) {
             Ok(felt) => Self(felt),
             // We cannot format the error in a const context.
             Err(_) => panic!("invalid token symbol"),
@@ -97,51 +97,6 @@ impl TryFrom<Felt> for TokenSymbol {
 // HELPER FUNCTIONS
 // ================================================================================================
 
-/// Error type returned by [`const_encode_symbol_to_felt`].
-///
-/// This is a simple error type that can be used in const contexts.
-#[derive(Debug)]
-enum ConstTokenSymbolError {
-    InvalidLength,
-    InvalidCharacter,
-}
-
-/// Const version of [`encode_symbol_to_felt`] that can be used in const contexts.
-///
-/// We must check the validity of the token symbol against the raw bytes of the UTF-8 string because
-/// typical character APIs are not available in a const version. We can do this because any byte
-/// in a UTF-8 string that is an ASCII character never represents anything other than such a
-/// character.
-const fn const_encode_symbol_to_felt(s: &str) -> Result<Felt, ConstTokenSymbolError> {
-    let bytes = s.as_bytes();
-    let len = bytes.len();
-
-    if len == 0 || len > TokenSymbol::MAX_SYMBOL_LENGTH {
-        return Err(ConstTokenSymbolError::InvalidLength);
-    }
-
-    let mut encoded_value: u64 = 0;
-    let mut idx = 0;
-
-    while idx < len {
-        let byte = bytes[idx];
-
-        // Check if the byte is an uppercase ASCII letter (A-Z: 65-90)
-        if byte < b'A' || byte > b'Z' {
-            return Err(ConstTokenSymbolError::InvalidCharacter);
-        }
-
-        let digit = (byte - b'A') as u64;
-        encoded_value = encoded_value * TokenSymbol::ALPHABET_LENGTH + digit;
-        idx += 1;
-    }
-
-    // add token length to the encoded value to be able to decode the exact number of characters
-    encoded_value = encoded_value * TokenSymbol::ALPHABET_LENGTH + len as u64;
-
-    Ok(Felt::new(encoded_value))
-}
-
 /// Encodes the provided token symbol string into a single [`Felt`] value.
 ///
 /// The alphabet used in the decoding process consists of the Latin capital letters as defined in
@@ -159,22 +114,31 @@ const fn const_encode_symbol_to_felt(s: &str) -> Result<Felt, ConstTokenSymbolEr
 /// Returns an error if:
 /// - The length of the provided string is less than 1 or greater than 6.
 /// - The provided token string contains characters that are not uppercase ASCII.
-fn encode_symbol_to_felt(s: &str) -> Result<Felt, TokenSymbolError> {
-    if s.is_empty() || s.len() > TokenSymbol::MAX_SYMBOL_LENGTH {
-        return Err(TokenSymbolError::InvalidLength(s.len()));
-    } else if s.chars().any(|c| !c.is_ascii_uppercase()) {
-        return Err(TokenSymbolError::InvalidCharacter(s.to_string()));
+const fn encode_symbol_to_felt(s: &str) -> Result<Felt, TokenSymbolError> {
+    let bytes = s.as_bytes();
+    let len = bytes.len();
+
+    if len == 0 || len > TokenSymbol::MAX_SYMBOL_LENGTH {
+        return Err(TokenSymbolError::InvalidLength(len));
     }
 
-    let mut encoded_value = 0;
-    for char in s.chars() {
-        let digit = char as u64 - b'A' as u64;
-        debug_assert!(digit < TokenSymbol::ALPHABET_LENGTH);
+    let mut encoded_value: u64 = 0;
+    let mut idx = 0;
+
+    while idx < len {
+        let byte = bytes[idx];
+
+        if !byte.is_ascii_uppercase() {
+            return Err(TokenSymbolError::InvalidCharacter);
+        }
+
+        let digit = (byte - b'A') as u64;
         encoded_value = encoded_value * TokenSymbol::ALPHABET_LENGTH + digit;
+        idx += 1;
     }
 
     // add token length to the encoded value to be able to decode the exact number of characters
-    encoded_value = encoded_value * TokenSymbol::ALPHABET_LENGTH + s.len() as u64;
+    encoded_value = encoded_value * TokenSymbol::ALPHABET_LENGTH + len as u64;
 
     Ok(Felt::new(encoded_value))
 }
@@ -268,7 +232,7 @@ mod test {
 
         let symbol = "$$$";
         let felt = encode_symbol_to_felt(symbol);
-        assert_matches!(felt.unwrap_err(), TokenSymbolError::InvalidCharacter(s) if s == *"$$$");
+        assert_matches!(felt.unwrap_err(), TokenSymbolError::InvalidCharacter);
 
         let symbol = "ABCDEF";
         let token_symbol = TokenSymbol::try_from(symbol);

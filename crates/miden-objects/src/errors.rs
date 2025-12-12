@@ -483,8 +483,8 @@ pub enum TokenSymbolError {
     ValueTooLarge(u64),
     #[error("token symbol should have length between 1 and 6 characters, but {0} was provided")]
     InvalidLength(usize),
-    #[error("token symbol `{0}` contains characters that are not uppercase ASCII")]
-    InvalidCharacter(String),
+    #[error("token symbol contains a character that is not uppercase ASCII")]
+    InvalidCharacter,
     #[error("token symbol data left after decoding the specified number of characters")]
     DataNotFullyDecoded,
 }
