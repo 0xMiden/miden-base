@@ -33,6 +33,7 @@ const BUILD_GENERATED_FILES_IN_SRC: bool = option_env!("BUILD_GENERATED_FILES_IN
 const ASSETS_DIR: &str = "assets";
 const ASM_DIR: &str = "asm";
 const ASM_MIDEN_DIR: &str = "miden";
+const ASM_AGGLAYER_DIR: &str = "agglayer";
 const ASM_NOTE_SCRIPTS_DIR: &str = "note_scripts";
 const ASM_ACCOUNT_COMPONENTS_DIR: &str = "account_components";
 const SHARED_UTILS_DIR: &str = "shared_utils";
@@ -99,6 +100,10 @@ fn main() -> Result<()> {
     let miden_lib = compile_miden_lib(&source_dir, &target_dir, assembler.clone())?;
     assembler.link_dynamic_library(miden_lib)?;
 
+    // compile agglayer library and link it
+    let agglayer_lib = compile_agglayer_lib(&source_dir, &target_dir, assembler.clone())?;
+    assembler.link_dynamic_library(agglayer_lib)?;
+
     // compile note scripts
     compile_note_scripts(
         &source_dir.join(ASM_NOTE_SCRIPTS_DIR),
@@ -106,10 +111,24 @@ fn main() -> Result<()> {
         assembler.clone(),
     )?;
 
+    // compile agglayer note scripts
+    compile_note_scripts(
+        &source_dir.join(ASM_AGGLAYER_DIR).join(ASM_NOTE_SCRIPTS_DIR),
+        &target_dir.join(ASM_AGGLAYER_DIR).join(ASM_NOTE_SCRIPTS_DIR),
+        assembler.clone(),
+    )?;
+
     // compile account components
     compile_account_components(
         &source_dir.join(ASM_ACCOUNT_COMPONENTS_DIR),
         &target_dir.join(ASM_ACCOUNT_COMPONENTS_DIR),
+        assembler.clone(),
+    )?;
+
+    // compile agglayer account components
+    compile_account_components(
+        &source_dir.join(ASM_AGGLAYER_DIR).join(ASM_ACCOUNT_COMPONENTS_DIR),
+        &target_dir.join(ASM_AGGLAYER_DIR).join(ASM_ACCOUNT_COMPONENTS_DIR),
         assembler,
     )?;
 
@@ -313,6 +332,31 @@ fn compile_miden_lib(
     miden_lib.write_to_file(output_file).into_diagnostic()?;
 
     Ok(miden_lib)
+}
+
+// COMPILE AGGLAYER LIB
+// ================================================================================================
+
+/// Reads the MASM files from "{source_dir}/agglayer/account_components" directory, compiles them
+/// into an AggLayer assembly library, saves the library into "{target_dir}/agglayer.masl",
+/// and returns the compiled library.
+fn compile_agglayer_lib(
+    source_dir: &Path,
+    target_dir: &Path,
+    assembler: Assembler,
+) -> Result<Library> {
+    let agglayer_namespace = ASM_AGGLAYER_DIR
+        .parse::<LibraryNamespace>()
+        .expect("invalid agglayer namespace");
+    let agglayer_lib = assembler.assemble_library_from_dir(
+        source_dir.join(ASM_AGGLAYER_DIR).join(ASM_ACCOUNT_COMPONENTS_DIR),
+        agglayer_namespace,
+    )?;
+
+    let output_file = target_dir.join(ASM_AGGLAYER_DIR).with_extension(Library::LIBRARY_EXTENSION);
+    agglayer_lib.write_to_file(output_file).into_diagnostic()?;
+
+    Ok(agglayer_lib)
 }
 
 // COMPILE EXECUTABLE MODULES
