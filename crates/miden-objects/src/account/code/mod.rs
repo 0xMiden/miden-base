@@ -1,4 +1,3 @@
-use alloc::collections::BTreeSet;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
@@ -317,15 +316,11 @@ impl PrettyPrint for AccountCode {
 
 struct ProcedureInfoBuilder {
     procedures: Vec<AccountProcedureRoot>,
-    proc_root_set: BTreeSet<Word>,
 }
 
 impl ProcedureInfoBuilder {
     fn new() -> Self {
-        Self {
-            procedures: Vec::new(),
-            proc_root_set: BTreeSet::new(),
-        }
+        Self { procedures: Vec::new() }
     }
 
     fn add_auth_component(&mut self, component: &AccountComponent) -> Result<(), AccountError> {
@@ -364,11 +359,16 @@ impl ProcedureInfoBuilder {
     fn add_procedure(&mut self, proc_mast_root: Word) -> Result<(), AccountError> {
         // TODO: Check if we can now safely allow this.
         // Disallow procedures with the same MAST root from different components.
-        if !self.proc_root_set.insert(proc_mast_root) {
-            return Err(AccountError::AccountComponentDuplicateProcedureRoot(proc_mast_root));
+        let proc_mast_root = AccountProcedureRoot::from_raw(proc_mast_root);
+        // The number of procedures in accounts is generally small, so checking via linear search
+        // should be fine.
+        if self.procedures.contains(&proc_mast_root) {
+            return Err(AccountError::AccountComponentDuplicateProcedureRoot(
+                proc_mast_root.as_word(),
+            ));
         }
 
-        self.procedures.push(AccountProcedureRoot::from_raw(proc_mast_root));
+        self.procedures.push(proc_mast_root);
 
         Ok(())
     }
