@@ -33,6 +33,8 @@ const.ERR_ACCOUNT_PROC_NOT_AUTH_PROC="account procedure is not the authenticatio
 # TODO(named_slots): Remove along with index APIs.
 const.ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS="provided storage slot index is out of bounds"
 
+const.ERR_ACCOUNT_STORAGE_SLOTS_MUST_BE_SORTED_AND_UNIQUE="slot IDs must be unique and sorted in ascending order"
+
 const.ERR_ACCOUNT_UNKNOWN_STORAGE_SLOT_NAME="storage slot with the provided name does not exist"
 
 const.ERR_FAUCET_INVALID_STORAGE_OFFSET="storage offset is invalid for a faucet account (0 is prohibited as it is the reserved data slot for faucets)"
@@ -1089,6 +1091,106 @@ export.validate_seed
     # assert the account ID matches the account ID of the new account
     exec.account_id::is_equal assert.err=ERR_ACCOUNT_SEED_AND_COMMITMENT_DIGEST_MISMATCH
     # => []
+end
+
+#! Validates that slot IDs are sorted in ascending order and that slot IDs are unique.
+#!
+#! Inputs:  []
+#! Outputs: []
+#!
+#! Pancis if:
+#! - each slot's ID is not strictly less than the next slot's ID.
+#!    - this ensures sorting and uniqueness among slot IDs.
+pub proc validate_storage
+    exec.memory::get_num_storage_slots
+    # => [num_slots]
+
+    # compute the number of slot ID comparisons we need to make
+    # generally, we need num_storage_slots - 1 comparisons, e.g., if we have 3 slots, we need 2
+    # comparisons: 2 with 1 and 1 with 0.
+    # we subtract 1 if any slots exist and 0 otherwise, notably:
+    # maps 1 storage slot -> 0 comparisons, since 1 slot is always sorted and unique
+    # maps 0 storage slots -> 0 comparisons
+    dup u32gt.0
+    # => [has_slots, num_slots]
+
+    sub
+    # => [num_comparisons]
+
+    # loop if we need to compare slots
+    dup neq.0
+    # => [should_loop, num_comparisons]
+
+    while.true
+        # first iteration: number of comparisons = current slot index
+        # => [curr_slot_idx]
+
+        dup exec.get_slot_id
+        # => [curr_slot_id_prefix, curr_slot_id_suffix, curr_slot_idx]
+
+        # we are guaranteed to not underflow because curr_slot_idx is at least 1 at the
+        # beginning of the loop
+        dup.2 sub.1
+        # => [prev_slot_idx, curr_slot_id_prefix, curr_slot_id_suffix, curr_slot_idx]
+
+        exec.get_slot_id
+        # => [prev_slot_id_prefix, prev_slot_id_suffix, curr_slot_id_prefix, curr_slot_id_suffix, curr_slot_idx]
+
+        # this effectively checks that slots are sorted _and_ unique, since duplicate slot IDs are
+        # not less than each other
+        exec.is_slot_id_lt
+        # => [is_prev_lt_curr, curr_slot_idx]
+
+        assert.err=ERR_ACCOUNT_STORAGE_SLOTS_MUST_BE_SORTED_AND_UNIQUE
+        # => [curr_slot_idx]
+
+        sub.1 dup neq.0
+        # => [should_continue, prev_slot_idx]
+    end
+    # => [prev_slot_idx]
+
+    drop
+    # => []
+end
+
+#! Returns 1 if the previous slot ID is smaller than the current slot ID, 0 otherwise.
+#!
+#! In the slot ID comparison, the prefix takes precedence over the suffix.
+#!
+#! This procedure is public so it can be tested.
+#!
+#! Inputs:  [prev_slot_id_prefix, prev_slot_id_suffix, curr_slot_id_prefix, curr_slot_id_suffix]
+#! Outputs: [is_prev_lt_curr]
+pub proc is_slot_id_lt
+    movup.2
+    # => [curr_slot_id_prefix, prev_slot_id_prefix, prev_slot_id_suffix, curr_slot_id_suffix]
+
+    # compute prev == curr for prefix
+    dup dup.2 eq
+    # => [is_prefix_eq, curr_slot_id_prefix, prev_slot_id_prefix, prev_slot_id_suffix, curr_slot_id_suffix]
+
+    movdn.4
+    # => [curr_slot_id_prefix, prev_slot_id_prefix, prev_slot_id_suffix, curr_slot_id_suffix, is_prefix_eq]
+
+    # compute prev < curr for prefix
+    lt
+    # => [is_prev_lt_curr_prefix, prev_slot_id_suffix, curr_slot_id_suffix, is_prefix_eq]
+
+    swap.2
+    # => [curr_slot_id_suffix, prev_slot_id_suffix, is_prev_lt_curr_prefix, is_prefix_eq]
+
+    # compute prev < curr for suffix
+    lt
+    # => [is_prev_lt_curr_suffix, is_prev_lt_curr_prefix, is_prefix_eq]
+
+    movup.2
+    # => [is_prefix_eq, is_prev_lt_curr_suffix, is_prev_lt_curr_prefix]
+
+    # compute result as is_prefix_lt || (is_suffix_lt && is_prefix_eq)
+    # is_suffix_lt only affects the result if the prefix was equal, otherwise the prefix
+    # determines the outcome
+    and or
+    # => [is_prev_lt_curr]
 end
 
 # DATA LOADERS

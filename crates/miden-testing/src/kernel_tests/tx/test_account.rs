@@ -28,6 +28,7 @@ use miden_objects::account::{
     StorageMap,
     StorageSlot,
     StorageSlotContent,
+    StorageSlotId,
     StorageSlotName,
     StorageSlotType,
 };
@@ -519,6 +520,68 @@ async fn test_get_storage_slot_type() -> miette::Result<()> {
             Word::empty(),
             "the rest of the stack is empty"
         );
+    }
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_is_slot_id_lt() -> miette::Result<()> {
+    // Note that the slot IDs derived from the names are essentially randomly sorted, so these cover
+    // "less than" and "greater than" outcomes.
+    let mut test_cases = (0..100)
+        .map(|i| {
+            let prev_slot = StorageSlotName::mock(i).id();
+            let curr_slot = StorageSlotName::mock(i + 1).id();
+            (prev_slot, curr_slot)
+        })
+        .collect::<Vec<_>>();
+
+    // Extend with special case where prefix matches and suffix determines the outcome.
+    let prefix = Felt::from(100u32);
+    test_cases.extend([
+        // prev_slot == curr_slot
+        (
+            StorageSlotId::new(Felt::from(50u32), prefix),
+            StorageSlotId::new(Felt::from(50u32), prefix),
+        ),
+        // prev_slot < curr_slot
+        (
+            StorageSlotId::new(Felt::from(50u32), prefix),
+            StorageSlotId::new(Felt::from(51u32), prefix),
+        ),
+        // prev_slot > curr_slot
+        (
+            StorageSlotId::new(Felt::from(51u32), prefix),
+            StorageSlotId::new(Felt::from(50u32), prefix),
+        ),
+    ]);
+
+    for (prev_slot, curr_slot) in test_cases {
+        let code = format!(
+            r#"
+            use.$kernel::account
+
+            begin
+                push.{curr_suffix}.{curr_prefix}.{prev_suffix}.{prev_prefix}
+                # => [prev_slot_id_prefix, prev_slot_id_suffix, curr_slot_id_prefix, curr_slot_id_suffix]
+
+                exec.account::is_slot_id_lt
+                # => [is_slot_id_lt]
+
+                push.{is_lt}
+                assert_eq.err="is_slot_id_lt was not {is_lt}"
+                # => []
+            end
+            "#,
+            prev_prefix = prev_slot.prefix(),
+            prev_suffix = prev_slot.suffix(),
+            curr_prefix = curr_slot.prefix(),
+            curr_suffix = curr_slot.suffix(),
+            is_lt = u8::from(prev_slot < curr_slot)
+        );
+
+        CodeExecutor::with_default_host().run(&code).await?;
     }
 
     Ok(())

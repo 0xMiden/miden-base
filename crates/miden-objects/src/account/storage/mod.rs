@@ -1,4 +1,3 @@
-use alloc::collections::BTreeSet;
 use alloc::string::ToString;
 use alloc::vec::Vec;
 
@@ -82,18 +81,16 @@ impl AccountStorage {
             return Err(AccountError::StorageTooManySlots(num_slots as u64));
         }
 
-        // TODO(named_slots): Optimization: If we keep slots sorted, iterate slots instead and
-        // compare adjacent elements.
-        let mut names = BTreeSet::new();
-        for slot in &slots {
-            if !names.insert(slot.name()) {
-                // TODO(named_slots): Add test for this new error.
-                return Err(AccountError::DuplicateStorageSlotName(slot.name().clone()));
-            }
-        }
-
         // Unstable sort is fine because we require all names to be unique.
         slots.sort_unstable();
+
+        // Check for slot name uniqueness by checking each neighboring slot's IDs. This is
+        // sufficient because the slots are sorted.
+        for slots in slots.windows(2) {
+            if slots[0].id() == slots[1].id() {
+                return Err(AccountError::DuplicateStorageSlotName(slots[0].name().clone()));
+            }
+        }
 
         Ok(Self { slots })
     }
@@ -400,8 +397,11 @@ impl Deserializable for AccountStorage {
 
 #[cfg(test)]
 mod tests {
+    use assert_matches::assert_matches;
+
     use super::{AccountStorage, Deserializable, Serializable};
-    use crate::account::{StorageSlot, StorageSlotName};
+    use crate::AccountError;
+    use crate::account::{AccountStorageHeader, StorageSlot, StorageSlotName};
 
     #[test]
     fn test_serde_account_storage() -> anyhow::Result<()> {
@@ -435,6 +435,43 @@ mod tests {
 
         assert_eq!(storage.get(&counter_slot).unwrap(), &slots[0]);
         assert_eq!(storage.get(&map_slot).unwrap(), &slots[1]);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_account_storage_and_header_fail_on_duplicate_slot_name() -> anyhow::Result<()> {
+        let slot_name0 = StorageSlotName::mock(0);
+        let slot_name1 = StorageSlotName::mock(1);
+        let slot_name2 = StorageSlotName::mock(2);
+
+        let mut slots = vec![
+            StorageSlot::with_empty_value(slot_name0.clone()),
+            StorageSlot::with_empty_value(slot_name1.clone()),
+            StorageSlot::with_empty_map(slot_name0.clone()),
+            StorageSlot::with_empty_value(slot_name2.clone()),
+        ];
+
+        // Set up a test where the slots we pass are not already sorted
+        // This ensures the duplicate is correctly found
+        let err = AccountStorage::new(slots.clone()).unwrap_err();
+
+        assert_matches!(err, AccountError::DuplicateStorageSlotName(name) => {
+            assert_eq!(name, slot_name0);
+        });
+
+        slots.sort_unstable();
+        let err = AccountStorageHeader::new(
+            slots
+                .iter()
+                .map(|slot| (slot.name().clone(), slot.slot_type(), slot.value()))
+                .collect(),
+        )
+        .unwrap_err();
+
+        assert_matches!(err, AccountError::DuplicateStorageSlotName(name) => {
+            assert_eq!(name, slot_name0);
+        });
 
         Ok(())
     }

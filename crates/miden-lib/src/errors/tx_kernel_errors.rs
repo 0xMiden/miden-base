@@ -56,6 +56,8 @@ pub const ERR_ACCOUNT_STACK_UNDERFLOW: MasmError = MasmError::from_static_str("f
 pub const ERR_ACCOUNT_STORAGE_COMMITMENT_MISMATCH: MasmError = MasmError::from_static_str("computed account storage commitment does not match recorded account storage commitment");
 /// Error Message: "storage map entries provided as advice inputs do not have the same storage map root as the root of the map the new account commits to"
 pub const ERR_ACCOUNT_STORAGE_MAP_ENTRIES_DO_NOT_MATCH_MAP_ROOT: MasmError = MasmError::from_static_str("storage map entries provided as advice inputs do not have the same storage map root as the root of the map the new account commits to");
+/// Error Message: "slot IDs must be unique and sorted in ascending order"
+pub const ERR_ACCOUNT_STORAGE_SLOTS_MUST_BE_SORTED_AND_UNIQUE: MasmError = MasmError::from_static_str("slot IDs must be unique and sorted in ascending order");
 /// Error Message: "provided storage slot index is out of bounds"
 pub const ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS: MasmError = MasmError::from_static_str("provided storage slot index is out of bounds");
 /// Error Message: "number of account procedures exceeds the maximum limit of 256"
