@@ -129,7 +129,7 @@ pub proc bridge_out
     push.0 movdn.4 exec.word::store_word_u32s_le
     # => [dest_network, dest_address(5)]
 
-    # Store [dest_network, dest_address[0..2]] as u32 limbs in memory starting at address 8
+    # Store [dest_network, dest_address[0..3]] as u32 limbs in memory starting at address 8
     push.8 movdn.4 exec.word::store_word_u32s_le
     # => [dest_address(2), 0, 0]
 
