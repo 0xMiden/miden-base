@@ -10,6 +10,8 @@ use miden_lib::errors::tx_kernel_errors::{
     ERR_ACCOUNT_ID_UNKNOWN_VERSION,
     ERR_ACCOUNT_NONCE_AT_MAX,
     ERR_ACCOUNT_NONCE_CAN_ONLY_BE_INCREMENTED_ONCE,
+    ERR_ACCOUNT_UNKNOWN_STORAGE_SLOT_NAME,
+    ERR_FAUCET_STORAGE_DATA_SLOT_IS_RESERVED,
 };
 use miden_lib::testing::account_component::MockAccountComponent;
 use miden_lib::testing::mock_account::MockAccountExt;
@@ -521,6 +523,82 @@ async fn test_get_storage_slot_type() -> miette::Result<()> {
             "the rest of the stack is empty"
         );
     }
+
+    Ok(())
+}
+
+/// Tests that accessing an unknown slot fails with the expected error message.
+///
+/// This tests both accounts with empty storage and non-empty storage.
+#[tokio::test]
+async fn test_account_get_item_fails_on_unknown_slot() -> anyhow::Result<()> {
+    let mut builder = MockChain::builder();
+
+    let account_empty_storage = builder.add_existing_mock_account(Auth::IncrNonce)?;
+    assert_eq!(account_empty_storage.storage().num_slots(), 0);
+
+    let account_non_empty_storage = builder.add_existing_mock_account(Auth::BasicAuth)?;
+    assert_eq!(account_non_empty_storage.storage().num_slots(), 1);
+
+    let chain = builder.build()?;
+
+    let code = r#"
+            use.mock::account
+
+            const.UNKNOWN_SLOT_NAME = word("unknown::slot::name")
+
+            begin
+                push.UNKNOWN_SLOT_NAME[0..2]
+                call.account::get_item
+            end
+            "#;
+    let tx_script = ScriptBuilder::with_mock_libraries()?.compile_tx_script(code)?;
+
+    let result = chain
+        .build_tx_context(account_empty_storage, &[], &[])?
+        .tx_script(tx_script.clone())
+        .build()?
+        .execute()
+        .await;
+    assert_transaction_executor_error!(result, ERR_ACCOUNT_UNKNOWN_STORAGE_SLOT_NAME);
+
+    let result = chain
+        .build_tx_context(account_non_empty_storage, &[], &[])?
+        .tx_script(tx_script)
+        .build()?
+        .execute()
+        .await;
+    assert_transaction_executor_error!(result, ERR_ACCOUNT_UNKNOWN_STORAGE_SLOT_NAME);
+
+    Ok(())
+}
+
+/// Tests that accessing the protocol-reserved faucet metadata slot fails with the expected error
+/// message.
+#[tokio::test]
+async fn test_account_set_item_fails_on_reserved_faucet_metadata_slot() -> anyhow::Result<()> {
+    let code = r#"
+            use.miden::native_account
+
+            const.FAUCET_SYSDATA_SLOT=word("miden::faucet::sysdata")
+
+            begin
+                push.FAUCET_SYSDATA_SLOT[0..2]
+                exec.native_account::set_item
+            end
+            "#;
+    let tx_script = ScriptBuilder::default().compile_tx_script(code)?;
+
+    let tx_context = TransactionContextBuilder::with_fungible_faucet(
+        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
+        Felt::from(0u32),
+    )
+    .tx_script(tx_script)
+    .build()
+    .unwrap();
+
+    let result = tx_context.execute().await;
+    assert_transaction_executor_error!(result, ERR_FAUCET_STORAGE_DATA_SLOT_IS_RESERVED);
 
     Ok(())
 }
