@@ -113,8 +113,7 @@ impl LocalTransactionProver {
 
         let account_procedure_index_map = AccountProcedureIndexMap::new(
             tx_inputs.foreign_account_code().iter().chain([tx_inputs.account().code()]),
-        )
-        .map_err(TransactionProverError::CreateAccountProcedureIndexMap)?;
+        );
 
         let (partial_account, ref_block, _, input_notes, _) = tx_inputs.into_parts();
         let mut host = TransactionProverHost::new(
