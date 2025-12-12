@@ -144,8 +144,7 @@ impl TransactionContext {
             [tx_inputs.account().code()]
                 .into_iter()
                 .chain(self.foreign_account_inputs.values().map(|(account, _)| account.code())),
-        )
-        .expect("constructing account procedure index map should work");
+        );
 
         // The ref block is unimportant when using execute_code so we can set it to any value.
         let ref_block = tx_inputs.block_header().block_num();
