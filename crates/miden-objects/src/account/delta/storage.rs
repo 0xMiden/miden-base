@@ -98,7 +98,7 @@ impl AccountStorageDelta {
         self.maps.entry(slot_name).or_default().insert(key, new_value);
     }
 
-    /// Inserts an empty storage map delta for the provided slot index.
+    /// Inserts an empty storage map delta for the provided slot name.
     ///
     /// This is useful for full state deltas to represent an empty map in the delta.
     pub fn insert_empty_map_delta(&mut self, slot_name: StorageSlotName) {
