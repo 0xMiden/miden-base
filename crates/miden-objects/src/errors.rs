@@ -147,9 +147,9 @@ pub enum AccountError {
     DuplicateStorageSlotName(StorageSlotName),
     #[error(
         "account storage cannot contain a user-provided slot with name {} as it is reserved by the protocol",
-        AccountStorage::faucet_metadata_slot()
+        AccountStorage::faucet_sysdata_slot()
     )]
-    StorageSlotNameMustNotBeFaucetMetadata,
+    StorageSlotNameMustNotBeFaucetSysdata,
     #[error("storage does not contain a slot with name {slot_name}")]
     StorageSlotNameNotFound { slot_name: StorageSlotName },
     #[error("storage does not contain a slot with ID {slot_id}")]

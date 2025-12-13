@@ -1,4 +1,3 @@
-use alloc::collections::BTreeSet;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
@@ -28,6 +27,10 @@ use procedure::{AccountProcedureRoot, PrintableProcedure};
 ///
 /// An account's public interface consists of a set of account procedures, each of which is
 /// identified and committed to by a MAST root. They are represented by [`AccountProcedureRoot`].
+///
+/// The set of procedures has an arbitrary order, i.e. they are not sorted. The only exception is
+/// the authentication procedure of the account, which is always at index 0. This procedure is
+/// automatically called at the end of a transaction to validate an account's state transition.
 ///
 /// The code commits to the entire account interface by building a sequential hash of all procedure
 /// MAST roots. Specifically, each procedure contributes exactly 4 field elements to the sequence of
@@ -92,7 +95,7 @@ impl AccountCode {
             MastForest::merge(components.iter().map(|component| component.mast_forest()))
                 .map_err(AccountError::AccountComponentMastForestMergeError)?;
 
-        let mut builder = ProcedureInfoBuilder::new();
+        let mut builder = AccountProcedureBuilder::new();
         let mut components_iter = components.iter();
 
         let first_component =
@@ -198,7 +201,7 @@ impl AccountCode {
     pub fn printable_procedures(&self) -> impl Iterator<Item = PrintableProcedure> {
         self.procedures()
             .iter()
-            .filter_map(move |procedure_info| self.printable_procedure(procedure_info).ok())
+            .filter_map(move |proc_root| self.printable_procedure(proc_root).ok())
     }
 
     // HELPER FUNCTIONS
@@ -210,14 +213,14 @@ impl AccountCode {
     /// Returns an error if no procedure with the specified root exists in this account code.
     fn printable_procedure(
         &self,
-        proc_info: &AccountProcedureRoot,
+        proc_root: &AccountProcedureRoot,
     ) -> Result<PrintableProcedure, AccountError> {
         let node_id = self
             .mast
-            .find_procedure_root(*proc_info.mast_root())
+            .find_procedure_root(*proc_root.mast_root())
             .expect("procedure root should be present in the mast forest");
 
-        Ok(PrintableProcedure::new(self.mast.clone(), *proc_info, node_id))
+        Ok(PrintableProcedure::new(self.mast.clone(), *proc_root, node_id))
     }
 }
 
@@ -315,19 +318,19 @@ impl PrettyPrint for AccountCode {
 // ACCOUNT PROCEDURE BUILDER
 // ================================================================================================
 
-struct ProcedureInfoBuilder {
+/// A helper type for building the set of account procedures from account components.
+///
+/// In particular, this ensures that the auth procedure ends up at index 0.
+struct AccountProcedureBuilder {
     procedures: Vec<AccountProcedureRoot>,
-    proc_root_set: BTreeSet<Word>,
 }
 
-impl ProcedureInfoBuilder {
+impl AccountProcedureBuilder {
     fn new() -> Self {
-        Self {
-            procedures: Vec::new(),
-            proc_root_set: BTreeSet::new(),
-        }
+        Self { procedures: Vec::new() }
     }
 
+    /// This method must be called before add_component is called.
     fn add_auth_component(&mut self, component: &AccountComponent) -> Result<(), AccountError> {
         let mut auth_proc_count = 0;
 
@@ -364,11 +367,10 @@ impl ProcedureInfoBuilder {
     fn add_procedure(&mut self, proc_mast_root: Word) {
         // Allow procedures with the same MAST root from different components, but only add them
         // once.
-        if !self.proc_root_set.insert(proc_mast_root) {
-            return;
+        let proc_root = AccountProcedureRoot::from_raw(proc_mast_root);
+        if !self.procedures.contains(&proc_root) {
+            self.procedures.push(proc_root);
         }
-
-        self.procedures.push(AccountProcedureRoot::from_raw(proc_mast_root));
     }
 
     fn build(self) -> Result<Vec<AccountProcedureRoot>, AccountError> {
@@ -440,9 +442,8 @@ mod tests {
 
     #[test]
     fn test_account_code_no_auth_component() {
-        let component = AccountComponent::compile(CODE, Assembler::default(), vec![])
-            .unwrap()
-            .with_supports_all_types();
+        let library = Assembler::default().assemble_library([CODE]).unwrap();
+        let component = AccountComponent::new(library, vec![]).unwrap().with_supports_all_types();
 
         let err =
             AccountCode::from_components(&[component], AccountType::RegularAccountUpdatableCode)
@@ -478,10 +479,8 @@ mod tests {
             end
         ";
 
-        let component =
-            AccountComponent::compile(code_with_multiple_auth, Assembler::default(), vec![])
-                .unwrap()
-                .with_supports_all_types();
+        let library = Assembler::default().assemble_library([code_with_multiple_auth]).unwrap();
+        let component = AccountComponent::new(library, vec![]).unwrap().with_supports_all_types();
 
         let err =
             AccountCode::from_components(&[component], AccountType::RegularAccountUpdatableCode)

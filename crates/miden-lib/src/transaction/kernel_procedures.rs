@@ -28,7 +28,7 @@ pub const KERNEL_PROCEDURES: [Word; 52] = [
     // account_get_initial_item
     word!("0x4835f7023bcafd46f28ece1e5c879f0f99191f78e4026c5c0590c01edc8ab598"),
     // account_set_item
-    word!("0x51fc2400a85270b3ed5d5d2b2b316676eb23eaf9e5217068d7465167229716cc"),
+    word!("0x07737e8ce29230526bb76b64f64da0e45739363e11b11cb746657adaa749b37c"),
     // account_get_map_item
     word!("0xd816dc31953635af927407f3b1cd8f1ec6825522363a93c264cc36eaeb23d019"),
     // account_get_initial_map_item
@@ -60,13 +60,13 @@ pub const KERNEL_PROCEDURES: [Word; 52] = [
     // account_has_procedure
     word!("0xb0b63fdd01af0bcb4aacb2412e934cdc7691308647152d416c7ae4fc909da076"),
     // faucet_mint_asset
-    word!("0x25697335fb522f37461d5a49390e6476581cc543718188b425109365629c8627"),
+    word!("0xf44dbb74a478e3ac63eada9680c32d57890e481f7ade41382cbf2a98592320fe"),
     // faucet_burn_asset
-    word!("0xa58ee22766e1cb72499281cba5321108d517eed06959dc0b19ab28be54bed73d"),
+    word!("0x522a0592e159ac3fa15bfc73bba8afd1b753fdb9f86a6526f3c02a25b42bacec"),
     // faucet_get_total_fungible_asset_issuance
-    word!("0xedbc4fa4fba063dc750576c2ad7b00ed92f1c7bf744ed096b4bc7923f92ef682"),
+    word!("0x51cfb361598b5dd34ff93ae2c3788e7c1cd702e8831e2ea1d45dfc2ccd97876f"),
     // faucet_is_non_fungible_asset_issued
-    word!("0x94f574852d517f8e547a0b298a6760d76f770dab3cafc46556935c094f272792"),
+    word!("0xb4e83658a2c6b89ce2562fed3a6dfa141f7ff00c3d36a89d0d06f70b6690f133"),
     // input_note_get_metadata
     word!("0x7ad3e94585e7a397ee27443c98b376ed8d4ba762122af6413fde9314c00a6219"),
     // input_note_get_assets_info
@@ -104,7 +104,7 @@ pub const KERNEL_PROCEDURES: [Word; 52] = [
     // tx_get_block_timestamp
     word!("0x7903185b847517debb6c2072364e3e757b99ee623e97c2bd0a4661316c5c5418"),
     // tx_start_foreign_context
-    word!("0x9aa28324c8218711377c9d170dad6c1498604c727f72b31b426df62107cd2d1d"),
+    word!("0x923b99b2b14173d265dfdeda4375fb4195f1246a6c96b102b256bb1a6400d2e9"),
     // tx_end_foreign_context
     word!("0xaa0018aa8da890b73511879487f65553753fb7df22de380dd84c11e6f77eec6f"),
     // tx_get_expiration_delta

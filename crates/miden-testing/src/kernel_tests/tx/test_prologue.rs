@@ -53,14 +53,15 @@ use miden_lib::transaction::memory::{
     PARTIAL_BLOCKCHAIN_NUM_LEAVES_PTR,
     PARTIAL_BLOCKCHAIN_PEAKS_PTR,
     PREV_BLOCK_COMMITMENT_PTR,
-    PROOF_COMMITMENT_PTR,
     PROTOCOL_VERSION_IDX,
     TIMESTAMP_IDX,
     TX_COMMITMENT_PTR,
     TX_KERNEL_COMMITMENT_PTR,
     TX_SCRIPT_ROOT_PTR,
+    VALIDATOR_KEY_COMMITMENT_PTR,
     VERIFICATION_BASE_FEE_IDX,
 };
+use miden_lib::utils::CodeBuilder;
 use miden_objects::account::{
     Account,
     AccountBuilder,
@@ -80,7 +81,7 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_SENDER,
 };
 use miden_objects::testing::noop_auth_component::NoopAuthComponent;
-use miden_objects::transaction::{ExecutedTransaction, TransactionArgs, TransactionScript};
+use miden_objects::transaction::{ExecutedTransaction, TransactionArgs};
 use miden_objects::{EMPTY_WORD, ONE, WORD_SIZE};
 use miden_processor::fast::ExecutionOutput;
 use miden_processor::{AdviceInputs, Word};
@@ -136,12 +137,7 @@ async fn test_transaction_prologue() -> anyhow::Result<()> {
         end
         ";
 
-    let mock_tx_script_program = TransactionKernel::assembler()
-        .with_debug_mode(true)
-        .assemble_program(mock_tx_script_code)
-        .unwrap();
-
-    let tx_script = TransactionScript::new(mock_tx_script_program);
+    let tx_script = CodeBuilder::default().compile_tx_script(mock_tx_script_code).unwrap();
 
     let note_args = [Word::from([91u32; 4]), Word::from([92u32; 4])];
 
@@ -266,9 +262,9 @@ fn block_data_memory_assertions(exec_output: &ExecutionOutput, inputs: &Transact
     );
 
     assert_eq!(
-        exec_output.get_kernel_mem_word(PROOF_COMMITMENT_PTR),
-        inputs.tx_inputs().block_header().proof_commitment(),
-        "The proof commitment should be stored at the PROOF_COMMITMENT_PTR"
+        exec_output.get_kernel_mem_word(VALIDATOR_KEY_COMMITMENT_PTR),
+        inputs.tx_inputs().block_header().validator_key().to_commitment(),
+        "The public key commitment should be stored at the VALIDATOR_KEY_COMMITMENT_PTR"
     );
 
     assert_eq!(
@@ -664,7 +660,7 @@ pub async fn create_account_fungible_faucet_invalid_initial_balance() -> anyhow:
     // do that.
     let faucet_data_slot = Word::from([0, 0, 0, 100u32]);
     storage
-        .set_item(AccountStorage::faucet_metadata_slot(), faucet_data_slot)
+        .set_item(AccountStorage::faucet_sysdata_slot(), faucet_data_slot)
         .unwrap();
 
     // The compute account ID function will set the nonce to zero so this is considered a new
@@ -692,7 +688,7 @@ pub async fn create_account_non_fungible_faucet_invalid_initial_reserved_slot() 
     let non_fungible_storage_map =
         StorageMap::with_entries([(asset.vault_key().into(), asset.into())]).unwrap();
     let storage = AccountStorage::new(vec![StorageSlot::with_map(
-        AccountStorage::faucet_metadata_slot().clone(),
+        AccountStorage::faucet_sysdata_slot().clone(),
         non_fungible_storage_map,
     )])
     .unwrap();

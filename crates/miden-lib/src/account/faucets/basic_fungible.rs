@@ -9,7 +9,6 @@ use miden_objects::account::{
     StorageSlotName,
 };
 use miden_objects::asset::{FungibleAsset, TokenSymbol};
-use miden_objects::utils::sync::LazyLock;
 use miden_objects::{Felt, FieldElement, Word};
 
 use super::FungibleFaucetError;
@@ -41,17 +40,12 @@ procedure_digest!(
     basic_fungible_faucet_library
 );
 
-static METADATA_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
-    StorageSlotName::new("miden::standards::faucets::metadata")
-        .expect("storage slot name should be valid")
-});
-
 /// An [`AccountComponent`] implementing a basic fungible faucet.
 ///
 /// It reexports the procedures from `miden::contracts::faucets::basic_fungible`. When linking
 /// against this component, the `miden` library (i.e. [`MidenLib`](crate::MidenLib)) must be
 /// available to the assembler which is the case when using
-/// [`TransactionKernel::assembler()`][kasm]. The procedures of this component are:
+/// [`CodeBuilder`][builder]. The procedures of this component are:
 /// - `distribute`, which mints an assets and create a note for the provided recipient.
 /// - `burn`, which burns the provided asset.
 ///
@@ -66,7 +60,7 @@ static METADATA_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
 ///
 /// - [`Self::metadata_slot`]: Fungible faucet metadata
 ///
-/// [kasm]: crate::transaction::TransactionKernel::assembler
+/// [builder]: crate::utils::CodeBuilder
 pub struct BasicFungibleFaucet {
     symbol: TokenSymbol,
     decimals: u8,
@@ -162,7 +156,7 @@ impl BasicFungibleFaucet {
 
     /// Returns the [`StorageSlotName`] where the [`BasicFungibleFaucet`]'s metadata is stored.
     pub fn metadata_slot() -> &'static StorageSlotName {
-        &METADATA_SLOT_NAME
+        &super::METADATA_SLOT_NAME
     }
 
     /// Returns the symbol of the faucet.
@@ -362,11 +356,11 @@ mod tests {
         )
         .unwrap();
 
-        // The reserved faucet slot should be initialized to an empty word.
+        // The faucet sysdata slot should be initialized to an empty word.
         assert_eq!(
             faucet_account
                 .storage()
-                .get_item(AccountStorage::faucet_metadata_slot())
+                .get_item(AccountStorage::faucet_sysdata_slot())
                 .unwrap(),
             Word::empty()
         );
