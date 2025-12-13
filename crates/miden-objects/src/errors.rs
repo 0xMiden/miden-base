@@ -103,8 +103,6 @@ pub enum AccountError {
     AccountComponentAssemblyError(Report),
     #[error("failed to merge components into one account code mast forest")]
     AccountComponentMastForestMergeError(#[source] MastForestError),
-    #[error("procedure with MAST root {0} is present in multiple account components")]
-    AccountComponentDuplicateProcedureRoot(Word),
     // #[error("failed to create account component")]
     // AccountComponentTemplateInstantiationError(#[source] AccountComponentTemplateError),
     #[error("account component contains multiple authentication procedures")]

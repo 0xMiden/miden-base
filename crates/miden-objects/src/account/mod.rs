@@ -895,28 +895,6 @@ mod tests {
         ))
     }
 
-    /// Two components who export a procedure with the same MAST root should fail to convert into
-    /// code and storage.
-    #[test]
-    fn test_account_duplicate_exported_mast_root() {
-        let code1 = "export.foo add eq.1 end";
-        let code2 = "export.bar add eq.1 end";
-
-        let library1 = Assembler::default().assemble_library([code1]).unwrap();
-        let library2 = Assembler::default().assemble_library([code2]).unwrap();
-
-        let component1 = AccountComponent::new(library1, vec![]).unwrap().with_supports_all_types();
-        let component2 = AccountComponent::new(library2, vec![]).unwrap().with_supports_all_types();
-
-        let err = Account::initialize_from_components(
-            AccountType::RegularAccountUpdatableCode,
-            vec![NoopAuthComponent.into(), component1, component2],
-        )
-        .unwrap_err();
-
-        assert_matches!(err, AccountError::AccountComponentDuplicateProcedureRoot(_))
-    }
-
     /// Tests all cases of account ID seed validation.
     #[test]
     fn seed_validation() -> anyhow::Result<()> {

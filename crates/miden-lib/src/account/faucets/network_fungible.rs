@@ -57,7 +57,7 @@ static OWNER_CONFIG_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
 /// ## Storage Layout
 ///
 /// - [`Self::metadata_slot`]: Fungible faucet metadata.
-/// - [`Self::owner_config_slot`]: The owner account of this network facuet.
+/// - [`Self::owner_config_slot`]: The owner account of this network faucet.
 ///
 /// [builder]: crate::utils::CodeBuilder
 pub struct NetworkFungibleFaucet {

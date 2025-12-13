@@ -34,8 +34,8 @@ use miden_objects::account::{
     StorageSlotName,
     StorageSlotType,
 };
-use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::assembly::diagnostics::{IntoDiagnostic, NamedSource, Report, WrapErr, miette};
+use miden_objects::assembly::{DefaultSourceManager, Library};
 use miden_objects::asset::{Asset, FungibleAsset};
 use miden_objects::note::NoteType;
 use miden_objects::testing::account_id::{
@@ -48,6 +48,7 @@ use miden_objects::testing::account_id::{
 };
 use miden_objects::testing::storage::{MOCK_MAP_SLOT, MOCK_VALUE_SLOT0, MOCK_VALUE_SLOT1};
 use miden_objects::transaction::OutputNote;
+use miden_objects::utils::sync::LazyLock;
 use miden_objects::{LexicographicWord, StarkField};
 use miden_processor::{ExecutionError, Word};
 use miden_tx::LocalTransactionProver;
@@ -1746,6 +1747,132 @@ async fn incrementing_nonce_overflow_fails() -> anyhow::Result<()> {
     let result = TransactionContextBuilder::new(account).build()?.execute().await;
 
     assert_transaction_executor_error!(result, ERR_ACCOUNT_NONCE_AT_MAX);
+
+    Ok(())
+}
+
+/// Tests that merging two components that have a procedure with the same mast root
+/// (`get_slot_content`) works.
+///
+/// Asserts that the procedure is callable via both names.
+#[tokio::test]
+async fn merging_components_with_same_mast_root_succeeds() -> anyhow::Result<()> {
+    static TEST_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
+        StorageSlotName::new("miden::slot::test").expect("storage slot name should be valid")
+    });
+
+    static COMPONENT_1_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
+        let code = format!(
+            r#"
+              use.miden::active_account
+
+              const TEST_SLOT_NAME = word("{test_slot_name}")
+
+              pub proc get_slot_content
+                  push.TEST_SLOT_NAME[0..2]
+                  exec.active_account::get_item
+                  swapw dropw
+              end
+            "#,
+            test_slot_name = &*TEST_SLOT_NAME
+        );
+
+        let source = NamedSource::new("component1::interface", code);
+        TransactionKernel::assembler()
+            .with_debug_mode(true)
+            .assemble_library([source])
+            .expect("mock account code should be valid")
+    });
+
+    static COMPONENT_2_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
+        let code = format!(
+            r#"
+              use.miden::active_account
+              use.miden::native_account
+
+              const TEST_SLOT_NAME = word("{test_slot_name}")
+
+              pub proc get_slot_content
+                  push.TEST_SLOT_NAME[0..2]
+                  exec.active_account::get_item
+                  swapw dropw
+              end
+
+              pub proc set_slot_content
+                  push.5.6.7.8
+                  push.TEST_SLOT_NAME[0..2]
+                  exec.native_account::set_item
+                  swapw dropw
+              end
+            "#,
+            test_slot_name = &*TEST_SLOT_NAME
+        );
+
+        let source = NamedSource::new("component2::interface", code);
+        TransactionKernel::assembler()
+            .with_debug_mode(true)
+            .assemble_library([source])
+            .expect("mock account code should be valid")
+    });
+
+    struct CustomComponent1 {
+        slot: StorageSlot,
+    }
+
+    impl From<CustomComponent1> for AccountComponent {
+        fn from(component: CustomComponent1) -> AccountComponent {
+            AccountComponent::new(COMPONENT_1_LIBRARY.clone(), vec![component.slot])
+                .expect("should be valid")
+                .with_supports_all_types()
+        }
+    }
+
+    struct CustomComponent2;
+
+    impl From<CustomComponent2> for AccountComponent {
+        fn from(_component: CustomComponent2) -> AccountComponent {
+            AccountComponent::new(COMPONENT_2_LIBRARY.clone(), vec![])
+                .expect("should be valid")
+                .with_supports_all_types()
+        }
+    }
+
+    let slot = StorageSlot::with_value(TEST_SLOT_NAME.clone(), Word::from([1, 2, 3, 4u32]));
+
+    let account = AccountBuilder::new([42; 32])
+        .with_auth_component(Auth::IncrNonce)
+        .with_component(CustomComponent1 { slot: slot.clone() })
+        .with_component(CustomComponent2)
+        .build()
+        .context("failed to build account")?;
+
+    let tx_script = r#"
+      use.component1::interface->comp1_interface
+      use.component2::interface->comp2_interface
+
+      begin
+          call.comp1_interface::get_slot_content
+          push.1.2.3.4
+          assert_eqw.err="failed to get slot content1"
+
+          call.comp2_interface::set_slot_content
+
+          call.comp2_interface::get_slot_content
+          push.5.6.7.8
+          assert_eqw.err="failed to get slot content2"
+      end
+    "#;
+
+    let tx_script = CodeBuilder::default()
+        .with_dynamically_linked_library(COMPONENT_1_LIBRARY.clone())?
+        .with_dynamically_linked_library(COMPONENT_2_LIBRARY.clone())?
+        .compile_tx_script(tx_script)?;
+
+    TransactionContextBuilder::new(account)
+        .tx_script(tx_script)
+        .build()?
+        .execute()
+        .await?;
 
     Ok(())
 }

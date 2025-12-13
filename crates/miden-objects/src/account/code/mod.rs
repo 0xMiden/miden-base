@@ -335,7 +335,7 @@ impl AccountProcedureBuilder {
         let mut auth_proc_count = 0;
 
         for (proc_root, is_auth) in component.get_procedures() {
-            self.add_procedure(proc_root)?;
+            self.add_procedure(proc_root);
 
             if is_auth {
                 let auth_proc_idx = self.procedures.len() - 1;
@@ -358,27 +358,19 @@ impl AccountProcedureBuilder {
             if is_auth {
                 return Err(AccountError::AccountCodeMultipleAuthComponents);
             }
-            self.add_procedure(proc_mast_root)?;
+            self.add_procedure(proc_mast_root);
         }
 
         Ok(())
     }
 
-    fn add_procedure(&mut self, proc_mast_root: Word) -> Result<(), AccountError> {
-        // TODO: Check if we can now safely allow this.
-        // Disallow procedures with the same MAST root from different components.
-        let proc_mast_root = AccountProcedureRoot::from_raw(proc_mast_root);
-        // The number of procedures in accounts is generally small, so checking via linear search
-        // should be fine.
-        if self.procedures.contains(&proc_mast_root) {
-            return Err(AccountError::AccountComponentDuplicateProcedureRoot(
-                proc_mast_root.as_word(),
-            ));
+    fn add_procedure(&mut self, proc_mast_root: Word) {
+        // Allow procedures with the same MAST root from different components, but only add them
+        // once.
+        let proc_root = AccountProcedureRoot::from_raw(proc_mast_root);
+        if !self.procedures.contains(&proc_root) {
+            self.procedures.push(proc_root);
         }
-
-        self.procedures.push(proc_mast_root);
-
-        Ok(())
     }
 
     fn build(self) -> Result<Vec<AccountProcedureRoot>, AccountError> {
