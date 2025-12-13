@@ -36,6 +36,8 @@ const.ERR_ACCOUNT_UNKNOWN_STORAGE_SLOT_NAME="storage slot with the provided name
 
 const.ERR_ACCOUNT_CODE_COMMITMENT_MISMATCH="computed account code commitment does not match recorded account code commitment"
 
+const.ERR_ACCOUNT_NOT_ENOUGH_PROCEDURES="number of account procedures must be at least 2"
+
 const.ERR_ACCOUNT_TOO_MANY_PROCEDURES="number of account procedures exceeds the maximum limit of 256"
 
 const.ERR_ACCOUNT_TOO_MANY_STORAGE_SLOTS="number of account storage slots exceeds the maximum limit of 255"
@@ -69,6 +71,9 @@ const.MAX_STORAGE_SLOT_INDEX=254
 
 # The maximum number of account storage slots.
 const.MAX_NUM_STORAGE_SLOTS=MAX_STORAGE_SLOT_INDEX+1
+
+# The minimum number of account interface procedures.
+const.MIN_NUM_PROCEDURES=2
 
 # The maximum number of account interface procedures.
 const.MAX_NUM_PROCEDURES=256
@@ -1240,8 +1245,18 @@ export.save_account_procedure_data
     # OS => [num_procs, CODE_COMMITMENT]
     # AS => [[ACCOUNT_PROCEDURE_DATA]]
 
-    # assert that account does not exceed allowed maximum number of procedures
-    dup exec.get_max_num_procedures lte assert.err=ERR_ACCOUNT_TOO_MANY_PROCEDURES
+    # make sure number of procedures is a valid u32, so we can use u32 operations for validation
+    u32assert.err=ERR_ACCOUNT_TOO_MANY_PROCEDURES
+    # OS => [num_procs, CODE_COMMITMENT]
+    # AS => [[ACCOUNT_PROCEDURE_DATA]]
+
+    # assert the account has at least the minimum number of procedures
+    dup u32gte.MIN_NUM_PROCEDURES assert.err=ERR_ACCOUNT_NOT_ENOUGH_PROCEDURES
+    # OS => [num_procs, CODE_COMMITMENT]
+    # AS => [[ACCOUNT_PROCEDURE_DATA]]
+
+    # assert the account does not exceed the maximum number of procedures
+    dup u32lte.MAX_NUM_PROCEDURES assert.err=ERR_ACCOUNT_TOO_MANY_PROCEDURES
     # OS => [num_procs, CODE_COMMITMENT]
     # AS => [[ACCOUNT_PROCEDURE_DATA]]
 

@@ -24,9 +24,9 @@ use crate::account::components::{
     rpo_falcon_512_library,
     rpo_falcon_512_multisig_library,
 };
-use crate::errors::ScriptBuilderError;
+use crate::errors::CodeBuilderError;
 use crate::note::WellKnownNote;
-use crate::utils::ScriptBuilder;
+use crate::utils::CodeBuilder;
 
 #[cfg(test)]
 mod test;
@@ -247,7 +247,7 @@ impl AccountInterface {
             note_creation_source,
         );
 
-        let tx_script = ScriptBuilder::new(in_debug_mode)
+        let tx_script = CodeBuilder::new(in_debug_mode)
             .compile_tx_script(script)
             .map_err(AccountInterfaceError::InvalidTransactionScript)?;
 
@@ -431,7 +431,7 @@ pub enum AccountInterfaceError {
     #[error("note created by the basic fungible faucet doesn't contain exactly one asset")]
     FaucetNoteWithoutAsset,
     #[error("invalid transaction script")]
-    InvalidTransactionScript(#[source] ScriptBuilderError),
+    InvalidTransactionScript(#[source] CodeBuilderError),
     #[error("invalid sender account: {0}")]
     InvalidSenderAccount(AccountId),
     #[error("{} interface does not support the generation of the standard send_note script", interface.name())]

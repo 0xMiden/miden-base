@@ -4,7 +4,7 @@ mod auth;
 mod scripts;
 mod wallet;
 
-use miden_lib::utils::ScriptBuilder;
+use miden_lib::utils::CodeBuilder;
 use miden_objects::account::AccountId;
 use miden_objects::asset::FungibleAsset;
 use miden_objects::crypto::utils::Serializable;
@@ -53,7 +53,7 @@ pub fn get_note_with_fungible_asset_and_script(
 ) -> Note {
     use miden_objects::note::NoteExecutionHint;
 
-    let note_script = ScriptBuilder::default().compile_note_script(note_script).unwrap();
+    let note_script = CodeBuilder::default().compile_note_script(note_script).unwrap();
     let serial_num = Word::from([1, 2, 3, 4u32]);
     let sender_id = AccountId::try_from(ACCOUNT_ID_SENDER).unwrap();
 
