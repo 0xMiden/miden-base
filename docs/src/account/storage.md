@@ -11,9 +11,15 @@ A flexible, arbitrary data store within the `Account`.
 
 The [storage](https://docs.rs/miden-objects/latest/miden_objects/account/struct.AccountStorage.html) consists of up to 256 individual [storage slots](https://docs.rs/miden-objects/latest/miden_objects/account/enum.StorageSlot.html), where each slot consists of:
 - Key: Slot name.
-- Value: A `Word` (32 bytes).
+- Value: either a single [`Word`](#storage-units) or a key-value map of [`Word`](#storage-units)s.
 
 So, account storage can be thought of as a map from slot name to slot value.
+
+#### Storage units
+
+The basic storage unit in account storage is a `Word`. A `Word` consists of 4 elements where each element is slightly less than a 64-bit value. Specifically, a maximum value of an element is $2^{64} - 2^{32}$. Thus, a single `Word` can contain almost 32 bytes of data.
+
+Since a `Word` cannot store exactly 32 bytes of data, we may need to use multiple words to store such binary data as Keccak or SHA256 hashes. At the minimum, a 32-byte hash would require 5 elements to store, but it is recommended to encode such hashes into 8 elements with each element containing 32 bits of data. In both cases, two words would be used to store the hash.
 
 ## Slot Name
 
@@ -35,20 +41,20 @@ project_name::component_name::slot_name
 
 ### Slot ID
 
-Because slot names are too large to be used directly in the transaction kernel, a _slot ID_ is used instead. The slot ID is the hash of the slot name. Miden Assembly APIs will always work with the slot ID instead of the slot name.
+Because slot names are too large to be used directly in the transaction kernel, a _slot ID_ is used instead. The slot ID is derived from the hash of the slot name. Miden Assembly APIs will always work with the slot ID instead of the slot name.
 
 ## Slot types
 
 Each slot has one of the following types:
 
-- **Value slot:** Contains 32 bytes of arbitrary data.
-- **Map slot:** Contains a [StorageMap](#map-slots), a key-value store where both keys and values are 32 bytes. The slot's value is set to the root of the map.
+- **Value slot:** Contains a single `Word` of arbitrary data.
+- **Map slot:** Contains a [StorageMap](#map-slots), a key-value store where both keys and values are `Word`s. The slot's value is set to the root of the map.
 
 An account's storage is typically the result of merging multiple [account components](./components).
 
 ### Value Slots
 
-A value slot can be used whenever 32 bytes of data is enough, e.g. for storing a single public key for use in [authentication procedures](code#authentication).
+A value slot can be used whenever a single `Word` (almost 32 bytes) of data is enough, e.g. for storing a single public key commitment for use in [authentication procedures](code#authentication).
 
 Value slots can be used with `set_item`, `get_item` and `get_initial_item` APIs.
 
