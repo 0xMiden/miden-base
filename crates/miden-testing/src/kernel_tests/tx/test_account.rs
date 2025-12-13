@@ -1863,9 +1863,9 @@ async fn merging_components_with_same_mast_root_succeeds() -> anyhow::Result<()>
       end
     "#;
 
-    let tx_script = ScriptBuilder::default()
-        .with_dynamically_linked_library(&COMPONENT_1_LIBRARY)?
-        .with_dynamically_linked_library(&COMPONENT_2_LIBRARY)?
+    let tx_script = CodeBuilder::default()
+        .with_dynamically_linked_library(COMPONENT_1_LIBRARY.clone())?
+        .with_dynamically_linked_library(COMPONENT_2_LIBRARY.clone())?
         .compile_tx_script(tx_script)?;
 
     TransactionContextBuilder::new(account)
