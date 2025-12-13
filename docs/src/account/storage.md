@@ -9,7 +9,7 @@ title: "Storage"
 A flexible, arbitrary data store within the `Account`.
 :::
 
-The [storage](https://docs.rs/miden-objects/latest/miden_objects/account/struct.AccountStorage.html) consists of up to 255 individual [storage slots](https://docs.rs/miden-objects/latest/miden_objects/account/enum.StorageSlot.html), where each slot consists of:
+The [storage](https://docs.rs/miden-objects/latest/miden_objects/account/struct.AccountStorage.html) consists of up to 256 individual [storage slots](https://docs.rs/miden-objects/latest/miden_objects/account/enum.StorageSlot.html), where each slot consists of:
 - Key: Slot name.
 - Value: A `Word` (32 bytes).
 
