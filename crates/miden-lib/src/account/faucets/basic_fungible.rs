@@ -9,7 +9,6 @@ use miden_objects::account::{
     StorageSlotName,
 };
 use miden_objects::asset::{FungibleAsset, TokenSymbol};
-use miden_objects::utils::sync::LazyLock;
 use miden_objects::{Felt, FieldElement, Word};
 
 use super::FungibleFaucetError;
@@ -41,17 +40,12 @@ procedure_digest!(
     basic_fungible_faucet_library
 );
 
-static METADATA_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
-    StorageSlotName::new("miden::basic_fungible_faucet::metadata")
-        .expect("storage slot name should be valid")
-});
-
 /// An [`AccountComponent`] implementing a basic fungible faucet.
 ///
 /// It reexports the procedures from `miden::contracts::faucets::basic_fungible`. When linking
 /// against this component, the `miden` library (i.e. [`MidenLib`](crate::MidenLib)) must be
 /// available to the assembler which is the case when using
-/// [`TransactionKernel::assembler()`][kasm]. The procedures of this component are:
+/// [`CodeBuilder`][builder]. The procedures of this component are:
 /// - `distribute`, which mints an assets and create a note for the provided recipient.
 /// - `burn`, which burns the provided asset.
 ///
@@ -64,9 +58,9 @@ static METADATA_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
 ///
 /// ## Storage Layout
 ///
-/// - [`Self::metadata_slot_name`]: Basic fungible faucet's metadata
+/// - [`Self::metadata_slot`]: Fungible faucet metadata
 ///
-/// [kasm]: crate::transaction::TransactionKernel::assembler
+/// [builder]: crate::utils::CodeBuilder
 pub struct BasicFungibleFaucet {
     symbol: TokenSymbol,
     decimals: u8,
@@ -133,11 +127,11 @@ impl BasicFungibleFaucet {
         for component in interface.components().iter() {
             if let AccountComponentInterface::BasicFungibleFaucet = component {
                 let faucet_metadata = storage
-                    .get_item(BasicFungibleFaucet::metadata_slot_name())
+                    .get_item(BasicFungibleFaucet::metadata_slot())
                     .map_err(|err| FungibleFaucetError::StorageLookupFailed {
-                    slot_name: BasicFungibleFaucet::metadata_slot_name().clone(),
-                    source: err,
-                })?;
+                        slot_name: BasicFungibleFaucet::metadata_slot().clone(),
+                        source: err,
+                    })?;
                 let [max_supply, decimals, token_symbol, _] = *faucet_metadata;
 
                 // verify metadata values
@@ -161,8 +155,8 @@ impl BasicFungibleFaucet {
     // --------------------------------------------------------------------------------------------
 
     /// Returns the [`StorageSlotName`] where the [`BasicFungibleFaucet`]'s metadata is stored.
-    pub fn metadata_slot_name() -> &'static StorageSlotName {
-        &METADATA_SLOT_NAME
+    pub fn metadata_slot() -> &'static StorageSlotName {
+        &super::METADATA_SLOT_NAME
     }
 
     /// Returns the symbol of the faucet.
@@ -202,7 +196,7 @@ impl From<BasicFungibleFaucet> for AccountComponent {
             Felt::ZERO,
         ]);
         let storage_slot =
-            StorageSlot::with_value(BasicFungibleFaucet::metadata_slot_name().clone(), metadata);
+            StorageSlot::with_value(BasicFungibleFaucet::metadata_slot().clone(), metadata);
 
         AccountComponent::new(basic_fungible_faucet_library(), vec![storage_slot])
             .expect("basic fungible faucet component should satisfy the requirements of a valid account component")
@@ -362,11 +356,11 @@ mod tests {
         )
         .unwrap();
 
-        // The reserved faucet slot should be initialized to an empty word.
+        // The faucet sysdata slot should be initialized to an empty word.
         assert_eq!(
             faucet_account
                 .storage()
-                .get_item(AccountStorage::faucet_metadata_slot())
+                .get_item(AccountStorage::faucet_sysdata_slot())
                 .unwrap(),
             Word::empty()
         );
@@ -405,10 +399,7 @@ mod tests {
 
         // Check that faucet metadata was initialized to the given values.
         assert_eq!(
-            faucet_account
-                .storage()
-                .get_item(BasicFungibleFaucet::metadata_slot_name())
-                .unwrap(),
+            faucet_account.storage().get_item(BasicFungibleFaucet::metadata_slot()).unwrap(),
             [Felt::new(123), Felt::new(2), token_symbol.into(), Felt::ZERO].into()
         );
 

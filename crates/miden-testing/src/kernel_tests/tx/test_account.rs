@@ -10,11 +10,13 @@ use miden_lib::errors::tx_kernel_errors::{
     ERR_ACCOUNT_ID_UNKNOWN_VERSION,
     ERR_ACCOUNT_NONCE_AT_MAX,
     ERR_ACCOUNT_NONCE_CAN_ONLY_BE_INCREMENTED_ONCE,
+    ERR_ACCOUNT_UNKNOWN_STORAGE_SLOT_NAME,
+    ERR_FAUCET_STORAGE_DATA_SLOT_IS_RESERVED,
 };
 use miden_lib::testing::account_component::MockAccountComponent;
 use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::transaction::TransactionKernel;
-use miden_lib::utils::ScriptBuilder;
+use miden_lib::utils::CodeBuilder;
 use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{
     Account,
@@ -28,11 +30,12 @@ use miden_objects::account::{
     StorageMap,
     StorageSlot,
     StorageSlotContent,
+    StorageSlotId,
     StorageSlotName,
     StorageSlotType,
 };
-use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::assembly::diagnostics::{IntoDiagnostic, NamedSource, Report, WrapErr, miette};
+use miden_objects::assembly::{DefaultSourceManager, Library};
 use miden_objects::asset::{Asset, FungibleAsset};
 use miden_objects::note::NoteType;
 use miden_objects::testing::account_id::{
@@ -45,6 +48,7 @@ use miden_objects::testing::account_id::{
 };
 use miden_objects::testing::storage::{MOCK_MAP_SLOT, MOCK_VALUE_SLOT0, MOCK_VALUE_SLOT1};
 use miden_objects::transaction::OutputNote;
+use miden_objects::utils::sync::LazyLock;
 use miden_objects::{LexicographicWord, StarkField};
 use miden_processor::{ExecutionError, Word};
 use miden_tx::LocalTransactionProver;
@@ -140,8 +144,7 @@ pub async fn compute_commitment() -> miette::Result<()> {
     );
 
     let tx_context_builder = TransactionContextBuilder::new(account);
-    let tx_script = ScriptBuilder::with_mock_libraries()
-        .into_diagnostic()?
+    let tx_script = CodeBuilder::with_mock_libraries()
         .compile_tx_script(tx_script)
         .into_diagnostic()?;
     let tx_context = tx_context_builder
@@ -519,6 +522,144 @@ async fn test_get_storage_slot_type() -> miette::Result<()> {
             Word::empty(),
             "the rest of the stack is empty"
         );
+    }
+
+    Ok(())
+}
+
+/// Tests that accessing an unknown slot fails with the expected error message.
+///
+/// This tests both accounts with empty storage and non-empty storage.
+#[tokio::test]
+async fn test_account_get_item_fails_on_unknown_slot() -> anyhow::Result<()> {
+    let mut builder = MockChain::builder();
+
+    let account_empty_storage = builder.add_existing_mock_account(Auth::IncrNonce)?;
+    assert_eq!(account_empty_storage.storage().num_slots(), 0);
+
+    let account_non_empty_storage = builder.add_existing_mock_account(Auth::BasicAuth)?;
+    assert_eq!(account_non_empty_storage.storage().num_slots(), 1);
+
+    let chain = builder.build()?;
+
+    let code = r#"
+            use.mock::account
+
+            const.UNKNOWN_SLOT_NAME = word("unknown::slot::name")
+
+            begin
+                push.UNKNOWN_SLOT_NAME[0..2]
+                call.account::get_item
+            end
+            "#;
+    let tx_script = CodeBuilder::with_mock_libraries().compile_tx_script(code)?;
+
+    let result = chain
+        .build_tx_context(account_empty_storage, &[], &[])?
+        .tx_script(tx_script.clone())
+        .build()?
+        .execute()
+        .await;
+    assert_transaction_executor_error!(result, ERR_ACCOUNT_UNKNOWN_STORAGE_SLOT_NAME);
+
+    let result = chain
+        .build_tx_context(account_non_empty_storage, &[], &[])?
+        .tx_script(tx_script)
+        .build()?
+        .execute()
+        .await;
+    assert_transaction_executor_error!(result, ERR_ACCOUNT_UNKNOWN_STORAGE_SLOT_NAME);
+
+    Ok(())
+}
+
+/// Tests that accessing the protocol-reserved faucet metadata slot fails with the expected error
+/// message.
+#[tokio::test]
+async fn test_account_set_item_fails_on_reserved_faucet_metadata_slot() -> anyhow::Result<()> {
+    let code = r#"
+            use.miden::native_account
+
+            const.FAUCET_SYSDATA_SLOT=word("miden::faucet::sysdata")
+
+            begin
+                push.FAUCET_SYSDATA_SLOT[0..2]
+                exec.native_account::set_item
+            end
+            "#;
+    let tx_script = CodeBuilder::default().compile_tx_script(code)?;
+
+    let tx_context = TransactionContextBuilder::with_fungible_faucet(
+        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
+        Felt::from(0u32),
+    )
+    .tx_script(tx_script)
+    .build()
+    .unwrap();
+
+    let result = tx_context.execute().await;
+    assert_transaction_executor_error!(result, ERR_FAUCET_STORAGE_DATA_SLOT_IS_RESERVED);
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_is_slot_id_lt() -> miette::Result<()> {
+    // Note that the slot IDs derived from the names are essentially randomly sorted, so these cover
+    // "less than" and "greater than" outcomes.
+    let mut test_cases = (0..100)
+        .map(|i| {
+            let prev_slot = StorageSlotName::mock(i).id();
+            let curr_slot = StorageSlotName::mock(i + 1).id();
+            (prev_slot, curr_slot)
+        })
+        .collect::<Vec<_>>();
+
+    // Extend with special case where prefix matches and suffix determines the outcome.
+    let prefix = Felt::from(100u32);
+    test_cases.extend([
+        // prev_slot == curr_slot
+        (
+            StorageSlotId::new(Felt::from(50u32), prefix),
+            StorageSlotId::new(Felt::from(50u32), prefix),
+        ),
+        // prev_slot < curr_slot
+        (
+            StorageSlotId::new(Felt::from(50u32), prefix),
+            StorageSlotId::new(Felt::from(51u32), prefix),
+        ),
+        // prev_slot > curr_slot
+        (
+            StorageSlotId::new(Felt::from(51u32), prefix),
+            StorageSlotId::new(Felt::from(50u32), prefix),
+        ),
+    ]);
+
+    for (prev_slot, curr_slot) in test_cases {
+        let code = format!(
+            r#"
+            use.$kernel::account
+
+            begin
+                push.{curr_suffix}.{curr_prefix}.{prev_suffix}.{prev_prefix}
+                # => [prev_slot_id_prefix, prev_slot_id_suffix, curr_slot_id_prefix, curr_slot_id_suffix]
+
+                exec.account::is_slot_id_lt
+                # => [is_slot_id_lt]
+
+                push.{is_lt}
+                assert_eq.err="is_slot_id_lt was not {is_lt}"
+                # => []
+            end
+            "#,
+            prev_prefix = prev_slot.prefix(),
+            prev_suffix = prev_slot.suffix(),
+            curr_prefix = curr_slot.prefix(),
+            curr_suffix = curr_slot.suffix(),
+            is_lt = u8::from(prev_slot < curr_slot)
+        );
+
+        CodeExecutor::with_default_host().run(&code).await?;
     }
 
     Ok(())
@@ -989,7 +1130,7 @@ async fn test_get_init_balance_addition() -> anyhow::Result<()> {
             initial_balance + fungible_asset_for_note_existing.unwrap_fungible().amount(),
     );
 
-    let tx_script = ScriptBuilder::default().compile_tx_script(add_existing_source)?;
+    let tx_script = CodeBuilder::default().compile_tx_script(add_existing_source)?;
 
     let tx_context = mock_chain
         .build_tx_context(
@@ -1042,7 +1183,7 @@ async fn test_get_init_balance_addition() -> anyhow::Result<()> {
         final_balance = initial_balance + fungible_asset_for_note_new.unwrap_fungible().amount(),
     );
 
-    let tx_script = ScriptBuilder::default().compile_tx_script(add_new_source)?;
+    let tx_script = CodeBuilder::default().compile_tx_script(add_new_source)?;
 
     let tx_context = mock_chain
         .build_tx_context(TxContextInput::AccountId(account.id()), &[], &[p2id_note_new_asset])?
@@ -1146,8 +1287,7 @@ async fn test_get_init_balance_subtraction() -> anyhow::Result<()> {
             initial_balance - fungible_asset_for_note_existing.unwrap_fungible().amount(),
     );
 
-    let tx_script =
-        ScriptBuilder::with_mock_libraries()?.compile_tx_script(remove_existing_source)?;
+    let tx_script = CodeBuilder::with_mock_libraries().compile_tx_script(remove_existing_source)?;
 
     let tx_context = mock_chain
         .build_tx_context(TxContextInput::AccountId(account.id()), &[], &[])?
@@ -1273,8 +1413,7 @@ async fn test_was_procedure_called() -> miette::Result<()> {
     );
 
     // Compile the transaction script using the testing assembler with mock account
-    let tx_script = ScriptBuilder::with_mock_libraries()
-        .into_diagnostic()?
+    let tx_script = CodeBuilder::with_mock_libraries()
         .compile_tx_script(tx_script_code)
         .into_diagnostic()?;
 
@@ -1324,8 +1463,11 @@ async fn transaction_executor_account_code_using_custom_library() -> miette::Res
     let external_library =
         TransactionKernel::assembler().assemble_library([external_library_source])?;
 
-    let mut assembler =
-        TransactionKernel::with_mock_libraries(Arc::new(DefaultSourceManager::default()));
+    let mut assembler: miden_objects::assembly::Assembler =
+        CodeBuilder::with_mock_libraries_with_source_manager(Arc::new(
+            DefaultSourceManager::default(),
+        ))
+        .into();
     assembler.link_static_library(&external_library)?;
 
     let account_component_source =
@@ -1352,7 +1494,7 @@ async fn transaction_executor_account_code_using_custom_library() -> miette::Res
         .build_existing()
         .into_diagnostic()?;
 
-    let tx_script = ScriptBuilder::default()
+    let tx_script = CodeBuilder::default()
         .with_dynamically_linked_library(&account_component_lib)
         .into_diagnostic()?
         .compile_tx_script(tx_script_src)
@@ -1388,9 +1530,10 @@ async fn incrementing_nonce_twice_fails() -> anyhow::Result<()> {
         end
     ";
 
+    let faulty_auth_code =
+        CodeBuilder::default().compile_component_code("test::faulty_auth", source_code)?;
     let faulty_auth_component =
-        AccountComponent::compile(source_code, TransactionKernel::assembler(), vec![])?
-            .with_supports_all_types();
+        AccountComponent::new(faulty_auth_code, vec![])?.with_supports_all_types();
     let account = AccountBuilder::new([5; 32])
         .with_auth_component(faulty_auth_component)
         .with_component(MockAccountComponent::with_empty_slots())
@@ -1441,8 +1584,7 @@ async fn test_has_procedure() -> miette::Result<()> {
         "#;
 
     // Compile the transaction script using the testing assembler with mock account
-    let tx_script = ScriptBuilder::with_mock_libraries()
-        .into_diagnostic()?
+    let tx_script = CodeBuilder::with_mock_libraries()
         .compile_tx_script(tx_script_code)
         .into_diagnostic()?;
 
@@ -1605,6 +1747,132 @@ async fn incrementing_nonce_overflow_fails() -> anyhow::Result<()> {
     let result = TransactionContextBuilder::new(account).build()?.execute().await;
 
     assert_transaction_executor_error!(result, ERR_ACCOUNT_NONCE_AT_MAX);
+
+    Ok(())
+}
+
+/// Tests that merging two components that have a procedure with the same mast root
+/// (`get_slot_content`) works.
+///
+/// Asserts that the procedure is callable via both names.
+#[tokio::test]
+async fn merging_components_with_same_mast_root_succeeds() -> anyhow::Result<()> {
+    static TEST_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
+        StorageSlotName::new("miden::slot::test").expect("storage slot name should be valid")
+    });
+
+    static COMPONENT_1_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
+        let code = format!(
+            r#"
+              use.miden::active_account
+
+              const TEST_SLOT_NAME = word("{test_slot_name}")
+
+              pub proc get_slot_content
+                  push.TEST_SLOT_NAME[0..2]
+                  exec.active_account::get_item
+                  swapw dropw
+              end
+            "#,
+            test_slot_name = &*TEST_SLOT_NAME
+        );
+
+        let source = NamedSource::new("component1::interface", code);
+        TransactionKernel::assembler()
+            .with_debug_mode(true)
+            .assemble_library([source])
+            .expect("mock account code should be valid")
+    });
+
+    static COMPONENT_2_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
+        let code = format!(
+            r#"
+              use.miden::active_account
+              use.miden::native_account
+
+              const TEST_SLOT_NAME = word("{test_slot_name}")
+
+              pub proc get_slot_content
+                  push.TEST_SLOT_NAME[0..2]
+                  exec.active_account::get_item
+                  swapw dropw
+              end
+
+              pub proc set_slot_content
+                  push.5.6.7.8
+                  push.TEST_SLOT_NAME[0..2]
+                  exec.native_account::set_item
+                  swapw dropw
+              end
+            "#,
+            test_slot_name = &*TEST_SLOT_NAME
+        );
+
+        let source = NamedSource::new("component2::interface", code);
+        TransactionKernel::assembler()
+            .with_debug_mode(true)
+            .assemble_library([source])
+            .expect("mock account code should be valid")
+    });
+
+    struct CustomComponent1 {
+        slot: StorageSlot,
+    }
+
+    impl From<CustomComponent1> for AccountComponent {
+        fn from(component: CustomComponent1) -> AccountComponent {
+            AccountComponent::new(COMPONENT_1_LIBRARY.clone(), vec![component.slot])
+                .expect("should be valid")
+                .with_supports_all_types()
+        }
+    }
+
+    struct CustomComponent2;
+
+    impl From<CustomComponent2> for AccountComponent {
+        fn from(_component: CustomComponent2) -> AccountComponent {
+            AccountComponent::new(COMPONENT_2_LIBRARY.clone(), vec![])
+                .expect("should be valid")
+                .with_supports_all_types()
+        }
+    }
+
+    let slot = StorageSlot::with_value(TEST_SLOT_NAME.clone(), Word::from([1, 2, 3, 4u32]));
+
+    let account = AccountBuilder::new([42; 32])
+        .with_auth_component(Auth::IncrNonce)
+        .with_component(CustomComponent1 { slot: slot.clone() })
+        .with_component(CustomComponent2)
+        .build()
+        .context("failed to build account")?;
+
+    let tx_script = r#"
+      use.component1::interface->comp1_interface
+      use.component2::interface->comp2_interface
+
+      begin
+          call.comp1_interface::get_slot_content
+          push.1.2.3.4
+          assert_eqw.err="failed to get slot content1"
+
+          call.comp2_interface::set_slot_content
+
+          call.comp2_interface::get_slot_content
+          push.5.6.7.8
+          assert_eqw.err="failed to get slot content2"
+      end
+    "#;
+
+    let tx_script = CodeBuilder::default()
+        .with_dynamically_linked_library(COMPONENT_1_LIBRARY.clone())?
+        .with_dynamically_linked_library(COMPONENT_2_LIBRARY.clone())?
+        .compile_tx_script(tx_script)?;
+
+    TransactionContextBuilder::new(account)
+        .tx_script(tx_script)
+        .build()?
+        .execute()
+        .await?;
 
     Ok(())
 }

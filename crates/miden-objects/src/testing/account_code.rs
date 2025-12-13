@@ -19,9 +19,10 @@ pub const CODE: &str = "
 impl AccountCode {
     /// Creates a mock [AccountCode] with default assembler and mock code
     pub fn mock() -> AccountCode {
-        let component = AccountComponent::compile(CODE, Assembler::default(), vec![])
-            .unwrap()
-            .with_supports_all_types();
+        let library = Assembler::default()
+            .assemble_library([CODE])
+            .expect("mock account component should assemble");
+        let component = AccountComponent::new(library, vec![]).unwrap().with_supports_all_types();
 
         Self::from_components(
             &[NoopAuthComponent.into(), component],
