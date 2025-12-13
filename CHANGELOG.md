@@ -33,6 +33,7 @@ Added the ability to get full public key from `TransactionAuthenticator` ([#2145
 - [BREAKING] Added fee to `TransactionHeader` ([#2131](https://github.com/0xMiden/miden-base/pull/2131)).
 - [BREAKING] Increased `MAX_INPUTS_PER_NOTE` from 128 to 1024 ([#2139](https://github.com/0xMiden/miden-base/pull/2139)).
 - Added the ability to get full public key from `TransactionAuthenticator` ([#2145](https://github.com/0xMiden/miden-base/pull/2145)).
+- Added `TokenSymbol::from_static_str` const function for compile-time token symbol validation ([#2148](https://github.com/0xMiden/miden-base/pull/2148)).
 - [BREAKING] Renamed `AccountProcedureInfo` into `AccountProcedureRoot` and remove storage offset and size ([#2162](https://github.com/0xMiden/miden-base/pull/2162)).
 - [BREAKING] Made `AccountProcedureIndexMap` construction infallible ([#2163](https://github.com/0xMiden/miden-base/pull/2163)).
 
