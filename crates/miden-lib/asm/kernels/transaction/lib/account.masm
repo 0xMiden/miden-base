@@ -24,20 +24,15 @@ const.ERR_ACCOUNT_SETTING_VALUE_ITEM_ON_NON_VALUE_SLOT="failed to write an accou
 
 const.ERR_ACCOUNT_SETTING_MAP_ITEM_ON_NON_MAP_SLOT="failed to write an account map item to a non-map storage slot"
 
-const.ERR_ACCOUNT_PROC_NOT_PART_OF_ACCOUNT_CODE="account procedure is not part of the account code"
+const.ERR_ACCOUNT_PROC_NOT_PART_OF_ACCOUNT_CODE="procedure is not part of the account code"
 
 const.ERR_ACCOUNT_PROC_INDEX_OUT_OF_BOUNDS="provided procedure index is out of bounds"
 
 const.ERR_ACCOUNT_PROC_NOT_AUTH_PROC="account procedure is not the authentication procedure; some procedures (e.g. `incr_nonce`) can be called only from the authentication procedure"
 
-# TODO(named_slots): Remove along with index APIs.
-const.ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS="provided storage slot index is out of bounds"
-
 const.ERR_ACCOUNT_STORAGE_SLOTS_MUST_BE_SORTED_AND_UNIQUE="slot IDs must be unique and sorted in ascending order"
 
 const.ERR_ACCOUNT_UNKNOWN_STORAGE_SLOT_NAME="storage slot with the provided name does not exist"
-
-const.ERR_FAUCET_INVALID_STORAGE_OFFSET="storage offset is invalid for a faucet account (0 is prohibited as it is the reserved data slot for faucets)"
 
 const.ERR_ACCOUNT_CODE_COMMITMENT_MISMATCH="computed account code commitment does not match recorded account code commitment"
 
@@ -50,8 +45,6 @@ const.ERR_ACCOUNT_TOO_MANY_STORAGE_SLOTS="number of account storage slots exceed
 const.ERR_ACCOUNT_STORAGE_COMMITMENT_MISMATCH="computed account storage commitment does not match recorded account storage commitment"
 
 const.ERR_ACCOUNT_STORAGE_MAP_ENTRIES_DO_NOT_MATCH_MAP_ROOT="storage map entries provided as advice inputs do not have the same storage map root as the root of the map the new account commits to"
-
-const.ERR_ACCOUNT_INVALID_STORAGE_OFFSET_FOR_SIZE="storage size can only be zero if storage offset is also zero"
 
 const.ERR_FOREIGN_ACCOUNT_ID_IS_ZERO="ID of the provided foreign account equals zero"
 
@@ -128,7 +121,7 @@ const.ACCOUNT_TREE_DEPTH=64
 const.ACCOUNT_STORAGE_SLOT_DATA_LENGTH=8
 
 # The number of field elements it takes to store one account procedure.
-const.ACCOUNT_PROCEDURE_DATA_LENGTH=8
+const.ACCOUNT_PROCEDURE_DATA_LENGTH=4
 
 # The offset of the slot type in the storage slot.
 const.ACCOUNT_SLOT_TYPE_OFFSET=1
@@ -836,140 +829,14 @@ end
 # CODE
 # -------------------------------------------------------------------------------------------------
 
-#! Validates all account procedure's storage metadata.
-#!
-#! Inputs:  []
-#! Outputs: []
-#!
-#! Panics if:
-#! - Storage offset + storage size > number of storage slots.
-#! - Storage size is zero and storage offset is non-zero.
-#!   - This is validated to ensure users do not accidentally set a non-zero offset with a
-#!     zero size which would prevent any access to storage.
-#! - The storage offset of a faucet account's procedure is 0 with a size != 0.
-#!   - This prevents access to the reserved storage slot.
-export.validate_procedure_metadata
-    # get number of account procedures and number of storage slots
-    exec.memory::get_num_account_procedures exec.memory::get_num_storage_slots
-    # => [num_storage_slots, num_account_procedures]
-
-    # prepare stack for looping
-    push.0.1
-    # => [start_loop, index, num_storage_slots, num_account_procedures]
-
-    # check if the account is a faucet
-    exec.get_id swap drop exec.account_id::is_faucet
-    # => [is_faucet, start_loop, index, num_storage_slots, num_account_procedures]
-
-    # we do not check if num_account_procedures == 0 here because a valid
-    # account has between 1 and 256 procedures with associated offsets
-    if.true
-        # This branch handles procedures from faucet accounts.
-        while.true
-            # get storage offset and size from memory
-            dup exec.get_procedure_metadata
-            # => [storage_offset, storage_size, index, num_storage_slots, num_account_procedures]
-
-            # Procedures that do not access storage are defined with (offset, size) = (0, 0).
-            # But we want to fail on tuples defined with a zero size but non-zero offset, since that
-            # is a logic error.
-            # We assert this with: (size == 0 && offset != 0) == 0.
-            dup.1 eq.0 dup.1 eq.0 not and assertz.err=ERR_ACCOUNT_INVALID_STORAGE_OFFSET_FOR_SIZE
-            # => [storage_offset, storage_size, index, num_storage_slots, num_account_procedures]
-
-            # No procedure should access the reserved faucet slot (slot 0). However (0, 0) should
-            # still be allowed per the above.
-            # We assert this with: (offset == 0 && size != 0) == 0.
-            dup.1 eq.0 not dup.1 eq.0 and assertz.err=ERR_FAUCET_INVALID_STORAGE_OFFSET
-            # => [storage_offset, storage_size, index, num_storage_slots, num_account_procedures]
-
-            # assert that storage limit is in bounds
-            add dup.2 lte assert.err=ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS
-            # => [index, num_storage_slots, num_account_procedures]
-
-            # check if we should continue looping
-            add.1 dup dup.3 lt
-            # => [should_loop, index, num_storage_slots, num_account_procedures]
-        end
-    else
-        # This branch handles procedures from regular accounts.
-        while.true
-            # get storage offset and size from memory
-            dup exec.get_procedure_metadata
-            # => [storage_offset, storage_size, index, num_storage_slots, num_account_procedures]
-
-            # Procedures that do not access storage are defined with (offset, size) = (0, 0).
-            # But we want to fail on tuples defined with a zero size but non-zero offset, since that
-            # is a logic error.
-            # We assert this with: (size == 0 && offset != 0) == 0.
-            dup.1 eq.0 dup.1 eq.0 not and assertz.err=ERR_ACCOUNT_INVALID_STORAGE_OFFSET_FOR_SIZE
-            # => [storage_offset, storage_size, index, num_storage_slots, num_account_procedures]
-
-            # assert that storage limit is in bounds
-            add dup.2 lte assert.err=ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS
-            # => [index, num_storage_slots, num_account_procedures]
-
-            # check if we should continue looping
-            add.1 dup dup.3 lt
-            # => [should_loop, index, num_storage_slots, num_account_procedures]
-        end
-    end
-
-    # clean stack
-    drop drop drop
-    # => []
-end
-
-#! Returns the procedure information.
-#!
-#! Inputs:  [index]
-#! Outputs: [PROC_ROOT, storage_offset, storage_size]
-#!
-#! Where:
-#! - PROC_ROOT is the hash of the procedure.
-#! - storage_offset is the procedure storage offset.
-#! - storage_size is the number of storage slots the procedure is allowed to access.
-#!
-#! Panics if:
-#! - the procedure index is out of bounds.
-export.get_procedure_info
-    # check that index < number of procedures contained in the account code
-    dup exec.memory::get_num_account_procedures
-    u32assert2.err=ERR_ACCOUNT_PROC_INDEX_OUT_OF_BOUNDS u32lt assert.err=ERR_ACCOUNT_PROC_INDEX_OUT_OF_BOUNDS
-    # => [index]
-
-    # get procedure pointer
-    exec.memory::get_account_procedure_ptr
-    # => [proc_ptr]
-
-    # get metadata pointer
-    dup add.4 swap
-    # => [proc_ptr, metadata_ptr]
-
-    # load procedure information from memory
-    padw movup.4 mem_loadw_be padw movup.8 mem_loadw_be
-    # => [METADATA, PROC_ROOT]
-    # more explicitly:
-    # => [0, 0, storage_size, storage_offset, PROC_ROOT]
-
-    # keep relevant data
-    drop drop
-    # => [storage_size, storage_offset, PROC_ROOT]
-
-    swap movdn.5 movdn.5
-    # => [PROC_ROOT, storage_offset, storage_size]
-end
-
 #! Verifies that the procedure root is part of the account code and tracks whether it has been
 #! called.
 #!
 #! Inputs:  [PROC_ROOT]
-#! Outputs: [storage_offset, storage_size]
+#! Outputs: []
 #!
 #! Where:
 #! - PROC_ROOT is the hash of the procedure to authenticate.
-#! - storage_offset is the procedure storage offset.
-#! - storage_size is the number of storage slots the procedure is allowed to access.
 #!
 #! Panics if:
 #! - the procedure root is not part of the account code.
@@ -978,19 +845,16 @@ export.authenticate_and_track_procedure
     emit.ACCOUNT_PUSH_PROCEDURE_INDEX_EVENT adv_push.1
     # => [index, PROC_ROOT]
 
-    dup movdn.5
-    # get procedure info (PROC_ROOT, storage_offset, storage_size) from memory stored at index
-    exec.get_procedure_info
-    # => [MEM_PROC_ROOT, storage_offset, storage_size, PROC_ROOT, index]
+    dup movdn.5 exec.get_procedure_root
+    # => [MEM_PROC_ROOT, PROC_ROOT, index]
 
-    # verify that PROC_ROOT exists in memory at index
-    movup.4 movdn.9 movup.4 movdn.9 assert_eqw.err=ERR_ACCOUNT_PROC_NOT_PART_OF_ACCOUNT_CODE
-    # => [storage_offset, storage_size, index]
+    # verify that PROC_ROOT and MEM_PROC_ROOT fetched from memory match
+    assert_eqw.err=ERR_ACCOUNT_PROC_NOT_PART_OF_ACCOUNT_CODE
+    # => [index]
 
     # Set the was_called flag to 1 for this procedure
-    movup.2 exec.set_was_procedure_called
-
-    # => [storage_offset, storage_size]
+    exec.set_was_procedure_called
+    # => []
 end
 
 #! Asserts that the specified procedure root is the root of the authentication procedure for an
@@ -1013,7 +877,7 @@ export.assert_auth_procedure
     dup exec.set_was_procedure_called
     # => [index, PROC_ROOT]
 
-    # get procedure info (PROC_ROOT, storage_offset, storage_size) from memory stored at index
+    # get procedure root from memory stored at index
     exec.get_procedure_root
     # => [MEM_PROC_ROOT, PROC_ROOT]
 
@@ -1223,8 +1087,7 @@ end
 #! - STORAGE_SLOT_DATA is the data contained in the storage slot which is constructed as follows:
 #!   [SLOT_VALUE, slot_type, 0, 0, 0].
 #! - CODE_COMMITMENT is the commitment to the account's code.
-#! - ACCOUNT_PROCEDURE_DATA is the information about account procedures which is constructed as
-#!   follows: [PROCEDURE_MAST_ROOT, storage_offset, 0, 0, 0].
+#! - ACCOUNT_PROCEDURE_DATA are the roots of the public procedures of the foreign account.
 #!
 #! Panics if:
 #! - the number of account procedures exceeded the maximum limit of 256.
@@ -1330,7 +1193,7 @@ export.save_account_storage_data
 
     # pad stack before reading from advice stack
     padw padw padw
-    # OS => [PAD, PAD, PAD, acct_proc_offset, end_ptr, STORAGE_COMMITMENT]
+    # OS => [PAD, PAD, PAD, acct_storage_slots_ptr, end_ptr, STORAGE_COMMITMENT]
     # AS => [[STORAGE_SLOT_DATA]]
 
     # read the data from advice stack to memory and hash
@@ -1364,8 +1227,8 @@ end
 #!
 #! Where:
 #! - CODE_COMMITMENT is the commitment of the active account's code.
-#! - ACCOUNT_PROCEDURE_DATA is the information about account procedure which is constructed as
-#!   follows: [PROCEDURE_MAST_ROOT, storage_offset, storage_size, 0, 0]
+#! - ACCOUNT_PROCEDURE_DATA are the roots of the public procedures of the account laid out as
+#!   [ACCOUNT_PROCEDURE_DATA].
 #!
 #! Panics if:
 #! - the number of account procedures exceeded the maximum limit of 256.
@@ -1402,19 +1265,13 @@ export.save_account_procedure_data
     # OS => [num_procs, CODE_COMMITMENT]
     # AS => [[ACCOUNT_PROCEDURE_DATA]]
 
-    # setup acct_proc_offset and end_ptr for reading from advice stack
-    exec.memory::get_account_procedure_ptr
-    push.0 exec.memory::get_account_procedure_ptr
-    # OS => [acct_proc_offset, end_ptr, CODE_COMMITMENT]
-    # AS => [[ACCOUNT_PROCEDURE_DATA]]
-
-    # pad stack before reading from advice stack
-    padw padw padw
-    # OS => [PAD, PAD, PAD, acct_proc_offset, end_ptr, CODE_COMMITMENT]
+    # setup start ptr and num procedures for reading from advice stack
+    exec.memory::get_account_procedures_section_ptr swap
+    # OS => [num_procs, account_proc_ptr, CODE_COMMITMENT]
     # AS => [[ACCOUNT_PROCEDURE_DATA]]
 
     # read the data from advice stack to memory and hash
-    exec.mem::pipe_double_words_to_memory
+    exec.mem::pipe_words_to_memory
     # OS => [PERM, PERM, PERM, end_ptr', CODE_COMMITMENT]
     # AS => []
 
@@ -1911,7 +1768,8 @@ end
 #! - the procedure index is out of bounds.
 proc.get_procedure_root
     dup exec.memory::get_num_account_procedures
-    u32assert2.err=ERR_ACCOUNT_PROC_INDEX_OUT_OF_BOUNDS u32lt assert.err=ERR_ACCOUNT_PROC_INDEX_OUT_OF_BOUNDS
+    u32assert2.err=ERR_ACCOUNT_PROC_INDEX_OUT_OF_BOUNDS
+    u32lt assert.err=ERR_ACCOUNT_PROC_INDEX_OUT_OF_BOUNDS
     # => [index]
 
     # get procedure pointer
@@ -1921,27 +1779,6 @@ proc.get_procedure_root
     # load procedure root from memory
     padw movup.4 mem_loadw_be
     # => [PROC_ROOT]
-end
-
-#! Returns the procedure metadata.
-#!
-#! Note:
-#! - We assume that index has been validated and is within bounds.
-#!
-#! Inputs:  [index]
-#! Outputs: [storage_offset, storage_size]
-#!
-#! Where:
-#! - storage_offset is the procedure storage offset.
-#! - storage_size is the number of storage slots the procedure is allowed to access.
-proc.get_procedure_metadata
-    # get procedure storage metadata pointer
-    padw exec.memory::get_account_procedure_ptr add.4
-    # => [storage_offset_ptr, EMPTY_WORD]
-
-    # load procedure metadata from memory and keep relevant data
-    mem_loadw_be drop drop swap
-    # => [storage_offset, storage_size]
 end
 
 #! Returns the pointer to the next vacant memory slot if the account was not loaded before, and the
@@ -2216,18 +2053,18 @@ export.has_procedure
         # => [PROC_ROOT, curr_proc_ptr, end_ptr, is_procedure_available']
 
         # move the current procedure pointer
-        movup.4 add.8
-        # => [curr_proc_ptr + 8, PROC_ROOT, end_ptr, is_procedure_available']
+        movup.4 add.ACCOUNT_PROCEDURE_DATA_LENGTH
+        # => [curr_proc_ptr + 4, PROC_ROOT, end_ptr, is_procedure_available']
         
         # compute should_loop flag: we should continue iterating if
-        # !(is_procedure_available' || curr_proc_ptr + 8 == end_ptr), i.e. we didn't find the 
+        # !(is_procedure_available' || curr_proc_ptr + 4 == end_ptr), i.e. we didn't find the
         # procedure and we didn't reach the end of the procedures memory block
         dup dup.6 eq dup.7 or eq.0
-        # => [should_loop, curr_proc_ptr + 8, PROC_ROOT, end_ptr, is_procedure_available']
+        # => [should_loop, curr_proc_ptr + 4, PROC_ROOT, end_ptr, is_procedure_available']
 
         # rearrange the stack
         swap movdn.5
-        # => [should_loop, PROC_ROOT, curr_proc_ptr + 8, end_ptr, is_procedure_available']
+        # => [should_loop, PROC_ROOT, curr_proc_ptr + 4, end_ptr, is_procedure_available']
     end
 
     # => [PROC_ROOT, curr_proc_ptr', end_ptr, is_procedure_available']

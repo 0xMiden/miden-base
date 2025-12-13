@@ -67,7 +67,7 @@ use miden_objects::account::{
     AccountBuilder,
     AccountId,
     AccountIdVersion,
-    AccountProcedureInfo,
+    AccountProcedureRoot,
     AccountStorage,
     AccountStorageMode,
     AccountType,
@@ -431,14 +431,14 @@ fn account_data_memory_assertions(exec_output: &ExecutionOutput, inputs: &Transa
         .account()
         .code()
         .as_elements()
-        .chunks(AccountProcedureInfo::NUM_ELEMENTS_PER_PROC / 2)
+        .chunks(AccountProcedureRoot::NUM_ELEMENTS)
         .enumerate()
     {
         assert_eq!(
             exec_output
                 .get_kernel_mem_word(NATIVE_ACCT_PROCEDURES_SECTION_PTR + (i * WORD_SIZE) as u32),
             Word::try_from(elements).unwrap(),
-            "The account procedures and storage offsets should be stored starting at NATIVE_ACCT_PROCEDURES_SECTION_PTR"
+            "The account procedures should be stored starting at NATIVE_ACCT_PROCEDURES_SECTION_PTR"
         );
     }
 }
