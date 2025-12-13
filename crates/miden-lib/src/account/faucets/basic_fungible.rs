@@ -239,9 +239,9 @@ impl TryFrom<&Account> for BasicFungibleFaucet {
 /// The storage layout of the faucet account is:
 /// - Slot 0: Reserved slot for faucets.
 /// - Slot 1: Public Key of the authentication component.
-/// - Slot 2: [num_tracked_procs, allow_unauthorized_output_notes, allow_unauthorized_input_notes,
+/// - Slot 2: [num_trigger_procs, allow_unauthorized_output_notes, allow_unauthorized_input_notes,
 ///   0].
-/// - Slot 3: A map with tracked procedure roots.
+/// - Slot 3: A map with trigger procedure roots.
 /// - Slot 4: Token metadata of the faucet.
 pub fn create_basic_fungible_faucet(
     init_seed: [u8; 32],
@@ -375,9 +375,9 @@ mod tests {
         );
 
         // The config slot of the auth component stores:
-        // [num_tracked_procs, allow_unauthorized_output_notes, allow_unauthorized_input_notes, 0].
+        // [num_trigger_procs, allow_unauthorized_output_notes, allow_unauthorized_input_notes, 0].
         //
-        // With 1 tracked procedure (distribute), allow_unauthorized_output_notes=false, and
+        // With 1 trigger procedure (distribute), allow_unauthorized_output_notes=false, and
         // allow_unauthorized_input_notes=true, this should be [1, 0, 1, 0].
         assert_eq!(
             faucet_account.storage().get_item(AuthRpoFalcon512Acl::config_slot()).unwrap(),
@@ -390,7 +390,7 @@ mod tests {
             faucet_account
                 .storage()
                 .get_map_item(
-                    AuthRpoFalcon512Acl::tracked_procedure_roots_slot(),
+                    AuthRpoFalcon512Acl::trigger_procedure_roots_slot(),
                     [Felt::ZERO, Felt::ZERO, Felt::ZERO, Felt::ZERO].into()
                 )
                 .unwrap(),
