@@ -2,9 +2,46 @@
 
 ## 0.13.0 (TBD)
 
-## 0.12.2 (unreleased)
+### Features
+
+- [BREAKING] Refactored storage slots to be accessed by names instead of indices ([#1987](https://github.com/0xMiden/miden-base/pull/1987), [#2025](https://github.com/0xMiden/miden-base/pull/2025), [#2149](https://github.com/0xMiden/miden-base/pull/2149), [#2150](https://github.com/0xMiden/miden-base/pull/2150), [#2153](https://github.com/0xMiden/miden-base/pull/2153), [#2154](https://github.com/0xMiden/miden-base/pull/2154), [#2161](https://github.com/0xMiden/miden-base/pull/2161), [#2170](https://github.com/0xMiden/miden-base/pull/2170)).
+- [BREAKING] Allowed account components to share identical account code procedures ([#2164](https://github.com/0xMiden/miden-base/pull/2164)).
+
+### Changes
+
+- Added proc-macro `WordWrapper` to ease implementation of `Word`-wrapping types ([#2071](https://github.com/0xMiden/miden-base/pull/2108)).
+- [BREAKING] Added `BlockBody` and `BlockProof` structs in preparation for validator signatures and deferred block proving ([#2012](https://github.com/0xMiden/miden-base/pull/2012)).
+- [BREAKING] Renamed `TransactionEvent` into `TransactionEventId` and split event handling into data extraction and handling logic ([#2071](https://github.com/0xMiden/miden-base/pull/2071)).
+- Split tx progress events out into a separate enum ([#2103](https://github.com/0xMiden/miden-base/pull/2103)).
+- Added `note::get_network_account_tag` procedure ([#2120](https://github.com/0xMiden/miden-base/pull/2120)).
+- [BREAKING] Updated MINT note to support both private and public output note creation ([#2123](https://github.com/0xMiden/miden-base/pull/2123)).
+- [BREAKING] Removed `AccountComponentTemplate` in favor of instantiating components via `AccountComponent::from_package` ([#2127](https://github.com/0xMiden/miden-base/pull/2127)).
+- [BREAKING] Added public key to, remove proof commitment from, `BlockHeader`, and add signing functionality through `BlockSigner` trait ([#2128](https://github.com/0xMiden/miden-base/pull/2128)).
+- [BREAKING] Added fee to `TransactionHeader` ([#2131](https://github.com/0xMiden/miden-base/pull/2131)).
+- [BREAKING] Increased `MAX_INPUTS_PER_NOTE` from 128 to 1024 ([#2139](https://github.com/0xMiden/miden-base/pull/2139)).
+- Added the ability to get full public key from `TransactionAuthenticator` ([#2145](https://github.com/0xMiden/miden-base/pull/2145)).
+- Added `TokenSymbol::from_static_str` const function for compile-time token symbol validation ([#2148](https://github.com/0xMiden/miden-base/pull/2148)).
+- [BREAKING] Renamed `AccountProcedureInfo` into `AccountProcedureRoot` and remove storage offset and size ([#2162](https://github.com/0xMiden/miden-base/pull/2162)).
+- [BREAKING] Made `AccountProcedureIndexMap` construction infallible ([#2163](https://github.com/0xMiden/miden-base/pull/2163)).
+
+## 0.12.4 (2025-11-26)
+
+- Added the standard library's precompile registry to `TransactionVerifier` ([#2116](https://github.com/0xMiden/miden-base/pull/2116)).
+
+## 0.12.3 (2025-11-15)
+
+- Added `ecdsa_k256_keccak::PublicKey` as a valid template type ([#2097](https://github.com/0xMiden/miden-base/pull/2097)).
+- [BREAKING] Fix advice inputs in transaction inputs not being propagated through ([#2099](https://github.com/0xMiden/miden-base/pull/2099)).
+- Add `S` generic to `NullifierTree` to allow usage with `LargeSmt`s ([#1353](https://github.com/0xMiden/miden-node/issues/1353)).
+- [BREAKING] Pre-fetch note and fee asset witnesses before transaction execution ([#2113](https://github.com/0xMiden/miden-base/pull/2113)).
+
+## 0.12.2 (2025-11-12)
 
 - Added `create_mint_note` and `create_burn_note` helper functions for creating standardized MINT and BURN notes ([#2061](https://github.com/0xMiden/miden-base/pull/2061)).
+- [BREAKING] Fix ECDSA signature preparation in `Signature::to_prepared_signature()` method  ([#2074](https://github.com/0xMiden/miden-base/pull/2074)).
+- Skip value slot normalization for new account's deltas ([#2075](https://github.com/0xMiden/miden-base/pull/2075)).
+- Skip value and map slot normalization for new account's deltas ([#2075](https://github.com/0xMiden/miden-base/pull/2075), [#2077](https://github.com/0xMiden/miden-base/pull/2077)).
+- Added `AuthEcdsaK256Keccak` and `AuthEcdsaK256KeccakMultisig` auth components ([#2083](https://github.com/0xMiden/miden-base/pull/2083)).
 
 ## 0.12.1 (2025-11-06)
 
@@ -44,9 +81,9 @@
 - Added `account::get_initial_balance` procedure to `miden` lib ([#1959](https://github.com/0xMiden/miden-base/pull/1959)).
 - [BREAKING] Changed `Account` to `PartialAccount` conversion to generally track only minimal data ([#1963](https://github.com/0xMiden/miden-base/pull/1963)).
 - Added `MastArtifact`, `PackageExport`, `PackageManifest`, `AttributeSet`, `QualifiedProcedureName`, `Section` and `SectionId` to re-export section ([#1984](https://github.com/0xMiden/miden-base/pull/1984) and [#2015](https://github.com/0xMiden/miden-base/pull/2015)).
-- [BREAKING] Enable computing the transaction ID from the data in a `TransactionHeader` ([#1973](https://github.com/0xMiden/miden-base/pull/1973)).
+- [BREAKING] Enable computing the transaction ID from the data in a `TransactionHeader` ([#1973]https://github.com/0xMiden/miden-base/pull/1973).
+- [BREAKING] Introduce `VaultKey` newtype wrapper for asset vault keys ([#1978]https://github.com/0xMiden/miden-base/pull/1978).
 - [BREAKING] Introduce `AssetVaultKey` newtype wrapper for asset vault keys ([#1978](https://github.com/0xMiden/miden-base/pull/1978), [#2024](https://github.com/0xMiden/miden-base/pull/2024)).
-- [BREAKING] Change `Account` to `PartialAccount` conversion to generally track only minimal data ([#1963](https://github.com/0xMiden/miden-base/pull/1963)).
 - Added `network_fungible_faucet` and `MINT` & `BURN` notes ([#1925](https://github.com/0xMiden/miden-base/pull/1925))
 - Removed `create_p2id_note` and `create_p2any_note` methods from `MockChainBuilder`, users should use `add_p2id_note` and `add_p2any_note` instead ([#1990](https://github.com/0xMiden/miden-base/issues/1990)).
 - [BREAKING] Introduced `AuthScheme` and `PublicKey` enums in `miden-objects::account::auth` module ([#1994](https://github.com/0xMiden/miden-base/pull/1994)).

@@ -2,18 +2,25 @@ use alloc::vec::Vec;
 
 use anyhow::Context;
 use assert_matches::assert_matches;
-use miden_block_prover::{LocalBlockProver, ProvenBlockError};
+use miden_lib::block::build_block;
 use miden_lib::testing::account_component::{IncrNonceAuthComponent, MockAccountComponent};
 use miden_lib::testing::mock_account::MockAccountExt;
 use miden_objects::account::delta::AccountUpdateDetails;
-use miden_objects::account::{Account, AccountBuilder, AccountComponent, AccountId, StorageSlot};
+use miden_objects::account::{
+    Account,
+    AccountBuilder,
+    AccountComponent,
+    AccountId,
+    StorageSlot,
+    StorageSlotName,
+};
 use miden_objects::asset::FungibleAsset;
 use miden_objects::batch::ProvenBatch;
 use miden_objects::block::{BlockInputs, BlockNumber, ProposedBlock};
 use miden_objects::note::NoteType;
 use miden_objects::transaction::ProvenTransactionBuilder;
 use miden_objects::vm::ExecutionProof;
-use miden_objects::{AccountTreeError, NullifierTreeError, Word};
+use miden_objects::{AccountTreeError, NullifierTreeError, ProposedBlockError, Word};
 use miden_tx::LocalTransactionProver;
 
 use crate::kernel_tests::block::utils::MockChainBlockExt;
@@ -73,10 +80,10 @@ async fn witness_test_setup() -> anyhow::Result<WitnessTestSetup> {
     })
 }
 
-/// Tests that a proven block cannot be built if witnesses from a stale account tree are used
+/// Tests that a block cannot be built if witnesses from a stale account tree are used
 /// (i.e. an account tree whose root is not in the previous block header).
 #[tokio::test]
-async fn proven_block_fails_on_stale_account_witnesses() -> anyhow::Result<()> {
+async fn block_building_fails_on_stale_account_witnesses() -> anyhow::Result<()> {
     // Setup test with stale and valid block inputs.
     // --------------------------------------------------------------------------------------------
 
@@ -97,11 +104,11 @@ async fn proven_block_fails_on_stale_account_witnesses() -> anyhow::Result<()> {
     let proposed_block0 = ProposedBlock::new(invalid_account_tree_block_inputs, batches.clone())
         .context("failed to propose block 0")?;
 
-    let error = LocalBlockProver::new(0).prove_dummy(proposed_block0).unwrap_err();
+    let error = build_block(proposed_block0).unwrap_err();
 
     assert_matches!(
         error,
-        ProvenBlockError::StaleAccountTreeRoot {
+        ProposedBlockError::StaleAccountTreeRoot {
             prev_block_account_root,
             ..
         } if prev_block_account_root == valid_block_inputs.prev_block_header().account_root()
@@ -110,10 +117,10 @@ async fn proven_block_fails_on_stale_account_witnesses() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Tests that a proven block cannot be built if witnesses from a stale nullifier tree are used
+/// Tests that a block cannot be built if witnesses from a stale nullifier tree are used
 /// (i.e. a nullifier tree whose root is not in the previous block header).
 #[tokio::test]
-async fn proven_block_fails_on_stale_nullifier_witnesses() -> anyhow::Result<()> {
+async fn block_building_fails_on_stale_nullifier_witnesses() -> anyhow::Result<()> {
     // Setup test with stale and valid block inputs.
     // --------------------------------------------------------------------------------------------
 
@@ -134,11 +141,11 @@ async fn proven_block_fails_on_stale_nullifier_witnesses() -> anyhow::Result<()>
     let proposed_block2 = ProposedBlock::new(invalid_nullifier_tree_block_inputs, batches.clone())
         .context("failed to propose block 2")?;
 
-    let error = LocalBlockProver::new(0).prove_dummy(proposed_block2).unwrap_err();
+    let error = build_block(proposed_block2).unwrap_err();
 
     assert_matches!(
         error,
-        ProvenBlockError::StaleNullifierTreeRoot {
+        ProposedBlockError::StaleNullifierTreeRoot {
           prev_block_nullifier_root,
           ..
         } if prev_block_nullifier_root == valid_block_inputs.prev_block_header().nullifier_root()
@@ -147,10 +154,10 @@ async fn proven_block_fails_on_stale_nullifier_witnesses() -> anyhow::Result<()>
     Ok(())
 }
 
-/// Tests that a proven block cannot be built if both witnesses from a stale account tree and from
+/// Tests that a block cannot be built if both witnesses from a stale account tree and from
 /// the current account tree are used which results in different account tree roots.
 #[tokio::test]
-async fn proven_block_fails_on_account_tree_root_mismatch() -> anyhow::Result<()> {
+async fn block_building_fails_on_account_tree_root_mismatch() -> anyhow::Result<()> {
     // Setup test with stale and valid block inputs.
     // --------------------------------------------------------------------------------------------
 
@@ -180,11 +187,11 @@ async fn proven_block_fails_on_account_tree_root_mismatch() -> anyhow::Result<()
     let proposed_block1 = ProposedBlock::new(stale_account_witness_block_inputs, batches.clone())
         .context("failed to propose block 1")?;
 
-    let error = LocalBlockProver::new(0).prove_dummy(proposed_block1).unwrap_err();
+    let error = build_block(proposed_block1).unwrap_err();
 
     assert_matches!(
         error,
-        ProvenBlockError::AccountWitnessTracking {
+        ProposedBlockError::AccountWitnessTracking {
             source: AccountTreeError::TreeRootConflict { .. },
             ..
         }
@@ -193,10 +200,10 @@ async fn proven_block_fails_on_account_tree_root_mismatch() -> anyhow::Result<()
     Ok(())
 }
 
-/// Tests that a proven block cannot be built if both witnesses from a stale nullifier tree and from
+/// Tests that a block cannot be built if both witnesses from a stale nullifier tree and from
 /// the current nullifier tree are used which results in different nullifier tree roots.
 #[tokio::test]
-async fn proven_block_fails_on_nullifier_tree_root_mismatch() -> anyhow::Result<()> {
+async fn block_building_fails_on_nullifier_tree_root_mismatch() -> anyhow::Result<()> {
     // Setup test with stale and valid block inputs.
     // --------------------------------------------------------------------------------------------
 
@@ -228,11 +235,11 @@ async fn proven_block_fails_on_nullifier_tree_root_mismatch() -> anyhow::Result<
     let proposed_block3 = ProposedBlock::new(invalid_nullifier_witness_block_inputs, batches)
         .context("failed to propose block 3")?;
 
-    let error = LocalBlockProver::new(0).prove_dummy(proposed_block3).unwrap_err();
+    let error = build_block(proposed_block3).unwrap_err();
 
     assert_matches!(
         error,
-        ProvenBlockError::NullifierWitnessRootMismatch(NullifierTreeError::TreeRootConflict(_))
+        ProposedBlockError::NullifierWitnessRootMismatch(NullifierTreeError::TreeRootConflict(_))
     );
 
     Ok(())
@@ -241,7 +248,7 @@ async fn proven_block_fails_on_nullifier_tree_root_mismatch() -> anyhow::Result<
 /// Tests that creating an account when an existing account with the same account ID prefix exists,
 /// results in an error.
 #[tokio::test]
-async fn proven_block_fails_on_creating_account_with_existing_account_id_prefix()
+async fn block_building_fails_on_creating_account_with_existing_account_id_prefix()
 -> anyhow::Result<()> {
     // Construct a new account.
     // --------------------------------------------------------------------------------------------
@@ -252,9 +259,10 @@ async fn proven_block_fails_on_creating_account_with_existing_account_id_prefix(
 
     let account = AccountBuilder::new([5; 32])
         .with_auth_component(auth_component.clone())
-        .with_component(MockAccountComponent::with_slots(vec![StorageSlot::Value(Word::from(
-            [5u32; 4],
-        ))]))
+        .with_component(MockAccountComponent::with_slots(vec![StorageSlot::with_value(
+            StorageSlotName::new("miden::test_slot")?,
+            Word::from([5u32; 4]),
+        )]))
         .build()
         .context("failed to build account")?;
 
@@ -321,12 +329,12 @@ async fn proven_block_fails_on_creating_account_with_existing_account_id_prefix(
 
     let block = mock_chain.propose_block(batches).context("failed to propose block")?;
 
-    let err = LocalBlockProver::new(0).prove_dummy(block).unwrap_err();
+    let err = build_block(block).unwrap_err();
 
     // This should fail when we try to _insert_ the same two prefixes into the partial tree.
     assert_matches!(
         err,
-        ProvenBlockError::AccountIdPrefixDuplicate {
+        ProposedBlockError::AccountIdPrefixDuplicate {
             source: AccountTreeError::DuplicateIdPrefix { duplicate_prefix }
         } if duplicate_prefix == new_id.prefix()
     );
@@ -336,16 +344,17 @@ async fn proven_block_fails_on_creating_account_with_existing_account_id_prefix(
 
 /// Tests that creating two accounts in the same block whose ID prefixes match, results in an error.
 #[tokio::test]
-async fn proven_block_fails_on_creating_account_with_duplicate_account_id_prefix()
+async fn block_building_fails_on_creating_account_with_duplicate_account_id_prefix()
 -> anyhow::Result<()> {
     // Construct a new account.
     // --------------------------------------------------------------------------------------------
     let mock_chain = MockChain::new();
     let account = AccountBuilder::new([5; 32])
         .with_auth_component(Auth::IncrNonce)
-        .with_component(MockAccountComponent::with_slots(vec![StorageSlot::Value(Word::from(
-            [5u32; 4],
-        ))]))
+        .with_component(MockAccountComponent::with_slots(vec![StorageSlot::with_value(
+            StorageSlotName::new("miden::test_slot")?,
+            Word::from([5u32; 4]),
+        )]))
         .build()
         .context("failed to build account")?;
 
@@ -417,12 +426,12 @@ async fn proven_block_fails_on_creating_account_with_duplicate_account_id_prefix
 
     let block = mock_chain.propose_block(batches).context("failed to propose block")?;
 
-    let err = LocalBlockProver::new(0).prove_dummy(block).unwrap_err();
+    let err = build_block(block).unwrap_err();
 
     // This should fail when we try to _track_ the same two prefixes in the partial tree.
     assert_matches!(
         err,
-        ProvenBlockError::AccountWitnessTracking {
+        ProposedBlockError::AccountWitnessTracking {
             source: AccountTreeError::DuplicateIdPrefix { duplicate_prefix }
         } if duplicate_prefix == id0.prefix()
     );

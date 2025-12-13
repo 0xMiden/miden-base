@@ -1,10 +1,11 @@
+use miden_lib::account::auth::AuthRpoFalcon512Multisig;
 use miden_lib::account::components::rpo_falcon_512_multisig_library;
 use miden_lib::account::interface::AccountInterface;
 use miden_lib::account::wallets::BasicWallet;
 use miden_lib::errors::tx_kernel_errors::ERR_TX_ALREADY_EXECUTED;
 use miden_lib::note::create_p2id_note;
 use miden_lib::testing::account_interface::get_public_keys_from_account;
-use miden_lib::utils::ScriptBuilder;
+use miden_lib::utils::CodeBuilder;
 use miden_objects::account::auth::{AuthSecretKey, PublicKey};
 use miden_objects::account::{Account, AccountBuilder, AccountId, AccountStorageMode, AccountType};
 use miden_objects::asset::FungibleAsset;
@@ -398,8 +399,8 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
         end
     ";
 
-    let tx_script = ScriptBuilder::new(true)
-        .with_dynamically_linked_library(&rpo_falcon_512_multisig_library())?
+    let tx_script = CodeBuilder::default()
+        .with_dynamically_linked_library(rpo_falcon_512_multisig_library())?
         .compile_tx_script(tx_script_code)?;
 
     let advice_inputs = AdviceInputs {
@@ -462,15 +463,20 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
     // Verify that the public keys were actually updated in storage
     for (i, expected_key) in new_public_keys.iter().enumerate() {
         let storage_key = [Felt::new(i as u64), Felt::new(0), Felt::new(0), Felt::new(0)].into();
-        let storage_item = updated_multisig_account.storage().get_map_item(1, storage_key).unwrap();
+        let storage_item = updated_multisig_account
+            .storage()
+            .get_map_item(AuthRpoFalcon512Multisig::approver_public_keys_slot(), storage_key)
+            .unwrap();
 
         let expected_word: Word = expected_key.to_commitment().into();
 
         assert_eq!(storage_item, expected_word, "Public key {} doesn't match expected value", i);
     }
 
-    // Verify the threshold was updated by checking storage slot 0
-    let threshold_config_storage = updated_multisig_account.storage().get_item(0).unwrap();
+    // Verify the threshold was updated by checking the config storage slot
+    let threshold_config_storage = updated_multisig_account
+        .storage()
+        .get_item(AuthRpoFalcon512Multisig::threshold_config_slot())?;
 
     assert_eq!(
         threshold_config_storage[0],
@@ -631,8 +637,8 @@ async fn test_multisig_update_signers_remove_owner() -> anyhow::Result<()> {
     advice_map.insert(multisig_config_hash, config_and_pubkeys_vector);
 
     // Create transaction script
-    let tx_script = ScriptBuilder::new(true)
-        .with_dynamically_linked_library(&rpo_falcon_512_multisig_library())?
+    let tx_script = CodeBuilder::default()
+        .with_dynamically_linked_library(rpo_falcon_512_multisig_library())?
         .compile_tx_script("begin\n    call.::update_signers_and_threshold\nend")?;
 
     let advice_inputs = AdviceInputs { map: advice_map, ..Default::default() };
@@ -699,13 +705,17 @@ async fn test_multisig_update_signers_remove_owner() -> anyhow::Result<()> {
     // Verify public keys were updated
     for (i, expected_key) in new_public_keys.iter().enumerate() {
         let storage_key = [Felt::new(i as u64), Felt::new(0), Felt::new(0), Felt::new(0)].into();
-        let storage_item = updated_multisig_account.storage().get_map_item(1, storage_key).unwrap();
+        let storage_item = updated_multisig_account
+            .storage()
+            .get_map_item(AuthRpoFalcon512Multisig::approver_public_keys_slot(), storage_key)?;
         let expected_word: Word = expected_key.to_commitment().into();
         assert_eq!(storage_item, expected_word, "Public key {} doesn't match", i);
     }
 
     // Verify threshold and num_approvers
-    let threshold_config = updated_multisig_account.storage().get_item(0).unwrap();
+    let threshold_config = updated_multisig_account
+        .storage()
+        .get_item(AuthRpoFalcon512Multisig::threshold_config_slot())?;
     assert_eq!(threshold_config[0], Felt::new(threshold), "Threshold not updated");
     assert_eq!(threshold_config[1], Felt::new(num_of_approvers), "Num approvers not updated");
 
@@ -725,8 +735,10 @@ async fn test_multisig_update_signers_remove_owner() -> anyhow::Result<()> {
     for removed_idx in 2..5 {
         let removed_owner_key =
             [Felt::new(removed_idx), Felt::new(0), Felt::new(0), Felt::new(0)].into();
-        let removed_owner_slot =
-            updated_multisig_account.storage().get_map_item(1, removed_owner_key).unwrap();
+        let removed_owner_slot = updated_multisig_account
+            .storage()
+            .get_map_item(AuthRpoFalcon512Multisig::approver_public_keys_slot(), removed_owner_key)
+            .unwrap();
         assert_eq!(
             removed_owner_slot,
             Word::empty(),
@@ -739,7 +751,10 @@ async fn test_multisig_update_signers_remove_owner() -> anyhow::Result<()> {
     let mut non_empty_count = 0;
     for i in 0..5 {
         let storage_key = [Felt::new(i as u64), Felt::new(0), Felt::new(0), Felt::new(0)].into();
-        let storage_item = updated_multisig_account.storage().get_map_item(1, storage_key).unwrap();
+        let storage_item = updated_multisig_account
+            .storage()
+            .get_map_item(AuthRpoFalcon512Multisig::approver_public_keys_slot(), storage_key)
+            .unwrap();
 
         if storage_item != Word::empty() {
             non_empty_count += 1;
@@ -825,8 +840,8 @@ async fn test_multisig_new_approvers_cannot_sign_before_update() -> anyhow::Resu
         end
     ";
 
-    let tx_script = ScriptBuilder::new(true)
-        .with_dynamically_linked_library(&rpo_falcon_512_multisig_library())?
+    let tx_script = CodeBuilder::default()
+        .with_dynamically_linked_library(rpo_falcon_512_multisig_library())?
         .compile_tx_script(tx_script_code)?;
 
     let advice_inputs = AdviceInputs {

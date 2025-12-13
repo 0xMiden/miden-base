@@ -1,12 +1,17 @@
 use miden_lib::transaction::memory::{
     ACCOUNT_STACK_TOP_PTR,
+    ACCT_CODE_COMMITMENT_OFFSET,
+    ACCT_STORAGE_SLOT_ID_PREFIX_OFFSET,
+    ACCT_STORAGE_SLOT_ID_SUFFIX_OFFSET,
+    ACCT_STORAGE_SLOT_TYPE_OFFSET,
+    ACCT_STORAGE_SLOT_VALUE_OFFSET,
     ACTIVE_INPUT_NOTE_PTR,
     NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR,
 };
-use miden_objects::account::AccountId;
+use miden_objects::account::{AccountId, StorageSlotId, StorageSlotType};
 use miden_objects::note::{NoteId, NoteInputs};
 use miden_objects::{Hasher, Word};
-use miden_processor::{EventError, ExecutionError, Felt, ProcessState};
+use miden_processor::{ExecutionError, Felt, ProcessState};
 
 use crate::errors::TransactionKernelError;
 
@@ -14,13 +19,26 @@ use crate::errors::TransactionKernelError;
 // ================================================================================================
 
 pub(super) trait TransactionKernelProcess {
+    /// Returns the pointer to the active account.
+    fn get_active_account_ptr(&self) -> Result<u32, TransactionKernelError>;
+
+    /// Returns the [`AccountId`] of the active account.
     fn get_active_account_id(&self) -> Result<AccountId, TransactionKernelError>;
 
+    /// Returns the account code commitment of the active account.
+    fn get_active_account_code_commitment(&self) -> Result<Word, TransactionKernelError>;
+
+    #[allow(dead_code)]
     fn get_num_storage_slots(&self) -> Result<u64, TransactionKernelError>;
 
     fn get_vault_root(&self, vault_root_ptr: Felt) -> Result<Word, TransactionKernelError>;
 
-    fn get_active_note_id(&self) -> Result<Option<NoteId>, EventError>;
+    fn get_active_note_id(&self) -> Result<Option<NoteId>, TransactionKernelError>;
+
+    fn get_storage_slot(
+        &self,
+        slot_ptr: Felt,
+    ) -> Result<(StorageSlotId, StorageSlotType, Word), TransactionKernelError>;
 
     fn read_note_recipient_info_from_adv_map(
         &self,
@@ -33,11 +51,18 @@ pub(super) trait TransactionKernelProcess {
     ) -> Result<NoteInputs, TransactionKernelError>;
 
     fn has_advice_map_entry(&self, key: Word) -> bool;
+
+    /// Returns `true` if the advice provider has a merkle path for the provided root and leaf
+    /// index, `false` otherwise.
+    fn has_merkle_path<const TREE_DEPTH: u8>(
+        &self,
+        root: Word,
+        leaf_index: Felt,
+    ) -> Result<bool, TransactionKernelError>;
 }
 
 impl<'a> TransactionKernelProcess for ProcessState<'a> {
-    /// Returns the ID of the currently active account.
-    fn get_active_account_id(&self) -> Result<AccountId, TransactionKernelError> {
+    fn get_active_account_ptr(&self) -> Result<u32, TransactionKernelError> {
         let account_stack_top_ptr =
             self.get_mem_value(self.ctx(), ACCOUNT_STACK_TOP_PTR).ok_or_else(|| {
                 TransactionKernelError::other("account stack top ptr should be initialized")
@@ -49,10 +74,12 @@ impl<'a> TransactionKernelProcess for ProcessState<'a> {
         let active_account_ptr = self
             .get_mem_value(self.ctx(), account_stack_top_ptr)
             .ok_or_else(|| TransactionKernelError::other("account id should be initialized"))?;
-        let active_account_ptr = u32::try_from(active_account_ptr).map_err(|_| {
-            TransactionKernelError::other("active account ptr should fit into a u32")
-        })?;
+        u32::try_from(active_account_ptr)
+            .map_err(|_| TransactionKernelError::other("active account ptr should fit into a u32"))
+    }
 
+    fn get_active_account_id(&self) -> Result<AccountId, TransactionKernelError> {
+        let active_account_ptr = self.get_active_account_ptr()?;
         let active_account_id_and_nonce = self
             .get_mem_word(self.ctx(), active_account_ptr)
             .map_err(|_| {
@@ -68,6 +95,23 @@ impl<'a> TransactionKernelProcess for ProcessState<'a> {
                     "active account id ptr should point to a valid account ID",
                 )
             })
+    }
+
+    fn get_active_account_code_commitment(&self) -> Result<Word, TransactionKernelError> {
+        let active_account_ptr = self.get_active_account_ptr()?;
+        let code_commitment = self
+            .get_mem_word(self.ctx(), active_account_ptr + ACCT_CODE_COMMITMENT_OFFSET)
+            .map_err(|err| {
+                TransactionKernelError::other_with_source(
+                    "failed to read code commitment from memory",
+                    err,
+                )
+            })?
+            .ok_or_else(|| {
+                TransactionKernelError::other("active account code commitment was not initialized")
+            })?;
+
+        Ok(code_commitment)
     }
 
     /// Returns the number of storage slots initialized for the active account.
@@ -91,7 +135,7 @@ impl<'a> TransactionKernelProcess for ProcessState<'a> {
     /// # Errors
     /// Returns an error if the address of the active note is invalid (e.g., greater than
     /// `u32::MAX`).
-    fn get_active_note_id(&self) -> Result<Option<NoteId>, EventError> {
+    fn get_active_note_id(&self) -> Result<Option<NoteId>, TransactionKernelError> {
         // get the note address in `Felt` or return `None` if the address hasn't been accessed
         // previously.
         let note_address_felt = match self.get_mem_value(self.ctx(), ACTIVE_INPUT_NOTE_PTR) {
@@ -100,7 +144,7 @@ impl<'a> TransactionKernelProcess for ProcessState<'a> {
         };
         // convert note address into u32
         let note_address = u32::try_from(note_address_felt).map_err(|_| {
-            EventError::from(format!(
+            TransactionKernelError::other(format!(
                 "failed to convert {note_address_felt} into a memory address (u32)"
             ))
         })?;
@@ -110,8 +154,13 @@ impl<'a> TransactionKernelProcess for ProcessState<'a> {
         } else {
             Ok(self
                 .get_mem_word(self.ctx(), note_address)
-                .map_err(ExecutionError::MemoryError)?
-                .map(NoteId::from))
+                .map_err(|err| {
+                    TransactionKernelError::other_with_source(
+                        "failed to read note address",
+                        ExecutionError::MemoryError(err),
+                    )
+                })?
+                .map(NoteId::from_raw))
         }
     }
 
@@ -133,6 +182,61 @@ impl<'a> TransactionKernelProcess for ProcessState<'a> {
                     "vault root ptr {vault_root_ptr} was not initialized"
                 ))
             })
+    }
+
+    fn get_storage_slot(
+        &self,
+        slot_ptr: Felt,
+    ) -> Result<(StorageSlotId, StorageSlotType, Word), TransactionKernelError> {
+        let slot_ptr = u32::try_from(slot_ptr).map_err(|_err| {
+            TransactionKernelError::other(format!(
+                "slot ptr should fit into a u32, but was {slot_ptr}"
+            ))
+        })?;
+
+        let slot_metadata = self
+            .get_mem_word(self.ctx(), slot_ptr)
+            .map_err(|err| {
+                TransactionKernelError::other_with_source(
+                    format!("misaligned slot ptr {slot_ptr}"),
+                    err,
+                )
+            })?
+            .ok_or_else(|| {
+                TransactionKernelError::other(format!("slot ptr {slot_ptr} is uninitialized"))
+            })?;
+
+        let slot_value_ptr = slot_ptr + ACCT_STORAGE_SLOT_VALUE_OFFSET as u32;
+        let slot_value = self
+            .get_mem_word(self.ctx(), slot_value_ptr)
+            .map_err(|err| {
+                TransactionKernelError::other_with_source(
+                    format!("misaligned slot value ptr {slot_value_ptr}"),
+                    err,
+                )
+            })?
+            .ok_or_else(|| {
+                TransactionKernelError::other(format!(
+                    "slot value ptr {slot_value_ptr} is uninitialized"
+                ))
+            })?;
+
+        let slot_type = slot_metadata[ACCT_STORAGE_SLOT_TYPE_OFFSET as usize];
+        let slot_type = u8::try_from(slot_type).map_err(|err| {
+            TransactionKernelError::other(format!("failed to convert {slot_type} into u8: {err}"))
+        })?;
+        let slot_type = StorageSlotType::try_from(slot_type).map_err(|err| {
+            TransactionKernelError::other_with_source(
+                format!("failed to convert {slot_type} into storage slot type",),
+                err,
+            )
+        })?;
+
+        let suffix = slot_metadata[ACCT_STORAGE_SLOT_ID_SUFFIX_OFFSET as usize];
+        let prefix = slot_metadata[ACCT_STORAGE_SLOT_ID_PREFIX_OFFSET as usize];
+        let slot_id = StorageSlotId::new(suffix, prefix);
+
+        Ok((slot_id, slot_type, slot_value))
     }
 
     fn read_note_recipient_info_from_adv_map(
@@ -192,6 +296,21 @@ impl<'a> TransactionKernelProcess for ProcessState<'a> {
 
     fn has_advice_map_entry(&self, key: Word) -> bool {
         self.advice_provider().get_mapped_values(&key).is_some()
+    }
+
+    fn has_merkle_path<const TREE_DEPTH: u8>(
+        &self,
+        root: Word,
+        leaf_index: Felt,
+    ) -> Result<bool, TransactionKernelError> {
+        self.advice_provider()
+            .has_merkle_path(root, Felt::from(TREE_DEPTH), leaf_index)
+            .map_err(|err| {
+                TransactionKernelError::other_with_source(
+                    "failed to check for merkle path presence in advice provider",
+                    err,
+                )
+            })
     }
 }
 

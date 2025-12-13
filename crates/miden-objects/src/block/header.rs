@@ -3,6 +3,7 @@ use alloc::vec::Vec;
 
 use crate::account::{AccountId, AccountType};
 use crate::block::BlockNumber;
+use crate::crypto::dsa::ecdsa_k256_keccak::PublicKey;
 use crate::utils::serde::{
     ByteReader,
     ByteWriter,
@@ -12,8 +13,11 @@ use crate::utils::serde::{
 };
 use crate::{FeeError, Felt, Hasher, Word, ZERO};
 
-/// The header of a block. It contains metadata about the block, commitments to the current
-/// state of the chain and the hash of the proof that attests to the integrity of the chain.
+// BLOCK HEADER
+// ================================================================================================
+
+/// The header of a block. It contains metadata about the block, commitments to the current state of
+/// the chain and the hash of the proof that attests to the integrity of the chain.
 ///
 /// A block header includes the following fields:
 ///
@@ -27,8 +31,7 @@ use crate::{FeeError, Felt, Hasher, Word, ZERO};
 /// - `tx_commitment` is a commitment to the set of transaction IDs which affected accounts in the
 ///   block.
 /// - `tx_kernel_commitment` a commitment to all transaction kernels supported by this block.
-/// - `proof_commitment` is the commitment of the block's STARK proof attesting to the correct state
-///   transition.
+/// - `validator_key` is the public key of the validator that is expected to sign the block.
 /// - `fee_parameters` are the parameters defining the base fees and the native asset, see
 ///   [`FeeParameters`] for more details.
 /// - `timestamp` is the time when the block was created, in seconds since UNIX epoch. Current
@@ -46,7 +49,7 @@ pub struct BlockHeader {
     note_root: Word,
     tx_commitment: Word,
     tx_kernel_commitment: Word,
-    proof_commitment: Word,
+    validator_key: PublicKey,
     fee_parameters: FeeParameters,
     timestamp: u32,
     sub_commitment: Word,
@@ -66,11 +69,11 @@ impl BlockHeader {
         note_root: Word,
         tx_commitment: Word,
         tx_kernel_commitment: Word,
-        proof_commitment: Word,
+        validator_key: PublicKey,
         fee_parameters: FeeParameters,
         timestamp: u32,
     ) -> Self {
-        // compute block sub commitment
+        // Compute block sub commitment.
         let sub_commitment = Self::compute_sub_commitment(
             version,
             prev_block_commitment,
@@ -79,7 +82,7 @@ impl BlockHeader {
             nullifier_root,
             tx_commitment,
             tx_kernel_commitment,
-            proof_commitment,
+            &validator_key,
             &fee_parameters,
             timestamp,
             block_num,
@@ -101,7 +104,7 @@ impl BlockHeader {
             note_root,
             tx_commitment,
             tx_kernel_commitment,
-            proof_commitment,
+            validator_key,
             fee_parameters,
             timestamp,
             sub_commitment,
@@ -169,6 +172,11 @@ impl BlockHeader {
         self.note_root
     }
 
+    /// Returns the public key of the block's validator.
+    pub fn validator_key(&self) -> &PublicKey {
+        &self.validator_key
+    }
+
     /// Returns the commitment to all transactions in this block.
     ///
     /// The commitment is computed as sequential hash of (`transaction_id`, `account_id`) tuples.
@@ -184,11 +192,6 @@ impl BlockHeader {
     /// hashes.
     pub fn tx_kernel_commitment(&self) -> Word {
         self.tx_kernel_commitment
-    }
-
-    /// Returns the proof commitment.
-    pub fn proof_commitment(&self) -> Word {
-        self.proof_commitment
     }
 
     /// Returns a reference to the [`FeeParameters`] in this header.
@@ -213,7 +216,7 @@ impl BlockHeader {
     ///
     /// The sub commitment is computed as a sequential hash of the following fields:
     /// `prev_block_commitment`, `chain_commitment`, `account_root`, `nullifier_root`, `note_root`,
-    /// `tx_commitment`, `tx_kernel_commitment`, `proof_commitment`, `version`, `timestamp`,
+    /// `tx_commitment`, `tx_kernel_commitment`, `validator_key_commitment`, `version`, `timestamp`,
     /// `block_num`, `native_asset_id`, `verification_base_fee` (all fields except the `note_root`).
     #[allow(clippy::too_many_arguments)]
     fn compute_sub_commitment(
@@ -224,7 +227,7 @@ impl BlockHeader {
         nullifier_root: Word,
         tx_commitment: Word,
         tx_kernel_commitment: Word,
-        proof_commitment: Word,
+        validator_key: &PublicKey,
         fee_parameters: &FeeParameters,
         timestamp: u32,
         block_num: BlockNumber,
@@ -236,7 +239,7 @@ impl BlockHeader {
         elements.extend_from_slice(nullifier_root.as_elements());
         elements.extend_from_slice(tx_commitment.as_elements());
         elements.extend_from_slice(tx_kernel_commitment.as_elements());
-        elements.extend_from_slice(proof_commitment.as_elements());
+        elements.extend(validator_key.to_commitment());
         elements.extend([block_num.into(), version.into(), timestamp.into(), ZERO]);
         elements.extend([
             fee_parameters.native_asset_id().suffix(),
@@ -254,18 +257,36 @@ impl BlockHeader {
 
 impl Serializable for BlockHeader {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        self.version.write_into(target);
-        self.prev_block_commitment.write_into(target);
-        self.block_num.write_into(target);
-        self.chain_commitment.write_into(target);
-        self.account_root.write_into(target);
-        self.nullifier_root.write_into(target);
-        self.note_root.write_into(target);
-        self.tx_commitment.write_into(target);
-        self.tx_kernel_commitment.write_into(target);
-        self.proof_commitment.write_into(target);
-        self.fee_parameters.write_into(target);
-        self.timestamp.write_into(target);
+        let Self {
+            version,
+            prev_block_commitment,
+            block_num,
+            chain_commitment,
+            account_root,
+            nullifier_root,
+            note_root,
+            tx_commitment,
+            tx_kernel_commitment,
+            validator_key,
+            fee_parameters,
+            timestamp,
+            // Don't serialize sub commitment and commitment as they can be derived.
+            sub_commitment: _,
+            commitment: _,
+        } = self;
+
+        version.write_into(target);
+        prev_block_commitment.write_into(target);
+        block_num.write_into(target);
+        chain_commitment.write_into(target);
+        account_root.write_into(target);
+        nullifier_root.write_into(target);
+        note_root.write_into(target);
+        tx_commitment.write_into(target);
+        tx_kernel_commitment.write_into(target);
+        validator_key.write_into(target);
+        fee_parameters.write_into(target);
+        timestamp.write_into(target);
     }
 }
 
@@ -280,7 +301,7 @@ impl Deserializable for BlockHeader {
         let note_root = source.read()?;
         let tx_commitment = source.read()?;
         let tx_kernel_commitment = source.read()?;
-        let proof_commitment = source.read()?;
+        let validator_key = source.read()?;
         let fee_parameters = source.read()?;
         let timestamp = source.read()?;
 
@@ -294,7 +315,7 @@ impl Deserializable for BlockHeader {
             note_root,
             tx_commitment,
             tx_kernel_commitment,
-            proof_commitment,
+            validator_key,
             fee_parameters,
             timestamp,
         ))
@@ -370,6 +391,7 @@ impl Deserializable for FeeParameters {
             .map_err(|err| DeserializationError::InvalidValue(err.to_string()))
     }
 }
+
 // TESTS
 // ================================================================================================
 

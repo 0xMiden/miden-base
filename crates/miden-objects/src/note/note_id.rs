@@ -1,6 +1,8 @@
 use alloc::string::String;
 use core::fmt::Display;
 
+use miden_protocol_macros::WordWrapper;
+
 use super::{Felt, Hasher, NoteDetails, Word};
 use crate::WordError;
 use crate::utils::serde::{
@@ -28,33 +30,13 @@ use crate::utils::serde::{
 /// - Every note can be reduced to a single unique ID.
 /// - To compute a note ID, we do not need to know the note's serial_num. Knowing the hash of the
 ///   serial_num (as well as script root, input commitment, and note assets) is sufficient.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, WordWrapper)]
 pub struct NoteId(Word);
 
 impl NoteId {
     /// Returns a new [NoteId] instantiated from the provided note components.
     pub fn new(recipient: Word, asset_commitment: Word) -> Self {
         Self(Hasher::merge(&[recipient, asset_commitment]))
-    }
-
-    /// Returns the elements representation of this note ID.
-    pub fn as_elements(&self) -> &[Felt] {
-        self.0.as_elements()
-    }
-
-    /// Returns the byte representation of this note ID.
-    pub fn as_bytes(&self) -> [u8; 32] {
-        self.0.as_bytes()
-    }
-
-    /// Returns a big-endian, hex-encoded string.
-    pub fn to_hex(&self) -> String {
-        self.0.to_hex()
-    }
-
-    /// Returns the digest defining this note ID.
-    pub fn as_word(&self) -> Word {
-        self.0
     }
 }
 
@@ -73,43 +55,12 @@ impl From<&NoteDetails> for NoteId {
     }
 }
 
-impl From<Word> for NoteId {
-    fn from(digest: Word) -> Self {
-        Self(digest)
-    }
-}
-
 impl NoteId {
     /// Attempts to convert from a hexadecimal string to [NoteId].
+    ///
+    /// Callers must ensure the provided value is an actual [`NoteId`].
     pub fn try_from_hex(hex_value: &str) -> Result<NoteId, WordError> {
-        Word::try_from(hex_value).map(NoteId::from)
-    }
-}
-
-// CONVERSIONS FROM NOTE ID
-// ================================================================================================
-
-impl From<NoteId> for Word {
-    fn from(id: NoteId) -> Self {
-        id.as_word()
-    }
-}
-
-impl From<NoteId> for [u8; 32] {
-    fn from(id: NoteId) -> Self {
-        id.0.into()
-    }
-}
-
-impl From<&NoteId> for Word {
-    fn from(id: &NoteId) -> Self {
-        id.0
-    }
-}
-
-impl From<&NoteId> for [u8; 32] {
-    fn from(id: &NoteId) -> Self {
-        id.0.into()
+        Word::try_from(hex_value).map(NoteId::from_raw)
     }
 }
 

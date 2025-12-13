@@ -1,4 +1,5 @@
 use.$kernel::constants
+use.$kernel::account
 use.std::mem
 
 # ERRORS
@@ -115,7 +116,7 @@ const.TX_COMMITMENT_PTR=816
 const.TX_KERNEL_COMMITMENT_PTR=820
 
 # The memory address at which the proof commitment is stored
-const.PROOF_COMMITMENT_PTR=824
+const.VALIDATOR_KEY_COMMITMENT_PTR=824
 
 # The memory address at which the block metadata is stored [block_number, version, timestamp, 0]
 const.BLOCK_METADATA_PTR=828
@@ -165,6 +166,10 @@ const.NATIVE_ACCOUNT_DATA_PTR=8192
 
 # The length of the memory interval that the account data occupies.
 const.ACCOUNT_DATA_LENGTH=8192
+
+# The number of field elements it takes to store one account procedure.
+# TODO: Duplicated in account.masm, can we remove that?
+const.ACCOUNT_PROCEDURE_DATA_LENGTH=4
 
 # The offsets at which the account data is stored relative to the start of the account data segment.
 const.ACCT_ID_AND_NONCE_OFFSET=0
@@ -502,14 +507,14 @@ export.get_init_native_account_vault_root
     padw mem_loadw_be.INIT_NATIVE_ACCOUNT_VAULT_ROOT_PTR
 end
 
-#! Returns the memory address of the vault root of the native account at the beginning of the 
+#! Returns the memory address of the vault root of the native account at the beginning of the
 #! transaction.
 #!
 #! Inputs:  []
 #! Outputs: [native_account_initial_vault_root_ptr]
 #!
 #! Where:
-#! - native_account_initial_vault_root_ptr is the memory pointer to the initial vault root of the 
+#! - native_account_initial_vault_root_ptr is the memory pointer to the initial vault root of the
 #!   native account.
 export.get_init_native_account_vault_root_ptr
     push.INIT_NATIVE_ACCOUNT_VAULT_ROOT_PTR
@@ -769,15 +774,15 @@ export.get_tx_kernel_commitment
     padw mem_loadw_be.TX_KERNEL_COMMITMENT_PTR
 end
 
-#! Returns the proof commitment of the transaction reference block.
+#! Returns the validator key commitment of the transaction reference block.
 #!
 #! Inputs:  []
-#! Outputs: [PROOF_COMMITMENT]
+#! Outputs: [VALIDATOR_KEY_COMMITMENT]
 #!
 #! Where:
-#! - PROOF_COMMITMENT is the proof commitment of the transaction reference block.
-export.get_proof_commitment
-    padw mem_loadw_be.PROOF_COMMITMENT_PTR
+#! - VALIDATOR_KEY_COMMITMENT is the public key commitment of the transaction reference block.
+export.get_validator_key_commitment
+    padw mem_loadw_be.VALIDATOR_KEY_COMMITMENT_PTR
 end
 
 #! Returns the note root of the transaction reference block.
@@ -987,6 +992,17 @@ export.is_native_account
     # => [is_native_account]
 end
 
+#! Returns 1 if the native account is new, i.e. its nonce is zero, 0 otherwise.
+#!
+#! Inputs:  []
+#! Outputs: [is_new_account]
+export.is_new_account
+    # the account is new if its nonce is zero
+    # use get_init_nonce so this procedure works correctly even after the account's nonce was
+    # incremented
+    exec.get_init_nonce eq.0
+end
+
 #! Returns a pointer to the end of the core account data section.
 #!
 #! Inputs:  []
@@ -1132,7 +1148,7 @@ end
 #! Where:
 #! - account_initial_vault_root_ptr is the memory pointer to the initial vault root.
 export.get_account_initial_vault_root_ptr
-    # For foreign account, use the regular vault root pointer since foreign accounts are read-only 
+    # For foreign account, use the regular vault root pointer since foreign accounts are read-only
     # and initial == current
     exec.get_account_vault_root_ptr
     # => [account_vault_root_ptr]
@@ -1254,7 +1270,7 @@ end
 #! - proc_idx is the index of the account procedure.
 #! - proc_ptr is the memory pointer to the account procedure at the specified index.
 export.get_account_procedure_ptr
-    mul.8 exec.get_account_procedures_section_ptr add
+    mul.ACCOUNT_PROCEDURE_DATA_LENGTH exec.get_account_procedures_section_ptr add
 end
 
 ### ACCOUNT STORAGE #################################################
@@ -1347,20 +1363,6 @@ export.set_num_storage_slots
     mem_store
 end
 
-#! Returns the type of the requested storage slot.
-#!
-#! Inputs:  [account_storage_slots_section_ptr, index]
-#! Outputs: [slot_type]
-#!
-#! Where:
-#! - index is the location in memory of the storage slot.
-#! - slot_type is the type of the storage slot.
-export.get_storage_slot_type
-    # get storage slot type
-    swap mul.8 add add.4 mem_load
-    # => [slot_type]
-end
-
 #! Returns the memory pointer to the account storage slots section.
 #!
 #! Inputs:  []
@@ -1406,7 +1408,7 @@ end
 #! Where:
 #! - account_initial_storage_slots_ptr is the memory pointer to the initial storage slot values.
 export.get_account_initial_storage_slots_ptr
-    # For foreign account, use the regular storage slots pointer since foreign accounts are 
+    # For foreign account, use the regular storage slots pointer since foreign accounts are
     # read-only and initial == current
     exec.get_account_storage_slots_section_ptr
     # => [account_storage_slots_ptr]

@@ -1,4 +1,5 @@
 use alloc::collections::BTreeMap;
+use alloc::vec::Vec;
 
 use miden_objects::Word;
 use miden_objects::account::{
@@ -6,6 +7,7 @@ use miden_objects::account::{
     AccountStorageHeader,
     PartialAccount,
     StorageMap,
+    StorageSlotName,
     StorageSlotType,
 };
 
@@ -21,13 +23,15 @@ use miden_objects::account::{
 /// that slot.
 #[derive(Debug, Clone)]
 pub struct StorageDeltaTracker {
+    /// Flag indicating whether this delta is for a new account.
+    is_account_new: bool,
     /// The _initial_ storage header of the native account against which the transaction is
     /// executed. This is only used to look up the initial values of storage _value_ slots, while
     /// the map slots are unused.
     storage_header: AccountStorageHeader,
-    /// A map from slot index to a map of key-value pairs where the key is a storage map key and
+    /// A map from slot name to a map of key-value pairs where the key is a storage map key and
     /// the value represents the value of that key at the beginning of transaction execution.
-    init_maps: BTreeMap<u8, BTreeMap<Word, Word>>,
+    init_maps: BTreeMap<StorageSlotName, BTreeMap<Word, Word>>,
     /// The account storage delta.
     delta: AccountStorageDelta,
 }
@@ -48,6 +52,7 @@ impl StorageDeltaTracker {
         };
 
         let mut storage_delta_tracker = Self {
+            is_account_new: account.is_new(),
             storage_header: initial_storage_header,
             init_maps: BTreeMap::new(),
             delta: AccountStorageDelta::new(),
@@ -55,31 +60,36 @@ impl StorageDeltaTracker {
 
         // Insert account storage into delta if it is new to match the kernel behavior.
         if account.is_new() {
-            (0..u8::MAX).zip(account.storage().header().slots()).for_each(
-                |(slot_idx, (slot_type, value))| match slot_type {
+            account
+                .storage()
+                .header()
+                .slots()
+                .for_each(|(slot_name, slot_type, slot_value)| match slot_type {
                     StorageSlotType::Value => {
-                        // Note that we can insert the value unconditionally as the delta will be
-                        // normalized before the commitment is computed.
-                        storage_delta_tracker.set_item(slot_idx, Word::empty(), *value);
+                        // For new accounts, all values should be added to the delta, even empty
+                        // words, so that the final delta includes the storage slot.
+                        storage_delta_tracker.set_item(slot_name.clone(), *slot_value);
                     },
                     StorageSlotType::Map => {
                         let storage_map = account
                             .storage()
                             .maps()
-                            .find(|map| map.root() == *value)
+                            .find(|map| map.root() == *slot_value)
                             .expect("storage map should be present in partial storage");
+
+                        // Make sure each map is represented by at least an empty storage map delta.
+                        storage_delta_tracker.delta.insert_empty_map_delta(slot_name.clone());
 
                         storage_map.entries().for_each(|(key, value)| {
                             storage_delta_tracker.set_map_item(
-                                slot_idx,
+                                slot_name.clone(),
                                 *key,
                                 Word::empty(),
                                 *value,
                             );
                         });
                     },
-                },
-            );
+                });
         }
 
         storage_delta_tracker
@@ -89,19 +99,22 @@ impl StorageDeltaTracker {
     // --------------------------------------------------------------------------------------------
 
     /// Updates a value slot.
-    pub fn set_item(&mut self, slot_index: u8, prev_value: Word, new_value: Word) {
-        // Don't update the delta if the new value matches the old one.
-        if prev_value != new_value {
-            self.delta.set_item(slot_index, new_value);
-        }
+    pub fn set_item(&mut self, slot_name: StorageSlotName, new_value: Word) {
+        self.delta.set_item(slot_name, new_value);
     }
 
     /// Updates a map slot.
-    pub fn set_map_item(&mut self, slot_index: u8, key: Word, prev_value: Word, new_value: Word) {
+    pub fn set_map_item(
+        &mut self,
+        slot_name: StorageSlotName,
+        key: Word,
+        prev_value: Word,
+        new_value: Word,
+    ) {
         // Don't update the delta if the new value matches the old one.
         if prev_value != new_value {
-            self.set_init_map_item(slot_index, key, prev_value);
-            self.delta.set_map_item(slot_index, key, new_value);
+            self.set_init_map_item(slot_name.clone(), key, prev_value);
+            self.delta.set_map_item(slot_name, key, new_value);
         }
     }
 
@@ -115,8 +128,8 @@ impl StorageDeltaTracker {
 
     /// Sets the initial value of the given key in the given slot to the given value, if no value is
     /// already tracked for that key.
-    fn set_init_map_item(&mut self, slot_index: u8, key: Word, prev_value: Word) {
-        let slot_map = self.init_maps.entry(slot_index).or_default();
+    fn set_init_map_item(&mut self, slot_name: StorageSlotName, key: Word, prev_value: Word) {
+        let slot_map = self.init_maps.entry(slot_name).or_default();
         slot_map.entry(key).or_insert(prev_value);
     }
 
@@ -127,22 +140,33 @@ impl StorageDeltaTracker {
     /// - removing entries for map slot updates where for a given key, the new value is equal to the
     ///   initial value at the beginning of transaction execution.
     fn normalize(self) -> AccountStorageDelta {
-        let Self { storage_header, init_maps, delta } = self;
+        let Self {
+            is_account_new,
+            storage_header,
+            init_maps,
+            delta,
+        } = self;
         let (mut value_slots, mut map_slots) = delta.into_parts();
 
-        // Keep only the values whose new value is different from the initial value.
-        value_slots.retain(|slot_idx, new_value| {
-            // SAFETY: The header in the initial storage is the one from the account against which
-            // the transaction is executed, so accessing that slot index should be fine.
-            let (_, initial_value) =
-                storage_header.slot(*slot_idx as usize).expect("index should be in bounds");
-            new_value != initial_value
-        });
+        // Skip normalization of value slots for new accounts. Since the initial value for
+        // normalization defaults to Word::empty, this prevents slots being removed that are validly
+        // created with an empty value.
+        if !is_account_new {
+            // Keep only the values whose new value is different from the initial value.
+            value_slots.retain(|slot_name, new_value| {
+                // SAFETY: The header in the initial storage is the one from the account against
+                // which the transaction is executed, so accessing that slot name should be fine.
+                let (_slot_type, initial_value) = storage_header
+                    .find_slot_header_by_name(slot_name)
+                    .expect("slot name should exist");
+                new_value != initial_value
+            });
+        }
 
         // On the key-value level: Keep only the key-value pairs whose new value is different from
         // the initial value.
         // On the map level: Keep only the maps that are non-empty after its key-value pairs have
-        // been normalized.
+        // been normalized, or if the account is new.
         map_slots.retain(|slot_idx, map_delta| {
             let init_map = init_maps.get(slot_idx);
 
@@ -155,8 +179,9 @@ impl StorageDeltaTracker {
                 });
             }
 
-            // Only retain the map delta if it still contains values after normalization.
-            !map_delta.is_empty()
+            // Only retain the map delta if the account is new or if it still contains values after
+            // normalization.
+            self.is_account_new || !map_delta.is_empty()
         });
 
         AccountStorageDelta::from_parts(value_slots, map_slots)
@@ -166,14 +191,17 @@ impl StorageDeltaTracker {
 
 /// Creates empty slots of the same slot types as the to-be-created account.
 fn empty_storage_header_from_account(account: &PartialAccount) -> AccountStorageHeader {
-    let slots = account
+    let slots: Vec<(StorageSlotName, StorageSlotType, Word)> = account
         .storage()
         .header()
         .slots()
-        .map(|(slot_type, _)| match slot_type {
-            StorageSlotType::Value => (*slot_type, Word::empty()),
-            StorageSlotType::Map => (*slot_type, StorageMap::new().root()),
+        .map(|(slot_name, slot_type, _)| match slot_type {
+            StorageSlotType::Value => (slot_name.clone(), *slot_type, Word::empty()),
+            StorageSlotType::Map => (slot_name.clone(), *slot_type, StorageMap::new().root()),
         })
         .collect();
-    AccountStorageHeader::new(slots)
+
+    // SAFETY: We are recreating a valid storage header with different values, which should not
+    // violate any constraints of the storage header.
+    AccountStorageHeader::new(slots).expect("storage header should be valid")
 }

@@ -11,7 +11,6 @@ use miden_objects::account::{
 use miden_objects::asset::{AssetVault, NonFungibleAsset};
 use miden_objects::testing::constants::{self};
 use miden_objects::testing::noop_auth_component::NoopAuthComponent;
-use miden_objects::testing::storage::FAUCET_STORAGE_DATA_SLOT;
 use miden_objects::{Felt, Word, ZERO};
 
 use crate::testing::account_component::{MockAccountComponent, MockFaucetComponent};
@@ -49,8 +48,10 @@ pub trait MockAccountExt {
             .expect("account should be valid");
         let (_id, vault, mut storage, code, nonce, _seed) = account.into_parts();
 
-        let faucet_data_slot = Word::from([ZERO, ZERO, ZERO, initial_balance]);
-        storage.set_item(FAUCET_STORAGE_DATA_SLOT, faucet_data_slot).unwrap();
+        let faucet_sysdata_slot = Word::from([ZERO, ZERO, ZERO, initial_balance]);
+        storage
+            .set_item(AccountStorage::faucet_sysdata_slot(), faucet_sysdata_slot)
+            .unwrap();
 
         Account::new_existing(account_id, vault, storage, code, nonce)
     }
@@ -71,8 +72,11 @@ pub trait MockAccountExt {
         let asset = NonFungibleAsset::mock(&constants::NON_FUNGIBLE_ASSET_DATA_2);
         let non_fungible_storage_map =
             StorageMap::with_entries([(asset.vault_key().into(), asset.into())]).unwrap();
-        let storage =
-            AccountStorage::new(vec![StorageSlot::Map(non_fungible_storage_map)]).unwrap();
+        let storage = AccountStorage::new(vec![StorageSlot::with_map(
+            AccountStorage::faucet_sysdata_slot().clone(),
+            non_fungible_storage_map,
+        )])
+        .unwrap();
 
         Account::new_existing(account_id, vault, storage, code, nonce)
     }

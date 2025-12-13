@@ -28,9 +28,9 @@ use crate::utils::serde::{Deserializable, Serializable};
 ///
 /// # Guarantees
 ///
-/// The [`PartialBlockchain`] contains the full authenticated [`BlockHeader`]s of all blocks it
-/// tracks in its partial MMR and users of this type can make this assumption. This is ensured when
-/// using [`PartialBlockchain::new`]. [`PartialBlockchain::new_unchecked`] should only be used
+/// The [`PartialBlockchain`] contains the full authenticated [`BlockHeader`]s of all blocks
+/// it tracks in its partial MMR and users of this type can make this assumption. This is ensured
+/// when using [`PartialBlockchain::new`]. [`PartialBlockchain::new_unchecked`] should only be used
 /// whenever this guarantee can be upheld.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PartialBlockchain {
@@ -182,7 +182,7 @@ impl PartialBlockchain {
     /// # Panics
     /// Panics if the `block_header.block_num` is not equal to the current chain length (i.e., the
     /// provided block header is not the next block in the chain).
-    pub fn add_block(&mut self, block_header: BlockHeader, track: bool) {
+    pub fn add_block(&mut self, block_header: &BlockHeader, track: bool) {
         assert_eq!(block_header.block_num(), self.chain_length());
         self.mmr.add(block_header.commitment(), track);
     }
@@ -277,10 +277,13 @@ impl Default for PartialBlockchain {
 mod tests {
     use assert_matches::assert_matches;
     use miden_core::utils::{Deserializable, Serializable};
+    use rand::SeedableRng;
+    use rand_chacha::ChaCha20Rng;
 
     use super::PartialBlockchain;
     use crate::alloc::vec::Vec;
     use crate::block::{BlockHeader, BlockNumber, FeeParameters};
+    use crate::crypto::dsa::ecdsa_k256_keccak::SecretKey;
     use crate::crypto::merkle::{Mmr, PartialMmr};
     use crate::testing::account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET;
     use crate::{PartialBlockchainError, Word};
@@ -298,9 +301,9 @@ mod tests {
 
         // add a new block to the partial blockchain, this reduces the number of peaks to 1
         let block_num = 3;
-        let bock_header = int_to_block_header(block_num);
-        mmr.add(bock_header.commitment());
-        partial_blockchain.add_block(bock_header, true);
+        let block_header = int_to_block_header(block_num);
+        mmr.add(block_header.commitment());
+        partial_blockchain.add_block(&block_header, true);
 
         assert_eq!(
             mmr.open(block_num as usize).unwrap(),
@@ -309,9 +312,9 @@ mod tests {
 
         // add one more block to the partial blockchain, the number of peaks is again 2
         let block_num = 4;
-        let bock_header = int_to_block_header(block_num);
-        mmr.add(bock_header.commitment());
-        partial_blockchain.add_block(bock_header, true);
+        let block_header = int_to_block_header(block_num);
+        mmr.add(block_header.commitment());
+        partial_blockchain.add_block(&block_header, true);
 
         assert_eq!(
             mmr.open(block_num as usize).unwrap(),
@@ -320,9 +323,9 @@ mod tests {
 
         // add one more block to the partial blockchain, the number of peaks is still 2
         let block_num = 5;
-        let bock_header = int_to_block_header(block_num);
-        mmr.add(bock_header.commitment());
-        partial_blockchain.add_block(bock_header, true);
+        let block_header = int_to_block_header(block_num);
+        mmr.add(block_header.commitment());
+        partial_blockchain.add_block(&block_header, true);
 
         assert_eq!(
             mmr.open(block_num as usize).unwrap(),
@@ -426,6 +429,8 @@ mod tests {
         let fee_parameters =
             FeeParameters::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET.try_into().unwrap(), 500)
                 .expect("native asset ID should be a fungible faucet ID");
+        let mut rng = ChaCha20Rng::from_seed([0u8; 32]);
+        let validator_key = SecretKey::with_rng(&mut rng).public_key();
 
         BlockHeader::new(
             0,
@@ -437,7 +442,7 @@ mod tests {
             Word::empty(),
             Word::empty(),
             Word::empty(),
-            Word::empty(),
+            validator_key,
             fee_parameters,
             0,
         )

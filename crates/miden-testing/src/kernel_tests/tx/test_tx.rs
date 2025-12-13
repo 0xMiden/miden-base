@@ -9,7 +9,7 @@ use miden_lib::note::create_p2id_note;
 use miden_lib::testing::account_component::IncrNonceAuthComponent;
 use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::transaction::TransactionKernel;
-use miden_lib::utils::ScriptBuilder;
+use miden_lib::utils::CodeBuilder;
 use miden_objects::account::{
     Account,
     AccountBuilder,
@@ -19,6 +19,7 @@ use miden_objects::account::{
     AccountStorageMode,
     AccountType,
     StorageSlot,
+    StorageSlotName,
 };
 use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::assembly::diagnostics::NamedSource;
@@ -43,6 +44,7 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
+    ACCOUNT_ID_SENDER,
 };
 use miden_objects::testing::constants::{FUNGIBLE_ASSET_AMOUNT, NON_FUNGIBLE_ASSET_DATA};
 use miden_objects::testing::note::DEFAULT_NOTE_CODE;
@@ -218,7 +220,7 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
 
     // Create the expected output note for Note 2 which is public
     let serial_num_2 = Word::from([1, 2, 3, 4u32]);
-    let note_script_2 = ScriptBuilder::default().compile_note_script(DEFAULT_NOTE_CODE)?;
+    let note_script_2 = CodeBuilder::default().compile_note_script(DEFAULT_NOTE_CODE)?;
     let inputs_2 = NoteInputs::new(vec![ONE])?;
     let metadata_2 =
         NoteMetadata::new(account_id, note_type2, tag2, NoteExecutionHint::none(), aux2)?;
@@ -228,7 +230,7 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
 
     // Create the expected output note for Note 3 which is public
     let serial_num_3 = Word::from([Felt::new(5), Felt::new(6), Felt::new(7), Felt::new(8)]);
-    let note_script_3 = ScriptBuilder::default().compile_note_script(DEFAULT_NOTE_CODE)?;
+    let note_script_3 = CodeBuilder::default().compile_note_script(DEFAULT_NOTE_CODE)?;
     let inputs_3 = NoteInputs::new(vec![ONE, Felt::new(2)])?;
     let metadata_3 = NoteMetadata::new(
         account_id,
@@ -342,7 +344,7 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
         EXECUTION_HINT_3 = Felt::from(NoteExecutionHint::on_block_slot(11, 22, 33)),
     );
 
-    let tx_script = ScriptBuilder::default().compile_tx_script(tx_script_src)?;
+    let tx_script = CodeBuilder::default().compile_tx_script(tx_script_src)?;
 
     // expected delta
     // --------------------------------------------------------------------------------------------
@@ -438,10 +440,12 @@ async fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
       end
     "#;
 
-    let auth_component =
-        AccountComponent::compile(source_code, TransactionKernel::assembler(), vec![])
-            .context("failed to compile auth component")?
-            .with_supports_all_types();
+    let auth_code = CodeBuilder::default()
+        .compile_component_code("test::auth_component", source_code)
+        .context("failed to parse auth component")?;
+    let auth_component = AccountComponent::new(auth_code, vec![])
+        .context("failed to parse auth component")?
+        .with_supports_all_types();
 
     let account = AccountBuilder::new([42; 32])
         .storage_mode(AccountStorageMode::Private)
@@ -530,9 +534,79 @@ async fn tx_summary_commitment_is_signed_by_falcon_auth() -> anyhow::Result<()> 
         AuthScheme::RpoFalcon512 { pub_key } => pub_key,
         AuthScheme::NoAuth => panic!("Expected RpoFalcon512 auth scheme, got NoAuth"),
         AuthScheme::RpoFalcon512Multisig { .. } => {
-            panic!("Expected RpoFalcon512 auth scheme, got Multisig")
+            panic!("Expected RpoFalcon512 auth scheme, got RpoFalcon512Multisig")
         },
         AuthScheme::Unknown => panic!("Expected RpoFalcon512 auth scheme, got Unknown"),
+        AuthScheme::EcdsaK256Keccak { .. } => {
+            panic!("Expected RpoFalcon512 auth scheme, got EcdsaK256Keccak")
+        },
+        AuthScheme::EcdsaK256KeccakMultisig { .. } => {
+            panic!("Expected RpoFalcon512 auth scheme, got EcdsaK256KeccakMultisig")
+        },
+    };
+
+    // This is in an internal detail of the tx executor host, but this is the easiest way to check
+    // for the presence of the signature in the advice map.
+    let signature_key = Hasher::merge(&[Word::from(*pub_key), summary_commitment]);
+
+    // The summary commitment should have been signed as part of transaction execution and inserted
+    // into the advice map.
+    tx.advice_witness().map.get(&signature_key).unwrap();
+
+    Ok(())
+}
+
+/// Tests that a transaction consuming and creating one note with EcdsaK256Keccak authentication
+/// correctly signs the transaction summary.
+#[tokio::test]
+async fn tx_summary_commitment_is_signed_by_ecdsa_auth() -> anyhow::Result<()> {
+    let mut builder = MockChain::builder();
+    let account = builder.add_existing_mock_account(Auth::EcdsaK256KeccakAuth)?;
+    let mut rng = RpoRandomCoin::new(Word::empty());
+    let p2id_note = create_p2id_note(
+        account.id(),
+        account.id(),
+        vec![],
+        NoteType::Private,
+        Felt::ZERO,
+        &mut rng,
+    )?;
+    let spawn_note = builder.add_spawn_note([&p2id_note])?;
+    let chain = builder.build()?;
+
+    let tx = chain
+        .build_tx_context(account.id(), &[spawn_note.id()], &[])?
+        .build()?
+        .execute()
+        .await?;
+
+    let summary = TransactionSummary::new(
+        tx.account_delta().clone(),
+        tx.input_notes().clone(),
+        tx.output_notes().clone(),
+        Word::from([
+            0,
+            0,
+            tx.block_header().block_num().as_u32(),
+            tx.final_account().nonce().as_int() as u32,
+        ]),
+    );
+    let summary_commitment = summary.to_commitment();
+
+    let account_interface = AccountInterface::from(&account);
+    let pub_key = match account_interface.auth().first().unwrap() {
+        AuthScheme::EcdsaK256Keccak { pub_key } => pub_key,
+        AuthScheme::EcdsaK256KeccakMultisig { .. } => {
+            panic!("Expected EcdsaK256Keccak auth scheme, got EcdsaK256KeccakMultisig")
+        },
+        AuthScheme::NoAuth => panic!("Expected EcdsaK256Keccak auth scheme, got NoAuth"),
+        AuthScheme::RpoFalcon512Multisig { .. } => {
+            panic!("Expected EcdsaK256Keccak auth scheme, got RpoFalcon512Multisig")
+        },
+        AuthScheme::Unknown => panic!("Expected EcdsaK256Keccak auth scheme, got Unknown"),
+        AuthScheme::RpoFalcon512 { .. } => {
+            panic!("Expected EcdsaK256Keccak auth scheme, got RpoFalcon512")
+        },
     };
 
     // This is in an internal detail of the tx executor host, but this is the easiest way to check
@@ -574,7 +648,7 @@ async fn execute_tx_view_script() -> anyhow::Result<()> {
     end
     ";
 
-    let tx_script = ScriptBuilder::new(false)
+    let tx_script = CodeBuilder::new(false)
         .with_statically_linked_library(&library)?
         .compile_tx_script(source)?;
     let tx_context = TransactionContextBuilder::with_existing_mock_account()
@@ -622,7 +696,7 @@ async fn test_tx_script_inputs() -> anyhow::Result<()> {
         "
     );
 
-    let tx_script = ScriptBuilder::default().compile_tx_script(tx_script_src)?;
+    let tx_script = CodeBuilder::default().compile_tx_script(tx_script_src)?;
 
     let tx_context = TransactionContextBuilder::with_existing_mock_account()
         .tx_script(tx_script)
@@ -660,9 +734,9 @@ async fn test_tx_script_args() -> anyhow::Result<()> {
             push.5.6.7.8 assert_eqw.err="obtained advice map value doesn't match the expected one"
         end"#;
 
-    let tx_script = ScriptBuilder::default()
+    let tx_script = CodeBuilder::default()
         .compile_tx_script(tx_script_src)
-        .context("failed to compile transaction script")?;
+        .context("failed to parse transaction script")?;
 
     // extend the advice map with the entry that is accessed using the provided transaction script
     // argument
@@ -684,7 +758,7 @@ async fn test_tx_script_args() -> anyhow::Result<()> {
 // part of the transaction advice inputs
 #[tokio::test]
 async fn inputs_created_correctly() -> anyhow::Result<()> {
-    let account_code_script = r#"
+    let account_component_masm = r#"
             adv_map.A([6,7,8,9])=[10,11,12,13]
 
             export.assert_adv_map
@@ -695,11 +769,12 @@ async fn inputs_created_correctly() -> anyhow::Result<()> {
                 assert_eqw.err="script adv map not found"
             end
         "#;
+    let component_code = CodeBuilder::default()
+        .compile_component_code("test::adv_map_component", account_component_masm)?;
 
-    let component = AccountComponent::compile(
-        account_code_script,
-        TransactionKernel::assembler(),
-        vec![StorageSlot::Value(Word::default())],
+    let component = AccountComponent::new(
+        component_code.clone(),
+        vec![StorageSlot::with_value(StorageSlotName::mock(0), Word::default())],
     )?
     .with_supports_all_types();
 
@@ -708,27 +783,25 @@ async fn inputs_created_correctly() -> anyhow::Result<()> {
         AccountType::RegularAccountUpdatableCode,
     )?;
 
-    let script = format!(
-        r#"
+    let script = r#"
             use.miden::account
 
             adv_map.A([1,2,3,4])=[5,6,7,8]
 
             begin
+                call.::test::adv_map_component::assert_adv_map
+
                 # test account code advice map
                 push.[6,7,8,9]
                 adv.push_mapval adv_loadw
                 push.[10,11,12,13]
                 assert_eqw.err="account code adv map not found"
-
-                call.{assert_adv_map_proc_root}
             end
-        "#,
-        assert_adv_map_proc_root =
-            component.library().get_procedure_root_by_name("$anon::assert_adv_map").unwrap()
-    );
+        "#;
 
-    let tx_script = ScriptBuilder::default().compile_tx_script(script)?;
+    let tx_script = CodeBuilder::default()
+        .with_dynamically_linked_library(component_code.as_library())?
+        .compile_tx_script(script)?;
 
     assert!(tx_script.mast().advice_map().get(&Word::try_from([1u64, 2, 3, 4])?).is_some());
     assert!(
@@ -748,6 +821,39 @@ async fn inputs_created_correctly() -> anyhow::Result<()> {
     );
     let tx_context = crate::TransactionContextBuilder::new(account).tx_script(tx_script).build()?;
     _ = tx_context.execute().await?;
+
+    Ok(())
+}
+
+/// Test that reexecuting a transaction with no authenticator and the tx inputs from a first
+/// successful execution is possible. This ensures that the signature generated in the first
+/// execution is present during re-execution.
+#[tokio::test]
+async fn tx_can_be_reexecuted() -> anyhow::Result<()> {
+    let mut builder = MockChain::builder();
+    // Use basic auth so the tx requires a signature for successful execution.
+    let account = builder.add_existing_mock_account(Auth::BasicAuth)?;
+    let note = builder.add_p2id_note(
+        ACCOUNT_ID_SENDER.try_into()?,
+        account.id(),
+        &[FungibleAsset::mock(3)],
+        NoteType::Public,
+    )?;
+    let chain = builder.build()?;
+
+    let tx = chain
+        .build_tx_context(account.id(), &[note.id()], &[])?
+        .build()?
+        .execute()
+        .await?;
+
+    let _reexecuted_tx = chain
+        .build_tx_context(account.id(), &[note.id()], &[])?
+        .authenticator(None)
+        .tx_inputs(tx.tx_inputs().clone())
+        .build()?
+        .execute()
+        .await?;
 
     Ok(())
 }

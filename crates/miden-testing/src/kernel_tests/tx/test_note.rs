@@ -5,9 +5,8 @@ use anyhow::Context;
 use miden_lib::account::wallets::BasicWallet;
 use miden_lib::errors::MasmError;
 use miden_lib::testing::note::NoteBuilder;
-use miden_lib::transaction::TransactionKernel;
 use miden_lib::transaction::memory::ACTIVE_INPUT_NOTE_PTR;
-use miden_lib::utils::ScriptBuilder;
+use miden_lib::utils::CodeBuilder;
 use miden_objects::account::auth::PublicKeyCommitment;
 use miden_objects::account::{AccountBuilder, AccountId};
 use miden_objects::assembly::DefaultSourceManager;
@@ -27,6 +26,7 @@ use miden_objects::note::{
     NoteType,
 };
 use miden_objects::testing::account_id::{
+    ACCOUNT_ID_NETWORK_FUNGIBLE_FAUCET,
     ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
     ACCOUNT_ID_SENDER,
 };
@@ -192,7 +192,7 @@ async fn test_build_recipient() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
     // Create test script and serial number
-    let note_script = ScriptBuilder::default().compile_note_script("begin nop end")?;
+    let note_script = CodeBuilder::default().compile_note_script("begin nop end")?;
     let serial_num = Word::default();
 
     // Define test values as Words
@@ -469,7 +469,7 @@ pub async fn test_timelock() -> anyhow::Result<()> {
         .note_inputs([Felt::from(lock_timestamp)])?
         .source_manager(source_manager.clone())
         .code(code.clone())
-        .dynamically_linked_libraries(TransactionKernel::mock_libraries())
+        .dynamically_linked_libraries(CodeBuilder::mock_libraries())
         .build()?;
 
     builder.add_output_note(OutputNote::Full(timelock_note.clone()));
@@ -541,7 +541,7 @@ async fn test_public_key_as_note_input() -> anyhow::Result<()> {
         Default::default(),
     )?;
     let vault = NoteAssets::new(vec![])?;
-    let note_script = ScriptBuilder::default().compile_note_script("begin nop end")?;
+    let note_script = CodeBuilder::default().compile_note_script("begin nop end")?;
     let recipient =
         NoteRecipient::new(serial_num, note_script, NoteInputs::new(public_key_value.to_vec())?);
     let note_with_pub_key = Note::new(vault.clone(), metadata, recipient);
@@ -552,5 +552,45 @@ async fn test_public_key_as_note_input() -> anyhow::Result<()> {
         .build()?;
 
     tx_context.execute().await?;
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_build_note_tag_for_network_account() -> anyhow::Result<()> {
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
+
+    let account_id = AccountId::try_from(ACCOUNT_ID_NETWORK_FUNGIBLE_FAUCET)?;
+    let expected_tag = NoteTag::from_account_id(account_id).as_u32();
+
+    let prefix: u64 = account_id.prefix().into();
+    let suffix: u64 = account_id.suffix().into();
+
+    let code = format!(
+        "
+        use.std::sys
+        use.miden::note
+
+        begin
+            push.{suffix}.{prefix} 
+
+            exec.note::build_note_tag_for_network_account
+            # => [network_account_tag]
+
+            exec.sys::truncate_stack
+        end
+        ",
+        suffix = suffix,
+        prefix = prefix,
+    );
+
+    let exec_output = tx_context.execute_code(&code).await?;
+    let actual_tag = exec_output.stack[0].as_int();
+
+    assert_eq!(
+        actual_tag, expected_tag as u64,
+        "Expected tag {:#010x}, got {:#010x}",
+        expected_tag, actual_tag
+    );
+
     Ok(())
 }

@@ -6,6 +6,7 @@ use miden_core::utils::{Deserializable, Serializable};
 use super::PartialBlockchain;
 use crate::TransactionInputError;
 use crate::account::{AccountCode, PartialAccount};
+use crate::asset::AssetWitness;
 use crate::block::{BlockHeader, BlockNumber};
 use crate::note::{Note, NoteInclusionProof};
 use crate::transaction::{TransactionArgs, TransactionScript};
@@ -30,6 +31,8 @@ pub struct TransactionInputs {
     tx_args: TransactionArgs,
     advice_inputs: AdviceInputs,
     foreign_account_code: Vec<AccountCode>,
+    /// Pre-fetched asset witnesses for note assets and the fee asset.
+    asset_witnesses: Vec<AssetWitness>,
 }
 
 impl TransactionInputs {
@@ -85,7 +88,14 @@ impl TransactionInputs {
             tx_args: TransactionArgs::default(),
             advice_inputs: AdviceInputs::default(),
             foreign_account_code: Vec::new(),
+            asset_witnesses: Vec::new(),
         })
+    }
+
+    /// Replaces the transaction inputs and assigns the given asset witnesses.
+    pub fn with_asset_witnesses(mut self, witnesses: Vec<AssetWitness>) -> Self {
+        self.asset_witnesses = witnesses;
+        self
     }
 
     /// Replaces the transaction inputs and assigns the given foreign account code.
@@ -96,13 +106,13 @@ impl TransactionInputs {
 
     /// Replaces the transaction inputs and assigns the given transaction arguments.
     pub fn with_tx_args(mut self, tx_args: TransactionArgs) -> Self {
-        self.tx_args = tx_args;
+        self.set_tx_args_inner(tx_args);
         self
     }
 
     /// Replaces the transaction inputs and assigns the given advice inputs.
     pub fn with_advice_inputs(mut self, advice_inputs: AdviceInputs) -> Self {
-        self.advice_inputs = advice_inputs;
+        self.set_advice_inputs(advice_inputs);
         self
     }
 
@@ -115,14 +125,18 @@ impl TransactionInputs {
     }
 
     /// Replaces the advice inputs for the transaction.
+    ///
+    /// Note: the advice stack from the provided advice inputs is discarded.
     pub fn set_advice_inputs(&mut self, new_advice_inputs: AdviceInputs) {
-        self.advice_inputs = new_advice_inputs;
+        let AdviceInputs { map, store, .. } = new_advice_inputs;
+        self.advice_inputs = AdviceInputs { stack: Default::default(), map, store };
+        self.tx_args.extend_advice_inputs(self.advice_inputs.clone());
     }
 
     /// Updates the transaction arguments of the inputs.
     #[cfg(feature = "testing")]
     pub fn set_tx_args(&mut self, tx_args: TransactionArgs) {
-        self.tx_args = tx_args;
+        self.set_tx_args_inner(tx_args);
     }
 
     // PUBLIC ACCESSORS
@@ -164,6 +178,11 @@ impl TransactionInputs {
         &self.foreign_account_code
     }
 
+    /// Returns the pre-fetched witnesses for note and fee assets.
+    pub fn asset_witnesses(&self) -> &[AssetWitness] {
+        &self.asset_witnesses
+    }
+
     /// Returns the advice inputs to be consumed in the transaction.
     pub fn advice_inputs(&self) -> &AdviceInputs {
         &self.advice_inputs
@@ -189,6 +208,18 @@ impl TransactionInputs {
     ) {
         (self.account, self.block_header, self.blockchain, self.input_notes, self.tx_args)
     }
+
+    // HELPER METHODS
+    // --------------------------------------------------------------------------------------------
+
+    /// Replaces the current tx_args with the provided value.
+    ///
+    /// This also appends advice inputs from these transaction inputs to the advice inputs of the
+    /// tx args.
+    fn set_tx_args_inner(&mut self, tx_args: TransactionArgs) {
+        self.tx_args = tx_args;
+        self.tx_args.extend_advice_inputs(self.advice_inputs.clone());
+    }
 }
 
 impl Serializable for TransactionInputs {
@@ -200,6 +231,7 @@ impl Serializable for TransactionInputs {
         self.tx_args.write_into(target);
         self.advice_inputs.write_into(target);
         self.foreign_account_code.write_into(target);
+        self.asset_witnesses.write_into(target);
     }
 }
 
@@ -214,6 +246,7 @@ impl Deserializable for TransactionInputs {
         let tx_args = TransactionArgs::read_from(source)?;
         let advice_inputs = AdviceInputs::read_from(source)?;
         let foreign_account_code = Vec::<AccountCode>::read_from(source)?;
+        let asset_witnesses = Vec::<AssetWitness>::read_from(source)?;
 
         Ok(TransactionInputs {
             account,
@@ -223,6 +256,7 @@ impl Deserializable for TransactionInputs {
             tx_args,
             advice_inputs,
             foreign_account_code,
+            asset_witnesses,
         })
     }
 }

@@ -26,20 +26,20 @@ pub const ERR_ACCOUNT_ID_SUFFIX_MOST_SIGNIFICANT_BIT_MUST_BE_ZERO: MasmError = M
 pub const ERR_ACCOUNT_ID_UNKNOWN_STORAGE_MODE: MasmError = MasmError::from_static_str("unknown account storage mode in account ID");
 /// Error Message: "unknown version in account ID"
 pub const ERR_ACCOUNT_ID_UNKNOWN_VERSION: MasmError = MasmError::from_static_str("unknown version in account ID");
-/// Error Message: "storage size can only be zero if storage offset is also zero"
-pub const ERR_ACCOUNT_INVALID_STORAGE_OFFSET_FOR_SIZE: MasmError = MasmError::from_static_str("storage size can only be zero if storage offset is also zero");
 /// Error Message: "the active account is not native"
 pub const ERR_ACCOUNT_IS_NOT_NATIVE: MasmError = MasmError::from_static_str("the active account is not native");
 /// Error Message: "account nonce is already at its maximum possible value"
 pub const ERR_ACCOUNT_NONCE_AT_MAX: MasmError = MasmError::from_static_str("account nonce is already at its maximum possible value");
 /// Error Message: "account nonce can only be incremented once"
 pub const ERR_ACCOUNT_NONCE_CAN_ONLY_BE_INCREMENTED_ONCE: MasmError = MasmError::from_static_str("account nonce can only be incremented once");
+/// Error Message: "number of account procedures must be at least 2"
+pub const ERR_ACCOUNT_NOT_ENOUGH_PROCEDURES: MasmError = MasmError::from_static_str("number of account procedures must be at least 2");
 /// Error Message: "provided procedure index is out of bounds"
 pub const ERR_ACCOUNT_PROC_INDEX_OUT_OF_BOUNDS: MasmError = MasmError::from_static_str("provided procedure index is out of bounds");
 /// Error Message: "account procedure is not the authentication procedure; some procedures (e.g. `incr_nonce`) can be called only from the authentication procedure"
 pub const ERR_ACCOUNT_PROC_NOT_AUTH_PROC: MasmError = MasmError::from_static_str("account procedure is not the authentication procedure; some procedures (e.g. `incr_nonce`) can be called only from the authentication procedure");
-/// Error Message: "account procedure is not part of the account code"
-pub const ERR_ACCOUNT_PROC_NOT_PART_OF_ACCOUNT_CODE: MasmError = MasmError::from_static_str("account procedure is not part of the account code");
+/// Error Message: "procedure is not part of the account code"
+pub const ERR_ACCOUNT_PROC_NOT_PART_OF_ACCOUNT_CODE: MasmError = MasmError::from_static_str("procedure is not part of the account code");
 /// Error Message: "failed to read an account map item from a non-map storage slot"
 pub const ERR_ACCOUNT_READING_MAP_VALUE_FROM_NON_MAP_SLOT: MasmError = MasmError::from_static_str("failed to read an account map item from a non-map storage slot");
 /// Error Message: "ID of the new account does not match the ID computed from the seed and commitments"
@@ -56,12 +56,14 @@ pub const ERR_ACCOUNT_STACK_UNDERFLOW: MasmError = MasmError::from_static_str("f
 pub const ERR_ACCOUNT_STORAGE_COMMITMENT_MISMATCH: MasmError = MasmError::from_static_str("computed account storage commitment does not match recorded account storage commitment");
 /// Error Message: "storage map entries provided as advice inputs do not have the same storage map root as the root of the map the new account commits to"
 pub const ERR_ACCOUNT_STORAGE_MAP_ENTRIES_DO_NOT_MATCH_MAP_ROOT: MasmError = MasmError::from_static_str("storage map entries provided as advice inputs do not have the same storage map root as the root of the map the new account commits to");
-/// Error Message: "provided storage slot index is out of bounds"
-pub const ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS: MasmError = MasmError::from_static_str("provided storage slot index is out of bounds");
+/// Error Message: "slot IDs must be unique and sorted in ascending order"
+pub const ERR_ACCOUNT_STORAGE_SLOTS_MUST_BE_SORTED_AND_UNIQUE: MasmError = MasmError::from_static_str("slot IDs must be unique and sorted in ascending order");
 /// Error Message: "number of account procedures exceeds the maximum limit of 256"
 pub const ERR_ACCOUNT_TOO_MANY_PROCEDURES: MasmError = MasmError::from_static_str("number of account procedures exceeds the maximum limit of 256");
 /// Error Message: "number of account storage slots exceeds the maximum limit of 255"
 pub const ERR_ACCOUNT_TOO_MANY_STORAGE_SLOTS: MasmError = MasmError::from_static_str("number of account storage slots exceeds the maximum limit of 255");
+/// Error Message: "storage slot with the provided name does not exist"
+pub const ERR_ACCOUNT_UNKNOWN_STORAGE_SLOT_NAME: MasmError = MasmError::from_static_str("storage slot with the provided name does not exist");
 
 /// Error Message: "executed transaction neither changed the account state, nor consumed any notes"
 pub const ERR_EPILOGUE_EXECUTED_TRANSACTION_IS_EMPTY: MasmError = MasmError::from_static_str("executed transaction neither changed the account state, nor consumed any notes");
@@ -74,8 +76,6 @@ pub const ERR_EPILOGUE_TOTAL_NUMBER_OF_ASSETS_MUST_STAY_THE_SAME: MasmError = Ma
 pub const ERR_FAUCET_BURN_CANNOT_EXCEED_EXISTING_TOTAL_SUPPLY: MasmError = MasmError::from_static_str("asset amount to burn can not exceed the existing total supply");
 /// Error Message: "the burn_non_fungible_asset procedure can only be called on a non-fungible faucet"
 pub const ERR_FAUCET_BURN_NON_FUNGIBLE_ASSET_CAN_ONLY_BE_CALLED_ON_NON_FUNGIBLE_FAUCET: MasmError = MasmError::from_static_str("the burn_non_fungible_asset procedure can only be called on a non-fungible faucet");
-/// Error Message: "storage offset is invalid for a faucet account (0 is prohibited as it is the reserved data slot for faucets)"
-pub const ERR_FAUCET_INVALID_STORAGE_OFFSET: MasmError = MasmError::from_static_str("storage offset is invalid for a faucet account (0 is prohibited as it is the reserved data slot for faucets)");
 /// Error Message: "the faucet_is_non_fungible_asset_issued procedure can only be called on a non-fungible faucet"
 pub const ERR_FAUCET_IS_NF_ASSET_ISSUED_PROC_CAN_ONLY_BE_CALLED_ON_NON_FUNGIBLE_FAUCET: MasmError = MasmError::from_static_str("the faucet_is_non_fungible_asset_issued procedure can only be called on a non-fungible faucet");
 /// Error Message: "asset mint operation would cause the new total supply to exceed the maximum allowed asset amount"
@@ -209,14 +209,14 @@ pub const ERR_PROLOGUE_NEW_NON_FUNGIBLE_FAUCET_RESERVED_SLOT_INVALID_TYPE: MasmE
 pub const ERR_PROLOGUE_NEW_NON_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_VALID_EMPTY_SMT: MasmError = MasmError::from_static_str("reserved slot for non-fungible faucet is not a valid empty SMT");
 /// Error Message: "failed to authenticate note inclusion in block"
 pub const ERR_PROLOGUE_NOTE_AUTHENTICATION_FAILED: MasmError = MasmError::from_static_str("failed to authenticate note inclusion in block");
-/// Error Message: "number of note inputs exceeded the maximum limit of 128"
-pub const ERR_PROLOGUE_NOTE_INPUTS_LEN_EXCEEDED_LIMIT: MasmError = MasmError::from_static_str("number of note inputs exceeded the maximum limit of 128");
+/// Error Message: "number of note inputs exceeded the maximum limit of 1024"
+pub const ERR_PROLOGUE_NOTE_INPUTS_LEN_EXCEEDED_LIMIT: MasmError = MasmError::from_static_str("number of note inputs exceeded the maximum limit of 1024");
 /// Error Message: "number of input notes exceeds the kernel's maximum limit of 1024"
 pub const ERR_PROLOGUE_NUMBER_OF_INPUT_NOTES_EXCEEDS_LIMIT: MasmError = MasmError::from_static_str("number of input notes exceeds the kernel's maximum limit of 1024");
 /// Error Message: "number of note assets exceeds the maximum limit of 256"
 pub const ERR_PROLOGUE_NUMBER_OF_NOTE_ASSETS_EXCEEDS_LIMIT: MasmError = MasmError::from_static_str("number of note assets exceeds the maximum limit of 256");
-/// Error Message: "number of note inputs exceeded the maximum limit of 128"
-pub const ERR_PROLOGUE_NUMBER_OF_NOTE_INPUTS_EXCEEDED_LIMIT: MasmError = MasmError::from_static_str("number of note inputs exceeded the maximum limit of 128");
+/// Error Message: "number of note inputs exceeded the maximum limit of 1024"
+pub const ERR_PROLOGUE_NUMBER_OF_NOTE_INPUTS_EXCEEDED_LIMIT: MasmError = MasmError::from_static_str("number of note inputs exceeded the maximum limit of 1024");
 /// Error Message: "account data provided does not match the commitment recorded on-chain"
 pub const ERR_PROLOGUE_PROVIDED_ACCOUNT_DATA_DOES_NOT_MATCH_ON_CHAIN_COMMITMENT: MasmError = MasmError::from_static_str("account data provided does not match the commitment recorded on-chain");
 /// Error Message: "provided info about assets of an input does not match its commitment"

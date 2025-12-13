@@ -6,8 +6,8 @@ use super::StorageValueName;
 use crate::Word;
 
 /// Represents the data required to initialize storage entries when instantiating an
-/// [AccountComponent](crate::account::AccountComponent) from a
-/// [template](crate::account::AccountComponentTemplate).
+/// [AccountComponent](crate::account::AccountComponent) from component metadata (either provided
+/// directly or extracted from a package).
 ///
 /// An [`InitStorageData`] can be created from a TOML string when the `std` feature flag is set.
 #[derive(Clone, Debug, Default)]

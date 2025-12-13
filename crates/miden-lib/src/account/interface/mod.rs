@@ -15,15 +15,18 @@ use crate::AuthScheme;
 use crate::account::components::{
     basic_fungible_faucet_library,
     basic_wallet_library,
+    ecdsa_k256_keccak_acl_library,
+    ecdsa_k256_keccak_library,
+    ecdsa_k256_keccak_multisig_library,
     network_fungible_faucet_library,
     no_auth_library,
     rpo_falcon_512_acl_library,
     rpo_falcon_512_library,
     rpo_falcon_512_multisig_library,
 };
-use crate::errors::ScriptBuilderError;
+use crate::errors::CodeBuilderError;
 use crate::note::WellKnownNote;
-use crate::utils::ScriptBuilder;
+use crate::utils::CodeBuilder;
 
 #[cfg(test)]
 mod test;
@@ -137,24 +140,37 @@ impl AccountInterface {
                     component_proc_digests
                         .extend(basic_wallet_library().mast_forest().procedure_digests());
                 },
-                AccountComponentInterface::BasicFungibleFaucet(_) => {
+                AccountComponentInterface::BasicFungibleFaucet => {
                     component_proc_digests
                         .extend(basic_fungible_faucet_library().mast_forest().procedure_digests());
                 },
-                AccountComponentInterface::NetworkFungibleFaucet(_) => {
+                AccountComponentInterface::NetworkFungibleFaucet => {
                     component_proc_digests.extend(
                         network_fungible_faucet_library().mast_forest().procedure_digests(),
                     );
                 },
-                AccountComponentInterface::AuthRpoFalcon512(_) => {
+                AccountComponentInterface::AuthEcdsaK256Keccak => {
+                    component_proc_digests
+                        .extend(ecdsa_k256_keccak_library().mast_forest().procedure_digests());
+                },
+                AccountComponentInterface::AuthEcdsaK256KeccakAcl => {
+                    component_proc_digests
+                        .extend(ecdsa_k256_keccak_acl_library().mast_forest().procedure_digests());
+                },
+                AccountComponentInterface::AuthEcdsaK256KeccakMultisig => {
+                    component_proc_digests.extend(
+                        ecdsa_k256_keccak_multisig_library().mast_forest().procedure_digests(),
+                    );
+                },
+                AccountComponentInterface::AuthRpoFalcon512 => {
                     component_proc_digests
                         .extend(rpo_falcon_512_library().mast_forest().procedure_digests());
                 },
-                AccountComponentInterface::AuthRpoFalcon512Acl(_) => {
+                AccountComponentInterface::AuthRpoFalcon512Acl => {
                     component_proc_digests
                         .extend(rpo_falcon_512_acl_library().mast_forest().procedure_digests());
                 },
-                AccountComponentInterface::AuthRpoFalcon512Multisig(_) => {
+                AccountComponentInterface::AuthRpoFalcon512Multisig => {
                     component_proc_digests.extend(
                         rpo_falcon_512_multisig_library().mast_forest().procedure_digests(),
                     );
@@ -231,7 +247,7 @@ impl AccountInterface {
             note_creation_source,
         );
 
-        let tx_script = ScriptBuilder::new(in_debug_mode)
+        let tx_script = CodeBuilder::new(in_debug_mode)
             .compile_tx_script(script)
             .map_err(AccountInterfaceError::InvalidTransactionScript)?;
 
@@ -255,12 +271,12 @@ impl AccountInterface {
         output_notes: &[PartialNote],
     ) -> Result<String, AccountInterfaceError> {
         if let Some(basic_fungible_faucet) = self.components().iter().find(|component_interface| {
-            matches!(component_interface, AccountComponentInterface::BasicFungibleFaucet(_))
+            matches!(component_interface, AccountComponentInterface::BasicFungibleFaucet)
         }) {
             basic_fungible_faucet.send_note_body(*self.id(), output_notes)
         } else if let Some(_network_fungible_faucet) =
             self.components().iter().find(|component_interface| {
-                matches!(component_interface, AccountComponentInterface::NetworkFungibleFaucet(_))
+                matches!(component_interface, AccountComponentInterface::NetworkFungibleFaucet)
             })
         {
             // Network fungible faucet doesn't support send_note_body, because minting
@@ -415,7 +431,7 @@ pub enum AccountInterfaceError {
     #[error("note created by the basic fungible faucet doesn't contain exactly one asset")]
     FaucetNoteWithoutAsset,
     #[error("invalid transaction script")]
-    InvalidTransactionScript(#[source] ScriptBuilderError),
+    InvalidTransactionScript(#[source] CodeBuilderError),
     #[error("invalid sender account: {0}")]
     InvalidSenderAccount(AccountId),
     #[error("{} interface does not support the generation of the standard send_note script", interface.name())]

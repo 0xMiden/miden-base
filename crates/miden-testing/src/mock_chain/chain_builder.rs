@@ -17,32 +17,38 @@ use miden_lib::account::faucets::{BasicFungibleFaucet, NetworkFungibleFaucet};
 use miden_lib::account::wallets::BasicWallet;
 use miden_lib::note::{create_p2id_note, create_p2ide_note, create_swap_note};
 use miden_lib::testing::account_component::MockAccountComponent;
-use miden_lib::transaction::{TransactionKernel, memory};
+use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{
     Account,
     AccountBuilder,
     AccountDelta,
     AccountId,
+    AccountStorage,
     AccountStorageMode,
     AccountType,
     StorageSlot,
 };
 use miden_objects::asset::{Asset, FungibleAsset, TokenSymbol};
 use miden_objects::block::account_tree::AccountTree;
+use miden_objects::block::nullifier_tree::NullifierTree;
 use miden_objects::block::{
     BlockAccountUpdate,
+    BlockBody,
     BlockHeader,
     BlockNoteTree,
     BlockNumber,
+    BlockProof,
     Blockchain,
     FeeParameters,
-    NullifierTree,
     OutputNoteBatch,
     ProvenBlock,
 };
+use miden_objects::crypto::dsa::ecdsa_k256_keccak::SecretKey;
+use miden_objects::crypto::merkle::Smt;
 use miden_objects::note::{Note, NoteDetails, NoteType};
 use miden_objects::testing::account_id::ACCOUNT_ID_NATIVE_ASSET_FAUCET;
+use miden_objects::testing::random_signer::RandomBlockSigner;
 use miden_objects::transaction::{OrderedTransactionHeaders, OutputNote};
 use miden_objects::{Felt, FieldElement, MAX_OUTPUT_NOTES_PER_BATCH, NoteError, Word, ZERO};
 use miden_processor::crypto::RpoRandomCoin;
@@ -209,14 +215,15 @@ impl MockChainBuilder {
         let block_num = BlockNumber::from(0u32);
         let chain_commitment = Blockchain::new().commitment();
         let account_root = account_tree.root();
-        let nullifier_root = NullifierTree::new().root();
+        let nullifier_root = NullifierTree::<Smt>::default().root();
         let note_root = note_tree.root();
         let tx_commitment = transactions.commitment();
         let tx_kernel_commitment = TransactionKernel.to_commitment();
-        let proof_commitment = Word::empty();
         let timestamp = MockChain::TIMESTAMP_START_SECS;
         let fee_parameters = FeeParameters::new(self.native_asset_id, self.verification_base_fee)
             .context("failed to construct fee parameters")?;
+        let validator_secret_key = SecretKey::random();
+        let validator_public_key = validator_secret_key.public_key();
 
         let header = BlockHeader::new(
             version,
@@ -228,20 +235,28 @@ impl MockChainBuilder {
             note_root,
             tx_commitment,
             tx_kernel_commitment,
-            proof_commitment,
+            validator_public_key,
             fee_parameters,
             timestamp,
         );
 
-        let genesis_block = ProvenBlock::new_unchecked(
-            header,
+        let body = BlockBody::new_unchecked(
             block_account_updates,
             output_note_batches,
             created_nullifiers,
             transactions,
         );
 
-        MockChain::from_genesis_block(genesis_block, account_tree, self.account_authenticators)
+        let signature = validator_secret_key.sign(header.commitment());
+        let block_proof = BlockProof::new_dummy();
+        let genesis_block = ProvenBlock::new_unchecked(header, body, signature, block_proof);
+
+        MockChain::from_genesis_block(
+            genesis_block,
+            account_tree,
+            self.account_authenticators,
+            validator_secret_key,
+        )
     }
 
     // ACCOUNT METHODS
@@ -333,13 +348,13 @@ impl MockChainBuilder {
         let mut account =
             self.add_account_from_builder(auth_method, account_builder, AccountState::Exists)?;
 
-        // The faucet's reserved slot is initialized to an empty word by default.
+        // The faucet's sysdata slot is initialized to an empty word by default.
         // If total_issuance is set, overwrite it and reinsert the account.
         if let Some(issuance) = total_issuance {
             account
                 .storage_mut()
                 .set_item(
-                    memory::FAUCET_STORAGE_DATA_SLOT,
+                    AccountStorage::faucet_sysdata_slot(),
                     Word::from([ZERO, ZERO, ZERO, Felt::new(issuance)]),
                 )
                 .context("failed to set faucet storage")?;
@@ -377,13 +392,13 @@ impl MockChainBuilder {
         let mut account =
             self.add_account_from_builder(Auth::IncrNonce, account_builder, AccountState::Exists)?;
 
-        // The faucet's reserved slot is initialized to an empty word by default.
+        // The faucet's sysdata slot is initialized to an empty word by default.
         // If total_issuance is set, overwrite it and reinsert the account.
         if let Some(issuance) = total_issuance {
             account
                 .storage_mut()
                 .set_item(
-                    memory::FAUCET_STORAGE_DATA_SLOT,
+                    AccountStorage::faucet_sysdata_slot(),
                     Word::from([ZERO, ZERO, ZERO, Felt::new(issuance)]),
                 )
                 .context("failed to set faucet storage")?;

@@ -1,8 +1,14 @@
 mod header;
 pub use header::{BlockHeader, FeeParameters};
 
+mod block_body;
+pub use block_body::BlockBody;
+
 mod block_number;
 pub use block_number::BlockNumber;
+
+mod block_proof;
+pub use block_proof::BlockProof;
 
 mod proposed_block;
 pub use proposed_block::ProposedBlock;
@@ -18,8 +24,7 @@ pub use partial_account_tree::PartialAccountTree;
 
 pub mod account_tree;
 
-mod nullifier_tree;
-pub use nullifier_tree::NullifierTree;
+pub mod nullifier_tree;
 
 mod blockchain;
 pub use blockchain::Blockchain;
@@ -41,6 +46,9 @@ pub use block_inputs::BlockInputs;
 
 mod note_tree;
 pub use note_tree::{BlockNoteIndex, BlockNoteTree};
+
+mod signer;
+pub use signer::BlockSigner;
 
 /// The set of notes created in a transaction batch with their index in the batch.
 ///

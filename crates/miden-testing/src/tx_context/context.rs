@@ -4,10 +4,17 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use miden_lib::transaction::TransactionKernel;
-use miden_objects::account::{Account, AccountId, PartialAccount, StorageMapWitness, StorageSlot};
+use miden_lib::utils::CodeBuilder;
+use miden_objects::account::{
+    Account,
+    AccountId,
+    PartialAccount,
+    StorageMapWitness,
+    StorageSlotContent,
+};
 use miden_objects::assembly::debuginfo::{SourceLanguage, Uri};
-use miden_objects::assembly::{SourceManager, SourceManagerSync};
-use miden_objects::asset::{AssetVaultKey, AssetWitness};
+use miden_objects::assembly::{Assembler, SourceManager, SourceManagerSync};
+use miden_objects::asset::{Asset, AssetVaultKey, AssetWitness};
 use miden_objects::block::{AccountWitness, BlockHeader, BlockNumber};
 use miden_objects::note::{Note, NoteScript};
 use miden_objects::transaction::{
@@ -59,11 +66,10 @@ impl TransactionContext {
     /// Executes arbitrary code within the context of a mocked transaction environment and returns
     /// the resulting [`ExecutionOutput`].
     ///
-    /// The code is compiled with the assembler returned by
-    /// [`TransactionKernel::with_mock_libraries`] and executed with advice inputs constructed from
-    /// the data stored in the context. The program is run on a modified [`TransactionExecutorHost`]
-    /// which is loaded with the procedures exposed by the transaction kernel, and also
-    /// individual kernel functions (not normally exposed).
+    /// The code is compiled with the assembler built by [`CodeBuilder::with_mock_libraries`]
+    /// and executed with advice inputs constructed from the data stored in the context. The program
+    /// is run on a modified [`TransactionExecutorHost`] which is loaded with the procedures exposed
+    /// by the transaction kernel, and also individual kernel functions (not normally exposed).
     ///
     /// To improve the error message quality, convert the returned [`ExecutionError`] into a
     /// [`Report`](miden_objects::assembly::diagnostics::Report) or use `?` with
@@ -77,8 +83,42 @@ impl TransactionContext {
     ///
     /// - If the provided `code` is not a valid program.
     pub async fn execute_code(&self, code: &str) -> Result<ExecutionOutput, ExecutionError> {
-        let (stack_inputs, advice_inputs) = TransactionKernel::prepare_inputs(&self.tx_inputs)
-            .expect("error initializing transaction inputs");
+        // Fetch all witnesses for note assets and the fee asset.
+        let mut asset_vault_keys = self
+            .tx_inputs
+            .input_notes()
+            .iter()
+            .flat_map(|note| note.note().assets().iter().map(Asset::vault_key))
+            .collect::<BTreeSet<_>>();
+        let fee_asset_vault_key = AssetVaultKey::from_account_id(
+            self.tx_inputs().block_header().fee_parameters().native_asset_id(),
+        )
+        .expect("fee asset should be a fungible asset");
+        asset_vault_keys.extend([fee_asset_vault_key]);
+
+        let (account, block_header, _blockchain) = self
+            .get_transaction_inputs(
+                self.tx_inputs.account().id(),
+                BTreeSet::from_iter([self.tx_inputs.block_header().block_num()]),
+            )
+            .await
+            .expect("failed to fetch transaction inputs");
+
+        // Add the vault key for the fee asset to the list of asset vault keys which may need to be
+        // accessed at the end of the transaction.
+        let fee_asset_vault_key =
+            AssetVaultKey::from_account_id(block_header.fee_parameters().native_asset_id())
+                .expect("fee asset should be a fungible asset");
+        asset_vault_keys.insert(fee_asset_vault_key);
+
+        // Fetch the witnesses for all asset vault keys.
+        let asset_witnesses = self
+            .get_vault_asset_witnesses(account.id(), account.vault().root(), asset_vault_keys)
+            .await
+            .expect("failed to fetch asset witnesses");
+
+        let tx_inputs = self.tx_inputs.clone().with_asset_witnesses(asset_witnesses);
+        let (stack_inputs, advice_inputs) = TransactionKernel::prepare_inputs(&tx_inputs);
 
         // Virtual file name should be unique.
         let virtual_source_file = self.source_manager.load(
@@ -87,8 +127,10 @@ impl TransactionContext {
             code.to_owned(),
         );
 
-        let assembler = TransactionKernel::with_mock_libraries(self.source_manager.clone())
-            .with_debug_mode(true);
+        let assembler: Assembler =
+            CodeBuilder::with_mock_libraries_with_source_manager(self.source_manager.clone())
+                .into();
+
         let program = assembler
             .with_debug_mode(true)
             .assemble_program(virtual_source_file)
@@ -101,23 +143,25 @@ impl TransactionContext {
         self.mast_store.insert(program.mast_forest().clone());
 
         let account_procedure_idx_map = AccountProcedureIndexMap::new(
-            [self.tx_inputs().account().code()]
+            [tx_inputs.account().code()]
                 .into_iter()
                 .chain(self.foreign_account_inputs.values().map(|(account, _)| account.code())),
-        )
-        .expect("constructing account procedure index map should work");
+        );
 
         // The ref block is unimportant when using execute_code so we can set it to any value.
-        let ref_block = self.tx_inputs().block_header().block_num();
+        let ref_block = tx_inputs.block_header().block_num();
 
         let exec_host = TransactionExecutorHost::<'_, '_, _, UnreachableAuth>::new(
             &PartialAccount::from(self.account()),
-            self.tx_inputs().input_notes().clone(),
+            tx_inputs.input_notes().clone(),
             self,
             ScriptMastForestStore::default(),
             account_procedure_idx_map,
             None,
             ref_block,
+            // We don't need to set the initial balance in this context under the assumption that
+            // fees are zero.
+            0u64,
             self.source_manager(),
         );
 
@@ -190,15 +234,25 @@ impl DataStore for TransactionContext {
     fn get_transaction_inputs(
         &self,
         account_id: AccountId,
-        _ref_blocks: BTreeSet<BlockNumber>,
+        ref_blocks: BTreeSet<BlockNumber>,
     ) -> impl FutureMaybeSend<Result<(PartialAccount, BlockHeader, PartialBlockchain), DataStoreError>>
     {
+        // Sanity checks
         assert_eq!(account_id, self.account().id());
         assert_eq!(account_id, self.tx_inputs.account().id());
+        assert_eq!(
+            ref_blocks
+                .last()
+                .copied()
+                .expect("at least the tx ref block should be provided"),
+            self.tx_inputs().blockchain().chain_length(),
+            "tx reference block should match partial blockchain length"
+        );
 
         let account = self.tx_inputs.account().clone();
         let block_header = self.tx_inputs.block_header().clone();
         let blockchain = self.tx_inputs.blockchain().clone();
+
         async move { Ok((account, block_header, blockchain)) }
     }
 
@@ -224,22 +278,21 @@ impl DataStore for TransactionContext {
         }
     }
 
-    fn get_vault_asset_witness(
+    fn get_vault_asset_witnesses(
         &self,
         account_id: AccountId,
         vault_root: Word,
-        asset_key: AssetVaultKey,
-    ) -> impl FutureMaybeSend<Result<AssetWitness, DataStoreError>> {
+        vault_keys: BTreeSet<AssetVaultKey>,
+    ) -> impl FutureMaybeSend<Result<Vec<AssetWitness>, DataStoreError>> {
         async move {
-            if account_id == self.account().id() {
+            let asset_vault = if account_id == self.account().id() {
                 if self.account().vault().root() != vault_root {
                     return Err(DataStoreError::other(format!(
                         "native account {account_id} has vault root {} but {vault_root} was requested",
                         self.account().vault().root()
                     )));
                 }
-
-                Ok(self.account().vault().open(asset_key))
+                self.account().vault()
             } else {
                 let (foreign_account, _witness) = self
                     .foreign_account_inputs
@@ -261,9 +314,10 @@ impl DataStore for TransactionContext {
                         foreign_account.vault().root()
                     )));
                 }
+                foreign_account.vault()
+            };
 
-                Ok(foreign_account.vault().open(asset_key))
-            }
+            Ok(vault_keys.into_iter().map(|vault_key| asset_vault.open(vault_key)).collect())
         }
     }
 
@@ -281,8 +335,8 @@ impl DataStore for TransactionContext {
                     .storage()
                     .slots()
                     .iter()
-                    .find_map(|slot| match slot {
-                        StorageSlot::Map(storage_map) if storage_map.root() == map_root => {
+                    .find_map(|slot| match slot.content() {
+                        StorageSlotContent::Map(storage_map) if storage_map.root() == map_root => {
                             Some(storage_map)
                         },
                         _ => None,
@@ -313,8 +367,8 @@ impl DataStore for TransactionContext {
                     .storage()
                     .slots()
                     .iter()
-                    .find_map(|slot| match slot {
-                        StorageSlot::Map(storage_map) if storage_map.root() == map_root => {Some(storage_map)},
+                    .find_map(|slot| match slot.content() {
+                        StorageSlotContent::Map(storage_map) if storage_map.root() == map_root => {Some(storage_map)},
                         _ => None,
                     })
                     .ok_or_else(|| {

@@ -12,6 +12,9 @@ use thiserror::Error;
 
 use super::AuthScheme;
 use crate::account::auth::{
+    AuthEcdsaK256Keccak,
+    AuthEcdsaK256KeccakMultisig,
+    AuthEcdsaK256KeccakMultisigConfig,
     AuthRpoFalcon512,
     AuthRpoFalcon512Multisig,
     AuthRpoFalcon512MultisigConfig,
@@ -40,7 +43,7 @@ procedure_digest!(
 ///
 /// It reexports the procedures from `miden::contracts::wallets::basic`. When linking against this
 /// component, the `miden` library (i.e. [`MidenLib`](crate::MidenLib)) must be available to the
-/// assembler which is the case when using [`TransactionKernel::assembler()`][kasm]. The procedures
+/// assembler which is the case when using [`CodeBuilder`][builder]. The procedures
 /// of this component are:
 /// - `receive_asset`, which can be used to add an asset to the account.
 /// - `move_asset_to_note`, which can be used to remove the specified asset from the account and add
@@ -51,7 +54,7 @@ procedure_digest!(
 ///
 /// This component supports all account types.
 ///
-/// [kasm]: crate::transaction::TransactionKernel::assembler
+/// [builder]: crate::utils::CodeBuilder
 pub struct BasicWallet;
 
 impl BasicWallet {
@@ -117,6 +120,17 @@ pub fn create_basic_wallet(
     }
 
     let auth_component: AccountComponent = match auth_scheme {
+        AuthScheme::EcdsaK256Keccak { pub_key } => AuthEcdsaK256Keccak::new(pub_key).into(),
+        AuthScheme::EcdsaK256KeccakMultisig { threshold, pub_keys } => {
+            let config = AuthEcdsaK256KeccakMultisigConfig::new(pub_keys, threshold)
+                .and_then(|cfg| {
+                    cfg.with_proc_thresholds(vec![(BasicWallet::receive_asset_digest(), 1)])
+                })
+                .map_err(BasicWalletError::AccountError)?;
+            AuthEcdsaK256KeccakMultisig::new(config)
+                .map_err(BasicWalletError::AccountError)?
+                .into()
+        },
         AuthScheme::RpoFalcon512 { pub_key } => AuthRpoFalcon512::new(pub_key).into(),
         AuthScheme::RpoFalcon512Multisig { threshold, pub_keys } => {
             let config = AuthRpoFalcon512MultisigConfig::new(pub_keys, threshold)

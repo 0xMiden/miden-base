@@ -99,8 +99,7 @@ impl LocalTransactionProver {
         tx_inputs: impl Into<TransactionInputs>,
     ) -> Result<ProvenTransaction, TransactionProverError> {
         let tx_inputs = tx_inputs.into();
-        let (stack_inputs, advice_inputs) = TransactionKernel::prepare_inputs(&tx_inputs)
-            .map_err(TransactionProverError::ConflictingAdviceMapEntry)?;
+        let (stack_inputs, advice_inputs) = TransactionKernel::prepare_inputs(&tx_inputs);
 
         self.mast_store.load_account_code(tx_inputs.account().code());
         for account_code in tx_inputs.foreign_account_code() {
@@ -114,8 +113,7 @@ impl LocalTransactionProver {
 
         let account_procedure_index_map = AccountProcedureIndexMap::new(
             tx_inputs.foreign_account_code().iter().chain([tx_inputs.account().code()]),
-        )
-        .map_err(TransactionProverError::CreateAccountProcedureIndexMap)?;
+        );
 
         let (partial_account, ref_block, _, input_notes, _) = tx_inputs.into_parts();
         let mut host = TransactionProverHost::new(
@@ -140,7 +138,7 @@ impl LocalTransactionProver {
         // Extract transaction outputs and process transaction data.
         // Note that the account delta does not contain the removed transaction fee, so it is the
         // "pre-fee" delta of the transaction.
-        let (pre_fee_account_delta, input_notes, output_notes, _tx_progress) = host.into_parts();
+        let (pre_fee_account_delta, input_notes, output_notes) = host.into_parts();
         let tx_outputs =
             TransactionKernel::from_transaction_parts(&stack_outputs, &advice_inputs, output_notes)
                 .map_err(TransactionProverError::TransactionOutputConstructionFailed)?;

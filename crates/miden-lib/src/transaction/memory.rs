@@ -32,6 +32,8 @@ pub type StorageSlot = u8;
 //
 // Here the "end pointer" is the last memory pointer occupied by the current data
 //
+// TODO: Rearrange the memory sections that follow account procedures to be contiguous to it.
+//
 // | Section            | Start address, pointer (word pointer) | End address, pointer (word pointer) | Comment                             |
 // | ------------------ | :-----------------------------------: | :---------------------------------: | ----------------------------------- |
 // | ID and nonce       | 0 (0)                                 | 3 (0)                               |                                     |
@@ -40,13 +42,15 @@ pub type StorageSlot = u8;
 // | Code commitment    | 12 (3)                                | 15 (3)                              |                                     |
 // | Padding            | 16 (4)                                | 27 (6)                              |                                     |
 // | Num procedures     | 28 (7)                                | 31 (7)                              |                                     |
-// | Procedures info    | 32 (8)                                | 2_079 (519)                         | 255 procedures max, 8 elements each |
+// | Procedures roots   | 32 (8)                                | 1_055 (263)                         | 256 procedures max, 4 elements each |
 // | Padding            | 2_080 (520)                           | 2_083 (520)                         |                                     |
-// | Proc tracking      | 2_084 (521)                           | 2_339 (584)                         | 255 procedures max, 1 element each  |
+// | Proc tracking      | 2_084 (521)                           | 2_339 (584)                         | 256 procedures max, 1 element each  |
 // | Num storage slots  | 2_340 (585)                           | 2_343 (585)                         |                                     |
 // | Storage slot info  | 2_344 (586)                           | 4_383 (1095)                        | 255 slots max, 8 elements each      |
 // | Initial slot info  | 4_384 (1096)                          | 6_423 (1545)                        | Only present on the native account  |
 // | Padding            | 6_424 (1545)                          | 8_191 (2047)                        |                                     |
+//
+// Storage slot info is laid out as [[0, slot_type, slot_id_suffix, slot_id_prefix], SLOT_VALUE].
 
 // Relative layout of the native account's delta.
 //
@@ -59,16 +63,6 @@ pub type StorageSlot = u8;
 // | Fungible Asset Delta Ptr     | 0 (0)                        | 3 (0)                      |                                     |
 // | Non-Fungible Asset Delta Ptr | 4 (1)                        | 7 (1)                      |                                     |
 // | Storage Map Delta Ptrs       | 8 (2)                        | 263 (65)                   | Max 255 storage map deltas          |
-
-// RESERVED ACCOUNT STORAGE SLOTS
-// ------------------------------------------------------------------------------------------------
-
-/// The account storage slot at which faucet data is stored.
-///
-/// - Fungible faucet: The faucet data consists of [0, 0, 0, total_issuance].
-/// - Non-fungible faucet: The faucet data consists of SMT root containing minted non-fungible
-///   assets.
-pub const FAUCET_STORAGE_DATA_SLOT: StorageSlot = 0;
 
 // BOOKKEEPING
 // ------------------------------------------------------------------------------------------------
@@ -149,40 +143,40 @@ pub const AUTH_ARGS_PTR: MemoryAddress = 436;
 // BLOCK DATA
 // ------------------------------------------------------------------------------------------------
 
-/// The memory address at which the block data section begins
+/// The memory address at which the block data section begins.
 pub const BLOCK_DATA_SECTION_OFFSET: MemoryOffset = 800;
 
-/// The memory address at which the previous block commitment is stored
+/// The memory address at which the previous block commitment is stored.
 pub const PREV_BLOCK_COMMITMENT_PTR: MemoryAddress = 800;
 
-/// The memory address at which the chain commitment is stored
+/// The memory address at which the chain commitment is stored.
 pub const CHAIN_COMMITMENT_PTR: MemoryAddress = 804;
 
-/// The memory address at which the state root is stored
+/// The memory address at which the state root is stored.
 pub const ACCT_DB_ROOT_PTR: MemoryAddress = 808;
 
-/// The memory address at which the nullifier db root is store
+/// The memory address at which the nullifier db root is store.
 pub const NULLIFIER_DB_ROOT_PTR: MemoryAddress = 812;
 
-/// The memory address at which the TX commitment is stored
+/// The memory address at which the TX commitment is stored.
 pub const TX_COMMITMENT_PTR: MemoryAddress = 816;
 
-/// The memory address at which the transaction kernel commitment is stored
+/// The memory address at which the transaction kernel commitment is stored.
 pub const TX_KERNEL_COMMITMENT_PTR: MemoryAddress = 820;
 
-/// The memory address at which the proof commitment is stored
-pub const PROOF_COMMITMENT_PTR: MemoryAddress = 824;
+/// The memory address at which the public key is stored.
+pub const VALIDATOR_KEY_COMMITMENT_PTR: MemoryAddress = 824;
 
-/// The memory address at which the block number is stored
+/// The memory address at which the block number is stored.
 pub const BLOCK_METADATA_PTR: MemoryAddress = 828;
 
-/// The index of the block number within the block metadata
+/// The index of the block number within the block metadata.
 pub const BLOCK_NUMBER_IDX: DataIndex = 0;
 
-/// The index of the protocol version within the block metadata
+/// The index of the protocol version within the block metadata.
 pub const PROTOCOL_VERSION_IDX: DataIndex = 1;
 
-/// The index of the timestamp within the block metadata
+/// The index of the timestamp within the block metadata.
 pub const TIMESTAMP_IDX: DataIndex = 2;
 
 /// The memory address at which the fee parameters are stored. These occupy a double word.
@@ -197,19 +191,19 @@ pub const NATIVE_ASSET_ID_PREFIX_IDX: DataIndex = 1;
 /// The index of the verification base fee within the block fee parameters.
 pub const VERIFICATION_BASE_FEE_IDX: DataIndex = 2;
 
-/// The memory address at which the note root is stored
+/// The memory address at which the note root is stored.
 pub const NOTE_ROOT_PTR: MemoryAddress = 840;
 
 // CHAIN DATA
 // ------------------------------------------------------------------------------------------------
 
-/// The memory address at which the chain data section begins
+/// The memory address at which the chain data section begins.
 pub const PARTIAL_BLOCKCHAIN_PTR: MemoryAddress = 1200;
 
-/// The memory address at which the total number of leaves in the partial blockchain is stored
+/// The memory address at which the total number of leaves in the partial blockchain is stored.
 pub const PARTIAL_BLOCKCHAIN_NUM_LEAVES_PTR: MemoryAddress = 1200;
 
-/// The memory address at which the partial blockchain peaks are stored
+/// The memory address at which the partial blockchain peaks are stored.
 pub const PARTIAL_BLOCKCHAIN_PEAKS_PTR: MemoryAddress = 1204;
 
 // KERNEL DATA
@@ -219,13 +213,13 @@ pub const PARTIAL_BLOCKCHAIN_PEAKS_PTR: MemoryAddress = 1204;
 pub const NUM_KERNEL_PROCEDURES_PTR: MemoryAddress = 1600;
 
 /// The memory address at which the section, where the hashes of the kernel procedures are stored,
-/// begins
+/// begins.
 pub const KERNEL_PROCEDURES_PTR: MemoryAddress = 1604;
 
 // ACCOUNT DATA
 // ------------------------------------------------------------------------------------------------
 
-/// The size of the memory segment allocated to core account data (excluding new code commitment)
+/// The size of the memory segment allocated to core account data (excluding new code commitment).
 pub const ACCT_DATA_MEM_SIZE: MemSize = 16;
 
 /// The memory address at which the native account is stored.
@@ -314,6 +308,18 @@ pub const ACCT_STORAGE_SLOTS_SECTION_OFFSET: MemoryAddress = 2344;
 
 /// The number of elements that each storage slot takes up in memory.
 pub const ACCT_STORAGE_SLOT_NUM_ELEMENTS: u8 = 8;
+
+/// The offset of the slot type in the storage slot.
+pub const ACCT_STORAGE_SLOT_TYPE_OFFSET: u8 = 1;
+
+/// The offset of the slot's ID suffix in the storage slot.
+pub const ACCT_STORAGE_SLOT_ID_SUFFIX_OFFSET: u8 = 2;
+
+/// The offset of the slot's ID prefix in the storage slot.
+pub const ACCT_STORAGE_SLOT_ID_PREFIX_OFFSET: u8 = 3;
+
+/// The offset of the slot value in the storage slot.
+pub const ACCT_STORAGE_SLOT_VALUE_OFFSET: u8 = 4;
 
 /// The memory address at which the account storage slots section begins in the native account.
 pub const NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR: MemoryAddress =

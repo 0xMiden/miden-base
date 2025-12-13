@@ -3,7 +3,6 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use core::error::Error;
 
-use miden_lib::transaction::TransactionAdviceMapMismatch;
 use miden_objects::account::AccountId;
 use miden_objects::account::auth::PublicKeyCommitment;
 use miden_objects::assembly::diagnostics::reporting::PrintDiagnostic;
@@ -74,10 +73,12 @@ impl From<TransactionCheckerError> for TransactionExecutorError {
 
 #[derive(Debug, Error)]
 pub enum TransactionExecutorError {
-    #[error("the advice map contains conflicting map entries")]
-    ConflictingAdviceMapEntry(#[source] TransactionAdviceMapMismatch),
     #[error("failed to fetch transaction inputs from the data store")]
     FetchTransactionInputsFailed(#[source] DataStoreError),
+    #[error("failed to fetch asset witnesses from the data store")]
+    FetchAssetWitnessFailed(#[source] DataStoreError),
+    #[error("fee asset must be fungible but was non-fungible")]
+    FeeAssetMustBeFungible,
     #[error("foreign account inputs for ID {0} are not anchored on reference block")]
     ForeignAccountNotAnchoredInReference(AccountId),
     #[error(
@@ -118,8 +119,6 @@ pub enum TransactionExecutorError {
         "input note {0} was created in a block past the transaction reference block number ({1})"
     )]
     NoteBlockPastReferenceBlock(NoteId, BlockNumber),
-    #[error("failed to create transaction host")]
-    TransactionHostCreationFailed(#[source] TransactionHostError),
     #[error("failed to construct transaction outputs")]
     TransactionOutputConstructionFailed(#[source] TransactionOutputError),
     // Print the diagnostic directly instead of returning the source error. In the source error
@@ -149,16 +148,10 @@ pub enum TransactionProverError {
     TransactionOutputConstructionFailed(#[source] TransactionOutputError),
     #[error("failed to build proven transaction")]
     ProvenTransactionBuildFailed(#[source] ProvenTransactionError),
-    #[error("the advice map contains conflicting map entries")]
-    ConflictingAdviceMapEntry(#[source] TransactionAdviceMapMismatch),
     // Print the diagnostic directly instead of returning the source error. In the source error
     // case, the diagnostic is lost if the execution error is not explicitly unwrapped.
     #[error("failed to execute transaction kernel program:\n{}", PrintDiagnostic::new(.0))]
     TransactionProgramExecutionFailed(ExecutionError),
-    #[error("failed to create account procedure index map")]
-    CreateAccountProcedureIndexMap(#[source] TransactionHostError),
-    #[error("failed to create transaction host")]
-    TransactionHostCreationFailed(#[source] TransactionHostError),
     /// Custom error variant for errors not covered by the other variants.
     #[error("{error_msg}")]
     Other {
@@ -201,17 +194,6 @@ pub enum TransactionVerifierError {
     InsufficientProofSecurityLevel { actual: u32, expected_minimum: u32 },
 }
 
-// TRANSACTION HOST ERROR
-// ================================================================================================
-
-#[derive(Debug, Error)]
-pub enum TransactionHostError {
-    #[error("{0}")]
-    AccountProcedureIndexMapError(String),
-    #[error("failed to create account procedure info")]
-    AccountProcedureInfoCreationFailed(#[source] AccountError),
-}
-
 // TRANSACTION KERNEL ERROR
 // ================================================================================================
 
@@ -225,10 +207,6 @@ pub enum TransactionKernelError {
     FailedToAddAssetToNote(#[source] NoteError),
     #[error("note input data has hash {actual} but expected hash {expected}")]
     InvalidNoteInputs { expected: Word, actual: Word },
-    #[error(
-        "storage slot index {actual} is invalid, must be smaller than the number of account storage slots {max}"
-    )]
-    InvalidStorageSlotIndex { max: u64, actual: u64 },
     #[error(
         "failed to respond to signature requested since no authenticator is assigned to the host"
     )]
@@ -260,7 +238,7 @@ pub enum TransactionKernelError {
     #[error("recipient data `{0:?}` in the advice provider is not well formed")]
     MalformedRecipientData(Vec<Felt>),
     #[error("cannot add asset to note with index {0}, note does not exist in the advice provider")]
-    MissingNote(u64),
+    MissingNote(usize),
     #[error(
         "public note with metadata {0:?} and recipient digest {1} is missing details in the advice provider"
     )]

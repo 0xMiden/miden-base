@@ -1,16 +1,20 @@
 use alloc::string::String;
 
-use miden_objects::account::{Account, AccountType};
+use miden_objects::account::{Account, AccountStorage, AccountType, StorageSlotName};
+use miden_objects::utils::sync::LazyLock;
 use miden_objects::{AccountError, Felt, TokenSymbolError};
 use thiserror::Error;
-
-use crate::transaction::memory::FAUCET_STORAGE_DATA_SLOT;
 
 mod basic_fungible;
 mod network_fungible;
 
 pub use basic_fungible::{BasicFungibleFaucet, create_basic_fungible_faucet};
 pub use network_fungible::{NetworkFungibleFaucet, create_network_fungible_faucet};
+
+static METADATA_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
+    StorageSlotName::new("miden::standards::fungible_faucets::metadata")
+        .expect("storage slot name should be valid")
+});
 
 // FUNGIBLE FAUCET
 // ================================================================================================
@@ -19,7 +23,6 @@ pub use network_fungible::{NetworkFungibleFaucet, create_network_fungible_faucet
 /// account's reserved storage slot.
 pub trait FungibleFaucetExt {
     const ISSUANCE_ELEMENT_INDEX: usize;
-    const ISSUANCE_STORAGE_SLOT: u8;
 
     /// Returns the amount of tokens (in base units) issued from this fungible faucet.
     ///
@@ -30,17 +33,19 @@ pub trait FungibleFaucetExt {
 
 impl FungibleFaucetExt for Account {
     const ISSUANCE_ELEMENT_INDEX: usize = 3;
-    const ISSUANCE_STORAGE_SLOT: u8 = FAUCET_STORAGE_DATA_SLOT;
 
     fn get_token_issuance(&self) -> Result<Felt, FungibleFaucetError> {
         if self.account_type() != AccountType::FungibleFaucet {
             return Err(FungibleFaucetError::NotAFungibleFaucetAccount);
         }
 
-        let slot = self
-            .storage()
-            .get_item(Self::ISSUANCE_STORAGE_SLOT)
-            .map_err(|_| FungibleFaucetError::InvalidStorageOffset(Self::ISSUANCE_STORAGE_SLOT))?;
+        let slot =
+            self.storage().get_item(AccountStorage::faucet_sysdata_slot()).map_err(|err| {
+                FungibleFaucetError::StorageLookupFailed {
+                    slot_name: AccountStorage::faucet_sysdata_slot().clone(),
+                    source: err,
+                }
+            })?;
         Ok(slot[Self::ISSUANCE_ELEMENT_INDEX])
     }
 }
@@ -59,8 +64,11 @@ pub enum FungibleFaucetError {
         "account interface provided for faucet creation does not have basic fungible faucet component"
     )]
     NoAvailableInterface,
-    #[error("storage offset `{0}` is invalid")]
-    InvalidStorageOffset(u8),
+    #[error("failed to retrieve storage slot with name {slot_name}")]
+    StorageLookupFailed {
+        slot_name: StorageSlotName,
+        source: AccountError,
+    },
     #[error("invalid token symbol")]
     InvalidTokenSymbol(#[source] TokenSymbolError),
     #[error("unsupported authentication scheme: {0}")]

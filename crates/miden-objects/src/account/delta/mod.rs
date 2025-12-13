@@ -182,7 +182,7 @@ impl AccountDelta {
 
     /// Computes the commitment to the account delta.
     ///
-    /// # Computation
+    /// ## Computation
     ///
     /// The delta is a sequential hash over a vector of field elements which starts out empty and
     /// is appended to in the following way. Whenever sorting is expected, it is that of a
@@ -205,19 +205,24 @@ impl AccountDelta {
     ///       assets since `faucet_id_prefix` is at the same position in the layout for both assets,
     ///       and, by design, it is never the same for fungible and non-fungible assets.
     ///     - Append `[hash0, hash1, hash2, faucet_id_prefix]`, i.e. the non-fungible asset.
-    /// - Storage Slots - for each slot **whose value has changed**, depending on the slot type:
+    /// - Storage Slots are sorted by slot ID and are iterated in this order. For each slot **whose
+    ///   value has changed**, depending on the slot type:
     ///   - Value Slot
-    ///     - Append `[[domain = 2, slot_idx, 0, 0], NEW_VALUE]` where NEW_VALUE is the new value of
-    ///       the slot and slot_idx is the index of the slot.
+    ///     - Append `[[domain = 2, 0, slot_id_suffix, slot_id_prefix], NEW_VALUE]` where
+    ///       `NEW_VALUE` is the new value of the slot and `slot_id_{suffix, prefix}` is the
+    ///       identifier of the slot.
     ///   - Map Slot
     ///     - For each key-value pair, sorted by key, whose new value is different from the previous
     ///       value in the map:
     ///       - Append `[KEY, NEW_VALUE]`.
-    ///     - Append `[[domain = 3, slot_idx, num_changed_entries, 0], 0, 0, 0, 0]`, except if
-    ///       `num_changed_entries` is 0, where slot_idx is the index of the slot and
+    ///     - Append `[[domain = 3, num_changed_entries, slot_id_suffix, slot_id_prefix], 0, 0, 0,
+    ///       0]`, where `slot_id_{suffix, prefix}` are the slot identifiers and
     ///       `num_changed_entries` is the number of changed key-value pairs in the map.
+    ///         - For partial state deltas, the map header must only be included if
+    ///           `num_changed_entries` is not zero.
+    ///         - For full state deltas, the map header must always be included.
     ///
-    /// # Rationale
+    /// ## Rationale
     ///
     /// The rationale for this layout is that hashing in the VM should be as efficient as possible
     /// and minimize the number of branches to be as efficient as possible. Every high-level section
@@ -225,7 +230,14 @@ impl AccountDelta {
     /// on double words. In the VM, each permutation is done immediately, so adding an uneven
     /// number of words in a given step will result in more difficulty in the MASM implementation.
     ///
-    /// # Security
+    /// ### New Accounts
+    ///
+    /// The delta for new accounts (a full state delta) must commit to all the storage slots of the
+    /// account, even if the storage slots have a default value (e.g. the empty word for value slots
+    /// or an empty storage map). This ensures the full state delta commits to the exact storage
+    /// slots that are contained in the account.
+    ///
+    /// ## Security
     ///
     /// The general concern with the commitment is that two distinct deltas must never hash to the
     /// same commitment. E.g. a commitment of a delta that changes a key-value pair in a storage
@@ -244,12 +256,11 @@ impl AccountDelta {
     ///     a value slot being set to EMPTY_WORD and its value being unchanged.
     /// - Storage map slots:
     ///   - Map slots append a header which summarizes the changes in the slot, in particular the
-    ///     slot index and number of changed entries. Since only changed slots are included, the
-    ///     number of changed entries is never zero.
+    ///     slot ID and number of changed entries.
     ///   - Two distinct storage map slots use the same domain but are disambiguated due to
-    ///     inclusion of the slot index.
+    ///     inclusion of the slot ID.
     ///
-    /// **Domain Separators**
+    /// ### Domain Separators
     ///
     /// As an example for ambiguity, consider these two deltas:
     ///
@@ -257,7 +268,7 @@ impl AccountDelta {
     /// [
     ///   ID_AND_NONCE, EMPTY_WORD,
     ///   [/* no fungible asset delta */],
-    ///   [[domain = 1, was_added = 1, 0, 0], NON_FUNGIBLE_ASSET],
+    ///   [[domain = 1, was_added = 0, 0, 0], NON_FUNGIBLE_ASSET],
     ///   [/* no storage delta */]
     /// ]
     /// ```
@@ -267,7 +278,7 @@ impl AccountDelta {
     ///   ID_AND_NONCE, EMPTY_WORD,
     ///   [/* no fungible asset delta */],
     ///   [/* no non-fungible asset delta */],
-    ///   [[domain = 2, slot_idx = 1, 0, 0], NEW_VALUE]
+    ///   [[domain = 2, 0, slot_id_suffix = 0, slot_id_prefix = 0], NEW_VALUE]
     /// ]
     /// ```
     ///
@@ -276,38 +287,42 @@ impl AccountDelta {
     /// importance of placing the domain separators in the same index within each word's layout
     /// which makes it easy to see that this value cannot be crafted to be the same.
     ///
-    /// **Number of Changed Entries**
+    /// ### Number of Changed Entries
     ///
     /// As an example for ambiguity, consider these two deltas:
     ///
     /// ```text
     /// [
-    ///   EMPTY_WORD, ID_AND_NONCE,
+    ///   ID_AND_NONCE, EMPTY_WORD,
     ///   [/* no fungible asset delta */],
-    ///   [[domain = 1, was_added = 1, 0, 0], NON_FUNGIBLE_ASSET],
-    ///   [/* no storage delta */],
+    ///   [/* no non-fungible asset delta */],
+    ///   [domain = 3, num_changed_entries = 0, slot_id_suffix = 20, slot_id_prefix = 21, 0, 0, 0, 0]
+    ///   [domain = 3, num_changed_entries = 0, slot_id_suffix = 42, slot_id_prefix = 43, 0, 0, 0, 0]
     /// ]
     /// ```
     ///
     /// ```text
     /// [
-    ///    ID_AND_NONCE, EMPTY_WORD,
+    ///   ID_AND_NONCE, EMPTY_WORD,
     ///   [/* no fungible asset delta */],
     ///   [/* no non-fungible asset delta */],
     ///   [KEY0, VALUE0],
-    ///   [KEY1, VALUE1],
-    ///   [domain = 3, slot_idx = 0, num_changed_entries = 2, 0, 0, 0, 0, 0]
+    ///   [domain = 3, num_changed_entries = 1, slot_id_suffix = 42, slot_id_prefix = 43, 0, 0, 0, 0]
     /// ]
     /// ```
     ///
-    /// The keys and values of map slots are user-controllable so `KEY0` and `VALUE0` can be crafted
-    /// to match `NON_FUNGIBLE_ASSET` and its metadata. Including the header of the map slot
-    /// additionally hashes the map domain into the delta, but if the header was included whenever
-    /// _any_ value in the map has changed, it would cause ambiguity about whether `KEY0`/`VALUE0`
-    /// are in fact map keys or a non-fungible asset (or any asset or a value storage slot more
-    /// generally). Including `num_changed_entries` disambiguates this situation, by ensuring
-    /// that the delta commitment is different when, e.g. 1) a non-fungible asset and one key-value
-    /// pair have changed and 2) when two key-value pairs have changed.
+    /// The keys and values of map slots are user-controllable so `KEY0` and `VALUE0` could be
+    /// crafted to match the first map header in the first delta. So, _without_ having
+    /// `num_changed_entries` included in the commitment, these deltas would be ambiguous. A delta
+    /// with two empty maps could have the same commitment as a delta with one map entry where one
+    /// key-value pair has changed.
+    ///
+    /// #### New Accounts
+    ///
+    /// The number of changed entries of a storage map can be validly zero when an empty storage map
+    /// is added to a new account. In such cases, the number of changed key-value pairs is 0, but
+    /// the map must still be committed to, in order to differentiate between a slot being an empty
+    /// map or not being present at all.
     pub fn to_commitment(&self) -> Word {
         <Self as SequentialCommit>::to_commitment(self)
     }
@@ -344,11 +359,10 @@ impl TryFrom<&AccountDelta> for Account {
         // this to create an empty account and use `Account::apply_delta` instead.
         // For now, we need to create the initial storage of the account with the same slot types.
         let mut empty_storage_slots = Vec::new();
-        for slot_idx in 0..u8::MAX {
-            let slot = match delta.storage().slot_type(slot_idx) {
-                Some(StorageSlotType::Value) => StorageSlot::empty_value(),
-                Some(StorageSlotType::Map) => StorageSlot::empty_map(),
-                None => break,
+        for (slot_name, slot_type) in delta.storage().slots() {
+            let slot = match slot_type {
+                StorageSlotType::Value => StorageSlot::with_empty_value(slot_name.clone()),
+                StorageSlotType::Map => StorageSlot::with_empty_map(slot_name.clone()),
             };
             empty_storage_slots.push(slot);
         }
@@ -585,6 +599,7 @@ mod tests {
         AccountStorageMode,
         AccountType,
         StorageMapDelta,
+        StorageSlotName,
     };
     use crate::asset::{
         Asset,
@@ -611,7 +626,7 @@ mod tests {
         AccountDelta::new(account_id, storage_delta.clone(), vault_delta.clone(), ONE).unwrap();
 
         // non-empty delta
-        let storage_delta = AccountStorageDelta::from_iters([1], [], []);
+        let storage_delta = AccountStorageDelta::from_iters([StorageSlotName::mock(1)], [], []);
 
         assert_matches!(
             AccountDelta::new(account_id, storage_delta.clone(), vault_delta.clone(), ZERO)
@@ -659,10 +674,13 @@ mod tests {
         assert_eq!(account_delta.to_bytes().len(), account_delta.get_size_hint());
 
         let storage_delta = AccountStorageDelta::from_iters(
-            [1],
-            [(2, Word::from([1, 1, 1, 1u32])), (3, Word::from([1, 1, 0, 1u32]))],
+            [StorageSlotName::mock(1)],
+            [
+                (StorageSlotName::mock(2), Word::from([1, 1, 1, 1u32])),
+                (StorageSlotName::mock(3), Word::from([1, 1, 0, 1u32])),
+            ],
             [(
-                4,
+                StorageSlotName::mock(4),
                 StorageMapDelta::from_iters(
                     [Word::from([1, 1, 1, 0u32]), Word::from([0, 1, 1, 1u32])],
                     [(Word::from([1, 1, 1, 1u32]), Word::from([1, 1, 1, 1u32]))],
