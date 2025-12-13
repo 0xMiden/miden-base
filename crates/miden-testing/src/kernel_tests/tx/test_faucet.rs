@@ -9,14 +9,13 @@ use miden_lib::errors::tx_kernel_errors::{
     ERR_VAULT_FUNGIBLE_ASSET_AMOUNT_LESS_THAN_AMOUNT_TO_WITHDRAW,
 };
 use miden_lib::testing::mock_account::MockAccountExt;
-use miden_lib::transaction::TransactionKernel;
-use miden_lib::transaction::memory::NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR;
-use miden_lib::utils::ScriptBuilder;
+use miden_lib::utils::CodeBuilder;
 use miden_objects::account::{
     Account,
     AccountBuilder,
     AccountComponent,
     AccountId,
+    AccountStorage,
     AccountType,
     StorageMap,
 };
@@ -36,10 +35,8 @@ use miden_objects::testing::constants::{
     NON_FUNGIBLE_ASSET_DATA_2,
 };
 use miden_objects::testing::noop_auth_component::NoopAuthComponent;
-use miden_objects::testing::storage::FAUCET_STORAGE_DATA_SLOT;
 use miden_objects::{Felt, Word};
 
-use crate::kernel_tests::tx::ExecutionOutputExt;
 use crate::utils::create_public_p2any_note;
 use crate::{TransactionContextBuilder, assert_execution_error, assert_transaction_executor_error};
 
@@ -49,24 +46,22 @@ use crate::{TransactionContextBuilder, assert_execution_error, assert_transactio
 #[tokio::test]
 async fn test_mint_fungible_asset_succeeds() -> anyhow::Result<()> {
     let faucet_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).unwrap();
-    let tx_context = TransactionContextBuilder::with_fungible_faucet(
-        faucet_id.into(),
-        Felt::new(FUNGIBLE_FAUCET_INITIAL_BALANCE),
-    )
-    .build()?;
+    let expected_final_amount = FUNGIBLE_FAUCET_INITIAL_BALANCE + FUNGIBLE_ASSET_AMOUNT;
 
     let code = format!(
         r#"
-        use.mock::faucet
+        use.mock::faucet->mock_faucet
+        use.miden::faucet
         use.$kernel::asset_vault
         use.$kernel::memory
         use.$kernel::prologue
 
         begin
-            # mint asset
             exec.prologue::prepare_transaction
+
+            # mint asset
             push.{FUNGIBLE_ASSET_AMOUNT} push.0 push.{suffix} push.{prefix}
-            call.faucet::mint
+            call.mock_faucet::mint
 
             # assert the correct asset is returned
             push.{FUNGIBLE_ASSET_AMOUNT} push.0 push.{suffix} push.{prefix}
@@ -77,23 +72,24 @@ async fn test_mint_fungible_asset_succeeds() -> anyhow::Result<()> {
             push.{suffix} push.{prefix}
             exec.asset_vault::get_balance
             push.{FUNGIBLE_ASSET_AMOUNT} assert_eq.err="input vault should contain minted asset"
+
+            exec.faucet::get_total_issuance
+            push.{expected_final_amount}
+            assert_eq.err="expected total issuance to be {expected_final_amount}"
         end
         "#,
         prefix = faucet_id.prefix().as_felt(),
         suffix = faucet_id.suffix(),
     );
 
-    let exec_output = &tx_context.execute_code(&code).await.unwrap();
+    TransactionContextBuilder::with_fungible_faucet(
+        faucet_id.into(),
+        Felt::new(FUNGIBLE_FAUCET_INITIAL_BALANCE),
+    )
+    .build()?
+    .execute_code(&code)
+    .await?;
 
-    let expected_final_storage_amount = FUNGIBLE_FAUCET_INITIAL_BALANCE + FUNGIBLE_ASSET_AMOUNT;
-    let faucet_reserved_slot_storage_location =
-        FAUCET_STORAGE_DATA_SLOT as u32 + NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR;
-    let faucet_storage_amount_location = faucet_reserved_slot_storage_location + 3;
-
-    let faucet_storage_amount =
-        exec_output.get_kernel_mem_element(faucet_storage_amount_location).as_int();
-
-    assert_eq!(faucet_storage_amount, expected_final_storage_amount);
     Ok(())
 }
 
@@ -113,7 +109,7 @@ async fn mint_fungible_asset_fails_on_non_faucet_account() -> anyhow::Result<()>
       ",
         asset = Word::from(FungibleAsset::mock(50))
     );
-    let tx_script = ScriptBuilder::with_mock_libraries()?.compile_tx_script(code)?;
+    let tx_script = CodeBuilder::with_mock_libraries().compile_tx_script(code)?;
 
     let result = TransactionContextBuilder::new(account)
         .tx_script(tx_script)
@@ -166,7 +162,7 @@ async fn test_mint_fungible_asset_fails_saturate_max_amount() -> anyhow::Result<
     ",
         asset = Word::from(FungibleAsset::mock(FungibleAsset::MAX_AMOUNT))
     );
-    let tx_script = ScriptBuilder::with_mock_libraries()?.compile_tx_script(code)?;
+    let tx_script = CodeBuilder::with_mock_libraries().compile_tx_script(code)?;
 
     let result = TransactionContextBuilder::with_fungible_faucet(
         FungibleAsset::mock_issuer().into(),
@@ -206,6 +202,8 @@ async fn test_mint_non_fungible_asset_succeeds() -> anyhow::Result<()> {
         use.$kernel::prologue
         use.mock::faucet->mock_faucet
 
+        const FAUCET_SYSDATA_SLOT_NAME = word("{faucet_sysdata_slot_name}")
+
         begin
             # mint asset
             exec.prologue::prepare_transaction
@@ -223,7 +221,7 @@ async fn test_mint_non_fungible_asset_succeeds() -> anyhow::Result<()> {
             assert.err="vault should contain asset"
 
             # assert the non-fungible asset has been added to the faucet smt
-            push.{FAUCET_STORAGE_DATA_SLOT}
+            push.FAUCET_SYSDATA_SLOT_NAME[0..2]
             exec.account::get_item
             push.{asset_vault_key}
             exec.smt::get
@@ -232,6 +230,7 @@ async fn test_mint_non_fungible_asset_succeeds() -> anyhow::Result<()> {
             dropw
         end
         "#,
+        faucet_sysdata_slot_name = AccountStorage::faucet_sysdata_slot(),
         non_fungible_asset = Word::from(non_fungible_asset),
         asset_vault_key = StorageMap::hash_key(asset_vault_key.into()),
     );
@@ -285,7 +284,7 @@ async fn mint_non_fungible_asset_fails_on_non_faucet_account() -> anyhow::Result
       ",
         asset = Word::from(FungibleAsset::mock(50))
     );
-    let tx_script = ScriptBuilder::with_mock_libraries()?.compile_tx_script(code)?;
+    let tx_script = CodeBuilder::with_mock_libraries().compile_tx_script(code)?;
 
     let result = TransactionContextBuilder::new(account)
         .tx_script(tx_script)
@@ -344,19 +343,22 @@ async fn test_burn_fungible_asset_succeeds() -> anyhow::Result<()> {
     };
 
     let faucet_id = tx_context.account().id();
+    let expected_final_amount = FUNGIBLE_FAUCET_INITIAL_BALANCE - FUNGIBLE_ASSET_AMOUNT;
 
     let code = format!(
         r#"
-        use.mock::faucet
+        use.mock::faucet->mock_faucet
+        use.miden::faucet
         use.$kernel::asset_vault
         use.$kernel::memory
         use.$kernel::prologue
 
         begin
-            # burn asset
             exec.prologue::prepare_transaction
+
+            # burn asset
             push.{FUNGIBLE_ASSET_AMOUNT} push.0 push.{suffix} push.{prefix}
-            call.faucet::burn
+            call.mock_faucet::burn
 
             # assert the correct asset is returned
             push.{FUNGIBLE_ASSET_AMOUNT} push.0 push.{suffix} push.{prefix}
@@ -368,7 +370,12 @@ async fn test_burn_fungible_asset_succeeds() -> anyhow::Result<()> {
             push.{suffix} push.{prefix}
             exec.asset_vault::get_balance
 
-            push.{final_input_vault_asset_amount} assert_eq.err="vault balance does not match expected balance"
+            push.{final_input_vault_asset_amount}
+            assert_eq.err="vault balance does not match expected balance"
+
+            exec.faucet::get_total_issuance
+            push.{expected_final_amount}
+            assert_eq.err="expected total issuance to be {expected_final_amount}"
         end
         "#,
         prefix = faucet_id.prefix().as_felt(),
@@ -376,17 +383,8 @@ async fn test_burn_fungible_asset_succeeds() -> anyhow::Result<()> {
         final_input_vault_asset_amount = CONSUMED_ASSET_1_AMOUNT - FUNGIBLE_ASSET_AMOUNT,
     );
 
-    let exec_output = &tx_context.execute_code(&code).await.unwrap();
+    tx_context.execute_code(&code).await?;
 
-    let expected_final_storage_amount = FUNGIBLE_FAUCET_INITIAL_BALANCE - FUNGIBLE_ASSET_AMOUNT;
-    let faucet_reserved_slot_storage_location =
-        FAUCET_STORAGE_DATA_SLOT as u32 + NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR;
-    let faucet_storage_amount_location = faucet_reserved_slot_storage_location + 3;
-
-    let faucet_storage_amount =
-        exec_output.get_kernel_mem_element(faucet_storage_amount_location).as_int();
-
-    assert_eq!(faucet_storage_amount, expected_final_storage_amount);
     Ok(())
 }
 
@@ -406,7 +404,7 @@ async fn burn_fungible_asset_fails_on_non_faucet_account() -> anyhow::Result<()>
       ",
         asset = Word::from(FungibleAsset::mock(50))
     );
-    let tx_script = ScriptBuilder::with_mock_libraries()?.compile_tx_script(code)?;
+    let tx_script = CodeBuilder::with_mock_libraries().compile_tx_script(code)?;
 
     let result = TransactionContextBuilder::new(account)
         .tx_script(tx_script)
@@ -504,6 +502,8 @@ async fn test_burn_non_fungible_asset_succeeds() -> anyhow::Result<()> {
         use.$kernel::prologue
         use.mock::faucet->mock_faucet
 
+        const FAUCET_SYSDATA_SLOT_NAME = word("{faucet_sysdata_slot_name}")
+
         begin
             exec.prologue::prepare_transaction
 
@@ -519,7 +519,7 @@ async fn test_burn_non_fungible_asset_succeeds() -> anyhow::Result<()> {
 
             # check that the non-fungible asset is in the account map
             push.{burnt_asset_vault_key}
-            push.{FAUCET_STORAGE_DATA_SLOT}
+            push.FAUCET_SYSDATA_SLOT_NAME[0..2]
             exec.account::get_map_item
             push.{non_fungible_asset}
             assert_eqw.err="non-fungible asset should be in the account map"
@@ -541,13 +541,14 @@ async fn test_burn_non_fungible_asset_succeeds() -> anyhow::Result<()> {
 
             # assert that the non-fungible asset is no longer in the account map
             push.{burnt_asset_vault_key}
-            push.{FAUCET_STORAGE_DATA_SLOT}
+            push.FAUCET_SYSDATA_SLOT_NAME[0..2]
             exec.account::get_map_item
             padw
             assert_eqw.err="burnt asset should have been removed from map"
             dropw
         end
         "#,
+        faucet_sysdata_slot_name = AccountStorage::faucet_sysdata_slot(),
         non_fungible_asset = Word::from(non_fungible_asset_burnt),
         burnt_asset_vault_key = burnt_asset_vault_key,
     );
@@ -601,7 +602,7 @@ async fn burn_non_fungible_asset_fails_on_non_faucet_account() -> anyhow::Result
       ",
         asset = Word::from(FungibleAsset::mock(50))
     );
-    let tx_script = ScriptBuilder::with_mock_libraries()?.compile_tx_script(code)?;
+    let tx_script = CodeBuilder::with_mock_libraries().compile_tx_script(code)?;
 
     let result = TransactionContextBuilder::new(account)
         .tx_script(tx_script)
@@ -731,13 +732,16 @@ async fn test_get_total_issuance_succeeds() -> anyhow::Result<()> {
 /// This is used to test that calling these procedures fails as expected.
 fn setup_non_faucet_account() -> anyhow::Result<Account> {
     // Build a custom non-faucet account that (invalidly) exposes faucet procedures.
-    let faucet_component = AccountComponent::compile(
+    let faucet_code = CodeBuilder::with_mock_libraries_with_source_manager(Arc::new(
+        DefaultSourceManager::default(),
+    ))
+    .compile_component_code(
+        "test::non_faucet_component",
         "export.::miden::faucet::mint
          export.::miden::faucet::burn",
-        TransactionKernel::with_mock_libraries(Arc::new(DefaultSourceManager::default())),
-        vec![],
-    )?
-    .with_supported_type(AccountType::RegularAccountUpdatableCode);
+    )?;
+    let faucet_component = AccountComponent::new(faucet_code, vec![])?
+        .with_supported_type(AccountType::RegularAccountUpdatableCode);
     Ok(AccountBuilder::new([4; 32])
         .account_type(AccountType::RegularAccountUpdatableCode)
         .with_auth_component(NoopAuthComponent)

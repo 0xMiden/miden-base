@@ -16,7 +16,7 @@ use miden_lib::transaction::memory::{
     OUTPUT_NOTE_ASSET_COMMITMENT_OFFSET,
     OUTPUT_NOTE_SECTION_OFFSET,
 };
-use miden_lib::utils::ScriptBuilder;
+use miden_lib::utils::CodeBuilder;
 use miden_objects::Word;
 use miden_objects::account::{Account, AccountDelta, AccountStorageDelta, AccountVaultDelta};
 use miden_objects::asset::{Asset, FungibleAsset};
@@ -27,6 +27,7 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
     ACCOUNT_ID_SENDER,
 };
+use miden_objects::testing::storage::MOCK_VALUE_SLOT0;
 use miden_objects::transaction::{OutputNote, OutputNotes};
 use miden_processor::{Felt, ONE};
 
@@ -239,7 +240,7 @@ async fn epilogue_fails_when_num_output_assets_exceed_num_input_assets() -> anyh
         OUTPUT_ASSET = Word::from(output_asset),
     );
 
-    let builder = ScriptBuilder::with_mock_libraries()?;
+    let builder = CodeBuilder::with_mock_libraries();
     let source_manager = builder.source_manager();
     let tx_script = builder.compile_tx_script(code)?;
 
@@ -292,7 +293,7 @@ async fn epilogue_fails_when_num_input_assets_exceed_num_output_assets() -> anyh
         OUTPUT_ASSET = Word::from(input_asset),
     );
 
-    let builder = ScriptBuilder::with_mock_libraries()?;
+    let builder = CodeBuilder::with_mock_libraries();
     let source_manager = builder.source_manager();
     let tx_script = builder.compile_tx_script(code)?;
 
@@ -423,17 +424,19 @@ async fn test_epilogue_increment_nonce_success() -> anyhow::Result<()> {
     let expected_nonce = ONE + ONE;
 
     let code = format!(
-        "
+        r#"
         use.$kernel::prologue
         use.mock::account
         use.$kernel::epilogue
         use.$kernel::memory
 
+        const MOCK_VALUE_SLOT0 = word("{mock_value_slot0}")
+
         begin
             exec.prologue::prepare_transaction
 
             push.1.2.3.4
-            push.0
+            push.MOCK_VALUE_SLOT0[0..2]
             call.account::set_item
             dropw
 
@@ -445,7 +448,8 @@ async fn test_epilogue_increment_nonce_success() -> anyhow::Result<()> {
             exec.memory::get_account_nonce
             push.{expected_nonce} assert_eq
         end
-        "
+        "#,
+        mock_value_slot0 = &*MOCK_VALUE_SLOT0,
     );
 
     tx_context.execute_code(code.as_str()).await?;
@@ -455,21 +459,26 @@ async fn test_epilogue_increment_nonce_success() -> anyhow::Result<()> {
 /// Tests that changing the account state without incrementing the nonce results in an error.
 #[tokio::test]
 async fn epilogue_fails_on_account_state_change_without_nonce_increment() -> anyhow::Result<()> {
-    let code = "
+    let code = format!(
+        r#"
         use.mock::account
+
+        const MOCK_VALUE_SLOT0 = word("{mock_value_slot0}")
 
         begin
             push.91.92.93.94
-            push.0
+            push.MOCK_VALUE_SLOT0[0..2]
             repeat.5 movup.5 drop end
-            # => [index, VALUE]
+            # => [slot_id_prefix, slot_id_suffix, VALUE]
             call.account::set_item
             # => [PREV_VALUE]
             dropw
         end
-        ";
+        "#,
+        mock_value_slot0 = &*MOCK_VALUE_SLOT0,
+    );
 
-    let tx_script = ScriptBuilder::with_mock_libraries()?.compile_tx_script(code)?;
+    let tx_script = CodeBuilder::with_mock_libraries().compile_tx_script(code)?;
 
     let result = TransactionContextBuilder::with_noop_auth_account()
         .tx_script(tx_script)

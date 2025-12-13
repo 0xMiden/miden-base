@@ -10,12 +10,10 @@ use.std::crypto::dsa::rpo_falcon512
 # The event to request an authentication signature.
 const.AUTH_REQUEST_EVENT=event("miden::auth::request")
 
-# The slot in this component's storage layout where the public key is stored.
-const.PUBLIC_KEY_SLOT=0
-
 # Local Memory Addresses for multisig operations
 const.NUM_OF_APPROVERS_LOC=0
-const.PUB_KEY_MAP_IDX_LOC=4
+const.PUB_KEY_SLOT_SUFFIX_LOC=4
+const.PUB_KEY_SLOT_PREFIX_LOC=5
 const.CURRENT_PK_LOC=8
 const.SUCCESSFUL_VERIFICATIONS_LOC=12
 
@@ -81,10 +79,11 @@ end
 #! the owner public key mapping - the previous signers must authorize the change to the new signers,
 #! not the new signers authorizing themselves.
 #!
-#! Inputs:  [pub_key_slot_idx, num_of_approvers, MSG]
+#! Inputs:  [pub_key_slot_prefix, pub_key_slot_suffix, num_of_approvers, MSG]
 #! Outputs: [num_verified_signatures, MSG]
 export.verify_signatures.16
-    loc_store.PUB_KEY_MAP_IDX_LOC
+    loc_store.PUB_KEY_SLOT_PREFIX_LOC
+    loc_store.PUB_KEY_SLOT_SUFFIX_LOC
     # => [num_of_approvers, MSG]
 
     # Initializing SUCCESSFUL_VERIFICATIONS local memory address to 0
@@ -104,8 +103,9 @@ export.verify_signatures.16
         # Fetch public key from storage map.
         # -----------------------------------------------------------------------------------------
 
-        sub.1 dup push.0.0.0 loc_load.PUB_KEY_MAP_IDX_LOC
-        # => [owner_key_slot, [0, 0, 0, i-1], i-1, MSG]
+        sub.1 dup push.0.0.0
+        loc_load.PUB_KEY_SLOT_SUFFIX_LOC loc_load.PUB_KEY_SLOT_PREFIX_LOC
+        # => [owner_key_slot_prefix, owner_key_slot_suffix, [0, 0, 0, i-1], i-1, MSG]
 
         # Get public key from initial storage state
         exec.active_account::get_initial_map_item

@@ -138,7 +138,7 @@ impl TransactionAdviceInputs {
     ///     NULLIFIER_ROOT,
     ///     TX_COMMITMENT,
     ///     TX_KERNEL_COMMITMENT
-    ///     PROOF_COMMITMENT,
+    ///     VALIDATOR_KEY_COMMITMENT,
     ///     [block_num, version, timestamp, 0],
     ///     [native_asset_id_suffix, native_asset_id_prefix, verification_base_fee, 0]
     ///     [0, 0, 0, 0]
@@ -163,7 +163,7 @@ impl TransactionAdviceInputs {
         self.extend_stack(header.nullifier_root());
         self.extend_stack(header.tx_commitment());
         self.extend_stack(header.tx_kernel_commitment());
-        self.extend_stack(header.proof_commitment());
+        self.extend_stack(header.validator_key().to_commitment());
         self.extend_stack([
             header.block_num().into(),
             header.version().into(),
@@ -266,7 +266,7 @@ impl TransactionAdviceInputs {
 
         // STORAGE_COMMITMENT |-> [[STORAGE_SLOT_DATA]]
         let storage_header = account.storage().header();
-        self.add_map_entry(storage_header.compute_commitment(), storage_header.as_elements());
+        self.add_map_entry(storage_header.to_commitment(), storage_header.to_elements());
 
         // populate Merkle store and advice map with nodes info needed to access storage map entries
         self.extend_merkle_store(account.storage().inner_nodes());

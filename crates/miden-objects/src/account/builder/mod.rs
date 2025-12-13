@@ -144,13 +144,13 @@ impl AccountBuilder {
         let mut components = vec![auth_component];
         components.append(&mut self.components);
 
-        let (code, storage) = Account::initialize_from_components(self.account_type, &components)
+        let (code, storage) = Account::initialize_from_components(self.account_type, components)
             .map_err(|err| {
-            AccountError::BuildError(
-                "account components failed to build".into(),
-                Some(Box::new(err)),
-            )
-        })?;
+                AccountError::BuildError(
+                    "account components failed to build".into(),
+                    Some(Box::new(err)),
+                )
+            })?;
 
         Ok((vault, code, storage))
     }
@@ -209,14 +209,14 @@ impl AccountBuilder {
             self.init_seed,
             self.id_version,
             code.commitment(),
-            storage.commitment(),
+            storage.to_commitment(),
         )?;
 
         let account_id = AccountId::new(
             seed,
             AccountIdVersion::Version0,
             code.commitment(),
-            storage.commitment(),
+            storage.to_commitment(),
         )
         .expect("get_account_seed should provide a suitable seed");
 
@@ -291,7 +291,7 @@ mod tests {
     use miden_processor::MastNodeExt;
 
     use super::*;
-    use crate::account::StorageSlot;
+    use crate::account::{AccountProcedureRoot, StorageSlot, StorageSlotName};
     use crate::testing::noop_auth_component::NoopAuthComponent;
 
     const CUSTOM_CODE1: &str = "
@@ -316,6 +316,19 @@ mod tests {
             .expect("code should be valid")
     });
 
+    static CUSTOM_COMPONENT1_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
+        StorageSlotName::new("custom::component1::slot0")
+            .expect("storage slot name should be valid")
+    });
+    static CUSTOM_COMPONENT2_SLOT_NAME0: LazyLock<StorageSlotName> = LazyLock::new(|| {
+        StorageSlotName::new("custom::component2::slot0")
+            .expect("storage slot name should be valid")
+    });
+    static CUSTOM_COMPONENT2_SLOT_NAME1: LazyLock<StorageSlotName> = LazyLock::new(|| {
+        StorageSlotName::new("custom::component2::slot1")
+            .expect("storage slot name should be valid")
+    });
+
     struct CustomComponent1 {
         slot0: u64,
     }
@@ -324,9 +337,12 @@ mod tests {
             let mut value = Word::empty();
             value[0] = Felt::new(custom.slot0);
 
-            AccountComponent::new(CUSTOM_LIBRARY1.clone(), vec![StorageSlot::Value(value)])
-                .expect("component should be valid")
-                .with_supports_all_types()
+            AccountComponent::new(
+                CUSTOM_LIBRARY1.clone(),
+                vec![StorageSlot::with_value(CUSTOM_COMPONENT1_SLOT_NAME.clone(), value)],
+            )
+            .expect("component should be valid")
+            .with_supports_all_types()
         }
     }
 
@@ -343,7 +359,10 @@ mod tests {
 
             AccountComponent::new(
                 CUSTOM_LIBRARY2.clone(),
-                vec![StorageSlot::Value(value0), StorageSlot::Value(value1)],
+                vec![
+                    StorageSlot::with_value(CUSTOM_COMPONENT2_SLOT_NAME0.clone(), value0),
+                    StorageSlot::with_value(CUSTOM_COMPONENT2_SLOT_NAME1.clone(), value1),
+                ],
             )
             .expect("component should be valid")
             .with_supports_all_types()
@@ -373,7 +392,7 @@ mod tests {
             account.seed().unwrap(),
             AccountIdVersion::Version0,
             account.code.commitment(),
-            account.storage.commitment(),
+            account.storage.to_commitment(),
         )
         .unwrap();
         assert_eq!(account.id(), computed_id);
@@ -388,34 +407,19 @@ mod tests {
             [CUSTOM_LIBRARY2.get_export_node_id(&CUSTOM_LIBRARY2.exports().next().unwrap().name)]
         .digest();
 
-        let foo_procedure_info = &account
-            .code()
-            .procedures()
-            .iter()
-            .find(|info| info.mast_root() == &foo_root)
-            .unwrap();
-        assert_eq!(foo_procedure_info.storage_offset(), 0);
-        assert_eq!(foo_procedure_info.storage_size(), 1);
-
-        let bar_procedure_info = &account
-            .code()
-            .procedures()
-            .iter()
-            .find(|info| info.mast_root() == &bar_root)
-            .unwrap();
-        assert_eq!(bar_procedure_info.storage_offset(), 1);
-        assert_eq!(bar_procedure_info.storage_size(), 2);
+        assert!(account.code().procedures().contains(&AccountProcedureRoot::from_raw(foo_root)));
+        assert!(account.code().procedures().contains(&AccountProcedureRoot::from_raw(bar_root)));
 
         assert_eq!(
-            account.storage().get_item(0).unwrap(),
+            account.storage().get_item(&CUSTOM_COMPONENT1_SLOT_NAME).unwrap(),
             [Felt::new(storage_slot0), Felt::new(0), Felt::new(0), Felt::new(0)].into()
         );
         assert_eq!(
-            account.storage().get_item(1).unwrap(),
+            account.storage().get_item(&CUSTOM_COMPONENT2_SLOT_NAME0).unwrap(),
             [Felt::new(0), Felt::new(0), Felt::new(0), Felt::new(storage_slot1)].into()
         );
         assert_eq!(
-            account.storage().get_item(2).unwrap(),
+            account.storage().get_item(&CUSTOM_COMPONENT2_SLOT_NAME1).unwrap(),
             [Felt::new(0), Felt::new(0), Felt::new(0), Felt::new(storage_slot2)].into()
         );
     }

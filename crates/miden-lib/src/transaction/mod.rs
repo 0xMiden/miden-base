@@ -441,58 +441,6 @@ impl TransactionKernel {
         Library::read_from_bytes(Self::KERNEL_TESTING_LIB_BYTES)
             .expect("failed to deserialize transaction kernel library")
     }
-
-    /// Returns the mock account and faucet libraries.
-    pub fn mock_libraries() -> impl Iterator<Item = Library> {
-        use miden_objects::account::AccountCode;
-
-        use crate::testing::mock_account_code::MockAccountCodeExt;
-
-        vec![AccountCode::mock_account_library(), AccountCode::mock_faucet_library()].into_iter()
-    }
-
-    /// Returns an [`Assembler`] with the transaction kernel as a library.
-    ///
-    /// This assembler is the same as [`TransactionKernel::assembler`] but additionally includes the
-    /// kernel library on the namespace of `$kernel`. The `$kernel` library is added separately
-    /// because even though the library (`api.masm`) and the kernel binary (`main.masm`) include
-    /// this code, it is not otherwise accessible. By adding it separately, we can invoke procedures
-    /// from the kernel library to test them individually.
-    pub fn with_kernel_library(source_manager: Arc<dyn SourceManagerSync>) -> Assembler {
-        Self::assembler_with_source_manager(source_manager)
-            .with_dynamic_library(Self::library())
-            .expect("failed to load kernel library (/lib)")
-            .with_debug_mode(true)
-    }
-
-    /// Returns an [`Assembler`] with the `mock::{account, faucet, util}` libraries.
-    ///
-    /// This assembler is the same as [`TransactionKernel::with_kernel_library`] but additionally
-    /// includes:
-    /// - [`MockAccountCodeExt::mock_account_library`][account_lib],
-    /// - [`MockAccountCodeExt::mock_faucet_library`][faucet_lib],
-    /// - [`mock_util_library`][util_lib]
-    ///
-    /// [account_lib]: crate::testing::mock_account_code::MockAccountCodeExt::mock_account_library
-    /// [faucet_lib]: crate::testing::mock_account_code::MockAccountCodeExt::mock_faucet_library
-    /// [util_lib]: crate::testing::mock_util_lib::mock_util_library
-    pub fn with_mock_libraries(source_manager: Arc<dyn SourceManagerSync>) -> Assembler {
-        use crate::testing::mock_util_lib::mock_util_library;
-
-        let mut assembler = Self::with_kernel_library(source_manager);
-
-        for library in Self::mock_libraries() {
-            assembler
-                .link_dynamic_library(library)
-                .expect("failed to add mock account libraries");
-        }
-
-        assembler
-            .link_static_library(mock_util_library())
-            .expect("failed to add mock test library");
-
-        assembler
-    }
 }
 
 impl SequentialCommit for TransactionKernel {
@@ -505,7 +453,7 @@ impl SequentialCommit for TransactionKernel {
 }
 
 #[cfg(all(any(feature = "testing", test), feature = "std"))]
-mod source_manager_ext {
+pub(crate) mod source_manager_ext {
     use std::path::{Path, PathBuf};
     use std::vec::Vec;
     use std::{fs, io};
