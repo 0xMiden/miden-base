@@ -15,132 +15,6 @@ use crate::utils::serde::{
 };
 use crate::{AccountError, FieldElement, ZERO};
 
-// STORAGE SLOT HEADER
-// ================================================================================================
-
-/// The header of a [`StorageSlot`], storing only the slot name (or ID), slot type and value of the
-/// slot.
-///
-/// The stored value differs based on the slot type:
-/// - [`StorageSlotType::Value`]: The value of the slot itself.
-/// - [`StorageSlotType::Map`]: The root of the SMT that represents the storage map.
-///
-/// The `'name` lifetime parameter allows efficient borrowing of the slot name without cloning.
-/// When the name is borrowed from a static string or another source, no allocation is needed.
-/// When owned, the name is stored in an allocated [`StorageSlotName`].
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct StorageSlotHeader<'name> {
-    id: Cow<'name, StorageSlotName>,
-    r#type: StorageSlotType,
-    value: Word,
-}
-
-impl<'name> StorageSlotHeader<'name> {
-    // CONSTRUCTORS
-    // --------------------------------------------------------------------------------------------
-
-    /// Returns a new instance of storage slot header with a borrowed slot name.
-    pub fn with_borrowed_name(
-        name: &'name StorageSlotName,
-        r#type: StorageSlotType,
-        value: Word,
-    ) -> Self {
-        Self { id: Cow::Borrowed(name), r#type, value }
-    }
-
-    /// Returns a new instance of storage slot header with an owned slot name.
-    pub fn with_owned_name(name: StorageSlotName, r#type: StorageSlotType, value: Word) -> Self {
-        Self { id: Cow::Owned(name), r#type, value }
-    }
-
-    /// Returns a new instance of storage slot header with an empty value slot.
-    pub fn with_empty_value(name: StorageSlotName) -> StorageSlotHeader<'static> {
-        StorageSlotHeader::with_owned_name(name, StorageSlotType::Value, Word::default())
-    }
-
-    /// Returns a new instance of storage slot header with an empty map slot.
-    pub fn with_empty_map(name: StorageSlotName) -> StorageSlotHeader<'static> {
-        StorageSlotHeader::with_owned_name(name, StorageSlotType::Map, EMPTY_STORAGE_MAP_ROOT)
-    }
-
-    // ACCESSORS
-    // --------------------------------------------------------------------------------------------
-
-    /// Returns a reference to the slot name.
-    pub fn name(&self) -> &StorageSlotName {
-        &self.id
-    }
-
-    /// Returns the slot ID.
-    pub fn id(&self) -> StorageSlotId {
-        self.id.id()
-    }
-
-    /// Returns the slot type.
-    pub fn slot_type(&self) -> StorageSlotType {
-        self.r#type
-    }
-
-    /// Returns the slot value.
-    pub fn value(&self) -> Word {
-        self.value
-    }
-
-    /// Returns this storage slot header as field elements.
-    ///
-    /// This is done by converting this storage slot into 8 field elements as follows:
-    /// ```text
-    /// [[0, slot_type, slot_id_suffix, slot_id_prefix], SLOT_VALUE]
-    /// ```
-    pub(crate) fn to_elements(&self) -> [Felt; StorageSlot::NUM_ELEMENTS] {
-        let id = self.id();
-        let mut elements = [ZERO; StorageSlot::NUM_ELEMENTS];
-        elements[0..4].copy_from_slice(&[
-            Felt::ZERO,
-            self.r#type.as_felt(),
-            id.suffix(),
-            id.prefix(),
-        ]);
-        elements[4..8].copy_from_slice(self.value.as_elements());
-        elements
-    }
-
-    /// Converts this storage slot header into an owned version with `'static` lifetime.
-    pub fn into_owned(self) -> StorageSlotHeader<'static> {
-        StorageSlotHeader {
-            id: Cow::Owned(self.id.into_owned()),
-            r#type: self.r#type,
-            value: self.value,
-        }
-    }
-}
-
-impl<'name> From<&'name StorageSlot> for StorageSlotHeader<'name> {
-    fn from(slot: &'name StorageSlot) -> Self {
-        StorageSlotHeader::with_borrowed_name(slot.name(), slot.slot_type(), slot.value())
-    }
-}
-
-// SERIALIZATION
-// ================================================================================================
-
-impl Serializable for StorageSlotHeader<'_> {
-    fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        self.id.write_into(target);
-        self.r#type.write_into(target);
-        self.value.write_into(target);
-    }
-}
-
-impl Deserializable for StorageSlotHeader<'static> {
-    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        let name = StorageSlotName::read_from(source)?;
-        let slot_type = StorageSlotType::read_from(source)?;
-        let value = Word::read_from(source)?;
-        Ok(Self::with_owned_name(name, slot_type, value))
-    }
-}
-
 // ACCOUNT STORAGE HEADER
 // ================================================================================================
 
@@ -321,6 +195,132 @@ impl Deserializable for AccountStorageHeader {
         let len = source.read_u8()?;
         let slots: Vec<StorageSlotHeader<'static>> = source.read_many(len as usize)?;
         Self::new(slots).map_err(|err| DeserializationError::InvalidValue(err.to_string()))
+    }
+}
+
+// STORAGE SLOT HEADER
+// ================================================================================================
+
+/// The header of a [`StorageSlot`], storing only the slot name (or ID), slot type and value of the
+/// slot.
+///
+/// The stored value differs based on the slot type:
+/// - [`StorageSlotType::Value`]: The value of the slot itself.
+/// - [`StorageSlotType::Map`]: The root of the SMT that represents the storage map.
+///
+/// The `'name` lifetime parameter allows efficient borrowing of the slot name without cloning.
+/// When the name is borrowed from a static string or another source, no allocation is needed.
+/// When owned, the name is stored in an allocated [`StorageSlotName`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StorageSlotHeader<'name> {
+    name: Cow<'name, StorageSlotName>,
+    r#type: StorageSlotType,
+    value: Word,
+}
+
+impl<'name> StorageSlotHeader<'name> {
+    // CONSTRUCTORS
+    // --------------------------------------------------------------------------------------------
+
+    /// Returns a new instance of storage slot header with a borrowed slot name.
+    pub fn with_borrowed_name(
+        name: &'name StorageSlotName,
+        r#type: StorageSlotType,
+        value: Word,
+    ) -> Self {
+        Self { name: Cow::Borrowed(name), r#type, value }
+    }
+
+    /// Returns a new instance of storage slot header with an owned slot name.
+    pub fn with_owned_name(name: StorageSlotName, r#type: StorageSlotType, value: Word) -> Self {
+        Self { name: Cow::Owned(name), r#type, value }
+    }
+
+    /// Returns a new instance of storage slot header with an empty value slot.
+    pub fn with_empty_value(name: StorageSlotName) -> StorageSlotHeader<'static> {
+        StorageSlotHeader::with_owned_name(name, StorageSlotType::Value, Word::default())
+    }
+
+    /// Returns a new instance of storage slot header with an empty map slot.
+    pub fn with_empty_map(name: StorageSlotName) -> StorageSlotHeader<'static> {
+        StorageSlotHeader::with_owned_name(name, StorageSlotType::Map, EMPTY_STORAGE_MAP_ROOT)
+    }
+
+    // ACCESSORS
+    // --------------------------------------------------------------------------------------------
+
+    /// Returns a reference to the slot name.
+    pub fn name(&self) -> &StorageSlotName {
+        &self.name
+    }
+
+    /// Returns the slot ID.
+    pub fn id(&self) -> StorageSlotId {
+        self.name.id()
+    }
+
+    /// Returns the slot type.
+    pub fn slot_type(&self) -> StorageSlotType {
+        self.r#type
+    }
+
+    /// Returns the slot value.
+    pub fn value(&self) -> Word {
+        self.value
+    }
+
+    /// Returns this storage slot header as field elements.
+    ///
+    /// This is done by converting this storage slot into 8 field elements as follows:
+    /// ```text
+    /// [[0, slot_type, slot_id_suffix, slot_id_prefix], SLOT_VALUE]
+    /// ```
+    pub(crate) fn to_elements(&self) -> [Felt; StorageSlot::NUM_ELEMENTS] {
+        let id = self.id();
+        let mut elements = [ZERO; StorageSlot::NUM_ELEMENTS];
+        elements[0..4].copy_from_slice(&[
+            Felt::ZERO,
+            self.r#type.as_felt(),
+            id.suffix(),
+            id.prefix(),
+        ]);
+        elements[4..8].copy_from_slice(self.value.as_elements());
+        elements
+    }
+
+    /// Converts this storage slot header into an owned version with `'static` lifetime.
+    pub fn into_owned(self) -> StorageSlotHeader<'static> {
+        StorageSlotHeader {
+            name: Cow::Owned(self.name.into_owned()),
+            r#type: self.r#type,
+            value: self.value,
+        }
+    }
+}
+
+impl<'name> From<&'name StorageSlot> for StorageSlotHeader<'name> {
+    fn from(slot: &'name StorageSlot) -> Self {
+        StorageSlotHeader::with_borrowed_name(slot.name(), slot.slot_type(), slot.value())
+    }
+}
+
+// SERIALIZATION
+// ================================================================================================
+
+impl Serializable for StorageSlotHeader<'_> {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        self.name.write_into(target);
+        self.r#type.write_into(target);
+        self.value.write_into(target);
+    }
+}
+
+impl Deserializable for StorageSlotHeader<'static> {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let name = StorageSlotName::read_from(source)?;
+        let slot_type = StorageSlotType::read_from(source)?;
+        let value = Word::read_from(source)?;
+        Ok(Self::with_owned_name(name, slot_type, value))
     }
 }
 
