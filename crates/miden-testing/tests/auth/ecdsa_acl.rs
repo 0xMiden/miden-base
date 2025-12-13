@@ -207,7 +207,7 @@ async fn test_ecdsa_acl_with_allow_unauthorized_output_notes() -> anyhow::Result
         .storage()
         .get_item(AuthEcdsaK256KeccakAcl::config_slot())
         .expect("config storage slot access failed");
-    // Config Slot should be [num_tracked_procs, allow_unauthorized_output_notes,
+    // Config Slot should be [num_trigger_procs, allow_unauthorized_output_notes,
     // allow_unauthorized_input_notes, 0] With 2 procedures,
     // allow_unauthorized_output_notes=true, and allow_unauthorized_input_notes=true, this should be
     // [2, 1, 1, 0]
@@ -247,7 +247,7 @@ async fn test_ecdsa_acl_with_disallow_unauthorized_input_notes() -> anyhow::Resu
         .storage()
         .get_item(AuthEcdsaK256KeccakAcl::config_slot())
         .expect("config storage slot access failed");
-    // Config Slot should be [num_tracked_procs, allow_unauthorized_output_notes,
+    // Config Slot should be [num_trigger_procs, allow_unauthorized_output_notes,
     // allow_unauthorized_input_notes, 0] With 2 procedures,
     // allow_unauthorized_output_notes=true, and allow_unauthorized_input_notes=false, this should
     // be [2, 1, 0, 0]
