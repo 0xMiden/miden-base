@@ -256,10 +256,9 @@ impl AccountDelta {
     ///     a value slot being set to EMPTY_WORD and its value being unchanged.
     /// - Storage map slots:
     ///   - Map slots append a header which summarizes the changes in the slot, in particular the
-    ///     slot index and number of changed entries. Since only changed slots are included, the
-    ///     number of changed entries is never zero.
+    ///     slot ID and number of changed entries.
     ///   - Two distinct storage map slots use the same domain but are disambiguated due to
-    ///     inclusion of the slot index.
+    ///     inclusion of the slot ID.
     ///
     /// ### Domain Separators
     ///

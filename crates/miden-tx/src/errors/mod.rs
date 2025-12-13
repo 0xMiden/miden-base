@@ -208,10 +208,6 @@ pub enum TransactionKernelError {
     #[error("note input data has hash {actual} but expected hash {expected}")]
     InvalidNoteInputs { expected: Word, actual: Word },
     #[error(
-        "storage slot index {actual} is invalid, must be smaller than the number of account storage slots {max}"
-    )]
-    InvalidStorageSlotIndex { max: u64, actual: u64 },
-    #[error(
         "failed to respond to signature requested since no authenticator is assigned to the host"
     )]
     MissingAuthenticator,

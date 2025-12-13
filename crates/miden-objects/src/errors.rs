@@ -99,18 +99,10 @@ pub enum AccountError {
     AccountCodeNoProcedures,
     #[error("account code contains {0} procedures but it may contain at most {max} procedures", max = AccountCode::MAX_NUM_PROCEDURES)]
     AccountCodeTooManyProcedures(usize),
-    #[error("account procedure {0}'s storage offset {1} does not fit into u8")]
-    AccountCodeProcedureStorageOffsetTooLarge(Word, Felt),
-    #[error("account procedure {0}'s storage size {1} does not fit into u8")]
-    AccountCodeProcedureStorageSizeTooLarge(Word, Felt),
-    #[error("account procedure {0}'s final two elements must be Felt::ZERO")]
-    AccountCodeProcedureInvalidPadding(Word),
     #[error("failed to assemble account component:\n{}", PrintDiagnostic::new(.0))]
     AccountComponentAssemblyError(Report),
     #[error("failed to merge components into one account code mast forest")]
     AccountComponentMastForestMergeError(#[source] MastForestError),
-    #[error("procedure with MAST root {0} is present in multiple account components")]
-    AccountComponentDuplicateProcedureRoot(Word),
     // #[error("failed to create account component")]
     // AccountComponentTemplateInstantiationError(#[source] AccountComponentTemplateError),
     #[error("account component contains multiple authentication procedures")]
@@ -166,14 +158,6 @@ pub enum AccountError {
     UnsortedStorageSlots,
     #[error("number of storage slots is {0} but max possible number is {max}", max = AccountStorage::MAX_NUM_STORAGE_SLOTS)]
     StorageTooManySlots(u64),
-    #[error("procedure storage offset + size is {0} which exceeds the maximum value of {max}",
-      max = AccountStorage::MAX_NUM_STORAGE_SLOTS
-    )]
-    StorageOffsetPlusSizeOutOfBounds(u16),
-    #[error(
-        "procedure which does not access storage (storage size = 0) has non-zero storage offset"
-    )]
-    PureProcedureWithStorageOffset,
     #[error(
         "account component at index {component_index} is incompatible with account of type {account_type}"
     )]
