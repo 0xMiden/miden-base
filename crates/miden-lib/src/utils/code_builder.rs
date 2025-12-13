@@ -19,7 +19,8 @@ use crate::transaction::TransactionKernel;
 // CODE BUILDER
 // ================================================================================================
 
-/// A builder for compiling note scripts and transaction scripts with optional library dependencies.
+/// A builder for compiling account components, note scripts, and transaction scripts with optional
+/// library dependencies.
 ///
 /// The [`CodeBuilder`] simplifies the process of creating transaction scripts by providing:
 /// - A clean API for adding multiple libraries with static or dynamic linking
