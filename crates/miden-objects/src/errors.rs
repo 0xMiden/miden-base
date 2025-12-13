@@ -1081,6 +1081,9 @@ pub enum NullifierTreeError {
 
     #[error("failed to compute nullifier tree mutations")]
     ComputeMutations(#[source] MerkleError),
+
+    #[error("invalid nullifier block number")]
+    InvalidNullifierBlockNumber,
 }
 
 // AUTH SCHEME ERROR
