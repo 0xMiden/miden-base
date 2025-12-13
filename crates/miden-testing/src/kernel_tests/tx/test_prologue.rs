@@ -61,6 +61,7 @@ use miden_lib::transaction::memory::{
     VALIDATOR_KEY_COMMITMENT_PTR,
     VERIFICATION_BASE_FEE_IDX,
 };
+use miden_lib::utils::CodeBuilder;
 use miden_objects::account::{
     Account,
     AccountBuilder,
@@ -80,7 +81,7 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_SENDER,
 };
 use miden_objects::testing::noop_auth_component::NoopAuthComponent;
-use miden_objects::transaction::{ExecutedTransaction, TransactionArgs, TransactionScript};
+use miden_objects::transaction::{ExecutedTransaction, TransactionArgs};
 use miden_objects::{EMPTY_WORD, ONE, WORD_SIZE};
 use miden_processor::fast::ExecutionOutput;
 use miden_processor::{AdviceInputs, Word};
@@ -136,12 +137,7 @@ async fn test_transaction_prologue() -> anyhow::Result<()> {
         end
         ";
 
-    let mock_tx_script_program = TransactionKernel::assembler()
-        .with_debug_mode(true)
-        .assemble_program(mock_tx_script_code)
-        .unwrap();
-
-    let tx_script = TransactionScript::new(mock_tx_script_program);
+    let tx_script = CodeBuilder::default().compile_tx_script(mock_tx_script_code).unwrap();
 
     let note_args = [Word::from([91u32; 4]), Word::from([92u32; 4])];
 

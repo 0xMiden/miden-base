@@ -4,6 +4,7 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use miden_lib::transaction::TransactionKernel;
+use miden_lib::utils::CodeBuilder;
 use miden_objects::account::{
     Account,
     AccountId,
@@ -12,7 +13,7 @@ use miden_objects::account::{
     StorageSlotContent,
 };
 use miden_objects::assembly::debuginfo::{SourceLanguage, Uri};
-use miden_objects::assembly::{SourceManager, SourceManagerSync};
+use miden_objects::assembly::{Assembler, SourceManager, SourceManagerSync};
 use miden_objects::asset::{Asset, AssetVaultKey, AssetWitness};
 use miden_objects::block::{AccountWitness, BlockHeader, BlockNumber};
 use miden_objects::note::{Note, NoteScript};
@@ -65,11 +66,10 @@ impl TransactionContext {
     /// Executes arbitrary code within the context of a mocked transaction environment and returns
     /// the resulting [`ExecutionOutput`].
     ///
-    /// The code is compiled with the assembler returned by
-    /// [`TransactionKernel::with_mock_libraries`] and executed with advice inputs constructed from
-    /// the data stored in the context. The program is run on a modified [`TransactionExecutorHost`]
-    /// which is loaded with the procedures exposed by the transaction kernel, and also
-    /// individual kernel functions (not normally exposed).
+    /// The code is compiled with the assembler built by [`CodeBuilder::with_mock_libraries`]
+    /// and executed with advice inputs constructed from the data stored in the context. The program
+    /// is run on a modified [`TransactionExecutorHost`] which is loaded with the procedures exposed
+    /// by the transaction kernel, and also individual kernel functions (not normally exposed).
     ///
     /// To improve the error message quality, convert the returned [`ExecutionError`] into a
     /// [`Report`](miden_objects::assembly::diagnostics::Report) or use `?` with
@@ -127,8 +127,10 @@ impl TransactionContext {
             code.to_owned(),
         );
 
-        let assembler = TransactionKernel::with_mock_libraries(self.source_manager.clone())
-            .with_debug_mode(true);
+        let assembler: Assembler =
+            CodeBuilder::with_mock_libraries_with_source_manager(self.source_manager.clone())
+                .into();
+
         let program = assembler
             .with_debug_mode(true)
             .assemble_program(virtual_source_file)

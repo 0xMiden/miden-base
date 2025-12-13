@@ -26,6 +26,7 @@ Added the ability to get full public key from `TransactionAuthenticator` ([#2145
 - [BREAKING] Updated MINT note to support both private and public output note creation ([#2123](https://github.com/0xMiden/miden-base/pull/2123)).
 - [BREAKING] Removed `AccountComponentTemplate` in favor of instantiating components via `AccountComponent::from_package` ([#2127](https://github.com/0xMiden/miden-base/pull/2127)).
 - [BREAKING] Add public key to, remove proof commitment from, `BlockHeader`, and add signing functionality through `BlockSigner` trait ([#2128](https://github.com/0xMiden/miden-base/pull/2128)).
+- [BREAKING] Renamed `ScriptBuilder` into `CodeBuilder` and added the ability to build component code ([#2142](https://github.com/0xMiden/miden-base/pull/2142)).
 
 ## 0.12.4 (2025-11-26)
 
