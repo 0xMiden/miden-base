@@ -1,4 +1,4 @@
-use.std::math::u256
+use.std::math::u64
 
 # CONSTANTS
 # =================================================================================================
@@ -87,21 +87,18 @@ pub proc scale_native_amount_to_u256
     u32split
     # => [scale_hi, scale_lo, amount]
 
-    push.0.0.0.0.0.0
-    # => [SCALE_U256[1], SCALE_U256[0], amount]
+    movup.2 u32split
+    # => [amount_hi, amount_lo, scale_hi, scale_lo]
 
-    movup.8 u32split
-    # => [amount_hi, amount_lo, SCALE_U256[1], SCALE_U256[0]]
+    # Perform u64 multiplication: amount * scale
+    # This is more efficient than u256 multiplication since both values are u64
+    exec.u64::overflowing_mul
+    # => [res_hi, res_mid_hi, res_mid_lo, res_lo]
 
-    push.0.0.0.0.0.0
-    # => [AMOUNT_U256[1], AMOUNT_U256[0], SCALE_U256[1], SCALE_U256[0]]
+    push.0.0.0.0
+    # => [RESULT_U256[1], RESULT_U256[0]]
 
-    # Perform U256 multiplication: amount * scale
-    # This is safe because both the scaling factor and amount are guaranteed to be smaller
-    # than 2^64, so we will never overflow a 256-bit value.
-    exec.u256::mul_unsafe
-    # => [RESULT_U256[1], RESULT_U256[0], EMPTY_WORD, EMPTY_WORD]
-
-    movupw.3 dropw movupw.3 dropw
+    # truncate stack to 8 felts representing U256
+    movupw.2 dropw movup.8 drop movup.8 drop
     # => [RESULT_U256[1], RESULT_U256[0]]
 end
