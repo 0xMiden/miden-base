@@ -121,19 +121,20 @@ impl Deserializable for SigningInputs {
 /// a key managed by the authenticator. That is, the authenticator maintains a set of public-
 /// private key pairs, and can be requested to generate signatures against any of the managed keys.
 ///
-/// The public keys are defined by [Word]'s which are the hashes of the actual public keys.
+/// The public keys are defined by [PublicKeyCommitment]'s which are the hashes of the actual
+/// public keys.
 pub trait TransactionAuthenticator {
     /// Retrieves a signature for a specific message as a list of [Felt].
     ///
     /// The request is initiated by the VM as a consequence of the SigToStack advice
     /// injector.
     ///
-    /// - `pub_key_hash`: The hash of the public key used for signature generation.
-    /// - `message`: The message to sign, usually a commitment to the transaction data.
-    /// - `account_delta`: An informational parameter describing the changes made to the account up
-    ///   to the point of calling `get_signature()`. This allows the authenticator to review any
-    ///   alterations to the account prior to signing. It should not be directly used in the
-    ///   signature computation.
+    /// - `pub_key_commitment`: the hash of the public key used for signature generation.
+    /// - `signing_inputs`: description of the message to be singed. The inputs could contain
+    ///   arbitrary data or a [TransactionSummary] which would describe the changes made to the
+    ///   account up to the point of calling `get_signature()`. This allows the authenticator to
+    ///   review any alterations to the account prior to signing. It should not be directly used
+    ///   in the signature computation.
     fn get_signature(
         &self,
         pub_key_commitment: PublicKeyCommitment,
@@ -218,10 +219,6 @@ impl TransactionAuthenticator for BasicAuthenticator {
     /// Gets a signature over a message, given a public key commitment.
     ///
     /// The key should be included in the `keys` map and should be a variant of [AuthSecretKey].
-    ///
-    /// Supported signature schemes:
-    /// - RpoFalcon512
-    /// - EcdsaK256Keccak
     ///
     /// # Errors
     /// If the public key is not contained in the `keys` map,
