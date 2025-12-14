@@ -11,11 +11,11 @@ use crate::{Felt, FieldElement, Word};
 mod backend;
 pub use backend::NullifierTreeBackend;
 
-mod nullifier_witness;
-pub use nullifier_witness::NullifierWitness;
+mod witness;
+pub use witness::NullifierWitness;
 
-mod partial_nullifier_tree;
-pub use partial_nullifier_tree::PartialNullifierTree;
+mod partial;
+pub use partial::PartialNullifierTree;
 
 // NULLIFIER TREE
 // ================================================================================================
