@@ -1083,7 +1083,7 @@ pub enum NullifierTreeError {
     ComputeMutations(#[source] MerkleError),
 
     #[error("invalid nullifier block number")]
-    InvalidNullifierBlockNumber,
+    InvalidNullifierBlockNumber(Word),
 }
 
 // AUTH SCHEME ERROR

@@ -3,7 +3,7 @@ use alloc::string::ToString;
 use alloc::vec::Vec;
 
 use miden_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
-use miden_core::{EMPTY_WORD, Felt, FieldElement, Word};
+use miden_core::{Felt, FieldElement, Word};
 #[cfg(feature = "std")]
 use miden_crypto::merkle::{LargeSmt, LargeSmtError, SmtStorage};
 use miden_crypto::merkle::{MerkleError, MutationSet, Smt, SmtProof};
@@ -12,65 +12,6 @@ use miden_processor::{DeserializationError, SMT_DEPTH};
 use crate::block::{BlockNumber, NullifierWitness};
 use crate::errors::NullifierTreeError;
 use crate::note::Nullifier;
-
-// CONSTANTS
-// ================================================================================================
-
-/// The value of an unspent nullifier in the tree.
-pub(super) const UNSPENT_NULLIFIER: Word = EMPTY_WORD;
-
-/// A nullifier block value in the [`NullifierTree`].
-///
-/// # Invariants
-///
-/// The [`NullifierBlock`] guarantees the following:
-/// - The felt at index 0 is a valid [`BlockNumber`].
-/// - The remaining felts are set to zero.
-#[derive(Debug, PartialEq, Eq, Copy, Clone)]
-pub struct NullifierBlock(BlockNumber);
-
-impl NullifierBlock {
-    pub const UNSPENT: NullifierBlock = NullifierBlock(BlockNumber::GENESIS);
-
-    pub fn new(value: Word) -> Result<Self, NullifierTreeError> {
-        if TryInto::<u32>::try_into(value[0].as_int()).is_ok()
-            && value[1..4].iter().all(|l| l.inner() == 0)
-        {
-            return Ok(Self(BlockNumber::from(value[0].as_int() as u32)));
-        }
-        Err(NullifierTreeError::InvalidNullifierBlockNumber)
-    }
-
-    pub fn is_spent(&self) -> bool {
-        *self != Self::UNSPENT
-    }
-
-    pub fn is_consumed(&self) -> bool {
-        self.0 != BlockNumber::GENESIS
-    }
-}
-
-impl From<BlockNumber> for NullifierBlock {
-    fn from(block_num: BlockNumber) -> Self {
-        Self(block_num)
-    }
-}
-
-/// Returns the [`BlockNumber`] at which the nullifier was consumed.
-///
-/// There are no nullifiers in the genesis block, and the block number zero is used to signal
-/// an unconsumed nullifier.
-impl From<NullifierBlock> for BlockNumber {
-    fn from(value: NullifierBlock) -> BlockNumber {
-        value.0
-    }
-}
-
-impl From<NullifierBlock> for Word {
-    fn from(value: NullifierBlock) -> Word {
-        Word::from([Felt::from(value.0), Felt::ZERO, Felt::ZERO, Felt::ZERO])
-    }
-}
 
 // NULLIFIER TREE BACKEND TRAIT
 // ================================================================================================
@@ -111,7 +52,7 @@ pub trait NullifierTreeBackend: Sized {
     ) -> Result<MutationSet<SMT_DEPTH, Word, Word>, Self::Error>;
 
     /// Inserts a key-value pair into the SMT, returning the previous value at that key.
-    fn insert(&mut self, key: Word, value: NullifierBlock) -> Result<Word, Self::Error>;
+    fn insert(&mut self, key: Word, value: NullifierBlock) -> Result<NullifierBlock, Self::Error>;
 
     /// Returns the value associated with the given key.
     fn get_value(&self, key: &Word) -> NullifierBlock;
@@ -149,12 +90,15 @@ impl NullifierTreeBackend for Smt {
         Smt::compute_mutations(self, updates)
     }
 
-    fn insert(&mut self, key: Word, value: NullifierBlock) -> Result<Word, Self::Error> {
-        Smt::insert(self, key, value.into())
+    fn insert(&mut self, key: Word, value: NullifierBlock) -> Result<NullifierBlock, Self::Error> {
+        Smt::insert(self, key, value.into()).map(|word| {
+            NullifierBlock::try_from(word).expect("SMT should only store valid NullifierBlocks")
+        })
     }
 
     fn get_value(&self, key: &Word) -> NullifierBlock {
-        NullifierBlock::new(Smt::get_value(self, key)).expect("unable to create NullifierBlock")
+        NullifierBlock::new(Smt::get_value(self, key))
+            .expect("SMT should only store valid NullifierBlocks")
     }
 
     fn root(&self) -> Word {
@@ -212,12 +156,15 @@ where
         LargeSmt::compute_mutations(self, updates).map_err(large_smt_error_to_merkle_error)
     }
 
-    fn insert(&mut self, key: Word, value: NullifierBlock) -> Result<Word, Self::Error> {
-        LargeSmt::insert(self, key, value.into())
+    fn insert(&mut self, key: Word, value: NullifierBlock) -> Result<NullifierBlock, Self::Error> {
+        LargeSmt::insert(self, key, value.into()).map(|word| {
+            NullifierBlock::try_from(word).expect("SMT should only store valid NullifierBlocks")
+        })
     }
 
     fn get_value(&self, key: &Word) -> NullifierBlock {
-        NullifierBlock::new(LargeSmt::get_value(self, key))
+        LargeSmt::get_value(self, key)
+            .try_into()
             .expect("unable to create NullifierBlock")
     }
 
@@ -230,6 +177,9 @@ where
             .expect("Storage I/O error accessing root")
     }
 }
+
+// NULLIFIER TREE
+// ================================================================================================
 
 /// The sparse merkle tree of all nullifiers in the blockchain.
 ///
@@ -263,9 +213,6 @@ where
     /// The depth of the nullifier tree.
     pub const DEPTH: u8 = SMT_DEPTH;
 
-    /// The value of an unspent nullifier in the tree.
-    pub const UNSPENT_NULLIFIER: Word = EMPTY_WORD;
-
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
@@ -297,7 +244,7 @@ where
             (
                 Nullifier::from_raw(nullifier),
                 NullifierBlock::new(value)
-                    .expect("Invalid value to create NullifierBlock")
+                    .expect("SMT should only store valid NullifierBlocks")
                     .into(),
             )
         })
@@ -317,7 +264,7 @@ where
     /// yet.
     pub fn get_block_num(&self, nullifier: &Nullifier) -> Option<BlockNumber> {
         let nullifier_block = self.smt.get_value(&nullifier.as_word());
-        if Self::UNSPENT_NULLIFIER == nullifier_block.into() {
+        if nullifier_block.is_unspent() {
             return None;
         }
 
@@ -379,7 +326,7 @@ where
             .insert(nullifier.as_word(), NullifierBlock::from(block_num))
             .map_err(NullifierTreeError::MaxLeafEntriesExceeded)?;
 
-        if prev_nullifier_value != Self::UNSPENT_NULLIFIER {
+        if prev_nullifier_value.is_spent() {
             Err(NullifierTreeError::NullifierAlreadySpent(nullifier))
         } else {
             Ok(())
@@ -515,6 +462,80 @@ impl NullifierMutationSet {
     /// Consumes self and returns the underlying [`MutationSet`].
     pub fn into_mutation_set(self) -> MutationSet<SMT_DEPTH, Word, Word> {
         self.mutation_set
+    }
+}
+
+// NULLIFIER BLOCK
+// ================================================================================================
+
+/// The [`BlockNumber`] at which a [`Nullifier`] was consumed.
+///
+/// Since there are no nullifiers in the genesis block the [`BlockNumber::GENESIS`] is used to
+/// signal an unconsumed nullifier.
+///
+/// This type can be converted to a [`Word`] which is laid out like this:
+///
+/// ```text
+/// [block_num, 0, 0, 0]
+/// ```
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+pub struct NullifierBlock(BlockNumber);
+
+impl NullifierBlock {
+    pub const UNSPENT: NullifierBlock = NullifierBlock(BlockNumber::GENESIS);
+
+    /// Returns a new [NullifierBlock] constructed from the provided word.
+    ///
+    /// # Errors
+    /// Returns an error if:
+    /// - The 0th element in the word is not a valid [BlockNumber].
+    /// - Any of the remaining elements is non-zero.
+    pub fn new(word: Word) -> Result<Self, NullifierTreeError> {
+        let block_num = u32::try_from(word[0].as_int())
+            .map(BlockNumber::from)
+            .map_err(|_| NullifierTreeError::InvalidNullifierBlockNumber(word))?;
+
+        if word[1..4].iter().any(|felt| *felt != Felt::ZERO) {
+            return Err(NullifierTreeError::InvalidNullifierBlockNumber(word));
+        }
+
+        Ok(NullifierBlock(block_num))
+    }
+
+    /// Returns true if the nullifier has already been spent.
+    pub fn is_spent(&self) -> bool {
+        !self.is_unspent()
+    }
+
+    /// Returns true if the nullifier has not yet been spent.
+    pub fn is_unspent(&self) -> bool {
+        self == &Self::UNSPENT
+    }
+}
+
+impl From<BlockNumber> for NullifierBlock {
+    fn from(block_num: BlockNumber) -> Self {
+        Self(block_num)
+    }
+}
+
+impl From<NullifierBlock> for BlockNumber {
+    fn from(value: NullifierBlock) -> BlockNumber {
+        value.0
+    }
+}
+
+impl From<NullifierBlock> for Word {
+    fn from(value: NullifierBlock) -> Word {
+        Word::from([Felt::from(value.0), Felt::ZERO, Felt::ZERO, Felt::ZERO])
+    }
+}
+
+impl TryFrom<Word> for NullifierBlock {
+    type Error = NullifierTreeError;
+
+    fn try_from(value: Word) -> Result<Self, Self::Error> {
+        Self::new(value)
     }
 }
 

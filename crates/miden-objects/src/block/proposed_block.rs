@@ -398,9 +398,9 @@ impl ProposedBlock {
         // SAFETY: As mentioned above, we can safely assume that each nullifier's witness was
         // added and every nullifier should be tracked by the partial tree and
         // therefore updatable.
-        partial_nullifier_tree.mark_spent(self.created_nullifiers.keys().copied(), self.block_num()).expect(
-          "nullifiers' merkle path should have been added to the partial tree and the nullifiers should be unspent",
-        );
+        partial_nullifier_tree
+            .mark_spent_all(self.created_nullifiers.keys().copied(), self.block_num())
+            .expect("nullifiers' merkle path should have been added to the partial tree and the nullifiers should be unspent");
 
         Ok(partial_nullifier_tree.root())
     }
