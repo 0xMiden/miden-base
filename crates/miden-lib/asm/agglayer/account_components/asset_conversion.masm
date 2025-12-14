@@ -90,8 +90,9 @@ pub proc scale_native_amount_to_u256
     movup.2 u32split
     # => [amount_hi, amount_lo, scale_hi, scale_lo]
 
-    # Perform u64 multiplication: amount * scale
-    # This is more efficient than u256 multiplication since both values are u64
+    # Perform U256 multiplication: amount * scale
+    # This is safe because both the scaling factor and amount are guaranteed to be smaller
+    # than 2^64, so we will never overflow a 256-bit value.
     exec.u64::overflowing_mul
     # => [res_hi, res_mid_hi, res_mid_lo, res_lo]
 
