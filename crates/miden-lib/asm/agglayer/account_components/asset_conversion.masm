@@ -67,16 +67,17 @@ end
 #! Outputs: [[RESULT_U256[1], RESULT_U256[0]]]
 #!
 #! Where:
-#! - amount: The asset amount to be converted
+#! - amount: The asset amount to be converted (range: 0 to 2^63 - 2^31)
 #! - target_scale: Exponent for scaling factor (10^target_scale)
 #! - [RESULT_U256[1], RESULT_U256[0]]: U256 value as 8 u32 limbs in big-endian order
+#!   (most significant limb at the top of the stack, each limb stored in little-endian format)
 #!
 #! Examples:
 #! - USDC: amount=1000000000, target_scale=0 → 1000000000 (no scaling)
 #! - ETH: amount=1e10, target_scale=8 → 1e18
 #!
 #! Invocation: exec
-pub proc convert_amount_to_u256_scaled
+pub proc scale_native_amount_to_u256
     swap
     # => [target_scale, amount]
 

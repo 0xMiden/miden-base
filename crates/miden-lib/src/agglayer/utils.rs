@@ -4,9 +4,13 @@ use alloc::vec::Vec;
 use miden_objects::Felt;
 
 /// Convert 8 Felt values (u32 limbs in big-endian order) to U256 bytes in little-endian format.
-pub fn felts_to_u256_bytes(limbs: Vec<Felt>) -> Vec<u8> {
-    assert_eq!(limbs.len(), 8, "expected exactly 8 u32 limbs for U256 conversion");
-
+///
+/// The conversion from big-endian to little-endian is necessary because:
+/// - Miden stores U256 values as 8 u32 limbs in big-endian order (most significant limb first)
+/// - Ethereum/EVM expects U256 values as 32 bytes in little-endian format (least significant byte
+///   first)
+/// - This ensures compatibility when bridging assets between Miden and Ethereum-based chains
+pub fn felts_to_u256_bytes(limbs: [Felt; 8]) -> Vec<u8> {
     let mut bytes = Vec::with_capacity(32);
 
     for i in (0..8).rev() {

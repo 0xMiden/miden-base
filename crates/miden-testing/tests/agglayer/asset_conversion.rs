@@ -13,7 +13,10 @@ use primitive_types::U256;
 
 /// Convert a Vec<Felt> to a U256
 fn felts_to_u256(felts: Vec<Felt>) -> U256 {
-    let bytes = utils::felts_to_u256_bytes(felts);
+    assert_eq!(felts.len(), 8, "expected exactly 8 felts");
+    let array: [Felt; 8] =
+        [felts[0], felts[1], felts[2], felts[3], felts[4], felts[5], felts[6], felts[7]];
+    let bytes = utils::felts_to_u256_bytes(array);
     U256::from_little_endian(&bytes)
 }
 
@@ -61,7 +64,7 @@ async fn test_convert_to_u256_helper(
         
         begin
             push.{}.{}
-            call.::convert_amount_to_u256_scaled
+            call.::scale_native_amount_to_u256
             exec.sys::truncate_stack
         end
         ",
@@ -139,7 +142,7 @@ async fn test_convert_to_u256_scaled_eth() -> anyhow::Result<()> {
         
         begin
             push.{}.{}
-            call.::convert_amount_to_u256_scaled
+            call.::scale_native_amount_to_u256
             exec.sys::truncate_stack
         end
         ",
@@ -183,7 +186,7 @@ async fn test_convert_to_u256_scaled_large_amount() -> anyhow::Result<()> {
         begin
             push.{}.{}
 
-            call.::convert_amount_to_u256_scaled
+            call.::scale_native_amount_to_u256
             exec.sys::truncate_stack
         end
         ",
@@ -211,7 +214,7 @@ async fn test_convert_to_u256_scaled_large_amount() -> anyhow::Result<()> {
 
 #[test]
 fn test_felts_to_u256_bytes_sequential_values() {
-    let limbs = vec![
+    let limbs = [
         Felt::new(1),
         Felt::new(2),
         Felt::new(3),
@@ -235,13 +238,13 @@ fn test_felts_to_u256_bytes_sequential_values() {
 #[test]
 fn test_felts_to_u256_bytes_edge_cases() {
     // Test case 1: All zeros (minimum)
-    let limbs = vec![Felt::new(0); 8];
+    let limbs = [Felt::new(0); 8];
     let result = utils::felts_to_u256_bytes(limbs);
     assert_eq!(result.len(), 32);
     assert!(result.iter().all(|&b| b == 0));
 
     // Test case 2: All max u32 values (maximum)
-    let limbs = vec![Felt::new(u32::MAX as u64); 8];
+    let limbs = [Felt::new(u32::MAX as u64); 8];
     let result = utils::felts_to_u256_bytes(limbs);
     assert_eq!(result.len(), 32);
     assert!(result.iter().all(|&b| b == 255));
