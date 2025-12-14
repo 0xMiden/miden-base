@@ -16,9 +16,6 @@ pub use proposed_block::ProposedBlock;
 mod proven_block;
 pub use proven_block::ProvenBlock;
 
-mod nullifier_witness;
-pub use nullifier_witness::NullifierWitness;
-
 mod partial_account_tree;
 pub use partial_account_tree::PartialAccountTree;
 
@@ -28,9 +25,6 @@ pub mod nullifier_tree;
 
 mod blockchain;
 pub use blockchain::Blockchain;
-
-mod partial_nullifier_tree;
-pub use partial_nullifier_tree::PartialNullifierTree;
 
 mod block_account_update;
 pub use block_account_update::BlockAccountUpdate;

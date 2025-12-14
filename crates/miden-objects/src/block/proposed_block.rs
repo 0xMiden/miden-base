@@ -12,6 +12,7 @@ use crate::batch::{
     ProvenBatch,
 };
 use crate::block::block_inputs::BlockInputs;
+use crate::block::nullifier_tree::{NullifierWitness, PartialNullifierTree};
 use crate::block::{
     AccountUpdateWitness,
     AccountWitness,
@@ -19,10 +20,8 @@ use crate::block::{
     BlockNoteIndex,
     BlockNoteTree,
     BlockNumber,
-    NullifierWitness,
     OutputNoteBatch,
     PartialAccountTree,
-    PartialNullifierTree,
 };
 use crate::errors::ProposedBlockError;
 use crate::note::{NoteId, Nullifier};

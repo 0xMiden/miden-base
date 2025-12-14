@@ -1,6 +1,6 @@
-use super::nullifier_tree::NullifierBlock;
+use super::{NullifierBlock, NullifierWitness};
 use crate::Word;
-use crate::block::{BlockNumber, NullifierWitness};
+use crate::block::BlockNumber;
 use crate::crypto::merkle::PartialSmt;
 use crate::errors::NullifierTreeError;
 use crate::note::Nullifier;

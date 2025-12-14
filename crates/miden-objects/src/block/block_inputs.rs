@@ -3,7 +3,8 @@ use alloc::collections::BTreeMap;
 use miden_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
 
 use crate::account::AccountId;
-use crate::block::{AccountWitness, BlockHeader, NullifierWitness};
+use crate::block::nullifier_tree::NullifierWitness;
+use crate::block::{AccountWitness, BlockHeader};
 use crate::note::{NoteId, NoteInclusionProof, Nullifier};
 use crate::transaction::PartialBlockchain;
 use crate::utils::serde::DeserializationError;
