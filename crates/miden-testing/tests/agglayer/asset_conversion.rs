@@ -3,7 +3,7 @@ extern crate alloc;
 use alloc::sync::Arc;
 
 use miden_lib::StdLibrary;
-use miden_lib::agglayer::{asset_conversion_component, utils};
+use miden_lib::agglayer::{asset_conversion_library, utils};
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::Felt;
 use miden_objects::assembly::{Assembler, DefaultSourceManager};
@@ -55,8 +55,7 @@ async fn test_convert_to_u256_helper(
     expected_result_array: [u32; 8],
     expected_result_u256: U256,
 ) -> anyhow::Result<()> {
-    let asset_conversion_comp = asset_conversion_component(vec![]);
-    let asset_conversion_lib = asset_conversion_comp.library();
+    let asset_conversion_lib = asset_conversion_library();
 
     let script_code = format!(
         "
@@ -133,8 +132,7 @@ async fn test_convert_to_u256_scaled_eth() -> anyhow::Result<()> {
     // scale to 1e18
     let target_scale = Felt::new(12);
 
-    let asset_conversion_comp = asset_conversion_component(vec![]);
-    let asset_conversion_lib = asset_conversion_comp.library();
+    let asset_conversion_lib = asset_conversion_library();
 
     let script_code = format!(
         "
@@ -176,8 +174,7 @@ async fn test_convert_to_u256_scaled_large_amount() -> anyhow::Result<()> {
     // scale to base 1e18
     let scale_exponent = Felt::new(8);
 
-    let asset_conversion_comp = asset_conversion_component(vec![]);
-    let asset_conversion_lib = asset_conversion_comp.library();
+    let asset_conversion_lib = asset_conversion_library();
 
     let script_code = format!(
         "
