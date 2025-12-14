@@ -148,7 +148,7 @@ where
     ///
     /// # Panics
     ///
-    /// Panics if the SMT backend fails to open the leaf (only possible with [`LargeSmt`] backend).
+    /// Panics if the SMT backend fails to open the leaf (only possible with `LargeSmt` backend).
     pub fn open(&self, account_id: AccountId) -> AccountWitness {
         let key = account_id_to_smt_key(account_id);
         let proof = self.smt.open(&key);
