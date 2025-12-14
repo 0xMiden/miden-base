@@ -13,7 +13,7 @@ use miden_objects::account::auth::{PublicKeyCommitment, Signature};
 use miden_objects::account::{Account, AccountHeader, AccountId};
 use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::assembly::debuginfo::SourceManagerSync;
-use miden_objects::block::AccountWitness;
+use miden_objects::block::account_tree::AccountWitness;
 use miden_objects::note::{Note, NoteId, NoteScript};
 use miden_objects::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE;
 use miden_objects::testing::noop_auth_component::NoopAuthComponent;

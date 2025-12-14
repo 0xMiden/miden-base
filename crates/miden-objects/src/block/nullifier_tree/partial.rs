@@ -68,7 +68,7 @@ impl PartialNullifierTree {
     /// - a nullifier was already spent.
     /// - a nullifier is not tracked by this partial nullifier tree, that is, its
     ///   [`NullifierWitness`] was not added to the tree previously.
-    fn mark_spent(
+    pub fn mark_spent(
         &mut self,
         nullifier: Nullifier,
         block_num: BlockNumber,
