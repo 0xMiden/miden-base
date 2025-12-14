@@ -26,8 +26,6 @@ pub const ERR_ACCOUNT_ID_SUFFIX_MOST_SIGNIFICANT_BIT_MUST_BE_ZERO: MasmError = M
 pub const ERR_ACCOUNT_ID_UNKNOWN_STORAGE_MODE: MasmError = MasmError::from_static_str("unknown account storage mode in account ID");
 /// Error Message: "unknown version in account ID"
 pub const ERR_ACCOUNT_ID_UNKNOWN_VERSION: MasmError = MasmError::from_static_str("unknown version in account ID");
-/// Error Message: "storage size can only be zero if storage offset is also zero"
-pub const ERR_ACCOUNT_INVALID_STORAGE_OFFSET_FOR_SIZE: MasmError = MasmError::from_static_str("storage size can only be zero if storage offset is also zero");
 /// Error Message: "the active account is not native"
 pub const ERR_ACCOUNT_IS_NOT_NATIVE: MasmError = MasmError::from_static_str("the active account is not native");
 /// Error Message: "account nonce is already at its maximum possible value"
@@ -40,8 +38,8 @@ pub const ERR_ACCOUNT_NOT_ENOUGH_PROCEDURES: MasmError = MasmError::from_static_
 pub const ERR_ACCOUNT_PROC_INDEX_OUT_OF_BOUNDS: MasmError = MasmError::from_static_str("provided procedure index is out of bounds");
 /// Error Message: "account procedure is not the authentication procedure; some procedures (e.g. `incr_nonce`) can be called only from the authentication procedure"
 pub const ERR_ACCOUNT_PROC_NOT_AUTH_PROC: MasmError = MasmError::from_static_str("account procedure is not the authentication procedure; some procedures (e.g. `incr_nonce`) can be called only from the authentication procedure");
-/// Error Message: "account procedure is not part of the account code"
-pub const ERR_ACCOUNT_PROC_NOT_PART_OF_ACCOUNT_CODE: MasmError = MasmError::from_static_str("account procedure is not part of the account code");
+/// Error Message: "procedure is not part of the account code"
+pub const ERR_ACCOUNT_PROC_NOT_PART_OF_ACCOUNT_CODE: MasmError = MasmError::from_static_str("procedure is not part of the account code");
 /// Error Message: "failed to read an account map item from a non-map storage slot"
 pub const ERR_ACCOUNT_READING_MAP_VALUE_FROM_NON_MAP_SLOT: MasmError = MasmError::from_static_str("failed to read an account map item from a non-map storage slot");
 /// Error Message: "ID of the new account does not match the ID computed from the seed and commitments"
@@ -60,8 +58,6 @@ pub const ERR_ACCOUNT_STORAGE_COMMITMENT_MISMATCH: MasmError = MasmError::from_s
 pub const ERR_ACCOUNT_STORAGE_MAP_ENTRIES_DO_NOT_MATCH_MAP_ROOT: MasmError = MasmError::from_static_str("storage map entries provided as advice inputs do not have the same storage map root as the root of the map the new account commits to");
 /// Error Message: "slot IDs must be unique and sorted in ascending order"
 pub const ERR_ACCOUNT_STORAGE_SLOTS_MUST_BE_SORTED_AND_UNIQUE: MasmError = MasmError::from_static_str("slot IDs must be unique and sorted in ascending order");
-/// Error Message: "provided storage slot index is out of bounds"
-pub const ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS: MasmError = MasmError::from_static_str("provided storage slot index is out of bounds");
 /// Error Message: "number of account procedures exceeds the maximum limit of 256"
 pub const ERR_ACCOUNT_TOO_MANY_PROCEDURES: MasmError = MasmError::from_static_str("number of account procedures exceeds the maximum limit of 256");
 /// Error Message: "number of account storage slots exceeds the maximum limit of 255"
@@ -80,8 +76,6 @@ pub const ERR_EPILOGUE_TOTAL_NUMBER_OF_ASSETS_MUST_STAY_THE_SAME: MasmError = Ma
 pub const ERR_FAUCET_BURN_CANNOT_EXCEED_EXISTING_TOTAL_SUPPLY: MasmError = MasmError::from_static_str("asset amount to burn can not exceed the existing total supply");
 /// Error Message: "the burn_non_fungible_asset procedure can only be called on a non-fungible faucet"
 pub const ERR_FAUCET_BURN_NON_FUNGIBLE_ASSET_CAN_ONLY_BE_CALLED_ON_NON_FUNGIBLE_FAUCET: MasmError = MasmError::from_static_str("the burn_non_fungible_asset procedure can only be called on a non-fungible faucet");
-/// Error Message: "storage offset is invalid for a faucet account (0 is prohibited as it is the reserved data slot for faucets)"
-pub const ERR_FAUCET_INVALID_STORAGE_OFFSET: MasmError = MasmError::from_static_str("storage offset is invalid for a faucet account (0 is prohibited as it is the reserved data slot for faucets)");
 /// Error Message: "the faucet_is_non_fungible_asset_issued procedure can only be called on a non-fungible faucet"
 pub const ERR_FAUCET_IS_NF_ASSET_ISSUED_PROC_CAN_ONLY_BE_CALLED_ON_NON_FUNGIBLE_FAUCET: MasmError = MasmError::from_static_str("the faucet_is_non_fungible_asset_issued procedure can only be called on a non-fungible faucet");
 /// Error Message: "asset mint operation would cause the new total supply to exceed the maximum allowed asset amount"

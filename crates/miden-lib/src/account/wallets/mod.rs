@@ -43,7 +43,7 @@ procedure_digest!(
 ///
 /// It reexports the procedures from `miden::contracts::wallets::basic`. When linking against this
 /// component, the `miden` library (i.e. [`MidenLib`](crate::MidenLib)) must be available to the
-/// assembler which is the case when using [`TransactionKernel::assembler()`][kasm]. The procedures
+/// assembler which is the case when using [`CodeBuilder`][builder]. The procedures
 /// of this component are:
 /// - `receive_asset`, which can be used to add an asset to the account.
 /// - `move_asset_to_note`, which can be used to remove the specified asset from the account and add
@@ -54,7 +54,7 @@ procedure_digest!(
 ///
 /// This component supports all account types.
 ///
-/// [kasm]: crate::transaction::TransactionKernel::assembler
+/// [builder]: crate::utils::CodeBuilder
 pub struct BasicWallet;
 
 impl BasicWallet {

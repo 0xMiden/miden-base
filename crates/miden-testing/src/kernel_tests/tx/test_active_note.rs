@@ -3,7 +3,7 @@ use alloc::string::String;
 use anyhow::Context;
 use miden_lib::errors::tx_kernel_errors::ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_METADATA_WHILE_NO_NOTE_BEING_PROCESSED;
 use miden_lib::testing::mock_account::MockAccountExt;
-use miden_lib::utils::ScriptBuilder;
+use miden_lib::utils::CodeBuilder;
 use miden_objects::account::Account;
 use miden_objects::asset::FungibleAsset;
 use miden_objects::crypto::rand::{FeltRng, RpoRandomCoin};
@@ -56,9 +56,9 @@ async fn test_active_note_get_sender_fails_from_tx_script() -> anyhow::Result<()
             exec.active_note::get_sender
         end
         ";
-    let tx_script = ScriptBuilder::default()
+    let tx_script = CodeBuilder::default()
         .compile_tx_script(code)
-        .context("failed to compile tx script")?;
+        .context("failed to parse tx script")?;
 
     let tx_context = mock_chain
         .build_tx_context(TxContextInput::AccountId(account.id()), &[p2id_note.id()], &[])?
@@ -412,9 +412,9 @@ async fn test_active_note_get_exactly_8_inputs() -> anyhow::Result<()> {
     )
     .context("failed to create metadata")?;
     let vault = NoteAssets::new(vec![]).context("failed to create input note assets")?;
-    let note_script = ScriptBuilder::default()
+    let note_script = CodeBuilder::default()
         .compile_note_script("begin nop end")
-        .context("failed to compile note script")?;
+        .context("failed to parse note script")?;
 
     // create a recipient with note inputs, which number divides by 8. For simplicity create 8 input
     // values

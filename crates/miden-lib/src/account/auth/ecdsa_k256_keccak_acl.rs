@@ -23,8 +23,8 @@ static CONFIG_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
         .expect("storage slot name should be valid")
 });
 
-static TRACKED_PROCEDURE_ROOT_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
-    StorageSlotName::new("miden::standards::auth::ecdsa_k256_keccak_acl::tracked_procedure_roots")
+static TRIGGER_PROCEDURE_ROOT_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
+    StorageSlotName::new("miden::standards::auth::ecdsa_k256_keccak_acl::trigger_procedure_roots")
         .expect("storage slot name should be valid")
 });
 
@@ -118,7 +118,7 @@ impl Default for AuthEcdsaK256KeccakAclConfig {
 ///
 /// ## Storage Layout
 /// - Slot 0(value): Public key (same as EcdsaK256Keccak)
-/// - Slot 1(value): [num_tracked_procs, allow_unauthorized_output_notes,
+/// - Slot 1(value): [num_trigger_procs, allow_unauthorized_output_notes,
 ///   allow_unauthorized_input_notes, 0]
 /// - Slot 2(map): A map with trigger procedure roots
 ///
@@ -166,9 +166,9 @@ impl AuthEcdsaK256KeccakAcl {
         &CONFIG_SLOT_NAME
     }
 
-    /// Returns the [`StorageSlotName`] where the tracked procedure roots are stored.
-    pub fn tracked_procedure_roots_slot() -> &'static StorageSlotName {
-        &TRACKED_PROCEDURE_ROOT_SLOT_NAME
+    /// Returns the [`StorageSlotName`] where the trigger procedure roots are stored.
+    pub fn trigger_procedure_roots_slot() -> &'static StorageSlotName {
+        &TRIGGER_PROCEDURE_ROOT_SLOT_NAME
     }
 }
 
@@ -194,7 +194,7 @@ impl From<AuthEcdsaK256KeccakAcl> for AccountComponent {
             ]),
         ));
 
-        // Tracked procedure roots slot
+        // Trigger procedure roots slot
         // We add the map even if there are no trigger procedures, to always maintain the same
         // storage layout.
         let map_entries = ecdsa
@@ -206,7 +206,7 @@ impl From<AuthEcdsaK256KeccakAcl> for AccountComponent {
 
         // Safe to unwrap because we know that the map keys are unique.
         storage_slots.push(StorageSlot::with_map(
-            AuthEcdsaK256KeccakAcl::tracked_procedure_roots_slot().clone(),
+            AuthEcdsaK256KeccakAcl::trigger_procedure_roots_slot().clone(),
             StorageMap::with_entries(map_entries).unwrap(),
         ));
 
@@ -295,7 +295,7 @@ mod tests {
                 let proc_root = account
                     .storage()
                     .get_map_item(
-                        AuthEcdsaK256KeccakAcl::tracked_procedure_roots_slot(),
+                        AuthEcdsaK256KeccakAcl::trigger_procedure_roots_slot(),
                         Word::from([i as u32, 0, 0, 0]),
                     )
                     .expect("storage map access failed");
@@ -305,7 +305,7 @@ mod tests {
             // When no procedures, the map should return empty for key [0,0,0,0]
             let proc_root = account
                 .storage()
-                .get_map_item(AuthEcdsaK256KeccakAcl::tracked_procedure_roots_slot(), Word::empty())
+                .get_map_item(AuthEcdsaK256KeccakAcl::trigger_procedure_roots_slot(), Word::empty())
                 .expect("storage map access failed");
             assert_eq!(proc_root, Word::empty());
         }

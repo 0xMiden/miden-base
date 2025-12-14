@@ -9,8 +9,8 @@ pub mod note_script_errors;
 mod masm_error;
 pub use masm_error::MasmError;
 
-mod script_builder_errors;
-pub use script_builder_errors::ScriptBuilderError;
+mod code_builder_errors;
+pub use code_builder_errors::CodeBuilderError;
 
 mod transaction_errors;
 pub use transaction_errors::{TransactionEventError, TransactionTraceParsingError};
