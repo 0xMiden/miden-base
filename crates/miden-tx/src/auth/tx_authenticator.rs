@@ -133,8 +133,8 @@ pub trait TransactionAuthenticator {
     /// - `signing_inputs`: description of the message to be singed. The inputs could contain
     ///   arbitrary data or a [TransactionSummary] which would describe the changes made to the
     ///   account up to the point of calling `get_signature()`. This allows the authenticator to
-    ///   review any alterations to the account prior to signing. It should not be directly used
-    ///   in the signature computation.
+    ///   review any alterations to the account prior to signing. It should not be directly used in
+    ///   the signature computation.
     fn get_signature(
         &self,
         pub_key_commitment: PublicKeyCommitment,
