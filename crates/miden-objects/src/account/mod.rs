@@ -74,6 +74,7 @@ pub use storage::{
     StorageMapWitness,
     StorageSlot,
     StorageSlotContent,
+    StorageSlotHeader,
     StorageSlotId,
     StorageSlotName,
     StorageSlotType,

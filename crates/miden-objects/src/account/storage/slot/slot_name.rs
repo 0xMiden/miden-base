@@ -1,4 +1,5 @@
 use alloc::string::{String, ToString};
+use alloc::sync::Arc;
 use core::fmt::Display;
 use core::str::FromStr;
 
@@ -35,7 +36,7 @@ use crate::utils::serde::{ByteWriter, Deserializable, DeserializationError, Seri
 /// - Each component must not start with an underscore.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct StorageSlotName {
-    name: String,
+    name: Arc<str>,
     id: StorageSlotId,
 }
 
@@ -58,10 +59,10 @@ impl StorageSlotName {
     ///
     /// Returns an error if:
     /// - the slot name is invalid (see the type-level docs for the requirements).
-    pub fn new(name: impl Into<String>) -> Result<Self, StorageSlotNameError> {
-        let name = name.into();
+    pub fn new(name: impl Into<Arc<str>>) -> Result<Self, StorageSlotNameError> {
+        let name: Arc<str> = name.into();
         Self::validate(&name)?;
-        let id = StorageSlotId::from_str(name.as_str());
+        let id = StorageSlotId::from_str(&name);
         Ok(Self { name, id })
     }
 
@@ -211,7 +212,7 @@ impl FromStr for StorageSlotName {
 
 impl From<StorageSlotName> for String {
     fn from(slot_name: StorageSlotName) -> Self {
-        slot_name.name
+        slot_name.name.to_string()
     }
 }
 
@@ -352,7 +353,7 @@ mod tests {
     #[test]
     fn slot_name_allows_ascii_alphanumeric_and_underscore() -> anyhow::Result<()> {
         let name = format!("{FULL_ALPHABET}::second");
-        let slot_name = StorageSlotName::new(&name)?;
+        let slot_name = StorageSlotName::new(name.clone())?;
         assert_eq!(slot_name.as_str(), name);
 
         Ok(())

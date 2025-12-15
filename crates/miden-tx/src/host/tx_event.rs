@@ -260,8 +260,8 @@ impl TransactionEvent {
 
                 let (slot_id, slot_type, _old_value) = process.get_storage_slot(slot_ptr)?;
 
-                let (slot_name, ..) = base_host.initial_account_storage_slot(slot_id)?;
-                let slot_name = slot_name.clone();
+                let slot_header = base_host.initial_account_storage_slot(slot_id)?;
+                let slot_name = slot_header.name().clone();
 
                 if !slot_type.is_value() {
                     return Err(TransactionKernelError::other(format!(
@@ -297,9 +297,8 @@ impl TransactionEvent {
 
                 // Resolve slot ID to slot name.
                 let (slot_id, ..) = process.get_storage_slot(slot_ptr)?;
-                let (slot_name, ..) = base_host.initial_account_storage_slot(slot_id)?;
-
-                let slot_name = slot_name.clone();
+                let slot_header = base_host.initial_account_storage_slot(slot_id)?;
+                let slot_name = slot_header.name().clone();
 
                 Some(TransactionEvent::AccountStorageAfterSetMapItem {
                     slot_name,
@@ -582,15 +581,14 @@ fn on_account_storage_map_item_accessed<'store, STORE>(
         // For native accounts, we have to request witnesses against the initial
         // root instead of the _current_ one, since the data
         // store only has witnesses for initial one.
-        let (_slot_name, slot_type, slot_value) =
-            base_host.initial_account_storage_slot(slot_id)?;
+        let slot_header = base_host.initial_account_storage_slot(slot_id)?;
 
-        if *slot_type != StorageSlotType::Map {
+        if slot_header.slot_type() != StorageSlotType::Map {
             return Err(TransactionKernelError::other(format!(
                 "expected slot {slot_id} to be of type map"
             )));
         }
-        *slot_value
+        slot_header.value()
     } else {
         current_map_root
     };
