@@ -179,14 +179,8 @@ impl AccountStorage {
 
     /// Returns an [AccountStorageHeader] for this account storage.
     pub fn to_header(&self) -> AccountStorageHeader {
-        AccountStorageHeader::new(
-            self.slots
-                .iter()
-                .map(StorageSlotHeader::from)
-                .map(StorageSlotHeader::into_owned)
-                .collect(),
-        )
-        .expect("slots should be valid as ensured by AccountStorage")
+        AccountStorageHeader::new(self.slots.iter().map(StorageSlotHeader::from).collect())
+            .expect("slots should be valid as ensured by AccountStorage")
     }
 
     /// Returns a reference to the storage slot with the provided name, if it exists, `None`
@@ -349,9 +343,8 @@ impl SequentialCommit for AccountStorage {
         self.slots()
             .iter()
             .flat_map(|slot| {
-                // Use borrowed name to avoid cloning
-                StorageSlotHeader::with_borrowed_name(
-                    slot.name(),
+                StorageSlotHeader::new(
+                    slot.name().clone(),
                     slot.content().slot_type(),
                     slot.content().value(),
                 )
@@ -461,14 +454,8 @@ mod tests {
         });
 
         slots.sort_unstable();
-        let err = AccountStorageHeader::new(
-            slots
-                .iter()
-                .map(StorageSlotHeader::from)
-                .map(StorageSlotHeader::into_owned)
-                .collect(),
-        )
-        .unwrap_err();
+        let err = AccountStorageHeader::new(slots.iter().map(StorageSlotHeader::from).collect())
+            .unwrap_err();
 
         assert_matches!(err, AccountError::DuplicateStorageSlotName(name) => {
             assert_eq!(name, slot_name0);

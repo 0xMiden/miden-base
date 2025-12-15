@@ -165,7 +165,7 @@ impl<'store, STORE> TransactionBaseHost<'store, STORE> {
     pub fn initial_account_storage_slot(
         &self,
         slot_id: StorageSlotId,
-    ) -> Result<&StorageSlotHeader<'static>, TransactionKernelError> {
+    ) -> Result<&StorageSlotHeader, TransactionKernelError> {
         self.initial_account_storage_header()
             .find_slot_header_by_id(slot_id)
             .ok_or_else(|| {

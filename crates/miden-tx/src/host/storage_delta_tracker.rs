@@ -192,7 +192,7 @@ impl StorageDeltaTracker {
 
 /// Creates empty slots of the same slot types as the to-be-created account.
 fn empty_storage_header_from_account(account: &PartialAccount) -> AccountStorageHeader {
-    let slots: Vec<StorageSlotHeader<'static>> = account
+    let slots: Vec<StorageSlotHeader> = account
         .storage()
         .header()
         .slots()
