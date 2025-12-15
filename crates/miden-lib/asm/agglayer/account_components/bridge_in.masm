@@ -35,54 +35,44 @@ end
 #! It validates that only the authorized bridge operator can update GER
 #! and stores both the GER value and its index.
 #!
-#! Inputs: [GER_UPPER, GER_LOWER, GER_INDEX]
+#! Inputs: [GER_UPPER, GER_LOWER, ger_index]
 #! Outputs: []
 #!
 #! Where:
 #! - GER_UPPER is the upper 128-bit limb of the 256-bit Global Exit Root (4 field elements)
 #! - GER_LOWER is the lower 128-bit limb of the 256-bit Global Exit Root (4 field elements)
-#! - GER_INDEX is the 32-bit L1InfoTree index (1 field element)
+#! - ger_index is the 32-bit L1InfoTree index (1 field element)
 #!
 #! Panics if:
 #! - the note sender is not the authorized bridge operator
 pub proc update_ger
     # Check authorization first
     exec.is_authorized_operator
-    # => [is_authorized, GER_UPPER, GER_LOWER, GER_INDEX]
+    # => [is_authorized, GER_UPPER, GER_LOWER, ger_index]
 
     assert.err=ERR_ONLY_BRIDGE_OPERATOR_CAN_UPDATE_GER
-    # => [GER_UPPER, GER_LOWER, GER_INDEX]
+    # => [GER_UPPER, GER_LOWER, ger_index]
 
     # Store GER_UPPER at key [0,0,0,0]
-    # Stack: [GER_UPPER, GER_LOWER, GER_INDEX]
+    # Stack: [GER_UPPER, GER_LOWER, ger_index]
     push.0.0.0.0 push.GLOBAL_EXIT_ROOT_MAP[0..2]
-    # => [index, KEY, GER_UPPER, GER_LOWER, GER_INDEX]
+    # => [index, KEY, GER_UPPER, GER_LOWER, ger_index]
 
     exec.native_account::set_map_item
-    # => [OLD_MAP_ROOT, OLD_MAP_VALUE, GER_LOWER, GER_INDEX]
+    # => [OLD_MAP_ROOT, OLD_MAP_VALUE, GER_LOWER, ger_index]
 
     dropw dropw
-    # => [GER_LOWER, GER_INDEX]
+    # => [GER_LOWER, ger_index]
 
     # Store GER_LOWER at key [0,0,0,1]
     push.1.0.0.0 push.GLOBAL_EXIT_ROOT_MAP[0..2]
-    # => [index, KEY, GER_LOWER, GER_INDEX]
+    # => [index, KEY, GER_LOWER, ger_index]
 
     exec.native_account::set_map_item
-    # => [OLD_MAP_ROOT, OLD_MAP_VALUE, GER_INDEX]
+    # => [OLD_MAP_ROOT, OLD_MAP_VALUE, ger_index]
 
     dropw dropw
-    # => [GER_INDEX]
-
-    # Store GER_INDEX at key [0,0,0,2]
-    padw padw padw
-    # => [0, 0, 0, GER_INDEX]
-    
-    push.2.0.0.0 push.GLOBAL_EXIT_ROOT_MAP[0..2]
-    # => [index, KEY, GER_INDEX_WORD]
-
-    exec.native_account::set_map_item
-    # => [OLD_MAP_ROOT, OLD_MAP_VALUE]
+    # => [ger_index]
 
     dropw dropw dropw dropw
     # => []

@@ -17,14 +17,14 @@ begin
     # GER_LOWER = [GER[4], GER[5], GER[6], GER[7]]
     
     # Load individual elements to build correct stack order
-    mem_load.0 mem_load.1 mem_load.2 mem_load.3
+    mem_loadw_le.4
     # => [GER[3], GER[2], GER[1], GER[0]] (GER_UPPER)
     
-    mem_load.4 mem_load.5 mem_load.6 mem_load.7
+    padw mem_loadw_le.0
     # => [GER[7], GER[6], GER[5], GER[4], GER[3], GER[2], GER[1], GER[0]] (GER_LOWER + GER_UPPER)
     
     # Load GER_INDEX
-    mem_load.8
+    mem_load.8 movdn.8
     # => [GER_INDEX, GER[7], GER[6], GER[5], GER[4], GER[3], GER[2], GER[1], GER[0]]
 
     push.111 debug.stack drop

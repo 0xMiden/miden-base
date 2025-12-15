@@ -1,13 +1,7 @@
 extern crate alloc;
 
 use miden_lib::agglayer::{bridge_in_component, update_ger_script};
-use miden_objects::account::{
-    Account,
-    AccountId,
-    AccountStorageMode,
-    StorageSlot,
-    StorageSlotName,
-};
+use miden_objects::account::{Account, AccountStorageMode, StorageSlot, StorageSlotName};
 use miden_objects::note::{
     Note,
     NoteAssets,
@@ -83,6 +77,9 @@ async fn test_update_ger_flow() -> anyhow::Result<()> {
     }
     input_values.push(Felt::new(ger_index as u64));
 
+    println!("input values: {:?}", input_values);
+    println!("ger index: {}", ger_index);
+
     // Create UPDATE_GER note from the bridge operator
     let inputs = NoteInputs::new(input_values)?;
     let tag = NoteTag::for_local_use_case(0, 0).unwrap();
@@ -117,10 +114,10 @@ async fn test_update_ger_flow() -> anyhow::Result<()> {
     let lex_key_upper = LexicographicWord::new(key_upper);
     let value_upper = entries.get(&lex_key_upper).expect("GER upper word should be stored");
     let expected_word_upper = Word::from([
-        Felt::new(ger_value_u32s[0] as u64),
-        Felt::new(ger_value_u32s[1] as u64),
-        Felt::new(ger_value_u32s[2] as u64),
         Felt::new(ger_value_u32s[3] as u64),
+        Felt::new(ger_value_u32s[2] as u64),
+        Felt::new(ger_value_u32s[1] as u64),
+        Felt::new(ger_value_u32s[0] as u64),
     ]);
     assert_eq!(*value_upper, expected_word_upper);
 
@@ -129,20 +126,12 @@ async fn test_update_ger_flow() -> anyhow::Result<()> {
     let lex_key_lower = LexicographicWord::new(key_lower);
     let value_lower = entries.get(&lex_key_lower).expect("GER lower word should be stored");
     let expected_word_lower = Word::from([
-        Felt::new(ger_value_u32s[4] as u64),
-        Felt::new(ger_value_u32s[5] as u64),
-        Felt::new(ger_value_u32s[6] as u64),
         Felt::new(ger_value_u32s[7] as u64),
+        Felt::new(ger_value_u32s[6] as u64),
+        Felt::new(ger_value_u32s[5] as u64),
+        Felt::new(ger_value_u32s[4] as u64),
     ]);
     assert_eq!(*value_lower, expected_word_lower);
-
-    // Verify GER_INDEX at key [0,0,0,2]
-    let key_index = Word::from([Felt::new(2), Felt::new(0), Felt::new(0), Felt::new(0)]);
-    let lex_key_index = LexicographicWord::new(key_index);
-    let value_index = entries.get(&lex_key_index).expect("GER index should be stored");
-    let expected_word_index =
-        Word::from([Felt::new(0), Felt::new(0), Felt::new(0), Felt::new(ger_index as u64)]);
-    assert_eq!(*value_index, expected_word_index);
 
     Ok(())
 }
@@ -189,7 +178,7 @@ async fn test_update_ger_unauthorized_fails() -> anyhow::Result<()> {
     let mut mock_chain = builder.build()?;
     mock_chain.prove_next_block()?;
 
-    // Generate random GER data
+    // Generate random 32-byte GER value (8 u32 values) and 32-bit GER index (1 u32 value)
     let mut rng = rand::rng();
     let ger_value_u32s: [u32; 8] = [
         rng.random::<u32>(),
@@ -203,7 +192,7 @@ async fn test_update_ger_unauthorized_fails() -> anyhow::Result<()> {
     ];
     let ger_index = rng.random::<u32>();
 
-    // Create note inputs
+    // Create note inputs (9 u32 values total)
     let mut input_values = Vec::new();
     for &value in &ger_value_u32s {
         input_values.push(Felt::new(value as u64));
