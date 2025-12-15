@@ -1,13 +1,15 @@
 use alloc::vec::Vec;
 
-use anyhow::Context;
+use anyhow::{Context, anyhow};
 use miden_objects::Word;
 use miden_objects::account::AccountId;
 use miden_objects::asset::FungibleAsset;
 use miden_objects::block::BlockNumber;
 use miden_objects::crypto::merkle::SparseMerklePath;
 use miden_objects::note::{Note, NoteInclusionProof, Nullifier};
-use miden_objects::transaction::{InputNote, OutputNote, ProvenTransaction};
+use miden_objects::transaction::{
+    InputNote, InputNotes, OutputNote, OutputNotes, ProvenTransaction,
+};
 use miden_objects::vm::ExecutionProof;
 
 /// A builder to build mocked [`ProvenTransaction`]s.
@@ -108,14 +110,19 @@ impl MockProvenTxBuilder {
             input_note_commitments.extend(nullifiers.into_iter().map(Into::into));
         }
 
+        let input_notes = InputNotes::new(input_note_commitments)
+            .map_err(|e| anyhow!("InputNotes error: {:?}", e))?;
+        let output_notes = OutputNotes::new(self.output_notes.unwrap_or_default())
+            .map_err(|e| anyhow!("OutputNotes error: {:?}", e))?;
+
         ProvenTransaction::new(
             self.account_id,
             self.initial_account_commitment,
             self.final_account_commitment,
             Word::empty(),
             AccountUpdateDetails::Private,
-            input_note_commitments,
-            self.output_notes.unwrap_or_default(),
+            input_notes,
+            output_notes,
             BlockNumber::from(0),
             self.ref_block_commitment.unwrap_or_default(),
             self.fee,

@@ -11,7 +11,9 @@ use miden_objects::asset::FungibleAsset;
 use miden_objects::batch::ProvenBatch;
 use miden_objects::block::{BlockInputs, BlockNumber, ProposedBlock};
 use miden_objects::note::NoteType;
-use miden_objects::transaction::{InputNoteCommitment, OutputNote, ProvenTransaction};
+use miden_objects::transaction::{
+    InputNoteCommitment, InputNotes, OutputNote, OutputNotes, ProvenTransaction,
+};
 use miden_objects::vm::ExecutionProof;
 use miden_objects::{AccountTreeError, NullifierTreeError, Word};
 use miden_tx::LocalTransactionProver;
@@ -374,14 +376,16 @@ async fn proven_block_fails_on_creating_account_with_duplicate_account_id_prefix
 
     let [tx0, tx1] =
         [(id0, [0, 0, 0, 1u32]), (id1, [0, 0, 0, 2u32])].map(|(id, final_state_comm)| {
+            let input_notes = InputNotes::new(Vec::<InputNoteCommitment>::new()).unwrap();
+            let output_notes = OutputNotes::new(Vec::<OutputNote>::new()).unwrap();
             ProvenTransaction::new(
                 id,
                 Word::empty(),
                 Word::from(final_state_comm),
                 Word::empty(),
                 AccountUpdateDetails::Private,
-                Vec::<InputNoteCommitment>::new(),
-                Vec::<OutputNote>::new(),
+                input_notes,
+                output_notes,
                 genesis_block.block_num(),
                 genesis_block.commitment(),
                 FungibleAsset::mock(500).unwrap_fungible(),
