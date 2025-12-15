@@ -1,4 +1,4 @@
-use alloc::string::{String, ToString};
+use alloc::string::String;
 
 use super::{Felt, TokenSymbolError};
 
@@ -20,8 +20,33 @@ impl TokenSymbol {
     /// This value encodes the "ZZZZZZ" token symbol.
     pub const MAX_ENCODED_VALUE: u64 = 8031810156;
 
+    /// Constructs a new [`TokenSymbol`] from a static string.
+    ///
+    /// This function is `const` and can be used to define token symbols as constants, e.g.:
+    ///
+    /// ```rust
+    /// # use miden_objects::asset::TokenSymbol;
+    /// const TOKEN: TokenSymbol = TokenSymbol::from_static_str("ETH");
+    /// ```
+    ///
+    /// This is convenient because using a string that is not a valid token symbol fails to
+    /// compile.
+    ///
+    /// # Panics
+    ///
+    /// Panics if:
+    /// - The length of the provided string is less than 1 or greater than 6.
+    /// - The provided token string contains characters that are not uppercase ASCII.
+    pub const fn from_static_str(symbol: &'static str) -> Self {
+        match encode_symbol_to_felt(symbol) {
+            Ok(felt) => Self(felt),
+            // We cannot format the error in a const context.
+            Err(_) => panic!("invalid token symbol"),
+        }
+    }
+
     /// Creates a new [`TokenSymbol`] instance from the provided token name string.
-    ///     
+    ///
     /// # Errors
     /// Returns an error if:
     /// - The length of the provided string is less than 1 or greater than 6.
@@ -89,22 +114,31 @@ impl TryFrom<Felt> for TokenSymbol {
 /// Returns an error if:
 /// - The length of the provided string is less than 1 or greater than 6.
 /// - The provided token string contains characters that are not uppercase ASCII.
-fn encode_symbol_to_felt(s: &str) -> Result<Felt, TokenSymbolError> {
-    if s.is_empty() || s.len() > TokenSymbol::MAX_SYMBOL_LENGTH {
-        return Err(TokenSymbolError::InvalidLength(s.len()));
-    } else if s.chars().any(|c| !c.is_ascii_uppercase()) {
-        return Err(TokenSymbolError::InvalidCharacter(s.to_string()));
+const fn encode_symbol_to_felt(s: &str) -> Result<Felt, TokenSymbolError> {
+    let bytes = s.as_bytes();
+    let len = bytes.len();
+
+    if len == 0 || len > TokenSymbol::MAX_SYMBOL_LENGTH {
+        return Err(TokenSymbolError::InvalidLength(len));
     }
 
-    let mut encoded_value = 0;
-    for char in s.chars() {
-        let digit = char as u64 - b'A' as u64;
-        debug_assert!(digit < TokenSymbol::ALPHABET_LENGTH);
+    let mut encoded_value: u64 = 0;
+    let mut idx = 0;
+
+    while idx < len {
+        let byte = bytes[idx];
+
+        if !byte.is_ascii_uppercase() {
+            return Err(TokenSymbolError::InvalidCharacter);
+        }
+
+        let digit = (byte - b'A') as u64;
         encoded_value = encoded_value * TokenSymbol::ALPHABET_LENGTH + digit;
+        idx += 1;
     }
 
     // add token length to the encoded value to be able to decode the exact number of characters
-    encoded_value = encoded_value * TokenSymbol::ALPHABET_LENGTH + s.len() as u64;
+    encoded_value = encoded_value * TokenSymbol::ALPHABET_LENGTH + len as u64;
 
     Ok(Felt::new(encoded_value))
 }
@@ -198,7 +232,7 @@ mod test {
 
         let symbol = "$$$";
         let felt = encode_symbol_to_felt(symbol);
-        assert_matches!(felt.unwrap_err(), TokenSymbolError::InvalidCharacter(s) if s == *"$$$");
+        assert_matches!(felt.unwrap_err(), TokenSymbolError::InvalidCharacter);
 
         let symbol = "ABCDEF";
         let token_symbol = TokenSymbol::try_from(symbol);
@@ -230,5 +264,59 @@ mod test {
     fn test_token_symbol_max_value() {
         let token_symbol = TokenSymbol::try_from("ZZZZZZ").unwrap();
         assert_eq!(Felt::from(token_symbol).as_int(), TokenSymbol::MAX_ENCODED_VALUE);
+    }
+
+    // Const function tests
+    // --------------------------------------------------------------------------------------------
+
+    const _TOKEN0: TokenSymbol = TokenSymbol::from_static_str("A");
+    const _TOKEN1: TokenSymbol = TokenSymbol::from_static_str("ETH");
+    const _TOKEN2: TokenSymbol = TokenSymbol::from_static_str("MIDEN");
+    const _TOKEN3: TokenSymbol = TokenSymbol::from_static_str("ZZZZZZ");
+
+    #[test]
+    fn test_from_static_str_matches_new() {
+        // Test that from_static_str produces the same result as new
+        let symbols = ["A", "BC", "ETH", "MIDEN", "ZZZZZZ"];
+        for symbol in symbols {
+            let from_new = TokenSymbol::new(symbol).unwrap();
+            let from_static = TokenSymbol::from_static_str(symbol);
+            assert_eq!(
+                Felt::from(from_new),
+                Felt::from(from_static),
+                "Mismatch for symbol: {}",
+                symbol
+            );
+        }
+    }
+
+    #[test]
+    #[should_panic(expected = "invalid token symbol")]
+    fn token_symbol_panics_on_empty_string() {
+        TokenSymbol::from_static_str("");
+    }
+
+    #[test]
+    #[should_panic(expected = "invalid token symbol")]
+    fn token_symbol_panics_on_too_long_string() {
+        TokenSymbol::from_static_str("ABCDEFG");
+    }
+
+    #[test]
+    #[should_panic(expected = "invalid token symbol")]
+    fn token_symbol_panics_on_lowercase() {
+        TokenSymbol::from_static_str("eth");
+    }
+
+    #[test]
+    #[should_panic(expected = "invalid token symbol")]
+    fn token_symbol_panics_on_invalid_character() {
+        TokenSymbol::from_static_str("ET$");
+    }
+
+    #[test]
+    #[should_panic(expected = "invalid token symbol")]
+    fn token_symbol_panics_on_number() {
+        TokenSymbol::from_static_str("ETH1");
     }
 }

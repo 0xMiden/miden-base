@@ -23,8 +23,8 @@ static CONFIG_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
         .expect("storage slot name should be valid")
 });
 
-static TRACKED_PROCEDURE_ROOT_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
-    StorageSlotName::new("miden::standards::auth::rpo_falcon512_acl::tracked_procedure_roots")
+static TRIGGER_PROCEDURE_ROOT_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
+    StorageSlotName::new("miden::standards::auth::rpo_falcon512_acl::trigger_procedure_roots")
         .expect("storage slot name should be valid")
 });
 
@@ -119,9 +119,9 @@ impl Default for AuthRpoFalcon512AclConfig {
 /// ## Storage Layout
 ///
 /// - [`Self::public_key_slot`]: Public key
-/// - [`Self::config_slot`]: `[num_tracked_procs, allow_unauthorized_output_notes,
+/// - [`Self::config_slot`]: `[num_trigger_procs, allow_unauthorized_output_notes,
 ///   allow_unauthorized_input_notes, 0]`
-/// - [`Self::tracked_procedure_roots_slot`]: A map with trigger procedure roots
+/// - [`Self::trigger_procedure_roots_slot`]: A map with trigger procedure roots
 ///
 /// ## Important Note on Procedure Detection
 /// The procedure-based authentication relies on the `was_procedure_called` kernel function,
@@ -167,9 +167,9 @@ impl AuthRpoFalcon512Acl {
         &CONFIG_SLOT_NAME
     }
 
-    /// Returns the [`StorageSlotName`] where the tracked procedure roots are stored.
-    pub fn tracked_procedure_roots_slot() -> &'static StorageSlotName {
-        &TRACKED_PROCEDURE_ROOT_SLOT_NAME
+    /// Returns the [`StorageSlotName`] where the trigger procedure roots are stored.
+    pub fn trigger_procedure_roots_slot() -> &'static StorageSlotName {
+        &TRIGGER_PROCEDURE_ROOT_SLOT_NAME
     }
 }
 
@@ -195,7 +195,7 @@ impl From<AuthRpoFalcon512Acl> for AccountComponent {
             ]),
         ));
 
-        // Tracked procedure roots slot
+        // Trigger procedure roots slot
         // We add the map even if there are no trigger procedures, to always maintain the same
         // storage layout.
         let map_entries = falcon
@@ -207,7 +207,7 @@ impl From<AuthRpoFalcon512Acl> for AccountComponent {
 
         // Safe to unwrap because we know that the map keys are unique.
         storage_slots.push(StorageSlot::with_map(
-            AuthRpoFalcon512Acl::tracked_procedure_roots_slot().clone(),
+            AuthRpoFalcon512Acl::trigger_procedure_roots_slot().clone(),
             StorageMap::with_entries(map_entries).unwrap(),
         ));
 
@@ -296,7 +296,7 @@ mod tests {
                 let proc_root = account
                     .storage()
                     .get_map_item(
-                        AuthRpoFalcon512Acl::tracked_procedure_roots_slot(),
+                        AuthRpoFalcon512Acl::trigger_procedure_roots_slot(),
                         Word::from([i as u32, 0, 0, 0]),
                     )
                     .expect("storage map access failed");
@@ -306,7 +306,7 @@ mod tests {
             // When no procedures, the map should return empty for key [0,0,0,0]
             let proc_root = account
                 .storage()
-                .get_map_item(AuthRpoFalcon512Acl::tracked_procedure_roots_slot(), Word::empty())
+                .get_map_item(AuthRpoFalcon512Acl::trigger_procedure_roots_slot(), Word::empty())
                 .expect("storage map access failed");
             assert_eq!(proc_root, Word::empty());
         }

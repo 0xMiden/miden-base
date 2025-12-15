@@ -1,198 +1,24 @@
-use alloc::boxed::Box;
 use alloc::string::ToString;
 use alloc::vec::Vec;
 
-use miden_core::EMPTY_WORD;
-use miden_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
-#[cfg(feature = "std")]
-use miden_crypto::merkle::{LargeSmt, LargeSmtError, SmtStorage};
-use miden_crypto::merkle::{MerkleError, MutationSet, Smt, SmtProof};
-use miden_processor::{DeserializationError, SMT_DEPTH};
-
-use crate::Word;
-use crate::block::{BlockNumber, NullifierWitness};
+use crate::block::BlockNumber;
+use crate::crypto::merkle::{MerkleError, MutationSet, SMT_DEPTH, Smt};
 use crate::errors::NullifierTreeError;
 use crate::note::Nullifier;
+use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
+use crate::{Felt, FieldElement, Word};
 
-// FREE HELPER FUNCTIONS AND CONSTANTS
+mod backend;
+pub use backend::NullifierTreeBackend;
+
+mod witness;
+pub use witness::NullifierWitness;
+
+mod partial;
+pub use partial::PartialNullifierTree;
+
+// NULLIFIER TREE
 // ================================================================================================
-
-/// The value of an unspent nullifier in the tree.
-pub(super) const UNSPENT_NULLIFIER: Word = EMPTY_WORD;
-
-/// Returns the nullifier's leaf value in the SMT by its block number.
-pub(super) fn block_num_to_nullifier_leaf_value(block: BlockNumber) -> Word {
-    Word::from([block.as_u32(), 0, 0, 0])
-}
-
-/// Given the leaf value of the nullifier SMT, returns the nullifier's block number.
-///
-/// There are no nullifiers in the genesis block. The value zero is instead used to signal
-/// absence of a value.
-pub(super) fn nullifier_leaf_value_to_block_num(value: Word) -> BlockNumber {
-    let block_num: u32 = value[0].as_int().try_into().expect("invalid block number found in store");
-
-    block_num.into()
-}
-
-// NULLIFIER TREE BACKEND TRAIT
-// ================================================================================================
-
-/// This trait abstracts over different SMT backends (e.g., `Smt` and `LargeSmt`) to allow
-/// the `NullifierTree` to work with either implementation transparently.
-///
-/// Users should instantiate the backend directly (potentially with entries) and then
-/// pass it to [`NullifierTree::new_unchecked`].
-///
-/// # Invariants
-///
-/// Assumes the provided SMT upholds the guarantees of the [`NullifierTree`]. Specifically:
-/// - Nullifiers are only spent once and their block numbers do not change.
-/// - Nullifier entries must follow the format `Word([block_num, 0, 0, 0])` with `block_num` a valid
-///   block number.
-pub trait NullifierTreeBackend: Sized {
-    type Error: core::error::Error + Send + 'static;
-
-    /// Returns the number of entries in the SMT.
-    fn num_entries(&self) -> usize;
-
-    /// Returns all entries in the SMT as an iterator over key-value pairs.
-    fn entries(&self) -> Box<dyn Iterator<Item = (Word, Word)> + '_>;
-
-    /// Opens the leaf at the given key, returning a Merkle proof.
-    fn open(&self, key: &Word) -> SmtProof;
-
-    /// Applies the given mutation set to the SMT.
-    fn apply_mutations(
-        &mut self,
-        set: MutationSet<SMT_DEPTH, Word, Word>,
-    ) -> Result<(), Self::Error>;
-
-    /// Computes the mutation set required to apply the given updates to the SMT.
-    fn compute_mutations(
-        &self,
-        updates: impl IntoIterator<Item = (Word, Word)>,
-    ) -> Result<MutationSet<SMT_DEPTH, Word, Word>, Self::Error>;
-
-    /// Inserts a key-value pair into the SMT, returning the previous value at that key.
-    fn insert(&mut self, key: Word, value: Word) -> Result<Word, Self::Error>;
-
-    /// Returns the value associated with the given key.
-    fn get_value(&self, key: &Word) -> Word;
-
-    /// Returns the root of the SMT.
-    fn root(&self) -> Word;
-}
-
-impl NullifierTreeBackend for Smt {
-    type Error = MerkleError;
-
-    fn num_entries(&self) -> usize {
-        Smt::num_entries(self)
-    }
-
-    fn entries(&self) -> Box<dyn Iterator<Item = (Word, Word)> + '_> {
-        Box::new(Smt::entries(self).map(|(k, v)| (*k, *v)))
-    }
-
-    fn open(&self, key: &Word) -> SmtProof {
-        Smt::open(self, key)
-    }
-
-    fn apply_mutations(
-        &mut self,
-        set: MutationSet<SMT_DEPTH, Word, Word>,
-    ) -> Result<(), Self::Error> {
-        Smt::apply_mutations(self, set)
-    }
-
-    fn compute_mutations(
-        &self,
-        updates: impl IntoIterator<Item = (Word, Word)>,
-    ) -> Result<MutationSet<SMT_DEPTH, Word, Word>, Self::Error> {
-        Smt::compute_mutations(self, updates)
-    }
-
-    fn insert(&mut self, key: Word, value: Word) -> Result<Word, Self::Error> {
-        Smt::insert(self, key, value)
-    }
-
-    fn get_value(&self, key: &Word) -> Word {
-        Smt::get_value(self, key)
-    }
-
-    fn root(&self) -> Word {
-        Smt::root(self)
-    }
-}
-
-#[cfg(feature = "std")]
-fn large_smt_error_to_merkle_error(err: LargeSmtError) -> MerkleError {
-    match err {
-        LargeSmtError::Storage(storage_err) => {
-            panic!("Storage error encountered: {:?}", storage_err)
-        },
-        LargeSmtError::Merkle(merkle_err) => merkle_err,
-    }
-}
-
-#[cfg(feature = "std")]
-impl<Backend> NullifierTreeBackend for LargeSmt<Backend>
-where
-    Backend: SmtStorage,
-{
-    type Error = MerkleError;
-
-    fn num_entries(&self) -> usize {
-        // SAFETY: We panic on storage errors here as they represent unrecoverable I/O failures.
-        // This maintains API compatibility with the non-fallible Smt::num_entries().
-        // See issue #2010 for future improvements to error handling.
-        LargeSmt::num_entries(self)
-            .map_err(large_smt_error_to_merkle_error)
-            .expect("Storage I/O error accessing num_entries")
-    }
-
-    fn entries(&self) -> Box<dyn Iterator<Item = (Word, Word)> + '_> {
-        // SAFETY: We expect here as only I/O errors can occur. Storage failures are considered
-        // unrecoverable at this layer. See issue #2010 for future error handling improvements.
-        Box::new(LargeSmt::entries(self).expect("Storage I/O error accessing entries"))
-    }
-
-    fn open(&self, key: &Word) -> SmtProof {
-        LargeSmt::open(self, key)
-    }
-
-    fn apply_mutations(
-        &mut self,
-        set: MutationSet<SMT_DEPTH, Word, Word>,
-    ) -> Result<(), Self::Error> {
-        LargeSmt::apply_mutations(self, set).map_err(large_smt_error_to_merkle_error)
-    }
-
-    fn compute_mutations(
-        &self,
-        updates: impl IntoIterator<Item = (Word, Word)>,
-    ) -> Result<MutationSet<SMT_DEPTH, Word, Word>, Self::Error> {
-        LargeSmt::compute_mutations(self, updates).map_err(large_smt_error_to_merkle_error)
-    }
-
-    fn insert(&mut self, key: Word, value: Word) -> Result<Word, Self::Error> {
-        LargeSmt::insert(self, key, value)
-    }
-
-    fn get_value(&self, key: &Word) -> Word {
-        LargeSmt::get_value(self, key)
-    }
-
-    fn root(&self) -> Word {
-        // SAFETY: We expect here as storage errors are considered unrecoverable. This maintains
-        // API compatibility with the non-fallible Smt::root().
-        // See issue #2010 for future improvements to error handling.
-        LargeSmt::root(self)
-            .map_err(large_smt_error_to_merkle_error)
-            .expect("Storage I/O error accessing root")
-    }
-}
 
 /// The sparse merkle tree of all nullifiers in the blockchain.
 ///
@@ -226,9 +52,6 @@ where
     /// The depth of the nullifier tree.
     pub const DEPTH: u8 = SMT_DEPTH;
 
-    /// The value of an unspent nullifier in the tree.
-    pub const UNSPENT_NULLIFIER: Word = EMPTY_WORD;
-
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
@@ -256,8 +79,13 @@ where
 
     /// Returns an iterator over the nullifiers and their block numbers in the tree.
     pub fn entries(&self) -> impl Iterator<Item = (Nullifier, BlockNumber)> {
-        self.smt.entries().map(|(nullifier, block_num)| {
-            (Nullifier::from_raw(nullifier), nullifier_leaf_value_to_block_num(block_num))
+        self.smt.entries().map(|(nullifier, value)| {
+            (
+                Nullifier::from_raw(nullifier),
+                NullifierBlock::new(value)
+                    .expect("SMT should only store valid NullifierBlocks")
+                    .into(),
+            )
         })
     }
 
@@ -274,12 +102,12 @@ where
     /// Returns the block number for the given nullifier or `None` if the nullifier wasn't spent
     /// yet.
     pub fn get_block_num(&self, nullifier: &Nullifier) -> Option<BlockNumber> {
-        let value = self.smt.get_value(&nullifier.as_word());
-        if value == Self::UNSPENT_NULLIFIER {
+        let nullifier_block = self.smt.get_value(&nullifier.as_word());
+        if nullifier_block.is_unspent() {
             return None;
         }
 
-        Some(nullifier_leaf_value_to_block_num(value))
+        Some(nullifier_block.into())
     }
 
     /// Computes a mutation set resulting from inserting the provided nullifiers into this nullifier
@@ -309,7 +137,7 @@ where
                 nullifiers
                     .into_iter()
                     .map(|(nullifier, block_num)| {
-                        (nullifier.as_word(), block_num_to_nullifier_leaf_value(block_num))
+                        (nullifier.as_word(), NullifierBlock::from(block_num).into())
                     })
                     .collect::<Vec<_>>(),
             )
@@ -334,10 +162,10 @@ where
     ) -> Result<(), NullifierTreeError> {
         let prev_nullifier_value = self
             .smt
-            .insert(nullifier.as_word(), block_num_to_nullifier_leaf_value(block_num))
+            .insert(nullifier.as_word(), NullifierBlock::from(block_num))
             .map_err(NullifierTreeError::MaxLeafEntriesExceeded)?;
 
-        if prev_nullifier_value != Self::UNSPENT_NULLIFIER {
+        if prev_nullifier_value.is_spent() {
             Err(NullifierTreeError::NullifierAlreadySpent(nullifier))
         } else {
             Ok(())
@@ -357,64 +185,6 @@ where
         self.smt
             .apply_mutations(mutations.into_mutation_set())
             .map_err(NullifierTreeError::TreeRootConflict)
-    }
-}
-
-// CONVENIENCE METHODS
-// ================================================================================================
-
-impl NullifierTree<Smt> {
-    /// Creates a new nullifier tree from the provided entries.
-    ///
-    /// This is a convenience method that creates an SMT backend with the provided entries and
-    /// wraps it in a NullifierTree.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if:
-    /// - the provided entries contain multiple block numbers for the same nullifier.
-    pub fn with_entries(
-        entries: impl IntoIterator<Item = (Nullifier, BlockNumber)>,
-    ) -> Result<Self, NullifierTreeError> {
-        let leaves = entries.into_iter().map(|(nullifier, block_num)| {
-            (nullifier.as_word(), block_num_to_nullifier_leaf_value(block_num))
-        });
-
-        let smt = Smt::with_entries(leaves)
-            .map_err(NullifierTreeError::DuplicateNullifierBlockNumbers)?;
-
-        Ok(Self::new_unchecked(smt))
-    }
-}
-
-#[cfg(feature = "std")]
-impl<Backend> NullifierTree<LargeSmt<Backend>>
-where
-    Backend: SmtStorage,
-{
-    /// Creates a new nullifier tree from the provided entries using the given storage backend
-    ///
-    /// This is a convenience method that creates an SMT on the provided storage backend using the
-    /// provided entries and wraps it in a NullifierTree.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if:
-    /// - the provided entries contain multiple block numbers for the same nullifier.
-    /// - a storage error is encountered.
-    pub fn with_storage_from_entries(
-        storage: Backend,
-        entries: impl IntoIterator<Item = (Nullifier, BlockNumber)>,
-    ) -> Result<Self, NullifierTreeError> {
-        let leaves = entries.into_iter().map(|(nullifier, block_num)| {
-            (nullifier.as_word(), block_num_to_nullifier_leaf_value(block_num))
-        });
-
-        let smt = LargeSmt::<Backend>::with_entries(storage, leaves)
-            .map_err(large_smt_error_to_merkle_error)
-            .map_err(NullifierTreeError::DuplicateNullifierBlockNumbers)?;
-
-        Ok(Self::new_unchecked(smt))
     }
 }
 
@@ -476,6 +246,80 @@ impl NullifierMutationSet {
     }
 }
 
+// NULLIFIER BLOCK
+// ================================================================================================
+
+/// The [`BlockNumber`] at which a [`Nullifier`] was consumed.
+///
+/// Since there are no nullifiers in the genesis block the [`BlockNumber::GENESIS`] is used to
+/// signal an unconsumed nullifier.
+///
+/// This type can be converted to a [`Word`] which is laid out like this:
+///
+/// ```text
+/// [block_num, 0, 0, 0]
+/// ```
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+pub struct NullifierBlock(BlockNumber);
+
+impl NullifierBlock {
+    pub const UNSPENT: NullifierBlock = NullifierBlock(BlockNumber::GENESIS);
+
+    /// Returns a new [NullifierBlock] constructed from the provided word.
+    ///
+    /// # Errors
+    /// Returns an error if:
+    /// - The 0th element in the word is not a valid [BlockNumber].
+    /// - Any of the remaining elements is non-zero.
+    pub fn new(word: Word) -> Result<Self, NullifierTreeError> {
+        let block_num = u32::try_from(word[0].as_int())
+            .map(BlockNumber::from)
+            .map_err(|_| NullifierTreeError::InvalidNullifierBlockNumber(word))?;
+
+        if word[1..4].iter().any(|felt| *felt != Felt::ZERO) {
+            return Err(NullifierTreeError::InvalidNullifierBlockNumber(word));
+        }
+
+        Ok(NullifierBlock(block_num))
+    }
+
+    /// Returns true if the nullifier has already been spent.
+    pub fn is_spent(&self) -> bool {
+        !self.is_unspent()
+    }
+
+    /// Returns true if the nullifier has not yet been spent.
+    pub fn is_unspent(&self) -> bool {
+        self == &Self::UNSPENT
+    }
+}
+
+impl From<BlockNumber> for NullifierBlock {
+    fn from(block_num: BlockNumber) -> Self {
+        Self(block_num)
+    }
+}
+
+impl From<NullifierBlock> for BlockNumber {
+    fn from(value: NullifierBlock) -> BlockNumber {
+        value.0
+    }
+}
+
+impl From<NullifierBlock> for Word {
+    fn from(value: NullifierBlock) -> Word {
+        Word::from([Felt::from(value.0), Felt::ZERO, Felt::ZERO, Felt::ZERO])
+    }
+}
+
+impl TryFrom<Word> for NullifierBlock {
+    type Error = NullifierTreeError;
+
+    fn try_from(value: Word) -> Result<Self, Self::Error> {
+        Self::new(value)
+    }
+}
+
 // TESTS
 // ================================================================================================
 
@@ -485,29 +329,33 @@ mod tests {
 
     use super::NullifierTree;
     use crate::block::BlockNumber;
+    use crate::block::nullifier_tree::NullifierBlock;
     use crate::note::Nullifier;
     use crate::{NullifierTreeError, Word};
 
     #[test]
     fn leaf_value_encode_decode() {
         let block_num = BlockNumber::from(0xffff_ffff_u32);
-        let leaf = super::block_num_to_nullifier_leaf_value(block_num);
-        let block_num_recovered = super::nullifier_leaf_value_to_block_num(leaf);
+        let nullifier_block = NullifierBlock::from(block_num);
+        let block_num_recovered = nullifier_block.into();
         assert_eq!(block_num, block_num_recovered);
     }
 
     #[test]
     fn leaf_value_encoding() {
-        let block_num = 123;
-        let nullifier_value = super::block_num_to_nullifier_leaf_value(block_num.into());
-        assert_eq!(nullifier_value, Word::from([block_num, 0, 0, 0u32]));
+        let block_num = BlockNumber::from(123);
+        let nullifier_value = NullifierBlock::from(block_num);
+        assert_eq!(
+            nullifier_value,
+            NullifierBlock::new(Word::from([block_num.as_u32(), 0, 0, 0u32])).unwrap()
+        );
     }
 
     #[test]
     fn leaf_value_decoding() {
         let block_num = 123;
-        let nullifier_value = Word::from([block_num, 0, 0, 0u32]);
-        let decoded_block_num = super::nullifier_leaf_value_to_block_num(nullifier_value);
+        let nullifier_value = NullifierBlock::new(Word::from([block_num, 0, 0, 0u32])).unwrap();
+        let decoded_block_num: BlockNumber = nullifier_value.into();
 
         assert_eq!(decoded_block_num, block_num.into());
     }
@@ -580,8 +428,8 @@ mod tests {
             LargeSmt::with_entries(
                 MemoryStorage::default(),
                 [
-                    (nullifier1.as_word(), super::block_num_to_nullifier_leaf_value(block1)),
-                    (nullifier2.as_word(), super::block_num_to_nullifier_leaf_value(block2)),
+                    (nullifier1.as_word(), NullifierBlock::from(block1).into()),
+                    (nullifier2.as_word(), NullifierBlock::from(block2).into()),
                 ],
             )
             .unwrap(),
@@ -614,7 +462,7 @@ mod tests {
         let mut tree = NullifierTree::new_unchecked(
             LargeSmt::with_entries(
                 MemoryStorage::default(),
-                [(nullifier1.as_word(), super::block_num_to_nullifier_leaf_value(block1))],
+                [(nullifier1.as_word(), NullifierBlock::from(block1).into())],
             )
             .unwrap(),
         );
@@ -640,7 +488,7 @@ mod tests {
 
         let mut tree = LargeSmt::with_entries(
             MemoryStorage::default(),
-            [(nullifier1.as_word(), super::block_num_to_nullifier_leaf_value(block1))],
+            [(nullifier1.as_word(), NullifierBlock::from(block1).into())],
         )
         .map(NullifierTree::new_unchecked)
         .unwrap();
@@ -671,8 +519,8 @@ mod tests {
         let large_tree = LargeSmt::with_entries(
             MemoryStorage::default(),
             [
-                (nullifier1.as_word(), super::block_num_to_nullifier_leaf_value(block1)),
-                (nullifier2.as_word(), super::block_num_to_nullifier_leaf_value(block2)),
+                (nullifier1.as_word(), NullifierBlock::from(block1).into()),
+                (nullifier2.as_word(), NullifierBlock::from(block2).into()),
             ],
         )
         .map(NullifierTree::new_unchecked)
