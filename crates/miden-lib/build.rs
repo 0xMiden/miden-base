@@ -370,8 +370,6 @@ fn compile_account_components(
             .expect("file stem should be valid UTF-8")
             .to_owned();
 
-        // Read the source code to string instead of passing it to assemble_library directly since
-        // that would attempt to interpret the path as a LibraryPath which would fail.
         let component_source_code = fs::read_to_string(masm_file_path)
             .expect("reading the component's MASM source code should succeed");
 

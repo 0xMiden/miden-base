@@ -247,7 +247,6 @@ impl CodeBuilder {
     /// # Errors
     /// Returns an error if:
     /// - Compiling the account component code fails
-    /// - If `component_path` is not a valid [`LibraryPath`]
     pub fn compile_component_code(
         self,
         component_path: impl AsRef<str>,
