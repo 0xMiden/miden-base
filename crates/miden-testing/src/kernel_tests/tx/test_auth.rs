@@ -4,7 +4,7 @@ use miden_lib::errors::MasmError;
 use miden_lib::errors::note_script_errors::ERR_AUTH_PROCEDURE_CALLED_FROM_WRONG_CONTEXT;
 use miden_lib::testing::account_component::{ConditionalAuthComponent, ERR_WRONG_ARGS_MSG};
 use miden_lib::testing::mock_account::MockAccountExt;
-use miden_lib::utils::ScriptBuilder;
+use miden_lib::utils::CodeBuilder;
 use miden_objects::account::{Account, AccountBuilder};
 use miden_objects::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE;
 use miden_objects::{Felt, ONE};
@@ -77,12 +77,12 @@ async fn test_auth_procedure_called_from_wrong_context() -> anyhow::Result<()> {
     // Create a transaction script that calls the auth procedure
     let tx_script_source = "
         begin
-            call.::nofile::auth_incr_nonce
+            call.::incr_nonce::auth_incr_nonce
         end
     ";
 
-    let tx_script = ScriptBuilder::default()
-        .with_dynamically_linked_library(auth_component.library())?
+    let tx_script = CodeBuilder::default()
+        .with_dynamically_linked_library(auth_component.component_code())?
         .compile_tx_script(tx_script_source)?;
 
     let tx_context = TransactionContextBuilder::new(account).tx_script(tx_script).build()?;

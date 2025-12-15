@@ -2,7 +2,7 @@ use alloc::vec::Vec;
 
 use miden_objects::account::{AccountHeader, AccountId, PartialAccount};
 use miden_objects::asset::AssetWitness;
-use miden_objects::block::AccountWitness;
+use miden_objects::block::account_tree::AccountWitness;
 use miden_objects::crypto::SequentialCommit;
 use miden_objects::crypto::merkle::InnerNodeInfo;
 use miden_objects::crypto::merkle::smt::SmtProof;

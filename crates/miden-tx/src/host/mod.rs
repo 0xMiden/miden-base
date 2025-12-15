@@ -63,7 +63,7 @@ use miden_processor::{
 pub(crate) use tx_event::{RecipientData, TransactionEvent, TransactionProgressEvent};
 pub use tx_progress::TransactionProgress;
 
-use crate::errors::{TransactionHostError, TransactionKernelError};
+use crate::errors::TransactionKernelError;
 
 // TRANSACTION BASE HOST
 // ================================================================================================
@@ -256,10 +256,7 @@ impl<'store, STORE> TransactionBaseHost<'store, STORE> {
     }
 
     /// Loads the provided [`AccountCode`] into the host's [`AccountProcedureIndexMap`].
-    pub fn load_foreign_account_code(
-        &mut self,
-        account_code: &AccountCode,
-    ) -> Result<(), TransactionHostError> {
+    pub fn load_foreign_account_code(&mut self, account_code: &AccountCode) {
         self.acct_procedure_index_map.insert_code(account_code)
     }
 

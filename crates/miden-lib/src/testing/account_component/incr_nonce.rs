@@ -2,7 +2,7 @@ use miden_objects::account::AccountComponent;
 use miden_objects::assembly::Library;
 use miden_objects::utils::sync::LazyLock;
 
-use crate::transaction::TransactionKernel;
+use crate::utils::CodeBuilder;
 
 const INCR_NONCE_AUTH_CODE: &str = "
     use miden::native_account
@@ -13,12 +13,14 @@ const INCR_NONCE_AUTH_CODE: &str = "
 ";
 
 static INCR_NONCE_AUTH_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
-    TransactionKernel::assembler()
-        .assemble_library([INCR_NONCE_AUTH_CODE])
+    CodeBuilder::default()
+        .compile_component_code("incr_nonce", INCR_NONCE_AUTH_CODE)
         .expect("incr nonce code should be valid")
+        .into_library()
 });
 
-/// Creates a mock authentication [`AccountComponent`] for testing purposes.
+/// Creates a mock authentication [`AccountComponent`] for testing purposes under the "incr_nonce"
+/// namespace.
 ///
 /// The component defines an `auth_incr_nonce` procedure that always increments the nonce by 1.
 pub struct IncrNonceAuthComponent;

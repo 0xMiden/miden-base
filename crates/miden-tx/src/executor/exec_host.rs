@@ -158,17 +158,7 @@ where
         let mut tx_advice_inputs = TransactionAdviceInputs::default();
         tx_advice_inputs.add_foreign_accounts([&foreign_account_inputs]);
 
-        self.base_host
-            .load_foreign_account_code(foreign_account_inputs.code())
-            .map_err(|err| {
-                TransactionKernelError::other_with_source(
-                    format!(
-                        "failed to insert account procedures for foreign account {}",
-                        foreign_account_inputs.id()
-                    ),
-                    err,
-                )
-            })?;
+        self.base_host.load_foreign_account_code(foreign_account_inputs.code());
 
         // Add the foreign account's code to the list of accessed code.
         self.accessed_foreign_account_code.push(foreign_account_inputs.code().clone());

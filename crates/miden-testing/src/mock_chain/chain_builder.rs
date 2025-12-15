@@ -348,13 +348,13 @@ impl MockChainBuilder {
         let mut account =
             self.add_account_from_builder(auth_method, account_builder, AccountState::Exists)?;
 
-        // The faucet's reserved slot is initialized to an empty word by default.
+        // The faucet's sysdata slot is initialized to an empty word by default.
         // If total_issuance is set, overwrite it and reinsert the account.
         if let Some(issuance) = total_issuance {
             account
                 .storage_mut()
                 .set_item(
-                    AccountStorage::faucet_metadata_slot(),
+                    AccountStorage::faucet_sysdata_slot(),
                     Word::from([ZERO, ZERO, ZERO, Felt::new(issuance)]),
                 )
                 .context("failed to set faucet storage")?;
@@ -392,13 +392,13 @@ impl MockChainBuilder {
         let mut account =
             self.add_account_from_builder(Auth::IncrNonce, account_builder, AccountState::Exists)?;
 
-        // The faucet's reserved slot is initialized to an empty word by default.
+        // The faucet's sysdata slot is initialized to an empty word by default.
         // If total_issuance is set, overwrite it and reinsert the account.
         if let Some(issuance) = total_issuance {
             account
                 .storage_mut()
                 .set_item(
-                    AccountStorage::faucet_metadata_slot(),
+                    AccountStorage::faucet_sysdata_slot(),
                     Word::from([ZERO, ZERO, ZERO, Felt::new(issuance)]),
                 )
                 .context("failed to set faucet storage")?;

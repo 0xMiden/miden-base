@@ -1,8 +1,8 @@
-use alloc::collections::BTreeMap;
+use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 
 use miden_objects::Word;
-use miden_objects::account::AccountProcedureInfo;
+use miden_objects::account::AccountProcedureRoot;
 use miden_objects::assembly::{Library, LibraryExport};
 use miden_objects::utils::Deserializable;
 use miden_objects::utils::sync::LazyLock;
@@ -194,20 +194,16 @@ impl WellKnownComponent {
     /// interface to the component interface vector.
     fn extract_component(
         &self,
-        procedures_map: &mut BTreeMap<Word, &AccountProcedureInfo>,
+        procedures_set: &mut BTreeSet<AccountProcedureRoot>,
         component_interface_vec: &mut Vec<AccountComponentInterface>,
     ) {
         // Determine if this component should be extracted based on procedure matching
-        if self
-            .procedure_digests()
-            .all(|proc_digest| procedures_map.contains_key(&proc_digest))
-        {
-            // Extract the storage offset from any matching procedure
-            let mut storage_offset = 0u8;
+        if self.procedure_digests().all(|proc_digest| {
+            procedures_set.contains(&AccountProcedureRoot::from_raw(proc_digest))
+        }) {
+            // Remove the procedure root of any matching procedure.
             self.procedure_digests().for_each(|component_procedure| {
-                if let Some(proc_info) = procedures_map.remove(&component_procedure) {
-                    storage_offset = proc_info.storage_offset();
-                }
+                procedures_set.remove(&AccountProcedureRoot::from_raw(component_procedure));
             });
 
             // Create the appropriate component interface
@@ -247,19 +243,19 @@ impl WellKnownComponent {
     /// Gets all well known components which could be constructed from the provided procedures map
     /// and pushes them to the `component_interface_vec`.
     pub fn extract_well_known_components(
-        procedures_map: &mut BTreeMap<Word, &AccountProcedureInfo>,
+        procedures_set: &mut BTreeSet<AccountProcedureRoot>,
         component_interface_vec: &mut Vec<AccountComponentInterface>,
     ) {
-        Self::BasicWallet.extract_component(procedures_map, component_interface_vec);
-        Self::BasicFungibleFaucet.extract_component(procedures_map, component_interface_vec);
-        Self::NetworkFungibleFaucet.extract_component(procedures_map, component_interface_vec);
-        Self::AuthEcdsaK256Keccak.extract_component(procedures_map, component_interface_vec);
-        Self::AuthEcdsaK256KeccakAcl.extract_component(procedures_map, component_interface_vec);
+        Self::BasicWallet.extract_component(procedures_set, component_interface_vec);
+        Self::BasicFungibleFaucet.extract_component(procedures_set, component_interface_vec);
+        Self::NetworkFungibleFaucet.extract_component(procedures_set, component_interface_vec);
+        Self::AuthEcdsaK256Keccak.extract_component(procedures_set, component_interface_vec);
+        Self::AuthEcdsaK256KeccakAcl.extract_component(procedures_set, component_interface_vec);
         Self::AuthEcdsaK256KeccakMultisig
-            .extract_component(procedures_map, component_interface_vec);
-        Self::AuthRpoFalcon512.extract_component(procedures_map, component_interface_vec);
-        Self::AuthRpoFalcon512Acl.extract_component(procedures_map, component_interface_vec);
-        Self::AuthRpoFalcon512Multisig.extract_component(procedures_map, component_interface_vec);
-        Self::AuthNoAuth.extract_component(procedures_map, component_interface_vec);
+            .extract_component(procedures_set, component_interface_vec);
+        Self::AuthRpoFalcon512.extract_component(procedures_set, component_interface_vec);
+        Self::AuthRpoFalcon512Acl.extract_component(procedures_set, component_interface_vec);
+        Self::AuthRpoFalcon512Multisig.extract_component(procedures_set, component_interface_vec);
+        Self::AuthNoAuth.extract_component(procedures_set, component_interface_vec);
     }
 }

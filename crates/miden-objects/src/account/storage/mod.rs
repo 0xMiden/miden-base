@@ -1,4 +1,3 @@
-use alloc::collections::BTreeSet;
 use alloc::string::ToString;
 use alloc::vec::Vec;
 
@@ -30,8 +29,8 @@ pub use header::AccountStorageHeader;
 mod partial;
 pub use partial::PartialStorage;
 
-static FAUCET_METADATA_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
-    StorageSlotName::new("miden::faucet::metadata").expect("storage slot name should be valid")
+static FAUCET_SYSDATA_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
+    StorageSlotName::new("miden::faucet::sysdata").expect("storage slot name should be valid")
 });
 
 // ACCOUNT STORAGE
@@ -82,18 +81,16 @@ impl AccountStorage {
             return Err(AccountError::StorageTooManySlots(num_slots as u64));
         }
 
-        // TODO(named_slots): Optimization: If we keep slots sorted, iterate slots instead and
-        // compare adjacent elements.
-        let mut names = BTreeSet::new();
-        for slot in &slots {
-            if !names.insert(slot.name()) {
-                // TODO(named_slots): Add test for this new error.
-                return Err(AccountError::DuplicateStorageSlotName(slot.name().clone()));
-            }
-        }
-
         // Unstable sort is fine because we require all names to be unique.
         slots.sort_unstable();
+
+        // Check for slot name uniqueness by checking each neighboring slot's IDs. This is
+        // sufficient because the slots are sorted.
+        for slots in slots.windows(2) {
+            if slots[0].id() == slots[1].id() {
+                return Err(AccountError::DuplicateStorageSlotName(slots[0].name().clone()));
+            }
+        }
 
         Ok(Self { slots })
     }
@@ -111,16 +108,17 @@ impl AccountStorage {
     ///
     /// Returns an error if:
     /// - The number of [`StorageSlot`]s of all components exceeds 255.
+    /// - Any component accesses [`AccountStorage::faucet_sysdata_slot`].
     pub(super) fn from_components(
         components: Vec<AccountComponent>,
         account_type: AccountType,
     ) -> Result<AccountStorage, AccountError> {
         let mut storage_slots = match account_type {
             AccountType::FungibleFaucet => {
-                vec![StorageSlot::with_empty_value(Self::faucet_metadata_slot().clone())]
+                vec![StorageSlot::with_empty_value(Self::faucet_sysdata_slot().clone())]
             },
             AccountType::NonFungibleFaucet => {
-                vec![StorageSlot::with_empty_map(Self::faucet_metadata_slot().clone())]
+                vec![StorageSlot::with_empty_map(Self::faucet_sysdata_slot().clone())]
             },
             _ => vec![],
         };
@@ -129,8 +127,8 @@ impl AccountStorage {
             let AccountComponent { storage_slots, .. } = component;
             storage_slots.into_iter()
         }) {
-            if component_slot.name() == Self::faucet_metadata_slot() {
-                return Err(AccountError::StorageSlotNameMustNotBeFaucetMetadata);
+            if component_slot.name() == Self::faucet_sysdata_slot() {
+                return Err(AccountError::StorageSlotNameMustNotBeFaucetSysdata);
             }
 
             storage_slots.push(component_slot);
@@ -142,9 +140,9 @@ impl AccountStorage {
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns the [`StorageSlotName`] of the faucet's protocol metadata.
-    pub fn faucet_metadata_slot() -> &'static StorageSlotName {
-        &FAUCET_METADATA_SLOT_NAME
+    /// Returns the [`StorageSlotName`] of the faucet's protocol system data.
+    pub fn faucet_sysdata_slot() -> &'static StorageSlotName {
+        &FAUCET_SYSDATA_SLOT_NAME
     }
 
     /// Converts storage slots of this account storage into a vector of field elements.
@@ -400,8 +398,11 @@ impl Deserializable for AccountStorage {
 
 #[cfg(test)]
 mod tests {
+    use assert_matches::assert_matches;
+
     use super::{AccountStorage, Deserializable, Serializable};
-    use crate::account::{StorageSlot, StorageSlotName};
+    use crate::AccountError;
+    use crate::account::{AccountStorageHeader, StorageSlot, StorageSlotName};
 
     #[test]
     fn test_serde_account_storage() -> anyhow::Result<()> {
@@ -435,6 +436,43 @@ mod tests {
 
         assert_eq!(storage.get(&counter_slot).unwrap(), &slots[0]);
         assert_eq!(storage.get(&map_slot).unwrap(), &slots[1]);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_account_storage_and_header_fail_on_duplicate_slot_name() -> anyhow::Result<()> {
+        let slot_name0 = StorageSlotName::mock(0);
+        let slot_name1 = StorageSlotName::mock(1);
+        let slot_name2 = StorageSlotName::mock(2);
+
+        let mut slots = vec![
+            StorageSlot::with_empty_value(slot_name0.clone()),
+            StorageSlot::with_empty_value(slot_name1.clone()),
+            StorageSlot::with_empty_map(slot_name0.clone()),
+            StorageSlot::with_empty_value(slot_name2.clone()),
+        ];
+
+        // Set up a test where the slots we pass are not already sorted
+        // This ensures the duplicate is correctly found
+        let err = AccountStorage::new(slots.clone()).unwrap_err();
+
+        assert_matches!(err, AccountError::DuplicateStorageSlotName(name) => {
+            assert_eq!(name, slot_name0);
+        });
+
+        slots.sort_unstable();
+        let err = AccountStorageHeader::new(
+            slots
+                .iter()
+                .map(|slot| (slot.name().clone(), slot.slot_type(), slot.value()))
+                .collect(),
+        )
+        .unwrap_err();
+
+        assert_matches!(err, AccountError::DuplicateStorageSlotName(name) => {
+            assert_eq!(name, slot_name0);
+        });
 
         Ok(())
     }

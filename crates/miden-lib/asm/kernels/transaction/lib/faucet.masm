@@ -43,7 +43,7 @@ pub proc mint_fungible_asset
     # => [ASSET]
 
     # get the current total issuance
-    exec.account::get_faucet_storage_slot_id exec.account::get_item
+    exec.account::get_faucet_sysdata_slot_id exec.account::get_item
     # => [TOTAL_ISSUANCE, ASSET]
 
     # prepare stack to ensure that minting the asset will not exceed the maximum
@@ -55,7 +55,7 @@ pub proc mint_fungible_asset
     # => [amount, TOTAL_ISSUANCE, ASSET]
 
     # update the total issuance
-    add exec.account::get_faucet_storage_slot_id exec.account::set_item dropw
+    add exec.account::get_faucet_sysdata_slot_id exec.account::set_item dropw
     # => [ASSET]
 
     # add the asset to the input vault for asset preservation checks
@@ -85,7 +85,7 @@ proc burn_fungible_asset
     # => [ASSET]
 
     # fetch TOTAL_ISSUANCE such that we can compute the new total issuance
-    exec.account::get_faucet_storage_slot_id exec.account::get_item
+    exec.account::get_faucet_sysdata_slot_id exec.account::get_item
     # => [TOTAL_ISSUANCE, ASSET]
 
     # assert that the asset amount being burned is less or equal to the total issuance
@@ -93,7 +93,7 @@ proc burn_fungible_asset
     # => [amount, TOTAL_ISSUANCE, ASSET]
 
     # compute new total issuance
-    sub exec.account::get_faucet_storage_slot_id exec.account::set_item dropw
+    sub exec.account::get_faucet_sysdata_slot_id exec.account::set_item dropw
     # => [ASSET]
 
     # remove the asset from the input vault
@@ -111,7 +111,7 @@ end
 #!   against.
 pub proc get_total_issuance
     # fetch the TOTAL_ISSUANCE from storage
-    exec.account::get_faucet_storage_slot_id exec.account::get_item
+    exec.account::get_faucet_sysdata_slot_id exec.account::get_item
     # => [TOTAL_ISSUANCE]
 
     # extract the total_issuance and purge the padding
@@ -147,7 +147,7 @@ proc mint_non_fungible_asset
     # => [ASSET_KEY, ASSET, ASSET]
 
     # get the faucet storage data slot
-    exec.account::get_faucet_storage_slot_id
+    exec.account::get_faucet_sysdata_slot_id
     # => [faucet_slot_name_prefix, faucet_slot_name_suffix, ASSET_KEY, ASSET, ASSET]
 
     # insert the non-fungible asset into the tracking SMT
@@ -195,7 +195,7 @@ proc burn_non_fungible_asset
     # => [ASSET_KEY, EMPTY_WORD, ASSET]
 
     # get the faucet storage data slot
-    exec.account::get_faucet_storage_slot_id
+    exec.account::get_faucet_sysdata_slot_id
     # => [faucet_storage_data_slot, ASSET_KEY, EMPTY_WORD, ASSET]
 
     # remove the non-fungible asset from the tracking SMT
@@ -236,7 +236,7 @@ pub proc is_non_fungible_asset_issued
     # => [ASSET_KEY]
 
     # get the storage index where faucet's assets map is stored
-    exec.account::get_faucet_storage_slot_id
+    exec.account::get_faucet_sysdata_slot_id
     # => [map_slot_index, ASSET_KEY]
 
     # get the non-fungible asset stored by the computed account key

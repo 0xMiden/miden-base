@@ -16,7 +16,7 @@ use miden_lib::transaction::memory::{
     OUTPUT_NOTE_ASSET_COMMITMENT_OFFSET,
     OUTPUT_NOTE_SECTION_OFFSET,
 };
-use miden_lib::utils::ScriptBuilder;
+use miden_lib::utils::CodeBuilder;
 use miden_objects::Word;
 use miden_objects::account::{Account, AccountDelta, AccountStorageDelta, AccountVaultDelta};
 use miden_objects::asset::{Asset, FungibleAsset};
@@ -240,7 +240,7 @@ async fn epilogue_fails_when_num_output_assets_exceed_num_input_assets() -> anyh
         OUTPUT_ASSET = Word::from(output_asset),
     );
 
-    let builder = ScriptBuilder::with_mock_libraries()?;
+    let builder = CodeBuilder::with_mock_libraries();
     let source_manager = builder.source_manager();
     let tx_script = builder.compile_tx_script(code)?;
 
@@ -293,7 +293,7 @@ async fn epilogue_fails_when_num_input_assets_exceed_num_output_assets() -> anyh
         OUTPUT_ASSET = Word::from(input_asset),
     );
 
-    let builder = ScriptBuilder::with_mock_libraries()?;
+    let builder = CodeBuilder::with_mock_libraries();
     let source_manager = builder.source_manager();
     let tx_script = builder.compile_tx_script(code)?;
 
@@ -478,7 +478,7 @@ async fn epilogue_fails_on_account_state_change_without_nonce_increment() -> any
         mock_value_slot0 = &*MOCK_VALUE_SLOT0,
     );
 
-    let tx_script = ScriptBuilder::with_mock_libraries()?.compile_tx_script(code)?;
+    let tx_script = CodeBuilder::with_mock_libraries().compile_tx_script(code)?;
 
     let result = TransactionContextBuilder::with_noop_auth_account()
         .tx_script(tx_script)

@@ -9,15 +9,13 @@ use miden_objects::account::auth::{AuthSecretKey, PublicKey};
 use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{Account, AccountId, PartialAccount};
 use miden_objects::batch::{ProposedBatch, ProvenBatch};
-use miden_objects::block::account_tree::AccountTree;
-use miden_objects::block::nullifier_tree::NullifierTree;
+use miden_objects::block::account_tree::{AccountTree, AccountWitness};
+use miden_objects::block::nullifier_tree::{NullifierTree, NullifierWitness};
 use miden_objects::block::{
-    AccountWitness,
     BlockHeader,
     BlockInputs,
     BlockNumber,
     Blockchain,
-    NullifierWitness,
     ProposedBlock,
     ProvenBlock,
 };

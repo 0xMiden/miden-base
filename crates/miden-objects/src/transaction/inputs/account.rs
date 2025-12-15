@@ -1,7 +1,7 @@
 use crate::Word;
 use crate::account::{AccountCode, AccountId, PartialAccount, PartialStorage};
 use crate::asset::PartialVault;
-use crate::block::AccountWitness;
+use crate::block::account_tree::AccountWitness;
 use crate::crypto::merkle::smt::{SmtProof, SmtProofError};
 use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
@@ -103,7 +103,7 @@ mod tests {
 
     use crate::account::{Account, AccountCode, AccountId, AccountStorage, PartialAccount};
     use crate::asset::AssetVault;
-    use crate::block::AccountWitness;
+    use crate::block::account_tree::AccountWitness;
     use crate::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE;
     use crate::transaction::AccountInputs;
 

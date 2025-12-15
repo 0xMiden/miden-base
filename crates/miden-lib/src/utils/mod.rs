@@ -1,6 +1,6 @@
-pub mod script_builder;
+pub mod code_builder;
 
+pub use code_builder::CodeBuilder;
 pub use miden_objects::utils::*;
-pub use script_builder::ScriptBuilder;
 
-pub use crate::errors::ScriptBuilderError;
+pub use crate::errors::CodeBuilderError;

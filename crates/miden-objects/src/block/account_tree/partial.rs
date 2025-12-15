@@ -1,9 +1,8 @@
 use miden_crypto::merkle::smt::{PartialSmt, SmtLeaf};
 
+use super::{AccountWitness, account_id_to_smt_key};
 use crate::Word;
 use crate::account::AccountId;
-use crate::block::AccountWitness;
-use crate::block::account_tree::account_id_to_smt_key;
 use crate::errors::AccountTreeError;
 
 /// The partial sparse merkle tree containing the state commitments of accounts in the chain.

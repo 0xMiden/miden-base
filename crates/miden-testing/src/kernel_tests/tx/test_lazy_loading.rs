@@ -3,7 +3,7 @@
 //! Once lazy loading is enabled generally, it can be removed and/or integrated into other tests.
 
 use miden_lib::testing::note::NoteBuilder;
-use miden_lib::utils::ScriptBuilder;
+use miden_lib::utils::CodeBuilder;
 use miden_objects::LexicographicWord;
 use miden_objects::account::{AccountId, AccountStorage};
 use miden_objects::asset::{Asset, FungibleAsset};
@@ -54,7 +54,7 @@ async fn adding_fungible_assets_with_lazy_loading_succeeds() -> anyhow::Result<(
         FUNGIBLE_ASSET2 = Word::from(fungible_asset2)
     );
 
-    let builder = ScriptBuilder::with_mock_libraries()?;
+    let builder = CodeBuilder::with_mock_libraries();
     let source_manager = builder.source_manager();
     let tx_script = builder.compile_tx_script(code)?;
     let tx_context = TransactionContextBuilder::with_existing_mock_account()
@@ -112,7 +112,7 @@ async fn removing_fungible_assets_with_lazy_loading_succeeds() -> anyhow::Result
         FUNGIBLE_ASSET2 = Word::from(fungible_asset2)
     );
 
-    let builder = ScriptBuilder::with_mock_libraries()?;
+    let builder = CodeBuilder::with_mock_libraries();
     let source_manager = builder.source_manager();
     let tx_script = builder.compile_tx_script(code)?;
 
@@ -209,7 +209,7 @@ async fn setting_map_item_with_lazy_loading_succeeds() -> anyhow::Result<()> {
       "#
     );
 
-    let builder = ScriptBuilder::with_mock_libraries()?;
+    let builder = CodeBuilder::with_mock_libraries();
     let source_manager = builder.source_manager();
     let tx_script = builder.compile_tx_script(code)?;
 
@@ -275,7 +275,7 @@ async fn getting_map_item_with_lazy_loading_succeeds() -> anyhow::Result<()> {
       "#
     );
 
-    let builder = ScriptBuilder::with_mock_libraries()?;
+    let builder = CodeBuilder::with_mock_libraries();
     let source_manager = builder.source_manager();
     let tx_script = builder.compile_tx_script(code)?;
 
