@@ -3,6 +3,7 @@ use alloc::vec::Vec;
 
 use super::TransactionInputError;
 use crate::note::{Note, NoteId, NoteInclusionProof, NoteLocation, Nullifier};
+use crate::transaction::InputNoteCommitment;
 use crate::utils::serde::{
     ByteReader,
     ByteWriter,
@@ -144,6 +145,12 @@ impl InputNotes<InputNote> {
             notes.into_iter().map(|note| InputNote::Unauthenticated { note }).collect();
 
         Self::new(input_note_vec)
+    }
+
+    /// Returns a vector of input note commitments based on the input notes.
+    pub fn to_commitments(&self) -> InputNotes<InputNoteCommitment> {
+        let notes = self.notes.iter().map(InputNoteCommitment::from).collect();
+        InputNotes::<InputNoteCommitment>::new_unchecked(notes)
     }
 }
 
