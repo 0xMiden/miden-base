@@ -7,21 +7,11 @@ use crate::account::AccountHeader;
 use crate::asset::FungibleAsset;
 use crate::block::BlockNumber;
 use crate::note::{
-    Note,
-    NoteAssets,
-    NoteHeader,
-    NoteId,
-    NoteMetadata,
-    NoteRecipient,
-    PartialNote,
+    Note, NoteAssets, NoteHeader, NoteId, NoteMetadata, NoteRecipient, PartialNote,
     compute_note_commitment,
 };
 use crate::utils::serde::{
-    ByteReader,
-    ByteWriter,
-    Deserializable,
-    DeserializationError,
-    Serializable,
+    ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
 };
 use crate::{Felt, Hasher, MAX_OUTPUT_NOTES_PER_TX, TransactionOutputError, Word};
 
@@ -160,6 +150,12 @@ impl OutputNotes {
         }
 
         Hasher::hash_elements(&elements)
+    }
+
+    pub fn shrink(&mut self) {
+        for note in &mut self.notes {
+            *note = note.shrink();
+        }
     }
 }
 

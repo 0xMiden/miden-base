@@ -3,12 +3,9 @@ use alloc::vec::Vec;
 
 use super::TransactionInputError;
 use crate::note::{Note, NoteId, NoteInclusionProof, NoteLocation, Nullifier};
+use crate::transaction::InputNoteCommitment;
 use crate::utils::serde::{
-    ByteReader,
-    ByteWriter,
-    Deserializable,
-    DeserializationError,
-    Serializable,
+    ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
 };
 use crate::{Felt, Hasher, MAX_INPUT_NOTES_PER_TX, Word};
 
@@ -144,6 +141,11 @@ impl InputNotes<InputNote> {
             notes.into_iter().map(|note| InputNote::Unauthenticated { note }).collect();
 
         Self::new(input_note_vec)
+    }
+
+    pub fn to_input_note_commitments(&self) -> InputNotes<InputNoteCommitment> {
+        let notes = self.notes.iter().map(InputNoteCommitment::from).collect();
+        InputNotes { notes, commitment: self.commitment }
     }
 }
 
