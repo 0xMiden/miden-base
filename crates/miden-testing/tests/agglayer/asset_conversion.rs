@@ -63,7 +63,7 @@ async fn test_convert_to_u256_helper(
         
         begin
             push.{}.{}
-            call.::scale_native_amount_to_u256
+            exec.::scale_native_amount_to_u256
             exec.sys::truncate_stack
         end
         ",
@@ -107,7 +107,7 @@ async fn test_convert_to_u256_basic_examples() -> anyhow::Result<()> {
     test_convert_to_u256_helper(
         Felt::new(1),
         Felt::new(0),
-        [0, 0, 0, 0, 0, 0, 0, 1],
+        [1, 0, 0, 0, 0, 0, 0, 0],
         U256::from(1u64),
     )
     .await?;
@@ -116,7 +116,7 @@ async fn test_convert_to_u256_basic_examples() -> anyhow::Result<()> {
     test_convert_to_u256_helper(
         Felt::new(1),
         Felt::new(18),
-        [0, 0, 0, 0, 0, 0, 232830643, 2808348672],
+        [2808348672, 232830643, 0, 0, 0, 0, 0, 0],
         U256::from_dec_str("1000000000000000000").unwrap(),
     )
     .await?;
@@ -140,7 +140,7 @@ async fn test_convert_to_u256_scaled_eth() -> anyhow::Result<()> {
         
         begin
             push.{}.{}
-            call.::scale_native_amount_to_u256
+            exec.::scale_native_amount_to_u256
             exec.sys::truncate_stack
         end
         ",
@@ -183,7 +183,7 @@ async fn test_convert_to_u256_scaled_large_amount() -> anyhow::Result<()> {
         begin
             push.{}.{}
 
-            call.::scale_native_amount_to_u256
+            exec.::scale_native_amount_to_u256
             exec.sys::truncate_stack
         end
         ",
@@ -224,12 +224,12 @@ fn test_felts_to_u256_bytes_sequential_values() {
     let result = utils::felts_to_u256_bytes(limbs);
     assert_eq!(result.len(), 32);
 
-    // Verify the byte layout: limbs are processed in reverse order, each as little-endian u32
-    // First byte should be 8 (limbs[7] = 8, most significant limb, least significant byte)
-    assert_eq!(result[0], 8);
-    // Byte at position 28 should be 1 (limbs[0] = 1, least significant limb, least significant
+    // Verify the byte layout: limbs are processed in little-endian order, each as little-endian u32
+    // First byte should be 1 (limbs[0] = 1, least significant limb, least significant byte)
+    assert_eq!(result[0], 1);
+    // Byte at position 28 should be 8 (limbs[7] = 8, most significant limb, least significant
     // byte)
-    assert_eq!(result[28], 1);
+    assert_eq!(result[28], 8);
 }
 
 #[test]

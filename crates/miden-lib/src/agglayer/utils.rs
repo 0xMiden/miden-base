@@ -3,19 +3,19 @@ use alloc::vec::Vec;
 
 use miden_objects::Felt;
 
-/// Convert 8 Felt values (u32 limbs in big-endian order) to U256 bytes in little-endian format.
+/// Convert 8 Felt values (u32 limbs in little-endian order) to U256 bytes in little-endian format.
 ///
-/// The conversion from big-endian to little-endian is necessary because:
-/// - Miden stores U256 values as 8 u32 limbs in big-endian order (most significant limb first)
-/// - Ethereum/EVM expects U256 values as 32 bytes in little-endian format (least significant byte
-///   first)
-/// - This ensures compatibility when bridging assets between Miden and Ethereum-based chains
-pub fn felts_to_u256_bytes(limbs: [Felt; 8]) -> Vec<u8> {
-    let mut bytes = Vec::with_capacity(32);
+/// The input limbs are expected to be in little-endian order (least significant limb first).
+/// This function converts them to a 32-byte array in little-endian format for compatibility
+/// with Ethereum/EVM which expects U256 values as 32 bytes in little-endian format.
+/// This ensures compatibility when bridging assets between Miden and Ethereum-based chains.
+pub fn felts_to_u256_bytes(limbs: [Felt; 8]) -> [u8; 32] {
+    let mut bytes = [0u8; 32];
 
-    for i in (0..8).rev() {
-        let u32_value = limbs[i].as_int() as u32;
-        bytes.extend_from_slice(&u32_value.to_le_bytes());
+    for (i, limb) in limbs.iter().enumerate() {
+        let u32_value = limb.as_int() as u32;
+        let limb_bytes = u32_value.to_le_bytes();
+        bytes[i * 4..(i + 1) * 4].copy_from_slice(&limb_bytes);
     }
 
     bytes
