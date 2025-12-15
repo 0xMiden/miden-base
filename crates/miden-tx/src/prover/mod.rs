@@ -5,26 +5,13 @@ use miden_lib::transaction::TransactionKernel;
 use miden_objects::AccountError;
 use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{
-    Account,
-    AccountDelta,
-    AccountStorage,
-    PartialAccount,
-    PartialStorage,
-    PartialStorageMap,
-    StorageMap,
-    StorageSlot,
-    StorageSlotType,
+    Account, AccountDelta, AccountStorage, PartialAccount, PartialStorage, PartialStorageMap,
+    StorageMap, StorageSlot, StorageSlotType,
 };
 use miden_objects::asset::{Asset, AssetVault};
 use miden_objects::block::BlockNumber;
 use miden_objects::transaction::{
-    InputNote,
-    InputNoteCommitment,
-    InputNotes,
-    OutputNote,
-    ProvenTransaction,
-    TransactionInputs,
-    TransactionOutputs,
+    InputNote, InputNotes, ProvenTransaction, TransactionInputs, TransactionOutputs,
 };
 pub use miden_prover::ProvingOptions;
 use miden_prover::{ExecutionProof, Word, prove};
@@ -67,15 +54,15 @@ impl LocalTransactionProver {
         proof: ExecutionProof,
     ) -> Result<ProvenTransaction, TransactionProverError> {
         // erase private note information (convert private full notes to just headers)
-        let output_notes: Vec<_> = tx_outputs.output_notes.iter().map(OutputNote::shrink).collect();
+        let mut output_notes = tx_outputs.output_notes.clone();
+        output_notes.shrink();
 
         // Compute the commitment of the pre-fee delta, which goes into the proven transaction,
         // since it is the output of the transaction and so is needed for proof verification.
         let pre_fee_delta_commitment: Word = pre_fee_account_delta.to_commitment();
 
         // Collect input notes as commitments
-        let input_note_commitments: Vec<_> =
-            input_notes.iter().map(InputNoteCommitment::from).collect();
+        let input_note_commitments = input_notes.to_input_note_commitments();
 
         // Determine account update details
         let account_id = account.id();
