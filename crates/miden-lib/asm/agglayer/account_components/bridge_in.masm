@@ -1,35 +1,89 @@
 use.miden::native_account
 use.miden::active_account
+use.miden::active_note
+use.miden::account_id
 
 const.GLOBAL_EXIT_ROOT_MAP=word("miden::agglayer::GER")
+const.BRIDGE_OPERATOR_SLOT=word("miden::agglayer::bridge_operator")
+
+# ERRORS
+const.ERR_ONLY_BRIDGE_OPERATOR_CAN_UPDATE_GER="note sender is not the authorized bridge operator"
+
+#! Checks if the note sender is the authorized bridge operator.
+#!
+#! Inputs:  []
+#! Outputs: [is_authorized]
+#!
+#! Where:
+#! - is_authorized is 1 if the sender is the bridge operator, 0 otherwise.
+proc.is_authorized_operator
+    push.BRIDGE_OPERATOR_SLOT[0..2] exec.active_account::get_item
+    # => [operator_prefix, operator_suffix, 0, 0]
+
+    exec.active_note::get_sender
+    # => [sender_prefix, sender_suffix, operator_prefix, operator_suffix, 0, 0]
+
+    exec.account_id::is_equal
+    # => [are_equal, 0, 0]
+
+    movdn.2 drop drop
+    # => [is_authorized]
+end
 
 #! Update Global Exit Root procedure
 #! This procedure handles updating the Global Exit Root in the bridge
-#! For now, this is a placeholder implementation
+#! It validates that only the authorized bridge operator can update GER
+#! and stores both the GER value and its index.
 #!
-#! Inputs: [INPUTS[0], INPUTS[1]]
+#! Inputs: [GER_UPPER, GER_LOWER, GER_INDEX]
+#! Outputs: []
+#!
+#! Where:
+#! - GER_UPPER is the upper 128-bit limb of the 256-bit Global Exit Root (4 field elements)
+#! - GER_LOWER is the lower 128-bit limb of the 256-bit Global Exit Root (4 field elements)
+#! - GER_INDEX is the 32-bit L1InfoTree index (1 field element)
+#!
+#! Panics if:
+#! - the note sender is not the authorized bridge operator
 pub proc update_ger
+    # Check authorization first
+    exec.is_authorized_operator
+    # => [is_authorized, GER_UPPER, GER_LOWER, GER_INDEX]
 
-    # TODO: assert note sender == owner
+    assert.err=ERR_ONLY_BRIDGE_OPERATOR_CAN_UPDATE_GER
+    # => [GER_UPPER, GER_LOWER, GER_INDEX]
 
-    push.111 debug.stack drop
-
-    # writing double word root to map keys [0,0,0,0] & [0,0,0,1]
+    # Store GER_UPPER at key [0,0,0,0]
+    # Stack: [GER_UPPER, GER_LOWER, GER_INDEX]
     push.0.0.0.0 push.GLOBAL_EXIT_ROOT_MAP[0..2]
-    # => [index, KEY, INPUTS[0], INPUTS[1]]
+    # => [index, KEY, GER_UPPER, GER_LOWER, GER_INDEX]
 
     exec.native_account::set_map_item
-    # => [OLD_MAP_ROOT, OLD_MAP_VALUE, INPUTS[1]]
+    # => [OLD_MAP_ROOT, OLD_MAP_VALUE, GER_LOWER, GER_INDEX]
 
     dropw dropw
-    # => [INPUTS[1]]
+    # => [GER_LOWER, GER_INDEX]
 
+    # Store GER_LOWER at key [0,0,0,1]
     push.1.0.0.0 push.GLOBAL_EXIT_ROOT_MAP[0..2]
-    # => [index, KEY, INPUTS[1]]]
+    # => [index, KEY, GER_LOWER, GER_INDEX]
+
+    exec.native_account::set_map_item
+    # => [OLD_MAP_ROOT, OLD_MAP_VALUE, GER_INDEX]
+
+    dropw dropw
+    # => [GER_INDEX]
+
+    # Store GER_INDEX at key [0,0,0,2]
+    padw padw padw
+    # => [0, 0, 0, GER_INDEX]
+    
+    push.2.0.0.0 push.GLOBAL_EXIT_ROOT_MAP[0..2]
+    # => [index, KEY, GER_INDEX_WORD]
 
     exec.native_account::set_map_item
     # => [OLD_MAP_ROOT, OLD_MAP_VALUE]
 
-    dropw dropw
+    dropw dropw dropw dropw
     # => []
 end

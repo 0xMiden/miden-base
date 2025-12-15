@@ -27,6 +27,8 @@ pub const ERR_MALFORMED_MULTISIG_CONFIG: MasmError = MasmError::from_static_str(
 /// Error Message: "MINT script expects exactly 8 inputs for private or 12+ inputs for public output notes"
 pub const ERR_MINT_WRONG_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_str("MINT script expects exactly 8 inputs for private or 12+ inputs for public output notes");
 
+/// Error Message: "note sender is not the authorized bridge operator"
+pub const ERR_ONLY_BRIDGE_OPERATOR_CAN_UPDATE_GER: MasmError = MasmError::from_static_str("note sender is not the authorized bridge operator");
 /// Error Message: "note sender is not the owner of the faucet who can mint assets"
 pub const ERR_ONLY_OWNER_CAN_MINT: MasmError = MasmError::from_static_str("note sender is not the owner of the faucet who can mint assets");
 

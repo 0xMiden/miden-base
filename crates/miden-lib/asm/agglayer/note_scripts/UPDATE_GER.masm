@@ -10,11 +10,27 @@ begin
 
     drop drop
 
-    mem_loadw_be.0 swapw mem_loadw_be.4
-    # => [INPUTS[0], INPUTS[1]]
+    # Load GER value (8 field elements) and GER index (1 field element)
+    # Memory layout: [GER[0], GER[1], GER[2], GER[3], GER[4], GER[5], GER[6], GER[7], GER_INDEX]
+    # We need: [GER_UPPER, GER_LOWER, GER_INDEX] where:
+    # GER_UPPER = [GER[0], GER[1], GER[2], GER[3]]
+    # GER_LOWER = [GER[4], GER[5], GER[6], GER[7]]
+    
+    # Load individual elements to build correct stack order
+    mem_load.0 mem_load.1 mem_load.2 mem_load.3
+    # => [GER[3], GER[2], GER[1], GER[0]] (GER_UPPER)
+    
+    mem_load.4 mem_load.5 mem_load.6 mem_load.7
+    # => [GER[7], GER[6], GER[5], GER[4], GER[3], GER[2], GER[1], GER[0]] (GER_LOWER + GER_UPPER)
+    
+    # Load GER_INDEX
+    mem_load.8
+    # => [GER_INDEX, GER[7], GER[6], GER[5], GER[4], GER[3], GER[2], GER[1], GER[0]]
 
-    push.222 debug.stack drop
+    push.111 debug.stack drop
 
     call.bridge_in::update_ger
     # => []
+
+    dropw drop
 end
