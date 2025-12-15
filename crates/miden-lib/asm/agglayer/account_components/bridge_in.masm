@@ -6,6 +6,12 @@ use.miden::account_id
 const.GLOBAL_EXIT_ROOT_MAP=word("miden::agglayer::GER")
 const.BRIDGE_OPERATOR_SLOT=word("miden::agglayer::bridge_operator")
 
+# 32 byte Global Exit Root stored across two Word values
+const.GER_UPPER_KEY=[0,0,0,0]
+const.GER_LOWER_KEY=[1,0,0,0]
+
+const.GER_INDEX_KEY=[2,0,0,0]
+
 # ERRORS
 const.ERR_ONLY_BRIDGE_OPERATOR_CAN_UPDATE_GER="note sender is not the authorized bridge operator"
 
@@ -29,6 +35,45 @@ proc.is_authorized_operator
     movdn.2 drop drop
     # => [is_authorized]
 end
+
+
+proc.is_ger_update_monotonic
+    # Stack: [incoming_ger_index]
+    dup
+    # => [incoming_ger_index, incoming_ger_index]
+
+    # Get current ger_index from storage
+    push.GER_INDEX_KEY push.GLOBAL_EXIT_ROOT_MAP[0..2] exec.active_account::get_map_item
+    # => [current_ger_index_word, incoming_ger_index, incoming_ger_index]
+
+    # Extract the current ger_index (stored in the first element of the word)
+    drop drop drop
+    # => [current_ger_index, incoming_ger_index, incoming_ger_index]
+
+    # Check that incoming_index = current_index + 1
+    add.1
+    # => [current_index + 1, incoming_ger_index, incoming_ger_index]
+
+    dup.1 eq
+    # => [is_monotonic, incoming_ger_index, incoming_ger_index]
+
+    assert.err="ger index must increase monotonically by 1"
+    # => [incoming_ger_index, incoming_ger_index]
+    
+    drop
+    # => [incoming_ger_index]
+
+    # Store the incoming ger_index at GER_INDEX_KEY
+    push.0.0.0
+    # => [0, 0, 0, incoming_ger_index]
+
+    push.GER_INDEX_KEY push.GLOBAL_EXIT_ROOT_MAP[0..2] exec.native_account::set_map_item
+    # => [old_map_root, old_map_value]
+    
+    dropw dropw
+    # => []
+end
+
 
 #! Update Global Exit Root procedure
 #! This procedure handles updating the Global Exit Root in the bridge
@@ -55,7 +100,7 @@ pub proc update_ger
 
     # Store GER_UPPER at key [0,0,0,0]
     # Stack: [GER_UPPER, GER_LOWER, ger_index]
-    push.0.0.0.0 push.GLOBAL_EXIT_ROOT_MAP[0..2]
+    push.GER_UPPER_KEY push.GLOBAL_EXIT_ROOT_MAP[0..2]
     # => [index, KEY, GER_UPPER, GER_LOWER, ger_index]
 
     exec.native_account::set_map_item
@@ -65,7 +110,7 @@ pub proc update_ger
     # => [GER_LOWER, ger_index]
 
     # Store GER_LOWER at key [0,0,0,1]
-    push.1.0.0.0 push.GLOBAL_EXIT_ROOT_MAP[0..2]
+    push.GER_LOWER_KEY push.GLOBAL_EXIT_ROOT_MAP[0..2]
     # => [index, KEY, GER_LOWER, ger_index]
 
     exec.native_account::set_map_item
@@ -73,6 +118,8 @@ pub proc update_ger
 
     dropw dropw
     # => [ger_index]
+
+    exec.is_ger_update_monotonic
 
     dropw dropw dropw dropw
     # => []

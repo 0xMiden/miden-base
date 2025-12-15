@@ -27,8 +27,6 @@ begin
     mem_load.8 movdn.8
     # => [GER_INDEX, GER[7], GER[6], GER[5], GER[4], GER[3], GER[2], GER[1], GER[0]]
 
-    push.111 debug.stack drop
-
     call.bridge_in::update_ger
     # => []
 
