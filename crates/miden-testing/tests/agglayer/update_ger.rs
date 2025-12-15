@@ -210,8 +210,37 @@ async fn test_update_ger_flow() -> anyhow::Result<()> {
 /// Tests that consuming two UPDATE_GER notes must be done monotonically
 #[tokio::test]
 async fn test_update_ger_monotonic_consumption() -> anyhow::Result<()> {
-    let setup = UpdateGerTestSetup::new()?;
     let mut builder = MockChain::builder();
+
+    // Create bridge operator account
+    let bridge_operator = builder.add_existing_wallet(Auth::IncrNonce)?;
+
+    // Create bridge account with bridge_in component for GER updates
+    let ger_storage_slot_name = StorageSlotName::new("miden::agglayer::GER").unwrap();
+    let bridge_operator_slot_name =
+        StorageSlotName::new("miden::agglayer::bridge_operator").unwrap();
+
+    // Store the bridge operator account ID in the bridge operator slot
+    let operator_id_word = Word::from([
+        Felt::new(0),
+        Felt::new(0),
+        Felt::new(bridge_operator.id().suffix().as_int()),
+        bridge_operator.id().prefix().as_felt(),
+    ]);
+
+    let bridge_storage_slots = vec![
+        StorageSlot::with_empty_map(ger_storage_slot_name.clone()),
+        StorageSlot::with_value(bridge_operator_slot_name, operator_id_word),
+    ];
+    let bridge_component = bridge_in_component(bridge_storage_slots);
+    let bridge_account_builder = Account::builder(builder.rng_mut().random())
+        .storage_mode(AccountStorageMode::Public)
+        .with_component(bridge_component);
+    let bridge_account = builder.add_account_from_builder(
+        Auth::IncrNonce,
+        bridge_account_builder,
+        AccountState::Exists,
+    )?;
 
     // Generate first GER update with index 1
     let mut rng = rand::rng();
@@ -242,40 +271,30 @@ async fn test_update_ger_monotonic_consumption() -> anyhow::Result<()> {
 
     // Create both UPDATE_GER notes
     let serial_num_1 = Word::from([1, 2, 3, 4u32]);
-    let update_ger_note_1 = create_update_ger_note(
-        setup.bridge_operator.id(),
-        ger_value_1_u32s,
-        ger_index_1,
-        serial_num_1,
-    )?;
+    let update_ger_note_1 =
+        create_update_ger_note(bridge_operator.id(), ger_value_1_u32s, ger_index_1, serial_num_1)?;
 
     let serial_num_2 = Word::from([5, 6, 7, 8u32]);
-    let update_ger_note_2 = create_update_ger_note(
-        setup.bridge_operator.id(),
-        ger_value_2_u32s,
-        ger_index_2,
-        serial_num_2,
-    )?;
+    let update_ger_note_2 =
+        create_update_ger_note(bridge_operator.id(), ger_value_2_u32s, ger_index_2, serial_num_2)?;
 
-    // Add both notes to the builder so they're available in the same block
+    // Add both notes to the mock chain so they're available
     builder.add_output_note(OutputNote::Full(update_ger_note_1.clone()));
     builder.add_output_note(OutputNote::Full(update_ger_note_2.clone()));
 
-    // Build mock chain with the setup's accounts
-    builder.add_existing_mock_account(Auth::IncrNonce)?;
-    builder.add_existing_mock_account(Auth::IncrNonce)?;
+    // Build mock chain
     let mut mock_chain = builder.build()?;
     mock_chain.prove_next_block()?;
 
     // Execute first UPDATE_GER note
     let tx_context_1 = mock_chain
-        .build_tx_context(setup.bridge_account.id(), &[], &[update_ger_note_1])?
+        .build_tx_context(bridge_account.id(), &[], &[update_ger_note_1])?
         .build()?;
     let executed_transaction_1 = tx_context_1.execute().await?;
 
     // Verify first GER index was stored
     let account_delta_1 = executed_transaction_1.account_delta();
-    verify_ger_index_stored(&account_delta_1, &setup.ger_storage_slot_name, ger_index_1)?;
+    verify_ger_index_stored(&account_delta_1, &ger_storage_slot_name, ger_index_1)?;
 
     // Create a new block after consuming the first note
     mock_chain.add_pending_executed_transaction(&executed_transaction_1)?;
@@ -283,13 +302,13 @@ async fn test_update_ger_monotonic_consumption() -> anyhow::Result<()> {
 
     // Execute second UPDATE_GER note in a separate transaction - should succeed
     let tx_context_2 = mock_chain
-        .build_tx_context(setup.bridge_account.id(), &[], &[update_ger_note_2])?
+        .build_tx_context(bridge_account.id(), &[], &[update_ger_note_2])?
         .build()?;
     let executed_transaction_2 = tx_context_2.execute().await?;
 
     // Verify second GER index was stored
     let account_delta_2 = executed_transaction_2.account_delta();
-    verify_ger_index_stored(&account_delta_2, &setup.ger_storage_slot_name, ger_index_2)?;
+    verify_ger_index_stored(&account_delta_2, &ger_storage_slot_name, ger_index_2)?;
 
     Ok(())
 }
@@ -297,9 +316,37 @@ async fn test_update_ger_monotonic_consumption() -> anyhow::Result<()> {
 /// Tests that consuming UPDATE_GER notes with non-monotonic indices fails
 #[tokio::test]
 async fn test_update_ger_non_monotonic_fails() -> anyhow::Result<()> {
-    let setup = UpdateGerTestSetup::new()?;
-    let mut mock_chain = setup.mock_chain;
-    mock_chain.prove_next_block()?;
+    let mut builder = MockChain::builder();
+
+    // Create bridge operator account
+    let bridge_operator = builder.add_existing_wallet(Auth::IncrNonce)?;
+
+    // Create bridge account with bridge_in component for GER updates
+    let ger_storage_slot_name = StorageSlotName::new("miden::agglayer::GER").unwrap();
+    let bridge_operator_slot_name =
+        StorageSlotName::new("miden::agglayer::bridge_operator").unwrap();
+
+    // Store the bridge operator account ID in the bridge operator slot
+    let operator_id_word = Word::from([
+        Felt::new(0),
+        Felt::new(0),
+        Felt::new(bridge_operator.id().suffix().as_int()),
+        bridge_operator.id().prefix().as_felt(),
+    ]);
+
+    let bridge_storage_slots = vec![
+        StorageSlot::with_empty_map(ger_storage_slot_name.clone()),
+        StorageSlot::with_value(bridge_operator_slot_name, operator_id_word),
+    ];
+    let bridge_component = bridge_in_component(bridge_storage_slots);
+    let bridge_account_builder = Account::builder(builder.rng_mut().random())
+        .storage_mode(AccountStorageMode::Public)
+        .with_component(bridge_component);
+    let bridge_account = builder.add_account_from_builder(
+        Auth::IncrNonce,
+        bridge_account_builder,
+        AccountState::Exists,
+    )?;
 
     // Generate first GER update with index 1
     let mut rng = rand::rng();
@@ -315,25 +362,6 @@ async fn test_update_ger_non_monotonic_fails() -> anyhow::Result<()> {
     ];
     let ger_index_1 = 1u32; // First index should be 1 (current storage is 0, so 0+1=1)
 
-    // Create first UPDATE_GER note
-    let serial_num_1 = Word::from([1, 2, 3, 4u32]);
-    let update_ger_note_1 = create_update_ger_note(
-        setup.bridge_operator.id(),
-        ger_value_1_u32s,
-        ger_index_1,
-        serial_num_1,
-    )?;
-
-    // Execute first UPDATE_GER note
-    let tx_context_1 = mock_chain
-        .build_tx_context(setup.bridge_account.id(), &[], &[update_ger_note_1])?
-        .build()?;
-    let executed_transaction_1 = tx_context_1.execute().await?;
-
-    // Update the mock chain with the new account state
-    mock_chain.add_pending_executed_transaction(&executed_transaction_1)?;
-    mock_chain.prove_next_block()?;
-
     // Generate second GER update with index 5 (non-monotonic - should be 2)
     let ger_value_2_u32s: [u32; 8] = [
         rng.random::<u32>(),
@@ -347,18 +375,36 @@ async fn test_update_ger_non_monotonic_fails() -> anyhow::Result<()> {
     ];
     let ger_index_2 = 5u32; // Non-monotonic jump (should be 2, but we're using 5)
 
-    // Create second UPDATE_GER note
+    // Create both UPDATE_GER notes
+    let serial_num_1 = Word::from([1, 2, 3, 4u32]);
+    let update_ger_note_1 =
+        create_update_ger_note(bridge_operator.id(), ger_value_1_u32s, ger_index_1, serial_num_1)?;
+
     let serial_num_2 = Word::from([5, 6, 7, 8u32]);
-    let update_ger_note_2 = create_update_ger_note(
-        setup.bridge_operator.id(),
-        ger_value_2_u32s,
-        ger_index_2,
-        serial_num_2,
-    )?;
+    let update_ger_note_2 =
+        create_update_ger_note(bridge_operator.id(), ger_value_2_u32s, ger_index_2, serial_num_2)?;
+
+    // Add both notes to the mock chain so they're available
+    builder.add_output_note(OutputNote::Full(update_ger_note_1.clone()));
+    builder.add_output_note(OutputNote::Full(update_ger_note_2.clone()));
+
+    // Build mock chain
+    let mut mock_chain = builder.build()?;
+    mock_chain.prove_next_block()?;
+
+    // Execute first UPDATE_GER note
+    let tx_context_1 = mock_chain
+        .build_tx_context(bridge_account.id(), &[], &[update_ger_note_1])?
+        .build()?;
+    let executed_transaction_1 = tx_context_1.execute().await?;
+
+    // Update the mock chain with the new account state
+    mock_chain.add_pending_executed_transaction(&executed_transaction_1)?;
+    mock_chain.prove_next_block()?;
 
     // Execute second UPDATE_GER note - should fail
     let tx_context_2 = mock_chain
-        .build_tx_context(setup.bridge_account.id(), &[], &[update_ger_note_2])?
+        .build_tx_context(bridge_account.id(), &[], &[update_ger_note_2])?
         .build()?;
     let result = tx_context_2.execute().await;
 
@@ -377,15 +423,42 @@ async fn test_update_ger_non_monotonic_fails() -> anyhow::Result<()> {
 /// Tests that UPDATE_GER fails when called by unauthorized account
 #[tokio::test]
 async fn test_update_ger_unauthorized_fails() -> anyhow::Result<()> {
-    let setup = UpdateGerTestSetup::new()?;
     let mut builder = MockChain::builder();
+
+    // Create bridge operator account
+    let bridge_operator = builder.add_existing_wallet(Auth::IncrNonce)?;
 
     // Create unauthorized account
     let unauthorized_account = builder.add_existing_wallet(Auth::IncrNonce)?;
 
-    // Build mock chain with the setup's accounts
-    builder.add_existing_mock_account(Auth::IncrNonce)?;
-    builder.add_existing_mock_account(Auth::IncrNonce)?;
+    // Create bridge account with bridge_in component for GER updates
+    let ger_storage_slot_name = StorageSlotName::new("miden::agglayer::GER").unwrap();
+    let bridge_operator_slot_name =
+        StorageSlotName::new("miden::agglayer::bridge_operator").unwrap();
+
+    // Store the bridge operator account ID in the bridge operator slot
+    let operator_id_word = Word::from([
+        Felt::new(0),
+        Felt::new(0),
+        Felt::new(bridge_operator.id().suffix().as_int()),
+        bridge_operator.id().prefix().as_felt(),
+    ]);
+
+    let bridge_storage_slots = vec![
+        StorageSlot::with_empty_map(ger_storage_slot_name.clone()),
+        StorageSlot::with_value(bridge_operator_slot_name, operator_id_word),
+    ];
+    let bridge_component = bridge_in_component(bridge_storage_slots);
+    let bridge_account_builder = Account::builder(builder.rng_mut().random())
+        .storage_mode(AccountStorageMode::Public)
+        .with_component(bridge_component);
+    let bridge_account = builder.add_account_from_builder(
+        Auth::IncrNonce,
+        bridge_account_builder,
+        AccountState::Exists,
+    )?;
+
+    // Build mock chain
     let mut mock_chain = builder.build()?;
     mock_chain.prove_next_block()?;
 
@@ -414,7 +487,7 @@ async fn test_update_ger_unauthorized_fails() -> anyhow::Result<()> {
 
     // Execute UPDATE_GER note against bridge account - should fail
     let tx_context = mock_chain
-        .build_tx_context(setup.bridge_account.id(), &[], &[update_ger_note])?
+        .build_tx_context(bridge_account.id(), &[], &[update_ger_note])?
         .build()?;
     let result = tx_context.execute().await;
 
