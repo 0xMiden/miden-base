@@ -1,9 +1,9 @@
-use alloc::collections::BTreeMap;
+use alloc::collections::BTreeSet;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
 use miden_objects::account::auth::PublicKeyCommitment;
-use miden_objects::account::{AccountId, AccountProcedureInfo, AccountStorage, StorageSlotName};
+use miden_objects::account::{AccountId, AccountProcedureRoot, AccountStorage, StorageSlotName};
 use miden_objects::note::PartialNote;
 use miden_objects::{Felt, FieldElement, Word};
 
@@ -58,9 +58,9 @@ pub enum AccountComponentInterface {
     AuthNoAuth,
     /// A non-standard, custom interface which exposes the contained procedures.
     ///
-    /// Custom interface holds procedures which are not part of some standard interface which is
-    /// used by this account. Each custom interface holds procedures with the same storage offset.
-    Custom(Vec<AccountProcedureInfo>),
+    /// Custom interface holds all procedures which are not part of some standard interface which is
+    /// used by this account.
+    Custom(Vec<AccountProcedureRoot>),
 }
 
 impl AccountComponentInterface {
@@ -90,10 +90,10 @@ impl AccountComponentInterface {
             },
 
             AccountComponentInterface::AuthNoAuth => "No Auth".to_string(),
-            AccountComponentInterface::Custom(proc_info_vec) => {
-                let result = proc_info_vec
+            AccountComponentInterface::Custom(proc_root_vec) => {
+                let result = proc_root_vec
                     .iter()
-                    .map(|proc_info| proc_info.mast_root().to_hex()[..9].to_string())
+                    .map(|proc_root| proc_root.mast_root().to_hex()[..9].to_string())
                     .collect::<Vec<_>>()
                     .join(", ");
                 format!("Custom([{result}])")
@@ -177,13 +177,10 @@ impl AccountComponentInterface {
 
     /// Creates a vector of [AccountComponentInterface] instances. This vector specifies the
     /// components which were used to create an account with the provided procedures info array.
-    pub fn from_procedures(procedures: &[AccountProcedureInfo]) -> Vec<Self> {
+    pub fn from_procedures(procedures: &[AccountProcedureRoot]) -> Vec<Self> {
         let mut component_interface_vec = Vec::new();
 
-        let mut procedures: BTreeMap<_, _> = procedures
-            .iter()
-            .map(|procedure_info| (*procedure_info.mast_root(), procedure_info))
-            .collect();
+        let mut procedures = BTreeSet::from_iter(procedures.iter().copied());
 
         // Well known component interfaces
         // ----------------------------------------------------------------------------------------
@@ -198,21 +195,9 @@ impl AccountComponentInterface {
         // Custom component interfaces
         // ----------------------------------------------------------------------------------------
 
-        let mut custom_interface_procs_map = BTreeMap::<u8, Vec<AccountProcedureInfo>>::new();
-        procedures.into_iter().for_each(|(_, proc_info)| {
-            match custom_interface_procs_map.get_mut(&proc_info.storage_offset()) {
-                Some(proc_vec) => proc_vec.push(*proc_info),
-                None => {
-                    custom_interface_procs_map.insert(proc_info.storage_offset(), vec![*proc_info]);
-                },
-            }
-        });
-
-        if !custom_interface_procs_map.is_empty() {
-            for proc_vec in custom_interface_procs_map.into_values() {
-                component_interface_vec.push(AccountComponentInterface::Custom(proc_vec));
-            }
-        }
+        // All remaining procedures are put into the custom bucket.
+        component_interface_vec
+            .push(AccountComponentInterface::Custom(procedures.into_iter().collect()));
 
         component_interface_vec
     }

@@ -2,7 +2,7 @@ use alloc::string::String;
 use alloc::vec::Vec;
 
 use miden_lib::testing::note::NoteBuilder;
-use miden_lib::transaction::TransactionKernel;
+use miden_lib::utils::CodeBuilder;
 use miden_objects::account::AccountId;
 use miden_objects::asset::Asset;
 use miden_objects::crypto::rand::FeltRng;
@@ -151,7 +151,7 @@ pub fn create_p2any_note(
         .note_type(note_type)
         .serial_number(serial_number)
         .code(code)
-        .dynamically_linked_libraries(TransactionKernel::mock_libraries())
+        .dynamically_linked_libraries(CodeBuilder::mock_libraries())
         .build()
         .expect("generated note script should compile")
 }
@@ -187,7 +187,7 @@ where
 
     let note = NoteBuilder::new(sender_id, SmallRng::from_os_rng())
         .code(note_code)
-        .dynamically_linked_libraries(TransactionKernel::mock_libraries())
+        .dynamically_linked_libraries(CodeBuilder::mock_libraries())
         .build()?;
 
     Ok(note)
