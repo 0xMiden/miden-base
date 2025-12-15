@@ -369,7 +369,7 @@ impl CodeBuilder {
     ) -> Self {
         use crate::testing::mock_util_lib::mock_util_library;
 
-        // Start from the full kernel-aware assembler (includes stdlib and miden-lib).
+        // Start from the full kernel-aware assembler (includes core lib and miden-lib).
         let mut assembler =
             TransactionKernel::assembler_with_source_manager(source_manager.clone());
 

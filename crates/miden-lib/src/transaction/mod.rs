@@ -141,13 +141,13 @@ impl TransactionKernel {
     // --------------------------------------------------------------------------------------------
 
     /// Returns a new Miden assembler instantiated with the transaction kernel and loaded with the
-    /// Miden stdlib as well as with miden-lib.
+    /// core lib as well as with miden-lib.
     pub fn assembler() -> Assembler {
         Self::assembler_with_source_manager(Arc::new(DefaultSourceManager::default()))
     }
 
     /// Returns a new assembler instantiated with the transaction kernel and loaded with the
-    /// Miden stdlib as well as with miden-lib.
+    /// core lib as well as with miden-lib.
     pub fn assembler_with_source_manager(source_manager: Arc<dyn SourceManagerSync>) -> Assembler {
         #[cfg(all(any(feature = "testing", test), feature = "std"))]
         source_manager_ext::load_masm_source_files(&source_manager);

@@ -397,7 +397,7 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
     // TODO: use proper names for the components to be able to use their procs
     let tx_script_code = "
         begin
-            call.::nofile::update_signers_and_threshold
+            call.::rpo_falcon_512_multisig::update_signers_and_threshold
         end
     ";
 
@@ -641,7 +641,9 @@ async fn test_multisig_update_signers_remove_owner() -> anyhow::Result<()> {
     // Create transaction script
     let tx_script = CodeBuilder::default()
         .with_dynamically_linked_library(rpo_falcon_512_multisig_library())?
-        .compile_tx_script("begin\n    call.::nofile::update_signers_and_threshold\nend")?;
+        .compile_tx_script(
+            "begin\n    call.::rpo_falcon_512_multisig::update_signers_and_threshold\nend",
+        )?;
 
     let advice_inputs = AdviceInputs { map: advice_map, ..Default::default() };
 
@@ -838,7 +840,7 @@ async fn test_multisig_new_approvers_cannot_sign_before_update() -> anyhow::Resu
     // Create a transaction script that calls the update_signers procedure
     let tx_script_code = "
         begin
-            call.::nofile::update_signers_and_threshold
+            call.::rpo_falcon_512_multisig::update_signers_and_threshold
         end
     ";
 

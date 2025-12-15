@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use fs_err as fs;
-use miden_assembly::diagnostics::{IntoDiagnostic, Result, WrapErr, miette};
+use miden_assembly::diagnostics::{IntoDiagnostic, NamedSource, Result, WrapErr, miette};
 use miden_assembly::utils::Serializable;
 use miden_assembly::{Assembler, DefaultSourceManager, KernelLibrary, Library, Report};
 use regex::Regex;
@@ -373,10 +373,13 @@ fn compile_account_components(
         let component_source_code = fs::read_to_string(masm_file_path)
             .expect("reading the component's MASM source code should succeed");
 
+        let named_source = NamedSource::new(component_name.clone(), component_source_code);
+
         let component_library = assembler
             .clone()
-            .assemble_library([component_source_code])
+            .assemble_library([named_source])
             .expect("library assembly should succeed");
+
         let component_file_path =
             target_dir.join(component_name).with_extension(Library::LIBRARY_EXTENSION);
         component_library.write_to_file(component_file_path).into_diagnostic()?;
@@ -585,7 +588,7 @@ fn extract_masm_errors(
     errors: &mut BTreeMap<ErrorName, ExtractedError>,
     file_contents: &str,
 ) -> Result<()> {
-    let regex = Regex::new(r#"const(\.|\ )ERR_(?<name>.*)\ ?=\ ?"(?<message>.*)""#).unwrap();
+    let regex = Regex::new(r#"const\s*ERR_(?<name>.*)\s*=\s*"(?<message>.*)""#).unwrap();
 
     for capture in regex.captures_iter(file_contents) {
         let error_name = capture
@@ -808,19 +811,17 @@ fn extract_all_event_definitions(asm_source_dir: &Path) -> Result<BTreeMap<Strin
     Ok(events)
 }
 
-/// Extract event definitions from a single MASM file in two possible forms:
-/// - `const ${X}=event("${x::path}")`
-/// - `const ${X} = event("${x::path}")`
+/// Extract event definitions from a single MASM file in form of `const ${X} = event("${x::path}")`.
 fn extract_event_definitions_from_file(
     events: &mut BTreeMap<String, String>,
     file_contents: &str,
     file_path: &Path,
 ) -> Result<()> {
-    let regex = Regex::new(r#"const(\.|\ )(\w+)\ ?=\ ?event\("([^"]+)"\)"#).unwrap();
+    let regex = Regex::new(r#"const\s*(\w+)\s*=\s*event\("([^"]+)"\)"#).unwrap();
 
     for capture in regex.captures_iter(file_contents) {
-        let const_name = capture.get(2).expect("const name should be captured");
-        let event_path = capture.get(3).expect("event path should be captured");
+        let const_name = capture.get(1).expect("const name should be captured");
+        let event_path = capture.get(2).expect("event path should be captured");
 
         let event_path = event_path.as_str();
         let const_name = const_name.as_str();
@@ -833,13 +834,7 @@ fn extract_event_definitions_from_file(
             };
 
         if !event_path.starts_with("miden::") {
-            // we ignore any `stdlib::` prefixed ones
-            if !event_path.starts_with("stdlib::") {
-                return Err(miette::miette!(
-                    "unhandled `event_path={event_path}`, doesn't with `stdlib::` nor with `miden::`."
-                ));
-            }
-            continue;
+            return Err(miette::miette!("unhandled `event_path={event_path}`"));
         }
 
         // Check for duplicates with different definitions

@@ -39,7 +39,7 @@ static ECDSA_K256_KECCAK_ACL_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
 static ECDSA_K256_KECCAK_MULTISIG_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
     let bytes = include_bytes!(concat!(
         env!("OUT_DIR"),
-        "/assets/account_components/multisig_ecdsa_k256_keccak.masl"
+        "/assets/account_components/ecdsa_k256_keccak_multisig.masl"
     ));
     Library::read_from_bytes(bytes)
         .expect("Shipped Multisig Ecdsa K256 Keccak library is well-formed")
@@ -89,7 +89,7 @@ static NO_AUTH_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
 static RPO_FALCON_512_MULTISIG_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
     let bytes = include_bytes!(concat!(
         env!("OUT_DIR"),
-        "/assets/account_components/multisig_rpo_falcon_512.masl"
+        "/assets/account_components/rpo_falcon_512_multisig.masl"
     ));
     Library::read_from_bytes(bytes).expect("Shipped Multisig Rpo Falcon 512 library is well-formed")
 });

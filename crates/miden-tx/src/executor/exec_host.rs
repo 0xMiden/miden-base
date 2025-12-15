@@ -466,7 +466,7 @@ where
                 return Ok(mutations);
             }
 
-            // The outer None means the event was handled by stdlib handlers.
+            // The outer None means the event was handled by core lib handlers.
             let Some(tx_event_result) = tx_event_result else {
                 return Ok(Vec::new());
             };
