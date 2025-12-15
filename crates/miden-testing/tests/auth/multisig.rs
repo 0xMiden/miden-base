@@ -994,11 +994,8 @@ async fn test_multisig_proc_threshold_overrides() -> anyhow::Result<()> {
         &mut RpoRandomCoin::new(Word::from([Felt::new(42); 4])),
     )?;
     let multisig_account_interface = AccountInterface::from(&multisig_account);
-    let send_note_transaction_script = multisig_account_interface.build_send_notes_script(
-        &[output_note.clone().into()],
-        None,
-        false,
-    )?;
+    let send_note_transaction_script =
+        multisig_account_interface.build_send_notes_script(&[output_note.clone().into()], None)?;
 
     // Execute transaction without signatures to get tx summary
     let tx_context_init = mock_chain

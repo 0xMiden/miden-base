@@ -52,11 +52,8 @@ async fn test_send_note_script_basic_wallet() -> anyhow::Result<()> {
     let partial_note: PartialNote = note.clone().into();
 
     let expiration_delta = 10u16;
-    let send_note_transaction_script = sender_account_interface.build_send_notes_script(
-        slice::from_ref(&partial_note),
-        Some(expiration_delta),
-        false,
-    )?;
+    let send_note_transaction_script = sender_account_interface
+        .build_send_notes_script(slice::from_ref(&partial_note), Some(expiration_delta))?;
 
     let executed_transaction = mock_chain
         .build_tx_context(sender_basic_wallet_account.id(), &[], &[])
@@ -116,11 +113,8 @@ async fn test_send_note_script_basic_fungible_faucet() -> anyhow::Result<()> {
     let partial_note: PartialNote = note.clone().into();
 
     let expiration_delta = 10u16;
-    let send_note_transaction_script = sender_account_interface.build_send_notes_script(
-        slice::from_ref(&partial_note),
-        Some(expiration_delta),
-        false,
-    )?;
+    let send_note_transaction_script = sender_account_interface
+        .build_send_notes_script(slice::from_ref(&partial_note), Some(expiration_delta))?;
 
     let _executed_transaction = mock_chain
         .build_tx_context(sender_basic_fungible_faucet_account.id(), &[], &[])

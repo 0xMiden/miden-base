@@ -87,18 +87,14 @@ impl CodeBuilder {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
-    /// Creates a new CodeBuilder with the specified debug mode.
-    ///
-    /// TODO: remove `in_debug_mode` argument
-    pub fn new(_in_debug_mode: bool) -> Self {
+    /// Creates a new CodeBuilder.
+    pub fn new() -> Self {
         let source_manager = Arc::new(DefaultSourceManager::default());
         let assembler = TransactionKernel::assembler_with_source_manager(source_manager.clone());
         Self { assembler, source_manager }
     }
 
     /// Creates a new CodeBuilder with the specified source manager.
-    ///
-    /// TODO: remove `in_debug_mode` argument
     ///
     /// # Arguments
     /// * `source_manager` - The source manager to use with the internal `Assembler`
@@ -394,7 +390,7 @@ impl CodeBuilder {
 
 impl Default for CodeBuilder {
     fn default() -> Self {
-        Self::new(true)
+        Self::new()
     }
 }
 
