@@ -15,7 +15,8 @@ use miden_objects::account::{
 use miden_objects::assembly::debuginfo::{SourceLanguage, Uri};
 use miden_objects::assembly::{Assembler, SourceManager, SourceManagerSync};
 use miden_objects::asset::{Asset, AssetVaultKey, AssetWitness};
-use miden_objects::block::{AccountWitness, BlockHeader, BlockNumber};
+use miden_objects::block::account_tree::AccountWitness;
+use miden_objects::block::{BlockHeader, BlockNumber};
 use miden_objects::note::{Note, NoteScript};
 use miden_objects::transaction::{
     AccountInputs,

@@ -1,8 +1,12 @@
+use super::{NullifierBlock, NullifierWitness};
 use crate::Word;
-use crate::block::{BlockNumber, NullifierWitness, nullifier_tree};
+use crate::block::BlockNumber;
 use crate::crypto::merkle::PartialSmt;
 use crate::errors::NullifierTreeError;
 use crate::note::Nullifier;
+
+// PARTIAL NULLIFIER TREE
+// ================================================================================================
 
 /// The partial sparse merkle tree containing the nullifiers of consumed notes.
 ///
@@ -36,8 +40,15 @@ impl PartialNullifierTree {
             .map(Self)
     }
 
-    /// Adds the given nullifier witness to the partial tree and tracks it. Once a nullifier has
-    /// been added to the tree, it can be marked as spent using [`Self::mark_spent`].
+    /// Returns the root of the tree.
+    pub fn root(&self) -> Word {
+        self.0.root()
+    }
+
+    /// Adds the given nullifier witness to the partial tree and tracks it.
+    ///
+    /// Once a nullifier has been added to the tree, it can be marked as spent using
+    /// [`Self::mark_spent`].
     ///
     /// # Errors
     ///
@@ -49,7 +60,7 @@ impl PartialNullifierTree {
         self.0.add_path(leaf, path).map_err(NullifierTreeError::TreeRootConflict)
     }
 
-    /// Marks the given nullifiers as spent at the given block number.
+    /// Marks the given nullifier as spent at the given block number.
     ///
     /// # Errors
     ///
@@ -59,46 +70,42 @@ impl PartialNullifierTree {
     ///   [`NullifierWitness`] was not added to the tree previously.
     pub fn mark_spent(
         &mut self,
-        nullifiers: impl IntoIterator<Item = Nullifier>,
-        block_num: BlockNumber,
-    ) -> Result<(), NullifierTreeError> {
-        for nullifier in nullifiers {
-            self.mark_spent_single(nullifier, block_num)?;
-        }
-
-        Ok(())
-    }
-
-    /// Returns the root of the tree.
-    pub fn root(&self) -> Word {
-        self.0.root()
-    }
-
-    /// Marks the given nullifier as spent at the given block number.
-    ///
-    /// # Errors
-    ///
-    /// See [`Self::mark_spent`] for the possible error conditions.
-    fn mark_spent_single(
-        &mut self,
         nullifier: Nullifier,
         block_num: BlockNumber,
     ) -> Result<(), NullifierTreeError> {
-        let prev_nullifier_value = self
+        let prev_nullifier_value: NullifierBlock = self
             .0
-            .insert(
-                nullifier.as_word(),
-                nullifier_tree::block_num_to_nullifier_leaf_value(block_num),
-            )
-            .map_err(|source| NullifierTreeError::UntrackedNullifier { nullifier, source })?;
+            .insert(nullifier.as_word(), NullifierBlock::from(block_num).into())
+            .map_err(|source| NullifierTreeError::UntrackedNullifier { nullifier, source })?
+            .try_into()?;
 
-        if prev_nullifier_value != nullifier_tree::UNSPENT_NULLIFIER {
+        if prev_nullifier_value.is_spent() {
             Err(NullifierTreeError::NullifierAlreadySpent(nullifier))
         } else {
             Ok(())
         }
     }
+
+    /// Marks the given nullifiers as spent at the given block number.
+    ///
+    /// # Errors
+    ///
+    /// See [`Self::mark_spent`] for the possible error conditions.
+    pub fn mark_spent_all(
+        &mut self,
+        nullifiers: impl IntoIterator<Item = Nullifier>,
+        block_num: BlockNumber,
+    ) -> Result<(), NullifierTreeError> {
+        for nullifier in nullifiers {
+            self.mark_spent(nullifier, block_num)?;
+        }
+
+        Ok(())
+    }
 }
+
+// TESTS
+// ================================================================================================
 
 #[cfg(test)]
 mod tests {
@@ -155,7 +162,7 @@ mod tests {
         let mut partial_tree = PartialNullifierTree::with_witnesses([witness]).unwrap();
 
         // Attempt to insert nullifier 1 again at a different block number.
-        let err = partial_tree.mark_spent([nullifier1], block2).unwrap_err();
+        let err = partial_tree.mark_spent_all([nullifier1], block2).unwrap_err();
 
         assert_matches!(err, NullifierTreeError::NullifierAlreadySpent(nullifier) if nullifier == nullifier1);
     }
@@ -184,7 +191,7 @@ mod tests {
 
         // Insert a new value into partial and full tree and assert the root is the same.
         tree.mark_spent(nullifier3, block3).unwrap();
-        partial_tree.mark_spent([nullifier3], block3).unwrap();
+        partial_tree.mark_spent(nullifier3, block3).unwrap();
 
         assert_eq!(tree.root(), partial_tree.root());
     }
