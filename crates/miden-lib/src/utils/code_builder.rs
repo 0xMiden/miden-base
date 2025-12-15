@@ -46,9 +46,9 @@ use crate::transaction::TransactionKernel;
 /// 1. Create a new CodeBuilder with debug mode preference
 /// 2. Add any required modules using `link_module()` or `with_linked_module()`
 /// 3. Add libraries using `link_static_library()` / `link_dynamic_library()` as appropriate
-/// 4. Parse your script with `parse_note_script()` or `parse_tx_script()`
+/// 4. Compile your script with `compile_note_script()` or `compile_tx_script()`
 ///
-/// Note that the Compiling methods consume the CodeBuilder, so if you need to parse
+/// Note that the compiling methods consume the CodeBuilder, so if you need to compile
 /// multiple scripts with the same configuration, you should clone the builder first.
 ///
 /// ## Builder Pattern Example

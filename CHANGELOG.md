@@ -6,6 +6,7 @@
 
 - [BREAKING] Refactored storage slots to be accessed by names instead of indices ([#1987](https://github.com/0xMiden/miden-base/pull/1987), [#2025](https://github.com/0xMiden/miden-base/pull/2025), [#2149](https://github.com/0xMiden/miden-base/pull/2149), [#2150](https://github.com/0xMiden/miden-base/pull/2150), [#2153](https://github.com/0xMiden/miden-base/pull/2153), [#2154](https://github.com/0xMiden/miden-base/pull/2154), [#2160](https://github.com/0xMiden/miden-base/pull/2160), [#2161](https://github.com/0xMiden/miden-base/pull/2161), [#2170](https://github.com/0xMiden/miden-base/pull/2170)).
 - [BREAKING] Allowed account components to share identical account code procedures ([#2164](https://github.com/0xMiden/miden-base/pull/2164)).
+- Add `From<&ExecutedTransaction> for TransactionHeader` implementation ([#2178](https://github.com/0xMiden/miden-base/pull/2178)).
 
 ### Changes
 
@@ -18,11 +19,13 @@
 - [BREAKING] Removed `AccountComponentTemplate` in favor of instantiating components via `AccountComponent::from_package` ([#2127](https://github.com/0xMiden/miden-base/pull/2127)).
 - [BREAKING] Added public key to, remove proof commitment from, `BlockHeader`, and add signing functionality through `BlockSigner` trait ([#2128](https://github.com/0xMiden/miden-base/pull/2128)).
 - [BREAKING] Added fee to `TransactionHeader` ([#2131](https://github.com/0xMiden/miden-base/pull/2131)).
+- Create `NullifierLeafValue` newtype wrapper ([#2136](https://github.com/0xMiden/miden-base/pull/2136)).
 - [BREAKING] Increased `MAX_INPUTS_PER_NOTE` from 128 to 1024 ([#2139](https://github.com/0xMiden/miden-base/pull/2139)).
 - Added the ability to get full public key from `TransactionAuthenticator` ([#2145](https://github.com/0xMiden/miden-base/pull/2145)).
 - Added `TokenSymbol::from_static_str` const function for compile-time token symbol validation ([#2148](https://github.com/0xMiden/miden-base/pull/2148)).
 - [BREAKING] Renamed `AccountProcedureInfo` into `AccountProcedureRoot` and remove storage offset and size ([#2162](https://github.com/0xMiden/miden-base/pull/2162)).
 - [BREAKING] Made `AccountProcedureIndexMap` construction infallible ([#2163](https://github.com/0xMiden/miden-base/pull/2163)).
+- [BREAKING] Renamed `tracked_procedure_roots_slot` to `trigger_procedure_roots_slot` in ACL auth components for naming consistency ([#2166](https://github.com/0xMiden/miden-base/pull/2166)).
 
 ## 0.12.4 (2025-11-26)
 
