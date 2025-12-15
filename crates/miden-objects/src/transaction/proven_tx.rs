@@ -1,25 +1,13 @@
 use alloc::string::ToString;
-use alloc::vec::Vec;
 
 use super::{InputNote, ToInputNoteCommitments};
 use crate::account::delta::AccountUpdateDetails;
 use crate::asset::FungibleAsset;
 use crate::block::BlockNumber;
 use crate::note::NoteHeader;
-use crate::transaction::{
-    AccountId,
-    InputNotes,
-    Nullifier,
-    OutputNote,
-    OutputNotes,
-    TransactionId,
-};
+use crate::transaction::{AccountId, InputNotes, Nullifier, OutputNotes, TransactionId};
 use crate::utils::serde::{
-    ByteReader,
-    ByteWriter,
-    Deserializable,
-    DeserializationError,
-    Serializable,
+    ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
 };
 use crate::vm::ExecutionProof;
 use crate::{ACCOUNT_UPDATE_MAX_SIZE, EMPTY_WORD, ProvenTransactionError, Word};
@@ -171,21 +159,14 @@ impl ProvenTransaction {
         final_account_commitment: Word,
         account_delta_commitment: Word,
         account_update_details: AccountUpdateDetails,
-        input_notes: impl IntoIterator<Item = InputNoteCommitment>,
-        output_notes: impl IntoIterator<Item = OutputNote>,
+        input_notes: InputNotes<InputNoteCommitment>,
+        output_notes: OutputNotes,
         ref_block_num: BlockNumber,
         ref_block_commitment: Word,
         fee: FungibleAsset,
         expiration_block_num: BlockNumber,
         proof: ExecutionProof,
     ) -> Result<Self, ProvenTransactionError> {
-        let input_notes_vec: Vec<_> = input_notes.into_iter().collect();
-        let output_notes_vec: Vec<_> = output_notes.into_iter().collect();
-
-        let input_notes =
-            InputNotes::new(input_notes_vec).map_err(ProvenTransactionError::InputNotesError)?;
-        let output_notes =
-            OutputNotes::new(output_notes_vec).map_err(ProvenTransactionError::OutputNotesError)?;
         let id = TransactionId::new(
             initial_account_commitment,
             final_account_commitment,
@@ -212,67 +193,44 @@ impl ProvenTransaction {
             proof,
         };
 
-        proven_transaction.validate()
-    }
-
-    /// Validates the transaction.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if:
-    /// - The size of the serialized account update exceeds [`ACCOUNT_UPDATE_MAX_SIZE`].
-    /// - The transaction is empty, which is the case if the account state is unchanged or the
-    ///   number of input notes is zero.
-    /// - The transaction was executed against a _new_ account with public state and its account ID
-    ///   does not match the ID in the account update.
-    /// - The transaction was executed against a _new_ account with public state and its commitment
-    ///   does not match the final state commitment of the account update.
-    /// - The transaction was executed against a private account and the account update is _not_ of
-    ///   type [`AccountUpdateDetails::Private`].
-    /// - The transaction was executed against an account with public state and the update is of
-    ///   type [`AccountUpdateDetails::Private`].
-    /// - The transaction was executed against an _existing_ account with public state and the
-    ///   update is of type [`AccountUpdateDetails::New`].
-    /// - The transaction creates a _new_ account with public state and the update is of type
-    ///   [`AccountUpdateDetails::Delta`].
-    fn validate(self) -> Result<Self, ProvenTransactionError> {
-        // If the account's state is public, then the account update details must be present.
-        if self.account_id().has_public_state() {
-            self.account_update.validate()?;
-
-            // check that either the account state was changed or at least one note was consumed,
-            // otherwise this transaction is empty
-            if self.account_update.initial_state_commitment()
-                == self.account_update.final_state_commitment()
-                && self.input_notes.commitment() == EMPTY_WORD
+        // Inline validation from the old validate method
+        if proven_transaction.account_id().has_public_state() {
+            proven_transaction.account_update.validate()?;
+            if proven_transaction.account_update.initial_state_commitment()
+                == proven_transaction.account_update.final_state_commitment()
+                && proven_transaction.input_notes.commitment() == EMPTY_WORD
             {
                 return Err(ProvenTransactionError::EmptyTransaction);
             }
-
-            let is_new_account = self.account_update.initial_state_commitment() == Word::empty();
-            match self.account_update.details() {
+            let is_new_account =
+                proven_transaction.account_update.initial_state_commitment() == Word::empty();
+            match proven_transaction.account_update.details() {
                 AccountUpdateDetails::Private => {
                     return Err(ProvenTransactionError::PublicStateAccountMissingDetails(
-                        self.account_id(),
+                        proven_transaction.account_id(),
                     ));
                 },
                 AccountUpdateDetails::New(account) => {
                     if !is_new_account {
                         return Err(
                             ProvenTransactionError::ExistingPublicStateAccountRequiresDeltaDetails(
-                                self.account_id(),
+                                proven_transaction.account_id(),
                             ),
                         );
                     }
-                    if account.id() != self.account_id() {
+                    if account.id() != proven_transaction.account_id() {
                         return Err(ProvenTransactionError::AccountIdMismatch {
-                            tx_account_id: self.account_id(),
+                            tx_account_id: proven_transaction.account_id(),
                             details_account_id: account.id(),
                         });
                     }
-                    if account.commitment() != self.account_update.final_state_commitment() {
+                    if account.commitment()
+                        != proven_transaction.account_update.final_state_commitment()
+                    {
                         return Err(ProvenTransactionError::AccountFinalCommitmentMismatch {
-                            tx_final_commitment: self.account_update.final_state_commitment(),
+                            tx_final_commitment: proven_transaction
+                                .account_update
+                                .final_state_commitment(),
                             details_commitment: account.commitment(),
                         });
                     }
@@ -281,17 +239,19 @@ impl ProvenTransaction {
                     if is_new_account {
                         return Err(
                             ProvenTransactionError::NewPublicStateAccountRequiresFullDetails(
-                                self.account_id(),
+                                proven_transaction.account_id(),
                             ),
                         );
                     }
                 },
             }
-        } else if !self.account_update.is_private() {
-            return Err(ProvenTransactionError::PrivateAccountWithDetails(self.account_id()));
+        } else if !proven_transaction.account_update.is_private() {
+            return Err(ProvenTransactionError::PrivateAccountWithDetails(
+                proven_transaction.account_id(),
+            ));
         }
 
-        Ok(self)
+        Ok(proven_transaction)
     }
 }
 
@@ -328,18 +288,14 @@ impl Deserializable for ProvenTransaction {
         let account_delta_commitment = account_update.account_delta_commitment();
         let account_update_details = account_update.details().clone();
 
-        // Extract input and output notes as vecs
-        let input_notes_vec = input_notes.into_vec();
-        let output_notes_vec: Vec<_> = output_notes.iter().cloned().collect();
-
         ProvenTransaction::new(
             account_id,
             initial_account_commitment,
             final_account_commitment,
             account_delta_commitment,
             account_update_details,
-            input_notes_vec,
-            output_notes_vec,
+            input_notes,
+            output_notes,
             ref_block_num,
             ref_block_commitment,
             fee,
@@ -583,30 +539,20 @@ mod tests {
     use super::ProvenTransaction;
     use crate::account::delta::AccountUpdateDetails;
     use crate::account::{
-        AccountDelta,
-        AccountId,
-        AccountIdVersion,
-        AccountStorageDelta,
-        AccountStorageMode,
-        AccountType,
-        AccountVaultDelta,
-        StorageMapDelta,
+        AccountDelta, AccountId, AccountIdVersion, AccountStorageDelta, AccountStorageMode,
+        AccountType, AccountVaultDelta, StorageMapDelta,
     };
     use crate::asset::FungibleAsset;
     use crate::block::BlockNumber;
     use crate::testing::account_id::{
-        ACCOUNT_ID_PRIVATE_SENDER,
-        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
+        ACCOUNT_ID_PRIVATE_SENDER, ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
     };
-    use crate::transaction::{InputNoteCommitment, OutputNote, TxAccountUpdate};
+    use crate::transaction::{
+        InputNoteCommitment, InputNotes, OutputNote, OutputNotes, TxAccountUpdate,
+    };
     use crate::utils::Serializable;
     use crate::{
-        ACCOUNT_UPDATE_MAX_SIZE,
-        EMPTY_WORD,
-        LexicographicWord,
-        ONE,
-        ProvenTransactionError,
-        Word,
+        ACCOUNT_UPDATE_MAX_SIZE, EMPTY_WORD, LexicographicWord, ONE, ProvenTransactionError, Word,
     };
 
     fn check_if_sync<T: Sync>() {}
@@ -703,14 +649,17 @@ mod tests {
         let expiration_block_num = BlockNumber::from(2);
         let proof = ExecutionProof::new_dummy();
 
+        let input_notes = InputNotes::new(Vec::<InputNoteCommitment>::new()).unwrap();
+        let output_notes = OutputNotes::new(Vec::<OutputNote>::new()).unwrap();
+
         let tx = ProvenTransaction::new(
             account_id,
             initial_account_commitment,
             final_account_commitment,
             account_delta_commitment,
             AccountUpdateDetails::Private,
-            Vec::<InputNoteCommitment>::new(),
-            Vec::<OutputNote>::new(),
+            input_notes,
+            output_notes,
             ref_block_num,
             ref_block_commitment,
             FungibleAsset::mock(42).unwrap_fungible(),
