@@ -82,7 +82,7 @@ async fn test_fpi_memory_single_account() -> anyhow::Result<()> {
 
     let source_manager = Arc::new(DefaultSourceManager::default());
     let foreign_account_component = AccountComponent::new(
-        CodeBuilder::with_kernel_library(source_manager.clone())
+        CodeBuilder::with_source_manager(source_manager.clone())
             .compile_component_code("test::foreign_account", foreign_account_code_source)?,
         vec![mock_value_slot0.clone(), mock_map_slot.clone()],
     )?
@@ -343,14 +343,14 @@ async fn test_fpi_memory_two_accounts() -> anyhow::Result<()> {
     ";
 
     let foreign_account_component_1 = AccountComponent::new(
-        CodeBuilder::with_kernel_library(Arc::new(DefaultSourceManager::default()))
+        CodeBuilder::default()
             .compile_component_code("test::foreign_account_1", foreign_account_code_source_1)?,
         vec![mock_value_slot0.clone()],
     )?
     .with_supports_all_types();
 
     let foreign_account_component_2 = AccountComponent::new(
-        CodeBuilder::with_kernel_library(Arc::new(DefaultSourceManager::default()))
+        CodeBuilder::default()
             .compile_component_code("test::foreign_account_2", foreign_account_code_source_2)?,
         vec![mock_value_slot1.clone()],
     )?
@@ -1326,10 +1326,9 @@ async fn test_nested_fpi_stack_overflow() -> anyhow::Result<()> {
         mock_value_slot0 = mock_value_slot0.name(),
     );
 
-    let last_foreign_account_code =
-        CodeBuilder::with_kernel_library(Arc::new(DefaultSourceManager::default()))
-            .compile_component_code("test::last_foreign_account", last_foreign_account_code_source)
-            .unwrap();
+    let last_foreign_account_code = CodeBuilder::default()
+        .compile_component_code("test::last_foreign_account", last_foreign_account_code_source)
+        .unwrap();
     let last_foreign_account_component =
         AccountComponent::new(last_foreign_account_code, vec![mock_value_slot0.clone()])
             .unwrap()
@@ -1374,13 +1373,12 @@ async fn test_nested_fpi_stack_overflow() -> anyhow::Result<()> {
                     next_foreign_prefix = next_account.id().prefix().as_felt(),
                 );
 
-        let foreign_account_code =
-            CodeBuilder::with_kernel_library(Arc::new(DefaultSourceManager::default()))
-                .compile_component_code(
-                    format!("test::foreign_account_chain_{foreign_account_index}"),
-                    foreign_account_code_source,
-                )
-                .unwrap();
+        let foreign_account_code = CodeBuilder::default()
+            .compile_component_code(
+                format!("test::foreign_account_chain_{foreign_account_index}"),
+                foreign_account_code_source,
+            )
+            .unwrap();
         let foreign_account_component = AccountComponent::new(foreign_account_code, vec![])
             .unwrap()
             .with_supports_all_types();
@@ -1493,7 +1491,7 @@ async fn test_nested_fpi_native_account_invocation() -> anyhow::Result<()> {
     ";
 
     let foreign_account_component = AccountComponent::new(
-        CodeBuilder::with_kernel_library(Arc::new(DefaultSourceManager::default()))
+        CodeBuilder::default()
             .compile_component_code("foreign_account", foreign_account_code_source)?,
         vec![],
     )?
@@ -1592,7 +1590,7 @@ async fn test_fpi_stale_account() -> anyhow::Result<()> {
 
     let mock_value_slot0 = AccountStorage::mock_value_slot0();
     let foreign_account_component = AccountComponent::new(
-        CodeBuilder::with_kernel_library(Arc::new(DefaultSourceManager::default()))
+        CodeBuilder::default()
             .compile_component_code("foreign_account_invalid", foreign_account_code_source)?,
         vec![mock_value_slot0.clone()],
     )?
@@ -1700,7 +1698,7 @@ async fn test_fpi_get_account_id() -> anyhow::Result<()> {
     ";
 
     let foreign_account_component = AccountComponent::new(
-        CodeBuilder::with_kernel_library(Arc::new(DefaultSourceManager::default()))
+        CodeBuilder::default()
             .compile_component_code("foreign_account", foreign_account_code_source)?,
         Vec::new(),
     )?
