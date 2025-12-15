@@ -9,13 +9,8 @@ use crate::block::{BlockHeader, BlockNumber};
 use crate::errors::ProposedBatchError;
 use crate::note::{NoteId, NoteInclusionProof};
 use crate::transaction::{
-    InputNoteCommitment,
-    InputNotes,
-    OrderedTransactionHeaders,
-    OutputNote,
-    PartialBlockchain,
-    ProvenTransaction,
-    TransactionHeader,
+    InputNoteCommitment, InputNotes, OrderedTransactionHeaders, OutputNote, PartialBlockchain,
+    ProvenTransaction, TransactionHeader,
 };
 use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 use crate::{MAX_ACCOUNTS_PER_BATCH, MAX_INPUT_NOTES_PER_BATCH, MAX_OUTPUT_NOTES_PER_BATCH};
@@ -436,6 +431,7 @@ mod tests {
     use crate::account::delta::AccountUpdateDetails;
     use crate::account::{AccountIdVersion, AccountStorageMode, AccountType};
     use crate::asset::FungibleAsset;
+    use crate::transaction::OutputNotes;
     use crate::transaction::{InputNoteCommitment, OutputNote};
 
     #[test]
@@ -477,14 +473,17 @@ mod tests {
         let expiration_block_num = reference_block_header.block_num() + 1;
         let proof = ExecutionProof::new_dummy();
 
+        let input_notes = InputNotes::new(Vec::<InputNoteCommitment>::new()).unwrap();
+        let output_notes = OutputNotes::new(Vec::<OutputNote>::new()).unwrap();
+
         let tx = ProvenTransaction::new(
             account_id,
             initial_account_commitment,
             final_account_commitment,
             account_delta_commitment,
             AccountUpdateDetails::Private,
-            Vec::<InputNoteCommitment>::new(),
-            Vec::<OutputNote>::new(),
+            input_notes,
+            output_notes,
             block_num,
             block_ref,
             FungibleAsset::mock(100).unwrap_fungible(),
