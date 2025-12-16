@@ -47,7 +47,6 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
         AccountState::Exists,
     )?;
 
-
     // CREATE AGGLAYER FAUCET ACCOUNT (with agglayer_faucet component)
     // --------------------------------------------------------------------------------------------
     use miden_lib::account::faucets::NetworkFungibleFaucet;
