@@ -193,9 +193,9 @@ impl AccountComponent {
         procedures
     }
 
-    /// Returns the digest of the procedure with the specified name, or `None` if it was not found
+    /// Returns the digest of the procedure with the specified path, or `None` if it was not found
     /// in this component's library or its library path is malformed.
-    pub fn get_procedure_root_by_name(&self, proc_name: impl AsRef<Path>) -> Option<Word> {
+    pub fn get_procedure_root_by_path(&self, proc_name: impl AsRef<Path>) -> Option<Word> {
         self.code.as_library().get_procedure_root_by_path(proc_name)
     }
 

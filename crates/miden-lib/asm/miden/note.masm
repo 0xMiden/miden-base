@@ -39,6 +39,10 @@ pub proc compute_inputs_commitment
     # => [inputs_ptr, num_inputs]
 
     # compute the inputs commitment
+    #
+    # TODO: refactor the hash computation process as part of the
+    # https://github.com/0xMiden/miden-base/issues/2036 and
+    # https://github.com/0xMiden/miden-base/issues/2129
     exec.rpo256::pad_and_hash_elements
     # => [INPUTS_COMMITMENT]
 end

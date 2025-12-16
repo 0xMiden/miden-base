@@ -393,8 +393,6 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
     advice_map.insert(multisig_config_hash, config_and_pubkeys_vector);
 
     // Create a transaction script that calls the update_signers procedure
-    //
-    // TODO: use proper names for the components to be able to use their procs
     let tx_script_code = "
         begin
             call.::rpo_falcon_512_multisig::update_signers_and_threshold

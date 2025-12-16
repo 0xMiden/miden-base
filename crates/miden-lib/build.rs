@@ -138,13 +138,11 @@ fn main() -> Result<()> {
 /// - src/transaction/procedures/kernel_v0.rs -> contains the kernel procedures table.
 fn compile_tx_kernel(source_dir: &Path, target_dir: &Path) -> Result<Assembler> {
     let shared_utils_path = std::path::Path::new(ASM_DIR).join(SHARED_UTILS_DIR);
+    let kernel_path = miden_assembly::Path::kernel_path();
 
     let mut assembler = build_assembler(None)?;
     // add the shared util modules to the kernel lib under the ::$kernel::util namespace
-    assembler.compile_and_statically_link_from_dir(
-        &shared_utils_path,
-        miden_assembly::Path::kernel_path(),
-    )?;
+    assembler.compile_and_statically_link_from_dir(&shared_utils_path, kernel_path)?;
 
     // assemble the kernel library and write it to the "tx_kernel.masl" file
     let kernel_lib = assembler
@@ -161,14 +159,8 @@ fn compile_tx_kernel(source_dir: &Path, target_dir: &Path) -> Result<Assembler> 
     // assemble the kernel program and write it to the "tx_kernel.masb" file
     let mut main_assembler = assembler.clone();
     // add the shared util modules to the kernel lib under the ::$kernel::util namespace
-    main_assembler.compile_and_statically_link_from_dir(
-        &shared_utils_path,
-        miden_assembly::Path::kernel_path(),
-    )?;
-    main_assembler.compile_and_statically_link_from_dir(
-        source_dir.join("lib"),
-        miden_assembly::Path::kernel_path(),
-    )?;
+    main_assembler.compile_and_statically_link_from_dir(&shared_utils_path, kernel_path)?;
+    main_assembler.compile_and_statically_link_from_dir(source_dir.join("lib"), kernel_path)?;
 
     let main_file_path = source_dir.join("main.masm");
     let kernel_main = main_assembler.clone().assemble_program(main_file_path)?;
@@ -187,13 +179,11 @@ fn compile_tx_kernel(source_dir: &Path, target_dir: &Path) -> Result<Assembler> 
         // be hidden when using KernelLibrary (api.masm)
 
         // add the shared util modules to the kernel lib under the ::$kernel::util namespace
-        kernel_lib_assembler.compile_and_statically_link_from_dir(
-            &shared_utils_path,
-            miden_assembly::Path::kernel_path(),
-        )?;
+        kernel_lib_assembler
+            .compile_and_statically_link_from_dir(&shared_utils_path, kernel_path)?;
 
         let test_lib = kernel_lib_assembler
-            .assemble_library_from_dir(source_dir.join("lib"), miden_assembly::Path::kernel_path())
+            .assemble_library_from_dir(source_dir.join("lib"), kernel_path)
             .unwrap();
 
         let masb_file_path =
@@ -233,7 +223,7 @@ fn generate_kernel_proc_hash_file(kernel: KernelLibrary) -> Result<()> {
     let to_exclude = BTreeSet::from_iter(["exec_kernel_proc"]);
     let offsets_filename = Path::new(ASM_DIR).join(ASM_MIDEN_DIR).join("kernel_proc_offsets.masm");
     let offsets = parse_proc_offsets(&offsets_filename)?;
-    std::println!("offsets: {:?}", offsets);
+
     let generated_procs: BTreeMap<usize, String> = module_info
         .procedures()
         .filter(|(_, proc_info)| !to_exclude.contains::<str>(proc_info.name.as_ref()))
