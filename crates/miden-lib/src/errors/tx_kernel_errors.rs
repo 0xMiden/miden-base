@@ -65,6 +65,8 @@ pub const ERR_ACCOUNT_TOO_MANY_STORAGE_SLOTS: MasmError = MasmError::from_static
 /// Error Message: "storage slot with the provided name does not exist"
 pub const ERR_ACCOUNT_UNKNOWN_STORAGE_SLOT_NAME: MasmError = MasmError::from_static_str("storage slot with the provided name does not exist");
 
+/// Error Message: "auth procedure has been called from outside the epilogue"
+pub const ERR_EPILOGUE_AUTH_PROCEDURE_CALLED_FROM_WRONG_CONTEXT: MasmError = MasmError::from_static_str("auth procedure has been called from outside the epilogue");
 /// Error Message: "executed transaction neither changed the account state, nor consumed any notes"
 pub const ERR_EPILOGUE_EXECUTED_TRANSACTION_IS_EMPTY: MasmError = MasmError::from_static_str("executed transaction neither changed the account state, nor consumed any notes");
 /// Error Message: "nonce cannot be 0 after an account-creating transaction"

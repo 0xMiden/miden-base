@@ -10,9 +10,6 @@ use crate::errors::MasmError;
 // NOTE SCRIPT ERRORS
 // ================================================================================================
 
-/// Error Message: "auth procedure had been called from outside the epilogue"
-pub const ERR_AUTH_PROCEDURE_CALLED_FROM_WRONG_CONTEXT: MasmError = MasmError::from_static_str("auth procedure had been called from outside the epilogue");
-
 /// Error Message: "burn requires exactly 1 note asset"
 pub const ERR_BASIC_FUNGIBLE_BURN_WRONG_NUMBER_OF_ASSETS: MasmError = MasmError::from_static_str("burn requires exactly 1 note asset");
 
