@@ -1547,6 +1547,7 @@ dependencies = [
  "fs-err",
  "miden-assembly",
  "miden-core",
+ "miden-lib",
  "miden-objects",
  "miden-processor",
  "miden-stdlib",

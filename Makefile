@@ -108,6 +108,11 @@ check: ## Check all targets and features for errors without code generation
 check-no-std: ## Check the no-std target without any features for errors without code generation
 	$(BUILD_GENERATED_FILES_IN_SRC) cargo check --no-default-features --target wasm32-unknown-unknown --workspace --lib
 
+
+.PHONY: check-features
+check-features: ## Checks all feature combinations compile without warnings using cargo-hack
+	@scripts/check-features.sh
+
 # --- building ------------------------------------------------------------------------------------
 
 .PHONY: build
