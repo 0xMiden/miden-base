@@ -164,8 +164,8 @@ async fn test_update_ger_flow() -> anyhow::Result<()> {
 
     // Verify GER values and index were updated in bridge account storage
     let account_delta = executed_transaction.account_delta();
-    verify_ger_values_stored(&account_delta, &setup.ger_storage_slot_name, ger_value_u32s)?;
-    verify_ger_index_stored(&account_delta, &setup.ger_storage_slot_name, ger_index)?;
+    verify_ger_values_stored(account_delta, &setup.ger_storage_slot_name, ger_value_u32s)?;
+    verify_ger_index_stored(account_delta, &setup.ger_storage_slot_name, ger_index)?;
 
     Ok(())
 }
@@ -257,7 +257,7 @@ async fn test_update_ger_monotonic_consumption() -> anyhow::Result<()> {
 
     // Verify first GER index was stored
     let account_delta_1 = executed_transaction_1.account_delta();
-    verify_ger_index_stored(&account_delta_1, &ger_storage_slot_name, ger_index_1)?;
+    verify_ger_index_stored(account_delta_1, &ger_storage_slot_name, ger_index_1)?;
 
     // Create a new block after consuming the first note
     mock_chain.add_pending_executed_transaction(&executed_transaction_1)?;
@@ -271,7 +271,7 @@ async fn test_update_ger_monotonic_consumption() -> anyhow::Result<()> {
 
     // Verify second GER index was stored
     let account_delta_2 = executed_transaction_2.account_delta();
-    verify_ger_index_stored(&account_delta_2, &ger_storage_slot_name, ger_index_2)?;
+    verify_ger_index_stored(account_delta_2, &ger_storage_slot_name, ger_index_2)?;
 
     Ok(())
 }
