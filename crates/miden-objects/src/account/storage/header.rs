@@ -1,6 +1,7 @@
 use alloc::string::ToString;
 use alloc::vec::Vec;
 
+use super::map::EMPTY_STORAGE_MAP_ROOT;
 use super::{AccountStorage, Felt, StorageSlotType, Word};
 use crate::account::{StorageSlot, StorageSlotId, StorageSlotName};
 use crate::crypto::SequentialCommit;
@@ -16,44 +17,6 @@ use crate::{AccountError, FieldElement, ZERO};
 // ACCOUNT STORAGE HEADER
 // ================================================================================================
 
-/// The header of a [`StorageSlot`], storing only the slot ID, slot type and value of the slot.
-///
-/// The stored value differs based on the slot type:
-/// - [`StorageSlotType::Value`]: The value of the slot itself.
-/// - [`StorageSlotType::Map`]: The root of the SMT that represents the storage map.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct StorageSlotHeader {
-    id: StorageSlotId,
-    r#type: StorageSlotType,
-    value: Word,
-}
-
-impl StorageSlotHeader {
-    /// Returns a new instance of storage slot header from the provided storage slot ID, type and
-    /// value.
-    pub(crate) fn new(id: StorageSlotId, r#type: StorageSlotType, value: Word) -> Self {
-        Self { id, r#type, value }
-    }
-
-    /// Returns this storage slot header as field elements.
-    ///
-    /// This is done by converting this storage slot into 8 field elements as follows:
-    /// ```text
-    /// [[0, slot_type, slot_id_suffix, slot_id_prefix], SLOT_VALUE]
-    /// ```
-    pub(crate) fn to_elements(&self) -> [Felt; StorageSlot::NUM_ELEMENTS] {
-        let mut elements = [ZERO; StorageSlot::NUM_ELEMENTS];
-        elements[0..4].copy_from_slice(&[
-            Felt::ZERO,
-            self.r#type.as_felt(),
-            self.id.suffix(),
-            self.id.prefix(),
-        ]);
-        elements[4..8].copy_from_slice(self.value.as_elements());
-        elements
-    }
-}
-
 /// The header of an [`AccountStorage`], storing only the slot name, slot type and value of each
 /// storage slot.
 ///
@@ -62,7 +25,7 @@ impl StorageSlotHeader {
 /// - [`StorageSlotType::Map`]: The root of the SMT that represents the storage map.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AccountStorageHeader {
-    slots: Vec<(StorageSlotName, StorageSlotType, Word)>,
+    slots: Vec<StorageSlotHeader>,
 }
 
 impl AccountStorageHeader {
@@ -77,39 +40,60 @@ impl AccountStorageHeader {
     /// - The number of provided slots is greater than [`AccountStorage::MAX_NUM_STORAGE_SLOTS`].
     /// - The slots are not sorted by [`StorageSlotId`].
     /// - There are multiple storage slots with the same [`StorageSlotName`].
-    pub fn new(slots: Vec<(StorageSlotName, StorageSlotType, Word)>) -> Result<Self, AccountError> {
+    pub fn new(slots: Vec<StorageSlotHeader>) -> Result<Self, AccountError> {
         if slots.len() > AccountStorage::MAX_NUM_STORAGE_SLOTS {
             return Err(AccountError::StorageTooManySlots(slots.len() as u64));
         }
 
-        if !slots.is_sorted_by_key(|(slot_name, ..)| slot_name.id()) {
+        if !slots.is_sorted_by_key(|slot| slot.id()) {
             return Err(AccountError::UnsortedStorageSlots);
         }
 
         // Check for slot name uniqueness by checking each neighboring slot's IDs. This is
         // sufficient because the slots are sorted.
         for slots in slots.windows(2) {
-            if slots[0].0.id() == slots[1].0.id() {
-                return Err(AccountError::DuplicateStorageSlotName(slots[0].0.clone()));
+            if slots[0].id() == slots[1].id() {
+                return Err(AccountError::DuplicateStorageSlotName(slots[0].name().clone()));
             }
         }
 
         Ok(Self { slots })
     }
 
+    /// Returns a new instance of account storage header initialized with the provided slot tuples.
+    ///
+    /// This is a convenience method that converts tuples to [`StorageSlotHeader`]s.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The number of provided slots is greater than [`AccountStorage::MAX_NUM_STORAGE_SLOTS`].
+    /// - The slots are not sorted by [`StorageSlotId`].
+    #[cfg(any(feature = "testing", test))]
+    pub fn from_tuples(
+        slots: Vec<(StorageSlotName, StorageSlotType, Word)>,
+    ) -> Result<Self, AccountError> {
+        let slots = slots
+            .into_iter()
+            .map(|(name, slot_type, value)| StorageSlotHeader::new(name, slot_type, value))
+            .collect();
+
+        Self::new(slots)
+    }
+
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
     /// Returns an iterator over the storage header slots.
-    pub fn slots(&self) -> impl Iterator<Item = (&StorageSlotName, &StorageSlotType, &Word)> {
-        self.slots.iter().map(|(name, r#type, value)| (name, r#type, value))
+    pub fn slots(&self) -> impl Iterator<Item = &StorageSlotHeader> {
+        self.slots.iter()
     }
 
     /// Returns an iterator over the storage header map slots.
-    pub fn map_slot_roots(&self) -> impl Iterator<Item = Word> {
-        self.slots.iter().filter_map(|(_, slot_type, value)| match slot_type {
+    pub fn map_slot_roots(&self) -> impl Iterator<Item = Word> + '_ {
+        self.slots.iter().filter_map(|slot| match slot.slot_type() {
             StorageSlotType::Value => None,
-            StorageSlotType::Map => Some(*value),
+            StorageSlotType::Map => Some(slot.value()),
         })
     }
 
@@ -119,31 +103,21 @@ impl AccountStorageHeader {
         self.slots.len() as u8
     }
 
-    /// Returns a slot contained in the storage header at a given index.
+    /// Returns the storage slot header for the slot with the given name.
     ///
-    /// Returns `None` if a slot with the provided slot ID does not exist.
+    /// Returns `None` if a slot with the provided name does not exist.
     pub fn find_slot_header_by_name(
         &self,
         slot_name: &StorageSlotName,
-    ) -> Option<(&StorageSlotType, &Word)> {
+    ) -> Option<&StorageSlotHeader> {
         self.find_slot_header_by_id(slot_name.id())
-            .map(|(_slot_name, slot_type, slot_value)| (slot_type, slot_value))
     }
 
-    /// Returns a slot contained in the storage header at a given index.
+    /// Returns the storage slot header for the slot with the given ID.
     ///
     /// Returns `None` if a slot with the provided slot ID does not exist.
-    pub fn find_slot_header_by_id(
-        &self,
-        slot_id: StorageSlotId,
-    ) -> Option<(&StorageSlotName, &StorageSlotType, &Word)> {
-        self.slots.iter().find_map(|(slot_name, slot_type, slot_value)| {
-            if slot_name.id() == slot_id {
-                Some((slot_name, slot_type, slot_value))
-            } else {
-                None
-            }
-        })
+    pub fn find_slot_header_by_id(&self, slot_id: StorageSlotId) -> Option<&StorageSlotHeader> {
+        self.slots.iter().find(|slot| slot.id() == slot_id)
     }
 
     /// Indicates whether the slot with the given `name` is a map slot.
@@ -156,7 +130,7 @@ impl AccountStorageHeader {
         match self
             .find_slot_header_by_name(name)
             .ok_or(AccountError::StorageSlotNameNotFound { slot_name: name.clone() })?
-            .0
+            .slot_type()
         {
             StorageSlotType::Map => Ok(true),
             StorageSlotType::Value => Ok(false),
@@ -195,11 +169,7 @@ impl SequentialCommit for AccountStorageHeader {
     type Commitment = Word;
 
     fn to_elements(&self) -> Vec<Felt> {
-        self.slots()
-            .flat_map(|(slot_name, slot_type, slot_value)| {
-                StorageSlotHeader::new(slot_name.id(), *slot_type, *slot_value).to_elements()
-            })
-            .collect()
+        self.slots().flat_map(|slot| slot.to_elements()).collect()
     }
 }
 
@@ -217,8 +187,112 @@ impl Serializable for AccountStorageHeader {
 impl Deserializable for AccountStorageHeader {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let len = source.read_u8()?;
-        let slots = source.read_many(len as usize)?;
+        let slots: Vec<StorageSlotHeader> = source.read_many(len as usize)?;
         Self::new(slots).map_err(|err| DeserializationError::InvalidValue(err.to_string()))
+    }
+}
+
+// STORAGE SLOT HEADER
+// ================================================================================================
+
+/// The header of a [`StorageSlot`], storing only the slot name (or ID), slot type and value of the
+/// slot.
+///
+/// The stored value differs based on the slot type:
+/// - [`StorageSlotType::Value`]: The value of the slot itself.
+/// - [`StorageSlotType::Map`]: The root of the SMT that represents the storage map.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StorageSlotHeader {
+    name: StorageSlotName,
+    r#type: StorageSlotType,
+    value: Word,
+}
+
+impl StorageSlotHeader {
+    // CONSTRUCTORS
+    // --------------------------------------------------------------------------------------------
+
+    /// Returns a new instance of storage slot header.
+    pub fn new(name: StorageSlotName, r#type: StorageSlotType, value: Word) -> Self {
+        Self { name, r#type, value }
+    }
+
+    /// Returns a new instance of storage slot header with an empty value slot.
+    pub fn with_empty_value(name: StorageSlotName) -> StorageSlotHeader {
+        StorageSlotHeader::new(name, StorageSlotType::Value, Word::default())
+    }
+
+    /// Returns a new instance of storage slot header with an empty map slot.
+    pub fn with_empty_map(name: StorageSlotName) -> StorageSlotHeader {
+        StorageSlotHeader::new(name, StorageSlotType::Map, EMPTY_STORAGE_MAP_ROOT)
+    }
+
+    // ACCESSORS
+    // --------------------------------------------------------------------------------------------
+
+    /// Returns a reference to the slot name.
+    pub fn name(&self) -> &StorageSlotName {
+        &self.name
+    }
+
+    /// Returns the slot ID.
+    pub fn id(&self) -> StorageSlotId {
+        self.name.id()
+    }
+
+    /// Returns the slot type.
+    pub fn slot_type(&self) -> StorageSlotType {
+        self.r#type
+    }
+
+    /// Returns the slot value.
+    pub fn value(&self) -> Word {
+        self.value
+    }
+
+    /// Returns this storage slot header as field elements.
+    ///
+    /// This is done by converting this storage slot into 8 field elements as follows:
+    /// ```text
+    /// [[0, slot_type, slot_id_suffix, slot_id_prefix], SLOT_VALUE]
+    /// ```
+    pub(crate) fn to_elements(&self) -> [Felt; StorageSlot::NUM_ELEMENTS] {
+        let id = self.id();
+        let mut elements = [ZERO; StorageSlot::NUM_ELEMENTS];
+        elements[0..4].copy_from_slice(&[
+            Felt::ZERO,
+            self.r#type.as_felt(),
+            id.suffix(),
+            id.prefix(),
+        ]);
+        elements[4..8].copy_from_slice(self.value.as_elements());
+        elements
+    }
+}
+
+impl From<&StorageSlot> for StorageSlotHeader {
+    fn from(slot: &StorageSlot) -> Self {
+        StorageSlotHeader::new(slot.name().clone(), slot.slot_type(), slot.value())
+    }
+}
+
+// SERIALIZATION
+// ================================================================================================
+
+impl Serializable for StorageSlotHeader {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        self.name.write_into(target);
+        self.r#type.write_into(target);
+        self.value.write_into(target);
+    }
+}
+
+impl Deserializable for StorageSlotHeader {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let name = StorageSlotName::read_from(source)?;
+        let slot_type = StorageSlotType::read_from(source)?;
+        let value = Word::read_from(source)?;
+        Ok(Self::new(name, slot_type, value))
     }
 }
 
@@ -251,7 +325,7 @@ mod tests {
         ];
         slots.sort_unstable_by_key(|(slot_name, ..)| slot_name.id());
 
-        let expected_header = AccountStorageHeader { slots };
+        let expected_header = AccountStorageHeader::from_tuples(slots).unwrap();
         let account_storage = AccountStorage::mock();
 
         assert_eq!(expected_header, AccountStorageHeader::from(&account_storage))
