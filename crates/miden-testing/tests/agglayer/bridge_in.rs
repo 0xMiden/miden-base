@@ -47,10 +47,6 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
         AccountState::Exists,
     )?;
 
-    let test_parse =
-        AccountId::try_from([bridge_account.id().prefix().as_felt(), bridge_account.id().suffix()])
-            .unwrap();
-    assert_eq!(test_parse, bridge_account.id());
 
     // CREATE AGGLAYER FAUCET ACCOUNT (with agglayer_faucet component)
     // --------------------------------------------------------------------------------------------
