@@ -1,41 +1,35 @@
-use.agglayer::bridge_out
+use.agglayer::bridge_in
 use.miden::active_account
-use.miden::active_note
-use.miden::contracts::faucets::network_fungible
-use.miden::native_account
-use.miden::note
-use.miden::output_note
+use.miden::contracts::faucets
 use.miden::tx
-use.std::sys
 
+# CONSTANTS
+# =================================================================================================
+
+# The slot in this component's storage layout where the bridge account ID is stored.
 const.BRIDGE_ID_IDX=word("miden::agglayer::faucet")
 
-#! Custom agglayer faucet component that combines network faucet functionality
-#! with bridge validation via Foreign Procedure Invocation (FPI).
-#!
-#! This component provides a "claim" procedure that:
-#! 1. Extracts CLAIM note details
-#! 2. Validates the claim against a bridge MMR account via FPI
-#! 3. If validation passes, mints assets using network faucet functionality
+# ERRORS
+# =================================================================================================
+const.ERR_INVALID_PROOF="invalid proof"
 
-#! Validates a CLAIM note against the bridge MMR account via FPI.
+#! Validates a CLAIM note's rollup exit root Merkle Proof against the agglayer bridge via FPI.
 #!
-#! This procedure performs a foreign procedure invocation to the bridge MMR account
-#! to validate that the CLAIM note details are consistent with the MMR state.
+#! This procedure performs a foreign procedure invocation to the agglayer bridge to validate
+#! that the CLAIM note's rollup exit root Merkle Proof is valid.
 #!
 #! Inputs:  []
 #! Outputs: []
 #!
-#! Where:
-#! - bridge_account_id_prefix, bridge_account_id_suffix: ID of the bridge MMR account
-#! - ASSET: The asset being claimed
-#! - validation_result: 1 if valid, 0 if invalid
+#! Panics if:
+#! - the bridge account ID is not properly configured in storage.
+#! - the foreign procedure invocation fails.
+#! - the claim proof validation fails.
 #!
 #! Invocation: exec
 proc validate_claim_via_fpi
-
     # get check_claim_proof root
-    procref.bridge_out::check_claim_proof
+    procref.bridge_in::check_claim_proof
     # => [MAST_ROOT]
 
     push.BRIDGE_ID_IDX[0..2]
@@ -44,7 +38,7 @@ proc validate_claim_via_fpi
     # get bridge account id
     exec.active_account::get_item
     # => [bridge_account_id_prefix, bridge_account_id_suffix, 0, 0, MAST_ROOT]
-    
+
     movup.2 drop movup.2 drop
     # => [bridge_account_id_prefix, bridge_account_id_suffix, MAST_ROOT]
 
@@ -52,56 +46,55 @@ proc validate_claim_via_fpi
     exec.tx::execute_foreign_procedure
     # => [validation_result]
 
-    push.333 debug.stack drop
-
-    assert.err="invalid proof" drop
+    assert.err=ERR_INVALID_PROOF drop
     # => []
 end
 
-#! Main claim procedure that processes CLAIM notes.
+#! Distributes freshly minted fungible assets to the provided recipient by creating a note.
 #!
-#! This procedure:
-#! 1. Extracts the asset and bridge details from the CLAIM note
-#! 2. Validates the claim against the bridge MMR account via FPI
-#! 3. If validation passes, creates a MINT note for the asset
+#! This procedure validates the rollup exit root Merkle Proof via FPI against the agglayer bridge,
+#! and if validation passes, mints the asset and creates an output note for the recipient.
 #!
-#! Inputs:  []
-#! Outputs: []
+#! Inputs:  [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
+#! Outputs: [pad(16)]
+#!
+#! Where:
+#! - amount is the amount to be minted and sent.
+#! - tag is the tag to be included in the note.
+#! - aux is the auxiliary data to be included in the note.
+#! - note_type is the type of the note that holds the asset.
+#! - execution_hint is the execution hint of the note that holds the asset.
+#! - RECIPIENT is the recipient of the asset, i.e.,
+#!   hash(hash(hash(serial_num, [0; 4]), script_root), input_commitment).
+#!
+#! Panics if:
+#! - the rollup exit root Merkle Proof validation via FPI fails.
+#! - any of the validations in faucets::distribute fail.
 #!
 #! Invocation: call
 export.claim
-    # Get the CLAIM note assets
+    exec.faucets::distribute
+    # => [pad(16)]
 
-    # validate CLAIM note proof
-    # panics if invalid
+    # validate CLAIM note proof (stubbed out)
     exec.validate_claim_via_fpi
-    # => []
-
-    # TODO: output note
-    # exec.distribute
+    # => [pad(16)]
 end
 
-#! Distributes fungible assets by creating MINT notes.
+#! Burns the fungible asset from the active note.
 #!
-#! This procedure wraps the network faucet's distribute functionality
-#! and can be called directly for standard minting operations.
+#! This procedure retrieves the asset from the active note and burns it. The note must contain
+#! exactly one asset, which must be a fungible asset issued by this faucet.
 #!
-#! Inputs:  [amount, tag, aux, note_type, execution_hint, RECIPIENT]
-#! Outputs: [note_idx]
+#! Inputs:  [pad(16)]
+#! Outputs: [pad(16)]
+#!
+#! Panics if:
+#! - the procedure is not called from a note context (active_note::get_assets will fail).
+#! - the note does not contain exactly one asset.
+#! - the transaction is executed against an account which is not a fungible asset faucet.
+#! - the transaction is executed against a faucet which is not the origin of the specified asset.
+#! - the amount about to be burned is greater than the outstanding supply of the asset.
 #!
 #! Invocation: call
-export.distribute
-    call.network_fungible::distribute
-end
-
-#! Burns fungible assets.
-#!
-#! This procedure wraps the network faucet's burn functionality.
-#!
-#! Inputs:  [ASSET]
-#! Outputs: [ASSET]
-#!
-#! Invocation: call
-export.burn
-    call.network_fungible::burn
-end
+export.faucets::burn

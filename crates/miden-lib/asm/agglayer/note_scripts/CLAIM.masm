@@ -1,11 +1,82 @@
 use.agglayer::agglayer_faucet -> agg_faucet
+use.miden::note
+use.miden::active_note
 
+# CONSTANTS
+# =================================================================================================
+
+const.CLAIM_NOTE_MIN_NUM_INPUTS_PUBLIC=12
+const.OUTPUT_NOTE_TYPE_PUBLIC=1
+const.OUTPUT_PUBLIC_NOTE_INPUTS_ADDR=12
+const.OUTPUT_PUBLIC_NOTE_INPUTS_LEN_MEM_ADDR=0
+
+# ERRORS
+# =================================================================================================
+const.ERR_CLAIM_WRONG_NUMBER_OF_INPUTS="CLAIM script expects 12+ inputs for public output notes"
+
+#! Agglayer Faucet CLAIM script: claims assets by calling the agglayer faucet's claim function.
+#! This note is intended to be executed against an agglayer faucet account.
+#!
+#! Requires that the account exposes:
+#! - agglayer::agglayer_faucet::claim procedure.
+#!
+#! Inputs:  [ARGS, pad(12)]
+#! Outputs: [pad(16)]
+#!
+#! The CLAIM note only supports public output notes and requires 12+ inputs:
+#! - execution_hint: Execution hint for the output note
+#! - aux: Auxiliary data for the output note
+#! - tag: Note tag for the output note
+#! - amount: The amount to claim
+#! - SCRIPT_ROOT: Script root of the output note (4 elements)
+#! - SERIAL_NUM: Serial number of the output note (4 elements)
+#! - [INPUTS]: Variable-length inputs for the output note (Vec<Felt>)
+#!             The number of output note inputs = num_claim_note_inputs - 12
+#!
+#! Panics if:
+#! - account does not expose claim procedure.
+#! - the number of inputs is less than 12.
 begin
     dropw
     # => [pad(16)]
+    # Load note inputs into memory starting at address 0
+    push.0 exec.active_note::get_inputs
+    # => [total_inputs, inputs_ptr, pad(16)]
 
-    push.111 debug.stack drop
+    u32assert2.err=ERR_CLAIM_WRONG_NUMBER_OF_INPUTS
+    # => [total_inputs, inputs_ptr, pad(16)]
+
+    movdn.9 drop
+    # => [EMPTY_WORD, EMPTY_WORD, total_inputs, pad(8)]
+
+    mem_loadw_be.4
+    # => [SCRIPT_ROOT, EMPTY_WORD, total_inputs, pad(8)]
+
+    swapw mem_loadw_be.8
+    # => [SERIAL_NUM, SCRIPT_ROOT, total_inputs, pad(8)]
+
+    # compute variable length note inputs for the output note
+    movup.8 sub.CLAIM_NOTE_MIN_NUM_INPUTS_PUBLIC
+    # => [num_output_note_inputs, SERIAL_NUM, SCRIPT_ROOT, pad(8)]
+
+    push.OUTPUT_PUBLIC_NOTE_INPUTS_ADDR
+    # => [inputs_ptr = 12, num_output_note_inputs, SERIAL_NUM, SCRIPT_ROOT, pad(8)]
+
+    exec.note::build_recipient
+    # => [RECIPIENT, pad(12)]
+
+    swapw mem_loadw_be.0
+    # => [amount, tag, aux, execution_hint, RECIPIENT, pad(8)]
+
+    push.OUTPUT_NOTE_TYPE_PUBLIC
+    # => [note_type, amount, tag, aux, execution_hint, RECIPIENT, pad(8)]
+
+    movdn.3
+    # => [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
 
     call.agg_faucet::claim
+    # => [pad(17))]
 
+    drop
+    # => [pad(16)]
 end

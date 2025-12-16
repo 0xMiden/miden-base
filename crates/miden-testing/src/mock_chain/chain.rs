@@ -714,7 +714,7 @@ impl MockChain {
 
     /// Gets foreign account inputs to execute FPI transactions.
     ///
-    /// Only used internally and so does not need to be public.
+    /// Used in tests to get foreign account inputs for FPI calls.
     pub fn get_foreign_account_inputs(
         &self,
         account_id: AccountId,

@@ -1,17 +1,7 @@
 extern crate alloc;
 
-use miden_lib::agglayer::{bridge_in_component, update_ger_script};
+use miden_lib::agglayer::{bridge_in_component, create_update_ger_note};
 use miden_objects::account::{Account, AccountStorageMode, StorageSlot, StorageSlotName};
-use miden_objects::note::{
-    Note,
-    NoteAssets,
-    NoteExecutionHint,
-    NoteInputs,
-    NoteMetadata,
-    NoteRecipient,
-    NoteTag,
-    NoteType,
-};
 use miden_objects::transaction::OutputNote;
 use miden_objects::{Felt, LexicographicWord, Word};
 use miden_testing::{AccountState, Auth, MockChain};
@@ -72,33 +62,6 @@ impl UpdateGerTestSetup {
             mock_chain,
         })
     }
-}
-
-/// Creates an UPDATE_GER note with the given parameters
-fn create_update_ger_note(
-    sender_id: miden_objects::account::AccountId,
-    ger_values: [u32; 8],
-    ger_index: u32,
-    serial_num: Word,
-) -> anyhow::Result<Note> {
-    let mut input_values = Vec::new();
-    for &value in &ger_values {
-        input_values.push(Felt::new(value as u64));
-    }
-    input_values.push(Felt::new(ger_index as u64));
-
-    let inputs = NoteInputs::new(input_values)?;
-    let tag = NoteTag::for_local_use_case(0, 0).unwrap();
-    let note_metadata = NoteMetadata::new(
-        sender_id,
-        NoteType::Public,
-        tag,
-        NoteExecutionHint::always(),
-        Felt::new(0),
-    )?;
-    let note_assets = NoteAssets::new(vec![])?;
-    let note_recipient = NoteRecipient::new(serial_num, update_ger_script(), inputs);
-    Ok(Note::new(note_assets, note_metadata, note_recipient))
 }
 
 /// Verifies that the GER index is stored correctly in the account storage

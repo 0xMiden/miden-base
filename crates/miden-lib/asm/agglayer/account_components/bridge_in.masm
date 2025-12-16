@@ -2,6 +2,7 @@ use.miden::native_account
 use.miden::active_account
 use.miden::active_note
 use.miden::account_id
+use.agglayer::local_exit_tree
 
 const.GLOBAL_EXIT_ROOT_MAP=word("miden::agglayer::GER")
 const.BRIDGE_OPERATOR_SLOT=word("miden::agglayer::bridge_operator")
@@ -35,7 +36,6 @@ proc.is_authorized_operator
     movdn.2 drop drop
     # => [is_authorized]
 end
-
 
 proc.is_ger_update_monotonic
     # Stack: [incoming_ger_index]
@@ -73,7 +73,6 @@ proc.is_ger_update_monotonic
     dropw dropw
     # => []
 end
-
 
 #! Update Global Exit Root procedure
 #! This procedure handles updating the Global Exit Root in the bridge
@@ -123,4 +122,19 @@ pub proc update_ger
 
     dropw dropw dropw dropw
     # => []
+end
+
+#! Checks the validity of the GET proof
+#!
+#! Inputs:  []
+#! Outputs: [is_valid_claim_proof]
+#! 
+#! Invocation: exec
+pub proc check_claim_proof
+    exec.local_exit_tree::verify_claim_proof
+    # => [is_valid_claim_proof]
+
+    # truncate stack
+    swap drop
+    # => [is_valid_claim_proof]
 end
