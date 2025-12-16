@@ -216,7 +216,7 @@ pub fn asset_conversion_component(storage_slots: Vec<StorageSlot>) -> AccountCom
 /// # Errors
 /// Returns an error if note creation fails.
 pub fn create_claim_note<R: FeltRng>(
-    faucet_id: AccountId,
+    agg_faucet_id: AccountId,
     sender: AccountId,
     target_account_id: AccountId,
     amount: Felt,
@@ -228,14 +228,11 @@ pub fn create_claim_note<R: FeltRng>(
     let claim_script = claim_script();
     let serial_num = rng.draw_word();
 
-    // CLAIM notes are always public for network execution
     let note_type = NoteType::Public;
     let execution_hint = NoteExecutionHint::always();
 
-    // Create the output note tag for the target account
     let output_note_tag = NoteTag::from_account_id(target_account_id);
 
-    // Create CLAIM note inputs following the pattern from the test
     let claim_inputs = vec![
         Felt::new(0),                         // execution_hint (always = 0)
         aux,                                  // aux
@@ -254,10 +251,9 @@ pub fn create_claim_note<R: FeltRng>(
     ];
 
     let inputs = NoteInputs::new(claim_inputs)?;
-    let tag = NoteTag::from_account_id(faucet_id);
-
+    let tag = NoteTag::from_account_id(agg_faucet_id);
     let metadata = NoteMetadata::new(sender, note_type, tag, execution_hint, aux)?;
-    let assets = NoteAssets::new(vec![])?; // CLAIM notes have no initial assets
+    let assets = NoteAssets::new(vec![])?;
     let recipient = NoteRecipient::new(serial_num, claim_script, inputs);
 
     Ok(Note::new(assets, metadata, recipient))
