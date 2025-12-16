@@ -2,6 +2,7 @@ use.agglayer::bridge_out -> agglayer
 use.miden::account_id
 use.miden::active_account
 use.miden::active_note
+use.miden::note
 
 # CONSTANTS
 # =================================================================================================
@@ -13,6 +14,31 @@ const.B2AGG_NOTE_INPUTS_COUNT=6
 const.ERR_B2AGG_WRONG_NUMBER_OF_ASSETS="B2AGG script requires exactly 1 note asset"
 
 const.ERR_B2AGG_WRONG_NUMBER_OF_INPUTS="B2AGG script expects exactly 6 note inputs"
+
+const.ACTIVE_ACCOUNT_TAG_DOES_NOT_MATCH_TARGET="B2AGG note tag does not match active account ntx tag"
+
+# Verifies that the consuming account is the bridge contract by comparing note tags.
+# Panics if the B2AGG note's tag doesn't match the consuming account's network tag.
+#!
+#! Inputs: []
+#! Outputs: []
+proc assert_is_bridge
+    exec.active_note::get_metadata
+    # => [METADATA]
+    
+    drop swap drop swap drop
+    # => [b2agg_tag]
+
+    exec.active_account::get_id
+    # => [account_id_prefix, account_id_suffix, pad(16)]
+
+    exec.note::build_note_tag_for_network_account
+    # => [active_account_tag, b2agg_tag]
+
+    eq assert.err=ACTIVE_ACCOUNT_TAG_DOES_NOT_MATCH_TARGET
+    # => []
+end
+
 
 #! Bridge-to-AggLayer (B2AGG) note script: bridges assets from Miden to an AggLayer-connected chain.
 #!
@@ -57,6 +83,9 @@ begin
         exec.active_note::add_assets_to_account
         # => [pad(16)]
     else
+        exec.assert_is_bridge
+        # => [pad(16)]
+
         # Store note inputs -> mem[8..14]
         push.8 exec.active_note::get_inputs
         # => [num_inputs, dest_ptr, pad(16)]
