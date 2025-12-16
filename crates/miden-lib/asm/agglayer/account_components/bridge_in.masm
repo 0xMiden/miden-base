@@ -10,7 +10,6 @@ const.BRIDGE_OPERATOR_SLOT=word("miden::agglayer::bridge_operator")
 # 32 byte Global Exit Root stored across two Word values
 const.GER_UPPER_KEY=[0,0,0,0]
 const.GER_LOWER_KEY=[1,0,0,0]
-
 const.GER_INDEX_KEY=[2,0,0,0]
 
 # ERRORS
