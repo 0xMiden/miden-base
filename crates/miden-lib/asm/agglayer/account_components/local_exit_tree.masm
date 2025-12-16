@@ -119,11 +119,10 @@ pub proc add_asset_message
   # => []
 end
 
-#! Verifies the validity of the CLAIM bridge asset proof (stubbed implementation).
+#! Verifies the validity of the CLAIM note proof (stubbed implementation).
 #!
-#! This is a stubbed implementation that always returns 1 (true), indicating the proof is valid
-#! regardless of the input. The full implementation will verify the validity of the CLAIM bridge
-#! asset proof according to the protocol's requirements.
+#! This is a stubbed implementation that always returns 1 (true), indicating the
+#! proof is valid regardless of the input.
 #!
 #! Inputs:  [...]
 #! Outputs: [1] (currently always returns 1)
