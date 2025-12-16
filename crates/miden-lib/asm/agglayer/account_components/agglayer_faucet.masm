@@ -1,13 +1,7 @@
 use.agglayer::bridge_in
 use.miden::active_account
-use.miden::active_note
-use.miden::contracts::faucets::network_fungible
 use.miden::contracts::faucets
-use.miden::native_account
-use.miden::note
-use.miden::output_note
 use.miden::tx
-use.std::sys
 
 const.BRIDGE_ID_IDX=word("miden::agglayer::faucet")
 
