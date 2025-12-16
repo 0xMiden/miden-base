@@ -1,11 +1,23 @@
 use alloc::vec::Vec;
 
-use miden_objects::account::{AccountComponent, StorageSlot};
+use miden_objects::account::{AccountComponent, AccountId, StorageSlot};
 use miden_objects::assembly::Library;
-use miden_objects::note::NoteScript;
+use miden_objects::crypto::rand::FeltRng;
+use miden_objects::note::{
+    Note,
+    NoteAssets,
+    NoteExecutionHint,
+    NoteInputs,
+    NoteMetadata,
+    NoteRecipient,
+    NoteScript,
+    NoteTag,
+    NoteType,
+};
 use miden_objects::utils::Deserializable;
 use miden_objects::utils::sync::LazyLock;
 use miden_objects::vm::Program;
+use miden_objects::{Felt, NoteError, Word};
 
 pub mod utils;
 
@@ -184,4 +196,79 @@ pub fn asset_conversion_component(storage_slots: Vec<StorageSlot>) -> AccountCom
     AccountComponent::new(library, storage_slots)
         .expect("asset_conversion component should satisfy the requirements of a valid account component")
         .with_supports_all_types()
+}
+
+// AGGLAYER NOTE CREATION HELPERS
+// ================================================================================================
+
+/// Generates a CLAIM note - a note that instructs an agglayer faucet to validate and mint assets.
+///
+/// This script enables the creation of a PUBLIC note that, when consumed by an agglayer faucet,
+/// will validate the claim against a bridge MMR account via Foreign Procedure Invocation (FPI)
+/// and mint the specified amount of fungible assets to create a P2ID output note.
+///
+/// CLAIM notes are always PUBLIC for network execution and contain no assets initially.
+/// The agglayer faucet will mint assets and create the specified output note upon validation.
+///
+/// The passed-in `rng` is used to generate a serial number for the note. The note's tag
+/// is automatically set to the faucet's account ID for proper routing.
+///
+/// # Parameters
+/// - `faucet_id`: The account ID of the agglayer faucet that will process the claim
+/// - `sender`: The account ID of the note creator
+/// - `target_account_id`: The account ID that will receive the P2ID output note
+/// - `amount`: The amount of assets to be minted and transferred
+/// - `output_note_script`: The script for the output note (typically P2ID script)
+/// - `output_serial_num`: The serial number for the output note
+/// - `aux`: Auxiliary data for the CLAIM note
+/// - `rng`: Random number generator for creating the serial number
+///
+/// # Errors
+/// Returns an error if note creation fails.
+pub fn create_claim_note<R: FeltRng>(
+    faucet_id: AccountId,
+    sender: AccountId,
+    target_account_id: AccountId,
+    amount: Felt,
+    output_note_script: &NoteScript,
+    output_serial_num: Word,
+    aux: Felt,
+    rng: &mut R,
+) -> Result<Note, NoteError> {
+    let claim_script = claim_script();
+    let serial_num = rng.draw_word();
+
+    // CLAIM notes are always public for network execution
+    let note_type = NoteType::Public;
+    let execution_hint = NoteExecutionHint::always();
+
+    // Create the output note tag for the target account
+    let output_note_tag = NoteTag::from_account_id(target_account_id);
+
+    // Create CLAIM note inputs following the pattern from the test
+    let claim_inputs = vec![
+        Felt::new(0),                         // execution_hint (always = 0)
+        aux,                                  // aux
+        Felt::from(output_note_tag),          // tag
+        amount,                               // amount
+        output_note_script.root()[0],         // SCRIPT_ROOT[0]
+        output_note_script.root()[1],         // SCRIPT_ROOT[1]
+        output_note_script.root()[2],         // SCRIPT_ROOT[2]
+        output_note_script.root()[3],         // SCRIPT_ROOT[3]
+        output_serial_num[0],                 // SERIAL_NUM[0]
+        output_serial_num[1],                 // SERIAL_NUM[1]
+        output_serial_num[2],                 // SERIAL_NUM[2]
+        output_serial_num[3],                 // SERIAL_NUM[3]
+        target_account_id.suffix(),           // P2ID input: suffix
+        target_account_id.prefix().as_felt(), // P2ID input: prefix
+    ];
+
+    let inputs = NoteInputs::new(claim_inputs)?;
+    let tag = NoteTag::from_account_id(faucet_id);
+
+    let metadata = NoteMetadata::new(sender, note_type, tag, execution_hint, aux)?;
+    let assets = NoteAssets::new(vec![])?; // CLAIM notes have no initial assets
+    let recipient = NoteRecipient::new(serial_num, claim_script, inputs);
+
+    Ok(Note::new(assets, metadata, recipient))
 }

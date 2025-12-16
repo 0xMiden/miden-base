@@ -1,7 +1,7 @@
 extern crate alloc;
 
 use miden_lib::account::wallets::BasicWallet;
-use miden_lib::agglayer::{agglayer_faucet_component, bridge_out_component, claim_script};
+use miden_lib::agglayer::{agglayer_faucet_component, bridge_out_component, create_claim_note};
 use miden_lib::note::WellKnownNote;
 use miden_objects::account::{
     Account,
@@ -12,6 +12,7 @@ use miden_objects::account::{
     StorageSlot,
     StorageSlotName,
 };
+use miden_objects::asset::{Asset, FungibleAsset};
 use miden_objects::note::{
     Note,
     NoteAssets,
@@ -22,6 +23,7 @@ use miden_objects::note::{
     NoteTag,
     NoteType,
 };
+use miden_objects::transaction::OutputNote;
 use miden_objects::{Felt, FieldElement, Word};
 use miden_testing::{AccountState, Auth, MockChain};
 use rand::Rng;
@@ -124,7 +126,7 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
 
     // BUILD MOCK CHAIN WITH ALL ACCOUNTS
     // --------------------------------------------------------------------------------------------
-    let mut mock_chain = builder.build()?;
+    let mut mock_chain = builder.clone().build()?;
     mock_chain.prove_next_block()?;
 
     // CREATE CLAIM NOTE WITH P2ID OUTPUT NOTE DETAILS
@@ -134,48 +136,27 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
     let serial_num = Word::from([1, 2, 3, 4u32]);
 
     // Create P2ID note for the user account (similar to network faucet test)
-    let output_note_tag = NoteTag::from_account_id(user_account.id());
     let p2id_script = WellKnownNote::P2ID.script();
     let p2id_inputs = vec![user_account.id().suffix(), user_account.id().prefix().as_felt()];
     let note_inputs = NoteInputs::new(p2id_inputs)?;
     let p2id_recipient = NoteRecipient::new(serial_num, p2id_script.clone(), note_inputs);
 
-    // Create CLAIM note inputs following MINT note pattern for public notes (12+ inputs)
-    let claim_inputs = vec![
-        Felt::new(0),                         // execution_hint (always = 0)
-        aux,                                  // aux
-        Felt::from(output_note_tag),          // tag
-        amount,                               // amount
-        p2id_script.root()[0],                // SCRIPT_ROOT[0]
-        p2id_script.root()[1],                // SCRIPT_ROOT[1]
-        p2id_script.root()[2],                // SCRIPT_ROOT[2]
-        p2id_script.root()[3],                // SCRIPT_ROOT[3]
-        serial_num[0],                        // SERIAL_NUM[0]
-        serial_num[1],                        // SERIAL_NUM[1]
-        serial_num[2],                        // SERIAL_NUM[2]
-        serial_num[3],                        // SERIAL_NUM[3]
-        user_account.id().suffix(),           // P2ID input: suffix
-        user_account.id().prefix().as_felt(), // P2ID input: prefix
-    ];
-
-    let claim_script = claim_script();
-    let claim_note_inputs = NoteInputs::new(claim_inputs)?;
-    let claim_note_metadata = NoteMetadata::new(
+    // Create CLAIM note using the helper function
+    let claim_note = create_claim_note(
         agglayer_faucet.id(),
-        NoteType::Public,
-        NoteTag::for_local_use_case(0, 0).unwrap(),
-        NoteExecutionHint::always(),
+        agglayer_faucet.id(),
+        user_account.id(),
+        amount,
+        &p2id_script,
+        serial_num,
         aux,
+        builder.rng_mut(),
     )?;
-    let claim_note_assets = NoteAssets::new(vec![])?; // Empty assets - will be validated and minted
-    let claim_note_recipient = NoteRecipient::new(serial_num, claim_script, claim_note_inputs);
-    let claim_note = Note::new(claim_note_assets, claim_note_metadata, claim_note_recipient);
 
     // CREATE EXPECTED P2ID NOTE FOR VERIFICATION
     // --------------------------------------------------------------------------------------------
-    use miden_objects::asset::FungibleAsset;
-    let mint_asset: miden_objects::asset::Asset =
-        FungibleAsset::new(agglayer_faucet.id(), amount.into())?.into();
+    let mint_asset: Asset = FungibleAsset::new(agglayer_faucet.id(), amount.into())?.into();
+    let output_note_tag = NoteTag::from_account_id(user_account.id());
     let expected_p2id_note = Note::new(
         NoteAssets::new(vec![mint_asset])?,
         NoteMetadata::new(
@@ -217,12 +198,12 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
 
     // Extract the full note from the OutputNote enum for detailed verification
     let full_note = match output_note {
-        miden_objects::transaction::OutputNote::Full(note) => note,
+        OutputNote::Full(note) => note,
         _ => panic!("Expected OutputNote::Full variant for public note"),
     };
 
     // Verify the output note contains the expected fungible asset
-    let expected_asset_obj = miden_objects::asset::Asset::from(expected_asset);
+    let expected_asset_obj = Asset::from(expected_asset);
     assert!(full_note.assets().iter().any(|asset| asset == &expected_asset_obj));
 
     // Test completed successfully - P2ID note was created with the expected asset
