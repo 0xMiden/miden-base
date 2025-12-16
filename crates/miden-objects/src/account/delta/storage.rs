@@ -82,7 +82,7 @@ impl AccountStorageDelta {
     /// # Errors
     ///
     /// Returns an error if:
-    /// - the slot name points to an existing slot that is not of type map.
+    /// - the slot name points to an existing slot that is not of type value.
     pub fn set_item(
         &mut self,
         slot_name: StorageSlotName,
@@ -92,7 +92,7 @@ impl AccountStorageDelta {
             return Err(AccountDeltaError::StorageSlotUsedAsDifferentTypes(slot_name));
         }
 
-        self.deltas.insert(slot_name.clone(), StorageSlotDelta::Value(new_slot_value));
+        self.deltas.insert(slot_name, StorageSlotDelta::Value(new_slot_value));
 
         Ok(())
     }
@@ -423,7 +423,7 @@ impl StorageSlotDelta {
     /// - `self` is not of type [`StorageSlotDelta::Map`].
     pub fn unwrap_map(self) -> StorageMapDelta {
         match self {
-            StorageSlotDelta::Value(_) => panic!("called unwrap_value on a value slot delta"),
+            StorageSlotDelta::Value(_) => panic!("called unwrap_map on a value slot delta"),
             StorageSlotDelta::Map(map_delta) => map_delta,
         }
     }
