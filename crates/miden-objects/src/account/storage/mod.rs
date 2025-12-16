@@ -12,7 +12,6 @@ use super::{
     Serializable,
     Word,
 };
-use crate::account::storage::header::StorageSlotHeader;
 use crate::account::{AccountComponent, AccountType};
 use crate::crypto::SequentialCommit;
 use crate::utils::sync::LazyLock;
@@ -24,7 +23,7 @@ mod map;
 pub use map::{PartialStorageMap, StorageMap, StorageMapWitness};
 
 mod header;
-pub use header::AccountStorageHeader;
+pub use header::{AccountStorageHeader, StorageSlotHeader};
 
 mod partial;
 pub use partial::PartialStorage;
@@ -180,15 +179,8 @@ impl AccountStorage {
 
     /// Returns an [AccountStorageHeader] for this account storage.
     pub fn to_header(&self) -> AccountStorageHeader {
-        AccountStorageHeader::new(
-            self.slots
-                .iter()
-                .map(|slot| {
-                    (slot.name().clone(), slot.content().slot_type(), slot.content().value())
-                })
-                .collect(),
-        )
-        .expect("slots should be valid as ensured by AccountStorage")
+        AccountStorageHeader::new(self.slots.iter().map(StorageSlotHeader::from).collect())
+            .expect("slots should be valid as ensured by AccountStorage")
     }
 
     /// Returns a reference to the storage slot with the provided name, if it exists, `None`
@@ -352,7 +344,7 @@ impl SequentialCommit for AccountStorage {
             .iter()
             .flat_map(|slot| {
                 StorageSlotHeader::new(
-                    slot.id(),
+                    slot.name().clone(),
                     slot.content().slot_type(),
                     slot.content().value(),
                 )
@@ -402,7 +394,7 @@ mod tests {
 
     use super::{AccountStorage, Deserializable, Serializable};
     use crate::AccountError;
-    use crate::account::{AccountStorageHeader, StorageSlot, StorageSlotName};
+    use crate::account::{AccountStorageHeader, StorageSlot, StorageSlotHeader, StorageSlotName};
 
     #[test]
     fn test_serde_account_storage() -> anyhow::Result<()> {
@@ -462,13 +454,8 @@ mod tests {
         });
 
         slots.sort_unstable();
-        let err = AccountStorageHeader::new(
-            slots
-                .iter()
-                .map(|slot| (slot.name().clone(), slot.slot_type(), slot.value()))
-                .collect(),
-        )
-        .unwrap_err();
+        let err = AccountStorageHeader::new(slots.iter().map(StorageSlotHeader::from).collect())
+            .unwrap_err();
 
         assert_matches!(err, AccountError::DuplicateStorageSlotName(name) => {
             assert_eq!(name, slot_name0);
