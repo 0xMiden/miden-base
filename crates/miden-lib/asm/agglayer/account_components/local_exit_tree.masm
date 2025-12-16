@@ -118,3 +118,9 @@ pub proc add_asset_message
   exec.write_mmr_frontier_root
   # => []
 end
+
+#! Verifies the validity of the CLAIM bridge asset in proof 
+#! stubbed out
+pub proc verify_claim_proof
+  push.1
+end

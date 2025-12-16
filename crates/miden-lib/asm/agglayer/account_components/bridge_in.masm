@@ -1,0 +1,16 @@
+use.agglayer::local_exit_tree
+
+#! Checks the validity of the GET proof
+#!
+#! Inputs:  []
+#! Outputs: [is_valid_claim_proof]
+#! 
+#! Invocation: exec
+pub proc check_claim_proof
+    exec.local_exit_tree::verify_claim_proof
+    # => [is_valid_claim_proof]
+
+    # truncate stack
+    swap drop
+    # => [is_valid_claim_proof]
+end
