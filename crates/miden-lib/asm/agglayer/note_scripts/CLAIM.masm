@@ -4,6 +4,7 @@ begin
     dropw
     # => [pad(16)]
 
+    # => []
     push.111 debug.stack drop
 
     call.agg_faucet::claim

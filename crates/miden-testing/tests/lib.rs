@@ -28,14 +28,19 @@ use miden_tx::{
 pub fn prove_and_verify_transaction(
     executed_transaction: ExecutedTransaction,
 ) -> Result<(), TransactionVerifierError> {
+    use miden_objects::transaction::TransactionHeader;
+
     let executed_transaction_id = executed_transaction.id();
+    let executed_tx_header = TransactionHeader::from(&executed_transaction);
     // Prove the transaction
 
     let proof_options = ProvingOptions::default();
     let prover = LocalTransactionProver::new(proof_options);
     let proven_transaction = prover.prove(executed_transaction).unwrap();
+    let proven_tx_header = TransactionHeader::from(&proven_transaction);
 
     assert_eq!(proven_transaction.id(), executed_transaction_id);
+    assert_eq!(proven_tx_header, executed_tx_header);
 
     // Serialize & deserialize the ProvenTransaction
     let serialised_transaction = proven_transaction.to_bytes();
