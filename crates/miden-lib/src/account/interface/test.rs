@@ -31,6 +31,7 @@ use crate::account::faucets::BasicFungibleFaucet;
 use crate::account::interface::{
     AccountComponentInterface,
     AccountInterface,
+    AccountInterfaceExt,
     NoteAccountCompatibility,
 };
 use crate::account::wallets::BasicWallet;
@@ -51,7 +52,7 @@ fn test_basic_wallet_default_notes() {
         .build_existing()
         .expect("failed to create wallet account");
 
-    let wallet_account_interface = AccountInterface::from(&wallet_account);
+    let wallet_account_interface = AccountInterface::from_account(&wallet_account);
 
     let mock_seed = Word::from([Felt::new(4), Felt::new(5), Felt::new(6), Felt::new(7)]).as_bytes();
     let faucet_account = AccountBuilder::new(mock_seed)
@@ -67,7 +68,7 @@ fn test_basic_wallet_default_notes() {
         )
         .build_existing()
         .expect("failed to create wallet account");
-    let faucet_account_interface = AccountInterface::from(&faucet_account);
+    let faucet_account_interface = AccountInterface::from_account(&faucet_account);
 
     let p2id_note = create_p2id_note(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
@@ -160,7 +161,7 @@ fn test_custom_account_default_note() {
         .with_component(account_component.clone())
         .build_existing()
         .unwrap();
-    let target_account_interface = AccountInterface::from(&target_account);
+    let target_account_interface = AccountInterface::from_account(&target_account);
 
     let p2id_note = create_p2id_note(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
@@ -246,7 +247,7 @@ fn test_basic_wallet_custom_notes() {
         .with_assets(vec![FungibleAsset::mock(20)])
         .build_existing()
         .expect("failed to create wallet account");
-    let wallet_account_interface = AccountInterface::from(&wallet_account);
+    let wallet_account_interface = AccountInterface::from_account(&wallet_account);
 
     let sender_account_id = ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE_2.try_into().unwrap();
     let serial_num = RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])).draw_word();
@@ -336,7 +337,7 @@ fn test_basic_fungible_faucet_custom_notes() {
         )
         .build_existing()
         .expect("failed to create wallet account");
-    let faucet_account_interface = AccountInterface::from(&faucet_account);
+    let faucet_account_interface = AccountInterface::from_account(&faucet_account);
 
     let sender_account_id = ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE_2.try_into().unwrap();
     let serial_num = RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])).draw_word();
@@ -439,7 +440,7 @@ fn test_custom_account_custom_notes() {
         .with_component(account_component.clone())
         .build_existing()
         .unwrap();
-    let target_account_interface = AccountInterface::from(&target_account);
+    let target_account_interface = AccountInterface::from_account(&target_account);
 
     let mock_seed = Word::from([0, 1, 2, 3u32]).as_bytes();
     let sender_account = AccountBuilder::new(mock_seed)
@@ -550,7 +551,7 @@ fn test_custom_account_multiple_components_custom_notes() {
         .with_component(BasicWallet)
         .build_existing()
         .unwrap();
-    let target_account_interface = AccountInterface::from(&target_account);
+    let target_account_interface = AccountInterface::from_account(&target_account);
 
     let mock_seed = Word::from([0, 1, 2, 3u32]).as_bytes();
     let sender_account = AccountBuilder::new(mock_seed)
@@ -677,7 +678,7 @@ fn test_get_auth_scheme_ecdsa_k256_keccak() {
         .build_existing()
         .expect("failed to create wallet account");
 
-    let wallet_account_interface = AccountInterface::from(&wallet_account);
+    let wallet_account_interface = AccountInterface::from_account(&wallet_account);
 
     // Find the EcdsaK256Keccak component interface
     let ecdsa_k256_keccak_component = wallet_account_interface
@@ -707,7 +708,7 @@ fn test_get_auth_scheme_rpo_falcon512() {
         .build_existing()
         .expect("failed to create wallet account");
 
-    let wallet_account_interface = AccountInterface::from(&wallet_account);
+    let wallet_account_interface = AccountInterface::from_account(&wallet_account);
 
     // Find the RpoFalcon512 component interface
     let rpo_falcon_component = wallet_account_interface
@@ -737,7 +738,7 @@ fn test_get_auth_scheme_no_auth() {
         .build_existing()
         .expect("failed to create no-auth account");
 
-    let no_auth_account_interface = AccountInterface::from(&no_auth_account);
+    let no_auth_account_interface = AccountInterface::from_account(&no_auth_account);
 
     // Find the NoAuth component interface
     let no_auth_component = no_auth_account_interface
@@ -781,7 +782,7 @@ fn test_account_interface_from_account_uses_get_auth_scheme() {
         .build_existing()
         .expect("failed to create wallet account");
 
-    let wallet_account_interface = AccountInterface::from(&wallet_account);
+    let wallet_account_interface = AccountInterface::from_account(&wallet_account);
 
     // Should have exactly one auth scheme
     assert_eq!(wallet_account_interface.auth().len(), 1);
@@ -801,7 +802,7 @@ fn test_account_interface_from_account_uses_get_auth_scheme() {
         .build_existing()
         .expect("failed to create no-auth account");
 
-    let no_auth_account_interface = AccountInterface::from(&no_auth_account);
+    let no_auth_account_interface = AccountInterface::from_account(&no_auth_account);
 
     // Should have exactly one auth scheme
     assert_eq!(no_auth_account_interface.auth().len(), 1);
@@ -822,7 +823,7 @@ fn test_account_interface_get_auth_scheme() {
         .build_existing()
         .expect("failed to create wallet account");
 
-    let wallet_account_interface = AccountInterface::from(&wallet_account);
+    let wallet_account_interface = AccountInterface::from_account(&wallet_account);
 
     // Test that auth() method provides the authentication schemes
     assert_eq!(wallet_account_interface.auth().len(), 1);
@@ -840,7 +841,7 @@ fn test_account_interface_get_auth_scheme() {
         .build_existing()
         .expect("failed to create no-auth account");
 
-    let no_auth_account_interface = AccountInterface::from(&no_auth_account);
+    let no_auth_account_interface = AccountInterface::from_account(&no_auth_account);
 
     // Test that auth() method provides the authentication schemes
     assert_eq!(no_auth_account_interface.auth().len(), 1);
