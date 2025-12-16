@@ -20,31 +20,29 @@ const.ACTIVE_ACCOUNT_TAG_DOES_NOT_MATCH_TARGET="B2AGG note tag does not match ac
 # Verifies that the consuming account is the bridge contract by comparing note tags.
 # Panics if the B2AGG note's tag doesn't match the consuming account's network tag.
 #!
-#! Inputs: []
+#! Inputs: [account_id_prefix, account_id_suffix]
 #! Outputs: []
-proc assert_is_bridge
-    exec.active_note::get_metadata
-    # => [METADATA]
-    
-    drop swap drop swap drop
-    # => [b2agg_tag]
-
-    exec.active_account::get_id
-    # => [account_id_prefix, account_id_suffix, pad(16)]
+proc assert_account_id_is_target
+    # => [account_id_prefix, account_id_suffix]
 
     exec.note::build_note_tag_for_network_account
-    # => [active_account_tag, b2agg_tag]
+    # => [active_account_tag]
+
+    exec.active_note::get_metadata
+    # => [METADATA, active_account_tag]
+
+    drop swap drop swap drop
+    # => [b2agg_tag, active_account_tag]
 
     eq assert.err=ACTIVE_ACCOUNT_TAG_DOES_NOT_MATCH_TARGET
     # => []
 end
 
-
 #! Bridge-to-AggLayer (B2AGG) note script: bridges assets from Miden to an AggLayer-connected chain.
 #!
 #! This note can be consumed in two ways:
 #! - If the consuming account is the sender (reclaim): the note's assets are added back to the consuming account.
-#! - If the consuming account is the Agglayer Bridge: the note's assets are moved to a BURN note, 
+#! - If the consuming account is the Agglayer Bridge: the note's assets are moved to a BURN note,
 #!   and the note details are hashed into a leaf and appended to the Local Exit Tree.
 #!   global exit root (GER) merkle tree structure.
 #!
@@ -70,20 +68,26 @@ begin
 
     # Check if reclaim
     exec.active_account::get_id
-    # => [account_id_prefix, account_id_suffix, pad(16)]
+    # => [id_prefix, id_suffix, pad(16)]
+
+    dup.1 dup.1
+    # => [id_prefix, id_suffix, id_prefix, id_suffix, pad(16)]
 
     exec.active_note::get_sender
-    # => [sender_id_prefix, sender_id_suffix, account_id_prefix, account_id_suffix, pad(16)]
+    # => [sender_id_prefix, sender_id_suffix, id_prefix, id_suffix, id_prefix, id_suffix, pad(16)]
 
     exec.account_id::is_equal
-    # => [reclaim, pad(16)]
+    # => [reclaim, id_prefix, id_suffix, pad(16)]
 
     # B2AGG note is being reclaimed; adding note assets to account
     if.true
+        drop drop
+        # => [pad(16)]
+
         exec.active_note::add_assets_to_account
         # => [pad(16)]
     else
-        exec.assert_is_bridge
+        exec.assert_account_id_is_target
         # => [pad(16)]
 
         # Store note inputs -> mem[8..14]
