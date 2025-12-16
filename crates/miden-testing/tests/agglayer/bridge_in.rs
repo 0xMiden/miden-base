@@ -1,18 +1,19 @@
 extern crate alloc;
 
+use core::slice;
+
+use miden_lib::account::faucets::NetworkFungibleFaucet;
 use miden_lib::account::wallets::BasicWallet;
 use miden_lib::agglayer::{agglayer_faucet_component, bridge_out_component, create_claim_note};
 use miden_lib::note::WellKnownNote;
 use miden_objects::account::{
     Account,
-    AccountId,
-    AccountIdVersion,
     AccountStorageMode,
     AccountType,
     StorageSlot,
     StorageSlotName,
 };
-use miden_objects::asset::{Asset, FungibleAsset};
+use miden_objects::asset::{Asset, FungibleAsset, TokenSymbol};
 use miden_objects::note::{
     Note,
     NoteAssets,
@@ -49,16 +50,6 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
 
     // CREATE AGGLAYER FAUCET ACCOUNT (with agglayer_faucet component)
     // --------------------------------------------------------------------------------------------
-    use miden_lib::account::faucets::NetworkFungibleFaucet;
-    use miden_objects::asset::TokenSymbol;
-
-    // Create a dummy owner account ID for the network faucet
-    let owner_account_id = AccountId::dummy(
-        [1; 15],
-        AccountIdVersion::Version0,
-        AccountType::RegularAccountImmutableCode,
-        AccountStorageMode::Private,
-    );
 
     // Create network faucet storage slots (required for fungible asset creation)
     let token_symbol = TokenSymbol::new("AGG").unwrap();
@@ -71,18 +62,6 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
     let metadata_slot =
         StorageSlot::with_value(NetworkFungibleFaucet::metadata_slot().clone(), metadata_word);
 
-    // Network faucet owner config slot: [0, 0, suffix, prefix]
-    let owner_config_word = Word::new([
-        Felt::new(0),
-        Felt::new(0),
-        owner_account_id.suffix(),
-        owner_account_id.prefix().as_felt(),
-    ]);
-    let owner_config_slot = StorageSlot::with_value(
-        NetworkFungibleFaucet::owner_config_slot().clone(),
-        owner_config_word,
-    );
-
     // Agglayer-specific bridge storage slot
     let bridge_account_id_word = Word::new([
         Felt::new(0),
@@ -94,7 +73,7 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
     let bridge_slot = StorageSlot::with_value(agglayer_storage_slot_name, bridge_account_id_word);
 
     // Combine all storage slots for the agglayer faucet component
-    let agglayer_storage_slots = vec![metadata_slot, owner_config_slot, bridge_slot];
+    let agglayer_storage_slots = vec![metadata_slot, bridge_slot];
     let agglayer_component = agglayer_faucet_component(agglayer_storage_slots);
 
     // Create agglayer faucet with FungibleFaucet account type and Network storage mode
@@ -119,11 +98,6 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
         AccountState::Exists,
     )?;
 
-    // BUILD MOCK CHAIN WITH ALL ACCOUNTS
-    // --------------------------------------------------------------------------------------------
-    let mut mock_chain = builder.clone().build()?;
-    mock_chain.prove_next_block()?;
-
     // CREATE CLAIM NOTE WITH P2ID OUTPUT NOTE DETAILS
     // --------------------------------------------------------------------------------------------
     let amount = Felt::new(100);
@@ -147,6 +121,14 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
         aux,
         builder.rng_mut(),
     )?;
+
+    // Add the claim note to the builder before building the mock chain
+    builder.add_output_note(OutputNote::Full(claim_note.clone()));
+
+    // BUILD MOCK CHAIN WITH ALL ACCOUNTS
+    // --------------------------------------------------------------------------------------------
+    let mut mock_chain = builder.clone().build()?;
+    mock_chain.prove_next_block()?;
 
     // CREATE EXPECTED P2ID NOTE FOR VERIFICATION
     // --------------------------------------------------------------------------------------------
@@ -201,7 +183,24 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
     let expected_asset_obj = Asset::from(expected_asset);
     assert!(full_note.assets().iter().any(|asset| asset == &expected_asset_obj));
 
-    // Test completed successfully - P2ID note was created with the expected asset
+    // Apply the transaction to the mock chain
+    mock_chain.add_pending_executed_transaction(&executed_transaction)?;
+    mock_chain.prove_next_block()?;
+
+    // CONSUME THE OUTPUT NOTE WITH TARGET ACCOUNT
+    // --------------------------------------------------------------------------------------------
+    // Consume the output note with target account
+    let mut user_account_mut = user_account.clone();
+    let consume_tx_context = mock_chain
+        .build_tx_context(user_account_mut.clone(), &[], slice::from_ref(&expected_p2id_note))?
+        .build()?;
+    let consume_executed_transaction = consume_tx_context.execute().await?;
+
+    user_account_mut.apply_delta(consume_executed_transaction.account_delta())?;
+
+    // Verify the account's vault now contains the expected fungible asset
+    let balance = user_account_mut.vault().get_balance(agglayer_faucet.id())?;
+    assert_eq!(balance, expected_asset.amount());
 
     Ok(())
 }
