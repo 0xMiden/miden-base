@@ -184,7 +184,7 @@ async fn test_update_ger_flow() -> anyhow::Result<()> {
         rng.random::<u32>(),
         rng.random::<u32>(),
     ];
-    let ger_index = 1u32; // Start with index 1 since storage starts at 0
+    let ger_index = 1u32; 
 
     println!("ger index: {}", ger_index);
 
