@@ -203,16 +203,6 @@ pub fn asset_conversion_component(storage_slots: Vec<StorageSlot>) -> AccountCom
 
 /// Generates a CLAIM note - a note that instructs an agglayer faucet to validate and mint assets.
 ///
-/// This script enables the creation of a PUBLIC note that, when consumed by an agglayer faucet,
-/// will validate the claim against a bridge MMR account via Foreign Procedure Invocation (FPI)
-/// and mint the specified amount of fungible assets to create a P2ID output note.
-///
-/// CLAIM notes are always PUBLIC for network execution and contain no assets initially.
-/// The agglayer faucet will mint assets and create the specified output note upon validation.
-///
-/// The passed-in `rng` is used to generate a serial number for the note. The note's tag
-/// is automatically set to the faucet's account ID for proper routing.
-///
 /// # Parameters
 /// - `faucet_id`: The account ID of the agglayer faucet that will process the claim
 /// - `sender`: The account ID of the note creator
