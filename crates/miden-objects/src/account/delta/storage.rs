@@ -1,6 +1,5 @@
 use alloc::collections::BTreeMap;
 use alloc::collections::btree_map::Entry;
-use alloc::string::ToString;
 use alloc::vec::Vec;
 
 use super::{
@@ -12,34 +11,25 @@ use super::{
     Serializable,
     Word,
 };
-use crate::account::{StorageMap, StorageSlotName, StorageSlotType};
+use crate::account::{StorageMap, StorageSlotContent, StorageSlotName, StorageSlotType};
 use crate::{EMPTY_WORD, Felt, LexicographicWord, ZERO};
 
 // ACCOUNT STORAGE DELTA
 // ================================================================================================
 
-/// [AccountStorageDelta] stores the differences between two states of account storage.
+/// The [`AccountStorageDelta`] stores the differences between two states of account storage.
 ///
-/// The delta consists of two maps:
-/// - A map containing the updates to value storage slots. The keys in this map are indexes of the
-///   updated storage slots and the values are the new values for these slots.
-/// - A map containing updates to storage maps. The keys in this map are indexes of the updated
-///   storage slots and the values are corresponding storage map delta objects.
+/// The delta consists of a map from [`StorageSlotName`] to [`StorageSlotDelta`].
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AccountStorageDelta {
-    /// The updates to the value slots of the account.
-    values: BTreeMap<StorageSlotName, Word>,
-    /// The updates to the map slots of the account.
-    maps: BTreeMap<StorageSlotName, StorageMapDelta>,
+    /// The updates to the slots of the account.
+    deltas: BTreeMap<StorageSlotName, StorageSlotDelta>,
 }
 
 impl AccountStorageDelta {
     /// Creates a new, empty storage delta.
     pub fn new() -> Self {
-        Self {
-            values: BTreeMap::new(),
-            maps: BTreeMap::new(),
-        }
+        Self { deltas: BTreeMap::new() }
     }
 
     /// Creates a new storage delta from the provided fields.
@@ -49,90 +39,129 @@ impl AccountStorageDelta {
     /// Returns an error if:
     /// - Any of the updated slot is referenced from both maps, which means a slot is treated as
     ///   both a value and a map slot.
-    pub fn from_parts(
-        values: BTreeMap<StorageSlotName, Word>,
-        maps: BTreeMap<StorageSlotName, StorageMapDelta>,
-    ) -> Result<Self, AccountDeltaError> {
-        let delta = Self { values, maps };
-        delta.validate()?;
-
-        Ok(delta)
+    pub fn from_raw(deltas: BTreeMap<StorageSlotName, StorageSlotDelta>) -> Self {
+        Self { deltas }
     }
 
-    /// Returns an iterator over the slot names and types tracked by this delta.
-    pub(crate) fn slots(&self) -> impl Iterator<Item = (&StorageSlotName, StorageSlotType)> {
-        self.values()
-            .keys()
-            .map(|slot_name| (slot_name, StorageSlotType::Value))
-            .chain(self.maps.keys().map(|slot_name| (slot_name, StorageSlotType::Map)))
+    /// Returns the delta for the provided slot name, or `None` if no delta exists.
+    pub fn get(&self, slot_name: &StorageSlotName) -> Option<&StorageSlotDelta> {
+        self.deltas.get(slot_name)
     }
 
-    /// Returns a reference to the updated values in this storage delta.
-    pub fn values(&self) -> &BTreeMap<StorageSlotName, Word> {
-        &self.values
+    /// Returns an iterator over the slot deltas.
+    pub(crate) fn slots(&self) -> impl Iterator<Item = (&StorageSlotName, &StorageSlotDelta)> {
+        self.deltas.iter()
     }
 
-    /// Returns a reference to the updated maps in this storage delta.
-    pub fn maps(&self) -> &BTreeMap<StorageSlotName, StorageMapDelta> {
-        &self.maps
+    /// Returns an iterator over the updated values in this storage delta.
+    pub fn values(&self) -> impl Iterator<Item = (&StorageSlotName, &Word)> {
+        self.deltas.iter().filter_map(|(slot_name, slot_delta)| match slot_delta {
+            StorageSlotDelta::Value(word) => Some((slot_name, word)),
+            StorageSlotDelta::Map(_) => None,
+        })
+    }
+
+    /// Returns an iterator over the updated maps in this storage delta.
+    pub fn maps(&self) -> impl Iterator<Item = (&StorageSlotName, &StorageMapDelta)> {
+        self.deltas.iter().filter_map(|(slot_name, slot_delta)| match slot_delta {
+            StorageSlotDelta::Value(_) => None,
+            StorageSlotDelta::Map(map_delta) => Some((slot_name, map_delta)),
+        })
     }
 
     /// Returns true if storage delta contains no updates.
     pub fn is_empty(&self) -> bool {
-        self.values.is_empty() && self.maps.is_empty()
+        self.deltas.is_empty()
     }
 
     /// Tracks a slot change.
     ///
     /// This does not (and cannot) validate that the slot name _exists_ or that it points to a
     /// _value_ slot in the corresponding account.
-    pub fn set_item(&mut self, slot_name: StorageSlotName, new_slot_value: Word) {
-        self.values.insert(slot_name, new_slot_value);
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - the slot name points to an existing slot that is not of type map.
+    pub fn set_item(
+        &mut self,
+        slot_name: StorageSlotName,
+        new_slot_value: Word,
+    ) -> Result<(), AccountDeltaError> {
+        if !self.deltas.get(&slot_name).map(StorageSlotDelta::is_value).unwrap_or(true) {
+            return Err(AccountDeltaError::StorageSlotUsedAsDifferentTypes(slot_name));
+        }
+
+        self.deltas.insert(slot_name.clone(), StorageSlotDelta::Value(new_slot_value));
+
+        Ok(())
     }
 
     /// Tracks a map item change.
     ///
     /// This does not (and cannot) validate that the slot name _exists_ or that it points to a
     /// _map_ slot in the corresponding account.
-    pub fn set_map_item(&mut self, slot_name: StorageSlotName, key: Word, new_value: Word) {
-        self.maps.entry(slot_name).or_default().insert(key, new_value);
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - the slot name points to an existing slot that is not of type map.
+    pub fn set_map_item(
+        &mut self,
+        slot_name: StorageSlotName,
+        key: Word,
+        new_value: Word,
+    ) -> Result<(), AccountDeltaError> {
+        match self
+            .deltas
+            .entry(slot_name.clone())
+            .or_insert(StorageSlotDelta::Map(StorageMapDelta::default()))
+        {
+            StorageSlotDelta::Value(_) => {
+                return Err(AccountDeltaError::StorageSlotUsedAsDifferentTypes(slot_name));
+            },
+            StorageSlotDelta::Map(storage_map_delta) => {
+                storage_map_delta.insert(key, new_value);
+            },
+        };
+
+        Ok(())
     }
 
     /// Inserts an empty storage map delta for the provided slot name.
     ///
     /// This is useful for full state deltas to represent an empty map in the delta.
+    ///
+    /// This overwrites the existing slot delta, if any.
     pub fn insert_empty_map_delta(&mut self, slot_name: StorageSlotName) {
-        self.maps.entry(slot_name).or_default();
+        self.deltas.insert(slot_name, StorageSlotDelta::with_empty_map());
     }
 
     /// Merges another delta into this one, overwriting any existing values.
     pub fn merge(&mut self, other: Self) -> Result<(), AccountDeltaError> {
-        self.values.extend(other.values);
-
-        // merge maps
-        for (slot, update) in other.maps.into_iter() {
-            match self.maps.entry(slot) {
-                Entry::Vacant(entry) => {
-                    entry.insert(update);
+        for (slot_name, slot_delta) in other.deltas {
+            match self.deltas.entry(slot_name.clone()) {
+                Entry::Vacant(vacant_entry) => {
+                    vacant_entry.insert(slot_delta);
                 },
-                Entry::Occupied(mut entry) => entry.get_mut().merge(update),
-            }
-        }
-
-        self.validate()
-    }
-
-    /// Checks whether this storage delta is valid.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if:
-    /// - Any of the updated slot is referenced from both maps, which means a slot is treated as
-    ///   both a value and a map slot.
-    fn validate(&self) -> Result<(), AccountDeltaError> {
-        for slot in self.maps.keys() {
-            if self.values.contains_key(slot) {
-                return Err(AccountDeltaError::StorageSlotUsedAsDifferentTypes(slot.clone()));
+                Entry::Occupied(mut occupied_entry) => match (occupied_entry.get_mut(), slot_delta)
+                {
+                    (
+                        StorageSlotDelta::Value(current_value),
+                        StorageSlotDelta::Value(new_value),
+                    ) => {
+                        *current_value = new_value;
+                    },
+                    (
+                        StorageSlotDelta::Map(current_map_delta),
+                        StorageSlotDelta::Map(new_map_delta),
+                    ) => {
+                        current_map_delta.merge(new_map_delta);
+                    },
+                    (..) => {
+                        return Err(AccountDeltaError::StorageSlotUsedAsDifferentTypes(slot_name));
+                    },
+                },
             }
         }
 
@@ -141,12 +170,22 @@ impl AccountStorageDelta {
 
     /// Returns an iterator of all the cleared storage slots.
     fn cleared_values(&self) -> impl Iterator<Item = &StorageSlotName> {
-        self.values.iter().filter(|&(_, value)| value.is_empty()).map(|(slot, _)| slot)
+        self.values().filter_map(
+            |(slot_name, slot_value)| {
+                if slot_value.is_empty() { Some(slot_name) } else { None }
+            },
+        )
     }
 
     /// Returns an iterator of all the updated storage slots.
     fn updated_values(&self) -> impl Iterator<Item = (&StorageSlotName, &Word)> {
-        self.values.iter().filter(|&(_, value)| !value.is_empty())
+        self.values().filter_map(|(slot_name, slot_value)| {
+            if !slot_value.is_empty() {
+                Some((slot_name, slot_value))
+            } else {
+                None
+            }
+        })
     }
 
     /// Appends the storage slots delta to the given `elements` from which the delta commitment will
@@ -155,23 +194,7 @@ impl AccountStorageDelta {
         const DOMAIN_VALUE: Felt = Felt::new(2);
         const DOMAIN_MAP: Felt = Felt::new(3);
 
-        // Merge slots into a single map to sort them by slot name.
-        let mut sorted_slots: BTreeMap<&StorageSlotName, StorageSlotDelta> = self
-            .values()
-            .iter()
-            .map(|(name, value)| (name, StorageSlotDelta::Value(*value)))
-            .collect();
-        sorted_slots.extend(
-            self.maps()
-                .iter()
-                .map(|(name, map_delta)| (name, StorageSlotDelta::Map(map_delta))),
-        );
-
-        // The storage delta ensures that the value slots and map slots do not have overlapping
-        // slot names, so the number of entries should be identical after merging.
-        debug_assert_eq!(sorted_slots.len(), self.values.len() + self.maps.len());
-
-        for (slot_name, slot_delta) in sorted_slots {
+        for (slot_name, slot_delta) in self.deltas.iter() {
             let slot_id = slot_name.id();
 
             match slot_delta {
@@ -206,11 +229,9 @@ impl AccountStorageDelta {
         }
     }
 
-    /// Consumes self and returns the underlying parts of the storage delta.
-    pub fn into_parts(
-        self,
-    ) -> (BTreeMap<StorageSlotName, Word>, BTreeMap<StorageSlotName, StorageMapDelta>) {
-        (self.values, self.maps)
+    /// Consumes self and returns the underlying map of the storage delta.
+    pub fn into_map(self) -> BTreeMap<StorageSlotName, StorageSlotDelta> {
+        self.deltas
     }
 }
 
@@ -228,43 +249,58 @@ impl AccountStorageDelta {
         updated_values: impl IntoIterator<Item = (StorageSlotName, Word)>,
         updated_maps: impl IntoIterator<Item = (StorageSlotName, StorageMapDelta)>,
     ) -> Self {
-        Self {
-            values: BTreeMap::from_iter(
-                cleared_values.into_iter().map(|key| (key, EMPTY_WORD)).chain(updated_values),
-            ),
-            maps: BTreeMap::from_iter(updated_maps),
-        }
+        let deltas =
+            cleared_values
+                .into_iter()
+                .map(|slot_name| (slot_name, StorageSlotDelta::with_empty_value()))
+                .chain(updated_values.into_iter().map(|(slot_name, slot_value)| {
+                    (slot_name, StorageSlotDelta::Value(slot_value))
+                }))
+                .chain(
+                    updated_maps.into_iter().map(|(slot_name, map_delta)| {
+                        (slot_name, StorageSlotDelta::Map(map_delta))
+                    }),
+                )
+                .collect();
+
+        Self::from_raw(deltas)
     }
 }
 
 impl Serializable for AccountStorageDelta {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        let num_cleared = self.cleared_values().count();
-        let num_cleared = u8::try_from(num_cleared).expect("number of slots should fit in u8");
-        let cleared = self.cleared_values();
+        let num_cleared_values = self.cleared_values().count();
+        let num_cleared_values =
+            u8::try_from(num_cleared_values).expect("number of slots should fit in u8");
+        let cleared_values = self.cleared_values();
 
-        let num_updated = self.updated_values().count();
-        let num_updated = u8::try_from(num_updated).expect("number of slots should fit in u8");
-        let updated = self.updated_values();
+        let num_updated_values = self.updated_values().count();
+        let num_updated_values =
+            u8::try_from(num_updated_values).expect("number of slots should fit in u8");
+        let updated_values = self.updated_values();
 
-        target.write_u8(num_cleared);
-        target.write_many(cleared);
+        let num_maps = self.maps().count();
+        let num_maps = u8::try_from(num_maps).expect("number of slots should fit in u8");
+        let maps = self.maps();
 
-        target.write_u8(num_updated);
-        target.write_many(updated);
+        target.write_u8(num_cleared_values);
+        target.write_many(cleared_values);
 
-        target.write_u8(self.maps.len() as u8);
-        target.write_many(self.maps.iter());
+        target.write_u8(num_updated_values);
+        target.write_many(updated_values);
+
+        target.write_u8(num_maps);
+        target.write_many(maps);
     }
 
     fn get_size_hint(&self) -> usize {
         let u8_size = 0u8.get_size_hint();
 
         let mut storage_map_delta_size = 0;
-        for (slot, storage_map_delta) in self.maps.iter() {
+        for (slot_name, storage_map_delta) in self.maps() {
             // The serialized size of each entry is the combination of slot (key) and the delta
             // (value).
-            storage_map_delta_size += slot.get_size_hint() + storage_map_delta.get_size_hint();
+            storage_map_delta_size += slot_name.get_size_hint() + storage_map_delta.get_size_hint();
         }
 
         // Length Prefixes
@@ -282,28 +318,29 @@ impl Serializable for AccountStorageDelta {
 
 impl Deserializable for AccountStorageDelta {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        let mut values = BTreeMap::new();
+        let mut deltas = BTreeMap::new();
 
-        let num_cleared_items = source.read_u8()?;
-        for _ in 0..num_cleared_items {
+        let num_cleared_values = source.read_u8()?;
+        for _ in 0..num_cleared_values {
             let cleared_value: StorageSlotName = source.read()?;
-            values.insert(cleared_value, EMPTY_WORD);
+            deltas.insert(cleared_value, StorageSlotDelta::with_empty_value());
         }
 
-        let num_updated_items = source.read_u8()?;
-        for _ in 0..num_updated_items {
+        let num_updated_values = source.read_u8()?;
+        for _ in 0..num_updated_values {
             let (updated_slot, updated_value) = source.read()?;
-            values.insert(updated_slot, updated_value);
+            deltas.insert(updated_slot, StorageSlotDelta::Value(updated_value));
         }
 
         let num_maps = source.read_u8()? as usize;
-        let maps = source
-            .read_many::<(StorageSlotName, StorageMapDelta)>(num_maps)?
-            .into_iter()
-            .collect();
+        deltas.extend(
+            source
+                .read_many::<(StorageSlotName, StorageMapDelta)>(num_maps)?
+                .into_iter()
+                .map(|(slot_name, map_delta)| (slot_name, StorageSlotDelta::Map(map_delta))),
+        );
 
-        Self::from_parts(values, maps)
-            .map_err(|err| DeserializationError::InvalidValue(err.to_string()))
+        Ok(Self::from_raw(deltas))
     }
 }
 
@@ -311,10 +348,129 @@ impl Deserializable for AccountStorageDelta {
 // ================================================================================================
 
 /// The delta of a single storage slot.
-#[derive(Clone, Debug, PartialEq, Eq)]
-enum StorageSlotDelta<'map> {
+///
+/// - [`StorageSlotDelta::Value`] contains the value to which a value slot is updated.
+/// - [`StorageSlotDelta::Map`] contains the [`StorageMapDelta`] which contains the key-value pairs
+///   that were updated in a map slot.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StorageSlotDelta {
     Value(Word),
-    Map(&'map StorageMapDelta),
+    Map(StorageMapDelta),
+}
+
+impl StorageSlotDelta {
+    // CONSTANTS
+    // ----------------------------------------------------------------------------------------
+
+    /// The type byte for value slot deltas.
+    const VALUE: u8 = 0;
+
+    /// The type byte for map slot deltas.
+    const MAP: u8 = 1;
+
+    // CONSTRUCTORS
+    // ----------------------------------------------------------------------------------------
+
+    /// Returns a new [`StorageSlotDelta::Value`] with an empty value.
+    pub fn with_empty_value() -> Self {
+        Self::Value(Word::empty())
+    }
+
+    /// Returns a new [`StorageSlotDelta::Map`] with an empty map delta.
+    pub fn with_empty_map() -> Self {
+        Self::Map(StorageMapDelta::default())
+    }
+
+    // ACCESSORS
+    // ----------------------------------------------------------------------------------------
+
+    /// Returns the [`StorageSlotType`] of this slot delta.
+    pub fn slot_type(&self) -> StorageSlotType {
+        match self {
+            StorageSlotDelta::Value(_) => StorageSlotType::Value,
+            StorageSlotDelta::Map(_) => StorageSlotType::Map,
+        }
+    }
+
+    /// Returns `true` if the slot delta is of type [`StorageSlotDelta::Value`], `false` otherwise.
+    pub fn is_value(&self) -> bool {
+        matches!(self, Self::Value(_))
+    }
+
+    /// Returns `true` if the slot delta is of type [`StorageSlotDelta::Map`], `false` otherwise.
+    pub fn is_map(&self) -> bool {
+        matches!(self, Self::Map(_))
+    }
+
+    /// Unwraps a value slot delta into a [`Word`].
+    ///
+    /// # Panics
+    ///
+    /// Panics if:
+    /// - `self` is not of type [`StorageSlotDelta::Value`].
+    pub fn unwrap_value(self) -> Word {
+        match self {
+            StorageSlotDelta::Value(value) => value,
+            StorageSlotDelta::Map(_) => panic!("called unwrap_value on a map slot delta"),
+        }
+    }
+
+    /// Unwraps a map slot delta into a [`StorageMapDelta`].
+    ///
+    /// # Panics
+    ///
+    /// Panics if:
+    /// - `self` is not of type [`StorageSlotDelta::Map`].
+    pub fn unwrap_map(self) -> StorageMapDelta {
+        match self {
+            StorageSlotDelta::Value(_) => panic!("called unwrap_value on a value slot delta"),
+            StorageSlotDelta::Map(map_delta) => map_delta,
+        }
+    }
+}
+
+impl From<StorageSlotContent> for StorageSlotDelta {
+    fn from(content: StorageSlotContent) -> Self {
+        match content {
+            StorageSlotContent::Value(word) => StorageSlotDelta::Value(word),
+            StorageSlotContent::Map(storage_map) => {
+                StorageSlotDelta::Map(StorageMapDelta::from(storage_map))
+            },
+        }
+    }
+}
+
+impl Serializable for StorageSlotDelta {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        match self {
+            StorageSlotDelta::Value(value) => {
+                target.write_u8(Self::VALUE);
+                target.write(value);
+            },
+            StorageSlotDelta::Map(storage_map_delta) => {
+                target.write_u8(Self::MAP);
+                target.write(storage_map_delta);
+            },
+        }
+    }
+}
+
+impl Deserializable for StorageSlotDelta {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        match source.read_u8()? {
+            Self::VALUE => {
+                let value = source.read()?;
+                Ok(Self::Value(value))
+            },
+            Self::MAP => {
+                let map_delta = source.read()?;
+                Ok(Self::Map(map_delta))
+            },
+            other => Err(DeserializationError::InvalidValue(format!(
+                "unknown storage slot delta variant {other}"
+            ))),
+        }
+    }
 }
 
 // STORAGE MAP DELTA
@@ -477,54 +633,35 @@ impl Deserializable for StorageMapDelta {
 #[cfg(test)]
 mod tests {
     use anyhow::Context;
+    use assert_matches::assert_matches;
 
     use super::{AccountStorageDelta, Deserializable, Serializable};
-    use crate::account::{StorageMapDelta, StorageSlotName};
+    use crate::account::{StorageMapDelta, StorageSlotDelta, StorageSlotName};
     use crate::testing::storage::AccountStorageDeltaBuilder;
-    use crate::{ONE, Word, ZERO};
+    use crate::{AccountDeltaError, ONE, Word};
 
     #[test]
-    fn account_storage_delta_validation() {
-        let delta = AccountStorageDelta::from_iters(
-            [StorageSlotName::mock(1), StorageSlotName::mock(2), StorageSlotName::mock(3)],
-            [
-                (StorageSlotName::mock(4), Word::from([ONE, ONE, ONE, ONE])),
-                (StorageSlotName::mock(5), Word::from([ONE, ONE, ONE, ZERO])),
-            ],
+    fn account_storage_delta_returns_err_on_slot_type_mismatch() {
+        let value_slot_name = StorageSlotName::mock(1);
+        let map_slot_name = StorageSlotName::mock(2);
+
+        let mut delta = AccountStorageDelta::from_iters(
+            [value_slot_name.clone()],
             [],
+            [(map_slot_name.clone(), StorageMapDelta::default())],
         );
-        assert!(delta.validate().is_ok());
 
-        let bytes = delta.to_bytes();
-        assert_eq!(AccountStorageDelta::read_from_bytes(&bytes), Ok(delta));
+        let err = delta
+            .set_map_item(value_slot_name.clone(), Word::empty(), Word::empty())
+            .unwrap_err();
+        assert_matches!(err, AccountDeltaError::StorageSlotUsedAsDifferentTypes(slot_name) => {
+            assert_eq!(value_slot_name, slot_name)
+        });
 
-        // duplicate across cleared items and maps
-        let delta = AccountStorageDelta::from_iters(
-            [StorageSlotName::mock(1), StorageSlotName::mock(2), StorageSlotName::mock(3)],
-            [
-                (StorageSlotName::mock(2), Word::from([ONE, ONE, ONE, ONE])),
-                (StorageSlotName::mock(5), Word::from([ONE, ONE, ONE, ZERO])),
-            ],
-            [(StorageSlotName::mock(1), StorageMapDelta::default())],
-        );
-        assert!(delta.validate().is_err());
-
-        let bytes = delta.to_bytes();
-        assert!(AccountStorageDelta::read_from_bytes(&bytes).is_err());
-
-        // duplicate across updated items and maps
-        let delta = AccountStorageDelta::from_iters(
-            [StorageSlotName::mock(1), StorageSlotName::mock(3)],
-            [
-                (StorageSlotName::mock(2), Word::from([ONE, ONE, ONE, ONE])),
-                (StorageSlotName::mock(5), Word::from([ONE, ONE, ONE, ZERO])),
-            ],
-            [(StorageSlotName::mock(2), StorageMapDelta::default())],
-        );
-        assert!(delta.validate().is_err());
-
-        let bytes = delta.to_bytes();
-        assert!(AccountStorageDelta::read_from_bytes(&bytes).is_err());
+        let err = delta.set_item(map_slot_name.clone(), Word::empty()).unwrap_err();
+        assert_matches!(err, AccountDeltaError::StorageSlotUsedAsDifferentTypes(slot_name) => {
+            assert_eq!(map_slot_name, slot_name)
+        });
     }
 
     #[test]
@@ -600,6 +737,36 @@ mod tests {
         assert_eq!(deserialized, storage_map_delta);
     }
 
+    #[test]
+    fn test_serde_storage_slot_value_delta() {
+        let slot_delta = StorageSlotDelta::with_empty_value();
+        let serialized = slot_delta.to_bytes();
+        let deserialized = StorageSlotDelta::read_from_bytes(&serialized).unwrap();
+        assert_eq!(deserialized, slot_delta);
+
+        let slot_delta = StorageSlotDelta::Value(Word::from([1, 2, 3, 4u32]));
+        let serialized = slot_delta.to_bytes();
+        let deserialized = StorageSlotDelta::read_from_bytes(&serialized).unwrap();
+        assert_eq!(deserialized, slot_delta);
+    }
+
+    #[test]
+    fn test_serde_storage_slot_map_delta() {
+        let slot_delta = StorageSlotDelta::with_empty_map();
+        let serialized = slot_delta.to_bytes();
+        let deserialized = StorageSlotDelta::read_from_bytes(&serialized).unwrap();
+        assert_eq!(deserialized, slot_delta);
+
+        let map_delta = StorageMapDelta::from_iters(
+            [Word::from([1, 2, 3, 4u32])],
+            [(Word::from([5, 6, 7, 8u32]), Word::from([3, 4, 5, 6u32]))],
+        );
+        let slot_delta = StorageSlotDelta::Map(map_delta);
+        let serialized = slot_delta.to_bytes();
+        let deserialized = StorageSlotDelta::read_from_bytes(&serialized).unwrap();
+        assert_eq!(deserialized, slot_delta);
+    }
+
     #[rstest::rstest]
     #[case::some_some(Some(1), Some(2), Some(2))]
     #[case::none_some(None, Some(2), Some(2))]
@@ -611,7 +778,7 @@ mod tests {
         #[case] expected: Option<u32>,
     ) -> anyhow::Result<()> {
         /// Creates a delta containing the item as an update if Some, else with the item cleared.
-        fn create_delta(item: Option<u32>) -> anyhow::Result<AccountStorageDelta> {
+        fn create_delta(item: Option<u32>) -> AccountStorageDelta {
             let slot_name = StorageSlotName::mock(123);
             let item = item.map(|x| (slot_name.clone(), Word::from([x, 0, 0, 0])));
 
@@ -619,12 +786,11 @@ mod tests {
                 .add_cleared_items(item.is_none().then_some(slot_name.clone()))
                 .add_updated_values(item)
                 .build()
-                .context("failed to build storage delta")
         }
 
-        let mut delta_x = create_delta(x)?;
-        let delta_y = create_delta(y)?;
-        let expected = create_delta(expected)?;
+        let mut delta_x = create_delta(x);
+        let delta_y = create_delta(y);
+        let expected = create_delta(expected);
 
         delta_x.merge(delta_y).context("failed to merge deltas")?;
 
