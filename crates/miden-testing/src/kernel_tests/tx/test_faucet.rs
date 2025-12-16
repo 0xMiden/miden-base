@@ -1,6 +1,6 @@
 use alloc::sync::Arc;
 
-use miden_lib::errors::tx_kernel_errors::{
+use miden_lib::errors::tx_kernel::{
     ERR_FAUCET_NEW_TOTAL_SUPPLY_WOULD_EXCEED_MAX_ASSET_AMOUNT,
     ERR_FAUCET_NON_FUNGIBLE_ASSET_ALREADY_ISSUED,
     ERR_FAUCET_NON_FUNGIBLE_ASSET_TO_BURN_NOT_FOUND,

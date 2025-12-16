@@ -2,7 +2,7 @@ use alloc::sync::Arc;
 use alloc::vec;
 use alloc::vec::Vec;
 
-use miden_lib::errors::tx_kernel_errors::{
+use miden_lib::errors::tx_kernel::{
     ERR_FOREIGN_ACCOUNT_CONTEXT_AGAINST_NATIVE_ACCOUNT,
     ERR_FOREIGN_ACCOUNT_INVALID_COMMITMENT,
     ERR_FOREIGN_ACCOUNT_MAX_NUMBER_EXCEEDED,

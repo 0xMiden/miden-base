@@ -1,10 +1,14 @@
 #[cfg(any(feature = "testing", test))]
 #[rustfmt::skip]
-pub mod tx_kernel_errors;
+pub mod tx_kernel;
 
 #[cfg(any(feature = "testing", test))]
 #[rustfmt::skip]
-pub mod note_script_errors;
+pub mod protocol_lib;
+
+#[cfg(any(feature = "testing", test))]
+#[rustfmt::skip]
+pub mod standards;
 
 mod masm_error;
 pub use masm_error::MasmError;

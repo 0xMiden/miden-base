@@ -2,7 +2,7 @@ use miden_lib::account::auth::AuthEcdsaK256KeccakMultisig;
 use miden_lib::account::components::ecdsa_k256_keccak_multisig_library;
 use miden_lib::account::interface::{AccountInterface, AccountInterfaceExt};
 use miden_lib::account::wallets::BasicWallet;
-use miden_lib::errors::tx_kernel_errors::ERR_TX_ALREADY_EXECUTED;
+use miden_lib::errors::standards::ERR_TX_ALREADY_EXECUTED;
 use miden_lib::note::create_p2id_note;
 use miden_lib::testing::account_interface::get_public_keys_from_account;
 use miden_lib::utils::CodeBuilder;
