@@ -2,7 +2,6 @@ use miden::core::mem
 
 use miden::kernel_proc_offsets
 use miden::note
-use miden::contracts::wallets::basic->wallet
 
 # ERRORS
 # =================================================================================================
