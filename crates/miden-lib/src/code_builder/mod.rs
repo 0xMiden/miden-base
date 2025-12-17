@@ -55,9 +55,9 @@ use crate::standards_lib::StandardsLib;
 ///
 /// ```no_run
 /// # use anyhow::Context;
-/// # use crate::code_builder::CodeBuilder;
+/// # use miden_lib::code_builder::CodeBuilder;
 /// # use miden_objects::assembly::Library;
-/// # use miden_core_lib::CoreLibrary;
+/// # use miden_objects::CoreLibrary;
 /// # fn example() -> anyhow::Result<()> {
 /// # let module_code = "pub proc test push.1 add end";
 /// # let script_code = "begin nop end";
