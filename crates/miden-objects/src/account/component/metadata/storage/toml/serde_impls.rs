@@ -2,15 +2,12 @@ use alloc::collections::BTreeMap;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
-use miden_core::Felt;
 use serde::de::Error as DeError;
 use serde::ser::{Error as SerError, SerializeStruct};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use super::super::type_registry::SCHEMA_TYPE_REGISTRY;
 use super::super::{FeltSchema, SchemaTypeIdentifier, StorageValueName};
-use crate::asset::TokenSymbol;
-
 // FELT SCHEMA SERIALIZATION
 // ================================================================================================
 
@@ -43,8 +40,7 @@ impl Serialize for FeltSchema {
         if let Some(default_value) = self.default_value() {
             state.serialize_field(
                 "default-value",
-                &render_felt_default_value(&self.felt_type(), default_value)
-                    .map_err(|err| SerError::custom(err.to_string()))?,
+                &SCHEMA_TYPE_REGISTRY.display_felt(&self.felt_type(), default_value),
             )?;
         }
         state.end()
@@ -141,32 +137,13 @@ impl<'de> Deserialize<'de> for FeltSchema {
     }
 }
 
-fn render_felt_default_value(
-    schema_type: &SchemaTypeIdentifier,
-    felt: Felt,
-) -> Result<String, crate::account::component::SchemaTypeError> {
-    match schema_type.as_str() {
-        "void" => Ok("0".into()),
-        "u8" | "u16" | "u32" => Ok(felt.as_int().to_string()),
-        "token_symbol" => {
-            let token = TokenSymbol::try_from(felt).map_err(|err| {
-                crate::account::component::SchemaTypeError::ConversionError(err.to_string())
-            })?;
-            token.to_string().map_err(|err| {
-                crate::account::component::SchemaTypeError::ConversionError(err.to_string())
-            })
-        },
-        _ => Ok(format!("0x{:x}", felt.as_int())),
-    }
-}
-
 fn toml_value_to_string<E: DeError>(value: toml::Value) -> Result<String, E> {
     match value {
         toml::Value::String(s) => Ok(s),
         toml::Value::Integer(i) => Ok(i.to_string()),
         toml::Value::Float(f) => Ok(f.to_string()),
         other => Err(E::custom(format!(
-            "expected a scalar TOML value for `default-value`, got {other}"
+            "expected a scalar TOML value for default-value, got {other}"
         ))),
     }
 }

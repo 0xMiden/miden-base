@@ -2,7 +2,7 @@ use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
-use miden_core::{Felt, FieldElement, Word};
+use miden_core::{Felt, Word};
 use semver::Version;
 use serde::de::Error as _;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -139,26 +139,7 @@ impl WordValue {
     }
 
     fn from_word(schema_type: &SchemaTypeIdentifier, word: Word) -> Self {
-        if SCHEMA_TYPE_REGISTRY.contains_felt_type(schema_type)
-            && word[0] == Felt::ZERO
-            && word[1] == Felt::ZERO
-            && word[2] == Felt::ZERO
-        {
-            return WordValue::Scalar(render_typed_felt(schema_type, word[3]));
-        }
-
-        WordValue::Scalar(word.to_string())
-    }
-}
-
-fn render_typed_felt(schema_type: &SchemaTypeIdentifier, felt: Felt) -> String {
-    match schema_type.as_str() {
-        "void" => "0".into(),
-        "u8" | "u16" | "u32" => felt.as_int().to_string(),
-        "token_symbol" => crate::asset::TokenSymbol::try_from(felt)
-            .and_then(|token| token.to_string())
-            .unwrap_or_else(|_| format!("0x{:x}", felt.as_int())),
-        _ => format!("0x{:x}", felt.as_int()),
+        WordValue::Scalar(SCHEMA_TYPE_REGISTRY.display_word(schema_type, word))
     }
 }
 

@@ -190,8 +190,14 @@ pub trait FeltType: Send + Sync {
     fn type_name() -> SchemaTypeIdentifier
     where
         Self: Sized;
+
     /// Parses the input string into a `Felt`.
     fn parse_felt(input: &str) -> Result<Felt, SchemaTypeError>
+    where
+        Self: Sized;
+
+    /// Displays a `Felt` in a canonical string representation for this type.
+    fn display_felt(value: Felt) -> Result<String, SchemaTypeError>
     where
         Self: Sized;
 }
@@ -205,6 +211,11 @@ pub trait WordType: alloc::fmt::Debug + Send + Sync {
 
     /// Parses the input string into a `Word`.
     fn parse_word(input: &str) -> Result<Word, SchemaTypeError>
+    where
+        Self: Sized;
+
+    /// Displays a `Word` in a canonical string representation for this type.
+    fn display_word(value: Word) -> Result<String, SchemaTypeError>
     where
         Self: Sized;
 }
@@ -221,11 +232,22 @@ where
         let felt = <T as FeltType>::parse_felt(input)?;
         Ok(Word::from([Felt::new(0), Felt::new(0), Felt::new(0), felt]))
     }
+
+    fn display_word(value: Word) -> Result<String, SchemaTypeError> {
+        if value[0] != Felt::new(0) || value[1] != Felt::new(0) || value[2] != Felt::new(0) {
+            return Err(SchemaTypeError::ConversionError(format!(
+                "expected a word of the form [0, 0, 0, <felt>] for type `{}`",
+                Self::type_name()
+            )));
+        }
+        <T as FeltType>::display_felt(value[3])
+    }
 }
 
 // FELT IMPLS FOR NATIVE TYPES
 // ================================================================================================
 
+/// A felt type that represents irrelevant elements in a storage schema definition.
 struct Void;
 
 impl FeltType for Void {
@@ -240,6 +262,13 @@ impl FeltType for Void {
         }
         Ok(Felt::new(0))
     }
+
+    fn display_felt(value: Felt) -> Result<String, SchemaTypeError> {
+        if value != Felt::new(0) {
+            return Err(SchemaTypeError::ConversionError("void values must be zero".to_string()));
+        }
+        Ok("0".into())
+    }
 }
 
 impl FeltType for u8 {
@@ -252,6 +281,13 @@ impl FeltType for u8 {
             SchemaTypeError::parse(input.to_string(), <Self as FeltType>::type_name(), err)
         })?;
         Ok(Felt::from(native))
+    }
+
+    fn display_felt(value: Felt) -> Result<String, SchemaTypeError> {
+        let native = u8::try_from(value.as_int()).map_err(|_| {
+            SchemaTypeError::ConversionError(format!("value `{}` is out of range for u8", value))
+        })?;
+        Ok(native.to_string())
     }
 }
 
@@ -266,6 +302,13 @@ impl FeltType for u16 {
         })?;
         Ok(Felt::from(native))
     }
+
+    fn display_felt(value: Felt) -> Result<String, SchemaTypeError> {
+        let native = u16::try_from(value.as_int()).map_err(|_| {
+            SchemaTypeError::ConversionError(format!("value `{}` is out of range for u16", value))
+        })?;
+        Ok(native.to_string())
+    }
 }
 
 impl FeltType for u32 {
@@ -278,6 +321,13 @@ impl FeltType for u32 {
             SchemaTypeError::parse(input.to_string(), <Self as FeltType>::type_name(), err)
         })?;
         Ok(Felt::from(native))
+    }
+
+    fn display_felt(value: Felt) -> Result<String, SchemaTypeError> {
+        let native = u32::try_from(value.as_int()).map_err(|_| {
+            SchemaTypeError::ConversionError(format!("value `{}` is out of range for u32", value))
+        })?;
+        Ok(native.to_string())
     }
 }
 
@@ -297,6 +347,10 @@ impl FeltType for Felt {
         })?;
         Felt::try_from(n).map_err(|_| SchemaTypeError::ConversionError(input.to_string()))
     }
+
+    fn display_felt(value: Felt) -> Result<String, SchemaTypeError> {
+        Ok(format!("0x{:x}", value.as_int()))
+    }
 }
 
 impl FeltType for TokenSymbol {
@@ -308,6 +362,21 @@ impl FeltType for TokenSymbol {
             SchemaTypeError::parse(input.to_string(), <Self as FeltType>::type_name(), err)
         })?;
         Ok(Felt::from(token))
+    }
+
+    fn display_felt(value: Felt) -> Result<String, SchemaTypeError> {
+        let token = TokenSymbol::try_from(value).map_err(|err| {
+            SchemaTypeError::ConversionError(format!(
+                "invalid token_symbol value `{}`: {err}",
+                value.as_int()
+            ))
+        })?;
+        token.to_string().map_err(|err| {
+            SchemaTypeError::ConversionError(format!(
+                "failed to display token_symbol value `{}`: {err}",
+                value.as_int()
+            ))
+        })
     }
 }
 
@@ -346,6 +415,10 @@ impl WordType for Word {
             )
         })
     }
+
+    fn display_word(value: Word) -> Result<String, SchemaTypeError> {
+        Ok(value.to_string())
+    }
 }
 
 impl WordType for rpo_falcon512::PublicKey {
@@ -362,6 +435,10 @@ impl WordType for rpo_falcon512::PublicKey {
                 WordParseError(err.to_string()),
             )
         })
+    }
+
+    fn display_word(value: Word) -> Result<String, SchemaTypeError> {
+        Ok(value.to_string())
     }
 }
 
@@ -380,6 +457,10 @@ impl WordType for ecdsa_k256_keccak::PublicKey {
             )
         })
     }
+
+    fn display_word(value: Word) -> Result<String, SchemaTypeError> {
+        Ok(value.to_string())
+    }
 }
 
 // TYPE ALIASES FOR CONVERTER CLOSURES
@@ -390,6 +471,12 @@ type FeltTypeConverter = fn(&str) -> Result<Felt, SchemaTypeError>;
 
 /// Type alias for a function that converts a string into a [`Word`].
 type WordTypeConverter = fn(&str) -> Result<Word, SchemaTypeError>;
+
+/// Type alias for a function that converts a [`Felt`] into a canonical string representation.
+type FeltTypeDisplayer = fn(Felt) -> Result<String, SchemaTypeError>;
+
+/// Type alias for a function that converts a [`Word`] into a canonical string representation.
+type WordTypeDisplayer = fn(Word) -> Result<String, SchemaTypeError>;
 
 // SCHEMA TYPE REGISTRY
 // ================================================================================================
@@ -403,6 +490,8 @@ type WordTypeConverter = fn(&str) -> Result<Word, SchemaTypeError>;
 pub struct SchemaTypeRegistry {
     felt: BTreeMap<SchemaTypeIdentifier, FeltTypeConverter>,
     word: BTreeMap<SchemaTypeIdentifier, WordTypeConverter>,
+    felt_display: BTreeMap<SchemaTypeIdentifier, FeltTypeDisplayer>,
+    word_display: BTreeMap<SchemaTypeIdentifier, WordTypeDisplayer>,
 }
 
 impl SchemaTypeRegistry {
@@ -418,12 +507,14 @@ impl SchemaTypeRegistry {
     pub fn register_felt_type<T: FeltType + 'static>(&mut self) {
         let key = <T as FeltType>::type_name();
         self.felt.insert(key.clone(), T::parse_felt);
+        self.felt_display.insert(key, T::display_felt);
     }
 
     /// Registers a `WordType` converter, to interpret a string as a [`Word`].
     pub fn register_word_type<T: WordType + 'static>(&mut self) {
         let key = <T as WordType>::type_name();
-        self.word.insert(key, T::parse_word);
+        self.word.insert(key.clone(), T::parse_word);
+        self.word_display.insert(key, T::display_word);
     }
 
     /// Attempts to parse a string into a `Felt` using the registered converter for the given type
@@ -447,6 +538,37 @@ impl SchemaTypeRegistry {
             .get(type_name)
             .ok_or(SchemaTypeError::FeltTypeNotFound(type_name.clone()))?;
         converter(value)
+    }
+
+    /// Converts a [`Felt`] into a canonical string representation for the given schema type.
+    ///
+    /// This is intended for serializing schemas to TOML (e.g. default values).
+    #[allow(dead_code)]
+    pub fn display_felt(&self, type_name: &SchemaTypeIdentifier, felt: Felt) -> String {
+        self.felt_display
+            .get(type_name)
+            .and_then(|display| display(felt).ok())
+            .unwrap_or_else(|| format!("0x{:x}", felt.as_int()))
+    }
+
+    /// Converts a [`Word`] into a canonical string representation for the given schema type.
+    ///
+    /// Tries displaying as word if the coverter is known, otherwise tests as a felt type, and
+    /// if it doesn't work, the word as hex is returned
+    // TODO: This should return richer information (how it was converted, if it succeded as word,
+    // etc.)
+    #[allow(dead_code)]
+    pub fn display_word(&self, type_name: &SchemaTypeIdentifier, word: Word) -> String {
+        if let Some(display) = self.word_display.get(type_name) {
+            return display(word).unwrap_or_else(|_| word.to_string());
+        }
+
+        // Treat any registered felt type as a word type by zero-padding the remaining felts.
+        if self.contains_felt_type(type_name) {
+            return self.display_felt(type_name, word[3]);
+        }
+
+        word.to_hex()
     }
 
     /// Attempts to parse a string into a `Word` using the registered converter for the given type
