@@ -43,6 +43,21 @@ use crate::{
     MAX_OUTPUT_NOTES_PER_TX,
 };
 
+#[cfg(any(feature = "testing", test))]
+mod masm_error;
+#[cfg(any(feature = "testing", test))]
+pub use masm_error::MasmError;
+
+/// The errors from the MASM code of the transaction kernel.
+#[cfg(any(feature = "testing", test))]
+#[rustfmt::skip]
+pub mod tx_kernel;
+
+/// The errors from the MASM code of the Miden protocol library.
+#[cfg(any(feature = "testing", test))]
+#[rustfmt::skip]
+pub mod protocol;
+
 // ACCOUNT COMPONENT TEMPLATE ERROR
 // ================================================================================================
 

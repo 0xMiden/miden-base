@@ -11,6 +11,7 @@ pub mod address;
 pub mod asset;
 pub mod batch;
 pub mod block;
+pub mod errors;
 pub mod note;
 pub mod transaction;
 
@@ -18,7 +19,6 @@ pub mod transaction;
 pub mod testing;
 
 mod constants;
-mod errors;
 
 // RE-EXPORTS
 // ================================================================================================
