@@ -40,8 +40,8 @@ pub type StorageSlot = u8;
 // | Padding            | 1_056         | 4                |                                        |
 // | Proc tracking      | 1_060         | 256              | 256 procedures max, 1 element each     |
 // | Num storage slots  | 1_316         | 4                |                                        |
-// | Active slot info   | 1_320         | 1_020            | 255 slots max, 8 elements each         |
-// | Initial slot info  | 2_340         | 1_020            | Only initialized on the native account |
+// | Initial slot info  | 1_320         | 1_020            | Only initialized on the native account |
+// | Active slot info   | 2_340         | 1_020            | 255 slots max, 8 elements each         |
 // | Padding            | 3_360         | 4_832            |                                        |
 //
 // Active slot info is laid out as [[0, slot_type, slot_id_suffix, slot_id_prefix], SLOT_VALUE].
