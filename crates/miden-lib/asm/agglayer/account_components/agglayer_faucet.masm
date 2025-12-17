@@ -32,7 +32,7 @@ proc validate_claim_via_fpi
     procref.bridge_in::check_claim_proof
     # => [MAST_ROOT]
 
-    push.BRIDGE_ID_IDX[0..2]
+    push.BRIDGE_ID_SLOT[0..2]
     # => [bridge_id_idx, MAST_ROOT]
 
     # get bridge account id
