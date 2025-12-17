@@ -55,7 +55,7 @@ use crate::standards_lib::StandardsLib;
 ///
 /// ```no_run
 /// # use anyhow::Context;
-/// # use miden_lib::code_builder::CodeBuilder;
+/// # use crate::code_builder::CodeBuilder;
 /// # use miden_objects::assembly::Library;
 /// # use miden_core_lib::CoreLibrary;
 /// # fn example() -> anyhow::Result<()> {
@@ -342,7 +342,7 @@ impl CodeBuilder {
     ///
     /// [account_lib]: crate::testing::mock_account_code::MockAccountCodeExt::mock_account_library
     /// [faucet_lib]: crate::testing::mock_account_code::MockAccountCodeExt::mock_faucet_library
-    /// [util_lib]: crate::testing::mock_util_lib::mock_util_library
+    /// [util_lib]: miden_objects::testing::mock_util_lib::mock_util_library
     #[cfg(any(feature = "testing", test))]
     pub fn with_mock_libraries() -> Self {
         Self::with_mock_libraries_with_source_manager(Arc::new(DefaultSourceManager::default()))

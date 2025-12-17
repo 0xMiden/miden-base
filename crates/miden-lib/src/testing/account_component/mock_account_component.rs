@@ -13,7 +13,7 @@ use crate::testing::mock_account_code::MockAccountCodeExt;
 /// arbitrary number of storage slots (within the overall limit) so anything can be set for testing
 /// purposes.
 ///
-/// This component supports all [`AccountType`](crate::account::AccountType)s for testing
+/// This component supports all [`AccountType`](miden_objects::account::AccountType)s for testing
 /// purposes.
 ///
 /// [account_lib]: crate::testing::mock_account_code::MockAccountCodeExt::mock_account_library
