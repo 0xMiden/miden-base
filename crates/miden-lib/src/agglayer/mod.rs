@@ -210,7 +210,7 @@ pub fn asset_conversion_component(storage_slots: Vec<StorageSlot>) -> AccountCom
 /// - `amount`: The amount of assets to be minted and transferred
 /// - `output_note_script`: The script for the output note (typically P2ID script)
 /// - `output_serial_num`: The serial number for the output note
-/// - `aux`: Auxiliary data for the CLAIM note
+/// - `aux`: Auxiliary data for the CLAIM note (verified against Global Exit Tree)
 /// - `rng`: Random number generator for creating the serial number
 ///
 /// # Errors

@@ -1,0 +1,12 @@
+#! Verifies the validity of the CLAIM note proof against the Global Exit Tree.
+#!
+#! This procedure verifies that a claim proof is valid against the Global Exit Tree (GET).
+#! Currently this is a stubbed implementation that always returns 1 (true).
+#!
+#! Inputs:  [...]
+#! Outputs: [1] (currently always returns 1)
+#!
+#! Invocation: exec
+pub proc verify_claim_proof
+  push.1
+end

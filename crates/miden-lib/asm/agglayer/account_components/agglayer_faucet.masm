@@ -11,7 +11,7 @@ const BRIDGE_ID_SLOT = word("miden::agglayer::faucet")
 
 # ERRORS
 # =================================================================================================
-const ERR_INVALID_PROOF = "invalid proof"
+const ERR_CLAIM_INVALID_GER_PROOF = "invalid ger claim proof"
 
 #! Validates a CLAIM note by verifying its inputs against a GER against the AggLayer bridge.
 #!
@@ -47,7 +47,7 @@ proc validate_claim_via_fpi
     exec.tx::execute_foreign_procedure
     # => [validation_result]
 
-    assert.err=ERR_INVALID_PROOF drop
+    assert.err=ERR_CLAIM_INVALID_GER_PROOF drop
     # => []
 end
 
@@ -63,7 +63,7 @@ end
 #! - amount is the amount to be minted and sent.
 #! - tag is the tag to be included in the note.
 #! - aux is the auxiliary data to be included in the note.
-#! - note_type is the type of the note that holds the asset.
+#! - note_type is the type of the note that holds the asset (only public notes are supported).
 #! - execution_hint is the execution hint of the note that holds the asset.
 #! - RECIPIENT is the recipient of the asset, i.e.,
 #!   hash(hash(hash(serial_num, [0; 4]), script_root), input_commitment).

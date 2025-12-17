@@ -21,11 +21,10 @@ pub const ERR_B2AGG_WRONG_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_s
 /// Error Message: "burn requires exactly 1 note asset"
 pub const ERR_BASIC_FUNGIBLE_BURN_WRONG_NUMBER_OF_ASSETS: MasmError = MasmError::from_static_str("burn requires exactly 1 note asset");
 
+/// Error Message: "invalid ger claim proof"
+pub const ERR_CLAIM_INVALID_GER_PROOF: MasmError = MasmError::from_static_str("invalid ger claim proof");
 /// Error Message: "CLAIM script expects 12+ inputs for public output notes"
 pub const ERR_CLAIM_WRONG_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_str("CLAIM script expects 12+ inputs for public output notes");
-
-/// Error Message: "invalid proof"
-pub const ERR_INVALID_PROOF: MasmError = MasmError::from_static_str("invalid proof");
 
 /// Error Message: "number of approvers must be equal to or greater than threshold"
 pub const ERR_MALFORMED_MULTISIG_CONFIG: MasmError = MasmError::from_static_str("number of approvers must be equal to or greater than threshold");
