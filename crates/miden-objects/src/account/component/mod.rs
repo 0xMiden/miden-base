@@ -1,9 +1,9 @@
 use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 
-// TODO(named_slots): Refactor templates.
-// mod template;
-// pub use template::*;
+mod metadata;
+pub use metadata::*;
+
 mod code;
 pub use code::AccountComponentCode;
 
@@ -79,6 +79,8 @@ impl AccountComponent {
     ///
     /// * `package` - The package containing the [`Library`](miden_assembly::Library) and account
     ///   component metadata
+    /// * `package` - The package containing the [`Library`](miden_assembly::Library) and account
+    ///   component metadata
     /// * `init_storage_data` - The initialization data for storage slots
     ///
     /// # Errors
@@ -106,8 +108,13 @@ impl AccountComponent {
         let component_code = AccountComponentCode::from(library);
 
         AccountComponent::from_library(&component_code, &metadata, init_storage_data)
+        let component_code = AccountComponentCode::from(library);
+
+        AccountComponent::from_library(&component_code, &metadata, init_storage_data)
     }
 
+    /// Creates an [`AccountComponent`] from an [`AccountComponentCode`] and
+    /// [`AccountComponentMetadata`].
     /// Creates an [`AccountComponent`] from an [`AccountComponentCode`] and
     /// [`AccountComponentMetadata`].
     ///
@@ -130,6 +137,7 @@ impl AccountComponent {
     /// - The storage initialization fails due to invalid or missing data
     /// - The component creation fails
     pub fn from_library(
+        library: &AccountComponentCode,
         library: &AccountComponentCode,
         account_component_metadata: &AccountComponentMetadata,
         init_storage_data: &InitStorageData,
@@ -241,7 +249,7 @@ impl From<AccountComponent> for AccountComponentCode {
     }
 }
 
-// TODO(named_slots): Reactivate tests once template is refactored.
+// TODO(named_slots): Reactivate tests once packages support schemas.
 /*
 #[cfg(test)]
 mod tests {

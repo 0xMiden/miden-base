@@ -35,19 +35,20 @@ pub mod component;
 pub use component::{
     AccountComponent,
     AccountComponentCode,
-    // TODO(named_slots): Uncomment when refactored.
-    // AccountComponentMetadata,
-    // FeltRepresentation,
-    // InitStorageData,
-    // MapEntry,
-    // MapRepresentation,
-    // PlaceholderTypeRequirement,
-    // StorageEntry,
-    // StorageValueName,
-    // StorageValueNameError,
-    // TemplateType,
-    // TemplateTypeError,
-    // WordRepresentation,
+    AccountComponentMetadata,
+    AccountStorageSchema,
+    FeltSchema,
+    InitStorageData,
+    InitValueRequirement,
+    MapSlotSchema,
+    SchemaTypeError,
+    SchemaTypeIdentifier,
+    StorageSlotSchema,
+    StorageValueName,
+    StorageValueNameError,
+    ValueSlotSchema,
+    WordSchema,
+    WordValue,
 };
 
 pub mod delta;

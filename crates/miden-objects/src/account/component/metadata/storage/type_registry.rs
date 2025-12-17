@@ -1,0 +1,493 @@
+use alloc::boxed::Box;
+use alloc::collections::BTreeMap;
+use alloc::string::{String, ToString};
+use core::error::Error;
+use core::fmt::{self, Display};
+
+use miden_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
+use miden_core::{Felt, Word};
+use miden_crypto::dsa::{ecdsa_k256_keccak, rpo_falcon512};
+use miden_processor::DeserializationError;
+use thiserror::Error;
+
+use crate::asset::TokenSymbol;
+use crate::utils::sync::LazyLock;
+
+/// A global registry for schema type converters.
+///
+/// It is used during component instantiation to convert init-provided values (typically provided
+/// as strings) into their respective storage values.
+pub static SCHEMA_TYPE_REGISTRY: LazyLock<SchemaTypeRegistry> = LazyLock::new(|| {
+    let mut registry = SchemaTypeRegistry::new();
+    registry.register_felt_type::<Void>();
+    registry.register_felt_type::<u8>();
+    registry.register_felt_type::<u16>();
+    registry.register_felt_type::<u32>();
+    registry.register_felt_type::<Felt>();
+    registry.register_felt_type::<TokenSymbol>();
+    registry.register_word_type::<Word>();
+    registry.register_word_type::<rpo_falcon512::PublicKey>();
+    registry.register_word_type::<ecdsa_k256_keccak::PublicKey>();
+    registry
+});
+
+// SCHEMA TYPE ERROR
+// ================================================================================================
+
+/// Errors that can occur when parsing or converting schema types.
+///
+/// This enum covers various failure cases including parsing errors, conversion errors,
+/// unsupported conversions, and cases where a required type is not found in the registry.
+#[derive(Debug, Error)]
+pub enum SchemaTypeError {
+    #[error("conversion error: {0}")]
+    ConversionError(String),
+    #[error("felt type ` {0}` not found in the type registry")]
+    FeltTypeNotFound(SchemaTypeIdentifier),
+    #[error("invalid type name `{0}`: {1}")]
+    InvalidTypeName(String, String),
+    #[error("failed to parse input `{input}` as `{schema_type}`")]
+    ParseError {
+        input: String,
+        schema_type: SchemaTypeIdentifier,
+        source: Box<dyn Error + Send + Sync + 'static>,
+    },
+    #[error("word type ` {0}` not found in the type registry")]
+    WordTypeNotFound(SchemaTypeIdentifier),
+}
+
+impl SchemaTypeError {
+    /// Creates a [`SchemaTypeError::ParseError`].
+    pub fn parse(
+        input: impl Into<String>,
+        schema_type: SchemaTypeIdentifier,
+        source: impl Error + Send + Sync + 'static,
+    ) -> Self {
+        SchemaTypeError::ParseError {
+            input: input.into(),
+            schema_type,
+            source: Box::new(source),
+        }
+    }
+}
+
+// SCHEMA TYPE
+// ================================================================================================
+
+/// A newtype wrapper around a `String`, representing a schema type identifier.
+#[derive(Debug, Clone, PartialEq, Eq, Ord, PartialOrd)]
+#[cfg_attr(feature = "std", derive(::serde::Deserialize, ::serde::Serialize))]
+#[cfg_attr(feature = "std", serde(transparent))]
+pub struct SchemaTypeIdentifier(String);
+
+impl SchemaTypeIdentifier {
+    /// Creates a new [`SchemaTypeIdentifier`] from a `String`.
+    ///
+    /// The name must follow a Rust-style namespace format, consisting of one or more segments
+    /// (non-empty, and alphanumerical) separated by double-colon (`::`) delimiters.
+    ///
+    /// # Errors
+    ///
+    /// - If the identifier is empty.
+    /// - If any segment is empty or contains something other than alphanumerical
+    ///   characters/underscores.
+    pub fn new(s: impl Into<String>) -> Result<Self, SchemaTypeError> {
+        let s = s.into();
+        if s.is_empty() {
+            return Err(SchemaTypeError::InvalidTypeName(
+                s.clone(),
+                "schema type identifier is empty".to_string(),
+            ));
+        }
+        for segment in s.split("::") {
+            if segment.is_empty() {
+                return Err(SchemaTypeError::InvalidTypeName(
+                    s.clone(),
+                    "empty segment in schema type identifier".to_string(),
+                ));
+            }
+            if !segment.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
+                return Err(SchemaTypeError::InvalidTypeName(
+                    s.clone(),
+                    format!("segment '{segment}' contains invalid characters"),
+                ));
+            }
+        }
+        Ok(Self(s))
+    }
+
+    /// Returns the schema type identifier for the native [`Felt`] type.
+    pub fn native_felt() -> SchemaTypeIdentifier {
+        SchemaTypeIdentifier::new("felt").expect("type is well formed")
+    }
+
+    /// Returns the schema type identifier for the native [`Word`] type.
+    pub fn native_word() -> SchemaTypeIdentifier {
+        SchemaTypeIdentifier::new("word").expect("type is well formed")
+    }
+
+    /// Returns the schema type identifier for storage map slots.
+    pub fn storage_map() -> SchemaTypeIdentifier {
+        SchemaTypeIdentifier::new("map").expect("type is well formed")
+    }
+
+    /// Returns the schema type identifier for the `void` type.
+    ///
+    /// The `void` type always parses to `0` and is intended to model reserved or padding felts.
+    pub fn void() -> SchemaTypeIdentifier {
+        SchemaTypeIdentifier::new("void").expect("type is well formed")
+    }
+
+    /// Returns a reference to the inner string.
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl Display for SchemaTypeIdentifier {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl Serializable for SchemaTypeIdentifier {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        target.write(self.0.clone())
+    }
+}
+
+impl Deserializable for SchemaTypeIdentifier {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let id: String = source.read()?;
+
+        SchemaTypeIdentifier::new(id)
+            .map_err(|err| DeserializationError::InvalidValue(err.to_string()))
+    }
+}
+
+// INIT VALUE REQUIREMENT
+// ================================================================================================
+
+/// Describes the expected type and additional metadata for an init-provided storage value.
+///
+/// An `InitValueRequirement` specifies the expected type identifier for a required init value as
+/// well as an optional description. This information is used to validate and provide context for
+/// instantiation-time values.
+#[derive(Debug)]
+pub struct InitValueRequirement {
+    /// The expected type identifier.
+    pub r#type: SchemaTypeIdentifier,
+    /// An optional description providing additional context.
+    pub description: Option<String>,
+}
+
+// SCHEMA TYPE TRAITS
+// ================================================================================================
+
+/// Trait for converting a string into a single `Felt`.
+pub trait FeltType: Send + Sync {
+    /// Returns the type identifier.
+    fn type_name() -> SchemaTypeIdentifier
+    where
+        Self: Sized;
+    /// Parses the input string into a `Felt`.
+    fn parse_felt(input: &str) -> Result<Felt, SchemaTypeError>
+    where
+        Self: Sized;
+}
+
+/// Trait for converting a string into a single `Word`.
+pub trait WordType: alloc::fmt::Debug + Send + Sync {
+    /// Returns the type identifier.
+    fn type_name() -> SchemaTypeIdentifier
+    where
+        Self: Sized;
+
+    /// Parses the input string into a `Word`.
+    fn parse_word(input: &str) -> Result<Word, SchemaTypeError>
+    where
+        Self: Sized;
+}
+
+impl<T> WordType for T
+where
+    T: FeltType + alloc::fmt::Debug,
+{
+    fn type_name() -> SchemaTypeIdentifier {
+        <T as FeltType>::type_name()
+    }
+
+    fn parse_word(input: &str) -> Result<Word, SchemaTypeError> {
+        let felt = <T as FeltType>::parse_felt(input)?;
+        Ok(Word::from([Felt::new(0), Felt::new(0), Felt::new(0), felt]))
+    }
+}
+
+// FELT IMPLS FOR NATIVE TYPES
+// ================================================================================================
+
+struct Void;
+
+impl FeltType for Void {
+    fn type_name() -> SchemaTypeIdentifier {
+        SchemaTypeIdentifier::void()
+    }
+
+    fn parse_felt(input: &str) -> Result<Felt, SchemaTypeError> {
+        let parsed = <Felt as FeltType>::parse_felt(input)?;
+        if parsed != Felt::new(0) {
+            return Err(SchemaTypeError::ConversionError("void values must be zero".to_string()));
+        }
+        Ok(Felt::new(0))
+    }
+}
+
+impl FeltType for u8 {
+    fn type_name() -> SchemaTypeIdentifier {
+        SchemaTypeIdentifier::new("u8").expect("type is well formed")
+    }
+
+    fn parse_felt(input: &str) -> Result<Felt, SchemaTypeError> {
+        let native: u8 = input.parse().map_err(|err| {
+            SchemaTypeError::parse(input.to_string(), <Self as FeltType>::type_name(), err)
+        })?;
+        Ok(Felt::from(native))
+    }
+}
+
+impl FeltType for u16 {
+    fn type_name() -> SchemaTypeIdentifier {
+        SchemaTypeIdentifier::new("u16").expect("type is well formed")
+    }
+
+    fn parse_felt(input: &str) -> Result<Felt, SchemaTypeError> {
+        let native: u16 = input.parse().map_err(|err| {
+            SchemaTypeError::parse(input.to_string(), <Self as FeltType>::type_name(), err)
+        })?;
+        Ok(Felt::from(native))
+    }
+}
+
+impl FeltType for u32 {
+    fn type_name() -> SchemaTypeIdentifier {
+        SchemaTypeIdentifier::new("u32").expect("type is well formed")
+    }
+
+    fn parse_felt(input: &str) -> Result<Felt, SchemaTypeError> {
+        let native: u32 = input.parse().map_err(|err| {
+            SchemaTypeError::parse(input.to_string(), <Self as FeltType>::type_name(), err)
+        })?;
+        Ok(Felt::from(native))
+    }
+}
+
+impl FeltType for Felt {
+    fn type_name() -> SchemaTypeIdentifier {
+        SchemaTypeIdentifier::new("felt").expect("type is well formed")
+    }
+
+    fn parse_felt(input: &str) -> Result<Felt, SchemaTypeError> {
+        let n = if let Some(hex) = input.strip_prefix("0x").or_else(|| input.strip_prefix("0X")) {
+            u64::from_str_radix(hex, 16)
+        } else {
+            input.parse::<u64>()
+        }
+        .map_err(|err| {
+            SchemaTypeError::parse(input.to_string(), <Self as FeltType>::type_name(), err)
+        })?;
+        Felt::try_from(n).map_err(|_| SchemaTypeError::ConversionError(input.to_string()))
+    }
+}
+
+impl FeltType for TokenSymbol {
+    fn type_name() -> SchemaTypeIdentifier {
+        SchemaTypeIdentifier::new("token_symbol").expect("type is well formed")
+    }
+    fn parse_felt(input: &str) -> Result<Felt, SchemaTypeError> {
+        let token = TokenSymbol::new(input).map_err(|err| {
+            SchemaTypeError::parse(input.to_string(), <Self as FeltType>::type_name(), err)
+        })?;
+        Ok(Felt::from(token))
+    }
+}
+
+// WORD IMPLS FOR NATIVE TYPES
+// ================================================================================================
+
+#[derive(Debug, Error)]
+#[error("error parsing word: {0}")]
+struct WordParseError(String);
+
+/// Pads a hex string to 64 characters (excluding the 0x prefix).
+///
+/// If the input starts with "0x" and has fewer than 64 hex characters after the prefix,
+/// it will be left-padded with zeros. Otherwise, returns the input unchanged.
+fn pad_hex_string(input: &str) -> String {
+    if input.starts_with("0x") && input.len() < 66 {
+        // 66 = "0x" + 64 hex chars
+        let hex_part = &input[2..];
+        let padding = "0".repeat(64 - hex_part.len());
+        format!("0x{}{}", padding, hex_part)
+    } else {
+        input.to_string()
+    }
+}
+
+impl WordType for Word {
+    fn type_name() -> SchemaTypeIdentifier {
+        SchemaTypeIdentifier::native_word()
+    }
+    fn parse_word(input: &str) -> Result<Word, SchemaTypeError> {
+        Word::parse(input).map_err(|err| {
+            SchemaTypeError::parse(
+                input.to_string(),
+                Self::type_name(),
+                WordParseError(err.to_string()),
+            )
+        })
+    }
+}
+
+impl WordType for rpo_falcon512::PublicKey {
+    fn type_name() -> SchemaTypeIdentifier {
+        SchemaTypeIdentifier::new("auth::rpo_falcon512::pub_key").expect("type is well formed")
+    }
+    fn parse_word(input: &str) -> Result<Word, SchemaTypeError> {
+        let padded_input = pad_hex_string(input);
+
+        Word::try_from(padded_input.as_str()).map_err(|err| {
+            SchemaTypeError::parse(
+                input.to_string(), // Use original input in error
+                Self::type_name(),
+                WordParseError(err.to_string()),
+            )
+        })
+    }
+}
+
+impl WordType for ecdsa_k256_keccak::PublicKey {
+    fn type_name() -> SchemaTypeIdentifier {
+        SchemaTypeIdentifier::new("auth::ecdsa_k256_keccak::pub_key").expect("type is well formed")
+    }
+    fn parse_word(input: &str) -> Result<Word, SchemaTypeError> {
+        let padded_input = pad_hex_string(input);
+
+        Word::try_from(padded_input.as_str()).map_err(|err| {
+            SchemaTypeError::parse(
+                input.to_string(),
+                Self::type_name(),
+                WordParseError(err.to_string()),
+            )
+        })
+    }
+}
+
+// TYPE ALIASES FOR CONVERTER CLOSURES
+// ================================================================================================
+
+/// Type alias for a function that converts a string into a [`Felt`] value.
+type FeltTypeConverter = fn(&str) -> Result<Felt, SchemaTypeError>;
+
+/// Type alias for a function that converts a string into a [`Word`].
+type WordTypeConverter = fn(&str) -> Result<Word, SchemaTypeError>;
+
+// SCHEMA TYPE REGISTRY
+// ================================================================================================
+
+/// Registry for schema type converters.
+///
+/// This registry maintains mappings from type identifiers (as strings) to conversion functions for
+/// [`Felt`] and [`Word`] types. It is used to dynamically parse init-provided inputs into their
+/// corresponding storage values.
+#[derive(Clone, Debug, Default)]
+pub struct SchemaTypeRegistry {
+    felt: BTreeMap<SchemaTypeIdentifier, FeltTypeConverter>,
+    word: BTreeMap<SchemaTypeIdentifier, WordTypeConverter>,
+}
+
+impl SchemaTypeRegistry {
+    /// Creates a new, empty [`SchemaTypeRegistry`].
+    ///
+    /// The registry is initially empty and conversion functions can be registered using the
+    /// `register_*_type` methods.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Registers a `FeltType` converter, to interpret a string as a [`Felt``].
+    pub fn register_felt_type<T: FeltType + 'static>(&mut self) {
+        let key = <T as FeltType>::type_name();
+        self.felt.insert(key.clone(), T::parse_felt);
+    }
+
+    /// Registers a `WordType` converter, to interpret a string as a [`Word`].
+    pub fn register_word_type<T: WordType + 'static>(&mut self) {
+        let key = <T as WordType>::type_name();
+        self.word.insert(key, T::parse_word);
+    }
+
+    /// Attempts to parse a string into a `Felt` using the registered converter for the given type
+    /// name.
+    ///
+    /// # Arguments
+    ///
+    /// - type_name: A string that acts as the type identifier.
+    /// - value: The string input that should be parsed.
+    ///
+    /// # Errors
+    ///
+    /// - If the type is not registered or if the conversion fails.
+    pub fn try_parse_felt(
+        &self,
+        type_name: &SchemaTypeIdentifier,
+        value: &str,
+    ) -> Result<Felt, SchemaTypeError> {
+        let converter = self
+            .felt
+            .get(type_name)
+            .ok_or(SchemaTypeError::FeltTypeNotFound(type_name.clone()))?;
+        converter(value)
+    }
+
+    /// Attempts to parse a string into a `Word` using the registered converter for the given type
+    /// name.
+    ///
+    /// # Arguments
+    ///
+    /// - type_name: A string that acts as the type identifier.
+    /// - value: The string input that should be parsed.
+    ///
+    /// # Errors
+    ///
+    /// - If the type is not registered or if the conversion fails.
+    pub fn try_parse_word(
+        &self,
+        type_name: &SchemaTypeIdentifier,
+        value: &str,
+    ) -> Result<Word, SchemaTypeError> {
+        if let Some(converter) = self.word.get(type_name) {
+            return converter(value);
+        }
+
+        // Treat any registered felt type as a word type by zero-padding the remaining felts.
+        if let Some(converter) = self.felt.get(type_name) {
+            let felt = converter(value)?;
+            return Ok(Word::from([Felt::new(0), Felt::new(0), Felt::new(0), felt]));
+        }
+
+        Err(SchemaTypeError::WordTypeNotFound(type_name.clone()))
+    }
+
+    /// Returns `true` if a `FeltType` is registered for the given type.
+    pub fn contains_felt_type(&self, type_name: &SchemaTypeIdentifier) -> bool {
+        self.felt.contains_key(type_name)
+    }
+
+    /// Returns `true` if a `WordType` is registered for the given type.
+    ///
+    /// This also returns `true` for any registered felt type (as those can be embedded into a word
+    /// with zero-padding).
+    pub fn contains_word_type(&self, type_name: &SchemaTypeIdentifier) -> bool {
+        self.word.contains_key(type_name) || self.felt.contains_key(type_name)
+    }
+}

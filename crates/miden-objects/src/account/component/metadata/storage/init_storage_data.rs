@@ -1,0 +1,77 @@
+use alloc::collections::BTreeMap;
+use alloc::string::String;
+use alloc::vec::Vec;
+
+use super::StorageValueName;
+
+/// A raw word value provided via [`InitStorageData`].
+///
+/// This is used for map entries, where keys and values are supplied as either a scalar string
+/// (e.g. `"0x1234"`, `"16"`, `"BTC"`) or an array of 4 scalar elements.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum WordValue {
+    Scalar(String),
+    Elements([String; 4]),
+}
+
+impl From<String> for WordValue {
+    fn from(value: String) -> Self {
+        WordValue::Scalar(value)
+    }
+}
+
+impl From<&str> for WordValue {
+    fn from(value: &str) -> Self {
+        WordValue::Scalar(String::from(value))
+    }
+}
+
+/// Represents the data required to initialize storage entries when instantiating an
+/// [AccountComponent](crate::account::AccountComponent) from component metadata (either provided
+/// directly or extracted from a package).
+///
+/// An [`InitStorageData`] can be created from a TOML string when the `std` feature flag is set.
+#[derive(Clone, Debug, Default)]
+pub struct InitStorageData {
+    /// A mapping of init value names to their raw values.
+    value_entries: BTreeMap<StorageValueName, WordValue>,
+    /// A mapping of storage map slot names to their raw key/value entries.
+    map_entries: BTreeMap<StorageValueName, Vec<(WordValue, WordValue)>>,
+}
+
+impl InitStorageData {
+    /// Creates a new instance of [InitStorageData].
+    ///
+    /// A [`BTreeMap`] is constructed from the passed iterator, so duplicate keys will cause
+    /// overridden values.
+    pub fn new(
+        entries: impl IntoIterator<Item = (StorageValueName, WordValue)>,
+        map_entries: impl IntoIterator<Item = (StorageValueName, Vec<(WordValue, WordValue)>)>,
+    ) -> Self {
+        let value_entries = entries
+            .into_iter()
+            .filter(|(entry_name, _)| !entry_name.as_str().is_empty())
+            .collect::<BTreeMap<_, _>>();
+
+        InitStorageData {
+            value_entries,
+            map_entries: map_entries.into_iter().collect(),
+        }
+    }
+
+    /// Returns a reference to the underlying init values map.
+    pub fn values(&self) -> &BTreeMap<StorageValueName, WordValue> {
+        &self.value_entries
+    }
+
+    /// Returns a reference to the stored init value, or [`Option::None`] if the key is not
+    /// present.
+    pub fn get(&self, key: &StorageValueName) -> Option<&WordValue> {
+        self.value_entries.get(key)
+    }
+
+    /// Returns the map entries associated with the given storage map slot name, if any.
+    pub fn map_entries(&self, key: &StorageValueName) -> Option<&Vec<(WordValue, WordValue)>> {
+        self.map_entries.get(key)
+    }
+}
