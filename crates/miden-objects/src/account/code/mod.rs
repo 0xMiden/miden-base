@@ -15,7 +15,9 @@ use super::{
     Serializable,
 };
 use crate::Word;
-use crate::account::{AccountComponent, AccountType};
+use crate::account::AccountComponent;
+#[cfg(any(feature = "testing", test))]
+use crate::account::AccountType;
 
 pub mod procedure;
 use procedure::{AccountProcedureRoot, PrintableProcedure};

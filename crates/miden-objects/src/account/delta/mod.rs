@@ -15,7 +15,7 @@ use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError,
 use crate::{AccountDeltaError, AccountError, Felt, Word, ZERO};
 
 mod storage;
-pub use storage::{AccountStorageDelta, StorageMapDelta};
+pub use storage::{AccountStorageDelta, StorageMapDelta, StorageSlotDelta};
 
 mod vault;
 pub use vault::{
@@ -359,8 +359,8 @@ impl TryFrom<&AccountDelta> for Account {
         // this to create an empty account and use `Account::apply_delta` instead.
         // For now, we need to create the initial storage of the account with the same slot types.
         let mut empty_storage_slots = Vec::new();
-        for (slot_name, slot_type) in delta.storage().slots() {
-            let slot = match slot_type {
+        for (slot_name, slot_delta) in delta.storage().slots() {
+            let slot = match slot_delta.slot_type() {
                 StorageSlotType::Value => StorageSlot::with_empty_value(slot_name.clone()),
                 StorageSlotType::Map => StorageSlot::with_empty_map(slot_name.clone()),
             };
