@@ -366,6 +366,7 @@ fn generate_error_constants(asm_source_dir: &Path) -> Result<()> {
         shared::ErrorModule {
             file_name: TX_KERNEL_ERRORS_FILE,
             array_name: TX_KERNEL_ERRORS_ARRAY_NAME,
+            is_crate_local: true,
         },
         errors,
     )?;
@@ -381,6 +382,7 @@ fn generate_error_constants(asm_source_dir: &Path) -> Result<()> {
         shared::ErrorModule {
             file_name: PROTOCOL_LIB_ERRORS_FILE,
             array_name: PROTOCOL_LIB_ERRORS_ARRAY_NAME,
+            is_crate_local: true,
         },
         errors,
     )?;
@@ -736,10 +738,14 @@ mod shared {
 
     /// Generates the content of an error file for the given category and the set of errors and
     /// writes it to the category's file.
-    pub fn generate_error_file(category: ErrorModule, errors: Vec<NamedError>) -> Result<()> {
+    pub fn generate_error_file(module: ErrorModule, errors: Vec<NamedError>) -> Result<()> {
         let mut output = String::new();
 
-        writeln!(output, "use crate::errors::MasmError;\n").unwrap();
+        if module.is_crate_local {
+            writeln!(output, "use crate::errors::MasmError;\n").unwrap();
+        } else {
+            writeln!(output, "use miden_objects::errors::MasmError;\n").unwrap();
+        }
 
         writeln!(
             output,
@@ -757,7 +763,7 @@ mod shared {
             "// {}
 // ================================================================================================
 ",
-            category.array_name.replace("_", " ")
+            module.array_name.replace("_", " ")
         )
         .unwrap();
 
@@ -778,7 +784,7 @@ mod shared {
             .into_diagnostic()?;
         }
 
-        std::fs::write(category.file_name, output).into_diagnostic()?;
+        std::fs::write(module.file_name, output).into_diagnostic()?;
 
         Ok(())
     }
@@ -800,5 +806,6 @@ mod shared {
     pub struct ErrorModule {
         pub file_name: &'static str,
         pub array_name: &'static str,
+        pub is_crate_local: bool,
     }
 }

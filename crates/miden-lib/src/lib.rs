@@ -12,7 +12,8 @@ pub use auth::AuthScheme;
 pub mod account;
 pub mod errors;
 pub mod note;
-pub mod utils;
+mod code_builder;
+mod standards_lib;
 
 #[cfg(any(feature = "testing", test))]
 pub mod testing;

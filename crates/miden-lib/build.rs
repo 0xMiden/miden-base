@@ -50,23 +50,50 @@ fn main() -> Result<()> {
     // set target directory to {OUT_DIR}/assets
     let target_dir = Path::new(&build_dir).join(ASSETS_DIR);
 
+    // compile standards library
+    let standards_lib =
+        compile_standards_lib(&source_dir, &target_dir, TransactionKernel::assembler())?;
+
+    let mut assembler = TransactionKernel::assembler();
+    assembler.link_static_library(standards_lib)?;
+
     // compile note scripts
     compile_note_scripts(
         &source_dir.join(ASM_NOTE_SCRIPTS_DIR),
         &target_dir.join(ASM_NOTE_SCRIPTS_DIR),
-        TransactionKernel::assembler(),
+        assembler.clone(),
     )?;
 
     // compile account components
     compile_account_components(
         &source_dir.join(ASM_ACCOUNT_COMPONENTS_DIR),
         &target_dir.join(ASM_ACCOUNT_COMPONENTS_DIR),
-        TransactionKernel::assembler(),
+        assembler,
     )?;
 
     generate_error_constants(&source_dir)?;
 
     Ok(())
+}
+
+// COMPILE PROTOCOL LIB
+// ================================================================================================
+
+/// Reads the MASM files from "{source_dir}/miden" directory, compiles them into a Miden assembly
+/// library, saves the library into "{target_dir}/miden.masl", and returns the compiled library.
+fn compile_standards_lib(
+    source_dir: &Path,
+    target_dir: &Path,
+    assembler: Assembler,
+) -> Result<Library> {
+    let source_dir = source_dir.join(ASM_MIDEN_DIR);
+
+    let standards_lib = assembler.assemble_library_from_dir(source_dir, "miden")?;
+
+    let output_file = target_dir.join("standards").with_extension(Library::LIBRARY_EXTENSION);
+    standards_lib.write_to_file(output_file).into_diagnostic()?;
+
+    Ok(standards_lib)
 }
 
 // COMPILE EXECUTABLE MODULES
@@ -183,6 +210,7 @@ fn generate_error_constants(asm_source_dir: &Path) -> Result<()> {
         shared::ErrorModule {
             file_name: STANDARDS_ERRORS_FILE,
             array_name: STANDARDS_ERRORS_ARRAY_NAME,
+            is_crate_local: false,
         },
         errors,
     )?;
@@ -383,10 +411,14 @@ mod shared {
 
     /// Generates the content of an error file for the given category and the set of errors and
     /// writes it to the category's file.
-    pub fn generate_error_file(category: ErrorModule, errors: Vec<NamedError>) -> Result<()> {
+    pub fn generate_error_file(module: ErrorModule, errors: Vec<NamedError>) -> Result<()> {
         let mut output = String::new();
 
-        writeln!(output, "use crate::errors::MasmError;\n").unwrap();
+        if module.is_crate_local {
+            writeln!(output, "use crate::errors::MasmError;\n").unwrap();
+        } else {
+            writeln!(output, "use miden_objects::errors::MasmError;\n").unwrap();
+        }
 
         writeln!(
             output,
@@ -404,7 +436,7 @@ mod shared {
             "// {}
 // ================================================================================================
 ",
-            category.array_name.replace("_", " ")
+            module.array_name.replace("_", " ")
         )
         .unwrap();
 
@@ -425,7 +457,7 @@ mod shared {
             .into_diagnostic()?;
         }
 
-        std::fs::write(category.file_name, output).into_diagnostic()?;
+        std::fs::write(module.file_name, output).into_diagnostic()?;
 
         Ok(())
     }
@@ -447,5 +479,6 @@ mod shared {
     pub struct ErrorModule {
         pub file_name: &'static str,
         pub array_name: &'static str,
+        pub is_crate_local: bool,
     }
 }
