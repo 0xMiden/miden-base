@@ -48,7 +48,7 @@ fn from_toml_str_with_deeply_nested_tables() {
         d = "0xd"
 
         [x.y.z]
-        w = 42 # NOTE: This gets parsed as string
+        w = "42"
     "#;
 
     let storage = InitStorageData::from_toml(toml_str).expect("Failed to parse TOML");
@@ -69,6 +69,16 @@ fn from_toml_str_with_deeply_nested_tables() {
     assert_eq!(v1, "0xb");
     assert_eq!(v2, "0xd");
     assert_eq!(v3, "42");
+}
+
+#[test]
+fn from_toml_rejects_non_string_scalars() {
+    let toml_str = r#"
+        foo = 42
+    "#;
+
+    let result = InitStorageData::from_toml(toml_str);
+    assert_matches::assert_matches!(result.unwrap_err(), InitStorageDataError::NonStringScalar(_));
 }
 
 #[test]
@@ -486,10 +496,10 @@ fn extensive_schema_metadata_and_init_toml_example() {
     // Build storage without providing optional defaulted fields.
     let init_toml_defaults = r#"
         "demo::owner_pub_key" = "0x1234"
-        "demo::protocol_version" = 7
+        "demo::protocol_version" = "7"
 
-        "demo::token_metadata.max_supply" = 1000000
-        "demo::token_metadata.decimals" = 6
+        "demo::token_metadata.max_supply" = "1000000"
+        "demo::token_metadata.decimals" = "6"
     "#;
     let init_defaults = InitStorageData::from_toml(init_toml_defaults).unwrap();
     let slots = metadata.storage_schema().build_storage_slots(&init_defaults).unwrap();
@@ -561,7 +571,7 @@ fn extensive_schema_metadata_and_init_toml_example() {
     // Provide init-populated multiple map entries  and rebuild.
     let init_toml_with_overrides = r#"
         "demo::owner_pub_key" = "0x1234"
-        "demo::protocol_version" = 7
+        "demo::protocol_version" = "7"
         "demo::legacy_word" = "0x456"
 
         "demo::typed_map_new" = [
@@ -575,8 +585,8 @@ fn extensive_schema_metadata_and_init_toml_example() {
         ]
 
         ["demo::token_metadata"]
-        max_supply = 1000000
-        decimals = 6
+        max_supply = "1000000"
+        decimals = "6"
         symbol = "BTC"
     "#;
     let init_with_overrides = InitStorageData::from_toml(init_toml_with_overrides).unwrap();

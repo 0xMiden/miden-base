@@ -14,8 +14,8 @@ impl InitStorageData {
     /// This method parses the provided TOML and flattens nested tables into
     /// dot‑separated keys using [`StorageValueName`] as keys.
     ///
-    /// Scalar values are stored as [`WordValue::Scalar`] strings (so that, for example,
-    /// `key = 10` and `key = "10"` both yield `WordValue::Scalar("10")`).
+    /// Scalar values must be strings (e.g. `"0x1234"`, `"16"`, `"BTC"`). Numeric TOML scalars are
+    /// rejected to keep parsing simple and unambiguous.
     ///
     /// Arrays are supported for:
     /// - storage map slots: an array of inline tables of the form `{ key = <word>, value = <word>
@@ -88,40 +88,29 @@ impl InitStorageData {
                     )?;
                     map_entries.insert(prefix, entries);
                 } else if items.len() == 4
-                    && items.iter().all(|item| {
-                        matches!(
-                            item,
-                            toml::Value::String(_)
-                                | toml::Value::Integer(_)
-                                | toml::Value::Float(_)
-                        )
-                    })
+                    && items.iter().all(|item| matches!(item, toml::Value::String(_)))
                 {
-                    let elements: Vec<String> = items
+                    let elements: [String; 4] = items
                         .into_iter()
                         .map(|value| match value {
                             toml::Value::String(s) => Ok(s),
-                            toml::Value::Integer(i) => Ok(i.to_string()),
-                            toml::Value::Float(f) => Ok(f.to_string()),
                             _ => Err(InitStorageDataError::ArraysNotSupported),
                         })
-                        .collect::<Result<_, _>>()
-                        .map_err(|_| InitStorageDataError::ArraysNotSupported)?;
-
-                    let elements: [String; 4] =
-                        elements.try_into().expect("length was checked above");
+                        .collect::<Result<Vec<_>, _>>()?
+                        .try_into()
+                        .expect("length was checked above");
                     value_entries.insert(prefix, WordValue::Elements(elements));
                 } else {
                     return Err(InitStorageDataError::ArraysNotSupported);
                 }
             },
-            toml_value => {
-                // Get the string value, or convert to string if it's some other type
-                let value = match toml_value {
-                    toml::Value::String(s) => s.clone(),
-                    _ => toml_value.to_string(),
-                };
-                value_entries.insert(prefix, WordValue::Scalar(value));
+            toml_value => match toml_value {
+                toml::Value::String(s) => {
+                    value_entries.insert(prefix, WordValue::Scalar(s));
+                },
+                _ => {
+                    return Err(InitStorageDataError::NonStringScalar(prefix.as_str().into()));
+                },
             },
         }
         Ok(())
@@ -138,6 +127,9 @@ pub enum InitStorageDataError {
 
     #[error("invalid input: unsupported array value")]
     ArraysNotSupported,
+
+    #[error("invalid input for `{0}`: init values must be strings")]
+    NonStringScalar(String),
 
     #[error("invalid storage value name")]
     InvalidStorageValueName(#[source] StorageValueNameError),

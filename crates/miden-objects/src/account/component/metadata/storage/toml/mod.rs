@@ -1,12 +1,10 @@
 use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
-use core::fmt;
 
 use miden_core::{Felt, FieldElement, Word};
 use semver::Version;
-use serde::de::{self, Error, SeqAccess, Visitor};
-use serde::ser::SerializeSeq;
+use serde::de::Error as _;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use super::super::{
@@ -150,99 +148,6 @@ impl WordValue {
         }
 
         WordValue::Scalar(word.to_string())
-    }
-}
-
-impl Serialize for WordValue {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        match self {
-            WordValue::Scalar(value) => serializer.serialize_str(value),
-            WordValue::Elements(elements) => {
-                let mut seq = serializer.serialize_seq(Some(4))?;
-                for element in elements.iter() {
-                    seq.serialize_element(element)?;
-                }
-                seq.end()
-            },
-        }
-    }
-}
-
-impl<'de> Deserialize<'de> for WordValue {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        struct WordValueVisitor;
-
-        impl<'de> Visitor<'de> for WordValueVisitor {
-            type Value = WordValue;
-
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter.write_str("a scalar word value or an array of 4 scalar elements")
-            }
-
-            fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
-            where
-                E: Error,
-            {
-                Ok(WordValue::Scalar(value.to_string()))
-            }
-
-            fn visit_string<E>(self, value: String) -> Result<Self::Value, E>
-            where
-                E: Error,
-            {
-                Ok(WordValue::Scalar(value))
-            }
-
-            fn visit_i64<E>(self, value: i64) -> Result<Self::Value, E>
-            where
-                E: Error,
-            {
-                Ok(WordValue::Scalar(value.to_string()))
-            }
-
-            fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
-            where
-                E: Error,
-            {
-                Ok(WordValue::Scalar(value.to_string()))
-            }
-
-            fn visit_seq<A>(self, seq: A) -> Result<Self::Value, A::Error>
-            where
-                A: SeqAccess<'de>,
-            {
-                let elements: Vec<toml::Value> =
-                    Deserialize::deserialize(serde::de::value::SeqAccessDeserializer::new(seq))?;
-                if elements.len() != 4 {
-                    return Err(de::Error::invalid_length(
-                        elements.len(),
-                        &"expected an array of 4 elements",
-                    ));
-                }
-
-                let elements: Vec<String> = elements
-                    .into_iter()
-                    .map(|value| match value {
-                        toml::Value::String(s) => Ok(s),
-                        toml::Value::Integer(i) => Ok(i.to_string()),
-                        toml::Value::Float(f) => Ok(f.to_string()),
-                        other => Err(de::Error::custom(format!(
-                            "expected a scalar value in word element array, got {other}"
-                        ))),
-                    })
-                    .collect::<Result<_, _>>()?;
-
-                Ok(WordValue::Elements(elements.try_into().expect("length was checked")))
-            }
-        }
-
-        deserializer.deserialize_any(WordValueVisitor)
     }
 }
 

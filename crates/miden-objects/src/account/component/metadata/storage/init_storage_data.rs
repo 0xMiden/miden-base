@@ -9,6 +9,8 @@ use super::StorageValueName;
 /// This is used for map entries, where keys and values are supplied as either a scalar string
 /// (e.g. `"0x1234"`, `"16"`, `"BTC"`) or an array of 4 scalar elements.
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "std", derive(serde::Deserialize, serde::Serialize))]
+#[cfg_attr(feature = "std", serde(untagged))]
 pub enum WordValue {
     Scalar(String),
     Elements([String; 4]),
