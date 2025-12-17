@@ -6,7 +6,7 @@ pub mod tx_kernel;
 /// The errors from the MASM code of the Miden protocol library.
 #[cfg(any(feature = "testing", test))]
 #[rustfmt::skip]
-pub mod protocol_lib;
+pub mod protocol;
 
 /// The errors from the MASM code of the Miden standards.
 #[cfg(any(feature = "testing", test))]

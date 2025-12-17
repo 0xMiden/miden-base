@@ -31,7 +31,7 @@ const ASM_TX_KERNEL_DIR: &str = "kernels/transaction";
 const KERNEL_PROCEDURES_RS_FILE: &str = "src/transaction/kernel_procedures.rs";
 
 const TX_KERNEL_ERRORS_FILE: &str = "src/errors/tx_kernel.rs";
-const PROTOCOL_LIB_ERRORS_FILE: &str = "src/errors/protocol_lib.rs";
+const PROTOCOL_LIB_ERRORS_FILE: &str = "src/errors/protocol.rs";
 const STANDARDS_ERRORS_FILE: &str = "src/errors/standards.rs";
 
 const TX_KERNEL_ERRORS_ARRAY_NAME: &str = "TX_KERNEL_ERRORS";
