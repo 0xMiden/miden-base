@@ -1,12 +1,13 @@
 use alloc::collections::BTreeMap;
 use alloc::sync::Arc;
 
-use miden_lib::transaction::TransactionKernel;
-use miden_lib::{CoreLibrary, MidenLib};
-use miden_objects::Word;
+use miden_lib::StandardsLib;
 use miden_objects::account::AccountCode;
 use miden_objects::assembly::mast::MastForest;
+use miden_objects::protocol::MidenLib;
+use miden_objects::transaction::TransactionKernel;
 use miden_objects::utils::sync::RwLock;
+use miden_objects::{CoreLibrary, Word};
 use miden_processor::MastForestStore;
 
 // TRANSACTION MAST STORE
@@ -43,9 +44,13 @@ impl TransactionMastStore {
         let miden_core_lib_forest = CoreLibrary::default().mast_forest().clone();
         store.insert(miden_core_lib_forest);
 
-        // load miden lib MAST forest
+        // load protocol lib MAST forest
         let miden_lib_forest = MidenLib::default().mast_forest().clone();
         store.insert(miden_lib_forest);
+
+        // load standards lib MAST forest
+        let standards_lib_forest = StandardsLib::default().mast_forest().clone();
+        store.insert(standards_lib_forest);
 
         store
     }
