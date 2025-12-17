@@ -2,18 +2,16 @@ extern crate alloc;
 
 use core::slice;
 
-use miden_lib::account::faucets::NetworkFungibleFaucet;
 use miden_lib::account::wallets::BasicWallet;
-use miden_lib::agglayer::{agglayer_faucet_component, bridge_out_component, create_claim_note};
-use miden_lib::note::WellKnownNote;
-use miden_objects::account::{
-    Account,
-    AccountStorageMode,
-    AccountType,
-    StorageSlot,
-    StorageSlotName,
+use miden_lib::agglayer::{
+    create_agglayer_faucet_builder,
+    create_bridge_account_builder,
+    create_claim_note,
 };
-use miden_objects::asset::{Asset, FungibleAsset, TokenSymbol};
+use miden_lib::note::WellKnownNote;
+use miden_objects::account::Account;
+use miden_objects::asset::{Asset, FungibleAsset};
+use miden_objects::crypto::rand::FeltRng;
 use miden_objects::note::{
     Note,
     NoteAssets,
@@ -25,7 +23,7 @@ use miden_objects::note::{
     NoteType,
 };
 use miden_objects::transaction::OutputNote;
-use miden_objects::{Felt, FieldElement, Word};
+use miden_objects::{Felt, Word};
 use miden_testing::{AccountState, Auth, MockChain};
 use rand::Rng;
 
@@ -36,12 +34,8 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
 
     // CREATE BRIDGE ACCOUNT (with bridge_out component for MMR validation)
     // --------------------------------------------------------------------------------------------
-    let bridge_storage_slot_name = StorageSlotName::new("miden::agglayer::bridge").unwrap();
-    let bridge_storage_slots = vec![StorageSlot::with_empty_map(bridge_storage_slot_name)];
-    let bridge_component = bridge_out_component(bridge_storage_slots);
-    let bridge_account_builder = Account::builder(builder.rng_mut().random())
-        .storage_mode(AccountStorageMode::Public)
-        .with_component(bridge_component);
+    let bridge_seed = builder.rng_mut().draw_word();
+    let bridge_account_builder = create_bridge_account_builder(bridge_seed);
     let bridge_account = builder.add_account_from_builder(
         Auth::IncrNonce,
         bridge_account_builder,
@@ -50,38 +44,18 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
 
     // CREATE AGGLAYER FAUCET ACCOUNT (with agglayer_faucet component)
     // --------------------------------------------------------------------------------------------
-
-    // Create network faucet storage slots (required for fungible asset creation)
-    let token_symbol = TokenSymbol::new("AGG").unwrap();
+    let token_symbol = "AGG";
     let decimals = 8u8;
     let max_supply = Felt::new(1000000);
+    let agglayer_faucet_seed = builder.rng_mut().draw_word();
 
-    // Network faucet metadata slot: [max_supply, decimals, token_symbol, 0]
-    let metadata_word =
-        Word::new([max_supply, Felt::from(decimals), token_symbol.into(), Felt::ZERO]);
-    let metadata_slot =
-        StorageSlot::with_value(NetworkFungibleFaucet::metadata_slot().clone(), metadata_word);
-
-    // Agglayer-specific bridge storage slot
-    let bridge_account_id_word = Word::new([
-        Felt::new(0),
-        Felt::new(0),
-        bridge_account.id().suffix(),
-        bridge_account.id().prefix().as_felt(),
-    ]);
-    let agglayer_storage_slot_name = StorageSlotName::new("miden::agglayer::faucet").unwrap();
-    let bridge_slot = StorageSlot::with_value(agglayer_storage_slot_name, bridge_account_id_word);
-
-    // Combine all storage slots for the agglayer faucet component
-    let agglayer_storage_slots = vec![metadata_slot, bridge_slot];
-    let agglayer_component = agglayer_faucet_component(agglayer_storage_slots);
-
-    // Create agglayer faucet with FungibleFaucet account type and Network storage mode
-    let agglayer_faucet_seed = builder.rng_mut().random();
-    let agglayer_faucet_builder = Account::builder(agglayer_faucet_seed)
-        .account_type(AccountType::FungibleFaucet)
-        .storage_mode(AccountStorageMode::Network)  // Network faucets use Network storage mode
-        .with_component(agglayer_component);
+    let agglayer_faucet_builder = create_agglayer_faucet_builder(
+        agglayer_faucet_seed,
+        token_symbol,
+        decimals,
+        max_supply,
+        bridge_account.id(),
+    );
     let agglayer_faucet = builder.add_account_from_builder(
         Auth::IncrNonce,
         agglayer_faucet_builder,
