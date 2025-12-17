@@ -50,7 +50,7 @@ proc validate_claim_via_fpi
     # => []
 end
 
-#! Distributes freshly minted fungible assets to the provided recipient by creating a note.
+#! Validates a CLAIM note against the AggLayer bridge and mints the corresponding asset to the recipient.
 #!
 #! This procedure validates the rollup exit root Merkle Proof via FPI against the agglayer bridge,
 #! and if validation passes, mints the asset and creates an output note for the recipient.
