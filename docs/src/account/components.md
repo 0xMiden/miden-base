@@ -82,10 +82,10 @@ value-type = "u16"
 
 #### Specifying word schema and types
 
-Single-slot entries describe their schema via `WordSchema`. A schema can be either:
+Value-slot entries describe their schema via `WordSchema`. A value type can be either:
 
-- **Singular** — defined through the `type` field, indicating the expected `SchemaTypeIdentifier` for the entire word. The value is supplied at instantiation time via `InitStorageData`.
-- **Composed** — provided through `type = [ ... ]`, which contains exactly four `FeltSchema` descriptors. Each element is either a named typed field (optionally with `default-value`) or a `void` element for reserved/padding zeros.
+- **Singular**: defined through the `type` field, indicating the expected `SchemaTypeIdentifier` for the entire word. The value is supplied at instantiation time via `InitStorageData`.
+- **Composed**: provided through `type = [ ... ]`, which contains exactly four `FeltSchema` descriptors. Each element is either a named typed field (optionally with `default-value`) or a `void` element for reserved/padding zeros.
 
 Composed schema entries reuse the existing TOML structure for four-element words, while singular schemas rely on `type`. In our example, the `token_metadata` slot uses a composed schema (`type = [...]`) mixing typed fields (`max_supply`, `decimals`) with defaults (`symbol`) and a reserved/padding `void` element.
 
@@ -105,15 +105,15 @@ type = [
 
 ##### Word types
 
-Singular schemas accept `word` (default) and word-shaped types such as `auth::rpo_falcon512::pub_key` (parsed from hexadecimal strings).
+Singular schemas accept `word` (default) and word-shaped types such as `auth::rpo_falcon512::pub_key` or `auth::ecdsa_k256_keccak::pub_key` (parsed from hexadecimal strings).
 
-Singular schemas can also use any felt type identifier (e.g. `u8`, `u16`, `u32`, `felt`, `token_symbol`, `void`): the value is parsed as a felt and stored as a word with the parsed felt in the last element and the remaining elements set to `0`.
+Singular schemas can also use any felt type (e.g. `u8`, `u16`, `u32`, `felt`, `token_symbol`, `void`). The value is parsed as a felt and stored as a word with the parsed felt in the last element and the remaining elements set to `0`.
 
 ##### Felt types
 
 Valid field element types are `void`, `u8`, `u16`, `u32`, `felt` (default) and `token_symbol`:
 
-- `void` is a special type which always evaluates to `0` and does not produce an init requirement; it is intended for reserved/padding elements.
+- `void` is a special type which always evaluates to `0` and does not produce an init requirement; it is intended for reserved or padding elements.
 - `u8`, `u16` and `u32` values can be parsed as decimal numbers and represent 8-bit, 16-bit and 32-bit unsigned integers.
 - `felt` values represent a field element, and can be parsed as decimal or hexadecimal numbers.
 - `token_symbol` values represent basic fungible token symbols, parsed as 1–6 uppercase ASCII characters.
@@ -143,7 +143,7 @@ Single-slot entries are represented by `ValueSlotSchema` and occupy one slot (on
 
 - `type` (optional): Describes the schema for this slot. It can be either:
   - a string type identifier (singular init-supplied slot), or
-  - an array of 4 `FeltSchema` descriptors (composed slot schema).
+  - an array of 4 felt schema descriptors (composed slot schema).
 - `default-value` (optional): An overridable default for singular slots. If omitted, the slot is required at instantiation (unless `type = "void"`).
 
 In our TOML example, the first entry defines a composed schema, while the second is an init-supplied value typed as `auth::rpo_falcon512::pub_key`.
