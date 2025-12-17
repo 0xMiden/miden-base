@@ -636,7 +636,7 @@ export.set_map_item
     exec.constants::get_storage_slot_type_map eq
     assert.err=ERR_ACCOUNT_SETTING_MAP_ITEM_ON_NON_MAP_SLOT
     # => [slot_ptr, KEY, NEW_VALUE]
-
+ 
     exec.set_map_item_raw
     # => [OLD_MAP_ROOT, OLD_MAP_VALUE]
 end

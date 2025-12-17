@@ -183,9 +183,11 @@ export.set_map_item
     syscall.exec_kernel_proc
     # => [OLD_MAP_ROOT, OLD_MAP_VALUE, pad(8)]
 
+    dropw
+
     # clean the stack
-    swapdw dropw dropw
-    # => [OLD_MAP_ROOT, OLD_MAP_VALUE]
+    swapw dropw swapw dropw
+    # => [OLD_MAP_VALUE]
 end
 
 # VAULT

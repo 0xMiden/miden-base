@@ -744,18 +744,18 @@ async fn test_set_map_item() -> miette::Result<()> {
 
             # double check that the storage slot is indeed the new map
             push.SLOT_NAME[0..2]
-            # => [slot_id_prefix, slot_id_suffix, OLD_VALUE, OLD_MAP_ROOT]
+            # => [slot_id_prefix, slot_id_suffix, OLD_VALUE]
 
             # pad the stack
             repeat.14 push.0 movdn.2 end
-            # => [slot_id_prefix, slot_id_suffix, pad(14), OLD_VALUE, OLD_MAP_ROOT]
+            # => [slot_id_prefix, slot_id_suffix, pad(14), OLD_VALUE]
 
             call.mock_account::get_item
-            # => [MAP_ROOT, pad(12), OLD_VALUE, OLD_MAP_ROOT]
+            # => [MAP_ROOT, pad(12), OLD_VALUE]
 
             # truncate the stack
             repeat.3 swapw dropw end
-            # => [MAP_ROOT, OLD_VALUE, OLD_MAP_ROOT]
+            # => [MAP_ROOT, OLD_VALUE]
 
             exec.sys::truncate_stack
         end
@@ -774,11 +774,6 @@ async fn test_set_map_item() -> miette::Result<()> {
         new_storage_map.root(),
         exec_output.get_stack_word_be(0),
         "get_item should return the updated root",
-    );
-    assert_eq!(
-        slot.content().value(),
-        exec_output.get_stack_word_be(4),
-        "get_item must return the new updated value",
     );
 
     Ok(())
