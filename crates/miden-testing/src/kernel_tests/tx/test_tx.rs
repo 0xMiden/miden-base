@@ -667,7 +667,6 @@ async fn execute_tx_view_script() -> anyhow::Result<()> {
         .await?;
 
     assert_eq!(stack_outputs[..3], [Felt::new(7), Felt::new(2), ONE]);
-    // assert_eq!(stack_outputs[..3], [Felt::new(7), miden_objects::ZERO, miden_objects::ZERO]);
 
     Ok(())
 }

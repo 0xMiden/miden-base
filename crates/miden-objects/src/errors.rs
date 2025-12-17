@@ -357,7 +357,7 @@ pub enum NetworkIdError {
 
 #[derive(Debug, Error)]
 pub enum AccountDeltaError {
-    #[error("storage slot {0} was updated as a value and as a map")]
+    #[error("storage slot {0} was used as different slot types")]
     StorageSlotUsedAsDifferentTypes(StorageSlotName),
     #[error("non fungible vault can neither be added nor removed twice")]
     DuplicateNonFungibleVaultUpdate(NonFungibleAsset),

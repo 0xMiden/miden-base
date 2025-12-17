@@ -128,11 +128,9 @@ impl CodeBuilder {
         let mut parse_options = ParseOptions::for_library();
         parse_options.path = Some(Path::new(module_path.as_ref()).into());
 
-        let module = module_code
-            .parse_with_options(self.source_manager.clone(), parse_options)
-            .map_err(|err| {
-                CodeBuilderError::build_error_with_report("failed to parse module code", err)
-            })?;
+        let module = module_code.parse_with_options(self.source_manager(), parse_options).map_err(
+            |err| CodeBuilderError::build_error_with_report("failed to parse module code", err),
+        )?;
 
         self.assembler.compile_and_statically_link(module).map_err(|err| {
             CodeBuilderError::build_error_with_report("failed to assemble module", err)
@@ -253,11 +251,12 @@ impl CodeBuilder {
         let mut parse_options = ParseOptions::for_library();
         parse_options.path = Some(Path::new(component_path.as_ref()).into());
 
-        let module = component_code
-            .parse_with_options(source_manager.clone(), parse_options)
-            .map_err(|err| {
-                CodeBuilderError::build_error_with_report("failed to parse component code", err)
-            })?;
+        let module =
+            component_code
+                .parse_with_options(source_manager, parse_options)
+                .map_err(|err| {
+                    CodeBuilderError::build_error_with_report("failed to parse component code", err)
+                })?;
 
         let library = assembler.assemble_library([module]).map_err(|err| {
             CodeBuilderError::build_error_with_report("failed to parse component code", err)

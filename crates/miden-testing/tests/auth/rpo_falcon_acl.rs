@@ -45,10 +45,10 @@ fn setup_rpo_falcon_acl_test(
         MockAccountComponent::with_slots(AccountStorage::mock_storage_slots()).into();
 
     let get_item_proc_root = component
-        .get_procedure_root_by_name("mock::account::get_item")
+        .get_procedure_root_by_path("mock::account::get_item")
         .expect("get_item procedure should exist");
     let set_item_proc_root = component
-        .get_procedure_root_by_name("mock::account::set_item")
+        .get_procedure_root_by_path("mock::account::set_item")
         .expect("set_item procedure should exist");
     let auth_trigger_procedures = vec![get_item_proc_root, set_item_proc_root];
 
@@ -87,10 +87,10 @@ async fn test_rpo_falcon_acl() -> anyhow::Result<()> {
         MockAccountComponent::with_slots(AccountStorage::mock_storage_slots()).into();
 
     let get_item_proc_root = component
-        .get_procedure_root_by_name("mock::account::get_item")
+        .get_procedure_root_by_path("mock::account::get_item")
         .expect("get_item procedure should exist");
     let set_item_proc_root = component
-        .get_procedure_root_by_name("mock::account::set_item")
+        .get_procedure_root_by_path("mock::account::set_item")
         .expect("set_item procedure should exist");
     let auth_trigger_procedures = vec![get_item_proc_root, set_item_proc_root];
 

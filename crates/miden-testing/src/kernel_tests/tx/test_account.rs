@@ -3,6 +3,7 @@ use alloc::vec::Vec;
 use std::collections::BTreeMap;
 
 use anyhow::Context;
+use assert_matches::assert_matches;
 use miden_lib::errors::tx_kernel::{
     ERR_ACCOUNT_ID_SUFFIX_LEAST_SIGNIFICANT_BYTE_MUST_BE_ZERO,
     ERR_ACCOUNT_ID_SUFFIX_MOST_SIGNIFICANT_BIT_MUST_BE_ZERO,
@@ -30,6 +31,7 @@ use miden_objects::account::{
     StorageMap,
     StorageSlot,
     StorageSlotContent,
+    StorageSlotDelta,
     StorageSlotId,
     StorageSlotName,
     StorageSlotType,
@@ -946,16 +948,28 @@ async fn prove_account_creation_with_non_empty_storage() -> anyhow::Result<()> {
 
     assert_eq!(tx.account_delta().nonce_delta(), Felt::new(1));
 
-    assert_eq!(tx.account_delta().storage().values().get(&slot_name0).unwrap(), &slot0.value());
-    assert_eq!(tx.account_delta().storage().values().get(&slot_name1).unwrap(), &slot1.value());
-
-    assert_eq!(
-        tx.account_delta().storage().maps().get(&slot_name2).unwrap().entries(),
-        &BTreeMap::from_iter(
+    assert_matches!(
+        tx.account_delta().storage().get(&slot_name0).unwrap(),
+        StorageSlotDelta::Value(value) => {
+            assert_eq!(*value, slot0.value())
+        }
+    );
+    assert_matches!(
+        tx.account_delta().storage().get(&slot_name1).unwrap(),
+        StorageSlotDelta::Value(value) => {
+            assert_eq!(*value, slot1.value())
+        }
+    );
+    assert_matches!(
+        tx.account_delta().storage().get(&slot_name2).unwrap(),
+        StorageSlotDelta::Map(map_delta) => {
+            let expected = &BTreeMap::from_iter(
             map_entries
                 .into_iter()
                 .map(|(key, value)| { (LexicographicWord::new(key), value) })
-        )
+            );
+            assert_eq!(expected, map_delta.entries())
+        }
     );
 
     assert!(tx.account_delta().vault().is_empty());
@@ -1509,9 +1523,10 @@ async fn transaction_executor_account_code_using_custom_library() -> miette::Res
     assert_eq!(executed_tx.account_delta().nonce_delta(), Felt::new(1));
 
     // Make sure that account storage has been updated as per the tx script call.
+    assert_eq!(executed_tx.account_delta().storage().values().count(), 1);
     assert_eq!(
-        *executed_tx.account_delta().storage().values(),
-        BTreeMap::from([(MOCK_VALUE_SLOT0.clone(), Word::from([2, 3, 4, 5u32]))]),
+        executed_tx.account_delta().storage().get(&MOCK_VALUE_SLOT0).unwrap(),
+        &StorageSlotDelta::Value(Word::from([2, 3, 4, 5u32])),
     );
     Ok(())
 }
