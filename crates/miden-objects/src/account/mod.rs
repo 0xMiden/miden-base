@@ -1,8 +1,5 @@
-use alloc::collections::BTreeMap;
 use alloc::string::ToString;
 use alloc::vec::Vec;
-
-use miden_core::LexicographicWord;
 
 use crate::asset::{Asset, AssetVault};
 use crate::utils::serde::{
@@ -62,6 +59,7 @@ pub use delta::{
     NonFungibleAssetDelta,
     NonFungibleDeltaAction,
     StorageMapDelta,
+    StorageSlotDelta,
 };
 
 mod storage;
@@ -433,29 +431,13 @@ impl TryFrom<Account> for AccountDelta {
             return Err(AccountError::DeltaFromAccountWithSeed);
         }
 
-        let mut value_slots = BTreeMap::new();
-        let mut map_slots = BTreeMap::new();
-
-        for slot in storage.into_slots() {
-            let (slot_name, slot_content) = slot.into_parts();
-            match slot_content {
-                StorageSlotContent::Value(word) => {
-                    value_slots.insert(slot_name, word);
-                },
-                StorageSlotContent::Map(storage_map) => {
-                    let map_delta = StorageMapDelta::new(
-                        storage_map
-                            .into_entries()
-                            .into_iter()
-                            .map(|(key, value)| (LexicographicWord::from(key), value))
-                            .collect(),
-                    );
-                    map_slots.insert(slot_name, map_delta);
-                },
-            }
-        }
-        let storage_delta = AccountStorageDelta::from_parts(value_slots, map_slots)
-            .expect("value and map slots from account storage should not overlap");
+        let slot_deltas = storage
+            .into_slots()
+            .into_iter()
+            .map(StorageSlot::into_parts)
+            .map(|(slot_name, slot_content)| (slot_name, StorageSlotDelta::from(slot_content)))
+            .collect();
+        let storage_delta = AccountStorageDelta::from_raw(slot_deltas);
 
         let mut fungible_delta = FungibleAssetDelta::default();
         let mut non_fungible_delta = NonFungibleAssetDelta::default();
@@ -648,7 +630,6 @@ mod tests {
     };
     use crate::testing::add_component::AddComponent;
     use crate::testing::noop_auth_component::NoopAuthComponent;
-    use crate::testing::storage::AccountStorageDeltaBuilder;
 
     #[test]
     fn test_serde_account() {
@@ -669,11 +650,9 @@ mod tests {
         let nonce_delta = Felt::new(2);
         let asset_0 = FungibleAsset::mock(15);
         let asset_1 = NonFungibleAsset::mock(&[5, 5, 5]);
-        let storage_delta = AccountStorageDeltaBuilder::new()
+        let storage_delta = AccountStorageDelta::new()
             .add_cleared_items([StorageSlotName::mock(0)])
-            .add_updated_values([(StorageSlotName::mock(1), Word::from([1, 2, 3, 4u32]))])
-            .build()
-            .unwrap();
+            .add_updated_values([(StorageSlotName::mock(1), Word::from([1, 2, 3, 4u32]))]);
         let account_delta = build_account_delta(
             account_id,
             vec![asset_1],
@@ -734,12 +713,10 @@ mod tests {
 
         // build account delta
         let final_nonce = Felt::new(2);
-        let storage_delta = AccountStorageDeltaBuilder::new()
+        let storage_delta = AccountStorageDelta::new()
             .add_cleared_items([StorageSlotName::mock(0)])
             .add_updated_values([(StorageSlotName::mock(1), Word::from([1, 2, 3, 4u32]))])
-            .add_updated_maps([(StorageSlotName::mock(2), updated_map)])
-            .build()
-            .unwrap();
+            .add_updated_maps([(StorageSlotName::mock(2), updated_map)]);
         let account_delta = build_account_delta(
             account_id,
             vec![asset_1],
@@ -776,11 +753,9 @@ mod tests {
             build_account(vec![asset], init_nonce, vec![StorageSlotContent::Value(Word::empty())]);
 
         // build account delta
-        let storage_delta = AccountStorageDeltaBuilder::new()
+        let storage_delta = AccountStorageDelta::new()
             .add_cleared_items([StorageSlotName::mock(0)])
-            .add_updated_values([(StorageSlotName::mock(1), Word::from([1, 2, 3, 4u32]))])
-            .build()
-            .unwrap();
+            .add_updated_values([(StorageSlotName::mock(1), Word::from([1, 2, 3, 4u32]))]);
         let account_delta =
             build_account_delta(account_id, vec![], vec![asset], init_nonce, storage_delta);
 
@@ -800,11 +775,9 @@ mod tests {
 
         // build account delta
         let final_nonce = Felt::new(1);
-        let storage_delta = AccountStorageDeltaBuilder::new()
+        let storage_delta = AccountStorageDelta::new()
             .add_cleared_items([StorageSlotName::mock(0)])
-            .add_updated_values([(StorageSlotName::mock(1), Word::from([1, 2, 3, 4u32]))])
-            .build()
-            .unwrap();
+            .add_updated_values([(StorageSlotName::mock(1), Word::from([1, 2, 3, 4u32]))]);
         let account_delta =
             build_account_delta(account_id, vec![], vec![asset], final_nonce, storage_delta);
 

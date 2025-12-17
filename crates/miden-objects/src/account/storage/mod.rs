@@ -238,12 +238,12 @@ impl AccountStorage {
     /// - The updates violate storage constraints.
     pub(super) fn apply_delta(&mut self, delta: &AccountStorageDelta) -> Result<(), AccountError> {
         // Update storage values
-        for (slot_name, &value) in delta.values().iter() {
+        for (slot_name, &value) in delta.values() {
             self.set_item(slot_name, value)?;
         }
 
         // Update storage maps
-        for (slot_name, map_delta) in delta.maps().iter() {
+        for (slot_name, map_delta) in delta.maps() {
             let slot = self
                 .get_mut(slot_name)
                 .ok_or(AccountError::StorageSlotNameNotFound { slot_name: slot_name.clone() })?;

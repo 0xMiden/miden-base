@@ -5,7 +5,7 @@
 use miden_lib::testing::note::NoteBuilder;
 use miden_lib::utils::CodeBuilder;
 use miden_objects::LexicographicWord;
-use miden_objects::account::{AccountId, AccountStorage};
+use miden_objects::account::{AccountId, AccountStorage, StorageSlotDelta};
 use miden_objects::asset::{Asset, FungibleAsset};
 use miden_objects::testing::account_id::{
     ACCOUNT_ID_NATIVE_ASSET_FAUCET,
@@ -220,7 +220,13 @@ async fn setting_map_item_with_lazy_loading_succeeds() -> anyhow::Result<()> {
         .execute()
         .await?;
 
-    let map_delta = tx.account_delta().storage().maps().get(mock_map_slot).unwrap();
+    let map_delta = tx
+        .account_delta()
+        .storage()
+        .get(mock_map_slot)
+        .cloned()
+        .map(StorageSlotDelta::unwrap_map)
+        .unwrap();
     assert_eq!(map_delta.entries().get(&LexicographicWord::new(existing_key)).unwrap(), &value0);
     assert_eq!(
         map_delta.entries().get(&LexicographicWord::new(non_existent_key)).unwrap(),
