@@ -11,7 +11,7 @@ const BRIDGE_ID_SLOT = word("miden::agglayer::faucet")
 
 # ERRORS
 # =================================================================================================
-const.ERR_INVALID_PROOF="invalid proof"
+const ERR_INVALID_PROOF = "invalid proof"
 
 #! Validates a CLAIM note's rollup exit root Merkle Proof against the agglayer bridge via FPI.
 #!
