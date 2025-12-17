@@ -1,26 +1,12 @@
-use alloc::collections::BTreeSet;
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use miden_objects::Word;
 use miden_objects::account::{AccountId, AccountIdPrefix, AccountType};
 use miden_objects::note::PartialNote;
 use miden_objects::transaction::TransactionScript;
 use thiserror::Error;
 
 use crate::AuthScheme;
-use crate::account::components::{
-    basic_fungible_faucet_library,
-    basic_wallet_library,
-    ecdsa_k256_keccak_acl_library,
-    ecdsa_k256_keccak_library,
-    ecdsa_k256_keccak_multisig_library,
-    network_fungible_faucet_library,
-    no_auth_library,
-    rpo_falcon_512_acl_library,
-    rpo_falcon_512_library,
-    rpo_falcon_512_multisig_library,
-};
 use crate::errors::CodeBuilderError;
 use crate::utils::CodeBuilder;
 
@@ -116,64 +102,6 @@ impl AccountInterface {
     /// Returns a reference to the set of used component interfaces.
     pub fn components(&self) -> &Vec<AccountComponentInterface> {
         &self.components
-    }
-
-    /// Returns a digests set of all procedures from all account component interfaces.
-    pub(crate) fn get_procedure_digests(&self) -> BTreeSet<Word> {
-        let mut component_proc_digests = BTreeSet::new();
-        for component in self.components.iter() {
-            match component {
-                AccountComponentInterface::BasicWallet => {
-                    component_proc_digests
-                        .extend(basic_wallet_library().mast_forest().procedure_digests());
-                },
-                AccountComponentInterface::BasicFungibleFaucet => {
-                    component_proc_digests
-                        .extend(basic_fungible_faucet_library().mast_forest().procedure_digests());
-                },
-                AccountComponentInterface::NetworkFungibleFaucet => {
-                    component_proc_digests.extend(
-                        network_fungible_faucet_library().mast_forest().procedure_digests(),
-                    );
-                },
-                AccountComponentInterface::AuthEcdsaK256Keccak => {
-                    component_proc_digests
-                        .extend(ecdsa_k256_keccak_library().mast_forest().procedure_digests());
-                },
-                AccountComponentInterface::AuthEcdsaK256KeccakAcl => {
-                    component_proc_digests
-                        .extend(ecdsa_k256_keccak_acl_library().mast_forest().procedure_digests());
-                },
-                AccountComponentInterface::AuthEcdsaK256KeccakMultisig => {
-                    component_proc_digests.extend(
-                        ecdsa_k256_keccak_multisig_library().mast_forest().procedure_digests(),
-                    );
-                },
-                AccountComponentInterface::AuthRpoFalcon512 => {
-                    component_proc_digests
-                        .extend(rpo_falcon_512_library().mast_forest().procedure_digests());
-                },
-                AccountComponentInterface::AuthRpoFalcon512Acl => {
-                    component_proc_digests
-                        .extend(rpo_falcon_512_acl_library().mast_forest().procedure_digests());
-                },
-                AccountComponentInterface::AuthRpoFalcon512Multisig => {
-                    component_proc_digests.extend(
-                        rpo_falcon_512_multisig_library().mast_forest().procedure_digests(),
-                    );
-                },
-                AccountComponentInterface::AuthNoAuth => {
-                    component_proc_digests
-                        .extend(no_auth_library().mast_forest().procedure_digests());
-                },
-                AccountComponentInterface::Custom(custom_procs) => {
-                    component_proc_digests
-                        .extend(custom_procs.iter().map(|info| *info.mast_root()));
-                },
-            }
-        }
-
-        component_proc_digests
     }
 }
 

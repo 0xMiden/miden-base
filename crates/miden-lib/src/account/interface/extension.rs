@@ -9,7 +9,19 @@ use miden_objects::note::{Note, NoteScript};
 use miden_processor::MastNodeExt;
 
 use crate::AuthScheme;
-use crate::account::components::WellKnownComponent;
+use crate::account::components::{
+    WellKnownComponent,
+    basic_fungible_faucet_library,
+    basic_wallet_library,
+    ecdsa_k256_keccak_acl_library,
+    ecdsa_k256_keccak_library,
+    ecdsa_k256_keccak_multisig_library,
+    network_fungible_faucet_library,
+    no_auth_library,
+    rpo_falcon_512_acl_library,
+    rpo_falcon_512_library,
+    rpo_falcon_512_multisig_library,
+};
 use crate::account::interface::{
     AccountComponentInterface,
     AccountInterface,
@@ -32,6 +44,9 @@ pub trait AccountInterfaceExt {
     /// Returns [NoteAccountCompatibility::Maybe] if the provided note is compatible with the
     /// current [AccountInterface], and [NoteAccountCompatibility::No] otherwise.
     fn is_compatible_with(&self, note: &Note) -> NoteAccountCompatibility;
+
+    /// Returns the set of digests of all procedures from all account component interfaces.
+    fn get_procedure_digests(&self) -> BTreeSet<Word>;
 }
 
 impl AccountInterfaceExt for AccountInterface {
@@ -69,6 +84,63 @@ impl AccountInterfaceExt for AccountInterface {
         } else {
             verify_note_script_compatibility(note.script(), self.get_procedure_digests())
         }
+    }
+
+    fn get_procedure_digests(&self) -> BTreeSet<Word> {
+        let mut component_proc_digests = BTreeSet::new();
+        for component in self.components.iter() {
+            match component {
+                AccountComponentInterface::BasicWallet => {
+                    component_proc_digests
+                        .extend(basic_wallet_library().mast_forest().procedure_digests());
+                },
+                AccountComponentInterface::BasicFungibleFaucet => {
+                    component_proc_digests
+                        .extend(basic_fungible_faucet_library().mast_forest().procedure_digests());
+                },
+                AccountComponentInterface::NetworkFungibleFaucet => {
+                    component_proc_digests.extend(
+                        network_fungible_faucet_library().mast_forest().procedure_digests(),
+                    );
+                },
+                AccountComponentInterface::AuthEcdsaK256Keccak => {
+                    component_proc_digests
+                        .extend(ecdsa_k256_keccak_library().mast_forest().procedure_digests());
+                },
+                AccountComponentInterface::AuthEcdsaK256KeccakAcl => {
+                    component_proc_digests
+                        .extend(ecdsa_k256_keccak_acl_library().mast_forest().procedure_digests());
+                },
+                AccountComponentInterface::AuthEcdsaK256KeccakMultisig => {
+                    component_proc_digests.extend(
+                        ecdsa_k256_keccak_multisig_library().mast_forest().procedure_digests(),
+                    );
+                },
+                AccountComponentInterface::AuthRpoFalcon512 => {
+                    component_proc_digests
+                        .extend(rpo_falcon_512_library().mast_forest().procedure_digests());
+                },
+                AccountComponentInterface::AuthRpoFalcon512Acl => {
+                    component_proc_digests
+                        .extend(rpo_falcon_512_acl_library().mast_forest().procedure_digests());
+                },
+                AccountComponentInterface::AuthRpoFalcon512Multisig => {
+                    component_proc_digests.extend(
+                        rpo_falcon_512_multisig_library().mast_forest().procedure_digests(),
+                    );
+                },
+                AccountComponentInterface::AuthNoAuth => {
+                    component_proc_digests
+                        .extend(no_auth_library().mast_forest().procedure_digests());
+                },
+                AccountComponentInterface::Custom(custom_procs) => {
+                    component_proc_digests
+                        .extend(custom_procs.iter().map(|info| *info.mast_root()));
+                },
+            }
+        }
+
+        component_proc_digests
     }
 }
 
