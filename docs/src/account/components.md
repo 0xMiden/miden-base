@@ -43,7 +43,7 @@ description = "This component showcases the component schema format, and the dif
 version = "1.0.0"
 supported-types = ["FungibleFaucet"]
 
-[[storage]]
+[[storage.value]]
 name = "demo::token_metadata"
 description = "Contains token metadata (max supply, symbol, decimals)."
 type = [
@@ -53,29 +53,27 @@ type = [
     { type = "void" }
 ]
 
-[[storage]]
+[[storage.value]]
 name = "demo::owner_public_key"
 description = "This is a typed value supplied at instantiation and interpreted as a Falcon public key"
 type = "auth::rpo_falcon512::pub_key"
 
-[[storage]]
+[[storage.value]]
 name = "demo::protocol_version"
 description = "A whole-word init-supplied value typed as a felt (stored as [0,0,0,<value>])."
 type = "u8"
 
-[[storage]]
+[[storage.map]]
 name = "demo::static_map"
 description = "A map slot with statically defined entries"
-type = "map"
 default-values = [
     { key = "0x0000000000000000000000000000000000000000000000000000000000000001", value = ["0x0", "249381274", "998123581", "124991023478"] },
     { key = ["0", "0", "0", "2"], value = "0x0000000000000000000000000000000000000000000000000000000000000010" }
 ]
 
-[[storage]]
+[[storage.map]]
 name = "demo::procedure_thresholds"
 description = "Map which stores procedure thresholds (PROC_ROOT -> signature threshold)"
-type = "map"
 key-type = "word"
 value-type = "u16"
 ```
@@ -92,7 +90,7 @@ Composed schema entries reuse the existing TOML structure for four-element words
 ##### Word schema example
 
 ```toml
-[[storage]]
+[[storage.value]]
 name = "demo::faucet_id"
 description = "Account ID of the registered faucet"
 type = [
@@ -130,7 +128,14 @@ The metadata header specifies four fields:
 #### Storage entries
 
 An account component schema can contain multiple storage entries, each describing either a
-**single-slot value** or a **storage map**. Every entry carries:
+**single-slot value** or a **storage map**.
+
+In TOML, these are declared using dotted array keys:
+
+- Value slots: `[[storage.value]]`
+- Map slots: `[[storage.map]]`
+
+Every entry carries:
 
 - `name`: Identifies the storage entry.
 - `description` (optional): Explains the entry's purpose within the component.
@@ -141,7 +146,7 @@ The remaining fields depend on whether the entry is a value slot or a map slot.
 
 Single-slot entries are represented by `ValueSlotSchema` and occupy one slot (one word). They use the fields:
 
-- `type` (optional): Describes the schema for this slot. It can be either:
+- `type` (optional, defaults to `word`): Describes the schema for this slot. It can be either:
   - a string type identifier (singular init-supplied slot), or
   - an array of 4 felt schema descriptors (composed slot schema).
 - `default-value` (optional): An overridable default for singular slots. If omitted, the slot is required at instantiation (unless `type = "void"`).
@@ -152,12 +157,11 @@ In our TOML example, the first entry defines a composed schema, while the second
 
 [Storage maps](./storage#map-slots) use `MapSlotSchema` and describe key-value pairs where each key and value is itself a `WordSchema`. Map slots support:
 
-- `type = "map"`: Declares that this entry is a map slot.
-- `key-type` (optional): Declares the schema/type of keys stored in the map.
-- `value-type` (optional): Declares the schema/type of values stored in the map.
+- `key-type` (optional, defaults to `word`): Declares the schema/type of keys stored in the map.
+- `value-type` (optional, defaults to `word`): Declares the schema/type of values stored in the map.
 - `default-values` (optional): Lists default map entries defined by nested `key` and `value` descriptors. Each entry must be fully specified and cannot contain typed fields.
 
-`key-type` / `value-type` accept either a string type identifier (e.g. `"word"`) or a 4-element array of `FeltSchema` descriptors.
+`key-type` / `value-type` accept either a string type identifier (e.g. `"word"`) or a 4-element array of felt schema descriptors.
 
 If `default-values` is omitted, the map is populated at instantiation via [`InitStorageData`](#providing-init-values). When `default-values` are present, they act as defaults: init data can optionally add entries and override existing keys.
 
@@ -168,9 +172,8 @@ In the example, the third storage entry defines a static map and the fourth entr
 You can type maps at the slot level via `key-type` and `value-type` (each a `WordSchema`):
 
 ```toml
-[[storage]]
+[[storage.map]]
 name = "demo::typed_map"
-type = "map"
 key-type = "word"
 value-type = "auth::rpo_falcon512::pub_key"
 ```
@@ -192,11 +195,11 @@ For example, the init-populated map entry above can be populated from TOML as fo
 
 ```toml
 "demo::owner_public_key" = "0x1234"
-"demo::protocol_version" = 1
+"demo::protocol_version" = "1"
 
 ["demo::token_metadata"]
-max_supply = 1000000000
-decimals = 10
+max_supply = "1000000000"
+decimals = "10"
 
 "demo::procedure_thresholds" = [
     {
@@ -210,4 +213,6 @@ decimals = 10
 ]
 ```
 
-Each element in the array is a fully specified key/value pair. Keys and values can be written either as hexadecimal words or as an array of four field elements (decimal or hexadecimal strings). Note that slot names include `::`, so they must be quoted in TOML. This syntax complements the existing `default-values = [...]` form used for static maps, and mirrors how map entries are provided in component metadata. If an init-populated map slot is omitted from `InitStorageData`, it defaults to an empty map.
+All init values must be provided as TOML strings (including numeric values), and are parsed/validated against the schema at instantiation time.
+
+Each element in the array is a fully specified key/value pair. Note that slot names include `::`, so they must be quoted in TOML. This syntax complements the existing `default-values = [...]` form used for static maps, and mirrors how map entries are provided in component metadata. If an init-populated map slot is omitted from `InitStorageData`, it defaults to an empty map.
