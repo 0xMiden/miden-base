@@ -1,8 +1,7 @@
-use miden_objects::account::AccountComponent;
-use miden_objects::assembly::Library;
-use miden_objects::utils::sync::LazyLock;
-
-use crate::utils::CodeBuilder;
+use crate::account::AccountComponent;
+use crate::assembly::Library;
+use crate::code_builder::CodeBuilder;
+use crate::utils::sync::LazyLock;
 
 const INCR_NONCE_AUTH_CODE: &str = "
     use miden::native_account

@@ -1,7 +1,7 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use miden_lib::testing::note::NoteBuilder;
+use miden_lib::testing::note_builder::NoteBuilder;
 use miden_lib::utils::CodeBuilder;
 use miden_objects::account::AccountId;
 use miden_objects::asset::Asset;

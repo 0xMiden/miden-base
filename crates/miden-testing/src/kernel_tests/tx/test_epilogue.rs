@@ -9,7 +9,7 @@ use miden_lib::errors::tx_kernel::{
     ERR_TX_INVALID_EXPIRATION_DELTA,
 };
 use miden_lib::testing::mock_account::MockAccountExt;
-use miden_lib::testing::note::NoteBuilder;
+use miden_lib::testing::note_builder::NoteBuilder;
 use miden_lib::transaction::EXPIRATION_BLOCK_ELEMENT_IDX;
 use miden_lib::transaction::memory::{
     NOTE_MEM_SIZE,

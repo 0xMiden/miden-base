@@ -2,7 +2,7 @@
 //!
 //! Once lazy loading is enabled generally, it can be removed and/or integrated into other tests.
 
-use miden_lib::testing::note::NoteBuilder;
+use miden_lib::testing::note_builder::NoteBuilder;
 use miden_lib::utils::CodeBuilder;
 use miden_objects::LexicographicWord;
 use miden_objects::account::{AccountId, AccountStorage, StorageSlotDelta};

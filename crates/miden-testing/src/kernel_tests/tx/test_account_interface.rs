@@ -4,7 +4,7 @@ use alloc::vec::Vec;
 use assert_matches::assert_matches;
 use miden_lib::note::{NoteConsumptionStatus, WellKnownNote, create_p2id_note, create_p2ide_note};
 use miden_lib::testing::mock_account::MockAccountExt;
-use miden_lib::testing::note::NoteBuilder;
+use miden_lib::testing::note_builder::NoteBuilder;
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::{Account, AccountId};
 use miden_objects::asset::{Asset, FungibleAsset};

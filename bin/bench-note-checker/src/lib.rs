@@ -1,4 +1,4 @@
-use miden_lib::testing::note::NoteBuilder;
+use miden_lib::testing::note_builder::NoteBuilder;
 use miden_objects::account::AccountId;
 use miden_objects::asset::FungibleAsset;
 use miden_objects::crypto::rand::RpoRandomCoin;

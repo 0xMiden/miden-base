@@ -4,7 +4,7 @@ use alloc::sync::Arc;
 use anyhow::Context;
 use miden_lib::account::wallets::BasicWallet;
 use miden_lib::errors::MasmError;
-use miden_lib::testing::note::NoteBuilder;
+use miden_lib::testing::note_builder::NoteBuilder;
 use miden_lib::transaction::memory::ACTIVE_INPUT_NOTE_PTR;
 use miden_lib::utils::CodeBuilder;
 use miden_objects::account::auth::PublicKeyCommitment;
