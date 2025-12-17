@@ -44,7 +44,7 @@ pub type StorageSlot = u8;
 // | Active slot info   | 2_340         | 1_020            | 255 slots max, 8 elements each         |
 // | Padding            | 3_360         | 4_832            |                                        |
 //
-// Active slot info is laid out as [[0, slot_type, slot_id_suffix, slot_id_prefix], SLOT_VALUE].
+// Storage slots are laid out as [[0, slot_type, slot_id_suffix, slot_id_prefix], SLOT_VALUE].
 
 // Relative layout of the native account's delta.
 //
