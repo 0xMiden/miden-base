@@ -2,7 +2,7 @@ use core::fmt;
 
 pub use miden_core::EventId;
 
-use super::TransactionEventError;
+use crate::errors::TransactionEventError;
 
 // CONSTANTS
 // ================================================================================================
