@@ -34,6 +34,7 @@ thiserror = { workspace = true }
 fs-err         = { version = "3" }
 miden-assembly = { workspace = true }
 miden-core     = { workspace = true }
+miden-objects     = { workspace = true }
 miden-core-lib = { workspace = true }
 regex          = { version = "1.11" }
 walkdir        = { version = "2.5" }
