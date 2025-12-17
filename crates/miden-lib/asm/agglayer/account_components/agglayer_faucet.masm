@@ -13,10 +13,11 @@ const BRIDGE_ID_SLOT = word("miden::agglayer::faucet")
 # =================================================================================================
 const ERR_INVALID_PROOF = "invalid proof"
 
-#! Validates a CLAIM note's rollup exit root Merkle Proof against the agglayer bridge via FPI.
+#! Validates a CLAIM note by verifying its inputs against a GER against the AggLayer bridge.
 #!
-#! This procedure performs a foreign procedure invocation to the agglayer bridge to validate
-#! that the CLAIM note's rollup exit root Merkle Proof is valid.
+#! This procedure performs a foreign procedure invocation (FPI) to the configured
+#! AggLayer bridge account to verify its claim data (asset, amount, recipient) inclusion against 
+#! one of the Global Exit Roots in the bridge storage.
 #!
 #! Inputs:  []
 #! Outputs: []
