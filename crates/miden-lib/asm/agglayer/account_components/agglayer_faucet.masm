@@ -7,7 +7,7 @@ use.miden::tx
 # =================================================================================================
 
 # The slot in this component's storage layout where the bridge account ID is stored.
-const.BRIDGE_ID_IDX=word("miden::agglayer::faucet")
+const BRIDGE_ID_SLOT = word("miden::agglayer::faucet")
 
 # ERRORS
 # =================================================================================================
