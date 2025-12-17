@@ -144,7 +144,7 @@ Single-slot entries are represented by `ValueSlotSchema` and occupy one slot (on
 - `type` (optional): Describes the schema for this slot. It can be either:
   - a string type identifier (singular init-supplied slot), or
   - an array of 4 `FeltSchema` descriptors (composed slot schema).
-- `default-value` (optional): An overrideable default for singular slots. If omitted, the slot is required at instantiation (unless `type = "void"`).
+- `default-value` (optional): An overridable default for singular slots. If omitted, the slot is required at instantiation (unless `type = "void"`).
 
 In our TOML example, the first entry defines a composed schema, while the second is an init-supplied value typed as `auth::rpo_falcon512::pub_key`.
 

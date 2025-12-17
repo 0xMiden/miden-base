@@ -389,7 +389,7 @@ fn extensive_schema_metadata_and_init_toml_example() {
         description = "Protocol version stored as u8 in the last felt"
         type = "u8"
 
-        # word slot with an overrideable default
+        # word slot with an overridable default
         [[storage]]
         name = "demo::static_word"
         description = "A fully specified word slot"

@@ -385,7 +385,7 @@ struct RawStorageSlotSchema {
     #[serde(rename = "type")]
     #[serde(default)]
     r#type: Option<RawSlotType>,
-    /// The (overrideable) default value for a singular word slot.
+    /// The (overridable) default value for a singular word slot.
     #[serde(default)]
     default_value: Option<WordValue>,
     /// Default map entries.
@@ -627,7 +627,7 @@ impl RawStorageSlotSchema {
                 ))
             },
 
-            // Word slot with explicit type, and optional overrideable default value.
+            // Word slot with explicit type, and optional overridable default value.
             (Some(RawSlotType::Identifier(r#type)), default_value, None)
                 if r#type != SchemaTypeIdentifier::storage_map() =>
             {
@@ -654,7 +654,7 @@ impl RawStorageSlotSchema {
                 ))
             },
 
-            // Word slot with implied `type = "word"` and an overrideable default value.
+            // Word slot with implied `type = "word"` and an overridable default value.
             (None, Some(default_value), None) => {
                 let r#type = SchemaTypeIdentifier::native_word();
                 let word = default_value.try_parse_as_typed_word(
