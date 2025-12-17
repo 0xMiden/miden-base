@@ -145,14 +145,13 @@ fn metadata_from_toml_parses_named_storage_schema() {
         version = "0.1.0"
         supported-types = []
 
-        [[storage]]
+        [[storage.value]]
         name = "demo::test_value"
         description = "a demo slot"
         type = "word"
 
-        [[storage]]
+        [[storage.map]]
         name = "demo::my_map"
-        type = "map"
     "#;
 
     let metadata = AccountComponentMetadata::from_toml(toml_str).unwrap();
@@ -170,9 +169,8 @@ fn metadata_from_toml_rejects_typed_fields_in_static_map_values() {
         version = "0.1.0"
         supported-types = []
 
-        [[storage]]
+        [[storage.map]]
         name = "demo::my_map"
-        type = "map"
         default-values = [
             { key = "0x1", value = { type = "word" } },
         ]
@@ -195,7 +193,7 @@ fn metadata_from_toml_rejects_reserved_slot_names() {
             version = "0.1.0"
             supported-types = []
 
-            [[storage]]
+            [[storage.value]]
             name = "{reserved_slot}"
             type = "word"
         "#
@@ -215,14 +213,13 @@ fn metadata_toml_round_trip_value_and_map_slots() {
         version = "0.1.0"
         supported-types = []
 
-        [[storage]]
+        [[storage.value]]
         name = "demo::scalar"
         description = "single word slot"
         default-value = "0x1"
 
-        [[storage]]
+        [[storage.map]]
         name = "demo::statemap"
-        type = "map"
         default-values = [
             { key = "0x000000000000ed5d", value = "0x10" },
         ]
@@ -245,7 +242,7 @@ fn metadata_toml_round_trip_composed_slot_with_typed_fields() {
         version = "0.1.0"
         supported-types = []
 
-        [[storage]]
+        [[storage.value]]
         name = "demo::composed"
         description = "composed word with typed fields"
         type = [
@@ -283,13 +280,12 @@ fn metadata_toml_round_trip_typed_slots() {
         version = "0.1.0"
         supported-types = []
 
-        [[storage]]
+        [[storage.value]]
         name = "demo::typed_value"
         type = "word"
 
-        [[storage]]
+        [[storage.map]]
         name = "demo::typed_map"
-        type = "map"
         key-type = "auth::rpo_falcon512::pub_key"
         value-type = "auth::rpo_falcon512::pub_key"
     "#;
@@ -335,19 +331,20 @@ fn metadata_toml_round_trip_typed_slots() {
 
     let round_trip = metadata.to_toml().expect("serialize");
     let parsed: toml::Value = toml::from_str(&round_trip).unwrap();
-    let storage = parsed.get("storage").unwrap().as_array().unwrap();
+    let storage = parsed.get("storage").unwrap().as_table().unwrap();
+    let storage_values = storage.get("value").unwrap().as_array().unwrap();
+    let storage_maps = storage.get("map").unwrap().as_array().unwrap();
 
-    let typed_value_entry = storage
+    let typed_value_entry = storage_values
         .iter()
         .find(|entry| entry.get("name").unwrap().as_str().unwrap() == "demo::typed_value")
         .unwrap();
     assert_eq!(typed_value_entry.get("type").unwrap().as_str().unwrap(), "word");
 
-    let typed_map_entry = storage
+    let typed_map_entry = storage_maps
         .iter()
         .find(|entry| entry.get("name").unwrap().as_str().unwrap() == "demo::typed_map")
         .unwrap();
-    assert_eq!(typed_map_entry.get("type").unwrap().as_str().unwrap(), "map");
     assert_eq!(
         typed_map_entry.get("key-type").unwrap().as_str().unwrap(),
         "auth::rpo_falcon512::pub_key"
@@ -367,7 +364,7 @@ fn extensive_schema_metadata_and_init_toml_example() {
         supported-types = ["FungibleFaucet", "RegularAccountImmutableCode"]
 
         # composed slot schema expressed via `type = [...]`
-        [[storage]]
+        [[storage.value]]
         name = "demo::token_metadata"
         description = "Token metadata: max_supply, symbol, decimals, reserved."
         type = [
@@ -378,49 +375,46 @@ fn extensive_schema_metadata_and_init_toml_example() {
         ]
 
         # singular word-typed slot (must be passed at instantiation)
-        [[storage]]
+        [[storage.value]]
         name = "demo::owner_pub_key"
         description = "Owner public key"
         type = "auth::rpo_falcon512::pub_key"
 
         # singular felt-typed word slot (parsed as felt, stored as [0,0,0,<felt>])
-        [[storage]]
+        [[storage.value]]
         name = "demo::protocol_version"
         description = "Protocol version stored as u8 in the last felt"
         type = "u8"
 
         # word slot with an overridable default
-        [[storage]]
+        [[storage.value]]
         name = "demo::static_word"
         description = "A fully specified word slot"
         type = "word"
         default-value = ["0x1", "0x2", "0x3", "0x4"]
 
         # Word slot with implied `type = "word"`
-        [[storage]]
+        [[storage.value]]
         name = "demo::legacy_word"
         default-value = "0x123"
 
         # Static map defaults (fully concrete key/value words)
-        [[storage]]
+        [[storage.map]]
         name = "demo::static_map"
         description = "Static map with default entries"
-        type = "map"
         default-values = [
             { key = "0x1", value = "0x10" },
             { key = ["0", "0", "0", "2"], value = ["0", "0", "0", "32"] }
         ]
 
         # Map with no key/value typing specified: defaults to word/word
-        [[storage]]
+        [[storage.map]]
         name = "demo::default_typed_map"
         description = "Defaults to key/value type => word/word"
-        type = "map"
 
         # init-populated map with key/value types
-        [[storage]]
+        [[storage.map]]
         name = "demo::typed_map_new"
-        type = "map"
         key-type = [
             { type = "felt", name = "prefix" },
             { type = "felt", name = "suffix" },
@@ -643,9 +637,8 @@ fn typed_map_init_entries_are_validated() {
         version = "0.1.0"
         supported-types = []
 
-        [[storage]]
+        [[storage.map]]
         name = "demo::typed_map"
-        type = "map"
         key-type = [
             { name = "prefix" },
             { name = "suffix" },
@@ -680,9 +673,8 @@ fn typed_map_supports_non_numeric_value_types() {
         version = "0.1.0"
         supported-types = []
 
-        [[storage]]
+        [[storage.map]]
         name = "demo::symbol_map"
-        type = "map"
         value-type = "token_symbol"
     "#;
 

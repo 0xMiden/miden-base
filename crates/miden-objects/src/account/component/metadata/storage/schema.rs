@@ -914,7 +914,7 @@ impl MapSlotSchema {
     }
 }
 
-fn parse_word_value_against_schema(
+pub(super) fn parse_word_value_against_schema(
     schema: &WordSchema,
     raw: &WordValue,
     slot_prefix: &StorageValueName,
