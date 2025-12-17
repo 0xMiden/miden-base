@@ -26,8 +26,7 @@ The component's code defines a library of functions that can read and write to t
 
 The component metadata describes the account component entirely: its name, description, version, and storage layout.
 
-The storage layout is described as a set of named storage slots. Each slot name must be a valid
-[`StorageSlotName`](../api/miden_objects/account/struct.StorageSlotName.html), and its slot ID is
+The storage layout is described as a set of named storage slots. Each slot name must be a valid `StorageSlotName`, and its slot ID is
 derived deterministically from the name.
 
 A slot can either define a concrete value (optionally containing typed fields filled at instantiation),
