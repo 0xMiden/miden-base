@@ -73,3 +73,11 @@ winter-air     = { version = "0.13" }
 # for HashFunction/ExecutionProof::new_dummy
 color-eyre = { version = "0.5" }
 miden-air  = { features = ["std", "testing"], workspace = true }
+
+[build-dependencies]
+fs-err         = { version = "3" }
+miden-assembly = { workspace = true }
+miden-core     = { workspace = true }
+miden-core-lib = { workspace = true }
+regex          = { version = "1.11" }
+walkdir        = { version = "2.5" }
