@@ -72,7 +72,7 @@ end
 #! - any of the validations in faucets::distribute fail.
 #!
 #! Invocation: call
-export.claim
+pub proc claim
     exec.faucets::distribute
     # => [pad(16)]
 
