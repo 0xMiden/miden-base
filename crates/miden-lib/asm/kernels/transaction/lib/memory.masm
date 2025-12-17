@@ -178,17 +178,17 @@ const.ACCT_VAULT_ROOT_OFFSET=4
 const.ACCT_STORAGE_COMMITMENT_OFFSET=8
 const.ACCT_CODE_COMMITMENT_OFFSET=12
 const.ACCT_CORE_DATA_SECTION_END_OFFSET=16
-const.NUM_ACCT_PROCEDURES_OFFSET=28
+const.ACCT_NUM_PROCEDURES_OFFSET=28
 const.ACCT_PROCEDURES_SECTION_OFFSET=32
 const.ACCT_PROCEDURES_CALL_TRACKING_OFFSET=1060
-const.NUM_ACCT_STORAGE_SLOTS_OFFSET=1316
-const.ACCT_STORAGE_SLOTS_SECTION_OFFSET=1320
+const.ACCT_NUM_STORAGE_SLOTS_OFFSET=1316
+const.ACCT_INITIAL_STORAGE_SLOTS_SECTION_OFFSET=1320
 
-# Offset at which an exact copy of the account's storage slot section starting at
-# ACCT_STORAGE_SLOTS_SECTION_OFFSET is kept. This keeps the initial values of the account storage
+# Offset at which the account's active storage slot section is kept. This section contains the
+# current values of the account storage slots. This keeps the initial values of the account storage
 # slots accessible to enable computing a diff between the initial and current account storage slots
 # for use in the account delta. This section is only present for the native account.
-const.ACCT_INITIAL_STORAGE_SLOTS_SECTION_OFFSET=2340
+const.ACCT_ACTIVE_STORAGE_SLOTS_SECTION_OFFSET=2340
 
 # NATIVE ACCOUNT DELTA
 # -------------------------------------------------------------------------------------------------
@@ -1223,7 +1223,7 @@ end
 #! Where:
 #! - num_procedures is the number of procedures contained in the account code.
 export.get_num_account_procedures
-    exec.get_active_account_data_ptr add.NUM_ACCT_PROCEDURES_OFFSET
+    exec.get_active_account_data_ptr add.ACCT_NUM_PROCEDURES_OFFSET
     mem_load
 end
 
@@ -1235,7 +1235,7 @@ end
 #! Where:
 #! - num_procedures is the number of procedures contained in the account code.
 export.set_num_account_procedures
-    exec.get_active_account_data_ptr add.NUM_ACCT_PROCEDURES_OFFSET
+    exec.get_active_account_data_ptr add.ACCT_NUM_PROCEDURES_OFFSET
     mem_store
 end
 
@@ -1347,7 +1347,7 @@ end
 #! Where:
 #! - num_storage_slots is the number of storage slots contained in the account storage.
 export.get_num_storage_slots
-    exec.get_active_account_data_ptr add.NUM_ACCT_STORAGE_SLOTS_OFFSET
+    exec.get_active_account_data_ptr add.ACCT_NUM_STORAGE_SLOTS_OFFSET
     mem_load
 end
 
@@ -1359,7 +1359,7 @@ end
 #! Where:
 #! - num_storage_slots is the number of storage slots contained in the account storage.
 export.set_num_storage_slots
-    exec.get_active_account_data_ptr add.NUM_ACCT_STORAGE_SLOTS_OFFSET
+    exec.get_active_account_data_ptr add.ACCT_NUM_STORAGE_SLOTS_OFFSET
     mem_store
 end
 
@@ -1371,7 +1371,7 @@ end
 #! Where:
 #! - storage_slots_section_ptr is the memory pointer to the account storage slots section.
 export.get_account_storage_slots_section_ptr
-    exec.get_active_account_data_ptr add.ACCT_STORAGE_SLOTS_SECTION_OFFSET
+    exec.get_active_account_data_ptr add.ACCT_ACTIVE_STORAGE_SLOTS_SECTION_OFFSET
 end
 
 #! Returns the memory pointer to the native account's storage slots section.
@@ -1382,7 +1382,7 @@ end
 #! Where:
 #! - storage_slots_section_ptr is the memory pointer to the native account's storage slots section.
 export.get_native_account_storage_slots_ptr
-    exec.get_native_account_data_ptr add.ACCT_STORAGE_SLOTS_SECTION_OFFSET
+    exec.get_native_account_data_ptr add.ACCT_ACTIVE_STORAGE_SLOTS_SECTION_OFFSET
 end
 
 #! Returns the memory pointer to the initial storage slots of the native account.
@@ -1467,13 +1467,13 @@ end
 #! Inputs:  []
 #! Outputs: []
 export.mem_copy_native_account_initial_storage_slots
-  exec.get_native_account_initial_storage_slots_ptr
   exec.get_native_account_storage_slots_ptr
-  # => [storage_slots_section_ptr, initial_storage_slots_ptr]
+  exec.get_native_account_initial_storage_slots_ptr
+  # => [initial_storage_slots_ptr, active_storage_slots_ptr]
 
   # each slot takes up two words
   exec.get_num_storage_slots mul.2
-  # => [num_storage_slot_words, storage_slots_section_ptr, initial_storage_slots_ptr]
+  # => [num_storage_slot_words, initial_storage_slots_ptr, active_storage_slots_ptr]
 
   exec.mem::memcopy_words
   # => []
