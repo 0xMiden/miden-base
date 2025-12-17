@@ -13,6 +13,7 @@ pub mod batch;
 pub mod block;
 pub mod errors;
 pub mod note;
+pub mod protocol;
 pub mod transaction;
 
 #[cfg(any(feature = "testing", test))]
@@ -47,9 +48,11 @@ pub use errors::{
     StorageMapError,
     StorageSlotNameError,
     TokenSymbolError,
+    TransactionEventError,
     TransactionInputError,
     TransactionOutputError,
     TransactionScriptError,
+    TransactionTraceParsingError,
 };
 pub use miden_core::mast::{MastForest, MastNodeId};
 pub use miden_core::prettier::PrettyPrint;

@@ -3,43 +3,28 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use miden_core_lib::CoreLibrary;
-use miden_objects::account::AccountId;
+
+use crate::account::{AccountHeader, AccountId};
 #[cfg(any(feature = "testing", test))]
-use miden_objects::assembly::Library;
-use miden_objects::assembly::debuginfo::SourceManagerSync;
-use miden_objects::assembly::{Assembler, DefaultSourceManager, KernelLibrary};
-use miden_objects::asset::FungibleAsset;
-use miden_objects::block::BlockNumber;
-use miden_objects::crypto::SequentialCommit;
-use miden_objects::transaction::{OutputNote, OutputNotes, TransactionInputs, TransactionOutputs};
-use miden_objects::utils::serde::Deserializable;
-use miden_objects::utils::sync::LazyLock;
-use miden_objects::vm::{AdviceInputs, Program, ProgramInfo, StackInputs, StackOutputs};
-use miden_objects::{Felt, Hasher, TransactionOutputError, Word};
-
-use super::MidenLib;
-
-pub mod memory;
-
-mod tx_event_id;
-pub use tx_event_id::{EventId, TransactionEventId};
-
-mod inputs;
-pub use inputs::TransactionAdviceInputs;
-
-mod outputs;
-pub use outputs::{
-    ACCOUNT_UPDATE_COMMITMENT_WORD_IDX,
-    EXPIRATION_BLOCK_ELEMENT_IDX,
-    FEE_ASSET_WORD_IDX,
-    OUTPUT_NOTES_COMMITMENT_WORD_IDX,
-    parse_final_account_header,
+use crate::assembly::Library;
+use crate::assembly::debuginfo::SourceManagerSync;
+use crate::assembly::{Assembler, DefaultSourceManager, KernelLibrary};
+use crate::asset::FungibleAsset;
+use crate::block::BlockNumber;
+use crate::crypto::SequentialCommit;
+use crate::protocol::MidenLib;
+use crate::transaction::{
+    self,
+    OutputNote,
+    OutputNotes,
+    TransactionAdviceInputs,
+    TransactionInputs,
+    TransactionOutputs,
 };
-
-pub use crate::errors::{TransactionEventError, TransactionTraceParsingError};
-
-mod kernel_procedures;
-use kernel_procedures::KERNEL_PROCEDURES;
+use crate::utils::serde::Deserializable;
+use crate::utils::sync::LazyLock;
+use crate::vm::{AdviceInputs, Program, ProgramInfo, StackInputs, StackOutputs};
+use crate::{Felt, Hasher, TransactionOutputError, Word};
 
 // CONSTANTS
 // ================================================================================================
@@ -78,7 +63,7 @@ impl TransactionKernel {
     // --------------------------------------------------------------------------------------------
 
     /// Array of kernel procedures.
-    pub const PROCEDURES: &'static [Word] = &KERNEL_PROCEDURES;
+    pub const PROCEDURES: &'static [Word] = &transaction::KERNEL_PROCEDURES;
 
     // KERNEL SOURCE CODE
     // --------------------------------------------------------------------------------------------
@@ -272,19 +257,19 @@ impl TransactionKernel {
         stack: &StackOutputs, // FIXME TODO add an extension trait for this one
     ) -> Result<(Word, Word, FungibleAsset, BlockNumber), TransactionOutputError> {
         let output_notes_commitment = stack
-            .get_stack_word_be(OUTPUT_NOTES_COMMITMENT_WORD_IDX * 4)
+            .get_stack_word_be(TransactionOutputs::OUTPUT_NOTES_COMMITMENT_WORD_IDX * 4)
             .expect("output_notes_commitment (first word) missing");
 
         let account_update_commitment = stack
-            .get_stack_word_be(ACCOUNT_UPDATE_COMMITMENT_WORD_IDX * 4)
+            .get_stack_word_be(TransactionOutputs::ACCOUNT_UPDATE_COMMITMENT_WORD_IDX * 4)
             .expect("account_update_commitment (second word) missing");
 
         let fee = stack
-            .get_stack_word_be(FEE_ASSET_WORD_IDX * 4)
+            .get_stack_word_be(TransactionOutputs::FEE_ASSET_WORD_IDX * 4)
             .expect("fee_asset (third word) missing");
 
         let expiration_block_num = stack
-            .get_stack_item(EXPIRATION_BLOCK_ELEMENT_IDX)
+            .get_stack_item(TransactionOutputs::EXPIRATION_BLOCK_ELEMENT_IDX)
             .expect("tx_expiration_block_num (element on index 12) missing");
 
         let expiration_block_num = u32::try_from(expiration_block_num.as_int())
@@ -357,7 +342,7 @@ impl TransactionKernel {
             .get(&final_account_commitment)
             .ok_or(TransactionOutputError::FinalAccountCommitmentMissingInAdviceMap)?;
 
-        let account = parse_final_account_header(final_account_data)
+        let account = AccountHeader::try_from_felts(final_account_data)
             .map_err(TransactionOutputError::FinalAccountHeaderParseFailure)?;
 
         // validate output notes
@@ -458,8 +443,8 @@ pub(crate) mod source_manager_ext {
     use std::vec::Vec;
     use std::{fs, io};
 
-    use miden_objects::assembly::SourceManager;
-    use miden_objects::assembly::debuginfo::SourceManagerExt;
+    use crate::assembly::SourceManager;
+    use crate::assembly::debuginfo::SourceManagerExt;
 
     /// Loads all files with a .masm extension in the `asm` directory into the provided source
     /// manager.
