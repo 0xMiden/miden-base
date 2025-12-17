@@ -5,14 +5,14 @@ use.miden::active_note
 # CONSTANTS
 # =================================================================================================
 
-const.CLAIM_NOTE_MIN_NUM_INPUTS_PUBLIC=12
-const.OUTPUT_NOTE_TYPE_PUBLIC=1
-const.OUTPUT_PUBLIC_NOTE_INPUTS_ADDR=12
-const.OUTPUT_PUBLIC_NOTE_INPUTS_LEN_MEM_ADDR=0
+const CLAIM_NOTE_MIN_NUM_INPUTS_PUBLIC = 12
+const OUTPUT_NOTE_TYPE_PUBLIC = 1
+const OUTPUT_PUBLIC_NOTE_INPUTS_ADDR = 12
+const OUTPUT_PUBLIC_NOTE_INPUTS_LEN_MEM_ADDR = 0
 
 # ERRORS
 # =================================================================================================
-const.ERR_CLAIM_WRONG_NUMBER_OF_INPUTS="CLAIM script expects 12+ inputs for public output notes"
+const ERR_CLAIM_WRONG_NUMBER_OF_INPUTS = "CLAIM script expects 12+ inputs for public output notes"
 
 #! Agglayer Faucet CLAIM script: claims assets by calling the agglayer faucet's claim function.
 #! This note is intended to be executed against an agglayer faucet account.
