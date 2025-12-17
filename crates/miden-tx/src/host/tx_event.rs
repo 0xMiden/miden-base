@@ -1,10 +1,9 @@
 use alloc::vec::Vec;
 
-use miden_lib::transaction::{EventId, TransactionEventId};
 use miden_objects::account::{AccountId, StorageMap, StorageSlotName, StorageSlotType};
 use miden_objects::asset::{Asset, AssetVault, AssetVaultKey, FungibleAsset};
 use miden_objects::note::{NoteId, NoteInputs, NoteMetadata, NoteRecipient, NoteScript};
-use miden_objects::transaction::TransactionSummary;
+use miden_objects::transaction::{EventId, TransactionEventId, TransactionSummary};
 use miden_objects::{Felt, Hasher, Word};
 use miden_processor::{AdviceMutation, ProcessState, RowIndex};
 

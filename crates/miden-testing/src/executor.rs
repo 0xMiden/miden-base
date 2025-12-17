@@ -45,7 +45,7 @@ impl<H: AsyncHost> CodeExecutor<H> {
         use alloc::borrow::ToOwned;
         use alloc::sync::Arc;
 
-        use miden_lib::utils::CodeBuilder;
+        use miden_lib::code_builder::CodeBuilder;
         use miden_objects::assembly::debuginfo::{SourceLanguage, Uri};
         use miden_objects::assembly::{DefaultSourceManager, SourceManagerSync};
 
@@ -88,7 +88,7 @@ impl<H: AsyncHost> CodeExecutor<H> {
 #[cfg(test)]
 impl CodeExecutor<DefaultHost> {
     pub fn with_default_host() -> Self {
-        use miden_lib::transaction::TransactionKernel;
+        use miden_objects::transaction::TransactionKernel;
 
         let mut host = DefaultHost::default();
 

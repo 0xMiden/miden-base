@@ -1,7 +1,16 @@
 use alloc::string::String;
 
 use anyhow::Context;
-use miden_lib::transaction::memory::{
+use miden_objects::account::{Account, AccountId};
+use miden_objects::asset::{Asset, FungibleAsset};
+use miden_objects::note::{Note, NoteType};
+use miden_objects::testing::account_id::{
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
+    ACCOUNT_ID_SENDER,
+};
+use miden_objects::testing::storage::prepare_assets;
+use miden_objects::transaction::memory::{
     self,
     MemoryOffset,
     NOTE_MEM_SIZE,
@@ -13,15 +22,6 @@ use miden_lib::transaction::memory::{
     OUTPUT_NOTE_RECIPIENT_OFFSET,
     OUTPUT_NOTE_SECTION_OFFSET,
 };
-use miden_objects::account::{Account, AccountId};
-use miden_objects::asset::{Asset, FungibleAsset};
-use miden_objects::note::{Note, NoteType};
-use miden_objects::testing::account_id::{
-    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
-    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
-    ACCOUNT_ID_SENDER,
-};
-use miden_objects::testing::storage::prepare_assets;
 use miden_objects::vm::StackInputs;
 use miden_objects::{Felt, Word, ZERO};
 use miden_processor::ContextId;

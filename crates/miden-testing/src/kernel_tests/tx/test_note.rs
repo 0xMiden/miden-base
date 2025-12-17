@@ -3,10 +3,8 @@ use alloc::sync::Arc;
 
 use anyhow::Context;
 use miden_lib::account::wallets::BasicWallet;
-use miden_lib::errors::MasmError;
-use miden_lib::testing::note_builder::NoteBuilder;
-use miden_lib::transaction::memory::ACTIVE_INPUT_NOTE_PTR;
-use miden_lib::utils::CodeBuilder;
+use miden_lib::code_builder::CodeBuilder;
+use miden_lib::testing::note::NoteBuilder;
 use miden_objects::account::auth::PublicKeyCommitment;
 use miden_objects::account::{AccountBuilder, AccountId};
 use miden_objects::assembly::DefaultSourceManager;
@@ -14,6 +12,7 @@ use miden_objects::assembly::diagnostics::miette::{self, miette};
 use miden_objects::asset::FungibleAsset;
 use miden_objects::crypto::dsa::falcon512_rpo::SecretKey;
 use miden_objects::crypto::rand::{FeltRng, RpoRandomCoin};
+use miden_objects::errors::MasmError;
 use miden_objects::note::{
     Note,
     NoteAssets,
@@ -30,6 +29,7 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
     ACCOUNT_ID_SENDER,
 };
+use miden_objects::transaction::memory::ACTIVE_INPUT_NOTE_PTR;
 use miden_objects::transaction::{OutputNote, TransactionArgs};
 use miden_objects::{Felt, Word, ZERO};
 use miden_processor::fast::ExecutionOutput;

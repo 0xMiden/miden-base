@@ -3,7 +3,6 @@ use alloc::vec::Vec;
 
 use anyhow::Context;
 use miden_block_prover::LocalBlockProver;
-use miden_lib::block::build_block;
 use miden_objects::MIN_PROOF_SECURITY_LEVEL;
 use miden_objects::account::auth::{AuthSecretKey, PublicKey};
 use miden_objects::account::delta::AccountUpdateDetails;
@@ -986,7 +985,7 @@ impl MockChain {
 
     /// Proves proposed block alongside a corresponding list of batches.
     pub fn prove_block(&self, proposed_block: ProposedBlock) -> anyhow::Result<ProvenBlock> {
-        let (header, body) = build_block(proposed_block.clone())?;
+        let (header, body) = proposed_block.clone().compute_header_and_body()?;
         let inputs = self.get_block_inputs(proposed_block.batches().as_slice())?;
         let block_proof = LocalBlockProver::new(MIN_PROOF_SECURITY_LEVEL).prove_dummy(
             proposed_block.batches().clone(),

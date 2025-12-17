@@ -3,9 +3,9 @@ use core::slice;
 use anyhow::Context;
 use assert_matches::assert_matches;
 use miden_lib::account::auth::AuthRpoFalcon512Acl;
+use miden_lib::code_builder::CodeBuilder;
 use miden_lib::testing::account_component::MockAccountComponent;
-use miden_lib::testing::note_builder::NoteBuilder;
-use miden_lib::utils::CodeBuilder;
+use miden_lib::testing::note::NoteBuilder;
 use miden_objects::account::{
     Account,
     AccountBuilder,

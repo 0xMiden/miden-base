@@ -3,8 +3,8 @@ use std::collections::BTreeMap;
 use std::string::String;
 
 use anyhow::Context;
+use miden_lib::code_builder::CodeBuilder;
 use miden_lib::testing::account_component::MockAccountComponent;
-use miden_lib::utils::CodeBuilder;
 use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{
     Account,

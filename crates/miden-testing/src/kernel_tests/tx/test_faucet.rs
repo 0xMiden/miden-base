@@ -1,15 +1,7 @@
 use alloc::sync::Arc;
 
-use miden_lib::errors::tx_kernel::{
-    ERR_FAUCET_NEW_TOTAL_SUPPLY_WOULD_EXCEED_MAX_ASSET_AMOUNT,
-    ERR_FAUCET_NON_FUNGIBLE_ASSET_ALREADY_ISSUED,
-    ERR_FAUCET_NON_FUNGIBLE_ASSET_TO_BURN_NOT_FOUND,
-    ERR_FUNGIBLE_ASSET_FAUCET_IS_NOT_ORIGIN,
-    ERR_NON_FUNGIBLE_ASSET_FAUCET_IS_NOT_ORIGIN,
-    ERR_VAULT_FUNGIBLE_ASSET_AMOUNT_LESS_THAN_AMOUNT_TO_WITHDRAW,
-};
+use miden_lib::code_builder::CodeBuilder;
 use miden_lib::testing::mock_account::MockAccountExt;
-use miden_lib::utils::CodeBuilder;
 use miden_objects::account::{
     Account,
     AccountBuilder,
@@ -21,6 +13,14 @@ use miden_objects::account::{
 };
 use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::asset::{FungibleAsset, NonFungibleAsset};
+use miden_objects::errors::tx_kernel::{
+    ERR_FAUCET_NEW_TOTAL_SUPPLY_WOULD_EXCEED_MAX_ASSET_AMOUNT,
+    ERR_FAUCET_NON_FUNGIBLE_ASSET_ALREADY_ISSUED,
+    ERR_FAUCET_NON_FUNGIBLE_ASSET_TO_BURN_NOT_FOUND,
+    ERR_FUNGIBLE_ASSET_FAUCET_IS_NOT_ORIGIN,
+    ERR_NON_FUNGIBLE_ASSET_FAUCET_IS_NOT_ORIGIN,
+    ERR_VAULT_FUNGIBLE_ASSET_AMOUNT_LESS_THAN_AMOUNT_TO_WITHDRAW,
+};
 use miden_objects::testing::account_id::{
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,

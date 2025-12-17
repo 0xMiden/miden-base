@@ -1,7 +1,6 @@
 use alloc::collections::BTreeSet;
 use alloc::sync::Arc;
 
-use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::AccountId;
 use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::assembly::debuginfo::SourceManagerSync;
@@ -13,6 +12,7 @@ use miden_objects::transaction::{
     InputNotes,
     TransactionArgs,
     TransactionInputs,
+    TransactionKernel,
     TransactionScript,
 };
 use miden_objects::vm::StackOutputs;

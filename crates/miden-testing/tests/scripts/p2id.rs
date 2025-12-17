@@ -1,6 +1,6 @@
+use miden_lib::code_builder::CodeBuilder;
 use miden_lib::errors::standards::ERR_P2ID_TARGET_ACCT_MISMATCH;
 use miden_lib::note::create_p2id_note;
-use miden_lib::utils::CodeBuilder;
 use miden_objects::account::Account;
 use miden_objects::asset::{Asset, AssetVault, FungibleAsset};
 use miden_objects::crypto::rand::RpoRandomCoin;
