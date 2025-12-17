@@ -1,17 +1,22 @@
 use alloc::vec::Vec;
 
-use miden_objects::account::{AccountHeader, AccountId, PartialAccount};
-use miden_objects::asset::AssetWitness;
-use miden_objects::block::account_tree::AccountWitness;
-use miden_objects::crypto::SequentialCommit;
-use miden_objects::crypto::merkle::InnerNodeInfo;
-use miden_objects::crypto::merkle::smt::SmtProof;
-use miden_objects::transaction::{AccountInputs, InputNote, PartialBlockchain, TransactionInputs};
-use miden_objects::vm::AdviceInputs;
-use miden_objects::{EMPTY_WORD, Felt, FieldElement, Word, ZERO};
 use miden_processor::AdviceMutation;
 
-use super::TransactionKernel;
+use crate::account::{AccountHeader, AccountId, PartialAccount};
+use crate::asset::AssetWitness;
+use crate::block::account_tree::AccountWitness;
+use crate::crypto::SequentialCommit;
+use crate::crypto::merkle::InnerNodeInfo;
+use crate::crypto::merkle::smt::SmtProof;
+use crate::transaction::{
+    AccountInputs,
+    InputNote,
+    PartialBlockchain,
+    TransactionInputs,
+    TransactionKernel,
+};
+use crate::vm::AdviceInputs;
+use crate::{EMPTY_WORD, Felt, FieldElement, Word, ZERO};
 
 // TRANSACTION ADVICE INPUTS
 // ================================================================================================
@@ -400,7 +405,7 @@ impl TransactionAdviceInputs {
         self.0.stack.extend(iter);
     }
 
-    /// Extends the [`MerkleStore`](miden_objects::crypto::merkle::MerkleStore) with the given
+    /// Extends the [`MerkleStore`](crate::crypto::merkle::MerkleStore) with the given
     /// nodes.
     fn extend_merkle_store(&mut self, iter: impl Iterator<Item = InnerNodeInfo>) {
         self.0.store.extend(iter);
