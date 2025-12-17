@@ -2,6 +2,7 @@ use assert_matches::assert_matches;
 use miden_objects::account::auth::PublicKeyCommitment;
 use miden_objects::account::{AccountBuilder, AccountComponent, AccountType};
 use miden_objects::asset::{FungibleAsset, NonFungibleAsset, TokenSymbol};
+use crate::code_builder::CodeBuilder;
 use miden_objects::crypto::rand::{FeltRng, RpoRandomCoin};
 use miden_objects::note::{
     Note,
@@ -37,7 +38,6 @@ use crate::account::interface::{
 use crate::account::wallets::BasicWallet;
 use crate::note::{create_p2id_note, create_p2ide_note, create_swap_note};
 use crate::testing::account_interface::get_public_keys_from_account;
-use crate::utils::CodeBuilder;
 
 // DEFAULT NOTES
 // ================================================================================================

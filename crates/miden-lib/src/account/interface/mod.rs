@@ -7,8 +7,8 @@ use miden_objects::transaction::TransactionScript;
 use thiserror::Error;
 
 use crate::AuthScheme;
+use crate::code_builder::CodeBuilder;
 use crate::errors::CodeBuilderError;
-use crate::utils::CodeBuilder;
 
 #[cfg(test)]
 mod test;

@@ -1,8 +1,8 @@
 use alloc::string::String;
 
-use crate::account::{AccountComponent, AccountComponentCode};
+use miden_objects::account::{AccountComponent, AccountComponentCode};
 use crate::code_builder::CodeBuilder;
-use crate::utils::sync::LazyLock;
+use miden_objects::utils::sync::LazyLock;
 
 pub const ERR_WRONG_ARGS_MSG: &str = "auth procedure args are incorrect";
 

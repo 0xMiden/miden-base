@@ -53,7 +53,7 @@ impl Default for MidenLib {
 // TESTS
 // ================================================================================================
 
-// NOTE: Most kernel-related tests can be found under /miden-tx/kernel_tests
+// NOTE: Most protocol-related tests can be found in miden-testing.
 #[cfg(all(test, feature = "std"))]
 mod tests {
     use super::MidenLib;

@@ -14,7 +14,7 @@ use miden_objects::note::NoteScript;
 use miden_objects::transaction::TransactionScript;
 
 use crate::errors::CodeBuilderError;
-use crate::transaction::TransactionKernel;
+use miden_objects::transaction::TransactionKernel;
 
 // CODE BUILDER
 // ================================================================================================
@@ -353,7 +353,7 @@ impl CodeBuilder {
     pub fn mock_libraries() -> impl Iterator<Item = Library> {
         use miden_objects::account::AccountCode;
 
-        use crate::testing::mock_account_code::MockAccountCodeExt;
+        use miden_objects::testing::mock_account_code::MockAccountCodeExt;
 
         vec![AccountCode::mock_account_library(), AccountCode::mock_faucet_library()].into_iter()
     }
@@ -362,7 +362,7 @@ impl CodeBuilder {
     pub fn with_mock_libraries_with_source_manager(
         source_manager: Arc<dyn SourceManagerSync>,
     ) -> Self {
-        use crate::testing::mock_util_lib::mock_util_library;
+        use miden_objects::testing::mock_util_lib::mock_util_library;
 
         // Start from the full kernel-aware assembler (includes core lib and miden-lib).
         let mut assembler =
