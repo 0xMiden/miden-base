@@ -639,6 +639,10 @@ export.set_map_item
  
     exec.set_map_item_raw
     # => [OLD_MAP_ROOT, OLD_MAP_VALUE]
+
+    # todo rm
+    dropw
+    # => [OLD_MAP_VALUE]
 end
 
 #! Returns the type of the storage slot at the provided index.

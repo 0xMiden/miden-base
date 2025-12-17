@@ -508,11 +508,12 @@ export.account_set_map_item
 
     # set the new map item
     exec.account::set_map_item
-    # => [OLD_MAP_ROOT, OLD_VALUE, pad(16)]
 
+    # => [OLD_VALUE, pad(16)]
+
+    swapw dropw swapw dropw
     # truncate the stack
-    movupw.2 dropw movupw.2 dropw
-    # => [OLD_MAP_ROOT, OLD_VALUE, pad(8)]
+    # => [OLD_VALUE, pad(8)]
 end
 
 #! Returns the vault root of the active account at the beginning of the transaction.

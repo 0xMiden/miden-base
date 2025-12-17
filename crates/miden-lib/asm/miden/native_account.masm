@@ -181,12 +181,12 @@ export.set_map_item
     # => [offset, slot_id_prefix, slot_id_suffix, KEY, VALUE, pad(5)]
 
     syscall.exec_kernel_proc
-    # => [OLD_MAP_ROOT, OLD_MAP_VALUE, pad(8)]
+    # => [OLD_MAP_VALUE, pad(8)]
 
-    dropw
+    # => [OLD_MAP_VALUE, pad(12)]
 
     # clean the stack
-    swapw dropw swapw dropw
+    swapw dropw swapw dropw swapw dropw
     # => [OLD_MAP_VALUE]
 end
 
@@ -224,6 +224,8 @@ export.add_asset
     # clean the stack
     swapdw dropw dropw swapw dropw
     # => [ASSET']
+
+    sdepth push.333 debug.stack drop drop
 end
 
 #! Remove the specified asset from the vault.
