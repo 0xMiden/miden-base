@@ -32,13 +32,7 @@ impl AccountStorageDelta {
         Self { deltas: BTreeMap::new() }
     }
 
-    /// Creates a new storage delta from the provided fields.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if:
-    /// - Any of the updated slot is referenced from both maps, which means a slot is treated as
-    ///   both a value and a map slot.
+    /// Creates a new storage delta from the provided slot deltas.
     pub fn from_raw(deltas: BTreeMap<StorageSlotName, StorageSlotDelta>) -> Self {
         Self { deltas }
     }
@@ -144,23 +138,10 @@ impl AccountStorageDelta {
                 Entry::Vacant(vacant_entry) => {
                     vacant_entry.insert(slot_delta);
                 },
-                Entry::Occupied(mut occupied_entry) => match (occupied_entry.get_mut(), slot_delta)
-                {
-                    (
-                        StorageSlotDelta::Value(current_value),
-                        StorageSlotDelta::Value(new_value),
-                    ) => {
-                        *current_value = new_value;
-                    },
-                    (
-                        StorageSlotDelta::Map(current_map_delta),
-                        StorageSlotDelta::Map(new_map_delta),
-                    ) => {
-                        current_map_delta.merge(new_map_delta);
-                    },
-                    (..) => {
-                        return Err(AccountDeltaError::StorageSlotUsedAsDifferentTypes(slot_name));
-                    },
+                Entry::Occupied(mut occupied_entry) => {
+                    occupied_entry.get_mut().merge(slot_delta).ok_or_else(|| {
+                        AccountDeltaError::StorageSlotUsedAsDifferentTypes(slot_name)
+                    })?;
                 },
             }
         }
@@ -402,6 +383,9 @@ impl StorageSlotDelta {
         matches!(self, Self::Map(_))
     }
 
+    // MUTATORS
+    // ----------------------------------------------------------------------------------------
+
     /// Unwraps a value slot delta into a [`Word`].
     ///
     /// # Panics
@@ -426,6 +410,29 @@ impl StorageSlotDelta {
             StorageSlotDelta::Value(_) => panic!("called unwrap_map on a value slot delta"),
             StorageSlotDelta::Map(map_delta) => map_delta,
         }
+    }
+
+    /// Merges `other` into `self`.
+    ///
+    /// # Errors
+    ///
+    /// Returns `None` if:
+    /// - merging failed due to a slot type mismatch.
+    #[must_use]
+    fn merge(&mut self, other: Self) -> Option<()> {
+        match (self, other) {
+            (StorageSlotDelta::Value(current_value), StorageSlotDelta::Value(new_value)) => {
+                *current_value = new_value;
+            },
+            (StorageSlotDelta::Map(current_map_delta), StorageSlotDelta::Map(new_map_delta)) => {
+                current_map_delta.merge(new_map_delta);
+            },
+            (..) => {
+                return None;
+            },
+        }
+
+        Some(())
     }
 }
 
