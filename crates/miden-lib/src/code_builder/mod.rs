@@ -11,10 +11,10 @@ use miden_objects::assembly::{
     SourceManagerSync,
 };
 use miden_objects::note::NoteScript;
-use miden_objects::transaction::TransactionScript;
+use miden_objects::transaction::{TransactionKernel, TransactionScript};
 
 use crate::errors::CodeBuilderError;
-use miden_objects::transaction::TransactionKernel;
+use crate::standards_lib::StandardsLib;
 
 // CODE BUILDER
 // ================================================================================================
@@ -55,7 +55,7 @@ use miden_objects::transaction::TransactionKernel;
 ///
 /// ```no_run
 /// # use anyhow::Context;
-/// # use miden_lib::utils::CodeBuilder;
+/// # use miden_lib::code_builder::CodeBuilder;
 /// # use miden_objects::assembly::Library;
 /// # use miden_core_lib::CoreLibrary;
 /// # fn example() -> anyhow::Result<()> {
@@ -89,9 +89,7 @@ impl CodeBuilder {
 
     /// Creates a new CodeBuilder.
     pub fn new() -> Self {
-        let source_manager = Arc::new(DefaultSourceManager::default());
-        let assembler = TransactionKernel::assembler_with_source_manager(source_manager.clone());
-        Self { assembler, source_manager }
+        Self::with_source_manager(Arc::new(DefaultSourceManager::default()))
     }
 
     /// Creates a new CodeBuilder with the specified source manager.
@@ -99,7 +97,9 @@ impl CodeBuilder {
     /// # Arguments
     /// * `source_manager` - The source manager to use with the internal `Assembler`
     pub fn with_source_manager(source_manager: Arc<dyn SourceManagerSync>) -> Self {
-        let assembler = TransactionKernel::assembler_with_source_manager(source_manager.clone());
+        let assembler = TransactionKernel::assembler_with_source_manager(source_manager.clone())
+            .with_dynamic_library(StandardsLib::default())
+            .expect("linking std lib should work");
         Self { assembler, source_manager }
     }
 
@@ -353,7 +353,7 @@ impl CodeBuilder {
     pub fn mock_libraries() -> impl Iterator<Item = Library> {
         use miden_objects::account::AccountCode;
 
-        use miden_objects::testing::mock_account_code::MockAccountCodeExt;
+        use crate::testing::mock_account_code::MockAccountCodeExt;
 
         vec![AccountCode::mock_account_library(), AccountCode::mock_faucet_library()].into_iter()
     }
@@ -364,26 +364,26 @@ impl CodeBuilder {
     ) -> Self {
         use miden_objects::testing::mock_util_lib::mock_util_library;
 
-        // Start from the full kernel-aware assembler (includes core lib and miden-lib).
-        let mut assembler =
-            TransactionKernel::assembler_with_source_manager(source_manager.clone());
+        // Start with the builder linking against the transaction kernel, protocol library and
+        // standards library.
+        let mut builder = Self::with_source_manager(source_manager);
 
         // Expose kernel procedures under `$kernel` for testing.
-        assembler
-            .link_dynamic_library(TransactionKernel::library())
+        builder
+            .link_dynamic_library(&TransactionKernel::library())
             .expect("failed to link kernel library");
 
         // Add mock account/faucet libs (built in debug mode) and mock util.
         for library in Self::mock_libraries() {
-            assembler
-                .link_dynamic_library(library)
+            builder
+                .link_dynamic_library(&library)
                 .expect("failed to link mock account libraries");
         }
-        assembler
-            .link_static_library(mock_util_library())
+        builder
+            .link_static_library(&mock_util_library())
             .expect("failed to link mock util library");
 
-        Self { assembler, source_manager }
+        builder
     }
 }
 

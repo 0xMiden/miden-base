@@ -27,7 +27,7 @@ static FALCON_PUBKEY_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
 ///
 /// - [`Self::public_key_slot`]: Public key
 ///
-/// [builder]: crate::utils::CodeBuilder
+/// [builder]: miden_lib::code_builder::CodeBuilder
 pub struct AuthRpoFalcon512 {
     pub_key: PublicKeyCommitment,
 }

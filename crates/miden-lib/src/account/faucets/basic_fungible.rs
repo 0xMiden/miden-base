@@ -60,7 +60,7 @@ procedure_digest!(
 ///
 /// - [`Self::metadata_slot`]: Fungible faucet metadata
 ///
-/// [builder]: crate::utils::CodeBuilder
+/// [builder]: miden_lib::code_builder::CodeBuilder
 pub struct BasicFungibleFaucet {
     symbol: TokenSymbol,
     decimals: u8,

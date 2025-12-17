@@ -54,7 +54,7 @@ procedure_digest!(
 ///
 /// This component supports all account types.
 ///
-/// [builder]: crate::utils::CodeBuilder
+/// [builder]: miden_lib::code_builder::CodeBuilder
 pub struct BasicWallet;
 
 impl BasicWallet {

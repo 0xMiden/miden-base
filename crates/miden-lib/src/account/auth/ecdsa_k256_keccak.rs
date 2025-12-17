@@ -23,7 +23,7 @@ static ECDSA_PUBKEY_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
 ///
 /// This component supports all account types.
 ///
-/// [builder]: crate::utils::CodeBuilder
+/// [builder]: miden_lib::code_builder::CodeBuilder
 pub struct AuthEcdsaK256Keccak {
     pub_key: PublicKeyCommitment,
 }
