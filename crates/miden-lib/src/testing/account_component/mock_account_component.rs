@@ -1,6 +1,7 @@
 use alloc::vec::Vec;
 
 use miden_objects::account::{AccountCode, AccountComponent, AccountStorage, StorageSlot};
+
 use crate::testing::mock_account_code::MockAccountCodeExt;
 
 // MOCK ACCOUNT COMPONENT
