@@ -222,32 +222,6 @@ impl Default for AccountStorageDelta {
     }
 }
 
-#[cfg(any(feature = "testing", test))]
-impl AccountStorageDelta {
-    /// Creates an [AccountStorageDelta] from the given iterators.
-    pub fn from_iters(
-        cleared_values: impl IntoIterator<Item = StorageSlotName>,
-        updated_values: impl IntoIterator<Item = (StorageSlotName, Word)>,
-        updated_maps: impl IntoIterator<Item = (StorageSlotName, StorageMapDelta)>,
-    ) -> Self {
-        let deltas =
-            cleared_values
-                .into_iter()
-                .map(|slot_name| (slot_name, StorageSlotDelta::with_empty_value()))
-                .chain(updated_values.into_iter().map(|(slot_name, slot_value)| {
-                    (slot_name, StorageSlotDelta::Value(slot_value))
-                }))
-                .chain(
-                    updated_maps.into_iter().map(|(slot_name, map_delta)| {
-                        (slot_name, StorageSlotDelta::Map(map_delta))
-                    }),
-                )
-                .collect();
-
-        Self::from_raw(deltas)
-    }
-}
-
 impl Serializable for AccountStorageDelta {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         let num_cleared_values = self.cleared_values().count();
@@ -644,7 +618,6 @@ mod tests {
 
     use super::{AccountStorageDelta, Deserializable, Serializable};
     use crate::account::{StorageMapDelta, StorageSlotDelta, StorageSlotName};
-    use crate::testing::storage::AccountStorageDeltaBuilder;
     use crate::{AccountDeltaError, ONE, Word};
 
     #[test]
@@ -789,10 +762,9 @@ mod tests {
             let slot_name = StorageSlotName::mock(123);
             let item = item.map(|x| (slot_name.clone(), Word::from([x, 0, 0, 0])));
 
-            AccountStorageDeltaBuilder::new()
+            AccountStorageDelta::new()
                 .add_cleared_items(item.is_none().then_some(slot_name.clone()))
                 .add_updated_values(item)
-                .build()
         }
 
         let mut delta_x = create_delta(x);

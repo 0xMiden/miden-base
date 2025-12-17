@@ -1,4 +1,3 @@
-use alloc::collections::BTreeMap;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
@@ -16,28 +15,44 @@ use crate::account::{
 use crate::note::NoteAssets;
 use crate::utils::sync::LazyLock;
 
-// ACCOUNT STORAGE DELTA BUILDER
+// ACCOUNT STORAGE DELTA
 // ================================================================================================
 
-#[derive(Clone, Debug, Default)]
-pub struct AccountStorageDeltaBuilder {
-    deltas: BTreeMap<StorageSlotName, StorageSlotDelta>,
-}
-
-impl AccountStorageDeltaBuilder {
+impl AccountStorageDelta {
     // CONSTRUCTORS
-    // -------------------------------------------------------------------------------------------
+    // ----------------------------------------------------------------------------------------
 
-    pub fn new() -> Self {
-        Self { deltas: BTreeMap::new() }
+    /// Creates an [`AccountStorageDelta`] from the given iterators.
+    pub fn from_iters(
+        cleared_values: impl IntoIterator<Item = StorageSlotName>,
+        updated_values: impl IntoIterator<Item = (StorageSlotName, Word)>,
+        updated_maps: impl IntoIterator<Item = (StorageSlotName, StorageMapDelta)>,
+    ) -> Self {
+        let deltas =
+            cleared_values
+                .into_iter()
+                .map(|slot_name| (slot_name, StorageSlotDelta::with_empty_value()))
+                .chain(updated_values.into_iter().map(|(slot_name, slot_value)| {
+                    (slot_name, StorageSlotDelta::Value(slot_value))
+                }))
+                .chain(
+                    updated_maps.into_iter().map(|(slot_name, map_delta)| {
+                        (slot_name, StorageSlotDelta::Map(map_delta))
+                    }),
+                )
+                .collect();
+
+        Self::from_raw(deltas)
     }
 
-    // MODIFIERS
+    // MUTATORS
     // -------------------------------------------------------------------------------------------
 
     pub fn add_cleared_items(mut self, items: impl IntoIterator<Item = StorageSlotName>) -> Self {
-        self.deltas
-            .extend(items.into_iter().map(|slot| (slot, StorageSlotDelta::with_empty_value())));
+        items
+            .into_iter()
+            .for_each(|slot_name| self.set_item(slot_name, Word::empty()).expect("TODO"));
+
         self
     }
 
@@ -45,11 +60,10 @@ impl AccountStorageDeltaBuilder {
         mut self,
         items: impl IntoIterator<Item = (StorageSlotName, Word)>,
     ) -> Self {
-        self.deltas.extend(
-            items
-                .into_iter()
-                .map(|(slot_name, slot_value)| (slot_name, StorageSlotDelta::Value(slot_value))),
-        );
+        items.into_iter().for_each(|(slot_name, slot_value)| {
+            self.set_item(slot_name, slot_value).expect("TODO")
+        });
+
         self
     }
 
@@ -57,19 +71,13 @@ impl AccountStorageDeltaBuilder {
         mut self,
         items: impl IntoIterator<Item = (StorageSlotName, StorageMapDelta)>,
     ) -> Self {
-        self.deltas.extend(
-            items
-                .into_iter()
-                .map(|(slot_name, map_delta)| (slot_name, StorageSlotDelta::Map(map_delta))),
-        );
+        items.into_iter().for_each(|(slot_name, map_delta)| {
+            for (key, value) in map_delta.entries() {
+                self.set_map_item(slot_name.clone(), *key.inner(), *value).expect("TODO")
+            }
+        });
+
         self
-    }
-
-    // BUILDERS
-    // -------------------------------------------------------------------------------------------
-
-    pub fn build(self) -> AccountStorageDelta {
-        AccountStorageDelta::from_raw(self.deltas)
     }
 }
 
