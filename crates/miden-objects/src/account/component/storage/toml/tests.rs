@@ -84,11 +84,18 @@ fn from_toml_rejects_non_string_scalars() {
 #[test]
 fn test_error_on_array() {
     let toml_str = r#"
-        token_metadata.v = [1, 2, 3]
+        token_metadata.v = ["1", "2", "3", "4", "5"]
     "#;
 
-    let result = InitStorageData::from_toml(toml_str);
-    assert_matches::assert_matches!(result.unwrap_err(), InitStorageDataError::ArraysNotSupported);
+    let err = InitStorageData::from_toml(toml_str).unwrap_err();
+    assert_matches::assert_matches!(
+        &err,
+        InitStorageDataError::ArraysNotSupported { key, len }
+            if key == "token_metadata.v" && *len == 5
+    );
+    let msg = err.to_string();
+    assert!(msg.contains("token_metadata.v"));
+    assert!(msg.contains("len 5"));
 }
 
 #[test]
@@ -276,7 +283,7 @@ fn metadata_toml_round_trip_composed_slot_with_typed_fields() {
             .remove(&"demo::composed.a".parse::<StorageValueName>().unwrap())
             .unwrap()
             .r#type,
-        SchemaTypeIdentifier::new("u16").unwrap()
+        SchemaTypeIdentifier::u16()
     );
 
     let round_trip_toml = original.to_toml().expect("serialize to toml");
@@ -473,7 +480,7 @@ fn extensive_schema_metadata_and_init_toml_example() {
     };
     assert_eq!(
         typed_map_new.value_schema(),
-        &WordSchema::new_singular(SchemaTypeIdentifier::new("u16").unwrap())
+        &WordSchema::new_singular(SchemaTypeIdentifier::u16())
     );
     assert!(matches!(typed_map_new.key_schema(), WordSchema::Composite { .. }));
 

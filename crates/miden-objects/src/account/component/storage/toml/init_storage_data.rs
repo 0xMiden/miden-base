@@ -68,13 +68,19 @@ impl InitStorageData {
             },
             toml::Value::Array(items) if items.is_empty() => {
                 if prefix.as_str().is_empty() {
-                    return Err(InitStorageDataError::ArraysNotSupported);
+                    return Err(InitStorageDataError::ArraysNotSupported {
+                        key: "<root>".into(),
+                        len: 0,
+                    });
                 }
                 map_entries.insert(prefix, Vec::new());
             },
             toml::Value::Array(items) => {
                 if prefix.as_str().is_empty() {
-                    return Err(InitStorageDataError::ArraysNotSupported);
+                    return Err(InitStorageDataError::ArraysNotSupported {
+                        key: "<root>".into(),
+                        len: items.len(),
+                    });
                 }
 
                 // Arrays can be either:
@@ -94,14 +100,20 @@ impl InitStorageData {
                         .into_iter()
                         .map(|value| match value {
                             toml::Value::String(s) => Ok(s),
-                            _ => Err(InitStorageDataError::ArraysNotSupported),
+                            _ => Err(InitStorageDataError::ArraysNotSupported {
+                                key: prefix.as_str().into(),
+                                len: 4,
+                            }),
                         })
                         .collect::<Result<Vec<_>, _>>()?
                         .try_into()
                         .expect("length was checked above");
                     value_entries.insert(prefix, WordValue::Elements(elements));
                 } else {
-                    return Err(InitStorageDataError::ArraysNotSupported);
+                    return Err(InitStorageDataError::ArraysNotSupported {
+                        key: prefix.as_str().into(),
+                        len: items.len(),
+                    });
                 }
             },
             toml_value => match toml_value {
@@ -125,8 +137,8 @@ pub enum InitStorageDataError {
     #[error("empty table encountered for key `{0}`")]
     EmptyTable(String),
 
-    #[error("invalid input: unsupported array value")]
-    ArraysNotSupported,
+    #[error("invalid input for `{key}`: unsupported array value (len {len}); expected either a map entry list (array of inline tables with `key` and `value`) or a 4-element word array of strings")]
+    ArraysNotSupported { key: String, len: usize },
 
     #[error("invalid input for `{0}`: init values must be strings")]
     NonStringScalar(String),

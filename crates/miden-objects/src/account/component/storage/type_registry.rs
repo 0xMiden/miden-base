@@ -133,6 +133,21 @@ impl SchemaTypeIdentifier {
         SchemaTypeIdentifier::new("void").expect("type is well formed")
     }
 
+    /// Returns the schema type identifier for the native `u8` type.
+    pub fn u8() -> SchemaTypeIdentifier {
+        SchemaTypeIdentifier::new("u8").expect("type is well formed")
+    }
+
+    /// Returns the schema type identifier for the native `u16` type.
+    pub fn u16() -> SchemaTypeIdentifier {
+        SchemaTypeIdentifier::new("u16").expect("type is well formed")
+    }
+
+    /// Returns the schema type identifier for the native `u32` type.
+    pub fn u32() -> SchemaTypeIdentifier {
+        SchemaTypeIdentifier::new("u32").expect("type is well formed")
+    }
+
     /// Returns a reference to the inner string.
     pub fn as_str(&self) -> &str {
         &self.0
@@ -268,7 +283,7 @@ impl FeltType for Void {
 
 impl FeltType for u8 {
     fn type_name() -> SchemaTypeIdentifier {
-        SchemaTypeIdentifier::new("u8").expect("type is well formed")
+        SchemaTypeIdentifier::u8()
     }
 
     fn parse_str(input: &str) -> Result<Felt, SchemaTypeError> {
@@ -288,7 +303,7 @@ impl FeltType for u8 {
 
 impl FeltType for u16 {
     fn type_name() -> SchemaTypeIdentifier {
-        SchemaTypeIdentifier::new("u16").expect("type is well formed")
+        SchemaTypeIdentifier::u16()
     }
 
     fn parse_str(input: &str) -> Result<Felt, SchemaTypeError> {
@@ -308,7 +323,7 @@ impl FeltType for u16 {
 
 impl FeltType for u32 {
     fn type_name() -> SchemaTypeIdentifier {
-        SchemaTypeIdentifier::new("u32").expect("type is well formed")
+        SchemaTypeIdentifier::u32()
     }
 
     fn parse_str(input: &str) -> Result<Felt, SchemaTypeError> {
@@ -536,6 +551,19 @@ impl SchemaTypeRegistry {
             .get(type_name)
             .ok_or(SchemaTypeError::FeltTypeNotFound(type_name.clone()))?;
         converter(value)
+    }
+
+    /// Validates that the given [`Felt`] conforms to the specified schema type.
+    pub fn validate_felt_value(
+        &self,
+        type_name: &SchemaTypeIdentifier,
+        felt: Felt,
+    ) -> Result<(), SchemaTypeError> {
+        let display = self
+            .felt_display
+            .get(type_name)
+            .ok_or(SchemaTypeError::FeltTypeNotFound(type_name.clone()))?;
+        display(felt).map(|_| ())
     }
 
     /// Converts a [`Felt`] into a canonical string representation for the given schema type.

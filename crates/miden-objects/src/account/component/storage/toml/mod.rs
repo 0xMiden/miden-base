@@ -273,17 +273,10 @@ impl RawStorageSlotSchema {
         let description =
             description.and_then(|d| if d.trim().is_empty() { None } else { Some(d) });
 
-        if default_value.is_some() && default_values.is_some() {
-            return Err(AccountComponentTemplateError::InvalidSchema(
-                "storage slot schema cannot define both `default-value` and `default-values`"
-                    .into(),
-            ));
-        }
-
         let slot_prefix = StorageValueName::from_slot_name(&slot_name);
 
         match (r#type, default_value, default_values) {
-            // Map slot: inferred via `type = { ... }`.
+            // Map slot: inferred via `type = { key = ..., value = ... }`.
             (RawSlotType::Map(map_type), None, default_values) => {
                 let RawMapType { key: key_type, value: value_type } = map_type;
 
@@ -304,6 +297,13 @@ impl RawStorageSlotSchema {
                 let value_schema = match value_type {
                     RawWordType::Identifier(r#type) => WordSchema::new_singular(r#type),
                     RawWordType::WordElements(elements) => {
+                        if default_values.is_some() {
+                            return Err(AccountComponentTemplateError::InvalidSchema(
+                                "value slot schema cannot define both `default-values`. Use `default-value` instead"
+                                    .into(),
+                            ));
+                        }
+
                         if elements.len() != 4 {
                             return Err(AccountComponentTemplateError::InvalidSchema(format!(
                                 "`type.value` must be an array of 4 elements, got {}",
@@ -385,6 +385,7 @@ impl RawStorageSlotSchema {
                 ))
             },
 
+            // For composite types, inner elements define their defaults.
             (RawSlotType::Word(RawWordType::WordElements(_)), Some(_), _) => {
                 Err(AccountComponentTemplateError::InvalidSchema(
                     "composite word slots cannot define `default-value`".into(),

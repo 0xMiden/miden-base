@@ -691,36 +691,7 @@ fn validate_felt_value(
     schema_type: &SchemaTypeIdentifier,
     felt: Felt,
 ) -> Result<(), super::SchemaTypeError> {
-    match schema_type.as_str() {
-        "void" => (felt == Felt::ZERO).then_some(()).ok_or_else(|| {
-            super::SchemaTypeError::ConversionError("void values must be zero".to_string())
-        }),
-        "felt" => Ok(()),
-        "u8" => u8::try_from(felt.as_int()).map(|_| ()).map_err(|_| {
-            super::SchemaTypeError::ConversionError(format!(
-                "value `{}` is out of range for u8",
-                felt.as_int()
-            ))
-        }),
-        "u16" => u16::try_from(felt.as_int()).map(|_| ()).map_err(|_| {
-            super::SchemaTypeError::ConversionError(format!(
-                "value `{}` is out of range for u16",
-                felt.as_int()
-            ))
-        }),
-        "u32" => u32::try_from(felt.as_int()).map(|_| ()).map_err(|_| {
-            super::SchemaTypeError::ConversionError(format!(
-                "value `{}` is out of range for u32",
-                felt.as_int()
-            ))
-        }),
-        "miden::standards::fungible_faucets::metadata::token_symbol" => {
-            crate::asset::TokenSymbol::try_from(felt)
-                .map(|_| ())
-                .map_err(|err| super::SchemaTypeError::ConversionError(err.to_string()))
-        },
-        _ => Ok(()),
-    }
+    SCHEMA_TYPE_REGISTRY.validate_felt_value(schema_type, felt)
 }
 
 /// Describes the schema for a storage value slot.
@@ -1066,9 +1037,9 @@ mod tests {
         ];
 
         let felt_values = [
-            FeltSchema::new_typed(SchemaTypeIdentifier::new("u8").unwrap(), felt_names[0].clone()),
-            FeltSchema::new_typed(SchemaTypeIdentifier::new("u16").unwrap(), felt_names[1].clone()),
-            FeltSchema::new_typed(SchemaTypeIdentifier::new("u32").unwrap(), felt_names[2].clone()),
+            FeltSchema::new_typed(SchemaTypeIdentifier::u8(), felt_names[0].clone()),
+            FeltSchema::new_typed(SchemaTypeIdentifier::u16(), felt_names[1].clone()),
+            FeltSchema::new_typed(SchemaTypeIdentifier::u32(), felt_names[2].clone()),
             FeltSchema::new_typed(
                 SchemaTypeIdentifier::new("felt").unwrap(),
                 felt_names[3].clone(),
@@ -1080,9 +1051,9 @@ mod tests {
             panic!("expected composed word schema");
         };
 
-        assert_eq!(value[0].felt_type(), SchemaTypeIdentifier::new("u8").unwrap());
-        assert_eq!(value[1].felt_type(), SchemaTypeIdentifier::new("u16").unwrap());
-        assert_eq!(value[2].felt_type(), SchemaTypeIdentifier::new("u32").unwrap());
+        assert_eq!(value[0].felt_type(), SchemaTypeIdentifier::u8());
+        assert_eq!(value[1].felt_type(), SchemaTypeIdentifier::u16());
+        assert_eq!(value[2].felt_type(), SchemaTypeIdentifier::u32());
         assert_eq!(value[3].felt_type(), SchemaTypeIdentifier::new("felt").unwrap());
     }
 
@@ -1131,10 +1102,7 @@ mod tests {
 
     #[test]
     fn value_slot_schema_accepts_felt_typed_word_init_value() {
-        let slot = ValueSlotSchema::new(
-            None,
-            WordSchema::new_singular(SchemaTypeIdentifier::new("u8").unwrap()),
-        );
+        let slot = ValueSlotSchema::new(None, WordSchema::new_singular(SchemaTypeIdentifier::u8()));
         let slot_prefix: StorageValueName = "demo::u8_word".parse().unwrap();
 
         let init_data = InitStorageData::new([(slot_prefix.clone(), "6".into())], []);
@@ -1146,7 +1114,7 @@ mod tests {
     #[test]
     fn value_slot_schema_accepts_typed_felt_init_value_in_composed_word() {
         let word = WordSchema::new_value([
-            FeltSchema::new_typed(SchemaTypeIdentifier::new("u8").unwrap(), "a".parse().unwrap()),
+            FeltSchema::new_typed(SchemaTypeIdentifier::u8(), "a".parse().unwrap()),
             FeltSchema::new_typed_with_default(
                 SchemaTypeIdentifier::native_felt(),
                 "b".parse().unwrap(),
