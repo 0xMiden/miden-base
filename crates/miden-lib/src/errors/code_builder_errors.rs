@@ -2,8 +2,8 @@ use alloc::boxed::Box;
 use alloc::string::String;
 use core::error::Error;
 
-use miden_objects::assembly::diagnostics::Report;
-use miden_objects::assembly::diagnostics::reporting::PrintDiagnostic;
+use miden_protocol::assembly::diagnostics::Report;
+use miden_protocol::assembly::diagnostics::reporting::PrintDiagnostic;
 
 // CODE BUILDER ERROR
 // ================================================================================================

@@ -1,4 +1,4 @@
-use miden_objects::account::AccountComponent;
+use miden_protocol::account::AccountComponent;
 
 use crate::account::components::no_auth_library;
 
@@ -41,7 +41,7 @@ impl From<NoAuth> for AccountComponent {
 
 #[cfg(test)]
 mod tests {
-    use miden_objects::account::AccountBuilder;
+    use miden_protocol::account::AccountBuilder;
 
     use super::*;
     use crate::account::wallets::BasicWallet;

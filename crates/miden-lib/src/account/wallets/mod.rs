@@ -1,13 +1,13 @@
 use alloc::string::String;
 
-use miden_objects::account::{
+use miden_protocol::account::{
     Account,
     AccountBuilder,
     AccountComponent,
     AccountStorageMode,
     AccountType,
 };
-use miden_objects::{AccountError, Word};
+use miden_protocol::{AccountError, Word};
 use thiserror::Error;
 
 use super::AuthScheme;
@@ -42,7 +42,7 @@ procedure_digest!(
 /// An [`AccountComponent`] implementing a basic wallet.
 ///
 /// It reexports the procedures from `miden::contracts::wallets::basic`. When linking against this
-/// component, the `miden` library (i.e. [`ProtocolLib`](miden_objects::ProtocolLib)) must be
+/// component, the `miden` library (i.e. [`ProtocolLib`](miden_protocol::ProtocolLib)) must be
 /// available to the assembler which is the case when using [`CodeBuilder`][builder]. The procedures
 /// of this component are:
 /// - `receive_asset`, which can be used to add an asset to the account.
@@ -170,9 +170,9 @@ pub fn create_basic_wallet(
 
 #[cfg(test)]
 mod tests {
-    use miden_objects::account::auth::PublicKeyCommitment;
-    use miden_objects::{ONE, Word};
     use miden_processor::utils::{Deserializable, Serializable};
+    use miden_protocol::account::auth::PublicKeyCommitment;
+    use miden_protocol::{ONE, Word};
 
     use super::{Account, AccountStorageMode, AccountType, AuthScheme, create_basic_wallet};
     use crate::account::wallets::BasicWallet;

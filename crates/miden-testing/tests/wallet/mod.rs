@@ -1,7 +1,7 @@
 use miden_lib::AuthScheme;
 use miden_lib::account::wallets::create_basic_wallet;
-use miden_objects::Word;
-use miden_objects::account::auth::AuthSecretKey;
+use miden_protocol::Word;
+use miden_protocol::account::auth::AuthSecretKey;
 use rand_chacha::ChaCha20Rng;
 use rand_chacha::rand_core::SeedableRng;
 
@@ -10,7 +10,7 @@ use rand_chacha::rand_core::SeedableRng;
 fn wallet_creation() {
     use miden_lib::account::auth::AuthRpoFalcon512;
     use miden_lib::account::wallets::BasicWallet;
-    use miden_objects::account::{AccountCode, AccountStorageMode, AccountType};
+    use miden_protocol::account::{AccountCode, AccountStorageMode, AccountType};
 
     // we need a Falcon Public Key to create the wallet account
     let seed = [0_u8; 32];
@@ -51,7 +51,7 @@ fn wallet_creation() {
 fn wallet_creation_2() {
     use miden_lib::account::auth::AuthEcdsaK256Keccak;
     use miden_lib::account::wallets::BasicWallet;
-    use miden_objects::account::{AccountCode, AccountStorageMode, AccountType};
+    use miden_protocol::account::{AccountCode, AccountStorageMode, AccountType};
 
     // we need a ECDSA Public Key to create the wallet account
     let seed = [0_u8; 32];

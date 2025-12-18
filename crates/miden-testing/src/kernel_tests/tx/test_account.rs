@@ -7,8 +7,9 @@ use assert_matches::assert_matches;
 use miden_lib::code_builder::CodeBuilder;
 use miden_lib::testing::account_component::MockAccountComponent;
 use miden_lib::testing::mock_account::MockAccountExt;
-use miden_objects::account::delta::AccountUpdateDetails;
-use miden_objects::account::{
+use miden_processor::{ExecutionError, Word};
+use miden_protocol::account::delta::AccountUpdateDetails;
+use miden_protocol::account::{
     Account,
     AccountBuilder,
     AccountCode,
@@ -25,10 +26,10 @@ use miden_objects::account::{
     StorageSlotName,
     StorageSlotType,
 };
-use miden_objects::assembly::diagnostics::{IntoDiagnostic, NamedSource, Report, WrapErr, miette};
-use miden_objects::assembly::{DefaultSourceManager, Library};
-use miden_objects::asset::{Asset, FungibleAsset};
-use miden_objects::errors::tx_kernel::{
+use miden_protocol::assembly::diagnostics::{IntoDiagnostic, NamedSource, Report, WrapErr, miette};
+use miden_protocol::assembly::{DefaultSourceManager, Library};
+use miden_protocol::asset::{Asset, FungibleAsset};
+use miden_protocol::errors::tx_kernel::{
     ERR_ACCOUNT_ID_SUFFIX_LEAST_SIGNIFICANT_BYTE_MUST_BE_ZERO,
     ERR_ACCOUNT_ID_SUFFIX_MOST_SIGNIFICANT_BIT_MUST_BE_ZERO,
     ERR_ACCOUNT_ID_UNKNOWN_STORAGE_MODE,
@@ -38,8 +39,8 @@ use miden_objects::errors::tx_kernel::{
     ERR_ACCOUNT_UNKNOWN_STORAGE_SLOT_NAME,
     ERR_FAUCET_STORAGE_DATA_SLOT_IS_RESERVED,
 };
-use miden_objects::note::NoteType;
-use miden_objects::testing::account_id::{
+use miden_protocol::note::NoteType;
+use miden_protocol::testing::account_id::{
     ACCOUNT_ID_PRIVATE_NON_FUNGIBLE_FAUCET,
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
@@ -47,11 +48,10 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
     ACCOUNT_ID_SENDER,
 };
-use miden_objects::testing::storage::{MOCK_MAP_SLOT, MOCK_VALUE_SLOT0, MOCK_VALUE_SLOT1};
-use miden_objects::transaction::{OutputNote, TransactionKernel};
-use miden_objects::utils::sync::LazyLock;
-use miden_objects::{LexicographicWord, StarkField};
-use miden_processor::{ExecutionError, Word};
+use miden_protocol::testing::storage::{MOCK_MAP_SLOT, MOCK_VALUE_SLOT0, MOCK_VALUE_SLOT1};
+use miden_protocol::transaction::{OutputNote, TransactionKernel};
+use miden_protocol::utils::sync::LazyLock;
+use miden_protocol::{LexicographicWord, StarkField};
 use miden_tx::LocalTransactionProver;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
@@ -1474,7 +1474,7 @@ async fn transaction_executor_account_code_using_custom_library() -> miette::Res
     let external_library =
         TransactionKernel::assembler().assemble_library([external_library_source])?;
 
-    let mut assembler: miden_objects::assembly::Assembler =
+    let mut assembler: miden_protocol::assembly::Assembler =
         CodeBuilder::with_mock_libraries_with_source_manager(Arc::new(
             DefaultSourceManager::default(),
         ))

@@ -1,6 +1,6 @@
 use alloc::vec::Vec;
 
-use miden_objects::account::{AccountCode, AccountComponent, AccountStorage, StorageSlot};
+use miden_protocol::account::{AccountCode, AccountComponent, AccountStorage, StorageSlot};
 
 use crate::testing::mock_account_code::MockAccountCodeExt;
 
@@ -13,7 +13,7 @@ use crate::testing::mock_account_code::MockAccountCodeExt;
 /// arbitrary number of storage slots (within the overall limit) so anything can be set for testing
 /// purposes.
 ///
-/// This component supports all [`AccountType`](miden_objects::account::AccountType)s for testing
+/// This component supports all [`AccountType`](miden_protocol::account::AccountType)s for testing
 /// purposes.
 ///
 /// [account_lib]: crate::testing::mock_account_code::MockAccountCodeExt::mock_account_library

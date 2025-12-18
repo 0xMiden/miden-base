@@ -1,4 +1,4 @@
-use miden_objects::account::{
+use miden_protocol::account::{
     Account,
     AccountBuilder,
     AccountComponent,
@@ -8,10 +8,10 @@ use miden_objects::account::{
     StorageMap,
     StorageSlot,
 };
-use miden_objects::asset::{AssetVault, NonFungibleAsset};
-use miden_objects::testing::constants::{self};
-use miden_objects::testing::noop_auth_component::NoopAuthComponent;
-use miden_objects::{Felt, Word, ZERO};
+use miden_protocol::asset::{AssetVault, NonFungibleAsset};
+use miden_protocol::testing::constants::{self};
+use miden_protocol::testing::noop_auth_component::NoopAuthComponent;
+use miden_protocol::{Felt, Word, ZERO};
 
 use crate::testing::account_component::{MockAccountComponent, MockFaucetComponent};
 

@@ -145,8 +145,8 @@ pub const fn account_id(
 /// # Example
 ///
 /// ```
-/// # use miden_objects::account::{AccountType, AccountStorageMode, AccountId};
-/// # use miden_objects::testing::account_id::{AccountIdBuilder};
+/// # use miden_protocol::account::{AccountType, AccountStorageMode, AccountId};
+/// # use miden_protocol::testing::account_id::{AccountIdBuilder};
 ///
 /// let mut rng = rand::rng();
 ///

@@ -5,14 +5,14 @@ mod scripts;
 mod wallet;
 
 use miden_lib::code_builder::CodeBuilder;
-use miden_objects::account::AccountId;
-use miden_objects::asset::FungibleAsset;
-use miden_objects::crypto::utils::Serializable;
-use miden_objects::note::{Note, NoteAssets, NoteInputs, NoteMetadata, NoteRecipient, NoteType};
-use miden_objects::testing::account_id::ACCOUNT_ID_SENDER;
-use miden_objects::transaction::{ExecutedTransaction, ProvenTransaction};
-use miden_objects::{Word, ZERO};
 use miden_processor::utils::Deserializable;
+use miden_protocol::account::AccountId;
+use miden_protocol::asset::FungibleAsset;
+use miden_protocol::crypto::utils::Serializable;
+use miden_protocol::note::{Note, NoteAssets, NoteInputs, NoteMetadata, NoteRecipient, NoteType};
+use miden_protocol::testing::account_id::ACCOUNT_ID_SENDER;
+use miden_protocol::transaction::{ExecutedTransaction, ProvenTransaction};
+use miden_protocol::{Word, ZERO};
 use miden_tx::{
     LocalTransactionProver,
     ProvingOptions,
@@ -27,7 +27,7 @@ use miden_tx::{
 pub fn prove_and_verify_transaction(
     executed_transaction: ExecutedTransaction,
 ) -> Result<(), TransactionVerifierError> {
-    use miden_objects::transaction::TransactionHeader;
+    use miden_protocol::transaction::TransactionHeader;
 
     let executed_transaction_id = executed_transaction.id();
     let executed_tx_header = TransactionHeader::from(&executed_transaction);
@@ -46,7 +46,7 @@ pub fn prove_and_verify_transaction(
     let proven_transaction = ProvenTransaction::read_from_bytes(&serialised_transaction).unwrap();
 
     // Verify that the generated proof is valid
-    let verifier = TransactionVerifier::new(miden_objects::MIN_PROOF_SECURITY_LEVEL);
+    let verifier = TransactionVerifier::new(miden_protocol::MIN_PROOF_SECURITY_LEVEL);
 
     verifier.verify(&proven_transaction)
 }
@@ -56,7 +56,7 @@ pub fn get_note_with_fungible_asset_and_script(
     fungible_asset: FungibleAsset,
     note_script: &str,
 ) -> Note {
-    use miden_objects::note::NoteExecutionHint;
+    use miden_protocol::note::NoteExecutionHint;
 
     let note_script = CodeBuilder::default().compile_note_script(note_script).unwrap();
     let serial_num = Word::from([1, 2, 3, 4u32]);

@@ -5,7 +5,7 @@ use miden_lib::account::auth::AuthEcdsaK256KeccakAcl;
 use miden_lib::code_builder::CodeBuilder;
 use miden_lib::testing::account_component::MockAccountComponent;
 use miden_lib::testing::note::NoteBuilder;
-use miden_objects::account::{
+use miden_protocol::account::{
     Account,
     AccountBuilder,
     AccountComponent,
@@ -13,10 +13,10 @@ use miden_objects::account::{
     AccountStorageMode,
     AccountType,
 };
-use miden_objects::note::Note;
-use miden_objects::testing::storage::MOCK_VALUE_SLOT0;
-use miden_objects::transaction::OutputNote;
-use miden_objects::{Felt, FieldElement, Word};
+use miden_protocol::note::Note;
+use miden_protocol::testing::storage::MOCK_VALUE_SLOT0;
+use miden_protocol::transaction::OutputNote;
+use miden_protocol::{Felt, FieldElement, Word};
 use miden_testing::{Auth, MockChain};
 use miden_tx::TransactionExecutorError;
 

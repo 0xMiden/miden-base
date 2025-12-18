@@ -1,4 +1,4 @@
-use miden_objects::account::{
+use miden_protocol::account::{
     Account,
     AccountBuilder,
     AccountComponent,
@@ -8,8 +8,8 @@ use miden_objects::account::{
     StorageSlot,
     StorageSlotName,
 };
-use miden_objects::asset::{FungibleAsset, TokenSymbol};
-use miden_objects::{Felt, FieldElement, Word};
+use miden_protocol::asset::{FungibleAsset, TokenSymbol};
+use miden_protocol::{Felt, FieldElement, Word};
 
 use super::FungibleFaucetError;
 use crate::account::AuthScheme;
@@ -44,7 +44,7 @@ procedure_digest!(
 ///
 /// It reexports the procedures from `miden::contracts::faucets::basic_fungible`. When linking
 /// against this component, the `miden` library (i.e.
-/// [`ProtocolLib`](miden_objects::ProtocolLib)) must be available to the assembler which is the
+/// [`ProtocolLib`](miden_protocol::ProtocolLib)) must be available to the assembler which is the
 /// case when using [`CodeBuilder`][builder]. The procedures of this component are:
 /// - `distribute`, which mints an assets and create a note for the provided recipient.
 /// - `burn`, which burns the provided asset.
@@ -311,9 +311,9 @@ pub fn create_basic_fungible_faucet(
 #[cfg(test)]
 mod tests {
     use assert_matches::assert_matches;
-    use miden_objects::account::AccountStorage;
-    use miden_objects::account::auth::PublicKeyCommitment;
-    use miden_objects::{FieldElement, ONE, Word};
+    use miden_protocol::account::AccountStorage;
+    use miden_protocol::account::auth::PublicKeyCommitment;
+    use miden_protocol::{FieldElement, ONE, Word};
 
     use super::{
         AccountBuilder,

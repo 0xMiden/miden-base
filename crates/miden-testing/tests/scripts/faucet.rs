@@ -8,16 +8,17 @@ use miden_lib::code_builder::CodeBuilder;
 use miden_lib::errors::standards::ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED;
 use miden_lib::note::{MintNoteInputs, WellKnownNote, create_burn_note, create_mint_note};
 use miden_lib::testing::note::NoteBuilder;
-use miden_objects::account::{
+use miden_processor::crypto::RpoRandomCoin;
+use miden_protocol::account::{
     Account,
     AccountId,
     AccountIdVersion,
     AccountStorageMode,
     AccountType,
 };
-use miden_objects::assembly::DefaultSourceManager;
-use miden_objects::asset::{Asset, FungibleAsset};
-use miden_objects::note::{
+use miden_protocol::assembly::DefaultSourceManager;
+use miden_protocol::asset::{Asset, FungibleAsset};
+use miden_protocol::note::{
     Note,
     NoteAssets,
     NoteExecutionHint,
@@ -29,10 +30,9 @@ use miden_objects::note::{
     NoteTag,
     NoteType,
 };
-use miden_objects::testing::account_id::ACCOUNT_ID_PRIVATE_SENDER;
-use miden_objects::transaction::{ExecutedTransaction, OutputNote};
-use miden_objects::{Felt, Word};
-use miden_processor::crypto::RpoRandomCoin;
+use miden_protocol::testing::account_id::ACCOUNT_ID_PRIVATE_SENDER;
+use miden_protocol::transaction::{ExecutedTransaction, OutputNote};
+use miden_protocol::{Felt, Word};
 use miden_testing::{Auth, MockChain, assert_transaction_executor_error};
 
 use crate::scripts::swap::create_p2id_note_exact;

@@ -2,11 +2,11 @@ use alloc::string::{String, ToString};
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use miden_objects::account::AccountId;
-use miden_objects::assembly::debuginfo::{SourceLanguage, SourceManagerSync, Uri};
-use miden_objects::assembly::{DefaultSourceManager, Library};
-use miden_objects::asset::Asset;
-use miden_objects::note::{
+use miden_protocol::account::AccountId;
+use miden_protocol::assembly::debuginfo::{SourceLanguage, SourceManagerSync, Uri};
+use miden_protocol::assembly::{DefaultSourceManager, Library};
+use miden_protocol::asset::Asset;
+use miden_protocol::note::{
     Note,
     NoteAssets,
     NoteExecutionHint,
@@ -16,8 +16,8 @@ use miden_objects::note::{
     NoteTag,
     NoteType,
 };
-use miden_objects::testing::note::DEFAULT_NOTE_CODE;
-use miden_objects::{Felt, NoteError, Word, ZERO};
+use miden_protocol::testing::note::DEFAULT_NOTE_CODE;
+use miden_protocol::{Felt, NoteError, Word, ZERO};
 use rand::Rng;
 
 use crate::code_builder::CodeBuilder;

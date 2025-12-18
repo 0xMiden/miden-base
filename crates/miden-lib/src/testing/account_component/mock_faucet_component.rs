@@ -1,4 +1,4 @@
-use miden_objects::account::{AccountCode, AccountComponent, AccountType};
+use miden_protocol::account::{AccountCode, AccountComponent, AccountType};
 
 use crate::testing::mock_account_code::MockAccountCodeExt;
 
@@ -10,7 +10,7 @@ use crate::testing::mock_account_code::MockAccountCodeExt;
 /// It uses the [`MockAccountCodeExt::mock_faucet_library`][faucet_lib] and contains no storage
 /// slots.
 ///
-/// This component supports the faucet [`AccountType`](miden_objects::account::AccountType)s for
+/// This component supports the faucet [`AccountType`](miden_protocol::account::AccountType)s for
 /// testing purposes.
 ///
 /// [faucet_lib]: crate::testing::mock_account_code::MockAccountCodeExt::mock_faucet_library

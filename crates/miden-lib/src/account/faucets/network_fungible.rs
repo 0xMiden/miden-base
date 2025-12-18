@@ -1,4 +1,4 @@
-use miden_objects::account::{
+use miden_protocol::account::{
     Account,
     AccountBuilder,
     AccountComponent,
@@ -9,9 +9,9 @@ use miden_objects::account::{
     StorageSlot,
     StorageSlotName,
 };
-use miden_objects::asset::TokenSymbol;
-use miden_objects::utils::sync::LazyLock;
-use miden_objects::{Felt, FieldElement, Word};
+use miden_protocol::asset::TokenSymbol;
+use miden_protocol::utils::sync::LazyLock;
+use miden_protocol::{Felt, FieldElement, Word};
 
 use super::{BasicFungibleFaucet, FungibleFaucetError};
 use crate::account::auth::NoAuth;
@@ -45,7 +45,7 @@ static OWNER_CONFIG_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
 ///
 /// It reexports the procedures from `miden::contracts::faucets::network_fungible`. When linking
 /// against this component, the `miden` library (i.e.
-/// [`ProtocolLib`](miden_objects::ProtocolLib)) must be available to the assembler which is the
+/// [`ProtocolLib`](miden_protocol::ProtocolLib)) must be available to the assembler which is the
 /// case when using [`CodeBuilder`][builder]. The procedures of this component are:
 /// - `distribute`, which mints an assets and create a note for the provided recipient.
 /// - `burn`, which burns the provided asset.
@@ -84,7 +84,7 @@ impl NetworkFungibleFaucet {
     /// Returns an error if:
     /// - the decimals parameter exceeds maximum value of [`Self::MAX_DECIMALS`].
     /// - the max supply parameter exceeds maximum possible amount for a fungible asset
-    ///   ([`miden_objects::asset::FungibleAsset::MAX_AMOUNT`])
+    ///   ([`miden_protocol::asset::FungibleAsset::MAX_AMOUNT`])
     pub fn new(
         symbol: TokenSymbol,
         decimals: u8,
@@ -106,7 +106,7 @@ impl NetworkFungibleFaucet {
     ///   [`AccountComponentInterface::NetworkFungibleFaucet`] component.
     /// - the decimals parameter exceeds maximum value of [`Self::MAX_DECIMALS`].
     /// - the max supply value exceeds maximum possible amount for a fungible asset of
-    ///   [`miden_objects::asset::FungibleAsset::MAX_AMOUNT`].
+    ///   [`miden_protocol::asset::FungibleAsset::MAX_AMOUNT`].
     /// - the token symbol encoded value exceeds the maximum value of
     ///   [`TokenSymbol::MAX_ENCODED_VALUE`].
     fn try_from_interface(

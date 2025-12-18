@@ -2,13 +2,13 @@ use alloc::boxed::Box;
 use alloc::string::String;
 use core::error::Error;
 
-use miden_objects::account::AccountId;
-use miden_objects::block::BlockNumber;
-use miden_objects::note::{Note, NoteScript};
-use miden_objects::utils::Deserializable;
-use miden_objects::utils::sync::LazyLock;
-use miden_objects::vm::Program;
-use miden_objects::{Felt, Word};
+use miden_protocol::account::AccountId;
+use miden_protocol::block::BlockNumber;
+use miden_protocol::note::{Note, NoteScript};
+use miden_protocol::utils::Deserializable;
+use miden_protocol::utils::sync::LazyLock;
+use miden_protocol::vm::Program;
+use miden_protocol::{Felt, Word};
 
 use crate::account::faucets::{BasicFungibleFaucet, NetworkFungibleFaucet};
 use crate::account::interface::{AccountComponentInterface, AccountInterface, AccountInterfaceExt};

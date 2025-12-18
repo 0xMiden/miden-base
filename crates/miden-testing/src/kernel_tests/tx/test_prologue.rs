@@ -6,7 +6,9 @@ use miden_lib::account::wallets::BasicWallet;
 use miden_lib::code_builder::CodeBuilder;
 use miden_lib::testing::account_component::MockAccountComponent;
 use miden_lib::testing::mock_account::MockAccountExt;
-use miden_objects::account::{
+use miden_processor::fast::ExecutionOutput;
+use miden_processor::{AdviceInputs, Word};
+use miden_protocol::account::{
     Account,
     AccountBuilder,
     AccountId,
@@ -19,18 +21,18 @@ use miden_objects::account::{
     StorageSlot,
     StorageSlotName,
 };
-use miden_objects::asset::{FungibleAsset, NonFungibleAsset};
-use miden_objects::errors::tx_kernel::{
+use miden_protocol::asset::{FungibleAsset, NonFungibleAsset};
+use miden_protocol::errors::tx_kernel::{
     ERR_ACCOUNT_SEED_AND_COMMITMENT_DIGEST_MISMATCH,
     ERR_PROLOGUE_NEW_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_EMPTY,
     ERR_PROLOGUE_NEW_NON_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_VALID_EMPTY_SMT,
 };
-use miden_objects::testing::account_id::{
+use miden_protocol::testing::account_id::{
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
     ACCOUNT_ID_SENDER,
 };
-use miden_objects::testing::noop_auth_component::NoopAuthComponent;
-use miden_objects::transaction::memory::{
+use miden_protocol::testing::noop_auth_component::NoopAuthComponent;
+use miden_protocol::transaction::memory::{
     ACCT_DB_ROOT_PTR,
     BLOCK_COMMITMENT_PTR,
     BLOCK_METADATA_PTR,
@@ -80,10 +82,8 @@ use miden_objects::transaction::memory::{
     VALIDATOR_KEY_COMMITMENT_PTR,
     VERIFICATION_BASE_FEE_IDX,
 };
-use miden_objects::transaction::{ExecutedTransaction, TransactionArgs, TransactionKernel};
-use miden_objects::{EMPTY_WORD, ONE, WORD_SIZE};
-use miden_processor::fast::ExecutionOutput;
-use miden_processor::{AdviceInputs, Word};
+use miden_protocol::transaction::{ExecutedTransaction, TransactionArgs, TransactionKernel};
+use miden_protocol::{EMPTY_WORD, ONE, WORD_SIZE};
 use miden_tx::TransactionExecutorError;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;

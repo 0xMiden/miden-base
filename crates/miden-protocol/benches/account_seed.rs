@@ -1,8 +1,8 @@
 use std::time::Duration;
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use miden_objects::Word;
-use miden_objects::account::{AccountId, AccountIdVersion, AccountStorageMode, AccountType};
+use miden_protocol::Word;
+use miden_protocol::account::{AccountId, AccountIdVersion, AccountStorageMode, AccountType};
 use rand::{Rng, SeedableRng};
 
 /// Running this benchmark with --no-default-features will use the single-threaded account seed
@@ -13,7 +13,7 @@ use rand::{Rng, SeedableRng};
 /// To produce a flamegraph, run with the `--profile-time` argument.
 ///
 /// ```sh
-/// cargo bench -p miden-objects --no-default-features -- --profile-time 10
+/// cargo bench -p miden-protocol --no-default-features -- --profile-time 10
 /// ```
 ///
 /// The flamegraph will be saved as `target/criterion/grind-seed/Grind regular public account

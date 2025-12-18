@@ -1,12 +1,12 @@
-use miden_objects::account::AccountId;
-use miden_objects::asset::NonFungibleAsset;
-use miden_objects::testing::account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET;
-use miden_objects::testing::constants::{
+use miden_protocol::account::AccountId;
+use miden_protocol::asset::NonFungibleAsset;
+use miden_protocol::testing::account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET;
+use miden_protocol::testing::constants::{
     FUNGIBLE_ASSET_AMOUNT,
     FUNGIBLE_FAUCET_INITIAL_BALANCE,
     NON_FUNGIBLE_ASSET_DATA,
 };
-use miden_objects::{Felt, Hasher, Word};
+use miden_protocol::{Felt, Hasher, Word};
 
 use crate::TransactionContextBuilder;
 use crate::kernel_tests::tx::ExecutionOutputExt;

@@ -17,8 +17,9 @@ use miden_lib::account::faucets::{BasicFungibleFaucet, NetworkFungibleFaucet};
 use miden_lib::account::wallets::BasicWallet;
 use miden_lib::note::{create_p2id_note, create_p2ide_note, create_swap_note};
 use miden_lib::testing::account_component::MockAccountComponent;
-use miden_objects::account::delta::AccountUpdateDetails;
-use miden_objects::account::{
+use miden_processor::crypto::RpoRandomCoin;
+use miden_protocol::account::delta::AccountUpdateDetails;
+use miden_protocol::account::{
     Account,
     AccountBuilder,
     AccountDelta,
@@ -28,10 +29,10 @@ use miden_objects::account::{
     AccountType,
     StorageSlot,
 };
-use miden_objects::asset::{Asset, FungibleAsset, TokenSymbol};
-use miden_objects::block::account_tree::AccountTree;
-use miden_objects::block::nullifier_tree::NullifierTree;
-use miden_objects::block::{
+use miden_protocol::asset::{Asset, FungibleAsset, TokenSymbol};
+use miden_protocol::block::account_tree::AccountTree;
+use miden_protocol::block::nullifier_tree::NullifierTree;
+use miden_protocol::block::{
     BlockAccountUpdate,
     BlockBody,
     BlockHeader,
@@ -43,14 +44,13 @@ use miden_objects::block::{
     OutputNoteBatch,
     ProvenBlock,
 };
-use miden_objects::crypto::dsa::ecdsa_k256_keccak::SecretKey;
-use miden_objects::crypto::merkle::smt::Smt;
-use miden_objects::note::{Note, NoteDetails, NoteType};
-use miden_objects::testing::account_id::ACCOUNT_ID_NATIVE_ASSET_FAUCET;
-use miden_objects::testing::random_signer::RandomBlockSigner;
-use miden_objects::transaction::{OrderedTransactionHeaders, OutputNote, TransactionKernel};
-use miden_objects::{Felt, FieldElement, MAX_OUTPUT_NOTES_PER_BATCH, NoteError, Word, ZERO};
-use miden_processor::crypto::RpoRandomCoin;
+use miden_protocol::crypto::dsa::ecdsa_k256_keccak::SecretKey;
+use miden_protocol::crypto::merkle::smt::Smt;
+use miden_protocol::note::{Note, NoteDetails, NoteType};
+use miden_protocol::testing::account_id::ACCOUNT_ID_NATIVE_ASSET_FAUCET;
+use miden_protocol::testing::random_signer::RandomBlockSigner;
+use miden_protocol::transaction::{OrderedTransactionHeaders, OutputNote, TransactionKernel};
+use miden_protocol::{Felt, FieldElement, MAX_OUTPUT_NOTES_PER_BATCH, NoteError, Word, ZERO};
 use rand::Rng;
 
 use crate::mock_chain::chain::AccountAuthenticator;
@@ -63,7 +63,7 @@ use crate::{AccountState, Auth, MockChain};
 ///
 /// ```
 /// # use anyhow::Result;
-/// # use miden_objects::{
+/// # use miden_protocol::{
 /// #    asset::{Asset, FungibleAsset},
 /// #    note::NoteType,
 /// # };

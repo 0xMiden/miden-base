@@ -1,9 +1,9 @@
 use assert_matches::assert_matches;
-use miden_objects::account::auth::PublicKeyCommitment;
-use miden_objects::account::{AccountBuilder, AccountComponent, AccountType};
-use miden_objects::asset::{FungibleAsset, NonFungibleAsset, TokenSymbol};
-use miden_objects::crypto::rand::{FeltRng, RpoRandomCoin};
-use miden_objects::note::{
+use miden_protocol::account::auth::PublicKeyCommitment;
+use miden_protocol::account::{AccountBuilder, AccountComponent, AccountType};
+use miden_protocol::asset::{FungibleAsset, NonFungibleAsset, TokenSymbol};
+use miden_protocol::crypto::rand::{FeltRng, RpoRandomCoin};
+use miden_protocol::note::{
     Note,
     NoteAssets,
     NoteExecutionHint,
@@ -13,11 +13,11 @@ use miden_objects::note::{
     NoteTag,
     NoteType,
 };
-use miden_objects::testing::account_id::{
+use miden_protocol::testing::account_id::{
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE_2,
 };
-use miden_objects::{Felt, NoteError, Word, ZERO};
+use miden_protocol::{Felt, NoteError, Word, ZERO};
 
 use crate::AuthScheme;
 use crate::account::auth::{

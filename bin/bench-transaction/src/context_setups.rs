@@ -1,10 +1,10 @@
 use anyhow::Result;
 use miden_lib::code_builder::CodeBuilder;
-use miden_objects::asset::{Asset, FungibleAsset};
-use miden_objects::note::NoteType;
-use miden_objects::testing::account_id::ACCOUNT_ID_SENDER;
-use miden_objects::transaction::OutputNote;
-use miden_objects::{Felt, Word};
+use miden_protocol::asset::{Asset, FungibleAsset};
+use miden_protocol::note::NoteType;
+use miden_protocol::testing::account_id::ACCOUNT_ID_SENDER;
+use miden_protocol::transaction::OutputNote;
+use miden_protocol::{Felt, Word};
 use miden_testing::{Auth, MockChain, TransactionContext};
 
 /// Returns the transaction context which could be used to run the transaction which creates a

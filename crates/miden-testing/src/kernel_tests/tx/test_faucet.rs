@@ -2,7 +2,7 @@ use alloc::sync::Arc;
 
 use miden_lib::code_builder::CodeBuilder;
 use miden_lib::testing::mock_account::MockAccountExt;
-use miden_objects::account::{
+use miden_protocol::account::{
     Account,
     AccountBuilder,
     AccountComponent,
@@ -11,9 +11,9 @@ use miden_objects::account::{
     AccountType,
     StorageMap,
 };
-use miden_objects::assembly::DefaultSourceManager;
-use miden_objects::asset::{FungibleAsset, NonFungibleAsset};
-use miden_objects::errors::tx_kernel::{
+use miden_protocol::assembly::DefaultSourceManager;
+use miden_protocol::asset::{FungibleAsset, NonFungibleAsset};
+use miden_protocol::errors::tx_kernel::{
     ERR_FAUCET_NEW_TOTAL_SUPPLY_WOULD_EXCEED_MAX_ASSET_AMOUNT,
     ERR_FAUCET_NON_FUNGIBLE_ASSET_ALREADY_ISSUED,
     ERR_FAUCET_NON_FUNGIBLE_ASSET_TO_BURN_NOT_FOUND,
@@ -21,21 +21,21 @@ use miden_objects::errors::tx_kernel::{
     ERR_NON_FUNGIBLE_ASSET_FAUCET_IS_NOT_ORIGIN,
     ERR_VAULT_FUNGIBLE_ASSET_AMOUNT_LESS_THAN_AMOUNT_TO_WITHDRAW,
 };
-use miden_objects::testing::account_id::{
+use miden_protocol::testing::account_id::{
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
     ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET_1,
     ACCOUNT_ID_SENDER,
 };
-use miden_objects::testing::constants::{
+use miden_protocol::testing::constants::{
     CONSUMED_ASSET_1_AMOUNT,
     FUNGIBLE_ASSET_AMOUNT,
     FUNGIBLE_FAUCET_INITIAL_BALANCE,
     NON_FUNGIBLE_ASSET_DATA,
     NON_FUNGIBLE_ASSET_DATA_2,
 };
-use miden_objects::testing::noop_auth_component::NoopAuthComponent;
-use miden_objects::{Felt, Word};
+use miden_protocol::testing::noop_auth_component::NoopAuthComponent;
+use miden_protocol::{Felt, Word};
 
 use crate::utils::create_public_p2any_note;
 use crate::{TransactionContextBuilder, assert_execution_error, assert_transaction_executor_error};

@@ -30,8 +30,8 @@ pub mod wallets;
 #[macro_export]
 macro_rules! procedure_digest {
     ($name:ident, $proc_name:expr, $library_fn:expr) => {
-        static $name: miden_objects::utils::sync::LazyLock<miden_objects::Word> =
-            miden_objects::utils::sync::LazyLock::new(|| {
+        static $name: miden_protocol::utils::sync::LazyLock<miden_protocol::Word> =
+            miden_protocol::utils::sync::LazyLock::new(|| {
                 $library_fn().get_procedure_root_by_path($proc_name).unwrap_or_else(|| {
                     panic!("{} should contain '{}' procedure", stringify!($library_fn), $proc_name)
                 })

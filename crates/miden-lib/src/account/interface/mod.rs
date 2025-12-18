@@ -1,9 +1,9 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use miden_objects::account::{AccountId, AccountIdPrefix, AccountType};
-use miden_objects::note::PartialNote;
-use miden_objects::transaction::TransactionScript;
+use miden_protocol::account::{AccountId, AccountIdPrefix, AccountType};
+use miden_protocol::note::PartialNote;
+use miden_protocol::transaction::TransactionScript;
 use thiserror::Error;
 
 use crate::AuthScheme;
@@ -72,8 +72,8 @@ impl AccountInterface {
     }
 
     /// Returns `true` if the full state of the account is public on chain, i.e. if the modes are
-    /// [`AccountStorageMode::Public`](miden_objects::account::AccountStorageMode::Public) or
-    /// [`AccountStorageMode::Network`](miden_objects::account::AccountStorageMode::Network),
+    /// [`AccountStorageMode::Public`](miden_protocol::account::AccountStorageMode::Public) or
+    /// [`AccountStorageMode::Network`](miden_protocol::account::AccountStorageMode::Network),
     /// `false` otherwise.
     pub fn has_public_state(&self) -> bool {
         self.account_id.has_public_state()

@@ -3,11 +3,11 @@ use alloc::string::String;
 use anyhow::Context;
 use miden_lib::code_builder::CodeBuilder;
 use miden_lib::testing::mock_account::MockAccountExt;
-use miden_objects::account::Account;
-use miden_objects::asset::FungibleAsset;
-use miden_objects::crypto::rand::{FeltRng, RpoRandomCoin};
-use miden_objects::errors::tx_kernel::ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_METADATA_WHILE_NO_NOTE_BEING_PROCESSED;
-use miden_objects::note::{
+use miden_protocol::account::Account;
+use miden_protocol::asset::FungibleAsset;
+use miden_protocol::crypto::rand::{FeltRng, RpoRandomCoin};
+use miden_protocol::errors::tx_kernel::ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_METADATA_WHILE_NO_NOTE_BEING_PROCESSED;
+use miden_protocol::note::{
     Note,
     NoteAssets,
     NoteExecutionHint,
@@ -17,12 +17,12 @@ use miden_objects::note::{
     NoteTag,
     NoteType,
 };
-use miden_objects::testing::account_id::{
+use miden_protocol::testing::account_id::{
     ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
     ACCOUNT_ID_SENDER,
 };
-use miden_objects::{EMPTY_WORD, Felt, ONE, WORD_SIZE, Word};
+use miden_protocol::{EMPTY_WORD, Felt, ONE, WORD_SIZE, Word};
 
 use crate::kernel_tests::tx::ExecutionOutputExt;
 use crate::utils::create_public_p2any_note;

@@ -1,10 +1,10 @@
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
-use miden_objects::account::auth::PublicKeyCommitment;
-use miden_objects::account::{AccountId, AccountProcedureRoot, AccountStorage, StorageSlotName};
-use miden_objects::note::PartialNote;
-use miden_objects::{Felt, FieldElement, Word};
+use miden_protocol::account::auth::PublicKeyCommitment;
+use miden_protocol::account::{AccountId, AccountProcedureRoot, AccountStorage, StorageSlotName};
+use miden_protocol::note::PartialNote;
+use miden_protocol::{Felt, FieldElement, Word};
 
 use crate::AuthScheme;
 use crate::account::auth::{

@@ -276,9 +276,9 @@ impl Deserializable for PublicKey {
 /// convert the native signature into a vector of field elements that can be loaded into the advice
 /// provider. To prepare the signature, use the provided `to_prepared_signature` method:
 /// ```rust,no_run
-/// use miden_objects::account::auth::Signature;
-/// use miden_objects::crypto::dsa::falcon512_rpo::SecretKey;
-/// use miden_objects::{Felt, Word};
+/// use miden_protocol::account::auth::Signature;
+/// use miden_protocol::crypto::dsa::falcon512_rpo::SecretKey;
+/// use miden_protocol::{Felt, Word};
 ///
 /// let secret_key = SecretKey::new();
 /// let message = Word::default();

@@ -1,7 +1,7 @@
 use alloc::vec::Vec;
 
-use miden_objects::Word;
-use miden_objects::account::Account;
+use miden_protocol::Word;
+use miden_protocol::account::Account;
 
 use crate::account::interface::{AccountInterface, AccountInterfaceExt};
 

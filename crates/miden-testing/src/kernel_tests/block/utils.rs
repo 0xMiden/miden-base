@@ -1,11 +1,11 @@
 use std::vec::Vec;
 
 use miden_lib::code_builder::CodeBuilder;
-use miden_objects::account::AccountId;
-use miden_objects::batch::ProvenBatch;
-use miden_objects::block::BlockNumber;
-use miden_objects::note::{Note, NoteId};
-use miden_objects::transaction::{ExecutedTransaction, ProvenTransaction, TransactionScript};
+use miden_protocol::account::AccountId;
+use miden_protocol::batch::ProvenBatch;
+use miden_protocol::block::BlockNumber;
+use miden_protocol::note::{Note, NoteId};
+use miden_protocol::transaction::{ExecutedTransaction, ProvenTransaction, TransactionScript};
 use miden_tx::LocalTransactionProver;
 
 use crate::{MockChain, TxContextInput};

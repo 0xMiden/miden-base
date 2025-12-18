@@ -9,7 +9,8 @@ use miden_lib::code_builder::CodeBuilder;
 use miden_lib::note::create_p2id_note;
 use miden_lib::testing::account_component::IncrNonceAuthComponent;
 use miden_lib::testing::mock_account::MockAccountExt;
-use miden_objects::account::{
+use miden_processor::crypto::RpoRandomCoin;
+use miden_protocol::account::{
     Account,
     AccountBuilder,
     AccountCode,
@@ -20,11 +21,11 @@ use miden_objects::account::{
     StorageSlot,
     StorageSlotName,
 };
-use miden_objects::assembly::DefaultSourceManager;
-use miden_objects::assembly::diagnostics::NamedSource;
-use miden_objects::asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset};
-use miden_objects::block::BlockNumber;
-use miden_objects::note::{
+use miden_protocol::assembly::DefaultSourceManager;
+use miden_protocol::assembly::diagnostics::NamedSource;
+use miden_protocol::asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset};
+use miden_protocol::block::BlockNumber;
+use miden_protocol::note::{
     Note,
     NoteAssets,
     NoteExecutionHint,
@@ -37,7 +38,7 @@ use miden_objects::note::{
     NoteTag,
     NoteType,
 };
-use miden_objects::testing::account_id::{
+use miden_protocol::testing::account_id::{
     ACCOUNT_ID_PRIVATE_SENDER,
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
@@ -45,9 +46,9 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
     ACCOUNT_ID_SENDER,
 };
-use miden_objects::testing::constants::{FUNGIBLE_ASSET_AMOUNT, NON_FUNGIBLE_ASSET_DATA};
-use miden_objects::testing::note::DEFAULT_NOTE_CODE;
-use miden_objects::transaction::{
+use miden_protocol::testing::constants::{FUNGIBLE_ASSET_AMOUNT, NON_FUNGIBLE_ASSET_DATA};
+use miden_protocol::testing::note::DEFAULT_NOTE_CODE;
+use miden_protocol::transaction::{
     InputNotes,
     OutputNote,
     OutputNotes,
@@ -55,8 +56,7 @@ use miden_objects::transaction::{
     TransactionKernel,
     TransactionSummary,
 };
-use miden_objects::{Felt, FieldElement, Hasher, ONE, Word};
-use miden_processor::crypto::RpoRandomCoin;
+use miden_protocol::{Felt, FieldElement, Hasher, ONE, Word};
 use miden_tx::auth::UnreachableAuth;
 use miden_tx::{TransactionExecutor, TransactionExecutorError};
 

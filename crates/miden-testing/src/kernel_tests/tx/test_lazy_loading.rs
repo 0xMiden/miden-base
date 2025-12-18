@@ -4,16 +4,16 @@
 
 use miden_lib::code_builder::CodeBuilder;
 use miden_lib::testing::note::NoteBuilder;
-use miden_objects::LexicographicWord;
-use miden_objects::account::{AccountId, AccountStorage, StorageSlotDelta};
-use miden_objects::asset::{Asset, FungibleAsset};
-use miden_objects::testing::account_id::{
+use miden_protocol::LexicographicWord;
+use miden_protocol::account::{AccountId, AccountStorage, StorageSlotDelta};
+use miden_protocol::asset::{Asset, FungibleAsset};
+use miden_protocol::testing::account_id::{
     ACCOUNT_ID_NATIVE_ASSET_FAUCET,
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
 };
-use miden_objects::testing::constants::FUNGIBLE_ASSET_AMOUNT;
-use miden_objects::testing::storage::MOCK_MAP_SLOT;
+use miden_protocol::testing::constants::FUNGIBLE_ASSET_AMOUNT;
+use miden_protocol::testing::storage::MOCK_MAP_SLOT;
 
 use super::Word;
 use crate::{Auth, MockChain, TransactionContextBuilder};

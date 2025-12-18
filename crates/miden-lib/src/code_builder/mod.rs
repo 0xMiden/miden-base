@@ -1,7 +1,7 @@
 use alloc::sync::Arc;
 
-use miden_objects::account::AccountComponentCode;
-use miden_objects::assembly::{
+use miden_protocol::account::AccountComponentCode;
+use miden_protocol::assembly::{
     Assembler,
     DefaultSourceManager,
     Library,
@@ -10,8 +10,8 @@ use miden_objects::assembly::{
     Path,
     SourceManagerSync,
 };
-use miden_objects::note::NoteScript;
-use miden_objects::transaction::{TransactionKernel, TransactionScript};
+use miden_protocol::note::NoteScript;
+use miden_protocol::transaction::{TransactionKernel, TransactionScript};
 
 use crate::errors::CodeBuilderError;
 use crate::standards_lib::StandardsLib;
@@ -56,8 +56,8 @@ use crate::standards_lib::StandardsLib;
 /// ```no_run
 /// # use anyhow::Context;
 /// # use miden_lib::code_builder::CodeBuilder;
-/// # use miden_objects::assembly::Library;
-/// # use miden_objects::CoreLibrary;
+/// # use miden_protocol::assembly::Library;
+/// # use miden_protocol::CoreLibrary;
 /// # fn example() -> anyhow::Result<()> {
 /// # let module_code = "pub proc test push.1 add end";
 /// # let script_code = "begin nop end";
@@ -342,7 +342,7 @@ impl CodeBuilder {
     ///
     /// [account_lib]: crate::testing::mock_account_code::MockAccountCodeExt::mock_account_library
     /// [faucet_lib]: crate::testing::mock_account_code::MockAccountCodeExt::mock_faucet_library
-    /// [util_lib]: miden_objects::testing::mock_util_lib::mock_util_library
+    /// [util_lib]: miden_protocol::testing::mock_util_lib::mock_util_library
     #[cfg(any(feature = "testing", test))]
     pub fn with_mock_libraries() -> Self {
         Self::with_mock_libraries_with_source_manager(Arc::new(DefaultSourceManager::default()))
@@ -351,7 +351,7 @@ impl CodeBuilder {
     /// Returns the mock account and faucet libraries used in testing.
     #[cfg(any(feature = "testing", test))]
     pub fn mock_libraries() -> impl Iterator<Item = Library> {
-        use miden_objects::account::AccountCode;
+        use miden_protocol::account::AccountCode;
 
         use crate::testing::mock_account_code::MockAccountCodeExt;
 
@@ -362,7 +362,7 @@ impl CodeBuilder {
     pub fn with_mock_libraries_with_source_manager(
         source_manager: Arc<dyn SourceManagerSync>,
     ) -> Self {
-        use miden_objects::testing::mock_util_lib::mock_util_library;
+        use miden_protocol::testing::mock_util_lib::mock_util_library;
 
         // Start with the builder linking against the transaction kernel, protocol library and
         // standards library.
@@ -405,7 +405,7 @@ impl From<CodeBuilder> for Assembler {
 #[cfg(test)]
 mod tests {
     use anyhow::Context;
-    use miden_objects::assembly::diagnostics::NamedSource;
+    use miden_protocol::assembly::diagnostics::NamedSource;
 
     use super::*;
 

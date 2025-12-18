@@ -3,13 +3,13 @@ use alloc::vec::Vec;
 
 use miden_lib::code_builder::CodeBuilder;
 use miden_lib::testing::note::NoteBuilder;
-use miden_objects::account::AccountId;
-use miden_objects::asset::Asset;
-use miden_objects::crypto::rand::FeltRng;
-use miden_objects::note::{Note, NoteType};
-use miden_objects::testing::storage::prepare_assets;
 use miden_processor::Felt;
 use miden_processor::crypto::RpoRandomCoin;
+use miden_protocol::account::AccountId;
+use miden_protocol::asset::Asset;
+use miden_protocol::crypto::rand::FeltRng;
+use miden_protocol::note::{Note, NoteType};
+use miden_protocol::testing::storage::prepare_assets;
 use rand::SeedableRng;
 use rand::rngs::SmallRng;
 

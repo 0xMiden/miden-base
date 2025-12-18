@@ -174,7 +174,7 @@ Placeholders can currently not be defined for multi-slot values. In our example,
 #### Initializing placeholder values
 
 When a storage entry introduces placeholders, an implementation must provide their concrete values
-at instantiation time. This is done through `InitStorageData` (available as `miden_objects::account::InitStorageData`), which can be created programmatically or loaded from TOML using `InitStorageData::from_toml()`.
+at instantiation time. This is done through `InitStorageData` (available as `miden_protocol::account::InitStorageData`), which can be created programmatically or loaded from TOML using `InitStorageData::from_toml()`.
 
 For example, the templated map entry above can be populated from TOML as follows:
 

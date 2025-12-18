@@ -1,9 +1,9 @@
 use alloc::sync::Arc;
 
-use miden_objects::assembly::Library;
-use miden_objects::assembly::mast::MastForest;
-use miden_objects::utils::serde::Deserializable;
-use miden_objects::utils::sync::LazyLock;
+use miden_protocol::assembly::Library;
+use miden_protocol::assembly::mast::MastForest;
+use miden_protocol::utils::serde::Deserializable;
+use miden_protocol::utils::sync::LazyLock;
 
 // CONSTANTS
 // ================================================================================================
@@ -53,7 +53,7 @@ impl Default for StandardsLib {
 // NOTE: Most standards-related tests can be found in miden-testing.
 #[cfg(all(test, feature = "std"))]
 mod tests {
-    use miden_objects::assembly::Path;
+    use miden_protocol::assembly::Path;
 
     use super::StandardsLib;
 

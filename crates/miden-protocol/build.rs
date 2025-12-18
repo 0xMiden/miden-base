@@ -750,7 +750,7 @@ mod shared {
         if module.is_crate_local {
             writeln!(output, "use crate::errors::MasmError;\n").unwrap();
         } else {
-            writeln!(output, "use miden_objects::errors::MasmError;\n").unwrap();
+            writeln!(output, "use miden_protocol::errors::MasmError;\n").unwrap();
         }
 
         writeln!(

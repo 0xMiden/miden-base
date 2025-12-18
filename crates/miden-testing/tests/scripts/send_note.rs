@@ -3,10 +3,10 @@ use std::collections::BTreeMap;
 
 use miden_lib::account::interface::{AccountInterface, AccountInterfaceExt};
 use miden_lib::code_builder::CodeBuilder;
-use miden_objects::Word;
-use miden_objects::asset::{Asset, FungibleAsset};
-use miden_objects::crypto::rand::{FeltRng, RpoRandomCoin};
-use miden_objects::note::{
+use miden_protocol::Word;
+use miden_protocol::asset::{Asset, FungibleAsset};
+use miden_protocol::crypto::rand::{FeltRng, RpoRandomCoin};
+use miden_protocol::note::{
     Note,
     NoteAssets,
     NoteExecutionHint,
@@ -17,7 +17,7 @@ use miden_objects::note::{
     NoteType,
     PartialNote,
 };
-use miden_objects::transaction::OutputNote;
+use miden_protocol::transaction::OutputNote;
 use miden_testing::{Auth, MockChain};
 
 /// Tests the execution of the generated send_note transaction script in case the sending account

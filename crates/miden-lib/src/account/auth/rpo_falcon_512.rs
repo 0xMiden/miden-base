@@ -1,6 +1,6 @@
-use miden_objects::account::auth::PublicKeyCommitment;
-use miden_objects::account::{AccountComponent, StorageSlot, StorageSlotName};
-use miden_objects::utils::sync::LazyLock;
+use miden_protocol::account::auth::PublicKeyCommitment;
+use miden_protocol::account::{AccountComponent, StorageSlot, StorageSlotName};
+use miden_protocol::utils::sync::LazyLock;
 
 use crate::account::components::rpo_falcon_512_library;
 
@@ -13,7 +13,7 @@ static FALCON_PUBKEY_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
 /// transactions.
 ///
 /// It reexports the procedures from `miden::contracts::auth::rpo_falcon512`. When linking against
-/// this component, the `miden` library (i.e. [`ProtocolLib`](miden_objects::ProtocolLib)) must
+/// this component, the `miden` library (i.e. [`ProtocolLib`](miden_protocol::ProtocolLib)) must
 /// be available to the assembler which is the case when using [`CodeBuilder`][builder]. The
 /// procedures of this component are:
 /// - `verify_signatures`, which can be used to verify a signature provided via the advice stack to

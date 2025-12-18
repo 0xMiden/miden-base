@@ -1,10 +1,10 @@
 use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 
-use miden_objects::account::auth::PublicKeyCommitment;
-use miden_objects::account::{AccountComponent, StorageMap, StorageSlot, StorageSlotName};
-use miden_objects::utils::sync::LazyLock;
-use miden_objects::{AccountError, Word};
+use miden_protocol::account::auth::PublicKeyCommitment;
+use miden_protocol::account::{AccountComponent, StorageMap, StorageSlot, StorageSlotName};
+use miden_protocol::utils::sync::LazyLock;
+use miden_protocol::{AccountError, Word};
 
 use crate::account::components::ecdsa_k256_keccak_multisig_library;
 
@@ -205,8 +205,8 @@ impl From<AuthEcdsaK256KeccakMultisig> for AccountComponent {
 mod tests {
     use alloc::string::ToString;
 
-    use miden_objects::Word;
-    use miden_objects::account::AccountBuilder;
+    use miden_protocol::Word;
+    use miden_protocol::account::AccountBuilder;
 
     use super::*;
     use crate::account::wallets::BasicWallet;

@@ -25,7 +25,7 @@ impl TokenSymbol {
     /// This function is `const` and can be used to define token symbols as constants, e.g.:
     ///
     /// ```rust
-    /// # use miden_objects::asset::TokenSymbol;
+    /// # use miden_protocol::asset::TokenSymbol;
     /// const TOKEN: TokenSymbol = TokenSymbol::from_static_str("ETH");
     /// ```
     ///

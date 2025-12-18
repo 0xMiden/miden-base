@@ -2,9 +2,6 @@ use alloc::collections::BTreeSet;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use miden_objects::transaction::TransactionEventId;
-use miden_objects::vm::EventId;
-use miden_objects::{CoreLibrary, Word};
 use miden_processor::{
     AdviceMutation,
     AsyncHost,
@@ -14,6 +11,9 @@ use miden_processor::{
     MastForest,
     ProcessState,
 };
+use miden_protocol::transaction::TransactionEventId;
+use miden_protocol::vm::EventId;
+use miden_protocol::{CoreLibrary, Word};
 use miden_tx::TransactionExecutorHost;
 use miden_tx::auth::UnreachableAuth;
 
@@ -93,10 +93,10 @@ impl<'store> MockHost<'store> {
 impl<'store> BaseHost for MockHost<'store> {
     fn get_label_and_source_file(
         &self,
-        location: &miden_objects::assembly::debuginfo::Location,
+        location: &miden_protocol::assembly::debuginfo::Location,
     ) -> (
-        miden_objects::assembly::debuginfo::SourceSpan,
-        Option<Arc<miden_objects::assembly::SourceFile>>,
+        miden_protocol::assembly::debuginfo::SourceSpan,
+        Option<Arc<miden_protocol::assembly::SourceFile>>,
     ) {
         self.exec_host.get_label_and_source_file(location)
     }

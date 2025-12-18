@@ -6,19 +6,25 @@ use miden_lib::code_builder::CodeBuilder;
 use miden_lib::errors::standards::ERR_TX_ALREADY_EXECUTED;
 use miden_lib::note::create_p2id_note;
 use miden_lib::testing::account_interface::get_public_keys_from_account;
-use miden_objects::account::auth::{AuthSecretKey, PublicKey};
-use miden_objects::account::{Account, AccountBuilder, AccountId, AccountStorageMode, AccountType};
-use miden_objects::asset::FungibleAsset;
-use miden_objects::note::NoteType;
-use miden_objects::testing::account_id::{
+use miden_processor::AdviceInputs;
+use miden_processor::crypto::RpoRandomCoin;
+use miden_protocol::account::auth::{AuthSecretKey, PublicKey};
+use miden_protocol::account::{
+    Account,
+    AccountBuilder,
+    AccountId,
+    AccountStorageMode,
+    AccountType,
+};
+use miden_protocol::asset::FungibleAsset;
+use miden_protocol::note::NoteType;
+use miden_protocol::testing::account_id::{
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
 };
-use miden_objects::transaction::OutputNote;
-use miden_objects::vm::AdviceMap;
-use miden_objects::{Felt, Hasher, Word};
-use miden_processor::AdviceInputs;
-use miden_processor::crypto::RpoRandomCoin;
+use miden_protocol::transaction::OutputNote;
+use miden_protocol::vm::AdviceMap;
+use miden_protocol::{Felt, Hasher, Word};
 use miden_testing::utils::create_spawn_note;
 use miden_testing::{Auth, MockChainBuilder, assert_transaction_executor_error};
 use miden_tx::TransactionExecutorError;

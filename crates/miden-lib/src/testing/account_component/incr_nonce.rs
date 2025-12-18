@@ -1,6 +1,6 @@
-use miden_objects::account::AccountComponent;
-use miden_objects::assembly::Library;
-use miden_objects::utils::sync::LazyLock;
+use miden_protocol::account::AccountComponent;
+use miden_protocol::assembly::Library;
+use miden_protocol::utils::sync::LazyLock;
 
 use crate::code_builder::CodeBuilder;
 

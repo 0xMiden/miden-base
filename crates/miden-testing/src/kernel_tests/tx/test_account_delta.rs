@@ -5,8 +5,8 @@ use std::string::String;
 use anyhow::Context;
 use miden_lib::code_builder::CodeBuilder;
 use miden_lib::testing::account_component::MockAccountComponent;
-use miden_objects::account::delta::AccountUpdateDetails;
-use miden_objects::account::{
+use miden_protocol::account::delta::AccountUpdateDetails;
+use miden_protocol::account::{
     Account,
     AccountBuilder,
     AccountDelta,
@@ -19,9 +19,9 @@ use miden_objects::account::{
     StorageSlotDelta,
     StorageSlotName,
 };
-use miden_objects::asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset};
-use miden_objects::note::{Note, NoteExecutionHint, NoteTag, NoteType};
-use miden_objects::testing::account_id::{
+use miden_protocol::asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset};
+use miden_protocol::note::{Note, NoteExecutionHint, NoteTag, NoteType};
+use miden_protocol::testing::account_id::{
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_3,
@@ -29,17 +29,17 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_SENDER,
     AccountIdBuilder,
 };
-use miden_objects::testing::asset::NonFungibleAssetBuilder;
-use miden_objects::testing::constants::{
+use miden_protocol::testing::asset::NonFungibleAssetBuilder;
+use miden_protocol::testing::constants::{
     CONSUMED_ASSET_1_AMOUNT,
     CONSUMED_ASSET_3_AMOUNT,
     FUNGIBLE_ASSET_AMOUNT,
     NON_FUNGIBLE_ASSET_DATA,
     NON_FUNGIBLE_ASSET_DATA_2,
 };
-use miden_objects::testing::storage::{MOCK_MAP_SLOT, MOCK_VALUE_SLOT0};
-use miden_objects::transaction::TransactionScript;
-use miden_objects::{EMPTY_WORD, Felt, FieldElement, LexicographicWord, Word, ZERO};
+use miden_protocol::testing::storage::{MOCK_MAP_SLOT, MOCK_VALUE_SLOT0};
+use miden_protocol::transaction::TransactionScript;
+use miden_protocol::{EMPTY_WORD, Felt, FieldElement, LexicographicWord, Word, ZERO};
 use miden_tx::LocalTransactionProver;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;

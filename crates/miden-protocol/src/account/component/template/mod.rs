@@ -44,12 +44,12 @@ pub use storage::*;
 /// # use std::collections::{BTreeMap, BTreeSet};
 /// # use std::sync::Arc;
 /// # use miden_mast_package::{MastArtifact, Package, PackageManifest, Section, SectionId};
-/// # use miden_objects::{testing::account_code::CODE, account::{
+/// # use miden_protocol::{testing::account_code::CODE, account::{
 /// #     AccountComponent, AccountComponentMetadata, StorageEntry,
 /// #     StorageValueName, FeltRepresentation, WordRepresentation, TemplateType},
 /// #     assembly::Assembler, Felt};
-/// # use miden_objects::account::InitStorageData;
-/// # use miden_objects::utils::Serializable;
+/// # use miden_protocol::account::InitStorageData;
+/// # use miden_protocol::utils::Serializable;
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let first_felt = FeltRepresentation::from(Felt::new(0u64));
 /// let second_felt = FeltRepresentation::from(Felt::new(1u64));

@@ -1,15 +1,15 @@
 use alloc::vec::Vec;
 
-use miden_objects::account::auth::PublicKeyCommitment;
-use miden_objects::account::{
+use miden_protocol::account::auth::PublicKeyCommitment;
+use miden_protocol::account::{
     AccountCode,
     AccountComponent,
     StorageMap,
     StorageSlot,
     StorageSlotName,
 };
-use miden_objects::utils::sync::LazyLock;
-use miden_objects::{AccountError, Word};
+use miden_protocol::utils::sync::LazyLock;
+use miden_protocol::{AccountError, Word};
 
 use crate::account::components::ecdsa_k256_keccak_acl_library;
 
@@ -220,8 +220,8 @@ impl From<AuthEcdsaK256KeccakAcl> for AccountComponent {
 
 #[cfg(test)]
 mod tests {
-    use miden_objects::Word;
-    use miden_objects::account::AccountBuilder;
+    use miden_protocol::Word;
+    use miden_protocol::account::AccountBuilder;
 
     use super::*;
     use crate::account::components::WellKnownComponent;

@@ -5,7 +5,7 @@ use fs_err as fs;
 use miden_assembly::diagnostics::{IntoDiagnostic, NamedSource, Result, WrapErr};
 use miden_assembly::utils::Serializable;
 use miden_assembly::{Assembler, Library, Report};
-use miden_objects::transaction::TransactionKernel;
+use miden_protocol::transaction::TransactionKernel;
 
 // CONSTANTS
 // ================================================================================================
@@ -221,7 +221,7 @@ fn generate_error_constants(asm_source_dir: &Path) -> Result<()> {
     Ok(())
 }
 
-/// This module should be kept in sync with the copy in miden-objects's build.rs.
+/// This module should be kept in sync with the copy in miden-protocol's build.rs.
 mod shared {
     use std::collections::BTreeMap;
     use std::fmt::Write;
@@ -420,7 +420,7 @@ mod shared {
         if module.is_crate_local {
             writeln!(output, "use crate::errors::MasmError;\n").unwrap();
         } else {
-            writeln!(output, "use miden_objects::errors::MasmError;\n").unwrap();
+            writeln!(output, "use miden_protocol::errors::MasmError;\n").unwrap();
         }
 
         writeln!(

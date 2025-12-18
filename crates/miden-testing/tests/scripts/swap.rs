@@ -1,9 +1,9 @@
 use anyhow::Context;
 use miden_lib::code_builder::CodeBuilder;
 use miden_lib::note::utils;
-use miden_objects::account::{Account, AccountId, AccountStorageMode, AccountType};
-use miden_objects::asset::{Asset, FungibleAsset, NonFungibleAsset};
-use miden_objects::note::{
+use miden_protocol::account::{Account, AccountId, AccountStorageMode, AccountType};
+use miden_protocol::asset::{Asset, FungibleAsset, NonFungibleAsset};
+use miden_protocol::note::{
     Note,
     NoteAssets,
     NoteDetails,
@@ -12,13 +12,13 @@ use miden_objects::note::{
     NoteTag,
     NoteType,
 };
-use miden_objects::testing::account_id::{
+use miden_protocol::testing::account_id::{
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
     AccountIdBuilder,
 };
-use miden_objects::transaction::OutputNote;
-use miden_objects::{Felt, NoteError, Word};
+use miden_protocol::transaction::OutputNote;
+use miden_protocol::{Felt, NoteError, Word};
 use miden_testing::{Auth, MockChain};
 
 use crate::prove_and_verify_transaction;
