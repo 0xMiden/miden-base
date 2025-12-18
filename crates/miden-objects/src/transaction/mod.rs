@@ -23,7 +23,6 @@ pub use advice_inputs::TransactionAdviceInputs;
 pub use executed_tx::{ExecutedTransaction, TransactionMeasurements};
 pub use inputs::{AccountInputs, InputNote, InputNotes, ToInputNoteCommitments, TransactionInputs};
 pub use kernel::TransactionKernel;
-pub(crate) use kernel_procedures::KERNEL_PROCEDURES;
 pub use ordered_transactions::OrderedTransactionHeaders;
 pub use outputs::{OutputNote, OutputNotes, TransactionOutputs};
 pub use partial_blockchain::PartialBlockchain;

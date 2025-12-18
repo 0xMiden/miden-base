@@ -14,12 +14,12 @@ use crate::block::BlockNumber;
 use crate::crypto::SequentialCommit;
 use crate::protocol::ProtocolLib;
 use crate::transaction::{
-    self,
     OutputNote,
     OutputNotes,
     TransactionAdviceInputs,
     TransactionInputs,
     TransactionOutputs,
+    kernel_procedures,
 };
 use crate::utils::serde::Deserializable;
 use crate::utils::sync::LazyLock;
@@ -63,7 +63,7 @@ impl TransactionKernel {
     // --------------------------------------------------------------------------------------------
 
     /// Array of kernel procedures.
-    pub const PROCEDURES: &'static [Word] = &transaction::KERNEL_PROCEDURES;
+    pub const PROCEDURES: &'static [Word] = &kernel_procedures::KERNEL_PROCEDURES;
 
     // KERNEL SOURCE CODE
     // --------------------------------------------------------------------------------------------
