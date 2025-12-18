@@ -985,7 +985,7 @@ impl MockChain {
 
     /// Proves proposed block alongside a corresponding list of batches.
     pub fn prove_block(&self, proposed_block: ProposedBlock) -> anyhow::Result<ProvenBlock> {
-        let (header, body) = proposed_block.clone().compute_header_and_body()?;
+        let (header, body) = proposed_block.clone().into_header_and_body()?;
         let inputs = self.get_block_inputs(proposed_block.batches().as_slice())?;
         let block_proof = LocalBlockProver::new(MIN_PROOF_SECURITY_LEVEL).prove_dummy(
             proposed_block.batches().clone(),

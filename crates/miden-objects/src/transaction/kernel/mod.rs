@@ -345,7 +345,7 @@ impl TransactionKernel {
             .get(&final_account_commitment)
             .ok_or(TransactionOutputError::FinalAccountCommitmentMissingInAdviceMap)?;
 
-        let account = AccountHeader::try_from_felts(final_account_data)
+        let account = AccountHeader::try_from_elements(final_account_data)
             .map_err(TransactionOutputError::FinalAccountHeaderParseFailure)?;
 
         // validate output notes

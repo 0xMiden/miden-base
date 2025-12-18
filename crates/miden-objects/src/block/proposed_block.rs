@@ -459,7 +459,7 @@ impl ProposedBlock {
     ///
     /// The returned block header contains the same validator public key as the previous block, as
     /// provided by the proposed block.
-    pub fn compute_header_and_body(self) -> Result<(BlockHeader, BlockBody), ProposedBlockError> {
+    pub fn into_header_and_body(self) -> Result<(BlockHeader, BlockBody), ProposedBlockError> {
         // Get fields from the proposed block before it is consumed.
         let block_num = self.block_num();
         let timestamp = self.timestamp();

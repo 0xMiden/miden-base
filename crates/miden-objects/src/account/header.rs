@@ -59,7 +59,7 @@ impl AccountHeader {
     /// Parses the account header data returned by the VM into individual account component
     /// commitments. Returns a tuple of account ID, vault root, storage commitment, code
     /// commitment, and nonce.
-    pub(crate) fn try_from_felts(elements: &[Felt]) -> Result<AccountHeader, AccountError> {
+    pub(crate) fn try_from_elements(elements: &[Felt]) -> Result<AccountHeader, AccountError> {
         if elements.len() != ACCT_DATA_MEM_SIZE {
             return Err(AccountError::HeaderDataIncorrectLength {
                 actual: elements.len(),
