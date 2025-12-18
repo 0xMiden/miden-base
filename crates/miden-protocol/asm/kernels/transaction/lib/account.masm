@@ -64,7 +64,7 @@ const ERR_ACCOUNT_READING_MAP_VALUE_FROM_NON_MAP_SLOT="failed to read an account
 # The name of the account storage slot at which faucet data is stored.
 # Fungible faucet: The faucet data consists of [0, 0, 0, total_issuance]
 # Non-fungible faucet: The faucet data consists of SMT root containing minted non-fungible assets.
-const FAUCET_SYSDATA_SLOT=word("miden::faucet::sysdata")
+const FAUCET_SYSDATA_SLOT=word("miden::protocol::faucet::sysdata")
 
 # The maximum storage slot index
 const MAX_STORAGE_SLOT_INDEX=254

@@ -29,7 +29,8 @@ mod partial;
 pub use partial::PartialStorage;
 
 static FAUCET_SYSDATA_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
-    StorageSlotName::new("miden::faucet::sysdata").expect("storage slot name should be valid")
+    StorageSlotName::new("miden::protocol::faucet::sysdata")
+        .expect("storage slot name should be valid")
 });
 
 // ACCOUNT STORAGE
