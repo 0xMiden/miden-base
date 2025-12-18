@@ -2,7 +2,8 @@ use alloc::collections::BTreeSet;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use miden_objects::transaction::{EventId, TransactionEventId};
+use miden_objects::transaction::TransactionEventId;
+use miden_objects::vm::EventId;
 use miden_objects::{CoreLibrary, Word};
 use miden_processor::{
     AdviceMutation,

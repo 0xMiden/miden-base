@@ -24,7 +24,7 @@ const ASM_MIDEN_DIR: &str = "miden";
 const SHARED_UTILS_DIR: &str = "shared_utils";
 const SHARED_MODULES_DIR: &str = "shared_modules";
 const ASM_TX_KERNEL_DIR: &str = "kernels/transaction";
-const KERNEL_PROCEDURES_RS_FILE: &str = "src/transaction/kernel_procedures.rs";
+const KERNEL_PROCEDURES_RS_FILE: &str = "src/transaction/kernel/procedures.rs";
 
 const TX_KERNEL_ERRORS_FILE: &str = "src/errors/tx_kernel.rs";
 const PROTOCOL_LIB_ERRORS_FILE: &str = "src/errors/protocol.rs";

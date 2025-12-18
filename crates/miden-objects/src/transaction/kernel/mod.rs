@@ -13,18 +13,21 @@ use crate::asset::FungibleAsset;
 use crate::block::BlockNumber;
 use crate::crypto::SequentialCommit;
 use crate::protocol::ProtocolLib;
-use crate::transaction::{
-    OutputNote,
-    OutputNotes,
-    TransactionAdviceInputs,
-    TransactionInputs,
-    TransactionOutputs,
-    kernel_procedures,
-};
+use crate::transaction::{OutputNote, OutputNotes, TransactionInputs, TransactionOutputs};
 use crate::utils::serde::Deserializable;
 use crate::utils::sync::LazyLock;
 use crate::vm::{AdviceInputs, Program, ProgramInfo, StackInputs, StackOutputs};
 use crate::{Felt, Hasher, TransactionOutputError, Word};
+
+mod procedures;
+
+pub mod memory;
+
+mod advice_inputs;
+mod tx_event_id;
+
+pub use advice_inputs::TransactionAdviceInputs;
+pub use tx_event_id::TransactionEventId;
 
 // CONSTANTS
 // ================================================================================================
@@ -63,7 +66,7 @@ impl TransactionKernel {
     // --------------------------------------------------------------------------------------------
 
     /// Array of kernel procedures.
-    pub const PROCEDURES: &'static [Word] = &kernel_procedures::KERNEL_PROCEDURES;
+    pub const PROCEDURES: &'static [Word] = &procedures::KERNEL_PROCEDURES;
 
     // KERNEL SOURCE CODE
     // --------------------------------------------------------------------------------------------

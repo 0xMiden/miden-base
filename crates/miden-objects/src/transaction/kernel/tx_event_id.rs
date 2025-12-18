@@ -1,6 +1,6 @@
 use core::fmt;
 
-pub use miden_core::EventId;
+use miden_core::EventId;
 
 use crate::errors::TransactionEventError;
 
