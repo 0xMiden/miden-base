@@ -27,6 +27,8 @@ impl AccountStorageSchema {
     /// # Errors
     /// - If `fields` contains duplicate slot names.
     /// - If `fields` contains the protocol-reserved faucet metadata slot name.
+    /// - If any slot schema is invalid.
+    /// - If multiple schema fields map to the same init value name.
     pub fn new(
         fields: impl IntoIterator<Item = (StorageSlotName, StorageSlotSchema)>,
     ) -> Result<Self, AccountComponentTemplateError> {
@@ -41,7 +43,9 @@ impl AccountStorageSchema {
             }
         }
 
-        Ok(Self { slots: map })
+        let schema = Self { slots: map };
+        schema.validate()?;
+        Ok(schema)
     }
 
     /// Returns an iterator over `(slot_name, schema)` pairs in slot-id order.
@@ -121,7 +125,9 @@ impl Deserializable for AccountStorageSchema {
             }
         }
 
-        Ok(Self { slots: fields })
+        let schema = AccountStorageSchema::new(fields)
+            .map_err(|err| DeserializationError::InvalidValue(err.to_string()))?;
+        Ok(schema)
     }
 }
 
@@ -371,7 +377,7 @@ impl WordSchema {
                     },
                     None => {
                         if *r#type == SchemaTypeIdentifier::void() {
-                            Ok(Word::from([Felt::ZERO; 4]))
+                            Ok(Word::empty())
                         } else {
                             default_value.as_ref().copied().ok_or_else(|| {
                                 AccountComponentTemplateError::InitValueNotProvided(value_name)

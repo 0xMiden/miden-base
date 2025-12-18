@@ -268,8 +268,7 @@ mod tests {
             Version::new(1, 0, 0),
             BTreeSet::from_iter([AccountType::RegularAccountImmutableCode]),
             AccountStorageSchema::default(),
-        )
-        .unwrap();
+        );
 
         let metadata_bytes = metadata.to_bytes();
         let package_with_metadata = Package {
@@ -326,8 +325,7 @@ mod tests {
                 AccountType::RegularAccountUpdatableCode,
             ]),
             AccountStorageSchema::default(),
-        )
-        .unwrap();
+        );
 
         // Test with empty init data - this tests the complete workflow:
         // Library + Metadata -> AccountComponent

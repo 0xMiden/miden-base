@@ -9,7 +9,6 @@ use semver::Version;
 
 use super::{AccountStorageSchema, AccountType, SchemaRequirement, StorageValueName};
 use crate::AccountError;
-use crate::errors::AccountComponentTemplateError;
 
 // ACCOUNT COMPONENT METADATA
 // ================================================================================================
@@ -29,8 +28,8 @@ use crate::errors::AccountComponentTemplateError;
 /// - The metadata's storage schema does not contain duplicate slot names.
 /// - The schema cannot contain protocol-reserved slot names.
 /// - Each init-time value name uniquely identifies a single value. The expected init-time metadata
-///   can be retrieved with [AccountComponentMetadata::init_value_requirements()], which returns a
-///   map from keys to [SchemaRequirement] (which indicates the expected value type and optional
+///   can be retrieved with [AccountComponentMetadata::schema_requirements()], which returns a map
+///   from keys to [SchemaRequirement] (which indicates the expected value type and optional
 ///   defaults).
 ///
 /// # Example
@@ -72,7 +71,7 @@ use crate::errors::AccountComponentTemplateError;
 ///     Version::parse("0.1.0")?,
 ///     BTreeSet::new(),
 ///     storage_schema,
-/// )?;
+/// );
 ///
 /// // Init value keys are derived from slot name: `demo::test_value.foo`.
 /// let foo: StorageValueName = "foo".parse()?;
@@ -109,28 +108,20 @@ pub struct AccountComponentMetadata {
 
 impl AccountComponentMetadata {
     /// Create a new [AccountComponentMetadata].
-    ///
-    /// # Errors
-    ///
-    /// - If the schema contains invalid slot definitions.
-    /// - If the schema contains duplicate slot names.
-    /// - If the schema contains duplicate init value names.
     pub fn new(
         name: String,
         description: String,
         version: Version,
         targets: BTreeSet<AccountType>,
         storage_schema: AccountStorageSchema,
-    ) -> Result<Self, AccountComponentTemplateError> {
-        let component = Self {
+    ) -> Self {
+        Self {
             name,
             description,
             version,
             supported_types: targets,
             storage_schema,
-        };
-        component.validate()?;
-        Ok(component)
+        }
     }
 
     /// Returns the init-time values's requirements for this schema.
@@ -166,15 +157,6 @@ impl AccountComponentMetadata {
     /// Returns the storage schema of the component.
     pub fn storage_schema(&self) -> &AccountStorageSchema {
         &self.storage_schema
-    }
-
-    /// Validate the [AccountComponentMetadata].
-    ///
-    /// # Errors
-    ///
-    /// - If any included schema fails to validate correctly.
-    fn validate(&self) -> Result<(), AccountComponentTemplateError> {
-        self.storage_schema.validate()
     }
 }
 

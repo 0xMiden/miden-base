@@ -15,12 +15,12 @@ An account component schema describes a reusable piece of account functionality 
 everything required to initialize it. The schema encapsulates the component's **metadata**, its
 code, and how its storage should be laid out and typed.
 
-Once defined, a component schema can be instantiated to an account component, which can then be
+Once defined, a component schema can be instantiated to an account component. Multiple components can then be
 merged to form the account's `Code` and `Storage`.
 
 ## Component code
 
-The component's code defines a library of functions that can read and write to the storage slots specified by the schema.
+The component's code defines a library of functions that can perform arbitrary computations, as well as read and write to account storage.
 
 ## Component metadata
 
@@ -81,7 +81,7 @@ type = { key = "word", value = "u16" }
 
 Value-slot entries describe their schema via `WordSchema`. A value type can be either:
 
-- **Singular**: defined through the `type` field, indicating the expected `SchemaTypeIdentifier` for the entire word. The value is supplied at instantiation time via `InitStorageData`.
+- **Singular**: defined through the `type = "<identifier>"` field, indicating the expected `SchemaTypeIdentifier` for the entire word. The value is supplied at instantiation time via `InitStorageData`.
 - **Composite**: provided through `type = [ ... ]`, which contains exactly four `FeltSchema` descriptors. Each element is either a named typed field (optionally with `default-value`) or a `void` element for reserved/padding zeros.
 
 Composite schema entries reuse the existing TOML structure for four-element words, while singular schemas rely on `type`. In our example, the `token_metadata` slot uses a composite schema (`type = [...]`) mixing typed fields (`max_supply`, `decimals`) with defaults (`symbol`) and a reserved/padding `void` element.
