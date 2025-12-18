@@ -38,12 +38,12 @@ impl From<StandardsLib> for Library {
 
 impl Default for StandardsLib {
     fn default() -> Self {
-        static MIDEN_LIB: LazyLock<StandardsLib> = LazyLock::new(|| {
+        static STANDARDS_LIB: LazyLock<StandardsLib> = LazyLock::new(|| {
             let contents = Library::read_from_bytes(STANDARDS_LIB_BYTES)
                 .expect("standards lib masl should be well-formed");
             StandardsLib(contents)
         });
-        MIDEN_LIB.clone()
+        STANDARDS_LIB.clone()
     }
 }
 

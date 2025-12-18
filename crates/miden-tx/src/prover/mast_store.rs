@@ -44,8 +44,8 @@ impl TransactionMastStore {
         store.insert(miden_core_lib_forest);
 
         // load protocol lib MAST forest
-        let miden_lib_forest = ProtocolLib::default().mast_forest().clone();
-        store.insert(miden_lib_forest);
+        let protocol_lib_forest = ProtocolLib::default().mast_forest().clone();
+        store.insert(protocol_lib_forest);
 
         // load standards lib MAST forest
         let standards_lib_forest = StandardsLib::default().mast_forest().clone();
