@@ -46,3 +46,4 @@ begin
     call.agg_faucet::claim
     # => []
 end
+
