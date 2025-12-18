@@ -152,7 +152,7 @@ proc.mint_non_fungible_asset
 
     # insert the non-fungible asset into the tracking SMT
     exec.account::set_map_item
-    # => [ASSET]
+    # => [OLD_VAL, ASSET]
 
     # Assert the `OLD_VAL` is an EMPTY_WORD, indicating that the non-fungible asset has not been
     # issued yet. We only need to check OLD_VAL[3] as this is always set to the faucet_id_prefix
@@ -200,7 +200,7 @@ proc.burn_non_fungible_asset
 
     # remove the non-fungible asset from the tracking SMT
     exec.account::set_map_item
-    # => [ASSET]
+    # => [OLD_VAL, ASSET]
 
     # Assert the `OLD_VAL` is not an EMPTY_WORD, indicating that the non-fungible asset exists. We
     # only need to check OLD_VAL[3] as this is always set to the faucet_id_prefix and can not be 0.

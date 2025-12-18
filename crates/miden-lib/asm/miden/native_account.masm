@@ -181,8 +181,6 @@ export.set_map_item
     # => [offset, slot_id_prefix, slot_id_suffix, KEY, VALUE, pad(5)]
 
     syscall.exec_kernel_proc
-    # => [OLD_VALUE, pad(8)]
-
     # => [OLD_VALUE, pad(12)]
 
     # clean the stack
