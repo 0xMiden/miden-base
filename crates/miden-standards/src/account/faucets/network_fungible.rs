@@ -37,7 +37,7 @@ procedure_digest!(
 );
 
 static OWNER_CONFIG_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
-    StorageSlotName::new("miden::network_fungible_faucet::owner_config")
+    StorageSlotName::new("miden::standards::network_fungible_faucet::owner_config")
         .expect("storage slot name should be valid")
 });
 

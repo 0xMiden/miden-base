@@ -8,7 +8,7 @@ use miden::standards::faucets::basic_fungible
 # ================================================================================================
 
 # The slot in this component's storage layout where the owner config is stored.
-const OWNER_CONFIG_SLOT=word("miden::network_fungible_faucet::owner_config")
+const OWNER_CONFIG_SLOT=word("miden::standards::network_fungible_faucet::owner_config")
 
 # ERRORS
 const ERR_ONLY_OWNER_CAN_MINT="note sender is not the owner of the faucet who can mint assets"
