@@ -1,8 +1,8 @@
 use miden::protocol::active_account
 use miden::protocol::native_account
-use miden::auth
+use miden::standards::auth
 use miden::protocol::tx
-use miden::core::crypto::dsa::ecdsa_k256_keccak
+use miden::core::crypto::dsa::falcon512rpo
 
 # CONSTANTS
 # =================================================================================================
@@ -17,7 +17,7 @@ const PUB_KEY_SLOT_PREFIX_LOC=5
 const CURRENT_PK_LOC=8
 const SUCCESSFUL_VERIFICATIONS_LOC=12
 
-#! Authenticate a transaction using the ECDSA signature scheme.
+#! Authenticate a transaction using the Falcon signature scheme.
 #!
 #! It first increments the nonce of the account, independent of whether the account's state has
 #! changed or not. Then it computes and signs the following message (in memory order):
@@ -63,7 +63,7 @@ pub proc authenticate_transaction
     # Verify the signature against the public key and the message. The procedure gets as inputs the
     # hash of the public key and the message via the operand stack. The signature is provided via
     # the advice stack. The signature is valid if and only if the procedure returns.
-    exec.ecdsa_k256_keccak::verify
+    exec.falcon512rpo::verify
     # OS => []
     # AS => []
 end
@@ -156,7 +156,7 @@ pub proc verify_signatures
             # OS => [PUB_KEY, MSG, MSG, i-1]
             # AS => [SIGNATURE]
 
-            exec.ecdsa_k256_keccak::verify
+            exec.falcon512rpo::verify
             # => [MSG, i-1]
 
             loc_load.SUCCESSFUL_VERIFICATIONS_LOC

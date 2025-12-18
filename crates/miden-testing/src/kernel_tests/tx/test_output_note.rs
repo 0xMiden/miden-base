@@ -769,7 +769,7 @@ async fn test_get_asset_info() -> anyhow::Result<()> {
 
             # move the asset 0 to the note
             push.{asset_0}
-            call.::miden::contracts::wallets::basic::move_asset_to_note
+            call.::miden::standards::wallets::basic::move_asset_to_note
             dropw
             # => [note_idx]
 
@@ -798,7 +798,7 @@ async fn test_get_asset_info() -> anyhow::Result<()> {
 
             # add asset_1 to the note
             push.{asset_1}
-            call.::miden::contracts::wallets::basic::move_asset_to_note
+            call.::miden::standards::wallets::basic::move_asset_to_note
             dropw
             # => [note_idx]
 
@@ -1055,7 +1055,7 @@ fn create_output_note(note: &Note) -> String {
             "
             # move the asset to the note
             push.{asset}
-            call.::miden::contracts::wallets::basic::move_asset_to_note
+            call.::miden::standards::wallets::basic::move_asset_to_note
             dropw
             # => [note_idx]
         ",

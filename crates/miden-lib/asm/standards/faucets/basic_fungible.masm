@@ -8,7 +8,7 @@
 # - decimals are the decimals of the token.
 # - token_symbol as three chars encoded in a Felt.
 
-use miden::contracts::faucets
+use miden::standards::faucets
 
 # CONSTANTS
 # =================================================================================================

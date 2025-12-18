@@ -2,5 +2,5 @@
 #
 # See the `BasicFungibleFaucet` Rust type's documentation for more details.
 
-pub use ::miden::contracts::faucets::basic_fungible::distribute
-pub use ::miden::contracts::faucets::basic_fungible::burn
+pub use ::miden::standards::faucets::basic_fungible::distribute
+pub use ::miden::standards::faucets::basic_fungible::burn

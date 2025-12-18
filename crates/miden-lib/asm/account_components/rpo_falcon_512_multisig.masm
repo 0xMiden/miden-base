@@ -4,7 +4,7 @@
 
 use miden::protocol::active_account
 use miden::protocol::native_account
-use miden::auth
+use miden::standards::auth
 
 type BeWord = struct @bigendian { a: felt, b: felt, c: felt, d: felt }
 
@@ -390,7 +390,7 @@ pub proc auth_tx_rpo_falcon512_multisig(salt: BeWord)
     push.APPROVER_PUBLIC_KEYS_SLOT[0..2]
     # => [pub_key_slot_prefix, pub_key_slot_suffix, num_of_approvers, TX_SUMMARY_COMMITMENT, default_threshold]
 
-    exec.::miden::auth::rpo_falcon512::verify_signatures
+    exec.::miden::standards::auth::rpo_falcon512::verify_signatures
     # => [num_verified_signatures, TX_SUMMARY_COMMITMENT, default_threshold]
 
     # ------ Checking threshold is >= num_verified_signatures ------

@@ -245,7 +245,7 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
 
     let tx_script_src = format!(
         "\
-        use miden::contracts::wallets::basic->wallet
+        use miden::standards::wallets::basic->wallet
         use miden::protocol::output_note
 
         # Inputs:  [tag, aux, note_type, execution_hint, RECIPIENT]
@@ -414,7 +414,7 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
 #[tokio::test]
 async fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
     let source_code = r#"
-      use miden::auth
+      use miden::standards::auth
       use miden::protocol::tx
       const AUTH_UNAUTHORIZED_EVENT=event("miden::auth::unauthorized")
       #! Inputs:  [AUTH_ARGS, pad(12)]

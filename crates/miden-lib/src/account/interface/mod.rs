@@ -134,7 +134,7 @@ impl AccountInterface {
     ///     push.{note information}
     ///
     ///     push.{asset amount}
-    ///     call.::miden::contracts::faucets::basic_fungible::distribute dropw dropw drop
+    ///     call.::miden::standards::faucets::basic_fungible::distribute dropw dropw drop
     /// end
     /// ```
     ///

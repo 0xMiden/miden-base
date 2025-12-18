@@ -67,7 +67,7 @@ pub fn create_mint_script_code(params: &FaucetTestParams) -> String {
                 push.{amount}
                 # => [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
 
-                call.::miden::contracts::faucets::basic_fungible::distribute
+                call.::miden::standards::faucets::basic_fungible::distribute
                 # => [note_idx, pad(15)]
 
                 # truncate the stack
@@ -186,7 +186,7 @@ async fn faucet_contract_mint_fungible_asset_fails_exceeds_max_supply() -> anyho
                 push.{amount}
                 # => [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
 
-                call.::miden::contracts::faucets::basic_fungible::distribute
+                call.::miden::standards::faucets::basic_fungible::distribute
                 # => [note_idx, pad(15)]
 
                 # truncate the stack
@@ -263,7 +263,7 @@ async fn prove_burning_fungible_asset_on_existing_faucet_succeeds() -> anyhow::R
             dropw
             # => []
 
-            call.::miden::contracts::faucets::basic_fungible::burn
+            call.::miden::standards::faucets::basic_fungible::burn
             # => [ASSET]
 
             # truncate the stack
@@ -391,7 +391,7 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
                 push.{amount}
                 # => [amount, tag, aux, note_type, execution_hint, RECIPIENT]
 
-                call.::miden::contracts::faucets::basic_fungible::distribute
+                call.::miden::standards::faucets::basic_fungible::distribute
                 # => [note_idx, pad(15)]
 
                 # Truncate the stack

@@ -2,7 +2,7 @@
 #
 # See the `AuthRpoFalcon512` Rust type's documentation for more details.
 
-use miden::auth::rpo_falcon512
+use miden::standards::auth::rpo_falcon512
 use miden::protocol::active_account
 
 type BeWord = struct @bigendian { a: felt, b: felt, c: felt, d: felt }

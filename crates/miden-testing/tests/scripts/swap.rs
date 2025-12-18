@@ -50,7 +50,7 @@ pub async fn prove_send_swap_note() -> anyhow::Result<()> {
             call.output_note::create
 
             push.{asset}
-            call.::miden::contracts::wallets::basic::move_asset_to_note
+            call.::miden::standards::wallets::basic::move_asset_to_note
             dropw dropw dropw dropw
         end
         ",

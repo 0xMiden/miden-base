@@ -192,7 +192,7 @@ impl AccountComponentInterface {
     ///     call.::miden::protocol::output_note::create
     ///
     ///     push.{note asset}
-    ///     call.::miden::contracts::wallets::basic::move_asset_to_note dropw
+    ///     call.::miden::standards::wallets::basic::move_asset_to_note dropw
     ///     dropw dropw dropw drop
     /// ```
     ///
@@ -202,7 +202,7 @@ impl AccountComponentInterface {
     ///     push.{note information}
     ///
     ///     push.{asset amount}
-    ///     call.::miden::contracts::faucets::basic_fungible::distribute dropw dropw drop
+    ///     call.::miden::standards::faucets::basic_fungible::distribute dropw dropw drop
     /// ```
     ///
     /// # Errors:
@@ -257,7 +257,7 @@ impl AccountComponentInterface {
 
                     body.push_str(&format!(
                         "push.{amount}
-                        call.::miden::contracts::faucets::basic_fungible::distribute dropw dropw drop\n",
+                        call.::miden::standards::faucets::basic_fungible::distribute dropw dropw drop\n",
                         amount = asset.unwrap_fungible().amount()
                     ));
                     // stack => []
@@ -269,7 +269,7 @@ impl AccountComponentInterface {
                     for asset in partial_note.assets().iter() {
                         body.push_str(&format!(
                             "push.{asset}
-                            call.::miden::contracts::wallets::basic::move_asset_to_note dropw\n",
+                            call.::miden::standards::wallets::basic::move_asset_to_note dropw\n",
                             asset = Word::from(*asset)
                         ));
                         // stack => [note_idx]

@@ -643,7 +643,7 @@ async fn asset_and_storage_delta() -> anyhow::Result<()> {
 
             # move an asset to the created note to partially deplete fungible asset balance
             swapw dropw push.{REMOVED_ASSET}
-            call.::miden::contracts::wallets::basic::move_asset_to_note
+            call.::miden::standards::wallets::basic::move_asset_to_note
             # => [ASSET, note_idx, pad(11)]
 
             # clear the stack

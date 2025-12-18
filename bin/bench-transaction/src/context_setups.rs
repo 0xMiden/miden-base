@@ -40,7 +40,7 @@ pub fn tx_create_single_p2id_note() -> Result<TransactionContext> {
 
             # move the asset to the note
             push.{asset}
-            call.::miden::contracts::wallets::basic::move_asset_to_note
+            call.::miden::standards::wallets::basic::move_asset_to_note
             dropw
             # => [note_idx]
 

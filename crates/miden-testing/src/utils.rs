@@ -131,7 +131,7 @@ pub fn create_p2any_note(
         "
         use mock::account
         use miden::protocol::active_note
-        use miden::contracts::wallets::basic->wallet
+        use miden::standards::wallets::basic->wallet
 
         begin
             # fetch pointer & number of assets
@@ -244,7 +244,7 @@ fn note_script_that_creates_notes<'note>(
         for asset in assets_str {
             out.push_str(&format!(
                 " push.{asset}
-                  call.::miden::contracts::wallets::basic::move_asset_to_note\n",
+                  call.::miden::standards::wallets::basic::move_asset_to_note\n",
             ));
         }
     }

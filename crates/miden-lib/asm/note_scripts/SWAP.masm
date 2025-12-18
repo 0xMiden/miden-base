@@ -1,6 +1,6 @@
 use miden::protocol::active_note
 use miden::protocol::output_note
-use miden::contracts::wallets::basic->wallet
+use miden::standards::wallets::basic->wallet
 
 # CONSTANTS
 # =================================================================================================

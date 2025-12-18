@@ -128,7 +128,7 @@ pub proc auth_tx_rpo_falcon512_acl(auth_args: BeWord)
         push.PUBLIC_KEY_SLOT[0..2] exec.active_account::get_item
         # => [PUB_KEY, pad(16)]
 
-        exec.::miden::auth::rpo_falcon512::authenticate_transaction
+        exec.::miden::standards::auth::rpo_falcon512::authenticate_transaction
     else
         # ------ Check if initial account commitment differs from current commitment ------
 

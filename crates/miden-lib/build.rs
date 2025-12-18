@@ -17,21 +17,23 @@ const BUILD_GENERATED_FILES_IN_SRC: bool = option_env!("BUILD_GENERATED_FILES_IN
 
 const ASSETS_DIR: &str = "assets";
 const ASM_DIR: &str = "asm";
-const ASM_MIDEN_DIR: &str = "miden";
+const ASM_STANDARDS_DIR: &str = "standards";
 const ASM_NOTE_SCRIPTS_DIR: &str = "note_scripts";
 const ASM_ACCOUNT_COMPONENTS_DIR: &str = "account_components";
 
-const STANDARDS_ERRORS_FILE: &str = "src/errors/standards.rs";
+const STANDARDS_LIB_NAMESPACE: &str = "miden::standards";
 
+const STANDARDS_ERRORS_FILE: &str = "src/errors/standards.rs";
 const STANDARDS_ERRORS_ARRAY_NAME: &str = "STANDARDS_ERRORS";
 
 // PRE-PROCESSING
 // ================================================================================================
 
 /// Read and parse the contents from `./asm`.
-/// - Compiles contents of asm/miden directory into a Miden library file (.masl) under miden
+/// - Compiles the contents of asm/standards directory into a Miden library file (.masl) under standards
 ///   namespace.
-/// - Compiles contents of asm/scripts directory into individual .masb files.
+/// - Compiles the contents of asm/note_scripts directory into individual .masb files.
+/// - Compiles the contents of asm/account_components directory into individual .masl files.
 fn main() -> Result<()> {
     // re-build when the MASM code changes
     println!("cargo::rerun-if-changed={ASM_DIR}/");
@@ -79,16 +81,17 @@ fn main() -> Result<()> {
 // COMPILE PROTOCOL LIB
 // ================================================================================================
 
-/// Reads the MASM files from "{source_dir}/miden" directory, compiles them into a Miden assembly
-/// library, saves the library into "{target_dir}/miden.masl", and returns the compiled library.
+/// Reads the MASM files from "{source_dir}/standards" directory, compiles them into a Miden
+/// assembly library, saves the library into "{target_dir}/standards.masl", and returns the compiled
+/// library.
 fn compile_standards_lib(
     source_dir: &Path,
     target_dir: &Path,
     assembler: Assembler,
 ) -> Result<Library> {
-    let source_dir = source_dir.join(ASM_MIDEN_DIR);
+    let source_dir = source_dir.join(ASM_STANDARDS_DIR);
 
-    let standards_lib = assembler.assemble_library_from_dir(source_dir, "miden")?;
+    let standards_lib = assembler.assemble_library_from_dir(source_dir, STANDARDS_LIB_NAMESPACE)?;
 
     let output_file = target_dir.join("standards").with_extension(Library::LIBRARY_EXTENSION);
     standards_lib.write_to_file(output_file).into_diagnostic()?;

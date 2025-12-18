@@ -1242,7 +1242,7 @@ async fn test_get_init_balance_subtraction() -> anyhow::Result<()> {
     let remove_existing_source = format!(
         r#"
         use miden::protocol::active_account
-        use miden::contracts::wallets::basic->wallet
+        use miden::standards::wallets::basic->wallet
         use mock::util
 
         # Inputs:  [ASSET, note_idx]

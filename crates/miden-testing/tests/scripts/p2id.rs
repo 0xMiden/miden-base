@@ -232,7 +232,7 @@ async fn test_create_consume_multiple_notes() -> anyhow::Result<()> {
                 call.output_note::create
 
                 push.{asset_1}
-                call.::miden::contracts::wallets::basic::move_asset_to_note
+                call.::miden::standards::wallets::basic::move_asset_to_note
                 dropw dropw dropw dropw
 
                 push.{recipient_2}
@@ -243,7 +243,7 @@ async fn test_create_consume_multiple_notes() -> anyhow::Result<()> {
                 call.output_note::create
 
                 push.{asset_2}
-                call.::miden::contracts::wallets::basic::move_asset_to_note
+                call.::miden::standards::wallets::basic::move_asset_to_note
                 dropw dropw dropw dropw
             end
             ",
