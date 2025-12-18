@@ -40,9 +40,9 @@ pub type StorageSlot = u8;
 // | Padding            | 1_056         | 4                |                                        |
 // | Proc tracking      | 1_060         | 256              | 256 procedures max, 1 element each     |
 // | Num storage slots  | 1_316         | 4                |                                        |
-// | Initial slot info  | 1_320         | 1_020            | Only initialized on the native account |
-// | Storage slot info  | 2_340         | 1_020            | 255 slots max, 8 elements each         |
-// | Padding            | 3_360         | 4_832            |                                        |
+// | Initial slot info  | 1_320         | 2_040            | Only initialized on the native account |
+// | Storage slot info  | 3_360         | 2_040            | 255 slots max, 8 elements each         |
+// | Padding            | 5_400         | 2_792            |                                        |
 //
 // Storage slot info is laid out as [[0, slot_type, slot_id_suffix, slot_id_prefix], SLOT_VALUE].
 
@@ -296,7 +296,7 @@ pub const NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR: MemoryAddress =
 
 /// The offset at which the account storage slots section begins relative to the start of the
 /// account data segment.
-pub const ACCT_STORAGE_SLOTS_SECTION_OFFSET: MemoryAddress = 2340;
+pub const ACCT_STORAGE_SLOTS_SECTION_OFFSET: MemoryAddress = 3360;
 
 /// The number of elements that each storage slot takes up in memory.
 pub const ACCT_STORAGE_SLOT_NUM_ELEMENTS: u8 = 8;
