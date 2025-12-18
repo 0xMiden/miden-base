@@ -221,8 +221,6 @@ export.add_asset
     # clean the stack
     swapdw dropw dropw swapw dropw
     # => [ASSET']
-
-    sdepth push.333 debug.stack drop drop
 end
 
 #! Remove the specified asset from the vault.
