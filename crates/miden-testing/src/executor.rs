@@ -45,9 +45,9 @@ impl<H: AsyncHost> CodeExecutor<H> {
         use alloc::borrow::ToOwned;
         use alloc::sync::Arc;
 
-        use miden_lib::code_builder::CodeBuilder;
         use miden_protocol::assembly::debuginfo::{SourceLanguage, Uri};
         use miden_protocol::assembly::{DefaultSourceManager, SourceManagerSync};
+        use miden_standards::code_builder::CodeBuilder;
 
         let source_manager: Arc<dyn SourceManagerSync> = Arc::new(DefaultSourceManager::default());
         let assembler: Assembler = CodeBuilder::with_kernel_library(source_manager.clone()).into();

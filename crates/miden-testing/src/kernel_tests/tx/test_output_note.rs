@@ -2,9 +2,6 @@ use alloc::string::String;
 use alloc::vec::Vec;
 
 use anyhow::Context;
-use miden_lib::code_builder::CodeBuilder;
-use miden_lib::note::create_p2id_note;
-use miden_lib::testing::mock_account::MockAccountExt;
 use miden_protocol::account::{Account, AccountId};
 use miden_protocol::asset::{Asset, FungibleAsset, NonFungibleAsset};
 use miden_protocol::crypto::rand::RpoRandomCoin;
@@ -45,6 +42,9 @@ use miden_protocol::transaction::memory::{
 };
 use miden_protocol::transaction::{OutputNote, OutputNotes};
 use miden_protocol::{Felt, Word, ZERO};
+use miden_standards::code_builder::CodeBuilder;
+use miden_standards::note::create_p2id_note;
+use miden_standards::testing::mock_account::MockAccountExt;
 
 use super::{TestSetup, setup_test};
 use crate::kernel_tests::tx::ExecutionOutputExt;

@@ -1,6 +1,3 @@
-use miden_lib::code_builder::CodeBuilder;
-use miden_lib::errors::standards::ERR_P2ID_TARGET_ACCT_MISMATCH;
-use miden_lib::note::create_p2id_note;
 use miden_protocol::account::Account;
 use miden_protocol::asset::{Asset, AssetVault, FungibleAsset};
 use miden_protocol::crypto::rand::RpoRandomCoin;
@@ -14,6 +11,9 @@ use miden_protocol::testing::account_id::{
 };
 use miden_protocol::transaction::OutputNote;
 use miden_protocol::{Felt, Word};
+use miden_standards::code_builder::CodeBuilder;
+use miden_standards::errors::standards::ERR_P2ID_TARGET_ACCT_MISMATCH;
+use miden_standards::note::create_p2id_note;
 use miden_testing::{Auth, MockChain, assert_transaction_executor_error};
 
 use crate::prove_and_verify_transaction;

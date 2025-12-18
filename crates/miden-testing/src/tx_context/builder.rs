@@ -6,8 +6,6 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use anyhow::Context;
-use miden_lib::testing::account_component::IncrNonceAuthComponent;
-use miden_lib::testing::mock_account::MockAccountExt;
 use miden_processor::{AdviceInputs, Felt, Word};
 use miden_protocol::EMPTY_WORD;
 use miden_protocol::account::auth::{PublicKeyCommitment, Signature};
@@ -24,6 +22,8 @@ use miden_protocol::transaction::{
     TransactionInputs,
     TransactionScript,
 };
+use miden_standards::testing::account_component::IncrNonceAuthComponent;
+use miden_standards::testing::mock_account::MockAccountExt;
 use miden_tx::TransactionMastStore;
 use miden_tx::auth::BasicAuthenticator;
 
@@ -113,7 +113,7 @@ impl TransactionContextBuilder {
     /// - Has a nonce of `1` (so it does not imply seed validation).
     /// - Has an ID of [`ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE`].
     /// - Has an account code based on an
-    ///   [miden_lib::testing::account_component::MockAccountComponent].
+    ///   [miden_standards::testing::account_component::MockAccountComponent].
     pub fn with_existing_mock_account() -> Self {
         Self::new(Account::mock(
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,

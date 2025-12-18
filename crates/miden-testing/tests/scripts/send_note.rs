@@ -1,8 +1,6 @@
 use core::slice;
 use std::collections::BTreeMap;
 
-use miden_lib::account::interface::{AccountInterface, AccountInterfaceExt};
-use miden_lib::code_builder::CodeBuilder;
 use miden_protocol::Word;
 use miden_protocol::asset::{Asset, FungibleAsset};
 use miden_protocol::crypto::rand::{FeltRng, RpoRandomCoin};
@@ -18,12 +16,14 @@ use miden_protocol::note::{
     PartialNote,
 };
 use miden_protocol::transaction::OutputNote;
+use miden_standards::account::interface::{AccountInterface, AccountInterfaceExt};
+use miden_standards::code_builder::CodeBuilder;
 use miden_testing::{Auth, MockChain};
 
 /// Tests the execution of the generated send_note transaction script in case the sending account
 /// has the [`BasicWallet`][wallet] interface.
 ///
-/// [wallet]: miden_lib::account::interface::AccountComponentInterface::BasicWallet
+/// [wallet]: miden_standards::account::interface::AccountComponentInterface::BasicWallet
 #[tokio::test]
 async fn test_send_note_script_basic_wallet() -> anyhow::Result<()> {
     let sent_asset = FungibleAsset::mock(10);
@@ -84,7 +84,7 @@ async fn test_send_note_script_basic_wallet() -> anyhow::Result<()> {
 /// Tests the execution of the generated send_note transaction script in case the sending account
 /// has the [`BasicFungibleFaucet`][faucet] interface.
 ///
-/// [faucet]: miden_lib::account::interface::AccountComponentInterface::BasicFungibleFaucet
+/// [faucet]: miden_standards::account::interface::AccountComponentInterface::BasicFungibleFaucet
 #[tokio::test]
 async fn test_send_note_script_basic_fungible_faucet() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();

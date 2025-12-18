@@ -1,8 +1,8 @@
 use alloc::string::String;
 
-use miden_lib::code_builder::CodeBuilder;
 use miden_protocol::Word;
 use miden_protocol::note::Note;
+use miden_standards::code_builder::CodeBuilder;
 
 use super::{TestSetup, setup_test};
 use crate::TxContextInput;

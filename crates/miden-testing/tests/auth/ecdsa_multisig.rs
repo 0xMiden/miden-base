@@ -1,11 +1,3 @@
-use miden_lib::account::auth::AuthEcdsaK256KeccakMultisig;
-use miden_lib::account::components::ecdsa_k256_keccak_multisig_library;
-use miden_lib::account::interface::{AccountInterface, AccountInterfaceExt};
-use miden_lib::account::wallets::BasicWallet;
-use miden_lib::code_builder::CodeBuilder;
-use miden_lib::errors::standards::ERR_TX_ALREADY_EXECUTED;
-use miden_lib::note::create_p2id_note;
-use miden_lib::testing::account_interface::get_public_keys_from_account;
 use miden_processor::AdviceInputs;
 use miden_processor::crypto::RpoRandomCoin;
 use miden_protocol::account::auth::{AuthSecretKey, PublicKey};
@@ -25,6 +17,14 @@ use miden_protocol::testing::account_id::{
 use miden_protocol::transaction::OutputNote;
 use miden_protocol::vm::AdviceMap;
 use miden_protocol::{Felt, Hasher, Word};
+use miden_standards::account::auth::AuthEcdsaK256KeccakMultisig;
+use miden_standards::account::components::ecdsa_k256_keccak_multisig_library;
+use miden_standards::account::interface::{AccountInterface, AccountInterfaceExt};
+use miden_standards::account::wallets::BasicWallet;
+use miden_standards::code_builder::CodeBuilder;
+use miden_standards::errors::standards::ERR_TX_ALREADY_EXECUTED;
+use miden_standards::note::create_p2id_note;
+use miden_standards::testing::account_interface::get_public_keys_from_account;
 use miden_testing::utils::create_spawn_note;
 use miden_testing::{Auth, MockChainBuilder, assert_transaction_executor_error};
 use miden_tx::TransactionExecutorError;

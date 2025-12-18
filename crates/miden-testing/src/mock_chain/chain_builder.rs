@@ -13,10 +13,6 @@ const DEFAULT_FAUCET_DECIMALS: u8 = 10;
 // ================================================================================================
 
 use itertools::Itertools;
-use miden_lib::account::faucets::{BasicFungibleFaucet, NetworkFungibleFaucet};
-use miden_lib::account::wallets::BasicWallet;
-use miden_lib::note::{create_p2id_note, create_p2ide_note, create_swap_note};
-use miden_lib::testing::account_component::MockAccountComponent;
 use miden_processor::crypto::RpoRandomCoin;
 use miden_protocol::account::delta::AccountUpdateDetails;
 use miden_protocol::account::{
@@ -51,6 +47,10 @@ use miden_protocol::testing::account_id::ACCOUNT_ID_NATIVE_ASSET_FAUCET;
 use miden_protocol::testing::random_signer::RandomBlockSigner;
 use miden_protocol::transaction::{OrderedTransactionHeaders, OutputNote, TransactionKernel};
 use miden_protocol::{Felt, FieldElement, MAX_OUTPUT_NOTES_PER_BATCH, NoteError, Word, ZERO};
+use miden_standards::account::faucets::{BasicFungibleFaucet, NetworkFungibleFaucet};
+use miden_standards::account::wallets::BasicWallet;
+use miden_standards::note::{create_p2id_note, create_p2ide_note, create_swap_note};
+use miden_standards::testing::account_component::MockAccountComponent;
 use rand::Rng;
 
 use crate::mock_chain::chain::AccountAuthenticator;

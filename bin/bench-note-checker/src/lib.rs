@@ -1,4 +1,3 @@
-use miden_lib::testing::note::NoteBuilder;
 use miden_protocol::account::AccountId;
 use miden_protocol::asset::FungibleAsset;
 use miden_protocol::crypto::rand::RpoRandomCoin;
@@ -7,6 +6,7 @@ use miden_protocol::testing::account_id::{
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
     ACCOUNT_ID_SENDER,
 };
+use miden_standards::testing::note::NoteBuilder;
 use miden_testing::{Auth, MockChain, TxContextInput};
 use miden_tx::auth::UnreachableAuth;
 use miden_tx::{NoteConsumptionChecker, TransactionExecutor};

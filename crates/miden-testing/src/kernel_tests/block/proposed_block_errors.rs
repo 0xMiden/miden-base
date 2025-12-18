@@ -3,13 +3,13 @@ use std::collections::BTreeMap;
 use std::vec::Vec;
 
 use assert_matches::assert_matches;
-use miden_lib::note::create_p2id_note;
 use miden_processor::crypto::MerklePath;
 use miden_protocol::asset::FungibleAsset;
 use miden_protocol::block::{BlockInputs, BlockNumber, ProposedBlock};
 use miden_protocol::crypto::merkle::SparseMerklePath;
 use miden_protocol::note::{NoteInclusionProof, NoteType};
 use miden_protocol::{MAX_BATCHES_PER_BLOCK, ProposedBlockError, ZERO};
+use miden_standards::note::create_p2id_note;
 use miden_tx::LocalTransactionProver;
 
 use crate::kernel_tests::block::utils::MockChainBlockExt;

@@ -2,10 +2,6 @@ use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
 
 use anyhow::Context;
-use miden_lib::account::wallets::BasicWallet;
-use miden_lib::code_builder::CodeBuilder;
-use miden_lib::testing::account_component::MockAccountComponent;
-use miden_lib::testing::mock_account::MockAccountExt;
 use miden_processor::fast::ExecutionOutput;
 use miden_processor::{AdviceInputs, Word};
 use miden_protocol::account::{
@@ -84,6 +80,10 @@ use miden_protocol::transaction::memory::{
 };
 use miden_protocol::transaction::{ExecutedTransaction, TransactionArgs, TransactionKernel};
 use miden_protocol::{EMPTY_WORD, ONE, WORD_SIZE};
+use miden_standards::account::wallets::BasicWallet;
+use miden_standards::code_builder::CodeBuilder;
+use miden_standards::testing::account_component::MockAccountComponent;
+use miden_standards::testing::mock_account::MockAccountExt;
 use miden_tx::TransactionExecutorError;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;

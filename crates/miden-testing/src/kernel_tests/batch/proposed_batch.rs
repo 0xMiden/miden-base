@@ -3,8 +3,6 @@ use std::collections::BTreeMap;
 
 use anyhow::Context;
 use assert_matches::assert_matches;
-use miden_lib::testing::account_component::MockAccountComponent;
-use miden_lib::testing::note::NoteBuilder;
 use miden_protocol::account::{Account, AccountId, AccountStorageMode};
 use miden_protocol::batch::ProposedBatch;
 use miden_protocol::block::BlockNumber;
@@ -13,6 +11,8 @@ use miden_protocol::note::{Note, NoteType};
 use miden_protocol::testing::account_id::AccountIdBuilder;
 use miden_protocol::transaction::{InputNote, InputNoteCommitment, OutputNote, PartialBlockchain};
 use miden_protocol::{BatchAccountUpdateError, ProposedBatchError, Word};
+use miden_standards::testing::account_component::MockAccountComponent;
+use miden_standards::testing::note::NoteBuilder;
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 

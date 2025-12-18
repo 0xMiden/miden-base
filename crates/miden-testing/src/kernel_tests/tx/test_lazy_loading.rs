@@ -2,8 +2,6 @@
 //!
 //! Once lazy loading is enabled generally, it can be removed and/or integrated into other tests.
 
-use miden_lib::code_builder::CodeBuilder;
-use miden_lib::testing::note::NoteBuilder;
 use miden_protocol::LexicographicWord;
 use miden_protocol::account::{AccountId, AccountStorage, StorageSlotDelta};
 use miden_protocol::asset::{Asset, FungibleAsset};
@@ -14,6 +12,8 @@ use miden_protocol::testing::account_id::{
 };
 use miden_protocol::testing::constants::FUNGIBLE_ASSET_AMOUNT;
 use miden_protocol::testing::storage::MOCK_MAP_SLOT;
+use miden_standards::code_builder::CodeBuilder;
+use miden_standards::testing::note::NoteBuilder;
 
 use super::Word;
 use crate::{Auth, MockChain, TransactionContextBuilder};

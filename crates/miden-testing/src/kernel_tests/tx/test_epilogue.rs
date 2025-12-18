@@ -1,9 +1,6 @@
 use alloc::string::ToString;
 use alloc::vec::Vec;
 
-use miden_lib::code_builder::CodeBuilder;
-use miden_lib::testing::mock_account::MockAccountExt;
-use miden_lib::testing::note::NoteBuilder;
 use miden_processor::{Felt, ONE};
 use miden_protocol::Word;
 use miden_protocol::account::{Account, AccountDelta, AccountStorageDelta, AccountVaultDelta};
@@ -29,6 +26,9 @@ use miden_protocol::transaction::memory::{
     OUTPUT_NOTE_SECTION_OFFSET,
 };
 use miden_protocol::transaction::{OutputNote, OutputNotes, TransactionOutputs};
+use miden_standards::code_builder::CodeBuilder;
+use miden_standards::testing::mock_account::MockAccountExt;
+use miden_standards::testing::note::NoteBuilder;
 
 use super::{ZERO, create_mock_notes_procedure};
 use crate::kernel_tests::tx::ExecutionOutputExt;

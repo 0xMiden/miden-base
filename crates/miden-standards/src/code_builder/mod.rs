@@ -55,7 +55,7 @@ use crate::standards_lib::StandardsLib;
 ///
 /// ```no_run
 /// # use anyhow::Context;
-/// # use miden_lib::code_builder::CodeBuilder;
+/// # use miden_standards::code_builder::CodeBuilder;
 /// # use miden_protocol::assembly::Library;
 /// # use miden_protocol::CoreLibrary;
 /// # fn example() -> anyhow::Result<()> {

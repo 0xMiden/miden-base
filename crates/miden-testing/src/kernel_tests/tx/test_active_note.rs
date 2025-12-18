@@ -1,8 +1,6 @@
 use alloc::string::String;
 
 use anyhow::Context;
-use miden_lib::code_builder::CodeBuilder;
-use miden_lib::testing::mock_account::MockAccountExt;
 use miden_protocol::account::Account;
 use miden_protocol::asset::FungibleAsset;
 use miden_protocol::crypto::rand::{FeltRng, RpoRandomCoin};
@@ -23,6 +21,8 @@ use miden_protocol::testing::account_id::{
     ACCOUNT_ID_SENDER,
 };
 use miden_protocol::{EMPTY_WORD, Felt, ONE, WORD_SIZE, Word};
+use miden_standards::code_builder::CodeBuilder;
+use miden_standards::testing::mock_account::MockAccountExt;
 
 use crate::kernel_tests::tx::ExecutionOutputExt;
 use crate::utils::create_public_p2any_note;

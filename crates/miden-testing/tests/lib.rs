@@ -4,7 +4,6 @@ mod auth;
 mod scripts;
 mod wallet;
 
-use miden_lib::code_builder::CodeBuilder;
 use miden_processor::utils::Deserializable;
 use miden_protocol::account::AccountId;
 use miden_protocol::asset::FungibleAsset;
@@ -13,6 +12,7 @@ use miden_protocol::note::{Note, NoteAssets, NoteInputs, NoteMetadata, NoteRecip
 use miden_protocol::testing::account_id::ACCOUNT_ID_SENDER;
 use miden_protocol::transaction::{ExecutedTransaction, ProvenTransaction};
 use miden_protocol::{Word, ZERO};
+use miden_standards::code_builder::CodeBuilder;
 use miden_tx::{
     LocalTransactionProver,
     ProvingOptions,

@@ -4,9 +4,6 @@ use std::collections::BTreeMap;
 
 use anyhow::Context;
 use assert_matches::assert_matches;
-use miden_lib::code_builder::CodeBuilder;
-use miden_lib::testing::account_component::MockAccountComponent;
-use miden_lib::testing::mock_account::MockAccountExt;
 use miden_processor::{ExecutionError, Word};
 use miden_protocol::account::delta::AccountUpdateDetails;
 use miden_protocol::account::{
@@ -52,6 +49,9 @@ use miden_protocol::testing::storage::{MOCK_MAP_SLOT, MOCK_VALUE_SLOT0, MOCK_VAL
 use miden_protocol::transaction::{OutputNote, TransactionKernel};
 use miden_protocol::utils::sync::LazyLock;
 use miden_protocol::{LexicographicWord, StarkField};
+use miden_standards::code_builder::CodeBuilder;
+use miden_standards::testing::account_component::MockAccountComponent;
+use miden_standards::testing::mock_account::MockAccountExt;
 use miden_tx::LocalTransactionProver;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;

@@ -1,7 +1,6 @@
 use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
 
-use miden_lib::note::{NoteConsumptionStatus, WellKnownNote};
 use miden_processor::fast::FastProcessor;
 use miden_protocol::account::AccountId;
 use miden_protocol::block::BlockNumber;
@@ -14,6 +13,7 @@ use miden_protocol::transaction::{
     TransactionKernel,
 };
 use miden_prover::AdviceInputs;
+use miden_standards::note::{NoteConsumptionStatus, WellKnownNote};
 
 use super::TransactionExecutor;
 use crate::auth::TransactionAuthenticator;

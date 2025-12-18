@@ -2,13 +2,6 @@ use alloc::sync::Arc;
 
 use anyhow::Context;
 use assert_matches::assert_matches;
-use miden_lib::AuthScheme;
-use miden_lib::account::interface::{AccountInterface, AccountInterfaceExt};
-use miden_lib::account::wallets::BasicWallet;
-use miden_lib::code_builder::CodeBuilder;
-use miden_lib::note::create_p2id_note;
-use miden_lib::testing::account_component::IncrNonceAuthComponent;
-use miden_lib::testing::mock_account::MockAccountExt;
 use miden_processor::crypto::RpoRandomCoin;
 use miden_protocol::account::{
     Account,
@@ -57,6 +50,13 @@ use miden_protocol::transaction::{
     TransactionSummary,
 };
 use miden_protocol::{Felt, FieldElement, Hasher, ONE, Word};
+use miden_standards::AuthScheme;
+use miden_standards::account::interface::{AccountInterface, AccountInterfaceExt};
+use miden_standards::account::wallets::BasicWallet;
+use miden_standards::code_builder::CodeBuilder;
+use miden_standards::note::create_p2id_note;
+use miden_standards::testing::account_component::IncrNonceAuthComponent;
+use miden_standards::testing::mock_account::MockAccountExt;
 use miden_tx::auth::UnreachableAuth;
 use miden_tx::{TransactionExecutor, TransactionExecutorError};
 

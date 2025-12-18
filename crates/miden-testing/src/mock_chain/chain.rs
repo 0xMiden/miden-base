@@ -1149,7 +1149,6 @@ impl From<Account> for TxContextInput {
 
 #[cfg(test)]
 mod tests {
-    use miden_lib::account::wallets::BasicWallet;
     use miden_protocol::account::{AccountBuilder, AccountStorageMode};
     use miden_protocol::asset::{Asset, FungibleAsset};
     use miden_protocol::note::NoteType;
@@ -1158,6 +1157,7 @@ mod tests {
         ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
         ACCOUNT_ID_SENDER,
     };
+    use miden_standards::account::wallets::BasicWallet;
 
     use super::*;
     use crate::Auth;

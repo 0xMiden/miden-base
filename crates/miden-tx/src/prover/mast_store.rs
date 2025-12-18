@@ -1,13 +1,13 @@
 use alloc::collections::BTreeMap;
 use alloc::sync::Arc;
 
-use miden_lib::StandardsLib;
 use miden_processor::MastForestStore;
 use miden_protocol::account::AccountCode;
 use miden_protocol::assembly::mast::MastForest;
 use miden_protocol::transaction::TransactionKernel;
 use miden_protocol::utils::sync::RwLock;
 use miden_protocol::{CoreLibrary, ProtocolLib, Word};
+use miden_standards::StandardsLib;
 
 // TRANSACTION MAST STORE
 // ================================================================================================

@@ -1,6 +1,4 @@
 use anyhow::Context;
-use miden_lib::code_builder::CodeBuilder;
-use miden_lib::note::utils;
 use miden_protocol::account::{Account, AccountId, AccountStorageMode, AccountType};
 use miden_protocol::asset::{Asset, FungibleAsset, NonFungibleAsset};
 use miden_protocol::note::{
@@ -19,6 +17,8 @@ use miden_protocol::testing::account_id::{
 };
 use miden_protocol::transaction::OutputNote;
 use miden_protocol::{Felt, NoteError, Word};
+use miden_standards::code_builder::CodeBuilder;
+use miden_standards::note::utils;
 use miden_testing::{Auth, MockChain};
 
 use crate::prove_and_verify_transaction;

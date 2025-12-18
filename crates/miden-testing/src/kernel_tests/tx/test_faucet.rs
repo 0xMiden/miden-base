@@ -1,7 +1,5 @@
 use alloc::sync::Arc;
 
-use miden_lib::code_builder::CodeBuilder;
-use miden_lib::testing::mock_account::MockAccountExt;
 use miden_protocol::account::{
     Account,
     AccountBuilder,
@@ -36,6 +34,8 @@ use miden_protocol::testing::constants::{
 };
 use miden_protocol::testing::noop_auth_component::NoopAuthComponent;
 use miden_protocol::{Felt, Word};
+use miden_standards::code_builder::CodeBuilder;
+use miden_standards::testing::mock_account::MockAccountExt;
 
 use crate::utils::create_public_p2any_note;
 use crate::{TransactionContextBuilder, assert_execution_error, assert_transaction_executor_error};

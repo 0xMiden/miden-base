@@ -2,9 +2,6 @@ use alloc::collections::BTreeMap;
 use alloc::sync::Arc;
 
 use anyhow::Context;
-use miden_lib::account::wallets::BasicWallet;
-use miden_lib::code_builder::CodeBuilder;
-use miden_lib::testing::note::NoteBuilder;
 use miden_processor::fast::ExecutionOutput;
 use miden_protocol::account::auth::PublicKeyCommitment;
 use miden_protocol::account::{AccountBuilder, AccountId};
@@ -33,6 +30,9 @@ use miden_protocol::testing::account_id::{
 use miden_protocol::transaction::memory::ACTIVE_INPUT_NOTE_PTR;
 use miden_protocol::transaction::{OutputNote, TransactionArgs};
 use miden_protocol::{Felt, Word, ZERO};
+use miden_standards::account::wallets::BasicWallet;
+use miden_standards::code_builder::CodeBuilder;
+use miden_standards::testing::note::NoteBuilder;
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 

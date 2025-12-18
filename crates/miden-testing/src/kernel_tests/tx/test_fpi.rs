@@ -2,8 +2,6 @@ use alloc::sync::Arc;
 use alloc::vec;
 use alloc::vec::Vec;
 
-use miden_lib::code_builder::CodeBuilder;
-use miden_lib::testing::account_component::MockAccountComponent;
 use miden_processor::fast::ExecutionOutput;
 use miden_processor::{AdviceInputs, Felt};
 use miden_protocol::account::{
@@ -41,6 +39,8 @@ use miden_protocol::transaction::memory::{
     NUM_ACCT_STORAGE_SLOTS_OFFSET,
 };
 use miden_protocol::{FieldElement, Word, ZERO};
+use miden_standards::code_builder::CodeBuilder;
+use miden_standards::testing::account_component::MockAccountComponent;
 use miden_tx::LocalTransactionProver;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;

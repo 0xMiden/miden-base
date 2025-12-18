@@ -3,7 +3,6 @@ use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use miden_lib::code_builder::CodeBuilder;
 use miden_processor::fast::ExecutionOutput;
 use miden_processor::{ExecutionError, FutureMaybeSend, MastForest, MastForestStore, Word};
 use miden_protocol::account::{
@@ -29,6 +28,7 @@ use miden_protocol::transaction::{
     TransactionInputs,
     TransactionKernel,
 };
+use miden_standards::code_builder::CodeBuilder;
 use miden_tx::auth::{BasicAuthenticator, UnreachableAuth};
 use miden_tx::{
     AccountProcedureIndexMap,

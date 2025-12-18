@@ -3,11 +3,6 @@ extern crate alloc;
 use alloc::sync::Arc;
 use core::slice;
 
-use miden_lib::account::faucets::{BasicFungibleFaucet, FungibleFaucetExt, NetworkFungibleFaucet};
-use miden_lib::code_builder::CodeBuilder;
-use miden_lib::errors::standards::ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED;
-use miden_lib::note::{MintNoteInputs, WellKnownNote, create_burn_note, create_mint_note};
-use miden_lib::testing::note::NoteBuilder;
 use miden_processor::crypto::RpoRandomCoin;
 use miden_protocol::account::{
     Account,
@@ -33,6 +28,15 @@ use miden_protocol::note::{
 use miden_protocol::testing::account_id::ACCOUNT_ID_PRIVATE_SENDER;
 use miden_protocol::transaction::{ExecutedTransaction, OutputNote};
 use miden_protocol::{Felt, Word};
+use miden_standards::account::faucets::{
+    BasicFungibleFaucet,
+    FungibleFaucetExt,
+    NetworkFungibleFaucet,
+};
+use miden_standards::code_builder::CodeBuilder;
+use miden_standards::errors::standards::ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED;
+use miden_standards::note::{MintNoteInputs, WellKnownNote, create_burn_note, create_mint_note};
+use miden_standards::testing::note::NoteBuilder;
 use miden_testing::{Auth, MockChain, assert_transaction_executor_error};
 
 use crate::scripts::swap::create_p2id_note_exact;
