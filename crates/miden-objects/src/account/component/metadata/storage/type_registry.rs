@@ -553,9 +553,9 @@ impl SchemaTypeRegistry {
 
     /// Converts a [`Word`] into a canonical string representation for the given schema type.
     ///
-    /// Tries displaying as word if the coverter is known, otherwise tests as a felt type, and
+    /// Tries displaying as word if the converter is known, otherwise tests as a felt type, and
     /// if it doesn't work, the word as hex is returned
-    // TODO: This should return richer information (how it was converted, if it succeded as word,
+    // TODO: This should return richer information (how it was converted, if it succededs as word,
     // etc.)
     #[allow(dead_code)]
     pub fn display_word(&self, type_name: &SchemaTypeIdentifier, word: Word) -> String {
