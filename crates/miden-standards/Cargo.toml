@@ -1,12 +1,12 @@
 [package]
 authors.workspace      = true
 categories             = ["no-std"]
-description            = "Standard library of the Miden protocol"
+description            = "Standards of the Miden protocol"
 edition.workspace      = true
 homepage.workspace     = true
 keywords               = ["kernel", "miden", "transaction"]
 license.workspace      = true
-name                   = "miden-lib"
+name                   = "miden-standards"
 readme                 = "README.md"
 repository.workspace   = true
 rust-version.workspace = true
@@ -46,4 +46,4 @@ miden-protocol  = { features = ["testing"], workspace = true }
 # When building as a dev-dependency (e.g., `cargo test --workspace` or `cargo check --all-targets`),
 # enable the `testing` feature. This is a workaround for Cargo's lack of test-specific features.
 # See: https://github.com/rust-lang/cargo/issues/2911#issuecomment-1483256987
-miden-lib = { features = ["testing"], path = "." }
+miden-standards = { features = ["testing"], path = "." }

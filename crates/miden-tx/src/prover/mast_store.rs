@@ -28,9 +28,10 @@ impl TransactionMastStore {
     /// Returns a new [TransactionMastStore] instantiated with the default libraries.
     ///
     /// The default libraries include:
-    /// - Miden core library (miden-core-lib).
-    /// - Miden protocol library (miden-lib).
-    /// - Transaction kernel.
+    /// - Miden core library [`CoreLibrary`].
+    /// - Miden protocol library [`ProtocolLib`].
+    /// - Miden standards library [`StandardsLib`].
+    /// - Transaction kernel [`TransactionKernel::kernel`].
     pub fn new() -> Self {
         let mast_forests = RwLock::new(BTreeMap::new());
         let store = Self { mast_forests };
