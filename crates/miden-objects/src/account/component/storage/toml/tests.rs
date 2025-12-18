@@ -300,7 +300,7 @@ fn metadata_toml_round_trip_typed_slots() {
 
         [[storage.slot]]
         name = "demo::typed_map"
-        type = { key = "auth::rpo_falcon512::pub_key", value = "auth::rpo_falcon512::pub_key" }
+        type = { key = "miden::standards::auth::rpo_falcon512::pub_key", value = "miden::standards::auth::rpo_falcon512::pub_key" }
     "#;
 
     let metadata =
@@ -328,7 +328,8 @@ fn metadata_toml_round_trip_typed_slots() {
         _ => panic!("expected map slot"),
     };
 
-    let pub_key_type = SchemaTypeIdentifier::new("auth::rpo_falcon512::pub_key").unwrap();
+    let pub_key_type =
+        SchemaTypeIdentifier::new("miden::standards::auth::rpo_falcon512::pub_key").unwrap();
     assert_eq!(map_slot.key_schema(), &WordSchema::new_singular(pub_key_type.clone()));
     assert_eq!(map_slot.value_schema(), &WordSchema::new_singular(pub_key_type));
 
@@ -358,8 +359,14 @@ fn metadata_toml_round_trip_typed_slots() {
         .find(|entry| entry.get("name").unwrap().as_str().unwrap() == "demo::typed_map")
         .unwrap();
     let map_type = typed_map_entry.get("type").unwrap().as_table().unwrap();
-    assert_eq!(map_type.get("key").unwrap().as_str().unwrap(), "auth::rpo_falcon512::pub_key");
-    assert_eq!(map_type.get("value").unwrap().as_str().unwrap(), "auth::rpo_falcon512::pub_key");
+    assert_eq!(
+        map_type.get("key").unwrap().as_str().unwrap(),
+        "miden::standards::auth::rpo_falcon512::pub_key"
+    );
+    assert_eq!(
+        map_type.get("value").unwrap().as_str().unwrap(),
+        "miden::standards::auth::rpo_falcon512::pub_key"
+    );
 }
 
 #[test]
@@ -374,18 +381,18 @@ fn extensive_schema_metadata_and_init_toml_example() {
         [[storage.slot]]
         name = "demo::token_metadata"
         description = "Token metadata: max_supply, symbol, decimals, reserved."
-        type = [
-            { type = "u32", name = "max_supply", description = "Maximum supply (base units)" },
-            { type = "token_symbol", name = "symbol", default-value = "TST" },
-            { type = "u8", name = "decimals", description = "Token decimals" },
-            { type = "void" }
-        ]
+	        type = [
+	            { type = "u32", name = "max_supply", description = "Maximum supply (base units)" },
+	            { type = "miden::standards::fungible_faucets::metadata::token_symbol", name = "symbol", default-value = "TST" },
+	            { type = "u8", name = "decimals", description = "Token decimals" },
+	            { type = "void" }
+	        ]
 
         # singular word-typed slot (must be passed at instantiation)
-        [[storage.slot]]
-        name = "demo::owner_pub_key"
-        description = "Owner public key"
-        type = "auth::rpo_falcon512::pub_key"
+	        [[storage.slot]]
+	        name = "demo::owner_pub_key"
+	        description = "Owner public key"
+	        type = "miden::standards::auth::rpo_falcon512::pub_key"
 
         # singular felt-typed word slot (parsed as felt, stored as [0,0,0,<felt>])
         [[storage.slot]]
@@ -686,7 +693,7 @@ fn typed_map_supports_non_numeric_value_types() {
         [[storage.slot]]
         name = "demo::symbol_map"
         type.key = "word"
-        type.value = "token_symbol"
+        type.value = "miden::standards::fungible_faucets::metadata::token_symbol"
     "#;
 
     let metadata = AccountComponentMetadata::from_toml(metadata_toml).unwrap();

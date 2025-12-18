@@ -94,7 +94,8 @@ struct RawStorageSchema {
 /// Storage slot type descriptor.
 ///
 /// This field accepts either:
-/// - a string (e.g. `"word"`, `"u16"`, `"auth::rpo_falcon512::pub_key"`) for singular word slots,
+/// - a string (e.g. `"word"`, `"u16"`, `"miden::standards::auth::rpo_falcon512::pub_key"`) for
+///   singular word slots,
 /// - an array of 4 [`FeltSchema`] descriptors for composite word slots, or
 /// - a table `{ key = ..., value = ... }` for map slots.
 #[derive(Debug, Clone, Deserialize, Serialize)]

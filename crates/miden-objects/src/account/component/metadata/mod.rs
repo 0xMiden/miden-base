@@ -28,7 +28,7 @@ use crate::errors::AccountComponentTemplateError;
 ///
 /// - The metadata's storage schema does not contain duplicate slot names.
 /// - The schema cannot contain protocol-reserved slot names.
-/// - Each init-time value name uniquely identifies a single value. The expected init-time values
+/// - Each init-time value name uniquely identifies a single value. The expected init-time metadata
 ///   can be retrieved with [AccountComponentMetadata::init_value_requirements()], which returns a
 ///   map from keys to [InitValueRequirement] (which indicates the expected value type).
 ///
@@ -132,7 +132,7 @@ impl AccountComponentMetadata {
         Ok(component)
     }
 
-    /// Returns the init-time values required to instantiate this schema.
+    /// Returns the init-time values's requirements for this schema.
     ///
     /// These values are used for initializing storage slot values or storage map entries. For a
     /// full example, refer to the docs for [AccountComponentMetadata].

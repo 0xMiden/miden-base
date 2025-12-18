@@ -187,7 +187,7 @@ pub trait FeltType: Send + Sync {
         Self: Sized;
 
     /// Parses the input string into a `Felt`.
-    fn parse_felt(input: &str) -> Result<Felt, SchemaTypeError>
+    fn parse_str(input: &str) -> Result<Felt, SchemaTypeError>
     where
         Self: Sized;
 
@@ -205,7 +205,7 @@ pub trait WordType: Send + Sync {
         Self: Sized;
 
     /// Parses the input string into a `Word`.
-    fn parse_word(input: &str) -> Result<Word, SchemaTypeError>
+    fn parse_str(input: &str) -> Result<Word, SchemaTypeError>
     where
         Self: Sized;
 
@@ -223,8 +223,8 @@ where
         <T as FeltType>::type_name()
     }
 
-    fn parse_word(input: &str) -> Result<Word, SchemaTypeError> {
-        let felt = <T as FeltType>::parse_felt(input)?;
+    fn parse_str(input: &str) -> Result<Word, SchemaTypeError> {
+        let felt = <T as FeltType>::parse_str(input)?;
         Ok(Word::from([Felt::new(0), Felt::new(0), Felt::new(0), felt]))
     }
 
@@ -250,8 +250,8 @@ impl FeltType for Void {
         SchemaTypeIdentifier::void()
     }
 
-    fn parse_felt(input: &str) -> Result<Felt, SchemaTypeError> {
-        let parsed = <Felt as FeltType>::parse_felt(input)?;
+    fn parse_str(input: &str) -> Result<Felt, SchemaTypeError> {
+        let parsed = <Felt as FeltType>::parse_str(input)?;
         if parsed != Felt::new(0) {
             return Err(SchemaTypeError::ConversionError("void values must be zero".to_string()));
         }
@@ -271,7 +271,7 @@ impl FeltType for u8 {
         SchemaTypeIdentifier::new("u8").expect("type is well formed")
     }
 
-    fn parse_felt(input: &str) -> Result<Felt, SchemaTypeError> {
+    fn parse_str(input: &str) -> Result<Felt, SchemaTypeError> {
         let native: u8 = input.parse().map_err(|err| {
             SchemaTypeError::parse(input.to_string(), <Self as FeltType>::type_name(), err)
         })?;
@@ -291,7 +291,7 @@ impl FeltType for u16 {
         SchemaTypeIdentifier::new("u16").expect("type is well formed")
     }
 
-    fn parse_felt(input: &str) -> Result<Felt, SchemaTypeError> {
+    fn parse_str(input: &str) -> Result<Felt, SchemaTypeError> {
         let native: u16 = input.parse().map_err(|err| {
             SchemaTypeError::parse(input.to_string(), <Self as FeltType>::type_name(), err)
         })?;
@@ -311,7 +311,7 @@ impl FeltType for u32 {
         SchemaTypeIdentifier::new("u32").expect("type is well formed")
     }
 
-    fn parse_felt(input: &str) -> Result<Felt, SchemaTypeError> {
+    fn parse_str(input: &str) -> Result<Felt, SchemaTypeError> {
         let native: u32 = input.parse().map_err(|err| {
             SchemaTypeError::parse(input.to_string(), <Self as FeltType>::type_name(), err)
         })?;
@@ -331,7 +331,7 @@ impl FeltType for Felt {
         SchemaTypeIdentifier::new("felt").expect("type is well formed")
     }
 
-    fn parse_felt(input: &str) -> Result<Felt, SchemaTypeError> {
+    fn parse_str(input: &str) -> Result<Felt, SchemaTypeError> {
         let n = if let Some(hex) = input.strip_prefix("0x").or_else(|| input.strip_prefix("0X")) {
             u64::from_str_radix(hex, 16)
         } else {
@@ -350,9 +350,10 @@ impl FeltType for Felt {
 
 impl FeltType for TokenSymbol {
     fn type_name() -> SchemaTypeIdentifier {
-        SchemaTypeIdentifier::new("token_symbol").expect("type is well formed")
+        SchemaTypeIdentifier::new("miden::standards::fungible_faucets::metadata::token_symbol")
+            .expect("type is well formed")
     }
-    fn parse_felt(input: &str) -> Result<Felt, SchemaTypeError> {
+    fn parse_str(input: &str) -> Result<Felt, SchemaTypeError> {
         let token = TokenSymbol::new(input).map_err(|err| {
             SchemaTypeError::parse(input.to_string(), <Self as FeltType>::type_name(), err)
         })?;
@@ -401,7 +402,7 @@ impl WordType for Word {
     fn type_name() -> SchemaTypeIdentifier {
         SchemaTypeIdentifier::native_word()
     }
-    fn parse_word(input: &str) -> Result<Word, SchemaTypeError> {
+    fn parse_str(input: &str) -> Result<Word, SchemaTypeError> {
         Word::parse(input).map_err(|err| {
             SchemaTypeError::parse(
                 input.to_string(),
@@ -418,9 +419,10 @@ impl WordType for Word {
 
 impl WordType for rpo_falcon512::PublicKey {
     fn type_name() -> SchemaTypeIdentifier {
-        SchemaTypeIdentifier::new("auth::rpo_falcon512::pub_key").expect("type is well formed")
+        SchemaTypeIdentifier::new("miden::standards::auth::rpo_falcon512::pub_key")
+            .expect("type is well formed")
     }
-    fn parse_word(input: &str) -> Result<Word, SchemaTypeError> {
+    fn parse_str(input: &str) -> Result<Word, SchemaTypeError> {
         let padded_input = pad_hex_string(input);
 
         Word::try_from(padded_input.as_str()).map_err(|err| {
@@ -439,9 +441,10 @@ impl WordType for rpo_falcon512::PublicKey {
 
 impl WordType for ecdsa_k256_keccak::PublicKey {
     fn type_name() -> SchemaTypeIdentifier {
-        SchemaTypeIdentifier::new("auth::ecdsa_k256_keccak::pub_key").expect("type is well formed")
+        SchemaTypeIdentifier::new("miden::standards::auth::ecdsa_k256_keccak::pub_key")
+            .expect("type is well formed")
     }
-    fn parse_word(input: &str) -> Result<Word, SchemaTypeError> {
+    fn parse_str(input: &str) -> Result<Word, SchemaTypeError> {
         let padded_input = pad_hex_string(input);
 
         Word::try_from(padded_input.as_str()).map_err(|err| {
@@ -501,14 +504,14 @@ impl SchemaTypeRegistry {
     /// Registers a `FeltType` converter, to interpret a string as a [`Felt``].
     pub fn register_felt_type<T: FeltType + 'static>(&mut self) {
         let key = <T as FeltType>::type_name();
-        self.felt.insert(key.clone(), T::parse_felt);
+        self.felt.insert(key.clone(), T::parse_str);
         self.felt_display.insert(key, T::display_felt);
     }
 
     /// Registers a `WordType` converter, to interpret a string as a [`Word`].
     pub fn register_word_type<T: WordType + 'static>(&mut self) {
         let key = <T as WordType>::type_name();
-        self.word.insert(key.clone(), T::parse_word);
+        self.word.insert(key.clone(), T::parse_str);
         self.word_display.insert(key, T::display_word);
     }
 

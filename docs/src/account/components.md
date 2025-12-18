@@ -47,7 +47,7 @@ name = "demo::token_metadata"
 description = "Contains token metadata (max supply, symbol, decimals)."
 type = [
     { type = "u32", name = "max_supply", description = "Maximum supply of the token in base units" },
-    { type = "token_symbol", name = "symbol", description = "Token symbol", default-value = "TST" },
+    { type = "miden::standards::fungible_faucets::metadata::token_symbol", name = "symbol", description = "Token symbol", default-value = "TST" },
     { type = "u8", name = "decimals", description = "Number of decimal places for converting to absolute units" },
     { type = "void" }
 ]
@@ -55,7 +55,7 @@ type = [
 [[storage.slot]]
 name = "demo::owner_public_key"
 description = "This is a typed value supplied at instantiation and interpreted as a Falcon public key"
-type = "auth::rpo_falcon512::pub_key"
+type = "miden::standards::auth::rpo_falcon512::pub_key"
 
 [[storage.slot]]
 name = "demo::protocol_version"
@@ -129,19 +129,19 @@ shape of the `type` field.
 
 ##### Word types
 
-Singular schemas accept `word` (default) and word-shaped types such as `auth::rpo_falcon512::pub_key` or `auth::ecdsa_k256_keccak::pub_key` (parsed from hexadecimal strings).
+Singular schemas accept `word` (default) and word-shaped types such as `miden::standards::auth::rpo_falcon512::pub_key` or `miden::standards::auth::ecdsa_k256_keccak::pub_key` (parsed from hexadecimal strings).
 
-Singular schemas can also use any felt type (e.g. `u8`, `u16`, `u32`, `felt`, `token_symbol`, `void`). The value is parsed as a felt and stored as a word with the parsed felt in the last element and the remaining elements set to `0`.
+Singular schemas can also use any felt type (e.g. `u8`, `u16`, `u32`, `felt`, `miden::standards::fungible_faucets::metadata::token_symbol`, `void`). The value is parsed as a felt and stored as a word with the parsed felt in the last element and the remaining elements set to `0`.
 
 
 ##### Felt types
 
-Valid field element types are `void`, `u8`, `u16`, `u32`, `felt` (default) and `token_symbol`:
+Valid field element types are `void`, `u8`, `u16`, `u32`, `felt` (default) and `miden::standards::fungible_faucets::metadata::token_symbol`:
 
 - `void` is a special type which always evaluates to `0` and does not produce an init requirement; it is intended for reserved or padding elements.
 - `u8`, `u16` and `u32` values can be parsed as decimal numbers and represent 8-bit, 16-bit and 32-bit unsigned integers.
 - `felt` values represent a field element, and can be parsed as decimal or hexadecimal numbers.
-- `token_symbol` values represent basic fungible token symbols, parsed as 1–6 uppercase ASCII characters.
+- `miden::standards::fungible_faucets::metadata::token_symbol` values represent basic fungible token symbols, parsed as 1–6 uppercase ASCII characters.
 
 ##### Value slots
 
@@ -152,7 +152,7 @@ Single-slot entries are represented by `ValueSlotSchema` and occupy one slot (on
   - an array of 4 felt schema descriptors (composite slot schema).
 - `default-value` (optional): An overridable default for singular slots. If omitted, the slot is required at instantiation (unless `type = "void"`).
 
-In our TOML example, the first entry defines a composite schema, while the second is an init-supplied value typed as `auth::rpo_falcon512::pub_key`.
+In our TOML example, the first entry defines a composite schema, while the second is an init-supplied value typed as `miden::standards::auth::rpo_falcon512::pub_key`.
 
 ##### Storage map slots
 
@@ -176,10 +176,10 @@ You can type maps at the slot level via `type.key` and `type.value` (each a `Wor
 ```toml
 [[storage.slot]]
 name = "demo::typed_map"
-type = { key = "word", value = "auth::rpo_falcon512::pub_key" }
+type = { key = "word", value = "miden::standards::auth::rpo_falcon512::pub_key" }
 ```
 
-This declares that all keys are `word` and all values are `auth::rpo_falcon512::pub_key`, regardless of whether the map contents come from `default-values = [...]` (static) or are supplied at instantiation via `InitStorageData`.
+This declares that all keys are `word` and all values are `miden::standards::auth::rpo_falcon512::pub_key`, regardless of whether the map contents come from `default-values = [...]` (static) or are supplied at instantiation via `InitStorageData`.
 
 `type.key` / `type.value` are validated when building map entries from `InitStorageData` (and when validating `default-values`).
 
