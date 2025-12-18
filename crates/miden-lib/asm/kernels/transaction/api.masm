@@ -479,7 +479,7 @@ end
 #! slot.
 #!
 #! Inputs:  [slot_id_prefix, slot_id_suffix, KEY, NEW_VALUE, pad(6)]
-#! Outputs: [OLD_MAP_ROOT, OLD_MAP_VALUE, pad(8)]
+#! Outputs: [OLD_MAP_VALUE, pad(8)]
 #!
 #! Where:
 #! - slot_id_{prefix, suffix} are the prefix and suffix felts of the slot identifier, which are
@@ -488,7 +488,6 @@ end
 #! - NEW_VALUE is the value of the new map item for the respective KEY.
 #! - OLD_VALUE is the value of the old map item for the respective KEY.
 #! - KEY is the key of the new item.
-#! - OLD_MAP_ROOT is the root of the old map before insertion
 #!
 #! Panics if:
 #! - a slot with the provided slot ID does not exist in account storage.
@@ -508,11 +507,10 @@ export.account_set_map_item
 
     # set the new map item
     exec.account::set_map_item
-
     # => [OLD_VALUE, pad(16)]
 
-    swapw dropw swapw dropw
     # truncate the stack
+    swapw dropw swapw dropw
     # => [OLD_VALUE, pad(8)]
 end
 

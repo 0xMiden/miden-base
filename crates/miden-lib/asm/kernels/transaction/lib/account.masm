@@ -605,7 +605,7 @@ end
 #! Stores NEW_VALUE under the specified KEY within the map contained in the given account storage slot.
 #!
 #! Inputs:  [slot_id_prefix, slot_id_suffix, KEY, NEW_VALUE]
-#! Outputs: [OLD_MAP_ROOT, OLD_MAP_VALUE]
+#! Outputs: [OLD_MAP_VALUE]
 #!
 #! Where:
 #! - slot_id_{prefix, suffix} are the prefix and suffix felts of the slot identifier, which are
@@ -614,7 +614,6 @@ end
 #! - NEW_VALUE is the value to set under KEY.
 #! - KEY is the key to set.
 #! - OLD_MAP_VALUE is the previous value of the item.
-#! - OLD_MAP_ROOT is the root of the old map before insertion
 #!
 #! Panics if:
 #! - a slot with the provided slot ID does not exist in account storage.
@@ -638,10 +637,6 @@ export.set_map_item
     # => [slot_ptr, KEY, NEW_VALUE]
  
     exec.set_map_item_raw
-    # => [OLD_MAP_ROOT, OLD_MAP_VALUE]
-
-    # todo rm
-    dropw
     # => [OLD_MAP_VALUE]
 end
 
@@ -1406,7 +1401,7 @@ proc.insert_and_validate_storage_map
 
         # insert the key-value pair into account storage
         # this could be optimized to avoid reading and writing the root on every call
-        exec.set_map_item_raw dropw dropw
+        exec.set_map_item_raw dropw
         # => [remaining_entries, slot_ptr, MAP_ROOT]
 
         dup neq.0
@@ -1560,14 +1555,13 @@ end
 #! WARNING: This must only be used on the native account.
 #!
 #! Inputs:  [slot_ptr, KEY, NEW_VALUE]
-#! Outputs: [OLD_MAP_ROOT, OLD_MAP_VALUE]
+#! Outputs: [OLD_MAP_VALUE]
 #!
 #! Where:
 #! - slot_ptr is the pointer to a slot.
 #! - KEY is the key to set.
 #! - NEW_VALUE is the value to set under KEY.
 #! - OLD_MAP_VALUE is the previous value of the item.
-#! - OLD_MAP_ROOT is the root of the old map before insertion
 #!
 #! Panics if:
 #! - a slot with the provided slot ID does not exist in account storage.
@@ -1576,8 +1570,7 @@ end
 #! Locals:
 #! - 0: slot_ptr
 #! - 4..8: OLD_MAP_VALUE
-#! - 8..12: OLD_MAP_ROOT
-proc set_map_item_raw.12
+proc set_map_item_raw.8
     # store slot_ptr until the end of the procedure
     dup loc_store.0
     # => [slot_ptr, KEY, NEW_VALUE]
@@ -1587,10 +1580,6 @@ proc set_map_item_raw.12
 
     # load the current map root from memory
     exec.get_item_raw
-    # => [OLD_MAP_ROOT, KEY, NEW_VALUE]
-
-    # store OLD_MAP_ROOT until the end of the procedure
-    loc_storew_be.8
     # => [OLD_MAP_ROOT, KEY, NEW_VALUE]
 
     # duplicate the KEY and the NEW_VALUE for account delta insertion and event emission
@@ -1630,9 +1619,9 @@ proc set_map_item_raw.12
     exec.account_delta::set_map_item
     # => []
 
-    # load OLD_MAP_ROOT and OLD_MAP_VALUE as return values on the stack
-    padw loc_loadw_be.4 padw loc_loadw_be.8
-    # => [OLD_MAP_ROOT, OLD_MAP_VALUE]
+    # load OLD_MAP_VALUE as return value on the stack
+    padw loc_loadw_be.4
+    # => [OLD_MAP_VALUE]
 end
 
 #! Gets the value of the storage slot located at the memory address specified by the provided
