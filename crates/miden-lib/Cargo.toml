@@ -44,3 +44,8 @@ anyhow          = "1.0"
 assert_matches  = { workspace = true }
 miden-objects   = { features = ["testing"], workspace = true }
 miden-processor = { features = ["testing"], workspace = true }
+
+# When building as a dev-dependency (e.g., `cargo test --workspace` or `cargo check --all-targets`),
+# enable the `testing` feature. This is a workaround for Cargo's lack of test-specific features.
+# See: https://github.com/rust-lang/cargo/issues/2911#issuecomment-1483256987
+miden-lib = { features = ["testing"], path = "." }
