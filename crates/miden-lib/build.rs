@@ -147,7 +147,7 @@ fn compile_tx_kernel(source_dir: &Path, target_dir: &Path) -> Result<Assembler> 
     let shared_utils_path = Path::new(ASM_DIR).join(SHARED_UTILS_DIR);
     let kernel_namespace = LibraryNamespace::Kernel;
 
-    let mut assembler = build_assembler(None)?.with_debug_mode(true);
+    let mut assembler = build_assembler(None)?;
     // add the shared util modules to the kernel lib under the kernel::util namespace
     assembler.compile_and_statically_link_from_dir(kernel_namespace.clone(), &shared_utils_path)?;
 
@@ -396,7 +396,7 @@ fn build_assembler(kernel: Option<KernelLibrary>) -> Result<Assembler> {
     kernel
         .map(|kernel| Assembler::with_kernel(Arc::new(DefaultSourceManager::default()), kernel))
         .unwrap_or_default()
-        .with_debug_mode(true)
+        .with_debug_mode(cfg!(feature = "with-debug-info"))
         .with_dynamic_library(miden_stdlib::StdLibrary::default())
 }
 
