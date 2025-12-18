@@ -180,15 +180,15 @@ const.ACCT_CODE_COMMITMENT_OFFSET=12
 const.ACCT_CORE_DATA_SECTION_END_OFFSET=16
 const.NUM_ACCT_PROCEDURES_OFFSET=28
 const.ACCT_PROCEDURES_SECTION_OFFSET=32
-const.ACCT_PROCEDURES_CALL_TRACKING_OFFSET=2084
-const.NUM_ACCT_STORAGE_SLOTS_OFFSET=2340
-const.ACCT_STORAGE_SLOTS_SECTION_OFFSET=2344
+const.ACCT_PROCEDURES_CALL_TRACKING_OFFSET=1060
+const.NUM_ACCT_STORAGE_SLOTS_OFFSET=1316
+const.ACCT_STORAGE_SLOTS_SECTION_OFFSET=2340
 
 # Offset at which an exact copy of the account's storage slot section starting at
 # ACCT_STORAGE_SLOTS_SECTION_OFFSET is kept. This keeps the initial values of the account storage
 # slots accessible to enable computing a diff between the initial and current account storage slots
 # for use in the account delta. This section is only present for the native account.
-const.ACCT_INITIAL_STORAGE_SLOTS_SECTION_OFFSET=4384
+const.ACCT_INITIAL_STORAGE_SLOTS_SECTION_OFFSET=1320
 
 # NATIVE ACCOUNT DELTA
 # -------------------------------------------------------------------------------------------------
