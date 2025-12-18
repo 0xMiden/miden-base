@@ -42,7 +42,7 @@ procedure_digest!(
 /// An [`AccountComponent`] implementing a basic wallet.
 ///
 /// It reexports the procedures from `miden::contracts::wallets::basic`. When linking against this
-/// component, the `miden` library (i.e. [`ProtocoLib`](miden_objects::ProtocolLib)) must be
+/// component, the `miden` library (i.e. [`ProtocolLib`](miden_objects::ProtocolLib)) must be
 /// available to the assembler which is the case when using [`CodeBuilder`][builder]. The procedures
 /// of this component are:
 /// - `receive_asset`, which can be used to add an asset to the account.

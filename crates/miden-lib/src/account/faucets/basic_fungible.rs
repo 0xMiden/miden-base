@@ -44,7 +44,7 @@ procedure_digest!(
 ///
 /// It reexports the procedures from `miden::contracts::faucets::basic_fungible`. When linking
 /// against this component, the `miden` library (i.e.
-/// [`ProtocoLib`](miden_objects::ProtocolLib)) must be available to the assembler which is the
+/// [`ProtocolLib`](miden_objects::ProtocolLib)) must be available to the assembler which is the
 /// case when using [`CodeBuilder`][builder]. The procedures of this component are:
 /// - `distribute`, which mints an assets and create a note for the provided recipient.
 /// - `burn`, which burns the provided asset.
