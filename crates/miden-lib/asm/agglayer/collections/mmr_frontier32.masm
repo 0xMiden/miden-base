@@ -1,0 +1,265 @@
+use miden::core::crypto::hashes::keccak256
+
+# Module description: TBD
+
+# CONSTANTS
+# =================================================================================================
+
+# The maximum number of leaves which could be added to the MMR.
+const MAX_LEAVES_NUM = 32
+
+# The total height of the full MMR tree, which root represents the the commitment to the current
+# frontier.
+const TREE_HEIGHT = 5
+
+# The number of the stack elements which one node occupy.
+const NODE_SIZE = 8
+
+# The offset of the number of leaves in the current MMR state.
+const NUM_LEAVES_OFFSET = 0
+
+# The offset of the MMR root. 
+#
+# Q: do we need to store the root? It seems like we never return it
+const MMR_ROOT_OFFSET = 4 
+
+# The offset of the array of the zero hashes of respective heights.
+const ZEROS_OFFSET = 12 # 6 double words, 48 felts in total
+
+# The offset of the array of the frontier nodes of respective heights.
+const FRONTIER_OFFSET = 60 # 6 double words, 48 felts in total
+
+# PUBLIC API
+# =================================================================================================
+
+#! Sets the zeros in the zero array, sets the root to the ZERO_5 (root of the zero tree of height 5)
+#!
+#! Inputs:  [mmr_frontier_ptr]
+#! Outputs: []
+pub proc new
+    # prepare the pointers to the zero array and to the root
+    dup add.MMR_ROOT_OFFSET swap add.ZEROS_OFFSET
+    # => [zero_array_ptr, mmr_root_ptr]
+
+    # store the zero for the height 0
+    push.1676014350.378744630.4127735880.2512168523.3362732168.2839872470.2825030484.3656125737
+    # => [ZERO_0_LO, ZERO_0_HI, zero_array_ptr, mmr_root_ptr]
+
+    exec.mem_store_double_word
+    # => [zero_array_ptr, mmr_root_ptr]
+
+    # store the zero for the height 1
+    add.NODE_SIZE
+    push.501060780.3871659214.3009211592.2623812180.1269040150.2402257162.1716941530.3619962211
+    # => [ZERO_1_LO, ZERO_1_HI, zero_array_ptr, mmr_root_ptr]
+
+    exec.mem_store_double_word
+    # => [zero_array_ptr+8, mmr_root_ptr]
+
+    # store the zero for the height 2
+    add.NODE_SIZE
+    push.2113874120.866443917.1466696484.1577749685.3266301349.2378900196.2613970667.2822768521
+    # => [ZERO_2_LO, ZERO_2_HI, zero_array_ptr, mmr_root_ptr]
+
+    exec.mem_store_double_word
+    # => [zero_array_ptr+16, mmr_root_ptr]
+
+    # store the zero for the height 3
+    add.NODE_SIZE
+    push.3624627744.3896701049.3259095475.2541063347.2174359630.3386860883.819752706.2663419451
+    # => [ZERO_3_LO, ZERO_3_HI, zero_array_ptr, mmr_root_ptr]
+
+    exec.mem_store_double_word
+    # => [zero_array_ptr+24, mmr_root_ptr]
+
+    # store the zero for the height 4
+    add.NODE_SIZE
+    push.3672259025.1408703058.2325593427.3764368977.1768984761.3986407010.3179733816.3993949676
+    # => [ZERO_4_LO, ZERO_4_HI, zero_array_ptr, mmr_root_ptr]
+
+    exec.mem_store_double_word
+    # => [zero_array_ptr+32, mmr_root_ptr]
+
+    # store the zero for the height 5, update the root
+    add.NODE_SIZE
+    push.2772295100.1943789808.3975148557.2783120662.1954699067.4078189558.55884592.3556179934
+    # => [ZERO_5_LO, ZERO_5_HI, zero_array_ptr, mmr_root_ptr]
+
+    dup.8 mem_storew_be dup.9 mem_storew_be dropw
+    movup.4 mem_storew_be movup.4 mem_storew_be
+    # => []
+end
+
+#! Updates the existing frontier with the new leaf, returns a new leaf count and a new MMR root.
+#!
+#! Inputs:  [NEW_LEAF_LO, NEW_LEAF_HI, mmr_frontier_ptr]
+#! Outputs: [NEW_ROOT_LO, NEW_ROOT_HI]
+@locals(8)
+pub proc append_and_update_frontier
+    # store the new leaf to the local memory
+    loc_storew.0 dropw
+    loc_storew.4 dropw
+    # => [mmr_frontier_ptr]
+
+    # get the leaves number
+    dup add.NUM_LEAVES_OFFSET mem_load
+    # => [num_leaves, mmr_frontier_ptr]
+    
+    # store the updated leaves number
+    dup add.1 dup.2 add.NUM_LEAVES_OFFSET
+    # => [num_leaves_ptr, num_leaves+1, num_leaves, mmr_frontier_ptr]
+
+    mem_store
+    # => [num_leaves, mmr_frontier_ptr]
+
+    # iterate `TREE_HEIGHT` times to get the root of the tree
+    #
+    # iter_counter in that case will show the current tree height
+    push.0 push.1
+    # => [loop_flag=1, iter_counter=0, num_leaves, mmr_frontier_ptr]
+
+    while.true
+        # => [iter_counter, num_leaves, mmr_frontier_ptr]
+
+        # get the pointer to the frontier node of the current height
+        dup.2 add.FRONTIER_OFFSET dup.1 mul.NODE_SIZE add
+        # => [frontier[iter_counter]_ptr, iter_counter, num_leaves, mmr_frontier_ptr]
+
+        # determine whether the last `num_leaves` bit is 1 (is `num_leaves` odd)
+        dup.2 u32and.1
+        # => [is_odd, frontier[iter_counter]_ptr, iter_counter, num_leaves, mmr_frontier_ptr]
+
+        if.true
+            # => [frontier[iter_counter]_ptr, iter_counter, num_leaves, mmr_frontier_ptr]
+            #
+            # this height already had a subtree root stored in frontier[iter_counter], merge into
+            # parent.
+            exec.mem_load_double_word
+            # => [FRONTIER[iter_counter]_LO, FRONTIER[iter_counter]_HI, iter_counter, num_leaves, mmr_frontier_ptr]
+
+            # load the current hash from the local memory back to the stack
+            padw loc_loadw.4 padw loc_loadw.0 swapdw
+            # => [FRONTIER[iter_counter]_LO, FRONTIER[iter_counter]_HI, CUR_HASH_LO, CUR_HASH_HI, iter_counter, num_leaves, mmr_frontier_ptr]
+
+            # merge the frontier node of this height with the current hash to get the current hash
+            # of the next height (merge(frontier[h], cur))
+            exec.keccak256::merge
+            # => [CUR_HASH_LO', CUR_HASH_HI', iter_counter, num_leaves, mmr_frontier_ptr]
+
+            # store the current hash of the next height back to the local memory
+            loc_storew.0 dropw
+            loc_storew.4 dropw
+            # => [iter_counter, num_leaves, mmr_frontier_ptr]
+        else
+            # => [frontier[iter_counter]_ptr, iter_counter, num_leaves, mmr_frontier_ptr]
+            #
+            # this height wasn't "occupied" yet: store the current hash as the subtree root 
+            # (frontier node) at height `iter_counter`
+            padw loc_loadw.4 padw loc_loadw.0
+            # => [CUR_HASH_LO, CUR_HASH_HI, frontier[iter_counter]_ptr, iter_counter, num_leaves, mmr_frontier_ptr]
+
+            # store the CUR_HASH to the frontier[iter_counter]_ptr
+            dup.8 mem_storew_be swapw
+            movup.8 add.4 mem_storew_be swapw
+            # => [CUR_HASH_LO, CUR_HASH_HI, iter_counter, num_leaves, mmr_frontier_ptr]
+
+            # get the pointer to the zero node of the current height
+            dup.10 add.ZEROS_OFFSET dup.9 mul.NODE_SIZE add
+            # => [zeros[iter_counter], CUR_HASH_LO, CUR_HASH_HI, iter_counter, num_leaves, mmr_frontier_ptr]
+
+            # load the zero node to the stack
+            exec.mem_load_double_word swapdw
+            # => [CUR_HASH_LO, CUR_HASH_HI, ZERO_H_LO, ZERO_H_HI, iter_counter, num_leaves, mmr_frontier_ptr]
+
+            # merge the current hash with the zero node of this height to get the current hash of
+            # the next height (merge(cur, zeroes[h]))
+            exec.keccak256::merge
+            # => [CUR_HASH_LO', CUR_HASH_HI', iter_counter, num_leaves, mmr_frontier_ptr]
+
+            # store the current hash of the next height back to the local memory
+            loc_storew.0 dropw
+            loc_storew.4 dropw
+            # => [iter_counter, num_leaves, mmr_frontier_ptr]
+        end
+        # => [iter_counter, num_leaves, mmr_frontier_ptr]
+
+        # update the counter
+        push.1 add
+
+        # update the `num_leaves` (shift it right by 1 bit)
+        swap u32shr.1 swap
+        # => [iter_counter+1, num_leaves>>1, mmr_frontier_ptr]
+
+        # compute the cycle flag
+        dup neq.TREE_HEIGHT
+        # => [loop_flag, iter_counter+1, num_leaves>>1, mmr_frontier_ptr]
+    end
+    # => [iter_counter=5, num_leaves=0, mmr_frontier_ptr]
+
+    # clean the stack
+    drop drop
+    # => [mmr_frontier_ptr]
+
+    # update the frontier[5] (frontier[tree_height]) value with the current (final) hash -- in case
+    # we have a full tree (32 leaves) this only node will represent the frontier
+    #
+    # at the same time we can update the root, since the final hash is the root of the full MMR
+
+    # load the root pointer and the pointer to the 5th frontier node onto the stack
+    dup add.FRONTIER_OFFSET push.TREE_HEIGHT.NODE_SIZE mul add
+    swap add.MMR_ROOT_OFFSET
+    # => [mmr_root_ptr, frontier[tree_height]_ptr]
+
+    # load the final hash
+    padw loc_loadw.4 padw loc_loadw.0
+    # => [FIN_HASH_LO, FIN_HASH_HI, mmr_root_ptr, frontier[tree_height]_ptr]
+
+    # store FIN_HASH_LO to the frontier[tree_height]_ptr
+    dup.9 mem_storew_be
+    # => [FIN_HASH_LO, FIN_HASH_HI, mmr_root_ptr, frontier[tree_height]_ptr]
+
+    # store FIN_HASH_LO to the root_ptr
+    dup.8 mem_storew_be
+    # => [FIN_HASH_LO, FIN_HASH_HI, mmr_root_ptr, frontier[tree_height]_ptr]
+
+    # store FIN_HASH_HI to the frontier[tree_height]_ptr+4
+    swapw movup.9 add.4 mem_storew_be
+    # => [FIN_HASH_HI, FIN_HASH_LO, mmr_root_ptr]
+
+    # store FIN_HASH_HI to the root_ptr+4
+    movup.8 add.4 mem_storew_be swapw
+    # => [FIN_HASH_LO, FIN_HASH_HI]
+    # sine the final hash represents the tree root, the resulting stack state could be represented 
+    # as:
+    # => [NEW_ROOT_LO, NEW_ROOT_HI]
+end
+
+# HELPER PROCEDURES
+# =================================================================================================
+
+#! Stores two words to the provided global memory address.
+#!
+#! Inputs:  [WORD_1, WORD_2, ptr]
+#! Outputs: [ptr]
+proc mem_store_double_word
+    dup.8 mem_storew_be dropw
+    # => [WORD_2, ptr]
+
+    dup.4 add.4 mem_storew_be dropw
+    # => [ptr]
+end
+
+#! Loads two words from the provided global memory address.
+#!
+#! Inputs:  [ptr]
+#! Outputs: [WORD_1, WORD_2]
+proc mem_load_double_word
+    padw dup.4 mem_loadw_be
+    # => [WORD_1, ptr]
+
+    padw movup.8 add.4 mem_loadw_be
+    # => [WORD_2, WORD_1]
+
+    swapw
+    # => [WORD_1, WORD_2]
+end
