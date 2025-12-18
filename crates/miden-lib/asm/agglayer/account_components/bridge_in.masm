@@ -14,3 +14,4 @@ pub proc check_claim_proof
     swap drop
     # => [is_valid_claim_proof]
 end
+

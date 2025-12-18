@@ -118,3 +118,4 @@ pub proc add_asset_message
   exec.write_mmr_frontier_root
   # => []
 end
+
