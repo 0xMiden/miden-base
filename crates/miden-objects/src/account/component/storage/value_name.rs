@@ -33,26 +33,6 @@ impl StorageValueName {
         }
     }
 
-    /// Creates a [`StorageValueName`] for a named field within a storage slot.
-    ///
-    /// This is equivalent to `StorageValueName::from_slot_name(slot).with_suffix(field)`.
-    pub fn from_slot_name_and_suffix(
-        slot_name: &StorageSlotName,
-        suffix: &StorageValueName,
-    ) -> Self {
-        Self::from_slot_name(slot_name).with_suffix(suffix)
-    }
-
-    /// Creates a [`StorageValueName`] for a named field within a storage slot.
-    pub fn from_slot_name_and_field(
-        slot_name: &StorageSlotName,
-        field: impl Into<String>,
-    ) -> Result<Self, StorageValueNameError> {
-        let field: String = field.into();
-        let suffix: StorageValueName = field.parse()?;
-        Ok(Self::from_slot_name_and_suffix(slot_name, &suffix))
-    }
-
     /// Creates an empty [`StorageValueName`].
     pub(crate) fn empty() -> Self {
         StorageValueName { fully_qualified_name: String::default() }

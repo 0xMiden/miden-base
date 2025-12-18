@@ -155,13 +155,14 @@ fn metadata_from_toml_parses_named_storage_schema() {
         version = "0.1.0"
         supported-types = []
 
-        [[storage.value]]
+        [[storage.slot]]
         name = "demo::test_value"
         description = "a demo slot"
         type = "word"
 
-        [[storage.map]]
+        [[storage.slot]]
         name = "demo::my_map"
+        type = { key = "word", value = "word" }
     "#;
 
     let metadata = AccountComponentMetadata::from_toml(toml_str).unwrap();
@@ -179,8 +180,9 @@ fn metadata_from_toml_rejects_typed_fields_in_static_map_values() {
         version = "0.1.0"
         supported-types = []
 
-        [[storage.map]]
+        [[storage.slot]]
         name = "demo::my_map"
+        type = { key = "word", value = "word" }
         default-values = [
             { key = "0x1", value = { type = "word" } },
         ]
@@ -203,7 +205,7 @@ fn metadata_from_toml_rejects_reserved_slot_names() {
             version = "0.1.0"
             supported-types = []
 
-            [[storage.value]]
+            [[storage.slot]]
             name = "{reserved_slot}"
             type = "word"
         "#
@@ -223,13 +225,15 @@ fn metadata_toml_round_trip_value_and_map_slots() {
         version = "0.1.0"
         supported-types = []
 
-        [[storage.value]]
+        [[storage.slot]]
         name = "demo::scalar"
         description = "single word slot"
+        type = "word"
         default-value = "0x1"
 
-        [[storage.map]]
+        [[storage.slot]]
         name = "demo::statemap"
+        type = { key = "word", value = "word" }
         default-values = [
             { key = "0x000000000000ed5d", value = "0x10" },
         ]
@@ -252,7 +256,7 @@ fn metadata_toml_round_trip_composed_slot_with_typed_fields() {
         version = "0.1.0"
         supported-types = []
 
-        [[storage.value]]
+        [[storage.slot]]
         name = "demo::composed"
         description = "composed word with typed fields"
         type = [
@@ -290,14 +294,13 @@ fn metadata_toml_round_trip_typed_slots() {
         version = "0.1.0"
         supported-types = []
 
-        [[storage.value]]
+        [[storage.slot]]
         name = "demo::typed_value"
         type = "word"
 
-        [[storage.map]]
+        [[storage.slot]]
         name = "demo::typed_map"
-        key-type = "auth::rpo_falcon512::pub_key"
-        value-type = "auth::rpo_falcon512::pub_key"
+        type = { key = "auth::rpo_falcon512::pub_key", value = "auth::rpo_falcon512::pub_key" }
     "#;
 
     let metadata =
@@ -342,27 +345,21 @@ fn metadata_toml_round_trip_typed_slots() {
     let round_trip = metadata.to_toml().expect("serialize");
     let parsed: toml::Value = toml::from_str(&round_trip).unwrap();
     let storage = parsed.get("storage").unwrap().as_table().unwrap();
-    let storage_values = storage.get("value").unwrap().as_array().unwrap();
-    let storage_maps = storage.get("map").unwrap().as_array().unwrap();
+    let storage_slots = storage.get("slot").unwrap().as_array().unwrap();
 
-    let typed_value_entry = storage_values
+    let typed_value_entry = storage_slots
         .iter()
         .find(|entry| entry.get("name").unwrap().as_str().unwrap() == "demo::typed_value")
         .unwrap();
     assert_eq!(typed_value_entry.get("type").unwrap().as_str().unwrap(), "word");
 
-    let typed_map_entry = storage_maps
+    let typed_map_entry = storage_slots
         .iter()
         .find(|entry| entry.get("name").unwrap().as_str().unwrap() == "demo::typed_map")
         .unwrap();
-    assert_eq!(
-        typed_map_entry.get("key-type").unwrap().as_str().unwrap(),
-        "auth::rpo_falcon512::pub_key"
-    );
-    assert_eq!(
-        typed_map_entry.get("value-type").unwrap().as_str().unwrap(),
-        "auth::rpo_falcon512::pub_key"
-    );
+    let map_type = typed_map_entry.get("type").unwrap().as_table().unwrap();
+    assert_eq!(map_type.get("key").unwrap().as_str().unwrap(), "auth::rpo_falcon512::pub_key");
+    assert_eq!(map_type.get("value").unwrap().as_str().unwrap(), "auth::rpo_falcon512::pub_key");
 }
 
 #[test]
@@ -374,7 +371,7 @@ fn extensive_schema_metadata_and_init_toml_example() {
         supported-types = ["FungibleFaucet", "RegularAccountImmutableCode"]
 
         # composed slot schema expressed via `type = [...]`
-        [[storage.value]]
+        [[storage.slot]]
         name = "demo::token_metadata"
         description = "Token metadata: max_supply, symbol, decimals, reserved."
         type = [
@@ -385,53 +382,56 @@ fn extensive_schema_metadata_and_init_toml_example() {
         ]
 
         # singular word-typed slot (must be passed at instantiation)
-        [[storage.value]]
+        [[storage.slot]]
         name = "demo::owner_pub_key"
         description = "Owner public key"
         type = "auth::rpo_falcon512::pub_key"
 
         # singular felt-typed word slot (parsed as felt, stored as [0,0,0,<felt>])
-        [[storage.value]]
+        [[storage.slot]]
         name = "demo::protocol_version"
         description = "Protocol version stored as u8 in the last felt"
         type = "u8"
 
         # word slot with an overridable default
-        [[storage.value]]
+        [[storage.slot]]
         name = "demo::static_word"
         description = "A fully specified word slot"
         type = "word"
         default-value = ["0x1", "0x2", "0x3", "0x4"]
 
-        # Word slot with implied `type = "word"`
-        [[storage.value]]
+        # Word slot with explicit `type = "word"`
+        [[storage.slot]]
         name = "demo::legacy_word"
+        type = "word"
         default-value = "0x123"
 
         # Static map defaults (fully concrete key/value words)
-        [[storage.map]]
+        [[storage.slot]]
         name = "demo::static_map"
         description = "Static map with default entries"
+        type = { key = "word", value = "word" }
         default-values = [
             { key = "0x1", value = "0x10" },
             { key = ["0", "0", "0", "2"], value = ["0", "0", "0", "32"] }
         ]
 
-        # Map with no key/value typing specified: defaults to word/word
-        [[storage.map]]
+        # Word/word map (explicit key/value types).
+        [[storage.slot]]
         name = "demo::default_typed_map"
         description = "Defaults to key/value type => word/word"
+        type = { key = "word", value = "word" }
 
         # init-populated map with key/value types
-        [[storage.map]]
+        [[storage.slot]]
         name = "demo::typed_map_new"
-        key-type = [
+        type.key = [
             { type = "felt", name = "prefix" },
             { type = "felt", name = "suffix" },
             { type = "void" },
             { type = "void" }
         ]
-        value-type = "u16"
+        type.value = "u16"
     "#;
 
     let metadata = AccountComponentMetadata::from_toml(metadata_toml).unwrap();
@@ -441,7 +441,7 @@ fn extensive_schema_metadata_and_init_toml_example() {
     let round_trip = AccountComponentMetadata::from_toml(&round_trip_toml).unwrap();
     assert_eq!(metadata, round_trip);
 
-    // map typing defaults to word/word when omitted
+    // map typing is always explicit
     let default_map_name = StorageSlotName::new("demo::default_typed_map").unwrap();
     let StorageSlotSchema::Map(default_map) =
         metadata.storage_schema().fields().get(&default_map_name).unwrap()
@@ -457,7 +457,7 @@ fn extensive_schema_metadata_and_init_toml_example() {
         &WordSchema::new_singular(SchemaTypeIdentifier::native_word())
     );
 
-    // `key-type`/`value-type` parse as schema/type descriptors (not literal words).
+    // `type.key`/`type.value` parse as schema/type descriptors (not literal words).
     let typed_map_new_name = StorageSlotName::new("demo::typed_map_new").unwrap();
     let StorageSlotSchema::Map(typed_map_new) =
         metadata.storage_schema().fields().get(&typed_map_new_name).unwrap()
@@ -643,19 +643,19 @@ fn extensive_schema_metadata_and_init_toml_example() {
 fn typed_map_init_entries_are_validated() {
     let metadata_toml = r#"
         name = "typed map validation"
-        description = "validates init-provided map entries against key-type/value-type"
+        description = "validates init-provided map entries against type.key/type.value"
         version = "0.1.0"
         supported-types = []
 
-        [[storage.map]]
+        [[storage.slot]]
         name = "demo::typed_map"
-        key-type = [
+        type.key = [
             { name = "prefix" },
             { name = "suffix" },
             { type = "void" },
             { type = "void" }
         ]
-        value-type = "u16"
+        type.value = "u16"
     "#;
 
     let metadata = AccountComponentMetadata::from_toml(metadata_toml).unwrap();
@@ -679,13 +679,14 @@ fn typed_map_init_entries_are_validated() {
 fn typed_map_supports_non_numeric_value_types() {
     let metadata_toml = r#"
         name = "typed map token_symbol"
-        description = "parses typed map values using the slot-level value-type"
+        description = "parses typed map values using slot-level type.value"
         version = "0.1.0"
         supported-types = []
 
-        [[storage.map]]
+        [[storage.slot]]
         name = "demo::symbol_map"
-        value-type = "token_symbol"
+        type.key = "word"
+        type.value = "token_symbol"
     "#;
 
     let metadata = AccountComponentMetadata::from_toml(metadata_toml).unwrap();

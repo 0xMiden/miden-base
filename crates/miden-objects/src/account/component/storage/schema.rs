@@ -803,12 +803,9 @@ impl MapSlotSchema {
     pub fn new(
         description: Option<String>,
         default_values: Option<BTreeMap<Word, Word>>,
-        key_schema: Option<WordSchema>,
-        value_schema: Option<WordSchema>,
+        key_schema: WordSchema,
+        value_schema: WordSchema,
     ) -> Self {
-        let default_word_schema = WordSchema::new_singular(SchemaTypeIdentifier::native_word());
-        let key_schema = key_schema.unwrap_or_else(|| default_word_schema.clone());
-        let value_schema = value_schema.unwrap_or(default_word_schema);
         Self {
             description,
             default_values,
@@ -1010,12 +1007,7 @@ impl Deserializable for MapSlotSchema {
         let default_values = Option::<BTreeMap<Word, Word>>::read_from(source)?;
         let key_schema = WordSchema::read_from(source)?;
         let value_schema = WordSchema::read_from(source)?;
-        Ok(MapSlotSchema::new(
-            description,
-            default_values,
-            Some(key_schema),
-            Some(value_schema),
-        ))
+        Ok(MapSlotSchema::new(description, default_values, key_schema, value_schema))
     }
 }
 
@@ -1040,12 +1032,18 @@ mod tests {
 
     #[test]
     fn map_slot_schema_default_values_returns_map() {
+        let word_schema = WordSchema::new_singular(SchemaTypeIdentifier::native_word());
         let mut default_values = BTreeMap::new();
         default_values.insert(
             Word::from([Felt::new(1), Felt::new(0), Felt::new(0), Felt::new(0)]),
             Word::from([Felt::new(10), Felt::new(11), Felt::new(12), Felt::new(13)]),
         );
-        let slot = MapSlotSchema::new(Some("static map".into()), Some(default_values), None, None);
+        let slot = MapSlotSchema::new(
+            Some("static map".into()),
+            Some(default_values),
+            word_schema.clone(),
+            word_schema,
+        );
 
         let mut expected = BTreeMap::new();
         expected.insert(
@@ -1098,7 +1096,7 @@ mod tests {
             FeltSchema::new_typed(SchemaTypeIdentifier::native_felt(), "d".parse().unwrap()),
         ]);
 
-        let slot = MapSlotSchema::new(None, None, Some(key_schema), Some(value_schema));
+        let slot = MapSlotSchema::new(None, None, key_schema, value_schema);
 
         assert_eq!(
             slot.key_schema(),
@@ -1173,7 +1171,8 @@ mod tests {
 
     #[test]
     fn map_slot_schema_accepts_typed_map_init_value() {
-        let slot = MapSlotSchema::new(None, None, None, None);
+        let word_schema = WordSchema::new_singular(SchemaTypeIdentifier::native_word());
+        let slot = MapSlotSchema::new(None, None, word_schema.clone(), word_schema);
         let slot_prefix: StorageValueName = "demo::map".parse().unwrap();
 
         let entries = vec![(
@@ -1193,7 +1192,8 @@ mod tests {
 
     #[test]
     fn map_slot_schema_missing_init_value_defaults_to_empty_map() {
-        let slot = MapSlotSchema::new(None, None, None, None);
+        let word_schema = WordSchema::new_singular(SchemaTypeIdentifier::native_word());
+        let slot = MapSlotSchema::new(None, None, word_schema.clone(), word_schema);
         let built = slot
             .try_build_map(&InitStorageData::default(), "demo::map".parse().unwrap())
             .unwrap();

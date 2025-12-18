@@ -126,11 +126,6 @@ impl SchemaTypeIdentifier {
         SchemaTypeIdentifier::new("word").expect("type is well formed")
     }
 
-    /// Returns the schema type identifier for storage map slots.
-    pub fn storage_map() -> SchemaTypeIdentifier {
-        SchemaTypeIdentifier::new("map").expect("type is well formed")
-    }
-
     /// Returns the schema type identifier for the `void` type.
     ///
     /// The `void` type always parses to `0` and is intended to model reserved or padding felts.
@@ -203,7 +198,7 @@ pub trait FeltType: Send + Sync {
 }
 
 /// Trait for converting a string into a single `Word`.
-pub trait WordType: alloc::fmt::Debug + Send + Sync {
+pub trait WordType: Send + Sync {
     /// Returns the type identifier.
     fn type_name() -> SchemaTypeIdentifier
     where
@@ -222,7 +217,7 @@ pub trait WordType: alloc::fmt::Debug + Send + Sync {
 
 impl<T> WordType for T
 where
-    T: FeltType + alloc::fmt::Debug,
+    T: FeltType,
 {
     fn type_name() -> SchemaTypeIdentifier {
         <T as FeltType>::type_name()

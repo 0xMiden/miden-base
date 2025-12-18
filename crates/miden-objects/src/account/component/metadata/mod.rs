@@ -7,12 +7,9 @@ use miden_mast_package::{Package, SectionId};
 use miden_processor::DeserializationError;
 use semver::Version;
 
-use super::AccountType;
+use super::{AccountStorageSchema, AccountType, InitValueRequirement, StorageValueName};
 use crate::AccountError;
 use crate::errors::AccountComponentTemplateError;
-
-mod storage;
-pub use storage::*;
 
 // ACCOUNT COMPONENT METADATA
 // ================================================================================================
@@ -77,8 +74,9 @@ pub use storage::*;
 /// )?;
 ///
 /// // Init value keys are derived from slot name: `demo::test_value.foo`.
+/// let foo: StorageValueName = "foo".parse()?;
 /// let init_storage_data = InitStorageData::new(
-///     [(StorageValueName::from_slot_name_and_field(&slot_name, "foo")?, "300".into())],
+///     [(StorageValueName::from_slot_name(&slot_name).with_suffix(&foo), "300".into())],
 ///     [],
 /// );
 ///
