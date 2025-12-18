@@ -1,7 +1,7 @@
 use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 
-use super::TransactionInputError;
+use crate::errors::TransactionInputError;
 use crate::note::{Note, NoteId, NoteInclusionProof, NoteLocation, Nullifier};
 use crate::transaction::InputNoteCommitment;
 use crate::utils::serde::{
@@ -373,7 +373,7 @@ mod input_notes_tests {
     use miden_core::Word;
 
     use super::InputNotes;
-    use crate::TransactionInputError;
+    use crate::errors::TransactionInputError;
     use crate::note::Note;
     use crate::transaction::InputNote;
 

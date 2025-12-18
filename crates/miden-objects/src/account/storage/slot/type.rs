@@ -1,6 +1,8 @@
 use alloc::string::ToString;
 use core::fmt::Display;
 
+use crate::Felt;
+use crate::errors::AccountError;
 use crate::utils::serde::{
     ByteReader,
     ByteWriter,
@@ -8,7 +10,6 @@ use crate::utils::serde::{
     DeserializationError,
     Serializable,
 };
-use crate::{AccountError, Felt};
 
 // STORAGE SLOT TYPE
 // ================================================================================================

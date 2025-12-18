@@ -1,8 +1,9 @@
 // NOTE EXECUTION HINT
 // ================================================================================================
 
+use crate::Felt;
 use crate::block::BlockNumber;
-use crate::{Felt, NoteError};
+use crate::errors::NoteError;
 
 /// Specifies the conditions under which a note is ready to be consumed.
 /// These conditions are meant to be encoded in the note script as well.

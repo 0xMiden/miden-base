@@ -9,13 +9,14 @@ use miden_lib::errors::tx_kernel_errors::{
 use miden_lib::transaction::memory;
 use miden_objects::account::AccountId;
 use miden_objects::asset::{Asset, FungibleAsset, NonFungibleAsset, NonFungibleAssetDetails};
+use miden_objects::errors::AssetVaultError;
 use miden_objects::testing::account_id::{
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
     ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET,
     ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET_1,
 };
 use miden_objects::testing::constants::{FUNGIBLE_ASSET_AMOUNT, NON_FUNGIBLE_ASSET_DATA};
-use miden_objects::{AssetVaultError, Felt, ONE, Word, ZERO};
+use miden_objects::{Felt, ONE, Word, ZERO};
 
 use crate::kernel_tests::tx::ExecutionOutputExt;
 use crate::{TransactionContextBuilder, assert_execution_error};

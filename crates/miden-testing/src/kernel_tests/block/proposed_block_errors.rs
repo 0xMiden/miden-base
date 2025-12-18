@@ -7,8 +7,9 @@ use miden_lib::note::create_p2id_note;
 use miden_objects::asset::FungibleAsset;
 use miden_objects::block::{BlockInputs, BlockNumber, ProposedBlock};
 use miden_objects::crypto::merkle::SparseMerklePath;
+use miden_objects::errors::ProposedBlockError;
 use miden_objects::note::{NoteInclusionProof, NoteType};
-use miden_objects::{MAX_BATCHES_PER_BLOCK, ProposedBlockError, ZERO};
+use miden_objects::{MAX_BATCHES_PER_BLOCK, ZERO};
 use miden_processor::crypto::MerklePath;
 use miden_tx::LocalTransactionProver;
 

@@ -1,5 +1,6 @@
 use miden_objects::account::{AccountHeader, AccountId};
-use miden_objects::{AccountError, Felt, WORD_SIZE, Word, WordError};
+use miden_objects::errors::AccountError;
+use miden_objects::{Felt, WORD_SIZE, Word, WordError};
 
 use super::memory::{
     ACCT_CODE_COMMITMENT_OFFSET,

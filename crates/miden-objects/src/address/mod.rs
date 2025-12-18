@@ -16,9 +16,9 @@ pub use interface::AddressInterface;
 use miden_processor::DeserializationError;
 pub use network_id::{CustomNetworkId, NetworkId};
 
-use crate::AddressError;
 use crate::account::AccountStorageMode;
 use crate::crypto::ies::SealingKey;
+use crate::errors::AddressError;
 use crate::note::NoteTag;
 use crate::utils::serde::{ByteWriter, Deserializable, Serializable};
 
@@ -245,10 +245,9 @@ mod tests {
     use bech32::{Bech32, Bech32m, NoChecksum};
 
     use super::*;
-    use crate::AccountIdError;
     use crate::account::{AccountId, AccountType};
     use crate::address::CustomNetworkId;
-    use crate::errors::Bech32Error;
+    use crate::errors::{AccountIdError, Bech32Error};
     use crate::testing::account_id::{ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, AccountIdBuilder};
 
     /// Tests that an account ID address can be encoded and decoded.

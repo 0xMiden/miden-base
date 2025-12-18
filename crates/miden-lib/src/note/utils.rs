@@ -1,8 +1,9 @@
 use miden_objects::account::AccountId;
 use miden_objects::asset::Asset;
 use miden_objects::block::BlockNumber;
+use miden_objects::errors::NoteError;
 use miden_objects::note::{NoteExecutionMode, NoteInputs, NoteRecipient, NoteTag, NoteType};
-use miden_objects::{Felt, NoteError, Word};
+use miden_objects::{Felt, Word};
 
 use super::well_known_note::WellKnownNote;
 

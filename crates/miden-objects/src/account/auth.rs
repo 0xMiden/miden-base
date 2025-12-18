@@ -3,6 +3,7 @@ use alloc::vec::Vec;
 use rand::{CryptoRng, Rng};
 
 use crate::crypto::dsa::{ecdsa_k256_keccak, rpo_falcon512};
+use crate::errors::AuthSchemeError;
 use crate::utils::serde::{
     ByteReader,
     ByteWriter,
@@ -10,7 +11,7 @@ use crate::utils::serde::{
     DeserializationError,
     Serializable,
 };
-use crate::{AuthSchemeError, Felt, Hasher, Word};
+use crate::{Felt, Hasher, Word};
 
 // AUTH SCHEME
 // ================================================================================================

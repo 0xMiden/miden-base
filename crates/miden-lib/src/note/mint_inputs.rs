@@ -1,5 +1,6 @@
+use miden_objects::errors::NoteError;
 use miden_objects::note::{NoteExecutionHint, NoteInputs, NoteRecipient};
-use miden_objects::{Felt, MAX_INPUTS_PER_NOTE, NoteError, Word};
+use miden_objects::{Felt, MAX_INPUTS_PER_NOTE, Word};
 
 /// Represents the different input formats for MINT notes.
 /// - Private: Creates a private output note using a precomputed recipient digest (8 MINT note

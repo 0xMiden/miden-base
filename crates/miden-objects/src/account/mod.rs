@@ -2,6 +2,7 @@ use alloc::string::ToString;
 use alloc::vec::Vec;
 
 use crate::asset::{Asset, AssetVault};
+use crate::errors::AccountError;
 use crate::utils::serde::{
     ByteReader,
     ByteWriter,
@@ -9,7 +10,7 @@ use crate::utils::serde::{
     DeserializationError,
     Serializable,
 };
-use crate::{AccountError, Felt, Hasher, Word, ZERO};
+use crate::{Felt, Hasher, Word, ZERO};
 
 mod account_id;
 pub use account_id::{
@@ -608,7 +609,6 @@ mod tests {
         AccountStorageDelta,
         AccountVaultDelta,
     };
-    use crate::AccountError;
     use crate::account::AccountStorageMode::Network;
     use crate::account::{
         Account,
@@ -624,6 +624,7 @@ mod tests {
         StorageSlotName,
     };
     use crate::asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset};
+    use crate::errors::AccountError;
     use crate::testing::account_id::{
         ACCOUNT_ID_PRIVATE_SENDER,
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,

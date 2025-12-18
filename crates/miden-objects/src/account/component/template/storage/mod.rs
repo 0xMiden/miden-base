@@ -401,9 +401,9 @@ mod tests {
         TemplateTypeError,
         WordRepresentation,
     };
-    use crate::errors::AccountComponentTemplateError;
+    use crate::errors::{AccountComponentTemplateError, AccountError};
     use crate::testing::account_code::CODE;
-    use crate::{AccountError, word};
+    use crate::word;
 
     #[test]
     fn test_storage_entry_serialization() {

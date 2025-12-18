@@ -3,8 +3,8 @@ use alloc::string::ToString;
 use miden_crypto::merkle::{InnerNodeInfo, SmtLeaf, SmtProof};
 
 use super::vault_key::AssetVaultKey;
-use crate::AssetError;
 use crate::asset::Asset;
+use crate::errors::AssetError;
 use crate::utils::serde::{Deserializable, DeserializationError, Serializable};
 
 /// A witness of an asset in an [`AssetVault`](super::AssetVault).

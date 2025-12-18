@@ -1,6 +1,8 @@
 use core::fmt::Display;
 use core::str::FromStr;
 
+use crate::Felt;
+use crate::errors::NoteError;
 use crate::utils::serde::{
     ByteReader,
     ByteWriter,
@@ -8,7 +10,6 @@ use crate::utils::serde::{
     DeserializationError,
     Serializable,
 };
-use crate::{Felt, NoteError};
 
 // CONSTANTS
 // ================================================================================================

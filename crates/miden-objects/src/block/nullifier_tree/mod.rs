@@ -328,10 +328,11 @@ mod tests {
     use assert_matches::assert_matches;
 
     use super::NullifierTree;
+    use crate::Word;
     use crate::block::BlockNumber;
     use crate::block::nullifier_tree::NullifierBlock;
+    use crate::errors::NullifierTreeError;
     use crate::note::Nullifier;
-    use crate::{NullifierTreeError, Word};
 
     #[test]
     fn leaf_value_encode_decode() {

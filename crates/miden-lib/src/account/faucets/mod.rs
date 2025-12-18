@@ -1,8 +1,9 @@
 use alloc::string::String;
 
+use miden_objects::Felt;
 use miden_objects::account::{Account, AccountStorage, AccountType, StorageSlotName};
+use miden_objects::errors::{AccountError, TokenSymbolError};
 use miden_objects::utils::sync::LazyLock;
-use miden_objects::{AccountError, Felt, TokenSymbolError};
 use thiserror::Error;
 
 mod basic_fungible;

@@ -6,6 +6,7 @@ use core::fmt::Debug;
 use crate::account::AccountHeader;
 use crate::asset::FungibleAsset;
 use crate::block::BlockNumber;
+use crate::errors::TransactionOutputError;
 use crate::note::{
     Note,
     NoteAssets,
@@ -23,7 +24,7 @@ use crate::utils::serde::{
     DeserializationError,
     Serializable,
 };
-use crate::{Felt, Hasher, MAX_OUTPUT_NOTES_PER_TX, TransactionOutputError, Word};
+use crate::{Felt, Hasher, MAX_OUTPUT_NOTES_PER_TX, Word};
 
 // TRANSACTION OUTPUTS
 // ================================================================================================
@@ -336,9 +337,10 @@ mod output_notes_tests {
     use assert_matches::assert_matches;
 
     use super::OutputNotes;
+    use crate::Word;
+    use crate::errors::TransactionOutputError;
     use crate::note::Note;
     use crate::transaction::OutputNote;
-    use crate::{TransactionOutputError, Word};
 
     #[test]
     fn test_duplicate_output_notes() -> anyhow::Result<()> {

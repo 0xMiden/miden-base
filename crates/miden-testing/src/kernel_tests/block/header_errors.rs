@@ -5,6 +5,7 @@ use assert_matches::assert_matches;
 use miden_lib::block::build_block;
 use miden_lib::testing::account_component::{IncrNonceAuthComponent, MockAccountComponent};
 use miden_lib::testing::mock_account::MockAccountExt;
+use miden_objects::Word;
 use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{
     Account,
@@ -17,10 +18,10 @@ use miden_objects::account::{
 use miden_objects::asset::FungibleAsset;
 use miden_objects::batch::ProvenBatch;
 use miden_objects::block::{BlockInputs, BlockNumber, ProposedBlock};
+use miden_objects::errors::{AccountTreeError, NullifierTreeError, ProposedBlockError};
 use miden_objects::note::NoteType;
 use miden_objects::transaction::ProvenTransactionBuilder;
 use miden_objects::vm::ExecutionProof;
-use miden_objects::{AccountTreeError, NullifierTreeError, ProposedBlockError, Word};
 use miden_tx::LocalTransactionProver;
 
 use crate::kernel_tests::block::utils::MockChainBlockExt;

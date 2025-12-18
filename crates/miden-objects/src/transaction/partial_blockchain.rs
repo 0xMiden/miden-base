@@ -2,9 +2,9 @@ use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
 use core::ops::RangeTo;
 
-use crate::PartialBlockchainError;
 use crate::block::{BlockHeader, BlockNumber};
 use crate::crypto::merkle::{InnerNodeInfo, MmrPeaks, PartialMmr};
+use crate::errors::PartialBlockchainError;
 use crate::utils::serde::{Deserializable, Serializable};
 
 // PARTIAL BLOCKCHAIN
@@ -281,12 +281,13 @@ mod tests {
     use rand_chacha::ChaCha20Rng;
 
     use super::PartialBlockchain;
+    use crate::Word;
     use crate::alloc::vec::Vec;
     use crate::block::{BlockHeader, BlockNumber, FeeParameters};
     use crate::crypto::dsa::ecdsa_k256_keccak::SecretKey;
     use crate::crypto::merkle::{Mmr, PartialMmr};
+    use crate::errors::PartialBlockchainError;
     use crate::testing::account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET;
-    use crate::{PartialBlockchainError, Word};
 
     #[test]
     fn test_partial_blockchain_add() {

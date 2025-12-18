@@ -4,6 +4,7 @@ use alloc::vec::Vec;
 use crate::account::{AccountId, AccountType};
 use crate::block::BlockNumber;
 use crate::crypto::dsa::ecdsa_k256_keccak::PublicKey;
+use crate::errors::FeeError;
 use crate::utils::serde::{
     ByteReader,
     ByteWriter,
@@ -11,7 +12,7 @@ use crate::utils::serde::{
     DeserializationError,
     Serializable,
 };
-use crate::{FeeError, Felt, Hasher, Word, ZERO};
+use crate::{Felt, Hasher, Word, ZERO};
 
 // BLOCK HEADER
 // ================================================================================================

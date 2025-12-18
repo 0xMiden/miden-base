@@ -4,6 +4,7 @@ use miden_objects::account::AccountId;
 use miden_objects::asset::Asset;
 use miden_objects::block::BlockNumber;
 use miden_objects::crypto::rand::FeltRng;
+use miden_objects::errors::NoteError;
 use miden_objects::note::{
     Note,
     NoteAssets,
@@ -15,7 +16,7 @@ use miden_objects::note::{
     NoteTag,
     NoteType,
 };
-use miden_objects::{Felt, NoteError, Word};
+use miden_objects::{Felt, Word};
 use utils::build_swap_tag;
 
 pub mod mint_inputs;

@@ -10,11 +10,12 @@ use miden_objects::assembly::{Assembler, DefaultSourceManager, KernelLibrary};
 use miden_objects::asset::FungibleAsset;
 use miden_objects::block::BlockNumber;
 use miden_objects::crypto::SequentialCommit;
+use miden_objects::errors::TransactionOutputError;
 use miden_objects::transaction::{OutputNote, OutputNotes, TransactionInputs, TransactionOutputs};
 use miden_objects::utils::serde::Deserializable;
 use miden_objects::utils::sync::LazyLock;
 use miden_objects::vm::{AdviceInputs, Program, ProgramInfo, StackInputs, StackOutputs};
-use miden_objects::{Felt, Hasher, TransactionOutputError, Word};
+use miden_objects::{Felt, Hasher, Word};
 use miden_stdlib::StdLibrary;
 
 use super::MidenLib;

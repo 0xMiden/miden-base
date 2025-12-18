@@ -393,8 +393,8 @@ mod tests {
     use assert_matches::assert_matches;
 
     use super::{AccountStorage, Deserializable, Serializable};
-    use crate::AccountError;
     use crate::account::{AccountStorageHeader, StorageSlot, StorageSlotHeader, StorageSlotName};
+    use crate::errors::AccountError;
 
     #[test]
     fn test_serde_account_storage() -> anyhow::Result<()> {

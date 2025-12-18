@@ -1,6 +1,6 @@
 use core::fmt::{self, Display, Formatter};
 
-use crate::AddressError;
+use crate::errors::AddressError;
 
 /// The account interface of an [`Address`](super::Address).
 ///

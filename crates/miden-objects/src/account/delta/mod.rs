@@ -11,8 +11,9 @@ use crate::account::{
 };
 use crate::asset::AssetVault;
 use crate::crypto::SequentialCommit;
+use crate::errors::{AccountDeltaError, AccountError};
 use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
-use crate::{AccountDeltaError, AccountError, Felt, Word, ZERO};
+use crate::{Felt, Word, ZERO};
 
 mod storage;
 pub use storage::{AccountStorageDelta, StorageMapDelta, StorageSlotDelta};
@@ -608,12 +609,13 @@ mod tests {
         NonFungibleAsset,
         NonFungibleAssetDetails,
     };
+    use crate::errors::AccountDeltaError;
     use crate::testing::account_id::{
         ACCOUNT_ID_PRIVATE_SENDER,
         ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
         AccountIdBuilder,
     };
-    use crate::{AccountDeltaError, ONE, Word, ZERO};
+    use crate::{ONE, Word, ZERO};
 
     #[test]
     fn account_delta_nonce_validation() {

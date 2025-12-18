@@ -9,7 +9,8 @@ pub use code::AccountComponentCode;
 
 use crate::account::{AccountType, StorageSlot};
 use crate::assembly::QualifiedProcedureName;
-use crate::{AccountError, MastForest, Word};
+use crate::errors::AccountError;
+use crate::{MastForest, Word};
 
 // ACCOUNT COMPONENT
 // ================================================================================================

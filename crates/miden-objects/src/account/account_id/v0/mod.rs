@@ -19,9 +19,9 @@ use crate::account::account_id::account_type::{
 use crate::account::account_id::storage_mode::{NETWORK, PRIVATE, PUBLIC};
 use crate::account::{AccountIdVersion, AccountStorageMode, AccountType};
 use crate::address::AddressType;
-use crate::errors::{AccountIdError, Bech32Error};
+use crate::errors::{AccountError, AccountIdError, Bech32Error};
 use crate::utils::{ByteReader, Deserializable, DeserializationError, Serializable};
-use crate::{AccountError, EMPTY_WORD, Felt, Hasher, Word};
+use crate::{EMPTY_WORD, Felt, Hasher, Word};
 
 // ACCOUNT ID VERSION 0
 // ================================================================================================

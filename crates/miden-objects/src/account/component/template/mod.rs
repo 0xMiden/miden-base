@@ -9,8 +9,7 @@ use miden_processor::DeserializationError;
 use semver::Version;
 
 use super::AccountType;
-use crate::AccountError;
-use crate::errors::AccountComponentTemplateError;
+use crate::errors::{AccountComponentTemplateError, AccountError};
 
 mod storage;
 pub use storage::*;
@@ -336,12 +335,11 @@ mod tests {
     use semver::Version;
 
     use super::{FeltRepresentation, test_package_with_metadata};
-    use crate::AccountError;
     use crate::account::component::FieldIdentifier;
     use crate::account::component::template::storage::StorageEntry;
     use crate::account::component::template::{AccountComponentMetadata, InitStorageData};
     use crate::account::{AccountComponent, StorageValueName};
-    use crate::errors::AccountComponentTemplateError;
+    use crate::errors::{AccountComponentTemplateError, AccountError};
     use crate::testing::account_code::CODE;
 
     fn default_felt_array() -> [FeltRepresentation; 4] {

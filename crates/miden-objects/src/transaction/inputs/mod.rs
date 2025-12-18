@@ -4,10 +4,10 @@ use core::fmt::Debug;
 use miden_core::utils::{Deserializable, Serializable};
 
 use super::PartialBlockchain;
-use crate::TransactionInputError;
 use crate::account::{AccountCode, PartialAccount};
 use crate::asset::AssetWitness;
 use crate::block::{BlockHeader, BlockNumber};
+use crate::errors::TransactionInputError;
 use crate::note::{Note, NoteInclusionProof};
 use crate::transaction::{TransactionArgs, TransactionScript};
 

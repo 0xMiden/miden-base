@@ -18,39 +18,12 @@ pub mod transaction;
 pub mod testing;
 
 mod constants;
-mod errors;
+pub mod errors;
 
 // RE-EXPORTS
 // ================================================================================================
 
 pub use constants::*;
-pub use errors::{
-    AccountDeltaError,
-    AccountError,
-    AccountIdError,
-    AccountTreeError,
-    AddressError,
-    AssetError,
-    AssetVaultError,
-    AuthSchemeError,
-    BatchAccountUpdateError,
-    FeeError,
-    NetworkIdError,
-    NoteError,
-    NullifierTreeError,
-    PartialAssetVaultError,
-    PartialBlockchainError,
-    ProposedBatchError,
-    ProposedBlockError,
-    ProvenBatchError,
-    ProvenTransactionError,
-    StorageMapError,
-    StorageSlotNameError,
-    TokenSymbolError,
-    TransactionInputError,
-    TransactionOutputError,
-    TransactionScriptError,
-};
 pub use miden_core::mast::{MastForest, MastNodeId};
 pub use miden_core::prettier::PrettyPrint;
 pub use miden_core::{EMPTY_WORD, Felt, FieldElement, ONE, StarkField, WORD_SIZE, ZERO};

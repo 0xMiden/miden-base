@@ -23,9 +23,9 @@ use miden_core::utils::{ByteReader, Deserializable, Serializable};
 use miden_crypto::utils::hex_to_bytes;
 use miden_processor::DeserializationError;
 
+use crate::Word;
 use crate::address::NetworkId;
-use crate::errors::AccountIdError;
-use crate::{AccountError, Word};
+use crate::errors::{AccountError, AccountIdError};
 
 /// The identifier of an [`Account`](crate::account::Account).
 ///

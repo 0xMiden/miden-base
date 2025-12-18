@@ -6,8 +6,9 @@ use super::utils::serde::{
     DeserializationError,
     Serializable,
 };
-use super::{AssetError, Felt, Hasher, TokenSymbolError, Word, ZERO};
+use super::{Felt, Hasher, Word, ZERO};
 use crate::account::AccountIdPrefix;
+use crate::errors::{AssetError, TokenSymbolError};
 
 mod fungible;
 use alloc::boxed::Box;

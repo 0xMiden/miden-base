@@ -1,5 +1,6 @@
 use alloc::string::String;
 
+use miden_objects::Word;
 use miden_objects::account::{
     Account,
     AccountBuilder,
@@ -7,7 +8,7 @@ use miden_objects::account::{
     AccountStorageMode,
     AccountType,
 };
-use miden_objects::{AccountError, Word};
+use miden_objects::errors::AccountError;
 use thiserror::Error;
 
 use super::AuthScheme;

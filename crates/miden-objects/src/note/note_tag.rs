@@ -390,8 +390,8 @@ mod tests {
     use assert_matches::assert_matches;
 
     use super::{NoteExecutionMode, NoteTag};
-    use crate::NoteError;
     use crate::account::AccountId;
+    use crate::errors::NoteError;
     use crate::note::NoteType;
     use crate::note::note_tag::{
         LOCAL_ANY,

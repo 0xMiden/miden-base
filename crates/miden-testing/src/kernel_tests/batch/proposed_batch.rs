@@ -5,14 +5,15 @@ use anyhow::Context;
 use assert_matches::assert_matches;
 use miden_lib::testing::account_component::MockAccountComponent;
 use miden_lib::testing::note::NoteBuilder;
+use miden_objects::Word;
 use miden_objects::account::{Account, AccountId, AccountStorageMode};
 use miden_objects::batch::ProposedBatch;
 use miden_objects::block::BlockNumber;
 use miden_objects::crypto::merkle::MerkleError;
+use miden_objects::errors::{BatchAccountUpdateError, ProposedBatchError};
 use miden_objects::note::{Note, NoteType};
 use miden_objects::testing::account_id::AccountIdBuilder;
 use miden_objects::transaction::{InputNote, InputNoteCommitment, OutputNote, PartialBlockchain};
-use miden_objects::{BatchAccountUpdateError, ProposedBatchError, Word};
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 

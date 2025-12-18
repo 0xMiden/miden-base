@@ -14,9 +14,10 @@ use super::{
     NonFungibleAsset,
     Serializable,
 };
+use crate::Word;
 use crate::account::{AccountId, AccountVaultDelta, NonFungibleDeltaAction};
 use crate::crypto::merkle::Smt;
-use crate::{AssetVaultError, Word};
+use crate::errors::AssetVaultError;
 
 mod partial;
 pub use partial::PartialVault;

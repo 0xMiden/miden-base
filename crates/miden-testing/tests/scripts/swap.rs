@@ -3,6 +3,7 @@ use miden_lib::note::utils;
 use miden_lib::utils::CodeBuilder;
 use miden_objects::account::{Account, AccountId, AccountStorageMode, AccountType};
 use miden_objects::asset::{Asset, FungibleAsset, NonFungibleAsset};
+use miden_objects::errors::NoteError;
 use miden_objects::note::{
     Note,
     NoteAssets,
@@ -18,7 +19,7 @@ use miden_objects::testing::account_id::{
     AccountIdBuilder,
 };
 use miden_objects::transaction::OutputNote;
-use miden_objects::{Felt, NoteError, Word};
+use miden_objects::{Felt, Word};
 use miden_testing::{Auth, MockChain};
 
 use crate::prove_and_verify_transaction;

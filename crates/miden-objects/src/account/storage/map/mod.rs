@@ -6,8 +6,8 @@ use miden_crypto::merkle::EmptySubtreeRoots;
 use super::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable, Word};
 use crate::account::StorageMapDelta;
 use crate::crypto::merkle::{InnerNodeInfo, LeafIndex, SMT_DEPTH, Smt, SmtLeaf};
-use crate::errors::StorageMapError;
-use crate::{AccountError, Felt, Hasher};
+use crate::errors::{AccountError, StorageMapError};
+use crate::{Felt, Hasher};
 
 mod partial;
 pub use partial::PartialStorageMap;

@@ -3,6 +3,7 @@ use miden_objects::account::auth::PublicKeyCommitment;
 use miden_objects::account::{AccountBuilder, AccountComponent, AccountType};
 use miden_objects::asset::{FungibleAsset, NonFungibleAsset, TokenSymbol};
 use miden_objects::crypto::rand::{FeltRng, RpoRandomCoin};
+use miden_objects::errors::NoteError;
 use miden_objects::note::{
     Note,
     NoteAssets,
@@ -17,7 +18,7 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE_2,
 };
-use miden_objects::{Felt, NoteError, Word, ZERO};
+use miden_objects::{Felt, Word, ZERO};
 
 use crate::AuthScheme;
 use crate::account::auth::{

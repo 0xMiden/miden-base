@@ -1,5 +1,5 @@
-use miden_objects::ProposedBlockError;
 use miden_objects::block::{BlockBody, BlockHeader, ProposedBlock};
+use miden_objects::errors::ProposedBlockError;
 
 use crate::transaction::TransactionKernel;
 

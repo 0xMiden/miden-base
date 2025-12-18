@@ -46,11 +46,12 @@ use miden_objects::block::{
 };
 use miden_objects::crypto::dsa::ecdsa_k256_keccak::SecretKey;
 use miden_objects::crypto::merkle::Smt;
+use miden_objects::errors::NoteError;
 use miden_objects::note::{Note, NoteDetails, NoteType};
 use miden_objects::testing::account_id::ACCOUNT_ID_NATIVE_ASSET_FAUCET;
 use miden_objects::testing::random_signer::RandomBlockSigner;
 use miden_objects::transaction::{OrderedTransactionHeaders, OutputNote};
-use miden_objects::{Felt, FieldElement, MAX_OUTPUT_NOTES_PER_BATCH, NoteError, Word, ZERO};
+use miden_objects::{Felt, FieldElement, MAX_OUTPUT_NOTES_PER_BATCH, Word, ZERO};
 use miden_processor::crypto::RpoRandomCoin;
 use rand::Rng;
 
