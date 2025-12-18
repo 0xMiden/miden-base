@@ -605,7 +605,7 @@ end
 #! Stores NEW_VALUE under the specified KEY within the map contained in the given account storage slot.
 #!
 #! Inputs:  [slot_id_prefix, slot_id_suffix, KEY, NEW_VALUE]
-#! Outputs: [OLD_MAP_VALUE]
+#! Outputs: [OLD_VALUE]
 #!
 #! Where:
 #! - slot_id_{prefix, suffix} are the prefix and suffix felts of the slot identifier, which are
@@ -613,7 +613,7 @@ end
 #!    - the slot must point to the root of the storage map.
 #! - NEW_VALUE is the value to set under KEY.
 #! - KEY is the key to set.
-#! - OLD_MAP_VALUE is the previous value of the item.
+#! - OLD_VALUE is the previous value of the item.
 #!
 #! Panics if:
 #! - a slot with the provided slot ID does not exist in account storage.
@@ -637,7 +637,7 @@ export.set_map_item
     # => [slot_ptr, KEY, NEW_VALUE]
  
     exec.set_map_item_raw
-    # => [OLD_MAP_VALUE]
+    # => [OLD_VALUE]
 end
 
 #! Returns the type of the storage slot at the provided index.
@@ -1555,13 +1555,13 @@ end
 #! WARNING: This must only be used on the native account.
 #!
 #! Inputs:  [slot_ptr, KEY, NEW_VALUE]
-#! Outputs: [OLD_MAP_VALUE]
+#! Outputs: [OLD_VALUE]
 #!
 #! Where:
 #! - slot_ptr is the pointer to a slot.
 #! - KEY is the key to set.
 #! - NEW_VALUE is the value to set under KEY.
-#! - OLD_MAP_VALUE is the previous value of the item.
+#! - OLD_VALUE is the previous value of the item.
 #!
 #! Panics if:
 #! - a slot with the provided slot ID does not exist in account storage.
@@ -1569,7 +1569,7 @@ end
 #!
 #! Locals:
 #! - 0: slot_ptr
-#! - 4..8: OLD_MAP_VALUE
+#! - 4..8: OLD_VALUE
 proc set_map_item_raw.8
     # store slot_ptr until the end of the procedure
     dup loc_store.0
@@ -1592,36 +1592,36 @@ proc set_map_item_raw.8
 
     # set the NEW_VALUE under HASHED_KEY in the tree
     exec.smt::set
-    # => [OLD_MAP_VALUE, NEW_ROOT, KEY, NEW_VALUE]
+    # => [OLD_VALUE, NEW_ROOT, KEY, NEW_VALUE]
 
-    # store OLD_MAP_VALUE until the end of the procedure
+    # store OLD_VALUE until the end of the procedure
     loc_storew_be.4 swapw
-    # => [NEW_ROOT, OLD_MAP_VALUE, KEY, NEW_VALUE]
+    # => [NEW_ROOT, OLD_VALUE, KEY, NEW_VALUE]
 
     # store NEW_ROOT into the map slot's VALUE
     loc_load.0 exec.set_item_raw
-    # => [OLD_MAP_VALUE, KEY, NEW_VALUE]
+    # => [OLD_VALUE, KEY, NEW_VALUE]
 
     swapw
-    # => [KEY, OLD_MAP_VALUE, NEW_VALUE]
+    # => [KEY, OLD_VALUE, NEW_VALUE]
 
     loc_load.0
-    # => [slot_ptr, KEY, OLD_MAP_VALUE, NEW_VALUE]
+    # => [slot_ptr, KEY, OLD_VALUE, NEW_VALUE]
 
     # emit event to signal that an account storage map item is being updated
     emit.ACCOUNT_STORAGE_AFTER_SET_MAP_ITEM_EVENT
-    # => [slot_ptr, KEY, OLD_MAP_VALUE, NEW_VALUE]
+    # => [slot_ptr, KEY, OLD_VALUE, NEW_VALUE]
 
     # convert the slot ptr to a slot index for the delta API
     exec.slot_ptr_to_index
-    # => [slot_idx, KEY, OLD_MAP_VALUE, NEW_VALUE]
+    # => [slot_idx, KEY, OLD_VALUE, NEW_VALUE]
 
     exec.account_delta::set_map_item
     # => []
 
-    # load OLD_MAP_VALUE as return value on the stack
+    # load OLD_VALUE as return value on the stack
     padw loc_loadw_be.4
-    # => [OLD_MAP_VALUE]
+    # => [OLD_VALUE]
 end
 
 #! Gets the value of the storage slot located at the memory address specified by the provided

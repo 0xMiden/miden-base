@@ -479,7 +479,7 @@ end
 #! slot.
 #!
 #! Inputs:  [slot_id_prefix, slot_id_suffix, KEY, NEW_VALUE, pad(6)]
-#! Outputs: [OLD_MAP_VALUE, pad(8)]
+#! Outputs: [OLD_VALUE, pad(8)]
 #!
 #! Where:
 #! - slot_id_{prefix, suffix} are the prefix and suffix felts of the slot identifier, which are

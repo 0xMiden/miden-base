@@ -289,7 +289,7 @@ impl TransactionEvent {
             },
 
             TransactionEventId::AccountStorageAfterSetMapItem => {
-                // Expected stack state: [event, slot_ptr, KEY, OLD_MAP_VALUE, NEW_VALUE]
+                // Expected stack state: [event, slot_ptr, KEY, OLD_VALUE, NEW_VALUE]
                 let slot_ptr = process.get_stack_item(1);
                 let key = process.get_stack_word_be(2);
                 let old_map_value = process.get_stack_word_be(6);
