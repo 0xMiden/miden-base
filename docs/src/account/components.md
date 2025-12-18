@@ -165,7 +165,7 @@ In our TOML example, the first entry defines a composite schema, while the secon
 
 `type.key` / `type.value` accept either a string type identifier (e.g. `"word"`) or a 4-element array of felt schema descriptors.
 
-If `default-values` is omitted, the map is populated at instantiation via [`InitStorageData`](#providing-init-values). When `default-values` are present, they act as defaults: init data can optionally add entries and override existing keys.
+If `default-values` is omitted, the map is populated at instantiation via [`InitStorageData`](#providing-init-values). When `default-values` are present, they act as defaults: init data can override existing values and optionally add new key-value pairs.
 
 In the example, the third storage entry defines a static map and the fourth entry (`procedure_thresholds`) is populated at instantiation.
 

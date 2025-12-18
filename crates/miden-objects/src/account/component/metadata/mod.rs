@@ -18,8 +18,8 @@ use crate::errors::AccountComponentTemplateError;
 ///
 /// An account component metadata describes the component alongside its storage layout.
 /// The storage layout can declare typed values which must be provided at instantiation time via
-/// [`InitStorageData`]. These can appear either at the slot level (a singular word slot) or inside
-/// composed words as typed fields.
+/// [InitStorageData](`super::storage::InitStorageData`). These can appear either at the slot level
+/// (a singular word slot) or inside composed words as typed fields.
 ///
 /// When the `std` feature is enabled, this struct allows for serialization and deserialization to
 /// and from a TOML file.

@@ -714,9 +714,11 @@ fn validate_felt_value(
                 felt.as_int()
             ))
         }),
-        "miden::standards::fungible_faucets::metadata::token_symbol" => crate::asset::TokenSymbol::try_from(felt)
-            .map(|_| ())
-            .map_err(|err| super::SchemaTypeError::ConversionError(err.to_string())),
+        "miden::standards::fungible_faucets::metadata::token_symbol" => {
+            crate::asset::TokenSymbol::try_from(felt)
+                .map(|_| ())
+                .map_err(|err| super::SchemaTypeError::ConversionError(err.to_string()))
+        },
         _ => Ok(()),
     }
 }
