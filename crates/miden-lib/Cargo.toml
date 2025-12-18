@@ -16,13 +16,13 @@ version.workspace      = true
 
 [features]
 default = ["std"]
-std     = ["miden-assembly/std", "miden-core-lib/std", "miden-objects/std", "miden-processor/std"]
-testing = ["dep:rand", "miden-assembly/testing", "miden-objects/testing"]
+std     = ["miden-assembly/std", "miden-core-lib/std", "miden-processor/std", "miden-protocol/std"]
+testing = ["dep:rand", "miden-assembly/testing", "miden-protocol/testing"]
 
 [dependencies]
 # Miden dependencies
-miden-objects   = { workspace = true }
 miden-processor = { workspace = true }
+miden-protocol  = { workspace = true }
 
 # External dependencies
 rand      = { optional = true, workspace = true }
@@ -33,15 +33,15 @@ fs-err         = { version = "3" }
 miden-assembly = { workspace = true }
 miden-core     = { workspace = true }
 miden-core-lib = { workspace = true }
-miden-objects  = { workspace = true }
+miden-protocol = { workspace = true }
 regex          = { version = "1.11" }
 walkdir        = { version = "2.5" }
 
 [dev-dependencies]
 anyhow          = "1.0"
 assert_matches  = { workspace = true }
-miden-objects   = { features = ["testing"], workspace = true }
 miden-processor = { features = ["testing"], workspace = true }
+miden-protocol  = { features = ["testing"], workspace = true }
 
 # When building as a dev-dependency (e.g., `cargo test --workspace` or `cargo check --all-targets`),
 # enable the `testing` feature. This is a workaround for Cargo's lack of test-specific features.

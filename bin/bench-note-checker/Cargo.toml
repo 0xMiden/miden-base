@@ -12,10 +12,10 @@ version                = "0.1.0"
 
 [dependencies]
 # Workspace dependencies
-miden-lib     = { workspace = true }
-miden-objects = { features = ["testing"], workspace = true }
-miden-testing = { workspace = true }
-miden-tx      = { workspace = true }
+miden-lib      = { workspace = true }
+miden-protocol = { features = ["testing"], workspace = true }
+miden-testing  = { workspace = true }
+miden-tx       = { workspace = true }
 
 # External dependencies
 anyhow = { workspace = true }

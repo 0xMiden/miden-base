@@ -55,8 +55,8 @@ const TX_KERNEL_ERROR_CATEGORIES: [&str; 14] = [
 // ================================================================================================
 
 /// Read and parse the contents from `./asm`.
-/// - Compiles the contents of asm/protocol directory into a Protocol library file (.masl) under miden::protocol
-///   namespace.
+/// - Compiles the contents of asm/protocol directory into a Protocol library file (.masl) under
+///   miden::protocol namespace.
 /// - Compiles the contents of asm/kernels into the transaction kernel library.
 fn main() -> Result<()> {
     // re-build when the MASM code changes
@@ -203,7 +203,8 @@ fn generate_kernel_proc_hash_file(kernel: KernelLibrary) -> Result<()> {
     let (_, module_info, _) = kernel.into_parts();
 
     let to_exclude = BTreeSet::from_iter(["exec_kernel_proc"]);
-    let offsets_filename = Path::new(ASM_DIR).join(ASM_PROTOCOL_DIR).join("kernel_proc_offsets.masm");
+    let offsets_filename =
+        Path::new(ASM_DIR).join(ASM_PROTOCOL_DIR).join("kernel_proc_offsets.masm");
     let offsets = parse_proc_offsets(&offsets_filename)?;
 
     let generated_procs: BTreeMap<usize, String> = module_info
@@ -301,8 +302,9 @@ fn build_assembler(kernel: Option<KernelLibrary>) -> Result<Assembler> {
         .with_dynamic_library(miden_core_lib::CoreLibrary::default())
 }
 
-/// Copies the content of the build `shared_modules` folder to the `lib` and `protocol` build folders.
-/// This is required to include the shared modules as APIs of the `kernel` and `protocol` libraries.
+/// Copies the content of the build `shared_modules` folder to the `lib` and `protocol` build
+/// folders. This is required to include the shared modules as APIs of the `kernel` and `protocol`
+/// libraries.
 ///
 /// This is done to make it possible to import the modules in the `shared_modules` folder directly,
 /// i.e. "use $kernel::account_id".
@@ -379,8 +381,8 @@ fn generate_error_constants(asm_source_dir: &Path) -> Result<()> {
     // ------------------------------------------
 
     let protocol_dir = asm_source_dir.join(ASM_PROTOCOL_DIR);
-    let errors =
-        shared::extract_all_masm_errors(&protocol_dir).context("failed to extract all masm errors")?;
+    let errors = shared::extract_all_masm_errors(&protocol_dir)
+        .context("failed to extract all masm errors")?;
 
     shared::generate_error_file(
         shared::ErrorModule {

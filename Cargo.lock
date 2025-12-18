@@ -233,7 +233,7 @@ dependencies = [
  "anyhow",
  "criterion 0.6.0",
  "miden-lib",
- "miden-objects",
+ "miden-protocol",
  "miden-testing",
  "miden-tx",
  "serde",
@@ -248,7 +248,7 @@ dependencies = [
  "anyhow",
  "criterion 0.6.0",
  "miden-lib",
- "miden-objects",
+ "miden-protocol",
  "miden-testing",
  "miden-tx",
  "serde",
@@ -1440,7 +1440,7 @@ dependencies = [
 name = "miden-block-prover"
 version = "0.13.0"
 dependencies = [
- "miden-objects",
+ "miden-protocol",
  "thiserror",
 ]
 
@@ -1565,8 +1565,8 @@ dependencies = [
  "miden-core",
  "miden-core-lib",
  "miden-lib",
- "miden-objects",
  "miden-processor",
+ "miden-protocol",
  "rand",
  "regex",
  "thiserror",
@@ -1628,45 +1628,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "miden-objects"
-version = "0.13.0"
-dependencies = [
- "anyhow",
- "assert_matches",
- "bech32",
- "color-eyre",
- "criterion 0.5.1",
- "fs-err",
- "getrandom 0.3.4",
- "miden-air",
- "miden-assembly",
- "miden-assembly-syntax",
- "miden-core",
- "miden-core-lib",
- "miden-crypto",
- "miden-mast-package",
- "miden-objects",
- "miden-processor",
- "miden-protocol-macros",
- "miden-utils-sync",
- "miden-verifier",
- "pprof",
- "rand",
- "rand_chacha",
- "rand_xoshiro",
- "regex",
- "rstest",
- "semver 1.0.27",
- "serde",
- "tempfile",
- "thiserror",
- "toml",
- "walkdir",
- "winter-air",
- "winter-rand-utils",
-]
-
-[[package]]
 name = "miden-processor"
 version = "0.20.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1687,10 +1648,49 @@ dependencies = [
 ]
 
 [[package]]
+name = "miden-protocol"
+version = "0.13.0"
+dependencies = [
+ "anyhow",
+ "assert_matches",
+ "bech32",
+ "color-eyre",
+ "criterion 0.5.1",
+ "fs-err",
+ "getrandom 0.3.4",
+ "miden-air",
+ "miden-assembly",
+ "miden-assembly-syntax",
+ "miden-core",
+ "miden-core-lib",
+ "miden-crypto",
+ "miden-mast-package",
+ "miden-processor",
+ "miden-protocol",
+ "miden-protocol-macros",
+ "miden-utils-sync",
+ "miden-verifier",
+ "pprof",
+ "rand",
+ "rand_chacha",
+ "rand_xoshiro",
+ "regex",
+ "rstest",
+ "semver 1.0.27",
+ "serde",
+ "tempfile",
+ "thiserror",
+ "toml",
+ "walkdir",
+ "winter-air",
+ "winter-rand-utils",
+]
+
+[[package]]
 name = "miden-protocol-macros"
 version = "0.13.0"
 dependencies = [
- "miden-objects",
+ "miden-protocol",
  "proc-macro2",
  "quote",
  "syn 2.0.111",
@@ -1719,8 +1719,8 @@ dependencies = [
  "itertools 0.14.0",
  "miden-block-prover",
  "miden-lib",
- "miden-objects",
  "miden-processor",
+ "miden-protocol",
  "miden-tx",
  "miden-tx-batch-prover",
  "rand",
@@ -1739,8 +1739,8 @@ dependencies = [
  "assert_matches",
  "miden-assembly",
  "miden-lib",
- "miden-objects",
  "miden-processor",
+ "miden-protocol",
  "miden-prover",
  "miden-tx",
  "miden-verifier",
@@ -1752,7 +1752,7 @@ dependencies = [
 name = "miden-tx-batch-prover"
 version = "0.13.0"
 dependencies = [
- "miden-objects",
+ "miden-protocol",
  "miden-tx",
 ]
 

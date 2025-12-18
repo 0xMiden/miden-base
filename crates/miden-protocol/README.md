@@ -1,6 +1,6 @@
-# Miden Objects
+# Miden Protocol
 
-This crates contains core components defining the Miden protocol.
+This crates contains core components defining the Miden protocol including the Miden protocol kernels.
 
 ## Modules
 

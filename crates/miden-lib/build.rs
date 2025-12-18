@@ -30,8 +30,8 @@ const STANDARDS_ERRORS_ARRAY_NAME: &str = "STANDARDS_ERRORS";
 // ================================================================================================
 
 /// Read and parse the contents from `./asm`.
-/// - Compiles the contents of asm/standards directory into a Miden library file (.masl) under standards
-///   namespace.
+/// - Compiles the contents of asm/standards directory into a Miden library file (.masl) under
+///   standards namespace.
 /// - Compiles the contents of asm/note_scripts directory into individual .masb files.
 /// - Compiles the contents of asm/account_components directory into individual .masl files.
 fn main() -> Result<()> {
