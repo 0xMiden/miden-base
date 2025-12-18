@@ -175,20 +175,24 @@ impl Deserializable for SchemaTypeIdentifier {
     }
 }
 
-// INIT VALUE REQUIREMENT
+// SCHEMA REQUIREMENT
 // ================================================================================================
 
 /// Describes the expected type and additional metadata for an init-provided storage value.
 ///
-/// An `InitValueRequirement` specifies the expected type identifier for a required init value as
-/// well as an optional description. This information is used to validate and provide context for
-/// instantiation-time values.
-#[derive(Debug)]
-pub struct InitValueRequirement {
+/// A schema requirement specifies the expected type identifier for an init value, along with
+/// optional description and default value metadata.
+///
+/// The `default_value` (when present) is the canonical string representation for this type, and
+/// can be used directly in [`InitStorageData`](super::InitStorageData).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SchemaRequirement {
     /// The expected type identifier.
     pub r#type: SchemaTypeIdentifier,
     /// An optional description providing additional context.
     pub description: Option<String>,
+    /// An optional default value, which can be overridden at component instantiation time.
+    pub default_value: Option<String>,
 }
 
 // SCHEMA TYPE TRAITS

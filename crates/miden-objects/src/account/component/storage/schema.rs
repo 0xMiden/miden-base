@@ -2,21 +2,15 @@ use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
-use core::iter;
 
 use miden_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
 use miden_processor::DeserializationError;
 
-use super::type_registry::{InitValueRequirement, SCHEMA_TYPE_REGISTRY, SchemaTypeIdentifier};
+use super::type_registry::{SCHEMA_TYPE_REGISTRY, SchemaRequirement, SchemaTypeIdentifier};
 use super::{InitStorageData, StorageValueName, WordValue};
 use crate::account::{AccountStorage, StorageMap, StorageSlot, StorageSlotName};
 use crate::errors::AccountComponentTemplateError;
 use crate::{Felt, FieldElement, Word};
-
-/// Alias used for iterators that collect all init-required values and their types within a
-/// component storage schema.
-pub type SchemaRequirementsIter<'a> =
-    Box<dyn Iterator<Item = (StorageValueName, InitValueRequirement)> + 'a>;
 
 // STORAGE SCHEMA
 // ================================================================================================
@@ -71,22 +65,30 @@ impl AccountStorageSchema {
             .collect()
     }
 
-    /// Returns an iterator over init-value requirements for the entire schema.
-    pub fn init_value_requirements(&self) -> SchemaRequirementsIter<'_> {
-        Box::new(
-            self.slots
-                .iter()
-                .flat_map(|(slot_name, schema)| schema.init_value_requirements(slot_name)),
-        )
+    /// Returns init-value requirements for the entire schema.
+    ///
+    /// The returned map includes both required values (no `default_value`) and optional values
+    /// (with `default_value`), and excludes map entries.
+    pub fn schema_requirements(
+        &self,
+    ) -> Result<BTreeMap<StorageValueName, SchemaRequirement>, AccountComponentTemplateError> {
+        let mut requirements = BTreeMap::new();
+        for (slot_name, schema) in self.slots.iter() {
+            schema.collect_init_value_requirements(slot_name, &mut requirements)?;
+        }
+        Ok(requirements)
     }
 
     pub(crate) fn validate(&self) -> Result<(), AccountComponentTemplateError> {
+        let mut init_values = BTreeMap::new();
+
         for (slot_name, schema) in self.slots.iter() {
             if slot_name.id() == AccountStorage::faucet_sysdata_slot().id() {
                 return Err(AccountComponentTemplateError::ReservedSlotName(slot_name.clone()));
             }
 
             schema.validate(slot_name)?;
+            schema.collect_init_value_requirements(slot_name, &mut init_values)?;
         }
 
         Ok(())
@@ -136,15 +138,17 @@ pub enum StorageSlotSchema {
 }
 
 impl StorageSlotSchema {
-    /// Returns init-value requirements for this slot schema.
-    pub fn init_value_requirements(
+    fn collect_init_value_requirements(
         &self,
         slot_name: &StorageSlotName,
-    ) -> SchemaRequirementsIter<'_> {
+        requirements: &mut BTreeMap<StorageValueName, SchemaRequirement>,
+    ) -> Result<(), AccountComponentTemplateError> {
         let slot_prefix = StorageValueName::from_slot_name(slot_name);
         match self {
-            StorageSlotSchema::Value(slot) => slot.init_value_requirements(slot_prefix),
-            StorageSlotSchema::Map(slot) => slot.init_value_requirements(slot_prefix),
+            StorageSlotSchema::Value(slot) => {
+                slot.collect_init_value_requirements(slot_prefix, requirements)
+            },
+            StorageSlotSchema::Map(_) => Ok(()),
         }
     }
 
@@ -259,27 +263,54 @@ impl WordSchema {
         }
     }
 
-    pub fn schema_requirements(
+    fn collect_init_value_requirements(
         &self,
-        value_prefix: StorageValueName,
+        slot_prefix: StorageValueName,
         description: Option<String>,
-    ) -> SchemaRequirementsIter<'_> {
+        requirements: &mut BTreeMap<StorageValueName, SchemaRequirement>,
+    ) -> Result<(), AccountComponentTemplateError> {
         match self {
             WordSchema::Singular { r#type, default_value } => {
-                if *r#type == SchemaTypeIdentifier::void() || default_value.is_some() {
-                    Box::new(iter::empty())
-                } else {
-                    Box::new(iter::once((
-                        value_prefix,
-                        InitValueRequirement { description, r#type: r#type.clone() },
-                    )))
+                if *r#type == SchemaTypeIdentifier::void() {
+                    return Ok(());
                 }
+
+                let default_value =
+                    default_value.map(|word| SCHEMA_TYPE_REGISTRY.display_word(r#type, word));
+
+                if requirements
+                    .insert(
+                        slot_prefix.clone(),
+                        SchemaRequirement {
+                            description,
+                            r#type: r#type.clone(),
+                            default_value,
+                        },
+                    )
+                    .is_some()
+                {
+                    return Err(AccountComponentTemplateError::DuplicateInitValueName(slot_prefix));
+                }
+
+                Ok(())
             },
-            WordSchema::Composite { value } => Box::new(
-                value
-                    .iter()
-                    .flat_map(move |felt| felt.schema_requirements(value_prefix.clone())),
-            ),
+            WordSchema::Composite { value } => {
+                for felt in value.iter() {
+                    felt.collect_init_value_requirements(slot_prefix.clone(), requirements)?;
+                }
+                Ok(())
+            },
+        }
+    }
+
+    fn is_fully_defaulted(&self) -> bool {
+        match self {
+            WordSchema::Singular { r#type, default_value } => {
+                *r#type == SchemaTypeIdentifier::void() || default_value.is_some()
+            },
+            WordSchema::Composite { value } => value.iter().all(|felt| {
+                felt.felt_type() == SchemaTypeIdentifier::void() || felt.default_value().is_some()
+            }),
         }
     }
 
@@ -521,6 +552,43 @@ impl FeltSchema {
         self.default_value
     }
 
+    fn collect_init_value_requirements(
+        &self,
+        slot_prefix: StorageValueName,
+        requirements: &mut BTreeMap<StorageValueName, SchemaRequirement>,
+    ) -> Result<(), AccountComponentTemplateError> {
+        if self.r#type == SchemaTypeIdentifier::void() {
+            return Ok(());
+        }
+
+        let Some(name) = self.name.as_ref() else {
+            return Err(AccountComponentTemplateError::InvalidSchema(
+                "non-void felt elements must be named".into(),
+            ));
+        };
+        let value_name = slot_prefix.clone().with_suffix(name);
+
+        let default_value = self
+            .default_value
+            .map(|felt| SCHEMA_TYPE_REGISTRY.display_felt(&self.r#type, felt));
+
+        if requirements
+            .insert(
+                value_name.clone(),
+                SchemaRequirement {
+                    description: self.description.clone(),
+                    r#type: self.r#type.clone(),
+                    default_value,
+                },
+            )
+            .is_some()
+        {
+            return Err(AccountComponentTemplateError::DuplicateInitValueName(value_name));
+        }
+
+        Ok(())
+    }
+
     /// Attempts to convert the [`FeltSchema`] into a [`Felt`].
     ///
     /// If the schema variant is typed, the value is retrieved from `init_storage_data`,
@@ -566,33 +634,6 @@ impl FeltSchema {
         };
 
         Err(AccountComponentTemplateError::InitValueNotProvided(value_name))
-    }
-
-    /// Returns an iterator over the felt's schema requirements.
-    ///
-    /// A felt element produces an init requirement only when it is:
-    /// - non-`void`,
-    /// - named, and
-    /// - missing a `default_value`.
-    pub fn schema_requirements(
-        &self,
-        value_prefix: StorageValueName,
-    ) -> SchemaRequirementsIter<'_> {
-        if self.r#type == SchemaTypeIdentifier::void() || self.default_value.is_some() {
-            return Box::new(iter::empty());
-        }
-
-        let Some(name) = self.name.as_ref() else {
-            return Box::new(iter::empty());
-        };
-
-        Box::new(iter::once((
-            value_prefix.with_suffix(name),
-            InitValueRequirement {
-                description: self.description.clone(),
-                r#type: self.r#type.clone(),
-            },
-        )))
     }
 
     /// Validates that the defined felt type exists.
@@ -714,11 +755,16 @@ impl ValueSlotSchema {
         &self.word
     }
 
-    pub fn init_value_requirements(
+    fn collect_init_value_requirements(
         &self,
         slot_prefix: StorageValueName,
-    ) -> SchemaRequirementsIter<'_> {
-        self.word.schema_requirements(slot_prefix, self.description.clone())
+        requirements: &mut BTreeMap<StorageValueName, SchemaRequirement>,
+    ) -> Result<(), AccountComponentTemplateError> {
+        self.word.collect_init_value_requirements(
+            slot_prefix,
+            self.description.clone(),
+            requirements,
+        )
     }
 
     pub fn try_build_word(
@@ -730,7 +776,7 @@ impl ValueSlotSchema {
     }
 
     pub fn default_value(&self) -> Option<Word> {
-        if self.word.schema_requirements(StorageValueName::empty(), None).next().is_some() {
+        if !self.word.is_fully_defaulted() {
             return None;
         }
 
@@ -789,16 +835,6 @@ impl MapSlotSchema {
 
     pub fn description(&self) -> Option<&String> {
         self.description.as_ref()
-    }
-
-    pub fn init_value_requirements(
-        &self,
-        _slot_prefix: StorageValueName,
-    ) -> SchemaRequirementsIter<'_> {
-        // Init-provided map entries are optional: if a value is not provided at instantiation time,
-        // the map defaults to empty. Static maps (with `default_values`) also do not require any
-        // init data.
-        Box::new(iter::empty())
     }
 
     pub fn try_build_map(

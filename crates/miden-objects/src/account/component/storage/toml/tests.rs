@@ -173,7 +173,7 @@ fn metadata_from_toml_parses_named_storage_schema() {
     "#;
 
     let metadata = AccountComponentMetadata::from_toml(toml_str).unwrap();
-    let requirements = metadata.init_value_requirements();
+    let requirements = metadata.schema_requirements();
 
     assert!(requirements.contains_key(&"demo::test_value".parse::<StorageValueName>().unwrap()));
     assert!(!requirements.contains_key(&"demo::my_map".parse::<StorageValueName>().unwrap()));
@@ -277,7 +277,7 @@ fn metadata_toml_round_trip_composed_slot_with_typed_fields() {
     let original =
         AccountComponentMetadata::from_toml(toml_str).expect("original metadata should parse");
 
-    let mut requirements = original.init_value_requirements();
+    let mut requirements = original.schema_requirements();
     assert_eq!(
         requirements
             .remove(&"demo::composed.a".parse::<StorageValueName>().unwrap())
@@ -340,7 +340,7 @@ fn metadata_toml_round_trip_typed_slots() {
     assert_eq!(map_slot.key_schema(), &WordSchema::new_singular(pub_key_type.clone()));
     assert_eq!(map_slot.value_schema(), &WordSchema::new_singular(pub_key_type));
 
-    let mut requirements = metadata.init_value_requirements();
+    let mut requirements = metadata.schema_requirements();
     assert_eq!(
         requirements
             .remove(&"demo::typed_value".parse::<StorageValueName>().unwrap())
@@ -485,7 +485,7 @@ fn extensive_schema_metadata_and_init_toml_example() {
     assert!(matches!(typed_map_new.key_schema(), WordSchema::Composite { .. }));
 
     // used storage slots
-    let requirements = metadata.init_value_requirements();
+    let requirements = metadata.schema_requirements();
     assert!(requirements.contains_key(&"demo::owner_pub_key".parse::<StorageValueName>().unwrap()));
     assert!(
         requirements.contains_key(&"demo::protocol_version".parse::<StorageValueName>().unwrap())
@@ -498,10 +498,15 @@ fn extensive_schema_metadata_and_init_toml_example() {
         requirements
             .contains_key(&"demo::token_metadata.decimals".parse::<StorageValueName>().unwrap())
     );
-    assert!(
-        !requirements
-            .contains_key(&"demo::token_metadata.symbol".parse::<StorageValueName>().unwrap())
+    let symbol_requirement = requirements
+        .get(&"demo::token_metadata.symbol".parse::<StorageValueName>().unwrap())
+        .expect("symbol should be reported with a default value");
+    assert_eq!(
+        symbol_requirement.r#type,
+        SchemaTypeIdentifier::new("miden::standards::fungible_faucets::metadata::token_symbol")
+            .unwrap()
     );
+    assert_eq!(symbol_requirement.default_value.as_deref(), Some("TST"));
     assert!(
         !requirements.contains_key(&"demo::typed_map_new".parse::<StorageValueName>().unwrap())
     );

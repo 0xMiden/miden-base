@@ -7,7 +7,7 @@ use miden_mast_package::{Package, SectionId};
 use miden_processor::DeserializationError;
 use semver::Version;
 
-use super::{AccountStorageSchema, AccountType, InitValueRequirement, StorageValueName};
+use super::{AccountStorageSchema, AccountType, SchemaRequirement, StorageValueName};
 use crate::AccountError;
 use crate::errors::AccountComponentTemplateError;
 
@@ -30,7 +30,8 @@ use crate::errors::AccountComponentTemplateError;
 /// - The schema cannot contain protocol-reserved slot names.
 /// - Each init-time value name uniquely identifies a single value. The expected init-time metadata
 ///   can be retrieved with [AccountComponentMetadata::init_value_requirements()], which returns a
-///   map from keys to [InitValueRequirement] (which indicates the expected value type).
+///   map from keys to [SchemaRequirement] (which indicates the expected value type and optional
+///   defaults).
 ///
 /// # Example
 ///
@@ -138,13 +139,8 @@ impl AccountComponentMetadata {
     /// full example, refer to the docs for [AccountComponentMetadata].
     ///
     /// Types for returned init values are inferred based on their location in the storage layout.
-    pub fn init_value_requirements(&self) -> BTreeMap<StorageValueName, InitValueRequirement> {
-        let mut requirements = BTreeMap::new();
-        for (name, requirement) in self.storage_schema.init_value_requirements() {
-            requirements.insert(name, requirement);
-        }
-
-        requirements
+    pub fn schema_requirements(&self) -> BTreeMap<StorageValueName, SchemaRequirement> {
+        self.storage_schema.schema_requirements().expect("storage schema is validated")
     }
 
     /// Returns the name of the account component.
