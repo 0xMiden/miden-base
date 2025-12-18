@@ -1,5 +1,5 @@
-use miden::kernel_proc_offsets
-use miden::note
+use miden::protocol::kernel_proc_offsets
+use miden::protocol::note
 
 # PROCEDURES
 # =================================================================================================

@@ -129,7 +129,7 @@ impl AccountInterface {
     ///
     /// ```masm
     /// begin
-    ///     push.{expiration_delta} exec.::miden::tx::update_expiration_block_delta
+    ///     push.{expiration_delta} exec.::miden::protocol::tx::update_expiration_block_delta
     ///
     ///     push.{note information}
     ///
@@ -206,7 +206,9 @@ impl AccountInterface {
     /// Returns a string with the expiration delta update procedure call for the script.
     fn build_set_tx_expiration_section(&self, expiration_delta: Option<u16>) -> String {
         if let Some(expiration_delta) = expiration_delta {
-            format!("push.{expiration_delta} exec.::miden::tx::update_expiration_block_delta\n")
+            format!(
+                "push.{expiration_delta} exec.::miden::protocol::tx::update_expiration_block_delta\n"
+            )
         } else {
             String::new()
         }

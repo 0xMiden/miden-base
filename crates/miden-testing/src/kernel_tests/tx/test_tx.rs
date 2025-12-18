@@ -133,7 +133,7 @@ async fn test_block_procedures() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
     let code = "
-        use miden::tx
+        use miden::protocol::tx
         use $kernel::prologue
 
         begin
@@ -246,7 +246,7 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
     let tx_script_src = format!(
         "\
         use miden::contracts::wallets::basic->wallet
-        use miden::output_note
+        use miden::protocol::output_note
 
         # Inputs:  [tag, aux, note_type, execution_hint, RECIPIENT]
         # Outputs: [note_idx]
@@ -415,7 +415,7 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
 async fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
     let source_code = r#"
       use miden::auth
-      use miden::tx
+      use miden::protocol::tx
       const AUTH_UNAUTHORIZED_EVENT=event("miden::auth::unauthorized")
       #! Inputs:  [AUTH_ARGS, pad(12)]
       #! Outputs: [pad(16)]
@@ -424,7 +424,7 @@ async fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
           # => [pad(16)]
 
           push.0.0 exec.tx::get_block_number
-          exec.::miden::native_account::incr_nonce
+          exec.::miden::protocol::native_account::incr_nonce
           # => [[final_nonce, block_num, 0, 0], pad(16)]
           # => [SALT, pad(16)]
 

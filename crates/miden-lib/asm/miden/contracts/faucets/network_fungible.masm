@@ -1,6 +1,6 @@
-use miden::active_account
-use miden::account_id
-use miden::active_note
+use miden::protocol::active_account
+use miden::protocol::account_id
+use miden::protocol::active_note
 use miden::contracts::faucets
 use miden::contracts::faucets::basic_fungible
 

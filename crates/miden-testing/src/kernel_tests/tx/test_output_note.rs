@@ -62,7 +62,7 @@ async fn test_create_note() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use miden::output_note
+        use miden::protocol::output_note
 
         use $kernel::prologue
 
@@ -143,7 +143,7 @@ async fn test_create_note_with_invalid_tag() -> anyhow::Result<()> {
 fn note_creation_script(tag: Felt) -> String {
     format!(
         "
-            use miden::output_note
+            use miden::protocol::output_note
             use $kernel::prologue
 
             begin
@@ -174,7 +174,7 @@ async fn test_create_note_too_many_notes() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use miden::output_note
+        use miden::protocol::output_note
         use $kernel::constants
         use $kernel::memory
         use $kernel::prologue
@@ -294,8 +294,8 @@ async fn test_get_output_notes_commitment() -> anyhow::Result<()> {
         "
         use miden::core::sys
 
-        use miden::tx
-        use miden::output_note
+        use miden::protocol::tx
+        use miden::protocol::output_note
 
         use $kernel::prologue
 
@@ -397,7 +397,7 @@ async fn test_create_note_and_add_asset() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use miden::output_note
+        use miden::protocol::output_note
 
         use $kernel::prologue
 
@@ -466,7 +466,7 @@ async fn test_create_note_and_add_multiple_assets() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use miden::output_note
+        use miden::protocol::output_note
         use $kernel::prologue
 
         begin
@@ -548,7 +548,7 @@ async fn test_create_note_and_add_same_nft_twice() -> anyhow::Result<()> {
     let code = format!(
         "
         use $kernel::prologue
-        use miden::output_note
+        use miden::protocol::output_note
 
         begin
             exec.prologue::prepare_transaction
@@ -639,8 +639,8 @@ async fn test_build_recipient_hash() -> anyhow::Result<()> {
     let recipient = NoteRecipient::new(output_serial_no, input_note_1.script().clone(), inputs);
     let code = format!(
         "
-        use miden::output_note
-        use miden::note
+        use miden::protocol::output_note
+        use miden::protocol::note
         use $kernel::prologue
 
         begin
@@ -702,7 +702,7 @@ async fn test_build_recipient_hash() -> anyhow::Result<()> {
 /// This test creates an output note and then adds some assets into it checking the assets info on
 /// each stage.
 ///
-/// Namely, we invoke the `miden::output_notes::get_assets_info` procedure:
+/// Namely, we invoke the `miden::protocol::output_notes::get_assets_info` procedure:
 /// - After adding the first `asset_0` to the note.
 /// - Right after the previous check to make sure it returns the same commitment from the cached
 ///   data.
@@ -754,7 +754,7 @@ async fn test_get_asset_info() -> anyhow::Result<()> {
 
     let tx_script_src = &format!(
         r#"
-        use miden::output_note
+        use miden::protocol::output_note
         use miden::core::sys
 
         begin
@@ -870,7 +870,7 @@ async fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
 
     let tx_script_src = &format!(
         r#"
-        use miden::output_note
+        use miden::protocol::output_note
         use miden::core::sys
 
         begin
@@ -984,7 +984,7 @@ async fn test_get_assets() -> anyhow::Result<()> {
 
     let tx_script_src = &format!(
         "
-        use miden::output_note
+        use miden::protocol::output_note
         use miden::core::sys
 
         begin

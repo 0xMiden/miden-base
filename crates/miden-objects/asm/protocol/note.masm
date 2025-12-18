@@ -1,4 +1,4 @@
-use miden::account_id
+use miden::protocol::account_id
 use miden::core::crypto::hashes::rpo256
 use miden::core::math::u64
 use miden::core::mem
@@ -53,7 +53,7 @@ end
 #! Output: [max_inputs_per_note]
 #!
 #! - max_inputs_per_note is the max inputs per note.
-pub use ::miden::util::note::get_max_inputs_per_note
+pub use ::miden::protocol::util::note::get_max_inputs_per_note
 
 #! Writes the assets data stored in the advice map to the memory specified by the provided
 #! destination pointer.

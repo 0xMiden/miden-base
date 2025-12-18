@@ -1,7 +1,7 @@
 use miden::core::mem
 
-use miden::kernel_proc_offsets
-use miden::note
+use miden::protocol::kernel_proc_offsets
+use miden::protocol::note
 
 # ERRORS
 # =================================================================================================

@@ -1,5 +1,5 @@
-use miden::active_account
-use miden::native_account
+use miden::protocol::active_account
+use miden::protocol::native_account
 use miden::core::word
 
 #! Increment the nonce only if the account commitment has changed

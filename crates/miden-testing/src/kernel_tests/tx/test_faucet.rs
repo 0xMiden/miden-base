@@ -51,7 +51,7 @@ async fn test_mint_fungible_asset_succeeds() -> anyhow::Result<()> {
     let code = format!(
         r#"
         use mock::faucet->mock_faucet
-        use miden::faucet
+        use miden::protocol::faucet
         use $kernel::asset_vault
         use $kernel::memory
         use $kernel::prologue
@@ -348,7 +348,7 @@ async fn test_burn_fungible_asset_succeeds() -> anyhow::Result<()> {
     let code = format!(
         r#"
         use mock::faucet->mock_faucet
-        use miden::faucet
+        use miden::protocol::faucet
         use $kernel::asset_vault
         use $kernel::memory
         use $kernel::prologue
@@ -662,7 +662,7 @@ async fn test_is_non_fungible_asset_issued_succeeds() -> anyhow::Result<()> {
     let code = format!(
         r#"
         use $kernel::prologue
-        use miden::faucet
+        use miden::protocol::faucet
 
         begin
             exec.prologue::prepare_transaction
@@ -704,7 +704,7 @@ async fn test_get_total_issuance_succeeds() -> anyhow::Result<()> {
     let code = format!(
         r#"
         use $kernel::prologue
-        use miden::faucet
+        use miden::protocol::faucet
 
         begin
             exec.prologue::prepare_transaction
@@ -737,8 +737,8 @@ fn setup_non_faucet_account() -> anyhow::Result<Account> {
     ))
     .compile_component_code(
         "test::non_faucet_component",
-        "pub use ::miden::faucet::mint
-         pub use ::miden::faucet::burn",
+        "pub use ::miden::protocol::faucet::mint
+         pub use ::miden::protocol::faucet::burn",
     )?;
     let faucet_component = AccountComponent::new(faucet_code, vec![])?
         .with_supported_type(AccountType::RegularAccountUpdatableCode);

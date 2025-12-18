@@ -263,7 +263,7 @@ fn test_basic_wallet_custom_notes() {
     let vault = NoteAssets::new(vec![FungibleAsset::mock(100)]).unwrap();
 
     let compatible_source_code = "
-        use miden::tx
+        use miden::protocol::tx
         use miden::contracts::wallets::basic->wallet
         use miden::contracts::faucets::basic_fungible->fungible_faucet
 

@@ -1,4 +1,4 @@
-use miden::account_id
+use miden::protocol::account_id
 
 # ERRORS
 # =================================================================================================
@@ -69,4 +69,4 @@ end
 #! Outputs: [fungible_asset_max_amount]
 #!
 #! fungible_asset_max_amount is the maximum amount of a fungible asset.
-pub use ::miden::util::asset::get_fungible_asset_max_amount
+pub use ::miden::protocol::util::asset::get_fungible_asset_max_amount

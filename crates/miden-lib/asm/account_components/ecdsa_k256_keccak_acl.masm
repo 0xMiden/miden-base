@@ -2,9 +2,9 @@
 #
 # See the `AuthEcdsaK256KeccakAcl` Rust type's documentation for more details.
 
-use miden::active_account
-use miden::native_account
-use miden::tx
+use miden::protocol::active_account
+use miden::protocol::native_account
+use miden::protocol::tx
 use miden::core::word
 
 type BeWord = struct @bigendian { a: felt, b: felt, c: felt, d: felt }

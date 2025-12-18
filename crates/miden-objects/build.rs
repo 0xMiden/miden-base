@@ -19,12 +19,14 @@ const BUILD_GENERATED_FILES_IN_SRC: bool = option_env!("BUILD_GENERATED_FILES_IN
 
 const ASSETS_DIR: &str = "assets";
 const ASM_DIR: &str = "asm";
-const ASM_MIDEN_DIR: &str = "miden";
+const ASM_PROTOCOL_DIR: &str = "protocol";
 
 const SHARED_UTILS_DIR: &str = "shared_utils";
 const SHARED_MODULES_DIR: &str = "shared_modules";
 const ASM_TX_KERNEL_DIR: &str = "kernels/transaction";
 const KERNEL_PROCEDURES_RS_FILE: &str = "src/transaction/kernel/procedures.rs";
+
+const PROTOCOL_LIB_NAMESPACE: &str = "miden::protocol";
 
 const TX_KERNEL_ERRORS_FILE: &str = "src/errors/tx_kernel.rs";
 const PROTOCOL_LIB_ERRORS_FILE: &str = "src/errors/protocol.rs";
@@ -53,9 +55,9 @@ const TX_KERNEL_ERROR_CATEGORIES: [&str; 14] = [
 // ================================================================================================
 
 /// Read and parse the contents from `./asm`.
-/// - Compiles contents of asm/miden directory into a Miden library file (.masl) under miden
+/// - Compiles the contents of asm/protocol directory into a Protocol library file (.masl) under miden::protocol
 ///   namespace.
-/// - Compiles contents of asm/scripts directory into individual .masb files.
+/// - Compiles the contents of asm/kernels into the transaction kernel library.
 fn main() -> Result<()> {
     // re-build when the MASM code changes
     println!("cargo::rerun-if-changed={ASM_DIR}/");
@@ -71,7 +73,7 @@ fn main() -> Result<()> {
     // set source directory to {OUT_DIR}/asm
     let source_dir = dst.join(ASM_DIR);
 
-    // copy the shared modules to the kernel and miden library folders
+    // copy the shared modules to the kernel and protocol library folders
     copy_shared_modules(&source_dir)?;
 
     // set target directory to {OUT_DIR}/assets
@@ -201,7 +203,7 @@ fn generate_kernel_proc_hash_file(kernel: KernelLibrary) -> Result<()> {
     let (_, module_info, _) = kernel.into_parts();
 
     let to_exclude = BTreeSet::from_iter(["exec_kernel_proc"]);
-    let offsets_filename = Path::new(ASM_DIR).join(ASM_MIDEN_DIR).join("kernel_proc_offsets.masm");
+    let offsets_filename = Path::new(ASM_DIR).join(ASM_PROTOCOL_DIR).join("kernel_proc_offsets.masm");
     let offsets = parse_proc_offsets(&offsets_filename)?;
 
     let generated_procs: BTreeMap<usize, String> = module_info
@@ -265,22 +267,22 @@ fn parse_proc_offsets(filename: impl AsRef<Path>) -> Result<BTreeMap<String, usi
 // COMPILE PROTOCOL LIB
 // ================================================================================================
 
-/// Reads the MASM files from "{source_dir}/miden" directory, compiles them into a Miden assembly
-/// library, saves the library into "{target_dir}/miden.masl", and returns the compiled library.
+/// Reads the MASM files from "{source_dir}/protocol" directory, compiles them into a Miden assembly
+/// library, saves the library into "{target_dir}/protocol.masl", and returns the compiled library.
 fn compile_protocol_lib(
     source_dir: &Path,
     target_dir: &Path,
     mut assembler: Assembler,
 ) -> Result<Library> {
-    let source_dir = source_dir.join(ASM_MIDEN_DIR);
+    let source_dir = source_dir.join(ASM_PROTOCOL_DIR);
     let shared_path = Path::new(ASM_DIR).join(SHARED_UTILS_DIR);
 
-    // add the shared modules to the protocol lib under the miden::util namespace
+    // add the shared modules to the protocol lib under the miden::protocol::util namespace
     // note that this module is not publicly exported, it is only available for linking the library
     // itself
-    assembler.compile_and_statically_link_from_dir(&shared_path, "miden")?;
+    assembler.compile_and_statically_link_from_dir(&shared_path, PROTOCOL_LIB_NAMESPACE)?;
 
-    let protocol_lib = assembler.assemble_library_from_dir(source_dir, "miden")?;
+    let protocol_lib = assembler.assemble_library_from_dir(source_dir, PROTOCOL_LIB_NAMESPACE)?;
 
     let output_file = target_dir.join("protocol").with_extension(Library::LIBRARY_EXTENSION);
     protocol_lib.write_to_file(output_file).into_diagnostic()?;
@@ -299,8 +301,8 @@ fn build_assembler(kernel: Option<KernelLibrary>) -> Result<Assembler> {
         .with_dynamic_library(miden_core_lib::CoreLibrary::default())
 }
 
-/// Copies the content of the build `shared_modules` folder to the `lib` and `miden` build folders.
-/// This is required to include the shared modules as APIs of the `kernel` and `miden` libraries.
+/// Copies the content of the build `shared_modules` folder to the `lib` and `protocol` build folders.
+/// This is required to include the shared modules as APIs of the `kernel` and `protocol` libraries.
 ///
 /// This is done to make it possible to import the modules in the `shared_modules` folder directly,
 /// i.e. "use $kernel::account_id".
@@ -315,9 +317,9 @@ fn copy_shared_modules<T: AsRef<Path>>(source_dir: T) -> Result<()> {
         let kernel_lib_folder = source_dir.as_ref().join(ASM_TX_KERNEL_DIR).join("lib");
         fs::copy(&module_path, kernel_lib_folder.join(module_name)).into_diagnostic()?;
 
-        // copy to miden lib
-        let miden_lib_folder = source_dir.as_ref().join(ASM_MIDEN_DIR);
-        fs::copy(&module_path, miden_lib_folder.join(module_name)).into_diagnostic()?;
+        // copy to protocol lib
+        let protocol_lib_folder = source_dir.as_ref().join(ASM_PROTOCOL_DIR);
+        fs::copy(&module_path, protocol_lib_folder.join(module_name)).into_diagnostic()?;
     }
 
     Ok(())
@@ -376,9 +378,9 @@ fn generate_error_constants(asm_source_dir: &Path) -> Result<()> {
     // Miden protocol library errors
     // ------------------------------------------
 
-    let miden_dir = asm_source_dir.join(ASM_MIDEN_DIR);
+    let protocol_dir = asm_source_dir.join(ASM_PROTOCOL_DIR);
     let errors =
-        shared::extract_all_masm_errors(&miden_dir).context("failed to extract all masm errors")?;
+        shared::extract_all_masm_errors(&protocol_dir).context("failed to extract all masm errors")?;
 
     shared::generate_error_file(
         shared::ErrorModule {
@@ -752,7 +754,7 @@ mod shared {
         writeln!(
             output,
             "// This file is generated by build.rs, do not modify manually.
-// It is generated by extracting errors from the MASM files in the `miden-lib/asm` directory.
+// It is generated by extracting errors from the MASM files in the `./asm` directory.
 //
 // To add a new error, define a constant in MASM of the pattern `const ERR_<CATEGORY>_...`.
 // Try to fit the error into a pre-existing category if possible (e.g. Account, Note, ...).

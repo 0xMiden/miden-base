@@ -5,7 +5,7 @@ use crate::transaction::TransactionKernel;
 use crate::utils::sync::LazyLock;
 
 const MOCK_UTIL_LIBRARY_CODE: &str = "
-    use miden::output_note
+    use miden::protocol::output_note
 
     # Inputs:  []
     # Outputs: [note_idx]

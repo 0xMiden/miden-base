@@ -206,7 +206,7 @@ async fn test_build_recipient() -> anyhow::Result<()> {
         "
         use miden::core::sys
 
-        use miden::note
+        use miden::protocol::note
 
         begin
             # put the values that will be hashed into the memory
@@ -295,7 +295,7 @@ async fn test_compute_inputs_commitment() -> anyhow::Result<()> {
         "
         use miden::core::sys
 
-        use miden::note
+        use miden::protocol::note
 
         begin
             # put the values that will be hashed into the memory
@@ -434,8 +434,8 @@ pub async fn test_timelock() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-      use miden::active_note
-      use miden::tx
+      use miden::protocol::active_note
+      use miden::protocol::tx
 
       begin
           # store the note inputs to memory starting at address 0
@@ -568,7 +568,7 @@ async fn test_build_note_tag_for_network_account() -> anyhow::Result<()> {
     let code = format!(
         "
         use miden::core::sys
-        use miden::note
+        use miden::protocol::note
 
         begin
             push.{suffix}.{prefix} 

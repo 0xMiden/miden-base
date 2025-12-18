@@ -146,7 +146,7 @@ pub proc get_assets_info
     # => [ASSETS_COMMITMENT, note_data_ptr, num_assets]
 
     # next we should store the assets in the advice map using the computed assets commitment to be
-    # able to get the assets later (in the `miden::output_note::get_assets` procedure)
+    # able to get the assets later (in the `miden::protocol::output_note::get_assets` procedure)
 
     # get the start and the end pointers of the asset data
     #

@@ -29,7 +29,7 @@ async fn get_balance_returns_correct_amount() -> anyhow::Result<()> {
     let code = format!(
         r#"
         use $kernel::prologue
-        use miden::active_account
+        use miden::protocol::active_account
 
         begin
             exec.prologue::prepare_transaction
@@ -113,7 +113,7 @@ async fn test_get_balance_non_fungible_fails() -> anyhow::Result<()> {
     let code = format!(
         "
         use $kernel::prologue
-        use miden::active_account
+        use miden::protocol::active_account
 
         begin
             exec.prologue::prepare_transaction
@@ -144,7 +144,7 @@ async fn test_has_non_fungible_asset() -> anyhow::Result<()> {
     let code = format!(
         "
         use $kernel::prologue
-        use miden::active_account
+        use miden::protocol::active_account
 
         begin
             exec.prologue::prepare_transaction

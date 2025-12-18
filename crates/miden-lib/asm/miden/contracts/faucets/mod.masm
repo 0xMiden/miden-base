@@ -1,7 +1,7 @@
-use miden::active_account
-use miden::active_note
-use miden::faucet
-use miden::output_note
+use miden::protocol::active_account
+use miden::protocol::active_note
+use miden::protocol::faucet
+use miden::protocol::output_note
 
 # CONSTANTS
 # =================================================================================================

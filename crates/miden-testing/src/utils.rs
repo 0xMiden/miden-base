@@ -130,7 +130,7 @@ pub fn create_p2any_note(
     let code = format!(
         "
         use mock::account
-        use miden::active_note
+        use miden::protocol::active_note
         use miden::contracts::wallets::basic->wallet
 
         begin
@@ -199,7 +199,7 @@ fn note_script_that_creates_notes<'note>(
     sender_id: AccountId,
     output_notes: impl Iterator<Item = &'note Note>,
 ) -> anyhow::Result<String> {
-    let mut out = String::from("use miden::output_note\n\nbegin\n");
+    let mut out = String::from("use miden::protocol::output_note\n\nbegin\n");
 
     for (idx, note) in output_notes.into_iter().enumerate() {
         anyhow::ensure!(
@@ -209,7 +209,7 @@ fn note_script_that_creates_notes<'note>(
 
         // Make sure that the transaction's native account matches the note sender.
         out.push_str(&format!(
-            r#"exec.::miden::native_account::get_id
+            r#"exec.::miden::protocol::native_account::get_id
              # => [native_account_id_prefix, native_account_id_suffix]
              push.{sender_prefix} assert_eq.err="sender ID prefix does not match native account ID's prefix"
              # => [native_account_id_suffix]

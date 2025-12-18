@@ -435,8 +435,8 @@ mod tests {
         ";
 
         let account_code = "
-            use miden::active_account
-            use miden::native_account
+            use miden::protocol::active_account
+            use miden::protocol::native_account
             use miden::core::sys
 
             pub proc increment
@@ -473,8 +473,8 @@ mod tests {
         ";
 
         let account_code = "
-            use miden::active_account
-            use miden::native_account
+            use miden::protocol::active_account
+            use miden::protocol::native_account
             use miden::core::sys
 
             pub proc increment
@@ -524,8 +524,8 @@ mod tests {
         ";
 
         let account_code = "
-            use miden::active_account
-            use miden::native_account
+            use miden::protocol::active_account
+            use miden::protocol::native_account
             use miden::core::sys
 
             pub proc increment

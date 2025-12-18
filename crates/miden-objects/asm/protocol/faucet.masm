@@ -1,6 +1,6 @@
-use miden::asset
-use miden::active_account
-use miden::kernel_proc_offsets
+use miden::protocol::asset
+use miden::protocol::active_account
+use miden::protocol::kernel_proc_offsets
 
 #! Creates a fungible asset for the faucet the transaction is being executed against.
 #!

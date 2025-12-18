@@ -1,5 +1,5 @@
-use miden::native_account
-use miden::tx
+use miden::protocol::native_account
+use miden::protocol::tx
 use miden::core::crypto::hashes::rpo256
 
 #! Inputs:  [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]

@@ -57,7 +57,7 @@ mod tests {
 
     #[test]
     fn test_compile() {
-        let path = Path::new("::miden::active_account::get_id");
+        let path = Path::new("::miden::protocol::active_account::get_id");
         let miden = ProtocolLib::default();
         let exists = miden.0.module_infos().any(|module| {
             module

@@ -660,7 +660,7 @@ async fn asset_and_storage_delta() -> anyhow::Result<()> {
     let tx_script_src = format!(
         r#"
         use mock::account
-        use miden::output_note
+        use miden::protocol::output_note
 
         const MOCK_VALUE_SLOT0 = word("{mock_value_slot0}")
         const MOCK_MAP_SLOT = word("{mock_map_slot}")
@@ -1105,7 +1105,7 @@ fn parse_tx_script(code: impl AsRef<str>) -> anyhow::Result<TransactionScript> {
 
 const TEST_ACCOUNT_CONVENIENCE_WRAPPERS: &str = "
       use mock::account
-      use miden::output_note
+      use miden::protocol::output_note
 
       #! Inputs:  [slot_id_prefix, slot_id_suffix, VALUE]
       #! Outputs: []

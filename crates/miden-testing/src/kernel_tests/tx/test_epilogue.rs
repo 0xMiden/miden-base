@@ -538,7 +538,7 @@ async fn test_epilogue_empty_transaction_with_empty_output_note() -> anyhow::Res
     let tx_script_source = format!(
         r#"
         use miden::core::word
-        use miden::output_note
+        use miden::protocol::output_note
         use $kernel::prologue
         use $kernel::epilogue
         use $kernel::note

@@ -5,7 +5,7 @@ use miden_objects::utils::sync::LazyLock;
 use crate::code_builder::CodeBuilder;
 
 const MOCK_FAUCET_CODE: &str = "
-    use miden::faucet
+    use miden::protocol::faucet
 
     #! Inputs:  [ASSET, pad(12)]
     #! Outputs: [ASSET, pad(12)]
@@ -23,9 +23,9 @@ const MOCK_FAUCET_CODE: &str = "
 ";
 
 const MOCK_ACCOUNT_CODE: &str = "
-    use miden::active_account
-    use miden::native_account
-    use miden::tx
+    use miden::protocol::active_account
+    use miden::protocol::native_account
+    use miden::protocol::tx
 
     pub use ::miden::contracts::wallets::basic::receive_asset
     pub use ::miden::contracts::wallets::basic::move_asset_to_note
