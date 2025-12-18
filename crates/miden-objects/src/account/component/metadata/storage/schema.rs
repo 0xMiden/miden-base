@@ -21,10 +21,10 @@ pub type SchemaRequirementsIter<'a> =
 // STORAGE SCHEMA
 // ================================================================================================
 
-/// Describes the storage layout of an account component in terms of named storage slots.
+/// Describes the storage schema of an account component in terms of its named storage slots.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct AccountStorageSchema {
-    fields: BTreeMap<StorageSlotName, StorageSlotSchema>,
+    slots: BTreeMap<StorageSlotName, StorageSlotSchema>,
 }
 
 impl AccountStorageSchema {
@@ -47,17 +47,17 @@ impl AccountStorageSchema {
             }
         }
 
-        Ok(Self { fields: map })
+        Ok(Self { slots: map })
     }
 
     /// Returns an iterator over `(slot_name, schema)` pairs in slot-id order.
     pub fn iter(&self) -> impl Iterator<Item = (&StorageSlotName, &StorageSlotSchema)> {
-        self.fields.iter()
+        self.slots.iter()
     }
 
     /// Returns a reference to the underlying fields map.
     pub fn fields(&self) -> &BTreeMap<StorageSlotName, StorageSlotSchema> {
-        &self.fields
+        &self.slots
     }
 
     /// Builds the initial [`StorageSlot`]s for this schema using the provided initialization data.
@@ -65,7 +65,7 @@ impl AccountStorageSchema {
         &self,
         init_storage_data: &InitStorageData,
     ) -> Result<Vec<StorageSlot>, AccountComponentTemplateError> {
-        self.fields
+        self.slots
             .iter()
             .map(|(slot_name, schema)| schema.try_build_storage_slot(slot_name, init_storage_data))
             .collect()
@@ -74,14 +74,14 @@ impl AccountStorageSchema {
     /// Returns an iterator over init-value requirements for the entire schema.
     pub fn init_value_requirements(&self) -> SchemaRequirementsIter<'_> {
         Box::new(
-            self.fields
+            self.slots
                 .iter()
                 .flat_map(|(slot_name, schema)| schema.init_value_requirements(slot_name)),
         )
     }
 
     pub(crate) fn validate(&self) -> Result<(), AccountComponentTemplateError> {
-        for (slot_name, schema) in self.fields.iter() {
+        for (slot_name, schema) in self.slots.iter() {
             if slot_name.id() == AccountStorage::faucet_sysdata_slot().id() {
                 return Err(AccountComponentTemplateError::ReservedSlotName(slot_name.clone()));
             }
@@ -95,8 +95,8 @@ impl AccountStorageSchema {
 
 impl Serializable for AccountStorageSchema {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        target.write_u16(self.fields.len() as u16);
-        for (slot_name, schema) in self.fields.iter() {
+        target.write_u16(self.slots.len() as u16);
+        for (slot_name, schema) in self.slots.iter() {
             target.write(slot_name);
             target.write(schema);
         }
@@ -119,7 +119,7 @@ impl Deserializable for AccountStorageSchema {
             }
         }
 
-        Ok(Self { fields })
+        Ok(Self { slots: fields })
     }
 }
 
@@ -225,7 +225,7 @@ pub enum WordSchema {
         default_value: Option<Word>,
     },
     /// A composed word that may mix defaults and typed fields.
-    Composed { value: [FeltSchema; 4] },
+    Composite { value: [FeltSchema; 4] },
 }
 
 impl WordSchema {
@@ -241,12 +241,12 @@ impl WordSchema {
     }
 
     pub fn new_value(value: impl Into<[FeltSchema; 4]>) -> Self {
-        WordSchema::Composed { value: value.into() }
+        WordSchema::Composite { value: value.into() }
     }
 
     pub fn value(&self) -> Option<&[FeltSchema; 4]> {
         match self {
-            WordSchema::Composed { value } => Some(value),
+            WordSchema::Composite { value } => Some(value),
             WordSchema::Singular { .. } => None,
         }
     }
@@ -255,7 +255,7 @@ impl WordSchema {
     pub fn word_type(&self) -> SchemaTypeIdentifier {
         match self {
             WordSchema::Singular { r#type, .. } => r#type.clone(),
-            WordSchema::Composed { .. } => SchemaTypeIdentifier::native_word(),
+            WordSchema::Composite { .. } => SchemaTypeIdentifier::native_word(),
         }
     }
 
@@ -275,7 +275,7 @@ impl WordSchema {
                     )))
                 }
             },
-            WordSchema::Composed { value } => Box::new(
+            WordSchema::Composite { value } => Box::new(
                 value
                     .iter()
                     .flat_map(move |felt| felt.schema_requirements(value_prefix.clone())),
@@ -349,7 +349,7 @@ impl WordSchema {
                     },
                 }
             },
-            WordSchema::Composed { value } => {
+            WordSchema::Composite { value } => {
                 let mut result = [Felt::ZERO; 4];
                 for (index, felt_schema) in value.iter().enumerate() {
                     result[index] =
@@ -375,7 +375,7 @@ impl WordSchema {
                     )
                 })
             },
-            WordSchema::Composed { value } => {
+            WordSchema::Composite { value } => {
                 for (index, felt_schema) in value.iter().enumerate() {
                     let felt_type = felt_schema.felt_type();
                     validate_felt_value(&felt_type, word[index]).map_err(|err| {
@@ -400,7 +400,7 @@ impl Serializable for WordSchema {
                 target.write(r#type);
                 target.write(default_value);
             },
-            WordSchema::Composed { value } => {
+            WordSchema::Composite { value } => {
                 target.write_u8(1);
                 target.write(value);
             },
@@ -419,7 +419,7 @@ impl Deserializable for WordSchema {
             },
             1 => {
                 let value = <[FeltSchema; 4]>::read_from(source)?;
-                Ok(WordSchema::Composed { value })
+                Ok(WordSchema::Composite { value })
             },
             other => Err(DeserializationError::InvalidValue(format!(
                 "unknown tag '{other}' for WordSchema"
@@ -950,7 +950,7 @@ pub(super) fn parse_word_value_against_schema(
                 Ok(word)
             },
         },
-        WordSchema::Composed { value } => match raw {
+        WordSchema::Composite { value } => match raw {
             WordValue::Elements(elements) => {
                 let mut felts = [Felt::ZERO; 4];
                 for index in 0..4 {
@@ -1076,7 +1076,7 @@ mod tests {
         ];
 
         let slot = ValueSlotSchema::new(None, WordSchema::new_value(felt_values));
-        let WordSchema::Composed { value } = slot.word() else {
+        let WordSchema::Composite { value } = slot.word() else {
             panic!("expected composed word schema");
         };
 
@@ -1105,7 +1105,7 @@ mod tests {
             &WordSchema::new_singular(SchemaTypeIdentifier::new("sampling::Key").unwrap())
         );
 
-        let WordSchema::Composed { value } = slot.value_schema() else {
+        let WordSchema::Composite { value } = slot.value_schema() else {
             panic!("expected composed word schema for map values");
         };
         for felt in value.iter() {

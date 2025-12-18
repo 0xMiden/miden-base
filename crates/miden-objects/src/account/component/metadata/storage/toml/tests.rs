@@ -468,7 +468,7 @@ fn extensive_schema_metadata_and_init_toml_example() {
         typed_map_new.value_schema(),
         &WordSchema::new_singular(SchemaTypeIdentifier::new("u16").unwrap())
     );
-    assert!(matches!(typed_map_new.key_schema(), WordSchema::Composed { .. }));
+    assert!(matches!(typed_map_new.key_schema(), WordSchema::Composite { .. }));
 
     // used storage slots
     let requirements = metadata.init_value_requirements();

@@ -79,8 +79,6 @@ impl AccountComponent {
     ///
     /// * `package` - The package containing the [`Library`](miden_assembly::Library) and account
     ///   component metadata
-    /// * `package` - The package containing the [`Library`](miden_assembly::Library) and account
-    ///   component metadata
     /// * `init_storage_data` - The initialization data for storage slots
     ///
     /// # Errors
@@ -115,8 +113,6 @@ impl AccountComponent {
 
     /// Creates an [`AccountComponent`] from an [`AccountComponentCode`] and
     /// [`AccountComponentMetadata`].
-    /// Creates an [`AccountComponent`] from an [`AccountComponentCode`] and
-    /// [`AccountComponentMetadata`].
     ///
     /// This method provides type safety by leveraging the component's metadata to validate
     /// the passed storage initialization data ([`InitStorageData`]).
@@ -137,7 +133,6 @@ impl AccountComponent {
     /// - The storage initialization fails due to invalid or missing data
     /// - The component creation fails
     pub fn from_library(
-        library: &AccountComponentCode,
         library: &AccountComponentCode,
         account_component_metadata: &AccountComponentMetadata,
         init_storage_data: &InitStorageData,

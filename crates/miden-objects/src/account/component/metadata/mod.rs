@@ -178,20 +178,9 @@ impl AccountComponentMetadata {
     ///
     /// # Errors
     ///
-    /// - If the schema contains invalid slot definitions.
-    /// - If the schema contains duplicate init value names.
+    /// - If any included schema fails to validate correctly.
     fn validate(&self) -> Result<(), AccountComponentTemplateError> {
-        self.storage_schema.validate()?;
-
-        // Check for duplicate init value names.
-        let mut seen_init_value_names = BTreeSet::new();
-        for (name, _) in self.storage_schema.init_value_requirements() {
-            if !seen_init_value_names.insert(name.clone()) {
-                return Err(AccountComponentTemplateError::DuplicateInitValueName(name));
-            }
-        }
-
-        Ok(())
+        self.storage_schema.validate()
     }
 }
 

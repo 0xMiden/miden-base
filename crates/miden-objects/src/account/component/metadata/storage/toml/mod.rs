@@ -208,7 +208,7 @@ impl RawValueSlotSchema {
                 Some(RawSlotType::Identifier(r#type.clone())),
                 default_value.map(|word| WordValue::from_word(r#type, word)),
             ),
-            WordSchema::Composed { value } => {
+            WordSchema::Composite { value } => {
                 (Some(RawSlotType::WordElements(value.to_vec())), None)
             },
         };
@@ -343,13 +343,13 @@ impl RawMapSlotSchema {
 
         let key_type = (schema.key_schema() != &default_word).then(|| match schema.key_schema() {
             WordSchema::Singular { r#type, .. } => RawSlotType::Identifier(r#type.clone()),
-            WordSchema::Composed { value } => RawSlotType::WordElements(value.to_vec()),
+            WordSchema::Composite { value } => RawSlotType::WordElements(value.to_vec()),
         });
 
         let value_type =
             (schema.value_schema() != &default_word).then(|| match schema.value_schema() {
                 WordSchema::Singular { r#type, .. } => RawSlotType::Identifier(r#type.clone()),
-                WordSchema::Composed { value } => RawSlotType::WordElements(value.to_vec()),
+                WordSchema::Composite { value } => RawSlotType::WordElements(value.to_vec()),
             });
 
         Self {
