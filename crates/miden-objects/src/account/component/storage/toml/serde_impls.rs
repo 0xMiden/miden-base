@@ -1,8 +1,6 @@
-use alloc::collections::BTreeMap;
-use alloc::string::{String, ToString};
-use alloc::vec::Vec;
+use alloc::string::String;
 
-use serde::de::Error as DeError;
+use serde::de::Error as _;
 use serde::ser::{Error as SerError, SerializeStruct};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
@@ -53,31 +51,21 @@ impl<'de> Deserialize<'de> for FeltSchema {
         D: Deserializer<'de>,
     {
         #[derive(Deserialize)]
-        #[serde(rename_all = "kebab-case")]
+        #[serde(rename_all = "kebab-case", deny_unknown_fields)]
         struct RawFeltSchema {
             #[serde(default)]
             name: Option<String>,
             #[serde(default)]
             description: Option<String>,
             #[serde(default, rename = "default-value")]
-            default_value: Option<toml::Value>,
+            default_value: Option<String>,
             #[serde(default, rename = "type")]
             r#type: Option<SchemaTypeIdentifier>,
-            #[serde(flatten)]
-            extra: BTreeMap<String, toml::Value>,
         }
 
         let raw = RawFeltSchema::deserialize(deserializer)?;
 
         let felt_type = raw.r#type.unwrap_or_else(SchemaTypeIdentifier::native_felt);
-        if !raw.extra.is_empty() {
-            let mut keys = raw.extra.keys().cloned().collect::<Vec<_>>();
-            keys.sort();
-            return Err(D::Error::custom(format!(
-                "felt schema contains unknown field(s): {}",
-                keys.join(", ")
-            )));
-        }
 
         let description = raw.description.and_then(|description| {
             if description.trim().is_empty() {
@@ -113,8 +101,6 @@ impl<'de> Deserialize<'de> for FeltSchema {
 
         let default_value = raw
             .default_value
-            .map(toml_value_to_string::<D::Error>)
-            .transpose()?
             .map(|default_value| {
                 SCHEMA_TYPE_REGISTRY.try_parse_felt(&felt_type, &default_value).map_err(|err| {
                     D::Error::custom(format!(
@@ -134,16 +120,5 @@ impl<'de> Deserialize<'de> for FeltSchema {
             Some(description) => schema.with_description(description),
             None => schema,
         })
-    }
-}
-
-fn toml_value_to_string<E: DeError>(value: toml::Value) -> Result<String, E> {
-    match value {
-        toml::Value::String(s) => Ok(s),
-        toml::Value::Integer(i) => Ok(i.to_string()),
-        toml::Value::Float(f) => Ok(f.to_string()),
-        other => Err(E::custom(format!(
-            "expected a scalar TOML value for default-value, got {other}"
-        ))),
     }
 }

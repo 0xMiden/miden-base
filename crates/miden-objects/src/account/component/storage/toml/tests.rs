@@ -674,7 +674,8 @@ fn typed_map_init_entries_are_validated() {
 
     let metadata = AccountComponentMetadata::from_toml(metadata_toml).unwrap();
 
-    // Key schema requires the last 2 elements to be `void` (i.e. 0).
+    // Key schema requires the last 2 elements to be `void` (0). This also tests parsing composite
+    // keys against a schema
     let init_toml = r#"
         "demo::typed_map" = [
           { key = ["1", "2", "3", "0"], value = ["0", "0", "0", "1"] }

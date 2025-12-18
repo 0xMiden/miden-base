@@ -137,7 +137,9 @@ pub enum InitStorageDataError {
     #[error("empty table encountered for key `{0}`")]
     EmptyTable(String),
 
-    #[error("invalid input for `{key}`: unsupported array value (len {len}); expected either a map entry list (array of inline tables with `key` and `value`) or a 4-element word array of strings")]
+    #[error(
+        "invalid input for `{key}`: unsupported array value (len {len}); expected either a map entry list (array of inline tables with `key` and `value`) or a 4-element word array of strings"
+    )]
     ArraysNotSupported { key: String, len: usize },
 
     #[error("invalid input for `{0}`: init values must be strings")]

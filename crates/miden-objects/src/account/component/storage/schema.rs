@@ -808,14 +808,6 @@ impl MapSlotSchema {
     ) -> Result<StorageMap, AccountComponentTemplateError> {
         let mut entries = self.default_values.clone().unwrap_or_default();
 
-        if let Some(defaults) = &self.default_values {
-            for (key, value) in defaults.iter() {
-                self.key_schema.validate_word_value(&slot_prefix, "default map key", *key)?;
-                self.value_schema
-                    .validate_word_value(&slot_prefix, "default map value", *value)?;
-            }
-        }
-
         if init_storage_data.get(&slot_prefix).is_some()
             && init_storage_data.map_entries(&slot_prefix).is_none()
         {
@@ -831,13 +823,13 @@ impl MapSlotSchema {
                 let key_label = format!("map entry[{index}].key");
                 let value_label = format!("map entry[{index}].value");
 
-                let key = parse_word_value_against_schema(
+                let key = parse_word_value_with_schema(
                     &self.key_schema,
                     raw_key,
                     &slot_prefix,
                     key_label.as_str(),
                 )?;
-                let value = parse_word_value_against_schema(
+                let value = parse_word_value_with_schema(
                     &self.value_schema,
                     raw_value,
                     &slot_prefix,
@@ -848,7 +840,7 @@ impl MapSlotSchema {
             }
 
             // Reject duplicate keys in init-provided entries.
-            let _ = StorageMap::with_entries(parsed_entries.clone()).map_err(|err| {
+            let _ = StorageMap::with_entries(parsed_entries.iter().copied()).map_err(|err| {
                 AccountComponentTemplateError::StorageMapHasDuplicateKeys(Box::new(err))
             })?;
 
@@ -884,14 +876,14 @@ impl MapSlotSchema {
     }
 }
 
-pub(super) fn parse_word_value_against_schema(
+pub(super) fn parse_word_value_with_schema(
     schema: &WordSchema,
-    raw: &WordValue,
+    raw_value: &WordValue,
     slot_prefix: &StorageValueName,
     label: &str,
 ) -> Result<Word, AccountComponentTemplateError> {
     match schema {
-        WordSchema::Singular { r#type, .. } => match raw {
+        WordSchema::Singular { r#type, .. } => match raw_value {
             WordValue::Scalar(value) => {
                 SCHEMA_TYPE_REGISTRY.try_parse_word(r#type, value).map_err(|err| {
                     AccountComponentTemplateError::InvalidInitStorageValue(
@@ -920,7 +912,7 @@ pub(super) fn parse_word_value_against_schema(
                 Ok(word)
             },
         },
-        WordSchema::Composite { value } => match raw {
+        WordSchema::Composite { value } => match raw_value {
             WordValue::Elements(elements) => {
                 let mut felts = [Felt::ZERO; 4];
                 for index in 0..4 {
@@ -935,31 +927,15 @@ pub(super) fn parse_word_value_against_schema(
                         })?;
                 }
 
-                let word = Word::from(felts);
-                schema.validate_word_value(slot_prefix, label, word)?;
-                Ok(word)
+                Ok(Word::from(felts))
             },
             WordValue::Scalar(value) => {
-                if !value.starts_with("0x") && !value.starts_with("0X") {
-                    return Err(AccountComponentTemplateError::InvalidInitStorageValue(
-                        slot_prefix.clone(),
-                        format!(
-                            "{label} must be an array of 4 elements for a composed schema (or a 0x-prefixed word literal)"
-                        ),
-                    ));
-                }
-
-                let word = SCHEMA_TYPE_REGISTRY
-                    .try_parse_word(&SchemaTypeIdentifier::native_word(), value)
-                    .map_err(|err| {
-                        AccountComponentTemplateError::InvalidInitStorageValue(
-                            slot_prefix.clone(),
-                            format!("failed to parse {label} as `word`: {err}"),
-                        )
-                    })?;
-
-                schema.validate_word_value(slot_prefix, label, word)?;
-                Ok(word)
+                Err(AccountComponentTemplateError::InvalidInitStorageValue(
+                    slot_prefix.clone(),
+                    format!(
+                        "{label} must be an array of 4 elements for a composed schema, got scalar `{value}`"
+                    ),
+                ))
             },
         },
     }
