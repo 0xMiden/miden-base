@@ -81,9 +81,9 @@ fn main() -> Result<()> {
     let mut assembler =
         compile_tx_kernel(&source_dir.join(ASM_TX_KERNEL_DIR), &target_dir.join("kernels"))?;
 
-    // compile miden library
-    let miden_lib = compile_miden_lib(&source_dir, &target_dir, assembler.clone())?;
-    assembler.link_dynamic_library(miden_lib)?;
+    // compile protocol library
+    let protocol_lib = compile_protocol_lib(&source_dir, &target_dir, assembler.clone())?;
+    assembler.link_dynamic_library(protocol_lib)?;
 
     generate_error_constants(&source_dir)?;
 
@@ -262,12 +262,12 @@ fn parse_proc_offsets(filename: impl AsRef<Path>) -> Result<BTreeMap<String, usi
     Ok(result)
 }
 
-// COMPILE MIDEN LIB
+// COMPILE PROTOCOL LIB
 // ================================================================================================
 
 /// Reads the MASM files from "{source_dir}/miden" directory, compiles them into a Miden assembly
 /// library, saves the library into "{target_dir}/miden.masl", and returns the compiled library.
-fn compile_miden_lib(
+fn compile_protocol_lib(
     source_dir: &Path,
     target_dir: &Path,
     mut assembler: Assembler,
@@ -275,15 +275,17 @@ fn compile_miden_lib(
     let source_dir = source_dir.join(ASM_MIDEN_DIR);
     let shared_path = Path::new(ASM_DIR).join(SHARED_UTILS_DIR);
 
-    // add the shared modules to the kernel lib under the miden::util namespace
+    // add the shared modules to the protocol lib under the miden::util namespace
+    // note that this module is not publicly exported, it is only available for linking the library
+    // itself
     assembler.compile_and_statically_link_from_dir(&shared_path, "miden")?;
 
-    let miden_lib = assembler.assemble_library_from_dir(source_dir, "miden")?;
+    let protocol_lib = assembler.assemble_library_from_dir(source_dir, "miden")?;
 
-    let output_file = target_dir.join("miden").with_extension(Library::LIBRARY_EXTENSION);
-    miden_lib.write_to_file(output_file).into_diagnostic()?;
+    let output_file = target_dir.join("protocol").with_extension(Library::LIBRARY_EXTENSION);
+    protocol_lib.write_to_file(output_file).into_diagnostic()?;
 
-    Ok(miden_lib)
+    Ok(protocol_lib)
 }
 
 // HELPER FUNCTIONS

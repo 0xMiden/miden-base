@@ -40,7 +40,7 @@ impl Default for StandardsLib {
     fn default() -> Self {
         static MIDEN_LIB: LazyLock<StandardsLib> = LazyLock::new(|| {
             let contents = Library::read_from_bytes(STANDARDS_LIB_BYTES)
-                .expect("failed to read standards lib masl");
+                .expect("standards lib masl should be well-formed");
             StandardsLib(contents)
         });
         MIDEN_LIB.clone()

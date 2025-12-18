@@ -12,7 +12,7 @@ use crate::assembly::{Assembler, DefaultSourceManager, KernelLibrary};
 use crate::asset::FungibleAsset;
 use crate::block::BlockNumber;
 use crate::crypto::SequentialCommit;
-use crate::protocol::MidenLib;
+use crate::protocol::ProtocolLib;
 use crate::transaction::{
     self,
     OutputNote,
@@ -140,7 +140,7 @@ impl TransactionKernel {
         Assembler::with_kernel(source_manager, Self::kernel())
             .with_dynamic_library(CoreLibrary::default())
             .expect("failed to load std-lib")
-            .with_dynamic_library(MidenLib::default())
+            .with_dynamic_library(ProtocolLib::default())
             .expect("failed to load miden-lib")
     }
 

@@ -13,7 +13,7 @@ pub mod batch;
 pub mod block;
 pub mod errors;
 pub mod note;
-pub mod protocol;
+mod protocol;
 pub mod transaction;
 
 #[cfg(any(feature = "testing", test))]
@@ -61,6 +61,7 @@ pub use miden_core_lib::CoreLibrary;
 pub use miden_crypto::hash::rpo::Rpo256 as Hasher;
 pub use miden_crypto::word;
 pub use miden_crypto::word::{LexicographicWord, Word, WordError};
+pub use protocol::ProtocolLib;
 
 pub mod assembly {
     pub use miden_assembly::ast::{Module, ModuleKind, ProcedureName, QualifiedProcedureName};
