@@ -90,7 +90,6 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
         agglayer_faucet.id(),
         user_account.id(),
         amount,
-        &p2id_script,
         serial_num,
         aux,
         builder.rng_mut(),

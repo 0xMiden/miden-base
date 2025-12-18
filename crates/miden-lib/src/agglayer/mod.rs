@@ -365,7 +365,6 @@ pub fn create_agglayer_faucet_builder(
 /// - `sender`: The account ID of the note creator
 /// - `target_account_id`: The account ID that will receive the P2ID output note
 /// - `amount`: The amount of assets to be minted and transferred
-/// - `output_note_script`: The script for the output note (typically P2ID script)
 /// - `output_serial_num`: The serial number for the output note
 /// - `aux`: Auxiliary data for the CLAIM note (verified against Global Exit Tree)
 /// - `rng`: Random number generator for creating the serial number
@@ -377,7 +376,6 @@ pub fn create_claim_note<R: FeltRng>(
     sender: AccountId,
     target_account_id: AccountId,
     amount: Felt,
-    output_note_script: &NoteScript,
     output_serial_num: Word,
     aux: Felt,
     rng: &mut R,
@@ -395,16 +393,14 @@ pub fn create_claim_note<R: FeltRng>(
         aux,                                  // aux
         Felt::from(output_note_tag),          // tag
         amount,                               // amount
-        output_note_script.root()[0],         // SCRIPT_ROOT[0]
-        output_note_script.root()[1],         // SCRIPT_ROOT[1]
-        output_note_script.root()[2],         // SCRIPT_ROOT[2]
-        output_note_script.root()[3],         // SCRIPT_ROOT[3]
         output_serial_num[0],                 // SERIAL_NUM[0]
         output_serial_num[1],                 // SERIAL_NUM[1]
         output_serial_num[2],                 // SERIAL_NUM[2]
         output_serial_num[3],                 // SERIAL_NUM[3]
         target_account_id.suffix(),           // P2ID input: suffix
         target_account_id.prefix().as_felt(), // P2ID input: prefix
+        agg_faucet_id.suffix(),               // faucet account suffix
+        agg_faucet_id.prefix().as_felt(),     // faucet account prefix
     ];
 
     let inputs = NoteInputs::new(claim_inputs)?;
