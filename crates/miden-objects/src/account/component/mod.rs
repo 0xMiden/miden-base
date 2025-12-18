@@ -242,8 +242,6 @@ impl From<AccountComponent> for AccountComponentCode {
     }
 }
 
-// TODO(named_slots): Reactivate tests once packages support schemas.
-/*
 #[cfg(test)]
 mod tests {
     use alloc::collections::BTreeSet;
@@ -359,4 +357,3 @@ mod tests {
         assert!(error_msg.contains("package does not contain account component metadata"));
     }
 }
-*/
