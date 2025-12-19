@@ -23,6 +23,8 @@ pub const ERR_BASIC_FUNGIBLE_BURN_WRONG_NUMBER_OF_ASSETS: MasmError = MasmError:
 
 /// Error Message: "invalid ger claim proof"
 pub const ERR_CLAIM_INVALID_GER_PROOF: MasmError = MasmError::from_static_str("invalid ger claim proof");
+/// Error Message: "CLAIM's target account address and transaction address do not match"
+pub const ERR_CLAIM_TARGET_ACCT_MISMATCH: MasmError = MasmError::from_static_str("CLAIM's target account address and transaction address do not match");
 /// Error Message: "CLAIM script expects 12+ inputs for public output notes"
 pub const ERR_CLAIM_WRONG_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_str("CLAIM script expects 12+ inputs for public output notes");
 

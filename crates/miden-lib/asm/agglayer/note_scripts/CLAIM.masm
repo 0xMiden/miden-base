@@ -4,7 +4,7 @@ use.miden::active_account
 use.miden::active_note
 use.miden::note
 
-const.ERR_P2ID_TARGET_ACCT_MISMATCH="P2ID's target account address and transaction address do not match"
+const.ERR_CLAIM_TARGET_ACCT_MISMATCH="CLAIM's target account address and transaction address do not match"
 #! Agglayer Faucet CLAIM script: claims assets by calling the agglayer faucet's claim function.
 #! This note is intended to be executed against an agglayer faucet account.
 #!
@@ -40,7 +40,7 @@ begin
     exec.active_account::get_id
     # => [account_id_prefix, account_id_suffix, agg_faucet_prefix, agg_faucet_suffix]
 
-    exec.account_id::is_equal assert.err=ERR_P2ID_TARGET_ACCT_MISMATCH
+    exec.account_id::is_equal assert.err=ERR_CLAIM_TARGET_ACCT_MISMATCH
     # => []
 
     call.agg_faucet::claim
