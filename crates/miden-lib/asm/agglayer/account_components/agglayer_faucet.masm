@@ -9,20 +9,19 @@ use.miden::tx
 # =================================================================================================
 
 # The slot in this component's storage layout where the bridge account ID is stored.
-
 const BRIDGE_ID_SLOT = word("miden::agglayer::faucet")
 
 const P2ID_NOTE_NUM_INPUTS = 2
 const OUTPUT_NOTE_TYPE_PUBLIC = 1
 const OUTPUT_PUBLIC_NOTE_INPUTS_ADDR = 8
 const OUTPUT_PUBLIC_NOTE_INPUTS_LEN_MEM_ADDR = 0
-const ERR_CLAIM_WRONG_NUMBER_OF_INPUTS = "CLAIM note must have exactly 12 inputs"
-
 const P2ID_SCRIPT_ROOT = [15783632360113277539, 7403765918285273520, 15691985194755641846, 10399643920503194563]
 
 # ERRORS
 # =================================================================================================
+
 const ERR_CLAIM_INVALID_GER_PROOF = "invalid ger claim proof"
+const ERR_CLAIM_WRONG_NUMBER_OF_INPUTS = "CLAIM note must have exactly 12 inputs"
 
 #! Validates a CLAIM note by verifying its inputs against a GER against the AggLayer bridge.
 #!
