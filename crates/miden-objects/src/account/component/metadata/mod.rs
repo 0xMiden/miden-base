@@ -43,7 +43,7 @@ use crate::AccountError;
 ///     AccountStorageSchema,
 ///     FeltSchema,
 ///     InitStorageData,
-///     SchemaTypeIdentifier,
+///     SchemaTypeId,
 ///     StorageSlotSchema,
 ///     StorageValueName,
 ///     ValueSlotSchema,
@@ -57,7 +57,7 @@ use crate::AccountError;
 ///     FeltSchema::new_void(),
 ///     FeltSchema::new_void(),
 ///     FeltSchema::new_void(),
-///     FeltSchema::new_typed(SchemaTypeIdentifier::native_felt(), "foo".parse()?),
+///     FeltSchema::new_typed(SchemaTypeId::native_felt(), "foo".parse()?),
 /// ]);
 ///
 /// let storage_schema = AccountStorageSchema::new([(

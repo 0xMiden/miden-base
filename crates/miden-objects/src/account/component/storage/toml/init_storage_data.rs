@@ -23,16 +23,19 @@ impl InitStorageData {
     ///
     /// # Errors
     ///
-    /// - If duplicate keys or empty tables are found in the string
+    /// - If the TOML string fails to parse
+    /// - If duplicate keys are found after parsing
+    /// - If empty tables are found in the string
     /// - If the TOML string includes unsupported arrays
     pub fn from_toml(toml_str: &str) -> Result<Self, InitStorageDataError> {
-        let value: toml::Value = toml::from_str(toml_str)?;
+        // TOML documents are always parsed as a root table.
+        let table: toml::Table = toml::from_str(toml_str)?;
         let mut value_entries = BTreeMap::new();
         let mut map_entries = BTreeMap::new();
         // Start with an empty prefix (i.e. the default, which is an empty string)
         Self::flatten_parse_toml_value(
             StorageValueName::empty(),
-            value,
+            toml::Value::Table(table),
             &mut value_entries,
             &mut map_entries,
         )?;
@@ -66,22 +69,12 @@ impl InitStorageData {
                 }
             },
             toml::Value::Array(items) if items.is_empty() => {
-                if prefix.as_str().is_empty() {
-                    return Err(InitStorageDataError::ArraysNotSupported {
-                        key: "<root>".into(),
-                        len: 0,
-                    });
+                if value_entries.contains_key(&prefix) || map_entries.contains_key(&prefix) {
+                    return Err(InitStorageDataError::DuplicateKey(prefix.as_str().into()));
                 }
                 map_entries.insert(prefix, Vec::new());
             },
             toml::Value::Array(items) => {
-                if prefix.as_str().is_empty() {
-                    return Err(InitStorageDataError::ArraysNotSupported {
-                        key: "<root>".into(),
-                        len: items.len(),
-                    });
-                }
-
                 // Arrays can be either:
                 // - map entries: an array of inline tables `{ key = ..., value = ... }`
                 // - a 4-element word value: an array of 4 field elements
@@ -91,6 +84,9 @@ impl InitStorageData {
                         _,
                     >>(
                     )?;
+                    if value_entries.contains_key(&prefix) || map_entries.contains_key(&prefix) {
+                        return Err(InitStorageDataError::DuplicateKey(prefix.as_str().into()));
+                    }
                     map_entries.insert(prefix, entries);
                 } else if items.len() == 4
                     && items.iter().all(|item| matches!(item, toml::Value::String(_)))
@@ -107,6 +103,9 @@ impl InitStorageData {
                         .collect::<Result<Vec<_>, _>>()?
                         .try_into()
                         .expect("length was checked above");
+                    if value_entries.contains_key(&prefix) || map_entries.contains_key(&prefix) {
+                        return Err(InitStorageDataError::DuplicateKey(prefix.as_str().into()));
+                    }
                     value_entries.insert(prefix, WordValue::Elements(elements));
                 } else {
                     return Err(InitStorageDataError::ArraysNotSupported {
@@ -117,6 +116,9 @@ impl InitStorageData {
             },
             toml_value => match toml_value {
                 toml::Value::String(s) => {
+                    if value_entries.contains_key(&prefix) || map_entries.contains_key(&prefix) {
+                        return Err(InitStorageDataError::DuplicateKey(prefix.as_str().into()));
+                    }
                     value_entries.insert(prefix, WordValue::Atomic(s));
                 },
                 _ => {
@@ -130,11 +132,14 @@ impl InitStorageData {
 
 #[derive(Debug, Error)]
 pub enum InitStorageDataError {
-    #[error("failed to parse TOML")]
+    #[error("failed to parse TOML: {0}")]
     InvalidToml(#[from] toml::de::Error),
 
     #[error("empty table encountered for key `{0}`")]
     EmptyTable(String),
+
+    #[error("duplicate init key `{0}`")]
+    DuplicateKey(String),
 
     #[error(
         "invalid input for `{key}`: unsupported array value (len {len}); expected either a map entry list (array of inline tables with `key` and `value`) or a 4-element word array of strings"

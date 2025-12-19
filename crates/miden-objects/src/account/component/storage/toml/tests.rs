@@ -155,6 +155,20 @@ fn error_on_duplicate_keys() {
 }
 
 #[test]
+fn error_on_duplicate_keys_after_flattening() {
+    // `"a.b"` should collide with `[a] b`.
+    let toml_str = r#"
+        "a.b" = "1"
+
+        [a]
+        b = "2"
+    "#;
+
+    let err = InitStorageData::from_toml(toml_str).unwrap_err();
+    assert_matches::assert_matches!(err, InitStorageDataError::DuplicateKey(key) if key == "a.b");
+}
+
+#[test]
 fn metadata_from_toml_parses_named_storage_schema() {
     let toml_str = r#"
         name = "Test Component"
@@ -462,10 +476,7 @@ fn extensive_schema_metadata_and_init_toml_example() {
         panic!("expected map slot schema");
     };
     assert_eq!(default_map.key_schema(), &WordSchema::new_simple(SchemaTypeId::native_word()));
-    assert_eq!(
-        default_map.value_schema(),
-        &WordSchema::new_simple(SchemaTypeId::native_word())
-    );
+    assert_eq!(default_map.value_schema(), &WordSchema::new_simple(SchemaTypeId::native_word()));
 
     // `type.key`/`type.value` parse as schema/type descriptors (not literal words).
     let typed_map_new_name = StorageSlotName::new("demo::typed_map_new").unwrap();
