@@ -385,65 +385,65 @@ fn extensive_schema_metadata_and_init_toml_example() {
         supported-types = ["FungibleFaucet", "RegularAccountImmutableCode"]
 
         # composed slot schema expressed via `type = [...]`
-	        [[storage.slots]]
-	        name = "demo::token_metadata"
+        [[storage.slots]]
+        name = "demo::token_metadata"
         description = "Token metadata: max_supply, symbol, decimals, reserved."
-	        type = [
-	            { type = "u32", name = "max_supply", description = "Maximum supply (base units)" },
-	            { type = "miden::standards::fungible_faucets::metadata::token_symbol", name = "symbol", default-value = "TST" },
-	            { type = "u8", name = "decimals", description = "Token decimals" },
-	            { type = "void" }
-	        ]
+        type = [
+            { type = "u32", name = "max_supply", description = "Maximum supply (base units)" },
+            { type = "miden::standards::fungible_faucets::metadata::token_symbol", name = "symbol", default-value = "TST" },
+            { type = "u8", name = "decimals", description = "Token decimals" },
+            { type = "void" },
+        ]
 
         # simple word-typed slot (must be passed at instantiation)
-		        [[storage.slots]]
-		        name = "demo::owner_pub_key"
-	        description = "Owner public key"
-	        type = "miden::standards::auth::rpo_falcon512::pub_key"
+        [[storage.slots]]
+        name = "demo::owner_pub_key"
+        description = "Owner public key"
+        type = "miden::standards::auth::rpo_falcon512::pub_key"
 
         # simple felt-typed word slot (parsed as felt, stored as [0,0,0,<felt>])
-	        [[storage.slots]]
-	        name = "demo::protocol_version"
+        [[storage.slots]]
+        name = "demo::protocol_version"
         description = "Protocol version stored as u8 in the last felt"
         type = "u8"
 
         # word slot with an overridable default
-	        [[storage.slots]]
-	        name = "demo::static_word"
+        [[storage.slots]]
+        name = "demo::static_word"
         description = "A fully specified word slot"
         type = "word"
         default-value = ["0x1", "0x2", "0x3", "0x4"]
 
         # Word slot with explicit `type = "word"`
-	        [[storage.slots]]
-	        name = "demo::legacy_word"
+        [[storage.slots]]
+        name = "demo::legacy_word"
         type = "word"
         default-value = "0x123"
 
         # Static map defaults (fully concrete key/value words)
-	        [[storage.slots]]
-	        name = "demo::static_map"
+        [[storage.slots]]
+        name = "demo::static_map"
         description = "Static map with default entries"
         type = { key = "word", value = "word" }
         default-values = [
             { key = "0x1", value = "0x10" },
-            { key = ["0", "0", "0", "2"], value = ["0", "0", "0", "32"] }
+            { key = ["0", "0", "0", "2"], value = ["0", "0", "0", "32"] },
         ]
 
         # Word/word map (explicit key/value types).
-	        [[storage.slots]]
-	        name = "demo::default_typed_map"
+        [[storage.slots]]
+        name = "demo::default_typed_map"
         description = "Defaults to key/value type => word/word"
         type = { key = "word", value = "word" }
 
         # init-populated map with key/value types
-	        [[storage.slots]]
-	        name = "demo::typed_map_new"
+        [[storage.slots]]
+        name = "demo::typed_map_new"
         type.key = [
             { type = "felt", name = "prefix" },
             { type = "felt", name = "suffix" },
             { type = "void" },
-            { type = "void" }
+            { type = "void" },
         ]
         type.value = "u16"
     "#;
