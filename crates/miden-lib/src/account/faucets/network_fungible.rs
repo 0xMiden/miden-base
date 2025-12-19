@@ -214,7 +214,7 @@ impl From<NetworkFungibleFaucet> for AccountComponent {
             Felt::ZERO,
         ]);
 
-        // Convert AccountId to Word representation for storage
+        // Convert AccountId into its Word encoding for storage.
         let owner_account_id_word: Word = [
             Felt::new(0),
             Felt::new(0),
