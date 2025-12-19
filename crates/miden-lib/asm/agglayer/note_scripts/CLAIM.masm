@@ -13,6 +13,7 @@ const.CLAIM_NOTE_NUM_INPUTS=12
 # =================================================================================================
 
 const.ERR_CLAIM_TARGET_ACCT_MISMATCH="CLAIM's target account address and transaction address do not match"
+
 #! Agglayer Faucet CLAIM script: claims assets by calling the agglayer faucet's claim function.
 #! This note is intended to be consumed by an agglayer faucet account and will create a P2ID note on consumption.
 #!
