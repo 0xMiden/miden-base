@@ -64,10 +64,10 @@ const MOCK_ACCOUNT_CODE: &str = "
     end
 
     #! Inputs:  [slot_id_prefix, slot_id_suffix, KEY, NEW_VALUE, pad(6)]
-    #! Outputs: [OLD_VALUE, pad(8)]
+    #! Outputs: [OLD_VALUE, pad(12)]
     export.set_map_item
         exec.native_account::set_map_item
-        # => [OLD_VALUE, pad(8)]
+        # => [OLD_VALUE, pad(12)]
     end
 
     #! Inputs:  [slot_id_prefix, slot_id_suffix, KEY, pad(10)]

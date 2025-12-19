@@ -510,8 +510,8 @@ export.account_set_map_item
     # => [OLD_VALUE, pad(16)]
 
     # truncate the stack
-    swapw dropw swapw dropw
-    # => [OLD_VALUE, pad(8)]
+    swapw dropw
+    # => [OLD_VALUE, pad(12)]
 end
 
 #! Returns the vault root of the active account at the beginning of the transaction.

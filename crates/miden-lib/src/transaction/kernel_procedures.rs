@@ -34,7 +34,7 @@ pub const KERNEL_PROCEDURES: [Word; 52] = [
     // account_get_initial_map_item
     word!("0x773b9197efb18287cc9f1009ea53dbd3945b79b7168717b6a56ff0292083d1ea"),
     // account_set_map_item
-    word!("0xdbf0f47e5626f49a083e251c733737518196b64ef53e5520ef7bdc7d528892fa"),
+    word!("0xb131c44ee1304dc688a86c73699092cb0fe56c31bfebd5a73aaf878923b88ef6"),
     // account_get_initial_vault_root
     word!("0x46297d9ac95afd60c7ef1a065e024ad49aa4c019f6b3924191905449b244d4ec"),
     // account_get_vault_root

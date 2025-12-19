@@ -742,7 +742,7 @@ async fn test_set_map_item() -> miette::Result<()> {
             push.{new_value}
             push.{new_key}
             push.SLOT_NAME[0..2]
-            call.mock_account::set_map_item
+            call.mock_account::set_map_item 
 
             # double check that the storage slot is indeed the new map
             push.SLOT_NAME[0..2]
@@ -776,6 +776,16 @@ async fn test_set_map_item() -> miette::Result<()> {
         new_storage_map.root(),
         exec_output.get_stack_word_be(0),
         "get_item should return the updated root",
+    );
+
+    let old_value_for_key = match slot.content() {
+        StorageSlotContent::Map(original_map) => original_map.get(&new_key),
+        _ => panic!("expected map"),
+    };
+    assert_eq!(
+        old_value_for_key,
+        exec_output.get_stack_word_be(4),
+        "set_map_item must return the old value for the key (empty word for new key)",
     );
 
     Ok(())
