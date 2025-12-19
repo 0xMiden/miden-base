@@ -6,25 +6,28 @@ use super::StorageValueName;
 
 /// A raw word value provided via [`InitStorageData`].
 ///
-/// This is used for map entries, where keys and values are supplied as either a scalar string
-/// (e.g. `"0x1234"`, `"16"`, `"BTC"`) or an array of 4 scalar elements.
+/// This is used for defining specific values in relation to a component's schema, where each values
+/// is supplied as either an atomic string (e.g. `"0x1234"`, `"16"`, `"BTC"`) or an array of 4 field
+/// elements.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "std", serde(untagged))]
 pub enum WordValue {
-    Scalar(String),
+    /// Represents a single word value, given by a single string input.
+    Atomic(String),
+    /// Represents a word through four string-encoded field elements.
     Elements([String; 4]),
 }
 
 impl From<String> for WordValue {
     fn from(value: String) -> Self {
-        WordValue::Scalar(value)
+        WordValue::Atomic(value)
     }
 }
 
 impl From<&str> for WordValue {
     fn from(value: &str) -> Self {
-        WordValue::Scalar(String::from(value))
+        WordValue::Atomic(String::from(value))
     }
 }
 

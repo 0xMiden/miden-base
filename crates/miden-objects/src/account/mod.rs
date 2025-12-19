@@ -42,7 +42,7 @@ pub use component::{
     MapSlotSchema,
     SchemaRequirement,
     SchemaTypeError,
-    SchemaTypeIdentifier,
+    SchemaTypeId,
     StorageSlotSchema,
     StorageValueName,
     StorageValueNameError,

@@ -14,13 +14,12 @@ impl InitStorageData {
     /// This method parses the provided TOML and flattens nested tables into
     /// dot‑separated keys using [`StorageValueName`] as keys.
     ///
-    /// Scalar values must be strings (e.g. `"0x1234"`, `"16"`, `"BTC"`). Numeric TOML scalars are
-    /// rejected to keep parsing simple and unambiguous.
+    /// Atomic values must be strings (e.g. `"0x1234"`, `"16"`, `"BTC"`).
     ///
     /// Arrays are supported for:
     /// - storage map slots: an array of inline tables of the form `{ key = <word>, value = <word>
     ///   }`,
-    /// - word values: a 4-element array of scalar elements.
+    /// - word values: a 4-element array of field elements.
     ///
     /// # Errors
     ///
@@ -85,7 +84,7 @@ impl InitStorageData {
 
                 // Arrays can be either:
                 // - map entries: an array of inline tables `{ key = ..., value = ... }`
-                // - a 4-element word value: an array of 4 scalar elements
+                // - a 4-element word value: an array of 4 field elements
                 if items.iter().all(|item| matches!(item, toml::Value::Table(_))) {
                     let entries = items.into_iter().map(parse_map_entry_value).collect::<Result<
                         Vec<(WordValue, WordValue)>,
@@ -118,10 +117,10 @@ impl InitStorageData {
             },
             toml_value => match toml_value {
                 toml::Value::String(s) => {
-                    value_entries.insert(prefix, WordValue::Scalar(s));
+                    value_entries.insert(prefix, WordValue::Atomic(s));
                 },
                 _ => {
-                    return Err(InitStorageDataError::NonStringScalar(prefix.as_str().into()));
+                    return Err(InitStorageDataError::NonStringAtomic(prefix.as_str().into()));
                 },
             },
         }
@@ -143,7 +142,7 @@ pub enum InitStorageDataError {
     ArraysNotSupported { key: String, len: usize },
 
     #[error("invalid input for `{0}`: init values must be strings")]
-    NonStringScalar(String),
+    NonStringAtomic(String),
 
     #[error("invalid storage value name")]
     InvalidStorageValueName(#[source] StorageValueNameError),

@@ -18,7 +18,7 @@ use super::super::{
     WordValue,
 };
 use crate::account::component::storage::type_registry::SCHEMA_TYPE_REGISTRY;
-use crate::account::component::{AccountComponentMetadata, SchemaTypeIdentifier};
+use crate::account::component::{AccountComponentMetadata, SchemaTypeId};
 use crate::account::{AccountType, StorageSlotName};
 use crate::errors::AccountComponentTemplateError;
 
@@ -55,10 +55,10 @@ impl AccountComponentMetadata {
         let raw: RawAccountComponentMetadata = toml::from_str(toml_string)
             .map_err(AccountComponentTemplateError::TomlDeserializationError)?;
 
-        let RawStorageSchema { slot } = raw.storage;
-        let mut fields = Vec::with_capacity(slot.len());
+        let RawStorageSchema { slots } = raw.storage;
+        let mut fields = Vec::with_capacity(slots.len());
 
-        for slot in slot {
+        for slot in slots {
             fields.push(slot.try_into_slot_schema()?);
         }
 
@@ -83,10 +83,9 @@ impl AccountComponentMetadata {
 // ACCOUNT STORAGE SCHEMA SERIALIZATION
 // ================================================================================================
 
-// TODO: should this be `[[storage.slots]]`?
 /// Raw TOML storage schema:
 ///
-/// - `[[storage.slot]]` for both value and map slots.
+/// - `[[storage.slots]]` for both value and map slots.
 ///
 /// Slot kind is inferred by the shape of the `type` field:
 /// - `type = "..."` or `type = [ ... ]` => value slot
@@ -95,14 +94,14 @@ impl AccountComponentMetadata {
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 struct RawStorageSchema {
     #[serde(default)]
-    slot: Vec<RawStorageSlotSchema>,
+    slots: Vec<RawStorageSlotSchema>,
 }
 
 /// Storage slot type descriptor.
 ///
 /// This field accepts either:
 /// - a type identifier (e.g. `"word"`, `"u16"`, `"miden::standards::auth::rpo_falcon512::pub_key"`)
-///   for singular word slots,
+///   for simple word slots,
 /// - an array of 4 [`FeltSchema`] descriptors for composite word slots, or
 /// - a table `{ key = ..., value = ... }` for map slots.
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -116,7 +115,7 @@ enum RawSlotType {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(untagged)]
 enum RawWordType {
-    TypeIdentifier(SchemaTypeIdentifier),
+    TypeIdentifier(SchemaTypeId),
     FeltSchemaArray(Vec<FeltSchema>),
 }
 
@@ -137,12 +136,12 @@ impl Serialize for AccountStorageSchema {
         S: Serializer,
     {
         let slots = self
-            .fields()
+            .slots()
             .iter()
             .map(|(slot_name, schema)| RawStorageSlotSchema::from_slot(slot_name, schema))
             .collect();
 
-        RawStorageSchema { slot: slots }.serialize(serializer)
+        RawStorageSchema { slots }.serialize(serializer)
     }
 }
 
@@ -153,9 +152,9 @@ impl<'de> Deserialize<'de> for AccountStorageSchema {
     {
         // First, look at the raw representation
         let raw = RawStorageSchema::deserialize(deserializer)?;
-        let mut fields = Vec::with_capacity(raw.slot.len());
+        let mut fields = Vec::with_capacity(raw.slots.len());
 
-        for slot in raw.slot {
+        for slot in raw.slots {
             let (slot_name, schema) = slot.try_into_slot_schema().map_err(D::Error::custom)?;
             fields.push((slot_name, schema));
         }
@@ -183,11 +182,11 @@ struct RawStorageSlotSchema {
     /// - If `type = { ... }`, this is a map slot.
     /// - If `type = [ ... ]`, this is a composite word slot whose schema is described by 4
     ///   [`FeltSchema`] descriptors.
-    /// - Otherwise, if `type = "..."`, this is a singular word slot whose value is supplied at
+    /// - Otherwise, if `type = "..."`, this is a simple word slot whose value is supplied at
     ///   instantiation time unless `default-value` is set (or the type is `void`).
     #[serde(rename = "type")]
     r#type: RawSlotType,
-    /// The (overridable) default value for a singular word slot.
+    /// The (overridable) default value for a simple word slot.
     #[serde(default)]
     default_value: Option<WordValue>,
     /// Default map entries.
@@ -219,7 +218,7 @@ impl RawStorageSlotSchema {
     fn from_value_slot(slot_name: &StorageSlotName, schema: &ValueSlotSchema) -> Self {
         let word = schema.word();
         let (r#type, default_value) = match word {
-            WordSchema::Singular { r#type, default_value } => (
+            WordSchema::Simple { r#type, default_value } => (
                 RawSlotType::Word(RawWordType::TypeIdentifier(r#type.clone())),
                 default_value.map(|word| WordValue::from_word(r#type, word)),
             ),
@@ -249,12 +248,12 @@ impl RawStorageSlotSchema {
         });
 
         let key_type = match schema.key_schema() {
-            WordSchema::Singular { r#type, .. } => RawWordType::TypeIdentifier(r#type.clone()),
+            WordSchema::Simple { r#type, .. } => RawWordType::TypeIdentifier(r#type.clone()),
             WordSchema::Composite { value } => RawWordType::FeltSchemaArray(value.to_vec()),
         };
 
         let value_type = match schema.value_schema() {
-            WordSchema::Singular { r#type, .. } => RawWordType::TypeIdentifier(r#type.clone()),
+            WordSchema::Simple { r#type, .. } => RawWordType::TypeIdentifier(r#type.clone()),
             WordSchema::Composite { value } => RawWordType::FeltSchemaArray(value.to_vec()),
         };
 
@@ -364,8 +363,8 @@ impl RawStorageSlotSchema {
                             .transpose()?;
 
                         let word_schema = match word {
-                            Some(word) => WordSchema::new_singular_with_default(r#type, word),
-                            None => WordSchema::new_singular(r#type),
+                            Some(word) => WordSchema::new_simple_with_default(r#type, word),
+                            None => WordSchema::new_simple(r#type),
                         };
 
                         Ok((
@@ -403,7 +402,7 @@ impl RawStorageSlotSchema {
         label: &str,
     ) -> Result<WordSchema, AccountComponentTemplateError> {
         match raw {
-            RawWordType::TypeIdentifier(r#type) => Ok(WordSchema::new_singular(r#type)),
+            RawWordType::TypeIdentifier(r#type) => Ok(WordSchema::new_simple(r#type)),
             RawWordType::FeltSchemaArray(elements) => {
                 let elements = Self::parse_felt_schema_array(elements, label)?;
                 Ok(WordSchema::new_value(elements))
@@ -463,20 +462,19 @@ impl RawStorageSlotSchema {
 impl WordValue {
     pub(super) fn try_parse_as_typed_word(
         &self,
-        schema_type: &SchemaTypeIdentifier,
+        schema_type: &SchemaTypeId,
         slot_prefix: &StorageValueName,
         label: &str,
     ) -> Result<Word, AccountComponentTemplateError> {
         let word = match self {
-            WordValue::Scalar(value) => SCHEMA_TYPE_REGISTRY
+            WordValue::Atomic(value) => SCHEMA_TYPE_REGISTRY
                 .try_parse_word(schema_type, value)
                 .map_err(AccountComponentTemplateError::StorageValueParsingError)?,
             WordValue::Elements(elements) => {
                 let felts = elements
                     .iter()
                     .map(|element| {
-                        SCHEMA_TYPE_REGISTRY
-                            .try_parse_felt(&SchemaTypeIdentifier::native_felt(), element)
+                        SCHEMA_TYPE_REGISTRY.try_parse_felt(&SchemaTypeId::native_felt(), element)
                     })
                     .collect::<Result<Vec<Felt>, _>>()
                     .map_err(AccountComponentTemplateError::StorageValueParsingError)?;
@@ -485,7 +483,7 @@ impl WordValue {
             },
         };
 
-        WordSchema::new_singular(schema_type.clone()).validate_word_value(
+        WordSchema::new_simple(schema_type.clone()).validate_word_value(
             slot_prefix,
             label,
             word,
@@ -493,7 +491,7 @@ impl WordValue {
         Ok(word)
     }
 
-    pub(super) fn from_word(schema_type: &SchemaTypeIdentifier, word: Word) -> Self {
-        WordValue::Scalar(SCHEMA_TYPE_REGISTRY.display_word(schema_type, word))
+    pub(super) fn from_word(schema_type: &SchemaTypeId, word: Word) -> Self {
+        WordValue::Atomic(SCHEMA_TYPE_REGISTRY.display_word(schema_type, word))
     }
 }

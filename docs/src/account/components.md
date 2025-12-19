@@ -42,7 +42,7 @@ description = "This component showcases the component schema format, and the dif
 version = "1.0.0"
 supported-types = ["FungibleFaucet"]
 
-[[storage.slot]]
+[[storage.slots]]
 name = "demo::token_metadata"
 description = "Contains token metadata (max supply, symbol, decimals)."
 type = [
@@ -52,17 +52,17 @@ type = [
     { type = "void" }
 ]
 
-[[storage.slot]]
+[[storage.slots]]
 name = "demo::owner_public_key"
 description = "This is a typed value supplied at instantiation and interpreted as a Falcon public key"
 type = "miden::standards::auth::rpo_falcon512::pub_key"
 
-[[storage.slot]]
+[[storage.slots]]
 name = "demo::protocol_version"
 description = "A whole-word init-supplied value typed as a felt (stored as [0,0,0,<value>])."
 type = "u8"
 
-[[storage.slot]]
+[[storage.slots]]
 name = "demo::static_map"
 description = "A map slot with statically defined entries"
 type = { key = "word", value = "word" }
@@ -71,33 +71,10 @@ default-values = [
     { key = ["0", "0", "0", "2"], value = "0x0000000000000000000000000000000000000000000000000000000000000010" }
 ]
 
-[[storage.slot]]
+[[storage.slots]]
 name = "demo::procedure_thresholds"
 description = "Map which stores procedure thresholds (PROC_ROOT -> signature threshold)"
 type = { key = "word", value = "u16" }
-```
-
-#### Specifying word schema and types
-
-Value-slot entries describe their schema via `WordSchema`. A value type can be either:
-
-- **Singular**: defined through the `type = "<identifier>"` field, indicating the expected `SchemaTypeIdentifier` for the entire word. The value is supplied at instantiation time via `InitStorageData`.
-- **Composite**: provided through `type = [ ... ]`, which contains exactly four `FeltSchema` descriptors. Each element is either a named typed field (optionally with `default-value`) or a `void` element for reserved/padding zeros.
-
-Composite schema entries reuse the existing TOML structure for four-element words, while singular schemas rely on `type`. In our example, the `token_metadata` slot uses a composite schema (`type = [...]`) mixing typed fields (`max_supply`, `decimals`) with defaults (`symbol`) and a reserved/padding `void` element.
-
-##### Word schema example
-
-```toml
-[[storage.slot]]
-name = "demo::faucet_id"
-description = "Account ID of the registered faucet"
-type = [
-  { type = "felt", name = "prefix", description = "Faucet ID prefix" },
-  { type = "felt", name = "suffix", description = "Faucet ID suffix" },
-  { type = "void" },
-  { type = "void" },
-]
 ```
 
 #### Header
@@ -109,6 +86,20 @@ The metadata header specifies four fields:
 - `version`: A semantic version of this component schema
 - `supported-types`: Specifies the types of accounts on which the component can be used. Valid values are `FungibleFaucet`, `NonFungibleFaucet`, `RegularAccountUpdatableCode` and `RegularAccountImmutableCode`
 
+##### Word schema example
+
+```toml
+[[storage.slots]]
+name = "demo::faucet_id"
+description = "Account ID of the registered faucet"
+type = [
+  { type = "felt", name = "prefix", description = "Faucet ID prefix" },
+  { type = "felt", name = "suffix", description = "Faucet ID suffix" },
+  { type = "void" },
+  { type = "void" },
+]
+```
+
 #### Storage entries
 
 An account component schema can contain multiple storage entries, each describing either a
@@ -116,8 +107,15 @@ An account component schema can contain multiple storage entries, each describin
 
 In TOML, these are declared using dotted array keys:
 
-- Value slots: `[[storage.slot]]` with `type = "..."` or `type = [ ... ]`
-- Map slots: `[[storage.slot]]` with `type = { ... }`
+- **Value slots**: `[[storage.slots]]` with `type = "..."` or `type = [ ... ]`
+- **Map slots**: `[[storage.slots]]` with `type = { ... }`
+
+**Value-slot** entries describe their schema via `WordSchema`. A value type can be either:
+
+- **Simple**: defined through the `type = "<identifier>"` field, indicating the expected `SchemaTypeId` for the entire word. The value is supplied at instantiation time via `InitStorageData`.
+- **Composite**: provided through `type = [ ... ]`, which contains exactly four `FeltSchema` descriptors. Each element is either a named typed field (optionally with `default-value`) or a `void` element for reserved/padding zeros.
+
+Composite schema entries reuse the existing TOML structure for four-element words, while simple schemas rely on `type`. In our example, the `token_metadata` slot uses a composite schema (`type = [...]`) mixing typed fields (`max_supply`, `decimals`) with defaults (`symbol`) and a reserved/padding `void` element.
 
 Every entry carries:
 
@@ -129,9 +127,9 @@ shape of the `type` field.
 
 ##### Word types
 
-Singular schemas accept `word` (default) and word-shaped types such as `miden::standards::auth::rpo_falcon512::pub_key` or `miden::standards::auth::ecdsa_k256_keccak::pub_key` (parsed from hexadecimal strings).
+Simple schemas accept `word` (default) and word-shaped types such as `miden::standards::auth::rpo_falcon512::pub_key` or `miden::standards::auth::ecdsa_k256_keccak::pub_key` (parsed from hexadecimal strings).
 
-Singular schemas can also use any felt type (e.g. `u8`, `u16`, `u32`, `felt`, `miden::standards::fungible_faucets::metadata::token_symbol`, `void`). The value is parsed as a felt and stored as a word with the parsed felt in the last element and the remaining elements set to `0`.
+Simple schemas can also use any felt type (e.g. `u8`, `u16`, `u32`, `felt`, `miden::standards::fungible_faucets::metadata::token_symbol`, `void`). The value is parsed as a felt and stored as a word with the parsed felt in the last element and the remaining elements set to `0`.
 
 
 ##### Felt types
@@ -148,9 +146,9 @@ Valid field element types are `void`, `u8`, `u16`, `u32`, `felt` (default) and `
 Single-slot entries are represented by `ValueSlotSchema` and occupy one slot (one word). They use the fields:
 
 - `type` (required): Describes the schema for this slot. It can be either:
-  - a string type identifier (singular init-supplied slot), or
+  - a string type identifier (simple init-supplied slot), or
   - an array of 4 felt schema descriptors (composite slot schema).
-- `default-value` (optional): An overridable default for singular slots. If omitted, the slot is required at instantiation (unless `type = "void"`).
+- `default-value` (optional): An overridable default for simple slots. If omitted, the slot is required at instantiation (unless `type = "void"`).
 
 In our TOML example, the first entry defines a composite schema, while the second is an init-supplied value typed as `miden::standards::auth::rpo_falcon512::pub_key`.
 
@@ -174,7 +172,7 @@ In the example, the third storage entry defines a static map and the fourth entr
 You can type maps at the slot level via `type.key` and `type.value` (each a `WordSchema`):
 
 ```toml
-[[storage.slot]]
+[[storage.slots]]
 name = "demo::typed_map"
 type = { key = "word", value = "miden::standards::auth::rpo_falcon512::pub_key" }
 ```

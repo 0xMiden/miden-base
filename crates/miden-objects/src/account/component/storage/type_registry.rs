@@ -43,24 +43,24 @@ pub enum SchemaTypeError {
     #[error("conversion error: {0}")]
     ConversionError(String),
     #[error("felt type ` {0}` not found in the type registry")]
-    FeltTypeNotFound(SchemaTypeIdentifier),
+    FeltTypeNotFound(SchemaTypeId),
     #[error("invalid type name `{0}`: {1}")]
     InvalidTypeName(String, String),
     #[error("failed to parse input `{input}` as `{schema_type}`")]
     ParseError {
         input: String,
-        schema_type: SchemaTypeIdentifier,
+        schema_type: SchemaTypeId,
         source: Box<dyn Error + Send + Sync + 'static>,
     },
     #[error("word type ` {0}` not found in the type registry")]
-    WordTypeNotFound(SchemaTypeIdentifier),
+    WordTypeNotFound(SchemaTypeId),
 }
 
 impl SchemaTypeError {
     /// Creates a [`SchemaTypeError::ParseError`].
     pub fn parse(
         input: impl Into<String>,
-        schema_type: SchemaTypeIdentifier,
+        schema_type: SchemaTypeId,
         source: impl Error + Send + Sync + 'static,
     ) -> Self {
         SchemaTypeError::ParseError {
@@ -75,12 +75,20 @@ impl SchemaTypeError {
 // ================================================================================================
 
 /// A newtype wrapper around a `String`, representing a schema type identifier.
+///
+/// A valid schema identifier is a name in the style of Rust namespaces, composed of one or more
+/// non-empty segments separated by `::`. Each segment can contain only ASCII alphanumerics or `_`.
+///
+/// Some examples:
+/// - `u32`
+/// - `felt`
+/// - `miden::standards::auth::rpo_falcon512::pub_key`
 #[derive(Debug, Clone, PartialEq, Eq, Ord, PartialOrd)]
 #[cfg_attr(feature = "std", derive(::serde::Deserialize, ::serde::Serialize))]
 #[cfg_attr(feature = "std", serde(transparent))]
-pub struct SchemaTypeIdentifier(String);
+pub struct SchemaTypeId(String);
 
-impl SchemaTypeIdentifier {
+impl SchemaTypeId {
     /// Creates a new [`SchemaTypeIdentifier`] from a `String`.
     ///
     /// The name must follow a Rust-style namespace format, consisting of one or more segments
@@ -116,36 +124,36 @@ impl SchemaTypeIdentifier {
         Ok(Self(s))
     }
 
-    /// Returns the schema type identifier for the native [`Felt`] type.
-    pub fn native_felt() -> SchemaTypeIdentifier {
-        SchemaTypeIdentifier::new("felt").expect("type is well formed")
-    }
-
-    /// Returns the schema type identifier for the native [`Word`] type.
-    pub fn native_word() -> SchemaTypeIdentifier {
-        SchemaTypeIdentifier::new("word").expect("type is well formed")
-    }
-
     /// Returns the schema type identifier for the `void` type.
     ///
     /// The `void` type always parses to `0` and is intended to model reserved or padding felts.
-    pub fn void() -> SchemaTypeIdentifier {
-        SchemaTypeIdentifier::new("void").expect("type is well formed")
+    pub fn void() -> SchemaTypeId {
+        SchemaTypeId::new("void").expect("type is well formed")
+    }
+
+    /// Returns the schema type identifier for the native [`Felt`] type.
+    pub fn native_felt() -> SchemaTypeId {
+        SchemaTypeId::new("felt").expect("type is well formed")
+    }
+
+    /// Returns the schema type identifier for the native [`Word`] type.
+    pub fn native_word() -> SchemaTypeId {
+        SchemaTypeId::new("word").expect("type is well formed")
     }
 
     /// Returns the schema type identifier for the native `u8` type.
-    pub fn u8() -> SchemaTypeIdentifier {
-        SchemaTypeIdentifier::new("u8").expect("type is well formed")
+    pub fn u8() -> SchemaTypeId {
+        SchemaTypeId::new("u8").expect("type is well formed")
     }
 
     /// Returns the schema type identifier for the native `u16` type.
-    pub fn u16() -> SchemaTypeIdentifier {
-        SchemaTypeIdentifier::new("u16").expect("type is well formed")
+    pub fn u16() -> SchemaTypeId {
+        SchemaTypeId::new("u16").expect("type is well formed")
     }
 
     /// Returns the schema type identifier for the native `u32` type.
-    pub fn u32() -> SchemaTypeIdentifier {
-        SchemaTypeIdentifier::new("u32").expect("type is well formed")
+    pub fn u32() -> SchemaTypeId {
+        SchemaTypeId::new("u32").expect("type is well formed")
     }
 
     /// Returns a reference to the inner string.
@@ -154,24 +162,23 @@ impl SchemaTypeIdentifier {
     }
 }
 
-impl Display for SchemaTypeIdentifier {
+impl Display for SchemaTypeId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(self.as_str())
     }
 }
 
-impl Serializable for SchemaTypeIdentifier {
+impl Serializable for SchemaTypeId {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         target.write(self.0.clone())
     }
 }
 
-impl Deserializable for SchemaTypeIdentifier {
+impl Deserializable for SchemaTypeId {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let id: String = source.read()?;
 
-        SchemaTypeIdentifier::new(id)
-            .map_err(|err| DeserializationError::InvalidValue(err.to_string()))
+        SchemaTypeId::new(id).map_err(|err| DeserializationError::InvalidValue(err.to_string()))
     }
 }
 
@@ -188,7 +195,7 @@ impl Deserializable for SchemaTypeIdentifier {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SchemaRequirement {
     /// The expected type identifier.
-    pub r#type: SchemaTypeIdentifier,
+    pub r#type: SchemaTypeId,
     /// An optional description providing additional context.
     pub description: Option<String>,
     /// An optional default value, which can be overridden at component instantiation time.
@@ -201,7 +208,7 @@ pub struct SchemaRequirement {
 /// Trait for converting a string into a single `Felt`.
 pub trait FeltType: Send + Sync {
     /// Returns the type identifier.
-    fn type_name() -> SchemaTypeIdentifier
+    fn type_name() -> SchemaTypeId
     where
         Self: Sized;
 
@@ -219,7 +226,7 @@ pub trait FeltType: Send + Sync {
 /// Trait for converting a string into a single `Word`.
 pub trait WordType: Send + Sync {
     /// Returns the type identifier.
-    fn type_name() -> SchemaTypeIdentifier
+    fn type_name() -> SchemaTypeId
     where
         Self: Sized;
 
@@ -238,7 +245,7 @@ impl<T> WordType for T
 where
     T: FeltType,
 {
-    fn type_name() -> SchemaTypeIdentifier {
+    fn type_name() -> SchemaTypeId {
         <T as FeltType>::type_name()
     }
 
@@ -265,8 +272,8 @@ where
 struct Void;
 
 impl FeltType for Void {
-    fn type_name() -> SchemaTypeIdentifier {
-        SchemaTypeIdentifier::void()
+    fn type_name() -> SchemaTypeId {
+        SchemaTypeId::void()
     }
 
     fn parse_str(input: &str) -> Result<Felt, SchemaTypeError> {
@@ -286,8 +293,8 @@ impl FeltType for Void {
 }
 
 impl FeltType for u8 {
-    fn type_name() -> SchemaTypeIdentifier {
-        SchemaTypeIdentifier::u8()
+    fn type_name() -> SchemaTypeId {
+        SchemaTypeId::u8()
     }
 
     fn parse_str(input: &str) -> Result<Felt, SchemaTypeError> {
@@ -306,8 +313,8 @@ impl FeltType for u8 {
 }
 
 impl FeltType for u16 {
-    fn type_name() -> SchemaTypeIdentifier {
-        SchemaTypeIdentifier::u16()
+    fn type_name() -> SchemaTypeId {
+        SchemaTypeId::u16()
     }
 
     fn parse_str(input: &str) -> Result<Felt, SchemaTypeError> {
@@ -326,8 +333,8 @@ impl FeltType for u16 {
 }
 
 impl FeltType for u32 {
-    fn type_name() -> SchemaTypeIdentifier {
-        SchemaTypeIdentifier::u32()
+    fn type_name() -> SchemaTypeId {
+        SchemaTypeId::u32()
     }
 
     fn parse_str(input: &str) -> Result<Felt, SchemaTypeError> {
@@ -346,8 +353,8 @@ impl FeltType for u32 {
 }
 
 impl FeltType for Felt {
-    fn type_name() -> SchemaTypeIdentifier {
-        SchemaTypeIdentifier::new("felt").expect("type is well formed")
+    fn type_name() -> SchemaTypeId {
+        SchemaTypeId::new("felt").expect("type is well formed")
     }
 
     fn parse_str(input: &str) -> Result<Felt, SchemaTypeError> {
@@ -368,8 +375,8 @@ impl FeltType for Felt {
 }
 
 impl FeltType for TokenSymbol {
-    fn type_name() -> SchemaTypeIdentifier {
-        SchemaTypeIdentifier::new("miden::standards::fungible_faucets::metadata::token_symbol")
+    fn type_name() -> SchemaTypeId {
+        SchemaTypeId::new("miden::standards::fungible_faucets::metadata::token_symbol")
             .expect("type is well formed")
     }
     fn parse_str(input: &str) -> Result<Felt, SchemaTypeError> {
@@ -418,8 +425,8 @@ fn pad_hex_string(input: &str) -> String {
 }
 
 impl WordType for Word {
-    fn type_name() -> SchemaTypeIdentifier {
-        SchemaTypeIdentifier::native_word()
+    fn type_name() -> SchemaTypeId {
+        SchemaTypeId::native_word()
     }
     fn parse_str(input: &str) -> Result<Word, SchemaTypeError> {
         Word::parse(input).map_err(|err| {
@@ -437,8 +444,8 @@ impl WordType for Word {
 }
 
 impl WordType for rpo_falcon512::PublicKey {
-    fn type_name() -> SchemaTypeIdentifier {
-        SchemaTypeIdentifier::new("miden::standards::auth::rpo_falcon512::pub_key")
+    fn type_name() -> SchemaTypeId {
+        SchemaTypeId::new("miden::standards::auth::rpo_falcon512::pub_key")
             .expect("type is well formed")
     }
     fn parse_str(input: &str) -> Result<Word, SchemaTypeError> {
@@ -459,8 +466,8 @@ impl WordType for rpo_falcon512::PublicKey {
 }
 
 impl WordType for ecdsa_k256_keccak::PublicKey {
-    fn type_name() -> SchemaTypeIdentifier {
-        SchemaTypeIdentifier::new("miden::standards::auth::ecdsa_k256_keccak::pub_key")
+    fn type_name() -> SchemaTypeId {
+        SchemaTypeId::new("miden::standards::auth::ecdsa_k256_keccak::pub_key")
             .expect("type is well formed")
     }
     fn parse_str(input: &str) -> Result<Word, SchemaTypeError> {
@@ -505,10 +512,10 @@ type WordTypeDisplayer = fn(Word) -> Result<String, SchemaTypeError>;
 /// corresponding storage values.
 #[derive(Clone, Debug, Default)]
 pub struct SchemaTypeRegistry {
-    felt: BTreeMap<SchemaTypeIdentifier, FeltTypeConverter>,
-    word: BTreeMap<SchemaTypeIdentifier, WordTypeConverter>,
-    felt_display: BTreeMap<SchemaTypeIdentifier, FeltTypeDisplayer>,
-    word_display: BTreeMap<SchemaTypeIdentifier, WordTypeDisplayer>,
+    felt: BTreeMap<SchemaTypeId, FeltTypeConverter>,
+    word: BTreeMap<SchemaTypeId, WordTypeConverter>,
+    felt_display: BTreeMap<SchemaTypeId, FeltTypeDisplayer>,
+    word_display: BTreeMap<SchemaTypeId, WordTypeDisplayer>,
 }
 
 impl SchemaTypeRegistry {
@@ -547,7 +554,7 @@ impl SchemaTypeRegistry {
     /// - If the type is not registered or if the conversion fails.
     pub fn try_parse_felt(
         &self,
-        type_name: &SchemaTypeIdentifier,
+        type_name: &SchemaTypeId,
         value: &str,
     ) -> Result<Felt, SchemaTypeError> {
         let converter = self
@@ -560,7 +567,7 @@ impl SchemaTypeRegistry {
     /// Validates that the given [`Felt`] conforms to the specified schema type.
     pub fn validate_felt_value(
         &self,
-        type_name: &SchemaTypeIdentifier,
+        type_name: &SchemaTypeId,
         felt: Felt,
     ) -> Result<(), SchemaTypeError> {
         let display = self
@@ -574,7 +581,7 @@ impl SchemaTypeRegistry {
     ///
     /// This is intended for serializing schemas to TOML (e.g. default values).
     #[allow(dead_code)]
-    pub fn display_felt(&self, type_name: &SchemaTypeIdentifier, felt: Felt) -> String {
+    pub fn display_felt(&self, type_name: &SchemaTypeId, felt: Felt) -> String {
         self.felt_display
             .get(type_name)
             .and_then(|display| display(felt).ok())
@@ -588,7 +595,7 @@ impl SchemaTypeRegistry {
     // TODO: This should return richer information (how it was converted, if it succededs as word,
     // etc.)
     #[allow(dead_code)]
-    pub fn display_word(&self, type_name: &SchemaTypeIdentifier, word: Word) -> String {
+    pub fn display_word(&self, type_name: &SchemaTypeId, word: Word) -> String {
         if let Some(display) = self.word_display.get(type_name) {
             return display(word).unwrap_or_else(|_| word.to_string());
         }
@@ -614,7 +621,7 @@ impl SchemaTypeRegistry {
     /// - If the type is not registered or if the conversion fails.
     pub fn try_parse_word(
         &self,
-        type_name: &SchemaTypeIdentifier,
+        type_name: &SchemaTypeId,
         value: &str,
     ) -> Result<Word, SchemaTypeError> {
         if let Some(converter) = self.word.get(type_name) {
@@ -631,7 +638,7 @@ impl SchemaTypeRegistry {
     }
 
     /// Returns `true` if a `FeltType` is registered for the given type.
-    pub fn contains_felt_type(&self, type_name: &SchemaTypeIdentifier) -> bool {
+    pub fn contains_felt_type(&self, type_name: &SchemaTypeId) -> bool {
         self.felt.contains_key(type_name)
     }
 
@@ -639,7 +646,7 @@ impl SchemaTypeRegistry {
     ///
     /// This also returns `true` for any registered felt type (as those can be embedded into a word
     /// with zero-padding).
-    pub fn contains_word_type(&self, type_name: &SchemaTypeIdentifier) -> bool {
+    pub fn contains_word_type(&self, type_name: &SchemaTypeId) -> bool {
         self.word.contains_key(type_name) || self.felt.contains_key(type_name)
     }
 }
