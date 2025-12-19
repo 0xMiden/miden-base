@@ -40,6 +40,7 @@ begin
     exec.active_account::get_id
     # => [account_id_prefix, account_id_suffix, agg_faucet_prefix, agg_faucet_suffix]
 
+    # ensure only the specified agglayer faucet can consume this CLAIM note, not any other account
     exec.account_id::is_equal assert.err=ERR_CLAIM_TARGET_ACCT_MISMATCH
     # => []
 
