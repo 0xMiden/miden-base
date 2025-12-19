@@ -2,11 +2,10 @@ use alloc::string::String;
 use alloc::vec::Vec;
 
 use miden_core::FieldElement;
-use miden_objects::Felt;
-use miden_objects::Word;
 use miden_objects::account::{AccountComponent, StorageMap, StorageSlot, StorageSlotName};
 use miden_objects::assembly::Library;
 use miden_objects::assembly::diagnostics::NamedSource;
+use miden_objects::{Felt, Word};
 
 use crate::transaction::TransactionKernel;
 
@@ -31,7 +30,7 @@ const ARRAY_MASM_TEMPLATE: &str = include_str!("../../asm/account_components/arr
 /// An [`AccountComponent`] providing an array data structure for storing words.
 ///
 /// This component provides a sparse array backed by a StorageMap that can store up to
-/// [`ARRAY_MAX_ELEMENTS`] elements. It supports `set` and `get` operations for storing and 
+/// [`ARRAY_MAX_ELEMENTS`] elements. It supports `set` and `get` operations for storing and
 /// retrieving words by index.
 ///
 /// When linking against this component, the `miden` library (i.e. [`MidenLib`](crate::MidenLib))
@@ -70,10 +69,7 @@ impl Array {
     /// # Arguments
     /// * `data_slot` - The storage slot name where the array data will be stored.
     pub fn new(data_slot: StorageSlotName) -> Self {
-        Self {
-            initial_elements: Vec::new(),
-            data_slot,
-        }
+        Self { initial_elements: Vec::new(), data_slot }
     }
 
     /// Creates a new [`Array`] component with the given initial elements.
@@ -107,10 +103,7 @@ impl Array {
             .enumerate()
             .map(|(i, word)| (Felt::new(i as u64), *word))
             .collect();
-        Self {
-            initial_elements,
-            data_slot,
-        }
+        Self { initial_elements, data_slot }
     }
 
     /// Returns a reference to the [`StorageSlotName`] where the array data is stored.
@@ -124,13 +117,17 @@ impl Array {
         ARRAY_MASM_TEMPLATE.replace("{{DATA_SLOT}}", self.data_slot.as_str())
     }
 
-    /// Generates the compiled [`Library`] for this array component.
+    /// Generates the compiled [`Library`] for this array component with the given component name.
+    ///
+    /// The `component_name` determines the module path used to reference the array's procedures.
+    /// For example, with `component_name = "myarray::data"`, the procedures would be called as
+    /// `myarray::data::get` and `myarray::data::set`.
     ///
     /// This can be used to link the array component's procedures into transaction scripts
     /// or other code that needs to call the array's `get` and `set` procedures.
-    pub fn generate_library(&self) -> Library {
+    pub fn generate_library(&self, component_name: &str) -> Library {
         let masm_source = self.generate_masm_source();
-        let source = NamedSource::new("array::component", masm_source);
+        let source = NamedSource::new(component_name, masm_source);
         TransactionKernel::assembler()
             .assemble_library([source])
             .expect("Array MASM template should be valid")
@@ -239,7 +236,7 @@ mod tests {
             let key = Word::from([*index, Felt::ZERO, Felt::ZERO, Felt::ZERO]);
             let value = account
                 .storage()
-                .get_map_item(&data_slot, key.into())
+                .get_map_item(&data_slot, key)
                 .expect("data slot should contain element");
             assert_eq!(&value, expected, "element at index {} should match", index);
         }
@@ -253,8 +250,10 @@ mod tests {
         let slot2 =
             StorageSlotName::new("myproject::array2::data").expect("slot name should be valid");
 
-        let array1 = Array::with_elements(slot1.clone(), [(Felt::new(0), Word::from([1, 1, 1, 1u32]))]);
-        let array2 = Array::with_elements(slot2.clone(), [(Felt::new(0), Word::from([2, 2, 2, 2u32]))]);
+        let array1 =
+            Array::with_elements(slot1.clone(), [(Felt::new(0), Word::from([1, 1, 1, 1u32]))]);
+        let array2 =
+            Array::with_elements(slot2.clone(), [(Felt::new(0), Word::from([2, 2, 2, 2u32]))]);
 
         // Build an account with both Array components
         let account = AccountBuilder::new([0u8; 32])
@@ -269,13 +268,13 @@ mod tests {
 
         let value1 = account
             .storage()
-            .get_map_item(&slot1, key.into())
+            .get_map_item(&slot1, key)
             .expect("slot1 should contain element");
         assert_eq!(value1, Word::from([1, 1, 1, 1u32]));
 
         let value2 = account
             .storage()
-            .get_map_item(&slot2, key.into())
+            .get_map_item(&slot2, key)
             .expect("slot2 should contain element");
         assert_eq!(value2, Word::from([2, 2, 2, 2u32]));
     }
