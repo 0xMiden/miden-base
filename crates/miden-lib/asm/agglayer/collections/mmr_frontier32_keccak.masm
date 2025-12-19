@@ -45,7 +45,7 @@ pub proc new
     push.1676014350.378744630.4127735880.2512168523.3362732168.2839872470.2825030484.3656125737
     # => [ZERO_0_LO, ZERO_0_HI, zero_array_ptr, mmr_root_ptr]
 
-    exec.mem_store_double_word
+    exec.mem_store_double_word dropw dropw
     # => [zero_array_ptr, mmr_root_ptr]
 
     # store the zero for the height 1
@@ -53,7 +53,7 @@ pub proc new
     push.501060780.3871659214.3009211592.2623812180.1269040150.2402257162.1716941530.3619962211
     # => [ZERO_1_LO, ZERO_1_HI, zero_array_ptr, mmr_root_ptr]
 
-    exec.mem_store_double_word
+    exec.mem_store_double_word dropw dropw
     # => [zero_array_ptr+8, mmr_root_ptr]
 
     # store the zero for the height 2
@@ -61,7 +61,7 @@ pub proc new
     push.2113874120.866443917.1466696484.1577749685.3266301349.2378900196.2613970667.2822768521
     # => [ZERO_2_LO, ZERO_2_HI, zero_array_ptr, mmr_root_ptr]
 
-    exec.mem_store_double_word
+    exec.mem_store_double_word dropw dropw
     # => [zero_array_ptr+16, mmr_root_ptr]
 
     # store the zero for the height 3
@@ -69,7 +69,7 @@ pub proc new
     push.3624627744.3896701049.3259095475.2541063347.2174359630.3386860883.819752706.2663419451
     # => [ZERO_3_LO, ZERO_3_HI, zero_array_ptr, mmr_root_ptr]
 
-    exec.mem_store_double_word
+    exec.mem_store_double_word dropw dropw
     # => [zero_array_ptr+24, mmr_root_ptr]
 
     # store the zero for the height 4
@@ -77,16 +77,22 @@ pub proc new
     push.3672259025.1408703058.2325593427.3764368977.1768984761.3986407010.3179733816.3993949676
     # => [ZERO_4_LO, ZERO_4_HI, zero_array_ptr, mmr_root_ptr]
 
-    exec.mem_store_double_word
+    exec.mem_store_double_word dropw dropw
     # => [zero_array_ptr+32, mmr_root_ptr]
 
-    # store the zero for the height 5, update the root
+    # store the zero for the height 5
     add.NODE_SIZE
     push.2772295100.1943789808.3975148557.2783120662.1954699067.4078189558.55884592.3556179934
-    # => [ZERO_5_LO, ZERO_5_HI, zero_array_ptr, mmr_root_ptr]
+    # => [ZERO_5_LO, ZERO_5_HI, zero_array_ptr+40, mmr_root_ptr]
 
-    dup.8 mem_storew_be dup.9 mem_storew_be dropw
-    movup.4 mem_storew_be movup.4 mem_storew_be
+    exec.mem_store_double_word
+
+    # update the root
+    movup.8 drop
+    # => [ZERO_5_LO, ZERO_5_HI, mmr_root_ptr]
+
+    exec.mem_store_double_word
+    dropw dropw drop
     # => []
 end
 
@@ -159,8 +165,7 @@ pub proc append_and_update_frontier
             # => [CUR_HASH_LO, CUR_HASH_HI, frontier[iter_counter]_ptr, iter_counter, num_leaves, mmr_frontier_ptr]
 
             # store the CUR_HASH to the frontier[iter_counter]_ptr
-            dup.8 mem_storew_be swapw
-            movup.8 add.4 mem_storew_be swapw
+            exec.mem_store_double_word movdn.8 drop
             # => [CUR_HASH_LO, CUR_HASH_HI, iter_counter, num_leaves, mmr_frontier_ptr]
 
             # get the pointer to the zero node of the current height
@@ -214,20 +219,12 @@ pub proc append_and_update_frontier
     padw loc_loadw.4 padw loc_loadw.0
     # => [FIN_HASH_LO, FIN_HASH_HI, mmr_root_ptr, frontier[tree_height]_ptr]
 
-    # store FIN_HASH_LO to the frontier[tree_height]_ptr
-    dup.9 mem_storew_be
-    # => [FIN_HASH_LO, FIN_HASH_HI, mmr_root_ptr, frontier[tree_height]_ptr]
+    # save the final hash as root of the MMR
+    exec.mem_store_double_word movup.8 drop
+    # => [FIN_HASH_LO, FIN_HASH_HI, frontier[tree_height]_ptr]
 
-    # store FIN_HASH_LO to the root_ptr
-    dup.8 mem_storew_be
-    # => [FIN_HASH_LO, FIN_HASH_HI, mmr_root_ptr, frontier[tree_height]_ptr]
-
-    # store FIN_HASH_HI to the frontier[tree_height]_ptr+4
-    swapw movup.9 add.4 mem_storew_be
-    # => [FIN_HASH_HI, FIN_HASH_LO, mmr_root_ptr]
-
-    # store FIN_HASH_HI to the root_ptr+4
-    movup.8 add.4 mem_storew_be swapw
+    # store the final hash to the frontier[tree_height]_ptr (frontier[5])
+    exec.mem_store_double_word movup.8 drop
     # => [FIN_HASH_LO, FIN_HASH_HI]
     # sine the final hash represents the tree root, the resulting stack state could be represented 
     # as:
@@ -240,13 +237,13 @@ end
 #! Stores two words to the provided global memory address.
 #!
 #! Inputs:  [WORD_1, WORD_2, ptr]
-#! Outputs: [ptr]
+#! Outputs: [WORD_1, WORD_2, ptr]
 proc mem_store_double_word
-    dup.8 mem_storew_be dropw
-    # => [WORD_2, ptr]
+    dup.8 mem_storew_be swapw
+    # => [WORD_2, WORD_1, ptr]
 
-    dup.4 add.4 mem_storew_be dropw
-    # => [ptr]
+    dup.8 add.4 mem_storew_be swapw
+    # => [WORD_1, WORD_2, ptr]
 end
 
 #! Loads two words from the provided global memory address.
