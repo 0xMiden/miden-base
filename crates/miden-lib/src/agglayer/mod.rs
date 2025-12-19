@@ -295,6 +295,7 @@ pub fn create_bridge_account(seed: Word) -> Account {
 /// Creates an existing bridge account with the standard configuration.
 ///
 /// This creates an existing account suitable for testing scenarios.
+#[cfg(any(feature = "testing", test))]
 pub fn create_existing_bridge_account(seed: Word) -> Account {
     create_bridge_account_builder(seed)
         .with_auth_component(AccountComponent::from(NoAuth))
@@ -338,6 +339,7 @@ pub fn create_agglayer_faucet(
 /// Creates an existing agglayer faucet account with the specified configuration.
 ///
 /// This creates an existing account suitable for testing scenarios.
+#[cfg(any(feature = "testing", test))]
 pub fn create_existing_agglayer_faucet(
     seed: Word,
     token_symbol: &str,
