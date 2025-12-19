@@ -20,16 +20,16 @@ use crate::errors::AccountComponentTemplateError;
 #[test]
 fn from_toml_str_with_nested_table_and_flattened() {
     let toml_table = r#"
-        [token_metadata]
+        ["demo::token_metadata"]
         max_supply = "1000000000"
         symbol = "ETH"
         decimals = "9"
     "#;
 
     let toml_inline = r#"
-        token_metadata.max_supply = "1000000000"
-        token_metadata.symbol = "ETH"
-        token_metadata.decimals = "9"
+        "demo::token_metadata.max_supply" = "1000000000"
+        "demo::token_metadata.symbol" = "ETH"
+        "demo::token_metadata.decimals" = "9"
     "#;
 
     let storage_table = InitStorageData::from_toml(toml_table).unwrap();
@@ -39,42 +39,23 @@ fn from_toml_str_with_nested_table_and_flattened() {
 }
 
 #[test]
-fn from_toml_str_with_deeply_nested_tables() {
+fn from_toml_str_with_deeply_nested_tables_is_rejected() {
     let toml_str = r#"
-        [a]
-        b = "0xb"
-
-        [a.c]
-        d = "0xd"
-
-        [x.y.z]
-        w = "42"
+        ["demo::token_metadata"]
+        [ "demo::token_metadata".nested ]
+        value = "42"
     "#;
 
-    let storage = InitStorageData::from_toml(toml_str).expect("Failed to parse TOML");
-    let key1: StorageValueName = "a.b".parse().unwrap();
-    let key2: StorageValueName = "a.c.d".parse().unwrap();
-    let key3: StorageValueName = "x.y.z.w".parse().unwrap();
-
-    let WordValue::Atomic(v1) = storage.get(&key1).unwrap() else {
-        panic!("expected a raw value for {key1}");
-    };
-    let WordValue::Atomic(v2) = storage.get(&key2).unwrap() else {
-        panic!("expected a raw value for {key2}");
-    };
-    let WordValue::Atomic(v3) = storage.get(&key3).unwrap() else {
-        panic!("expected a raw value for {key3}");
-    };
-
-    assert_eq!(v1, "0xb");
-    assert_eq!(v2, "0xd");
-    assert_eq!(v3, "42");
+    assert_matches::assert_matches!(
+        InitStorageData::from_toml(toml_str),
+        Err(InitStorageDataError::InvalidStorageValueName(_))
+    );
 }
 
 #[test]
 fn from_toml_rejects_non_string_atomics() {
     let toml_str = r#"
-        foo = 42
+        "demo::foo" = 42
     "#;
 
     let result = InitStorageData::from_toml(toml_str);
@@ -84,31 +65,31 @@ fn from_toml_rejects_non_string_atomics() {
 #[test]
 fn test_error_on_array() {
     let toml_str = r#"
-        token_metadata.v = ["1", "2", "3", "4", "5"]
+        "demo::token_metadata.v" = ["1", "2", "3", "4", "5"]
     "#;
 
     let err = InitStorageData::from_toml(toml_str).unwrap_err();
     assert_matches::assert_matches!(
         &err,
         InitStorageDataError::ArraysNotSupported { key, len }
-            if key == "token_metadata.v" && *len == 5
+            if key == "demo::token_metadata.v" && *len == 5
     );
     let msg = err.to_string();
-    assert!(msg.contains("token_metadata.v"));
+    assert!(msg.contains("demo::token_metadata.v"));
     assert!(msg.contains("len 5"));
 }
 
 #[test]
 fn parse_map_entries_from_array() {
     let toml_str = r#"
-        my_map = [
+        "demo::my_map" = [
             { key = "0x0000000000000000000000000000000000000000000000000000000000000001", value = "0x0000000000000000000000000000000000000000000000000000000000000010" },
             { key = "0x0000000000000000000000000000000000000000000000000000000000000002", value = ["1", "2", "3", "4"] }
         ]
     "#;
 
     let storage = InitStorageData::from_toml(toml_str).expect("Failed to parse map entries");
-    let map_name: StorageValueName = "my_map".parse().unwrap();
+    let map_name: StorageValueName = "demo::my_map".parse().unwrap();
     let entries = storage.map_entries(&map_name).expect("map entries missing");
     assert_eq!(entries.len(), 2);
 
@@ -133,19 +114,22 @@ fn parse_map_entries_from_array() {
 #[test]
 fn error_on_empty_subtable() {
     let toml_str = r#"
-        [a]
-        b = {}
+        ["demo::token_metadata"]
+        max_supply = {}
     "#;
 
     let result = InitStorageData::from_toml(toml_str);
-    assert_matches::assert_matches!(result.unwrap_err(), InitStorageDataError::EmptyTable(_));
+    assert_matches::assert_matches!(
+        result.unwrap_err(),
+        InitStorageDataError::EmptyTable(key) if key == "demo::token_metadata.max_supply"
+    );
 }
 
 #[test]
 fn error_on_duplicate_keys() {
     let toml_str = r#"
-        token_metadata.max_supply = "1000000000"
-        token_metadata.max_supply = "500000000"
+        "demo::token_metadata.max_supply" = "1000000000"
+        "demo::token_metadata.max_supply" = "500000000"
     "#;
 
     let result = InitStorageData::from_toml(toml_str).unwrap_err();
@@ -156,16 +140,19 @@ fn error_on_duplicate_keys() {
 
 #[test]
 fn error_on_duplicate_keys_after_flattening() {
-    // `"a.b"` should collide with `[a] b`.
+    // `"slot.field"` should collide with `["slot"] field`.
     let toml_str = r#"
-        "a.b" = "1"
+        "demo::token_metadata.max_supply" = "1"
 
-        [a]
-        b = "2"
+        ["demo::token_metadata"]
+        max_supply = "2"
     "#;
 
     let err = InitStorageData::from_toml(toml_str).unwrap_err();
-    assert_matches::assert_matches!(err, InitStorageDataError::DuplicateKey(key) if key == "a.b");
+    assert_matches::assert_matches!(
+        err,
+        InitStorageDataError::DuplicateKey(key) if key == "demo::token_metadata.max_supply"
+    );
 }
 
 #[test]
@@ -694,7 +681,7 @@ fn typed_map_init_entries_are_validated() {
     assert_matches::assert_matches!(
         metadata.storage_schema().build_storage_slots(&init_data),
         Err(AccountComponentTemplateError::InvalidInitStorageValue(name, msg))
-            if name.as_str() == "demo::typed_map" && msg.contains("void")
+            if &name.to_string() == "demo::typed_map" && msg.contains("void")
     );
 }
 

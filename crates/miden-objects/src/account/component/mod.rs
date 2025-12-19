@@ -6,7 +6,7 @@ use miden_mast_package::{MastArtifact, Package};
 mod metadata;
 pub use metadata::*;
 
-mod storage;
+pub mod storage;
 pub use storage::*;
 
 mod code;

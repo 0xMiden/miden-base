@@ -32,24 +32,7 @@ pub use code::AccountCode;
 pub use code::procedure::AccountProcedureRoot;
 
 pub mod component;
-pub use component::{
-    AccountComponent,
-    AccountComponentCode,
-    AccountComponentMetadata,
-    AccountStorageSchema,
-    FeltSchema,
-    InitStorageData,
-    MapSlotSchema,
-    SchemaRequirement,
-    SchemaTypeError,
-    SchemaTypeId,
-    StorageSlotSchema,
-    StorageValueName,
-    StorageValueNameError,
-    ValueSlotSchema,
-    WordSchema,
-    WordValue,
-};
+pub use component::{AccountComponent, AccountComponentCode, AccountComponentMetadata};
 
 pub mod delta;
 pub use delta::{

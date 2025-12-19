@@ -5,7 +5,7 @@ use serde::ser::{Error as SerError, SerializeStruct};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use super::super::type_registry::SCHEMA_TYPE_REGISTRY;
-use super::super::{FeltSchema, SchemaTypeId, StorageValueName};
+use super::super::{FeltSchema, SchemaTypeId};
 
 // FELT SCHEMA SERIALIZATION
 // ================================================================================================
@@ -96,9 +96,6 @@ impl<'de> Deserialize<'de> for FeltSchema {
         let Some(name) = raw.name else {
             return Err(D::Error::custom("non-void elements must define `name`"));
         };
-
-        let name: StorageValueName =
-            name.parse().map_err(|err| D::Error::custom(format!("invalid `name`: {err}")))?;
 
         let default_value = raw
             .default_value

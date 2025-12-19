@@ -6,7 +6,7 @@ use serde::Deserialize;
 use thiserror::Error;
 
 use super::super::{InitStorageData, StorageValueName, StorageValueNameError, WordValue};
-use crate::account::component::toml::RawMapEntrySchema;
+use super::RawMapEntrySchema;
 
 impl InitStorageData {
     /// Creates an instance of [`InitStorageData`] from a TOML string.
@@ -32,9 +32,9 @@ impl InitStorageData {
         let table: toml::Table = toml::from_str(toml_str)?;
         let mut value_entries = BTreeMap::new();
         let mut map_entries = BTreeMap::new();
-        // Start with an empty prefix (i.e. the default, which is an empty string)
+        // Start at the root (no prefix yet).
         Self::flatten_parse_toml_value(
-            StorageValueName::empty(),
+            None,
             toml::Value::Table(table),
             &mut value_entries,
             &mut map_entries,
@@ -49,7 +49,7 @@ impl InitStorageData {
     /// [`StorageValueName::with_suffix`]. If an encountered table is empty (and not the top-level),
     /// an error is returned.
     fn flatten_parse_toml_value(
-        prefix: StorageValueName,
+        prefix: Option<StorageValueName>,
         value: toml::Value,
         value_entries: &mut BTreeMap<StorageValueName, WordValue>,
         map_entries: &mut BTreeMap<StorageValueName, Vec<(WordValue, WordValue)>>,
@@ -57,24 +57,38 @@ impl InitStorageData {
         match value {
             toml::Value::Table(table) => {
                 // If this is not the root and the table is empty, error
-                if !prefix.as_str().is_empty() && table.is_empty() {
-                    return Err(InitStorageDataError::EmptyTable(prefix.as_str().into()));
+                if let Some(prefix) = prefix.as_ref()
+                    && table.is_empty()
+                {
+                    return Err(InitStorageDataError::EmptyTable(prefix.to_string()));
                 }
                 for (key, val) in table {
-                    // Create a new key and combine it with the current prefix.
-                    let new_key: StorageValueName =
-                        key.parse().map_err(InitStorageDataError::InvalidStorageValueName)?;
-                    let new_prefix = prefix.clone().with_suffix(&new_key);
-                    Self::flatten_parse_toml_value(new_prefix, val, value_entries, map_entries)?;
+                    let new_prefix = match prefix.as_ref() {
+                        None => {
+                            key.parse().map_err(InitStorageDataError::InvalidStorageValueName)?
+                        },
+                        Some(prefix) => prefix
+                            .clone()
+                            .with_suffix(&key)
+                            .map_err(InitStorageDataError::InvalidStorageValueName)?,
+                    };
+                    Self::flatten_parse_toml_value(
+                        Some(new_prefix),
+                        val,
+                        value_entries,
+                        map_entries,
+                    )?;
                 }
             },
             toml::Value::Array(items) if items.is_empty() => {
+                let prefix = prefix.expect("arrays must have a key prefix");
                 if value_entries.contains_key(&prefix) || map_entries.contains_key(&prefix) {
-                    return Err(InitStorageDataError::DuplicateKey(prefix.as_str().into()));
+                    return Err(InitStorageDataError::DuplicateKey(prefix.to_string()));
                 }
                 map_entries.insert(prefix, Vec::new());
             },
             toml::Value::Array(items) => {
+                let prefix = prefix.expect("arrays must have a key prefix");
                 // Arrays can be either:
                 // - map entries: an array of inline tables `{ key = ..., value = ... }`
                 // - a 4-element word value: an array of 4 field elements
@@ -85,7 +99,7 @@ impl InitStorageData {
                     >>(
                     )?;
                     if value_entries.contains_key(&prefix) || map_entries.contains_key(&prefix) {
-                        return Err(InitStorageDataError::DuplicateKey(prefix.as_str().into()));
+                        return Err(InitStorageDataError::DuplicateKey(prefix.to_string()));
                     }
                     map_entries.insert(prefix, entries);
                 } else if items.len() == 4
@@ -96,7 +110,7 @@ impl InitStorageData {
                         .map(|value| match value {
                             toml::Value::String(s) => Ok(s),
                             _ => Err(InitStorageDataError::ArraysNotSupported {
-                                key: prefix.as_str().into(),
+                                key: prefix.to_string(),
                                 len: 4,
                             }),
                         })
@@ -104,25 +118,27 @@ impl InitStorageData {
                         .try_into()
                         .expect("length was checked above");
                     if value_entries.contains_key(&prefix) || map_entries.contains_key(&prefix) {
-                        return Err(InitStorageDataError::DuplicateKey(prefix.as_str().into()));
+                        return Err(InitStorageDataError::DuplicateKey(prefix.to_string()));
                     }
                     value_entries.insert(prefix, WordValue::Elements(elements));
                 } else {
                     return Err(InitStorageDataError::ArraysNotSupported {
-                        key: prefix.as_str().into(),
+                        key: prefix.to_string(),
                         len: items.len(),
                     });
                 }
             },
             toml_value => match toml_value {
                 toml::Value::String(s) => {
+                    let prefix = prefix.expect("atomic values must have a key prefix");
                     if value_entries.contains_key(&prefix) || map_entries.contains_key(&prefix) {
-                        return Err(InitStorageDataError::DuplicateKey(prefix.as_str().into()));
+                        return Err(InitStorageDataError::DuplicateKey(prefix.to_string()));
                     }
                     value_entries.insert(prefix, WordValue::Atomic(s));
                 },
                 _ => {
-                    return Err(InitStorageDataError::NonStringAtomic(prefix.as_str().into()));
+                    let prefix = prefix.expect("atomic values must have a key prefix");
+                    return Err(InitStorageDataError::NonStringAtomic(prefix.to_string()));
                 },
             },
         }
@@ -156,7 +172,7 @@ pub enum InitStorageDataError {
     InvalidMapEntrySchema(String),
 }
 
-/// Parses a `{ key, value }` TOML table into a `(Word, Word)` pair, rejecting typed fields.
+/// Parses a `{ key, value }` table into a `(Word, Word)` pair, rejecting typed fields.
 fn parse_map_entry_value(
     item: toml::Value,
 ) -> Result<(WordValue, WordValue), InitStorageDataError> {

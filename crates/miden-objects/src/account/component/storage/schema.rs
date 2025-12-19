@@ -305,17 +305,6 @@ impl WordSchema {
         }
     }
 
-    fn is_fully_defaulted(&self) -> bool {
-        match self {
-            WordSchema::Simple { r#type, default_value } => {
-                *r#type == SchemaTypeId::void() || default_value.is_some()
-            },
-            WordSchema::Composite { value } => value.iter().all(|felt| {
-                felt.felt_type() == SchemaTypeId::void() || felt.default_value().is_some()
-            }),
-        }
-    }
-
     /// Validates that the defined word type exists and its inner felts (if any) are valid.
     fn validate(&self) -> Result<(), AccountComponentTemplateError> {
         let type_exists = SCHEMA_TYPE_REGISTRY.contains_word_type(&self.word_type());
@@ -485,7 +474,7 @@ impl From<[Felt; 4]> for WordSchema {
 /// which always evaluates to `0` and does not require init data.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FeltSchema {
-    name: Option<StorageValueName>,
+    name: Option<String>,
     description: Option<String>,
     r#type: SchemaTypeId,
     default_value: Option<Felt>,
@@ -493,9 +482,9 @@ pub struct FeltSchema {
 
 impl FeltSchema {
     /// Creates a new required typed felt field.
-    pub fn new_typed(r#type: SchemaTypeId, name: StorageValueName) -> Self {
+    pub fn new_typed(r#type: SchemaTypeId, name: impl Into<String>) -> Self {
         FeltSchema {
-            name: Some(name),
+            name: Some(name.into()),
             description: None,
             r#type,
             default_value: None,
@@ -505,11 +494,11 @@ impl FeltSchema {
     /// Creates a new typed felt field with a default value.
     pub fn new_typed_with_default(
         r#type: SchemaTypeId,
-        name: StorageValueName,
+        name: impl Into<String>,
         default_value: Felt,
     ) -> Self {
         FeltSchema {
-            name: Some(name),
+            name: Some(name.into()),
             description: None,
             r#type,
             default_value: Some(default_value),
@@ -539,8 +528,8 @@ impl FeltSchema {
         self.r#type.clone()
     }
 
-    pub fn name(&self) -> Option<&StorageValueName> {
-        self.name.as_ref()
+    pub fn name(&self) -> Option<&str> {
+        self.name.as_deref()
     }
 
     pub fn description(&self) -> Option<&String> {
@@ -560,12 +549,15 @@ impl FeltSchema {
             return Ok(());
         }
 
-        let Some(name) = self.name.as_ref() else {
+        let Some(name) = self.name.as_deref() else {
             return Err(AccountComponentTemplateError::InvalidSchema(
                 "non-void felt elements must be named".into(),
             ));
         };
-        let value_name = slot_prefix.clone().with_suffix(name);
+        let value_name = slot_prefix
+            .clone()
+            .with_suffix(name)
+            .map_err(|err| AccountComponentTemplateError::InvalidSchema(err.to_string()))?;
 
         let default_value = self
             .default_value
@@ -597,8 +589,13 @@ impl FeltSchema {
         init_storage_data: &InitStorageData,
         value_prefix: StorageValueName,
     ) -> Result<Felt, AccountComponentTemplateError> {
-        let has_name = self.name.as_ref();
-        let value_name = has_name.map(|name| value_prefix.with_suffix(name));
+        let value_name =
+            match self.name.as_deref() {
+                Some(name) => Some(value_prefix.with_suffix(name).map_err(|err| {
+                    AccountComponentTemplateError::InvalidSchema(err.to_string())
+                })?),
+                None => None,
+            };
 
         if let Some(value_name) = value_name.clone() {
             match init_storage_data.get(&value_name) {
@@ -684,7 +681,7 @@ impl Serializable for FeltSchema {
 
 impl Deserializable for FeltSchema {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        let name = Option::<StorageValueName>::read_from(source)?;
+        let name = Option::<String>::read_from(source)?;
         let description = Option::<String>::read_from(source)?;
         let r#type = SchemaTypeId::read_from(source)?;
         let default_value = Option::<Felt>::read_from(source)?;
@@ -772,16 +769,6 @@ impl ValueSlotSchema {
         value_prefix: StorageValueName,
     ) -> Result<Word, AccountComponentTemplateError> {
         self.word.try_build_word(init_storage_data, value_prefix)
-    }
-
-    pub fn default_value(&self) -> Option<Word> {
-        if !self.word.is_fully_defaulted() {
-            return None;
-        }
-
-        self.word
-            .try_build_word(&InitStorageData::default(), StorageValueName::empty())
-            .ok()
     }
 
     pub(crate) fn validate(
@@ -1004,16 +991,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn value_slot_schema_default_value_returns_word_default() {
-        let slot = ValueSlotSchema::new(
-            Some("default value".into()),
-            WordSchema::from([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]),
-        );
-        let expected = Word::from([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]);
-        assert_eq!(slot.default_value(), Some(expected));
-    }
-
-    #[test]
     fn map_slot_schema_default_values_returns_map() {
         let word_schema = WordSchema::new_simple(SchemaTypeId::native_word());
         let mut default_values = BTreeMap::new();
@@ -1039,18 +1016,11 @@ mod tests {
 
     #[test]
     fn value_slot_schema_exposes_felt_schema_types() {
-        let felt_names = [
-            "a".parse::<StorageValueName>().unwrap(),
-            "b".parse::<StorageValueName>().unwrap(),
-            "c".parse::<StorageValueName>().unwrap(),
-            "d".parse::<StorageValueName>().unwrap(),
-        ];
-
         let felt_values = [
-            FeltSchema::new_typed(SchemaTypeId::u8(), felt_names[0].clone()),
-            FeltSchema::new_typed(SchemaTypeId::u16(), felt_names[1].clone()),
-            FeltSchema::new_typed(SchemaTypeId::u32(), felt_names[2].clone()),
-            FeltSchema::new_typed(SchemaTypeId::new("felt").unwrap(), felt_names[3].clone()),
+            FeltSchema::new_typed(SchemaTypeId::u8(), "a"),
+            FeltSchema::new_typed(SchemaTypeId::u16(), "b"),
+            FeltSchema::new_typed(SchemaTypeId::u32(), "c"),
+            FeltSchema::new_typed(SchemaTypeId::new("felt").unwrap(), "d"),
         ];
 
         let slot = ValueSlotSchema::new(None, WordSchema::new_value(felt_values));
@@ -1069,10 +1039,10 @@ mod tests {
         let key_schema = WordSchema::new_simple(SchemaTypeId::new("sampling::Key").unwrap());
 
         let value_schema = WordSchema::new_value([
-            FeltSchema::new_typed(SchemaTypeId::native_felt(), "a".parse().unwrap()),
-            FeltSchema::new_typed(SchemaTypeId::native_felt(), "b".parse().unwrap()),
-            FeltSchema::new_typed(SchemaTypeId::native_felt(), "c".parse().unwrap()),
-            FeltSchema::new_typed(SchemaTypeId::native_felt(), "d".parse().unwrap()),
+            FeltSchema::new_typed(SchemaTypeId::native_felt(), "a"),
+            FeltSchema::new_typed(SchemaTypeId::native_felt(), "b"),
+            FeltSchema::new_typed(SchemaTypeId::native_felt(), "c"),
+            FeltSchema::new_typed(SchemaTypeId::native_felt(), "d"),
         ]);
 
         let slot = MapSlotSchema::new(None, None, key_schema, value_schema);
@@ -1117,22 +1087,10 @@ mod tests {
     #[test]
     fn value_slot_schema_accepts_typed_felt_init_value_in_composed_word() {
         let word = WordSchema::new_value([
-            FeltSchema::new_typed(SchemaTypeId::u8(), "a".parse().unwrap()),
-            FeltSchema::new_typed_with_default(
-                SchemaTypeId::native_felt(),
-                "b".parse().unwrap(),
-                Felt::new(2),
-            ),
-            FeltSchema::new_typed_with_default(
-                SchemaTypeId::native_felt(),
-                "c".parse().unwrap(),
-                Felt::new(3),
-            ),
-            FeltSchema::new_typed_with_default(
-                SchemaTypeId::native_felt(),
-                "d".parse().unwrap(),
-                Felt::new(4),
-            ),
+            FeltSchema::new_typed(SchemaTypeId::u8(), "a"),
+            FeltSchema::new_typed_with_default(SchemaTypeId::native_felt(), "b", Felt::new(2)),
+            FeltSchema::new_typed_with_default(SchemaTypeId::native_felt(), "c", Felt::new(3)),
+            FeltSchema::new_typed_with_default(SchemaTypeId::native_felt(), "d", Felt::new(4)),
         ]);
         let slot = ValueSlotSchema::new(None, word);
 

@@ -53,13 +53,8 @@ impl InitStorageData {
         entries: impl IntoIterator<Item = (StorageValueName, WordValue)>,
         map_entries: impl IntoIterator<Item = (StorageValueName, Vec<(WordValue, WordValue)>)>,
     ) -> Self {
-        let value_entries = entries
-            .into_iter()
-            .filter(|(entry_name, _)| !entry_name.as_str().is_empty())
-            .collect::<BTreeMap<_, _>>();
-
         InitStorageData {
-            value_entries,
+            value_entries: entries.into_iter().collect(),
             map_entries: map_entries.into_iter().collect(),
         }
     }

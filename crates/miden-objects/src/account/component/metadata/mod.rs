@@ -57,7 +57,7 @@ use crate::AccountError;
 ///     FeltSchema::new_void(),
 ///     FeltSchema::new_void(),
 ///     FeltSchema::new_void(),
-///     FeltSchema::new_typed(SchemaTypeId::native_felt(), "foo".parse()?),
+///     FeltSchema::new_typed(SchemaTypeId::native_felt(), "foo"),
 /// ]);
 ///
 /// let storage_schema = AccountStorageSchema::new([(
@@ -74,9 +74,8 @@ use crate::AccountError;
 /// );
 ///
 /// // Init value keys are derived from slot name: `demo::test_value.foo`.
-/// let foo: StorageValueName = "foo".parse()?;
 /// let init_storage_data = InitStorageData::new(
-///     [(StorageValueName::from_slot_name(&slot_name).with_suffix(&foo), "300".into())],
+///     [(StorageValueName::from_slot_name(&slot_name).with_suffix("foo")?, "300".into())],
 ///     [],
 /// );
 ///
