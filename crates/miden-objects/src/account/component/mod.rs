@@ -1,9 +1,14 @@
 use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 
-// TODO(named_slots): Refactor templates.
-// mod template;
-// pub use template::*;
+use miden_mast_package::{MastArtifact, Package};
+
+mod metadata;
+pub use metadata::*;
+
+pub mod storage;
+pub use storage::*;
+
 mod code;
 pub use code::AccountComponentCode;
 
@@ -69,7 +74,6 @@ impl AccountComponent {
         })
     }
 
-    /*
     /// Creates an [`AccountComponent`] from a [`Package`] using [`InitStorageData`].
     ///
     /// This method provides type safety by leveraging the component's metadata to validate
@@ -104,8 +108,7 @@ impl AccountComponent {
         };
 
         let component_code = AccountComponentCode::from(library);
-
-        AccountComponent::from_library(&component_code, &metadata, init_storage_data)
+        Self::from_library(&component_code, &metadata, init_storage_data)
     }
 
     /// Creates an [`AccountComponent`] from an [`AccountComponentCode`] and
@@ -134,18 +137,16 @@ impl AccountComponent {
         account_component_metadata: &AccountComponentMetadata,
         init_storage_data: &InitStorageData,
     ) -> Result<Self, AccountError> {
-        let mut storage_slots = vec![];
-        for storage_entry in account_component_metadata.storage_entries() {
-            let entry_storage_slots = storage_entry
-                .try_build_storage_slots(init_storage_data)
-                .map_err(AccountError::AccountComponentTemplateInstantiationError)?;
-            storage_slots.extend(entry_storage_slots);
-        }
+        let storage_slots = account_component_metadata
+            .storage_schema()
+            .build_storage_slots(init_storage_data)
+            .map_err(|err| {
+                AccountError::other_with_source("failed to instantiate account component", err)
+            })?;
 
         Ok(AccountComponent::new(library.clone(), storage_slots)?
             .with_supported_types(account_component_metadata.supported_types().clone()))
     }
-    */
 
     // ACCESSORS
     // --------------------------------------------------------------------------------------------
@@ -238,8 +239,6 @@ impl From<AccountComponent> for AccountComponentCode {
     }
 }
 
-// TODO(named_slots): Reactivate tests once template is refactored.
-/*
 #[cfg(test)]
 mod tests {
     use alloc::collections::BTreeSet;
@@ -265,9 +264,8 @@ mod tests {
             "A test component".to_string(),
             Version::new(1, 0, 0),
             BTreeSet::from_iter([AccountType::RegularAccountImmutableCode]),
-            vec![],
-        )
-        .unwrap();
+            AccountStorageSchema::default(),
+        );
 
         let metadata_bytes = metadata.to_bytes();
         let package_with_metadata = Package {
@@ -323,9 +321,8 @@ mod tests {
                 AccountType::RegularAccountImmutableCode,
                 AccountType::RegularAccountUpdatableCode,
             ]),
-            vec![],
-        )
-        .unwrap();
+            AccountStorageSchema::default(),
+        );
 
         // Test with empty init data - this tests the complete workflow:
         // Library + Metadata -> AccountComponent
@@ -355,4 +352,3 @@ mod tests {
         assert!(error_msg.contains("package does not contain account component metadata"));
     }
 }
-*/
