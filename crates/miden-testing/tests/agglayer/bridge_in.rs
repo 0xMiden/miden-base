@@ -4,9 +4,9 @@ use core::slice;
 
 use miden_lib::account::wallets::BasicWallet;
 use miden_lib::agglayer::{
-    create_agglayer_faucet_builder,
-    create_bridge_account_builder,
     create_claim_note,
+    create_existing_agglayer_faucet,
+    create_existing_bridge_account,
 };
 use miden_lib::note::WellKnownNote;
 use miden_objects::account::Account;
@@ -35,12 +35,8 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
     // CREATE BRIDGE ACCOUNT (with bridge_out component for MMR validation)
     // --------------------------------------------------------------------------------------------
     let bridge_seed = builder.rng_mut().draw_word();
-    let bridge_account_builder = create_bridge_account_builder(bridge_seed);
-    let bridge_account = builder.add_account_from_builder(
-        Auth::IncrNonce,
-        bridge_account_builder,
-        AccountState::Exists,
-    )?;
+    let bridge_account = create_existing_bridge_account(bridge_seed);
+    builder.add_account(bridge_account.clone())?;
 
     // CREATE AGGLAYER FAUCET ACCOUNT (with agglayer_faucet component)
     // --------------------------------------------------------------------------------------------
@@ -49,18 +45,14 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
     let max_supply = Felt::new(1000000);
     let agglayer_faucet_seed = builder.rng_mut().draw_word();
 
-    let agglayer_faucet_builder = create_agglayer_faucet_builder(
+    let agglayer_faucet = create_existing_agglayer_faucet(
         agglayer_faucet_seed,
         token_symbol,
         decimals,
         max_supply,
         bridge_account.id(),
     );
-    let agglayer_faucet = builder.add_account_from_builder(
-        Auth::IncrNonce,
-        agglayer_faucet_builder,
-        AccountState::Exists,
-    )?;
+    builder.add_account(agglayer_faucet.clone())?;
 
     // CREATE USER ACCOUNT TO RECEIVE P2ID NOTE
     // --------------------------------------------------------------------------------------------

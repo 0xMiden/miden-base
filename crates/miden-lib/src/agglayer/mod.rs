@@ -29,6 +29,7 @@ use miden_objects::utils::sync::LazyLock;
 use miden_objects::vm::Program;
 use miden_objects::{Felt, FieldElement, NoteError, Word};
 
+use crate::account::auth::NoAuth;
 use crate::account::faucets::NetworkFungibleFaucet;
 
 pub mod utils;
@@ -274,71 +275,34 @@ pub fn create_agglayer_faucet_component(
 }
 
 /// Creates a complete bridge account builder with the standard configuration.
-///
-/// This is a high-level convenience function that creates a bridge account with:
-/// - Public storage mode for MMR validation
-/// - Bridge out component with standard bridge storage slot
-/// - Random account seed
-///
-/// # Parameters
-/// - `seed`: The account seed for deterministic account creation
-///
-/// # Returns
-/// Returns an [`miden_objects::account::AccountBuilder`] ready to be built into a bridge account.
-///
-/// # Example
-/// ```rust,ignore
-/// use miden_lib::agglayer::create_bridge_account_builder;
-/// use miden_objects::crypto::rand::RpoRandomCoin;
-///
-/// let mut rng = RpoRandomCoin::new([0u8; 32]);
-/// let seed = rng.draw_word();
-/// let bridge_builder = create_bridge_account_builder(seed);
-/// ```
-pub fn create_bridge_account_builder(seed: Word) -> miden_objects::account::AccountBuilder {
+pub fn create_bridge_account_builder(seed: Word) -> AccountBuilder {
     let bridge_component = create_bridge_account_component();
     Account::builder(seed.into())
         .storage_mode(AccountStorageMode::Public)
         .with_component(bridge_component)
 }
 
+/// Creates a new bridge account with the standard configuration.
+///
+/// This creates a new account suitable for production use.
+pub fn create_bridge_account(seed: Word) -> Account {
+    create_bridge_account_builder(seed)
+        .with_auth_component(AccountComponent::from(NoAuth))
+        .build()
+        .expect("Bridge account should be valid")
+}
+
+/// Creates an existing bridge account with the standard configuration.
+///
+/// This creates an existing account suitable for testing scenarios.
+pub fn create_existing_bridge_account(seed: Word) -> Account {
+    create_bridge_account_builder(seed)
+        .with_auth_component(AccountComponent::from(NoAuth))
+        .build_existing()
+        .expect("Bridge account should be valid")
+}
+
 /// Creates a complete agglayer faucet account builder with the specified configuration.
-///
-/// This is a high-level convenience function that creates an agglayer faucet account with:
-/// - FungibleFaucet account type
-/// - Network storage mode (required for network faucets)
-/// - Agglayer faucet component with all necessary storage slots
-///
-/// # Parameters
-/// - `seed`: The account seed for deterministic account creation
-/// - `token_symbol`: The symbol for the fungible token (e.g., "AGG")
-/// - `decimals`: Number of decimal places for the token
-/// - `max_supply`: Maximum supply of the token
-/// - `bridge_account_id`: The account ID of the bridge account for validation
-///
-/// # Returns
-/// Returns an [`miden_objects::account::AccountBuilder`] ready to be built into an agglayer faucet
-/// account.
-///
-/// # Example
-/// ```rust,ignore
-/// use miden_lib::agglayer::create_agglayer_faucet_builder;
-/// use miden_objects::crypto::rand::RpoRandomCoin;
-/// use miden_objects::{Felt, AccountId};
-///
-/// let mut rng = RpoRandomCoin::new([0u8; 32]);
-/// let seed = rng.draw_word();
-/// let bridge_id = AccountId::try_from(0x1234567890abcdef_u64).unwrap();
-/// let max_supply = Felt::new(1000000);
-///
-/// let faucet_builder = create_agglayer_faucet_builder(
-///     seed,
-///     "AGG",
-///     8,
-///     max_supply,
-///     bridge_id,
-/// );
-/// ```
 pub fn create_agglayer_faucet_builder(
     seed: Word,
     token_symbol: &str,
@@ -353,6 +317,38 @@ pub fn create_agglayer_faucet_builder(
         .account_type(AccountType::FungibleFaucet)
         .storage_mode(AccountStorageMode::Network)
         .with_component(agglayer_component)
+}
+
+/// Creates a new agglayer faucet account with the specified configuration.
+///
+/// This creates a new account suitable for production use.
+pub fn create_agglayer_faucet(
+    seed: Word,
+    token_symbol: &str,
+    decimals: u8,
+    max_supply: Felt,
+    bridge_account_id: AccountId,
+) -> Account {
+    create_agglayer_faucet_builder(seed, token_symbol, decimals, max_supply, bridge_account_id)
+        .with_auth_component(AccountComponent::from(NoAuth))
+        .build()
+        .expect("Agglayer faucet account should be valid")
+}
+
+/// Creates an existing agglayer faucet account with the specified configuration.
+///
+/// This creates an existing account suitable for testing scenarios.
+pub fn create_existing_agglayer_faucet(
+    seed: Word,
+    token_symbol: &str,
+    decimals: u8,
+    max_supply: Felt,
+    bridge_account_id: AccountId,
+) -> Account {
+    create_agglayer_faucet_builder(seed, token_symbol, decimals, max_supply, bridge_account_id)
+        .with_auth_component(AccountComponent::from(NoAuth))
+        .build_existing()
+        .expect("Agglayer faucet account should be valid")
 }
 
 // AGGLAYER NOTE CREATION HELPERS
