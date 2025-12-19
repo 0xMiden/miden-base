@@ -83,7 +83,7 @@ impl NonFungibleAsset {
     /// Creates a new [NonFungibleAsset] without checking its validity.
     ///
     /// # Safety
-    /// This function required that the provided value is a valid word representation of a
+    /// This function requires that the provided value is a valid word encoding of a
     /// [NonFungibleAsset].
     pub unsafe fn new_unchecked(value: Word) -> NonFungibleAsset {
         NonFungibleAsset(value)
