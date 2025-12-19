@@ -1,5 +1,6 @@
 use super::auth_scheme::AuthScheme;
 
+pub mod array;
 pub mod auth;
 pub mod components;
 pub mod faucets;
