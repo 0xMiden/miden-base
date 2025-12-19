@@ -89,7 +89,7 @@ impl SchemaTypeError {
 pub struct SchemaTypeId(String);
 
 impl SchemaTypeId {
-    /// Creates a new [`SchemaTypeIdentifier`] from a `String`.
+    /// Creates a new [`SchemaTypeId`] from a `String`.
     ///
     /// The name must follow a Rust-style namespace format, consisting of one or more segments
     /// (non-empty, and alphanumerical) separated by double-colon (`::`) delimiters.
