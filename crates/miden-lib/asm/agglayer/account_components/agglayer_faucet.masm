@@ -12,11 +12,11 @@ use.miden::tx
 
 const BRIDGE_ID_SLOT = word("miden::agglayer::faucet")
 
-const CLAIM_NOTE_NUM_INPUTS = 2
+const P2ID_NOTE_NUM_INPUTS = 2
 const OUTPUT_NOTE_TYPE_PUBLIC = 1
 const OUTPUT_PUBLIC_NOTE_INPUTS_ADDR = 8
 const OUTPUT_PUBLIC_NOTE_INPUTS_LEN_MEM_ADDR = 0
-const ERR_CLAIM_WRONG_NUMBER_OF_INPUTS = "CLAIM script expects 12+ inputs for public output notes"
+const ERR_CLAIM_WRONG_NUMBER_OF_INPUTS = "CLAIM note must have exactly 12 inputs"
 
 const P2ID_SCRIPT_ROOT = [15783632360113277539, 7403765918285273520, 15691985194755641846, 10399643920503194563]
 
@@ -92,7 +92,7 @@ pub proc claim
     swapw mem_loadw_be.4
     # => [SERIAL_NUM, SCRIPT_ROOT, pad(12)]
 
-    push.CLAIM_NOTE_NUM_INPUTS
+    push.P2ID_NOTE_NUM_INPUTS
     # => [num_output_note_inputs, SERIAL_NUM, SCRIPT_ROOT, pad(12)]
 
     push.OUTPUT_PUBLIC_NOTE_INPUTS_ADDR

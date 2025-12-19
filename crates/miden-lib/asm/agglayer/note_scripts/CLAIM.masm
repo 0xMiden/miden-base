@@ -4,9 +4,17 @@ use.miden::active_account
 use.miden::active_note
 use.miden::note
 
+# CONSTANTS
+# =================================================================================================
+
+const.CLAIM_NOTE_NUM_INPUTS=12
+
+# ERRORS
+# =================================================================================================
+
 const.ERR_CLAIM_TARGET_ACCT_MISMATCH="CLAIM's target account address and transaction address do not match"
 #! Agglayer Faucet CLAIM script: claims assets by calling the agglayer faucet's claim function.
-#! This note is intended to be executed against an agglayer faucet account.
+#! This note is intended to be consumed by an agglayer faucet account and will create a P2ID note on consumption.
 #!
 #! Requires that the account exposes:
 #! - agglayer::agglayer_faucet::claim procedure.
@@ -14,19 +22,21 @@ const.ERR_CLAIM_TARGET_ACCT_MISMATCH="CLAIM's target account address and transac
 #! Inputs:  [ARGS, pad(12)]
 #! Outputs: [pad(16)]
 #!
-#! The CLAIM note only supports public output notes and requires 12+ inputs:
-#! - execution_hint: Execution hint for the output note
+#! The CLAIM note only supports public output notes and requires exactly 12 inputs.
+#!
+#! Note inputs are assumed to be as follows:
+#! - execution_hint: Execution hint for the output note (always 0)
 #! - aux: Auxiliary data for the output note
 #! - tag: Note tag for the output note
 #! - amount: The amount to claim
-#! - SCRIPT_ROOT: Script root of the output note (4 elements)
 #! - SERIAL_NUM: Serial number of the output note (4 elements)
-#! - [INPUTS]: Variable-length inputs for the output note (Vec<Felt>)
-#!             The number of output note inputs = num_claim_note_inputs - 12
+#! - target_account_id: P2ID recipient account ID (suffix, prefix)
+#! - agg_faucet_id: Agglayer faucet account ID (suffix, prefix)
 #!
 #! Panics if:
 #! - account does not expose claim procedure.
 #! - the number of inputs is less than 12.
+#! - agglayer faucet account ID does not match the consuming account ID.
 begin
     dropw
     # => []
