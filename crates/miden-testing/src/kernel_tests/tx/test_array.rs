@@ -54,7 +54,7 @@ async fn test_array_get_and_set() -> anyhow::Result<()> {
 
         #! Wrapper for array::set that uses exec internally.
         #! Inputs:  [index, VALUE, pad(11)]
-        #! Outputs: [OLD_MAP_ROOT, OLD_MAP_VALUE, pad(8)]
+        #! Outputs: [OLD_VALUE, pad(12)]
         export.test_set
             exec.test_array::set
         end
@@ -106,31 +106,34 @@ async fn test_array_get_and_set() -> anyhow::Result<()> {
 
         begin
             # Step 1: Get value at index 0 (should return [42, 42, 42, 42])
-            padw padw padw push.0.0.0
             push.0
+            # => [index, pad(16)]
             call.wrapper::test_get
+            # => [VALUE, pad(13)]
 
             # Verify value is [42, 42, 42, 42]
             push.42.42.42.42
             assert_eqw.err="get(0) should return [42, 42, 42, 42] initially"
-            dropw dropw dropw
+            # => [pad(16)] (auto-padding)
 
             # Step 2: Set value at index 0 to [43, 43, 43, 43]
-            padw padw push.0.0.0
             push.43.43.43.43
             push.0
+            # => [index, VALUE, pad(16)]
             call.wrapper::test_set
-            dropw dropw dropw dropw  # drop OLD_MAP_ROOT, OLD_MAP_VALUE, pad
-
+            # => [OLD_VALUE, pad(17)]
+            dropw
+            
             # Step 3: Get value at index 0 (should return [43, 43, 43, 43])
-            padw padw padw push.0.0.0
             push.0
+            # => [index, pad(17)]
             call.wrapper::test_get
-
+            # => [VALUE, pad(14)]
+            
             # Verify value is [43, 43, 43, 43]
             push.43.43.43.43
             assert_eqw.err="get(0) should return [43, 43, 43, 43] after set"
-            dropw dropw dropw
+            # => [pad(16)] (auto-padding)
         end
         "#;
 

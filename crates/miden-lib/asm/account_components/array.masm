@@ -28,39 +28,27 @@ const DATA_SLOT = word("{{DATA_SLOT}}")
 #! Sets a word in the array at the specified index.
 #!
 #! Inputs:  [index, VALUE, pad(11)]
-#! Outputs: [OLD_MAP_ROOT, OLD_MAP_VALUE, pad(8)]
+#! Outputs: [OLD_VALUE, pad(12)]
 #!
 #! Where:
 #! - index is the index at which to store the value (0 to 2^64 - 2^32).
 #! - VALUE is the word to store at the specified index.
-#! - OLD_MAP_ROOT is the old map root (can be ignored).
-#! - OLD_MAP_VALUE is the previous value at the specified index.
 #!
 #! Invocation: call
 pub proc set(index: felt, value: Word) -> Word
-    # Stack: [index, VALUE, pad(11)]
-    # Stack size: 16
-    # Target for set_map_item: [slot_prefix, slot_suffix, KEY, VALUE, pad(6)]
-    # where KEY = [index, 0, 0, 0]
-    
-    # Build KEY = [index, 0, 0, 0] by extending with zeros
+    # Build KEY = [index, 0, 0, 0]
     push.0.0.0 movup.3
-    # Stack: [index, 0, 0, 0, VALUE, pad(11)]
-    # Stack size: 19
+    # => [index, 0, 0, 0, VALUE, pad(11)]
     
     # Push slot IDs
     push.DATA_SLOT[0..2]
-    # Stack: [slot_prefix, slot_suffix, KEY, VALUE, pad(11)]
-    # Stack size: 21
-    
-    # Drop 5 padding elements to get to 16
-    movup.15 drop movup.15 drop movup.15 drop movup.15 drop movup.15 drop
-    # Stack: [slot_prefix, slot_suffix, KEY, VALUE, pad(6)]
-    # Stack size: 16
+    # => [slot_prefix, slot_suffix, KEY, VALUE, pad(11)]
     
     exec.native_account::set_map_item
-    # Stack: [OLD_MAP_ROOT, OLD_MAP_VALUE, pad(8)]
-    # Stack size: 16
+    # => [OLD_MAP_ROOT, OLD_VALUE, pad(11)]
+
+    dropw # (auto-padding to 16 elements)
+    # => [OLD_VALUE, pad(12)]
 end
 
 #! Gets a word from the array at the specified index.
@@ -74,26 +62,15 @@ end
 #!
 #! Invocation: call
 pub proc get(index: felt) -> Word
-    # Stack: [index, pad(15)]
-    # Stack size: 16
-    # Target for get_map_item: [slot_prefix, slot_suffix, KEY, pad(10)]
-    
     # Build KEY = [index, 0, 0, 0]
     push.0.0.0 movup.3
-    # Stack: [index, 0, 0, 0, pad(15)]
-    # Stack size: 19
+    # => [index, 0, 0, 0, pad(15)]
     
     # Push slot IDs
     push.DATA_SLOT[0..2]
-    # Stack: [slot_prefix, slot_suffix, KEY, pad(15)]
-    # Stack size: 21
-    
-    # Drop 5 padding elements to get to 16
-    movup.15 drop movup.15 drop movup.15 drop movup.15 drop movup.15 drop
-    # Stack: [slot_prefix, slot_suffix, KEY, pad(10)]
-    # Stack size: 16
+    # => [slot_prefix, slot_suffix, KEY, pad(15)]
     
     exec.active_account::get_map_item
-    # Stack: [VALUE, pad(12)]
-    # Stack size: 16
+    # => [VALUE, pad(15)]
+    repeat.3 movup.4 drop end
 end
