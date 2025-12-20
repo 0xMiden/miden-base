@@ -5,8 +5,8 @@ use core::error::Error;
 
 use miden_assembly::Report;
 use miden_assembly::diagnostics::reporting::PrintDiagnostic;
-use miden_core::Felt;
 use miden_core::mast::MastForestError;
+use miden_core::{EventId, Felt};
 use miden_crypto::merkle::mmr::MmrError;
 use miden_crypto::utils::HexParseError;
 use miden_processor::DeserializationError;
@@ -34,7 +34,7 @@ use crate::asset::AssetVaultKey;
 use crate::batch::BatchId;
 use crate::block::BlockNumber;
 use crate::note::{NoteAssets, NoteExecutionHint, NoteTag, NoteType, Nullifier};
-use crate::transaction::TransactionId;
+use crate::transaction::{TransactionEventId, TransactionId};
 use crate::{
     ACCOUNT_UPDATE_MAX_SIZE,
     MAX_ACCOUNTS_PER_BATCH,
@@ -43,6 +43,21 @@ use crate::{
     MAX_INPUTS_PER_NOTE,
     MAX_OUTPUT_NOTES_PER_TX,
 };
+
+#[cfg(any(feature = "testing", test))]
+mod masm_error;
+#[cfg(any(feature = "testing", test))]
+pub use masm_error::MasmError;
+
+/// The errors from the MASM code of the transaction kernel.
+#[cfg(any(feature = "testing", test))]
+#[rustfmt::skip]
+pub mod tx_kernel;
+
+/// The errors from the MASM code of the Miden protocol library.
+#[cfg(any(feature = "testing", test))]
+#[rustfmt::skip]
+pub mod protocol;
 
 // ACCOUNT COMPONENT TEMPLATE ERROR
 // ================================================================================================
@@ -704,6 +719,28 @@ pub enum TransactionOutputError {
     TooManyOutputNotes(usize),
     #[error("failed to process account update commitment: {0}")]
     AccountUpdateCommitment(Box<str>),
+}
+
+// TRANSACTION EVENT PARSING ERROR
+// ================================================================================================
+
+#[derive(Debug, Error)]
+pub enum TransactionEventError {
+    #[error("event id {0} is not a valid transaction event")]
+    InvalidTransactionEvent(EventId, Option<&'static str>),
+    #[error("event id {0} is not a transaction kernel event")]
+    NotTransactionEvent(EventId, Option<&'static str>),
+    #[error("event id {0} can only be emitted from the root context")]
+    NotRootContext(TransactionEventId),
+}
+
+// TRANSACTION TRACE PARSING ERROR
+// ================================================================================================
+
+#[derive(Debug, Error)]
+pub enum TransactionTraceParsingError {
+    #[error("trace id {0} is an unknown transaction kernel trace")]
+    UnknownTransactionTrace(u32),
 }
 
 // PROVEN TRANSACTION ERROR

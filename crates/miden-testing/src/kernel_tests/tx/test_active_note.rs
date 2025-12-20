@@ -1,12 +1,12 @@
 use alloc::string::String;
 
 use anyhow::Context;
-use miden_lib::errors::tx_kernel::ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_METADATA_WHILE_NO_NOTE_BEING_PROCESSED;
+use miden_lib::code_builder::CodeBuilder;
 use miden_lib::testing::mock_account::MockAccountExt;
-use miden_lib::utils::CodeBuilder;
 use miden_objects::account::Account;
 use miden_objects::asset::FungibleAsset;
 use miden_objects::crypto::rand::{FeltRng, RpoRandomCoin};
+use miden_objects::errors::tx_kernel::ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_METADATA_WHILE_NO_NOTE_BEING_PROCESSED;
 use miden_objects::note::{
     Note,
     NoteAssets,

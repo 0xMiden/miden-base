@@ -1,20 +1,20 @@
 use assert_matches::assert_matches;
-use miden_lib::errors::tx_kernel::{
+use miden_objects::account::AccountId;
+use miden_objects::asset::{Asset, FungibleAsset, NonFungibleAsset, NonFungibleAssetDetails};
+use miden_objects::errors::tx_kernel::{
     ERR_VAULT_FUNGIBLE_ASSET_AMOUNT_LESS_THAN_AMOUNT_TO_WITHDRAW,
     ERR_VAULT_FUNGIBLE_MAX_AMOUNT_EXCEEDED,
     ERR_VAULT_GET_BALANCE_CAN_ONLY_BE_CALLED_ON_FUNGIBLE_ASSET,
     ERR_VAULT_NON_FUNGIBLE_ASSET_ALREADY_EXISTS,
     ERR_VAULT_NON_FUNGIBLE_ASSET_TO_REMOVE_NOT_FOUND,
 };
-use miden_lib::transaction::memory;
-use miden_objects::account::AccountId;
-use miden_objects::asset::{Asset, FungibleAsset, NonFungibleAsset, NonFungibleAssetDetails};
 use miden_objects::testing::account_id::{
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
     ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET,
     ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET_1,
 };
 use miden_objects::testing::constants::{FUNGIBLE_ASSET_AMOUNT, NON_FUNGIBLE_ASSET_DATA};
+use miden_objects::transaction::memory;
 use miden_objects::{AssetVaultError, Felt, ONE, Word, ZERO};
 
 use crate::kernel_tests::tx::ExecutionOutputExt;

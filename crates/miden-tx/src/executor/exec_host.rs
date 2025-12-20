@@ -3,7 +3,6 @@ use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use miden_lib::transaction::TransactionAdviceInputs;
 use miden_objects::account::auth::PublicKeyCommitment;
 use miden_objects::account::{AccountCode, AccountDelta, AccountId, PartialAccount};
 use miden_objects::assembly::debuginfo::Location;
@@ -12,7 +11,13 @@ use miden_objects::asset::{AssetVaultKey, AssetWitness, FungibleAsset};
 use miden_objects::block::BlockNumber;
 use miden_objects::crypto::merkle::smt::SmtProof;
 use miden_objects::note::{NoteInputs, NoteMetadata, NoteRecipient};
-use miden_objects::transaction::{InputNote, InputNotes, OutputNote, TransactionSummary};
+use miden_objects::transaction::{
+    InputNote,
+    InputNotes,
+    OutputNote,
+    TransactionAdviceInputs,
+    TransactionSummary,
+};
 use miden_objects::vm::AdviceMap;
 use miden_objects::{Felt, Hasher, Word};
 use miden_processor::{

@@ -20,7 +20,7 @@ use miden_objects::testing::note::DEFAULT_NOTE_CODE;
 use miden_objects::{Felt, NoteError, Word, ZERO};
 use rand::Rng;
 
-use crate::utils::CodeBuilder;
+use crate::code_builder::CodeBuilder;
 
 // NOTE BUILDER
 // ================================================================================================

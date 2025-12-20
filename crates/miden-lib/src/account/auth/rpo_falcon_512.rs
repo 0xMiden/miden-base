@@ -13,9 +13,9 @@ static FALCON_PUBKEY_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
 /// transactions.
 ///
 /// It reexports the procedures from `miden::contracts::auth::rpo_falcon512`. When linking against
-/// this component, the `miden` library (i.e. [`MidenLib`](crate::MidenLib)) must be available to
-/// the assembler which is the case when using [`CodeBuilder`][builder]. The procedures of this
-/// component are:
+/// this component, the `miden` library (i.e. [`ProtocolLib`](miden_objects::ProtocolLib)) must
+/// be available to the assembler which is the case when using [`CodeBuilder`][builder]. The
+/// procedures of this component are:
 /// - `verify_signatures`, which can be used to verify a signature provided via the advice stack to
 ///   authenticate a transaction.
 /// - `authenticate_transaction`, which can be used to authenticate a transaction using the Falcon
@@ -27,7 +27,7 @@ static FALCON_PUBKEY_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
 ///
 /// - [`Self::public_key_slot`]: Public key
 ///
-/// [builder]: crate::utils::CodeBuilder
+/// [builder]: crate::code_builder::CodeBuilder
 pub struct AuthRpoFalcon512 {
     pub_key: PublicKeyCommitment,
 }

@@ -44,7 +44,7 @@ use crate::{MockChain, MockChainNote};
 /// # use anyhow::Result;
 /// # use miden_testing::TransactionContextBuilder;
 /// # use miden_objects::{account::AccountBuilder,Felt, FieldElement};
-/// # use miden_lib::transaction::TransactionKernel;
+/// # use miden_objects::transaction::TransactionKernel;
 /// #
 /// # #[tokio::main(flavor = "current_thread")]
 /// # async fn main() -> Result<()> {

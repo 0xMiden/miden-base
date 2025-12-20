@@ -42,8 +42,8 @@ procedure_digest!(
 /// An [`AccountComponent`] implementing a basic wallet.
 ///
 /// It reexports the procedures from `miden::contracts::wallets::basic`. When linking against this
-/// component, the `miden` library (i.e. [`MidenLib`](crate::MidenLib)) must be available to the
-/// assembler which is the case when using [`CodeBuilder`][builder]. The procedures
+/// component, the `miden` library (i.e. [`ProtocolLib`](miden_objects::ProtocolLib)) must be
+/// available to the assembler which is the case when using [`CodeBuilder`][builder]. The procedures
 /// of this component are:
 /// - `receive_asset`, which can be used to add an asset to the account.
 /// - `move_asset_to_note`, which can be used to remove the specified asset from the account and add
@@ -54,7 +54,7 @@ procedure_digest!(
 ///
 /// This component supports all account types.
 ///
-/// [builder]: crate::utils::CodeBuilder
+/// [builder]: crate::code_builder::CodeBuilder
 pub struct BasicWallet;
 
 impl BasicWallet {

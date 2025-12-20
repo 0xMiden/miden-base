@@ -10,8 +10,8 @@ mod account_procedures;
 pub use account_procedures::AccountProcedureIndexMap;
 
 pub(crate) mod note_builder;
-use miden_lib::CoreLibrary;
-use miden_lib::transaction::EventId;
+use miden_objects::CoreLibrary;
+use miden_objects::vm::EventId;
 use note_builder::OutputNoteBuilder;
 
 mod kernel_process;

@@ -2,7 +2,7 @@ use core::slice;
 use std::collections::BTreeMap;
 
 use miden_lib::account::interface::{AccountInterface, AccountInterfaceExt};
-use miden_lib::utils::CodeBuilder;
+use miden_lib::code_builder::CodeBuilder;
 use miden_objects::Word;
 use miden_objects::asset::{Asset, FungibleAsset};
 use miden_objects::crypto::rand::{FeltRng, RpoRandomCoin};

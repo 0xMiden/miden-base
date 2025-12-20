@@ -3,8 +3,7 @@ use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use miden_lib::transaction::TransactionKernel;
-use miden_lib::utils::CodeBuilder;
+use miden_lib::code_builder::CodeBuilder;
 use miden_objects::account::{
     Account,
     AccountId,
@@ -26,6 +25,7 @@ use miden_objects::transaction::{
     PartialBlockchain,
     TransactionArgs,
     TransactionInputs,
+    TransactionKernel,
 };
 use miden_processor::fast::ExecutionOutput;
 use miden_processor::{ExecutionError, FutureMaybeSend, MastForest, MastForestStore, Word};

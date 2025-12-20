@@ -1,11 +1,11 @@
 use anyhow::Context;
 use miden_lib::account::wallets::BasicWallet;
-use miden_lib::errors::MasmError;
-use miden_lib::errors::tx_kernel::ERR_EPILOGUE_AUTH_PROCEDURE_CALLED_FROM_WRONG_CONTEXT;
+use miden_lib::code_builder::CodeBuilder;
 use miden_lib::testing::account_component::{ConditionalAuthComponent, ERR_WRONG_ARGS_MSG};
 use miden_lib::testing::mock_account::MockAccountExt;
-use miden_lib::utils::CodeBuilder;
 use miden_objects::account::{Account, AccountBuilder};
+use miden_objects::errors::MasmError;
+use miden_objects::errors::tx_kernel::ERR_EPILOGUE_AUTH_PROCEDURE_CALLED_FROM_WRONG_CONTEXT;
 use miden_objects::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE;
 use miden_objects::{Felt, ONE};
 

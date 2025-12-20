@@ -2,24 +2,16 @@ use alloc::string::String;
 use alloc::vec::Vec;
 
 use anyhow::Context;
-use miden_lib::errors::tx_kernel::{
-    ERR_NON_FUNGIBLE_ASSET_ALREADY_EXISTS,
-    ERR_TX_NUMBER_OF_OUTPUT_NOTES_EXCEEDS_LIMIT,
-};
+use miden_lib::code_builder::CodeBuilder;
 use miden_lib::note::create_p2id_note;
 use miden_lib::testing::mock_account::MockAccountExt;
-use miden_lib::transaction::memory::{
-    NOTE_MEM_SIZE,
-    NUM_OUTPUT_NOTES_PTR,
-    OUTPUT_NOTE_ASSETS_OFFSET,
-    OUTPUT_NOTE_METADATA_OFFSET,
-    OUTPUT_NOTE_RECIPIENT_OFFSET,
-    OUTPUT_NOTE_SECTION_OFFSET,
-};
-use miden_lib::utils::CodeBuilder;
 use miden_objects::account::{Account, AccountId};
 use miden_objects::asset::{Asset, FungibleAsset, NonFungibleAsset};
 use miden_objects::crypto::rand::RpoRandomCoin;
+use miden_objects::errors::tx_kernel::{
+    ERR_NON_FUNGIBLE_ASSET_ALREADY_EXISTS,
+    ERR_TX_NUMBER_OF_OUTPUT_NOTES_EXCEEDS_LIMIT,
+};
 use miden_objects::note::{
     Note,
     NoteAssets,
@@ -43,6 +35,14 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_SENDER,
 };
 use miden_objects::testing::constants::NON_FUNGIBLE_ASSET_DATA_2;
+use miden_objects::transaction::memory::{
+    NOTE_MEM_SIZE,
+    NUM_OUTPUT_NOTES_PTR,
+    OUTPUT_NOTE_ASSETS_OFFSET,
+    OUTPUT_NOTE_METADATA_OFFSET,
+    OUTPUT_NOTE_RECIPIENT_OFFSET,
+    OUTPUT_NOTE_SECTION_OFFSET,
+};
 use miden_objects::transaction::{OutputNote, OutputNotes};
 use miden_objects::{Felt, Word, ZERO};
 

@@ -1,6 +1,6 @@
 use std::vec::Vec;
 
-use miden_lib::utils::CodeBuilder;
+use miden_lib::code_builder::CodeBuilder;
 use miden_objects::account::AccountId;
 use miden_objects::batch::ProvenBatch;
 use miden_objects::block::BlockNumber;

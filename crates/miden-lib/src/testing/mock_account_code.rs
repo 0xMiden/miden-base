@@ -2,7 +2,7 @@ use miden_objects::account::AccountCode;
 use miden_objects::assembly::Library;
 use miden_objects::utils::sync::LazyLock;
 
-use crate::utils::CodeBuilder;
+use crate::code_builder::CodeBuilder;
 
 const MOCK_FAUCET_CODE: &str = "
     use miden::faucet

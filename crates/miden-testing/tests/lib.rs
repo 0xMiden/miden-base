@@ -4,7 +4,7 @@ mod auth;
 mod scripts;
 mod wallet;
 
-use miden_lib::utils::CodeBuilder;
+use miden_lib::code_builder::CodeBuilder;
 use miden_objects::account::AccountId;
 use miden_objects::asset::FungibleAsset;
 use miden_objects::crypto::utils::Serializable;

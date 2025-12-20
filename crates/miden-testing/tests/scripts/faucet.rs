@@ -4,10 +4,10 @@ use alloc::sync::Arc;
 use core::slice;
 
 use miden_lib::account::faucets::{BasicFungibleFaucet, FungibleFaucetExt, NetworkFungibleFaucet};
-use miden_lib::errors::protocol::ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED;
+use miden_lib::code_builder::CodeBuilder;
+use miden_lib::errors::standards::ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED;
 use miden_lib::note::{MintNoteInputs, WellKnownNote, create_burn_note, create_mint_note};
 use miden_lib::testing::note::NoteBuilder;
-use miden_lib::utils::CodeBuilder;
 use miden_objects::account::{
     Account,
     AccountId,

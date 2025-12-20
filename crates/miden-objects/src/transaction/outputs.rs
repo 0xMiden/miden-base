@@ -43,6 +43,23 @@ pub struct TransactionOutputs {
     pub expiration_block_num: BlockNumber,
 }
 
+impl TransactionOutputs {
+    // CONSTANTS
+    // --------------------------------------------------------------------------------------------
+
+    /// The index of the word at which the final account nonce is stored on the output stack.
+    pub const OUTPUT_NOTES_COMMITMENT_WORD_IDX: usize = 0;
+
+    /// The index of the word at which the account update commitment is stored on the output stack.
+    pub const ACCOUNT_UPDATE_COMMITMENT_WORD_IDX: usize = 1;
+
+    /// The index of the word at which the fee asset is stored on the output stack.
+    pub const FEE_ASSET_WORD_IDX: usize = 2;
+
+    /// The index of the item at which the expiration block height is stored on the output stack.
+    pub const EXPIRATION_BLOCK_ELEMENT_IDX: usize = 12;
+}
+
 impl Serializable for TransactionOutputs {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         self.account.write_into(target);

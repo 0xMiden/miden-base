@@ -3,7 +3,7 @@ use alloc::string::String;
 use miden_objects::account::{AccountComponent, AccountComponentCode};
 use miden_objects::utils::sync::LazyLock;
 
-use crate::utils::CodeBuilder;
+use crate::code_builder::CodeBuilder;
 
 pub const ERR_WRONG_ARGS_MSG: &str = "auth procedure args are incorrect";
 

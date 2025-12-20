@@ -1,7 +1,8 @@
-use miden_objects::assembly::Library;
-use miden_objects::utils::sync::LazyLock;
+use miden_assembly::diagnostics::NamedSource;
 
-use crate::utils::CodeBuilder;
+use crate::assembly::Library;
+use crate::transaction::TransactionKernel;
+use crate::utils::sync::LazyLock;
 
 const MOCK_UTIL_LIBRARY_CODE: &str = "
     use miden::output_note
@@ -35,10 +36,9 @@ const MOCK_UTIL_LIBRARY_CODE: &str = "
 ";
 
 static MOCK_UTIL_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
-    CodeBuilder::new()
-        .compile_component_code("mock::util", MOCK_UTIL_LIBRARY_CODE)
+    TransactionKernel::assembler()
+        .assemble_library([NamedSource::new("mock::util", MOCK_UTIL_LIBRARY_CODE)])
         .expect("mock util library should be valid")
-        .into_library()
 });
 
 /// Returns the mock test [`Library`] under the `mock::util` namespace.

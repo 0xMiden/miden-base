@@ -1,5 +1,5 @@
 use anyhow::Result;
-use miden_lib::utils::CodeBuilder;
+use miden_lib::code_builder::CodeBuilder;
 use miden_objects::asset::{Asset, FungibleAsset};
 use miden_objects::note::NoteType;
 use miden_objects::testing::account_id::ACCOUNT_ID_SENDER;

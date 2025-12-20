@@ -21,8 +21,6 @@ testing = ["dep:rand", "miden-assembly/testing", "miden-objects/testing"]
 
 [dependencies]
 # Miden dependencies
-miden-core      = { workspace = true }
-miden-core-lib  = { workspace = true }
 miden-objects   = { workspace = true }
 miden-processor = { workspace = true }
 
@@ -35,6 +33,7 @@ fs-err         = { version = "3" }
 miden-assembly = { workspace = true }
 miden-core     = { workspace = true }
 miden-core-lib = { workspace = true }
+miden-objects  = { workspace = true }
 regex          = { version = "1.11" }
 walkdir        = { version = "2.5" }
 
