@@ -143,9 +143,9 @@ fn test_basic_wallet_default_notes() {
 #[test]
 fn test_custom_account_default_note() {
     let account_custom_code_source = "
-        use.miden::contracts::wallets::basic
+        use miden::contracts::wallets::basic
 
-        export.basic::receive_asset
+        pub use basic::receive_asset
     ";
 
     let account_code = CodeBuilder::default()
@@ -262,9 +262,9 @@ fn test_basic_wallet_custom_notes() {
     let vault = NoteAssets::new(vec![FungibleAsset::mock(100)]).unwrap();
 
     let compatible_source_code = "
-        use.miden::tx
-        use.miden::contracts::wallets::basic->wallet
-        use.miden::contracts::faucets::basic_fungible->fungible_faucet
+        use miden::tx
+        use miden::contracts::wallets::basic->wallet
+        use miden::contracts::faucets::basic_fungible->fungible_faucet
 
         begin
             push.1
@@ -292,8 +292,8 @@ fn test_basic_wallet_custom_notes() {
     );
 
     let incompatible_source_code = "
-        use.miden::contracts::wallets::basic->wallet
-        use.miden::contracts::faucets::basic_fungible->fungible_faucet
+        use miden::contracts::wallets::basic->wallet
+        use miden::contracts::faucets::basic_fungible->fungible_faucet
 
         begin
             push.1
@@ -352,8 +352,8 @@ fn test_basic_fungible_faucet_custom_notes() {
     let vault = NoteAssets::new(vec![FungibleAsset::mock(100)]).unwrap();
 
     let compatible_source_code = "
-        use.miden::contracts::wallets::basic->wallet
-        use.miden::contracts::faucets::basic_fungible->fungible_faucet
+        use miden::contracts::wallets::basic->wallet
+        use miden::contracts::faucets::basic_fungible->fungible_faucet
 
         begin
             push.1
@@ -380,8 +380,8 @@ fn test_basic_fungible_faucet_custom_notes() {
     );
 
     let incompatible_source_code = "
-        use.miden::contracts::wallets::basic->wallet
-        use.miden::contracts::faucets::basic_fungible->fungible_faucet
+        use miden::contracts::wallets::basic->wallet
+        use miden::contracts::faucets::basic_fungible->fungible_faucet
 
         begin
             push.1
@@ -418,11 +418,11 @@ fn test_basic_fungible_faucet_custom_notes() {
 #[test]
 fn test_custom_account_custom_notes() {
     let account_custom_code_source = "
-        export.procedure_1
+        pub proc procedure_1
             push.1.2.3.4 dropw
         end
 
-        export.procedure_2
+        pub proc procedure_2
             push.5.6.7.8 dropw
         end
     ";
@@ -462,8 +462,8 @@ fn test_custom_account_custom_notes() {
     let vault = NoteAssets::new(vec![FungibleAsset::mock(100)]).unwrap();
 
     let compatible_source_code = "
-        use.miden::contracts::wallets::basic->wallet
-        use.test::account::component_1->test_account
+        use miden::contracts::wallets::basic->wallet
+        use test::account::component_1->test_account
 
         begin
             push.1
@@ -493,8 +493,8 @@ fn test_custom_account_custom_notes() {
     );
 
     let incompatible_source_code = "
-        use.miden::contracts::wallets::basic->wallet
-        use.test::account::component_1->test_account
+        use miden::contracts::wallets::basic->wallet
+        use test::account::component_1->test_account
 
         begin
             push.1
@@ -528,11 +528,11 @@ fn test_custom_account_custom_notes() {
 #[test]
 fn test_custom_account_multiple_components_custom_notes() {
     let account_custom_code_source = "
-        export.procedure_1
+        pub proc procedure_1
             push.1.2.3.4 dropw
         end
 
-        export.procedure_2
+        pub proc procedure_2
             push.5.6.7.8 dropw
         end
     ";
@@ -573,10 +573,9 @@ fn test_custom_account_multiple_components_custom_notes() {
     let vault = NoteAssets::new(vec![FungibleAsset::mock(100)]).unwrap();
 
     let compatible_source_code = "
-        use.miden::contracts::wallets::basic->wallet
-        use.miden::contracts::auth::basic->basic_auth
-        use.test::account::component_1->test_account
-        use.miden::contracts::faucets::basic_fungible->fungible_faucet
+        use miden::contracts::wallets::basic->wallet
+        use test::account::component_1->test_account
+        use miden::contracts::faucets::basic_fungible->fungible_faucet
 
         begin
             push.1
@@ -611,10 +610,9 @@ fn test_custom_account_multiple_components_custom_notes() {
     );
 
     let incompatible_source_code = "
-        use.miden::contracts::wallets::basic->wallet
-        use.miden::contracts::auth::basic->basic_auth
-        use.test::account::component_1->test_account
-        use.miden::contracts::faucets::basic_fungible->fungible_faucet
+        use miden::contracts::wallets::basic->wallet
+        use test::account::component_1->test_account
+        use miden::contracts::faucets::basic_fungible->fungible_faucet
 
         begin
             push.1

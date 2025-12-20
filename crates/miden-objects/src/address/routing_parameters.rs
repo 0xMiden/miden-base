@@ -7,7 +7,7 @@ use bech32::{Bech32m, Hrp};
 
 use crate::AddressError;
 use crate::address::AddressInterface;
-use crate::crypto::dsa::{ecdsa_k256_keccak, eddsa_25519};
+use crate::crypto::dsa::{ecdsa_k256_keccak, eddsa_25519_sha512};
 use crate::crypto::ies::SealingKey;
 use crate::errors::Bech32Error;
 use crate::note::NoteTag;
@@ -363,7 +363,7 @@ fn decode_encryption_key(
 
 fn read_x25519_pub_key(
     byte_iter: &mut impl ExactSizeIterator<Item = u8>,
-) -> Result<eddsa_25519::PublicKey, AddressError> {
+) -> Result<eddsa_25519_sha512::PublicKey, AddressError> {
     if byte_iter.len() < X25519_PUBLIC_KEY_LENGTH {
         return Err(AddressError::decode_error(format!(
             "expected {} bytes to decode X25519 public key",
@@ -371,7 +371,7 @@ fn read_x25519_pub_key(
         )));
     }
     let key_bytes: [u8; X25519_PUBLIC_KEY_LENGTH] = read_byte_array(byte_iter);
-    eddsa_25519::PublicKey::read_from_bytes(&key_bytes).map_err(|err| {
+    eddsa_25519_sha512::PublicKey::read_from_bytes(&key_bytes).map_err(|err| {
         AddressError::decode_error_with_source("failed to decode X25519 public key", err)
     })
 }
@@ -538,7 +538,7 @@ mod tests {
 
         // Test X25519XChaCha20Poly1305
         {
-            use crate::crypto::dsa::eddsa_25519::SecretKey;
+            use crate::crypto::dsa::eddsa_25519_sha512::SecretKey;
             let secret_key = SecretKey::with_rng(&mut rand::rng());
             let public_key = secret_key.public_key();
             let encryption_key = SealingKey::X25519XChaCha20Poly1305(public_key);
@@ -556,7 +556,7 @@ mod tests {
 
         // Test X25519AeadRpo
         {
-            use crate::crypto::dsa::eddsa_25519::SecretKey;
+            use crate::crypto::dsa::eddsa_25519_sha512::SecretKey;
             let secret_key = SecretKey::with_rng(&mut rand::rng());
             let public_key = secret_key.public_key();
             let encryption_key = SealingKey::X25519AeadRpo(public_key);

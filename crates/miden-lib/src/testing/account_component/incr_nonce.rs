@@ -5,9 +5,9 @@ use miden_objects::utils::sync::LazyLock;
 use crate::utils::CodeBuilder;
 
 const INCR_NONCE_AUTH_CODE: &str = "
-    use.miden::native_account
+    use miden::native_account
 
-    export.auth_incr_nonce
+    pub proc auth_incr_nonce
         exec.native_account::incr_nonce drop
     end
 ";

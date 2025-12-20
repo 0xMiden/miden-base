@@ -87,11 +87,10 @@ pub async fn compute_commitment() -> miette::Result<()> {
 
     let tx_script = format!(
         r#"
-        use.std::word
+        use miden::core::word
 
-        use.miden::prologue
-        use.miden::active_account
-        use.mock::account->mock_account
+        use miden::active_account
+        use mock::account->mock_account
 
         const MOCK_MAP_SLOT = word("{mock_map_slot}")
 
@@ -190,7 +189,7 @@ async fn test_account_type() -> miette::Result<()> {
 
             let code = format!(
                 "
-                use.$kernel::account_id
+                use $kernel::account_id
 
                 begin
                     exec.account_id::{procedure}
@@ -262,7 +261,7 @@ async fn test_account_validate_id() -> miette::Result<()> {
         let suffix = Felt::try_from((account_id % (1u128 << 64)) as u64).unwrap();
 
         let code = "
-            use.$kernel::account_id
+            use $kernel::account_id
 
             begin
                 exec.account_id::validate
@@ -315,7 +314,7 @@ async fn test_is_faucet_procedure() -> miette::Result<()> {
 
         let code = format!(
             "
-            use.$kernel::account_id
+            use $kernel::account_id
 
             begin
                 push.{prefix}
@@ -356,8 +355,8 @@ pub async fn test_compute_code_commitment() -> miette::Result<()> {
 
     let code = format!(
         r#"
-        use.$kernel::prologue
-        use.mock::account->mock_account
+        use $kernel::prologue
+        use mock::account->mock_account
 
         begin
             exec.prologue::prepare_transaction
@@ -385,10 +384,10 @@ async fn test_get_item() -> miette::Result<()> {
 
         let code = format!(
             r#"
-            use.$kernel::account
-            use.$kernel::prologue
+            use $kernel::account
+            use $kernel::prologue
 
-            const.SLOT_NAME = word("{slot_name}")
+            const SLOT_NAME = word("{slot_name}")
 
             begin
                 exec.prologue::prepare_transaction
@@ -431,8 +430,8 @@ async fn test_get_map_item() -> miette::Result<()> {
     for (key, expected_value) in map.entries() {
         let code = format!(
             r#"
-            use.$kernel::prologue
-            use.mock::account
+            use $kernel::prologue
+            use mock::account
 
             const SLOT_NAME = word("{slot_name}")
 
@@ -448,7 +447,7 @@ async fn test_get_map_item() -> miette::Result<()> {
                 push.{expected_value}
                 assert_eqw.err="value did not match {expected_value}"
 
-                exec.::std::sys::truncate_stack
+                exec.::miden::core::sys::truncate_stack
             end
             "#,
             slot_name = slot.name(),
@@ -479,8 +478,8 @@ async fn test_get_storage_slot_type() -> miette::Result<()> {
 
         let code = format!(
             "
-            use.$kernel::account
-            use.$kernel::prologue
+            use $kernel::account
+            use $kernel::prologue
 
             begin
                 exec.prologue::prepare_transaction
@@ -545,9 +544,9 @@ async fn test_account_get_item_fails_on_unknown_slot() -> anyhow::Result<()> {
     let chain = builder.build()?;
 
     let code = r#"
-            use.mock::account
+            use mock::account
 
-            const.UNKNOWN_SLOT_NAME = word("unknown::slot::name")
+            const UNKNOWN_SLOT_NAME = word("unknown::slot::name")
 
             begin
                 push.UNKNOWN_SLOT_NAME[0..2]
@@ -580,9 +579,9 @@ async fn test_account_get_item_fails_on_unknown_slot() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_account_set_item_fails_on_reserved_faucet_metadata_slot() -> anyhow::Result<()> {
     let code = r#"
-            use.miden::native_account
+            use miden::native_account
 
-            const.FAUCET_SYSDATA_SLOT=word("miden::faucet::sysdata")
+            const FAUCET_SYSDATA_SLOT=word("miden::faucet::sysdata")
 
             begin
                 push.FAUCET_SYSDATA_SLOT[0..2]
@@ -640,7 +639,7 @@ async fn test_is_slot_id_lt() -> miette::Result<()> {
     for (prev_slot, curr_slot) in test_cases {
         let code = format!(
             r#"
-            use.$kernel::account
+            use $kernel::account
 
             begin
                 push.{curr_suffix}.{curr_prefix}.{prev_suffix}.{prev_prefix}
@@ -677,10 +676,10 @@ async fn test_set_item() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-        use.$kernel::account
-        use.$kernel::prologue
+        use $kernel::account
+        use $kernel::prologue
 
-        const.MOCK_VALUE_SLOT0 = word("{slot_name}")
+        const MOCK_VALUE_SLOT0 = word("{slot_name}")
 
         begin
             exec.prologue::prepare_transaction
@@ -728,12 +727,12 @@ async fn test_set_map_item() -> miette::Result<()> {
 
     let code = format!(
         r#"
-        use.std::sys
+        use miden::core::sys
 
-        use.$kernel::prologue
-        use.mock::account->mock_account
+        use $kernel::prologue
+        use mock::account->mock_account
 
-        const.SLOT_NAME=word("{slot_name}")
+        const SLOT_NAME=word("{slot_name}")
 
         begin
             exec.prologue::prepare_transaction
@@ -809,8 +808,8 @@ async fn test_get_initial_storage_commitment() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-        use.miden::active_account
-        use.$kernel::prologue
+        use miden::active_account
+        use $kernel::prologue
 
         begin
             exec.prologue::prepare_transaction
@@ -860,12 +859,11 @@ async fn test_compute_storage_commitment() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-        use.miden::account
-        use.$kernel::prologue
-        use.mock::account->mock_account
+        use $kernel::prologue
+        use mock::account->mock_account
 
-        const.MOCK_VALUE_SLOT0=word("{mock_value_slot0}")
-        const.MOCK_MAP_SLOT=word("{mock_map_slot}")
+        const MOCK_VALUE_SLOT0=word("{mock_value_slot0}")
+        const MOCK_MAP_SLOT=word("{mock_map_slot}")
 
         begin
             exec.prologue::prepare_transaction
@@ -1008,8 +1006,8 @@ async fn test_get_vault_root() -> anyhow::Result<()> {
     // get the initial vault root
     let code = format!(
         "
-        use.miden::active_account
-        use.$kernel::prologue
+        use miden::active_account
+        use $kernel::prologue
 
         begin
             exec.prologue::prepare_transaction
@@ -1029,9 +1027,9 @@ async fn test_get_vault_root() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-        use.miden::active_account
-        use.$kernel::prologue
-        use.mock::account->mock_account
+        use miden::active_account
+        use $kernel::prologue
+        use mock::account->mock_account
 
         begin
             exec.prologue::prepare_transaction
@@ -1113,7 +1111,7 @@ async fn test_get_init_balance_addition() -> anyhow::Result<()> {
 
     let add_existing_source = format!(
         r#"
-        use.miden::active_account
+        use miden::active_account
 
         begin
             # push faucet ID prefix and suffix
@@ -1167,7 +1165,7 @@ async fn test_get_init_balance_addition() -> anyhow::Result<()> {
 
     let add_new_source = format!(
         r#"
-        use.miden::active_account
+        use miden::active_account
 
         begin
             # push faucet ID prefix and suffix
@@ -1244,13 +1242,13 @@ async fn test_get_init_balance_subtraction() -> anyhow::Result<()> {
 
     let remove_existing_source = format!(
         r#"
-        use.miden::active_account
-        use.miden::contracts::wallets::basic->wallet
-        use.mock::util
+        use miden::active_account
+        use miden::contracts::wallets::basic->wallet
+        use mock::util
 
         # Inputs:  [ASSET, note_idx]
         # Outputs: [ASSET, note_idx]
-        proc.move_asset_to_note
+        proc move_asset_to_note
             # pad the stack before call
             push.0.0.0 movdn.7 movdn.7 movdn.7 padw padw swapdw
             # => [ASSET, note_idx, pad(11)]
@@ -1339,8 +1337,8 @@ async fn test_authenticate_and_track_procedure() -> miette::Result<()> {
 
         let code = format!(
             "
-            use.$kernel::account
-            use.$kernel::prologue
+            use $kernel::account
+            use $kernel::prologue
 
             begin
                 exec.prologue::prepare_transaction
@@ -1395,8 +1393,8 @@ async fn test_was_procedure_called() -> miette::Result<()> {
     // 5. Checks that `was_procedure_called` returns `true`
     let tx_script_code = format!(
         r#"
-        use.mock::account->mock_account
-        use.miden::native_account
+        use mock::account->mock_account
+        use miden::native_account
 
         const MOCK_VALUE_SLOT1 = word("{mock_value_slot1}")
 
@@ -1452,11 +1450,11 @@ async fn test_was_procedure_called() -> miette::Result<()> {
 async fn transaction_executor_account_code_using_custom_library() -> miette::Result<()> {
     let external_library_code = format!(
         r#"
-      use.miden::native_account
+      use miden::native_account
 
       const MOCK_VALUE_SLOT0 = word("{mock_value_slot0}")
 
-      export.external_setter
+      pub proc external_setter
         push.2.3.4.5
         push.MOCK_VALUE_SLOT0[0..2]
         exec.native_account::set_item
@@ -1466,9 +1464,9 @@ async fn transaction_executor_account_code_using_custom_library() -> miette::Res
     );
 
     const ACCOUNT_COMPONENT_CODE: &str = "
-      use.external_library::external_module
+      use external_library::external_module
 
-      export.custom_setter
+      pub proc custom_setter
         exec.external_module::external_setter
       end";
 
@@ -1490,7 +1488,7 @@ async fn transaction_executor_account_code_using_custom_library() -> miette::Res
         assembler.clone().assemble_library([account_component_source]).unwrap();
 
     let tx_script_src = "\
-          use.account_component::account_module
+          use account_component::account_module
 
           begin
             call.account_module::custom_setter
@@ -1537,9 +1535,9 @@ async fn transaction_executor_account_code_using_custom_library() -> miette::Res
 #[tokio::test]
 async fn incrementing_nonce_twice_fails() -> anyhow::Result<()> {
     let source_code = "
-        use.miden::native_account
+        use miden::native_account
 
-        export.auth_incr_nonce_twice
+        pub proc auth_incr_nonce_twice
             exec.native_account::incr_nonce drop
             exec.native_account::incr_nonce drop
         end
@@ -1573,8 +1571,8 @@ async fn test_has_procedure() -> miette::Result<()> {
         .unwrap();
 
     let tx_script_code = r#"
-        use.mock::account->mock_account
-        use.miden::active_account
+        use mock::account->mock_account
+        use miden::active_account
 
         begin
             # check that get_item procedure is available on the mock account
@@ -1625,9 +1623,9 @@ async fn test_get_initial_item() -> miette::Result<()> {
     // Test that get_initial_item returns the initial value before any changes
     let code = format!(
         r#"
-        use.$kernel::account
-        use.$kernel::prologue
-        use.mock::account->mock_account
+        use $kernel::account
+        use $kernel::prologue
+        use mock::account->mock_account
 
         const MOCK_VALUE_SLOT0 = word("{mock_value_slot0}")
 
@@ -1691,8 +1689,8 @@ async fn test_get_initial_map_item() -> miette::Result<()> {
 
     let code = format!(
         r#"
-        use.$kernel::prologue
-        use.mock::account->mock_account
+        use $kernel::prologue
+        use mock::account->mock_account
 
         const MOCK_MAP_SLOT = word("{mock_map_slot}")
 
@@ -1779,7 +1777,7 @@ async fn merging_components_with_same_mast_root_succeeds() -> anyhow::Result<()>
     static COMPONENT_1_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
         let code = format!(
             r#"
-              use.miden::active_account
+              use miden::active_account
 
               const TEST_SLOT_NAME = word("{test_slot_name}")
 
@@ -1794,7 +1792,6 @@ async fn merging_components_with_same_mast_root_succeeds() -> anyhow::Result<()>
 
         let source = NamedSource::new("component1::interface", code);
         TransactionKernel::assembler()
-            .with_debug_mode(true)
             .assemble_library([source])
             .expect("mock account code should be valid")
     });
@@ -1802,8 +1799,8 @@ async fn merging_components_with_same_mast_root_succeeds() -> anyhow::Result<()>
     static COMPONENT_2_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
         let code = format!(
             r#"
-              use.miden::active_account
-              use.miden::native_account
+              use miden::active_account
+              use miden::native_account
 
               const TEST_SLOT_NAME = word("{test_slot_name}")
 
@@ -1825,7 +1822,6 @@ async fn merging_components_with_same_mast_root_succeeds() -> anyhow::Result<()>
 
         let source = NamedSource::new("component2::interface", code);
         TransactionKernel::assembler()
-            .with_debug_mode(true)
             .assemble_library([source])
             .expect("mock account code should be valid")
     });
@@ -1862,8 +1858,8 @@ async fn merging_components_with_same_mast_root_succeeds() -> anyhow::Result<()>
         .context("failed to build account")?;
 
     let tx_script = r#"
-      use.component1::interface->comp1_interface
-      use.component2::interface->comp2_interface
+      use component1::interface->comp1_interface
+      use component2::interface->comp2_interface
 
       begin
           call.comp1_interface::get_slot_content

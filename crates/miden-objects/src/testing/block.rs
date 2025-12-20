@@ -1,4 +1,4 @@
-use miden_crypto::merkle::Smt;
+use miden_crypto::merkle::smt::Smt;
 #[cfg(not(target_family = "wasm"))]
 use winter_rand_utils::rand_value;
 

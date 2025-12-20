@@ -13,7 +13,7 @@ mod code;
 pub use code::AccountComponentCode;
 
 use crate::account::{AccountType, StorageSlot};
-use crate::assembly::QualifiedProcedureName;
+use crate::assembly::Path;
 use crate::{AccountError, MastForest, Word};
 
 // ACCOUNT COMPONENT
@@ -194,13 +194,10 @@ impl AccountComponent {
         procedures
     }
 
-    /// Returns the digest of the procedure with the specified name, or `None` if it was not found
+    /// Returns the digest of the procedure with the specified path, or `None` if it was not found
     /// in this component's library or its library path is malformed.
-    pub fn get_procedure_root_by_name(
-        &self,
-        proc_name: impl TryInto<QualifiedProcedureName>,
-    ) -> Option<Word> {
-        self.code.as_library().get_procedure_root_by_name(proc_name)
+    pub fn get_procedure_root_by_path(&self, proc_name: impl AsRef<Path>) -> Option<Word> {
+        self.code.as_library().get_procedure_root_by_path(proc_name)
     }
 
     // MUTATORS
@@ -250,7 +247,14 @@ mod tests {
 
     use miden_assembly::Assembler;
     use miden_core::utils::Serializable;
-    use miden_mast_package::{MastArtifact, Package, PackageManifest, Section, SectionId};
+    use miden_mast_package::{
+        MastArtifact,
+        Package,
+        PackageKind,
+        PackageManifest,
+        Section,
+        SectionId,
+    };
     use semver::Version;
 
     use super::*;
@@ -275,7 +279,7 @@ mod tests {
             name: "test_package".to_string(),
             mast: MastArtifact::Library(Arc::new(library.clone())),
             manifest: PackageManifest::new(None),
-
+            kind: PackageKind::AccountComponent,
             sections: vec![Section::new(
                 SectionId::ACCOUNT_COMPONENT_METADATA,
                 metadata_bytes.clone(),
@@ -298,6 +302,7 @@ mod tests {
             name: "test_package_no_metadata".to_string(),
             mast: MastArtifact::Library(Arc::new(library)),
             manifest: PackageManifest::new(None),
+            kind: PackageKind::AccountComponent,
             sections: vec![], // No metadata section
             version: Default::default(),
             description: None,
@@ -343,6 +348,7 @@ mod tests {
         let package_without_metadata = Package {
             name: "test_package_no_metadata".to_string(),
             mast: MastArtifact::Library(Arc::new(library)),
+            kind: PackageKind::AccountComponent,
             manifest: PackageManifest::new(None),
             sections: vec![], // No metadata section
             version: Default::default(),

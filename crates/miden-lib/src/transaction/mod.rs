@@ -2,6 +2,7 @@ use alloc::string::ToString;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
+use miden_core_lib::CoreLibrary;
 use miden_objects::account::AccountId;
 #[cfg(any(feature = "testing", test))]
 use miden_objects::assembly::Library;
@@ -15,7 +16,6 @@ use miden_objects::utils::serde::Deserializable;
 use miden_objects::utils::sync::LazyLock;
 use miden_objects::vm::{AdviceInputs, Program, ProgramInfo, StackInputs, StackOutputs};
 use miden_objects::{Felt, Hasher, TransactionOutputError, Word};
-use miden_stdlib::StdLibrary;
 
 use super::MidenLib;
 
@@ -141,19 +141,19 @@ impl TransactionKernel {
     // --------------------------------------------------------------------------------------------
 
     /// Returns a new Miden assembler instantiated with the transaction kernel and loaded with the
-    /// Miden stdlib as well as with miden-lib.
+    /// core lib as well as with miden-lib.
     pub fn assembler() -> Assembler {
         Self::assembler_with_source_manager(Arc::new(DefaultSourceManager::default()))
     }
 
     /// Returns a new assembler instantiated with the transaction kernel and loaded with the
-    /// Miden stdlib as well as with miden-lib.
+    /// core lib as well as with miden-lib.
     pub fn assembler_with_source_manager(source_manager: Arc<dyn SourceManagerSync>) -> Assembler {
         #[cfg(all(any(feature = "testing", test), feature = "std"))]
         source_manager_ext::load_masm_source_files(&source_manager);
 
         Assembler::with_kernel(source_manager, Self::kernel())
-            .with_dynamic_library(StdLibrary::default())
+            .with_dynamic_library(CoreLibrary::default())
             .expect("failed to load std-lib")
             .with_dynamic_library(MidenLib::default())
             .expect("failed to load miden-lib")

@@ -2,5 +2,5 @@
 #
 # See the `NetworkFungibleFaucet` Rust type's documentation for more details.
 
-export.::miden::contracts::faucets::network_fungible::distribute
-export.::miden::contracts::faucets::network_fungible::burn
+pub use ::miden::contracts::faucets::network_fungible::distribute
+pub use ::miden::contracts::faucets::network_fungible::burn

@@ -2,9 +2,10 @@ use alloc::boxed::Box;
 
 use super::{BlockNumber, Nullifier, NullifierBlock, NullifierTree, NullifierTreeError};
 use crate::Word;
+use crate::crypto::merkle::MerkleError;
 #[cfg(feature = "std")]
-use crate::crypto::merkle::{LargeSmt, LargeSmtError, SmtStorage};
-use crate::crypto::merkle::{MerkleError, MutationSet, SMT_DEPTH, Smt, SmtProof};
+use crate::crypto::merkle::smt::{LargeSmt, LargeSmtError, SmtStorage};
+use crate::crypto::merkle::smt::{MutationSet, SMT_DEPTH, Smt, SmtProof};
 
 // NULLIFIER TREE BACKEND
 // ================================================================================================
@@ -158,12 +159,7 @@ where
     }
 
     fn root(&self) -> Word {
-        // SAFETY: We expect here as storage errors are considered unrecoverable. This maintains
-        // API compatibility with the non-fallible Smt::root().
-        // See issue #2010 for future improvements to error handling.
         LargeSmt::root(self)
-            .map_err(large_smt_error_to_merkle_error)
-            .expect("Storage I/O error accessing root")
     }
 }
 

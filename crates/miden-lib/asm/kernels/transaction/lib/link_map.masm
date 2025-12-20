@@ -1,6 +1,6 @@
-use.std::collections::smt
-use.std::word
-use.$kernel::memory
+use miden::core::collections::smt
+use miden::core::word
+use $kernel::memory
 
 # A link map is a map data structure based on a sorted linked list.
 #
@@ -119,58 +119,58 @@ use.$kernel::memory
 # ERRORS
 # =================================================================================================
 
-const.ERR_LINK_MAP_CANNOT_BE_EMPTY_ON_ABSENCE_AFTER_ENTRY="map cannot be empty when proving absence after an entry"
+const ERR_LINK_MAP_CANNOT_BE_EMPTY_ON_ABSENCE_AFTER_ENTRY="map cannot be empty when proving absence after an entry"
 
-const.ERR_LINK_MAP_PROVIDED_KEY_NOT_EQUAL_TO_ENTRY_KEY="provided key does not match key in map entry"
+const ERR_LINK_MAP_PROVIDED_KEY_NOT_EQUAL_TO_ENTRY_KEY="provided key does not match key in map entry"
 
-const.ERR_LINK_MAP_PROVIDED_KEY_NOT_GREATER_THAN_ENTRY_KEY="provided key is not greater than the entry key"
+const ERR_LINK_MAP_PROVIDED_KEY_NOT_GREATER_THAN_ENTRY_KEY="provided key is not greater than the entry key"
 
-const.ERR_LINK_MAP_PROVIDED_KEY_NOT_LESS_THAN_ENTRY_KEY="provided key is not less than the entry key"
+const ERR_LINK_MAP_PROVIDED_KEY_NOT_LESS_THAN_ENTRY_KEY="provided key is not less than the entry key"
 
-const.ERR_LINK_MAP_ENTRY_PTR_IS_OUTSIDE_VALID_MEMORY_REGION="host-provided entry ptr is outside the valid memory region"
+const ERR_LINK_MAP_ENTRY_PTR_IS_OUTSIDE_VALID_MEMORY_REGION="host-provided entry ptr is outside the valid memory region"
 
-const.ERR_LINK_MAP_ENTRY_PTR_IS_NOT_ENTRY_ALIGNED="host-provided entry ptr is not 'link map entry'-aligned"
+const ERR_LINK_MAP_ENTRY_PTR_IS_NOT_ENTRY_ALIGNED="host-provided entry ptr is not 'link map entry'-aligned"
 
-const.ERR_LINK_MAP_MAP_PTR_IN_ENTRY_DOES_NOT_MATCH_EXPECTED_MAP_PTR="map ptr stored in host-provided entry does not match actual pointer of the map"
+const ERR_LINK_MAP_MAP_PTR_IN_ENTRY_DOES_NOT_MATCH_EXPECTED_MAP_PTR="map ptr stored in host-provided entry does not match actual pointer of the map"
 
 # CONSTANTS
 # =================================================================================================
 
 # The offset of the prev_entry_ptr in an entry's metadata.
-const.PREV_ENTRY_PTR_OFFSET=1
+const PREV_ENTRY_PTR_OFFSET=1
 
 # The offset of the next_entry_ptr in an entry's metadata.
-const.NEXT_ENTRY_PTR_OFFSET=2
+const NEXT_ENTRY_PTR_OFFSET=2
 
 # The offset of the KEY in an entry.
-const.KEY_OFFSET=4
+const KEY_OFFSET=4
 
 # The offset of the VALUE0 in an entry.
-const.VALUE0_OFFSET=8
+const VALUE0_OFFSET=8
 
 # The offset of the VALUE1 in an entry.
-const.VALUE1_OFFSET=12
+const VALUE1_OFFSET=12
 
 # The value of the Update operation for a set event.
-const.INSERT_OPERATION_UPDATE=0
+const INSERT_OPERATION_UPDATE=0
 
 # The value of the InsertAtHead operation for a set event.
-const.INSERT_OPERATION_AT_HEAD=1
+const INSERT_OPERATION_AT_HEAD=1
 
 # The value of the Found operation for a get event.
-const.GET_OPERATION_FOUND=0
+const GET_OPERATION_FOUND=0
 
 # The value of the AbsentAtHead operation for a get event.
-const.GET_OPERATION_ABSENT_AT_HEAD=1
+const GET_OPERATION_ABSENT_AT_HEAD=1
 
 # EVENTS
 # =================================================================================================
 
 # Event emitted when an entry is set.
-const.LINK_MAP_SET_EVENT=event("miden::link_map::set")
+const LINK_MAP_SET_EVENT=event("miden::link_map::set")
 
 # Event emitted when an entry is fetched.
-const.LINK_MAP_GET_EVENT=event("miden::link_map::get")
+const LINK_MAP_GET_EVENT=event("miden::link_map::get")
 
 # LINK MAP PROCEDURES
 # =================================================================================================
@@ -198,7 +198,7 @@ const.LINK_MAP_GET_EVENT=event("miden::link_map::get")
 #! Panics if:
 #! - the host provides faulty advice. See panic sections of assert_entry_ptr_is_valid,
 #!   update_entry, insert_at_head, insert_after_entry.
-export.set
+pub proc set
     emit.LINK_MAP_SET_EVENT
     adv_push.2
     # => [operation, entry_ptr, map_ptr, KEY, VALUE0, VALUE1]
@@ -265,7 +265,7 @@ end
 #! Panics if:
 #! - the host provides faulty advice. See panic sections of assert_entry_ptr_is_valid,
 #!   get_existing_value, assert_absent_at_head, assert_absent_after_entry.
-export.get
+pub proc get
     emit.LINK_MAP_GET_EVENT
     adv_push.2
     # => [get_operation, entry_ptr, map_ptr, KEY]
@@ -318,7 +318,7 @@ end
 #!
 #! Inputs:  [map_ptr]
 #! Outputs: [is_empty]
-export.is_empty
+pub proc is_empty
     mem_load eq.0
 end
 
@@ -328,7 +328,7 @@ end
 #!
 #! Inputs:  [map_ptr]
 #! Outputs: [has_next, iter]
-export.iter
+pub proc iter
     exec.get_head
     # => [entry_ptr]
 
@@ -349,7 +349,7 @@ end
 #!
 #! Inputs:  [iter]
 #! Outputs: [KEY, VALUE0, VALUE1, has_next, next_iter]
-export.next_key_double_value
+pub proc next_key_double_value
     dup exec.next_key
     # => [KEY, has_next, next_entry_ptr, entry_ptr = iter]
 
@@ -367,7 +367,7 @@ end
 #!
 #! Inputs:  [iter]
 #! Outputs: [KEY, VALUE0, has_next, next_iter]
-export.next_key_value
+pub proc next_key_value
     dup exec.next_key
     # => [KEY, has_next, next_entry_ptr, entry_ptr = iter]
 
@@ -385,7 +385,7 @@ end
 #!
 #! Inputs:  [iter]
 #! Outputs: [KEY, has_next, next_iter]
-export.next_key
+pub proc next_key
     dup exec.get_next_entry_ptr
     # => [next_entry_ptr, entry_ptr = iter]
 
@@ -406,7 +406,7 @@ end
 #!
 #! Panics if:
 #! - the KEY is not less than the key in the head of the map, unless the map is empty.
-proc.insert_at_head
+proc insert_at_head
     exec.memory::link_map_malloc
     # => [entry_ptr, map_ptr, KEY, VALUE0, VALUE1]
 
@@ -465,7 +465,7 @@ end
 #!
 #! Panics if:
 #! - the key in the entry does not match the provided KEY.
-proc.update_entry
+proc update_entry
     dup movdn.5
     # => [entry_ptr, KEY, entry_ptr, VALUE0, VALUE1]
 
@@ -485,7 +485,7 @@ end
 #! - the KEY is not greater than the key in the prev entry.
 #! - the KEY is not less than the key in prev_entry.next_entry, unless the prev entry is the last
 #!   one in the map.
-proc.insert_after_entry
+proc insert_after_entry
     movdn.5
     # => [map_ptr, KEY, prev_entry_ptr, VALUE0, VALUE1]
 
@@ -567,7 +567,7 @@ end
 #!
 #! Inputs:  [entry_ptr, map_ptr, KEY, VALUE0, VALUE1]
 #! Outputs: []
-proc.insert_pair
+proc insert_pair
     swap dup.1
     # => [entry_ptr, map_ptr, entry_ptr, KEY, VALUE0, VALUE1]
 
@@ -597,7 +597,7 @@ end
 #!
 #! Panics if:
 #! - the KEY is not less than the key in the head of the map, unless the map is empty.
-proc.assert_absent_at_head
+proc assert_absent_at_head
     dup exec.is_empty
     # => [is_empty, map_ptr, KEY]
 
@@ -627,7 +627,7 @@ end
 #! - the map is empty.
 #! - the KEY is not greater than the key in the entry.
 #! - the KEY is not less than the key in entry.next_entry, unless the entry is the last one in the map.
-proc.assert_absent_after_entry
+proc assert_absent_after_entry
     swap exec.is_empty assertz.err=ERR_LINK_MAP_CANNOT_BE_EMPTY_ON_ABSENCE_AFTER_ENTRY
     # => [entry_ptr, KEY]
 
@@ -666,7 +666,7 @@ end
 #!
 #! Panics if:
 #! - the key in the entry does not match KEY.
-proc.get_existing_value
+proc get_existing_value
     movdn.4 dup.4
     # => [entry_ptr, KEY, entry_ptr]
 
@@ -684,7 +684,7 @@ end
 #!
 #! Inputs:  [entry_ptr]
 #! Outputs: [has_next]
-proc.has_next
+proc has_next
     exec.get_next_entry_ptr eq.0 not
 end
 
@@ -692,7 +692,7 @@ end
 #!
 #! Inputs:  [entry_ptr, next_entry_ptr]
 #! Outputs: []
-proc.set_next_entry_ptr
+proc set_next_entry_ptr
     add.NEXT_ENTRY_PTR_OFFSET mem_store
     # => []
 end
@@ -701,7 +701,7 @@ end
 #!
 #! Inputs:  [entry_ptr]
 #! Outputs: [next_entry_ptr]
-proc.get_next_entry_ptr
+proc get_next_entry_ptr
     add.NEXT_ENTRY_PTR_OFFSET mem_load
     # => [next_entry_ptr]
 end
@@ -710,7 +710,7 @@ end
 #!
 #! Inputs:  [entry_ptr, prev_entry_ptr]
 #! Outputs: []
-proc.set_prev_entry_ptr
+proc set_prev_entry_ptr
     add.PREV_ENTRY_PTR_OFFSET mem_store
     # => []
 end
@@ -719,7 +719,7 @@ end
 #!
 #! Inputs:  [entry_ptr, VALUE0, VALUE1]
 #! Outputs: []
-proc.set_value
+proc set_value
     dup movdn.5
     # => [entry_ptr, VALUE0, entry_ptr, VALUE1]
 
@@ -734,7 +734,7 @@ end
 #!
 #! Inputs:  [entry_ptr]
 #! Outputs: [VALUE0, VALUE1]
-proc.get_values
+proc get_values
     dup exec.get_value1
     # => [VALUE1, entry_ptr]
 
@@ -746,7 +746,7 @@ end
 #!
 #! Inputs:  [entry_ptr]
 #! Outputs: [VALUE0]
-proc.get_value0
+proc get_value0
     padw movup.4
     # => [entry_ptr, pad(4)]
 
@@ -758,7 +758,7 @@ end
 #!
 #! Inputs:  [entry_ptr]
 #! Outputs: [VALUE1]
-proc.get_value1
+proc get_value1
     padw movup.4
     # => [entry_ptr, pad(4)]
 
@@ -770,7 +770,7 @@ end
 #!
 #! Inputs:  [entry_ptr, KEY]
 #! Outputs: []
-proc.set_key
+proc set_key
     add.KEY_OFFSET mem_storew_be dropw
 end
 
@@ -778,7 +778,7 @@ end
 #!
 #! Inputs:  [entry_ptr]
 #! Outputs: [KEY]
-proc.get_key
+proc get_key
     padw movup.4
     # => [entry_ptr, pad(4)]
 
@@ -790,7 +790,7 @@ end
 #!
 #! Inputs:  [map_ptr, entry_ptr]
 #! Outputs: []
-proc.set_head
+proc set_head
     mem_store
 end
 
@@ -798,7 +798,7 @@ end
 #!
 #! Inputs:  [map_ptr]
 #! Outputs: [entry_ptr]
-proc.get_head
+proc get_head
     mem_load
 end
 
@@ -806,7 +806,7 @@ end
 #!
 #! Inputs:  [entry_ptr, map_ptr]
 #! Outputs: []
-proc.set_map_ptr
+proc set_map_ptr
     mem_store
 end
 
@@ -814,7 +814,7 @@ end
 #!
 #! Inputs:  [entry_ptr]
 #! Outputs: [map_ptr]
-proc.get_map_ptr
+proc get_map_ptr
     mem_load
 end
 
@@ -825,7 +825,7 @@ end
 #!
 #! Inputs:  [entry_ptr, KEY]
 #! Outputs: []
-proc.assert_key_is_equal
+proc assert_key_is_equal
     exec.get_key swapw
     # => [KEY, ENTRY_KEY]
 
@@ -837,7 +837,7 @@ end
 #!
 #! Inputs:  [entry_ptr, KEY]
 #! Outputs: []
-proc.assert_key_is_greater
+proc assert_key_is_greater
     exec.get_key
     # => [ENTRY_KEY, KEY]
 
@@ -848,7 +848,7 @@ end
 #!
 #! Inputs:  [entry_ptr, KEY]
 #! Outputs: []
-proc.assert_key_is_less
+proc assert_key_is_less
     exec.get_key
     # => [ENTRY_KEY, KEY]
 
@@ -867,7 +867,7 @@ end
 #!   - entry ptr is "link map entry"-aligned, i.e. entry_ptr % LINK_MAP_ENTRY_SIZE == 0. This
 #!     works because every entry ptr is a multiple of LINK_MAP_ENTRY_SIZE.
 #!   - entry's map ptr is equal to the given map_ptr.
-export.assert_entry_ptr_is_valid
+pub proc assert_entry_ptr_is_valid
     # Check entry pointer is in valid memory range.
     # -------------------------------------------------------------------------------------------------
 

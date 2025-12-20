@@ -10,7 +10,7 @@ use miden_objects::assembly::debuginfo::Location;
 use miden_objects::assembly::{SourceFile, SourceManagerSync, SourceSpan};
 use miden_objects::asset::{AssetVaultKey, AssetWitness, FungibleAsset};
 use miden_objects::block::BlockNumber;
-use miden_objects::crypto::merkle::SmtProof;
+use miden_objects::crypto::merkle::smt::SmtProof;
 use miden_objects::note::{NoteInputs, NoteMetadata, NoteRecipient};
 use miden_objects::transaction::{InputNote, InputNotes, OutputNote, TransactionSummary};
 use miden_objects::vm::AdviceMap;
@@ -451,22 +451,22 @@ where
         &mut self,
         process: &ProcessState,
     ) -> impl FutureMaybeSend<Result<Vec<AdviceMutation>, EventError>> {
-        let stdlib_event_result = self.base_host.handle_stdlib_events(process);
+        let core_lib_event_result = self.base_host.handle_core_lib_events(process);
 
-        // If the event was handled by a stdlib handler (Ok(Some)), we will return the result from
+        // If the event was handled by a core lib handler (Ok(Some)), we will return the result from
         // within the async block below. So, we only need to extract th tx event if the event was
         // not yet handled (Ok(None)).
-        let tx_event_result = match stdlib_event_result {
+        let tx_event_result = match core_lib_event_result {
             Ok(None) => Some(TransactionEvent::extract(&self.base_host, process)),
             _ => None,
         };
 
         async move {
-            if let Some(mutations) = stdlib_event_result? {
+            if let Some(mutations) = core_lib_event_result? {
                 return Ok(mutations);
             }
 
-            // The outer None means the event was handled by stdlib handlers.
+            // The outer None means the event was handled by core lib handlers.
             let Some(tx_event_result) = tx_event_result else {
                 return Ok(Vec::new());
             };

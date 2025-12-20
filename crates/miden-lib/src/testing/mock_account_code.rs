@@ -5,30 +5,30 @@ use miden_objects::utils::sync::LazyLock;
 use crate::utils::CodeBuilder;
 
 const MOCK_FAUCET_CODE: &str = "
-    use.miden::faucet
+    use miden::faucet
 
     #! Inputs:  [ASSET, pad(12)]
     #! Outputs: [ASSET, pad(12)]
-    export.mint
+    pub proc mint
         exec.faucet::mint
         # => [ASSET, pad(12)]
     end
 
     #! Inputs:  [ASSET, pad(12)]
     #! Outputs: [ASSET, pad(12)]
-    export.burn
+    pub proc burn
         exec.faucet::burn
         # => [ASSET, pad(12)]
     end
 ";
 
 const MOCK_ACCOUNT_CODE: &str = "
-    use.miden::active_account
-    use.miden::native_account
-    use.miden::tx
+    use miden::active_account
+    use miden::native_account
+    use miden::tx
 
-    export.::miden::contracts::wallets::basic::receive_asset
-    export.::miden::contracts::wallets::basic::move_asset_to_note
+    pub use ::miden::contracts::wallets::basic::receive_asset
+    pub use ::miden::contracts::wallets::basic::move_asset_to_note
 
     # Note: all account's export procedures below should be only called or dyncall'ed, so it
     # is assumed that the operand stack at the beginning of their execution is pad'ed and
@@ -36,14 +36,14 @@ const MOCK_ACCOUNT_CODE: &str = "
 
     #! Inputs:  [slot_id_prefix, slot_id_suffix, VALUE, pad(10)]
     #! Outputs: [OLD_VALUE, pad(12)]
-    export.set_item
+    pub proc set_item
         exec.native_account::set_item
         # => [OLD_VALUE, pad(12)]
     end
 
     #! Inputs:  [slot_id_prefix, slot_id_suffix, pad(14)]
     #! Outputs: [VALUE, pad(12)]
-    export.get_item
+    pub proc get_item
         exec.active_account::get_item
         # => [VALUE, pad(14)]
 
@@ -54,7 +54,7 @@ const MOCK_ACCOUNT_CODE: &str = "
 
     #! Inputs:  [slot_id_prefix, slot_id_suffix, pad(14)]
     #! Outputs: [VALUE, pad(12)]
-    export.get_initial_item
+    pub proc get_initial_item
         exec.active_account::get_initial_item
         # => [VALUE, pad(14)]
 
@@ -65,28 +65,28 @@ const MOCK_ACCOUNT_CODE: &str = "
 
     #! Inputs:  [slot_id_prefix, slot_id_suffix, KEY, NEW_VALUE, pad(6)]
     #! Outputs: [OLD_MAP_ROOT, OLD_MAP_VALUE, pad(8)]
-    export.set_map_item
+    pub proc set_map_item
         exec.native_account::set_map_item
         # => [OLD_MAP_ROOT, OLD_MAP_VALUE, pad(8)]
     end
 
     #! Inputs:  [slot_id_prefix, slot_id_suffix, KEY, pad(10)]
     #! Outputs: [VALUE, pad(12)]
-    export.get_map_item
+    pub proc get_map_item
         exec.active_account::get_map_item
         # => [VALUE, pad(12)]
     end
 
     #! Inputs:  [slot_id_prefix, slot_id_suffix, KEY, pad(10)]
     #! Outputs: [INIT_VALUE, pad(12)]
-    export.get_initial_map_item
+    pub proc get_initial_map_item
         exec.active_account::get_initial_map_item
         # => [INIT_VALUE, pad(12)]
     end
 
     #! Inputs:  [pad(16)]
     #! Outputs: [CODE_COMMITMENT, pad(12)]
-    export.get_code_commitment
+    pub proc get_code_commitment
         exec.active_account::get_code_commitment
         # => [CODE_COMMITMENT, pad(16)]
 
@@ -97,7 +97,7 @@ const MOCK_ACCOUNT_CODE: &str = "
 
     #! Inputs:  [pad(16)]
     #! Outputs: [CODE_COMMITMENT, pad(12)]
-    export.compute_storage_commitment
+    pub proc compute_storage_commitment
         exec.active_account::compute_storage_commitment
         # => [STORAGE_COMMITMENT, pad(16)]
 
@@ -107,21 +107,21 @@ const MOCK_ACCOUNT_CODE: &str = "
 
     #! Inputs:  [ASSET, pad(12)]
     #! Outputs: [ASSET', pad(12)]
-    export.add_asset
+    pub proc add_asset
         exec.native_account::add_asset
         # => [ASSET', pad(12)]
     end
 
     #! Inputs:  [ASSET, pad(12)]
     #! Outputs: [ASSET, pad(12)]
-    export.remove_asset
+    pub proc remove_asset
         exec.native_account::remove_asset
         # => [ASSET, pad(12)]
     end
 
     #! Inputs:  [pad(16)]
     #! Outputs: [3, pad(12)]
-    export.account_procedure_1
+    pub proc account_procedure_1
         push.1.2 add
 
         # truncate the stack
@@ -130,7 +130,7 @@ const MOCK_ACCOUNT_CODE: &str = "
 
     #! Inputs:  [pad(16)]
     #! Outputs: [1, pad(12)]
-    export.account_procedure_2
+    pub proc account_procedure_2
         push.2.1 sub
 
         # truncate the stack

@@ -1,5 +1,5 @@
-use.miden::kernel_proc_offsets
-use.miden::note
+use miden::kernel_proc_offsets
+use miden::note
 
 # PROCEDURES
 # =================================================================================================
@@ -18,7 +18,7 @@ use.miden::note
 #! - note_idx is the index of the created note.
 #!
 #! Invocation: exec
-export.create
+pub proc create
     # pad the stack before the syscall to prevent accidental modification of the deeper stack
     # elements
     padw padw swapdw movup.8 drop
@@ -51,7 +51,7 @@ end
 #! - the note index is greater or equal to the total number of output notes.
 #!
 #! Invocation: exec
-export.get_assets_info
+pub proc get_assets_info
     # start padding the stack
     push.0.0 movup.2
     # => [note_index, 0, 0]
@@ -97,7 +97,7 @@ end
 #! - the note index is greater or equal to the total number of output notes.
 #!
 #! Invocation: exec
-export.get_assets
+pub proc get_assets
     # get the assets commitment and assets number
     dup.1 exec.get_assets_info
     # => [ASSETS_COMMITMENT, num_assets, dest_ptr, note_index]
@@ -117,7 +117,7 @@ end
 #! - ASSET can be a fungible or non-fungible asset.
 #!
 #! Invocation: exec
-export.add_asset
+pub proc add_asset
     movup.4 exec.kernel_proc_offsets::output_note_add_asset_offset
     # => [offset, note_idx, ASSET]
 
@@ -147,7 +147,7 @@ end
 #! - the note index is greater or equal to the total number of output notes.
 #!
 #! Invocation: exec
-export.get_recipient
+pub proc get_recipient
     # start padding the stack
     push.0.0 movup.2
     # => [note_index, 0, 0]
@@ -180,7 +180,7 @@ end
 #! - the note index is greater or equal to the total number of output notes.
 #!
 #! Invocation: exec
-export.get_metadata
+pub proc get_metadata
     # start padding the stack
     push.0.0 movup.2
     # => [note_index, 0, 0]

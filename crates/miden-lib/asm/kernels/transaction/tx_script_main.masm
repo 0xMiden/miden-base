@@ -1,12 +1,12 @@
-use.std::word
+use miden::core::word
 
-use.$kernel::memory
-use.$kernel::prologue
+use $kernel::memory
+use $kernel::prologue
 
 # ERRORS
 # =================================================================================================
 
-const.ERR_TX_TRANSACTION_SCRIPT_IS_MISSING="the transaction script is missing"
+const ERR_TX_TRANSACTION_SCRIPT_IS_MISSING="the transaction script is missing"
 
 # MAIN
 # =================================================================================================
@@ -34,7 +34,7 @@ const.ERR_TX_TRANSACTION_SCRIPT_IS_MISSING="the transaction script is missing"
 #! - account_id is the account that the transaction is being executed against.
 #! - INITIAL_ACCOUNT_COMMITMENT is the account state prior to the transaction, EMPTY_WORD for new accounts.
 #! - INPUT_NOTES_COMMITMENT, see `transaction::api::get_input_notes_commitment`.
-proc.main
+proc main
     # Prologue
     # ---------------------------------------------------------------------------------------------
 

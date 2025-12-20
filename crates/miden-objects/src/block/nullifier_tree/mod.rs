@@ -2,7 +2,8 @@ use alloc::string::ToString;
 use alloc::vec::Vec;
 
 use crate::block::BlockNumber;
-use crate::crypto::merkle::{MerkleError, MutationSet, SMT_DEPTH, Smt};
+use crate::crypto::merkle::MerkleError;
+use crate::crypto::merkle::smt::{MutationSet, SMT_DEPTH, Smt};
 use crate::errors::NullifierTreeError;
 use crate::note::Nullifier;
 use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
@@ -412,7 +413,7 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn large_smt_backend_basic_operations() {
-        use miden_crypto::merkle::{LargeSmt, MemoryStorage};
+        use miden_crypto::merkle::smt::{LargeSmt, MemoryStorage};
 
         // Create test data
         let nullifier1 = Nullifier::dummy(1);
@@ -452,7 +453,7 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn large_smt_backend_nullifier_already_spent() {
-        use miden_crypto::merkle::{LargeSmt, MemoryStorage};
+        use miden_crypto::merkle::smt::{LargeSmt, MemoryStorage};
 
         let nullifier1 = Nullifier::dummy(1);
 
@@ -476,7 +477,7 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn large_smt_backend_apply_mutations() {
-        use miden_crypto::merkle::{LargeSmt, MemoryStorage};
+        use miden_crypto::merkle::smt::{LargeSmt, MemoryStorage};
 
         let nullifier1 = Nullifier::dummy(1);
         let nullifier2 = Nullifier::dummy(2);
@@ -507,7 +508,7 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn large_smt_backend_same_root_as_regular_smt() {
-        use miden_crypto::merkle::{LargeSmt, MemoryStorage};
+        use miden_crypto::merkle::smt::{LargeSmt, MemoryStorage};
 
         let nullifier1 = Nullifier::dummy(1);
         let nullifier2 = Nullifier::dummy(2);

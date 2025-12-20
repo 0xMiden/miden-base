@@ -4,11 +4,11 @@ use miden_objects::utils::sync::LazyLock;
 use crate::utils::CodeBuilder;
 
 const MOCK_UTIL_LIBRARY_CODE: &str = "
-    use.miden::output_note
+    use miden::output_note
 
     # Inputs:  []
     # Outputs: [note_idx]
-    export.create_random_note
+    pub proc create_random_note
         push.1.2.3.4           # = RECIPIENT
         push.1                 # = NoteExecutionHint::Always
         push.2                 # = NoteType::Private
@@ -22,7 +22,7 @@ const MOCK_UTIL_LIBRARY_CODE: &str = "
 
     # Inputs:  [ASSET]
     # Outputs: []
-    export.create_random_note_with_asset
+    pub proc create_random_note_with_asset
         exec.create_random_note
         # => [note_idx, ASSET]
 
@@ -35,7 +35,7 @@ const MOCK_UTIL_LIBRARY_CODE: &str = "
 ";
 
 static MOCK_UTIL_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
-    CodeBuilder::new(false)
+    CodeBuilder::new()
         .compile_component_code("mock::util", MOCK_UTIL_LIBRARY_CODE)
         .expect("mock util library should be valid")
         .into_library()

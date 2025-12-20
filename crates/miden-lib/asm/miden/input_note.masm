@@ -1,5 +1,5 @@
-use.miden::kernel_proc_offsets
-use.miden::note
+use miden::kernel_proc_offsets
+use miden::note
 
 # PROCEDURES
 # =================================================================================================
@@ -20,7 +20,7 @@ use.miden::note
 #! - the note index is greater or equal to the total number of input notes.
 #!
 #! Invocation: exec
-export.get_assets_info
+pub proc get_assets_info
     # start padding the stack
     push.0 swap
     # => [note_index, 0]
@@ -71,7 +71,7 @@ end
 #! - the note index is greater or equal to the total number of input notes.
 #!
 #! Invocation: exec
-export.get_assets
+pub proc get_assets
     # get the assets commitment and assets number
     dup.1 exec.get_assets_info
     # => [ASSETS_COMMITMENT, num_assets, dest_ptr, note_index]
@@ -94,7 +94,7 @@ end
 #! - the note index is greater or equal to the total number of input notes.
 #!
 #! Invocation: exec
-export.get_recipient
+pub proc get_recipient
     # start padding the stack
     push.0 swap
     # => [note_index, 0]
@@ -132,7 +132,7 @@ end
 #! - the note index is greater or equal to the total number of input notes.
 #!
 #! Invocation: exec
-export.get_metadata
+pub proc get_metadata
     # start padding the stack
     push.0 swap
     # => [note_index, 0]
@@ -170,7 +170,7 @@ end
 #! - the note index is greater or equal to the total number of input notes.
 #!
 #! Invocation: exec
-export.get_sender
+pub proc get_sender
     # start padding the stack
     push.0 swap
     # => [note_index, 0]
@@ -213,7 +213,7 @@ end
 #! - the note index is greater or equal to the total number of input notes.
 #!
 #! Invocation: exec
-export.get_inputs_info
+pub proc get_inputs_info
     # start padding the stack
     push.0 swap
     # => [note_index, 0]
@@ -254,7 +254,7 @@ end
 #! - the note index is greater or equal to the total number of input notes.
 #!
 #! Invocation: exec
-export.get_script_root
+pub proc get_script_root
     # start padding the stack
     push.0 swap
     # => [note_index, 0]
@@ -292,7 +292,7 @@ end
 #! - the note index is greater or equal to the total number of input notes.
 #!
 #! Invocation: exec
-export.get_serial_number
+pub proc get_serial_number
     # start padding the stack
     push.0 swap
     # => [note_index, 0]

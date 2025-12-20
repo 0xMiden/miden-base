@@ -61,15 +61,15 @@ pub use miden_crypto::word::{LexicographicWord, Word, WordError};
 pub mod assembly {
     pub use miden_assembly::ast::{Module, ModuleKind, ProcedureName, QualifiedProcedureName};
     pub use miden_assembly::debuginfo::SourceManagerSync;
+    pub use miden_assembly::library::LibraryExport;
     pub use miden_assembly::{
         Assembler,
         DefaultSourceManager,
         KernelLibrary,
         Library,
-        LibraryNamespace,
-        LibraryPath,
         Parse,
         ParseOptions,
+        Path,
         SourceFile,
         SourceId,
         SourceManager,

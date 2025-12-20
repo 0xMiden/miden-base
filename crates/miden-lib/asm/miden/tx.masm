@@ -1,4 +1,4 @@
-use.miden::kernel_proc_offsets
+use miden::kernel_proc_offsets
 
 #! Returns the block number of the transaction reference block.
 #!
@@ -9,7 +9,7 @@ use.miden::kernel_proc_offsets
 #! - num is the transaction reference block number.
 #!
 #! Invocation: exec
-export.get_block_number
+pub proc get_block_number
     # pad the stack
     padw padw padw push.0.0.0
     # => [pad(15)]
@@ -34,7 +34,7 @@ end
 #! - BLOCK_COMMITMENT is the commitment to the reference block of the transaction.
 #!
 #! Invocation: exec
-export.get_block_commitment
+pub proc get_block_commitment
     # pad the stack
     padw padw padw push.0.0.0
     # => [pad(15)]
@@ -77,7 +77,7 @@ end
 #! Where:
 #! - timestamp is the timestamp of the reference block for this transaction. The underlying value is
 #!   of type u32, so u32 operations can be safely used on it.
-export.get_block_timestamp
+pub proc get_block_timestamp
     # pad the stack
     padw padw padw push.0.0.0
     # => [pad(15)]
@@ -104,7 +104,7 @@ end
 #! - INPUT_NOTES_COMMITMENT is the input notes commitment hash.
 #!
 #! Invocation: exec
-export.get_input_notes_commitment
+pub proc get_input_notes_commitment
     # pad the stack
     padw padw padw push.0.0.0
     # => [pad(15)]
@@ -130,7 +130,7 @@ end
 #! - OUTPUT_NOTES_COMMITMENT is the output notes commitment.
 #!
 #! Invocation: exec
-export.get_output_notes_commitment
+pub proc get_output_notes_commitment
     # pad the stack
     padw padw padw push.0.0.0
     # => [pad(15)]
@@ -155,7 +155,7 @@ end
 #! - num_input_notes is the total number of input notes consumed by this transaction.
 #!
 #! Invocation: exec
-export.get_num_input_notes
+pub proc get_num_input_notes
     # pad the stack
     padw padw padw push.0.0.0
     # => [pad(15)]
@@ -183,7 +183,7 @@ end
 #! - num_output_notes is the number of output notes created in this transaction so far.
 #!
 #! Invocation: exec
-export.get_num_output_notes
+pub proc get_num_output_notes
     # pad the stack
     padw padw padw push.0.0.0
     # => [pad(15)]
@@ -215,7 +215,8 @@ end
 #!   moment of the foreign procedure execution (n = 16 - mem_addr_size - foreign_inputs_len).
 #!
 #! Invocation: exec
-export.execute_foreign_procedure.4
+@locals(4)
+pub proc execute_foreign_procedure
     # get the start_foreign_context procedure offset
     push.0 movup.2 movup.2 exec.kernel_proc_offsets::tx_start_foreign_context_offset
     # => [offset, foreign_account_id_prefix, foreign_account_id_suffix, 0, FOREIGN_PROC_ROOT, <foreign account inputs>, pad(n)]
@@ -268,7 +269,7 @@ end
 #! - block_height_delta is the desired expiration time delta (1 to 0xFFFF).
 #!
 #! Annotation hint: is not used anywhere
-export.update_expiration_block_delta
+pub proc update_expiration_block_delta
     exec.kernel_proc_offsets::tx_update_expiration_block_delta_offset
     # => [offset, expiration_delta, ...]
 
@@ -291,7 +292,7 @@ end
 #! - block_height_delta is the stored expiration time delta (1 to 0xFFFF).
 #!
 #! Annotation hint: is not used anywhere
-export.get_expiration_block_delta
+pub proc get_expiration_block_delta
     # pad the stack
     padw padw padw push.0.0.0
     # => [pad(15)]

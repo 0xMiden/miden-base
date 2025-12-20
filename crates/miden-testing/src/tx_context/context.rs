@@ -133,7 +133,6 @@ impl TransactionContext {
                 .into();
 
         let program = assembler
-            .with_debug_mode(true)
             .assemble_program(virtual_source_file)
             .expect("code was not well formed");
 

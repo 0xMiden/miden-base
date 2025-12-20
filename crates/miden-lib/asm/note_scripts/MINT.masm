@@ -1,22 +1,22 @@
-use.miden::active_note
-use.miden::contracts::faucets::network_fungible->network_faucet
-use.miden::note
+use miden::active_note
+use miden::contracts::faucets::network_fungible->network_faucet
+use miden::note
 
 # CONSTANTS
 # =================================================================================================
 
-const.MINT_NOTE_NUM_INPUTS_PRIVATE=8
-const.MINT_NOTE_MIN_NUM_INPUTS_PUBLIC=12
+const MINT_NOTE_NUM_INPUTS_PRIVATE=8
+const MINT_NOTE_MIN_NUM_INPUTS_PUBLIC=12
 
-const.OUTPUT_NOTE_TYPE_PUBLIC=1
-const.OUTPUT_NOTE_TYPE_PRIVATE=2
+const OUTPUT_NOTE_TYPE_PUBLIC=1
+const OUTPUT_NOTE_TYPE_PRIVATE=2
 
-const.OUTPUT_PUBLIC_NOTE_INPUTS_ADDR=12
-const.OUTPUT_PUBLIC_NOTE_INPUTS_LEN_MEM_ADDR=0
+const OUTPUT_PUBLIC_NOTE_INPUTS_ADDR=12
+const OUTPUT_PUBLIC_NOTE_INPUTS_LEN_MEM_ADDR=0
 
 # ERRORS
 # =================================================================================================
-const.ERR_MINT_WRONG_NUMBER_OF_INPUTS="MINT script expects exactly 8 inputs for private or 12+ inputs for public output notes"
+const ERR_MINT_WRONG_NUMBER_OF_INPUTS="MINT script expects exactly 8 inputs for private or 12+ inputs for public output notes"
 
 #! Network Faucet MINT script: mints assets by calling the network faucet's distribute function.
 #! This note is intended to be executed against a network fungible faucet account.

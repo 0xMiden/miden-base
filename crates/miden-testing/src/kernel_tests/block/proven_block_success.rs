@@ -9,7 +9,7 @@ use miden_objects::asset::FungibleAsset;
 use miden_objects::batch::BatchNoteTree;
 use miden_objects::block::account_tree::AccountTree;
 use miden_objects::block::{BlockInputs, BlockNoteIndex, BlockNoteTree, ProposedBlock};
-use miden_objects::crypto::merkle::Smt;
+use miden_objects::crypto::merkle::smt::Smt;
 use miden_objects::note::NoteType;
 use miden_objects::transaction::InputNoteCommitment;
 

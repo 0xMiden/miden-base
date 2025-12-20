@@ -32,13 +32,7 @@ macro_rules! procedure_digest {
     ($name:ident, $proc_name:expr, $library_fn:expr) => {
         static $name: miden_objects::utils::sync::LazyLock<miden_objects::Word> =
             miden_objects::utils::sync::LazyLock::new(|| {
-                let qualified_name = miden_objects::assembly::QualifiedProcedureName::new(
-                    ::core::default::Default::default(),
-                    miden_objects::assembly::ProcedureName::new($proc_name).unwrap_or_else(|_| {
-                        panic!("failed to create name for '{}' procedure", $proc_name)
-                    }),
-                );
-                $library_fn().get_procedure_root_by_name(qualified_name).unwrap_or_else(|| {
+                $library_fn().get_procedure_root_by_path($proc_name).unwrap_or_else(|| {
                     panic!("{} should contain '{}' procedure", stringify!($library_fn), $proc_name)
                 })
             });

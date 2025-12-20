@@ -4,7 +4,8 @@ use core::ops::RangeTo;
 
 use crate::PartialBlockchainError;
 use crate::block::{BlockHeader, BlockNumber};
-use crate::crypto::merkle::{InnerNodeInfo, MmrPeaks, PartialMmr};
+use crate::crypto::merkle::InnerNodeInfo;
+use crate::crypto::merkle::mmr::{MmrPeaks, PartialMmr};
 use crate::utils::serde::{Deserializable, Serializable};
 
 // PARTIAL BLOCKCHAIN
@@ -284,7 +285,7 @@ mod tests {
     use crate::alloc::vec::Vec;
     use crate::block::{BlockHeader, BlockNumber, FeeParameters};
     use crate::crypto::dsa::ecdsa_k256_keccak::SecretKey;
-    use crate::crypto::merkle::{Mmr, PartialMmr};
+    use crate::crypto::merkle::mmr::{Mmr, PartialMmr};
     use crate::testing::account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET;
     use crate::{PartialBlockchainError, Word};
 

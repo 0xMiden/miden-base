@@ -124,7 +124,7 @@ async fn test_transaction_prologue() -> anyhow::Result<()> {
     };
 
     let code = "
-        use.$kernel::prologue
+        use $kernel::prologue
 
         begin
             exec.prologue::prepare_transaction
@@ -743,7 +743,7 @@ pub async fn create_account_invalid_seed() -> anyhow::Result<()> {
         .build()?;
 
     let code = "
-      use.$kernel::prologue
+      use $kernel::prologue
 
       begin
           exec.prologue::prepare_transaction
@@ -761,8 +761,8 @@ pub async fn create_account_invalid_seed() -> anyhow::Result<()> {
 async fn test_get_blk_version() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
     let code = "
-    use.$kernel::memory
-    use.$kernel::prologue
+    use $kernel::memory
+    use $kernel::prologue
 
     begin
         exec.prologue::prepare_transaction
@@ -787,8 +787,8 @@ async fn test_get_blk_version() -> anyhow::Result<()> {
 async fn test_get_blk_timestamp() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
     let code = "
-    use.$kernel::memory
-    use.$kernel::prologue
+    use $kernel::memory
+    use $kernel::prologue
 
     begin
         exec.prologue::prepare_transaction
