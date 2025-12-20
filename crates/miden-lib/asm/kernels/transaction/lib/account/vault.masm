@@ -1,0 +1,211 @@
+use.$kernel::account_delta
+use.$kernel::asset_vault
+use.$kernel::memory
+
+# EVENTS
+# =================================================================================================
+
+# Event emitted before an asset is added to the account vault.
+const.ACCOUNT_VAULT_BEFORE_ADD_ASSET_EVENT=event("miden::account::vault_before_add_asset")
+# Event emitted after an asset is added to the account vault.
+const.ACCOUNT_VAULT_AFTER_ADD_ASSET_EVENT=event("miden::account::vault_after_add_asset")
+
+# Event emitted before an asset is removed from the account vault.
+const.ACCOUNT_VAULT_BEFORE_REMOVE_ASSET_EVENT=event("miden::account::vault_before_remove_asset")
+# Event emitted after an asset is removed from the account vault.
+const.ACCOUNT_VAULT_AFTER_REMOVE_ASSET_EVENT=event("miden::account::vault_after_remove_asset")
+
+# Event emitted before a fungible asset's balance is fetched from the account vault.
+const.ACCOUNT_VAULT_BEFORE_GET_BALANCE_EVENT=event("miden::account::vault_before_get_balance")
+
+# Event emitted before it is checked whether a non-fungible asset exists in the account vault.
+const.ACCOUNT_VAULT_BEFORE_HAS_NON_FUNGIBLE_ASSET_EVENT=event("miden::account::vault_before_has_non_fungible_asset")
+
+# PROCEDURES
+# =================================================================================================
+
+#! Adds the specified asset to the account vault.
+#!
+#! Inputs:  [ASSET]
+#! Outputs: [ASSET']
+#!
+#! Where:
+#! - ASSET is the asset that is added to the vault.
+#! - ASSET' final asset in the account vault defined as follows:
+#!   - If ASSET is a non-fungible asset, then ASSET' is the same as ASSET.
+#!   - If ASSET is a fungible asset, then ASSET' is the total fungible asset in the account vault
+#!     after ASSET was added to it.
+#!
+#! Panics if:
+#! - the asset is not valid.
+#! - the total value of the fungible asset is greater than or equal to 2^63 after the new asset was
+#!   added.
+#! - the vault already contains the same non-fungible asset.
+export.add_asset_to_vault
+    # duplicate the ASSET to be able to emit an event after an asset is being added
+    dupw
+    # => [ASSET, ASSET]
+
+    # fetch the account vault root
+    exec.memory::get_account_vault_root_ptr movdn.4
+    # => [ASSET, acct_vault_root_ptr, ASSET]
+
+    # emit event to signal that an asset is going to be added to the account vault
+    emit.ACCOUNT_VAULT_BEFORE_ADD_ASSET_EVENT
+
+    # add the asset to the account vault
+    exec.asset_vault::add_asset
+    # => [ASSET', ASSET]
+
+    swapw
+    # => [ASSET, ASSET']
+
+    dupw exec.account_delta::add_asset
+    # => [ASSET, ASSET']
+
+    # emit event to signal that an asset is being added to the account vault
+    emit.ACCOUNT_VAULT_AFTER_ADD_ASSET_EVENT
+    dropw
+    # => [ASSET']
+end
+
+#! Removes the specified asset from the account vault.
+#!
+#! Inputs:  [ASSET]
+#! Outputs: [ASSET]
+#!
+#! Where:
+#! - ASSET is the asset to remove from the vault.
+#!
+#! Panics if:
+#! - the fungible asset is not found in the vault.
+#! - the amount of the fungible asset in the vault is less than the amount to be removed.
+#! - the non-fungible asset is not found in the vault.
+export.remove_asset_from_vault
+    # fetch the vault root
+    exec.memory::get_account_vault_root_ptr movdn.4
+    # => [ASSET, acct_vault_root_ptr]
+
+    # emit event to signal that an asset is going to be removed from the account vault
+    emit.ACCOUNT_VAULT_BEFORE_REMOVE_ASSET_EVENT
+
+    # remove the asset from the account vault
+    exec.asset_vault::remove_asset
+    # => [ASSET]
+
+    dupw exec.account_delta::remove_asset
+    # => [ASSET]
+
+    # emit event to signal that an asset is being removed from the account vault
+    emit.ACCOUNT_VAULT_AFTER_REMOVE_ASSET_EVENT
+    # => [ASSET]
+end
+
+#! Returns the balance of the fungible asset associated with the provided faucet_id in the active
+#! account's vault.
+#!
+#! Inputs:  [faucet_id_prefix, faucet_id_suffix]
+#! Outputs: [balance]
+#!
+#! Where:
+#! - faucet_id_{prefix, suffix} are the prefix and suffix felts of the faucet id of the fungible
+#!   asset of interest.
+#! - balance is the vault balance of the fungible asset.
+#!
+#! Panics if:
+#! - the provided faucet ID is not an ID of a fungible faucet.
+export.get_balance
+    # get the vault root
+    exec.memory::get_account_vault_root_ptr movdn.2
+    # => [faucet_id_prefix, faucet_id_suffix, vault_root_ptr]
+
+    # emit event to signal that an asset's balance is requested
+    emit.ACCOUNT_VAULT_BEFORE_GET_BALANCE_EVENT
+    # => [faucet_id_prefix, faucet_id_suffix, vault_root_ptr]
+
+    # get the asset balance
+    exec.asset_vault::get_balance
+    # => [balance]
+end
+
+#! Returns the balance of the fungible asset associated with the provided faucet_id in the active 
+#! account's vault at the beginning of the transaction.
+#!
+#! Inputs:  [faucet_id_prefix, faucet_id_suffix]
+#! Outputs: [init_balance]
+#!
+#! Where:
+#! - faucet_id_{prefix, suffix} are the prefix and suffix felts of the faucet id of the fungible
+#!   asset of interest.
+#! - init_balance is the vault balance of the fungible asset at the beginning of the transaction.
+#!
+#! Panics if:
+#! - the provided faucet ID is not an ID of a fungible faucet.
+export.get_initial_balance
+    # get the vault root associated with the initial vault root of the native account
+    exec.memory::get_account_initial_vault_root_ptr movdn.2
+    # => [faucet_id_prefix, faucet_id_suffix, init_native_vault_root_ptr]
+
+    # emit event to signal that an asset's balance is requested
+    emit.ACCOUNT_VAULT_BEFORE_GET_BALANCE_EVENT
+    # => [faucet_id_prefix, faucet_id_suffix, init_native_vault_root_ptr]
+
+    # get the asset balance
+    exec.asset_vault::get_balance
+    # => [init_balance]
+end
+
+#! Returns the vault root of the active account at the beginning of the transaction.
+#!
+#! Inputs:  []
+#! Outputs: [INIT_ACCOUNT_VAULT_ROOT]
+#!
+#! Where:
+#! - INIT_ACCOUNT_VAULT_ROOT is the initial account vault root.
+export.get_initial_vault_root
+    # Get the vault root of the active account. For the foreign account this root will be equal to 
+    # the initial one.
+    exec.memory::get_account_vault_root
+    # => [ACTIVE_ACCOUNT_VAULT_ROOT]
+
+    # get the initial vault root of the native account
+    exec.memory::get_init_native_account_vault_root
+    # => [INIT_NATIVE_ACCOUNT_VAULT_ROOT, ACTIVE_ACCOUNT_VAULT_ROOT]
+
+    # check whether the active account is native
+    exec.memory::is_native_account
+    # => [is_native_account, INIT_NATIVE_ACCOUNT_VAULT_ROOT, ACTIVE_ACCOUNT_VAULT_ROOT]
+
+    # if the active account is native, keep the INIT_NATIVE_ACCOUNT_VAULT_ROOT, or
+    # ACTIVE_ACCOUNT_VAULT_ROOT otherwise
+    cdropw
+    # => [INIT_ACCOUNT_VAULT_ROOT]
+end
+
+#! Returns a boolean indicating whether the non-fungible asset is present in the active account's
+#! vault.
+#!
+#! Inputs:  [ASSET]
+#! Outputs: [has_asset]
+#!
+#! Where:
+#! - ASSET is the non-fungible asset of interest.
+#! - has_asset is a boolean indicating whether the account vault has the asset of interest.
+#!
+#! Panics if:
+#! - the ASSET is a fungible asset.
+export.has_non_fungible_asset
+    # get the vault root
+    exec.memory::get_account_vault_root_ptr movdn.4
+    # => [ASSET, vault_root_ptr]
+
+    # emit event to signal that an asset's presence is being checked
+    emit.ACCOUNT_VAULT_BEFORE_HAS_NON_FUNGIBLE_ASSET_EVENT
+    # => [ASSET, vault_root_ptr]
+
+    # check if the account vault has the non-fungible asset
+    exec.asset_vault::has_non_fungible_asset
+    # => [has_asset]
+end
+
+
