@@ -3,18 +3,6 @@ use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use miden_lib::transaction::TransactionAdviceInputs;
-use miden_objects::account::auth::PublicKeyCommitment;
-use miden_objects::account::{AccountCode, AccountDelta, AccountId, PartialAccount};
-use miden_objects::assembly::debuginfo::Location;
-use miden_objects::assembly::{SourceFile, SourceManagerSync, SourceSpan};
-use miden_objects::asset::{AssetVaultKey, AssetWitness, FungibleAsset};
-use miden_objects::block::BlockNumber;
-use miden_objects::crypto::merkle::SmtProof;
-use miden_objects::note::{NoteInputs, NoteMetadata, NoteRecipient};
-use miden_objects::transaction::{InputNote, InputNotes, OutputNote, TransactionSummary};
-use miden_objects::vm::AdviceMap;
-use miden_objects::{Felt, Hasher, Word};
 use miden_processor::{
     AdviceMutation,
     AsyncHost,
@@ -24,6 +12,23 @@ use miden_processor::{
     MastForest,
     ProcessState,
 };
+use miden_protocol::account::auth::PublicKeyCommitment;
+use miden_protocol::account::{AccountCode, AccountDelta, AccountId, PartialAccount};
+use miden_protocol::assembly::debuginfo::Location;
+use miden_protocol::assembly::{SourceFile, SourceManagerSync, SourceSpan};
+use miden_protocol::asset::{AssetVaultKey, AssetWitness, FungibleAsset};
+use miden_protocol::block::BlockNumber;
+use miden_protocol::crypto::merkle::smt::SmtProof;
+use miden_protocol::note::{NoteInputs, NoteMetadata, NoteRecipient};
+use miden_protocol::transaction::{
+    InputNote,
+    InputNotes,
+    OutputNote,
+    TransactionAdviceInputs,
+    TransactionSummary,
+};
+use miden_protocol::vm::AdviceMap;
+use miden_protocol::{Felt, Hasher, Word};
 
 use crate::auth::{SigningInputs, TransactionAuthenticator};
 use crate::errors::TransactionKernelError;
@@ -451,22 +456,22 @@ where
         &mut self,
         process: &ProcessState,
     ) -> impl FutureMaybeSend<Result<Vec<AdviceMutation>, EventError>> {
-        let stdlib_event_result = self.base_host.handle_stdlib_events(process);
+        let core_lib_event_result = self.base_host.handle_core_lib_events(process);
 
-        // If the event was handled by a stdlib handler (Ok(Some)), we will return the result from
+        // If the event was handled by a core lib handler (Ok(Some)), we will return the result from
         // within the async block below. So, we only need to extract th tx event if the event was
         // not yet handled (Ok(None)).
-        let tx_event_result = match stdlib_event_result {
+        let tx_event_result = match core_lib_event_result {
             Ok(None) => Some(TransactionEvent::extract(&self.base_host, process)),
             _ => None,
         };
 
         async move {
-            if let Some(mutations) = stdlib_event_result? {
+            if let Some(mutations) = core_lib_event_result? {
                 return Ok(mutations);
             }
 
-            // The outer None means the event was handled by stdlib handlers.
+            // The outer None means the event was handled by core lib handlers.
             let Some(tx_event_result) = tx_event_result else {
                 return Ok(Vec::new());
             };

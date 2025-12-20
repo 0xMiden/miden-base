@@ -1,5 +1,5 @@
-use miden_objects::asset::Asset;
-use miden_objects::note::{Note, NoteAssets, NoteMetadata, NoteRecipient, PartialNote};
+use miden_protocol::asset::Asset;
+use miden_protocol::note::{Note, NoteAssets, NoteMetadata, NoteRecipient, PartialNote};
 
 use super::{OutputNote, Word};
 use crate::errors::TransactionKernelError;
