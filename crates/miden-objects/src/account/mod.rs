@@ -32,23 +32,7 @@ pub use code::AccountCode;
 pub use code::procedure::AccountProcedureRoot;
 
 pub mod component;
-pub use component::{
-    AccountComponent,
-    AccountComponentCode,
-    // TODO(named_slots): Uncomment when refactored.
-    // AccountComponentMetadata,
-    // FeltRepresentation,
-    // InitStorageData,
-    // MapEntry,
-    // MapRepresentation,
-    // PlaceholderTypeRequirement,
-    // StorageEntry,
-    // StorageValueName,
-    // StorageValueNameError,
-    // TemplateType,
-    // TemplateTypeError,
-    // WordRepresentation,
-};
+pub use component::{AccountComponent, AccountComponentCode, AccountComponentMetadata};
 
 pub mod delta;
 pub use delta::{
