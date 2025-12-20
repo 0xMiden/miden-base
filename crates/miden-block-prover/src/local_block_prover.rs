@@ -1,5 +1,5 @@
-use miden_objects::batch::OrderedBatches;
-use miden_objects::block::{BlockHeader, BlockInputs, BlockProof};
+use miden_protocol::batch::OrderedBatches;
+use miden_protocol::block::{BlockHeader, BlockInputs, BlockProof};
 
 use crate::BlockProverError;
 

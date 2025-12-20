@@ -1,11 +1,6 @@
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use miden_objects::Word;
-use miden_objects::account::{AccountDelta, PartialAccount};
-use miden_objects::assembly::debuginfo::Location;
-use miden_objects::assembly::{SourceFile, SourceSpan};
-use miden_objects::transaction::{InputNote, InputNotes, OutputNote};
 use miden_processor::{
     AdviceMutation,
     BaseHost,
@@ -15,6 +10,11 @@ use miden_processor::{
     ProcessState,
     SyncHost,
 };
+use miden_protocol::Word;
+use miden_protocol::account::{AccountDelta, PartialAccount};
+use miden_protocol::assembly::debuginfo::Location;
+use miden_protocol::assembly::{SourceFile, SourceSpan};
+use miden_protocol::transaction::{InputNote, InputNotes, OutputNote};
 
 use crate::host::{RecipientData, ScriptMastForestStore, TransactionBaseHost, TransactionEvent};
 use crate::{AccountProcedureIndexMap, TransactionKernelError};

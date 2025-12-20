@@ -3,8 +3,8 @@ use std::collections::BTreeMap;
 use std::string::String;
 
 use anyhow::Context;
-use miden_objects::{EMPTY_WORD, LexicographicWord, Word};
 use miden_processor::{ONE, ZERO};
+use miden_protocol::{EMPTY_WORD, LexicographicWord, Word};
 use miden_tx::{LinkMap, MemoryViewer};
 use rand::seq::IteratorRandom;
 use winter_rand_utils::rand_value;

@@ -1,6 +1,7 @@
-use miden_objects::account::{AccountId, StorageSlotId, StorageSlotType};
-use miden_objects::note::{NoteId, NoteInputs};
-use miden_objects::transaction::memory::{
+use miden_processor::{ExecutionError, Felt, ProcessState};
+use miden_protocol::account::{AccountId, StorageSlotId, StorageSlotType};
+use miden_protocol::note::{NoteId, NoteInputs};
+use miden_protocol::transaction::memory::{
     ACCOUNT_STACK_TOP_PTR,
     ACCT_CODE_COMMITMENT_OFFSET,
     ACCT_STORAGE_SLOT_ID_PREFIX_OFFSET,
@@ -10,8 +11,7 @@ use miden_objects::transaction::memory::{
     ACTIVE_INPUT_NOTE_PTR,
     NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR,
 };
-use miden_objects::{Hasher, Word};
-use miden_processor::{ExecutionError, Felt, ProcessState};
+use miden_protocol::{Hasher, Word};
 
 use crate::errors::TransactionKernelError;
 

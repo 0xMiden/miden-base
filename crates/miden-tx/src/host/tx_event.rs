@@ -1,12 +1,12 @@
 use alloc::vec::Vec;
 
-use miden_objects::account::{AccountId, StorageMap, StorageSlotName, StorageSlotType};
-use miden_objects::asset::{Asset, AssetVault, AssetVaultKey, FungibleAsset};
-use miden_objects::note::{NoteId, NoteInputs, NoteMetadata, NoteRecipient, NoteScript};
-use miden_objects::transaction::{TransactionEventId, TransactionSummary};
-use miden_objects::vm::EventId;
-use miden_objects::{Felt, Hasher, Word};
 use miden_processor::{AdviceMutation, ProcessState, RowIndex};
+use miden_protocol::account::{AccountId, StorageMap, StorageSlotName, StorageSlotType};
+use miden_protocol::asset::{Asset, AssetVault, AssetVaultKey, FungibleAsset};
+use miden_protocol::note::{NoteId, NoteInputs, NoteMetadata, NoteRecipient, NoteScript};
+use miden_protocol::transaction::{TransactionEventId, TransactionSummary};
+use miden_protocol::vm::EventId;
+use miden_protocol::{Felt, Hasher, Word};
 
 use crate::host::{TransactionBaseHost, TransactionKernelProcess};
 use crate::{LinkMap, TransactionKernelError};

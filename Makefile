@@ -8,7 +8,7 @@ help:
 
 WARNINGS=RUSTDOCFLAGS="-D warnings"
 # Enable file generation in the `src` directory.
-# This is used in the build scripts of miden-lib.
+# This is used in the build scripts of miden-protocol and miden-standards.
 BUILD_GENERATED_FILES_IN_SRC=BUILD_GENERATED_FILES_IN_SRC=1
 # Enable backtraces for tests where we return an anyhow::Result. If enabled, anyhow::Error will
 # then contain a `Backtrace` and print it when a test returns an error.

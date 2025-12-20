@@ -3,15 +3,15 @@ use std::collections::BTreeMap;
 use std::vec::Vec;
 
 use anyhow::Context;
-use miden_lib::note::create_p2id_note;
-use miden_objects::ZERO;
-use miden_objects::asset::FungibleAsset;
-use miden_objects::batch::BatchNoteTree;
-use miden_objects::block::account_tree::AccountTree;
-use miden_objects::block::{BlockInputs, BlockNoteIndex, BlockNoteTree, ProposedBlock};
-use miden_objects::crypto::merkle::smt::Smt;
-use miden_objects::note::NoteType;
-use miden_objects::transaction::InputNoteCommitment;
+use miden_protocol::ZERO;
+use miden_protocol::asset::FungibleAsset;
+use miden_protocol::batch::BatchNoteTree;
+use miden_protocol::block::account_tree::AccountTree;
+use miden_protocol::block::{BlockInputs, BlockNoteIndex, BlockNoteTree, ProposedBlock};
+use miden_protocol::crypto::merkle::smt::Smt;
+use miden_protocol::note::NoteType;
+use miden_protocol::transaction::InputNoteCommitment;
+use miden_standards::note::create_p2id_note;
 
 use crate::kernel_tests::block::utils::MockChainBlockExt;
 use crate::utils::create_p2any_note;

@@ -1,15 +1,15 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use miden_lib::code_builder::CodeBuilder;
-use miden_lib::testing::note::NoteBuilder;
-use miden_objects::account::AccountId;
-use miden_objects::asset::Asset;
-use miden_objects::crypto::rand::FeltRng;
-use miden_objects::note::{Note, NoteType};
-use miden_objects::testing::storage::prepare_assets;
 use miden_processor::Felt;
 use miden_processor::crypto::RpoRandomCoin;
+use miden_protocol::account::AccountId;
+use miden_protocol::asset::Asset;
+use miden_protocol::crypto::rand::FeltRng;
+use miden_protocol::note::{Note, NoteType};
+use miden_protocol::testing::storage::prepare_assets;
+use miden_standards::code_builder::CodeBuilder;
+use miden_standards::testing::note::NoteBuilder;
 use rand::SeedableRng;
 use rand::rngs::SmallRng;
 
@@ -130,8 +130,8 @@ pub fn create_p2any_note(
     let code = format!(
         "
         use mock::account
-        use miden::active_note
-        use miden::contracts::wallets::basic->wallet
+        use miden::protocol::active_note
+        use miden::standards::wallets::basic->wallet
 
         begin
             # fetch pointer & number of assets
@@ -199,7 +199,7 @@ fn note_script_that_creates_notes<'note>(
     sender_id: AccountId,
     output_notes: impl Iterator<Item = &'note Note>,
 ) -> anyhow::Result<String> {
-    let mut out = String::from("use miden::output_note\n\nbegin\n");
+    let mut out = String::from("use miden::protocol::output_note\n\nbegin\n");
 
     for (idx, note) in output_notes.into_iter().enumerate() {
         anyhow::ensure!(
@@ -209,7 +209,7 @@ fn note_script_that_creates_notes<'note>(
 
         // Make sure that the transaction's native account matches the note sender.
         out.push_str(&format!(
-            r#"exec.::miden::native_account::get_id
+            r#"exec.::miden::protocol::native_account::get_id
              # => [native_account_id_prefix, native_account_id_suffix]
              push.{sender_prefix} assert_eq.err="sender ID prefix does not match native account ID's prefix"
              # => [native_account_id_suffix]
@@ -244,7 +244,7 @@ fn note_script_that_creates_notes<'note>(
         for asset in assets_str {
             out.push_str(&format!(
                 " push.{asset}
-                  call.::miden::contracts::wallets::basic::move_asset_to_note\n",
+                  call.::miden::standards::wallets::basic::move_asset_to_note\n",
             ));
         }
     }

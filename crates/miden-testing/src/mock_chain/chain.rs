@@ -3,14 +3,15 @@ use alloc::vec::Vec;
 
 use anyhow::Context;
 use miden_block_prover::LocalBlockProver;
-use miden_objects::MIN_PROOF_SECURITY_LEVEL;
-use miden_objects::account::auth::{AuthSecretKey, PublicKey};
-use miden_objects::account::delta::AccountUpdateDetails;
-use miden_objects::account::{Account, AccountId, PartialAccount};
-use miden_objects::batch::{ProposedBatch, ProvenBatch};
-use miden_objects::block::account_tree::{AccountTree, AccountWitness};
-use miden_objects::block::nullifier_tree::{NullifierTree, NullifierWitness};
-use miden_objects::block::{
+use miden_processor::DeserializationError;
+use miden_protocol::MIN_PROOF_SECURITY_LEVEL;
+use miden_protocol::account::auth::{AuthSecretKey, PublicKey};
+use miden_protocol::account::delta::AccountUpdateDetails;
+use miden_protocol::account::{Account, AccountId, PartialAccount};
+use miden_protocol::batch::{ProposedBatch, ProvenBatch};
+use miden_protocol::block::account_tree::{AccountTree, AccountWitness};
+use miden_protocol::block::nullifier_tree::{NullifierTree, NullifierWitness};
+use miden_protocol::block::{
     BlockHeader,
     BlockInputs,
     BlockNumber,
@@ -18,9 +19,9 @@ use miden_objects::block::{
     ProposedBlock,
     ProvenBlock,
 };
-use miden_objects::crypto::dsa::ecdsa_k256_keccak::SecretKey;
-use miden_objects::note::{Note, NoteHeader, NoteId, NoteInclusionProof, Nullifier};
-use miden_objects::transaction::{
+use miden_protocol::crypto::dsa::ecdsa_k256_keccak::SecretKey;
+use miden_protocol::note::{Note, NoteHeader, NoteId, NoteInclusionProof, Nullifier};
+use miden_protocol::transaction::{
     ExecutedTransaction,
     InputNote,
     InputNotes,
@@ -29,7 +30,6 @@ use miden_objects::transaction::{
     ProvenTransaction,
     TransactionInputs,
 };
-use miden_processor::DeserializationError;
 use miden_tx::LocalTransactionProver;
 use miden_tx::auth::BasicAuthenticator;
 use miden_tx::utils::{ByteReader, Deserializable, Serializable};
@@ -63,7 +63,7 @@ use crate::{MockChainBuilder, TransactionContextBuilder};
 /// ## Executing a simple transaction
 /// ```
 /// # use anyhow::Result;
-/// # use miden_objects::{
+/// # use miden_protocol::{
 /// #    asset::{Asset, FungibleAsset},
 /// #    note::NoteType,
 /// # };
@@ -127,7 +127,7 @@ use crate::{MockChainBuilder, TransactionContextBuilder};
 ///
 /// ```
 /// # use anyhow::Result;
-/// # use miden_objects::{Felt, asset::{Asset, FungibleAsset}, note::NoteType};
+/// # use miden_protocol::{Felt, asset::{Asset, FungibleAsset}, note::NoteType};
 /// # use miden_testing::{Auth, MockChain, TransactionContextBuilder};
 /// #
 /// # #[tokio::main(flavor = "current_thread")]
@@ -1149,15 +1149,15 @@ impl From<Account> for TxContextInput {
 
 #[cfg(test)]
 mod tests {
-    use miden_lib::account::wallets::BasicWallet;
-    use miden_objects::account::{AccountBuilder, AccountStorageMode};
-    use miden_objects::asset::{Asset, FungibleAsset};
-    use miden_objects::note::NoteType;
-    use miden_objects::testing::account_id::{
+    use miden_protocol::account::{AccountBuilder, AccountStorageMode};
+    use miden_protocol::asset::{Asset, FungibleAsset};
+    use miden_protocol::note::NoteType;
+    use miden_protocol::testing::account_id::{
         ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET,
         ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
         ACCOUNT_ID_SENDER,
     };
+    use miden_standards::account::wallets::BasicWallet;
 
     use super::*;
     use crate::Auth;

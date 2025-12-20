@@ -1,6 +1,6 @@
-use miden_objects::CoreLibrary;
-use miden_objects::transaction::{ProvenTransaction, TransactionKernel};
-use miden_objects::vm::ProgramInfo;
+use miden_protocol::CoreLibrary;
+use miden_protocol::transaction::{ProvenTransaction, TransactionKernel};
+use miden_protocol::vm::ProgramInfo;
 use miden_verifier::verify_with_precompiles;
 
 use super::TransactionVerifierError;

@@ -2,10 +2,8 @@ use alloc::vec::Vec;
 
 use anyhow::Context;
 use assert_matches::assert_matches;
-use miden_lib::testing::account_component::{IncrNonceAuthComponent, MockAccountComponent};
-use miden_lib::testing::mock_account::MockAccountExt;
-use miden_objects::account::delta::AccountUpdateDetails;
-use miden_objects::account::{
+use miden_protocol::account::delta::AccountUpdateDetails;
+use miden_protocol::account::{
     Account,
     AccountBuilder,
     AccountComponent,
@@ -13,13 +11,15 @@ use miden_objects::account::{
     StorageSlot,
     StorageSlotName,
 };
-use miden_objects::asset::FungibleAsset;
-use miden_objects::batch::ProvenBatch;
-use miden_objects::block::{BlockInputs, BlockNumber, ProposedBlock};
-use miden_objects::note::NoteType;
-use miden_objects::transaction::ProvenTransactionBuilder;
-use miden_objects::vm::ExecutionProof;
-use miden_objects::{AccountTreeError, NullifierTreeError, ProposedBlockError, Word};
+use miden_protocol::asset::FungibleAsset;
+use miden_protocol::batch::ProvenBatch;
+use miden_protocol::block::{BlockInputs, BlockNumber, ProposedBlock};
+use miden_protocol::note::NoteType;
+use miden_protocol::transaction::ProvenTransactionBuilder;
+use miden_protocol::vm::ExecutionProof;
+use miden_protocol::{AccountTreeError, NullifierTreeError, ProposedBlockError, Word};
+use miden_standards::testing::account_component::{IncrNonceAuthComponent, MockAccountComponent};
+use miden_standards::testing::mock_account::MockAccountExt;
 use miden_tx::LocalTransactionProver;
 
 use crate::kernel_tests::block::utils::MockChainBlockExt;

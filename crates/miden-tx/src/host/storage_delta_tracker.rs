@@ -1,8 +1,8 @@
 use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
 
-use miden_objects::Word;
-use miden_objects::account::{
+use miden_protocol::Word;
+use miden_protocol::account::{
     AccountStorageDelta,
     AccountStorageHeader,
     PartialAccount,

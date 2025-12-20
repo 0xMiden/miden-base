@@ -46,8 +46,8 @@ Miden is currently on release v0.13. This is an early version of the protocol an
 
 | Crate                           | Description                                                                     |
 | ------------------------------- | ------------------------------------------------------------------------------- |
-| [objects](crates/miden-objects) | Contains core components defining the Miden rollup protocol.                    |
-| [miden-lib](crates/miden-lib)   | Contains the code of the Miden rollup kernels and standardized smart contracts. |
+| [miden-protocol](crates/miden-protocol) | Contains core components defining the Miden protocol, including the transaction kernel.                    |
+| [miden-standards](crates/miden-standards)   | Contains the code of Miden's standardized smart contracts. |
 | [miden-tx](crates/miden-tx)     | Contains tool for creating, executing, and proving Miden rollup transaction.    |
 | [bench-tx](bin/bench-tx)        | Contains transaction execution and proving benchmarks.                          |
 

@@ -1,11 +1,11 @@
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use miden_objects::account::delta::AccountUpdateDetails;
-use miden_objects::account::{AccountDelta, PartialAccount};
-use miden_objects::asset::Asset;
-use miden_objects::block::BlockNumber;
-use miden_objects::transaction::{
+use miden_protocol::account::delta::AccountUpdateDetails;
+use miden_protocol::account::{AccountDelta, PartialAccount};
+use miden_protocol::asset::Asset;
+use miden_protocol::block::BlockNumber;
+use miden_protocol::transaction::{
     InputNote,
     InputNotes,
     OutputNote,
@@ -168,7 +168,7 @@ impl Default for LocalTransactionProver {
 impl LocalTransactionProver {
     pub fn prove_dummy(
         &self,
-        executed_transaction: miden_objects::transaction::ExecutedTransaction,
+        executed_transaction: miden_protocol::transaction::ExecutedTransaction,
     ) -> Result<ProvenTransaction, TransactionProverError> {
         let (tx_inputs, tx_outputs, account_delta, _) = executed_transaction.into_parts();
 

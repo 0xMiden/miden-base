@@ -4,11 +4,9 @@ use std::collections::BTreeMap;
 
 use anyhow::Context;
 use assert_matches::assert_matches;
-use miden_lib::code_builder::CodeBuilder;
-use miden_lib::testing::account_component::MockAccountComponent;
-use miden_lib::testing::mock_account::MockAccountExt;
-use miden_objects::account::delta::AccountUpdateDetails;
-use miden_objects::account::{
+use miden_processor::{ExecutionError, Word};
+use miden_protocol::account::delta::AccountUpdateDetails;
+use miden_protocol::account::{
     Account,
     AccountBuilder,
     AccountCode,
@@ -25,10 +23,10 @@ use miden_objects::account::{
     StorageSlotName,
     StorageSlotType,
 };
-use miden_objects::assembly::diagnostics::{IntoDiagnostic, NamedSource, Report, WrapErr, miette};
-use miden_objects::assembly::{DefaultSourceManager, Library};
-use miden_objects::asset::{Asset, FungibleAsset};
-use miden_objects::errors::tx_kernel::{
+use miden_protocol::assembly::diagnostics::{IntoDiagnostic, NamedSource, Report, WrapErr, miette};
+use miden_protocol::assembly::{DefaultSourceManager, Library};
+use miden_protocol::asset::{Asset, FungibleAsset};
+use miden_protocol::errors::tx_kernel::{
     ERR_ACCOUNT_ID_SUFFIX_LEAST_SIGNIFICANT_BYTE_MUST_BE_ZERO,
     ERR_ACCOUNT_ID_SUFFIX_MOST_SIGNIFICANT_BIT_MUST_BE_ZERO,
     ERR_ACCOUNT_ID_UNKNOWN_STORAGE_MODE,
@@ -38,8 +36,8 @@ use miden_objects::errors::tx_kernel::{
     ERR_ACCOUNT_UNKNOWN_STORAGE_SLOT_NAME,
     ERR_FAUCET_STORAGE_DATA_SLOT_IS_RESERVED,
 };
-use miden_objects::note::NoteType;
-use miden_objects::testing::account_id::{
+use miden_protocol::note::NoteType;
+use miden_protocol::testing::account_id::{
     ACCOUNT_ID_PRIVATE_NON_FUNGIBLE_FAUCET,
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
@@ -47,11 +45,13 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
     ACCOUNT_ID_SENDER,
 };
-use miden_objects::testing::storage::{MOCK_MAP_SLOT, MOCK_VALUE_SLOT0, MOCK_VALUE_SLOT1};
-use miden_objects::transaction::{OutputNote, TransactionKernel};
-use miden_objects::utils::sync::LazyLock;
-use miden_objects::{LexicographicWord, StarkField};
-use miden_processor::{ExecutionError, Word};
+use miden_protocol::testing::storage::{MOCK_MAP_SLOT, MOCK_VALUE_SLOT0, MOCK_VALUE_SLOT1};
+use miden_protocol::transaction::{OutputNote, TransactionKernel};
+use miden_protocol::utils::sync::LazyLock;
+use miden_protocol::{LexicographicWord, StarkField};
+use miden_standards::code_builder::CodeBuilder;
+use miden_standards::testing::account_component::MockAccountComponent;
+use miden_standards::testing::mock_account::MockAccountExt;
 use miden_tx::LocalTransactionProver;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
@@ -88,7 +88,7 @@ pub async fn compute_commitment() -> miette::Result<()> {
         r#"
         use miden::core::word
 
-        use miden::active_account
+        use miden::protocol::active_account
         use mock::account->mock_account
 
         const MOCK_MAP_SLOT = word("{mock_map_slot}")
@@ -578,9 +578,9 @@ async fn test_account_get_item_fails_on_unknown_slot() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_account_set_item_fails_on_reserved_faucet_metadata_slot() -> anyhow::Result<()> {
     let code = r#"
-            use miden::native_account
+            use miden::protocol::native_account
 
-            const FAUCET_SYSDATA_SLOT=word("miden::faucet::sysdata")
+            const FAUCET_SYSDATA_SLOT=word("miden::protocol::faucet::sysdata")
 
             begin
                 push.FAUCET_SYSDATA_SLOT[0..2]
@@ -807,7 +807,7 @@ async fn test_get_initial_storage_commitment() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-        use miden::active_account
+        use miden::protocol::active_account
         use $kernel::prologue
 
         begin
@@ -1005,7 +1005,7 @@ async fn test_get_vault_root() -> anyhow::Result<()> {
     // get the initial vault root
     let code = format!(
         "
-        use miden::active_account
+        use miden::protocol::active_account
         use $kernel::prologue
 
         begin
@@ -1026,7 +1026,7 @@ async fn test_get_vault_root() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-        use miden::active_account
+        use miden::protocol::active_account
         use $kernel::prologue
         use mock::account->mock_account
 
@@ -1052,13 +1052,13 @@ async fn test_get_vault_root() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// This test checks the correctness of the `miden::active_account::get_initial_balance` procedure
-/// in two cases:
+/// This test checks the correctness of the `miden::protocol::active_account::get_initial_balance`
+/// procedure in two cases:
 /// - when a note adds the asset which already exists in the account vault.
 /// - when a note adds the asset which doesn't exist in the account vault.
 ///
 /// As part of the test pipeline it also checks the correctness of the
-/// `miden::active_account::get_balance` procedure.
+/// `miden::protocol::active_account::get_balance` procedure.
 #[tokio::test]
 async fn test_get_init_balance_addition() -> anyhow::Result<()> {
     // prepare the testing data
@@ -1110,7 +1110,7 @@ async fn test_get_init_balance_addition() -> anyhow::Result<()> {
 
     let add_existing_source = format!(
         r#"
-        use miden::active_account
+        use miden::protocol::active_account
 
         begin
             # push faucet ID prefix and suffix
@@ -1164,7 +1164,7 @@ async fn test_get_init_balance_addition() -> anyhow::Result<()> {
 
     let add_new_source = format!(
         r#"
-        use miden::active_account
+        use miden::protocol::active_account
 
         begin
             # push faucet ID prefix and suffix
@@ -1206,11 +1206,11 @@ async fn test_get_init_balance_addition() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// This test checks the correctness of the `miden::active_account::get_initial_balance` procedure
-/// in case when we create a note which removes an asset from the account vault.
+/// This test checks the correctness of the `miden::protocol::active_account::get_initial_balance`
+/// procedure in case when we create a note which removes an asset from the account vault.
 ///  
 /// As part of the test pipeline it also checks the correctness of the
-/// `miden::active_account::get_balance` procedure.
+/// `miden::protocol::active_account::get_balance` procedure.
 #[tokio::test]
 async fn test_get_init_balance_subtraction() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
@@ -1241,8 +1241,8 @@ async fn test_get_init_balance_subtraction() -> anyhow::Result<()> {
 
     let remove_existing_source = format!(
         r#"
-        use miden::active_account
-        use miden::contracts::wallets::basic->wallet
+        use miden::protocol::active_account
+        use miden::standards::wallets::basic->wallet
         use mock::util
 
         # Inputs:  [ASSET, note_idx]
@@ -1393,7 +1393,7 @@ async fn test_was_procedure_called() -> miette::Result<()> {
     let tx_script_code = format!(
         r#"
         use mock::account->mock_account
-        use miden::native_account
+        use miden::protocol::native_account
 
         const MOCK_VALUE_SLOT1 = word("{mock_value_slot1}")
 
@@ -1449,7 +1449,7 @@ async fn test_was_procedure_called() -> miette::Result<()> {
 async fn transaction_executor_account_code_using_custom_library() -> miette::Result<()> {
     let external_library_code = format!(
         r#"
-      use miden::native_account
+      use miden::protocol::native_account
 
       const MOCK_VALUE_SLOT0 = word("{mock_value_slot0}")
 
@@ -1474,7 +1474,7 @@ async fn transaction_executor_account_code_using_custom_library() -> miette::Res
     let external_library =
         TransactionKernel::assembler().assemble_library([external_library_source])?;
 
-    let mut assembler: miden_objects::assembly::Assembler =
+    let mut assembler: miden_protocol::assembly::Assembler =
         CodeBuilder::with_mock_libraries_with_source_manager(Arc::new(
             DefaultSourceManager::default(),
         ))
@@ -1534,7 +1534,7 @@ async fn transaction_executor_account_code_using_custom_library() -> miette::Res
 #[tokio::test]
 async fn incrementing_nonce_twice_fails() -> anyhow::Result<()> {
     let source_code = "
-        use miden::native_account
+        use miden::protocol::native_account
 
         pub proc auth_incr_nonce_twice
             exec.native_account::incr_nonce drop
@@ -1571,7 +1571,7 @@ async fn test_has_procedure() -> miette::Result<()> {
 
     let tx_script_code = r#"
         use mock::account->mock_account
-        use miden::active_account
+        use miden::protocol::active_account
 
         begin
             # check that get_item procedure is available on the mock account
@@ -1776,7 +1776,7 @@ async fn merging_components_with_same_mast_root_succeeds() -> anyhow::Result<()>
     static COMPONENT_1_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
         let code = format!(
             r#"
-              use miden::active_account
+              use miden::protocol::active_account
 
               const TEST_SLOT_NAME = word("{test_slot_name}")
 
@@ -1798,8 +1798,8 @@ async fn merging_components_with_same_mast_root_succeeds() -> anyhow::Result<()>
     static COMPONENT_2_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
         let code = format!(
             r#"
-              use miden::active_account
-              use miden::native_account
+              use miden::protocol::active_account
+              use miden::protocol::native_account
 
               const TEST_SLOT_NAME = word("{test_slot_name}")
 
