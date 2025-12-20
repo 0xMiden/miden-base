@@ -1,9 +1,8 @@
-use miden_crypto::Word;
-use miden_crypto::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
 use miden_processor::DeserializationError;
 
 use crate::account::AccountId;
-use crate::{Felt, Hasher, NoteError, WORD_SIZE, ZERO};
+use crate::utils::serde::{ByteReader, ByteWriter, Deserializable, Serializable};
+use crate::{Felt, Hasher, NoteError, WORD_SIZE, Word, ZERO};
 
 mod assets;
 pub use assets::NoteAssets;
@@ -232,6 +231,10 @@ impl Serializable for Note {
         // only metadata is serialized as note ID can be computed from note details
         header.metadata().write_into(target);
         details.write_into(target);
+    }
+
+    fn get_size_hint(&self) -> usize {
+        self.header.metadata().get_size_hint() + self.details.get_size_hint()
     }
 }
 

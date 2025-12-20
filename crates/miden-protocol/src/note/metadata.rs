@@ -173,6 +173,10 @@ impl Serializable for NoteMetadata {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         Word::from(self).write_into(target);
     }
+
+    fn get_size_hint(&self) -> usize {
+        Word::SERIALIZED_SIZE
+    }
 }
 
 impl Deserializable for NoteMetadata {

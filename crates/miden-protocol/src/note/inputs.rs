@@ -145,6 +145,15 @@ impl Serializable for NoteInputs {
         target.write_u16(values.len().try_into().expect("inputs len is not a u16 value"));
         target.write_many(values);
     }
+
+    fn get_size_hint(&self) -> usize {
+        // Size of the serialized inputs length prefix.
+        let u16_size = 0u16.get_size_hint();
+
+        let values_size: usize = self.values.iter().map(|value| value.get_size_hint()).sum();
+
+        u16_size + values_size
+    }
 }
 
 impl Deserializable for NoteInputs {

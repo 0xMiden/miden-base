@@ -42,6 +42,7 @@ use crate::{
     MAX_INPUT_NOTES_PER_TX,
     MAX_INPUTS_PER_NOTE,
     MAX_OUTPUT_NOTES_PER_TX,
+    NOTE_MAX_SIZE,
 };
 
 #[cfg(any(feature = "testing", test))]
@@ -719,6 +720,10 @@ pub enum TransactionOutputError {
     TooManyOutputNotes(usize),
     #[error("failed to process account update commitment: {0}")]
     AccountUpdateCommitment(Box<str>),
+    #[error(
+        "output note with id {note_id} has size {note_size} bytes which exceeds maximum note size of {NOTE_MAX_SIZE}"
+    )]
+    OutputNoteSizeLimitExceeded { note_id: NoteId, note_size: usize },
 }
 
 // TRANSACTION EVENT PARSING ERROR

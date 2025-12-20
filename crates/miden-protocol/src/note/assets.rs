@@ -225,6 +225,15 @@ impl Serializable for NoteAssets {
         target.write_u8(self.assets.len().try_into().expect("Asset number must fit into `u8`"));
         target.write_many(&self.assets);
     }
+
+    fn get_size_hint(&self) -> usize {
+        // Size of the serialized asset count prefix.
+        let u8_size = 0u8.get_size_hint();
+
+        let assets_size: usize = self.assets.iter().map(|asset| asset.get_size_hint()).sum();
+
+        u8_size + assets_size
+    }
 }
 
 impl Deserializable for NoteAssets {

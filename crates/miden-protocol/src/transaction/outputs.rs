@@ -23,7 +23,7 @@ use crate::utils::serde::{
     DeserializationError,
     Serializable,
 };
-use crate::{Felt, Hasher, MAX_OUTPUT_NOTES_PER_TX, TransactionOutputError, Word};
+use crate::{Felt, Hasher, MAX_OUTPUT_NOTES_PER_TX, NOTE_MAX_SIZE, TransactionOutputError, Word};
 
 // TRANSACTION OUTPUTS
 // ================================================================================================
@@ -108,6 +108,7 @@ impl OutputNotes {
     /// Returns an error if:
     /// - The total number of notes is greater than [`MAX_OUTPUT_NOTES_PER_TX`].
     /// - The vector of notes contains duplicates.
+    /// - Any individual output note exceeds the maximum allowed serialized size [`NOTE_MAX_SIZE`].
     pub fn new(notes: Vec<OutputNote>) -> Result<Self, TransactionOutputError> {
         if notes.len() > MAX_OUTPUT_NOTES_PER_TX {
             return Err(TransactionOutputError::TooManyOutputNotes(notes.len()));
@@ -115,8 +116,17 @@ impl OutputNotes {
 
         let mut seen_notes = BTreeSet::new();
         for note in notes.iter() {
-            if !seen_notes.insert(note.id()) {
-                return Err(TransactionOutputError::DuplicateOutputNote(note.id()));
+            let note_id = note.id();
+            if !seen_notes.insert(note_id) {
+                return Err(TransactionOutputError::DuplicateOutputNote(note_id));
+            }
+
+            let note_size = note.get_size_hint();
+            if note_size > NOTE_MAX_SIZE as usize {
+                return Err(TransactionOutputError::OutputNoteSizeLimitExceeded {
+                    note_id,
+                    note_size,
+                });
             }
         }
 
@@ -189,6 +199,13 @@ impl Serializable for OutputNotes {
         assert!(self.notes.len() <= u16::MAX.into());
         target.write_u16(self.notes.len() as u16);
         target.write_many(&self.notes);
+    }
+
+    fn get_size_hint(&self) -> usize {
+        let u16_size = 0u16.get_size_hint();
+        let notes_size: usize = self.notes.iter().map(|note| note.get_size_hint()).sum();
+
+        u16_size + notes_size
     }
 }
 
@@ -332,6 +349,17 @@ impl Serializable for OutputNote {
             },
         }
     }
+
+    fn get_size_hint(&self) -> usize {
+        // Serialized size of the enum tag.
+        let tag_size = 0u8.get_size_hint();
+
+        match self {
+            OutputNote::Full(note) => tag_size + note.get_size_hint(),
+            OutputNote::Partial(note) => tag_size + note.get_size_hint(),
+            OutputNote::Header(note) => tag_size + note.get_size_hint(),
+        }
+    }
 }
 
 impl Deserializable for OutputNote {
@@ -353,9 +381,11 @@ mod output_notes_tests {
     use assert_matches::assert_matches;
 
     use super::OutputNotes;
-    use crate::note::Note;
+    use crate::assembly::Assembler;
+    use crate::note::{Note, NoteInputs, NoteRecipient, NoteScript};
     use crate::transaction::OutputNote;
-    use crate::{TransactionOutputError, Word};
+    use crate::utils::serde::Serializable;
+    use crate::{NOTE_MAX_SIZE, TransactionOutputError, Word};
 
     #[test]
     fn test_duplicate_output_notes() -> anyhow::Result<()> {
@@ -368,6 +398,66 @@ mod output_notes_tests {
                 .expect_err("input notes creation should fail");
 
         assert_matches!(error, TransactionOutputError::DuplicateOutputNote(note_id) if note_id == mock_note_id);
+
+        Ok(())
+    }
+
+    #[test]
+    fn output_note_size_hint_matches_serialized_length() -> anyhow::Result<()> {
+        let mock_note = Note::mock_noop(Word::empty());
+        let output_note = OutputNote::Full(mock_note);
+
+        let bytes = output_note.to_bytes();
+
+        assert_eq!(bytes.len(), output_note.get_size_hint());
+
+        Ok(())
+    }
+
+    #[test]
+    fn oversized_output_note_triggers_size_limit_error() -> anyhow::Result<()> {
+        // Construct a note whose serialized size exceeds NOTE_MAX_SIZE by creating a very
+        // large note script (many instructions) so that the script's serialized MAST alone
+        // is larger than the configured limit.
+
+        // Build a large MASM program with many `nop` instructions.
+        let mut src = alloc::string::String::from("begin\n");
+        // The exact threshold is not critical as long as we clearly exceed NOTE_MAX_SIZE.
+        // Thousands of instructions are cheap enough for a test but large enough to
+        // produce a big MAST.
+        for _ in 0..5000 {
+            src.push_str("    nop\n");
+        }
+        src.push_str("end\n");
+
+        let assembler = Assembler::default();
+        let program = assembler.assemble_program(&src).unwrap();
+        let script = NoteScript::new(program);
+
+        let serial_num = Word::empty();
+        let inputs = NoteInputs::new(alloc::vec::Vec::new())?;
+
+        let base_note = Note::mock_noop(Word::empty());
+        let assets = base_note.assets().clone();
+        let metadata = *base_note.header().metadata();
+
+        let recipient = NoteRecipient::new(serial_num, script, inputs);
+        let oversized_note = Note::new(assets, metadata, recipient);
+        let oversized_output_note = OutputNote::Full(oversized_note);
+
+        // Sanity-check that our constructed note is indeed larger than the configured
+        // maximum. If this ever fails, it likely means the protocol constants or
+        // serialization format have changed.
+        let computed_note_size = oversized_output_note.get_size_hint();
+        assert!(computed_note_size > NOTE_MAX_SIZE as usize);
+
+        let result = OutputNotes::new(vec![oversized_output_note]);
+
+        assert_matches!(
+            result,
+            Err(TransactionOutputError::OutputNoteSizeLimitExceeded { note_id: _, note_size })
+                if note_size > NOTE_MAX_SIZE as usize
+        );
 
         Ok(())
     }

@@ -166,6 +166,10 @@ impl Serializable for NoteScript {
         self.mast.write_into(target);
         target.write_u32(u32::from(self.entrypoint));
     }
+
+    fn get_size_hint(&self) -> usize {
+        self.mast.get_size_hint() + 0u32.get_size_hint()
+    }
 }
 
 impl Deserializable for NoteScript {

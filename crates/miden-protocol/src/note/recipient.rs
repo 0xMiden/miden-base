@@ -87,6 +87,10 @@ impl Serializable for NoteRecipient {
         inputs.write_into(target);
         serial_num.write_into(target);
     }
+
+    fn get_size_hint(&self) -> usize {
+        self.script.get_size_hint() + self.inputs.get_size_hint() + Word::SERIALIZED_SIZE
+    }
 }
 
 impl Deserializable for NoteRecipient {
