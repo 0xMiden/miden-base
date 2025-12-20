@@ -1,4 +1,4 @@
-use miden_lib::errors::note_script_errors::ERR_P2ID_TARGET_ACCT_MISMATCH;
+use miden_lib::errors::standards::ERR_P2ID_TARGET_ACCT_MISMATCH;
 use miden_lib::note::create_p2id_note;
 use miden_lib::utils::CodeBuilder;
 use miden_objects::account::Account;

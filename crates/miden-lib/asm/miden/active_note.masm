@@ -2,7 +2,6 @@ use miden::core::mem
 
 use miden::kernel_proc_offsets
 use miden::note
-use miden::contracts::wallets::basic->wallet
 
 # ERRORS
 # =================================================================================================
@@ -258,64 +257,6 @@ pub proc get_script_root
     # clean the stack
     swapdw dropw dropw swapw dropw
     # => [SCRIPT_ROOT]
-end
-
-#! Adds all assets from the active note to the native account's vault.
-#!
-#! Inputs:  []
-#! Outputs: []
-@locals(1024)
-pub proc add_assets_to_account
-    # write assets to local memory starting at offset 0
-    # we have allocated 4 * MAX_ASSETS_PER_NOTE number of locals so all assets should fit
-    # since the asset memory will be overwritten, we don't have to initialize the locals to zero
-    locaddr.0 exec.get_assets
-    # => [num_of_assets, ptr = 0]
-
-    # compute the pointer at which we should stop iterating
-    mul.4 dup.1 add
-    # => [end_ptr, ptr]
-
-    # pad the stack and move the pointer to the top
-    padw movup.5
-    # => [ptr, EMPTY_WORD, end_ptr]
-
-    # loop if the amount of assets is non-zero
-    dup dup.6 neq
-    # => [should_loop, ptr, EMPTY_WORD, end_ptr]
-
-    while.true
-        # => [ptr, EMPTY_WORD, end_ptr]
-
-        # save the pointer so that we can use it later
-        dup movdn.5
-        # => [ptr, EMPTY_WORD, ptr, end_ptr]
-
-        # load the asset
-        mem_loadw_be
-        # => [ASSET, ptr, end_ptr]
-
-        # pad the stack before call
-        padw swapw padw padw swapdw
-        # => [ASSET, pad(12), ptr, end_ptr]
-
-        # add asset to the account
-        call.wallet::receive_asset
-        # => [pad(16), ptr, end_ptr]
-
-        # clean the stack after call
-        dropw dropw dropw
-        # => [EMPTY_WORD, ptr, end_ptr]
-
-        # increment the pointer and continue looping if ptr != end_ptr
-        movup.4 add.4 dup dup.6 neq
-        # => [should_loop, ptr+4, EMPTY_WORD, end_ptr]
-    end
-    # => [ptr', EMPTY_WORD, end_ptr]
-
-    # clear the stack
-    drop dropw drop
-    # => []
 end
 
 # HELPER PROCEDURES
