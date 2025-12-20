@@ -10,8 +10,8 @@ mod account_procedures;
 pub use account_procedures::AccountProcedureIndexMap;
 
 pub(crate) mod note_builder;
-use miden_objects::CoreLibrary;
-use miden_objects::vm::EventId;
+use miden_protocol::CoreLibrary;
+use miden_protocol::vm::EventId;
 use note_builder::OutputNoteBuilder;
 
 mod kernel_process;
@@ -28,8 +28,17 @@ use alloc::collections::BTreeMap;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use miden_objects::Word;
-use miden_objects::account::{
+use miden_processor::{
+    AdviceMutation,
+    EventError,
+    EventHandlerRegistry,
+    Felt,
+    MastForest,
+    MastForestStore,
+    ProcessState,
+};
+use miden_protocol::Word;
+use miden_protocol::account::{
     AccountCode,
     AccountDelta,
     AccountHeader,
@@ -40,9 +49,9 @@ use miden_objects::account::{
     StorageSlotId,
     StorageSlotName,
 };
-use miden_objects::asset::Asset;
-use miden_objects::note::{NoteId, NoteMetadata, NoteRecipient};
-use miden_objects::transaction::{
+use miden_protocol::asset::Asset;
+use miden_protocol::note::{NoteId, NoteMetadata, NoteRecipient};
+use miden_protocol::transaction::{
     InputNote,
     InputNotes,
     OutputNote,
@@ -50,16 +59,7 @@ use miden_objects::transaction::{
     TransactionMeasurements,
     TransactionSummary,
 };
-use miden_objects::vm::RowIndex;
-use miden_processor::{
-    AdviceMutation,
-    EventError,
-    EventHandlerRegistry,
-    Felt,
-    MastForest,
-    MastForestStore,
-    ProcessState,
-};
+use miden_protocol::vm::RowIndex;
 pub(crate) use tx_event::{RecipientData, TransactionEvent, TransactionProgressEvent};
 pub use tx_progress::TransactionProgress;
 

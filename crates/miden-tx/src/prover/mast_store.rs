@@ -1,13 +1,13 @@
 use alloc::collections::BTreeMap;
 use alloc::sync::Arc;
 
-use miden_lib::StandardsLib;
-use miden_objects::account::AccountCode;
-use miden_objects::assembly::mast::MastForest;
-use miden_objects::transaction::TransactionKernel;
-use miden_objects::utils::sync::RwLock;
-use miden_objects::{CoreLibrary, ProtocolLib, Word};
 use miden_processor::MastForestStore;
+use miden_protocol::account::AccountCode;
+use miden_protocol::assembly::mast::MastForest;
+use miden_protocol::transaction::TransactionKernel;
+use miden_protocol::utils::sync::RwLock;
+use miden_protocol::{CoreLibrary, ProtocolLib, Word};
+use miden_standards::StandardsLib;
 
 // TRANSACTION MAST STORE
 // ================================================================================================
@@ -28,9 +28,10 @@ impl TransactionMastStore {
     /// Returns a new [TransactionMastStore] instantiated with the default libraries.
     ///
     /// The default libraries include:
-    /// - Miden core library (miden-core-lib).
-    /// - Miden protocol library (miden-lib).
-    /// - Transaction kernel.
+    /// - Miden core library [`CoreLibrary`].
+    /// - Miden protocol library [`ProtocolLib`].
+    /// - Miden standards library [`StandardsLib`].
+    /// - Transaction kernel [`TransactionKernel::kernel`].
     pub fn new() -> Self {
         let mast_forests = RwLock::new(BTreeMap::new());
         let store = Self { mast_forests };

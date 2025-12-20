@@ -2,9 +2,9 @@ use alloc::sync::Arc;
 use alloc::vec;
 use alloc::vec::Vec;
 
-use miden_lib::code_builder::CodeBuilder;
-use miden_lib::testing::account_component::MockAccountComponent;
-use miden_objects::account::{
+use miden_processor::fast::ExecutionOutput;
+use miden_processor::{AdviceInputs, Felt};
+use miden_protocol::account::{
     Account,
     AccountBuilder,
     AccountComponent,
@@ -14,19 +14,19 @@ use miden_objects::account::{
     AccountStorageMode,
     StorageSlot,
 };
-use miden_objects::assembly::DefaultSourceManager;
-use miden_objects::asset::{Asset, FungibleAsset, NonFungibleAsset, NonFungibleAssetDetails};
-use miden_objects::errors::tx_kernel::{
+use miden_protocol::assembly::DefaultSourceManager;
+use miden_protocol::asset::{Asset, FungibleAsset, NonFungibleAsset, NonFungibleAssetDetails};
+use miden_protocol::errors::tx_kernel::{
     ERR_FOREIGN_ACCOUNT_CONTEXT_AGAINST_NATIVE_ACCOUNT,
     ERR_FOREIGN_ACCOUNT_INVALID_COMMITMENT,
     ERR_FOREIGN_ACCOUNT_MAX_NUMBER_EXCEEDED,
 };
-use miden_objects::testing::account_id::{
+use miden_protocol::testing::account_id::{
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
     ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET,
 };
-use miden_objects::testing::storage::STORAGE_LEAVES_2;
-use miden_objects::transaction::memory::{
+use miden_protocol::testing::storage::STORAGE_LEAVES_2;
+use miden_protocol::transaction::memory::{
     ACCOUNT_DATA_LENGTH,
     ACCT_CODE_COMMITMENT_OFFSET,
     ACCT_ID_AND_NONCE_OFFSET,
@@ -38,9 +38,9 @@ use miden_objects::transaction::memory::{
     NUM_ACCT_PROCEDURES_OFFSET,
     NUM_ACCT_STORAGE_SLOTS_OFFSET,
 };
-use miden_objects::{FieldElement, Word, ZERO};
-use miden_processor::fast::ExecutionOutput;
-use miden_processor::{AdviceInputs, Felt};
+use miden_protocol::{FieldElement, Word, ZERO};
+use miden_standards::code_builder::CodeBuilder;
+use miden_standards::testing::account_component::MockAccountComponent;
 use miden_tx::LocalTransactionProver;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
@@ -60,7 +60,7 @@ async fn test_fpi_memory_single_account() -> anyhow::Result<()> {
     let mock_value_slot0 = AccountStorage::mock_value_slot0();
     let mock_map_slot = AccountStorage::mock_map_slot();
     let foreign_account_code_source = "
-        use miden::active_account
+        use miden::protocol::active_account
 
         pub proc get_item_foreign
             # make this foreign procedure unique to make sure that we invoke the procedure of the
@@ -125,7 +125,7 @@ async fn test_fpi_memory_single_account() -> anyhow::Result<()> {
         use miden::core::sys
 
         use $kernel::prologue
-        use miden::tx
+        use miden::protocol::tx
 
         const MOCK_VALUE_SLOT0 = word("{mock_value_slot0}")
 
@@ -179,7 +179,7 @@ async fn test_fpi_memory_single_account() -> anyhow::Result<()> {
         use miden::core::sys
 
         use $kernel::prologue
-        use miden::tx
+        use miden::protocol::tx
 
         const MOCK_MAP_SLOT = word("{mock_map_slot}")
 
@@ -239,7 +239,7 @@ async fn test_fpi_memory_single_account() -> anyhow::Result<()> {
         use miden::core::sys
 
         use $kernel::prologue
-        use miden::tx
+        use miden::protocol::tx
 
         const MOCK_VALUE_SLOT0 = word("{mock_value_slot0}")
 
@@ -316,7 +316,7 @@ async fn test_fpi_memory_two_accounts() -> anyhow::Result<()> {
     let mock_value_slot1 = AccountStorage::mock_value_slot1();
 
     let foreign_account_code_source_1 = "
-        use miden::active_account
+        use miden::protocol::active_account
 
         pub proc get_item_foreign_1
             # make this foreign procedure unique to make sure that we invoke the procedure of the
@@ -329,7 +329,7 @@ async fn test_fpi_memory_two_accounts() -> anyhow::Result<()> {
         end
     ";
     let foreign_account_code_source_2 = "
-        use miden::active_account
+        use miden::protocol::active_account
 
         pub proc get_item_foreign_2
             # make this foreign procedure unique to make sure that we invoke the procedure of the
@@ -403,7 +403,7 @@ async fn test_fpi_memory_two_accounts() -> anyhow::Result<()> {
         use miden::core::sys
 
         use $kernel::prologue
-        use miden::tx
+        use miden::protocol::tx
 
         const MOCK_VALUE_SLOT0 = word("{mock_value_slot0}")
         const MOCK_VALUE_SLOT1 = word("{mock_value_slot1}")
@@ -535,7 +535,7 @@ async fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
     let mock_map_slot = AccountStorage::mock_map_slot();
 
     let foreign_account_code_source = "
-        use miden::active_account
+        use miden::protocol::active_account
 
         pub proc get_item_foreign
             # make this foreign procedure unique to make sure that we invoke the procedure of the
@@ -583,7 +583,7 @@ async fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
         r#"
         use miden::core::sys
 
-        use miden::tx
+        use miden::protocol::tx
 
         const MOCK_VALUE_SLOT0 = word("{mock_value_slot0}")
         const MOCK_MAP_SLOT = word("{mock_map_slot}")
@@ -686,7 +686,7 @@ async fn foreign_account_can_get_balance_and_presence_of_asset() -> anyhow::Resu
 
     let foreign_account_code_source = format!(
         "
-        use miden::active_account
+        use miden::protocol::active_account
 
         pub proc get_asset_balance
             # get balance of first asset
@@ -742,7 +742,7 @@ async fn foreign_account_can_get_balance_and_presence_of_asset() -> anyhow::Resu
         "
         use miden::core::sys
 
-        use miden::tx
+        use miden::protocol::tx
 
         begin
             # Get the added balance of two assets from foreign account
@@ -799,7 +799,7 @@ async fn foreign_account_get_initial_balance() -> anyhow::Result<()> {
 
     let foreign_account_code_source = format!(
         "
-        use miden::active_account
+        use miden::protocol::active_account
 
         pub proc get_initial_balance
             # push the faucet ID on the stack
@@ -847,7 +847,7 @@ async fn foreign_account_get_initial_balance() -> anyhow::Result<()> {
         "
         use miden::core::sys
 
-        use miden::tx
+        use miden::protocol::tx
 
         begin
             # Get the initial balance of the fungible asset from the foreign account
@@ -914,8 +914,8 @@ async fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
 
     let second_foreign_account_code_source = format!(
         r#"
-        use miden::tx
-        use miden::active_account
+        use miden::protocol::tx
+        use miden::protocol::active_account
 
         use miden::core::sys
 
@@ -979,8 +979,8 @@ async fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
     // ------ FIRST FOREIGN ACCOUNT ---------------------------------------------------------------
     let first_foreign_account_code_source = format!(
         r#"
-        use miden::tx
-        use miden::active_account
+        use miden::protocol::tx
+        use miden::protocol::active_account
 
         use miden::core::sys
 
@@ -1083,7 +1083,7 @@ async fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
     let code = format!(
         r#"
         use miden::core::sys
-        use miden::tx
+        use miden::protocol::tx
 
         begin
             # pad the stack for the `execute_foreign_procedure` execution
@@ -1173,7 +1173,7 @@ async fn test_prove_fpi_two_foreign_accounts_chain() -> anyhow::Result<()> {
     // unique procedure which calls the second foreign account via FPI and then returns
     let first_foreign_account_code_source = format!(
         r#"
-        use miden::tx
+        use miden::protocol::tx
         use miden::core::sys
 
         pub proc first_account_foreign_proc
@@ -1241,7 +1241,7 @@ async fn test_prove_fpi_two_foreign_accounts_chain() -> anyhow::Result<()> {
     let code = format!(
         r#"
         use miden::core::sys
-        use miden::tx
+        use miden::protocol::tx
 
         begin
             # pad the stack for the `execute_foreign_procedure` execution
@@ -1300,7 +1300,7 @@ async fn test_nested_fpi_stack_overflow() -> anyhow::Result<()> {
 
     let last_foreign_account_code_source = format!(
         r#"
-                use miden::active_account
+                use miden::protocol::active_account
 
                 const MOCK_VALUE_SLOT0 = word("{mock_value_slot0}")
 
@@ -1345,7 +1345,7 @@ async fn test_nested_fpi_stack_overflow() -> anyhow::Result<()> {
 
         let foreign_account_code_source = format!(
                     "
-                use miden::tx
+                use miden::protocol::tx
                 use miden::core::sys
 
                 pub proc read_first_foreign_storage_slot_{foreign_account_index}
@@ -1420,7 +1420,7 @@ async fn test_nested_fpi_stack_overflow() -> anyhow::Result<()> {
                 "
             use miden::core::sys
 
-            use miden::tx
+            use miden::protocol::tx
 
             begin
                 # pad the stack for the `execute_foreign_procedure` execution
@@ -1465,7 +1465,7 @@ async fn test_nested_fpi_stack_overflow() -> anyhow::Result<()> {
 async fn test_nested_fpi_native_account_invocation() -> anyhow::Result<()> {
     // ------ FIRST FOREIGN ACCOUNT ---------------------------------------------------------------
     let foreign_account_code_source = "
-        use miden::tx
+        use miden::protocol::tx
 
         use miden::core::sys
 
@@ -1516,7 +1516,7 @@ async fn test_nested_fpi_native_account_invocation() -> anyhow::Result<()> {
         "
         use miden::core::sys
 
-        use miden::tx
+        use miden::protocol::tx
 
         begin
             # pad the stack for the `execute_foreign_procedure` execution
@@ -1577,7 +1577,7 @@ async fn test_nested_fpi_native_account_invocation() -> anyhow::Result<()> {
 async fn test_fpi_stale_account() -> anyhow::Result<()> {
     // Prepare the test data
     let foreign_account_code_source = "
-        use miden::native_account
+        use miden::protocol::native_account
 
         # code is not used in this test
         pub proc set_some_item_foreign
@@ -1642,7 +1642,7 @@ async fn test_fpi_stale_account() -> anyhow::Result<()> {
       use miden::core::sys
 
       use $kernel::prologue
-      use miden::tx
+      use miden::protocol::tx
 
       begin
           exec.prologue::prepare_transaction
@@ -1677,8 +1677,8 @@ async fn test_fpi_stale_account() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_fpi_get_account_id() -> anyhow::Result<()> {
     let foreign_account_code_source = "
-        use miden::active_account
-        use miden::native_account
+        use miden::protocol::active_account
+        use miden::protocol::native_account
 
         pub proc get_current_and_native_ids
             # get the ID of the current (foreign) account
@@ -1722,8 +1722,8 @@ async fn test_fpi_get_account_id() -> anyhow::Result<()> {
         r#"
         use miden::core::sys
 
-        use miden::tx
-        use miden::account_id
+        use miden::protocol::tx
+        use miden::protocol::account_id
 
         begin
             # get the IDs of the foreign and native accounts
@@ -1876,7 +1876,7 @@ async fn test_get_initial_item_and_get_initial_map_item_with_foreign_account() -
     // Create foreign procedures that test get_initial_item and get_initial_map_item
     let foreign_account_code_source = format!(
         r#"
-        use miden::active_account
+        use miden::protocol::active_account
         use miden::core::sys
 
         const MOCK_VALUE_SLOT0 = word("{mock_value_slot0}")
@@ -1918,7 +1918,7 @@ async fn test_get_initial_item_and_get_initial_map_item_with_foreign_account() -
     let code = format!(
         r#"
         use miden::core::sys
-        use miden::tx
+        use miden::protocol::tx
 
         const MOCK_MAP_SLOT = word("{mock_map_slot}")
 

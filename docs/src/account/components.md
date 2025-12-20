@@ -187,8 +187,7 @@ Multi-slot values are currently unsupported by component schemas.
 
 #### Providing init values
 
-When a storage entry requires init-supplied values, an implementation must provide their concrete values
-at instantiation time. This is done through `InitStorageData` (available as `miden_objects::account::component::InitStorageData`), which can be created programmatically or loaded from TOML using `InitStorageData::from_toml()`.
+When a storage entry requires init-supplied values, an implementation must provide their concrete values at instantiation time. This is done through `InitStorageData` (available as `miden_protocol::account::component::InitStorageData`), which can be created programmatically or loaded from TOML using `InitStorageData::from_toml()`.
 
 For example, the init-populated map entry above can be populated from TOML as follows:
 
