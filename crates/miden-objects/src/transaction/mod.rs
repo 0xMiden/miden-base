@@ -5,6 +5,7 @@ use super::{Felt, Hasher, WORD_SIZE, Word, ZERO};
 
 mod executed_tx;
 mod inputs;
+mod kernel;
 mod ordered_transactions;
 mod outputs;
 mod partial_blockchain;
@@ -16,6 +17,7 @@ mod tx_summary;
 
 pub use executed_tx::{ExecutedTransaction, TransactionMeasurements};
 pub use inputs::{AccountInputs, InputNote, InputNotes, ToInputNoteCommitments, TransactionInputs};
+pub use kernel::{TransactionAdviceInputs, TransactionEventId, TransactionKernel, memory};
 pub use ordered_transactions::OrderedTransactionHeaders;
 pub use outputs::{OutputNote, OutputNotes, TransactionOutputs};
 pub use partial_blockchain::PartialBlockchain;

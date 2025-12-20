@@ -1,8 +1,8 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 
+use miden_lib::code_builder::CodeBuilder;
 use miden_lib::testing::note::NoteBuilder;
-use miden_lib::utils::CodeBuilder;
 use miden_objects::account::AccountId;
 use miden_objects::asset::Asset;
 use miden_objects::crypto::rand::FeltRng;

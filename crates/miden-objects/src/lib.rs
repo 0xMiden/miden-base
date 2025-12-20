@@ -11,14 +11,15 @@ pub mod address;
 pub mod asset;
 pub mod batch;
 pub mod block;
+pub mod errors;
 pub mod note;
+mod protocol;
 pub mod transaction;
 
 #[cfg(any(feature = "testing", test))]
 pub mod testing;
 
 mod constants;
-mod errors;
 
 // RE-EXPORTS
 // ================================================================================================
@@ -47,16 +48,20 @@ pub use errors::{
     StorageMapError,
     StorageSlotNameError,
     TokenSymbolError,
+    TransactionEventError,
     TransactionInputError,
     TransactionOutputError,
     TransactionScriptError,
+    TransactionTraceParsingError,
 };
 pub use miden_core::mast::{MastForest, MastNodeId};
 pub use miden_core::prettier::PrettyPrint;
 pub use miden_core::{EMPTY_WORD, Felt, FieldElement, ONE, StarkField, WORD_SIZE, ZERO};
+pub use miden_core_lib::CoreLibrary;
 pub use miden_crypto::hash::rpo::Rpo256 as Hasher;
 pub use miden_crypto::word;
 pub use miden_crypto::word::{LexicographicWord, Word, WordError};
+pub use protocol::ProtocolLib;
 
 pub mod assembly {
     pub use miden_assembly::ast::{Module, ModuleKind, ProcedureName, QualifiedProcedureName};
@@ -103,7 +108,7 @@ pub mod utils {
 pub mod vm {
     pub use miden_assembly_syntax::ast::{AttributeSet, QualifiedProcedureName};
     pub use miden_core::sys_events::SystemEvent;
-    pub use miden_core::{AdviceMap, Program, ProgramInfo};
+    pub use miden_core::{AdviceMap, EventId, Program, ProgramInfo};
     pub use miden_mast_package::{
         MastArtifact,
         Package,

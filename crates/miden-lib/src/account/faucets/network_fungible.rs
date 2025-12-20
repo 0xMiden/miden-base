@@ -44,9 +44,9 @@ static OWNER_CONFIG_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
 /// An [`AccountComponent`] implementing a network fungible faucet.
 ///
 /// It reexports the procedures from `miden::contracts::faucets::network_fungible`. When linking
-/// against this component, the `miden` library (i.e. [`MidenLib`](crate::MidenLib)) must be
-/// available to the assembler which is the case when using
-/// [`CodeBuilder`][builder]. The procedures of this component are:
+/// against this component, the `miden` library (i.e.
+/// [`ProtocolLib`](miden_objects::ProtocolLib)) must be available to the assembler which is the
+/// case when using [`CodeBuilder`][builder]. The procedures of this component are:
 /// - `distribute`, which mints an assets and create a note for the provided recipient.
 /// - `burn`, which burns the provided asset.
 ///
@@ -59,7 +59,7 @@ static OWNER_CONFIG_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
 /// - [`Self::metadata_slot`]: Fungible faucet metadata.
 /// - [`Self::owner_config_slot`]: The owner account of this network faucet.
 ///
-/// [builder]: crate::utils::CodeBuilder
+/// [builder]: crate::code_builder::CodeBuilder
 pub struct NetworkFungibleFaucet {
     faucet: BasicFungibleFaucet,
     owner_account_id: AccountId,

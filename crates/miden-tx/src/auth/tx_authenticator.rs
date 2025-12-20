@@ -276,8 +276,8 @@ impl TransactionAuthenticator for () {
 
 #[cfg(test)]
 mod test {
-    use miden_lib::utils::{Deserializable, Serializable};
     use miden_objects::account::auth::AuthSecretKey;
+    use miden_objects::utils::{Deserializable, Serializable};
     use miden_objects::{Felt, Word};
 
     use super::SigningInputs;

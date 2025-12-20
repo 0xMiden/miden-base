@@ -2,11 +2,16 @@ use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
 
 use miden_lib::note::{NoteConsumptionStatus, WellKnownNote};
-use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::AccountId;
 use miden_objects::block::BlockNumber;
 use miden_objects::note::Note;
-use miden_objects::transaction::{InputNote, InputNotes, TransactionArgs, TransactionInputs};
+use miden_objects::transaction::{
+    InputNote,
+    InputNotes,
+    TransactionArgs,
+    TransactionInputs,
+    TransactionKernel,
+};
 use miden_processor::fast::FastProcessor;
 use miden_prover::AdviceInputs;
 

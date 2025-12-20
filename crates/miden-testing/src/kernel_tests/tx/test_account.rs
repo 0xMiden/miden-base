@@ -4,20 +4,9 @@ use std::collections::BTreeMap;
 
 use anyhow::Context;
 use assert_matches::assert_matches;
-use miden_lib::errors::tx_kernel::{
-    ERR_ACCOUNT_ID_SUFFIX_LEAST_SIGNIFICANT_BYTE_MUST_BE_ZERO,
-    ERR_ACCOUNT_ID_SUFFIX_MOST_SIGNIFICANT_BIT_MUST_BE_ZERO,
-    ERR_ACCOUNT_ID_UNKNOWN_STORAGE_MODE,
-    ERR_ACCOUNT_ID_UNKNOWN_VERSION,
-    ERR_ACCOUNT_NONCE_AT_MAX,
-    ERR_ACCOUNT_NONCE_CAN_ONLY_BE_INCREMENTED_ONCE,
-    ERR_ACCOUNT_UNKNOWN_STORAGE_SLOT_NAME,
-    ERR_FAUCET_STORAGE_DATA_SLOT_IS_RESERVED,
-};
+use miden_lib::code_builder::CodeBuilder;
 use miden_lib::testing::account_component::MockAccountComponent;
 use miden_lib::testing::mock_account::MockAccountExt;
-use miden_lib::transaction::TransactionKernel;
-use miden_lib::utils::CodeBuilder;
 use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{
     Account,
@@ -39,6 +28,16 @@ use miden_objects::account::{
 use miden_objects::assembly::diagnostics::{IntoDiagnostic, NamedSource, Report, WrapErr, miette};
 use miden_objects::assembly::{DefaultSourceManager, Library};
 use miden_objects::asset::{Asset, FungibleAsset};
+use miden_objects::errors::tx_kernel::{
+    ERR_ACCOUNT_ID_SUFFIX_LEAST_SIGNIFICANT_BYTE_MUST_BE_ZERO,
+    ERR_ACCOUNT_ID_SUFFIX_MOST_SIGNIFICANT_BIT_MUST_BE_ZERO,
+    ERR_ACCOUNT_ID_UNKNOWN_STORAGE_MODE,
+    ERR_ACCOUNT_ID_UNKNOWN_VERSION,
+    ERR_ACCOUNT_NONCE_AT_MAX,
+    ERR_ACCOUNT_NONCE_CAN_ONLY_BE_INCREMENTED_ONCE,
+    ERR_ACCOUNT_UNKNOWN_STORAGE_SLOT_NAME,
+    ERR_FAUCET_STORAGE_DATA_SLOT_IS_RESERVED,
+};
 use miden_objects::note::NoteType;
 use miden_objects::testing::account_id::{
     ACCOUNT_ID_PRIVATE_NON_FUNGIBLE_FAUCET,
@@ -49,7 +48,7 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_SENDER,
 };
 use miden_objects::testing::storage::{MOCK_MAP_SLOT, MOCK_VALUE_SLOT0, MOCK_VALUE_SLOT1};
-use miden_objects::transaction::OutputNote;
+use miden_objects::transaction::{OutputNote, TransactionKernel};
 use miden_objects::utils::sync::LazyLock;
 use miden_objects::{LexicographicWord, StarkField};
 use miden_processor::{ExecutionError, Word};

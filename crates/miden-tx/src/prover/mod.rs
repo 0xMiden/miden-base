@@ -1,7 +1,6 @@
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{AccountDelta, PartialAccount};
 use miden_objects::asset::Asset;
@@ -13,6 +12,7 @@ use miden_objects::transaction::{
     ProvenTransaction,
     ProvenTransactionBuilder,
     TransactionInputs,
+    TransactionKernel,
     TransactionOutputs,
 };
 pub use miden_prover::ProvingOptions;

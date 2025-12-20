@@ -16,6 +16,7 @@ use crate::block::block_inputs::BlockInputs;
 use crate::block::nullifier_tree::{NullifierWitness, PartialNullifierTree};
 use crate::block::{
     AccountUpdateWitness,
+    BlockBody,
     BlockHeader,
     BlockNoteIndex,
     BlockNoteTree,
@@ -24,7 +25,13 @@ use crate::block::{
 };
 use crate::errors::ProposedBlockError;
 use crate::note::{NoteId, Nullifier};
-use crate::transaction::{InputNoteCommitment, OutputNote, PartialBlockchain, TransactionHeader};
+use crate::transaction::{
+    InputNoteCommitment,
+    OutputNote,
+    PartialBlockchain,
+    TransactionHeader,
+    TransactionKernel,
+};
 use crate::utils::serde::{
     ByteReader,
     ByteWriter,
@@ -441,6 +448,73 @@ impl ProposedBlock {
 
     // STATE MUTATORS
     // --------------------------------------------------------------------------------------------
+
+    /// Builds a [`BlockHeader`] and [`BlockBody`] by computing the following from the state
+    /// updates encapsulated by the provided [`ProposedBlock`]:
+    /// - the account root;
+    /// - the nullifier root;
+    /// - the note root;
+    /// - the transaction commitment; and
+    /// - the chain commitment.
+    ///
+    /// The returned block header contains the same validator public key as the previous block, as
+    /// provided by the proposed block.
+    pub fn into_header_and_body(self) -> Result<(BlockHeader, BlockBody), ProposedBlockError> {
+        // Get fields from the proposed block before it is consumed.
+        let block_num = self.block_num();
+        let timestamp = self.timestamp();
+        let prev_block_header = self.prev_block_header().clone();
+
+        // Insert the state commitments of updated accounts into the account tree to compute its new
+        // root.
+        let new_account_root = self.compute_account_root()?;
+
+        // Insert the created nullifiers into the nullifier tree to compute its new root.
+        let new_nullifier_root = self.compute_nullifier_root()?;
+
+        // Compute the root of the block note tree.
+        let note_tree = self.compute_block_note_tree();
+        let note_root = note_tree.root();
+
+        // Insert the previous block header into the block partial blockchain to get the new chain
+        // commitment.
+        // TODO: Consider avoiding the partial blockchain clone by constructing `BlockBody` from its
+        // raw parts, which does not require the partial blockchain.
+        let new_chain_commitment = self.compute_chain_commitment();
+
+        // Construct the block body from the proposed block.
+        let body = BlockBody::from(self);
+
+        // Construct the header.
+        let tx_commitment = body.transaction_commitment();
+        let prev_block_commitment = prev_block_header.commitment();
+
+        // For now we copy the parameters of the previous header, which means the parameters set on
+        // the genesis block will be passed through. Eventually, the contained base fees will be
+        // updated based on the demand in the currently proposed block.
+        let fee_parameters = prev_block_header.fee_parameters().clone();
+
+        // Currently undefined and reserved for future use.
+        // See miden-base/1155.
+        let version = 0;
+        let tx_kernel_commitment = TransactionKernel.to_commitment();
+        let header = BlockHeader::new(
+            version,
+            prev_block_commitment,
+            block_num,
+            new_chain_commitment,
+            new_account_root,
+            new_nullifier_root,
+            note_root,
+            tx_commitment,
+            tx_kernel_commitment,
+            prev_block_header.validator_key().clone(),
+            fee_parameters,
+            timestamp,
+        );
+
+        Ok((header, body))
+    }
 
     /// Consumes self and returns the non-[`Copy`] parts of the block.
     #[allow(clippy::type_complexity)]

@@ -20,13 +20,8 @@ pub const ERR_ACCOUNT_ID_UNKNOWN_STORAGE_MODE: MasmError = MasmError::from_stati
 /// Error Message: "unknown version in account ID"
 pub const ERR_ACCOUNT_ID_UNKNOWN_VERSION: MasmError = MasmError::from_static_str("unknown version in account ID");
 
-/// Error Message: "burn requires exactly 1 note asset"
-pub const ERR_BASIC_FUNGIBLE_BURN_WRONG_NUMBER_OF_ASSETS: MasmError = MasmError::from_static_str("burn requires exactly 1 note asset");
-
 /// Error Message: "fungible asset build operation called with amount that exceeds the maximum allowed asset amount"
 pub const ERR_FUNGIBLE_ASSET_AMOUNT_EXCEEDS_MAX_ALLOWED_AMOUNT: MasmError = MasmError::from_static_str("fungible asset build operation called with amount that exceeds the maximum allowed asset amount");
-/// Error Message: "distribute would cause the maximum supply to be exceeded"
-pub const ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED: MasmError = MasmError::from_static_str("distribute would cause the maximum supply to be exceeded");
 /// Error Message: "failed to build the fungible asset because the provided faucet id is not from a fungible faucet"
 pub const ERR_FUNGIBLE_ASSET_PROVIDED_FAUCET_ID_IS_INVALID: MasmError = MasmError::from_static_str("failed to build the fungible asset because the provided faucet id is not from a fungible faucet");
 
@@ -37,9 +32,6 @@ pub const ERR_NON_FUNGIBLE_ASSET_PROVIDED_FAUCET_ID_IS_INVALID: MasmError = Masm
 pub const ERR_NOTE_DATA_DOES_NOT_MATCH_COMMITMENT: MasmError = MasmError::from_static_str("note data does not match the commitment");
 /// Error Message: "the specified number of note inputs does not match the actual number"
 pub const ERR_NOTE_INVALID_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_str("the specified number of note inputs does not match the actual number");
-
-/// Error Message: "note sender is not the owner of the faucet who can mint assets"
-pub const ERR_ONLY_OWNER_CAN_MINT: MasmError = MasmError::from_static_str("note sender is not the owner of the faucet who can mint assets");
 
 /// Error Message: "number of note inputs exceeded the maximum limit of 1024"
 pub const ERR_PROLOGUE_NOTE_INPUTS_LEN_EXCEEDED_LIMIT: MasmError = MasmError::from_static_str("number of note inputs exceeded the maximum limit of 1024");

@@ -5,11 +5,10 @@ use assert_matches::assert_matches;
 use miden_lib::AuthScheme;
 use miden_lib::account::interface::{AccountInterface, AccountInterfaceExt};
 use miden_lib::account::wallets::BasicWallet;
+use miden_lib::code_builder::CodeBuilder;
 use miden_lib::note::create_p2id_note;
 use miden_lib::testing::account_component::IncrNonceAuthComponent;
 use miden_lib::testing::mock_account::MockAccountExt;
-use miden_lib::transaction::TransactionKernel;
-use miden_lib::utils::CodeBuilder;
 use miden_objects::account::{
     Account,
     AccountBuilder,
@@ -53,6 +52,7 @@ use miden_objects::transaction::{
     OutputNote,
     OutputNotes,
     TransactionArgs,
+    TransactionKernel,
     TransactionSummary,
 };
 use miden_objects::{Felt, FieldElement, Hasher, ONE, Word};
