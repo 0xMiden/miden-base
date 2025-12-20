@@ -1,8 +1,8 @@
+use miden::core::crypto::dsa::ecdsa_k256_keccak
 use miden::protocol::active_account
 use miden::protocol::native_account
-use miden::standards::auth
 use miden::protocol::tx
-use miden::core::crypto::dsa::ecdsa_k256_keccak
+use miden::standards::auth
 
 # CONSTANTS
 # =================================================================================================

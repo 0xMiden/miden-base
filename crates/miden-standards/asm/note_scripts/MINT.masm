@@ -1,6 +1,6 @@
 use miden::protocol::active_note
-use miden::standards::faucets::network_fungible->network_faucet
 use miden::protocol::note
+use miden::standards::faucets::network_fungible->network_faucet
 
 # CONSTANTS
 # =================================================================================================
