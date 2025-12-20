@@ -29,6 +29,7 @@
 - [BREAKING] Refactor `miden-objects` and `miden-lib` into `miden-protocol` and `miden-standards` ([#2184](https://github.com/0xMiden/miden-base/pull/2184), [#2191](https://github.com/0xMiden/miden-base/pull/2191), [#2197](https://github.com/0xMiden/miden-base/pull/2197)).
 - [BREAKING] Migrated to `miden-vm` v0.20 and `miden-crypto` v0.19 ([#2158](https://github.com/0xMiden/miden-base/pull/2158)).
 - [BREAKING] Refactored `AccountStorageDelta` to use a new `StorageSlotDelta` type ([#2182](https://github.com/0xMiden/miden-base/pull/2182)).
+- [BREAKING] Refactored account component templates into `AccountStorageSchema` ([#2193](https://github.com/0xMiden/miden-base/pull/2193)).
 
 ## 0.12.4 (2025-11-26)
 
