@@ -1,7 +1,7 @@
 use core::slice;
 use std::collections::BTreeMap;
 
-use miden_lib::account::interface::AccountInterface;
+use miden_lib::account::interface::{AccountInterface, AccountInterfaceExt};
 use miden_lib::utils::CodeBuilder;
 use miden_objects::Word;
 use miden_objects::asset::{Asset, FungibleAsset};
@@ -33,7 +33,7 @@ async fn test_send_note_script_basic_wallet() -> anyhow::Result<()> {
         builder.add_existing_wallet_with_assets(Auth::BasicAuth, [FungibleAsset::mock(100)])?;
     let mock_chain = builder.build()?;
 
-    let sender_account_interface = AccountInterface::from(&sender_basic_wallet_account);
+    let sender_account_interface = AccountInterface::from_account(&sender_basic_wallet_account);
 
     let tag = NoteTag::from_account_id(sender_basic_wallet_account.id());
     let metadata = NoteMetadata::new(
@@ -92,7 +92,8 @@ async fn test_send_note_script_basic_fungible_faucet() -> anyhow::Result<()> {
         builder.add_existing_basic_faucet(Auth::BasicAuth, "POL", 200, None)?;
     let mock_chain = builder.build()?;
 
-    let sender_account_interface = AccountInterface::from(&sender_basic_fungible_faucet_account);
+    let sender_account_interface =
+        AccountInterface::from_account(&sender_basic_fungible_faucet_account);
 
     let tag = NoteTag::from_account_id(sender_basic_fungible_faucet_account.id());
     let metadata = NoteMetadata::new(

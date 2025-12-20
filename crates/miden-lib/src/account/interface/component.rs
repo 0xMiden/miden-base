@@ -1,4 +1,3 @@
-use alloc::collections::BTreeSet;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
@@ -16,7 +15,6 @@ use crate::account::auth::{
     AuthRpoFalcon512Acl,
     AuthRpoFalcon512Multisig,
 };
-use crate::account::components::WellKnownComponent;
 use crate::account::interface::AccountInterfaceError;
 
 // ACCOUNT COMPONENT INTERFACE
@@ -173,33 +171,6 @@ impl AccountComponentInterface {
             AccountComponentInterface::AuthNoAuth => vec![AuthScheme::NoAuth],
             _ => vec![], // Non-auth components return empty vector
         }
-    }
-
-    /// Creates a vector of [AccountComponentInterface] instances. This vector specifies the
-    /// components which were used to create an account with the provided procedures info array.
-    pub fn from_procedures(procedures: &[AccountProcedureRoot]) -> Vec<Self> {
-        let mut component_interface_vec = Vec::new();
-
-        let mut procedures = BTreeSet::from_iter(procedures.iter().copied());
-
-        // Well known component interfaces
-        // ----------------------------------------------------------------------------------------
-
-        // Get all available well known components which could be constructed from the `procedures`
-        // map and push them to the `component_interface_vec`
-        WellKnownComponent::extract_well_known_components(
-            &mut procedures,
-            &mut component_interface_vec,
-        );
-
-        // Custom component interfaces
-        // ----------------------------------------------------------------------------------------
-
-        // All remaining procedures are put into the custom bucket.
-        component_interface_vec
-            .push(AccountComponentInterface::Custom(procedures.into_iter().collect()));
-
-        component_interface_vec
     }
 
     /// Generates a body for the note creation of the `send_note` transaction script. The resulting

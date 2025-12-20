@@ -12,9 +12,6 @@ use miden_assembly::{Assembler, DefaultSourceManager, KernelLibrary, Library, Re
 use regex::Regex;
 use walkdir::WalkDir;
 
-/// A map where the key is the error name and the value is the error code with the message.
-type ErrorCategoryMap = BTreeMap<ErrorCategory, Vec<NamedError>>;
-
 // CONSTANTS
 // ================================================================================================
 
@@ -33,27 +30,29 @@ const SHARED_MODULES_DIR: &str = "shared_modules";
 const ASM_TX_KERNEL_DIR: &str = "kernels/transaction";
 const KERNEL_PROCEDURES_RS_FILE: &str = "src/transaction/kernel_procedures.rs";
 
-const TX_KERNEL_ERRORS_FILE: &str = "src/errors/tx_kernel_errors.rs";
-const NOTE_SCRIPT_ERRORS_FILE: &str = "src/errors/note_script_errors.rs";
+const TX_KERNEL_ERRORS_FILE: &str = "src/errors/tx_kernel.rs";
+const PROTOCOL_LIB_ERRORS_FILE: &str = "src/errors/protocol.rs";
+const STANDARDS_ERRORS_FILE: &str = "src/errors/standards.rs";
 
 const TX_KERNEL_ERRORS_ARRAY_NAME: &str = "TX_KERNEL_ERRORS";
-const NOTE_SCRIPT_ERRORS_ARRAY_NAME: &str = "NOTE_SCRIPT_ERRORS";
+const PROTOCOL_LIB_ERRORS_ARRAY_NAME: &str = "PROTOCOL_LIB_ERRORS";
+const STANDARDS_ERRORS_ARRAY_NAME: &str = "STANDARDS_ERRORS";
 
-const TX_KERNEL_ERROR_CATEGORIES: [TxKernelErrorCategory; 14] = [
-    TxKernelErrorCategory::Kernel,
-    TxKernelErrorCategory::Prologue,
-    TxKernelErrorCategory::Epilogue,
-    TxKernelErrorCategory::Tx,
-    TxKernelErrorCategory::Note,
-    TxKernelErrorCategory::Account,
-    TxKernelErrorCategory::ForeignAccount,
-    TxKernelErrorCategory::Faucet,
-    TxKernelErrorCategory::FungibleAsset,
-    TxKernelErrorCategory::NonFungibleAsset,
-    TxKernelErrorCategory::Vault,
-    TxKernelErrorCategory::LinkMap,
-    TxKernelErrorCategory::InputNote,
-    TxKernelErrorCategory::OutputNote,
+const TX_KERNEL_ERROR_CATEGORIES: [&str; 14] = [
+    "KERNEL",
+    "PROLOGUE",
+    "EPILOGUE",
+    "TX",
+    "NOTE",
+    "ACCOUNT",
+    "FOREIGN_ACCOUNT",
+    "FAUCET",
+    "FUNGIBLE_ASSET",
+    "NON_FUNGIBLE_ASSET",
+    "VAULT",
+    "LINK_MAP",
+    "INPUT_NOTE",
+    "OUTPUT_NOTE",
 ];
 
 // PRE-PROCESSING
@@ -531,20 +530,61 @@ fn generate_error_constants(asm_source_dir: &Path) -> Result<()> {
         return Ok(());
     }
 
-    let categories =
-        extract_all_masm_errors(asm_source_dir).context("failed to extract all masm errors")?;
+    // Transaction kernel errors
+    // ------------------------------------------
 
-    for (category, errors) in categories {
-        // Generate the errors file.
-        let error_file_content = generate_error_file_content(category, errors)?;
-        std::fs::write(category.error_file_name(), error_file_content).into_diagnostic()?;
-    }
+    let tx_kernel_dir = asm_source_dir.join(ASM_TX_KERNEL_DIR);
+    let errors =
+        extract_all_masm_errors(&tx_kernel_dir).context("failed to extract all masm errors")?;
+    validate_tx_kernel_category(&errors)?;
+
+    generate_error_file(
+        ErrorModule {
+            file_name: TX_KERNEL_ERRORS_FILE,
+            array_name: TX_KERNEL_ERRORS_ARRAY_NAME,
+        },
+        errors,
+    )?;
+
+    // Miden protocol library errors
+    // ------------------------------------------
+
+    let miden_dir = asm_source_dir.join(ASM_MIDEN_DIR);
+    let errors =
+        extract_all_masm_errors(&miden_dir).context("failed to extract all masm errors")?;
+
+    generate_error_file(
+        ErrorModule {
+            file_name: PROTOCOL_LIB_ERRORS_FILE,
+            array_name: PROTOCOL_LIB_ERRORS_ARRAY_NAME,
+        },
+        errors,
+    )?;
+
+    // Miden standards errors
+    // ------------------------------------------
+
+    let account_components_dir = asm_source_dir.join(ASM_ACCOUNT_COMPONENTS_DIR);
+    let note_scripts_dir = asm_source_dir.join(ASM_NOTE_SCRIPTS_DIR);
+    let mut errors = extract_all_masm_errors(&account_components_dir)
+        .context("failed to extract all masm errors")?;
+    errors.extend(
+        extract_all_masm_errors(&note_scripts_dir).context("failed to extract all masm errors")?,
+    );
+
+    generate_error_file(
+        ErrorModule {
+            file_name: STANDARDS_ERRORS_FILE,
+            array_name: STANDARDS_ERRORS_ARRAY_NAME,
+        },
+        errors,
+    )?;
 
     Ok(())
 }
 
 /// Extract all masm errors from the given path and returns a map by error category.
-fn extract_all_masm_errors(asm_source_dir: &Path) -> Result<ErrorCategoryMap> {
+fn extract_all_masm_errors(asm_source_dir: &Path) -> Result<Vec<NamedError>> {
     // We use a BTree here to order the errors by their categories which is the first part after the
     // ERR_ prefix and to allow for the same error to be defined multiple times in different files
     // (as long as the constant name and error messages match).
@@ -560,17 +600,12 @@ fn extract_all_masm_errors(asm_source_dir: &Path) -> Result<ErrorCategoryMap> {
         extract_masm_errors(&mut errors, &file_contents)?;
     }
 
-    let mut category_map: BTreeMap<ErrorCategory, Vec<NamedError>> = BTreeMap::new();
+    let errors = errors
+        .into_iter()
+        .map(|(error_name, error)| NamedError { name: error_name, message: error.message })
+        .collect();
 
-    for (error_name, error) in errors.into_iter() {
-        let category = ErrorCategory::match_category(&error_name)?;
-
-        let named_error = NamedError { name: error_name, message: error.message };
-
-        category_map.entry(category).or_default().push(named_error);
-    }
-
-    Ok(category_map)
+    Ok(errors)
 }
 
 /// Extracts the errors from a single masm file and inserts them into the provided map.
@@ -633,8 +668,9 @@ fn is_new_error_category<'a>(last_error: &mut Option<&'a str>, current_error: &'
     is_new
 }
 
-/// Generates the content of an error file for the given category and the set of errors.
-fn generate_error_file_content(category: ErrorCategory, errors: Vec<NamedError>) -> Result<String> {
+/// Generates the content of an error file for the given category and the set of errors and writes
+/// it to the category's file.
+fn generate_error_file(category: ErrorModule, errors: Vec<NamedError>) -> Result<()> {
     let mut output = String::new();
 
     writeln!(output, "use crate::errors::MasmError;\n").unwrap();
@@ -642,11 +678,10 @@ fn generate_error_file_content(category: ErrorCategory, errors: Vec<NamedError>)
     writeln!(
         output,
         "// This file is generated by build.rs, do not modify manually.
-// It is generated by extracting errors from the masm files in the `miden-lib/asm` directory.
+// It is generated by extracting errors from the MASM files in the `miden-lib/asm` directory.
 //
-// To add a new error, define a constant in masm of the pattern `const ERR_<CATEGORY>_...`.
-// Try to fit the error into a pre-existing category if possible (e.g. Account, Prologue,
-// Non-Fungible-Asset, ...).
+// To add a new error, define a constant in MASM of the pattern `const ERR_<CATEGORY>_...`.
+// Try to fit the error into a pre-existing category if possible (e.g. Account, Note, ...).
 "
     )
     .unwrap();
@@ -656,7 +691,7 @@ fn generate_error_file_content(category: ErrorCategory, errors: Vec<NamedError>)
         "// {}
 // ================================================================================================
 ",
-        category.array_name().replace("_", " ")
+        category.array_name.replace("_", " ")
     )
     .unwrap();
 
@@ -677,7 +712,9 @@ fn generate_error_file_content(category: ErrorCategory, errors: Vec<NamedError>)
         .into_diagnostic()?;
     }
 
-    Ok(output)
+    std::fs::write(category.file_name, output).into_diagnostic()?;
+
+    Ok(())
 }
 
 type ErrorName = String;
@@ -693,76 +730,28 @@ struct NamedError {
     message: String,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-enum ErrorCategory {
-    TxKernel,
-    NoteScript,
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+struct ErrorModule {
+    pub file_name: &'static str,
+    pub array_name: &'static str,
 }
 
-impl ErrorCategory {
-    pub const fn error_file_name(&self) -> &'static str {
-        match self {
-            ErrorCategory::TxKernel => TX_KERNEL_ERRORS_FILE,
-            ErrorCategory::NoteScript => NOTE_SCRIPT_ERRORS_FILE,
+/// Validates that all error names in the provided slice start with a known tx kernel error
+/// category.
+fn validate_tx_kernel_category(errors: &[NamedError]) -> Result<()> {
+    for error in errors {
+        if !TX_KERNEL_ERROR_CATEGORIES
+            .iter()
+            .any(|known_category| error.name.starts_with(known_category))
+        {
+            return Err(miette::miette!(
+                "error `{}` does not start with a known tx kernel error category",
+                error.name
+            ));
         }
     }
 
-    pub const fn array_name(&self) -> &'static str {
-        match self {
-            ErrorCategory::TxKernel => TX_KERNEL_ERRORS_ARRAY_NAME,
-            ErrorCategory::NoteScript => NOTE_SCRIPT_ERRORS_ARRAY_NAME,
-        }
-    }
-
-    pub fn match_category(error_name: &ErrorName) -> Result<Self> {
-        for kernel_category in TX_KERNEL_ERROR_CATEGORIES {
-            if error_name.starts_with(kernel_category.category_name()) {
-                return Ok(ErrorCategory::TxKernel);
-            }
-        }
-
-        // If the error is not a tx kernel error, consider it a note script error.
-        Ok(ErrorCategory::NoteScript)
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-enum TxKernelErrorCategory {
-    Kernel,
-    Prologue,
-    Epilogue,
-    Tx,
-    Note,
-    Account,
-    ForeignAccount,
-    Faucet,
-    FungibleAsset,
-    NonFungibleAsset,
-    Vault,
-    LinkMap,
-    InputNote,
-    OutputNote,
-}
-
-impl TxKernelErrorCategory {
-    pub const fn category_name(&self) -> &'static str {
-        match self {
-            TxKernelErrorCategory::Kernel => "KERNEL",
-            TxKernelErrorCategory::Prologue => "PROLOGUE",
-            TxKernelErrorCategory::Epilogue => "EPILOGUE",
-            TxKernelErrorCategory::Tx => "TX",
-            TxKernelErrorCategory::Note => "NOTE",
-            TxKernelErrorCategory::Account => "ACCOUNT",
-            TxKernelErrorCategory::ForeignAccount => "FOREIGN_ACCOUNT",
-            TxKernelErrorCategory::Faucet => "FAUCET",
-            TxKernelErrorCategory::FungibleAsset => "FUNGIBLE_ASSET",
-            TxKernelErrorCategory::NonFungibleAsset => "NON_FUNGIBLE_ASSET",
-            TxKernelErrorCategory::Vault => "VAULT",
-            TxKernelErrorCategory::LinkMap => "LINK_MAP",
-            TxKernelErrorCategory::InputNote => "INPUT_NOTE",
-            TxKernelErrorCategory::OutputNote => "OUTPUT_NOTE",
-        }
-    }
+    Ok(())
 }
 
 // EVENT CONSTANTS FILE GENERATION

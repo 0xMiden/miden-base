@@ -1,7 +1,7 @@
 use anyhow::Context;
 use miden_lib::account::wallets::BasicWallet;
 use miden_lib::errors::MasmError;
-use miden_lib::errors::note_script_errors::ERR_AUTH_PROCEDURE_CALLED_FROM_WRONG_CONTEXT;
+use miden_lib::errors::tx_kernel::ERR_EPILOGUE_AUTH_PROCEDURE_CALLED_FROM_WRONG_CONTEXT;
 use miden_lib::testing::account_component::{ConditionalAuthComponent, ERR_WRONG_ARGS_MSG};
 use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::utils::CodeBuilder;
@@ -91,7 +91,7 @@ async fn test_auth_procedure_called_from_wrong_context() -> anyhow::Result<()> {
 
     assert_transaction_executor_error!(
         execution_result,
-        ERR_AUTH_PROCEDURE_CALLED_FROM_WRONG_CONTEXT
+        ERR_EPILOGUE_AUTH_PROCEDURE_CALLED_FROM_WRONG_CONTEXT
     );
 
     Ok(())

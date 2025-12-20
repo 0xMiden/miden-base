@@ -16,7 +16,7 @@ use miden_objects::{Felt, FieldElement, Word};
 use super::{BasicFungibleFaucet, FungibleFaucetError};
 use crate::account::auth::NoAuth;
 use crate::account::components::network_fungible_faucet_library;
-use crate::account::interface::{AccountComponentInterface, AccountInterface};
+use crate::account::interface::{AccountComponentInterface, AccountInterface, AccountInterfaceExt};
 use crate::procedure_digest;
 
 // NETWORK FUNGIBLE FAUCET ACCOUNT COMPONENT
@@ -243,7 +243,7 @@ impl TryFrom<Account> for NetworkFungibleFaucet {
     type Error = FungibleFaucetError;
 
     fn try_from(account: Account) -> Result<Self, Self::Error> {
-        let account_interface = AccountInterface::from(&account);
+        let account_interface = AccountInterface::from_account(&account);
 
         NetworkFungibleFaucet::try_from_interface(account_interface, account.storage())
     }
@@ -253,7 +253,7 @@ impl TryFrom<&Account> for NetworkFungibleFaucet {
     type Error = FungibleFaucetError;
 
     fn try_from(account: &Account) -> Result<Self, Self::Error> {
-        let account_interface = AccountInterface::from(account);
+        let account_interface = AccountInterface::from_account(account);
 
         NetworkFungibleFaucet::try_from_interface(account_interface, account.storage())
     }

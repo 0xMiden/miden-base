@@ -11,7 +11,7 @@ use miden_objects::vm::Program;
 use miden_objects::{Felt, Word};
 
 use crate::account::faucets::{BasicFungibleFaucet, NetworkFungibleFaucet};
-use crate::account::interface::{AccountComponentInterface, AccountInterface};
+use crate::account::interface::{AccountComponentInterface, AccountInterface, AccountInterfaceExt};
 use crate::account::wallets::BasicWallet;
 
 // WELL KNOWN NOTE SCRIPTS

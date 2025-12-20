@@ -1,10 +1,17 @@
+/// The errors from the MASM code of the transaction kernel.
 #[cfg(any(feature = "testing", test))]
 #[rustfmt::skip]
-pub mod tx_kernel_errors;
+pub mod tx_kernel;
 
+/// The errors from the MASM code of the Miden protocol library.
 #[cfg(any(feature = "testing", test))]
 #[rustfmt::skip]
-pub mod note_script_errors;
+pub mod protocol;
+
+/// The errors from the MASM code of the Miden standards.
+#[cfg(any(feature = "testing", test))]
+#[rustfmt::skip]
+pub mod standards;
 
 mod masm_error;
 pub use masm_error::MasmError;

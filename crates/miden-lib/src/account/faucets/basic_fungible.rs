@@ -20,7 +20,7 @@ use crate::account::auth::{
     AuthRpoFalcon512AclConfig,
 };
 use crate::account::components::basic_fungible_faucet_library;
-use crate::account::interface::{AccountComponentInterface, AccountInterface};
+use crate::account::interface::{AccountComponentInterface, AccountInterface, AccountInterfaceExt};
 use crate::procedure_digest;
 
 // BASIC FUNGIBLE FAUCET ACCOUNT COMPONENT
@@ -208,7 +208,7 @@ impl TryFrom<Account> for BasicFungibleFaucet {
     type Error = FungibleFaucetError;
 
     fn try_from(account: Account) -> Result<Self, Self::Error> {
-        let account_interface = AccountInterface::from(&account);
+        let account_interface = AccountInterface::from_account(&account);
 
         BasicFungibleFaucet::try_from_interface(account_interface, account.storage())
     }
@@ -218,7 +218,7 @@ impl TryFrom<&Account> for BasicFungibleFaucet {
     type Error = FungibleFaucetError;
 
     fn try_from(account: &Account) -> Result<Self, Self::Error> {
-        let account_interface = AccountInterface::from(account);
+        let account_interface = AccountInterface::from_account(account);
 
         BasicFungibleFaucet::try_from_interface(account_interface, account.storage())
     }

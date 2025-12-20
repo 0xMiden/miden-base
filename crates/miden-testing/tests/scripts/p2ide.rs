@@ -1,7 +1,7 @@
 use core::slice;
 
 use anyhow::Context;
-use miden_lib::errors::note_script_errors::{
+use miden_lib::errors::standards::{
     ERR_P2IDE_RECLAIM_ACCT_IS_NOT_SENDER,
     ERR_P2IDE_RECLAIM_DISABLED,
     ERR_P2IDE_RECLAIM_HEIGHT_NOT_REACHED,

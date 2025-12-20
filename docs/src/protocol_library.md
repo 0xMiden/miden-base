@@ -81,7 +81,6 @@ Active note procedures can be used to fetch data from the note that is currently
 | `get_sender`            | Returns the sender of the active note.<br/><br/>**Inputs:** `[]`<br/>**Outputs:** `[sender_id_prefix, sender_id_suffix]`                                        | Note    |
 | `get_serial_number`     | Returns the [serial number](note.md#serial-number) of the active note.<br/><br/>**Inputs:** `[]`<br/>**Outputs:** `[SERIAL_NUMBER]`                                                      | Note    |
 | `get_script_root`       | Returns the [script root](note.md#script) of the active note.<br/><br/>**Inputs:** `[]`<br/>**Outputs:** `[SCRIPT_ROOT]`                                                          | Note    |
-| `add_assets_to_account` | Adds all assets from the active note to the account vault.<br/><br/>**Inputs:** `[]`<br/>**Outputs:** `[]`                                                      | Note    |
 
 ## Input Note Procedures (`miden::input_note`)
 

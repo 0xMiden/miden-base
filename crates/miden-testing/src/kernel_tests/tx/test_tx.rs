@@ -3,7 +3,7 @@ use alloc::sync::Arc;
 use anyhow::Context;
 use assert_matches::assert_matches;
 use miden_lib::AuthScheme;
-use miden_lib::account::interface::AccountInterface;
+use miden_lib::account::interface::{AccountInterface, AccountInterfaceExt};
 use miden_lib::account::wallets::BasicWallet;
 use miden_lib::note::create_p2id_note;
 use miden_lib::testing::account_component::IncrNonceAuthComponent;
@@ -529,7 +529,7 @@ async fn tx_summary_commitment_is_signed_by_falcon_auth() -> anyhow::Result<()> 
     );
     let summary_commitment = summary.to_commitment();
 
-    let account_interface = AccountInterface::from(&account);
+    let account_interface = AccountInterface::from_account(&account);
     let pub_key = match account_interface.auth().first().unwrap() {
         AuthScheme::RpoFalcon512 { pub_key } => pub_key,
         AuthScheme::NoAuth => panic!("Expected RpoFalcon512 auth scheme, got NoAuth"),
@@ -593,7 +593,7 @@ async fn tx_summary_commitment_is_signed_by_ecdsa_auth() -> anyhow::Result<()> {
     );
     let summary_commitment = summary.to_commitment();
 
-    let account_interface = AccountInterface::from(&account);
+    let account_interface = AccountInterface::from_account(&account);
     let pub_key = match account_interface.auth().first().unwrap() {
         AuthScheme::EcdsaK256Keccak { pub_key } => pub_key,
         AuthScheme::EcdsaK256KeccakMultisig { .. } => {

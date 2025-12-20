@@ -1,6 +1,7 @@
 use miden::active_account
 use miden::account_id
 use miden::active_note
+use miden::contracts::wallets::basic->basic_wallet
 
 # ERRORS
 # =================================================================================================
@@ -47,6 +48,6 @@ begin
     exec.account_id::is_equal assert.err=ERR_P2ID_TARGET_ACCT_MISMATCH
     # => []
 
-    exec.active_note::add_assets_to_account
+    exec.basic_wallet::add_assets_to_account
     # => []
 end

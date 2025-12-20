@@ -1,7 +1,7 @@
 use alloc::string::String;
 
 use anyhow::Context;
-use miden_lib::errors::tx_kernel_errors::ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_METADATA_WHILE_NO_NOTE_BEING_PROCESSED;
+use miden_lib::errors::tx_kernel::ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_METADATA_WHILE_NO_NOTE_BEING_PROCESSED;
 use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::utils::CodeBuilder;
 use miden_objects::account::Account;
