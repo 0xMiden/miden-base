@@ -740,7 +740,7 @@ async fn test_set_map_item() -> miette::Result<()> {
             push.{new_value}
             push.{new_key}
             push.SLOT_NAME[0..2]
-            call.mock_account::set_map_item 
+            call.mock_account::set_map_item
 
             # double check that the storage slot is indeed the new map
             push.SLOT_NAME[0..2]
