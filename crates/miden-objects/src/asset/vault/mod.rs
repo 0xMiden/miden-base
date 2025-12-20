@@ -15,7 +15,7 @@ use super::{
     Serializable,
 };
 use crate::account::{AccountId, AccountVaultDelta, NonFungibleDeltaAction};
-use crate::crypto::merkle::Smt;
+use crate::crypto::merkle::smt::Smt;
 use crate::{AssetVaultError, Word};
 
 mod partial;

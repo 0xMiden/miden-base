@@ -2,33 +2,33 @@
 # =================================================================================================
 
 # The number of elements in a Word
-const.WORD_SIZE=4
+const WORD_SIZE=4
 
 # The maximum number of input values associated with a single note.
-const.MAX_INPUTS_PER_NOTE=1024
+const MAX_INPUTS_PER_NOTE=1024
 
 # The maximum number of assets that can be stored in a single note.
-const.MAX_ASSETS_PER_NOTE=256
+const MAX_ASSETS_PER_NOTE=256
 
 # The maximum number of notes that can be consumed in a single transaction.
-const.MAX_INPUT_NOTES_PER_TX=1024
+const MAX_INPUT_NOTES_PER_TX=1024
 
 # The size of the memory segment allocated to each note.
-const.NOTE_MEM_SIZE=2048
+const NOTE_MEM_SIZE=2048
 
 # The depth of the Merkle tree used to commit to notes produced in a block.
-const.NOTE_TREE_DEPTH=16
+const NOTE_TREE_DEPTH=16
 
 # The maximum number of notes that can be created in a single transaction.
-const.MAX_OUTPUT_NOTES_PER_TX=1024
+const MAX_OUTPUT_NOTES_PER_TX=1024
 
 # TYPES
 # =================================================================================================
 
 # Type of storage slot item in the account storage
-const.STORAGE_SLOT_TYPE_VALUE=0
-const.STORAGE_SLOT_TYPE_MAP=1
-const.STORAGE_SLOT_TYPE_ARRAY=2
+const STORAGE_SLOT_TYPE_VALUE=0
+const STORAGE_SLOT_TYPE_MAP=1
+const STORAGE_SLOT_TYPE_ARRAY=2
 
 # PROCEDURES
 # =================================================================================================
@@ -40,7 +40,7 @@ const.STORAGE_SLOT_TYPE_ARRAY=2
 #!
 #! Where:
 #! - word_size is the number of elements in a Word.
-export.get_word_size
+pub proc get_word_size
     push.WORD_SIZE
 end
 
@@ -51,7 +51,7 @@ end
 #!
 #! Where:
 #! - max_inputs_per_note is the max inputs per note.
-export.::$kernel::util::note::get_max_inputs_per_note
+pub use ::$kernel::util::note::get_max_inputs_per_note
 
 #! Returns the max allowed number of assets per note.
 #!
@@ -60,7 +60,7 @@ export.::$kernel::util::note::get_max_inputs_per_note
 #!
 #! Where:
 #! - max_assets_per_note is the max assets per note.
-export.get_max_assets_per_note
+pub proc get_max_assets_per_note
     push.MAX_ASSETS_PER_NOTE
 end
 
@@ -71,7 +71,7 @@ end
 #!
 #! Where:
 #! - max_num_input_notes is the max number of input notes.
-export.get_max_num_input_notes
+pub proc get_max_num_input_notes
     push.MAX_INPUT_NOTES_PER_TX
 end
 
@@ -82,7 +82,7 @@ end
 #!
 #! Where:
 #! - note_mem_size is the size of the memory segment allocated to each note.
-export.get_note_mem_size
+pub proc get_note_mem_size
     push.NOTE_MEM_SIZE
 end
 
@@ -93,7 +93,7 @@ end
 #!
 #! Where:
 #! - note_tree_depth is the depth of the Merkle tree used to commit to notes produced in a block.
-export.get_note_tree_depth
+pub proc get_note_tree_depth
     push.NOTE_TREE_DEPTH
 end
 
@@ -104,7 +104,7 @@ end
 #!
 #! Where:
 #! - max_num_output_notes is the max number of notes that can be created in a single transaction.
-export.get_max_num_output_notes
+pub proc get_max_num_output_notes
     push.MAX_OUTPUT_NOTES_PER_TX
 end
 
@@ -115,7 +115,7 @@ end
 #!
 #! Where:
 #! - EMPTY_SMT_ROOT is the root of an empty Sparse Merkle Tree.
-export.get_empty_smt_root
+pub proc get_empty_smt_root
     push.15321474589252129342.17373224439259377994.15071539326562317628.3312677166725950353
 end
 
@@ -126,7 +126,7 @@ end
 #!
 #! Where:
 #! - type_storage_value is the type of storage slot item in the account storage.
-export.get_storage_slot_type_value
+pub proc get_storage_slot_type_value
     push.STORAGE_SLOT_TYPE_VALUE
 end
 
@@ -137,7 +137,7 @@ end
 #!
 #! Where:
 #! - type_storage_map is the type of storage slot item in the account storage.
-export.get_storage_slot_type_map
+pub proc get_storage_slot_type_map
     push.STORAGE_SLOT_TYPE_MAP
 end
 
@@ -148,6 +148,6 @@ end
 #!
 #! Where:
 #! - type_storage_array is the type of storage slot item in the account storage.
-export.get_storage_slot_type_array
+pub proc get_storage_slot_type_array
     push.STORAGE_SLOT_TYPE_ARRAY
 end

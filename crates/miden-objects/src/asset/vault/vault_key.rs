@@ -1,6 +1,6 @@
 use core::fmt;
 
-use miden_crypto::merkle::LeafIndex;
+use miden_crypto::merkle::smt::LeafIndex;
 use miden_processor::SMT_DEPTH;
 
 use crate::Word;

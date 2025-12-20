@@ -1,6 +1,7 @@
 use alloc::vec::Vec;
 
-use crate::crypto::merkle::{LeafIndex, MerkleError, SimpleSmt};
+use crate::crypto::merkle::MerkleError;
+use crate::crypto::merkle::smt::{LeafIndex, SimpleSmt};
 use crate::note::{NoteId, NoteMetadata, compute_note_commitment};
 use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 use crate::{BATCH_NOTE_TREE_DEPTH, EMPTY_WORD, Word};

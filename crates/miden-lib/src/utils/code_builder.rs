@@ -5,9 +5,9 @@ use miden_objects::assembly::{
     Assembler,
     DefaultSourceManager,
     Library,
-    LibraryPath,
     Parse,
     ParseOptions,
+    Path,
     SourceManagerSync,
 };
 use miden_objects::note::NoteScript;
@@ -57,13 +57,13 @@ use crate::transaction::TransactionKernel;
 /// # use anyhow::Context;
 /// # use miden_lib::utils::CodeBuilder;
 /// # use miden_objects::assembly::Library;
-/// # use miden_stdlib::StdLibrary;
+/// # use miden_core_lib::CoreLibrary;
 /// # fn example() -> anyhow::Result<()> {
-/// # let module_code = "export.test push.1 add end";
+/// # let module_code = "pub proc test push.1 add end";
 /// # let script_code = "begin nop end";
 /// # // Create sample libraries for the example
-/// # let my_lib: Library = StdLibrary::default().into(); // Convert StdLibrary to Library
-/// # let fpi_lib: Library = StdLibrary::default().into();
+/// # let my_lib: Library = CoreLibrary::default().into(); // Convert CoreLibrary to Library
+/// # let fpi_lib: Library = CoreLibrary::default().into();
 /// let script = CodeBuilder::default()
 ///     .with_linked_module("my::module", module_code).context("failed to link module")?
 ///     .with_statically_linked_library(&my_lib).context("failed to link static library")?
@@ -87,26 +87,19 @@ impl CodeBuilder {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
-    /// Creates a new CodeBuilder with the specified debug mode.
-    ///
-    /// # Arguments
-    /// * `in_debug_mode` - Whether to enable debug mode in the assembler
-    pub fn new(in_debug_mode: bool) -> Self {
+    /// Creates a new CodeBuilder.
+    pub fn new() -> Self {
         let source_manager = Arc::new(DefaultSourceManager::default());
-        let assembler = TransactionKernel::assembler_with_source_manager(source_manager.clone())
-            .with_debug_mode(in_debug_mode);
+        let assembler = TransactionKernel::assembler_with_source_manager(source_manager.clone());
         Self { assembler, source_manager }
     }
 
     /// Creates a new CodeBuilder with the specified source manager.
     ///
-    /// The returned builder is instantiated with debug mode enabled.
-    ///
     /// # Arguments
     /// * `source_manager` - The source manager to use with the internal `Assembler`
     pub fn with_source_manager(source_manager: Arc<dyn SourceManagerSync>) -> Self {
-        let assembler = TransactionKernel::assembler_with_source_manager(source_manager.clone())
-            .with_debug_mode(true);
+        let assembler = TransactionKernel::assembler_with_source_manager(source_manager.clone());
         Self { assembler, source_manager }
     }
 
@@ -132,22 +125,12 @@ impl CodeBuilder {
         module_path: impl AsRef<str>,
         module_code: impl Parse,
     ) -> Result<(), CodeBuilderError> {
-        // Parse the library path
-        let lib_path = LibraryPath::new(module_path.as_ref()).map_err(|err| {
-            CodeBuilderError::build_error_with_source(
-                format!("invalid module path: {}", module_path.as_ref()),
-                err,
-            )
-        })?;
-
         let mut parse_options = ParseOptions::for_library();
-        parse_options.path = Some(lib_path);
+        parse_options.path = Some(Path::new(module_path.as_ref()).into());
 
-        let module = module_code
-            .parse_with_options(self.source_manager.as_ref(), parse_options)
-            .map_err(|err| {
-                CodeBuilderError::build_error_with_report("failed to parse module code", err)
-            })?;
+        let module = module_code.parse_with_options(self.source_manager(), parse_options).map_err(
+            |err| CodeBuilderError::build_error_with_report("failed to parse module code", err),
+        )?;
 
         self.assembler.compile_and_statically_link(module).map_err(|err| {
             CodeBuilderError::build_error_with_report("failed to assemble module", err)
@@ -258,29 +241,22 @@ impl CodeBuilder {
     /// # Errors
     /// Returns an error if:
     /// - Compiling the account component code fails
-    /// - If `component_path` is not a valid [`LibraryPath`]
     pub fn compile_component_code(
         self,
         component_path: impl AsRef<str>,
         component_code: impl Parse,
     ) -> Result<AccountComponentCode, CodeBuilderError> {
         let CodeBuilder { assembler, source_manager } = self;
-        let component_path = component_path.as_ref();
-        let lib_path = LibraryPath::new(component_path).map_err(|err| {
-            CodeBuilderError::build_error_with_source(
-                format!("invalid component path: {component_path}"),
-                err,
-            )
-        })?;
 
         let mut parse_options = ParseOptions::for_library();
-        parse_options.path = Some(lib_path);
+        parse_options.path = Some(Path::new(component_path.as_ref()).into());
 
-        let module = component_code
-            .parse_with_options(source_manager.as_ref(), parse_options)
-            .map_err(|err| {
-                CodeBuilderError::build_error_with_report("failed to parse component code", err)
-            })?;
+        let module =
+            component_code
+                .parse_with_options(source_manager, parse_options)
+                .map_err(|err| {
+                    CodeBuilderError::build_error_with_report("failed to parse component code", err)
+                })?;
 
         let library = assembler.assemble_library([module]).map_err(|err| {
             CodeBuilderError::build_error_with_report("failed to parse component code", err)
@@ -388,10 +364,9 @@ impl CodeBuilder {
     ) -> Self {
         use crate::testing::mock_util_lib::mock_util_library;
 
-        // Start from the full kernel-aware assembler (includes stdlib and miden-lib).
+        // Start from the full kernel-aware assembler (includes core lib and miden-lib).
         let mut assembler =
-            TransactionKernel::assembler_with_source_manager(source_manager.clone())
-                .with_debug_mode(true);
+            TransactionKernel::assembler_with_source_manager(source_manager.clone());
 
         // Expose kernel procedures under `$kernel` for testing.
         assembler
@@ -414,7 +389,7 @@ impl CodeBuilder {
 
 impl Default for CodeBuilder {
     fn default() -> Self {
-        Self::new(true)
+        Self::new()
     }
 }
 
@@ -452,7 +427,7 @@ mod tests {
     #[test]
     fn test_create_library_and_create_tx_script() -> anyhow::Result<()> {
         let script_code = "
-            use.external_contract::counter_contract
+            use external_contract::counter_contract
 
             begin
                 call.counter_contract::increment
@@ -460,11 +435,11 @@ mod tests {
         ";
 
         let account_code = "
-            use.miden::active_account
-            use.miden::native_account
-            use.std::sys
+            use miden::active_account
+            use miden::native_account
+            use miden::core::sys
 
-            export.increment
+            pub proc increment
                 push.0
                 exec.active_account::get_item
                 push.1 add
@@ -490,7 +465,7 @@ mod tests {
     #[test]
     fn test_parse_library_and_add_to_builder() -> anyhow::Result<()> {
         let script_code = "
-            use.external_contract::counter_contract
+            use external_contract::counter_contract
 
             begin
                 call.counter_contract::increment
@@ -498,11 +473,11 @@ mod tests {
         ";
 
         let account_code = "
-            use.miden::active_account
-            use.miden::native_account
-            use.std::sys
+            use miden::active_account
+            use miden::native_account
+            use miden::core::sys
 
-            export.increment
+            pub proc increment
                 push.0
                 exec.active_account::get_item
                 push.1 add
@@ -529,7 +504,7 @@ mod tests {
             .link_module(library_path, account_code)
             .context("failed to link first module")?;
         builder_with_libs
-            .link_module("test::lib", "export.test nop end")
+            .link_module("test::lib", "pub proc test nop end")
             .context("failed to link second module")?;
         builder_with_libs
             .compile_tx_script(script_code)
@@ -541,7 +516,7 @@ mod tests {
     #[test]
     fn test_builder_style_chaining() -> anyhow::Result<()> {
         let script_code = "
-            use.external_contract::counter_contract
+            use external_contract::counter_contract
 
             begin
                 call.counter_contract::increment
@@ -549,11 +524,11 @@ mod tests {
         ";
 
         let account_code = "
-            use.miden::active_account
-            use.miden::native_account
-            use.std::sys
+            use miden::active_account
+            use miden::native_account
+            use miden::core::sys
 
-            export.increment
+            pub proc increment
                 push.0
                 exec.active_account::get_item
                 push.1 add
@@ -576,13 +551,13 @@ mod tests {
     #[test]
     fn test_multiple_chained_modules() -> anyhow::Result<()> {
         let script_code =
-            "use.test::lib1 use.test::lib2 begin exec.lib1::test1 exec.lib2::test2 end";
+            "use test::lib1 use test::lib2 begin exec.lib1::test1 exec.lib2::test2 end";
 
         // Test chaining multiple modules
         let builder = CodeBuilder::default()
-            .with_linked_module("test::lib1", "export.test1 push.1 add end")
+            .with_linked_module("test::lib1", "pub proc test1 push.1 add end")
             .context("failed to link first module")?
-            .with_linked_module("test::lib2", "export.test2 push.2 add end")
+            .with_linked_module("test::lib2", "pub proc test2 push.2 add end")
             .context("failed to link second module")?;
 
         builder.compile_tx_script(script_code).context("failed to parse tx script")?;
@@ -593,7 +568,7 @@ mod tests {
     #[test]
     fn test_static_and_dynamic_linking() -> anyhow::Result<()> {
         let script_code = "
-            use.contracts::static_contract
+            use contracts::static_contract
 
             begin
                 call.static_contract::increment_1
@@ -601,13 +576,13 @@ mod tests {
         ";
 
         let account_code_1 = "
-            export.increment_1
+            pub proc increment_1
                 push.0 drop
             end
         ";
 
         let account_code_2 = "
-            export.increment_2
+            pub proc increment_2
                 push.0 drop
             end
         ";

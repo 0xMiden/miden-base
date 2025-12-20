@@ -7,7 +7,7 @@ use miden_assembly::Report;
 use miden_assembly::diagnostics::reporting::PrintDiagnostic;
 use miden_core::Felt;
 use miden_core::mast::MastForestError;
-use miden_crypto::merkle::MmrError;
+use miden_crypto::merkle::mmr::MmrError;
 use miden_crypto::utils::HexParseError;
 use miden_processor::DeserializationError;
 use thiserror::Error;

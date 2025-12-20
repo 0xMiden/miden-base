@@ -1,29 +1,29 @@
-use.$kernel::account
-use.$kernel::asset
-use.$kernel::asset_vault
-use.$kernel::constants
-use.$kernel::link_map
-use.$kernel::memory
-use.std::crypto::hashes::rpo
-use.std::word
+use $kernel::account
+use $kernel::asset
+use $kernel::asset_vault
+use $kernel::constants
+use $kernel::link_map
+use $kernel::memory
+use miden::core::crypto::hashes::rpo256
+use miden::core::word
 
 # ERRORS
 # =================================================================================================
 
-const.ERR_ACCOUNT_DELTA_NONCE_MUST_BE_INCREMENTED_IF_VAULT_OR_STORAGE_CHANGED="nonce must be incremented if account vault or account storage changed"
+const ERR_ACCOUNT_DELTA_NONCE_MUST_BE_INCREMENTED_IF_VAULT_OR_STORAGE_CHANGED="nonce must be incremented if account vault or account storage changed"
 
 # CONSTANTS
 # =================================================================================================
 
 # The domain of an asset in the delta commitment.
-const.DOMAIN_ASSET=1
+const DOMAIN_ASSET = 1
 # The domain of a value storage slot in the delta commitment.
-const.DOMAIN_VALUE=2
+const DOMAIN_VALUE = 2
 # The domain of a map storage slot in the delta commitment.
-const.DOMAIN_MAP=3
+const DOMAIN_MAP = 3
 
 # The maximum value a felt can represent.
-const.FELT_MAX=0xffffffff00000000
+const FELT_MAX = 0xffffffff00000000
 
 # PROCEDURES
 # =================================================================================================
@@ -43,7 +43,7 @@ const.FELT_MAX=0xffffffff00000000
 #!
 #! Panics if:
 #! - the vault or storage delta is not empty but the nonce increment is zero.
-export.compute_commitment
+pub proc compute_commitment
     # pad capacity element of the hasher
     padw
     # => [CAPACITY]
@@ -76,7 +76,7 @@ export.compute_commitment
     exec.update_storage_delta
     # => [RATE, RATE, PERM, ID_AND_NONCE_DIGEST]
 
-    exec.rpo::squeeze_digest
+    exec.rpo256::squeeze_digest
     # => [DELTA_COMMITMENT, ID_AND_NONCE_DIGEST]
 
     exec.was_nonce_incremented not
@@ -103,7 +103,7 @@ end
 #!
 #! Inputs:  [RATE, RATE, PERM]
 #! Outputs: [RATE, RATE, PERM]
-proc.update_storage_delta
+proc update_storage_delta
     exec.memory::get_num_storage_slots movdn.12
     # => [RATE, RATE, PERM, num_storage_slots]
 
@@ -144,7 +144,7 @@ end
 #!
 #! Inputs:  [slot_idx, RATE, RATE, PERM]
 #! Outputs: [RATE, RATE, PERM]
-proc.update_slot_delta
+proc update_slot_delta
     dup exec.account::get_storage_slot_type
     # => [storage_slot_type, slot_idx, RATE, RATE, PERM]
 
@@ -164,7 +164,7 @@ end
 #!
 #! Inputs:  [slot_idx, RATE, RATE, PERM]
 #! Outputs: [RATE, RATE, PERM]
-proc.update_value_slot_delta
+proc update_value_slot_delta
     exec.account::get_item_delta
     # => [INIT_VALUE, CURRENT_VALUE, slot_id_prefix, slot_id_suffix, RATE, RATE, PERM]
 
@@ -220,7 +220,8 @@ end
 #! - 2: has_next
 #! - 3: iter
 #! - 4: num_changed_entries
-proc.update_map_slot_delta.5
+@locals(5)
+proc update_map_slot_delta
     # initialize num_changed_entries = 0
     # this is necessary because this procedure can be called multiple times and the second
     # invocation shouldn't reuse the first invocation's value
@@ -321,7 +322,8 @@ end
 #!
 #! Inputs:  [RATE, RATE, PERM]
 #! Outputs: [RATE, RATE, PERM]
-proc.update_fungible_asset_delta.2
+@locals(2)
+proc update_fungible_asset_delta
     exec.memory::get_account_delta_fungible_asset_ptr
     # => [account_delta_fungible_asset_ptr, RATE, RATE, PERM]
 
@@ -401,7 +403,8 @@ end
 #!
 #! Inputs:  [RATE, RATE, PERM]
 #! Outputs: [RATE, RATE, PERM]
-proc.update_non_fungible_asset_delta.2
+@locals(2)
+proc update_non_fungible_asset_delta
     exec.memory::get_account_delta_non_fungible_asset_ptr
     # => [account_delta_non_fungible_asset_ptr, RATE, RATE, PERM]
 
@@ -478,7 +481,7 @@ end
 #!
 #! Where:
 #! - was_nonce_incremented is the boolean flag indicating whether the account nonce was incremented.
-export.was_nonce_incremented
+pub proc was_nonce_incremented
     exec.memory::get_init_nonce
     # => [init_nonce]
 
@@ -498,7 +501,7 @@ end
 #!
 #! Where:
 #! - ASSET is the asset.
-export.add_asset
+pub proc add_asset
     # check if the asset is a fungible asset
     exec.asset::is_fungible_asset
     # => [is_fungible_asset, ASSET]
@@ -528,7 +531,7 @@ end
 #!
 #! Where:
 #! - ASSET is the asset.
-export.remove_asset
+pub proc remove_asset
     # check if the asset is a fungible asset
     exec.asset::is_fungible_asset
     # => [is_fungible_asset, ASSET, vault_root_ptr]
@@ -556,7 +559,7 @@ end
 #! Where:
 #! - ASSET_KEY is the asset key of the fungible asset.
 #! - amount is the amount by which the fungible asset's amount increases.
-export.add_fungible_asset
+pub proc add_fungible_asset
     dupw exec.memory::get_account_delta_fungible_asset_ptr
     # => [fungible_delta_map_ptr, ASSET_KEY, ASSET_KEY, amount]
 
@@ -593,7 +596,7 @@ end
 #! Where:
 #! - ASSET_KEY is the asset key of the fungible asset.
 #! - amount is the amount by which the fungible asset's amount decreases.
-export.remove_fungible_asset
+pub proc remove_fungible_asset
     dupw exec.memory::get_account_delta_fungible_asset_ptr
     # => [fungible_delta_map_ptr, ASSET_KEY, ASSET_KEY, amount]
 
@@ -643,7 +646,7 @@ end
 #!
 #! Where:
 #! - ASSET is the non-fungible asset to be added.
-export.add_non_fungible_asset
+pub proc add_non_fungible_asset
     dupw exec.memory::get_account_delta_non_fungible_asset_ptr
     # => [non_fungible_delta_map_ptr, ASSET, ASSET]
 
@@ -677,7 +680,7 @@ end
 #!
 #! Where:
 #! - ASSET is the non-fungible asset to be removed.
-export.remove_non_fungible_asset
+pub proc remove_non_fungible_asset
     dupw exec.memory::get_account_delta_non_fungible_asset_ptr
     # => [non_fungible_delta_map_ptr, ASSET, ASSET]
 
@@ -715,7 +718,8 @@ end
 #! - KEY is the key in the storage map that is being updated.
 #! - PREV_VALUE is the previous value of the key in the storage map that is being updated.
 #! - NEW_VALUE is the new value of the key in the storage map that is being updated.
-export.set_map_item.8
+@locals(8)
+pub proc set_map_item
     # retrieve the link map ptr to the storage map delta for the provided index
     exec.memory::get_account_delta_storage_map_ptr
     # => [account_delta_storage_map_ptr, KEY, PREV_VALUE, NEW_VALUE]
@@ -808,7 +812,7 @@ end
 #! - is_delta_amount_positive indicates whether the delta amount is positive.
 #! - delta_amount_abs is the absolute value of the delta_amount, meaning negative values are
 #!   remapped to their positive equivalent value.
-proc.delta_amount_absolute
+proc delta_amount_absolute
     dup exec.is_delta_amount_negative not
     # => [is_positive, delta_amount]
 
@@ -829,7 +833,7 @@ end
 #! Where:
 #! - delta_amount is the delta amount that can span the entire felt range.
 #! - is_delta_amount_negative indicates whether the delta amount represents a negative value.
-proc.is_delta_amount_negative
+proc is_delta_amount_negative
     # delta_amount represents a negative number if it is greater than the max amount
     exec.asset::get_fungible_asset_max_amount gt
     # => [is_delta_amount_negative]

@@ -1,17 +1,17 @@
-use.miden::active_account
-use.miden::account_id
-use.miden::active_note
-use.miden::contracts::faucets
-use.miden::contracts::faucets::basic_fungible
+use miden::active_account
+use miden::account_id
+use miden::active_note
+use miden::contracts::faucets
+use miden::contracts::faucets::basic_fungible
 
 # CONSTANTS
 # ================================================================================================
 
 # The slot in this component's storage layout where the owner config is stored.
-const.OWNER_CONFIG_SLOT=word("miden::network_fungible_faucet::owner_config")
+const OWNER_CONFIG_SLOT=word("miden::network_fungible_faucet::owner_config")
 
 # ERRORS
-const.ERR_ONLY_OWNER_CAN_MINT="note sender is not the owner of the faucet who can mint assets"
+const ERR_ONLY_OWNER_CAN_MINT="note sender is not the owner of the faucet who can mint assets"
 
 #! Checks if the note sender is the owner of this faucet.
 #!
@@ -20,7 +20,7 @@ const.ERR_ONLY_OWNER_CAN_MINT="note sender is not the owner of the faucet who ca
 #!
 #! Where:
 #! - is_owner is 1 if the sender is the owner, 0 otherwise.
-proc.is_owner
+proc is_owner
     push.OWNER_CONFIG_SLOT[0..2] exec.active_account::get_item
     # => [owner_prefix, owner_suffix, 0, 0]
 
@@ -55,7 +55,7 @@ end
 #! - any of the validations in faucets::distribute fail.
 #!
 #! Invocation: call
-export.distribute
+pub proc distribute
     exec.is_owner
     # => [is_owner, amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
 
@@ -82,4 +82,4 @@ end
 #! - the amount about to be burned is greater than the outstanding supply of the asset.
 #!
 #! Invocation: call
-export.faucets::burn
+pub use faucets::burn

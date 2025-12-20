@@ -1,4 +1,4 @@
-use crate::crypto::merkle::SmtProof;
+use crate::crypto::merkle::smt::SmtProof;
 use crate::utils::serde::{
     ByteReader,
     ByteWriter,

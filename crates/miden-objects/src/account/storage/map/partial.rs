@@ -2,15 +2,8 @@ use alloc::collections::BTreeMap;
 
 use miden_core::utils::{Deserializable, Serializable};
 use miden_crypto::Word;
-use miden_crypto::merkle::{
-    InnerNodeInfo,
-    LeafIndex,
-    MerkleError,
-    PartialSmt,
-    SMT_DEPTH,
-    SmtLeaf,
-    SmtProof,
-};
+use miden_crypto::merkle::smt::{LeafIndex, PartialSmt, SMT_DEPTH, SmtLeaf, SmtProof};
+use miden_crypto::merkle::{InnerNodeInfo, MerkleError};
 
 use crate::account::{StorageMap, StorageMapWitness};
 use crate::utils::serde::{ByteReader, DeserializationError};

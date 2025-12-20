@@ -3,7 +3,8 @@ use alloc::vec::Vec;
 
 use crate::Word;
 use crate::account::{AccountId, AccountIdPrefix};
-use crate::crypto::merkle::{MerkleError, MutationSet, SMT_DEPTH, Smt, SmtLeaf};
+use crate::crypto::merkle::MerkleError;
+use crate::crypto::merkle::smt::{MutationSet, SMT_DEPTH, Smt, SmtLeaf};
 use crate::errors::AccountTreeError;
 use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
@@ -578,7 +579,7 @@ pub(super) mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn large_smt_backend_basic_operations() {
-        use miden_crypto::merkle::{LargeSmt, MemoryStorage};
+        use miden_crypto::merkle::smt::{LargeSmt, MemoryStorage};
 
         // Create test data
         let id0 = AccountIdBuilder::new().build_with_seed([5; 32]);
@@ -624,7 +625,7 @@ pub(super) mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn large_smt_backend_duplicate_prefix_check() {
-        use miden_crypto::merkle::{LargeSmt, MemoryStorage};
+        use miden_crypto::merkle::smt::{LargeSmt, MemoryStorage};
 
         let [(id0, commitment0), (id1, commitment1)] = setup_duplicate_prefix_ids();
 
@@ -645,7 +646,7 @@ pub(super) mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn large_smt_backend_apply_mutations() {
-        use miden_crypto::merkle::{LargeSmt, MemoryStorage};
+        use miden_crypto::merkle::smt::{LargeSmt, MemoryStorage};
 
         let id0 = AccountIdBuilder::new().build_with_seed([5; 32]);
         let id1 = AccountIdBuilder::new().build_with_seed([6; 32]);
@@ -678,7 +679,7 @@ pub(super) mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn large_smt_backend_same_root_as_regular_smt() {
-        use miden_crypto::merkle::{LargeSmt, MemoryStorage};
+        use miden_crypto::merkle::smt::{LargeSmt, MemoryStorage};
 
         let id0 = AccountIdBuilder::new().build_with_seed([5; 32]);
         let id1 = AccountIdBuilder::new().build_with_seed([6; 32]);

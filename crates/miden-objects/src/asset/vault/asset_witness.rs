@@ -1,6 +1,7 @@
 use alloc::string::ToString;
 
-use miden_crypto::merkle::{InnerNodeInfo, SmtLeaf, SmtProof};
+use miden_crypto::merkle::InnerNodeInfo;
+use miden_crypto::merkle::smt::{SmtLeaf, SmtProof};
 
 use super::vault_key::AssetVaultKey;
 use crate::AssetError;
@@ -112,7 +113,7 @@ impl Deserializable for AssetWitness {
 #[cfg(test)]
 mod tests {
     use assert_matches::assert_matches;
-    use miden_crypto::merkle::Smt;
+    use miden_crypto::merkle::smt::Smt;
 
     use super::*;
     use crate::Word;

@@ -1,20 +1,20 @@
-use.miden::active_account
-use.miden::account_id
-use.miden::active_note
-use.miden::tx
+use miden::active_account
+use miden::account_id
+use miden::active_note
+use miden::tx
 
 # ERRORS
 # =================================================================================================
 
-const.ERR_P2IDE_WRONG_NUMBER_OF_INPUTS="P2IDE note expects exactly 4 note inputs"
+const ERR_P2IDE_WRONG_NUMBER_OF_INPUTS="P2IDE note expects exactly 4 note inputs"
 
-const.ERR_P2IDE_RECLAIM_ACCT_IS_NOT_SENDER="failed to reclaim P2IDE note because the reclaiming account is not the sender"
+const ERR_P2IDE_RECLAIM_ACCT_IS_NOT_SENDER="failed to reclaim P2IDE note because the reclaiming account is not the sender"
 
-const.ERR_P2IDE_RECLAIM_HEIGHT_NOT_REACHED="failed to reclaim P2IDE note because the reclaim block height is not reached yet"
+const ERR_P2IDE_RECLAIM_HEIGHT_NOT_REACHED="failed to reclaim P2IDE note because the reclaim block height is not reached yet"
 
-const.ERR_P2IDE_RECLAIM_DISABLED="P2IDE reclaim is disabled"
+const ERR_P2IDE_RECLAIM_DISABLED="P2IDE reclaim is disabled"
 
-const.ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED="failed to consume P2IDE note because the note is still timelocked"
+const ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED="failed to consume P2IDE note because the note is still timelocked"
 
 # HELPER PROCEDURES
 # =================================================================================================
@@ -23,7 +23,7 @@ const.ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED="failed to consume P2IDE note becaus
 #!
 #! Inputs:  [current_block_height, timelock_block_height]
 #! Outputs: [current_block_height]
-proc.verify_unlocked
+proc verify_unlocked
     dup movdn.2
     # => [current_block_height, timelock_block_height, current_block_height]
 
@@ -43,7 +43,7 @@ end
 #! - the reclaim of the active note is disabled.
 #! - the reclaim block height is not reached yet.
 #! - the account attempting to reclaim the note is not the sender account.
-proc.reclaim_note
+proc reclaim_note
     # check that the reclaim of the active note is enabled
     movup.3 dup neq.0 assert.err=ERR_P2IDE_RECLAIM_DISABLED
     # => [reclaim_block_height, account_id_prefix, account_id_suffix, current_block_height]

@@ -1,4 +1,4 @@
-use.miden::kernel_proc_offsets
+use miden::kernel_proc_offsets
 
 # NATIVE ACCOUNT PROCEDURES
 # =================================================================================================
@@ -16,7 +16,7 @@ use.miden::kernel_proc_offsets
 #!   transaction.
 #!
 #! Invocation: exec
-export.get_id
+pub proc get_id
     # pad the stack
     padw padw padw push.0.0
     # => [pad(14)]
@@ -52,7 +52,7 @@ end
 #! - the nonce has already been incremented.
 #!
 #! Invocation: exec
-export.incr_nonce
+pub proc incr_nonce
     # pad the stack
     padw padw padw push.0.0.0
     # => [pad(15)]
@@ -93,7 +93,7 @@ end
 #!
 #! Panics if:
 #! - the vault or storage delta is not empty but the nonce increment is zero.
-export.compute_delta_commitment
+pub proc compute_delta_commitment
     # pad the stack
     padw padw padw push.0.0.0
     # => [pad(15)]
@@ -129,7 +129,7 @@ end
 #! - the native account is a faucet and the provided slot ID points to the reserved faucet storage slot.
 #!
 #! Invocation: exec
-export.set_item
+pub proc set_item
     exec.kernel_proc_offsets::account_set_item_offset
     # => [offset, slot_id_prefix, slot_id_suffix, VALUE]
 
@@ -166,7 +166,7 @@ end
 #! - the invocation of this procedure does not originate from the native account.
 #!
 #! Invocation: exec
-export.set_map_item
+pub proc set_map_item
     exec.kernel_proc_offsets::account_set_map_item_offset
     # => [offset, slot_id_prefix, slot_id_suffix, KEY, VALUE]
 
@@ -208,7 +208,7 @@ end
 #! - the vault already contains the same non-fungible asset.
 #!
 #! Invocation: exec
-export.add_asset
+pub proc add_asset
     exec.kernel_proc_offsets::account_add_asset_offset
     # => [offset, ASSET]
 
@@ -238,7 +238,7 @@ end
 #! - the non-fungible asset is not found in the vault.
 #!
 #! Invocation: exec
-export.remove_asset
+pub proc remove_asset
     exec.kernel_proc_offsets::account_remove_asset_offset
     # => [offset, ASSET]
 
@@ -271,7 +271,7 @@ end
 #! - was_called is 1 if the procedure was called, 0 otherwise.
 #!
 #! Invocation: exec
-export.was_procedure_called
+pub proc was_procedure_called
     exec.kernel_proc_offsets::account_was_procedure_called_offset
     # => [offset, PROC_ROOT]
 

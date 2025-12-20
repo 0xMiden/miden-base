@@ -1,6 +1,6 @@
 use miden::active_account
 use miden::native_account
-use std::word
+use miden::core::word
 
 #! Increment the nonce only if the account commitment has changed
 #!

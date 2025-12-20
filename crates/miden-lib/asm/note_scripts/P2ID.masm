@@ -1,13 +1,13 @@
-use.miden::active_account
-use.miden::account_id
-use.miden::active_note
+use miden::active_account
+use miden::account_id
+use miden::active_note
 
 # ERRORS
 # =================================================================================================
 
-const.ERR_P2ID_WRONG_NUMBER_OF_INPUTS="P2ID note expects exactly 2 note inputs"
+const ERR_P2ID_WRONG_NUMBER_OF_INPUTS="P2ID note expects exactly 2 note inputs"
 
-const.ERR_P2ID_TARGET_ACCT_MISMATCH="P2ID's target account address and transaction address do not match"
+const ERR_P2ID_TARGET_ACCT_MISMATCH="P2ID's target account address and transaction address do not match"
 
 #! Pay-to-ID script: adds all assets from the note to the account, assuming ID of the account
 #! matches target account ID specified by the note inputs.

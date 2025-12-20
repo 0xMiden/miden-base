@@ -1,12 +1,12 @@
-use.$kernel::account
-use.$kernel::account_delta
-use.$kernel::account_id
-use.$kernel::faucet
-use.$kernel::input_note
-use.$kernel::memory
-use.$kernel::note
-use.$kernel::output_note
-use.$kernel::tx
+use $kernel::account
+use $kernel::account_delta
+use $kernel::account_id
+use $kernel::faucet
+use $kernel::input_note
+use $kernel::memory
+use $kernel::note
+use $kernel::output_note
+use $kernel::tx
 
 # NOTE
 # =================================================================================================
@@ -20,25 +20,25 @@ use.$kernel::tx
 # ERRORS
 # =================================================================================================
 
-const.ERR_FAUCET_STORAGE_DATA_SLOT_IS_RESERVED="for faucets the FAUCET_STORAGE_DATA_SLOT storage slot is reserved and can not be used with set_account_item"
+const ERR_FAUCET_STORAGE_DATA_SLOT_IS_RESERVED="for faucets the FAUCET_STORAGE_DATA_SLOT storage slot is reserved and can not be used with set_account_item"
 
-const.ERR_FAUCET_TOTAL_ISSUANCE_PROC_CAN_ONLY_BE_CALLED_ON_FUNGIBLE_FAUCET="the faucet_get_total_fungible_asset_issuance procedure can only be called on a fungible faucet"
+const ERR_FAUCET_TOTAL_ISSUANCE_PROC_CAN_ONLY_BE_CALLED_ON_FUNGIBLE_FAUCET="the faucet_get_total_fungible_asset_issuance procedure can only be called on a fungible faucet"
 
-const.ERR_FAUCET_IS_NF_ASSET_ISSUED_PROC_CAN_ONLY_BE_CALLED_ON_NON_FUNGIBLE_FAUCET="the faucet_is_non_fungible_asset_issued procedure can only be called on a non-fungible faucet"
+const ERR_FAUCET_IS_NF_ASSET_ISSUED_PROC_CAN_ONLY_BE_CALLED_ON_NON_FUNGIBLE_FAUCET="the faucet_is_non_fungible_asset_issued procedure can only be called on a non-fungible faucet"
 
-const.ERR_KERNEL_PROCEDURE_OFFSET_OUT_OF_BOUNDS="provided kernel procedure offset is out of bounds"
+const ERR_KERNEL_PROCEDURE_OFFSET_OUT_OF_BOUNDS="provided kernel procedure offset is out of bounds"
 
-const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_ASSETS_WHILE_NO_NOTE_BEING_PROCESSED="failed to access note assets of active note because no note is currently being processed"
+const ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_ASSETS_WHILE_NO_NOTE_BEING_PROCESSED="failed to access note assets of active note because no note is currently being processed"
 
-const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_RECIPIENT_WHILE_NO_NOTE_BEING_PROCESSED="failed to access note recipient of active note because no note is currently being processed"
+const ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_RECIPIENT_WHILE_NO_NOTE_BEING_PROCESSED="failed to access note recipient of active note because no note is currently being processed"
 
-const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_METADATA_WHILE_NO_NOTE_BEING_PROCESSED="failed to access note metadata of active note because no note is currently being processed"
+const ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_METADATA_WHILE_NO_NOTE_BEING_PROCESSED="failed to access note metadata of active note because no note is currently being processed"
 
-const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_INPUTS_WHILE_NO_NOTE_BEING_PROCESSED="failed to access note inputs of active note because no note is currently being processed"
+const ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_INPUTS_WHILE_NO_NOTE_BEING_PROCESSED="failed to access note inputs of active note because no note is currently being processed"
 
-const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SCRIPT_ROOT_WHILE_NO_NOTE_BEING_PROCESSED="failed to access note script root of active note because no note is currently being processed"
+const ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SCRIPT_ROOT_WHILE_NO_NOTE_BEING_PROCESSED="failed to access note script root of active note because no note is currently being processed"
 
-const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SERIAL_NUMBER_WHILE_NO_NOTE_BEING_PROCESSED="failed to access note serial number of active note because no note is currently being processed"
+const ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SERIAL_NUMBER_WHILE_NO_NOTE_BEING_PROCESSED="failed to access note serial number of active note because no note is currently being processed"
 
 # AUTHENTICATION
 # =================================================================================================
@@ -52,7 +52,7 @@ const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SERIAL_NUMBER_WHILE_NO_NOTE_BEING_PROCESSE
 #! - the invocation of the kernel procedure does not originate from the account context.
 #!
 #! Invocation: exec
-proc.authenticate_account_origin
+proc authenticate_account_origin
     # get the hash of the caller
     padw caller
     # => [CALLER]
@@ -73,7 +73,7 @@ end
 #!   of the account.
 #!
 #! Invocation: exec
-proc.assert_auth_procedure_origin
+proc assert_auth_procedure_origin
     # get the hash of the caller
     padw caller
     # => [CALLER]
@@ -98,7 +98,7 @@ end
 #! - INIT_COMMITMENT is the initial account commitment.
 #!
 #! Invocation: dynexec
-export.account_get_initial_commitment
+pub proc account_get_initial_commitment
     # get the initial account commitment
     exec.account::get_initial_commitment
     # => [INIT_COMMITMENT, pad(16)]
@@ -117,7 +117,7 @@ end
 #! - ACCOUNT_COMMITMENT is the commitment of the account data.
 #!
 #! Invocation: dynexec
-export.account_compute_commitment
+pub proc account_compute_commitment
     # compute the active account commitment
     exec.account::compute_commitment
     # => [ACCOUNT_COMMITMENT, pad(16)]
@@ -148,7 +148,7 @@ end
 #! - the vault or storage delta is not empty but the nonce increment is zero.
 #!
 #! Invocation: dynexec
-export.account_compute_delta_commitment
+pub proc account_compute_delta_commitment
     # compute the account delta commitment
     exec.account_delta::compute_commitment
     # => [DELTA_COMMITMENT, pad(16)]
@@ -169,7 +169,7 @@ end
 #! - account_id_{prefix,suffix} are the prefix and suffix felts of the ID of the active account.
 #!
 #! Invocation: dynexec
-export.account_get_id
+pub proc account_get_id
     # get the native account ID
     exec.memory::get_native_account_id
     # => [native_account_id_prefix, native_account_id_suffix, is_native, pad(15)]
@@ -215,7 +215,7 @@ end
 #! - nonce is the active account's nonce.
 #!
 #! Invocation: dynexec
-export.account_get_nonce
+pub proc account_get_nonce
     # get the account nonce
     exec.account::get_nonce
     # => [nonce, pad(16)]
@@ -241,7 +241,7 @@ end
 #! - the nonce has already been incremented.
 #!
 #! Invocation: dynexec
-export.account_incr_nonce
+pub proc account_incr_nonce
     # check that this procedure was executed against the native account
     exec.memory::assert_native_account
     # => [pad(16)]
@@ -268,7 +268,7 @@ end
 #! - CODE_COMMITMENT is the commitment of the account code.
 #!
 #! Invocation: dynexec
-export.account_get_code_commitment
+pub proc account_get_code_commitment
     # authenticate that the procedure invocation originates from the account context
     exec.authenticate_account_origin
     # => [pad(16)]
@@ -291,7 +291,7 @@ end
 #! - INIT_STORAGE_COMMITMENT is the initial account storage commitment.
 #!
 #! Invocation: dynexec
-export.account_get_initial_storage_commitment
+pub proc account_get_initial_storage_commitment
     # get the initial account storage commitment
     exec.account::get_initial_storage_commitment
     # => [INIT_STORAGE_COMMITMENT, pad(16)]
@@ -310,7 +310,7 @@ end
 #! - STORAGE_COMMITMENT is the commitment of the account storage.
 #!
 #! Invocation: dynexec
-export.account_compute_storage_commitment
+pub proc account_compute_storage_commitment
     # authenticate that the procedure invocation originates from the account context
     exec.authenticate_account_origin
     # => [pad(16)]
@@ -338,7 +338,7 @@ end
 #! - a slot with the provided slot ID does not exist in account storage.
 #!
 #! Invocation: dynexec
-export.account_get_item
+pub proc account_get_item
     # authenticate that the procedure invocation originates from the account context
     exec.authenticate_account_origin
     # => [slot_id_prefix, slot_id_suffix, pad(14)]
@@ -369,7 +369,7 @@ end
 #! - the native account is a faucet and the provided slot ID points to the reserved faucet storage slot.
 #!
 #! Invocation: dynexec
-export.account_set_item
+pub proc account_set_item
     # check that this procedure was executed against the native account
     exec.memory::assert_native_account
     # => [slot_id_prefix, slot_id_suffix, VALUE, pad(10)]
@@ -410,7 +410,7 @@ end
 #! - the requested storage slot type is not map.
 #!
 #! Invocation: dynexec
-export.account_get_map_item
+pub proc account_get_map_item
     # authenticate that the procedure invocation originates from the account context
     exec.authenticate_account_origin
     # => [slot_id_prefix, slot_id_suffix, KEY, pad(10)]
@@ -434,7 +434,7 @@ end
 #! - a slot with the provided slot ID does not exist in account storage.
 #!
 #! Invocation: dynexec
-export.account_get_initial_item
+pub proc account_get_initial_item
     # authenticate that the procedure invocation originates from the account context
     exec.authenticate_account_origin
     # => [slot_id_prefix, slot_id_suffix, pad(14)]
@@ -465,7 +465,7 @@ end
 #! - the requested storage slot type is not map.
 #!
 #! Invocation: dynexec
-export.account_get_initial_map_item
+pub proc account_get_initial_map_item
     # authenticate that the procedure invocation originates from the account context
     exec.authenticate_account_origin
     # => [slot_id_prefix, slot_id_suffix, KEY, pad(10)]
@@ -497,7 +497,7 @@ end
 #! - the invocation of this procedure does not originate from the native account.
 #!
 #! Invocation: dynexec
-export.account_set_map_item
+pub proc account_set_map_item
     # check that this procedure was executed against the native account
     exec.memory::assert_native_account
     # => [slot_id_prefix, slot_id_suffix, KEY, NEW_VALUE, pad(6)]
@@ -524,7 +524,7 @@ end
 #! - INIT_VAULT_ROOT is the initial account vault root.
 #!
 #! Invocation: dynexec
-export.account_get_initial_vault_root
+pub proc account_get_initial_vault_root
     # get the initial account vault root
     exec.account::get_initial_vault_root
     # => [INIT_VAULT_ROOT, pad(16)]
@@ -543,7 +543,7 @@ end
 #! - VAULT_ROOT is the root of the account vault.
 #!
 #! Invocation: dynexec
-export.account_get_vault_root
+pub proc account_get_vault_root
     # fetch the account vault root
     exec.memory::get_account_vault_root
     # => [VAULT_ROOT, pad(16)]
@@ -573,7 +573,7 @@ end
 #! - the invocation of this procedure does not originate from the native account.
 #!
 #! Invocation: dynexec
-export.account_add_asset
+pub proc account_add_asset
     # check that this procedure was executed against the native account
     exec.memory::assert_native_account
     # => [ASSET, pad(12)]
@@ -602,7 +602,7 @@ end
 #! - the invocation of this procedure does not originate from the native account.
 #!
 #! Invocation: dynexec
-export.account_remove_asset
+pub proc account_remove_asset
     # check that this procedure was executed against the native account
     exec.memory::assert_native_account
     # => [ASSET, pad(12)]
@@ -631,7 +631,7 @@ end
 #! - the provided faucet ID is not an ID of a fungible faucet.
 #!
 #! Invocation: dynexec
-export.account_get_balance
+pub proc account_get_balance
     exec.account::get_balance
     # => [balance, pad(15)]
 end
@@ -651,7 +651,7 @@ end
 #! - the provided faucet ID is not an ID of a fungible faucet.
 #!
 #! Invocation: dynexec
-export.account_get_initial_balance
+pub proc account_get_initial_balance
     exec.account::get_initial_balance
     # => [init_balance, pad(15)]
 end
@@ -670,7 +670,7 @@ end
 #! - the ASSET is a fungible asset.
 #!
 #! Invocation: dynexec
-export.account_has_non_fungible_asset
+pub proc account_has_non_fungible_asset
     exec.account::has_non_fungible_asset
     # => [has_asset, pad(15)]
 end
@@ -688,7 +688,7 @@ end
 #! - the procedure root is not part of the account code.
 #!
 #! Invocation: dynexec
-export.account_was_procedure_called
+pub proc account_was_procedure_called
     # check that this procedure was executed against the native account
     exec.memory::assert_native_account
     # => [PROC_ROOT, pad(12)]
@@ -707,7 +707,7 @@ end
 #! - num_procedures is the number of procedures in the active account.
 #!
 #! Invocation: dynexec
-export.account_get_num_procedures
+pub proc account_get_num_procedures
     # get the number of procedures
     exec.memory::get_num_account_procedures
     # => [num_procedures, pad(16)]
@@ -730,7 +730,7 @@ end
 #! - the procedure index is out of bounds.
 #!
 #! Invocation: dynexec
-export.account_get_procedure_root
+pub proc account_get_procedure_root
     # get the procedure root
     exec.account::get_procedure_root
     # => [PROC_ROOT, pad(15)]
@@ -754,7 +754,7 @@ end
 #!   available on the active account.
 #!
 #! Invocation: dynexec
-export.account_has_procedure
+pub proc account_has_procedure
     # check if the procedure was called
     exec.account::has_procedure
     # => [is_procedure_available, pad(15)]
@@ -783,7 +783,7 @@ end
 #!   - if the non-fungible asset being minted already exists.
 #!
 #! Invocation: dynexec
-export.faucet_mint_asset
+pub proc faucet_mint_asset
     # check that this procedure was executed against the native account
     exec.memory::assert_native_account
     # => [ASSET, pad(12)]
@@ -818,7 +818,7 @@ end
 #!     transaction via a note or the accounts vault.
 #!
 #! Invocation: dynexec
-export.faucet_burn_asset
+pub proc faucet_burn_asset
     # check that this procedure was executed against the native account
     exec.memory::assert_native_account
     # => [ASSET, pad(12)]
@@ -845,7 +845,7 @@ end
 #! - the transaction is not being executed against a fungible faucet.
 #!
 #! Invocation: dynexec
-export.faucet_get_total_fungible_asset_issuance
+pub proc faucet_get_total_fungible_asset_issuance
     # assert that we are executing a transaction against a fungible faucet (access checks)
     exec.account::get_id swap drop exec.account_id::is_fungible_faucet
     assert.err=ERR_FAUCET_TOTAL_ISSUANCE_PROC_CAN_ONLY_BE_CALLED_ON_FUNGIBLE_FAUCET
@@ -875,7 +875,7 @@ end
 #! - the ASSET is not associated with the faucet the transaction is being executed against.
 #!
 #! Invocation: dynexec
-export.faucet_is_non_fungible_asset_issued
+pub proc faucet_is_non_fungible_asset_issued
     # assert that we are executing a transaction against a non-fungible faucet (access checks)
     exec.account::get_id swap drop exec.account_id::is_non_fungible_faucet
     assert.err=ERR_FAUCET_IS_NF_ASSET_ISSUED_PROC_CAN_ONLY_BE_CALLED_ON_NON_FUNGIBLE_FAUCET
@@ -912,7 +912,7 @@ end
 #!   from incorrect context).
 #!
 #! Invocation: dynexec
-export.input_note_get_assets_info
+pub proc input_note_get_assets_info
     # get the input note pointer depending on whether the requested note is current or it was 
     # requested by index.
     exec.get_requested_note_ptr
@@ -950,7 +950,7 @@ end
 #!   from incorrect context).
 #!
 #! Invocation: dynexec
-export.input_note_get_recipient
+pub proc input_note_get_recipient
     # get the input note pointer depending on whether the requested note is current or it was 
     # requested by index.
     exec.get_requested_note_ptr
@@ -988,7 +988,7 @@ end
 #!   from incorrect context).
 #!
 #! Invocation: dynexec
-export.input_note_get_metadata
+pub proc input_note_get_metadata
     # get the input note pointer depending on whether the requested note is current or it was 
     # requested by index.
     exec.get_requested_note_ptr
@@ -1026,7 +1026,7 @@ end
 #!   from incorrect context).
 #!
 #! Invocation: dynexec
-export.input_note_get_serial_number
+pub proc input_note_get_serial_number
     # get the input note pointer depending on whether the requested note is current or it was 
     # requested by index.
     exec.get_requested_note_ptr
@@ -1067,7 +1067,7 @@ end
 #!   from incorrect context).
 #!
 #! Invocation: dynexec
-export.input_note_get_inputs_info
+pub proc input_note_get_inputs_info
     # get the input note pointer depending on whether the requested note is current or it was 
     # requested by index.
     exec.get_requested_note_ptr
@@ -1111,7 +1111,7 @@ end
 #!   from incorrect context).
 #!
 #! Invocation: dynexec
-export.input_note_get_script_root
+pub proc input_note_get_script_root
     # get the input note pointer depending on whether the requested note is current or it was 
     # requested by index.
     exec.get_requested_note_ptr
@@ -1150,7 +1150,7 @@ end
 #! - note_idx is the index of the created note.
 #!
 #! Invocation: dynexec
-export.output_note_create
+pub proc output_note_create
     # check that this procedure was executed against the native account
     exec.memory::assert_native_account
     # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
@@ -1172,7 +1172,7 @@ end
 #! - the procedure is called when the active account is not the native one.
 #!
 #! Invocation: dynexec
-export.output_note_add_asset
+pub proc output_note_add_asset
     # check that this procedure was executed against the native account
     exec.memory::assert_native_account
     # => [note_idx, ASSET, pad(11)]
@@ -1195,7 +1195,7 @@ end
 #! - the note index is greater or equal to the total number of output notes.
 #!
 #! Invocation: dynexec
-export.output_note_get_assets_info
+pub proc output_note_get_assets_info
     # assert that the provided note index is less than the total number of output notes
     exec.output_note::assert_note_index_in_bounds
     # => [note_index, pad(15)]
@@ -1224,7 +1224,7 @@ end
 #! - the note index is greater or equal to the total number of output notes.
 #!
 #! Invocation: dynexec
-export.output_note_get_recipient
+pub proc output_note_get_recipient
     # assert that the provided note index is less than the total number of output notes
     exec.output_note::assert_note_index_in_bounds
     # => [note_index, pad(15)]
@@ -1255,7 +1255,7 @@ end
 #! - the note index is greater or equal to the total number of output notes.
 #!
 #! Invocation: dynexec
-export.output_note_get_metadata
+pub proc output_note_get_metadata
     # assert that the provided note index is less than the total number of output notes
     exec.output_note::assert_note_index_in_bounds
     # => [note_index, pad(15)]
@@ -1291,7 +1291,7 @@ end
 #! - INPUT_NOTES_COMMITMENT is the input notes commitment hash.
 #!
 #! Invocation: dynexec
-export.tx_get_input_notes_commitment
+pub proc tx_get_input_notes_commitment
     exec.tx::get_input_notes_commitment
     # => [INPUT_NOTES_COMMITMENT, pad(16)]
 
@@ -1310,7 +1310,7 @@ end
 #! - OUTPUT_NOTES_COMMITMENT is the output notes commitment.
 #!
 #! Invocation: dynexec
-export.tx_get_output_notes_commitment
+pub proc tx_get_output_notes_commitment
     # get the output notes commitment
     exec.tx::get_output_notes_commitment
     # => [OUTPUT_NOTES_COMMITMENT, pad(16)]
@@ -1329,7 +1329,7 @@ end
 #! - num_input_notes is the total number of input notes consumed by this transaction.
 #!
 #! Invocation: dynexec
-export.tx_get_num_input_notes
+pub proc tx_get_num_input_notes
     # get the number of input notes
     exec.tx::get_num_input_notes
     # => [num_input_notes, pad(16)]
@@ -1348,7 +1348,7 @@ end
 #! - num_output_notes is the number of output notes created in this transaction so far.
 #!
 #! Invocation: dynexec
-export.tx_get_num_output_notes
+pub proc tx_get_num_output_notes
     # get the number of input notes
     exec.tx::get_num_output_notes
     # => [num_output_notes, pad(16)]
@@ -1367,7 +1367,7 @@ end
 #! - BLOCK_COMMITMENT is the commitment of the transaction reference block.
 #!
 #! Invocation: dynexec
-export.tx_get_block_commitment
+pub proc tx_get_block_commitment
     exec.tx::get_block_commitment
     # => [BLOCK_COMMITMENT, pad(16)]
 
@@ -1385,7 +1385,7 @@ end
 #! - num is the transaction reference block number.
 #!
 #! Invocation: dynexec
-export.tx_get_block_number
+pub proc tx_get_block_number
     # get the block number
     exec.tx::get_block_number
     # => [num, pad(16)]
@@ -1402,7 +1402,7 @@ end
 #!
 #! Where:
 #! - timestamp is the timestamp of the reference block for this transaction.
-export.tx_get_block_timestamp
+pub proc tx_get_block_timestamp
     # get the transaction reference block timestamp
     exec.tx::get_block_timestamp
     # => [timestamp, pad(16)]
@@ -1446,7 +1446,7 @@ end
 #! - foreign context is created against the native account.
 #!
 #! Invocation: dynexec
-export.tx_start_foreign_context
+pub proc tx_start_foreign_context
     # get the memory address and a flag whether this account was already loaded.
     exec.account::get_account_data_ptr
     # OS => [was_loaded, ptr, foreign_account_id_prefix, foreign_account_id_suffix, pad(14)]
@@ -1479,7 +1479,7 @@ end
 #! - the active account is the native account.
 #!
 #! Invocation: dynexec
-export.tx_end_foreign_context
+pub proc tx_end_foreign_context
     exec.memory::pop_ptr_from_account_stack
     # => [pad(16)]
 end
@@ -1498,7 +1498,7 @@ end
 #! - block_height_delta is the desired expiration time delta (1 to 0xFFFF).
 #!
 #! Invocation: dynexec
-export.tx_update_expiration_block_delta
+pub proc tx_update_expiration_block_delta
     exec.tx::update_expiration_block_delta
     # => [pad(16)]
 end
@@ -1512,7 +1512,7 @@ end
 #! - block_height_delta is the stored expiration time delta (1 to 0xFFFF).
 #!
 #! Invocation: dynexec
-export.tx_get_expiration_delta
+pub proc tx_get_expiration_delta
     exec.tx::get_expiration_delta
     # => [block_height_delta, pad(16)]
 
@@ -1538,7 +1538,7 @@ end
 #! - the provided procedure offset exceeds the number of kernel procedures.
 #!
 #! Invocation: syscall
-export.exec_kernel_proc
+pub proc exec_kernel_proc
     # check that the provided procedure offset is within expected bounds
     dup exec.memory::get_num_kernel_procedures
     lt assert.err=ERR_KERNEL_PROCEDURE_OFFSET_OUT_OF_BOUNDS
@@ -1574,7 +1574,7 @@ end
 #!
 #! Panics if:
 #! - the note index is greater or equal to the total number of input notes.
-proc.get_requested_note_ptr
+proc get_requested_note_ptr
     # get the memory pointer to the note with the specified index and verify it is valid
     swap exec.input_note::get_input_note_ptr swap
     # => [is_active_note, indexed_input_note_ptr]

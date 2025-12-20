@@ -74,8 +74,8 @@ impl BasicFungibleFaucet {
     /// The maximum number of decimals supported by the component.
     pub const MAX_DECIMALS: u8 = 12;
 
-    const DISTRIBUTE_PROC_NAME: &str = "distribute";
-    const BURN_PROC_NAME: &str = "burn";
+    const DISTRIBUTE_PROC_NAME: &str = "basic_fungible_faucet::distribute";
+    const BURN_PROC_NAME: &str = "basic_fungible_faucet::burn";
 
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------

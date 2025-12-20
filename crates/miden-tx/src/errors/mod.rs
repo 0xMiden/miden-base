@@ -8,7 +8,7 @@ use miden_objects::account::auth::PublicKeyCommitment;
 use miden_objects::assembly::diagnostics::reporting::PrintDiagnostic;
 use miden_objects::asset::AssetVaultKey;
 use miden_objects::block::BlockNumber;
-use miden_objects::crypto::merkle::SmtProofError;
+use miden_objects::crypto::merkle::smt::SmtProofError;
 use miden_objects::note::{NoteId, NoteMetadata};
 use miden_objects::transaction::TransactionSummary;
 use miden_objects::{

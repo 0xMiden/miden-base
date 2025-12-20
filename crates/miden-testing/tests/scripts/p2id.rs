@@ -222,7 +222,7 @@ async fn test_create_consume_multiple_notes() -> anyhow::Result<()> {
 
     let tx_script_src = &format!(
         "
-            use.miden::output_note
+            use miden::output_note
             begin
                 push.{recipient_1}
                 push.{note_execution_hint_1}

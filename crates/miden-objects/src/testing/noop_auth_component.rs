@@ -6,7 +6,7 @@ use crate::utils::sync::LazyLock;
 // ================================================================================================
 
 const NOOP_AUTH_CODE: &str = "
-    export.auth_noop
+    pub proc auth_noop
         push.0 drop
     end
 ";

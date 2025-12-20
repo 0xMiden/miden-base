@@ -470,13 +470,11 @@ mod tests {
         use miden_assembly::Assembler;
 
         let code_with_multiple_auth = "
-            use.miden::account
-
-            export.auth_basic
+            pub proc auth_basic
                 push.1 drop
             end
 
-            export.auth_secondary
+            pub proc auth_secondary
                 push.0 drop
             end
         ";

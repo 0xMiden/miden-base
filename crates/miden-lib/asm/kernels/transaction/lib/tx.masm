@@ -1,19 +1,19 @@
-use.$kernel::memory
-use.$kernel::note
+use $kernel::memory
+use $kernel::note
 
 # CONSTANTS
 # =================================================================================================
 
 # Max value for U16, used as the upper limit for expiration block delta
-const.EXPIRY_UPPER_LIMIT=0xFFFF+1
+const EXPIRY_UPPER_LIMIT=0xFFFF+1
 
 # Max U32 value, used for initializing the expiration block number
-const.MAX_BLOCK_NUM=0xFFFFFFFF
+const MAX_BLOCK_NUM=0xFFFFFFFF
 
 # ERRORS
 # =================================================================================================
 
-const.ERR_TX_INVALID_EXPIRATION_DELTA="transaction expiration block delta must be within 0x1 and 0xFFFF"
+const ERR_TX_INVALID_EXPIRATION_DELTA="transaction expiration block delta must be within 0x1 and 0xFFFF"
 
 # PROCEDURES
 # =================================================================================================
@@ -25,7 +25,7 @@ const.ERR_TX_INVALID_EXPIRATION_DELTA="transaction expiration block delta must b
 #!
 #! Where:
 #! - BLOCK_COMMITMENT is the commitment of the transaction reference block.
-export.memory::get_block_commitment
+pub use memory::get_block_commitment
 
 #! Returns the block number of the transaction reference block.
 #!
@@ -34,7 +34,7 @@ export.memory::get_block_commitment
 #!
 #! Where:
 #! - num is the transaction reference block number.
-export.memory::get_blk_num->get_block_number
+pub use memory::get_blk_num->get_block_number
 
 #! Returns the block timestamp of the reference block for this transaction.
 #!
@@ -43,7 +43,7 @@ export.memory::get_blk_num->get_block_number
 #!
 #! Where:
 #! - timestamp is the timestamp of the reference block for this transaction.
-export.memory::get_blk_timestamp->get_block_timestamp
+pub use memory::get_blk_timestamp->get_block_timestamp
 
 #! Returns the input notes commitment hash.
 #!
@@ -54,7 +54,7 @@ export.memory::get_blk_timestamp->get_block_timestamp
 #!
 #! Where:
 #! - INPUT_NOTES_COMMITMENT is the input notes commitment hash.
-export.memory::get_input_notes_commitment
+pub use memory::get_input_notes_commitment
 
 #! Returns the output notes commitment hash. This is computed as a sequential hash of
 #! (note_id, note_metadata) tuples over all output notes.
@@ -64,7 +64,7 @@ export.memory::get_input_notes_commitment
 #!
 #! Where:
 #! - OUTPUT_NOTES_COMMITMENT is the output notes commitment.
-export.note::compute_output_notes_commitment->get_output_notes_commitment
+pub use note::compute_output_notes_commitment->get_output_notes_commitment
 
 #! Returns the total number of input notes consumed by this transaction.
 #!
@@ -73,7 +73,7 @@ export.note::compute_output_notes_commitment->get_output_notes_commitment
 #!
 #! Where:
 #! - num_input_notes is the total number of input notes consumed by this transaction.
-export.memory::get_num_input_notes
+pub use memory::get_num_input_notes
 
 #! Returns the current number of output notes created in this transaction.
 #!
@@ -82,7 +82,7 @@ export.memory::get_num_input_notes
 #!
 #! Where:
 #! - num_output_notes is the number of output notes created in this transaction so far.
-export.memory::get_num_output_notes
+pub use memory::get_num_output_notes
 
 #! Updates the transaction expiration block delta.
 #!
@@ -95,7 +95,7 @@ export.memory::get_num_output_notes
 #!
 #! Where:
 #! - block_height_delta is the desired expiration time delta (1 to 0xFFFF).
-export.update_expiration_block_delta
+pub proc update_expiration_block_delta
     # Ensure block_height_delta is between 1 and 0xFFFF (inclusive)
     dup neq.0 assert.err=ERR_TX_INVALID_EXPIRATION_DELTA
     # => [block_height_delta]
@@ -130,7 +130,7 @@ end
 #!
 #! Where:
 #! - block_height_delta is the stored expiration time delta (1 to 0xFFFF).
-export.get_expiration_delta
+pub proc get_expiration_delta
     exec.memory::get_expiration_block_num
     # => [stored_expiration_block_num]
 

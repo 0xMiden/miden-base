@@ -1,9 +1,9 @@
-use.miden::native_account
-use.miden::output_note
+use miden::native_account
+use miden::output_note
 
 # CONSTANTS
 # =================================================================================================
-const.PUBLIC_NOTE=1
+const PUBLIC_NOTE=1
 
 #! Adds the provided asset to the active account.
 #!
@@ -19,7 +19,7 @@ const.PUBLIC_NOTE=1
 #!   the total amount would be greater than 2^63.
 #!
 #! Invocation: call
-export.receive_asset
+pub proc receive_asset
     exec.native_account::add_asset
     # => [ASSET', pad(12)]
 
@@ -48,7 +48,7 @@ end
 #! - the non-fungible asset is not found in the vault.
 #!
 #! Invocation: call
-export.move_asset_to_note
+pub proc move_asset_to_note
     # remove the asset from the account
     exec.native_account::remove_asset
     # => [ASSET, note_idx, pad(11)]

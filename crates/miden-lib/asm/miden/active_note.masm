@@ -1,15 +1,15 @@
-use.std::mem
+use miden::core::mem
 
-use.miden::kernel_proc_offsets
-use.miden::note
-use.miden::contracts::wallets::basic->wallet
+use miden::kernel_proc_offsets
+use miden::note
+use miden::contracts::wallets::basic->wallet
 
 # ERRORS
 # =================================================================================================
 
-const.ERR_NOTE_DATA_DOES_NOT_MATCH_COMMITMENT="note data does not match the commitment"
+const ERR_NOTE_DATA_DOES_NOT_MATCH_COMMITMENT="note data does not match the commitment"
 
-const.ERR_NOTE_INVALID_NUMBER_OF_INPUTS="the specified number of note inputs does not match the actual number"
+const ERR_NOTE_INVALID_NUMBER_OF_INPUTS="the specified number of note inputs does not match the actual number"
 
 # ACTIVE NOTE PROCEDURES
 # =================================================================================================
@@ -30,7 +30,7 @@ const.ERR_NOTE_INVALID_NUMBER_OF_INPUTS="the specified number of note inputs doe
 #! - no note is currently active.
 #!
 #! Invocation: exec
-export.get_assets
+pub proc get_assets
     # pad the stack
     padw padw padw push.0.0
     # => [pad(14), dest_ptr]
@@ -66,7 +66,7 @@ end
 #! - no note is currently active.
 #!
 #! Invocation: exec
-export.get_recipient
+pub proc get_recipient
     # pad the stack
     padw padw padw push.0.0
     # => [pad(14)]
@@ -103,7 +103,7 @@ end
 #! - no note is currently active.
 #!
 #! Invocation: exec
-export.get_inputs
+pub proc get_inputs
     # pad the stack
     padw padw padw push.0.0
     # => [pad(14), dest_ptr]
@@ -140,7 +140,7 @@ end
 #! - no note is currently active.
 #!
 #! Invocation: exec
-export.get_metadata
+pub proc get_metadata
     # pad the stack
     padw padw padw push.0.0
     # => [pad(14)]
@@ -172,7 +172,7 @@ end
 #! - no note is currently active.
 #!
 #! Invocation: exec
-export.get_sender
+pub proc get_sender
     # pad the stack
     padw padw padw push.0.0
     # => [pad(14)]
@@ -208,7 +208,7 @@ end
 #! - no note is currently active.
 #!
 #! Invocation: exec
-export.get_serial_number
+pub proc get_serial_number
     # pad the stack
     padw padw padw push.0.0
     # => [pad(14)]
@@ -240,7 +240,7 @@ end
 #! - no note is currently active.
 #!
 #! Invocation: exec
-export.get_script_root
+pub proc get_script_root
     # pad the stack
     padw padw padw push.0.0
     # => [pad(14)]
@@ -264,7 +264,8 @@ end
 #!
 #! Inputs:  []
 #! Outputs: []
-export.add_assets_to_account.1024
+@locals(1024)
+pub proc add_assets_to_account
     # write assets to local memory starting at offset 0
     # we have allocated 4 * MAX_ASSETS_PER_NOTE number of locals so all assets should fit
     # since the asset memory will be overwritten, we don't have to initialize the locals to zero
@@ -330,7 +331,7 @@ end
 #!   }
 #! Outputs:
 #!   Operand stack: [num_inputs, dest_ptr]
-proc.write_inputs_to_memory
+proc write_inputs_to_memory
     # load the inputs from the advice map to the advice stack
     adv.push_mapvaln
     # OS => [NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]

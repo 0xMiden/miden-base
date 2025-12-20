@@ -3,7 +3,8 @@ use alloc::string::ToString;
 use miden_crypto::merkle::SparseMerklePath;
 
 use crate::batch::BatchNoteTree;
-use crate::crypto::merkle::{LeafIndex, MerkleError, SimpleSmt};
+use crate::crypto::merkle::MerkleError;
+use crate::crypto::merkle::smt::{LeafIndex, SimpleSmt};
 use crate::note::{NoteId, NoteMetadata, compute_note_commitment};
 use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 use crate::{
@@ -176,7 +177,7 @@ impl Deserializable for BlockNoteTree {
 
 #[cfg(test)]
 mod tests {
-    use miden_crypto::merkle::SimpleSmt;
+    use miden_crypto::merkle::smt::SimpleSmt;
     use miden_crypto::utils::{Deserializable, Serializable};
 
     use super::BlockNoteTree;

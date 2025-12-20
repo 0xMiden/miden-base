@@ -1,18 +1,18 @@
-use.miden::active_note
-use.miden::output_note
-use.miden::contracts::wallets::basic->wallet
+use miden::active_note
+use miden::output_note
+use miden::contracts::wallets::basic->wallet
 
 # CONSTANTS
 # =================================================================================================
 
-const.SWAP_NOTE_INPUTS_NUMBER=12
+const SWAP_NOTE_INPUTS_NUMBER=12
 
 # ERRORS
 # =================================================================================================
 
-const.ERR_SWAP_WRONG_NUMBER_OF_INPUTS="SWAP script expects exactly 12 note inputs"
+const ERR_SWAP_WRONG_NUMBER_OF_INPUTS="SWAP script expects exactly 12 note inputs"
 
-const.ERR_SWAP_WRONG_NUMBER_OF_ASSETS="SWAP script requires exactly 1 note asset"
+const ERR_SWAP_WRONG_NUMBER_OF_ASSETS="SWAP script requires exactly 1 note asset"
 
 #! Swap script: adds an asset from the note into consumers account and
 #! creates a note consumable by note issuer containing requested ASSET.

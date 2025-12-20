@@ -1,7 +1,7 @@
 use super::{NullifierBlock, NullifierWitness};
 use crate::Word;
 use crate::block::BlockNumber;
-use crate::crypto::merkle::PartialSmt;
+use crate::crypto::merkle::smt::PartialSmt;
 use crate::errors::NullifierTreeError;
 use crate::note::Nullifier;
 
@@ -110,7 +110,7 @@ impl PartialNullifierTree {
 #[cfg(test)]
 mod tests {
     use assert_matches::assert_matches;
-    use miden_crypto::merkle::Smt;
+    use miden_crypto::merkle::smt::Smt;
     use winter_rand_utils::rand_value;
 
     use super::*;

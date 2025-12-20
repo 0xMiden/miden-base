@@ -1,35 +1,35 @@
-use.$kernel::account
-use.$kernel::memory
-use.$kernel::note
-use.$kernel::asset
-use.$kernel::constants
-use.std::word
+use $kernel::account
+use $kernel::memory
+use $kernel::note
+use $kernel::asset
+use $kernel::constants
+use miden::core::word
 
 # CONSTANTS
 # =================================================================================================
 
 # Constants for different note types
-const.PUBLIC_NOTE=1     # 0b01
-const.PRIVATE_NOTE=2    # 0b10
-const.ENCRYPTED_NOTE=3  # 0b11
+const PUBLIC_NOTE=1     # 0b01
+const PRIVATE_NOTE=2    # 0b10
+const ENCRYPTED_NOTE=3  # 0b11
 
 # The note type must be PUBLIC, unless the high bits are `0b11`. (See the table below.)
-const.LOCAL_ANY_PREFIX=3 # 0b11
+const LOCAL_ANY_PREFIX=3 # 0b11
 
 # ERRORS
 # =================================================================================================
 
-const.ERR_TX_NUMBER_OF_OUTPUT_NOTES_EXCEEDS_LIMIT="number of output notes in the transaction exceeds the maximum limit of 1024"
+const ERR_TX_NUMBER_OF_OUTPUT_NOTES_EXCEEDS_LIMIT="number of output notes in the transaction exceeds the maximum limit of 1024"
 
-const.ERR_NOTE_INVALID_TYPE="invalid note type"
+const ERR_NOTE_INVALID_TYPE="invalid note type"
 
-const.ERR_OUTPUT_NOTE_INDEX_OUT_OF_BOUNDS="requested output note index should be less than the total number of created output notes"
+const ERR_OUTPUT_NOTE_INDEX_OUT_OF_BOUNDS="requested output note index should be less than the total number of created output notes"
 
-const.ERR_NOTE_INVALID_INDEX="failed to find note at the given index; index must be within [0, num_of_notes]"
+const ERR_NOTE_INVALID_INDEX="failed to find note at the given index; index must be within [0, num_of_notes]"
 
-const.ERR_NOTE_FUNGIBLE_MAX_AMOUNT_EXCEEDED="adding a fungible asset to a note cannot exceed the max_amount of 9223372036854775807"
+const ERR_NOTE_FUNGIBLE_MAX_AMOUNT_EXCEEDED="adding a fungible asset to a note cannot exceed the max_amount of 9223372036854775807"
 
-const.ERR_NON_FUNGIBLE_ASSET_ALREADY_EXISTS="non-fungible asset that already exists in the note cannot be added again"
+const ERR_NON_FUNGIBLE_ASSET_ALREADY_EXISTS="non-fungible asset that already exists in the note cannot be added again"
 
 # The 2 highest bits in the u32 tag have the following meaning:
 #
@@ -51,22 +51,22 @@ const.ERR_NON_FUNGIBLE_ASSET_ALREADY_EXISTS="non-fungible asset that already exi
 # users won't see the note 2. generate slightly more load as extra validation is performed for the
 # invalid tags. None of these scenarios have any significant impact.
 
-const.ERR_NOTE_INVALID_NOTE_TYPE_FOR_NOTE_TAG_PREFIX="invalid note type for the given note tag prefix"
+const ERR_NOTE_INVALID_NOTE_TYPE_FOR_NOTE_TAG_PREFIX="invalid note type for the given note tag prefix"
 
-const.ERR_NOTE_TAG_MUST_BE_U32="the note's tag must fit into a u32 so the 32 most significant bits must be zero"
+const ERR_NOTE_TAG_MUST_BE_U32="the note's tag must fit into a u32 so the 32 most significant bits must be zero"
 
 # EVENTS
 # =================================================================================================
 
 # Event emitted before a new note is created.
-const.NOTE_BEFORE_CREATED_EVENT=event("miden::note::before_created")
+const NOTE_BEFORE_CREATED_EVENT=event("miden::note::before_created")
 # Event emitted after a new note is created.
-const.NOTE_AFTER_CREATED_EVENT=event("miden::note::after_created")
+const NOTE_AFTER_CREATED_EVENT=event("miden::note::after_created")
 
 # Event emitted before an ASSET is added to a note
-const.NOTE_BEFORE_ADD_ASSET_EVENT=event("miden::note::before_add_asset")
+const NOTE_BEFORE_ADD_ASSET_EVENT=event("miden::note::before_add_asset")
 # Event emitted after an ASSET is added to a note
-const.NOTE_AFTER_ADD_ASSET_EVENT=event("miden::note::after_add_asset")
+const NOTE_AFTER_ADD_ASSET_EVENT=event("miden::note::after_add_asset")
 
 # OUTPUT NOTE PROCEDURES
 # =================================================================================================
@@ -90,7 +90,7 @@ const.NOTE_AFTER_ADD_ASSET_EVENT=event("miden::note::after_add_asset")
 #! - the note_tag is not an u32.
 #! - the note_tag starts with anything but 0b11 and note_type is not public.
 #! - the number of output notes exceeds the maximum limit of 1024.
-export.create
+pub proc create
     emit.NOTE_BEFORE_CREATED_EVENT
 
     exec.build_metadata
@@ -132,7 +132,7 @@ end
 #! - note_index is the index of the output note whose assets info should be returned.
 #! - num_assets is the number of assets in the specified note.
 #! - ASSETS_COMMITMENT is a sequential hash of the assets in the specified note.
-export.get_assets_info
+pub proc get_assets_info
     # get the note data pointer based on the index of the requested note
     exec.memory::get_output_note_ptr
     # => [note_data_ptr]
@@ -188,7 +188,7 @@ end
 #! - the max amount of fungible assets is exceeded.
 #! - the non-fungible asset already exists in the note.
 #! - the total number of ASSETs exceeds the maximum of 256.
-export.add_asset
+pub proc add_asset
     # check if the note exists, it must be within [0, num_of_notes]
     dup exec.memory::get_num_output_notes lte assert.err=ERR_NOTE_INVALID_INDEX
     # => [note_idx, ASSET]
@@ -242,7 +242,7 @@ end
 #!
 #! Inputs:  [note_index]
 #! Outputs: [note_index]
-export.assert_note_index_in_bounds
+pub proc assert_note_index_in_bounds
     # assert that the provided note index is less than the total number of notes
     dup exec.memory::get_num_output_notes
     # => [output_notes_num, note_index, note_index]
@@ -270,7 +270,7 @@ end
 #!   or off-chain).
 #! - execution_hint is the hint which specifies when a note is ready to be consumed.
 #! - NOTE_METADATA is the metadata associated with a note.
-export.build_metadata
+pub proc build_metadata
     # Validate the note type.
     # --------------------------------------------------------------------------------------------
 
@@ -366,7 +366,7 @@ end
 #!
 #! Where:
 #! - note_idx is the index of the next note to be created.
-proc.increment_num_output_notes
+proc increment_num_output_notes
     # get the current number of output notes
     exec.memory::get_num_output_notes
     # => [note_idx]
@@ -397,7 +397,7 @@ end
 #!
 #! Panics if
 #! - the summed amounts exceed the maximum amount of fungible assets.
-proc.add_fungible_asset
+proc add_fungible_asset
     dup.4 exec.memory::get_output_note_asset_data_ptr
     # => [asset_ptr, ASSET, note_ptr, num_of_assets, note_idx]
 
@@ -487,7 +487,7 @@ end
 #!
 #! Panics if:
 #! - the non-fungible asset already exists in the note.
-proc.add_non_fungible_asset
+proc add_non_fungible_asset
     dup.4 exec.memory::get_output_note_asset_data_ptr
     # => [asset_ptr, ASSET, note_ptr, num_of_assets, note_idx]
 

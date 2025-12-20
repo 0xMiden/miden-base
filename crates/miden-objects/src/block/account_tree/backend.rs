@@ -3,17 +3,10 @@ use alloc::vec::Vec;
 
 use super::{AccountId, AccountIdPrefix, AccountTree, AccountTreeError, account_id_to_smt_key};
 use crate::Word;
+use crate::crypto::merkle::MerkleError;
 #[cfg(feature = "std")]
-use crate::crypto::merkle::{LargeSmt, LargeSmtError, SmtStorage};
-use crate::crypto::merkle::{
-    LeafIndex,
-    MerkleError,
-    MutationSet,
-    SMT_DEPTH,
-    Smt,
-    SmtLeaf,
-    SmtProof,
-};
+use crate::crypto::merkle::smt::{LargeSmt, LargeSmtError, SmtStorage};
+use crate::crypto::merkle::smt::{LeafIndex, MutationSet, SMT_DEPTH, Smt, SmtLeaf, SmtProof};
 
 // ACCOUNT TREE BACKEND
 // ================================================================================================
@@ -183,7 +176,7 @@ where
     }
 
     fn root(&self) -> Word {
-        LargeSmt::root(self).map_err(large_smt_error_to_merkle_error).unwrap()
+        LargeSmt::root(self)
     }
 }
 

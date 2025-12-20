@@ -125,7 +125,7 @@ pub fn create_mock_notes_procedure(notes: &[Note]) -> String {
     }
 
     let mut script = String::from(
-        "proc.create_mock_notes
+        "proc create_mock_notes
             # remove padding from prologue
             dropw dropw dropw dropw
         ",

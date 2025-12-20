@@ -6,16 +6,9 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use fs_err as fs;
-use miden_assembly::diagnostics::{IntoDiagnostic, Result, WrapErr, miette};
+use miden_assembly::diagnostics::{IntoDiagnostic, NamedSource, Result, WrapErr, miette};
 use miden_assembly::utils::Serializable;
-use miden_assembly::{
-    Assembler,
-    DefaultSourceManager,
-    KernelLibrary,
-    Library,
-    LibraryNamespace,
-    Report,
-};
+use miden_assembly::{Assembler, DefaultSourceManager, KernelLibrary, Library, Report};
 use regex::Regex;
 use walkdir::WalkDir;
 
@@ -144,12 +137,12 @@ fn main() -> Result<()> {
 ///   tx_script_main.masm.
 /// - src/transaction/procedures/kernel_v0.rs -> contains the kernel procedures table.
 fn compile_tx_kernel(source_dir: &Path, target_dir: &Path) -> Result<Assembler> {
-    let shared_utils_path = Path::new(ASM_DIR).join(SHARED_UTILS_DIR);
-    let kernel_namespace = LibraryNamespace::Kernel;
+    let shared_utils_path = std::path::Path::new(ASM_DIR).join(SHARED_UTILS_DIR);
+    let kernel_path = miden_assembly::Path::kernel_path();
 
     let mut assembler = build_assembler(None)?;
-    // add the shared util modules to the kernel lib under the kernel::util namespace
-    assembler.compile_and_statically_link_from_dir(kernel_namespace.clone(), &shared_utils_path)?;
+    // add the shared util modules to the kernel lib under the ::$kernel::util namespace
+    assembler.compile_and_statically_link_from_dir(&shared_utils_path, kernel_path)?;
 
     // assemble the kernel library and write it to the "tx_kernel.masl" file
     let kernel_lib = assembler
@@ -165,11 +158,9 @@ fn compile_tx_kernel(source_dir: &Path, target_dir: &Path) -> Result<Assembler> 
 
     // assemble the kernel program and write it to the "tx_kernel.masb" file
     let mut main_assembler = assembler.clone();
-    // add the shared util modules to the kernel lib under the kernel::util namespace
-    main_assembler
-        .compile_and_statically_link_from_dir(kernel_namespace.clone(), &shared_utils_path)?;
-    main_assembler
-        .compile_and_statically_link_from_dir(kernel_namespace.clone(), source_dir.join("lib"))?;
+    // add the shared util modules to the kernel lib under the ::$kernel::util namespace
+    main_assembler.compile_and_statically_link_from_dir(&shared_utils_path, kernel_path)?;
+    main_assembler.compile_and_statically_link_from_dir(source_dir.join("lib"), kernel_path)?;
 
     let main_file_path = source_dir.join("main.masm");
     let kernel_main = main_assembler.clone().assemble_program(main_file_path)?;
@@ -187,12 +178,12 @@ fn compile_tx_kernel(source_dir: &Path, target_dir: &Path) -> Result<Assembler> 
         // This is needed in test assemblers to access individual procedures which would otherwise
         // be hidden when using KernelLibrary (api.masm)
 
-        // add the shared util modules to the kernel lib under the kernel::util namespace
+        // add the shared util modules to the kernel lib under the ::$kernel::util namespace
         kernel_lib_assembler
-            .compile_and_statically_link_from_dir(kernel_namespace.clone(), &shared_utils_path)?;
+            .compile_and_statically_link_from_dir(&shared_utils_path, kernel_path)?;
 
         let test_lib = kernel_lib_assembler
-            .assemble_library_from_dir(source_dir.join("lib"), kernel_namespace)
+            .assemble_library_from_dir(source_dir.join("lib"), kernel_path)
             .unwrap();
 
         let masb_file_path =
@@ -232,6 +223,7 @@ fn generate_kernel_proc_hash_file(kernel: KernelLibrary) -> Result<()> {
     let to_exclude = BTreeSet::from_iter(["exec_kernel_proc"]);
     let offsets_filename = Path::new(ASM_DIR).join(ASM_MIDEN_DIR).join("kernel_proc_offsets.masm");
     let offsets = parse_proc_offsets(&offsets_filename)?;
+
     let generated_procs: BTreeMap<usize, String> = module_info
         .procedures()
         .filter(|(_, proc_info)| !to_exclude.contains::<str>(proc_info.name.as_ref()))
@@ -276,7 +268,7 @@ pub const KERNEL_PROCEDURES: [Word; {proc_count}] = [
 }
 
 fn parse_proc_offsets(filename: impl AsRef<Path>) -> Result<BTreeMap<String, usize>> {
-    let regex: Regex = Regex::new(r"^const\.(?P<name>\w+)_OFFSET\s*=\s*(?P<offset>\d+)").unwrap();
+    let regex: Regex = Regex::new(r"^const\s*(?P<name>\w+)_OFFSET\s*=\s*(?P<offset>\d+)").unwrap();
     let mut result = BTreeMap::new();
     for line in fs::read_to_string(filename).into_diagnostic()?.lines() {
         if let Some(captures) = regex.captures(line) {
@@ -303,11 +295,10 @@ fn compile_miden_lib(
     let source_dir = source_dir.join(ASM_MIDEN_DIR);
     let shared_path = Path::new(ASM_DIR).join(SHARED_UTILS_DIR);
 
-    let miden_namespace = "miden".parse::<LibraryNamespace>().expect("invalid base namespace");
     // add the shared modules to the kernel lib under the miden::util namespace
-    assembler.compile_and_statically_link_from_dir(miden_namespace.clone(), &shared_path)?;
+    assembler.compile_and_statically_link_from_dir(&shared_path, "miden")?;
 
-    let miden_lib = assembler.assemble_library_from_dir(source_dir, miden_namespace)?;
+    let miden_lib = assembler.assemble_library_from_dir(source_dir, "miden")?;
 
     let output_file = target_dir.join("miden").with_extension(Library::LIBRARY_EXTENSION);
     miden_lib.write_to_file(output_file).into_diagnostic()?;
@@ -369,15 +360,16 @@ fn compile_account_components(
             .expect("file stem should be valid UTF-8")
             .to_owned();
 
-        // Read the source code to string instead of passing it to assemble_library directly since
-        // that would attempt to interpret the path as a LibraryPath which would fail.
         let component_source_code = fs::read_to_string(masm_file_path)
             .expect("reading the component's MASM source code should succeed");
 
+        let named_source = NamedSource::new(component_name.clone(), component_source_code);
+
         let component_library = assembler
             .clone()
-            .assemble_library([component_source_code])
+            .assemble_library([named_source])
             .expect("library assembly should succeed");
+
         let component_file_path =
             target_dir.join(component_name).with_extension(Library::LIBRARY_EXTENSION);
         component_library.write_to_file(component_file_path).into_diagnostic()?;
@@ -389,15 +381,12 @@ fn compile_account_components(
 // HELPER FUNCTIONS
 // ================================================================================================
 
-/// Returns a new [Assembler] loaded with miden-stdlib and the specified kernel, if provided.
-///
-/// The returned assembler will be in the `debug` mode if the `with-debug-info` feature is enabled.
+/// Returns a new [Assembler] loaded with miden-core-lib and the specified kernel, if provided.
 fn build_assembler(kernel: Option<KernelLibrary>) -> Result<Assembler> {
     kernel
         .map(|kernel| Assembler::with_kernel(Arc::new(DefaultSourceManager::default()), kernel))
         .unwrap_or_default()
-        .with_debug_mode(cfg!(feature = "with-debug-info"))
-        .with_dynamic_library(miden_stdlib::StdLibrary::default())
+        .with_dynamic_library(miden_core_lib::CoreLibrary::default())
 }
 
 /// Recursively copies `src` into `dst`.
@@ -448,7 +437,7 @@ fn copy_directory<T: AsRef<Path>, R: AsRef<Path>>(src: T, dst: R) -> Result<()> 
 /// This is required to include the shared modules as APIs of the `kernel` and `miden` libraries.
 ///
 /// This is done to make it possible to import the modules in the `shared_modules` folder directly,
-/// i.e. "use.$kernel::account_id".
+/// i.e. "use $kernel::account_id".
 fn copy_shared_modules<T: AsRef<Path>>(source_dir: T) -> Result<()> {
     // source is expected to be an `OUT_DIR/asm` folder
     let shared_modules_dir = source_dir.as_ref().join(SHARED_MODULES_DIR);
@@ -517,7 +506,7 @@ fn is_masm_file(path: &Path) -> io::Result<bool> {
 /// For example:
 ///
 /// ```text
-/// const.ERR_PROLOGUE_NEW_ACCOUNT_VAULT_MUST_BE_EMPTY="new account must have an empty vault"
+/// const ERR_PROLOGUE_NEW_ACCOUNT_VAULT_MUST_BE_EMPTY="new account must have an empty vault"
 /// ```
 ///
 /// would generate a Rust file for transaction kernel errors (since the error belongs to that
@@ -589,7 +578,7 @@ fn extract_masm_errors(
     errors: &mut BTreeMap<ErrorName, ExtractedError>,
     file_contents: &str,
 ) -> Result<()> {
-    let regex = Regex::new(r#"const(\.|\ )ERR_(?<name>.*)\ ?=\ ?"(?<message>.*)""#).unwrap();
+    let regex = Regex::new(r#"const\s*ERR_(?<name>.*)\s*=\s*"(?<message>.*)""#).unwrap();
 
     for capture in regex.captures_iter(file_contents) {
         let error_name = capture
@@ -655,7 +644,7 @@ fn generate_error_file_content(category: ErrorCategory, errors: Vec<NamedError>)
         "// This file is generated by build.rs, do not modify manually.
 // It is generated by extracting errors from the masm files in the `miden-lib/asm` directory.
 //
-// To add a new error, define a constant in masm of the pattern `const.ERR_<CATEGORY>_...`.
+// To add a new error, define a constant in masm of the pattern `const ERR_<CATEGORY>_...`.
 // Try to fit the error into a pre-existing category if possible (e.g. Account, Prologue,
 // Non-Fungible-Asset, ...).
 "
@@ -793,7 +782,7 @@ fn generate_event_constants(asm_source_dir: &Path, target_dir: &Path) -> Result<
     Ok(())
 }
 
-/// Extract all `const.X=event("x")` definitions from all MASM files
+/// Extract all `const X=event("x")` definitions from all MASM files
 fn extract_all_event_definitions(asm_source_dir: &Path) -> Result<BTreeMap<String, String>> {
     // collect mappings event path to const variable name, we want a unique mapping
     // which we use to generate the constants and enum variant names
@@ -812,19 +801,17 @@ fn extract_all_event_definitions(asm_source_dir: &Path) -> Result<BTreeMap<Strin
     Ok(events)
 }
 
-/// Extract event definitions from a single MASM file in two possible forms:
-/// - `const.${X}=event("${x::path}")`
-/// - `const ${X} = event("${x::path}")`
+/// Extract event definitions from a single MASM file in form of `const ${X} = event("${x::path}")`.
 fn extract_event_definitions_from_file(
     events: &mut BTreeMap<String, String>,
     file_contents: &str,
     file_path: &Path,
 ) -> Result<()> {
-    let regex = Regex::new(r#"const(\.|\ )(\w+)\ ?=\ ?event\("([^"]+)"\)"#).unwrap();
+    let regex = Regex::new(r#"const\s*(\w+)\s*=\s*event\("([^"]+)"\)"#).unwrap();
 
     for capture in regex.captures_iter(file_contents) {
-        let const_name = capture.get(2).expect("const name should be captured");
-        let event_path = capture.get(3).expect("event path should be captured");
+        let const_name = capture.get(1).expect("const name should be captured");
+        let event_path = capture.get(2).expect("event path should be captured");
 
         let event_path = event_path.as_str();
         let const_name = const_name.as_str();
@@ -837,13 +824,7 @@ fn extract_event_definitions_from_file(
             };
 
         if !event_path.starts_with("miden::") {
-            // we ignore any `stdlib::` prefixed ones
-            if !event_path.starts_with("stdlib::") {
-                return Err(miette::miette!(
-                    "unhandled `event_path={event_path}`, doesn't with `stdlib::` nor with `miden::`."
-                ));
-            }
-            continue;
+            return Err(miette::miette!("unhandled `event_path={event_path}`"));
         }
 
         // Check for duplicates with different definitions
@@ -876,7 +857,7 @@ fn generate_event_file_content(
 
     // Generate constants
     //
-    // Note: If we ever encounter two constants `const.X`, that are both named `X` we will error
+    // Note: If we ever encounter two constants `const X`, that are both named `X` we will error
     // when attempting to generate the rust code. Currently this is a side-effect, but we
     // want to error out as early as possible:
     // TODO: make the error out at build-time to be able to present better error hints

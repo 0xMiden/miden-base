@@ -40,7 +40,7 @@ async fn adding_fungible_assets_with_lazy_loading_succeeds() -> anyhow::Result<(
 
     let code = format!(
         "
-      use.mock::account
+      use mock::account
 
       begin
           push.{FUNGIBLE_ASSET1}
@@ -87,8 +87,8 @@ async fn removing_fungible_assets_with_lazy_loading_succeeds() -> anyhow::Result
 
     let code = format!(
         "
-      use.mock::account
-      use.mock::util
+      use mock::account
+      use mock::util
 
       begin
           push.{FUNGIBLE_ASSET1}
@@ -185,7 +185,7 @@ async fn setting_map_item_with_lazy_loading_succeeds() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-      use.mock::account
+      use mock::account
 
       const MOCK_MAP_SLOT = word("{mock_map_slot}")
 
@@ -204,7 +204,7 @@ async fn setting_map_item_with_lazy_loading_succeeds() -> anyhow::Result<()> {
           # => [slot_id_prefix, slot_id_suffix, KEY, VALUE]
           call.account::set_map_item
 
-          exec.::std::sys::truncate_stack
+          exec.::miden::core::sys::truncate_stack
       end
       "#
     );
@@ -253,8 +253,8 @@ async fn getting_map_item_with_lazy_loading_succeeds() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-      use.std::word
-      use.mock::account
+      use miden::core::word
+      use mock::account
 
       const MOCK_MAP_SLOT = word("{mock_map_slot}")
 
@@ -276,7 +276,7 @@ async fn getting_map_item_with_lazy_loading_succeeds() -> anyhow::Result<()> {
 
           padw assert_eqw.err="non-existent value should be the empty word"
 
-          exec.::std::sys::truncate_stack
+          exec.::miden::core::sys::truncate_stack
       end
       "#
     );

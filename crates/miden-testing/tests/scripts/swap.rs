@@ -40,7 +40,7 @@ pub async fn prove_send_swap_note() -> anyhow::Result<()> {
 
     let tx_script_src = &format!(
         "
-        use.miden::output_note
+        use miden::output_note
         begin
             push.{recipient}
             push.{note_execution_hint}

@@ -358,7 +358,7 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
 
     let trigger_note_script_code = format!(
         "
-            use.miden::note
+            use miden::note
             
             begin
                 # Build recipient hash from SERIAL_NUM, SCRIPT_ROOT, and INPUTS_COMMITMENT

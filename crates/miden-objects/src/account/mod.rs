@@ -828,7 +828,7 @@ mod tests {
     /// account type returns an error.
     #[test]
     fn test_account_unsupported_component_type() {
-        let code1 = "export.foo add end";
+        let code1 = "pub proc foo add end";
         let library1 = Assembler::default().assemble_library([code1]).unwrap();
 
         // This component support all account types except the regular account with updatable code.

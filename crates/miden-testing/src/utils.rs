@@ -20,7 +20,7 @@ use rand::rngs::SmallRng;
 macro_rules! assert_execution_error {
     ($execution_result:expr, $expected_err:expr) => {
         match $execution_result {
-            Err(miden_processor::ExecutionError::FailedAssertion { label: _, source_file: _, clk: _, err_code, err_msg }) => {
+            Err(miden_processor::ExecutionError::FailedAssertion { label: _, source_file: _, clk: _, err_code, err_msg, err: _ }) => {
                 if let Some(ref msg) = err_msg {
                   assert_eq!(msg.as_ref(), $expected_err.message(), "error messages did not match");
                 }
@@ -48,6 +48,7 @@ macro_rules! assert_transaction_executor_error {
                     clk: _,
                     err_code,
                     err_msg,
+                    err: _,
                 },
             )) => {
                 if let Some(ref msg) = err_msg {
@@ -128,9 +129,9 @@ pub fn create_p2any_note(
 
     let code = format!(
         "
-        use.mock::account
-        use.miden::active_note
-        use.miden::contracts::wallets::basic->wallet
+        use mock::account
+        use miden::active_note
+        use miden::contracts::wallets::basic->wallet
 
         begin
             # fetch pointer & number of assets
@@ -198,7 +199,7 @@ fn note_script_that_creates_notes<'note>(
     sender_id: AccountId,
     output_notes: impl Iterator<Item = &'note Note>,
 ) -> anyhow::Result<String> {
-    let mut out = String::from("use.miden::output_note\n\nbegin\n");
+    let mut out = String::from("use miden::output_note\n\nbegin\n");
 
     for (idx, note) in output_notes.into_iter().enumerate() {
         anyhow::ensure!(

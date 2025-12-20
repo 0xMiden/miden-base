@@ -51,8 +51,8 @@ use crate::{MockChain, MockChainNote};
 /// let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 ///
 /// let code = "
-/// use.$kernel::prologue
-/// use.mock::account
+/// use $kernel::prologue
+/// use mock::account
 ///
 /// begin
 ///     exec.prologue::prepare_transaction

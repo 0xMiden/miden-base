@@ -3,7 +3,7 @@ use alloc::vec::Vec;
 
 use miden_objects::Word;
 use miden_objects::account::AccountProcedureRoot;
-use miden_objects::assembly::Library;
+use miden_objects::assembly::{Library, LibraryExport};
 use miden_objects::utils::Deserializable;
 use miden_objects::utils::sync::LazyLock;
 use miden_processor::MastNodeExt;
@@ -39,7 +39,7 @@ static ECDSA_K256_KECCAK_ACL_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
 static ECDSA_K256_KECCAK_MULTISIG_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
     let bytes = include_bytes!(concat!(
         env!("OUT_DIR"),
-        "/assets/account_components/multisig_ecdsa_k256_keccak.masl"
+        "/assets/account_components/ecdsa_k256_keccak_multisig.masl"
     ));
     Library::read_from_bytes(bytes)
         .expect("Shipped Multisig Ecdsa K256 Keccak library is well-formed")
@@ -89,7 +89,7 @@ static NO_AUTH_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
 static RPO_FALCON_512_MULTISIG_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
     let bytes = include_bytes!(concat!(
         env!("OUT_DIR"),
-        "/assets/account_components/multisig_rpo_falcon_512.masl"
+        "/assets/account_components/rpo_falcon_512_multisig.masl"
     ));
     Library::read_from_bytes(bytes).expect("Shipped Multisig Rpo Falcon 512 library is well-formed")
 });
@@ -177,13 +177,16 @@ impl WellKnownComponent {
             Self::AuthNoAuth => NO_AUTH_LIBRARY.as_ref(),
         };
 
-        library.exports().map(|export| {
-            library
-                .mast_forest()
-                .get_node_by_id(export.node)
-                .expect("export node not in the forest")
-                .digest()
-        })
+        library
+            .exports()
+            .filter(|export| matches!(export, LibraryExport::Procedure(_)))
+            .map(|proc_export| {
+                library
+                    .mast_forest()
+                    .get_node_by_id(proc_export.unwrap_procedure().node)
+                    .expect("export node not in the forest")
+                    .digest()
+            })
     }
 
     /// Checks whether procedures from the current component are present in the procedures map

@@ -1,6 +1,7 @@
 use alloc::string::ToString;
 
-use miden_crypto::merkle::{InnerNodeInfo, MerkleError, PartialSmt, SmtLeaf, SmtProof};
+use miden_crypto::merkle::smt::{PartialSmt, SmtLeaf, SmtProof};
+use miden_crypto::merkle::{InnerNodeInfo, MerkleError};
 
 use super::{AssetVault, AssetVaultKey};
 use crate::Word;
@@ -191,7 +192,7 @@ impl Deserializable for PartialVault {
 #[cfg(test)]
 mod tests {
     use assert_matches::assert_matches;
-    use miden_crypto::merkle::Smt;
+    use miden_crypto::merkle::smt::Smt;
 
     use super::*;
     use crate::asset::FungibleAsset;

@@ -1,4 +1,4 @@
-use.miden::kernel_proc_offsets
+use miden::kernel_proc_offsets
 
 # ACTIVE ACCOUNT PROCEDURES
 # =================================================================================================
@@ -15,7 +15,7 @@ use.miden::kernel_proc_offsets
 #! - account_id_{prefix,suffix} are the prefix and suffix felts of the ID of the active account.
 #!
 #! Invocation: exec
-export.get_id
+pub proc get_id
     # pad the stack
     padw padw padw push.0.0
     # => [pad(14)]
@@ -48,7 +48,7 @@ end
 #! - nonce is the active account's nonce.
 #!
 #! Invocation: exec
-export.get_nonce
+pub proc get_nonce
     # pad the stack
     padw padw padw push.0.0.0
     # => [pad(15)]
@@ -76,7 +76,7 @@ end
 #! - INIT_COMMITMENT is the initial account commitment.
 #!
 #! Invocation: exec
-export.get_initial_commitment
+pub proc get_initial_commitment
     # pad the stack
     padw padw padw push.0.0.0
     # => [pad(15)]
@@ -101,7 +101,7 @@ end
 #! - ACCOUNT_COMMITMENT is the commitment of the account data.
 #!
 #! Invocation: exec
-export.compute_commitment
+pub proc compute_commitment
     # pad the stack
     padw padw padw push.0.0.0
     # => [pad(15)]
@@ -139,7 +139,7 @@ end
 #! - CODE_COMMITMENT is the commitment of the account code.
 #!
 #! Invocation: exec
-export.get_code_commitment
+pub proc get_code_commitment
     # pad the stack
     padw padw padw push.0.0.0
     # => [pad(15)]
@@ -169,7 +169,7 @@ end
 #! - INIT_STORAGE_COMMITMENT is the initial account storage commitment.
 #!
 #! Invocation: exec
-export.get_initial_storage_commitment
+pub proc get_initial_storage_commitment
     # pad the stack
     padw padw padw push.0.0.0
     # => [pad(15)]
@@ -203,7 +203,7 @@ end
 #! - STORAGE_COMMITMENT is the commitment of the account storage.
 #!
 #! Invocation: exec
-export.compute_storage_commitment
+pub proc compute_storage_commitment
     # pad the stack
     padw padw padw push.0.0.0
     # => [pad(15)]
@@ -228,7 +228,7 @@ end
 #! - INIT_VAULT_ROOT is the initial account vault root.
 #!
 #! Invocation: exec
-export.get_initial_vault_root
+pub proc get_initial_vault_root
     # pad the stack
     padw padw padw push.0.0.0
     # => [pad(15)]
@@ -253,7 +253,7 @@ end
 #! - VAULT_ROOT is the root of the account vault.
 #!
 #! Invocation: exec
-export.get_vault_root
+pub proc get_vault_root
     # pad the stack for syscall invocation
     padw padw padw push.0.0.0
     # => [pad(15)]
@@ -286,7 +286,7 @@ end
 #! - a slot with the provided slot ID does not exist in account storage.
 #!
 #! Invocation: exec
-export.get_item
+pub proc get_item
     push.0 movdn.2
     # => [slot_id_prefix, slot_id_suffix, 0]
 
@@ -320,7 +320,7 @@ end
 #! - a slot with the provided slot ID does not exist in account storage.
 #!
 #! Invocation: exec
-export.get_initial_item
+pub proc get_initial_item
     push.0 movdn.2
     # => [slot_id_prefix, slot_id_suffix, 0]
 
@@ -356,7 +356,7 @@ end
 #! - the slot item at index is not a map.
 #!
 #! Invocation: exec
-export.get_map_item
+pub proc get_map_item
     exec.kernel_proc_offsets::account_get_map_item_offset
     # => [offset, slot_id_prefix, slot_id_suffix, KEY]
 
@@ -389,7 +389,7 @@ end
 #! - the slot item at index is not a map.
 #!
 #! Invocation: exec
-export.get_initial_map_item
+pub proc get_initial_map_item
     exec.kernel_proc_offsets::account_get_initial_map_item_offset
     # => [offset, slot_id_prefix, slot_id_suffix, KEY]
 
@@ -422,7 +422,7 @@ end
 #! - the provided faucet ID is not an ID of a fungible faucet.
 #!
 #! Invocation: exec
-export.get_balance
+pub proc get_balance
     exec.kernel_proc_offsets::account_get_balance_offset
     # => [offset, faucet_id_prefix, faucet_id_suffix]
 
@@ -453,7 +453,7 @@ end
 #! - the provided faucet ID is not an ID of a fungible faucet.
 #!
 #! Invocation: exec
-export.get_initial_balance
+pub proc get_initial_balance
     exec.kernel_proc_offsets::account_get_initial_balance_offset
     # => [offset, faucet_id_prefix, faucet_id_suffix]
 
@@ -483,7 +483,7 @@ end
 #! - the ASSET is a fungible asset.
 #!
 #! Invocation: exec
-export.has_non_fungible_asset
+pub proc has_non_fungible_asset
     exec.kernel_proc_offsets::account_has_non_fungible_asset_offset
     # => [offset, ASSET]
 
@@ -508,7 +508,7 @@ end
 #! - num_procedures is the number of procedures in the active account.
 #!
 #! Invocation: exec
-export.get_num_procedures
+pub proc get_num_procedures
     # pad the stack
     padw padw padw push.0.0.0
     # => [pad(15)]
@@ -537,7 +537,7 @@ end
 #! - the procedure index is out of bounds.
 #!
 #! Invocation: exec
-export.get_procedure_root
+pub proc get_procedure_root
     # => [index]
 
     push.0.0 movup.2
@@ -570,7 +570,7 @@ end
 #!   available on the active account.
 #!
 #! Invocation: exec
-export.has_procedure
+pub proc has_procedure
     exec.kernel_proc_offsets::account_has_procedure_offset
     # => [offset, PROC_ROOT]
 

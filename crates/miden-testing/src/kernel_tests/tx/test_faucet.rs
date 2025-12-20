@@ -50,11 +50,11 @@ async fn test_mint_fungible_asset_succeeds() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-        use.mock::faucet->mock_faucet
-        use.miden::faucet
-        use.$kernel::asset_vault
-        use.$kernel::memory
-        use.$kernel::prologue
+        use mock::faucet->mock_faucet
+        use miden::faucet
+        use $kernel::asset_vault
+        use $kernel::memory
+        use $kernel::prologue
 
         begin
             exec.prologue::prepare_transaction
@@ -100,7 +100,7 @@ async fn mint_fungible_asset_fails_on_non_faucet_account() -> anyhow::Result<()>
 
     let code = format!(
         "
-      use.mock::faucet
+      use mock::faucet
 
       begin
           push.{asset}
@@ -131,8 +131,8 @@ async fn test_mint_fungible_asset_inconsistent_faucet_id() -> anyhow::Result<()>
 
     let code = format!(
         "
-        use.$kernel::prologue
-        use.mock::faucet
+        use $kernel::prologue
+        use mock::faucet
 
         begin
             exec.prologue::prepare_transaction
@@ -153,7 +153,7 @@ async fn test_mint_fungible_asset_inconsistent_faucet_id() -> anyhow::Result<()>
 async fn test_mint_fungible_asset_fails_saturate_max_amount() -> anyhow::Result<()> {
     let code = format!(
         "
-        use.mock::faucet
+        use mock::faucet
 
         begin
             push.{asset}
@@ -194,13 +194,13 @@ async fn test_mint_non_fungible_asset_succeeds() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-        use.std::collections::smt
+        use miden::core::collections::smt
 
-        use.$kernel::account
-        use.$kernel::asset_vault
-        use.$kernel::memory
-        use.$kernel::prologue
-        use.mock::faucet->mock_faucet
+        use $kernel::account
+        use $kernel::asset_vault
+        use $kernel::memory
+        use $kernel::prologue
+        use mock::faucet->mock_faucet
 
         const FAUCET_SYSDATA_SLOT_NAME = word("{faucet_sysdata_slot_name}")
 
@@ -250,8 +250,8 @@ async fn test_mint_non_fungible_asset_fails_inconsistent_faucet_id() -> anyhow::
 
     let code = format!(
         "
-        use.$kernel::prologue
-        use.mock::faucet
+        use $kernel::prologue
+        use mock::faucet
 
         begin
             exec.prologue::prepare_transaction
@@ -275,7 +275,7 @@ async fn mint_non_fungible_asset_fails_on_non_faucet_account() -> anyhow::Result
 
     let code = format!(
         "
-      use.mock::faucet
+      use mock::faucet
 
       begin
           push.{asset}
@@ -306,8 +306,8 @@ async fn test_mint_non_fungible_asset_fails_asset_already_exists() -> anyhow::Re
 
     let code = format!(
         "
-        use.$kernel::prologue
-        use.mock::faucet
+        use $kernel::prologue
+        use mock::faucet
 
         begin
             exec.prologue::prepare_transaction
@@ -347,11 +347,11 @@ async fn test_burn_fungible_asset_succeeds() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-        use.mock::faucet->mock_faucet
-        use.miden::faucet
-        use.$kernel::asset_vault
-        use.$kernel::memory
-        use.$kernel::prologue
+        use mock::faucet->mock_faucet
+        use miden::faucet
+        use $kernel::asset_vault
+        use $kernel::memory
+        use $kernel::prologue
 
         begin
             exec.prologue::prepare_transaction
@@ -395,7 +395,7 @@ async fn burn_fungible_asset_fails_on_non_faucet_account() -> anyhow::Result<()>
 
     let code = format!(
         "
-      use.mock::faucet
+      use mock::faucet
 
       begin
           push.{asset}
@@ -428,8 +428,8 @@ async fn test_burn_fungible_asset_inconsistent_faucet_id() -> anyhow::Result<()>
 
     let code = format!(
         "
-        use.$kernel::prologue
-        use.mock::faucet
+        use $kernel::prologue
+        use mock::faucet
 
         begin
             exec.prologue::prepare_transaction
@@ -459,8 +459,8 @@ async fn test_burn_fungible_asset_insufficient_input_amount() -> anyhow::Result<
 
     let code = format!(
         "
-        use.$kernel::prologue
-        use.mock::faucet
+        use $kernel::prologue
+        use mock::faucet
 
         begin
             exec.prologue::prepare_transaction
@@ -496,11 +496,11 @@ async fn test_burn_non_fungible_asset_succeeds() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-        use.$kernel::account
-        use.$kernel::asset_vault
-        use.$kernel::memory
-        use.$kernel::prologue
-        use.mock::faucet->mock_faucet
+        use $kernel::account
+        use $kernel::asset_vault
+        use $kernel::memory
+        use $kernel::prologue
+        use mock::faucet->mock_faucet
 
         const FAUCET_SYSDATA_SLOT_NAME = word("{faucet_sysdata_slot_name}")
 
@@ -567,8 +567,8 @@ async fn test_burn_non_fungible_asset_fails_does_not_exist() -> anyhow::Result<(
 
     let code = format!(
         "
-        use.$kernel::prologue
-        use.mock::faucet
+        use $kernel::prologue
+        use mock::faucet
 
         begin
             # burn asset
@@ -593,7 +593,7 @@ async fn burn_non_fungible_asset_fails_on_non_faucet_account() -> anyhow::Result
 
     let code = format!(
         "
-      use.mock::faucet
+      use mock::faucet
 
       begin
           push.{asset}
@@ -626,8 +626,8 @@ async fn test_burn_non_fungible_asset_fails_inconsistent_faucet_id() -> anyhow::
 
     let code = format!(
         "
-        use.$kernel::prologue
-        use.mock::faucet
+        use $kernel::prologue
+        use mock::faucet
 
         begin
             # burn asset
@@ -661,8 +661,8 @@ async fn test_is_non_fungible_asset_issued_succeeds() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-        use.$kernel::prologue
-        use.miden::faucet
+        use $kernel::prologue
+        use miden::faucet
 
         begin
             exec.prologue::prepare_transaction
@@ -703,8 +703,8 @@ async fn test_get_total_issuance_succeeds() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-        use.$kernel::prologue
-        use.miden::faucet
+        use $kernel::prologue
+        use miden::faucet
 
         begin
             exec.prologue::prepare_transaction
@@ -737,8 +737,8 @@ fn setup_non_faucet_account() -> anyhow::Result<Account> {
     ))
     .compile_component_code(
         "test::non_faucet_component",
-        "export.::miden::faucet::mint
-         export.::miden::faucet::burn",
+        "pub use ::miden::faucet::mint
+         pub use ::miden::faucet::burn",
     )?;
     let faucet_component = AccountComponent::new(faucet_code, vec![])?
         .with_supported_type(AccountType::RegularAccountUpdatableCode);

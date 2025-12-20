@@ -1,21 +1,21 @@
-use.$kernel::account
-use.$kernel::account_id
-use.$kernel::asset
-use.$kernel::asset_vault
-use.$kernel::memory
+use $kernel::account
+use $kernel::account_id
+use $kernel::asset
+use $kernel::asset_vault
+use $kernel::memory
 
 # ERRORS
 # =================================================================================================
 
-const.ERR_FAUCET_NEW_TOTAL_SUPPLY_WOULD_EXCEED_MAX_ASSET_AMOUNT="asset mint operation would cause the new total supply to exceed the maximum allowed asset amount"
+const ERR_FAUCET_NEW_TOTAL_SUPPLY_WOULD_EXCEED_MAX_ASSET_AMOUNT="asset mint operation would cause the new total supply to exceed the maximum allowed asset amount"
 
-const.ERR_FAUCET_BURN_CANNOT_EXCEED_EXISTING_TOTAL_SUPPLY="asset amount to burn can not exceed the existing total supply"
+const ERR_FAUCET_BURN_CANNOT_EXCEED_EXISTING_TOTAL_SUPPLY="asset amount to burn can not exceed the existing total supply"
 
-const.ERR_FAUCET_NON_FUNGIBLE_ASSET_ALREADY_ISSUED="failed to mint new non-fungible asset because it was already issued"
+const ERR_FAUCET_NON_FUNGIBLE_ASSET_ALREADY_ISSUED="failed to mint new non-fungible asset because it was already issued"
 
-const.ERR_FAUCET_BURN_NON_FUNGIBLE_ASSET_CAN_ONLY_BE_CALLED_ON_NON_FUNGIBLE_FAUCET="the burn_non_fungible_asset procedure can only be called on a non-fungible faucet"
+const ERR_FAUCET_BURN_NON_FUNGIBLE_ASSET_CAN_ONLY_BE_CALLED_ON_NON_FUNGIBLE_FAUCET="the burn_non_fungible_asset procedure can only be called on a non-fungible faucet"
 
-const.ERR_FAUCET_NON_FUNGIBLE_ASSET_TO_BURN_NOT_FOUND="failed to burn non-existent non-fungible asset in the vault"
+const ERR_FAUCET_NON_FUNGIBLE_ASSET_TO_BURN_NOT_FOUND="failed to burn non-existent non-fungible asset in the vault"
 
 # FUNGIBLE ASSETS
 # ==================================================================================================
@@ -36,7 +36,7 @@ const.ERR_FAUCET_NON_FUNGIBLE_ASSET_TO_BURN_NOT_FOUND="failed to burn non-existe
 #!   executed against.
 #! - the asset is not well formed.
 #! - the total issuance after minting is greater than the maximum amount allowed.
-export.mint_fungible_asset
+pub proc mint_fungible_asset
     # assert that the asset is associated with the faucet the transaction is being executed against
     # and that the asset is valid
     exec.account::get_id exec.asset::validate_fungible_asset_origin
@@ -78,7 +78,7 @@ end
 #!   executed against.
 #! - the asset is not well formed.
 #! - the amount being burned is greater than the total input to the transaction.
-proc.burn_fungible_asset
+proc burn_fungible_asset
     # assert that the asset is associated with the faucet the transaction is being executed against
     # and that the asset is valid
     exec.account::get_id exec.asset::validate_fungible_asset_origin
@@ -109,7 +109,7 @@ end
 #! Where:
 #! - total_issuance is the total issuance of the fungible faucet the transaction is being executed
 #!   against.
-export.get_total_issuance
+pub proc get_total_issuance
     # fetch the TOTAL_ISSUANCE from storage
     exec.account::get_faucet_sysdata_slot_id exec.account::get_item
     # => [TOTAL_ISSUANCE]
@@ -136,7 +136,7 @@ end
 #! - the non-fungible asset being minted is not associated with the faucet the transaction is being
 #!   executed against.
 #! - the non-fungible asset being minted already exists.
-proc.mint_non_fungible_asset
+proc mint_non_fungible_asset
     # assert that the asset is associated with the faucet the transaction is being executed against
     # and that the asset is valid
     exec.account::get_id swap drop exec.asset::validate_non_fungible_asset_origin
@@ -180,7 +180,7 @@ end
 #!   executed against.
 #! - the non-fungible asset being burned does not exist or was not provided as input to the
 #!   transaction via a note or the accounts vault.
-proc.burn_non_fungible_asset
+proc burn_non_fungible_asset
     # assert that we are executing a transaction against the non-fungible faucet (access checks)
     exec.account::get_id swap drop exec.account_id::is_non_fungible_faucet
     assert.err=ERR_FAUCET_BURN_NON_FUNGIBLE_ASSET_CAN_ONLY_BE_CALLED_ON_NON_FUNGIBLE_FAUCET
@@ -225,7 +225,7 @@ end
 #! Panics if:
 #! - the ASSET is a fungible asset.
 #! - the ASSET is not associated with the faucet the transaction is being executed against.
-export.is_non_fungible_asset_issued
+pub proc is_non_fungible_asset_issued
     # assert that the asset is associated with the faucet the transaction is being executed against
     # and that the asset is valid
     exec.account::get_id swap drop exec.asset::validate_non_fungible_asset_origin
@@ -270,7 +270,7 @@ end
 #! - For fungible faucets if the total issuance after minting is greater than the maximum amount
 #!   allowed.
 #! - For non-fungible faucets if the non-fungible asset being minted already exists.
-export.mint
+pub proc mint
     # check if the asset is a fungible asset
     exec.asset::is_fungible_asset
     # => [is_fungible_asset, ASSET]
@@ -303,7 +303,7 @@ end
 #!   transaction.
 #! - For non-fungible faucets if the non-fungible asset being burned does not exist or was not
 #!   provided as input to the transaction via a note or the accounts vault.
-export.burn
+pub proc burn
     # check if the asset is a fungible asset
     exec.asset::is_fungible_asset
     # => [is_fungible_asset, ASSET]

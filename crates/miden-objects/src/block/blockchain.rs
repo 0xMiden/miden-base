@@ -1,7 +1,7 @@
 use alloc::collections::BTreeSet;
 
 use miden_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
-use miden_crypto::merkle::{Forest, Mmr, MmrError, MmrPeaks, MmrProof, PartialMmr};
+use miden_crypto::merkle::mmr::{Forest, Mmr, MmrError, MmrPeaks, MmrProof, PartialMmr};
 use miden_processor::DeserializationError;
 
 use crate::Word;

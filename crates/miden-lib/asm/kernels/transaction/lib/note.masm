@@ -1,19 +1,19 @@
-use.std::crypto::hashes::rpo
+use miden::core::crypto::hashes::rpo256
 
-use.$kernel::constants
-use.$kernel::memory
+use $kernel::constants
+use $kernel::memory
 
 # ERRORS
 # =================================================================================================
 
-const.ERR_NOTE_NUM_OF_ASSETS_EXCEED_LIMIT="number of assets in a note exceed 255"
+const ERR_NOTE_NUM_OF_ASSETS_EXCEED_LIMIT="number of assets in a note exceed 255"
 
 # CONSTANTS
 # =================================================================================================
 
 # The diff between the memory address after first mem_stream operation and the next target when
 # generating the output notes commitment. Must be NOTE_MEM_SIZE - 8;
-const.OUTPUT_NOTE_HASHING_MEM_DIFF=2040
+const OUTPUT_NOTE_HASHING_MEM_DIFF=2040
 
 # ACTIVE NOTE PROCEDURES
 # =================================================================================================
@@ -25,7 +25,7 @@ const.OUTPUT_NOTE_HASHING_MEM_DIFF=2040
 #!
 #! Where:
 #! - active_input_note_ptr is the pointer to the next note to be processed.
-export.increment_active_input_note_ptr
+pub proc increment_active_input_note_ptr
     # get the active input note pointer
     exec.memory::get_active_input_note_ptr
     # => [orig_input_note_ptr]
@@ -44,7 +44,7 @@ end
 #!
 #! Inputs:  []
 #! Outputs: []
-export.note_processing_teardown
+pub proc note_processing_teardown
     # set the active input note pointer to 0
     push.0 exec.memory::set_active_input_note_ptr
     # => []
@@ -60,7 +60,7 @@ end
 #! Where:
 #! - note_script_root_ptr is the memory address where note's script root is stored.
 #! - NOTE_ARGS is the note's arguments.
-export.prepare_note
+pub proc prepare_note
     padw padw push.0.0.0
     # => [pad(11)]
 
@@ -92,7 +92,7 @@ end
 #! Where:
 #! - note_data_ptr is a pointer to the data section of the output note.
 #! - ASSETS_COMMITMENT is the commitment of the assets of the output note located at note_data_ptr.
-export.compute_output_note_assets_commitment
+pub proc compute_output_note_assets_commitment
     # get the assets commitment dirty flag and decide whether we need to recompute the commitment
     dup exec.memory::get_output_note_dirty_flag
     # => [dirty_flag, note_data_ptr]
@@ -138,7 +138,7 @@ export.compute_output_note_assets_commitment
         end
 
         # extract digest
-        exec.rpo::squeeze_digest
+        exec.rpo256::squeeze_digest
         # => [ASSETS_COMMITMENT, asset_data_ptr, asset_counter, num_asset_pairs, note_data_ptr]
 
         # drop accessory variables from stack
@@ -176,7 +176,7 @@ end
 #! Where:
 #! - note_data_ptr is a pointer to the data section of the output note.
 #! - NOTE_ID is the ID of the output note located at note_data_ptr.
-proc.compute_output_note_id
+proc compute_output_note_id
     # pad capacity elements of hasher
     padw
     # => [EMPTY_WORD, note_data_ptr]
@@ -190,7 +190,7 @@ proc.compute_output_note_id
     # => [ASSETS_COMMITMENT, RECIPIENT, EMPTY_WORD, note_data_ptr]
 
     # compute output note commitment (which is also note ID) and extract digest
-    hperm exec.rpo::squeeze_digest
+    hperm exec.rpo256::squeeze_digest
     # => [NOTE_ID, note_data_ptr]
 
     # save the output note commitment (note ID) to memory
@@ -206,7 +206,7 @@ end
 #!
 #! Where:
 #! - OUTPUT_NOTES_COMMITMENT is the commitment to the notes output by the transaction.
-export.compute_output_notes_commitment
+pub proc compute_output_notes_commitment
     # get the number of output notes from memory
     exec.memory::get_num_output_notes
     # => [num_notes, ...]
@@ -251,7 +251,7 @@ export.compute_output_notes_commitment
     end
 
     # extract digest
-    exec.rpo::squeeze_digest
+    exec.rpo256::squeeze_digest
     # => [OUTPUT_NOTES_COMMITMENT, end_ptr, end_ptr, ...]
 
     # drop accessory variables from stack

@@ -237,7 +237,6 @@ impl AccountInterface {
         &self,
         output_notes: &[PartialNote],
         expiration_delta: Option<u16>,
-        in_debug_mode: bool,
     ) -> Result<TransactionScript, AccountInterfaceError> {
         let note_creation_source = self.build_create_notes_section(output_notes)?;
 
@@ -247,7 +246,7 @@ impl AccountInterface {
             note_creation_source,
         );
 
-        let tx_script = CodeBuilder::new(in_debug_mode)
+        let tx_script = CodeBuilder::new()
             .compile_tx_script(script)
             .map_err(AccountInterfaceError::InvalidTransactionScript)?;
 

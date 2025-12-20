@@ -425,7 +425,7 @@ impl Deserializable for ProposedBatch {
 #[cfg(test)]
 mod tests {
     use anyhow::Context;
-    use miden_crypto::merkle::{Mmr, PartialMmr};
+    use miden_crypto::merkle::mmr::{Mmr, PartialMmr};
     use miden_verifier::ExecutionProof;
     use winter_rand_utils::rand_value;
 
