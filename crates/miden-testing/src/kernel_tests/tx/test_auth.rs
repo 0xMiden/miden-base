@@ -1,15 +1,21 @@
 use anyhow::Context;
-use miden_protocol::account::{Account, AccountBuilder};
+use miden_protocol::account::{Account, AccountBuilder, AccountStorageMode, StorageSlotName};
 use miden_protocol::errors::MasmError;
 use miden_protocol::errors::tx_kernel::ERR_EPILOGUE_AUTH_PROCEDURE_CALLED_FROM_WRONG_CONTEXT;
 use miden_protocol::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE;
-use miden_protocol::{Felt, ONE};
+use miden_protocol::{Felt, ONE, Word};
 use miden_standards::account::wallets::BasicWallet;
 use miden_standards::code_builder::CodeBuilder;
-use miden_standards::testing::account_component::{ConditionalAuthComponent, ERR_WRONG_ARGS_MSG};
+use miden_standards::testing::account_component::{
+    CALL_COUNTER_SLOT_NAME,
+    ConditionalAuthComponent,
+    ERR_WRONG_ARGS_MSG,
+    MockAccountComponent,
+    SelfCallingAuthComponent,
+};
 use miden_standards::testing::mock_account::MockAccountExt;
 
-use crate::{Auth, TransactionContextBuilder, assert_transaction_executor_error};
+use crate::{Auth, MockChainBuilder, TransactionContextBuilder, assert_transaction_executor_error};
 
 pub const ERR_WRONG_ARGS: MasmError = MasmError::from_static_str(ERR_WRONG_ARGS_MSG);
 
@@ -92,6 +98,63 @@ async fn test_auth_procedure_called_from_wrong_context() -> anyhow::Result<()> {
     assert_transaction_executor_error!(
         execution_result,
         ERR_EPILOGUE_AUTH_PROCEDURE_CALLED_FROM_WRONG_CONTEXT
+    );
+
+    Ok(())
+}
+
+// REENTRANCY TESTS
+// ================================================================================================
+
+/// Tests that auth procedure reentrancy is prevented.
+#[tokio::test]
+async fn test_auth_procedure_reentrancy_self_call() -> anyhow::Result<()> {
+    let mut builder = MockChainBuilder::default();
+
+    let account = AccountBuilder::new([42; 32])
+        .with_auth_component(SelfCallingAuthComponent)
+        .with_component(MockAccountComponent::with_empty_slots())
+        .storage_mode(AccountStorageMode::Public)
+        .build_existing()?;
+
+    // Assert that the call counter is initialized to 0
+    let counter_slot = account
+        .storage()
+        .get_item(&StorageSlotName::new(CALL_COUNTER_SLOT_NAME).unwrap());
+    assert_eq!(counter_slot.unwrap(), Word::default(), "counter should be initialized to 0");
+
+    let account_for_delta = account.clone();
+    builder.add_account(account.clone())?;
+    let mut mock_chain = builder.build()?;
+    mock_chain.prove_next_block()?;
+
+    let tx_context = mock_chain
+        .build_tx_context(crate::TxContextInput::Account(account), &[], &[])?
+        .build()?;
+
+    let execution_result = tx_context.execute().await;
+
+    // Apply the transaction delta to get the updated account state
+    let executed_tx = execution_result.expect("transaction should execute");
+    let mut updated_account = account_for_delta;
+    updated_account.apply_delta(executed_tx.account_delta())?;
+
+    // Check the counter value after transaction execution
+    let counter_slot = updated_account
+        .storage()
+        .get_item(&StorageSlotName::new(CALL_COUNTER_SLOT_NAME).unwrap());
+    let counter_word = counter_slot.expect("counter slot should exist");
+
+    let counter_value = counter_word[3].as_int();
+
+    // BUG: The transaction succeeds and the counter is incremented to 2, indicating
+    // that the auth procedure was able to call itself via dynexec.
+
+    // Expected: counter = 1 (only first call should succeed, reentrancy should fail)
+    // Actual: counter = 2 (both calls succeeded, reentrancy was not prevented)
+    assert_eq!(
+        counter_value, 2,
+        "counter should be 2 if reentrancy succeeded (BUG), or 1 if prevented"
     );
 
     Ok(())

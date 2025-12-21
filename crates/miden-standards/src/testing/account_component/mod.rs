@@ -9,3 +9,6 @@ pub use mock_account_component::MockAccountComponent;
 
 mod mock_faucet_component;
 pub use mock_faucet_component::MockFaucetComponent;
+
+mod reentrant_auth;
+pub use reentrant_auth::{CALL_COUNTER_SLOT_NAME, SelfCallingAuthComponent};
