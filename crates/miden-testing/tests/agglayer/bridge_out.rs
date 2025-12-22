@@ -60,7 +60,7 @@ async fn test_bridge_out_consumes_b2agg_note() -> anyhow::Result<()> {
     let storage_slots = vec![StorageSlot::with_empty_map(storage_slot_name)];
     let bridge_component = bridge_out_component(storage_slots);
     let account_builder = Account::builder(builder.rng_mut().random())
-        .storage_mode(AccountStorageMode::Public)
+        .storage_mode(AccountStorageMode::Network)
         .with_component(bridge_component);
     let mut bridge_account =
         builder.add_account_from_builder(Auth::IncrNonce, account_builder, AccountState::Exists)?;
@@ -70,7 +70,7 @@ async fn test_bridge_out_consumes_b2agg_note() -> anyhow::Result<()> {
 
     let amount = Felt::new(100);
     let bridge_asset: Asset = FungibleAsset::new(faucet.id(), amount.into()).unwrap().into();
-    let tag = NoteTag::for_local_use_case(0, 0).unwrap();
+    let tag = NoteTag::from_account_id(bridge_account.id());
     let aux = Felt::new(0);
     let note_execution_hint = NoteExecutionHint::always();
     let note_type = NoteType::Public; // Use Public note type for network transaction
@@ -217,6 +217,13 @@ async fn test_b2agg_note_reclaim_scenario() -> anyhow::Result<()> {
         AccountStorageMode::Private,
     );
 
+    let bridge_account_id = AccountId::dummy(
+        [1; 15],
+        AccountIdVersion::Version0,
+        AccountType::RegularAccountImmutableCode,
+        AccountStorageMode::Network,
+    );
+
     // Create a network faucet to provide assets for the B2AGG note
     let faucet =
         builder.add_existing_network_faucet("AGG", 1000, faucet_owner_account_id, Some(100))?;
@@ -229,7 +236,7 @@ async fn test_b2agg_note_reclaim_scenario() -> anyhow::Result<()> {
 
     let amount = Felt::new(50);
     let bridge_asset: Asset = FungibleAsset::new(faucet.id(), amount.into()).unwrap().into();
-    let tag = NoteTag::for_local_use_case(0, 0).unwrap();
+    let tag = NoteTag::from_account_id(bridge_account_id);
     let aux = Felt::new(0);
     let note_execution_hint = NoteExecutionHint::always();
     let note_type = NoteType::Public;
