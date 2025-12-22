@@ -27,10 +27,10 @@ use crate::AccountError;
 ///
 /// - The metadata's storage schema does not contain duplicate slot names.
 /// - The schema cannot contain protocol-reserved slot names.
-/// - Each init-time value name uniquely identifies a single value. The expected init-time metadata
-///   can be retrieved with [AccountComponentMetadata::schema_requirements()], which returns a map
-///   from keys to [SchemaRequirement] (which indicates the expected value type and optional
-///   defaults).
+/// - Each init-time value name uniquely identifies a single value. The expected init-time
+///   requirements can be retrieved with [AccountComponentMetadata::schema_requirements()], which
+///   returns a map from keys to [SchemaRequirement] (which indicates the expected value type and
+///   optional defaults).
 ///
 /// # Example
 ///
@@ -123,7 +123,7 @@ impl AccountComponentMetadata {
         }
     }
 
-    /// Returns the init-time values's requirements for this schema.
+    /// Returns the init-time value requirements for this schema.
     ///
     /// These values are used for initializing storage slot values or storage map entries. For a
     /// full example, refer to the docs for [AccountComponentMetadata].

@@ -5,7 +5,7 @@ use core::error::Error;
 use core::fmt::{self, Display};
 
 use miden_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
-use miden_core::{Felt, Word};
+use miden_core::{Felt, FieldElement, Word};
 use miden_crypto::dsa::{ecdsa_k256_keccak, falcon512_rpo};
 use miden_processor::DeserializationError;
 use thiserror::Error;
@@ -491,16 +491,40 @@ impl WordType for ecdsa_k256_keccak::PublicKey {
 // ================================================================================================
 
 /// Type alias for a function that converts a string into a [`Felt`] value.
-type FeltTypeConverter = fn(&str) -> Result<Felt, SchemaTypeError>;
+type FeltFromStrConverter = fn(&str) -> Result<Felt, SchemaTypeError>;
 
 /// Type alias for a function that converts a string into a [`Word`].
-type WordTypeConverter = fn(&str) -> Result<Word, SchemaTypeError>;
+type WordFromStrConverter = fn(&str) -> Result<Word, SchemaTypeError>;
 
 /// Type alias for a function that converts a [`Felt`] into a canonical string representation.
 type FeltTypeDisplayer = fn(Felt) -> Result<String, SchemaTypeError>;
 
 /// Type alias for a function that converts a [`Word`] into a canonical string representation.
 type WordTypeDisplayer = fn(Word) -> Result<String, SchemaTypeError>;
+
+/// Result of a word display conversion.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum WordDisplay {
+    Word(String),
+    Felt(String),
+    Hex(String),
+}
+
+impl WordDisplay {
+    pub fn value(&self) -> &str {
+        match self {
+            WordDisplay::Word(v) => v,
+            WordDisplay::Felt(v) => v,
+            WordDisplay::Hex(v) => v,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum TypeKind {
+    Word,
+    Felt,
+}
 
 // SCHEMA TYPE REGISTRY
 // ================================================================================================
@@ -512,8 +536,8 @@ type WordTypeDisplayer = fn(Word) -> Result<String, SchemaTypeError>;
 /// corresponding storage values.
 #[derive(Clone, Debug, Default)]
 pub struct SchemaTypeRegistry {
-    felt: BTreeMap<SchemaTypeId, FeltTypeConverter>,
-    word: BTreeMap<SchemaTypeId, WordTypeConverter>,
+    felt: BTreeMap<SchemaTypeId, FeltFromStrConverter>,
+    word: BTreeMap<SchemaTypeId, WordFromStrConverter>,
     felt_display: BTreeMap<SchemaTypeId, FeltTypeDisplayer>,
     word_display: BTreeMap<SchemaTypeId, WordTypeDisplayer>,
 }
@@ -577,6 +601,30 @@ impl SchemaTypeRegistry {
         display(felt).map(|_| ())
     }
 
+    // VALUE VALIDATION HELPERS
+    // ============================================================================================
+
+    /// Validates that the given [`Word`] conforms to the specified schema type.
+    pub fn validate_word_value(
+        &self,
+        type_name: &SchemaTypeId,
+        word: Word,
+    ) -> Result<(), SchemaTypeError> {
+        match self.type_kind(type_name) {
+            TypeKind::Word => Ok(()),
+            TypeKind::Felt => {
+                // Felt types are only parseable as words if they have the last element with a
+                // non-zero value
+                if word[0] != Felt::ZERO || word[1] != Felt::ZERO || word[2] != Felt::ZERO {
+                    return Err(SchemaTypeError::ConversionError(format!(
+                        "expected a word of the form [0, 0, 0, <felt>] for type `{type_name}`"
+                    )));
+                }
+                self.validate_felt_value(type_name, word[3])
+            },
+        }
+    }
+
     /// Converts a [`Felt`] into a canonical string representation for the given schema type.
     ///
     /// This is intended for serializing schemas to TOML (e.g. default values).
@@ -588,24 +636,20 @@ impl SchemaTypeRegistry {
             .unwrap_or_else(|| format!("0x{:x}", felt.as_int()))
     }
 
-    /// Converts a [`Word`] into a canonical string representation for the given schema type.
-    ///
-    /// Tries displaying as word if the converter is known, otherwise tests as a felt type, and
-    /// if it doesn't work, the word as hex is returned
-    // TODO: This should return richer information (how it was converted, if it succededs as word,
-    // etc.)
-    #[allow(dead_code)]
-    pub fn display_word(&self, type_name: &SchemaTypeId, word: Word) -> String {
+    /// Converts a [`Word`] into a canonical string representation and reports how it was produced.
+    pub fn display_word(&self, type_name: &SchemaTypeId, word: Word) -> WordDisplay {
         if let Some(display) = self.word_display.get(type_name) {
-            return display(word).unwrap_or_else(|_| word.to_string());
+            let value = display(word).unwrap_or_else(|_| word.to_string());
+            return WordDisplay::Word(value);
         }
 
         // Treat any registered felt type as a word type by zero-padding the remaining felts.
         if self.contains_felt_type(type_name) {
-            return self.display_felt(type_name, word[3]);
+            let value = self.display_felt(type_name, word[3]);
+            return WordDisplay::Felt(value);
         }
 
-        word.to_hex()
+        WordDisplay::Hex(word.to_hex())
     }
 
     /// Attempts to parse a string into a `Word` using the registered converter for the given type
@@ -640,6 +684,14 @@ impl SchemaTypeRegistry {
     /// Returns `true` if a `FeltType` is registered for the given type.
     pub fn contains_felt_type(&self, type_name: &SchemaTypeId) -> bool {
         self.felt.contains_key(type_name)
+    }
+
+    fn type_kind(&self, type_name: &SchemaTypeId) -> TypeKind {
+        if self.contains_felt_type(type_name) {
+            TypeKind::Felt
+        } else {
+            TypeKind::Word
+        }
     }
 
     /// Returns `true` if a `WordType` is registered for the given type.
