@@ -6,24 +6,24 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use anyhow::Context;
-use miden_lib::testing::account_component::IncrNonceAuthComponent;
-use miden_lib::testing::mock_account::MockAccountExt;
-use miden_objects::EMPTY_WORD;
-use miden_objects::account::auth::{PublicKeyCommitment, Signature};
-use miden_objects::account::{Account, AccountHeader, AccountId};
-use miden_objects::assembly::DefaultSourceManager;
-use miden_objects::assembly::debuginfo::SourceManagerSync;
-use miden_objects::block::account_tree::AccountWitness;
-use miden_objects::note::{Note, NoteId, NoteScript};
-use miden_objects::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE;
-use miden_objects::testing::noop_auth_component::NoopAuthComponent;
-use miden_objects::transaction::{
+use miden_processor::{AdviceInputs, Felt, Word};
+use miden_protocol::EMPTY_WORD;
+use miden_protocol::account::auth::{PublicKeyCommitment, Signature};
+use miden_protocol::account::{Account, AccountHeader, AccountId};
+use miden_protocol::assembly::DefaultSourceManager;
+use miden_protocol::assembly::debuginfo::SourceManagerSync;
+use miden_protocol::block::account_tree::AccountWitness;
+use miden_protocol::note::{Note, NoteId, NoteScript};
+use miden_protocol::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE;
+use miden_protocol::testing::noop_auth_component::NoopAuthComponent;
+use miden_protocol::transaction::{
     OutputNote,
     TransactionArgs,
     TransactionInputs,
     TransactionScript,
 };
-use miden_processor::{AdviceInputs, Felt, Word};
+use miden_standards::testing::account_component::IncrNonceAuthComponent;
+use miden_standards::testing::mock_account::MockAccountExt;
 use miden_tx::TransactionMastStore;
 use miden_tx::auth::BasicAuthenticator;
 
@@ -43,8 +43,8 @@ use crate::{MockChain, MockChainNote};
 /// ```
 /// # use anyhow::Result;
 /// # use miden_testing::TransactionContextBuilder;
-/// # use miden_objects::{account::AccountBuilder,Felt, FieldElement};
-/// # use miden_lib::transaction::TransactionKernel;
+/// # use miden_protocol::{account::AccountBuilder,Felt, FieldElement};
+/// # use miden_protocol::transaction::TransactionKernel;
 /// #
 /// # #[tokio::main(flavor = "current_thread")]
 /// # async fn main() -> Result<()> {
@@ -109,11 +109,11 @@ impl TransactionContextBuilder {
     ///
     /// The wallet:
     ///
-    /// - Includes a series of mocked assets ([miden_objects::asset::AssetVault::mock()]).
+    /// - Includes a series of mocked assets ([miden_protocol::asset::AssetVault::mock()]).
     /// - Has a nonce of `1` (so it does not imply seed validation).
     /// - Has an ID of [`ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE`].
     /// - Has an account code based on an
-    ///   [miden_lib::testing::account_component::MockAccountComponent].
+    ///   [miden_standards::testing::account_component::MockAccountComponent].
     pub fn with_existing_mock_account() -> Self {
         Self::new(Account::mock(
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,

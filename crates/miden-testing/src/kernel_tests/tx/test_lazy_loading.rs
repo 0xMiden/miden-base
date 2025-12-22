@@ -2,18 +2,18 @@
 //!
 //! Once lazy loading is enabled generally, it can be removed and/or integrated into other tests.
 
-use miden_lib::testing::note::NoteBuilder;
-use miden_lib::utils::CodeBuilder;
-use miden_objects::LexicographicWord;
-use miden_objects::account::{AccountId, AccountStorage};
-use miden_objects::asset::{Asset, FungibleAsset};
-use miden_objects::testing::account_id::{
+use miden_protocol::LexicographicWord;
+use miden_protocol::account::{AccountId, AccountStorage, StorageSlotDelta};
+use miden_protocol::asset::{Asset, FungibleAsset};
+use miden_protocol::testing::account_id::{
     ACCOUNT_ID_NATIVE_ASSET_FAUCET,
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
 };
-use miden_objects::testing::constants::FUNGIBLE_ASSET_AMOUNT;
-use miden_objects::testing::storage::MOCK_MAP_SLOT;
+use miden_protocol::testing::constants::FUNGIBLE_ASSET_AMOUNT;
+use miden_protocol::testing::storage::MOCK_MAP_SLOT;
+use miden_standards::code_builder::CodeBuilder;
+use miden_standards::testing::note::NoteBuilder;
 
 use super::Word;
 use crate::{Auth, MockChain, TransactionContextBuilder};
@@ -220,7 +220,13 @@ async fn setting_map_item_with_lazy_loading_succeeds() -> anyhow::Result<()> {
         .execute()
         .await?;
 
-    let map_delta = tx.account_delta().storage().maps().get(mock_map_slot).unwrap();
+    let map_delta = tx
+        .account_delta()
+        .storage()
+        .get(mock_map_slot)
+        .cloned()
+        .map(StorageSlotDelta::unwrap_map)
+        .unwrap();
     assert_eq!(map_delta.entries().get(&LexicographicWord::new(existing_key)).unwrap(), &value0);
     assert_eq!(
         map_delta.entries().get(&LexicographicWord::new(non_existent_key)).unwrap(),

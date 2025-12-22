@@ -1,12 +1,10 @@
 use core::slice;
 use std::collections::BTreeMap;
 
-use miden_lib::account::interface::AccountInterface;
-use miden_lib::utils::CodeBuilder;
-use miden_objects::Word;
-use miden_objects::asset::{Asset, FungibleAsset};
-use miden_objects::crypto::rand::{FeltRng, RpoRandomCoin};
-use miden_objects::note::{
+use miden_protocol::Word;
+use miden_protocol::asset::{Asset, FungibleAsset};
+use miden_protocol::crypto::rand::{FeltRng, RpoRandomCoin};
+use miden_protocol::note::{
     Note,
     NoteAssets,
     NoteExecutionHint,
@@ -17,13 +15,15 @@ use miden_objects::note::{
     NoteType,
     PartialNote,
 };
-use miden_objects::transaction::OutputNote;
+use miden_protocol::transaction::OutputNote;
+use miden_standards::account::interface::{AccountInterface, AccountInterfaceExt};
+use miden_standards::code_builder::CodeBuilder;
 use miden_testing::{Auth, MockChain};
 
 /// Tests the execution of the generated send_note transaction script in case the sending account
 /// has the [`BasicWallet`][wallet] interface.
 ///
-/// [wallet]: miden_lib::account::interface::AccountComponentInterface::BasicWallet
+/// [wallet]: miden_standards::account::interface::AccountComponentInterface::BasicWallet
 #[tokio::test]
 async fn test_send_note_script_basic_wallet() -> anyhow::Result<()> {
     let sent_asset = FungibleAsset::mock(10);
@@ -33,7 +33,7 @@ async fn test_send_note_script_basic_wallet() -> anyhow::Result<()> {
         builder.add_existing_wallet_with_assets(Auth::BasicAuth, [FungibleAsset::mock(100)])?;
     let mock_chain = builder.build()?;
 
-    let sender_account_interface = AccountInterface::from(&sender_basic_wallet_account);
+    let sender_account_interface = AccountInterface::from_account(&sender_basic_wallet_account);
 
     let tag = NoteTag::from_account_id(sender_basic_wallet_account.id());
     let metadata = NoteMetadata::new(
@@ -84,7 +84,7 @@ async fn test_send_note_script_basic_wallet() -> anyhow::Result<()> {
 /// Tests the execution of the generated send_note transaction script in case the sending account
 /// has the [`BasicFungibleFaucet`][faucet] interface.
 ///
-/// [faucet]: miden_lib::account::interface::AccountComponentInterface::BasicFungibleFaucet
+/// [faucet]: miden_standards::account::interface::AccountComponentInterface::BasicFungibleFaucet
 #[tokio::test]
 async fn test_send_note_script_basic_fungible_faucet() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
@@ -92,7 +92,8 @@ async fn test_send_note_script_basic_fungible_faucet() -> anyhow::Result<()> {
         builder.add_existing_basic_faucet(Auth::BasicAuth, "POL", 200, None)?;
     let mock_chain = builder.build()?;
 
-    let sender_account_interface = AccountInterface::from(&sender_basic_fungible_faucet_account);
+    let sender_account_interface =
+        AccountInterface::from_account(&sender_basic_fungible_faucet_account);
 
     let tag = NoteTag::from_account_id(sender_basic_fungible_faucet_account.id());
     let metadata = NoteMetadata::new(

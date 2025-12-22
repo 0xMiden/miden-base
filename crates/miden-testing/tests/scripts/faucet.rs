@@ -3,21 +3,17 @@ extern crate alloc;
 use alloc::sync::Arc;
 use core::slice;
 
-use miden_lib::account::faucets::{BasicFungibleFaucet, FungibleFaucetExt, NetworkFungibleFaucet};
-use miden_lib::errors::tx_kernel_errors::ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED;
-use miden_lib::note::{MintNoteInputs, WellKnownNote, create_burn_note, create_mint_note};
-use miden_lib::testing::note::NoteBuilder;
-use miden_lib::utils::CodeBuilder;
-use miden_objects::account::{
+use miden_processor::crypto::RpoRandomCoin;
+use miden_protocol::account::{
     Account,
     AccountId,
     AccountIdVersion,
     AccountStorageMode,
     AccountType,
 };
-use miden_objects::assembly::DefaultSourceManager;
-use miden_objects::asset::{Asset, FungibleAsset};
-use miden_objects::note::{
+use miden_protocol::assembly::DefaultSourceManager;
+use miden_protocol::asset::{Asset, FungibleAsset};
+use miden_protocol::note::{
     Note,
     NoteAssets,
     NoteExecutionHint,
@@ -29,10 +25,18 @@ use miden_objects::note::{
     NoteTag,
     NoteType,
 };
-use miden_objects::testing::account_id::ACCOUNT_ID_PRIVATE_SENDER;
-use miden_objects::transaction::{ExecutedTransaction, OutputNote};
-use miden_objects::{Felt, Word};
-use miden_processor::crypto::RpoRandomCoin;
+use miden_protocol::testing::account_id::ACCOUNT_ID_PRIVATE_SENDER;
+use miden_protocol::transaction::{ExecutedTransaction, OutputNote};
+use miden_protocol::{Felt, Word};
+use miden_standards::account::faucets::{
+    BasicFungibleFaucet,
+    FungibleFaucetExt,
+    NetworkFungibleFaucet,
+};
+use miden_standards::code_builder::CodeBuilder;
+use miden_standards::errors::standards::ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED;
+use miden_standards::note::{MintNoteInputs, WellKnownNote, create_burn_note, create_mint_note};
+use miden_standards::testing::note::NoteBuilder;
 use miden_testing::{Auth, MockChain, assert_transaction_executor_error};
 
 use crate::scripts::swap::create_p2id_note_exact;
@@ -67,7 +71,7 @@ pub fn create_mint_script_code(params: &FaucetTestParams) -> String {
                 push.{amount}
                 # => [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
 
-                call.::miden::contracts::faucets::basic_fungible::distribute
+                call.::miden::standards::faucets::basic_fungible::distribute
                 # => [note_idx, pad(15)]
 
                 # truncate the stack
@@ -186,7 +190,7 @@ async fn faucet_contract_mint_fungible_asset_fails_exceeds_max_supply() -> anyho
                 push.{amount}
                 # => [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
 
-                call.::miden::contracts::faucets::basic_fungible::distribute
+                call.::miden::standards::faucets::basic_fungible::distribute
                 # => [note_idx, pad(15)]
 
                 # truncate the stack
@@ -263,7 +267,7 @@ async fn prove_burning_fungible_asset_on_existing_faucet_succeeds() -> anyhow::R
             dropw
             # => []
 
-            call.::miden::contracts::faucets::basic_fungible::burn
+            call.::miden::standards::faucets::basic_fungible::burn
             # => [ASSET]
 
             # truncate the stack
@@ -358,7 +362,7 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
 
     let trigger_note_script_code = format!(
         "
-            use miden::note
+            use miden::protocol::note
             
             begin
                 # Build recipient hash from SERIAL_NUM, SCRIPT_ROOT, and INPUTS_COMMITMENT
@@ -391,7 +395,7 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
                 push.{amount}
                 # => [amount, tag, aux, note_type, execution_hint, RECIPIENT]
 
-                call.::miden::contracts::faucets::basic_fungible::distribute
+                call.::miden::standards::faucets::basic_fungible::distribute
                 # => [note_idx, pad(15)]
 
                 # Truncate the stack

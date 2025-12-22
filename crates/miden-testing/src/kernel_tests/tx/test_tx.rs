@@ -2,15 +2,8 @@ use alloc::sync::Arc;
 
 use anyhow::Context;
 use assert_matches::assert_matches;
-use miden_lib::AuthScheme;
-use miden_lib::account::interface::AccountInterface;
-use miden_lib::account::wallets::BasicWallet;
-use miden_lib::note::create_p2id_note;
-use miden_lib::testing::account_component::IncrNonceAuthComponent;
-use miden_lib::testing::mock_account::MockAccountExt;
-use miden_lib::transaction::TransactionKernel;
-use miden_lib::utils::CodeBuilder;
-use miden_objects::account::{
+use miden_processor::crypto::RpoRandomCoin;
+use miden_protocol::account::{
     Account,
     AccountBuilder,
     AccountCode,
@@ -21,11 +14,11 @@ use miden_objects::account::{
     StorageSlot,
     StorageSlotName,
 };
-use miden_objects::assembly::DefaultSourceManager;
-use miden_objects::assembly::diagnostics::NamedSource;
-use miden_objects::asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset};
-use miden_objects::block::BlockNumber;
-use miden_objects::note::{
+use miden_protocol::assembly::DefaultSourceManager;
+use miden_protocol::assembly::diagnostics::NamedSource;
+use miden_protocol::asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset};
+use miden_protocol::block::BlockNumber;
+use miden_protocol::note::{
     Note,
     NoteAssets,
     NoteExecutionHint,
@@ -38,7 +31,7 @@ use miden_objects::note::{
     NoteTag,
     NoteType,
 };
-use miden_objects::testing::account_id::{
+use miden_protocol::testing::account_id::{
     ACCOUNT_ID_PRIVATE_SENDER,
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
@@ -46,17 +39,24 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
     ACCOUNT_ID_SENDER,
 };
-use miden_objects::testing::constants::{FUNGIBLE_ASSET_AMOUNT, NON_FUNGIBLE_ASSET_DATA};
-use miden_objects::testing::note::DEFAULT_NOTE_CODE;
-use miden_objects::transaction::{
+use miden_protocol::testing::constants::{FUNGIBLE_ASSET_AMOUNT, NON_FUNGIBLE_ASSET_DATA};
+use miden_protocol::testing::note::DEFAULT_NOTE_CODE;
+use miden_protocol::transaction::{
     InputNotes,
     OutputNote,
     OutputNotes,
     TransactionArgs,
+    TransactionKernel,
     TransactionSummary,
 };
-use miden_objects::{Felt, FieldElement, Hasher, ONE, Word};
-use miden_processor::crypto::RpoRandomCoin;
+use miden_protocol::{Felt, FieldElement, Hasher, ONE, Word};
+use miden_standards::AuthScheme;
+use miden_standards::account::interface::{AccountInterface, AccountInterfaceExt};
+use miden_standards::account::wallets::BasicWallet;
+use miden_standards::code_builder::CodeBuilder;
+use miden_standards::note::create_p2id_note;
+use miden_standards::testing::account_component::IncrNonceAuthComponent;
+use miden_standards::testing::mock_account::MockAccountExt;
 use miden_tx::auth::UnreachableAuth;
 use miden_tx::{TransactionExecutor, TransactionExecutorError};
 
@@ -133,7 +133,7 @@ async fn test_block_procedures() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
     let code = "
-        use miden::tx
+        use miden::protocol::tx
         use $kernel::prologue
 
         begin
@@ -245,8 +245,8 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
 
     let tx_script_src = format!(
         "\
-        use miden::contracts::wallets::basic->wallet
-        use miden::output_note
+        use miden::standards::wallets::basic->wallet
+        use miden::protocol::output_note
 
         # Inputs:  [tag, aux, note_type, execution_hint, RECIPIENT]
         # Outputs: [note_idx]
@@ -414,8 +414,8 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
 #[tokio::test]
 async fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
     let source_code = r#"
-      use miden::auth
-      use miden::tx
+      use miden::standards::auth
+      use miden::protocol::tx
       const AUTH_UNAUTHORIZED_EVENT=event("miden::auth::unauthorized")
       #! Inputs:  [AUTH_ARGS, pad(12)]
       #! Outputs: [pad(16)]
@@ -424,7 +424,7 @@ async fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
           # => [pad(16)]
 
           push.0.0 exec.tx::get_block_number
-          exec.::miden::native_account::incr_nonce
+          exec.::miden::protocol::native_account::incr_nonce
           # => [[final_nonce, block_num, 0, 0], pad(16)]
           # => [SALT, pad(16)]
 
@@ -529,7 +529,7 @@ async fn tx_summary_commitment_is_signed_by_falcon_auth() -> anyhow::Result<()> 
     );
     let summary_commitment = summary.to_commitment();
 
-    let account_interface = AccountInterface::from(&account);
+    let account_interface = AccountInterface::from_account(&account);
     let pub_key = match account_interface.auth().first().unwrap() {
         AuthScheme::RpoFalcon512 { pub_key } => pub_key,
         AuthScheme::NoAuth => panic!("Expected RpoFalcon512 auth scheme, got NoAuth"),
@@ -593,7 +593,7 @@ async fn tx_summary_commitment_is_signed_by_ecdsa_auth() -> anyhow::Result<()> {
     );
     let summary_commitment = summary.to_commitment();
 
-    let account_interface = AccountInterface::from(&account);
+    let account_interface = AccountInterface::from_account(&account);
     let pub_key = match account_interface.auth().first().unwrap() {
         AuthScheme::EcdsaK256Keccak { pub_key } => pub_key,
         AuthScheme::EcdsaK256KeccakMultisig { .. } => {

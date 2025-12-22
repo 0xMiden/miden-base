@@ -2,19 +2,16 @@ use alloc::collections::BTreeMap;
 use alloc::sync::Arc;
 
 use anyhow::Context;
-use miden_lib::account::wallets::BasicWallet;
-use miden_lib::errors::MasmError;
-use miden_lib::testing::note::NoteBuilder;
-use miden_lib::transaction::memory::ACTIVE_INPUT_NOTE_PTR;
-use miden_lib::utils::CodeBuilder;
-use miden_objects::account::auth::PublicKeyCommitment;
-use miden_objects::account::{AccountBuilder, AccountId};
-use miden_objects::assembly::DefaultSourceManager;
-use miden_objects::assembly::diagnostics::miette::{self, miette};
-use miden_objects::asset::FungibleAsset;
-use miden_objects::crypto::dsa::falcon512_rpo::SecretKey;
-use miden_objects::crypto::rand::{FeltRng, RpoRandomCoin};
-use miden_objects::note::{
+use miden_processor::fast::ExecutionOutput;
+use miden_protocol::account::auth::PublicKeyCommitment;
+use miden_protocol::account::{AccountBuilder, AccountId};
+use miden_protocol::assembly::DefaultSourceManager;
+use miden_protocol::assembly::diagnostics::miette::{self, miette};
+use miden_protocol::asset::FungibleAsset;
+use miden_protocol::crypto::dsa::falcon512_rpo::SecretKey;
+use miden_protocol::crypto::rand::{FeltRng, RpoRandomCoin};
+use miden_protocol::errors::MasmError;
+use miden_protocol::note::{
     Note,
     NoteAssets,
     NoteExecutionHint,
@@ -25,14 +22,17 @@ use miden_objects::note::{
     NoteTag,
     NoteType,
 };
-use miden_objects::testing::account_id::{
+use miden_protocol::testing::account_id::{
     ACCOUNT_ID_NETWORK_FUNGIBLE_FAUCET,
     ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
     ACCOUNT_ID_SENDER,
 };
-use miden_objects::transaction::{OutputNote, TransactionArgs};
-use miden_objects::{Felt, Word, ZERO};
-use miden_processor::fast::ExecutionOutput;
+use miden_protocol::transaction::memory::ACTIVE_INPUT_NOTE_PTR;
+use miden_protocol::transaction::{OutputNote, TransactionArgs};
+use miden_protocol::{Felt, Word, ZERO};
+use miden_standards::account::wallets::BasicWallet;
+use miden_standards::code_builder::CodeBuilder;
+use miden_standards::testing::note::NoteBuilder;
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 
@@ -206,7 +206,7 @@ async fn test_build_recipient() -> anyhow::Result<()> {
         "
         use miden::core::sys
 
-        use miden::note
+        use miden::protocol::note
 
         begin
             # put the values that will be hashed into the memory
@@ -295,7 +295,7 @@ async fn test_compute_inputs_commitment() -> anyhow::Result<()> {
         "
         use miden::core::sys
 
-        use miden::note
+        use miden::protocol::note
 
         begin
             # put the values that will be hashed into the memory
@@ -434,8 +434,8 @@ pub async fn test_timelock() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-      use miden::active_note
-      use miden::tx
+      use miden::protocol::active_note
+      use miden::protocol::tx
 
       begin
           # store the note inputs to memory starting at address 0
@@ -568,7 +568,7 @@ async fn test_build_note_tag_for_network_account() -> anyhow::Result<()> {
     let code = format!(
         "
         use miden::core::sys
-        use miden::note
+        use miden::protocol::note
 
         begin
             push.{suffix}.{prefix} 

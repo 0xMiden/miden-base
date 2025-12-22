@@ -1,8 +1,8 @@
 use alloc::string::String;
 
-use miden_lib::utils::CodeBuilder;
-use miden_objects::Word;
-use miden_objects::note::Note;
+use miden_protocol::Word;
+use miden_protocol::note::Note;
+use miden_standards::code_builder::CodeBuilder;
 
 use super::{TestSetup, setup_test};
 use crate::TxContextInput;
@@ -47,7 +47,7 @@ async fn test_get_asset_info() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use miden::input_note
+        use miden::protocol::input_note
 
         begin
             {check_note_0}
@@ -104,7 +104,7 @@ async fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-        use miden::input_note
+        use miden::protocol::input_note
 
         begin
             # get the recipient from the input note
@@ -158,7 +158,7 @@ async fn test_get_sender() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-        use miden::input_note
+        use miden::protocol::input_note
 
         begin
             # get the sender from the input note
@@ -257,7 +257,7 @@ async fn test_get_assets() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use miden::input_note
+        use miden::protocol::input_note
 
         begin
             {check_note_0}
@@ -302,7 +302,7 @@ async fn test_get_inputs_info() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-        use miden::input_note
+        use miden::protocol::input_note
 
         begin
             # get the inputs commitment and length from the input note with index 0 (the only one
@@ -352,7 +352,7 @@ async fn test_get_script_root() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-        use miden::input_note
+        use miden::protocol::input_note
 
         begin
             # get the script root from the input note with index 0 (the only one we have)
@@ -395,7 +395,7 @@ async fn test_get_serial_number() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-        use miden::input_note
+        use miden::protocol::input_note
 
         begin
             # get the serial number from the input note with index 0 (the only one we have)

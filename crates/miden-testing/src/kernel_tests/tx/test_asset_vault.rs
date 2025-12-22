@@ -1,21 +1,21 @@
 use assert_matches::assert_matches;
-use miden_lib::errors::tx_kernel_errors::{
+use miden_protocol::account::AccountId;
+use miden_protocol::asset::{Asset, FungibleAsset, NonFungibleAsset, NonFungibleAssetDetails};
+use miden_protocol::errors::tx_kernel::{
     ERR_VAULT_FUNGIBLE_ASSET_AMOUNT_LESS_THAN_AMOUNT_TO_WITHDRAW,
     ERR_VAULT_FUNGIBLE_MAX_AMOUNT_EXCEEDED,
     ERR_VAULT_GET_BALANCE_CAN_ONLY_BE_CALLED_ON_FUNGIBLE_ASSET,
     ERR_VAULT_NON_FUNGIBLE_ASSET_ALREADY_EXISTS,
     ERR_VAULT_NON_FUNGIBLE_ASSET_TO_REMOVE_NOT_FOUND,
 };
-use miden_lib::transaction::memory;
-use miden_objects::account::AccountId;
-use miden_objects::asset::{Asset, FungibleAsset, NonFungibleAsset, NonFungibleAssetDetails};
-use miden_objects::testing::account_id::{
+use miden_protocol::testing::account_id::{
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
     ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET,
     ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET_1,
 };
-use miden_objects::testing::constants::{FUNGIBLE_ASSET_AMOUNT, NON_FUNGIBLE_ASSET_DATA};
-use miden_objects::{AssetVaultError, Felt, ONE, Word, ZERO};
+use miden_protocol::testing::constants::{FUNGIBLE_ASSET_AMOUNT, NON_FUNGIBLE_ASSET_DATA};
+use miden_protocol::transaction::memory;
+use miden_protocol::{AssetVaultError, Felt, ONE, Word, ZERO};
 
 use crate::kernel_tests::tx::ExecutionOutputExt;
 use crate::{TransactionContextBuilder, assert_execution_error};
@@ -29,7 +29,7 @@ async fn get_balance_returns_correct_amount() -> anyhow::Result<()> {
     let code = format!(
         r#"
         use $kernel::prologue
-        use miden::active_account
+        use miden::protocol::active_account
 
         begin
             exec.prologue::prepare_transaction
@@ -113,7 +113,7 @@ async fn test_get_balance_non_fungible_fails() -> anyhow::Result<()> {
     let code = format!(
         "
         use $kernel::prologue
-        use miden::active_account
+        use miden::protocol::active_account
 
         begin
             exec.prologue::prepare_transaction
@@ -144,7 +144,7 @@ async fn test_has_non_fungible_asset() -> anyhow::Result<()> {
     let code = format!(
         "
         use $kernel::prologue
-        use miden::active_account
+        use miden::protocol::active_account
 
         begin
             exec.prologue::prepare_transaction
