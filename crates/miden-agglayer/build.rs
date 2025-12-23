@@ -407,11 +407,9 @@ mod shared {
     pub fn generate_error_file(module: ErrorModule, errors: Vec<NamedError>) -> Result<()> {
         let mut output = String::new();
 
-        if module.is_crate_local {
-            writeln!(output, "use crate::errors::MasmError;\n").unwrap();
-        } else {
-            writeln!(output, "use miden_protocol::errors::MasmError;\n").unwrap();
-        }
+        // Always use Cow<'static, str> as the error type since these constants are used in production MASM code
+        writeln!(output, "use alloc::borrow::Cow;\n").unwrap();
+        writeln!(output, "type MasmError = Cow<'static, str>;\n").unwrap();
 
         writeln!(
             output,
@@ -445,7 +443,7 @@ mod shared {
             writeln!(output, "/// Error Message: \"{message}\"").into_diagnostic()?;
             writeln!(
                 output,
-                r#"pub const ERR_{name}: MasmError = MasmError::from_static_str("{message}");"#
+                r#"pub const ERR_{name}: MasmError = Cow::Borrowed("{message}");"#
             )
             .into_diagnostic()?;
         }
