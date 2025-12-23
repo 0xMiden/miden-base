@@ -2,8 +2,8 @@ use alloc::sync::Arc;
 use alloc::vec;
 use alloc::vec::Vec;
 
+use miden_processor::AdviceInputs;
 use miden_processor::fast::ExecutionOutput;
-use miden_processor::{AdviceInputs, Felt};
 use miden_protocol::account::{
     Account,
     AccountBuilder,
@@ -38,7 +38,7 @@ use miden_protocol::transaction::memory::{
     NUM_ACCT_PROCEDURES_OFFSET,
     NUM_ACCT_STORAGE_SLOTS_OFFSET,
 };
-use miden_protocol::{FieldElement, Word, ZERO};
+use miden_protocol::{ONE, Word, ZERO};
 use miden_standards::code_builder::CodeBuilder;
 use miden_standards::testing::account_component::MockAccountComponent;
 use miden_tx::LocalTransactionProver;
@@ -1614,10 +1614,9 @@ async fn test_fpi_stale_account() -> anyhow::Result<()> {
 
     // Modify the account's storage to change its storage commitment and in turn the account
     // commitment.
-    foreign_account.storage_mut().set_item(
-        mock_value_slot0.name(),
-        Word::from([Felt::ONE, Felt::ONE, Felt::ONE, Felt::ONE]),
-    )?;
+    foreign_account
+        .storage_mut()
+        .set_item(mock_value_slot0.name(), Word::from([ONE, ONE, ONE, ONE]))?;
 
     // We pass the modified foreign account with a witness that is valid against the ref block. This
     // means the foreign account's commitment does not match the commitment that the account witness

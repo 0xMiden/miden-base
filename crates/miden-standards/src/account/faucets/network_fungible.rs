@@ -11,7 +11,7 @@ use miden_protocol::account::{
 };
 use miden_protocol::asset::TokenSymbol;
 use miden_protocol::utils::sync::LazyLock;
-use miden_protocol::{Felt, FieldElement, Word};
+use miden_protocol::{Felt, Word, ZERO};
 
 use super::{BasicFungibleFaucet, FungibleFaucetError};
 use crate::account::auth::NoAuth;
@@ -211,7 +211,7 @@ impl From<NetworkFungibleFaucet> for AccountComponent {
             network_faucet.faucet.max_supply(),
             Felt::from(network_faucet.faucet.decimals()),
             network_faucet.faucet.symbol().into(),
-            Felt::ZERO,
+            ZERO,
         ]);
 
         // Convert AccountId into its Word encoding for storage.

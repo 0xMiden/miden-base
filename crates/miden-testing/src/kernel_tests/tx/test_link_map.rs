@@ -4,12 +4,27 @@ use std::string::String;
 
 use anyhow::Context;
 use miden_processor::{ONE, ZERO};
-use miden_protocol::{EMPTY_WORD, LexicographicWord, Word};
+use miden_protocol::{EMPTY_WORD, Felt, LexicographicWord, Word};
 use miden_tx::{LinkMap, MemoryViewer};
 use rand::seq::IteratorRandom;
 use winter_rand_utils::rand_value;
 
 use crate::TransactionContextBuilder;
+
+// HELPER FUNCTIONS
+// ================================================================================================
+
+fn rand_word() -> Word {
+    Word::from([
+        Felt::new(rand_value::<u64>()),
+        Felt::new(rand_value::<u64>()),
+        Felt::new(rand_value::<u64>()),
+        Felt::new(rand_value::<u64>()),
+    ])
+}
+
+// TESTS
+// ================================================================================================
 
 /// Tests the following properties:
 /// - Insertion into an empty map.
@@ -604,8 +619,8 @@ fn generate_entries(count: u64) -> Vec<(LexicographicWord, (Word, Word))> {
     (0..count)
         .map(|_| {
             let key = rand_link_map_key();
-            let value0 = rand_value::<Word>();
-            let value1 = rand_value::<Word>();
+            let value0 = rand_word();
+            let value1 = rand_word();
             (key, (value0, value1))
         })
         .collect()
@@ -621,10 +636,10 @@ fn generate_updates(
         .iter()
         .choose_multiple(&mut rng, num_updates)
         .into_iter()
-        .map(|(key, _)| (*key, (rand_value::<Word>(), rand_value::<Word>())))
+        .map(|(key, _)| (*key, (rand_word(), rand_word())))
         .collect()
 }
 
 fn rand_link_map_key() -> LexicographicWord {
-    LexicographicWord::new(rand_value())
+    LexicographicWord::new(rand_word())
 }

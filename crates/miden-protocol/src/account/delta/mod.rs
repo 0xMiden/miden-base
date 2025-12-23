@@ -586,8 +586,8 @@ fn validate_nonce(
 mod tests {
 
     use assert_matches::assert_matches;
+    use miden_core::Felt;
     use miden_core::utils::Serializable;
-    use miden_core::{Felt, FieldElement};
 
     use super::{AccountDelta, AccountStorageDelta, AccountVaultDelta};
     use crate::account::delta::AccountUpdateDetails;
@@ -643,7 +643,7 @@ mod tests {
         let vault_delta = AccountVaultDelta::default();
 
         let nonce_delta0 = ONE;
-        let nonce_delta1 = Felt::try_from(0xffff_ffff_0000_0000u64).unwrap();
+        let nonce_delta1 = Felt::from(0xffff_ffff_0000_0000u64);
 
         let mut delta0 =
             AccountDelta::new(account_id, storage_delta.clone(), vault_delta.clone(), nonce_delta0)
@@ -732,13 +732,8 @@ mod tests {
         let account_code = AccountCode::mock();
         assert_eq!(account_code.to_bytes().len(), account_code.get_size_hint());
 
-        let account = Account::new_existing(
-            account_id,
-            asset_vault,
-            account_storage,
-            account_code,
-            Felt::ONE,
-        );
+        let account =
+            Account::new_existing(account_id, asset_vault, account_storage, account_code, ONE);
         assert_eq!(account.to_bytes().len(), account.get_size_hint());
 
         // AccountUpdateDetails

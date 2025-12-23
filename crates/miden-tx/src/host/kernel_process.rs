@@ -67,14 +67,17 @@ impl<'a> TransactionKernelProcess for ProcessState<'a> {
             self.get_mem_value(self.ctx(), ACCOUNT_STACK_TOP_PTR).ok_or_else(|| {
                 TransactionKernelError::other("account stack top ptr should be initialized")
             })?;
-        let account_stack_top_ptr = u32::try_from(account_stack_top_ptr).map_err(|_| {
-            TransactionKernelError::other("account stack top ptr should fit into a u32")
-        })?;
+        let account_stack_top_ptr: u32 =
+            account_stack_top_ptr.as_int().try_into().map_err(|_| {
+                TransactionKernelError::other("account stack top ptr should fit into a u32")
+            })?;
 
         let active_account_ptr = self
             .get_mem_value(self.ctx(), account_stack_top_ptr)
             .ok_or_else(|| TransactionKernelError::other("account id should be initialized"))?;
-        u32::try_from(active_account_ptr)
+        active_account_ptr
+            .as_int()
+            .try_into()
             .map_err(|_| TransactionKernelError::other("active account ptr should fit into a u32"))
     }
 
@@ -143,7 +146,7 @@ impl<'a> TransactionKernelProcess for ProcessState<'a> {
             None => return Ok(None),
         };
         // convert note address into u32
-        let note_address = u32::try_from(note_address_felt).map_err(|_| {
+        let note_address: u32 = note_address_felt.as_int().try_into().map_err(|_| {
             TransactionKernelError::other(format!(
                 "failed to convert {note_address_felt} into a memory address (u32)"
             ))
@@ -166,7 +169,7 @@ impl<'a> TransactionKernelProcess for ProcessState<'a> {
 
     /// Returns the vault root at the provided pointer.
     fn get_vault_root(&self, vault_root_ptr: Felt) -> Result<Word, TransactionKernelError> {
-        let vault_root_ptr = u32::try_from(vault_root_ptr).map_err(|_err| {
+        let vault_root_ptr: u32 = vault_root_ptr.as_int().try_into().map_err(|_err| {
             TransactionKernelError::other(format!(
                 "vault root ptr should fit into a u32, but was {vault_root_ptr}"
             ))
@@ -188,7 +191,7 @@ impl<'a> TransactionKernelProcess for ProcessState<'a> {
         &self,
         slot_ptr: Felt,
     ) -> Result<(StorageSlotId, StorageSlotType, Word), TransactionKernelError> {
-        let slot_ptr = u32::try_from(slot_ptr).map_err(|_err| {
+        let slot_ptr: u32 = slot_ptr.as_int().try_into().map_err(|_err| {
             TransactionKernelError::other(format!(
                 "slot ptr should fit into a u32, but was {slot_ptr}"
             ))
@@ -222,7 +225,7 @@ impl<'a> TransactionKernelProcess for ProcessState<'a> {
             })?;
 
         let slot_type = slot_metadata[ACCT_STORAGE_SLOT_TYPE_OFFSET as usize];
-        let slot_type = u8::try_from(slot_type).map_err(|err| {
+        let slot_type: u8 = slot_type.as_int().try_into().map_err(|err| {
             TransactionKernelError::other(format!("failed to convert {slot_type} into u8: {err}"))
         })?;
         let slot_type = StorageSlotType::try_from(slot_type).map_err(|err| {

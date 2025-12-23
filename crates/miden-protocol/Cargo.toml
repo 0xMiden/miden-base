@@ -31,7 +31,7 @@ std = [
   "miden-processor/std",
   "miden-verifier/std",
 ]
-testing = ["dep:rand_chacha", "dep:rand_xoshiro", "dep:winter-rand-utils", "miden-air/testing"]
+testing = ["dep:rand_chacha", "dep:rand_xoshiro", "dep:miden-test-utils", "miden-air/testing"]
 
 [dependencies]
 # Miden dependencies
@@ -45,7 +45,7 @@ miden-processor       = { workspace = true }
 miden-protocol-macros = { workspace = true }
 miden-utils-sync      = { workspace = true }
 miden-verifier        = { workspace = true }
-winter-rand-utils     = { optional = true, version = "0.13" }
+miden-test-utils      = { optional = true, git = "https://github.com/0xPolygonMiden/miden-vm", branch = "al-migrate-p3-ver2" }
 
 # External dependencies
 bech32       = { default-features = false, features = ["alloc"], version = "0.11" }

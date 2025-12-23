@@ -9,7 +9,7 @@ use miden_protocol::account::{
     StorageSlotName,
 };
 use miden_protocol::asset::{FungibleAsset, TokenSymbol};
-use miden_protocol::{Felt, FieldElement, Word};
+use miden_protocol::{Felt, Word, ZERO};
 
 use super::FungibleFaucetError;
 use crate::account::AuthScheme;
@@ -189,12 +189,8 @@ impl From<BasicFungibleFaucet> for AccountComponent {
     fn from(faucet: BasicFungibleFaucet) -> Self {
         // Note: data is stored as [a0, a1, a2, a3] but loaded onto the stack as
         // [a3, a2, a1, a0, ...]
-        let metadata = Word::new([
-            faucet.max_supply,
-            Felt::from(faucet.decimals),
-            faucet.symbol.into(),
-            Felt::ZERO,
-        ]);
+        let metadata =
+            Word::new([faucet.max_supply, Felt::from(faucet.decimals), faucet.symbol.into(), ZERO]);
         let storage_slot =
             StorageSlot::with_value(BasicFungibleFaucet::metadata_slot().clone(), metadata);
 
@@ -313,7 +309,7 @@ mod tests {
     use assert_matches::assert_matches;
     use miden_protocol::account::AccountStorage;
     use miden_protocol::account::auth::PublicKeyCommitment;
-    use miden_protocol::{FieldElement, ONE, Word};
+    use miden_protocol::{ONE, Word, ZERO};
 
     use super::{
         AccountBuilder,
@@ -381,7 +377,7 @@ mod tests {
         // allow_unauthorized_input_notes=true, this should be [1, 0, 1, 0].
         assert_eq!(
             faucet_account.storage().get_item(AuthRpoFalcon512Acl::config_slot()).unwrap(),
-            [Felt::ONE, Felt::ZERO, Felt::ONE, Felt::ZERO].into()
+            [ONE, ZERO, ONE, ZERO].into()
         );
 
         // The procedure root map should contain the distribute procedure root.
@@ -391,7 +387,7 @@ mod tests {
                 .storage()
                 .get_map_item(
                     AuthRpoFalcon512Acl::trigger_procedure_roots_slot(),
-                    [Felt::ZERO, Felt::ZERO, Felt::ZERO, Felt::ZERO].into()
+                    [ZERO, ZERO, ZERO, ZERO].into()
                 )
                 .unwrap(),
             distribute_root
@@ -400,7 +396,7 @@ mod tests {
         // Check that faucet metadata was initialized to the given values.
         assert_eq!(
             faucet_account.storage().get_item(BasicFungibleFaucet::metadata_slot()).unwrap(),
-            [Felt::new(123), Felt::new(2), token_symbol.into(), Felt::ZERO].into()
+            [Felt::new(123), Felt::new(2), token_symbol.into(), ZERO].into()
         );
 
         assert!(faucet_account.is_faucet());

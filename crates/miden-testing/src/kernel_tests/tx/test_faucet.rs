@@ -420,7 +420,7 @@ async fn burn_fungible_asset_fails_on_non_faucet_account() -> anyhow::Result<()>
 async fn test_burn_fungible_asset_inconsistent_faucet_id() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_fungible_faucet(
         ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
-        Felt::try_from(FUNGIBLE_FAUCET_INITIAL_BALANCE).unwrap(),
+        Felt::from(FUNGIBLE_FAUCET_INITIAL_BALANCE),
     )
     .build()?;
 

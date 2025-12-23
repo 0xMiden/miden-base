@@ -11,7 +11,7 @@ use miden_protocol::block::{BlockInputs, ProposedBlock};
 use miden_protocol::note::{Note, NoteType};
 use miden_protocol::testing::account_id::ACCOUNT_ID_SENDER;
 use miden_protocol::transaction::{ExecutedTransaction, OutputNote, TransactionHeader};
-use miden_protocol::{Felt, FieldElement};
+use miden_protocol::{Felt, ONE, ZERO};
 use miden_standards::testing::account_component::MockAccountComponent;
 use miden_standards::testing::note::NoteBuilder;
 use miden_tx::LocalTransactionProver;
@@ -331,7 +331,7 @@ async fn generate_conditional_tx(
 ) -> ExecutedTransaction {
     let auth_args = [
         // increment nonce if modify_storage is true
-        if modify_storage { Felt::ONE } else { Felt::ZERO },
+        if modify_storage { ONE } else { ZERO },
         Felt::new(99),
         Felt::new(98),
         Felt::new(97),

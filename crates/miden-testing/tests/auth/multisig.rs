@@ -706,9 +706,8 @@ async fn test_multisig_update_signers_remove_owner() -> anyhow::Result<()> {
     mock_chain.add_pending_executed_transaction(&update_approvers_tx)?;
     mock_chain.prove_next_block()?;
 
-    // Apply delta to get updated account
-    let mut updated_multisig_account = multisig_account.clone();
-    updated_multisig_account.apply_delta(update_approvers_tx.account_delta())?;
+    // Get the updated account from the chain (after the block was proven)
+    let updated_multisig_account = mock_chain.committed_account(multisig_account.id())?;
 
     // Verify public keys were updated
     for (i, expected_key) in new_public_keys.iter().enumerate() {

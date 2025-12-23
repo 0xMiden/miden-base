@@ -2,6 +2,8 @@ use alloc::collections::BTreeMap;
 use alloc::collections::btree_map::Entry;
 use alloc::vec::Vec;
 
+use miden_core::PrimeField64;
+
 use super::{
     AccountDeltaError,
     ByteReader,
@@ -194,9 +196,12 @@ impl AccountStorageDelta {
                         elements.extend_from_slice(value.as_elements());
                     }
 
-                    let num_changed_entries = Felt::try_from(map_delta.num_entries()).expect(
-                        "number of changed entries should not exceed max representable felt",
+                    let num_entries = map_delta.num_entries() as u64;
+                    assert!(
+                        num_entries < Felt::ORDER_U64,
+                        "number of changed entries should not exceed max representable felt"
                     );
+                    let num_changed_entries = Felt::new(num_entries);
 
                     elements.extend_from_slice(&[
                         DOMAIN_MAP,

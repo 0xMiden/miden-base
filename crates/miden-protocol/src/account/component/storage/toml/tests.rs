@@ -1,8 +1,9 @@
 use alloc::string::ToString;
 use core::error::Error;
 
-use miden_core::{Felt, FieldElement, Word};
+use miden_core::{Felt, Word};
 
+use crate::ZERO;
 use crate::account::component::toml::init_storage_data::InitStorageDataError;
 use crate::account::component::{
     AccountComponentMetadata,
@@ -520,7 +521,7 @@ fn extensive_schema_metadata_and_init_toml_example() {
     };
     let symbol_felt: Felt = TokenSymbol::new("TST").unwrap().into();
     let expected_token_metadata =
-        Word::from([Felt::from(1_000_000u32), symbol_felt, Felt::from(6u8), Felt::ZERO]);
+        Word::from([Felt::from(1_000_000u32), symbol_felt, Felt::from(6u8), ZERO]);
     assert_eq!(token_metadata_word, &expected_token_metadata);
 
     let owner_pub_key_name = StorageSlotName::new("demo::owner_pub_key").unwrap();
@@ -537,10 +538,7 @@ fn extensive_schema_metadata_and_init_toml_example() {
     let StorageSlotContent::Value(protocol_version_word) = protocol_version_slot.content() else {
         panic!("expected value slot for protocol_version");
     };
-    assert_eq!(
-        protocol_version_word,
-        &Word::from([Felt::ZERO, Felt::ZERO, Felt::ZERO, Felt::from(7u8)])
-    );
+    assert_eq!(protocol_version_word, &Word::from([ZERO, ZERO, ZERO, Felt::from(7u8)]));
 
     let static_word_name = StorageSlotName::new("demo::static_word").unwrap();
     let static_word_slot = slots.iter().find(|s| s.name() == &static_word_name).unwrap();
@@ -567,8 +565,8 @@ fn extensive_schema_metadata_and_init_toml_example() {
     assert_eq!(static_map.num_entries(), 2);
     assert_eq!(static_map.get(&Word::parse("0x1").unwrap()), Word::parse("0x10").unwrap());
     assert_eq!(
-        static_map.get(&Word::from([Felt::ZERO, Felt::ZERO, Felt::ZERO, Felt::new(2)])),
-        Word::from([Felt::ZERO, Felt::ZERO, Felt::ZERO, Felt::new(32)])
+        static_map.get(&Word::from([ZERO, ZERO, ZERO, Felt::new(2)])),
+        Word::from([ZERO, ZERO, ZERO, Felt::new(32)])
     );
 
     let typed_map_new_slot = slots.iter().find(|s| s.name() == &typed_map_new_name).unwrap();
@@ -613,11 +611,8 @@ fn extensive_schema_metadata_and_init_toml_example() {
     };
     assert_eq!(typed_map_new_contents.num_entries(), 2);
 
-    let key1 = Word::from([Felt::new(1), Felt::new(2), Felt::ZERO, Felt::ZERO]);
-    assert_eq!(
-        typed_map_new_contents.get(&key1),
-        Word::from([Felt::ZERO, Felt::ZERO, Felt::ZERO, Felt::new(16)])
-    );
+    let key1 = Word::from([Felt::new(1), Felt::new(2), ZERO, ZERO]);
+    assert_eq!(typed_map_new_contents.get(&key1), Word::from([ZERO, ZERO, ZERO, Felt::new(16)]));
 
     let token_metadata_slot =
         slots_with_maps.iter().find(|s| s.name() == &token_metadata_name).unwrap();
@@ -626,7 +621,7 @@ fn extensive_schema_metadata_and_init_toml_example() {
     };
     let symbol_felt: Felt = TokenSymbol::new("BTC").unwrap().into();
     let expected_token_metadata_overridden =
-        Word::from([Felt::from(1_000_000u32), symbol_felt, Felt::from(6u8), Felt::ZERO]);
+        Word::from([Felt::from(1_000_000u32), symbol_felt, Felt::from(6u8), ZERO]);
     assert_eq!(token_metadata_word, &expected_token_metadata_overridden);
 
     let legacy_word_slot = slots_with_maps.iter().find(|s| s.name() == &legacy_word_name).unwrap();
@@ -642,8 +637,8 @@ fn extensive_schema_metadata_and_init_toml_example() {
     assert_eq!(static_map.num_entries(), 3);
     assert_eq!(static_map.get(&Word::parse("0x1").unwrap()), Word::parse("0x99").unwrap());
     assert_eq!(
-        static_map.get(&Word::from([Felt::ZERO, Felt::ZERO, Felt::ZERO, Felt::new(2)])),
-        Word::from([Felt::ZERO, Felt::ZERO, Felt::ZERO, Felt::new(32)])
+        static_map.get(&Word::from([ZERO, ZERO, ZERO, Felt::new(2)])),
+        Word::from([ZERO, ZERO, ZERO, Felt::new(32)])
     );
     assert_eq!(static_map.get(&Word::parse("0x3").unwrap()), Word::parse("0x30").unwrap());
 }
@@ -720,6 +715,6 @@ fn typed_map_supports_non_numeric_value_types() {
 
     let key = Word::parse("0x1").unwrap();
     let symbol_felt: Felt = TokenSymbol::new("BTC").unwrap().into();
-    let expected_value = Word::from([Felt::ZERO, Felt::ZERO, Felt::ZERO, symbol_felt]);
+    let expected_value = Word::from([ZERO, ZERO, ZERO, symbol_felt]);
     assert_eq!(map.get(&key), expected_value);
 }

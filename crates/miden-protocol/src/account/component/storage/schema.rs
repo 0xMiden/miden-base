@@ -10,7 +10,7 @@ use super::type_registry::{SCHEMA_TYPE_REGISTRY, SchemaRequirement, SchemaTypeId
 use super::{InitStorageData, StorageValueName, WordValue};
 use crate::account::{AccountStorage, StorageMap, StorageSlot, StorageSlotName};
 use crate::errors::AccountComponentTemplateError;
-use crate::{Felt, FieldElement, Word};
+use crate::{Felt, Word, ZERO};
 
 // STORAGE SCHEMA
 // ================================================================================================
@@ -372,7 +372,7 @@ impl WordSchema {
                 }
             },
             WordSchema::Composite { value } => {
-                let mut result = [Felt::ZERO; 4];
+                let mut result = [ZERO; 4];
                 for (index, felt_schema) in value.iter().enumerate() {
                     result[index] =
                         felt_schema.try_build_felt(init_storage_data, value_prefix.clone())?;
@@ -616,7 +616,7 @@ impl FeltSchema {
         }
 
         if self.r#type == SchemaTypeId::void() {
-            return Ok(Felt::ZERO);
+            return Ok(ZERO);
         }
 
         if let Some(default_value) = self.default_value {
@@ -714,7 +714,7 @@ fn validate_word_value(
     match kind {
         WordTypeKind::Word => Ok(()),
         WordTypeKind::Felt => {
-            if word[0] != Felt::ZERO || word[1] != Felt::ZERO || word[2] != Felt::ZERO {
+            if word[0] != ZERO || word[1] != ZERO || word[2] != ZERO {
                 return Err(super::SchemaTypeError::ConversionError(format!(
                     "expected a word of the form [0, 0, 0, <felt>] for type `{schema_type}`"
                 )));
@@ -935,7 +935,7 @@ pub(super) fn parse_word_value_with_schema(
         },
         WordSchema::Composite { value } => match raw_value {
             WordValue::Elements(elements) => {
-                let mut felts = [Felt::ZERO; 4];
+                let mut felts = [ZERO; 4];
                 for index in 0..4 {
                     let felt_type = value[index].felt_type();
                     felts[index] = SCHEMA_TYPE_REGISTRY

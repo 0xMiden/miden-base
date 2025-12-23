@@ -50,17 +50,17 @@ miden-tx              = { default-features = false, path = "crates/miden-tx", ve
 miden-tx-batch-prover = { default-features = false, path = "crates/miden-tx-batch-prover", version = "0.13" }
 
 # Miden dependencies
-miden-air             = { default-features = false, version = "0.20" }
-miden-assembly        = { default-features = false, version = "0.20" }
-miden-assembly-syntax = { default-features = false, version = "0.20" }
-miden-core            = { default-features = false, version = "0.20" }
-miden-core-lib        = { default-features = false, version = "0.20" }
-miden-crypto          = { default-features = false, version = "0.19" }
-miden-mast-package    = { default-features = false, version = "0.20" }
-miden-processor       = { default-features = false, version = "0.20" }
-miden-prover          = { default-features = false, version = "0.20" }
-miden-utils-sync      = { default-features = false, version = "0.20" }
-miden-verifier        = { default-features = false, version = "0.20" }
+miden-air             = { default-features = false, git = "https://github.com/0xPolygonMiden/miden-vm", branch = "al-migrate-p3-ver2" }
+miden-assembly        = { default-features = false, git = "https://github.com/0xPolygonMiden/miden-vm", branch = "al-migrate-p3-ver2" }
+miden-assembly-syntax = { default-features = false, git = "https://github.com/0xPolygonMiden/miden-vm", branch = "al-migrate-p3-ver2" }
+miden-core            = { default-features = false, git = "https://github.com/0xPolygonMiden/miden-vm", branch = "al-migrate-p3-ver2" }
+miden-core-lib        = { default-features = false, git = "https://github.com/0xPolygonMiden/miden-vm", branch = "al-migrate-p3-ver2" }
+miden-crypto          = { default-features = false, git = "https://github.com/0xmiden/crypto", branch = "huitseeker/p3-rebased" }
+miden-mast-package    = { default-features = false, git = "https://github.com/0xPolygonMiden/miden-vm", branch = "al-migrate-p3-ver2" }
+miden-processor       = { default-features = false, git = "https://github.com/0xPolygonMiden/miden-vm", branch = "al-migrate-p3-ver2" }
+miden-prover          = { default-features = false, git = "https://github.com/0xPolygonMiden/miden-vm", branch = "al-migrate-p3-ver2" }
+miden-utils-sync      = { default-features = false, git = "https://github.com/0xPolygonMiden/miden-vm", branch = "al-migrate-p3-ver2" }
+miden-verifier        = { default-features = false, git = "https://github.com/0xPolygonMiden/miden-vm", branch = "al-migrate-p3-ver2" }
 
 # External dependencies
 anyhow         = { default-features = false, features = ["backtrace", "std"], version = "1.0" }

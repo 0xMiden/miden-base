@@ -1,6 +1,7 @@
 use alloc::vec::Vec;
 
 use anyhow::Context;
+use miden_air::HashFunction;
 use miden_protocol::Word;
 use miden_protocol::account::AccountId;
 use miden_protocol::asset::FungibleAsset;
@@ -111,7 +112,7 @@ impl MockProvenTxBuilder {
             self.ref_block_commitment.unwrap_or_default(),
             self.fee,
             self.expiration_block_num,
-            ExecutionProof::new_dummy(),
+            ExecutionProof::new(Vec::new(), HashFunction::Blake3_192, Vec::new()),
         )
         .add_input_notes(self.input_notes.unwrap_or_default())
         .add_input_notes(self.nullifiers.unwrap_or_default())

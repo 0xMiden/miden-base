@@ -1,8 +1,6 @@
 use alloc::boxed::Box;
 use alloc::vec::Vec;
 
-use miden_core::FieldElement;
-
 use crate::account::{
     Account,
     AccountCode,
@@ -15,14 +13,14 @@ use crate::account::{
     AccountType,
 };
 use crate::asset::AssetVault;
-use crate::{AccountError, Felt, Word};
+use crate::{AccountError, Felt, ONE, Word, ZERO};
 
 /// A convenient builder for an [`Account`] allowing for safe construction of an account by
 /// combining multiple [`AccountComponent`]s.
 ///
 /// This will build a valid new account with these properties:
 /// - An empty [`AssetVault`].
-/// - The nonce set to [`Felt::ZERO`].
+/// - The nonce set to [`ZERO`].
 /// - A seed which results in an [`AccountId`] valid for the configured account type and storage
 ///   mode.
 ///
@@ -225,8 +223,7 @@ impl AccountBuilder {
 
         // SAFETY: The account ID was derived from the seed and the seed is provided, so it is safe
         // to bypass the checks of `Account::new`.
-        let account =
-            Account::new_unchecked(account_id, vault, storage, code, Felt::ZERO, Some(seed));
+        let account = Account::new_unchecked(account_id, vault, storage, code, ZERO, Some(seed));
 
         Ok(account)
     }
@@ -252,7 +249,7 @@ impl AccountBuilder {
         self
     }
 
-    /// Builds the account as an existing account, that is, with the nonce set to [`Felt::ONE`].
+    /// Builds the account as an existing account, that is, with the nonce set to [`ONE`].
     ///
     /// The [`AccountId`] is constructed by slightly modifying `init_seed[0..8]` to be a valid ID.
     ///
@@ -271,8 +268,8 @@ impl AccountBuilder {
             )
         };
 
-        // Use the nonce value set by the Self::nonce method or Felt::ONE as a default.
-        let nonce = self.nonce.unwrap_or(Felt::ONE);
+        // Use the nonce value set by the Self::nonce method or ONE as a default.
+        let nonce = self.nonce.unwrap_or(ONE);
 
         Ok(Account::new_existing(account_id, vault, storage, code, nonce))
     }
@@ -287,7 +284,6 @@ mod tests {
 
     use assert_matches::assert_matches;
     use miden_assembly::{Assembler, Library};
-    use miden_core::FieldElement;
     use miden_processor::MastNodeExt;
 
     use super::*;
@@ -386,7 +382,7 @@ mod tests {
             .unwrap();
 
         // Account should be new, i.e. nonce = zero.
-        assert_eq!(account.nonce(), Felt::ZERO);
+        assert_eq!(account.nonce(), ZERO);
 
         let computed_id = AccountId::new(
             account.seed().unwrap(),

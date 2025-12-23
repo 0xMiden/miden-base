@@ -5,6 +5,7 @@ use std::collections::BTreeMap;
 use anyhow::Context;
 use assert_matches::assert_matches;
 use miden_processor::{ExecutionError, Word};
+use miden_protocol::LexicographicWord;
 use miden_protocol::account::delta::AccountUpdateDetails;
 use miden_protocol::account::{
     Account,
@@ -48,7 +49,6 @@ use miden_protocol::testing::account_id::{
 use miden_protocol::testing::storage::{MOCK_MAP_SLOT, MOCK_VALUE_SLOT0, MOCK_VALUE_SLOT1};
 use miden_protocol::transaction::{OutputNote, TransactionKernel};
 use miden_protocol::utils::sync::LazyLock;
-use miden_protocol::{LexicographicWord, StarkField};
 use miden_standards::code_builder::CodeBuilder;
 use miden_standards::testing::account_component::MockAccountComponent;
 use miden_standards::testing::mock_account::MockAccountExt;
@@ -68,6 +68,18 @@ use crate::{
     TxContextInput,
     assert_transaction_executor_error,
 };
+
+// HELPER FUNCTIONS
+// ================================================================================================
+
+fn rand_word() -> Word {
+    Word::from([
+        Felt::new(rand_value::<u64>()),
+        Felt::new(rand_value::<u64>()),
+        Felt::new(rand_value::<u64>()),
+        Felt::new(rand_value::<u64>()),
+    ])
+}
 
 // ACCOUNT COMMITMENT TESTS
 // ================================================================================================
@@ -204,7 +216,7 @@ async fn test_account_type() -> miette::Result<()> {
                 .await?;
 
             let type_matches = account_id.account_type() == expected_type;
-            let expected_result = Felt::from(type_matches);
+            let expected_result = if type_matches { Felt::new(1) } else { Felt::new(0) };
             has_type |= type_matches;
 
             assert_eq!(
@@ -256,8 +268,8 @@ async fn test_account_validate_id() -> miette::Result<()> {
     for (account_id, expected_error) in test_cases.iter() {
         // Manually split the account ID into prefix and suffix since we can't use AccountId methods
         // on invalid ids.
-        let prefix = Felt::try_from((account_id / (1u128 << 64)) as u64).unwrap();
-        let suffix = Felt::try_from((account_id % (1u128 << 64)) as u64).unwrap();
+        let prefix = Felt::from((account_id / (1u128 << 64)) as u64);
+        let suffix = Felt::from((account_id % (1u128 << 64)) as u64);
 
         let code = "
             use $kernel::account_id
@@ -929,7 +941,7 @@ async fn prove_account_creation_with_non_empty_storage() -> anyhow::Result<()> {
     let slot1 = StorageSlot::with_value(slot_name1.clone(), Word::from([10, 20, 30, 40u32]));
     let mut map_entries = Vec::new();
     for _ in 0..10 {
-        map_entries.push((rand_value::<Word>(), rand_value::<Word>()));
+        map_entries.push((rand_word(), rand_word()));
     }
     let map_slot =
         StorageSlot::with_map(slot_name2.clone(), StorageMap::with_entries(map_entries.clone())?);
@@ -1758,8 +1770,8 @@ async fn incrementing_nonce_overflow_fails() -> anyhow::Result<()> {
         .build_existing()
         .context("failed to build account")?;
     // Increment the nonce to the maximum felt value. The nonce is already 1, so we increment by
-    // modulus - 2.
-    account.increment_nonce(Felt::new(Felt::MODULUS - 2))?;
+    // modulus - 2 (Goldilocks: 2^64 - 2^32 + 1).
+    account.increment_nonce(Felt::new(0xffffffff00000000 - 1))?;
 
     let result = TransactionContextBuilder::new(account).build()?.execute().await;
 

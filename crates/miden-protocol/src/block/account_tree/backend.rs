@@ -215,9 +215,7 @@ impl AccountTree<Smt> {
             // SAFETY: Since we only inserted account IDs into the SMT, it is guaranteed that
             // the leaf_idx is a valid Felt as well as a valid account ID prefix.
             AccountTreeError::DuplicateStateCommitments {
-                prefix: AccountIdPrefix::new_unchecked(
-                    crate::Felt::try_from(leaf_idx).expect("leaf index should be a valid felt"),
-                ),
+                prefix: AccountIdPrefix::new_unchecked(crate::Felt::from(leaf_idx)),
             }
         })?;
 
@@ -235,5 +233,11 @@ fn large_smt_error_to_merkle_error(err: LargeSmtError) -> MerkleError {
             panic!("Storage error encountered: {:?}", storage_err)
         },
         LargeSmtError::Merkle(merkle_err) => merkle_err,
+        LargeSmtError::RootMismatch { .. } => {
+            panic!("Root mismatch error encountered: {:?}", err)
+        },
+        LargeSmtError::StorageNotEmpty => {
+            panic!("Storage not empty error encountered")
+        },
     }
 }

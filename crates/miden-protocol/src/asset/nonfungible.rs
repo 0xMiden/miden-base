@@ -6,10 +6,13 @@ use core::fmt;
 use super::vault::AssetVaultKey;
 use super::{AccountIdPrefix, AccountType, Asset, AssetError, Felt, Hasher, Word};
 use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
-use crate::{FieldElement, WORD_SIZE};
+use crate::{WORD_SIZE, ZERO};
 
 /// Position of the faucet_id inside the [`NonFungibleAsset`] word having fields in BigEndian.
 const FAUCET_ID_POS_BE: usize = 3;
+
+/// Number of bytes in a Felt (Goldilocks is 64-bit = 8 bytes)
+const FELT_NUM_BYTES: usize = 8;
 
 // NON-FUNGIBLE ASSET
 // ================================================================================================
@@ -48,7 +51,7 @@ impl NonFungibleAsset {
     /// The serialized size of a [`NonFungibleAsset`] in bytes.
     ///
     /// Currently represented as a word.
-    pub const SERIALIZED_SIZE: usize = Felt::ELEMENT_BYTES * WORD_SIZE;
+    pub const SERIALIZED_SIZE: usize = FELT_NUM_BYTES * WORD_SIZE;
 
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
@@ -214,11 +217,8 @@ impl NonFungibleAsset {
 
         // The last felt in the data_hash will be replaced by the faucet id, so we can set it to
         // zero here.
-        NonFungibleAsset::from_parts(
-            faucet_id_prefix,
-            Word::from([hash_0, hash_1, hash_2, Felt::ZERO]),
-        )
-        .map_err(|err| DeserializationError::InvalidValue(err.to_string()))
+        NonFungibleAsset::from_parts(faucet_id_prefix, Word::from([hash_0, hash_1, hash_2, ZERO]))
+            .map_err(|err| DeserializationError::InvalidValue(err.to_string()))
     }
 }
 

@@ -2,6 +2,7 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::fmt::Display;
 
+use miden_core::PrimeField64;
 use miden_processor::MastNodeExt;
 
 use super::Felt;
@@ -134,12 +135,21 @@ impl TryFrom<&[Felt]> for NoteScript {
             return Err(DeserializationError::UnexpectedEOF);
         }
 
-        let entrypoint: u32 = elements[0].try_into().map_err(DeserializationError::InvalidValue)?;
-        let len = elements[1].as_int();
+        let entrypoint_u64 = elements[0].as_canonical_u64();
+        let entrypoint: u32 = entrypoint_u64.try_into().map_err(|_| {
+            DeserializationError::InvalidValue(format!(
+                "Entrypoint value {} doesn't fit in u32",
+                entrypoint_u64
+            ))
+        })?;
+        let len = elements[1].as_canonical_u64();
         let mut data = Vec::with_capacity(elements.len() * 4);
 
         for &felt in &elements[2..] {
-            let v: u32 = felt.try_into().map_err(DeserializationError::InvalidValue)?;
+            let felt_u64 = felt.as_canonical_u64();
+            let v: u32 = felt_u64.try_into().map_err(|_| {
+                DeserializationError::InvalidValue(format!("Value {} doesn't fit in u32", felt_u64))
+            })?;
             data.extend(v.to_le_bytes())
         }
         data.shrink_to(len as usize);
