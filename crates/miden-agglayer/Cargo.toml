@@ -23,7 +23,7 @@ testing = ["miden-protocol/testing"]
 # Miden dependencies
 miden-assembly   = { workspace = true }
 miden-core       = { workspace = true }
-miden-protocol   = { features = ["testing"], workspace = true }
+miden-protocol   = { workspace = true }
 miden-utils-sync = { workspace = true }
 
 [dev-dependencies]
