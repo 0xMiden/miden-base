@@ -7,7 +7,7 @@ use crate::crypto::merkle::smt::{MutationSet, SMT_DEPTH, Smt};
 use crate::errors::NullifierTreeError;
 use crate::note::Nullifier;
 use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
-use crate::{Felt, FieldElement, Word};
+use crate::{Felt, Word, ZERO};
 
 mod backend;
 pub use backend::NullifierTreeBackend;
@@ -277,7 +277,7 @@ impl NullifierBlock {
             .map(BlockNumber::from)
             .map_err(|_| NullifierTreeError::InvalidNullifierBlockNumber(word))?;
 
-        if word[1..4].iter().any(|felt| *felt != Felt::ZERO) {
+        if word[1..4].iter().any(|felt| *felt != ZERO) {
             return Err(NullifierTreeError::InvalidNullifierBlockNumber(word));
         }
 
@@ -309,7 +309,7 @@ impl From<NullifierBlock> for BlockNumber {
 
 impl From<NullifierBlock> for Word {
     fn from(value: NullifierBlock) -> Word {
-        Word::from([Felt::from(value.0), Felt::ZERO, Felt::ZERO, Felt::ZERO])
+        Word::from([Felt::from(value.0), ZERO, ZERO, ZERO])
     }
 }
 

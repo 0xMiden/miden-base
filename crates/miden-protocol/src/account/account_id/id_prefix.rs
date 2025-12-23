@@ -1,6 +1,8 @@
 use alloc::string::{String, ToString};
 use core::fmt;
 
+use miden_core::PrimeField64;
+
 use super::v0;
 use crate::Felt;
 use crate::account::account_id::AccountIdPrefixV0;
@@ -162,8 +164,7 @@ impl AccountIdPrefix {
                 // Set the fungible bit to zero by taking the bitwise `and` of the felt with the
                 // inverted is_faucet mask.
                 let clear_fungible_bit_mask = !AccountIdV0::IS_FAUCET_MASK;
-                Felt::try_from(felt.as_int() & clear_fungible_bit_mask)
-                    .expect("felt should still be valid as we cleared a bit and did not set any")
+                Felt::from(felt.as_int() & clear_fungible_bit_mask)
             },
         }
     }
@@ -237,8 +238,16 @@ impl TryFrom<u64> for AccountIdPrefix {
     /// Returns an error if any of the ID constraints are not met. See the [constraints
     /// documentation](super::AccountId#constraints) for details.
     fn try_from(value: u64) -> Result<Self, Self::Error> {
-        let element = Felt::try_from(value.to_le_bytes().as_slice())
-            .map_err(AccountIdError::AccountIdInvalidPrefixFieldElement)?;
+        // Validate that the value is within the field modulus
+        if value >= Felt::ORDER_U64 {
+            return Err(AccountIdError::AccountIdInvalidPrefixFieldElement(
+                DeserializationError::InvalidValue(format!(
+                    "Value {} outside field modulus",
+                    value
+                )),
+            ));
+        }
+        let element = Felt::new(value);
         Self::new(element)
     }
 }

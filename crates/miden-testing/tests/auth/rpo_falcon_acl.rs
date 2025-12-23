@@ -13,7 +13,7 @@ use miden_protocol::account::{
 use miden_protocol::note::Note;
 use miden_protocol::testing::storage::MOCK_VALUE_SLOT0;
 use miden_protocol::transaction::OutputNote;
-use miden_protocol::{Felt, FieldElement, Word};
+use miden_protocol::{Word, ZERO};
 use miden_standards::account::auth::AuthRpoFalcon512Acl;
 use miden_standards::code_builder::CodeBuilder;
 use miden_standards::testing::account_component::MockAccountComponent;
@@ -189,7 +189,7 @@ async fn test_rpo_falcon_acl() -> anyhow::Result<()> {
         .context("no trigger, no auth should succeed")?;
     assert_eq!(
         executed.account_delta().nonce_delta(),
-        Felt::ZERO,
+        ZERO,
         "no auth but should still trigger nonce increment"
     );
 
@@ -229,7 +229,7 @@ async fn test_rpo_falcon_acl_with_allow_unauthorized_output_notes() -> anyhow::R
         .expect("no trigger, no auth should succeed");
     assert_eq!(
         executed.account_delta().nonce_delta(),
-        Felt::ZERO,
+        ZERO,
         "no auth but should still trigger nonce increment"
     );
 

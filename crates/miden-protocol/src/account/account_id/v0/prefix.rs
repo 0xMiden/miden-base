@@ -2,8 +2,8 @@ use alloc::string::{String, ToString};
 use core::fmt;
 use core::hash::Hash;
 
-use miden_core::Felt;
 use miden_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
+use miden_core::{Felt, PrimeField64};
 use miden_processor::DeserializationError;
 
 use crate::account::account_id::v0::{self, validate_prefix};
@@ -142,13 +142,20 @@ impl TryFrom<[u8; 8]> for AccountIdPrefixV0 {
     /// See [`TryFrom<[u8; 8]> for
     /// AccountIdPrefix`](crate::account::AccountIdPrefix#impl-TryFrom<%5Bu8;+8%
     /// 5D>-for-AccountIdPrefix) for details.
-    fn try_from(mut value: [u8; 8]) -> Result<Self, Self::Error> {
-        // Felt::try_from expects little-endian order.
-        value.reverse();
-
-        Felt::try_from(value.as_slice())
-            .map_err(AccountIdError::AccountIdInvalidPrefixFieldElement)
-            .and_then(Self::new)
+    fn try_from(value: [u8; 8]) -> Result<Self, Self::Error> {
+        // Convert from little-endian bytes to u64
+        let value_u64 = u64::from_le_bytes(value);
+        // Validate that the value is within the field modulus
+        if value_u64 >= Felt::ORDER_U64 {
+            return Err(AccountIdError::AccountIdInvalidPrefixFieldElement(
+                DeserializationError::InvalidValue(format!(
+                    "Value {} is outside field modulus",
+                    value_u64
+                )),
+            ));
+        }
+        let element = Felt::new(value_u64);
+        Self::new(element)
     }
 }
 
@@ -159,8 +166,16 @@ impl TryFrom<u64> for AccountIdPrefixV0 {
     /// AccountIdPrefix`](crate::account::AccountIdPrefix#impl-TryFrom<u64>-for-AccountIdPrefix)
     /// for details.
     fn try_from(value: u64) -> Result<Self, Self::Error> {
-        let element = Felt::try_from(value.to_le_bytes().as_slice())
-            .map_err(AccountIdError::AccountIdInvalidPrefixFieldElement)?;
+        // Validate that the value is within the field modulus
+        if value >= Felt::ORDER_U64 {
+            return Err(AccountIdError::AccountIdInvalidPrefixFieldElement(
+                DeserializationError::InvalidValue(format!(
+                    "Value {} is outside field modulus",
+                    value
+                )),
+            ));
+        }
+        let element = Felt::new(value);
         Self::new(element)
     }
 }

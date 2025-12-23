@@ -3,6 +3,7 @@ use alloc::vec::Vec;
 
 use miden_processor::{
     AdviceMutation,
+    AsyncHost,
     BaseHost,
     EventError,
     MastForest,
@@ -188,5 +189,27 @@ where
         };
 
         result.map_err(EventError::from)
+    }
+}
+
+// ASYNC HOST IMPLEMENTATION
+// ================================================================================================
+
+impl<STORE> AsyncHost for TransactionProverHost<'_, STORE>
+where
+    STORE: MastForestStore,
+{
+    fn get_mast_forest(
+        &self,
+        node_digest: &Word,
+    ) -> impl miden_processor::FutureMaybeSend<Option<Arc<MastForest>>> {
+        core::future::ready(SyncHost::get_mast_forest(self, node_digest))
+    }
+
+    fn on_event(
+        &mut self,
+        process: &ProcessState<'_>,
+    ) -> impl miden_processor::FutureMaybeSend<Result<Vec<AdviceMutation>, EventError>> {
+        core::future::ready(SyncHost::on_event(self, process))
     }
 }

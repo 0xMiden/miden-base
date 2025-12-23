@@ -12,7 +12,7 @@ use crate::utils::serde::{
     DeserializationError,
     Serializable,
 };
-use crate::{AccountError, FieldElement, ZERO};
+use crate::{AccountError, ZERO};
 
 // ACCOUNT STORAGE HEADER
 // ================================================================================================
@@ -259,12 +259,7 @@ impl StorageSlotHeader {
     pub(crate) fn to_elements(&self) -> [Felt; StorageSlot::NUM_ELEMENTS] {
         let id = self.id();
         let mut elements = [ZERO; StorageSlot::NUM_ELEMENTS];
-        elements[0..4].copy_from_slice(&[
-            Felt::ZERO,
-            self.r#type.as_felt(),
-            id.suffix(),
-            id.prefix(),
-        ]);
+        elements[0..4].copy_from_slice(&[ZERO, self.r#type.as_felt(), id.suffix(), id.prefix()]);
         elements[4..8].copy_from_slice(self.value.as_elements());
         elements
     }

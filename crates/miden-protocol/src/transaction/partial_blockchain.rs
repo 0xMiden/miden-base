@@ -5,7 +5,7 @@ use core::ops::RangeTo;
 use crate::PartialBlockchainError;
 use crate::block::{BlockHeader, BlockNumber};
 use crate::crypto::merkle::InnerNodeInfo;
-use crate::crypto::merkle::mmr::{MmrPeaks, PartialMmr};
+use crate::crypto::merkle::mmr::{MmrPeaks, MmrProof, PartialMmr};
 use crate::utils::serde::{Deserializable, Serializable};
 
 // PARTIAL BLOCKCHAIN
@@ -67,11 +67,13 @@ impl PartialBlockchain {
         for (block_num, block) in partial_chain.blocks.iter() {
             // SAFETY: new_unchecked returns an error if a block is not tracked in the MMR, so
             // retrieving a proof here should succeed.
-            let proof = partial_chain
+            let path = partial_chain
                 .mmr
                 .open(block_num.as_usize())
                 .expect("block should not exceed chain length")
                 .expect("block should be tracked in the partial MMR");
+
+            let proof = MmrProof::new(path, block.commitment());
 
             partial_chain.mmr.peaks().verify(block.commitment(), proof).map_err(|source| {
                 PartialBlockchainError::BlockHeaderCommitmentMismatch {
@@ -307,8 +309,8 @@ mod tests {
         partial_blockchain.add_block(&block_header, true);
 
         assert_eq!(
-            mmr.open(block_num as usize).unwrap(),
-            partial_blockchain.mmr.open(block_num as usize).unwrap().unwrap()
+            mmr.open(block_num as usize).unwrap().merkle_path(),
+            partial_blockchain.mmr.open(block_num as usize).unwrap().unwrap().merkle_path()
         );
 
         // add one more block to the partial blockchain, the number of peaks is again 2
@@ -318,8 +320,8 @@ mod tests {
         partial_blockchain.add_block(&block_header, true);
 
         assert_eq!(
-            mmr.open(block_num as usize).unwrap(),
-            partial_blockchain.mmr.open(block_num as usize).unwrap().unwrap()
+            mmr.open(block_num as usize).unwrap().merkle_path(),
+            partial_blockchain.mmr.open(block_num as usize).unwrap().unwrap().merkle_path()
         );
 
         // add one more block to the partial blockchain, the number of peaks is still 2
@@ -329,8 +331,8 @@ mod tests {
         partial_blockchain.add_block(&block_header, true);
 
         assert_eq!(
-            mmr.open(block_num as usize).unwrap(),
-            partial_blockchain.mmr.open(block_num as usize).unwrap().unwrap()
+            mmr.open(block_num as usize).unwrap().merkle_path(),
+            partial_blockchain.mmr.open(block_num as usize).unwrap().unwrap().merkle_path()
         );
     }
 
@@ -348,7 +350,7 @@ mod tests {
         let mut partial_mmr = PartialMmr::from_peaks(mmr.peaks());
         for i in 0..3 {
             partial_mmr
-                .track(i, mmr.get(i).unwrap(), &mmr.open(i).unwrap().merkle_path)
+                .track(i, mmr.get(i).unwrap(), mmr.open(i).unwrap().merkle_path())
                 .unwrap();
         }
 
@@ -398,7 +400,7 @@ mod tests {
 
         let mut partial_mmr = PartialMmr::from_peaks(mmr.peaks());
         partial_mmr
-            .track(1, block_header1.commitment(), &mmr.open(1).unwrap().merkle_path)
+            .track(1, block_header1.commitment(), mmr.open(1).unwrap().merkle_path())
             .unwrap();
 
         let error =
@@ -465,7 +467,7 @@ mod tests {
         for i in 0..total_blocks {
             let i: usize = i as usize;
             partial_mmr
-                .track(i, full_mmr.get(i).unwrap(), &full_mmr.open(i).unwrap().merkle_path)
+                .track(i, full_mmr.get(i).unwrap(), full_mmr.open(i).unwrap().merkle_path())
                 .unwrap();
         }
         let mut chain = PartialBlockchain::new(partial_mmr, headers).unwrap();

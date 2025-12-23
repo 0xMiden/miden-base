@@ -4,7 +4,7 @@ use alloc::vec::Vec;
 use miden_protocol::account::auth::PublicKeyCommitment;
 use miden_protocol::account::{AccountId, AccountProcedureRoot, AccountStorage, StorageSlotName};
 use miden_protocol::note::PartialNote;
-use miden_protocol::{Felt, FieldElement, Word};
+use miden_protocol::{Felt, Word, ZERO};
 
 use crate::AuthScheme;
 use crate::account::auth::{
@@ -313,7 +313,7 @@ fn extract_multisig_auth_scheme(
     // Read each public key from the map
     for key_index in 0..num_approvers {
         // The multisig component stores keys using pattern [index, 0, 0, 0]
-        let map_key = [Felt::new(key_index as u64), Felt::ZERO, Felt::ZERO, Felt::ZERO];
+        let map_key = [Felt::new(key_index as u64), ZERO, ZERO, ZERO];
 
         match storage.get_map_item(approver_public_keys_slot, map_key.into()) {
             Ok(pub_key) => {

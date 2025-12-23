@@ -221,7 +221,7 @@ fn merge_id_type_and_hint_tag(
 
     // SAFETY: The most significant bit of the suffix is zero by construction so the bytes will be a
     // valid felt.
-    Felt::try_from(merged).expect("encoded value should be a valid felt")
+    Felt::from(merged)
 }
 
 /// Unmerges the given felt into the suffix of an [`AccountId`], a [`NoteType`] and the tag of
@@ -241,7 +241,7 @@ fn unmerge_id_type_and_hint_tag(element: Felt) -> Result<(Felt, NoteType, u8), N
 
     // SAFETY: The input was a valid felt and we cleared additional bits and did not set any
     // bits, so it must still be a valid felt.
-    let sender_id_suffix = Felt::try_from(element).expect("element should still be valid");
+    let sender_id_suffix = Felt::from(element);
 
     Ok((sender_id_suffix, note_type, tag_bits))
 }
@@ -272,7 +272,7 @@ fn merge_note_tag_and_hint_payload(
 
     // SAFETY: The payload is guaranteed to never be u32::MAX so at least one of the upper 32 bits
     // is zero, hence the felt is valid even if note_tag is u32::MAX.
-    Felt::try_from(felt_int).expect("bytes should be a valid felt")
+    Felt::from(felt_int)
 }
 
 /// Unmerges the given felt into a [`NoteExecutionHint`] payload and a [`NoteTag`] and constructs a
@@ -310,7 +310,7 @@ mod tests {
         let sender = AccountId::try_from(ACCOUNT_ID_MAX_ONES).unwrap();
         let note_type = NoteType::Public;
         let tag = NoteTag::from_account_id(sender);
-        let aux = Felt::try_from(0xffff_ffff_0000_0000u64).unwrap();
+        let aux = Felt::from(0xffff_ffff_0000_0000u64);
 
         for execution_hint in [
             NoteExecutionHint::always(),

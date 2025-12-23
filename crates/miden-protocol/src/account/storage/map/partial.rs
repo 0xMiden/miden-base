@@ -7,6 +7,7 @@ use miden_crypto::merkle::{InnerNodeInfo, MerkleError};
 
 use crate::account::{StorageMap, StorageMapWitness};
 use crate::utils::serde::{ByteReader, DeserializationError};
+use crate::LexicographicWord;
 
 /// A partial representation of a [`StorageMap`], containing only proofs for a subset of the
 /// key-value pairs.
@@ -66,7 +67,10 @@ impl PartialStorageMap {
     /// original storage map.
     pub fn new_full(storage_map: StorageMap) -> Self {
         let partial_smt = PartialSmt::from(storage_map.smt);
-        let entries = storage_map.entries;
+        // Convert from BTreeMap<LexicographicWord, Word> to BTreeMap<Word, Word>
+        let entries = storage_map.entries.into_iter()
+            .map(|(k, v)| (*k.inner(), v))
+            .collect();
 
         PartialStorageMap { partial_smt, entries }
     }

@@ -56,7 +56,7 @@ pub use errors::{
 };
 pub use miden_core::mast::{MastForest, MastNodeId};
 pub use miden_core::prettier::PrettyPrint;
-pub use miden_core::{EMPTY_WORD, Felt, FieldElement, ONE, StarkField, WORD_SIZE, ZERO};
+pub use miden_core::{EMPTY_WORD, Felt, ONE, WORD_SIZE, ZERO};
 pub use miden_core_lib::CoreLibrary;
 pub use miden_crypto::hash::rpo::Rpo256 as Hasher;
 pub use miden_crypto::word;

@@ -366,7 +366,7 @@ impl FeltType for Felt {
         .map_err(|err| {
             SchemaTypeError::parse(input.to_string(), <Self as FeltType>::type_name(), err)
         })?;
-        Felt::try_from(n).map_err(|_| SchemaTypeError::ConversionError(input.to_string()))
+        Ok(Felt::from(n))
     }
 
     fn display_felt(value: Felt) -> Result<String, SchemaTypeError> {

@@ -8,7 +8,7 @@ use crate::account::StorageMapDelta;
 use crate::crypto::merkle::InnerNodeInfo;
 use crate::crypto::merkle::smt::{LeafIndex, SMT_DEPTH, Smt, SmtLeaf};
 use crate::errors::StorageMapError;
-use crate::{AccountError, Felt, Hasher};
+use crate::{AccountError, Felt, Hasher, LexicographicWord};
 
 mod partial;
 pub use partial::PartialStorageMap;
@@ -47,7 +47,7 @@ pub struct StorageMap {
     ///
     /// It is an invariant of this type that the map's entries are always consistent with the SMT's
     /// entries and vice-versa.
-    entries: BTreeMap<Word, Word>,
+    entries: BTreeMap<LexicographicWord, Word>,
 }
 
 impl StorageMap {
@@ -103,7 +103,12 @@ impl StorageMap {
         let smt = Smt::with_entries(hashed_keys_iter)
             .expect("btree maps should not contain duplicate keys");
 
-        StorageMap { smt, entries }
+        let lexicographic_entries = entries
+            .into_iter()
+            .map(|(k, v)| (LexicographicWord::new(k), v))
+            .collect();
+
+        StorageMap { smt, entries: lexicographic_entries }
     }
 
     // PUBLIC ACCESSORS
@@ -133,7 +138,7 @@ impl StorageMap {
     /// Returns the value corresponding to the key or [`Self::EMPTY_VALUE`] if the key is not
     /// associated with a value.
     pub fn get(&self, raw_key: &Word) -> Word {
-        self.entries.get(raw_key).copied().unwrap_or_default()
+        self.entries.get(&LexicographicWord::new(*raw_key)).copied().unwrap_or_default()
     }
 
     /// Returns an opening of the leaf associated with raw key.
@@ -142,7 +147,7 @@ impl StorageMap {
     pub fn open(&self, raw_key: &Word) -> StorageMapWitness {
         let hashed_map_key = Self::hash_key(*raw_key);
         let smt_proof = self.smt.open(&hashed_map_key);
-        let value = self.entries.get(raw_key).copied().unwrap_or_default();
+        let value = self.entries.get(&LexicographicWord::new(*raw_key)).copied().unwrap_or_default();
 
         // SAFETY: The key value pair is guaranteed to be present in the provided proof since we
         // open its hashed version and because of the guarantees of the storage map.
@@ -160,8 +165,8 @@ impl StorageMap {
     /// Returns an iterator over the key-value pairs in this storage map.
     ///
     /// Note that the returned key is the raw map key.
-    pub fn entries(&self) -> impl Iterator<Item = (&Word, &Word)> {
-        self.entries.iter()
+    pub fn entries(&self) -> impl Iterator<Item = (&Word, &Word)> + '_ {
+        self.entries.iter().map(|(k, v)| (k.inner(), v))
     }
 
     /// Returns an iterator over the inner nodes of the underlying [`Smt`].
@@ -177,10 +182,12 @@ impl StorageMap {
     ///
     /// If the provided `value` is [`Self::EMPTY_VALUE`] the entry will be removed.
     pub fn insert(&mut self, raw_key: Word, value: Word) -> Result<Word, AccountError> {
+        let lexicographic_key = LexicographicWord::new(raw_key);
+
         if value == EMPTY_WORD {
-            self.entries.remove(&raw_key);
+            self.entries.remove(&lexicographic_key);
         } else {
-            self.entries.insert(raw_key, value);
+            self.entries.insert(lexicographic_key, value);
         }
 
         let hashed_key = Self::hash_key(raw_key);
@@ -193,7 +200,7 @@ impl StorageMap {
     pub fn apply_delta(&mut self, delta: &StorageMapDelta) -> Result<Word, AccountError> {
         // apply the updated and cleared leaves to the storage map
         for (&key, &value) in delta.entries().iter() {
-            self.insert(key.into_inner(), value)?;
+            self.insert(*key.inner(), value)?;
         }
 
         Ok(self.root())
@@ -201,7 +208,7 @@ impl StorageMap {
 
     /// Consumes the map and returns the underlying map of entries.
     pub fn into_entries(self) -> BTreeMap<Word, Word> {
-        self.entries
+        self.entries.into_iter().map(|(k, v)| (*k.inner(), v)).collect()
     }
 
     /// Hashes the given key to get the key of the SMT.
@@ -228,7 +235,11 @@ impl Default for StorageMap {
 
 impl Serializable for StorageMap {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        self.entries.write_into(target);
+        // Convert from Lexicographic Word back to Word for serialization
+        let word_entries: BTreeMap<Word, Word> = self.entries.iter()
+            .map(|(k, v)| (*k.inner(), *v))
+            .collect();
+        word_entries.write_into(target);
     }
 
     fn get_size_hint(&self) -> usize {

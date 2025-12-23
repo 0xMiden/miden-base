@@ -12,6 +12,18 @@ use winter_rand_utils::rand_value;
 use crate::utils::create_public_p2any_note;
 use crate::{Auth, MockChain};
 
+// HELPER FUNCTIONS
+// ================================================================================================
+
+fn rand_word() -> Word {
+    Word::from([
+        Felt::new(rand_value::<u64>()),
+        Felt::new(rand_value::<u64>()),
+        Felt::new(rand_value::<u64>()),
+        Felt::new(rand_value::<u64>()),
+    ])
+}
+
 // FEE TESTS
 // ================================================================================================
 
@@ -132,10 +144,10 @@ async fn mutate_account_with_storage() -> anyhow::Result<ExecutedTransaction> {
     let account = builder.add_existing_mock_account_with_storage_and_assets(
         Auth::IncrNonce,
         [
-            StorageSlot::with_value(StorageSlotName::mock(0), rand_value()),
+            StorageSlot::with_value(StorageSlotName::mock(0), rand_word()),
             StorageSlot::with_map(
                 StorageSlotName::mock(1),
-                StorageMap::with_entries([(rand_value(), rand_value())])?,
+                StorageMap::with_entries([(rand_word(), rand_word())])?,
             ),
         ],
         [Asset::from(native_asset), NonFungibleAsset::mock(&[1, 2, 3, 4])],
@@ -166,9 +178,9 @@ async fn create_output_notes() -> anyhow::Result<ExecutedTransaction> {
         [
             StorageSlot::with_map(
                 StorageSlotName::mock(0),
-                StorageMap::with_entries([(rand_value(), rand_value())])?,
+                StorageMap::with_entries([(rand_word(), rand_word())])?,
             ),
-            StorageSlot::with_value(StorageSlotName::mock(1), rand_value()),
+            StorageSlot::with_value(StorageSlotName::mock(1), rand_word()),
         ],
         [Asset::from(native_asset), NonFungibleAsset::mock(&[1, 2, 3, 4])],
     )?;

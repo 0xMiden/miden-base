@@ -425,9 +425,10 @@ impl Deserializable for ProposedBatch {
 #[cfg(test)]
 mod tests {
     use anyhow::Context;
+    use miden_air::HashFunction;
     use miden_crypto::merkle::mmr::{Mmr, PartialMmr};
+    use miden_test_utils::rand::rand_value;
     use miden_verifier::ExecutionProof;
-    use winter_rand_utils::rand_value;
 
     use super::*;
     use crate::Word;
@@ -472,7 +473,7 @@ mod tests {
         let block_num = reference_block_header.block_num();
         let block_ref = reference_block_header.commitment();
         let expiration_block_num = reference_block_header.block_num() + 1;
-        let proof = ExecutionProof::new_dummy();
+        let proof = ExecutionProof::new(Vec::new(), HashFunction::Blake3_192, Vec::new());
 
         let tx = ProvenTransactionBuilder::new(
             account_id,

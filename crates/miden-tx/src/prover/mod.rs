@@ -16,7 +16,7 @@ use miden_protocol::transaction::{
     TransactionOutputs,
 };
 pub use miden_prover::ProvingOptions;
-use miden_prover::{ExecutionProof, Word, prove};
+use miden_prover::{ExecutionProof, HashFunction, Word, prove};
 
 use super::TransactionProverError;
 use crate::host::{AccountProcedureIndexMap, ScriptMastForestStore};
@@ -181,7 +181,7 @@ impl LocalTransactionProver {
             partial_account,
             ref_block.block_num(),
             ref_block.commitment(),
-            ExecutionProof::new_dummy(),
+            ExecutionProof::new(Vec::new(), HashFunction::Blake3_192, Vec::new()),
         )
     }
 }

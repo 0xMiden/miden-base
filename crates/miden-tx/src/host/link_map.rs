@@ -30,7 +30,7 @@ impl<'process> LinkMap<'process> {
 
     /// Creates a new link map from the provided map_ptr in the provided process.
     pub fn new(map_ptr: Felt, mem: &'process MemoryViewer<'process>) -> Self {
-        let map_ptr: u32 = map_ptr.try_into().expect("map_ptr must be a valid u32");
+        let map_ptr: u32 = map_ptr.as_int().try_into().expect("map_ptr must be a valid u32");
 
         Self { map_ptr, mem }
     }
@@ -94,7 +94,7 @@ impl<'process> LinkMap<'process> {
             if head_ptr == ZERO {
                 None
             } else {
-                Some(u32::try_from(head_ptr).expect("head ptr should be a valid ptr"))
+                Some(head_ptr.as_int().try_into().expect("head ptr should be a valid ptr"))
             }
         })
     }
@@ -142,15 +142,17 @@ impl<'process> LinkMap<'process> {
             self.mem.get_kernel_mem_word(entry_ptr).expect("entry pointer should be valid");
 
         let map_ptr = entry_metadata[0];
-        let map_ptr = map_ptr.try_into().expect("entry_ptr should point to a u32 map_ptr");
+        let map_ptr = map_ptr.as_int().try_into().expect("entry_ptr should point to a u32 map_ptr");
 
         let prev_entry_ptr = entry_metadata[1];
         let prev_entry_ptr = prev_entry_ptr
+            .as_int()
             .try_into()
             .expect("entry_ptr should point to a u32 prev_entry_ptr");
 
         let next_entry_ptr = entry_metadata[2];
         let next_entry_ptr = next_entry_ptr
+            .as_int()
             .try_into()
             .expect("entry_ptr should point to a u32 next_entry_ptr");
 

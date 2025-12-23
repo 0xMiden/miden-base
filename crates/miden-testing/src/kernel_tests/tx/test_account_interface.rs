@@ -24,7 +24,7 @@ use miden_protocol::testing::account_id::{
     ACCOUNT_ID_SENDER,
 };
 use miden_protocol::transaction::{InputNote, OutputNote, TransactionKernel};
-use miden_protocol::{Felt, StarkField, Word, ZERO};
+use miden_protocol::{Felt, Word, ZERO};
 use miden_standards::note::{
     NoteConsumptionStatus,
     WellKnownNote,
@@ -484,7 +484,7 @@ async fn test_check_note_consumability_static_analysis_invalid_inputs() -> anyho
         [
             target_account_id.suffix().as_int(),
             target_account_id.prefix().as_u64(),
-            Felt::MODULUS - 1,
+            0xffffffff00000000, // Goldilocks MODULUS - 1
             4,
         ],
         sender_account_id,
@@ -495,7 +495,7 @@ async fn test_check_note_consumability_static_analysis_invalid_inputs() -> anyho
             target_account_id.suffix().as_int(),
             target_account_id.prefix().as_u64(),
             3,
-            Felt::MODULUS - 1,
+            0xffffffff00000000, // Goldilocks MODULUS - 1
         ],
         sender_account_id,
     );

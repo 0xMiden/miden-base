@@ -49,7 +49,7 @@ use miden_protocol::transaction::{
     TransactionKernel,
     TransactionSummary,
 };
-use miden_protocol::{Felt, FieldElement, Hasher, ONE, Word};
+use miden_protocol::{Felt, Hasher, ONE, Word, ZERO};
 use miden_standards::AuthScheme;
 use miden_standards::account::interface::{AccountInterface, AccountInterfaceExt};
 use miden_standards::account::wallets::BasicWallet;
@@ -456,14 +456,8 @@ async fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
 
     // Consume and create a note so the input and outputs notes commitment is not the empty word.
     let mut rng = RpoRandomCoin::new(Word::empty());
-    let output_note = create_p2id_note(
-        account.id(),
-        account.id(),
-        vec![],
-        NoteType::Private,
-        Felt::ZERO,
-        &mut rng,
-    )?;
+    let output_note =
+        create_p2id_note(account.id(), account.id(), vec![], NoteType::Private, ZERO, &mut rng)?;
     let input_note = create_spawn_note(vec![&output_note])?;
 
     let mut builder = MockChain::builder();
@@ -499,14 +493,8 @@ async fn tx_summary_commitment_is_signed_by_falcon_auth() -> anyhow::Result<()> 
     let mut builder = MockChain::builder();
     let account = builder.add_existing_mock_account(Auth::BasicAuth)?;
     let mut rng = RpoRandomCoin::new(Word::empty());
-    let p2id_note = create_p2id_note(
-        account.id(),
-        account.id(),
-        vec![],
-        NoteType::Private,
-        Felt::ZERO,
-        &mut rng,
-    )?;
+    let p2id_note =
+        create_p2id_note(account.id(), account.id(), vec![], NoteType::Private, ZERO, &mut rng)?;
     let spawn_note = builder.add_spawn_note([&p2id_note])?;
     let chain = builder.build()?;
 
@@ -563,14 +551,8 @@ async fn tx_summary_commitment_is_signed_by_ecdsa_auth() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let account = builder.add_existing_mock_account(Auth::EcdsaK256KeccakAuth)?;
     let mut rng = RpoRandomCoin::new(Word::empty());
-    let p2id_note = create_p2id_note(
-        account.id(),
-        account.id(),
-        vec![],
-        NoteType::Private,
-        Felt::ZERO,
-        &mut rng,
-    )?;
+    let p2id_note =
+        create_p2id_note(account.id(), account.id(), vec![], NoteType::Private, ZERO, &mut rng)?;
     let spawn_note = builder.add_spawn_note([&p2id_note])?;
     let chain = builder.build()?;
 

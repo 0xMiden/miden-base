@@ -6,6 +6,7 @@ use core::hash::Hash;
 
 use bech32::Bech32m;
 use bech32::primitives::decode::{ByteIter, CheckedHrpstring};
+use miden_core::PrimeField64;
 use miden_crypto::utils::hex_to_bytes;
 pub use prefix::AccountIdPrefixV0;
 
@@ -118,8 +119,7 @@ impl AccountIdV0 {
 
         let prefix_bytes =
             bytes[0..8].try_into().expect("we should have sliced off exactly 8 bytes");
-        let prefix = Felt::try_from(u64::from_be_bytes(prefix_bytes))
-            .expect("should be a valid felt due to the most significant bit being zero");
+        let prefix = Felt::from(u64::from_be_bytes(prefix_bytes));
 
         let mut suffix_bytes = [0; 8];
         // Overwrite first 7 bytes, leaving the 8th byte 0 (which will be cleared by
@@ -130,8 +130,7 @@ impl AccountIdV0 {
         let mut suffix = Felt::new(u64::from_be_bytes(suffix_bytes));
 
         // Clear the most significant bit of the suffix.
-        suffix = Felt::try_from(suffix.as_int() & 0x7fff_ffff_ffff_ffff)
-            .expect("no bits were set so felt should still be valid");
+        suffix = Felt::from(suffix.as_int() & 0x7fff_ffff_ffff_ffff);
 
         suffix = shape_suffix(suffix);
 
@@ -369,11 +368,34 @@ impl TryFrom<[u8; 15]> for AccountIdV0 {
         let mut suffix_bytes = [0; 8];
         suffix_bytes[1..8].copy_from_slice(suffix_slice);
 
-        let prefix = Felt::try_from(prefix_slice)
-            .map_err(AccountIdError::AccountIdInvalidPrefixFieldElement)?;
+        // Convert prefix bytes to u64 and validate
+        let prefix_array: [u8; 8] = prefix_slice.try_into().map_err(|_| {
+            AccountIdError::AccountIdInvalidPrefixFieldElement(DeserializationError::InvalidValue(
+                "Invalid prefix byte length".to_string(),
+            ))
+        })?;
+        let prefix_u64 = u64::from_le_bytes(prefix_array);
+        if prefix_u64 >= Felt::ORDER_U64 {
+            return Err(AccountIdError::AccountIdInvalidPrefixFieldElement(
+                DeserializationError::InvalidValue(format!(
+                    "Prefix value {} outside field modulus",
+                    prefix_u64
+                )),
+            ));
+        }
+        let prefix = Felt::new(prefix_u64);
 
-        let suffix = Felt::try_from(suffix_bytes.as_slice())
-            .map_err(AccountIdError::AccountIdInvalidSuffixFieldElement)?;
+        // Convert suffix bytes to u64 and validate
+        let suffix_u64 = u64::from_le_bytes(suffix_bytes);
+        if suffix_u64 >= Felt::ORDER_U64 {
+            return Err(AccountIdError::AccountIdInvalidSuffixFieldElement(
+                DeserializationError::InvalidValue(format!(
+                    "Suffix value {} outside field modulus",
+                    suffix_u64
+                )),
+            ));
+        }
+        let suffix = Felt::new(suffix_u64);
 
         Self::try_from([prefix, suffix])
     }
@@ -509,7 +531,7 @@ fn shape_suffix(suffix: Felt) -> Felt {
     suffix &= 0xffff_ffff_ffff_ff00;
 
     // SAFETY: Felt was previously valid and we only cleared bits, so it must still be valid.
-    Felt::try_from(suffix).expect("no bits were set so felt should still be valid")
+    Felt::from(suffix)
 }
 
 // COMMON TRAIT IMPLS
@@ -562,8 +584,8 @@ mod tests {
 
     #[test]
     fn account_id_from_felts_with_max_pop_count() {
-        let valid_suffix = Felt::try_from(0x7fff_ffff_ffff_ff00u64).unwrap();
-        let valid_prefix = Felt::try_from(0x7fff_ffff_ffff_ff70u64).unwrap();
+        let valid_suffix = Felt::from(0x7fff_ffff_ffff_ff00u64);
+        let valid_prefix = Felt::from(0x7fff_ffff_ffff_ff70u64);
 
         let id1 = AccountIdV0::new_unchecked([valid_prefix, valid_suffix]);
         assert_eq!(id1.account_type(), AccountType::NonFungibleFaucet);

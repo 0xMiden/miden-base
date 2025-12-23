@@ -382,7 +382,7 @@ async fn test_build_metadata() -> miette::Result<()> {
         NoteTag::from_account_id(receiver),
         NoteExecutionHint::after_block(500.into())
             .map_err(|e| miette::miette!("Failed to create execution hint: {}", e))?,
-        Felt::try_from(1u64 << 63).map_err(|e| miette::miette!("Failed to convert felt: {}", e))?,
+        Felt::from(1u64 << 63),
     )
     .map_err(|e| miette::miette!("Failed to create metadata: {}", e))?;
     let test_metadata2 = NoteMetadata::new(
@@ -392,7 +392,7 @@ async fn test_build_metadata() -> miette::Result<()> {
         NoteTag::for_public_use_case((1 << 14) - 1, u16::MAX, NoteExecutionMode::Local)
             .map_err(|e| miette::miette!("Failed to create note tag: {}", e))?,
         NoteExecutionHint::on_block_slot(u8::MAX, u8::MAX, u8::MAX),
-        Felt::try_from(0u64).map_err(|e| miette::miette!("Failed to convert felt: {}", e))?,
+        Felt::from(0u64),
     )
     .map_err(|e| miette::miette!("Failed to create metadata: {}", e))?;
 

@@ -683,11 +683,13 @@ impl Deserializable for InputNoteCommitment {
 #[cfg(test)]
 mod tests {
     use alloc::collections::BTreeMap;
+    use alloc::vec::Vec;
 
     use anyhow::Context;
+    use miden_air::HashFunction;
     use miden_core::utils::Deserializable;
+    use miden_test_utils::rand::rand_value;
     use miden_verifier::ExecutionProof;
-    use winter_rand_utils::rand_value;
 
     use super::ProvenTransaction;
     use crate::account::delta::AccountUpdateDetails;
@@ -815,7 +817,7 @@ mod tests {
         let ref_block_num = BlockNumber::from(1);
         let ref_block_commitment = Word::empty();
         let expiration_block_num = BlockNumber::from(2);
-        let proof = ExecutionProof::new_dummy();
+        let proof = ExecutionProof::new(Vec::new(), HashFunction::Blake3_192, Vec::new());
 
         let tx = ProvenTransactionBuilder::new(
             account_id,

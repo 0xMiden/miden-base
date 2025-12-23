@@ -43,7 +43,7 @@ use crate::{MockChain, MockChainNote};
 /// ```
 /// # use anyhow::Result;
 /// # use miden_testing::TransactionContextBuilder;
-/// # use miden_protocol::{account::AccountBuilder,Felt, FieldElement};
+/// # use miden_protocol::{account::AccountBuilder,Felt};
 /// # use miden_protocol::transaction::TransactionKernel;
 /// #
 /// # #[tokio::main(flavor = "current_thread")]

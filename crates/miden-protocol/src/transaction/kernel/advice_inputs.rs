@@ -16,7 +16,7 @@ use crate::transaction::{
     TransactionKernel,
 };
 use crate::vm::AdviceInputs;
-use crate::{EMPTY_WORD, Felt, FieldElement, Word, ZERO};
+use crate::{EMPTY_WORD, Felt, ONE, Word, ZERO};
 
 // TRANSACTION ADVICE INPUTS
 // ================================================================================================
@@ -358,7 +358,7 @@ impl TransactionAdviceInputs {
             match input_note {
                 InputNote::Authenticated { note, proof } => {
                     // Push the `is_authenticated` flag
-                    note_data.push(Felt::ONE);
+                    note_data.push(ONE);
 
                     // Merkle path
                     self.extend_merkle_store(proof.authenticated_nodes(note.commitment()));
@@ -380,7 +380,7 @@ impl TransactionAdviceInputs {
                 },
                 InputNote::Unauthenticated { .. } => {
                     // push the `is_authenticated` flag
-                    note_data.push(Felt::ZERO)
+                    note_data.push(ZERO)
                 },
             }
         }
