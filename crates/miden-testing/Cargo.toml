@@ -40,7 +40,7 @@ winterfell  = { version = "0.13" }
 anyhow            = { features = ["backtrace", "std"], workspace = true }
 assert_matches    = { workspace = true }
 miden-protocol    = { features = ["std"], workspace = true }
-primitive-types   = { version = "0.14" }
+primitive-types   = { workspace = true }
 rstest            = { workspace = true }
 tokio             = { features = ["macros", "rt"], workspace = true }
 winter-rand-utils = { version = "0.13" }
