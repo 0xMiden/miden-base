@@ -1,10 +1,8 @@
 extern crate alloc;
 
-use miden_lib::account::faucets::FungibleFaucetExt;
-use miden_lib::agglayer::utils::ethereum_address_string_to_felts;
-use miden_lib::agglayer::{b2agg_script, bridge_out_component};
-use miden_lib::note::WellKnownNote;
-use miden_objects::account::{
+use miden_agglayer::utils::ethereum_address_string_to_felts;
+use miden_agglayer::{b2agg_script, bridge_out_component};
+use miden_protocol::account::{
     Account,
     AccountId,
     AccountIdVersion,
@@ -13,8 +11,8 @@ use miden_objects::account::{
     StorageSlot,
     StorageSlotName,
 };
-use miden_objects::asset::{Asset, FungibleAsset};
-use miden_objects::note::{
+use miden_protocol::asset::{Asset, FungibleAsset};
+use miden_protocol::note::{
     Note,
     NoteAssets,
     NoteExecutionHint,
@@ -25,8 +23,10 @@ use miden_objects::note::{
     NoteTag,
     NoteType,
 };
-use miden_objects::transaction::OutputNote;
-use miden_objects::{Felt, Word};
+use miden_protocol::transaction::OutputNote;
+use miden_protocol::{Felt, Word};
+use miden_standards::account::faucets::FungibleFaucetExt;
+use miden_standards::note::WellKnownNote;
 use miden_testing::{AccountState, Auth, MockChain};
 use rand::Rng;
 
@@ -97,7 +97,8 @@ async fn test_bridge_out_consumes_b2agg_note() -> anyhow::Result<()> {
         NoteMetadata::new(faucet.id(), note_type, tag, note_execution_hint, aux)?;
     let b2agg_note_assets = NoteAssets::new(vec![bridge_asset])?;
     let serial_num = Word::from([1, 2, 3, 4u32]);
-    let b2agg_note_recipient = NoteRecipient::new(serial_num, b2agg_script, inputs);
+    let b2agg_note_script = NoteScript::new(b2agg_script);
+    let b2agg_note_recipient = NoteRecipient::new(serial_num, b2agg_note_script, inputs);
     let b2agg_note = Note::new(b2agg_note_assets, b2agg_note_metadata, b2agg_note_recipient);
 
     // Add the B2AGG note to the mock chain
@@ -255,7 +256,8 @@ async fn test_b2agg_note_reclaim_scenario() -> anyhow::Result<()> {
         NoteMetadata::new(user_account.id(), note_type, tag, note_execution_hint, aux)?;
     let b2agg_note_assets = NoteAssets::new(vec![bridge_asset])?;
     let serial_num = Word::from([1, 2, 3, 4u32]);
-    let b2agg_note_recipient = NoteRecipient::new(serial_num, b2agg_script, inputs);
+    let b2agg_note_script = NoteScript::new(b2agg_script);
+    let b2agg_note_recipient = NoteRecipient::new(serial_num, b2agg_note_script, inputs);
     let b2agg_note = Note::new(b2agg_note_assets, b2agg_note_metadata, b2agg_note_recipient);
 
     // Add the B2AGG note to the mock chain

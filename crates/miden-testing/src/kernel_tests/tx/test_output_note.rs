@@ -2,25 +2,14 @@ use alloc::string::String;
 use alloc::vec::Vec;
 
 use anyhow::Context;
-use miden_lib::errors::tx_kernel_errors::{
+use miden_protocol::account::{Account, AccountId};
+use miden_protocol::asset::{Asset, FungibleAsset, NonFungibleAsset};
+use miden_protocol::crypto::rand::RpoRandomCoin;
+use miden_protocol::errors::tx_kernel::{
     ERR_NON_FUNGIBLE_ASSET_ALREADY_EXISTS,
     ERR_TX_NUMBER_OF_OUTPUT_NOTES_EXCEEDS_LIMIT,
 };
-use miden_lib::note::create_p2id_note;
-use miden_lib::testing::mock_account::MockAccountExt;
-use miden_lib::transaction::memory::{
-    NOTE_MEM_SIZE,
-    NUM_OUTPUT_NOTES_PTR,
-    OUTPUT_NOTE_ASSETS_OFFSET,
-    OUTPUT_NOTE_METADATA_OFFSET,
-    OUTPUT_NOTE_RECIPIENT_OFFSET,
-    OUTPUT_NOTE_SECTION_OFFSET,
-};
-use miden_lib::utils::CodeBuilder;
-use miden_objects::account::{Account, AccountId};
-use miden_objects::asset::{Asset, FungibleAsset, NonFungibleAsset};
-use miden_objects::crypto::rand::RpoRandomCoin;
-use miden_objects::note::{
+use miden_protocol::note::{
     Note,
     NoteAssets,
     NoteExecutionHint,
@@ -31,7 +20,7 @@ use miden_objects::note::{
     NoteTag,
     NoteType,
 };
-use miden_objects::testing::account_id::{
+use miden_protocol::testing::account_id::{
     ACCOUNT_ID_NETWORK_NON_FUNGIBLE_FAUCET,
     ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET,
     ACCOUNT_ID_PRIVATE_SENDER,
@@ -42,9 +31,20 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
     ACCOUNT_ID_SENDER,
 };
-use miden_objects::testing::constants::NON_FUNGIBLE_ASSET_DATA_2;
-use miden_objects::transaction::{OutputNote, OutputNotes};
-use miden_objects::{Felt, Word, ZERO};
+use miden_protocol::testing::constants::NON_FUNGIBLE_ASSET_DATA_2;
+use miden_protocol::transaction::memory::{
+    NOTE_MEM_SIZE,
+    NUM_OUTPUT_NOTES_PTR,
+    OUTPUT_NOTE_ASSETS_OFFSET,
+    OUTPUT_NOTE_METADATA_OFFSET,
+    OUTPUT_NOTE_RECIPIENT_OFFSET,
+    OUTPUT_NOTE_SECTION_OFFSET,
+};
+use miden_protocol::transaction::{OutputNote, OutputNotes};
+use miden_protocol::{Felt, Word, ZERO};
+use miden_standards::code_builder::CodeBuilder;
+use miden_standards::note::create_p2id_note;
+use miden_standards::testing::mock_account::MockAccountExt;
 
 use super::{TestSetup, setup_test};
 use crate::kernel_tests::tx::ExecutionOutputExt;
@@ -62,9 +62,9 @@ async fn test_create_note() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.miden::output_note
+        use miden::protocol::output_note
 
-        use.$kernel::prologue
+        use $kernel::prologue
 
         begin
             exec.prologue::prepare_transaction
@@ -143,8 +143,8 @@ async fn test_create_note_with_invalid_tag() -> anyhow::Result<()> {
 fn note_creation_script(tag: Felt) -> String {
     format!(
         "
-            use.miden::output_note
-            use.$kernel::prologue
+            use miden::protocol::output_note
+            use $kernel::prologue
 
             begin
                 exec.prologue::prepare_transaction
@@ -174,10 +174,10 @@ async fn test_create_note_too_many_notes() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.miden::output_note
-        use.$kernel::constants
-        use.$kernel::memory
-        use.$kernel::prologue
+        use miden::protocol::output_note
+        use $kernel::constants
+        use $kernel::memory
+        use $kernel::prologue
 
         begin
             exec.constants::get_max_num_output_notes
@@ -292,12 +292,12 @@ async fn test_get_output_notes_commitment() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.std::sys
+        use miden::core::sys
 
-        use.miden::tx
-        use.miden::output_note
+        use miden::protocol::tx
+        use miden::protocol::output_note
 
-        use.$kernel::prologue
+        use $kernel::prologue
 
         begin
             # => [BH, acct_id, IAH, NC]
@@ -397,9 +397,9 @@ async fn test_create_note_and_add_asset() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.miden::output_note
+        use miden::protocol::output_note
 
-        use.$kernel::prologue
+        use $kernel::prologue
 
         begin
             exec.prologue::prepare_transaction
@@ -466,8 +466,8 @@ async fn test_create_note_and_add_multiple_assets() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.miden::output_note
-        use.$kernel::prologue
+        use miden::protocol::output_note
+        use $kernel::prologue
 
         begin
             exec.prologue::prepare_transaction
@@ -547,8 +547,8 @@ async fn test_create_note_and_add_same_nft_twice() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.$kernel::prologue
-        use.miden::output_note
+        use $kernel::prologue
+        use miden::protocol::output_note
 
         begin
             exec.prologue::prepare_transaction
@@ -639,9 +639,9 @@ async fn test_build_recipient_hash() -> anyhow::Result<()> {
     let recipient = NoteRecipient::new(output_serial_no, input_note_1.script().clone(), inputs);
     let code = format!(
         "
-        use.miden::output_note
-        use.miden::note
-        use.$kernel::prologue
+        use miden::protocol::output_note
+        use miden::protocol::note
+        use $kernel::prologue
 
         begin
             exec.prologue::prepare_transaction
@@ -702,7 +702,7 @@ async fn test_build_recipient_hash() -> anyhow::Result<()> {
 /// This test creates an output note and then adds some assets into it checking the assets info on
 /// each stage.
 ///
-/// Namely, we invoke the `miden::output_notes::get_assets_info` procedure:
+/// Namely, we invoke the `miden::protocol::output_notes::get_assets_info` procedure:
 /// - After adding the first `asset_0` to the note.
 /// - Right after the previous check to make sure it returns the same commitment from the cached
 ///   data.
@@ -754,8 +754,8 @@ async fn test_get_asset_info() -> anyhow::Result<()> {
 
     let tx_script_src = &format!(
         r#"
-        use.miden::output_note
-        use.std::sys
+        use miden::protocol::output_note
+        use miden::core::sys
 
         begin
             # create an output note with fungible asset 0
@@ -769,7 +769,7 @@ async fn test_get_asset_info() -> anyhow::Result<()> {
 
             # move the asset 0 to the note
             push.{asset_0}
-            call.::miden::contracts::wallets::basic::move_asset_to_note
+            call.::miden::standards::wallets::basic::move_asset_to_note
             dropw
             # => [note_idx]
 
@@ -798,7 +798,7 @@ async fn test_get_asset_info() -> anyhow::Result<()> {
 
             # add asset_1 to the note
             push.{asset_1}
-            call.::miden::contracts::wallets::basic::move_asset_to_note
+            call.::miden::standards::wallets::basic::move_asset_to_note
             dropw
             # => [note_idx]
 
@@ -870,8 +870,8 @@ async fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
 
     let tx_script_src = &format!(
         r#"
-        use.miden::output_note
-        use.std::sys
+        use miden::protocol::output_note
+        use miden::core::sys
 
         begin
             # create an output note with one asset
@@ -984,8 +984,8 @@ async fn test_get_assets() -> anyhow::Result<()> {
 
     let tx_script_src = &format!(
         "
-        use.miden::output_note
-        use.std::sys
+        use miden::protocol::output_note
+        use miden::core::sys
 
         begin
             {create_note_0}
@@ -1055,7 +1055,7 @@ fn create_output_note(note: &Note) -> String {
             "
             # move the asset to the note
             push.{asset}
-            call.::miden::contracts::wallets::basic::move_asset_to_note
+            call.::miden::standards::wallets::basic::move_asset_to_note
             dropw
             # => [note_idx]
         ",

@@ -1,35 +1,34 @@
 use alloc::string::ToString;
 use alloc::vec::Vec;
 
-use miden_lib::errors::tx_kernel_errors::{
+use miden_processor::{Felt, ONE};
+use miden_protocol::Word;
+use miden_protocol::account::{Account, AccountDelta, AccountStorageDelta, AccountVaultDelta};
+use miden_protocol::asset::{Asset, FungibleAsset};
+use miden_protocol::errors::tx_kernel::{
     ERR_ACCOUNT_DELTA_NONCE_MUST_BE_INCREMENTED_IF_VAULT_OR_STORAGE_CHANGED,
     ERR_EPILOGUE_EXECUTED_TRANSACTION_IS_EMPTY,
     ERR_EPILOGUE_NONCE_CANNOT_BE_0,
     ERR_EPILOGUE_TOTAL_NUMBER_OF_ASSETS_MUST_STAY_THE_SAME,
     ERR_TX_INVALID_EXPIRATION_DELTA,
 };
-use miden_lib::testing::mock_account::MockAccountExt;
-use miden_lib::testing::note::NoteBuilder;
-use miden_lib::transaction::EXPIRATION_BLOCK_ELEMENT_IDX;
-use miden_lib::transaction::memory::{
-    NOTE_MEM_SIZE,
-    OUTPUT_NOTE_ASSET_COMMITMENT_OFFSET,
-    OUTPUT_NOTE_SECTION_OFFSET,
-};
-use miden_lib::utils::CodeBuilder;
-use miden_objects::Word;
-use miden_objects::account::{Account, AccountDelta, AccountStorageDelta, AccountVaultDelta};
-use miden_objects::asset::{Asset, FungibleAsset};
-use miden_objects::note::{NoteTag, NoteType};
-use miden_objects::testing::account_id::{
+use miden_protocol::note::{NoteTag, NoteType};
+use miden_protocol::testing::account_id::{
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
     ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
     ACCOUNT_ID_SENDER,
 };
-use miden_objects::testing::storage::MOCK_VALUE_SLOT0;
-use miden_objects::transaction::{OutputNote, OutputNotes};
-use miden_processor::{Felt, ONE};
+use miden_protocol::testing::storage::MOCK_VALUE_SLOT0;
+use miden_protocol::transaction::memory::{
+    NOTE_MEM_SIZE,
+    OUTPUT_NOTE_ASSET_COMMITMENT_OFFSET,
+    OUTPUT_NOTE_SECTION_OFFSET,
+};
+use miden_protocol::transaction::{OutputNote, OutputNotes, TransactionOutputs};
+use miden_standards::code_builder::CodeBuilder;
+use miden_standards::testing::mock_account::MockAccountExt;
+use miden_standards::testing::note::NoteBuilder;
 
 use super::{ZERO, create_mock_notes_procedure};
 use crate::kernel_tests::tx::ExecutionOutputExt;
@@ -69,9 +68,9 @@ async fn test_epilogue() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.$kernel::prologue
-        use.$kernel::account
-        use.$kernel::epilogue
+        use $kernel::prologue
+        use $kernel::account
+        use $kernel::epilogue
 
         {output_notes_data_procedure}
 
@@ -112,7 +111,7 @@ async fn test_epilogue() -> anyhow::Result<()> {
     .to_commitment();
 
     let account_update_commitment =
-        miden_objects::Hasher::merge(&[final_account.commitment(), account_delta_commitment]);
+        miden_protocol::Hasher::merge(&[final_account.commitment(), account_delta_commitment]);
 
     let mut expected_stack = Vec::with_capacity(16);
     expected_stack.extend(output_notes.commitment().as_elements().iter().rev());
@@ -169,8 +168,8 @@ async fn test_compute_output_note_id() -> anyhow::Result<()> {
     for (note, i) in tx_context.expected_output_notes().iter().zip(0u32..) {
         let code = format!(
             "
-            use.$kernel::prologue
-            use.$kernel::epilogue
+            use $kernel::prologue
+            use $kernel::epilogue
 
             {output_notes_data_procedure}
 
@@ -227,8 +226,8 @@ async fn epilogue_fails_when_num_output_assets_exceed_num_input_assets() -> anyh
 
     let code = format!(
         "
-      use.mock::account
-      use.mock::util
+      use mock::account
+      use mock::util
 
       begin
           # create a note with the output asset
@@ -280,8 +279,8 @@ async fn epilogue_fails_when_num_input_assets_exceed_num_output_assets() -> anyh
 
     let code = format!(
         "
-      use.mock::account
-      use.mock::util
+      use mock::account
+      use mock::util
 
       begin
           # create a note with the output asset
@@ -318,10 +317,10 @@ async fn test_block_expiration_height_monotonically_decreases() -> anyhow::Resul
 
     let test_pairs: [(u64, u64); 3] = [(9, 12), (18, 3), (20, 20)];
     let code_template = "
-        use.$kernel::prologue
-        use.$kernel::tx
-        use.$kernel::epilogue
-        use.$kernel::account
+        use $kernel::prologue
+        use $kernel::tx
+        use $kernel::epilogue
+        use $kernel::account
 
         begin
             exec.prologue::prepare_transaction
@@ -352,7 +351,9 @@ async fn test_block_expiration_height_monotonically_decreases() -> anyhow::Resul
         let expected_expiry =
             v1.min(v2) + tx_context.tx_inputs().block_header().block_num().as_u64();
         assert_eq!(
-            exec_output.get_stack_element(EXPIRATION_BLOCK_ELEMENT_IDX).as_int(),
+            exec_output
+                .get_stack_element(TransactionOutputs::EXPIRATION_BLOCK_ELEMENT_IDX)
+                .as_int(),
             expected_expiry
         );
     }
@@ -366,7 +367,7 @@ async fn test_invalid_expiration_deltas() -> anyhow::Result<()> {
 
     let test_values = [0u64, u16::MAX as u64 + 1, u32::MAX as u64];
     let code_template = "
-        use.$kernel::tx
+        use $kernel::tx
 
         begin
             push.{value_1}
@@ -389,10 +390,10 @@ async fn test_no_expiration_delta_set() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
     let code_template = "
-    use.$kernel::prologue
-    use.$kernel::epilogue
-    use.$kernel::tx
-    use.$kernel::account
+    use $kernel::prologue
+    use $kernel::epilogue
+    use $kernel::tx
+    use $kernel::account
 
     begin
         exec.prologue::prepare_transaction
@@ -410,7 +411,9 @@ async fn test_no_expiration_delta_set() -> anyhow::Result<()> {
 
     // Default value should be equal to u32::MAX, set in the prologue
     assert_eq!(
-        exec_output.get_stack_element(EXPIRATION_BLOCK_ELEMENT_IDX).as_int() as u32,
+        exec_output
+            .get_stack_element(TransactionOutputs::EXPIRATION_BLOCK_ELEMENT_IDX)
+            .as_int() as u32,
         u32::MAX
     );
 
@@ -425,10 +428,10 @@ async fn test_epilogue_increment_nonce_success() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-        use.$kernel::prologue
-        use.mock::account
-        use.$kernel::epilogue
-        use.$kernel::memory
+        use $kernel::prologue
+        use mock::account
+        use $kernel::epilogue
+        use $kernel::memory
 
         const MOCK_VALUE_SLOT0 = word("{mock_value_slot0}")
 
@@ -461,7 +464,7 @@ async fn test_epilogue_increment_nonce_success() -> anyhow::Result<()> {
 async fn epilogue_fails_on_account_state_change_without_nonce_increment() -> anyhow::Result<()> {
     let code = format!(
         r#"
-        use.mock::account
+        use mock::account
 
         const MOCK_VALUE_SLOT0 = word("{mock_value_slot0}")
 
@@ -534,11 +537,11 @@ async fn test_epilogue_empty_transaction_with_empty_output_note() -> anyhow::Res
     // create an empty output note in the transaction script
     let tx_script_source = format!(
         r#"
-        use.std::word
-        use.miden::output_note
-        use.$kernel::prologue
-        use.$kernel::epilogue
-        use.$kernel::note
+        use miden::core::word
+        use miden::protocol::output_note
+        use $kernel::prologue
+        use $kernel::epilogue
+        use $kernel::note
 
         begin
             exec.prologue::prepare_transaction
