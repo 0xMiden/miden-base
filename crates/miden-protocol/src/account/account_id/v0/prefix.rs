@@ -142,13 +142,6 @@ impl TryFrom<[u8; 8]> for AccountIdPrefixV0 {
     /// See [`TryFrom<[u8; 8]> for
     /// AccountIdPrefix`](crate::account::AccountIdPrefix#impl-TryFrom<%5Bu8;+8%
     /// 5D>-for-AccountIdPrefix) for details.
-    fn try_from(mut value: [u8; 8]) -> Result<Self, Self::Error> {
-        // Felt::try_from expects little-endian order.
-        value.reverse();
-
-        Felt::try_from(value.as_slice())
-            .map_err(AccountIdError::AccountIdInvalidPrefixFieldElement)
-            .and_then(Self::new)
     }
 }
 
