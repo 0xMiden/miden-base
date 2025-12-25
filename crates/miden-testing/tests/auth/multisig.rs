@@ -727,7 +727,7 @@ async fn test_multisig_update_signers_remove_owner() -> anyhow::Result<()> {
     assert_eq!(threshold_config[1], Felt::new(num_of_approvers), "Num approvers not updated");
 
     // Verify extracted public keys
-    let extracted_pub_keys = get_public_keys_from_account(&updated_multisig_account);
+    let extracted_pub_keys = get_public_keys_from_account(updated_multisig_account);
     assert_eq!(extracted_pub_keys.len(), 2, "Should have 2 public keys after update");
 
     for expected_key in new_public_keys.iter() {

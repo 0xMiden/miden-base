@@ -143,8 +143,9 @@ impl TryFrom<[u8; 8]> for AccountIdPrefixV0 {
     /// AccountIdPrefix`](crate::account::AccountIdPrefix#impl-TryFrom<%5Bu8;+8%
     /// 5D>-for-AccountIdPrefix) for details.
     fn try_from(value: [u8; 8]) -> Result<Self, Self::Error> {
-        // Convert from little-endian bytes to u64
-        let value_u64 = u64::from_le_bytes(value);
+        // Convert from big-endian bytes to u64
+        // (serialization uses to_be_bytes, so deserialization must use from_be_bytes)
+        let value_u64 = u64::from_be_bytes(value);
         // Validate that the value is within the field modulus
         if value_u64 >= Felt::ORDER_U64 {
             return Err(AccountIdError::AccountIdInvalidPrefixFieldElement(
