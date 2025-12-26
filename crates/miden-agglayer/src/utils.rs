@@ -1,7 +1,7 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use miden_core::Felt;
+use miden_protocol::Felt;
 
 /// Convert 8 Felt values (u32 limbs in little-endian order) to U256 bytes in little-endian format.
 ///
