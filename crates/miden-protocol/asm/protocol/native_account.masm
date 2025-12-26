@@ -148,7 +148,7 @@ end
 #! Sets a map item in the native account storage.
 #!
 #! Inputs:  [slot_id_prefix, slot_id_suffix, KEY, VALUE]
-#! Outputs: [OLD_MAP_ROOT, OLD_MAP_VALUE]
+#! Outputs: [OLD_VALUE]
 #!
 #! Where:
 #! - slot_id_{prefix, suffix} are the prefix and suffix felts of the slot identifier, which are
@@ -156,8 +156,7 @@ end
 #!    - the slot must point to the root of the storage map.
 #! - KEY is the key to set at VALUE.
 #! - VALUE is the value to set at KEY.
-#! - OLD_MAP_ROOT is the old map root.
-#! - OLD_MAP_VALUE is the old value at KEY.
+#! - OLD_VALUE is the old value at KEY.
 #!
 #! Panics if:
 #! - a slot with the provided slot ID does not exist in account storage.
@@ -181,11 +180,11 @@ pub proc set_map_item
     # => [offset, slot_id_prefix, slot_id_suffix, KEY, VALUE, pad(5)]
 
     syscall.exec_kernel_proc
-    # => [OLD_MAP_ROOT, OLD_MAP_VALUE, pad(8)]
+    # => [OLD_VALUE, pad(12)]
 
-    # clean the stack
-    swapdw dropw dropw
-    # => [OLD_MAP_ROOT, OLD_MAP_VALUE]
+    # drop pad(12)
+    movdnw.3 dropw dropw dropw
+    # => [OLD_VALUE]
 end
 
 # VAULT
