@@ -18,7 +18,7 @@ const BUILD_GENERATED_FILES_IN_SRC: bool = option_env!("BUILD_GENERATED_FILES_IN
 const ASSETS_DIR: &str = "assets";
 const ASM_DIR: &str = "asm";
 const ASM_NOTE_SCRIPTS_DIR: &str = "note_scripts";
-const ASM_ACCOUNT_COMPONENTS_DIR: &str = "account_components";
+const ASM_BRIDGE_DIR: &str = "bridge";
 
 const AGGLAYER_ERRORS_FILE: &str = "src/errors/agglayer.rs";
 const AGGLAYER_ERRORS_ARRAY_NAME: &str = "AGGLAYER_ERRORS";
@@ -49,10 +49,10 @@ fn main() -> Result<()> {
 
     let mut assembler = TransactionKernel::assembler();
 
-    // compile account components first and add the library to the assembler
-    let agglayer_lib = compile_account_components(
-        &source_dir.join(ASM_ACCOUNT_COMPONENTS_DIR),
-        &target_dir.join(ASM_ACCOUNT_COMPONENTS_DIR),
+    // compile bridge components first and add the library to the assembler
+    let agglayer_lib = compile_bridge_components(
+        &source_dir.join(ASM_BRIDGE_DIR),
+        &target_dir.join(ASM_BRIDGE_DIR),
         assembler.clone(),
     )?;
 
@@ -111,12 +111,12 @@ fn compile_note_scripts(
     Ok(())
 }
 
-// COMPILE ACCOUNT COMPONENTS
+// COMPILE BRIDGE COMPONENTS
 // ================================================================================================
 
-/// Compiles the account components in `source_dir` into MASL libraries and stores the compiled
+/// Compiles the bridge components in `source_dir` into MASL libraries and stores the compiled
 /// files in `target_dir`.
-fn compile_account_components(
+fn compile_bridge_components(
     source_dir: &Path,
     target_dir: &Path,
     mut assembler: Assembler,
@@ -129,11 +129,11 @@ fn compile_account_components(
     let standards_lib = miden_standards::StandardsLib::default();
     assembler.link_static_library(standards_lib)?;
 
-    // Compile all components together as a single library under the "agglayer" namespace
+    // Compile all components together as a single library under the "miden::agglayer" namespace
     // This allows cross-references between components (e.g., bridge_out using
-    // agglayer::local_exit_tree)
+    // miden::agglayer::local_exit_tree)
     let agglayer_library = assembler
-        .assemble_library_from_dir(source_dir, "agglayer")
+        .assemble_library_from_dir(source_dir, "miden::agglayer")
         .expect("library assembly should succeed");
 
     // Write the combined library
