@@ -122,14 +122,11 @@ where
             TransactionEvent::AccountStorageAfterSetMapItem {
                 slot_name,
                 key,
-                old_map_value,
-                new_map_value,
-            } => self.base_host.on_account_storage_after_set_map_item(
-                slot_name,
-                key,
-                old_map_value,
-                new_map_value,
-            ),
+                old_value,
+                new_value,
+            } => self
+                .base_host
+                .on_account_storage_after_set_map_item(slot_name, key, old_value, new_value),
 
             // Access witnesses should be in the advice provider at proving time.
             TransactionEvent::AccountVaultBeforeAssetAccess { .. } => Ok(Vec::new()),

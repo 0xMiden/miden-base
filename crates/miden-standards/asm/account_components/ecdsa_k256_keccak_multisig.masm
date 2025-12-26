@@ -74,9 +74,9 @@ proc assert_new_tx(msg: BeWord)
 
     # Set the key value pair in the map to mark transaction as executed
     exec.native_account::set_map_item
-    # => [OLD_MAP_ROOT, [0, 0, 0, is_executed]]
+    # => [[0, 0, 0, is_executed]]
 
-    dropw drop drop drop
+    drop drop drop
     # => [is_executed]
 
     assertz.err=ERR_TX_ALREADY_EXECUTED
@@ -119,9 +119,9 @@ proc cleanup_pubkey_mapping(init_num_of_approvers: u32, new_num_of_approvers: u3
         # => [pub_key_slot_prefix, pub_key_slot_suffix, [0, 0, 0, i-1], EMPTY_WORD, i-1, new_num_of_approvers]
 
         exec.native_account::set_map_item
-        # => [OLD_MAP_ROOT, OLD_MAP_VALUE, i-1, new_num_of_approvers]
+        # => [OLD_VALUE, i-1, new_num_of_approvers]
 
-        dropw dropw
+        dropw
         # => [i-1, new_num_of_approvers]
 
         dup.1 dup.1
@@ -210,9 +210,9 @@ pub proc update_signers_and_threshold(multisig_config_hash: BeWord)
         # => [pub_key_slot_prefix, pub_key_slot_suffix, [0, 0, 0, i-1], PUB_KEY, i-1, pad(12)]
 
         exec.native_account::set_map_item
-        # => [OLD_MAP_ROOT, OLD_MAP_VALUE, i-1, pad(12)]
+        # => [OLD_VALUE, i-1, pad(12)]
 
-        dropw dropw
+        dropw
         # => [i-1, pad(12)]
 
         dup neq.0

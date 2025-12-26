@@ -1126,7 +1126,7 @@ const TEST_ACCOUNT_CONVENIENCE_WRAPPERS: &str = "
           # => [index, KEY, VALUE, pad(6)]
 
           call.account::set_map_item
-          # => [OLD_MAP_ROOT, OLD_MAP_VALUE, pad(8)]
+          # => [OLD_VALUE, pad(12)]
 
           dropw dropw dropw dropw
           # => []
