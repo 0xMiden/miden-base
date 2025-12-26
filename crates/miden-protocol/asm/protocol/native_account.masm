@@ -182,8 +182,8 @@ pub proc set_map_item
     syscall.exec_kernel_proc
     # => [OLD_VALUE, pad(12)]
 
-    # clean the stack
-    swapw dropw swapw dropw swapw dropw
+    # drop pad(12)
+    movdnw.3 dropw dropw dropw
     # => [OLD_VALUE]
 end
 
