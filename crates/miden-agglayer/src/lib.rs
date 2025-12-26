@@ -33,8 +33,7 @@ pub fn b2agg_script() -> Program {
 
 // Initialize the unified AggLayer library only once
 static AGGLAYER_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
-    let bytes =
-        include_bytes!(concat!(env!("OUT_DIR"), "/assets/account_components/agglayer.masl"));
+    let bytes = include_bytes!(concat!(env!("OUT_DIR"), "/assets/bridge/agglayer.masl"));
     Library::read_from_bytes(bytes).expect("Shipped AggLayer library is well-formed")
 });
 
