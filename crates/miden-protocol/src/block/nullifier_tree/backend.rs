@@ -114,12 +114,8 @@ where
     type Error = MerkleError;
 
     fn num_entries(&self) -> usize {
-        // SAFETY: We panic on storage errors here as they represent unrecoverable I/O failures.
-        // This maintains API compatibility with the non-fallible Smt::num_entries().
-        // See issue #2010 for future improvements to error handling.
+        // LargeSmt::num_entries now returns usize directly
         LargeSmt::num_entries(self)
-            .map_err(large_smt_error_to_merkle_error)
-            .expect("Storage I/O error accessing num_entries")
     }
 
     fn entries(&self) -> Box<dyn Iterator<Item = (Word, Word)> + '_> {

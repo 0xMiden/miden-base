@@ -991,7 +991,7 @@ async fn prove_account_creation_with_non_empty_storage() -> anyhow::Result<()> {
     assert!(tx.account_delta().vault().is_empty());
     assert_eq!(tx.final_account().nonce(), Felt::new(1));
 
-    let proven_tx = LocalTransactionProver::default().prove(tx.clone())?;
+    let proven_tx = LocalTransactionProver::default().prove_async(tx.clone()).await?;
 
     // The delta should be present on the proven tx.
     let AccountUpdateDetails::Delta(delta) = proven_tx.account_update().details() else {

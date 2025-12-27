@@ -129,9 +129,8 @@ where
     type Error = MerkleError;
 
     fn num_leaves(&self) -> usize {
-        // LargeSmt::num_leaves returns Result<usize, LargeSmtError>
-        // We'll unwrap or return 0 on error
-        LargeSmt::num_leaves(self).map_err(large_smt_error_to_merkle_error).unwrap_or(0)
+        // LargeSmt::num_leaves now returns usize directly
+        LargeSmt::num_leaves(self)
     }
 
     fn leaves<'a>(&'a self) -> Box<dyn 'a + Iterator<Item = (LeafIndex<SMT_DEPTH>, SmtLeaf)>> {

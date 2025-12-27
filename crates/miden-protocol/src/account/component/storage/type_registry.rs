@@ -5,7 +5,7 @@ use core::error::Error;
 use core::fmt::{self, Display};
 
 use miden_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
-use miden_core::{Felt, FieldElement, Word};
+use miden_core::{Felt, Word, ZERO};
 use miden_crypto::dsa::{ecdsa_k256_keccak, falcon512_rpo};
 use miden_processor::DeserializationError;
 use thiserror::Error;
@@ -614,7 +614,7 @@ impl SchemaTypeRegistry {
             TypeKind::Word => Ok(()),
             TypeKind::Felt => {
                 // Felt types stored as words must have the form [0, 0, 0, <felt>]
-                if word[0] != Felt::ZERO || word[1] != Felt::ZERO || word[2] != Felt::ZERO {
+                if word[0] != ZERO || word[1] != ZERO || word[2] != ZERO {
                     return Err(SchemaTypeError::ConversionError(format!(
                         "expected a word of the form [0, 0, 0, <felt>] for type `{type_name}`"
                     )));
