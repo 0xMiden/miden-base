@@ -31,7 +31,7 @@ std = [
   "miden-processor/std",
   "miden-verifier/std",
 ]
-testing = ["dep:rand_chacha", "dep:rand_xoshiro", "dep:miden-test-utils", "miden-air/testing"]
+testing = ["dep:miden-test-utils", "dep:rand_chacha", "dep:rand_xoshiro", "miden-air/testing"]
 
 [dependencies]
 # Miden dependencies
@@ -43,9 +43,9 @@ miden-crypto          = { workspace = true }
 miden-mast-package    = { workspace = true }
 miden-processor       = { workspace = true }
 miden-protocol-macros = { workspace = true }
+miden-test-utils      = { branch = "al-migrate-p3-ver2", git = "https://github.com/0xPolygonMiden/miden-vm", optional = true }
 miden-utils-sync      = { workspace = true }
 miden-verifier        = { workspace = true }
-miden-test-utils      = { optional = true, git = "https://github.com/0xPolygonMiden/miden-vm", branch = "al-migrate-p3-ver2" }
 
 # External dependencies
 bech32       = { default-features = false, features = ["alloc"], version = "0.11" }
@@ -65,19 +65,19 @@ getrandom = { features = ["wasm_js"], version = "0.3" }
 anyhow         = { features = ["backtrace", "std"], workspace = true }
 assert_matches = { workspace = true }
 criterion      = { default-features = false, features = ["html_reports"], version = "0.5" }
-miden-protocol = { features = ["testing"], path = "." }
+miden-protocol = { default-features = false, features = ["testing"], path = "." }
 pprof          = { default-features = false, features = ["criterion", "flamegraph"], version = "0.15" }
 rstest         = { workspace = true }
 tempfile       = { version = "3.19" }
 winter-air     = { version = "0.13" }
 # for HashFunction/ExecutionProof::new_dummy
 color-eyre = { version = "0.5" }
-miden-air  = { features = ["std", "testing"], workspace = true }
+miden-air  = { default-features = false, features = ["std", "testing"], workspace = true }
 
 [build-dependencies]
 fs-err         = { version = "3" }
-miden-assembly = { workspace = true }
-miden-core     = { workspace = true }
-miden-core-lib = { workspace = true }
+miden-assembly = { default-features = false, workspace = true }
+miden-core     = { default-features = false, workspace = true }
+miden-core-lib = { default-features = false, workspace = true }
 regex          = { version = "1.11" }
 walkdir        = { version = "2.5" }
