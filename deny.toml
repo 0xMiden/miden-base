@@ -66,11 +66,23 @@ skip-tree = [
   # Allow itertools v0.12/v0.13/v0.14 - Plonky3 and miden-vm use different versions
   { name = "itertools", version = "=0.12.*" },
   { name = "itertools", version = "=0.13.*" },
+  # Allow p3-miden crates from both git and registry during Plonky3 migration
+  { name = "p3-miden-air", version = "=0.4.0" },
+  { name = "p3-miden-goldilocks", version = "=0.4.0" },
+  { name = "p3-miden-prover", version = "=0.4.0" },
+  { name = "p3-miden-uni-stark", version = "=0.4.0" },
+  # Allow spin v0.9.x - legacy version used by some dependencies
+  { name = "spin", version = "=0.9.*" },
 ]
 wildcards = "allow"
 
 # Sources configuration
 [sources]
-allow-registry   = ["https://github.com/rust-lang/crates.io-index"]
-unknown-git      = "deny"
+allow-git = [
+  "https://github.com/0xMiden/p3-miden",
+  "https://github.com/0xPolygonMiden/miden-vm",
+  "https://github.com/0xmiden/crypto",
+]
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+unknown-git = "deny"
 unknown-registry = "deny"
