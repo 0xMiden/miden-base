@@ -415,7 +415,7 @@ impl AccountMutationSet {
 // TESTS
 // ================================================================================================
 
-#[cfg(test)]
+#[cfg(all(test, feature = "std"))]
 pub(super) mod tests {
     use std::vec::Vec;
 
