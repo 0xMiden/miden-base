@@ -1391,13 +1391,11 @@ dependencies = [
 [[package]]
 name = "miden-air"
 version = "0.21.0"
-source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#562d8157a93511cb62104661f74d499d296ec5e8"
+source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#aa75b9d1ec62ddd334bf6dabb0ee731e861893f0"
 dependencies = [
- "bincode",
  "miden-core",
  "miden-crypto",
  "miden-utils-indexing",
- "p3-air",
  "p3-blake3",
  "p3-challenger",
  "p3-commit",
@@ -1411,7 +1409,6 @@ dependencies = [
  "p3-miden-fri",
  "p3-miden-prover",
  "p3-symmetric",
- "p3-uni-stark",
  "serde",
  "thiserror",
  "tracing",
@@ -1420,7 +1417,7 @@ dependencies = [
 [[package]]
 name = "miden-assembly"
 version = "0.21.0"
-source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#562d8157a93511cb62104661f74d499d296ec5e8"
+source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#aa75b9d1ec62ddd334bf6dabb0ee731e861893f0"
 dependencies = [
  "env_logger",
  "log",
@@ -1434,7 +1431,7 @@ dependencies = [
 [[package]]
 name = "miden-assembly-syntax"
 version = "0.21.0"
-source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#562d8157a93511cb62104661f74d499d296ec5e8"
+source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#aa75b9d1ec62ddd334bf6dabb0ee731e861893f0"
 dependencies = [
  "aho-corasick",
  "env_logger",
@@ -1465,7 +1462,7 @@ dependencies = [
 [[package]]
 name = "miden-core"
 version = "0.21.0"
-source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#562d8157a93511cb62104661f74d499d296ec5e8"
+source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#aa75b9d1ec62ddd334bf6dabb0ee731e861893f0"
 dependencies = [
  "derive_more",
  "itertools 0.14.0",
@@ -1486,7 +1483,7 @@ dependencies = [
 [[package]]
 name = "miden-core-lib"
 version = "0.21.0"
-source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#562d8157a93511cb62104661f74d499d296ec5e8"
+source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#aa75b9d1ec62ddd334bf6dabb0ee731e861893f0"
 dependencies = [
  "env_logger",
  "fs-err",
@@ -1502,7 +1499,7 @@ dependencies = [
 [[package]]
 name = "miden-crypto"
 version = "0.20.0"
-source = "git+https://github.com/0xmiden/crypto?branch=next#3114ff851e74d26e0205604fae7f712f155dd9ab"
+source = "git+https://github.com/0xmiden/crypto?branch=bobbin-crate-exports#3ad8d73917ae3015ca1a8dcc9edbe9fd1c3f7e3a"
 dependencies = [
  "blake3",
  "cc",
@@ -1541,7 +1538,7 @@ dependencies = [
 [[package]]
 name = "miden-crypto-derive"
 version = "0.20.0"
-source = "git+https://github.com/0xmiden/crypto?branch=next#3114ff851e74d26e0205604fae7f712f155dd9ab"
+source = "git+https://github.com/0xmiden/crypto?branch=bobbin-crate-exports#3ad8d73917ae3015ca1a8dcc9edbe9fd1c3f7e3a"
 dependencies = [
  "quote",
  "syn 2.0.111",
@@ -1550,7 +1547,7 @@ dependencies = [
 [[package]]
 name = "miden-debug-types"
 version = "0.21.0"
-source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#562d8157a93511cb62104661f74d499d296ec5e8"
+source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#aa75b9d1ec62ddd334bf6dabb0ee731e861893f0"
 dependencies = [
  "memchr",
  "miden-crypto",
@@ -1576,7 +1573,7 @@ dependencies = [
 [[package]]
 name = "miden-mast-package"
 version = "0.21.0"
-source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#562d8157a93511cb62104661f74d499d296ec5e8"
+source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#aa75b9d1ec62ddd334bf6dabb0ee731e861893f0"
 dependencies = [
  "derive_more",
  "miden-assembly-syntax",
@@ -1623,7 +1620,7 @@ dependencies = [
 [[package]]
 name = "miden-processor"
 version = "0.21.0"
-source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#562d8157a93511cb62104661f74d499d296ec5e8"
+source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#aa75b9d1ec62ddd334bf6dabb0ee731e861893f0"
 dependencies = [
  "itertools 0.14.0",
  "miden-air",
@@ -1694,7 +1691,7 @@ dependencies = [
 [[package]]
 name = "miden-prover"
 version = "0.21.0"
-source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#562d8157a93511cb62104661f74d499d296ec5e8"
+source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#aa75b9d1ec62ddd334bf6dabb0ee731e861893f0"
 dependencies = [
  "bincode",
  "getrandom 0.2.16",
@@ -1703,7 +1700,6 @@ dependencies = [
  "miden-crypto",
  "miden-debug-types",
  "miden-processor",
- "p3-air",
  "p3-blake3",
  "p3-challenger",
  "p3-commit",
@@ -1719,7 +1715,6 @@ dependencies = [
  "p3-miden-prover",
  "p3-poseidon2",
  "p3-symmetric",
- "p3-uni-stark",
  "p3-util",
  "rand",
  "serde",
@@ -1730,7 +1725,7 @@ dependencies = [
 [[package]]
 name = "miden-serde-utils"
 version = "0.20.0"
-source = "git+https://github.com/0xmiden/crypto?branch=next#3114ff851e74d26e0205604fae7f712f155dd9ab"
+source = "git+https://github.com/0xmiden/crypto?branch=bobbin-crate-exports#3ad8d73917ae3015ca1a8dcc9edbe9fd1c3f7e3a"
 dependencies = [
  "p3-field",
  "p3-miden-goldilocks",
@@ -1760,13 +1755,12 @@ dependencies = [
 [[package]]
 name = "miden-test-utils"
 version = "0.1.0"
-source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#562d8157a93511cb62104661f74d499d296ec5e8"
+source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#aa75b9d1ec62ddd334bf6dabb0ee731e861893f0"
 dependencies = [
  "env_logger",
  "miden-air",
  "miden-assembly",
  "miden-core",
- "miden-core-lib",
  "miden-processor",
  "miden-prover",
  "miden-verifier",
@@ -1805,13 +1799,13 @@ dependencies = [
  "bincode",
  "miden-air",
  "miden-assembly",
+ "miden-crypto",
  "miden-processor",
  "miden-protocol",
  "miden-prover",
  "miden-standards",
  "miden-tx",
  "miden-verifier",
- "p3-miden-prover",
  "rstest",
  "thiserror",
 ]
@@ -1827,7 +1821,7 @@ dependencies = [
 [[package]]
 name = "miden-utils-core-derive"
 version = "0.21.0"
-source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#562d8157a93511cb62104661f74d499d296ec5e8"
+source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#aa75b9d1ec62ddd334bf6dabb0ee731e861893f0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1837,7 +1831,7 @@ dependencies = [
 [[package]]
 name = "miden-utils-diagnostics"
 version = "0.21.0"
-source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#562d8157a93511cb62104661f74d499d296ec5e8"
+source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#aa75b9d1ec62ddd334bf6dabb0ee731e861893f0"
 dependencies = [
  "miden-crypto",
  "miden-debug-types",
@@ -1849,7 +1843,7 @@ dependencies = [
 [[package]]
 name = "miden-utils-indexing"
 version = "0.21.0"
-source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#562d8157a93511cb62104661f74d499d296ec5e8"
+source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#aa75b9d1ec62ddd334bf6dabb0ee731e861893f0"
 dependencies = [
  "serde",
  "thiserror",
@@ -1858,7 +1852,7 @@ dependencies = [
 [[package]]
 name = "miden-utils-sync"
 version = "0.21.0"
-source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#562d8157a93511cb62104661f74d499d296ec5e8"
+source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#aa75b9d1ec62ddd334bf6dabb0ee731e861893f0"
 dependencies = [
  "lock_api",
  "loom",
@@ -1869,13 +1863,12 @@ dependencies = [
 [[package]]
 name = "miden-verifier"
 version = "0.21.0"
-source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#562d8157a93511cb62104661f74d499d296ec5e8"
+source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#aa75b9d1ec62ddd334bf6dabb0ee731e861893f0"
 dependencies = [
  "bincode",
  "itertools 0.12.1",
  "miden-air",
  "miden-core",
- "p3-air",
  "p3-blake3",
  "p3-challenger",
  "p3-commit",
@@ -1889,7 +1882,6 @@ dependencies = [
  "p3-miden-prover",
  "p3-poseidon2",
  "p3-symmetric",
- "p3-uni-stark",
  "p3-util",
  "serde",
  "thiserror",
