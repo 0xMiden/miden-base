@@ -30,11 +30,6 @@ lto           = true
 inherits  = "dev"
 opt-level = 1
 
-# Avoid running the expensive debug assertion in winter-prover
-# https://github.com/facebook/winterfell/blob/cd32dce2fd4986c94516113568eefd938fafe31c/prover/src/lib.rs#L355C1-L356
-[profile.test-dev.package.winter-prover]
-debug-assertions = false
-
 [profile.bench]
 codegen-units = 1
 lto           = true
@@ -55,7 +50,7 @@ miden-assembly        = { branch = "al-migrate-p3-ver2", default-features = fals
 miden-assembly-syntax = { branch = "al-migrate-p3-ver2", default-features = false, git = "https://github.com/0xPolygonMiden/miden-vm" }
 miden-core            = { branch = "al-migrate-p3-ver2", default-features = false, git = "https://github.com/0xPolygonMiden/miden-vm" }
 miden-core-lib        = { branch = "al-migrate-p3-ver2", default-features = false, git = "https://github.com/0xPolygonMiden/miden-vm" }
-miden-crypto          = { branch = "next", default-features = false, git = "https://github.com/0xmiden/crypto" }
+miden-crypto          = { branch = "bobbin-crate-exports", default-features = false, git = "https://github.com/0xmiden/crypto" }
 miden-mast-package    = { branch = "al-migrate-p3-ver2", default-features = false, git = "https://github.com/0xPolygonMiden/miden-vm" }
 miden-processor       = { branch = "al-migrate-p3-ver2", default-features = false, git = "https://github.com/0xPolygonMiden/miden-vm" }
 miden-prover          = { branch = "al-migrate-p3-ver2", default-features = false, git = "https://github.com/0xPolygonMiden/miden-vm" }
