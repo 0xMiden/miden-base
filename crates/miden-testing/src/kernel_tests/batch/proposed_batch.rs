@@ -561,15 +561,26 @@ fn input_and_output_notes_commitment() -> anyhow::Result<()> {
     assert_eq!(batch.output_notes().len(), 3);
     assert_eq!(batch.output_notes(), expected_output_notes);
 
-    // Input notes are sorted by the order in which they appeared in the batch.
+    // Check that we have exactly 2 input notes (note1 was erased as it was created and consumed
+    // in the batch).
     assert_eq!(batch.input_notes().num_notes(), 2);
-    assert_eq!(
-        batch.input_notes().clone().into_vec(),
-        &[
-            InputNoteCommitment::from(&InputNote::unauthenticated(note5)),
-            InputNoteCommitment::from(&InputNote::unauthenticated(note4)),
-        ]
-    );
+
+    // The input notes come from a BTreeMap<Nullifier, ...>, so their order depends on
+    // Nullifier::Ord. We verify set equality rather than order equality.
+    let expected_input_notes = vec![
+        InputNoteCommitment::from(&InputNote::unauthenticated(note5)),
+        InputNoteCommitment::from(&InputNote::unauthenticated(note4)),
+    ];
+    let actual_input_notes = batch.input_notes().clone().into_vec();
+
+    assert_eq!(actual_input_notes.len(), expected_input_notes.len());
+    for note in &expected_input_notes {
+        assert!(
+            actual_input_notes.contains(note),
+            "Expected note with nullifier {:?} not found in batch input notes",
+            note.nullifier()
+        );
+    }
 
     Ok(())
 }
