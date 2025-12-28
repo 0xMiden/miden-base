@@ -13,6 +13,7 @@ use crate::account::{
     AccountType,
 };
 use crate::asset::AssetVault;
+#[allow(unused_imports)] // Used by public API methods that may not be called in all contexts
 use crate::{AccountError, Felt, ONE, Word, ZERO};
 
 /// A convenient builder for an [`Account`] allowing for safe construction of an account by

@@ -274,7 +274,7 @@ impl TransactionAuthenticator for () {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "std"))]
 mod test {
     use miden_protocol::account::auth::AuthSecretKey;
     use miden_protocol::utils::{Deserializable, Serializable};
