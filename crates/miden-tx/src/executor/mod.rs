@@ -80,6 +80,7 @@ where
             exec_options: ExecutionOptions::new(
                 Some(MAX_TX_EXECUTION_CYCLES),
                 MIN_TX_EXECUTION_CYCLES,
+                1 << 12, // DEFAULT_CORE_TRACE_FRAGMENT_SIZE = 4096
                 false,
                 false,
             )
