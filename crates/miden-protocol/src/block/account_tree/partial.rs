@@ -254,7 +254,12 @@ mod tests {
 
     #[test]
     fn upsert_state_commitments_fails_on_untracked_key() {
-        let mut partial_tree = PartialAccountTree::default();
+        // Create a non-empty partial tree with a specific root. We use a non-empty root because
+        // PartialSmt treats all keys as implicitly tracked in an empty tree (since all leaves
+        // are provably empty via the empty subtree root).
+        use crate::Felt;
+        let non_empty_root = Word::from([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]);
+        let mut partial_tree = PartialAccountTree::new(non_empty_root);
         let [update, _] = setup_duplicate_prefix_ids();
 
         let err = partial_tree.upsert_state_commitments([update]).unwrap_err();
