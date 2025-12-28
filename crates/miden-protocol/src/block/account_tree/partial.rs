@@ -187,7 +187,7 @@ impl PartialAccountTree {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "std"))]
 mod tests {
     use assert_matches::assert_matches;
     use miden_crypto::merkle::smt::Smt;

@@ -293,7 +293,7 @@ impl AccountBuilder {
 // TESTS
 // ================================================================================================
 
-#[cfg(test)]
+#[cfg(all(test, feature = "std"))]
 mod tests {
     use std::sync::LazyLock;
 

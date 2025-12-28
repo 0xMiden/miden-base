@@ -245,7 +245,7 @@ impl Deserializable for StorageSlotName {
 // TESTS
 // ================================================================================================
 
-#[cfg(test)]
+#[cfg(all(test, feature = "std"))]
 mod tests {
     use std::borrow::ToOwned;
 

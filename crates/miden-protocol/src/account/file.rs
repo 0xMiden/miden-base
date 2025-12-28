@@ -99,17 +99,19 @@ impl Deserializable for AccountFile {
 
 #[cfg(test)]
 mod tests {
-    use miden_crypto::utils::{Deserializable, Serializable};
-    use storage::AccountStorage;
     #[cfg(feature = "std")]
-    use tempfile::tempdir;
+    use {
+        miden_crypto::utils::{Deserializable, Serializable},
+        storage::AccountStorage,
+        tempfile::tempdir,
+        super::AccountFile,
+        crate::account::auth::AuthSecretKey,
+        crate::account::{Account, AccountCode, AccountId, Felt, storage},
+        crate::asset::AssetVault,
+        crate::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
+    };
 
-    use super::AccountFile;
-    use crate::account::auth::AuthSecretKey;
-    use crate::account::{Account, AccountCode, AccountId, Felt, storage};
-    use crate::asset::AssetVault;
-    use crate::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE;
-
+    #[cfg(feature = "std")]
     fn build_account_file() -> AccountFile {
         let id = AccountId::try_from(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE).unwrap();
         let code = AccountCode::mock();
@@ -125,6 +127,7 @@ mod tests {
         AccountFile::new(account, vec![auth_secret_key, auth_secret_key_2])
     }
 
+    #[cfg(feature = "std")]
     #[test]
     fn test_serde() {
         let account_file = build_account_file();
