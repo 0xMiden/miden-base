@@ -15,7 +15,7 @@ use miden_protocol::transaction::{
     TransactionKernel,
     TransactionOutputs,
 };
-pub use miden_prover::ProvingOptions;
+pub use miden_prover::{HashFunction, ProvingOptions};
 use miden_prover::{ExecutionProof, Word, prove};
 
 use super::TransactionProverError;
