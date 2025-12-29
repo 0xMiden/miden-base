@@ -6,7 +6,7 @@ pub const ACCOUNT_TREE_DEPTH: u8 = 64;
 /// The maximum allowed size of an account update is 256 KiB.
 pub const ACCOUNT_UPDATE_MAX_SIZE: u32 = 2u32.pow(18);
 
-/// The maximum allowed size of a serialized note in bytes.
+/// The maximum allowed size of a serialized note in bytes (32 KB).
 pub const NOTE_MAX_SIZE: u32 = 2u32.pow(15);
 
 /// The maximum number of assets that can be stored in a single note.

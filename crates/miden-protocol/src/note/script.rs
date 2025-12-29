@@ -168,7 +168,10 @@ impl Serializable for NoteScript {
     }
 
     fn get_size_hint(&self) -> usize {
-        self.mast.get_size_hint() + 0u32.get_size_hint()
+        let mast_size = self.mast.to_bytes().len();
+        let u32_size = 0u32.get_size_hint();
+
+        mast_size + u32_size
     }
 }
 
