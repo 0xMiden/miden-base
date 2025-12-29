@@ -84,8 +84,12 @@ fn prove_with_hash_function(c: &mut Criterion, hash_fn: HashFunction, hash_name:
     let bench_name_single = format!("Prove single P2ID note ({})", hash_name);
     let bench_name_two = format!("Prove two P2ID notes ({})", hash_name);
 
-    // Pre-execute transactions once (not measured) and clone inputs for each iteration
-    let rt = tokio::runtime::Runtime::new().unwrap();
+    // Pre-execute transactions once (not measured) and convert to TransactionInputs.
+    // Clone TransactionInputs for each iteration.
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
 
     let single_tx_inputs: TransactionInputs = {
         let tx_context = tx_consume_single_p2id_note()
@@ -104,38 +108,27 @@ fn prove_with_hash_function(c: &mut Criterion, hash_fn: HashFunction, hash_name:
     };
 
     prove_group.bench_function(&bench_name_single, |b| {
-        b.to_async(tokio::runtime::Builder::new_current_thread().build().unwrap())
-            .iter(|| {
-                let tx_inputs = single_tx_inputs.clone();
-                async move {
-                    black_box(prove_transaction_async(tx_inputs, hash_fn).await)
-                }
-            });
+        b.iter(|| {
+            let tx_inputs = single_tx_inputs.clone();
+            black_box(prove_transaction(tx_inputs, hash_fn))
+        });
     });
 
     prove_group.bench_function(&bench_name_two, |b| {
-        b.to_async(tokio::runtime::Builder::new_current_thread().build().unwrap())
-            .iter(|| {
-                let tx_inputs = two_tx_inputs.clone();
-                async move {
-                    black_box(prove_transaction_async(tx_inputs, hash_fn).await)
-                }
-            });
+        b.iter(|| {
+            let tx_inputs = two_tx_inputs.clone();
+            black_box(prove_transaction(tx_inputs, hash_fn))
+        });
     });
 
     prove_group.finish();
 }
 
-async fn prove_transaction_async(
-    tx_inputs: TransactionInputs,
-    hash_fn: HashFunction,
-) -> Result<()> {
+fn prove_transaction(tx_inputs: TransactionInputs, hash_fn: HashFunction) -> Result<ProvenTransaction> {
     let proof_options = ProvingOptions::new(hash_fn);
-
-    let _proven_transaction: ProvenTransaction =
-        LocalTransactionProver::new(proof_options).prove_async(tx_inputs).await?;
-
-    Ok(())
+    let proven_transaction: ProvenTransaction =
+        LocalTransactionProver::new(proof_options).prove(tx_inputs)?;
+    Ok(proven_transaction)
 }
 
 criterion_group!(
