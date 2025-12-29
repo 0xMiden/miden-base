@@ -2,16 +2,33 @@ use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
 
 use anyhow::Context;
-use miden_lib::account::wallets::BasicWallet;
-use miden_lib::errors::tx_kernel_errors::{
+use miden_processor::fast::ExecutionOutput;
+use miden_processor::{AdviceInputs, Word};
+use miden_protocol::account::{
+    Account,
+    AccountBuilder,
+    AccountId,
+    AccountIdVersion,
+    AccountProcedureRoot,
+    AccountStorage,
+    AccountStorageMode,
+    AccountType,
+    StorageMap,
+    StorageSlot,
+    StorageSlotName,
+};
+use miden_protocol::asset::{FungibleAsset, NonFungibleAsset};
+use miden_protocol::errors::tx_kernel::{
     ERR_ACCOUNT_SEED_AND_COMMITMENT_DIGEST_MISMATCH,
     ERR_PROLOGUE_NEW_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_EMPTY,
     ERR_PROLOGUE_NEW_NON_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_VALID_EMPTY_SMT,
 };
-use miden_lib::testing::account_component::MockAccountComponent;
-use miden_lib::testing::mock_account::MockAccountExt;
-use miden_lib::transaction::TransactionKernel;
-use miden_lib::transaction::memory::{
+use miden_protocol::testing::account_id::{
+    ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
+    ACCOUNT_ID_SENDER,
+};
+use miden_protocol::testing::noop_auth_component::NoopAuthComponent;
+use miden_protocol::transaction::memory::{
     ACCT_DB_ROOT_PTR,
     BLOCK_COMMITMENT_PTR,
     BLOCK_METADATA_PTR,
@@ -61,30 +78,12 @@ use miden_lib::transaction::memory::{
     VALIDATOR_KEY_COMMITMENT_PTR,
     VERIFICATION_BASE_FEE_IDX,
 };
-use miden_lib::utils::CodeBuilder;
-use miden_objects::account::{
-    Account,
-    AccountBuilder,
-    AccountId,
-    AccountIdVersion,
-    AccountProcedureRoot,
-    AccountStorage,
-    AccountStorageMode,
-    AccountType,
-    StorageMap,
-    StorageSlot,
-    StorageSlotName,
-};
-use miden_objects::asset::{FungibleAsset, NonFungibleAsset};
-use miden_objects::testing::account_id::{
-    ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
-    ACCOUNT_ID_SENDER,
-};
-use miden_objects::testing::noop_auth_component::NoopAuthComponent;
-use miden_objects::transaction::{ExecutedTransaction, TransactionArgs};
-use miden_objects::{EMPTY_WORD, ONE, WORD_SIZE};
-use miden_processor::fast::ExecutionOutput;
-use miden_processor::{AdviceInputs, Word};
+use miden_protocol::transaction::{ExecutedTransaction, TransactionArgs, TransactionKernel};
+use miden_protocol::{EMPTY_WORD, ONE, WORD_SIZE};
+use miden_standards::account::wallets::BasicWallet;
+use miden_standards::code_builder::CodeBuilder;
+use miden_standards::testing::account_component::MockAccountComponent;
+use miden_standards::testing::mock_account::MockAccountExt;
 use miden_tx::TransactionExecutorError;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
@@ -124,7 +123,7 @@ async fn test_transaction_prologue() -> anyhow::Result<()> {
     };
 
     let code = "
-        use.$kernel::prologue
+        use $kernel::prologue
 
         begin
             exec.prologue::prepare_transaction
@@ -743,7 +742,7 @@ pub async fn create_account_invalid_seed() -> anyhow::Result<()> {
         .build()?;
 
     let code = "
-      use.$kernel::prologue
+      use $kernel::prologue
 
       begin
           exec.prologue::prepare_transaction
@@ -761,8 +760,8 @@ pub async fn create_account_invalid_seed() -> anyhow::Result<()> {
 async fn test_get_blk_version() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
     let code = "
-    use.$kernel::memory
-    use.$kernel::prologue
+    use $kernel::memory
+    use $kernel::prologue
 
     begin
         exec.prologue::prepare_transaction
@@ -787,8 +786,8 @@ async fn test_get_blk_version() -> anyhow::Result<()> {
 async fn test_get_blk_timestamp() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
     let code = "
-    use.$kernel::memory
-    use.$kernel::prologue
+    use $kernel::memory
+    use $kernel::prologue
 
     begin
         exec.prologue::prepare_transaction

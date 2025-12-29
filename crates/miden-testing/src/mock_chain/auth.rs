@@ -2,7 +2,11 @@
 // ================================================================================================
 use alloc::vec::Vec;
 
-use miden_lib::account::auth::{
+use miden_protocol::Word;
+use miden_protocol::account::AccountComponent;
+use miden_protocol::account::auth::{AuthSecretKey, PublicKeyCommitment};
+use miden_protocol::testing::noop_auth_component::NoopAuthComponent;
+use miden_standards::account::auth::{
     AuthEcdsaK256Keccak,
     AuthEcdsaK256KeccakAcl,
     AuthEcdsaK256KeccakAclConfig,
@@ -14,11 +18,10 @@ use miden_lib::account::auth::{
     AuthRpoFalcon512Multisig,
     AuthRpoFalcon512MultisigConfig,
 };
-use miden_lib::testing::account_component::{ConditionalAuthComponent, IncrNonceAuthComponent};
-use miden_objects::Word;
-use miden_objects::account::AccountComponent;
-use miden_objects::account::auth::{AuthSecretKey, PublicKeyCommitment};
-use miden_objects::testing::noop_auth_component::NoopAuthComponent;
+use miden_standards::testing::account_component::{
+    ConditionalAuthComponent,
+    IncrNonceAuthComponent,
+};
 use miden_tx::auth::BasicAuthenticator;
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
@@ -88,7 +91,7 @@ impl Auth {
         match self {
             Auth::BasicAuth => {
                 let mut rng = ChaCha20Rng::from_seed(Default::default());
-                let sec_key = AuthSecretKey::new_rpo_falcon512_with_rng(&mut rng);
+                let sec_key = AuthSecretKey::new_falcon512_rpo_with_rng(&mut rng);
                 let pub_key = sec_key.public_key().to_commitment();
 
                 let component = AuthRpoFalcon512::new(pub_key).into();
@@ -138,7 +141,7 @@ impl Auth {
                 allow_unauthorized_input_notes,
             } => {
                 let mut rng = ChaCha20Rng::from_seed(Default::default());
-                let sec_key = AuthSecretKey::new_rpo_falcon512_with_rng(&mut rng);
+                let sec_key = AuthSecretKey::new_falcon512_rpo_with_rng(&mut rng);
                 let pub_key = sec_key.public_key().to_commitment();
 
                 let component = AuthRpoFalcon512Acl::new(

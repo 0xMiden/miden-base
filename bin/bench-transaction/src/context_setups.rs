@@ -1,10 +1,10 @@
 use anyhow::Result;
-use miden_lib::utils::CodeBuilder;
-use miden_objects::asset::{Asset, FungibleAsset};
-use miden_objects::note::NoteType;
-use miden_objects::testing::account_id::ACCOUNT_ID_SENDER;
-use miden_objects::transaction::OutputNote;
-use miden_objects::{Felt, Word};
+use miden_protocol::asset::{Asset, FungibleAsset};
+use miden_protocol::note::NoteType;
+use miden_protocol::testing::account_id::ACCOUNT_ID_SENDER;
+use miden_protocol::transaction::OutputNote;
+use miden_protocol::{Felt, Word};
+use miden_standards::code_builder::CodeBuilder;
 use miden_testing::{Auth, MockChain, TransactionContext};
 
 /// Returns the transaction context which could be used to run the transaction which creates a
@@ -25,8 +25,8 @@ pub fn tx_create_single_p2id_note() -> Result<TransactionContext> {
 
     let tx_note_creation_script = format!(
         "
-        use.miden::output_note
-        use.std::sys
+        use miden::protocol::output_note
+        use miden::core::sys
 
         begin
             # create an output note with fungible asset
@@ -40,7 +40,7 @@ pub fn tx_create_single_p2id_note() -> Result<TransactionContext> {
 
             # move the asset to the note
             push.{asset}
-            call.::miden::contracts::wallets::basic::move_asset_to_note
+            call.::miden::standards::wallets::basic::move_asset_to_note
             dropw
             # => [note_idx]
 

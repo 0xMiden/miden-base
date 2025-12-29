@@ -27,7 +27,7 @@ Most procedures in the Miden protocol library are implemented as wrappers around
 
 The procedures maintain the same security and context restrictions as the underlying kernel procedures. When invoking these procedures, ensure that the calling context matches the requirements.
 
-## Active account Procedures (`miden::active_account`)
+## Active account Procedures (`miden::protocol::active_account`)
 
 Active account procedures can be used to read from storage, fetch or compute commitments or obtain other internal data of the active account. 
 
@@ -53,7 +53,7 @@ Active account procedures can be used to read from storage, fetch or compute com
 | `get_procedure_root`             | Returns the procedure root for the procedure at the specified index.<br/><br/>**Inputs:** `[index]`<br/>**Outputs:** `[PROC_ROOT]`                                                                         | Any              |
 | `has_procedure`                  | Returns the binary flag indicating whether the procedure with the provided root is available on the active account.<br/><br/>**Inputs:** `[PROC_ROOT]`<br/>**Outputs:** `[is_procedure_available]`                           | Any |
 
-## Native account Procedures (`miden::native_account`)
+## Native account Procedures (`miden::protocol::native_account`)
 
 Native account procedures can be used to write to storage, add or remove assets from the vault and compute delta commitment of the native account. 
 
@@ -63,12 +63,12 @@ Native account procedures can be used to write to storage, add or remove assets 
 | `incr_nonce`                   | Increments the nonce of the native account by one and returns the new nonce. Can only be called from auth procedures.<br/><br/>**Inputs:** `[]`<br/>**Outputs:** `[final_nonce]`                                        | Auth             |
 | `compute_delta_commitment`     | Computes the commitment to the native account's delta. Can only be called from auth procedures.<br/><br/>**Inputs:** `[]`<br/>**Outputs:** `[DELTA_COMMITMENT]`                                           | Auth             |
 | `set_item`                     | Sets an item in the native account storage.<br/><br/>**Inputs:** `[slot_id_prefix, slot_id_suffix, VALUE]`<br/>**Outputs:** `[OLD_VALUE]`                                                                                                 | Native & Account |
-| `set_map_item`                 | Sets VALUE under the specified KEY within the map contained in the given native account storage slot.<br/><br/>**Inputs:** `[slot_id_prefix, slot_id_suffix, KEY, VALUE]`<br/>**Outputs:** `[OLD_MAP_ROOT, OLD_MAP_VALUE]`                | Native & Account |
+| `set_map_item`                 | Sets VALUE under the specified KEY within the map contained in the given native account storage slot.<br/><br/>**Inputs:** `[slot_id_prefix, slot_id_suffix, KEY, VALUE]`<br/>**Outputs:** `[OLD_VALUE]`                | Native & Account |
 | `add_asset`                    | Adds the specified asset to the vault. For fungible assets, returns the total after addition.<br/><br/>**Inputs:** `[ASSET]`<br/>**Outputs:** `[ASSET']`                                                  | Native & Account |
 | `remove_asset`                 | Removes the specified asset from the vault.<br/><br/>**Inputs:** `[ASSET]`<br/>**Outputs:** `[ASSET]`                                                                                                     | Native & Account |
 | `was_procedure_called`         | Returns 1 if a native account procedure was called during transaction execution, and 0 otherwise.<br/><br/>**Inputs:** `[PROC_ROOT]`<br/>**Outputs:** `[was_called]`                                                     | Any              |
 
-## Active Note Procedures (`miden::active_note`)
+## Active Note Procedures (`miden::protocol::active_note`)
 
 Active note procedures can be used to fetch data from the note that is currently being processed by the transaction kernel.
 
@@ -81,9 +81,8 @@ Active note procedures can be used to fetch data from the note that is currently
 | `get_sender`            | Returns the sender of the active note.<br/><br/>**Inputs:** `[]`<br/>**Outputs:** `[sender_id_prefix, sender_id_suffix]`                                        | Note    |
 | `get_serial_number`     | Returns the [serial number](note.md#serial-number) of the active note.<br/><br/>**Inputs:** `[]`<br/>**Outputs:** `[SERIAL_NUMBER]`                                                      | Note    |
 | `get_script_root`       | Returns the [script root](note.md#script) of the active note.<br/><br/>**Inputs:** `[]`<br/>**Outputs:** `[SCRIPT_ROOT]`                                                          | Note    |
-| `add_assets_to_account` | Adds all assets from the active note to the account vault.<br/><br/>**Inputs:** `[]`<br/>**Outputs:** `[]`                                                      | Note    |
 
-## Input Note Procedures (`miden::input_note`)
+## Input Note Procedures (`miden::protocol::input_note`)
 
 Input note procedures can be used to fetch data on input notes consumed by the transaction.
 
@@ -98,7 +97,7 @@ Input note procedures can be used to fetch data on input notes consumed by the t
 | `get_script_root`   | Returns the [script root](note.md#script) of the input note with the specified index.<br/><br/>**Inputs:** `[note_index]`<br/>**Outputs:** `[SCRIPT_ROOT]`                                                                        | Any     |
 | `get_serial_number` | Returns the [serial number](note.md#serial-number) of the input note with the specified index.<br/><br/>**Inputs:** `[note_index]`<br/>**Outputs:** `[SERIAL_NUMBER]`                                                             | Any     |
 
-## Output Note Procedures (`miden::output_note`)
+## Output Note Procedures (`miden::protocol::output_note`)
 
 Output note procedures can be used to fetch data on output notes created by the transaction.
 
@@ -111,7 +110,7 @@ Output note procedures can be used to fetch data on output notes created by the 
 | `get_recipient`   | Returns the [recipient](note#note-recipient-restricting-consumption) of the output note with the specified index.<br/><br/>**Inputs:** `[note_index]`<br/>**Outputs:** `[RECIPIENT]`                             | Any              |
 | `get_metadata`    | Returns the [metadata](note#metadata) of the output note with the specified index.<br/><br/>**Inputs:** `[note_index]`<br/>**Outputs:** `[METADATA]`                                                             | Any              |
 
-## Note Utility Procedures (`miden::note`)
+## Note Utility Procedures (`miden::protocol::note`)
 
 Note utility procedures can be used to compute the required utility data or write note data to memory.
 
@@ -124,7 +123,7 @@ Note utility procedures can be used to compute the required utility data or writ
 | `build_recipient`           | Builds the recipient hash from note inputs, script root, and serial number.<br/><br/>**Inputs:** `[inputs_ptr, num_inputs, SERIAL_NUM, SCRIPT_ROOT]`<br/>**Outputs:** `[RECIPIENT]`                                     | Any     |
 | `extract_sender_from_metadata` | Extracts the sender ID from the provided metadata word.<br/><br/>**Inputs:** `[METADATA]`<br/>**Outputs:** `[sender_id_prefix, sender_id_suffix]` | Any     |
 
-## Transaction Procedures (`miden::tx`)
+## Transaction Procedures (`miden::protocol::tx`)
 
 Transaction procedures manage transaction-level operations including note creation, context switching, and reading transaction metadata.
 
@@ -141,7 +140,7 @@ Transaction procedures manage transaction-level operations including note creati
 | `get_expiration_block_delta`    | Returns the transaction expiration delta, or 0 if not set.<br/><br/>**Inputs:** `[]`<br/>**Outputs:** `[block_height_delta]`                                                                                   | Any     |
 | `update_expiration_block_delta` | Updates the transaction expiration delta.<br/><br/>**Inputs:** `[block_height_delta]`<br/>**Outputs:** `[]`                                                                                                    | Any     |
 
-## Faucet Procedures (`miden::faucet`)
+## Faucet Procedures (`miden::protocol::faucet`)
 
 Faucet procedures allow reading and writing to faucet accounts to mint and burn assets.
 
@@ -154,7 +153,7 @@ Faucet procedures allow reading and writing to faucet accounts to mint and burn 
 | `get_total_issuance`           | Returns the total issuance of the fungible faucet the transaction is being executed against.<br/><br/>**Inputs:** `[]`<br/>**Outputs:** `[total_issuance]`                 | Faucet                    |
 | `is_non_fungible_asset_issued` | Returns a boolean indicating whether the provided non-fungible asset has been already issued by this faucet.<br/><br/>**Inputs:** `[ASSET]`<br/>**Outputs:** `[is_issued]` | Faucet                    |
 
-## Asset Procedures (`miden::asset`)
+## Asset Procedures (`miden::protocol::asset`)
 
 Asset procedures provide utilities for creating fungible and non-fungible assets.
 

@@ -3,11 +3,11 @@ use alloc::collections::BTreeMap;
 use alloc::string::ToString;
 use alloc::vec::Vec;
 
-use miden_objects::account::auth::{AuthSecretKey, PublicKey, PublicKeyCommitment, Signature};
-use miden_objects::crypto::SequentialCommit;
-use miden_objects::transaction::TransactionSummary;
-use miden_objects::{Felt, Hasher, Word};
 use miden_processor::FutureMaybeSend;
+use miden_protocol::account::auth::{AuthSecretKey, PublicKey, PublicKeyCommitment, Signature};
+use miden_protocol::crypto::SequentialCommit;
+use miden_protocol::transaction::TransactionSummary;
+use miden_protocol::{Felt, Hasher, Word};
 
 use crate::errors::AuthenticationError;
 use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
@@ -276,15 +276,15 @@ impl TransactionAuthenticator for () {
 
 #[cfg(test)]
 mod test {
-    use miden_lib::utils::{Deserializable, Serializable};
-    use miden_objects::account::auth::AuthSecretKey;
-    use miden_objects::{Felt, Word};
+    use miden_protocol::account::auth::AuthSecretKey;
+    use miden_protocol::utils::{Deserializable, Serializable};
+    use miden_protocol::{Felt, Word};
 
     use super::SigningInputs;
 
     #[test]
     fn serialize_auth_key() {
-        let auth_key = AuthSecretKey::new_rpo_falcon512();
+        let auth_key = AuthSecretKey::new_falcon512_rpo();
         let serialized = auth_key.to_bytes();
         let deserialized = AuthSecretKey::read_from_bytes(&serialized).unwrap();
 

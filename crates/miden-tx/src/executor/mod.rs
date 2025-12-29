@@ -1,25 +1,25 @@
 use alloc::collections::BTreeSet;
 use alloc::sync::Arc;
 
-use miden_lib::transaction::TransactionKernel;
-use miden_objects::account::AccountId;
-use miden_objects::assembly::DefaultSourceManager;
-use miden_objects::assembly::debuginfo::SourceManagerSync;
-use miden_objects::asset::{Asset, AssetVaultKey};
-use miden_objects::block::BlockNumber;
-use miden_objects::transaction::{
+use miden_processor::fast::FastProcessor;
+use miden_processor::{AdviceInputs, ExecutionError, StackInputs};
+pub use miden_processor::{ExecutionOptions, MastForestStore};
+use miden_protocol::account::AccountId;
+use miden_protocol::assembly::DefaultSourceManager;
+use miden_protocol::assembly::debuginfo::SourceManagerSync;
+use miden_protocol::asset::{Asset, AssetVaultKey};
+use miden_protocol::block::BlockNumber;
+use miden_protocol::transaction::{
     ExecutedTransaction,
     InputNote,
     InputNotes,
     TransactionArgs,
     TransactionInputs,
+    TransactionKernel,
     TransactionScript,
 };
-use miden_objects::vm::StackOutputs;
-use miden_objects::{Felt, MAX_TX_EXECUTION_CYCLES, MIN_TX_EXECUTION_CYCLES};
-use miden_processor::fast::FastProcessor;
-use miden_processor::{AdviceInputs, ExecutionError, StackInputs};
-pub use miden_processor::{ExecutionOptions, MastForestStore};
+use miden_protocol::vm::StackOutputs;
+use miden_protocol::{Felt, MAX_TX_EXECUTION_CYCLES, MIN_TX_EXECUTION_CYCLES};
 
 use super::TransactionExecutorError;
 use crate::auth::TransactionAuthenticator;
@@ -101,7 +101,7 @@ where
     ///
     /// The `source_manager` is used to map potential errors back to their source code. To get the
     /// most value out of it, use the same source manager as was used with the
-    /// [`Assembler`](miden_objects::assembly::Assembler) that assembled the Miden Assembly code
+    /// [`Assembler`](miden_protocol::assembly::Assembler) that assembled the Miden Assembly code
     /// that should be debugged, e.g. account components, note scripts or transaction scripts.
     ///
     /// This will overwrite any previously set source manager.

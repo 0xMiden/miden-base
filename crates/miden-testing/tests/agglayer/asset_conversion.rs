@@ -2,13 +2,13 @@ extern crate alloc;
 
 use alloc::sync::Arc;
 
-use miden_lib::StdLibrary;
-use miden_lib::agglayer::{asset_conversion_library, utils};
-use miden_lib::transaction::TransactionKernel;
-use miden_objects::Felt;
-use miden_objects::assembly::{Assembler, DefaultSourceManager};
+use miden_agglayer::{agglayer_library, utils};
+use miden_assembly::{Assembler, DefaultSourceManager};
+use miden_core_lib::CoreLibrary;
 use miden_processor::fast::{ExecutionOutput, FastProcessor};
 use miden_processor::{AdviceInputs, DefaultHost, ExecutionError, Program, StackInputs};
+use miden_protocol::Felt;
+use miden_protocol::transaction::TransactionKernel;
 use primitive_types::U256;
 
 /// Convert a Vec<Felt> to a U256
@@ -35,10 +35,10 @@ async fn execute_program_with_default_host(
     let test_lib = TransactionKernel::library();
     host.load_library(test_lib.mast_forest()).unwrap();
 
-    let std_lib = StdLibrary::default();
+    let std_lib = CoreLibrary::default();
     host.load_library(std_lib.mast_forest()).unwrap();
 
-    let asset_conversion_lib = miden_lib::agglayer::asset_conversion_library();
+    let asset_conversion_lib = agglayer_library();
     host.load_library(asset_conversion_lib.mast_forest()).unwrap();
 
     let stack_inputs = StackInputs::new(vec![]).unwrap();
@@ -55,15 +55,16 @@ async fn test_convert_to_u256_helper(
     expected_result_array: [u32; 8],
     expected_result_u256: U256,
 ) -> anyhow::Result<()> {
-    let asset_conversion_lib = asset_conversion_library();
+    let asset_conversion_lib = agglayer_library();
 
     let script_code = format!(
         "
-        use.std::sys
+        use miden::core::sys
+        use miden::agglayer::asset_conversion
         
         begin
             push.{}.{}
-            exec.::scale_native_amount_to_u256
+            exec.asset_conversion::scale_native_amount_to_u256
             exec.sys::truncate_stack
         end
         ",
@@ -71,8 +72,7 @@ async fn test_convert_to_u256_helper(
     );
 
     let program = Assembler::new(Arc::new(DefaultSourceManager::default()))
-        .with_debug_mode(true)
-        .with_dynamic_library(StdLibrary::default())
+        .with_dynamic_library(CoreLibrary::default())
         .unwrap()
         .with_dynamic_library(asset_conversion_lib.clone())
         .unwrap()
@@ -132,15 +132,16 @@ async fn test_convert_to_u256_scaled_eth() -> anyhow::Result<()> {
     // scale to 1e18
     let target_scale = Felt::new(12);
 
-    let asset_conversion_lib = asset_conversion_library();
+    let asset_conversion_lib = agglayer_library();
 
     let script_code = format!(
         "
-        use.std::sys
+        use miden::core::sys
+        use miden::agglayer::asset_conversion
         
         begin
             push.{}.{}
-            exec.::scale_native_amount_to_u256
+            exec.asset_conversion::scale_native_amount_to_u256
             exec.sys::truncate_stack
         end
         ",
@@ -148,8 +149,7 @@ async fn test_convert_to_u256_scaled_eth() -> anyhow::Result<()> {
     );
 
     let program = Assembler::new(Arc::new(DefaultSourceManager::default()))
-        .with_debug_mode(true)
-        .with_dynamic_library(StdLibrary::default())
+        .with_dynamic_library(CoreLibrary::default())
         .unwrap()
         .with_dynamic_library(asset_conversion_lib.clone())
         .unwrap()
@@ -174,16 +174,17 @@ async fn test_convert_to_u256_scaled_large_amount() -> anyhow::Result<()> {
     // scale to base 1e18
     let scale_exponent = Felt::new(8);
 
-    let asset_conversion_lib = asset_conversion_library();
+    let asset_conversion_lib = agglayer_library();
 
     let script_code = format!(
         "
-        use.std::sys
-        
+        use miden::core::sys
+        use miden::agglayer::asset_conversion
+
         begin
             push.{}.{}
 
-            exec.::scale_native_amount_to_u256
+            exec.asset_conversion::scale_native_amount_to_u256
             exec.sys::truncate_stack
         end
         ",
@@ -191,8 +192,7 @@ async fn test_convert_to_u256_scaled_large_amount() -> anyhow::Result<()> {
     );
 
     let program = Assembler::new(Arc::new(DefaultSourceManager::default()))
-        .with_debug_mode(true)
-        .with_dynamic_library(StdLibrary::default())
+        .with_dynamic_library(CoreLibrary::default())
         .unwrap()
         .with_dynamic_library(asset_conversion_lib.clone())
         .unwrap()
