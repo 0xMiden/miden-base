@@ -1391,7 +1391,7 @@ dependencies = [
 [[package]]
 name = "miden-air"
 version = "0.21.0"
-source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#82a47b105f45869ec92807f453a4df4d9ef60169"
+source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#36937f46b0bb606896b83874e2fb40c3c105e2dc"
 dependencies = [
  "miden-core",
  "miden-crypto",
@@ -1417,7 +1417,7 @@ dependencies = [
 [[package]]
 name = "miden-assembly"
 version = "0.21.0"
-source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#82a47b105f45869ec92807f453a4df4d9ef60169"
+source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#36937f46b0bb606896b83874e2fb40c3c105e2dc"
 dependencies = [
  "env_logger",
  "log",
@@ -1431,7 +1431,7 @@ dependencies = [
 [[package]]
 name = "miden-assembly-syntax"
 version = "0.21.0"
-source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#82a47b105f45869ec92807f453a4df4d9ef60169"
+source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#36937f46b0bb606896b83874e2fb40c3c105e2dc"
 dependencies = [
  "aho-corasick",
  "env_logger",
@@ -1462,7 +1462,7 @@ dependencies = [
 [[package]]
 name = "miden-core"
 version = "0.21.0"
-source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#82a47b105f45869ec92807f453a4df4d9ef60169"
+source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#36937f46b0bb606896b83874e2fb40c3c105e2dc"
 dependencies = [
  "derive_more",
  "itertools 0.14.0",
@@ -1483,7 +1483,7 @@ dependencies = [
 [[package]]
 name = "miden-core-lib"
 version = "0.21.0"
-source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#82a47b105f45869ec92807f453a4df4d9ef60169"
+source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#36937f46b0bb606896b83874e2fb40c3c105e2dc"
 dependencies = [
  "env_logger",
  "fs-err",
@@ -1498,8 +1498,9 @@ dependencies = [
 
 [[package]]
 name = "miden-crypto"
-version = "0.21.0"
-source = "git+https://github.com/0xmiden/crypto?branch=next#af37cd01514d385f4434393df574a67cea9ae3f3"
+version = "0.20.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f616701654d174d7c2a36e3b62090563fdbb7bdcc53df4ff7d0123506f1cca9b"
 dependencies = [
  "blake3",
  "cc",
@@ -1537,8 +1538,9 @@ dependencies = [
 
 [[package]]
 name = "miden-crypto-derive"
-version = "0.21.0"
-source = "git+https://github.com/0xmiden/crypto?branch=next#af37cd01514d385f4434393df574a67cea9ae3f3"
+version = "0.20.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7ac7d0e73d4cf3a5682846dfabcc53fc28d24fa2462a5668ef1f8d5d65614d3f"
 dependencies = [
  "quote",
  "syn 2.0.111",
@@ -1547,7 +1549,7 @@ dependencies = [
 [[package]]
 name = "miden-debug-types"
 version = "0.21.0"
-source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#82a47b105f45869ec92807f453a4df4d9ef60169"
+source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#36937f46b0bb606896b83874e2fb40c3c105e2dc"
 dependencies = [
  "memchr",
  "miden-crypto",
@@ -1573,7 +1575,7 @@ dependencies = [
 [[package]]
 name = "miden-mast-package"
 version = "0.21.0"
-source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#82a47b105f45869ec92807f453a4df4d9ef60169"
+source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#36937f46b0bb606896b83874e2fb40c3c105e2dc"
 dependencies = [
  "derive_more",
  "miden-assembly-syntax",
@@ -1620,7 +1622,7 @@ dependencies = [
 [[package]]
 name = "miden-processor"
 version = "0.21.0"
-source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#82a47b105f45869ec92807f453a4df4d9ef60169"
+source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#36937f46b0bb606896b83874e2fb40c3c105e2dc"
 dependencies = [
  "itertools 0.14.0",
  "miden-air",
@@ -1691,7 +1693,7 @@ dependencies = [
 [[package]]
 name = "miden-prover"
 version = "0.21.0"
-source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#82a47b105f45869ec92807f453a4df4d9ef60169"
+source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#36937f46b0bb606896b83874e2fb40c3c105e2dc"
 dependencies = [
  "bincode",
  "getrandom 0.2.16",
@@ -1724,8 +1726,9 @@ dependencies = [
 
 [[package]]
 name = "miden-serde-utils"
-version = "0.21.0"
-source = "git+https://github.com/0xmiden/crypto?branch=next#af37cd01514d385f4434393df574a67cea9ae3f3"
+version = "0.20.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6448da86226ead305347408061e224d9214deafa2bd946bd2e471b48419b289f"
 dependencies = [
  "p3-field",
  "p3-miden-goldilocks",
@@ -1755,7 +1758,7 @@ dependencies = [
 [[package]]
 name = "miden-test-utils"
 version = "0.1.0"
-source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#82a47b105f45869ec92807f453a4df4d9ef60169"
+source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#36937f46b0bb606896b83874e2fb40c3c105e2dc"
 dependencies = [
  "env_logger",
  "miden-air",
@@ -1821,7 +1824,7 @@ dependencies = [
 [[package]]
 name = "miden-utils-core-derive"
 version = "0.21.0"
-source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#82a47b105f45869ec92807f453a4df4d9ef60169"
+source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#36937f46b0bb606896b83874e2fb40c3c105e2dc"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1831,7 +1834,7 @@ dependencies = [
 [[package]]
 name = "miden-utils-diagnostics"
 version = "0.21.0"
-source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#82a47b105f45869ec92807f453a4df4d9ef60169"
+source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#36937f46b0bb606896b83874e2fb40c3c105e2dc"
 dependencies = [
  "miden-crypto",
  "miden-debug-types",
@@ -1843,7 +1846,7 @@ dependencies = [
 [[package]]
 name = "miden-utils-indexing"
 version = "0.21.0"
-source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#82a47b105f45869ec92807f453a4df4d9ef60169"
+source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#36937f46b0bb606896b83874e2fb40c3c105e2dc"
 dependencies = [
  "serde",
  "thiserror",
@@ -1852,7 +1855,7 @@ dependencies = [
 [[package]]
 name = "miden-utils-sync"
 version = "0.21.0"
-source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#82a47b105f45869ec92807f453a4df4d9ef60169"
+source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#36937f46b0bb606896b83874e2fb40c3c105e2dc"
 dependencies = [
  "lock_api",
  "loom",
@@ -1863,7 +1866,7 @@ dependencies = [
 [[package]]
 name = "miden-verifier"
 version = "0.21.0"
-source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#82a47b105f45869ec92807f453a4df4d9ef60169"
+source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#36937f46b0bb606896b83874e2fb40c3c105e2dc"
 dependencies = [
  "bincode",
  "itertools 0.12.1",
@@ -3852,6 +3855,6 @@ checksum = "b97154e67e32c85465826e8bcc1c59429aaaf107c1e4a9e53c8d8ccd5eff88d0"
 
 [[package]]
 name = "zmij"
-version = "1.0.1"
+version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f5858cd3a46fff31e77adea2935e357e3a2538d870741617bfb7c943e218fee6"
+checksum = "0f4a4e8e9dc5c62d159f04fcdbe07f4c3fb710415aab4754bf11505501e3251d"
