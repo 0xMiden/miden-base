@@ -456,7 +456,7 @@ mod output_notes_tests {
         assert_matches!(
             result,
             Err(TransactionOutputError::OutputNoteSizeLimitExceeded { note_id: _, note_size })
-                if note_size > NOTE_MAX_SIZE as usize
+                if note_size == computed_note_size
         );
 
         Ok(())
