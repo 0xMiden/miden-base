@@ -1,22 +1,22 @@
-use miden_lib::AuthScheme;
-use miden_lib::account::wallets::create_basic_wallet;
-use miden_objects::Word;
-use miden_objects::account::auth::AuthSecretKey;
+use miden_protocol::Word;
+use miden_protocol::account::auth::AuthSecretKey;
+use miden_standards::AuthScheme;
+use miden_standards::account::wallets::create_basic_wallet;
 use rand_chacha::ChaCha20Rng;
 use rand_chacha::rand_core::SeedableRng;
 
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn wallet_creation() {
-    use miden_lib::account::auth::AuthRpoFalcon512;
-    use miden_lib::account::wallets::BasicWallet;
-    use miden_objects::account::{AccountCode, AccountStorageMode, AccountType};
+    use miden_protocol::account::{AccountCode, AccountStorageMode, AccountType};
+    use miden_standards::account::auth::AuthRpoFalcon512;
+    use miden_standards::account::wallets::BasicWallet;
 
     // we need a Falcon Public Key to create the wallet account
     let seed = [0_u8; 32];
     let mut rng = ChaCha20Rng::from_seed(seed);
 
-    let sec_key = AuthSecretKey::new_rpo_falcon512_with_rng(&mut rng);
+    let sec_key = AuthSecretKey::new_falcon512_rpo_with_rng(&mut rng);
     let pub_key = sec_key.public_key().to_commitment();
     let auth_scheme: AuthScheme = AuthScheme::RpoFalcon512 { pub_key };
 
@@ -49,9 +49,9 @@ fn wallet_creation() {
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn wallet_creation_2() {
-    use miden_lib::account::auth::AuthEcdsaK256Keccak;
-    use miden_lib::account::wallets::BasicWallet;
-    use miden_objects::account::{AccountCode, AccountStorageMode, AccountType};
+    use miden_protocol::account::{AccountCode, AccountStorageMode, AccountType};
+    use miden_standards::account::auth::AuthEcdsaK256Keccak;
+    use miden_standards::account::wallets::BasicWallet;
 
     // we need a ECDSA Public Key to create the wallet account
     let seed = [0_u8; 32];

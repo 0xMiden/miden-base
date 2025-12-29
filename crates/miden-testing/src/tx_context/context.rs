@@ -3,22 +3,22 @@ use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use miden_lib::transaction::TransactionKernel;
-use miden_lib::utils::CodeBuilder;
-use miden_objects::account::{
+use miden_processor::fast::ExecutionOutput;
+use miden_processor::{ExecutionError, FutureMaybeSend, MastForest, MastForestStore, Word};
+use miden_protocol::account::{
     Account,
     AccountId,
     PartialAccount,
     StorageMapWitness,
     StorageSlotContent,
 };
-use miden_objects::assembly::debuginfo::{SourceLanguage, Uri};
-use miden_objects::assembly::{Assembler, SourceManager, SourceManagerSync};
-use miden_objects::asset::{Asset, AssetVaultKey, AssetWitness};
-use miden_objects::block::account_tree::AccountWitness;
-use miden_objects::block::{BlockHeader, BlockNumber};
-use miden_objects::note::{Note, NoteScript};
-use miden_objects::transaction::{
+use miden_protocol::assembly::debuginfo::{SourceLanguage, Uri};
+use miden_protocol::assembly::{Assembler, SourceManager, SourceManagerSync};
+use miden_protocol::asset::{Asset, AssetVaultKey, AssetWitness};
+use miden_protocol::block::account_tree::AccountWitness;
+use miden_protocol::block::{BlockHeader, BlockNumber};
+use miden_protocol::note::{Note, NoteScript};
+use miden_protocol::transaction::{
     AccountInputs,
     ExecutedTransaction,
     InputNote,
@@ -26,9 +26,9 @@ use miden_objects::transaction::{
     PartialBlockchain,
     TransactionArgs,
     TransactionInputs,
+    TransactionKernel,
 };
-use miden_processor::fast::ExecutionOutput;
-use miden_processor::{ExecutionError, FutureMaybeSend, MastForest, MastForestStore, Word};
+use miden_standards::code_builder::CodeBuilder;
 use miden_tx::auth::{BasicAuthenticator, UnreachableAuth};
 use miden_tx::{
     AccountProcedureIndexMap,
@@ -73,8 +73,8 @@ impl TransactionContext {
     /// by the transaction kernel, and also individual kernel functions (not normally exposed).
     ///
     /// To improve the error message quality, convert the returned [`ExecutionError`] into a
-    /// [`Report`](miden_objects::assembly::diagnostics::Report) or use `?` with
-    /// [`miden_objects::assembly::diagnostics::Result`].
+    /// [`Report`](miden_protocol::assembly::diagnostics::Report) or use `?` with
+    /// [`miden_protocol::assembly::diagnostics::Result`].
     ///
     /// # Errors
     ///
@@ -133,7 +133,6 @@ impl TransactionContext {
                 .into();
 
         let program = assembler
-            .with_debug_mode(true)
             .assemble_program(virtual_source_file)
             .expect("code was not well formed");
 
@@ -402,9 +401,9 @@ impl MastForestStore for TransactionContext {
 
 #[cfg(test)]
 mod tests {
-    use miden_objects::Felt;
-    use miden_objects::assembly::Assembler;
-    use miden_objects::note::NoteScript;
+    use miden_protocol::Felt;
+    use miden_protocol::assembly::Assembler;
+    use miden_protocol::note::NoteScript;
 
     use super::*;
     use crate::TransactionContextBuilder;

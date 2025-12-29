@@ -1,13 +1,11 @@
 use alloc::string::String;
 
 use anyhow::Context;
-use miden_lib::errors::tx_kernel_errors::ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_METADATA_WHILE_NO_NOTE_BEING_PROCESSED;
-use miden_lib::testing::mock_account::MockAccountExt;
-use miden_lib::utils::CodeBuilder;
-use miden_objects::account::Account;
-use miden_objects::asset::FungibleAsset;
-use miden_objects::crypto::rand::{FeltRng, RpoRandomCoin};
-use miden_objects::note::{
+use miden_protocol::account::Account;
+use miden_protocol::asset::FungibleAsset;
+use miden_protocol::crypto::rand::{FeltRng, RpoRandomCoin};
+use miden_protocol::errors::tx_kernel::ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_METADATA_WHILE_NO_NOTE_BEING_PROCESSED;
+use miden_protocol::note::{
     Note,
     NoteAssets,
     NoteExecutionHint,
@@ -17,12 +15,14 @@ use miden_objects::note::{
     NoteTag,
     NoteType,
 };
-use miden_objects::testing::account_id::{
+use miden_protocol::testing::account_id::{
     ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
     ACCOUNT_ID_SENDER,
 };
-use miden_objects::{EMPTY_WORD, Felt, ONE, WORD_SIZE, Word};
+use miden_protocol::{EMPTY_WORD, Felt, ONE, WORD_SIZE, Word};
+use miden_standards::code_builder::CodeBuilder;
+use miden_standards::testing::mock_account::MockAccountExt;
 
 use crate::kernel_tests::tx::ExecutionOutputExt;
 use crate::utils::create_public_p2any_note;
@@ -49,7 +49,7 @@ async fn test_active_note_get_sender_fails_from_tx_script() -> anyhow::Result<()
     mock_chain.prove_next_block()?;
 
     let code = "
-        use.miden::active_note
+        use miden::protocol::active_note
 
         begin
             # try to get the sender from transaction script
@@ -90,9 +90,9 @@ async fn test_active_note_get_metadata() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-        use.$kernel::prologue
-        use.$kernel::note->note_internal
-        use.miden::active_note
+        use $kernel::prologue
+        use $kernel::note->note_internal
+        use miden::protocol::active_note
 
         begin
             exec.prologue::prepare_transaction
@@ -135,9 +135,9 @@ async fn test_active_note_get_sender() -> anyhow::Result<()> {
 
     // calling get_sender should return sender of the active note
     let code = "
-        use.$kernel::prologue
-        use.$kernel::note->note_internal
-        use.miden::active_note
+        use $kernel::prologue
+        use $kernel::note->note_internal
+        use miden::protocol::active_note
 
         begin
             exec.prologue::prepare_transaction
@@ -211,13 +211,13 @@ async fn test_active_note_get_assets() -> anyhow::Result<()> {
     // calling get_assets should return assets at the specified address
     let code = format!(
         "
-        use.std::sys
+        use miden::core::sys
 
-        use.$kernel::prologue
-        use.$kernel::note->note_internal
-        use.miden::active_note
+        use $kernel::prologue
+        use $kernel::note->note_internal
+        use miden::protocol::active_note
 
-        proc.process_note_0
+        proc process_note_0
             # drop the note inputs
             dropw dropw dropw dropw
 
@@ -240,7 +240,7 @@ async fn test_active_note_get_assets() -> anyhow::Result<()> {
             drop
         end
 
-        proc.process_note_1
+        proc process_note_1
             # drop the note inputs
             dropw dropw dropw dropw
 
@@ -341,9 +341,9 @@ async fn test_active_note_get_inputs() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.$kernel::prologue
-        use.$kernel::note->note_internal
-        use.miden::active_note
+        use $kernel::prologue
+        use $kernel::note->note_internal
+        use miden::protocol::active_note
 
         begin
             # => [BH, acct_id, IAH, NC]
@@ -385,8 +385,8 @@ async fn test_active_note_get_inputs() -> anyhow::Result<()> {
 }
 
 /// This test checks the scenario when an input note has exactly 8 inputs, and the transaction
-/// script attempts to load the inputs to memory using the `miden::active_note::get_inputs`
-/// procedure.
+/// script attempts to load the inputs to memory using the
+/// `miden::protocol::active_note::get_inputs` procedure.
 ///
 /// Previously this setup was leading to the incorrect number of note inputs computed during the
 /// `get_inputs` procedure, see the [issue #1363](https://github.com/0xMiden/miden-base/issues/1363)
@@ -441,8 +441,8 @@ async fn test_active_note_get_exactly_8_inputs() -> anyhow::Result<()> {
         .build()?;
 
     let tx_code = "
-            use.$kernel::prologue
-            use.miden::active_note
+            use $kernel::prologue
+            use miden::protocol::active_note
 
             begin
                 exec.prologue::prepare_transaction
@@ -484,8 +484,8 @@ async fn test_active_note_get_serial_number() -> anyhow::Result<()> {
 
     // calling get_serial_number should return the serial number of the active note
     let code = "
-        use.$kernel::prologue
-        use.miden::active_note
+        use $kernel::prologue
+        use miden::protocol::active_note
 
         begin
             exec.prologue::prepare_transaction
@@ -523,8 +523,8 @@ async fn test_active_note_get_script_root() -> anyhow::Result<()> {
 
     // calling get_script_root should return script root of the active note
     let code = "
-    use.$kernel::prologue
-    use.miden::active_note
+    use $kernel::prologue
+    use miden::protocol::active_note
 
     begin
         exec.prologue::prepare_transaction

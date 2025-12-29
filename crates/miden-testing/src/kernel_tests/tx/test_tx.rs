@@ -2,15 +2,8 @@ use alloc::sync::Arc;
 
 use anyhow::Context;
 use assert_matches::assert_matches;
-use miden_lib::AuthScheme;
-use miden_lib::account::interface::AccountInterface;
-use miden_lib::account::wallets::BasicWallet;
-use miden_lib::note::create_p2id_note;
-use miden_lib::testing::account_component::IncrNonceAuthComponent;
-use miden_lib::testing::mock_account::MockAccountExt;
-use miden_lib::transaction::TransactionKernel;
-use miden_lib::utils::CodeBuilder;
-use miden_objects::account::{
+use miden_processor::crypto::RpoRandomCoin;
+use miden_protocol::account::{
     Account,
     AccountBuilder,
     AccountCode,
@@ -21,11 +14,11 @@ use miden_objects::account::{
     StorageSlot,
     StorageSlotName,
 };
-use miden_objects::assembly::DefaultSourceManager;
-use miden_objects::assembly::diagnostics::NamedSource;
-use miden_objects::asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset};
-use miden_objects::block::BlockNumber;
-use miden_objects::note::{
+use miden_protocol::assembly::DefaultSourceManager;
+use miden_protocol::assembly::diagnostics::NamedSource;
+use miden_protocol::asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset};
+use miden_protocol::block::BlockNumber;
+use miden_protocol::note::{
     Note,
     NoteAssets,
     NoteExecutionHint,
@@ -38,7 +31,7 @@ use miden_objects::note::{
     NoteTag,
     NoteType,
 };
-use miden_objects::testing::account_id::{
+use miden_protocol::testing::account_id::{
     ACCOUNT_ID_PRIVATE_SENDER,
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
@@ -46,17 +39,24 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
     ACCOUNT_ID_SENDER,
 };
-use miden_objects::testing::constants::{FUNGIBLE_ASSET_AMOUNT, NON_FUNGIBLE_ASSET_DATA};
-use miden_objects::testing::note::DEFAULT_NOTE_CODE;
-use miden_objects::transaction::{
+use miden_protocol::testing::constants::{FUNGIBLE_ASSET_AMOUNT, NON_FUNGIBLE_ASSET_DATA};
+use miden_protocol::testing::note::DEFAULT_NOTE_CODE;
+use miden_protocol::transaction::{
     InputNotes,
     OutputNote,
     OutputNotes,
     TransactionArgs,
+    TransactionKernel,
     TransactionSummary,
 };
-use miden_objects::{Felt, FieldElement, Hasher, ONE, Word};
-use miden_processor::crypto::RpoRandomCoin;
+use miden_protocol::{Felt, FieldElement, Hasher, ONE, Word};
+use miden_standards::AuthScheme;
+use miden_standards::account::interface::{AccountInterface, AccountInterfaceExt};
+use miden_standards::account::wallets::BasicWallet;
+use miden_standards::code_builder::CodeBuilder;
+use miden_standards::note::create_p2id_note;
+use miden_standards::testing::account_component::IncrNonceAuthComponent;
+use miden_standards::testing::mock_account::MockAccountExt;
 use miden_tx::auth::UnreachableAuth;
 use miden_tx::{TransactionExecutor, TransactionExecutorError};
 
@@ -133,8 +133,8 @@ async fn test_block_procedures() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
     let code = "
-        use.miden::tx
-        use.$kernel::prologue
+        use miden::protocol::tx
+        use $kernel::prologue
 
         begin
             exec.prologue::prepare_transaction
@@ -245,12 +245,12 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
 
     let tx_script_src = format!(
         "\
-        use.miden::contracts::wallets::basic->wallet
-        use.miden::output_note
+        use miden::standards::wallets::basic->wallet
+        use miden::protocol::output_note
 
         # Inputs:  [tag, aux, note_type, execution_hint, RECIPIENT]
         # Outputs: [note_idx]
-        proc.create_note
+        proc create_note
             # pad the stack before the call to prevent accidental modification of the deeper stack
             # elements
             padw padw swapdw
@@ -266,7 +266,7 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
 
         # Inputs:  [ASSET, note_idx]
         # Outputs: [ASSET, note_idx]
-        proc.move_asset_to_note
+        proc move_asset_to_note
             # pad the stack before call
             push.0.0.0 movdn.7 movdn.7 movdn.7 padw padw swapdw
             # => [ASSET, note_idx, pad(11)]
@@ -414,17 +414,17 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
 #[tokio::test]
 async fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
     let source_code = r#"
-      use.miden::auth
-      use.miden::tx
-      const.AUTH_UNAUTHORIZED_EVENT=event("miden::auth::unauthorized")
+      use miden::standards::auth
+      use miden::protocol::tx
+      const AUTH_UNAUTHORIZED_EVENT=event("miden::auth::unauthorized")
       #! Inputs:  [AUTH_ARGS, pad(12)]
       #! Outputs: [pad(16)]
-      export.auth_abort_tx
+      pub proc auth_abort_tx
           dropw
           # => [pad(16)]
 
           push.0.0 exec.tx::get_block_number
-          exec.::miden::native_account::incr_nonce
+          exec.::miden::protocol::native_account::incr_nonce
           # => [[final_nonce, block_num, 0, 0], pad(16)]
           # => [SALT, pad(16)]
 
@@ -529,7 +529,7 @@ async fn tx_summary_commitment_is_signed_by_falcon_auth() -> anyhow::Result<()> 
     );
     let summary_commitment = summary.to_commitment();
 
-    let account_interface = AccountInterface::from(&account);
+    let account_interface = AccountInterface::from_account(&account);
     let pub_key = match account_interface.auth().first().unwrap() {
         AuthScheme::RpoFalcon512 { pub_key } => pub_key,
         AuthScheme::NoAuth => panic!("Expected RpoFalcon512 auth scheme, got NoAuth"),
@@ -593,7 +593,7 @@ async fn tx_summary_commitment_is_signed_by_ecdsa_auth() -> anyhow::Result<()> {
     );
     let summary_commitment = summary.to_commitment();
 
-    let account_interface = AccountInterface::from(&account);
+    let account_interface = AccountInterface::from_account(&account);
     let pub_key = match account_interface.auth().first().unwrap() {
         AuthScheme::EcdsaK256Keccak { pub_key } => pub_key,
         AuthScheme::EcdsaK256KeccakMultisig { .. } => {
@@ -624,7 +624,7 @@ async fn tx_summary_commitment_is_signed_by_ecdsa_auth() -> anyhow::Result<()> {
 #[tokio::test]
 async fn execute_tx_view_script() -> anyhow::Result<()> {
     let test_module_source = "
-        export.foo
+        pub proc foo
             push.3.4
             add
             swapw dropw
@@ -638,8 +638,8 @@ async fn execute_tx_view_script() -> anyhow::Result<()> {
     let library = assembler.assemble_library([source]).unwrap();
 
     let source = "
-    use.test::module_1
-    use.std::sys
+    use test::module_1
+    use miden::core::sys
 
     begin
         push.1.2
@@ -648,7 +648,7 @@ async fn execute_tx_view_script() -> anyhow::Result<()> {
     end
     ";
 
-    let tx_script = CodeBuilder::new(false)
+    let tx_script = CodeBuilder::new()
         .with_statically_linked_library(&library)?
         .compile_tx_script(source)?;
     let tx_context = TransactionContextBuilder::with_existing_mock_account()
@@ -681,8 +681,6 @@ async fn test_tx_script_inputs() -> anyhow::Result<()> {
     let tx_script_input_value = Word::from([9, 8, 7, 6u32]);
     let tx_script_src = format!(
         "
-        use.miden::account
-
         begin
             # push the tx script input key onto the stack
             push.{tx_script_input_key}
@@ -714,8 +712,6 @@ async fn test_tx_script_args() -> anyhow::Result<()> {
     let tx_script_args = Word::from([1, 2, 3, 4u32]);
 
     let tx_script_src = r#"
-        use.miden::account
-
         begin
             # => [TX_SCRIPT_ARGS]
             # `TX_SCRIPT_ARGS` value is a user provided word, which could be used during the
@@ -759,9 +755,9 @@ async fn test_tx_script_args() -> anyhow::Result<()> {
 #[tokio::test]
 async fn inputs_created_correctly() -> anyhow::Result<()> {
     let account_component_masm = r#"
-            adv_map.A([6,7,8,9])=[10,11,12,13]
+            adv_map A([6,7,8,9]) = [10,11,12,13]
 
-            export.assert_adv_map
+            pub proc assert_adv_map
                 # test tx script advice map
                 push.[1,2,3,4]
                 adv.push_mapval adv_loadw
@@ -784,9 +780,7 @@ async fn inputs_created_correctly() -> anyhow::Result<()> {
     )?;
 
     let script = r#"
-            use.miden::account
-
-            adv_map.A([1,2,3,4])=[5,6,7,8]
+            adv_map A([1,2,3,4]) = [5,6,7,8]
 
             begin
                 call.::test::adv_map_component::assert_adv_map

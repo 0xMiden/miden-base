@@ -1,9 +1,9 @@
 #[cfg(test)]
-use miden_objects::assembly::Assembler;
-#[cfg(test)]
 use miden_processor::DefaultHost;
 use miden_processor::fast::{ExecutionOutput, FastProcessor};
 use miden_processor::{AdviceInputs, AsyncHost, ExecutionError, Program, StackInputs};
+#[cfg(test)]
+use miden_protocol::assembly::Assembler;
 
 // CODE EXECUTOR
 // ================================================================================================
@@ -39,15 +39,15 @@ impl<H: AsyncHost> CodeExecutor<H> {
     /// Compiles and runs the desired code in the host and returns the [`Process`] state.
     ///
     /// To improve the error message quality, convert the returned [`ExecutionError`] into a
-    /// [`Report`](miden_objects::assembly::diagnostics::Report).
+    /// [`Report`](miden_protocol::assembly::diagnostics::Report).
     #[cfg(test)]
     pub async fn run(self, code: &str) -> Result<ExecutionOutput, ExecutionError> {
         use alloc::borrow::ToOwned;
         use alloc::sync::Arc;
 
-        use miden_lib::utils::CodeBuilder;
-        use miden_objects::assembly::debuginfo::{SourceLanguage, Uri};
-        use miden_objects::assembly::{DefaultSourceManager, SourceManagerSync};
+        use miden_protocol::assembly::debuginfo::{SourceLanguage, Uri};
+        use miden_protocol::assembly::{DefaultSourceManager, SourceManagerSync};
+        use miden_standards::code_builder::CodeBuilder;
 
         let source_manager: Arc<dyn SourceManagerSync> = Arc::new(DefaultSourceManager::default());
         let assembler: Assembler = CodeBuilder::with_kernel_library(source_manager.clone()).into();
@@ -63,7 +63,7 @@ impl<H: AsyncHost> CodeExecutor<H> {
     /// Executes the provided [`Program`] and returns the [`Process`] state.
     ///
     /// To improve the error message quality, convert the returned [`ExecutionError`] into a
-    /// [`Report`](miden_objects::assembly::diagnostics::Report).
+    /// [`Report`](miden_protocol::assembly::diagnostics::Report).
     pub async fn execute_program(
         mut self,
         program: Program,
@@ -88,7 +88,7 @@ impl<H: AsyncHost> CodeExecutor<H> {
 #[cfg(test)]
 impl CodeExecutor<DefaultHost> {
     pub fn with_default_host() -> Self {
-        use miden_lib::transaction::TransactionKernel;
+        use miden_protocol::transaction::TransactionKernel;
 
         let mut host = DefaultHost::default();
 
