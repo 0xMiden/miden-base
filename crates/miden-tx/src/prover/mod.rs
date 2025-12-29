@@ -15,10 +15,10 @@ use miden_protocol::transaction::{
     TransactionKernel,
     TransactionOutputs,
 };
-pub use miden_prover::ProvingOptions;
+pub use miden_prover::{HashFunction, ProvingOptions};
 #[cfg(not(target_arch = "wasm32"))]
 use miden_prover::prove_sync;
-use miden_prover::{ExecutionProof, HashFunction, Word};
+use miden_prover::{ExecutionProof, Word};
 
 use super::TransactionProverError;
 use crate::host::{AccountProcedureIndexMap, ScriptMastForestStore};

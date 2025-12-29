@@ -24,6 +24,7 @@ pub use host::{AccountProcedureIndexMap, LinkMap, MemoryViewer, ScriptMastForest
 
 mod prover;
 pub use prover::{
+    HashFunction,
     LocalTransactionProver,
     ProvingOptions,
     TransactionMastStore,
