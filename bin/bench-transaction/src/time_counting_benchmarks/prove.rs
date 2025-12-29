@@ -89,7 +89,7 @@ fn prove_with_hash_function(c: &mut Criterion, hash_fn: HashFunction, hash_name:
     let bench_name_two = format!("Prove two P2ID notes ({})", hash_name);
 
     // Pre-execute transactions once (not measured) and convert to TransactionInputs.
-    // Clone TransactionInputs for each iteration - this aligns with Plonky3 benchmarks.
+    // Clone TransactionInputs for each iteration.
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
