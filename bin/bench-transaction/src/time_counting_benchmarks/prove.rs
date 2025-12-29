@@ -33,9 +33,7 @@ fn execute_benchmarks(c: &mut Criterion) {
                     tx_consume_single_p2id_note()
                         .expect("failed to create a context which consumes single P2ID note")
                 },
-                |tx_context| async move {
-                    black_box(tx_context.execute().await)
-                },
+                |tx_context| async move { black_box(tx_context.execute().await) },
                 BatchSize::SmallInput,
             );
     });
@@ -47,9 +45,7 @@ fn execute_benchmarks(c: &mut Criterion) {
                     tx_consume_two_p2id_notes()
                         .expect("failed to create a context which consumes two P2ID notes")
                 },
-                |tx_context| async move {
-                    black_box(tx_context.execute().await)
-                },
+                |tx_context| async move { black_box(tx_context.execute().await) },
                 BatchSize::SmallInput,
             );
     });
@@ -86,15 +82,13 @@ fn prove_with_hash_function(c: &mut Criterion, hash_fn: HashFunction, hash_name:
 
     // Pre-execute transactions once (not measured) and convert to TransactionInputs.
     // Clone TransactionInputs for each iteration.
-    let rt = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .unwrap();
+    let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
 
     let single_tx_inputs: TransactionInputs = {
         let tx_context = tx_consume_single_p2id_note()
             .expect("failed to create a context which consumes single P2ID note");
-        let executed_tx = rt.block_on(tx_context.execute())
+        let executed_tx = rt
+            .block_on(tx_context.execute())
             .expect("execution of the single P2ID note consumption tx failed");
         executed_tx.into()
     };
@@ -102,7 +96,8 @@ fn prove_with_hash_function(c: &mut Criterion, hash_fn: HashFunction, hash_name:
     let two_tx_inputs: TransactionInputs = {
         let tx_context = tx_consume_two_p2id_notes()
             .expect("failed to create a context which consumes two P2ID notes");
-        let executed_tx = rt.block_on(tx_context.execute())
+        let executed_tx = rt
+            .block_on(tx_context.execute())
             .expect("execution of the two P2ID note consumption tx failed");
         executed_tx.into()
     };
@@ -124,7 +119,10 @@ fn prove_with_hash_function(c: &mut Criterion, hash_fn: HashFunction, hash_name:
     prove_group.finish();
 }
 
-fn prove_transaction(tx_inputs: TransactionInputs, hash_fn: HashFunction) -> Result<ProvenTransaction> {
+fn prove_transaction(
+    tx_inputs: TransactionInputs,
+    hash_fn: HashFunction,
+) -> Result<ProvenTransaction> {
     let proof_options = ProvingOptions::new(hash_fn);
     let proven_transaction: ProvenTransaction =
         LocalTransactionProver::new(proof_options).prove(tx_inputs)?;

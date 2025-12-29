@@ -15,10 +15,10 @@ use miden_protocol::transaction::{
     TransactionKernel,
     TransactionOutputs,
 };
-pub use miden_prover::{HashFunction, ProvingOptions};
 #[cfg(not(target_arch = "wasm32"))]
 use miden_prover::prove_sync;
 use miden_prover::{ExecutionProof, Word};
+pub use miden_prover::{HashFunction, ProvingOptions};
 
 use super::TransactionProverError;
 use crate::host::{AccountProcedureIndexMap, ScriptMastForestStore};
@@ -115,7 +115,7 @@ impl LocalTransactionProver {
         use miden_processor::fast::FastProcessor;
         use miden_processor::parallel::build_trace;
         use miden_prover::math::Felt;
-        use tracing::{info_span, Instrument};
+        use tracing::{Instrument, info_span};
 
         const DEFAULT_FRAGMENT_SIZE: usize = 1 << 16;
 
