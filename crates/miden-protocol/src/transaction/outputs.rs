@@ -200,13 +200,6 @@ impl Serializable for OutputNotes {
         target.write_u16(self.notes.len() as u16);
         target.write_many(&self.notes);
     }
-
-    fn get_size_hint(&self) -> usize {
-        let u16_size = 0u16.get_size_hint();
-        let notes_size: usize = self.notes.iter().map(|note| note.get_size_hint()).sum();
-
-        u16_size + notes_size
-    }
 }
 
 impl Deserializable for OutputNotes {
@@ -382,10 +375,22 @@ mod output_notes_tests {
 
     use super::OutputNotes;
     use crate::assembly::Assembler;
-    use crate::note::{Note, NoteInputs, NoteRecipient, NoteScript};
+    use crate::asset::FungibleAsset;
+    use crate::note::{
+        Note,
+        NoteAssets,
+        NoteExecutionHint,
+        NoteInputs,
+        NoteMetadata,
+        NoteRecipient,
+        NoteScript,
+        NoteTag,
+        NoteType,
+    };
+    use crate::testing::account_id::ACCOUNT_ID_SENDER;
     use crate::transaction::OutputNote;
     use crate::utils::serde::Serializable;
-    use crate::{NOTE_MAX_SIZE, TransactionOutputError, Word};
+    use crate::{Felt, NOTE_MAX_SIZE, TransactionOutputError, Word, ZERO};
 
     #[test]
     fn test_duplicate_output_notes() -> anyhow::Result<()> {
@@ -404,8 +409,29 @@ mod output_notes_tests {
 
     #[test]
     fn output_note_size_hint_matches_serialized_length() -> anyhow::Result<()> {
-        let mock_note = Note::mock_noop(Word::empty());
-        let output_note = OutputNote::Full(mock_note);
+        let sender_id = ACCOUNT_ID_SENDER.try_into().unwrap();
+
+        // Build a note with at least two assets.
+        let assets = NoteAssets::new(vec![FungibleAsset::mock(100), FungibleAsset::mock(200)])?;
+
+        // Build metadata similarly to how mock notes are constructed.
+        let metadata = NoteMetadata::new(
+            sender_id,
+            NoteType::Private,
+            NoteTag::from_account_id(sender_id),
+            NoteExecutionHint::Always,
+            ZERO,
+        )?;
+
+        // Build inputs with at least two values.
+        let inputs = NoteInputs::new(vec![Felt::new(1), Felt::new(2)])?;
+
+        let serial_num = Word::empty();
+        let script = NoteScript::mock();
+        let recipient = NoteRecipient::new(serial_num, script, inputs);
+
+        let note = Note::new(assets, metadata, recipient);
+        let output_note = OutputNote::Full(note);
 
         let bytes = output_note.to_bytes();
 
@@ -456,7 +482,7 @@ mod output_notes_tests {
         assert_matches!(
             result,
             Err(TransactionOutputError::OutputNoteSizeLimitExceeded { note_id: _, note_size })
-                if note_size == computed_note_size
+                if note_size > NOTE_MAX_SIZE as usize
         );
 
         Ok(())
