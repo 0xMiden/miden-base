@@ -15,8 +15,8 @@ use miden_protocol::transaction::{
     TransactionKernel,
     TransactionOutputs,
 };
-pub use miden_prover::{HashFunction, ProvingOptions};
 use miden_prover::{ExecutionProof, Word, prove};
+pub use miden_prover::{HashFunction, ProvingOptions};
 
 use super::TransactionProverError;
 use crate::host::{AccountProcedureIndexMap, ScriptMastForestStore};
