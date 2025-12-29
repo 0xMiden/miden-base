@@ -20,6 +20,15 @@ pub use inputs::NoteInputs;
 mod metadata;
 pub use metadata::NoteMetadata;
 
+mod attachment;
+pub use attachment::{
+    NoteAttachment,
+    NoteAttachmentCommitment,
+    NoteAttachmentContent,
+    NoteAttachmentContentType,
+    NoteAttachmentType,
+};
+
 mod execution_hint;
 pub use execution_hint::{AfterBlockNumber, NoteExecutionHint};
 
