@@ -28,7 +28,8 @@ async fn main() -> Result<()> {
     let filter = EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| {
             // Default: info level shows top 2-3 levels of the proving tree
-            EnvFilter::new("p3_uni_stark=info,p3_fri=info")
+            // miden_tx=info captures execute_for_trace and build_trace spans
+            EnvFilter::new("miden_tx=info,miden_prover=info,p3_uni_stark=info,p3_fri=info")
         });
 
     tracing_subscriber::registry()

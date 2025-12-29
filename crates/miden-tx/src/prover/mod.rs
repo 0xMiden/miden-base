@@ -115,6 +115,7 @@ impl LocalTransactionProver {
         use miden_processor::fast::FastProcessor;
         use miden_processor::parallel::build_trace;
         use miden_prover::math::Felt;
+        use tracing::{info_span, Instrument};
 
         const DEFAULT_FRAGMENT_SIZE: usize = 1 << 16;
 
@@ -130,15 +131,19 @@ impl LocalTransactionProver {
         };
 
         // Use async execute_for_trace instead of sync version
-        let (execution_output, trace_generation_context) =
-            processor.execute_for_trace(program, host, DEFAULT_FRAGMENT_SIZE).await?;
+        let (execution_output, trace_generation_context) = processor
+            .execute_for_trace(program, host, DEFAULT_FRAGMENT_SIZE)
+            .instrument(info_span!("execute_for_trace"))
+            .await?;
 
-        let trace = build_trace(
-            execution_output,
-            trace_generation_context,
-            program.hash(),
-            program.kernel().clone(),
-        );
+        let trace = info_span!("build_trace").in_scope(|| {
+            build_trace(
+                execution_output,
+                trace_generation_context,
+                program.hash(),
+                program.kernel().clone(),
+            )
+        });
 
         let stack_outputs = trace.stack_outputs().clone();
         let precompile_requests = trace.precompile_requests().to_vec();
