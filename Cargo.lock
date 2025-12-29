@@ -245,6 +245,8 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+ "tracing-forest",
+ "tracing-subscriber 0.3.22",
 ]
 
 [[package]]
@@ -1410,7 +1412,7 @@ dependencies = [
  "p3-miden-prover",
  "p3-symmetric",
  "serde",
- "thiserror",
+ "thiserror 2.0.17",
  "tracing",
 ]
 
@@ -1425,7 +1427,7 @@ dependencies = [
  "miden-core",
  "miden-mast-package",
  "smallvec",
- "thiserror",
+ "thiserror 2.0.17",
 ]
 
 [[package]]
@@ -1448,7 +1450,7 @@ dependencies = [
  "rustc_version 0.4.1",
  "semver 1.0.27",
  "smallvec",
- "thiserror",
+ "thiserror 2.0.17",
 ]
 
 [[package]]
@@ -1456,7 +1458,7 @@ name = "miden-block-prover"
 version = "0.13.0"
 dependencies = [
  "miden-protocol",
- "thiserror",
+ "thiserror 2.0.17",
 ]
 
 [[package]]
@@ -1477,7 +1479,7 @@ dependencies = [
  "proptest",
  "proptest-derive",
  "serde",
- "thiserror",
+ "thiserror 2.0.17",
 ]
 
 [[package]]
@@ -1493,7 +1495,7 @@ dependencies = [
  "miden-processor",
  "miden-utils-sync",
  "sha2",
- "thiserror",
+ "thiserror 2.0.17",
 ]
 
 [[package]]
@@ -1532,7 +1534,7 @@ dependencies = [
  "sha2",
  "sha3",
  "subtle",
- "thiserror",
+ "thiserror 2.0.17",
  "x25519-dalek",
 ]
 
@@ -1560,7 +1562,7 @@ dependencies = [
  "paste",
  "serde",
  "serde_spanned",
- "thiserror",
+ "thiserror 2.0.17",
 ]
 
 [[package]]
@@ -1580,7 +1582,7 @@ dependencies = [
  "derive_more",
  "miden-assembly-syntax",
  "miden-core",
- "thiserror",
+ "thiserror 2.0.17",
 ]
 
 [[package]]
@@ -1603,7 +1605,7 @@ dependencies = [
  "strip-ansi-escapes",
  "syn 2.0.111",
  "textwrap",
- "thiserror",
+ "thiserror 2.0.17",
  "trybuild",
  "unicode-width 0.1.14",
 ]
@@ -1636,7 +1638,7 @@ dependencies = [
  "p3-util",
  "paste",
  "rayon",
- "thiserror",
+ "thiserror 2.0.17",
  "tokio",
  "tracing",
 ]
@@ -1674,7 +1676,7 @@ dependencies = [
  "semver 1.0.27",
  "serde",
  "tempfile",
- "thiserror",
+ "thiserror 2.0.17",
  "toml",
  "walkdir",
  "winter-air",
@@ -1751,7 +1753,7 @@ dependencies = [
  "miden-standards",
  "rand",
  "regex",
- "thiserror",
+ "thiserror 2.0.17",
  "walkdir",
 ]
 
@@ -1810,7 +1812,7 @@ dependencies = [
  "miden-tx",
  "miden-verifier",
  "rstest",
- "thiserror",
+ "thiserror 2.0.17",
 ]
 
 [[package]]
@@ -1849,7 +1851,7 @@ version = "0.21.0"
 source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=al-migrate-p3-ver2#36937f46b0bb606896b83874e2fb40c3c105e2dc"
 dependencies = [
  "serde",
- "thiserror",
+ "thiserror 2.0.17",
 ]
 
 [[package]]
@@ -1887,7 +1889,7 @@ dependencies = [
  "p3-symmetric",
  "p3-util",
  "serde",
- "thiserror",
+ "thiserror 2.0.17",
  "tracing",
 ]
 
@@ -1899,7 +1901,7 @@ checksum = "9d4cfab04baffdda3fb9eafa5f873604059b89a1699aa95e4f1057397a69f0b5"
 dependencies = [
  "miden-formatting",
  "smallvec",
- "thiserror",
+ "thiserror 2.0.17",
 ]
 
 [[package]]
@@ -2244,7 +2246,7 @@ dependencies = [
  "p3-util",
  "rand",
  "serde",
- "thiserror",
+ "thiserror 2.0.17",
  "tracing",
 ]
 
@@ -2336,7 +2338,7 @@ dependencies = [
  "p3-uni-stark",
  "p3-util",
  "serde",
- "thiserror",
+ "thiserror 2.0.17",
  "tracing",
 ]
 
@@ -2404,7 +2406,7 @@ dependencies = [
  "p3-maybe-rayon",
  "p3-util",
  "serde",
- "thiserror",
+ "thiserror 2.0.17",
  "tracing",
 ]
 
@@ -2562,7 +2564,7 @@ dependencies = [
  "spin 0.10.0",
  "symbolic-demangle",
  "tempfile",
- "thiserror",
+ "thiserror 2.0.17",
 ]
 
 [[package]]
@@ -3261,11 +3263,31 @@ dependencies = [
 
 [[package]]
 name = "thiserror"
+version = "1.0.69"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b6aaf5339b578ea85b50e080feb250a3e8ae8cfcdff9a461c9ec2904bc923f52"
+dependencies = [
+ "thiserror-impl 1.0.69",
+]
+
+[[package]]
+name = "thiserror"
 version = "2.0.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f63587ca0f12b72a0600bcba1d40081f830876000bb46dd2337a3051618f4fc8"
 dependencies = [
- "thiserror-impl",
+ "thiserror-impl 2.0.17",
+]
+
+[[package]]
+name = "thiserror-impl"
+version = "1.0.69"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4fee6c4efc90059e10f81e6d42c60a18f76588c3d74cb83a0b242a2b6c7504c1"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.111",
 ]
 
 [[package]]
@@ -3443,6 +3465,18 @@ checksum = "b4d7c0b83d4a500748fa5879461652b361edf5c9d51ede2a2ac03875ca185e24"
 dependencies = [
  "tracing",
  "tracing-subscriber 0.2.25",
+]
+
+[[package]]
+name = "tracing-forest"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ee40835db14ddd1e3ba414292272eddde9dad04d3d4b65509656414d1c42592f"
+dependencies = [
+ "smallvec",
+ "thiserror 1.0.69",
+ "tracing",
+ "tracing-subscriber 0.3.22",
 ]
 
 [[package]]

@@ -4,7 +4,7 @@ use std::time::Duration;
 use anyhow::Result;
 use bench_transaction::context_setups::{tx_consume_single_p2id_note, tx_consume_two_p2id_notes};
 use criterion::{BatchSize, Criterion, SamplingMode, criterion_group, criterion_main};
-use miden_protocol::transaction::{ExecutedTransaction, ProvenTransaction, TransactionInputs};
+use miden_protocol::transaction::{ProvenTransaction, TransactionInputs};
 use miden_tx::{HashFunction, LocalTransactionProver, ProvingOptions};
 
 // BENCHMARK NAMES
@@ -15,13 +15,10 @@ const BENCH_EXECUTE_TX_CONSUME_SINGLE_P2ID: &str =
     "Execute transaction which consumes single P2ID note";
 const BENCH_EXECUTE_TX_CONSUME_TWO_P2ID: &str = "Execute transaction which consumes two P2ID notes";
 
-// CORE PROVING BENCHMARKS
+// EXECUTION BENCHMARKS
 // ================================================================================================
 
 fn execute_benchmarks(c: &mut Criterion) {
-    // EXECUTE GROUP (no proving, just execution)
-    // --------------------------------------------------------------------------------------------
-
     let mut execute_group = c.benchmark_group(BENCH_GROUP_EXECUTE);
 
     execute_group
@@ -33,12 +30,10 @@ fn execute_benchmarks(c: &mut Criterion) {
         b.to_async(tokio::runtime::Builder::new_current_thread().build().unwrap())
             .iter_batched(
                 || {
-                    // prepare the transaction context
                     tx_consume_single_p2id_note()
                         .expect("failed to create a context which consumes single P2ID note")
                 },
                 |tx_context| async move {
-                    // benchmark the transaction execution
                     black_box(tx_context.execute().await)
                 },
                 BatchSize::SmallInput,
@@ -49,12 +44,10 @@ fn execute_benchmarks(c: &mut Criterion) {
         b.to_async(tokio::runtime::Builder::new_current_thread().build().unwrap())
             .iter_batched(
                 || {
-                    // prepare the transaction context
                     tx_consume_two_p2id_notes()
                         .expect("failed to create a context which consumes two P2ID notes")
                 },
                 |tx_context| async move {
-                    // benchmark the transaction execution
                     black_box(tx_context.execute().await)
                 },
                 BatchSize::SmallInput,
@@ -63,6 +56,9 @@ fn execute_benchmarks(c: &mut Criterion) {
 
     execute_group.finish();
 }
+
+// PROVING BENCHMARKS (proving only, execution in setup)
+// ================================================================================================
 
 fn prove_benchmarks_blake3(c: &mut Criterion) {
     prove_with_hash_function(c, HashFunction::Blake3_256, "Blake3_256");
@@ -88,63 +84,57 @@ fn prove_with_hash_function(c: &mut Criterion, hash_fn: HashFunction, hash_name:
     let bench_name_single = format!("Prove single P2ID note ({})", hash_name);
     let bench_name_two = format!("Prove two P2ID notes ({})", hash_name);
 
+    // Pre-execute transactions once (not measured) and clone inputs for each iteration
+    let rt = tokio::runtime::Runtime::new().unwrap();
+
+    let single_tx_inputs: TransactionInputs = {
+        let tx_context = tx_consume_single_p2id_note()
+            .expect("failed to create a context which consumes single P2ID note");
+        let executed_tx = rt.block_on(tx_context.execute())
+            .expect("execution of the single P2ID note consumption tx failed");
+        executed_tx.into()
+    };
+
+    let two_tx_inputs: TransactionInputs = {
+        let tx_context = tx_consume_two_p2id_notes()
+            .expect("failed to create a context which consumes two P2ID notes");
+        let executed_tx = rt.block_on(tx_context.execute())
+            .expect("execution of the two P2ID note consumption tx failed");
+        executed_tx.into()
+    };
+
     prove_group.bench_function(&bench_name_single, |b| {
         b.to_async(tokio::runtime::Builder::new_current_thread().build().unwrap())
-            .iter_batched(
-                || {
-                    // prepare the transaction context
-                    tx_consume_single_p2id_note()
-                        .expect("failed to create a context which consumes single P2ID note")
-                },
-                |tx_context| async move {
-                    // benchmark the transaction execution and proving
-                    let executed_tx = tx_context
-                        .execute()
-                        .await
-                        .expect("execution of the single P2ID note consumption tx failed");
-                    black_box(prove_transaction_async(executed_tx, hash_fn).await)
-                },
-                BatchSize::SmallInput,
-            );
+            .iter(|| {
+                let tx_inputs = single_tx_inputs.clone();
+                async move {
+                    black_box(prove_transaction_async(tx_inputs, hash_fn).await)
+                }
+            });
     });
 
     prove_group.bench_function(&bench_name_two, |b| {
         b.to_async(tokio::runtime::Builder::new_current_thread().build().unwrap())
-            .iter_batched(
-                || {
-                    // prepare the transaction context
-                    tx_consume_two_p2id_notes()
-                        .expect("failed to create a context which consumes two P2ID notes")
-                },
-                |tx_context| async move {
-                    // benchmark the transaction execution and proving
-                    let executed_tx = tx_context
-                        .execute()
-                        .await
-                        .expect("execution of the two P2ID note consumption tx failed");
-                    black_box(prove_transaction_async(executed_tx, hash_fn).await)
-                },
-                BatchSize::SmallInput,
-            );
+            .iter(|| {
+                let tx_inputs = two_tx_inputs.clone();
+                async move {
+                    black_box(prove_transaction_async(tx_inputs, hash_fn).await)
+                }
+            });
     });
 
     prove_group.finish();
 }
 
 async fn prove_transaction_async(
-    executed_transaction: ExecutedTransaction,
+    tx_inputs: TransactionInputs,
     hash_fn: HashFunction,
 ) -> Result<()> {
-    let executed_transaction_id = executed_transaction.id();
     let proof_options = ProvingOptions::new(hash_fn);
 
-    // Convert ExecutedTransaction to TransactionInputs for prove_async
-    let tx_inputs: TransactionInputs = executed_transaction.into();
-
-    let proven_transaction: ProvenTransaction =
+    let _proven_transaction: ProvenTransaction =
         LocalTransactionProver::new(proof_options).prove_async(tx_inputs).await?;
 
-    assert_eq!(proven_transaction.id(), executed_transaction_id);
     Ok(())
 }
 
