@@ -3,15 +3,16 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use core::error::Error;
 
-use miden_objects::account::AccountId;
-use miden_objects::account::auth::PublicKeyCommitment;
-use miden_objects::assembly::diagnostics::reporting::PrintDiagnostic;
-use miden_objects::asset::AssetVaultKey;
-use miden_objects::block::BlockNumber;
-use miden_objects::crypto::merkle::SmtProofError;
-use miden_objects::note::{NoteId, NoteMetadata};
-use miden_objects::transaction::TransactionSummary;
-use miden_objects::{
+use miden_processor::{DeserializationError, ExecutionError};
+use miden_protocol::account::AccountId;
+use miden_protocol::account::auth::PublicKeyCommitment;
+use miden_protocol::assembly::diagnostics::reporting::PrintDiagnostic;
+use miden_protocol::asset::AssetVaultKey;
+use miden_protocol::block::BlockNumber;
+use miden_protocol::crypto::merkle::smt::SmtProofError;
+use miden_protocol::note::{NoteId, NoteMetadata};
+use miden_protocol::transaction::TransactionSummary;
+use miden_protocol::{
     AccountDeltaError,
     AccountError,
     AssetError,
@@ -22,7 +23,6 @@ use miden_objects::{
     TransactionOutputError,
     Word,
 };
-use miden_processor::{DeserializationError, ExecutionError};
 use miden_verifier::VerificationError;
 use thiserror::Error;
 

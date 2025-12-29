@@ -13,17 +13,20 @@ rust-version.workspace = true
 version.workspace      = true
 
 [features]
-std = ["miden-lib/std", "miden-objects/std", "miden-tx/std"]
+std = ["miden-protocol/std", "miden-standards/std", "miden-tx/std"]
 
 [dependencies]
 # Workspace dependencies
+miden-agglayer        = { features = ["testing"], workspace = true }
 miden-block-prover    = { features = ["testing"], workspace = true }
-miden-lib             = { features = ["testing"], workspace = true }
-miden-objects         = { features = ["testing"], workspace = true }
+miden-protocol        = { features = ["testing"], workspace = true }
+miden-standards       = { features = ["testing"], workspace = true }
 miden-tx              = { features = ["testing"], workspace = true }
 miden-tx-batch-prover = { features = ["testing"], workspace = true }
 
 # Miden dependencies
+miden-assembly  = { workspace = true }
+miden-core-lib  = { workspace = true }
 miden-processor = { workspace = true }
 
 # External dependencies
@@ -36,7 +39,7 @@ winterfell  = { version = "0.13" }
 [dev-dependencies]
 anyhow            = { features = ["backtrace", "std"], workspace = true }
 assert_matches    = { workspace = true }
-miden-objects     = { features = ["std"], workspace = true }
+miden-protocol    = { features = ["std"], workspace = true }
 primitive-types   = { workspace = true }
 rstest            = { workspace = true }
 tokio             = { features = ["macros", "rt"], workspace = true }

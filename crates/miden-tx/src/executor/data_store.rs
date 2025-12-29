@@ -1,12 +1,12 @@
 use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 
-use miden_objects::account::{AccountId, PartialAccount, StorageMapWitness};
-use miden_objects::asset::{AssetVaultKey, AssetWitness};
-use miden_objects::block::{BlockHeader, BlockNumber};
-use miden_objects::note::NoteScript;
-use miden_objects::transaction::{AccountInputs, PartialBlockchain};
 use miden_processor::{FutureMaybeSend, MastForestStore, Word};
+use miden_protocol::account::{AccountId, PartialAccount, StorageMapWitness};
+use miden_protocol::asset::{AssetVaultKey, AssetWitness};
+use miden_protocol::block::{BlockHeader, BlockNumber};
+use miden_protocol::note::NoteScript;
+use miden_protocol::transaction::{AccountInputs, PartialBlockchain};
 
 use crate::DataStoreError;
 

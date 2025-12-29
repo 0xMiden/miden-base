@@ -2,17 +2,15 @@ extern crate alloc;
 
 use core::slice;
 
-use miden_lib::account::wallets::BasicWallet;
-use miden_lib::agglayer::{
+use miden_agglayer::{
     create_claim_note,
     create_existing_agglayer_faucet,
     create_existing_bridge_account,
 };
-use miden_lib::note::WellKnownNote;
-use miden_objects::account::Account;
-use miden_objects::asset::{Asset, FungibleAsset};
-use miden_objects::crypto::rand::FeltRng;
-use miden_objects::note::{
+use miden_protocol::account::Account;
+use miden_protocol::asset::{Asset, FungibleAsset};
+use miden_protocol::crypto::rand::FeltRng;
+use miden_protocol::note::{
     Note,
     NoteAssets,
     NoteExecutionHint,
@@ -22,8 +20,10 @@ use miden_objects::note::{
     NoteTag,
     NoteType,
 };
-use miden_objects::transaction::OutputNote;
-use miden_objects::{Felt, Word};
+use miden_protocol::transaction::OutputNote;
+use miden_protocol::{Felt, Word};
+use miden_standards::account::wallets::BasicWallet;
+use miden_standards::note::WellKnownNote;
 use miden_testing::{AccountState, Auth, MockChain};
 use rand::Rng;
 

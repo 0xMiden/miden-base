@@ -1,0 +1,136 @@
+use miden::agglayer::bridge_in
+use miden::protocol::active_account
+use miden::protocol::active_note
+use miden::standards::faucets
+use miden::protocol::note
+use miden::protocol::tx
+
+# CONSTANTS
+# =================================================================================================
+
+# The slot in this component's storage layout where the bridge account ID is stored.
+const BRIDGE_ID_SLOT = word("miden::agglayer::faucet")
+
+const P2ID_NOTE_NUM_INPUTS = 2
+const OUTPUT_NOTE_TYPE_PUBLIC = 1
+const OUTPUT_PUBLIC_NOTE_INPUTS_ADDR = 8
+const OUTPUT_PUBLIC_NOTE_INPUTS_LEN_MEM_ADDR = 0
+const P2ID_SCRIPT_ROOT = [7588674509004260508, 4058706621878288170, 5607159951796201570, 5541281552524512743]
+
+# ERRORS
+# =================================================================================================
+
+const ERR_CLAIM_INVALID_GER_PROOF = "invalid ger claim proof"
+const ERR_CLAIM_WRONG_NUMBER_OF_INPUTS = "CLAIM note must have exactly 12 inputs"
+
+#! Validates a CLAIM note by verifying its inputs against a GER against the AggLayer bridge.
+#!
+#! This procedure performs a foreign procedure invocation (FPI) to the configured
+#! AggLayer bridge account to verify its claim data (asset, amount, recipient) inclusion against
+#! one of the Global Exit Roots in the bridge storage.
+#!
+#! Inputs:  []
+#! Outputs: []
+#!
+#! Panics if:
+#! - the bridge account ID is not properly configured in storage.
+#! - the foreign procedure invocation fails.
+#! - the claim proof validation fails.
+#!
+#! Invocation: exec
+proc validate_claim_via_fpi
+    # get check_claim_proof root
+    procref.bridge_in::check_claim_proof
+    # => [MAST_ROOT]
+
+    push.BRIDGE_ID_SLOT[0..2]
+    # => [bridge_id_idx, MAST_ROOT]
+
+    # get bridge account id
+    exec.active_account::get_item
+    # => [bridge_account_id_prefix, bridge_account_id_suffix, 0, 0, MAST_ROOT]
+
+    movup.2 drop movup.2 drop
+    # => [bridge_account_id_prefix, bridge_account_id_suffix, MAST_ROOT]
+
+    # call check_claim_proof proc on bridge
+    exec.tx::execute_foreign_procedure
+    # => [validation_result]
+
+    assert.err=ERR_CLAIM_INVALID_GER_PROOF drop
+    # => []
+end
+
+#! Validates a CLAIM note against the AggLayer bridge and mints the corresponding asset to the recipient.
+#!
+#! This procedure validates the rollup exit root Merkle Proof via FPI against the agglayer bridge,
+#! and if validation passes, mints the asset and creates an output note for the recipient.
+#!
+#! Inputs:  [pad(16)]
+#! Outputs: [pad(16)]
+#!
+#! Panics if:
+#! - the rollup exit root Merkle Proof validation via FPI fails.
+#! - any of the validations in faucets::distribute fail.
+#!
+#! Invocation: call
+pub proc claim
+    # load note inputs into memory starting at address 0
+    push.0 exec.active_note::get_inputs
+    # => [total_inputs, inputs_ptr, pad(16)]
+
+    u32assert2.err=ERR_CLAIM_WRONG_NUMBER_OF_INPUTS
+    # => [total_inputs, inputs_ptr, pad(16)]
+
+    drop drop
+    # => [pad(16)]
+
+    push.P2ID_SCRIPT_ROOT[0..4]
+    # => [SCRIPT_ROOT, pad(16)]
+
+    swapw mem_loadw_be.4
+    # => [SERIAL_NUM, SCRIPT_ROOT, pad(12)]
+
+    push.P2ID_NOTE_NUM_INPUTS
+    # => [num_output_note_inputs, SERIAL_NUM, SCRIPT_ROOT, pad(12)]
+
+    push.OUTPUT_PUBLIC_NOTE_INPUTS_ADDR
+    # => [inputs_ptr = 12, num_output_note_inputs, SERIAL_NUM, SCRIPT_ROOT, pad(12)]
+
+    exec.note::build_recipient
+    # => [RECIPIENT, pad(12)]
+
+    swapw mem_loadw_be.0
+    # => [amount, tag, aux, execution_hint, RECIPIENT, pad(8)]
+
+    push.OUTPUT_NOTE_TYPE_PUBLIC
+    # => [note_type, amount, tag, aux, execution_hint, RECIPIENT, pad(8)]
+
+    movdn.3
+    # => [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
+
+    exec.faucets::distribute
+    # => [pad(16)]
+
+    # validate CLAIM note proof (stubbed out)
+    exec.validate_claim_via_fpi
+    # => [pad(16)]
+end
+
+#! Burns the fungible asset from the active note.
+#!
+#! This procedure retrieves the asset from the active note and burns it. The note must contain
+#! exactly one asset, which must be a fungible asset issued by this faucet.
+#!
+#! Inputs:  [pad(16)]
+#! Outputs: [pad(16)]
+#!
+#! Panics if:
+#! - the procedure is not called from a note context (active_note::get_assets will fail).
+#! - the note does not contain exactly one asset.
+#! - the transaction is executed against an account which is not a fungible asset faucet.
+#! - the transaction is executed against a faucet which is not the origin of the specified asset.
+#! - the amount about to be burned is greater than the outstanding supply of the asset.
+#!
+#! Invocation: call
+pub use ::miden::standards::faucets::basic_fungible::burn
