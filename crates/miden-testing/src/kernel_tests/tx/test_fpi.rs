@@ -28,15 +28,15 @@ use miden_protocol::testing::account_id::{
 use miden_protocol::testing::storage::STORAGE_LEAVES_2;
 use miden_protocol::transaction::memory::{
     ACCOUNT_DATA_LENGTH,
+    ACCT_ACTIVE_STORAGE_SLOTS_SECTION_OFFSET,
     ACCT_CODE_COMMITMENT_OFFSET,
     ACCT_ID_AND_NONCE_OFFSET,
-    ACCT_PROCEDURES_SECTION_OFFSET,
-    ACCT_STORAGE_COMMITMENT_OFFSET,
-    ACCT_ACTIVE_STORAGE_SLOTS_SECTION_OFFSET,
-    ACCT_VAULT_ROOT_OFFSET,
-    NATIVE_ACCOUNT_DATA_PTR,
     ACCT_NUM_PROCEDURES_OFFSET,
     ACCT_NUM_STORAGE_SLOTS_OFFSET,
+    ACCT_PROCEDURES_SECTION_OFFSET,
+    ACCT_STORAGE_COMMITMENT_OFFSET,
+    ACCT_VAULT_ROOT_OFFSET,
+    NATIVE_ACCOUNT_DATA_PTR,
 };
 use miden_protocol::{FieldElement, Word, ZERO};
 use miden_standards::code_builder::CodeBuilder;
@@ -1832,7 +1832,9 @@ fn foreign_account_data_memory_assertions(
     {
         assert_eq!(
             exec_output.get_kernel_mem_word(
-                foreign_account_data_ptr + ACCT_ACTIVE_STORAGE_SLOTS_SECTION_OFFSET + (i as u32) * 4
+                foreign_account_data_ptr
+                    + ACCT_ACTIVE_STORAGE_SLOTS_SECTION_OFFSET
+                    + (i as u32) * 4
             ),
             Word::try_from(elements).unwrap(),
         )
