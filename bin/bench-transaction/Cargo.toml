@@ -14,6 +14,10 @@ version                = "0.1.0"
 concurrent = ["miden-tx/concurrent"]
 default    = []
 
+[[bin]]
+name = "profile_proving"
+path = "src/bin/profile_proving.rs"
+
 [[bench]]
 harness = false
 name    = "time_counting_benchmarks"
@@ -31,6 +35,8 @@ anyhow     = { workspace = true }
 serde      = { features = ["derive"], version = "1.0" }
 serde_json = { features = ["preserve_order"], package = "serde_json", version = "1.0" }
 tokio      = { features = ["macros", "rt"], workspace = true }
+tracing-forest = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [dev-dependencies]
 criterion = { features = ["async_tokio", "html_reports"], version = "0.6" }
