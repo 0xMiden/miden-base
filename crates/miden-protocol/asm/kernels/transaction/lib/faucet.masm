@@ -151,7 +151,7 @@ proc mint_non_fungible_asset
     # => [faucet_slot_name_prefix, faucet_slot_name_suffix, ASSET_KEY, ASSET, ASSET]
 
     # insert the non-fungible asset into the tracking SMT
-    exec.account::set_map_item dropw
+    exec.account::set_map_item
     # => [OLD_VAL, ASSET]
 
     # Assert the `OLD_VAL` is an EMPTY_WORD, indicating that the non-fungible asset has not been
@@ -199,7 +199,7 @@ proc burn_non_fungible_asset
     # => [faucet_storage_data_slot, ASSET_KEY, EMPTY_WORD, ASSET]
 
     # remove the non-fungible asset from the tracking SMT
-    exec.account::set_map_item dropw
+    exec.account::set_map_item
     # => [OLD_VAL, ASSET]
 
     # Assert the `OLD_VAL` is not an EMPTY_WORD, indicating that the non-fungible asset exists. We

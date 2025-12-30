@@ -1,5 +1,5 @@
 use alloc::boxed::Box;
-use alloc::string::String;
+use alloc::string::{String, ToString};
 use core::error::Error;
 
 use miden_protocol::account::AccountId;
@@ -427,6 +427,27 @@ pub enum NoteConsumptionStatus {
     UnconsumableConditions,
     /// The note cannot be consumed by the specified account under any conditions.
     NeverConsumable(Box<dyn Error + Send + Sync + 'static>),
+}
+
+impl Clone for NoteConsumptionStatus {
+    fn clone(&self) -> Self {
+        match self {
+            NoteConsumptionStatus::Consumable => NoteConsumptionStatus::Consumable,
+            NoteConsumptionStatus::ConsumableAfter(block_height) => {
+                NoteConsumptionStatus::ConsumableAfter(*block_height)
+            },
+            NoteConsumptionStatus::ConsumableWithAuthorization => {
+                NoteConsumptionStatus::ConsumableWithAuthorization
+            },
+            NoteConsumptionStatus::UnconsumableConditions => {
+                NoteConsumptionStatus::UnconsumableConditions
+            },
+            NoteConsumptionStatus::NeverConsumable(error) => {
+                let err = error.to_string();
+                NoteConsumptionStatus::NeverConsumable(err.into())
+            },
+        }
+    }
 }
 
 #[derive(thiserror::Error, Debug)]

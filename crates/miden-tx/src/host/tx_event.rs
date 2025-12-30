@@ -64,8 +64,8 @@ pub(crate) enum TransactionEvent {
     AccountStorageAfterSetMapItem {
         slot_name: StorageSlotName,
         key: Word,
-        old_map_value: Word,
-        new_map_value: Word,
+        old_value: Word,
+        new_value: Word,
     },
 
     /// The data necessary to request a storage map witness from the data store.
@@ -289,11 +289,11 @@ impl TransactionEvent {
             },
 
             TransactionEventId::AccountStorageAfterSetMapItem => {
-                // Expected stack state: [event, slot_ptr, KEY, OLD_MAP_VALUE, NEW_VALUE]
+                // Expected stack state: [event, slot_ptr, KEY, OLD_VALUE, NEW_VALUE]
                 let slot_ptr = process.get_stack_item(1);
                 let key = process.get_stack_word_be(2);
-                let old_map_value = process.get_stack_word_be(6);
-                let new_map_value = process.get_stack_word_be(10);
+                let old_value = process.get_stack_word_be(6);
+                let new_value = process.get_stack_word_be(10);
 
                 // Resolve slot ID to slot name.
                 let (slot_id, ..) = process.get_storage_slot(slot_ptr)?;
@@ -303,8 +303,8 @@ impl TransactionEvent {
                 Some(TransactionEvent::AccountStorageAfterSetMapItem {
                     slot_name,
                     key,
-                    old_map_value,
-                    new_map_value,
+                    old_value,
+                    new_value,
                 })
             },
 
