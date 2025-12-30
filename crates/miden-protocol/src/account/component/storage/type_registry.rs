@@ -613,8 +613,7 @@ impl SchemaTypeRegistry {
         match self.type_kind(type_name) {
             TypeKind::Word => Ok(()),
             TypeKind::Felt => {
-                // Felt types are only parseable as words if they have the last element with a
-                // non-zero value
+                // Felt types stored as words must have the form [0, 0, 0, <felt>]
                 if word[0] != Felt::ZERO || word[1] != Felt::ZERO || word[2] != Felt::ZERO {
                     return Err(SchemaTypeError::ConversionError(format!(
                         "expected a word of the form [0, 0, 0, <felt>] for type `{type_name}`"
