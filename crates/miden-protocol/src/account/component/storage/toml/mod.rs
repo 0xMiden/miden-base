@@ -492,6 +492,6 @@ impl WordValue {
     }
 
     pub(super) fn from_word(schema_type: &SchemaTypeId, word: Word) -> Self {
-        WordValue::Atomic(SCHEMA_TYPE_REGISTRY.display_word(schema_type, word))
+        WordValue::Atomic(SCHEMA_TYPE_REGISTRY.display_word(schema_type, word).value().to_string())
     }
 }

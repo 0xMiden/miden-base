@@ -86,20 +86,6 @@ The metadata header specifies four fields:
 - `version`: A semantic version of this component schema
 - `supported-types`: Specifies the types of accounts on which the component can be used. Valid values are `FungibleFaucet`, `NonFungibleFaucet`, `RegularAccountUpdatableCode` and `RegularAccountImmutableCode`
 
-##### Word schema example
-
-```toml
-[[storage.slots]]
-name = "demo::faucet_id"
-description = "Account ID of the registered faucet"
-type = [
-  { type = "felt", name = "prefix", description = "Faucet ID prefix" },
-  { type = "felt", name = "suffix", description = "Faucet ID suffix" },
-  { type = "void" },
-  { type = "void" },
-]
-```
-
 #### Storage entries
 
 An account component schema can contain multiple storage entries, each describing either a
@@ -112,7 +98,7 @@ In TOML, these are declared using dotted array keys:
 
 **Value-slot** entries describe their schema via `WordSchema`. A value type can be either:
 
-- **Simple**: defined through the `type = "<identifier>"` field, indicating the expected `SchemaTypeId` for the entire word. The value is supplied at instantiation time via `InitStorageData`.
+- **Simple**: defined through the `type = "<identifier>"` field, indicating the expected `SchemaTypeId` for the entire word. The value is supplied at instantiation time via `InitStorageData`. Felt types are stored as full words in the following layout: `[0, 0, 0, <felt>]`.
 - **Composite**: provided through `type = [ ... ]`, which contains exactly four `FeltSchema` descriptors. Each element is either a named typed field (optionally with `default-value`) or a `void` element for reserved/padding zeros.
 
 Composite schema entries reuse the existing TOML structure for four-element words, while simple schemas rely on `type`. In our example, the `token_metadata` slot uses a composite schema (`type = [...]`) mixing typed fields (`max_supply`, `decimals`) with defaults (`symbol`) and a reserved/padding `void` element.
@@ -131,6 +117,19 @@ Simple schemas accept `word` (default) and word-shaped types such as `miden::sta
 
 Simple schemas can also use any felt type (e.g. `u8`, `u16`, `u32`, `felt`, `miden::standards::fungible_faucets::metadata::token_symbol`, `void`). The value is parsed as a felt and stored as a word with the parsed felt in the last element and the remaining elements set to `0`.
 
+##### Word schema example
+
+```toml
+[[storage.slots]]
+name = "demo::faucet_id"
+description = "Account ID of the registered faucet"
+type = [
+  { type = "felt", name = "prefix", description = "Faucet ID prefix" },
+  { type = "felt", name = "suffix", description = "Faucet ID suffix" },
+  { type = "void" },
+  { type = "void" },
+]
+```
 
 ##### Felt types
 

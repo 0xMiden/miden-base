@@ -8,7 +8,8 @@ use miden_processor::DeserializationError;
 
 use super::type_registry::{SCHEMA_TYPE_REGISTRY, SchemaRequirement, SchemaTypeId};
 use super::{InitStorageData, StorageValueName, WordValue};
-use crate::account::{AccountStorage, StorageMap, StorageSlot, StorageSlotName};
+use crate::account::storage::is_reserved_slot_name;
+use crate::account::{StorageMap, StorageSlot, StorageSlotName};
 use crate::errors::AccountComponentTemplateError;
 use crate::{Felt, FieldElement, Word};
 
@@ -83,7 +84,7 @@ impl AccountStorageSchema {
         let mut init_values = BTreeMap::new();
 
         for (slot_name, schema) in self.slots.iter() {
-            if slot_name.id() == AccountStorage::faucet_sysdata_slot().id() {
+            if is_reserved_slot_name(slot_name) {
                 return Err(AccountComponentTemplateError::ReservedSlotName(slot_name.clone()));
             }
 
@@ -277,8 +278,9 @@ impl WordSchema {
                     return Ok(());
                 }
 
-                let default_value =
-                    default_value.map(|word| SCHEMA_TYPE_REGISTRY.display_word(r#type, word));
+                let default_value = default_value.map(|word| {
+                    SCHEMA_TYPE_REGISTRY.display_word(r#type, word).value().to_string()
+                });
 
                 if requirements
                     .insert(
@@ -320,7 +322,8 @@ impl WordSchema {
             default_value: Some(default_value),
         } = self
         {
-            validate_word_value(word_type_kind(r#type), r#type, *default_value)
+            SCHEMA_TYPE_REGISTRY
+                .validate_word_value(r#type, *default_value)
                 .map_err(AccountComponentTemplateError::StorageValueParsingError)?;
         }
 
@@ -356,7 +359,8 @@ impl WordSchema {
                             .map_err(AccountComponentTemplateError::StorageValueParsingError)?;
                         let felts: [Felt; 4] = felts.try_into().expect("length is 4");
                         let word = Word::from(felts);
-                        validate_word_value(word_type_kind(r#type), r#type, word)
+                        SCHEMA_TYPE_REGISTRY
+                            .validate_word_value(r#type, word)
                             .map_err(AccountComponentTemplateError::StorageValueParsingError)?;
                         Ok(word)
                     },
@@ -390,7 +394,7 @@ impl WordSchema {
     ) -> Result<(), AccountComponentTemplateError> {
         match self {
             WordSchema::Simple { r#type, .. } => {
-                validate_word_value(word_type_kind(r#type), r#type, word).map_err(|err| {
+                SCHEMA_TYPE_REGISTRY.validate_word_value(r#type, word).map_err(|err| {
                     AccountComponentTemplateError::InvalidInitStorageValue(
                         slot_prefix.clone(),
                         format!("{label} does not match `{}`: {err}", r#type),
@@ -400,12 +404,14 @@ impl WordSchema {
             WordSchema::Composite { value } => {
                 for (index, felt_schema) in value.iter().enumerate() {
                     let felt_type = felt_schema.felt_type();
-                    validate_felt_value(&felt_type, word[index]).map_err(|err| {
-                        AccountComponentTemplateError::InvalidInitStorageValue(
-                            slot_prefix.clone(),
-                            format!("{label}[{index}] does not match `{felt_type}`: {err}"),
-                        )
-                    })?;
+                    SCHEMA_TYPE_REGISTRY.validate_felt_value(&felt_type, word[index]).map_err(
+                        |err| {
+                            AccountComponentTemplateError::InvalidInitStorageValue(
+                                slot_prefix.clone(),
+                                format!("{label}[{index}] does not match `{felt_type}`: {err}"),
+                            )
+                        },
+                    )?;
                 }
 
                 Ok(())
@@ -663,7 +669,8 @@ impl FeltSchema {
         }
 
         if let Some(value) = self.default_value {
-            validate_felt_value(&self.felt_type(), value)
+            SCHEMA_TYPE_REGISTRY
+                .validate_felt_value(&self.felt_type(), value)
                 .map_err(AccountComponentTemplateError::StorageValueParsingError)?;
         }
         Ok(())
@@ -687,48 +694,6 @@ impl Deserializable for FeltSchema {
         let default_value = Option::<Felt>::read_from(source)?;
         Ok(FeltSchema { name, description, r#type, default_value })
     }
-}
-
-// VALUE VALIDATION HELPERS
-// ================================================================================================
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum WordTypeKind {
-    Word,
-    Felt,
-}
-
-fn word_type_kind(schema_type: &SchemaTypeId) -> WordTypeKind {
-    if SCHEMA_TYPE_REGISTRY.contains_felt_type(schema_type) {
-        WordTypeKind::Felt
-    } else {
-        WordTypeKind::Word
-    }
-}
-
-fn validate_word_value(
-    kind: WordTypeKind,
-    schema_type: &SchemaTypeId,
-    word: Word,
-) -> Result<(), super::SchemaTypeError> {
-    match kind {
-        WordTypeKind::Word => Ok(()),
-        WordTypeKind::Felt => {
-            if word[0] != Felt::ZERO || word[1] != Felt::ZERO || word[2] != Felt::ZERO {
-                return Err(super::SchemaTypeError::ConversionError(format!(
-                    "expected a word of the form [0, 0, 0, <felt>] for type `{schema_type}`"
-                )));
-            }
-            validate_felt_value(schema_type, word[3])
-        },
-    }
-}
-
-fn validate_felt_value(
-    schema_type: &SchemaTypeId,
-    felt: Felt,
-) -> Result<(), super::SchemaTypeError> {
-    SCHEMA_TYPE_REGISTRY.validate_felt_value(schema_type, felt)
 }
 
 /// Describes the schema for a storage value slot.

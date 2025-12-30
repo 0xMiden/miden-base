@@ -33,6 +33,14 @@ static FAUCET_SYSDATA_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
         .expect("storage slot name should be valid")
 });
 
+static RESERVED_SLOT_NAMES: LazyLock<Vec<StorageSlotName>> =
+    LazyLock::new(|| vec![FAUCET_SYSDATA_SLOT_NAME.clone()]);
+
+/// Returns `true` if the provided slot name is reserved by the protocol.
+pub fn is_reserved_slot_name(slot_name: &StorageSlotName) -> bool {
+    RESERVED_SLOT_NAMES.iter().any(|reserved| reserved.id() == slot_name.id())
+}
+
 // ACCOUNT STORAGE
 // ================================================================================================
 
@@ -127,7 +135,7 @@ impl AccountStorage {
             let AccountComponent { storage_slots, .. } = component;
             storage_slots.into_iter()
         }) {
-            if component_slot.name() == Self::faucet_sysdata_slot() {
+            if is_reserved_slot_name(component_slot.name()) {
                 return Err(AccountError::StorageSlotNameMustNotBeFaucetSysdata);
             }
 

@@ -158,7 +158,7 @@ pub enum InitStorageDataError {
     DuplicateKey(String),
 
     #[error(
-        "invalid input for `{key}`: unsupported array value (len {len}); expected either a map entry list (array of inline tables with `key` and `value`) or a 4-element word array of strings"
+        "invalid input for `{key}`: unsupported array value (length {len}); expected either a map entry list (array of inline tables with `key` and `value`) or a 4-element word array of strings"
     )]
     ArraysNotSupported { key: String, len: usize },
 
