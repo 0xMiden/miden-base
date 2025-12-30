@@ -3,49 +3,31 @@ use miden::protocol::account_id
 use miden::protocol::active_account
 use miden::protocol::active_note
 use miden::protocol::note
-
+use miden::core::crypto::hashes::keccak256
+use miden::core::crypto::hashes::rpo256
 # CONSTANTS
 # =================================================================================================
 
-const CLAIM_NOTE_NUM_INPUTS = 12
+const CLAIM_NOTE_NUM_INPUTS = 582
+const CLAIM_PROOF_DATA_SIZE = 560
+const CLAIM_PROOF_DATA_BYTES = 140  # 570 * 4 bytes (u32s)
+
+const AGG_FAUCET_PREFIX = 11
+const AGG_FAUCET_SUFFIX = 10
 
 # ERRORS
 # =================================================================================================
 
 const ERR_CLAIM_TARGET_ACCT_MISMATCH = "CLAIM's target account address and transaction address do not match"
+const ERR_CLAIM_WRONG_NUMBER_OF_INPUTS = "CLAIM note must have exactly 586 inputs"
 
-#! Agglayer Faucet CLAIM script: claims assets by calling the agglayer faucet's claim function.
-#! This note is intended to be consumed by an agglayer faucet account and will create a P2ID note on consumption.
-#!
-#! Requires that the account exposes:
-#! - agglayer::agglayer_faucet::claim procedure.
-#!
-#! Inputs:  [ARGS, pad(12)]
-#! Outputs: [pad(16)]
-#!
-#! The CLAIM note only supports public output notes and requires exactly 12 inputs.
-#!
-#! Note inputs are assumed to be as follows:
-#! - execution_hint: Execution hint for the output note (always 0)
-#! - aux: Auxiliary data for the output note
-#! - tag: Note tag for the output note
-#! - amount: The amount to claim
-#! - SERIAL_NUM: Serial number of the output note (4 elements)
-#! - target_account_id: P2ID recipient account ID (suffix, prefix)
-#! - agg_faucet_id: Agglayer faucet account ID (suffix, prefix)
-#!
-#! Panics if:
-#! - account does not expose claim procedure.
-#! - the number of inputs is less than 12.
-#! - agglayer faucet account ID does not match the consuming account ID.
-begin
-    dropw
-    # => []
 
-    push.0 exec.active_note::get_inputs
-    # => [total_inputs, inputs_ptr]
 
-    mem_loadw_be.8 movup.2 drop movup.2 drop
+# Inputs: []
+# Output: []
+proc assert_aggfaucet_is_consumer
+    # Load agglayer faucet ID (assumes active_note::get_inputs has been called)
+    mem_load.AGG_FAUCET_SUFFIX mem_load.AGG_FAUCET_PREFIX
     # => [agg_faucet_prefix, agg_faucet_suffix]
 
     exec.active_account::get_id
@@ -54,8 +36,95 @@ begin
     # ensure only the specified agglayer faucet can consume this CLAIM note, not any other account
     exec.account_id::is_equal assert.err=ERR_CLAIM_TARGET_ACCT_MISMATCH
     # => []
+end
 
+
+
+#! Agglayer Faucet CLAIM script: claims assets by calling the agglayer faucet's claim function.
+#! This note is intended to be consumed by an agglayer faucet account and will create a P2ID note on consumption.
+#!
+#! Requires that the account exposes:
+#! - agglayer::agglayer_faucet::claim procedure.
+#!
+#! Inputs:  [ARGS, pad(16)]
+#! Outputs: [pad(16)]
+#!
+#! TODO: Eventually, CLAIM note inputs will need to include the actual proof and leaf index info
+#! (and maybe GER info as well). The proof data will be hashed using keccak256::hash_bytes
+#! and passed as a commitment to decouple the note from the faucet implementation.
+#!
+#! Current note inputs are assumed to be as follows:
+#! - execution_hint: Execution hint for the output note (always 0)
+#! - aux: Auxiliary data for the output note
+#! - tag: Note tag for the output note
+#! - amount: The amount to claim
+#! - SERIAL_NUM: Serial number of the output note (4 elements)
+#! - target_account_id: P2ID recipient account ID (suffix, prefix)
+#! - agg_faucet_id: Agglayer faucet account ID (suffix, prefix)
+#! - PROOF_DATA: 570 Felts of proof data (currently all zeros, will be actual proof data)
+#!
+#! Panics if:
+#! - account does not expose claim procedure.
+#! - the number of inputs is not exactly 586.
+#! - agglayer faucet account ID does not match the consuming account ID.
+begin
+    dropw
+    # => []
+
+    push.0 exec.active_note::get_inputs
+    # => [total_inputs, inputs_ptr]
+
+    # Verify we have exactly 586 inputs
+    push.CLAIM_NOTE_NUM_INPUTS eq assert.err=ERR_CLAIM_WRONG_NUMBER_OF_INPUTS
+    # => [inputs_ptr]
+
+    exec.assert_aggfaucet_is_consumer
+    # => [inputs_ptr]
+
+    # Hash the proof data (560 Felts starting at offset 12)
+    # The proof data starts at memory address inputs_ptr + 12
+    add.12
+    # => [proof_data_ptr]
+
+    # Push the length in bytes (560 u32s * 4 = 140 bytes)
+    push.CLAIM_PROOF_DATA_BYTES
+    # => [len_bytes, proof_data_ptr]
+
+    swap
+    # => [proof_data_ptr, len_bytes]
+
+    # Hash the proof data using keccak256
+    exec.keccak256::hash_bytes
+    # => [MERKLE_PATH_COMMITMENT[8]]
+
+    push.560 push.12
+
+    exec.rpo256::hash_elements
+    # => [HASH, MERKLE_PATH_COMMITMENT[8]]
+
+    push.CLAIM_PROOF_DATA_SIZE add.12 push.12
+    # => [, start_ptr, end_ptr, HASH, MERKLE_PATH_COMMITMENT[8]]
+    
+    movdn.5 movdn.5
+    # => [HASH, start_ptr, end_ptr, MERKLE_PATH_COMMITMENT[8]]
+
+    push.111 debug.stack drop
+
+    adv.insert_mem
+    # OS => [MERKLE_PATH_RPO_COMMITMENT, start_ptr, end_ptr]
+    # AS => {MERKLE_PATH_RPO_COMMITMENT: mem[start_ptr..end_ptr] }
+
+    movup.4 drop movup.4 drop
+    # => [MERKLE_PATH_RPO_COMMITMENT]
+
+    push.222 debug.stack drop
+
+    # Pass the proof hash to the faucet's claim procedure
     call.agg_faucet::claim
     # => []
+
+    dropw dropw dropw dropw
+
+    push.555 debug.stack drop
 end
 

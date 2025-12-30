@@ -4,6 +4,8 @@ use miden::protocol::active_note
 use miden::standards::faucets
 use miden::protocol::note
 use miden::protocol::tx
+use miden::core::mem
+
 
 # CONSTANTS
 # =================================================================================================
@@ -21,7 +23,6 @@ const P2ID_SCRIPT_ROOT = [7588674509004260508, 4058706621878288170, 560715995179
 # =================================================================================================
 
 const ERR_CLAIM_INVALID_GER_PROOF = "invalid ger claim proof"
-const ERR_CLAIM_WRONG_NUMBER_OF_INPUTS = "CLAIM note must have exactly 12 inputs"
 
 #! Validates a CLAIM note by verifying its inputs against a GER against the AggLayer bridge.
 #!
@@ -29,7 +30,7 @@ const ERR_CLAIM_WRONG_NUMBER_OF_INPUTS = "CLAIM note must have exactly 12 inputs
 #! AggLayer bridge account to verify its claim data (asset, amount, recipient) inclusion against
 #! one of the Global Exit Roots in the bridge storage.
 #!
-#! Inputs:  []
+#! Inputs:  [MERKLE_PATH_RPO_COMMITMENT]
 #! Outputs: []
 #!
 #! Panics if:
@@ -38,7 +39,19 @@ const ERR_CLAIM_WRONG_NUMBER_OF_INPUTS = "CLAIM note must have exactly 12 inputs
 #! - the claim proof validation fails.
 #!
 #! Invocation: exec
-proc validate_claim_via_fpi
+proc validate_claim
+
+    # check AdviceMap was not tampered with
+    adv.push_mapvaln
+    # => [MERKLE_PATH_RPO_COMMITMENT]
+
+    # validate MERKLE_PATH_RPO_COMMITMENT is valid commitment to data in AdviceProvider
+    push.12 push.140
+    # => [num_words, write_ptr, MERKLE_PATH_RPO_COMMITMENT]
+
+    exec.mem::pipe_double_words_preimage_to_memory drop
+    # => []
+
     # get check_claim_proof root
     procref.bridge_in::check_claim_proof
     # => [MAST_ROOT]
@@ -66,8 +79,14 @@ end
 #! This procedure validates the rollup exit root Merkle Proof via FPI against the agglayer bridge,
 #! and if validation passes, mints the asset and creates an output note for the recipient.
 #!
-#! Inputs:  [pad(16)]
+#! Inputs:  [MERKLE_PATH_RPO_COMMITMENT, pad(12)]
 #! Outputs: [pad(16)]
+#!
+#! Where:
+#! - MERKLE_PATH_RPO_COMMITMENT: RPO hash of the MERKLE_PATH_COMMITMENT[8] of the merkle proof data
+#!
+#! This procedure validates the rollup exit root Merkle Proof via FPI against the agglayer bridge,
+#! and if validation passes, mints the asset and creates an output note for the recipient.
 #!
 #! Panics if:
 #! - the rollup exit root Merkle Proof validation via FPI fails.
@@ -76,13 +95,13 @@ end
 #! Invocation: call
 pub proc claim
     # load note inputs into memory starting at address 0
-    push.0 exec.active_note::get_inputs
-    # => [total_inputs, inputs_ptr, pad(16)]
+    push.0 exec.active_note::get_inputs drop drop
+    # => [MERKLE_PATH_RPO_COMMITMENT, pad(12)]
 
-    u32assert2.err=ERR_CLAIM_WRONG_NUMBER_OF_INPUTS
-    # => [total_inputs, inputs_ptr, pad(16)]
+    push.333 debug.stack drop
 
-    drop drop
+    # validate CLAIM note proof (stubbed out)
+    exec.validate_claim
     # => [pad(16)]
 
     push.P2ID_SCRIPT_ROOT[0..4]
@@ -112,9 +131,7 @@ pub proc claim
     exec.faucets::distribute
     # => [pad(16)]
 
-    # validate CLAIM note proof (stubbed out)
-    exec.validate_claim_via_fpi
-    # => [pad(16)]
+
 end
 
 #! Burns the fungible asset from the active note.

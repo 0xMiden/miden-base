@@ -362,7 +362,7 @@ pub fn create_claim_note<R: FeltRng>(
 
     let output_note_tag = NoteTag::from_account_id(target_account_id);
 
-    let claim_inputs = vec![
+    let mut claim_inputs = vec![
         Felt::new(0),                         // execution_hint (always = 0)
         aux,                                  // aux
         Felt::from(output_note_tag),          // tag
@@ -376,6 +376,11 @@ pub fn create_claim_note<R: FeltRng>(
         agg_faucet_id.suffix(),               // faucet account suffix
         agg_faucet_id.prefix().as_felt(),     // faucet account prefix
     ];
+
+    // TODO: Create 570 Felts of proof data (currently stubbed out as zeros)
+    // In the future, this will contain actual Merkle proof data for Global Exit Tree verification
+    let proof_data: Vec<Felt> = vec![Felt::new(333); 570];
+    claim_inputs.extend(proof_data);
 
     let inputs = NoteInputs::new(claim_inputs)?;
     let tag = NoteTag::from_account_id(agg_faucet_id);

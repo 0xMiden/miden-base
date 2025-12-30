@@ -87,6 +87,12 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
         builder.rng_mut(),
     )?;
 
+    println!(
+        "agglayer_faucet id: {} {}",
+        agglayer_faucet.id().prefix().as_felt(),
+        agglayer_faucet.id().suffix().as_int()
+    );
+
     // Add the claim note to the builder before building the mock chain
     builder.add_output_note(OutputNote::Full(claim_note.clone()));
 
