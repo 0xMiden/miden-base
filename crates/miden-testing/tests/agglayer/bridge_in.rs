@@ -27,6 +27,68 @@ use miden_standards::note::WellKnownNote;
 use miden_testing::{AccountState, Auth, MockChain};
 use rand::Rng;
 
+/// Returns dummy test inputs for creating CLAIM notes.
+///
+/// This is a convenience function for testing that provides realistic dummy data
+/// for all the Solidity bridge inputs.
+///
+/// # Returns
+/// A tuple containing:
+/// - smt_proof: Vec<Felt> (570 felts)
+/// - index: Felt
+/// - mainnet_exit_root: [u8; 32]
+/// - rollup_exit_root: [u8; 32]
+/// - origin_network: Felt
+/// - origin_token_address: [u8; 20]
+/// - destination_network: Felt
+/// - destination_address: [u8; 20]
+/// - metadata: Vec<Felt>
+fn claim_note_test_inputs()
+-> (Vec<Felt>, Felt, [u8; 32], [u8; 32], Felt, [u8; 20], Felt, [u8; 20], Vec<Felt>) {
+    // Create SMT proof with 570 felts (matching Solidity smtProof parameter)
+    let smt_proof = vec![Felt::new(0); 570];
+    let index = Felt::new(12345);
+
+    let mainnet_exit_root: [u8; 32] = [
+        0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xf0, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,
+        0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66,
+        0x77, 0x88,
+    ];
+
+    let rollup_exit_root: [u8; 32] = [
+        0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88,
+        0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,
+        0x88, 0x99,
+    ];
+
+    let origin_network = Felt::new(1);
+
+    let origin_token_address: [u8; 20] = [
+        0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xf0, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,
+        0x88, 0x99, 0xaa, 0xbb, 0xcc,
+    ];
+
+    let destination_network = Felt::new(2);
+
+    let destination_address: [u8; 20] = [
+        0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88,
+        0x99, 0xaa, 0xbb, 0xcc, 0xdd,
+    ];
+
+    let metadata: Vec<Felt> = vec![Felt::new(0); 8];
+    (
+        smt_proof,
+        index,
+        mainnet_exit_root,
+        rollup_exit_root,
+        origin_network,
+        origin_token_address,
+        destination_network,
+        destination_address,
+        metadata,
+    )
+}
+
 /// Tests the bridge-in flow: CLAIM note -> Aggfaucet (FPI to Bridge) -> P2ID note created.
 #[tokio::test]
 async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
@@ -76,7 +138,19 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
     let note_inputs = NoteInputs::new(p2id_inputs)?;
     let p2id_recipient = NoteRecipient::new(serial_num, p2id_script.clone(), note_inputs);
 
-    // Create CLAIM note using the helper function
+    // Create CLAIM note using the helper function with new Solidity inputs
+    let (
+        smt_proof,
+        index,
+        mainnet_exit_root,
+        rollup_exit_root,
+        origin_network,
+        origin_token_address,
+        destination_network,
+        destination_address,
+        metadata,
+    ) = claim_note_test_inputs();
+
     let claim_note = create_claim_note(
         agglayer_faucet.id(),
         agglayer_faucet.id(),
@@ -84,6 +158,15 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
         amount,
         serial_num,
         aux,
+        smt_proof,
+        index,
+        &mainnet_exit_root,
+        &rollup_exit_root,
+        origin_network,
+        &origin_token_address,
+        destination_network,
+        &destination_address,
+        metadata,
         builder.rng_mut(),
     )?;
 
@@ -92,6 +175,8 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
         agglayer_faucet.id().prefix().as_felt(),
         agglayer_faucet.id().suffix().as_int()
     );
+
+    println!("claim note inputs: {:?}", claim_note.inputs());
 
     // Add the claim note to the builder before building the mock chain
     builder.add_output_note(OutputNote::Full(claim_note.clone()));

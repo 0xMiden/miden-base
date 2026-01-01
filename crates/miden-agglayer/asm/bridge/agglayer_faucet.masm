@@ -19,10 +19,11 @@ const OUTPUT_PUBLIC_NOTE_INPUTS_ADDR = 8
 const OUTPUT_PUBLIC_NOTE_INPUTS_LEN_MEM_ADDR = 0
 const P2ID_SCRIPT_ROOT = [7588674509004260508, 4058706621878288170, 5607159951796201570, 5541281552524512743]
 
+const P2ID_OUTPUT_NOTE_AMOUNT_MEM_PTR = 611
 # ERRORS
 # =================================================================================================
 
-const ERR_CLAIM_INVALID_GER_PROOF = "invalid ger claim proof"
+const ERR_INVALID_CLAIM_PROOF = "invalid claim proof"
 
 #! Validates a CLAIM note by verifying its inputs against a GER against the AggLayer bridge.
 #!
@@ -30,7 +31,7 @@ const ERR_CLAIM_INVALID_GER_PROOF = "invalid ger claim proof"
 #! AggLayer bridge account to verify its claim data (asset, amount, recipient) inclusion against
 #! one of the Global Exit Roots in the bridge storage.
 #!
-#! Inputs:  [MERKLE_PATH_RPO_COMMITMENT]
+#! Inputs:  [CLAIM_PROOF_RPO_COMMITMENT]
 #! Outputs: []
 #!
 #! Panics if:
@@ -42,35 +43,37 @@ const ERR_CLAIM_INVALID_GER_PROOF = "invalid ger claim proof"
 proc validate_claim
 
     # check AdviceMap was not tampered with
-    adv.push_mapvaln
-    # => [MERKLE_PATH_RPO_COMMITMENT]
+    adv.push_mapval
+    # => [CLAIM_PROOF_RPO_COMMITMENT]
 
-    # validate MERKLE_PATH_RPO_COMMITMENT is valid commitment to data in AdviceProvider
-    push.12 push.140
-    # => [num_words, write_ptr, MERKLE_PATH_RPO_COMMITMENT]
+    push.12 push.152
+    # => [num_words, write_ptr, CLAIM_PROOF_RPO_COMMITMENT]
 
+    # Validate CLAIM_PROOF_RPO_COMMITMENT is valid commitment to CLAIM data in AdviceMap
+    # Will panic if CLAIM_PROOF_RPO_COMMITMENT is not hash of data in AdviceMap 
     exec.mem::pipe_double_words_preimage_to_memory drop
     # => []
 
-    # get check_claim_proof root
+    # Get bridge_in::check_claim_proof procedure MAST root
     procref.bridge_in::check_claim_proof
-    # => [MAST_ROOT]
+    # => [BRIDGE_PROC_MAST_ROOT]
 
     push.BRIDGE_ID_SLOT[0..2]
-    # => [bridge_id_idx, MAST_ROOT]
+    # => [bridge_id_idx, BRIDGE_PROC_MAST_ROOT]
 
-    # get bridge account id
+    # Get Bridge AccountId
     exec.active_account::get_item
-    # => [bridge_account_id_prefix, bridge_account_id_suffix, 0, 0, MAST_ROOT]
+    # => [bridge_account_id_prefix, bridge_account_id_suffix, 0, 0, BRIDGE_PROC_MAST_ROOT]
 
     movup.2 drop movup.2 drop
-    # => [bridge_account_id_prefix, bridge_account_id_suffix, MAST_ROOT]
+    # => [bridge_account_id_prefix, bridge_account_id_suffix, BRIDGE_PROC_MAST_ROOT]
 
-    # call check_claim_proof proc on bridge
+    # Call check_claim_proof procedure on Bridge
     exec.tx::execute_foreign_procedure
     # => [validation_result]
 
-    assert.err=ERR_CLAIM_INVALID_GER_PROOF drop
+    # Assert valid proof data
+    assert.err=ERR_INVALID_CLAIM_PROOF drop
     # => []
 end
 
@@ -79,7 +82,7 @@ end
 #! This procedure validates the rollup exit root Merkle Proof via FPI against the agglayer bridge,
 #! and if validation passes, mints the asset and creates an output note for the recipient.
 #!
-#! Inputs:  [MERKLE_PATH_RPO_COMMITMENT, pad(12)]
+#! Inputs:  [CLAIM_PROOF_RPO_COMMITMENT, pad(12)]
 #! Outputs: [pad(16)]
 #!
 #! Where:
@@ -98,8 +101,6 @@ pub proc claim
     push.0 exec.active_note::get_inputs drop drop
     # => [MERKLE_PATH_RPO_COMMITMENT, pad(12)]
 
-    push.333 debug.stack drop
-
     # validate CLAIM note proof (stubbed out)
     exec.validate_claim
     # => [pad(16)]
@@ -111,7 +112,7 @@ pub proc claim
     # => [SERIAL_NUM, SCRIPT_ROOT, pad(12)]
 
     push.P2ID_NOTE_NUM_INPUTS
-    # => [num_output_note_inputs, SERIAL_NUM, SCRIPT_ROOT, pad(12)]
+    # => [num_output_note_inputs, SERIAL_NUM, SCRIPT_ROOT, pad(1)]
 
     push.OUTPUT_PUBLIC_NOTE_INPUTS_ADDR
     # => [inputs_ptr = 12, num_output_note_inputs, SERIAL_NUM, SCRIPT_ROOT, pad(12)]
@@ -120,6 +121,10 @@ pub proc claim
     # => [RECIPIENT, pad(12)]
 
     swapw mem_loadw_be.0
+    # => [0, tag, aux, execution_hint, RECIPIENT, pad(8)]
+
+    # load amount from Claim Proof data
+    drop mem_load.P2ID_OUTPUT_NOTE_AMOUNT_MEM_PTR
     # => [amount, tag, aux, execution_hint, RECIPIENT, pad(8)]
 
     push.OUTPUT_NOTE_TYPE_PUBLIC
@@ -130,8 +135,6 @@ pub proc claim
 
     exec.faucets::distribute
     # => [pad(16)]
-
-
 end
 
 #! Burns the fungible asset from the active note.

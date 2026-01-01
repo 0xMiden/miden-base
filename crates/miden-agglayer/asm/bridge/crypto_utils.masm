@@ -1,0 +1,80 @@
+use miden::core::crypto::hashes::keccak256
+
+#! Given the leaf data returns the leaf value.
+#!
+#! Inputs:  [leaf_type, origin_network, ORIGIN_ADDRESS, destination_network, DESTINATION_ADDRESS, amount, METADATA_HASH]
+#! Outputs: [LEAF_VALUE]
+#!
+#! Where:
+#! - leaf_type is the leaf type: [0] transfer Ether / ERC20 tokens, [1] message.
+#! - origin_network is the origin network identifier.
+#! - ORIGIN_ADDRESS is the origin token address (5 elements)
+#! - destination_network is the destination network identifier.
+#! - DESTINATION_ADDRESS is the destination address (5 elements).
+#! - amount is the amount: [0] Amount of tokens/ether, [1] Amount of ether.
+#! - METADATA_HASH is the hash of the metadata (8 elements).
+#! - LEAF_VALUE is the computed leaf value (8 elements).
+#!
+#! This function computes the keccak256 hash of the abi.encodePacked data.
+#!
+#! Invocation: exec
+pub proc get_leaf_value
+    
+    # TODO: implement getLeafValue()
+    # https://github.com/agglayer/agglayer-contracts/blob/e468f9b0967334403069aa650d9f1164b1731ebb/contracts/v2/lib/DepositContractV2.sol#L22
+
+    # stubbed out:
+    push.1.1.1.1
+    push.1.1.1.1
+    
+    # exec.keccak256::hash_bytes
+    # => [LEAF_VALUE[8]]
+end
+
+#! Verify leaf and checks that it has not been claimed.
+#!
+#! This procedure verifies that a claim proof is valid against the Global Exit Tree (GET)
+#! and that the leaf has not been previously claimed.
+#!
+#! Inputs:
+#!   Operand stack: [GER_ROOT[8], CLAIM_PROOF_RPO_COMMITMENT, pad(12)]
+#!   Advice map: {
+#!     CLAIM_PROOF_RPO_COMMITMENT => [
+#!       leafType,
+#!       originNetwork,
+#!       originAddress,
+#!       destinationNetwork,
+#!       destinationAddress,
+#!       amount,
+#!       metadata,
+#!       index,
+#!       claimRoot,
+#!       smtProof
+#!     ]
+#!   }
+#! Outputs:
+#!   Operand stack: [is_valid]
+#!
+#! Where:
+#! - RPO_CLAIM_NOTE_INPUTS_COMMITMENT is the RPO hash commitment of all claim note inputs
+#! - leafType is the leaf type: [0] transfer Ether / ERC20 tokens, [1] message
+#! - originNetwork is the origin network identifier (u32 as Felt)
+#! - originAddress is the origin address (5 felts representing address)
+#! - destinationNetwork is the destination network identifier (u32 as Felt)
+#! - destinationAddress is the destination address (5 felts representing address)
+#! - amount is the amount of tokens (u256 as Felt)
+#! - metadata is the metadata (4 felts representing 4 u32 0 values)
+#! - index is the index of the leaf (u32 as Felt)
+#! - claimRoot is the claim root (8 felts representing bytes32)
+#! - smtProof is the SMT proof data (570 felts)
+#! - is_valid is 1 if the leaf is valid and not claimed, 0 otherwise
+#!
+#! Invocation: exec
+pub proc verify_claim_proof
+    # TODO: Implement actual Global Exit Tree proof verification
+    
+    # For now, drop all inputs and return 1 (valid)
+    dropw dropw dropw dropw
+    push.1
+end
+

@@ -39,6 +39,8 @@ use miden_utils_sync::LazyLock;
 pub mod errors;
 pub mod utils;
 
+use utils::{bytes32_to_felts, ethereum_address_to_felts};
+
 // AGGLAYER NOTE SCRIPTS
 // ================================================================================================
 
@@ -341,6 +343,15 @@ pub fn create_existing_agglayer_faucet(
 /// - `amount`: The amount of assets to be minted and transferred
 /// - `output_serial_num`: The serial number for the output note
 /// - `aux`: Auxiliary data for the CLAIM note (verified against Global Exit Tree)
+/// - `smt_proof`: SMT proof data (570 felts) matching Solidity claimAsset smtProof parameter
+/// - `index`: Index for the claim (u32 as Felt)
+/// - `mainnet_exit_root`: Mainnet exit root hash (bytes32 as 32-byte array)
+/// - `rollup_exit_root`: Rollup exit root hash (bytes32 as 32-byte array)
+/// - `origin_network`: Origin network identifier (u32 as Felt)
+/// - `origin_token_address`: Origin token address (address as 20-byte array)
+/// - `destination_network`: Destination network identifier (u32 as Felt)
+/// - `destination_address`: Destination address (address as 20-byte array)
+/// - `metadata`: Additional metadata for the claim (bytes as Vec<Felt>)
 /// - `rng`: Random number generator for creating the serial number
 ///
 /// # Errors
@@ -352,8 +363,25 @@ pub fn create_claim_note<R: FeltRng>(
     amount: Felt,
     output_serial_num: Word,
     aux: Felt,
+    smt_proof: Vec<Felt>,
+    index: Felt,
+    mainnet_exit_root: &[u8; 32],
+    rollup_exit_root: &[u8; 32],
+    origin_network: Felt,
+    origin_token_address: &[u8; 20],
+    destination_network: Felt,
+    destination_address: &[u8; 20],
+    metadata: Vec<Felt>,
     rng: &mut R,
 ) -> Result<Note, NoteError> {
+    // Validate SMT proof length
+    if smt_proof.len() != 570 {
+        return Err(NoteError::other(alloc::format!(
+            "SMT proof must be exactly 570 felts, got {}",
+            smt_proof.len()
+        )));
+    }
+
     let claim_script = claim_script();
     let serial_num = rng.draw_word();
 
@@ -366,7 +394,7 @@ pub fn create_claim_note<R: FeltRng>(
         Felt::new(0),                         // execution_hint (always = 0)
         aux,                                  // aux
         Felt::from(output_note_tag),          // tag
-        amount,                               // amount
+        Felt::ZERO,                           // padding to be word-aligned
         output_serial_num[0],                 // SERIAL_NUM[0]
         output_serial_num[1],                 // SERIAL_NUM[1]
         output_serial_num[2],                 // SERIAL_NUM[2]
@@ -377,10 +405,40 @@ pub fn create_claim_note<R: FeltRng>(
         agg_faucet_id.prefix().as_felt(),     // faucet account prefix
     ];
 
-    // TODO: Create 570 Felts of proof data (currently stubbed out as zeros)
-    // In the future, this will contain actual Merkle proof data for Global Exit Tree verification
-    let proof_data: Vec<Felt> = vec![Felt::new(333); 570];
-    claim_inputs.extend(proof_data);
+    // Add Solidity claimAsset function parameters in order:
+    // smtProof (570 felts) - comes first to match Solidity parameter order
+    claim_inputs.extend(smt_proof);
+
+    // index (u32 as Felt)
+    claim_inputs.push(index);
+
+    // mainnetExitRoot (bytes32 as 8 u32 felts)
+    let mainnet_exit_root_felts = bytes32_to_felts(mainnet_exit_root);
+    claim_inputs.extend(mainnet_exit_root_felts);
+
+    // rollupExitRoot (bytes32 as 8 u32 felts)
+    let rollup_exit_root_felts = bytes32_to_felts(rollup_exit_root);
+    claim_inputs.extend(rollup_exit_root_felts);
+
+    // originNetwork (u32 as Felt)
+    claim_inputs.push(origin_network);
+
+    // originTokenAddress (address as 5 u32 felts)
+    let origin_token_address_felts = ethereum_address_to_felts(origin_token_address);
+    claim_inputs.extend(origin_token_address_felts);
+
+    // destinationNetwork (u32 as Felt)
+    claim_inputs.push(destination_network);
+
+    // destinationAddress (address as 5 u32 felts)
+    let destination_address_felts = ethereum_address_to_felts(destination_address);
+    claim_inputs.extend(destination_address_felts);
+
+    // amount to claim
+    claim_inputs.push(amount);
+
+    // metadata
+    claim_inputs.extend(metadata);
 
     let inputs = NoteInputs::new(claim_inputs)?;
     let tag = NoteTag::from_account_id(agg_faucet_id);

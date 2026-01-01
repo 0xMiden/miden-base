@@ -8,9 +8,9 @@ use miden::core::crypto::hashes::rpo256
 # CONSTANTS
 # =================================================================================================
 
-const CLAIM_NOTE_NUM_INPUTS = 582
-const CLAIM_PROOF_DATA_SIZE = 560
-const CLAIM_PROOF_DATA_BYTES = 140  # 570 * 4 bytes (u32s)
+const CLAIM_NOTE_NUM_INPUTS = 620  # Updated to match new Solidity claimAsset inputs
+const CLAIM_PROOF_DATA_SIZE = 608  # Claim Data + SMT proof is 604 felts
+const CLAIM_PROOF_DATA_WORDS = 570  # 570 felts directly
 
 const AGG_FAUCET_PREFIX = 11
 const AGG_FAUCET_SUFFIX = 10
@@ -19,9 +19,7 @@ const AGG_FAUCET_SUFFIX = 10
 # =================================================================================================
 
 const ERR_CLAIM_TARGET_ACCT_MISMATCH = "CLAIM's target account address and transaction address do not match"
-const ERR_CLAIM_WRONG_NUMBER_OF_INPUTS = "CLAIM note must have exactly 586 inputs"
-
-
+const ERR_CLAIM_WRONG_NUMBER_OF_INPUTS = "CLAIM note must have exactly 614 inputs"
 
 # Inputs: []
 # Output: []
@@ -38,8 +36,6 @@ proc assert_aggfaucet_is_consumer
     # => []
 end
 
-
-
 #! Agglayer Faucet CLAIM script: claims assets by calling the agglayer faucet's claim function.
 #! This note is intended to be consumed by an agglayer faucet account and will create a P2ID note on consumption.
 #!
@@ -49,10 +45,6 @@ end
 #! Inputs:  [ARGS, pad(16)]
 #! Outputs: [pad(16)]
 #!
-#! TODO: Eventually, CLAIM note inputs will need to include the actual proof and leaf index info
-#! (and maybe GER info as well). The proof data will be hashed using keccak256::hash_bytes
-#! and passed as a commitment to decouple the note from the faucet implementation.
-#!
 #! Current note inputs are assumed to be as follows:
 #! - execution_hint: Execution hint for the output note (always 0)
 #! - aux: Auxiliary data for the output note
@@ -61,70 +53,62 @@ end
 #! - SERIAL_NUM: Serial number of the output note (4 elements)
 #! - target_account_id: P2ID recipient account ID (suffix, prefix)
 #! - agg_faucet_id: Agglayer faucet account ID (suffix, prefix)
-#! - PROOF_DATA: 570 Felts of proof data (currently all zeros, will be actual proof data)
+#! - smtProof: SMT proof data (570 felts) matching Solidity claimAsset parameter
+#! - index: Index for the claim (u32 as Felt)
+#! - mainnetExitRoot: Mainnet exit root hash (8 felts)
+#! - rollupExitRoot: Rollup exit root hash (8 felts)
+#! - originNetwork: Origin network identifier (1 felt)
+#! - originTokenAddress: Origin token address (5 felts)
+#! - destinationNetwork: Destination network identifier (1 felt)
+#! - destinationAddress: Destination address (5 felts)
+#! - metadata: Additional metadata (variable length)
 #!
 #! Panics if:
 #! - account does not expose claim procedure.
-#! - the number of inputs is not exactly 586.
+#! - the number of inputs is not exactly 612.
 #! - agglayer faucet account ID does not match the consuming account ID.
 begin
     dropw
     # => []
 
+    # load CLAIM note inputs
     push.0 exec.active_note::get_inputs
     # => [total_inputs, inputs_ptr]
 
     # Verify we have exactly 586 inputs
-    push.CLAIM_NOTE_NUM_INPUTS eq assert.err=ERR_CLAIM_WRONG_NUMBER_OF_INPUTS
-    # => [inputs_ptr]
+    push.CLAIM_NOTE_NUM_INPUTS eq assert.err=ERR_CLAIM_WRONG_NUMBER_OF_INPUTS drop
+    # => []
 
+    # check consuming account == aggfaucet
     exec.assert_aggfaucet_is_consumer
-    # => [inputs_ptr]
+    # => []
 
-    # Hash the proof data (560 Felts starting at offset 12)
-    # The proof data starts at memory address inputs_ptr + 12
-    add.12
-    # => [proof_data_ptr]
-
-    # Push the length in bytes (560 u32s * 4 = 140 bytes)
-    push.CLAIM_PROOF_DATA_BYTES
-    # => [len_bytes, proof_data_ptr]
-
-    swap
-    # => [proof_data_ptr, len_bytes]
-
-    # Hash the proof data using keccak256
-    exec.keccak256::hash_bytes
-    # => [MERKLE_PATH_COMMITMENT[8]]
-
-    push.560 push.12
+    # Compute the RPO_COMMITMENT of the claim proof data
+    # Hash the proof data data (600 Felts starting at offset 12)
+    # The proof data starts at memory address 12
+    push.608 push.12
+    # => [start_ptr, end_ptr]
 
     exec.rpo256::hash_elements
-    # => [HASH, MERKLE_PATH_COMMITMENT[8]]
+    # => [CLAIM_PROOF_RPO_COMMITMENT]
 
+    # Prepare for insertion into AdviceMap
     push.CLAIM_PROOF_DATA_SIZE add.12 push.12
-    # => [, start_ptr, end_ptr, HASH, MERKLE_PATH_COMMITMENT[8]]
-    
+    # => [start_ptr, end_ptr, CLAIM_PROOF_RPO_COMMITMENT]
+
     movdn.5 movdn.5
-    # => [HASH, start_ptr, end_ptr, MERKLE_PATH_COMMITMENT[8]]
+    # => [CLAIM_PROOF_RPO_COMMITMENT, start_ptr, end_ptr]
 
-    push.111 debug.stack drop
-
+    # Insert Proof Data into AdviceMap
     adv.insert_mem
-    # OS => [MERKLE_PATH_RPO_COMMITMENT, start_ptr, end_ptr]
-    # AS => {MERKLE_PATH_RPO_COMMITMENT: mem[start_ptr..end_ptr] }
+    # OS => [CLAIM_PROOF_RPO_COMMITMENT, start_ptr, end_ptr]
+    # AS => {CLAIM_PROOF_RPO_COMMITMENT: mem[start_ptr..end_ptr] }
 
-    movup.4 drop movup.4 drop
-    # => [MERKLE_PATH_RPO_COMMITMENT]
-
-    push.222 debug.stack drop
-
-    # Pass the proof hash to the faucet's claim procedure
+    # Pass the proof data commitment to the faucet's claim procedure
     call.agg_faucet::claim
     # => []
 
     dropw dropw dropw dropw
-
-    push.555 debug.stack drop
+    # => []
 end
 

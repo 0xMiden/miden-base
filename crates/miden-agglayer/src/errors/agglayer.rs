@@ -14,12 +14,13 @@ pub const ERR_B2AGG_WRONG_NUMBER_OF_ASSETS: MasmError = MasmError::from_static_s
 /// Error Message: "B2AGG script expects exactly 6 note inputs"
 pub const ERR_B2AGG_WRONG_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_str("B2AGG script expects exactly 6 note inputs");
 
-/// Error Message: "invalid ger claim proof"
-pub const ERR_CLAIM_INVALID_GER_PROOF: MasmError = MasmError::from_static_str("invalid ger claim proof");
 /// Error Message: "CLAIM's target account address and transaction address do not match"
 pub const ERR_CLAIM_TARGET_ACCT_MISMATCH: MasmError = MasmError::from_static_str("CLAIM's target account address and transaction address do not match");
-/// Error Message: "CLAIM note must have exactly 12 inputs"
-pub const ERR_CLAIM_WRONG_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_str("CLAIM note must have exactly 12 inputs");
+/// Error Message: "CLAIM note must have exactly 614 inputs"
+pub const ERR_CLAIM_WRONG_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_str("CLAIM note must have exactly 614 inputs");
+
+/// Error Message: "invalid claim proof"
+pub const ERR_INVALID_CLAIM_PROOF: MasmError = MasmError::from_static_str("invalid claim proof");
 
 /// Error Message: "maximum scaling factor is 18"
 pub const ERR_SCALE_AMOUNT_EXCEEDED_LIMIT: MasmError = MasmError::from_static_str("maximum scaling factor is 18");

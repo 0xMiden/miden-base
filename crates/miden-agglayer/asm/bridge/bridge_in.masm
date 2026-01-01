@@ -1,45 +1,39 @@
-use miden::agglayer::global_exit_tree
+use miden::agglayer::crypto_utils
+
+# Inputs: []
+# Output: [GER_ROOT[8]]
+pub proc get_rollup_exit_root
+    # Push dummy GER (8 elements)
+    push.0.0.0.0.0.0.0.0  # dummy GER
+end
 
 #! Checks the validity of the GET proof
 #!
-#! Inputs: [bridge_msg_hash(8), ger_index, is_l1_claim, leaf_info, merkle_path_commitment(4)]
-#! Outputs: [is_valid_claim_proof]
+#! Inputs:
+#!   Operand stack: [CLAIM_PROOF_RPO_COMMITMENT, pad(12)]
+#!   Advice map: {
+#!     CLAIM_PROOF_RPO_COMMITMENT => [
+#!       leafType,
+#!       originNetwork,
+#!       originAddress,
+#!       destinationNetwork,
+#!       destinationAddress,
+#!       amount,
+#!       metadata,
+#!       index,
+#!       claimRoot,
+#!       smtProof
+#!     ]
+#!   }
 #!
-#! Where:
-#! - bridge_msg_hash(8): The bridge message hash (8 elements)
-#! - ger_index: GER index (so that we know how to find the right root to validate against)
-#! - is_l1_claim: Flag indicating whether the bridge message is from L1 (1) or another L2 (0)
-#! - leaf_info: Field element encoding leaf indexes:
-#!   - Upper 32 bits: rollup exit tree index (0 in case of L1->L2 transfer)
-#!   - Lower 32 bits: bridge message index
-#! - merkle_path_commitment(4): Merkle path commitment (4 elements)
-#!
-#! Invocation: exec
+#! Invocation: call
 pub proc check_claim_proof
-    # TODO: For now, we need to construct the proper inputs for verify_claim_proof
-    # The current interface expects [GER(8), is_from_l1, leaf_info, proof_ptr]
-    # We need to reorganize the inputs and set up memory for the proof
-    
-    # For now, stub out the implementation and just call verify_claim_proof with dummy inputs
-    # In a real implementation, we would:
-    # 1. Extract GER root from ger_index
-    # 2. Set up memory with merkle_path_commitment
-    # 3. Call verify_claim_proof with proper parameters
-    
-    # Drop all inputs for now and push dummy values
-    drop drop drop dropw dropw
-    
-    # Push dummy GER (8 elements), is_from_l1, leaf_info, proof_ptr
-    push.0.0.0.0.0.0.0.0  # dummy GER
-    push.1                # dummy is_from_l1
-    push.0                # dummy leaf_info
-    push.0                # dummy proof_ptr
-    
-    exec.global_exit_tree::verify_claim_proof
+    exec.get_rollup_exit_root
+    # => [GER_ROOT[8], CLAIM_PROOF_RPO_COMMITMENT]
+
+    # Check CLAIM note proof data against current GER 
+    exec.crypto_utils::verify_claim_proof
     # => [is_valid_claim_proof]
 
     swap drop
-
-    sdepth push.222 debug.stack drop drop
 end
-
