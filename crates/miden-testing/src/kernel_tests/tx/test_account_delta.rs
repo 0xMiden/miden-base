@@ -608,13 +608,6 @@ async fn asset_and_storage_delta() -> anyhow::Result<()> {
 
     let note_types = [NoteType::Private; 3];
 
-    tag1.validate(NoteType::Private)
-        .expect("note tag 1 should support private notes");
-    tag2.validate(NoteType::Private)
-        .expect("note tag 2 should support private notes");
-    tag3.validate(NoteType::Private)
-        .expect("note tag 3 should support private notes");
-
     let execution_hint_1 = Felt::from(NoteExecutionHint::always());
     let execution_hint_2 = Felt::from(NoteExecutionHint::none());
     let execution_hint_3 = Felt::from(NoteExecutionHint::on_block_slot(1, 1, 1));

@@ -210,10 +210,6 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
     let note_type2 = NoteType::Public;
     let note_type3 = NoteType::Public;
 
-    tag1.validate(note_type1).expect("note tag 1 should support private notes");
-    tag2.validate(note_type2).expect("note tag 2 should support public notes");
-    tag3.validate(note_type3).expect("note tag 3 should support public notes");
-
     // In this test we create 3 notes. Note 1 is private, Note 2 is public and Note 3 is public
     // without assets.
 

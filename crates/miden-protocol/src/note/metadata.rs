@@ -65,10 +65,9 @@ pub struct NoteMetadata {
 }
 
 impl NoteMetadata {
-    /// Returns a new [NoteMetadata] instantiated with the specified parameters.
-    ///
-    /// # Errors
-    /// Returns an error if the note type and note tag are inconsistent.
+    /// Returns a new [`NoteMetadata`] instantiated with the specified parameters.
+    /// 
+    /// TODO: Make infallible.
     pub fn new(
         sender: AccountId,
         note_type: NoteType,
@@ -76,7 +75,6 @@ impl NoteMetadata {
         execution_hint: NoteExecutionHint,
         aux: Felt,
     ) -> Result<Self, NoteError> {
-        let tag = tag.validate(note_type)?;
         Ok(Self {
             sender,
             note_type,

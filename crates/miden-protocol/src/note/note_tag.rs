@@ -9,36 +9,9 @@ use super::{
     Deserializable,
     DeserializationError,
     NoteError,
-    NoteType,
     Serializable,
 };
 use crate::account::AccountStorageMode;
-
-// CONSTANTS
-// ================================================================================================
-const NETWORK_EXECUTION: u8 = 0;
-const LOCAL_EXECUTION: u8 = 1;
-
-// The 2 most significant bits are set to `0b00`.
-#[allow(dead_code)]
-const NETWORK_ACCOUNT: u32 = 0;
-const LOCAL_ANY: u32 = 0xc000_0000;
-
-/// [super::Note]'s execution mode hints.
-///
-/// The execution hints are _not_ enforced, therefore function only as hints. For example, if a
-/// note's tag is created with the [NoteExecutionMode::Network], further validation is necessary to
-/// check the account_id is known, that the account's state is public on chain, and the account is
-/// controlled by the network.
-///
-/// The goal of the hint is to allow for a network node to quickly filter notes that are not
-/// intended for network execution, and skip the validation steps mentioned above.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u8)]
-pub enum NoteExecutionMode {
-    Network = NETWORK_EXECUTION,
-    Local = LOCAL_EXECUTION,
-}
 
 // NOTE TAG
 // ================================================================================================
@@ -92,9 +65,6 @@ impl NoteTag {
     // CONSTANTS
     // --------------------------------------------------------------------------------------------
 
-    /// The exponent of the maximum allowed use case id. In other words, 2^exponent is the maximum
-    /// allowed use case id.
-    pub(crate) const MAX_USE_CASE_ID_EXPONENT: u8 = 14;
     /// The default note tag length for an account ID with local execution.
     pub const DEFAULT_LOCAL_TAG_LENGTH: u8 = 14;
     /// The default note tag length for an account ID with network execution.
@@ -187,45 +157,9 @@ impl NoteTag {
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns note execution mode defined by this tag.
-    ///
-    /// If the most significant bit of the tag is 0 the note is intended for network execution;
-    /// otherwise, the note is intended for local execution.
-    pub fn execution_mode(&self) -> NoteExecutionMode {
-        if self.0 >> 31 == 0 {
-            NoteExecutionMode::Network
-        } else {
-            NoteExecutionMode::Local
-        }
-    }
-
     /// Returns the inner u32 value of this tag.
     pub fn as_u32(&self) -> u32 {
         self.0
-    }
-
-    // UTILITY METHODS
-    // --------------------------------------------------------------------------------------------
-
-    /// Returns an error if this tag is not consistent with the specified note type, and self
-    /// otherwise.
-    pub fn validate(&self, note_type: NoteType) -> Result<Self, NoteError> {
-        if self.execution_mode() == NoteExecutionMode::Network && note_type != NoteType::Public {
-            return Err(NoteError::NetworkExecutionRequiresPublicNote(note_type));
-        }
-
-        // Ensure the note is public if the note tag requires it.
-        if self.requires_public_note() && note_type != NoteType::Public {
-            Err(NoteError::PublicNoteRequired(note_type))
-        } else {
-            Ok(*self)
-        }
-    }
-
-    /// Returns `true` if the note tag requires a public note.
-    fn requires_public_note(&self) -> bool {
-        // If the high bits are not 0b11 then the note must be public.
-        self.0 & 0xc0000000 != LOCAL_ANY
     }
 }
 

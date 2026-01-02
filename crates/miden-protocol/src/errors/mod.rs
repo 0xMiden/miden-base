@@ -552,8 +552,6 @@ pub enum NoteError {
     AddFungibleAssetBalanceError(#[source] AssetError),
     #[error("note sender is not a valid account ID")]
     NoteSenderInvalidAccountId(#[source] AccountIdError),
-    #[error("note tag use case {0} must be less than 2^{exp}", exp = NoteTag::MAX_USE_CASE_ID_EXPONENT)]
-    NoteTagUseCaseTooLarge(u16),
     #[error(
         "note execution hint tag {0} must be in range {from}..={to}",
         from = NoteExecutionHint::NONE_TAG,

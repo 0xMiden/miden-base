@@ -151,11 +151,6 @@ async fn minting_fungible_asset_on_existing_faucet_succeeds() -> anyhow::Result<
         amount: Felt::new(100),
     };
 
-    params
-        .tag
-        .validate(params.note_type)
-        .expect("note tag should support private notes");
-
     let executed_transaction =
         execute_mint_transaction(&mut mock_chain, faucet.clone(), &params).await?;
     verify_minted_output_note(&executed_transaction, &faucet, &params)?;
@@ -235,11 +230,6 @@ async fn minting_fungible_asset_on_new_faucet_succeeds() -> anyhow::Result<()> {
         note_type: NoteType::Private,
         amount: Felt::new(100),
     };
-
-    params
-        .tag
-        .validate(params.note_type)
-        .expect("note tag should support private notes");
 
     let executed_transaction =
         execute_mint_transaction(&mut mock_chain, faucet.clone(), &params).await?;
