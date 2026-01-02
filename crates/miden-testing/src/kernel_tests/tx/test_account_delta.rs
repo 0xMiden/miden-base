@@ -599,7 +599,7 @@ async fn asset_and_storage_delta() -> anyhow::Result<()> {
     let removed_assets = [removed_asset_1, removed_asset_2, removed_asset_3];
 
     let tag1 =
-        NoteTag::from_account_id(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into()?);
+        NoteTag::with_account_target(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into()?);
     let tag2 = NoteTag::default();
     let tag3 = NoteTag::default();
     let tags = [tag1, tag2, tag3];

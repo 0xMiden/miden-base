@@ -49,7 +49,7 @@ pub fn create_p2id_note<R: FeltRng>(
     let serial_num = rng.draw_word();
     let recipient = utils::build_p2id_recipient(target, serial_num)?;
 
-    let tag = NoteTag::from_account_id(target);
+    let tag = NoteTag::with_account_target(target);
 
     let metadata = NoteMetadata::new(sender, note_type, tag, NoteExecutionHint::always(), aux)?;
     let vault = NoteAssets::new(assets)?;
@@ -83,7 +83,7 @@ pub fn create_p2ide_note<R: FeltRng>(
     let serial_num = rng.draw_word();
     let recipient =
         utils::build_p2ide_recipient(target, reclaim_height, timelock_height, serial_num)?;
-    let tag = NoteTag::from_account_id(target);
+    let tag = NoteTag::with_account_target(target);
 
     let execution_hint = match timelock_height {
         Some(height) => NoteExecutionHint::after_block(height)?,
@@ -126,7 +126,7 @@ pub fn create_swap_note<R: FeltRng>(
 
     let payback_recipient_word: Word = payback_recipient.digest();
     let requested_asset_word: Word = requested_asset.into();
-    let payback_tag = NoteTag::from_account_id(sender);
+    let payback_tag = NoteTag::with_account_target(sender);
 
     let inputs = NoteInputs::new(vec![
         requested_asset_word[0],
@@ -200,7 +200,7 @@ pub fn create_mint_note<R: FeltRng>(
     // Convert MintNoteInputs to NoteInputs
     let inputs = NoteInputs::from(mint_inputs);
 
-    let tag = NoteTag::from_account_id(faucet_id);
+    let tag = NoteTag::with_account_target(faucet_id);
 
     let metadata = NoteMetadata::new(sender, note_type, tag, execution_hint, aux)?;
     let assets = NoteAssets::new(vec![])?; // MINT notes have no assets
@@ -246,7 +246,7 @@ pub fn create_burn_note<R: FeltRng>(
     let execution_hint = NoteExecutionHint::always();
 
     let inputs = NoteInputs::new(vec![])?;
-    let tag = NoteTag::from_account_id(faucet_id);
+    let tag = NoteTag::with_account_target(faucet_id);
 
     let metadata = NoteMetadata::new(sender, note_type, tag, execution_hint, aux)?;
     let assets = NoteAssets::new(vec![fungible_asset])?; // BURN notes contain the asset to burn

@@ -31,7 +31,7 @@ use crate::account::AccountStorageMode;
 /// the receiver's privacy. See also the section on privacy below.
 ///
 /// Because this convention is widely used, the note tag provides a dedicated constructor for this:
-/// [`NoteTag::from_account_id`].
+/// [`NoteTag::with_account_target`].
 ///
 /// ## Use Cases
 ///
@@ -66,11 +66,11 @@ impl NoteTag {
     // --------------------------------------------------------------------------------------------
 
     /// The default note tag length for an account ID with local execution.
-    pub const DEFAULT_LOCAL_TAG_LENGTH: u8 = 14;
+    pub const DEFAULT_LOCAL_ACCOUNT_TARGET_TAG_LENGTH: u8 = 14;
     /// The default note tag length for an account ID with network execution.
-    pub const DEFAULT_NETWORK_TAG_LENGTH: u8 = 30;
+    pub const DEFAULT_NETWORK_ACCOUNT_TARGET_TAG_LENGTH: u8 = 30;
     /// The maximum number of bits that can be encoded into the tag for local accounts.
-    pub const MAX_LOCAL_TAG_LENGTH: u8 = 30;
+    pub const MAX_ACCOUNT_TARGET_TAG_LENGTH: u8 = 30;
 
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
@@ -80,7 +80,7 @@ impl NoteTag {
         Self(tag)
     }
 
-    /// Returns a note tag instantiated from the specified account ID.
+    /// Constructs a note tag that targets the given `account_id`.
     ///
     /// The tag is constructed as follows:
     ///
@@ -90,18 +90,22 @@ impl NoteTag {
     /// - For network execution ([`AccountStorageMode::Network`]), the most significant bits are set
     ///   to `0b00` and the remaining bits are set to the 30 most significant bits of the account
     ///   ID.
-    pub fn from_account_id(account_id: AccountId) -> Self {
+    pub fn with_account_target(account_id: AccountId) -> Self {
         match account_id.storage_mode() {
             AccountStorageMode::Network => Self::from_network_account_id(account_id),
             AccountStorageMode::Private | AccountStorageMode::Public => {
-                // safe to unwrap since DEFAULT_LOCAL_TAG_LENGTH < MAX_LOCAL_TAG_LENGTH
-                Self::from_account_id_and_tag_len(account_id, Self::DEFAULT_LOCAL_TAG_LENGTH)
-                    .unwrap()
+                // safe to unwrap since DEFAULT_LOCAL_ACCOUNT_TARGET_TAG_LENGTH <
+                // MAX_ACCOUNT_TARGET_TAG_LENGTH
+                Self::with_custom_account_target(
+                    account_id,
+                    Self::DEFAULT_LOCAL_ACCOUNT_TARGET_TAG_LENGTH,
+                )
+                .unwrap()
             },
         }
     }
 
-    /// Constructs a note tag from the given `account_id` and `tag_len`.
+    /// Constructs a note tag that targets the given `account_id` with a custom `tag_len`.
     ///
     /// The tag is constructed by:
     /// - Setting the two most significant bits to zero.
@@ -110,12 +114,12 @@ impl NoteTag {
     ///
     /// # Errors
     ///
-    /// Returns an error if `tag_len` is larger than [`NoteTag::MAX_LOCAL_TAG_LENGTH`].
-    pub fn from_account_id_and_tag_len(
+    /// Returns an error if `tag_len` is larger than [`NoteTag::MAX_ACCOUNT_TARGET_TAG_LENGTH`].
+    pub fn with_custom_account_target(
         account_id: AccountId,
         tag_len: u8,
     ) -> Result<Self, NoteError> {
-        if tag_len > Self::MAX_LOCAL_TAG_LENGTH {
+        if tag_len > Self::MAX_ACCOUNT_TARGET_TAG_LENGTH {
             return Err(NoteError::NoteTagLengthTooLarge(tag_len));
         }
 
@@ -267,7 +271,7 @@ mod tests {
         ];
 
         for account_id in private_accounts.iter().chain(public_accounts.iter()) {
-            let tag = NoteTag::from_account_id(*account_id);
+            let tag = NoteTag::with_account_target(*account_id);
             assert_eq!(tag.as_u32() >> 30, 0, "two most significant bits should be zero");
             assert_eq!(tag.as_u32() << 16, 0, "16 least significant bits should be zero");
             assert_eq!(
@@ -278,7 +282,7 @@ mod tests {
         }
 
         for account_id in network_accounts {
-            let tag = NoteTag::from_account_id(account_id);
+            let tag = NoteTag::with_account_target(account_id);
             assert_eq!(tag.as_u32() >> 30, 0, "two most significant bits should be zero");
             assert_eq!(
                 account_id.prefix().as_u64() >> 34,
@@ -291,7 +295,10 @@ mod tests {
     #[test]
     fn from_custom_account_target() -> anyhow::Result<()> {
         let account_id = AccountId::try_from(ACCOUNT_ID_SENDER)?;
-        let tag = NoteTag::from_account_id_and_tag_len(account_id, NoteTag::MAX_LOCAL_TAG_LENGTH)?;
+        let tag = NoteTag::with_custom_account_target(
+            account_id,
+            NoteTag::MAX_ACCOUNT_TARGET_TAG_LENGTH,
+        )?;
 
         assert_eq!(tag.as_u32() >> 30, 0, "two most significant bits should be zero");
         assert_eq!(

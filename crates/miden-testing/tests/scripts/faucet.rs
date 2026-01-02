@@ -521,7 +521,7 @@ async fn network_faucet_mint() -> anyhow::Result<()> {
     let aux = Felt::new(27);
     let serial_num = Word::default();
 
-    let output_note_tag = NoteTag::from_account_id(target_account.id());
+    let output_note_tag = NoteTag::with_account_target(target_account.id());
     let p2id_mint_output_note = create_p2id_note_exact(
         faucet.id(),
         target_account.id(),
@@ -704,7 +704,7 @@ async fn test_mint_note_output_note_types(#[case] note_type: NoteType) -> anyhow
     // Create MINT note based on note type
     let mint_inputs = match note_type {
         NoteType::Private => {
-            let output_note_tag = NoteTag::from_account_id(target_account.id());
+            let output_note_tag = NoteTag::with_account_target(target_account.id());
             let recipient = p2id_mint_output_note.recipient().digest();
             MintNoteInputs::new_private(
                 recipient,
@@ -715,7 +715,7 @@ async fn test_mint_note_output_note_types(#[case] note_type: NoteType) -> anyhow
             )
         },
         NoteType::Public => {
-            let output_note_tag = NoteTag::from_account_id(target_account.id());
+            let output_note_tag = NoteTag::with_account_target(target_account.id());
             let p2id_script = WellKnownNote::P2ID.script();
             let p2id_inputs =
                 vec![target_account.id().suffix(), target_account.id().prefix().as_felt()];

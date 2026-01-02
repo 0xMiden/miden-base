@@ -35,7 +35,7 @@ async fn test_send_note_script_basic_wallet() -> anyhow::Result<()> {
 
     let sender_account_interface = AccountInterface::from_account(&sender_basic_wallet_account);
 
-    let tag = NoteTag::from_account_id(sender_basic_wallet_account.id());
+    let tag = NoteTag::with_account_target(sender_basic_wallet_account.id());
     let metadata = NoteMetadata::new(
         sender_basic_wallet_account.id(),
         NoteType::Public,
@@ -95,7 +95,7 @@ async fn test_send_note_script_basic_fungible_faucet() -> anyhow::Result<()> {
     let sender_account_interface =
         AccountInterface::from_account(&sender_basic_fungible_faucet_account);
 
-    let tag = NoteTag::from_account_id(sender_basic_fungible_faucet_account.id());
+    let tag = NoteTag::with_account_target(sender_basic_fungible_faucet_account.id());
     let metadata = NoteMetadata::new(
         sender_basic_fungible_faucet_account.id(),
         NoteType::Public,

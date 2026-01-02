@@ -57,7 +57,7 @@ impl NoteBuilder {
             note_execution_hint: NoteExecutionHint::None,
             serial_num,
             // The note tag is not under test, so we choose a value that is always valid.
-            tag: NoteTag::from_account_id(sender),
+            tag: NoteTag::with_account_target(sender),
             code: DEFAULT_NOTE_CODE.to_string(),
             aux: ZERO,
             dyn_libraries: Vec::new(),

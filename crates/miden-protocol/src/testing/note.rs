@@ -28,7 +28,7 @@ impl Note {
         let metadata = NoteMetadata::new(
             sender_id,
             NoteType::Private,
-            NoteTag::from_account_id(sender_id),
+            NoteTag::with_account_target(sender_id),
             NoteExecutionHint::Always,
             ZERO,
         )

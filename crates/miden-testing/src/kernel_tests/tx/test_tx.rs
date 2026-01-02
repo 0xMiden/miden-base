@@ -197,7 +197,7 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
         .expect("asset is valid"),
     );
 
-    let tag1 = NoteTag::from_account_id(
+    let tag1 = NoteTag::with_account_target(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
     );
     let tag2 = NoteTag::default();

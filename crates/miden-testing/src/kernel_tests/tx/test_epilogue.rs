@@ -530,7 +530,7 @@ async fn test_epilogue_execute_empty_transaction() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_epilogue_empty_transaction_with_empty_output_note() -> anyhow::Result<()> {
     let tag =
-        NoteTag::from_account_id(ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE.try_into()?);
+        NoteTag::with_account_target(ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE.try_into()?);
     let aux = Felt::new(26);
     let note_type = NoteType::Private;
 

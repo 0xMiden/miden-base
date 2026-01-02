@@ -358,7 +358,7 @@ pub fn create_p2id_note_exact(
 ) -> Result<Note, NoteError> {
     let recipient = utils::build_p2id_recipient(target, serial_num)?;
 
-    let tag = NoteTag::from_account_id(target);
+    let tag = NoteTag::with_account_target(target);
 
     let metadata = NoteMetadata::new(sender, note_type, tag, NoteExecutionHint::always(), aux)?;
     let vault = NoteAssets::new(assets)?;
