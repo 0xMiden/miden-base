@@ -69,6 +69,7 @@ proc validate_claim
     # => [bridge_account_id_prefix, bridge_account_id_suffix, BRIDGE_PROC_MAST_ROOT]
 
     # Call check_claim_proof procedure on Bridge
+    # Calling: bridge_in::check_claim_proof
     exec.tx::execute_foreign_procedure
     # => [validation_result]
 
@@ -97,14 +98,15 @@ end
 #!
 #! Invocation: call
 pub proc claim
-    # load note inputs into memory starting at address 0
-    push.0 exec.active_note::get_inputs drop drop
-    # => [MERKLE_PATH_RPO_COMMITMENT, pad(12)]
-
-    # validate CLAIM note proof (stubbed out)
+    # Validate claim proof (stubbed out)
     exec.validate_claim
     # => [pad(16)]
 
+    # Load note inputs into memory starting at address 0
+    push.0 exec.active_note::get_inputs drop drop
+    # => [pad(16)]
+
+    # Build P2ID output note
     push.P2ID_SCRIPT_ROOT[0..4]
     # => [SCRIPT_ROOT, pad(16)]
 

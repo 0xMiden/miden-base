@@ -71,7 +71,7 @@ begin
     dropw
     # => []
 
-    # load CLAIM note inputs
+    # Load CLAIM note inputs
     push.0 exec.active_note::get_inputs
     # => [total_inputs, inputs_ptr]
 
@@ -79,7 +79,7 @@ begin
     push.CLAIM_NOTE_NUM_INPUTS eq assert.err=ERR_CLAIM_WRONG_NUMBER_OF_INPUTS drop
     # => []
 
-    # check consuming account == aggfaucet
+    # Check consuming account == aggfaucet
     exec.assert_aggfaucet_is_consumer
     # => []
 
@@ -99,12 +99,12 @@ begin
     movdn.5 movdn.5
     # => [CLAIM_PROOF_RPO_COMMITMENT, start_ptr, end_ptr]
 
-    # Insert Proof Data into AdviceMap
+    # Insert Asset Claim Proof Data into AdviceMap
     adv.insert_mem
     # OS => [CLAIM_PROOF_RPO_COMMITMENT, start_ptr, end_ptr]
     # AS => {CLAIM_PROOF_RPO_COMMITMENT: mem[start_ptr..end_ptr] }
 
-    # Pass the proof data commitment to the faucet's claim procedure
+    # Call the Aggfaucet Claim procedure
     call.agg_faucet::claim
     # => []
 
