@@ -382,16 +382,14 @@ async fn test_build_metadata() -> miette::Result<()> {
         NoteExecutionHint::after_block(500.into())
             .map_err(|e| miette::miette!("Failed to create execution hint: {}", e))?,
         Felt::try_from(1u64 << 63).map_err(|e| miette::miette!("Failed to convert felt: {}", e))?,
-    )
-    .map_err(|e| miette::miette!("Failed to create metadata: {}", e))?;
+    );
     let test_metadata2 = NoteMetadata::new(
         sender,
         NoteType::Public,
         NoteTag::new(u32::MAX),
         NoteExecutionHint::on_block_slot(u8::MAX, u8::MAX, u8::MAX),
         Felt::try_from(0u64).map_err(|e| miette::miette!("Failed to convert felt: {}", e))?,
-    )
-    .map_err(|e| miette::miette!("Failed to create metadata: {}", e))?;
+    );
 
     for (iteration, test_metadata) in [test_metadata1, test_metadata2].into_iter().enumerate() {
         let code = format!(
@@ -536,7 +534,7 @@ async fn test_public_key_as_note_input() -> anyhow::Result<()> {
         tag,
         NoteExecutionHint::always(),
         Default::default(),
-    )?;
+    );
     let vault = NoteAssets::new(vec![])?;
     let note_script = CodeBuilder::default().compile_note_script("begin nop end")?;
     let recipient =

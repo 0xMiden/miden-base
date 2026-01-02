@@ -126,7 +126,7 @@ pub fn verify_minted_output_note(
             params.tag,
             params.note_execution_hint,
             params.aux
-        )?
+        )
     );
 
     Ok(())
@@ -346,7 +346,7 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
     let output_script_root = note_recipient.script().root();
 
     let asset = FungibleAsset::new(faucet.id(), amount.into())?;
-    let metadata = NoteMetadata::new(faucet.id(), note_type, tag, note_execution_hint, aux)?;
+    let metadata = NoteMetadata::new(faucet.id(), note_type, tag, note_execution_hint, aux);
     let expected_note = Note::new(NoteAssets::new(vec![asset.into()])?, metadata, note_recipient);
 
     let trigger_note_script_code = format!(

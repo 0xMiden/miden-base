@@ -51,7 +51,7 @@ pub fn create_p2id_note<R: FeltRng>(
 
     let tag = NoteTag::with_account_target(target);
 
-    let metadata = NoteMetadata::new(sender, note_type, tag, NoteExecutionHint::always(), aux)?;
+    let metadata = NoteMetadata::new(sender, note_type, tag, NoteExecutionHint::always(), aux);
     let vault = NoteAssets::new(assets)?;
 
     Ok(Note::new(vault, metadata, recipient))
@@ -90,7 +90,7 @@ pub fn create_p2ide_note<R: FeltRng>(
         None => NoteExecutionHint::always(),
     };
 
-    let metadata = NoteMetadata::new(sender, note_type, tag, execution_hint, aux)?;
+    let metadata = NoteMetadata::new(sender, note_type, tag, execution_hint, aux);
     let vault = NoteAssets::new(assets)?;
 
     Ok(Note::new(vault, metadata, recipient))
@@ -149,7 +149,7 @@ pub fn create_swap_note<R: FeltRng>(
 
     // build the outgoing note
     let metadata =
-        NoteMetadata::new(sender, swap_note_type, tag, NoteExecutionHint::always(), swap_note_aux)?;
+        NoteMetadata::new(sender, swap_note_type, tag, NoteExecutionHint::always(), swap_note_aux);
     let assets = NoteAssets::new(vec![offered_asset])?;
     let recipient = NoteRecipient::new(serial_num, note_script, inputs);
     let note = Note::new(assets, metadata, recipient);
@@ -202,7 +202,7 @@ pub fn create_mint_note<R: FeltRng>(
 
     let tag = NoteTag::with_account_target(faucet_id);
 
-    let metadata = NoteMetadata::new(sender, note_type, tag, execution_hint, aux)?;
+    let metadata = NoteMetadata::new(sender, note_type, tag, execution_hint, aux);
     let assets = NoteAssets::new(vec![])?; // MINT notes have no assets
     let recipient = NoteRecipient::new(serial_num, note_script, inputs);
 
@@ -248,7 +248,7 @@ pub fn create_burn_note<R: FeltRng>(
     let inputs = NoteInputs::new(vec![])?;
     let tag = NoteTag::with_account_target(faucet_id);
 
-    let metadata = NoteMetadata::new(sender, note_type, tag, execution_hint, aux)?;
+    let metadata = NoteMetadata::new(sender, note_type, tag, execution_hint, aux);
     let assets = NoteAssets::new(vec![fungible_asset])?; // BURN notes contain the asset to burn
     let recipient = NoteRecipient::new(serial_num, note_script, inputs);
 

@@ -409,8 +409,7 @@ async fn test_active_note_get_exactly_8_inputs() -> anyhow::Result<()> {
         tag,
         NoteExecutionHint::always(),
         Default::default(),
-    )
-    .context("failed to create metadata")?;
+    );
     let vault = NoteAssets::new(vec![]).context("failed to create input note assets")?;
     let note_script = CodeBuilder::default()
         .compile_note_script("begin nop end")

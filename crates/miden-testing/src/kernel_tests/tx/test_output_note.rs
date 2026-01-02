@@ -106,7 +106,7 @@ async fn test_create_note() -> anyhow::Result<()> {
         tag,
         NoteExecutionHint::after_block(23.into())?,
         Felt::new(27),
-    )?
+    )
     .into();
 
     assert_eq!(
@@ -262,7 +262,7 @@ async fn test_get_output_notes_commitment() -> anyhow::Result<()> {
         output_tag_1,
         NoteExecutionHint::Always,
         ZERO,
-    )?;
+    );
     let inputs = NoteInputs::new(vec![])?;
     let recipient = NoteRecipient::new(output_serial_no_1, input_note_1.script().clone(), inputs);
     let output_note_1 = Note::new(assets, metadata, recipient);
@@ -277,7 +277,7 @@ async fn test_get_output_notes_commitment() -> anyhow::Result<()> {
         output_tag_2,
         NoteExecutionHint::after_block(123.into())?,
         ZERO,
-    )?;
+    );
     let inputs = NoteInputs::new(vec![])?;
     let recipient = NoteRecipient::new(output_serial_no_2, input_note_2.script().clone(), inputs);
     let output_note_2 = Note::new(assets, metadata, recipient);

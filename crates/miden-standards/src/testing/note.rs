@@ -160,7 +160,7 @@ impl NoteBuilder {
             self.tag,
             self.note_execution_hint,
             self.aux,
-        )?;
+        );
         let inputs = NoteInputs::new(self.inputs)?;
         let recipient = NoteRecipient::new(self.serial_num, note_script, inputs);
 

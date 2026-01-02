@@ -66,22 +66,20 @@ pub struct NoteMetadata {
 
 impl NoteMetadata {
     /// Returns a new [`NoteMetadata`] instantiated with the specified parameters.
-    ///
-    /// TODO: Make infallible.
     pub fn new(
         sender: AccountId,
         note_type: NoteType,
         tag: NoteTag,
         execution_hint: NoteExecutionHint,
         aux: Felt,
-    ) -> Result<Self, NoteError> {
-        Ok(Self {
+    ) -> Self {
+        Self {
             sender,
             note_type,
             tag,
             aux,
             execution_hint,
-        })
+        }
     }
 
     /// Returns the account which created the note.
@@ -160,7 +158,7 @@ impl TryFrom<Word> for NoteMetadata {
         let (execution_hint, note_tag) =
             unmerge_note_tag_and_hint_payload(elements[2], execution_hint_tag)?;
 
-        Self::new(sender, note_type, note_tag, execution_hint, elements[3])
+        Ok(Self::new(sender, note_type, note_tag, execution_hint, elements[3]))
     }
 }
 
@@ -316,7 +314,7 @@ mod tests {
             NoteExecutionHint::on_block_slot(10, 11, 12),
             NoteExecutionHint::after_block((u32::MAX - 1).into()).unwrap(),
         ] {
-            let metadata = NoteMetadata::new(sender, note_type, tag, execution_hint, aux).unwrap();
+            let metadata = NoteMetadata::new(sender, note_type, tag, execution_hint, aux);
             NoteMetadata::read_from_bytes(&metadata.to_bytes())
                 .context(format!("failed for execution hint {execution_hint:?}"))?;
         }

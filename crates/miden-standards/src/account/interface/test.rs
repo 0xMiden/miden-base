@@ -258,8 +258,7 @@ fn test_basic_wallet_custom_notes() {
         tag,
         NoteExecutionHint::always(),
         Default::default(),
-    )
-    .unwrap();
+    );
     let vault = NoteAssets::new(vec![FungibleAsset::mock(100)]).unwrap();
 
     let compatible_source_code = "
@@ -348,8 +347,7 @@ fn test_basic_fungible_faucet_custom_notes() {
         tag,
         NoteExecutionHint::always(),
         Default::default(),
-    )
-    .unwrap();
+    );
     let vault = NoteAssets::new(vec![FungibleAsset::mock(100)]).unwrap();
 
     let compatible_source_code = "
@@ -458,8 +456,7 @@ fn test_custom_account_custom_notes() {
         tag,
         NoteExecutionHint::always(),
         Default::default(),
-    )
-    .unwrap();
+    );
     let vault = NoteAssets::new(vec![FungibleAsset::mock(100)]).unwrap();
 
     let compatible_source_code = "
@@ -569,8 +566,7 @@ fn test_custom_account_multiple_components_custom_notes() {
         tag,
         NoteExecutionHint::always(),
         Default::default(),
-    )
-    .unwrap();
+    );
     let vault = NoteAssets::new(vec![FungibleAsset::mock(100)]).unwrap();
 
     let compatible_source_code = "

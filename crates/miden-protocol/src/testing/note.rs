@@ -31,8 +31,7 @@ impl Note {
             NoteTag::with_account_target(sender_id),
             NoteExecutionHint::Always,
             ZERO,
-        )
-        .unwrap();
+        );
         let inputs = NoteInputs::new(Vec::new()).unwrap();
         let recipient = NoteRecipient::new(serial_num, note_script, inputs);
 
