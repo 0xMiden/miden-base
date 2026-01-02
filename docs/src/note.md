@@ -98,7 +98,26 @@ After validation notes become "live" and eligible for consumption. If creation a
 
 Clients often need to find specific notes of interest. Miden allows clients to query the `Note` database using `Note` tags. These lightweight, 32-bit data fields serve as best-effort filters, enabling quick lookups for notes related to particular use cases, scripts, or account prefixes.
 
-Using `Note` tags strikes a balance between privacy and efficiency. Without tags, querying a specific `Note` ID reveals a user’s interest to the operator. Conversely, downloading and filtering all registered notes locally is highly inefficient. Tags allow users to adjust their level of privacy by choosing how broadly or narrowly they define their search criteria, letting them find the right balance between revealing too much information and incurring excessive computational overhead.
+While note tags can be arbitrarily constructed from 32 bits of data, there are two categories of tags that many notes fit into.
+
+#### Account Targets
+
+A note targeted at an account is a note that is intended or even enforced to be consumed by a specific account. One example is a P2ID note that enforces that it can only be consumed by a specific account ID. The tag for such a P2ID note should make it easy for the receiver to find the note. Therefore, the tag encodes a certain number of bits of the receiver account's ID, by convention. Notably, it may not encode the full 32 bits of the target account's ID to preserve the receiver's privacy. See also the section on privacy below.
+
+#### Use Cases
+
+Use case notes are notes that are not intended to be consumed by a specific account, but by anyone willing to fulfill the note's contract. One example is a SWAP note that trades one asset against another. Such a use case note can define the structure of their note tags. A sensible structure for a SWAP note could be:
+- encoding the 2 bits of the note's type.
+- encoding the note script root, i.e. making it identifiable as a SWAP note, for example by
+  using 16 bits of the SWAP script root.
+- encoding the SWAP pair, for example by using 8 bits of the offered asset faucet ID and 8 bits
+  of the requested asset faucet ID.
+
+This allows clients to search for a public SWAP note that trades USDC against ETH only through the note tag. Since tags are not validated in any way and only act as best-effort filters, further local filtering is almost always necessary. For example, there could easily be a collision on the 8 bits used in SWAP tag's faucet IDs.
+
+#### Privacy vs Efficiency
+
+Using `Note` tags strikes a balance between privacy and efficiency. Without tags, querying a specific `Note` ID reveals a user's interest to the operator. Conversely, downloading and filtering all registered notes locally is highly inefficient. Tags allow users to adjust their level of privacy by choosing how broadly or narrowly they define their search criteria, letting them find the right balance between revealing too much information and incurring excessive computational overhead.
 
 ### Note consumption
 
