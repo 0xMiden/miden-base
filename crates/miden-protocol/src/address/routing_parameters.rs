@@ -87,8 +87,8 @@ impl RoutingParameters {
     /// The tag length determines how many bits of the address ID are encoded into [`NoteTag`]s of
     /// notes targeted to this address. This lets the receiver choose their level of privacy. A
     /// higher tag length makes the address ID more uniquely identifiable and reduces privacy,
-    /// while a shorter length increases privacy at the cost of matching more notes
-    /// published onchain.
+    /// while a shorter length increases privacy at the cost of matching more notes published
+    /// onchain.
     ///
     /// # Errors
     ///
