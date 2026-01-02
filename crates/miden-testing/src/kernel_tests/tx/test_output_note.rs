@@ -13,7 +13,6 @@ use miden_protocol::note::{
     Note,
     NoteAssets,
     NoteExecutionHint,
-    NoteExecutionMode,
     NoteInputs,
     NoteMetadata,
     NoteRecipient,
@@ -129,7 +128,7 @@ async fn test_create_note_with_invalid_tag() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
     let invalid_tag = Felt::new((NoteType::Public as u64) << 62);
-    let valid_tag: Felt = NoteTag::for_local_use_case(0, 0).unwrap().into();
+    let valid_tag: Felt = NoteTag::default().into();
 
     // Test invalid tag
     assert!(tx_context.execute_code(&note_creation_script(invalid_tag)).await.is_err());
@@ -193,7 +192,7 @@ async fn test_create_note_too_many_notes() -> anyhow::Result<()> {
             call.output_note::create
         end
         ",
-        tag = NoteTag::for_local_use_case(1234, 5678).unwrap(),
+        tag = NoteTag::new(1234 << 16 | 5678),
         recipient = Word::from([0, 1, 2, 3u32]),
         execution_hint_always = Felt::from(NoteExecutionHint::always()),
         PUBLIC_NOTE = NoteType::Public as u8,
@@ -541,7 +540,7 @@ async fn test_create_note_and_add_same_nft_twice() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
     let recipient = Word::from([0, 1, 2, 3u32]);
-    let tag = NoteTag::for_public_use_case(999, 777, NoteExecutionMode::Local).unwrap();
+    let tag = NoteTag::new(999 << 16 | 777);
     let non_fungible_asset = NonFungibleAsset::mock(&[1, 2, 3]);
     let encoded = Word::from(non_fungible_asset);
 
@@ -631,7 +630,7 @@ async fn test_build_recipient_hash() -> anyhow::Result<()> {
     // create output note
     let output_serial_no = Word::from([0, 1, 2, 3u32]);
     let aux = Felt::new(27);
-    let tag = NoteTag::for_public_use_case(42, 42, NoteExecutionMode::Network).unwrap();
+    let tag = NoteTag::new(42 << 16 | 42);
     let single_input = 2;
     let inputs = NoteInputs::new(vec![Felt::new(single_input)]).unwrap();
     let input_commitment = inputs.commitment();

@@ -22,7 +22,6 @@ use miden_protocol::note::{
     Note,
     NoteAssets,
     NoteExecutionHint,
-    NoteExecutionMode,
     NoteHeader,
     NoteId,
     NoteInputs,
@@ -201,8 +200,8 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
     let tag1 = NoteTag::from_account_id(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
     );
-    let tag2 = NoteTag::for_public_use_case(0, 0, NoteExecutionMode::Local).unwrap();
-    let tag3 = NoteTag::for_public_use_case(0, 0, NoteExecutionMode::Local).unwrap();
+    let tag2 = NoteTag::default();
+    let tag3 = NoteTag::default();
     let aux1 = Felt::new(27);
     let aux2 = Felt::new(28);
     let aux3 = Felt::new(29);

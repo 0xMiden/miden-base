@@ -22,11 +22,6 @@ const LOCAL_EXECUTION: u8 = 1;
 // The 2 most significant bits are set to `0b00`.
 #[allow(dead_code)]
 const NETWORK_ACCOUNT: u32 = 0;
-// The 2 most significant bits are set to `0b01`.
-const NETWORK_PUBLIC_USECASE: u32 = 0x4000_0000;
-// The 2 most significant bits are set to `0b10`.
-const LOCAL_PUBLIC_ANY: u32 = 0x8000_0000;
-// The 2 most significant bits are set to `0b11`.
 const LOCAL_ANY: u32 = 0xc000_0000;
 
 /// [super::Note]'s execution mode hints.
@@ -90,7 +85,7 @@ pub enum NoteExecutionMode {
 /// privacy by choosing how broadly or narrowly they define their search criteria, letting them find
 /// the right balance between revealing too much information and incurring excessive computational
 /// overhead.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Default)]
 pub struct NoteTag(u32);
 
 impl NoteTag {
@@ -187,59 +182,6 @@ impl NoteTag {
         // This is equivalent to the following layout, interpreted as a u32:
         // [2 zero bits | remaining high bits (30 bits)].
         Self(high_bits as u32)
-    }
-
-    /// Returns a new network use case or local public any note tag instantiated for a custom use
-    /// case which requires a public note.
-    ///
-    /// The public use_case tag requires a [NoteType::Public] note.
-    ///
-    /// The two high bits are set to the `b10` or `b01` depending on the execution hint, the next 14
-    /// bits are set to the `use_case_id`, and the low 16 bits are set to `payload`.
-    ///
-    /// # Errors
-    ///
-    /// - If `use_case_id` is larger than or equal to $2^{14}$.
-    pub fn for_public_use_case(
-        use_case_id: u16,
-        payload: u16,
-        execution: NoteExecutionMode,
-    ) -> Result<Self, NoteError> {
-        if (use_case_id >> 14) != 0 {
-            return Err(NoteError::NoteTagUseCaseTooLarge(use_case_id));
-        }
-
-        match execution {
-            NoteExecutionMode::Network => {
-                let tag = NETWORK_PUBLIC_USECASE | ((use_case_id as u32) << 16) | (payload as u32);
-                Ok(Self(tag))
-            },
-            NoteExecutionMode::Local => {
-                let tag = LOCAL_PUBLIC_ANY | ((use_case_id as u32) << 16) | (payload as u32);
-                Ok(Self(tag))
-            },
-        }
-    }
-
-    /// Returns a new local any note tag instantiated for a custom local use case.
-    ///
-    /// The local use_case tag is the only tag type that allows for [NoteType::Private] notes.
-    ///
-    /// The two high bits are set to the `b11`, the next 14 bits are set to the `use_case_id`, and
-    /// the low 16 bits are set to `payload`.
-    ///
-    /// # Errors
-    ///
-    /// - If `use_case_id` is larger than or equal to 2^14.
-    pub fn for_local_use_case(use_case_id: u16, payload: u16) -> Result<Self, NoteError> {
-        if (use_case_id >> NoteTag::MAX_USE_CASE_ID_EXPONENT) != 0 {
-            return Err(NoteError::NoteTagUseCaseTooLarge(use_case_id));
-        }
-
-        let use_case_bits = (use_case_id as u32) << 16;
-        let payload_bits = payload as u32;
-
-        Ok(Self(LOCAL_ANY | use_case_bits | payload_bits))
     }
 
     // PUBLIC ACCESSORS
@@ -339,13 +281,8 @@ impl Deserializable for NoteTag {
 #[cfg(test)]
 mod tests {
 
-    use assert_matches::assert_matches;
-
-    use super::{NoteExecutionMode, NoteTag};
-    use crate::NoteError;
+    use super::NoteTag;
     use crate::account::AccountId;
-    use crate::note::NoteType;
-    use crate::note::note_tag::LOCAL_ANY;
     use crate::testing::account_id::{
         ACCOUNT_ID_NETWORK_FUNGIBLE_FAUCET,
         ACCOUNT_ID_NETWORK_NON_FUNGIBLE_FAUCET,
@@ -430,102 +367,5 @@ mod tests {
         );
 
         Ok(())
-    }
-
-    #[test]
-    fn for_public_use_case() {
-        // NETWORK
-        // ----------------------------------------------------------------------------------------
-        let tag = NoteTag::for_public_use_case(0b0, 0b0, NoteExecutionMode::Network).unwrap();
-        assert_eq!(tag.as_u32(), 0b01000000_00000000_00000000_00000000u32);
-
-        tag.validate(NoteType::Public).unwrap();
-
-        assert_matches!(
-            tag.validate(NoteType::Private).unwrap_err(),
-            NoteError::NetworkExecutionRequiresPublicNote(NoteType::Private)
-        );
-        assert_matches!(
-            tag.validate(NoteType::Encrypted).unwrap_err(),
-            NoteError::NetworkExecutionRequiresPublicNote(NoteType::Encrypted)
-        );
-
-        let tag = NoteTag::for_public_use_case(0b1, 0b0, NoteExecutionMode::Network).unwrap();
-        assert_eq!(tag.as_u32(), 0b01000000_00000001_00000000_00000000u32);
-
-        let tag = NoteTag::for_public_use_case(0b0, 0b1, NoteExecutionMode::Network).unwrap();
-        assert_eq!(tag.as_u32(), 0b01000000_00000000_00000000_00000001u32);
-
-        let tag = NoteTag::for_public_use_case(1 << 13, 0b0, NoteExecutionMode::Network).unwrap();
-        assert_eq!(tag.as_u32(), 0b01100000_00000000_00000000_00000000u32);
-
-        // LOCAL
-        // ----------------------------------------------------------------------------------------
-        let tag = NoteTag::for_public_use_case(0b0, 0b0, NoteExecutionMode::Local).unwrap();
-        assert_eq!(tag.as_u32(), 0b10000000_00000000_00000000_00000000u32);
-
-        tag.validate(NoteType::Public).unwrap();
-        assert_matches!(
-            tag.validate(NoteType::Private).unwrap_err(),
-            NoteError::PublicNoteRequired(NoteType::Private)
-        );
-        assert_matches!(
-            tag.validate(NoteType::Encrypted).unwrap_err(),
-            NoteError::PublicNoteRequired(NoteType::Encrypted)
-        );
-
-        let tag = NoteTag::for_public_use_case(0b0, 0b1, NoteExecutionMode::Local).unwrap();
-        assert_eq!(tag.as_u32(), 0b10000000_00000000_00000000_00000001u32);
-
-        let tag = NoteTag::for_public_use_case(0b1, 0b0, NoteExecutionMode::Local).unwrap();
-        assert_eq!(tag.as_u32(), 0b10000000_00000001_00000000_00000000u32);
-
-        let tag = NoteTag::for_public_use_case(1 << 13, 0b0, NoteExecutionMode::Local).unwrap();
-        assert_eq!(tag.as_u32(), 0b10100000_00000000_00000000_00000000u32);
-
-        assert_matches!(
-          NoteTag::for_public_use_case(1 << 15, 0b0, NoteExecutionMode::Local).unwrap_err(),
-          NoteError::NoteTagUseCaseTooLarge(use_case) if use_case == 1 << 15
-        );
-        assert_matches!(
-          NoteTag::for_public_use_case(1 << 14, 0b0, NoteExecutionMode::Local).unwrap_err(),
-          NoteError::NoteTagUseCaseTooLarge(use_case) if use_case == 1 << 14
-        );
-    }
-
-    #[test]
-    fn for_private_use_case() {
-        let tag = NoteTag::for_local_use_case(0b0, 0b0).unwrap();
-        assert_eq!(
-            tag.as_u32() >> 30,
-            LOCAL_ANY >> 30,
-            "local use case prefix should be local any"
-        );
-        assert_eq!(tag.as_u32(), 0b11000000_00000000_00000000_00000000u32);
-
-        tag.validate(NoteType::Public)
-            .expect("local execution should support public notes");
-        tag.validate(NoteType::Private)
-            .expect("local execution should support private notes");
-        tag.validate(NoteType::Encrypted)
-            .expect("local execution should support encrypted notes");
-
-        let tag = NoteTag::for_local_use_case(0b0, 0b1).unwrap();
-        assert_eq!(tag.as_u32(), 0b11000000_00000000_00000000_00000001u32);
-
-        let tag = NoteTag::for_local_use_case(0b1, 0b0).unwrap();
-        assert_eq!(tag.as_u32(), 0b11000000_00000001_00000000_00000000u32);
-
-        let tag = NoteTag::for_local_use_case(1 << 13, 0b0).unwrap();
-        assert_eq!(tag.as_u32(), 0b11100000_00000000_00000000_00000000u32);
-
-        assert_matches!(
-          NoteTag::for_local_use_case(1 << 15, 0b0).unwrap_err(),
-          NoteError::NoteTagUseCaseTooLarge(use_case) if use_case == 1 << 15
-        );
-        assert_matches!(
-          NoteTag::for_local_use_case(1 << 14, 0b0).unwrap_err(),
-          NoteError::NoteTagUseCaseTooLarge(use_case) if use_case == 1 << 14
-        );
     }
 }

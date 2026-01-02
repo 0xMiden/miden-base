@@ -17,7 +17,6 @@ use miden_protocol::note::{
     Note,
     NoteAssets,
     NoteExecutionHint,
-    NoteExecutionMode,
     NoteId,
     NoteInputs,
     NoteMetadata,
@@ -145,7 +144,7 @@ async fn minting_fungible_asset_on_existing_faucet_succeeds() -> anyhow::Result<
 
     let params = FaucetTestParams {
         recipient: Word::from([0, 1, 2, 3u32]),
-        tag: NoteTag::for_local_use_case(0, 0).unwrap(),
+        tag: NoteTag::default(),
         aux: Felt::new(27),
         note_execution_hint: NoteExecutionHint::on_block_slot(5, 6, 7),
         note_type: NoteType::Private,
@@ -230,7 +229,7 @@ async fn minting_fungible_asset_on_new_faucet_succeeds() -> anyhow::Result<()> {
 
     let params = FaucetTestParams {
         recipient: Word::from([0, 1, 2, 3u32]),
-        tag: NoteTag::for_local_use_case(0, 0).unwrap(),
+        tag: NoteTag::default(),
         aux: Felt::new(27),
         note_execution_hint: NoteExecutionHint::on_block_slot(5, 6, 7),
         note_type: NoteType::Private,
@@ -324,7 +323,7 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
     // Parameters for the PUBLIC note that will be created by the faucet
     let recipient_account_id = AccountId::try_from(ACCOUNT_ID_PRIVATE_SENDER)?;
     let amount = Felt::new(75);
-    let tag = NoteTag::for_public_use_case(0, 0, NoteExecutionMode::Local)?;
+    let tag = NoteTag::default();
     let aux = Felt::new(27);
     let note_execution_hint = NoteExecutionHint::on_block_slot(5, 6, 7);
     let note_type = NoteType::Public;
@@ -422,7 +421,7 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
     let mut rng = RpoRandomCoin::new([Felt::from(1u32); 4].into());
     let trigger_note = NoteBuilder::new(faucet.id(), &mut rng)
         .note_type(NoteType::Private)
-        .tag(NoteTag::for_local_use_case(0, 0)?.into())
+        .tag(NoteTag::default().into())
         .note_execution_hint(NoteExecutionHint::always())
         .aux(Felt::new(0))
         .serial_number(Word::from([1, 2, 3, 4u32]))

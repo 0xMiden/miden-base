@@ -15,7 +15,6 @@ use miden_protocol::note::{
     Note,
     NoteAssets,
     NoteExecutionHint,
-    NoteExecutionMode,
     NoteInputs,
     NoteMetadata,
     NoteRecipient,
@@ -388,9 +387,7 @@ async fn test_build_metadata() -> miette::Result<()> {
     let test_metadata2 = NoteMetadata::new(
         sender,
         NoteType::Public,
-        // Use largest allowed use_case_id.
-        NoteTag::for_public_use_case((1 << 14) - 1, u16::MAX, NoteExecutionMode::Local)
-            .map_err(|e| miette::miette!("Failed to create note tag: {}", e))?,
+        NoteTag::new(u32::MAX),
         NoteExecutionHint::on_block_slot(u8::MAX, u8::MAX, u8::MAX),
         Felt::try_from(0u64).map_err(|e| miette::miette!("Failed to convert felt: {}", e))?,
     )

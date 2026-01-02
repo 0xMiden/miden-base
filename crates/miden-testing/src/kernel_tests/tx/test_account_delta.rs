@@ -600,8 +600,8 @@ async fn asset_and_storage_delta() -> anyhow::Result<()> {
 
     let tag1 =
         NoteTag::from_account_id(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into()?);
-    let tag2 = NoteTag::for_local_use_case(0, 0)?;
-    let tag3 = NoteTag::for_local_use_case(0, 0)?;
+    let tag2 = NoteTag::default();
+    let tag3 = NoteTag::default();
     let tags = [tag1, tag2, tag3];
 
     let aux_array = [Felt::new(27), Felt::new(28), Felt::new(29)];

@@ -1,7 +1,7 @@
 use miden_protocol::account::AccountId;
 use miden_protocol::asset::Asset;
 use miden_protocol::block::BlockNumber;
-use miden_protocol::note::{NoteExecutionMode, NoteInputs, NoteRecipient, NoteTag, NoteType};
+use miden_protocol::note::{NoteInputs, NoteRecipient, NoteTag, NoteType};
 use miden_protocol::{Felt, NoteError, Word};
 
 use super::well_known_note::WellKnownNote;
@@ -47,18 +47,26 @@ pub fn build_p2ide_recipient(
 
 /// Returns a note tag for a swap note with the specified parameters.
 ///
-/// Use case ID for the returned tag is set to 0.
+/// The tag is laid out as follows:
 ///
-/// Tag payload is constructed by taking asset tags (8 bits of each faucet ID) and concatenating
-/// them together as offered_asset_tag + requested_asset tag.
+/// ```text
+/// [
+///   note_type (2 bits) | script_root (14 bits)
+///   | offered_asset_faucet_id (8 bits) | requested_asset_faucet_id (8 bits)
+/// ]
+/// ```
 ///
-/// Network execution hint for the returned tag is set to `Local`.
+/// The script root serves as the use case identifier of the SWAP tag.
 pub fn build_swap_tag(
     note_type: NoteType,
     offered_asset: &Asset,
     requested_asset: &Asset,
-) -> Result<NoteTag, NoteError> {
-    const SWAP_USE_CASE_ID: u16 = 0;
+) -> NoteTag {
+    let swap_root_bytes = WellKnownNote::SWAP.script().root().as_bytes();
+    // Construct the swap use case ID from the 14 most significant bits of the script root. This
+    // leaves the two most significant bits zero.
+    let mut swap_use_case_id = (swap_root_bytes[0] as u16) << 6;
+    swap_use_case_id |= (swap_root_bytes[1] >> 2) as u16;
 
     // Get bits 0..8 from the faucet IDs of both assets which will form the tag payload.
     let offered_asset_id: u64 = offered_asset.faucet_id_prefix().into();
@@ -67,13 +75,12 @@ pub fn build_swap_tag(
     let requested_asset_id: u64 = requested_asset.faucet_id_prefix().into();
     let requested_asset_tag = (requested_asset_id >> 56) as u8;
 
-    let payload = ((offered_asset_tag as u16) << 8) | (requested_asset_tag as u16);
+    let asset_pair = ((offered_asset_tag as u16) << 8) | (requested_asset_tag as u16);
 
-    let execution = NoteExecutionMode::Local;
-    match note_type {
-        NoteType::Public => NoteTag::for_public_use_case(SWAP_USE_CASE_ID, payload, execution),
-        _ => NoteTag::for_local_use_case(SWAP_USE_CASE_ID, payload),
-    }
+    let tag =
+        ((note_type as u8 as u32) << 30) | ((swap_use_case_id as u32) << 16) | asset_pair as u32;
+
+    NoteTag::new(tag)
 }
 
 #[cfg(test)]
@@ -129,16 +136,24 @@ mod tests {
         // The fungible ID starts with 0xcdb1.
         // The non fungible ID starts with 0xabec.
         // The expected tag payload is thus 0xcdab.
-        let expected_tag_payload = 0xcdab;
+        let expected_asset_pair = 0xcdab;
 
-        let actual_tag =
-            build_swap_tag(NoteType::Public, &offered_asset, &requested_asset).unwrap();
+        let note_type = NoteType::Public;
+        let actual_tag = build_swap_tag(note_type, &offered_asset, &requested_asset);
 
-        // 0 is the SWAP use case ID.
-        let expected_tag =
-            NoteTag::for_public_use_case(0, expected_tag_payload, NoteExecutionMode::Local)
-                .unwrap();
-
-        assert_eq!(actual_tag, expected_tag);
+        assert_eq!(actual_tag.as_u32() as u16, expected_asset_pair, "asset pair should match");
+        assert_eq!((actual_tag.as_u32() >> 30) as u8, note_type as u8, "note type should match");
+        // Check the 8 bits of the first script root byte.
+        assert_eq!(
+            (actual_tag.as_u32() >> 22) as u8,
+            WellKnownNote::SWAP.script().root().as_bytes()[0],
+            "swap script root byte 0 should match"
+        );
+        // Extract the 6 bits of the second script root byte and shift for comparison.
+        assert_eq!(
+            ((actual_tag.as_u32() & 0b00000000_00111111_00000000_00000000) >> 16) as u8,
+            WellKnownNote::SWAP.script().root().as_bytes()[1] >> 2,
+            "swap script root byte 1 should match with the lower two bits set to zero"
+        );
     }
 }

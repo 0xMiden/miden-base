@@ -144,7 +144,7 @@ pub fn create_swap_note<R: FeltRng>(
     ])?;
 
     // build the tag for the SWAP use case
-    let tag = build_swap_tag(swap_note_type, &offered_asset, &requested_asset)?;
+    let tag = build_swap_tag(swap_note_type, &offered_asset, &requested_asset);
     let serial_num = rng.draw_word();
 
     // build the outgoing note
