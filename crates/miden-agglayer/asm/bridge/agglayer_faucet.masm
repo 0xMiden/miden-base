@@ -41,8 +41,7 @@ const ERR_INVALID_CLAIM_PROOF = "invalid claim proof"
 #!
 #! Invocation: exec
 proc validate_claim
-
-    # check AdviceMap was not tampered with
+    # Check AdviceMap was not tampered with
     adv.push_mapval
     # => [CLAIM_PROOF_RPO_COMMITMENT]
 
