@@ -168,6 +168,9 @@ impl Serializable for NoteScript {
     }
 
     fn get_size_hint(&self) -> usize {
+        // TODO: this is a temporary workaround. Replace mast.to_bytes().len() with
+        // MastForest::get_size_hint() (or a similar size-hint API) once it becomes
+        // available.
         let mast_size = self.mast.to_bytes().len();
         let u32_size = 0u32.get_size_hint();
 

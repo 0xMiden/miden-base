@@ -374,6 +374,7 @@ mod output_notes_tests {
     use assert_matches::assert_matches;
 
     use super::OutputNotes;
+    use crate::account::AccountId;
     use crate::assembly::Assembler;
     use crate::asset::FungibleAsset;
     use crate::note::{
@@ -387,7 +388,11 @@ mod output_notes_tests {
         NoteTag,
         NoteType,
     };
-    use crate::testing::account_id::ACCOUNT_ID_SENDER;
+    use crate::testing::account_id::{
+        ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET,
+        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
+        ACCOUNT_ID_SENDER,
+    };
     use crate::transaction::OutputNote;
     use crate::utils::serde::Serializable;
     use crate::{Felt, NOTE_MAX_SIZE, TransactionOutputError, Word, ZERO};
@@ -412,7 +417,13 @@ mod output_notes_tests {
         let sender_id = ACCOUNT_ID_SENDER.try_into().unwrap();
 
         // Build a note with at least two assets.
-        let assets = NoteAssets::new(vec![FungibleAsset::mock(100), FungibleAsset::mock(200)])?;
+        let faucet_id_1 = AccountId::try_from(ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET).unwrap();
+        let faucet_id_2 = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).unwrap();
+
+        let asset_1 = FungibleAsset::new(faucet_id_1, 100)?.into();
+        let asset_2 = FungibleAsset::new(faucet_id_2, 200)?.into();
+
+        let assets = NoteAssets::new(vec![asset_1, asset_2])?;
 
         // Build metadata similarly to how mock notes are constructed.
         let metadata = NoteMetadata::new(
