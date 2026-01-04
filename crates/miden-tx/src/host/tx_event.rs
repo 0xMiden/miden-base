@@ -593,7 +593,7 @@ fn on_account_storage_map_item_accessed<'store, STORE>(
         current_map_root
     };
 
-    if process.has_merkle_path::<{ StorageMap::DEPTH }>(current_map_root, leaf_index)? {
+    if process.has_merkle_path::<{ StorageMap::DEPTH }>(map_root, leaf_index)? {
         // If the witness already exists, the event does not need to be handled.
         Ok(None)
     } else {
