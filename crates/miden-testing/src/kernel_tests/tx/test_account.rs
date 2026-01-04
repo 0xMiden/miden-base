@@ -161,6 +161,60 @@ pub async fn compute_commitment() -> miette::Result<()> {
     Ok(())
 }
 
+#[tokio::test]
+async fn test_set_then_get_map_item_in_single_tx() -> miette::Result<()> {
+    let (new_key, new_value) =
+        (Word::from([209, 210, 211, 212u32]), Word::from([13, 14, 15, 16u32]));
+
+    let slot = AccountStorage::mock_map_slot();
+    let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
+        .with_auth_component(Auth::IncrNonce)
+        .with_component(MockAccountComponent::with_slots(vec![slot.clone()]))
+        .build_existing()
+        .unwrap();
+
+    let tx_context = TransactionContextBuilder::new(account).build().unwrap();
+
+    let code = format!(
+        r#"
+        use miden::core::sys
+
+        use $kernel::prologue
+        use mock::account
+        use mock::account->mock_account
+
+        const SLOT_NAME=word("{slot_name}")
+
+        begin
+            exec.prologue::prepare_transaction
+
+            # set the map item
+            push.{new_value}
+            push.{new_key}
+            push.SLOT_NAME[0..2]
+            call.mock_account::set_map_item
+
+            # get the same map item
+            push.{new_key}
+            push.SLOT_NAME[0..2]
+            call.account::get_map_item
+
+            push.{new_value}
+            assert_eqw.err="value did not match {new_value}"
+
+            exec.sys::truncate_stack
+        end
+        "#,
+        slot_name = slot.name(),
+        new_key = &new_key,
+        new_value = &new_value,
+    );
+
+    tx_context.execute_code(&code).await?;
+
+    Ok(())
+}
+
 // ACCOUNT ID TESTS
 // ================================================================================================
 
