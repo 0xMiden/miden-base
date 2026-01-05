@@ -111,7 +111,7 @@ fn compile_note_scripts(source_dir: &Path, target_dir: &Path, assembler: Assembl
         .into_diagnostic()
         .wrap_err("failed to create note_scripts directory")?;
 
-    for masm_file_path in shared::get_masm_files_recursive(source_dir).unwrap() {
+    for masm_file_path in shared::get_masm_files(source_dir).unwrap() {
         // read the MASM file, parse it, and serialize the parsed AST to bytes
         let code = assembler.clone().assemble_program(masm_file_path.clone())?;
 
@@ -145,7 +145,7 @@ fn compile_account_components(
         fs::create_dir_all(target_dir).unwrap();
     }
 
-    for masm_file_path in shared::get_masm_files_recursive(source_dir).unwrap() {
+    for masm_file_path in shared::get_masm_files(source_dir).unwrap() {
         let component_name = masm_file_path
             .file_stem()
             .expect("masm file should have a file stem")
@@ -297,7 +297,7 @@ mod shared {
     /// subdirectories.
     ///
     /// All non-MASM files are skipped.
-    pub fn get_masm_files_recursive<P: AsRef<Path>>(dir_path: P) -> Result<Vec<PathBuf>> {
+    pub fn get_masm_files<P: AsRef<Path>>(dir_path: P) -> Result<Vec<PathBuf>> {
         let mut files = Vec::new();
 
         let path = dir_path.as_ref();
