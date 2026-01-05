@@ -5,7 +5,7 @@
 #
 # This component provides an array data structure backed by a StorageMap.
 # It supports "set" and "get" operations for storing and retrieving words by index.
-# The array can store up to 2^64 - 2^32 elements (indices 0 to 2^64 - 2^32).
+# The array can store up to 2^64 - 2^32 + 1 elements (indices 0 to 2^64 - 2^32).
 #
 # See the `Array` Rust type's documentation for more details.
 
