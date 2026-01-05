@@ -45,9 +45,9 @@ pub proc set(index: felt, value: Word) -> Word
     # => [slot_prefix, slot_suffix, KEY, VALUE, pad(11)]
     
     exec.native_account::set_map_item
-    # => [OLD_MAP_ROOT, OLD_VALUE, pad(11)]
+    # => [OLD_VALUE, pad(11)]
 
-    dropw # (auto-padding to 16 elements)
+    # (auto-padding to 16 elements)
     # => [OLD_VALUE, pad(12)]
 end
 
