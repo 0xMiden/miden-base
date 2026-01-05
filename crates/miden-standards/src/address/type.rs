@@ -1,5 +1,5 @@
-use crate::AddressError;
-use crate::errors::Bech32Error;
+use miden_protocol::AddressError;
+use miden_protocol::errors::Bech32Error;
 
 /// The type of an [`Address`](super::Address) in Miden.
 ///
@@ -36,3 +36,4 @@ impl TryFrom<u8> for AddressType {
         }
     }
 }
+

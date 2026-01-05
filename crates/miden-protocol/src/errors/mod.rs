@@ -29,7 +29,9 @@ use crate::account::{
     // TemplateTypeError,
     StorageSlotName,
 };
-use crate::address::AddressType;
+// AddressType has been moved to miden-standards.
+// We use the constant value directly here to avoid the dependency.
+const ADDRESS_TYPE_ACCOUNT_ID: u8 = 232;
 use crate::asset::AssetVaultKey;
 use crate::batch::BatchId;
 use crate::block::BlockNumber;
@@ -348,7 +350,7 @@ pub enum Bech32Error {
     #[error(transparent)]
     DecodeError(Box<dyn Error + Send + Sync + 'static>),
     #[error("found unknown address type {0} which is not the expected {account_addr} account ID address type",
-      account_addr = AddressType::AccountId as u8
+      account_addr = ADDRESS_TYPE_ACCOUNT_ID
     )]
     UnknownAddressType(u8),
     #[error("expected bech32 data to be of length {expected} but it was of length {actual}")]

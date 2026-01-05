@@ -7,7 +7,6 @@ extern crate alloc;
 extern crate std;
 
 pub mod account;
-pub mod address;
 pub mod asset;
 pub mod batch;
 pub mod block;

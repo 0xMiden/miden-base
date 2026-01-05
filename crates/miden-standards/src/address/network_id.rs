@@ -3,8 +3,7 @@ use alloc::str::FromStr;
 use alloc::string::ToString;
 
 use bech32::Hrp;
-
-use crate::errors::NetworkIdError;
+use miden_protocol::errors::NetworkIdError;
 
 // This is essentially a wrapper around [`bech32::Hrp`] but that type does not actually appear in
 // the public API since that crate does not have a stable release.
@@ -51,8 +50,9 @@ impl NetworkId {
 
     /// Returns the [`Hrp`] of this network ID.
     ///
-    /// This method should not be made public to avoid having `bech32` types in the public API.
-    pub(crate) fn into_hrp(self) -> Hrp {
+    /// This method is public to allow usage from miden-protocol, but returns an opaque type
+    /// to avoid exposing `bech32` types in the public API.
+    pub fn into_hrp(self) -> Hrp {
         match self {
             NetworkId::Mainnet => {
                 Hrp::parse(NetworkId::MAINNET).expect("mainnet hrp should be valid")

@@ -1,15 +1,15 @@
 use alloc::string::ToString;
+use alloc::vec::Vec;
 
 use bech32::Bech32m;
-use bech32::primitives::decode::CheckedHrpstring;
+use bech32::primitives::decode::{ByteIter, CheckedHrpstring};
 use miden_processor::DeserializationError;
-
-use crate::AddressError;
-use crate::account::{AccountId, AccountStorageMode};
-use crate::address::{AddressType, NetworkId};
-use crate::errors::Bech32Error;
-use crate::note::NoteTag;
-use crate::utils::serde::{ByteWriter, Deserializable, Serializable};
+use miden_protocol::AddressError;
+use miden_protocol::account::{AccountId, AccountStorageMode};
+use miden_protocol::address::{AddressType, NetworkId};
+use miden_protocol::errors::Bech32Error;
+use miden_protocol::note::NoteTag;
+use miden_protocol::utils::serde::{ByteWriter, Deserializable, Serializable};
 
 /// The identifier of an [`Address`](super::Address).
 ///
@@ -59,23 +59,31 @@ impl AddressId {
         let hrp = checked_string.hrp();
         let network_id = NetworkId::from_hrp(hrp);
 
-        let mut byte_iter = checked_string.byte_iter();
+        // Collect the byte iterator into a Vec to avoid exposing bech32::ByteIter.
+        // This allows us to work with a generic iterator interface.
+        let mut byte_iter: Vec<u8> = checked_string.byte_iter().collect();
 
         // We only know the expected length once we know the address type, but to get the
         // address type, the length must be at least one.
-        let address_byte = byte_iter.next().ok_or_else(|| {
-            AddressError::Bech32DecodeError(Bech32Error::InvalidDataLength {
+        if byte_iter.is_empty() {
+            return Err(AddressError::Bech32DecodeError(Bech32Error::InvalidDataLength {
                 expected: 1,
-                actual: byte_iter.len(),
-            })
-        })?;
+                actual: 0,
+            }));
+        }
 
+        let address_byte = byte_iter[0];
         let address_type = AddressType::try_from(address_byte)?;
 
+        // For AccountId, we need to call AccountId::from_bech32_byte_iter, but it requires
+        // ByteIter which we want to avoid exposing. Since AccountId::from_bech32_byte_iter
+        // is pub(crate) in miden-protocol, we can't call it from miden-standards.
+        // Instead, we'll use AccountId::from_bech32 with the original bech32 string,
+        // which already contains the address type byte.
         let identifier = match address_type {
-            AddressType::AccountId => AccountId::from_bech32_byte_iter(byte_iter)
+            AddressType::AccountId => AccountId::from_bech32(bech32_string)
                 .map_err(AddressError::AccountIdDecodeError)
-                .map(AddressId::AccountId)?,
+                .map(|(_, account_id)| AddressId::AccountId(account_id))?,
         };
 
         Ok((network_id, identifier))

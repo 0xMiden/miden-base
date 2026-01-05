@@ -1,6 +1,8 @@
 pub(crate) mod v0;
 pub use v0::{AccountIdPrefixV0, AccountIdV0};
 
+mod network_id;
+
 mod id_prefix;
 pub use id_prefix::AccountIdPrefix;
 
@@ -22,8 +24,8 @@ use miden_core::Felt;
 use miden_core::utils::{ByteReader, Deserializable, Serializable};
 use miden_crypto::utils::hex_to_bytes;
 use miden_processor::DeserializationError;
+use crate::account::account_id::network_id::NetworkId;
 
-use crate::address::NetworkId;
 use crate::errors::AccountIdError;
 use crate::{AccountError, Word};
 
@@ -490,10 +492,15 @@ mod tests {
 
     use assert_matches::assert_matches;
     use bech32::{Bech32, Bech32m, NoChecksum};
+    use crate::account::account_id::network_id::{NetworkId, CustomNetworkId};
+    use alloc::str::FromStr;
+    
+    // AddressType has been moved to miden-standards.
+    // For tests, we use the constant value directly.
+    const ADDRESS_TYPE_ACCOUNT_ID: u8 = 232;
 
     use super::*;
     use crate::account::account_id::v0::{extract_storage_mode, extract_type, extract_version};
-    use crate::address::{AddressType, CustomNetworkId};
     use crate::errors::Bech32Error;
     use crate::testing::account_id::{
         ACCOUNT_ID_NETWORK_NON_FUNGIBLE_FAUCET,
@@ -564,7 +571,7 @@ mod tests {
                 let (_, data) = bech32::decode(&bech32_string).unwrap();
 
                 // Raw bech32 data should contain the address type as the first byte.
-                assert_eq!(data[0], AddressType::AccountId as u8);
+                assert_eq!(data[0], ADDRESS_TYPE_ACCOUNT_ID);
 
                 // Raw bech32 data should contain the metadata byte at index 8.
                 assert_eq!(extract_version(data[8] as u64).unwrap(), account_id.version());
@@ -619,7 +626,7 @@ mod tests {
     fn bech32_invalid_other_checksum() {
         let account_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).unwrap();
         let mut id_bytes = account_id.to_bytes();
-        id_bytes.insert(0, AddressType::AccountId as u8);
+        id_bytes.insert(0, ADDRESS_TYPE_ACCOUNT_ID);
 
         // Use Bech32 instead of Bech32m which is disallowed.
         let invalid_bech32_regular =
@@ -638,7 +645,7 @@ mod tests {
     fn bech32_invalid_length() {
         let account_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).unwrap();
         let mut id_bytes = account_id.to_bytes();
-        id_bytes.insert(0, AddressType::AccountId as u8);
+        id_bytes.insert(0, ADDRESS_TYPE_ACCOUNT_ID);
         // Add one byte to make the length invalid.
         id_bytes.push(5);
 

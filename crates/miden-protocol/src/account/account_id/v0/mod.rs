@@ -7,9 +7,9 @@ use core::hash::Hash;
 use bech32::Bech32m;
 use bech32::primitives::decode::{ByteIter, CheckedHrpstring};
 use miden_crypto::utils::hex_to_bytes;
+use crate::account::account_id::network_id::NetworkId;
 pub use prefix::AccountIdPrefixV0;
 
-use crate::account::account_id::NetworkId;
 use crate::account::account_id::account_type::{
     FUNGIBLE_FAUCET,
     NON_FUNGIBLE_FAUCET,
@@ -18,7 +18,9 @@ use crate::account::account_id::account_type::{
 };
 use crate::account::account_id::storage_mode::{NETWORK, PRIVATE, PUBLIC};
 use crate::account::{AccountIdVersion, AccountStorageMode, AccountType};
-use crate::address::AddressType;
+// AddressType has been moved to miden-standards.
+// For internal use, we use the constant value directly.
+const ADDRESS_TYPE_ACCOUNT_ID: u8 = 232;
 use crate::errors::{AccountIdError, Bech32Error};
 use crate::utils::{ByteReader, Deserializable, DeserializationError, Serializable};
 use crate::{AccountError, EMPTY_WORD, Felt, Hasher, Word};
@@ -221,7 +223,7 @@ impl AccountIdV0 {
         let id_bytes: [u8; Self::SERIALIZED_SIZE] = (*self).into();
 
         let mut data = [0; Self::SERIALIZED_SIZE + 1];
-        data[0] = AddressType::AccountId as u8;
+        data[0] = ADDRESS_TYPE_ACCOUNT_ID;
         data[1..16].copy_from_slice(&id_bytes);
 
         // SAFETY: Encoding only panics if the total length of the hrp, data (in GF(32)), separator
@@ -262,7 +264,7 @@ impl AccountIdV0 {
         }
 
         let address_byte = byte_iter.next().expect("there should be at least one byte");
-        if address_byte != AddressType::AccountId as u8 {
+        if address_byte != ADDRESS_TYPE_ACCOUNT_ID {
             return Err(AccountIdError::Bech32DecodeError(Bech32Error::UnknownAddressType(
                 address_byte,
             )));

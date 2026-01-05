@@ -25,6 +25,7 @@ miden-processor = { workspace = true }
 miden-protocol  = { workspace = true }
 
 # External dependencies
+bech32    = { default-features = false, features = ["alloc"], version = "0.11" }
 rand      = { optional = true, workspace = true }
 thiserror = { workspace = true }
 

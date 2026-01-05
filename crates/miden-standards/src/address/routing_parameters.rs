@@ -4,21 +4,21 @@ use alloc::vec::Vec;
 
 use bech32::primitives::decode::CheckedHrpstring;
 use bech32::{Bech32m, Hrp};
-
-use crate::AddressError;
-use crate::address::AddressInterface;
-use crate::crypto::dsa::{ecdsa_k256_keccak, eddsa_25519_sha512};
-use crate::crypto::ies::SealingKey;
-use crate::errors::Bech32Error;
-use crate::note::NoteTag;
-use crate::utils::serde::{
+use miden_protocol::AddressError;
+use miden_protocol::crypto::dsa::{ecdsa_k256_keccak, eddsa_25519_sha512};
+use miden_protocol::crypto::ies::SealingKey;
+use miden_protocol::errors::Bech32Error;
+use miden_protocol::note::NoteTag;
+use miden_protocol::utils::serde::{
     ByteReader,
     ByteWriter,
     Deserializable,
     DeserializationError,
     Serializable,
 };
-use crate::utils::sync::LazyLock;
+use miden_protocol::utils::sync::LazyLock;
+
+use super::AddressInterface;
 
 /// The HRP used for encoding routing parameters.
 ///
@@ -538,7 +538,7 @@ mod tests {
 
         // Test X25519XChaCha20Poly1305
         {
-            use crate::crypto::dsa::eddsa_25519_sha512::SecretKey;
+            use miden_protocol::crypto::dsa::eddsa_25519_sha512::SecretKey;
             let secret_key = SecretKey::with_rng(&mut rand::rng());
             let public_key = secret_key.public_key();
             let encryption_key = SealingKey::X25519XChaCha20Poly1305(public_key);
@@ -547,7 +547,7 @@ mod tests {
 
         // Test K256XChaCha20Poly1305
         {
-            use crate::crypto::dsa::ecdsa_k256_keccak::SecretKey;
+            use miden_protocol::crypto::dsa::ecdsa_k256_keccak::SecretKey;
             let secret_key = SecretKey::with_rng(&mut rand::rng());
             let public_key = secret_key.public_key();
             let encryption_key = SealingKey::K256XChaCha20Poly1305(public_key);
@@ -556,7 +556,7 @@ mod tests {
 
         // Test X25519AeadRpo
         {
-            use crate::crypto::dsa::eddsa_25519_sha512::SecretKey;
+            use miden_protocol::crypto::dsa::eddsa_25519_sha512::SecretKey;
             let secret_key = SecretKey::with_rng(&mut rand::rng());
             let public_key = secret_key.public_key();
             let encryption_key = SealingKey::X25519AeadRpo(public_key);
@@ -565,7 +565,7 @@ mod tests {
 
         // Test K256AeadRpo
         {
-            use crate::crypto::dsa::ecdsa_k256_keccak::SecretKey;
+            use miden_protocol::crypto::dsa::ecdsa_k256_keccak::SecretKey;
             let secret_key = SecretKey::with_rng(&mut rand::rng());
             let public_key = secret_key.public_key();
             let encryption_key = SealingKey::K256AeadRpo(public_key);
