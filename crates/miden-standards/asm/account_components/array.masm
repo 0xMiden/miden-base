@@ -12,7 +12,7 @@
 use miden::protocol::active_account
 use miden::protocol::native_account
 
-type Word = struct { a: felt, b: felt, c: felt, d: felt }
+type BeWord = struct @bigendian { a: felt, b: felt, c: felt, d: felt }
 
 # CONSTANTS
 # =================================================================================================
@@ -35,7 +35,7 @@ const DATA_SLOT = word("{{DATA_SLOT}}")
 #! - VALUE is the word to store at the specified index.
 #!
 #! Invocation: call
-pub proc set(index: felt, value: Word) -> Word
+pub proc set(index: felt, value: BeWord) -> BeWord
     # Build KEY = [index, 0, 0, 0]
     push.0.0.0 movup.3
     # => [index, 0, 0, 0, VALUE, pad(11)]
@@ -61,7 +61,7 @@ end
 #! - VALUE is the word stored at the specified index (zero if not set).
 #!
 #! Invocation: call
-pub proc get(index: felt) -> Word
+pub proc get(index: felt) -> BeWord
     # Build KEY = [index, 0, 0, 0]
     push.0.0.0 movup.3
     # => [index, 0, 0, 0, pad(15)]
