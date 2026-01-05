@@ -551,7 +551,7 @@ pub(crate) static EVENT_NAME_LUT: ::miden_utils_sync::LazyLock<BTreeMap<u64, &'s
     Ok(output)
 }
 
-/// This module should be kept in sync with the copy in miden-lib's build.rs.
+/// This module should be kept in sync with the copy in miden-standards' build.rs.
 mod shared {
     use std::collections::BTreeMap;
     use std::fmt::Write;
