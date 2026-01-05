@@ -83,8 +83,8 @@ async fn test_array_get_and_set() -> anyhow::Result<()> {
         AccountComponent::new(wrapper_library.clone(), vec![])?.with_supports_all_types();
 
     // Build an account with both the Array component and the wrapper component
-    let array_for_account =
-        Array::with_elements(data_slot.clone(), [(Felt::new(0), initial_value)]);
+    let array_for_account: AccountComponent =
+        Array::with_elements(data_slot.clone(), [(Felt::new(0), initial_value)]).try_into()?;
     let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(Auth::IncrNonce)
         .with_component(array_for_account)

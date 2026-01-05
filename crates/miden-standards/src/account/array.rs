@@ -5,7 +5,7 @@ use miden_protocol::account::{AccountComponent, StorageMap, StorageSlot, Storage
 use miden_protocol::assembly::Library;
 use miden_protocol::assembly::diagnostics::NamedSource;
 use miden_protocol::transaction::TransactionKernel;
-use miden_protocol::{Felt, FieldElement, Word};
+use miden_protocol::{Felt, FieldElement, StorageMapError, Word};
 
 // CONSTANTS
 // ================================================================================================
@@ -132,8 +132,10 @@ impl Array {
     }
 }
 
-impl From<Array> for AccountComponent {
-    fn from(array: Array) -> Self {
+impl TryFrom<Array> for AccountComponent {
+    type Error = StorageMapError;
+
+    fn try_from(array: Array) -> Result<Self, Self::Error> {
         // Generate the MASM source with the configured slot name
         let masm_source = array.generate_masm_source();
 
@@ -149,14 +151,12 @@ impl From<Array> for AccountComponent {
             .into_iter()
             .map(|(index, value)| (Word::from([index, Felt::ZERO, Felt::ZERO, Felt::ZERO]), value));
 
-        let storage_slots = vec![StorageSlot::with_map(
-            array.data_slot,
-            StorageMap::with_entries(map_entries).unwrap(),
-        )];
+        let storage_slots =
+            vec![StorageSlot::with_map(array.data_slot, StorageMap::with_entries(map_entries)?)];
 
-        AccountComponent::new(library, storage_slots)
+        Ok(AccountComponent::new(library, storage_slots)
             .expect("Array component should satisfy the requirements of a valid account component")
-            .with_supports_all_types()
+            .with_supports_all_types())
     }
 }
 
@@ -173,7 +173,7 @@ mod tests {
         let slot =
             StorageSlotName::new("myproject::myarray::data").expect("slot name should be valid");
         let array = Array::new(slot);
-        let component: AccountComponent = array.into();
+        let component: AccountComponent = array.try_into().expect("should create component");
 
         // Verify component was created successfully with one storage slot (data)
         assert_eq!(component.storage_slots().len(), 1);
@@ -189,7 +189,7 @@ mod tests {
         let slot =
             StorageSlotName::new("myproject::myarray::data").expect("slot name should be valid");
         let array = Array::with_elements(slot, elements);
-        let component: AccountComponent = array.into();
+        let component: AccountComponent = array.try_into().expect("should create component");
 
         // Verify component was created successfully
         assert_eq!(component.storage_slots().len(), 1);
@@ -205,7 +205,7 @@ mod tests {
         let slot =
             StorageSlotName::new("myproject::myarray::data").expect("slot name should be valid");
         let array = Array::from_slice(slot, &elements);
-        let component: AccountComponent = array.into();
+        let component: AccountComponent = array.try_into().expect("should create component");
 
         // Verify component was created successfully
         assert_eq!(component.storage_slots().len(), 1);
@@ -221,11 +221,12 @@ mod tests {
             (Felt::new(1000), Word::from([9, 10, 11, 12u32])),
         ];
         let array = Array::with_elements(data_slot.clone(), elements.clone());
+        let array_component: AccountComponent = array.try_into().expect("should create component");
 
         // Build an account with the Array component
         let account = AccountBuilder::new([0u8; 32])
             .with_auth_component(NoAuth)
-            .with_component(array)
+            .with_component(array_component)
             .build()
             .expect("account building should succeed");
 
@@ -248,10 +249,14 @@ mod tests {
         let slot2 =
             StorageSlotName::new("myproject::array2::data").expect("slot name should be valid");
 
-        let array1 =
-            Array::with_elements(slot1.clone(), [(Felt::new(0), Word::from([1, 1, 1, 1u32]))]);
-        let array2 =
-            Array::with_elements(slot2.clone(), [(Felt::new(0), Word::from([2, 2, 2, 2u32]))]);
+        let array1: AccountComponent =
+            Array::with_elements(slot1.clone(), [(Felt::new(0), Word::from([1, 1, 1, 1u32]))])
+                .try_into()
+                .expect("should create component");
+        let array2: AccountComponent =
+            Array::with_elements(slot2.clone(), [(Felt::new(0), Word::from([2, 2, 2, 2u32]))])
+                .try_into()
+                .expect("should create component");
 
         // Build an account with both Array components
         let account = AccountBuilder::new([0u8; 32])
