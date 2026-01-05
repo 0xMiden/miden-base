@@ -111,7 +111,7 @@ fn compile_note_scripts(source_dir: &Path, target_dir: &Path, assembler: Assembl
         .into_diagnostic()
         .wrap_err("failed to create note_scripts directory")?;
 
-    for masm_file_path in shared::get_masm_files(source_dir).unwrap() {
+    for masm_file_path in shared::get_masm_files_recursive(source_dir).unwrap() {
         // read the MASM file, parse it, and serialize the parsed AST to bytes
         let code = assembler.clone().assemble_program(masm_file_path.clone())?;
 
@@ -291,31 +291,6 @@ mod shared {
         }
 
         Ok(())
-    }
-
-    /// Returns a vector with paths to all MASM files in the specified directory.
-    ///
-    /// All non-MASM files are skipped.
-    pub fn get_masm_files<P: AsRef<Path>>(dir_path: P) -> Result<Vec<PathBuf>> {
-        let mut files = Vec::new();
-
-        let path = dir_path.as_ref();
-        if path.is_dir() {
-            let entries = fs::read_dir(path)
-                .into_diagnostic()
-                .wrap_err_with(|| format!("failed to read directory {}", path.display()))?;
-            for entry in entries {
-                let file = entry.into_diagnostic().wrap_err("failed to read directory entry")?;
-                let file_path = file.path();
-                if is_masm_file(&file_path).into_diagnostic()? {
-                    files.push(file_path);
-                }
-            }
-        } else {
-            println!("cargo:warn=The specified path is not a directory.");
-        }
-
-        Ok(files)
     }
 
     /// Returns a vector with paths to all MASM files in the specified directory and its

@@ -82,10 +82,8 @@ static RPO_FALCON_512_MULTISIG_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
 
 // Initialize the NoAuth library only once.
 static NO_AUTH_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
-    let bytes = include_bytes!(concat!(
-        env!("OUT_DIR"),
-        "/assets/account_components/auth/no_auth.masl"
-    ));
+    let bytes =
+        include_bytes!(concat!(env!("OUT_DIR"), "/assets/account_components/auth/no_auth.masl"));
     Library::read_from_bytes(bytes).expect("Shipped NoAuth library is well-formed")
 });
 
