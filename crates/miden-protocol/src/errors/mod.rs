@@ -692,6 +692,8 @@ pub enum TransactionInputError {
         "total number of input notes is {0} which exceeds the maximum of {MAX_INPUT_NOTES_PER_TX}"
     )]
     TooManyInputNotes(usize),
+    #[error("foreign account data not found or invalid for account {0}")]
+    ForeignAccountError(AccountId),
 }
 
 // TRANSACTION OUTPUT ERROR

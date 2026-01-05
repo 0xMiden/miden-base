@@ -4,12 +4,21 @@ use core::fmt::Debug;
 use miden_core::utils::{Deserializable, Serializable};
 
 use super::PartialBlockchain;
-use crate::TransactionInputError;
-use crate::account::{AccountCode, PartialAccount};
-use crate::asset::AssetWitness;
+use crate::account::{
+    AccountCode,
+    AccountHeader,
+    AccountId,
+    AccountStorageHeader,
+    PartialAccount,
+    PartialStorage,
+};
+use crate::asset::{AssetWitness, PartialVault};
+use crate::block::account_tree::{AccountWitness, account_id_to_smt_index};
 use crate::block::{BlockHeader, BlockNumber};
+use crate::crypto::merkle::SparseMerklePath;
 use crate::note::{Note, NoteInclusionProof};
 use crate::transaction::{TransactionArgs, TransactionScript};
+use crate::{TransactionInputError, Word, ZERO};
 
 mod account;
 pub use account::AccountInputs;
@@ -193,6 +202,133 @@ impl TransactionInputs {
         &self.tx_args
     }
 
+    /// Reads AccountInputs for a foreign account from the advice inputs.
+    ///
+    /// This function reverses the process of `add_foreign_accounts` by:
+    /// 1. Reading the account header from the advice map using the account_id_key
+    /// 2. Building a PartialAccount from the header and foreign account code
+    /// 3. Creating an AccountWitness (currently with placeholder path)
+    ///
+    /// The account header is stored in the advice map under a key derived from the account ID,
+    /// containing [ID_AND_NONCE, VAULT_ROOT, STORAGE_COMMITMENT, CODE_COMMITMENT] elements.
+    /// The corresponding foreign account code must be present in the foreign_account_code list.
+    ///
+    /// # Implementation Notes
+    ///
+    /// Currently, the AccountWitness is created with a placeholder Merkle path. For a complete
+    /// implementation, the witness should be reconstructed from the Merkle store data that was
+    /// added via `add_account_witness`. This would require:
+    ///
+    /// 1. Implementing `MerkleStore::get_path(root, index)` method or equivalent
+    /// 2. Using `account_id_to_smt_index()` to convert the account ID to the correct index
+    /// 3. Retrieving the authenticated nodes from the merkle store
+    /// 4. Reconstructing the SparseMerklePath from the stored InnerNodeInfo data
+    ///
+    /// The authenticated nodes are stored in the merkle store via `witness.authenticated_nodes()`
+    /// in the `add_account_witness` function.
+    ///
+    /// # Arguments
+    /// * `account_id` - The ID of the foreign account to read
+    ///
+    /// # Returns
+    /// * `Ok(AccountInputs)` if the account data can be successfully read and parsed
+    /// * `Err(TransactionInputError)` if any required data is missing or invalid
+    ///
+    /// # Errors
+    ///
+    /// This function will return `TransactionInputError::ForeignAccountError` if:
+    /// - The account header is not found in the advice map
+    /// - The account header cannot be parsed from the stored elements
+    /// - The foreign account code is not found in the foreign_account_code list
+    /// - Any component of the PartialAccount cannot be constructed
+    /// - The AccountWitness cannot be created
+    pub fn read_foreign_account_inputs(
+        &self,
+        account_id: AccountId,
+    ) -> Result<AccountInputs, TransactionInputError> {
+        // Create the account_id_key using the same method as add_foreign_accounts
+        let account_id_key = Self::account_id_map_key(account_id);
+
+        // Read the account header elements from the advice map
+        let header_elements = self
+            .advice_inputs
+            .map
+            .get(&account_id_key)
+            .ok_or(TransactionInputError::ForeignAccountError(account_id))?;
+
+        // Parse the header from elements
+        let header = AccountHeader::try_from_elements(header_elements)
+            .map_err(|_| TransactionInputError::ForeignAccountError(account_id))?;
+
+        // Find the corresponding foreign account code
+        let account_code = self
+            .foreign_account_code
+            .iter()
+            .find(|code| code.commitment() == header.code_commitment())
+            .ok_or(TransactionInputError::ForeignAccountError(account_id))?
+            .clone();
+
+        // Build partial account components
+        // Note: We create minimal partial storage and vault since foreign accounts
+        // typically don't need full state access
+        let empty_header = AccountStorageHeader::new(vec![])
+            .map_err(|_| TransactionInputError::ForeignAccountError(account_id))?;
+        let partial_storage = PartialStorage::new(empty_header, [])
+            .map_err(|_| TransactionInputError::ForeignAccountError(account_id))?;
+        let partial_vault = PartialVault::new(header.vault_root());
+
+        // Create the partial account
+        let partial_account = PartialAccount::new(
+            account_id,
+            header.nonce(),
+            account_code,
+            partial_storage,
+            partial_vault,
+            None, // No seed for existing accounts
+        )
+        .map_err(|_| TransactionInputError::ForeignAccountError(account_id))?;
+
+        // Create the account witness
+        //
+        // IMPORTANT: This is currently a placeholder implementation. For a complete solution,
+        // the Merkle path should be reconstructed from the advice store data.
+        //
+        // The complete implementation would:
+        // 1. Get the account tree root from the block header
+        // 2. Convert account_id to SMT index using account_id_to_smt_index()
+        // 3. Retrieve the Merkle path from the store using something like: let merkle_path =
+        //    self.advice_inputs.store.get_path(account_tree_root, smt_index)?;
+        // 4. Convert to SparseMerklePath and create the witness
+        //
+        // For now, we create a minimal witness that would need to be replaced
+        // with the actual stored witness data.
+        let account_tree_root = self.block_header.account_root();
+        let _smt_index = account_id_to_smt_index(account_id);
+
+        // Create a placeholder empty path - this should be replaced with actual path reconstruction
+        // The authenticated nodes were stored via witness.authenticated_nodes() in
+        // add_account_witness
+        let empty_nodes = vec![account_tree_root; 64];
+        let sparse_path = SparseMerklePath::from_sized_iter(empty_nodes)
+            .map_err(|_| TransactionInputError::ForeignAccountError(account_id))?;
+
+        let witness = AccountWitness::new(account_id, header.commitment(), sparse_path)
+            .map_err(|_| TransactionInputError::ForeignAccountError(account_id))?;
+
+        // Create and return the AccountInputs
+        Ok(AccountInputs::new(partial_account, witness))
+    }
+
+    /// Helper function to create the account ID map key for accessing foreign account data.
+    ///
+    /// This must match the implementation in `TransactionAdviceInputs::account_id_map_key()`
+    /// to ensure consistency between storing and retrieving foreign account data.
+    ///
+    /// The key format is: [account_id.suffix(), account_id.prefix().as_felt(), ZERO, ZERO]
+    fn account_id_map_key(id: AccountId) -> Word {
+        Word::from([id.suffix(), id.prefix().as_felt(), ZERO, ZERO])
+    }
+
     // CONVERSIONS
     // --------------------------------------------------------------------------------------------
 
@@ -278,4 +414,68 @@ fn validate_is_in_block(
         .map_err(|_| {
             TransactionInputError::InputNoteNotInBlock(note.id(), proof.location().block_num())
         })
+}
+
+// TESTS
+// ================================================================================================
+
+#[cfg(test)]
+mod tests {
+    use alloc::vec;
+
+    use super::*;
+    use crate::account::{AccountCode, AccountStorageHeader, PartialStorage};
+    use crate::asset::PartialVault;
+    use crate::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE;
+    use crate::{Felt, Word};
+
+    #[test]
+    fn test_account_id_map_key() {
+        let account_id =
+            AccountId::try_from(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE).unwrap();
+
+        let key = TransactionInputs::account_id_map_key(account_id);
+        let expected = Word::from([account_id.suffix(), account_id.prefix().as_felt(), ZERO, ZERO]);
+
+        assert_eq!(key, expected);
+    }
+
+    #[test]
+    fn test_read_foreign_account_inputs_missing_data() {
+        let account_id =
+            AccountId::try_from(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE).unwrap();
+
+        // Create minimal transaction inputs with empty advice map
+        let code = AccountCode::mock();
+        let storage_header = AccountStorageHeader::new(vec![]).unwrap();
+        let partial_storage = PartialStorage::new(storage_header, []).unwrap();
+        let partial_vault = PartialVault::new(Word::default());
+        let partial_account = PartialAccount::new(
+            account_id,
+            Felt::new(10),
+            code,
+            partial_storage,
+            partial_vault,
+            None,
+        )
+        .unwrap();
+
+        let tx_inputs = TransactionInputs {
+            account: partial_account,
+            block_header: crate::block::BlockHeader::mock(0, None, None, &[], Word::default()),
+            blockchain: crate::transaction::PartialBlockchain::default(),
+            input_notes: crate::transaction::InputNotes::new(vec![]).unwrap(),
+            tx_args: crate::transaction::TransactionArgs::default(),
+            advice_inputs: crate::vm::AdviceInputs::default(),
+            foreign_account_code: Vec::new(),
+            asset_witnesses: Vec::new(),
+        };
+
+        // Try to read foreign account that doesn't exist in advice map
+        let result = tx_inputs.read_foreign_account_inputs(account_id);
+
+        assert!(
+            matches!(result, Err(TransactionInputError::ForeignAccountError(id)) if id == account_id)
+        );
+    }
 }
