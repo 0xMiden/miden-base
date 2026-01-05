@@ -31,8 +31,9 @@ const ARRAY_MASM_TEMPLATE: &str = include_str!("../../asm/account_components/arr
 /// [`ARRAY_MAX_ELEMENTS`] elements. It supports `set` and `get` operations for storing and
 /// retrieving words by index.
 ///
-/// When linking against this component, the `miden` library (i.e. [`MidenLib`](crate::MidenLib))
-/// must be available to the assembler which is the case when using [`CodeBuilder`][builder].
+/// When linking against this component, the `miden` library (i.e.
+/// [`ProtocolLib`](miden_protocol::ProtocolLib)) must be available to the assembler which is the
+/// case when using [`CodeBuilder`][builder].
 ///
 /// The procedures of this component are:
 /// - `set`: Stores a word at the specified index. Returns the old value.
@@ -53,7 +54,7 @@ const ARRAY_MASM_TEMPLATE: &str = include_str!("../../asm/account_components/arr
 /// The data slot can be configured at construction time, allowing multiple independent
 /// arrays to coexist in the same account by using different slot names.
 ///
-/// [builder]: crate::utils::CodeBuilder
+/// [builder]: crate::code_builder::CodeBuilder
 pub struct Array {
     /// Initial elements to populate the array with, as (index, value) pairs.
     initial_elements: Vec<(Felt, Word)>,
