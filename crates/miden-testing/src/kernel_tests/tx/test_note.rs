@@ -29,7 +29,7 @@ use miden_protocol::testing::account_id::{
 };
 use miden_protocol::transaction::memory::ACTIVE_INPUT_NOTE_PTR;
 use miden_protocol::transaction::{OutputNote, TransactionArgs};
-use miden_protocol::{Felt, Word, ZERO};
+use miden_protocol::{Felt, Hasher, Word, ZERO};
 use miden_standards::account::wallets::BasicWallet;
 use miden_standards::code_builder::CodeBuilder;
 use miden_standards::testing::note::NoteBuilder;
@@ -261,6 +261,22 @@ async fn test_build_recipient() -> anyhow::Result<()> {
     let recipient_5 = NoteRecipient::new(serial_num, note_script.clone(), note_inputs_5.clone());
     let recipient_8 = NoteRecipient::new(serial_num, note_script.clone(), note_inputs_8.clone());
 
+    for note_inputs in [note_inputs_4, note_inputs_5, note_inputs_8] {
+        let inputs_advice_map_key = note_inputs.commitment();
+        assert_eq!(
+            exec_output.advice.get_mapped_values(&inputs_advice_map_key).unwrap(),
+            note_inputs.to_elements(),
+            "advice entry with note inputs should contain the padded values"
+        );
+
+        let num_inputs_advice_map_key =
+            Hasher::hash_elements(note_inputs.commitment().as_elements());
+        assert_eq!(
+            exec_output.advice.get_mapped_values(&num_inputs_advice_map_key).unwrap(),
+            &[Felt::from(note_inputs.num_values())],
+            "advice entry with num note inputs should contain the original number of values"
+        );
+    }
 
     let mut expected_stack = alloc::vec::Vec::new();
     expected_stack.extend_from_slice(recipient_4.digest().as_elements());
