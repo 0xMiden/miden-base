@@ -8,12 +8,12 @@ use miden::core::crypto::hashes::rpo256
 # CONSTANTS
 # =================================================================================================
 
-const CLAIM_NOTE_NUM_INPUTS = 567
+const CLAIM_NOTE_NUM_INPUTS = 571
 const CLAIM_PROOF_DATA_SIZE = 564
 const CLAIM_PROOF_DATA_WORDS = 570
 
-const AGG_FAUCET_PREFIX_MEM_ADDR = 564
-const AGG_FAUCET_SUFFIX_MEM_ADDR = 565
+const AGG_FAUCET_PREFIX_MEM_ADDR = 568
+const AGG_FAUCET_SUFFIX_MEM_ADDR = 569
 
 # ERRORS
 # =================================================================================================
@@ -47,7 +47,7 @@ end
 #!
 #! Current note inputs match exactly the agglayer claimAsset function parameters:
 #!
-#! NoteInputs layout (567 felts total):
+#! NoteInputs layout (571 felts total):
 #! - smtProofLocalExitRoot      [0..255]  : SMT proof for local exit root (256 felts, bytes32[_DEPOSIT_CONTRACT_TREE_DEPTH])
 #! - smtProofRollupExitRoot     [256..511]: SMT proof for rollup exit root (256 felts, bytes32[_DEPOSIT_CONTRACT_TREE_DEPTH])
 #! - globalIndex                [512..519]: Global index (8 felts, uint256 as 8 u32 felts)
@@ -59,12 +59,13 @@ end
 #! - destinationAddress         [543..547]: Destination address (5 felts, address as 5 u32 felts)
 #! - amount                     [548..555]: Amount of tokens (8 felts, uint256 as 8 u32 felts)
 #! - metadata                   [556..563]: ABI encoded metadata (8 felts, fixed size)
-#! - agglayer_faucet_account_id [564..565]: Agglayer faucet account ID (2 felts, prefix and suffix)
-#! - output note tag            [566]     : P2ID output note tag
+#! - output_p2id_serial_num     [564..567]: P2ID note serial number (4 felts, Word)
+#! - agglayer_faucet_account_id [568..569]: Agglayer faucet account ID (2 felts, prefix and suffix)
+#! - output_note_tag            [570]     : P2ID output note tag
 #!
 #! Panics if:
 #! - account does not expose claim procedure.
-#! - the number of inputs is not exactly 612.
+#! - the number of inputs is not exactly 571.
 #! - agglayer faucet account ID does not match the consuming account ID.
 begin
     dropw
@@ -98,7 +99,6 @@ begin
     # => [CLAIM_PROOF_RPO_COMMITMENT, pad(16)]
 
     # Prepare for insertion into AdviceMap
-
     push.CLAIM_PROOF_DATA_SIZE add.4 push.0
     # => [start_ptr, end_ptr, CLAIM_PROOF_RPO_COMMITMENT, pad(16)]
 

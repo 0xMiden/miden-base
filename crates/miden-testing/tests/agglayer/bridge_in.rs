@@ -4,9 +4,7 @@ use core::slice;
 
 use miden_agglayer::{
     ClaimNoteParams,
-    account_id_to_destination_bytes,
     claim_note_test_inputs,
-    compute_claim_proof_hash,
     create_claim_note,
     create_existing_agglayer_faucet,
     create_existing_bridge_account,
@@ -72,17 +70,7 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
     // --------------------------------------------------------------------------------------------
 
     // Define amount values for the test
-    let amount_felt = Felt::new(100); // Amount as single Felt for Miden operations
-    let amount_u256 = [
-        Felt::new(100),
-        Felt::new(0),
-        Felt::new(0),
-        Felt::new(0),
-        Felt::new(0),
-        Felt::new(0),
-        Felt::new(0),
-        Felt::new(0),
-    ]; // Amount as u256 array for agglayer
+    let amount_felt = Felt::new(100);
 
     // Create CLAIM note using the helper function with new agglayer claimAsset inputs
     let (
@@ -94,19 +82,15 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
         origin_network,
         origin_token_address,
         destination_network,
-        _destination_address,
-        _amount,
+        destination_address,
+        amount_u256,
         metadata,
-    ) = claim_note_test_inputs();
+    ) = claim_note_test_inputs(amount_felt, user_account.id());
 
     let aux = Felt::new(0);
-    let destination_address = account_id_to_destination_bytes(user_account.id());
 
-    println!(
-        "user account id prefix & suffix: {:?}, {:?}",
-        user_account.id().prefix().as_felt(),
-        user_account.id().suffix()
-    );
+    // Generate a serial number for the P2ID note
+    let serial_num = builder.rng_mut().draw_word();
 
     let claim_params = ClaimNoteParams {
         smt_proof_local_exit_root,
@@ -123,12 +107,10 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
         claim_note_creator_account_id: user_account.id(),
         agglayer_faucet_account_id: agglayer_faucet.id(),
         output_note_tag: NoteTag::from_account_id(user_account.id()),
+        p2id_serial_number: serial_num,
         destination_account_id: user_account.id(),
         rng: builder.rng_mut(),
     };
-
-    // Compute the serial number as the hash of the CLAIM note inputs (first 564 felts)
-    let serial_num = compute_claim_proof_hash(&claim_params);
 
     // Create P2ID note for the user account (similar to network faucet test)
     let p2id_script = WellKnownNote::P2ID.script();
@@ -162,10 +144,6 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
         p2id_recipient,
     );
 
-    println!("p2id note script_root : {:?}", expected_p2id_note.script().root());
-    println!("p2id note serial num  : {:?}", expected_p2id_note.serial_num());
-    println!("p2id inputs: {:?}", expected_p2id_note.recipient().inputs());
-
     // EXECUTE CLAIM NOTE AGAINST AGGLAYER FAUCET (with FPI to Bridge)
     // --------------------------------------------------------------------------------------------
     let foreign_account_inputs = mock_chain.get_foreign_account_inputs(bridge_account.id())?;
@@ -181,25 +159,17 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
     // VERIFY P2ID NOTE WAS CREATED
     // --------------------------------------------------------------------------------------------
 
-    // Check that a P2ID note was created by the faucet
+    // Check that exactly one P2ID note was created by the faucet
     assert_eq!(executed_transaction.output_notes().num_notes(), 1);
     let output_note = executed_transaction.output_notes().get_note(0);
 
     // Verify the output note contains the minted fungible asset
     let expected_asset = FungibleAsset::new(agglayer_faucet.id(), amount_felt.into())?;
 
-    // Verify the note was created by the agglayer faucet
+    // Verify note metadata properties
     assert_eq!(output_note.metadata().sender(), agglayer_faucet.id());
     assert_eq!(output_note.metadata().note_type(), NoteType::Public);
-
-    println!("expected p2id note serial: {:?}", serial_num);
-    println!("output note recipient: {:?}", output_note.recipient_digest());
-    println!("expected note recipient {:?}", expected_p2id_note.recipient().digest());
-
-    // assert_eq!(output_note.recipient_digest(), expected_p2id_note.recipient().digest()?);
-
-    // TODO: debug why the note IDs don't match here
-    // assert_eq!(output_note.id(), expected_p2id_note.id());
+    assert_eq!(output_note.id(), expected_p2id_note.id());
 
     // Extract the full note from the OutputNote enum for detailed verification
     let full_note = match output_note {
@@ -207,8 +177,9 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
         _ => panic!("Expected OutputNote::Full variant for public note"),
     };
 
-    // Verify the output note contains the expected fungible asset
+    // Verify note structure and asset content
     let expected_asset_obj = Asset::from(expected_asset);
+    assert_eq!(full_note, &expected_p2id_note);
     assert!(full_note.assets().iter().any(|asset| asset == &expected_asset_obj));
 
     // Apply the transaction to the mock chain

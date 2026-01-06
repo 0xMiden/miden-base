@@ -8,6 +8,7 @@ use alloc::vec::Vec;
 use miden_assembly::Library;
 use miden_assembly::utils::Deserializable;
 use miden_core::{Felt, FieldElement, Program, Word};
+use miden_protocol::NoteError;
 use miden_protocol::account::{
     Account,
     AccountBuilder,
@@ -31,7 +32,6 @@ use miden_protocol::note::{
     NoteTag,
     NoteType,
 };
-use miden_protocol::{Hasher, NoteError};
 use miden_standards::account::auth::NoAuth;
 use miden_standards::account::faucets::NetworkFungibleFaucet;
 use miden_utils_sync::LazyLock;
@@ -369,6 +369,8 @@ pub struct ClaimNoteParams<'a, R: FeltRng> {
     pub agglayer_faucet_account_id: AccountId,
     /// Output P2ID note tag
     pub output_note_tag: NoteTag,
+    /// P2ID note serial number (4 felts as Word)
+    pub p2id_serial_number: Word,
     /// TODO: remove and use destination_address: [u8; 20]
     pub destination_account_id: AccountId,
     /// RNG for creating CLAIM note serial number
@@ -426,7 +428,7 @@ pub fn create_claim_note<R: FeltRng>(params: ClaimNoteParams<'_, R>) -> Result<N
     claim_inputs.push(params.destination_network);
 
     // destinationAddress (address as 5 u32 felts)
-    // Use AccountId prefix and suffix directly to get [prefix, suffix, 0, 0, 0]
+    // Use AccountId prefix and suffix directly to get [suffix, prefix, 0, 0, 0]
     // TODO: refactor to use destination_address: [u8; 20] instead once converstion function
     // exists [u8; 20] -> [address as 5 Felts]
     let destination_address_felts = vec![
@@ -443,6 +445,9 @@ pub fn create_claim_note<R: FeltRng>(params: ClaimNoteParams<'_, R>) -> Result<N
 
     // metadata (fixed size of 8 felts)
     claim_inputs.extend(params.metadata);
+
+    // output_p2id_serial_num (4 felts as Word)
+    claim_inputs.extend(params.p2id_serial_number);
 
     // agglayer_faucet_account_id (2 felts: prefix and suffix)
     claim_inputs.push(params.agglayer_faucet_account_id.prefix().as_felt());
@@ -474,50 +479,6 @@ pub fn create_claim_note<R: FeltRng>(params: ClaimNoteParams<'_, R>) -> Result<N
     let recipient = NoteRecipient::new(serial_num, claim_script, inputs);
 
     Ok(Note::new(assets, metadata, recipient))
-}
-
-/// Computes the hash of the CLAIM note proof data (564 felts).
-/// This hash is used as the serial number for the output P2ID note.
-pub fn compute_claim_proof_hash(params: &ClaimNoteParams<'_, impl FeltRng>) -> Word {
-    let mut claim_proof_data = vec![];
-
-    // Add the first 564 felts (excluding agglayer_faucet_account_id and output_note_tag)
-    claim_proof_data.extend(params.smt_proof_local_exit_root.clone());
-    claim_proof_data.extend(params.smt_proof_rollup_exit_root.clone());
-    claim_proof_data.extend(params.global_index);
-
-    let mainnet_exit_root_felts = bytes32_to_felts(params.mainnet_exit_root);
-    claim_proof_data.extend(mainnet_exit_root_felts);
-
-    let rollup_exit_root_felts = bytes32_to_felts(params.rollup_exit_root);
-    claim_proof_data.extend(rollup_exit_root_felts);
-
-    claim_proof_data.push(params.origin_network);
-
-    let origin_token_address_felts = ethereum_address_to_felts(params.origin_token_address);
-    claim_proof_data.extend(origin_token_address_felts);
-
-    claim_proof_data.push(params.destination_network);
-
-    // Use the same destination address format as in create_claim_note: [prefix, suffix, 0, 0, 0]
-    // TODO: refactor to use destination_address: [u8; 20] instead once conversion function
-    // exists [u8; 20] -> [address as 5 Felts]
-    let destination_address_felts = vec![
-        params.destination_account_id.prefix().as_felt(),
-        params.destination_account_id.suffix(),
-        Felt::new(0),
-        Felt::new(0),
-        Felt::new(0),
-    ];
-    claim_proof_data.extend(destination_address_felts);
-
-    claim_proof_data.extend(params.amount);
-    claim_proof_data.extend(params.metadata);
-
-    claim_proof_data.extend(Word::default());
-
-    // Hash the 568 felts (564 + 4 padding)
-    Hasher::hash_elements(&claim_proof_data)
 }
 
 // CONVERSION FUNCTIONS
@@ -642,6 +603,10 @@ pub type ClaimNoteTestInputs = (
 /// This is a convenience function for testing that provides realistic dummy data
 /// for all the agglayer claimAsset function inputs.
 ///
+/// # Parameters
+/// - `amount`: The amount as a single Felt for Miden operations
+/// - `destination_account_id`: The destination account ID to convert to address bytes
+///
 /// # Returns
 /// A tuple containing:
 /// - smt_proof_local_exit_root: Vec<Felt> (256 felts)
@@ -655,7 +620,10 @@ pub type ClaimNoteTestInputs = (
 /// - destination_address: [u8; 20]
 /// - amount: [Felt; 8]
 /// - metadata: [Felt; 8]
-pub fn claim_note_test_inputs() -> ClaimNoteTestInputs {
+pub fn claim_note_test_inputs(
+    amount: Felt,
+    destination_account_id: AccountId,
+) -> ClaimNoteTestInputs {
     // Create SMT proofs with 256 felts each (32 bytes32 values * 8 u32 per bytes32)
     let smt_proof_local_exit_root = vec![Felt::new(0); 256];
     let smt_proof_rollup_exit_root = vec![Felt::new(0); 256];
@@ -691,13 +659,12 @@ pub fn claim_note_test_inputs() -> ClaimNoteTestInputs {
 
     let destination_network = Felt::new(2);
 
-    let destination_address: [u8; 20] = [
-        0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88,
-        0x99, 0xaa, 0xbb, 0xcc, 0xdd,
-    ];
+    // Convert AccountId to destination address bytes
+    let destination_address = account_id_to_destination_bytes(destination_account_id);
 
-    let amount = [
-        Felt::new(1000),
+    // Convert amount Felt to u256 array for agglayer
+    let amount_u256 = [
+        amount,
         Felt::new(0),
         Felt::new(0),
         Felt::new(0),
@@ -718,7 +685,7 @@ pub fn claim_note_test_inputs() -> ClaimNoteTestInputs {
         origin_token_address,
         destination_network,
         destination_address,
-        amount,
+        amount_u256,
         metadata,
     )
 }

@@ -19,8 +19,8 @@ const EXECUTION_HINT_ALWAYS = 1
 const OUTPUT_NOTE_AUX = 0
 
 const OUTPUT_NOTE_INPUTS_MEM_ADDR = 0
-const OUTPUT_NOTE_TAG_MEM_ADDR = 566
-const OUTPUT_NOTE_SERIAL_NUM_MEM_ADDR = 600
+const OUTPUT_NOTE_TAG_MEM_ADDR = 570
+const OUTPUT_NOTE_SERIAL_NUM_MEM_ADDR = 564
 const OUTPUT_NOTE_ASSET_AMOUNT_MEM_ADDR_0 = 548
 const OUTPUT_NOTE_ASSET_AMOUNT_MEM_ADDR_1 = 552
 
@@ -87,9 +87,14 @@ end
 
 # Inputs: [U256[0], U256[1]]
 # Outputs: [amount]
-proc scale_down_amount_stubbed_out
-    dropw dropw
-    push.100
+proc scale_down_amount
+    repeat.7 drop end
+end
+
+# Inputs: []
+# Outputs: [prefix, suffix]
+proc get_destination_account_id
+    mem_load.543 mem_load.544
 end
 
 #! Validates a CLAIM note against the AggLayer bridge and mints the corresponding asset to the recipient.
@@ -112,10 +117,6 @@ end
 #!
 #! Invocation: call
 pub proc claim
-    # Using CLAIM_PROOF_RPO_COMMITMENT as P2ID serial number
-    mem_storew_be.OUTPUT_NOTE_SERIAL_NUM_MEM_ADDR
-    # => [CLAIM_PROOF_RPO_COMMITMENT, pad(12)]
-    
     # Validate claim proof (stubbed out)
     exec.validate_claim
     # => [CLAIM_PROOF_RPO_COMMITMENT, pad(12)]
@@ -134,18 +135,15 @@ pub proc claim
     push.P2ID_NOTE_NUM_INPUTS
     # => [num_output_note_inputs, SERIAL_NUM, SCRIPT_ROOT, pad(1)]
 
-    push.101 debug.stack debug.mem.543.547 drop
-
-    mem_load.543 mem_load.544
+    # TODO: need to convert vec [u64; 5] -> [prefix, suffix]
+    exec.get_destination_account_id
     # => [account_id_prefix, account_id_suffix, num_output_note_inputs, SERIAL_NUM, SCRIPT_ROOT]
 
-    mem_store.1 mem_store.0
+    mem_store.0 mem_store.1
     # => [num_output_note_inputs, SERIAL_NUM, SCRIPT_ROOT, pad(1)]
 
     push.OUTPUT_NOTE_INPUTS_MEM_ADDR
     # => [inputs_ptr = 0, num_output_note_inputs, SERIAL_NUM, SCRIPT_ROOT, pad(12)]
-
-    push.101 debug.stack debug.mem.0.1 drop
 
     exec.note::build_recipient
     # => [RECIPIENT, pad(12)]
@@ -160,11 +158,9 @@ pub proc claim
     padw mem_loadw_be.OUTPUT_NOTE_ASSET_AMOUNT_MEM_ADDR_1
     # => [AMOUNT[1], AMOUNT[0], tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
 
-    # stubbed out for now
-    exec.scale_down_amount_stubbed_out 
+    # TODO: implement scale down logic; stubbed out for now
+    exec.scale_down_amount
     # => [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
-
-    push.606 debug.stack drop
 
     exec.faucets::distribute
     # => [pad(16)]
