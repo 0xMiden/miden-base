@@ -274,19 +274,13 @@ end
 #!   Operand stack: [num_inputs, dest_ptr]
 proc write_inputs_to_memory
     # load the inputs from the advice map to the advice stack
-    adv.push_mapvaln
+    adv.push_mapvaln.8
     # OS => [NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
     # AS => [advice_num_inputs, [INPUT_VALUES]]
 
     # move the number of inputs obtained from advice map to the operand stack
     adv_push.1 dup.5
     # OS => [num_inputs, advice_num_inputs, NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
-    # AS => [[INPUT_VALUES]]
-
-    # Validate the note inputs length. Round up the number of inputs to the next multiple of 8: that
-    # value should be equal to the length obtained from the `adv.push_mapvaln` procedure.
-    u32divmod.8 neq.0 add mul.8
-    # OS => [rounded_up_num_inputs, advice_num_inputs, NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
     # AS => [[INPUT_VALUES]]
 
     assert_eq.err=ERR_NOTE_INVALID_NUMBER_OF_INPUTS

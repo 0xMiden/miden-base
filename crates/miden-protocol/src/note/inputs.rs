@@ -75,7 +75,7 @@ impl NoteInputs {
     /// - INPUTS is the variable inputs for the note
     /// - PADDING is the optional padding to align the data with a 2WORD boundary
     pub fn to_elements(&self) -> Vec<Felt> {
-        pad_inputs(&self.values)
+        self.values.to_vec()
     }
 }
 
