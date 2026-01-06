@@ -25,7 +25,7 @@ use miden_protocol::transaction::memory::{
     OUTPUT_NOTE_ASSET_COMMITMENT_OFFSET,
     OUTPUT_NOTE_SECTION_OFFSET,
 };
-use miden_protocol::transaction::{OutputNote, OutputNotes, TransactionOutputs};
+use miden_protocol::transaction::{RawOutputNote, RawOutputNotes, TransactionOutputs};
 use miden_standards::code_builder::CodeBuilder;
 use miden_standards::testing::mock_account::MockAccountExt;
 use miden_standards::testing::note::NoteBuilder;
@@ -59,7 +59,7 @@ async fn test_epilogue() -> anyhow::Result<()> {
         let input_note_2 = create_spawn_note([&output_note_1])?;
         TransactionContextBuilder::new(account.clone())
             .extend_input_notes(vec![input_note_1, input_note_2])
-            .extend_expected_output_notes(vec![OutputNote::Full(output_note_1)])
+            .extend_expected_output_notes(vec![RawOutputNote::Full(output_note_1)])
             .build()?
     };
 
@@ -93,12 +93,12 @@ async fn test_epilogue() -> anyhow::Result<()> {
     let mut final_account = account.clone();
     final_account.increment_nonce(ONE)?;
 
-    let output_notes = OutputNotes::new(
+    let output_notes = RawOutputNotes::new(
         tx_context
             .expected_output_notes()
             .iter()
             .cloned()
-            .map(OutputNote::Full)
+            .map(RawOutputNote::Full)
             .collect(),
     )?;
 
@@ -158,7 +158,7 @@ async fn test_compute_output_note_id() -> anyhow::Result<()> {
         let input_note_2 = create_spawn_note([&output_note_1])?;
         TransactionContextBuilder::new(account)
             .extend_input_notes(vec![input_note_1, input_note_2])
-            .extend_expected_output_notes(vec![OutputNote::Full(output_note_1)])
+            .extend_expected_output_notes(vec![RawOutputNote::Full(output_note_1)])
             .build()?
     };
 
@@ -221,7 +221,7 @@ async fn epilogue_fails_when_num_output_assets_exceed_num_input_assets() -> anyh
     let input_note = NoteBuilder::new(account.id(), *builder.rng_mut())
         .add_assets([Asset::from(input_asset)])
         .build()?;
-    builder.add_output_note(OutputNote::Full(input_note.clone()));
+    builder.add_output_note(RawOutputNote::Full(input_note.clone()));
     let mock_chain = builder.build()?;
 
     let code = format!(
@@ -274,7 +274,7 @@ async fn epilogue_fails_when_num_input_assets_exceed_num_output_assets() -> anyh
     let input_note = NoteBuilder::new(account.id(), *builder.rng_mut())
         .add_assets([Asset::from(output_asset)])
         .build()?;
-    builder.add_output_note(OutputNote::Full(input_note.clone()));
+    builder.add_output_note(RawOutputNote::Full(input_note.clone()));
     let mock_chain = builder.build()?;
 
     let code = format!(

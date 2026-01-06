@@ -40,7 +40,7 @@ use miden_protocol::transaction::memory::{
     OUTPUT_NOTE_RECIPIENT_OFFSET,
     OUTPUT_NOTE_SECTION_OFFSET,
 };
-use miden_protocol::transaction::{OutputNote, OutputNotes};
+use miden_protocol::transaction::{RawOutputNote, RawOutputNotes};
 use miden_protocol::{Felt, Word, ZERO};
 use miden_standards::code_builder::CodeBuilder;
 use miden_standards::note::create_p2id_note;
@@ -227,7 +227,7 @@ async fn test_get_output_notes_commitment() -> anyhow::Result<()> {
 
         TransactionContextBuilder::new(account)
             .extend_input_notes(vec![input_note_1, input_note_2])
-            .extend_expected_output_notes(vec![OutputNote::Full(output_note_1)])
+            .extend_expected_output_notes(vec![RawOutputNote::Full(output_note_1)])
             .build()?
     };
 
@@ -284,9 +284,9 @@ async fn test_get_output_notes_commitment() -> anyhow::Result<()> {
     let output_note_2 = Note::new(assets, metadata, recipient);
 
     // compute expected output notes commitment
-    let expected_output_notes_commitment = OutputNotes::new(vec![
-        OutputNote::Full(output_note_1.clone()),
-        OutputNote::Full(output_note_2.clone()),
+    let expected_output_notes_commitment = RawOutputNotes::new(vec![
+        RawOutputNote::Full(output_note_1.clone()),
+        RawOutputNote::Full(output_note_2.clone()),
     ])?
     .commitment();
 
@@ -839,7 +839,7 @@ async fn test_get_asset_info() -> anyhow::Result<()> {
 
     let tx_context = mock_chain
         .build_tx_context(account.id(), &[], &[])?
-        .extend_expected_output_notes(vec![OutputNote::Full(output_note_1)])
+        .extend_expected_output_notes(vec![RawOutputNote::Full(output_note_1)])
         .tx_script(tx_script)
         .build()?;
 
@@ -911,7 +911,7 @@ async fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
 
     let tx_context = mock_chain
         .build_tx_context(account.id(), &[], &[])?
-        .extend_expected_output_notes(vec![OutputNote::Full(output_note)])
+        .extend_expected_output_notes(vec![RawOutputNote::Full(output_note)])
         .tx_script(tx_script)
         .build()?;
 
@@ -1014,9 +1014,9 @@ async fn test_get_assets() -> anyhow::Result<()> {
     let tx_context = mock_chain
         .build_tx_context(account.id(), &[], &[])?
         .extend_expected_output_notes(vec![
-            OutputNote::Full(p2id_note_0_assets),
-            OutputNote::Full(p2id_note_1_asset),
-            OutputNote::Full(p2id_note_2_assets),
+            RawOutputNote::Full(p2id_note_0_assets),
+            RawOutputNote::Full(p2id_note_1_asset),
+            RawOutputNote::Full(p2id_note_2_assets),
         ])
         .tx_script(tx_script)
         .build()?;

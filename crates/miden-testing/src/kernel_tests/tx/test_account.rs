@@ -46,7 +46,7 @@ use miden_protocol::testing::account_id::{
     ACCOUNT_ID_SENDER,
 };
 use miden_protocol::testing::storage::{MOCK_MAP_SLOT, MOCK_VALUE_SLOT0, MOCK_VALUE_SLOT1};
-use miden_protocol::transaction::{OutputNote, TransactionKernel};
+use miden_protocol::transaction::{RawOutputNote, TransactionKernel};
 use miden_protocol::utils::sync::LazyLock;
 use miden_protocol::{LexicographicWord, StarkField};
 use miden_standards::code_builder::CodeBuilder;
@@ -1303,7 +1303,7 @@ async fn test_get_init_balance_subtraction() -> anyhow::Result<()> {
     let tx_context = mock_chain
         .build_tx_context(TxContextInput::AccountId(account.id()), &[], &[])?
         .tx_script(tx_script)
-        .extend_expected_output_notes(vec![OutputNote::Full(expected_output_note)])
+        .extend_expected_output_notes(vec![RawOutputNote::Full(expected_output_note)])
         .build()?;
 
     tx_context.execute().await?;

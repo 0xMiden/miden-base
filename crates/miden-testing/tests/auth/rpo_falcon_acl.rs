@@ -12,7 +12,7 @@ use miden_protocol::account::{
 };
 use miden_protocol::note::Note;
 use miden_protocol::testing::storage::MOCK_VALUE_SLOT0;
-use miden_protocol::transaction::OutputNote;
+use miden_protocol::transaction::RawOutputNote;
 use miden_protocol::{Felt, FieldElement, Word};
 use miden_standards::account::auth::AuthRpoFalcon512Acl;
 use miden_standards::code_builder::CodeBuilder;
@@ -72,7 +72,7 @@ fn setup_rpo_falcon_acl_test(
     let note = NoteBuilder::new(account.id(), &mut rand::rng())
         .build()
         .expect("failed to create mock note");
-    builder.add_output_note(OutputNote::Full(note.clone()));
+    builder.add_output_note(RawOutputNote::Full(note.clone()));
     let mock_chain = builder.build()?;
 
     Ok((account, mock_chain, note))

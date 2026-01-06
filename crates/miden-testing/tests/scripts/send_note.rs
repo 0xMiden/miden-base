@@ -15,7 +15,7 @@ use miden_protocol::note::{
     NoteType,
     PartialNote,
 };
-use miden_protocol::transaction::OutputNote;
+use miden_protocol::transaction::RawOutputNote;
 use miden_standards::account::interface::{AccountInterface, AccountInterfaceExt};
 use miden_standards::code_builder::CodeBuilder;
 use miden_testing::{Auth, MockChain};
@@ -59,7 +59,7 @@ async fn test_send_note_script_basic_wallet() -> anyhow::Result<()> {
         .build_tx_context(sender_basic_wallet_account.id(), &[], &[])
         .expect("failed to build tx context")
         .tx_script(send_note_transaction_script)
-        .extend_expected_output_notes(vec![OutputNote::Full(note)])
+        .extend_expected_output_notes(vec![RawOutputNote::Full(note)])
         .build()?
         .execute()
         .await?;
@@ -121,7 +121,7 @@ async fn test_send_note_script_basic_fungible_faucet() -> anyhow::Result<()> {
         .build_tx_context(sender_basic_fungible_faucet_account.id(), &[], &[])
         .expect("failed to build tx context")
         .tx_script(send_note_transaction_script)
-        .extend_expected_output_notes(vec![OutputNote::Full(note)])
+        .extend_expected_output_notes(vec![RawOutputNote::Full(note)])
         .build()?
         .execute()
         .await?;
