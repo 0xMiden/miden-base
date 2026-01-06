@@ -1,5 +1,0 @@
-# CONSTANTS
-# =================================================================================================
-
-# The maximum number of input values associated with a single note.
-pub const MAX_INPUTS_PER_NOTE = 1024
