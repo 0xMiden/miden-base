@@ -7,7 +7,13 @@ use $kernel::account
 use $kernel::account_delta
 use $kernel::account_id
 use $kernel::asset_vault
-use $kernel::constants
+use $kernel::constants::EMPTY_SMT_ROOT
+use $kernel::constants::MAX_ASSETS_PER_NOTE
+use $kernel::constants::MAX_INPUT_NOTES_PER_TX
+use $kernel::constants::MAX_INPUTS_PER_NOTE
+use $kernel::constants::NOTE_TREE_DEPTH
+use $kernel::constants::STORAGE_SLOT_TYPE_MAP
+use $kernel::constants::STORAGE_SLOT_TYPE_VALUE
 use $kernel::memory
 
 # CONSTS
@@ -307,7 +313,7 @@ proc validate_new_account
     # => [ACCT_VAULT_ROOT]
 
     # push empty vault root onto stack
-    exec.constants::get_empty_smt_root
+    push.EMPTY_SMT_ROOT
     # => [EMPTY_VAULT_ROOT, ACCT_VAULT_ROOT]
 
     assert_eqw.err=ERR_PROLOGUE_NEW_ACCOUNT_VAULT_MUST_BE_EMPTY
@@ -336,18 +342,18 @@ proc validate_new_account
             # => [slot_type]
 
             # assert the fungible faucet reserved slot type == value
-            exec.constants::get_storage_slot_type_value eq
+            push.STORAGE_SLOT_TYPE_VALUE eq
             assert.err=ERR_PROLOGUE_NEW_FUNGIBLE_FAUCET_RESERVED_SLOT_INVALID_TYPE
             # => []
         else
             # assert the non-fungible faucet reserved slot is initialized correctly (root of
             # empty SMT)
-            exec.constants::get_empty_smt_root
+            push.EMPTY_SMT_ROOT
             assert_eqw.err=ERR_PROLOGUE_NEW_NON_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_VALID_EMPTY_SMT
             # => [slot_type]
 
             # assert the non-fungible faucet reserved slot type == map
-            exec.constants::get_storage_slot_type_map eq
+            push.STORAGE_SLOT_TYPE_MAP eq
             assert.err=ERR_PROLOGUE_NEW_NON_FUNGIBLE_FAUCET_RESERVED_SLOT_INVALID_TYPE
             # => []
         end
@@ -560,7 +566,7 @@ proc authenticate_note
     # => [NOTE_COMMITMENT, note_index, NOTE_ROOT]
 
     # get the depth of the note tree
-    exec.constants::get_note_tree_depth movdn.4
+    push.NOTE_TREE_DEPTH movdn.4
     # => [NOTE_COMMITMENT, depth, note_index, NOTE_ROOT]
 
     # verify the note commitment
@@ -655,7 +661,7 @@ proc process_note_inputs_length
     # => [inputs_len, note_ptr]
 
     # validate the input length
-    dup exec.::$kernel::util::note::get_max_inputs_per_note lte
+    dup push.MAX_INPUTS_PER_NOTE lte
     assert.err=ERR_PROLOGUE_NUMBER_OF_NOTE_INPUTS_EXCEEDED_LIMIT
     # => [inputs_len, note_ptr]
 
@@ -684,7 +690,7 @@ proc process_note_assets
     adv_push.1
     # => [assets_count, note_ptr]
 
-    dup exec.constants::get_max_assets_per_note lte
+    dup push.MAX_ASSETS_PER_NOTE lte
     assert.err=ERR_PROLOGUE_NUMBER_OF_NOTE_ASSETS_EXCEEDS_LIMIT
     # => [assets_count, note_ptr]
 
@@ -978,7 +984,7 @@ proc process_input_notes_data
     # assert the number of input notes is within limits; since max number of input notes is
     # expected to be smaller than 2^32, we can use a more efficient u32 comparison
     dup
-    exec.constants::get_max_num_input_notes
+    push.MAX_INPUT_NOTES_PER_TX
     u32assert2.err=ERR_PROLOGUE_NUMBER_OF_INPUT_NOTES_EXCEEDS_LIMIT
     u32lte assert.err=ERR_PROLOGUE_NUMBER_OF_INPUT_NOTES_EXCEEDS_LIMIT
     # => [num_notes]

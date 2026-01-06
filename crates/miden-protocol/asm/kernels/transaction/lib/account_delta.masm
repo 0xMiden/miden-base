@@ -1,7 +1,7 @@
 use $kernel::account
 use $kernel::asset
 use $kernel::asset_vault
-use $kernel::constants
+use $kernel::constants::STORAGE_SLOT_TYPE_VALUE
 use $kernel::link_map
 use $kernel::memory
 use miden::core::crypto::hashes::rpo256
@@ -149,7 +149,7 @@ proc update_slot_delta
     # => [storage_slot_type, slot_idx, RATE, RATE, PERM]
 
     # check if slot is of type value
-    exec.constants::get_storage_slot_type_value eq
+    push.STORAGE_SLOT_TYPE_VALUE eq
     # => [is_value_slot_type, slot_idx, RATE, RATE, PERM]
 
     if.true

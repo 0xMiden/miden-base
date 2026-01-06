@@ -2,18 +2,4 @@
 # =================================================================================================
 
 # The maximum number of input values associated with a single note.
-const MAX_INPUTS_PER_NOTE=1024
-
-# PROCEDURES
-# =================================================================================================
-
-#! Returns the max allowed number of input values per note.
-#!
-#! Inputs:  []
-#! Outputs: [max_inputs_per_note]
-#!
-#! Where:
-#! - max_inputs_per_note is the max inputs per note.
-pub proc get_max_inputs_per_note
-    push.MAX_INPUTS_PER_NOTE
-end
+pub const MAX_INPUTS_PER_NOTE = 1024
