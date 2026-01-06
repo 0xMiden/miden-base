@@ -246,34 +246,39 @@ async fn test_build_recipient() -> anyhow::Result<()> {
     let exec_output = &tx_context.execute_code(&code).await?;
 
     // Create expected NoteInputs for each test case
-    let note_inputs_4 = NoteInputs::new(word_1.to_vec())?;
+    let inputs_4 = word_1.to_vec();
+    let note_inputs_4 = NoteInputs::new(inputs_4.clone())?;
 
     let mut inputs_5 = word_1.to_vec();
     inputs_5.push(word_2[0]);
-    let note_inputs_5 = NoteInputs::new(inputs_5)?;
+    let note_inputs_5 = NoteInputs::new(inputs_5.clone())?;
 
     let mut inputs_8 = word_1.to_vec();
     inputs_8.extend_from_slice(&word_2.to_vec());
-    let note_inputs_8 = NoteInputs::new(inputs_8)?;
+    let note_inputs_8 = NoteInputs::new(inputs_8.clone())?;
 
     // Create expected recipients and get their digests
     let recipient_4 = NoteRecipient::new(serial_num, note_script.clone(), note_inputs_4.clone());
     let recipient_5 = NoteRecipient::new(serial_num, note_script.clone(), note_inputs_5.clone());
     let recipient_8 = NoteRecipient::new(serial_num, note_script.clone(), note_inputs_8.clone());
 
-    for note_inputs in [note_inputs_4, note_inputs_5, note_inputs_8] {
-        let inputs_advice_map_key = note_inputs.commitment();
+    for note_inputs in [
+        (note_inputs_4, inputs_4.clone()),
+        (note_inputs_5, inputs_5.clone()),
+        (note_inputs_8, inputs_8.clone()),
+    ] {
+        let inputs_advice_map_key = note_inputs.0.commitment();
         assert_eq!(
             exec_output.advice.get_mapped_values(&inputs_advice_map_key).unwrap(),
-            note_inputs.to_elements(),
-            "advice entry with note inputs should contain the padded values"
+            note_inputs.1,
+            "advice entry with note inputs should contain the unpadded values"
         );
 
         let num_inputs_advice_map_key =
-            Hasher::hash_elements(note_inputs.commitment().as_elements());
+            Hasher::hash_elements(note_inputs.0.commitment().as_elements());
         assert_eq!(
             exec_output.advice.get_mapped_values(&num_inputs_advice_map_key).unwrap(),
-            &[Felt::from(note_inputs.num_values())],
+            &[Felt::from(note_inputs.0.num_values())],
             "advice entry with num note inputs should contain the original number of values"
         );
     }
