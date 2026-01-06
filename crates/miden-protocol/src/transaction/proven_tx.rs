@@ -810,7 +810,6 @@ mod tests {
         let ref_block_num = BlockNumber::from(1);
         let ref_block_commitment = Word::empty();
         let expiration_block_num = BlockNumber::from(2);
-        let proof = ExecutionProof::new_dummy();
 
         let tx = ProvenTransactionBuilder::new(
             account_id,

@@ -392,7 +392,6 @@ async fn block_building_fails_on_creating_account_with_duplicate_account_id_pref
                 genesis_block.commitment(),
                 FungibleAsset::mock(500).unwrap_fungible(),
                 BlockNumber::from(u32::MAX),
-                ExecutionProof::new_dummy(),
             )
             .account_update_details(AccountUpdateDetails::Private)
             .build()

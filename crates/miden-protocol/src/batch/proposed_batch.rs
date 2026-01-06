@@ -472,7 +472,6 @@ mod tests {
         let block_num = reference_block_header.block_num();
         let block_ref = reference_block_header.commitment();
         let expiration_block_num = reference_block_header.block_num() + 1;
-        let proof = ExecutionProof::new_dummy();
 
         let tx = ProvenTransactionBuilder::new(
             account_id,

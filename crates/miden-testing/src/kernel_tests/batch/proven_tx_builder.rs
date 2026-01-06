@@ -111,7 +111,6 @@ impl MockProvenTxBuilder {
             self.ref_block_commitment.unwrap_or_default(),
             self.fee,
             self.expiration_block_num,
-            ExecutionProof::new_dummy(),
         )
         .add_input_notes(self.input_notes.unwrap_or_default())
         .add_input_notes(self.nullifiers.unwrap_or_default())
