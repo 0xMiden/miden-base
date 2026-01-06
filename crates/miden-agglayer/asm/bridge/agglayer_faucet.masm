@@ -38,7 +38,7 @@ const ERR_INVALID_CLAIM_PROOF = "invalid claim proof"
 #! AggLayer bridge account to verify its claim data (asset, amount, recipient) inclusion against
 #! one of the Global Exit Roots in the bridge storage.
 #!
-#! Inputs:  [CLAIM_PROOF_RPO_COMMITMENT]
+#! Inputs:  [CLAIM_NOTE_RPO_COMMITMENT]
 #! Outputs: []
 #!
 #! Panics if:
@@ -48,16 +48,15 @@ const ERR_INVALID_CLAIM_PROOF = "invalid claim proof"
 #!
 #! Invocation: exec
 proc validate_claim
-
     # Check AdviceMap was not tampered with
     adv.push_mapval
-    # => [CLAIM_PROOF_RPO_COMMITMENT]
+    # => [CLAIM_NOTE_RPO_COMMITMENT]
 
-    push.0 push.142
-    # => [num_words, write_ptr, CLAIM_PROOF_RPO_COMMITMENT]
+    push.0 push.144
+    # => [num_words, write_ptr, CLAIM_NOTE_RPO_COMMITMENT]
 
-    # Validate CLAIM_PROOF_RPO_COMMITMENT is valid commitment to CLAIM data in AdviceMap
-    # Will panic if CLAIM_PROOF_RPO_COMMITMENT is not hash of data in AdviceMap 
+    # Validate CLAIM_NOTE_RPO_COMMITMENT is valid commitment to CLAIM data in AdviceMap
+    # Will panic if CLAIM_NOTE_RPO_COMMITMENT is not hash of data in AdviceMap 
     exec.mem::pipe_double_words_preimage_to_memory drop
     # => []
 
@@ -85,6 +84,13 @@ proc validate_claim
     # => []
 end
 
+# Inputs: []
+# Outputs: [U256[0], U256[1]]
+proc get_raw_claim_amount
+    padw mem_loadw_be.OUTPUT_NOTE_ASSET_AMOUNT_MEM_ADDR_0
+    padw mem_loadw_be.OUTPUT_NOTE_ASSET_AMOUNT_MEM_ADDR_1
+end
+
 # Inputs: [U256[0], U256[1]]
 # Outputs: [amount]
 proc scale_down_amount
@@ -102,7 +108,7 @@ end
 #! This procedure validates the rollup exit root Merkle Proof via FPI against the agglayer bridge,
 #! and if validation passes, mints the asset and creates an output note for the recipient.
 #!
-#! Inputs:  [CLAIM_PROOF_RPO_COMMITMENT, pad(12)]
+#! Inputs:  [CLAIM_NOTE_RPO_COMMITMENT, pad(12)]
 #! Outputs: [pad(16)]
 #!
 #! Where:
@@ -119,11 +125,7 @@ end
 pub proc claim
     # Validate claim proof (stubbed out)
     exec.validate_claim
-    # => [CLAIM_PROOF_RPO_COMMITMENT, pad(12)]
-
-    # Load note inputs into memory starting at address 0
-    push.0 exec.active_note::get_inputs drop drop
-    # => [pad(16)]
+    # => [CLAIM_NOTE_RPO_COMMITMENT, pad(12)]
 
     # Build P2ID output note
     push.P2ID_SCRIPT_ROOT[0..4]
@@ -135,7 +137,6 @@ pub proc claim
     push.P2ID_NOTE_NUM_INPUTS
     # => [num_output_note_inputs, SERIAL_NUM, SCRIPT_ROOT, pad(1)]
 
-    # TODO: need to convert vec [u64; 5] -> [prefix, suffix]
     exec.get_destination_account_id
     # => [account_id_prefix, account_id_suffix, num_output_note_inputs, SERIAL_NUM, SCRIPT_ROOT]
 
@@ -154,8 +155,7 @@ pub proc claim
     mem_load.OUTPUT_NOTE_TAG_MEM_ADDR
     # => [tag, aux, execution_hint, RECIPIENT, pad(8)]
 
-    padw mem_loadw_be.OUTPUT_NOTE_ASSET_AMOUNT_MEM_ADDR_0
-    padw mem_loadw_be.OUTPUT_NOTE_ASSET_AMOUNT_MEM_ADDR_1
+    exec.get_raw_claim_amount
     # => [AMOUNT[1], AMOUNT[0], tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
 
     # TODO: implement scale down logic; stubbed out for now

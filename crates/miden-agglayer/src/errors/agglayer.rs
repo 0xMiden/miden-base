@@ -16,8 +16,8 @@ pub const ERR_B2AGG_WRONG_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_s
 
 /// Error Message: "CLAIM's target account address and transaction address do not match"
 pub const ERR_CLAIM_TARGET_ACCT_MISMATCH: MasmError = MasmError::from_static_str("CLAIM's target account address and transaction address do not match");
-/// Error Message: "CLAIM note must have exactly 566 inputs"
-pub const ERR_CLAIM_WRONG_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_str("CLAIM note must have exactly 566 inputs");
+/// Error Message: "CLAIM note must have exactly 571 inputs"
+pub const ERR_CLAIM_WRONG_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_str("CLAIM note must have exactly 571 inputs");
 
 /// Error Message: "invalid claim proof"
 pub const ERR_INVALID_CLAIM_PROOF: MasmError = MasmError::from_static_str("invalid claim proof");

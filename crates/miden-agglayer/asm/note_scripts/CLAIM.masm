@@ -8,9 +8,11 @@ use miden::core::crypto::hashes::rpo256
 # CONSTANTS
 # =================================================================================================
 
+# Total number of CLAIM note inputs
 const CLAIM_NOTE_NUM_INPUTS = 571
-const CLAIM_PROOF_DATA_SIZE = 564
-const CLAIM_PROOF_DATA_WORDS = 570
+# Number of elements to hash for CLAIM_NOTE_RPO_COMMITMENT 
+# (padded with 5 zeros for even word count: 576/4 = 144 words)
+const CLAIM_NOTE_DATA_SIZE = 576
 
 const AGG_FAUCET_PREFIX_MEM_ADDR = 568
 const AGG_FAUCET_SUFFIX_MEM_ADDR = 569
@@ -19,7 +21,7 @@ const AGG_FAUCET_SUFFIX_MEM_ADDR = 569
 # =================================================================================================
 
 const ERR_CLAIM_TARGET_ACCT_MISMATCH = "CLAIM's target account address and transaction address do not match"
-const ERR_CLAIM_WRONG_NUMBER_OF_INPUTS = "CLAIM note must have exactly 566 inputs"
+const ERR_CLAIM_WRONG_NUMBER_OF_INPUTS = "CLAIM note must have exactly 571 inputs"
 
 # Inputs: []
 # Output: []
@@ -83,35 +85,29 @@ begin
     exec.assert_aggfaucet_is_consumer
     # => [pad(16)]
 
-    # Overwrite Agglayer faucet AccountId in memory with 0s
-    # This is to compute the CLAIM_PROOF_RPO_COMMITMENT
-    mem_storew_be.AGG_FAUCET_PREFIX_MEM_ADDR
-    # => [pad(16)]
-
-    # Compute the CLAIM_PROOF_RPO_COMMITMENT of the claim proof data
-    # Hash the proof data data (564 felts + four 0 felts so that word length is even)
-    # 568 / 4 = 142 Word values
-    # The proof data starts at memory address 0
-    push.CLAIM_PROOF_DATA_SIZE add.4 push.0
+    # Compute the CLAIM_NOTE_RPO_COMMITMENT of the claim proof data
+    push.CLAIM_NOTE_DATA_SIZE push.0
     # => [start_ptr, end_ptr, pad(16)]
 
+    # Hashing NoteInputs and inserting into AdivceMap
+    # to prevent calling active_note::get_inputs twice
     exec.rpo256::hash_elements
-    # => [CLAIM_PROOF_RPO_COMMITMENT, pad(16)]
+    # => [CLAIM_NOTE_RPO_COMMITMENT, pad(16)]
 
     # Prepare for insertion into AdviceMap
-    push.CLAIM_PROOF_DATA_SIZE add.4 push.0
-    # => [start_ptr, end_ptr, CLAIM_PROOF_RPO_COMMITMENT, pad(16)]
+    push.CLAIM_NOTE_DATA_SIZE push.0
+    # => [start_ptr, end_ptr, CLAIM_NOTE_RPO_COMMITMENT, pad(16)]
 
     movdn.5 movdn.5
-    # => [CLAIM_PROOF_RPO_COMMITMENT, start_ptr, end_ptr, pad(16)]
+    # => [CLAIM_NOTE_RPO_COMMITMENT, start_ptr, end_ptr, pad(16)]
 
     # Insert Asset Claim Proof Data into AdviceMap
     adv.insert_mem
-    # OS => [CLAIM_PROOF_RPO_COMMITMENT, start_ptr, end_ptr, pad(16)]
-    # AS => {CLAIM_PROOF_RPO_COMMITMENT: mem[start_ptr..end_ptr] }
+    # OS => [CLAIM_NOTE_RPO_COMMITMENT, start_ptr, end_ptr, pad(16)]
+    # AS => {CLAIM_NOTE_RPO_COMMITMENT: mem[start_ptr..end_ptr] }
 
     movup.5 drop movup.5 drop
-    # => [CLAIM_PROOF_RPO_COMMITMENT, pad(16)]
+    # => [CLAIM_NOTE_RPO_COMMITMENT, pad(16)]
 
     # Call the Aggfaucet Claim procedure
     call.agg_faucet::claim
