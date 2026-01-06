@@ -8,7 +8,6 @@ use alloc::vec::Vec;
 use miden_assembly::Library;
 use miden_assembly::utils::Deserializable;
 use miden_core::{Felt, FieldElement, Program, Word};
-use miden_protocol::NoteError;
 use miden_protocol::account::{
     Account,
     AccountBuilder,
@@ -32,6 +31,7 @@ use miden_protocol::note::{
     NoteTag,
     NoteType,
 };
+use miden_protocol::{Hasher, NoteError};
 use miden_standards::account::auth::NoAuth;
 use miden_standards::account::faucets::NetworkFungibleFaucet;
 use miden_utils_sync::LazyLock;
@@ -336,41 +336,42 @@ pub fn create_existing_agglayer_faucet(
 
 /// Parameters for creating a CLAIM note.
 ///
-/// This struct groups all the parameters needed to create a CLAIM note that instructs
-/// an agglayer faucet to validate and mint assets. The parameters match the Solidity
-/// bridge contract's claimAsset function signature.
+/// This struct groups all the parameters needed to create a CLAIM note that exactly
+/// matches the agglayer claimAsset function signature.
 pub struct ClaimNoteParams<'a, R: FeltRng> {
-    /// The account ID of the agglayer faucet that will process the claim
-    pub agg_faucet_id: AccountId,
-    /// The account ID of the note creator
-    pub sender: AccountId,
-    /// The account ID that will receive the P2ID output note
-    pub target_account_id: AccountId,
-    /// The amount of assets to be minted and transferred
-    pub amount: Felt,
-    /// The serial number for the output note
-    pub output_serial_num: Word,
-    /// Auxiliary data for the CLAIM note (verified against Global Exit Tree)
-    pub aux: Felt,
-    /// SMT proof data (570 felts) matching Solidity claimAsset smtProof parameter
-    pub smt_proof: Vec<Felt>,
-    /// Index for the claim (u32 as Felt)
-    pub index: Felt,
+    /// AGGLAYER claimAsset function parameters
+    /// SMT proof for local exit root (bytes32[_DEPOSIT_CONTRACT_TREE_DEPTH])
+    pub smt_proof_local_exit_root: Vec<Felt>,
+    /// SMT proof for rollup exit root (bytes32[_DEPOSIT_CONTRACT_TREE_DEPTH])
+    pub smt_proof_rollup_exit_root: Vec<Felt>,
+    /// Global index (uint256 as 8 u32 felts)
+    pub global_index: [Felt; 8],
     /// Mainnet exit root hash (bytes32 as 32-byte array)
     pub mainnet_exit_root: &'a [u8; 32],
     /// Rollup exit root hash (bytes32 as 32-byte array)
     pub rollup_exit_root: &'a [u8; 32],
-    /// Origin network identifier (u32 as Felt)
+    /// Origin network identifier (uint32)
     pub origin_network: Felt,
     /// Origin token address (address as 20-byte array)
     pub origin_token_address: &'a [u8; 20],
-    /// Destination network identifier (u32 as Felt)
+    /// Destination network identifier (uint32)
     pub destination_network: Felt,
     /// Destination address (address as 20-byte array)
     pub destination_address: &'a [u8; 20],
-    /// Additional metadata for the claim (fixed size of 8 felts)
+    /// Amount of tokens (uint256 as 8 u32 felts)
+    pub amount: [Felt; 8],
+    /// ABI encoded metadata (fixed size of 8 felts)
     pub metadata: [Felt; 8],
-    /// Random number generator for creating the serial number
+    /// CLAIM note required parameters
+    /// CLAIM note sender account id
+    pub claim_note_creator_account_id: AccountId,
+    /// Agglayer faucet AccountId
+    pub agglayer_faucet_account_id: AccountId,
+    /// Output P2ID note tag
+    pub output_note_tag: NoteTag,
+    /// TODO: remove and use destination_address: [u8; 20]
+    pub destination_account_id: AccountId,
+    /// RNG for creating CLAIM note serial number
     pub rng: &'a mut R,
 }
 
@@ -382,43 +383,29 @@ pub struct ClaimNoteParams<'a, R: FeltRng> {
 /// # Errors
 /// Returns an error if note creation fails.
 pub fn create_claim_note<R: FeltRng>(params: ClaimNoteParams<'_, R>) -> Result<Note, NoteError> {
-    // Validate SMT proof length
-    if params.smt_proof.len() != 570 {
+    // Validate SMT proof lengths - each should be 256 felts (32 bytes32 values * 8 u32 per bytes32)
+    if params.smt_proof_local_exit_root.len() != 256 {
         return Err(NoteError::other(alloc::format!(
-            "SMT proof must be exactly 570 felts, got {}",
-            params.smt_proof.len()
+            "SMT proof local exit root must be exactly 256 felts, got {}",
+            params.smt_proof_local_exit_root.len()
         )));
     }
+    if params.smt_proof_rollup_exit_root.len() != 256 {
+        return Err(NoteError::other(alloc::format!(
+            "SMT proof rollup exit root must be exactly 256 felts, got {}",
+            params.smt_proof_rollup_exit_root.len()
+        )));
+    }
+    // Create claim inputs matching exactly the agglayer claimAsset function parameters
+    let mut claim_inputs = vec![];
 
-    let claim_script = claim_script();
-    let serial_num = params.rng.draw_word();
+    // smtProofLocalExitRoot (256 felts) - first SMT proof parameter
+    claim_inputs.extend(params.smt_proof_local_exit_root);
+    // smtProofRollupExitRoot (256 felts) - second SMT proof parameter
+    claim_inputs.extend(params.smt_proof_rollup_exit_root);
 
-    let note_type = NoteType::Public;
-    let execution_hint = NoteExecutionHint::always();
-
-    let output_note_tag = NoteTag::from_account_id(params.target_account_id);
-
-    let mut claim_inputs = vec![
-        Felt::new(0),                                // execution_hint (always = 0)
-        params.aux,                                  // aux
-        Felt::from(output_note_tag),                 // tag
-        Felt::ZERO,                                  // padding to be word-aligned
-        params.output_serial_num[0],                 // SERIAL_NUM[0]
-        params.output_serial_num[1],                 // SERIAL_NUM[1]
-        params.output_serial_num[2],                 // SERIAL_NUM[2]
-        params.output_serial_num[3],                 // SERIAL_NUM[3]
-        params.target_account_id.suffix(),           // P2ID input: suffix
-        params.target_account_id.prefix().as_felt(), // P2ID input: prefix
-        params.agg_faucet_id.suffix(),               // faucet account suffix
-        params.agg_faucet_id.prefix().as_felt(),     // faucet account prefix
-    ];
-
-    // Add Solidity claimAsset function parameters in order:
-    // smtProof (570 felts) - comes first to match Solidity parameter order
-    claim_inputs.extend(params.smt_proof);
-
-    // index (u32 as Felt)
-    claim_inputs.push(params.index);
+    // globalIndex (uint256 as 8 u32 felts)
+    claim_inputs.extend(params.global_index);
 
     // mainnetExitRoot (bytes32 as 8 u32 felts)
     let mainnet_exit_root_felts = bytes32_to_felts(params.mainnet_exit_root);
@@ -428,33 +415,193 @@ pub fn create_claim_note<R: FeltRng>(params: ClaimNoteParams<'_, R>) -> Result<N
     let rollup_exit_root_felts = bytes32_to_felts(params.rollup_exit_root);
     claim_inputs.extend(rollup_exit_root_felts);
 
-    // originNetwork (u32 as Felt)
+    // originNetwork (uint32 as Felt)
     claim_inputs.push(params.origin_network);
 
     // originTokenAddress (address as 5 u32 felts)
     let origin_token_address_felts = ethereum_address_to_felts(params.origin_token_address);
     claim_inputs.extend(origin_token_address_felts);
 
-    // destinationNetwork (u32 as Felt)
+    // destinationNetwork (uint32 as Felt)
     claim_inputs.push(params.destination_network);
 
     // destinationAddress (address as 5 u32 felts)
-    let destination_address_felts = ethereum_address_to_felts(params.destination_address);
+    // Use AccountId prefix and suffix directly to get [prefix, suffix, 0, 0, 0]
+    // TODO: refactor to use destination_address: [u8; 20] instead once converstion function
+    // exists [u8; 20] -> [address as 5 Felts]
+    let destination_address_felts = vec![
+        params.destination_account_id.prefix().as_felt(),
+        params.destination_account_id.suffix(),
+        Felt::new(0),
+        Felt::new(0),
+        Felt::new(0),
+    ];
     claim_inputs.extend(destination_address_felts);
 
-    // amount to claim
-    claim_inputs.push(params.amount);
+    // amount (uint256 as 8 u32 felts)
+    claim_inputs.extend(params.amount);
 
-    // metadata
+    // metadata (fixed size of 8 felts)
     claim_inputs.extend(params.metadata);
 
+    // agglayer_faucet_account_id (2 felts: prefix and suffix)
+    claim_inputs.push(params.agglayer_faucet_account_id.prefix().as_felt());
+    claim_inputs.push(params.agglayer_faucet_account_id.suffix());
+
+    // output note tag
+    claim_inputs.push(params.output_note_tag.as_u32().into());
+
     let inputs = NoteInputs::new(claim_inputs)?;
-    let tag = NoteTag::from_account_id(params.agg_faucet_id);
-    let metadata = NoteMetadata::new(params.sender, note_type, tag, execution_hint, params.aux)?;
+
+    // Use a default tag since we don't have agg_faucet_id anymore
+    let tag = NoteTag::for_local_use_case(0, 0)?;
+
+    let claim_script = claim_script();
+    let serial_num = params.rng.draw_word();
+
+    let note_type = NoteType::Public;
+    let execution_hint = NoteExecutionHint::always();
+
+    // Use a default sender since we don't have sender anymore - create from destination address
+    let metadata = NoteMetadata::new(
+        params.claim_note_creator_account_id,
+        note_type,
+        tag,
+        execution_hint,
+        Felt::ZERO,
+    )?;
     let assets = NoteAssets::new(vec![])?;
     let recipient = NoteRecipient::new(serial_num, claim_script, inputs);
 
     Ok(Note::new(assets, metadata, recipient))
+}
+
+/// Computes the hash of the CLAIM note proof data (564 felts).
+/// This hash is used as the serial number for the output P2ID note.
+pub fn compute_claim_proof_hash(params: &ClaimNoteParams<'_, impl FeltRng>) -> Word {
+    let mut claim_proof_data = vec![];
+
+    // Add the first 564 felts (excluding agglayer_faucet_account_id and output_note_tag)
+    claim_proof_data.extend(params.smt_proof_local_exit_root.clone());
+    claim_proof_data.extend(params.smt_proof_rollup_exit_root.clone());
+    claim_proof_data.extend(params.global_index);
+
+    let mainnet_exit_root_felts = bytes32_to_felts(params.mainnet_exit_root);
+    claim_proof_data.extend(mainnet_exit_root_felts);
+
+    let rollup_exit_root_felts = bytes32_to_felts(params.rollup_exit_root);
+    claim_proof_data.extend(rollup_exit_root_felts);
+
+    claim_proof_data.push(params.origin_network);
+
+    let origin_token_address_felts = ethereum_address_to_felts(params.origin_token_address);
+    claim_proof_data.extend(origin_token_address_felts);
+
+    claim_proof_data.push(params.destination_network);
+
+    // Use the same destination address format as in create_claim_note: [prefix, suffix, 0, 0, 0]
+    // TODO: refactor to use destination_address: [u8; 20] instead once conversion function
+    // exists [u8; 20] -> [address as 5 Felts]
+    let destination_address_felts = vec![
+        params.destination_account_id.prefix().as_felt(),
+        params.destination_account_id.suffix(),
+        Felt::new(0),
+        Felt::new(0),
+        Felt::new(0),
+    ];
+    claim_proof_data.extend(destination_address_felts);
+
+    claim_proof_data.extend(params.amount);
+    claim_proof_data.extend(params.metadata);
+
+    claim_proof_data.extend(Word::default());
+
+    // Hash the 568 felts (564 + 4 padding)
+    Hasher::hash_elements(&claim_proof_data)
+}
+
+// CONVERSION FUNCTIONS
+// ================================================================================================
+
+/// Converts an AccountId (u32 prefix, u32 suffix) into a bytes20 EVM address.
+///
+/// The conversion uses the format: [prefix, suffix, 0, 0, 0] as 5 u32 values,
+/// then takes the first 20 bytes to form the EVM address.
+pub fn account_id_to_evm_address(account_id: AccountId) -> [u8; 20] {
+    let mut address = [0u8; 20];
+
+    // Convert prefix and suffix to u64, then to bytes (big-endian)
+    let prefix_u64 = account_id.prefix().as_felt().as_int();
+    let suffix_u64 = account_id.suffix().as_int();
+
+    let prefix_bytes = prefix_u64.to_be_bytes();
+    let suffix_bytes = suffix_u64.to_be_bytes();
+
+    // Copy last 4 bytes from prefix (u32 portion)
+    address[0..4].copy_from_slice(&prefix_bytes[4..8]);
+    // Copy last 4 bytes from suffix (u32 portion)
+    address[4..8].copy_from_slice(&suffix_bytes[4..8]);
+    // Remaining 12 bytes stay as zeros
+
+    address
+}
+
+/// Converts a bytes20 EVM address into an AccountId.
+///
+/// The conversion extracts the first 8 bytes as prefix (u32) and suffix (u32),
+/// with the remaining bytes ignored (treated as zeros).
+pub fn evm_address_to_account_id(address: &[u8; 20]) -> AccountId {
+    // Extract first 8 bytes and convert to u32 values
+    let mut prefix_bytes = [0u8; 8];
+    let mut suffix_bytes = [0u8; 8];
+
+    // Copy first 4 bytes to prefix (pad with zeros)
+    prefix_bytes[4..8].copy_from_slice(&address[0..4]);
+    // Copy next 4 bytes to suffix (pad with zeros)
+    suffix_bytes[4..8].copy_from_slice(&address[4..8]);
+
+    let prefix = u64::from_be_bytes(prefix_bytes);
+    let suffix = u64::from_be_bytes(suffix_bytes);
+
+    // Create AccountId from the extracted values
+    // Note: This creates a basic account ID - in practice you might want to use
+    // a specific account type and storage mode
+    AccountId::new_unchecked([Felt::new(prefix), Felt::new(suffix)])
+}
+
+/// Converts an AccountId to a bytes20 address that will produce [prefix, suffix, 0, 0, 0]
+/// when processed by ethereum_address_to_felts().
+///
+/// This function creates a 20-byte address where:
+/// - Bytes 0-3: AccountId prefix as u32 (big-endian)
+/// - Bytes 4-7: AccountId suffix as u32 (big-endian)
+/// - Bytes 8-19: Zero padding
+///
+/// When ethereum_address_to_felts() processes this address, it will extract:
+/// - u32[0] from bytes 0-3: prefix
+/// - u32[1] from bytes 4-7: suffix
+/// - u32[2] from bytes 8-11: zeros
+/// - u32[3] from bytes 12-15: zeros
+/// - u32[4] from bytes 16-19: zeros
+///
+/// This results in [prefix, suffix, 0, 0, 0] as desired.
+pub fn account_id_to_destination_bytes(account_id: AccountId) -> [u8; 20] {
+    let mut address = [0u8; 20];
+
+    // Get prefix and suffix as u64 values, then convert to u32
+    let prefix = account_id.prefix().as_felt().as_int() as u32;
+    let suffix = account_id.suffix().as_int() as u32;
+
+    // Pack prefix into first 4 bytes (u32, big-endian)
+    address[0..4].copy_from_slice(&prefix.to_be_bytes());
+
+    // Pack suffix into next 4 bytes (u32, big-endian)
+    address[4..8].copy_from_slice(&suffix.to_be_bytes());
+
+    // Remaining 12 bytes stay as zeros
+    // This will result in [prefix, suffix, 0, 0, 0] when processed by ethereum_address_to_felts()
+
+    address
 }
 
 // TESTING HELPERS
@@ -464,39 +611,64 @@ pub fn create_claim_note<R: FeltRng>(params: ClaimNoteParams<'_, R>) -> Result<N
 /// Type alias for the complex return type of claim_note_test_inputs.
 ///
 /// Contains:
-/// - smt_proof: Vec<Felt> (570 felts)
-/// - index: Felt
+/// - smt_proof_local_exit_root: Vec<Felt> (256 felts)
+/// - smt_proof_rollup_exit_root: Vec<Felt> (256 felts)
+/// - global_index: [Felt; 8]
 /// - mainnet_exit_root: [u8; 32]
 /// - rollup_exit_root: [u8; 32]
 /// - origin_network: Felt
 /// - origin_token_address: [u8; 20]
 /// - destination_network: Felt
 /// - destination_address: [u8; 20]
+/// - amount: [Felt; 8]
 /// - metadata: [Felt; 8]
-pub type ClaimNoteTestInputs =
-    (Vec<Felt>, Felt, [u8; 32], [u8; 32], Felt, [u8; 20], Felt, [u8; 20], [Felt; 8]);
+pub type ClaimNoteTestInputs = (
+    Vec<Felt>,
+    Vec<Felt>,
+    [Felt; 8],
+    [u8; 32],
+    [u8; 32],
+    Felt,
+    [u8; 20],
+    Felt,
+    [u8; 20],
+    [Felt; 8],
+    [Felt; 8],
+);
 
 #[cfg(any(feature = "testing", test))]
 /// Returns dummy test inputs for creating CLAIM notes.
 ///
 /// This is a convenience function for testing that provides realistic dummy data
-/// for all the Solidity bridge inputs.
+/// for all the agglayer claimAsset function inputs.
 ///
 /// # Returns
 /// A tuple containing:
-/// - smt_proof: Vec<Felt> (570 felts)
-/// - index: Felt
+/// - smt_proof_local_exit_root: Vec<Felt> (256 felts)
+/// - smt_proof_rollup_exit_root: Vec<Felt> (256 felts)
+/// - global_index: [Felt; 8]
 /// - mainnet_exit_root: [u8; 32]
 /// - rollup_exit_root: [u8; 32]
 /// - origin_network: Felt
 /// - origin_token_address: [u8; 20]
 /// - destination_network: Felt
 /// - destination_address: [u8; 20]
+/// - amount: [Felt; 8]
 /// - metadata: [Felt; 8]
 pub fn claim_note_test_inputs() -> ClaimNoteTestInputs {
-    // Create SMT proof with 570 felts (matching Solidity smtProof parameter)
-    let smt_proof = vec![Felt::new(0); 570];
-    let index = Felt::new(12345);
+    // Create SMT proofs with 256 felts each (32 bytes32 values * 8 u32 per bytes32)
+    let smt_proof_local_exit_root = vec![Felt::new(0); 256];
+    let smt_proof_rollup_exit_root = vec![Felt::new(0); 256];
+    let global_index = [
+        Felt::new(12345),
+        Felt::new(0),
+        Felt::new(0),
+        Felt::new(0),
+        Felt::new(0),
+        Felt::new(0),
+        Felt::new(0),
+        Felt::new(0),
+    ];
 
     let mainnet_exit_root: [u8; 32] = [
         0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xf0, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,
@@ -524,16 +696,29 @@ pub fn claim_note_test_inputs() -> ClaimNoteTestInputs {
         0x99, 0xaa, 0xbb, 0xcc, 0xdd,
     ];
 
+    let amount = [
+        Felt::new(1000),
+        Felt::new(0),
+        Felt::new(0),
+        Felt::new(0),
+        Felt::new(0),
+        Felt::new(0),
+        Felt::new(0),
+        Felt::new(0),
+    ];
     let metadata: [Felt; 8] = [Felt::new(0); 8];
+
     (
-        smt_proof,
-        index,
+        smt_proof_local_exit_root,
+        smt_proof_rollup_exit_root,
+        global_index,
         mainnet_exit_root,
         rollup_exit_root,
         origin_network,
         origin_token_address,
         destination_network,
         destination_address,
+        amount,
         metadata,
     )
 }

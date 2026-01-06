@@ -8,24 +8,24 @@ use miden::core::crypto::hashes::rpo256
 # CONSTANTS
 # =================================================================================================
 
-const CLAIM_NOTE_NUM_INPUTS = 620  # Updated to match new Solidity claimAsset inputs
-const CLAIM_PROOF_DATA_SIZE = 608  # Claim Data + SMT proof is 604 felts
-const CLAIM_PROOF_DATA_WORDS = 570  # 570 felts directly
+const CLAIM_NOTE_NUM_INPUTS = 567
+const CLAIM_PROOF_DATA_SIZE = 564
+const CLAIM_PROOF_DATA_WORDS = 570
 
-const AGG_FAUCET_PREFIX = 11
-const AGG_FAUCET_SUFFIX = 10
+const AGG_FAUCET_PREFIX_MEM_ADDR = 564
+const AGG_FAUCET_SUFFIX_MEM_ADDR = 565
 
 # ERRORS
 # =================================================================================================
 
 const ERR_CLAIM_TARGET_ACCT_MISMATCH = "CLAIM's target account address and transaction address do not match"
-const ERR_CLAIM_WRONG_NUMBER_OF_INPUTS = "CLAIM note must have exactly 614 inputs"
+const ERR_CLAIM_WRONG_NUMBER_OF_INPUTS = "CLAIM note must have exactly 566 inputs"
 
 # Inputs: []
 # Output: []
 proc assert_aggfaucet_is_consumer
     # Load agglayer faucet ID (assumes active_note::get_inputs has been called)
-    mem_load.AGG_FAUCET_SUFFIX mem_load.AGG_FAUCET_PREFIX
+    mem_load.AGG_FAUCET_SUFFIX_MEM_ADDR mem_load.AGG_FAUCET_PREFIX_MEM_ADDR
     # => [agg_faucet_prefix, agg_faucet_suffix]
 
     exec.active_account::get_id
@@ -45,23 +45,22 @@ end
 #! Inputs:  [ARGS, pad(12)]
 #! Outputs: [pad(16)]
 #!
-#! Current note inputs are assumed to be as follows:
-#! - execution_hint: Execution hint for the output note (always 0)
-#! - aux: Auxiliary data for the output note
-#! - tag: Note tag for the output note
-#! - amount: The amount to claim
-#! - SERIAL_NUM: Serial number of the output note (4 elements)
-#! - target_account_id: P2ID recipient account ID (suffix, prefix)
-#! - agg_faucet_id: Agglayer faucet account ID (suffix, prefix)
-#! - smtProof: SMT proof data (570 felts) matching Solidity claimAsset parameter
-#! - index: Index for the claim (u32 as Felt)
-#! - mainnetExitRoot: Mainnet exit root hash (8 felts)
-#! - rollupExitRoot: Rollup exit root hash (8 felts)
-#! - originNetwork: Origin network identifier (1 felt)
-#! - originTokenAddress: Origin token address (5 felts)
-#! - destinationNetwork: Destination network identifier (1 felt)
-#! - destinationAddress: Destination address (5 felts)
-#! - metadata: Additional metadata (variable length)
+#! Current note inputs match exactly the agglayer claimAsset function parameters:
+#!
+#! NoteInputs layout (567 felts total):
+#! - smtProofLocalExitRoot      [0..255]  : SMT proof for local exit root (256 felts, bytes32[_DEPOSIT_CONTRACT_TREE_DEPTH])
+#! - smtProofRollupExitRoot     [256..511]: SMT proof for rollup exit root (256 felts, bytes32[_DEPOSIT_CONTRACT_TREE_DEPTH])
+#! - globalIndex                [512..519]: Global index (8 felts, uint256 as 8 u32 felts)
+#! - mainnetExitRoot            [520..527]: Mainnet exit root hash (8 felts, bytes32 as 8 u32 felts)
+#! - rollupExitRoot             [528..535]: Rollup exit root hash (8 felts, bytes32 as 8 u32 felts)
+#! - originNetwork              [536]     : Origin network identifier (1 felt, uint32)
+#! - originTokenAddress         [537..541]: Origin token address (5 felts, address as 5 u32 felts)
+#! - destinationNetwork         [542]     : Destination network identifier (1 felt, uint32)
+#! - destinationAddress         [543..547]: Destination address (5 felts, address as 5 u32 felts)
+#! - amount                     [548..555]: Amount of tokens (8 felts, uint256 as 8 u32 felts)
+#! - metadata                   [556..563]: ABI encoded metadata (8 felts, fixed size)
+#! - agglayer_faucet_account_id [564..565]: Agglayer faucet account ID (2 felts, prefix and suffix)
+#! - output note tag            [566]     : P2ID output note tag
 #!
 #! Panics if:
 #! - account does not expose claim procedure.
@@ -75,7 +74,7 @@ begin
     push.0 exec.active_note::get_inputs
     # => [total_inputs, inputs_ptr, pad(16)]
 
-    # Verify we have exactly 586 inputs
+    # Verify we have exactly 566 inputs
     push.CLAIM_NOTE_NUM_INPUTS eq assert.err=ERR_CLAIM_WRONG_NUMBER_OF_INPUTS drop
     # => [pad(16)]
 
@@ -83,17 +82,24 @@ begin
     exec.assert_aggfaucet_is_consumer
     # => [pad(16)]
 
-    # Compute the RPO_COMMITMENT of the claim proof data
-    # Hash the proof data data (600 Felts starting at offset 12)
-    # The proof data starts at memory address 12
-    push.608 push.12
+    # Overwrite Agglayer faucet AccountId in memory with 0s
+    # This is to compute the CLAIM_PROOF_RPO_COMMITMENT
+    mem_storew_be.AGG_FAUCET_PREFIX_MEM_ADDR
+    # => [pad(16)]
+
+    # Compute the CLAIM_PROOF_RPO_COMMITMENT of the claim proof data
+    # Hash the proof data data (564 felts + four 0 felts so that word length is even)
+    # 568 / 4 = 142 Word values
+    # The proof data starts at memory address 0
+    push.CLAIM_PROOF_DATA_SIZE add.4 push.0
     # => [start_ptr, end_ptr, pad(16)]
 
     exec.rpo256::hash_elements
     # => [CLAIM_PROOF_RPO_COMMITMENT, pad(16)]
 
     # Prepare for insertion into AdviceMap
-    push.CLAIM_PROOF_DATA_SIZE add.12 push.12
+
+    push.CLAIM_PROOF_DATA_SIZE add.4 push.0
     # => [start_ptr, end_ptr, CLAIM_PROOF_RPO_COMMITMENT, pad(16)]
 
     movdn.5 movdn.5
@@ -103,6 +109,9 @@ begin
     adv.insert_mem
     # OS => [CLAIM_PROOF_RPO_COMMITMENT, start_ptr, end_ptr, pad(16)]
     # AS => {CLAIM_PROOF_RPO_COMMITMENT: mem[start_ptr..end_ptr] }
+
+    movup.5 drop movup.5 drop
+    # => [CLAIM_PROOF_RPO_COMMITMENT, pad(16)]
 
     # Call the Aggfaucet Claim procedure
     call.agg_faucet::claim

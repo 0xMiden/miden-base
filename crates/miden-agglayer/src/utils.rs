@@ -20,6 +20,7 @@ pub fn felts_to_u256_bytes(limbs: [Felt; 8]) -> [u8; 32] {
 
     bytes
 }
+
 /// Converts an Ethereum address (20 bytes) into a vector of 5 Felt values.
 ///
 /// An Ethereum address is 20 bytes, which we split into 5 u32 values (4 bytes each).
