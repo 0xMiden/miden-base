@@ -331,8 +331,10 @@ impl AccountId {
     ///
     /// Returns an error if the string cannot be parsed as either hex or bech32 format.
     pub fn parse(s: &str) -> Result<(Self, Option<NetworkId>), AccountIdError> {
-        if s.starts_with("0x") || s.starts_with("0X") {
-            Self::from_hex(s).map(|id| (id, None))
+        if let Some(hex_digits) = s.strip_prefix("0x").or_else(|| s.strip_prefix("0X")) {
+            // Normalize to lowercase "0x" prefix for from_hex
+            let normalized = format!("0x{hex_digits}");
+            Self::from_hex(&normalized).map(|id| (id, None))
         } else {
             Self::from_bech32(s).map(|(network_id, id)| (id, Some(network_id)))
         }
@@ -698,15 +700,27 @@ mod tests {
     }
 
     #[test]
+    fn parse_hex_string_uppercase_prefix() {
+        let account_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).unwrap();
+        // Use "0X" prefix (uppercase X) with uppercase hex digits
+        let hex_string = account_id.to_hex();
+        let hex_string = format!("0X{}", hex_string[2..].to_uppercase());
+
+        let (parsed_id, network_id) = AccountId::parse(&hex_string).unwrap();
+
+        assert_eq!(parsed_id, account_id);
+        assert!(network_id.is_none());
+    }
+
+    #[test]
     fn parse_bech32_string() {
         let account_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).unwrap();
-        let network_id = NetworkId::Mainnet;
-        let bech32_string = account_id.to_bech32(network_id.clone());
+        let bech32_string = account_id.to_bech32(NetworkId::Mainnet);
 
         let (parsed_id, parsed_network_id) = AccountId::parse(&bech32_string).unwrap();
 
         assert_eq!(parsed_id, account_id);
-        assert_eq!(parsed_network_id, Some(network_id));
+        assert_eq!(parsed_network_id, Some(NetworkId::Mainnet));
     }
 
     #[test]
