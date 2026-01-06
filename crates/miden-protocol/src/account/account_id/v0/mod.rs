@@ -6,7 +6,7 @@ use core::hash::Hash;
 
 use bech32::Bech32m;
 use bech32::primitives::decode::{ByteIter, CheckedHrpstring};
-use miden_core::PrimeField64;
+use miden_core::field::PrimeField64;
 use miden_crypto::utils::hex_to_bytes;
 pub use prefix::AccountIdPrefixV0;
 

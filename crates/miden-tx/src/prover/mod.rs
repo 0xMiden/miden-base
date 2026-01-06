@@ -155,9 +155,6 @@ impl LocalTransactionProver {
 
         // Generate STARK proof using unified miden-prover
         let proof_bytes = match hash_fn {
-            HashFunction::Blake3_192 => {
-                panic!("Blake3_192 is not yet supported")
-            },
             HashFunction::Blake3_256 => {
                 let config = miden_air::config::create_blake3_256_config();
                 let proof =
@@ -332,7 +329,7 @@ impl LocalTransactionProver {
             partial_account,
             ref_block.block_num(),
             ref_block.commitment(),
-            ExecutionProof::new(Vec::new(), HashFunction::Blake3_192, Vec::new()),
+            ExecutionProof::new(Vec::new(), HashFunction::Blake3_256, Vec::new()),
         )
     }
 }

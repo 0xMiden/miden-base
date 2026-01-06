@@ -43,7 +43,7 @@ miden-crypto          = { workspace = true }
 miden-mast-package    = { workspace = true }
 miden-processor       = { workspace = true }
 miden-protocol-macros = { workspace = true }
-miden-test-utils      = { branch = "al-migrate-p3-ver2", git = "https://github.com/0xPolygonMiden/miden-vm", optional = true }
+miden-test-utils      = { branch = "next", git = "https://github.com/0xPolygonMiden/miden-vm", optional = true }
 miden-utils-sync      = { workspace = true }
 miden-verifier        = { workspace = true }
 

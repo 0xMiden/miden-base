@@ -2,7 +2,7 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::fmt::Display;
 
-use miden_core::PrimeField64;
+use miden_core::field::PrimeField64;
 use miden_processor::MastNodeExt;
 
 use super::Felt;

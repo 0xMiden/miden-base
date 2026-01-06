@@ -2,8 +2,9 @@ use alloc::string::{String, ToString};
 use core::fmt;
 use core::hash::Hash;
 
+use miden_core::Felt;
+use miden_core::field::PrimeField64;
 use miden_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
-use miden_core::{Felt, PrimeField64};
 use miden_processor::DeserializationError;
 
 use crate::account::account_id::v0::{self, validate_prefix};

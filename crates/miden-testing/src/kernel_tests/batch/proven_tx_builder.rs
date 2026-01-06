@@ -112,7 +112,7 @@ impl MockProvenTxBuilder {
             self.ref_block_commitment.unwrap_or_default(),
             self.fee,
             self.expiration_block_num,
-            ExecutionProof::new(Vec::new(), HashFunction::Blake3_192, Vec::new()),
+            ExecutionProof::new(Vec::new(), HashFunction::Blake3_256, Vec::new()),
         )
         .add_input_notes(self.input_notes.unwrap_or_default())
         .add_input_notes(self.nullifiers.unwrap_or_default())

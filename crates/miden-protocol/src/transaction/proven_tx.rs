@@ -817,7 +817,7 @@ mod tests {
         let ref_block_num = BlockNumber::from(1);
         let ref_block_commitment = Word::empty();
         let expiration_block_num = BlockNumber::from(2);
-        let proof = ExecutionProof::new(Vec::new(), HashFunction::Blake3_192, Vec::new());
+        let proof = ExecutionProof::new(Vec::new(), HashFunction::Blake3_256, Vec::new());
 
         let tx = ProvenTransactionBuilder::new(
             account_id,

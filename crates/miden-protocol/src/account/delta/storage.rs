@@ -2,7 +2,7 @@ use alloc::collections::BTreeMap;
 use alloc::collections::btree_map::Entry;
 use alloc::vec::Vec;
 
-use miden_core::PrimeField64;
+use miden_core::field::PrimeField64;
 
 use super::{
     AccountDeltaError,

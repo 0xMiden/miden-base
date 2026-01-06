@@ -1,7 +1,7 @@
 use alloc::string::{String, ToString};
 use core::fmt;
 
-use miden_core::PrimeField64;
+use miden_core::field::PrimeField64;
 
 use super::v0;
 use crate::Felt;
