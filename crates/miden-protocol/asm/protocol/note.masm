@@ -33,9 +33,6 @@ const ERR_PROLOGUE_NOTE_INPUTS_LEN_EXCEEDED_LIMIT="number of note inputs exceede
 #!
 #! Invocation: exec
 pub proc compute_inputs_commitment
-    # check that number of inputs is less than or equal to MAX_INPUTS_PER_NOTE
-    dup.1 push.MAX_INPUTS_PER_NOTE u32assert2.err=ERR_PROLOGUE_NOTE_INPUTS_LEN_EXCEEDED_LIMIT
-    u32lte assert.err=ERR_PROLOGUE_NOTE_INPUTS_LEN_EXCEEDED_LIMIT
     # => [inputs_ptr, num_inputs]
 
     # compute the inputs commitment
@@ -46,9 +43,6 @@ pub proc compute_inputs_commitment
     exec.rpo256::pad_and_hash_elements
     # => [INPUTS_COMMITMENT]
 end
-
-# Re-export the max inputs per note constant.
-pub use ::miden::protocol::util::note::MAX_INPUTS_PER_NOTE
 
 #! Writes the assets data stored in the advice map to the memory specified by the provided
 #! destination pointer.
