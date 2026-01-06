@@ -4,3 +4,4 @@
 
 pub use ::miden::standards::faucets::network_fungible::distribute
 pub use ::miden::standards::faucets::network_fungible::burn
+pub use ::miden::standards::faucets::network_fungible::transfer_ownership

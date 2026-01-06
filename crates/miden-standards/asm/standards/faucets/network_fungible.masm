@@ -1,6 +1,7 @@
 use miden::protocol::active_account
 use miden::protocol::account_id
 use miden::protocol::active_note
+use miden::protocol::native_account
 use miden::standards::faucets
 use miden::standards::faucets::basic_fungible
 
@@ -8,10 +9,17 @@ use miden::standards::faucets::basic_fungible
 # ================================================================================================
 
 # The slot in this component's storage layout where the owner config is stored.
-const OWNER_CONFIG_SLOT=word("miden::standards::network_fungible_faucet::owner_config")
+# This must match the slot name used in the Rust code.
+const OWNER_CONFIG_SLOT=word("miden::standards::utils::access::ownable::owner_config")
 
 # ERRORS
+# ===============================================================================================
+
+const ERR_ONLY_OWNER="note sender is not the owner"
 const ERR_ONLY_OWNER_CAN_MINT="note sender is not the owner of the faucet who can mint assets"
+
+# INTERNAL PROCEDURES
+# ================================================================================================
 
 #! Checks if the note sender is the owner of this faucet.
 #!
@@ -28,10 +36,54 @@ proc is_owner
     # => [sender_prefix, sender_suffix, owner_prefix, owner_suffix, 0, 0]
 
     exec.account_id::is_equal
-    # => [are_equal, 0, 0]
+    # => [is_id_equal, 0, 0]
 
+    # Clean up the zeros left from get_item
     movdn.2 drop drop
     # => [is_owner]
+end
+
+#! Checks if the active account ID is the owner.
+#!
+#! This is used when calling from transaction scripts where there's no note sender.
+#!
+#! Inputs:  []
+#! Outputs: [is_owner]
+#!
+#! Where:
+#! - is_owner is 1 if the active account is the owner, 0 otherwise.
+proc is_owner_from_account
+    push.OWNER_CONFIG_SLOT[0..2] exec.active_account::get_item
+    # => [owner_prefix, owner_suffix, 0, 0]
+
+    exec.active_account::get_id
+    # => [account_id_prefix, account_id_suffix, owner_prefix, owner_suffix, 0, 0]
+
+    exec.account_id::is_equal
+    # => [is_id_equal, 0, 0]
+
+    # Clean up the zeros left from get_item
+    movdn.2 drop drop
+    # => [is_owner]
+end
+
+# PUBLIC INTERFACE
+# ================================================================================================
+
+
+#! Returns the owner AccountId.
+#!
+#! Inputs:  []
+#! Outputs: [owner_prefix, owner_suffix]
+#!
+#! Invocation: call
+pub proc get_owner
+
+    push.OWNER_CONFIG_SLOT[0..2] exec.active_account::get_item
+    # => [owner_prefix, owner_suffix, 0, 0]
+
+    drop drop
+    # => [owner_prefix, owner_suffix]
 end
 
 #! Distributes freshly minted fungible assets to the provided recipient.
@@ -83,3 +135,146 @@ end
 #!
 #! Invocation: call
 pub use faucets::burn
+
+#! Transfers ownership to a new account.
+#!
+#! Can only be called by the current owner.
+#!
+#! Inputs:  [new_owner_prefix, new_owner_suffix, pad(14)]
+#! Outputs: [pad(16)]
+#!
+#! Where:
+#! - new_owner_{prefix, suffix} are the prefix and suffix felts of the new owner AccountId.
+#!
+#! Panics if:
+#! - the note sender is not the owner.
+#!
+#! Invocation: call
+pub proc transfer_ownership
+    # Check that the caller is the owner
+    exec.is_owner
+    # => [is_owner, new_owner_prefix, new_owner_suffix, pad(14)]
+
+    assert.err=ERR_ONLY_OWNER
+    # => [new_owner_prefix, new_owner_suffix, pad(14)]
+
+    # Build Word format: [0, 0, new_owner_suffix, new_owner_prefix]
+    # Stack: [new_owner_prefix, new_owner_suffix, pad(14)]
+    push.0 push.0
+    # => [0, 0, new_owner_prefix, new_owner_suffix, pad(14)]
+
+    movup.4 movup.4
+    # => [new_owner_prefix, new_owner_suffix, 0, 0, pad(14)]
+
+    swap.2 swap.3
+    # => [new_owner_suffix, new_owner_prefix, 0, 0, pad(14)]
+
+    swap.2 swap.3
+    # => [0, 0, new_owner_suffix, new_owner_prefix, pad(14)]
+
+    # Prepare slot and call set_item
+    push.OWNER_CONFIG_SLOT[0..2]
+    # => [slot_prefix, slot_suffix, 0, 0, new_owner_suffix, new_owner_prefix, pad(14)]
+
+    movup.4 movup.4 movup.4 movup.4
+    # => [new_owner_prefix, new_owner_suffix, 0, 0, slot_prefix, slot_suffix, pad(14)]
+
+    swap.4 swap.5
+    # => [slot_prefix, slot_suffix, new_owner_prefix, new_owner_suffix, 0, 0, pad(14)]
+
+    swap.2 swap.3
+    # => [0, 0, new_owner_prefix, new_owner_suffix, slot_prefix, slot_suffix, pad(14)]
+
+    swap.2 swap.3
+    # => [new_owner_suffix, new_owner_prefix, 0, 0, slot_prefix, slot_suffix, pad(14)]
+
+    swap.2 swap.3
+    # => [0, 0, new_owner_suffix, new_owner_prefix, slot_prefix, slot_suffix, pad(14)]
+
+    movup.4 movup.4
+    # => [slot_prefix, slot_suffix, 0, 0, new_owner_suffix, new_owner_prefix, pad(14)]
+
+    exec.native_account::set_item
+    # => [OLD_OWNER_WORD, pad(14)]
+
+    # Clean up OLD_OWNER_WORD (4 felts)
+    dropw
+    # => [pad(14)]
+
+    # Return pad(16)
+    push.0 push.0
+    # => [pad(16)]
+end
+
+#! Transfers ownership to a new account (from transaction script context).
+#!
+#! Can only be called by the current owner (checked via active account ID).
+#!
+#! This version is designed to be called from transaction scripts where there's no note sender.
+#! It checks the active account ID instead of the note sender.
+#!
+#! Inputs:  [new_owner_prefix, new_owner_suffix, pad(14)]
+#! Outputs: [pad(16)]
+#!
+#! Where:
+#! - new_owner_{prefix, suffix} are the prefix and suffix felts of the new owner AccountId.
+#!
+#! Panics if:
+#! - the active account is not the owner.
+#!
+#! Invocation: call
+pub proc transfer_ownership_from_account
+    # Check that the active account is the owner
+    exec.is_owner_from_account
+    # => [is_owner, new_owner_prefix, new_owner_suffix, pad(14)]
+
+    assert.err=ERR_ONLY_OWNER
+    # => [new_owner_prefix, new_owner_suffix, pad(14)]
+
+    # Build Word format: [0, 0, new_owner_suffix, new_owner_prefix]
+    # Stack: [new_owner_prefix, new_owner_suffix, pad(14)]
+    push.0 push.0
+    # => [0, 0, new_owner_prefix, new_owner_suffix, pad(14)]
+
+    movup.4 movup.4
+    # => [new_owner_prefix, new_owner_suffix, 0, 0, pad(14)]
+
+    swap.2 swap.3
+    # => [new_owner_suffix, new_owner_prefix, 0, 0, pad(14)]
+
+    swap.2 swap.3
+    # => [0, 0, new_owner_suffix, new_owner_prefix, pad(14)]
+
+    # Prepare slot and call set_item
+    push.OWNER_CONFIG_SLOT[0..2]
+    # => [slot_prefix, slot_suffix, 0, 0, new_owner_suffix, new_owner_prefix, pad(14)]
+
+    movup.4 movup.4 movup.4 movup.4
+    # => [new_owner_prefix, new_owner_suffix, 0, 0, slot_prefix, slot_suffix, pad(14)]
+
+    swap.4 swap.5
+    # => [slot_prefix, slot_suffix, new_owner_prefix, new_owner_suffix, 0, 0, pad(14)]
+
+    swap.2 swap.3
+    # => [0, 0, new_owner_prefix, new_owner_suffix, slot_prefix, slot_suffix, pad(14)]
+
+    swap.2 swap.3
+    # => [new_owner_suffix, new_owner_prefix, 0, 0, slot_prefix, slot_suffix, pad(14)]
+
+    swap.2 swap.3
+    # => [0, 0, new_owner_suffix, new_owner_prefix, slot_prefix, slot_suffix, pad(14)]
+
+    movup.4 movup.4
+    # => [slot_prefix, slot_suffix, 0, 0, new_owner_suffix, new_owner_prefix, pad(14)]
+
+    exec.native_account::set_item
+    # => [OLD_OWNER_WORD, pad(14)]
+
+    # Clean up OLD_OWNER_WORD (4 felts)
+    dropw
+    # => [pad(14)]
+
+    # Return pad(16)
+    push.0 push.0
+    # => [pad(16)]
+end
