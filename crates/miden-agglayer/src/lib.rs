@@ -340,9 +340,9 @@ pub fn create_existing_agglayer_faucet(
 /// matches the agglayer claimAsset function signature.
 pub struct ClaimNoteParams<'a, R: FeltRng> {
     /// AGGLAYER claimAsset function parameters
-    /// SMT proof for local exit root (bytes32[_DEPOSIT_CONTRACT_TREE_DEPTH])
+    /// SMT proof for local exit root (bytes32\[_DEPOSIT_CONTRACT_TREE_DEPTH\])
     pub smt_proof_local_exit_root: Vec<Felt>,
-    /// SMT proof for rollup exit root (bytes32[_DEPOSIT_CONTRACT_TREE_DEPTH])
+    /// SMT proof for rollup exit root (bytes32\[_DEPOSIT_CONTRACT_TREE_DEPTH\])
     pub smt_proof_rollup_exit_root: Vec<Felt>,
     /// Global index (uint256 as 8 u32 felts)
     pub global_index: [Felt; 8],
@@ -539,11 +539,11 @@ pub fn evm_address_to_account_id(address: &[u8; 20]) -> AccountId {
 /// - Bytes 8-19: Zero padding
 ///
 /// When ethereum_address_to_felts() processes this address, it will extract:
-/// - u32[0] from bytes 0-3: prefix
-/// - u32[1] from bytes 4-7: suffix
-/// - u32[2] from bytes 8-11: zeros
-/// - u32[3] from bytes 12-15: zeros
-/// - u32[4] from bytes 16-19: zeros
+/// - u32\[0\] from bytes 0-3: prefix
+/// - u32\[1\] from bytes 4-7: suffix
+/// - u32\[2\] from bytes 8-11: zeros
+/// - u32\[3\] from bytes 12-15: zeros
+/// - u32\[4\] from bytes 16-19: zeros
 ///
 /// This results in [prefix, suffix, 0, 0, 0] as desired.
 pub fn account_id_to_destination_bytes(account_id: AccountId) -> [u8; 20] {
@@ -572,8 +572,8 @@ pub fn account_id_to_destination_bytes(account_id: AccountId) -> [u8; 20] {
 /// Type alias for the complex return type of claim_note_test_inputs.
 ///
 /// Contains:
-/// - smt_proof_local_exit_root: Vec<Felt> (256 felts)
-/// - smt_proof_rollup_exit_root: Vec<Felt> (256 felts)
+/// - smt_proof_local_exit_root: `Vec<Felt>` (256 felts)
+/// - smt_proof_rollup_exit_root: `Vec<Felt>` (256 felts)
 /// - global_index: [Felt; 8]
 /// - mainnet_exit_root: [u8; 32]
 /// - rollup_exit_root: [u8; 32]
@@ -609,8 +609,8 @@ pub type ClaimNoteTestInputs = (
 ///
 /// # Returns
 /// A tuple containing:
-/// - smt_proof_local_exit_root: Vec<Felt> (256 felts)
-/// - smt_proof_rollup_exit_root: Vec<Felt> (256 felts)
+/// - smt_proof_local_exit_root: `Vec<Felt>` (256 felts)
+/// - smt_proof_rollup_exit_root: `Vec<Felt>` (256 felts)
 /// - global_index: [Felt; 8]
 /// - mainnet_exit_root: [u8; 32]
 /// - rollup_exit_root: [u8; 32]

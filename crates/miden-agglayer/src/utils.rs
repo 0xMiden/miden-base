@@ -122,14 +122,14 @@ pub fn ethereum_address_string_to_felts(address_str: &str) -> Result<Vec<Felt>, 
 ///
 /// A bytes32 value is 32 bytes, which we split into 8 u32 values (4 bytes each).
 /// The bytes are distributed as follows:
-/// - u32[0]: bytes 0-3
-/// - u32[1]: bytes 4-7
-/// - u32[2]: bytes 8-11
-/// - u32[3]: bytes 12-15
-/// - u32[4]: bytes 16-19
-/// - u32[5]: bytes 20-23
-/// - u32[6]: bytes 24-27
-/// - u32[7]: bytes 28-31
+/// - u32\[0\]: bytes 0-3
+/// - u32\[1\]: bytes 4-7
+/// - u32\[2\]: bytes 8-11
+/// - u32\[3\]: bytes 12-15
+/// - u32\[4\]: bytes 16-19
+/// - u32\[5\]: bytes 20-23
+/// - u32\[6\]: bytes 24-27
+/// - u32\[7\]: bytes 28-31
 ///
 /// # Arguments
 /// * `bytes32` - A 32-byte value (e.g., hash, root)
