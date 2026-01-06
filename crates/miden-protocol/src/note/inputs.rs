@@ -69,11 +69,6 @@ impl NoteInputs {
     }
 
     /// Returns the note's input as a vector of field elements.
-    ///
-    /// The format is `INPUTS || PADDING`, where:
-    ///
-    /// - INPUTS is the variable inputs for the note
-    /// - PADDING is the optional padding to align the data with a 2WORD boundary
     pub fn to_elements(&self) -> Vec<Felt> {
         self.values.to_vec()
     }
