@@ -8,6 +8,7 @@
 - [BREAKING] Allowed account components to share identical account code procedures ([#2164](https://github.com/0xMiden/miden-base/pull/2164)).
 - Add `From<&ExecutedTransaction> for TransactionHeader` implementation ([#2178](https://github.com/0xMiden/miden-base/pull/2178)).
 - Add `AccountId::parse()` helper function to parse both hex and bech32 formats ([#2223](https://github.com/0xMiden/miden-base/pull/2223)).
+- Added `note::build_note_tag_for_local_account` procedure ([#2235](https://github.com/0xMiden/miden-base/pull/2235)).
 
 ### Changes
 
