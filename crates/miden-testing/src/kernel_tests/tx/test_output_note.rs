@@ -174,12 +174,12 @@ async fn test_create_note_too_many_notes() -> anyhow::Result<()> {
     let code = format!(
         "
         use miden::protocol::output_note
-        use $kernel::constants
+        use $kernel::constants::MAX_OUTPUT_NOTES_PER_TX
         use $kernel::memory
         use $kernel::prologue
 
         begin
-            exec.constants::get_max_num_output_notes
+            push.MAX_OUTPUT_NOTES_PER_TX
             exec.memory::set_num_output_notes
             exec.prologue::prepare_transaction
 
