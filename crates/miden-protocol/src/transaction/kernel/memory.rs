@@ -294,15 +294,6 @@ pub const ACCT_NUM_STORAGE_SLOTS_OFFSET: MemoryAddress = 1316;
 pub const NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR: MemoryAddress =
     NATIVE_ACCOUNT_DATA_PTR + ACCT_NUM_STORAGE_SLOTS_OFFSET;
 
-/// The offset at which the initial storage slots section begins relative to the start of the
-/// account data segment.
-///
-/// This section keeps an exact copy of the account's storage slot section starting at
-/// `ACCT_ACTIVE_STORAGE_SLOTS_SECTION_OFFSET`. This keeps the initial values of the account storage
-/// slots accessible to enable computing a diff between the initial and current account storage
-/// slots for use in the account delta. This section is only present for the native account.
-pub const ACCT_INITIAL_STORAGE_SLOTS_SECTION_OFFSET: MemoryAddress = 1320;
-
 /// The number of elements that each storage slot takes up in memory.
 pub const ACCT_STORAGE_SLOT_NUM_ELEMENTS: u8 = 8;
 
@@ -328,10 +319,6 @@ pub const ACCT_ACTIVE_STORAGE_SLOTS_SECTION_OFFSET: MemoryAddress = 2340;
 /// account.
 pub const NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR: MemoryAddress =
     NATIVE_ACCOUNT_DATA_PTR + ACCT_ACTIVE_STORAGE_SLOTS_SECTION_OFFSET;
-
-/// The memory address at which the initial storage slots section begins in the native account.
-pub const NATIVE_ACCT_INITIAL_STORAGE_SLOTS_SECTION_PTR: MemoryAddress =
-    NATIVE_ACCOUNT_DATA_PTR + ACCT_INITIAL_STORAGE_SLOTS_SECTION_OFFSET;
 
 // NOTES DATA
 // ================================================================================================
