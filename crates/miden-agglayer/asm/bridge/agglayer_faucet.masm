@@ -213,7 +213,7 @@ pub proc claim
     # VALIDATE CLAIM 
     mem_loadw_be.LEAF_DATA_KEY_MEM_ADDR padw
     mem_loadw_be.PROOF_DATA_KEY_MEM_ADDR
-    # => [PROOF_DATA_KEY, LEAF_DATA_KEY]
+    # => [PROOF_DATA_KEY, LEAF_DATA_KEY, OUTPUT_NOTE_DATA_KEY]
 
     # Errors on invalid proof
     exec.validate_claim
