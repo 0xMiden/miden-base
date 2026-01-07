@@ -1,4 +1,6 @@
-use $kernel::constants
+use $kernel::constants::ACCOUNT_PROCEDURE_DATA_LENGTH
+use $kernel::constants::MAX_ASSETS_PER_NOTE
+use $kernel::constants::NOTE_MEM_SIZE
 use miden::core::mem
 
 # ERRORS
@@ -165,10 +167,6 @@ const NATIVE_ACCOUNT_DATA_PTR=8192
 
 # The length of the memory interval that the account data occupies.
 const ACCOUNT_DATA_LENGTH=8192
-
-# The number of field elements it takes to store one account procedure.
-# TODO: Duplicated in account.masm, can we remove that?
-const ACCOUNT_PROCEDURE_DATA_LENGTH=4
 
 # The offsets at which the account data is stored relative to the start of the account data segment.
 const ACCT_ID_AND_NONCE_OFFSET=0
@@ -1513,7 +1511,7 @@ end
 #! - idx is the index of the input note.
 #! - note_ptr is the memory address of the data segment for the input note with `idx`.
 pub proc get_input_note_ptr
-    exec.constants::get_note_mem_size mul add.INPUT_NOTE_DATA_SECTION_OFFSET
+    push.NOTE_MEM_SIZE mul add.INPUT_NOTE_DATA_SECTION_OFFSET
 end
 
 #! Set the note id of the input note.
@@ -1834,7 +1832,7 @@ end
 #! - i is the index of the output note.
 #! - ptr is the memory address of the data segment for output note i.
 pub proc get_output_note_ptr
-    exec.constants::get_note_mem_size mul add.OUTPUT_NOTE_SECTION_OFFSET
+    push.NOTE_MEM_SIZE mul add.OUTPUT_NOTE_SECTION_OFFSET
 end
 
 #! Returns the output note recipient.
@@ -1922,7 +1920,7 @@ pub proc set_output_note_num_assets
     # => [note_ptr + offset, num_assets]
 
     # check note number of assets limit
-    dup.1 exec.constants::get_max_assets_per_note lt assert.err=ERR_NOTE_NUM_OF_ASSETS_EXCEED_LIMIT
+    dup.1 push.MAX_ASSETS_PER_NOTE lt assert.err=ERR_NOTE_NUM_OF_ASSETS_EXCEED_LIMIT
 
     mem_store
 end
