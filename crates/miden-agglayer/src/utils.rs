@@ -180,43 +180,6 @@ pub fn felts_to_bytes32(felts: &[Felt]) -> Result<[u8; 32], String> {
     Ok(bytes32)
 }
 
-/// Converts a bytes32 hex string (with or without "0x" prefix) into a vector of 8 Felt values.
-///
-/// # Arguments
-/// * `bytes32_str` - A hex string representing a bytes32 value (64 hex chars, optionally prefixed
-///   with "0x")
-///
-/// # Returns
-/// A Result containing a vector of 8 Felt values representing the bytes32 value, or an error string
-///
-/// # Errors
-/// Returns an error if:
-/// - The string is not a valid hex string
-/// - The string does not represent exactly 32 bytes (64 hex characters)
-pub fn bytes32_string_to_felts(bytes32_str: &str) -> Result<Vec<Felt>, String> {
-    // Remove "0x" prefix if present
-    let hex_str = bytes32_str.strip_prefix("0x").unwrap_or(bytes32_str);
-
-    // Check length (should be 64 hex characters for 32 bytes)
-    if hex_str.len() != 64 {
-        return Err(alloc::format!(
-            "Invalid bytes32 length: expected 64 hex characters, got {}",
-            hex_str.len()
-        ));
-    }
-
-    // Parse hex string to bytes
-    let mut bytes32_array = [0u8; 32];
-    for (i, chunk) in hex_str.as_bytes().chunks(2).enumerate() {
-        let hex_byte = core::str::from_utf8(chunk)
-            .map_err(|_| String::from("Invalid UTF-8 in bytes32 string"))?;
-        bytes32_array[i] = u8::from_str_radix(hex_byte, 16)
-            .map_err(|_| alloc::format!("Invalid hex character in bytes32: {}", hex_byte))?;
-    }
-
-    Ok(bytes32_to_felts(&bytes32_array))
-}
-
 #[cfg(test)]
 mod tests {
     use alloc::vec;
@@ -274,29 +237,6 @@ mod tests {
     }
 
     #[test]
-    fn test_bytes32_round_trip() {
-        // Test that converting from string to felts and back gives the same result
-        let original_bytes32 = "0x1234567890abcdef1122334455667788990011aabbccddeeff00112233445566";
-
-        // Convert string to felts
-        let felts = bytes32_string_to_felts(original_bytes32).unwrap();
-
-        // Convert felts back to bytes
-        let recovered_bytes = felts_to_bytes32(&felts).unwrap();
-
-        // Convert original string to bytes for comparison
-        let original_hex = original_bytes32.strip_prefix("0x").unwrap();
-        let mut expected_bytes = [0u8; 32];
-        for (i, chunk) in original_hex.as_bytes().chunks(2).enumerate() {
-            let hex_byte = core::str::from_utf8(chunk).unwrap();
-            expected_bytes[i] = u8::from_str_radix(hex_byte, 16).unwrap();
-        }
-
-        // Assert they match
-        assert_eq!(recovered_bytes, expected_bytes);
-    }
-
-    #[test]
     fn test_bytes32_to_felts_basic() {
         let bytes32: [u8; 32] = [
             0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xf0, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66,
@@ -314,13 +254,6 @@ mod tests {
     fn test_felts_to_bytes32_invalid_length() {
         let felts = vec![Felt::new(1), Felt::new(2)]; // Only 2 felts
         let result = felts_to_bytes32(&felts);
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_bytes32_string_invalid_length() {
-        let bytes32_str = "0x123456"; // Too short
-        let result = bytes32_string_to_felts(bytes32_str);
         assert!(result.is_err());
     }
 }
