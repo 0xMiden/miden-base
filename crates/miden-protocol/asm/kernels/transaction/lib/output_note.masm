@@ -2,7 +2,7 @@ use $kernel::account
 use $kernel::memory
 use $kernel::note
 use $kernel::asset
-use $kernel::constants
+use $kernel::constants::MAX_OUTPUT_NOTES_PER_TX
 use miden::core::word
 
 # CONSTANTS
@@ -372,7 +372,7 @@ proc increment_num_output_notes
     # => [note_idx]
 
     # assert that there is space for a new note
-    dup exec.constants::get_max_num_output_notes lt
+    dup push.MAX_OUTPUT_NOTES_PER_TX lt
     assert.err=ERR_TX_NUMBER_OF_OUTPUT_NOTES_EXCEEDS_LIMIT
     # => [note_idx]
 
