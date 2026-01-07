@@ -176,33 +176,11 @@ pub proc transfer_ownership
     push.OWNER_CONFIG_SLOT[0..2]
     # => [slot_prefix, slot_suffix, 0, 0, new_owner_suffix, new_owner_prefix, pad(14)]
 
-    movup.4 movup.4 movup.4 movup.4
-    # => [new_owner_prefix, new_owner_suffix, 0, 0, slot_prefix, slot_suffix, pad(14)]
-
-    swap.4 swap.5
-    # => [slot_prefix, slot_suffix, new_owner_prefix, new_owner_suffix, 0, 0, pad(14)]
-
-    swap.2 swap.3
-    # => [0, 0, new_owner_prefix, new_owner_suffix, slot_prefix, slot_suffix, pad(14)]
-
-    swap.2 swap.3
-    # => [new_owner_suffix, new_owner_prefix, 0, 0, slot_prefix, slot_suffix, pad(14)]
-
-    swap.2 swap.3
-    # => [0, 0, new_owner_suffix, new_owner_prefix, slot_prefix, slot_suffix, pad(14)]
-
-    movup.4 movup.4
-    # => [slot_prefix, slot_suffix, 0, 0, new_owner_suffix, new_owner_prefix, pad(14)]
-
     exec.native_account::set_item
     # => [OLD_OWNER_WORD, pad(14)]
 
     # Clean up OLD_OWNER_WORD (4 felts)
-    dropw
-    # => [pad(14)]
-
-    # Return pad(16)
-    push.0 push.0
+    drop drop
     # => [pad(16)]
 end
 
