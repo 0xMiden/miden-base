@@ -14,10 +14,19 @@ use miden::core::mem
 # The slot in this component's storage layout where the bridge account ID is stored.
 const BRIDGE_ID_SLOT = word("miden::agglayer::faucet")
 
-const P2ID_NOTE_NUM_INPUTS = 2
-const OUTPUT_NOTE_TYPE_PUBLIC = 1
-const EXECUTION_HINT_ALWAYS = 1
-const OUTPUT_NOTE_AUX = 0
+const PROOF_DATA_WORD_LEN = 134
+const LEAF_DATA_WORD_LEN = 6
+const OUTPUT_NOTE_DATA_WORD_LEN = 2
+
+const PROOF_DATA_START_PTR = 0
+const LEAF_DATA_START_PTR = 536
+const OUTPUT_NOTE_DATA_START_PTR = 568
+
+# Memory Addresses
+const PROOF_DATA_KEY_MEM_ADDR = 700
+const LEAF_DATA_KEY_MEM_ADDR = 704
+const OUTPUT_NOTE_DATA_MEM_ADDR = 708
+const CLAIM_NOTE_DATA_MEM_ADDR = 712
 
 const OUTPUT_NOTE_INPUTS_MEM_ADDR = 0
 const OUTPUT_NOTE_TAG_MEM_ADDR = 574
@@ -25,16 +34,12 @@ const OUTPUT_NOTE_SERIAL_NUM_MEM_ADDR = 568
 const OUTPUT_NOTE_ASSET_AMOUNT_MEM_ADDR_0 = 548
 const OUTPUT_NOTE_ASSET_AMOUNT_MEM_ADDR_1 = 552
 
-const PROOF_DATA_WORD_LEN = 134
-const LEAF_DATA_WORD_LEN = 6
-const OUTPUT_NOTE_DATA_WORD_LEN = 2
-
-const PROOF_DATA_KEY_MEM_ADDR = 800
-const LEAF_DATA_KEY_MEM_ADDR = 804
-const OUTPUT_NOTE_DATA_MEM_ADDR = 808
-const CLAIM_NOTE_DATA_MEM_ADDR = 812
-
+# P2ID output note constants
 const P2ID_SCRIPT_ROOT = [7588674509004260508, 4058706621878288170, 5607159951796201570, 5541281552524512743]
+const P2ID_NOTE_NUM_INPUTS = 2
+const OUTPUT_NOTE_TYPE_PUBLIC = 1
+const EXECUTION_HINT_ALWAYS = 1
+const OUTPUT_NOTE_AUX = 0
 
 const P2ID_OUTPUT_NOTE_AMOUNT_MEM_PTR = 611
 # ERRORS
@@ -103,7 +108,7 @@ proc batch_pipe_double_words
     adv.push_mapval
     # => [PROOF_DATA_KEY]
 
-    push.0 push.PROOF_DATA_WORD_LEN
+    push.PROOF_DATA_START_PTR push.PROOF_DATA_WORD_LEN
     exec.mem::pipe_double_words_preimage_to_memory drop
 
     # 2) Verify LEAF_DATA_KEY
@@ -111,7 +116,7 @@ proc batch_pipe_double_words
     adv.push_mapval
     # => [LEAF_DATA_KEY]
 
-    push.536 push.LEAF_DATA_WORD_LEN
+    push.LEAF_DATA_START_PTR push.LEAF_DATA_WORD_LEN
     exec.mem::pipe_double_words_preimage_to_memory drop
 
     # 3) Verify OUTPUT_NOTE_DATA_KEY
@@ -119,7 +124,7 @@ proc batch_pipe_double_words
     adv.push_mapval
     # => [OUTPUT_NOTE_DATA_KEY]
 
-    push.568 push.OUTPUT_NOTE_DATA_WORD_LEN
+    push.OUTPUT_NOTE_DATA_START_PTR push.OUTPUT_NOTE_DATA_WORD_LEN
     exec.mem::pipe_double_words_preimage_to_memory drop
 end
 
@@ -213,7 +218,7 @@ pub proc claim
     # VALIDATE CLAIM 
     mem_loadw_be.LEAF_DATA_KEY_MEM_ADDR padw
     mem_loadw_be.PROOF_DATA_KEY_MEM_ADDR
-    # => [PROOF_DATA_KEY, LEAF_DATA_KEY, OUTPUT_NOTE_DATA_KEY]
+    # => [PROOF_DATA_KEY, LEAF_DATA_KEY]
 
     # Errors on invalid proof
     exec.validate_claim
