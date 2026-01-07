@@ -1,7 +1,10 @@
 use $kernel::account_delta
 use $kernel::account_id
 use $kernel::asset_vault
-use $kernel::constants
+use $kernel::constants::ACCOUNT_PROCEDURE_DATA_LENGTH
+use $kernel::constants::EMPTY_SMT_ROOT
+use $kernel::constants::STORAGE_SLOT_TYPE_MAP
+use $kernel::constants::STORAGE_SLOT_TYPE_VALUE
 use $kernel::memory
 use miden::core::collections::smt
 use miden::core::collections::sorted_array
@@ -119,9 +122,6 @@ const ACCOUNT_TREE_DEPTH=64
 
 # The number of field elements it takes to store one account storage slot.
 const ACCOUNT_STORAGE_SLOT_DATA_LENGTH=8
-
-# The number of field elements it takes to store one account procedure.
-const ACCOUNT_PROCEDURE_DATA_LENGTH=4
 
 # The offset of the slot type in the storage slot.
 const ACCOUNT_SLOT_TYPE_OFFSET=1
@@ -538,7 +538,7 @@ pub proc set_item
     # => [slot_type, slot_ptr, VALUE]
 
     # assert slot_type is value
-    exec.constants::get_storage_slot_type_value eq
+    push.STORAGE_SLOT_TYPE_VALUE eq
     assert.err=ERR_ACCOUNT_SETTING_VALUE_ITEM_ON_NON_VALUE_SLOT
     # => [slot_ptr, VALUE]
 
@@ -632,7 +632,7 @@ pub proc set_map_item
     # => [slot_type, slot_ptr, KEY, NEW_VALUE]
 
     # assert slot_type is map
-    exec.constants::get_storage_slot_type_map eq
+    push.STORAGE_SLOT_TYPE_MAP eq
     assert.err=ERR_ACCOUNT_SETTING_MAP_ITEM_ON_NON_MAP_SLOT
     # => [slot_ptr, KEY, NEW_VALUE]
  
@@ -1310,7 +1310,7 @@ pub proc insert_new_storage
         dup exec.get_storage_slot_type
         # => [slot_type, slot_idx]
 
-        exec.constants::get_storage_slot_type_map eq
+        push.STORAGE_SLOT_TYPE_MAP eq
         # => [is_map_slot_type, slot_idx]
 
         if.true
@@ -1354,7 +1354,7 @@ proc insert_and_validate_storage_map
 
     # overwrite the map root with the root of an empty SMT, so we can insert the entries of
     # the map into an empty map and then check whether the resulting root matches MAP_ROOT.
-    exec.constants::get_empty_smt_root
+    push.EMPTY_SMT_ROOT
     dup.8
     # => [slot_ptr, EMPTY_SMT_ROOT, MAP_ROOT, slot_ptr]
 
@@ -1674,7 +1674,7 @@ proc get_map_item_raw
     # => [slot_type, slot_ptr, KEY]
 
     # assert slot_type is map
-    exec.constants::get_storage_slot_type_map eq
+    push.STORAGE_SLOT_TYPE_MAP eq
     assert.err=ERR_ACCOUNT_READING_MAP_VALUE_FROM_NON_MAP_SLOT
     # => [slot_ptr, KEY]
 
