@@ -12,6 +12,7 @@ use super::super::{
     FeltSchema,
     MapSlotSchema,
     StorageSlotSchema,
+    StorageValue,
     StorageValueName,
     ValueSlotSchema,
     WordSchema,
@@ -432,13 +433,16 @@ impl RawStorageSlotSchema {
         let mut map = BTreeMap::new();
 
         let parse = |schema: &WordSchema, raw: &WordValue, label: &str| {
-            super::schema::parse_word_value_with_schema(schema, raw, slot_prefix, label).map_err(
-                |err| {
-                    AccountComponentTemplateError::InvalidSchema(format!(
-                        "invalid map `{label}`: {err}"
-                    ))
-                },
+            super::schema::parse_storage_value_with_schema(
+                schema,
+                &StorageValue::Parseable(raw.clone()),
+                slot_prefix,
             )
+            .map_err(|err| {
+                AccountComponentTemplateError::InvalidSchema(format!(
+                    "invalid map `{label}`: {err}"
+                ))
+            })
         };
 
         for (index, entry) in entries.into_iter().enumerate() {

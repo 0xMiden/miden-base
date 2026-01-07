@@ -27,15 +27,15 @@ use crate::AccountError;
 ///
 /// - The metadata's storage schema does not contain duplicate slot names.
 /// - The schema cannot contain protocol-reserved slot names.
-/// - Each init-time value name uniquely identifies a single value. The expected init-time
-///   requirements can be retrieved with [AccountComponentMetadata::schema_requirements()], which
-///   returns a map from keys to [SchemaRequirement] (which indicates the expected value type and
-///   optional defaults).
+/// - Each init-time value name uniquely identifies a single value. The expected init-time metadata
+///   can be retrieved with [AccountComponentMetadata::schema_requirements()], which returns a map
+///   from keys to [SchemaRequirement] (which indicates the expected value type and optional
+///   defaults).
 ///
 /// # Example
 ///
 /// ```
-/// use std::collections::BTreeSet;
+/// use std::collections::{BTreeMap, BTreeSet};
 ///
 /// use miden_protocol::account::StorageSlotName;
 /// use miden_protocol::account::component::{
@@ -45,6 +45,7 @@ use crate::AccountError;
 ///     InitStorageData,
 ///     SchemaTypeId,
 ///     StorageSlotSchema,
+///     StorageValue,
 ///     StorageValueName,
 ///     ValueSlotSchema,
 ///     WordSchema,
@@ -74,10 +75,11 @@ use crate::AccountError;
 /// );
 ///
 /// // Init value keys are derived from slot name: `demo::test_value.foo`.
+/// let value_name = StorageValueName::from_slot_name_with_suffix(&slot_name, "foo")?;
 /// let init_storage_data = InitStorageData::new(
-///     [(StorageValueName::from_slot_name(&slot_name).with_suffix("foo")?, "300".into())],
-///     [],
-/// );
+///     BTreeMap::from([(value_name, StorageValue::Parseable("300".into()))]),
+///     BTreeMap::new(),
+/// )?;
 ///
 /// let storage_slots = metadata.storage_schema().build_storage_slots(&init_storage_data)?;
 /// assert_eq!(storage_slots.len(), 1);
@@ -123,7 +125,7 @@ impl AccountComponentMetadata {
         }
     }
 
-    /// Returns the init-time value requirements for this schema.
+    /// Returns the init-time values's requirements for this schema.
     ///
     /// These values are used for initializing storage slot values or storage map entries. For a
     /// full example, refer to the docs for [AccountComponentMetadata].

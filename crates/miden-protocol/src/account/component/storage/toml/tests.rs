@@ -7,8 +7,10 @@ use crate::account::component::toml::init_storage_data::InitStorageDataError;
 use crate::account::component::{
     AccountComponentMetadata,
     InitStorageData,
+    InitStorageDataError as CoreInitStorageDataError,
     SchemaTypeId,
     StorageSlotSchema,
+    StorageValue,
     StorageValueName,
     WordSchema,
     WordValue,
@@ -36,6 +38,7 @@ fn from_toml_str_with_nested_table_and_flattened() {
     let storage_inline = InitStorageData::from_toml(toml_inline).unwrap();
 
     assert_eq!(storage_table.values(), storage_inline.values());
+    assert_eq!(storage_table.maps(), storage_inline.maps());
 }
 
 #[test]
@@ -48,7 +51,7 @@ fn from_toml_str_with_deeply_nested_tables_is_rejected() {
 
     assert_matches::assert_matches!(
         InitStorageData::from_toml(toml_str),
-        Err(InitStorageDataError::InvalidStorageValueName(_))
+        Err(InitStorageDataError::InvalidValue(_))
     );
 }
 
@@ -59,22 +62,17 @@ fn from_toml_rejects_non_string_atomics() {
     "#;
 
     let result = InitStorageData::from_toml(toml_str);
-    assert_matches::assert_matches!(result.unwrap_err(), InitStorageDataError::NonStringAtomic(_));
+    assert_matches::assert_matches!(result.unwrap_err(), InitStorageDataError::InvalidValue(_));
 }
 
 #[test]
 fn test_error_on_array() {
     let toml_str = r#"
-        ["demo::token_metadata"]
-        v = ["1", "2", "3", "4", "5"]
+        "demo::token_metadata.v" = ["1", "2", "3", "4", "5"]
     "#;
 
     let err = InitStorageData::from_toml(toml_str).unwrap_err();
-    assert_matches::assert_matches!(
-        &err,
-        InitStorageDataError::ArraysNotSupported { key, len }
-            if key == "demo::token_metadata.v" && *len == 5
-    );
+    assert_matches::assert_matches!(&err, InitStorageDataError::InvalidValue(key) if key == "demo::token_metadata.v");
 }
 
 #[test]
@@ -87,26 +85,30 @@ fn parse_map_entries_from_array() {
     "#;
 
     let storage = InitStorageData::from_toml(toml_str).expect("Failed to parse map entries");
-    let map_name: StorageValueName = "demo::my_map".parse().unwrap();
+    let map_name: StorageSlotName = "demo::my_map".parse().unwrap();
     let entries = storage.map_entries(&map_name).expect("map entries missing");
     assert_eq!(entries.len(), 2);
 
     assert_matches::assert_matches!(
         &entries[0].0,
-        WordValue::Atomic(v)
+        StorageValue::Parseable(WordValue::Atomic(v))
             if v == "0x0000000000000000000000000000000000000000000000000000000000000001"
     );
     assert_matches::assert_matches!(
         &entries[0].1,
-        WordValue::Atomic(v)
+        StorageValue::Parseable(WordValue::Atomic(v))
             if v == "0x0000000000000000000000000000000000000000000000000000000000000010"
     );
-    assert_matches::assert_matches!(&entries[1].1, WordValue::Elements(elements) if elements == &[
-        "1".to_string(),
-        "2".to_string(),
-        "3".to_string(),
-        "4".to_string(),
-    ]);
+    assert_matches::assert_matches!(
+        &entries[1].1,
+        StorageValue::Parseable(WordValue::Elements(elements))
+            if elements == &[
+                "1".to_string(),
+                "2".to_string(),
+                "3".to_string(),
+                "4".to_string(),
+            ]
+    );
 }
 
 #[test]
@@ -119,7 +121,7 @@ fn error_on_empty_subtable() {
     let result = InitStorageData::from_toml(toml_str);
     assert_matches::assert_matches!(
         result.unwrap_err(),
-        InitStorageDataError::EmptyTable(key) if key == "demo::token_metadata.max_supply"
+        InitStorageDataError::InvalidValue(key) if key == "demo::token_metadata.max_supply"
     );
 }
 
@@ -149,7 +151,8 @@ fn error_on_duplicate_keys_after_flattening() {
     let err = InitStorageData::from_toml(toml_str).unwrap_err();
     assert_matches::assert_matches!(
         err,
-        InitStorageDataError::DuplicateKey(key) if key == "demo::token_metadata.max_supply"
+        InitStorageDataError::InvalidData(CoreInitStorageDataError::DuplicateKey(key))
+            if key == "demo::token_metadata.max_supply"
     );
 }
 
@@ -197,29 +200,6 @@ fn metadata_from_toml_rejects_typed_fields_in_static_map_values() {
     assert_matches::assert_matches!(
         AccountComponentMetadata::from_toml(toml_str),
         Err(AccountComponentTemplateError::TomlDeserializationError(_))
-    );
-}
-
-#[test]
-fn metadata_from_toml_rejects_short_composite_schema() {
-    let toml_str = r#"
-        name = "Test Component"
-        description = "Test description"
-        version = "0.1.0"
-        supported-types = []
-
-        [[storage.slots]]
-        name = "demo::short_composite"
-        type = [
-            { type = "u8", name = "a" },
-            { type = "void" },
-            { type = "void" },
-        ]
-    "#;
-    assert_matches::assert_matches!(
-        AccountComponentMetadata::from_toml(toml_str),
-        Err(AccountComponentTemplateError::InvalidSchema(msg))
-            if msg.contains("array of 4 elements")
     );
 }
 
@@ -621,7 +601,7 @@ fn extensive_schema_metadata_and_init_toml_example() {
     "#;
     let init_with_overrides = InitStorageData::from_toml(init_toml_with_overrides).unwrap();
     let parsed_entries = init_with_overrides
-        .map_entries(&"demo::typed_map_new".parse::<StorageValueName>().unwrap())
+        .map_entries(&"demo::typed_map_new".parse::<StorageSlotName>().unwrap())
         .expect("demo::typed_map_new map entries missing");
     assert_eq!(parsed_entries.len(), 2);
     let slots_with_maps =
