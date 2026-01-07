@@ -20,11 +20,6 @@ use super::{
 
 /// Metadata associated with a note.
 ///
-/// Note type and tag must be internally consistent according to the following rules:
-///
-/// - For private and encrypted notes, the two most significant bits of the tag must be `0b11`.
-/// - For public notes, the two most significant bits of the tag can be set to any value.
-///
 /// # Word layout & validity
 ///
 /// [`NoteMetadata`] can be encoded into a [`Word`] with the following layout:
