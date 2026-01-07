@@ -444,7 +444,7 @@ end
 #! - a slot with the provided slot ID does not exist in account storage.
 pub proc get_item
     # get account storage slots section offset
-    exec.memory::get_account_storage_slots_section_ptr
+    exec.memory::get_account_active_storage_slots_section_ptr
     # => [acct_storage_slots_section_offset, slot_id_prefix, slot_id_suffix]
 
     exec.find_storage_slot
@@ -470,7 +470,7 @@ end
 #! - a slot with the provided slot ID does not exist in account storage.
 pub proc get_typed_item
     # get account storage slots section offset
-    exec.memory::get_account_storage_slots_section_ptr
+    exec.memory::get_account_active_storage_slots_section_ptr
     # => [acct_storage_slots_section_offset, slot_id_prefix, slot_id_suffix]
 
     exec.find_storage_slot
@@ -527,7 +527,7 @@ pub proc set_item
     emit.ACCOUNT_STORAGE_BEFORE_SET_ITEM_EVENT
     # => [slot_id_prefix, slot_id_suffix, VALUE]
 
-    exec.memory::get_account_storage_slots_section_ptr
+    exec.memory::get_account_active_storage_slots_section_ptr
     # => [storage_slots_ptr, slot_id_prefix, slot_id_suffix, VALUE]
 
     exec.find_storage_slot
@@ -575,7 +575,7 @@ end
 #! - a slot with the provided slot ID does not exist in account storage.
 #! - the requested storage slot type is not map.
 pub proc get_map_item
-    exec.memory::get_account_storage_slots_section_ptr
+    exec.memory::get_account_active_storage_slots_section_ptr
     # => [storage_slots_ptr, slot_id_prefix, slot_id_suffix, KEY]
 
     exec.get_map_item_raw
@@ -620,7 +620,7 @@ end
 #! - the storage slot type is not map.
 #! - no map with the root of the slot is found.
 pub proc set_map_item
-    exec.memory::get_account_storage_slots_section_ptr
+    exec.memory::get_account_active_storage_slots_section_ptr
     # => [storage_slots_ptr, slot_id_prefix, slot_id_suffix, KEY, NEW_VALUE]
 
     # resolve the slot name to its pointer
@@ -656,7 +656,7 @@ pub proc get_storage_slot_type
     # => [offset]
 
     # compute storage slot ptr
-    exec.memory::get_native_account_storage_slots_ptr
+    exec.memory::get_native_account_active_storage_slots_ptr
     add
     # => [slot_ptr]
 
@@ -1345,7 +1345,7 @@ end
 #! Outputs: []
 proc insert_and_validate_storage_map
     mul.ACCOUNT_STORAGE_SLOT_DATA_LENGTH
-    exec.memory::get_account_storage_slots_section_ptr
+    exec.memory::get_account_active_storage_slots_section_ptr
     add
     # => [slot_ptr]
 
@@ -1471,7 +1471,7 @@ pub proc get_item_delta
     # => [offset]
 
     # get account storage slots section offset
-    exec.memory::get_native_account_storage_slots_ptr
+    exec.memory::get_native_account_active_storage_slots_ptr
     # => [storage_slots_ptr, offset]
 
     dup.1 add dup
@@ -1515,7 +1515,7 @@ pub proc get_slot_id
     mul.ACCOUNT_STORAGE_SLOT_DATA_LENGTH
     # => [offset]
 
-    exec.memory::get_account_storage_slots_section_ptr
+    exec.memory::get_account_active_storage_slots_section_ptr
     add
     # => [slot_ptr]
 
@@ -1741,7 +1741,7 @@ end
 #! - slot_ptr is the pointer to a "current" storage slot in the native account's memory section.
 #! - slot_idx is the index of the storage slot.
 proc slot_ptr_to_index
-    exec.memory::get_account_storage_slots_section_ptr
+    exec.memory::get_account_active_storage_slots_section_ptr
     sub
     # => [slot_offset]
 
