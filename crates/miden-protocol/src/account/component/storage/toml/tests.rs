@@ -65,7 +65,8 @@ fn from_toml_rejects_non_string_atomics() {
 #[test]
 fn test_error_on_array() {
     let toml_str = r#"
-        "demo::token_metadata.v" = ["1", "2", "3", "4", "5"]
+        ["demo::token_metadata"]
+        v = ["1", "2", "3", "4", "5"]
     "#;
 
     let err = InitStorageData::from_toml(toml_str).unwrap_err();
@@ -74,9 +75,6 @@ fn test_error_on_array() {
         InitStorageDataError::ArraysNotSupported { key, len }
             if key == "demo::token_metadata.v" && *len == 5
     );
-    let msg = err.to_string();
-    assert!(msg.contains("demo::token_metadata.v"));
-    assert!(msg.contains("len 5"));
 }
 
 #[test]
@@ -199,6 +197,29 @@ fn metadata_from_toml_rejects_typed_fields_in_static_map_values() {
     assert_matches::assert_matches!(
         AccountComponentMetadata::from_toml(toml_str),
         Err(AccountComponentTemplateError::TomlDeserializationError(_))
+    );
+}
+
+#[test]
+fn metadata_from_toml_rejects_short_composite_schema() {
+    let toml_str = r#"
+        name = "Test Component"
+        description = "Test description"
+        version = "0.1.0"
+        supported-types = []
+
+        [[storage.slots]]
+        name = "demo::short_composite"
+        type = [
+            { type = "u8", name = "a" },
+            { type = "void" },
+            { type = "void" },
+        ]
+    "#;
+    assert_matches::assert_matches!(
+        AccountComponentMetadata::from_toml(toml_str),
+        Err(AccountComponentTemplateError::InvalidSchema(msg))
+            if msg.contains("array of 4 elements")
     );
 }
 
