@@ -45,46 +45,52 @@ use crate::{
 #[tokio::test]
 async fn test_epilogue() -> anyhow::Result<()> {
     let account = Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, Auth::IncrNonce);
-    let tx_context = {
-        let output_note_1 = create_public_p2any_note(
-            ACCOUNT_ID_SENDER.try_into().unwrap(),
-            [FungibleAsset::mock(100)],
-        );
+    let asset = FungibleAsset::mock(100);
+    let output_note_1 = create_public_p2any_note(account.id(), [asset]);
+    // input_note_1 is needed for maintaining cohesion of involved assets
+    let input_note_1 =
+        create_public_p2any_note(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1.try_into().unwrap(), [asset]);
 
-        // input_note_1 is needed for maintaining cohesion of involved assets
-        let input_note_1 = create_public_p2any_note(
-            ACCOUNT_ID_SENDER.try_into().unwrap(),
-            [FungibleAsset::mock(100)],
-        );
-        let input_note_2 = create_spawn_note([&output_note_1])?;
-        TransactionContextBuilder::new(account.clone())
-            .extend_input_notes(vec![input_note_1, input_note_2])
-            .extend_expected_output_notes(vec![OutputNote::Full(output_note_1)])
-            .build()?
-    };
-
-    let output_notes_data_procedure =
-        create_mock_notes_procedure(tx_context.expected_output_notes());
+    let tx_context = TransactionContextBuilder::new(account.clone())
+        .extend_input_notes(vec![input_note_1])
+        .extend_expected_output_notes(vec![OutputNote::Full(output_note_1.clone())])
+        .build()?;
 
     let code = format!(
         "
         use $kernel::prologue
         use $kernel::account
         use $kernel::epilogue
-
-        {output_notes_data_procedure}
+        use miden::protocol::output_note
+        use miden::core::sys
 
         begin
             exec.prologue::prepare_transaction
 
-            exec.create_mock_notes
+            push.{recipient}
+            push.{note_execution_hint}
+            push.{note_type}
+            push.{aux}
+            push.{tag}
+            exec.output_note::create
+            # => [note_idx]
+
+            push.{asset}
+            exec.output_note::add_asset
+            # => []
 
             exec.epilogue::finalize_transaction
 
             # truncate the stack
-            repeat.13 movup.13 drop end
+            exec.sys::truncate_stack
         end
-        "
+        ",
+        recipient = output_note_1.recipient().digest(),
+        note_execution_hint = Felt::from(output_note_1.metadata().execution_hint()),
+        note_type = Felt::from(output_note_1.metadata().note_type()),
+        aux = output_note_1.metadata().aux(),
+        tag = Felt::from(output_note_1.metadata().tag()),
+        asset = Word::from(asset)
     );
 
     let exec_output = tx_context.execute_code(&code).await?;
