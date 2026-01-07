@@ -1185,7 +1185,7 @@ pub proc save_account_storage_data
     # AS => [[STORAGE_SLOT_DATA]]
 
     # setup acct_storage_slots_ptr and end_ptr for reading from advice stack
-    mul.ACCOUNT_STORAGE_SLOT_DATA_LENGTH exec.memory::get_account_storage_slots_section_ptr
+    mul.ACCOUNT_STORAGE_SLOT_DATA_LENGTH exec.memory::get_account_active_storage_slots_section_ptr
     dup movdn.2 add swap
     # OS => [acct_storage_slots_ptr, end_ptr, STORAGE_COMMITMENT]
     # AS => [[STORAGE_SLOT_DATA]]
@@ -1915,7 +1915,7 @@ proc refresh_storage_commitment
         # => [num_storage_slots]
 
         # setup start and end ptr
-        mul.ACCOUNT_STORAGE_SLOT_DATA_LENGTH exec.memory::get_account_storage_slots_section_ptr
+        mul.ACCOUNT_STORAGE_SLOT_DATA_LENGTH exec.memory::get_account_active_storage_slots_section_ptr
         dup movdn.2 add swap
         # => [start_ptr, end_ptr]
 
