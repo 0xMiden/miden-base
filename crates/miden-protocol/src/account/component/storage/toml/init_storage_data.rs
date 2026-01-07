@@ -16,6 +16,25 @@ use super::RawMapEntrySchema;
 
 impl InitStorageData {
     /// Creates an instance of [`InitStorageData`] from a TOML string.
+    ///
+    /// # Supported formats
+    ///
+    /// ```toml
+    /// # Value entry (string)
+    /// "slot::name" = "0x1234"
+    ///
+    /// # Value entry (4-element word)
+    /// "slot::name" = ["0", "0", "0", "100"]
+    ///
+    /// # Nested table (flattened to slot::name.field)
+    /// ["slot::name"]
+    /// field = "value"
+    ///
+    /// # Map entries
+    /// "slot::map" = [
+    ///     { key = "0x01", value = "0x10" },
+    /// ]
+    /// ```
     pub fn from_toml(toml_str: &str) -> Result<Self, InitStorageDataError> {
         let table: toml::Table = toml::from_str(toml_str)?;
         let mut data = InitStorageData::default();
