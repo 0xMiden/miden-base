@@ -376,7 +376,7 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
     let expected_note_id_2 = expected_output_note_2.id();
     let expected_note_metadata_2 = expected_output_note_2.metadata();
     assert_eq!(
-        NoteHeader::from(resulting_output_note_2),
+        *resulting_output_note_2.header(),
         NoteHeader::new(expected_note_id_2, *expected_note_metadata_2)
     );
 

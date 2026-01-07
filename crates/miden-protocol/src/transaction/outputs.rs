@@ -102,6 +102,7 @@ pub struct OutputNotes {
 impl OutputNotes {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
+
     /// Returns new [OutputNotes] instantiated from the provide vector of notes.
     ///
     /// # Errors
@@ -120,7 +121,7 @@ impl OutputNotes {
             }
         }
 
-        let commitment = Self::compute_commitment(notes.iter().map(NoteHeader::from));
+        let commitment = Self::compute_commitment(notes.iter().map(OutputNote::header));
 
         Ok(Self { notes, commitment })
     }
@@ -165,7 +166,9 @@ impl OutputNotes {
     ///
     /// For a non-empty list of notes, this is a sequential hash of (note_id, metadata) tuples for
     /// the notes created in a transaction. For an empty list, [EMPTY_WORD] is returned.
-    pub(crate) fn compute_commitment(notes: impl ExactSizeIterator<Item = NoteHeader>) -> Word {
+    pub(crate) fn compute_commitment<'header>(
+        notes: impl ExactSizeIterator<Item = &'header NoteHeader>,
+    ) -> Word {
         if notes.len() == 0 {
             return Word::empty();
         }
@@ -280,8 +283,17 @@ impl OutputNote {
             OutputNote::Full(note) if note.metadata().is_private() => {
                 OutputNote::Header(*note.header())
             },
-            OutputNote::Partial(note) => OutputNote::Header(note.into()),
+            OutputNote::Partial(note) => OutputNote::Header(*note.header()),
             _ => self.clone(),
+        }
+    }
+
+    /// Returns a reference to the [`NoteHeader`] of this note.
+    pub fn header(&self) -> &NoteHeader {
+        match self {
+            OutputNote::Full(note) => note.header(),
+            OutputNote::Partial(note) => note.header(),
+            OutputNote::Header(header) => header,
         }
     }
 
@@ -290,25 +302,6 @@ impl OutputNote {
     /// > hash(NOTE_ID || NOTE_METADATA)
     pub fn commitment(&self) -> Word {
         compute_note_commitment(self.id(), self.metadata())
-    }
-}
-
-// CONVERSIONS
-// ------------------------------------------------------------------------------------------------
-
-impl From<OutputNote> for NoteHeader {
-    fn from(value: OutputNote) -> Self {
-        (&value).into()
-    }
-}
-
-impl From<&OutputNote> for NoteHeader {
-    fn from(value: &OutputNote) -> Self {
-        match value {
-            OutputNote::Full(note) => note.into(),
-            OutputNote::Partial(note) => note.into(),
-            OutputNote::Header(note) => *note,
-        }
     }
 }
 
