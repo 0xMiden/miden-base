@@ -96,7 +96,7 @@ async fn removing_fungible_assets_with_lazy_loading_succeeds() -> anyhow::Result
           # => []
 
           # move asset to note to adhere to asset preservation rules
-          exec.util::create_random_note_with_asset
+          exec.util::create_default_note_with_asset
           # => []
 
           push.{FUNGIBLE_ASSET2}
@@ -104,7 +104,7 @@ async fn removing_fungible_assets_with_lazy_loading_succeeds() -> anyhow::Result
           # => [ASSET]
 
           # move asset to note to adhere to asset preservation rules
-          exec.util::create_random_note_with_asset
+          exec.util::create_default_note_with_asset
           # => []
       end
       ",
