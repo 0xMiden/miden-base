@@ -99,6 +99,7 @@ end
 # Outputs: []
 proc batch_pipe_double_words
     # 1) Verify PROOF_DATA_KEY
+    mem_storew_be.PROOF_DATA_KEY_MEM_ADDR 
     adv.push_mapval
     # => [PROOF_DATA_KEY]
 
@@ -106,6 +107,7 @@ proc batch_pipe_double_words
     exec.mem::pipe_double_words_preimage_to_memory drop
 
     # 2) Verify LEAF_DATA_KEY
+    mem_storew_be.LEAF_DATA_KEY_MEM_ADDR
     adv.push_mapval
     # => [LEAF_DATA_KEY]
 
@@ -113,6 +115,7 @@ proc batch_pipe_double_words
     exec.mem::pipe_double_words_preimage_to_memory drop
 
     # 3) Verify OUTPUT_NOTE_DATA_KEY
+    mem_storew_be.OUTPUT_NOTE_DATA_MEM_ADDR
     adv.push_mapval
     # => [OUTPUT_NOTE_DATA_KEY]
 
@@ -203,12 +206,7 @@ end
 #!
 #! Invocation: call
 pub proc claim
-    mem_storew_be.PROOF_DATA_KEY_MEM_ADDR 
-    mem_storew_be.LEAF_DATA_KEY_MEM_ADDR 
-    mem_storew_be.OUTPUT_NOTE_DATA_MEM_ADDR
-    # => [PROOF_DATA_KEY, LEAF_DATA_KEY, OUTPUT_NOTE_DATA_KEY, pad(4)]
-
-    # Check AdviceMap values hash to keys & write CLAIM inputs to global memory
+    # Check AdviceMap values hash to keys & write CLAIM inputs & DATA_KEYs to global memory
     exec.batch_pipe_double_words
     # => []
 
