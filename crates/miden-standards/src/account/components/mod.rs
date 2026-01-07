@@ -10,18 +10,26 @@ use miden_protocol::utils::sync::LazyLock;
 
 use crate::account::interface::AccountComponentInterface;
 
+// WALLET LIBRARIES
+// ================================================================================================
+
 // Initialize the Basic Wallet library only once.
 static BASIC_WALLET_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
-    let bytes =
-        include_bytes!(concat!(env!("OUT_DIR"), "/assets/account_components/basic_wallet.masl"));
+    let bytes = include_bytes!(concat!(
+        env!("OUT_DIR"),
+        "/assets/account_components/wallets/basic_wallet.masl"
+    ));
     Library::read_from_bytes(bytes).expect("Shipped Basic Wallet library is well-formed")
 });
+
+// AUTH LIBRARIES
+// ================================================================================================
 
 /// Initialize the ECDSA K256 Keccak library only once.
 static ECDSA_K256_KECCAK_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
     let bytes = include_bytes!(concat!(
         env!("OUT_DIR"),
-        "/assets/account_components/ecdsa_k256_keccak.masl"
+        "/assets/account_components/auth/ecdsa_k256_keccak.masl"
     ));
     Library::read_from_bytes(bytes).expect("Shipped Ecdsa K256 Keccak library is well-formed")
 });
@@ -30,7 +38,7 @@ static ECDSA_K256_KECCAK_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
 static ECDSA_K256_KECCAK_ACL_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
     let bytes = include_bytes!(concat!(
         env!("OUT_DIR"),
-        "/assets/account_components/ecdsa_k256_keccak_acl.masl"
+        "/assets/account_components/auth/ecdsa_k256_keccak_acl.masl"
     ));
     Library::read_from_bytes(bytes).expect("Shipped Ecdsa K256 Keccak ACL library is well-formed")
 });
@@ -39,7 +47,7 @@ static ECDSA_K256_KECCAK_ACL_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
 static ECDSA_K256_KECCAK_MULTISIG_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
     let bytes = include_bytes!(concat!(
         env!("OUT_DIR"),
-        "/assets/account_components/ecdsa_k256_keccak_multisig.masl"
+        "/assets/account_components/auth/ecdsa_k256_keccak_multisig.masl"
     ));
     Library::read_from_bytes(bytes)
         .expect("Shipped Multisig Ecdsa K256 Keccak library is well-formed")
@@ -47,16 +55,46 @@ static ECDSA_K256_KECCAK_MULTISIG_LIBRARY: LazyLock<Library> = LazyLock::new(|| 
 
 // Initialize the Rpo Falcon 512 library only once.
 static RPO_FALCON_512_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
-    let bytes =
-        include_bytes!(concat!(env!("OUT_DIR"), "/assets/account_components/rpo_falcon_512.masl"));
+    let bytes = include_bytes!(concat!(
+        env!("OUT_DIR"),
+        "/assets/account_components/auth/rpo_falcon_512.masl"
+    ));
     Library::read_from_bytes(bytes).expect("Shipped Rpo Falcon 512 library is well-formed")
 });
+
+// Initialize the Rpo Falcon 512 ACL library only once.
+static RPO_FALCON_512_ACL_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
+    let bytes = include_bytes!(concat!(
+        env!("OUT_DIR"),
+        "/assets/account_components/auth/rpo_falcon_512_acl.masl"
+    ));
+    Library::read_from_bytes(bytes).expect("Shipped Rpo Falcon 512 ACL library is well-formed")
+});
+
+// Initialize the Multisig Rpo Falcon 512 library only once.
+static RPO_FALCON_512_MULTISIG_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
+    let bytes = include_bytes!(concat!(
+        env!("OUT_DIR"),
+        "/assets/account_components/auth/rpo_falcon_512_multisig.masl"
+    ));
+    Library::read_from_bytes(bytes).expect("Shipped Multisig Rpo Falcon 512 library is well-formed")
+});
+
+// Initialize the NoAuth library only once.
+static NO_AUTH_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
+    let bytes =
+        include_bytes!(concat!(env!("OUT_DIR"), "/assets/account_components/auth/no_auth.masl"));
+    Library::read_from_bytes(bytes).expect("Shipped NoAuth library is well-formed")
+});
+
+// FAUCET LIBRARIES
+// ================================================================================================
 
 // Initialize the Basic Fungible Faucet library only once.
 static BASIC_FUNGIBLE_FAUCET_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
     let bytes = include_bytes!(concat!(
         env!("OUT_DIR"),
-        "/assets/account_components/basic_fungible_faucet.masl"
+        "/assets/account_components/faucets/basic_fungible_faucet.masl"
     ));
     Library::read_from_bytes(bytes).expect("Shipped Basic Fungible Faucet library is well-formed")
 });
@@ -65,33 +103,9 @@ static BASIC_FUNGIBLE_FAUCET_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
 static NETWORK_FUNGIBLE_FAUCET_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
     let bytes = include_bytes!(concat!(
         env!("OUT_DIR"),
-        "/assets/account_components/network_fungible_faucet.masl"
+        "/assets/account_components/faucets/network_fungible_faucet.masl"
     ));
     Library::read_from_bytes(bytes).expect("Shipped Network Fungible Faucet library is well-formed")
-});
-
-// Initialize the Rpo Falcon 512 ACL library only once.
-static RPO_FALCON_512_ACL_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
-    let bytes = include_bytes!(concat!(
-        env!("OUT_DIR"),
-        "/assets/account_components/rpo_falcon_512_acl.masl"
-    ));
-    Library::read_from_bytes(bytes).expect("Shipped Rpo Falcon 512 ACL library is well-formed")
-});
-
-// Initialize the NoAuth library only once.
-static NO_AUTH_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
-    let bytes = include_bytes!(concat!(env!("OUT_DIR"), "/assets/account_components/no_auth.masl"));
-    Library::read_from_bytes(bytes).expect("Shipped NoAuth library is well-formed")
-});
-
-// Initialize the Multisig Rpo Falcon 512 library only once.
-static RPO_FALCON_512_MULTISIG_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
-    let bytes = include_bytes!(concat!(
-        env!("OUT_DIR"),
-        "/assets/account_components/rpo_falcon_512_multisig.masl"
-    ));
-    Library::read_from_bytes(bytes).expect("Shipped Multisig Rpo Falcon 512 library is well-formed")
 });
 
 /// Returns the Basic Wallet Library.
