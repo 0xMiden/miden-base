@@ -41,7 +41,7 @@ proc assert_aggfaucet_is_consumer
     # => []
 end
 
-#! Inserts claim data into the advice map under three separate keys.
+#! Reads claim data from memory and inserts it into the advice map under three separate keys.
 #!
 #! This procedure organizes the claim note data into three logical groups and inserts them
 #! into the advice map under separate keys for easier access.
