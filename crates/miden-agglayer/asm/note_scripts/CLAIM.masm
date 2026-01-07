@@ -159,7 +159,7 @@ begin
     dropw
     # => [pad(16)]
 
-    # Load CLAIM note inputs
+    # Load CLAIM note inputs into memory, starting at address 0
     push.0 exec.active_note::get_inputs drop drop
     # => [pad(16)]
 
