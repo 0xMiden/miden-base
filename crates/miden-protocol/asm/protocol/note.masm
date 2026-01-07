@@ -252,3 +252,71 @@ pub proc build_note_tag_for_network_account
     drop
     # => [network_account_tag]
 end
+
+#! Computes the tag for a local note for a given local account such that it is
+#! picked up by the local transaction builder.
+#!
+#! This procedure implements the same logic as in Rust in NoteTag::from_local_account_id().
+#! Note: This procedure does not check if the account id is a local account id.
+#!
+#! The tag is constructed as follows:
+#! - The two most significant bits are set to `0b11` to indicate a LOCAL_ANY tag.
+#! - The next 14 bits are set to the most significant bits of the account ID prefix.
+#! - The remaining bits are set to zero.
+#!
+#! Inputs:  [account_id_prefix, account_id_suffix]
+#! Outputs: [local_account_tag]
+#!
+#! Where:
+#! - account_id_prefix, account_id_suffix is the account id to compute the note tag for.
+#! - local_account_tag is the computed local note tag.
+#!
+#! Invocation: exec
+pub proc build_note_tag_for_local_account
+    # => [account_id_prefix, account_id_suffix]
+    
+    # Drop the suffix as we only need the prefix
+    swap drop
+    # => [account_id_prefix]
+    
+    # Convert prefix to u64 by splitting into high and low parts
+    u32split
+    # => [prefix_hi, prefix_lo]
+    
+    # Shift right by 34 bits: prefix >> 34
+    # This is equivalent to: (prefix_hi << 32 | prefix_lo) >> 34
+    # Which simplifies to: (prefix_hi << (32-34)) | (prefix_lo >> 34)
+    # Since 32-34 = -2, we need: (prefix_hi >> 2) | (prefix_lo >> 34)
+    # But prefix_lo >> 34 = 0 (since prefix_lo is u32), so we just need prefix_hi >> 2
+    
+    # Shift prefix_hi right by 2 bits
+    push.2
+    # => [2, prefix_hi, prefix_lo]
+    
+    exec.u64::shr
+    # => [shifted_hi, shifted_lo]
+    
+    # Drop the high part since we only need the low 32 bits
+    swap drop
+    # => [high_bits]
+    
+    # Create mask: u32::MAX << (32 - 2 - 14) = u32::MAX << 16
+    push.4294967295  # u32::MAX
+    push.16
+    # => [16, u32::MAX, high_bits]
+    
+    # Shift left to create mask
+    u32shl
+    # => [mask, high_bits]
+    
+    # Apply mask to high_bits
+    u32and
+    # => [masked_high_bits]
+    
+    # Set the LOCAL_ANY prefix (0xc0000000) by ORing with the masked bits
+    push.3221225472  # 0xc0000000 = LOCAL_ANY
+    # => [LOCAL_ANY, masked_high_bits]
+    
+    u32or
+    # => [local_account_tag]
+end

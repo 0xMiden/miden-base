@@ -24,6 +24,7 @@ use miden_protocol::note::{
 };
 use miden_protocol::testing::account_id::{
     ACCOUNT_ID_NETWORK_FUNGIBLE_FAUCET,
+    ACCOUNT_ID_PRIVATE_SENDER,
     ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
     ACCOUNT_ID_SENDER,
 };
@@ -591,6 +592,42 @@ async fn test_build_note_tag_for_network_account() -> anyhow::Result<()> {
         "Expected tag {:#010x}, got {:#010x}",
         expected_tag, actual_tag
     );
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_build_note_tag_for_local_account() -> anyhow::Result<()> {
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
+
+    let account_id = AccountId::try_from(ACCOUNT_ID_PRIVATE_SENDER)?;
+    let expected_tag = NoteTag::from_account_id(account_id).as_u32();
+
+    let prefix: u64 = account_id.prefix().into();
+    let suffix: u64 = account_id.suffix().into();
+
+    let code = format!(
+        "
+        use miden::core::sys
+        use miden::protocol::note
+
+        begin
+            push.{suffix}.{prefix}
+
+            exec.note::build_note_tag_for_local_account
+            # => [local_account_tag]
+
+            exec.sys::truncate_stack
+        end
+        ",
+        suffix = suffix,
+        prefix = prefix,
+    );
+
+    let exec_output = tx_context.execute_code(&code).await?;
+    let actual_tag = exec_output.stack[0].as_int();
+
+    assert_eq!(expected_tag, actual_tag as u32,);
 
     Ok(())
 }
