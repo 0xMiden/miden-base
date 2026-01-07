@@ -102,9 +102,9 @@ While note tags can be arbitrarily constructed from 32 bits of data, there are t
 
 #### Account Targets
 
-A note targeted at an account is a note that is intended or even enforced to be consumed by a specific account. One example is a P2ID note that enforces that it can only be consumed by a specific account ID. The tag for such a P2ID note should make it easy for the receiver to find the note. Therefore, the tag encodes a certain number of bits of the receiver account's ID, by convention. Notably, it may not encode the full 32 bits of the target account's ID to preserve the receiver's privacy. See also the section on privacy below.
+A note targeted at an account is a note that is intended or even enforced to be consumed by a specific account. One example is a P2ID note that can only be consumed by a specific account ID. The tag for such a note should make it easy for the receiver to find the note. Therefore, the tag encodes a certain number of bits of the receiver account's ID, by convention. Notably, it may not encode the full 32 bits of the target account's ID to preserve the receiver's privacy. See also the section on privacy below.
 
-#### Use Cases
+#### Use Case Tags
 
 Use case notes are notes that are not intended to be consumed by a specific account, but by anyone willing to fulfill the note's contract. One example is a SWAP note that trades one asset against another. Such a use case note can define the structure of their note tags. A sensible structure for a SWAP note could be:
 - encoding the 2 bits of the note's type.

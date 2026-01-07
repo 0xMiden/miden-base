@@ -24,16 +24,16 @@ use crate::account::AccountStorageMode;
 /// ## Account Targets
 ///
 /// A note targeted at an account is a note that is intended or even enforced to be consumed by a
-/// specific account. One example is a P2ID note that enforces that it can only be consumed by a
-/// specific account ID. The tag for such a P2ID note should make it easy for the receiver to find
-/// the note. Therefore, the tag encodes a certain number of bits of the receiver account's ID, by
-/// convention. Notably, it may not encode the full 32 bits of the target account's ID to preserve
-/// the receiver's privacy. See also the section on privacy below.
+/// specific account. One example is a P2ID note that can only be consumed by a specific account ID.
+/// The tag for such a note should make it easy for the receiver to find the note. Therefore, the
+/// tag encodes a certain number of bits of the receiver account's ID, by convention. Notably, it
+/// may not encode the full 32 bits of the target account's ID to preserve the receiver's privacy.
+/// See also the section on privacy below.
 ///
 /// Because this convention is widely used, the note tag provides a dedicated constructor for this:
 /// [`NoteTag::with_account_target`].
 ///
-/// ## Use Cases
+/// ## Use Case Tags
 ///
 /// Use case notes are notes that are not intended to be consumed by a specific account, but by
 /// anyone willing to fulfill the note's contract. One example is a SWAP note that trades one asset
