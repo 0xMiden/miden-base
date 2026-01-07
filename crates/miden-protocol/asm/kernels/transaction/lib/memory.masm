@@ -1369,7 +1369,7 @@ end
 #!
 #! Where:
 #! - storage_slots_section_ptr is the memory pointer to the account storage slots section.
-pub proc get_account_storage_slots_section_ptr
+pub proc get_account_active_storage_slots_section_ptr
     exec.get_active_account_data_ptr add.ACCT_ACTIVE_STORAGE_SLOTS_SECTION_OFFSET
 end
 
@@ -1380,7 +1380,7 @@ end
 #!
 #! Where:
 #! - storage_slots_section_ptr is the memory pointer to the native account's storage slots section.
-pub proc get_native_account_storage_slots_ptr
+pub proc get_native_account_active_storage_slots_ptr
     exec.get_native_account_data_ptr add.ACCT_ACTIVE_STORAGE_SLOTS_SECTION_OFFSET
 end
 
@@ -1409,7 +1409,7 @@ end
 pub proc get_account_initial_storage_slots_ptr
     # For foreign account, use the regular storage slots pointer since foreign accounts are
     # read-only and initial == current
-    exec.get_account_storage_slots_section_ptr
+    exec.get_account_active_storage_slots_section_ptr
     # => [account_storage_slots_ptr]
 
     # For native account, use the initial storage slots pointer
@@ -1467,7 +1467,7 @@ end
 #! Outputs: []
 pub proc mem_copy_native_account_initial_storage_slots
   exec.get_native_account_initial_storage_slots_ptr
-  exec.get_native_account_storage_slots_ptr
+  exec.get_native_account_active_storage_slots_ptr
   # => [active_storage_slots_ptr, initial_storage_slots_ptr]
 
   # each slot takes up two words
