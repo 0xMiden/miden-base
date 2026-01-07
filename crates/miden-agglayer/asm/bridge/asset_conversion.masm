@@ -105,3 +105,10 @@ pub proc scale_native_amount_to_u256
     # => [RESULT_U256[0], RESULT_U256[1]]
 end
 
+#! TODO: implement scaling down
+#! 
+#! Inputs: [U256[0], U256[1]]
+#! Outputs: [amount]
+pub proc scale_u256_to_native_amount
+    repeat.7 drop end
+end

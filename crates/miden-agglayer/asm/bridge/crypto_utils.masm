@@ -38,23 +38,22 @@ end
 #! Inputs:
 #!   Operand stack: [GER_ROOT[8], CLAIM_PROOF_RPO_COMMITMENT, pad(12)]
 #!   Advice map: {
-#!     CLAIM_NOTE_RPO_COMMITMENT => [
+#!     PROOF_DATA_KEY => [
 #!       smtProofLocalExitRoot[256],      // SMT proof for local exit root (256 felts, bytes32[_DEPOSIT_CONTRACT_TREE_DEPTH])
 #!       smtProofRollupExitRoot[256],     // SMT proof for rollup exit root (256 felts, bytes32[_DEPOSIT_CONTRACT_TREE_DEPTH])
 #!       globalIndex[8],                  // Global index (8 felts, uint256 as 8 u32 felts)
 #!       mainnetExitRoot[8],              // Mainnet exit root hash (8 felts, bytes32 as 8 u32 felts)
 #!       rollupExitRoot[8],               // Rollup exit root hash (8 felts, bytes32 as 8 u32 felts)
+#!     ],
+#!     LEAF_DATA_KEY => [
 #!       originNetwork[1],                // Origin network identifier (1 felt, uint32)
 #!       originTokenAddress[5],           // Origin token address (5 felts, address as 5 u32 felts)
 #!       destinationNetwork[1],           // Destination network identifier (1 felt, uint32)
 #!       destinationAddress[5],           // Destination address (5 felts, address as 5 u32 felts)
 #!       amount[8],                       // Amount of tokens (8 felts, uint256 as 8 u32 felts)
 #!       metadata[8],                     // ABI encoded metadata (8 felts, fixed size)
-#!       output_p2id_serial_num[4],       // P2ID note serial number (4 felts, Word)
-#!       agglayer_faucet_account_id[2],   // Agglayer faucet account ID (2 felts, prefix and suffix)
-#!       output_note_tag[1],              // P2ID output note tag
-#!       trailing_zeros[5]                // Padding zeros to reach 576 total elements
-#!     ]
+#!       EMPTY_WORD                       // padding
+#!     ],
 #!   }
 #! Outputs:
 #!   Operand stack: [is_valid]

@@ -401,6 +401,7 @@ pub fn create_claim_note<R: FeltRng>(params: ClaimNoteParams<'_, R>) -> Result<N
     // Create claim inputs matching exactly the agglayer claimAsset function parameters
     let mut claim_inputs = vec![];
 
+    // 1) PROOF DATA
     // smtProofLocalExitRoot (256 felts) - first SMT proof parameter
     claim_inputs.extend(params.smt_proof_local_exit_root);
     // smtProofRollupExitRoot (256 felts) - second SMT proof parameter
@@ -417,6 +418,7 @@ pub fn create_claim_note<R: FeltRng>(params: ClaimNoteParams<'_, R>) -> Result<N
     let rollup_exit_root_felts = bytes32_to_felts(params.rollup_exit_root);
     claim_inputs.extend(rollup_exit_root_felts);
 
+    // 2) LEAF DATA
     // originNetwork (uint32 as Felt)
     claim_inputs.push(params.origin_network);
 
@@ -429,7 +431,7 @@ pub fn create_claim_note<R: FeltRng>(params: ClaimNoteParams<'_, R>) -> Result<N
 
     // destinationAddress (address as 5 u32 felts)
     // Use AccountId prefix and suffix directly to get [suffix, prefix, 0, 0, 0]
-    // TODO: refactor to use destination_address: [u8; 20] instead once converstion function
+    // TODO: refactor to use destination_address: [u8; 20] instead once conversion function
     // exists [u8; 20] -> [address as 5 Felts]
     let destination_address_felts = vec![
         params.destination_account_id.prefix().as_felt(),
@@ -446,6 +448,11 @@ pub fn create_claim_note<R: FeltRng>(params: ClaimNoteParams<'_, R>) -> Result<N
     // metadata (fixed size of 8 felts)
     claim_inputs.extend(params.metadata);
 
+    let padding = vec![Felt::ZERO; 4];
+    claim_inputs.extend(padding);
+
+    // 3) CLAIM NOTE DATA
+    // TODO: deterministically compute serial number of p2id hash(GER, leaf index)
     // output_p2id_serial_num (4 felts as Word)
     claim_inputs.extend(params.p2id_serial_number);
 

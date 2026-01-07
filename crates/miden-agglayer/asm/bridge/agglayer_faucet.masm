@@ -1,4 +1,5 @@
 use miden::agglayer::bridge_in
+use miden::agglayer::asset_conversion
 use miden::protocol::active_account
 use miden::protocol::active_note
 use miden::standards::faucets
@@ -19,10 +20,19 @@ const EXECUTION_HINT_ALWAYS = 1
 const OUTPUT_NOTE_AUX = 0
 
 const OUTPUT_NOTE_INPUTS_MEM_ADDR = 0
-const OUTPUT_NOTE_TAG_MEM_ADDR = 570
-const OUTPUT_NOTE_SERIAL_NUM_MEM_ADDR = 564
+const OUTPUT_NOTE_TAG_MEM_ADDR = 574
+const OUTPUT_NOTE_SERIAL_NUM_MEM_ADDR = 568
 const OUTPUT_NOTE_ASSET_AMOUNT_MEM_ADDR_0 = 548
 const OUTPUT_NOTE_ASSET_AMOUNT_MEM_ADDR_1 = 552
+
+const PROOF_DATA_WORD_LEN = 134
+const LEAF_DATA_WORD_LEN = 6
+const OUTPUT_NOTE_DATA_WORD_LEN = 2
+
+const PROOF_DATA_KEY_MEM_ADDR = 800
+const LEAF_DATA_KEY_MEM_ADDR = 804
+const OUTPUT_NOTE_DATA_MEM_ADDR = 808
+const CLAIM_NOTE_DATA_MEM_ADDR = 812
 
 const P2ID_SCRIPT_ROOT = [7588674509004260508, 4058706621878288170, 5607159951796201570, 5541281552524512743]
 
@@ -32,13 +42,7 @@ const P2ID_OUTPUT_NOTE_AMOUNT_MEM_PTR = 611
 
 const ERR_INVALID_CLAIM_PROOF = "invalid claim proof"
 
-#! Validates a CLAIM note by verifying its inputs against a GER against the AggLayer bridge.
-#!
-#! This procedure performs a foreign procedure invocation (FPI) to the configured
-#! AggLayer bridge account to verify its claim data (asset, amount, recipient) inclusion against
-#! one of the Global Exit Roots in the bridge storage.
-#!
-#! Inputs:  [CLAIM_NOTE_RPO_COMMITMENT]
+#! Inputs:  [PROOF_DATA_KEY, LEAF_DATA_KEY]
 #! Outputs: []
 #!
 #! Panics if:
@@ -48,18 +52,6 @@ const ERR_INVALID_CLAIM_PROOF = "invalid claim proof"
 #!
 #! Invocation: exec
 proc validate_claim
-    # Check AdviceMap was not tampered with
-    adv.push_mapval
-    # => [CLAIM_NOTE_RPO_COMMITMENT]
-
-    push.0 push.144
-    # => [num_words, write_ptr, CLAIM_NOTE_RPO_COMMITMENT]
-
-    # Validate CLAIM_NOTE_RPO_COMMITMENT is valid commitment to CLAIM data in AdviceMap
-    # Will panic if CLAIM_NOTE_RPO_COMMITMENT is not hash of data in AdviceMap 
-    exec.mem::pipe_double_words_preimage_to_memory drop
-    # => []
-
     # Get bridge_in::check_claim_proof procedure MAST root
     procref.bridge_in::check_claim_proof
     # => [BRIDGE_PROC_MAST_ROOT]
@@ -81,7 +73,7 @@ proc validate_claim
 
     # Assert valid proof data
     assert.err=ERR_INVALID_CLAIM_PROOF drop
-    # => []
+    # => [] 
 end
 
 # Inputs: []
@@ -103,16 +95,104 @@ proc get_destination_account_id
     mem_load.543 mem_load.544
 end
 
+# Inputs: [PROOF_DATA_KEY, LEAF_DATA_KEY, OUTPUT_NOTE_DATA_KEY]
+# Outputs: []
+proc batch_pipe_double_words
+    # 1) Verify PROOF_DATA_KEY
+    adv.push_mapval
+    # => [PROOF_DATA_KEY]
+
+    push.0 push.PROOF_DATA_WORD_LEN
+    exec.mem::pipe_double_words_preimage_to_memory drop
+
+    # 2) Verify LEAF_DATA_KEY
+    adv.push_mapval
+    # => [LEAF_DATA_KEY]
+
+    push.536 push.LEAF_DATA_WORD_LEN
+    exec.mem::pipe_double_words_preimage_to_memory drop
+
+    # 3) Verify OUTPUT_NOTE_DATA_KEY
+    adv.push_mapval
+    # => [OUTPUT_NOTE_DATA_KEY]
+
+    push.568 push.OUTPUT_NOTE_DATA_WORD_LEN
+    exec.mem::pipe_double_words_preimage_to_memory drop
+end
+
+#! Inputs: [PROOF_DATA_KEY, LEAF_DATA_KEY, OUTPUT_NOTE_DATA_KEY]
+#! Outputs: []
+proc build_p2id_output_note
+    # Build P2ID output note
+    push.P2ID_SCRIPT_ROOT[0..4]
+    # => [SCRIPT_ROOT]
+
+    swapw mem_loadw_be.OUTPUT_NOTE_SERIAL_NUM_MEM_ADDR
+    # => [SERIAL_NUM, SCRIPT_ROOT]
+
+    push.P2ID_NOTE_NUM_INPUTS
+    # => [num_output_note_inputs, SERIAL_NUM, SCRIPT_ROOT]
+
+    exec.get_destination_account_id
+    # => [account_id_prefix, account_id_suffix, num_output_note_inputs, SERIAL_NUM, SCRIPT_ROOT]
+
+    mem_store.0 mem_store.1
+    # => [num_output_note_inputs, SERIAL_NUM, SCRIPT_ROOT]
+
+    push.OUTPUT_NOTE_INPUTS_MEM_ADDR
+    # => [inputs_ptr = 0, num_output_note_inputs, SERIAL_NUM, SCRIPT_ROOT]
+
+    exec.note::build_recipient
+    # => [RECIPIENT]
+    
+    push.EXECUTION_HINT_ALWAYS push.OUTPUT_NOTE_TYPE_PUBLIC push.OUTPUT_NOTE_AUX
+    # => [aux, note_type, execution_hint, RECIPIENT] 
+
+    mem_load.OUTPUT_NOTE_TAG_MEM_ADDR
+    # => [tag, aux, execution_hint, RECIPIENT]
+
+    exec.get_raw_claim_amount
+    # => [AMOUNT[1], AMOUNT[0], tag, aux, note_type, execution_hint, RECIPIENT]
+
+    # TODO: implement scale down logic; stubbed out for now
+    exec.asset_conversion::scale_u256_to_native_amount
+    # => [amount, tag, aux, note_type, execution_hint, RECIPIENT]
+
+    exec.faucets::distribute
+    # => [pad(16)]
+end
+
 #! Validates a CLAIM note against the AggLayer bridge and mints the corresponding asset to the recipient.
 #!
 #! This procedure validates the rollup exit root Merkle Proof via FPI against the agglayer bridge,
 #! and if validation passes, mints the asset and creates an output note for the recipient.
 #!
-#! Inputs:  [CLAIM_NOTE_RPO_COMMITMENT, pad(12)]
+#! Inputs:  [PROOF_DATA_KEY, LEAF_DATA_KEY, OUTPUT_NOTE_DATA_KEY, pad(4)]
 #! Outputs: [pad(16)]
 #!
-#! Where:
-#! - MERKLE_PATH_RPO_COMMITMENT: RPO hash of the MERKLE_PATH_COMMITMENT[8] of the merkle proof data
+#! Advice map: {
+#!   PROOF_DATA_KEY => [
+#!     smtProofLocalExitRoot[256],      // SMT proof for local exit root (256 felts, bytes32[_DEPOSIT_CONTRACT_TREE_DEPTH])
+#!     smtProofRollupExitRoot[256],     // SMT proof for rollup exit root (256 felts, bytes32[_DEPOSIT_CONTRACT_TREE_DEPTH])
+#!     globalIndex[8],                  // Global index (8 felts, uint256 as 8 u32 felts)
+#!     mainnetExitRoot[8],              // Mainnet exit root hash (8 felts, bytes32 as 8 u32 felts)
+#!     rollupExitRoot[8],               // Rollup exit root hash (8 felts, bytes32 as 8 u32 felts)
+#!   ],
+#!   LEAF_DATA_KEY => [
+#!     originNetwork[1],                // Origin network identifier (1 felt, uint32)
+#!     originTokenAddress[5],           // Origin token address (5 felts, address as 5 u32 felts)
+#!     destinationNetwork[1],           // Destination network identifier (1 felt, uint32)
+#!     destinationAddress[5],           // Destination address (5 felts, address as 5 u32 felts)
+#!     amount[8],                       // Amount of tokens (8 felts, uint256 as 8 u32 felts)
+#!     metadata[8],                     // ABI encoded metadata (8 felts, fixed size)
+#!     EMPTY_WORD                       // padding
+#!   ],
+#!   OUTPUT_NOTE_DATA_KEY => [
+#!     output_p2id_serial_num[4],       // P2ID note serial number (4 felts, Word)
+#!     agglayer_faucet_account_id[2],   // Agglayer faucet account ID (2 felts, prefix and suffix)
+#!     output_note_tag[1],              // P2ID output note tag
+#!   ]
+#! }
 #!
 #! This procedure validates the rollup exit root Merkle Proof via FPI against the agglayer bridge,
 #! and if validation passes, mints the asset and creates an output note for the recipient.
@@ -123,47 +203,27 @@ end
 #!
 #! Invocation: call
 pub proc claim
-    # Validate claim proof (stubbed out)
+    mem_storew_be.PROOF_DATA_KEY_MEM_ADDR 
+    mem_storew_be.LEAF_DATA_KEY_MEM_ADDR 
+    mem_storew_be.OUTPUT_NOTE_DATA_MEM_ADDR
+    # => [PROOF_DATA_KEY, LEAF_DATA_KEY, OUTPUT_NOTE_DATA_KEY, pad(4)]
+
+    # Check AdviceMap values hash to keys & write CLAIM inputs to global memory
+    exec.batch_pipe_double_words
+    # => []
+
+    # VALIDATE CLAIM 
+    mem_loadw_be.LEAF_DATA_KEY_MEM_ADDR padw
+    mem_loadw_be.PROOF_DATA_KEY_MEM_ADDR
+    # => [PROOF_DATA_KEY, LEAF_DATA_KEY]
+
+    # Errors on invalid proof
     exec.validate_claim
-    # => [CLAIM_NOTE_RPO_COMMITMENT, pad(12)]
+    # => []
 
-    # Build P2ID output note
-    push.P2ID_SCRIPT_ROOT[0..4]
-    # => [SCRIPT_ROOT, pad(16)]
-
-    swapw mem_loadw_be.OUTPUT_NOTE_SERIAL_NUM_MEM_ADDR
-    # => [SERIAL_NUM, SCRIPT_ROOT, pad(12)]
-
-    push.P2ID_NOTE_NUM_INPUTS
-    # => [num_output_note_inputs, SERIAL_NUM, SCRIPT_ROOT, pad(1)]
-
-    exec.get_destination_account_id
-    # => [account_id_prefix, account_id_suffix, num_output_note_inputs, SERIAL_NUM, SCRIPT_ROOT]
-
-    mem_store.0 mem_store.1
-    # => [num_output_note_inputs, SERIAL_NUM, SCRIPT_ROOT, pad(1)]
-
-    push.OUTPUT_NOTE_INPUTS_MEM_ADDR
-    # => [inputs_ptr = 0, num_output_note_inputs, SERIAL_NUM, SCRIPT_ROOT, pad(12)]
-
-    exec.note::build_recipient
-    # => [RECIPIENT, pad(12)]
-    
-    push.EXECUTION_HINT_ALWAYS push.OUTPUT_NOTE_TYPE_PUBLIC push.OUTPUT_NOTE_AUX
-    # => [aux, note_type, execution_hint, RECIPIENT, pad(8)] 
-
-    mem_load.OUTPUT_NOTE_TAG_MEM_ADDR
-    # => [tag, aux, execution_hint, RECIPIENT, pad(8)]
-
-    exec.get_raw_claim_amount
-    # => [AMOUNT[1], AMOUNT[0], tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
-
-    # TODO: implement scale down logic; stubbed out for now
-    exec.scale_down_amount
-    # => [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
-
-    exec.faucets::distribute
-    # => [pad(16)]
+    # Create P2ID output note
+    exec.build_p2id_output_note
+    # => [] 
 end
 
 #! Burns the fungible asset from the active note.

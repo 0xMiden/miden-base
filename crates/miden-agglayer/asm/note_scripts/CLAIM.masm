@@ -5,23 +5,26 @@ use miden::protocol::active_note
 use miden::protocol::note
 use miden::core::crypto::hashes::keccak256
 use miden::core::crypto::hashes::rpo256
+use miden::core::mem
+
 # CONSTANTS
 # =================================================================================================
 
-# Total number of CLAIM note inputs
-const CLAIM_NOTE_NUM_INPUTS = 571
-# Number of elements to hash for CLAIM_NOTE_RPO_COMMITMENT 
-# (padded with 5 zeros for even word count: 576/4 = 144 words)
-const CLAIM_NOTE_DATA_SIZE = 576
+const PROOF_DATA_SIZE = 536
+const LEAF_DATA_SIZE = 24
+const OUTPUT_NOTE_SIZE = 8
 
-const AGG_FAUCET_PREFIX_MEM_ADDR = 568
-const AGG_FAUCET_SUFFIX_MEM_ADDR = 569
+const PROOF_DATA_START_PTR = 0
+const LEAF_DATA_START_PTR = 536
+const OUTPUT_NOTE_DATA_START_PTR = 568
+
+const AGG_FAUCET_PREFIX_MEM_ADDR = 572
+const AGG_FAUCET_SUFFIX_MEM_ADDR = 573
 
 # ERRORS
 # =================================================================================================
 
 const ERR_CLAIM_TARGET_ACCT_MISMATCH = "CLAIM's target account address and transaction address do not match"
-const ERR_CLAIM_WRONG_NUMBER_OF_INPUTS = "CLAIM note must have exactly 571 inputs"
 
 # Inputs: []
 # Output: []
@@ -38,6 +41,89 @@ proc assert_aggfaucet_is_consumer
     # => []
 end
 
+#! Inserts claim data into the advice map under three separate keys.
+#!
+#! This procedure organizes the claim note data into three logical groups and inserts them
+#! into the advice map under separate keys for easier access.
+#!
+#! Inputs: []
+#! Outputs: [PROOF_DATA_KEY, LEAF_DATA_KEY, OUTPUT_NOTE_DATA_KEY]
+#!
+#! Advice map entries created:
+#! PROOF_DATA_KEY => [
+#!   smtProofLocalExitRoot[256],      // SMT proof for local exit root (256 felts, bytes32[_DEPOSIT_CONTRACT_TREE_DEPTH])
+#!   smtProofRollupExitRoot[256],     // SMT proof for rollup exit root (256 felts, bytes32[_DEPOSIT_CONTRACT_TREE_DEPTH])
+#!   globalIndex[8],                  // Global index (8 felts, uint256 as 8 u32 felts)
+#!   mainnetExitRoot[8],              // Mainnet exit root hash (8 felts, bytes32 as 8 u32 felts)
+#!   rollupExitRoot[8],               // Rollup exit root hash (8 felts, bytes32 as 8 u32 felts)
+#! ]
+#!
+#! LEAF_DATA_KEY => [
+#!   originNetwork[1],                // Origin network identifier (1 felt, uint32)
+#!   originTokenAddress[5],           // Origin token address (5 felts, address as 5 u32 felts)
+#!   destinationNetwork[1],           // Destination network identifier (1 felt, uint32)
+#!   destinationAddress[5],           // Destination address (5 felts, address as 5 u32 felts)
+#!   amount[8],                       // Amount of tokens (8 felts, uint256 as 8 u32 felts)
+#!   metadata[8],                     // ABI encoded metadata (8 felts, fixed size)
+#!   EMPTY_WORD                       // padding
+#! ]
+#!
+#! OUTPUT_NOTE_DATA_KEY => [
+#!   output_p2id_serial_num[4],       // P2ID note serial number (4 felts, Word)
+#!   agglayer_faucet_account_id[2],   // Agglayer faucet account ID (2 felts, prefix and suffix)
+#!   output_note_tag[1],              // P2ID output note tag
+#! ]
+#!
+#! Invocation: exec
+proc write_claim_data_into_advice_map_by_key
+    # 1) Get OUTPUT_NOTE_DATA_KEY
+    push.OUTPUT_NOTE_SIZE push.OUTPUT_NOTE_DATA_START_PTR
+    exec.rpo256::hash_elements
+    # => [OUTPUT_NOTE_DATA_KEY]
+
+    push.OUTPUT_NOTE_SIZE add.OUTPUT_NOTE_DATA_START_PTR push.OUTPUT_NOTE_DATA_START_PTR
+    movdn.5 movdn.5
+    # => [OUTPUT_NOTE_DATA_KEY, start_ptr, end_ptr]
+
+    adv.insert_mem
+    # OS => [OUTPUT_NOTE_DATA_KEY, start_ptr, end_ptr, pad(16)]
+    # AS => {OUTPUT_NOTE_DATA_KEY: mem[start_ptr..end_ptr] }
+
+    movup.4 drop movup.4 drop
+    # => [OUTPUT_NOTE_DATA_KEY]
+
+    # 2) Get LEAF_DATA_KEY
+    push.LEAF_DATA_SIZE push.LEAF_DATA_START_PTR
+    exec.rpo256::hash_elements
+    # => [LEAF_DATA_KEY, OUTPUT_NOTE_DATA_KEY]
+
+    push.LEAF_DATA_SIZE add.LEAF_DATA_START_PTR push.LEAF_DATA_START_PTR
+    movdn.5 movdn.5
+    # => [LEAF_DATA_KEY, start_ptr, end_ptr, OUTPUT_NOTE_DATA_KEY]
+
+    adv.insert_mem
+    # OS => [LEAF_DATA_KEY, start_ptr, end_ptr]
+    # AS => {LEAF_DATA_KEY: mem[start_ptr..end_ptr] }
+    movup.4 drop movup.4 drop
+    # => [LEAF_DATA_KEY, OUTPUT_NOTE_DATA_KEY]
+
+    # 3) Get PROOF_DATA_KEY
+    push.PROOF_DATA_SIZE push.PROOF_DATA_START_PTR
+    exec.rpo256::hash_elements
+    # => [PROOF_DATA_KEY, LEAF_DATA_KEY, OUTPUT_NOTE_DATA_KEY]
+
+    push.PROOF_DATA_SIZE push.PROOF_DATA_START_PTR
+    movdn.5 movdn.5
+    # => [PROOF_DATA_KEY, start_ptr, end_ptr, LEAF_DATA_KEY, OUTPUT_NOTE_DATA_KEY]
+
+    adv.insert_mem
+    # OS => [PROOF_DATA_KEY, start_ptr, end_ptr, LEAF_DATA_KEY, OUTPUT_NOTE_DATA_KEY]
+    # AS => {PROOF_DATA_KEY: mem[start_ptr..end_ptr] }
+
+    movup.4 drop movup.4 drop
+    # => [PROOF_DATA_KEY, LEAF_DATA_KEY, OUTPUT_NOTE_DATA_KEY]
+end
+
 #! Agglayer Faucet CLAIM script: claims assets by calling the agglayer faucet's claim function.
 #! This note is intended to be consumed by an agglayer faucet account and will create a P2ID note on consumption.
 #!
@@ -49,7 +135,7 @@ end
 #!
 #! Current note inputs match exactly the agglayer claimAsset function parameters:
 #!
-#! NoteInputs layout (571 felts total):
+#! NoteInputs layout (575 felts total):
 #! - smtProofLocalExitRoot      [0..255]  : SMT proof for local exit root (256 felts, bytes32[_DEPOSIT_CONTRACT_TREE_DEPTH])
 #! - smtProofRollupExitRoot     [256..511]: SMT proof for rollup exit root (256 felts, bytes32[_DEPOSIT_CONTRACT_TREE_DEPTH])
 #! - globalIndex                [512..519]: Global index (8 felts, uint256 as 8 u32 felts)
@@ -61,59 +147,33 @@ end
 #! - destinationAddress         [543..547]: Destination address (5 felts, address as 5 u32 felts)
 #! - amount                     [548..555]: Amount of tokens (8 felts, uint256 as 8 u32 felts)
 #! - metadata                   [556..563]: ABI encoded metadata (8 felts, fixed size)
-#! - output_p2id_serial_num     [564..567]: P2ID note serial number (4 felts, Word)
-#! - agglayer_faucet_account_id [568..569]: Agglayer faucet account ID (2 felts, prefix and suffix)
-#! - output_note_tag            [570]     : P2ID output note tag
+#! - EMPTY_WORD                 [564..567]: EMPTY_WORD
+#! - output_p2id_serial_num     [568..571]: P2ID note serial number (4 felts, Word)
+#! - agglayer_faucet_account_id [572..573]: Agglayer faucet account ID (2 felts, prefix and suffix)
+#! - output_note_tag            [574]     : P2ID output note tag
 #!
 #! Panics if:
 #! - account does not expose claim procedure.
-#! - the number of inputs is not exactly 571.
 #! - agglayer faucet account ID does not match the consuming account ID.
 begin
     dropw
     # => [pad(16)]
 
     # Load CLAIM note inputs
-    push.0 exec.active_note::get_inputs
-    # => [total_inputs, inputs_ptr, pad(16)]
-
-    # Verify we have exactly 566 inputs
-    push.CLAIM_NOTE_NUM_INPUTS eq assert.err=ERR_CLAIM_WRONG_NUMBER_OF_INPUTS drop
+    push.0 exec.active_note::get_inputs drop drop
     # => [pad(16)]
 
     # Check consuming account == aggfaucet
     exec.assert_aggfaucet_is_consumer
     # => [pad(16)]
 
-    # Compute the CLAIM_NOTE_RPO_COMMITMENT of the claim proof data
-    push.CLAIM_NOTE_DATA_SIZE push.0
-    # => [start_ptr, end_ptr, pad(16)]
-
-    # Hashing NoteInputs and inserting into AdivceMap
-    # to prevent calling active_note::get_inputs twice
-    exec.rpo256::hash_elements
-    # => [CLAIM_NOTE_RPO_COMMITMENT, pad(16)]
-
-    # Prepare for insertion into AdviceMap
-    push.CLAIM_NOTE_DATA_SIZE push.0
-    # => [start_ptr, end_ptr, CLAIM_NOTE_RPO_COMMITMENT, pad(16)]
-
-    movdn.5 movdn.5
-    # => [CLAIM_NOTE_RPO_COMMITMENT, start_ptr, end_ptr, pad(16)]
-
-    # Insert Asset Claim Proof Data into AdviceMap
-    adv.insert_mem
-    # OS => [CLAIM_NOTE_RPO_COMMITMENT, start_ptr, end_ptr, pad(16)]
-    # AS => {CLAIM_NOTE_RPO_COMMITMENT: mem[start_ptr..end_ptr] }
-
-    movup.5 drop movup.5 drop
-    # => [CLAIM_NOTE_RPO_COMMITMENT, pad(16)]
+    exec.write_claim_data_into_advice_map_by_key
+    # => [PROOF_DATA_KEY, LEAF_DATA_KEY, OUTPUT_NOTE_DATA_KEY, pad(4)]
 
     # Call the Aggfaucet Claim procedure
     call.agg_faucet::claim
-    # => [pad(16), pad(6)]
+    # => [pad(16), pad(12)]
 
-    dropw drop drop
+    dropw dropw dropw
     # => [pad(16)]
 end
-
