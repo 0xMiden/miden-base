@@ -388,6 +388,8 @@ pub const INPUT_NOTE_NUM_INPUTS_OFFSET: MemoryOffset = 32;
 pub const INPUT_NOTE_NUM_ASSETS_OFFSET: MemoryOffset = 36;
 pub const INPUT_NOTE_ASSETS_OFFSET: MemoryOffset = 40;
 
+#[allow(clippy::empty_line_after_outer_attr)]
+#[rustfmt::skip]
 // OUTPUT NOTES DATA
 // ------------------------------------------------------------------------------------------------
 // Output notes section contains data of all notes produced by a transaction. The section starts at
