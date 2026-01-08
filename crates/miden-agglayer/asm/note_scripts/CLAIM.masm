@@ -18,25 +18,34 @@ const PROOF_DATA_START_PTR = 0
 const LEAF_DATA_START_PTR = 536
 const OUTPUT_NOTE_DATA_START_PTR = 568
 
-const AGG_FAUCET_PREFIX_MEM_ADDR = 572
-const AGG_FAUCET_SUFFIX_MEM_ADDR = 573
+const TARGET_FAUCET_PREFIX_MEM_ADDR = 572
+const TARGET_FAUCET_SUFFIX_MEM_ADDR = 573
 
 # ERRORS
 # =================================================================================================
 
 const ERR_CLAIM_TARGET_ACCT_MISMATCH = "CLAIM's target account address and transaction address do not match"
 
-# Inputs: []
-# Output: []
+#! Asserts that the consuming account matches the target agglayer faucet account.
+#!
+#! This procedure ensures that only the specified agglayer faucet account can consume
+#! this CLAIM note. It assumes that the note inputs have already been loaded into memory
+#! via active_note::get_inputs.
+#!
+#! Inputs: []
+#! Output: []
+#!
+#! Panics if:
+#! - The consuming account ID does not match the target faucet account ID stored in memory
 proc assert_aggfaucet_is_consumer
-    # Load agglayer faucet ID (assumes active_note::get_inputs has been called)
-    mem_load.AGG_FAUCET_SUFFIX_MEM_ADDR mem_load.AGG_FAUCET_PREFIX_MEM_ADDR
-    # => [agg_faucet_prefix, agg_faucet_suffix]
+    # Load target faucet ID (assumes active_note::get_inputs has been called)
+    mem_load.TARGET_FAUCET_SUFFIX_MEM_ADDR mem_load.TARGET_FAUCET_PREFIX_MEM_ADDR
+    # => [target_faucet_prefix, target_faucet_suffix]
 
     exec.active_account::get_id
-    # => [account_id_prefix, account_id_suffix, agg_faucet_prefix, agg_faucet_suffix]
+    # => [account_id_prefix, account_id_suffix, target_faucet_prefix, target_faucet_suffix]
 
-    # ensure only the specified agglayer faucet can consume this CLAIM note, not any other account
+    # ensure only the specified target faucet can consume this CLAIM note, not any other account
     exec.account_id::is_equal assert.err=ERR_CLAIM_TARGET_ACCT_MISMATCH
     # => []
 end
@@ -68,9 +77,10 @@ end
 #!   EMPTY_WORD                       // padding
 #! ]
 #!
+#! TODO: Will be removed in future PR
 #! OUTPUT_NOTE_DATA_KEY => [
 #!   output_p2id_serial_num[4],       // P2ID note serial number (4 felts, Word)
-#!   agglayer_faucet_account_id[2],   // Agglayer faucet account ID (2 felts, prefix and suffix)
+#!   target_faucet_account_id[2],     // Target faucet account ID (2 felts, prefix and suffix)
 #!   output_note_tag[1],              // P2ID output note tag
 #! ]
 #!
@@ -87,7 +97,7 @@ proc write_claim_data_into_advice_map_by_key
 
     adv.insert_mem
     # OS => [OUTPUT_NOTE_DATA_KEY, start_ptr, end_ptr, pad(16)]
-    # AS => {OUTPUT_NOTE_DATA_KEY: mem[start_ptr..end_ptr] }
+    # AM => {OUTPUT_NOTE_DATA_KEY: mem[start_ptr..end_ptr] }
 
     movup.4 drop movup.4 drop
     # => [OUTPUT_NOTE_DATA_KEY]
@@ -103,7 +113,7 @@ proc write_claim_data_into_advice_map_by_key
 
     adv.insert_mem
     # OS => [LEAF_DATA_KEY, start_ptr, end_ptr]
-    # AS => {LEAF_DATA_KEY: mem[start_ptr..end_ptr] }
+    # AM => {LEAF_DATA_KEY: mem[start_ptr..end_ptr] }
     movup.4 drop movup.4 drop
     # => [LEAF_DATA_KEY, OUTPUT_NOTE_DATA_KEY]
 
@@ -118,14 +128,16 @@ proc write_claim_data_into_advice_map_by_key
 
     adv.insert_mem
     # OS => [PROOF_DATA_KEY, start_ptr, end_ptr, LEAF_DATA_KEY, OUTPUT_NOTE_DATA_KEY]
-    # AS => {PROOF_DATA_KEY: mem[start_ptr..end_ptr] }
+    # AM => {PROOF_DATA_KEY: mem[start_ptr..end_ptr] }
 
     movup.4 drop movup.4 drop
     # => [PROOF_DATA_KEY, LEAF_DATA_KEY, OUTPUT_NOTE_DATA_KEY]
 end
 
 #! Agglayer Faucet CLAIM script: claims assets by calling the agglayer faucet's claim function.
-#! This note is intended to be consumed by an agglayer faucet account and will create a P2ID note on consumption.
+#!
+#! This note can only be consumed by the specific agglayer faucet account whose ID is provided
+#! in the note inputs (target_faucet_account_id). Upon consumption, it will create a P2ID note.
 #!
 #! Requires that the account exposes:
 #! - agglayer::agglayer_faucet::claim procedure.
@@ -133,28 +145,48 @@ end
 #! Inputs:  [ARGS, pad(12)]
 #! Outputs: [pad(16)]
 #!
-#! Current note inputs match exactly the agglayer claimAsset function parameters:
-#!
 #! NoteInputs layout (575 felts total):
-#! - smtProofLocalExitRoot      [0..255]  : SMT proof for local exit root (256 felts, bytes32[_DEPOSIT_CONTRACT_TREE_DEPTH])
-#! - smtProofRollupExitRoot     [256..511]: SMT proof for rollup exit root (256 felts, bytes32[_DEPOSIT_CONTRACT_TREE_DEPTH])
-#! - globalIndex                [512..519]: Global index (8 felts, uint256 as 8 u32 felts)
-#! - mainnetExitRoot            [520..527]: Mainnet exit root hash (8 felts, bytes32 as 8 u32 felts)
-#! - rollupExitRoot             [528..535]: Rollup exit root hash (8 felts, bytes32 as 8 u32 felts)
-#! - originNetwork              [536]     : Origin network identifier (1 felt, uint32)
-#! - originTokenAddress         [537..541]: Origin token address (5 felts, address as 5 u32 felts)
-#! - destinationNetwork         [542]     : Destination network identifier (1 felt, uint32)
-#! - destinationAddress         [543..547]: Destination address (5 felts, address as 5 u32 felts)
-#! - amount                     [548..555]: Amount of tokens (8 felts, uint256 as 8 u32 felts)
-#! - metadata                   [556..563]: ABI encoded metadata (8 felts, fixed size)
-#! - EMPTY_WORD                 [564..567]: EMPTY_WORD
-#! - output_p2id_serial_num     [568..571]: P2ID note serial number (4 felts, Word)
-#! - agglayer_faucet_account_id [572..573]: Agglayer faucet account ID (2 felts, prefix and suffix)
-#! - output_note_tag            [574]     : P2ID output note tag
+#! - smtProofLocalExitRoot      [0..255]  : 256 felts
+#! - smtProofRollupExitRoot     [256..511]: 256 felts
+#! - globalIndex                [512..519]: 8 felts
+#! - mainnetExitRoot            [520..527]: 8 felts
+#! - rollupExitRoot             [528..535]: 8 felts
+#! - originNetwork              [536]     : 1 felt
+#! - originTokenAddress         [537..541]: 5 felts
+#! - destinationNetwork         [542]     : 1 felt
+#! - destinationAddress         [543..547]: 5 felts
+#! - amount                     [548..555]: 8 felts
+#! - metadata                   [556..563]: 8 felts
+#! - EMPTY_WORD                 [564..567]: 4 felts
+#! - output_p2id_serial_num     [568..571]: 4 felts
+#! - target_faucet_account_id   [572..573]: 2 felts
+#! - output_note_tag            [574]     : 1 felt
+#!
+#! Where:
+#! - smtProofLocalExitRoot: SMT proof for local exit root (bytes32[_DEPOSIT_CONTRACT_TREE_DEPTH])
+#! - smtProofRollupExitRoot: SMT proof for rollup exit root (bytes32[_DEPOSIT_CONTRACT_TREE_DEPTH])
+#! - globalIndex: Global index (uint256 as 8 u32 felts). This is a packed "locator" for the leaf being claimed:
+#!   - mainnetFlag (1 bit): 1 = leaf came from L1 (Mainnet Exit Tree), 0 = leaf came from an L2 rollup
+#!   - rollupIndex (32 bits): which rollup (only used when mainnetFlag=0)
+#!   - localRootIndex (32 bits): leaf index / depositCount in the origin chain's Local Exit Tree
+#!   - Top 191 bits are ignored (not required to be zero), so indexers must decode it exactly like the contract does
+#! - mainnetExitRoot: Mainnet exit root hash (bytes32 as 8 u32 felts)
+#! - rollupExitRoot: Rollup exit root hash (bytes32 as 8 u32 felts)
+#! - originNetwork: Origin network identifier (uint32)
+#! - originTokenAddress: Origin token address (address as 5 u32 felts)
+#! - destinationNetwork: Destination network identifier (uint32)
+#! - destinationAddress: Destination address (address as 5 u32 felts)
+#! - amount: Amount of tokens (uint256 as 8 u32 felts)
+#! - metadata: ABI encoded metadata (fixed size)
+#! - EMPTY_WORD: Padding word
+#! - output_p2id_serial_num: P2ID note serial number (Word)
+#! - target_faucet_account_id: Target agglayer faucet account ID (prefix and suffix). Only this specific
+#!   account can consume the note - any other account will cause a panic.
+#! - output_note_tag: P2ID output note tag
 #!
 #! Panics if:
 #! - account does not expose claim procedure.
-#! - agglayer faucet account ID does not match the consuming account ID.
+#! - target faucet account ID does not match the consuming account ID.
 begin
     dropw
     # => [pad(16)]
