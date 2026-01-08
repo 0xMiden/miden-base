@@ -209,53 +209,56 @@ end
 pub proc compute_output_notes_commitment
     # get the number of output notes from memory
     exec.memory::get_num_output_notes
-    # => [num_notes, ...]
+    # => [num_notes]
 
-    # calculate the address at which we should stop looping
-    exec.memory::get_output_note_ptr
-    # => [end_ptr, ...]
-
-    # compute pointer for first address
-    push.0 exec.memory::get_output_note_ptr
-    # => [first_note_ptr, end_ptr, ...]
+    # initialize the output note index at which to start the commitment computation
+    push.0
+    # => [current_index = 0, num_notes]
 
     # prepare stack for hashing
     padw padw padw
-    # => [PERM, PERM, PERM, first_note_ptr, end_ptr, ...]
+    # => [PERM, PERM, PERM, current_index, num_notes]
 
-    # check if the number of output notes is greater then 0. Conditional for the while loop.
-    dup.13 dup.13 neq
-    # => [PERM, PERM, PERM, first_note_ptr, end_ptr, ...]
+    # starting looping if num_notes != 0
+    dup.13 neq.0
+    # => [should_loop, PERM, PERM, PERM, current_index, num_notes]
 
     # loop and hash output notes
     while.true
-        # compute and save output note ID to memory (this also computes the note's asset commitment)
-        dup.12 exec.compute_output_note_id
-        # => [NOTE_ID, PERM, PERM, PERM, note_ptr, end_ptr, ...]
+        dup.12 exec.memory::get_output_note_ptr
+        # => [current_note_ptr, PERM, PERM, PERM, current_index, num_notes]
 
-        # drop output note ID from stack (it will be read from memory by the next instruction)
-        dropw
-        # => [PERM, PERM, PERM, note_ptr, end_ptr, ...]
+        # compute and save output note ID to memory (this also computes the note's asset commitment)
+        dup exec.compute_output_note_id
+        # => [NOTE_ID, current_note_ptr, PERM, PERM, PERM, current_index, num_notes]
+
+        movup.4 exec.memory::get_output_note_metadata
+        # => [NOTE_METADATA, NOTE_ID, PERM, PERM, PERM, current_index, num_notes]
+
+        # replace rate words with note ID and metadata
+        swapdw dropw dropw
+        # => [NOTE_METADATA, NOTE_ID, PERM, current_index, num_notes]
 
         # permute over (note_id, note_metadata)
-        mem_stream hperm
-        # => [PERM, PERM, PERM, note_ptr + 8, end_ptr, ...]
+        hperm
+        # => [PERM, PERM, PERM, current_index, num_notes]
 
-        # increment output note pointer
-        movup.12 add.OUTPUT_NOTE_HASHING_MEM_DIFF
-        # => [note_ptr + 2048, PERM, PERM, PERM, end_ptr, ...]
+        # increment current_index
+        movup.12 add.1 movdn.12
+        # => [PERM, PERM, PERM, current_index + 1, num_notes]
 
-        # check if we should loop again
-        dup movdn.13 dup.14 neq
-        # => [should_loop, PERM, PERM, PERM, note_ptr + 512, end_ptr, ...]
+        # continue looping if current_index != num_notes
+        dup.13 dup.13 neq
+        # => [should_loop, PERM, PERM, PERM, current_index + 1, num_notes]
     end
+    # => [PERM, PERM, PERM, current_index + 1, num_notes]
 
     # extract digest
     exec.rpo256::squeeze_digest
-    # => [OUTPUT_NOTES_COMMITMENT, end_ptr, end_ptr, ...]
+    # => [OUTPUT_NOTES_COMMITMENT, current_index + 1, num_notes]
 
     # drop accessory variables from stack
     movup.4 drop
     movup.4 drop
-    # => [OUTPUT_NOTES_COMMITMENT, ...]
+    # => [OUTPUT_NOTES_COMMITMENT]
 end
