@@ -123,14 +123,14 @@ async fn test_note_script_and_note_args() -> miette::Result<()> {
             .unwrap()
     };
 
-    let code = "
+    let code =  "
         use $kernel::prologue
         use $kernel::memory
         use $kernel::note
 
         begin
             exec.prologue::prepare_transaction
-            exec.memory::get_num_input_notes push.2 assert_eq
+            exec.memory::get_num_input_notes push.2 assert_eq.err=\"unexpected number of input notes\"
             exec.note::prepare_note drop
             # => [NOTE_ARGS0, pad(11), pad(16)]
             repeat.11 movup.4 drop end
