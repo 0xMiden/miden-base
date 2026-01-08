@@ -1,6 +1,6 @@
 use miden::core::crypto::hashes::rpo256
 
-use $kernel::constants
+use $kernel::constants::NOTE_MEM_SIZE
 use $kernel::memory
 
 # ERRORS
@@ -31,7 +31,7 @@ pub proc increment_active_input_note_ptr
     # => [orig_input_note_ptr]
 
     # increment the pointer
-    exec.constants::get_note_mem_size add
+    push.NOTE_MEM_SIZE add
     # => [active_input_note_ptr]
 
     # set the active input note pointer to the incremented value

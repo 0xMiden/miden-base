@@ -12,6 +12,7 @@ use super::super::{
     FeltSchema,
     MapSlotSchema,
     StorageSlotSchema,
+    StorageValue,
     StorageValueName,
     ValueSlotSchema,
     WordSchema,
@@ -54,6 +55,12 @@ impl AccountComponentMetadata {
     pub fn from_toml(toml_string: &str) -> Result<Self, AccountComponentTemplateError> {
         let raw: RawAccountComponentMetadata = toml::from_str(toml_string)
             .map_err(AccountComponentTemplateError::TomlDeserializationError)?;
+
+        if !raw.description.is_ascii() {
+            return Err(AccountComponentTemplateError::InvalidSchema(
+                "description must contain only ASCII characters".to_string(),
+            ));
+        }
 
         let RawStorageSchema { slots } = raw.storage;
         let mut fields = Vec::with_capacity(slots.len());
@@ -432,13 +439,16 @@ impl RawStorageSlotSchema {
         let mut map = BTreeMap::new();
 
         let parse = |schema: &WordSchema, raw: &WordValue, label: &str| {
-            super::schema::parse_word_value_with_schema(schema, raw, slot_prefix, label).map_err(
-                |err| {
-                    AccountComponentTemplateError::InvalidSchema(format!(
-                        "invalid map `{label}`: {err}"
-                    ))
-                },
+            super::schema::parse_storage_value_with_schema(
+                schema,
+                &StorageValue::Parseable(raw.clone()),
+                slot_prefix,
             )
+            .map_err(|err| {
+                AccountComponentTemplateError::InvalidSchema(format!(
+                    "invalid map `{label}`: {err}"
+                ))
+            })
         };
 
         for (index, entry) in entries.into_iter().enumerate() {

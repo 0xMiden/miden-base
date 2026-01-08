@@ -551,7 +551,7 @@ pub(crate) static EVENT_NAME_LUT: ::miden_utils_sync::LazyLock<BTreeMap<u64, &'s
     Ok(output)
 }
 
-/// This module should be kept in sync with the copy in miden-lib's build.rs.
+/// This module should be kept in sync with the copy in miden-standards' build.rs.
 mod shared {
     use std::collections::BTreeMap;
     use std::fmt::Write;
@@ -612,7 +612,8 @@ mod shared {
         Ok(())
     }
 
-    /// Returns a vector with paths to all MASM files in the specified directory.
+    /// Returns a vector with paths to all MASM files in the specified directory and its
+    /// subdirectories.
     ///
     /// All non-MASM files are skipped.
     pub fn get_masm_files<P: AsRef<Path>>(dir_path: P) -> Result<Vec<PathBuf>> {
@@ -620,12 +621,9 @@ mod shared {
 
         let path = dir_path.as_ref();
         if path.is_dir() {
-            let entries = fs::read_dir(path)
-                .into_diagnostic()
-                .wrap_err_with(|| format!("failed to read directory {}", path.display()))?;
-            for entry in entries {
-                let file = entry.into_diagnostic().wrap_err("failed to read directory entry")?;
-                let file_path = file.path();
+            for entry in WalkDir::new(path) {
+                let entry = entry.into_diagnostic()?;
+                let file_path = entry.path().to_path_buf();
                 if is_masm_file(&file_path).into_diagnostic()? {
                     files.push(file_path);
                 }

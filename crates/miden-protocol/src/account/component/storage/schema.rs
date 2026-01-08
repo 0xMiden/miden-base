@@ -7,11 +7,12 @@ use miden_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
 use miden_processor::DeserializationError;
 
 use super::type_registry::{SCHEMA_TYPE_REGISTRY, SchemaRequirement, SchemaTypeId};
-use super::{InitStorageData, StorageValueName, WordValue};
+use super::{InitStorageData, StorageValue, StorageValueName, WordValue};
 use crate::account::storage::is_reserved_slot_name;
 use crate::account::{StorageMap, StorageSlot, StorageSlotName};
+use crate::crypto::utils::bytes_to_elements_with_padding;
 use crate::errors::AccountComponentTemplateError;
-use crate::{Felt, FieldElement, Word};
+use crate::{Felt, FieldElement, Hasher, Word};
 
 // STORAGE SCHEMA
 // ================================================================================================
@@ -66,6 +67,16 @@ impl AccountStorageSchema {
             .collect()
     }
 
+    /// Returns a commitment to this storage schema definition.
+    ///
+    /// The commitment is computed over the serialized schema and does not include defaults.
+    pub fn commitment(&self) -> Word {
+        let mut bytes = Vec::new();
+        self.write_into_with_defaults(&mut bytes, false);
+        let elements = bytes_to_elements_with_padding(&bytes);
+        Hasher::hash_elements(&elements)
+    }
+
     /// Returns init-value requirements for the entire schema.
     ///
     /// The returned map includes both required values (no `default_value`) and optional values
@@ -80,6 +91,17 @@ impl AccountStorageSchema {
         Ok(requirements)
     }
 
+    /// Serializes the schema, optionally ignoring the default values (used for committing to a
+    /// schema definition).
+    fn write_into_with_defaults<W: ByteWriter>(&self, target: &mut W, include_defaults: bool) {
+        target.write_u16(self.slots.len() as u16);
+        for (slot_name, schema) in self.slots.iter() {
+            target.write(slot_name);
+            schema.write_into_with_defaults(target, include_defaults);
+        }
+    }
+
+    /// Validates schema-level invariants across all slots.
     fn validate(&self) -> Result<(), AccountComponentTemplateError> {
         let mut init_values = BTreeMap::new();
 
@@ -88,7 +110,7 @@ impl AccountStorageSchema {
                 return Err(AccountComponentTemplateError::ReservedSlotName(slot_name.clone()));
             }
 
-            schema.validate(slot_name)?;
+            schema.validate()?;
             schema.collect_init_value_requirements(slot_name, &mut init_values)?;
         }
 
@@ -98,11 +120,7 @@ impl AccountStorageSchema {
 
 impl Serializable for AccountStorageSchema {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        target.write_u16(self.slots.len() as u16);
-        for (slot_name, schema) in self.slots.iter() {
-            target.write(slot_name);
-            target.write(schema);
-        }
+        self.write_into_with_defaults(target, true);
     }
 }
 
@@ -125,6 +143,16 @@ impl Deserializable for AccountStorageSchema {
         let schema = AccountStorageSchema::new(fields)
             .map_err(|err| DeserializationError::InvalidValue(err.to_string()))?;
         Ok(schema)
+    }
+}
+
+fn validate_description_ascii(description: &str) -> Result<(), AccountComponentTemplateError> {
+    if description.is_ascii() {
+        Ok(())
+    } else {
+        Err(AccountComponentTemplateError::InvalidSchema(
+            "description must contain only ASCII characters".to_string(),
+        ))
     }
 }
 
@@ -162,44 +190,47 @@ impl StorageSlotSchema {
         slot_name: &StorageSlotName,
         init_storage_data: &InitStorageData,
     ) -> Result<StorageSlot, AccountComponentTemplateError> {
-        let slot_prefix = StorageValueName::from_slot_name(slot_name);
         match self {
             StorageSlotSchema::Value(slot) => {
-                let word = slot.try_build_word(init_storage_data, slot_prefix)?;
+                let word = slot.try_build_word(init_storage_data, slot_name)?;
                 Ok(StorageSlot::with_value(slot_name.clone(), word))
             },
             StorageSlotSchema::Map(slot) => {
-                let storage_map = slot.try_build_map(init_storage_data, slot_prefix)?;
+                let storage_map = slot.try_build_map(init_storage_data, slot_name)?;
                 Ok(StorageSlot::with_map(slot_name.clone(), storage_map))
             },
         }
     }
 
-    pub(crate) fn validate(
-        &self,
-        slot_name: &StorageSlotName,
-    ) -> Result<(), AccountComponentTemplateError> {
+    /// Validates this slot schema's internal invariants.
+    pub(crate) fn validate(&self) -> Result<(), AccountComponentTemplateError> {
         match self {
-            StorageSlotSchema::Value(slot) => slot.validate(slot_name)?,
+            StorageSlotSchema::Value(slot) => slot.validate()?,
             StorageSlotSchema::Map(slot) => slot.validate()?,
         }
 
         Ok(())
     }
+
+    /// Serializes the schema, optionally ignoring the default values (used for committing to a
+    /// schema definition).
+    fn write_into_with_defaults<W: ByteWriter>(&self, target: &mut W, include_defaults: bool) {
+        match self {
+            StorageSlotSchema::Value(slot) => {
+                target.write_u8(0u8);
+                slot.write_into_with_defaults(target, include_defaults);
+            },
+            StorageSlotSchema::Map(slot) => {
+                target.write_u8(1u8);
+                slot.write_into_with_defaults(target, include_defaults);
+            },
+        }
+    }
 }
 
 impl Serializable for StorageSlotSchema {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        match self {
-            StorageSlotSchema::Value(slot) => {
-                target.write_u8(0u8);
-                slot.write_into(target);
-            },
-            StorageSlotSchema::Map(slot) => {
-                target.write_u8(1u8);
-                slot.write_into(target);
-            },
-        }
+        self.write_into_with_defaults(target, true);
     }
 }
 
@@ -307,7 +338,7 @@ impl WordSchema {
         }
     }
 
-    /// Validates that the defined word type exists and its inner felts (if any) are valid.
+    /// Validates the word schema type, defaults, and inner felts (if any).
     fn validate(&self) -> Result<(), AccountComponentTemplateError> {
         let type_exists = SCHEMA_TYPE_REGISTRY.contains_word_type(&self.word_type());
         if !type_exists {
@@ -339,47 +370,59 @@ impl WordSchema {
     pub(crate) fn try_build_word(
         &self,
         init_storage_data: &InitStorageData,
-        value_prefix: StorageValueName,
+        slot_name: &StorageSlotName,
     ) -> Result<Word, AccountComponentTemplateError> {
+        let slot_prefix = StorageValueName::from_slot_name(slot_name);
+        let slot_value = init_storage_data.slot_value_entry(slot_name);
+        let has_fields = init_storage_data.has_field_entries_for_slot(slot_name);
+        let has_map = init_storage_data.map_entries(slot_name).is_some();
         match self {
             WordSchema::Simple { r#type, default_value } => {
-                let value_name = value_prefix;
-                match init_storage_data.get(&value_name) {
-                    Some(WordValue::Atomic(raw)) => SCHEMA_TYPE_REGISTRY
-                        .try_parse_word(r#type, raw)
-                        .map_err(AccountComponentTemplateError::StorageValueParsingError),
-                    Some(WordValue::Elements(elements)) => {
-                        let felts = elements
-                            .iter()
-                            .map(|element| {
-                                SCHEMA_TYPE_REGISTRY
-                                    .try_parse_felt(&SchemaTypeId::native_felt(), element)
-                            })
-                            .collect::<Result<Vec<Felt>, _>>()
-                            .map_err(AccountComponentTemplateError::StorageValueParsingError)?;
-                        let felts: [Felt; 4] = felts.try_into().expect("length is 4");
-                        let word = Word::from(felts);
-                        SCHEMA_TYPE_REGISTRY
-                            .validate_word_value(r#type, word)
-                            .map_err(AccountComponentTemplateError::StorageValueParsingError)?;
-                        Ok(word)
-                    },
+                if has_map {
+                    return Err(AccountComponentTemplateError::InvalidInitStorageValue(
+                        slot_prefix,
+                        "expected a value, got a map".into(),
+                    ));
+                }
+                if has_fields {
+                    return Err(AccountComponentTemplateError::InvalidInitStorageValue(
+                        slot_prefix,
+                        "expected a value, got field entries".into(),
+                    ));
+                }
+                match slot_value {
+                    Some(value) => parse_storage_value_with_schema(self, value, &slot_prefix),
                     None => {
                         if *r#type == SchemaTypeId::void() {
                             Ok(Word::empty())
                         } else {
                             default_value.as_ref().copied().ok_or_else(|| {
-                                AccountComponentTemplateError::InitValueNotProvided(value_name)
+                                AccountComponentTemplateError::InitValueNotProvided(slot_prefix)
                             })
                         }
                     },
                 }
             },
             WordSchema::Composite { value } => {
+                if has_map {
+                    return Err(AccountComponentTemplateError::InvalidInitStorageValue(
+                        slot_prefix,
+                        "expected a value, got a map".into(),
+                    ));
+                }
+                if let Some(value) = slot_value {
+                    if has_fields {
+                        return Err(AccountComponentTemplateError::InvalidInitStorageValue(
+                            slot_prefix,
+                            "expected a single value, got both value and field entries".into(),
+                        ));
+                    }
+                    return parse_storage_value_with_schema(self, value, &slot_prefix);
+                }
+
                 let mut result = [Felt::ZERO; 4];
                 for (index, felt_schema) in value.iter().enumerate() {
-                    result[index] =
-                        felt_schema.try_build_felt(init_storage_data, value_prefix.clone())?;
+                    result[index] = felt_schema.try_build_felt(init_storage_data, slot_name)?;
                 }
                 Ok(Word::from(result))
             },
@@ -418,21 +461,30 @@ impl WordSchema {
             },
         }
     }
-}
 
-impl Serializable for WordSchema {
-    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+    /// Serializes the schema, optionally ignoring the default values (used for committing to a
+    /// schema definition).
+    fn write_into_with_defaults<W: ByteWriter>(&self, target: &mut W, include_defaults: bool) {
         match self {
             WordSchema::Simple { r#type, default_value } => {
                 target.write_u8(0);
                 target.write(r#type);
+                let default_value = if include_defaults { *default_value } else { None };
                 target.write(default_value);
             },
             WordSchema::Composite { value } => {
                 target.write_u8(1);
-                target.write(value);
+                for felt in value.iter() {
+                    felt.write_into_with_defaults(target, include_defaults);
+                }
             },
         }
+    }
+}
+
+impl Serializable for WordSchema {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        self.write_into_with_defaults(target, true);
     }
 }
 
@@ -560,10 +612,9 @@ impl FeltSchema {
                 "non-void felt elements must be named".into(),
             ));
         };
-        let value_name = slot_prefix
-            .clone()
-            .with_suffix(name)
-            .map_err(|err| AccountComponentTemplateError::InvalidSchema(err.to_string()))?;
+        let value_name =
+            StorageValueName::from_slot_name_with_suffix(slot_prefix.slot_name(), name)
+                .map_err(|err| AccountComponentTemplateError::InvalidSchema(err.to_string()))?;
 
         let default_value = self
             .default_value
@@ -593,31 +644,38 @@ impl FeltSchema {
     pub(crate) fn try_build_felt(
         &self,
         init_storage_data: &InitStorageData,
-        value_prefix: StorageValueName,
+        slot_name: &StorageSlotName,
     ) -> Result<Felt, AccountComponentTemplateError> {
-        let value_name =
-            match self.name.as_deref() {
-                Some(name) => Some(value_prefix.with_suffix(name).map_err(|err| {
-                    AccountComponentTemplateError::InvalidSchema(err.to_string())
-                })?),
-                None => None,
-            };
+        let value_name = match self.name.as_deref() {
+            Some(name) => Some(
+                StorageValueName::from_slot_name_with_suffix(slot_name, name)
+                    .map_err(|err| AccountComponentTemplateError::InvalidSchema(err.to_string()))?,
+            ),
+            None => None,
+        };
 
-        if let Some(value_name) = value_name.clone() {
-            match init_storage_data.get(&value_name) {
-                Some(WordValue::Atomic(raw)) => {
+        if let Some(value_name) = value_name.clone()
+            && let Some(raw_value) = init_storage_data.value_entry(&value_name)
+        {
+            match raw_value {
+                StorageValue::Parseable(WordValue::Atomic(raw)) => {
                     let felt = SCHEMA_TYPE_REGISTRY
                         .try_parse_felt(&self.r#type, raw)
                         .map_err(AccountComponentTemplateError::StorageValueParsingError)?;
                     return Ok(felt);
                 },
-                Some(WordValue::Elements(_)) => {
+                StorageValue::Parseable(WordValue::Elements(_)) => {
                     return Err(AccountComponentTemplateError::InvalidInitStorageValue(
                         value_name,
                         "expected an atomic value, got a 4-element array".into(),
                     ));
                 },
-                None => {},
+                StorageValue::Word(_) => {
+                    return Err(AccountComponentTemplateError::InvalidInitStorageValue(
+                        value_name,
+                        "expected an atomic value, got a word".into(),
+                    ));
+                },
             }
         }
 
@@ -638,8 +696,22 @@ impl FeltSchema {
         Err(AccountComponentTemplateError::InitValueNotProvided(value_name))
     }
 
-    /// Validates that the defined felt type exists.
+    /// Serializes the schema, optionally ignoring the default values (used for committing to a
+    /// schema definition).
+    fn write_into_with_defaults<W: ByteWriter>(&self, target: &mut W, include_defaults: bool) {
+        target.write(&self.name);
+        target.write(&self.description);
+        target.write(&self.r#type);
+        let default_value = if include_defaults { self.default_value } else { None };
+        target.write(default_value);
+    }
+
+    /// Validates the felt type, naming rules, and default value (if any).
     fn validate(&self) -> Result<(), AccountComponentTemplateError> {
+        if let Some(description) = self.description.as_deref() {
+            validate_description_ascii(description)?;
+        }
+
         let type_exists = SCHEMA_TYPE_REGISTRY.contains_felt_type(&self.felt_type());
         if !type_exists {
             return Err(AccountComponentTemplateError::InvalidType(
@@ -679,10 +751,7 @@ impl FeltSchema {
 
 impl Serializable for FeltSchema {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        target.write(&self.name);
-        target.write(&self.description);
-        target.write(&self.r#type);
-        target.write(self.default_value);
+        self.write_into_with_defaults(target, true);
     }
 }
 
@@ -731,15 +800,23 @@ impl ValueSlotSchema {
     pub fn try_build_word(
         &self,
         init_storage_data: &InitStorageData,
-        value_prefix: StorageValueName,
+        slot_name: &StorageSlotName,
     ) -> Result<Word, AccountComponentTemplateError> {
-        self.word.try_build_word(init_storage_data, value_prefix)
+        self.word.try_build_word(init_storage_data, slot_name)
     }
 
-    pub(crate) fn validate(
-        &self,
-        _slot_name: &StorageSlotName,
-    ) -> Result<(), AccountComponentTemplateError> {
+    /// Serializes the schema, optionally ignoring the default values (used for committing to a
+    /// schema definition).
+    fn write_into_with_defaults<W: ByteWriter>(&self, target: &mut W, include_defaults: bool) {
+        target.write(&self.description);
+        self.word.write_into_with_defaults(target, include_defaults);
+    }
+
+    /// Validates the slot's word schema.
+    pub(crate) fn validate(&self) -> Result<(), AccountComponentTemplateError> {
+        if let Some(description) = self.description.as_deref() {
+            validate_description_ascii(description)?;
+        }
         self.word.validate()?;
         Ok(())
     }
@@ -747,8 +824,7 @@ impl ValueSlotSchema {
 
 impl Serializable for ValueSlotSchema {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        target.write(&self.description);
-        target.write(&self.word);
+        self.write_into_with_defaults(target, true);
     }
 }
 
@@ -791,45 +867,32 @@ impl MapSlotSchema {
     pub fn try_build_map(
         &self,
         init_storage_data: &InitStorageData,
-        slot_prefix: StorageValueName,
+        slot_name: &StorageSlotName,
     ) -> Result<StorageMap, AccountComponentTemplateError> {
         let mut entries = self.default_values.clone().unwrap_or_default();
+        let slot_prefix = StorageValueName::from_slot_name(slot_name);
 
-        if init_storage_data.get(&slot_prefix).is_some()
-            && init_storage_data.map_entries(&slot_prefix).is_none()
-        {
+        if init_storage_data.slot_value_entry(slot_name).is_some() {
             return Err(AccountComponentTemplateError::InvalidInitStorageValue(
                 slot_prefix,
                 "expected a map, got a value".into(),
             ));
         }
-
-        if let Some(init_entries) = init_storage_data.map_entries(&slot_prefix) {
+        if init_storage_data.has_field_entries_for_slot(slot_name) {
+            return Err(AccountComponentTemplateError::InvalidInitStorageValue(
+                slot_prefix,
+                "expected a map, got field entries".into(),
+            ));
+        }
+        if let Some(init_entries) = init_storage_data.map_entries(slot_name) {
             let mut parsed_entries = Vec::with_capacity(init_entries.len());
-            for (index, (raw_key, raw_value)) in init_entries.iter().enumerate() {
-                let key_label = format!("map entry[{index}].key");
-                let value_label = format!("map entry[{index}].value");
-
-                let key = parse_word_value_with_schema(
-                    &self.key_schema,
-                    raw_key,
-                    &slot_prefix,
-                    key_label.as_str(),
-                )?;
-                let value = parse_word_value_with_schema(
-                    &self.value_schema,
-                    raw_value,
-                    &slot_prefix,
-                    value_label.as_str(),
-                )?;
+            for (raw_key, raw_value) in init_entries.iter() {
+                let key = parse_storage_value_with_schema(&self.key_schema, raw_key, &slot_prefix)?;
+                let value =
+                    parse_storage_value_with_schema(&self.value_schema, raw_value, &slot_prefix)?;
 
                 parsed_entries.push((key, value));
             }
-
-            // Reject duplicate keys in init-provided entries.
-            let _ = StorageMap::with_entries(parsed_entries.iter().copied()).map_err(|err| {
-                AccountComponentTemplateError::StorageMapHasDuplicateKeys(Box::new(err))
-            })?;
 
             for (key, value) in parsed_entries.iter() {
                 entries.insert(*key, *value);
@@ -856,83 +919,119 @@ impl MapSlotSchema {
         self.default_values.clone()
     }
 
+    /// Serializes the schema, optionally ignoring the default values (used for committing to a
+    /// schema definition).
+    fn write_into_with_defaults<W: ByteWriter>(&self, target: &mut W, include_defaults: bool) {
+        target.write(&self.description);
+        let default_values = if include_defaults {
+            self.default_values.clone()
+        } else {
+            None
+        };
+        target.write(&default_values);
+        self.key_schema.write_into_with_defaults(target, include_defaults);
+        self.value_schema.write_into_with_defaults(target, include_defaults);
+    }
+
+    /// Validates key/value word schemas for this map slot.
     fn validate(&self) -> Result<(), AccountComponentTemplateError> {
+        if let Some(description) = self.description.as_deref() {
+            validate_description_ascii(description)?;
+        }
         self.key_schema.validate()?;
         self.value_schema.validate()?;
         Ok(())
     }
 }
 
-pub(super) fn parse_word_value_with_schema(
+pub(super) fn parse_storage_value_with_schema(
     schema: &WordSchema,
-    raw_value: &WordValue,
+    raw_value: &StorageValue,
     slot_prefix: &StorageValueName,
-    label: &str,
 ) -> Result<Word, AccountComponentTemplateError> {
-    match schema {
-        WordSchema::Simple { r#type, .. } => match raw_value {
-            WordValue::Atomic(value) => {
-                SCHEMA_TYPE_REGISTRY.try_parse_word(r#type, value).map_err(|err| {
-                    AccountComponentTemplateError::InvalidInitStorageValue(
-                        slot_prefix.clone(),
-                        format!("failed to parse {label} as `{}`: {err}", r#type),
-                    )
-                })
+    let word = match raw_value {
+        StorageValue::Word(word) => *word,
+        StorageValue::Parseable(raw_value) => match schema {
+            WordSchema::Simple { r#type, .. } => {
+                parse_simple_word_value(r#type, raw_value, slot_prefix)?
             },
-            WordValue::Elements(elements) => {
-                let felts: Vec<Felt> = elements
-                    .iter()
-                    .map(|element| {
-                        SCHEMA_TYPE_REGISTRY.try_parse_felt(&SchemaTypeId::native_felt(), element)
-                    })
-                    .collect::<Result<_, _>>()
+            WordSchema::Composite { value } => match raw_value {
+                WordValue::Elements(elements) => {
+                    parse_composite_elements(value, elements, slot_prefix)?
+                },
+                WordValue::Atomic(value) => SCHEMA_TYPE_REGISTRY
+                    .try_parse_word(&SchemaTypeId::native_word(), value)
                     .map_err(|err| {
                         AccountComponentTemplateError::InvalidInitStorageValue(
                             slot_prefix.clone(),
-                            format!("failed to parse {label} element as `felt`: {err}"),
+                            format!("failed to parse value as `word`: {err}"),
                         )
-                    })?;
-                let felts: [Felt; 4] = felts.try_into().expect("length is 4");
-                let word = Word::from(felts);
-                schema.validate_word_value(slot_prefix, label, word)?;
-                Ok(word)
+                    })?,
             },
         },
-        WordSchema::Composite { value } => match raw_value {
-            WordValue::Elements(elements) => {
-                let mut felts = [Felt::ZERO; 4];
-                for index in 0..4 {
-                    let felt_type = value[index].felt_type();
-                    felts[index] = SCHEMA_TYPE_REGISTRY
-                        .try_parse_felt(&felt_type, &elements[index])
-                        .map_err(|err| {
-                            AccountComponentTemplateError::InvalidInitStorageValue(
-                                slot_prefix.clone(),
-                                format!("failed to parse {label}[{index}] as `{felt_type}`: {err}"),
-                            )
-                        })?;
-                }
+    };
 
-                Ok(Word::from(felts))
-            },
-            WordValue::Atomic(value) => {
-                Err(AccountComponentTemplateError::InvalidInitStorageValue(
+    schema.validate_word_value(slot_prefix, "value", word)?;
+    Ok(word)
+}
+
+fn parse_simple_word_value(
+    schema_type: &SchemaTypeId,
+    raw_value: &WordValue,
+    slot_prefix: &StorageValueName,
+) -> Result<Word, AccountComponentTemplateError> {
+    match raw_value {
+        WordValue::Atomic(value) => {
+            SCHEMA_TYPE_REGISTRY.try_parse_word(schema_type, value).map_err(|err| {
+                AccountComponentTemplateError::InvalidInitStorageValue(
                     slot_prefix.clone(),
-                    format!(
-                        "{label} must be an array of 4 elements for a composite schema, got atomic `{value}`"
-                    ),
-                ))
-            },
+                    format!("failed to parse value as `{}`: {err}", schema_type),
+                )
+            })
+        },
+        WordValue::Elements(elements) => {
+            let felts: Vec<Felt> = elements
+                .iter()
+                .map(|element| {
+                    SCHEMA_TYPE_REGISTRY.try_parse_felt(&SchemaTypeId::native_felt(), element)
+                })
+                .collect::<Result<_, _>>()
+                .map_err(|err| {
+                    AccountComponentTemplateError::InvalidInitStorageValue(
+                        slot_prefix.clone(),
+                        format!("failed to parse value element as `felt`: {err}"),
+                    )
+                })?;
+            let felts: [Felt; 4] = felts.try_into().expect("length is 4");
+            Ok(Word::from(felts))
         },
     }
 }
 
+fn parse_composite_elements(
+    schema: &[FeltSchema; 4],
+    elements: &[String; 4],
+    slot_prefix: &StorageValueName,
+) -> Result<Word, AccountComponentTemplateError> {
+    let mut felts = [Felt::ZERO; 4];
+    for (index, felt_schema) in schema.iter().enumerate() {
+        let felt_type = felt_schema.felt_type();
+        felts[index] =
+            SCHEMA_TYPE_REGISTRY
+                .try_parse_felt(&felt_type, &elements[index])
+                .map_err(|err| {
+                    AccountComponentTemplateError::InvalidInitStorageValue(
+                        slot_prefix.clone(),
+                        format!("failed to parse value[{index}] as `{felt_type}`: {err}"),
+                    )
+                })?;
+    }
+    Ok(Word::from(felts))
+}
+
 impl Serializable for MapSlotSchema {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        target.write(&self.description);
-        target.write(&self.default_values);
-        target.write(&self.key_schema);
-        target.write(&self.value_schema);
+        self.write_into_with_defaults(target, true);
     }
 }
 
@@ -1028,24 +1127,37 @@ mod tests {
     #[test]
     fn value_slot_schema_accepts_typed_word_init_value() {
         let slot = ValueSlotSchema::new(None, WordSchema::new_simple(SchemaTypeId::native_word()));
-        let slot_prefix: StorageValueName = "demo::slot".parse().unwrap();
+        let slot_name: StorageSlotName = "demo::slot".parse().unwrap();
 
         let expected = Word::from([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]);
-        let init_data =
-            InitStorageData::new([(slot_prefix.clone(), expected.to_string().into())], []);
+        let init_data = InitStorageData::new(
+            BTreeMap::from([(
+                StorageValueName::from_slot_name(&slot_name),
+                StorageValue::Word(expected),
+            )]),
+            BTreeMap::new(),
+        )
+        .unwrap();
 
-        let built = slot.try_build_word(&init_data, slot_prefix).unwrap();
+        let built = slot.try_build_word(&init_data, &slot_name).unwrap();
         assert_eq!(built, expected);
     }
 
     #[test]
     fn value_slot_schema_accepts_felt_typed_word_init_value() {
         let slot = ValueSlotSchema::new(None, WordSchema::new_simple(SchemaTypeId::u8()));
-        let slot_prefix: StorageValueName = "demo::u8_word".parse().unwrap();
+        let slot_name: StorageSlotName = "demo::u8_word".parse().unwrap();
 
-        let init_data = InitStorageData::new([(slot_prefix.clone(), "6".into())], []);
+        let init_data = InitStorageData::new(
+            BTreeMap::from([(
+                StorageValueName::from_slot_name(&slot_name),
+                StorageValue::Parseable("6".into()),
+            )]),
+            BTreeMap::new(),
+        )
+        .unwrap();
 
-        let built = slot.try_build_word(&init_data, slot_prefix).unwrap();
+        let built = slot.try_build_word(&init_data, &slot_name).unwrap();
         assert_eq!(built, Word::from([Felt::new(0), Felt::new(0), Felt::new(0), Felt::new(6)]));
     }
 
@@ -1058,10 +1170,18 @@ mod tests {
             FeltSchema::new_typed_with_default(SchemaTypeId::native_felt(), "d", Felt::new(4)),
         ]);
         let slot = ValueSlotSchema::new(None, word);
+        let slot_name: StorageSlotName = "demo::slot".parse().unwrap();
 
-        let init_data = InitStorageData::new([("demo::slot.a".parse().unwrap(), "1".into())], []);
+        let init_data = InitStorageData::new(
+            BTreeMap::from([(
+                StorageValueName::from_slot_name_with_suffix(&slot_name, "a").unwrap(),
+                StorageValue::Parseable("1".into()),
+            )]),
+            BTreeMap::new(),
+        )
+        .unwrap();
 
-        let built = slot.try_build_word(&init_data, "demo::slot".parse().unwrap()).unwrap();
+        let built = slot.try_build_word(&init_data, &slot_name).unwrap();
         assert_eq!(built, Word::from([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]));
     }
 
@@ -1069,15 +1189,29 @@ mod tests {
     fn map_slot_schema_accepts_typed_map_init_value() {
         let word_schema = WordSchema::new_simple(SchemaTypeId::native_word());
         let slot = MapSlotSchema::new(None, None, word_schema.clone(), word_schema);
-        let slot_prefix: StorageValueName = "demo::map".parse().unwrap();
+        let slot_name: StorageSlotName = "demo::map".parse().unwrap();
 
         let entries = vec![(
-            WordValue::Elements(["1".into(), "0".into(), "0".into(), "0".into()]),
-            WordValue::Elements(["10".into(), "11".into(), "12".into(), "13".into()]),
+            StorageValue::Parseable(WordValue::Elements([
+                "1".into(),
+                "0".into(),
+                "0".into(),
+                "0".into(),
+            ])),
+            StorageValue::Parseable(WordValue::Elements([
+                "10".into(),
+                "11".into(),
+                "12".into(),
+                "13".into(),
+            ])),
         )];
-        let init_data = InitStorageData::new([], [(slot_prefix.clone(), entries.clone())]);
+        let init_data = InitStorageData::new(
+            BTreeMap::new(),
+            BTreeMap::from([(slot_name.clone(), entries.clone())]),
+        )
+        .unwrap();
 
-        let built = slot.try_build_map(&init_data, slot_prefix).unwrap();
+        let built = slot.try_build_map(&init_data, &slot_name).unwrap();
         let expected = StorageMap::with_entries([(
             Word::from([Felt::new(1), Felt::new(0), Felt::new(0), Felt::new(0)]),
             Word::from([Felt::new(10), Felt::new(11), Felt::new(12), Felt::new(13)]),
@@ -1091,7 +1225,7 @@ mod tests {
         let word_schema = WordSchema::new_simple(SchemaTypeId::native_word());
         let slot = MapSlotSchema::new(None, None, word_schema.clone(), word_schema);
         let built = slot
-            .try_build_map(&InitStorageData::default(), "demo::map".parse().unwrap())
+            .try_build_map(&InitStorageData::default(), &"demo::map".parse().unwrap())
             .unwrap();
         assert_eq!(built, StorageMap::new());
     }

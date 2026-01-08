@@ -53,7 +53,7 @@ impl<'de> Deserialize<'de> for FeltSchema {
     {
         #[derive(Deserialize)]
         #[serde(rename_all = "kebab-case", deny_unknown_fields)]
-        struct RawFeltSchema {
+        struct FeltSchemaRepr {
             #[serde(default)]
             name: Option<String>,
             #[serde(default)]
@@ -64,7 +64,7 @@ impl<'de> Deserialize<'de> for FeltSchema {
             r#type: Option<SchemaTypeId>,
         }
 
-        let raw = RawFeltSchema::deserialize(deserializer)?;
+        let raw = FeltSchemaRepr::deserialize(deserializer)?;
 
         let felt_type = raw.r#type.unwrap_or_else(SchemaTypeId::native_felt);
 
