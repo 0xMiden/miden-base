@@ -700,6 +700,10 @@ pub enum TransactionInputError {
     ForeignAccountCodeNotFound(AccountId),
     #[error("failed to handle account data")]
     AccountError(#[from] AccountError),
+    #[error("failed to handle merkle data")]
+    MerkleError(#[from] MerkleError),
+    #[error("failed to handle account tree data")]
+    AccountTreeError(#[from] AccountTreeError),
 }
 
 // TRANSACTION OUTPUT ERROR

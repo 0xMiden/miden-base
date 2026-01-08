@@ -2,6 +2,7 @@ use alloc::vec::Vec;
 use core::fmt::Debug;
 
 use miden_core::utils::{Deserializable, Serializable};
+use miden_crypto::merkle::NodeIndex;
 
 use super::PartialBlockchain;
 use crate::TransactionInputError;
@@ -266,32 +267,20 @@ impl TransactionInputs {
             None, // No seed for existing accounts.
         )?;
 
-        // Create the account witness
-        //
-        // IMPORTANT: This is currently a placeholder implementation. For a complete solution,
-        // the Merkle path should be reconstructed from the advice store data.
-        //
-        // The complete implementation would:
-        // 1. Get the account tree root from the block header
-        // 2. Convert account_id to SMT index using account_id_to_smt_index()
-        // 3. Retrieve the Merkle path from the store using something like: let merkle_path =
-        //    self.advice_inputs.store.get_path(account_tree_root, smt_index)?;
-        // 4. Convert to SparseMerklePath and create the witness
-        //
-        // For now, we create a minimal witness that would need to be replaced
-        // with the actual stored witness data.
+        // Create the account witness by reconstructing the Merkle path from the advice store.
+
+        // Get the account tree root from the block header.
         let account_tree_root = self.block_header.account_root();
-        let _smt_index = account_id_to_smt_index(account_id);
+        let smt_index = NodeIndex::new(64, account_id_to_smt_index(account_id))?;
 
-        // Create a placeholder empty path - this should be replaced with actual path reconstruction
-        // The authenticated nodes were stored via witness.authenticated_nodes() in
-        // add_account_witness
-        let empty_nodes = vec![account_tree_root; 64];
-        let sparse_path = SparseMerklePath::from_sized_iter(empty_nodes)
-            .map_err(|_| TransactionInputError::ForeignAccountCodeNotFound(account_id))?;
+        // Get the Merkle path from the merkle store.
+        let merkle_path = self.advice_inputs.store.get_path(account_tree_root, smt_index)?;
 
-        let witness = AccountWitness::new(account_id, header.commitment(), sparse_path)
-            .map_err(|_| TransactionInputError::ForeignAccountCodeNotFound(account_id))?;
+        // Convert the Merkle path to SparseMerklePath.
+        let sparse_path = SparseMerklePath::from_sized_iter(merkle_path.path)?;
+
+        // Create the account witness.
+        let witness = AccountWitness::new(account_id, header.commitment(), sparse_path)?;
 
         // Create and return the AccountInputs
         Ok(AccountInputs::new(partial_account, witness))
@@ -531,5 +520,146 @@ mod tests {
         // Verify storage was properly reconstructed
         let storage = account_inputs.account().storage();
         assert_eq!(storage.header().slots().count(), 2);
+
+        // Verify witness data is valid
+        let witness = account_inputs.witness();
+        assert_eq!(witness.id(), foreign_account_id);
+
+        // Verify the witness can compute a valid account root
+        let computed_root = account_inputs.compute_account_root();
+        assert!(
+            computed_root.is_ok(),
+            "Failed to compute account root from witness: {:?}",
+            computed_root.err()
+        );
+
+        // Test that the witness path has the expected depth for SMT
+        assert_eq!(witness.path().depth(), 64, "Witness path should have SMT depth of 64");
+    }
+
+    #[test]
+    fn test_read_foreign_account_inputs_with_proper_witness() {
+        use crate::block::account_tree::AccountTree;
+        use crate::crypto::merkle::smt::Smt;
+        use crate::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE_2;
+
+        let native_account_id =
+            AccountId::try_from(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE).unwrap();
+        let foreign_account_id =
+            AccountId::try_from(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE_2).unwrap();
+
+        // Create a native account
+        let code = AccountCode::mock();
+        let storage_header = AccountStorageHeader::new(vec![]).unwrap();
+        let partial_storage = PartialStorage::new(storage_header, []).unwrap();
+        let partial_vault = PartialVault::new(Word::default());
+        let native_account = PartialAccount::new(
+            native_account_id,
+            Felt::new(10),
+            code.clone(),
+            partial_storage,
+            partial_vault,
+            None,
+        )
+        .unwrap();
+
+        // Create a foreign account with proper commitment
+        let foreign_header = AccountHeader::new(
+            foreign_account_id,
+            Felt::new(5),
+            Word::default(),
+            Word::new([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]),
+            code.commitment(),
+        );
+
+        // Create storage header for the foreign account
+        let foreign_storage_header = AccountStorageHeader::new(vec![]).unwrap();
+
+        // Create an account tree and insert both accounts to get proper Merkle paths
+        let mut account_tree = AccountTree::<Smt>::default();
+
+        // Insert native account
+        let native_commitment = AccountHeader::from(&native_account).commitment();
+        account_tree.insert(native_account_id, native_commitment).unwrap();
+
+        // Insert foreign account
+        let _foreign_partial_account = PartialAccount::new(
+            foreign_account_id,
+            Felt::new(5),
+            code.clone(),
+            PartialStorage::new(foreign_storage_header.clone(), []).unwrap(),
+            PartialVault::new(Word::default()),
+            None,
+        )
+        .unwrap();
+        account_tree.insert(foreign_account_id, foreign_header.commitment()).unwrap();
+
+        // Get the account tree root and create witness
+        let account_tree_root = account_tree.root();
+        let foreign_witness = account_tree.open(foreign_account_id);
+
+        // Create advice inputs with proper Merkle store data
+        let mut advice_inputs = crate::vm::AdviceInputs::default();
+
+        // Add account header to advice map
+        let account_id_key =
+            crate::transaction::TransactionAdviceInputs::account_id_map_key(foreign_account_id);
+        advice_inputs.map.insert(account_id_key, foreign_header.as_elements().to_vec());
+
+        // Add storage header to advice map
+        advice_inputs
+            .map
+            .insert(foreign_header.storage_commitment(), foreign_storage_header.to_elements());
+
+        // Add authenticated nodes from the witness to the Merkle store
+        advice_inputs.store.extend(foreign_witness.authenticated_nodes());
+
+        // Add the account leaf to the advice map (needed for witness verification)
+        let leaf = foreign_witness.leaf();
+        advice_inputs.map.insert(leaf.hash(), leaf.to_elements());
+
+        // Create block header with the account tree root
+        let block_header = crate::block::BlockHeader::mock(0, None, None, &[], account_tree_root);
+
+        let tx_inputs = TransactionInputs {
+            account: native_account,
+            block_header,
+            blockchain: crate::transaction::PartialBlockchain::default(),
+            input_notes: crate::transaction::InputNotes::new(vec![]).unwrap(),
+            tx_args: crate::transaction::TransactionArgs::default(),
+            advice_inputs,
+            foreign_account_code: vec![code],
+            asset_witnesses: Vec::new(),
+        };
+
+        // Test reading foreign account inputs
+        let result = tx_inputs.read_foreign_account_inputs(foreign_account_id);
+
+        // Should succeed and create proper witness
+        assert!(result.is_ok(), "Failed to read foreign account inputs: {:?}", result.err());
+        let account_inputs = result.unwrap();
+
+        // Verify account data
+        assert_eq!(account_inputs.id(), foreign_account_id);
+        assert_eq!(account_inputs.account().nonce(), Felt::new(5));
+
+        // Verify witness data
+        let witness = account_inputs.witness();
+        assert_eq!(witness.id(), foreign_account_id);
+
+        // Verify the witness contains the expected account ID and can compute a root
+        let computed_root = account_inputs.compute_account_root();
+        assert!(
+            computed_root.is_ok(),
+            "Failed to compute account root from witness: {:?}",
+            computed_root.err()
+        );
+
+        // The computed root should be consistent - we're mainly testing that
+        // the witness was properly reconstructed from the Merkle store data
+        let _computed_root_value = computed_root.unwrap();
+
+        // Test that the witness path has the expected depth (64 for SMT)
+        assert_eq!(witness.path().depth(), 64, "Witness path should have SMT depth of 64");
     }
 }

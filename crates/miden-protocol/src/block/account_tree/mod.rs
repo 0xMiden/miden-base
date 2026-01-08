@@ -52,8 +52,8 @@ pub fn smt_key_to_account_id(key: Word) -> AccountId {
 /// into a u64 index that can be used with MerkleStore::get_path().
 pub fn account_id_to_smt_index(account_id: AccountId) -> u64 {
     let key = account_id_to_smt_key(account_id);
-    // Convert the SMT key to a leaf index by using the first element as the index
-    // This follows the same pattern as used in the SMT implementation
+    // Convert the SMT key to a leaf index by using the first element as the index.
+    // This follows the same pattern as used in the SMT implementation.
     key.first().expect("words are not empty").as_int()
 }
 
