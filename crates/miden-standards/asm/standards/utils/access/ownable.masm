@@ -129,3 +129,23 @@ pub proc transfer_ownership
     # => [pad(16)]
 end
 
+#! Renounces ownership, leaving the component without an owner.
+#!
+#! Inputs:  [pad(16)]
+#! Outputs: [pad(16)]
+pub proc renounce_ownership
+    exec.only_owner
+    # => [pad(16)]
+    
+    # ---- Write zero AccountId to storage ----
+    push.0.0.0.0
+    # => [0, 0, 0, 0, pad(16)]
+    
+    push.OWNER_CONFIG_SLOT[0..2]
+    exec.native_account::set_item
+    # => [OLD_OWNER_WORD, pad(16)]
+    
+    dropw
+    # => [pad(16)]
+end
+

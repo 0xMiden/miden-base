@@ -978,6 +978,137 @@ async fn test_network_faucet_only_owner_can_transfer() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Tests that renounce_ownership clears the owner correctly.
+#[tokio::test]
+async fn test_network_faucet_renounce_ownership() -> anyhow::Result<()> {
+    let mut builder = MockChain::builder();
+
+    let owner_account_id = AccountId::dummy(
+        [1; 15],
+        AccountIdVersion::Version0,
+        AccountType::RegularAccountImmutableCode,
+        AccountStorageMode::Private,
+    );
+
+    let new_owner_account_id = AccountId::dummy(
+        [2; 15],
+        AccountIdVersion::Version0,
+        AccountType::RegularAccountImmutableCode,
+        AccountStorageMode::Private,
+    );
+
+    let faucet = builder.add_existing_network_faucet("NET", 1000, owner_account_id, Some(50))?;
+
+    // Check stored value before renouncing
+    let stored_owner_before = faucet
+        .storage()
+        .get_item(NetworkFungibleFaucet::owner_config_slot())?;
+    assert_eq!(stored_owner_before[3], owner_account_id.prefix().as_felt());
+    assert_eq!(stored_owner_before[2], Felt::new(owner_account_id.suffix().as_int()));
+
+    // Create renounce_ownership note script
+    let renounce_note_script_code = r#"
+        use miden::standards::faucets::network_fungible->network_faucet
+
+        begin
+            repeat.16 push.0 end
+            call.network_faucet::renounce_ownership
+            dropw dropw dropw dropw
+        end
+        "#;
+
+    let source_manager = Arc::new(DefaultSourceManager::default());
+    let renounce_note_script = CodeBuilder::with_source_manager(source_manager.clone())
+        .compile_note_script(renounce_note_script_code)?;
+
+    // Create transfer note script (will be used after renounce)
+    let transfer_note_script_code = format!(
+        r#"
+        use miden::standards::faucets::network_fungible->network_faucet
+
+        begin
+            repeat.14 push.0 end
+            push.{new_owner_suffix}
+            push.{new_owner_prefix}
+            call.network_faucet::transfer_ownership
+            dropw dropw dropw dropw
+        end
+        "#,
+        new_owner_prefix = new_owner_account_id.prefix().as_felt(),
+        new_owner_suffix = Felt::new(new_owner_account_id.suffix().as_int()),
+    );
+
+    let transfer_note_script = CodeBuilder::with_source_manager(source_manager.clone())
+        .compile_note_script(transfer_note_script_code.clone())?;
+
+    let mut rng = RpoRandomCoin::new([Felt::from(200u32); 4].into());
+    let renounce_note = NoteBuilder::new(owner_account_id, &mut rng)
+        .note_type(NoteType::Private)
+        .tag(NoteTag::for_local_use_case(0, 0)?.into())
+        .note_execution_hint(NoteExecutionHint::always())
+        .aux(Felt::new(0))
+        .serial_number(Word::from([11, 22, 33, 44u32]))
+        .code(renounce_note_script_code.to_string())
+        .build()?;
+
+    let mut rng = RpoRandomCoin::new([Felt::from(300u32); 4].into());
+    let transfer_note = NoteBuilder::new(owner_account_id, &mut rng)
+        .note_type(NoteType::Private)
+        .tag(NoteTag::for_local_use_case(0, 0)?.into())
+        .note_execution_hint(NoteExecutionHint::always())
+        .aux(Felt::new(0))
+        .serial_number(Word::from([50, 60, 70, 80u32]))
+        .code(transfer_note_script_code.clone())
+        .build()?;
+
+    builder.add_output_note(OutputNote::Full(renounce_note.clone()));
+    builder.add_output_note(OutputNote::Full(transfer_note.clone()));
+    let mut mock_chain = builder.build()?;
+    mock_chain.prove_next_block()?;
+
+    // Execute renounce_ownership
+    let tx_context = mock_chain
+        .build_tx_context(faucet.id(), &[renounce_note.id()], &[])?
+        .add_note_script(renounce_note_script.clone())
+        .with_source_manager(source_manager.clone())
+        .build()?;
+    let executed_transaction = tx_context.execute().await?;
+
+    mock_chain.add_pending_executed_transaction(&executed_transaction)?;
+    mock_chain.prove_next_block()?;
+
+    let mut updated_faucet = faucet.clone();
+    updated_faucet.apply_delta(executed_transaction.account_delta())?;
+
+    // Check stored value after renouncing - should be zero
+    let stored_owner_after = updated_faucet
+        .storage()
+        .get_item(NetworkFungibleFaucet::owner_config_slot())?;
+    assert_eq!(stored_owner_after[0], Felt::new(0));
+    assert_eq!(stored_owner_after[1], Felt::new(0));
+    assert_eq!(stored_owner_after[2], Felt::new(0));
+    assert_eq!(stored_owner_after[3], Felt::new(0));
+
+    // Try to transfer ownership - should fail because there's no owner
+    // The transfer note was already added to the builder, so we need to prove another block
+    // to make it available on-chain after the renounce transaction
+    mock_chain.prove_next_block()?;
+
+    let tx_context = mock_chain
+        .build_tx_context(updated_faucet.id(), &[transfer_note.id()], &[])?
+        .add_note_script(transfer_note_script.clone())
+        .with_source_manager(source_manager.clone())
+        .build()?;
+    let result = tx_context.execute().await;
+
+    use miden_protocol::errors::MasmError;
+    let expected_error = MasmError::from_static_str("note sender is not the owner");
+    assert_transaction_executor_error!(result, expected_error);
+
+    Ok(())
+}
+
+
 // TESTS FOR FAUCET PROCEDURE COMPATIBILITY
 // ================================================================================================
 

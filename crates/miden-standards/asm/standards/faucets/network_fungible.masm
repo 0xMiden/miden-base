@@ -4,13 +4,14 @@ use miden::protocol::active_note
 use miden::protocol::native_account
 use miden::standards::faucets
 use miden::standards::faucets::basic_fungible
+use miden::standards::utils::access::ownable
 
 # CONSTANTS
 # ================================================================================================
 
 # The slot in this component's storage layout where the owner config is stored.
 # This must match the slot name used in the Rust code.
-const OWNER_CONFIG_SLOT=word("miden::standards::utils::access::ownable::owner_config")
+# const OWNER_CONFIG_SLOT=word("miden::standards::utils::access::ownable::owner_config")
 
 # ERRORS
 # ===============================================================================================
@@ -27,18 +28,11 @@ const ERR_ONLY_OWNER="note sender is not the owner"
 #!
 #! Where:
 #! - is_owner is 1 if the sender is the owner, 0 otherwise.
+#!
+#! NOTE: Uses exec.ownable::is_owner to ensure it uses the same execution context
+#! and storage slot (OWNER_CONFIG_SLOT) as defined in ownable.masm.
 proc is_owner
-    push.OWNER_CONFIG_SLOT[0..2] exec.active_account::get_item
-    # => [owner_prefix, owner_suffix, 0, 0]
-
-    exec.active_note::get_sender
-    # => [sender_prefix, sender_suffix, owner_prefix, owner_suffix, 0, 0]
-
-    exec.account_id::is_equal
-    # => [is_id_equal, 0, 0]
-
-    # Clean up the zeros left from get_item
-    movdn.2 drop drop
+    exec.ownable::is_owner
     # => [is_owner]
 end
 
@@ -52,13 +46,12 @@ end
 #! Outputs: [owner_prefix, owner_suffix]
 #!
 #! Invocation: call
+#!
+#! NOTE: Uses exec.ownable::get_owner to ensure it uses the same execution context
+#! and storage slot (OWNER_CONFIG_SLOT) as defined in ownable.masm.
 pub proc get_owner
-
-    push.OWNER_CONFIG_SLOT[0..2] exec.active_account::get_item
-    # => [owner_prefix, owner_suffix, 0, 0]
-
-    drop drop
-    # => [owner_prefix, owner_suffix]
+    exec.ownable::get_owner
+    # => [owner_prefix, owner_suffix, pad(14)]
 end
 
 #! Distributes freshly minted fungible assets to the provided recipient.
@@ -125,26 +118,29 @@ pub use faucets::burn
 #! - the note sender is not the owner.
 #!
 #! Invocation: call
+#!
+#! NOTE: Uses exec.transfer_ownership to ensure it uses the same execution context
+#! and storage slot (OWNER_CONFIG_SLOT) as defined in this module.
 pub proc transfer_ownership
-    # Check that the caller is the owner
-    exec.is_owner
-    # => [is_owner, new_owner_prefix, new_owner_suffix, pad(14)]
+    exec.ownable::transfer_ownership
+    # => [pad(16)]
+end
 
-    assert.err=ERR_ONLY_OWNER
-    # => [new_owner_prefix, new_owner_suffix, pad(14)]
-
-    # get_item returns [owner_prefix, owner_suffix, 0, 0]
-    # so the Word in storage is [0, 0, owner_suffix, owner_prefix] (top to bottom)
-    # To write, we need: [new_owner_prefix, new_owner_suffix, 0, 0]
-    # The zeros from pad(14) already serve as word[1] and word[0]!
-    # Stack: [new_owner_prefix, new_owner_suffix, 0, 0, pad(12)]
-    push.OWNER_CONFIG_SLOT[0..2]
-    # => [slot_prefix, slot_suffix, new_owner_prefix, new_owner_suffix, 0, 0, pad(12)]
-
-    exec.native_account::set_item
-    # => [OLD_OWNER_WORD, pad(12)]
-
-    # Remove OLD_OWNER_WORD (4 felts) and keep pad(12)
-    dropw
+#! Renounces ownership, leaving the component without an owner.
+#!
+#! Can only be called by the current owner.
+#!
+#! Inputs:  [pad(16)]
+#! Outputs: [pad(16)]
+#!
+#! Panics if:
+#! - the note sender is not the owner.
+#!
+#! Invocation: call
+#!
+#! NOTE: Uses exec.renounce_ownership to ensure it uses the same execution context
+#! and storage slot (OWNER_CONFIG_SLOT) as defined in this module.
+pub proc renounce_ownership
+    exec.ownable::renounce_ownership
     # => [pad(16)]
 end
