@@ -123,14 +123,15 @@ async fn test_note_script_and_note_args() -> miette::Result<()> {
             .unwrap()
     };
 
-    let code = "
+    let code = format!(
+        r#"
         use $kernel::prologue
         use $kernel::memory
         use $kernel::note
 
         begin
             exec.prologue::prepare_transaction
-            exec.memory::get_num_input_notes push.2 assert_eq
+            exec.memory::get_num_input_notes push.2 assert_eq.err="unexpected number of input notes"
             exec.note::prepare_note drop
             # => [NOTE_ARGS0, pad(11), pad(16)]
             repeat.11 movup.4 drop end
@@ -147,7 +148,8 @@ async fn test_note_script_and_note_args() -> miette::Result<()> {
             # truncate the stack
             swapdw dropw dropw
         end
-        ";
+        "#,
+    );
 
     let note_args = [Word::from([91, 91, 91, 91u32]), Word::from([92, 92, 92, 92u32])];
     let note_args_map = BTreeMap::from([
@@ -159,7 +161,7 @@ async fn test_note_script_and_note_args() -> miette::Result<()> {
         .with_note_args(note_args_map);
 
     tx_context.set_tx_args(tx_args);
-    let exec_output = tx_context.execute_code(code).await.unwrap();
+    let exec_output = tx_context.execute_code(&code).await.unwrap();
 
     assert_eq!(exec_output.get_stack_word_be(0), note_args[0]);
     assert_eq!(exec_output.get_stack_word_be(4), note_args[1]);
