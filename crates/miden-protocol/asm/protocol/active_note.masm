@@ -274,7 +274,10 @@ end
 #!   Operand stack: [num_inputs, dest_ptr]
 proc write_inputs_to_memory
     # load the inputs from the advice map to the advice stack
-    adv.push_mapvaln.4
+    # we pad the number of inputs to the next multiple of 8 so that we can use the
+    # `pipe_words_to_memory` instruction with an even number of words, even though the padded zeros
+    # are ignored during the commitment computation
+    adv.push_mapvaln.8
     # OS => [NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
     # AS => [advice_num_inputs, [INPUT_VALUES]]
 
@@ -292,9 +295,14 @@ proc write_inputs_to_memory
     # OS => [num_words, NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
     # AS => [[INPUT_VALUES]]
 
+    # round up the number of words to the next multiple of 2
+    dup is_odd add
+    # OS => [even_num_words, NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
+    # AS => [[INPUT_VALUES]]
+
     # prepare the stack for the `pipe_words_to_memory` procedure
     dup.6 swap
-    # OS => [num_words, dest_ptr, NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
+    # OS => [even_num_words, dest_ptr, NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
     # AS => [[INPUT_VALUES]]
 
     # write the inputs from the advice stack into memory
