@@ -225,19 +225,16 @@ impl AccountComponentInterface {
                 ));
             }
 
+            // TODO(note_attachment): Include attachment.
             body.push_str(&format!(
                 "push.{recipient}
-                push.{execution_hint}
                 push.{note_type}
-                push.{aux}
                 push.{tag}\n",
                 recipient = partial_note.recipient_digest(),
                 note_type = Felt::from(partial_note.metadata().note_type()),
-                execution_hint = Felt::from(partial_note.metadata().execution_hint()),
-                aux = partial_note.metadata().aux(),
                 tag = Felt::from(partial_note.metadata().tag()),
             ));
-            // stack => [tag, aux, note_type, execution_hint, RECIPIENT]
+            // stack => [tag, note_type, RECIPIENT]
 
             match self {
                 AccountComponentInterface::BasicFungibleFaucet => {
