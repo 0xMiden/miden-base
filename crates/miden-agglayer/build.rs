@@ -47,16 +47,11 @@ fn main() -> Result<()> {
     // set target directory to {OUT_DIR}/assets
     let target_dir = Path::new(&build_dir).join(ASSETS_DIR);
 
+    // compile agglayer library
+    let agglayer_lib =
+        compile_agglayer_lib(&source_dir, &target_dir, TransactionKernel::assembler())?;
+
     let mut assembler = TransactionKernel::assembler();
-
-    // compile bridge components first and add the library to the assembler
-    let agglayer_lib = compile_bridge_components(
-        &source_dir.join(ASM_BRIDGE_DIR),
-        &target_dir.join(ASM_BRIDGE_DIR),
-        assembler.clone(),
-    )?;
-
-    // Add the agglayer library to the assembler for note scripts compilation
     assembler.link_static_library(agglayer_lib)?;
 
     // compile note scripts
@@ -69,6 +64,31 @@ fn main() -> Result<()> {
     generate_error_constants(&source_dir)?;
 
     Ok(())
+}
+
+// COMPILE AGGLAYER LIB
+// ================================================================================================
+
+/// Reads the MASM files from "{source_dir}/bridge" directory, compiles them into a Miden
+/// assembly library, saves the library into "{target_dir}/agglayer.masl", and returns the compiled
+/// library.
+fn compile_agglayer_lib(
+    source_dir: &Path,
+    target_dir: &Path,
+    mut assembler: Assembler,
+) -> Result<Library> {
+    let source_dir = source_dir.join(ASM_BRIDGE_DIR);
+
+    // Add the miden-standards library to the assembler so agglayer components can use it
+    let standards_lib = miden_standards::StandardsLib::default();
+    assembler.link_static_library(standards_lib)?;
+
+    let agglayer_lib = assembler.assemble_library_from_dir(source_dir, "miden::agglayer")?;
+
+    let output_file = target_dir.join("agglayer").with_extension(Library::LIBRARY_EXTENSION);
+    agglayer_lib.write_to_file(output_file).into_diagnostic()?;
+
+    Ok(agglayer_lib)
 }
 
 // COMPILE EXECUTABLE MODULES
@@ -111,12 +131,14 @@ fn compile_note_scripts(
     Ok(())
 }
 
-// COMPILE BRIDGE COMPONENTS
+// COMPILE ACCOUNT COMPONENTS (DEPRECATED)
 // ================================================================================================
 
 /// Compiles the bridge components in `source_dir` into MASL libraries and stores the compiled
 /// files in `target_dir`.
-fn compile_bridge_components(
+///
+/// NOTE: This function is deprecated and replaced by compile_agglayer_lib
+fn _compile_bridge_components(
     source_dir: &Path,
     target_dir: &Path,
     mut assembler: Assembler,
@@ -132,9 +154,7 @@ fn compile_bridge_components(
     // Compile all components together as a single library under the "miden::agglayer" namespace
     // This allows cross-references between components (e.g., bridge_out using
     // miden::agglayer::local_exit_tree)
-    let agglayer_library = assembler
-        .assemble_library_from_dir(source_dir, "miden::agglayer")
-        .expect("library assembly should succeed");
+    let agglayer_library = assembler.assemble_library_from_dir(source_dir, "miden::agglayer")?;
 
     // Write the combined library
     let library_path = target_dir.join("agglayer").with_extension(Library::LIBRARY_EXTENSION);
