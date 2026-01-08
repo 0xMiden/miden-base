@@ -128,8 +128,16 @@ proc batch_pipe_double_words
     exec.mem::pipe_double_words_preimage_to_memory drop
 end
 
-#! Inputs: [PROOF_DATA_KEY, LEAF_DATA_KEY, OUTPUT_NOTE_DATA_KEY]
+#! Builds a P2ID output note for the claim recipient.
+#!
+#! This procedure expects the claim data to be already written to memory via batch_pipe_double_words.
+#! It reads the destination account ID, amount, and other note parameters from memory to construct
+#! the output note.
+#!
+#! Inputs: []
 #! Outputs: []
+#!
+#! Note: This procedure will be refactored in a follow-up to use leaf data to build the output note.
 proc build_p2id_output_note
     # Build P2ID output note
     push.P2ID_SCRIPT_ROOT[0..4]
@@ -170,10 +178,17 @@ proc build_p2id_output_note
     # => [pad(16)]
 end
 
-#! Validates a CLAIM note against the AggLayer bridge and mints the corresponding asset to the recipient.
+#! Validates a claim against the AggLayer bridge and mints the corresponding asset to the recipient.
 #!
 #! This procedure validates the rollup exit root Merkle Proof via FPI against the agglayer bridge,
 #! and if validation passes, mints the asset and creates an output note for the recipient.
+#!
+#! TODO: Expand this description to cover the double-spend protection mechanism in detail.
+#! Double-spend can be prevented in two ways:
+#! 1) While it's possible to create two identical P2ID notes, only one can actually be consumed.
+#!    If the claim note is consumed twice, only one P2ID output note will be successfully consumed.
+#! 2) We can have a mapping in the bridge or in the faucet that stores consumed claim proofs
+#!    as a hash -> bool value (similar to how it's done in the agglayer solidity contract).
 #!
 #! Inputs:  [PROOF_DATA_KEY, LEAF_DATA_KEY, OUTPUT_NOTE_DATA_KEY, pad(4)]
 #! Outputs: [pad(16)]
@@ -201,9 +216,6 @@ end
 #!     output_note_tag[1],              // P2ID output note tag
 #!   ]
 #! }
-#!
-#! This procedure validates the rollup exit root Merkle Proof via FPI against the agglayer bridge,
-#! and if validation passes, mints the asset and creates an output note for the recipient.
 #!
 #! Panics if:
 #! - the rollup exit root Merkle Proof validation via FPI fails.
