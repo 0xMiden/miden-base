@@ -1606,31 +1606,29 @@ pub proc get_input_note_inputs_commitment
     mem_loadw_be
 end
 
-#! TODO(note_attachment): Rename to METADATA_HEADER.
 #! Returns the metadata of an input note located at the specified memory address.
 #!
 #! Inputs:  [note_ptr]
-#! Outputs: [METADATA]
+#! Outputs: [NOTE_METADATA_HEADER]
 #!
 #! Where:
 #! - note_ptr is the memory address at which the input note data begins.
-#! - METADATA is the metadata of the input note.
-pub proc get_input_note_metadata
+#! - NOTE_METADATA_HEADER is the metadata header of the input note.
+pub proc get_input_note_metadata_header
     padw
     movup.4 add.INPUT_NOTE_METADATA_HEADER_OFFSET
     mem_loadw_be
 end
 
-#! TODO(note_attachment): Rename to METADATA_HEADER.
 #! Sets the metadata for an input note located at the specified memory address.
 #!
-#! Inputs:  [note_ptr, NOTE_METADATA]
-#! Outputs: [NOTE_METADATA]
+#! Inputs:  [note_ptr, NOTE_METADATA_HEADER]
+#! Outputs: [NOTE_METADATA_HEADER]
 #!
 #! Where:
 #! - note_ptr is the memory address at which the input note data begins.
-#! - NOTE_METADATA is the metadata of the input note.
-pub proc set_input_note_metadata
+#! - NOTE_METADATA_HEADER is the metadata header of the input note.
+pub proc set_input_note_metadata_header
     add.INPUT_NOTE_METADATA_HEADER_OFFSET
     mem_storew_be
 end

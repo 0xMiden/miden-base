@@ -642,7 +642,7 @@ proc process_note_args_and_metadata
     padw adv_loadw dup.4 exec.memory::set_input_note_args dropw
     # => [note_ptr]
 
-    padw adv_loadw dup.4 exec.memory::set_input_note_metadata
+    padw adv_loadw dup.4 exec.memory::set_input_note_metadata_header
     # => [NOTE_METADATA_HEADER, note_ptr]
 
     padw adv_loadw movup.8 exec.memory::set_input_note_attachment

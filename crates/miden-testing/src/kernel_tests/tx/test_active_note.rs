@@ -101,17 +101,23 @@ async fn test_active_note_get_metadata() -> anyhow::Result<()> {
 
             # get the metadata of the active note
             exec.active_note::get_metadata
-            # => [METADATA]
+            # => [NOTE_ATTACHMENT, METADATA_HEADER]
 
-            # assert this metadata
-            push.{METADATA}
+            push.{NOTE_ATTACHMENT}
+            assert_eqw.err="note 0 has incorrect note attachment"
+            # => [METADATA_HEADER]
+
+            push.{METADATA_HEADER}
             assert_eqw.err="note 0 has incorrect metadata"
+            # => []
 
             # truncate the stack
             swapw dropw
         end
         "#,
-        METADATA = Word::from(tx_context.input_notes().get_note(0).note().metadata())
+        METADATA_HEADER = tx_context.input_notes().get_note(0).note().metadata().to_header_word(),
+        NOTE_ATTACHMENT =
+            tx_context.input_notes().get_note(0).note().metadata().to_attachment_word()
     );
 
     tx_context.execute_code(&code).await?;
