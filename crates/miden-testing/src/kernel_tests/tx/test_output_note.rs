@@ -60,7 +60,6 @@ async fn test_create_note() -> anyhow::Result<()> {
     let account_id = tx_context.account().id();
 
     let recipient = Word::from([0, 1, 2, 3u32]);
-    let aux = Felt::new(27);
     let tag = NoteTag::with_account_target(account_id);
 
     let code = format!(
@@ -73,12 +72,10 @@ async fn test_create_note() -> anyhow::Result<()> {
             exec.prologue::prepare_transaction
 
             push.{recipient}
-            push.{note_execution_hint}
             push.{PUBLIC_NOTE}
-            push.{aux}
             push.{tag}
 
-            call.output_note::create
+            exec.output_note::create
 
             # truncate the stack
             swapdw dropw dropw
@@ -86,7 +83,6 @@ async fn test_create_note() -> anyhow::Result<()> {
         ",
         recipient = recipient,
         PUBLIC_NOTE = NoteType::Public as u8,
-        note_execution_hint = Felt::from(NoteExecutionHint::after_block(23.into())),
         tag = tag,
     );
 
@@ -155,21 +151,17 @@ fn note_creation_script(tag: Felt) -> String {
                 exec.prologue::prepare_transaction
 
                 push.{recipient}
-                push.{execution_hint_always}
                 push.{PUBLIC_NOTE}
-                push.{aux}
                 push.{tag}
 
-                call.output_note::create
+                exec.output_note::create
 
                 # clean the stack
                 dropw dropw
             end
             ",
         recipient = Word::from([0, 1, 2, 3u32]),
-        execution_hint_always = Felt::from(NoteExecutionHint::always()),
         PUBLIC_NOTE = NoteType::Public as u8,
-        aux = ZERO,
     )
 }
 
@@ -190,19 +182,15 @@ async fn test_create_note_too_many_notes() -> anyhow::Result<()> {
             exec.prologue::prepare_transaction
 
             push.{recipient}
-            push.{execution_hint_always}
             push.{PUBLIC_NOTE}
-            push.{aux}
             push.{tag}
 
-            call.output_note::create
+            exec.output_note::create
         end
         ",
         tag = NoteTag::new(1234 << 16 | 5678),
         recipient = Word::from([0, 1, 2, 3u32]),
-        execution_hint_always = Felt::from(NoteExecutionHint::always()),
         PUBLIC_NOTE = NoteType::Public as u8,
-        aux = ZERO,
     );
 
     let exec_output = tx_context.execute_code(&code).await;
@@ -272,8 +260,13 @@ async fn test_get_output_notes_commitment() -> anyhow::Result<()> {
     let output_serial_no_2 = Word::from([11u32; 4]);
     let output_tag_2 = NoteTag::with_account_target(local_account);
     let assets = NoteAssets::new(vec![input_asset_2])?;
+    let attachment = NoteAttachment::new_array(
+        NoteAttachmentType::new(5),
+        [42, 43, 44, 45, 46u32].map(Felt::from).to_vec(),
+    )?;
     let metadata =
-        NoteMetadata::new(tx_context.tx_inputs().account().id(), NoteType::Public, output_tag_2);
+        NoteMetadata::new(tx_context.tx_inputs().account().id(), NoteType::Public, output_tag_2)
+            .with_attachment(attachment);
     let inputs = NoteInputs::new(vec![])?;
     let recipient = NoteRecipient::new(output_serial_no_2, input_note_2.script().clone(), inputs);
     let output_note_2 = Note::new(assets, metadata, recipient);
@@ -295,34 +288,36 @@ async fn test_get_output_notes_commitment() -> anyhow::Result<()> {
         use $kernel::prologue
 
         begin
-            # => [BH, acct_id, IAH, NC]
             exec.prologue::prepare_transaction
             # => []
 
             # create output note 1
             push.{recipient_1}
-            push.{NOTE_EXECUTION_HINT_1}
             push.{PUBLIC_NOTE}
-            push.{aux_1}
             push.{tag_1}
-            call.output_note::create
+            exec.output_note::create
             # => [note_idx]
 
             push.{asset_1}
-            call.output_note::add_asset
+            exec.output_note::add_asset
             # => []
 
             # create output note 2
             push.{recipient_2}
-            push.{NOTE_EXECUTION_HINT_2}
             push.{PUBLIC_NOTE}
-            push.{aux_2}
             push.{tag_2}
-            call.output_note::create
+            exec.output_note::create
             # => [note_idx]
 
-            push.{asset_2}
-            call.output_note::add_asset
+            dup push.{asset_2}
+            exec.output_note::add_asset
+            # => [note_idx]
+
+            push.{ATTACHMENT2}
+            push.{attachment_type2}
+            movup.5
+            # => [note_idx, attachment_type, ATTACHMENT]
+            exec.output_note::set_array_attachment
             # => []
 
             # compute the output notes commitment
@@ -335,20 +330,18 @@ async fn test_get_output_notes_commitment() -> anyhow::Result<()> {
         end
         ",
         PUBLIC_NOTE = NoteType::Public as u8,
-        NOTE_EXECUTION_HINT_1 = Felt::from(output_note_1.metadata().execution_hint()),
         recipient_1 = output_note_1.recipient().digest(),
         tag_1 = output_note_1.metadata().tag(),
-        aux_1 = output_note_1.metadata().aux(),
         asset_1 = Word::from(
             **output_note_1.assets().iter().take(1).collect::<Vec<_>>().first().unwrap()
         ),
         recipient_2 = output_note_2.recipient().digest(),
-        NOTE_EXECUTION_HINT_2 = Felt::from(output_note_2.metadata().execution_hint()),
         tag_2 = output_note_2.metadata().tag(),
-        aux_2 = output_note_2.metadata().aux(),
         asset_2 = Word::from(
             **output_note_2.assets().iter().take(1).collect::<Vec<_>>().first().unwrap()
         ),
+        ATTACHMENT2 = output_note_2.metadata().to_attachment_word(),
+        attachment_type2 = output_note_2.metadata().attachment().attachment_type().as_u32(),
     );
 
     let exec_output = &tx_context.execute_code(&code).await?;
@@ -395,7 +388,6 @@ async fn test_create_note_and_add_asset() -> anyhow::Result<()> {
 
     let faucet_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET)?;
     let recipient = Word::from([0, 1, 2, 3u32]);
-    let aux = Felt::new(27);
     let tag = NoteTag::with_account_target(faucet_id);
     let asset = Word::from(FungibleAsset::new(faucet_id, 10)?);
 
@@ -409,12 +401,10 @@ async fn test_create_note_and_add_asset() -> anyhow::Result<()> {
             exec.prologue::prepare_transaction
 
             push.{recipient}
-            push.{NOTE_EXECUTION_HINT}
             push.{PUBLIC_NOTE}
-            push.{aux}
             push.{tag}
 
-            call.output_note::create
+            exec.output_note::create
             # => [note_idx]
 
             # assert that the index of the created note equals zero
@@ -433,7 +423,6 @@ async fn test_create_note_and_add_asset() -> anyhow::Result<()> {
         ",
         recipient = recipient,
         PUBLIC_NOTE = NoteType::Public as u8,
-        NOTE_EXECUTION_HINT = Felt::from(NoteExecutionHint::always()),
         tag = tag,
         asset = asset,
     );
@@ -457,7 +446,6 @@ async fn test_create_note_and_add_multiple_assets() -> anyhow::Result<()> {
     let faucet_2 = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2)?;
 
     let recipient = Word::from([0, 1, 2, 3u32]);
-    let aux = Felt::new(27);
     let tag = NoteTag::with_account_target(faucet_2);
 
     let asset = Word::from(FungibleAsset::new(faucet, 10)?);
@@ -478,10 +466,8 @@ async fn test_create_note_and_add_multiple_assets() -> anyhow::Result<()> {
 
             push.{recipient}
             push.{PUBLIC_NOTE}
-            push.{aux}
             push.{tag}
-
-            call.output_note::create
+            exec.output_note::create
             # => [note_idx]
 
             # assert that the index of the created note equals zero
@@ -558,31 +544,25 @@ async fn test_create_note_and_add_same_nft_twice() -> anyhow::Result<()> {
             exec.prologue::prepare_transaction
             # => []
 
-            padw padw
             push.{recipient}
-            push.{execution_hint_always}
             push.{PUBLIC_NOTE}
-            push.{aux}
             push.{tag}
-
-            call.output_note::create
+            exec.output_note::create
             # => [note_idx]
 
             dup push.{nft}
             # => [NFT, note_idx, note_idx]
 
-            call.output_note::add_asset
+            exec.output_note::add_asset
             # => [note_idx]
 
             push.{nft}
-            call.output_note::add_asset
+            exec.output_note::add_asset
             # => []
         end
         ",
         recipient = recipient,
         PUBLIC_NOTE = NoteType::Public as u8,
-        execution_hint_always = Felt::from(NoteExecutionHint::always()),
-        aux = Felt::new(0),
         tag = tag,
         nft = encoded,
     );
@@ -634,7 +614,6 @@ async fn test_build_recipient_hash() -> anyhow::Result<()> {
 
     // create output note
     let output_serial_no = Word::from([0, 1, 2, 3u32]);
-    let aux = Felt::new(27);
     let tag = NoteTag::new(42 << 16 | 42);
     let single_input = 2;
     let inputs = NoteInputs::new(vec![Felt::new(single_input)]).unwrap();
@@ -643,15 +622,13 @@ async fn test_build_recipient_hash() -> anyhow::Result<()> {
     let recipient = NoteRecipient::new(output_serial_no, input_note_1.script().clone(), inputs);
     let code = format!(
         "
+        use $kernel::prologue
         use miden::protocol::output_note
         use miden::protocol::note
-        use $kernel::prologue
+        use miden::core::sys
 
         begin
             exec.prologue::prepare_transaction
-
-            # pad the stack before call
-            padw
 
             # input
             push.{input_commitment}
@@ -659,30 +636,26 @@ async fn test_build_recipient_hash() -> anyhow::Result<()> {
             push.{script_root}
             # SERIAL_NUM
             push.{output_serial_no}
-            # => [SERIAL_NUM, SCRIPT_ROOT, INPUT_COMMITMENT, pad(4)]
+            # => [SERIAL_NUM, SCRIPT_ROOT, INPUT_COMMITMENT]
 
             exec.note::build_recipient_hash
             # => [RECIPIENT, pad(12)]
 
-            push.{execution_hint}
             push.{PUBLIC_NOTE}
-            push.{aux}
             push.{tag}
-            # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(12)]
+            # => [tag, aux, note_type, execution_hint, RECIPIENT]
 
-            call.output_note::create
-            # => [note_idx, pad(19)]
+            exec.output_note::create
+            # => [note_idx]
 
             # clean the stack
-            dropw dropw dropw dropw dropw
+            exec.sys::truncate_stack
         end
         ",
         script_root = input_note_1.script().clone().root(),
         output_serial_no = output_serial_no,
         PUBLIC_NOTE = NoteType::Public as u8,
         tag = tag,
-        execution_hint = Felt::from(NoteExecutionHint::after_block(2.into())),
-        aux = aux,
     );
 
     let exec_output = &tx_context.execute_code(&code).await?;
@@ -764,11 +737,9 @@ async fn test_get_asset_info() -> anyhow::Result<()> {
         begin
             # create an output note with fungible asset 0
             push.{RECIPIENT}
-            push.{note_execution_hint}
             push.{note_type}
-            push.0              # aux
             push.{tag}
-            call.output_note::create
+            exec.output_note::create
             # => [note_idx]
 
             # move the asset 0 to the note
@@ -826,7 +797,6 @@ async fn test_get_asset_info() -> anyhow::Result<()> {
         "#,
         // output note
         RECIPIENT = output_note_1.recipient().digest(),
-        note_execution_hint = Felt::from(output_note_1.metadata().execution_hint()),
         note_type = NoteType::Public as u8,
         tag = output_note_1.metadata().tag(),
         asset_0 = Word::from(fungible_asset_0),
@@ -1048,9 +1018,7 @@ async fn test_set_none_attachment() -> anyhow::Result<()> {
 
         begin
             push.{RECIPIENT}
-            push.{note_execution_hint}
             push.{note_type}
-            push.{aux}
             push.{tag}
             exec.output_note::create
             # => [note_idx]
@@ -1069,8 +1037,6 @@ async fn test_set_none_attachment() -> anyhow::Result<()> {
         ",
         RECIPIENT = output_note.recipient().unwrap().digest(),
         note_type = output_note.metadata().note_type() as u8,
-        aux = output_note.metadata().aux(),
-        note_execution_hint = Felt::from(output_note.metadata().execution_hint()),
         tag = output_note.metadata().tag().as_u32(),
         ATTACHMENT = output_note.metadata().to_attachment_word(),
         attachment_content_type =
@@ -1109,9 +1075,7 @@ async fn test_set_word_attachment() -> anyhow::Result<()> {
 
         begin
             push.{RECIPIENT}
-            push.{note_execution_hint}
             push.{note_type}
-            push.{aux}
             push.{tag}
             exec.output_note::create
             # => [note_idx]
@@ -1129,8 +1093,6 @@ async fn test_set_word_attachment() -> anyhow::Result<()> {
         ",
         RECIPIENT = output_note.recipient().unwrap().digest(),
         note_type = output_note.metadata().note_type() as u8,
-        aux = output_note.metadata().aux(),
-        note_execution_hint = Felt::from(output_note.metadata().execution_hint()),
         tag = output_note.metadata().tag().as_u32(),
         attachment_type = output_note.metadata().attachment().attachment_type().as_u32(),
         ATTACHMENT = output_note.metadata().to_attachment_word(),
@@ -1167,9 +1129,7 @@ async fn test_set_array_attachment() -> anyhow::Result<()> {
 
         begin
             push.{RECIPIENT}
-            push.{note_execution_hint}
             push.{note_type}
-            push.{aux}
             push.{tag}
             exec.output_note::create
             # => [note_idx]
@@ -1187,8 +1147,6 @@ async fn test_set_array_attachment() -> anyhow::Result<()> {
         ",
         RECIPIENT = output_note.recipient().unwrap().digest(),
         note_type = output_note.metadata().note_type() as u8,
-        aux = output_note.metadata().aux(),
-        note_execution_hint = Felt::from(output_note.metadata().execution_hint()),
         tag = output_note.metadata().tag().as_u32(),
         attachment_type = output_note.metadata().attachment().attachment_type().as_u32(),
         ATTACHMENT = output_note.metadata().to_attachment_word(),
@@ -1255,15 +1213,12 @@ fn create_output_note(note: &Note) -> String {
         "
         # create an output note
         push.{RECIPIENT}
-        push.{note_execution_hint}
         push.{note_type}
-        push.0              # aux
         push.{tag}
-        call.output_note::create
+        exec.output_note::create
         # => [note_idx]
     ",
         RECIPIENT = note.recipient().digest(),
-        note_execution_hint = Felt::from(note.metadata().execution_hint()),
         note_type = note.metadata().note_type() as u8,
         tag = Felt::from(note.metadata().tag()),
     );
