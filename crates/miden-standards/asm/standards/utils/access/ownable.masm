@@ -69,6 +69,7 @@ end
 pub proc only_owner
     exec.is_owner
     # => [is_owner]
+    
     assert.err=ERR_ONLY_OWNER
     # => []
 end
