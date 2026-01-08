@@ -711,7 +711,8 @@ async fn test_network_faucet_non_owner_cannot_mint() -> anyhow::Result<()> {
     let result = tx_context.execute().await;
 
     use miden_protocol::errors::MasmError;
-    let expected_error = MasmError::from_static_str("note sender is not the owner of the faucet who can mint assets");
+    // The distribute function uses ERR_ONLY_OWNER, which is "note sender is not the owner"
+    let expected_error = MasmError::from_static_str("note sender is not the owner");
     assert_transaction_executor_error!(result, expected_error);
 
     Ok(())
@@ -748,15 +749,7 @@ async fn test_network_faucet_owner_storage() -> anyhow::Result<()> {
 
 /// Tests that transfer_ownership updates the owner correctly.
 ///
-/// NOTE: This test is currently ignored because `transfer_ownership` cannot be called from note
-/// scripts due to a fundamental architectural limitation in Miden. Even though the code is executed
-/// by the Faucet (native account) when it consumes the note, `set_item` requires that the invocation
-/// originates from a procedure that is part of the account's code (verified via `authenticate_account_origin`).
-/// When called via `call` from a note script, the `caller` is the note script, not an account procedure,
-/// so `authenticate_account_origin` fails, causing `set_item` to fail with "storage slot with the
-/// provided name does not exist".
 #[tokio::test]
-#[ignore = "set_item requires caller to be an account procedure, but call from note script sets caller to note script"]
 async fn test_network_faucet_transfer_ownership() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
 
@@ -777,7 +770,6 @@ async fn test_network_faucet_transfer_ownership() -> anyhow::Result<()> {
 
     let faucet = builder.add_existing_network_faucet("NET", 1000, initial_owner_account_id, Some(50))?;
     let target_account = builder.add_existing_wallet(Auth::IncrNonce)?;
-    let mut mock_chain = builder.build()?;
 
     let amount = Felt::new(75);
     let mint_asset: Asset = FungibleAsset::new(faucet.id(), amount.into())?.into();
@@ -806,15 +798,7 @@ async fn test_network_faucet_transfer_ownership() -> anyhow::Result<()> {
     let mut rng = RpoRandomCoin::new([Felt::from(42u32); 4].into());
     let mint_note = create_mint_note(faucet.id(), initial_owner_account_id, mint_inputs.clone(), aux, &mut rng)?;
 
-    let tx_context = mock_chain
-        .build_tx_context(faucet.id(), &[], &[mint_note])?
-        .build()?;
-    let executed_transaction = tx_context.execute().await?;
-    assert_eq!(executed_transaction.output_notes().num_notes(), 1);
-
-    // Action: Execute transfer_ownership via note script
-    // Note: transfer_ownership is in the module, but it will fail to write storage
-    // when called from note scripts due to storage context limitations
+    // Action: Create transfer_ownership note script
     let transfer_note_script_code = format!(
         r#"
         use miden::standards::faucets::network_fungible->network_faucet
@@ -835,6 +819,7 @@ async fn test_network_faucet_transfer_ownership() -> anyhow::Result<()> {
     let transfer_note_script = CodeBuilder::with_source_manager(source_manager.clone())
         .compile_note_script(transfer_note_script_code.clone())?;
 
+    // Create the transfer note and add it to the builder so it exists on-chain
     let mut rng = RpoRandomCoin::new([Felt::from(200u32); 4].into());
     let transfer_note = NoteBuilder::new(initial_owner_account_id, &mut rng)
         .note_type(NoteType::Private)
@@ -845,8 +830,23 @@ async fn test_network_faucet_transfer_ownership() -> anyhow::Result<()> {
         .code(transfer_note_script_code.clone())
         .build()?;
 
+    // Add the transfer note to the builder before building the chain
+    builder.add_output_note(OutputNote::Full(transfer_note.clone()));
+    let mut mock_chain = builder.build()?;
+    
+    // Prove the block to make the transfer note exist on-chain
+    mock_chain.prove_next_block()?;
+
+    // Sanity Check: Execute mint transaction to verify initial owner can mint
     let tx_context = mock_chain
-        .build_tx_context(faucet.id(), &[], &[transfer_note])?
+        .build_tx_context(faucet.id(), &[], &[mint_note])?
+        .build()?;
+    let executed_transaction = tx_context.execute().await?;
+    assert_eq!(executed_transaction.output_notes().num_notes(), 1);
+
+    // Action: Execute transfer_ownership via note script
+    let tx_context = mock_chain
+        .build_tx_context(faucet.id(), &[transfer_note.id()], &[])?
         .add_note_script(transfer_note_script.clone())
         .with_source_manager(source_manager.clone())
         .build()?;
@@ -856,29 +856,35 @@ async fn test_network_faucet_transfer_ownership() -> anyhow::Result<()> {
     mock_chain.add_pending_executed_transaction(&executed_transaction)?;
     mock_chain.prove_next_block()?;
 
+    // Apply the delta to the faucet account to reflect the ownership change
+    let mut updated_faucet = faucet.clone();
+    updated_faucet.apply_delta(executed_transaction.account_delta())?;
+
     // Validation 1: Try to mint using the old owner - should fail
     let mut rng = RpoRandomCoin::new([Felt::from(300u32); 4].into());
     let mint_note_old_owner = create_mint_note(
-        faucet.id(),
+        updated_faucet.id(),
         initial_owner_account_id,
         mint_inputs.clone(),
         aux,
         &mut rng,
     )?;
 
+    // Use the note as an unauthenticated note (full note object) - it will be created in this transaction
     let tx_context = mock_chain
-        .build_tx_context(faucet.id(), &[], &[mint_note_old_owner])?
+        .build_tx_context(updated_faucet.id(), &[], &[mint_note_old_owner])?
         .build()?;
     let result = tx_context.execute().await;
 
     use miden_protocol::errors::MasmError;
-    let expected_error = MasmError::from_static_str("note sender is not the owner of the faucet who can mint assets");
+    // The distribute function uses ERR_ONLY_OWNER, which is "note sender is not the owner"
+    let expected_error = MasmError::from_static_str("note sender is not the owner");
     assert_transaction_executor_error!(result, expected_error);
 
     // Validation 2: Try to mint using the new owner - should succeed
     let mut rng = RpoRandomCoin::new([Felt::from(400u32); 4].into());
     let mint_note_new_owner = create_mint_note(
-        faucet.id(),
+        updated_faucet.id(),
         new_owner_account_id,
         mint_inputs,
         aux,
@@ -886,7 +892,7 @@ async fn test_network_faucet_transfer_ownership() -> anyhow::Result<()> {
     )?;
 
     let tx_context = mock_chain
-        .build_tx_context(faucet.id(), &[], &[mint_note_new_owner])?
+        .build_tx_context(updated_faucet.id(), &[], &[mint_note_new_owner])?
         .build()?;
     let executed_transaction = tx_context.execute().await?;
 
