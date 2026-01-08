@@ -18,7 +18,7 @@ use miden_protocol::account::{
     StorageSlotName,
 };
 use miden_protocol::asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset};
-use miden_protocol::note::{Note, NoteExecutionHint, NoteTag, NoteType};
+use miden_protocol::note::{Note, NoteTag, NoteType};
 use miden_protocol::testing::account_id::{
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
@@ -604,14 +604,10 @@ async fn asset_and_storage_delta() -> anyhow::Result<()> {
     let tag3 = NoteTag::default();
     let tags = [tag1, tag2, tag3];
 
-    let aux_array = [Felt::new(27), Felt::new(28), Felt::new(29)];
+    // TODO(note_attachment): Replace with non-default attachment.
+    // let aux_array = [Felt::new(27), Felt::new(28), Felt::new(29)];
 
     let note_types = [NoteType::Private; 3];
-
-    let execution_hint_1 = Felt::from(NoteExecutionHint::always());
-    let execution_hint_2 = Felt::from(NoteExecutionHint::none());
-    let execution_hint_3 = Felt::from(NoteExecutionHint::on_block_slot(1, 1, 1));
-    let hints = [execution_hint_1, execution_hint_2, execution_hint_3];
 
     let mut send_asset_script = String::new();
     for i in 0..3 {
@@ -620,18 +616,12 @@ async fn asset_and_storage_delta() -> anyhow::Result<()> {
             ### note {i}
             # prepare the stack for a new note creation
             push.0.1.2.3           # recipient
-            push.{EXECUTION_HINT}  # note_execution_hint
             push.{NOTETYPE}        # note_type
-            push.{aux}             # aux
             push.{tag}             # tag
-            # => [tag, aux, note_type, execution_hint, RECIPIENT]
-
-            # pad the stack before calling the `create_note`
-            padw padw swapdw
-            # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
+            # => [tag, note_type, RECIPIENT]
 
             # create the note
-            call.output_note::create
+            exec.output_note::create
             # => [note_idx, pad(15)]
 
             # move an asset to the created note to partially deplete fungible asset balance
@@ -642,9 +632,7 @@ async fn asset_and_storage_delta() -> anyhow::Result<()> {
             # clear the stack
             dropw dropw dropw dropw
         ",
-            EXECUTION_HINT = hints[i],
             NOTETYPE = note_types[i] as u8,
-            aux = aux_array[i],
             tag = tags[i],
             REMOVED_ASSET = Word::from(removed_assets[i])
         ));
@@ -1129,13 +1117,11 @@ const TEST_ACCOUNT_CONVENIENCE_WRAPPERS: &str = "
       #! Outputs: []
       proc create_note_with_asset
           push.0.1.2.3           # recipient
-          push.1                 # note_execution_hint
           push.2                 # note_type private
-          push.0                 # aux
           push.0xC0000000        # tag
-          # => [tag, aux, note_type, execution_hint, RECIPIENT, ASSET]
+          # => [tag, note_type, RECIPIENT, ASSET]
 
-          exec.create_note
+          exec.output_note::create
           # => [note_idx, ASSET]
 
           movdn.4
@@ -1143,19 +1129,6 @@ const TEST_ACCOUNT_CONVENIENCE_WRAPPERS: &str = "
 
           exec.move_asset_to_note
           # => []
-      end
-
-      #! Inputs:  [tag, aux, note_type, execution_hint, RECIPIENT]
-      #! Outputs: [note_idx]
-      proc create_note
-          repeat.8 push.0 movdn.8 end
-          # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
-
-          call.output_note::create
-          # => [note_idx, pad(15)]
-
-          repeat.15 swap drop end
-          # => [note_idx]
       end
 
       #! Inputs:  [ASSET, note_idx]

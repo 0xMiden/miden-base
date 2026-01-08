@@ -21,7 +21,9 @@ use miden_protocol::block::BlockNumber;
 use miden_protocol::note::{
     Note,
     NoteAssets,
-    NoteExecutionHint,
+    NoteAttachment,
+    NoteAttachmentContent,
+    NoteAttachmentType,
     NoteHeader,
     NoteId,
     NoteInputs,
@@ -202,9 +204,13 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
     );
     let tag2 = NoteTag::default();
     let tag3 = NoteTag::default();
-    let aux1 = Felt::new(27);
-    let aux2 = Felt::new(28);
-    let aux3 = Felt::new(29);
+
+    let attachment2 =
+        NoteAttachment::new_word(NoteAttachmentType::new(28), Word::from([2, 3, 4, 5u32]));
+    let attachment3 = NoteAttachment::new_array(
+        NoteAttachmentType::new(29),
+        [6, 7, 8, 9u32].map(Felt::from).to_vec(),
+    )?;
 
     let note_type1 = NoteType::Private;
     let note_type2 = NoteType::Public;
@@ -217,7 +223,8 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
     let serial_num_2 = Word::from([1, 2, 3, 4u32]);
     let note_script_2 = CodeBuilder::default().compile_note_script(DEFAULT_NOTE_CODE)?;
     let inputs_2 = NoteInputs::new(vec![ONE])?;
-    let metadata_2 = NoteMetadata::new(account_id, note_type2, tag2);
+    let metadata_2 =
+        NoteMetadata::new(account_id, note_type2, tag2).with_attachment(attachment2.clone());
     let vault_2 = NoteAssets::new(vec![removed_asset_3, removed_asset_4])?;
     let recipient_2 = NoteRecipient::new(serial_num_2, note_script_2, inputs_2);
     let expected_output_note_2 = Note::new(vault_2, metadata_2, recipient_2);
@@ -226,7 +233,8 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
     let serial_num_3 = Word::from([Felt::new(5), Felt::new(6), Felt::new(7), Felt::new(8)]);
     let note_script_3 = CodeBuilder::default().compile_note_script(DEFAULT_NOTE_CODE)?;
     let inputs_3 = NoteInputs::new(vec![ONE, Felt::new(2)])?;
-    let metadata_3 = NoteMetadata::new(account_id, note_type3, tag3);
+    let metadata_3 =
+        NoteMetadata::new(account_id, note_type3, tag3).with_attachment(attachment3.clone());
     let vault_3 = NoteAssets::new(vec![])?;
     let recipient_3 = NoteRecipient::new(serial_num_3, note_script_3, inputs_3);
     let expected_output_note_3 = Note::new(vault_3, metadata_3, recipient_3);
@@ -236,35 +244,22 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
         use miden::standards::wallets::basic->wallet
         use miden::protocol::output_note
 
-        # Inputs:  [tag, aux, note_type, execution_hint, RECIPIENT]
-        # Outputs: [note_idx]
-        proc create_note
-            # pad the stack before the call to prevent accidental modification of the deeper stack
-            # elements
-            padw padw swapdw
-            # => [tag, aux, execution_hint, note_type, RECIPIENT, pad(8)]
-
-            call.output_note::create
-            # => [note_idx, pad(15)]
-
-            # remove excess PADs from the stack
-            swapdw dropw dropw movdn.7 dropw drop drop drop
-            # => [note_idx]
-        end
-
-        # Inputs:  [ASSET, note_idx]
-        # Outputs: [ASSET, note_idx]
+        #! Wrapper around move_asset_to_note for use with exec.
+        #!
+        #! Inputs:  [ASSET, note_idx]
+        #! Outputs: [note_idx]
         proc move_asset_to_note
             # pad the stack before call
             push.0.0.0 movdn.7 movdn.7 movdn.7 padw padw swapdw
             # => [ASSET, note_idx, pad(11)]
 
             call.wallet::move_asset_to_note
-            # => [ASSET, note_idx, pad(11)]
+            dropw
+            # => [note_idx, pad(11)]
 
             # remove excess PADs from the stack
-            swapdw dropw dropw swapw movdn.7 drop drop drop
-            # => [ASSET, note_idx]
+            repeat.11 swap drop end
+            # => [note_idx]
         end
 
         ## TRANSACTION SCRIPT
@@ -274,47 +269,54 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
             ## ------------------------------------------------------------------------------------
             # partially deplete fungible asset balance
             push.0.1.2.3                        # recipient
-            push.{EXECUTION_HINT_1}             # note execution hint
             push.{NOTETYPE1}                    # note_type
-            push.{aux1}                         # aux
             push.{tag1}                         # tag
-            exec.create_note
-            # => [note_idx]
+            exec.output_note::create
+            # => [note_idx = 0]
 
             push.{REMOVED_ASSET_1}              # asset_1
             # => [ASSET, note_idx]
 
-            exec.move_asset_to_note dropw
+            exec.move_asset_to_note
             # => [note_idx]
 
             push.{REMOVED_ASSET_2}              # asset_2
-            exec.move_asset_to_note dropw drop
+            exec.move_asset_to_note
+            drop
             # => []
 
             # send non-fungible asset
             push.{RECIPIENT2}                   # recipient
-            push.{EXECUTION_HINT_2}             # note execution hint
             push.{NOTETYPE2}                    # note_type
-            push.{aux2}                         # aux
             push.{tag2}                         # tag
-            exec.create_note
-            # => [note_idx]
+            exec.output_note::create
+            # => [note_idx = 1]
 
             push.{REMOVED_ASSET_3}              # asset_3
-            exec.move_asset_to_note dropw
+            exec.move_asset_to_note
             # => [note_idx]
 
             push.{REMOVED_ASSET_4}              # asset_4
-            exec.move_asset_to_note dropw drop
+            exec.move_asset_to_note
+            # => [note_idx]
+
+            push.{ATTACHMENT2}
+            push.{attachment_type2}
+            movup.5
+            exec.output_note::set_word_attachment
             # => []
 
             # create a public note without assets
             push.{RECIPIENT3}                   # recipient
-            push.{EXECUTION_HINT_3}             # note execution hint
             push.{NOTETYPE3}                    # note_type
-            push.{aux3}                         # aux
             push.{tag3}                         # tag
-            exec.create_note drop
+            exec.output_note::create
+            # => [note_idx = 2]
+
+            push.{ATTACHMENT3}
+            push.{attachment_type3}
+            movup.5
+            exec.output_note::set_array_attachment
             # => []
         end
     ",
@@ -327,9 +329,10 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
         NOTETYPE1 = note_type1 as u8,
         NOTETYPE2 = note_type2 as u8,
         NOTETYPE3 = note_type3 as u8,
-        EXECUTION_HINT_1 = Felt::from(NoteExecutionHint::always()),
-        EXECUTION_HINT_2 = Felt::from(NoteExecutionHint::none()),
-        EXECUTION_HINT_3 = Felt::from(NoteExecutionHint::on_block_slot(11, 22, 33)),
+        attachment_type2 = attachment2.attachment_type().as_u32(),
+        ATTACHMENT2 = attachment2.content().to_word(),
+        attachment_type3 = attachment3.attachment_type().as_u32(),
+        ATTACHMENT3 = attachment3.content().to_word(),
     );
 
     let tx_script = CodeBuilder::default().compile_tx_script(tx_script_src)?;
@@ -338,8 +341,13 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
     // --------------------------------------------------------------------------------------------
     // execute the transaction and get the witness
 
+    let NoteAttachmentContent::Array(array) = attachment3.content() else {
+        panic!("expected array attachment");
+    };
+
     let tx_context = TransactionContextBuilder::new(executor_account)
         .tx_script(tx_script)
+        .extend_advice_map(vec![(attachment3.content().to_word(), array.as_slice().to_vec())])
         .extend_expected_output_notes(vec![
             OutputNote::Full(expected_output_note_2.clone()),
             OutputNote::Full(expected_output_note_3.clone()),
