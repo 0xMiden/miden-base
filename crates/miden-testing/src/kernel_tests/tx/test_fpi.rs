@@ -610,7 +610,7 @@ async fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
             # => [STORAGE_VALUE]
 
             # assert the correctness of the obtained value
-            push.1.2.3.4 assert_eqw
+            push.1.2.3.4 assert_eqw.err="foreign proc returned unexpected value"
             # => []
 
             # get an item from the storage map
@@ -636,7 +636,7 @@ async fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
             # => [MAP_VALUE]
 
             # assert the correctness of the obtained value
-            push.1.2.3.4 assert_eqw
+            push.1.2.3.4 assert_eqw.err="foreign proc returned unexpected value"
             # => []
 
             # truncate the stack
@@ -1318,7 +1318,7 @@ async fn test_nested_fpi_stack_overflow() -> anyhow::Result<()> {
                     drop drop drop
 
                     # make sure that the resulting value equals 1
-                    assert
+                    assert.err="expected value to be 1"
                 end
         "#,
         mock_value_slot0 = mock_value_slot0.name(),

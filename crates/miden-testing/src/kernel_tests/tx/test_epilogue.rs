@@ -329,7 +329,7 @@ async fn test_block_expiration_height_monotonically_decreases() -> anyhow::Resul
             push.{value_2}
             exec.tx::update_expiration_block_delta
 
-            push.{min_value} exec.tx::get_expiration_delta assert_eq
+            push.{min_value} exec.tx::get_expiration_delta assert_eq.err=\"expiration delta mismatch\"
 
             exec.epilogue::finalize_transaction
 
@@ -398,7 +398,7 @@ async fn test_no_expiration_delta_set() -> anyhow::Result<()> {
     begin
         exec.prologue::prepare_transaction
 
-        exec.tx::get_expiration_delta assertz
+        exec.tx::get_expiration_delta assertz.err=\"expiration delta should be unset\"
 
         exec.epilogue::finalize_transaction
 
@@ -449,7 +449,7 @@ async fn test_epilogue_increment_nonce_success() -> anyhow::Result<()> {
             dropw dropw dropw dropw
 
             exec.memory::get_account_nonce
-            push.{expected_nonce} assert_eq
+            push.{expected_nonce} assert_eq.err="nonce mismatch"
         end
         "#,
         mock_value_slot0 = &*MOCK_VALUE_SLOT0,
