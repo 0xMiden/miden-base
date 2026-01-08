@@ -1,4 +1,4 @@
-use miden::agglayer::crypto_utils
+use miden::agglayer::bridge::crypto_utils
 
 # Inputs: []
 # Output: [GER_ROOT[8]]

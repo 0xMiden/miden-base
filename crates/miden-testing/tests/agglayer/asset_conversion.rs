@@ -60,7 +60,7 @@ async fn test_convert_to_u256_helper(
     let script_code = format!(
         "
         use miden::core::sys
-        use miden::agglayer::asset_conversion
+        use miden::agglayer::bridge::asset_conversion
         
         begin
             push.{}.{}
@@ -137,7 +137,7 @@ async fn test_convert_to_u256_scaled_eth() -> anyhow::Result<()> {
     let script_code = format!(
         "
         use miden::core::sys
-        use miden::agglayer::asset_conversion
+        use miden::agglayer::bridge::asset_conversion
         
         begin
             push.{}.{}
@@ -179,7 +179,7 @@ async fn test_convert_to_u256_scaled_large_amount() -> anyhow::Result<()> {
     let script_code = format!(
         "
         use miden::core::sys
-        use miden::agglayer::asset_conversion
+        use miden::agglayer::bridge::asset_conversion
 
         begin
             push.{}.{}

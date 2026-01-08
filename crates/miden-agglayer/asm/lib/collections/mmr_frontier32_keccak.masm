@@ -1,0 +1,229 @@
+use miden::core::crypto::hashes::keccak256
+use ::miden::agglayer::collections::canonical_zeros::load_zeros_to_memory
+
+# Module description: TBD
+
+# CONSTANTS
+# =================================================================================================
+
+# The maximum number of leaves which could be added to the MMR.
+#
+# If the height is 32, the leaves num will be equal to 4294967296 (2**32)
+const MAX_LEAVES_NUM = 4294967296
+
+# The total height of the full MMR tree, which root represents the the commitment to the current
+# frontier.
+const TREE_HEIGHT = 32
+
+# The number of the stack elements which one node occupy.
+const NODE_SIZE = 8
+
+# The offset of the number of leaves in the current MMR state.
+const NUM_LEAVES_OFFSET = 0
+
+# The offset of the array of the frontier nodes of respective heights.
+const FRONTIER_OFFSET = 4 # 32 double words, 256 felts in total
+
+# The offset of the array of the zero hashes of respective heights.
+const ZEROS_OFFSET = 52 # 32 double words, 256 felts in total
+
+# PUBLIC API
+# =================================================================================================
+
+#! Updates the existing frontier with the new leaf, returns a new leaf count and a new MMR root.
+#!
+#! The memory layout at the `mmr_frontier_ptr` is expected to be like so:
+#! [num_leaves, [[FRONTIER_NODE_LO, FRONTIER_NODE_HI]; 32]]
+#! So, in fact, empty, uninitialized memory is a valid state for the frontier in case there are no
+#! leaves.
+#!
+#! Inputs:  [NEW_LEAF_LO, NEW_LEAF_HI, mmr_frontier_ptr]
+#! Outputs: [NEW_ROOT_LO, NEW_ROOT_HI, new_leaf_count]
+@locals(264) # new_leaf + canonical_zeros
+pub proc append_and_update_frontier
+    # set CUR_HASH = NEW_LEAF and store to local memory
+    loc_storew_be.0 dropw
+    loc_storew_be.4 dropw
+    # => [mmr_frontier_ptr]
+
+    # get the memory pointer where the canonical zeros will be stored
+    locaddr.8
+    # => [zeros_ptr, mmr_frontier_ptr]
+
+    # load the canonical zeros into the memory
+    exec.load_zeros_to_memory
+    # => [mmr_frontier_ptr]
+
+    # get the current leaves number
+    dup add.NUM_LEAVES_OFFSET mem_load
+    # => [num_leaves, mmr_frontier_ptr]
+    
+    # update the leaves number and store it into the memory
+    dup add.1 dup.2 add.NUM_LEAVES_OFFSET
+    # => [num_leaves_ptr, num_leaves+1, num_leaves, mmr_frontier_ptr]
+
+    mem_store
+    # => [num_leaves, mmr_frontier_ptr]
+
+    # iterate `TREE_HEIGHT` times to get the root of the tree
+    #
+    # iter_counter in that case will show the current tree height
+    push.0 push.1
+    # => [loop_flag=1, iter_counter=0, num_leaves, mmr_frontier_ptr]
+
+    while.true
+        # => [iter_counter, num_leaves, mmr_frontier_ptr]
+
+        # get the pointer to the frontier node of the current height
+        #
+        # notice that the initial state of the frontier array is zeros
+        dup.2 add.FRONTIER_OFFSET dup.1 mul.NODE_SIZE add
+        # => [frontier[iter_counter]_ptr, iter_counter, num_leaves, mmr_frontier_ptr]
+
+        # determine whether the last `num_leaves` bit is 1 (is `num_leaves` odd)
+        dup.2 u32and.1
+        # => [is_odd, frontier[iter_counter]_ptr, iter_counter, num_leaves, mmr_frontier_ptr]
+
+        if.true
+            # => [frontier[iter_counter]_ptr, iter_counter, num_leaves, mmr_frontier_ptr]
+            #
+            # this height already had a subtree root stored in frontier[iter_counter], merge into
+            # parent.
+            exec.mem_load_double_word
+            # => [FRONTIER[iter_counter]_LO, FRONTIER[iter_counter]_HI, iter_counter, num_leaves, mmr_frontier_ptr]
+
+            # load the current hash from the local memory back to the stack
+            #
+            # in the first iteration the current hash will be equal to the new node
+            padw loc_loadw_be.4 padw loc_loadw_be.0 swapdw
+            # => [FRONTIER[iter_counter]_LO, FRONTIER[iter_counter]_HI, CUR_HASH_LO, CUR_HASH_HI, iter_counter, num_leaves, mmr_frontier_ptr]
+
+            # merge the frontier node of this height with the current hash to get the current hash
+            # of the next height (merge(frontier[h], cur))
+            exec.keccak256::merge
+            # => [CUR_HASH_LO', CUR_HASH_HI', iter_counter, num_leaves, mmr_frontier_ptr]
+
+            # store the current hash of the next height back to the local memory
+            loc_storew_be.0 dropw
+            loc_storew_be.4 dropw
+            # => [iter_counter, num_leaves, mmr_frontier_ptr]
+        else
+            # => [frontier[iter_counter]_ptr, iter_counter, num_leaves, mmr_frontier_ptr]
+            #
+            # this height wasn't "occupied" yet: store the current hash as the subtree root 
+            # (frontier node) at height `iter_counter`
+            padw loc_loadw_be.4 padw loc_loadw_be.0
+            # => [CUR_HASH_LO, CUR_HASH_HI, frontier[iter_counter]_ptr, iter_counter, num_leaves, mmr_frontier_ptr]
+
+            # store the CUR_HASH to the frontier[iter_counter]_ptr
+            exec.mem_store_double_word movdn.8 drop
+            # => [CUR_HASH_LO, CUR_HASH_HI, iter_counter, num_leaves, mmr_frontier_ptr]
+
+            # get the pointer to the canonical zero node of the current height
+            locaddr.8 dup.9 mul.NODE_SIZE add
+            # => [zeros[iter_counter], CUR_HASH_LO, CUR_HASH_HI, iter_counter, num_leaves, mmr_frontier_ptr]
+
+            # load the zero node to the stack
+            exec.mem_load_double_word swapdw
+            # => [CUR_HASH_LO, CUR_HASH_HI, ZERO_H_LO, ZERO_H_HI, iter_counter, num_leaves, mmr_frontier_ptr]
+
+            # merge the current hash with the zero node of this height to get the current hash of
+            # the next height (merge(cur, zeroes[h]))
+            exec.keccak256::merge
+            # => [CUR_HASH_LO', CUR_HASH_HI', iter_counter, num_leaves, mmr_frontier_ptr]
+
+            # store the current hash of the next height back to the local memory
+            loc_storew_be.0 dropw
+            loc_storew_be.4 dropw
+            # => [iter_counter, num_leaves, mmr_frontier_ptr]
+        end
+        # => [iter_counter, num_leaves, mmr_frontier_ptr]
+
+        # update the counter
+        push.1 add
+
+        # update the `num_leaves` (shift it right by 1 bit)
+        swap u32shr.1 swap
+        # => [iter_counter+1, num_leaves>>1, mmr_frontier_ptr]
+
+        # compute the cycle flag
+        dup neq.TREE_HEIGHT
+        # => [loop_flag, iter_counter+1, num_leaves>>1, mmr_frontier_ptr]
+    end
+    # => [iter_counter=5, num_leaves=0, mmr_frontier_ptr]
+
+    # clean the stack
+    drop drop
+    # => [mmr_frontier_ptr]
+
+    # load the final number of leaves onto the stack
+    add.NUM_LEAVES_OFFSET mem_load
+    # => [new_leaf_count]
+
+    # The current (final) hash represents the root of the whole tree.
+    #
+    # Notice that there is no need to update the frontier[tree_height] value, which in theory could
+    # represent the frontier in case the tree is full. The frontier nodes are used only for the 
+    # computation of the next height hash, but if the tree is full, there is no next hash to
+    # compute.
+
+    # load the final hash (which is also the root of the tree)
+    padw loc_loadw_be.4 padw loc_loadw_be.0
+    # => [NEW_ROOT_LO, NEW_ROOT_HI, new_leaf_count]
+end
+
+# HELPER PROCEDURES
+# =================================================================================================
+
+#! Stores the canonical zeros from the advice map to the memory at the provided address.
+#!
+#! Inputs:  [zeros_ptr]
+#! Outputs: []
+proc store_canonical_zeros
+    # load the canonical zeros from the advice map to the advice stack
+    # TODO: enable once adv_map can be created with constants
+    # push.CANONICAL_ZEROS adv.push_mapval dropw
+    # => [zeros_ptr]
+
+    # prepare the stack for the adv_pipe instruction
+    padw padw padw 
+    # => [PAD, PAD, PAD, zeros_ptr]
+
+    # TODO: use constant once constant usage will be implemented
+    repeat.32 
+        adv_pipe
+        # => [ZERO_I_L, ZERO_I_R, PAD, zeros_ptr+8]
+    end
+    # => [ZERO_31_L, ZERO_31_R, PAD, zeros_ptr+256]
+
+    # clean the stack
+    dropw dropw dropw drop
+    # => []
+end
+
+#! Stores two words to the provided global memory address.
+#!
+#! Inputs:  [WORD_1, WORD_2, ptr]
+#! Outputs: [WORD_1, WORD_2, ptr]
+pub proc mem_store_double_word
+    dup.8 mem_storew_be swapw
+    # => [WORD_2, WORD_1, ptr]
+
+    dup.8 add.4 mem_storew_be swapw
+    # => [WORD_1, WORD_2, ptr]
+end
+
+#! Loads two words from the provided global memory address.
+#!
+#! Inputs:  [ptr]
+#! Outputs: [WORD_1, WORD_2]
+proc mem_load_double_word
+    padw dup.4 mem_loadw_be
+    # => [WORD_1, ptr]
+
+    padw movup.8 add.4 mem_loadw_be
+    # => [WORD_2, WORD_1]
+
+    swapw
+    # => [WORD_1, WORD_2]
+end
