@@ -1267,7 +1267,7 @@ async fn test_get_init_balance_subtraction() -> anyhow::Result<()> {
 
         begin
             # create random note and move the asset into it
-            exec.util::create_random_note
+            exec.util::create_default_note
             # => [note_idx]
 
             push.{REMOVED_ASSET}
