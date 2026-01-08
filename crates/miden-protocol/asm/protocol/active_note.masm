@@ -95,7 +95,7 @@ end
 #!
 #! Where:
 #! - dest_ptr is the memory address to write the note inputs.
-#! - NOTE_INPUTS_COMMITMENT is the sequential hash of the padded note's inputs.
+#! - NOTE_INPUTS_COMMITMENT is the commitment to the note's (unpadded) inputs.
 #! - INPUTS is the data corresponding to the note's inputs.
 #!
 #! Panics if:
@@ -274,7 +274,7 @@ end
 #!   Operand stack: [num_inputs, dest_ptr]
 proc write_inputs_to_memory
     # load the inputs from the advice map to the advice stack
-    adv.push_mapvaln.8
+    adv.push_mapvaln.4
     # OS => [NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
     # AS => [advice_num_inputs, [INPUT_VALUES]]
 
@@ -292,18 +292,23 @@ proc write_inputs_to_memory
     # OS => [num_words, NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
     # AS => [[INPUT_VALUES]]
 
-    # round up the number of words to the next multiple of 2
-    dup is_odd add
-    # OS => [even_num_words, NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
-    # AS => [[INPUT_VALUES]]
-
-    # prepare the stack for the `pipe_preimage_to_memory` procedure
+    # prepare the stack for the `pipe_words_to_memory` procedure
     dup.6 swap
-    # OS => [even_num_words, dest_ptr, NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
+    # OS => [num_words, dest_ptr, NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
     # AS => [[INPUT_VALUES]]
 
     # write the inputs from the advice stack into memory
-    exec.mem::pipe_preimage_to_memory drop
-    # OS => [num_inputs, dest_ptr]
+    exec.mem::pipe_words_to_memory
+    # OS => [C, B, A, dest_ptr', NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
     # AS => []
+
+    # drop the hasher state and dest_ptr'
+    dropw dropw dropw drop
+    # OS => [NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
+
+    # compute and validate the inputs commitment (over the unpadded values)
+    dup.5 dup.5 swap
+    exec.note::compute_inputs_commitment
+    assert_eqw.err=ERR_NOTE_DATA_DOES_NOT_MATCH_COMMITMENT
+    # => [num_inputs, dest_ptr]
 end

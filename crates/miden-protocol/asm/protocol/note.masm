@@ -16,7 +16,8 @@ const ERR_PROLOGUE_NOTE_INPUTS_LEN_EXCEEDED_LIMIT="number of note inputs exceede
 #! This procedure checks that the provided number of note inputs is within limits and then computes
 #! the commitment.
 #!
-#! Notice that the note inputs are padded with zeros in case their number is not a multiple of 8.
+#! Notice that the commitment is computed over the unpadded input values (i.e. without extending
+#! them with zeros to the next multiple of 8).
 #!
 #! If the number of note inputs is 0, procedure returns the empty word: [0, 0, 0, 0].
 #!
@@ -43,7 +44,7 @@ pub proc compute_inputs_commitment
     # TODO: refactor the hash computation process as part of the
     # https://github.com/0xMiden/miden-base/issues/2036 and
     # https://github.com/0xMiden/miden-base/issues/2129
-    exec.rpo256::pad_and_hash_elements
+    exec.rpo256::hash_elements
     # => [INPUTS_COMMITMENT]
 end
 
