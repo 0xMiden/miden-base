@@ -131,9 +131,6 @@ pub fn ethereum_address_string_to_felts(address_str: &str) -> Result<Vec<Felt>, 
 /// - u32\[6\]: bytes 24-27
 /// - u32\[7\]: bytes 28-31
 ///
-/// Note: This function uses big-endian byte order for compatibility with Ethereum/AggLayer.
-/// We cannot use miden_core::utils::bytes_to_packed_u32_felts because it uses little-endian.
-///
 /// # Arguments
 /// * `bytes32` - A 32-byte value (e.g., hash, root)
 ///
@@ -157,9 +154,6 @@ pub fn bytes32_to_felts(bytes32: &[u8; 32]) -> Vec<Felt> {
 }
 
 /// Converts a vector of 8 Felt values back into a 32-byte array.
-///
-/// Note: This function uses big-endian byte order for compatibility with Ethereum/AggLayer.
-/// We cannot use miden_core::utils::packed_u32_felts_to_bytes because it uses little-endian.
 ///
 /// # Arguments
 /// * `felts` - A vector of 8 Felt values representing a bytes32 value
