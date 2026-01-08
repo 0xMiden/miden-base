@@ -132,8 +132,20 @@ end
 
 #! Renounces ownership, leaving the component without an owner.
 #!
+#! Can only be called by the current owner.
+#!
 #! Inputs:  [pad(16)]
 #! Outputs: [pad(16)]
+#!
+#! Panics if:
+#! - the note sender is not the owner.
+#!
+#! Invocation: call
+#!
+#! Important Note!
+#! This feature allows the owner to relinquish administrative privileges, a common pattern
+#! after an initial stage with centralized administration is over. Once ownership is renounced,
+#! the component becomes permanently ownerless and cannot be managed by any account.
 pub proc renounce_ownership
     exec.only_owner
     # => [pad(16)]
@@ -143,6 +155,8 @@ pub proc renounce_ownership
     # => [0, 0, 0, 0, pad(16)]
     
     push.OWNER_CONFIG_SLOT[0..2]
+    # => [slot_prefix, slot_suffix, 0, 0, 0, 0, pad(16)]
+    
     exec.native_account::set_item
     # => [OLD_OWNER_WORD, pad(16)]
     

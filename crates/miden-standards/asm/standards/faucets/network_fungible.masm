@@ -18,24 +18,6 @@ use miden::standards::utils::access::ownable
 
 const ERR_ONLY_OWNER="note sender is not the owner"
 
-# INTERNAL PROCEDURES
-# ================================================================================================
-
-#! Checks if the note sender is the owner of this faucet.
-#!
-#! Inputs:  []
-#! Outputs: [is_owner]
-#!
-#! Where:
-#! - is_owner is 1 if the sender is the owner, 0 otherwise.
-#!
-#! NOTE: Uses exec.ownable::is_owner to ensure it uses the same execution context
-#! and storage slot (OWNER_CONFIG_SLOT) as defined in ownable.masm.
-proc is_owner
-    exec.ownable::is_owner
-    # => [is_owner]
-end
-
 # PUBLIC INTERFACE
 # ================================================================================================
 
@@ -76,7 +58,7 @@ end
 #!
 #! Invocation: call
 pub proc distribute
-    exec.is_owner
+    exec.ownable::is_owner
     # => [is_owner, amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
 
     assert.err=ERR_ONLY_OWNER
