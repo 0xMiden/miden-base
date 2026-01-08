@@ -1,7 +1,6 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use miden_processor::Felt;
 use miden_processor::crypto::RpoRandomCoin;
 use miden_protocol::account::AccountId;
 use miden_protocol::asset::Asset;
@@ -228,15 +227,11 @@ fn note_script_that_creates_notes<'note>(
         out.push_str(&format!(
             "
             push.{recipient}
-            push.{hint}
             push.{note_type}
-            push.{aux}
             push.{tag}
-            call.output_note::create\n",
+            exec.output_note::create\n",
             recipient = note.recipient().digest(),
-            hint = Felt::from(note.metadata().execution_hint()),
             note_type = note.metadata().note_type() as u8,
-            aux = note.metadata().aux(),
             tag = note.metadata().tag(),
         ));
 

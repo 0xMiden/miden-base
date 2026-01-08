@@ -11,11 +11,9 @@ const MOCK_UTIL_LIBRARY_CODE: &str = "
     #! Outputs: [note_idx]
     pub proc create_default_note
         push.1.2.3.4           # = RECIPIENT
-        push.1                 # = NoteExecutionHint::Always
         push.2                 # = NoteType::Private
-        push.0                 # = aux
-        push.0xc0000000        # = NoteTag::LocalAny
-        # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
+        push.0                 # = NoteTag
+        # => [tag, note_type, RECIPIENT]
 
         exec.output_note::create
         # => [note_idx]
