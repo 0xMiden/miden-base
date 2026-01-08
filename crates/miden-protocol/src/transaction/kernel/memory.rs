@@ -342,14 +342,14 @@ pub const NOTE_MEM_SIZE: MemoryAddress = 2048;
 //
 // Here `n` represents number of input notes.
 //
-// Each nullifier occupies a single word. A data section for each note consists of exactly 512
-// words and is laid out like so:
+// Each nullifier occupies a single word. A data section for each note consists of exactly 2048
+// elements and is laid out like so:
 //
-// ┌──────┬────────┬────────┬────────┬────────────┬───────────┬──────┬───────┬────────┬────────┬───────┬─────┬───────┬─────────┬
-// │ NOTE │ SERIAL │ SCRIPT │ INPUTS │   ASSETS   | RECIPIENT │ META │ NOTE  │  NUM   │  NUM   │ ASSET │ ... │ ASSET │ PADDING │
-// │  ID  │  NUM   │  ROOT  │  HASH  │ COMMITMENT |           │ DATA │ ARGS  │ INPUTS │ ASSETS │   0   │     │   n   │         │
-// ├──────┼────────┼────────┼────────┼────────────┼───────────┼──────┼───────┼────────┼────────┼───────┼─────┼───────┼─────────┤
-// 0      4        8        12       16           20          24     28      32       36       40 + 4n
+// ┌──────┬────────┬────────┬────────┬────────────┬───────────┬──────────┬────────────┬───────┬────────┬────────┬───────┬─────┬───────┬─────────┬
+// │ NOTE │ SERIAL │ SCRIPT │ INPUTS │   ASSETS   | RECIPIENT │ METADATA │ ATTACHMENT │ NOTE  │  NUM   │  NUM   │ ASSET │ ... │ ASSET │ PADDING │
+// │  ID  │  NUM   │  ROOT  │  HASH  │ COMMITMENT |           │  HEADER  │            │ ARGS  │ INPUTS │ ASSETS │   0   │     │   n   │         │
+// ├──────┼────────┼────────┼────────┼────────────┼───────────┼──────────┼────────────┼───────┼────────┼────────┼───────┼─────┼───────┼─────────┤
+// 0      4        8        12       16           20          24         28           32       36      40       44 + 4n
 //
 // - NUM_INPUTS is encoded as [num_inputs, 0, 0, 0].
 // - NUM_ASSETS is encoded as [num_assets, 0, 0, 0].
@@ -382,11 +382,12 @@ pub const INPUT_NOTE_SCRIPT_ROOT_OFFSET: MemoryOffset = 8;
 pub const INPUT_NOTE_INPUTS_COMMITMENT_OFFSET: MemoryOffset = 12;
 pub const INPUT_NOTE_ASSETS_COMMITMENT_OFFSET: MemoryOffset = 16;
 pub const INPUT_NOTE_RECIPIENT_OFFSET: MemoryOffset = 20;
-pub const INPUT_NOTE_METADATA_OFFSET: MemoryOffset = 24;
-pub const INPUT_NOTE_ARGS_OFFSET: MemoryOffset = 28;
-pub const INPUT_NOTE_NUM_INPUTS_OFFSET: MemoryOffset = 32;
-pub const INPUT_NOTE_NUM_ASSETS_OFFSET: MemoryOffset = 36;
-pub const INPUT_NOTE_ASSETS_OFFSET: MemoryOffset = 40;
+pub const INPUT_NOTE_METADATA_HEADER_OFFSET: MemoryOffset = 24;
+pub const INPUT_NOTE_ATTACHMENT_OFFSET: MemoryOffset = 28;
+pub const INPUT_NOTE_ARGS_OFFSET: MemoryOffset = 32;
+pub const INPUT_NOTE_NUM_INPUTS_OFFSET: MemoryOffset = 36;
+pub const INPUT_NOTE_NUM_ASSETS_OFFSET: MemoryOffset = 40;
+pub const INPUT_NOTE_ASSETS_OFFSET: MemoryOffset = 44;
 
 #[allow(clippy::empty_line_after_outer_attr)]
 #[rustfmt::skip]
