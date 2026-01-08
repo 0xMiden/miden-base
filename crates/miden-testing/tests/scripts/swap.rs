@@ -35,11 +35,9 @@ pub async fn prove_send_swap_note() -> anyhow::Result<()> {
         use miden::protocol::output_note
         begin
             push.{recipient}
-            push.{note_execution_hint}
             push.{note_type}
-            push.0              # aux
             push.{tag}
-            call.output_note::create
+            exec.output_note::create
 
             push.{asset}
             call.::miden::standards::wallets::basic::move_asset_to_note
@@ -50,7 +48,6 @@ pub async fn prove_send_swap_note() -> anyhow::Result<()> {
         note_type = NoteType::Public as u8,
         tag = Felt::from(swap_note.metadata().tag()),
         asset = Word::from(offered_asset),
-        note_execution_hint = Felt::from(swap_note.metadata().execution_hint())
     );
 
     let tx_script = CodeBuilder::default().compile_tx_script(tx_script_src)?;

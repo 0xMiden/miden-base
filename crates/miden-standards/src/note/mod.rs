@@ -7,6 +7,7 @@ use miden_protocol::crypto::rand::FeltRng;
 use miden_protocol::note::{
     Note,
     NoteAssets,
+    NoteAttachment,
     NoteDetails,
     NoteExecutionHint,
     NoteInputs,
@@ -113,11 +114,8 @@ pub fn create_swap_note<R: FeltRng>(
     offered_asset: Asset,
     requested_asset: Asset,
     swap_note_type: NoteType,
-    // TODO(note_attachment): Replace with note attachment.
-    _swap_note_aux: Felt,
+    swap_note_attachment: NoteAttachment,
     payback_note_type: NoteType,
-    // TODO(note_attachment): Replace with note attachment.
-    payback_note_aux: Felt,
     rng: &mut R,
 ) -> Result<(Note, NoteDetails), NoteError> {
     if requested_asset == offered_asset {
@@ -142,9 +140,7 @@ pub fn create_swap_note<R: FeltRng>(
         payback_recipient_word[1],
         payback_recipient_word[2],
         payback_recipient_word[3],
-        NoteExecutionHint::always().into(),
         payback_note_type.into(),
-        payback_note_aux,
         payback_tag.into(),
     ])?;
 
@@ -153,7 +149,8 @@ pub fn create_swap_note<R: FeltRng>(
     let serial_num = rng.draw_word();
 
     // build the outgoing note
-    let metadata = NoteMetadata::new(sender, swap_note_type, tag);
+    let metadata =
+        NoteMetadata::new(sender, swap_note_type, tag).with_attachment(swap_note_attachment);
     let assets = NoteAssets::new(vec![offered_asset])?;
     let recipient = NoteRecipient::new(serial_num, note_script, inputs);
     let note = Note::new(assets, metadata, recipient);

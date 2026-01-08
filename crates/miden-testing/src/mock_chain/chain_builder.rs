@@ -42,7 +42,7 @@ use miden_protocol::block::{
 };
 use miden_protocol::crypto::dsa::ecdsa_k256_keccak::SecretKey;
 use miden_protocol::crypto::merkle::smt::Smt;
-use miden_protocol::note::{Note, NoteDetails, NoteType};
+use miden_protocol::note::{Note, NoteAttachment, NoteDetails, NoteType};
 use miden_protocol::testing::account_id::ACCOUNT_ID_NATIVE_ASSET_FAUCET;
 use miden_protocol::testing::random_signer::RandomBlockSigner;
 use miden_protocol::transaction::{OrderedTransactionHeaders, OutputNote, TransactionKernel};
@@ -604,9 +604,8 @@ impl MockChainBuilder {
             offered_asset,
             requested_asset,
             NoteType::Public,
-            Felt::ZERO,
+            NoteAttachment::default(),
             payback_note_type,
-            Felt::ZERO,
             &mut self.rng,
         )?;
 

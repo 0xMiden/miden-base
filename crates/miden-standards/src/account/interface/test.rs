@@ -6,6 +6,7 @@ use miden_protocol::crypto::rand::{FeltRng, RpoRandomCoin};
 use miden_protocol::note::{
     Note,
     NoteAssets,
+    NoteAttachment,
     NoteInputs,
     NoteMetadata,
     NoteRecipient,
@@ -16,7 +17,7 @@ use miden_protocol::testing::account_id::{
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE_2,
 };
-use miden_protocol::{Felt, NoteError, Word, ZERO};
+use miden_protocol::{Felt, NoteError, Word};
 
 use crate::AuthScheme;
 use crate::account::auth::{
@@ -99,9 +100,8 @@ fn test_basic_wallet_default_notes() {
         offered_asset,
         requested_asset,
         NoteType::Public,
-        ZERO,
+        NoteAttachment::default(),
         NoteType::Public,
-        ZERO,
         &mut RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])),
     )
     .unwrap();
@@ -192,9 +192,8 @@ fn test_custom_account_default_note() {
         offered_asset,
         requested_asset,
         NoteType::Public,
-        ZERO,
+        NoteAttachment::default(),
         NoteType::Public,
-        ZERO,
         &mut RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])),
     )
     .unwrap();
@@ -225,9 +224,8 @@ fn test_required_asset_same_as_offered() {
         offered_asset,
         requested_asset,
         NoteType::Public,
-        ZERO,
+        NoteAttachment::default(),
         NoteType::Public,
-        ZERO,
         &mut RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])),
     );
 
