@@ -212,36 +212,6 @@ impl TransactionInputs {
     /// The account header is stored in the advice map under a key derived from the account ID,
     /// containing [ID_AND_NONCE, VAULT_ROOT, STORAGE_COMMITMENT, CODE_COMMITMENT] elements.
     /// The corresponding foreign account code must be present in the foreign_account_code list.
-    ///
-    /// # Implementation Notes
-    ///
-    /// Currently, the AccountWitness is created with a placeholder Merkle path. For a complete
-    /// implementation, the witness should be reconstructed from the Merkle store data that was
-    /// added via `add_account_witness`. This would require:
-    ///
-    /// 1. Implementing `MerkleStore::get_path(root, index)` method or equivalent
-    /// 2. Using `account_id_to_smt_index()` to convert the account ID to the correct index
-    /// 3. Retrieving the authenticated nodes from the merkle store
-    /// 4. Reconstructing the SparseMerklePath from the stored InnerNodeInfo data
-    ///
-    /// The authenticated nodes are stored in the merkle store via `witness.authenticated_nodes()`
-    /// in the `add_account_witness` function.
-    ///
-    /// # Arguments
-    /// * `account_id` - The ID of the foreign account to read
-    ///
-    /// # Returns
-    /// * `Ok(AccountInputs)` if the account data can be successfully read and parsed
-    /// * `Err(TransactionInputError)` if any required data is missing or invalid
-    ///
-    /// # Errors
-    ///
-    /// This function will return `TransactionInputError::ForeignAccountError` if:
-    /// - The account header is not found in the advice map
-    /// - The account header cannot be parsed from the stored elements
-    /// - The foreign account code is not found in the foreign_account_code list
-    /// - Any component of the PartialAccount cannot be constructed
-    /// - The AccountWitness cannot be created
     pub fn read_foreign_account_inputs(
         &self,
         account_id: AccountId,
@@ -263,6 +233,9 @@ impl TransactionInputs {
         // Parse the header from elements.
         let header = AccountHeader::try_from_elements(header_elements)?;
 
+        // Derive the partial vault from the header.
+        let partial_vault = PartialVault::new(header.vault_root());
+
         // Find the corresponding foreign account code
         let account_code = self
             .foreign_account_code
@@ -271,16 +244,19 @@ impl TransactionInputs {
             .ok_or(TransactionInputError::ForeignAccountCodeNotFound(account_id))?
             .clone();
 
-        // Build partial account components
-        // Note: We create minimal partial storage and vault since foreign accounts
-        // typically don't need full state access
-        let empty_header = AccountStorageHeader::new(vec![])
-            .map_err(|_| TransactionInputError::ForeignAccountCodeNotFound(account_id))?;
-        let partial_storage = PartialStorage::new(empty_header, [])
-            .map_err(|_| TransactionInputError::ForeignAccountCodeNotFound(account_id))?;
-        let partial_vault = PartialVault::new(header.vault_root());
+        // Try to get storage header from advice map using storage commitment as key.
+        let storage_header = if let Some(storage_header_elements) =
+            self.advice_inputs.map.get(&header.storage_commitment())
+        {
+            AccountStorageHeader::from_elements(storage_header_elements)?
+        } else {
+            AccountStorageHeader::new(vec![])?
+        };
 
-        // Create the partial account
+        // Build partial storage.
+        let partial_storage = PartialStorage::new(storage_header, [])?;
+
+        // Create the partial account.
         let partial_account = PartialAccount::new(
             account_id,
             header.nonce(),
@@ -413,18 +389,30 @@ fn validate_is_in_block(
 
 #[cfg(test)]
 mod tests {
+    use alloc::string::ToString;
     use alloc::vec;
 
     use super::*;
-    use crate::account::{AccountCode, AccountStorageHeader, PartialStorage};
+    use crate::account::{
+        AccountCode,
+        AccountStorageHeader,
+        PartialStorage,
+        StorageSlotHeader,
+        StorageSlotName,
+        StorageSlotType,
+    };
     use crate::asset::PartialVault;
     use crate::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE;
     use crate::{Felt, Word};
 
     #[test]
     fn test_read_foreign_account_inputs_missing_data() {
-        let account_id =
+        use crate::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE_2;
+
+        let native_account_id =
             AccountId::try_from(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE).unwrap();
+        let foreign_account_id =
+            AccountId::try_from(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE_2).unwrap();
 
         // Create minimal transaction inputs with empty advice map
         let code = AccountCode::mock();
@@ -432,7 +420,7 @@ mod tests {
         let partial_storage = PartialStorage::new(storage_header, []).unwrap();
         let partial_vault = PartialVault::new(Word::default());
         let partial_account = PartialAccount::new(
-            account_id,
+            native_account_id,
             Felt::new(10),
             code,
             partial_storage,
@@ -453,10 +441,95 @@ mod tests {
         };
 
         // Try to read foreign account that doesn't exist in advice map
-        let result = tx_inputs.read_foreign_account_inputs(account_id);
+        let result = tx_inputs.read_foreign_account_inputs(foreign_account_id);
 
         assert!(
-            matches!(result, Err(TransactionInputError::ForeignAccountCodeNotFound(id)) if id == account_id)
+            matches!(result, Err(TransactionInputError::ForeignAccountNotFound(id)) if id == foreign_account_id)
         );
+    }
+
+    #[test]
+    fn test_read_foreign_account_inputs_with_storage_data() {
+        use crate::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE_2;
+
+        let native_account_id =
+            AccountId::try_from(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE).unwrap();
+        let foreign_account_id =
+            AccountId::try_from(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE_2).unwrap();
+
+        // Create minimal transaction inputs with proper advice map
+        let code = AccountCode::mock();
+        let storage_header = AccountStorageHeader::new(vec![]).unwrap();
+        let partial_storage = PartialStorage::new(storage_header, []).unwrap();
+        let partial_vault = PartialVault::new(Word::default());
+        let partial_account = PartialAccount::new(
+            native_account_id,
+            Felt::new(10),
+            code.clone(),
+            partial_storage,
+            partial_vault,
+            None,
+        )
+        .unwrap();
+
+        // Create foreign account header and storage data
+        let foreign_header = AccountHeader::new(
+            foreign_account_id,
+            Felt::new(5),
+            Word::default(),
+            Word::new([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]),
+            code.commitment(),
+        );
+
+        // Create storage slots with test data
+        let slot_name1 = StorageSlotName::new("test::slot1::value".to_string()).unwrap();
+        let slot_name2 = StorageSlotName::new("test::slot2::value".to_string()).unwrap();
+        let slot1 = StorageSlotHeader::new(
+            slot_name1,
+            StorageSlotType::Value,
+            Word::new([Felt::new(10), Felt::new(20), Felt::new(30), Felt::new(40)]),
+        );
+        let slot2 = StorageSlotHeader::new(
+            slot_name2,
+            StorageSlotType::Map,
+            Word::new([Felt::new(50), Felt::new(60), Felt::new(70), Felt::new(80)]),
+        );
+
+        let mut slots = vec![slot1, slot2];
+        slots.sort_by_key(|slot| slot.id());
+        let foreign_storage_header = AccountStorageHeader::new(slots).unwrap();
+
+        // Create advice inputs with both account header and storage header
+        let mut advice_inputs = crate::vm::AdviceInputs::default();
+        let account_id_key =
+            crate::transaction::TransactionAdviceInputs::account_id_map_key(foreign_account_id);
+        advice_inputs.map.insert(account_id_key, foreign_header.as_elements().to_vec());
+        advice_inputs
+            .map
+            .insert(foreign_header.storage_commitment(), foreign_storage_header.to_elements());
+
+        let tx_inputs = TransactionInputs {
+            account: partial_account,
+            block_header: crate::block::BlockHeader::mock(0, None, None, &[], Word::default()),
+            blockchain: crate::transaction::PartialBlockchain::default(),
+            input_notes: crate::transaction::InputNotes::new(vec![]).unwrap(),
+            tx_args: crate::transaction::TransactionArgs::default(),
+            advice_inputs,
+            foreign_account_code: vec![code],
+            asset_witnesses: Vec::new(),
+        };
+
+        // Try to read foreign account with storage data
+        let result = tx_inputs.read_foreign_account_inputs(foreign_account_id);
+
+        // Should succeed and create partial account with proper storage
+        assert!(result.is_ok());
+        let account_inputs = result.unwrap();
+        assert_eq!(account_inputs.id(), foreign_account_id);
+        assert_eq!(account_inputs.account().nonce(), Felt::new(5));
+
+        // Verify storage was properly reconstructed
+        let storage = account_inputs.account().storage();
+        assert_eq!(storage.header().slots().count(), 2);
     }
 }

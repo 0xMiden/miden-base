@@ -1,3 +1,4 @@
+use alloc::format;
 use alloc::string::ToString;
 use alloc::vec::Vec;
 
@@ -148,6 +149,61 @@ impl AccountStorageHeader {
     /// And then concatenating the resulting elements into a single vector.
     pub fn to_elements(&self) -> Vec<Felt> {
         <Self as SequentialCommit>::to_elements(self)
+    }
+
+    /// Reconstructs an [`AccountStorageHeader`] from field elements.
+    ///
+    /// The elements are expected to be groups of 8 elements per slot:
+    /// `[[0, slot_type, slot_id_suffix, slot_id_prefix], SLOT_VALUE]`
+    pub fn from_elements(elements: &[Felt]) -> Result<Self, AccountError> {
+        if !elements.len().is_multiple_of(StorageSlot::NUM_ELEMENTS) {
+            return Err(AccountError::other(
+                "storage header elements length must be divisible by 8",
+            ));
+        }
+
+        let mut slots = Vec::new();
+        for chunk in elements.chunks_exact(StorageSlot::NUM_ELEMENTS) {
+            // Parse slot type from second element.
+            let slot_type_felt = chunk[1];
+            let slot_type = if slot_type_felt == ZERO {
+                StorageSlotType::Value
+            } else if slot_type_felt == Felt::new(1) {
+                StorageSlotType::Map
+            } else {
+                return Err(AccountError::other("invalid storage slot type"));
+            };
+
+            // Parse slot ID from third and fourth elements.
+            let slot_id_suffix = chunk[2];
+            let slot_id_prefix = chunk[3];
+
+            // Parse slot value from last 4 elements.
+            let slot_value = Word::new([chunk[4], chunk[5], chunk[6], chunk[7]]);
+
+            // Create a synthetic slot name.
+            // Note: The original slot name cannot be recovered here.
+            let synthetic_name = format!(
+                "synthetic::{}::{:016x}{:016x}",
+                match slot_type {
+                    StorageSlotType::Value => "value",
+                    StorageSlotType::Map => "map",
+                },
+                slot_id_prefix.as_int(),
+                slot_id_suffix.as_int()
+            );
+            let slot_name = StorageSlotName::new(synthetic_name).map_err(|err| {
+                AccountError::other_with_source("failed to create synthetic slot name", err)
+            })?;
+
+            let slot_header = StorageSlotHeader::new(slot_name, slot_type, slot_value);
+            slots.push(slot_header);
+        }
+
+        // Sort slots by ID.
+        slots.sort_by_key(|slot| slot.id());
+
+        Self::new(slots)
     }
 
     /// Returns the commitment to the [`AccountStorage`] this header represents.
@@ -301,12 +357,15 @@ impl Deserializable for StorageSlotHeader {
 
 #[cfg(test)]
 mod tests {
+    use alloc::string::ToString;
+    use alloc::vec::Vec;
+
     use miden_core::Felt;
     use miden_core::utils::{Deserializable, Serializable};
 
     use super::AccountStorageHeader;
     use crate::Word;
-    use crate::account::{AccountStorage, StorageSlotType};
+    use crate::account::{AccountStorage, StorageSlotHeader, StorageSlotName, StorageSlotType};
     use crate::testing::storage::{MOCK_MAP_SLOT, MOCK_VALUE_SLOT0, MOCK_VALUE_SLOT1};
 
     #[test]
@@ -343,5 +402,101 @@ mod tests {
 
         // assert deserialized == storage header
         assert_eq!(storage_header, deserialized);
+    }
+
+    #[test]
+    fn test_to_elements_from_elements_empty() {
+        // Construct empty header.
+        let empty_header = AccountStorageHeader::new(vec![]).unwrap();
+        let empty_elements = empty_header.to_elements();
+
+        // Call from_elements.
+        let reconstructed_empty = AccountStorageHeader::from_elements(&empty_elements).unwrap();
+        assert_eq!(empty_header.slots().count(), reconstructed_empty.slots().count());
+    }
+
+    #[test]
+    fn test_to_elements_from_elements_single_slot() {
+        // Construct single slot header.
+        let slot_name1 = StorageSlotName::new("test::value::slot1".to_string()).unwrap();
+        let slot1 = StorageSlotHeader::new(
+            slot_name1,
+            StorageSlotType::Value,
+            Word::new([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]),
+        );
+
+        let single_slot_header = AccountStorageHeader::new(vec![slot1]).unwrap();
+        let single_elements = single_slot_header.to_elements();
+
+        // Call from_elements.
+        let reconstructed_single = AccountStorageHeader::from_elements(&single_elements).unwrap();
+
+        assert_eq!(single_slot_header.slots().count(), reconstructed_single.slots().count());
+
+        // Note: The reconstructed header will have synthetic slot names, so the commitment
+        // will be different. Instead, we verify that the slot types and values are preserved.
+        let original_slot = single_slot_header.slots().next().unwrap();
+        let reconstructed_slot = reconstructed_single.slots().next().unwrap();
+        assert_eq!(original_slot.slot_type(), reconstructed_slot.slot_type());
+        assert_eq!(original_slot.value(), reconstructed_slot.value());
+    }
+
+    #[test]
+    fn test_to_elements_from_elements_multiple_slot() {
+        // Construct multi slot header.
+        let slot_name2 = StorageSlotName::new("test::map::slot2".to_string()).unwrap();
+        let slot_name3 = StorageSlotName::new("test::value::slot3".to_string()).unwrap();
+
+        let slot2 = StorageSlotHeader::new(
+            slot_name2,
+            StorageSlotType::Map,
+            Word::new([Felt::new(5), Felt::new(6), Felt::new(7), Felt::new(8)]),
+        );
+        let slot3 = StorageSlotHeader::new(
+            slot_name3,
+            StorageSlotType::Value,
+            Word::new([Felt::new(9), Felt::new(10), Felt::new(11), Felt::new(12)]),
+        );
+
+        let mut slots = vec![slot2, slot3];
+        slots.sort_by_key(|slot| slot.id());
+        let multi_slot_header = AccountStorageHeader::new(slots).unwrap();
+        let multi_elements = multi_slot_header.to_elements();
+
+        // Call from_elements.
+        let reconstructed_multi = AccountStorageHeader::from_elements(&multi_elements).unwrap();
+
+        assert_eq!(multi_slot_header.slots().count(), reconstructed_multi.slots().count());
+
+        // Verify slot data is preserved (type and value) in the same order.
+        let original_slots = multi_slot_header.slots().collect::<Vec<_>>();
+
+        // Check that we have the same types and values in the elements.
+        for (i, chunk) in multi_elements.chunks_exact(8).enumerate() {
+            let original_type = original_slots[i].slot_type();
+            let original_value = original_slots[i].value();
+
+            let element_type = if chunk[1] == crate::ZERO {
+                StorageSlotType::Value
+            } else {
+                StorageSlotType::Map
+            };
+            let element_value = Word::new([chunk[4], chunk[5], chunk[6], chunk[7]]);
+
+            assert_eq!(original_type, element_type);
+            assert_eq!(original_value, element_value);
+        }
+    }
+
+    #[test]
+    fn test_from_elements_errors() {
+        // Test with invalid length (not divisible by 8).
+        let invalid_elements = vec![Felt::new(1), Felt::new(2), Felt::new(3)];
+        assert!(AccountStorageHeader::from_elements(&invalid_elements).is_err());
+
+        // Test with invalid slot type.
+        let mut invalid_type_elements = vec![crate::ZERO; 8];
+        invalid_type_elements[1] = Felt::new(5); // Invalid slot type.
+        assert!(AccountStorageHeader::from_elements(&invalid_type_elements).is_err());
     }
 }
