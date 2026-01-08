@@ -4,6 +4,7 @@ use core::fmt::Debug;
 use miden_core::utils::{Deserializable, Serializable};
 
 use super::PartialBlockchain;
+use crate::TransactionInputError;
 use crate::account::{
     AccountCode,
     AccountHeader,
@@ -17,8 +18,7 @@ use crate::block::account_tree::{AccountWitness, account_id_to_smt_index};
 use crate::block::{BlockHeader, BlockNumber};
 use crate::crypto::merkle::SparseMerklePath;
 use crate::note::{Note, NoteInclusionProof};
-use crate::transaction::{TransactionArgs, TransactionScript};
-use crate::{TransactionInputError, Word, ZERO};
+use crate::transaction::{TransactionAdviceInputs, TransactionArgs, TransactionScript};
 
 mod account;
 pub use account::AccountInputs;
@@ -246,35 +246,38 @@ impl TransactionInputs {
         &self,
         account_id: AccountId,
     ) -> Result<AccountInputs, TransactionInputError> {
-        // Create the account_id_key using the same method as add_foreign_accounts
-        let account_id_key = Self::account_id_map_key(account_id);
+        if account_id == self.account().id() {
+            return Err(TransactionInputError::AccountNotForeign);
+        }
 
-        // Read the account header elements from the advice map
+        // Create the account_id_key.
+        let account_id_key = TransactionAdviceInputs::account_id_map_key(account_id);
+
+        // Read the account header elements from the advice map.
         let header_elements = self
             .advice_inputs
             .map
             .get(&account_id_key)
-            .ok_or(TransactionInputError::ForeignAccountError(account_id))?;
+            .ok_or(TransactionInputError::ForeignAccountNotFound(account_id))?;
 
-        // Parse the header from elements
-        let header = AccountHeader::try_from_elements(header_elements)
-            .map_err(|_| TransactionInputError::ForeignAccountError(account_id))?;
+        // Parse the header from elements.
+        let header = AccountHeader::try_from_elements(header_elements)?;
 
         // Find the corresponding foreign account code
         let account_code = self
             .foreign_account_code
             .iter()
             .find(|code| code.commitment() == header.code_commitment())
-            .ok_or(TransactionInputError::ForeignAccountError(account_id))?
+            .ok_or(TransactionInputError::ForeignAccountCodeNotFound(account_id))?
             .clone();
 
         // Build partial account components
         // Note: We create minimal partial storage and vault since foreign accounts
         // typically don't need full state access
         let empty_header = AccountStorageHeader::new(vec![])
-            .map_err(|_| TransactionInputError::ForeignAccountError(account_id))?;
+            .map_err(|_| TransactionInputError::ForeignAccountCodeNotFound(account_id))?;
         let partial_storage = PartialStorage::new(empty_header, [])
-            .map_err(|_| TransactionInputError::ForeignAccountError(account_id))?;
+            .map_err(|_| TransactionInputError::ForeignAccountCodeNotFound(account_id))?;
         let partial_vault = PartialVault::new(header.vault_root());
 
         // Create the partial account
@@ -284,9 +287,8 @@ impl TransactionInputs {
             account_code,
             partial_storage,
             partial_vault,
-            None, // No seed for existing accounts
-        )
-        .map_err(|_| TransactionInputError::ForeignAccountError(account_id))?;
+            None, // No seed for existing accounts.
+        )?;
 
         // Create the account witness
         //
@@ -310,23 +312,13 @@ impl TransactionInputs {
         // add_account_witness
         let empty_nodes = vec![account_tree_root; 64];
         let sparse_path = SparseMerklePath::from_sized_iter(empty_nodes)
-            .map_err(|_| TransactionInputError::ForeignAccountError(account_id))?;
+            .map_err(|_| TransactionInputError::ForeignAccountCodeNotFound(account_id))?;
 
         let witness = AccountWitness::new(account_id, header.commitment(), sparse_path)
-            .map_err(|_| TransactionInputError::ForeignAccountError(account_id))?;
+            .map_err(|_| TransactionInputError::ForeignAccountCodeNotFound(account_id))?;
 
         // Create and return the AccountInputs
         Ok(AccountInputs::new(partial_account, witness))
-    }
-
-    /// Helper function to create the account ID map key for accessing foreign account data.
-    ///
-    /// This must match the implementation in `TransactionAdviceInputs::account_id_map_key()`
-    /// to ensure consistency between storing and retrieving foreign account data.
-    ///
-    /// The key format is: [account_id.suffix(), account_id.prefix().as_felt(), ZERO, ZERO]
-    fn account_id_map_key(id: AccountId) -> Word {
-        Word::from([id.suffix(), id.prefix().as_felt(), ZERO, ZERO])
     }
 
     // CONVERSIONS
@@ -430,17 +422,6 @@ mod tests {
     use crate::{Felt, Word};
 
     #[test]
-    fn test_account_id_map_key() {
-        let account_id =
-            AccountId::try_from(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE).unwrap();
-
-        let key = TransactionInputs::account_id_map_key(account_id);
-        let expected = Word::from([account_id.suffix(), account_id.prefix().as_felt(), ZERO, ZERO]);
-
-        assert_eq!(key, expected);
-    }
-
-    #[test]
     fn test_read_foreign_account_inputs_missing_data() {
         let account_id =
             AccountId::try_from(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE).unwrap();
@@ -475,7 +456,7 @@ mod tests {
         let result = tx_inputs.read_foreign_account_inputs(account_id);
 
         assert!(
-            matches!(result, Err(TransactionInputError::ForeignAccountError(id)) if id == account_id)
+            matches!(result, Err(TransactionInputError::ForeignAccountCodeNotFound(id)) if id == account_id)
         );
     }
 }

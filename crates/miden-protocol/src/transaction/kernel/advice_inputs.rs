@@ -414,7 +414,7 @@ impl TransactionAdviceInputs {
     /// Returns the advice map key where:
     /// - the seed for native accounts is stored.
     /// - the account header for foreign accounts is stored.
-    fn account_id_map_key(id: AccountId) -> Word {
+    pub fn account_id_map_key(id: AccountId) -> Word {
         Word::from([id.suffix(), id.prefix().as_felt(), ZERO, ZERO])
     }
 }
