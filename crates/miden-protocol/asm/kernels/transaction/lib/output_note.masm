@@ -71,10 +71,9 @@ const NOTE_BEFORE_SET_ATTACHMENT_EVENT=event("miden::note::before_set_attachment
 # OUTPUT NOTE PROCEDURES
 # =================================================================================================
 
-# TODO(note_attachment): Remove aux and execution hint parameters.
 #! Creates a new note and returns the index of the note.
 #!
-#! Inputs:  [tag, aux, note_type, execution_hint, RECIPIENT]
+#! Inputs:  [tag, note_type, RECIPIENT]
 #! Outputs: [note_idx]
 #!
 #! Where:
@@ -89,14 +88,6 @@ const NOTE_BEFORE_SET_ATTACHMENT_EVENT=event("miden::note::before_set_attachment
 #! - the note tag is not a u32.
 #! - the number of output notes exceeds the maximum limit of 1024.
 pub proc create
-    # temporary: drop aux
-    swap drop
-    # => [tag, note_type, execution_hint, RECIPIENT]
-
-    # temporary: drop execution_hint
-    movup.2 drop
-    # => [tag, note_type, RECIPIENT]
-
     emit.NOTE_BEFORE_CREATED_EVENT
     # => [tag, note_type, RECIPIENT]
 
