@@ -104,8 +104,9 @@ pub proc create
 
     # set the metadata for the output note
     dup.4
-    # => [note_ptr, NOTE_METADATA, note_ptr, RECIPIENT, note_idx]
-    exec.memory::set_output_note_metadata dropw
+    # => [note_ptr, NOTE_METADATA_HEADER, note_ptr, RECIPIENT, note_idx]
+
+    exec.memory::set_output_note_metadata_header dropw
     # => [note_ptr, RECIPIENT, note_idx]
 
     # set the attachment value of a new note to an empty word

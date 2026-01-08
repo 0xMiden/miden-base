@@ -910,11 +910,14 @@ async fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
             # get the metadata (the only existing note has 0'th index)
             push.0
             exec.output_note::get_metadata
-            # => [METADATA]
+            # => [NOTE_ATTACHMENT, METADATA_HEADER]
 
-            # assert the correctness of the metadata
-            push.{METADATA}
-            assert_eqw.err="requested note has incorrect metadata"
+            push.{NOTE_ATTACHMENT}
+            assert_eqw.err="requested note has incorrect note attachment"
+            # => [METADATA_HEADER]
+
+            push.{METADATA_HEADER}
+            assert_eqw.err="requested note has incorrect metadata header"
             # => []
 
             # truncate the stack
@@ -923,7 +926,8 @@ async fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
         "#,
         output_note = create_output_note(&output_note),
         RECIPIENT = output_note.recipient().digest(),
-        METADATA = Word::from(output_note.metadata()),
+        METADATA_HEADER = output_note.metadata().to_header_word(),
+        NOTE_ATTACHMENT = output_note.metadata().to_attachment_word(),
     );
 
     let tx_script = CodeBuilder::default().compile_tx_script(tx_script_src)?;

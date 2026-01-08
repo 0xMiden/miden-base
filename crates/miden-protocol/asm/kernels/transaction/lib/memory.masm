@@ -1864,30 +1864,30 @@ end
 #! Returns the output note's metadata.
 #!
 #! Inputs:  [note_ptr]
-#! Outputs: [METADATA]
+#! Outputs: [METADATA_HEADER]
 #!
 #! Where:
-#! - METADATA is the note metadata.
+#! - METADATA_HEADER is the note metadata header.
 #! - note_ptr is the memory address at which the output note data begins.
-pub proc get_output_note_metadata
+pub proc get_output_note_metadata_header
     padw
     # => [0, 0, 0, 0, note_ptr]
     movup.4 add.OUTPUT_NOTE_METADATA_HEADER_OFFSET
     # => [(note_ptr + offset), 0, 0, 0, 0]
     mem_loadw_be
-    # => [METADATA]
+    # => [METADATA_HEADER]
 end
 
-#! Sets the output note's metadata.
+#! Sets the output note's metadata header.
 #!
-#! Inputs:  [note_ptr, METADATA]
-#! Outputs: [METADATA]
+#! Inputs:  [note_ptr, METADATA_HEADER]
+#! Outputs: [METADATA_HEADER]
 #!
 #! Where:
-#! - METADATA is the note metadata.
+#! - METADATA_HEADER is the note metadata header.
 #! - note_ptr is the memory address at which the output note data begins.
-pub proc set_output_note_metadata
-    add.OUTPUT_NOTE_METADATA_OFFSET
+pub proc set_output_note_metadata_header
+    add.OUTPUT_NOTE_METADATA_HEADER_OFFSET
     mem_storew_be
 end
 

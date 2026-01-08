@@ -232,7 +232,7 @@ pub proc compute_output_notes_commitment
         dup exec.compute_output_note_id
         # => [NOTE_ID, current_note_ptr, PERM, PERM, PERM, current_index, num_notes]
 
-        dup.4 exec.memory::get_output_note_metadata
+        dup.4 exec.memory::get_output_note_metadata_header
         # => [NOTE_METADATA_HEADER, NOTE_ID, current_note_ptr, PERM, PERM, PERM, current_index, num_notes]
 
         movup.8 exec.memory::get_output_note_attachment
