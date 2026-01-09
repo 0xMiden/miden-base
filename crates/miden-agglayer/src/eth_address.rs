@@ -14,13 +14,24 @@ pub enum AddrConvError {
     InvalidHexLength,
     InvalidHexChar(char),
     HexParseError,
+    FeltOutOfField,
+    InvalidAccountId,
 }
 
 impl fmt::Display for AddrConvError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            AddrConvError::HexParseError => write!(f, "Hex parse error"),
-            _ => write!(f, "{:?}", self),
+            AddrConvError::NonZeroWordPadding => write!(f, "non-zero word padding"),
+            AddrConvError::NonZeroBytePrefix => write!(f, "address has non-zero 4-byte prefix"),
+            AddrConvError::InvalidHexLength => {
+                write!(f, "invalid hex length (expected 40 hex chars)")
+            },
+            AddrConvError::InvalidHexChar(c) => write!(f, "invalid hex character: {}", c),
+            AddrConvError::HexParseError => write!(f, "hex parse error"),
+            AddrConvError::FeltOutOfField => {
+                write!(f, "packed 64-bit word does not fit in the field")
+            },
+            AddrConvError::InvalidAccountId => write!(f, "invalid AccountId"),
         }
     }
 }
@@ -37,8 +48,22 @@ impl From<HexParseError> for AddrConvError {
 
 /// Represents an Ethereum address (20 bytes).
 ///
-/// This type provides conversions between Ethereum addresses and Miden types such as
-/// [`AccountId`] and field elements ([`Felt`]).
+/// # Representations used in this module
+///
+/// - Raw bytes: `[u8; 20]` in the conventional Ethereum big-endian byte order (`bytes[0]` is the
+///   most-significant byte).
+/// - MASM "address[5]" limbs: 5 x u32 limbs in *little-endian limb order*:
+///   - addr0 = bytes[16..19] (least-significant 4 bytes)
+///   - addr1 = bytes[12..15]
+///   - addr2 = bytes[ 8..11]
+///   - addr3 = bytes[ 4.. 7]
+///   - addr4 = bytes[ 0.. 3] (most-significant 4 bytes)
+/// - Embedded AccountId format: `0x00000000 || prefix(8) || suffix(8)`, where:
+///   - prefix = (addr3 << 32) | addr2 = bytes[4..11] as a big-endian u64
+///   - suffix = (addr1 << 32) | addr0 = bytes[12..19] as a big-endian u64
+///
+/// Note: prefix/suffix are *conceptual* 64-bit words; when converting to [`Felt`], we must ensure
+/// `Felt::new(u64)` does not reduce mod p (checked explicitly in `to_account_id`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct EthAddress([u8; 20]);
 
@@ -74,15 +99,9 @@ impl EthAddress {
 
     /// Creates an [`EthAddress`] from an [`AccountId`].
     ///
-    /// The AccountId is converted to an Ethereum address using the embedded format where
-    /// the first 4 bytes are zero padding, followed by the prefix and suffix as u64 values
-    /// in big-endian format.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the conversion fails (e.g., if the AccountId cannot be represented
-    /// as a valid Ethereum address).
-    pub fn from_account_id(account_id: AccountId) -> Result<Self, AddrConvError> {
+    /// This conversion is infallible: an [`AccountId`] is two felts, and `as_int()` yields `u64`
+    /// words which we embed as `0x00000000 || prefix(8) || suffix(8)` (big-endian words).
+    pub fn from_account_id(account_id: AccountId) -> Self {
         let felts: [Felt; 2] = account_id.into();
         let words = [felts[0].as_int(), felts[1].as_int()];
 
@@ -94,7 +113,7 @@ impl EthAddress {
         out[4..12].copy_from_slice(&w0);
         out[12..20].copy_from_slice(&w1);
 
-        Ok(Self(out))
+        Self(out)
     }
 
     // CONVERSIONS
@@ -112,20 +131,25 @@ impl EthAddress {
 
     /// Converts the Ethereum address into an array of 5 [`Felt`] values.
     ///
-    /// Each felt represents 4 bytes of the address in big-endian format:
-    /// - addr0 = bytes[0..3] (most-significant 4 bytes)
-    /// - addr1 = bytes[4..7]
-    /// - addr2 = bytes[8..11]
-    /// - addr3 = bytes[12..15]
-    /// - addr4 = bytes[16..19] (least-significant 4 bytes)
+    /// The returned order matches the MASM `address[5]` convention (*little-endian limb order*):
+    /// - addr0 = bytes[16..19] (least-significant 4 bytes)
+    /// - addr1 = bytes[12..15]
+    /// - addr2 = bytes[ 8..11]
+    /// - addr3 = bytes[ 4.. 7]
+    /// - addr4 = bytes[ 0.. 3] (most-significant 4 bytes)
+    ///
+    /// Each limb is interpreted as a big-endian `u32` and stored in a [`Felt`].
     pub fn to_elements(&self) -> [Felt; 5] {
         let mut result = [Felt::ZERO; 5];
-        for (i, felt) in result.iter_mut().enumerate() {
-            let start = i * 4;
+
+        // i=0 -> bytes[16..20], i=4 -> bytes[0..4]
+        for i in 0..5 {
+            let start = (4 - i) * 4;
             let chunk = &self.0[start..start + 4];
             let value = u32::from_be_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
-            *felt = Felt::new(value as u64);
+            result[i] = Felt::new(value as u64);
         }
+
         result
     }
 
@@ -133,16 +157,26 @@ impl EthAddress {
     ///
     /// # Errors
     ///
-    /// Returns an error if the first 4 bytes are not zero or if the resulting
-    /// AccountId is invalid.
+    /// Returns an error if:
+    /// - the first 4 bytes are not zero (not in the embedded AccountId format),
+    /// - packing the 8-byte prefix/suffix into [`Felt`] would reduce mod p,
+    /// - or the resulting felts do not form a valid [`AccountId`].
     pub fn to_account_id(&self) -> Result<AccountId, AddrConvError> {
         let (prefix, suffix) = Self::bytes20_to_prefix_suffix(self.0)?;
-        let felts = [Felt::new(prefix), Felt::new(suffix)];
 
-        match AccountId::try_from(felts) {
-            Ok(account_id) => Ok(account_id),
-            Err(_) => Err(AddrConvError::NonZeroBytePrefix),
+        // `Felt::new(u64)` may reduce mod p for some u64 values. Mirror the MASM `build_felt`
+        // safety: construct the felt, then require round-trip equality.
+        let prefix_felt = Felt::new(prefix);
+        if prefix_felt.as_int() != prefix {
+            return Err(AddrConvError::FeltOutOfField);
         }
+
+        let suffix_felt = Felt::new(suffix);
+        if suffix_felt.as_int() != suffix {
+            return Err(AddrConvError::FeltOutOfField);
+        }
+
+        AccountId::try_from([prefix_felt, suffix_felt]).map_err(|_| AddrConvError::InvalidAccountId)
     }
 
     /// Converts the Ethereum address to a hex string (lowercase, 0x-prefixed).
@@ -155,15 +189,16 @@ impl EthAddress {
 
     /// Convert `[u8; 20]` -> `(prefix, suffix)` by extracting the last 16 bytes.
     /// Requires the first 4 bytes be zero.
-    /// Returns prefix and suffix values that match the MASM little-endian implementation.
+    /// Returns prefix and suffix values that match the MASM little-endian limb implementation:
+    /// - prefix = bytes[4..12] as big-endian u64 = (addr3 << 32) | addr2
+    /// - suffix = bytes[12..20] as big-endian u64 = (addr1 << 32) | addr0
     fn bytes20_to_prefix_suffix(bytes: [u8; 20]) -> Result<(u64, u64), AddrConvError> {
         if bytes[0..4] != [0, 0, 0, 0] {
             return Err(AddrConvError::NonZeroBytePrefix);
         }
 
-        // Extract prefix from bytes[4..12] and suffix from bytes[12..20]
-        let prefix = u64::from_be_bytes(bytes[4..12].try_into().unwrap()); // (addr3 << 32) | addr2
-        let suffix = u64::from_be_bytes(bytes[12..20].try_into().unwrap()); // (addr1 << 32) | addr0
+        let prefix = u64::from_be_bytes(bytes[4..12].try_into().unwrap());
+        let suffix = u64::from_be_bytes(bytes[12..20].try_into().unwrap());
 
         Ok((prefix, suffix))
     }
@@ -178,6 +213,12 @@ impl fmt::Display for EthAddress {
 impl From<[u8; 20]> for EthAddress {
     fn from(bytes: [u8; 20]) -> Self {
         Self(bytes)
+    }
+}
+
+impl From<AccountId> for EthAddress {
+    fn from(account_id: AccountId) -> Self {
+        EthAddress::from_account_id(account_id)
     }
 }
 

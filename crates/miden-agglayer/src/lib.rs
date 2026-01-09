@@ -586,9 +586,7 @@ pub fn claim_note_test_inputs(
     let destination_network = Felt::new(2);
 
     // Convert AccountId to destination address bytes
-    let destination_address = EthAddress::from_account_id(destination_account_id)
-        .expect("Valid AccountId should convert to EthAddress")
-        .into_bytes();
+    let destination_address = EthAddress::from_account_id(destination_account_id).into_bytes();
 
     // Convert amount Felt to u256 array for agglayer
     let amount_u256 = [

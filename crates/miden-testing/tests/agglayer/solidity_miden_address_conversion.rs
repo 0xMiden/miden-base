@@ -47,7 +47,7 @@ async fn execute_program_with_default_host(
 #[test]
 fn test_account_id_to_ethereum_roundtrip() {
     let original_account_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).unwrap();
-    let eth_address = EthAddress::from_account_id(original_account_id).unwrap();
+    let eth_address = EthAddress::from_account_id(original_account_id);
     let recovered_account_id = eth_address.to_account_id().unwrap();
     assert_eq!(original_account_id, recovered_account_id);
 }
@@ -62,7 +62,7 @@ fn test_bech32_to_ethereum_roundtrip() {
 
     for bech32_address in test_addresses {
         let (network_id, account_id) = AccountId::from_bech32(bech32_address).unwrap();
-        let eth_address = EthAddress::from_account_id(account_id).unwrap();
+        let eth_address = EthAddress::from_account_id(account_id);
         let recovered_account_id = eth_address.to_account_id().unwrap();
         let recovered_bech32 = recovered_account_id.to_bech32(network_id);
 
@@ -79,7 +79,7 @@ fn test_random_bech32_to_ethereum_roundtrip() {
     for _ in 0..3 {
         let account_id = AccountIdBuilder::new().build_with_rng(&mut rng);
         let bech32_address = account_id.to_bech32(network_id.clone());
-        let eth_address = EthAddress::from_account_id(account_id).unwrap();
+        let eth_address = EthAddress::from_account_id(account_id);
         let recovered_account_id = eth_address.to_account_id().unwrap();
         let recovered_bech32 = recovered_account_id.to_bech32(network_id.clone());
 
@@ -92,8 +92,7 @@ fn test_random_bech32_to_ethereum_roundtrip() {
 async fn test_address_bytes20_hash_in_masm() -> anyhow::Result<()> {
     // Create account ID and convert to Ethereum address
     let account_id = AccountId::try_from(ACCOUNT_ID_PRIVATE_SENDER)?;
-    let eth_address = EthAddress::from_account_id(account_id)
-        .map_err(|e| anyhow::anyhow!("Failed to convert AccountId to Ethereum address: {:?}", e))?;
+    let eth_address = EthAddress::from_account_id(account_id);
 
     // Convert to field elements for MASM
     let address_felts = eth_address.to_elements().to_vec();
@@ -151,16 +150,10 @@ async fn test_ethereum_address_to_account_id_in_masm() -> anyhow::Result<()> {
     ];
 
     for (idx, original_account_id) in test_account_ids.iter().enumerate() {
-        let eth_address = EthAddress::from_account_id(*original_account_id).map_err(|e| {
-            anyhow::anyhow!(
-                "test {}: failed to convert AccountId to ethereum address: {:?}",
-                idx,
-                e
-            )
-        })?;
+        let eth_address = EthAddress::from_account_id(*original_account_id);
 
         let address_felts = eth_address.to_elements().to_vec();
-        let be: Vec<u32> = address_felts
+        let le: Vec<u32> = address_felts
             .iter()
             .map(|f| {
                 let val = f.as_int();
@@ -169,13 +162,13 @@ async fn test_ethereum_address_to_account_id_in_masm() -> anyhow::Result<()> {
             })
             .collect();
 
-        assert_eq!(be[0], 0, "test {}: expected msw limb (be[0]) to be zero", idx);
+        assert_eq!(le[4], 0, "test {}: expected msw limb (le[4]) to be zero", idx);
 
-        let addr0 = be[4];
-        let addr1 = be[3];
-        let addr2 = be[2];
-        let addr3 = be[1];
-        let addr4 = be[0];
+        let addr0 = le[0];
+        let addr1 = le[1];
+        let addr2 = le[2];
+        let addr3 = le[3];
+        let addr4 = le[4];
 
         let account_id_felts: [Felt; 2] = (*original_account_id).into();
         let expected_prefix = account_id_felts[0].as_int();
