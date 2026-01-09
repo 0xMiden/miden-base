@@ -24,8 +24,7 @@ const ERR_FELT_OUT_OF_FIELD="combined u64 doesn't fit in field"
 #! Outputs: [felt]
 proc build_felt
     # --- validate u32 limbs ---
-    u32assert.err=ERR_NOT_U32              # lo
-    dup.1 u32assert.err=ERR_NOT_U32 drop   # hi
+    u32assert2.err=ERR_NOT_U32
     # => [lo, hi]
 
     # keep copies for the overflow check
