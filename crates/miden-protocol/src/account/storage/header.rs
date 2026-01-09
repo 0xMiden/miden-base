@@ -166,13 +166,7 @@ impl AccountStorageHeader {
         for chunk in elements.chunks_exact(StorageSlot::NUM_ELEMENTS) {
             // Parse slot type from second element.
             let slot_type_felt = chunk[1];
-            let slot_type = if slot_type_felt == ZERO {
-                StorageSlotType::Value
-            } else if slot_type_felt == Felt::new(1) {
-                StorageSlotType::Map
-            } else {
-                return Err(AccountError::other("invalid storage slot type"));
-            };
+            let slot_type = slot_type_felt.try_into()?;
 
             // Parse slot ID from third and fourth elements.
             let slot_id_suffix = chunk[2];

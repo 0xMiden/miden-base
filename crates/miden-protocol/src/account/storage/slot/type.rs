@@ -1,6 +1,8 @@
 use alloc::string::ToString;
 use core::fmt::Display;
 
+use miden_core::{ONE, ZERO};
+
 use crate::utils::serde::{
     ByteReader,
     ByteWriter,
@@ -50,6 +52,20 @@ impl TryFrom<u8> for StorageSlotType {
             Self::VALUE_TYPE => Ok(StorageSlotType::Value),
             Self::MAP_TYPE => Ok(StorageSlotType::Map),
             _ => Err(AccountError::other(format!("unsupported storage slot type {value}"))),
+        }
+    }
+}
+
+impl TryFrom<Felt> for StorageSlotType {
+    type Error = AccountError;
+
+    fn try_from(value: Felt) -> Result<Self, Self::Error> {
+        if value == ZERO {
+            Ok(StorageSlotType::Value)
+        } else if value == ONE {
+            Ok(StorageSlotType::Map)
+        } else {
+            Err(AccountError::other("invalid storage slot type"))
         }
     }
 }
