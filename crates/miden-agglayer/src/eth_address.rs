@@ -103,15 +103,11 @@ impl EthAddress {
     /// words which we embed as `0x00000000 || prefix(8) || suffix(8)` (big-endian words).
     pub fn from_account_id(account_id: AccountId) -> Self {
         let felts: [Felt; 2] = account_id.into();
-        let words = [felts[0].as_int(), felts[1].as_int()];
 
         let mut out = [0u8; 20];
-        let w0 = words[0].to_be_bytes();
-        let w1 = words[1].to_be_bytes();
-
         out[0..4].copy_from_slice(&[0, 0, 0, 0]);
-        out[4..12].copy_from_slice(&w0);
-        out[12..20].copy_from_slice(&w1);
+        out[4..12].copy_from_slice(&felts[0].as_int().to_be_bytes());
+        out[12..20].copy_from_slice(&felts[1].as_int().to_be_bytes());
 
         Self(out)
     }
