@@ -5,7 +5,6 @@ use alloc::sync::Arc;
 use miden_agglayer::{EthAddress, agglayer_library};
 use miden_assembly::{Assembler, DefaultSourceManager};
 use miden_core_lib::CoreLibrary;
-use miden_core_lib::handlers::keccak256::KeccakPreimage;
 use miden_processor::fast::{ExecutionOutput, FastProcessor};
 use miden_processor::{AdviceInputs, DefaultHost, ExecutionError, Program, StackInputs};
 use miden_protocol::Felt;
@@ -86,57 +85,6 @@ fn test_random_bech32_to_ethereum_roundtrip() {
         assert_eq!(account_id, recovered_account_id);
         assert_eq!(bech32_address, recovered_bech32);
     }
-}
-
-#[tokio::test]
-async fn test_address_bytes20_hash_in_masm() -> anyhow::Result<()> {
-    // Create account ID and convert to Ethereum address
-    let account_id = AccountId::try_from(ACCOUNT_ID_PRIVATE_SENDER)?;
-    let eth_address = EthAddress::from_account_id(account_id);
-
-    // Convert to field elements for MASM
-    let address_felts = eth_address.to_elements().to_vec();
-    let addr_u32s: Vec<u32> = address_felts.iter().map(|f| f.as_int() as u32).collect();
-
-    // Compute expected Keccak256 hash using the same byte representation as MASM
-    let mut address_bytes = Vec::new();
-    for &addr_u32 in &addr_u32s {
-        address_bytes.extend_from_slice(&addr_u32.to_le_bytes());
-    }
-    address_bytes.truncate(20);
-
-    let preimage = KeccakPreimage::new(address_bytes);
-    let expected_digest: Vec<u64> = preimage.digest().as_ref().iter().map(Felt::as_int).collect();
-
-    // Execute MASM procedure to compute the hash
-    let script_code = format!(
-        "
-        use miden::core::sys
-        use miden::agglayer::eth_address
-
-        begin
-            push.{}.{}.{}.{}.{}
-            exec.eth_address::account_id_to_ethereum_hash
-            exec.sys::truncate_stack
-        end
-        ",
-        addr_u32s[4], addr_u32s[3], addr_u32s[2], addr_u32s[1], addr_u32s[0]
-    );
-
-    let program = Assembler::new(Arc::new(DefaultSourceManager::default()))
-        .with_dynamic_library(CoreLibrary::default())
-        .unwrap()
-        .with_dynamic_library(agglayer_library())
-        .unwrap()
-        .assemble_program(&script_code)
-        .unwrap();
-
-    let exec_output = execute_program_with_default_host(program).await?;
-    let actual_digest: Vec<u64> = exec_output.stack[0..8].iter().map(|f| f.as_int()).collect();
-
-    assert_eq!(actual_digest, expected_digest);
-
-    Ok(())
 }
 
 #[tokio::test]

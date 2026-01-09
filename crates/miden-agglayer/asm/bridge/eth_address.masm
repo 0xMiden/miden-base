@@ -15,26 +15,6 @@ const ERR_FELT_OUT_OF_FIELD="combined u64 doesn't fit in field"
 # ETHEREUM ADDRESS PROCEDURES
 # =================================================================================================
 
-#! Hashes an Ethereum address (address[5] type) using Keccak256.
-#!
-#! Address limb order: little-endian (addr0 is least-significant, addr4 is most-significant).
-#!
-#! Inputs:  [addr0, addr1, addr2, addr3, addr4]
-#! Outputs: [DIGEST_U32[8]]
-#!
-#! Invocation: exec
-pub proc account_id_to_ethereum_hash
-    mem_store.0
-    mem_store.1
-    mem_store.2
-    mem_store.3
-    mem_store.4
-
-    push.20.0
-    exec.keccak256::hash_bytes
-    # Stack: [DIGEST_U32[8]]
-end
-
 #! Builds a single felt from two u32 limbs (little-endian limb order).
 #! Conceptually, this is packing a 64-bit word (lo + (hi << 32)) into a field element.
 #! This proc additionally verifies that the packed value did *not* reduce mod p by round-tripping

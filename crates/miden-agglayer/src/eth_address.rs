@@ -143,11 +143,11 @@ impl EthAddress {
         let mut result = [Felt::ZERO; 5];
 
         // i=0 -> bytes[16..20], i=4 -> bytes[0..4]
-        for i in 0..5 {
+        for (i, felt) in result.iter_mut().enumerate() {
             let start = (4 - i) * 4;
             let chunk = &self.0[start..start + 4];
             let value = u32::from_be_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
-            result[i] = Felt::new(value as u64);
+            *felt = Felt::new(value as u64);
         }
 
         result
