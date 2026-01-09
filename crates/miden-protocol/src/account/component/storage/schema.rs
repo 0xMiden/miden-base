@@ -19,12 +19,12 @@ use crate::{Felt, FieldElement, Hasher, Word};
 
 /// Describes the storage schema of an account component in terms of its named storage slots.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct AccountStorageSchema {
+pub struct StorageSchema {
     slots: BTreeMap<StorageSlotName, StorageSlotSchema>,
 }
 
-impl AccountStorageSchema {
-    /// Creates a new [`AccountStorageSchema`].
+impl StorageSchema {
+    /// Creates a new [`StorageSchema`].
     ///
     /// # Errors
     /// - If `fields` contains duplicate slot names.
@@ -118,13 +118,13 @@ impl AccountStorageSchema {
     }
 }
 
-impl Serializable for AccountStorageSchema {
+impl Serializable for StorageSchema {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         self.write_into_with_defaults(target, true);
     }
 }
 
-impl Deserializable for AccountStorageSchema {
+impl Deserializable for StorageSchema {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let num_entries = source.read_u16()? as usize;
         let mut fields = BTreeMap::new();
@@ -140,7 +140,7 @@ impl Deserializable for AccountStorageSchema {
             }
         }
 
-        let schema = AccountStorageSchema::new(fields)
+        let schema = StorageSchema::new(fields)
             .map_err(|err| DeserializationError::InvalidValue(err.to_string()))?;
         Ok(schema)
     }

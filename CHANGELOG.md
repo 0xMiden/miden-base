@@ -31,9 +31,9 @@
 - [BREAKING] Migrated to `miden-vm` v0.20 and `miden-crypto` v0.19 ([#2158](https://github.com/0xMiden/miden-base/pull/2158)).
 - [BREAKING] Refactored `AccountStorageDelta` to use a new `StorageSlotDelta` type ([#2182](https://github.com/0xMiden/miden-base/pull/2182)).
 - [BREAKING] Removed OLD_MAP_ROOT from being returned when calling [`native_account::set_map_item`](crates/miden-lib/asm/miden/native_account.masm) ([#2194](https://github.com/0xMiden/miden-base/pull/2194)).
-- [BREAKING] Refactored account component templates into `AccountStorageSchema` ([#2193](https://github.com/0xMiden/miden-base/pull/2193)).
+- [BREAKING] Refactored account component templates into `StorageSchema` ([#2193](https://github.com/0xMiden/miden-base/pull/2193)).
 - [BREAKING] Refactored `InitStorageData` to support native types ([#2230](https://github.com/0xMiden/miden-base/pull/2230)).
-- Added `AccountStorageSchema::commitment()` ([#2244](https://github.com/0xMiden/miden-base/pull/2244)).
+- Added `StorageSchema::commitment()` ([#2244](https://github.com/0xMiden/miden-base/pull/2244)).
 
 ## 0.12.4 (2025-11-26)
 

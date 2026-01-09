@@ -7,7 +7,7 @@ use miden_mast_package::{Package, SectionId};
 use miden_processor::DeserializationError;
 use semver::Version;
 
-use super::{AccountStorageSchema, AccountType, SchemaRequirement, StorageValueName};
+use super::{AccountType, SchemaRequirement, StorageSchema, StorageValueName};
 use crate::AccountError;
 
 // ACCOUNT COMPONENT METADATA
@@ -40,10 +40,10 @@ use crate::AccountError;
 /// use miden_protocol::account::StorageSlotName;
 /// use miden_protocol::account::component::{
 ///     AccountComponentMetadata,
-///     AccountStorageSchema,
 ///     FeltSchema,
 ///     InitStorageData,
 ///     SchemaTypeId,
+///     StorageSchema,
 ///     StorageSlotSchema,
 ///     StorageValue,
 ///     StorageValueName,
@@ -61,7 +61,7 @@ use crate::AccountError;
 ///     FeltSchema::new_typed(SchemaTypeId::native_felt(), "foo"),
 /// ]);
 ///
-/// let storage_schema = AccountStorageSchema::new([(
+/// let storage_schema = StorageSchema::new([(
 ///     slot_name.clone(),
 ///     StorageSlotSchema::Value(ValueSlotSchema::new(Some("demo slot".into()), word)),
 /// )])?;
@@ -104,7 +104,7 @@ pub struct AccountComponentMetadata {
 
     /// Storage schema defining the component's storage layout, defaults, and init-supplied values.
     #[cfg_attr(feature = "std", serde(rename = "storage"))]
-    storage_schema: AccountStorageSchema,
+    storage_schema: StorageSchema,
 }
 
 impl AccountComponentMetadata {
@@ -114,7 +114,7 @@ impl AccountComponentMetadata {
         description: String,
         version: Version,
         targets: BTreeSet<AccountType>,
-        storage_schema: AccountStorageSchema,
+        storage_schema: StorageSchema,
     ) -> Self {
         Self {
             name,
@@ -156,7 +156,7 @@ impl AccountComponentMetadata {
     }
 
     /// Returns the storage schema of the component.
-    pub fn storage_schema(&self) -> &AccountStorageSchema {
+    pub fn storage_schema(&self) -> &StorageSchema {
         &self.storage_schema
     }
 }
@@ -212,7 +212,7 @@ impl Deserializable for AccountComponentMetadata {
         let version = semver::Version::from_str(&String::read_from(source)?)
             .map_err(|err: semver::Error| DeserializationError::InvalidValue(err.to_string()))?;
         let supported_types = BTreeSet::<AccountType>::read_from(source)?;
-        let storage_schema = AccountStorageSchema::read_from(source)?;
+        let storage_schema = StorageSchema::read_from(source)?;
 
         Ok(Self {
             name,

@@ -271,7 +271,7 @@ mod tests {
             "A test component".to_string(),
             Version::new(1, 0, 0),
             BTreeSet::from_iter([AccountType::RegularAccountImmutableCode]),
-            AccountStorageSchema::default(),
+            StorageSchema::default(),
         );
 
         let metadata_bytes = metadata.to_bytes();
@@ -329,7 +329,7 @@ mod tests {
                 AccountType::RegularAccountImmutableCode,
                 AccountType::RegularAccountUpdatableCode,
             ]),
-            AccountStorageSchema::default(),
+            StorageSchema::default(),
         );
 
         // Test with empty init data - this tests the complete workflow:
