@@ -229,14 +229,15 @@ impl TransactionInputs {
         let header = AccountHeader::try_from_elements(header_elements)?;
 
         // Construct and return account inputs.
-        let partial_account = self.read_foreign_partial_account(account_id, &header)?;
-        let witness = self.read_foreign_account_witness(account_id, &header)?;
+        let partial_account = self.read_foreign_partial_account(&header)?;
+        let witness = self.read_foreign_account_witness(&header)?;
         Ok(AccountInputs::new(partial_account, witness))
     }
 
+    /// Reads a foreign partial account from the advice inputs based on the account ID corresponding
+    /// to the provided header.
     fn read_foreign_partial_account(
         &self,
-        account_id: AccountId,
         header: &AccountHeader,
     ) -> Result<PartialAccount, TransactionInputError> {
         // Derive the partial vault from the header.
@@ -247,7 +248,7 @@ impl TransactionInputs {
             .foreign_account_code
             .iter()
             .find(|code| code.commitment() == header.code_commitment())
-            .ok_or(TransactionInputError::ForeignAccountCodeNotFound(account_id))?
+            .ok_or(TransactionInputError::ForeignAccountCodeNotFound(header.id()))?
             .clone();
 
         // Try to get storage header from advice map using storage commitment as key.
@@ -255,7 +256,7 @@ impl TransactionInputs {
             .advice_inputs
             .map
             .get(&header.storage_commitment())
-            .ok_or(TransactionInputError::StorageHeaderNotFound(account_id))?;
+            .ok_or(TransactionInputError::StorageHeaderNotFound(header.id()))?;
         let storage_header = AccountStorageHeader::try_from_elements(storage_header_elements)?;
 
         // Build partial storage.
@@ -263,7 +264,7 @@ impl TransactionInputs {
 
         // Create the partial account.
         let partial_account = PartialAccount::new(
-            account_id,
+            header.id(),
             header.nonce(),
             account_code,
             partial_storage,
@@ -274,14 +275,15 @@ impl TransactionInputs {
         Ok(partial_account)
     }
 
+    /// Reads a foreign account witness from the advice inputs based on the account ID corresponding
+    /// to the provided header.
     fn read_foreign_account_witness(
         &self,
-        account_id: AccountId,
         header: &AccountHeader,
     ) -> Result<AccountWitness, TransactionInputError> {
         // Get the account tree root from the block header.
         let account_tree_root = self.block_header.account_root();
-        let leaf_index = account_id_to_smt_index(account_id);
+        let leaf_index = account_id_to_smt_index(header.id());
         let smt_index = NodeIndex::new(64, leaf_index.value())?;
 
         // Get the Merkle path from the merkle store.
@@ -291,7 +293,7 @@ impl TransactionInputs {
         let sparse_path = SparseMerklePath::from_sized_iter(merkle_path.path)?;
 
         // Create the account witness.
-        let witness = AccountWitness::new(account_id, header.commitment(), sparse_path)?;
+        let witness = AccountWitness::new(header.id(), header.commitment(), sparse_path)?;
 
         Ok(witness)
     }
