@@ -282,7 +282,8 @@ impl TransactionInputs {
     ) -> Result<AccountWitness, TransactionInputError> {
         // Get the account tree root from the block header.
         let account_tree_root = self.block_header.account_root();
-        let smt_index = NodeIndex::new(64, account_id_to_smt_index(account_id))?;
+        let leaf_index = account_id_to_smt_index(account_id);
+        let smt_index = NodeIndex::new(64, leaf_index.value())?;
 
         // Get the Merkle path from the merkle store.
         let merkle_path = self.advice_inputs.store.get_path(account_tree_root, smt_index)?;
