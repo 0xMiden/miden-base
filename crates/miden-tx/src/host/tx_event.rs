@@ -1,9 +1,14 @@
 use alloc::vec::Vec;
 
-use miden_processor::{AdviceMutation, ProcessState, RowIndex};
+use miden_processor::{AdviceMutation, AdviceProvider, ProcessState, RowIndex};
 use miden_protocol::account::{AccountId, StorageMap, StorageSlotName, StorageSlotType};
 use miden_protocol::asset::{Asset, AssetVault, AssetVaultKey, FungibleAsset};
 use miden_protocol::note::{
+    NoteAttachment,
+    NoteAttachmentCommitment,
+    NoteAttachmentContent,
+    NoteAttachmentContentType,
+    NoteAttachmentType,
     NoteId,
     NoteInputs,
     NoteMetadata,
@@ -12,6 +17,7 @@ use miden_protocol::note::{
     NoteTag,
     NoteType,
 };
+use miden_protocol::transaction::memory::{NOTE_MEM_SIZE, OUTPUT_NOTE_SECTION_OFFSET};
 use miden_protocol::transaction::{TransactionEventId, TransactionSummary};
 use miden_protocol::vm::EventId;
 use miden_protocol::{Felt, Hasher, Word};
@@ -119,6 +125,13 @@ pub(crate) enum TransactionEvent {
         note_idx: usize,
         /// The asset that is added to the output note.
         asset: Asset,
+    },
+
+    NoteBeforeSetAttachment {
+        /// The note index on which the attachment is set.
+        note_idx: usize,
+        /// The attachment that is set.
+        attachment: NoteAttachment,
     },
 
     /// The data necessary to handle an auth request.
@@ -409,6 +422,28 @@ impl TransactionEvent {
 
             TransactionEventId::NoteAfterAddAsset => None,
 
+            TransactionEventId::NoteBeforeSetAttachment => {
+                // Expected stack state: [
+                //     event, attachment_content_type, attachment_type,
+                //     note_ptr, note_ptr, ATTACHMENT
+                // ]
+
+                let attachment_content_type = process.get_stack_item(1);
+                let attachment_type = process.get_stack_item(2);
+                let note_ptr = process.get_stack_item(3);
+                let attachment = process.get_stack_word_be(5);
+
+                let (note_idx, attachment) = extract_note_attachment(
+                    attachment_content_type,
+                    attachment_type,
+                    attachment,
+                    note_ptr,
+                    process.advice_provider(),
+                )?;
+
+                Some(TransactionEvent::NoteBeforeSetAttachment { note_idx, attachment })
+            },
+
             TransactionEventId::AuthRequest => {
                 // Expected stack state: [event, MESSAGE, PUB_KEY]
                 let message = process.get_stack_word_be(1);
@@ -690,6 +725,78 @@ fn build_note_metadata(
         .map(NoteTag::new)?;
 
     Ok(NoteMetadata::new(sender, note_type, tag))
+}
+
+fn extract_note_attachment(
+    attachment_content_type: Felt,
+    attachment_type: Felt,
+    attachment: Word,
+    note_ptr: Felt,
+    advice_provider: &AdviceProvider,
+) -> Result<(usize, NoteAttachment), TransactionKernelError> {
+    let note_idx = u32::try_from(note_ptr)
+        .map_err(|_| TransactionKernelError::other("failed to convert note_ptr to u32"))
+        .and_then(|note_ptr| {
+            note_ptr
+                .checked_sub(OUTPUT_NOTE_SECTION_OFFSET)
+                .ok_or_else(|| {
+                    TransactionKernelError::other("failed to calculate note_idx from note_ptr")
+                })
+                .map(|note_ptr| note_ptr / NOTE_MEM_SIZE)
+        })?;
+
+    let attachment_content_type = u8::try_from(attachment_content_type)
+        .map_err(|_| {
+            TransactionKernelError::other("failed to convert attachment content type to u8")
+        })
+        .and_then(|content_type| {
+            NoteAttachmentContentType::try_from(content_type).map_err(|source| {
+                TransactionKernelError::other_with_source(
+                    "failed to convert u8 to attachment content type",
+                    source,
+                )
+            })
+        })?;
+
+    let attachment_type = u32::try_from(attachment_type)
+        .map_err(|_| TransactionKernelError::other("failed to convert attachment type to u32"))
+        .map(NoteAttachmentType::new)?;
+
+    let attachment_content = match attachment_content_type {
+        NoteAttachmentContentType::None => {
+            if !attachment.is_empty() {
+                return Err(TransactionKernelError::NoteAttachmentNoneIsNotEmpty);
+            }
+            NoteAttachmentContent::None
+        },
+        NoteAttachmentContentType::Raw => NoteAttachmentContent::Raw(attachment),
+        NoteAttachmentContentType::Commitment => {
+            let elements = advice_provider.get_mapped_values(&attachment).ok_or_else(|| {
+              TransactionKernelError::other(
+                  "elements of a note attachment commitment must be present in the advice provider",
+              )
+            })?;
+
+            let commitment_attachment =
+                NoteAttachmentCommitment::new(elements.to_vec()).map_err(|source| {
+                    TransactionKernelError::other_with_source(
+                        "failed to construct note attachment commitment",
+                        source,
+                    )
+                })?;
+
+            if commitment_attachment.commitment() != attachment {
+                return Err(TransactionKernelError::NoteAttachmentCommitmentMismatch {
+                    actual: commitment_attachment.commitment(),
+                    provided: attachment,
+                });
+            }
+
+            NoteAttachmentContent::Commitment(commitment_attachment)
+        },
+    };
+
+    Ok((note_idx as usize, NoteAttachment::new(attachment_type, attachment_content)))
 }
 
 /// Extracts a word from a slice of field elements.

@@ -60,6 +60,9 @@ const NOTE_BEFORE_ADD_ASSET_EVENT=event("miden::note::before_add_asset")
 # Event emitted after an ASSET is added to a note
 const NOTE_AFTER_ADD_ASSET_EVENT=event("miden::note::after_add_asset")
 
+# Event emitted before an ATTACHMENT is added to a note
+const NOTE_BEFORE_SET_ATTACHMENT_EVENT=event("miden::note::before_set_attachment")
+
 # OUTPUT NOTE PROCEDURES
 # =================================================================================================
 
@@ -280,6 +283,9 @@ pub proc set_attachment
 
     # run validate_attachment after we have validated the attachment content type.
     exec.validate_attachment
+    # => [attachment_content_type, attachment_type, note_ptr, note_ptr, ATTACHMENT]
+
+    emit.NOTE_BEFORE_SET_ATTACHMENT_EVENT
     # => [attachment_content_type, attachment_type, note_ptr, note_ptr, ATTACHMENT]
 
     exec.set_attachment_type_info
