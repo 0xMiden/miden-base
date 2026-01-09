@@ -5,6 +5,7 @@ use core::fmt;
 use miden_core::FieldElement;
 use miden_protocol::Felt;
 use miden_protocol::account::AccountId;
+use miden_protocol::utils::{HexParseError, bytes_to_hex_string, hex_to_bytes};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AddrConvError {
@@ -12,11 +13,21 @@ pub enum AddrConvError {
     NonZeroBytePrefix,
     InvalidHexLength,
     InvalidHexChar(char),
+    HexParseError,
 }
 
 impl fmt::Display for AddrConvError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self)
+        match self {
+            AddrConvError::HexParseError => write!(f, "Hex parse error"),
+            _ => write!(f, "{:?}", self),
+        }
+    }
+}
+
+impl From<HexParseError> for AddrConvError {
+    fn from(_err: HexParseError) -> Self {
+        AddrConvError::HexParseError
     }
 }
 
@@ -51,14 +62,8 @@ impl EthAddress {
             return Err(AddrConvError::InvalidHexLength);
         }
 
-        let mut out = [0u8; 20];
-        let chars: alloc::vec::Vec<char> = s.chars().collect();
-        for i in 0..20 {
-            let hi = Self::hex_val(chars[2 * i])?;
-            let lo = Self::hex_val(chars[2 * i + 1])?;
-            out[i] = (hi << 4) | lo;
-        }
-        Ok(Self(out))
+        let bytes: [u8; 20] = hex_to_bytes(s)?;
+        Ok(Self(bytes))
     }
 
     /// Creates an [`EthAddress`] from an [`AccountId`].
@@ -139,32 +144,12 @@ impl EthAddress {
     pub fn to_hex(&self) -> String {
         let mut s = String::with_capacity(42);
         s.push_str("0x");
-        for b in self.0 {
-            s.push(Self::nibble_to_hex(b >> 4));
-            s.push(Self::nibble_to_hex(b & 0x0f));
-        }
+        s.push_str(&bytes_to_hex_string(self.0));
         s
     }
 
     // HELPER FUNCTIONS
     // --------------------------------------------------------------------------------------------
-
-    fn hex_val(c: char) -> Result<u8, AddrConvError> {
-        match c {
-            '0'..='9' => Ok((c as u8) - b'0'),
-            'a'..='f' => Ok((c as u8) - b'a' + 10),
-            'A'..='F' => Ok((c as u8) - b'A' + 10),
-            _ => Err(AddrConvError::InvalidHexChar(c)),
-        }
-    }
-
-    fn nibble_to_hex(n: u8) -> char {
-        match n {
-            0..=9 => (b'0' + n) as char,
-            10..=15 => (b'a' + (n - 10)) as char,
-            _ => unreachable!(),
-        }
-    }
 
     /// Convert `[u64; 5]` -> `[u8; 20]` (EVM address bytes).
     /// Layout: 4 zero bytes prefix + word0(be) + word1(be)
