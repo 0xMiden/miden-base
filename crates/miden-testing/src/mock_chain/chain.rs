@@ -908,7 +908,7 @@ impl MockChain {
                     created_note.id(),
                     MockChainNote::Private(
                         created_note.id(),
-                        *created_note.metadata(),
+                        created_note.metadata().clone(),
                         note_inclusion_proof,
                     ),
                 );

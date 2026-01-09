@@ -217,8 +217,7 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
     let serial_num_2 = Word::from([1, 2, 3, 4u32]);
     let note_script_2 = CodeBuilder::default().compile_note_script(DEFAULT_NOTE_CODE)?;
     let inputs_2 = NoteInputs::new(vec![ONE])?;
-    let metadata_2 =
-        NoteMetadata::new(account_id, note_type2, tag2, NoteExecutionHint::none(), aux2);
+    let metadata_2 = NoteMetadata::new(account_id, note_type2, tag2);
     let vault_2 = NoteAssets::new(vec![removed_asset_3, removed_asset_4])?;
     let recipient_2 = NoteRecipient::new(serial_num_2, note_script_2, inputs_2);
     let expected_output_note_2 = Note::new(vault_2, metadata_2, recipient_2);
@@ -227,13 +226,7 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
     let serial_num_3 = Word::from([Felt::new(5), Felt::new(6), Felt::new(7), Felt::new(8)]);
     let note_script_3 = CodeBuilder::default().compile_note_script(DEFAULT_NOTE_CODE)?;
     let inputs_3 = NoteInputs::new(vec![ONE, Felt::new(2)])?;
-    let metadata_3 = NoteMetadata::new(
-        account_id,
-        note_type3,
-        tag3,
-        NoteExecutionHint::on_block_slot(1, 2, 3),
-        aux3,
-    );
+    let metadata_3 = NoteMetadata::new(account_id, note_type3, tag3);
     let vault_3 = NoteAssets::new(vec![])?;
     let recipient_3 = NoteRecipient::new(serial_num_3, note_script_3, inputs_3);
     let expected_output_note_3 = Note::new(vault_3, metadata_3, recipient_3);
@@ -374,10 +367,10 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
     let resulting_output_note_2 = executed_transaction.output_notes().get_note(1);
 
     let expected_note_id_2 = expected_output_note_2.id();
-    let expected_note_metadata_2 = expected_output_note_2.metadata();
+    let expected_note_metadata_2 = expected_output_note_2.metadata().clone();
     assert_eq!(
         *resulting_output_note_2.header(),
-        NoteHeader::new(expected_note_id_2, *expected_note_metadata_2)
+        NoteHeader::new(expected_note_id_2, expected_note_metadata_2)
     );
 
     // assert that the expected output note 3 is present and has no assets
