@@ -232,15 +232,22 @@ pub proc compute_output_notes_commitment
         dup exec.compute_output_note_id
         # => [NOTE_ID, current_note_ptr, PERM, PERM, PERM, current_index, num_notes]
 
-        movup.4 exec.memory::get_output_note_metadata
-        # => [NOTE_METADATA, NOTE_ID, PERM, PERM, PERM, current_index, num_notes]
+        dup.4 exec.memory::get_output_note_metadata
+        # => [NOTE_METADATA_HEADER, NOTE_ID, current_note_ptr, PERM, PERM, PERM, current_index, num_notes]
 
-        # replace rate words with note ID and metadata
+        movup.8 exec.memory::get_output_note_attachment
+        # => [NOTE_ATTACHMENT, NOTE_METADATA_HEADER, NOTE_ID, current_note_ptr, PERM, PERM, PERM, current_index, num_notes]
+
+        # compute hash(NOTE_METADATA_HEADER || NOTE_ATTACHMENT)
+        exec.rpo256::merge
+        # => [NOTE_METADATA_COMMITMENT, NOTE_ID, current_note_ptr, PERM, PERM, PERM, current_index, num_notes]
+
+        # replace rate words with note ID and metadata commitment
         swapdw dropw dropw
-        # => [NOTE_METADATA, NOTE_ID, PERM, current_index, num_notes]
+        # => [NOTE_METADATA_COMMITMENT, NOTE_ID, PERM, current_index, num_notes]
 
-        # permute over (note_id, note_metadata)
-        hperm
+        # permute over (note_id, note_metadata_commitment)
+        exec.rpo256::permute
         # => [PERM, PERM, PERM, current_index, num_notes]
 
         # increment current_index
