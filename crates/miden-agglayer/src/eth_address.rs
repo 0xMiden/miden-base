@@ -112,7 +112,12 @@ impl EthAddress {
 
     /// Converts the Ethereum address into an array of 5 [`Felt`] values.
     ///
-    /// Each felt represents 4 bytes of the address in big-endian format.
+    /// Each felt represents 4 bytes of the address in big-endian format:
+    /// - addr0 = bytes[0..3] (most-significant 4 bytes)
+    /// - addr1 = bytes[4..7]
+    /// - addr2 = bytes[8..11]
+    /// - addr3 = bytes[12..15]
+    /// - addr4 = bytes[16..19] (least-significant 4 bytes)
     pub fn to_elements(&self) -> [Felt; 5] {
         let mut result = [Felt::ZERO; 5];
         for (i, felt) in result.iter_mut().enumerate() {
@@ -131,8 +136,8 @@ impl EthAddress {
     /// Returns an error if the first 4 bytes are not zero or if the resulting
     /// AccountId is invalid.
     pub fn to_account_id(&self) -> Result<AccountId, AddrConvError> {
-        let u64x5 = Self::bytes20_to_u64x5(self.0)?;
-        let felts = [Felt::new(u64x5[0]), Felt::new(u64x5[1])];
+        let (prefix, suffix) = Self::bytes20_to_prefix_suffix(self.0)?;
+        let felts = [Felt::new(prefix), Felt::new(suffix)];
 
         match AccountId::try_from(felts) {
             Ok(account_id) => Ok(account_id),
@@ -148,17 +153,19 @@ impl EthAddress {
     // HELPER FUNCTIONS
     // --------------------------------------------------------------------------------------------
 
-    /// Convert `[u8; 20]` -> `[u64; 5]` by extracting the last 16 bytes.
+    /// Convert `[u8; 20]` -> `(prefix, suffix)` by extracting the last 16 bytes.
     /// Requires the first 4 bytes be zero.
-    fn bytes20_to_u64x5(bytes: [u8; 20]) -> Result<[u64; 5], AddrConvError> {
+    /// Returns prefix and suffix values that match the MASM little-endian implementation.
+    fn bytes20_to_prefix_suffix(bytes: [u8; 20]) -> Result<(u64, u64), AddrConvError> {
         if bytes[0..4] != [0, 0, 0, 0] {
             return Err(AddrConvError::NonZeroBytePrefix);
         }
 
-        let w0 = u64::from_be_bytes(bytes[4..12].try_into().unwrap());
-        let w1 = u64::from_be_bytes(bytes[12..20].try_into().unwrap());
+        // Extract prefix from bytes[4..12] and suffix from bytes[12..20]
+        let prefix = u64::from_be_bytes(bytes[4..12].try_into().unwrap()); // (addr3 << 32) | addr2
+        let suffix = u64::from_be_bytes(bytes[12..20].try_into().unwrap()); // (addr1 << 32) | addr0
 
-        Ok([w0, w1, 0, 0, 0])
+        Ok((prefix, suffix))
     }
 }
 

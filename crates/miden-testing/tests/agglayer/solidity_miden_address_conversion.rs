@@ -142,7 +142,6 @@ async fn test_address_bytes20_hash_in_masm() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_ethereum_address_to_account_id_in_masm() -> anyhow::Result<()> {
-    // Test with multiple account IDs to ensure correctness
     let test_account_ids = [
         AccountId::try_from(ACCOUNT_ID_PRIVATE_SENDER)?,
         AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET)?,
@@ -152,27 +151,38 @@ async fn test_ethereum_address_to_account_id_in_masm() -> anyhow::Result<()> {
     ];
 
     for (idx, original_account_id) in test_account_ids.iter().enumerate() {
-        // 1) Convert AccountId to Ethereum address
         let eth_address = EthAddress::from_account_id(*original_account_id).map_err(|e| {
             anyhow::anyhow!(
-                "Test {}: Failed to convert AccountId to Ethereum address: {:?}",
+                "test {}: failed to convert AccountId to ethereum address: {:?}",
                 idx,
                 e
             )
         })?;
 
-        // 2) Convert to address[5] field elements for MASM (big-endian u32 chunks)
         let address_felts = eth_address.to_elements().to_vec();
-        let addr_u32s: Vec<u32> = address_felts.iter().map(|f| f.as_int() as u32).collect();
+        let be: Vec<u32> = address_felts
+            .iter()
+            .map(|f| {
+                let val = f.as_int();
+                assert!(val <= u32::MAX as u64, "felt value {} exceeds u32::MAX", val);
+                val as u32
+            })
+            .collect();
 
-        // 4) Get expected AccountId as [prefix, suffix]
+        assert_eq!(be[0], 0, "test {}: expected msw limb (be[0]) to be zero", idx);
+
+        let addr0 = be[4];
+        let addr1 = be[3];
+        let addr2 = be[2];
+        let addr3 = be[1];
+        let addr4 = be[0];
+
         let account_id_felts: [Felt; 2] = (*original_account_id).into();
         let expected_prefix = account_id_felts[0].as_int();
         let expected_suffix = account_id_felts[1].as_int();
 
-        // 5) Execute MASM procedure to convert address[5] back to AccountId
         let script_code = format!(
-            "
+            r#"
             use miden::core::sys
             use miden::agglayer::eth_address
 
@@ -181,8 +191,8 @@ async fn test_ethereum_address_to_account_id_in_masm() -> anyhow::Result<()> {
                 exec.eth_address::ethereum_address_to_account_id
                 exec.sys::truncate_stack
             end
-            ",
-            addr_u32s[4], addr_u32s[3], addr_u32s[2], addr_u32s[1], addr_u32s[0]
+            "#,
+            addr4, addr3, addr2, addr1, addr0
         );
 
         let program = Assembler::new(Arc::new(DefaultSourceManager::default()))
@@ -195,20 +205,18 @@ async fn test_ethereum_address_to_account_id_in_masm() -> anyhow::Result<()> {
 
         let exec_output = execute_program_with_default_host(program).await?;
 
-        // Stack should contain [prefix, suffix, ...]
         let actual_prefix = exec_output.stack[0].as_int();
         let actual_suffix = exec_output.stack[1].as_int();
 
-        assert_eq!(actual_prefix, expected_prefix, "Test {}: Prefix mismatch", idx);
-        assert_eq!(actual_suffix, expected_suffix, "Test {}: Suffix mismatch", idx);
+        assert_eq!(actual_prefix, expected_prefix, "test {}: prefix mismatch", idx);
+        assert_eq!(actual_suffix, expected_suffix, "test {}: suffix mismatch", idx);
 
-        // Verify we can reconstruct the AccountId
         let reconstructed_account_id =
             AccountId::try_from([Felt::new(actual_prefix), Felt::new(actual_suffix)])?;
 
         assert_eq!(
             reconstructed_account_id, *original_account_id,
-            "Test {}: AccountId roundtrip failed",
+            "test {}: accountId roundtrip failed",
             idx
         );
     }

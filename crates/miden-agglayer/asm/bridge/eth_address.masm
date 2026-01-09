@@ -8,15 +8,16 @@ const U32_MAX=4294967295
 const TWO_POW_32=4294967296
 
 const ERR_NOT_U32="address limb is not u32"
-const ERR_ADDR0_NONZERO="first 4 bytes (addr0) must be zero"
-const ERR_PREFIX_OUT_OF_FIELD="prefix would wrap field modulus"
-const ERR_SUFFIX_OUT_OF_FIELD="suffix would wrap field modulus"
+const ERR_ADDR4_NONZERO="most-significant 4 bytes (addr4) must be zero"
+const ERR_FELT_OUT_OF_FIELD="combined u64 doesn't fit in field"
 
 
 # ETHEREUM ADDRESS PROCEDURES
 # =================================================================================================
 
 #! Hashes an Ethereum address (address[5] type) using Keccak256.
+#!
+#! Address limb order: little-endian (addr0 is least-significant, addr4 is most-significant).
 #!
 #! Inputs:  [addr0, addr1, addr2, addr3, addr4]
 #! Outputs: [DIGEST_U32[8]]
@@ -34,62 +35,85 @@ pub proc account_id_to_ethereum_hash
     # Stack: [DIGEST_U32[8]]
 end
 
+#! Builds a single felt from two u32 limbs (little-endian limb order).
+#! i.e. felt = lo + (hi << 32)
+#!
+#! Inputs:  [lo, hi]
+#! Outputs: [felt]
+proc build_felt
+    # --- validate u32 limbs ---
+    u32assert.err=ERR_NOT_U32              # lo
+    dup.1 u32assert.err=ERR_NOT_U32 drop   # hi
+    # => [lo, hi]
+
+    # keep copies for the overflow check
+    dup.1 dup.1
+    # => [lo, hi, lo, hi]
+
+    # felt = (hi * 2^32) + lo
+    swap
+    push.TWO_POW_32 mul
+    add
+    # => [felt, lo, hi]
+
+    # ensure no reduction mod p happened:
+    # split felt back into (hi, lo) and compare to inputs
+    dup u32split
+    # => [hi2, lo2, felt, lo, hi]
+
+    movup.4 assert_eq.err=ERR_FELT_OUT_OF_FIELD
+    # => [lo2, felt, lo]
+
+    movup.2 assert_eq.err=ERR_FELT_OUT_OF_FIELD
+    # => [felt]
+end
+
 #! Converts an Ethereum address (address[5] type) back into an AccountId [prefix, suffix] type.
 #!
-#! The Ethereum address is represented as 5 u32 felts (20 bytes total) in big-endian format.
-#! The first 4 bytes must be zero for a valid AccountId conversion.
-#! The remaining 16 bytes are converted into two u64 values (prefix and suffix).
+#! The Ethereum address is represented as 5 u32 limbs (20 bytes total) in *little-endian limb order*:
+#!   addr0 = bytes[16..19]  (least-significant 4 bytes)
+#!   addr1 = bytes[12..15]
+#!   addr2 = bytes[ 8..11]
+#!   addr3 = bytes[ 4.. 7]
+#!   addr4 = bytes[ 0.. 3]  (most-significant 4 bytes)
+#!
+#! The most-significant 4 bytes must be zero for a valid AccountId conversion (addr4 == 0).
+#! The remaining 16 bytes are converted into two u64 values:
+#!   prefix = (addr3 << 32) | addr2   # bytes[4..11]
+#!   suffix = (addr1 << 32) | addr0   # bytes[12..19]
 #!
 #! Inputs:  [addr0, addr1, addr2, addr3, addr4]
 #! Outputs: [prefix, suffix]
 #!
-#! Where:
-#! - addr0..addr4 are u32 felts (big-endian) representing the 20-byte Ethereum address
-#! - Each addr[i] represents 4 bytes: addr0=bytes[0..3], addr1=bytes[4..7], etc.
-#! - prefix is the first u64 from bytes[4..11] = (addr1 << 32) | addr2
-#! - suffix is the second u64 from bytes[12..19] = (addr3 << 32) | addr4
-#!
-#! Note: This procedure ensures the packed u64 values don't overflow the field modulus
-#! p = 2^64 - 2^32 + 1 by checking that if the high 32 bits are 0xFFFFFFFF,
-#! then the low 32 bits must be 0.
-#!
 #! Invocation: exec
 pub proc ethereum_address_to_account_id
-    # --- addr0 must be 0 ---
+    # --- addr4 must be 0 (most-significant limb) ---
+    movup.4
     u32assert.err=ERR_NOT_U32
-    dup eq.0 assert.err=ERR_ADDR0_NONZERO
+    dup eq.0 assert.err=ERR_ADDR4_NONZERO
     drop
-    # => [addr1, addr2, addr3, addr4]
+    # => [addr0, addr1, addr2, addr3]
 
-    # --- validate u32 limbs (optional but nice) ---
-    u32assert.err=ERR_NOT_U32              # addr1
-    dup.1 u32assert.err=ERR_NOT_U32 drop   # addr2
-    dup.2 u32assert.err=ERR_NOT_U32 drop   # addr3
-    dup.3 u32assert.err=ERR_NOT_U32 drop   # addr4
-    # => [addr1, addr2, addr3, addr4]
-
-    # --- prefix: (addr1 << 32) | addr2 ---
-    dup push.U32_MAX eq
-    if.true
-        dup.1 eq.0 assert.err=ERR_PREFIX_OUT_OF_FIELD
-    end
-
-    push.TWO_POW_32 mul
-    add
-    # => [prefix, addr3, addr4]
-
-    # --- suffix: (addr3 << 32) | addr4 ---
-    swap
-    # => [addr3, prefix, addr4]
-
-    dup push.U32_MAX eq
-    if.true
-        dup.2 eq.0 assert.err=ERR_SUFFIX_OUT_OF_FIELD
-    end
-
-    push.TWO_POW_32 mul
+    # --- prefix: (addr3 << 32) | addr2 ---
+    # need build_felt([lo, hi]) = [addr2, addr3]
     movup.2
-    add
+    # => [addr2, addr0, addr1, addr3]
+    movup.3
+    # => [addr3, addr2, addr0, addr1]
+    swap
+    # => [addr2, addr3, addr0, addr1]
+    exec.build_felt
+    # => [prefix, addr0, addr1]
+
+    # --- suffix: (addr1 << 32) | addr0 ---
+    # need build_felt([lo, hi]) = [addr0, addr1]
+    swap
+    # => [addr0, prefix, addr1]
+    movup.2
+    # => [addr1, addr0, prefix]
+    swap
+    # => [addr0, addr1, prefix]
+    exec.build_felt
     # => [suffix, prefix]
 
     swap
