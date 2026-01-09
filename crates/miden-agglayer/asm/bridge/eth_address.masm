@@ -93,35 +93,19 @@ end
 #!
 #! Invocation: exec
 pub proc ethereum_address_to_account_id
-    # --- addr4 must be 0 (most-significant limb) ---
+    # addr4 must be 0 (most-significant limb)
     movup.4
     u32assert.err=ERR_NOT_U32
     dup eq.0 assert.err=ERR_ADDR4_NONZERO
     drop
     # => [addr0, addr1, addr2, addr3]
 
-    # --- prefix: (addr3 << 32) | addr2 ---
-    # need build_felt([lo, hi]) = [addr2, addr3]
-    movup.2
-    # => [addr2, addr0, addr1, addr3]
-    movup.3
-    # => [addr3, addr2, addr0, addr1]
-    swap
-    # => [addr2, addr3, addr0, addr1]
     exec.build_felt
-    # => [prefix, addr0, addr1]
+    # => [suffix, addr2, addr3]
 
-    # --- suffix: (addr1 << 32) | addr0 ---
-    # need build_felt([lo, hi]) = [addr0, addr1]
-    swap
-    # => [addr0, prefix, addr1]
-    movup.2
-    # => [addr1, addr0, prefix]
-    swap
-    # => [addr0, addr1, prefix]
+    movdn.2
+    # => [addr2, addr3, suffix]
+
     exec.build_felt
-    # => [suffix, prefix]
-
-    swap
     # => [prefix, suffix]
 end
