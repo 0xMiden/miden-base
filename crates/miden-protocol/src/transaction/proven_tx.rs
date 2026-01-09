@@ -636,7 +636,7 @@ impl From<&InputNote> for InputNoteCommitment {
             },
             InputNote::Unauthenticated { note } => Self {
                 nullifier: note.nullifier(),
-                header: Some(*note.header()),
+                header: Some(note.header().clone()),
             },
         }
     }
@@ -654,7 +654,7 @@ impl ToInputNoteCommitments for InputNoteCommitment {
     }
 
     fn note_commitment(&self) -> Option<Word> {
-        self.header.map(|header| header.commitment())
+        self.header.as_ref().map(NoteHeader::commitment)
     }
 }
 

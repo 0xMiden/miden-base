@@ -31,10 +31,12 @@ pub struct NoteBuilder {
     inputs: Vec<Felt>,
     assets: Vec<Asset>,
     note_type: NoteType,
+    // TODO(note_attachment): Remove.
     note_execution_hint: NoteExecutionHint,
     serial_num: Word,
     tag: NoteTag,
     code: String,
+    // TODO(note_attachment): Remove.
     aux: Felt,
     dyn_libraries: Vec<Library>,
     source_manager: Arc<dyn SourceManagerSync>,
@@ -154,13 +156,7 @@ impl NoteBuilder {
             .compile_note_script(virtual_source_file)
             .expect("note script should compile");
         let vault = NoteAssets::new(self.assets)?;
-        let metadata = NoteMetadata::new(
-            self.sender,
-            self.note_type,
-            self.tag,
-            self.note_execution_hint,
-            self.aux,
-        );
+        let metadata = NoteMetadata::new(self.sender, self.note_type, self.tag);
         let inputs = NoteInputs::new(self.inputs)?;
         let recipient = NoteRecipient::new(self.serial_num, note_script, inputs);
 

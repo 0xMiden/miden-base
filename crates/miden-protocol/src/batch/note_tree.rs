@@ -8,7 +8,7 @@ use crate::{BATCH_NOTE_TREE_DEPTH, EMPTY_WORD, Word};
 
 /// Wrapper over [SimpleSmt<BATCH_NOTE_TREE_DEPTH>] for batch note tree.
 ///
-/// Value of each leaf is computed as: `hash(note_id || note_metadata)`.
+/// Value of each leaf is computed as: `hash(note_id || note_metadata_commitment)`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BatchNoteTree(SimpleSmt<BATCH_NOTE_TREE_DEPTH>);
 

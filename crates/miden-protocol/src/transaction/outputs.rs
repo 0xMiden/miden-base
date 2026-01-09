@@ -281,9 +281,9 @@ impl OutputNote {
     pub fn shrink(&self) -> Self {
         match self {
             OutputNote::Full(note) if note.metadata().is_private() => {
-                OutputNote::Header(*note.header())
+                OutputNote::Header(note.header().clone())
             },
-            OutputNote::Partial(note) => OutputNote::Header(*note.header()),
+            OutputNote::Partial(note) => OutputNote::Header(note.header().clone()),
             _ => self.clone(),
         }
     }
@@ -299,7 +299,7 @@ impl OutputNote {
 
     /// Returns a commitment to the note and its metadata.
     ///
-    /// > hash(NOTE_ID || NOTE_METADATA)
+    /// > hash(NOTE_ID || NOTE_METADATA_COMMITMENT)
     pub fn commitment(&self) -> Word {
         compute_note_commitment(self.id(), self.metadata())
     }

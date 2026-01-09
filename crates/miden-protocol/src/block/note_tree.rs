@@ -29,18 +29,18 @@ impl BlockNoteTree {
     ///
     /// Entry format: (note_index, note_id, note_metadata).
     ///
-    /// Value of each leaf is computed as: `hash(note_id || note_metadata)`.
+    /// Value of each leaf is computed as: `hash(note_id || note_metadata_commitment)`.
     /// All leaves omitted from the entries list are set to [crate::EMPTY_WORD].
     ///
     /// # Errors
     /// Returns an error if:
     /// - The number of entries exceeds the maximum notes tree capacity, that is 2^16.
     /// - The provided entries contain multiple values for the same key.
-    pub fn with_entries(
-        entries: impl IntoIterator<Item = (BlockNoteIndex, NoteId, NoteMetadata)>,
+    pub fn with_entries<'metadata>(
+        entries: impl IntoIterator<Item = (BlockNoteIndex, NoteId, &'metadata NoteMetadata)>,
     ) -> Result<Self, MerkleError> {
         let leaves = entries.into_iter().map(|(index, note_id, metadata)| {
-            (index.leaf_index_value() as u64, compute_note_commitment(note_id, &metadata))
+            (index.leaf_index_value() as u64, compute_note_commitment(note_id, metadata))
         });
 
         SimpleSmt::with_leaves(leaves).map(Self)

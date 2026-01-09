@@ -1,11 +1,8 @@
-use alloc::vec::Vec;
-
 use super::{
     ByteReader,
     ByteWriter,
     Deserializable,
     DeserializationError,
-    Felt,
     NoteId,
     NoteMetadata,
     Serializable,
@@ -19,7 +16,7 @@ use crate::Hasher;
 /// Holds the strictly required, public information of a note.
 ///
 /// See [NoteId] and [NoteMetadata] for additional details.
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NoteHeader {
     note_id: NoteId,
     note_metadata: NoteMetadata,
@@ -43,9 +40,14 @@ impl NoteHeader {
         &self.note_metadata
     }
 
+    /// Consumes self and returns the note header's metadata.
+    pub fn into_metadata(self) -> NoteMetadata {
+        self.note_metadata
+    }
+
     /// Returns a commitment to the note and its metadata.
     ///
-    /// > hash(NOTE_ID || NOTE_METADATA)
+    /// > hash(NOTE_ID || NOTE_METADATA_COMMITMENT)
     ///
     /// This value is used primarily for authenticating notes consumed when they are consumed
     /// in a transaction.
@@ -59,64 +61,12 @@ impl NoteHeader {
 
 /// Returns a commitment to the note and its metadata.
 ///
-/// > hash(NOTE_ID || NOTE_METADATA)
+/// > hash(NOTE_ID || NOTE_METADATA_COMMITMENT)
 ///
 /// This value is used primarily for authenticating notes consumed when they are consumed
 /// in a transaction.
 pub fn compute_note_commitment(id: NoteId, metadata: &NoteMetadata) -> Word {
-    Hasher::merge(&[id.as_word(), Word::from(metadata)])
-}
-
-// CONVERSIONS FROM NOTE HEADER
-// ================================================================================================
-
-impl From<NoteHeader> for [Felt; 8] {
-    fn from(note_header: NoteHeader) -> Self {
-        (&note_header).into()
-    }
-}
-
-impl From<NoteHeader> for [Word; 2] {
-    fn from(note_header: NoteHeader) -> Self {
-        (&note_header).into()
-    }
-}
-
-impl From<NoteHeader> for [u8; 64] {
-    fn from(note_header: NoteHeader) -> Self {
-        (&note_header).into()
-    }
-}
-
-impl From<&NoteHeader> for [Felt; 8] {
-    fn from(note_header: &NoteHeader) -> Self {
-        let mut elements: [Felt; 8] = Default::default();
-        elements[..4].copy_from_slice(note_header.note_id.as_elements());
-        elements[4..].copy_from_slice(Word::from(note_header.metadata()).as_elements());
-        elements
-    }
-}
-
-impl From<&NoteHeader> for [Word; 2] {
-    fn from(note_header: &NoteHeader) -> Self {
-        let mut elements: [Word; 2] = Default::default();
-        elements[0].copy_from_slice(note_header.note_id.as_elements());
-        elements[1].copy_from_slice(Word::from(note_header.metadata()).as_elements());
-        elements
-    }
-}
-
-impl From<&NoteHeader> for [u8; 64] {
-    fn from(note_header: &NoteHeader) -> Self {
-        let mut elements: [u8; 64] = [0; 64];
-        let note_metadata_bytes = Word::from(note_header.metadata())
-            .iter()
-            .flat_map(|x| x.as_int().to_le_bytes())
-            .collect::<Vec<u8>>();
-        elements[..32].copy_from_slice(&note_header.note_id.as_bytes());
-        elements[32..].copy_from_slice(&note_metadata_bytes);
-        elements
-    }
+    Hasher::merge(&[id.as_word(), metadata.to_commitment()])
 }
 
 // SERIALIZATION
