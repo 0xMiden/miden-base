@@ -7,23 +7,24 @@ use miden_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
 use miden_processor::DeserializationError;
 
 use super::type_registry::{SCHEMA_TYPE_REGISTRY, SchemaRequirement, SchemaTypeId};
-use super::{InitStorageData, StorageValueName, WordValue};
+use super::{InitStorageData, StorageValue, StorageValueName, WordValue};
 use crate::account::storage::is_reserved_slot_name;
 use crate::account::{StorageMap, StorageSlot, StorageSlotName};
+use crate::crypto::utils::bytes_to_elements_with_padding;
 use crate::errors::AccountComponentTemplateError;
-use crate::{Felt, FieldElement, Word};
+use crate::{Felt, FieldElement, Hasher, Word};
 
 // STORAGE SCHEMA
 // ================================================================================================
 
 /// Describes the storage schema of an account component in terms of its named storage slots.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct AccountStorageSchema {
+pub struct StorageSchema {
     slots: BTreeMap<StorageSlotName, StorageSlotSchema>,
 }
 
-impl AccountStorageSchema {
-    /// Creates a new [`AccountStorageSchema`].
+impl StorageSchema {
+    /// Creates a new [`StorageSchema`].
     ///
     /// # Errors
     /// - If `fields` contains duplicate slot names.
@@ -66,6 +67,16 @@ impl AccountStorageSchema {
             .collect()
     }
 
+    /// Returns a commitment to this storage schema definition.
+    ///
+    /// The commitment is computed over the serialized schema and does not include defaults.
+    pub fn commitment(&self) -> Word {
+        let mut bytes = Vec::new();
+        self.write_into_with_defaults(&mut bytes, false);
+        let elements = bytes_to_elements_with_padding(&bytes);
+        Hasher::hash_elements(&elements)
+    }
+
     /// Returns init-value requirements for the entire schema.
     ///
     /// The returned map includes both required values (no `default_value`) and optional values
@@ -80,6 +91,17 @@ impl AccountStorageSchema {
         Ok(requirements)
     }
 
+    /// Serializes the schema, optionally ignoring the default values (used for committing to a
+    /// schema definition).
+    fn write_into_with_defaults<W: ByteWriter>(&self, target: &mut W, include_defaults: bool) {
+        target.write_u16(self.slots.len() as u16);
+        for (slot_name, schema) in self.slots.iter() {
+            target.write(slot_name);
+            schema.write_into_with_defaults(target, include_defaults);
+        }
+    }
+
+    /// Validates schema-level invariants across all slots.
     fn validate(&self) -> Result<(), AccountComponentTemplateError> {
         let mut init_values = BTreeMap::new();
 
@@ -88,7 +110,7 @@ impl AccountStorageSchema {
                 return Err(AccountComponentTemplateError::ReservedSlotName(slot_name.clone()));
             }
 
-            schema.validate(slot_name)?;
+            schema.validate()?;
             schema.collect_init_value_requirements(slot_name, &mut init_values)?;
         }
 
@@ -96,17 +118,13 @@ impl AccountStorageSchema {
     }
 }
 
-impl Serializable for AccountStorageSchema {
+impl Serializable for StorageSchema {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        target.write_u16(self.slots.len() as u16);
-        for (slot_name, schema) in self.slots.iter() {
-            target.write(slot_name);
-            target.write(schema);
-        }
+        self.write_into_with_defaults(target, true);
     }
 }
 
-impl Deserializable for AccountStorageSchema {
+impl Deserializable for StorageSchema {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let num_entries = source.read_u16()? as usize;
         let mut fields = BTreeMap::new();
@@ -122,9 +140,19 @@ impl Deserializable for AccountStorageSchema {
             }
         }
 
-        let schema = AccountStorageSchema::new(fields)
+        let schema = StorageSchema::new(fields)
             .map_err(|err| DeserializationError::InvalidValue(err.to_string()))?;
         Ok(schema)
+    }
+}
+
+fn validate_description_ascii(description: &str) -> Result<(), AccountComponentTemplateError> {
+    if description.is_ascii() {
+        Ok(())
+    } else {
+        Err(AccountComponentTemplateError::InvalidSchema(
+            "description must contain only ASCII characters".to_string(),
+        ))
     }
 }
 
@@ -174,31 +202,35 @@ impl StorageSlotSchema {
         }
     }
 
-    pub(crate) fn validate(
-        &self,
-        slot_name: &StorageSlotName,
-    ) -> Result<(), AccountComponentTemplateError> {
+    /// Validates this slot schema's internal invariants.
+    pub(crate) fn validate(&self) -> Result<(), AccountComponentTemplateError> {
         match self {
-            StorageSlotSchema::Value(slot) => slot.validate(slot_name)?,
+            StorageSlotSchema::Value(slot) => slot.validate()?,
             StorageSlotSchema::Map(slot) => slot.validate()?,
         }
 
         Ok(())
     }
+
+    /// Serializes the schema, optionally ignoring the default values (used for committing to a
+    /// schema definition).
+    fn write_into_with_defaults<W: ByteWriter>(&self, target: &mut W, include_defaults: bool) {
+        match self {
+            StorageSlotSchema::Value(slot) => {
+                target.write_u8(0u8);
+                slot.write_into_with_defaults(target, include_defaults);
+            },
+            StorageSlotSchema::Map(slot) => {
+                target.write_u8(1u8);
+                slot.write_into_with_defaults(target, include_defaults);
+            },
+        }
+    }
 }
 
 impl Serializable for StorageSlotSchema {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        match self {
-            StorageSlotSchema::Value(slot) => {
-                target.write_u8(0u8);
-                slot.write_into(target);
-            },
-            StorageSlotSchema::Map(slot) => {
-                target.write_u8(1u8);
-                slot.write_into(target);
-            },
-        }
+        self.write_into_with_defaults(target, true);
     }
 }
 
@@ -306,7 +338,7 @@ impl WordSchema {
         }
     }
 
-    /// Validates that the defined word type exists and its inner felts (if any) are valid.
+    /// Validates the word schema type, defaults, and inner felts (if any).
     fn validate(&self) -> Result<(), AccountComponentTemplateError> {
         let type_exists = SCHEMA_TYPE_REGISTRY.contains_word_type(&self.word_type());
         if !type_exists {
@@ -429,21 +461,30 @@ impl WordSchema {
             },
         }
     }
-}
 
-impl Serializable for WordSchema {
-    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+    /// Serializes the schema, optionally ignoring the default values (used for committing to a
+    /// schema definition).
+    fn write_into_with_defaults<W: ByteWriter>(&self, target: &mut W, include_defaults: bool) {
         match self {
             WordSchema::Simple { r#type, default_value } => {
                 target.write_u8(0);
                 target.write(r#type);
+                let default_value = if include_defaults { *default_value } else { None };
                 target.write(default_value);
             },
             WordSchema::Composite { value } => {
                 target.write_u8(1);
-                target.write(value);
+                for felt in value.iter() {
+                    felt.write_into_with_defaults(target, include_defaults);
+                }
             },
         }
+    }
+}
+
+impl Serializable for WordSchema {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        self.write_into_with_defaults(target, true);
     }
 }
 
@@ -617,19 +658,19 @@ impl FeltSchema {
             && let Some(raw_value) = init_storage_data.value_entry(&value_name)
         {
             match raw_value {
-                WordValue::Atomic(raw) => {
+                StorageValue::Parseable(WordValue::Atomic(raw)) => {
                     let felt = SCHEMA_TYPE_REGISTRY
                         .try_parse_felt(&self.r#type, raw)
                         .map_err(AccountComponentTemplateError::StorageValueParsingError)?;
                     return Ok(felt);
                 },
-                WordValue::Elements(_) => {
+                StorageValue::Parseable(WordValue::Elements(_)) => {
                     return Err(AccountComponentTemplateError::InvalidInitStorageValue(
                         value_name,
                         "expected an atomic value, got a 4-element array".into(),
                     ));
                 },
-                WordValue::FullyTyped(_) => {
+                StorageValue::Word(_) => {
                     return Err(AccountComponentTemplateError::InvalidInitStorageValue(
                         value_name,
                         "expected an atomic value, got a word".into(),
@@ -655,8 +696,22 @@ impl FeltSchema {
         Err(AccountComponentTemplateError::InitValueNotProvided(value_name))
     }
 
-    /// Validates that the defined felt type exists.
+    /// Serializes the schema, optionally ignoring the default values (used for committing to a
+    /// schema definition).
+    fn write_into_with_defaults<W: ByteWriter>(&self, target: &mut W, include_defaults: bool) {
+        target.write(&self.name);
+        target.write(&self.description);
+        target.write(&self.r#type);
+        let default_value = if include_defaults { self.default_value } else { None };
+        target.write(default_value);
+    }
+
+    /// Validates the felt type, naming rules, and default value (if any).
     fn validate(&self) -> Result<(), AccountComponentTemplateError> {
+        if let Some(description) = self.description.as_deref() {
+            validate_description_ascii(description)?;
+        }
+
         let type_exists = SCHEMA_TYPE_REGISTRY.contains_felt_type(&self.felt_type());
         if !type_exists {
             return Err(AccountComponentTemplateError::InvalidType(
@@ -696,10 +751,7 @@ impl FeltSchema {
 
 impl Serializable for FeltSchema {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        target.write(&self.name);
-        target.write(&self.description);
-        target.write(&self.r#type);
-        target.write(self.default_value);
+        self.write_into_with_defaults(target, true);
     }
 }
 
@@ -753,10 +805,18 @@ impl ValueSlotSchema {
         self.word.try_build_word(init_storage_data, slot_name)
     }
 
-    pub(crate) fn validate(
-        &self,
-        _slot_name: &StorageSlotName,
-    ) -> Result<(), AccountComponentTemplateError> {
+    /// Serializes the schema, optionally ignoring the default values (used for committing to a
+    /// schema definition).
+    fn write_into_with_defaults<W: ByteWriter>(&self, target: &mut W, include_defaults: bool) {
+        target.write(&self.description);
+        self.word.write_into_with_defaults(target, include_defaults);
+    }
+
+    /// Validates the slot's word schema.
+    pub(crate) fn validate(&self) -> Result<(), AccountComponentTemplateError> {
+        if let Some(description) = self.description.as_deref() {
+            validate_description_ascii(description)?;
+        }
         self.word.validate()?;
         Ok(())
     }
@@ -764,8 +824,7 @@ impl ValueSlotSchema {
 
 impl Serializable for ValueSlotSchema {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        target.write(&self.description);
-        target.write(&self.word);
+        self.write_into_with_defaults(target, true);
     }
 }
 
@@ -860,7 +919,25 @@ impl MapSlotSchema {
         self.default_values.clone()
     }
 
+    /// Serializes the schema, optionally ignoring the default values (used for committing to a
+    /// schema definition).
+    fn write_into_with_defaults<W: ByteWriter>(&self, target: &mut W, include_defaults: bool) {
+        target.write(&self.description);
+        let default_values = if include_defaults {
+            self.default_values.clone()
+        } else {
+            None
+        };
+        target.write(&default_values);
+        self.key_schema.write_into_with_defaults(target, include_defaults);
+        self.value_schema.write_into_with_defaults(target, include_defaults);
+    }
+
+    /// Validates key/value word schemas for this map slot.
     fn validate(&self) -> Result<(), AccountComponentTemplateError> {
+        if let Some(description) = self.description.as_deref() {
+            validate_description_ascii(description)?;
+        }
         self.key_schema.validate()?;
         self.value_schema.validate()?;
         Ok(())
@@ -869,25 +946,29 @@ impl MapSlotSchema {
 
 pub(super) fn parse_storage_value_with_schema(
     schema: &WordSchema,
-    raw_value: &WordValue,
+    raw_value: &StorageValue,
     slot_prefix: &StorageValueName,
 ) -> Result<Word, AccountComponentTemplateError> {
-    let word = match (schema, raw_value) {
-        (_, WordValue::FullyTyped(word)) => *word,
-        (WordSchema::Simple { r#type, .. }, raw_value) => {
-            parse_simple_word_value(r#type, raw_value, slot_prefix)?
+    let word = match raw_value {
+        StorageValue::Word(word) => *word,
+        StorageValue::Parseable(raw_value) => match schema {
+            WordSchema::Simple { r#type, .. } => {
+                parse_simple_word_value(r#type, raw_value, slot_prefix)?
+            },
+            WordSchema::Composite { value } => match raw_value {
+                WordValue::Elements(elements) => {
+                    parse_composite_elements(value, elements, slot_prefix)?
+                },
+                WordValue::Atomic(value) => SCHEMA_TYPE_REGISTRY
+                    .try_parse_word(&SchemaTypeId::native_word(), value)
+                    .map_err(|err| {
+                        AccountComponentTemplateError::InvalidInitStorageValue(
+                            slot_prefix.clone(),
+                            format!("failed to parse value as `word`: {err}"),
+                        )
+                    })?,
+            },
         },
-        (WordSchema::Composite { value }, WordValue::Elements(elements)) => {
-            parse_composite_elements(value, elements, slot_prefix)?
-        },
-        (WordSchema::Composite { .. }, WordValue::Atomic(value)) => SCHEMA_TYPE_REGISTRY
-            .try_parse_word(&SchemaTypeId::native_word(), value)
-            .map_err(|err| {
-                AccountComponentTemplateError::InvalidInitStorageValue(
-                    slot_prefix.clone(),
-                    format!("failed to parse value as `word`: {err}"),
-                )
-            })?,
     };
 
     schema.validate_word_value(slot_prefix, "value", word)?;
@@ -924,7 +1005,6 @@ fn parse_simple_word_value(
             let felts: [Felt; 4] = felts.try_into().expect("length is 4");
             Ok(Word::from(felts))
         },
-        WordValue::FullyTyped(word) => Ok(*word),
     }
 }
 
@@ -951,10 +1031,7 @@ fn parse_composite_elements(
 
 impl Serializable for MapSlotSchema {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        target.write(&self.description);
-        target.write(&self.default_values);
-        target.write(&self.key_schema);
-        target.write(&self.value_schema);
+        self.write_into_with_defaults(target, true);
     }
 }
 
@@ -1056,7 +1133,7 @@ mod tests {
         let init_data = InitStorageData::new(
             BTreeMap::from([(
                 StorageValueName::from_slot_name(&slot_name),
-                WordValue::FullyTyped(expected),
+                StorageValue::Word(expected),
             )]),
             BTreeMap::new(),
         )
@@ -1074,7 +1151,7 @@ mod tests {
         let init_data = InitStorageData::new(
             BTreeMap::from([(
                 StorageValueName::from_slot_name(&slot_name),
-                WordValue::Atomic("6".into()),
+                StorageValue::Parseable("6".into()),
             )]),
             BTreeMap::new(),
         )
@@ -1098,7 +1175,7 @@ mod tests {
         let init_data = InitStorageData::new(
             BTreeMap::from([(
                 StorageValueName::from_slot_name_with_suffix(&slot_name, "a").unwrap(),
-                WordValue::Atomic("1".into()),
+                StorageValue::Parseable("1".into()),
             )]),
             BTreeMap::new(),
         )
@@ -1115,18 +1192,18 @@ mod tests {
         let slot_name: StorageSlotName = "demo::map".parse().unwrap();
 
         let entries = vec![(
-            WordValue::Elements([
+            StorageValue::Parseable(WordValue::Elements([
                 "1".into(),
                 "0".into(),
                 "0".into(),
                 "0".into(),
-            ]),
-            WordValue::Elements([
+            ])),
+            StorageValue::Parseable(WordValue::Elements([
                 "10".into(),
                 "11".into(),
                 "12".into(),
                 "13".into(),
-            ]),
+            ])),
         )];
         let init_data = InitStorageData::new(
             BTreeMap::new(),

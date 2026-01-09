@@ -7,6 +7,7 @@ use thiserror::Error;
 use super::super::{
     InitStorageData,
     InitStorageDataError as CoreInitStorageDataError,
+    StorageValue,
     StorageValueName,
     StorageValueNameError,
     WordValue,
@@ -59,7 +60,7 @@ impl InitStorageData {
                         let word = WordValue::deserialize(field_value).map_err(|_| {
                             InitStorageDataError::InvalidValue(field_name.to_string())
                         })?;
-                        data.insert_value(field_name, word)?;
+                        data.insert_value(field_name, StorageValue::Parseable(word))?;
                     }
                 },
                 // "slot::name" = [{ key = "...", value = "..." }, ...]
@@ -77,7 +78,10 @@ impl InitStorageData {
                                 InitStorageDataError::InvalidMapEntrySchema(e.to_string())
                             })?;
 
-                        entries.push((entry.key, entry.value));
+                        entries.push((
+                            StorageValue::Parseable(entry.key),
+                            StorageValue::Parseable(entry.value),
+                        ));
                     }
                     data.set_map_values(name.slot_name().clone(), entries)?;
                 },
@@ -85,7 +89,7 @@ impl InitStorageData {
                 other => {
                     let word = WordValue::deserialize(other)
                         .map_err(|_| InitStorageDataError::InvalidValue(name.to_string()))?;
-                    data.insert_value(name, word)?;
+                    data.insert_value(name, StorageValue::Parseable(word))?;
                 },
             }
         }

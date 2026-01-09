@@ -10,6 +10,7 @@ use crate::account::component::{
     InitStorageDataError as CoreInitStorageDataError,
     SchemaTypeId,
     StorageSlotSchema,
+    StorageValue,
     StorageValueName,
     WordSchema,
     WordValue,
@@ -90,17 +91,17 @@ fn parse_map_entries_from_array() {
 
     assert_matches::assert_matches!(
         &entries[0].0,
-        WordValue::Atomic(v)
+        StorageValue::Parseable(WordValue::Atomic(v))
             if v == "0x0000000000000000000000000000000000000000000000000000000000000001"
     );
     assert_matches::assert_matches!(
         &entries[0].1,
-        WordValue::Atomic(v)
+        StorageValue::Parseable(WordValue::Atomic(v))
             if v == "0x0000000000000000000000000000000000000000000000000000000000000010"
     );
     assert_matches::assert_matches!(
         &entries[1].1,
-        WordValue::Elements(elements)
+        StorageValue::Parseable(WordValue::Elements(elements))
             if elements == &[
                 "1".to_string(),
                 "2".to_string(),
@@ -178,6 +179,109 @@ fn metadata_from_toml_parses_named_storage_schema() {
 
     assert!(requirements.contains_key(&"demo::test_value".parse::<StorageValueName>().unwrap()));
     assert!(!requirements.contains_key(&"demo::my_map".parse::<StorageValueName>().unwrap()));
+}
+
+#[test]
+fn metadata_from_toml_rejects_non_ascii_component_description() {
+    let toml_str = r#"
+        name = "Test Component"
+        description = "Invalid \u00e9"
+        version = "0.1.0"
+        supported-types = []
+    "#;
+
+    assert_matches::assert_matches!(
+        AccountComponentMetadata::from_toml(toml_str),
+        Err(AccountComponentTemplateError::InvalidSchema(_))
+    );
+}
+
+#[test]
+fn metadata_from_toml_rejects_non_ascii_slot_description() {
+    let toml_str = r#"
+        name = "Test Component"
+        description = "Test description"
+        version = "0.1.0"
+        supported-types = []
+
+        [[storage.slots]]
+        name = "demo::test_value"
+        description = "Invalid \u00e9"
+        type = "word"
+    "#;
+
+    assert_matches::assert_matches!(
+        AccountComponentMetadata::from_toml(toml_str),
+        Err(AccountComponentTemplateError::InvalidSchema(_))
+    );
+}
+
+#[test]
+fn metadata_schema_commitment_ignores_defaults_and_ordering() {
+    let toml_a = r#"
+        name = "Commitment Test"
+        description = "Schema commitments are equal regardless of defaults and ordering"
+        version = "0.1.0"
+        supported-types = []
+
+        [[storage.slots]]
+        name = "demo::first"
+        type = "word"
+        default-value = "0x1"
+
+        [[storage.slots]]
+        name = "demo::map"
+        type = { key = "word", value = "word" }
+        default-values = [
+            { key = "0x1", value = "0x10" },
+        ]
+
+        [[storage.slots]]
+        name = "demo::composed"
+        type = [
+            { name = "a", type = "u8", description = "field a", default-value = "1" },
+            { name = "b", description = "field b", default-value = "2" },
+            { name = "c", type = "u16", description = "field c", default-value = "3" },
+            { type = "void", description = "padding" },
+        ]
+    "#;
+
+    let toml_b = r#"
+        name = "Commitment Test"
+        description = ""
+        version = "0.1.0"
+        supported-types = []
+
+        [[storage.slots]]
+        name = "demo::map"
+        type = { key = "word", value = "word" }
+        default-values = [
+            { key = "0x2", value = "0x20" },
+        ]
+
+        [[storage.slots]]
+        name = "demo::composed"
+        type = [
+            { name = "a", type = "u8", description = "field a", default-value = "9" },
+            { name = "b", description = "field b", default-value = "8" },
+            { name = "c", type = "u16", description = "field c", default-value = "7" },
+            { type = "void", description = "padding" },
+        ]
+
+        [[storage.slots]]
+        name = "demo::first"
+        type = "word"
+        default-value = "0x9"
+    "#;
+
+    let metadata_a = AccountComponentMetadata::from_toml(toml_a).unwrap();
+    let metadata_b = AccountComponentMetadata::from_toml(toml_b).unwrap();
+
+    assert_ne!(metadata_a.storage_schema(), metadata_b.storage_schema());
+    assert_eq!(
+        metadata_a.storage_schema().commitment(),
+        metadata_b.storage_schema().commitment()
+    );
 }
 
 #[test]

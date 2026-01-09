@@ -7,7 +7,7 @@ use miden_mast_package::{Package, SectionId};
 use miden_processor::DeserializationError;
 use semver::Version;
 
-use super::{AccountStorageSchema, AccountType, SchemaRequirement, StorageValueName};
+use super::{AccountType, SchemaRequirement, StorageSchema, StorageValueName};
 use crate::AccountError;
 
 // ACCOUNT COMPONENT METADATA
@@ -40,15 +40,15 @@ use crate::AccountError;
 /// use miden_protocol::account::StorageSlotName;
 /// use miden_protocol::account::component::{
 ///     AccountComponentMetadata,
-///     AccountStorageSchema,
 ///     FeltSchema,
 ///     InitStorageData,
 ///     SchemaTypeId,
+///     StorageSchema,
 ///     StorageSlotSchema,
+///     StorageValue,
 ///     StorageValueName,
 ///     ValueSlotSchema,
 ///     WordSchema,
-///     WordValue,
 /// };
 /// use semver::Version;
 ///
@@ -61,7 +61,7 @@ use crate::AccountError;
 ///     FeltSchema::new_typed(SchemaTypeId::native_felt(), "foo"),
 /// ]);
 ///
-/// let storage_schema = AccountStorageSchema::new([(
+/// let storage_schema = StorageSchema::new([(
 ///     slot_name.clone(),
 ///     StorageSlotSchema::Value(ValueSlotSchema::new(Some("demo slot".into()), word)),
 /// )])?;
@@ -77,7 +77,7 @@ use crate::AccountError;
 /// // Init value keys are derived from slot name: `demo::test_value.foo`.
 /// let value_name = StorageValueName::from_slot_name_with_suffix(&slot_name, "foo")?;
 /// let init_storage_data = InitStorageData::new(
-///     BTreeMap::from([(value_name, WordValue::Atomic("300".into()))]),
+///     BTreeMap::from([(value_name, StorageValue::Parseable("300".into()))]),
 ///     BTreeMap::new(),
 /// )?;
 ///
@@ -104,7 +104,7 @@ pub struct AccountComponentMetadata {
 
     /// Storage schema defining the component's storage layout, defaults, and init-supplied values.
     #[cfg_attr(feature = "std", serde(rename = "storage"))]
-    storage_schema: AccountStorageSchema,
+    storage_schema: StorageSchema,
 }
 
 impl AccountComponentMetadata {
@@ -114,7 +114,7 @@ impl AccountComponentMetadata {
         description: String,
         version: Version,
         targets: BTreeSet<AccountType>,
-        storage_schema: AccountStorageSchema,
+        storage_schema: StorageSchema,
     ) -> Self {
         Self {
             name,
@@ -156,7 +156,7 @@ impl AccountComponentMetadata {
     }
 
     /// Returns the storage schema of the component.
-    pub fn storage_schema(&self) -> &AccountStorageSchema {
+    pub fn storage_schema(&self) -> &StorageSchema {
         &self.storage_schema
     }
 }
@@ -202,14 +202,24 @@ impl Serializable for AccountComponentMetadata {
 
 impl Deserializable for AccountComponentMetadata {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let name = String::read_from(source)?;
+        let description = String::read_from(source)?;
+        if !description.is_ascii() {
+            return Err(DeserializationError::InvalidValue(
+                "description must contain only ASCII characters".to_string(),
+            ));
+        }
+        let version = semver::Version::from_str(&String::read_from(source)?)
+            .map_err(|err: semver::Error| DeserializationError::InvalidValue(err.to_string()))?;
+        let supported_types = BTreeSet::<AccountType>::read_from(source)?;
+        let storage_schema = StorageSchema::read_from(source)?;
+
         Ok(Self {
-            name: String::read_from(source)?,
-            description: String::read_from(source)?,
-            version: semver::Version::from_str(&String::read_from(source)?).map_err(
-                |err: semver::Error| DeserializationError::InvalidValue(err.to_string()),
-            )?,
-            supported_types: BTreeSet::<AccountType>::read_from(source)?,
-            storage_schema: AccountStorageSchema::read_from(source)?,
+            name,
+            description,
+            version,
+            supported_types,
+            storage_schema,
         })
     }
 }

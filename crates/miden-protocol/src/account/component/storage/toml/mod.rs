@@ -8,10 +8,11 @@ use serde::de::Error as _;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use super::super::{
-    AccountStorageSchema,
     FeltSchema,
     MapSlotSchema,
+    StorageSchema,
     StorageSlotSchema,
+    StorageValue,
     StorageValueName,
     ValueSlotSchema,
     WordSchema,
@@ -55,6 +56,12 @@ impl AccountComponentMetadata {
         let raw: RawAccountComponentMetadata = toml::from_str(toml_string)
             .map_err(AccountComponentTemplateError::TomlDeserializationError)?;
 
+        if !raw.description.is_ascii() {
+            return Err(AccountComponentTemplateError::InvalidSchema(
+                "description must contain only ASCII characters".to_string(),
+            ));
+        }
+
         let RawStorageSchema { slots } = raw.storage;
         let mut fields = Vec::with_capacity(slots.len());
 
@@ -62,7 +69,7 @@ impl AccountComponentMetadata {
             fields.push(slot.try_into_slot_schema()?);
         }
 
-        let storage_schema = AccountStorageSchema::new(fields)?;
+        let storage_schema = StorageSchema::new(fields)?;
         Ok(Self::new(
             raw.name,
             raw.description,
@@ -130,7 +137,7 @@ struct RawMapType {
 // ACCOUNT STORAGE SCHEMA SERDE
 // ================================================================================================
 
-impl Serialize for AccountStorageSchema {
+impl Serialize for StorageSchema {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -145,7 +152,7 @@ impl Serialize for AccountStorageSchema {
     }
 }
 
-impl<'de> Deserialize<'de> for AccountStorageSchema {
+impl<'de> Deserialize<'de> for StorageSchema {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
@@ -159,7 +166,7 @@ impl<'de> Deserialize<'de> for AccountStorageSchema {
             fields.push((slot_name, schema));
         }
 
-        AccountStorageSchema::new(fields).map_err(D::Error::custom)
+        StorageSchema::new(fields).map_err(D::Error::custom)
     }
 }
 
@@ -432,7 +439,11 @@ impl RawStorageSlotSchema {
         let mut map = BTreeMap::new();
 
         let parse = |schema: &WordSchema, raw: &WordValue, label: &str| {
-            super::schema::parse_storage_value_with_schema(schema, raw, slot_prefix)
+            super::schema::parse_storage_value_with_schema(
+                schema,
+                &StorageValue::Parseable(raw.clone()),
+                slot_prefix,
+            )
             .map_err(|err| {
                 AccountComponentTemplateError::InvalidSchema(format!(
                     "invalid map `{label}`: {err}"
@@ -466,7 +477,6 @@ impl WordValue {
         label: &str,
     ) -> Result<Word, AccountComponentTemplateError> {
         let word = match self {
-            WordValue::FullyTyped(word) => *word,
             WordValue::Atomic(value) => SCHEMA_TYPE_REGISTRY
                 .try_parse_word(schema_type, value)
                 .map_err(AccountComponentTemplateError::StorageValueParsingError)?,
@@ -483,8 +493,11 @@ impl WordValue {
             },
         };
 
-        WordSchema::new_simple(schema_type.clone())
-            .validate_word_value(slot_prefix, label, word)?;
+        WordSchema::new_simple(schema_type.clone()).validate_word_value(
+            slot_prefix,
+            label,
+            word,
+        )?;
         Ok(word)
     }
 
