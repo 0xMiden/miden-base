@@ -6,7 +6,7 @@ use crate::{Word, word};
 // ================================================================================================
 
 /// Hashes of all dynamically executed kernel procedures.
-pub const KERNEL_PROCEDURES: [Word; 52] = [
+pub const KERNEL_PROCEDURES: [Word; 53] = [
     // account_get_initial_commitment
     word!("0x45c5a29a7420ecd4394c8cffe822f31781cb0a5e30aa2aa179d143df5710f23e"),
     // account_compute_commitment
@@ -89,6 +89,8 @@ pub const KERNEL_PROCEDURES: [Word; 52] = [
     word!("0x1ce137f0c5be72832970e6c818968a789f65b97db34515bfebb767705f28db67"),
     // output_note_add_asset
     word!("0xaf22383e4390f4f15a429768f79aa445f8a535bb21b0807172b9ef2de063d9d1"),
+    // output_note_set_attachment
+    word!("0x7fe944ee171d21e2a60848ecf000df8d3b289d2b57b61d80d720077ccc03c6b1"),
     // tx_get_num_input_notes
     word!("0xfcc186d4b65c584f3126dda1460b01eef977efd76f9e36f972554af28e33c685"),
     // tx_get_input_notes_commitment
