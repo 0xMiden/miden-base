@@ -46,7 +46,7 @@ pub use delta::{
     StorageSlotDelta,
 };
 
-mod storage;
+pub mod storage;
 pub use storage::{
     AccountStorage,
     AccountStorageHeader,

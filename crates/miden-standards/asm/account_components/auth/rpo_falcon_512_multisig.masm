@@ -1,6 +1,6 @@
-# The MASM code of the Multi-Signature ECDSA K256 Keccak Authentication Component.
+# The MASM code of the Multi-Signature RPO Falcon 512 Authentication Component.
 #
-# See the `AuthEcdsaK256KeccakMultisig` Rust type's documentation for more details.
+# See the `AuthRpoFalcon512Multisig` Rust type's documentation for more details.
 
 use miden::protocol::active_account
 use miden::protocol::native_account
@@ -29,19 +29,19 @@ const AUTH_UNAUTHORIZED_EVENT = event("miden::auth::unauthorized")
 # number of approvers are stored as:
 # [default_threshold, num_approvers, 0, 0].
 # The threshold is guaranteed to be less than or equal to num_approvers.
-const THRESHOLD_CONFIG_SLOT = word("miden::standards::auth::ecdsa_k256_keccak_multisig::threshold_config")
+const THRESHOLD_CONFIG_SLOT = word("miden::standards::auth::rpo_falcon512_multisig::threshold_config")
 
 # The slot in this component's storage layout where the public keys map is stored.
 # Map entries: [key_index, 0, 0, 0] => APPROVER_PUBLIC_KEY
-const APPROVER_PUBLIC_KEYS_SLOT = word("miden::standards::auth::ecdsa_k256_keccak_multisig::approver_public_keys")
+const APPROVER_PUBLIC_KEYS_SLOT = word("miden::standards::auth::rpo_falcon512_multisig::approver_public_keys")
 
 # The slot in this component's storage layout where executed transactions are stored.
 # Map entries: transaction_message => [is_executed, 0, 0, 0]
-const EXECUTED_TXS_SLOT = word("miden::standards::auth::ecdsa_k256_keccak_multisig::executed_transactions")
+const EXECUTED_TXS_SLOT = word("miden::standards::auth::rpo_falcon512_multisig::executed_transactions")
 
 # The slot in this component's storage layout where procedure thresholds are stored.
 # Map entries: PROC_ROOT => [proc_threshold, 0, 0, 0]
-const PROC_THRESHOLD_ROOTS_SLOT = word("miden::standards::auth::ecdsa_k256_keccak_multisig::procedure_thresholds")
+const PROC_THRESHOLD_ROOTS_SLOT = word("miden::standards::auth::rpo_falcon512_multisig::procedure_thresholds")
 
 # Executed Transaction Flag Constant
 const IS_EXECUTED_FLAG = [1, 0, 0, 0]
@@ -74,9 +74,9 @@ proc assert_new_tx(msg: BeWord)
 
     # Set the key value pair in the map to mark transaction as executed
     exec.native_account::set_map_item
-    # => [OLD_MAP_ROOT, [0, 0, 0, is_executed]]
+    # => [[0, 0, 0, is_executed]]
 
-    dropw drop drop drop
+    drop drop drop
     # => [is_executed]
 
     assertz.err=ERR_TX_ALREADY_EXECUTED
@@ -119,9 +119,9 @@ proc cleanup_pubkey_mapping(init_num_of_approvers: u32, new_num_of_approvers: u3
         # => [pub_key_slot_prefix, pub_key_slot_suffix, [0, 0, 0, i-1], EMPTY_WORD, i-1, new_num_of_approvers]
 
         exec.native_account::set_map_item
-        # => [OLD_MAP_ROOT, OLD_MAP_VALUE, i-1, new_num_of_approvers]
+        # => [OLD_VALUE, i-1, new_num_of_approvers]
 
-        dropw dropw
+        dropw
         # => [i-1, new_num_of_approvers]
 
         dup.1 dup.1
@@ -210,9 +210,9 @@ pub proc update_signers_and_threshold(multisig_config_hash: BeWord)
         # => [pub_key_slot_prefix, pub_key_slot_suffix, [0, 0, 0, i-1], PUB_KEY, i-1, pad(12)]
 
         exec.native_account::set_map_item
-        # => [OLD_MAP_ROOT, OLD_MAP_VALUE, i-1, pad(12)]
+        # => [OLD_VALUE, i-1, pad(12)]
 
-        dropw dropw
+        dropw
         # => [i-1, pad(12)]
 
         dup neq.0
@@ -324,7 +324,7 @@ proc compute_transaction_threshold(default_threshold: u32) -> u32
     # => [effective_transaction_threshold]
 end
 
-#! Authenticate a transaction using the ECDSA signature scheme with multi-signature support.
+#! Authenticate a transaction using the Falcon signature scheme with multi-signature support.
 #!
 #! This procedure implements multi-signature authentication by:
 #! 1. Computing the transaction summary message that needs to be signed
@@ -356,7 +356,7 @@ end
 #!
 #! Invocation: call
 @locals(1)
-pub proc auth_tx_ecdsa_k256_keccak_multisig(salt: BeWord)
+pub proc auth_tx_rpo_falcon512_multisig(salt: BeWord)
     exec.native_account::incr_nonce drop
     # => [SALT]
 
@@ -390,7 +390,7 @@ pub proc auth_tx_ecdsa_k256_keccak_multisig(salt: BeWord)
     push.APPROVER_PUBLIC_KEYS_SLOT[0..2]
     # => [pub_key_slot_prefix, pub_key_slot_suffix, num_of_approvers, TX_SUMMARY_COMMITMENT, default_threshold]
 
-    exec.::miden::standards::auth::ecdsa_k256_keccak::verify_signatures
+    exec.::miden::standards::auth::rpo_falcon512::verify_signatures
     # => [num_verified_signatures, TX_SUMMARY_COMMITMENT, default_threshold]
 
     # ------ Checking threshold is >= num_verified_signatures ------

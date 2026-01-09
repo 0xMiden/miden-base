@@ -30,7 +30,8 @@ jobs:
         with:
           tool: cargo-binstall
       - name: Install cargo-msrv
-        run: cargo binstall --no-confirm cargo-msrv
+        run: cargo binstall --no-confirm --force cargo-msrv
       - name: Check MSRV for each workspace member
         run: |
+          export PATH="$HOME/.cargo/bin:$PATH"
           ./scripts/check-msrv.sh

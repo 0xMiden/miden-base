@@ -499,13 +499,13 @@ where
                 TransactionEvent::AccountStorageAfterSetMapItem {
                     slot_name,
                     key,
-                    old_map_value: prev_map_value,
-                    new_map_value,
+                    old_value: prev_map_value,
+                    new_value,
                 } => self.base_host.on_account_storage_after_set_map_item(
                     slot_name,
                     key,
                     prev_map_value,
-                    new_map_value,
+                    new_value,
                 ),
 
                 TransactionEvent::AccountVaultBeforeAssetAccess {

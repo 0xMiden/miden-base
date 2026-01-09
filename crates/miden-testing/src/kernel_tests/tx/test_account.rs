@@ -700,7 +700,7 @@ async fn test_set_item() -> anyhow::Result<()> {
 
             exec.account::get_item
             push.{new_value}
-            assert_eqw
+            assert_eqw.err="new value did not match"
         end
         "#,
     );
@@ -744,18 +744,18 @@ async fn test_set_map_item() -> miette::Result<()> {
 
             # double check that the storage slot is indeed the new map
             push.SLOT_NAME[0..2]
-            # => [slot_id_prefix, slot_id_suffix, OLD_VALUE, OLD_MAP_ROOT]
+            # => [slot_id_prefix, slot_id_suffix, OLD_VALUE]
 
             # pad the stack
             repeat.14 push.0 movdn.2 end
-            # => [slot_id_prefix, slot_id_suffix, pad(14), OLD_VALUE, OLD_MAP_ROOT]
+            # => [slot_id_prefix, slot_id_suffix, pad(14), OLD_VALUE]
 
             call.mock_account::get_item
-            # => [MAP_ROOT, pad(12), OLD_VALUE, OLD_MAP_ROOT]
+            # => [MAP_ROOT, pad(12), OLD_VALUE]
 
             # truncate the stack
             repeat.3 swapw dropw end
-            # => [MAP_ROOT, OLD_VALUE, OLD_MAP_ROOT]
+            # => [MAP_ROOT, OLD_VALUE]
 
             exec.sys::truncate_stack
         end
@@ -775,10 +775,15 @@ async fn test_set_map_item() -> miette::Result<()> {
         exec_output.get_stack_word_be(0),
         "get_item should return the updated root",
     );
+
+    let old_value_for_key = match slot.content() {
+        StorageSlotContent::Map(original_map) => original_map.get(&new_key),
+        _ => panic!("expected map"),
+    };
     assert_eq!(
-        slot.content().value(),
+        old_value_for_key,
         exec_output.get_stack_word_be(4),
-        "get_item must return the new updated value",
+        "set_map_item must return the old value for the key (empty word for new key)",
     );
 
     Ok(())
@@ -1004,7 +1009,7 @@ async fn test_get_vault_root() -> anyhow::Result<()> {
 
     // get the initial vault root
     let code = format!(
-        "
+        r#"
         use miden::protocol::active_account
         use $kernel::prologue
 
@@ -1014,9 +1019,9 @@ async fn test_get_vault_root() -> anyhow::Result<()> {
             # get the initial vault root
             exec.active_account::get_initial_vault_root
             push.{expected_vault_root}
-            assert_eqw
+            assert_eqw.err="initial vault root mismatch"
         end
-        ",
+        "#,
         expected_vault_root = &account.vault().root(),
     );
     tx_context.execute_code(&code).await?;
@@ -1041,7 +1046,7 @@ async fn test_get_vault_root() -> anyhow::Result<()> {
             # get the current vault root
             exec.active_account::get_vault_root
             push.{expected_vault_root}
-            assert_eqw.err="actual vault root is not equal to the expected one"
+            assert_eqw.err="vault root mismatch"
         end
         "#,
         fungible_asset = Word::from(&fungible_asset),
