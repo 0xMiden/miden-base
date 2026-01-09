@@ -45,10 +45,10 @@ use crate::AccountError;
 ///     InitStorageData,
 ///     SchemaTypeId,
 ///     StorageSlotSchema,
-///     StorageValue,
 ///     StorageValueName,
 ///     ValueSlotSchema,
 ///     WordSchema,
+///     WordValue,
 /// };
 /// use semver::Version;
 ///
@@ -77,7 +77,7 @@ use crate::AccountError;
 /// // Init value keys are derived from slot name: `demo::test_value.foo`.
 /// let value_name = StorageValueName::from_slot_name_with_suffix(&slot_name, "foo")?;
 /// let init_storage_data = InitStorageData::new(
-///     BTreeMap::from([(value_name, StorageValue::Parseable("300".into()))]),
+///     BTreeMap::from([(value_name, WordValue::Atomic("300".into()))]),
 ///     BTreeMap::new(),
 /// )?;
 ///

@@ -2,25 +2,61 @@ use alloc::collections::BTreeMap;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use super::StorageValueName;
 use crate::account::StorageSlotName;
 use crate::{Felt, FieldElement, Word};
 
-/// A raw word value provided via [`InitStorageData`].
+/// A word value provided via [`InitStorageData`].
 ///
 /// This is used for defining specific values in relation to a component's schema, where each value
-/// is supplied as either an atomic string (e.g. `"0x1234"`, `"16"`, `"BTC"`) or an array of 4 field
-/// elements.
+/// is supplied as either a fully-typed word, an atomic string (e.g. `"0x1234"`, `"16"`, `"BTC"`),
+/// or an array of 4 field elements.
 #[derive(Clone, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "std", derive(serde::Deserialize, serde::Serialize))]
-#[cfg_attr(feature = "std", serde(untagged))]
 pub enum WordValue {
+    /// A fully-typed word value.
+    FullyTyped(Word),
     /// Represents a single word value, given by a single string input.
     Atomic(String),
     /// Represents a word through four string-encoded field elements.
     Elements([String; 4]),
+}
+
+#[cfg(feature = "std")]
+impl Serialize for WordValue {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self {
+            WordValue::Atomic(value) => serializer.serialize_str(value),
+            WordValue::Elements(elements) => elements.serialize(serializer),
+            WordValue::FullyTyped(word) => serializer.serialize_str(&word.to_string()),
+        }
+    }
+}
+
+#[cfg(feature = "std")]
+impl<'de> Deserialize<'de> for WordValue {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum RawWordValue {
+            Atomic(String),
+            Elements([String; 4]),
+        }
+
+        match RawWordValue::deserialize(deserializer)? {
+            RawWordValue::Atomic(value) => Ok(WordValue::Atomic(value)),
+            RawWordValue::Elements(elements) => Ok(WordValue::Elements(elements)),
+        }
+    }
 }
 
 impl From<String> for WordValue {
@@ -35,55 +71,22 @@ impl From<&str> for WordValue {
     }
 }
 
-// STORAGE VALUE
-// ====================================================================================================
-
-/// Represents a storage value supplied at initialization time.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum StorageValue {
-    /// A fully-typed word value.
-    Word(Word),
-    /// A raw value which will be parsed into a word using the slot schema.
-    Parseable(WordValue),
-}
-
-// CONVERSIONS
-// ====================================================================================================
-
-impl From<Word> for StorageValue {
+impl From<Word> for WordValue {
     fn from(value: Word) -> Self {
-        StorageValue::Word(value)
+        WordValue::FullyTyped(value)
     }
 }
 
-impl From<WordValue> for StorageValue {
-    fn from(value: WordValue) -> Self {
-        StorageValue::Parseable(value)
-    }
-}
-
-impl From<String> for StorageValue {
-    fn from(value: String) -> Self {
-        StorageValue::Parseable(WordValue::Atomic(value))
-    }
-}
-
-impl From<&str> for StorageValue {
-    fn from(value: &str) -> Self {
-        StorageValue::Parseable(WordValue::Atomic(String::from(value)))
-    }
-}
-
-impl From<Felt> for StorageValue {
-    /// Converts a [`Felt`] to a [`StorageValue`] as a Word in the form `[0, 0, 0, felt]`.
+impl From<Felt> for WordValue {
+    /// Converts a [`Felt`] to a [`WordValue`] as a Word in the form `[0, 0, 0, felt]`.
     fn from(value: Felt) -> Self {
-        StorageValue::Word(Word::from([Felt::ZERO, Felt::ZERO, Felt::ZERO, value]))
+        WordValue::FullyTyped(Word::from([Felt::ZERO, Felt::ZERO, Felt::ZERO, value]))
     }
 }
 
-impl From<[Felt; 4]> for StorageValue {
+impl From<[Felt; 4]> for WordValue {
     fn from(value: [Felt; 4]) -> Self {
-        StorageValue::Word(Word::from(value))
+        WordValue::FullyTyped(Word::from(value))
     }
 }
 
@@ -98,9 +101,9 @@ impl From<[Felt; 4]> for StorageValue {
 #[derive(Clone, Debug, Default)]
 pub struct InitStorageData {
     /// A mapping of storage value names to their init values.
-    value_entries: BTreeMap<StorageValueName, StorageValue>,
+    value_entries: BTreeMap<StorageValueName, WordValue>,
     /// A mapping of storage map slot names to their init key/value entries.
-    map_entries: BTreeMap<StorageSlotName, Vec<(StorageValue, StorageValue)>>,
+    map_entries: BTreeMap<StorageSlotName, Vec<(WordValue, WordValue)>>,
 }
 
 impl InitStorageData {
@@ -113,8 +116,8 @@ impl InitStorageData {
     /// - A slot has both value entries and map entries
     /// - A slot has both a slot-level value and field values
     pub fn new(
-        value_entries: BTreeMap<StorageValueName, StorageValue>,
-        map_entries: BTreeMap<StorageSlotName, Vec<(StorageValue, StorageValue)>>,
+        value_entries: BTreeMap<StorageValueName, WordValue>,
+        map_entries: BTreeMap<StorageSlotName, Vec<(WordValue, WordValue)>>,
     ) -> Result<Self, InitStorageDataError> {
         // Check for conflicts between value entries and map entries
         for slot_name in map_entries.keys() {
@@ -142,22 +145,22 @@ impl InitStorageData {
     }
 
     /// Returns a reference to the underlying init values map.
-    pub fn values(&self) -> &BTreeMap<StorageValueName, StorageValue> {
+    pub fn values(&self) -> &BTreeMap<StorageValueName, WordValue> {
         &self.value_entries
     }
 
     /// Returns a reference to the underlying init map entries.
-    pub fn maps(&self) -> &BTreeMap<StorageSlotName, Vec<(StorageValue, StorageValue)>> {
+    pub fn maps(&self) -> &BTreeMap<StorageSlotName, Vec<(WordValue, WordValue)>> {
         &self.map_entries
     }
 
     /// Returns a reference to the stored init value for the given name.
-    pub fn value_entry(&self, name: &StorageValueName) -> Option<&StorageValue> {
+    pub fn value_entry(&self, name: &StorageValueName) -> Option<&WordValue> {
         self.value_entries.get(name)
     }
 
     /// Returns a reference to the stored init value for a full slot name.
-    pub fn slot_value_entry(&self, slot_name: &StorageSlotName) -> Option<&StorageValue> {
+    pub fn slot_value_entry(&self, slot_name: &StorageSlotName) -> Option<&WordValue> {
         let name = StorageValueName::from_slot_name(slot_name);
         self.value_entries.get(&name)
     }
@@ -166,7 +169,7 @@ impl InitStorageData {
     pub fn map_entries(
         &self,
         slot_name: &StorageSlotName,
-    ) -> Option<&Vec<(StorageValue, StorageValue)>> {
+    ) -> Option<&Vec<(WordValue, WordValue)>> {
         self.map_entries.get(slot_name)
     }
 
@@ -196,17 +199,17 @@ impl InitStorageData {
 
     /// Inserts a value entry, returning an error on duplicate or conflicting keys.
     ///
-    /// The value can be any type that implements `Into<StorageValue>`, e.g.:
+    /// The value can be any type that implements `Into<WordValue>`, e.g.:
     ///
     /// - `Word`: a fully-typed word value
     /// - `[Felt; 4]`: converted to a Word
     /// - `Felt`: converted to `[0, 0, 0, felt]`
     /// - `String` or `&str`: a parseable string value
-    /// - `WordValue`: a raw word value (atomic or elements)
+    /// - `WordValue`: a raw or fully-typed word value
     pub fn insert_value(
         &mut self,
         name: StorageValueName,
-        value: impl Into<StorageValue>,
+        value: impl Into<WordValue>,
     ) -> Result<(), InitStorageDataError> {
         if self.value_entries.contains_key(&name) {
             return Err(InitStorageDataError::DuplicateKey(name.to_string()));
@@ -222,7 +225,7 @@ impl InitStorageData {
     pub fn set_map_values(
         &mut self,
         slot_name: StorageSlotName,
-        entries: Vec<(StorageValue, StorageValue)>,
+        entries: Vec<(WordValue, WordValue)>,
     ) -> Result<(), InitStorageDataError> {
         if self.has_value_entries_for_slot(&slot_name) {
             return Err(InitStorageDataError::ConflictingEntries(slot_name.as_str().into()));
@@ -237,8 +240,8 @@ impl InitStorageData {
     pub fn insert_map_entry(
         &mut self,
         slot_name: StorageSlotName,
-        key: impl Into<StorageValue>,
-        value: impl Into<StorageValue>,
+        key: impl Into<WordValue>,
+        value: impl Into<WordValue>,
     ) {
         self.map_entries.entry(slot_name).or_default().push((key.into(), value.into()));
     }

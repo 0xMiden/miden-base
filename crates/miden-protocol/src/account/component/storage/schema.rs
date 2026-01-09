@@ -7,7 +7,7 @@ use miden_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
 use miden_processor::DeserializationError;
 
 use super::type_registry::{SCHEMA_TYPE_REGISTRY, SchemaRequirement, SchemaTypeId};
-use super::{InitStorageData, StorageValue, StorageValueName, WordValue};
+use super::{InitStorageData, StorageValueName, WordValue};
 use crate::account::storage::is_reserved_slot_name;
 use crate::account::{StorageMap, StorageSlot, StorageSlotName};
 use crate::errors::AccountComponentTemplateError;
@@ -617,19 +617,19 @@ impl FeltSchema {
             && let Some(raw_value) = init_storage_data.value_entry(&value_name)
         {
             match raw_value {
-                StorageValue::Parseable(WordValue::Atomic(raw)) => {
+                WordValue::Atomic(raw) => {
                     let felt = SCHEMA_TYPE_REGISTRY
                         .try_parse_felt(&self.r#type, raw)
                         .map_err(AccountComponentTemplateError::StorageValueParsingError)?;
                     return Ok(felt);
                 },
-                StorageValue::Parseable(WordValue::Elements(_)) => {
+                WordValue::Elements(_) => {
                     return Err(AccountComponentTemplateError::InvalidInitStorageValue(
                         value_name,
                         "expected an atomic value, got a 4-element array".into(),
                     ));
                 },
-                StorageValue::Word(_) => {
+                WordValue::FullyTyped(_) => {
                     return Err(AccountComponentTemplateError::InvalidInitStorageValue(
                         value_name,
                         "expected an atomic value, got a word".into(),
@@ -869,29 +869,25 @@ impl MapSlotSchema {
 
 pub(super) fn parse_storage_value_with_schema(
     schema: &WordSchema,
-    raw_value: &StorageValue,
+    raw_value: &WordValue,
     slot_prefix: &StorageValueName,
 ) -> Result<Word, AccountComponentTemplateError> {
-    let word = match raw_value {
-        StorageValue::Word(word) => *word,
-        StorageValue::Parseable(raw_value) => match schema {
-            WordSchema::Simple { r#type, .. } => {
-                parse_simple_word_value(r#type, raw_value, slot_prefix)?
-            },
-            WordSchema::Composite { value } => match raw_value {
-                WordValue::Elements(elements) => {
-                    parse_composite_elements(value, elements, slot_prefix)?
-                },
-                WordValue::Atomic(value) => SCHEMA_TYPE_REGISTRY
-                    .try_parse_word(&SchemaTypeId::native_word(), value)
-                    .map_err(|err| {
-                        AccountComponentTemplateError::InvalidInitStorageValue(
-                            slot_prefix.clone(),
-                            format!("failed to parse value as `word`: {err}"),
-                        )
-                    })?,
-            },
+    let word = match (schema, raw_value) {
+        (_, WordValue::FullyTyped(word)) => *word,
+        (WordSchema::Simple { r#type, .. }, raw_value) => {
+            parse_simple_word_value(r#type, raw_value, slot_prefix)?
         },
+        (WordSchema::Composite { value }, WordValue::Elements(elements)) => {
+            parse_composite_elements(value, elements, slot_prefix)?
+        },
+        (WordSchema::Composite { .. }, WordValue::Atomic(value)) => SCHEMA_TYPE_REGISTRY
+            .try_parse_word(&SchemaTypeId::native_word(), value)
+            .map_err(|err| {
+                AccountComponentTemplateError::InvalidInitStorageValue(
+                    slot_prefix.clone(),
+                    format!("failed to parse value as `word`: {err}"),
+                )
+            })?,
     };
 
     schema.validate_word_value(slot_prefix, "value", word)?;
@@ -928,6 +924,7 @@ fn parse_simple_word_value(
             let felts: [Felt; 4] = felts.try_into().expect("length is 4");
             Ok(Word::from(felts))
         },
+        WordValue::FullyTyped(word) => Ok(*word),
     }
 }
 
@@ -1059,7 +1056,7 @@ mod tests {
         let init_data = InitStorageData::new(
             BTreeMap::from([(
                 StorageValueName::from_slot_name(&slot_name),
-                StorageValue::Word(expected),
+                WordValue::FullyTyped(expected),
             )]),
             BTreeMap::new(),
         )
@@ -1077,7 +1074,7 @@ mod tests {
         let init_data = InitStorageData::new(
             BTreeMap::from([(
                 StorageValueName::from_slot_name(&slot_name),
-                StorageValue::Parseable("6".into()),
+                WordValue::Atomic("6".into()),
             )]),
             BTreeMap::new(),
         )
@@ -1101,7 +1098,7 @@ mod tests {
         let init_data = InitStorageData::new(
             BTreeMap::from([(
                 StorageValueName::from_slot_name_with_suffix(&slot_name, "a").unwrap(),
-                StorageValue::Parseable("1".into()),
+                WordValue::Atomic("1".into()),
             )]),
             BTreeMap::new(),
         )
@@ -1118,18 +1115,18 @@ mod tests {
         let slot_name: StorageSlotName = "demo::map".parse().unwrap();
 
         let entries = vec![(
-            StorageValue::Parseable(WordValue::Elements([
+            WordValue::Elements([
                 "1".into(),
                 "0".into(),
                 "0".into(),
                 "0".into(),
-            ])),
-            StorageValue::Parseable(WordValue::Elements([
+            ]),
+            WordValue::Elements([
                 "10".into(),
                 "11".into(),
                 "12".into(),
                 "13".into(),
-            ])),
+            ]),
         )];
         let init_data = InitStorageData::new(
             BTreeMap::new(),
