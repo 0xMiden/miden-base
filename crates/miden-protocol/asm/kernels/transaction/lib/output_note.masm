@@ -21,7 +21,7 @@ const ATTACHMENT_CONTENT_TYPE_COMMITMENT=2
 # The default value of the felt at index 3 in the note metadata header when a new note is created.
 # All zeros sets the attachment content type to None and the user-defined attachment type to
 # "untyped".
-const ATTACHMENT_DEFAULT_TYPES=0
+const ATTACHMENT_DEFAULT_TYPE_INFO=0
 
 # ERRORS
 # =================================================================================================
@@ -301,8 +301,8 @@ pub proc build_metadata_header
     # --------------------------------------------------------------------------------------------
 
     movup.2
-    push.ATTACHMENT_DEFAULT_TYPES
-    # => [attachment_types, tag, sender_id_prefix, sender_id_suffix_and_note_type]
+    push.ATTACHMENT_DEFAULT_TYPE_INFO
+    # => [attachment_type_info, tag, sender_id_prefix, sender_id_suffix_and_note_type]
     # => [NOTE_METADATA_HEADER]
 end
 

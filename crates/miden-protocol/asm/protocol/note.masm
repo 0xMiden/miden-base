@@ -201,9 +201,9 @@ end
 #! - sender_{prefix,suffix} are the prefix and suffix felts of the sender ID of the note which
 #!   metadata was provided.
 pub proc extract_sender_from_metadata
-    # => [attachment_types, tag, sender_id_prefix, sender_id_suffix_and_note_type]
+    # => [attachment_type_info, tag, sender_id_prefix, sender_id_suffix_and_note_type]
 
-    # drop attachment types and tag
+    # drop attachment type info and tag
     drop drop swap
     # => [sender_id_suffix_and_note_type, sender_id_prefix]
 
