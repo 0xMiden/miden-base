@@ -1,5 +1,5 @@
-use alloc::string::String;
-use alloc::vec::Vec;
+use alloc::format;
+use alloc::string::{String, ToString};
 use core::fmt;
 
 use miden_core::FieldElement;
@@ -55,14 +55,20 @@ impl EthAddress {
     ///
     /// # Errors
     ///
-    /// Returns an error if the hex string is invalid or not 40 characters (20 bytes).
+    /// Returns an error if the hex string is invalid or the hex part is not exactly 40 characters.
     pub fn from_hex(hex_str: &str) -> Result<Self, AddrConvError> {
-        let s = hex_str.strip_prefix("0x").unwrap_or(hex_str);
-        if s.len() != 40 {
+        let hex_part = hex_str.strip_prefix("0x").unwrap_or(hex_str);
+        if hex_part.len() != 40 {
             return Err(AddrConvError::InvalidHexLength);
         }
 
-        let bytes: [u8; 20] = hex_to_bytes(s)?;
+        let prefixed_hex = if hex_str.starts_with("0x") {
+            hex_str.to_string()
+        } else {
+            format!("0x{}", hex_str)
+        };
+
+        let bytes: [u8; 20] = hex_to_bytes(&prefixed_hex)?;
         Ok(Self(bytes))
     }
 
@@ -78,9 +84,17 @@ impl EthAddress {
     /// as a valid Ethereum address).
     pub fn from_account_id(account_id: AccountId) -> Result<Self, AddrConvError> {
         let felts: [Felt; 2] = account_id.into();
-        let u64x5 = [felts[0].as_int(), felts[1].as_int(), 0, 0, 0];
-        let bytes = Self::u64x5_to_bytes20(u64x5)?;
-        Ok(Self(bytes))
+        let words = [felts[0].as_int(), felts[1].as_int()];
+
+        let mut out = [0u8; 20];
+        let w0 = words[0].to_be_bytes();
+        let w1 = words[1].to_be_bytes();
+
+        out[0..4].copy_from_slice(&[0, 0, 0, 0]);
+        out[4..12].copy_from_slice(&w0);
+        out[12..20].copy_from_slice(&w1);
+
+        Ok(Self(out))
     }
 
     // CONVERSIONS
@@ -96,24 +110,10 @@ impl EthAddress {
         self.0
     }
 
-    /// Converts the Ethereum address into a vector of 5 [`Felt`] values.
-    ///
-    /// Each felt represents 4 bytes of the address in big-endian format.
-    pub fn to_felts(&self) -> Vec<Felt> {
-        let mut result = Vec::with_capacity(5);
-        for i in 0..5 {
-            let start = i * 4;
-            let chunk = &self.0[start..start + 4];
-            let value = u32::from_be_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
-            result.push(Felt::new(value as u64));
-        }
-        result
-    }
-
     /// Converts the Ethereum address into an array of 5 [`Felt`] values.
     ///
     /// Each felt represents 4 bytes of the address in big-endian format.
-    pub fn to_felt_array(&self) -> [Felt; 5] {
+    pub fn to_elements(&self) -> [Felt; 5] {
         let mut result = [Felt::ZERO; 5];
         for (i, felt) in result.iter_mut().enumerate() {
             let start = i * 4;
@@ -142,32 +142,11 @@ impl EthAddress {
 
     /// Converts the Ethereum address to a hex string (lowercase, 0x-prefixed).
     pub fn to_hex(&self) -> String {
-        let mut s = String::with_capacity(42);
-        s.push_str("0x");
-        s.push_str(&bytes_to_hex_string(self.0));
-        s
+        bytes_to_hex_string(self.0)
     }
 
     // HELPER FUNCTIONS
     // --------------------------------------------------------------------------------------------
-
-    /// Convert `[u64; 5]` -> `[u8; 20]` (EVM address bytes).
-    /// Layout: 4 zero bytes prefix + word0(be) + word1(be)
-    fn u64x5_to_bytes20(words: [u64; 5]) -> Result<[u8; 20], AddrConvError> {
-        if words[2] != 0 || words[3] != 0 || words[4] != 0 {
-            return Err(AddrConvError::NonZeroWordPadding);
-        }
-
-        let mut out = [0u8; 20];
-        let w0 = words[0].to_be_bytes();
-        let w1 = words[1].to_be_bytes();
-
-        out[0..4].copy_from_slice(&[0, 0, 0, 0]);
-        out[4..12].copy_from_slice(&w0);
-        out[12..20].copy_from_slice(&w1);
-
-        Ok(out)
-    }
 
     /// Convert `[u8; 20]` -> `[u64; 5]` by extracting the last 16 bytes.
     /// Requires the first 4 bytes be zero.

@@ -83,7 +83,7 @@ async fn test_bridge_out_consumes_b2agg_note() -> anyhow::Result<()> {
     let destination_network = Felt::new(1); // Example network ID
     let destination_address = "0x1234567890abcdef1122334455667788990011aa";
     let eth_address = EthAddress::from_hex(destination_address).expect("Valid Ethereum address");
-    let address_felts = eth_address.to_felts();
+    let address_felts = eth_address.to_elements().to_vec();
 
     // Combine network ID and address felts into note inputs (6 felts total)
     let mut input_felts = vec![destination_network];
@@ -241,7 +241,7 @@ async fn test_b2agg_note_reclaim_scenario() -> anyhow::Result<()> {
     let destination_network = Felt::new(1);
     let destination_address = "0x1234567890abcdef1122334455667788990011aa";
     let eth_address = EthAddress::from_hex(destination_address).expect("Valid Ethereum address");
-    let address_felts = eth_address.to_felts();
+    let address_felts = eth_address.to_elements().to_vec();
 
     // Combine network ID and address felts into note inputs (6 felts total)
     let mut input_felts = vec![destination_network];

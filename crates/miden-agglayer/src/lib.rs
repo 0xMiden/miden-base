@@ -425,7 +425,8 @@ pub fn create_claim_note<R: FeltRng>(params: ClaimNoteParams<'_, R>) -> Result<N
     claim_inputs.push(params.origin_network);
 
     // originTokenAddress (address as 5 u32 felts)
-    let origin_token_address_felts = EthAddress::new(*params.origin_token_address).to_felts();
+    let origin_token_address_felts =
+        EthAddress::new(*params.origin_token_address).to_elements().to_vec();
     claim_inputs.extend(origin_token_address_felts);
 
     // destinationNetwork (uint32 as Felt)

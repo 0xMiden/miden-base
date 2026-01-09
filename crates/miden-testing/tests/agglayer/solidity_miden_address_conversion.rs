@@ -96,7 +96,7 @@ async fn test_address_bytes20_hash_in_masm() -> anyhow::Result<()> {
         .map_err(|e| anyhow::anyhow!("Failed to convert AccountId to Ethereum address: {:?}", e))?;
 
     // Convert to field elements for MASM
-    let address_felts = eth_address.to_felts();
+    let address_felts = eth_address.to_elements().to_vec();
     let addr_u32s: Vec<u32> = address_felts.iter().map(|f| f.as_int() as u32).collect();
 
     // Compute expected Keccak256 hash using the same byte representation as MASM
@@ -162,7 +162,7 @@ async fn test_ethereum_address_to_account_id_in_masm() -> anyhow::Result<()> {
         })?;
 
         // 2) Convert to address[5] field elements for MASM (big-endian u32 chunks)
-        let address_felts = eth_address.to_felts();
+        let address_felts = eth_address.to_elements().to_vec();
         let addr_u32s: Vec<u32> = address_felts.iter().map(|f| f.as_int() as u32).collect();
 
         // 4) Get expected AccountId as [prefix, suffix]
