@@ -1,7 +1,6 @@
 extern crate alloc;
 
-use miden_agglayer::utils::ethereum_address_string_to_felts;
-use miden_agglayer::{b2agg_script, bridge_out_component};
+use miden_agglayer::{EthAddress, b2agg_script, bridge_out_component};
 use miden_protocol::account::{
     Account,
     AccountId,
@@ -83,8 +82,8 @@ async fn test_bridge_out_consumes_b2agg_note() -> anyhow::Result<()> {
     // destination_address: 20 bytes (Ethereum address) split into 5 u32 values
     let destination_network = Felt::new(1); // Example network ID
     let destination_address = "0x1234567890abcdef1122334455667788990011aa";
-    let address_felts =
-        ethereum_address_string_to_felts(destination_address).expect("Valid Ethereum address");
+    let eth_address = EthAddress::from_hex(destination_address).expect("Valid Ethereum address");
+    let address_felts = eth_address.to_felts();
 
     // Combine network ID and address felts into note inputs (6 felts total)
     let mut input_felts = vec![destination_network];
@@ -241,8 +240,8 @@ async fn test_b2agg_note_reclaim_scenario() -> anyhow::Result<()> {
     // Create note inputs with destination network and address
     let destination_network = Felt::new(1);
     let destination_address = "0x1234567890abcdef1122334455667788990011aa";
-    let address_felts =
-        ethereum_address_string_to_felts(destination_address).expect("Valid Ethereum address");
+    let eth_address = EthAddress::from_hex(destination_address).expect("Valid Ethereum address");
+    let address_felts = eth_address.to_felts();
 
     // Combine network ID and address felts into note inputs (6 felts total)
     let mut input_felts = vec![destination_network];
