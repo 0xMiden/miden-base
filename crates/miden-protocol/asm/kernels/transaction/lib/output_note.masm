@@ -3,6 +3,7 @@ use $kernel::memory
 use $kernel::note
 use $kernel::asset
 use $kernel::constants::MAX_OUTPUT_NOTES_PER_TX
+use miden::core::mem
 use miden::core::word
 
 # CONSTANTS
@@ -31,6 +32,12 @@ const ERR_TX_NUMBER_OF_OUTPUT_NOTES_EXCEEDS_LIMIT="number of output notes in the
 const ERR_NOTE_INVALID_TYPE="invalid note type"
 
 const ERR_OUTPUT_NOTE_INDEX_OUT_OF_BOUNDS="requested output note index should be less than the total number of created output notes"
+
+const ERR_OUTPUT_NOTE_INVALID_ATTACHMENT_TYPES="attachment types must fit into u32s"
+
+const ERR_OUTPUT_NOTE_UNKNOWN_ATTACHMENT_CONTENT_TYPE="attachment content type variant must be between 0 and 2"
+
+const ERR_OUTPUT_NOTE_ATTACHMENT_NONE_MUST_BE_EMPTY_WORD="attachment of content type none must be set to an empty word"
 
 const ERR_NOTE_INVALID_INDEX="failed to find note at the given index; index must be within [0, num_of_notes]"
 
@@ -185,6 +192,7 @@ end
 #! - ASSET can be a fungible or non-fungible asset.
 #!
 #! Panics if:
+#! - the note index points to a non-existent output note.
 #! - the ASSET is malformed (e.g., invalid faucet ID).
 #! - the max amount of fungible assets is exceeded.
 #! - the non-fungible asset already exists in the note.
@@ -236,6 +244,48 @@ pub proc add_asset
 
     # drop the note index
     drop
+    # => []
+end
+
+#! Sets the attachment of the note specified by the index.
+#!
+#! Inputs:  [note_idx, attachment_content_type, attachment_type, ATTACHMENT]
+#! Outputs: []
+#!
+#! Where:
+#! - note_idx is the index of the note on which the attachment is set.
+#! - attachment_content_type is the content type of the attachment.
+#! - attachment_type is the user-defined type of the attachment.
+#! - ATTACHMENT is the attachment to be set.
+#!
+#! Panics if:
+#! - the note index points to a non-existent output note.
+#! - any of the attachment types does not fit into a u32.
+#! - the attachment content type is an unknown variant.
+pub proc set_attachment
+    dup exec.memory::get_num_output_notes lte assert.err=ERR_NOTE_INVALID_INDEX
+    # => [note_idx, attachment_content_type, attachment_type, ATTACHMENT]
+
+    exec.memory::get_output_note_ptr dup
+    # => [note_ptr, note_ptr, attachment_content_type, attachment_type, ATTACHMENT]
+
+    movdn.3 movdn.3
+    # => [attachment_content_type, attachment_type, note_ptr, note_ptr, ATTACHMENT]
+
+    exec.validate_attachment_type_info
+    # => [attachment_content_type, attachment_type, note_ptr, note_ptr, ATTACHMENT]
+
+    dupw.1 dup.4
+    # => [attachment_content_type, ATTACHMENT, attachment_content_type, attachment_type, note_ptr, note_ptr, ATTACHMENT]
+
+    # run validate_attachment after we have validated the attachment content type.
+    exec.validate_attachment
+    # => [attachment_content_type, attachment_type, note_ptr, note_ptr, ATTACHMENT]
+
+    exec.set_attachment_type_info
+    # => [note_ptr, ATTACHMENT]
+
+    exec.memory::set_output_note_attachment
     # => []
 end
 
@@ -304,6 +354,106 @@ pub proc build_metadata_header
     push.ATTACHMENT_DEFAULT_TYPE_INFO
     # => [attachment_type_info, tag, sender_id_prefix, sender_id_suffix_and_note_type]
     # => [NOTE_METADATA_HEADER]
+end
+
+#! Validate the ATTACHMENT against the content type.
+#!
+#! WARNING: The content type must be valid.
+#!
+#! Inputs:  [attachment_content_type, ATTACHMENT]
+#! Outputs: []
+#!
+#! Where:
+#! - attachment_content_type is the content type of the attachment.
+#! - ATTACHMENT is the attachment to validate.
+#!
+#! Panics if:
+#! - the content type is None and the ATTACHMENT is not an empty word.
+proc validate_attachment
+    eq.ATTACHMENT_CONTENT_TYPE_NONE
+    # => [is_attachment_none, ATTACHMENT]
+
+    if.true
+        padw assert_eqw.err=ERR_OUTPUT_NOTE_ATTACHMENT_NONE_MUST_BE_EMPTY_WORD
+        # => []
+    else
+        dropw
+        # => []
+    end
+    # => []
+end
+
+#! Validates the attachment type info.
+#!
+#! Inputs:  [attachment_content_type, attachment_type]
+#! Outputs: [attachment_content_type, attachment_type]
+#!
+#! Where:
+#! - attachment_content_type is the content type of the attachment.
+#! - attachment_type is the user-defined type of the attachment.
+#!
+#! Panics if:
+#! - any of the attachment types does not fit into a u32.
+#! - the attachment content type is an unknown variant.
+proc validate_attachment_type_info
+    u32assert2.err=ERR_OUTPUT_NOTE_INVALID_ATTACHMENT_TYPES
+    # => [attachment_content_type, attachment_type]
+
+    # assert that the attachment content type is valid
+    dup u32lte.ATTACHMENT_CONTENT_TYPE_COMMITMENT
+    assert.err=ERR_OUTPUT_NOTE_UNKNOWN_ATTACHMENT_CONTENT_TYPE
+    # => [attachment_content_type, attachment_type]
+end
+
+#! Sets an output note's attachment type info in the metadata header.
+#!
+#! WARNING: The attachment types must be valid.
+#!
+#! Inputs:  [attachment_content_type, attachment_type, note_ptr]
+#! Outputs: []
+#!
+#! Where:
+#! - attachment_content_type is the content type of the attachment.
+#! - attachment_type is the user-defined type of the attachment.
+#! - note_ptr is the memory address at which the output note data begins.
+proc set_attachment_type_info
+    exec.merge_attachment_type_info
+    # => [new_attachment_type_info, note_ptr]
+
+    dup.1 exec.memory::get_output_note_metadata_header
+    # => [METADATA_HEADER, new_attachment_type_info, note_ptr]
+    # => [[attachment_type_info, tag, sender_id_prefix, sender_id_suffix_and_note_type], new_attachment_type_info, note_ptr]
+
+    swap.4
+    # => [[new_attachment_type_info, tag, sender_id_prefix, sender_id_suffix_and_note_type], attachment_type_info, note_ptr]
+    # => [METADATA_HEADER, attachment_type_info, note_ptr]
+
+    movup.5 exec.memory::set_output_note_metadata_header
+    # => [METADATA_HEADER, attachment_type_info]
+
+    dropw drop
+    # => []
+end
+
+#! Merges the attachment types into a single felt with the following layout:
+#!
+#! [30 zero bits | attachment_content_type (2 bits) | attachment_type (32 bits)]
+#!
+#! WARNING: The attachment types must be valid.
+#!
+#! Inputs:  [attachment_content_type, attachment_type]
+#! Outputs: [attachment_type_info]
+#!
+#! Where:
+#! - attachment_content_type is the content type of the attachment.
+#! - attachment_type is the user-defined type of the attachment.
+#! - attachment_type_info is the felt constructed from the inputs.
+proc merge_attachment_type_info
+    # shift the content type 32 bits to the left, which is the same as multiplying by 2^32
+    # and set the lower bits to the attachment_type, which is done by adding the values together
+    mul.0x100000000
+    add
+    # => [attachment_type_info]
 end
 
 #! Increments the number of output notes by one. Returns the index of the next note to be created.
