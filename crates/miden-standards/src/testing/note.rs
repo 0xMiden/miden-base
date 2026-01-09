@@ -9,6 +9,7 @@ use miden_protocol::asset::Asset;
 use miden_protocol::note::{
     Note,
     NoteAssets,
+    NoteAttachment,
     NoteExecutionHint,
     NoteInputs,
     NoteMetadata,
@@ -38,6 +39,7 @@ pub struct NoteBuilder {
     code: String,
     // TODO(note_attachment): Remove.
     aux: Felt,
+    attachment: NoteAttachment,
     dyn_libraries: Vec<Library>,
     source_manager: Arc<dyn SourceManagerSync>,
 }
@@ -62,6 +64,7 @@ impl NoteBuilder {
             tag: NoteTag::with_account_target(sender),
             code: DEFAULT_NOTE_CODE.to_string(),
             aux: ZERO,
+            attachment: NoteAttachment::default(),
             dyn_libraries: Vec::new(),
             source_manager: Arc::new(DefaultSourceManager::default()),
         }
@@ -115,6 +118,12 @@ impl NoteBuilder {
         self
     }
 
+    /// Overwrites the attachment.
+    pub fn attachment(mut self, attachment: NoteAttachment) -> Self {
+        self.attachment = attachment;
+        self
+    }
+
     /// Extends the set of dynamically linked libraries that are passed to the assembler at
     /// build-time.
     pub fn dynamically_linked_libraries(
@@ -156,7 +165,8 @@ impl NoteBuilder {
             .compile_note_script(virtual_source_file)
             .expect("note script should compile");
         let vault = NoteAssets::new(self.assets)?;
-        let metadata = NoteMetadata::new(self.sender, self.note_type, self.tag);
+        let metadata = NoteMetadata::new(self.sender, self.note_type, self.tag)
+            .with_attachment(self.attachment);
         let inputs = NoteInputs::new(self.inputs)?;
         let recipient = NoteRecipient::new(self.serial_num, note_script, inputs);
 
