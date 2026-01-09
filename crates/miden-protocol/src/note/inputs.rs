@@ -39,7 +39,9 @@ impl NoteInputs {
             return Err(NoteError::TooManyInputs(values.len()));
         }
 
-        Ok(build(values))
+        let commitment = Hasher::hash_elements(&values);
+
+        Ok(Self { values, commitment })
     }
 
     // PUBLIC ACCESSORS
@@ -75,7 +77,7 @@ impl NoteInputs {
 
 impl Default for NoteInputs {
     fn default() -> Self {
-        build(vec![])
+        Self::new(vec![]).expect("empty values should be valid")
     }
 }
 
@@ -103,16 +105,6 @@ impl TryFrom<Vec<Felt>> for NoteInputs {
     fn try_from(value: Vec<Felt>) -> Result<Self, Self::Error> {
         NoteInputs::new(value)
     }
-}
-
-// HELPER FUNCTIONS
-// ================================================================================================
-
-/// Builds a new [`NoteInputs`] and computes its commitment.
-fn build(values: Vec<Felt>) -> NoteInputs {
-    let commitment = Hasher::hash_elements(&values);
-
-    NoteInputs { values, commitment }
 }
 
 // SERIALIZATION
