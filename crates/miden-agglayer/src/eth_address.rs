@@ -52,7 +52,7 @@ impl From<HexParseError> for AddrConvError {
 ///
 /// - Raw bytes: `[u8; 20]` in the conventional Ethereum big-endian byte order (`bytes[0]` is the
 ///   most-significant byte).
-/// - MASM "address[5]" limbs: 5 x u32 limbs in *little-endian limb order*:
+/// - MASM "address\[5\]" limbs: 5 x u32 limbs in *little-endian limb order*:
 ///   - addr0 = bytes[16..19] (least-significant 4 bytes)
 ///   - addr1 = bytes[12..15]
 ///   - addr2 = bytes[ 8..11]
@@ -131,7 +131,7 @@ impl EthAddress {
 
     /// Converts the Ethereum address into an array of 5 [`Felt`] values.
     ///
-    /// The returned order matches the MASM `address[5]` convention (*little-endian limb order*):
+    /// The returned order matches the MASM `address\[5\]` convention (*little-endian limb order*):
     /// - addr0 = bytes[16..19] (least-significant 4 bytes)
     /// - addr1 = bytes[12..15]
     /// - addr2 = bytes[ 8..11]
