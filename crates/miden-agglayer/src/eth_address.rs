@@ -6,13 +6,19 @@ use miden_core::FieldElement;
 use miden_protocol::Felt;
 use miden_protocol::account::AccountId;
 
-use crate::utils::{
-    AddrConvError,
-    account_id_to_ethereum_address,
-    bytes20_to_evm_hex,
-    ethereum_address_to_account_id,
-    evm_hex_to_bytes20,
-};
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AddrConvError {
+    NonZeroWordPadding,
+    NonZeroBytePrefix,
+    InvalidHexLength,
+    InvalidHexChar(char),
+}
+
+impl fmt::Display for AddrConvError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
 
 // ================================================================================================
 // ETHEREUM ADDRESS
@@ -40,7 +46,19 @@ impl EthAddress {
     ///
     /// Returns an error if the hex string is invalid or not 40 characters (20 bytes).
     pub fn from_hex(hex_str: &str) -> Result<Self, AddrConvError> {
-        evm_hex_to_bytes20(hex_str).map(Self)
+        let s = hex_str.strip_prefix("0x").unwrap_or(hex_str);
+        if s.len() != 40 {
+            return Err(AddrConvError::InvalidHexLength);
+        }
+
+        let mut out = [0u8; 20];
+        let chars: alloc::vec::Vec<char> = s.chars().collect();
+        for i in 0..20 {
+            let hi = Self::hex_val(chars[2 * i])?;
+            let lo = Self::hex_val(chars[2 * i + 1])?;
+            out[i] = (hi << 4) | lo;
+        }
+        Ok(Self(out))
     }
 
     /// Creates an [`EthAddress`] from an [`AccountId`].
@@ -54,7 +72,10 @@ impl EthAddress {
     /// Returns an error if the conversion fails (e.g., if the AccountId cannot be represented
     /// as a valid Ethereum address).
     pub fn from_account_id(account_id: AccountId) -> Result<Self, AddrConvError> {
-        account_id_to_ethereum_address(account_id).map(Self)
+        let felts: [Felt; 2] = account_id.into();
+        let u64x5 = [felts[0].as_int(), felts[1].as_int(), 0, 0, 0];
+        let bytes = Self::u64x5_to_bytes20(u64x5)?;
+        Ok(Self(bytes))
     }
 
     // CONVERSIONS
@@ -105,12 +126,75 @@ impl EthAddress {
     /// Returns an error if the first 4 bytes are not zero or if the resulting
     /// AccountId is invalid.
     pub fn to_account_id(&self) -> Result<AccountId, AddrConvError> {
-        ethereum_address_to_account_id(&self.0)
+        let u64x5 = Self::bytes20_to_u64x5(self.0)?;
+        let felts = [Felt::new(u64x5[0]), Felt::new(u64x5[1])];
+
+        match AccountId::try_from(felts) {
+            Ok(account_id) => Ok(account_id),
+            Err(_) => Err(AddrConvError::NonZeroBytePrefix),
+        }
     }
 
     /// Converts the Ethereum address to a hex string (lowercase, 0x-prefixed).
     pub fn to_hex(&self) -> String {
-        bytes20_to_evm_hex(self.0)
+        let mut s = String::with_capacity(42);
+        s.push_str("0x");
+        for b in self.0 {
+            s.push(Self::nibble_to_hex(b >> 4));
+            s.push(Self::nibble_to_hex(b & 0x0f));
+        }
+        s
+    }
+
+    // HELPER FUNCTIONS
+    // --------------------------------------------------------------------------------------------
+
+    fn hex_val(c: char) -> Result<u8, AddrConvError> {
+        match c {
+            '0'..='9' => Ok((c as u8) - b'0'),
+            'a'..='f' => Ok((c as u8) - b'a' + 10),
+            'A'..='F' => Ok((c as u8) - b'A' + 10),
+            _ => Err(AddrConvError::InvalidHexChar(c)),
+        }
+    }
+
+    fn nibble_to_hex(n: u8) -> char {
+        match n {
+            0..=9 => (b'0' + n) as char,
+            10..=15 => (b'a' + (n - 10)) as char,
+            _ => unreachable!(),
+        }
+    }
+
+    /// Convert `[u64; 5]` -> `[u8; 20]` (EVM address bytes).
+    /// Layout: 4 zero bytes prefix + word0(be) + word1(be)
+    fn u64x5_to_bytes20(words: [u64; 5]) -> Result<[u8; 20], AddrConvError> {
+        if words[2] != 0 || words[3] != 0 || words[4] != 0 {
+            return Err(AddrConvError::NonZeroWordPadding);
+        }
+
+        let mut out = [0u8; 20];
+        let w0 = words[0].to_be_bytes();
+        let w1 = words[1].to_be_bytes();
+
+        out[0..4].copy_from_slice(&[0, 0, 0, 0]);
+        out[4..12].copy_from_slice(&w0);
+        out[12..20].copy_from_slice(&w1);
+
+        Ok(out)
+    }
+
+    /// Convert `[u8; 20]` -> `[u64; 5]` by extracting the last 16 bytes.
+    /// Requires the first 4 bytes be zero.
+    fn bytes20_to_u64x5(bytes: [u8; 20]) -> Result<[u64; 5], AddrConvError> {
+        if bytes[0..4] != [0, 0, 0, 0] {
+            return Err(AddrConvError::NonZeroBytePrefix);
+        }
+
+        let w0 = u64::from_be_bytes(bytes[4..12].try_into().unwrap());
+        let w1 = u64::from_be_bytes(bytes[12..20].try_into().unwrap());
+
+        Ok([w0, w1, 0, 0, 0])
     }
 }
 
