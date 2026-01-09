@@ -1,4 +1,4 @@
-# miden::standards::utils::access::ownable
+# miden::standards::access::ownable
 #
 # Provides ownership management functionality for account components.
 # This template can be imported and used by any component that needs owner controls.
@@ -16,7 +16,7 @@ use miden::protocol::native_account
 # ================================================================================================
 
 # The slot in this component's storage layout where the owner config is stored.
-const OWNER_CONFIG_SLOT=word("miden::standards::utils::access::ownable::owner_config")
+const OWNER_CONFIG_SLOT=word("miden::standards::access::ownable::owner_config")
 
 # ERRORS
 # ================================================================================================
@@ -29,34 +29,45 @@ const ERR_ONLY_OWNER="note sender is not the owner"
 #! Returns the owner AccountId from storage.
 #!
 #! Inputs:  []
-#! Outputs: [owner_prefix, owner_suffix, 0, 0]
+#! Outputs: [owner_prefix, owner_suffix]
 #!
 #! Where:
 #! - owner_{prefix, suffix} are the prefix and suffix felts of the owner AccountId.
 proc owner
     push.OWNER_CONFIG_SLOT[0..2] exec.active_account::get_item
     # => [owner_prefix, owner_suffix, 0, 0]
+    
+    # Storage format in memory: [0, 0, suffix, prefix] (word[0], word[1], word[2], word[3])
+    # mem_loadw_be loads big-endian (reversed), so stack gets: [prefix, suffix, 0, 0]
+    # Stack: [owner_prefix (pos 0), owner_suffix (pos 1), 0 (pos 2), 0 (pos 3)]
+    # We want: [owner_prefix, owner_suffix]
+    # Move zeros to top using movup, then drop them
+    movup.2
+    # => [0, owner_prefix, owner_suffix, 0] (moves element at pos 2 to pos 0)
+
+    movup.3
+    # => [0, 0, owner_prefix, owner_suffix] (moves element at pos 3 to pos 0)
+
+    drop drop
+    # => [owner_prefix, owner_suffix]
 end
 
-#! Checks if the note sender is the owner of this component.
+#! Checks if the given account ID is the owner of this component.
 #!
-#! Inputs:  []
+#! Inputs:  [account_id_prefix, account_id_suffix]
 #! Outputs: [is_owner]
 #!
 #! Where:
-#! - is_owner is 1 if the sender is the owner, 0 otherwise.
+#! - account_id_{prefix, suffix} are the prefix and suffix felts of the AccountId to check.
+#! - is_owner is 1 if the account is the owner, 0 otherwise.
 proc is_owner
-    exec.owner
-    # => [owner_prefix, owner_suffix, 0, 0]
 
-    exec.active_note::get_sender
-    # => [sender_prefix, sender_suffix, owner_prefix, owner_suffix, 0, 0]
+    exec.owner
+    # => [owner_prefix, owner_suffix, account_id_prefix, account_id_suffix]
 
     exec.account_id::is_equal
-    # => [are_equal, 0, 0]
-
-    movdn.2 drop drop
     # => [is_owner]
+
 end
 
 #! Checks if the note sender is the owner and panics if not.
@@ -66,10 +77,13 @@ end
 #!
 #! Panics if:
 #! - the note sender is not the owner.
-pub proc only_owner
+pub proc verify_owner
+    exec.active_note::get_sender
+    # => [sender_prefix, sender_suffix]
+
     exec.is_owner
     # => [is_owner]
-    
+
     assert.err=ERR_ONLY_OWNER
     # => []
 end
@@ -88,10 +102,10 @@ end
 #! Invocation: call
 pub proc get_owner
     exec.owner
-    # => [owner_prefix, owner_suffix, 0, 0]
+    # => [owner_prefix, owner_suffix]
     
-    # ------ Clean up and return pad(14) ------
-    drop drop
+    # ------ Add pad(14) ------
+    padw padw padw push.0.0
     # => [owner_prefix, owner_suffix, pad(14)]
 end
 
@@ -111,10 +125,11 @@ end
 #! Invocation: call
 pub proc transfer_ownership
     # Check that the caller is the owner
-    exec.only_owner
+    exec.verify_owner
     # => [new_owner_prefix, new_owner_suffix, pad(14)]
 
-    # get_item returns [owner_prefix, owner_suffix, 0, 0]
+    # get_item returns [owner_prefix, owner_suffix]
+    
     # so the Word in storage is [0, 0, owner_suffix, owner_prefix] (top to bottom)
     # To write, we need: [new_owner_prefix, new_owner_suffix, 0, 0]
     # The zeros from pad(14) already serve as word[1] and word[0]!
@@ -147,7 +162,7 @@ end
 #! after an initial stage with centralized administration is over. Once ownership is renounced,
 #! the component becomes permanently ownerless and cannot be managed by any account.
 pub proc renounce_ownership
-    exec.only_owner
+    exec.verify_owner
     # => [pad(16)]
     
     # ---- Write zero AccountId to storage ----

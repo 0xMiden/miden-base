@@ -4,14 +4,14 @@ use miden::protocol::active_note
 use miden::protocol::native_account
 use miden::standards::faucets
 use miden::standards::faucets::basic_fungible
-use miden::standards::utils::access::ownable
+use miden::standards::access::ownable
 
 # CONSTANTS
 # ================================================================================================
 
 # The slot in this component's storage layout where the owner config is stored.
 # This must match the slot name used in the Rust code.
-# const OWNER_CONFIG_SLOT=word("miden::standards::utils::access::ownable::owner_config")
+# const OWNER_CONFIG_SLOT=word("miden::standards::access::ownable::owner_config")
 
 # ERRORS
 # ===============================================================================================
@@ -21,20 +21,48 @@ const ERR_ONLY_OWNER="note sender is not the owner"
 # PUBLIC INTERFACE
 # ================================================================================================
 
+# OWNER MANAGEMENT
+# ------------------------------------------------------------------------------------------------
 
 #! Returns the owner AccountId.
 #!
 #! Inputs:  []
-#! Outputs: [owner_prefix, owner_suffix]
+#! Outputs: [owner_prefix, owner_suffix, pad(14)]
 #!
 #! Invocation: call
+pub use ownable::get_owner
+
+#! Transfers ownership to a new account.
 #!
-#! NOTE: Uses exec.ownable::get_owner to ensure it uses the same execution context
-#! and storage slot (OWNER_CONFIG_SLOT) as defined in ownable.masm.
-pub proc get_owner
-    exec.ownable::get_owner
-    # => [owner_prefix, owner_suffix, pad(14)]
-end
+#! Can only be called by the current owner.
+#!
+#! Inputs:  [new_owner_prefix, new_owner_suffix, pad(14)]
+#! Outputs: [pad(16)]
+#!
+#! Where:
+#! - new_owner_{prefix, suffix} are the prefix and suffix felts of the new owner AccountId.
+#!
+#! Panics if:
+#! - the note sender is not the owner.
+#!
+#! Invocation: call
+pub use ownable::transfer_ownership
+
+#! Renounces ownership, leaving the component without an owner.
+#!
+#! Can only be called by the current owner.
+#!
+#! Inputs:  [pad(16)]
+#! Outputs: [pad(16)]
+#!
+#! Panics if:
+#! - the note sender is not the owner.
+#!
+#! Invocation: call
+pub use ownable::renounce_ownership
+
+# ASSET DISTRIBUTION
+# ------------------------------------------------------------------------------------------------
 
 #! Distributes freshly minted fungible assets to the provided recipient.
 #!
@@ -58,10 +86,7 @@ end
 #!
 #! Invocation: call
 pub proc distribute
-    exec.ownable::is_owner
-    # => [is_owner, amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
-
-    assert.err=ERR_ONLY_OWNER
+    exec.ownable::verify_owner
     # => [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
 
     exec.faucets::distribute
@@ -85,44 +110,3 @@ end
 #!
 #! Invocation: call
 pub use faucets::burn
-
-#! Transfers ownership to a new account.
-#!
-#! Can only be called by the current owner.
-#!
-#! Inputs:  [new_owner_prefix, new_owner_suffix, pad(14)]
-#! Outputs: [pad(16)]
-#!
-#! Where:
-#! - new_owner_{prefix, suffix} are the prefix and suffix felts of the new owner AccountId.
-#!
-#! Panics if:
-#! - the note sender is not the owner.
-#!
-#! Invocation: call
-#!
-#! NOTE: Uses exec.transfer_ownership to ensure it uses the same execution context
-#! and storage slot (OWNER_CONFIG_SLOT) as defined in this module.
-pub proc transfer_ownership
-    exec.ownable::transfer_ownership
-    # => [pad(16)]
-end
-
-#! Renounces ownership, leaving the component without an owner.
-#!
-#! Can only be called by the current owner.
-#!
-#! Inputs:  [pad(16)]
-#! Outputs: [pad(16)]
-#!
-#! Panics if:
-#! - the note sender is not the owner.
-#!
-#! Invocation: call
-#!
-#! NOTE: Uses exec.renounce_ownership to ensure it uses the same execution context
-#! and storage slot (OWNER_CONFIG_SLOT) as defined in this module.
-pub proc renounce_ownership
-    exec.ownable::renounce_ownership
-    # => [pad(16)]
-end
