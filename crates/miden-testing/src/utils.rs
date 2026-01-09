@@ -20,7 +20,7 @@ use rand::rngs::SmallRng;
 macro_rules! assert_execution_error {
     ($execution_result:expr, $expected_err:expr) => {
         match $execution_result {
-            Err(miden_processor::ExecutionError::FailedAssertion { label: _, source_file: _, clk: _, err_code, err_msg, err: _ }) => {
+            Err($crate::ExecError(miden_processor::ExecutionError::FailedAssertion { label: _, source_file: _, clk: _, err_code, err_msg, err: _ })) => {
                 if let Some(ref msg) = err_msg {
                   assert_eq!(msg.as_ref(), $expected_err.message(), "error messages did not match");
                 }
