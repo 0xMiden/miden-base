@@ -155,7 +155,7 @@ impl AccountStorageHeader {
     ///
     /// The elements are expected to be groups of 8 elements per slot:
     /// `[[0, slot_type, slot_id_suffix, slot_id_prefix], SLOT_VALUE]`
-    pub fn from_elements(elements: &[Felt]) -> Result<Self, AccountError> {
+    pub fn try_from_elements(elements: &[Felt]) -> Result<Self, AccountError> {
         if !elements.len().is_multiple_of(StorageSlot::NUM_ELEMENTS) {
             return Err(AccountError::other(
                 "storage header elements length must be divisible by 8",
@@ -405,7 +405,7 @@ mod tests {
         let empty_elements = empty_header.to_elements();
 
         // Call from_elements.
-        let reconstructed_empty = AccountStorageHeader::from_elements(&empty_elements).unwrap();
+        let reconstructed_empty = AccountStorageHeader::try_from_elements(&empty_elements).unwrap();
         assert_eq!(empty_header.slots().count(), reconstructed_empty.slots().count());
     }
 
@@ -423,7 +423,8 @@ mod tests {
         let single_elements = single_slot_header.to_elements();
 
         // Call from_elements.
-        let reconstructed_single = AccountStorageHeader::from_elements(&single_elements).unwrap();
+        let reconstructed_single =
+            AccountStorageHeader::try_from_elements(&single_elements).unwrap();
 
         assert_eq!(single_slot_header.slots().count(), reconstructed_single.slots().count());
 
@@ -458,7 +459,7 @@ mod tests {
         let multi_elements = multi_slot_header.to_elements();
 
         // Call from_elements.
-        let reconstructed_multi = AccountStorageHeader::from_elements(&multi_elements).unwrap();
+        let reconstructed_multi = AccountStorageHeader::try_from_elements(&multi_elements).unwrap();
 
         assert_eq!(multi_slot_header.slots().count(), reconstructed_multi.slots().count());
 
@@ -486,11 +487,11 @@ mod tests {
     fn test_from_elements_errors() {
         // Test with invalid length (not divisible by 8).
         let invalid_elements = vec![Felt::new(1), Felt::new(2), Felt::new(3)];
-        assert!(AccountStorageHeader::from_elements(&invalid_elements).is_err());
+        assert!(AccountStorageHeader::try_from_elements(&invalid_elements).is_err());
 
         // Test with invalid slot type.
         let mut invalid_type_elements = vec![crate::ZERO; 8];
         invalid_type_elements[1] = Felt::new(5); // Invalid slot type.
-        assert!(AccountStorageHeader::from_elements(&invalid_type_elements).is_err());
+        assert!(AccountStorageHeader::try_from_elements(&invalid_type_elements).is_err());
     }
 }

@@ -256,7 +256,7 @@ impl TransactionInputs {
             .map
             .get(&header.storage_commitment())
             .ok_or(TransactionInputError::StorageHeaderNotFound(account_id))?;
-        let storage_header = AccountStorageHeader::from_elements(storage_header_elements)?;
+        let storage_header = AccountStorageHeader::try_from_elements(storage_header_elements)?;
 
         // Build partial storage.
         let partial_storage = PartialStorage::new(storage_header, [])?;
