@@ -238,12 +238,13 @@ const OUTPUT_NOTE_SECTION_OFFSET=16777216
 
 # The offsets at which data of an output note is stored relative to the start of its data segment.
 const OUTPUT_NOTE_ID_OFFSET=0
-const OUTPUT_NOTE_METADATA_OFFSET=4
-const OUTPUT_NOTE_RECIPIENT_OFFSET=8
-const OUTPUT_NOTE_ASSETS_COMMITMENT_OFFSET=12
-const OUTPUT_NOTE_NUM_ASSETS_OFFSET=16
-const OUTPUT_NOTE_DIRTY_FLAG_OFFSET=17
-const OUTPUT_NOTE_ASSETS_OFFSET=20
+const OUTPUT_NOTE_METADATA_HEADER_OFFSET=4
+const OUTPUT_NOTE_ATTACHMENT_OFFSET=8
+const OUTPUT_NOTE_RECIPIENT_OFFSET=12
+const OUTPUT_NOTE_ASSETS_COMMITMENT_OFFSET=16
+const OUTPUT_NOTE_NUM_ASSETS_OFFSET=20
+const OUTPUT_NOTE_DIRTY_FLAG_OFFSET=21
+const OUTPUT_NOTE_ASSETS_OFFSET=24
 
 # LINK MAP MEMORY
 # -------------------------------------------------------------------------------------------------
@@ -1778,36 +1779,6 @@ pub proc get_input_note_serial_num
     mem_loadw_be
 end
 
-#! Returns the sender for the input note located at the specified memory address.
-#!
-#! Inputs:  [note_ptr]
-#! Outputs: [sender_id_prefix, sender_id_suffix]
-#!
-#! Where:
-#! - note_ptr is the memory address at which the input note data begins.
-#! - sender is the sender for the input note.
-pub proc get_input_note_sender
-    padw
-    movup.4 add.INPUT_NOTE_METADATA_OFFSET
-    mem_loadw_be
-    # => [aux, merged_tag_hint_payload, merged_sender_id_type_hint_tag, sender_id_prefix]
-
-    drop drop
-    # => [merged_sender_id_type_hint_tag, sender_id_prefix]
-
-    # extract suffix of sender from merged layout, which means clearing the least significant byte
-    u32split swap
-    # => [merged_lo, merged_hi, sender_id_prefix]
-
-    # clear least significant byte
-    u32and.0xffffff00 swap
-    # => [sender_id_suffix_hi, sender_id_suffix_lo, sender_id_prefix]
-
-    # reassemble the suffix by multiplying the high part with 2^32 and adding the lo part
-    mul.0x0100000000 add swap
-    # => [sender_id_prefix, sender_id_suffix]
-end
-
 # OUTPUT NOTES
 # -------------------------------------------------------------------------------------------------
 
@@ -1873,7 +1844,7 @@ end
 pub proc get_output_note_metadata
     padw
     # => [0, 0, 0, 0, note_ptr]
-    movup.4 add.OUTPUT_NOTE_METADATA_OFFSET
+    movup.4 add.OUTPUT_NOTE_METADATA_HEADER_OFFSET
     # => [(note_ptr + offset), 0, 0, 0, 0]
     mem_loadw_be
     # => [METADATA]
@@ -1890,6 +1861,35 @@ end
 pub proc set_output_note_metadata
     add.OUTPUT_NOTE_METADATA_OFFSET
     mem_storew_be
+end
+
+#! Returns the output note's attachment.
+#!
+#! Inputs:  [note_ptr]
+#! Outputs: [ATTACHMENT]
+#!
+#! Where:
+#! - ATTACHMENT is the note attachment.
+#! - note_ptr is the memory address at which the output note data begins.
+pub proc get_output_note_attachment
+    padw
+    movup.4 add.OUTPUT_NOTE_ATTACHMENT_OFFSET
+    mem_loadw_be
+    # => [ATTACHMENT]
+end
+
+#! Sets the output note's attachment.
+#!
+#! Inputs:  [note_ptr, ATTACHMENT]
+#! Outputs: []
+#!
+#! Where:
+#! - ATTACHMENT is the note attachment.
+#! - note_ptr is the memory address at which the output note data begins.
+pub proc set_output_note_attachment
+    add.OUTPUT_NOTE_ATTACHMENT_OFFSET
+    mem_storew_be
+    dropw
 end
 
 #! Returns the number of assets in the output note.

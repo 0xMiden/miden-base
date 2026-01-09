@@ -35,7 +35,8 @@ use miden_protocol::transaction::memory::{
     NOTE_MEM_SIZE,
     NUM_OUTPUT_NOTES_PTR,
     OUTPUT_NOTE_ASSETS_OFFSET,
-    OUTPUT_NOTE_METADATA_OFFSET,
+    OUTPUT_NOTE_ATTACHMENT_OFFSET,
+    OUTPUT_NOTE_METADATA_HEADER_OFFSET,
     OUTPUT_NOTE_RECIPIENT_OFFSET,
     OUTPUT_NOTE_SECTION_OFFSET,
 };
@@ -110,9 +111,16 @@ async fn test_create_note() -> anyhow::Result<()> {
     .into();
 
     assert_eq!(
-        exec_output.get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_METADATA_OFFSET),
-        expected_note_metadata,
-        "metadata must be stored at the correct memory location",
+        exec_output
+            .get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_METADATA_HEADER_OFFSET),
+        expected_metadata_header,
+        "metadata header must be stored at the correct memory location",
+    );
+
+    assert_eq!(
+        exec_output.get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_ATTACHMENT_OFFSET),
+        expected_note_attachment,
+        "attachment must be stored at the correct memory location",
     );
 
     assert_eq!(
@@ -372,12 +380,24 @@ async fn test_get_output_notes_commitment() -> anyhow::Result<()> {
         "Validate the output note 1 metadata",
     );
     assert_eq!(
-        NoteMetadata::try_from(exec_output.get_kernel_mem_word(
-            OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_METADATA_OFFSET + NOTE_MEM_SIZE
-        ))
-        .unwrap(),
-        *output_note_2.metadata(),
-        "Validate the output note 1 metadata",
+        exec_output.get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_ATTACHMENT_OFFSET),
+        output_note_1.metadata().to_attachment_word(),
+        "Validate the output note 1 attachment",
+    );
+
+    assert_eq!(
+        exec_output.get_kernel_mem_word(
+            OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_METADATA_HEADER_OFFSET + NOTE_MEM_SIZE
+        ),
+        output_note_2.metadata().to_header_word(),
+        "Validate the output note 2 metadata header",
+    );
+    assert_eq!(
+        exec_output.get_kernel_mem_word(
+            OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_ATTACHMENT_OFFSET + NOTE_MEM_SIZE
+        ),
+        output_note_2.metadata().to_attachment_word(),
+        "Validate the output note 2 attachment",
     );
 
     assert_eq!(exec_output.get_stack_word_be(0), expected_output_notes_commitment);
