@@ -268,7 +268,7 @@ impl TransactionInputs {
             account_code,
             partial_storage,
             partial_vault,
-            None, // No seed for existing accounts.
+            None, // We know that foreign accounts are existing accounts so a seed is not required.
         )?;
 
         Ok(partial_account)
