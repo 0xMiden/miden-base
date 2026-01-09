@@ -251,13 +251,12 @@ impl TransactionInputs {
             .clone();
 
         // Try to get storage header from advice map using storage commitment as key.
-        let storage_header = if let Some(storage_header_elements) =
-            self.advice_inputs.map.get(&header.storage_commitment())
-        {
-            AccountStorageHeader::from_elements(storage_header_elements)?
-        } else {
-            AccountStorageHeader::new(vec![])?
-        };
+        let storage_header_elements = self
+            .advice_inputs
+            .map
+            .get(&header.storage_commitment())
+            .ok_or(TransactionInputError::StorageHeaderNotFound(account_id))?;
+        let storage_header = AccountStorageHeader::from_elements(storage_header_elements)?;
 
         // Build partial storage.
         let partial_storage = PartialStorage::new(storage_header, [])?;

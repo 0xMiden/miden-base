@@ -698,6 +698,8 @@ pub enum TransactionInputError {
     ForeignAccountNotFound(AccountId),
     #[error("foreign account code not found for account {0}")]
     ForeignAccountCodeNotFound(AccountId),
+    #[error("storage header data not found in advice map for account {0}")]
+    StorageHeaderNotFound(AccountId),
     #[error("failed to handle account data")]
     AccountError(#[from] AccountError),
     #[error("failed to handle merkle data")]
