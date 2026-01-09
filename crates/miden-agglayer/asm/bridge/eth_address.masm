@@ -73,7 +73,8 @@ end
 #! Invocation: exec
 pub proc ethereum_address_to_account_id
     # addr4 must be 0 (most-significant limb)
-    movup.4 drop
+    movup.4
+    eq.0 assert.err=ERR_ADDR4_NONZERO
     # => [addr0, addr1, addr2, addr3]
 
     exec.build_felt
