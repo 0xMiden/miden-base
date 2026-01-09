@@ -1,5 +1,4 @@
 use miden::core::crypto::hashes::keccak256
-use miden::core::word
 
 #! Given the leaf data returns the leaf value.
 #!
