@@ -1,4 +1,6 @@
-use $kernel::constants
+use $kernel::constants::ACCOUNT_PROCEDURE_DATA_LENGTH
+use $kernel::constants::MAX_ASSETS_PER_NOTE
+use $kernel::constants::NOTE_MEM_SIZE
 use miden::core::mem
 
 # ERRORS
@@ -166,10 +168,6 @@ const NATIVE_ACCOUNT_DATA_PTR=8192
 # The length of the memory interval that the account data occupies.
 const ACCOUNT_DATA_LENGTH=8192
 
-# The number of field elements it takes to store one account procedure.
-# TODO: Duplicated in account.masm, can we remove that?
-const ACCOUNT_PROCEDURE_DATA_LENGTH=4
-
 # The offsets at which the account data is stored relative to the start of the account data segment.
 const ACCT_ID_AND_NONCE_OFFSET=0
 const ACCT_NONCE_OFFSET=3
@@ -177,17 +175,17 @@ const ACCT_VAULT_ROOT_OFFSET=4
 const ACCT_STORAGE_COMMITMENT_OFFSET=8
 const ACCT_CODE_COMMITMENT_OFFSET=12
 const ACCT_CORE_DATA_SECTION_END_OFFSET=16
-const NUM_ACCT_PROCEDURES_OFFSET=28
+const ACCT_NUM_PROCEDURES_OFFSET=28
 const ACCT_PROCEDURES_SECTION_OFFSET=32
-const ACCT_PROCEDURES_CALL_TRACKING_OFFSET=2084
-const NUM_ACCT_STORAGE_SLOTS_OFFSET=2340
-const ACCT_STORAGE_SLOTS_SECTION_OFFSET=2344
+const ACCT_PROCEDURES_CALL_TRACKING_OFFSET=1060
+const ACCT_NUM_STORAGE_SLOTS_OFFSET=1316
+# Offset at which a copy of the initial account's storage slot section is kept. This section is
+# only present for the native account.
+const ACCT_INITIAL_STORAGE_SLOTS_SECTION_OFFSET=1320
 
-# Offset at which an exact copy of the account's storage slot section starting at
-# ACCT_STORAGE_SLOTS_SECTION_OFFSET is kept. This keeps the initial values of the account storage
-# slots accessible to enable computing a diff between the initial and current account storage slots
-# for use in the account delta. This section is only present for the native account.
-const ACCT_INITIAL_STORAGE_SLOTS_SECTION_OFFSET=4384
+# Offset at which the account's active storage slot section is kept. This section contains the
+# current values of the account storage slots.
+const ACCT_ACTIVE_STORAGE_SLOTS_SECTION_OFFSET=2340
 
 # NATIVE ACCOUNT DELTA
 # -------------------------------------------------------------------------------------------------
@@ -1222,7 +1220,7 @@ end
 #! Where:
 #! - num_procedures is the number of procedures contained in the account code.
 pub proc get_num_account_procedures
-    exec.get_active_account_data_ptr add.NUM_ACCT_PROCEDURES_OFFSET
+    exec.get_active_account_data_ptr add.ACCT_NUM_PROCEDURES_OFFSET
     mem_load
 end
 
@@ -1234,7 +1232,7 @@ end
 #! Where:
 #! - num_procedures is the number of procedures contained in the account code.
 pub proc set_num_account_procedures
-    exec.get_active_account_data_ptr add.NUM_ACCT_PROCEDURES_OFFSET
+    exec.get_active_account_data_ptr add.ACCT_NUM_PROCEDURES_OFFSET
     mem_store
 end
 
@@ -1346,7 +1344,7 @@ end
 #! Where:
 #! - num_storage_slots is the number of storage slots contained in the account storage.
 pub proc get_num_storage_slots
-    exec.get_active_account_data_ptr add.NUM_ACCT_STORAGE_SLOTS_OFFSET
+    exec.get_active_account_data_ptr add.ACCT_NUM_STORAGE_SLOTS_OFFSET
     mem_load
 end
 
@@ -1358,7 +1356,7 @@ end
 #! Where:
 #! - num_storage_slots is the number of storage slots contained in the account storage.
 pub proc set_num_storage_slots
-    exec.get_active_account_data_ptr add.NUM_ACCT_STORAGE_SLOTS_OFFSET
+    exec.get_active_account_data_ptr add.ACCT_NUM_STORAGE_SLOTS_OFFSET
     mem_store
 end
 
@@ -1369,8 +1367,8 @@ end
 #!
 #! Where:
 #! - storage_slots_section_ptr is the memory pointer to the account storage slots section.
-pub proc get_account_storage_slots_section_ptr
-    exec.get_active_account_data_ptr add.ACCT_STORAGE_SLOTS_SECTION_OFFSET
+pub proc get_account_active_storage_slots_section_ptr
+    exec.get_active_account_data_ptr add.ACCT_ACTIVE_STORAGE_SLOTS_SECTION_OFFSET
 end
 
 #! Returns the memory pointer to the native account's storage slots section.
@@ -1380,8 +1378,8 @@ end
 #!
 #! Where:
 #! - storage_slots_section_ptr is the memory pointer to the native account's storage slots section.
-pub proc get_native_account_storage_slots_ptr
-    exec.get_native_account_data_ptr add.ACCT_STORAGE_SLOTS_SECTION_OFFSET
+pub proc get_native_account_active_storage_slots_ptr
+    exec.get_native_account_data_ptr add.ACCT_ACTIVE_STORAGE_SLOTS_SECTION_OFFSET
 end
 
 #! Returns the memory pointer to the initial storage slots of the native account.
@@ -1409,7 +1407,7 @@ end
 pub proc get_account_initial_storage_slots_ptr
     # For foreign account, use the regular storage slots pointer since foreign accounts are
     # read-only and initial == current
-    exec.get_account_storage_slots_section_ptr
+    exec.get_account_active_storage_slots_section_ptr
     # => [account_storage_slots_ptr]
 
     # For native account, use the initial storage slots pointer
@@ -1467,12 +1465,12 @@ end
 #! Outputs: []
 pub proc mem_copy_native_account_initial_storage_slots
   exec.get_native_account_initial_storage_slots_ptr
-  exec.get_native_account_storage_slots_ptr
-  # => [storage_slots_section_ptr, initial_storage_slots_ptr]
+  exec.get_native_account_active_storage_slots_ptr
+  # => [active_storage_slots_ptr, initial_storage_slots_ptr]
 
   # each slot takes up two words
   exec.get_num_storage_slots mul.2
-  # => [num_storage_slot_words, storage_slots_section_ptr, initial_storage_slots_ptr]
+  # => [num_storage_slot_words, active_storage_slots_ptr, initial_storage_slots_ptr]
 
   exec.mem::memcopy_words
   # => []
@@ -1513,7 +1511,7 @@ end
 #! - idx is the index of the input note.
 #! - note_ptr is the memory address of the data segment for the input note with `idx`.
 pub proc get_input_note_ptr
-    exec.constants::get_note_mem_size mul add.INPUT_NOTE_DATA_SECTION_OFFSET
+    push.NOTE_MEM_SIZE mul add.INPUT_NOTE_DATA_SECTION_OFFSET
 end
 
 #! Set the note id of the input note.
@@ -1834,7 +1832,7 @@ end
 #! - i is the index of the output note.
 #! - ptr is the memory address of the data segment for output note i.
 pub proc get_output_note_ptr
-    exec.constants::get_note_mem_size mul add.OUTPUT_NOTE_SECTION_OFFSET
+    push.NOTE_MEM_SIZE mul add.OUTPUT_NOTE_SECTION_OFFSET
 end
 
 #! Returns the output note recipient.
@@ -1922,7 +1920,7 @@ pub proc set_output_note_num_assets
     # => [note_ptr + offset, num_assets]
 
     # check note number of assets limit
-    dup.1 exec.constants::get_max_assets_per_note lt assert.err=ERR_NOTE_NUM_OF_ASSETS_EXCEED_LIMIT
+    dup.1 push.MAX_ASSETS_PER_NOTE lt assert.err=ERR_NOTE_NUM_OF_ASSETS_EXCEED_LIMIT
 
     mem_store
 end

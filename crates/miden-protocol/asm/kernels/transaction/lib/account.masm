@@ -1,7 +1,10 @@
 use $kernel::account_delta
 use $kernel::account_id
 use $kernel::asset_vault
-use $kernel::constants
+use $kernel::constants::ACCOUNT_PROCEDURE_DATA_LENGTH
+use $kernel::constants::EMPTY_SMT_ROOT
+use $kernel::constants::STORAGE_SLOT_TYPE_MAP
+use $kernel::constants::STORAGE_SLOT_TYPE_VALUE
 use $kernel::memory
 use miden::core::collections::smt
 use miden::core::collections::sorted_array
@@ -119,9 +122,6 @@ const ACCOUNT_TREE_DEPTH=64
 
 # The number of field elements it takes to store one account storage slot.
 const ACCOUNT_STORAGE_SLOT_DATA_LENGTH=8
-
-# The number of field elements it takes to store one account procedure.
-const ACCOUNT_PROCEDURE_DATA_LENGTH=4
 
 # The offset of the slot type in the storage slot.
 const ACCOUNT_SLOT_TYPE_OFFSET=1
@@ -444,7 +444,7 @@ end
 #! - a slot with the provided slot ID does not exist in account storage.
 pub proc get_item
     # get account storage slots section offset
-    exec.memory::get_account_storage_slots_section_ptr
+    exec.memory::get_account_active_storage_slots_section_ptr
     # => [acct_storage_slots_section_offset, slot_id_prefix, slot_id_suffix]
 
     exec.find_storage_slot
@@ -470,7 +470,7 @@ end
 #! - a slot with the provided slot ID does not exist in account storage.
 pub proc get_typed_item
     # get account storage slots section offset
-    exec.memory::get_account_storage_slots_section_ptr
+    exec.memory::get_account_active_storage_slots_section_ptr
     # => [acct_storage_slots_section_offset, slot_id_prefix, slot_id_suffix]
 
     exec.find_storage_slot
@@ -527,7 +527,7 @@ pub proc set_item
     emit.ACCOUNT_STORAGE_BEFORE_SET_ITEM_EVENT
     # => [slot_id_prefix, slot_id_suffix, VALUE]
 
-    exec.memory::get_account_storage_slots_section_ptr
+    exec.memory::get_account_active_storage_slots_section_ptr
     # => [storage_slots_ptr, slot_id_prefix, slot_id_suffix, VALUE]
 
     exec.find_storage_slot
@@ -538,7 +538,7 @@ pub proc set_item
     # => [slot_type, slot_ptr, VALUE]
 
     # assert slot_type is value
-    exec.constants::get_storage_slot_type_value eq
+    push.STORAGE_SLOT_TYPE_VALUE eq
     assert.err=ERR_ACCOUNT_SETTING_VALUE_ITEM_ON_NON_VALUE_SLOT
     # => [slot_ptr, VALUE]
 
@@ -575,7 +575,7 @@ end
 #! - a slot with the provided slot ID does not exist in account storage.
 #! - the requested storage slot type is not map.
 pub proc get_map_item
-    exec.memory::get_account_storage_slots_section_ptr
+    exec.memory::get_account_active_storage_slots_section_ptr
     # => [storage_slots_ptr, slot_id_prefix, slot_id_suffix, KEY]
 
     exec.get_map_item_raw
@@ -620,7 +620,7 @@ end
 #! - the storage slot type is not map.
 #! - no map with the root of the slot is found.
 pub proc set_map_item
-    exec.memory::get_account_storage_slots_section_ptr
+    exec.memory::get_account_active_storage_slots_section_ptr
     # => [storage_slots_ptr, slot_id_prefix, slot_id_suffix, KEY, NEW_VALUE]
 
     # resolve the slot name to its pointer
@@ -632,7 +632,7 @@ pub proc set_map_item
     # => [slot_type, slot_ptr, KEY, NEW_VALUE]
 
     # assert slot_type is map
-    exec.constants::get_storage_slot_type_map eq
+    push.STORAGE_SLOT_TYPE_MAP eq
     assert.err=ERR_ACCOUNT_SETTING_MAP_ITEM_ON_NON_MAP_SLOT
     # => [slot_ptr, KEY, NEW_VALUE]
  
@@ -656,7 +656,7 @@ pub proc get_storage_slot_type
     # => [offset]
 
     # compute storage slot ptr
-    exec.memory::get_native_account_storage_slots_ptr
+    exec.memory::get_native_account_active_storage_slots_ptr
     add
     # => [slot_ptr]
 
@@ -1185,7 +1185,7 @@ pub proc save_account_storage_data
     # AS => [[STORAGE_SLOT_DATA]]
 
     # setup acct_storage_slots_ptr and end_ptr for reading from advice stack
-    mul.ACCOUNT_STORAGE_SLOT_DATA_LENGTH exec.memory::get_account_storage_slots_section_ptr
+    mul.ACCOUNT_STORAGE_SLOT_DATA_LENGTH exec.memory::get_account_active_storage_slots_section_ptr
     dup movdn.2 add swap
     # OS => [acct_storage_slots_ptr, end_ptr, STORAGE_COMMITMENT]
     # AS => [[STORAGE_SLOT_DATA]]
@@ -1310,7 +1310,7 @@ pub proc insert_new_storage
         dup exec.get_storage_slot_type
         # => [slot_type, slot_idx]
 
-        exec.constants::get_storage_slot_type_map eq
+        push.STORAGE_SLOT_TYPE_MAP eq
         # => [is_map_slot_type, slot_idx]
 
         if.true
@@ -1345,7 +1345,7 @@ end
 #! Outputs: []
 proc insert_and_validate_storage_map
     mul.ACCOUNT_STORAGE_SLOT_DATA_LENGTH
-    exec.memory::get_account_storage_slots_section_ptr
+    exec.memory::get_account_active_storage_slots_section_ptr
     add
     # => [slot_ptr]
 
@@ -1354,7 +1354,7 @@ proc insert_and_validate_storage_map
 
     # overwrite the map root with the root of an empty SMT, so we can insert the entries of
     # the map into an empty map and then check whether the resulting root matches MAP_ROOT.
-    exec.constants::get_empty_smt_root
+    push.EMPTY_SMT_ROOT
     dup.8
     # => [slot_ptr, EMPTY_SMT_ROOT, MAP_ROOT, slot_ptr]
 
@@ -1471,7 +1471,7 @@ pub proc get_item_delta
     # => [offset]
 
     # get account storage slots section offset
-    exec.memory::get_native_account_storage_slots_ptr
+    exec.memory::get_native_account_active_storage_slots_ptr
     # => [storage_slots_ptr, offset]
 
     dup.1 add dup
@@ -1515,7 +1515,7 @@ pub proc get_slot_id
     mul.ACCOUNT_STORAGE_SLOT_DATA_LENGTH
     # => [offset]
 
-    exec.memory::get_account_storage_slots_section_ptr
+    exec.memory::get_account_active_storage_slots_section_ptr
     add
     # => [slot_ptr]
 
@@ -1674,7 +1674,7 @@ proc get_map_item_raw
     # => [slot_type, slot_ptr, KEY]
 
     # assert slot_type is map
-    exec.constants::get_storage_slot_type_map eq
+    push.STORAGE_SLOT_TYPE_MAP eq
     assert.err=ERR_ACCOUNT_READING_MAP_VALUE_FROM_NON_MAP_SLOT
     # => [slot_ptr, KEY]
 
@@ -1741,7 +1741,7 @@ end
 #! - slot_ptr is the pointer to a "current" storage slot in the native account's memory section.
 #! - slot_idx is the index of the storage slot.
 proc slot_ptr_to_index
-    exec.memory::get_account_storage_slots_section_ptr
+    exec.memory::get_account_active_storage_slots_section_ptr
     sub
     # => [slot_offset]
 
@@ -1915,7 +1915,7 @@ proc refresh_storage_commitment
         # => [num_storage_slots]
 
         # setup start and end ptr
-        mul.ACCOUNT_STORAGE_SLOT_DATA_LENGTH exec.memory::get_account_storage_slots_section_ptr
+        mul.ACCOUNT_STORAGE_SLOT_DATA_LENGTH exec.memory::get_account_active_storage_slots_section_ptr
         dup movdn.2 add swap
         # => [start_ptr, end_ptr]
 
