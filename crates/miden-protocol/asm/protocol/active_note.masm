@@ -95,7 +95,7 @@ end
 #!
 #! Where:
 #! - dest_ptr is the memory address to write the note inputs.
-#! - NOTE_INPUTS_COMMITMENT is the commitment to the note's (unpadded) inputs.
+#! - NOTE_INPUTS_COMMITMENT is the commitment to the note's inputs.
 #! - INPUTS is the data corresponding to the note's inputs.
 #!
 #! Panics if:
