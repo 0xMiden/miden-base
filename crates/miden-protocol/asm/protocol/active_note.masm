@@ -275,8 +275,8 @@ end
 proc write_inputs_to_memory
     # load the inputs from the advice map to the advice stack
     # we pad the number of inputs to the next multiple of 8 so that we can use the
-    # `pipe_words_to_memory` instruction with an even number of words, even though the padded zeros
-    # are ignored during the commitment computation
+    # `pipe_double_words_to_memory` instruction, even though the padded zeros are ignored during the
+    # commitment computation
     adv.push_mapvaln.8
     # OS => [NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
     # AS => [advice_num_inputs, [INPUT_VALUES]]
@@ -300,17 +300,22 @@ proc write_inputs_to_memory
     # OS => [even_num_words, NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
     # AS => [[INPUT_VALUES]]
 
-    # prepare the stack for the `pipe_words_to_memory` procedure
-    dup.6 swap
-    # OS => [even_num_words, dest_ptr, NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
+    # compute the end pointer for writing the padded inputs (even_num_words * 4 elements)
+    dup.6 swap mul.4 add
+    # OS => [end_ptr, NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
+    # AS => [[INPUT_VALUES]]
+
+    # prepare the stack for the `pipe_double_words_to_memory` procedure
+    dup.6 padw padw padw
+    # OS => [PAD, PAD, PAD, dest_ptr, end_ptr, NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
     # AS => [[INPUT_VALUES]]
 
     # write the inputs from the advice stack into memory
-    exec.mem::pipe_words_to_memory
-    # OS => [C, B, A, dest_ptr', NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
+    exec.mem::pipe_double_words_to_memory
+    # OS => [PERM, PERM, PERM, end_ptr', NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
     # AS => []
 
-    # drop the hasher state and dest_ptr'
+    # drop the hasher state and end_ptr'
     dropw dropw dropw drop
     # OS => [NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
 
