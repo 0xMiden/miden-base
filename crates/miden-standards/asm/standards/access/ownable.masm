@@ -11,6 +11,7 @@ use miden::protocol::active_account
 use miden::protocol::account_id
 use miden::protocol::active_note
 use miden::protocol::native_account
+use miden::core::sys
 
 # CONSTANTS
 # ================================================================================================
@@ -128,21 +129,24 @@ pub proc transfer_ownership
     exec.verify_owner
     # => [new_owner_prefix, new_owner_suffix, pad(14)]
 
-    # get_item returns [owner_prefix, owner_suffix]
-    
-    # so the Word in storage is [0, 0, owner_suffix, owner_prefix] (top to bottom)
-    # To write, we need: [new_owner_prefix, new_owner_suffix, 0, 0]
-    # The zeros from pad(14) already serve as word[1] and word[0]!
-    # Stack: [new_owner_prefix, new_owner_suffix, 0, 0, pad(12)]
+    # => [new_owner_prefix, new_owner_suffix, pad(14)]
+
+    push.0 movdn.2 push.0 movdn.2
+    # => [new_owner_prefix, new_owner_suffix, 0, 0, pad(14)]
+
     push.OWNER_CONFIG_SLOT[0..2]
-    # => [slot_prefix, slot_suffix, new_owner_prefix, new_owner_suffix, 0, 0, pad(12)]
+    # => [slot_prefix, slot_suffix, new_owner_prefix, new_owner_suffix, 0, 0, pad(14)]
 
     exec.native_account::set_item
-    # => [OLD_OWNER_WORD, pad(12)]
+    # => [OLD_OWNER_WORD, pad(14)]
 
-    # Remove OLD_OWNER_WORD (4 felts) and keep pad(12)
     dropw
-    # => [pad(16)]
+    # => [pad(14)]
+
+    # Truncate stack to exactly 16 elements (required for 'call' procedures)
+    # This ensures we have exactly 16 elements, regardless of how many padding elements we had
+    exec.sys::truncate_stack
+    # => [pad(16)] (exactly 16 elements)
 end
 
 #! Renounces ownership, leaving the component without an owner.
