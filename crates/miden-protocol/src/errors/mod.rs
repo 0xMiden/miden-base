@@ -8,6 +8,7 @@ use miden_assembly::diagnostics::reporting::PrintDiagnostic;
 use miden_core::mast::MastForestError;
 use miden_core::{EventId, Felt};
 use miden_crypto::merkle::mmr::MmrError;
+use miden_crypto::merkle::smt::SmtProofError;
 use miden_crypto::utils::HexParseError;
 use miden_processor::DeserializationError;
 use thiserror::Error;
@@ -706,6 +707,12 @@ pub enum TransactionInputError {
     MerkleError(#[from] MerkleError),
     #[error("failed to handle account tree data")]
     AccountTreeError(#[from] AccountTreeError),
+    #[error("missing vault root")]
+    MissingVaultRoot,
+    #[error("failed to construct SMT proof")]
+    SmtProofError(#[from] SmtProofError),
+    #[error("failed to construct asset witness")]
+    AssetError(#[from] AssetError),
 }
 
 // TRANSACTION OUTPUT ERROR
