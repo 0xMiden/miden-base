@@ -49,15 +49,8 @@ pub fn smt_key_to_account_id(key: Word) -> AccountId {
 }
 
 /// Converts an AccountId to an SMT leaf index for use with MerkleStore operations.
-///
-/// This function builds on [`account_id_to_smt_key()`] by converting the resulting Word
-/// into a leaf index that can be used with MerkleStore::get_path().
 pub fn account_id_to_smt_index(account_id: AccountId) -> LeafIndex<SMT_DEPTH> {
-    let key = account_id_to_smt_key(account_id);
-    // Convert the SMT key to a leaf index by using the first element as the index.
-    // This follows the same pattern as used in the SMT implementation.
-    let leaf_index = key.get(3).expect("words have 4 elements").as_int();
-    LeafIndex::new(leaf_index).expect("SMT_DEPTH is not smaller that SMT_MIN_DEPTH")
+    account_id_to_smt_key(account_id).into()
 }
 
 // ACCOUNT TREE
