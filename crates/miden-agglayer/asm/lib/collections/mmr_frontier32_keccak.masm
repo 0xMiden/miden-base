@@ -116,7 +116,7 @@ pub proc append_and_update_frontier
             # => [CUR_HASH_LO, CUR_HASH_HI, frontier[iter_counter]_ptr, iter_counter, num_leaves, mmr_frontier_ptr]
 
             # store the CUR_HASH to the frontier[iter_counter]_ptr
-            exec.mem_store_double_word movdn.8 drop
+            exec.mem_store_double_word movup.8 drop
             # => [CUR_HASH_LO, CUR_HASH_HI, iter_counter, num_leaves, mmr_frontier_ptr]
 
             # get the pointer to the canonical zero node of the current height

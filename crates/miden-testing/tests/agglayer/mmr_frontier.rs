@@ -44,19 +44,21 @@ impl<const TREE_HEIGHT: usize> KeccakMmrFrontier32<TREE_HEIGHT> {
     pub fn append_and_update_frontier(&mut self, new_leaf: Keccak256Digest) -> Keccak256Digest {
         let mut curr_hash = new_leaf;
         let mut idx = self.leaves_num;
+        self.leaves_num += 1;
 
         for height in 0..TREE_HEIGHT {
             if (idx & 1) == 0 {
                 // This height wasn't "occupied" yet: store cur as the subtree root at height h.
                 self.frontier[height] = curr_hash;
 
+                // std::println!("height: {height}\ncurr: {:?}\nzero: {:?}", keccak_digest_to_felt_strings(curr_hash), keccak_digest_to_felt_strings(CANONICAL_ZEROS_32[height]));
+
                 // Pair it with the canonical zero subtree on the right at this height.
                 curr_hash = Keccak256::merge(&[curr_hash, CANONICAL_ZEROS_32[height]]);
-                // curr_hash = hasher.hash_node(cur, zeroes[h]);
+                // std::println!("next curr: {:?}\n\n", keccak_digest_to_felt_strings(curr_hash));
             } else {
                 // This height already had a subtree root stored in frontier[h], merge into parent.
                 curr_hash = Keccak256::merge(&[self.frontier[height], curr_hash])
-                // curr_hash = hasher.hash_node(frontier[h], cur);
             }
 
             idx >>= 1;
@@ -68,7 +70,6 @@ impl<const TREE_HEIGHT: usize> KeccakMmrFrontier32<TREE_HEIGHT> {
 }
 
 #[tokio::test]
-#[ignore = "buggy"]
 async fn test_append_and_update_frontier() -> anyhow::Result<()> {
     let mut mmr_frontier = KeccakMmrFrontier32::<32>::new();
 
@@ -133,6 +134,7 @@ fn keccak_digest_to_felt_strings(digest: Keccak256Digest) -> String {
     (*digest)
         .chunks(4)
         .map(|chunk| Felt::from(u32::from_le_bytes(chunk.try_into().unwrap())).to_string())
+        .rev()
         .collect::<Vec<_>>()
         .join(".")
 }
