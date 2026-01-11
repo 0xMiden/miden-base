@@ -1,3 +1,4 @@
+use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
 use core::fmt::Debug;
 
@@ -13,6 +14,8 @@ use crate::account::{
     AccountStorageHeader,
     PartialAccount,
     PartialStorage,
+    StorageSlotId,
+    StorageSlotName,
 };
 use crate::asset::{AssetWitness, PartialVault};
 use crate::block::account_tree::{AccountWitness, account_id_to_smt_index};
@@ -43,6 +46,8 @@ pub struct TransactionInputs {
     foreign_account_code: Vec<AccountCode>,
     /// Pre-fetched asset witnesses for note assets and the fee asset.
     asset_witnesses: Vec<AssetWitness>,
+    /// Storage slot names for foreign accounts.
+    foreign_account_slot_names: BTreeMap<AccountId, BTreeMap<StorageSlotId, StorageSlotName>>,
 }
 
 impl TransactionInputs {
@@ -99,6 +104,7 @@ impl TransactionInputs {
             advice_inputs: AdviceInputs::default(),
             foreign_account_code: Vec::new(),
             asset_witnesses: Vec::new(),
+            foreign_account_slot_names: BTreeMap::new(),
         })
     }
 
@@ -117,6 +123,15 @@ impl TransactionInputs {
     /// Replaces the transaction inputs and assigns the given transaction arguments.
     pub fn with_tx_args(mut self, tx_args: TransactionArgs) -> Self {
         self.set_tx_args_inner(tx_args);
+        self
+    }
+
+    /// Replaces the transaction inputs and assigns the given foreign account slot names.
+    pub fn with_foreign_account_slot_names(
+        mut self,
+        foreign_account_slot_names: BTreeMap<AccountId, BTreeMap<StorageSlotId, StorageSlotName>>,
+    ) -> Self {
+        self.foreign_account_slot_names = foreign_account_slot_names;
         self
     }
 
@@ -193,6 +208,13 @@ impl TransactionInputs {
         &self.asset_witnesses
     }
 
+    /// Returns the foreign account storage slot names.
+    pub fn foreign_account_slot_names(
+        &self,
+    ) -> &BTreeMap<AccountId, BTreeMap<StorageSlotId, StorageSlotName>> {
+        &self.foreign_account_slot_names
+    }
+
     /// Returns the advice inputs to be consumed in the transaction.
     pub fn advice_inputs(&self) -> &AdviceInputs {
         &self.advice_inputs
@@ -257,7 +279,14 @@ impl TransactionInputs {
             .map
             .get(&header.storage_commitment())
             .ok_or(TransactionInputError::StorageHeaderNotFound(header.id()))?;
-        let storage_header = AccountStorageHeader::try_from_elements(storage_header_elements)?;
+
+        // Get slot names for this foreign account, or use empty map if not available.
+        let empty_slot_names = BTreeMap::new();
+        let slot_names =
+            self.foreign_account_slot_names.get(&header.id()).unwrap_or(&empty_slot_names);
+
+        let storage_header =
+            AccountStorageHeader::try_from_elements(storage_header_elements, slot_names)?;
 
         // Build partial storage.
         let partial_storage = PartialStorage::new(storage_header, [])?;
@@ -337,6 +366,17 @@ impl Serializable for TransactionInputs {
         self.advice_inputs.write_into(target);
         self.foreign_account_code.write_into(target);
         self.asset_witnesses.write_into(target);
+
+        // Serialize foreign account slot names.
+        target.write_u32(self.foreign_account_slot_names.len() as u32);
+        for (account_id, slot_names) in &self.foreign_account_slot_names {
+            account_id.write_into(target);
+            target.write_u32(slot_names.len() as u32);
+            for (slot_id, slot_name) in slot_names {
+                slot_id.write_into(target);
+                slot_name.write_into(target);
+            }
+        }
     }
 }
 
@@ -353,6 +393,21 @@ impl Deserializable for TransactionInputs {
         let foreign_account_code = Vec::<AccountCode>::read_from(source)?;
         let asset_witnesses = Vec::<AssetWitness>::read_from(source)?;
 
+        // Deserialize foreign account slot names.
+        let num_accounts = source.read_u32()? as usize;
+        let mut foreign_account_slot_names = BTreeMap::new();
+        for _ in 0..num_accounts {
+            let account_id = AccountId::read_from(source)?;
+            let num_slots = source.read_u32()? as usize;
+            let mut slot_names = BTreeMap::new();
+            for _ in 0..num_slots {
+                let slot_id = StorageSlotId::read_from(source)?;
+                let slot_name = StorageSlotName::read_from(source)?;
+                slot_names.insert(slot_id, slot_name);
+            }
+            foreign_account_slot_names.insert(account_id, slot_names);
+        }
+
         Ok(TransactionInputs {
             account,
             block_header,
@@ -362,6 +417,7 @@ impl Deserializable for TransactionInputs {
             advice_inputs,
             foreign_account_code,
             asset_witnesses,
+            foreign_account_slot_names,
         })
     }
 }
@@ -439,6 +495,7 @@ mod tests {
             advice_inputs: crate::vm::AdviceInputs::default(),
             foreign_account_code: Vec::new(),
             asset_witnesses: Vec::new(),
+            foreign_account_slot_names: BTreeMap::new(),
         };
 
         // Try to read foreign account that doesn't exist in advice map.
@@ -498,7 +555,7 @@ mod tests {
 
         let mut slots = vec![slot1, slot2];
         slots.sort_by_key(|slot| slot.id());
-        let foreign_storage_header = AccountStorageHeader::new(slots).unwrap();
+        let foreign_storage_header = AccountStorageHeader::new(slots.clone()).unwrap();
 
         // Create advice inputs with both account header and storage header.
         let mut advice_inputs = crate::vm::AdviceInputs::default();
@@ -509,6 +566,12 @@ mod tests {
             .map
             .insert(foreign_header.storage_commitment(), foreign_storage_header.to_elements());
 
+        let foreign_account_slot_names = BTreeMap::from([
+            (slots[0].id(), slots[0].name().clone()),
+            (slots[1].id(), slots[1].name().clone()),
+        ]);
+        let foreign_account_slot_names =
+            BTreeMap::from([(foreign_account_id, foreign_account_slot_names)]);
         let tx_inputs = TransactionInputs {
             account: partial_account,
             block_header: crate::block::BlockHeader::mock(0, None, None, &[], Word::default()),
@@ -518,6 +581,7 @@ mod tests {
             advice_inputs,
             foreign_account_code: vec![code],
             asset_witnesses: Vec::new(),
+            foreign_account_slot_names,
         };
 
         // Try to read foreign account with storage data.
@@ -639,6 +703,7 @@ mod tests {
             advice_inputs,
             foreign_account_code: vec![code],
             asset_witnesses: Vec::new(),
+            foreign_account_slot_names: BTreeMap::new(),
         };
 
         // Test reading foreign account inputs.
