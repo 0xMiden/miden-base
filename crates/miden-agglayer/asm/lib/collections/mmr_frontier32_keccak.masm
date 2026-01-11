@@ -1,7 +1,68 @@
 use miden::core::crypto::hashes::keccak256
 use ::miden::agglayer::collections::canonical_zeros::load_zeros_to_memory
 
-# Module description: TBD
+# An MMR Frontier is a data structure based on an MMR, which combines some features of an MMR and an
+# SMT.
+#
+# # Basics & Terminology
+#
+# The main entity in this structure is a _frontier_: it is a set of roots of all individual trees in 
+# the MMR. Let's consider the tree below as an example.
+#
+#        7
+#     /     \
+#    3       6       10
+#   /  \    /  \    /  \
+#  1    2  4    5  8    9  11 
+#
+# The frontier will consist of nodes 7, 10, and 11, because they represent roots of each subtree and
+# they are sufficient to compute the root of the entire MMR. If we add another node, the tree will
+# become a full binary one and will look like so:
+#
+#                15
+#              /    \
+#            /        \   
+#          /            \
+#        7               14
+#      /   \            /   \ 
+#    3       6       10       13
+#   /  \    /  \    /  \     /  \
+#  1    2  4    5  8    9  11    12 
+#
+# So in that case the frontier will consist of just one node 15.
+# 
+# An MMR frontier consists of the current number of leaves in the range and the array containing the
+# frontier. 
+# For the sake of simplicity, this array has a fixed length, equal to the maximum tree height. 1's 
+# in the binary representation of the leaves number will represent the relevant frontier values for
+# the current height. For example, if we have 10 leaves (1010 in binary representation), relevant 
+# frontier values will be stored at frontier[1] and frontier[3]: 1 and 3 are indexes of the 1's in
+# the 1010.
+#
+# To compute the hash of two MMR nodes, a Keccak256 hash function is used.
+# 
+# Each node in this MMR is represented by the Keccak256Digest. Notice that this hash is canonically
+# represented on the stack by the 8 u32 values, or two words. So each node of the MMR will occupy 
+# two words on the stack, while being only a 256 bit value.
+#
+# Each state of the MMR frontier is represented by the root. This root is essentially equal to the
+# root of the SMT which has the height equal to the maximum height of the current MMR frontier (for
+# this implementation this maximum height is set to 32), and the leaves equal to the MMR frontier
+# leaves or a zero hash (Keccak256::hash(&[0u8; 32])).
+#
+# # Layout
+#
+# The memory layout of the MMR frontier looks like so:
+# 
+# [num_leaves, 0, 0, 0, [FRONTIER_VALUE_DW]]
+# 
+# Where: 
+# - num_leaves is the number of leaves in the MMR frontier before adding the new leaf.
+# - [FRONTIER_VALUE_DW] is an array containing the double words which represent the frontier MMR 
+#   nodes. Notice that the index of a frontier value in this array represent its height in the tree.
+#
+# Zero hashes which are used during the root computation are stored in the local memory of the 
+# `append_and_update_frontier` procedure.
 
 # CONSTANTS
 # =================================================================================================
@@ -23,9 +84,6 @@ const NUM_LEAVES_OFFSET = 0
 
 # The offset of the array of the frontier nodes of respective heights.
 const FRONTIER_OFFSET = 4 # 32 double words, 256 felts in total
-
-# The offset of the array of the zero hashes of respective heights.
-const ZEROS_OFFSET = 52 # 32 double words, 256 felts in total
 
 # PUBLIC API
 # =================================================================================================
