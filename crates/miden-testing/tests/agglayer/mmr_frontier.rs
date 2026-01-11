@@ -51,11 +51,8 @@ impl<const TREE_HEIGHT: usize> KeccakMmrFrontier32<TREE_HEIGHT> {
                 // This height wasn't "occupied" yet: store cur as the subtree root at height h.
                 self.frontier[height] = curr_hash;
 
-                // std::println!("height: {height}\ncurr: {:?}\nzero: {:?}", keccak_digest_to_felt_strings(curr_hash), keccak_digest_to_felt_strings(CANONICAL_ZEROS_32[height]));
-
                 // Pair it with the canonical zero subtree on the right at this height.
                 curr_hash = Keccak256::merge(&[curr_hash, CANONICAL_ZEROS_32[height]]);
-                // std::println!("next curr: {:?}\n\n", keccak_digest_to_felt_strings(curr_hash));
             } else {
                 // This height already had a subtree root stored in frontier[h], merge into parent.
                 curr_hash = Keccak256::merge(&[self.frontier[height], curr_hash])
