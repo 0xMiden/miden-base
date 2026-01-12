@@ -180,13 +180,9 @@ where
         tx_advice_inputs.add_foreign_accounts([&foreign_account_inputs]);
 
         // Extract and store slot names for this foreign account and store.
-        let slot_names = foreign_account_inputs
-            .storage()
-            .header()
-            .slots()
-            .map(|slot| (slot.id(), slot.name().clone()))
-            .collect::<BTreeMap<StorageSlotId, StorageSlotName>>();
-        self.foreign_account_slot_names.extend(slot_names.into_iter());
+        foreign_account_inputs.storage().header().slots().for_each(|slot| {
+            self.foreign_account_slot_names.insert(slot.id(), slot.name().clone());
+        });
 
         self.base_host.load_foreign_account_code(foreign_account_inputs.code());
 
