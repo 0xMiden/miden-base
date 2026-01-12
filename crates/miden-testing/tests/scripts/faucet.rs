@@ -16,6 +16,7 @@ use miden_protocol::asset::{Asset, FungibleAsset};
 use miden_protocol::note::{
     Note,
     NoteAssets,
+    NoteAttachment,
     NoteExecutionHint,
     NoteId,
     NoteInputs,
@@ -298,8 +299,6 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
     let recipient_account_id = AccountId::try_from(ACCOUNT_ID_PRIVATE_SENDER)?;
     let amount = Felt::new(75);
     let tag = NoteTag::default();
-    // TODO(note_attachment): Replace with attachment.
-    // let aux = Felt::new(27);
     let note_type = NoteType::Public;
 
     // Create a simple output note script
@@ -498,7 +497,6 @@ async fn network_faucet_mint() -> anyhow::Result<()> {
 
     let amount = Felt::new(75);
     let mint_asset: Asset = FungibleAsset::new(faucet.id(), amount.into()).unwrap().into();
-    let aux = Felt::new(27);
     let serial_num = Word::default();
 
     let output_note_tag = NoteTag::with_account_target(target_account.id());
@@ -516,8 +514,13 @@ async fn network_faucet_mint() -> anyhow::Result<()> {
     let mint_inputs = MintNoteInputs::new_private(recipient, amount, output_note_tag.into());
 
     let mut rng = RpoRandomCoin::new([Felt::from(42u32); 4].into());
-    let mint_note =
-        create_mint_note(faucet.id(), faucet_owner_account_id, mint_inputs, aux, &mut rng)?;
+    let mint_note = create_mint_note(
+        faucet.id(),
+        faucet_owner_account_id,
+        mint_inputs,
+        NoteAttachment::default(),
+        &mut rng,
+    )?;
 
     // Add the MINT note to the mock chain
     builder.add_output_note(OutputNote::Full(mint_note.clone()));
@@ -603,7 +606,7 @@ async fn network_faucet_burn() -> anyhow::Result<()> {
         faucet_owner_account_id,
         faucet.id(),
         fungible_asset.into(),
-        Felt::new(0),
+        NoteAttachment::default(),
         &mut rng,
     )?;
 
@@ -660,7 +663,6 @@ async fn test_mint_note_output_note_types(#[case] note_type: NoteType) -> anyhow
 
     let amount = Felt::new(75);
     let mint_asset: Asset = FungibleAsset::new(faucet.id(), amount.into()).unwrap().into();
-    let aux = Felt::new(27);
     let serial_num = Word::from([1, 2, 3, 4u32]);
 
     // Create the expected P2ID output note
@@ -693,8 +695,13 @@ async fn test_mint_note_output_note_types(#[case] note_type: NoteType) -> anyhow
     };
 
     let mut rng = RpoRandomCoin::new([Felt::from(42u32); 4].into());
-    let mint_note =
-        create_mint_note(faucet.id(), faucet_owner_account_id, mint_inputs.clone(), aux, &mut rng)?;
+    let mint_note = create_mint_note(
+        faucet.id(),
+        faucet_owner_account_id,
+        mint_inputs.clone(),
+        NoteAttachment::default(),
+        &mut rng,
+    )?;
 
     builder.add_output_note(OutputNote::Full(mint_note.clone()));
     let mut mock_chain = builder.build()?;

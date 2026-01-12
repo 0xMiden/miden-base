@@ -15,7 +15,7 @@ use miden_protocol::note::{
     NoteTag,
     NoteType,
 };
-use miden_protocol::{Felt, NoteError, Word};
+use miden_protocol::{NoteError, Word};
 use utils::build_swap_tag;
 
 pub mod mint_inputs;
@@ -83,8 +83,7 @@ pub fn create_p2ide_note<R: FeltRng>(
     reclaim_height: Option<BlockNumber>,
     timelock_height: Option<BlockNumber>,
     note_type: NoteType,
-    // TODO(note_attachment): Replace with note attachment.
-    _aux: Felt,
+    attachment: NoteAttachment,
     rng: &mut R,
 ) -> Result<Note, NoteError> {
     let serial_num = rng.draw_word();
@@ -92,7 +91,7 @@ pub fn create_p2ide_note<R: FeltRng>(
         utils::build_p2ide_recipient(target, reclaim_height, timelock_height, serial_num)?;
     let tag = NoteTag::with_account_target(target);
 
-    let metadata = NoteMetadata::new(sender, note_type, tag);
+    let metadata = NoteMetadata::new(sender, note_type, tag).with_attachment(attachment);
     let vault = NoteAssets::new(assets)?;
 
     Ok(Note::new(vault, metadata, recipient))
@@ -186,8 +185,7 @@ pub fn create_mint_note<R: FeltRng>(
     faucet_id: AccountId,
     sender: AccountId,
     mint_inputs: MintNoteInputs,
-    // TODO(note_attachment): Replace with note attachment.
-    _aux: Felt,
+    attachment: NoteAttachment,
     rng: &mut R,
 ) -> Result<Note, NoteError> {
     let note_script = WellKnownNote::MINT.script();
@@ -201,7 +199,7 @@ pub fn create_mint_note<R: FeltRng>(
 
     let tag = NoteTag::with_account_target(faucet_id);
 
-    let metadata = NoteMetadata::new(sender, note_type, tag);
+    let metadata = NoteMetadata::new(sender, note_type, tag).with_attachment(attachment);
     let assets = NoteAssets::new(vec![])?; // MINT notes have no assets
     let recipient = NoteRecipient::new(serial_num, note_script, inputs);
 
@@ -233,8 +231,7 @@ pub fn create_burn_note<R: FeltRng>(
     sender: AccountId,
     faucet_id: AccountId,
     fungible_asset: Asset,
-    // TODO(note_attachment): Replace with note attachment.
-    _aux: Felt,
+    attachment: NoteAttachment,
     rng: &mut R,
 ) -> Result<Note, NoteError> {
     let note_script = WellKnownNote::BURN.script();
@@ -246,7 +243,7 @@ pub fn create_burn_note<R: FeltRng>(
     let inputs = NoteInputs::new(vec![])?;
     let tag = NoteTag::with_account_target(faucet_id);
 
-    let metadata = NoteMetadata::new(sender, note_type, tag);
+    let metadata = NoteMetadata::new(sender, note_type, tag).with_attachment(attachment);
     let assets = NoteAssets::new(vec![fungible_asset])?; // BURN notes contain the asset to burn
     let recipient = NoteRecipient::new(serial_num, note_script, inputs);
 
