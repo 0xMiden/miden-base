@@ -130,8 +130,6 @@ fn test_read_foreign_account_inputs_with_storage_data() {
         (slots[0].id(), slots[0].name().clone()),
         (slots[1].id(), slots[1].name().clone()),
     ]);
-    let foreign_account_slot_names =
-        BTreeMap::from([(foreign_account_id, foreign_account_slot_names)]);
     let tx_inputs = TransactionInputs {
         account: partial_account,
         block_header: crate::block::BlockHeader::mock(0, None, None, &[], Word::default()),
@@ -305,22 +303,11 @@ fn test_transaction_inputs_serialization_with_foreign_slot_names() {
         StorageSlotName,
     };
     use crate::asset::PartialVault;
-    use crate::testing::account_id::{
-        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
-        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE_2,
-    };
+    use crate::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE;
 
     // Create test account IDs
     let native_account_id =
         AccountId::try_from(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE).unwrap();
-    let foreign_account_id_1 =
-        AccountId::try_from(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE_2).unwrap();
-    let foreign_account_id_2 = AccountId::dummy(
-        [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-        foreign_account_id_1.version(),
-        foreign_account_id_1.account_type(),
-        foreign_account_id_1.storage_mode(),
-    );
 
     // Create some slot names and IDs.
     let slot_name_1 = StorageSlotName::new("test::slot1::value".to_string()).unwrap();
@@ -333,15 +320,9 @@ fn test_transaction_inputs_serialization_with_foreign_slot_names() {
 
     // Create foreign account slot names map.
     let mut foreign_account_slot_names = BTreeMap::new();
-
-    let mut account1_slots = BTreeMap::new();
-    account1_slots.insert(slot_id_1, slot_name_1.clone());
-    account1_slots.insert(slot_id_2, slot_name_2.clone());
-    foreign_account_slot_names.insert(foreign_account_id_1, account1_slots);
-
-    let mut account2_slots = BTreeMap::new();
-    account2_slots.insert(slot_id_3, slot_name_3.clone());
-    foreign_account_slot_names.insert(foreign_account_id_2, account2_slots);
+    foreign_account_slot_names.insert(slot_id_1, slot_name_1.clone());
+    foreign_account_slot_names.insert(slot_id_2, slot_name_2.clone());
+    foreign_account_slot_names.insert(slot_id_3, slot_name_3.clone());
 
     // Create a basic TransactionInputs with foreign slot names.
     let code = AccountCode::mock();
@@ -383,15 +364,11 @@ fn test_transaction_inputs_serialization_with_foreign_slot_names() {
     // Verify specific slot names.
     let deserialized_slots = deserialized.foreign_account_slot_names();
 
-    // Check account 1 slots.
-    let account1_deserialized = deserialized_slots.get(&foreign_account_id_1).unwrap();
-    assert_eq!(account1_deserialized.get(&slot_id_1).unwrap(), &slot_name_1);
-    assert_eq!(account1_deserialized.get(&slot_id_2).unwrap(), &slot_name_2);
+    // Check slots.
+    assert_eq!(deserialized_slots.get(&slot_id_1).unwrap(), &slot_name_1);
+    assert_eq!(deserialized_slots.get(&slot_id_2).unwrap(), &slot_name_2);
+    assert_eq!(deserialized_slots.get(&slot_id_3).unwrap(), &slot_name_3);
 
-    // Check account 2 slots.
-    let account2_deserialized = deserialized_slots.get(&foreign_account_id_2).unwrap();
-    assert_eq!(account2_deserialized.get(&slot_id_3).unwrap(), &slot_name_3);
-
-    // Verify the entire structure is identical
+    // Verify the entire structure is identical.
     assert_eq!(original_tx_inputs, deserialized);
 }

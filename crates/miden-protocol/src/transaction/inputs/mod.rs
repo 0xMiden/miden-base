@@ -52,7 +52,7 @@ pub struct TransactionInputs {
     /// Pre-fetched asset witnesses for note assets and the fee asset.
     asset_witnesses: Vec<AssetWitness>,
     /// Storage slot names for foreign accounts.
-    foreign_account_slot_names: BTreeMap<AccountId, BTreeMap<StorageSlotId, StorageSlotName>>,
+    foreign_account_slot_names: BTreeMap<StorageSlotId, StorageSlotName>,
 }
 
 impl TransactionInputs {
@@ -134,7 +134,7 @@ impl TransactionInputs {
     /// Replaces the transaction inputs and assigns the given foreign account slot names.
     pub fn with_foreign_account_slot_names(
         mut self,
-        foreign_account_slot_names: BTreeMap<AccountId, BTreeMap<StorageSlotId, StorageSlotName>>,
+        foreign_account_slot_names: BTreeMap<StorageSlotId, StorageSlotName>,
     ) -> Self {
         self.foreign_account_slot_names = foreign_account_slot_names;
         self
@@ -214,9 +214,7 @@ impl TransactionInputs {
     }
 
     /// Returns the foreign account storage slot names.
-    pub fn foreign_account_slot_names(
-        &self,
-    ) -> &BTreeMap<AccountId, BTreeMap<StorageSlotId, StorageSlotName>> {
+    pub fn foreign_account_slot_names(&self) -> &BTreeMap<StorageSlotId, StorageSlotName> {
         &self.foreign_account_slot_names
     }
 
@@ -327,12 +325,10 @@ impl TransactionInputs {
             .ok_or(TransactionInputError::StorageHeaderNotFound(header.id()))?;
 
         // Get slot names for this foreign account, or use empty map if not available.
-        let empty_slot_names = BTreeMap::new();
-        let slot_names =
-            self.foreign_account_slot_names.get(&header.id()).unwrap_or(&empty_slot_names);
-
-        let storage_header =
-            AccountStorageHeader::try_from_elements(storage_header_elements, slot_names)?;
+        let storage_header = AccountStorageHeader::try_from_elements(
+            storage_header_elements,
+            self.foreign_account_slot_names(),
+        )?;
 
         // Build partial storage.
         let partial_storage = PartialStorage::new(storage_header, [])?;
@@ -412,17 +408,8 @@ impl Serializable for TransactionInputs {
         self.advice_inputs.write_into(target);
         self.foreign_account_code.write_into(target);
         self.asset_witnesses.write_into(target);
-
-        // Serialize foreign account slot names.
-        target.write_u32(self.foreign_account_slot_names.len() as u32);
-        for (account_id, slot_names) in &self.foreign_account_slot_names {
-            account_id.write_into(target);
-            target.write_u32(slot_names.len() as u32);
-            for (slot_id, slot_name) in slot_names {
-                slot_id.write_into(target);
-                slot_name.write_into(target);
-            }
-        }
+        target.write_usize(self.foreign_account_slot_names().len());
+        target.write_many(&self.foreign_account_slot_names);
     }
 }
 
@@ -439,20 +426,11 @@ impl Deserializable for TransactionInputs {
         let foreign_account_code = Vec::<AccountCode>::read_from(source)?;
         let asset_witnesses = Vec::<AssetWitness>::read_from(source)?;
 
-        // Deserialize foreign account slot names.
-        let num_accounts = source.read_u32()? as usize;
-        let mut foreign_account_slot_names = BTreeMap::new();
-        for _ in 0..num_accounts {
-            let account_id = AccountId::read_from(source)?;
-            let num_slots = source.read_u32()? as usize;
-            let mut slot_names = BTreeMap::new();
-            for _ in 0..num_slots {
-                let slot_id = StorageSlotId::read_from(source)?;
-                let slot_name = StorageSlotName::read_from(source)?;
-                slot_names.insert(slot_id, slot_name);
-            }
-            foreign_account_slot_names.insert(account_id, slot_names);
-        }
+        let num_slot_names = source.read_usize()?;
+        let foreign_account_slot_names = source
+            .read_many::<(StorageSlotId, StorageSlotName)>(num_slot_names)?
+            .into_iter()
+            .collect();
 
         Ok(TransactionInputs {
             account,

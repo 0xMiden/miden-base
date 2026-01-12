@@ -85,7 +85,7 @@ where
     accessed_foreign_account_code: Vec<AccountCode>,
 
     /// Storage slot names for foreign accounts accessed during transaction execution.
-    foreign_account_slot_names: BTreeMap<AccountId, BTreeMap<StorageSlotId, StorageSlotName>>,
+    foreign_account_slot_names: BTreeMap<StorageSlotId, StorageSlotName>,
 
     /// Contains generated signatures (as a message |-> signature map) required for transaction
     /// execution. Once a signature was created for a given message, it is inserted into this map.
@@ -153,9 +153,7 @@ where
     }
 
     /// Returns a reference to the foreign account slot names collected during execution.
-    pub fn foreign_account_slot_names(
-        &self,
-    ) -> &BTreeMap<AccountId, BTreeMap<StorageSlotId, StorageSlotName>> {
+    pub fn foreign_account_slot_names(&self) -> &BTreeMap<StorageSlotId, StorageSlotName> {
         &self.foreign_account_slot_names
     }
 
@@ -181,17 +179,14 @@ where
         let mut tx_advice_inputs = TransactionAdviceInputs::default();
         tx_advice_inputs.add_foreign_accounts([&foreign_account_inputs]);
 
-        // Extract and store slot names for this foreign account.
+        // Extract and store slot names for this foreign account and store.
         let slot_names = foreign_account_inputs
             .storage()
             .header()
             .slots()
             .map(|slot| (slot.id(), slot.name().clone()))
             .collect::<BTreeMap<StorageSlotId, StorageSlotName>>();
-
-        if !slot_names.is_empty() {
-            self.foreign_account_slot_names.insert(foreign_account_id, slot_names);
-        }
+        self.foreign_account_slot_names.extend(slot_names.into_iter());
 
         self.base_host.load_foreign_account_code(foreign_account_inputs.code());
 
@@ -439,7 +434,7 @@ where
         Vec<AccountCode>,
         BTreeMap<Word, Vec<Felt>>,
         TransactionProgress,
-        BTreeMap<AccountId, BTreeMap<StorageSlotId, StorageSlotName>>,
+        BTreeMap<StorageSlotId, StorageSlotName>,
     ) {
         let (account_delta, input_notes, output_notes) = self.base_host.into_parts();
 
