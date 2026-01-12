@@ -166,10 +166,7 @@ impl InitStorageData {
     }
 
     /// Returns the map entries associated with the given storage map slot name, if any.
-    pub fn map_entries(
-        &self,
-        slot_name: &StorageSlotName,
-    ) -> Option<&Vec<(WordValue, WordValue)>> {
+    pub fn map_entries(&self, slot_name: &StorageSlotName) -> Option<&Vec<(WordValue, WordValue)>> {
         self.map_entries.get(slot_name)
     }
 

@@ -1115,18 +1115,8 @@ mod tests {
         let slot_name: StorageSlotName = "demo::map".parse().unwrap();
 
         let entries = vec![(
-            WordValue::Elements([
-                "1".into(),
-                "0".into(),
-                "0".into(),
-                "0".into(),
-            ]),
-            WordValue::Elements([
-                "10".into(),
-                "11".into(),
-                "12".into(),
-                "13".into(),
-            ]),
+            WordValue::Elements(["1".into(), "0".into(), "0".into(), "0".into()]),
+            WordValue::Elements(["10".into(), "11".into(), "12".into(), "13".into()]),
         )];
         let init_data = InitStorageData::new(
             BTreeMap::new(),

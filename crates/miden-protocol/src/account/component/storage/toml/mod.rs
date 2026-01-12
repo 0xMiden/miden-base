@@ -432,12 +432,13 @@ impl RawStorageSlotSchema {
         let mut map = BTreeMap::new();
 
         let parse = |schema: &WordSchema, raw: &WordValue, label: &str| {
-            super::schema::parse_storage_value_with_schema(schema, raw, slot_prefix)
-            .map_err(|err| {
-                AccountComponentTemplateError::InvalidSchema(format!(
-                    "invalid map `{label}`: {err}"
-                ))
-            })
+            super::schema::parse_storage_value_with_schema(schema, raw, slot_prefix).map_err(
+                |err| {
+                    AccountComponentTemplateError::InvalidSchema(format!(
+                        "invalid map `{label}`: {err}"
+                    ))
+                },
+            )
         };
 
         for (index, entry) in entries.into_iter().enumerate() {
@@ -483,8 +484,11 @@ impl WordValue {
             },
         };
 
-        WordSchema::new_simple(schema_type.clone())
-            .validate_word_value(slot_prefix, label, word)?;
+        WordSchema::new_simple(schema_type.clone()).validate_word_value(
+            slot_prefix,
+            label,
+            word,
+        )?;
         Ok(word)
     }
 
