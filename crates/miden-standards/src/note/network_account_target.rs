@@ -1,8 +1,11 @@
 use miden_protocol::account::AccountId;
-use miden_protocol::note::{NoteAttachment, NoteAttachmentContent, NoteAttachmentType};
-use miden_protocol::{AccountIdError, NoteError};
-
-use super::*;
+use miden_protocol::note::{
+    NoteAttachment,
+    NoteAttachmentContent,
+    NoteAttachmentType,
+    NoteExecutionHint,
+};
+use miden_protocol::{AccountIdError, NoteError, Word};
 
 // NETWORK ACCOUNT TARGET
 // ================================================================================================
