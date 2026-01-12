@@ -27,7 +27,7 @@ pub struct AccountSchemaCommitment {
 }
 
 impl AccountSchemaCommitment {
-    /// Creates a new [`StorageSchemaCommitment`] component from a list of storage schemas.
+    /// Creates a new [`AccountSchemaCommitment`] component from a list of storage schemas.
     ///
     /// The input schemas are ordered deterministically by their commitments before the final
     /// commitment is computed.
@@ -37,7 +37,7 @@ impl AccountSchemaCommitment {
         }
     }
 
-    /// Creates a new [`StorageSchemaCommitment`] component from a [`StorageSchema`].
+    /// Creates a new [`AccountSchemaCommitment`] component from a [`StorageSchema`].
     pub fn from_schema(storage_schema: &StorageSchema) -> Self {
         Self::new(core::slice::from_ref(storage_schema))
     }
