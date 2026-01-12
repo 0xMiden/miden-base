@@ -725,12 +725,7 @@ async fn test_mint_note_output_note_types(#[case] note_type: NoteType) -> anyhow
             // For private notes, we can only compare basic properties since we get
             // OutputNote::Partial
             assert_eq!(output_note.id(), p2id_mint_output_note.id());
-            assert_eq!(output_note.metadata().sender(), p2id_mint_output_note.metadata().sender());
-            assert_eq!(
-                output_note.metadata().note_type(),
-                p2id_mint_output_note.metadata().note_type()
-            );
-            assert_eq!(output_note.metadata().aux(), p2id_mint_output_note.metadata().aux());
+            assert_eq!(output_note.metadata(), p2id_mint_output_note.metadata());
         },
         NoteType::Public => {
             // For public notes, we get OutputNote::Full and can compare key properties

@@ -1,9 +1,9 @@
 use anyhow::Result;
+use miden_protocol::Word;
 use miden_protocol::asset::{Asset, FungibleAsset};
 use miden_protocol::note::NoteType;
 use miden_protocol::testing::account_id::ACCOUNT_ID_SENDER;
 use miden_protocol::transaction::OutputNote;
-use miden_protocol::{Felt, Word};
 use miden_standards::code_builder::CodeBuilder;
 use miden_testing::{Auth, MockChain, TransactionContext};
 
@@ -31,11 +31,9 @@ pub fn tx_create_single_p2id_note() -> Result<TransactionContext> {
         begin
             # create an output note with fungible asset
             push.{RECIPIENT}
-            push.{note_execution_hint}
             push.{note_type}
-            push.0              # aux
             push.{tag}
-            call.output_note::create
+            exec.output_note::create
             # => [note_idx]
 
             # move the asset to the note
@@ -49,7 +47,6 @@ pub fn tx_create_single_p2id_note() -> Result<TransactionContext> {
         end
         ",
         RECIPIENT = output_note.recipient().digest(),
-        note_execution_hint = Felt::from(output_note.metadata().execution_hint()),
         note_type = NoteType::Public as u8,
         tag = output_note.metadata().tag(),
         asset = Word::from(fungible_asset),
