@@ -37,9 +37,11 @@ use miden_standards::account::faucets::NetworkFungibleFaucet;
 use miden_utils_sync::LazyLock;
 
 pub mod errors;
+pub mod eth_address;
 pub mod utils;
 
-use utils::{bytes32_to_felts, ethereum_address_to_felts};
+pub use eth_address::EthAddress;
+use utils::bytes32_to_felts;
 
 // AGGLAYER NOTE SCRIPTS
 // ================================================================================================
@@ -423,7 +425,8 @@ pub fn create_claim_note<R: FeltRng>(params: ClaimNoteParams<'_, R>) -> Result<N
     claim_inputs.push(params.origin_network);
 
     // originTokenAddress (address as 5 u32 felts)
-    let origin_token_address_felts = ethereum_address_to_felts(params.origin_token_address);
+    let origin_token_address_felts =
+        EthAddress::new(*params.origin_token_address).to_elements().to_vec();
     claim_inputs.extend(origin_token_address_felts);
 
     // destinationNetwork (uint32 as Felt)
@@ -486,90 +489,6 @@ pub fn create_claim_note<R: FeltRng>(params: ClaimNoteParams<'_, R>) -> Result<N
     let recipient = NoteRecipient::new(serial_num, claim_script, inputs);
 
     Ok(Note::new(assets, metadata, recipient))
-}
-
-// CONVERSION FUNCTIONS
-// ================================================================================================
-
-/// Converts an AccountId (u32 prefix, u32 suffix) into a bytes20 EVM address.
-///
-/// The conversion uses the format: [prefix, suffix, 0, 0, 0] as 5 u32 values,
-/// then takes the first 20 bytes to form the EVM address.
-pub fn account_id_to_evm_address(account_id: AccountId) -> [u8; 20] {
-    let mut address = [0u8; 20];
-
-    // Convert prefix and suffix to u64, then to bytes (big-endian)
-    let prefix_u64 = account_id.prefix().as_felt().as_int();
-    let suffix_u64 = account_id.suffix().as_int();
-
-    let prefix_bytes = prefix_u64.to_be_bytes();
-    let suffix_bytes = suffix_u64.to_be_bytes();
-
-    // Copy last 4 bytes from prefix (u32 portion)
-    address[0..4].copy_from_slice(&prefix_bytes[4..8]);
-    // Copy last 4 bytes from suffix (u32 portion)
-    address[4..8].copy_from_slice(&suffix_bytes[4..8]);
-    // Remaining 12 bytes stay as zeros
-
-    address
-}
-
-/// Converts a bytes20 EVM address into an AccountId.
-///
-/// The conversion extracts the first 8 bytes as prefix (u32) and suffix (u32),
-/// with the remaining bytes ignored (treated as zeros).
-pub fn evm_address_to_account_id(address: &[u8; 20]) -> AccountId {
-    // Extract first 8 bytes and convert to u32 values
-    let mut prefix_bytes = [0u8; 8];
-    let mut suffix_bytes = [0u8; 8];
-
-    // Copy first 4 bytes to prefix (pad with zeros)
-    prefix_bytes[4..8].copy_from_slice(&address[0..4]);
-    // Copy next 4 bytes to suffix (pad with zeros)
-    suffix_bytes[4..8].copy_from_slice(&address[4..8]);
-
-    let prefix = u64::from_be_bytes(prefix_bytes);
-    let suffix = u64::from_be_bytes(suffix_bytes);
-
-    // Create AccountId from the extracted values
-    // Note: This creates a basic account ID - in practice you might want to use
-    // a specific account type and storage mode
-    AccountId::new_unchecked([Felt::new(prefix), Felt::new(suffix)])
-}
-
-/// Converts an AccountId to a bytes20 address that will produce [prefix, suffix, 0, 0, 0]
-/// when processed by ethereum_address_to_felts().
-///
-/// This function creates a 20-byte address where:
-/// - Bytes 0-3: AccountId prefix as u32 (big-endian)
-/// - Bytes 4-7: AccountId suffix as u32 (big-endian)
-/// - Bytes 8-19: Zero padding
-///
-/// When ethereum_address_to_felts() processes this address, it will extract:
-/// - u32\[0\] from bytes 0-3: prefix
-/// - u32\[1\] from bytes 4-7: suffix
-/// - u32\[2\] from bytes 8-11: zeros
-/// - u32\[3\] from bytes 12-15: zeros
-/// - u32\[4\] from bytes 16-19: zeros
-///
-/// This results in [prefix, suffix, 0, 0, 0] as desired.
-pub fn account_id_to_destination_bytes(account_id: AccountId) -> [u8; 20] {
-    let mut address = [0u8; 20];
-
-    // Get prefix and suffix as u64 values, then convert to u32
-    let prefix = account_id.prefix().as_felt().as_int() as u32;
-    let suffix = account_id.suffix().as_int() as u32;
-
-    // Pack prefix into first 4 bytes (u32, big-endian)
-    address[0..4].copy_from_slice(&prefix.to_be_bytes());
-
-    // Pack suffix into next 4 bytes (u32, big-endian)
-    address[4..8].copy_from_slice(&suffix.to_be_bytes());
-
-    // Remaining 12 bytes stay as zeros
-    // This will result in [prefix, suffix, 0, 0, 0] when processed by ethereum_address_to_felts()
-
-    address
 }
 
 // TESTING HELPERS
@@ -667,7 +586,7 @@ pub fn claim_note_test_inputs(
     let destination_network = Felt::new(2);
 
     // Convert AccountId to destination address bytes
-    let destination_address = account_id_to_destination_bytes(destination_account_id);
+    let destination_address = EthAddress::from_account_id(destination_account_id).into_bytes();
 
     // Convert amount Felt to u256 array for agglayer
     let amount_u256 = [
