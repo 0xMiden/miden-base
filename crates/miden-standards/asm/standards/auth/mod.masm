@@ -79,7 +79,7 @@ pub proc hash_tx_summary
     padw movdnw.2
     # => [INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT, CAPACITY, SALT, OUTPUT_NOTES_COMMITMENT]
 
-    hperm
+    exec.rpo256::permute
     # => [RATE, RATE, PERM, SALT, OUTPUT_NOTES_COMMITMENT]
 
     # drop rate words
@@ -89,7 +89,7 @@ pub proc hash_tx_summary
     movdnw.2
     # => [SALT, OUTPUT_NOTES_COMMITMENT, PERM]
 
-    hperm
+    exec.rpo256::permute
     # => [RATE, RATE, PERM]
 
     exec.rpo256::squeeze_digest

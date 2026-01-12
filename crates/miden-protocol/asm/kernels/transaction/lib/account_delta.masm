@@ -60,7 +60,7 @@ pub proc compute_commitment
     padw
     # => [EMPTY_WORD, ID_AND_NONCE, CAPACITY]
 
-    hperm
+    exec.rpo256::permute
     # => [RATE, RATE, PERM]
 
     # save the ID and nonce digest (the 2nd rate word) for a later check
@@ -199,7 +199,7 @@ proc update_value_slot_delta
         swapw
         # => [CURRENT_VALUE, slot_id_prefix, slot_id_suffix, 0, domain, PERM]
 
-        hperm
+        exec.rpo256::permute
         # => [RATE, RATE, PERM]
     else
         # drop init value, current value and slot name
@@ -273,7 +273,7 @@ proc update_map_slot_delta
             swapdw dropw dropw
             # => [NEW_VALUE, KEY, PERM]
 
-            hperm
+            exec.rpo256::permute
             # => [RATE, RATE, PERM]
         else
             # discard the key and init and new value words loaded from the map
@@ -312,7 +312,7 @@ proc update_map_slot_delta
         push.DOMAIN_MAP loc_load.4 loc_load.0 loc_load.1 padw
         # => [EMPTY_WORD, [slot_id_prefix, slot_id_suffix, num_changed_entries, domain], PERM]
 
-        hperm
+        exec.rpo256::permute
         # => [RATE, RATE, PERM]
     end
     # => [RATE, RATE, PERM]
@@ -377,7 +377,7 @@ proc update_fungible_asset_delta
             swapdw dropw dropw
             # => [[faucet_id_prefix, faucet_id_suffix, 0, delta_amount_abs], [0, 0, was_added, domain], PERM]
 
-            hperm
+            exec.rpo256::permute
             # => [RATE, RATE, PERM]
         else
             # discard values loaded from map: KEY, VALUE0
@@ -449,7 +449,7 @@ proc update_non_fungible_asset_delta
             swapdw dropw dropw
             # => [ASSET, [0, 0, was_added, domain], PERM]
 
-            hperm
+            exec.rpo256::permute
             # => [RATE, RATE, PERM]
         else
             # discard the two key and value words loaded from the map

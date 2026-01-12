@@ -5,6 +5,7 @@ use $kernel::constants::NOTE_MEM_SIZE
 use $kernel::memory
 use $kernel::note
 
+use miden::core::crypto::hashes::rpo256
 use miden::core::word
 
 # ERRORS
@@ -488,7 +489,7 @@ pub proc finalize_transaction
     adv.insert_hdword
     # => [ACCOUNT_DELTA_COMMITMENT, FINAL_ACCOUNT_COMMITMENT]
 
-    hmerge
+    exec.rpo256::merge
     # => [ACCOUNT_UPDATE_COMMITMENT]
 
     # ------ Build output stack ------

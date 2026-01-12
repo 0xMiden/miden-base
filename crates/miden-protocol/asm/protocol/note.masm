@@ -138,7 +138,7 @@ pub proc build_recipient
     #     INPUTS_COMMITMENT, inputs_ptr, num_inputs, SERIAL_NUM, SCRIPT_ROOT]
 
     # compute the advice map key for num_inputs by hashing the inputs commitment
-    hash
+    exec.rpo256::hash
     # => [hash(INPUTS_COMMITMENT), num_inputs_start_ptr, num_inputs_end_ptr,
     #     INPUTS_COMMITMENT, inputs_ptr, num_inputs, SERIAL_NUM, SCRIPT_ROOT]
 
@@ -164,13 +164,13 @@ pub proc build_recipient
     movdnw.2
     # => [SERIAL_NUM, SCRIPT_ROOT, INPUTS_COMMITMENT]
 
-    padw adv.insert_hdword hmerge
+    padw adv.insert_hdword exec.rpo256::merge
     # => [SERIAL_HASH, SCRIPT_ROOT, INPUTS_COMMITMENT]
 
-    swapw adv.insert_hdword hmerge
+    swapw adv.insert_hdword exec.rpo256::merge
     # => [SERIAL_SCRIPT_HASH, INPUTS_COMMITMENT]
 
-    swapw adv.insert_hdword hmerge
+    swapw adv.insert_hdword exec.rpo256::merge
     # => [RECIPIENT]
 end
 
@@ -187,13 +187,13 @@ end
 #!
 #! Invocation: exec
 pub proc build_recipient_hash
-    padw hmerge
+    padw exec.rpo256::merge
     # => [SERIAL_NUM_HASH, SCRIPT_ROOT, INPUT_COMMITMENT]
 
-    swapw hmerge
+    swapw exec.rpo256::merge
     # => [MERGE_SCRIPT, INPUT_COMMITMENT]
 
-    swapw hmerge
+    swapw exec.rpo256::merge
     # [RECIPIENT]
 end
 

@@ -210,11 +210,11 @@ proc process_block_data
     # read block data and compute its sub commitment
     # see `Advice stack` above for details.
     padw padw padw
-    adv_pipe hperm
-    adv_pipe hperm
-    adv_pipe hperm
-    adv_pipe hperm
-    adv_pipe hperm
+    adv_pipe exec.rpo256::permute
+    adv_pipe exec.rpo256::permute
+    adv_pipe exec.rpo256::permute
+    adv_pipe exec.rpo256::permute
+    adv_pipe exec.rpo256::permute
     exec.rpo256::squeeze_digest
     # => [SUB_COMMITMENT, block_data_ptr', block_num]
 
@@ -224,7 +224,7 @@ proc process_block_data
     # => [NOTE_ROOT, SUB_COMMITMENT, block_data_ptr', block_num]
 
     # merge the note root with the sub commitment to get the block commitment
-    hmerge
+    exec.rpo256::merge
     # => [BLOCK_COMMITMENT, block_data_ptr', block_num]
 
     # assert that the block commitment matches the commitment in global inputs
@@ -416,8 +416,8 @@ proc process_account_data
 
     # read account details and compute its digest. See `Advice stack` above for details.
     padw padw padw
-    adv_pipe hperm
-    adv_pipe hperm
+    adv_pipe exec.rpo256::permute
+    adv_pipe exec.rpo256::permute
     exec.rpo256::squeeze_digest
     # => [ACCOUNT_COMMITMENT, acct_data_ptr']
 
@@ -543,7 +543,7 @@ proc authenticate_note
 
     # read data from advice and compute hash(BLOCK_SUB_COMMITMENT || NOTE_ROOT)
     padw padw padw
-    adv_pipe hperm
+    adv_pipe exec.rpo256::permute
     # => [PERM, COMPUTED_BLOCK_COMMITMENT, PERM, mem_ptr', BLOCK_COMMITMENT, NOTE_COMMITMENT]
 
     dropw
@@ -605,8 +605,8 @@ proc process_input_note_details
 
     # read input note's data and compute its digest. See `Advice stack` above for details.
     padw padw padw
-    adv_pipe hperm
-    adv_pipe hperm
+    adv_pipe exec.rpo256::permute
+    adv_pipe exec.rpo256::permute
     exec.rpo256::squeeze_digest
     # => [NULLIFIER, note_data_ptr + 16]
 
@@ -729,7 +729,7 @@ proc process_note_assets
     # loop and read assets from the advice provider
     while.true
         # read data and compute its digest. See `Advice stack` above for details.
-        adv_pipe hperm
+        adv_pipe exec.rpo256::permute
         # => [PERM, PERM, PERM, assets_ptr+8, note_ptr, counter, rounded_num_assets]
 
         # update counter
@@ -815,15 +815,15 @@ end
 #! - NOTE_ID is the note's id, i.e. `hash(RECIPIENT || ASSET_COMMITMENT)`.
 proc compute_input_note_id
     # compute SERIAL_COMMITMENT: hash(SERIAL_NUMBER || EMPTY_WORD)
-    dup exec.memory::get_input_note_serial_num padw hmerge
+    dup exec.memory::get_input_note_serial_num padw exec.rpo256::merge
     # => [SERIAL_COMMITMENT, note_ptr]
 
     # compute MERGE_SCRIPT: hash(SERIAL_COMMITMENT || SCRIPT_ROOT)
-    dup.4 exec.memory::get_input_note_script_root hmerge
+    dup.4 exec.memory::get_input_note_script_root exec.rpo256::merge
     # => [MERGE_SCRIPT, note_ptr]
 
     # compute RECIPIENT: hash(MERGE_SCRIPT || INPUT_COMMITMENT)
-    dup.4 exec.memory::get_input_note_inputs_commitment hmerge
+    dup.4 exec.memory::get_input_note_inputs_commitment exec.rpo256::merge
     # => [RECIPIENT, note_ptr]
 
     # store the recipient in memory
@@ -831,7 +831,7 @@ proc compute_input_note_id
     # => [RECIPIENT, note_ptr]
 
     # compute NOTE_ID: hash(RECIPIENT || ASSET_COMMITMENT)
-    movup.4 exec.memory::get_input_note_assets_commitment hmerge
+    movup.4 exec.memory::get_input_note_assets_commitment exec.rpo256::merge
     # => [NOTE_ID]
 end
 
@@ -934,7 +934,7 @@ proc process_input_note
     # ---------------------------------------------------------------------------------------------
 
     # NOTE_COMMITMENT: `hash(NOTE_ID || NOTE_METADATA)`
-    swapw hmerge
+    swapw exec.rpo256::merge
     # => [NOTE_COMMITMENT, NULLIFIER, HASHER_CAPACITY]
 
     adv_push.1
@@ -952,7 +952,7 @@ proc process_input_note
     # => [EMPTY_WORD_OR_NOTE_COMMITMENT, NULLIFIER, HASHER_CAPACITY]
 
     # update the input note commitment
-    hperm
+    exec.rpo256::permute
     # => [PERM, PERM, PERM]
 end
 

@@ -1,4 +1,5 @@
 use miden::core::crypto::dsa::ecdsa_k256_keccak
+use miden::core::crypto::hashes::rpo256
 use miden::protocol::active_account
 use miden::protocol::native_account
 use miden::protocol::tx
@@ -121,7 +122,7 @@ pub proc verify_signatures
         movup.4 movdn.8 swapw dupw movdnw.2
         # => [MSG, OWNER_PUB_KEY, MSG, i-1]
 
-        hmerge
+        exec.rpo256::merge
         # => [SIG_KEY, MSG, i-1]
 
         adv.has_mapkey
