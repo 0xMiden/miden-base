@@ -290,8 +290,8 @@ impl SequentialCommit for NoteAttachmentArray {
 }
 
 impl From<NoteAttachmentArray> for NoteAttachmentContent {
-    fn from(attachment_commitment: NoteAttachmentArray) -> Self {
-        NoteAttachmentContent::Array(attachment_commitment)
+    fn from(array: NoteAttachmentArray) -> Self {
+        NoteAttachmentContent::Array(array)
     }
 }
 
