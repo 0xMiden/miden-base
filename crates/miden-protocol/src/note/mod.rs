@@ -23,7 +23,7 @@ pub use metadata::NoteMetadata;
 mod attachment;
 pub use attachment::{
     NoteAttachment,
-    NoteAttachmentCommitment,
+    NoteAttachmentArray,
     NoteAttachmentContent,
     NoteAttachmentContentType,
     NoteAttachmentType,

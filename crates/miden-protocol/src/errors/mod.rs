@@ -36,7 +36,7 @@ use crate::batch::BatchId;
 use crate::block::BlockNumber;
 use crate::note::{
     NoteAssets,
-    NoteAttachmentCommitment,
+    NoteAttachmentArray,
     NoteExecutionHint,
     NoteTag,
     NoteType,
@@ -595,9 +595,9 @@ pub enum NoteError {
     PublicNoteRequired(NoteType),
     #[error(
         "note attachment cannot commit to more than {} elements",
-        NoteAttachmentCommitment::MAX_NUM_ELEMENTS
+        NoteAttachmentArray::MAX_NUM_ELEMENTS
     )]
-    NoteAttachmentCommitmentSizeExceeded(usize),
+    NoteAttachmentArraySizeExceeded(usize),
     #[error("unknown note attachment content type {0}")]
     UnknownNoteAttachmentContentType(u8),
     #[error("{error_msg}")]

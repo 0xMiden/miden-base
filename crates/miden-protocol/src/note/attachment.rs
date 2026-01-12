@@ -60,7 +60,7 @@ impl NoteAttachment {
     /// # Errors
     ///
     /// Returns an error if:
-    /// - The maximum number of elements exceeds [`NoteAttachmentCommitment::MAX_NUM_ELEMENTS`].
+    /// - The maximum number of elements exceeds [`NoteAttachmentArray::MAX_NUM_ELEMENTS`].
     pub fn new_array(
         attachment_type: NoteAttachmentType,
         elements: Vec<Felt>,
@@ -129,7 +129,7 @@ pub enum NoteAttachmentContent {
     Word(Word),
 
     /// A note attachment consisting of the commitment to a set of felts.
-    Array(NoteAttachmentCommitment),
+    Array(NoteAttachmentArray),
 }
 
 impl NoteAttachmentContent {
@@ -151,9 +151,9 @@ impl NoteAttachmentContent {
     /// # Errors
     ///
     /// Returns an error if:
-    /// - The maximum number of elements exceeds [`NoteAttachmentCommitment::MAX_NUM_ELEMENTS`].
+    /// - The maximum number of elements exceeds [`NoteAttachmentArray::MAX_NUM_ELEMENTS`].
     pub fn new_array(elements: Vec<Felt>) -> Result<Self, NoteError> {
-        NoteAttachmentCommitment::new(elements).map(Self::from)
+        NoteAttachmentArray::new(elements).map(Self::from)
     }
 
     // ACCESSORS
@@ -225,12 +225,12 @@ impl Deserializable for NoteAttachmentContent {
 /// The type contained in [`NoteAttachmentContent::Array`] that commits to a set of field
 /// elements.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct NoteAttachmentCommitment {
+pub struct NoteAttachmentArray {
     elements: Vec<Felt>,
     commitment: Word,
 }
 
-impl NoteAttachmentCommitment {
+impl NoteAttachmentArray {
     // CONSTANTS
     // --------------------------------------------------------------------------------------------
 
@@ -243,15 +243,15 @@ impl NoteAttachmentCommitment {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
-    /// Creates a new [`NoteAttachmentCommitment`] from the provided elements.
+    /// Creates a new [`NoteAttachmentArray`] from the provided elements.
     ///
     /// # Errors
     ///
     /// Returns an error if:
-    /// - The maximum number of elements exceeds [`NoteAttachmentCommitment::MAX_NUM_ELEMENTS`].
+    /// - The maximum number of elements exceeds [`NoteAttachmentArray::MAX_NUM_ELEMENTS`].
     pub fn new(elements: Vec<Felt>) -> Result<Self, NoteError> {
         if elements.len() > Self::MAX_NUM_ELEMENTS as usize {
-            return Err(NoteError::NoteAttachmentCommitmentSizeExceeded(elements.len()));
+            return Err(NoteError::NoteAttachmentArraySizeExceeded(elements.len()));
         }
 
         let commitment = Hasher::hash_elements(&elements);
@@ -260,6 +260,11 @@ impl NoteAttachmentCommitment {
 
     // ACCESSORS
     // --------------------------------------------------------------------------------------------
+
+    /// Returns a reference to the elements this note attachment commits to.
+    pub fn as_slice(&self) -> &[Felt] {
+        &self.elements
+    }
 
     /// Returns the number of elements this note attachment commits to.
     pub fn num_elements(&self) -> u16 {
@@ -272,7 +277,7 @@ impl NoteAttachmentCommitment {
     }
 }
 
-impl SequentialCommit for NoteAttachmentCommitment {
+impl SequentialCommit for NoteAttachmentArray {
     type Commitment = Word;
 
     fn to_elements(&self) -> Vec<Felt> {
@@ -284,8 +289,8 @@ impl SequentialCommit for NoteAttachmentCommitment {
     }
 }
 
-impl From<NoteAttachmentCommitment> for NoteAttachmentContent {
-    fn from(attachment_commitment: NoteAttachmentCommitment) -> Self {
+impl From<NoteAttachmentArray> for NoteAttachmentContent {
+    fn from(attachment_commitment: NoteAttachmentArray) -> Self {
         NoteAttachmentContent::Array(attachment_commitment)
     }
 }
@@ -466,11 +471,11 @@ mod tests {
 
     #[test]
     fn note_attachment_commitment_fails_on_too_many_elements() -> anyhow::Result<()> {
-        let too_many_elements = (NoteAttachmentCommitment::MAX_NUM_ELEMENTS as usize) + 1;
+        let too_many_elements = (NoteAttachmentArray::MAX_NUM_ELEMENTS as usize) + 1;
         let elements = vec![Felt::from(1u32); too_many_elements];
-        let err = NoteAttachmentCommitment::new(elements).unwrap_err();
+        let err = NoteAttachmentArray::new(elements).unwrap_err();
 
-        assert_matches!(err, NoteError::NoteAttachmentCommitmentSizeExceeded(len) => {
+        assert_matches!(err, NoteError::NoteAttachmentArraySizeExceeded(len) => {
             len == too_many_elements
         });
 
