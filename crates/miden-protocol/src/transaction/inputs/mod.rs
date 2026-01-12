@@ -408,8 +408,7 @@ impl Serializable for TransactionInputs {
         self.advice_inputs.write_into(target);
         self.foreign_account_code.write_into(target);
         self.asset_witnesses.write_into(target);
-        target.write_usize(self.foreign_account_slot_names().len());
-        target.write_many(&self.foreign_account_slot_names);
+        self.foreign_account_slot_names.write_into(target);
     }
 }
 
@@ -425,12 +424,8 @@ impl Deserializable for TransactionInputs {
         let advice_inputs = AdviceInputs::read_from(source)?;
         let foreign_account_code = Vec::<AccountCode>::read_from(source)?;
         let asset_witnesses = Vec::<AssetWitness>::read_from(source)?;
-
-        let num_slot_names = source.read_usize()?;
-        let foreign_account_slot_names = source
-            .read_many::<(StorageSlotId, StorageSlotName)>(num_slot_names)?
-            .into_iter()
-            .collect();
+        let foreign_account_slot_names =
+            BTreeMap::<StorageSlotId, StorageSlotName>::read_from(source)?;
 
         Ok(TransactionInputs {
             account,
