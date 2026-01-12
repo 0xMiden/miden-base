@@ -22,7 +22,7 @@ const ERR_MINT_WRONG_NUMBER_OF_INPUTS="MINT script expects exactly 8 inputs for 
 #! This note is intended to be executed against a network fungible faucet account.
 #!
 #! Requires that the account exposes:
-#! - miden::contracts::faucets::network_fungible::distribute procedure.
+#! - miden::standards::faucets::network_fungible::distribute procedure.
 #!
 #! Inputs:  [ARGS, pad(12)]
 #! Outputs: [pad(16)]

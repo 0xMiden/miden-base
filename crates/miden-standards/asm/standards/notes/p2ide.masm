@@ -79,7 +79,7 @@ end
 #!     the transaction's reference block number is greater than or equal to the note's reclaim block height.
 #!
 #! Requires that the account exposes:
-#! - miden::contracts::wallets::basic::receive_asset procedure.
+#! - miden::standards::wallets::basic::receive_asset procedure.
 #!
 #! Inputs:  []
 #! Outputs: []
@@ -90,7 +90,7 @@ end
 #! - timelock_block_height is the block height at which the note can be consumed by the target.
 #!
 #! Panics if:
-#! - The account does not expose miden::contracts::wallets::basic::receive_asset procedure.
+#! - The account does not expose miden::standards::wallets::basic::receive_asset procedure.
 #! - The note is consumed before the timelock expired, i.e. the transaction's reference block
 #!   number is less than the timelock block height.
 #! - Before reclaim block height: the account ID of the executing account is not equal to the specified
