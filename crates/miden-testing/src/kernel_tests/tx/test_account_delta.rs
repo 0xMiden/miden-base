@@ -604,9 +604,6 @@ async fn asset_and_storage_delta() -> anyhow::Result<()> {
     let tag3 = NoteTag::default();
     let tags = [tag1, tag2, tag3];
 
-    // TODO(note_attachment): Replace with non-default attachment.
-    // let aux_array = [Felt::new(27), Felt::new(28), Felt::new(29)];
-
     let note_types = [NoteType::Private; 3];
 
     let mut send_asset_script = String::new();

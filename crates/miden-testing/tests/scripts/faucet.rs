@@ -17,7 +17,6 @@ use miden_protocol::note::{
     Note,
     NoteAssets,
     NoteAttachment,
-    NoteExecutionHint,
     NoteId,
     NoteInputs,
     NoteMetadata,
@@ -391,8 +390,6 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
     let trigger_note = NoteBuilder::new(faucet.id(), &mut rng)
         .note_type(NoteType::Private)
         .tag(NoteTag::default().into())
-        .note_execution_hint(NoteExecutionHint::always())
-        .aux(Felt::new(0))
         .serial_number(Word::from([1, 2, 3, 4u32]))
         .code(trigger_note_script_code)
         .build()?;

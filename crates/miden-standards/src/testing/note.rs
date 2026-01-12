@@ -10,7 +10,6 @@ use miden_protocol::note::{
     Note,
     NoteAssets,
     NoteAttachment,
-    NoteExecutionHint,
     NoteInputs,
     NoteMetadata,
     NoteRecipient,
@@ -18,7 +17,7 @@ use miden_protocol::note::{
     NoteType,
 };
 use miden_protocol::testing::note::DEFAULT_NOTE_CODE;
-use miden_protocol::{Felt, NoteError, Word, ZERO};
+use miden_protocol::{Felt, NoteError, Word};
 use rand::Rng;
 
 use crate::code_builder::CodeBuilder;
@@ -32,13 +31,9 @@ pub struct NoteBuilder {
     inputs: Vec<Felt>,
     assets: Vec<Asset>,
     note_type: NoteType,
-    // TODO(note_attachment): Remove.
-    note_execution_hint: NoteExecutionHint,
     serial_num: Word,
     tag: NoteTag,
     code: String,
-    // TODO(note_attachment): Remove.
-    aux: Felt,
     attachment: NoteAttachment,
     dyn_libraries: Vec<Library>,
     source_manager: Arc<dyn SourceManagerSync>,
@@ -58,12 +53,10 @@ impl NoteBuilder {
             inputs: vec![],
             assets: vec![],
             note_type: NoteType::Public,
-            note_execution_hint: NoteExecutionHint::None,
             serial_num,
             // The note tag is not under test, so we choose a value that is always valid.
             tag: NoteTag::with_account_target(sender),
             code: DEFAULT_NOTE_CODE.to_string(),
-            aux: ZERO,
             attachment: NoteAttachment::default(),
             dyn_libraries: Vec::new(),
             source_manager: Arc::new(DefaultSourceManager::default()),
@@ -87,11 +80,6 @@ impl NoteBuilder {
         self
     }
 
-    pub fn note_execution_hint(mut self, note_execution_hint: NoteExecutionHint) -> Self {
-        self.note_execution_hint = note_execution_hint;
-        self
-    }
-
     pub fn tag(mut self, tag: u32) -> Self {
         self.tag = tag.into();
         self
@@ -110,11 +98,6 @@ impl NoteBuilder {
     /// Overwrites the generated serial number with a custom one.
     pub fn serial_number(mut self, serial_number: Word) -> Self {
         self.serial_num = serial_number;
-        self
-    }
-
-    pub fn aux(mut self, aux: Felt) -> Self {
-        self.aux = aux;
         self
     }
 
