@@ -507,7 +507,6 @@ async fn network_faucet_mint() -> anyhow::Result<()> {
         target_account.id(),
         vec![mint_asset],
         NoteType::Private,
-        aux,
         serial_num,
     )
     .unwrap();
@@ -670,7 +669,6 @@ async fn test_mint_note_output_note_types(#[case] note_type: NoteType) -> anyhow
         target_account.id(),
         vec![mint_asset],
         note_type,
-        aux,
         serial_num,
     )
     .unwrap();

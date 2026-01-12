@@ -50,7 +50,7 @@ use miden_protocol::transaction::{
     TransactionKernel,
     TransactionSummary,
 };
-use miden_protocol::{Felt, FieldElement, Hasher, ONE, Word};
+use miden_protocol::{Felt, Hasher, ONE, Word};
 use miden_standards::AuthScheme;
 use miden_standards::account::interface::{AccountInterface, AccountInterfaceExt};
 use miden_standards::account::wallets::BasicWallet;
@@ -457,7 +457,7 @@ async fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
         account.id(),
         vec![],
         NoteType::Private,
-        Felt::ZERO,
+        NoteAttachment::default(),
         &mut rng,
     )?;
     let input_note = create_spawn_note(vec![&output_note])?;
@@ -500,7 +500,7 @@ async fn tx_summary_commitment_is_signed_by_falcon_auth() -> anyhow::Result<()> 
         account.id(),
         vec![],
         NoteType::Private,
-        Felt::ZERO,
+        NoteAttachment::default(),
         &mut rng,
     )?;
     let spawn_note = builder.add_spawn_note([&p2id_note])?;
@@ -564,7 +564,7 @@ async fn tx_summary_commitment_is_signed_by_ecdsa_auth() -> anyhow::Result<()> {
         account.id(),
         vec![],
         NoteType::Private,
-        Felt::ZERO,
+        NoteAttachment::default(),
         &mut rng,
     )?;
     let spawn_note = builder.add_spawn_note([&p2id_note])?;

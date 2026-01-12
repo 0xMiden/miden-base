@@ -3,13 +3,12 @@ use std::collections::BTreeMap;
 use std::vec::Vec;
 
 use anyhow::Context;
-use miden_protocol::ZERO;
 use miden_protocol::asset::FungibleAsset;
 use miden_protocol::batch::BatchNoteTree;
 use miden_protocol::block::account_tree::AccountTree;
 use miden_protocol::block::{BlockInputs, BlockNoteIndex, BlockNoteTree, ProposedBlock};
 use miden_protocol::crypto::merkle::smt::Smt;
-use miden_protocol::note::NoteType;
+use miden_protocol::note::{NoteAttachment, NoteType};
 use miden_protocol::transaction::InputNoteCommitment;
 use miden_standards::note::create_p2id_note;
 
@@ -38,7 +37,7 @@ async fn proven_block_success() -> anyhow::Result<()> {
         account0.id(),
         vec![asset],
         NoteType::Private,
-        ZERO,
+        NoteAttachment::default(),
         builder.rng_mut(),
     )?;
     let output_note1 = create_p2id_note(
@@ -46,7 +45,7 @@ async fn proven_block_success() -> anyhow::Result<()> {
         account1.id(),
         vec![asset],
         NoteType::Private,
-        ZERO,
+        NoteAttachment::default(),
         builder.rng_mut(),
     )?;
     let output_note2 = create_p2id_note(
@@ -54,7 +53,7 @@ async fn proven_block_success() -> anyhow::Result<()> {
         account2.id(),
         vec![asset],
         NoteType::Private,
-        ZERO,
+        NoteAttachment::default(),
         builder.rng_mut(),
     )?;
     let output_note3 = create_p2id_note(
@@ -62,7 +61,7 @@ async fn proven_block_success() -> anyhow::Result<()> {
         account3.id(),
         vec![asset],
         NoteType::Private,
-        ZERO,
+        NoteAttachment::default(),
         builder.rng_mut(),
     )?;
 

@@ -179,7 +179,6 @@ async fn consume_swap_note_public_payback_note() -> anyhow::Result<()> {
         sender_account.id(),
         vec![requested_asset],
         payback_note_type,
-        Felt::new(0),
         payback_note.serial_num(),
     )
     .unwrap();
@@ -342,8 +341,6 @@ pub fn create_p2id_note_exact(
     target: AccountId,
     assets: Vec<Asset>,
     note_type: NoteType,
-    // TODO(note_attachment): Replace with attachment.
-    _aux: Felt,
     serial_num: Word,
 ) -> Result<Note, NoteError> {
     let recipient = utils::build_p2id_recipient(target, serial_num)?;

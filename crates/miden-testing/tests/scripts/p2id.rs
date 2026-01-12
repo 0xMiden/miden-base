@@ -1,7 +1,7 @@
 use miden_protocol::account::Account;
 use miden_protocol::asset::{Asset, AssetVault, FungibleAsset};
 use miden_protocol::crypto::rand::RpoRandomCoin;
-use miden_protocol::note::NoteType;
+use miden_protocol::note::{NoteAttachment, NoteType};
 use miden_protocol::testing::account_id::{
     ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET,
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
@@ -207,7 +207,7 @@ async fn test_create_consume_multiple_notes() -> anyhow::Result<()> {
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE_2.try_into()?,
         vec![FungibleAsset::mock(10)],
         NoteType::Public,
-        Felt::new(0),
+        NoteAttachment::default(),
         &mut RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])),
     )?;
 
@@ -216,7 +216,7 @@ async fn test_create_consume_multiple_notes() -> anyhow::Result<()> {
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into()?,
         vec![FungibleAsset::mock(5)],
         NoteType::Public,
-        Felt::new(0),
+        NoteAttachment::default(),
         &mut RpoRandomCoin::new(Word::from([4, 3, 2, 1u32])),
     )?;
 

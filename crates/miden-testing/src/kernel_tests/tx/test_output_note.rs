@@ -716,7 +716,7 @@ async fn test_get_asset_info() -> anyhow::Result<()> {
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into()?,
         vec![fungible_asset_0],
         NoteType::Public,
-        Felt::new(0),
+        NoteAttachment::default(),
         &mut RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])),
     )?;
 
@@ -725,7 +725,7 @@ async fn test_get_asset_info() -> anyhow::Result<()> {
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into()?,
         vec![fungible_asset_0, fungible_asset_1],
         NoteType::Public,
-        Felt::new(0),
+        NoteAttachment::default(),
         &mut RpoRandomCoin::new(Word::from([4, 3, 2, 1u32])),
     )?;
 
@@ -838,7 +838,7 @@ async fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into()?,
         vec![FungibleAsset::mock(5)],
         NoteType::Public,
-        Felt::new(0),
+        NoteAttachment::default(),
         &mut RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])),
     )?;
 
