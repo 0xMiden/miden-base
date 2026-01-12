@@ -913,7 +913,7 @@ proc process_input_note
     # => [NOTE_ATTACHMENT, NOTE_METADATA_HEADER, note_ptr, NULLIFIER, HASHER_CAPACITY]
 
     # compute hash(NOTE_METADATA_HEADER || NOTE_ATTACHMENT)
-    hmerge
+    exec.rpo256::merge
     # => [NOTE_METADATA_COMMITMENT, note_ptr, NULLIFIER, HASHER_CAPACITY]
 
     movup.4

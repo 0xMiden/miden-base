@@ -157,7 +157,7 @@ impl NoteMetadata {
     ///
     /// See [`NoteMetadata`] docs for more details.
     pub fn to_attachment_word(&self) -> Word {
-        Word::from(self.attachment.content())
+        self.attachment.content().to_word()
     }
 
     /// Returns the commitment to the note metadata, which is defined as:

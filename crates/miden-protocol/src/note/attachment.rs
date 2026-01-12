@@ -168,11 +168,12 @@ impl NoteAttachmentContent {
             NoteAttachmentContent::Commitment(_) => NoteAttachmentContentType::Commitment,
         }
     }
-}
 
-impl From<&NoteAttachmentContent> for Word {
-    fn from(content: &NoteAttachmentContent) -> Self {
-        match content {
+    /// Returns the [`NoteAttachmentContent`] encoded to a [`Word`].
+    ///
+    /// See the type-level documentation for more details.
+    pub fn to_word(&self) -> Word {
+        match self {
             NoteAttachmentContent::None => Word::empty(),
             NoteAttachmentContent::Raw(word) => *word,
             NoteAttachmentContent::Commitment(attachment_commitment) => {
@@ -441,6 +442,9 @@ impl Deserializable for NoteAttachmentContentType {
             .map_err(|err| DeserializationError::InvalidValue(err.to_string()))
     }
 }
+
+// TESTS
+// ================================================================================================
 
 #[cfg(test)]
 mod tests {
