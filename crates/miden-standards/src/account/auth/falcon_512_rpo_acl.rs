@@ -11,26 +11,26 @@ use miden_protocol::account::{
 use miden_protocol::utils::sync::LazyLock;
 use miden_protocol::{AccountError, Word};
 
-use crate::account::components::rpo_falcon_512_acl_library;
+use crate::account::components::falcon_512_rpo_acl_library;
 
 static PUBKEY_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
-    StorageSlotName::new("miden::standards::auth::rpo_falcon512_acl::public_key")
+    StorageSlotName::new("miden::standards::auth::falcon512_rpo_acl::public_key")
         .expect("storage slot name should be valid")
 });
 
 static CONFIG_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
-    StorageSlotName::new("miden::standards::auth::rpo_falcon512_acl::config")
+    StorageSlotName::new("miden::standards::auth::falcon512_rpo_acl::config")
         .expect("storage slot name should be valid")
 });
 
 static TRIGGER_PROCEDURE_ROOT_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
-    StorageSlotName::new("miden::standards::auth::rpo_falcon512_acl::trigger_procedure_roots")
+    StorageSlotName::new("miden::standards::auth::falcon512_rpo_acl::trigger_procedure_roots")
         .expect("storage slot name should be valid")
 });
 
-/// Configuration for [`AuthRpoFalcon512Acl`] component.
+/// Configuration for [`AuthFalcon512RpoAcl`] component.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct AuthRpoFalcon512AclConfig {
+pub struct AuthFalcon512RpoAclConfig {
     /// List of procedure roots that require authentication when called.
     pub auth_trigger_procedures: Vec<Word>,
     /// When `false`, creating output notes (sending notes to other accounts) requires
@@ -41,7 +41,7 @@ pub struct AuthRpoFalcon512AclConfig {
     pub allow_unauthorized_input_notes: bool,
 }
 
-impl AuthRpoFalcon512AclConfig {
+impl AuthFalcon512RpoAclConfig {
     /// Creates a new configuration with no trigger procedures and both flags set to `false` (most
     /// restrictive).
     pub fn new() -> Self {
@@ -71,14 +71,14 @@ impl AuthRpoFalcon512AclConfig {
     }
 }
 
-impl Default for AuthRpoFalcon512AclConfig {
+impl Default for AuthFalcon512RpoAclConfig {
     fn default() -> Self {
         Self::new()
     }
 }
 
 /// An [`AccountComponent`] implementing a procedure-based Access Control List (ACL) using the
-/// RpoFalcon512 signature scheme for authentication of transactions.
+/// Falcon512Rpo signature scheme for authentication of transactions.
 ///
 /// This component provides fine-grained authentication control based on three conditions:
 /// 1. **Procedure-based authentication**: Requires authentication when any of the specified trigger
@@ -132,20 +132,20 @@ impl Default for AuthRpoFalcon512AclConfig {
 /// procedures for authentication.
 ///
 /// This component supports all account types.
-pub struct AuthRpoFalcon512Acl {
+pub struct AuthFalcon512RpoAcl {
     pub_key: PublicKeyCommitment,
-    config: AuthRpoFalcon512AclConfig,
+    config: AuthFalcon512RpoAclConfig,
 }
 
-impl AuthRpoFalcon512Acl {
-    /// Creates a new [`AuthRpoFalcon512Acl`] component with the given `public_key` and
+impl AuthFalcon512RpoAcl {
+    /// Creates a new [`AuthFalcon512RpoAcl`] component with the given `public_key` and
     /// configuration.
     ///
     /// # Panics
     /// Panics if more than [AccountCode::MAX_NUM_PROCEDURES] procedures are specified.
     pub fn new(
         pub_key: PublicKeyCommitment,
-        config: AuthRpoFalcon512AclConfig,
+        config: AuthFalcon512RpoAclConfig,
     ) -> Result<Self, AccountError> {
         let max_procedures = AccountCode::MAX_NUM_PROCEDURES;
         if config.auth_trigger_procedures.len() > max_procedures {
@@ -173,20 +173,20 @@ impl AuthRpoFalcon512Acl {
     }
 }
 
-impl From<AuthRpoFalcon512Acl> for AccountComponent {
-    fn from(falcon: AuthRpoFalcon512Acl) -> Self {
+impl From<AuthFalcon512RpoAcl> for AccountComponent {
+    fn from(falcon: AuthFalcon512RpoAcl) -> Self {
         let mut storage_slots = Vec::with_capacity(3);
 
         // Public key slot
         storage_slots.push(StorageSlot::with_value(
-            AuthRpoFalcon512Acl::public_key_slot().clone(),
+            AuthFalcon512RpoAcl::public_key_slot().clone(),
             falcon.pub_key.into(),
         ));
 
         // Config slot
         let num_procs = falcon.config.auth_trigger_procedures.len() as u32;
         storage_slots.push(StorageSlot::with_value(
-            AuthRpoFalcon512Acl::config_slot().clone(),
+            AuthFalcon512RpoAcl::config_slot().clone(),
             Word::from([
                 num_procs,
                 u32::from(falcon.config.allow_unauthorized_output_notes),
@@ -207,11 +207,11 @@ impl From<AuthRpoFalcon512Acl> for AccountComponent {
 
         // Safe to unwrap because we know that the map keys are unique.
         storage_slots.push(StorageSlot::with_map(
-            AuthRpoFalcon512Acl::trigger_procedure_roots_slot().clone(),
+            AuthFalcon512RpoAcl::trigger_procedure_roots_slot().clone(),
             StorageMap::with_entries(map_entries).unwrap(),
         ));
 
-        AccountComponent::new(rpo_falcon_512_acl_library(), storage_slots)
+        AccountComponent::new(falcon_512_rpo_acl_library(), storage_slots)
             .expect(
                 "ACL auth component should satisfy the requirements of a valid account component",
             )
@@ -254,7 +254,7 @@ mod tests {
         let public_key = PublicKeyCommitment::from(Word::empty());
 
         // Build the configuration
-        let mut acl_config = AuthRpoFalcon512AclConfig::new()
+        let mut acl_config = AuthFalcon512RpoAclConfig::new()
             .with_allow_unauthorized_output_notes(config.allow_unauthorized_output_notes)
             .with_allow_unauthorized_input_notes(config.allow_unauthorized_input_notes);
 
@@ -268,7 +268,7 @@ mod tests {
 
         // Create component and account
         let component =
-            AuthRpoFalcon512Acl::new(public_key, acl_config).expect("component creation failed");
+            AuthFalcon512RpoAcl::new(public_key, acl_config).expect("component creation failed");
 
         let account = AccountBuilder::new([0; 32])
             .with_auth_component(component)
@@ -279,14 +279,14 @@ mod tests {
         // Check public key storage
         let public_key_slot = account
             .storage()
-            .get_item(AuthRpoFalcon512Acl::public_key_slot())
+            .get_item(AuthFalcon512RpoAcl::public_key_slot())
             .expect("public key storage slot access failed");
         assert_eq!(public_key_slot, public_key.into());
 
         // Check configuration storage
         let config_slot = account
             .storage()
-            .get_item(AuthRpoFalcon512Acl::config_slot())
+            .get_item(AuthFalcon512RpoAcl::config_slot())
             .expect("config storage slot access failed");
         assert_eq!(config_slot, config.expected_config_slot);
 
@@ -296,7 +296,7 @@ mod tests {
                 let proc_root = account
                     .storage()
                     .get_map_item(
-                        AuthRpoFalcon512Acl::trigger_procedure_roots_slot(),
+                        AuthFalcon512RpoAcl::trigger_procedure_roots_slot(),
                         Word::from([i as u32, 0, 0, 0]),
                     )
                     .expect("storage map access failed");
@@ -306,7 +306,7 @@ mod tests {
             // When no procedures, the map should return empty for key [0,0,0,0]
             let proc_root = account
                 .storage()
-                .get_map_item(AuthRpoFalcon512Acl::trigger_procedure_roots_slot(), Word::empty())
+                .get_map_item(AuthFalcon512RpoAcl::trigger_procedure_roots_slot(), Word::empty())
                 .expect("storage map access failed");
             assert_eq!(proc_root, Word::empty());
         }
@@ -314,7 +314,7 @@ mod tests {
 
     /// Test ACL component with no procedures and both authorization flags set to false
     #[test]
-    fn test_rpo_falcon_512_acl_no_procedures() {
+    fn test_falcon_512_rpo_acl_no_procedures() {
         test_acl_component(AclTestConfig {
             with_procedures: false,
             allow_unauthorized_output_notes: false,
@@ -325,7 +325,7 @@ mod tests {
 
     /// Test ACL component with two procedures and both authorization flags set to false
     #[test]
-    fn test_rpo_falcon_512_acl_with_two_procedures() {
+    fn test_falcon_512_rpo_acl_with_two_procedures() {
         test_acl_component(AclTestConfig {
             with_procedures: true,
             allow_unauthorized_output_notes: false,
@@ -336,7 +336,7 @@ mod tests {
 
     /// Test ACL component with no procedures and allow_unauthorized_output_notes set to true
     #[test]
-    fn test_rpo_falcon_512_acl_with_allow_unauthorized_output_notes() {
+    fn test_falcon_512_rpo_acl_with_allow_unauthorized_output_notes() {
         test_acl_component(AclTestConfig {
             with_procedures: false,
             allow_unauthorized_output_notes: true,
@@ -347,7 +347,7 @@ mod tests {
 
     /// Test ACL component with two procedures and allow_unauthorized_output_notes set to true
     #[test]
-    fn test_rpo_falcon_512_acl_with_procedures_and_allow_unauthorized_output_notes() {
+    fn test_falcon_512_rpo_acl_with_procedures_and_allow_unauthorized_output_notes() {
         test_acl_component(AclTestConfig {
             with_procedures: true,
             allow_unauthorized_output_notes: true,
@@ -358,7 +358,7 @@ mod tests {
 
     /// Test ACL component with no procedures and allow_unauthorized_input_notes set to true
     #[test]
-    fn test_rpo_falcon_512_acl_with_allow_unauthorized_input_notes() {
+    fn test_falcon_512_rpo_acl_with_allow_unauthorized_input_notes() {
         test_acl_component(AclTestConfig {
             with_procedures: false,
             allow_unauthorized_output_notes: false,
@@ -369,7 +369,7 @@ mod tests {
 
     /// Test ACL component with two procedures and both authorization flags set to true
     #[test]
-    fn test_rpo_falcon_512_acl_with_both_allow_flags() {
+    fn test_falcon_512_rpo_acl_with_both_allow_flags() {
         test_acl_component(AclTestConfig {
             with_procedures: true,
             allow_unauthorized_output_notes: true,

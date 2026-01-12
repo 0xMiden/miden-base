@@ -16,8 +16,8 @@ use crate::account::AuthScheme;
 use crate::account::auth::{
     AuthEcdsaK256KeccakAcl,
     AuthEcdsaK256KeccakAclConfig,
-    AuthRpoFalcon512Acl,
-    AuthRpoFalcon512AclConfig,
+    AuthFalcon512RpoAcl,
+    AuthFalcon512RpoAclConfig,
 };
 use crate::account::components::basic_fungible_faucet_library;
 use crate::account::interface::{AccountComponentInterface, AccountInterface, AccountInterfaceExt};
@@ -254,9 +254,9 @@ pub fn create_basic_fungible_faucet(
     let distribute_proc_root = BasicFungibleFaucet::distribute_digest();
 
     let auth_component: AccountComponent = match auth_scheme {
-        AuthScheme::RpoFalcon512 { pub_key } => AuthRpoFalcon512Acl::new(
+        AuthScheme::Falcon512Rpo { pub_key } => AuthFalcon512RpoAcl::new(
             pub_key,
-            AuthRpoFalcon512AclConfig::new()
+            AuthFalcon512RpoAclConfig::new()
                 .with_auth_trigger_procedures(vec![distribute_proc_root])
                 .with_allow_unauthorized_input_notes(true),
         )
@@ -275,7 +275,7 @@ pub fn create_basic_fungible_faucet(
                 "basic fungible faucets cannot be created with NoAuth authentication scheme".into(),
             ));
         },
-        AuthScheme::RpoFalcon512Multisig { threshold: _, pub_keys: _ } => {
+        AuthScheme::Falcon512RpoMultisig { threshold: _, pub_keys: _ } => {
             return Err(FungibleFaucetError::UnsupportedAuthScheme(
                 "basic fungible faucets do not support multisig authentication".into(),
             ));
@@ -326,13 +326,13 @@ mod tests {
         TokenSymbol,
         create_basic_fungible_faucet,
     };
-    use crate::account::auth::{AuthRpoFalcon512, AuthRpoFalcon512Acl};
+    use crate::account::auth::{AuthFalcon512Rpo, AuthFalcon512RpoAcl};
     use crate::account::wallets::BasicWallet;
 
     #[test]
     fn faucet_contract_creation() {
         let pub_key_word = Word::new([ONE; 4]);
-        let auth_scheme: AuthScheme = AuthScheme::RpoFalcon512 { pub_key: pub_key_word.into() };
+        let auth_scheme: AuthScheme = AuthScheme::Falcon512Rpo { pub_key: pub_key_word.into() };
 
         // we need to use an initial seed to create the wallet account
         let init_seed: [u8; 32] = [
@@ -369,7 +369,7 @@ mod tests {
         assert_eq!(
             faucet_account
                 .storage()
-                .get_item(AuthRpoFalcon512Acl::public_key_slot())
+                .get_item(AuthFalcon512RpoAcl::public_key_slot())
                 .unwrap(),
             pub_key_word
         );
@@ -380,7 +380,7 @@ mod tests {
         // With 1 trigger procedure (distribute), allow_unauthorized_output_notes=false, and
         // allow_unauthorized_input_notes=true, this should be [1, 0, 1, 0].
         assert_eq!(
-            faucet_account.storage().get_item(AuthRpoFalcon512Acl::config_slot()).unwrap(),
+            faucet_account.storage().get_item(AuthFalcon512RpoAcl::config_slot()).unwrap(),
             [Felt::ONE, Felt::ZERO, Felt::ONE, Felt::ZERO].into()
         );
 
@@ -390,7 +390,7 @@ mod tests {
             faucet_account
                 .storage()
                 .get_map_item(
-                    AuthRpoFalcon512Acl::trigger_procedure_roots_slot(),
+                    AuthFalcon512RpoAcl::trigger_procedure_roots_slot(),
                     [Felt::ZERO, Felt::ZERO, Felt::ZERO, Felt::ZERO].into()
                 )
                 .unwrap(),
@@ -429,7 +429,7 @@ mod tests {
                 BasicFungibleFaucet::new(token_symbol, 10, Felt::new(100))
                     .expect("failed to create a fungible faucet component"),
             )
-            .with_auth_component(AuthRpoFalcon512::new(mock_public_key))
+            .with_auth_component(AuthFalcon512Rpo::new(mock_public_key))
             .build_existing()
             .expect("failed to create wallet account");
 
@@ -442,7 +442,7 @@ mod tests {
         // invalid account: basic fungible faucet component is missing
         let invalid_faucet_account = AccountBuilder::new(mock_seed)
             .account_type(AccountType::FungibleFaucet)
-            .with_auth_component(AuthRpoFalcon512::new(mock_public_key))
+            .with_auth_component(AuthFalcon512Rpo::new(mock_public_key))
             // we need to add some other component so the builder doesn't fail
             .with_component(BasicWallet)
             .build_existing()

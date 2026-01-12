@@ -2,17 +2,17 @@ use miden_protocol::account::auth::PublicKeyCommitment;
 use miden_protocol::account::{AccountComponent, StorageSlot, StorageSlotName};
 use miden_protocol::utils::sync::LazyLock;
 
-use crate::account::components::rpo_falcon_512_library;
+use crate::account::components::falcon_512_rpo_library;
 
 static FALCON_PUBKEY_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
-    StorageSlotName::new("miden::standards::auth::rpo_falcon512::public_key")
+    StorageSlotName::new("miden::standards::auth::falcon512_rpo::public_key")
         .expect("storage slot name should be valid")
 });
 
-/// An [`AccountComponent`] implementing the RpoFalcon512 signature scheme for authentication of
+/// An [`AccountComponent`] implementing the Falcon512Rpo signature scheme for authentication of
 /// transactions.
 ///
-/// It reexports the procedures from `miden::standards::auth::rpo_falcon512`. When linking against
+/// It reexports the procedures from `miden::standards::auth::falcon512_rpo`. When linking against
 /// this component, the `miden` library (i.e. [`ProtocolLib`](miden_protocol::ProtocolLib)) must
 /// be available to the assembler which is the case when using [`CodeBuilder`][builder]. The
 /// procedures of this component are:
@@ -28,12 +28,12 @@ static FALCON_PUBKEY_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
 /// - [`Self::public_key_slot`]: Public key
 ///
 /// [builder]: crate::code_builder::CodeBuilder
-pub struct AuthRpoFalcon512 {
+pub struct AuthFalcon512Rpo {
     pub_key: PublicKeyCommitment,
 }
 
-impl AuthRpoFalcon512 {
-    /// Creates a new [`AuthRpoFalcon512`] component with the given `public_key`.
+impl AuthFalcon512Rpo {
+    /// Creates a new [`AuthFalcon512Rpo`] component with the given `public_key`.
     pub fn new(pub_key: PublicKeyCommitment) -> Self {
         Self { pub_key }
     }
@@ -44,12 +44,12 @@ impl AuthRpoFalcon512 {
     }
 }
 
-impl From<AuthRpoFalcon512> for AccountComponent {
-    fn from(falcon: AuthRpoFalcon512) -> Self {
+impl From<AuthFalcon512Rpo> for AccountComponent {
+    fn from(falcon: AuthFalcon512Rpo) -> Self {
         AccountComponent::new(
-            rpo_falcon_512_library(),
+            falcon_512_rpo_library(),
             vec![StorageSlot::with_value(
-                AuthRpoFalcon512::public_key_slot().clone(),
+                AuthFalcon512Rpo::public_key_slot().clone(),
                 falcon.pub_key.into(),
             )],
         )

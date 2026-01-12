@@ -16,7 +16,7 @@ use crate::{AuthSchemeError, Felt, Hasher, Word};
 // ================================================================================================
 
 /// Identifier of signature schemes use for transaction authentication
-const RPO_FALCON_512: u8 = 0;
+const FALCON_512_RPO: u8 = 0;
 const ECDSA_K256_KECCAK: u8 = 1;
 
 /// Defines standard authentication schemes (i.e., signature schemes) available in the Miden
@@ -30,7 +30,7 @@ pub enum AuthScheme {
     /// This version differs from the reference Falcon512 implementation in its use of the RPO
     /// algebraic hash function in its hash-to-point algorithm to make signatures very efficient
     /// to verify inside Miden VM.
-    RpoFalcon512 = RPO_FALCON_512,
+    Falcon512Rpo = FALCON_512_RPO,
 
     /// ECDSA signature scheme over secp256k1 curve using Keccak to hash the messages when signing.
     EcdsaK256Keccak = ECDSA_K256_KECCAK,
@@ -46,7 +46,7 @@ impl AuthScheme {
 impl core::fmt::Display for AuthScheme {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            Self::RpoFalcon512 => f.write_str("RpoFalcon512"),
+            Self::Falcon512Rpo => f.write_str("Falcon512Rpo"),
             Self::EcdsaK256Keccak => f.write_str("EcdsaK256Keccak"),
         }
     }
@@ -57,7 +57,7 @@ impl TryFrom<u8> for AuthScheme {
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
-            RPO_FALCON_512 => Ok(Self::RpoFalcon512),
+            FALCON_512_RPO => Ok(Self::Falcon512Rpo),
             ECDSA_K256_KECCAK => Ok(Self::EcdsaK256Keccak),
             value => Err(AuthSchemeError::InvalidAuthSchemeIdentifier(value)),
         }
@@ -78,7 +78,7 @@ impl Serializable for AuthScheme {
 impl Deserializable for AuthScheme {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         match source.read_u8()? {
-            RPO_FALCON_512 => Ok(Self::RpoFalcon512),
+            FALCON_512_RPO => Ok(Self::Falcon512Rpo),
             ECDSA_K256_KECCAK => Ok(Self::EcdsaK256Keccak),
             value => Err(DeserializationError::InvalidValue(format!(
                 "auth scheme identifier `{value}` is not valid"
@@ -95,20 +95,20 @@ impl Deserializable for AuthScheme {
 #[non_exhaustive]
 #[repr(u8)]
 pub enum AuthSecretKey {
-    RpoFalcon512(falcon512_rpo::SecretKey) = RPO_FALCON_512,
+    Falcon512Rpo(falcon512_rpo::SecretKey) = FALCON_512_RPO,
     EcdsaK256Keccak(ecdsa_k256_keccak::SecretKey) = ECDSA_K256_KECCAK,
 }
 
 impl AuthSecretKey {
-    /// Generates an RpoFalcon512 secret key from the OS-provided randomness.
+    /// Generates an Falcon512Rpo secret key from the OS-provided randomness.
     #[cfg(feature = "std")]
     pub fn new_falcon512_rpo() -> Self {
-        Self::RpoFalcon512(falcon512_rpo::SecretKey::new())
+        Self::Falcon512Rpo(falcon512_rpo::SecretKey::new())
     }
 
-    /// Generates an RpoFalcon512 secrete key using the provided random number generator.
+    /// Generates an Falcon512Rpo secrete key using the provided random number generator.
     pub fn new_falcon512_rpo_with_rng<R: Rng>(rng: &mut R) -> Self {
-        Self::RpoFalcon512(falcon512_rpo::SecretKey::with_rng(rng))
+        Self::Falcon512Rpo(falcon512_rpo::SecretKey::with_rng(rng))
     }
 
     /// Generates an EcdsaK256Keccak secret key from the OS-provided randomness.
@@ -125,7 +125,7 @@ impl AuthSecretKey {
     /// Returns the authentication scheme of this secret key.
     pub fn auth_scheme(&self) -> AuthScheme {
         match self {
-            AuthSecretKey::RpoFalcon512(_) => AuthScheme::RpoFalcon512,
+            AuthSecretKey::Falcon512Rpo(_) => AuthScheme::Falcon512Rpo,
             AuthSecretKey::EcdsaK256Keccak(_) => AuthScheme::EcdsaK256Keccak,
         }
     }
@@ -133,7 +133,7 @@ impl AuthSecretKey {
     /// Returns a public key associated with this secret key.
     pub fn public_key(&self) -> PublicKey {
         match self {
-            AuthSecretKey::RpoFalcon512(key) => PublicKey::RpoFalcon512(key.public_key()),
+            AuthSecretKey::Falcon512Rpo(key) => PublicKey::Falcon512Rpo(key.public_key()),
             AuthSecretKey::EcdsaK256Keccak(key) => PublicKey::EcdsaK256Keccak(key.public_key()),
         }
     }
@@ -141,7 +141,7 @@ impl AuthSecretKey {
     /// Signs the provided message with this secret key.
     pub fn sign(&self, message: Word) -> Signature {
         match self {
-            AuthSecretKey::RpoFalcon512(key) => Signature::RpoFalcon512(key.sign(message)),
+            AuthSecretKey::Falcon512Rpo(key) => Signature::Falcon512Rpo(key.sign(message)),
             AuthSecretKey::EcdsaK256Keccak(key) => Signature::EcdsaK256Keccak(key.sign(message)),
         }
     }
@@ -151,7 +151,7 @@ impl Serializable for AuthSecretKey {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         self.auth_scheme().write_into(target);
         match self {
-            AuthSecretKey::RpoFalcon512(key) => key.write_into(target),
+            AuthSecretKey::Falcon512Rpo(key) => key.write_into(target),
             AuthSecretKey::EcdsaK256Keccak(key) => key.write_into(target),
         }
     }
@@ -160,9 +160,9 @@ impl Serializable for AuthSecretKey {
 impl Deserializable for AuthSecretKey {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         match source.read::<AuthScheme>()? {
-            AuthScheme::RpoFalcon512 => {
+            AuthScheme::Falcon512Rpo => {
                 let secret_key = falcon512_rpo::SecretKey::read_from(source)?;
-                Ok(AuthSecretKey::RpoFalcon512(secret_key))
+                Ok(AuthSecretKey::Falcon512Rpo(secret_key))
             },
             AuthScheme::EcdsaK256Keccak => {
                 let secret_key = ecdsa_k256_keccak::SecretKey::read_from(source)?;
@@ -207,7 +207,7 @@ impl From<Word> for PublicKeyCommitment {
 #[derive(Clone, Debug)]
 #[non_exhaustive]
 pub enum PublicKey {
-    RpoFalcon512(falcon512_rpo::PublicKey),
+    Falcon512Rpo(falcon512_rpo::PublicKey),
     EcdsaK256Keccak(ecdsa_k256_keccak::PublicKey),
 }
 
@@ -215,7 +215,7 @@ impl PublicKey {
     /// Returns the authentication scheme of this public key.
     pub fn auth_scheme(&self) -> AuthScheme {
         match self {
-            PublicKey::RpoFalcon512(_) => AuthScheme::RpoFalcon512,
+            PublicKey::Falcon512Rpo(_) => AuthScheme::Falcon512Rpo,
             PublicKey::EcdsaK256Keccak(_) => AuthScheme::EcdsaK256Keccak,
         }
     }
@@ -223,7 +223,7 @@ impl PublicKey {
     /// Returns a commitment to this public key.
     pub fn to_commitment(&self) -> PublicKeyCommitment {
         match self {
-            PublicKey::RpoFalcon512(key) => key.to_commitment().into(),
+            PublicKey::Falcon512Rpo(key) => key.to_commitment().into(),
             PublicKey::EcdsaK256Keccak(key) => key.to_commitment().into(),
         }
     }
@@ -231,7 +231,7 @@ impl PublicKey {
     /// Verifies the provided signature against the provided message and this public key.
     pub fn verify(&self, message: Word, signature: Signature) -> bool {
         match (self, signature) {
-            (PublicKey::RpoFalcon512(key), Signature::RpoFalcon512(sig)) => {
+            (PublicKey::Falcon512Rpo(key), Signature::Falcon512Rpo(sig)) => {
                 key.verify(message, &sig)
             },
             (PublicKey::EcdsaK256Keccak(key), Signature::EcdsaK256Keccak(sig)) => {
@@ -246,7 +246,7 @@ impl Serializable for PublicKey {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         self.auth_scheme().write_into(target);
         match self {
-            PublicKey::RpoFalcon512(pub_key) => pub_key.write_into(target),
+            PublicKey::Falcon512Rpo(pub_key) => pub_key.write_into(target),
             PublicKey::EcdsaK256Keccak(pub_key) => pub_key.write_into(target),
         }
     }
@@ -255,9 +255,9 @@ impl Serializable for PublicKey {
 impl Deserializable for PublicKey {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         match source.read::<AuthScheme>()? {
-            AuthScheme::RpoFalcon512 => {
+            AuthScheme::Falcon512Rpo => {
                 let pub_key = falcon512_rpo::PublicKey::read_from(source)?;
-                Ok(PublicKey::RpoFalcon512(pub_key))
+                Ok(PublicKey::Falcon512Rpo(pub_key))
             },
             AuthScheme::EcdsaK256Keccak => {
                 let pub_key = ecdsa_k256_keccak::PublicKey::read_from(source)?;
@@ -288,7 +288,7 @@ impl Deserializable for PublicKey {
 #[derive(Clone, Debug)]
 #[repr(u8)]
 pub enum Signature {
-    RpoFalcon512(falcon512_rpo::Signature) = RPO_FALCON_512,
+    Falcon512Rpo(falcon512_rpo::Signature) = FALCON_512_RPO,
     EcdsaK256Keccak(ecdsa_k256_keccak::Signature) = ECDSA_K256_KECCAK,
 }
 
@@ -296,7 +296,7 @@ impl Signature {
     /// Returns the authentication scheme of this signature.
     pub fn auth_scheme(&self) -> AuthScheme {
         match self {
-            Signature::RpoFalcon512(_) => AuthScheme::RpoFalcon512,
+            Signature::Falcon512Rpo(_) => AuthScheme::Falcon512Rpo,
             Signature::EcdsaK256Keccak(_) => AuthScheme::EcdsaK256Keccak,
         }
     }
@@ -310,7 +310,7 @@ impl Signature {
         // TODO: the `expect()` should be changed to an error; but that will be a part of a bigger
         // refactoring
         let mut result = match self {
-            Signature::RpoFalcon512(sig) => prepare_falcon512_rpo_signature(sig),
+            Signature::Falcon512Rpo(sig) => prepare_falcon512_rpo_signature(sig),
             Signature::EcdsaK256Keccak(sig) => {
                 let pk = ecdsa_k256_keccak::PublicKey::recover_from(msg, sig)
                     .expect("inferring public key from signature and message should succeed");
@@ -327,7 +327,7 @@ impl Signature {
 
 impl From<falcon512_rpo::Signature> for Signature {
     fn from(signature: falcon512_rpo::Signature) -> Self {
-        Signature::RpoFalcon512(signature)
+        Signature::Falcon512Rpo(signature)
     }
 }
 
@@ -335,7 +335,7 @@ impl Serializable for Signature {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         self.auth_scheme().write_into(target);
         match self {
-            Signature::RpoFalcon512(signature) => signature.write_into(target),
+            Signature::Falcon512Rpo(signature) => signature.write_into(target),
             Signature::EcdsaK256Keccak(signature) => signature.write_into(target),
         }
     }
@@ -344,9 +344,9 @@ impl Serializable for Signature {
 impl Deserializable for Signature {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         match source.read::<AuthScheme>()? {
-            AuthScheme::RpoFalcon512 => {
+            AuthScheme::Falcon512Rpo => {
                 let signature = falcon512_rpo::Signature::read_from(source)?;
-                Ok(Signature::RpoFalcon512(signature))
+                Ok(Signature::Falcon512Rpo(signature))
             },
             AuthScheme::EcdsaK256Keccak => {
                 let signature = ecdsa_k256_keccak::Signature::read_from(source)?;

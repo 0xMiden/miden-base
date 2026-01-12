@@ -16,11 +16,11 @@ use crate::account::components::{
     ecdsa_k256_keccak_acl_library,
     ecdsa_k256_keccak_library,
     ecdsa_k256_keccak_multisig_library,
+    falcon_512_rpo_acl_library,
+    falcon_512_rpo_library,
+    falcon_512_rpo_multisig_library,
     network_fungible_faucet_library,
     no_auth_library,
-    rpo_falcon_512_acl_library,
-    rpo_falcon_512_library,
-    rpo_falcon_512_multisig_library,
 };
 use crate::account::interface::{
     AccountComponentInterface,
@@ -116,17 +116,17 @@ impl AccountInterfaceExt for AccountInterface {
                         ecdsa_k256_keccak_multisig_library().mast_forest().procedure_digests(),
                     );
                 },
-                AccountComponentInterface::AuthRpoFalcon512 => {
+                AccountComponentInterface::AuthFalcon512Rpo => {
                     component_proc_digests
-                        .extend(rpo_falcon_512_library().mast_forest().procedure_digests());
+                        .extend(falcon_512_rpo_library().mast_forest().procedure_digests());
                 },
-                AccountComponentInterface::AuthRpoFalcon512Acl => {
+                AccountComponentInterface::AuthFalcon512RpoAcl => {
                     component_proc_digests
-                        .extend(rpo_falcon_512_acl_library().mast_forest().procedure_digests());
+                        .extend(falcon_512_rpo_acl_library().mast_forest().procedure_digests());
                 },
-                AccountComponentInterface::AuthRpoFalcon512Multisig => {
+                AccountComponentInterface::AuthFalcon512RpoMultisig => {
                     component_proc_digests.extend(
-                        rpo_falcon_512_multisig_library().mast_forest().procedure_digests(),
+                        falcon_512_rpo_multisig_library().mast_forest().procedure_digests(),
                     );
                 },
                 AccountComponentInterface::AuthNoAuth => {

@@ -100,7 +100,7 @@ struct RawStorageSchema {
 /// Storage slot type descriptor.
 ///
 /// This field accepts either:
-/// - a type identifier (e.g. `"word"`, `"u16"`, `"miden::standards::auth::rpo_falcon512::pub_key"`)
+/// - a type identifier (e.g. `"word"`, `"u16"`, `"miden::standards::auth::falcon512_rpo::pub_key"`)
 ///   for simple word slots,
 /// - an array of 4 [`FeltSchema`] descriptors for composite word slots, or
 /// - a table `{ key = ..., value = ... }` for map slots.

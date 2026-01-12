@@ -11,9 +11,9 @@ use crate::account::auth::{
     AuthEcdsaK256Keccak,
     AuthEcdsaK256KeccakAcl,
     AuthEcdsaK256KeccakMultisig,
-    AuthRpoFalcon512,
-    AuthRpoFalcon512Acl,
-    AuthRpoFalcon512Multisig,
+    AuthFalcon512Rpo,
+    AuthFalcon512RpoAcl,
+    AuthFalcon512RpoMultisig,
 };
 use crate::account::interface::AccountInterfaceError;
 
@@ -41,14 +41,14 @@ pub enum AccountComponentInterface {
     /// [`AuthEcdsaK256KeccakMultisig`][crate::account::auth::AuthEcdsaK256KeccakMultisig] module.
     AuthEcdsaK256KeccakMultisig,
     /// Exposes procedures from the
-    /// [`AuthRpoFalcon512`][crate::account::auth::AuthRpoFalcon512] module.
-    AuthRpoFalcon512,
+    /// [`AuthFalcon512Rpo`][crate::account::auth::AuthFalcon512Rpo] module.
+    AuthFalcon512Rpo,
     /// Exposes procedures from the
-    /// [`AuthRpoFalcon512Acl`][crate::account::auth::AuthRpoFalcon512Acl] module.
-    AuthRpoFalcon512Acl,
+    /// [`AuthFalcon512RpoAcl`][crate::account::auth::AuthFalcon512RpoAcl] module.
+    AuthFalcon512RpoAcl,
     /// Exposes procedures from the
-    /// [`AuthRpoFalcon512Multisig`][crate::account::auth::AuthRpoFalcon512Multisig] module.
-    AuthRpoFalcon512Multisig,
+    /// [`AuthFalcon512RpoMultisig`][crate::account::auth::AuthFalcon512RpoMultisig] module.
+    AuthFalcon512RpoMultisig,
     /// Exposes procedures from the [`NoAuth`][crate::account::auth::NoAuth] module.
     ///
     /// This authentication scheme provides no cryptographic authentication and only increments
@@ -81,9 +81,9 @@ impl AccountComponentInterface {
             AccountComponentInterface::AuthEcdsaK256KeccakMultisig => {
                 "ECDSA K256 Keccak Multisig".to_string()
             },
-            AccountComponentInterface::AuthRpoFalcon512 => "RPO Falcon512".to_string(),
-            AccountComponentInterface::AuthRpoFalcon512Acl => "RPO Falcon512 ACL".to_string(),
-            AccountComponentInterface::AuthRpoFalcon512Multisig => {
+            AccountComponentInterface::AuthFalcon512Rpo => "RPO Falcon512".to_string(),
+            AccountComponentInterface::AuthFalcon512RpoAcl => "RPO Falcon512 ACL".to_string(),
+            AccountComponentInterface::AuthFalcon512RpoMultisig => {
                 "RPO Falcon512 Multisig".to_string()
             },
 
@@ -108,9 +108,9 @@ impl AccountComponentInterface {
             AccountComponentInterface::AuthEcdsaK256Keccak
                 | AccountComponentInterface::AuthEcdsaK256KeccakAcl
                 | AccountComponentInterface::AuthEcdsaK256KeccakMultisig
-                | AccountComponentInterface::AuthRpoFalcon512
-                | AccountComponentInterface::AuthRpoFalcon512Acl
-                | AccountComponentInterface::AuthRpoFalcon512Multisig
+                | AccountComponentInterface::AuthFalcon512Rpo
+                | AccountComponentInterface::AuthFalcon512RpoAcl
+                | AccountComponentInterface::AuthFalcon512RpoMultisig
                 | AccountComponentInterface::AuthNoAuth
         )
     }
@@ -143,29 +143,29 @@ impl AccountComponentInterface {
                     AuthEcdsaK256KeccakMultisig::approver_public_keys_slot(),
                 )]
             },
-            AccountComponentInterface::AuthRpoFalcon512 => {
-                vec![AuthScheme::RpoFalcon512 {
+            AccountComponentInterface::AuthFalcon512Rpo => {
+                vec![AuthScheme::Falcon512Rpo {
                     pub_key: PublicKeyCommitment::from(
                         storage
-                            .get_item(AuthRpoFalcon512::public_key_slot())
-                            .expect("invalid slot name of the AuthRpoFalcon512 public key"),
+                            .get_item(AuthFalcon512Rpo::public_key_slot())
+                            .expect("invalid slot name of the AuthFalcon512Rpo public key"),
                     ),
                 }]
             },
-            AccountComponentInterface::AuthRpoFalcon512Acl => {
-                vec![AuthScheme::RpoFalcon512 {
+            AccountComponentInterface::AuthFalcon512RpoAcl => {
+                vec![AuthScheme::Falcon512Rpo {
                     pub_key: PublicKeyCommitment::from(
                         storage
-                            .get_item(AuthRpoFalcon512Acl::public_key_slot())
-                            .expect("invalid slot name of the AuthRpoFalcon512Acl public key"),
+                            .get_item(AuthFalcon512RpoAcl::public_key_slot())
+                            .expect("invalid slot name of the AuthFalcon512RpoAcl public key"),
                     ),
                 }]
             },
-            AccountComponentInterface::AuthRpoFalcon512Multisig => {
+            AccountComponentInterface::AuthFalcon512RpoMultisig => {
                 vec![extract_multisig_auth_scheme(
                     storage,
-                    AuthRpoFalcon512Multisig::threshold_config_slot(),
-                    AuthRpoFalcon512Multisig::approver_public_keys_slot(),
+                    AuthFalcon512RpoMultisig::threshold_config_slot(),
+                    AuthFalcon512RpoMultisig::approver_public_keys_slot(),
                 )]
             },
             AccountComponentInterface::AuthNoAuth => vec![AuthScheme::NoAuth],
@@ -331,5 +331,5 @@ fn extract_multisig_auth_scheme(
         }
     }
 
-    AuthScheme::RpoFalcon512Multisig { threshold, pub_keys }
+    AuthScheme::Falcon512RpoMultisig { threshold, pub_keys }
 }

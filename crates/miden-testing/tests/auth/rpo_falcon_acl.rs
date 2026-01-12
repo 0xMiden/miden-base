@@ -14,7 +14,7 @@ use miden_protocol::note::Note;
 use miden_protocol::testing::storage::MOCK_VALUE_SLOT0;
 use miden_protocol::transaction::OutputNote;
 use miden_protocol::{Felt, FieldElement, Word};
-use miden_standards::account::auth::AuthRpoFalcon512Acl;
+use miden_standards::account::auth::AuthFalcon512RpoAcl;
 use miden_standards::code_builder::CodeBuilder;
 use miden_standards::testing::account_component::MockAccountComponent;
 use miden_standards::testing::note::NoteBuilder;
@@ -203,7 +203,7 @@ async fn test_rpo_falcon_acl_with_allow_unauthorized_output_notes() -> anyhow::R
     // Verify the storage layout includes both authorization flags
     let config_slot = account
         .storage()
-        .get_item(AuthRpoFalcon512Acl::config_slot())
+        .get_item(AuthFalcon512RpoAcl::config_slot())
         .expect("config storage slot access failed");
     // Config Slot should be [num_trigger_procs, allow_unauthorized_output_notes,
     // allow_unauthorized_input_notes, 0] With 2 procedures,
@@ -243,7 +243,7 @@ async fn test_rpo_falcon_acl_with_disallow_unauthorized_input_notes() -> anyhow:
     // Verify the storage layout includes both flags
     let config_slot = account
         .storage()
-        .get_item(AuthRpoFalcon512Acl::config_slot())
+        .get_item(AuthFalcon512RpoAcl::config_slot())
         .expect("config storage slot access failed");
     // Config Slot should be [num_trigger_procs, allow_unauthorized_output_notes,
     // allow_unauthorized_input_notes, 0] With 2 procedures,

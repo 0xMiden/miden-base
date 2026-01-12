@@ -531,17 +531,17 @@ async fn tx_summary_commitment_is_signed_by_falcon_auth() -> anyhow::Result<()> 
 
     let account_interface = AccountInterface::from_account(&account);
     let pub_key = match account_interface.auth().first().unwrap() {
-        AuthScheme::RpoFalcon512 { pub_key } => pub_key,
-        AuthScheme::NoAuth => panic!("Expected RpoFalcon512 auth scheme, got NoAuth"),
-        AuthScheme::RpoFalcon512Multisig { .. } => {
-            panic!("Expected RpoFalcon512 auth scheme, got RpoFalcon512Multisig")
+        AuthScheme::Falcon512Rpo { pub_key } => pub_key,
+        AuthScheme::NoAuth => panic!("Expected Falcon512Rpo auth scheme, got NoAuth"),
+        AuthScheme::Falcon512RpoMultisig { .. } => {
+            panic!("Expected Falcon512Rpo auth scheme, got Falcon512RpoMultisig")
         },
-        AuthScheme::Unknown => panic!("Expected RpoFalcon512 auth scheme, got Unknown"),
+        AuthScheme::Unknown => panic!("Expected Falcon512Rpo auth scheme, got Unknown"),
         AuthScheme::EcdsaK256Keccak { .. } => {
-            panic!("Expected RpoFalcon512 auth scheme, got EcdsaK256Keccak")
+            panic!("Expected Falcon512Rpo auth scheme, got EcdsaK256Keccak")
         },
         AuthScheme::EcdsaK256KeccakMultisig { .. } => {
-            panic!("Expected RpoFalcon512 auth scheme, got EcdsaK256KeccakMultisig")
+            panic!("Expected Falcon512Rpo auth scheme, got EcdsaK256KeccakMultisig")
         },
     };
 
@@ -600,12 +600,12 @@ async fn tx_summary_commitment_is_signed_by_ecdsa_auth() -> anyhow::Result<()> {
             panic!("Expected EcdsaK256Keccak auth scheme, got EcdsaK256KeccakMultisig")
         },
         AuthScheme::NoAuth => panic!("Expected EcdsaK256Keccak auth scheme, got NoAuth"),
-        AuthScheme::RpoFalcon512Multisig { .. } => {
-            panic!("Expected EcdsaK256Keccak auth scheme, got RpoFalcon512Multisig")
+        AuthScheme::Falcon512RpoMultisig { .. } => {
+            panic!("Expected EcdsaK256Keccak auth scheme, got Falcon512RpoMultisig")
         },
         AuthScheme::Unknown => panic!("Expected EcdsaK256Keccak auth scheme, got Unknown"),
-        AuthScheme::RpoFalcon512 { .. } => {
-            panic!("Expected EcdsaK256Keccak auth scheme, got RpoFalcon512")
+        AuthScheme::Falcon512Rpo { .. } => {
+            panic!("Expected EcdsaK256Keccak auth scheme, got Falcon512Rpo")
         },
     };
 

@@ -13,11 +13,11 @@ pub use ecdsa_k256_keccak_multisig::{
     AuthEcdsaK256KeccakMultisigConfig,
 };
 
-mod rpo_falcon_512;
-pub use rpo_falcon_512::AuthRpoFalcon512;
+mod falcon_512_rpo;
+pub use falcon_512_rpo::AuthFalcon512Rpo;
 
-mod rpo_falcon_512_acl;
-pub use rpo_falcon_512_acl::{AuthRpoFalcon512Acl, AuthRpoFalcon512AclConfig};
+mod falcon_512_rpo_acl;
+pub use falcon_512_rpo_acl::{AuthFalcon512RpoAcl, AuthFalcon512RpoAclConfig};
 
-mod rpo_falcon_512_multisig;
-pub use rpo_falcon_512_multisig::{AuthRpoFalcon512Multisig, AuthRpoFalcon512MultisigConfig};
+mod falcon_512_rpo_multisig;
+pub use falcon_512_rpo_multisig::{AuthFalcon512RpoMultisig, AuthFalcon512RpoMultisigConfig};

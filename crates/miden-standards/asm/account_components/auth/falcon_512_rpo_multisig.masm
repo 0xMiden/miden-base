@@ -1,6 +1,6 @@
 # The MASM code of the Multi-Signature RPO Falcon 512 Authentication Component.
 #
-# See the `AuthRpoFalcon512Multisig` Rust type's documentation for more details.
+# See the `AuthFalcon512RpoMultisig` Rust type's documentation for more details.
 
 use miden::protocol::active_account
 use miden::protocol::native_account
@@ -29,19 +29,19 @@ const AUTH_UNAUTHORIZED_EVENT = event("miden::auth::unauthorized")
 # number of approvers are stored as:
 # [default_threshold, num_approvers, 0, 0].
 # The threshold is guaranteed to be less than or equal to num_approvers.
-const THRESHOLD_CONFIG_SLOT = word("miden::standards::auth::rpo_falcon512_multisig::threshold_config")
+const THRESHOLD_CONFIG_SLOT = word("miden::standards::auth::falcon512_rpo_multisig::threshold_config")
 
 # The slot in this component's storage layout where the public keys map is stored.
 # Map entries: [key_index, 0, 0, 0] => APPROVER_PUBLIC_KEY
-const APPROVER_PUBLIC_KEYS_SLOT = word("miden::standards::auth::rpo_falcon512_multisig::approver_public_keys")
+const APPROVER_PUBLIC_KEYS_SLOT = word("miden::standards::auth::falcon512_rpo_multisig::approver_public_keys")
 
 # The slot in this component's storage layout where executed transactions are stored.
 # Map entries: transaction_message => [is_executed, 0, 0, 0]
-const EXECUTED_TXS_SLOT = word("miden::standards::auth::rpo_falcon512_multisig::executed_transactions")
+const EXECUTED_TXS_SLOT = word("miden::standards::auth::falcon512_rpo_multisig::executed_transactions")
 
 # The slot in this component's storage layout where procedure thresholds are stored.
 # Map entries: PROC_ROOT => [proc_threshold, 0, 0, 0]
-const PROC_THRESHOLD_ROOTS_SLOT = word("miden::standards::auth::rpo_falcon512_multisig::procedure_thresholds")
+const PROC_THRESHOLD_ROOTS_SLOT = word("miden::standards::auth::falcon512_rpo_multisig::procedure_thresholds")
 
 # Executed Transaction Flag Constant
 const IS_EXECUTED_FLAG = [1, 0, 0, 0]
@@ -356,7 +356,7 @@ end
 #!
 #! Invocation: call
 @locals(1)
-pub proc auth_tx_rpo_falcon512_multisig(salt: BeWord)
+pub proc auth_tx_falcon512_rpo_multisig(salt: BeWord)
     exec.native_account::incr_nonce drop
     # => [SALT]
 
@@ -390,7 +390,7 @@ pub proc auth_tx_rpo_falcon512_multisig(salt: BeWord)
     push.APPROVER_PUBLIC_KEYS_SLOT[0..2]
     # => [pub_key_slot_prefix, pub_key_slot_suffix, num_of_approvers, TX_SUMMARY_COMMITMENT, default_threshold]
 
-    exec.::miden::standards::auth::rpo_falcon512::verify_signatures
+    exec.::miden::standards::auth::falcon512_rpo::verify_signatures
     # => [num_verified_signatures, TX_SUMMARY_COMMITMENT, default_threshold]
 
     # ------ Checking threshold is >= num_verified_signatures ------

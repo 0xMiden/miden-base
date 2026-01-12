@@ -25,11 +25,11 @@ pub enum AuthScheme {
     /// This variant differs from the standard in that instead of using SHAKE256 hash function in
     /// the hash-to-point algorithm we use RPO256. This makes the signature more efficient to
     /// verify in Miden VM.
-    RpoFalcon512 { pub_key: PublicKeyCommitment },
+    Falcon512Rpo { pub_key: PublicKeyCommitment },
     /// A multi-signature authentication scheme using RPO Falcon512 signatures.
     ///
     /// Requires a threshold number of signatures from the provided public keys.
-    RpoFalcon512Multisig {
+    Falcon512RpoMultisig {
         threshold: u32,
         pub_keys: Vec<PublicKeyCommitment>,
     },
@@ -46,8 +46,8 @@ impl AuthScheme {
             AuthScheme::NoAuth => Vec::new(),
             AuthScheme::EcdsaK256Keccak { pub_key } => vec![*pub_key],
             AuthScheme::EcdsaK256KeccakMultisig { pub_keys, .. } => pub_keys.clone(),
-            AuthScheme::RpoFalcon512 { pub_key } => vec![*pub_key],
-            AuthScheme::RpoFalcon512Multisig { pub_keys, .. } => pub_keys.clone(),
+            AuthScheme::Falcon512Rpo { pub_key } => vec![*pub_key],
+            AuthScheme::Falcon512RpoMultisig { pub_keys, .. } => pub_keys.clone(),
             AuthScheme::Unknown => Vec::new(),
         }
     }

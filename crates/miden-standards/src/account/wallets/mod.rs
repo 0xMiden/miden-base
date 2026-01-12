@@ -15,9 +15,9 @@ use crate::account::auth::{
     AuthEcdsaK256Keccak,
     AuthEcdsaK256KeccakMultisig,
     AuthEcdsaK256KeccakMultisigConfig,
-    AuthRpoFalcon512,
-    AuthRpoFalcon512Multisig,
-    AuthRpoFalcon512MultisigConfig,
+    AuthFalcon512Rpo,
+    AuthFalcon512RpoMultisig,
+    AuthFalcon512RpoMultisigConfig,
 };
 use crate::account::components::basic_wallet_library;
 use crate::procedure_digest;
@@ -131,14 +131,14 @@ pub fn create_basic_wallet(
                 .map_err(BasicWalletError::AccountError)?
                 .into()
         },
-        AuthScheme::RpoFalcon512 { pub_key } => AuthRpoFalcon512::new(pub_key).into(),
-        AuthScheme::RpoFalcon512Multisig { threshold, pub_keys } => {
-            let config = AuthRpoFalcon512MultisigConfig::new(pub_keys, threshold)
+        AuthScheme::Falcon512Rpo { pub_key } => AuthFalcon512Rpo::new(pub_key).into(),
+        AuthScheme::Falcon512RpoMultisig { threshold, pub_keys } => {
+            let config = AuthFalcon512RpoMultisigConfig::new(pub_keys, threshold)
                 .and_then(|cfg| {
                     cfg.with_proc_thresholds(vec![(BasicWallet::receive_asset_digest(), 1)])
                 })
                 .map_err(BasicWalletError::AccountError)?;
-            AuthRpoFalcon512Multisig::new(config)
+            AuthFalcon512RpoMultisig::new(config)
                 .map_err(BasicWalletError::AccountError)?
                 .into()
         },
@@ -182,7 +182,7 @@ mod tests {
         let pub_key = PublicKeyCommitment::from(Word::from([ONE; 4]));
         let wallet = create_basic_wallet(
             [1; 32],
-            AuthScheme::RpoFalcon512 { pub_key },
+            AuthScheme::Falcon512Rpo { pub_key },
             AccountType::RegularAccountImmutableCode,
             AccountStorageMode::Public,
         );
@@ -197,7 +197,7 @@ mod tests {
         let pub_key = PublicKeyCommitment::from(Word::from([ONE; 4]));
         let wallet = create_basic_wallet(
             [1; 32],
-            AuthScheme::RpoFalcon512 { pub_key },
+            AuthScheme::Falcon512Rpo { pub_key },
             AccountType::RegularAccountImmutableCode,
             AccountStorageMode::Public,
         )
