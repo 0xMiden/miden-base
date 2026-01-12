@@ -5,7 +5,7 @@ use miden_protocol::account::{AccountId, StorageMap, StorageSlotName, StorageSlo
 use miden_protocol::asset::{Asset, AssetVault, AssetVaultKey, FungibleAsset};
 use miden_protocol::note::{
     NoteAttachment,
-    NoteAttachmentCommitment,
+    NoteAttachmentArray,
     NoteAttachmentContent,
     NoteAttachmentContentType,
     NoteAttachmentType,
@@ -769,7 +769,7 @@ fn extract_note_attachment(
             })?;
 
             let commitment_attachment =
-                NoteAttachmentCommitment::new(elements.to_vec()).map_err(|source| {
+                NoteAttachmentArray::new(elements.to_vec()).map_err(|source| {
                     TransactionKernelError::other_with_source(
                         "failed to construct note attachment commitment",
                         source,
@@ -777,7 +777,7 @@ fn extract_note_attachment(
                 })?;
 
             if commitment_attachment.commitment() != attachment {
-                return Err(TransactionKernelError::NoteAttachmentCommitmentMismatch {
+                return Err(TransactionKernelError::NoteAttachmentArrayMismatch {
                     actual: commitment_attachment.commitment(),
                     provided: attachment,
                 });

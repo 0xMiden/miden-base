@@ -246,7 +246,7 @@ pub enum TransactionKernelError {
     #[error(
         "commitment of note attachment {actual} does not match attachment {provided} provided to set_attachment"
     )]
-    NoteAttachmentCommitmentMismatch { actual: Word, provided: Word },
+    NoteAttachmentArrayMismatch { actual: Word, provided: Word },
     #[error(
         "note input data in advice provider contains fewer elements ({actual}) than specified ({specified}) by its inputs length"
     )]
