@@ -80,3 +80,24 @@ pub proc verify_claim_proof
     dropw dropw dropw dropw
     push.1
 end
+
+#! Hash bytes using Keccak256
+#!
+#! This procedure takes a pointer to memory containing packed u32 values and the length in bytes,
+#! then computes the Keccak256 hash of those bytes.
+#!
+#! Inputs:  [ptr, len_bytes]
+#! Outputs: [DIGEST_U32[8]]
+#!
+#! Where:
+#! - ptr is the memory address where the packed u32 values are stored
+#! - len_bytes is the total length of the data in bytes
+#! - DIGEST_U32[8] is the Keccak256 hash as 8 u32 values (32 bytes total)
+#!
+#! The memory at ptr should contain u32 values in little-endian format,
+#! packed sequentially to represent the byte data to be hashed.
+#!
+#! Invocation: exec
+pub proc hash_bytes
+    exec.keccak256::hash_bytes
+end
