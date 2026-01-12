@@ -272,17 +272,17 @@ pub proc set_attachment
     exec.memory::get_output_note_ptr dup
     # => [note_ptr, note_ptr, attachment_content_type, attachment_type, ATTACHMENT]
 
-    movdn.3 movdn.3
-    # => [attachment_content_type, attachment_type, note_ptr, note_ptr, ATTACHMENT]
+    dupw.1
+    # => [ATTACHMENT, note_ptr, note_ptr, attachment_content_type, attachment_type, ATTACHMENT]
 
-    exec.validate_attachment_type_info
-    # => [attachment_content_type, attachment_type, note_ptr, note_ptr, ATTACHMENT]
+    dup.6 dup.8
+    # => [attachment_type, attachment_content_type, ATTACHMENT, note_ptr, note_ptr,
+    #     attachment_content_type, attachment_type, ATTACHMENT]
 
-    dupw.1 dup.4
-    # => [attachment_content_type, ATTACHMENT, attachment_content_type, attachment_type, note_ptr, note_ptr, ATTACHMENT]
-
-    # run validate_attachment after we have validated the attachment content type.
     exec.validate_attachment
+    # => [note_ptr, note_ptr, attachment_content_type, attachment_type, ATTACHMENT]
+
+    movdn.3 movdn.3
     # => [attachment_content_type, attachment_type, note_ptr, note_ptr, ATTACHMENT]
 
     emit.NOTE_BEFORE_SET_ATTACHMENT_EVENT
@@ -364,18 +364,28 @@ end
 
 #! Validate the ATTACHMENT against the content type.
 #!
-#! WARNING: The content type must be valid.
-#!
-#! Inputs:  [attachment_content_type, ATTACHMENT]
+#! Inputs:  [attachment_type, attachment_content_type, ATTACHMENT]
 #! Outputs: []
 #!
 #! Where:
+#! - attachment_type is the user-defined type of the attachment.
 #! - attachment_content_type is the content type of the attachment.
 #! - ATTACHMENT is the attachment to validate.
 #!
 #! Panics if:
+#! - any of the attachment types does not fit into a u32.
+#! - the attachment content type is an unknown variant.
 #! - the content type is None and the ATTACHMENT is not an empty word.
 proc validate_attachment
+    u32assert2.err=ERR_OUTPUT_NOTE_INVALID_ATTACHMENT_TYPES
+    drop
+    # => [attachment_content_type, ATTACHMENT]
+
+    # assert that the attachment content type is valid
+    dup u32lte.ATTACHMENT_CONTENT_TYPE_ARRAY
+    assert.err=ERR_OUTPUT_NOTE_UNKNOWN_ATTACHMENT_CONTENT_TYPE
+    # => [attachment_content_type, ATTACHMENT]
+
     eq.ATTACHMENT_CONTENT_TYPE_NONE
     # => [is_attachment_none, ATTACHMENT]
 
@@ -387,28 +397,6 @@ proc validate_attachment
         # => []
     end
     # => []
-end
-
-#! Validates the attachment type info.
-#!
-#! Inputs:  [attachment_content_type, attachment_type]
-#! Outputs: [attachment_content_type, attachment_type]
-#!
-#! Where:
-#! - attachment_content_type is the content type of the attachment.
-#! - attachment_type is the user-defined type of the attachment.
-#!
-#! Panics if:
-#! - any of the attachment types does not fit into a u32.
-#! - the attachment content type is an unknown variant.
-proc validate_attachment_type_info
-    u32assert2.err=ERR_OUTPUT_NOTE_INVALID_ATTACHMENT_TYPES
-    # => [attachment_content_type, attachment_type]
-
-    # assert that the attachment content type is valid
-    dup u32lte.ATTACHMENT_CONTENT_TYPE_ARRAY
-    assert.err=ERR_OUTPUT_NOTE_UNKNOWN_ATTACHMENT_CONTENT_TYPE
-    # => [attachment_content_type, attachment_type]
 end
 
 #! Sets an output note's attachment type info in the metadata header.
