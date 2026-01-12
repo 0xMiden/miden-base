@@ -734,16 +734,7 @@ fn extract_note_attachment(
     note_ptr: Felt,
     advice_provider: &AdviceProvider,
 ) -> Result<(usize, NoteAttachment), TransactionKernelError> {
-    let note_idx = u32::try_from(note_ptr)
-        .map_err(|_| TransactionKernelError::other("failed to convert note_ptr to u32"))
-        .and_then(|note_ptr| {
-            note_ptr
-                .checked_sub(OUTPUT_NOTE_SECTION_OFFSET)
-                .ok_or_else(|| {
-                    TransactionKernelError::other("failed to calculate note_idx from note_ptr")
-                })
-                .map(|note_ptr| note_ptr / NOTE_MEM_SIZE)
-        })?;
+    let note_idx = note_ptr_to_idx(note_ptr)?;
 
     let attachment_content_type = u8::try_from(attachment_content_type)
         .map_err(|_| {
@@ -808,4 +799,18 @@ fn extract_word(commitments: &[Felt], start: usize) -> Word {
         commitments[start + 2],
         commitments[start + 3],
     ])
+}
+
+/// Converts the provided note ptr into the corresponding note index.
+fn note_ptr_to_idx(note_ptr: Felt) -> Result<u32, TransactionKernelError> {
+    u32::try_from(note_ptr)
+        .map_err(|_| TransactionKernelError::other("failed to convert note_ptr to u32"))
+        .and_then(|note_ptr| {
+            note_ptr
+                .checked_sub(OUTPUT_NOTE_SECTION_OFFSET)
+                .ok_or_else(|| {
+                    TransactionKernelError::other("failed to calculate note_idx from note_ptr")
+                })
+                .map(|note_ptr| note_ptr / NOTE_MEM_SIZE)
+        })
 }
