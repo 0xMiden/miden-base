@@ -48,8 +48,6 @@ use crate::{get_note_with_fungible_asset_and_script, prove_and_verify_transactio
 pub struct FaucetTestParams {
     pub recipient: Word,
     pub tag: NoteTag,
-    pub aux: Felt,
-    pub note_execution_hint: NoteExecutionHint,
     pub note_type: NoteType,
     pub amount: Felt,
 }
@@ -60,15 +58,13 @@ pub fn create_mint_script_code(params: &FaucetTestParams) -> String {
         "
             begin
                 # pad the stack before call
-                push.0.0.0 padw
+                padw padw push.0
 
                 push.{recipient}
-                push.{note_execution_hint}
                 push.{note_type}
-                push.{aux}
                 push.{tag}
                 push.{amount}
-                # => [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
+                # => [amount, tag, note_type, RECIPIENT, pad(9)]
 
                 call.::miden::standards::faucets::basic_fungible::distribute
                 # => [note_idx, pad(15)]
@@ -79,9 +75,7 @@ pub fn create_mint_script_code(params: &FaucetTestParams) -> String {
             ",
         note_type = params.note_type as u8,
         recipient = params.recipient,
-        aux = params.aux,
         tag = u32::from(params.tag),
-        note_execution_hint = Felt::from(params.note_execution_hint),
         amount = params.amount,
     )
 }
@@ -139,8 +133,6 @@ async fn minting_fungible_asset_on_existing_faucet_succeeds() -> anyhow::Result<
     let params = FaucetTestParams {
         recipient: Word::from([0, 1, 2, 3u32]),
         tag: NoteTag::default(),
-        aux: Felt::new(27),
-        note_execution_hint: NoteExecutionHint::on_block_slot(5, 6, 7),
         note_type: NoteType::Private,
         amount: Felt::new(100),
     };
@@ -219,8 +211,6 @@ async fn minting_fungible_asset_on_new_faucet_succeeds() -> anyhow::Result<()> {
     let params = FaucetTestParams {
         recipient: Word::from([0, 1, 2, 3u32]),
         tag: NoteTag::default(),
-        aux: Felt::new(27),
-        note_execution_hint: NoteExecutionHint::on_block_slot(5, 6, 7),
         note_type: NoteType::Private,
         amount: Felt::new(100),
     };
