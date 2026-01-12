@@ -1,11 +1,11 @@
-use alloc::string::String;
+use alloc::string::{String, ToString};
 
 use serde::de::Error as _;
 use serde::ser::{Error as SerError, SerializeStruct};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use super::super::type_registry::SCHEMA_TYPE_REGISTRY;
-use super::super::{FeltSchema, SchemaTypeId};
+use super::super::{FeltSchema, SchemaTypeId, WordValue};
 
 // FELT SCHEMA SERIALIZATION
 // ================================================================================================
@@ -53,7 +53,7 @@ impl<'de> Deserialize<'de> for FeltSchema {
     {
         #[derive(Deserialize)]
         #[serde(rename_all = "kebab-case", deny_unknown_fields)]
-        struct FeltSchemaRepr {
+        struct RawFeltSchema {
             #[serde(default)]
             name: Option<String>,
             #[serde(default)]
@@ -64,7 +64,7 @@ impl<'de> Deserialize<'de> for FeltSchema {
             r#type: Option<SchemaTypeId>,
         }
 
-        let raw = FeltSchemaRepr::deserialize(deserializer)?;
+        let raw = RawFeltSchema::deserialize(deserializer)?;
 
         let felt_type = raw.r#type.unwrap_or_else(SchemaTypeId::native_felt);
 
@@ -118,5 +118,40 @@ impl<'de> Deserialize<'de> for FeltSchema {
             Some(description) => schema.with_description(description),
             None => schema,
         })
+    }
+}
+
+// WORD VALUE SERIALIZATION
+// ================================================================================================
+
+impl Serialize for WordValue {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            WordValue::Atomic(value) => serializer.serialize_str(value),
+            WordValue::Elements(elements) => elements.serialize(serializer),
+            WordValue::FullyTyped(word) => serializer.serialize_str(&word.to_string()),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for WordValue {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum RawWordValue {
+            Atomic(String),
+            Elements([String; 4]),
+        }
+
+        match RawWordValue::deserialize(deserializer)? {
+            RawWordValue::Atomic(value) => Ok(WordValue::Atomic(value)),
+            RawWordValue::Elements(elements) => Ok(WordValue::Elements(elements)),
+        }
     }
 }

@@ -1,7 +1,8 @@
 use alloc::string::ToString;
 use core::error::Error;
 
-use miden_core::{Felt, FieldElement, Word};
+use miden_air::FieldElement;
+use miden_core::{Felt, Word};
 
 use crate::account::component::toml::init_storage_data::InitStorageDataError;
 use crate::account::component::{
@@ -10,7 +11,6 @@ use crate::account::component::{
     InitStorageDataError as CoreInitStorageDataError,
     SchemaTypeId,
     StorageSlotSchema,
-    StorageValue,
     StorageValueName,
     WordSchema,
     WordValue,
@@ -91,17 +91,17 @@ fn parse_map_entries_from_array() {
 
     assert_matches::assert_matches!(
         &entries[0].0,
-        StorageValue::Parseable(WordValue::Atomic(v))
+        WordValue::Atomic(v)
             if v == "0x0000000000000000000000000000000000000000000000000000000000000001"
     );
     assert_matches::assert_matches!(
         &entries[0].1,
-        StorageValue::Parseable(WordValue::Atomic(v))
+        WordValue::Atomic(v)
             if v == "0x0000000000000000000000000000000000000000000000000000000000000010"
     );
     assert_matches::assert_matches!(
         &entries[1].1,
-        StorageValue::Parseable(WordValue::Elements(elements))
+        WordValue::Elements(elements)
             if elements == &[
                 "1".to_string(),
                 "2".to_string(),
