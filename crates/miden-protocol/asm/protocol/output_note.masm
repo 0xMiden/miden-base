@@ -5,9 +5,9 @@ use miden::protocol::note
 # =================================================================================================
 
 # Constants for note attachment content types
-const ATTACHMENT_CONTENT_TYPE_NONE=0
-const ATTACHMENT_CONTENT_TYPE_WORD=1
-const ATTACHMENT_CONTENT_TYPE_ARRAY=2
+pub const ATTACHMENT_CONTENT_TYPE_NONE=0
+pub const ATTACHMENT_CONTENT_TYPE_WORD=1
+pub const ATTACHMENT_CONTENT_TYPE_ARRAY=2
 
 # PROCEDURES
 # =================================================================================================
