@@ -406,7 +406,7 @@ proc validate_attachment_type_info
     # => [attachment_content_type, attachment_type]
 
     # assert that the attachment content type is valid
-    dup u32lte.ATTACHMENT_CONTENT_TYPE_COMMITMENT
+    dup u32lte.ATTACHMENT_CONTENT_TYPE_ARRAY
     assert.err=ERR_OUTPUT_NOTE_UNKNOWN_ATTACHMENT_CONTENT_TYPE
     # => [attachment_content_type, attachment_type]
 end

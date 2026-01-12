@@ -6,8 +6,8 @@ use miden::protocol::note
 
 # Constants for note attachment content types
 const ATTACHMENT_CONTENT_TYPE_NONE=0
-const ATTACHMENT_CONTENT_TYPE_RAW=1
-const ATTACHMENT_CONTENT_TYPE_COMMITMENT=2
+const ATTACHMENT_CONTENT_TYPE_WORD=1
+const ATTACHMENT_CONTENT_TYPE_ARRAY=2
 
 # PROCEDURES
 # =================================================================================================
@@ -214,7 +214,7 @@ pub proc set_none_attachment
 end
 
 
-#! Sets the attachment of the note specified by the note index to the raw provided word.
+#! Sets the attachment of the note specified by the note index to the provided word.
 #!
 #! This overwrites any previously set attachment.
 #!
@@ -232,15 +232,16 @@ end
 #! - the attachment_type does not fit into a u32.
 #!
 #! Invocation: exec
-pub proc set_raw_attachment
-    push.ATTACHMENT_CONTENT_TYPE_RAW swap
+pub proc set_word_attachment
+    push.ATTACHMENT_CONTENT_TYPE_WORD swap
     # => [note_idx, attachment_content_type, attachment_type, ATTACHMENT]
 
     exec.set_attachment
     # => []
 end
 
-#! Sets the attachment of the note specified by the note index to the provided commitment.
+#! Sets the attachment of the note specified by the note index to the provided ATTACHMENT which
+#! commits to an array of felts.
 #!
 #! This overwrites any previously set attachment.
 #!
@@ -258,8 +259,8 @@ end
 #! - the attachment_type does not fit into a u32.
 #!
 #! Invocation: exec
-pub proc set_commitment_attachment
-    push.ATTACHMENT_CONTENT_TYPE_COMMITMENT swap
+pub proc set_array_attachment
+    push.ATTACHMENT_CONTENT_TYPE_ARRAY swap
     # => [note_idx, attachment_content_type, attachment_type, ATTACHMENT]
 
     exec.set_attachment

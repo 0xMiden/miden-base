@@ -769,8 +769,8 @@ fn extract_note_attachment(
             }
             NoteAttachmentContent::None
         },
-        NoteAttachmentContentType::Raw => NoteAttachmentContent::Raw(attachment),
-        NoteAttachmentContentType::Commitment => {
+        NoteAttachmentContentType::Word => NoteAttachmentContent::Word(attachment),
+        NoteAttachmentContentType::Array => {
             let elements = advice_provider.get_mapped_values(&attachment).ok_or_else(|| {
               TransactionKernelError::other(
                   "elements of a note attachment commitment must be present in the advice provider",
@@ -792,7 +792,7 @@ fn extract_note_attachment(
                 });
             }
 
-            NoteAttachmentContent::Commitment(commitment_attachment)
+            NoteAttachmentContent::Array(commitment_attachment)
         },
     };
 

@@ -1089,11 +1089,11 @@ async fn test_set_none_attachment() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
-async fn test_set_raw_attachment() -> anyhow::Result<()> {
+async fn test_set_word_attachment() -> anyhow::Result<()> {
     let account = Account::mock(ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET, Auth::IncrNonce);
     let rng = RpoRandomCoin::new(Word::from([1, 2, 3, 4u32]));
     let attachment =
-        NoteAttachment::new_raw(NoteAttachmentType::new(u32::MAX), Word::from([3, 4, 5, 6u32]));
+        NoteAttachment::new_word(NoteAttachmentType::new(u32::MAX), Word::from([3, 4, 5, 6u32]));
     let output_note =
         OutputNote::Full(NoteBuilder::new(account.id(), rng).attachment(attachment).build()?);
 
@@ -1114,7 +1114,7 @@ async fn test_set_raw_attachment() -> anyhow::Result<()> {
             push.{attachment_type}
             movup.5
             # => [note_idx, attachment_type, ATTACHMENT]
-            exec.output_note::set_raw_attachment
+            exec.output_note::set_word_attachment
             # => []
 
             # truncate the stack
@@ -1147,11 +1147,11 @@ async fn test_set_raw_attachment() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
-async fn test_set_commitment_attachment() -> anyhow::Result<()> {
+async fn test_set_array_attachment() -> anyhow::Result<()> {
     let account = Account::mock(ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET, Auth::IncrNonce);
     let rng = RpoRandomCoin::new(Word::from([1, 2, 3, 4u32]));
     let elements = [3, 4, 5, 6, 7, 8, 9u32].map(Felt::from).to_vec();
-    let attachment = NoteAttachment::new_commitment(NoteAttachmentType::new(42), elements.clone())?;
+    let attachment = NoteAttachment::new_array(NoteAttachmentType::new(42), elements.clone())?;
     let output_note =
         OutputNote::Full(NoteBuilder::new(account.id(), rng).attachment(attachment).build()?);
 
@@ -1172,7 +1172,7 @@ async fn test_set_commitment_attachment() -> anyhow::Result<()> {
             push.{attachment_type}
             movup.5
             # => [note_idx, attachment_type, ATTACHMENT]
-            exec.output_note::set_commitment_attachment
+            exec.output_note::set_array_attachment
             # => []
 
             # truncate the stack
