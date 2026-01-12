@@ -348,7 +348,6 @@ impl Deserializable for StorageSlotHeader {
 mod tests {
     use alloc::collections::BTreeMap;
     use alloc::string::ToString;
-    use alloc::vec::Vec;
 
     use miden_core::Felt;
     use miden_core::utils::{Deserializable, Serializable};
@@ -404,7 +403,7 @@ mod tests {
         let empty_slot_names = BTreeMap::new();
         let reconstructed_empty =
             AccountStorageHeader::try_from_elements(&empty_elements, &empty_slot_names).unwrap();
-        assert_eq!(empty_header.slots().count(), reconstructed_empty.slots().count());
+        assert_eq!(empty_header, reconstructed_empty);
     }
 
     #[test]
@@ -425,14 +424,7 @@ mod tests {
         let reconstructed_single =
             AccountStorageHeader::try_from_elements(&single_elements, &slot_names).unwrap();
 
-        assert_eq!(single_slot_header.slots().count(), reconstructed_single.slots().count());
-
-        // Note: The reconstructed header will have synthetic slot names, so the commitment
-        // will be different. Instead, we verify that the slot types and values are preserved.
-        let original_slot = single_slot_header.slots().next().unwrap();
-        let reconstructed_slot = reconstructed_single.slots().next().unwrap();
-        assert_eq!(original_slot.slot_type(), reconstructed_slot.slot_type());
-        assert_eq!(original_slot.value(), reconstructed_slot.value());
+        assert_eq!(single_slot_header, reconstructed_single);
     }
 
     #[test]
@@ -465,26 +457,7 @@ mod tests {
         let reconstructed_multi =
             AccountStorageHeader::try_from_elements(&multi_elements, &slot_names).unwrap();
 
-        assert_eq!(multi_slot_header.slots().count(), reconstructed_multi.slots().count());
-
-        // Verify slot data is preserved (type and value) in the same order.
-        let original_slots = multi_slot_header.slots().collect::<Vec<_>>();
-
-        // Check that we have the same types and values in the elements.
-        for (i, chunk) in multi_elements.chunks_exact(8).enumerate() {
-            let original_type = original_slots[i].slot_type();
-            let original_value = original_slots[i].value();
-
-            let element_type = if chunk[1] == crate::ZERO {
-                StorageSlotType::Value
-            } else {
-                StorageSlotType::Map
-            };
-            let element_value = Word::new([chunk[4], chunk[5], chunk[6], chunk[7]]);
-
-            assert_eq!(original_type, element_type);
-            assert_eq!(original_value, element_value);
-        }
+        assert_eq!(multi_slot_header, reconstructed_multi);
     }
 
     #[test]
