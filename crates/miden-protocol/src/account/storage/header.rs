@@ -177,7 +177,7 @@ impl AccountStorageHeader {
             let slot_id_prefix = chunk[3];
             let parsed_slot_id = StorageSlotId::new(slot_id_suffix, slot_id_prefix);
 
-            // Use provided slot name or create synthetic one if not found.
+            // Retrieve slot name from the map.
             let slot_name = slot_names.get(&parsed_slot_id).cloned().ok_or(AccountError::other(
                 format!("slot name not found for slot ID {}", parsed_slot_id),
             ))?;
