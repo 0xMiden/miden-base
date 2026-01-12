@@ -225,22 +225,18 @@ async fn test_create_consume_multiple_notes() -> anyhow::Result<()> {
             use miden::protocol::output_note
             begin
                 push.{recipient_1}
-                push.{note_execution_hint_1}
                 push.{note_type_1}
-                push.0              # aux
                 push.{tag_1}
-                call.output_note::create
+                exec.output_note::create
 
                 push.{asset_1}
                 call.::miden::standards::wallets::basic::move_asset_to_note
                 dropw dropw dropw dropw
 
                 push.{recipient_2}
-                push.{note_execution_hint_2}
                 push.{note_type_2}
-                push.0              # aux
                 push.{tag_2}
-                call.output_note::create
+                exec.output_note::create
 
                 push.{asset_2}
                 call.::miden::standards::wallets::basic::move_asset_to_note
@@ -251,12 +247,10 @@ async fn test_create_consume_multiple_notes() -> anyhow::Result<()> {
         note_type_1 = NoteType::Public as u8,
         tag_1 = Felt::from(output_note_1.metadata().tag()),
         asset_1 = Word::from(FungibleAsset::mock(10)),
-        note_execution_hint_1 = Felt::from(output_note_1.metadata().execution_hint()),
         recipient_2 = output_note_2.recipient().digest(),
         note_type_2 = NoteType::Public as u8,
         tag_2 = Felt::from(output_note_2.metadata().tag()),
         asset_2 = Word::from(FungibleAsset::mock(5)),
-        note_execution_hint_2 = Felt::from(output_note_2.metadata().execution_hint())
     );
 
     let tx_script = CodeBuilder::default().compile_tx_script(tx_script_src)?;

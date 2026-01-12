@@ -9,7 +9,6 @@ use miden_protocol::note::{
     NoteAssets,
     NoteAttachment,
     NoteDetails,
-    NoteExecutionHint,
     NoteInputs,
     NoteMetadata,
     NoteRecipient,

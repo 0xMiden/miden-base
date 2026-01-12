@@ -1,5 +1,7 @@
-use miden_protocol::note::{NoteExecutionHint, NoteInputs, NoteRecipient};
-use miden_protocol::{Felt, MAX_INPUTS_PER_NOTE, NoteError, Word};
+use alloc::vec::Vec;
+
+use miden_protocol::note::{NoteInputs, NoteRecipient};
+use miden_protocol::{Felt, FieldElement, MAX_INPUTS_PER_NOTE, NoteError, Word};
 
 /// Represents the different input formats for MINT notes.
 /// - Private: Creates a private output note using a precomputed recipient digest (8 MINT note
@@ -13,41 +15,23 @@ pub enum MintNoteInputs {
         recipient_digest: Word,
         amount: Felt,
         tag: Felt,
-        execution_hint: NoteExecutionHint,
-        aux: Felt,
     },
     Public {
         recipient: NoteRecipient,
         amount: Felt,
         tag: Felt,
-        execution_hint: NoteExecutionHint,
-        aux: Felt,
     },
 }
 
 impl MintNoteInputs {
-    pub fn new_private(
-        recipient_digest: Word,
-        amount: Felt,
-        tag: Felt,
-        execution_hint: NoteExecutionHint,
-        aux: Felt,
-    ) -> Self {
-        Self::Private {
-            recipient_digest,
-            amount,
-            tag,
-            execution_hint,
-            aux,
-        }
+    pub fn new_private(recipient_digest: Word, amount: Felt, tag: Felt) -> Self {
+        Self::Private { recipient_digest, amount, tag }
     }
 
     pub fn new_public(
         recipient: NoteRecipient,
         amount: Felt,
         tag: Felt,
-        execution_hint: NoteExecutionHint,
-        aux: Felt,
     ) -> Result<Self, NoteError> {
         // Calculate total number of inputs that will be created:
         // 12 fixed inputs (execution_hint, aux, tag, amount, SCRIPT_ROOT, SERIAL_NUM) +
@@ -59,39 +43,23 @@ impl MintNoteInputs {
             return Err(NoteError::TooManyInputs(total_inputs));
         }
 
-        Ok(Self::Public {
-            recipient,
-            amount,
-            tag,
-            execution_hint,
-            aux,
-        })
+        Ok(Self::Public { recipient, amount, tag })
     }
 }
 
 impl From<MintNoteInputs> for NoteInputs {
     fn from(mint_inputs: MintNoteInputs) -> Self {
         match mint_inputs {
-            MintNoteInputs::Private {
-                recipient_digest,
-                amount,
-                tag,
-                execution_hint,
-                aux,
-            } => {
-                let mut input_values = vec![execution_hint.into(), aux, tag, amount];
+            MintNoteInputs::Private { recipient_digest, amount, tag } => {
+                let mut input_values = Vec::with_capacity(6);
                 input_values.extend_from_slice(recipient_digest.as_elements());
+                input_values.extend_from_slice(&[tag, amount]);
                 NoteInputs::new(input_values)
                     .expect("number of inputs should not exceed max inputs")
             },
-            MintNoteInputs::Public {
-                recipient,
-                amount,
-                tag,
-                execution_hint,
-                aux,
-            } => {
-                let mut input_values = vec![execution_hint.into(), aux, tag, amount];
+            MintNoteInputs::Public { recipient, amount, tag } => {
+                // Pad with zeroes to make the inputs pointer word-aligned.
+                let mut input_values = vec![tag, amount, Felt::ZERO, Felt::ZERO];
                 input_values.extend_from_slice(recipient.script().root().as_elements());
                 input_values.extend_from_slice(recipient.serial_num().as_elements());
                 input_values.extend_from_slice(recipient.inputs().values());

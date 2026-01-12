@@ -371,12 +371,10 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
                 # => [RECIPIENT]
 
                 # Now call distribute with the computed recipient
-                push.0 # note_execution_hint
                 push.{note_type}
-                push.0 # aux
                 push.{tag}
                 push.{amount}
-                # => [amount, tag, aux, note_type, execution_hint, RECIPIENT]
+                # => [amount, tag, note_type, RECIPIENT]
 
                 call.::miden::standards::faucets::basic_fungible::distribute
                 # => [note_idx, pad(15)]
@@ -526,13 +524,7 @@ async fn network_faucet_mint() -> anyhow::Result<()> {
     let recipient = p2id_mint_output_note.recipient().digest();
 
     // Create the MINT note using the helper function
-    let mint_inputs = MintNoteInputs::new_private(
-        recipient,
-        amount,
-        output_note_tag.into(),
-        NoteExecutionHint::always(),
-        aux,
-    );
+    let mint_inputs = MintNoteInputs::new_private(recipient, amount, output_note_tag.into());
 
     let mut rng = RpoRandomCoin::new([Felt::from(42u32); 4].into());
     let mint_note =
@@ -698,13 +690,7 @@ async fn test_mint_note_output_note_types(#[case] note_type: NoteType) -> anyhow
         NoteType::Private => {
             let output_note_tag = NoteTag::with_account_target(target_account.id());
             let recipient = p2id_mint_output_note.recipient().digest();
-            MintNoteInputs::new_private(
-                recipient,
-                amount,
-                output_note_tag.into(),
-                NoteExecutionHint::always(),
-                aux,
-            )
+            MintNoteInputs::new_private(recipient, amount, output_note_tag.into())
         },
         NoteType::Public => {
             let output_note_tag = NoteTag::with_account_target(target_account.id());
@@ -713,13 +699,7 @@ async fn test_mint_note_output_note_types(#[case] note_type: NoteType) -> anyhow
                 vec![target_account.id().suffix(), target_account.id().prefix().as_felt()];
             let note_inputs = NoteInputs::new(p2id_inputs)?;
             let recipient = NoteRecipient::new(serial_num, p2id_script, note_inputs);
-            MintNoteInputs::new_public(
-                recipient,
-                amount,
-                output_note_tag.into(),
-                NoteExecutionHint::always(),
-                aux,
-            )?
+            MintNoteInputs::new_public(recipient, amount, output_note_tag.into())?
         },
         NoteType::Encrypted => unreachable!("Encrypted note type not used in this test"),
     };

@@ -22,15 +22,13 @@ const METADATA_SLOT=word("miden::standards::fungible_faucets::metadata")
 
 #! Distributes freshly minted fungible assets to the provided recipient by creating a note.
 #!
-#! Inputs:  [amount, tag, aux, note_type, execution_hint, RECIPIENT]
+#! Inputs:  [amount, tag, note_type, RECIPIENT]
 #! Outputs: []
 #!
 #! Where:
 #! - amount is the amount to be minted and sent.
 #! - tag is the tag to be included in the note.
-#! - aux is the auxiliary data to be included in the note.
 #! - note_type is the type of the note that holds the asset.
-#! - execution_hint is the execution hint of the note that holds the asset.
 #! - RECIPIENT is the recipient of the asset, i.e.,
 #!   hash(hash(hash(serial_num, [0; 4]), script_root), input_commitment).
 #!
@@ -42,31 +40,30 @@ const METADATA_SLOT=word("miden::standards::fungible_faucets::metadata")
 pub proc distribute
     # get max supply of this faucet. We assume it is stored at pos 3 of slot 0
     push.METADATA_SLOT[0..2] exec.active_account::get_item drop drop drop
-    # => [max_supply, amount, tag, aux, note_type, execution_hint, RECIPIENT]
+    # => [max_supply, amount, tag, note_type, RECIPIENT]
 
     # get total issuance of this faucet so far and add amount to be minted
     exec.faucet::get_total_issuance
-    # => [total_issuance, max_supply, amount, tag, aux, note_type, execution_hint, RECIPIENT]
+    # => [total_issuance, max_supply, amount, tag, note_type, RECIPIENT]
 
     # compute maximum amount that can be minted, max_mint_amount = max_supply - total_issuance
     sub
-    # => [max_supply - total_issuance, amount, tag, aux, note_type, execution_hint, RECIPIENT]
+    # => [max_supply - total_issuance, amount, tag, note_type, RECIPIENT]
 
     # check that amount =< max_supply - total_issuance, fails if otherwise
     dup.1 gte assert.err=ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED
-    # => [amount, tag, aux, note_type, execution_hint, RECIPIENT]
+    # => [amount, tag, note_type, RECIPIENT]
 
     # creating the asset
     exec.faucet::create_fungible_asset
-    # => [ASSET, tag, aux, note_type, execution_hint, RECIPIENT]
+    # => [ASSET, tag, note_type, RECIPIENT]
 
     # mint the asset; this is needed to satisfy asset preservation logic.
     exec.faucet::mint
-    # => [ASSET, tag, aux, note_type, execution_hint, RECIPIENT]
+    # => [ASSET, tag, note_type, RECIPIENT]
 
-    # store and drop the ASSET
-    movdnw.2
-    # => [tag, aux, note_type, execution_hint, RECIPIENT, ASSET]
+    movdn.9 movdn.9 movdn.9 movdn.9
+    # => [tag, note_type, RECIPIENT, ASSET]
 
     # create a note
     exec.output_note::create

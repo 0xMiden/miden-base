@@ -5,14 +5,13 @@ use miden::standards::faucets::network_fungible->network_faucet
 # CONSTANTS
 # =================================================================================================
 
-const MINT_NOTE_NUM_INPUTS_PRIVATE=8
+const MINT_NOTE_NUM_INPUTS_PRIVATE=6
 const MINT_NOTE_MIN_NUM_INPUTS_PUBLIC=12
 
 const OUTPUT_NOTE_TYPE_PUBLIC=1
 const OUTPUT_NOTE_TYPE_PRIVATE=2
 
 const OUTPUT_PUBLIC_NOTE_INPUTS_ADDR=12
-const OUTPUT_PUBLIC_NOTE_INPUTS_LEN_MEM_ADDR=0
 
 # ERRORS
 # =================================================================================================
@@ -87,15 +86,10 @@ pub proc main
         exec.note::build_recipient
         # => [RECIPIENT, pad(12)]
 
-        swapw mem_loadw_be.0
-        # => [amount, tag, aux, execution_hint, RECIPIENT, pad(8)]
-
+        # push note_type, and load tag and amount
         push.OUTPUT_NOTE_TYPE_PUBLIC
-        # => [note_type, amount, tag, aux, execution_hint, RECIPIENT, pad(8)]
-
-        movdn.3
-        # => [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
-
+        mem_load.0 mem_load.1
+        # => [amount, tag, note_type, RECIPIENT, pad(12)]
     else
         # private output note creation
 
@@ -105,24 +99,19 @@ pub proc main
         drop
         # => [pad(16)]
 
-        mem_loadw_be.4
+        mem_loadw_be.0
         # => [RECIPIENT, pad(12)]
 
-        swapw mem_loadw_be.0
-        # => [amount, tag, aux, execution_hint, RECIPIENT, pad(8)]
-
+        # push note_type, and load tag and amount
         push.OUTPUT_NOTE_TYPE_PRIVATE
-        # => [note_type, amount, tag, aux, execution_hint, RECIPIENT, pad(8)]
-
-        movdn.3
-        # => [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
-
+        mem_load.4 mem_load.5
+        # => [amount, tag, note_type, RECIPIENT, pad(12)]
     end
-    # => [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
+    # => [amount, tag, note_type, RECIPIENT, pad(12)]
 
     call.network_faucet::distribute
-    # => [pad(17))]
+    # => [pad(19))]
 
-    drop
+    drop drop drop
     # => [pad(16)]
 end
