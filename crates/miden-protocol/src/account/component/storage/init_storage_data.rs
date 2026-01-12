@@ -2,8 +2,6 @@ use alloc::collections::BTreeMap;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
-#[cfg(feature = "std")]
-use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use super::StorageValueName;
@@ -23,40 +21,6 @@ pub enum WordValue {
     Atomic(String),
     /// Represents a word through four string-encoded field elements.
     Elements([String; 4]),
-}
-
-#[cfg(feature = "std")]
-impl Serialize for WordValue {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        match self {
-            WordValue::Atomic(value) => serializer.serialize_str(value),
-            WordValue::Elements(elements) => elements.serialize(serializer),
-            WordValue::FullyTyped(word) => serializer.serialize_str(&word.to_string()),
-        }
-    }
-}
-
-#[cfg(feature = "std")]
-impl<'de> Deserialize<'de> for WordValue {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        #[derive(Deserialize)]
-        #[serde(untagged)]
-        enum RawWordValue {
-            Atomic(String),
-            Elements([String; 4]),
-        }
-
-        match RawWordValue::deserialize(deserializer)? {
-            RawWordValue::Atomic(value) => Ok(WordValue::Atomic(value)),
-            RawWordValue::Elements(elements) => Ok(WordValue::Elements(elements)),
-        }
-    }
 }
 
 impl From<String> for WordValue {
