@@ -165,7 +165,7 @@ end
 #! - the attachment content type is an unknown variant.
 #!
 #! Invocation: exec
-proc set_attachment
+pub proc set_attachment
     exec.kernel_proc_offsets::output_note_set_attachment_offset
     # => [offset, note_idx, attachment_content_type, attachment_type, ATTACHMENT]
 
