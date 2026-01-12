@@ -707,12 +707,16 @@ pub enum TransactionInputError {
     MerkleError(#[from] MerkleError),
     #[error("failed to handle account tree data")]
     AccountTreeError(#[from] AccountTreeError),
-    #[error("missing vault root")]
+    #[error("missing vault root from Merkle store")]
     MissingVaultRoot,
+    #[error("missing storage map root from Merkle store")]
+    MissingMapRoot,
     #[error("failed to construct SMT proof")]
     SmtProofError(#[from] SmtProofError),
     #[error("failed to construct asset witness")]
     AssetError(#[from] AssetError),
+    #[error("failed to handle storage map data")]
+    StorageMapError(#[from] StorageMapError),
 }
 
 // TRANSACTION OUTPUT ERROR
