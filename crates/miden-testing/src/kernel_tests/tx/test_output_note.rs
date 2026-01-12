@@ -45,13 +45,13 @@ use miden_protocol::transaction::memory::{
 use miden_protocol::transaction::{OutputNote, OutputNotes};
 use miden_protocol::{Felt, Word, ZERO};
 use miden_standards::code_builder::CodeBuilder;
-use miden_standards::note::create_p2id_note;
+use miden_standards::note::{NetworkAccountTarget, create_p2id_note};
 use miden_standards::testing::mock_account::MockAccountExt;
 use miden_standards::testing::note::NoteBuilder;
 
 use super::{TestSetup, setup_test};
 use crate::kernel_tests::tx::ExecutionOutputExt;
-use crate::utils::create_public_p2any_note;
+use crate::utils::{create_public_p2any_note, create_spawn_note};
 use crate::{Auth, MockChain, TransactionContextBuilder, assert_execution_error};
 
 #[tokio::test]
@@ -1207,6 +1207,39 @@ async fn test_set_array_attachment() -> anyhow::Result<()> {
     let actual_note = tx.output_notes().get_note(0);
     assert_eq!(actual_note.header(), output_note.header());
     assert_eq!(actual_note.assets(), output_note.assets());
+
+    Ok(())
+}
+
+/// Tests creating an output note with an attachment of type NetworkAccountTarget.
+#[tokio::test]
+async fn test_set_network_target_account_attachment() -> anyhow::Result<()> {
+    let account = Account::mock(ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET, Auth::IncrNonce);
+    let rng = RpoRandomCoin::new(Word::from([1, 2, 3, 4u32]));
+    let attachment = NetworkAccountTarget::new(
+        ACCOUNT_ID_NETWORK_NON_FUNGIBLE_FAUCET.try_into()?,
+        NoteExecutionHint::on_block_slot(5, 32, 3),
+    )?;
+    let output_note = NoteBuilder::new(account.id(), rng)
+        .note_type(NoteType::Private)
+        .attachment(attachment)
+        .build()?;
+    let spawn_note = create_spawn_note([&output_note])?;
+
+    let tx = TransactionContextBuilder::new(account)
+        .extend_input_notes([spawn_note].to_vec())
+        .build()?
+        .execute()
+        .await?;
+
+    let actual_note = tx.output_notes().get_note(0);
+    assert_eq!(actual_note.header(), output_note.header());
+    assert_eq!(actual_note.assets().unwrap(), output_note.assets());
+
+    // Make sure we can deserialize the attachment back into its original type.
+    let actual_attachment =
+        NetworkAccountTarget::try_from(actual_note.metadata().attachment().clone())?;
+    assert_eq!(actual_attachment, attachment);
 
     Ok(())
 }
