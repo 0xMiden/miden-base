@@ -412,20 +412,12 @@ end
 #! - note_ptr is the memory address at which the output note data begins.
 proc set_attachment_type_info
     exec.merge_attachment_type_info
-    # => [new_attachment_type_info, note_ptr]
+    # => [attachment_type_info, note_ptr]
 
-    dup.1 exec.memory::get_output_note_metadata_header
-    # => [METADATA_HEADER, new_attachment_type_info, note_ptr]
-    # => [[attachment_type_info, tag, sender_id_prefix, sender_id_suffix_and_note_type], new_attachment_type_info, note_ptr]
+    swap
+    # => [note_ptr, attachment_type_info]
 
-    swap.4
-    # => [[new_attachment_type_info, tag, sender_id_prefix, sender_id_suffix_and_note_type], attachment_type_info, note_ptr]
-    # => [METADATA_HEADER, attachment_type_info, note_ptr]
-
-    movup.5 exec.memory::set_output_note_metadata_header
-    # => [METADATA_HEADER, attachment_type_info]
-
-    dropw drop
+    exec.memory::set_output_note_attachment_type_info
     # => []
 end
 
