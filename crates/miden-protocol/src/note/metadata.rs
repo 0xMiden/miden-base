@@ -56,10 +56,10 @@ use crate::{Hasher, NoteError};
 /// The value of the attachment word depends on the
 /// [`NoteAttachmentContentType`](crate::note::NoteAttachmentContentType):
 /// - [`NoteAttachmentContentType::None`](crate::note::NoteAttachmentContentType::None): Empty word.
-/// - [`NoteAttachmentContentType::Raw`](crate::note::NoteAttachmentContentType::Raw): The raw word
-///   itself.
-/// - [`NoteAttachmentContentType::Commitment`](crate::note::NoteAttachmentContentType::Commitment):
-///   The commitment to the elements.
+/// - [`NoteAttachmentContentType::Word`](crate::note::NoteAttachmentContentType::Word): The raw
+///   word itself.
+/// - [`NoteAttachmentContentType::Array`](crate::note::NoteAttachmentContentType::Array): The
+///   commitment to the elements.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct NoteMetadata {
     /// The ID of the account which created the note.
@@ -362,8 +362,8 @@ mod tests {
 
     #[rstest::rstest]
     #[case::attachment_none(NoteAttachment::default())]
-    #[case::attachment_raw(NoteAttachment::new_raw(NoteAttachmentType::new(0), Word::from([3, 4, 5, 6u32])))]
-    #[case::attachment_commitment(NoteAttachment::new_commitment(
+    #[case::attachment_raw(NoteAttachment::new_word(NoteAttachmentType::new(0), Word::from([3, 4, 5, 6u32])))]
+    #[case::attachment_commitment(NoteAttachment::new_array(
         NoteAttachmentType::new(u32::MAX),
         vec![Felt::new(5), Felt::new(6), Felt::new(7)],
     )?)]

@@ -15,8 +15,8 @@ const ENCRYPTED_NOTE=3  # 0b11
 
 # Constants for note attachment content types
 const ATTACHMENT_CONTENT_TYPE_NONE=0
-const ATTACHMENT_CONTENT_TYPE_RAW=1
-const ATTACHMENT_CONTENT_TYPE_COMMITMENT=2
+const ATTACHMENT_CONTENT_TYPE_WORD=1
+const ATTACHMENT_CONTENT_TYPE_ARRAY=2
 
 # The default value of the felt at index 3 in the note metadata header when a new note is created.
 # All zeros sets the attachment content type to None and the user-defined attachment type to

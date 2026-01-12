@@ -25,8 +25,8 @@ use crate::{Felt, Hasher, NoteError, Word};
 ///
 /// These use cases require different amounts of data, e.g. an account ID takes up just two felts
 /// while the details of an encrypted note require many felts. To accommodate these cases, both a
-/// computationally efficient [`NoteAttachmentContent::Raw`] as well as a more flexible
-/// [`NoteAttachmentContent::Commitment`] variant are available. See the type's docs for more
+/// computationally efficient [`NoteAttachmentContent::Word`] as well as a more flexible
+/// [`NoteAttachmentContent::Array`] variant are available. See the type's docs for more
 /// details.
 ///
 /// Next to the content, a note attachment can optionally specify a [`NoteAttachmentType`]. This
@@ -48,24 +48,24 @@ impl NoteAttachment {
         Self { attachment_type, content }
     }
 
-    /// Creates a new note attachment with content [`NoteAttachmentContent::Raw`] from the provided
+    /// Creates a new note attachment with content [`NoteAttachmentContent::Word`] from the provided
     /// word.
-    pub fn new_raw(attachment_type: NoteAttachmentType, word: Word) -> Self {
-        Self::new(attachment_type, NoteAttachmentContent::new_raw(word))
+    pub fn new_word(attachment_type: NoteAttachmentType, word: Word) -> Self {
+        Self::new(attachment_type, NoteAttachmentContent::new_word(word))
     }
 
-    /// Creates a new note attachment with content [`NoteAttachmentContent::Commitment`] from the
+    /// Creates a new note attachment with content [`NoteAttachmentContent::Array`] from the
     /// provided set of elements.
     ///
     /// # Errors
     ///
     /// Returns an error if:
     /// - The maximum number of elements exceeds [`NoteAttachmentCommitment::MAX_NUM_ELEMENTS`].
-    pub fn new_commitment(
+    pub fn new_array(
         attachment_type: NoteAttachmentType,
         elements: Vec<Felt>,
     ) -> Result<Self, NoteError> {
-        NoteAttachmentContent::new_commitment(elements)
+        NoteAttachmentContent::new_array(elements)
             .map(|content| Self::new(attachment_type, content))
     }
 
@@ -112,48 +112,47 @@ impl Deserializable for NoteAttachment {
 ///
 /// If a note attachment is not required, [`NoteAttachmentContent::None`] should be used.
 ///
-/// When a single [`Word`] has sufficient space, [`NoteAttachmentContent::Raw`] should be used, as
+/// When a single [`Word`] has sufficient space, [`NoteAttachmentContent::Word`] should be used, as
 /// it does not require any hashing. The word itself is encoded into the
 /// [`NoteMetadata`](super::NoteMetadata).
 ///
 /// If the space of a [`Word`] is insufficient, the more flexible
-/// [`NoteAttachmentContent::Commitment`] variant can be used. It contains a set of field elements
+/// [`NoteAttachmentContent::Array`] variant can be used. It contains a set of field elements
 /// where only their sequential hash is encoded into the [`NoteMetadata`](super::NoteMetadata).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
-#[repr(u8)]
 pub enum NoteAttachmentContent {
     /// Signals the absence of a note attachment.
     #[default]
-    None = 0,
+    None,
 
     /// A note attachment consisting of a single [`Word`].
-    Raw(Word) = 1,
+    Word(Word),
 
     /// A note attachment consisting of the commitment to a set of felts.
-    Commitment(NoteAttachmentCommitment) = 2,
+    Array(NoteAttachmentCommitment),
 }
 
 impl NoteAttachmentContent {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
-    /// Creates a new [`NoteAttachmentContent::Raw`] containing an empty word.
-    pub fn raw_empty() -> Self {
-        Self::Raw(Word::empty())
+    /// Creates a new [`NoteAttachmentContent::Word`] containing an empty word.
+    pub fn empty_word() -> Self {
+        Self::Word(Word::empty())
     }
 
-    /// Creates a new [`NoteAttachmentContent::Raw`] from the provided word.
-    pub fn new_raw(word: Word) -> Self {
-        Self::Raw(word)
+    /// Creates a new [`NoteAttachmentContent::Word`] from the provided word.
+    pub fn new_word(word: Word) -> Self {
+        Self::Word(word)
     }
 
-    /// Creates a new [`NoteAttachmentContent::Commitment`] from the provided elements.
+    /// Creates a new [`NoteAttachmentContent::Array`] from the provided elements.
     ///
     /// # Errors
     ///
     /// Returns an error if:
     /// - The maximum number of elements exceeds [`NoteAttachmentCommitment::MAX_NUM_ELEMENTS`].
-    pub fn new_commitment(elements: Vec<Felt>) -> Result<Self, NoteError> {
+    pub fn new_array(elements: Vec<Felt>) -> Result<Self, NoteError> {
         NoteAttachmentCommitment::new(elements).map(Self::from)
     }
 
@@ -164,8 +163,8 @@ impl NoteAttachmentContent {
     pub fn content_type(&self) -> NoteAttachmentContentType {
         match self {
             NoteAttachmentContent::None => NoteAttachmentContentType::None,
-            NoteAttachmentContent::Raw(_) => NoteAttachmentContentType::Raw,
-            NoteAttachmentContent::Commitment(_) => NoteAttachmentContentType::Commitment,
+            NoteAttachmentContent::Word(_) => NoteAttachmentContentType::Word,
+            NoteAttachmentContent::Array(_) => NoteAttachmentContentType::Array,
         }
     }
 
@@ -175,8 +174,8 @@ impl NoteAttachmentContent {
     pub fn to_word(&self) -> Word {
         match self {
             NoteAttachmentContent::None => Word::empty(),
-            NoteAttachmentContent::Raw(word) => *word,
-            NoteAttachmentContent::Commitment(attachment_commitment) => {
+            NoteAttachmentContent::Word(word) => *word,
+            NoteAttachmentContent::Array(attachment_commitment) => {
                 attachment_commitment.commitment()
             },
         }
@@ -189,10 +188,10 @@ impl Serializable for NoteAttachmentContent {
 
         match self {
             NoteAttachmentContent::None => (),
-            NoteAttachmentContent::Raw(word) => {
+            NoteAttachmentContent::Word(word) => {
                 word.write_into(target);
             },
-            NoteAttachmentContent::Commitment(attachment_commitment) => {
+            NoteAttachmentContent::Array(attachment_commitment) => {
                 attachment_commitment.num_elements().write_into(target);
                 target.write_many(&attachment_commitment.elements);
             },
@@ -206,14 +205,14 @@ impl Deserializable for NoteAttachmentContent {
 
         match content_type {
             NoteAttachmentContentType::None => Ok(NoteAttachmentContent::None),
-            NoteAttachmentContentType::Raw => {
+            NoteAttachmentContentType::Word => {
                 let word = Word::read_from(source)?;
-                Ok(NoteAttachmentContent::Raw(word))
+                Ok(NoteAttachmentContent::Word(word))
             },
-            NoteAttachmentContentType::Commitment => {
+            NoteAttachmentContentType::Array => {
                 let num_elements = u16::read_from(source)?;
                 let elements = source.read_many(num_elements as usize)?;
-                Self::new_commitment(elements)
+                Self::new_array(elements)
                     .map_err(|err| DeserializationError::InvalidValue(err.to_string()))
             },
         }
@@ -223,7 +222,7 @@ impl Deserializable for NoteAttachmentContent {
 // NOTE ATTACHMENT COMMITMENT
 // ================================================================================================
 
-/// The type contained in [`NoteAttachmentContent::Commitment`] that commits to a set of field
+/// The type contained in [`NoteAttachmentContent::Array`] that commits to a set of field
 /// elements.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NoteAttachmentCommitment {
@@ -287,7 +286,7 @@ impl SequentialCommit for NoteAttachmentCommitment {
 
 impl From<NoteAttachmentCommitment> for NoteAttachmentContent {
     fn from(attachment_commitment: NoteAttachmentCommitment) -> Self {
-        NoteAttachmentContent::Commitment(attachment_commitment)
+        NoteAttachmentContent::Array(attachment_commitment)
     }
 }
 
@@ -378,10 +377,10 @@ pub enum NoteAttachmentContentType {
     None = Self::NONE,
 
     /// A note attachment consisting of a single [`Word`].
-    Raw = Self::RAW,
+    Word = Self::WORD,
 
     /// A note attachment consisting of the commitment to a set of felts.
-    Commitment = Self::COMMITMENT,
+    Array = Self::ARRAY,
 }
 
 impl NoteAttachmentContentType {
@@ -389,8 +388,8 @@ impl NoteAttachmentContentType {
     // --------------------------------------------------------------------------------------------
 
     const NONE: u8 = 0;
-    const RAW: u8 = 1;
-    const COMMITMENT: u8 = 2;
+    const WORD: u8 = 1;
+    const ARRAY: u8 = 2;
 
     // ACCESSORS
     // --------------------------------------------------------------------------------------------
@@ -405,14 +404,14 @@ impl NoteAttachmentContentType {
         matches!(self, Self::None)
     }
 
-    /// Returns `true` if the content type is `Raw`, `false` otherwise.
-    pub const fn is_raw(&self) -> bool {
-        matches!(self, Self::Raw)
+    /// Returns `true` if the content type is `Word`, `false` otherwise.
+    pub const fn is_word(&self) -> bool {
+        matches!(self, Self::Word)
     }
 
-    /// Returns `true` if the content type is `Commitment`, `false` otherwise.
-    pub const fn is_commitment(&self) -> bool {
-        matches!(self, Self::Commitment)
+    /// Returns `true` if the content type is `Array`, `false` otherwise.
+    pub const fn is_array(&self) -> bool {
+        matches!(self, Self::Array)
     }
 }
 
@@ -422,8 +421,8 @@ impl TryFrom<u8> for NoteAttachmentContentType {
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
             Self::NONE => Ok(Self::None),
-            Self::RAW => Ok(Self::Raw),
-            Self::COMMITMENT => Ok(Self::Commitment),
+            Self::WORD => Ok(Self::Word),
+            Self::ARRAY => Ok(Self::Array),
             _ => Err(NoteError::UnknownNoteAttachmentContentType(value)),
         }
     }
@@ -454,8 +453,8 @@ mod tests {
 
     #[rstest::rstest]
     #[case::attachment_none(NoteAttachment::default())]
-    #[case::attachment_raw(NoteAttachment::new_raw(NoteAttachmentType::new(0), Word::from([3, 4, 5, 6u32])))]
-    #[case::attachment_commitment(NoteAttachment::new_commitment(
+    #[case::attachment_word(NoteAttachment::new_word(NoteAttachmentType::new(1), Word::from([3, 4, 5, 6u32])))]
+    #[case::attachment_array(NoteAttachment::new_array(
         NoteAttachmentType::new(u32::MAX),
         vec![Felt::new(5), Felt::new(6), Felt::new(7)],
     )?)]
