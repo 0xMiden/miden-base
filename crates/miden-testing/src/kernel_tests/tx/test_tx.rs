@@ -675,7 +675,7 @@ async fn test_tx_script_inputs() -> anyhow::Result<()> {
     let tx_script_input_key = Word::from([9999, 8888, 9999, 8888u32]);
     let tx_script_input_value = Word::from([9, 8, 7, 6u32]);
     let tx_script_src = format!(
-        "
+        r#"
         begin
             # push the tx script input key onto the stack
             push.{tx_script_input_key}
@@ -684,9 +684,9 @@ async fn test_tx_script_inputs() -> anyhow::Result<()> {
             adv.push_mapval adv_loadw
 
             # assert that the value is correct
-            push.{tx_script_input_value} assert_eqw
+            push.{tx_script_input_value} assert_eqw.err="tx script input value mismatch"
         end
-        "
+        "#,
     );
 
     let tx_script = CodeBuilder::default().compile_tx_script(tx_script_src)?;
