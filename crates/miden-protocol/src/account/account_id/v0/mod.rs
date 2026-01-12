@@ -5,7 +5,7 @@ use core::fmt;
 use core::hash::Hash;
 
 use bech32::Bech32m;
-use bech32::primitives::decode::{ByteIter, CheckedHrpstring};
+use bech32::primitives::decode::CheckedHrpstring;
 use miden_crypto::utils::hex_to_bytes;
 pub use prefix::AccountIdPrefixV0;
 
@@ -272,21 +272,23 @@ impl AccountIdV0 {
     }
 
     /// Decodes the data from the bech32 byte iterator into an [`AccountId`].
-    pub(crate) fn from_bech32_byte_iter(byte_iter: ByteIter<'_>) -> Result<Self, AccountIdError> {
-        // The _remaining_ length of the iterator must be the serialized size of the account ID.
-        if byte_iter.len() != Self::SERIALIZED_SIZE {
+    pub(crate) fn from_bech32_byte_iter(
+        byte_iter: impl Iterator<Item = u8>,
+    ) -> Result<Self, AccountIdError> {
+        // Collect the iterator into a Vec to check length and iterate
+        let bytes: Vec<u8> = byte_iter.collect();
+
+        // The length must be the serialized size of the account ID.
+        if bytes.len() != Self::SERIALIZED_SIZE {
             return Err(AccountIdError::Bech32DecodeError(Bech32Error::InvalidDataLength {
                 expected: Self::SERIALIZED_SIZE,
-                actual: byte_iter.len(),
+                actual: bytes.len(),
             }));
         }
 
-        // Every byte is guaranteed to be overwritten since we've checked the length of the
-        // iterator.
+        // Convert Vec to array
         let mut id_bytes = [0_u8; Self::SERIALIZED_SIZE];
-        for (i, byte) in byte_iter.enumerate() {
-            id_bytes[i] = byte;
-        }
+        id_bytes.copy_from_slice(&bytes);
 
         let account_id = Self::try_from(id_bytes)?;
 
