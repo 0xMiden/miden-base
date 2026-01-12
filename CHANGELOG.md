@@ -32,6 +32,7 @@
 - [BREAKING] Refactored `AccountStorageDelta` to use a new `StorageSlotDelta` type ([#2182](https://github.com/0xMiden/miden-base/pull/2182)).
 - [BREAKING] Removed OLD_MAP_ROOT from being returned when calling [`native_account::set_map_item`](crates/miden-lib/asm/miden/native_account.masm) ([#2194](https://github.com/0xMiden/miden-base/pull/2194)).
 - [BREAKING] Refactored account component templates into `AccountStorageSchema` ([#2193](https://github.com/0xMiden/miden-base/pull/2193)).
+- [BREAKING] `RpoFalcon512` was renamed to `Falcon512Rpo` everywhere, including procedure and file names ([#2264](https://github.com/0xMiden/miden-base/pull/2264)).
 
 ## 0.12.4 (2025-11-26)
 
@@ -81,7 +82,7 @@
 - Implement `SlotName` for named storage slots ([#1932](https://github.com/0xMiden/miden-base/issues/1932))
 - [BREAKING] Removed `get_falcon_signature` from `miden-tx` crate ([#1924](https://github.com/0xMiden/miden-base/pull/1924)).
 - Created a `Signature` wrapper to simplify the preparation of "native" signatures for use in the VM ([#1924](https://github.com/0xMiden/miden-base/pull/1924)).
-- Added per-procedure approval thresholds to `AuthFalcon512RpoMultisig` auth component ([#1968](https://github.com/0xMiden/miden-base/pull/1968)).
+- Added per-procedure approval thresholds to `AuthRpoFalcon512Multisig` auth component ([#1968](https://github.com/0xMiden/miden-base/pull/1968)).
 - Implemented `input_note::get_sender` and `active_note::get_metadata` procedures in `miden` lib ([#1933](https://github.com/0xMiden/miden-base/pull/1933)).
 - Added `Address` serialization and deserialization ([#1937](https://github.com/0xMiden/miden-base/issues/1937)).
 - Added `StorageMap::{num_entries, num_leaves}` to retrieve the number of entries in a storage map ([#1935](https://github.com/0xMiden/miden-base/pull/1935)).
@@ -106,7 +107,7 @@
 - [BREAKING] Remove `miden::account::get_native_nonce` procedure ([#2026](https://github.com/0xMiden/miden-base/pull/2026)).
 - [BREAKING] Refactor `Address` to make routing parameters optional ([#2032](https://github.com/0xMiden/miden-base/pull/2032), [#2047](https://github.com/0xMiden/miden-base/pull/2047)).
 - [BREAKING] Refactor `PartialVault`, `PartialStorageMap`, `PartialAccountTree` and `PartialNullifierTree` to allow construction from a root ([#2042](https://github.com/0xMiden/miden-base/pull/2042)).
-- Added duplicate approver validation to `AuthFalcon512RpoMultisigConfig` ([#2046](https://github.com/0xMiden/miden-base/issues/2046)).
+- Added duplicate approver validation to `AuthRpoFalcon512MultisigConfig` ([#2046](https://github.com/0xMiden/miden-base/issues/2046)).
 - Added `encryption_key` to `RoutingParameters` ([#2050](https://github.com/0xMiden/miden-base/pull/2050)).
 - [BREAKING] Added `EcdsaK256Keccak` variant to auth enums ([#2052](https://github.com/0xMiden/miden-base/pull/2052)).
 - Implemented storage map templates, which can be initialized through key/value lists provided via `InitStorageData` TOML ([#2053](https://github.com/0xMiden/miden-base/pull/2053)).
