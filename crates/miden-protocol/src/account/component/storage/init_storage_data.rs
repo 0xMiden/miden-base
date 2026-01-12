@@ -6,7 +6,7 @@ use thiserror::Error;
 
 use super::StorageValueName;
 use crate::account::StorageSlotName;
-use crate::{Felt, Word};
+use crate::{Felt, FieldElement, Word};
 
 /// A word value provided via [`InitStorageData`].
 ///
@@ -14,11 +14,8 @@ use crate::{Felt, Word};
 /// is supplied as either a fully-typed word, an atomic string (e.g. `"0x1234"`, `"16"`, `"BTC"`),
 /// or an array of 4 field elements.
 #[derive(Clone, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "std", derive(serde::Deserialize, serde::Serialize))]
-#[cfg_attr(feature = "std", serde(untagged))]
 pub enum WordValue {
     /// A fully-typed word value.
-    #[cfg_attr(feature = "std", serde(skip_serializing, skip_deserializing))]
     FullyTyped(Word),
     /// Represents a single word value, given by a single string input.
     Atomic(String),

@@ -12,7 +12,7 @@ use crate::account::storage::is_reserved_slot_name;
 use crate::account::{StorageMap, StorageSlot, StorageSlotName};
 use crate::crypto::utils::bytes_to_elements_with_padding;
 use crate::errors::AccountComponentTemplateError;
-use crate::{Felt, Hasher, Word};
+use crate::{Felt, FieldElement, Hasher, Word};
 
 // STORAGE SCHEMA
 // ================================================================================================
