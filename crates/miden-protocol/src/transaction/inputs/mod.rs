@@ -1,7 +1,6 @@
-use alloc::collections::BTreeMap;
+use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::vec::Vec;
 use core::fmt::Debug;
-use std::collections::BTreeSet;
 
 use miden_core::utils::{Deserializable, Serializable};
 use miden_crypto::merkle::NodeIndex;
