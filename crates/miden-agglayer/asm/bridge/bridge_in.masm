@@ -33,7 +33,7 @@ end
 #! Invocation: call
 pub proc check_claim_proof
     exec.get_rollup_exit_root
-    # => [GER_ROOT[8], CLAIM_NOTE_RPO_COMMITMENT]
+    # => [GER_ROOT[8], PROOF_DATA_KEY, LEAF_DATA_KEY]
 
     # Check CLAIM note proof data against current GER 
     exec.crypto_utils::verify_claim_proof
