@@ -121,7 +121,7 @@ Only those who know the RECIPIENT’s pre-image can consume the `Note`. For priv
 
 The [transaction prologue](transaction) requires all necessary data to compute the `Note` hash. This setup allows scenario-specific restrictions on who may consume a `Note`.
 
-For a practical example, refer to the [SWAP note script](https://github.com/0xMiden/miden-base/blob/next/crates/miden-standards/asm/note_scripts/SWAP.masm), where the RECIPIENT ensures that only a defined target can consume the swapped asset.
+For a practical example, refer to the [SWAP note script](https://github.com/0xMiden/miden-base/blob/next/crates/miden-standards/asm/standards/notes/swap.masm), where the RECIPIENT ensures that only a defined target can consume the swapped asset.
 
 #### Note nullifier ensuring private consumption
 
@@ -156,7 +156,7 @@ The P2ID note script implements a simple pay-to-account-ID pattern. It adds all 
 - **Purpose:** Direct asset transfer to a specific account ID
 - **Inputs:** Requires exactly 2 note inputs containing the target account ID
 - **Validation:** Ensures the consuming account's ID matches the target account ID specified in the note
-- **Requirements:** Target account must expose the `miden::contracts::wallets::basic::receive_asset` procedure
+- **Requirements:** Target account must expose the `miden::standards::wallets::basic::receive_asset` procedure
 
 **Use case:** Simple, direct payments where you want to send assets to a known account ID.
 
@@ -174,7 +174,7 @@ The P2IDE note script extends P2ID with additional features including time-locki
 - **Time-lock:** Note cannot be consumed until the specified block height is reached
 - **Reclaim:** Original sender can reclaim the note after the reclaim block height if not consumed by target
 - **Validation:** Complex logic to handle both target consumption and sender reclaim scenarios
-- **Requirements:** Account must expose the `miden::contracts::wallets::basic::receive_asset` procedure
+- **Requirements:** Account must expose the `miden::standards::wallets::basic::receive_asset` procedure
 
 **Use cases:**
 
@@ -198,8 +198,8 @@ The SWAP note script implements atomic asset swapping functionality.
   1. Creates a payback note containing the requested asset for the original note issuer
   2. Adds the note's asset to the consuming account's vault
 - **Requirements:** Account must expose both:
-  - `miden::contracts::wallets::basic::receive_asset` procedure
-  - `miden::contracts::wallets::basic::move_asset_to_note` procedure
+  - `miden::standards::wallets::basic::receive_asset` procedure
+  - `miden::standards::wallets::basic::move_asset_to_note` procedure
 
 **Use case:** Decentralized asset trading where two parties want to exchange different assets atomically.
 
