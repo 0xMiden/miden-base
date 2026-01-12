@@ -116,6 +116,7 @@ mod tests {
     use miden_core::utils::{Deserializable, Serializable};
 
     use crate::account::StorageSlotType;
+    use crate::{Felt, FieldElement};
 
     #[test]
     fn test_serde_account_storage_slot_type() {
@@ -127,5 +128,16 @@ mod tests {
         let deserialized_1 = StorageSlotType::read_from_bytes(&type_1_bytes).unwrap();
         assert_eq!(type_0, deserialized_0);
         assert_eq!(type_1, deserialized_1);
+    }
+
+    #[test]
+    fn test_storage_slot_type_from_felt() {
+        let felt = Felt::ZERO;
+        let slot_type = StorageSlotType::try_from(felt).unwrap();
+        assert_eq!(slot_type, StorageSlotType::Value);
+
+        let felt = Felt::ONE;
+        let slot_type = StorageSlotType::try_from(felt).unwrap();
+        assert_eq!(slot_type, StorageSlotType::Map);
     }
 }
