@@ -58,16 +58,13 @@ pub fn create_mint_script_code(params: &FaucetTestParams) -> String {
         "
             begin
                 # pad the stack before call
-                push.0.0.0
+                padw padw push.0
 
-                padw      # ATTACHMENT
-                push.0    # attachment_type
-                push.0    # attachment_content_type
                 push.{recipient}
                 push.{note_type}
                 push.{tag}
                 push.{amount}
-                # => [amount, tag, note_type, RECIPIENT, attachment_content_type, attachment_type, ATTACHMENT, pad(3)]
+                # => [amount, tag, note_type, RECIPIENT, pad(9)]
 
                 call.::miden::standards::faucets::basic_fungible::distribute
                 # => [note_idx, pad(15)]
@@ -163,16 +160,13 @@ async fn faucet_contract_mint_fungible_asset_fails_exceeds_max_supply() -> anyho
         "
             begin
                 # pad the stack before call
-                push.0.0.0
+                padw padw push.0
 
-                padw      # ATTACHMENT
-                push.0    # attachment_type
-                push.0    # attachment_content_type
                 push.{recipient}
                 push.{note_type}
                 push.{tag}
                 push.{amount}
-                # => [amount, tag, note_type, RECIPIENT, attachment_content_type, attachment_type, ATTACHMENT, pad(3)]
+                # => [amount, tag, note_type, RECIPIENT, pad(9)]
 
                 call.::miden::standards::faucets::basic_fungible::distribute
                 # => [note_idx, pad(15)]
@@ -363,17 +357,10 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
                 # => [RECIPIENT]
 
                 # Now call distribute with the computed recipient
-                padw swapw
-                # => [RECIPIENT, ATTACHMENT]
-
-                push.0 movdn.4
-                push.0 movdn.4
-                # => [RECIPIENT, attachment_content_type, attachment_type, ATTACHMENT]
-
                 push.{note_type}
                 push.{tag}
                 push.{amount}
-                # => [amount, tag, note_type, RECIPIENT, attachment_content_type, attachment_type, ATTACHMENT]
+                # => [amount, tag, note_type, RECIPIENT]
 
                 call.::miden::standards::faucets::basic_fungible::distribute
                 # => [note_idx, pad(15)]
