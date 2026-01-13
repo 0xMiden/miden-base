@@ -70,39 +70,29 @@ begin
         # public output note creation
         # => [total_inputs, inputs_ptr, pad(16)]
 
-        swap drop
-        # => [total_inputs, pad(16)]
-
-        movdn.4
-        # => [EMPTY_WORD, total_inputs, pad(12)]
+        movdn.9 drop
+        # => [EMPTY_WORD, EMPTY_WORD, total_inputs, pad(8)]
 
         mem_loadw_be.4
-        # => [ATTACHMENT, total_inputs, pad(12)]
+        # => [SCRIPT_ROOT, EMPTY_WORD, total_inputs, pad(8)]
 
-        mem_load.2 mem_load.3
-        # => [attachment_content_type, attachment_type, ATTACHMENT, total_inputs, pad(12)]
-
-        padw mem_loadw_be.8
-        # => [SCRIPT_ROOT, attachment_content_type, attachment_type, ATTACHMENT, total_inputs, pad(12)]
-
-        padw mem_loadw_be.12
-        # => [SERIAL_NUM, SCRIPT_ROOT, attachment_content_type, attachment_type, ATTACHMENT, total_inputs, pad(12)]
+        swapw mem_loadw_be.8
+        # => [SERIAL_NUM, SCRIPT_ROOT, total_inputs, pad(8)]
 
         # compute variable length note inputs for the output note
-        movup.14 sub.MINT_NOTE_MIN_NUM_INPUTS_PUBLIC
-        # => [num_output_note_inputs, SERIAL_NUM, SCRIPT_ROOT, attachment_content_type, attachment_type, ATTACHMENT, pad(12)]
+        movup.8 sub.MINT_NOTE_MIN_NUM_INPUTS_PUBLIC
+        # => [num_output_note_inputs, SERIAL_NUM, SCRIPT_ROOT, pad(8)]
 
         push.OUTPUT_PUBLIC_NOTE_INPUTS_ADDR
-        # => [inputs_ptr, num_output_note_inputs, SERIAL_NUM, SCRIPT_ROOT, attachment_content_type,
-        #     attachment_type, ATTACHMENT, pad(12)]
+        # => [inputs_ptr = 12, num_output_note_inputs, SERIAL_NUM, SCRIPT_ROOT, pad(8)]
 
         exec.note::build_recipient
-        # => [RECIPIENT, attachment_content_type, attachment_type, ATTACHMENT, pad(12)]
+        # => [RECIPIENT, pad(12)]
 
         # push note_type, and load tag and amount
         push.OUTPUT_NOTE_TYPE_PUBLIC
         mem_load.0 mem_load.1
-        # => [amount, tag, note_type, RECIPIENT, attachment_content_type, attachment_type, ATTACHMENT, pad(12)]
+        # => [amount, tag, note_type, RECIPIENT, pad(12)]
     else
         # private output note creation
 
@@ -112,28 +102,19 @@ begin
         drop
         # => [pad(16)]
 
-        mem_loadw_be.4
-        # => [ATTACHMENT, pad(12)]
-
-        mem_load.2 mem_load.3
-        # => [attachment_content_type, attachment_type, ATTACHMENT, pad(12)]
-
-        padw mem_loadw_be.8
-        # => [RECIPIENT, attachment_content_type, attachment_type, ATTACHMENT, pad(12)]
+        mem_loadw_be.0
+        # => [RECIPIENT, pad(12)]
 
         # push note_type, and load tag and amount
         push.OUTPUT_NOTE_TYPE_PRIVATE
-        mem_load.0
-        mem_load.1
-        # => [amount, tag, note_type, RECIPIENT, attachment_content_type, attachment_type, ATTACHMENT, pad(12)]
+        mem_load.4 mem_load.5
+        # => [amount, tag, note_type, RECIPIENT, pad(12)]
     end
-    # => [amount, tag, note_type, RECIPIENT, attachment_content_type, attachment_type, ATTACHMENT, pad(12)]
+    # => [amount, tag, note_type, RECIPIENT, pad(12)]
 
-    # distribute expects 3 pad elements, returns 16 and 12 are provided here.
-    # so the total number of pads after calling is 12 + (16-3) = 25
     call.network_faucet::distribute
-    # => [pad(25))]
+    # => [pad(19))]
 
-    dropw dropw drop
+    drop drop drop
     # => [pad(16)]
 end
