@@ -40,7 +40,7 @@ pub mod errors;
 pub mod eth_address;
 pub mod utils;
 
-pub use eth_address::EthAddress;
+pub use eth_address::EthAddressFormat;
 use utils::bytes32_to_felts;
 
 // AGGLAYER NOTE SCRIPTS
@@ -426,7 +426,7 @@ pub fn create_claim_note<R: FeltRng>(params: ClaimNoteParams<'_, R>) -> Result<N
 
     // originTokenAddress (address as 5 u32 felts)
     let origin_token_address_felts =
-        EthAddress::new(*params.origin_token_address).to_elements().to_vec();
+        EthAddressFormat::new(*params.origin_token_address).to_elements().to_vec();
     claim_inputs.extend(origin_token_address_felts);
 
     // destinationNetwork (uint32 as Felt)
@@ -586,7 +586,8 @@ pub fn claim_note_test_inputs(
     let destination_network = Felt::new(2);
 
     // Convert AccountId to destination address bytes
-    let destination_address = EthAddress::from_account_id(destination_account_id).into_bytes();
+    let destination_address =
+        EthAddressFormat::from_account_id(destination_account_id).into_bytes();
 
     // Convert amount Felt to u256 array for agglayer
     let amount_u256 = [

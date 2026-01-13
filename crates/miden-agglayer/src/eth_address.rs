@@ -65,18 +65,18 @@ impl From<HexParseError> for AddrConvError {
 /// Note: prefix/suffix are *conceptual* 64-bit words; when converting to [`Felt`], we must ensure
 /// `Felt::new(u64)` does not reduce mod p (checked explicitly in `to_account_id`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct EthAddress([u8; 20]);
+pub struct EthAddressFormat([u8; 20]);
 
-impl EthAddress {
+impl EthAddressFormat {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
-    /// Creates a new [`EthAddress`] from a 20-byte array.
+    /// Creates a new [`EthAddressFormat`] from a 20-byte array.
     pub const fn new(bytes: [u8; 20]) -> Self {
         Self(bytes)
     }
 
-    /// Creates an [`EthAddress`] from a hex string (with or without "0x" prefix).
+    /// Creates an [`EthAddressFormat`] from a hex string (with or without "0x" prefix).
     ///
     /// # Errors
     ///
@@ -97,7 +97,7 @@ impl EthAddress {
         Ok(Self(bytes))
     }
 
-    /// Creates an [`EthAddress`] from an [`AccountId`].
+    /// Creates an [`EthAddressFormat`] from an [`AccountId`].
     ///
     /// This conversion is infallible: an [`AccountId`] is two felts, and `as_int()` yields `u64`
     /// words which we embed as `0x00000000 || prefix(8) || suffix(8)` (big-endian words).
@@ -105,7 +105,6 @@ impl EthAddress {
         let felts: [Felt; 2] = account_id.into();
 
         let mut out = [0u8; 20];
-        out[0..4].copy_from_slice(&[0, 0, 0, 0]);
         out[4..12].copy_from_slice(&felts[0].as_int().to_be_bytes());
         out[12..20].copy_from_slice(&felts[1].as_int().to_be_bytes());
 
@@ -200,26 +199,26 @@ impl EthAddress {
     }
 }
 
-impl fmt::Display for EthAddress {
+impl fmt::Display for EthAddressFormat {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.to_hex())
     }
 }
 
-impl From<[u8; 20]> for EthAddress {
+impl From<[u8; 20]> for EthAddressFormat {
     fn from(bytes: [u8; 20]) -> Self {
         Self(bytes)
     }
 }
 
-impl From<AccountId> for EthAddress {
+impl From<AccountId> for EthAddressFormat {
     fn from(account_id: AccountId) -> Self {
-        EthAddress::from_account_id(account_id)
+        EthAddressFormat::from_account_id(account_id)
     }
 }
 
-impl From<EthAddress> for [u8; 20] {
-    fn from(addr: EthAddress) -> Self {
+impl From<EthAddressFormat> for [u8; 20] {
+    fn from(addr: EthAddressFormat) -> Self {
         addr.0
     }
 }
