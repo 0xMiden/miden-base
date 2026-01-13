@@ -42,7 +42,7 @@ procedure_digest!(
 
 /// An [`AccountComponent`] implementing a basic fungible faucet.
 ///
-/// It reexports the procedures from `miden::contracts::faucets::basic_fungible`. When linking
+/// It reexports the procedures from `miden::standards::faucets::basic_fungible`. When linking
 /// against this component, the `miden` library (i.e.
 /// [`ProtocolLib`](miden_protocol::ProtocolLib)) must be available to the assembler which is the
 /// case when using [`CodeBuilder`][builder]. The procedures of this component are:
