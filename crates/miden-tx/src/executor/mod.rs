@@ -367,6 +367,7 @@ fn build_executed_transaction<STORE: DataStore + Sync, AUTH: TransactionAuthenti
 ) -> Result<ExecutedTransaction, TransactionExecutorError> {
     // Note that the account delta does not contain the removed transaction fee, so it is the
     // "pre-fee" delta of the transaction.
+
     let (
         pre_fee_account_delta,
         _input_notes,
@@ -374,6 +375,7 @@ fn build_executed_transaction<STORE: DataStore + Sync, AUTH: TransactionAuthenti
         accessed_foreign_account_code,
         generated_signatures,
         tx_progress,
+        foreign_account_slot_names,
     ) = host.into_parts();
 
     let tx_outputs =
@@ -421,6 +423,7 @@ fn build_executed_transaction<STORE: DataStore + Sync, AUTH: TransactionAuthenti
     // guaranteed to be a superset of the original advice inputs.
     let tx_inputs = tx_inputs
         .with_foreign_account_code(accessed_foreign_account_code)
+        .with_foreign_account_slot_names(foreign_account_slot_names)
         .with_advice_inputs(advice_inputs);
 
     Ok(ExecutedTransaction::new(

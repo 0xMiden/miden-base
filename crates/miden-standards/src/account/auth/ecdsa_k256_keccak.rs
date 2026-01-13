@@ -12,7 +12,7 @@ static ECDSA_PUBKEY_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
 /// An [`AccountComponent`] implementing the ECDSA K256 Keccak signature scheme for authentication
 /// of transactions.
 ///
-/// It reexports the procedures from `miden::contracts::auth::ecdsa_k256_keccak`. When linking
+/// It reexports the procedures from `miden::standards::auth::ecdsa_k256_keccak`. When linking
 /// against this component, the `miden` library (i.e.
 /// [`ProtocolLib`](miden_protocol::ProtocolLib)) must be available to the assembler which is the
 /// case when using [`CodeBuilder`][builder]. The procedures of this component are:
