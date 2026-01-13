@@ -24,6 +24,9 @@ const ATTACHMENT_CONTENT_TYPE_ARRAY=2
 # "untyped".
 const ATTACHMENT_DEFAULT_TYPE_INFO=0
 
+#! The default attachment type, representing an untyped attachment.
+const ATTACHMENT_TYPE_UNTYPED=0
+
 # ERRORS
 # =================================================================================================
 
@@ -36,6 +39,8 @@ const ERR_OUTPUT_NOTE_INDEX_OUT_OF_BOUNDS="requested output note index should be
 const ERR_OUTPUT_NOTE_INVALID_ATTACHMENT_TYPES="attachment types must fit into u32s"
 
 const ERR_OUTPUT_NOTE_UNKNOWN_ATTACHMENT_CONTENT_TYPE="attachment content type variant must be between 0 and 2"
+
+const ERR_OUTPUT_NOTE_ATTACHMENT_NONE_MUST_HAVE_UNTYPED_ATTACHMENT_TYPE="attachment type of content type none must be 0"
 
 const ERR_OUTPUT_NOTE_ATTACHMENT_NONE_MUST_BE_EMPTY_WORD="attachment of content type none must be set to an empty word"
 
@@ -275,8 +280,8 @@ pub proc set_attachment
     dupw.1
     # => [ATTACHMENT, note_ptr, note_ptr, attachment_content_type, attachment_type, ATTACHMENT]
 
-    dup.6 dup.8
-    # => [attachment_type, attachment_content_type, ATTACHMENT, note_ptr, note_ptr,
+    dup.7 dup.7
+    # => [attachment_content_type, attachment_type, ATTACHMENT, note_ptr, note_ptr,
     #     attachment_content_type, attachment_type, ATTACHMENT]
 
     exec.validate_attachment
@@ -364,7 +369,7 @@ end
 
 #! Validate the ATTACHMENT against the content type.
 #!
-#! Inputs:  [attachment_type, attachment_content_type, ATTACHMENT]
+#! Inputs:  [attachment_content_type, attachment_type, ATTACHMENT]
 #! Outputs: []
 #!
 #! Where:
@@ -378,22 +383,25 @@ end
 #! - the content type is None and the ATTACHMENT is not an empty word.
 proc validate_attachment
     u32assert2.err=ERR_OUTPUT_NOTE_INVALID_ATTACHMENT_TYPES
-    drop
-    # => [attachment_content_type, ATTACHMENT]
+    # => [attachment_content_type, attachment_type, ATTACHMENT]
 
     # assert that the attachment content type is valid
     dup u32lte.ATTACHMENT_CONTENT_TYPE_ARRAY
     assert.err=ERR_OUTPUT_NOTE_UNKNOWN_ATTACHMENT_CONTENT_TYPE
-    # => [attachment_content_type, ATTACHMENT]
+    # => [attachment_content_type, attachment_type, ATTACHMENT]
 
     eq.ATTACHMENT_CONTENT_TYPE_NONE
-    # => [is_attachment_none, ATTACHMENT]
+    # => [is_attachment_none, attachment_type, ATTACHMENT]
 
     if.true
+        eq.ATTACHMENT_TYPE_UNTYPED
+        assert.err=ERR_OUTPUT_NOTE_ATTACHMENT_NONE_MUST_HAVE_UNTYPED_ATTACHMENT_TYPE
+        # => [ATTACHMENT]
+
         padw assert_eqw.err=ERR_OUTPUT_NOTE_ATTACHMENT_NONE_MUST_BE_EMPTY_WORD
         # => []
     else
-        dropw
+        drop dropw
         # => []
     end
     # => []

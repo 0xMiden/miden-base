@@ -1055,9 +1055,12 @@ async fn test_set_none_attachment() -> anyhow::Result<()> {
             exec.output_note::create
             # => [note_idx]
 
-            push.{attachment_type} swap
-            # => [note_idx, attachment_type]
-            exec.output_note::set_none_attachment
+            push.{ATTACHMENT}
+            push.{attachment_type}
+            push.{attachment_content_type}
+            movup.6
+            # => [note_idx, attachment_content_type, attachment_type, ATTACHMENT]
+            exec.output_note::set_attachment
             # => []
 
             # truncate the stack
@@ -1069,6 +1072,9 @@ async fn test_set_none_attachment() -> anyhow::Result<()> {
         aux = output_note.metadata().aux(),
         note_execution_hint = Felt::from(output_note.metadata().execution_hint()),
         tag = output_note.metadata().tag().as_u32(),
+        ATTACHMENT = output_note.metadata().to_attachment_word(),
+        attachment_content_type =
+            output_note.metadata().attachment().content().content_type().as_u8(),
         attachment_type = output_note.metadata().attachment().attachment_type().as_u32(),
     );
 
