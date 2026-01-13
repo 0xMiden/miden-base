@@ -8,6 +8,7 @@
 - [BREAKING] Allowed account components to share identical account code procedures ([#2164](https://github.com/0xMiden/miden-base/pull/2164)).
 - Add `From<&ExecutedTransaction> for TransactionHeader` implementation ([#2178](https://github.com/0xMiden/miden-base/pull/2178)).
 - Add `AccountId::parse()` helper function to parse both hex and bech32 formats ([#2223](https://github.com/0xMiden/miden-base/pull/2223)).
+- Add `read_foreign_account_inputs()`, `read_vault_asset_witnesses()`, and `read_storage_map_witness()` for `TransactionInputs` ([#2246](https://github.com/0xMiden/miden-base/pull/2246)).
 
 ### Changes
 
