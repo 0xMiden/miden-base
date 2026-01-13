@@ -76,6 +76,24 @@ impl NoteScript {
     pub fn entrypoint(&self) -> MastNodeId {
         self.entrypoint
     }
+
+    /// Returns a new [NoteScript] with the provided advice map entries merged into the
+    /// underlying [MastForest].
+    ///
+    /// This allows adding advice map entries to an already-compiled note script,
+    /// which is useful when the entries are determined after script compilation.
+    pub fn with_advice_map(self, advice_map: crate::vm::AdviceMap) -> Self {
+        if advice_map.is_empty() {
+            return self;
+        }
+
+        let mut mast = (*self.mast).clone();
+        mast.advice_map_mut().extend(advice_map);
+        Self {
+            mast: Arc::new(mast),
+            entrypoint: self.entrypoint,
+        }
+    }
 }
 
 // CONVERSIONS INTO NOTE SCRIPT
@@ -216,5 +234,30 @@ mod tests {
         let decoded: NoteScript = encoded.try_into().unwrap();
 
         assert_eq!(note_script, decoded);
+    }
+
+    #[test]
+    fn test_note_script_with_advice_map() {
+        use miden_core::{AdviceMap, Word};
+
+        let assembler = Assembler::default();
+        let program = assembler.assemble_program("begin nop end").unwrap();
+        let script = NoteScript::new(program);
+
+        // Initially empty advice map
+        assert!(script.mast().advice_map().is_empty());
+
+        // Add an entry
+        let key = Word::from([5u32, 6, 7, 8]);
+        let value = vec![Felt::new(100)];
+        let mut advice_map = AdviceMap::default();
+        advice_map.insert(key, value.clone());
+
+        let script_with_advice = script.with_advice_map(advice_map);
+
+        // Verify the entry is present
+        let mast = script_with_advice.mast();
+        let stored = mast.advice_map().get(&key).expect("advice map entry should be present");
+        assert_eq!(stored.as_ref(), value.as_slice());
     }
 }

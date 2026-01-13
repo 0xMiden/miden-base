@@ -324,6 +324,24 @@ impl TransactionScript {
     pub fn root(&self) -> Word {
         self.mast[self.entrypoint].digest()
     }
+
+    /// Returns a new [TransactionScript] with the provided advice map entries merged into the
+    /// underlying [MastForest].
+    ///
+    /// This allows adding advice map entries to an already-compiled transaction script,
+    /// which is useful when the entries are determined after script compilation.
+    pub fn with_advice_map(self, advice_map: AdviceMap) -> Self {
+        if advice_map.is_empty() {
+            return self;
+        }
+
+        let mut mast = (*self.mast).clone();
+        mast.advice_map_mut().extend(advice_map);
+        Self {
+            mast: Arc::new(mast),
+            entrypoint: self.entrypoint,
+        }
+    }
 }
 
 // SERIALIZATION
@@ -359,5 +377,50 @@ mod tests {
         let decoded = TransactionArgs::read_from_bytes(&bytes).unwrap();
 
         assert_eq!(tx_args, decoded);
+    }
+
+    #[test]
+    fn test_transaction_script_with_advice_map() {
+        use miden_core::{Felt, Word};
+
+        use super::TransactionScript;
+        use crate::assembly::Assembler;
+
+        let assembler = Assembler::default();
+        let program = assembler.assemble_program("begin nop end").unwrap();
+        let script = TransactionScript::new(program);
+
+        // Initially empty advice map
+        assert!(script.mast().advice_map().is_empty());
+
+        // Add an entry
+        let key = Word::from([1u32, 2, 3, 4]);
+        let value = vec![Felt::new(42), Felt::new(43)];
+        let mut advice_map = AdviceMap::default();
+        advice_map.insert(key, value.clone());
+
+        let script_with_advice = script.with_advice_map(advice_map);
+
+        // Verify the entry is present
+        let mast = script_with_advice.mast();
+        let stored = mast.advice_map().get(&key).expect("advice map entry should be present");
+        assert_eq!(stored.as_ref(), value.as_slice());
+    }
+
+    #[test]
+    fn test_transaction_script_with_empty_advice_map_returns_same() {
+        use super::TransactionScript;
+        use crate::assembly::Assembler;
+
+        let assembler = Assembler::default();
+        let program = assembler.assemble_program("begin nop end").unwrap();
+        let script = TransactionScript::new(program);
+
+        let original_root = script.root();
+
+        // Empty advice map should not change the script
+        let script_unchanged = script.with_advice_map(AdviceMap::default());
+
+        assert_eq!(original_root, script_unchanged.root());
     }
 }
