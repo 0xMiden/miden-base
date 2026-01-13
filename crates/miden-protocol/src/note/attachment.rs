@@ -95,6 +95,11 @@ impl NoteAttachment {
         self.attachment_type
     }
 
+    /// Returns the attachment content type.
+    pub fn content_type(&self) -> NoteAttachmentContentType {
+        self.content.content_type()
+    }
+
     /// Returns a reference to the attachment content.
     pub fn content(&self) -> &NoteAttachmentContent {
         &self.content

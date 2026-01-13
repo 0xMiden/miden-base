@@ -5,17 +5,18 @@ use miden::standards::faucets::network_fungible->network_faucet
 # CONSTANTS
 # =================================================================================================
 
-const MINT_NOTE_NUM_INPUTS_PRIVATE=6
-const MINT_NOTE_MIN_NUM_INPUTS_PUBLIC=12
+const MINT_NOTE_NUM_INPUTS_PRIVATE=12
+const MINT_NOTE_MIN_NUM_INPUTS_PUBLIC=16
 
 const OUTPUT_NOTE_TYPE_PUBLIC=1
 const OUTPUT_NOTE_TYPE_PRIVATE=2
 
-const OUTPUT_PUBLIC_NOTE_INPUTS_ADDR=12
+const OUTPUT_PUBLIC_NOTE_INPUTS_ADDR=16
 
 # ERRORS
 # =================================================================================================
-const ERR_MINT_WRONG_NUMBER_OF_INPUTS="MINT script expects exactly 8 inputs for private or 12+ inputs for public output notes"
+
+const ERR_MINT_WRONG_NUMBER_OF_INPUTS="MINT script expects exactly 12 inputs for private or 16+ inputs for public output notes"
 
 #! Network Faucet MINT script: mints assets by calling the network faucet's distribute function.
 #! This note is intended to be executed against a network fungible faucet account.
@@ -29,27 +30,29 @@ const ERR_MINT_WRONG_NUMBER_OF_INPUTS="MINT script expects exactly 8 inputs for 
 #! Note inputs support two modes. Depending on the number of note inputs,
 #! a private or public note is created on consumption of the MINT note:
 #!
-#! Private mode (8 inputs) - creates a private note:
-#! - execution_hint: Execution hint for the output note
-#! - aux: Auxiliary data for the output note
+#! Private mode (12 inputs) - creates a private note:
 #! - tag: Note tag for the output note
 #! - amount: The amount to mint
+#! - attachment_content_type: The content type of the attachment.
+#! - attachment_type: The user-defined type of the attachment.
+#! - ATTACHMENT: The attachment to be set.
 #! - RECIPIENT: The recipient digest (4 elements)
 #!
-#! Public mode (12+ inputs) - creates a public note with variable-length inputs:
-#! - execution_hint: Execution hint for the output note
-#! - aux: Auxiliary data for the output note
+#! Public mode (16+ inputs) - creates a public note with variable-length inputs:
 #! - tag: Note tag for the output note
 #! - amount: The amount to mint
+#! - attachment_content_type: The content type of the attachment.
+#! - attachment_type: The user-defined type of the attachment.
+#! - ATTACHMENT: The attachment to be set.
 #! - SCRIPT_ROOT: Script root of the output note (4 elements)
 #! - SERIAL_NUM: Serial number of the output note (4 elements)
 #! - [INPUTS]: Variable-length inputs for the output note (Vec<Felt>)
-#!             The number of output note inputs = num_mint_note_inputs - 12
+#!             The number of output note inputs = num_mint_note_inputs - 16
 #!
 #! Panics if:
 #! - account does not expose distribute procedure.
-#! - the number of inputs is not exactly 8 for private or less than 12 for public output notes.
-pub proc main
+#! - the number of inputs is not exactly 12 for private or less than 16 for public output notes.
+begin
     dropw
     # => [pad(16)]
     # Load note inputs into memory starting at address 0
@@ -67,29 +70,39 @@ pub proc main
         # public output note creation
         # => [total_inputs, inputs_ptr, pad(16)]
 
-        movdn.9 drop
-        # => [EMPTY_WORD, EMPTY_WORD, total_inputs, pad(8)]
+        swap drop
+        # => [total_inputs, pad(16)]
+
+        movdn.4
+        # => [EMPTY_WORD, total_inputs, pad(12)]
 
         mem_loadw_be.4
-        # => [SCRIPT_ROOT, EMPTY_WORD, total_inputs, pad(8)]
+        # => [ATTACHMENT, total_inputs, pad(12)]
 
-        swapw mem_loadw_be.8
-        # => [SERIAL_NUM, SCRIPT_ROOT, total_inputs, pad(8)]
+        mem_load.2 mem_load.3
+        # => [attachment_content_type, attachment_type, ATTACHMENT, total_inputs, pad(12)]
+
+        padw mem_loadw_be.8
+        # => [SCRIPT_ROOT, attachment_content_type, attachment_type, ATTACHMENT, total_inputs, pad(12)]
+
+        padw mem_loadw_be.12
+        # => [SERIAL_NUM, SCRIPT_ROOT, attachment_content_type, attachment_type, ATTACHMENT, total_inputs, pad(12)]
 
         # compute variable length note inputs for the output note
-        movup.8 sub.MINT_NOTE_MIN_NUM_INPUTS_PUBLIC
-        # => [num_output_note_inputs, SERIAL_NUM, SCRIPT_ROOT, pad(8)]
+        movup.14 sub.MINT_NOTE_MIN_NUM_INPUTS_PUBLIC
+        # => [num_output_note_inputs, SERIAL_NUM, SCRIPT_ROOT, attachment_content_type, attachment_type, ATTACHMENT, pad(12)]
 
         push.OUTPUT_PUBLIC_NOTE_INPUTS_ADDR
-        # => [inputs_ptr = 12, num_output_note_inputs, SERIAL_NUM, SCRIPT_ROOT, pad(8)]
+        # => [inputs_ptr, num_output_note_inputs, SERIAL_NUM, SCRIPT_ROOT, attachment_content_type,
+        #     attachment_type, ATTACHMENT, pad(12)]
 
         exec.note::build_recipient
-        # => [RECIPIENT, pad(12)]
+        # => [RECIPIENT, attachment_content_type, attachment_type, ATTACHMENT, pad(12)]
 
         # push note_type, and load tag and amount
         push.OUTPUT_NOTE_TYPE_PUBLIC
         mem_load.0 mem_load.1
-        # => [amount, tag, note_type, RECIPIENT, pad(12)]
+        # => [amount, tag, note_type, RECIPIENT, attachment_content_type, attachment_type, ATTACHMENT, pad(12)]
     else
         # private output note creation
 
@@ -99,19 +112,28 @@ pub proc main
         drop
         # => [pad(16)]
 
-        mem_loadw_be.0
-        # => [RECIPIENT, pad(12)]
+        mem_loadw_be.4
+        # => [ATTACHMENT, pad(12)]
+
+        mem_load.2 mem_load.3
+        # => [attachment_content_type, attachment_type, ATTACHMENT, pad(12)]
+
+        padw mem_loadw_be.8
+        # => [RECIPIENT, attachment_content_type, attachment_type, ATTACHMENT, pad(12)]
 
         # push note_type, and load tag and amount
         push.OUTPUT_NOTE_TYPE_PRIVATE
-        mem_load.4 mem_load.5
-        # => [amount, tag, note_type, RECIPIENT, pad(12)]
+        mem_load.0
+        mem_load.1
+        # => [amount, tag, note_type, RECIPIENT, attachment_content_type, attachment_type, ATTACHMENT, pad(12)]
     end
-    # => [amount, tag, note_type, RECIPIENT, pad(12)]
+    # => [amount, tag, note_type, RECIPIENT, attachment_content_type, attachment_type, ATTACHMENT, pad(12)]
 
+    # distribute expects 3 pad elements, returns 16 and 12 are provided here.
+    # so the total number of pads after calling is 12 + (16-3) = 25
     call.network_faucet::distribute
-    # => [pad(19))]
+    # => [pad(25))]
 
-    drop drop drop
+    dropw dropw drop
     # => [pad(16)]
 end

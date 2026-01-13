@@ -18,8 +18,8 @@ pub const ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED: M
 /// Error Message: "number of approvers must be equal to or greater than threshold"
 pub const ERR_MALFORMED_MULTISIG_CONFIG: MasmError = MasmError::from_static_str("number of approvers must be equal to or greater than threshold");
 
-/// Error Message: "MINT script expects exactly 8 inputs for private or 12+ inputs for public output notes"
-pub const ERR_MINT_WRONG_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_str("MINT script expects exactly 8 inputs for private or 12+ inputs for public output notes");
+/// Error Message: "MINT script expects exactly 12 inputs for private or 16+ inputs for public output notes"
+pub const ERR_MINT_WRONG_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_str("MINT script expects exactly 12 inputs for private or 16+ inputs for public output notes");
 
 /// Error Message: "note sender is not the owner of the faucet who can mint assets"
 pub const ERR_ONLY_OWNER_CAN_MINT: MasmError = MasmError::from_static_str("note sender is not the owner of the faucet who can mint assets");
