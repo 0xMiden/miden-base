@@ -787,7 +787,12 @@ fn extract_note_attachment(
         },
     };
 
-    Ok((note_idx as usize, NoteAttachment::new(attachment_type, attachment_content)))
+    let attachment =
+        NoteAttachment::new(attachment_type, attachment_content).map_err(|source| {
+            TransactionKernelError::other_with_source("failed to extract note attachment", source)
+        })?;
+
+    Ok((note_idx as usize, attachment))
 }
 
 /// Extracts a word from a slice of field elements.
