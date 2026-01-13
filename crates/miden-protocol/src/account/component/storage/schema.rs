@@ -72,7 +72,7 @@ impl StorageSchema {
     /// The commitment is computed over the serialized schema and does not include defaults.
     pub fn commitment(&self) -> Word {
         let mut bytes = Vec::new();
-        self.write_into_with_defaults(&mut bytes, false);
+        self.write_into_with_optional_defaults(&mut bytes, false);
         let elements = bytes_to_elements_with_padding(&bytes);
         Hasher::hash_elements(&elements)
     }
@@ -93,11 +93,15 @@ impl StorageSchema {
 
     /// Serializes the schema, optionally ignoring the default values (used for committing to a
     /// schema definition).
-    fn write_into_with_defaults<W: ByteWriter>(&self, target: &mut W, include_defaults: bool) {
+    fn write_into_with_optional_defaults<W: ByteWriter>(
+        &self,
+        target: &mut W,
+        include_defaults: bool,
+    ) {
         target.write_u16(self.slots.len() as u16);
         for (slot_name, schema) in self.slots.iter() {
             target.write(slot_name);
-            schema.write_into_with_defaults(target, include_defaults);
+            schema.write_into_with_optional_defaults(target, include_defaults);
         }
     }
 
@@ -120,7 +124,7 @@ impl StorageSchema {
 
 impl Serializable for StorageSchema {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        self.write_into_with_defaults(target, true);
+        self.write_into_with_optional_defaults(target, true);
     }
 }
 
@@ -174,10 +178,10 @@ impl StorageSlotSchema {
         slot_name: &StorageSlotName,
         requirements: &mut BTreeMap<StorageValueName, SchemaRequirement>,
     ) -> Result<(), AccountComponentTemplateError> {
-        let slot_prefix = StorageValueName::from_slot_name(slot_name);
+        let slot_name = StorageValueName::from_slot_name(slot_name);
         match self {
             StorageSlotSchema::Value(slot) => {
-                slot.collect_init_value_requirements(slot_prefix, requirements)
+                slot.collect_init_value_requirements(slot_name, requirements)
             },
             StorageSlotSchema::Map(_) => Ok(()),
         }
@@ -214,15 +218,19 @@ impl StorageSlotSchema {
 
     /// Serializes the schema, optionally ignoring the default values (used for committing to a
     /// schema definition).
-    fn write_into_with_defaults<W: ByteWriter>(&self, target: &mut W, include_defaults: bool) {
+    fn write_into_with_optional_defaults<W: ByteWriter>(
+        &self,
+        target: &mut W,
+        include_defaults: bool,
+    ) {
         match self {
             StorageSlotSchema::Value(slot) => {
                 target.write_u8(0u8);
-                slot.write_into_with_defaults(target, include_defaults);
+                slot.write_into_with_optional_defaults(target, include_defaults);
             },
             StorageSlotSchema::Map(slot) => {
                 target.write_u8(1u8);
-                slot.write_into_with_defaults(target, include_defaults);
+                slot.write_into_with_optional_defaults(target, include_defaults);
             },
         }
     }
@@ -230,7 +238,7 @@ impl StorageSlotSchema {
 
 impl Serializable for StorageSlotSchema {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        self.write_into_with_defaults(target, true);
+        self.write_into_with_optional_defaults(target, true);
     }
 }
 
@@ -299,7 +307,7 @@ impl WordSchema {
 
     fn collect_init_value_requirements(
         &self,
-        slot_prefix: StorageValueName,
+        value_name: StorageValueName,
         description: Option<String>,
         requirements: &mut BTreeMap<StorageValueName, SchemaRequirement>,
     ) -> Result<(), AccountComponentTemplateError> {
@@ -315,7 +323,7 @@ impl WordSchema {
 
                 if requirements
                     .insert(
-                        slot_prefix.clone(),
+                        value_name.clone(),
                         SchemaRequirement {
                             description,
                             r#type: r#type.clone(),
@@ -324,14 +332,14 @@ impl WordSchema {
                     )
                     .is_some()
                 {
-                    return Err(AccountComponentTemplateError::DuplicateInitValueName(slot_prefix));
+                    return Err(AccountComponentTemplateError::DuplicateInitValueName(value_name));
                 }
 
                 Ok(())
             },
             WordSchema::Composite { value } => {
                 for felt in value.iter() {
-                    felt.collect_init_value_requirements(slot_prefix.clone(), requirements)?;
+                    felt.collect_init_value_requirements(value_name.clone(), requirements)?;
                 }
                 Ok(())
             },
@@ -464,7 +472,11 @@ impl WordSchema {
 
     /// Serializes the schema, optionally ignoring the default values (used for committing to a
     /// schema definition).
-    fn write_into_with_defaults<W: ByteWriter>(&self, target: &mut W, include_defaults: bool) {
+    fn write_into_with_optional_defaults<W: ByteWriter>(
+        &self,
+        target: &mut W,
+        include_defaults: bool,
+    ) {
         match self {
             WordSchema::Simple { r#type, default_value } => {
                 target.write_u8(0);
@@ -475,7 +487,7 @@ impl WordSchema {
             WordSchema::Composite { value } => {
                 target.write_u8(1);
                 for felt in value.iter() {
-                    felt.write_into_with_defaults(target, include_defaults);
+                    felt.write_into_with_optional_defaults(target, include_defaults);
                 }
             },
         }
@@ -484,7 +496,7 @@ impl WordSchema {
 
 impl Serializable for WordSchema {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        self.write_into_with_defaults(target, true);
+        self.write_into_with_optional_defaults(target, true);
     }
 }
 
@@ -698,7 +710,11 @@ impl FeltSchema {
 
     /// Serializes the schema, optionally ignoring the default values (used for committing to a
     /// schema definition).
-    fn write_into_with_defaults<W: ByteWriter>(&self, target: &mut W, include_defaults: bool) {
+    fn write_into_with_optional_defaults<W: ByteWriter>(
+        &self,
+        target: &mut W,
+        include_defaults: bool,
+    ) {
         target.write(&self.name);
         target.write(&self.description);
         target.write(&self.r#type);
@@ -751,7 +767,7 @@ impl FeltSchema {
 
 impl Serializable for FeltSchema {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        self.write_into_with_defaults(target, true);
+        self.write_into_with_optional_defaults(target, true);
     }
 }
 
@@ -787,11 +803,11 @@ impl ValueSlotSchema {
 
     fn collect_init_value_requirements(
         &self,
-        slot_prefix: StorageValueName,
+        value_name: StorageValueName,
         requirements: &mut BTreeMap<StorageValueName, SchemaRequirement>,
     ) -> Result<(), AccountComponentTemplateError> {
         self.word.collect_init_value_requirements(
-            slot_prefix,
+            value_name,
             self.description.clone(),
             requirements,
         )
@@ -807,9 +823,13 @@ impl ValueSlotSchema {
 
     /// Serializes the schema, optionally ignoring the default values (used for committing to a
     /// schema definition).
-    fn write_into_with_defaults<W: ByteWriter>(&self, target: &mut W, include_defaults: bool) {
+    fn write_into_with_optional_defaults<W: ByteWriter>(
+        &self,
+        target: &mut W,
+        include_defaults: bool,
+    ) {
         target.write(&self.description);
-        self.word.write_into_with_defaults(target, include_defaults);
+        self.word.write_into_with_optional_defaults(target, include_defaults);
     }
 
     /// Validates the slot's word schema.
@@ -824,7 +844,7 @@ impl ValueSlotSchema {
 
 impl Serializable for ValueSlotSchema {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        self.write_into_with_defaults(target, true);
+        self.write_into_with_optional_defaults(target, true);
     }
 }
 
@@ -921,7 +941,11 @@ impl MapSlotSchema {
 
     /// Serializes the schema, optionally ignoring the default values (used for committing to a
     /// schema definition).
-    fn write_into_with_defaults<W: ByteWriter>(&self, target: &mut W, include_defaults: bool) {
+    fn write_into_with_optional_defaults<W: ByteWriter>(
+        &self,
+        target: &mut W,
+        include_defaults: bool,
+    ) {
         target.write(&self.description);
         let default_values = if include_defaults {
             self.default_values.clone()
@@ -929,8 +953,8 @@ impl MapSlotSchema {
             None
         };
         target.write(&default_values);
-        self.key_schema.write_into_with_defaults(target, include_defaults);
-        self.value_schema.write_into_with_defaults(target, include_defaults);
+        self.key_schema.write_into_with_optional_defaults(target, include_defaults);
+        self.value_schema.write_into_with_optional_defaults(target, include_defaults);
     }
 
     /// Validates key/value word schemas for this map slot.
@@ -1041,7 +1065,7 @@ fn parse_composite_elements(
 
 impl Serializable for MapSlotSchema {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        self.write_into_with_defaults(target, true);
+        self.write_into_with_optional_defaults(target, true);
     }
 }
 
@@ -1140,14 +1164,10 @@ mod tests {
         let slot_name: StorageSlotName = "demo::slot".parse().unwrap();
 
         let expected = Word::from([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]);
-        let init_data = InitStorageData::new(
-            BTreeMap::from([(
-                StorageValueName::from_slot_name(&slot_name),
-                WordValue::FullyTyped(expected),
-            )]),
-            BTreeMap::new(),
-        )
-        .unwrap();
+        let mut init_data = InitStorageData::default();
+        init_data
+            .set_value(StorageValueName::from_slot_name(&slot_name), expected)
+            .unwrap();
 
         let built = slot.try_build_word(&init_data, &slot_name).unwrap();
         assert_eq!(built, expected);
@@ -1158,11 +1178,8 @@ mod tests {
         let slot = ValueSlotSchema::new(None, WordSchema::new_simple(SchemaTypeId::u8()));
         let slot_name: StorageSlotName = "demo::u8_word".parse().unwrap();
 
-        let init_data = InitStorageData::new(
-            BTreeMap::from([(StorageValueName::from_slot_name(&slot_name), WordValue::from("6"))]),
-            BTreeMap::new(),
-        )
-        .unwrap();
+        let mut init_data = InitStorageData::default();
+        init_data.set_value(StorageValueName::from_slot_name(&slot_name), "6").unwrap();
 
         let built = slot.try_build_word(&init_data, &slot_name).unwrap();
         assert_eq!(built, Word::from([Felt::new(0), Felt::new(0), Felt::new(0), Felt::new(6)]));
@@ -1179,14 +1196,10 @@ mod tests {
         let slot = ValueSlotSchema::new(None, word);
         let slot_name: StorageSlotName = "demo::slot".parse().unwrap();
 
-        let init_data = InitStorageData::new(
-            BTreeMap::from([(
-                StorageValueName::from_slot_name_with_suffix(&slot_name, "a").unwrap(),
-                WordValue::from("1"),
-            )]),
-            BTreeMap::new(),
-        )
-        .unwrap();
+        let mut init_data = InitStorageData::default();
+        init_data
+            .set_value(StorageValueName::from_slot_name_with_suffix(&slot_name, "a").unwrap(), "1")
+            .unwrap();
 
         let built = slot.try_build_word(&init_data, &slot_name).unwrap();
         assert_eq!(built, Word::from([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]));
@@ -1202,11 +1215,8 @@ mod tests {
             WordValue::Elements(["1".into(), "0".into(), "0".into(), "0".into()]),
             WordValue::Elements(["10".into(), "11".into(), "12".into(), "13".into()]),
         )];
-        let init_data = InitStorageData::new(
-            BTreeMap::new(),
-            BTreeMap::from([(slot_name.clone(), entries.clone())]),
-        )
-        .unwrap();
+        let mut init_data = InitStorageData::default();
+        init_data.set_map_values(slot_name.clone(), entries.clone()).unwrap();
 
         let built = slot.try_build_map(&init_data, &slot_name).unwrap();
         let expected = StorageMap::with_entries([(
