@@ -1,12 +1,13 @@
 use core::slice;
 use std::collections::BTreeMap;
 
-use miden_protocol::Word;
 use miden_protocol::asset::{Asset, FungibleAsset};
 use miden_protocol::crypto::rand::{FeltRng, RpoRandomCoin};
 use miden_protocol::note::{
     Note,
     NoteAssets,
+    NoteAttachment,
+    NoteAttachmentType,
     NoteInputs,
     NoteMetadata,
     NoteRecipient,
@@ -15,6 +16,7 @@ use miden_protocol::note::{
     PartialNote,
 };
 use miden_protocol::transaction::OutputNote;
+use miden_protocol::{Felt, Word};
 use miden_standards::account::interface::{AccountInterface, AccountInterfaceExt};
 use miden_standards::code_builder::CodeBuilder;
 use miden_testing::{Auth, MockChain};
@@ -35,7 +37,10 @@ async fn test_send_note_script_basic_wallet() -> anyhow::Result<()> {
     let sender_account_interface = AccountInterface::from_account(&sender_basic_wallet_account);
 
     let tag = NoteTag::with_account_target(sender_basic_wallet_account.id());
-    let metadata = NoteMetadata::new(sender_basic_wallet_account.id(), NoteType::Public, tag);
+    let elements = [9, 8, 7, 6, 5u32].map(Felt::from).to_vec();
+    let attachment = NoteAttachment::new_array(NoteAttachmentType::new(42), elements.clone())?;
+    let metadata = NoteMetadata::new(sender_basic_wallet_account.id(), NoteType::Public, tag)
+        .with_attachment(attachment.clone());
     let assets = NoteAssets::new(vec![sent_asset]).unwrap();
     let note_script = CodeBuilder::default().compile_note_script("begin nop end").unwrap();
     let serial_num = RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])).draw_word();
@@ -51,8 +56,11 @@ async fn test_send_note_script_basic_wallet() -> anyhow::Result<()> {
     let executed_transaction = mock_chain
         .build_tx_context(sender_basic_wallet_account.id(), &[], &[])
         .expect("failed to build tx context")
+        // TODO: This shouldn't be necessary. The attachment should be included in the tx
+        // script's mast forest's advice map.
+        .extend_advice_map(vec![(attachment.content().to_word(), elements)])
         .tx_script(send_note_transaction_script)
-        .extend_expected_output_notes(vec![OutputNote::Full(note)])
+        .extend_expected_output_notes(vec![OutputNote::Full(note.clone())])
         .build()?
         .execute()
         .await?;
@@ -70,6 +78,7 @@ async fn test_send_note_script_basic_wallet() -> anyhow::Result<()> {
         sent_asset,
         "sent asset should be in removed assets"
     );
+    assert_eq!(executed_transaction.output_notes().get_note(0), &OutputNote::Full(note));
 
     Ok(())
 }
@@ -89,8 +98,10 @@ async fn test_send_note_script_basic_fungible_faucet() -> anyhow::Result<()> {
         AccountInterface::from_account(&sender_basic_fungible_faucet_account);
 
     let tag = NoteTag::with_account_target(sender_basic_fungible_faucet_account.id());
+    let attachment = NoteAttachment::new_word(NoteAttachmentType::new(100), Word::empty());
     let metadata =
-        NoteMetadata::new(sender_basic_fungible_faucet_account.id(), NoteType::Public, tag);
+        NoteMetadata::new(sender_basic_fungible_faucet_account.id(), NoteType::Public, tag)
+            .with_attachment(attachment);
     let assets = NoteAssets::new(vec![Asset::Fungible(
         FungibleAsset::new(sender_basic_fungible_faucet_account.id(), 10).unwrap(),
     )])?;
@@ -105,13 +116,16 @@ async fn test_send_note_script_basic_fungible_faucet() -> anyhow::Result<()> {
     let send_note_transaction_script = sender_account_interface
         .build_send_notes_script(slice::from_ref(&partial_note), Some(expiration_delta))?;
 
-    let _executed_transaction = mock_chain
+    let executed_transaction = mock_chain
         .build_tx_context(sender_basic_fungible_faucet_account.id(), &[], &[])
         .expect("failed to build tx context")
         .tx_script(send_note_transaction_script)
-        .extend_expected_output_notes(vec![OutputNote::Full(note)])
+        .extend_expected_output_notes(vec![OutputNote::Full(note.clone())])
         .build()?
         .execute()
         .await?;
+
+    assert_eq!(executed_transaction.output_notes().get_note(0), &OutputNote::Full(note));
+
     Ok(())
 }
