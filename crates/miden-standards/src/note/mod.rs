@@ -15,7 +15,7 @@ use miden_protocol::note::{
     NoteTag,
     NoteType,
 };
-use miden_protocol::{NoteError, Word};
+use miden_protocol::{Felt, NoteError, Word};
 use utils::build_swap_tag;
 
 pub mod mint_inputs;
@@ -98,7 +98,7 @@ pub fn create_p2ide_note<R: FeltRng>(
 }
 
 /// Generates a SWAP note - swap of assets between two accounts - and returns the note as well as
-/// [NoteDetails] for the payback note.
+/// [`NoteDetails`] for the payback note.
 ///
 /// This script enables a swap of 2 assets between the `sender` account and any other account that
 /// is willing to consume the note. The consumer will receive the `offered_asset` and will create a
@@ -113,6 +113,7 @@ pub fn create_swap_note<R: FeltRng>(
     swap_note_type: NoteType,
     swap_note_attachment: NoteAttachment,
     payback_note_type: NoteType,
+    payback_note_attachment: NoteAttachment,
     rng: &mut R,
 ) -> Result<(Note, NoteDetails), NoteError> {
     if requested_asset == offered_asset {
@@ -124,22 +125,24 @@ pub fn create_swap_note<R: FeltRng>(
     let payback_serial_num = rng.draw_word();
     let payback_recipient = utils::build_p2id_recipient(sender, payback_serial_num)?;
 
-    let payback_recipient_word: Word = payback_recipient.digest();
     let requested_asset_word: Word = requested_asset.into();
     let payback_tag = NoteTag::with_account_target(sender);
 
-    let inputs = NoteInputs::new(vec![
-        requested_asset_word[0],
-        requested_asset_word[1],
-        requested_asset_word[2],
-        requested_asset_word[3],
-        payback_recipient_word[0],
-        payback_recipient_word[1],
-        payback_recipient_word[2],
-        payback_recipient_word[3],
+    let attachment_type = Felt::from(payback_note_attachment.attachment_type().as_u32());
+    let attachment_content_type = Felt::from(payback_note_attachment.content_type().as_u8());
+    let attachment = payback_note_attachment.content().to_word();
+
+    let mut inputs = Vec::with_capacity(16);
+    inputs.extend_from_slice(&[
         payback_note_type.into(),
         payback_tag.into(),
-    ])?;
+        attachment_type,
+        attachment_content_type,
+    ]);
+    inputs.extend_from_slice(attachment.as_elements());
+    inputs.extend_from_slice(requested_asset_word.as_elements());
+    inputs.extend_from_slice(payback_recipient.digest().as_elements());
+    let inputs = NoteInputs::new(inputs)?;
 
     // build the tag for the SWAP use case
     let tag = build_swap_tag(swap_note_type, &offered_asset, &requested_asset);

@@ -125,7 +125,7 @@ impl WellKnownNote {
     const P2IDE_NUM_INPUTS: usize = 4;
 
     /// Expected number of inputs of the SWAP note.
-    const SWAP_NUM_INPUTS: usize = 10;
+    const SWAP_NUM_INPUTS: usize = 16;
 
     /// Expected number of inputs of the MINT note (private mode).
     const MINT_NUM_INPUTS_PRIVATE: usize = 8;
