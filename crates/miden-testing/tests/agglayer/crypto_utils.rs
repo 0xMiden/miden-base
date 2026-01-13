@@ -86,7 +86,7 @@ fn hex_to_fixed<const N: usize>(s: &str) -> [u8; N] {
 }
 
 #[tokio::test]
-async fn test_keccak_hash_get_leaf_value_hardhat_vector() -> anyhow::Result<()> {
+async fn test_keccak_hash_get_leaf_value() -> anyhow::Result<()> {
     let agglayer_lib = agglayer_library();
 
     // === Values from hardhat test ===
