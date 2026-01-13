@@ -1,3 +1,4 @@
+use miden::core::crypto::hashes::rpo256
 use miden::core::mem
 
 use miden::protocol::kernel_proc_offsets
@@ -306,9 +307,24 @@ proc write_inputs_to_memory
     # OS => [end_ptr, NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
     # AS => [[INPUT_VALUES]]
 
-    # prepare the stack for the `pipe_double_words_to_memory` procedure
-    dup.6 padw padw padw
-    # OS => [PAD, PAD, PAD, dest_ptr, end_ptr, NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
+    # prepare the stack for the `pipe_double_words_to_memory` procedure.
+    #
+    # To match `rpo256::hash_elements` (used for NOTE_INPUTS_COMMITMENT), we set the first capacity
+    # element to `num_inputs % 8`.
+    dup.6 dup.6
+    # OS => [num_inputs, write_ptr, end_ptr, NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
+    # AS => [[INPUT_VALUES]]
+
+    u32divmod.8 swap drop
+    # OS => [num_inputs_mod_8, write_ptr, end_ptr, NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
+    # AS => [[INPUT_VALUES]]
+
+    push.0.0.0
+    # OS => [A, write_ptr, end_ptr, NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr], where A = [0, 0, 0, num_inputs_mod_8]
+    # AS => [[INPUT_VALUES]]
+
+    padw padw
+    # OS => [PAD, PAD, A, write_ptr, end_ptr, NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
     # AS => [[INPUT_VALUES]]
 
     # write the inputs from the advice stack into memory
@@ -316,13 +332,15 @@ proc write_inputs_to_memory
     # OS => [PERM, PERM, PERM, end_ptr', NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
     # AS => []
 
-    # drop the hasher state and end_ptr'
-    dropw dropw dropw drop
-    # OS => [NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
+    # extract the computed commitment from the hasher state
+    exec.rpo256::squeeze_digest
+    # OS => [COMPUTED_COMMITMENT, end_ptr', NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
 
-    # compute and validate the inputs commitment (over the unpadded values)
-    dup.5 dup.5 swap
-    exec.note::compute_inputs_commitment
+    # drop end_ptr'
+    movup.4 drop
+    # OS => [COMPUTED_COMMITMENT, NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
+
+    # validate that the inputs written to memory match the inputs commitment
     assert_eqw.err=ERR_NOTE_DATA_DOES_NOT_MATCH_COMMITMENT
     # => [num_inputs, dest_ptr]
 end
