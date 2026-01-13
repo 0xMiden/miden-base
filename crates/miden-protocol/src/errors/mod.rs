@@ -693,6 +693,13 @@ pub enum TransactionInputError {
         "total number of input notes is {0} which exceeds the maximum of {MAX_INPUT_NOTES_PER_TX}"
     )]
     TooManyInputNotes(usize),
+}
+
+// TRANSACTION INPUTS EXTRACTION ERROR
+// ===============================================================================================
+
+#[derive(Debug, Error)]
+pub enum TransactionInputsExtractionError {
     #[error("specified foreign account id matches the transaction input's account id")]
     AccountNotForeign,
     #[error("foreign account data not found in advice map for account {0}")]

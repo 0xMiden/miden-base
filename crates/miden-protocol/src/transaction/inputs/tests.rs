@@ -17,12 +17,13 @@ use crate::account::{
     StorageSlotType,
 };
 use crate::asset::PartialVault;
+use crate::errors::TransactionInputsExtractionError;
 use crate::testing::account_id::{
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE_2,
 };
 use crate::transaction::TransactionInputs;
-use crate::{Felt, TransactionInputError, Word};
+use crate::{Felt, Word};
 
 #[test]
 fn test_read_foreign_account_inputs_missing_data() {
@@ -62,7 +63,7 @@ fn test_read_foreign_account_inputs_missing_data() {
     let result = tx_inputs.read_foreign_account_inputs(foreign_account_id);
 
     assert!(
-        matches!(result, Err(TransactionInputError::ForeignAccountNotFound(id)) if id == foreign_account_id)
+        matches!(result, Err(TransactionInputsExtractionError::ForeignAccountNotFound(id)) if id == foreign_account_id)
     );
 }
 

@@ -23,6 +23,7 @@ use crate::asset::{AssetVaultKey, AssetWitness, PartialVault};
 use crate::block::account_tree::{AccountWitness, account_id_to_smt_index};
 use crate::block::{BlockHeader, BlockNumber};
 use crate::crypto::merkle::SparseMerklePath;
+use crate::errors::TransactionInputsExtractionError;
 use crate::note::{Note, NoteInclusionProof};
 use crate::transaction::{TransactionAdviceInputs, TransactionArgs, TransactionScript};
 use crate::{Felt, TransactionInputError, Word};
@@ -237,7 +238,7 @@ impl TransactionInputs {
         &self,
         map_root: Word,
         map_key: Word,
-    ) -> Result<StorageMapWitness, TransactionInputError> {
+    ) -> Result<StorageMapWitness, TransactionInputsExtractionError> {
         // Convert map key into the index at which the key-value pair for this key is stored
         let leaf_index = StorageMap::map_key_to_leaf_index(map_key);
 
@@ -251,7 +252,7 @@ impl TransactionInputs {
             .advice_inputs
             .map
             .get(&merkle_node)
-            .ok_or(TransactionInputError::MissingVaultRoot)?;
+            .ok_or(TransactionInputsExtractionError::MissingVaultRoot)?;
         let smt_leaf = smt_leaf_from_elements(smt_leaf_elements, leaf_index);
 
         // Construct SMT proof and witness.
@@ -266,14 +267,14 @@ impl TransactionInputs {
         &self,
         account_id: AccountId,
         vault_keys: BTreeSet<AssetVaultKey>,
-    ) -> Result<Vec<AssetWitness>, TransactionInputError> {
+    ) -> Result<Vec<AssetWitness>, TransactionInputsExtractionError> {
         // Read the account header elements from the advice map.
         let account_id_key = TransactionAdviceInputs::account_id_map_key(account_id);
         let header_elements = self
             .advice_inputs
             .map
             .get(&account_id_key)
-            .ok_or(TransactionInputError::ForeignAccountNotFound(account_id))?;
+            .ok_or(TransactionInputsExtractionError::ForeignAccountNotFound(account_id))?;
 
         let header = AccountHeader::try_from_elements(header_elements)?;
         let vault_root = header.vault_root();
@@ -291,7 +292,7 @@ impl TransactionInputs {
                 .advice_inputs
                 .map
                 .get(&merkle_node)
-                .ok_or(TransactionInputError::MissingVaultRoot)?;
+                .ok_or(TransactionInputsExtractionError::MissingVaultRoot)?;
             let smt_leaf = smt_leaf_from_elements(smt_leaf_elements, smt_index);
 
             // Construct SMT proof and witness.
@@ -311,9 +312,9 @@ impl TransactionInputs {
     pub fn read_foreign_account_inputs(
         &self,
         account_id: AccountId,
-    ) -> Result<AccountInputs, TransactionInputError> {
+    ) -> Result<AccountInputs, TransactionInputsExtractionError> {
         if account_id == self.account().id() {
-            return Err(TransactionInputError::AccountNotForeign);
+            return Err(TransactionInputsExtractionError::AccountNotForeign);
         }
 
         // Read the account header elements from the advice map.
@@ -322,7 +323,7 @@ impl TransactionInputs {
             .advice_inputs
             .map
             .get(&account_id_key)
-            .ok_or(TransactionInputError::ForeignAccountNotFound(account_id))?;
+            .ok_or(TransactionInputsExtractionError::ForeignAccountNotFound(account_id))?;
 
         // Parse the header from elements.
         let header = AccountHeader::try_from_elements(header_elements)?;
@@ -338,7 +339,7 @@ impl TransactionInputs {
     fn read_foreign_partial_account(
         &self,
         header: &AccountHeader,
-    ) -> Result<PartialAccount, TransactionInputError> {
+    ) -> Result<PartialAccount, TransactionInputsExtractionError> {
         // Derive the partial vault from the header.
         let partial_vault = PartialVault::new(header.vault_root());
 
@@ -347,7 +348,7 @@ impl TransactionInputs {
             .foreign_account_code
             .iter()
             .find(|code| code.commitment() == header.code_commitment())
-            .ok_or(TransactionInputError::ForeignAccountCodeNotFound(header.id()))?
+            .ok_or(TransactionInputsExtractionError::ForeignAccountCodeNotFound(header.id()))?
             .clone();
 
         // Try to get storage header from advice map using storage commitment as key.
@@ -355,7 +356,7 @@ impl TransactionInputs {
             .advice_inputs
             .map
             .get(&header.storage_commitment())
-            .ok_or(TransactionInputError::StorageHeaderNotFound(header.id()))?;
+            .ok_or(TransactionInputsExtractionError::StorageHeaderNotFound(header.id()))?;
 
         // Get slot names for this foreign account, or use empty map if not available.
         let storage_header = AccountStorageHeader::try_from_elements(
@@ -384,7 +385,7 @@ impl TransactionInputs {
     fn read_foreign_account_witness(
         &self,
         header: &AccountHeader,
-    ) -> Result<AccountWitness, TransactionInputError> {
+    ) -> Result<AccountWitness, TransactionInputsExtractionError> {
         // Get the account tree root from the block header.
         let account_tree_root = self.block_header.account_root();
         let leaf_index = account_id_to_smt_index(header.id());
