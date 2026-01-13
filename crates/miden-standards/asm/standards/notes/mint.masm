@@ -73,10 +73,10 @@ begin
         movdn.9 drop
         # => [EMPTY_WORD, EMPTY_WORD, total_inputs, pad(8)]
 
-        mem_loadw_be.4
+        mem_loadw_be.8
         # => [SCRIPT_ROOT, EMPTY_WORD, total_inputs, pad(8)]
 
-        swapw mem_loadw_be.8
+        swapw mem_loadw_be.12
         # => [SERIAL_NUM, SCRIPT_ROOT, total_inputs, pad(8)]
 
         # compute variable length note inputs for the output note
@@ -84,7 +84,7 @@ begin
         # => [num_output_note_inputs, SERIAL_NUM, SCRIPT_ROOT, pad(8)]
 
         push.OUTPUT_PUBLIC_NOTE_INPUTS_ADDR
-        # => [inputs_ptr = 12, num_output_note_inputs, SERIAL_NUM, SCRIPT_ROOT, pad(8)]
+        # => [inputs_ptr, num_output_note_inputs, SERIAL_NUM, SCRIPT_ROOT, pad(8)]
 
         exec.note::build_recipient
         # => [RECIPIENT, pad(12)]
@@ -102,12 +102,12 @@ begin
         drop
         # => [pad(16)]
 
-        mem_loadw_be.0
+        mem_loadw_be.8
         # => [RECIPIENT, pad(12)]
 
         # push note_type, and load tag and amount
         push.OUTPUT_NOTE_TYPE_PRIVATE
-        mem_load.4 mem_load.5
+        mem_load.0 mem_load.1
         # => [amount, tag, note_type, RECIPIENT, pad(12)]
     end
     # => [amount, tag, note_type, RECIPIENT, pad(12)]
