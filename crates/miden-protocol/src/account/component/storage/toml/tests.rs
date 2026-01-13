@@ -138,6 +138,21 @@ fn map_entries_reject_field_key() {
 }
 
 #[test]
+fn map_entries_reject_invalid_schema() {
+    // Missing required `value` field in the entry table should fail schema deserialization.
+    let toml_str = r#"
+        "demo::my_map" = [
+            { key = "0x1" }
+        ]
+    "#;
+
+    assert_matches::assert_matches!(
+        InitStorageData::from_toml(toml_str),
+        Err(InitStorageDataError::InvalidMapEntrySchema(_))
+    );
+}
+
+#[test]
 fn error_on_empty_subtable() {
     let toml_str = r#"
         ["demo::token_metadata"]
