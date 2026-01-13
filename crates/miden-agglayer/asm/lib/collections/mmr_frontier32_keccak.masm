@@ -33,11 +33,11 @@ use ::miden::agglayer::collections::canonical_zeros::load_zeros_to_memory
 # 
 # An MMR frontier consists of the current number of leaves in the range and the array containing the
 # frontier. 
-# For the sake of simplicity, this array has a fixed length, equal to the maximum tree height. 1's 
-# in the binary representation of the leaves number will represent the relevant frontier values for
-# the current height. For example, if we have 10 leaves (1010 in binary representation), relevant 
-# frontier values will be stored at frontier[1] and frontier[3]: 1 and 3 are indexes of the 1's in
-# the 1010.
+# For the sake of simplicity, this array has a fixed length, equal to the maximum tree height.
+# Indexes of 1's in the binary representation of the total leaves number show the indexes of the 
+# relevant frontier values in the frontier array for the current height. For example, if we have 10
+# leaves (1010 in binary representation), relevant frontier values will be stored at frontier[1] and
+# frontier[3].
 #
 # To compute the hash of two MMR nodes, a Keccak256 hash function is used.
 # 
@@ -46,9 +46,9 @@ use ::miden::agglayer::collections::canonical_zeros::load_zeros_to_memory
 # two words on the stack, while being only a 256 bit value.
 #
 # Each state of the MMR frontier is represented by the root. This root is essentially equal to the
-# root of the SMT which has the height equal to the maximum height of the current MMR frontier (for
-# this implementation this maximum height is set to 32), and the leaves equal to the MMR frontier
-# leaves or a zero hash (Keccak256::hash(&[0u8; 32])).
+# root of the SMT which has the height equal to the maximum height of the current MMR (for this 
+# implementation this maximum height is set to 32), and the leaves equal to the MMR frontier leaves
+# plus the "zero hash" leaves (Keccak256::hash(&[0u8; 32])) for all other ones.
 #
 # # Layout
 #
@@ -57,7 +57,7 @@ use ::miden::agglayer::collections::canonical_zeros::load_zeros_to_memory
 # [num_leaves, 0, 0, 0, [FRONTIER_VALUE_DW]]
 # 
 # Where: 
-# - num_leaves is the number of leaves in the MMR frontier before adding the new leaf.
+# - num_leaves is the number of leaves in the MMR before adding the new leaf.
 # - [FRONTIER_VALUE_DW] is an array containing the double words which represent the frontier MMR 
 #   nodes. Notice that the index of a frontier value in this array represent its height in the tree.
 #
@@ -72,7 +72,7 @@ use ::miden::agglayer::collections::canonical_zeros::load_zeros_to_memory
 # If the height is 32, the leaves num will be equal to 4294967296 (2**32)
 const MAX_LEAVES_NUM = 4294967296
 
-# The total height of the full MMR tree, which root represents the the commitment to the current
+# The total height of the full MMR tree, whose root represents the the commitment to the current
 # frontier.
 const TREE_HEIGHT = 32
 

@@ -18,10 +18,8 @@ static CANONICAL_ZEROS_32: LazyLock<Vec<Keccak256Digest>> = LazyLock::new(|| {
     // Compute the canonical zeros for each height from 1 to 32
     // Zero of height `n` is computed as: `ZERO_N = Keccak256::merge(ZERO_{N-1}, ZERO_{N-1})`
     for _ in 1..32 {
-        let current_height_zero = Keccak256::merge(&[
-            *zeros_by_height.last().expect("zeros vec should have at least one value"),
-            *zeros_by_height.last().expect("zeros vec should have at least one value"),
-        ]);
+        let last_zero = zeros_by_height.last().expect("zeros vec should have at least one value");
+        let current_height_zero = Keccak256::merge(&[*last_zero, *last_zero]);
         zeros_by_height.push(current_height_zero);
     }
 
