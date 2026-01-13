@@ -265,20 +265,9 @@ impl TransactionInputs {
     /// Reads the vault asset witnesses for the given account and vault keys.
     pub fn read_vault_asset_witnesses(
         &self,
-        account_id: AccountId,
+        vault_root: Word,
         vault_keys: BTreeSet<AssetVaultKey>,
     ) -> Result<Vec<AssetWitness>, TransactionInputsExtractionError> {
-        // Read the account header elements from the advice map.
-        let account_id_key = TransactionAdviceInputs::account_id_map_key(account_id);
-        let header_elements = self
-            .advice_inputs
-            .map
-            .get(&account_id_key)
-            .ok_or(TransactionInputsExtractionError::ForeignAccountNotFound(account_id))?;
-
-        let header = AccountHeader::try_from_elements(header_elements)?;
-        let vault_root = header.vault_root();
-
         let mut asset_witnesses = Vec::new();
         for vault_key in vault_keys {
             let smt_index = vault_key.to_leaf_index();
