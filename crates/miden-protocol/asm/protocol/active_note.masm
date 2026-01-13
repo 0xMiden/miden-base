@@ -275,8 +275,9 @@ end
 proc write_inputs_to_memory
     # load the inputs from the advice map to the advice stack
     # we pad the number of inputs to the next multiple of 8 so that we can use the
-    # `pipe_double_words_to_memory` instruction, even though the padded zeros are ignored during the
-    # commitment computation
+    # `pipe_double_words_to_memory` instruction. The padded zeros don't affect the commitment
+    # computation.
+
     adv.push_mapvaln.8
     # OS => [NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
     # AS => [advice_num_inputs, [INPUT_VALUES]]
