@@ -10,7 +10,7 @@ use super::{
     Serializable,
     Word,
 };
-use crate::note::{NoteAttachment, NoteAttachmentContentType, NoteAttachmentType};
+use crate::note::{NoteAttachment, NoteAttachmentContentType, NoteAttachmentScheme};
 use crate::{Hasher, NoteError};
 
 // NOTE METADATA
@@ -36,7 +36,7 @@ use crate::{Hasher, NoteError};
 /// 0th felt: [sender_id_suffix (56 bits) | 6 zero bits | note_type (2 bit)]
 /// 1st felt: [sender_id_prefix (64 bits)]
 /// 2nd felt: [32 zero bits | note_tag (32 bits)]
-/// 3rd felt: [30 zero bits | attachment_content_type (2 bits) | attachment_type (32 bits)]
+/// 3rd felt: [30 zero bits | attachment_content_type (2 bits) | attachment_scheme (32 bits)]
 /// ```
 ///
 /// The felt validity of each part of the layout is guaranteed:
@@ -123,7 +123,7 @@ impl NoteMetadata {
             note_type: self.note_type,
             tag: self.tag,
             attachment_content_type: self.attachment().content().content_type(),
-            attachment_type: self.attachment.attachment_type(),
+            attachment_scheme: self.attachment.attachment_scheme(),
         }
     }
 
@@ -202,7 +202,7 @@ struct NoteMetadataHeader {
     note_type: NoteType,
     tag: NoteTag,
     attachment_content_type: NoteAttachmentContentType,
-    attachment_type: NoteAttachmentType,
+    attachment_scheme: NoteAttachmentScheme,
 }
 
 impl From<NoteMetadataHeader> for Word {
@@ -213,7 +213,7 @@ impl From<NoteMetadataHeader> for Word {
         metadata[1] = header.sender.prefix().as_felt();
         metadata[2] = Felt::from(header.tag);
         metadata[3] =
-            merge_attachment_type_info(header.attachment_content_type, header.attachment_type);
+            merge_attachment_scheme_info(header.attachment_content_type, header.attachment_scheme);
 
         metadata
     }
@@ -229,7 +229,7 @@ impl TryFrom<Word> for NoteMetadataHeader {
         let tag = u32::try_from(word[2]).map(NoteTag::new).map_err(|_| {
             NoteError::other("failed to convert note tag from metadata header to u32")
         })?;
-        let (attachment_content_type, attachment_type) = unmerge_attachment_type_info(word[3])?;
+        let (attachment_content_type, attachment_scheme) = unmerge_attachment_scheme_info(word[3])?;
 
         let sender = AccountId::try_from([sender_prefix, sender_suffix]).map_err(|source| {
             NoteError::other_with_source("failed to decode account ID from metadata header", source)
@@ -240,7 +240,7 @@ impl TryFrom<Word> for NoteMetadataHeader {
             note_type,
             tag,
             attachment_content_type,
-            attachment_type,
+            attachment_scheme,
         })
     }
 }
@@ -290,36 +290,36 @@ fn unmerge_sender_suffix_and_note_type(element: Felt) -> Result<(Felt, NoteType)
     Ok((sender_suffix, note_type))
 }
 
-/// Merges the [`NoteAttachmentType`] and [`NoteAttachmentContentType`] into a single [`Felt`].
+/// Merges the [`NoteAttachmentScheme`] and [`NoteAttachmentContentType`] into a single [`Felt`].
 ///
 /// The layout is as follows:
 ///
 /// ```text
-/// [30 zero bits | attachment_content_type (2 bits) | attachment_type (32 bits)]
+/// [30 zero bits | attachment_content_type (2 bits) | attachment_scheme (32 bits)]
 /// ```
-fn merge_attachment_type_info(
+fn merge_attachment_scheme_info(
     attachment_content_type: NoteAttachmentContentType,
-    attachment_type: NoteAttachmentType,
+    attachment_scheme: NoteAttachmentScheme,
 ) -> Felt {
     debug_assert!(
         attachment_content_type.as_u8() < 4,
         "attachment content type should fit into two bits"
     );
     let mut merged = (attachment_content_type.as_u8() as u64) << 32;
-    let attachment_type = attachment_type.as_u32();
-    merged |= attachment_type as u64;
+    let attachment_scheme = attachment_scheme.as_u32();
+    merged |= attachment_scheme as u64;
 
     Felt::try_from(merged).expect("the upper bit should be zero and the felt therefore valid")
 }
 
-/// Unmerges the attachment content type and attachment type.
-fn unmerge_attachment_type_info(
+/// Unmerges the attachment kind and attachment scheme.
+fn unmerge_attachment_kind_scheme(
     element: Felt,
-) -> Result<(NoteAttachmentContentType, NoteAttachmentType), NoteError> {
-    let attachment_type = element.as_int() as u32;
+) -> Result<(NoteAttachmentContentType, NoteAttachmentScheme), NoteError> {
+    let attachment_scheme = element.as_int() as u32;
     let attachment_content_type = (element.as_int() >> 32) as u8;
 
-    let attachment_type = NoteAttachmentType::new(attachment_type);
+    let attachment_scheme = NoteAttachmentScheme::new(attachment_scheme);
     let attachment_content_type = NoteAttachmentContentType::try_from(attachment_content_type)
         .map_err(|source| {
             NoteError::other_with_source(
@@ -328,7 +328,7 @@ fn unmerge_attachment_type_info(
             )
         })?;
 
-    Ok((attachment_content_type, attachment_type))
+    Ok((attachment_content_type, attachment_scheme))
 }
 
 // TESTS
@@ -338,14 +338,14 @@ fn unmerge_attachment_type_info(
 mod tests {
 
     use super::*;
-    use crate::note::NoteAttachmentType;
+    use crate::note::NoteAttachmentScheme;
     use crate::testing::account_id::ACCOUNT_ID_MAX_ONES;
 
     #[rstest::rstest]
     #[case::attachment_none(NoteAttachment::default())]
-    #[case::attachment_raw(NoteAttachment::new_word(NoteAttachmentType::new(0), Word::from([3, 4, 5, 6u32])))]
+    #[case::attachment_raw(NoteAttachment::new_word(NoteAttachmentScheme::new(0), Word::from([3, 4, 5, 6u32])))]
     #[case::attachment_commitment(NoteAttachment::new_array(
-        NoteAttachmentType::new(u32::MAX),
+        NoteAttachmentScheme::new(u32::MAX),
         vec![Felt::new(5), Felt::new(6), Felt::new(7)],
     )?)]
     #[test]

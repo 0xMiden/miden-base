@@ -128,7 +128,7 @@ pub fn create_swap_note<R: FeltRng>(
     let requested_asset_word: Word = requested_asset.into();
     let payback_tag = NoteTag::with_account_target(sender);
 
-    let attachment_type = Felt::from(payback_note_attachment.attachment_type().as_u32());
+    let attachment_scheme = Felt::from(payback_note_attachment.attachment_scheme().as_u32());
     let attachment_content_type = Felt::from(payback_note_attachment.content_type().as_u8());
     let attachment = payback_note_attachment.content().to_word();
 
@@ -136,7 +136,7 @@ pub fn create_swap_note<R: FeltRng>(
     inputs.extend_from_slice(&[
         payback_note_type.into(),
         payback_tag.into(),
-        attachment_type,
+        attachment_scheme,
         attachment_content_type,
     ]);
     inputs.extend_from_slice(attachment.as_elements());

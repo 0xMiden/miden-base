@@ -1,6 +1,6 @@
-use miden_protocol::note::NoteAttachmentType;
+use miden_protocol::note::NoteAttachmentScheme;
 
-/// The [`NoteAttachmentType`]s of well-known note attachmens.
+/// The [`NoteAttachmentScheme`]s of well-known note attachmens.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum WellKnownNoteAttachment {
@@ -9,10 +9,10 @@ pub enum WellKnownNoteAttachment {
 }
 
 impl WellKnownNoteAttachment {
-    /// Returns the [`NoteAttachmentType`] of the well-known attachment.
-    pub const fn attachment_type(&self) -> NoteAttachmentType {
+    /// Returns the [`NoteAttachmentScheme`] of the well-known attachment.
+    pub const fn attachment_scheme(&self) -> NoteAttachmentScheme {
         match self {
-            WellKnownNoteAttachment::NetworkAccountTarget => NoteAttachmentType::new(1u32),
+            WellKnownNoteAttachment::NetworkAccountTarget => NoteAttachmentScheme::new(1u32),
         }
     }
 }

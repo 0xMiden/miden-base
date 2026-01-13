@@ -9,7 +9,7 @@ const SWAP_NOTE_INPUTS_NUMBER=16
 
 const PAYBACK_NOTE_TYPE_ADDRESS=0
 const PAYBACK_NOTE_TAG_ADDRESS=1
-const ATTACHMENT_TYPE_ADDRESS=2
+const ATTACHMENT_SCHEME_ADDRESS=2
 const ATTACHMENT_CONTENT_TYPE_ADDRESS=3
 const ATTACHMENT_ADDRESS=4
 const REQUESTED_ASSET_ADDRESS=8
@@ -35,7 +35,7 @@ const ERR_SWAP_WRONG_NUMBER_OF_ASSETS="SWAP script requires exactly 1 note asset
 #! Note inputs are assumed to be as follows:
 #! - payback_note_type
 #! - payback_note_tag
-#! - attachment_type
+#! - attachment_scheme
 #! - attachment_content_type
 #! - ATTACHMENT
 #! - REQUESTED_ASSET
@@ -98,10 +98,10 @@ pub proc main
     # => [note_idx, pad(11)]
 
     mem_loadw_be.ATTACHMENT_ADDRESS
-    mem_load.ATTACHMENT_TYPE_ADDRESS
+    mem_load.ATTACHMENT_SCHEME_ADDRESS
     mem_load.ATTACHMENT_CONTENT_TYPE_ADDRESS
     movup.6
-    # => [note_idx, attachment_content_type, attachment_type, ATTACHMENT]
+    # => [note_idx, attachment_content_type, attachment_scheme, ATTACHMENT]
 
     exec.output_note::set_attachment
     # => [pad(12)]

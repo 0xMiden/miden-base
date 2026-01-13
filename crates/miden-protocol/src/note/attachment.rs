@@ -31,13 +31,13 @@ use crate::{Felt, FieldElement, Hasher, NoteError, Word};
 /// [`NoteAttachmentContent::Array`] variant are available. See the type's docs for more
 /// details.
 ///
-/// Next to the content, a note attachment can optionally specify a [`NoteAttachmentType`]. This
+/// Next to the content, a note attachment can optionally specify a [`NoteAttachmentScheme`]. This
 /// allows a note attachment to describe itself. For example, a network account target attachment
-/// can be identified by a standardized type. For cases when the attachment type is known from
-/// content or typing is otherwise undesirable, [`NoteAttachmentType::untyped`] can be used.
+/// can be identified by a standardized type. For cases when the attachment scheme is known from
+/// content or typing is otherwise undesirable, [`NoteAttachmentScheme::untyped`] can be used.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct NoteAttachment {
-    attachment_type: NoteAttachmentType,
+    attachment_scheme: NoteAttachmentScheme,
     content: NoteAttachmentContent,
 }
 
@@ -47,21 +47,21 @@ impl NoteAttachment {
 
     /// Creates a new [`NoteAttachment`] from a user-defined type and the provided content.
     pub fn new(
-        attachment_type: NoteAttachmentType,
+        attachment_scheme: NoteAttachmentScheme,
         content: NoteAttachmentContent,
     ) -> Result<Self, NoteError> {
-        if content.content_type().is_none() && !attachment_type.is_untyped() {
+        if content.content_type().is_none() && !attachment_scheme.is_untyped() {
             return Err(NoteError::NoneAttachmentMustHaveUntypedAttachmentType);
         }
 
-        Ok(Self { attachment_type, content })
+        Ok(Self { attachment_scheme, content })
     }
 
     /// Creates a new note attachment with content [`NoteAttachmentContent::Word`] from the provided
     /// word.
-    pub fn new_word(attachment_type: NoteAttachmentType, word: Word) -> Self {
+    pub fn new_word(attachment_scheme: NoteAttachmentScheme, word: Word) -> Self {
         Self {
-            attachment_type,
+            attachment_scheme,
             content: NoteAttachmentContent::new_word(word),
         }
     }
@@ -74,17 +74,18 @@ impl NoteAttachment {
     /// Returns an error if:
     /// - The maximum number of elements exceeds [`NoteAttachmentArray::MAX_NUM_ELEMENTS`].
     pub fn new_array(
-        attachment_type: NoteAttachmentType,
+        attachment_scheme: NoteAttachmentScheme,
         elements: Vec<Felt>,
     ) -> Result<Self, NoteError> {
-        NoteAttachmentContent::new_array(elements).map(|content| Self { attachment_type, content })
+        NoteAttachmentContent::new_array(elements)
+            .map(|content| Self { attachment_scheme, content })
     }
 
     /// Creates a new [`NoteAttachment`] from the provided content and using
-    /// [`NoteAttachmentType::untyped`].
+    /// [`NoteAttachmentScheme::untyped`].
     pub fn new_untyped(content: NoteAttachmentContent) -> Self {
         Self {
-            attachment_type: NoteAttachmentType::untyped(),
+            attachment_scheme: NoteAttachmentScheme::untyped(),
             content,
         }
     }
@@ -92,9 +93,9 @@ impl NoteAttachment {
     // ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns the attachment type.
-    pub fn attachment_type(&self) -> NoteAttachmentType {
-        self.attachment_type
+    /// Returns the attachment scheme.
+    pub fn attachment_scheme(&self) -> NoteAttachmentScheme {
+        self.attachment_scheme
     }
 
     /// Returns the attachment content type.
@@ -110,17 +111,17 @@ impl NoteAttachment {
 
 impl Serializable for NoteAttachment {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        self.attachment_type().write_into(target);
+        self.attachment_scheme().write_into(target);
         self.content().write_into(target);
     }
 }
 
 impl Deserializable for NoteAttachment {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        let attachment_type = NoteAttachmentType::read_from(source)?;
+        let attachment_scheme = NoteAttachmentScheme::read_from(source)?;
         let content = NoteAttachmentContent::read_from(source)?;
 
-        Self::new(attachment_type, content)
+        Self::new(attachment_scheme, content)
             .map_err(|err| DeserializationError::InvalidValue(err.to_string()))
     }
 }
@@ -320,20 +321,20 @@ impl From<NoteAttachmentArray> for NoteAttachmentContent {
     }
 }
 
-// NOTE ATTACHMENT TYPE
+// NOTE ATTACHMENT SCHEME
 // ================================================================================================
 
 /// The user-defined type of a [`NoteAttachment`].
 ///
-/// A note attachment type is an arbitrary 32-bit unsigned integer.
+/// A note attachment scheme is an arbitrary 32-bit unsigned integer.
 ///
 /// Value `0` is reserved to signal that an attachment is untyped. That is, no attempt should be
 /// made to guess the type of the attachment. Whenever the type of attachment is not standardized or
 /// interoperability is unimportant, this untyped value can be used.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct NoteAttachmentType(u32);
+pub struct NoteAttachmentScheme(u32);
 
-impl NoteAttachmentType {
+impl NoteAttachmentScheme {
     // CONSTANTS
     // --------------------------------------------------------------------------------------------
 
@@ -343,12 +344,12 @@ impl NoteAttachmentType {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
-    /// Creates a new [`NoteAttachmentType`] from a `u32`.
-    pub const fn new(attachment_type: u32) -> Self {
-        Self(attachment_type)
+    /// Creates a new [`NoteAttachmentScheme`] from a `u32`.
+    pub const fn new(attachment_scheme: u32) -> Self {
+        Self(attachment_scheme)
     }
 
-    /// Returns the [`NoteAttachmentType`] that signals an untyped note attachment.
+    /// Returns the [`NoteAttachmentScheme`] that signals an untyped note attachment.
     pub const fn untyped() -> Self {
         Self(Self::UNTYPED)
     }
@@ -361,35 +362,35 @@ impl NoteAttachmentType {
     // ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns the note attachment type as a u32.
+    /// Returns the note attachment scheme as a u32.
     pub const fn as_u32(&self) -> u32 {
         self.0
     }
 }
 
-impl Default for NoteAttachmentType {
-    /// Returns [`NoteAttachmentType::untyped`].
+impl Default for NoteAttachmentScheme {
+    /// Returns [`NoteAttachmentScheme::untyped`].
     fn default() -> Self {
         Self::untyped()
     }
 }
 
-impl core::fmt::Display for NoteAttachmentType {
+impl core::fmt::Display for NoteAttachmentScheme {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.write_fmt(format_args!("{}", self.0))
     }
 }
 
-impl Serializable for NoteAttachmentType {
+impl Serializable for NoteAttachmentScheme {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         self.as_u32().write_into(target);
     }
 }
 
-impl Deserializable for NoteAttachmentType {
+impl Deserializable for NoteAttachmentScheme {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        let attachment_type = u32::read_from(source)?;
-        Ok(Self::new(attachment_type))
+        let attachment_scheme = u32::read_from(source)?;
+        Ok(Self::new(attachment_scheme))
     }
 }
 
@@ -495,9 +496,9 @@ mod tests {
 
     #[rstest::rstest]
     #[case::attachment_none(NoteAttachment::default())]
-    #[case::attachment_word(NoteAttachment::new_word(NoteAttachmentType::new(1), Word::from([3, 4, 5, 6u32])))]
+    #[case::attachment_word(NoteAttachment::new_word(NoteAttachmentScheme::new(1), Word::from([3, 4, 5, 6u32])))]
     #[case::attachment_array(NoteAttachment::new_array(
-        NoteAttachmentType::new(u32::MAX),
+        NoteAttachmentScheme::new(u32::MAX),
         vec![Felt::new(5), Felt::new(6), Felt::new(7)],
     )?)]
     #[test]

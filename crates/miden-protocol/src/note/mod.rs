@@ -26,7 +26,7 @@ pub use attachment::{
     NoteAttachmentArray,
     NoteAttachmentContent,
     NoteAttachmentContentType,
-    NoteAttachmentType,
+    NoteAttachmentScheme,
 };
 
 mod execution_hint;
