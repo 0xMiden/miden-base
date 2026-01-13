@@ -1,3 +1,4 @@
+use miden::core::crypto::hashes::rpo256
 use miden::core::mem
 
 use miden::protocol::kernel_proc_offsets
@@ -95,7 +96,7 @@ end
 #!
 #! Where:
 #! - dest_ptr is the memory address to write the note inputs.
-#! - NOTE_INPUTS_COMMITMENT is the sequential hash of the padded note's inputs.
+#! - NOTE_INPUTS_COMMITMENT is the commitment to the note's inputs.
 #! - INPUTS is the data corresponding to the note's inputs.
 #!
 #! Panics if:
@@ -274,19 +275,17 @@ end
 #!   Operand stack: [num_inputs, dest_ptr]
 proc write_inputs_to_memory
     # load the inputs from the advice map to the advice stack
-    adv.push_mapvaln
+    # we pad the number of inputs to the next multiple of 8 so that we can use the
+    # `pipe_double_words_to_memory` instruction. The padded zeros don't affect the commitment
+    # computation.
+
+    adv.push_mapvaln.8
     # OS => [NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
     # AS => [advice_num_inputs, [INPUT_VALUES]]
 
     # move the number of inputs obtained from advice map to the operand stack
     adv_push.1 dup.5
     # OS => [num_inputs, advice_num_inputs, NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
-    # AS => [[INPUT_VALUES]]
-
-    # Validate the note inputs length. Round up the number of inputs to the next multiple of 8: that
-    # value should be equal to the length obtained from the `adv.push_mapvaln` procedure.
-    u32divmod.8 neq.0 add mul.8
-    # OS => [rounded_up_num_inputs, advice_num_inputs, NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
     # AS => [[INPUT_VALUES]]
 
     assert_eq.err=ERR_NOTE_INVALID_NUMBER_OF_INPUTS
@@ -303,13 +302,45 @@ proc write_inputs_to_memory
     # OS => [even_num_words, NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
     # AS => [[INPUT_VALUES]]
 
-    # prepare the stack for the `pipe_preimage_to_memory` procedure
-    dup.6 swap
-    # OS => [even_num_words, dest_ptr, NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
+    # compute the end pointer for writing the padded inputs (even_num_words * 4 elements)
+    dup.6 swap mul.4 add
+    # OS => [end_ptr, NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
+    # AS => [[INPUT_VALUES]]
+
+    # prepare the stack for the `pipe_double_words_to_memory` procedure.
+    #
+    # To match `rpo256::hash_elements` (used for NOTE_INPUTS_COMMITMENT), we set the first capacity
+    # element to `num_inputs % 8`.
+    dup.6 dup.6
+    # OS => [num_inputs, write_ptr, end_ptr, NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
+    # AS => [[INPUT_VALUES]]
+
+    u32divmod.8 swap drop
+    # OS => [num_inputs_mod_8, write_ptr, end_ptr, NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
+    # AS => [[INPUT_VALUES]]
+
+    push.0.0.0
+    # OS => [A, write_ptr, end_ptr, NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr], where A = [0, 0, 0, num_inputs_mod_8]
+    # AS => [[INPUT_VALUES]]
+
+    padw padw
+    # OS => [PAD, PAD, A, write_ptr, end_ptr, NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
     # AS => [[INPUT_VALUES]]
 
     # write the inputs from the advice stack into memory
-    exec.mem::pipe_preimage_to_memory drop
-    # OS => [num_inputs, dest_ptr]
+    exec.mem::pipe_double_words_to_memory
+    # OS => [PERM, PERM, PERM, end_ptr', NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
     # AS => []
+
+    # extract the computed commitment from the hasher state
+    exec.rpo256::squeeze_digest
+    # OS => [COMPUTED_COMMITMENT, end_ptr', NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
+
+    # drop end_ptr'
+    movup.4 drop
+    # OS => [COMPUTED_COMMITMENT, NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
+
+    # validate that the inputs written to memory match the inputs commitment
+    assert_eqw.err=ERR_NOTE_DATA_DOES_NOT_MATCH_COMMITMENT
+    # => [num_inputs, dest_ptr]
 end
