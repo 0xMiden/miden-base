@@ -124,6 +124,20 @@ fn parse_map_entries_from_array() {
 }
 
 #[test]
+fn map_entries_reject_field_key() {
+    let toml_str = r#"
+        "demo::my_map.entry" = [
+            { key = "0x1", value = "0x2" }
+        ]
+    "#;
+
+    assert_matches::assert_matches!(
+        InitStorageData::from_toml(toml_str),
+        Err(InitStorageDataError::InvalidMapEntryKey(_))
+    );
+}
+
+#[test]
 fn error_on_empty_subtable() {
     let toml_str = r#"
         ["demo::token_metadata"]
