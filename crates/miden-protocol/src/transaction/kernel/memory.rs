@@ -358,7 +358,7 @@ pub const NOTE_MEM_SIZE: MemoryAddress = 2048;
 //
 // Notice that note input values are not loaded to the memory, only their length. In order to obtain
 // the input values the advice map should be used: they are stored there as
-// `INPUTS_COMMITMENT -> INPUTS || PADDING`.
+// `INPUTS_COMMITMENT -> INPUTS`.
 //
 // As opposed to the asset values, input values are never used in kernel memory, so their presence
 // there is unnecessary.
