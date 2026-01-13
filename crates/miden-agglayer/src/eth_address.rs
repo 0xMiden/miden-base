@@ -46,7 +46,7 @@ impl From<HexParseError> for AddrConvError {
 // ETHEREUM ADDRESS
 // ================================================================================================
 
-/// Represents an Ethereum address (20 bytes).
+/// Represents an Ethereum address format (20 bytes).
 ///
 /// # Representations used in this module
 ///
