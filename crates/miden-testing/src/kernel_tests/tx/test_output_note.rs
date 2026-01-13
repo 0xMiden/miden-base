@@ -1024,10 +1024,10 @@ async fn test_set_none_attachment() -> anyhow::Result<()> {
             # => [note_idx]
 
             push.{ATTACHMENT}
-            push.{attachment_scheme}
             push.{attachment_kind}
+            push.{attachment_scheme}
             movup.6
-            # => [note_idx, attachment_kind, attachment_scheme, ATTACHMENT]
+            # => [note_idx, attachment_scheme, attachment_kind, ATTACHMENT]
             exec.output_note::set_attachment
             # => []
 

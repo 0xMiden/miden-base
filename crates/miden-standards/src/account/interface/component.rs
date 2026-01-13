@@ -295,10 +295,10 @@ impl AccountComponentInterface {
             body.push_str(&format!(
                 "
                 push.{ATTACHMENT}
-                push.{attachment_scheme}
                 push.{attachment_kind}
+                push.{attachment_scheme}
                 movup.6
-                # => [note_idx, attachment_kind, attachment_scheme, ATTACHMENT, pad(16)]
+                # => [note_idx, attachment_scheme, attachment_kind, ATTACHMENT, pad(16)]
                 exec.::miden::protocol::output_note::set_attachment
                 # => [pad(16)]
             ",

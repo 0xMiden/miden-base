@@ -247,13 +247,13 @@ end
 
 #! Sets the attachment of the note specified by the index.
 #!
-#! Inputs:  [note_idx, attachment_kind, attachment_scheme, ATTACHMENT]
+#! Inputs:  [note_idx, attachment_scheme, attachment_kind, ATTACHMENT]
 #! Outputs: []
 #!
 #! Where:
 #! - note_idx is the index of the note on which the attachment is set.
-#! - attachment_kind is the kind of the attachment content.
 #! - attachment_scheme is the user-defined scheme of the attachment.
+#! - attachment_kind is the kind of the attachment content.
 #! - ATTACHMENT is the attachment to be set.
 #!
 #! Panics if:
@@ -262,26 +262,26 @@ end
 #! - the attachment kind is an unknown variant.
 pub proc set_attachment
     dup exec.memory::get_num_output_notes lte assert.err=ERR_NOTE_INVALID_INDEX
-    # => [note_idx, attachment_kind, attachment_scheme, ATTACHMENT]
+    # => [note_idx, attachment_scheme, attachment_kind, ATTACHMENT]
 
     exec.memory::get_output_note_ptr dup
-    # => [note_ptr, note_ptr, attachment_kind, attachment_scheme, ATTACHMENT]
+    # => [note_ptr, note_ptr, attachment_scheme, attachment_kind, ATTACHMENT]
 
     dupw.1
-    # => [ATTACHMENT, note_ptr, note_ptr, attachment_kind, attachment_scheme, ATTACHMENT]
+    # => [ATTACHMENT, note_ptr, note_ptr, attachment_scheme, attachment_kind, ATTACHMENT]
 
     dup.7 dup.7
-    # => [attachment_kind, attachment_scheme, ATTACHMENT, note_ptr, note_ptr,
-    #     attachment_kind, attachment_scheme, ATTACHMENT]
+    # => [attachment_scheme, attachment_kind, ATTACHMENT, note_ptr, note_ptr,
+    #     attachment_scheme, attachment_kind, ATTACHMENT]
 
     exec.validate_attachment
-    # => [note_ptr, note_ptr, attachment_kind, attachment_scheme, ATTACHMENT]
+    # => [note_ptr, note_ptr, attachment_scheme, attachment_kind, ATTACHMENT]
 
     movdn.3 movdn.3
-    # => [attachment_kind, attachment_scheme, note_ptr, note_ptr, ATTACHMENT]
+    # => [attachment_scheme, attachment_kind, note_ptr, note_ptr, ATTACHMENT]
 
     emit.NOTE_BEFORE_SET_ATTACHMENT_EVENT
-    # => [attachment_kind, attachment_scheme, note_ptr, note_ptr, ATTACHMENT]
+    # => [attachment_scheme, attachment_kind, note_ptr, note_ptr, ATTACHMENT]
 
     exec.set_attachment_kind_scheme
     # => [note_ptr, ATTACHMENT]
@@ -359,7 +359,7 @@ end
 
 #! Validate the ATTACHMENT against the content type.
 #!
-#! Inputs:  [attachment_kind, attachment_scheme, ATTACHMENT]
+#! Inputs:  [attachment_scheme, attachment_kind, ATTACHMENT]
 #! Outputs: []
 #!
 #! Where:
@@ -373,10 +373,10 @@ end
 #! - the content type is None and the ATTACHMENT is not an empty word.
 proc validate_attachment
     u32assert2.err=ERR_OUTPUT_NOTE_INVALID_ATTACHMENT_SCHEMES
-    # => [attachment_kind, attachment_scheme, ATTACHMENT]
+    # => [attachment_scheme, attachment_kind, ATTACHMENT]
 
     # assert that the attachment kind is valid
-    dup u32lte.ATTACHMENT_KIND_ARRAY
+    swap dup u32lte.ATTACHMENT_KIND_ARRAY
     assert.err=ERR_OUTPUT_NOTE_UNKNOWN_ATTACHMENT_KIND
     # => [attachment_kind, attachment_scheme, ATTACHMENT]
 
@@ -401,12 +401,12 @@ end
 #!
 #! WARNING: The attachment scheme and kind must be valid.
 #!
-#! Inputs:  [attachment_kind, attachment_scheme, note_ptr]
+#! Inputs:  [attachment_scheme, attachment_kind, note_ptr]
 #! Outputs: []
 #!
 #! Where:
-#! - attachment_kind is the kind of the attachment content.
 #! - attachment_scheme is the user-defined type of the attachment.
+#! - attachment_kind is the kind of the attachment content.
 #! - note_ptr is the memory address at which the output note data begins.
 proc set_attachment_kind_scheme
     exec.merge_attachment_kind_and_scheme
@@ -425,17 +425,17 @@ end
 #!
 #! WARNING: The attachment scheme and kind must be valid.
 #!
-#! Inputs:  [attachment_kind, attachment_scheme]
+#! Inputs:  [attachment_scheme, attachment_kind]
 #! Outputs: [attachment_kind_scheme]
 #!
 #! Where:
-#! - attachment_kind is the kind of the attachment content.
 #! - attachment_scheme is the user-defined scheme of the attachment.
+#! - attachment_kind is the kind of the attachment content.
 #! - attachment_kind_scheme is the felt constructed from the inputs.
 proc merge_attachment_kind_and_scheme
-    # shift the content type 32 bits to the left, which is the same as multiplying by 2^32
+    # shift the attachment_kind 32 bits to the left, which is the same as multiplying by 2^32
     # and set the lower bits to the attachment_scheme, which is done by adding the values together
-    mul.0x100000000
+    swap mul.0x100000000
     add
     # => [attachment_kind_scheme]
 end

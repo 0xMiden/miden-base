@@ -41,7 +41,7 @@ impl MintNoteInputs {
         tag: Felt,
     ) -> Result<Self, NoteError> {
         // Calculate total number of inputs that will be created:
-        // 16 fixed inputs (tag, amount, attachment_scheme, attachment_kind, ATTACHMENT,
+        // 16 fixed inputs (tag, amount, attachment_kind, attachment_scheme, ATTACHMENT,
         // SCRIPT_ROOT, SERIAL_NUM) + variable recipient inputs length
         const FIXED_PUBLIC_INPUTS: usize = 16;
         let total_inputs = FIXED_PUBLIC_INPUTS + recipient.inputs().num_values() as usize;
@@ -93,7 +93,7 @@ impl From<MintNoteInputs> for NoteInputs {
                 let attachment = attachment.content().to_word();
 
                 let mut input_values = Vec::with_capacity(12);
-                input_values.extend_from_slice(&[tag, amount, attachment_scheme, attachment_kind]);
+                input_values.extend_from_slice(&[tag, amount, attachment_kind, attachment_scheme]);
                 input_values.extend_from_slice(attachment.as_elements());
                 input_values.extend_from_slice(recipient_digest.as_elements());
                 NoteInputs::new(input_values)
@@ -104,7 +104,7 @@ impl From<MintNoteInputs> for NoteInputs {
                 let attachment_kind = Felt::from(attachment.attachment_kind().as_u8());
                 let attachment = attachment.content().to_word();
 
-                let mut input_values = vec![tag, amount, attachment_scheme, attachment_kind];
+                let mut input_values = vec![tag, amount, attachment_kind, attachment_scheme];
                 input_values.extend_from_slice(attachment.as_elements());
                 input_values.extend_from_slice(recipient.script().root().as_elements());
                 input_values.extend_from_slice(recipient.serial_num().as_elements());

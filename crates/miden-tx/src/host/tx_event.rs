@@ -424,18 +424,18 @@ impl TransactionEvent {
 
             TransactionEventId::NoteBeforeSetAttachment => {
                 // Expected stack state: [
-                //     event, attachment_kind, attachment_scheme,
+                //     event, attachment_scheme, attachment_kind,
                 //     note_ptr, note_ptr, ATTACHMENT
                 // ]
 
-                let attachment_kind = process.get_stack_item(1);
-                let attachment_scheme = process.get_stack_item(2);
+                let attachment_scheme = process.get_stack_item(1);
+                let attachment_kind = process.get_stack_item(2);
                 let note_ptr = process.get_stack_item(3);
                 let attachment = process.get_stack_word_be(5);
 
                 let (note_idx, attachment) = extract_note_attachment(
-                    attachment_kind,
                     attachment_scheme,
+                    attachment_kind,
                     attachment,
                     note_ptr,
                     process.advice_provider(),
@@ -728,8 +728,8 @@ fn build_note_metadata(
 }
 
 fn extract_note_attachment(
-    attachment_kind: Felt,
     attachment_scheme: Felt,
+    attachment_kind: Felt,
     attachment: Word,
     note_ptr: Felt,
     advice_provider: &AdviceProvider,

@@ -1189,13 +1189,13 @@ end
 
 #! Sets the attachment of the note specified by the index.
 #!
-#! Inputs:  [note_idx, attachment_kind, attachment_scheme, ATTACHMENT, pad(9)]
+#! Inputs:  [note_idx, attachment_scheme, attachment_kind, ATTACHMENT, pad(9)]
 #! Outputs: [pad(16)]
 #!
 #! Where:
 #! - note_idx is the index of the note on which the attachment is set.
-#! - attachment_kind is the kind of the attachment content.
 #! - attachment_scheme is the user-defined scheme of the attachment.
+#! - attachment_kind is the kind of the attachment content.
 #! - ATTACHMENT is the attachment to be set.
 #!
 #! Panics if:
@@ -1208,7 +1208,7 @@ end
 pub proc output_note_set_attachment
     # check that this procedure was executed against the native account
     exec.memory::assert_native_account
-    # => [note_idx, attachment_kind, attachment_scheme, ATTACHMENT, pad(9)]
+    # => [note_idx, attachment_scheme, attachment_kind, ATTACHMENT, pad(9)]
 
     exec.output_note::set_attachment
     # => [pad(16)]
