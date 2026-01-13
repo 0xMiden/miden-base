@@ -278,6 +278,23 @@ impl CodeBuilder {
         self
     }
 
+    // PRIVATE HELPERS
+    // --------------------------------------------------------------------------------------------
+
+    /// Applies the advice map to a program if it's non-empty.
+    ///
+    /// This avoids cloning the MAST forest when there are no advice map entries.
+    fn apply_advice_map(
+        advice_map: AdviceMap,
+        program: miden_protocol::vm::Program,
+    ) -> miden_protocol::vm::Program {
+        if advice_map.is_empty() {
+            program
+        } else {
+            program.with_advice_map(advice_map)
+        }
+    }
+
     // COMPILATION
     // --------------------------------------------------------------------------------------------
 
@@ -335,13 +352,7 @@ impl CodeBuilder {
             CodeBuilderError::build_error_with_report("failed to parse transaction script", err)
         })?;
 
-        let program = if advice_map.is_empty() {
-            program
-        } else {
-            program.with_advice_map(advice_map)
-        };
-
-        Ok(TransactionScript::new(program))
+        Ok(TransactionScript::new(Self::apply_advice_map(advice_map, program)))
     }
 
     /// Compiles the provided MASM code into a [`NoteScript`].
@@ -361,13 +372,7 @@ impl CodeBuilder {
             CodeBuilderError::build_error_with_report("failed to parse note script", err)
         })?;
 
-        let program = if advice_map.is_empty() {
-            program
-        } else {
-            program.with_advice_map(advice_map)
-        };
-
-        Ok(NoteScript::new(program))
+        Ok(NoteScript::new(Self::apply_advice_map(advice_map, program)))
     }
 
     // ACCESSORS
@@ -687,19 +692,15 @@ mod tests {
             .compile_tx_script("begin nop end")
             .context("failed to compile tx script with advice map")?;
 
-        // Verify the advice map entry is in the MAST forest
         let mast = script.mast();
-        let stored_value = mast.advice_map().get(&key);
-        assert!(stored_value.is_some(), "advice map entry should be present");
-        assert_eq!(stored_value.unwrap().as_ref(), value.as_slice());
+        let stored_value = mast.advice_map().get(&key).expect("advice map entry should be present");
+        assert_eq!(stored_value.as_ref(), value.as_slice());
 
         Ok(())
     }
 
     #[test]
     fn test_code_builder_extend_advice_map() -> anyhow::Result<()> {
-        use miden_protocol::vm::AdviceMap;
-
         let key1 = Word::from([1u32, 0, 0, 0]);
         let key2 = Word::from([2u32, 0, 0, 0]);
 
@@ -730,9 +731,11 @@ mod tests {
             .context("failed to compile note script with advice map")?;
 
         let mast = script.mast();
-        let stored_value = mast.advice_map().get(&key);
-        assert!(stored_value.is_some(), "advice map entry should be present in note script");
-        assert_eq!(stored_value.unwrap().as_ref(), value.as_slice());
+        let stored_value = mast
+            .advice_map()
+            .get(&key)
+            .expect("advice map entry should be present in note script");
+        assert_eq!(stored_value.as_ref(), value.as_slice());
 
         Ok(())
     }
