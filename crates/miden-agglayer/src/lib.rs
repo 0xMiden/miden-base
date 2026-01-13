@@ -37,10 +37,10 @@ use miden_standards::account::faucets::NetworkFungibleFaucet;
 use miden_utils_sync::LazyLock;
 
 pub mod errors;
-pub mod eth_address;
+pub mod eth_address_format;
 pub mod utils;
 
-pub use eth_address::EthAddressFormat;
+pub use eth_address_format::EthAddressFormat;
 use utils::bytes32_to_felts;
 
 // AGGLAYER NOTE SCRIPTS
