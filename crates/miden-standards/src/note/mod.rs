@@ -179,7 +179,7 @@ pub fn create_swap_note<R: FeltRng>(
 /// - `faucet_id`: The account ID of the network faucet that will mint the assets
 /// - `sender`: The account ID of the note creator (must be the faucet owner)
 /// - `mint_inputs`: The input configuration specifying private or public output mode
-/// - `aux`: Auxiliary data for the MINT note
+/// - `attachment`: The [`NoteAttachment`] of the MINT note
 /// - `rng`: Random number generator for creating the serial number
 ///
 /// # Errors
@@ -225,7 +225,7 @@ pub fn create_mint_note<R: FeltRng>(
 /// - `sender`: The account ID of the note creator
 /// - `faucet_id`: The account ID of the faucet that will burn the assets
 /// - `fungible_asset`: The fungible asset to be burned
-/// - `aux`: Auxiliary data for the note
+/// - `attachment`: The [`NoteAttachment`] of the BURN note
 /// - `rng`: Random number generator for creating the serial number
 ///
 /// # Errors

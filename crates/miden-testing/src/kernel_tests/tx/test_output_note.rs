@@ -643,7 +643,7 @@ async fn test_build_recipient_hash() -> anyhow::Result<()> {
 
             push.{PUBLIC_NOTE}
             push.{tag}
-            # => [tag, aux, note_type, execution_hint, RECIPIENT]
+            # => [tag, note_type, RECIPIENT]
 
             exec.output_note::create
             # => [note_idx]
