@@ -14,7 +14,7 @@ use crate::utils::serde::{
     DeserializationError,
     Serializable,
 };
-use crate::vm::Program;
+use crate::vm::{AdviceMap, Program};
 use crate::{PrettyPrint, Word};
 
 // NOTE SCRIPT
@@ -82,7 +82,7 @@ impl NoteScript {
     ///
     /// This allows adding advice map entries to an already-compiled note script,
     /// which is useful when the entries are determined after script compilation.
-    pub fn with_advice_map(self, advice_map: crate::vm::AdviceMap) -> Self {
+    pub fn with_advice_map(self, advice_map: AdviceMap) -> Self {
         if advice_map.is_empty() {
             return self;
         }
@@ -244,20 +244,23 @@ mod tests {
         let program = assembler.assemble_program("begin nop end").unwrap();
         let script = NoteScript::new(program);
 
-        // Initially empty advice map
         assert!(script.mast().advice_map().is_empty());
 
-        // Add an entry
+        // Empty advice map should be a no-op
+        let original_root = script.root();
+        let script = script.with_advice_map(AdviceMap::default());
+        assert_eq!(original_root, script.root());
+
+        // Non-empty advice map should add entries
         let key = Word::from([5u32, 6, 7, 8]);
         let value = vec![Felt::new(100)];
         let mut advice_map = AdviceMap::default();
         advice_map.insert(key, value.clone());
 
-        let script_with_advice = script.with_advice_map(advice_map);
+        let script = script.with_advice_map(advice_map);
 
-        // Verify the entry is present
-        let mast = script_with_advice.mast();
-        let stored = mast.advice_map().get(&key).expect("advice map entry should be present");
+        let mast = script.mast();
+        let stored = mast.advice_map().get(&key).expect("entry should be present");
         assert_eq!(stored.as_ref(), value.as_slice());
     }
 }
