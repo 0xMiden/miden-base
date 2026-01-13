@@ -13,7 +13,14 @@ use miden_processor::{
     ProcessState,
 };
 use miden_protocol::account::auth::PublicKeyCommitment;
-use miden_protocol::account::{AccountCode, AccountDelta, AccountId, PartialAccount};
+use miden_protocol::account::{
+    AccountCode,
+    AccountDelta,
+    AccountId,
+    PartialAccount,
+    StorageSlotId,
+    StorageSlotName,
+};
 use miden_protocol::assembly::debuginfo::Location;
 use miden_protocol::assembly::{SourceFile, SourceManagerSync, SourceSpan};
 use miden_protocol::asset::{AssetVaultKey, AssetWitness, FungibleAsset};
@@ -77,6 +84,9 @@ where
     /// This is required for re-executing the transaction, e.g. as part of transaction proving.
     accessed_foreign_account_code: Vec<AccountCode>,
 
+    /// Storage slot names for foreign accounts accessed during transaction execution.
+    foreign_account_slot_names: BTreeMap<StorageSlotId, StorageSlotName>,
+
     /// Contains generated signatures (as a message |-> signature map) required for transaction
     /// execution. Once a signature was created for a given message, it is inserted into this map.
     /// After transaction execution, these can be inserted into the advice inputs to re-execute the
@@ -127,6 +137,7 @@ where
             authenticator,
             ref_block,
             accessed_foreign_account_code: Vec::new(),
+            foreign_account_slot_names: BTreeMap::new(),
             generated_signatures: BTreeMap::new(),
             initial_fee_asset_balance,
             source_manager,
@@ -139,6 +150,11 @@ where
     /// Returns a reference to the `tx_progress` field of this transaction host.
     pub fn tx_progress(&self) -> &TransactionProgress {
         &self.tx_progress
+    }
+
+    /// Returns a reference to the foreign account slot names collected during execution.
+    pub fn foreign_account_slot_names(&self) -> &BTreeMap<StorageSlotId, StorageSlotName> {
+        &self.foreign_account_slot_names
     }
 
     // EVENT HANDLERS
@@ -162,6 +178,11 @@ where
 
         let mut tx_advice_inputs = TransactionAdviceInputs::default();
         tx_advice_inputs.add_foreign_accounts([&foreign_account_inputs]);
+
+        // Extract and store slot names for this foreign account and store.
+        foreign_account_inputs.storage().header().slots().for_each(|slot| {
+            self.foreign_account_slot_names.insert(slot.id(), slot.name().clone());
+        });
 
         self.base_host.load_foreign_account_code(foreign_account_inputs.code());
 
@@ -409,6 +430,7 @@ where
         Vec<AccountCode>,
         BTreeMap<Word, Vec<Felt>>,
         TransactionProgress,
+        BTreeMap<StorageSlotId, StorageSlotName>,
     ) {
         let (account_delta, input_notes, output_notes) = self.base_host.into_parts();
 
@@ -419,6 +441,7 @@ where
             self.accessed_foreign_account_code,
             self.generated_signatures,
             self.tx_progress,
+            self.foreign_account_slot_names,
         )
     }
 }
