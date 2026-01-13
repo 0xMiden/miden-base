@@ -27,7 +27,7 @@ const ERR_BASIC_FUNGIBLE_BURN_WRONG_NUMBER_OF_ASSETS="burn requires exactly 1 no
 #! Distributes freshly minted fungible assets to the provided recipient by creating a note.
 #!
 #! Inputs:  [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
-#! Outputs: [pad(16)]
+#! Outputs: [note_idx, pad(15)]
 #!
 #! Where:
 #! - amount is the amount to be minted and sent.
@@ -37,6 +37,7 @@ const ERR_BASIC_FUNGIBLE_BURN_WRONG_NUMBER_OF_ASSETS="burn requires exactly 1 no
 #! - execution_hint is the execution hint of the note that holds the asset.
 #! - RECIPIENT is the recipient of the asset, i.e.,
 #!   hash(hash(hash(serial_num, [0; 4]), script_root), input_commitment).
+#! - note_idx is the index of the created note.
 #!
 #! Panics if:
 #! - the transaction is being executed against an account that is not a fungible asset faucet.
@@ -45,7 +46,7 @@ const ERR_BASIC_FUNGIBLE_BURN_WRONG_NUMBER_OF_ASSETS="burn requires exactly 1 no
 #! Invocation: call
 pub proc distribute
     exec.faucets::distribute
-    # => [pad(16)]
+    # => [note_idx, pad(15)]
 end
 
 #! Burns the fungible asset from the active note.

@@ -40,13 +40,14 @@ end
 #! mints the asset and creates an output note with that asset for the recipient.
 #!
 #! Inputs:  [amount, tag, note_type, RECIPIENT, pad(9)]
-#! Outputs: [pad(16)]
+#! Outputs: [note_idx, pad(15)]
 #!
 #! Where:
 #! - amount is the amount to be minted and sent.
 #! - tag is the tag to be included in the note.
 #! - note_type is the type of the note that holds the asset.
 #! - RECIPIENT is the recipient of the asset.
+#! - note_idx is the index of the created note.
 #!
 #! Panics if:
 #! - the note sender is not the owner of this faucet.
@@ -61,7 +62,7 @@ pub proc distribute
     # => [amount, tag, note_type, RECIPIENT, pad(9)]
 
     exec.faucets::distribute
-    # => [pad(16)]
+    # => [note_idx, pad(15)]
 end
 
 #! Burns the fungible asset from the active note.

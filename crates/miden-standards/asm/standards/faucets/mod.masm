@@ -23,7 +23,7 @@ const METADATA_SLOT=word("miden::standards::fungible_faucets::metadata")
 #! Distributes freshly minted fungible assets to the provided recipient by creating a note.
 #!
 #! Inputs:  [amount, tag, note_type, RECIPIENT]
-#! Outputs: []
+#! Outputs: [note_idx]
 #!
 #! Where:
 #! - amount is the amount to be minted and sent.
@@ -31,6 +31,7 @@ const METADATA_SLOT=word("miden::standards::fungible_faucets::metadata")
 #! - note_type is the type of the note that holds the asset.
 #! - RECIPIENT is the recipient of the asset, i.e.,
 #!   hash(hash(hash(serial_num, [0; 4]), script_root), input_commitment).
+#! - note_idx is the index of the created note.
 #!
 #! Panics if:
 #! - the transaction is being executed against an account that is not a fungible asset faucet.
@@ -70,8 +71,11 @@ pub proc distribute
     # => [note_idx, ASSET]
 
     # load the ASSET and add it to the note
-    movdn.4 exec.output_note::add_asset
-    # => []
+    dup movdn.5 movdn.5
+    # => [ASSET, note_idx, note_idx]
+
+    exec.output_note::add_asset
+    # => [note_idx]
 end
 
 #! Burns the fungible asset from the active note.
