@@ -229,29 +229,30 @@ impl TransactionInputs {
         &self.tx_args
     }
 
+    // DATA EXTRACTORS
+    // --------------------------------------------------------------------------------------------
+
     /// Reads the storage map witness for the given account and map key.
     pub fn read_storage_map_witness(
         &self,
         map_root: Word,
         map_key: Word,
     ) -> Result<StorageMapWitness, TransactionInputError> {
-        // Hash the map key to get the SMT key.
-        let hashed_map_key = StorageMap::hash_key(map_key);
-        let leaf_index = StorageMap::hashed_map_key_to_leaf_index(hashed_map_key);
-        let smt_index = LeafIndex::new_max_depth(leaf_index.as_int());
+        // Convert map key into the index at which the key-value pair for this key is stored
+        let leaf_index = StorageMap::map_key_to_leaf_index(map_key);
 
         // Construct sparse Merkle path.
-        let merkle_path = self.advice_inputs.store.get_path(map_root, smt_index.into())?;
+        let merkle_path = self.advice_inputs.store.get_path(map_root, leaf_index.into())?;
         let sparse_path = SparseMerklePath::from_sized_iter(merkle_path.path)?;
 
         // Construct SMT leaf.
-        let merkle_node = self.advice_inputs.store.get_node(map_root, smt_index.into())?;
+        let merkle_node = self.advice_inputs.store.get_node(map_root, leaf_index.into())?;
         let smt_leaf_elements = self
             .advice_inputs
             .map
             .get(&merkle_node)
             .ok_or(TransactionInputError::MissingVaultRoot)?;
-        let smt_leaf = smt_leaf_from_elements(smt_leaf_elements, smt_index);
+        let smt_leaf = smt_leaf_from_elements(smt_leaf_elements, leaf_index);
 
         // Construct SMT proof and witness.
         let smt_proof = SmtProof::new(sparse_path, smt_leaf)?;
@@ -429,6 +430,9 @@ impl TransactionInputs {
         self.tx_args.extend_advice_inputs(self.advice_inputs.clone());
     }
 }
+
+// SERIALIZATION / DESERIALIZATION
+// ================================================================================================
 
 impl Serializable for TransactionInputs {
     fn write_into<W: miden_core::utils::ByteWriter>(&self, target: &mut W) {
