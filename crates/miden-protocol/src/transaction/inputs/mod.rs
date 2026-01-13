@@ -253,7 +253,7 @@ impl TransactionInputs {
             .map
             .get(&merkle_node)
             .ok_or(TransactionInputsExtractionError::MissingVaultRoot)?;
-        let smt_leaf = smt_leaf_from_elements(smt_leaf_elements, leaf_index);
+        let smt_leaf = smt_leaf_from_elements(smt_leaf_elements, leaf_index)?;
 
         // Construct SMT proof and witness.
         let smt_proof = SmtProof::new(sparse_path, smt_leaf)?;
@@ -282,7 +282,7 @@ impl TransactionInputs {
                 .map
                 .get(&merkle_node)
                 .ok_or(TransactionInputsExtractionError::MissingVaultRoot)?;
-            let smt_leaf = smt_leaf_from_elements(smt_leaf_elements, smt_index);
+            let smt_leaf = smt_leaf_from_elements(smt_leaf_elements, smt_index)?;
 
             // Construct SMT proof and witness.
             let smt_proof = SmtProof::new(sparse_path, smt_leaf)?;
@@ -469,20 +469,24 @@ impl Deserializable for TransactionInputs {
 // HELPER FUNCTIONS
 // ================================================================================================
 
-// TODO(sergerad): Move this fn to crypto SmtLeaf::try_from_elements. Panics will be replaced with
-// SmtLeafError variants when moved.
-pub fn smt_leaf_from_elements(elements: &[Felt], leaf_index: LeafIndex<SMT_DEPTH>) -> SmtLeaf {
+// TODO(sergerad): Move this fn to crypto SmtLeaf::try_from_elements.
+pub fn smt_leaf_from_elements(
+    elements: &[Felt],
+    leaf_index: LeafIndex<SMT_DEPTH>,
+) -> Result<SmtLeaf, TransactionInputsExtractionError> {
     use miden_crypto::merkle::smt::SmtLeaf;
 
     // Based on the miden-crypto SMT leaf serialization format.
 
     if elements.is_empty() {
-        return SmtLeaf::new_empty(leaf_index);
+        return Ok(SmtLeaf::new_empty(leaf_index));
     }
 
     // Elements should be organized into a contiguous array of K/V Words (4 Felts each).
     if !elements.len().is_multiple_of(8) {
-        panic!("invalid SMT leaf format: elements length must be divisible by 8");
+        return Err(TransactionInputsExtractionError::LeafConversionError(
+            "invalid SMT leaf format: elements length must be divisible by 8".into(),
+        ));
     }
 
     let num_entries = elements.len() / 8;
@@ -491,7 +495,7 @@ pub fn smt_leaf_from_elements(elements: &[Felt], leaf_index: LeafIndex<SMT_DEPTH
         // Single entry.
         let key = Word::new([elements[0], elements[1], elements[2], elements[3]]);
         let value = Word::new([elements[4], elements[5], elements[6], elements[7]]);
-        SmtLeaf::new_single(key, value)
+        Ok(SmtLeaf::new_single(key, value))
     } else {
         // Multiple entries.
         let mut entries = Vec::with_capacity(num_entries);
@@ -512,7 +516,8 @@ pub fn smt_leaf_from_elements(elements: &[Felt], leaf_index: LeafIndex<SMT_DEPTH
             ]);
             entries.push((key, value));
         }
-        SmtLeaf::new_multiple(entries).expect("failed to create multiple leaf")
+        let leaf = SmtLeaf::new_multiple(entries)?;
+        Ok(leaf)
     }
 }
 

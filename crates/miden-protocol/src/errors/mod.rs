@@ -8,7 +8,7 @@ use miden_assembly::diagnostics::reporting::PrintDiagnostic;
 use miden_core::mast::MastForestError;
 use miden_core::{EventId, Felt};
 use miden_crypto::merkle::mmr::MmrError;
-use miden_crypto::merkle::smt::SmtProofError;
+use miden_crypto::merkle::smt::{SmtLeafError, SmtProofError};
 use miden_crypto::utils::HexParseError;
 use miden_processor::DeserializationError;
 use thiserror::Error;
@@ -724,6 +724,10 @@ pub enum TransactionInputsExtractionError {
     AssetError(#[from] AssetError),
     #[error("failed to handle storage map data")]
     StorageMapError(#[from] StorageMapError),
+    #[error("failed to convert elements to leaf index: {0}")]
+    LeafConversionError(String),
+    #[error("failed to construct SMT leaf")]
+    SmtLeafError(#[from] SmtLeafError),
 }
 
 // TRANSACTION OUTPUT ERROR
