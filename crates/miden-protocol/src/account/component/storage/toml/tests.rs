@@ -55,6 +55,19 @@ fn from_toml_str_with_deeply_nested_tables_is_rejected() {
 }
 
 #[test]
+fn from_toml_str_excessive_key_nesting_rejected() {
+    let toml_str = r#"
+        ["demo::token_metadata.nested"]
+        value = "42"
+    "#;
+
+    assert_matches::assert_matches!(
+        InitStorageData::from_toml(toml_str),
+        Err(InitStorageDataError::ExcessiveNesting(_))
+    );
+}
+
+#[test]
 fn from_toml_rejects_non_string_atomics() {
     let toml_str = r#"
         "demo::foo" = 42
