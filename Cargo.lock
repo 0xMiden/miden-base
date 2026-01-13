@@ -1697,6 +1697,7 @@ version = "0.13.0"
 dependencies = [
  "anyhow",
  "assert_matches",
+ "bech32",
  "fs-err",
  "miden-assembly",
  "miden-core",
