@@ -239,15 +239,15 @@ fn note_script_that_creates_notes<'note>(
             "
           push.{ATTACHMENT}
           push.{attachment_scheme}
-          push.{attachment_content_type}
+          push.{attachment_kind}
           dup.6
-          # => [note_idx, attachment_content_type, attachment_scheme, ATTACHMENT, note_idx]
+          # => [note_idx, attachment_kind, attachment_scheme, ATTACHMENT, note_idx]
           exec.output_note::set_attachment
           # => [note_idx]
         ",
             ATTACHMENT = note.metadata().to_attachment_word(),
             attachment_scheme = note.metadata().attachment().attachment_scheme().as_u32(),
-            attachment_content_type = note.metadata().attachment().content().content_type().as_u8(),
+            attachment_kind = note.metadata().attachment().content().attachment_kind().as_u8(),
         ));
 
         let assets_str = prepare_assets(note.assets());

@@ -1025,9 +1025,9 @@ async fn test_set_none_attachment() -> anyhow::Result<()> {
 
             push.{ATTACHMENT}
             push.{attachment_scheme}
-            push.{attachment_content_type}
+            push.{attachment_kind}
             movup.6
-            # => [note_idx, attachment_content_type, attachment_scheme, ATTACHMENT]
+            # => [note_idx, attachment_kind, attachment_scheme, ATTACHMENT]
             exec.output_note::set_attachment
             # => []
 
@@ -1039,8 +1039,7 @@ async fn test_set_none_attachment() -> anyhow::Result<()> {
         note_type = output_note.metadata().note_type() as u8,
         tag = output_note.metadata().tag().as_u32(),
         ATTACHMENT = output_note.metadata().to_attachment_word(),
-        attachment_content_type =
-            output_note.metadata().attachment().content().content_type().as_u8(),
+        attachment_kind = output_note.metadata().attachment().content().attachment_kind().as_u8(),
         attachment_scheme = output_note.metadata().attachment().attachment_scheme().as_u32(),
     );
 

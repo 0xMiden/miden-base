@@ -1189,7 +1189,7 @@ end
 
 #! Sets the attachment of the note specified by the index.
 #!
-#! Inputs:  [note_idx, attachment_content_type, attachment_scheme, ATTACHMENT, pad(9)]
+#! Inputs:  [note_idx, attachment_kind, attachment_scheme, ATTACHMENT, pad(9)]
 #! Outputs: [pad(16)]
 #!
 #! Where:
@@ -1202,13 +1202,13 @@ end
 #! - the procedure is called when the active account is not the native one.
 #! - the note index points to a non-existent output note.
 #! - the attachment kind or scheme does not fit into a u32.
-#! - the attachment content type is an unknown variant.
+#! - the attachment kind is an unknown variant.
 #!
 #! Invocation: dynexec
 pub proc output_note_set_attachment
     # check that this procedure was executed against the native account
     exec.memory::assert_native_account
-    # => [note_idx, attachment_content_type, attachment_scheme, ATTACHMENT, pad(9)]
+    # => [note_idx, attachment_kind, attachment_scheme, ATTACHMENT, pad(9)]
 
     exec.output_note::set_attachment
     # => [pad(16)]

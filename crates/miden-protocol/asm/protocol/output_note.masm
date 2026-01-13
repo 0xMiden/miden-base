@@ -4,10 +4,10 @@ use miden::protocol::note
 # CONSTANTS
 # =================================================================================================
 
-# Constants for note attachment content types
-pub const ATTACHMENT_CONTENT_TYPE_NONE=0
-pub const ATTACHMENT_CONTENT_TYPE_WORD=1
-pub const ATTACHMENT_CONTENT_TYPE_ARRAY=2
+# Constants for note attachment kinds
+pub const ATTACHMENT_KIND_NONE=0
+pub const ATTACHMENT_KIND_WORD=1
+pub const ATTACHMENT_KIND_ARRAY=2
 
 # PROCEDURES
 # =================================================================================================
@@ -150,7 +150,7 @@ end
 
 #! Sets the attachment of the note specified by the index.
 #!
-#! Inputs:  [note_idx, attachment_content_type, attachment_scheme, ATTACHMENT]
+#! Inputs:  [note_idx, attachment_kind, attachment_scheme, ATTACHMENT]
 #! Outputs: []
 #!
 #! Where:
@@ -163,16 +163,16 @@ end
 #! - the procedure is called when the active account is not the native one.
 #! - the note index points to a non-existent output note.
 #! - the attachment kind or scheme does not fit into a u32.
-#! - the attachment content type is an unknown variant.
+#! - the attachment kind is an unknown variant.
 #!
 #! Invocation: exec
 pub proc set_attachment
     exec.kernel_proc_offsets::output_note_set_attachment_offset
-    # => [offset, note_idx, attachment_content_type, attachment_scheme, ATTACHMENT]
+    # => [offset, note_idx, attachment_kind, attachment_scheme, ATTACHMENT]
 
     # pad the stack before the syscall
     padw padw swapdw
-    # => [offset, note_idx, attachment_content_type, attachment_scheme, ATTACHMENT, pad(8)]
+    # => [offset, note_idx, attachment_kind, attachment_scheme, ATTACHMENT, pad(8)]
 
     syscall.exec_kernel_proc
     # => [pad(16)]
@@ -203,8 +203,8 @@ end
 #!
 #! Invocation: exec
 pub proc set_word_attachment
-    push.ATTACHMENT_CONTENT_TYPE_WORD swap
-    # => [note_idx, attachment_content_type, attachment_scheme, ATTACHMENT]
+    push.ATTACHMENT_KIND_WORD swap
+    # => [note_idx, attachment_kind, attachment_scheme, ATTACHMENT]
 
     exec.set_attachment
     # => []
@@ -230,8 +230,8 @@ end
 #!
 #! Invocation: exec
 pub proc set_array_attachment
-    push.ATTACHMENT_CONTENT_TYPE_ARRAY swap
-    # => [note_idx, attachment_content_type, attachment_scheme, ATTACHMENT]
+    push.ATTACHMENT_KIND_ARRAY swap
+    # => [note_idx, attachment_kind, attachment_scheme, ATTACHMENT]
 
     exec.set_attachment
     # => []

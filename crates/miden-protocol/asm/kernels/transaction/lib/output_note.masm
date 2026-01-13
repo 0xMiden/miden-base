@@ -14,10 +14,10 @@ const PUBLIC_NOTE=1     # 0b01
 const PRIVATE_NOTE=2    # 0b10
 const ENCRYPTED_NOTE=3  # 0b11
 
-# Constants for note attachment content types
-const ATTACHMENT_CONTENT_TYPE_NONE=0
-const ATTACHMENT_CONTENT_TYPE_WORD=1
-const ATTACHMENT_CONTENT_TYPE_ARRAY=2
+# Constants for note attachment kinds
+const ATTACHMENT_KIND_NONE=0
+const ATTACHMENT_KIND_WORD=1
+const ATTACHMENT_KIND_ARRAY=2
 
 # The default value of the felt at index 3 in the note metadata header when a new note is created.
 # All zeros sets the attachment kind to None and the user-defined attachment scheme to
@@ -38,7 +38,7 @@ const ERR_OUTPUT_NOTE_INDEX_OUT_OF_BOUNDS="requested output note index should be
 
 const ERR_OUTPUT_NOTE_INVALID_ATTACHMENT_SCHEMES="attachment scheme and attachment kind must fit into u32s"
 
-const ERR_OUTPUT_NOTE_UNKNOWN_ATTACHMENT_CONTENT_TYPE="attachment content type variant must be between 0 and 2"
+const ERR_OUTPUT_NOTE_UNKNOWN_ATTACHMENT_KIND="attachment kind variant must be between 0 and 2"
 
 const ERR_OUTPUT_NOTE_ATTACHMENT_NONE_MUST_HAVE_UNTYPED_ATTACHMENT_SCHEME="attachment scheme of content type none must be 0"
 
@@ -116,7 +116,7 @@ pub proc create
     # => [note_ptr, RECIPIENT, note_idx]
 
     # set the attachment value of a new note to an empty word
-    # note that the attachment content type is set to None by build_metadata_header
+    # note that the attachment kind is set to None by build_metadata_header
     padw dup.4
     # => [note_ptr, EMPTY_WORD, note_ptr, RECIPIENT, note_idx]
 
@@ -248,7 +248,7 @@ end
 
 #! Sets the attachment of the note specified by the index.
 #!
-#! Inputs:  [note_idx, attachment_content_type, attachment_scheme, ATTACHMENT]
+#! Inputs:  [note_idx, attachment_kind, attachment_scheme, ATTACHMENT]
 #! Outputs: []
 #!
 #! Where:
@@ -260,29 +260,29 @@ end
 #! Panics if:
 #! - the note index points to a non-existent output note.
 #! - the attachment kind or scheme does not fit into a u32.
-#! - the attachment content type is an unknown variant.
+#! - the attachment kind is an unknown variant.
 pub proc set_attachment
     dup exec.memory::get_num_output_notes lte assert.err=ERR_NOTE_INVALID_INDEX
-    # => [note_idx, attachment_content_type, attachment_scheme, ATTACHMENT]
+    # => [note_idx, attachment_kind, attachment_scheme, ATTACHMENT]
 
     exec.memory::get_output_note_ptr dup
-    # => [note_ptr, note_ptr, attachment_content_type, attachment_scheme, ATTACHMENT]
+    # => [note_ptr, note_ptr, attachment_kind, attachment_scheme, ATTACHMENT]
 
     dupw.1
-    # => [ATTACHMENT, note_ptr, note_ptr, attachment_content_type, attachment_scheme, ATTACHMENT]
+    # => [ATTACHMENT, note_ptr, note_ptr, attachment_kind, attachment_scheme, ATTACHMENT]
 
     dup.7 dup.7
-    # => [attachment_content_type, attachment_scheme, ATTACHMENT, note_ptr, note_ptr,
-    #     attachment_content_type, attachment_scheme, ATTACHMENT]
+    # => [attachment_kind, attachment_scheme, ATTACHMENT, note_ptr, note_ptr,
+    #     attachment_kind, attachment_scheme, ATTACHMENT]
 
     exec.validate_attachment
-    # => [note_ptr, note_ptr, attachment_content_type, attachment_scheme, ATTACHMENT]
+    # => [note_ptr, note_ptr, attachment_kind, attachment_scheme, ATTACHMENT]
 
     movdn.3 movdn.3
-    # => [attachment_content_type, attachment_scheme, note_ptr, note_ptr, ATTACHMENT]
+    # => [attachment_kind, attachment_scheme, note_ptr, note_ptr, ATTACHMENT]
 
     emit.NOTE_BEFORE_SET_ATTACHMENT_EVENT
-    # => [attachment_content_type, attachment_scheme, note_ptr, note_ptr, ATTACHMENT]
+    # => [attachment_kind, attachment_scheme, note_ptr, note_ptr, ATTACHMENT]
 
     exec.set_attachment_kind_scheme
     # => [note_ptr, ATTACHMENT]
@@ -360,7 +360,7 @@ end
 
 #! Validate the ATTACHMENT against the content type.
 #!
-#! Inputs:  [attachment_content_type, attachment_scheme, ATTACHMENT]
+#! Inputs:  [attachment_kind, attachment_scheme, ATTACHMENT]
 #! Outputs: []
 #!
 #! Where:
@@ -370,18 +370,18 @@ end
 #!
 #! Panics if:
 #! - the attachment kind or scheme does not fit into a u32.
-#! - the attachment content type is an unknown variant.
+#! - the attachment kind is an unknown variant.
 #! - the content type is None and the ATTACHMENT is not an empty word.
 proc validate_attachment
     u32assert2.err=ERR_OUTPUT_NOTE_INVALID_ATTACHMENT_SCHEMES
-    # => [attachment_content_type, attachment_scheme, ATTACHMENT]
+    # => [attachment_kind, attachment_scheme, ATTACHMENT]
 
-    # assert that the attachment content type is valid
-    dup u32lte.ATTACHMENT_CONTENT_TYPE_ARRAY
-    assert.err=ERR_OUTPUT_NOTE_UNKNOWN_ATTACHMENT_CONTENT_TYPE
-    # => [attachment_content_type, attachment_scheme, ATTACHMENT]
+    # assert that the attachment kind is valid
+    dup u32lte.ATTACHMENT_KIND_ARRAY
+    assert.err=ERR_OUTPUT_NOTE_UNKNOWN_ATTACHMENT_KIND
+    # => [attachment_kind, attachment_scheme, ATTACHMENT]
 
-    eq.ATTACHMENT_CONTENT_TYPE_NONE
+    eq.ATTACHMENT_KIND_NONE
     # => [is_attachment_none, attachment_scheme, ATTACHMENT]
 
     if.true
@@ -402,12 +402,12 @@ end
 #!
 #! WARNING: The attachment scheme and kind must be valid.
 #!
-#! Inputs:  [attachment_content_type, attachment_scheme, note_ptr]
+#! Inputs:  [attachment_kind, attachment_scheme, note_ptr]
 #! Outputs: []
 #!
 #! Where:
 #! - attachment_kind is the kind of the attachment content.
-#! - attachment_scheme is the user-defined scheme of the attachment.
+#! - attachment_scheme is the user-defined type of the attachment.
 #! - note_ptr is the memory address at which the output note data begins.
 proc set_attachment_kind_scheme
     exec.merge_attachment_kind_and_scheme
@@ -422,11 +422,11 @@ end
 
 #! Merges the attachment kind and scheme into a single felt with the following layout:
 #!
-#! [30 zero bits | attachment_content_type (2 bits) | attachment_scheme (32 bits)]
+#! [30 zero bits | attachment_kind (2 bits) | attachment_scheme (32 bits)]
 #!
 #! WARNING: The attachment scheme and kind must be valid.
 #!
-#! Inputs:  [attachment_content_type, attachment_scheme]
+#! Inputs:  [attachment_kind, attachment_scheme]
 #! Outputs: [attachment_kind_scheme]
 #!
 #! Where:

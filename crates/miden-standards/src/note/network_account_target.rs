@@ -2,7 +2,7 @@ use miden_protocol::account::AccountId;
 use miden_protocol::note::{
     NoteAttachment,
     NoteAttachmentContent,
-    NoteAttachmentContentType,
+    NoteAttachmentKind,
     NoteAttachmentScheme,
     NoteExecutionHint,
 };
@@ -108,8 +108,8 @@ impl TryFrom<NoteAttachment> for NetworkAccountTarget {
 
                 NetworkAccountTarget::new(target_id, exec_hint)
             },
-            _ => Err(NetworkAccountTargetError::AttachmentContentTypeMismatch(
-                attachment.content().content_type(),
+            _ => Err(NetworkAccountTargetError::AttachmentKindMismatch(
+                attachment.content().attachment_kind(),
             )),
         }
     }
@@ -128,10 +128,10 @@ pub enum NetworkAccountTargetError {
     )]
     AttachmentSchemeMismatch(NoteAttachmentScheme),
     #[error(
-        "attachment content type {0} did not match expected type {expected}",
-        expected = NoteAttachmentContentType::Word
+        "attachment kind {0} did not match expected type {expected}",
+        expected = NoteAttachmentKind::Word
     )]
-    AttachmentContentTypeMismatch(NoteAttachmentContentType),
+    AttachmentKindMismatch(NoteAttachmentKind),
     #[error("failed to decode target account ID")]
     DecodeTargetId(#[source] AccountIdError),
     #[error("failed to decode execution hint")]

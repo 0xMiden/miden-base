@@ -50,8 +50,8 @@ impl NoteAttachment {
         attachment_scheme: NoteAttachmentScheme,
         content: NoteAttachmentContent,
     ) -> Result<Self, NoteError> {
-        if content.content_type().is_none() && !attachment_scheme.is_untyped() {
-            return Err(NoteError::NoneAttachmentMustHaveUntypedAttachmentType);
+        if content.attachment_kind().is_none() && !attachment_scheme.is_unknown() {
+            return Err(NoteError::NoneAttachmentMustHaveUnknownAttachmentScheme);
         }
 
         Ok(Self { attachment_scheme, content })
@@ -98,9 +98,9 @@ impl NoteAttachment {
         self.attachment_scheme
     }
 
-    /// Returns the attachment content type.
-    pub fn content_type(&self) -> NoteAttachmentContentType {
-        self.content.content_type()
+    /// Returns the attachment kind.
+    pub fn attachment_kind(&self) -> NoteAttachmentKind {
+        self.content.attachment_kind()
     }
 
     /// Returns a reference to the attachment content.
@@ -177,12 +177,12 @@ impl NoteAttachmentContent {
     // ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns the [`NoteAttachmentContentType`].
-    pub fn content_type(&self) -> NoteAttachmentContentType {
+    /// Returns the [`NoteAttachmentKind`].
+    pub fn attachment_kind(&self) -> NoteAttachmentKind {
         match self {
-            NoteAttachmentContent::None => NoteAttachmentContentType::None,
-            NoteAttachmentContent::Word(_) => NoteAttachmentContentType::Word,
-            NoteAttachmentContent::Array(_) => NoteAttachmentContentType::Array,
+            NoteAttachmentContent::None => NoteAttachmentKind::None,
+            NoteAttachmentContent::Word(_) => NoteAttachmentKind::Word,
+            NoteAttachmentContent::Array(_) => NoteAttachmentKind::Array,
         }
     }
 
@@ -202,7 +202,7 @@ impl NoteAttachmentContent {
 
 impl Serializable for NoteAttachmentContent {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        self.content_type().write_into(target);
+        self.attachment_kind().write_into(target);
 
         match self {
             NoteAttachmentContent::None => (),
@@ -219,15 +219,15 @@ impl Serializable for NoteAttachmentContent {
 
 impl Deserializable for NoteAttachmentContent {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        let content_type = NoteAttachmentContentType::read_from(source)?;
+        let attachment_kind = NoteAttachmentKind::read_from(source)?;
 
-        match content_type {
-            NoteAttachmentContentType::None => Ok(NoteAttachmentContent::None),
-            NoteAttachmentContentType::Word => {
+        match attachment_kind {
+            NoteAttachmentKind::None => Ok(NoteAttachmentContent::None),
+            NoteAttachmentKind::Word => {
                 let word = Word::read_from(source)?;
                 Ok(NoteAttachmentContent::Word(word))
             },
-            NoteAttachmentContentType::Array => {
+            NoteAttachmentKind::Array => {
                 let num_elements = u16::read_from(source)?;
                 let elements = source.read_many(num_elements as usize)?;
                 Self::new_array(elements)
@@ -394,7 +394,7 @@ impl Deserializable for NoteAttachmentScheme {
     }
 }
 
-// NOTE ATTACHMENT CONTENT TYPE
+// NOTE ATTACHMENT KIND
 // ================================================================================================
 
 /// The type of [`NoteAttachmentContent`].
@@ -402,7 +402,7 @@ impl Deserializable for NoteAttachmentScheme {
 /// See its docs for more details on each type.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 #[repr(u8)]
-pub enum NoteAttachmentContentType {
+pub enum NoteAttachmentKind {
     /// Signals the absence of a note attachment.
     #[default]
     None = Self::NONE,
@@ -414,7 +414,7 @@ pub enum NoteAttachmentContentType {
     Array = Self::ARRAY,
 }
 
-impl NoteAttachmentContentType {
+impl NoteAttachmentKind {
     // CONSTANTS
     // --------------------------------------------------------------------------------------------
 
@@ -446,7 +446,7 @@ impl NoteAttachmentContentType {
     }
 }
 
-impl TryFrom<u8> for NoteAttachmentContentType {
+impl TryFrom<u8> for NoteAttachmentKind {
     type Error = NoteError;
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
@@ -454,33 +454,33 @@ impl TryFrom<u8> for NoteAttachmentContentType {
             Self::NONE => Ok(Self::None),
             Self::WORD => Ok(Self::Word),
             Self::ARRAY => Ok(Self::Array),
-            _ => Err(NoteError::UnknownNoteAttachmentContentType(value)),
+            _ => Err(NoteError::UnknownNoteAttachmentKind(value)),
         }
     }
 }
 
-impl core::fmt::Display for NoteAttachmentContentType {
+impl core::fmt::Display for NoteAttachmentKind {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let output = match self {
-            NoteAttachmentContentType::None => "None",
-            NoteAttachmentContentType::Word => "Word",
-            NoteAttachmentContentType::Array => "Array",
+            NoteAttachmentKind::None => "None",
+            NoteAttachmentKind::Word => "Word",
+            NoteAttachmentKind::Array => "Array",
         };
 
         f.write_str(output)
     }
 }
 
-impl Serializable for NoteAttachmentContentType {
+impl Serializable for NoteAttachmentKind {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         self.as_u8().write_into(target);
     }
 }
 
-impl Deserializable for NoteAttachmentContentType {
+impl Deserializable for NoteAttachmentKind {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        let content_type = u8::read_from(source)?;
-        Self::try_from(content_type)
+        let attachment_kind = u8::read_from(source)?;
+        Self::try_from(attachment_kind)
             .map_err(|err| DeserializationError::InvalidValue(err.to_string()))
     }
 }
@@ -521,9 +521,9 @@ mod tests {
     }
 
     #[test]
-    fn note_attachment_content_type_fails_on_unknown_variant() -> anyhow::Result<()> {
-        let err = NoteAttachmentContentType::try_from(3u8).unwrap_err();
-        assert_matches!(err, NoteError::UnknownNoteAttachmentContentType(3u8));
+    fn note_attachment_kind_fails_on_unknown_variant() -> anyhow::Result<()> {
+        let err = NoteAttachmentKind::try_from(3u8).unwrap_err();
+        assert_matches!(err, NoteError::UnknownNoteAttachmentKind(3u8));
         Ok(())
     }
 }

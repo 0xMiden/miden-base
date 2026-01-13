@@ -25,7 +25,7 @@ pub use attachment::{
     NoteAttachment,
     NoteAttachmentArray,
     NoteAttachmentContent,
-    NoteAttachmentContentType,
+    NoteAttachmentKind,
     NoteAttachmentScheme,
 };
 
