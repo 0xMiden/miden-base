@@ -1,6 +1,7 @@
-# TODO: docs
+# This module defines the metadata storage_schema component for accounts. It exposes the storage
+# slot at which an account stores a commitment to its storage schema, and provides a helper
+# procedure to load that commitment from the active account's storage.
 
-use miden::standards::auth::rpo_falcon512
 use miden::protocol::active_account
 
 # CONSTANTS
@@ -13,9 +14,6 @@ pub proc get_schema_commitment
     dropw
     # => [pad(16)]
 
-    # Fetch commitment from storage.
-    # ---------------------------------------------------------------------------------------------
-
     push.SCHEMA_COMMITMENT_SLOT[0..2] exec.active_account::get_item
-    # => [PUB_KEY, pad(16)]
+    # => [SCHEMA_COMMITMENT, pad(16)]
 end

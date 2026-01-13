@@ -49,16 +49,16 @@ impl AccountSchemaCommitment {
 }
 
 impl From<AccountSchemaCommitment> for AccountComponent {
-    fn from(metadata: AccountSchemaCommitment) -> Self {
+    fn from(schema_commitment: AccountSchemaCommitment) -> Self {
         AccountComponent::new(
             storage_schema_library(),
             vec![StorageSlot::with_value(
                 AccountSchemaCommitment::schema_commitment_slot().clone(),
-                metadata.schema_commitment,
+                schema_commitment.schema_commitment,
             )],
         )
         .expect(
-            "StorageSchemaCommitment component should satisfy the requirements of a valid account component",
+            "AccountSchemaCommitment component should satisfy the requirements of a valid account component",
         )
         .with_supports_all_types()
     }
@@ -70,7 +70,6 @@ impl From<AccountSchemaCommitment> for AccountComponent {
 /// If the passed list of schemas is empty, [`Word::empty()`] is returned.
 fn compute_schema_commitment(schemas: &[StorageSchema]) -> Word {
     if schemas.is_empty() {
-        // TODO: Should this be an error instead?
         return Word::empty();
     }
 
@@ -88,6 +87,7 @@ fn compute_schema_commitment(schemas: &[StorageSchema]) -> Word {
 
 #[cfg(test)]
 mod tests {
+    use miden_protocol::Word;
     use miden_protocol::account::AccountBuilder;
     use miden_protocol::account::component::AccountComponentMetadata;
 
@@ -146,5 +146,12 @@ mod tests {
         let commitment_b = account_b.storage().get_item(slot_name).unwrap();
 
         assert_eq!(commitment_a, commitment_b);
+    }
+
+    #[test]
+    fn storage_schema_commitment_is_empty_for_no_schemas() {
+        let component = AccountSchemaCommitment::new(&[]);
+
+        assert_eq!(component.schema_commitment, Word::empty());
     }
 }
