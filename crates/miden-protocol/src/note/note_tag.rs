@@ -154,7 +154,7 @@ impl NoteTag {
     ///
     /// The tag is constructed as follows:
     ///
-    /// - The two most significant bits are set to `0b11` to indicate a [LOCAL_ANY] tag.
+    /// - The two most significant bits are set to `0b11` to indicate a local execution tag.
     /// - The next `tag_len` bits are set to the most significant bits of the account ID prefix.
     /// - The remaining bits are set to zero.
     ///
@@ -188,7 +188,7 @@ impl NoteTag {
     ///
     /// The tag is constructed as follows:
     ///
-    /// - The two most significant bits are set to `0b00` to indicate a [NETWORK_ACCOUNT] tag.
+    /// - The two most significant bits are set to `0b00` to indicate a network account tag.
     /// - The remaining bits are set to the 30 most significant bits of the account ID.
     pub fn from_network_account_id(account_id: AccountId) -> Self {
         let prefix_id: u64 = account_id.prefix().into();
