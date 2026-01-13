@@ -125,7 +125,7 @@ impl AccountComponentMetadata {
         }
     }
 
-    /// Returns the init-time values's requirements for this schema.
+    /// Returns the init-time values requirements for this schema.
     ///
     /// These values are used for initializing storage slot values or storage map entries. For a
     /// full example, refer to the docs for [AccountComponentMetadata].
