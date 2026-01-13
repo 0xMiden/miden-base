@@ -22,55 +22,67 @@ const METADATA_SLOT=word("miden::standards::fungible_faucets::metadata")
 
 #! Distributes freshly minted fungible assets to the provided recipient by creating a note.
 #!
-#! Inputs:  [amount, tag, note_type, RECIPIENT]
+#! Inputs:  [amount, tag, note_type, RECIPIENT, attachment_content_type, attachment_type, ATTACHMENT]
 #! Outputs: []
 #!
 #! Where:
 #! - amount is the amount to be minted and sent.
 #! - tag is the tag to be included in the note.
 #! - note_type is the type of the note that holds the asset.
+#! - attachment_content_type is the content type of the attachment.
+#! - attachment_type is the user-defined type of the attachment.
+#! - ATTACHMENT is the attachment to be set.
 #! - RECIPIENT is the recipient of the asset, i.e.,
 #!   hash(hash(hash(serial_num, [0; 4]), script_root), input_commitment).
 #!
 #! Panics if:
 #! - the transaction is being executed against an account that is not a fungible asset faucet.
 #! - the total issuance after minting is greater than the maximum allowed supply.
+#! - any of the attachment types does not fit into a u32.
+#! - the attachment content type is an unknown variant.
 #!
 #! Invocation: exec
 pub proc distribute
     # get max supply of this faucet. We assume it is stored at pos 3 of slot 0
     push.METADATA_SLOT[0..2] exec.active_account::get_item drop drop drop
-    # => [max_supply, amount, tag, note_type, RECIPIENT]
+    # => [max_supply, amount, tag, note_type, ...]
 
     # get total issuance of this faucet so far and add amount to be minted
     exec.faucet::get_total_issuance
-    # => [total_issuance, max_supply, amount, tag, note_type, RECIPIENT]
+    # => [total_issuance, max_supply, amount, tag, note_type, ...]
 
     # compute maximum amount that can be minted, max_mint_amount = max_supply - total_issuance
     sub
-    # => [max_supply - total_issuance, amount, tag, note_type, RECIPIENT]
+    # => [max_supply - total_issuance, amount, tag, note_type, ...]
 
     # check that amount =< max_supply - total_issuance, fails if otherwise
     dup.1 gte assert.err=ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED
-    # => [amount, tag, note_type, RECIPIENT]
+    # => [amount, tag, note_type, ...]
 
     # creating the asset
     exec.faucet::create_fungible_asset
-    # => [ASSET, tag, note_type, RECIPIENT]
+    # => [ASSET, tag, note_type, ...]
 
     # mint the asset; this is needed to satisfy asset preservation logic.
     exec.faucet::mint
-    # => [ASSET, tag, note_type, RECIPIENT]
+    # => [ASSET, tag, note_type, RECIPIENT, attachment_content_type, attachment_type, ATTACHMENT]
 
     movdn.9 movdn.9 movdn.9 movdn.9
-    # => [tag, note_type, RECIPIENT, ASSET]
+    # => [tag, note_type, RECIPIENT, ASSET, attachment_content_type, attachment_type, ATTACHMENT]
 
     # create a note
-    exec.output_note::create
-    # => [note_idx, ASSET]
+    exec.output_note::create dup
+    # => [note_idx, note_idx, ASSET, attachment_content_type, attachment_type, ATTACHMENT]
 
-    # load the ASSET and add it to the note
-    movdn.4 exec.output_note::add_asset
+    movdn.5 movdn.5
+    # => [ASSET, note_idx, note_idx, attachment_content_type, attachment_type, ATTACHMENT]
+
+    # add the ASSET to the note
+    exec.output_note::add_asset
+    # => [note_idx, attachment_content_type, attachment_type, ATTACHMENT]
+
+    # set the attachment on the note
+    exec.output_note::set_attachment
     # => []
 end
 

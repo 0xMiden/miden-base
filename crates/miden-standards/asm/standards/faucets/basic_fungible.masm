@@ -10,37 +10,29 @@
 
 use miden::standards::faucets
 
-# CONSTANTS
-# =================================================================================================
-
-const PRIVATE_NOTE=2
-
-# ERRORS
-# =================================================================================================
-const ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED="distribute would cause the maximum supply to be exceeded"
-
-const ERR_BASIC_FUNGIBLE_BURN_WRONG_NUMBER_OF_ASSETS="burn requires exactly 1 note asset"
-
-# CONSTANTS
+# PROCEDURES
 # =================================================================================================
 
 #! Distributes freshly minted fungible assets to the provided recipient by creating a note.
 #!
-#! Inputs:  [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
+#! Inputs:  [amount, tag, note_type, RECIPIENT, attachment_content_type, attachment_type, ATTACHMENT, pad(3)]
 #! Outputs: [pad(16)]
 #!
 #! Where:
 #! - amount is the amount to be minted and sent.
 #! - tag is the tag to be included in the note.
-#! - aux is the auxiliary data to be included in the note.
 #! - note_type is the type of the note that holds the asset.
-#! - execution_hint is the execution hint of the note that holds the asset.
+#! - attachment_content_type is the content type of the attachment.
+#! - attachment_type is the user-defined type of the attachment.
+#! - ATTACHMENT is the attachment to be set.
 #! - RECIPIENT is the recipient of the asset, i.e.,
 #!   hash(hash(hash(serial_num, [0; 4]), script_root), input_commitment).
 #!
 #! Panics if:
 #! - the transaction is being executed against an account that is not a fungible asset faucet.
 #! - the total issuance after minting is greater than the maximum allowed supply.
+#! - any of the attachment types does not fit into a u32.
+#! - the attachment content type is an unknown variant.
 #!
 #! Invocation: call
 pub proc distribute
@@ -53,7 +45,7 @@ end
 #! This procedure retrieves the asset from the active note and burns it. The note must contain
 #! exactly one asset, which must be a fungible asset issued by this faucet.
 #!
-#! This is a re-export of basic_fungible::burn.
+#! This is a re-export of faucets::burn.
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [pad(16)]
