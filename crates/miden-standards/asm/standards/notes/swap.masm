@@ -47,7 +47,7 @@ const ERR_SWAP_WRONG_NUMBER_OF_ASSETS="SWAP script requires exactly 1 note asset
 #! - account vault does not contain the requested asset.
 #! - adding a fungible asset would result in amount overflow, i.e., the total amount would be
 #!   greater than 2^63.
-#! - any of the attachment types does not fit into a u32.
+#! - the attachment kind or scheme does not fit into a u32.
 #! - the attachment content type is an unknown variant.
 pub proc main
     # dropping note args

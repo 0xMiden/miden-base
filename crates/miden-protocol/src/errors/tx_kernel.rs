@@ -169,8 +169,8 @@ pub const ERR_OUTPUT_NOTE_ATTACHMENT_NONE_MUST_BE_EMPTY_WORD: MasmError = MasmEr
 pub const ERR_OUTPUT_NOTE_ATTACHMENT_NONE_MUST_HAVE_UNTYPED_ATTACHMENT_TYPE: MasmError = MasmError::from_static_str("attachment type of content type none must be 0");
 /// Error Message: "requested output note index should be less than the total number of created output notes"
 pub const ERR_OUTPUT_NOTE_INDEX_OUT_OF_BOUNDS: MasmError = MasmError::from_static_str("requested output note index should be less than the total number of created output notes");
-/// Error Message: "attachment types must fit into u32s"
-pub const ERR_OUTPUT_NOTE_INVALID_ATTACHMENT_TYPES: MasmError = MasmError::from_static_str("attachment types must fit into u32s");
+/// Error Message: "attachment scheme and attachment kind must fit into u32s"
+pub const ERR_OUTPUT_NOTE_INVALID_ATTACHMENT_SCHEMES: MasmError = MasmError::from_static_str("attachment scheme and attachment kind must fit into u32s");
 /// Error Message: "attachment content type variant must be between 0 and 2"
 pub const ERR_OUTPUT_NOTE_UNKNOWN_ATTACHMENT_CONTENT_TYPE: MasmError = MasmError::from_static_str("attachment content type variant must be between 0 and 2");
 

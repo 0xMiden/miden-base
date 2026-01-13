@@ -213,7 +213,7 @@ impl From<NoteMetadataHeader> for Word {
         metadata[1] = header.sender.prefix().as_felt();
         metadata[2] = Felt::from(header.tag);
         metadata[3] =
-            merge_attachment_scheme_info(header.attachment_content_type, header.attachment_scheme);
+            merge_attachment_kind_scheme(header.attachment_content_type, header.attachment_scheme);
 
         metadata
     }
@@ -229,7 +229,7 @@ impl TryFrom<Word> for NoteMetadataHeader {
         let tag = u32::try_from(word[2]).map(NoteTag::new).map_err(|_| {
             NoteError::other("failed to convert note tag from metadata header to u32")
         })?;
-        let (attachment_content_type, attachment_scheme) = unmerge_attachment_scheme_info(word[3])?;
+        let (attachment_content_type, attachment_scheme) = unmerge_attachment_kind_scheme(word[3])?;
 
         let sender = AccountId::try_from([sender_prefix, sender_suffix]).map_err(|source| {
             NoteError::other_with_source("failed to decode account ID from metadata header", source)
@@ -297,7 +297,7 @@ fn unmerge_sender_suffix_and_note_type(element: Felt) -> Result<(Felt, NoteType)
 /// ```text
 /// [30 zero bits | attachment_content_type (2 bits) | attachment_scheme (32 bits)]
 /// ```
-fn merge_attachment_scheme_info(
+fn merge_attachment_kind_scheme(
     attachment_content_type: NoteAttachmentContentType,
     attachment_scheme: NoteAttachmentScheme,
 ) -> Felt {

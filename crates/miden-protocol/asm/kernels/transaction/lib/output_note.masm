@@ -36,7 +36,7 @@ const ERR_NOTE_INVALID_TYPE="invalid note type"
 
 const ERR_OUTPUT_NOTE_INDEX_OUT_OF_BOUNDS="requested output note index should be less than the total number of created output notes"
 
-const ERR_OUTPUT_NOTE_INVALID_ATTACHMENT_SCHEMES="attachment types must fit into u32s"
+const ERR_OUTPUT_NOTE_INVALID_ATTACHMENT_SCHEMES="attachment scheme and attachment kind must fit into u32s"
 
 const ERR_OUTPUT_NOTE_UNKNOWN_ATTACHMENT_CONTENT_TYPE="attachment content type variant must be between 0 and 2"
 
@@ -259,7 +259,7 @@ end
 #!
 #! Panics if:
 #! - the note index points to a non-existent output note.
-#! - any of the attachment types does not fit into a u32.
+#! - the attachment kind or scheme does not fit into a u32.
 #! - the attachment content type is an unknown variant.
 pub proc set_attachment
     dup exec.memory::get_num_output_notes lte assert.err=ERR_NOTE_INVALID_INDEX
@@ -284,7 +284,7 @@ pub proc set_attachment
     emit.NOTE_BEFORE_SET_ATTACHMENT_EVENT
     # => [attachment_content_type, attachment_scheme, note_ptr, note_ptr, ATTACHMENT]
 
-    exec.set_attachment_scheme_info
+    exec.set_attachment_kind_scheme
     # => [note_ptr, ATTACHMENT]
 
     exec.memory::set_output_note_attachment
@@ -354,7 +354,7 @@ pub proc build_metadata_header
 
     movup.2
     push.ATTACHMENT_DEFAULT_TYPE_INFO
-    # => [attachment_scheme_info, tag, sender_id_prefix, sender_id_suffix_and_note_type]
+    # => [attachment_kind_scheme, tag, sender_id_prefix, sender_id_suffix_and_note_type]
     # => [NOTE_METADATA_HEADER]
 end
 
@@ -369,7 +369,7 @@ end
 #! - ATTACHMENT is the attachment to validate.
 #!
 #! Panics if:
-#! - any of the attachment types does not fit into a u32.
+#! - the attachment kind or scheme does not fit into a u32.
 #! - the attachment content type is an unknown variant.
 #! - the content type is None and the ATTACHMENT is not an empty word.
 proc validate_attachment
@@ -398,9 +398,9 @@ proc validate_attachment
     # => []
 end
 
-#! Sets an output note's attachment type info in the metadata header.
+#! Sets an output note's attachment kind and scheme in the note metadata header.
 #!
-#! WARNING: The attachment types must be valid.
+#! WARNING: The attachment scheme and kind must be valid.
 #!
 #! Inputs:  [attachment_content_type, attachment_scheme, note_ptr]
 #! Outputs: []
@@ -409,25 +409,25 @@ end
 #! - attachment_kind is the kind of the attachment content.
 #! - attachment_scheme is the user-defined scheme of the attachment.
 #! - note_ptr is the memory address at which the output note data begins.
-proc set_attachment_scheme_info
-    exec.merge_attachment_scheme_info
-    # => [attachment_scheme_info, note_ptr]
+proc set_attachment_kind_scheme
+    exec.merge_attachment_kind_and_scheme
+    # => [attachment_kind_scheme, note_ptr]
 
     swap
-    # => [note_ptr, attachment_scheme_info]
+    # => [note_ptr, attachment_kind_scheme]
 
-    exec.memory::set_output_note_attachment_scheme_info
+    exec.memory::set_output_note_attachment_kind_scheme
     # => []
 end
 
-#! Merges the attachment types into a single felt with the following layout:
+#! Merges the attachment kind and scheme into a single felt with the following layout:
 #!
 #! [30 zero bits | attachment_content_type (2 bits) | attachment_scheme (32 bits)]
 #!
-#! WARNING: The attachment types must be valid.
+#! WARNING: The attachment scheme and kind must be valid.
 #!
 #! Inputs:  [attachment_content_type, attachment_scheme]
-#! Outputs: [attachment_scheme_info]
+#! Outputs: [attachment_kind_scheme]
 #!
 #! Where:
 #! - attachment_kind is the kind of the attachment content.
@@ -438,7 +438,7 @@ proc merge_attachment_kind_and_scheme
     # and set the lower bits to the attachment_scheme, which is done by adding the values together
     mul.0x100000000
     add
-    # => [attachment_scheme_info]
+    # => [attachment_kind_scheme]
 end
 
 #! Increments the number of output notes by one. Returns the index of the next note to be created.
