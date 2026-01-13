@@ -103,10 +103,6 @@ end
 #! Invocation: call
 pub proc get_owner
     exec.owner
-    # => [owner_prefix, owner_suffix]
-    
-    # ------ Add pad(14) ------
-    padw padw padw push.0.0
     # => [owner_prefix, owner_suffix, pad(14)]
 end
 
@@ -127,8 +123,6 @@ end
 pub proc transfer_ownership
     # Check that the caller is the owner
     exec.verify_owner
-    # => [new_owner_prefix, new_owner_suffix, pad(14)]
-
     # => [new_owner_prefix, new_owner_suffix, pad(14)]
 
     push.0 movdn.2 push.0 movdn.2
@@ -169,7 +163,7 @@ pub proc renounce_ownership
     exec.verify_owner
     # => [pad(16)]
     
-    # ---- Write zero AccountId to storage ----
+    # ---- Push ZERO_ADDRESS to storage ----
     push.0.0.0.0
     # => [0, 0, 0, 0, pad(16)]
     
