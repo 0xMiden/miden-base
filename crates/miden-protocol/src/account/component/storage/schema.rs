@@ -146,10 +146,10 @@ impl StorageSlotSchema {
         slot_name: &StorageSlotName,
         requirements: &mut BTreeMap<StorageValueName, SchemaRequirement>,
     ) -> Result<(), AccountComponentTemplateError> {
-        let slot_prefix = StorageValueName::from_slot_name(slot_name);
+        let slot_name = StorageValueName::from_slot_name(slot_name);
         match self {
             StorageSlotSchema::Value(slot) => {
-                slot.collect_init_value_requirements(slot_prefix, requirements)
+                slot.collect_init_value_requirements(slot_name, requirements)
             },
             StorageSlotSchema::Map(_) => Ok(()),
         }
@@ -267,7 +267,7 @@ impl WordSchema {
 
     fn collect_init_value_requirements(
         &self,
-        slot_prefix: StorageValueName,
+        value_name: StorageValueName,
         description: Option<String>,
         requirements: &mut BTreeMap<StorageValueName, SchemaRequirement>,
     ) -> Result<(), AccountComponentTemplateError> {
@@ -283,7 +283,7 @@ impl WordSchema {
 
                 if requirements
                     .insert(
-                        slot_prefix.clone(),
+                        value_name.clone(),
                         SchemaRequirement {
                             description,
                             r#type: r#type.clone(),
@@ -292,14 +292,14 @@ impl WordSchema {
                     )
                     .is_some()
                 {
-                    return Err(AccountComponentTemplateError::DuplicateInitValueName(slot_prefix));
+                    return Err(AccountComponentTemplateError::DuplicateInitValueName(value_name));
                 }
 
                 Ok(())
             },
             WordSchema::Composite { value } => {
                 for felt in value.iter() {
-                    felt.collect_init_value_requirements(slot_prefix.clone(), requirements)?;
+                    felt.collect_init_value_requirements(value_name.clone(), requirements)?;
                 }
                 Ok(())
             },
@@ -735,11 +735,11 @@ impl ValueSlotSchema {
 
     fn collect_init_value_requirements(
         &self,
-        slot_prefix: StorageValueName,
+        value_name: StorageValueName,
         requirements: &mut BTreeMap<StorageValueName, SchemaRequirement>,
     ) -> Result<(), AccountComponentTemplateError> {
         self.word.collect_init_value_requirements(
-            slot_prefix,
+            value_name,
             self.description.clone(),
             requirements,
         )
@@ -1053,14 +1053,10 @@ mod tests {
         let slot_name: StorageSlotName = "demo::slot".parse().unwrap();
 
         let expected = Word::from([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]);
-        let init_data = InitStorageData::new(
-            BTreeMap::from([(
-                StorageValueName::from_slot_name(&slot_name),
-                WordValue::FullyTyped(expected),
-            )]),
-            BTreeMap::new(),
-        )
-        .unwrap();
+        let mut init_data = InitStorageData::default();
+        init_data
+            .set_value(StorageValueName::from_slot_name(&slot_name), expected)
+            .unwrap();
 
         let built = slot.try_build_word(&init_data, &slot_name).unwrap();
         assert_eq!(built, expected);
@@ -1071,14 +1067,8 @@ mod tests {
         let slot = ValueSlotSchema::new(None, WordSchema::new_simple(SchemaTypeId::u8()));
         let slot_name: StorageSlotName = "demo::u8_word".parse().unwrap();
 
-        let init_data = InitStorageData::new(
-            BTreeMap::from([(
-                StorageValueName::from_slot_name(&slot_name),
-                WordValue::Atomic("6".into()),
-            )]),
-            BTreeMap::new(),
-        )
-        .unwrap();
+        let mut init_data = InitStorageData::default();
+        init_data.set_value(StorageValueName::from_slot_name(&slot_name), "6").unwrap();
 
         let built = slot.try_build_word(&init_data, &slot_name).unwrap();
         assert_eq!(built, Word::from([Felt::new(0), Felt::new(0), Felt::new(0), Felt::new(6)]));
@@ -1095,14 +1085,10 @@ mod tests {
         let slot = ValueSlotSchema::new(None, word);
         let slot_name: StorageSlotName = "demo::slot".parse().unwrap();
 
-        let init_data = InitStorageData::new(
-            BTreeMap::from([(
-                StorageValueName::from_slot_name_with_suffix(&slot_name, "a").unwrap(),
-                WordValue::Atomic("1".into()),
-            )]),
-            BTreeMap::new(),
-        )
-        .unwrap();
+        let mut init_data = InitStorageData::default();
+        init_data
+            .set_value(StorageValueName::from_slot_name_with_suffix(&slot_name, "a").unwrap(), "1")
+            .unwrap();
 
         let built = slot.try_build_word(&init_data, &slot_name).unwrap();
         assert_eq!(built, Word::from([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]));
@@ -1118,11 +1104,8 @@ mod tests {
             WordValue::Elements(["1".into(), "0".into(), "0".into(), "0".into()]),
             WordValue::Elements(["10".into(), "11".into(), "12".into(), "13".into()]),
         )];
-        let init_data = InitStorageData::new(
-            BTreeMap::new(),
-            BTreeMap::from([(slot_name.clone(), entries.clone())]),
-        )
-        .unwrap();
+        let mut init_data = InitStorageData::default();
+        init_data.set_map_values(slot_name.clone(), entries.clone()).unwrap();
 
         let built = slot.try_build_map(&init_data, &slot_name).unwrap();
         let expected = StorageMap::with_entries([(

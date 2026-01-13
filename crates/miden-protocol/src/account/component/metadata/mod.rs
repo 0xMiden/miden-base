@@ -35,7 +35,7 @@ use crate::AccountError;
 /// # Example
 ///
 /// ```
-/// use std::collections::{BTreeMap, BTreeSet};
+/// use std::collections::BTreeSet;
 ///
 /// use miden_protocol::account::StorageSlotName;
 /// use miden_protocol::account::component::{
@@ -76,10 +76,8 @@ use crate::AccountError;
 ///
 /// // Init value keys are derived from slot name: `demo::test_value.foo`.
 /// let value_name = StorageValueName::from_slot_name_with_suffix(&slot_name, "foo")?;
-/// let init_storage_data = InitStorageData::new(
-///     BTreeMap::from([(value_name, WordValue::Atomic("300".into()))]),
-///     BTreeMap::new(),
-/// )?;
+/// let mut init_storage_data = InitStorageData::default();
+/// init_storage_data.set_value(value_name, WordValue::Atomic("300".into()))?;
 ///
 /// let storage_slots = metadata.storage_schema().build_storage_slots(&init_storage_data)?;
 /// assert_eq!(storage_slots.len(), 1);
