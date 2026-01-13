@@ -20,12 +20,11 @@ const ATTACHMENT_KIND_WORD=1
 const ATTACHMENT_KIND_ARRAY=2
 
 # The default value of the felt at index 3 in the note metadata header when a new note is created.
-# All zeros sets the attachment kind to None and the user-defined attachment scheme to
-# "untyped".
-const ATTACHMENT_DEFAULT_TYPE_INFO=0
+# All zeros sets the attachment kind to None and the user-defined attachment scheme to "unknown".
+const ATTACHMENT_DEFAULT_KIND_AND_SCHEME=0
 
-#! The default attachment scheme, representing an untyped attachment.
-const ATTACHMENT_SCHEME_UNTYPED=0
+#! The default attachment scheme, representing an unknown scheme.
+const ATTACHMENT_SCHEME_UNKNOWN=0
 
 # ERRORS
 # =================================================================================================
@@ -40,7 +39,7 @@ const ERR_OUTPUT_NOTE_INVALID_ATTACHMENT_SCHEMES="attachment scheme and attachme
 
 const ERR_OUTPUT_NOTE_UNKNOWN_ATTACHMENT_KIND="attachment kind variant must be between 0 and 2"
 
-const ERR_OUTPUT_NOTE_ATTACHMENT_NONE_MUST_HAVE_UNTYPED_ATTACHMENT_SCHEME="attachment scheme of content type none must be 0"
+const ERR_OUTPUT_NOTE_ATTACHMENT_NONE_MUST_HAVE_UNKNOWN_ATTACHMENT_SCHEME="attachment scheme of content type none must be 0"
 
 const ERR_OUTPUT_NOTE_ATTACHMENT_NONE_MUST_BE_EMPTY_WORD="attachment of content type none must be set to an empty word"
 
@@ -311,7 +310,7 @@ end
 #! Builds the provided inputs into the NOTE_METADATA_HEADER word.
 #!
 #! - The sender ID is set to the native account's ID.
-#! - The attachment scheme is set to 0 (meaning untyped by convention) and the attachment content
+#! - The attachment scheme is set to 0 (meaning unknown by convention) and the attachment content
 #!   type is set to None.
 #!
 #! Note that this procedure is only exported so it can be tested. It should not be called from
@@ -353,7 +352,7 @@ pub proc build_metadata_header
     # --------------------------------------------------------------------------------------------
 
     movup.2
-    push.ATTACHMENT_DEFAULT_TYPE_INFO
+    push.ATTACHMENT_DEFAULT_KIND_AND_SCHEME
     # => [attachment_kind_scheme, tag, sender_id_prefix, sender_id_suffix_and_note_type]
     # => [NOTE_METADATA_HEADER]
 end
@@ -385,8 +384,8 @@ proc validate_attachment
     # => [is_attachment_none, attachment_scheme, ATTACHMENT]
 
     if.true
-        eq.ATTACHMENT_SCHEME_UNTYPED
-        assert.err=ERR_OUTPUT_NOTE_ATTACHMENT_NONE_MUST_HAVE_UNTYPED_ATTACHMENT_SCHEME
+        eq.ATTACHMENT_SCHEME_UNKNOWN
+        assert.err=ERR_OUTPUT_NOTE_ATTACHMENT_NONE_MUST_HAVE_UNKNOWN_ATTACHMENT_SCHEME
         # => [ATTACHMENT]
 
         padw assert_eqw.err=ERR_OUTPUT_NOTE_ATTACHMENT_NONE_MUST_BE_EMPTY_WORD

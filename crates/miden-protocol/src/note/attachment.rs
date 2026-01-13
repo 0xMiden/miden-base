@@ -34,7 +34,7 @@ use crate::{Felt, FieldElement, Hasher, NoteError, Word};
 /// Next to the content, a note attachment can optionally specify a [`NoteAttachmentScheme`]. This
 /// allows a note attachment to describe itself. For example, a network account target attachment
 /// can be identified by a standardized type. For cases when the attachment scheme is known from
-/// content or typing is otherwise undesirable, [`NoteAttachmentScheme::untyped`] can be used.
+/// content or typing is otherwise undesirable, [`NoteAttachmentScheme::unknown`] can be used.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct NoteAttachment {
     attachment_scheme: NoteAttachmentScheme,
@@ -82,10 +82,10 @@ impl NoteAttachment {
     }
 
     /// Creates a new [`NoteAttachment`] from the provided content and using
-    /// [`NoteAttachmentScheme::untyped`].
-    pub fn new_untyped(content: NoteAttachmentContent) -> Self {
+    /// [`NoteAttachmentScheme::unknown`].
+    pub fn new_unknown(content: NoteAttachmentContent) -> Self {
         Self {
-            attachment_scheme: NoteAttachmentScheme::untyped(),
+            attachment_scheme: NoteAttachmentScheme::unknown(),
             content,
         }
     }
@@ -328,9 +328,8 @@ impl From<NoteAttachmentArray> for NoteAttachmentContent {
 ///
 /// A note attachment scheme is an arbitrary 32-bit unsigned integer.
 ///
-/// Value `0` is reserved to signal that an attachment is untyped. That is, no attempt should be
-/// made to guess the type of the attachment. Whenever the type of attachment is not standardized or
-/// interoperability is unimportant, this untyped value can be used.
+/// Value `0` is reserved to signal that the scheme is unknown. Whenever the kind of attachment is
+/// not standardized or interoperability is unimportant, this unknown value can be used.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct NoteAttachmentScheme(u32);
 
@@ -338,8 +337,8 @@ impl NoteAttachmentScheme {
     // CONSTANTS
     // --------------------------------------------------------------------------------------------
 
-    /// The reserved value to signal an untyped note attachment.
-    const UNTYPED: u32 = 0;
+    /// The reserved value to signal an unknown note attachment.
+    const UNKNOWN: u32 = 0;
 
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
@@ -349,14 +348,14 @@ impl NoteAttachmentScheme {
         Self(attachment_scheme)
     }
 
-    /// Returns the [`NoteAttachmentScheme`] that signals an untyped note attachment.
-    pub const fn untyped() -> Self {
-        Self(Self::UNTYPED)
+    /// Returns the [`NoteAttachmentScheme`] that signals a unknown attachment scheme.
+    pub const fn unknown() -> Self {
+        Self(Self::UNKNOWN)
     }
 
-    /// Returns `true` if the attachment is untyped, `false` otherwise.
-    pub const fn is_untyped(&self) -> bool {
-        self.0 == Self::UNTYPED
+    /// Returns `true` if the attachment scheme is the reserved unknown value, `false` otherwise.
+    pub const fn is_unknown(&self) -> bool {
+        self.0 == Self::UNKNOWN
     }
 
     // ACCESSORS
@@ -369,9 +368,9 @@ impl NoteAttachmentScheme {
 }
 
 impl Default for NoteAttachmentScheme {
-    /// Returns [`NoteAttachmentScheme::untyped`].
+    /// Returns [`NoteAttachmentScheme::unknown`].
     fn default() -> Self {
-        Self::untyped()
+        Self::unknown()
     }
 }
 

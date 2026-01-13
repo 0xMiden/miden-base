@@ -166,7 +166,7 @@ pub const ERR_NOTE_TAG_MUST_BE_U32: MasmError = MasmError::from_static_str("the 
 /// Error Message: "attachment of content type none must be set to an empty word"
 pub const ERR_OUTPUT_NOTE_ATTACHMENT_NONE_MUST_BE_EMPTY_WORD: MasmError = MasmError::from_static_str("attachment of content type none must be set to an empty word");
 /// Error Message: "attachment scheme of content type none must be 0"
-pub const ERR_OUTPUT_NOTE_ATTACHMENT_NONE_MUST_HAVE_UNTYPED_ATTACHMENT_SCHEME: MasmError = MasmError::from_static_str("attachment scheme of content type none must be 0");
+pub const ERR_OUTPUT_NOTE_ATTACHMENT_NONE_MUST_HAVE_UNKNOWN_ATTACHMENT_SCHEME: MasmError = MasmError::from_static_str("attachment scheme of content type none must be 0");
 /// Error Message: "requested output note index should be less than the total number of created output notes"
 pub const ERR_OUTPUT_NOTE_INDEX_OUT_OF_BOUNDS: MasmError = MasmError::from_static_str("requested output note index should be less than the total number of created output notes");
 /// Error Message: "attachment scheme and attachment kind must fit into u32s"
