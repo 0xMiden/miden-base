@@ -19,7 +19,7 @@ use crate::note::WellKnownNoteAttachment;
 /// ```text
 /// - 0th felt: [target_id_suffix (56 bits) | 8 zero bits]
 /// - 1st felt: [target_id_prefix (64 bits)]
-/// - 2nd felt: [26 zero bits | exec_hint_payload (32 bits) | exec_hint_tag (6 bits)]
+/// - 2nd felt: [24 zero bits | exec_hint_payload (32 bits) | exec_hint_tag (8 bits)]
 /// - 3rd felt: [64 zero bits]
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

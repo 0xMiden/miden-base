@@ -86,7 +86,7 @@ async fn test_create_note() -> anyhow::Result<()> {
         ",
         recipient = recipient,
         PUBLIC_NOTE = NoteType::Public as u8,
-        note_execution_hint = Felt::from(NoteExecutionHint::after_block(23.into()).unwrap()),
+        note_execution_hint = Felt::from(NoteExecutionHint::after_block(23.into())),
         tag = tag,
     );
 
@@ -681,7 +681,7 @@ async fn test_build_recipient_hash() -> anyhow::Result<()> {
         output_serial_no = output_serial_no,
         PUBLIC_NOTE = NoteType::Public as u8,
         tag = tag,
-        execution_hint = Felt::from(NoteExecutionHint::after_block(2.into()).unwrap()),
+        execution_hint = Felt::from(NoteExecutionHint::after_block(2.into())),
         aux = aux,
     );
 
