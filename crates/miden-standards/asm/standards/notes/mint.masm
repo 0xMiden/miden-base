@@ -1,5 +1,6 @@
 use miden::protocol::active_note
 use miden::protocol::note
+use miden::protocol::output_note
 use miden::standards::faucets::network_fungible->network_faucet
 
 # CONSTANTS
@@ -11,6 +12,11 @@ const MINT_NOTE_MIN_NUM_INPUTS_PUBLIC=16
 const OUTPUT_NOTE_TYPE_PUBLIC=1
 const OUTPUT_NOTE_TYPE_PRIVATE=2
 
+# Memory Addresses of MINT note inputs
+# The attachment is at the same memory address for both private and public inputs.
+const ATTACHMENT_TYPE_ADDRESS=2
+const ATTACHMENT_CONTENT_TYPE_ADDRESS=3
+const ATTACHMENT_ADDRESS=4
 const OUTPUT_PUBLIC_NOTE_INPUTS_ADDR=16
 
 # ERRORS
@@ -52,7 +58,7 @@ const ERR_MINT_WRONG_NUMBER_OF_INPUTS="MINT script expects exactly 12 inputs for
 #! Panics if:
 #! - account does not expose distribute procedure.
 #! - the number of inputs is not exactly 12 for private or less than 16 for public output notes.
-begin
+pub proc main
     dropw
     # => [pad(16)]
     # Load note inputs into memory starting at address 0
@@ -112,9 +118,22 @@ begin
     end
     # => [amount, tag, note_type, RECIPIENT, pad(12)]
 
+    # distribute expects 9 pad elements, returns 15 and 12 are provided here.
+    # so the total number of pads after calling is 12 + (15-9) = 18
     call.network_faucet::distribute
-    # => [pad(19))]
+    # => [note_idx, pad(18))]
 
-    drop drop drop
+    padw mem_loadw_be.ATTACHMENT_ADDRESS
+    # => [ATTACHMENT, note_idx, pad(18))]
+
+    mem_load.ATTACHMENT_TYPE_ADDRESS
+    mem_load.ATTACHMENT_CONTENT_TYPE_ADDRESS
+    movup.6
+    # => [note_idx, attachment_content_type, attachment_type, ATTACHMENT, pad(18))]
+
+    exec.output_note::set_attachment
+    # => [pad(18))]
+
+    drop drop
     # => [pad(16)]
 end
