@@ -24,6 +24,9 @@ pub mod utils;
 mod network_account_target;
 pub use network_account_target::NetworkAccountTarget;
 
+mod well_known_note_attachment;
+pub use well_known_note_attachment::WellKnownNoteAttachment;
+
 mod well_known_note;
 pub use mint_inputs::MintNoteInputs;
 pub use well_known_note::{NoteConsumptionStatus, WellKnownNote};

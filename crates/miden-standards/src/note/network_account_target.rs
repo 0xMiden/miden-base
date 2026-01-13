@@ -7,6 +7,8 @@ use miden_protocol::note::{
 };
 use miden_protocol::{AccountIdError, NoteError, Word};
 
+use crate::note::WellKnownNoteAttachment;
+
 // NETWORK ACCOUNT TARGET
 // ================================================================================================
 
@@ -31,7 +33,8 @@ impl NetworkAccountTarget {
     // --------------------------------------------------------------------------------------------
 
     /// The standardized type of [`NetworkAccountTarget`] attachments.
-    pub const ATTACHMENT_TYPE: NoteAttachmentType = NoteAttachmentType::new(1u32);
+    pub const ATTACHMENT_TYPE: NoteAttachmentType =
+        WellKnownNoteAttachment::NetworkAccountTarget.attachment_type();
 
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
@@ -75,9 +78,8 @@ impl From<NetworkAccountTarget> for NoteAttachment {
         word[0] = network_attachment.target_id.suffix();
         word[1] = network_attachment.target_id.prefix().as_felt();
         word[2] = network_attachment.exec_hint.into();
-        let content = NoteAttachmentContent::Word(word);
 
-        NoteAttachment::new(NetworkAccountTarget::ATTACHMENT_TYPE, content)
+        NoteAttachment::new_word(NetworkAccountTarget::ATTACHMENT_TYPE, word)
     }
 }
 
