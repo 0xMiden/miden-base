@@ -11,6 +11,7 @@ use crate::account::component::{
     SchemaTypeId,
     StorageSlotSchema,
     StorageValueName,
+    StorageValueNameError,
     WordSchema,
     WordValue,
 };
@@ -38,6 +39,42 @@ fn from_toml_str_with_nested_table_and_flattened() {
 
     assert_eq!(storage_table.values(), storage_inline.values());
     assert_eq!(storage_table.maps(), storage_inline.maps());
+}
+
+#[test]
+fn empty_table_is_rejected() {
+    let toml_str = r#"
+        ["demo::empty_table"]
+
+        ["demo::valid_table"]
+        value = "42"
+    "#;
+
+    assert_matches::assert_matches!(
+        InitStorageData::from_toml(toml_str),
+        Err(InitStorageDataError::EmptyTable(key)) if key == "demo::empty_table"
+    );
+}
+
+#[test]
+fn invalid_storage_value_name_is_rejected() {
+    // Nested table fields are flattened to `slot.field` and thus must be valid field segments.
+    let toml_str = r#"
+        ["demo::valid_token_metadata"]
+        max_supply = "1000000000"
+
+        "demo::another_valid_token_metadata.supply" = "1000000000"
+
+        ["demo::invalid_token_metadata"]
+        "bad.field" = "42"
+    "#;
+
+    assert_matches::assert_matches!(
+        InitStorageData::from_toml(toml_str),
+        Err(InitStorageDataError::InvalidStorageValueName(
+            StorageValueNameError::InvalidCharacter { part, character }
+        )) if part == "bad.field" && character == '.'
+    );
 }
 
 #[test]
