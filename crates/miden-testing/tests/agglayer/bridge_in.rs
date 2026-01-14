@@ -4,6 +4,9 @@ use core::slice;
 
 use miden_agglayer::{
     ClaimNoteParams,
+    LeafData,
+    OutputNoteData,
+    ProofData,
     claim_note_test_inputs,
     create_claim_note,
     create_existing_agglayer_faucet,
@@ -70,9 +73,15 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
     // --------------------------------------------------------------------------------------------
 
     // Define amount values for the test
-    let amount_felt = Felt::new(100);
+    let amount = 100u32;
+    let amount_felt = Felt::new(amount as u64);
 
-    // Create CLAIM note using the helper function with new agglayer claimAsset inputs
+    let aux = Felt::new(0);
+
+    // Generate a serial number for the P2ID note
+    let serial_num = builder.rng_mut().draw_word();
+
+    // Create CLAIM note using the new test inputs function
     let (
         smt_proof_local_exit_root,
         smt_proof_rollup_exit_root,
@@ -83,31 +92,38 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
         origin_token_address,
         destination_network,
         destination_address,
-        amount_u256,
+        amount_u32,
         metadata,
-    ) = claim_note_test_inputs(amount_felt, user_account.id());
+    ) = claim_note_test_inputs(amount, user_account.id());
 
-    let aux = Felt::new(0);
-
-    // Generate a serial number for the P2ID note
-    let serial_num = builder.rng_mut().draw_word();
-
-    let claim_params = ClaimNoteParams {
-        smt_proof_local_exit_root,
-        smt_proof_rollup_exit_root,
+    let proof_data = ProofData {
+        smt_proof_local_exit_root: &smt_proof_local_exit_root,
+        smt_proof_rollup_exit_root: &smt_proof_rollup_exit_root,
         global_index,
         mainnet_exit_root: &mainnet_exit_root,
         rollup_exit_root: &rollup_exit_root,
+    };
+
+    let leaf_data = LeafData {
         origin_network,
         origin_token_address: &origin_token_address,
         destination_network,
         destination_address: &destination_address,
-        amount: amount_u256,
+        amount: amount_u32,
         metadata,
-        claim_note_creator_account_id: user_account.id(),
-        agglayer_faucet_account_id: agglayer_faucet.id(),
+    };
+
+    let output_note_data = OutputNoteData {
+        output_p2id_serial_num: serial_num,
+        target_faucet_account_id: agglayer_faucet.id(),
         output_note_tag: NoteTag::from_account_id(user_account.id()),
-        p2id_serial_number: serial_num,
+    };
+
+    let claim_params = ClaimNoteParams {
+        proof_data,
+        leaf_data,
+        output_note_data,
+        claim_note_creator_account_id: user_account.id(),
         destination_account_id: user_account.id(),
         rng: builder.rng_mut(),
     };
@@ -117,6 +133,10 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
     let p2id_inputs = vec![user_account.id().suffix(), user_account.id().prefix().as_felt()];
     let note_inputs = NoteInputs::new(p2id_inputs)?;
     let p2id_recipient = NoteRecipient::new(serial_num, p2id_script.clone(), note_inputs);
+
+    println!("p2id recipient: {:?}", p2id_recipient.digest());
+    println!("p2id serial num: {:?}", serial_num);
+    println!("p2id script root: {:?}", p2id_script.root());
 
     let claim_note = create_claim_note(claim_params)?;
 
@@ -150,7 +170,7 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
 
     let tx_context = mock_chain
         .build_tx_context(agglayer_faucet.id(), &[], &[claim_note])?
-        .add_note_script(p2id_script)
+        .add_note_script(p2id_script.clone())
         .foreign_accounts(vec![foreign_account_inputs])
         .build()?;
 
@@ -180,6 +200,7 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
     // Verify note structure and asset content
     let expected_asset_obj = Asset::from(expected_asset);
     assert_eq!(full_note, &expected_p2id_note);
+
     assert!(full_note.assets().iter().any(|asset| asset == &expected_asset_obj));
 
     // Apply the transaction to the mock chain
