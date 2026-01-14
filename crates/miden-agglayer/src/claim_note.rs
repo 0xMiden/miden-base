@@ -135,10 +135,14 @@ pub fn create_claim_note<R: FeltRng>(params: ClaimNoteParams<'_, R>) -> Result<N
     push_u32_words(&mut claim_inputs, &params.proof_data.global_index);
 
     // mainnetExitRoot (bytes32 as 8 u32 felts)
-    claim_inputs.extend(bytes32_to_felts(params.proof_data.mainnet_exit_root));
+    let mainnet_exit_root_felts = bytes32_to_felts(params.proof_data.mainnet_exit_root)
+        .map_err(|e| NoteError::other(alloc::format!("failed to convert mainnet_exit_root: {}", e)))?;
+    claim_inputs.extend(mainnet_exit_root_felts);
 
     // rollupExitRoot (bytes32 as 8 u32 felts)
-    claim_inputs.extend(bytes32_to_felts(params.proof_data.rollup_exit_root));
+    let rollup_exit_root_felts = bytes32_to_felts(params.proof_data.rollup_exit_root)
+        .map_err(|e| NoteError::other(alloc::format!("failed to convert rollup_exit_root: {}", e)))?;
+    claim_inputs.extend(rollup_exit_root_felts);
 
     // 2) LEAF DATA
     claim_inputs.push(Felt::new(params.leaf_data.origin_network as u64));

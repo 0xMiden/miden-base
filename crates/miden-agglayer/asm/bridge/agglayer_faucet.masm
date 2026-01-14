@@ -37,7 +37,7 @@ const OUTPUT_NOTE_ASSET_AMOUNT_MEM_ADDR_0 = 548
 const OUTPUT_NOTE_ASSET_AMOUNT_MEM_ADDR_1 = 552
 
 # P2ID output note constants
-const P2ID_SCRIPT_ROOT = [2422619126535031037, 14216630331386975806, 7110226511693876882, 13410058257797741995]
+const P2ID_SCRIPT_ROOT = [13362761878458161062, 15090726097241769395, 444910447169617901, 3558201871398422326]
 const P2ID_NOTE_NUM_INPUTS = 2
 const OUTPUT_NOTE_TYPE_PUBLIC = 1
 const EXECUTION_HINT_ALWAYS = 1
@@ -158,7 +158,7 @@ proc get_destination_account_id_data
     exec.word::reverse
     # => [address[5]]
 
-    exec.eth_address::ethereum_address_format_to_account_id
+    exec.eth_address::to_account_id
     # => [prefix, suffix]
 end
 

@@ -333,7 +333,6 @@ pub fn create_existing_agglayer_faucet(
         .build_existing()
         .expect("Agglayer faucet account should be valid")
 }
-
 // TESTING HELPERS
 // ================================================================================================
 
