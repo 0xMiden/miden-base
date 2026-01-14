@@ -1,11 +1,9 @@
 use alloc::string::ToString;
 use alloc::vec::Vec;
 
-use miden_core::WORD_SIZE;
-
 use crate::crypto::SequentialCommit;
 use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
-use crate::{Felt, FieldElement, Hasher, NoteError, Word};
+use crate::{Felt, Hasher, NoteError, Word};
 
 // NOTE ATTACHMENT
 // ================================================================================================
@@ -242,9 +240,6 @@ impl Deserializable for NoteAttachmentContent {
 
 /// The type contained in [`NoteAttachmentContent::Array`] that commits to a set of field
 /// elements.
-///
-/// The commitment of the attachment array is built over the elements, padded to the next multiple
-/// of 8 (double word size).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NoteAttachmentArray {
     elements: Vec<Felt>,
@@ -276,7 +271,6 @@ impl NoteAttachmentArray {
         }
 
         let commitment = Hasher::hash_elements(&elements);
-
         Ok(Self { elements, commitment })
     }
 
@@ -302,12 +296,8 @@ impl NoteAttachmentArray {
 impl SequentialCommit for NoteAttachmentArray {
     type Commitment = Word;
 
-    /// Returns the elements of the array padded to the next multiple of 8 (double word size).
     fn to_elements(&self) -> Vec<Felt> {
-        let mut padded = self.elements.clone();
-        let padded_len = padded.len().next_multiple_of(WORD_SIZE * 2);
-        padded.resize(padded_len, Felt::ZERO);
-        padded
+        self.elements.clone()
     }
 
     fn to_commitment(&self) -> Self::Commitment {
