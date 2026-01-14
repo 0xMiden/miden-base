@@ -5,8 +5,6 @@ use alloc::sync::Arc;
 use miden_agglayer::{EthAddressFormat, agglayer_library};
 use miden_assembly::{Assembler, DefaultSourceManager};
 use miden_core_lib::CoreLibrary;
-use miden_processor::fast::{ExecutionOutput, FastProcessor};
-use miden_processor::{AdviceInputs, DefaultHost, ExecutionError, Program, StackInputs};
 use miden_protocol::Felt;
 use miden_protocol::account::AccountId;
 use miden_protocol::address::NetworkId;
@@ -15,33 +13,8 @@ use miden_protocol::testing::account_id::{
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
     AccountIdBuilder,
 };
-use miden_protocol::transaction::TransactionKernel;
 
-/// Execute a program with default host
-async fn execute_program_with_default_host(
-    program: Program,
-) -> Result<ExecutionOutput, ExecutionError> {
-    let mut host = DefaultHost::default();
-
-    let test_lib = TransactionKernel::library();
-    host.load_library(test_lib.mast_forest()).unwrap();
-
-    let std_lib = CoreLibrary::default();
-    host.load_library(std_lib.mast_forest()).unwrap();
-
-    for (event_name, handler) in std_lib.handlers() {
-        host.register_handler(event_name, handler)?;
-    }
-
-    let asset_conversion_lib = agglayer_library();
-    host.load_library(asset_conversion_lib.mast_forest()).unwrap();
-
-    let stack_inputs = StackInputs::new(vec![]).unwrap();
-    let advice_inputs = AdviceInputs::default();
-
-    let processor = FastProcessor::new_debug(stack_inputs.as_slice(), advice_inputs);
-    processor.execute(&program, &mut host).await
-}
+use super::test_utils::execute_program_with_default_host;
 
 #[test]
 fn test_account_id_to_ethereum_roundtrip() {
@@ -144,7 +117,7 @@ async fn test_ethereum_address_to_account_id_in_masm() -> anyhow::Result<()> {
             .assemble_program(&script_code)
             .unwrap();
 
-        let exec_output = execute_program_with_default_host(program).await?;
+        let exec_output = execute_program_with_default_host(program, None).await?;
 
         let actual_prefix = exec_output.stack[0].as_int();
         let actual_suffix = exec_output.stack[1].as_int();

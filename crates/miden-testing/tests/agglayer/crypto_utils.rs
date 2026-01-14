@@ -9,36 +9,10 @@ use miden_assembly::{Assembler, DefaultSourceManager};
 use miden_core_lib::CoreLibrary;
 use miden_core_lib::handlers::keccak256::KeccakPreimage;
 use miden_crypto::FieldElement;
-use miden_processor::fast::{ExecutionOutput, FastProcessor};
-use miden_processor::{AdviceInputs, DefaultHost, ExecutionError, Program, StackInputs};
-use miden_protocol::transaction::TransactionKernel;
+use miden_processor::AdviceInputs;
 use miden_protocol::{Felt, Word};
 
-/// Execute a program with default host
-async fn execute_program_with_default_host(
-    program: Program,
-    advice_inputs: AdviceInputs,
-) -> Result<ExecutionOutput, ExecutionError> {
-    let mut host = DefaultHost::default();
-
-    let test_lib = TransactionKernel::library();
-    host.load_library(test_lib.mast_forest()).unwrap();
-
-    let std_lib = CoreLibrary::default();
-    host.load_library(std_lib.mast_forest()).unwrap();
-
-    for (event_name, handler) in std_lib.handlers() {
-        host.register_handler(event_name, handler)?;
-    }
-
-    let agglayer_lib = agglayer_library();
-    host.load_library(agglayer_lib.mast_forest()).unwrap();
-
-    let stack_inputs = StackInputs::new(vec![]).unwrap();
-
-    let processor = FastProcessor::new_debug(stack_inputs.as_slice(), advice_inputs);
-    processor.execute(&program, &mut host).await
-}
+use super::test_utils::execute_program_with_default_host;
 
 /// Convert bytes to field elements (u32 words packed into felts)
 fn bytes_to_felts(data: &[u8]) -> Vec<Felt> {
@@ -52,8 +26,8 @@ fn bytes_to_felts(data: &[u8]) -> Vec<Felt> {
 
     // Convert to u32 words in little-endian format
     for chunk in padded_data.chunks(4) {
-        let word = u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
-        felts.push(Felt::new(word as u64));
+        let u32_value = u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
+        felts.push(Felt::new(u32_value as u64));
     }
 
     // pad to next multiple of 4 felts
@@ -154,7 +128,7 @@ async fn test_keccak_hash_get_leaf_value() -> anyhow::Result<()> {
         .assemble_program(&source)
         .unwrap();
 
-    let exec_output = execute_program_with_default_host(program, advice_inputs).await?;
+    let exec_output = execute_program_with_default_host(program, Some(advice_inputs)).await?;
 
     let digest: Vec<u64> = exec_output.stack[0..8].iter().map(|f| f.as_int()).collect();
     let hex_digest = u32_words_to_solidity_bytes32_hex(&digest);
