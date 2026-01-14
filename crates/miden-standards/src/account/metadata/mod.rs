@@ -1,7 +1,7 @@
 use alloc::vec::Vec;
 
 use miden_protocol::account::component::StorageSchema;
-use miden_protocol::account::{AccountComponent, StorageSlot, StorageSlotName};
+use miden_protocol::account::{AccountBuilder, AccountComponent, StorageSlot, StorageSlotName};
 use miden_protocol::crypto::utils::bytes_to_elements_with_padding;
 use miden_protocol::utils::Serializable;
 use miden_protocol::utils::sync::LazyLock;
@@ -31,9 +31,12 @@ impl AccountSchemaCommitment {
     ///
     /// The input schemas are ordered deterministically by their commitments before the final
     /// commitment is computed.
-    pub fn new(schemas: &[StorageSchema]) -> Self {
+    pub fn new<'a, I>(schemas: I) -> Self
+    where
+        I: IntoIterator<Item = &'a StorageSchema>,
+    {
         Self {
-            schema_commitment: compute_schema_commitment(schemas),
+            schema_commitment: compute_schema_commitment_iter(schemas),
         }
     }
 
@@ -64,16 +67,35 @@ impl From<AccountSchemaCommitment> for AccountComponent {
     }
 }
 
-/// Computes the schema commitment.
-///
-/// The account schema commitment is the hash of the ordered list of component schema commitments.
-/// If the passed list of schemas is empty, [`Word::empty()`] is returned.
-fn compute_schema_commitment(schemas: &[StorageSchema]) -> Word {
-    if schemas.is_empty() {
+/// Extension helpers for attaching an account schema commitment component to an [`AccountBuilder`].
+pub trait AccountBuilderSchemaExt {
+    /// Adds the schema commitment component derived from the builder's components.
+    ///
+    /// Call this after adding all components to ensure the commitment reflects the final schema.
+    /// Only components that carry a storage schema will contribute to the commitment.
+    fn with_schema(self, include_schema: bool) -> Self;
+}
+
+impl AccountBuilderSchemaExt for AccountBuilder {
+    fn with_schema(mut self, include_schema: bool) -> Self {
+        if include_schema {
+            let component = AccountSchemaCommitment::new(self.storage_schemas());
+            self = self.with_component(component);
+        }
+
+        self
+    }
+}
+
+fn compute_schema_commitment_iter<'a, I>(schemas: I) -> Word
+where
+    I: IntoIterator<Item = &'a StorageSchema>,
+{
+    let mut commitments: Vec<Word> = schemas.into_iter().map(StorageSchema::commitment).collect();
+    if commitments.is_empty() {
         return Word::empty();
     }
 
-    let mut commitments: Vec<Word> = schemas.iter().map(StorageSchema::commitment).collect();
     commitments.sort_by(|a, b| LexicographicWord::new(*a).cmp(&LexicographicWord::new(*b)));
 
     let mut bytes = Vec::with_capacity(commitments.len() * Word::SERIALIZED_SIZE);
@@ -88,11 +110,12 @@ fn compute_schema_commitment(schemas: &[StorageSchema]) -> Word {
 #[cfg(test)]
 mod tests {
     use miden_protocol::Word;
-    use miden_protocol::account::AccountBuilder;
-    use miden_protocol::account::component::AccountComponentMetadata;
+    use miden_protocol::account::component::{AccountComponentMetadata, InitStorageData};
+    use miden_protocol::account::{AccountBuilder, AccountComponent, AccountComponentCode};
 
-    use super::AccountSchemaCommitment;
+    use super::{AccountBuilderSchemaExt, AccountSchemaCommitment};
     use crate::account::auth::NoAuth;
+    use crate::account::components::storage_schema_library;
 
     #[test]
     fn storage_schema_commitment_is_order_independent() {
@@ -153,5 +176,47 @@ mod tests {
         let component = AccountSchemaCommitment::new(&[]);
 
         assert_eq!(component.schema_commitment, Word::empty());
+    }
+
+    #[test]
+    fn account_builder_with_schema_attaches_commitment_component() {
+        let toml = r#"
+            name = "Component C"
+            description = "Component C schema"
+            version = "0.1.0"
+            supported-types = ["RegularAccountUpdatableCode"]
+
+            [[storage.slots]]
+            name = "test::slot_c"
+            type = "word"
+        "#;
+
+        let metadata = AccountComponentMetadata::from_toml(toml).unwrap();
+        let component_code = AccountComponentCode::from(storage_schema_library());
+        let component =
+            AccountComponent::from_library(&component_code, &metadata, &InitStorageData::default())
+                .unwrap();
+
+        let account = AccountBuilder::new([3u8; 32])
+            .with_auth_component(NoAuth)
+            .with_component(component)
+            .with_schema(true)
+            .build()
+            .unwrap();
+
+        let schema_component: AccountComponent =
+            AccountSchemaCommitment::new([metadata.storage_schema()]).into();
+        let expected_commitment = schema_component
+            .storage_slots()
+            .iter()
+            .find(|slot| slot.name() == AccountSchemaCommitment::schema_commitment_slot())
+            .expect("schema commitment slot should exist")
+            .value();
+        let stored_commitment = account
+            .storage()
+            .get_item(AccountSchemaCommitment::schema_commitment_slot())
+            .unwrap();
+
+        assert_eq!(stored_commitment, expected_commitment);
     }
 }

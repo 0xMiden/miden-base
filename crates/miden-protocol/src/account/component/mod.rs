@@ -38,6 +38,7 @@ use crate::{AccountError, MastForest, Word};
 pub struct AccountComponent {
     pub(super) code: AccountComponentCode,
     pub(super) storage_slots: Vec<StorageSlot>,
+    pub(super) metadata: Option<AccountComponentMetadata>,
     pub(super) supported_types: BTreeSet<AccountType>,
 }
 
@@ -70,6 +71,7 @@ impl AccountComponent {
         Ok(Self {
             code: code.into(),
             storage_slots,
+            metadata: None,
             supported_types: BTreeSet::new(),
         })
     }
@@ -145,7 +147,7 @@ impl AccountComponent {
             })?;
 
         Ok(AccountComponent::new(library.clone(), storage_slots)?
-            .with_supported_types(account_component_metadata.supported_types().clone()))
+            .with_metadata(account_component_metadata.clone()))
     }
 
     // ACCESSORS
@@ -170,6 +172,16 @@ impl AccountComponent {
     /// Returns a slice of the underlying [`StorageSlot`]s of this component.
     pub fn storage_slots(&self) -> &[StorageSlot] {
         self.storage_slots.as_slice()
+    }
+
+    /// Returns the component metadata, if any.
+    pub fn metadata(&self) -> Option<&AccountComponentMetadata> {
+        self.metadata.as_ref()
+    }
+
+    /// Returns the storage schema associated with this component, if any.
+    pub fn storage_schema(&self) -> Option<&StorageSchema> {
+        self.metadata.as_ref().map(AccountComponentMetadata::storage_schema)
     }
 
     /// Returns a reference to the supported [`AccountType`]s.
@@ -218,6 +230,13 @@ impl AccountComponent {
     /// useful after cloning an existing component.
     pub fn with_supported_types(mut self, supported_types: BTreeSet<AccountType>) -> Self {
         self.supported_types = supported_types;
+        self
+    }
+
+    /// Attaches metadata to this component for downstream schema commitments and introspection.
+    pub fn with_metadata(mut self, metadata: AccountComponentMetadata) -> Self {
+        self.supported_types = metadata.supported_types().clone();
+        self.metadata = Some(metadata);
         self
     }
 
