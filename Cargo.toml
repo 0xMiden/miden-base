@@ -55,7 +55,7 @@ miden-assembly        = { default-features = false, version = "0.20" }
 miden-assembly-syntax = { default-features = false, version = "0.20" }
 miden-core            = { default-features = false, version = "0.20" }
 miden-core-lib        = { default-features = false, version = "0.20" }
-miden-crypto          = { default-features = false, version = "0.19" }
+miden-crypto          = { git = "https://github.com/0xMiden/crypto.git",  branch = "sergerad-smt-leaf-try-from-elements", default-features = false }
 miden-mast-package    = { default-features = false, version = "0.20" }
 miden-processor       = { default-features = false, version = "0.20" }
 miden-prover          = { default-features = false, version = "0.20" }
