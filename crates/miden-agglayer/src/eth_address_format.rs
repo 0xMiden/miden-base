@@ -122,9 +122,7 @@ impl EthAddressFormat {
         let mut result = [Felt::ZERO; 5];
 
         // i=0 -> bytes[16..20], i=4 -> bytes[0..4]
-        for (i, felt) in result.iter_mut().enumerate() {
-            let start = (4 - i) * 4;
-            let chunk = &self.0[start..start + 4];
+        for (felt, chunk) in result.iter_mut().zip(self.0.chunks(4).skip(1).rev()) {
             let value = u32::from_be_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
             // u32 values always fit in Felt, so this conversion is safe
             *felt = Felt::try_from(value as u64).expect("u32 value should always fit in Felt");
@@ -149,13 +147,14 @@ impl EthAddressFormat {
         let (prefix, suffix) = Self::bytes20_to_prefix_suffix(self.0)?;
 
         // Use `Felt::try_from(u64)` to avoid potential truncating conversion
-        let prefix_felt = Felt::try_from(prefix)
-            .map_err(|_| AddressConversionError::FeltOutOfField)?;
+        let prefix_felt =
+            Felt::try_from(prefix).map_err(|_| AddressConversionError::FeltOutOfField)?;
 
-        let suffix_felt = Felt::try_from(suffix)
-            .map_err(|_| AddressConversionError::FeltOutOfField)?;
+        let suffix_felt =
+            Felt::try_from(suffix).map_err(|_| AddressConversionError::FeltOutOfField)?;
 
-        AccountId::try_from([prefix_felt, suffix_felt]).map_err(|_| AddressConversionError::InvalidAccountId)
+        AccountId::try_from([prefix_felt, suffix_felt])
+            .map_err(|_| AddressConversionError::InvalidAccountId)
     }
 
     // HELPER FUNCTIONS
@@ -221,7 +220,9 @@ impl fmt::Display for AddressConversionError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             AddressConversionError::NonZeroWordPadding => write!(f, "non-zero word padding"),
-            AddressConversionError::NonZeroBytePrefix => write!(f, "address has non-zero 4-byte prefix"),
+            AddressConversionError::NonZeroBytePrefix => {
+                write!(f, "address has non-zero 4-byte prefix")
+            },
             AddressConversionError::InvalidHexLength => {
                 write!(f, "invalid hex length (expected 40 hex chars)")
             },
