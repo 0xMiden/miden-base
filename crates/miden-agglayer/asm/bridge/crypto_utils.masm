@@ -23,18 +23,22 @@ const LEAF_DATA_START_PTR = 0
 #!
 #! Invocation: exec
 pub proc get_leaf_value
-
     adv.push_mapval dropw
     # => [LEAF_DATA_KEY]
 
     push.LEAF_DATA_START_PTR push.LEAF_DATA_NUM_WORDS
     exec.mem::pipe_words_to_memory dropw dropw dropw drop
+    # => []
 
     push.LEAF_DATA_BYTES push.LEAF_DATA_START_PTR
+    # => [start_ptr, byte_len]
 
     exec.keccak256::hash_bytes
     # => [LEAF_VALUE[8]]
+
+    # truncate stack
     swapdw dropw dropw
+    # => [LEAF_VALUE[8]]
 end
 
 #! Verify leaf and checks that it has not been claimed.
