@@ -110,7 +110,9 @@ where
 #[cfg(test)]
 mod tests {
     use miden_protocol::Word;
-    use miden_protocol::account::component::{AccountComponentMetadata, InitStorageData};
+    use miden_protocol::account::component::{
+        AccountComponentMetadata, InitStorageData, StorageValueName,
+    };
     use miden_protocol::account::{AccountBuilder, AccountComponent, AccountComponentCode};
 
     use super::{AccountBuilderSchemaExt, AccountSchemaCommitment};
@@ -193,8 +195,14 @@ mod tests {
 
         let metadata = AccountComponentMetadata::from_toml(toml).unwrap();
         let component_code = AccountComponentCode::from(storage_schema_library());
+        let mut init_storage_data = InitStorageData::default();
+        let slot_name: StorageValueName = "test::slot_c".parse().unwrap();
+        init_storage_data
+            .insert_value(slot_name, Word::empty())
+            .unwrap();
+
         let component =
-            AccountComponent::from_library(&component_code, &metadata, &InitStorageData::default())
+            AccountComponent::from_library(&component_code, &metadata, &init_storage_data)
                 .unwrap();
 
         let account = AccountBuilder::new([3u8; 32])
