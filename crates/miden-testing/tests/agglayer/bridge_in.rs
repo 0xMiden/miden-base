@@ -73,13 +73,7 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
     // --------------------------------------------------------------------------------------------
 
     // Define amount values for the test
-    let amount = 100u32;
-    let amount_felt = Felt::new(amount as u64);
-
-    let aux = Felt::new(0);
-
-    // Generate a serial number for the P2ID note
-    let serial_num = builder.rng_mut().draw_word();
+    let claim_amount = 100u32;
 
     // Create CLAIM note using the new test inputs function
     let (
@@ -94,7 +88,7 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
         destination_address,
         amount_u32,
         metadata,
-    ) = claim_note_test_inputs(amount, user_account.id());
+    ) = claim_note_test_inputs(claim_amount, user_account.id());
 
     let proof_data = ProofData {
         smt_proof_local_exit_root: &smt_proof_local_exit_root,
@@ -113,6 +107,8 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
         metadata,
     };
 
+    // Serial number for the output P2ID note
+    let serial_num = builder.rng_mut().draw_word();
     let output_note_data = OutputNoteData {
         output_p2id_serial_num: serial_num,
         target_faucet_account_id: agglayer_faucet.id(),
@@ -124,7 +120,6 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
         leaf_data,
         output_note_data,
         claim_note_creator_account_id: user_account.id(),
-        destination_account_id: user_account.id(),
         rng: builder.rng_mut(),
     };
 
@@ -133,10 +128,6 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
     let p2id_inputs = vec![user_account.id().suffix(), user_account.id().prefix().as_felt()];
     let note_inputs = NoteInputs::new(p2id_inputs)?;
     let p2id_recipient = NoteRecipient::new(serial_num, p2id_script.clone(), note_inputs);
-
-    println!("p2id recipient: {:?}", p2id_recipient.digest());
-    println!("p2id serial num: {:?}", serial_num);
-    println!("p2id script root: {:?}", p2id_script.root());
 
     let claim_note = create_claim_note(claim_params)?;
 
@@ -150,7 +141,8 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
 
     // CREATE EXPECTED P2ID NOTE FOR VERIFICATION
     // --------------------------------------------------------------------------------------------
-    let mint_asset: Asset = FungibleAsset::new(agglayer_faucet.id(), amount_felt.into())?.into();
+    let aux = Felt::new(0);
+    let mint_asset: Asset = FungibleAsset::new(agglayer_faucet.id(), claim_amount.into())?.into();
     let output_note_tag = NoteTag::from_account_id(user_account.id());
     let expected_p2id_note = Note::new(
         NoteAssets::new(vec![mint_asset])?,
@@ -184,7 +176,7 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
     let output_note = executed_transaction.output_notes().get_note(0);
 
     // Verify the output note contains the minted fungible asset
-    let expected_asset = FungibleAsset::new(agglayer_faucet.id(), amount_felt.into())?;
+    let expected_asset = FungibleAsset::new(agglayer_faucet.id(), claim_amount.into())?;
 
     // Verify note metadata properties
     assert_eq!(output_note.metadata().sender(), agglayer_faucet.id());

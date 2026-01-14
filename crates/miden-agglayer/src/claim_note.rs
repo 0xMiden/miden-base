@@ -59,10 +59,11 @@ pub struct LeafData<'a> {
 
 /// Output note data for CLAIM note creation.
 /// Contains note-specific data and can use Miden types.
+/// TODO: Remove all but target_faucet_account_id
 pub struct OutputNoteData {
     /// P2ID note serial number (4 felts as Word)
     pub output_p2id_serial_num: Word,
-    /// Target faucet account ID (2 felts: prefix and suffix)
+    /// Target agg faucet account ID (2 felts: prefix and suffix)
     pub target_faucet_account_id: AccountId,
     /// P2ID output note tag
     pub output_note_tag: NoteTag,
@@ -81,8 +82,6 @@ pub struct ClaimNoteParams<'a, R: FeltRng> {
     pub output_note_data: OutputNoteData,
     /// CLAIM note sender account id
     pub claim_note_creator_account_id: AccountId,
-    /// TODO: remove and use destination_address: [u8; 20]
-    pub destination_account_id: AccountId,
     /// RNG for creating CLAIM note serial number
     pub rng: &'a mut R,
 }
@@ -182,7 +181,7 @@ pub fn create_claim_note<R: FeltRng>(params: ClaimNoteParams<'_, R>) -> Result<N
 
     let inputs = NoteInputs::new(claim_inputs)?;
 
-    // Use a default tag since we don't have agg_faucet_id anymore.
+    // TODO: Make CLAIM note a Network Note once NoteAttachment PR lands
     let tag = NoteTag::for_local_use_case(0, 0)?;
 
     let metadata = NoteMetadata::new(
