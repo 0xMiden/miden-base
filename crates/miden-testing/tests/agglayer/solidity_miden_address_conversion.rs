@@ -53,20 +53,28 @@ fn test_account_id_to_ethereum_roundtrip() {
 
 #[test]
 fn test_bech32_to_ethereum_roundtrip() {
-    let test_addresses = [
+    let test_addresses = vec![
         "mtst1azcw08rget79fqp8ymr0zqkv5v5lj466",
         "mtst1arxmxavamh7lqyp79mexktt4vgxv40mp",
         "mtst1ar2phe0pa0ln75plsczxr8ryws4s8zyp",
     ];
 
-    for bech32_address in test_addresses {
-        let (network_id, account_id) = AccountId::from_bech32(bech32_address).unwrap();
-        let eth_address = EthAddressFormat::from_account_id(account_id);
-        let recovered_account_id = eth_address.to_account_id().unwrap();
-        let recovered_bech32 = recovered_account_id.to_bech32(network_id);
+    let evm_addresses = vec![
+        "0x00000000b0e79c68cafc54802726c6f102cca300",
+        "0x00000000cdb3759dddfdf0103e2ef26b2d756200",
+        "0x00000000d41be5e1ebff3f503f8604619c647400",
+    ];
 
-        assert_eq!(account_id, recovered_account_id);
-        assert_eq!(bech32_address, recovered_bech32);
+    for (bech32, expected_evm) in test_addresses.iter().zip(evm_addresses.iter()) {
+        let (network_id, account_id) = AccountId::from_bech32(bech32).unwrap();
+
+        let eth = EthAddressFormat::from_account_id(account_id);
+        let recovered = eth.to_account_id().unwrap();
+        let recovered_bech32 = recovered.to_bech32(network_id);
+
+        assert_eq!(&account_id, &recovered);
+        assert_eq!(*expected_evm, eth.to_string());
+        assert_eq!(*bech32, recovered_bech32);
     }
 }
 

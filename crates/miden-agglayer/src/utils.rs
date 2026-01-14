@@ -5,13 +5,16 @@ use miden_protocol::Felt;
 // ================================================================================================
 
 /// Converts a bytes32 value (32 bytes) into an array of 8 Felt values.
-pub fn bytes32_to_felts(bytes32: &[u8; 32]) -> [Felt; 8] {
+///
+/// Note: These utility functions will eventually be replaced with similar functions from miden-vm.
+pub fn bytes32_to_felts(bytes32: &[u8; 32]) -> Result<[Felt; 8], &'static str> {
     let mut result = [Felt::ZERO; 8];
     for (i, chunk) in bytes32.chunks(4).enumerate() {
         let value = u32::from_be_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
-        result[i] = Felt::new(value as u64);
+        result[i] =
+            Felt::try_from(value as u64).map_err(|_| "Failed to convert u32 value to Felt")?;
     }
-    result
+    Ok(result)
 }
 
 /// Convert 8 Felt values (u32 limbs in little-endian order) to U256 bytes in little-endian format.

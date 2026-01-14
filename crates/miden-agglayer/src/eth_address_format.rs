@@ -7,41 +7,6 @@ use miden_protocol::Felt;
 use miden_protocol::account::AccountId;
 use miden_protocol::utils::{HexParseError, bytes_to_hex_string, hex_to_bytes};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum AddrConvError {
-    NonZeroWordPadding,
-    NonZeroBytePrefix,
-    InvalidHexLength,
-    InvalidHexChar(char),
-    HexParseError,
-    FeltOutOfField,
-    InvalidAccountId,
-}
-
-impl fmt::Display for AddrConvError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            AddrConvError::NonZeroWordPadding => write!(f, "non-zero word padding"),
-            AddrConvError::NonZeroBytePrefix => write!(f, "address has non-zero 4-byte prefix"),
-            AddrConvError::InvalidHexLength => {
-                write!(f, "invalid hex length (expected 40 hex chars)")
-            },
-            AddrConvError::InvalidHexChar(c) => write!(f, "invalid hex character: {}", c),
-            AddrConvError::HexParseError => write!(f, "hex parse error"),
-            AddrConvError::FeltOutOfField => {
-                write!(f, "packed 64-bit word does not fit in the field")
-            },
-            AddrConvError::InvalidAccountId => write!(f, "invalid AccountId"),
-        }
-    }
-}
-
-impl From<HexParseError> for AddrConvError {
-    fn from(_err: HexParseError) -> Self {
-        AddrConvError::HexParseError
-    }
-}
-
 // ================================================================================================
 // ETHEREUM ADDRESS
 // ================================================================================================
@@ -81,10 +46,10 @@ impl EthAddressFormat {
     /// # Errors
     ///
     /// Returns an error if the hex string is invalid or the hex part is not exactly 40 characters.
-    pub fn from_hex(hex_str: &str) -> Result<Self, AddrConvError> {
+    pub fn from_hex(hex_str: &str) -> Result<Self, AddressConversionError> {
         let hex_part = hex_str.strip_prefix("0x").unwrap_or(hex_str);
         if hex_part.len() != 40 {
-            return Err(AddrConvError::InvalidHexLength);
+            return Err(AddressConversionError::InvalidHexLength);
         }
 
         let prefixed_hex = if hex_str.starts_with("0x") {
@@ -161,7 +126,8 @@ impl EthAddressFormat {
             let start = (4 - i) * 4;
             let chunk = &self.0[start..start + 4];
             let value = u32::from_be_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
-            *felt = Felt::new(value as u64);
+            // u32 values always fit in Felt, so this conversion is safe
+            *felt = Felt::try_from(value as u64).expect("u32 value should always fit in Felt");
         }
 
         result
@@ -179,22 +145,17 @@ impl EthAddressFormat {
     /// - the first 4 bytes are not zero (not in the embedded AccountId format),
     /// - packing the 8-byte prefix/suffix into [`Felt`] would reduce mod p,
     /// - or the resulting felts do not form a valid [`AccountId`].
-    pub fn to_account_id(&self) -> Result<AccountId, AddrConvError> {
+    pub fn to_account_id(&self) -> Result<AccountId, AddressConversionError> {
         let (prefix, suffix) = Self::bytes20_to_prefix_suffix(self.0)?;
 
-        // `Felt::new(u64)` may reduce mod p for some u64 values. Mirror the MASM `build_felt`
-        // safety: construct the felt, then require round-trip equality.
-        let prefix_felt = Felt::new(prefix);
-        if prefix_felt.as_int() != prefix {
-            return Err(AddrConvError::FeltOutOfField);
-        }
+        // Use `Felt::try_from(u64)` to avoid potential truncating conversion
+        let prefix_felt = Felt::try_from(prefix)
+            .map_err(|_| AddressConversionError::FeltOutOfField)?;
 
-        let suffix_felt = Felt::new(suffix);
-        if suffix_felt.as_int() != suffix {
-            return Err(AddrConvError::FeltOutOfField);
-        }
+        let suffix_felt = Felt::try_from(suffix)
+            .map_err(|_| AddressConversionError::FeltOutOfField)?;
 
-        AccountId::try_from([prefix_felt, suffix_felt]).map_err(|_| AddrConvError::InvalidAccountId)
+        AccountId::try_from([prefix_felt, suffix_felt]).map_err(|_| AddressConversionError::InvalidAccountId)
     }
 
     // HELPER FUNCTIONS
@@ -205,9 +166,9 @@ impl EthAddressFormat {
     /// Returns prefix and suffix values that match the MASM little-endian limb implementation:
     /// - prefix = bytes[4..12] as big-endian u64 = (addr3 << 32) | addr2
     /// - suffix = bytes[12..20] as big-endian u64 = (addr1 << 32) | addr0
-    fn bytes20_to_prefix_suffix(bytes: [u8; 20]) -> Result<(u64, u64), AddrConvError> {
+    fn bytes20_to_prefix_suffix(bytes: [u8; 20]) -> Result<(u64, u64), AddressConversionError> {
         if bytes[0..4] != [0, 0, 0, 0] {
-            return Err(AddrConvError::NonZeroBytePrefix);
+            return Err(AddressConversionError::NonZeroBytePrefix);
         }
 
         let prefix = u64::from_be_bytes(bytes[4..12].try_into().unwrap());
@@ -238,5 +199,44 @@ impl From<AccountId> for EthAddressFormat {
 impl From<EthAddressFormat> for [u8; 20] {
     fn from(addr: EthAddressFormat) -> Self {
         addr.0
+    }
+}
+
+// ================================================================================================
+// ADDRESS CONVERSION ERROR
+// ================================================================================================
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AddressConversionError {
+    NonZeroWordPadding,
+    NonZeroBytePrefix,
+    InvalidHexLength,
+    InvalidHexChar(char),
+    HexParseError,
+    FeltOutOfField,
+    InvalidAccountId,
+}
+
+impl fmt::Display for AddressConversionError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AddressConversionError::NonZeroWordPadding => write!(f, "non-zero word padding"),
+            AddressConversionError::NonZeroBytePrefix => write!(f, "address has non-zero 4-byte prefix"),
+            AddressConversionError::InvalidHexLength => {
+                write!(f, "invalid hex length (expected 40 hex chars)")
+            },
+            AddressConversionError::InvalidHexChar(c) => write!(f, "invalid hex character: {}", c),
+            AddressConversionError::HexParseError => write!(f, "hex parse error"),
+            AddressConversionError::FeltOutOfField => {
+                write!(f, "packed 64-bit word does not fit in the field")
+            },
+            AddressConversionError::InvalidAccountId => write!(f, "invalid AccountId"),
+        }
+    }
+}
+
+impl From<HexParseError> for AddressConversionError {
+    fn from(_err: HexParseError) -> Self {
+        AddressConversionError::HexParseError
     }
 }
