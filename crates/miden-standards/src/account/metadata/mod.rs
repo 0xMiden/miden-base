@@ -111,7 +111,9 @@ where
 mod tests {
     use miden_protocol::Word;
     use miden_protocol::account::component::{
-        AccountComponentMetadata, InitStorageData, StorageValueName,
+        AccountComponentMetadata,
+        InitStorageData,
+        StorageValueName,
     };
     use miden_protocol::account::{AccountBuilder, AccountComponent, AccountComponentCode};
 
@@ -197,13 +199,10 @@ mod tests {
         let component_code = AccountComponentCode::from(storage_schema_library());
         let mut init_storage_data = InitStorageData::default();
         let slot_name: StorageValueName = "test::slot_c".parse().unwrap();
-        init_storage_data
-            .insert_value(slot_name, Word::empty())
-            .unwrap();
+        init_storage_data.insert_value(slot_name, Word::empty()).unwrap();
 
         let component =
-            AccountComponent::from_library(&component_code, &metadata, &init_storage_data)
-                .unwrap();
+            AccountComponent::from_library(&component_code, &metadata, &init_storage_data).unwrap();
 
         let account = AccountBuilder::new([3u8; 32])
             .with_auth_component(NoAuth)
