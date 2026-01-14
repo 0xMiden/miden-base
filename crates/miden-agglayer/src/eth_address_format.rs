@@ -108,7 +108,7 @@ impl EthAddressFormat {
     ///
     /// **Internal API**: This function is used internally during CLAIM note processing to convert
     /// the address format into the MASM `address[5]` representation expected by the
-    /// `ethereum_address_format_to_account_id` procedure.
+    /// `to_account_id` procedure.
     ///
     /// The returned order matches the MASM `address\[5\]` convention (*little-endian limb order*):
     /// - addr0 = bytes[16..19] (least-significant 4 bytes)
@@ -135,7 +135,7 @@ impl EthAddressFormat {
     ///
     /// **Internal API**: This function is used internally during CLAIM note processing to extract
     /// the original AccountId from the Ethereum address format. It mirrors the functionality of
-    /// the MASM `ethereum_address_format_to_account_id` procedure.
+    /// the MASM `to_account_id` procedure.
     ///
     /// # Errors
     ///

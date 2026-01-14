@@ -137,7 +137,7 @@ async fn test_ethereum_address_to_account_id_in_masm() -> anyhow::Result<()> {
 
             begin
                 push.{}.{}.{}.{}.{}
-                exec.eth_address::ethereum_address_format_to_account_id
+                exec.eth_address::to_account_id
                 exec.sys::truncate_stack
             end
             "#,
