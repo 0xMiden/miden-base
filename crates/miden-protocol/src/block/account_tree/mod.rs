@@ -1,6 +1,8 @@
 use alloc::string::ToString;
 use alloc::vec::Vec;
 
+use miden_crypto::merkle::smt::LeafIndex;
+
 use crate::Word;
 use crate::account::{AccountId, AccountIdPrefix};
 use crate::crypto::merkle::MerkleError;
@@ -44,6 +46,11 @@ pub fn account_id_to_smt_key(account_id: AccountId) -> Word {
 pub fn smt_key_to_account_id(key: Word) -> AccountId {
     AccountId::try_from([key[KEY_PREFIX_IDX], key[KEY_SUFFIX_IDX]])
         .expect("account tree should only contain valid IDs")
+}
+
+/// Converts an AccountId to an SMT leaf index for use with MerkleStore operations.
+pub fn account_id_to_smt_index(account_id: AccountId) -> LeafIndex<SMT_DEPTH> {
+    account_id_to_smt_key(account_id).into()
 }
 
 // ACCOUNT TREE
