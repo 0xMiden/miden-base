@@ -30,13 +30,7 @@ pub mod eth_address_format;
 pub mod utils;
 
 // Re-export the main types from claim_note module
-pub use claim_note::{
-    ClaimNoteParams,
-    LeafData,
-    OutputNoteData,
-    ProofData,
-    create_claim_note,
-};
+pub use claim_note::{ClaimNoteParams, LeafData, OutputNoteData, ProofData, create_claim_note};
 pub use eth_address_format::EthAddressFormat;
 // Re-export utility functions from utils module
 pub use utils::{
