@@ -26,10 +26,10 @@ use crate::utils::bytes32_to_felts;
 /// Proof data for CLAIM note creation.
 /// Contains SMT proofs and root hashes using native types.
 pub struct ProofData<'a> {
-    /// SMT proof for local exit root (bytes32[_DEPOSIT_CONTRACT_TREE_DEPTH])
+    /// SMT proof for local exit root (bytes32\[_DEPOSIT_CONTRACT_TREE_DEPTH\])
     /// 256 elements, each bytes32 represented as 32-byte array
     pub smt_proof_local_exit_root: &'a [[u8; 32]],
-    /// SMT proof for rollup exit root (bytes32[_DEPOSIT_CONTRACT_TREE_DEPTH])
+    /// SMT proof for rollup exit root (bytes32\[_DEPOSIT_CONTRACT_TREE_DEPTH\])
     /// 256 elements, each bytes32 represented as 32-byte array
     pub smt_proof_rollup_exit_root: &'a [[u8; 32]],
     /// Global index (uint256 as 8 u32 values)
@@ -135,13 +135,17 @@ pub fn create_claim_note<R: FeltRng>(params: ClaimNoteParams<'_, R>) -> Result<N
     push_u32_words(&mut claim_inputs, &params.proof_data.global_index);
 
     // mainnetExitRoot (bytes32 as 8 u32 felts)
-    let mainnet_exit_root_felts = bytes32_to_felts(params.proof_data.mainnet_exit_root)
-        .map_err(|e| NoteError::other(alloc::format!("failed to convert mainnet_exit_root: {}", e)))?;
+    let mainnet_exit_root_felts =
+        bytes32_to_felts(params.proof_data.mainnet_exit_root).map_err(|e| {
+            NoteError::other(alloc::format!("failed to convert mainnet_exit_root: {}", e))
+        })?;
     claim_inputs.extend(mainnet_exit_root_felts);
 
     // rollupExitRoot (bytes32 as 8 u32 felts)
-    let rollup_exit_root_felts = bytes32_to_felts(params.proof_data.rollup_exit_root)
-        .map_err(|e| NoteError::other(alloc::format!("failed to convert rollup_exit_root: {}", e)))?;
+    let rollup_exit_root_felts =
+        bytes32_to_felts(params.proof_data.rollup_exit_root).map_err(|e| {
+            NoteError::other(alloc::format!("failed to convert rollup_exit_root: {}", e))
+        })?;
     claim_inputs.extend(rollup_exit_root_felts);
 
     // 2) LEAF DATA
