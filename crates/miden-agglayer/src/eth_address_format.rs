@@ -1,11 +1,12 @@
-use alloc::format;
-use alloc::string::{String, ToString};
+use alloc::string::String;
 use core::fmt;
 
 use miden_core::FieldElement;
 use miden_protocol::Felt;
 use miden_protocol::account::AccountId;
-use miden_protocol::utils::{HexParseError, bytes_to_hex_string, hex_to_bytes};
+use miden_protocol::utils::{HexParseError, bytes_to_hex_string};
+
+use crate::utils::hex_string_to_address;
 
 // ================================================================================================
 // ETHEREUM ADDRESS
@@ -47,18 +48,8 @@ impl EthAddressFormat {
     ///
     /// Returns an error if the hex string is invalid or the hex part is not exactly 40 characters.
     pub fn from_hex(hex_str: &str) -> Result<Self, AddressConversionError> {
-        let hex_part = hex_str.strip_prefix("0x").unwrap_or(hex_str);
-        if hex_part.len() != 40 {
-            return Err(AddressConversionError::InvalidHexLength);
-        }
-
-        let prefixed_hex = if hex_str.starts_with("0x") {
-            hex_str.to_string()
-        } else {
-            format!("0x{}", hex_str)
-        };
-
-        let bytes: [u8; 20] = hex_to_bytes(&prefixed_hex)?;
+        let bytes =
+            hex_string_to_address(hex_str).map_err(|_| AddressConversionError::InvalidHexLength)?;
         Ok(Self(bytes))
     }
 

@@ -36,13 +36,16 @@ pub use claim_note::{
     OutputNoteData,
     ProofData,
     create_claim_note,
+};
+pub use eth_address_format::EthAddressFormat;
+// Re-export utility functions from utils module
+pub use utils::{
     hex_string_to_address,
     hex_string_to_bytes32,
     hex_strings_to_bytes32_array,
     metadata_hex_to_u32_array,
     string_to_u256_array,
 };
-pub use eth_address_format::EthAddressFormat;
 
 // AGGLAYER NOTE SCRIPTS
 // ================================================================================================
