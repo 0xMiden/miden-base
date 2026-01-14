@@ -79,6 +79,9 @@ async fn test_keccak_hash_get_leaf_value() -> anyhow::Result<()> {
     let metadata_hash: [u8; 32] =
         hex_to_fixed("0x2cdc14cacf6fec86a549f0e4d01e83027d3b10f29fa527c1535192c1ca1aac81");
 
+    // Expected hash value from Solidity implementation
+    let expected_hash = "0xf6825f6c59be2edf318d7251f4b94c0e03eb631b76a0e7b977fd8ed3ff925a3f";
+
     // abi.encodePacked(
     //   uint8, uint32, address, uint32, address, uint256, bytes32
     // )
@@ -137,7 +140,7 @@ async fn test_keccak_hash_get_leaf_value() -> anyhow::Result<()> {
     let keccak256_hex_digest = u32_words_to_solidity_bytes32_hex(&keccak256_digest);
 
     assert_eq!(digest, keccak256_digest);
-    assert_eq!(hex_digest, keccak256_hex_digest,);
-
+    assert_eq!(hex_digest, keccak256_hex_digest);
+    assert_eq!(hex_digest, expected_hash);
     Ok(())
 }
