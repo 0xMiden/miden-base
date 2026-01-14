@@ -124,7 +124,7 @@ where
         notes.sort_unstable_by_key(|note| WellKnownNote::from_note(note).is_none());
 
         let notes = InputNotes::from(notes);
-        let tx_inputs = self
+        let (tx_inputs, _initial_fee_asset_balance) = self
             .0
             .prepare_tx_inputs(target_account_id, block_ref, notes, tx_args)
             .await
@@ -161,7 +161,7 @@ where
         }
 
         // Prepare transaction inputs.
-        let mut tx_inputs = self
+        let (mut tx_inputs, _initial_fee_asset_balance) = self
             .0
             .prepare_tx_inputs(
                 target_account_id,
@@ -329,11 +329,13 @@ where
             return Ok(());
         }
 
-        let (mut host, stack_inputs, advice_inputs) =
-            self.0
-                .prepare_transaction(tx_inputs)
-                .await
-                .map_err(TransactionCheckerError::TransactionPreparation)?;
+        // Note: For note consumption checking, we don't need the actual fee balance.
+        // The fee balance is only relevant for actual transaction execution.
+        let (mut host, stack_inputs, advice_inputs) = self
+            .0
+            .prepare_transaction(tx_inputs, 0)
+            .await
+            .map_err(TransactionCheckerError::TransactionPreparation)?;
 
         let processor =
             FastProcessor::new_with_advice_inputs(stack_inputs.as_slice(), advice_inputs);

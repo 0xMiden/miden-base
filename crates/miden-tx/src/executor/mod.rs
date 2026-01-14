@@ -1,5 +1,6 @@
 use alloc::collections::BTreeSet;
 use alloc::sync::Arc;
+use alloc::vec::Vec;
 
 use miden_processor::fast::FastProcessor;
 use miden_processor::{AdviceInputs, ExecutionError, StackInputs};
@@ -9,6 +10,7 @@ use miden_protocol::assembly::DefaultSourceManager;
 use miden_protocol::assembly::debuginfo::SourceManagerSync;
 use miden_protocol::asset::{Asset, AssetVaultKey};
 use miden_protocol::block::BlockNumber;
+use miden_protocol::crypto::merkle::NodeIndex;
 use miden_protocol::transaction::{
     ExecutedTransaction,
     InputNote,
@@ -179,9 +181,11 @@ where
         notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
     ) -> Result<ExecutedTransaction, TransactionExecutorError> {
-        let tx_inputs = self.prepare_tx_inputs(account_id, block_ref, notes, tx_args).await?;
+        let (tx_inputs, initial_fee_asset_balance) =
+            self.prepare_tx_inputs(account_id, block_ref, notes, tx_args).await?;
 
-        let (mut host, stack_inputs, advice_inputs) = self.prepare_transaction(&tx_inputs).await?;
+        let (mut host, stack_inputs, advice_inputs) =
+            self.prepare_transaction(&tx_inputs, initial_fee_asset_balance).await?;
 
         let processor = FastProcessor::new_debug(stack_inputs.as_slice(), advice_inputs);
         let output = processor
@@ -224,9 +228,11 @@ where
         tx_args.extend_advice_inputs(advice_inputs);
 
         let notes = InputNotes::default();
-        let tx_inputs = self.prepare_tx_inputs(account_id, block_ref, notes, tx_args).await?;
+        let (tx_inputs, initial_fee_asset_balance) =
+            self.prepare_tx_inputs(account_id, block_ref, notes, tx_args).await?;
 
-        let (mut host, stack_inputs, advice_inputs) = self.prepare_transaction(&tx_inputs).await?;
+        let (mut host, stack_inputs, advice_inputs) =
+            self.prepare_transaction(&tx_inputs, initial_fee_asset_balance).await?;
 
         let processor =
             FastProcessor::new_with_advice_inputs(stack_inputs.as_slice(), advice_inputs);
@@ -247,13 +253,15 @@ where
     // This method has a one-to-many call relationship with the `prepare_transaction` method. This
     // method needs to be called only once in order to allow many transactions to be prepared based
     // on the transaction inputs returned by this method.
+    //
+    // Returns the transaction inputs and the initial fee asset balance.
     async fn prepare_tx_inputs(
         &self,
         account_id: AccountId,
         block_ref: BlockNumber,
         input_notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
-    ) -> Result<TransactionInputs, TransactionExecutorError> {
+    ) -> Result<(TransactionInputs, u64), TransactionExecutorError> {
         let (mut asset_vault_keys, mut ref_blocks) = validate_input_notes(&input_notes, block_ref)?;
         ref_blocks.insert(block_ref);
 
@@ -270,19 +278,42 @@ where
                 .expect("fee asset should be a fungible asset");
         asset_vault_keys.insert(fee_asset_vault_key);
 
-        // Fetch the witnesses for all asset vault keys.
-        let asset_witnesses = self
-            .data_store
-            .get_vault_asset_witnesses(account_id, account.vault().root(), asset_vault_keys)
-            .await
-            .map_err(TransactionExecutorError::FetchAssetWitnessFailed)?;
+        // Filter out asset vault keys whose merkle paths are already present in the advice inputs.
+        // This optimization avoids redundant DataStore calls during re-execution.
+        let vault_root = account.vault().root();
+        let advice_store = &tx_args.advice_inputs().store;
+        asset_vault_keys.retain(|key| {
+            let node_index = NodeIndex::from(key.to_leaf_index());
+            !advice_store.has_path(vault_root, node_index)
+        });
+
+        // Fetch the witnesses for asset vault keys that still need them.
+        let asset_witnesses = if !asset_vault_keys.is_empty() {
+            self.data_store
+                .get_vault_asset_witnesses(account_id, vault_root, asset_vault_keys)
+                .await
+                .map_err(TransactionExecutorError::FetchAssetWitnessFailed)?
+        } else {
+            Vec::new()
+        };
+
+        // Calculate the initial fee asset balance before adding witnesses to advice inputs.
+        let fee_asset_witness =
+            asset_witnesses.iter().find_map(|witness| witness.find(fee_asset_vault_key));
+        let initial_fee_asset_balance = match fee_asset_witness {
+            Some(Asset::Fungible(fee_asset)) => fee_asset.amount(),
+            Some(Asset::NonFungible(_)) => {
+                return Err(TransactionExecutorError::FeeAssetMustBeFungible);
+            },
+            None => 0,
+        };
 
         let tx_inputs = TransactionInputs::new(account, block_header, blockchain, input_notes)
             .map_err(TransactionExecutorError::InvalidTransactionInputs)?
             .with_tx_args(tx_args)
             .with_asset_witnesses(asset_witnesses);
 
-        Ok(tx_inputs)
+        Ok((tx_inputs, initial_fee_asset_balance))
     }
 
     /// Prepares the data needed for transaction execution.
@@ -292,6 +323,7 @@ where
     async fn prepare_transaction(
         &self,
         tx_inputs: &TransactionInputs,
+        initial_fee_asset_balance: u64,
     ) -> Result<
         (TransactionExecutorHost<'store, 'auth, STORE, AUTH>, StackInputs, AdviceInputs),
         TransactionExecutorError,
@@ -316,26 +348,6 @@ where
         // native account's procedures. Foreign accounts are inserted into the map on first access.
         let account_procedure_index_map =
             AccountProcedureIndexMap::new([tx_inputs.account().code()]);
-
-        let initial_fee_asset_balance = {
-            let native_asset_id = tx_inputs.block_header().fee_parameters().native_asset_id();
-            let fee_asset_vault_key = AssetVaultKey::from_account_id(native_asset_id)
-                .expect("fee asset should be a fungible asset");
-
-            let fee_asset_witness = tx_inputs
-                .asset_witnesses()
-                .iter()
-                .find_map(|witness| witness.find(fee_asset_vault_key));
-
-            match fee_asset_witness {
-                Some(Asset::Fungible(fee_asset)) => fee_asset.amount(),
-                Some(Asset::NonFungible(_)) => {
-                    return Err(TransactionExecutorError::FeeAssetMustBeFungible);
-                },
-                // If the witness does not contain the asset, its balance is zero.
-                None => 0,
-            }
-        };
 
         let host = TransactionExecutorHost::new(
             tx_inputs.account(),
@@ -367,7 +379,6 @@ fn build_executed_transaction<STORE: DataStore + Sync, AUTH: TransactionAuthenti
 ) -> Result<ExecutedTransaction, TransactionExecutorError> {
     // Note that the account delta does not contain the removed transaction fee, so it is the
     // "pre-fee" delta of the transaction.
-
     let (
         pre_fee_account_delta,
         _input_notes,

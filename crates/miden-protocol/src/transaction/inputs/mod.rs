@@ -127,18 +127,18 @@ impl TransactionInputs {
         self
     }
 
-    /// Replaces the transaction inputs and assigns the given transaction arguments.
-    pub fn with_tx_args(mut self, tx_args: TransactionArgs) -> Self {
-        self.set_tx_args_inner(tx_args);
-        self
-    }
-
     /// Replaces the transaction inputs and assigns the given foreign account slot names.
     pub fn with_foreign_account_slot_names(
         mut self,
         foreign_account_slot_names: BTreeMap<StorageSlotId, StorageSlotName>,
     ) -> Self {
         self.foreign_account_slot_names = foreign_account_slot_names;
+        self
+    }
+
+    /// Replaces the transaction inputs and assigns the given transaction arguments.
+    pub fn with_tx_args(mut self, tx_args: TransactionArgs) -> Self {
+        self.set_tx_args_inner(tx_args);
         self
     }
 

@@ -106,16 +106,6 @@ impl TransactionAdviceInputs {
         .into_iter()
     }
 
-    // PUBLIC UTILITIES
-    // --------------------------------------------------------------------------------------------
-
-    /// Returns the advice map key where:
-    /// - the seed for native accounts is stored.
-    /// - the account header for foreign accounts is stored.
-    pub fn account_id_map_key(id: AccountId) -> Word {
-        Word::from([id.suffix(), id.prefix().as_felt(), ZERO, ZERO])
-    }
-
     // MUTATORS
     // --------------------------------------------------------------------------------------------
 
@@ -309,7 +299,7 @@ impl TransactionAdviceInputs {
     }
 
     /// Adds an asset witness to the advice inputs.
-    fn add_asset_witness(&mut self, witness: AssetWitness) {
+    pub fn add_asset_witness(&mut self, witness: AssetWitness) {
         self.extend_merkle_store(witness.authenticated_nodes());
 
         let smt_proof = SmtProof::from(witness);
@@ -419,6 +409,16 @@ impl TransactionAdviceInputs {
     /// nodes.
     fn extend_merkle_store(&mut self, iter: impl Iterator<Item = InnerNodeInfo>) {
         self.0.store.extend(iter);
+    }
+
+    // PUBLIC UTILITIES
+    // --------------------------------------------------------------------------------------------
+
+    /// Returns the advice map key where:
+    /// - the seed for native accounts is stored.
+    /// - the account header for foreign accounts is stored.
+    pub fn account_id_map_key(id: AccountId) -> Word {
+        Word::from([id.suffix(), id.prefix().as_felt(), ZERO, ZERO])
     }
 }
 

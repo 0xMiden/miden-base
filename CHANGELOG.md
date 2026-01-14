@@ -12,6 +12,7 @@
 
 ### Changes
 
+- [BREAKING] Removed `asset_witnesses` field from `TransactionInputs` ([#2274](https://github.com/0xMiden/miden-base/pull/2274)).
 - No longer pad the note inputs on insertion into advice map ([#2232](https://github.com/0xMiden/miden-base/pull/2232)).
 - Added proc-macro `WordWrapper` to ease implementation of `Word`-wrapping types ([#2071](https://github.com/0xMiden/miden-base/pull/2108)).
 - [BREAKING] Added `BlockBody` and `BlockProof` structs in preparation for validator signatures and deferred block proving ([#2012](https://github.com/0xMiden/miden-base/pull/2012)).
