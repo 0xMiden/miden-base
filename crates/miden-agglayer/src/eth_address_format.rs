@@ -46,7 +46,7 @@ impl From<HexParseError> for AddrConvError {
 // ETHEREUM ADDRESS
 // ================================================================================================
 
-/// Represents an Ethereum address (20 bytes).
+/// Represents an Ethereum address format (20 bytes).
 ///
 /// # Representations used in this module
 ///
@@ -65,18 +65,18 @@ impl From<HexParseError> for AddrConvError {
 /// Note: prefix/suffix are *conceptual* 64-bit words; when converting to [`Felt`], we must ensure
 /// `Felt::new(u64)` does not reduce mod p (checked explicitly in `to_account_id`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct EthAddress([u8; 20]);
+pub struct EthAddressFormat([u8; 20]);
 
-impl EthAddress {
-    // CONSTRUCTORS
+impl EthAddressFormat {
+    // EXTERNAL API - For integrators (Gateway, claim managers, etc.)
     // --------------------------------------------------------------------------------------------
 
-    /// Creates a new [`EthAddress`] from a 20-byte array.
+    /// Creates a new [`EthAddressFormat`] from a 20-byte array.
     pub const fn new(bytes: [u8; 20]) -> Self {
         Self(bytes)
     }
 
-    /// Creates an [`EthAddress`] from a hex string (with or without "0x" prefix).
+    /// Creates an [`EthAddressFormat`] from a hex string (with or without "0x" prefix).
     ///
     /// # Errors
     ///
@@ -97,23 +97,29 @@ impl EthAddress {
         Ok(Self(bytes))
     }
 
-    /// Creates an [`EthAddress`] from an [`AccountId`].
+    /// Creates an [`EthAddressFormat`] from an [`AccountId`].
+    ///
+    /// **External API**: This function is used by integrators (Gateway, claim managers) to convert
+    /// Miden AccountIds into the Ethereum address format for constructing CLAIM notes or
+    /// interfacing when calling the Agglayer Bridge function bridgeAsset().
     ///
     /// This conversion is infallible: an [`AccountId`] is two felts, and `as_int()` yields `u64`
     /// words which we embed as `0x00000000 || prefix(8) || suffix(8)` (big-endian words).
+    ///
+    /// # Example
+    /// ```ignore
+    /// let destination_address = EthAddressFormat::from_account_id(destination_account_id).into_bytes();
+    /// // then construct the CLAIM note with destination_address...
+    /// ```
     pub fn from_account_id(account_id: AccountId) -> Self {
         let felts: [Felt; 2] = account_id.into();
 
         let mut out = [0u8; 20];
-        out[0..4].copy_from_slice(&[0, 0, 0, 0]);
         out[4..12].copy_from_slice(&felts[0].as_int().to_be_bytes());
         out[12..20].copy_from_slice(&felts[1].as_int().to_be_bytes());
 
         Self(out)
     }
-
-    // CONVERSIONS
-    // --------------------------------------------------------------------------------------------
 
     /// Returns the raw 20-byte array.
     pub const fn as_bytes(&self) -> &[u8; 20] {
@@ -125,7 +131,19 @@ impl EthAddress {
         self.0
     }
 
-    /// Converts the Ethereum address into an array of 5 [`Felt`] values.
+    /// Converts the Ethereum address to a hex string (lowercase, 0x-prefixed).
+    pub fn to_hex(&self) -> String {
+        bytes_to_hex_string(self.0)
+    }
+
+    // INTERNAL API - For CLAIM note processing
+    // --------------------------------------------------------------------------------------------
+
+    /// Converts the Ethereum address format into an array of 5 [`Felt`] values for MASM processing.
+    ///
+    /// **Internal API**: This function is used internally during CLAIM note processing to convert
+    /// the address format into the MASM `address[5]` representation expected by the
+    /// `ethereum_address_format_to_account_id` procedure.
     ///
     /// The returned order matches the MASM `address\[5\]` convention (*little-endian limb order*):
     /// - addr0 = bytes[16..19] (least-significant 4 bytes)
@@ -149,7 +167,11 @@ impl EthAddress {
         result
     }
 
-    /// Converts the Ethereum address to an [`AccountId`].
+    /// Converts the Ethereum address format back to an [`AccountId`].
+    ///
+    /// **Internal API**: This function is used internally during CLAIM note processing to extract
+    /// the original AccountId from the Ethereum address format. It mirrors the functionality of
+    /// the MASM `ethereum_address_format_to_account_id` procedure.
     ///
     /// # Errors
     ///
@@ -175,11 +197,6 @@ impl EthAddress {
         AccountId::try_from([prefix_felt, suffix_felt]).map_err(|_| AddrConvError::InvalidAccountId)
     }
 
-    /// Converts the Ethereum address to a hex string (lowercase, 0x-prefixed).
-    pub fn to_hex(&self) -> String {
-        bytes_to_hex_string(self.0)
-    }
-
     // HELPER FUNCTIONS
     // --------------------------------------------------------------------------------------------
 
@@ -200,26 +217,26 @@ impl EthAddress {
     }
 }
 
-impl fmt::Display for EthAddress {
+impl fmt::Display for EthAddressFormat {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.to_hex())
     }
 }
 
-impl From<[u8; 20]> for EthAddress {
+impl From<[u8; 20]> for EthAddressFormat {
     fn from(bytes: [u8; 20]) -> Self {
         Self(bytes)
     }
 }
 
-impl From<AccountId> for EthAddress {
+impl From<AccountId> for EthAddressFormat {
     fn from(account_id: AccountId) -> Self {
-        EthAddress::from_account_id(account_id)
+        EthAddressFormat::from_account_id(account_id)
     }
 }
 
-impl From<EthAddress> for [u8; 20] {
-    fn from(addr: EthAddress) -> Self {
+impl From<EthAddressFormat> for [u8; 20] {
+    fn from(addr: EthAddressFormat) -> Self {
         addr.0
     }
 }

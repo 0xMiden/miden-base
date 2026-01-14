@@ -1,19 +1,17 @@
-use alloc::vec::Vec;
-
+use miden_core::FieldElement;
 use miden_protocol::Felt;
 
 // UTILITY FUNCTIONS
 // ================================================================================================
 
-/// Converts a bytes32 value (32 bytes) into a vector of 8 Felt values.
-pub fn bytes32_to_felts(bytes32: &[u8; 32]) -> Vec<Felt> {
-    bytes32
-        .chunks(4)
-        .map(|chunk| {
-            let value = u32::from_be_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
-            Felt::new(value as u64)
-        })
-        .collect()
+/// Converts a bytes32 value (32 bytes) into an array of 8 Felt values.
+pub fn bytes32_to_felts(bytes32: &[u8; 32]) -> [Felt; 8] {
+    let mut result = [Felt::ZERO; 8];
+    for (i, chunk) in bytes32.chunks(4).enumerate() {
+        let value = u32::from_be_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
+        result[i] = Felt::new(value as u64);
+    }
+    result
 }
 
 /// Convert 8 Felt values (u32 limbs in little-endian order) to U256 bytes in little-endian format.

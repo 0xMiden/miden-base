@@ -49,9 +49,9 @@ proc build_felt
     # => [felt]
 end
 
-#! Converts an Ethereum address (address[5] type) back into an AccountId [prefix, suffix] type.
+#! Converts an Ethereum address format (address[5] type) back into an AccountId [prefix, suffix] type.
 #!
-#! The Ethereum address is represented as 5 u32 limbs (20 bytes total) in *little-endian limb order*:
+#! The Ethereum address format is represented as 5 u32 limbs (20 bytes total) in *little-endian limb order*:
 #!   addr0 = bytes[16..19]  (least-significant 4 bytes)
 #!   addr1 = bytes[12..15]
 #!   addr2 = bytes[ 8..11]
@@ -71,7 +71,7 @@ end
 #! Outputs: [prefix, suffix]
 #!
 #! Invocation: exec
-pub proc ethereum_address_to_account_id
+pub proc ethereum_address_format_to_account_id
     # addr4 must be 0 (most-significant limb)
     movup.4
     eq.0 assert.err=ERR_ADDR4_NONZERO
