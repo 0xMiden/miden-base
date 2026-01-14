@@ -8,6 +8,7 @@ use miden_agglayer::agglayer_library;
 use miden_assembly::{Assembler, DefaultSourceManager};
 use miden_core_lib::CoreLibrary;
 use miden_core_lib::handlers::keccak256::KeccakPreimage;
+use miden_crypto::FieldElement;
 use miden_processor::fast::{ExecutionOutput, FastProcessor};
 use miden_processor::{AdviceInputs, DefaultHost, ExecutionError, Program, StackInputs};
 use miden_protocol::transaction::TransactionKernel;
@@ -53,6 +54,11 @@ fn bytes_to_felts(data: &[u8]) -> Vec<Felt> {
     for chunk in padded_data.chunks(4) {
         let word = u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
         felts.push(Felt::new(word as u64));
+    }
+
+    // pad to next multiple of 4 felts
+    while felts.len() % 4 != 0 {
+        felts.push(Felt::ZERO);
     }
 
     felts
@@ -119,6 +125,7 @@ async fn test_keccak_hash_get_leaf_value() -> anyhow::Result<()> {
 
     let preimage = KeccakPreimage::new(input_u8.clone());
     let input_felts = bytes_to_felts(&input_u8);
+    assert_eq!(input_felts.len(), 32);
 
     // Arbitrary key to store input in advice map (in prod this is RPO(input_felts))
     let key: Word = [Felt::new(1), Felt::new(1), Felt::new(1), Felt::new(1)].into();
