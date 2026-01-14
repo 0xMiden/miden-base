@@ -163,10 +163,10 @@ pub const ERR_NOTE_NUM_OF_ASSETS_EXCEED_LIMIT: MasmError = MasmError::from_stati
 /// Error Message: "the note's tag must fit into a u32 so the 32 most significant bits of the felt must be zero"
 pub const ERR_NOTE_TAG_MUST_BE_U32: MasmError = MasmError::from_static_str("the note's tag must fit into a u32 so the 32 most significant bits of the felt must be zero");
 
-/// Error Message: "attachment of content type none must be set to an empty word"
-pub const ERR_OUTPUT_NOTE_ATTACHMENT_NONE_MUST_BE_EMPTY_WORD: MasmError = MasmError::from_static_str("attachment of content type none must be set to an empty word");
-/// Error Message: "attachment scheme of content type none must be 0"
-pub const ERR_OUTPUT_NOTE_ATTACHMENT_NONE_MUST_HAVE_UNKNOWN_ATTACHMENT_SCHEME: MasmError = MasmError::from_static_str("attachment scheme of content type none must be 0");
+/// Error Message: "attachment kind None requires ATTACHMENT to be set to an empty word"
+pub const ERR_OUTPUT_NOTE_ATTACHMENT_KIND_NONE_MUST_BE_EMPTY_WORD: MasmError = MasmError::from_static_str("attachment kind None requires ATTACHMENT to be set to an empty word");
+/// Error Message: "attachment kind none must have attachment scheme none"
+pub const ERR_OUTPUT_NOTE_ATTACHMENT_KIND_NONE_MUST_HAVE_ATTACHMENT_SCHEME_NONE: MasmError = MasmError::from_static_str("attachment kind none must have attachment scheme none");
 /// Error Message: "requested output note index should be less than the total number of created output notes"
 pub const ERR_OUTPUT_NOTE_INDEX_OUT_OF_BOUNDS: MasmError = MasmError::from_static_str("requested output note index should be less than the total number of created output notes");
 /// Error Message: "attachment scheme and attachment kind must fit into u32s"
