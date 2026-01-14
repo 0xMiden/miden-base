@@ -1,17 +1,6 @@
-use miden::protocol::active_account
-use miden::protocol::account_id
 use miden::protocol::active_note
-use miden::protocol::native_account
 use miden::standards::faucets
-use miden::standards::faucets::basic_fungible
 use miden::standards::access::ownable
-
-# CONSTANTS
-# ================================================================================================
-
-# The slot in this component's storage layout where the owner config is stored.
-# This must match the slot name used in the Rust code.
-# const OWNER_CONFIG_SLOT=word("miden::standards::access::ownable::owner_config")
 
 # ERRORS
 # ===============================================================================================

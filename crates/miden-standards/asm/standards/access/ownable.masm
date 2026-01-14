@@ -2,16 +2,11 @@
 #
 # Provides ownership management functionality for account components.
 # This template can be imported and used by any component that needs owner controls.
-#
-# NOTE: This file is kept as reference/documentation only. The ownership logic is implemented
-# directly in the modules that use it (e.g., network_fungible.masm) because template modules
-# cannot access storage slots registered by the component that imports them.
 
 use miden::protocol::active_account
 use miden::protocol::account_id
 use miden::protocol::active_note
 use miden::protocol::native_account
-use miden::core::sys
 
 # CONSTANTS
 # ================================================================================================
@@ -19,10 +14,14 @@ use miden::core::sys
 # The slot in this component's storage layout where the owner config is stored.
 const OWNER_CONFIG_SLOT=word("miden::standards::access::ownable::owner_config")
 
+# ZERO_ADDRESS word (all zeros) used to represent no owner
+# Format: [prefix=0, suffix=0, 0, 0] as stored in account storage
+const ZERO_ADDRESS=[0, 0, 0, 0]
+
 # ERRORS
 # ================================================================================================
 
-const ERR_ONLY_OWNER="note sender is not the owner"
+const ERR_SENDER_NOT_OWNER="note sender is not the owner"
 
 # INTERNAL PROCEDURES
 # ================================================================================================
@@ -71,6 +70,9 @@ proc is_owner
 
 end
 
+# PUBLIC INTERFACE
+# ================================================================================================
+
 #! Checks if the note sender is the owner and panics if not.
 #!
 #! Inputs:  []
@@ -85,16 +87,13 @@ pub proc verify_owner
     exec.is_owner
     # => [is_owner]
 
-    assert.err=ERR_ONLY_OWNER
+    assert.err=ERR_SENDER_NOT_OWNER
     # => []
 end
 
-# PUBLIC INTERFACE
-# ================================================================================================
-
 #! Returns the owner AccountId.
 #!
-#! Inputs:  []
+#! Inputs:  [pad(16)]
 #! Outputs: [owner_prefix, owner_suffix, pad(14)]
 #!
 #! Where:
@@ -134,13 +133,10 @@ pub proc transfer_ownership
     exec.native_account::set_item
     # => [OLD_OWNER_WORD, pad(14)]
 
+    # When the stack has 16 elements, dropw will shift in zeros from the right,
+    # resulting in [pad(16)]. So dropw is sufficient here.
     dropw
-    # => [pad(14)]
-
-    # Truncate stack to exactly 16 elements (required for 'call' procedures)
-    # This ensures we have exactly 16 elements, regardless of how many padding elements we had
-    exec.sys::truncate_stack
-    # => [pad(16)] (exactly 16 elements)
+    # => [pad(16)]
 end
 
 #! Renounces ownership, leaving the component without an owner.
@@ -164,7 +160,7 @@ pub proc renounce_ownership
     # => [pad(16)]
     
     # ---- Push ZERO_ADDRESS to storage ----
-    push.0.0.0.0
+    push.ZERO_ADDRESS
     # => [0, 0, 0, 0, pad(16)]
     
     push.OWNER_CONFIG_SLOT[0..2]
