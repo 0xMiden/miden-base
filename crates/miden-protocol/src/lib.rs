@@ -25,6 +25,8 @@ mod constants;
 // ================================================================================================
 
 pub use constants::*;
+// Note: Address, AddressId, AddressInterface, and RoutingParameters are now in miden-standards
+// They are re-exported there for convenience
 pub use errors::{
     AccountDeltaError,
     AccountError,

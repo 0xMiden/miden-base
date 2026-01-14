@@ -1,7 +1,7 @@
 use crate::AddressError;
 use crate::errors::Bech32Error;
 
-/// The type of an [`Address`](super::Address) in Miden.
+/// The type of an address in Miden.
 ///
 /// The byte values of this address type should be chosen as a multiple of 8. That way, the first
 /// character of the bech32 string after the `1` separator will be different for every address type.

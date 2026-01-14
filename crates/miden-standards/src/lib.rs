@@ -10,6 +10,7 @@ mod auth_scheme;
 pub use auth_scheme::AuthScheme;
 
 pub mod account;
+pub mod address;
 pub mod code_builder;
 pub mod errors;
 pub mod note;

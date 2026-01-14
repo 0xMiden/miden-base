@@ -16,7 +16,6 @@ mod id_version;
 use alloc::string::{String, ToString};
 use core::fmt;
 
-use bech32::primitives::decode::ByteIter;
 pub use id_version::AccountIdVersion;
 use miden_core::Felt;
 use miden_core::utils::{ByteReader, Deserializable, Serializable};
@@ -341,7 +340,9 @@ impl AccountId {
     }
 
     /// Decodes the data from the bech32 byte iterator into an [`AccountId`].
-    pub(crate) fn from_bech32_byte_iter(byte_iter: ByteIter<'_>) -> Result<Self, AccountIdError> {
+    pub fn from_bech32_byte_iter(
+        byte_iter: impl Iterator<Item = u8>,
+    ) -> Result<Self, AccountIdError> {
         AccountIdV0::from_bech32_byte_iter(byte_iter).map(AccountId::V0)
     }
 

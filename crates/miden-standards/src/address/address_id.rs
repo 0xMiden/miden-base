@@ -1,15 +1,15 @@
 use alloc::string::ToString;
+use alloc::vec::Vec;
 
 use bech32::Bech32m;
 use bech32::primitives::decode::CheckedHrpstring;
 use miden_processor::DeserializationError;
-
-use crate::AddressError;
-use crate::account::{AccountId, AccountStorageMode};
-use crate::address::{AddressType, NetworkId};
-use crate::errors::Bech32Error;
-use crate::note::NoteTag;
-use crate::utils::serde::{ByteWriter, Deserializable, Serializable};
+use miden_protocol::AddressError;
+use miden_protocol::account::{AccountId, AccountStorageMode};
+use miden_protocol::address::{AddressType, NetworkId};
+use miden_protocol::errors::Bech32Error;
+use miden_protocol::note::NoteTag;
+use miden_protocol::utils::serde::{ByteWriter, Deserializable, Serializable};
 
 /// The identifier of an [`Address`](super::Address).
 ///
@@ -44,6 +44,13 @@ impl AddressId {
         }
     }
 
+    /// Returns the bytes representation of this address ID.
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut bytes = Vec::new();
+        self.write_into(&mut bytes);
+        bytes
+    }
+
     /// Decodes a bech32 string into an identifier.
     pub(crate) fn decode(bech32_string: &str) -> Result<(NetworkId, Self), AddressError> {
         // We use CheckedHrpString with an explicit checksum algorithm so we don't allow the
@@ -72,10 +79,19 @@ impl AddressId {
 
         let address_type = AddressType::try_from(address_byte)?;
 
+        // Collect the remaining bytes into a Vec to convert from ByteIter to a regular iterator
+        let remaining_bytes: Vec<u8> = byte_iter.collect();
+
         let identifier = match address_type {
-            AddressType::AccountId => AccountId::from_bech32_byte_iter(byte_iter)
+            AddressType::AccountId => AccountId::from_bech32_byte_iter(remaining_bytes.into_iter())
                 .map_err(AddressError::AccountIdDecodeError)
                 .map(AddressId::AccountId)?,
+            // AddressType is non-exhaustive, so we need a catch-all
+            _ => {
+                return Err(AddressError::Bech32DecodeError(
+                    miden_protocol::errors::Bech32Error::UnknownAddressType(address_type as u8),
+                ));
+            },
         };
 
         Ok((network_id, identifier))
@@ -100,18 +116,23 @@ impl Serializable for AddressId {
 }
 
 impl Deserializable for AddressId {
-    fn read_from<R: miden_core::utils::ByteReader>(
+    fn read_from<R: miden_protocol::utils::serde::ByteReader>(
         source: &mut R,
     ) -> Result<Self, DeserializationError> {
         let address_type: u8 = source.read_u8()?;
         let address_type = AddressType::try_from(address_type)
-            .map_err(|err| DeserializationError::InvalidValue(err.to_string()))?;
+            .map_err(|err| DeserializationError::InvalidValue(format!("{}", err)))?;
 
         match address_type {
             AddressType::AccountId => {
                 let id: AccountId = source.read()?;
                 Ok(AddressId::AccountId(id))
             },
+            // AddressType is non-exhaustive, so we need a catch-all
+            _ => Err(DeserializationError::InvalidValue(format!(
+                "unknown address type: {}",
+                address_type as u8
+            ))),
         }
     }
 }

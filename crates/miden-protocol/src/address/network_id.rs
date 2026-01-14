@@ -39,8 +39,9 @@ impl NetworkId {
 
     /// Constructs a new [`NetworkId`] from an [`Hrp`].
     ///
-    /// This method should not be made public to avoid having `bech32` types in the public API.
-    pub(crate) fn from_hrp(hrp: Hrp) -> Self {
+    /// This method is public to allow usage in miden-standards, but should be used with caution
+    /// as it exposes bech32 types.
+    pub fn from_hrp(hrp: Hrp) -> Self {
         match hrp.as_str() {
             NetworkId::MAINNET => NetworkId::Mainnet,
             NetworkId::TESTNET => NetworkId::Testnet,
@@ -51,8 +52,9 @@ impl NetworkId {
 
     /// Returns the [`Hrp`] of this network ID.
     ///
-    /// This method should not be made public to avoid having `bech32` types in the public API.
-    pub(crate) fn into_hrp(self) -> Hrp {
+    /// This method is public to allow usage in miden-standards, but should be used with caution
+    /// as it exposes bech32 types.
+    pub fn into_hrp(self) -> Hrp {
         match self {
             NetworkId::Mainnet => {
                 Hrp::parse(NetworkId::MAINNET).expect("mainnet hrp should be valid")
@@ -119,12 +121,12 @@ pub struct CustomNetworkId {
 
 impl CustomNetworkId {
     /// Creates a new [`CustomNetworkId`] from a [`bech32::Hrp`].
-    pub(crate) fn from_hrp(hrp: Hrp) -> Self {
+    pub fn from_hrp(hrp: Hrp) -> Self {
         CustomNetworkId { hrp }
     }
 
     /// Converts this [`CustomNetworkId`] to a [`bech32::Hrp`].
-    pub(crate) fn as_hrp(&self) -> Hrp {
+    pub fn as_hrp(&self) -> Hrp {
         self.hrp
     }
 

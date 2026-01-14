@@ -154,17 +154,14 @@ impl NoteTag {
     ///
     /// The tag is constructed as follows:
     ///
-    /// - The two most significant bits are set to `0b11` to indicate a [LOCAL_ANY] tag.
+    /// - The two most significant bits are set to `0b11` to indicate a local execution tag.
     /// - The next `tag_len` bits are set to the most significant bits of the account ID prefix.
     /// - The remaining bits are set to zero.
     ///
     /// # Errors
     ///
     /// Returns an error if `tag_len` is larger than [`NoteTag::MAX_LOCAL_TAG_LENGTH`].
-    pub(crate) fn from_local_account_id(
-        account_id: AccountId,
-        tag_len: u8,
-    ) -> Result<Self, NoteError> {
+    pub fn from_local_account_id(account_id: AccountId, tag_len: u8) -> Result<Self, NoteError> {
         if tag_len > Self::MAX_LOCAL_TAG_LENGTH {
             return Err(NoteError::NoteTagLengthTooLarge(tag_len));
         }
@@ -191,9 +188,9 @@ impl NoteTag {
     ///
     /// The tag is constructed as follows:
     ///
-    /// - The two most significant bits are set to `0b00` to indicate a [NETWORK_ACCOUNT] tag.
+    /// - The two most significant bits are set to `0b00` to indicate a network account tag.
     /// - The remaining bits are set to the 30 most significant bits of the account ID.
-    pub(crate) fn from_network_account_id(account_id: AccountId) -> Self {
+    pub fn from_network_account_id(account_id: AccountId) -> Self {
         let prefix_id: u64 = account_id.prefix().into();
 
         // Shift the high bits of the account ID such that they are laid out as:
