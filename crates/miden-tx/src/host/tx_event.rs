@@ -572,8 +572,10 @@ fn on_account_storage_map_item_accessed<'store, STORE>(
     }
 
     let active_account_id = process.get_active_account_id()?;
-    let hashed_map_key = StorageMap::hash_key(map_key);
-    let leaf_index = StorageMap::hashed_map_key_to_leaf_index(hashed_map_key);
+    let leaf_index: Felt = StorageMap::map_key_to_leaf_index(map_key)
+        .value()
+        .try_into()
+        .expect("expected key index to be a felt");
 
     // For the native account we need to explicitly request the initial map root,
     // while for foreign accounts the current map root is always the initial one.

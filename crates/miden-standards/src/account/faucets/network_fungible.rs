@@ -43,7 +43,7 @@ static OWNER_CONFIG_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
 
 /// An [`AccountComponent`] implementing a network fungible faucet.
 ///
-/// It reexports the procedures from `miden::contracts::faucets::network_fungible`. When linking
+/// It reexports the procedures from `miden::standards::faucets::network_fungible`. When linking
 /// against this component, the `miden` library (i.e.
 /// [`ProtocolLib`](miden_protocol::ProtocolLib)) must be available to the assembler which is the
 /// case when using [`CodeBuilder`][builder]. The procedures of this component are:
