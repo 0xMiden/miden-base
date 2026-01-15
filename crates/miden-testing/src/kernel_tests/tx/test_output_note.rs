@@ -15,9 +15,9 @@ use miden_protocol::note::{
     NoteAttachment,
     NoteAttachmentScheme,
     NoteExecutionHint,
-    NoteInputs,
     NoteMetadata,
     NoteRecipient,
+    NoteStorage,
     NoteTag,
     NoteType,
 };
@@ -252,7 +252,7 @@ async fn test_get_output_notes_commitment() -> anyhow::Result<()> {
     let assets = NoteAssets::new(vec![input_asset_1])?;
     let metadata =
         NoteMetadata::new(tx_context.tx_inputs().account().id(), NoteType::Public, output_tag_1);
-    let inputs = NoteInputs::new(vec![])?;
+    let inputs = NoteStorage::new(vec![])?;
     let recipient = NoteRecipient::new(output_serial_no_1, input_note_1.script().clone(), inputs);
     let output_note_1 = Note::new(assets, metadata, recipient);
 
@@ -267,7 +267,7 @@ async fn test_get_output_notes_commitment() -> anyhow::Result<()> {
     let metadata =
         NoteMetadata::new(tx_context.tx_inputs().account().id(), NoteType::Public, output_tag_2)
             .with_attachment(attachment);
-    let inputs = NoteInputs::new(vec![])?;
+    let inputs = NoteStorage::new(vec![])?;
     let recipient = NoteRecipient::new(output_serial_no_2, input_note_2.script().clone(), inputs);
     let output_note_2 = Note::new(assets, metadata, recipient);
 
@@ -616,7 +616,7 @@ async fn test_build_recipient_hash() -> anyhow::Result<()> {
     let output_serial_no = Word::from([0, 1, 2, 3u32]);
     let tag = NoteTag::new(42 << 16 | 42);
     let single_input = 2;
-    let inputs = NoteInputs::new(vec![Felt::new(single_input)]).unwrap();
+    let inputs = NoteStorage::new(vec![Felt::new(single_input)]).unwrap();
     let input_commitment = inputs.commitment();
 
     let recipient = NoteRecipient::new(output_serial_no, input_note_1.script().clone(), inputs);

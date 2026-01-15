@@ -1,7 +1,7 @@
 use alloc::vec::Vec;
 
-use miden_protocol::note::{NoteAttachment, NoteInputs, NoteRecipient};
-use miden_protocol::{Felt, MAX_INPUTS_PER_NOTE, NoteError, Word};
+use miden_protocol::note::{NoteAttachment, NoteRecipient, NoteStorage};
+use miden_protocol::{Felt, MAX_NOTE_STORAGE_ITEMS, NoteError, Word};
 
 /// Represents the different input formats for MINT notes.
 /// - Private: Creates a private output note using a precomputed recipient digest (12 MINT note
@@ -10,7 +10,7 @@ use miden_protocol::{Felt, MAX_INPUTS_PER_NOTE, NoteError, Word};
 ///   variable-length inputs (16+ MINT note inputs: 16 fixed + variable number of output note
 ///   inputs)
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum MintNoteInputs {
+pub enum MintNoteStorage {
     Private {
         recipient_digest: Word,
         amount: Felt,
@@ -25,7 +25,7 @@ pub enum MintNoteInputs {
     },
 }
 
-impl MintNoteInputs {
+impl MintNoteStorage {
     pub fn new_private(recipient_digest: Word, amount: Felt, tag: Felt) -> Self {
         Self::Private {
             recipient_digest,
@@ -44,10 +44,10 @@ impl MintNoteInputs {
         // 16 fixed inputs (tag, amount, attachment_kind, attachment_scheme, ATTACHMENT,
         // SCRIPT_ROOT, SERIAL_NUM) + variable recipient inputs length
         const FIXED_PUBLIC_INPUTS: usize = 16;
-        let total_inputs = FIXED_PUBLIC_INPUTS + recipient.inputs().num_values() as usize;
+        let total_inputs = FIXED_PUBLIC_INPUTS + recipient.storage().len() as usize;
 
-        if total_inputs > MAX_INPUTS_PER_NOTE {
-            return Err(NoteError::TooManyInputs(total_inputs));
+        if total_inputs > MAX_NOTE_STORAGE_ITEMS {
+            return Err(NoteError::TooManyStorageItems(total_inputs));
         }
 
         Ok(Self::Public {
@@ -61,28 +61,28 @@ impl MintNoteInputs {
     /// Overwrites the [`NoteAttachment`] of the note inputs.
     pub fn with_attachment(self, attachment: NoteAttachment) -> Self {
         match self {
-            MintNoteInputs::Private {
+            MintNoteStorage::Private {
                 recipient_digest,
                 amount,
                 tag,
                 attachment: _,
-            } => MintNoteInputs::Private {
+            } => MintNoteStorage::Private {
                 recipient_digest,
                 amount,
                 tag,
                 attachment,
             },
-            MintNoteInputs::Public { recipient, amount, tag, attachment: _ } => {
-                MintNoteInputs::Public { recipient, amount, tag, attachment }
+            MintNoteStorage::Public { recipient, amount, tag, attachment: _ } => {
+                MintNoteStorage::Public { recipient, amount, tag, attachment }
             },
         }
     }
 }
 
-impl From<MintNoteInputs> for NoteInputs {
-    fn from(mint_inputs: MintNoteInputs) -> Self {
+impl From<MintNoteStorage> for NoteStorage {
+    fn from(mint_inputs: MintNoteStorage) -> Self {
         match mint_inputs {
-            MintNoteInputs::Private {
+            MintNoteStorage::Private {
                 recipient_digest,
                 amount,
                 tag,
@@ -96,10 +96,10 @@ impl From<MintNoteInputs> for NoteInputs {
                 input_values.extend_from_slice(&[tag, amount, attachment_kind, attachment_scheme]);
                 input_values.extend_from_slice(attachment.as_elements());
                 input_values.extend_from_slice(recipient_digest.as_elements());
-                NoteInputs::new(input_values)
+                NoteStorage::new(input_values)
                     .expect("number of inputs should not exceed max inputs")
             },
-            MintNoteInputs::Public { recipient, amount, tag, attachment } => {
+            MintNoteStorage::Public { recipient, amount, tag, attachment } => {
                 let attachment_scheme = Felt::from(attachment.attachment_scheme().as_u32());
                 let attachment_kind = Felt::from(attachment.attachment_kind().as_u8());
                 let attachment = attachment.content().to_word();
@@ -108,8 +108,8 @@ impl From<MintNoteInputs> for NoteInputs {
                 input_values.extend_from_slice(attachment.as_elements());
                 input_values.extend_from_slice(recipient.script().root().as_elements());
                 input_values.extend_from_slice(recipient.serial_num().as_elements());
-                input_values.extend_from_slice(recipient.inputs().values());
-                NoteInputs::new(input_values)
+                input_values.extend_from_slice(recipient.storage().items());
+                NoteStorage::new(input_values)
                     .expect("number of inputs should not exceed max inputs")
             },
         }

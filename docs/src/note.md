@@ -173,7 +173,7 @@ The P2ID note script implements a simple pay-to-account-ID pattern. It adds all 
 **Key characteristics:**
 
 - **Purpose:** Direct asset transfer to a specific account ID
-- **Inputs:** Requires exactly 2 note inputs containing the target account ID
+- **Inputs:** Requires exactly 2 note storage containing the target account ID
 - **Validation:** Ensures the consuming account's ID matches the target account ID specified in the note
 - **Requirements:** Target account must expose the `miden::standards::wallets::basic::receive_asset` procedure
 
@@ -186,7 +186,7 @@ The P2IDE note script extends P2ID with additional features including time-locki
 **Key characteristics:**
 
 - **Purpose:** Advanced asset transfer with time-lock and reclaim capabilities
-- **Inputs:** Requires exactly 4 note inputs:
+- **Inputs:** Requires exactly 4 note storage:
   - Target account ID
   - Reclaim block height (when sender can reclaim)
   - Time-lock block height (when target can consume)
@@ -208,7 +208,7 @@ The SWAP note script implements atomic asset swapping functionality.
 **Key characteristics:**
 
 - **Purpose:** Atomic asset exchange between two parties
-- **Inputs:** Requires exactly 16 note inputs specifying:
+- **Inputs:** Requires exactly 16 note storage specifying:
   - Requested asset details
   - Payback note recipient information
   - Note creation parameters (type, tag, attachment)

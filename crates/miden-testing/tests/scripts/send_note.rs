@@ -8,9 +8,9 @@ use miden_protocol::note::{
     NoteAssets,
     NoteAttachment,
     NoteAttachmentScheme,
-    NoteInputs,
     NoteMetadata,
     NoteRecipient,
+    NoteStorage,
     NoteTag,
     NoteType,
     PartialNote,
@@ -44,7 +44,7 @@ async fn test_send_note_script_basic_wallet() -> anyhow::Result<()> {
     let assets = NoteAssets::new(vec![sent_asset]).unwrap();
     let note_script = CodeBuilder::default().compile_note_script("begin nop end").unwrap();
     let serial_num = RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])).draw_word();
-    let recipient = NoteRecipient::new(serial_num, note_script, NoteInputs::default());
+    let recipient = NoteRecipient::new(serial_num, note_script, NoteStorage::default());
 
     let note = Note::new(assets.clone(), metadata, recipient);
     let partial_note: PartialNote = note.clone().into();
@@ -107,7 +107,7 @@ async fn test_send_note_script_basic_fungible_faucet() -> anyhow::Result<()> {
     )])?;
     let note_script = CodeBuilder::default().compile_note_script("begin nop end").unwrap();
     let serial_num = RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])).draw_word();
-    let recipient = NoteRecipient::new(serial_num, note_script, NoteInputs::default());
+    let recipient = NoteRecipient::new(serial_num, note_script, NoteStorage::default());
 
     let note = Note::new(assets.clone(), metadata, recipient);
     let partial_note: PartialNote = note.clone().into();

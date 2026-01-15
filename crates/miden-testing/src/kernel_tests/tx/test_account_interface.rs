@@ -10,9 +10,9 @@ use miden_protocol::crypto::rand::FeltRng;
 use miden_protocol::note::{
     Note,
     NoteAssets,
-    NoteInputs,
     NoteMetadata,
     NoteRecipient,
+    NoteStorage,
     NoteTag,
     NoteType,
 };
@@ -537,7 +537,7 @@ async fn test_check_note_consumability_static_analysis_invalid_inputs() -> anyho
         assert_eq!(reason.to_string(), format!(
                         "P2IDE note should have {} inputs, but {} was provided",
                         WellKnownNote::P2IDE.num_expected_inputs(),
-                        p2ide_wrong_inputs_number.recipient().inputs().num_values()
+                        p2ide_wrong_inputs_number.recipient().storage().len()
                     ));
     });
 
@@ -789,7 +789,7 @@ fn create_p2ide_note_with_inputs(inputs: impl IntoIterator<Item = u64>, sender: 
     let recipient = NoteRecipient::new(
         serial_num,
         note_script,
-        NoteInputs::new(inputs.into_iter().map(Felt::new).collect()).unwrap(),
+        NoteStorage::new(inputs.into_iter().map(Felt::new).collect()).unwrap(),
     );
 
     let tag = NoteTag::with_account_target(sender);

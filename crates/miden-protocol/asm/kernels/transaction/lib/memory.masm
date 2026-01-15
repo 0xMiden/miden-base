@@ -221,7 +221,7 @@ const INPUT_NOTE_ID_OFFSET=0
 const INPUT_NOTE_CORE_DATA_OFFSET=4
 const INPUT_NOTE_SERIAL_NUM_OFFSET=4
 const INPUT_NOTE_SCRIPT_ROOT_OFFSET=8
-const INPUT_NOTE_INPUTS_COMMITMENT_OFFSET=12
+const INPUT_NOTE_STORAGE_COMMITMENT_OFFSET=12
 const INPUT_NOTE_ASSETS_COMMITMENT_OFFSET=16
 const INPUT_NOTE_RECIPIENT_OFFSET=20
 const INPUT_NOTE_METADATA_HEADER_OFFSET=24
@@ -1596,14 +1596,14 @@ end
 #! Returns the inputs commitment of an input note located at the specified memory address.
 #!
 #! Inputs:  [note_ptr]
-#! Outputs: [INPUTS_COMMITMENT]
+#! Outputs: [STORAGE_COMMITMENT]
 #!
 #! Where:
 #! - note_ptr is the memory address at which the input note data begins.
-#! - INPUTS_COMMITMENT is the inputs commitment of the input note.
-pub proc get_input_note_inputs_commitment
+#! - STORAGE_COMMITMENT is the inputs commitment of the input note.
+pub proc get_input_note_storage_commitment
     padw
-    movup.4 add.INPUT_NOTE_INPUTS_COMMITMENT_OFFSET
+    movup.4 add.INPUT_NOTE_STORAGE_COMMITMENT_OFFSET
     mem_loadw_be
 end
 
@@ -1691,25 +1691,25 @@ end
 #! Returns the number of inputs of the note located at the specified memory address.
 #!
 #! Inputs:  [note_ptr]
-#! Outputs: [num_inputs]
+#! Outputs: [storage_len]
 #!
 #! Where:
 #! - note_ptr is the memory address at which the input note data begins.
-#! - num_inputs is the number of inputs in in the input note.
-pub proc get_input_note_num_inputs
+#! - storage_len is the number of storage items of the input note.
+pub proc get_input_note_storage_len
     add.INPUT_NOTE_NUM_INPUTS_OFFSET
     mem_load
 end
 
 #! Sets the number of inputs for an input note located at the specified memory address.
 #!
-#! Inputs:  [note_ptr, num_inputs]
+#! Inputs:  [note_ptr, storage_len]
 #! Outputs: []
 #!
 #! Where:
 #! - note_ptr is the memory address at which the input note data begins.
-#! - num_inputs is the number of inputs in the input note.
-pub proc set_input_note_num_inputs
+#! - storage_len is the number of storage items of the input note.
+pub proc set_input_note_storage_len
     add.INPUT_NOTE_NUM_INPUTS_OFFSET
     mem_store
 end

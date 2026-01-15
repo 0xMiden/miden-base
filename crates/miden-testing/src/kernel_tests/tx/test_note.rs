@@ -14,9 +14,9 @@ use miden_protocol::errors::MasmError;
 use miden_protocol::note::{
     Note,
     NoteAssets,
-    NoteInputs,
     NoteMetadata,
     NoteRecipient,
+    NoteStorage,
     NoteTag,
     NoteType,
 };
@@ -243,40 +243,40 @@ async fn test_build_recipient() -> anyhow::Result<()> {
 
     let exec_output = &tx_context.execute_code(&code).await?;
 
-    // Create expected NoteInputs for each test case
+    // Create expected NoteStorage for each test case
     let inputs_4 = word_1.to_vec();
-    let note_inputs_4 = NoteInputs::new(inputs_4.clone())?;
+    let note_storage_4 = NoteStorage::new(inputs_4.clone())?;
 
     let mut inputs_5 = word_1.to_vec();
     inputs_5.push(word_2[0]);
-    let note_inputs_5 = NoteInputs::new(inputs_5.clone())?;
+    let note_storage_5 = NoteStorage::new(inputs_5.clone())?;
 
     let mut inputs_8 = word_1.to_vec();
     inputs_8.extend_from_slice(&word_2.to_vec());
-    let note_inputs_8 = NoteInputs::new(inputs_8.clone())?;
+    let note_storage_8 = NoteStorage::new(inputs_8.clone())?;
 
     // Create expected recipients and get their digests
-    let recipient_4 = NoteRecipient::new(serial_num, note_script.clone(), note_inputs_4.clone());
-    let recipient_5 = NoteRecipient::new(serial_num, note_script.clone(), note_inputs_5.clone());
-    let recipient_8 = NoteRecipient::new(serial_num, note_script.clone(), note_inputs_8.clone());
+    let recipient_4 = NoteRecipient::new(serial_num, note_script.clone(), note_storage_4.clone());
+    let recipient_5 = NoteRecipient::new(serial_num, note_script.clone(), note_storage_5.clone());
+    let recipient_8 = NoteRecipient::new(serial_num, note_script.clone(), note_storage_8.clone());
 
-    for note_inputs in [
-        (note_inputs_4, inputs_4.clone()),
-        (note_inputs_5, inputs_5.clone()),
-        (note_inputs_8, inputs_8.clone()),
+    for note_storage in [
+        (note_storage_4, inputs_4.clone()),
+        (note_storage_5, inputs_5.clone()),
+        (note_storage_8, inputs_8.clone()),
     ] {
-        let inputs_advice_map_key = note_inputs.0.commitment();
+        let inputs_advice_map_key = note_storage.0.commitment();
         assert_eq!(
             exec_output.advice.get_mapped_values(&inputs_advice_map_key).unwrap(),
-            note_inputs.1,
+            note_storage.1,
             "advice entry with note inputs should contain the unpadded values"
         );
 
         let num_inputs_advice_map_key =
-            Hasher::hash_elements(note_inputs.0.commitment().as_elements());
+            Hasher::hash_elements(note_storage.0.commitment().as_elements());
         assert_eq!(
             exec_output.advice.get_mapped_values(&num_inputs_advice_map_key).unwrap(),
-            &[Felt::from(note_inputs.0.num_values())],
+            &[Felt::from(note_storage.0.len())],
             "advice entry with num note inputs should contain the original number of values"
         );
     }
@@ -292,7 +292,7 @@ async fn test_build_recipient() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
-async fn test_compute_inputs_commitment() -> anyhow::Result<()> {
+async fn test_compute_storage_commitment() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
     // Define test values as Words
@@ -315,26 +315,26 @@ async fn test_compute_inputs_commitment() -> anyhow::Result<()> {
             push.{word_3} push.{addr_2} mem_storew_be dropw
             push.{word_4} push.{addr_3} mem_storew_be dropw
 
-            # push the number of values and pointer to the inputs on the stack
+            # push the number of values and pointer to the storage on the stack
             push.5.4000
-            # execute the `compute_inputs_commitment` procedure for 5 values
-            exec.note::compute_inputs_commitment
+            # execute the `compute_storage_commitment` procedure for 5 values
+            exec.note::compute_storage_commitment
             # => [HASH_5]
 
             push.8.4000
-            # execute the `compute_inputs_commitment` procedure for 8 values
-            exec.note::compute_inputs_commitment
+            # execute the `compute_storage_commitment` procedure for 8 values
+            exec.note::compute_storage_commitment
             # => [HASH_8, HASH_5]
 
             push.15.4000
-            # execute the `compute_inputs_commitment` procedure for 15 values
-            exec.note::compute_inputs_commitment
+            # execute the `compute_storage_commitment` procedure for 15 values
+            exec.note::compute_storage_commitment
             # => [HASH_15, HASH_8, HASH_5]
 
             push.0.4000
-            # check that calling `compute_inputs_commitment` procedure with 0 elements will result in an
+            # check that calling `compute_storage_commitment` procedure with 0 elements will result in an
             # empty word
-            exec.note::compute_inputs_commitment
+            exec.note::compute_storage_commitment
             # => [0, 0, 0, 0, HASH_15, HASH_8, HASH_5]
 
             # truncate the stack
@@ -355,23 +355,23 @@ async fn test_compute_inputs_commitment() -> anyhow::Result<()> {
 
     let mut inputs_5 = word_1.to_vec();
     inputs_5.push(word_2[0]);
-    let note_inputs_5_hash = NoteInputs::new(inputs_5)?.commitment();
+    let note_storage_5_hash = NoteStorage::new(inputs_5)?.commitment();
 
     let mut inputs_8 = word_1.to_vec();
     inputs_8.extend_from_slice(&word_2.to_vec());
-    let note_inputs_8_hash = NoteInputs::new(inputs_8)?.commitment();
+    let note_storage_8_hash = NoteStorage::new(inputs_8)?.commitment();
 
     let mut inputs_15 = word_1.to_vec();
     inputs_15.extend_from_slice(&word_2.to_vec());
     inputs_15.extend_from_slice(&word_3.to_vec());
     inputs_15.extend_from_slice(&word_4[0..3]);
-    let note_inputs_15_hash = NoteInputs::new(inputs_15)?.commitment();
+    let note_storage_15_hash = NoteStorage::new(inputs_15)?.commitment();
 
     let mut expected_stack = alloc::vec::Vec::new();
 
-    expected_stack.extend_from_slice(note_inputs_5_hash.as_elements());
-    expected_stack.extend_from_slice(note_inputs_8_hash.as_elements());
-    expected_stack.extend_from_slice(note_inputs_15_hash.as_elements());
+    expected_stack.extend_from_slice(note_storage_5_hash.as_elements());
+    expected_stack.extend_from_slice(note_storage_8_hash.as_elements());
+    expected_stack.extend_from_slice(note_storage_15_hash.as_elements());
     expected_stack.extend_from_slice(Word::empty().as_elements());
     expected_stack.reverse();
 
@@ -463,7 +463,7 @@ pub async fn test_timelock() -> anyhow::Result<()> {
     let lock_timestamp = 2_000_000_000;
     let source_manager = Arc::new(DefaultSourceManager::default());
     let timelock_note = NoteBuilder::new(account.id(), &mut ChaCha20Rng::from_os_rng())
-        .note_inputs([Felt::from(lock_timestamp)])?
+        .note_storage([Felt::from(lock_timestamp)])?
         .source_manager(source_manager.clone())
         .code(code.clone())
         .dynamically_linked_libraries(CodeBuilder::mock_libraries())
@@ -534,7 +534,7 @@ async fn test_public_key_as_note_input() -> anyhow::Result<()> {
     let vault = NoteAssets::new(vec![])?;
     let note_script = CodeBuilder::default().compile_note_script("begin nop end")?;
     let recipient =
-        NoteRecipient::new(serial_num, note_script, NoteInputs::new(public_key_value.to_vec())?);
+        NoteRecipient::new(serial_num, note_script, NoteStorage::new(public_key_value.to_vec())?);
     let note_with_pub_key = Note::new(vault.clone(), metadata, recipient);
 
     let tx_context = TransactionContextBuilder::new(target_account)

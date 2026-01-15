@@ -8,9 +8,9 @@ use miden_protocol::errors::tx_kernel::ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_METADATA_
 use miden_protocol::note::{
     Note,
     NoteAssets,
-    NoteInputs,
     NoteMetadata,
     NoteRecipient,
+    NoteStorage,
     NoteTag,
     NoteType,
 };
@@ -323,7 +323,7 @@ async fn test_active_note_get_inputs() -> anyhow::Result<()> {
 
     fn construct_inputs_assertions(note: &Note) -> String {
         let mut code = String::new();
-        for inputs_chunk in note.inputs().values().chunks(WORD_SIZE) {
+        for inputs_chunk in note.storage().items().chunks(WORD_SIZE) {
             let mut inputs_word = EMPTY_WORD;
             inputs_word.as_mut_slice()[..inputs_chunk.len()].copy_from_slice(inputs_chunk);
 
@@ -380,7 +380,7 @@ async fn test_active_note_get_inputs() -> anyhow::Result<()> {
             # => []
         end
         "#,
-        num_inputs = note0.inputs().num_values(),
+        num_inputs = note0.storage().len(),
         inputs_assertions = construct_inputs_assertions(note0),
         NOTE_0_PTR = 100000000,
     );
@@ -419,7 +419,7 @@ async fn test_active_note_get_exactly_8_inputs() -> anyhow::Result<()> {
     let recipient = NoteRecipient::new(
         serial_num,
         note_script,
-        NoteInputs::new(vec![
+        NoteStorage::new(vec![
             ONE,
             Felt::new(2),
             Felt::new(3),

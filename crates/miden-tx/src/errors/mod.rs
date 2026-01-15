@@ -206,7 +206,7 @@ pub enum TransactionKernelError {
     #[error("failed to add asset to note")]
     FailedToAddAssetToNote(#[source] NoteError),
     #[error("note input data has hash {actual} but expected hash {expected}")]
-    InvalidNoteInputs { expected: Word, actual: Word },
+    InvalidNoteStorage { expected: Word, actual: Word },
     #[error(
         "failed to respond to signature requested since no authenticator is assigned to the host"
     )]
@@ -225,7 +225,7 @@ pub enum TransactionKernelError {
     #[error(
         "note inputs data extracted from the advice map by the event handler is not well formed"
     )]
-    MalformedNoteInputs(#[source] NoteError),
+    MalformedNoteStorage(#[source] NoteError),
     #[error(
         "note script data `{data:?}` extracted from the advice map by the event handler is not well formed"
     )]
@@ -250,7 +250,7 @@ pub enum TransactionKernelError {
     #[error(
         "note input data in advice provider contains fewer elements ({actual}) than specified ({specified}) by its inputs length"
     )]
-    TooFewElementsForNoteInputs { specified: u64, actual: u64 },
+    TooFewElementsForNoteStorage { specified: u64, actual: u64 },
     #[error("account procedure with procedure root {0} is not in the account procedure index map")]
     UnknownAccountProcedure(Word),
     #[error("code commitment {0} is not in the account procedure index map")]

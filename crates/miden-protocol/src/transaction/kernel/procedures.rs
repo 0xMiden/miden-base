@@ -73,7 +73,7 @@ pub const KERNEL_PROCEDURES: [Word; 53] = [
     word!("0xe0817bed99fb61180e705b2c9e5ca8c8f0c62864953247a56acbc65b7d58c2d5"),
     // input_note_get_script_root
     word!("0x527036257e58c3a84cf0aa170fb3f219a4553db17d269279355ad164a2b90ac5"),
-    // input_note_get_inputs_info
+    // input_note_get_storage_info
     word!("0xb7f45ec34f7708355551dcf1f82c9c40e2c19252f8d5c98dcf9ef1aa0a3eb878"),
     // input_note_get_serial_number
     word!("0x25815e02b7976d8e5c297dde60d372cc142c81f702f424ac0920190528c547ee"),

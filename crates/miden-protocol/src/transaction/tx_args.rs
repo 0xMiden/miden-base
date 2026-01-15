@@ -155,14 +155,14 @@ impl TransactionArgs {
     /// Populates the advice inputs with the expected recipient data for creating output notes.
     ///
     /// The advice inputs' map is extended with the following entries:
-    /// - RECIPIENT: [SERIAL_SCRIPT_HASH, INPUTS_COMMITMENT]
+    /// - RECIPIENT: [SERIAL_SCRIPT_HASH, STORAGE_COMMITMENT]
     /// - SERIAL_SCRIPT_HASH: [SERIAL_HASH, SCRIPT_ROOT]
     /// - SERIAL_HASH: [SERIAL_NUM, EMPTY_WORD]
-    /// - inputs_commitment |-> inputs.
+    /// - storage_commitment |-> inputs.
     /// - script_root |-> script.
     pub fn add_output_note_recipient<T: AsRef<NoteRecipient>>(&mut self, note_recipient: T) {
         let note_recipient = note_recipient.as_ref();
-        let inputs = note_recipient.inputs();
+        let storage = note_recipient.storage();
         let script = note_recipient.script();
         let script_encoded: Vec<Felt> = script.into();
 
@@ -173,11 +173,11 @@ impl TransactionArgs {
         let new_elements = vec![
             (sn_hash, concat_words(note_recipient.serial_num(), Word::empty())),
             (sn_script_hash, concat_words(sn_hash, script.root())),
-            (note_recipient.digest(), concat_words(sn_script_hash, inputs.commitment())),
-            (inputs.commitment(), inputs.to_elements()),
+            (note_recipient.digest(), concat_words(sn_script_hash, storage.commitment())),
+            (storage.commitment(), storage.to_elements()),
             (
-                Hasher::hash_elements(inputs.commitment().as_elements()),
-                vec![Felt::from(inputs.num_values())],
+                Hasher::hash_elements(storage.commitment().as_elements()),
+                vec![Felt::from(storage.len())],
             ),
             (script.root(), script_encoded),
         ];
@@ -207,7 +207,7 @@ impl TransactionArgs {
     /// The advice inputs' map is extended with the following keys:
     ///
     /// - recipient |-> recipient details (inputs_hash, script_root, serial_num).
-    /// - inputs_commitment |-> inputs.
+    /// - storage_commitment |-> inputs.
     /// - script_root |-> script.
     pub fn extend_output_note_recipients<T, L>(&mut self, notes: L)
     where

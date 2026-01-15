@@ -32,18 +32,18 @@ pub const ERR_P2IDE_RECLAIM_DISABLED: MasmError = MasmError::from_static_str("P2
 pub const ERR_P2IDE_RECLAIM_HEIGHT_NOT_REACHED: MasmError = MasmError::from_static_str("failed to reclaim P2IDE note because the reclaim block height is not reached yet");
 /// Error Message: "failed to consume P2IDE note because the note is still timelocked"
 pub const ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED: MasmError = MasmError::from_static_str("failed to consume P2IDE note because the note is still timelocked");
-/// Error Message: "P2IDE note expects exactly 4 note inputs"
-pub const ERR_P2IDE_WRONG_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_str("P2IDE note expects exactly 4 note inputs");
+/// Error Message: "P2IDE note expects exactly 4 note storage"
+pub const ERR_P2IDE_WRONG_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_str("P2IDE note expects exactly 4 note storage");
 
 /// Error Message: "P2ID's target account address and transaction address do not match"
 pub const ERR_P2ID_TARGET_ACCT_MISMATCH: MasmError = MasmError::from_static_str("P2ID's target account address and transaction address do not match");
-/// Error Message: "P2ID note expects exactly 2 note inputs"
-pub const ERR_P2ID_WRONG_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_str("P2ID note expects exactly 2 note inputs");
+/// Error Message: "P2ID note expects exactly 2 note storage"
+pub const ERR_P2ID_WRONG_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_str("P2ID note expects exactly 2 note storage");
 
 /// Error Message: "SWAP script requires exactly 1 note asset"
 pub const ERR_SWAP_WRONG_NUMBER_OF_ASSETS: MasmError = MasmError::from_static_str("SWAP script requires exactly 1 note asset");
-/// Error Message: "SWAP script expects exactly 16 note inputs"
-pub const ERR_SWAP_WRONG_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_str("SWAP script expects exactly 16 note inputs");
+/// Error Message: "SWAP script expects exactly 16 note storage"
+pub const ERR_SWAP_WRONG_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_str("SWAP script expects exactly 16 note storage");
 
 /// Error Message: "failed to approve multisig transaction as it was already executed"
 pub const ERR_TX_ALREADY_EXECUTED: MasmError = MasmError::from_static_str("failed to approve multisig transaction as it was already executed");

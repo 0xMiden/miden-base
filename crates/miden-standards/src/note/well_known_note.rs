@@ -277,7 +277,7 @@ impl WellKnownNote {
     ) -> Result<Option<NoteConsumptionStatus>, StaticAnalysisError> {
         match self {
             WellKnownNote::P2ID => {
-                let input_account_id = parse_p2id_inputs(note.inputs().values())?;
+                let input_account_id = parse_p2id_inputs(note.storage().items())?;
 
                 if input_account_id == target_account_id {
                     Ok(Some(NoteConsumptionStatus::ConsumableWithAuthorization))
@@ -287,7 +287,7 @@ impl WellKnownNote {
             },
             WellKnownNote::P2IDE => {
                 let (receiver_account_id, reclaim_height, timelock_height) =
-                    parse_p2ide_inputs(note.inputs().values())?;
+                    parse_p2ide_inputs(note.storage().items())?;
 
                 let current_block_height = block_ref.as_u32();
 
@@ -344,16 +344,16 @@ impl WellKnownNote {
 /// - the length of the provided note inputs array is not equal to the expected inputs number of the
 ///   P2ID note.
 /// - first two elements of the note inputs array does not form the valid account ID.
-fn parse_p2id_inputs(note_inputs: &[Felt]) -> Result<AccountId, StaticAnalysisError> {
-    if note_inputs.len() != WellKnownNote::P2ID.num_expected_inputs() {
+fn parse_p2id_inputs(note_storage: &[Felt]) -> Result<AccountId, StaticAnalysisError> {
+    if note_storage.len() != WellKnownNote::P2ID.num_expected_inputs() {
         return Err(StaticAnalysisError::new(format!(
             "P2ID note should have {} inputs, but {} was provided",
             WellKnownNote::P2ID.num_expected_inputs(),
-            note_inputs.len()
+            note_storage.len()
         )));
     }
 
-    try_read_account_id_from_inputs(note_inputs)
+    try_read_account_id_from_inputs(note_storage)
 }
 
 /// Returns the receiver account ID, reclaim height and timelock height parsed from the provided
@@ -367,21 +367,21 @@ fn parse_p2id_inputs(note_inputs: &[Felt]) -> Result<AccountId, StaticAnalysisEr
 /// - first two elements of the note inputs array does not form the valid account ID.
 /// - third note inputs array element (reclaim height) is not a valid u32 value.
 /// - fourth note inputs array element (timelock height) is not a valid u32 value.
-fn parse_p2ide_inputs(note_inputs: &[Felt]) -> Result<(AccountId, u32, u32), StaticAnalysisError> {
-    if note_inputs.len() != WellKnownNote::P2IDE.num_expected_inputs() {
+fn parse_p2ide_inputs(note_storage: &[Felt]) -> Result<(AccountId, u32, u32), StaticAnalysisError> {
+    if note_storage.len() != WellKnownNote::P2IDE.num_expected_inputs() {
         return Err(StaticAnalysisError::new(format!(
             "P2IDE note should have {} inputs, but {} was provided",
             WellKnownNote::P2IDE.num_expected_inputs(),
-            note_inputs.len()
+            note_storage.len()
         )));
     }
 
-    let receiver_account_id = try_read_account_id_from_inputs(note_inputs)?;
+    let receiver_account_id = try_read_account_id_from_inputs(note_storage)?;
 
-    let reclaim_height = u32::try_from(note_inputs[2])
+    let reclaim_height = u32::try_from(note_storage[2])
         .map_err(|_err| StaticAnalysisError::new("reclaim block height should be a u32"))?;
 
-    let timelock_height = u32::try_from(note_inputs[3])
+    let timelock_height = u32::try_from(note_storage[3])
         .map_err(|_err| StaticAnalysisError::new("timelock block height should be a u32"))?;
 
     Ok((receiver_account_id, reclaim_height, timelock_height))
@@ -390,15 +390,17 @@ fn parse_p2ide_inputs(note_inputs: &[Felt]) -> Result<(AccountId, u32, u32), Sta
 /// Reads the account ID from the first two note input values.
 ///
 /// Returns None if the note input values used to construct the account ID are invalid.
-fn try_read_account_id_from_inputs(note_inputs: &[Felt]) -> Result<AccountId, StaticAnalysisError> {
-    if note_inputs.len() < 2 {
+fn try_read_account_id_from_inputs(
+    note_storage: &[Felt],
+) -> Result<AccountId, StaticAnalysisError> {
+    if note_storage.len() < 2 {
         return Err(StaticAnalysisError::new(format!(
             "P2ID and P2IDE notes should have at least 2 note inputs, but {} was provided",
-            note_inputs.len()
+            note_storage.len()
         )));
     }
 
-    AccountId::try_from([note_inputs[1], note_inputs[0]]).map_err(|source| {
+    AccountId::try_from([note_storage[1], note_storage[0]]).map_err(|source| {
         StaticAnalysisError::with_source(
             "failed to create an account ID from the first two note inputs",
             source,

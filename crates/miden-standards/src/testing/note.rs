@@ -10,9 +10,9 @@ use miden_protocol::note::{
     Note,
     NoteAssets,
     NoteAttachment,
-    NoteInputs,
     NoteMetadata,
     NoteRecipient,
+    NoteStorage,
     NoteTag,
     NoteType,
 };
@@ -66,11 +66,11 @@ impl NoteBuilder {
     /// Set the note's input to `inputs`.
     ///
     /// Note: This overwrite the inputs, the previous input values are discarded.
-    pub fn note_inputs(
+    pub fn note_storage(
         mut self,
         inputs: impl IntoIterator<Item = Felt>,
     ) -> Result<Self, NoteError> {
-        let validate = NoteInputs::new(inputs.into_iter().collect())?;
+        let validate = NoteStorage::new(inputs.into_iter().collect())?;
         self.inputs = validate.into();
         Ok(self)
     }
@@ -150,7 +150,7 @@ impl NoteBuilder {
         let vault = NoteAssets::new(self.assets)?;
         let metadata = NoteMetadata::new(self.sender, self.note_type, self.tag)
             .with_attachment(self.attachment);
-        let inputs = NoteInputs::new(self.inputs)?;
+        let inputs = NoteStorage::new(self.inputs)?;
         let recipient = NoteRecipient::new(self.serial_num, note_script, inputs);
 
         Ok(Note::new(vault, metadata, recipient))
