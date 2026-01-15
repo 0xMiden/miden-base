@@ -4,6 +4,8 @@ use core::slice;
 
 use miden_agglayer::{
     ClaimNoteParams,
+    EthAddressFormat,
+    EthAmount,
     LeafData,
     OutputNoteData,
     ProofData,
@@ -100,10 +102,10 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
 
     let leaf_data = LeafData {
         origin_network,
-        origin_token_address: &origin_token_address,
+        origin_token_address: EthAddressFormat::new(origin_token_address),
         destination_network,
-        destination_address: &destination_address,
-        amount: amount_u32,
+        destination_address: EthAddressFormat::new(destination_address),
+        amount: EthAmount::new(amount_u32),
         metadata,
     };
 

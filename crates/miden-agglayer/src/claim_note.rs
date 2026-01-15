@@ -17,6 +17,7 @@ use miden_protocol::note::{
 };
 
 use crate::claim_script;
+use crate::eth_address_format::{EthAddressFormat, EthAmount};
 use crate::utils::bytes32_to_felts;
 
 // CLAIM NOTE STRUCTURES
@@ -40,18 +41,18 @@ pub struct ProofData<'a> {
 }
 
 /// Leaf data for CLAIM note creation.
-/// Contains network, address, amount, and metadata using native types.
-pub struct LeafData<'a> {
+/// Contains network, address, amount, and metadata using typed representations.
+pub struct LeafData {
     /// Origin network identifier (uint32)
     pub origin_network: u32,
-    /// Origin token address (address as 20-byte array)
-    pub origin_token_address: &'a [u8; 20],
+    /// Origin token address
+    pub origin_token_address: EthAddressFormat,
     /// Destination network identifier (uint32)
     pub destination_network: u32,
-    /// Destination address (address as 20-byte array)
-    pub destination_address: &'a [u8; 20],
-    /// Amount of tokens (uint256 as 8 u32 values)
-    pub amount: [u32; 8],
+    /// Destination address
+    pub destination_address: EthAddressFormat,
+    /// Amount of tokens (uint256)
+    pub amount: EthAmount,
     /// ABI encoded metadata (fixed size of 8 u32 values)
     pub metadata: [u32; 8],
 }
@@ -76,7 +77,7 @@ pub struct ClaimNoteParams<'a, R: FeltRng> {
     /// Proof data containing SMT proofs and root hashes
     pub proof_data: ProofData<'a>,
     /// Leaf data containing network, address, amount, and metadata
-    pub leaf_data: LeafData<'a>,
+    pub leaf_data: LeafData,
     /// Output note data containing note-specific information
     pub output_note_data: OutputNoteData,
     /// CLAIM note sender account id
@@ -150,17 +151,15 @@ pub fn create_claim_note<R: FeltRng>(params: ClaimNoteParams<'_, R>) -> Result<N
     claim_inputs.push(Felt::new(params.leaf_data.origin_network as u64));
 
     // originTokenAddress (address as 5 u32 felts)
-    claim_inputs
-        .extend(crate::EthAddressFormat::new(*params.leaf_data.origin_token_address).to_elements());
+    claim_inputs.extend(params.leaf_data.origin_token_address.to_elements());
 
     claim_inputs.push(Felt::new(params.leaf_data.destination_network as u64));
 
     // destinationAddress (address as 5 u32 felts)
-    claim_inputs
-        .extend(crate::EthAddressFormat::new(*params.leaf_data.destination_address).to_elements());
+    claim_inputs.extend(params.leaf_data.destination_address.to_elements());
 
     // amount (uint256 as 8 u32 felts)
-    push_u32_words(&mut claim_inputs, &params.leaf_data.amount);
+    push_u32_words(&mut claim_inputs, params.leaf_data.amount.as_array());
 
     // metadata (fixed size of 8 felts)
     push_u32_words(&mut claim_inputs, &params.leaf_data.metadata);

@@ -31,7 +31,7 @@ pub mod utils;
 
 // Re-export the main types from claim_note module
 pub use claim_note::{ClaimNoteParams, LeafData, OutputNoteData, ProofData, create_claim_note};
-pub use eth_address_format::EthAddressFormat;
+pub use eth_address_format::{EthAddressFormat, EthAmount};
 // Re-export utility functions from utils module
 pub use utils::{
     hex_string_to_address,
@@ -404,12 +404,11 @@ pub fn claim_note_test_inputs(
 
     let destination_network = 2u32;
 
-    // Convert AccountId to destination address bytes using EthAddressFormat
-    let destination_address =
-        EthAddressFormat::from_account_id(destination_account_id).into_bytes();
+    // Convert AccountId to destination address using EthAddressFormat
+    let destination_address = EthAddressFormat::from_account_id(destination_account_id);
 
-    // Convert amount to u32 array for agglayer
-    let amount_u32 = [amount, 0, 0, 0, 0, 0, 0, 0];
+    // Convert amount to EthAmount for agglayer
+    let amount_eth = EthAmount::from_u32(amount);
     let metadata: [u32; 8] = [0; 8];
 
     (
@@ -421,8 +420,8 @@ pub fn claim_note_test_inputs(
         origin_network,
         origin_token_address,
         destination_network,
-        destination_address,
-        amount_u32,
+        destination_address.into_bytes(),
+        amount_eth.into_array(),
         metadata,
     )
 }
