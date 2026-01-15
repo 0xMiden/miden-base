@@ -5,7 +5,7 @@ use fs_err as fs;
 use miden_assembly::diagnostics::{IntoDiagnostic, Result, WrapErr};
 use miden_assembly::utils::Serializable;
 use miden_assembly::{Assembler, Library, Report};
-use miden_crypto::hash::keccak::Keccak256;
+use miden_crypto::hash::keccak::{Keccak256, Keccak256Digest};
 use miden_protocol::transaction::TransactionKernel;
 
 // CONSTANTS
@@ -246,9 +246,9 @@ fn generate_canonical_zeros() -> Result<()> {
 
     let mut zeros_by_height = Vec::with_capacity(TREE_HEIGHT as usize);
 
-    // Push the zero of height 0 to the zeros vec. This is done separately because it requires
-    // `Keccak256::hash` instead of `Keccak256::merge`
-    zeros_by_height.push(Keccak256::hash(&[0u8; 32]));
+    // Push the zero of height 0 to the zeros vec. This is done separately because the zero of
+    // height 0 is just a plain zero array ([0u8; 32]), it doesn't require to perform any hashing.
+    zeros_by_height.push(Keccak256Digest::default());
 
     // Compute the canonical zeros for each height from 1 to TREE_HEIGHT
     // Zero of height `n` is computed as: `ZERO_N = Keccak256::merge(ZERO_{N-1}, ZERO_{N-1})`
@@ -267,6 +267,7 @@ fn generate_canonical_zeros() -> Result<()> {
 # 
 # Since the Keccak hash is represented by eight u32 values, each constant consists of two Words.\n",
     );
+
     for (height, zero) in zeros_by_height.iter().enumerate() {
         let zero_as_u32_vec = zero
             .chunks(4)
