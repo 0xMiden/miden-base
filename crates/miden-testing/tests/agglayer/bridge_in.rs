@@ -3,7 +3,7 @@ extern crate alloc;
 use core::slice;
 
 use miden_agglayer::{
-    ClaimNoteParams,
+    ClaimNoteInputs,
     EthAddressFormat,
     EthAmount,
     LeafData,
@@ -93,11 +93,11 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
     ) = claim_note_test_inputs(claim_amount, user_account.id());
 
     let proof_data = ProofData {
-        smt_proof_local_exit_root: &smt_proof_local_exit_root,
-        smt_proof_rollup_exit_root: &smt_proof_rollup_exit_root,
+        smt_proof_local_exit_root,
+        smt_proof_rollup_exit_root,
         global_index,
-        mainnet_exit_root: &mainnet_exit_root,
-        rollup_exit_root: &rollup_exit_root,
+        mainnet_exit_root,
+        rollup_exit_root,
     };
 
     let leaf_data = LeafData {
@@ -117,13 +117,7 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
         output_note_tag: NoteTag::from_account_id(user_account.id()),
     };
 
-    let claim_params = ClaimNoteParams {
-        proof_data,
-        leaf_data,
-        output_note_data,
-        claim_note_creator_account_id: user_account.id(),
-        rng: builder.rng_mut(),
-    };
+    let claim_inputs = ClaimNoteInputs { proof_data, leaf_data, output_note_data };
 
     // Create P2ID note for the user account (similar to network faucet test)
     let p2id_script = WellKnownNote::P2ID.script();
@@ -131,7 +125,7 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
     let note_inputs = NoteInputs::new(p2id_inputs)?;
     let p2id_recipient = NoteRecipient::new(serial_num, p2id_script.clone(), note_inputs);
 
-    let claim_note = create_claim_note(claim_params)?;
+    let claim_note = create_claim_note(claim_inputs, user_account.id(), builder.rng_mut())?;
 
     // Add the claim note to the builder before building the mock chain
     builder.add_output_note(OutputNote::Full(claim_note.clone()));
