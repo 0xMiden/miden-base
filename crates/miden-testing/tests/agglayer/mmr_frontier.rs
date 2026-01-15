@@ -68,51 +68,23 @@ impl<const TREE_HEIGHT: usize> KeccakMmrFrontier32<TREE_HEIGHT> {
 async fn test_append_and_update_frontier() -> anyhow::Result<()> {
     let mut mmr_frontier = KeccakMmrFrontier32::<32>::new();
 
-    // create a leaf from a random hex
-    let first_leaf = Keccak256Digest::try_from(
-        "0x110527e2a134fcb367f3bc770acc0d75b9c47bb4c5a78f0de02c80143340df62",
-    )
-    .unwrap();
-    let first_root = mmr_frontier.append_and_update_frontier(first_leaf);
-    let first_leaf_count = mmr_frontier.num_leaves;
+    let mut source = "use miden::agglayer::collections::mmr_frontier32_keccak begin".to_string();
 
-    let second_leaf = Keccak256Digest::try_from(
-        "0xa623afa60853762a72f9de96574ebee588ba5653cd2bd5e611e288f8da8c06b4",
-    )
-    .unwrap();
-    let second_root = mmr_frontier.append_and_update_frontier(second_leaf);
-    let second_leaf_count = mmr_frontier.num_leaves;
+    for round in 0..32 {
+        // construct the leaf from the hex representation of the round number
+        let leaf = Keccak256Digest::try_from(format!("{:#066x}", round).as_str()).unwrap();
+        let root = mmr_frontier.append_and_update_frontier(leaf);
+        let num_leaves = mmr_frontier.num_leaves;
 
-    let third_leaf = Keccak256Digest::try_from(
-        "0x74a0e9822d944966bc7cfe38fc8af7dcd39a37f29750d11012931cef68a488d1",
-    )
-    .unwrap();
-    let third_root = mmr_frontier.append_and_update_frontier(third_leaf);
-    let third_leaf_count = mmr_frontier.num_leaves;
+        source.push_str(&leaf_assertion_code(leaf, root, num_leaves));
+    }
 
-    let source = format!(
-        r#"
-        use miden::agglayer::collections::mmr_frontier32_keccak
-
-        begin
-            # assert first leaf, root and leaves count
-            {first_assert}
-
-            # assert second leaf, root and leaves count
-            {second_assert}
-
-            # assert third leaf, root and leaves count
-            {third_assert}
-        end
-        "#,
-        first_assert = leaf_assertion_code(first_leaf, first_root, first_leaf_count),
-        second_assert = leaf_assertion_code(second_leaf, second_root, second_leaf_count),
-        third_assert = leaf_assertion_code(third_leaf, third_root, third_leaf_count),
-    );
+    source.push_str("end");
 
     let tx_script = CodeBuilder::new()
         .with_statically_linked_library(&agglayer_library())?
         .compile_tx_script(source)?;
+
     TransactionContextBuilder::with_existing_mock_account()
         .tx_script(tx_script.clone())
         .build()?
@@ -136,7 +108,7 @@ fn keccak_digest_to_word_strings(digest: Keccak256Digest) -> (String, String) {
     (double_word[0..4].join(", "), double_word[4..8].join(", "))
 }
 
-fn leaf_assertion_code(leaf: Keccak256Digest, root: Keccak256Digest, leaves_num: u32) -> String {
+fn leaf_assertion_code(leaf: Keccak256Digest, root: Keccak256Digest, num_leaves: u32) -> String {
     let (leaf_hi, leaf_lo) = keccak_digest_to_word_strings(leaf);
     let (root_hi, root_lo) = keccak_digest_to_word_strings(root);
 
@@ -162,8 +134,8 @@ fn leaf_assertion_code(leaf: Keccak256Digest, root: Keccak256Digest, leaves_num:
             assert_eqw.err="MMR root (HI) after first leaf was added is incorrect"
             # => [new_leaf_count=1]
 
-            # assert the new leaf count
-            push.{leaves_num}
+            # assert the new number of leaves
+            push.{num_leaves}
             assert_eq.err="first leaf count is incorrect"
         "#
     )
