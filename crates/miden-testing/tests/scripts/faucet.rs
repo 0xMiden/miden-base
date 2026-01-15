@@ -581,15 +581,13 @@ async fn test_network_faucet_owner_can_mint() -> anyhow::Result<()> {
 
     let amount = Felt::new(75);
     let mint_asset: Asset = FungibleAsset::new(faucet.id(), amount.into())?.into();
-    let aux = Felt::new(27);
 
-    let output_note_tag = NoteTag::from_account_id(target_account.id());
+    let output_note_tag = NoteTag::with_account_target(target_account.id());
     let p2id_note = create_p2id_note_exact(
         faucet.id(),
         target_account.id(),
         vec![mint_asset],
         NoteType::Private,
-        aux,
         Word::default(),
     )?;
     let recipient = p2id_note.recipient().digest();
@@ -598,12 +596,10 @@ async fn test_network_faucet_owner_can_mint() -> anyhow::Result<()> {
         recipient,
         amount,
         output_note_tag.into(),
-        NoteExecutionHint::always(),
-        aux,
     );
 
     let mut rng = RpoRandomCoin::new([Felt::from(42u32); 4].into());
-    let mint_note = create_mint_note(faucet.id(), owner_account_id, mint_inputs, aux, &mut rng)?;
+    let mint_note = create_mint_note(faucet.id(), owner_account_id, mint_inputs, NoteAttachment::default(), &mut rng)?;
 
     let tx_context = mock_chain
         .build_tx_context(faucet.id(), &[], &[mint_note])?
@@ -640,15 +636,13 @@ async fn test_network_faucet_non_owner_cannot_mint() -> anyhow::Result<()> {
 
     let amount = Felt::new(75);
     let mint_asset: Asset = FungibleAsset::new(faucet.id(), amount.into())?.into();
-    let aux = Felt::new(27);
 
-    let output_note_tag = NoteTag::from_account_id(target_account.id());
+    let output_note_tag = NoteTag::with_account_target(target_account.id());
     let p2id_note = create_p2id_note_exact(
         faucet.id(),
         target_account.id(),
         vec![mint_asset],
         NoteType::Private,
-        aux,
         Word::default(),
     )?;
     let recipient = p2id_note.recipient().digest();
@@ -657,13 +651,11 @@ async fn test_network_faucet_non_owner_cannot_mint() -> anyhow::Result<()> {
         recipient,
         amount,
         output_note_tag.into(),
-        NoteExecutionHint::always(),
-        aux,
     );
 
     // Create mint note from NON-OWNER
     let mut rng = RpoRandomCoin::new([Felt::from(42u32); 4].into());
-    let mint_note = create_mint_note(faucet.id(), non_owner_account_id, mint_inputs, aux, &mut rng)?;
+    let mint_note = create_mint_note(faucet.id(), non_owner_account_id, mint_inputs, NoteAttachment::default(), &mut rng)?;
 
     let tx_context = mock_chain
         .build_tx_context(faucet.id(), &[], &[mint_note])?
@@ -780,15 +772,13 @@ async fn test_network_faucet_transfer_ownership() -> anyhow::Result<()> {
 
     let amount = Felt::new(75);
     let mint_asset: Asset = FungibleAsset::new(faucet.id(), amount.into())?.into();
-    let aux = Felt::new(27);
 
-    let output_note_tag = NoteTag::from_account_id(target_account.id());
+    let output_note_tag = NoteTag::with_account_target(target_account.id());
     let p2id_note = create_p2id_note_exact(
         faucet.id(),
         target_account.id(),
         vec![mint_asset],
         NoteType::Private,
-        aux,
         Word::default(),
     )?;
     let recipient = p2id_note.recipient().digest();
@@ -798,12 +788,10 @@ async fn test_network_faucet_transfer_ownership() -> anyhow::Result<()> {
         recipient,
         amount,
         output_note_tag.into(),
-        NoteExecutionHint::always(),
-        aux,
     );
 
     let mut rng = RpoRandomCoin::new([Felt::from(42u32); 4].into());
-    let mint_note = create_mint_note(faucet.id(), initial_owner_account_id, mint_inputs.clone(), aux, &mut rng)?;
+    let mint_note = create_mint_note(faucet.id(), initial_owner_account_id, mint_inputs.clone(), NoteAttachment::default(), &mut rng)?;
 
     // Action: Create transfer_ownership note script
     let transfer_note_script_code = format!(
@@ -830,9 +818,7 @@ async fn test_network_faucet_transfer_ownership() -> anyhow::Result<()> {
     let mut rng = RpoRandomCoin::new([Felt::from(200u32); 4].into());
     let transfer_note = NoteBuilder::new(initial_owner_account_id, &mut rng)
         .note_type(NoteType::Private)
-        .tag(NoteTag::for_local_use_case(0, 0)?.into())
-        .note_execution_hint(NoteExecutionHint::always())
-        .aux(Felt::new(0))
+        .tag(NoteTag::default().into())
         .serial_number(Word::from([11, 22, 33, 44u32]))
         .code(transfer_note_script_code.clone())
         .build()?;
@@ -873,7 +859,7 @@ async fn test_network_faucet_transfer_ownership() -> anyhow::Result<()> {
         updated_faucet.id(),
         initial_owner_account_id,
         mint_inputs.clone(),
-        aux,
+        NoteAttachment::default(),
         &mut rng,
     )?;
 
@@ -894,7 +880,7 @@ async fn test_network_faucet_transfer_ownership() -> anyhow::Result<()> {
         updated_faucet.id(),
         new_owner_account_id,
         mint_inputs,
-        aux,
+        NoteAttachment::default(),
         &mut rng,
     )?;
 
@@ -963,9 +949,7 @@ async fn test_network_faucet_only_owner_can_transfer() -> anyhow::Result<()> {
     let mut rng = RpoRandomCoin::new([Felt::from(100u32); 4].into());
     let transfer_note = NoteBuilder::new(non_owner_account_id, &mut rng)
         .note_type(NoteType::Private)
-        .tag(NoteTag::for_local_use_case(0, 0)?.into())
-        .note_execution_hint(NoteExecutionHint::always())
-        .aux(Felt::new(0))
+        .tag(NoteTag::default().into())
         .serial_number(Word::from([10, 20, 30, 40u32]))
         .code(transfer_note_script_code.clone())
         .build()?;
@@ -1051,9 +1035,7 @@ async fn test_network_faucet_renounce_ownership() -> anyhow::Result<()> {
     let mut rng = RpoRandomCoin::new([Felt::from(200u32); 4].into());
     let renounce_note = NoteBuilder::new(owner_account_id, &mut rng)
         .note_type(NoteType::Private)
-        .tag(NoteTag::for_local_use_case(0, 0)?.into())
-        .note_execution_hint(NoteExecutionHint::always())
-        .aux(Felt::new(0))
+        .tag(NoteTag::default().into())
         .serial_number(Word::from([11, 22, 33, 44u32]))
         .code(renounce_note_script_code.to_string())
         .build()?;
@@ -1061,9 +1043,7 @@ async fn test_network_faucet_renounce_ownership() -> anyhow::Result<()> {
     let mut rng = RpoRandomCoin::new([Felt::from(300u32); 4].into());
     let transfer_note = NoteBuilder::new(owner_account_id, &mut rng)
         .note_type(NoteType::Private)
-        .tag(NoteTag::for_local_use_case(0, 0)?.into())
-        .note_execution_hint(NoteExecutionHint::always())
-        .aux(Felt::new(0))
+        .tag(NoteTag::default().into())
         .serial_number(Word::from([50, 60, 70, 80u32]))
         .code(transfer_note_script_code.clone())
         .build()?;
