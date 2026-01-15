@@ -17,6 +17,11 @@ use miden::protocol::note
 #! - RECIPIENT is the recipient of the note.
 #! - note_idx is the index of the created note.
 #!
+#! Panics if:
+#! - the note_type is unknown.
+#! - the note tag is not a u32.
+#! - the number of output notes exceeds the maximum limit of 1024.
+#!
 #! Invocation: exec
 pub proc create
     # pad the stack before the syscall to prevent accidental modification of the deeper stack

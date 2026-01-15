@@ -599,21 +599,14 @@ async fn asset_and_storage_delta() -> anyhow::Result<()> {
     let removed_assets = [removed_asset_1, removed_asset_2, removed_asset_3];
 
     let tag1 =
-        NoteTag::from_account_id(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into()?);
-    let tag2 = NoteTag::for_local_use_case(0, 0)?;
-    let tag3 = NoteTag::for_local_use_case(0, 0)?;
+        NoteTag::with_account_target(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into()?);
+    let tag2 = NoteTag::default();
+    let tag3 = NoteTag::default();
     let tags = [tag1, tag2, tag3];
 
     let aux_array = [Felt::new(27), Felt::new(28), Felt::new(29)];
 
     let note_types = [NoteType::Private; 3];
-
-    tag1.validate(NoteType::Private)
-        .expect("note tag 1 should support private notes");
-    tag2.validate(NoteType::Private)
-        .expect("note tag 2 should support private notes");
-    tag3.validate(NoteType::Private)
-        .expect("note tag 3 should support private notes");
 
     let execution_hint_1 = Felt::from(NoteExecutionHint::always());
     let execution_hint_2 = Felt::from(NoteExecutionHint::none());

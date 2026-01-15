@@ -793,10 +793,9 @@ fn create_p2ide_note_with_inputs(inputs: impl IntoIterator<Item = u64>, sender: 
         NoteInputs::new(inputs.into_iter().map(Felt::new).collect()).unwrap(),
     );
 
-    let tag = NoteTag::from_account_id(sender);
+    let tag = NoteTag::with_account_target(sender);
     let metadata =
-        NoteMetadata::new(sender, NoteType::Public, tag, NoteExecutionHint::always(), ZERO)
-            .unwrap();
+        NoteMetadata::new(sender, NoteType::Public, tag, NoteExecutionHint::always(), ZERO);
 
     Note::new(NoteAssets::default(), metadata, recipient)
 }

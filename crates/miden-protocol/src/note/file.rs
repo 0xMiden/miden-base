@@ -178,8 +178,7 @@ mod tests {
             NoteTag::from(123),
             crate::note::NoteExecutionHint::None,
             Felt::new(0),
-        )
-        .unwrap();
+        );
 
         Note::new(NoteAssets::new(vec![asset]).unwrap(), metadata, recipient)
     }

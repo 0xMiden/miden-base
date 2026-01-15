@@ -64,8 +64,7 @@ pub fn get_note_with_fungible_asset_and_script(
 
     let vault = NoteAssets::new(vec![fungible_asset.into()]).unwrap();
     let metadata =
-        NoteMetadata::new(sender_id, NoteType::Public, 1.into(), NoteExecutionHint::Always, ZERO)
-            .unwrap();
+        NoteMetadata::new(sender_id, NoteType::Public, 1.into(), NoteExecutionHint::Always, ZERO);
     let inputs = NoteInputs::new(vec![]).unwrap();
     let recipient = NoteRecipient::new(serial_num, note_script, inputs);
 

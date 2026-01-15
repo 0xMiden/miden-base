@@ -13,7 +13,6 @@ use miden_protocol::note::{
     Note,
     NoteAssets,
     NoteExecutionHint,
-    NoteExecutionMode,
     NoteInputs,
     NoteMetadata,
     NoteRecipient,
@@ -58,7 +57,7 @@ async fn test_create_note() -> anyhow::Result<()> {
 
     let recipient = Word::from([0, 1, 2, 3u32]);
     let aux = Felt::new(27);
-    let tag = NoteTag::from_account_id(account_id);
+    let tag = NoteTag::with_account_target(account_id);
 
     let code = format!(
         "
@@ -107,7 +106,7 @@ async fn test_create_note() -> anyhow::Result<()> {
         tag,
         NoteExecutionHint::after_block(23.into())?,
         Felt::new(27),
-    )?
+    )
     .into();
 
     assert_eq!(
@@ -129,7 +128,7 @@ async fn test_create_note_with_invalid_tag() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
     let invalid_tag = Felt::new((NoteType::Public as u64) << 62);
-    let valid_tag: Felt = NoteTag::for_local_use_case(0, 0).unwrap().into();
+    let valid_tag: Felt = NoteTag::default().into();
 
     // Test invalid tag
     assert!(tx_context.execute_code(&note_creation_script(invalid_tag)).await.is_err());
@@ -193,7 +192,7 @@ async fn test_create_note_too_many_notes() -> anyhow::Result<()> {
             call.output_note::create
         end
         ",
-        tag = NoteTag::for_local_use_case(1234, 5678).unwrap(),
+        tag = NoteTag::new(1234 << 16 | 5678),
         recipient = Word::from([0, 1, 2, 3u32]),
         execution_hint_always = Felt::from(NoteExecutionHint::always()),
         PUBLIC_NOTE = NoteType::Public as u8,
@@ -255,7 +254,7 @@ async fn test_get_output_notes_commitment() -> anyhow::Result<()> {
 
     // create output note 1
     let output_serial_no_1 = Word::from([8u32; 4]);
-    let output_tag_1 = NoteTag::from_account_id(network_account);
+    let output_tag_1 = NoteTag::with_account_target(network_account);
     let assets = NoteAssets::new(vec![input_asset_1])?;
     let metadata = NoteMetadata::new(
         tx_context.tx_inputs().account().id(),
@@ -263,14 +262,14 @@ async fn test_get_output_notes_commitment() -> anyhow::Result<()> {
         output_tag_1,
         NoteExecutionHint::Always,
         ZERO,
-    )?;
+    );
     let inputs = NoteInputs::new(vec![])?;
     let recipient = NoteRecipient::new(output_serial_no_1, input_note_1.script().clone(), inputs);
     let output_note_1 = Note::new(assets, metadata, recipient);
 
     // create output note 2
     let output_serial_no_2 = Word::from([11u32; 4]);
-    let output_tag_2 = NoteTag::from_account_id(local_account);
+    let output_tag_2 = NoteTag::with_account_target(local_account);
     let assets = NoteAssets::new(vec![input_asset_2])?;
     let metadata = NoteMetadata::new(
         tx_context.tx_inputs().account().id(),
@@ -278,7 +277,7 @@ async fn test_get_output_notes_commitment() -> anyhow::Result<()> {
         output_tag_2,
         NoteExecutionHint::after_block(123.into())?,
         ZERO,
-    )?;
+    );
     let inputs = NoteInputs::new(vec![])?;
     let recipient = NoteRecipient::new(output_serial_no_2, input_note_2.script().clone(), inputs);
     let output_note_2 = Note::new(assets, metadata, recipient);
@@ -392,7 +391,7 @@ async fn test_create_note_and_add_asset() -> anyhow::Result<()> {
     let faucet_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET)?;
     let recipient = Word::from([0, 1, 2, 3u32]);
     let aux = Felt::new(27);
-    let tag = NoteTag::from_account_id(faucet_id);
+    let tag = NoteTag::with_account_target(faucet_id);
     let asset = Word::from(FungibleAsset::new(faucet_id, 10)?);
 
     let code = format!(
@@ -454,7 +453,7 @@ async fn test_create_note_and_add_multiple_assets() -> anyhow::Result<()> {
 
     let recipient = Word::from([0, 1, 2, 3u32]);
     let aux = Felt::new(27);
-    let tag = NoteTag::from_account_id(faucet_2);
+    let tag = NoteTag::with_account_target(faucet_2);
 
     let asset = Word::from(FungibleAsset::new(faucet, 10)?);
     let asset_2 = Word::from(FungibleAsset::new(faucet_2, 20)?);
@@ -541,7 +540,7 @@ async fn test_create_note_and_add_same_nft_twice() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
     let recipient = Word::from([0, 1, 2, 3u32]);
-    let tag = NoteTag::for_public_use_case(999, 777, NoteExecutionMode::Local).unwrap();
+    let tag = NoteTag::new(999 << 16 | 777);
     let non_fungible_asset = NonFungibleAsset::mock(&[1, 2, 3]);
     let encoded = Word::from(non_fungible_asset);
 
@@ -631,7 +630,7 @@ async fn test_build_recipient_hash() -> anyhow::Result<()> {
     // create output note
     let output_serial_no = Word::from([0, 1, 2, 3u32]);
     let aux = Felt::new(27);
-    let tag = NoteTag::for_public_use_case(42, 42, NoteExecutionMode::Network).unwrap();
+    let tag = NoteTag::new(42 << 16 | 42);
     let single_input = 2;
     let inputs = NoteInputs::new(vec![Felt::new(single_input)]).unwrap();
     let input_commitment = inputs.commitment();

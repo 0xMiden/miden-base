@@ -13,9 +13,6 @@ const PUBLIC_NOTE=1     # 0b01
 const PRIVATE_NOTE=2    # 0b10
 const ENCRYPTED_NOTE=3  # 0b11
 
-# The note type must be PUBLIC, unless the high bits are `0b11`. (See the table below.)
-const LOCAL_ANY_PREFIX=3 # 0b11
-
 # ERRORS
 # =================================================================================================
 
@@ -31,29 +28,7 @@ const ERR_NOTE_FUNGIBLE_MAX_AMOUNT_EXCEEDED="adding a fungible asset to a note c
 
 const ERR_NON_FUNGIBLE_ASSET_ALREADY_EXISTS="non-fungible asset that already exists in the note cannot be added again"
 
-# The 2 highest bits in the u32 tag have the following meaning:
-#
-# | Prefix | Name                   | [`NoteExecutionMode`] | Target                   | Allowed [`NoteType`] |
-# | :----: | :--------------------: | :-------------------: | :----------------------: | :------------------: |
-# | `0b00` | `NetworkAccount`       | Network               | Network Account          | [`NoteType::Public`] |
-# | `0b01` | `NetworkUseCase`       | Network               | Use case                 | [`NoteType::Public`] |
-# | `0b10` | `LocalPublicAny`       | Local                 | Any                      | [`NoteType::Public`] |
-# | `0b11` | `LocalAny`             | Local                 | Any                      | Any                  |
-#
-# Execution: Is a hint for the network, to check if the note can be consumed by a network controlled
-#   account
-# Target: Is a hint for the type of target. Use case means the note may be consumed by anyone,
-#   specific means there is a specific target for the note (the target may be a public key, a user
-#   that knows some secret, or a specific account ID)
-#
-# Only the note type from the above list is enforced. The other values are only hints intended as a
-# best effort optimization strategy. A badly formatted note may 1. not be consumed because honest
-# users won't see the note 2. generate slightly more load as extra validation is performed for the
-# invalid tags. None of these scenarios have any significant impact.
-
-const ERR_NOTE_INVALID_NOTE_TYPE_FOR_NOTE_TAG_PREFIX="invalid note type for the given note tag prefix"
-
-const ERR_NOTE_TAG_MUST_BE_U32="the note's tag must fit into a u32 so the 32 most significant bits must be zero"
+const ERR_NOTE_TAG_MUST_BE_U32="the note's tag must fit into a u32 so the 32 most significant bits of the felt must be zero"
 
 # EVENTS
 # =================================================================================================
@@ -86,9 +61,8 @@ const NOTE_AFTER_ADD_ASSET_EVENT=event("miden::note::after_add_asset")
 #! - note_idx is the index of the created note.
 #!
 #! Panics if:
-#! - the note_type is not valid.
-#! - the note_tag is not an u32.
-#! - the note_tag starts with anything but 0b11 and note_type is not public.
+#! - the note_type is unknown.
+#! - the note tag is not a u32.
 #! - the number of output notes exceeds the maximum limit of 1024.
 pub proc create
     emit.NOTE_BEFORE_CREATED_EVENT
@@ -278,16 +252,7 @@ pub proc build_metadata
     dup.2 eq.PRIVATE_NOTE dup.3 eq.PUBLIC_NOTE or assert.err=ERR_NOTE_INVALID_TYPE
     # => [tag, aux, note_type, execution_hint]
 
-    # copy data to validate the tag
-    dup.2 push.PUBLIC_NOTE dup.1 dup.3
-    # => [tag, note_type, public_note, note_type, tag, aux, note_type, execution_hint]
-
     u32assert.err=ERR_NOTE_TAG_MUST_BE_U32
-    # => [tag, note_type, public_note, note_type, tag, aux, note_type, execution_hint]
-
-    # enforce the note type depending on the tag' bits
-    u32shr.30 eq.LOCAL_ANY_PREFIX cdrop
-    assert_eq.err=ERR_NOTE_INVALID_NOTE_TYPE_FOR_NOTE_TAG_PREFIX
     # => [tag, aux, note_type, execution_hint]
 
     # Split execution hint into its tag and payload parts as they are encoded in separate elements

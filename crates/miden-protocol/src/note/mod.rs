@@ -27,7 +27,7 @@ mod note_id;
 pub use note_id::NoteId;
 
 mod note_tag;
-pub use note_tag::{NoteExecutionMode, NoteTag};
+pub use note_tag::NoteTag;
 
 mod note_type;
 pub use note_type::NoteType;
@@ -155,11 +155,6 @@ impl Note {
     /// in a transaction.
     pub fn commitment(&self) -> Word {
         self.header.commitment()
-    }
-
-    /// Returns true if this note is intended to be executed by the network rather than a user.
-    pub fn is_network_note(&self) -> bool {
-        self.metadata().tag().execution_mode() == NoteExecutionMode::Network
     }
 }
 
