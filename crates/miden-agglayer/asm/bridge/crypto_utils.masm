@@ -23,11 +23,11 @@ const LEAF_DATA_START_PTR = 0
 #!
 #! Invocation: exec
 pub proc get_leaf_value
-    adv.push_mapval dropw
+    adv.push_mapval
     # => [LEAF_DATA_KEY]
 
     push.LEAF_DATA_START_PTR push.LEAF_DATA_NUM_WORDS
-    exec.mem::pipe_words_to_memory dropw dropw dropw drop
+    exec.mem::pipe_preimage_to_memory drop
     # => []
 
     push.LEAF_DATA_BYTES push.LEAF_DATA_START_PTR
