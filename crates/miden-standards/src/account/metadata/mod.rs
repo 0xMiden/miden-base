@@ -36,7 +36,7 @@ impl AccountSchemaCommitment {
         I: IntoIterator<Item = &'a StorageSchema>,
     {
         Self {
-            schema_commitment: compute_schema_commitment_iter(schemas),
+            schema_commitment: compute_schema_commitment(schemas),
         }
     }
 
@@ -67,6 +67,33 @@ impl From<AccountSchemaCommitment> for AccountComponent {
     }
 }
 
+/// Computes the schema commitment.
+///
+/// The account schema commitment is the hash of the ordered list of component schema commitments.
+/// If the passed list of schemas is empty, [`Word::empty()`] is returned.
+fn compute_schema_commitment<'a, I>(schemas: I) -> Word
+where
+    I: IntoIterator<Item = &'a StorageSchema>,
+{
+    let mut commitments: Vec<Word> = schemas.into_iter().map(StorageSchema::commitment).collect();
+    if commitments.is_empty() {
+        return Word::empty();
+    }
+
+    commitments.sort_by(|a, b| LexicographicWord::new(*a).cmp(&LexicographicWord::new(*b)));
+
+    let mut bytes = Vec::with_capacity(commitments.len() * Word::SERIALIZED_SIZE);
+    for commitment in commitments.iter() {
+        commitment.write_into(&mut bytes);
+    }
+
+    let elements = bytes_to_elements_with_padding(&bytes);
+    Hasher::hash_elements(&elements)
+}
+
+// BUILDER EXTENSION TRAIT
+// ================================================================================================
+
 /// Extension helpers for attaching an account schema commitment component to an [`AccountBuilder`].
 pub trait AccountBuilderSchemaExt {
     /// Adds the schema commitment component derived from the builder's components.
@@ -85,26 +112,6 @@ impl AccountBuilderSchemaExt for AccountBuilder {
 
         self
     }
-}
-
-fn compute_schema_commitment_iter<'a, I>(schemas: I) -> Word
-where
-    I: IntoIterator<Item = &'a StorageSchema>,
-{
-    let mut commitments: Vec<Word> = schemas.into_iter().map(StorageSchema::commitment).collect();
-    if commitments.is_empty() {
-        return Word::empty();
-    }
-
-    commitments.sort_by(|a, b| LexicographicWord::new(*a).cmp(&LexicographicWord::new(*b)));
-
-    let mut bytes = Vec::with_capacity(commitments.len() * Word::SERIALIZED_SIZE);
-    for commitment in commitments.iter() {
-        commitment.write_into(&mut bytes);
-    }
-
-    let elements = bytes_to_elements_with_padding(&bytes);
-    Hasher::hash_elements(&elements)
 }
 
 #[cfg(test)]
