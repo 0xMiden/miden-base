@@ -238,9 +238,9 @@ fn generate_error_constants(asm_source_dir: &Path) -> Result<()> {
 // ================================================================================================
 
 fn generate_canonical_zeros() -> Result<()> {
-    // if !BUILD_GENERATED_FILES_IN_SRC {
-    //     return Ok(());
-    // }
+    if !BUILD_GENERATED_FILES_IN_SRC {
+        return Ok(());
+    }
 
     const TREE_HEIGHT: u8 = 32;
 
@@ -281,19 +281,6 @@ fn generate_canonical_zeros() -> Result<()> {
         zero_constants
             .push_str(&format!("const ZERO_{height}_R = [{}]\n", zero_as_u32_vec[4..].join(", ")));
     }
-
-    // TODO: uncomment once constants could be used in the advice map definitions
-    //     zero_constants.push_str(
-    //         "# adv_map CANONICAL_ZEROS = [ZERO_0_L, ZERO_0_R, ZERO_1_L, ZERO_1_R, ZERO_2_L,
-    // ZERO_2_R, ZERO_3_L, ZERO_3_R, #                            ZERO_4_L, ZERO_4_R, ZERO_5_L,
-    // ZERO_5_R, ZERO_6_L, ZERO_6_R, ZERO_7_L, ZERO_7_R, #                            ZERO_8_L,
-    // ZERO_8_R, ZERO_9_L, ZERO_9_R, ZERO_10_L, ZERO_10_R, ZERO_11_L, ZERO_11_R, #
-    // ZERO_12_L, ZERO_12_R, ZERO_13_L, ZERO_13_R, ZERO_14_L, ZERO_14_R, ZERO_15_L, ZERO_15_R, #
-    // ZERO_16_L, ZERO_16_R, ZERO_17_L, ZERO_17_R, ZERO_18_L, ZERO_18_R, ZERO_19_L, ZERO_19_R, #
-    // ZERO_20_L, ZERO_20_R, ZERO_21_L, ZERO_21_R, ZERO_22_L, ZERO_22_R, ZERO_23_L, ZERO_23_R, #
-    // ZERO_24_L, ZERO_24_R, ZERO_25_L, ZERO_25_R, ZERO_26_L, ZERO_26_R, ZERO_27_L, ZERO_27_R, #
-    // ZERO_28_L, ZERO_28_R, ZERO_29_L, ZERO_29_R, ZERO_30_L, ZERO_30_R, ZERO_31_L, ZERO_31_R #
-    // ]"     );
 
     // remove once CANONICAL_ZEROS advice map is available
     zero_constants.push_str(

@@ -27,22 +27,22 @@ static CANONICAL_ZEROS_32: LazyLock<Vec<Keccak256Digest>> = LazyLock::new(|| {
 });
 
 struct KeccakMmrFrontier32<const TREE_HEIGHT: usize = 32> {
-    leaves_num: u32,
+    num_leaves: u32,
     frontier: [Keccak256Digest; TREE_HEIGHT],
 }
 
 impl<const TREE_HEIGHT: usize> KeccakMmrFrontier32<TREE_HEIGHT> {
     pub fn new() -> Self {
         Self {
-            leaves_num: 0,
+            num_leaves: 0,
             frontier: [Keccak256Digest::default(); TREE_HEIGHT],
         }
     }
 
     pub fn append_and_update_frontier(&mut self, new_leaf: Keccak256Digest) -> Keccak256Digest {
         let mut curr_hash = new_leaf;
-        let mut idx = self.leaves_num;
-        self.leaves_num += 1;
+        let mut idx = self.num_leaves;
+        self.num_leaves += 1;
 
         for height in 0..TREE_HEIGHT {
             if (idx & 1) == 0 {
@@ -74,21 +74,21 @@ async fn test_append_and_update_frontier() -> anyhow::Result<()> {
     )
     .unwrap();
     let first_root = mmr_frontier.append_and_update_frontier(first_leaf);
-    let first_leaf_count = mmr_frontier.leaves_num;
+    let first_leaf_count = mmr_frontier.num_leaves;
 
     let second_leaf = Keccak256Digest::try_from(
         "0xa623afa60853762a72f9de96574ebee588ba5653cd2bd5e611e288f8da8c06b4",
     )
     .unwrap();
     let second_root = mmr_frontier.append_and_update_frontier(second_leaf);
-    let second_leaf_count = mmr_frontier.leaves_num;
+    let second_leaf_count = mmr_frontier.num_leaves;
 
     let third_leaf = Keccak256Digest::try_from(
         "0x74a0e9822d944966bc7cfe38fc8af7dcd39a37f29750d11012931cef68a488d1",
     )
     .unwrap();
     let third_root = mmr_frontier.append_and_update_frontier(third_leaf);
-    let third_leaf_count = mmr_frontier.leaves_num;
+    let third_leaf_count = mmr_frontier.num_leaves;
 
     let source = format!(
         r#"
@@ -125,28 +125,35 @@ async fn test_append_and_update_frontier() -> anyhow::Result<()> {
 // HELPER FUNCTIONS
 // ================================================================================================
 
-fn keccak_digest_to_felt_strings(digest: Keccak256Digest) -> String {
-    (*digest)
+/// Transforms the `[Keccak256Digest]` into two word strings: (`a, b, c, d`, `e, f, g, h`)
+fn keccak_digest_to_word_strings(digest: Keccak256Digest) -> (String, String) {
+    let double_word = (*digest)
         .chunks(4)
         .map(|chunk| Felt::from(u32::from_le_bytes(chunk.try_into().unwrap())).to_string())
         .rev()
-        .collect::<Vec<_>>()
-        .join(".")
+        .collect::<Vec<_>>();
+
+    (double_word[0..4].join(", "), double_word[4..8].join(", "))
 }
 
 fn leaf_assertion_code(leaf: Keccak256Digest, root: Keccak256Digest, leaves_num: u32) -> String {
+    let (leaf_hi, leaf_lo) = keccak_digest_to_word_strings(leaf);
+    let (root_hi, root_lo) = keccak_digest_to_word_strings(root);
+
     format!(
         r#"
             # load the provided leaf onto the stack
-            push.{LEAF}
+            push.[{leaf_hi}]
+            push.[{leaf_lo}]
 
             # add this leaf to the MMR frontier
             exec.mmr_frontier32_keccak::append_and_update_frontier
             # => [NEW_ROOT_1_LO, NEW_ROOT_1_HI, new_leaf_count=1]
 
             # assert the root correctness after the first leaf was added
-            push.{ROOT}
-            swapw movdnw.3
+            push.[{root_lo}]
+            push.[{root_hi}]
+            movdnw.3
             # => [EXPECTED_ROOT_1_LO, NEW_ROOT_1_LO, NEW_ROOT_1_HI, EXPECTED_ROOT_1_HI, new_leaf_count=1]
 
             assert_eqw.err="MMR root (LO) after first leaf was added is incorrect"
@@ -158,8 +165,6 @@ fn leaf_assertion_code(leaf: Keccak256Digest, root: Keccak256Digest, leaves_num:
             # assert the new leaf count
             push.{leaves_num}
             assert_eq.err="first leaf count is incorrect"
-        "#,
-        LEAF = keccak_digest_to_felt_strings(leaf),
-        ROOT = keccak_digest_to_felt_strings(root),
+        "#
     )
 }

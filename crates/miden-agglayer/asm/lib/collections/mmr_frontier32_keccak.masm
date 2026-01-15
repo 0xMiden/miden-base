@@ -64,6 +64,11 @@ use ::miden::agglayer::collections::canonical_zeros::load_zeros_to_memory
 # Zero hashes which are used during the root computation are stored in the local memory of the 
 # `append_and_update_frontier` procedure.
 
+# ERRORS
+# =================================================================================================
+
+const ERR_MMR_FRONTIER_LEAVES_NUM_EXCEED_LIMIT = "number of leaves in the MMR of the MMR Frontier exceeded 4294967296 (2^32)"
+
 # CONSTANTS
 # =================================================================================================
 
@@ -72,7 +77,7 @@ use ::miden::agglayer::collections::canonical_zeros::load_zeros_to_memory
 # If the height is 32, the leaves num will be equal to 4294967296 (2**32)
 const MAX_LEAVES_NUM = 4294967296
 
-# The total height of the full MMR tree, whose root represents the the commitment to the current
+# The total height of the full MMR tree, whose root represents the commitment to the current
 # frontier.
 const TREE_HEIGHT = 32
 
@@ -85,35 +90,67 @@ const NUM_LEAVES_OFFSET = 0
 # The offset of the array of the frontier nodes of respective heights.
 const FRONTIER_OFFSET = 4 # 32 double words, 256 felts in total
 
+# The offset of the first half of the current Keccak256 hash value in the local memory of the
+# `append_and_update_frontier` procedure.
+const CUR_HASH_LO_LOCAL = 0
+
+# The offset of the second half of the current Keccak256 hash value in the local memory of the
+# `append_and_update_frontier` procedure.
+const CUR_HASH_HI_LOCAL = 4
+
+# The offset of the canonical zeros stored in the local memory of the `append_and_update_frontier`
+# procedure.
+const CANONICAL_ZEROES_LOCAL = 8
+
 # PUBLIC API
 # =================================================================================================
 
 #! Updates the existing frontier with the new leaf, returns a new leaf count and a new MMR root.
 #!
-#! The memory layout at the `mmr_frontier_ptr` is expected to be like so:
+#! The memory layout at the `mmr_frontier_ptr` is expected to be:
 #! [num_leaves, [[FRONTIER_NODE_LO, FRONTIER_NODE_HI]; 32]]
-#! So, in fact, empty, uninitialized memory is a valid state for the frontier in case there are no
+#! Empty uninitialized memory is a valid state for the frontier in the case where there are no
 #! leaves.
+#!
+#! The layout of the local memory of this `append_and_update_frontier` procedure looks like so:
+#! [CUR_HASH_LO, CUR_HASH_HI, [[CANONICAL_ZERO_LO, CANONICAL_ZERO_HI]; 32]]
+#! So the first 8 felt values is occupied by the current Keccak256 hash, and next 32 * 8 felt values
+#! is occupied by the canonical zeros, 8 values each, 32 zeros total.
 #!
 #! Inputs:  [NEW_LEAF_LO, NEW_LEAF_HI, mmr_frontier_ptr]
 #! Outputs: [NEW_ROOT_LO, NEW_ROOT_HI, new_leaf_count]
-@locals(264) # new_leaf + canonical_zeros
+#!
+#! Where:
+#! - [NEW_LEAF_LO, NEW_LEAF_HI] is the new leaf, represented as Keccak256 hash, which will be added
+#!   to the MMR.
+#! - mmr_frontier_ptr is the pointer to the memory where the MMR Frontier structure is located.
+#! - [NEW_ROOT_LO, NEW_ROOT_HI] is the new root of the MMR, represented as Keccak256 hash.
+#! - new_leaf_count is the number of leaves in the MMR after the new leaf was added.
+@locals(264) # new_leaf/curr_hash + canonical_zeros
 pub proc append_and_update_frontier
     # set CUR_HASH = NEW_LEAF and store to local memory
-    loc_storew_be.0 dropw
-    loc_storew_be.4 dropw
-    # => [mmr_frontier_ptr]
-
-    # get the memory pointer where the canonical zeros will be stored
-    locaddr.8
-    # => [zeros_ptr, mmr_frontier_ptr]
-
-    # load the canonical zeros into the memory
-    exec.load_zeros_to_memory
+    loc_storew_be.CUR_HASH_LO_LOCAL dropw
+    loc_storew_be.CUR_HASH_HI_LOCAL dropw
     # => [mmr_frontier_ptr]
 
     # get the current leaves number
     dup add.NUM_LEAVES_OFFSET mem_load
+    # => [num_leaves, mmr_frontier_ptr]
+
+    # make sure that the MMR is not full yet and we still can store the new leaf
+    #
+    # MMR is full when the number of leaves is equal to the 2^TREE_HEIGHT, and in case of the
+    # current implementation this number equals to 2^32. This value doesn't fit into the u32
+    # anymore, so we can use only the `u32assert` instruction to assert that the MMR is not full.
+    u32assert.err=ERR_MMR_FRONTIER_LEAVES_NUM_EXCEED_LIMIT
+    # => [num_leaves, mmr_frontier_ptr]
+
+    # get the memory pointer where the canonical zeros will be stored
+    locaddr.CANONICAL_ZEROES_LOCAL
+    # => [zeros_ptr, num_leaves, mmr_frontier_ptr]
+
+    # load the canonical zeros into the memory
+    exec.load_zeros_to_memory
     # => [num_leaves, mmr_frontier_ptr]
     
     # update the leaves number and store it into the memory
@@ -130,85 +167,106 @@ pub proc append_and_update_frontier
     # => [loop_flag=1, iter_counter=0, num_leaves, mmr_frontier_ptr]
 
     while.true
-        # => [iter_counter, num_leaves, mmr_frontier_ptr]
+        # => [curr_tree_height, num_leaves, mmr_frontier_ptr]
 
         # get the pointer to the frontier node of the current height
         #
         # notice that the initial state of the frontier array is zeros
         dup.2 add.FRONTIER_OFFSET dup.1 mul.NODE_SIZE add
-        # => [frontier[iter_counter]_ptr, iter_counter, num_leaves, mmr_frontier_ptr]
+        # => [frontier[curr_tree_height]_ptr, curr_tree_height, num_leaves, mmr_frontier_ptr]
 
         # determine whether the last `num_leaves` bit is 1 (is `num_leaves` odd)
         dup.2 u32and.1
-        # => [is_odd, frontier[iter_counter]_ptr, iter_counter, num_leaves, mmr_frontier_ptr]
+        # => [
+        #     is_odd, frontier[curr_tree_height]_ptr, curr_tree_height, num_leaves, mmr_frontier_ptr
+        #    ]
 
         if.true
-            # => [frontier[iter_counter]_ptr, iter_counter, num_leaves, mmr_frontier_ptr]
+            # => [frontier[curr_tree_height]_ptr, curr_tree_height, num_leaves, mmr_frontier_ptr]
             #
-            # this height already had a subtree root stored in frontier[iter_counter], merge into
-            # parent.
+            # this height already had a subtree root stored in frontier[curr_tree_height], merge
+            # into parent.
             exec.mem_load_double_word
-            # => [FRONTIER[iter_counter]_LO, FRONTIER[iter_counter]_HI, iter_counter, num_leaves, mmr_frontier_ptr]
+            # => [
+            #     FRONTIER[curr_tree_height]_LO, FRONTIER[curr_tree_height]_HI, curr_tree_height, 
+            #     num_leaves, mmr_frontier_ptr
+            #    ]
 
             # load the current hash from the local memory back to the stack
             #
             # in the first iteration the current hash will be equal to the new node
-            padw loc_loadw_be.4 padw loc_loadw_be.0 swapdw
-            # => [FRONTIER[iter_counter]_LO, FRONTIER[iter_counter]_HI, CUR_HASH_LO, CUR_HASH_HI, iter_counter, num_leaves, mmr_frontier_ptr]
+            padw loc_loadw_be.CUR_HASH_HI_LOCAL
+            padw loc_loadw_be.CUR_HASH_LO_LOCAL
+            swapdw
+            # => [
+            #     FRONTIER[curr_tree_height]_LO, FRONTIER[curr_tree_height]_HI, CUR_HASH_LO, 
+            #     CUR_HASH_HI, curr_tree_height, num_leaves, mmr_frontier_ptr
+            #    ]
 
             # merge the frontier node of this height with the current hash to get the current hash
             # of the next height (merge(frontier[h], cur))
             exec.keccak256::merge
-            # => [CUR_HASH_LO', CUR_HASH_HI', iter_counter, num_leaves, mmr_frontier_ptr]
+            # => [CUR_HASH_LO', CUR_HASH_HI', curr_tree_height, num_leaves, mmr_frontier_ptr]
 
             # store the current hash of the next height back to the local memory
-            loc_storew_be.0 dropw
-            loc_storew_be.4 dropw
-            # => [iter_counter, num_leaves, mmr_frontier_ptr]
+            loc_storew_be.CUR_HASH_LO_LOCAL dropw
+            loc_storew_be.CUR_HASH_HI_LOCAL dropw
+            # => [curr_tree_height, num_leaves, mmr_frontier_ptr]
         else
-            # => [frontier[iter_counter]_ptr, iter_counter, num_leaves, mmr_frontier_ptr]
+            # => [frontier[curr_tree_height]_ptr, curr_tree_height, num_leaves, mmr_frontier_ptr]
             #
             # this height wasn't "occupied" yet: store the current hash as the subtree root 
-            # (frontier node) at height `iter_counter`
-            padw loc_loadw_be.4 padw loc_loadw_be.0
-            # => [CUR_HASH_LO, CUR_HASH_HI, frontier[iter_counter]_ptr, iter_counter, num_leaves, mmr_frontier_ptr]
+            # (frontier node) at height `curr_tree_height`
+            padw loc_loadw_be.CUR_HASH_HI_LOCAL
+            padw loc_loadw_be.CUR_HASH_LO_LOCAL
+            # => [
+            #     CUR_HASH_LO, CUR_HASH_HI, frontier[curr_tree_height]_ptr, curr_tree_height,
+            #     num_leaves, mmr_frontier_ptr
+            #    ]
 
-            # store the CUR_HASH to the frontier[iter_counter]_ptr
+            # store the CUR_HASH to the frontier[curr_tree_height]_ptr
             exec.mem_store_double_word movup.8 drop
-            # => [CUR_HASH_LO, CUR_HASH_HI, iter_counter, num_leaves, mmr_frontier_ptr]
+            # => [CUR_HASH_LO, CUR_HASH_HI, curr_tree_height, num_leaves, mmr_frontier_ptr]
 
             # get the pointer to the canonical zero node of the current height
-            locaddr.8 dup.9 mul.NODE_SIZE add
-            # => [zeros[iter_counter], CUR_HASH_LO, CUR_HASH_HI, iter_counter, num_leaves, mmr_frontier_ptr]
+            locaddr.CANONICAL_ZEROES_LOCAL dup.9 mul.NODE_SIZE add
+            # => [
+            #     zeros[curr_tree_height], CUR_HASH_LO, CUR_HASH_HI, curr_tree_height, num_leaves, 
+            #     mmr_frontier_ptr
+            #    ]
 
             # load the zero node to the stack
             exec.mem_load_double_word swapdw
-            # => [CUR_HASH_LO, CUR_HASH_HI, ZERO_H_LO, ZERO_H_HI, iter_counter, num_leaves, mmr_frontier_ptr]
+            # => [
+            #     CUR_HASH_LO, CUR_HASH_HI, ZERO_H_LO, ZERO_H_HI, curr_tree_height, num_leaves, 
+            #     mmr_frontier_ptr
+            #    ]
 
             # merge the current hash with the zero node of this height to get the current hash of
             # the next height (merge(cur, zeroes[h]))
             exec.keccak256::merge
-            # => [CUR_HASH_LO', CUR_HASH_HI', iter_counter, num_leaves, mmr_frontier_ptr]
+            # => [CUR_HASH_LO', CUR_HASH_HI', curr_tree_height, num_leaves, mmr_frontier_ptr]
 
             # store the current hash of the next height back to the local memory
-            loc_storew_be.0 dropw
-            loc_storew_be.4 dropw
-            # => [iter_counter, num_leaves, mmr_frontier_ptr]
+            loc_storew_be.CUR_HASH_LO_LOCAL dropw
+            loc_storew_be.CUR_HASH_HI_LOCAL dropw
+            # => [curr_tree_height, num_leaves, mmr_frontier_ptr]
         end
-        # => [iter_counter, num_leaves, mmr_frontier_ptr]
+        # => [curr_tree_height, num_leaves, mmr_frontier_ptr]
 
-        # update the counter
-        push.1 add
+        # update the current tree height
+        add.1
+        # => [curr_tree_height+1, num_leaves, mmr_frontier_ptr]
 
         # update the `num_leaves` (shift it right by 1 bit)
         swap u32shr.1 swap
-        # => [iter_counter+1, num_leaves>>1, mmr_frontier_ptr]
+        # => [curr_tree_height+1, num_leaves>>1, mmr_frontier_ptr]
 
         # compute the cycle flag
         dup neq.TREE_HEIGHT
-        # => [loop_flag, iter_counter+1, num_leaves>>1, mmr_frontier_ptr]
+        # => [loop_flag, curr_tree_height+1, num_leaves>>1, mmr_frontier_ptr]
     end
-    # => [iter_counter=5, num_leaves=0, mmr_frontier_ptr]
+    # => [curr_tree_height=TREE_HEIGHT, num_leaves=0, mmr_frontier_ptr]
 
     # clean the stack
     drop drop
@@ -226,7 +284,8 @@ pub proc append_and_update_frontier
     # compute.
 
     # load the final hash (which is also the root of the tree)
-    padw loc_loadw_be.4 padw loc_loadw_be.0
+    padw loc_loadw_be.CUR_HASH_HI_LOCAL
+    padw loc_loadw_be.CUR_HASH_LO_LOCAL
     # => [NEW_ROOT_LO, NEW_ROOT_HI, new_leaf_count]
 end
 
@@ -238,11 +297,6 @@ end
 #! Inputs:  [zeros_ptr]
 #! Outputs: []
 proc store_canonical_zeros
-    # load the canonical zeros from the advice map to the advice stack
-    # TODO: enable once adv_map can be created with constants
-    # push.CANONICAL_ZEROS adv.push_mapval dropw
-    # => [zeros_ptr]
-
     # prepare the stack for the adv_pipe instruction
     padw padw padw 
     # => [PAD, PAD, PAD, zeros_ptr]
@@ -276,12 +330,9 @@ end
 #! Inputs:  [ptr]
 #! Outputs: [WORD_1, WORD_2]
 proc mem_load_double_word
-    padw dup.4 mem_loadw_be
-    # => [WORD_1, ptr]
+    padw dup.4 add.4 mem_loadw_be
+    # => [WORD_2, ptr]
 
-    padw movup.8 add.4 mem_loadw_be
-    # => [WORD_2, WORD_1]
-
-    swapw
+    padw movup.8 mem_loadw_be
     # => [WORD_1, WORD_2]
 end

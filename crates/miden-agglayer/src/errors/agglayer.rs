@@ -20,5 +20,8 @@ pub const ERR_CLAIM_TARGET_ACCT_MISMATCH: MasmError = MasmError::from_static_str
 /// Error Message: "invalid claim proof"
 pub const ERR_INVALID_CLAIM_PROOF: MasmError = MasmError::from_static_str("invalid claim proof");
 
+/// Error Message: "number of leaves in the MMR of the MMR Frontier exceeded 4294967296 (2^32)"
+pub const ERR_MMR_FRONTIER_LEAVES_NUM_EXCEED_LIMIT: MasmError = MasmError::from_static_str("number of leaves in the MMR of the MMR Frontier exceeded 4294967296 (2^32)");
+
 /// Error Message: "maximum scaling factor is 18"
 pub const ERR_SCALE_AMOUNT_EXCEEDED_LIMIT: MasmError = MasmError::from_static_str("maximum scaling factor is 18");
