@@ -50,7 +50,7 @@ use miden_protocol::account::{
     StorageSlotName,
 };
 use miden_protocol::asset::Asset;
-use miden_protocol::note::{NoteId, NoteMetadata, NoteRecipient};
+use miden_protocol::note::{NoteAttachment, NoteId, NoteMetadata, NoteRecipient};
 use miden_protocol::transaction::{
     InputNote,
     InputNotes,
@@ -296,6 +296,21 @@ impl<'store, STORE> TransactionBaseHost<'store, STORE> {
         })?;
 
         note_builder.add_asset(asset)?;
+
+        Ok(Vec::new())
+    }
+
+    /// Sets the attachment on the output note identified by the note index.
+    pub fn on_note_before_set_attachment(
+        &mut self,
+        note_idx: usize,
+        attachment: NoteAttachment,
+    ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
+        let note_builder = self.output_notes.get_mut(&note_idx).ok_or_else(|| {
+            TransactionKernelError::other(format!("failed to find output note {note_idx}"))
+        })?;
+
+        note_builder.set_attachment(attachment);
 
         Ok(Vec::new())
     }
