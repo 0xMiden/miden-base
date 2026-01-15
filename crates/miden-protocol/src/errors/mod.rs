@@ -8,6 +8,7 @@ use miden_assembly::diagnostics::reporting::PrintDiagnostic;
 use miden_core::mast::MastForestError;
 use miden_core::{EventId, Felt};
 use miden_crypto::merkle::mmr::MmrError;
+use miden_crypto::merkle::smt::{SmtLeafError, SmtProofError};
 use miden_crypto::utils::HexParseError;
 use miden_processor::DeserializationError;
 use thiserror::Error;
@@ -692,6 +693,41 @@ pub enum TransactionInputError {
         "total number of input notes is {0} which exceeds the maximum of {MAX_INPUT_NOTES_PER_TX}"
     )]
     TooManyInputNotes(usize),
+}
+
+// TRANSACTION INPUTS EXTRACTION ERROR
+// ===============================================================================================
+
+#[derive(Debug, Error)]
+pub enum TransactionInputsExtractionError {
+    #[error("specified foreign account id matches the transaction input's account id")]
+    AccountNotForeign,
+    #[error("foreign account data not found in advice map for account {0}")]
+    ForeignAccountNotFound(AccountId),
+    #[error("foreign account code not found for account {0}")]
+    ForeignAccountCodeNotFound(AccountId),
+    #[error("storage header data not found in advice map for account {0}")]
+    StorageHeaderNotFound(AccountId),
+    #[error("failed to handle account data")]
+    AccountError(#[from] AccountError),
+    #[error("failed to handle merkle data")]
+    MerkleError(#[from] MerkleError),
+    #[error("failed to handle account tree data")]
+    AccountTreeError(#[from] AccountTreeError),
+    #[error("missing vault root from Merkle store")]
+    MissingVaultRoot,
+    #[error("missing storage map root from Merkle store")]
+    MissingMapRoot,
+    #[error("failed to construct SMT proof")]
+    SmtProofError(#[from] SmtProofError),
+    #[error("failed to construct asset witness")]
+    AssetError(#[from] AssetError),
+    #[error("failed to handle storage map data")]
+    StorageMapError(#[from] StorageMapError),
+    #[error("failed to convert elements to leaf index: {0}")]
+    LeafConversionError(String),
+    #[error("failed to construct SMT leaf")]
+    SmtLeafError(#[from] SmtLeafError),
 }
 
 // TRANSACTION OUTPUT ERROR
