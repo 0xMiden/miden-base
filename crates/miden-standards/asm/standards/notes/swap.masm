@@ -9,8 +9,8 @@ const SWAP_NOTE_INPUTS_NUMBER=16
 
 const PAYBACK_NOTE_TYPE_ADDRESS=0
 const PAYBACK_NOTE_TAG_ADDRESS=1
-const ATTACHMENT_TYPE_ADDRESS=2
-const ATTACHMENT_CONTENT_TYPE_ADDRESS=3
+const ATTACHMENT_KIND_ADDRESS=2
+const ATTACHMENT_SCHEME_ADDRESS=3
 const ATTACHMENT_ADDRESS=4
 const REQUESTED_ASSET_ADDRESS=8
 const PAYBACK_RECIPIENT_ADDRESS=12
@@ -35,8 +35,8 @@ const ERR_SWAP_WRONG_NUMBER_OF_ASSETS="SWAP script requires exactly 1 note asset
 #! Note inputs are assumed to be as follows:
 #! - payback_note_type
 #! - payback_note_tag
-#! - attachment_type
-#! - attachment_content_type
+#! - attachment_kind
+#! - attachment_scheme
 #! - ATTACHMENT
 #! - REQUESTED_ASSET
 #! - PAYBACK_RECIPIENT
@@ -47,8 +47,8 @@ const ERR_SWAP_WRONG_NUMBER_OF_ASSETS="SWAP script requires exactly 1 note asset
 #! - account vault does not contain the requested asset.
 #! - adding a fungible asset would result in amount overflow, i.e., the total amount would be
 #!   greater than 2^63.
-#! - any of the attachment types does not fit into a u32.
-#! - the attachment content type is an unknown variant.
+#! - the attachment kind or scheme does not fit into a u32.
+#! - the attachment kind is an unknown variant.
 pub proc main
     # dropping note args
     dropw
@@ -98,10 +98,10 @@ pub proc main
     # => [note_idx, pad(11)]
 
     mem_loadw_be.ATTACHMENT_ADDRESS
-    mem_load.ATTACHMENT_TYPE_ADDRESS
-    mem_load.ATTACHMENT_CONTENT_TYPE_ADDRESS
+    mem_load.ATTACHMENT_KIND_ADDRESS
+    mem_load.ATTACHMENT_SCHEME_ADDRESS
     movup.6
-    # => [note_idx, attachment_content_type, attachment_type, ATTACHMENT]
+    # => [note_idx, attachment_scheme, attachment_kind, ATTACHMENT]
 
     exec.output_note::set_attachment
     # => [pad(12)]

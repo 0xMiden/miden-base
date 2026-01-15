@@ -13,7 +13,7 @@ use miden_protocol::note::{
     Note,
     NoteAssets,
     NoteAttachment,
-    NoteAttachmentType,
+    NoteAttachmentScheme,
     NoteExecutionHint,
     NoteInputs,
     NoteMetadata,
@@ -261,7 +261,7 @@ async fn test_get_output_notes_commitment() -> anyhow::Result<()> {
     let output_tag_2 = NoteTag::with_account_target(local_account);
     let assets = NoteAssets::new(vec![input_asset_2])?;
     let attachment = NoteAttachment::new_array(
-        NoteAttachmentType::new(5),
+        NoteAttachmentScheme::new(5),
         [42, 43, 44, 45, 46u32].map(Felt::from).to_vec(),
     )?;
     let metadata =
@@ -314,9 +314,9 @@ async fn test_get_output_notes_commitment() -> anyhow::Result<()> {
             # => [note_idx]
 
             push.{ATTACHMENT2}
-            push.{attachment_type2}
+            push.{attachment_scheme2}
             movup.5
-            # => [note_idx, attachment_type, ATTACHMENT]
+            # => [note_idx, attachment_scheme, ATTACHMENT]
             exec.output_note::set_array_attachment
             # => []
 
@@ -341,7 +341,7 @@ async fn test_get_output_notes_commitment() -> anyhow::Result<()> {
             **output_note_2.assets().iter().take(1).collect::<Vec<_>>().first().unwrap()
         ),
         ATTACHMENT2 = output_note_2.metadata().to_attachment_word(),
-        attachment_type2 = output_note_2.metadata().attachment().attachment_type().as_u32(),
+        attachment_scheme2 = output_note_2.metadata().attachment().attachment_scheme().as_u32(),
     );
 
     let exec_output = &tx_context.execute_code(&code).await?;
@@ -1024,10 +1024,10 @@ async fn test_set_none_attachment() -> anyhow::Result<()> {
             # => [note_idx]
 
             push.{ATTACHMENT}
-            push.{attachment_type}
-            push.{attachment_content_type}
+            push.{attachment_kind}
+            push.{attachment_scheme}
             movup.6
-            # => [note_idx, attachment_content_type, attachment_type, ATTACHMENT]
+            # => [note_idx, attachment_scheme, attachment_kind, ATTACHMENT]
             exec.output_note::set_attachment
             # => []
 
@@ -1039,9 +1039,8 @@ async fn test_set_none_attachment() -> anyhow::Result<()> {
         note_type = output_note.metadata().note_type() as u8,
         tag = output_note.metadata().tag().as_u32(),
         ATTACHMENT = output_note.metadata().to_attachment_word(),
-        attachment_content_type =
-            output_note.metadata().attachment().content().content_type().as_u8(),
-        attachment_type = output_note.metadata().attachment().attachment_type().as_u32(),
+        attachment_kind = output_note.metadata().attachment().content().attachment_kind().as_u8(),
+        attachment_scheme = output_note.metadata().attachment().attachment_scheme().as_u32(),
     );
 
     let tx_script = CodeBuilder::new().compile_tx_script(tx_script)?;
@@ -1065,7 +1064,7 @@ async fn test_set_word_attachment() -> anyhow::Result<()> {
     let account = Account::mock(ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET, Auth::IncrNonce);
     let rng = RpoRandomCoin::new(Word::from([1, 2, 3, 4u32]));
     let attachment =
-        NoteAttachment::new_word(NoteAttachmentType::new(u32::MAX), Word::from([3, 4, 5, 6u32]));
+        NoteAttachment::new_word(NoteAttachmentScheme::new(u32::MAX), Word::from([3, 4, 5, 6u32]));
     let output_note =
         OutputNote::Full(NoteBuilder::new(account.id(), rng).attachment(attachment).build()?);
 
@@ -1081,9 +1080,9 @@ async fn test_set_word_attachment() -> anyhow::Result<()> {
             # => [note_idx]
 
             push.{ATTACHMENT}
-            push.{attachment_type}
+            push.{attachment_scheme}
             movup.5
-            # => [note_idx, attachment_type, ATTACHMENT]
+            # => [note_idx, attachment_scheme, ATTACHMENT]
             exec.output_note::set_word_attachment
             # => []
 
@@ -1094,7 +1093,7 @@ async fn test_set_word_attachment() -> anyhow::Result<()> {
         RECIPIENT = output_note.recipient().unwrap().digest(),
         note_type = output_note.metadata().note_type() as u8,
         tag = output_note.metadata().tag().as_u32(),
-        attachment_type = output_note.metadata().attachment().attachment_type().as_u32(),
+        attachment_scheme = output_note.metadata().attachment().attachment_scheme().as_u32(),
         ATTACHMENT = output_note.metadata().to_attachment_word(),
     );
 
@@ -1119,7 +1118,7 @@ async fn test_set_array_attachment() -> anyhow::Result<()> {
     let account = Account::mock(ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET, Auth::IncrNonce);
     let rng = RpoRandomCoin::new(Word::from([1, 2, 3, 4u32]));
     let elements = [3, 4, 5, 6, 7, 8, 9u32].map(Felt::from).to_vec();
-    let attachment = NoteAttachment::new_array(NoteAttachmentType::new(42), elements.clone())?;
+    let attachment = NoteAttachment::new_array(NoteAttachmentScheme::new(42), elements.clone())?;
     let output_note =
         OutputNote::Full(NoteBuilder::new(account.id(), rng).attachment(attachment).build()?);
 
@@ -1135,9 +1134,9 @@ async fn test_set_array_attachment() -> anyhow::Result<()> {
             # => [note_idx]
 
             push.{ATTACHMENT}
-            push.{attachment_type}
+            push.{attachment_scheme}
             movup.5
-            # => [note_idx, attachment_type, ATTACHMENT]
+            # => [note_idx, attachment_scheme, ATTACHMENT]
             exec.output_note::set_array_attachment
             # => []
 
@@ -1148,7 +1147,7 @@ async fn test_set_array_attachment() -> anyhow::Result<()> {
         RECIPIENT = output_note.recipient().unwrap().digest(),
         note_type = output_note.metadata().note_type() as u8,
         tag = output_note.metadata().tag().as_u32(),
-        attachment_type = output_note.metadata().attachment().attachment_type().as_u32(),
+        attachment_scheme = output_note.metadata().attachment().attachment_scheme().as_u32(),
         ATTACHMENT = output_note.metadata().to_attachment_word(),
     );
 

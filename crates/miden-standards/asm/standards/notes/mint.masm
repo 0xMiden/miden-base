@@ -14,8 +14,8 @@ const OUTPUT_NOTE_TYPE_PRIVATE=2
 
 # Memory Addresses of MINT note inputs
 # The attachment is at the same memory address for both private and public inputs.
-const ATTACHMENT_TYPE_ADDRESS=2
-const ATTACHMENT_CONTENT_TYPE_ADDRESS=3
+const ATTACHMENT_KIND_ADDRESS=2
+const ATTACHMENT_SCHEME_ADDRESS=3
 const ATTACHMENT_ADDRESS=4
 const OUTPUT_PUBLIC_NOTE_INPUTS_ADDR=16
 
@@ -39,16 +39,16 @@ const ERR_MINT_WRONG_NUMBER_OF_INPUTS="MINT script expects exactly 12 inputs for
 #! Private mode (12 inputs) - creates a private note:
 #! - tag: Note tag for the output note
 #! - amount: The amount to mint
-#! - attachment_content_type: The content type of the attachment.
-#! - attachment_type: The user-defined type of the attachment.
+#! - attachment_scheme: The user-defined type of the attachment.
+#! - attachment_kind: The attachment kind of the attachment.
 #! - ATTACHMENT: The attachment to be set.
 #! - RECIPIENT: The recipient digest (4 elements)
 #!
 #! Public mode (16+ inputs) - creates a public note with variable-length inputs:
 #! - tag: Note tag for the output note
 #! - amount: The amount to mint
-#! - attachment_content_type: The content type of the attachment.
-#! - attachment_type: The user-defined type of the attachment.
+#! - attachment_scheme: The user-defined type of the attachment.
+#! - attachment_kind: The attachment kind of the attachment.
 #! - ATTACHMENT: The attachment to be set.
 #! - SCRIPT_ROOT: Script root of the output note (4 elements)
 #! - SERIAL_NUM: Serial number of the output note (4 elements)
@@ -126,10 +126,10 @@ pub proc main
     padw mem_loadw_be.ATTACHMENT_ADDRESS
     # => [ATTACHMENT, note_idx, pad(18))]
 
-    mem_load.ATTACHMENT_TYPE_ADDRESS
-    mem_load.ATTACHMENT_CONTENT_TYPE_ADDRESS
+    mem_load.ATTACHMENT_KIND_ADDRESS
+    mem_load.ATTACHMENT_SCHEME_ADDRESS
     movup.6
-    # => [note_idx, attachment_content_type, attachment_type, ATTACHMENT, pad(18))]
+    # => [note_idx, attachment_scheme, attachment_kind, ATTACHMENT, pad(18))]
 
     exec.output_note::set_attachment
     # => [pad(18))]

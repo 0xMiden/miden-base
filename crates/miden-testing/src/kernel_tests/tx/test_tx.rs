@@ -23,7 +23,7 @@ use miden_protocol::note::{
     NoteAssets,
     NoteAttachment,
     NoteAttachmentContent,
-    NoteAttachmentType,
+    NoteAttachmentScheme,
     NoteHeader,
     NoteId,
     NoteInputs,
@@ -206,9 +206,9 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
     let tag3 = NoteTag::default();
 
     let attachment2 =
-        NoteAttachment::new_word(NoteAttachmentType::new(28), Word::from([2, 3, 4, 5u32]));
+        NoteAttachment::new_word(NoteAttachmentScheme::new(28), Word::from([2, 3, 4, 5u32]));
     let attachment3 = NoteAttachment::new_array(
-        NoteAttachmentType::new(29),
+        NoteAttachmentScheme::new(29),
         [6, 7, 8, 9u32].map(Felt::from).to_vec(),
     )?;
 
@@ -301,7 +301,7 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
             # => [note_idx]
 
             push.{ATTACHMENT2}
-            push.{attachment_type2}
+            push.{attachment_scheme2}
             movup.5
             exec.output_note::set_word_attachment
             # => []
@@ -314,7 +314,7 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
             # => [note_idx = 2]
 
             push.{ATTACHMENT3}
-            push.{attachment_type3}
+            push.{attachment_scheme3}
             movup.5
             exec.output_note::set_array_attachment
             # => []
@@ -329,9 +329,9 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
         NOTETYPE1 = note_type1 as u8,
         NOTETYPE2 = note_type2 as u8,
         NOTETYPE3 = note_type3 as u8,
-        attachment_type2 = attachment2.attachment_type().as_u32(),
+        attachment_scheme2 = attachment2.attachment_scheme().as_u32(),
         ATTACHMENT2 = attachment2.content().to_word(),
-        attachment_type3 = attachment3.attachment_type().as_u32(),
+        attachment_scheme3 = attachment3.attachment_scheme().as_u32(),
         ATTACHMENT3 = attachment3.content().to_word(),
     );
 

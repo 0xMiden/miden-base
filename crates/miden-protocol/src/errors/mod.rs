@@ -598,10 +598,10 @@ pub enum NoteError {
         NoteAttachmentArray::MAX_NUM_ELEMENTS
     )]
     NoteAttachmentArraySizeExceeded(usize),
-    #[error("unknown note attachment content type {0}")]
-    UnknownNoteAttachmentContentType(u8),
-    #[error("note attachment of type None must have untyped attachment type")]
-    NoneAttachmentMustHaveUntypedAttachmentType,
+    #[error("unknown note attachment kind {0}")]
+    UnknownNoteAttachmentKind(u8),
+    #[error("note attachment of kind None must have attachment scheme None")]
+    AttachmentKindNoneMustHaveAttachmentSchemeNone,
     #[error("{error_msg}")]
     Other {
         error_msg: Box<str>,
