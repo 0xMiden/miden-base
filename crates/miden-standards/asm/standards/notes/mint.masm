@@ -40,7 +40,7 @@ const ERR_MINT_WRONG_NUMBER_OF_INPUTS="MINT script expects exactly 12 inputs for
 #! - tag: Note tag for the output note
 #! - amount: The amount to mint
 #! - attachment_scheme: The user-defined type of the attachment.
-#! - attachment_kind: The content type of the attachment.
+#! - attachment_kind: The attachment kind of the attachment.
 #! - ATTACHMENT: The attachment to be set.
 #! - RECIPIENT: The recipient digest (4 elements)
 #!
@@ -48,7 +48,7 @@ const ERR_MINT_WRONG_NUMBER_OF_INPUTS="MINT script expects exactly 12 inputs for
 #! - tag: Note tag for the output note
 #! - amount: The amount to mint
 #! - attachment_scheme: The user-defined type of the attachment.
-#! - attachment_kind: The content type of the attachment.
+#! - attachment_kind: The attachment kind of the attachment.
 #! - ATTACHMENT: The attachment to be set.
 #! - SCRIPT_ROOT: Script root of the output note (4 elements)
 #! - SERIAL_NUM: Serial number of the output note (4 elements)

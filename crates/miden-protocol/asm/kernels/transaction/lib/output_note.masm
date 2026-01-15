@@ -357,7 +357,7 @@ pub proc build_metadata_header
     # => [NOTE_METADATA_HEADER]
 end
 
-#! Validate the ATTACHMENT against the content type.
+#! Validate the ATTACHMENT against the attachment kind.
 #!
 #! Inputs:  [attachment_scheme, attachment_kind, ATTACHMENT]
 #! Outputs: []
@@ -370,7 +370,7 @@ end
 #! Panics if:
 #! - the attachment kind or scheme does not fit into a u32.
 #! - the attachment kind is an unknown variant.
-#! - the content type is None and the ATTACHMENT is not an empty word.
+#! - the attachment kind is None and the ATTACHMENT is not an empty word.
 proc validate_attachment
     u32assert2.err=ERR_OUTPUT_NOTE_INVALID_ATTACHMENT_SCHEMES
     # => [attachment_scheme, attachment_kind, ATTACHMENT]

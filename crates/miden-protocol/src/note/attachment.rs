@@ -413,22 +413,22 @@ impl NoteAttachmentKind {
     // ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns the content type as a u8.
+    /// Returns the attachment kind as a u8.
     pub const fn as_u8(&self) -> u8 {
         *self as u8
     }
 
-    /// Returns `true` if the content type is `None`, `false` otherwise.
+    /// Returns `true` if the attachment kind is `None`, `false` otherwise.
     pub const fn is_none(&self) -> bool {
         matches!(self, Self::None)
     }
 
-    /// Returns `true` if the content type is `Word`, `false` otherwise.
+    /// Returns `true` if the attachment kind is `Word`, `false` otherwise.
     pub const fn is_word(&self) -> bool {
         matches!(self, Self::Word)
     }
 
-    /// Returns `true` if the content type is `Array`, `false` otherwise.
+    /// Returns `true` if the attachment kind is `Array`, `false` otherwise.
     pub const fn is_array(&self) -> bool {
         matches!(self, Self::Array)
     }

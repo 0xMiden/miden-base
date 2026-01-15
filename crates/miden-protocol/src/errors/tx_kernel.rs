@@ -171,8 +171,8 @@ pub const ERR_OUTPUT_NOTE_ATTACHMENT_KIND_NONE_MUST_HAVE_ATTACHMENT_SCHEME_NONE:
 pub const ERR_OUTPUT_NOTE_INDEX_OUT_OF_BOUNDS: MasmError = MasmError::from_static_str("requested output note index should be less than the total number of created output notes");
 /// Error Message: "attachment scheme and attachment kind must fit into u32s"
 pub const ERR_OUTPUT_NOTE_INVALID_ATTACHMENT_SCHEMES: MasmError = MasmError::from_static_str("attachment scheme and attachment kind must fit into u32s");
-/// Error Message: "attachment content type variant must be between 0 and 2"
-pub const ERR_OUTPUT_NOTE_UNKNOWN_ATTACHMENT_CONTENT_TYPE: MasmError = MasmError::from_static_str("attachment content type variant must be between 0 and 2");
+/// Error Message: "attachment kind variant must be between 0 and 2"
+pub const ERR_OUTPUT_NOTE_UNKNOWN_ATTACHMENT_KIND: MasmError = MasmError::from_static_str("attachment kind variant must be between 0 and 2");
 
 /// Error Message: "existing accounts must have a non-zero nonce"
 pub const ERR_PROLOGUE_EXISTING_ACCOUNT_MUST_HAVE_NON_ZERO_NONCE: MasmError = MasmError::from_static_str("existing accounts must have a non-zero nonce");
