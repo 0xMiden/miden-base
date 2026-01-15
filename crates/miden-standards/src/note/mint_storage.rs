@@ -3,12 +3,12 @@ use alloc::vec::Vec;
 use miden_protocol::note::{NoteAttachment, NoteRecipient, NoteStorage};
 use miden_protocol::{Felt, MAX_NOTE_STORAGE_ITEMS, NoteError, Word};
 
-/// Represents the different input formats for MINT notes.
+/// Represents the different storage formats for MINT notes.
 /// - Private: Creates a private output note using a precomputed recipient digest (12 MINT note
-///   inputs)
+///   storage items)
 /// - Public: Creates a public output note by providing script root, serial number, and
-///   variable-length inputs (16+ MINT note inputs: 16 fixed + variable number of output note
-///   inputs)
+///   variable-length storage (16+ MINT note storage items: 16 fixed + variable number of output
+///   note storage items)
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MintNoteStorage {
     Private {
@@ -40,14 +40,14 @@ impl MintNoteStorage {
         amount: Felt,
         tag: Felt,
     ) -> Result<Self, NoteError> {
-        // Calculate total number of inputs that will be created:
-        // 16 fixed inputs (tag, amount, attachment_kind, attachment_scheme, ATTACHMENT,
-        // SCRIPT_ROOT, SERIAL_NUM) + variable recipient inputs length
-        const FIXED_PUBLIC_INPUTS: usize = 16;
-        let total_inputs = FIXED_PUBLIC_INPUTS + recipient.storage().len() as usize;
+        // Calculate total number of storage items that will be created:
+        // 16 fixed items (tag, amount, attachment_kind, attachment_scheme, ATTACHMENT,
+        // SCRIPT_ROOT, SERIAL_NUM) + variable recipient storage length
+        const FIXED_PUBLIC_STORAGE_ITEMS: usize = 16;
+        let total_storage_items = FIXED_PUBLIC_STORAGE_ITEMS + recipient.storage().len() as usize;
 
-        if total_inputs > MAX_NOTE_STORAGE_ITEMS {
-            return Err(NoteError::TooManyStorageItems(total_inputs));
+        if total_storage_items > MAX_NOTE_STORAGE_ITEMS {
+            return Err(NoteError::TooManyStorageItems(total_storage_items));
         }
 
         Ok(Self::Public {
@@ -58,7 +58,7 @@ impl MintNoteStorage {
         })
     }
 
-    /// Overwrites the [`NoteAttachment`] of the note inputs.
+    /// Overwrites the [`NoteAttachment`] of the note storage.
     pub fn with_attachment(self, attachment: NoteAttachment) -> Self {
         match self {
             MintNoteStorage::Private {
@@ -80,8 +80,8 @@ impl MintNoteStorage {
 }
 
 impl From<MintNoteStorage> for NoteStorage {
-    fn from(mint_inputs: MintNoteStorage) -> Self {
-        match mint_inputs {
+    fn from(mint_storage: MintNoteStorage) -> Self {
+        match mint_storage {
             MintNoteStorage::Private {
                 recipient_digest,
                 amount,
@@ -92,25 +92,30 @@ impl From<MintNoteStorage> for NoteStorage {
                 let attachment_kind = Felt::from(attachment.attachment_kind().as_u8());
                 let attachment = attachment.content().to_word();
 
-                let mut input_values = Vec::with_capacity(12);
-                input_values.extend_from_slice(&[tag, amount, attachment_kind, attachment_scheme]);
-                input_values.extend_from_slice(attachment.as_elements());
-                input_values.extend_from_slice(recipient_digest.as_elements());
-                NoteStorage::new(input_values)
-                    .expect("number of inputs should not exceed max inputs")
+                let mut storage_values = Vec::with_capacity(12);
+                storage_values.extend_from_slice(&[
+                    tag,
+                    amount,
+                    attachment_kind,
+                    attachment_scheme,
+                ]);
+                storage_values.extend_from_slice(attachment.as_elements());
+                storage_values.extend_from_slice(recipient_digest.as_elements());
+                NoteStorage::new(storage_values)
+                    .expect("number of storage items should not exceed max storage items")
             },
             MintNoteStorage::Public { recipient, amount, tag, attachment } => {
                 let attachment_scheme = Felt::from(attachment.attachment_scheme().as_u32());
                 let attachment_kind = Felt::from(attachment.attachment_kind().as_u8());
                 let attachment = attachment.content().to_word();
 
-                let mut input_values = vec![tag, amount, attachment_kind, attachment_scheme];
-                input_values.extend_from_slice(attachment.as_elements());
-                input_values.extend_from_slice(recipient.script().root().as_elements());
-                input_values.extend_from_slice(recipient.serial_num().as_elements());
-                input_values.extend_from_slice(recipient.storage().items());
-                NoteStorage::new(input_values)
-                    .expect("number of inputs should not exceed max inputs")
+                let mut storage_values = vec![tag, amount, attachment_kind, attachment_scheme];
+                storage_values.extend_from_slice(attachment.as_elements());
+                storage_values.extend_from_slice(recipient.script().root().as_elements());
+                storage_values.extend_from_slice(recipient.serial_num().as_elements());
+                storage_values.extend_from_slice(recipient.storage().items());
+                NoteStorage::new(storage_values)
+                    .expect("number of storage items should not exceed max storage items")
             },
         }
     }

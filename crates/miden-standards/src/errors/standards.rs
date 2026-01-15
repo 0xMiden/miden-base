@@ -18,8 +18,8 @@ pub const ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED: M
 /// Error Message: "number of approvers must be equal to or greater than threshold"
 pub const ERR_MALFORMED_MULTISIG_CONFIG: MasmError = MasmError::from_static_str("number of approvers must be equal to or greater than threshold");
 
-/// Error Message: "MINT script expects exactly 12 inputs for private or 16+ inputs for public output notes"
-pub const ERR_MINT_WRONG_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_str("MINT script expects exactly 12 inputs for private or 16+ inputs for public output notes");
+/// Error Message: "MINT script expects exactly 12 storage items for private or 16+ storage items for public output notes"
+pub const ERR_MINT_UNEXPECTED_STORAGE_LENGTH: MasmError = MasmError::from_static_str("MINT script expects exactly 12 storage items for private or 16+ storage items for public output notes");
 
 /// Error Message: "note sender is not the owner of the faucet who can mint assets"
 pub const ERR_ONLY_OWNER_CAN_MINT: MasmError = MasmError::from_static_str("note sender is not the owner of the faucet who can mint assets");
@@ -32,18 +32,18 @@ pub const ERR_P2IDE_RECLAIM_DISABLED: MasmError = MasmError::from_static_str("P2
 pub const ERR_P2IDE_RECLAIM_HEIGHT_NOT_REACHED: MasmError = MasmError::from_static_str("failed to reclaim P2IDE note because the reclaim block height is not reached yet");
 /// Error Message: "failed to consume P2IDE note because the note is still timelocked"
 pub const ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED: MasmError = MasmError::from_static_str("failed to consume P2IDE note because the note is still timelocked");
-/// Error Message: "P2IDE note expects exactly 4 note storage"
-pub const ERR_P2IDE_WRONG_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_str("P2IDE note expects exactly 4 note storage");
+/// Error Message: "P2IDE note expects exactly 4 note storage items"
+pub const ERR_P2IDE_UNEXPECTED_STORAGE_LENGTH: MasmError = MasmError::from_static_str("P2IDE note expects exactly 4 note storage items");
 
 /// Error Message: "P2ID's target account address and transaction address do not match"
 pub const ERR_P2ID_TARGET_ACCT_MISMATCH: MasmError = MasmError::from_static_str("P2ID's target account address and transaction address do not match");
-/// Error Message: "P2ID note expects exactly 2 note storage"
-pub const ERR_P2ID_WRONG_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_str("P2ID note expects exactly 2 note storage");
+/// Error Message: "P2ID note expects exactly 2 note storage items"
+pub const ERR_P2ID_UNEXPECTED_STORAGE_LENGTH: MasmError = MasmError::from_static_str("P2ID note expects exactly 2 note storage items");
 
 /// Error Message: "SWAP script requires exactly 1 note asset"
 pub const ERR_SWAP_WRONG_NUMBER_OF_ASSETS: MasmError = MasmError::from_static_str("SWAP script requires exactly 1 note asset");
-/// Error Message: "SWAP script expects exactly 16 note storage"
-pub const ERR_SWAP_WRONG_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_str("SWAP script expects exactly 16 note storage");
+/// Error Message: "SWAP script expects exactly 16 note storage items"
+pub const ERR_SWAP_UNEXPECTED_STORAGE_LENGTH: MasmError = MasmError::from_static_str("SWAP script expects exactly 16 note storage items");
 
 /// Error Message: "failed to approve multisig transaction as it was already executed"
 pub const ERR_TX_ALREADY_EXECUTED: MasmError = MasmError::from_static_str("failed to approve multisig transaction as it was already executed");

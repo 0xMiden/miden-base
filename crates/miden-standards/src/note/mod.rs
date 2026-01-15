@@ -18,7 +18,7 @@ use miden_protocol::note::{
 use miden_protocol::{Felt, NoteError, Word};
 use utils::build_swap_tag;
 
-pub mod mint_inputs;
+pub mod mint_storage;
 pub mod utils;
 
 mod network_account_target;
@@ -28,7 +28,7 @@ mod well_known_note_attachment;
 pub use well_known_note_attachment::WellKnownNoteAttachment;
 
 mod well_known_note;
-pub use mint_inputs::MintNoteStorage;
+pub use mint_storage::MintNoteStorage;
 pub use well_known_note::{NoteConsumptionStatus, WellKnownNote};
 
 // STANDARDIZED SCRIPTS
@@ -178,7 +178,7 @@ pub fn create_swap_note<R: FeltRng>(
 /// # Parameters
 /// - `faucet_id`: The account ID of the network faucet that will mint the assets
 /// - `sender`: The account ID of the note creator (must be the faucet owner)
-/// - `mint_inputs`: The input configuration specifying private or public output mode
+/// - `mint_storage`: The storage configuration specifying private or public output mode
 /// - `attachment`: The [`NoteAttachment`] of the MINT note
 /// - `rng`: Random number generator for creating the serial number
 ///
@@ -187,7 +187,7 @@ pub fn create_swap_note<R: FeltRng>(
 pub fn create_mint_note<R: FeltRng>(
     faucet_id: AccountId,
     sender: AccountId,
-    mint_inputs: MintNoteStorage,
+    mint_storage: MintNoteStorage,
     attachment: NoteAttachment,
     rng: &mut R,
 ) -> Result<Note, NoteError> {
@@ -198,13 +198,13 @@ pub fn create_mint_note<R: FeltRng>(
     let note_type = NoteType::Public;
 
     // Convert MintNoteStorage to NoteStorage
-    let inputs = NoteStorage::from(mint_inputs);
+    let storage = NoteStorage::from(mint_storage);
 
     let tag = NoteTag::with_account_target(faucet_id);
 
     let metadata = NoteMetadata::new(sender, note_type, tag).with_attachment(attachment);
     let assets = NoteAssets::new(vec![])?; // MINT notes have no assets
-    let recipient = NoteRecipient::new(serial_num, note_script, inputs);
+    let recipient = NoteRecipient::new(serial_num, note_script, storage);
 
     Ok(Note::new(assets, metadata, recipient))
 }

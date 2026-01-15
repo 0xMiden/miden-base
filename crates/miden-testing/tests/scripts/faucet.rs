@@ -506,13 +506,13 @@ async fn network_faucet_mint() -> anyhow::Result<()> {
     let recipient = p2id_mint_output_note.recipient().digest();
 
     // Create the MINT note using the helper function
-    let mint_inputs = MintNoteStorage::new_private(recipient, amount, output_note_tag.into());
+    let mint_storage = MintNoteStorage::new_private(recipient, amount, output_note_tag.into());
 
     let mut rng = RpoRandomCoin::new([Felt::from(42u32); 4].into());
     let mint_note = create_mint_note(
         faucet.id(),
         faucet_owner_account_id,
-        mint_inputs,
+        mint_storage,
         NoteAttachment::default(),
         &mut rng,
     )?;
@@ -671,7 +671,7 @@ async fn test_mint_note_output_note_types(#[case] note_type: NoteType) -> anyhow
     .unwrap();
 
     // Create MINT note based on note type
-    let mint_inputs = match note_type {
+    let mint_storage = match note_type {
         NoteType::Private => {
             let output_note_tag = NoteTag::with_account_target(target_account.id());
             let recipient = p2id_mint_output_note.recipient().digest();
@@ -680,9 +680,9 @@ async fn test_mint_note_output_note_types(#[case] note_type: NoteType) -> anyhow
         NoteType::Public => {
             let output_note_tag = NoteTag::with_account_target(target_account.id());
             let p2id_script = WellKnownNote::P2ID.script();
-            let p2id_inputs =
+            let p2id_storage =
                 vec![target_account.id().suffix(), target_account.id().prefix().as_felt()];
-            let note_storage = NoteStorage::new(p2id_inputs)?;
+            let note_storage = NoteStorage::new(p2id_storage)?;
             let recipient = NoteRecipient::new(serial_num, p2id_script, note_storage);
             MintNoteStorage::new_public(recipient, amount, output_note_tag.into())?
         },
@@ -693,7 +693,7 @@ async fn test_mint_note_output_note_types(#[case] note_type: NoteType) -> anyhow
     let mint_note = create_mint_note(
         faucet.id(),
         faucet_owner_account_id,
-        mint_inputs.clone(),
+        mint_storage.clone(),
         NoteAttachment::default(),
         &mut rng,
     )?;
