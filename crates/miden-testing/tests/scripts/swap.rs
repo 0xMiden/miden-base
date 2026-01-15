@@ -1,15 +1,7 @@
 use anyhow::Context;
 use miden_protocol::account::{Account, AccountId, AccountStorageMode, AccountType};
 use miden_protocol::asset::{Asset, FungibleAsset, NonFungibleAsset};
-use miden_protocol::note::{
-    Note,
-    NoteAssets,
-    NoteDetails,
-    NoteExecutionHint,
-    NoteMetadata,
-    NoteTag,
-    NoteType,
-};
+use miden_protocol::note::{Note, NoteAssets, NoteDetails, NoteMetadata, NoteTag, NoteType};
 use miden_protocol::testing::account_id::{
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
@@ -138,7 +130,7 @@ async fn consume_swap_note_private_payback_note() -> anyhow::Result<()> {
 
     let full_payback_note = Note::new(
         payback_note.assets().clone(),
-        *output_payback_note.metadata(),
+        output_payback_note.metadata().clone(),
         payback_note.recipient().clone(),
     );
 
@@ -217,7 +209,7 @@ async fn consume_swap_note_public_payback_note() -> anyhow::Result<()> {
 
     let full_payback_note = Note::new(
         payback_note.assets().clone(),
-        *output_payback_note.metadata(),
+        output_payback_note.metadata().clone(),
         payback_note.recipient().clone(),
     );
 
@@ -353,14 +345,15 @@ pub fn create_p2id_note_exact(
     target: AccountId,
     assets: Vec<Asset>,
     note_type: NoteType,
-    aux: Felt,
+    // TODO(note_attachment): Replace with attachment.
+    _aux: Felt,
     serial_num: Word,
 ) -> Result<Note, NoteError> {
     let recipient = utils::build_p2id_recipient(target, serial_num)?;
 
     let tag = NoteTag::with_account_target(target);
 
-    let metadata = NoteMetadata::new(sender, note_type, tag, NoteExecutionHint::always(), aux);
+    let metadata = NoteMetadata::new(sender, note_type, tag);
     let vault = NoteAssets::new(assets)?;
 
     Ok(Note::new(vault, metadata, recipient))

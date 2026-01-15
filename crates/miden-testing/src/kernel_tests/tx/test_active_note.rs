@@ -8,7 +8,6 @@ use miden_protocol::errors::tx_kernel::ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_METADATA_
 use miden_protocol::note::{
     Note,
     NoteAssets,
-    NoteExecutionHint,
     NoteInputs,
     NoteMetadata,
     NoteRecipient,
@@ -101,17 +100,23 @@ async fn test_active_note_get_metadata() -> anyhow::Result<()> {
 
             # get the metadata of the active note
             exec.active_note::get_metadata
-            # => [METADATA]
+            # => [NOTE_ATTACHMENT, METADATA_HEADER]
 
-            # assert this metadata
-            push.{METADATA}
+            push.{NOTE_ATTACHMENT}
+            assert_eqw.err="note 0 has incorrect note attachment"
+            # => [METADATA_HEADER]
+
+            push.{METADATA_HEADER}
             assert_eqw.err="note 0 has incorrect metadata"
+            # => []
 
             # truncate the stack
             swapw dropw
         end
         "#,
-        METADATA = Word::from(tx_context.input_notes().get_note(0).note().metadata())
+        METADATA_HEADER = tx_context.input_notes().get_note(0).note().metadata().to_header_word(),
+        NOTE_ATTACHMENT =
+            tx_context.input_notes().get_note(0).note().metadata().to_attachment_word()
     );
 
     tx_context.execute_code(&code).await?;
@@ -403,13 +408,7 @@ async fn test_active_note_get_exactly_8_inputs() -> anyhow::Result<()> {
     // prepare note data
     let serial_num = RpoRandomCoin::new(Word::from([4u32; 4])).draw_word();
     let tag = NoteTag::with_account_target(target_id);
-    let metadata = NoteMetadata::new(
-        sender_id,
-        NoteType::Public,
-        tag,
-        NoteExecutionHint::always(),
-        Default::default(),
-    );
+    let metadata = NoteMetadata::new(sender_id, NoteType::Public, tag);
     let vault = NoteAssets::new(vec![]).context("failed to create input note assets")?;
     let note_script = CodeBuilder::default()
         .compile_note_script("begin nop end")

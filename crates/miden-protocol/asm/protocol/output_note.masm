@@ -175,11 +175,12 @@ end
 #! Returns the metadata of the output note with the specified index.
 #!
 #! Inputs:  [note_index]
-#! Outputs: [METADATA]
+#! Outputs: [NOTE_ATTACHMENT, METADATA_HEADER]
 #!
 #! Where:
 #! - note_index is the index of the output note whose metadata should be returned.
-#! - METADATA is the metadata of the output note.
+#! - METADATA_HEADER is the metadata header of the specified output note.
+#! - NOTE_ATTACHMENT is the attachment of the specified output note.
 #!
 #! Panics if:
 #! - the note index is greater or equal to the total number of output notes.
@@ -198,9 +199,9 @@ pub proc get_metadata
     # => [offset, note_index, pad(14)]
 
     syscall.exec_kernel_proc
-    # => [METADATA, pad(12)]
+    # => [NOTE_ATTACHMENT, METADATA_HEADER, pad(8)]
 
     # clean the stack
-    swapdw dropw dropw swapw dropw
-    # => [METADATA]
+    swapdw dropw dropw
+    # => [NOTE_ATTACHMENT, METADATA_HEADER]
 end

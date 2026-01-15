@@ -43,7 +43,8 @@ pub fn create_p2id_note<R: FeltRng>(
     target: AccountId,
     assets: Vec<Asset>,
     note_type: NoteType,
-    aux: Felt,
+    // TODO(note_attachment): Replace with note attachment.
+    _aux: Felt,
     rng: &mut R,
 ) -> Result<Note, NoteError> {
     let serial_num = rng.draw_word();
@@ -51,7 +52,7 @@ pub fn create_p2id_note<R: FeltRng>(
 
     let tag = NoteTag::with_account_target(target);
 
-    let metadata = NoteMetadata::new(sender, note_type, tag, NoteExecutionHint::always(), aux);
+    let metadata = NoteMetadata::new(sender, note_type, tag);
     let vault = NoteAssets::new(assets)?;
 
     Ok(Note::new(vault, metadata, recipient))
@@ -77,7 +78,8 @@ pub fn create_p2ide_note<R: FeltRng>(
     reclaim_height: Option<BlockNumber>,
     timelock_height: Option<BlockNumber>,
     note_type: NoteType,
-    aux: Felt,
+    // TODO(note_attachment): Replace with note attachment.
+    _aux: Felt,
     rng: &mut R,
 ) -> Result<Note, NoteError> {
     let serial_num = rng.draw_word();
@@ -85,12 +87,7 @@ pub fn create_p2ide_note<R: FeltRng>(
         utils::build_p2ide_recipient(target, reclaim_height, timelock_height, serial_num)?;
     let tag = NoteTag::with_account_target(target);
 
-    let execution_hint = match timelock_height {
-        Some(height) => NoteExecutionHint::after_block(height)?,
-        None => NoteExecutionHint::always(),
-    };
-
-    let metadata = NoteMetadata::new(sender, note_type, tag, execution_hint, aux);
+    let metadata = NoteMetadata::new(sender, note_type, tag);
     let vault = NoteAssets::new(assets)?;
 
     Ok(Note::new(vault, metadata, recipient))
@@ -110,8 +107,10 @@ pub fn create_swap_note<R: FeltRng>(
     offered_asset: Asset,
     requested_asset: Asset,
     swap_note_type: NoteType,
-    swap_note_aux: Felt,
+    // TODO(note_attachment): Replace with note attachment.
+    _swap_note_aux: Felt,
     payback_note_type: NoteType,
+    // TODO(note_attachment): Replace with note attachment.
     payback_note_aux: Felt,
     rng: &mut R,
 ) -> Result<(Note, NoteDetails), NoteError> {
@@ -148,8 +147,7 @@ pub fn create_swap_note<R: FeltRng>(
     let serial_num = rng.draw_word();
 
     // build the outgoing note
-    let metadata =
-        NoteMetadata::new(sender, swap_note_type, tag, NoteExecutionHint::always(), swap_note_aux);
+    let metadata = NoteMetadata::new(sender, swap_note_type, tag);
     let assets = NoteAssets::new(vec![offered_asset])?;
     let recipient = NoteRecipient::new(serial_num, note_script, inputs);
     let note = Note::new(assets, metadata, recipient);
@@ -187,7 +185,8 @@ pub fn create_mint_note<R: FeltRng>(
     faucet_id: AccountId,
     sender: AccountId,
     mint_inputs: MintNoteInputs,
-    aux: Felt,
+    // TODO(note_attachment): Replace with note attachment.
+    _aux: Felt,
     rng: &mut R,
 ) -> Result<Note, NoteError> {
     let note_script = WellKnownNote::MINT.script();
@@ -195,14 +194,13 @@ pub fn create_mint_note<R: FeltRng>(
 
     // MINT notes are always public for network execution
     let note_type = NoteType::Public;
-    let execution_hint = NoteExecutionHint::always();
 
     // Convert MintNoteInputs to NoteInputs
     let inputs = NoteInputs::from(mint_inputs);
 
     let tag = NoteTag::with_account_target(faucet_id);
 
-    let metadata = NoteMetadata::new(sender, note_type, tag, execution_hint, aux);
+    let metadata = NoteMetadata::new(sender, note_type, tag);
     let assets = NoteAssets::new(vec![])?; // MINT notes have no assets
     let recipient = NoteRecipient::new(serial_num, note_script, inputs);
 
@@ -234,7 +232,8 @@ pub fn create_burn_note<R: FeltRng>(
     sender: AccountId,
     faucet_id: AccountId,
     fungible_asset: Asset,
-    aux: Felt,
+    // TODO(note_attachment): Replace with note attachment.
+    _aux: Felt,
     rng: &mut R,
 ) -> Result<Note, NoteError> {
     let note_script = WellKnownNote::BURN.script();
@@ -242,13 +241,11 @@ pub fn create_burn_note<R: FeltRng>(
 
     // BURN notes are always public
     let note_type = NoteType::Public;
-    // Use always execution hint for BURN notes
-    let execution_hint = NoteExecutionHint::always();
 
     let inputs = NoteInputs::new(vec![])?;
     let tag = NoteTag::with_account_target(faucet_id);
 
-    let metadata = NoteMetadata::new(sender, note_type, tag, execution_hint, aux);
+    let metadata = NoteMetadata::new(sender, note_type, tag);
     let assets = NoteAssets::new(vec![fungible_asset])?; // BURN notes contain the asset to burn
     let recipient = NoteRecipient::new(serial_num, note_script, inputs);
 

@@ -226,8 +226,6 @@ pub enum TransactionKernelError {
         "note inputs data extracted from the advice map by the event handler is not well formed"
     )]
     MalformedNoteInputs(#[source] NoteError),
-    #[error("note metadata created by the event handler is not well formed")]
-    MalformedNoteMetadata(#[source] NoteError),
     #[error(
         "note script data `{data:?}` extracted from the advice map by the event handler is not well formed"
     )]

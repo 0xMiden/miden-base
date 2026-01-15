@@ -20,6 +20,15 @@ pub use inputs::NoteInputs;
 mod metadata;
 pub use metadata::NoteMetadata;
 
+mod attachment;
+pub use attachment::{
+    NoteAttachment,
+    NoteAttachmentArray,
+    NoteAttachmentContent,
+    NoteAttachmentContentType,
+    NoteAttachmentType,
+};
+
 mod execution_hint;
 pub use execution_hint::{AfterBlockNumber, NoteExecutionHint};
 
@@ -149,7 +158,7 @@ impl Note {
 
     /// Returns a commitment to the note and its metadata.
     ///
-    /// > hash(NOTE_ID || NOTE_METADATA)
+    /// > hash(NOTE_ID || NOTE_METADATA_COMMITMENT)
     ///
     /// This value is used primarily for authenticating notes consumed when the are consumed
     /// in a transaction.
@@ -169,12 +178,6 @@ impl AsRef<NoteRecipient> for Note {
 
 // CONVERSIONS FROM NOTE
 // ================================================================================================
-
-impl From<&Note> for NoteHeader {
-    fn from(note: &Note) -> Self {
-        note.header
-    }
-}
 
 impl From<Note> for NoteHeader {
     fn from(note: Note) -> Self {
@@ -197,17 +200,7 @@ impl From<Note> for NoteDetails {
 impl From<Note> for PartialNote {
     fn from(note: Note) -> Self {
         let (assets, recipient, ..) = note.details.into_parts();
-        PartialNote::new(*note.header.metadata(), recipient.digest(), assets)
-    }
-}
-
-impl From<&Note> for PartialNote {
-    fn from(note: &Note) -> Self {
-        PartialNote::new(
-            *note.header.metadata(),
-            note.details.recipient().digest(),
-            note.details.assets().clone(),
-        )
+        PartialNote::new(note.header.into_metadata(), recipient.digest(), assets)
     }
 }
 

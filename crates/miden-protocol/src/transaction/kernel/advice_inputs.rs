@@ -359,7 +359,8 @@ impl TransactionAdviceInputs {
             note_data.extend(*recipient.inputs().commitment());
             note_data.extend(*assets.commitment());
             note_data.extend(*note_arg);
-            note_data.extend(Word::from(note.metadata()));
+            note_data.extend(note.metadata().to_header_word());
+            note_data.extend(note.metadata().to_attachment_word());
             note_data.push(recipient.inputs().num_values().into());
             note_data.push((assets.num_assets() as u32).into());
             note_data.extend(assets.to_padded_assets());

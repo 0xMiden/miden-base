@@ -116,7 +116,7 @@ async fn proven_block_success() -> anyhow::Result<()> {
             (
                 BlockNoteIndex::new(batch_idx, note_idx_in_batch).unwrap(),
                 note.id(),
-                *note.metadata(),
+                note.metadata(),
             )
         },
     ))

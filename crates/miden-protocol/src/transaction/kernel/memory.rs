@@ -342,14 +342,14 @@ pub const NOTE_MEM_SIZE: MemoryAddress = 2048;
 //
 // Here `n` represents number of input notes.
 //
-// Each nullifier occupies a single word. A data section for each note consists of exactly 512
-// words and is laid out like so:
+// Each nullifier occupies a single word. A data section for each note consists of exactly 2048
+// elements and is laid out like so:
 //
-// ┌──────┬────────┬────────┬────────┬────────────┬───────────┬──────┬───────┬────────┬────────┬───────┬─────┬───────┬─────────┬
-// │ NOTE │ SERIAL │ SCRIPT │ INPUTS │   ASSETS   | RECIPIENT │ META │ NOTE  │  NUM   │  NUM   │ ASSET │ ... │ ASSET │ PADDING │
-// │  ID  │  NUM   │  ROOT  │  HASH  │ COMMITMENT |           │ DATA │ ARGS  │ INPUTS │ ASSETS │   0   │     │   n   │         │
-// ├──────┼────────┼────────┼────────┼────────────┼───────────┼──────┼───────┼────────┼────────┼───────┼─────┼───────┼─────────┤
-// 0      4        8        12       16           20          24     28      32       36       40 + 4n
+// ┌──────┬────────┬────────┬────────┬────────────┬───────────┬──────────┬────────────┬───────┬────────┬────────┬───────┬─────┬───────┬─────────┬
+// │ NOTE │ SERIAL │ SCRIPT │ INPUTS │   ASSETS   | RECIPIENT │ METADATA │ ATTACHMENT │ NOTE  │  NUM   │  NUM   │ ASSET │ ... │ ASSET │ PADDING │
+// │  ID  │  NUM   │  ROOT  │  HASH  │ COMMITMENT |           │  HEADER  │            │ ARGS  │ INPUTS │ ASSETS │   0   │     │   n   │         │
+// ├──────┼────────┼────────┼────────┼────────────┼───────────┼──────────┼────────────┼───────┼────────┼────────┼───────┼─────┼───────┼─────────┤
+// 0      4        8        12       16           20          24         28           32       36      40       44 + 4n
 //
 // - NUM_INPUTS is encoded as [num_inputs, 0, 0, 0].
 // - NUM_ASSETS is encoded as [num_assets, 0, 0, 0].
@@ -382,12 +382,15 @@ pub const INPUT_NOTE_SCRIPT_ROOT_OFFSET: MemoryOffset = 8;
 pub const INPUT_NOTE_INPUTS_COMMITMENT_OFFSET: MemoryOffset = 12;
 pub const INPUT_NOTE_ASSETS_COMMITMENT_OFFSET: MemoryOffset = 16;
 pub const INPUT_NOTE_RECIPIENT_OFFSET: MemoryOffset = 20;
-pub const INPUT_NOTE_METADATA_OFFSET: MemoryOffset = 24;
-pub const INPUT_NOTE_ARGS_OFFSET: MemoryOffset = 28;
-pub const INPUT_NOTE_NUM_INPUTS_OFFSET: MemoryOffset = 32;
-pub const INPUT_NOTE_NUM_ASSETS_OFFSET: MemoryOffset = 36;
-pub const INPUT_NOTE_ASSETS_OFFSET: MemoryOffset = 40;
+pub const INPUT_NOTE_METADATA_HEADER_OFFSET: MemoryOffset = 24;
+pub const INPUT_NOTE_ATTACHMENT_OFFSET: MemoryOffset = 28;
+pub const INPUT_NOTE_ARGS_OFFSET: MemoryOffset = 32;
+pub const INPUT_NOTE_NUM_INPUTS_OFFSET: MemoryOffset = 36;
+pub const INPUT_NOTE_NUM_ASSETS_OFFSET: MemoryOffset = 40;
+pub const INPUT_NOTE_ASSETS_OFFSET: MemoryOffset = 44;
 
+#[allow(clippy::empty_line_after_outer_attr)]
+#[rustfmt::skip]
 // OUTPUT NOTES DATA
 // ------------------------------------------------------------------------------------------------
 // Output notes section contains data of all notes produced by a transaction. The section starts at
@@ -401,11 +404,11 @@ pub const INPUT_NOTE_ASSETS_OFFSET: MemoryOffset = 40;
 // The total number of output notes for a transaction is stored in the bookkeeping section of the
 // memory. Data section of each note is laid out like so:
 //
-// ┌──────┬──────────┬───────────┬────────────┬────────────────┬─────────┬─────┬─────────┬─────────┐
-// │ NOTE │ METADATA │ RECIPIENT │   ASSETS   │   NUM ASSETS   │ ASSET 0 │ ... │ ASSET n │ PADDING │
-// |  ID  |          |           | COMMITMENT | AND DIRTY FLAG |         |     |         |         |
-// ├──────┼──────────┼───────────┼────────────┼────────────────┼─────────┼─────┼─────────┼─────────┤
-//    0        1           2           3              4             5             5 + n
+// ┌──────┬──────────┬────────────┬───────────┬────────────┬────────────────┬─────────┬─────┬─────────┬─────────┐
+// │ NOTE │ METADATA │  METADATA  │ RECIPIENT │   ASSETS   │   NUM ASSETS   │ ASSET 0 │ ... │ ASSET n │ PADDING │
+// |  ID  |  HEADER  | ATTACHMENT |           | COMMITMENT | AND DIRTY FLAG |         |     |         |         |
+// ├──────┼──────────┼────────────┼───────────┼────────────┼────────────────┼─────────┼─────┼─────────┼─────────┤
+//    0        1           2           3           4              5             6             6 + n
 //
 // The NUM_ASSETS_AND_DIRTY_FLAG word has the following layout:
 // `[num_assets, assets_commitment_dirty_flag, 0, 0]`, where:
@@ -421,17 +424,15 @@ pub const INPUT_NOTE_ASSETS_OFFSET: MemoryOffset = 40;
 /// The memory address at which the output notes section begins.
 pub const OUTPUT_NOTE_SECTION_OFFSET: MemoryOffset = 16_777_216;
 
-/// The size of the core output note data segment.
-pub const OUTPUT_NOTE_CORE_DATA_SIZE: MemSize = 16;
-
 /// The offsets at which data of an output note is stored relative to the start of its data segment.
 pub const OUTPUT_NOTE_ID_OFFSET: MemoryOffset = 0;
-pub const OUTPUT_NOTE_METADATA_OFFSET: MemoryOffset = 4;
-pub const OUTPUT_NOTE_RECIPIENT_OFFSET: MemoryOffset = 8;
-pub const OUTPUT_NOTE_ASSET_COMMITMENT_OFFSET: MemoryOffset = 12;
-pub const OUTPUT_NOTE_NUM_ASSETS_OFFSET: MemoryOffset = 16;
-pub const OUTPUT_NOTE_DIRTY_FLAG_OFFSET: MemoryOffset = 17;
-pub const OUTPUT_NOTE_ASSETS_OFFSET: MemoryOffset = 20;
+pub const OUTPUT_NOTE_METADATA_HEADER_OFFSET: MemoryOffset = 4;
+pub const OUTPUT_NOTE_ATTACHMENT_OFFSET: MemoryOffset = 8;
+pub const OUTPUT_NOTE_RECIPIENT_OFFSET: MemoryOffset = 12;
+pub const OUTPUT_NOTE_ASSET_COMMITMENT_OFFSET: MemoryOffset = 16;
+pub const OUTPUT_NOTE_NUM_ASSETS_OFFSET: MemoryOffset = 20;
+pub const OUTPUT_NOTE_DIRTY_FLAG_OFFSET: MemoryOffset = 21;
+pub const OUTPUT_NOTE_ASSETS_OFFSET: MemoryOffset = 24;
 
 // LINK MAP
 // ------------------------------------------------------------------------------------------------

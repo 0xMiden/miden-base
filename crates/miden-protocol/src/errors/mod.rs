@@ -34,7 +34,14 @@ use crate::address::AddressType;
 use crate::asset::AssetVaultKey;
 use crate::batch::BatchId;
 use crate::block::BlockNumber;
-use crate::note::{NoteAssets, NoteExecutionHint, NoteTag, NoteType, Nullifier};
+use crate::note::{
+    NoteAssets,
+    NoteAttachmentArray,
+    NoteExecutionHint,
+    NoteTag,
+    NoteType,
+    Nullifier,
+};
 use crate::transaction::{TransactionEventId, TransactionId};
 use crate::{
     ACCOUNT_UPDATE_MAX_SIZE,
@@ -586,6 +593,13 @@ pub enum NoteError {
     TooManyInputs(usize),
     #[error("note tag requires a public note but the note is of type {0}")]
     PublicNoteRequired(NoteType),
+    #[error(
+        "note attachment cannot commit to more than {} elements",
+        NoteAttachmentArray::MAX_NUM_ELEMENTS
+    )]
+    NoteAttachmentArraySizeExceeded(usize),
+    #[error("unknown note attachment content type {0}")]
+    UnknownNoteAttachmentContentType(u8),
     #[error("{error_msg}")]
     Other {
         error_msg: Box<str>,
