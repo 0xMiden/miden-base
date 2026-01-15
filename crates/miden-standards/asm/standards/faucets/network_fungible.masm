@@ -2,11 +2,6 @@ use miden::protocol::active_note
 use miden::standards::faucets
 use miden::standards::access::ownable
 
-# ERRORS
-# ===============================================================================================
-
-const ERR_ONLY_OWNER="note sender is not the owner"
-
 # PUBLIC INTERFACE
 # ================================================================================================
 
