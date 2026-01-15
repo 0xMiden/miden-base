@@ -7,8 +7,8 @@ use miden_protocol::crypto::rand::FeltRng;
 use miden_protocol::note::{
     Note,
     NoteAssets,
+    NoteAttachment,
     NoteDetails,
-    NoteExecutionHint,
     NoteInputs,
     NoteMetadata,
     NoteRecipient,
@@ -49,8 +49,7 @@ pub fn create_p2id_note<R: FeltRng>(
     target: AccountId,
     assets: Vec<Asset>,
     note_type: NoteType,
-    // TODO(note_attachment): Replace with note attachment.
-    _aux: Felt,
+    attachment: NoteAttachment,
     rng: &mut R,
 ) -> Result<Note, NoteError> {
     let serial_num = rng.draw_word();
@@ -58,7 +57,7 @@ pub fn create_p2id_note<R: FeltRng>(
 
     let tag = NoteTag::with_account_target(target);
 
-    let metadata = NoteMetadata::new(sender, note_type, tag);
+    let metadata = NoteMetadata::new(sender, note_type, tag).with_attachment(attachment);
     let vault = NoteAssets::new(assets)?;
 
     Ok(Note::new(vault, metadata, recipient))
@@ -84,8 +83,7 @@ pub fn create_p2ide_note<R: FeltRng>(
     reclaim_height: Option<BlockNumber>,
     timelock_height: Option<BlockNumber>,
     note_type: NoteType,
-    // TODO(note_attachment): Replace with note attachment.
-    _aux: Felt,
+    attachment: NoteAttachment,
     rng: &mut R,
 ) -> Result<Note, NoteError> {
     let serial_num = rng.draw_word();
@@ -93,14 +91,14 @@ pub fn create_p2ide_note<R: FeltRng>(
         utils::build_p2ide_recipient(target, reclaim_height, timelock_height, serial_num)?;
     let tag = NoteTag::with_account_target(target);
 
-    let metadata = NoteMetadata::new(sender, note_type, tag);
+    let metadata = NoteMetadata::new(sender, note_type, tag).with_attachment(attachment);
     let vault = NoteAssets::new(assets)?;
 
     Ok(Note::new(vault, metadata, recipient))
 }
 
 /// Generates a SWAP note - swap of assets between two accounts - and returns the note as well as
-/// [NoteDetails] for the payback note.
+/// [`NoteDetails`] for the payback note.
 ///
 /// This script enables a swap of 2 assets between the `sender` account and any other account that
 /// is willing to consume the note. The consumer will receive the `offered_asset` and will create a
@@ -113,11 +111,9 @@ pub fn create_swap_note<R: FeltRng>(
     offered_asset: Asset,
     requested_asset: Asset,
     swap_note_type: NoteType,
-    // TODO(note_attachment): Replace with note attachment.
-    _swap_note_aux: Felt,
+    swap_note_attachment: NoteAttachment,
     payback_note_type: NoteType,
-    // TODO(note_attachment): Replace with note attachment.
-    payback_note_aux: Felt,
+    payback_note_attachment: NoteAttachment,
     rng: &mut R,
 ) -> Result<(Note, NoteDetails), NoteError> {
     if requested_asset == offered_asset {
@@ -129,31 +125,32 @@ pub fn create_swap_note<R: FeltRng>(
     let payback_serial_num = rng.draw_word();
     let payback_recipient = utils::build_p2id_recipient(sender, payback_serial_num)?;
 
-    let payback_recipient_word: Word = payback_recipient.digest();
     let requested_asset_word: Word = requested_asset.into();
     let payback_tag = NoteTag::with_account_target(sender);
 
-    let inputs = NoteInputs::new(vec![
-        requested_asset_word[0],
-        requested_asset_word[1],
-        requested_asset_word[2],
-        requested_asset_word[3],
-        payback_recipient_word[0],
-        payback_recipient_word[1],
-        payback_recipient_word[2],
-        payback_recipient_word[3],
-        NoteExecutionHint::always().into(),
+    let attachment_type = Felt::from(payback_note_attachment.attachment_type().as_u32());
+    let attachment_content_type = Felt::from(payback_note_attachment.content_type().as_u8());
+    let attachment = payback_note_attachment.content().to_word();
+
+    let mut inputs = Vec::with_capacity(16);
+    inputs.extend_from_slice(&[
         payback_note_type.into(),
-        payback_note_aux,
         payback_tag.into(),
-    ])?;
+        attachment_type,
+        attachment_content_type,
+    ]);
+    inputs.extend_from_slice(attachment.as_elements());
+    inputs.extend_from_slice(requested_asset_word.as_elements());
+    inputs.extend_from_slice(payback_recipient.digest().as_elements());
+    let inputs = NoteInputs::new(inputs)?;
 
     // build the tag for the SWAP use case
     let tag = build_swap_tag(swap_note_type, &offered_asset, &requested_asset);
     let serial_num = rng.draw_word();
 
     // build the outgoing note
-    let metadata = NoteMetadata::new(sender, swap_note_type, tag);
+    let metadata =
+        NoteMetadata::new(sender, swap_note_type, tag).with_attachment(swap_note_attachment);
     let assets = NoteAssets::new(vec![offered_asset])?;
     let recipient = NoteRecipient::new(serial_num, note_script, inputs);
     let note = Note::new(assets, metadata, recipient);
@@ -182,7 +179,7 @@ pub fn create_swap_note<R: FeltRng>(
 /// - `faucet_id`: The account ID of the network faucet that will mint the assets
 /// - `sender`: The account ID of the note creator (must be the faucet owner)
 /// - `mint_inputs`: The input configuration specifying private or public output mode
-/// - `aux`: Auxiliary data for the MINT note
+/// - `attachment`: The [`NoteAttachment`] of the MINT note
 /// - `rng`: Random number generator for creating the serial number
 ///
 /// # Errors
@@ -191,8 +188,7 @@ pub fn create_mint_note<R: FeltRng>(
     faucet_id: AccountId,
     sender: AccountId,
     mint_inputs: MintNoteInputs,
-    // TODO(note_attachment): Replace with note attachment.
-    _aux: Felt,
+    attachment: NoteAttachment,
     rng: &mut R,
 ) -> Result<Note, NoteError> {
     let note_script = WellKnownNote::MINT.script();
@@ -206,7 +202,7 @@ pub fn create_mint_note<R: FeltRng>(
 
     let tag = NoteTag::with_account_target(faucet_id);
 
-    let metadata = NoteMetadata::new(sender, note_type, tag);
+    let metadata = NoteMetadata::new(sender, note_type, tag).with_attachment(attachment);
     let assets = NoteAssets::new(vec![])?; // MINT notes have no assets
     let recipient = NoteRecipient::new(serial_num, note_script, inputs);
 
@@ -229,7 +225,7 @@ pub fn create_mint_note<R: FeltRng>(
 /// - `sender`: The account ID of the note creator
 /// - `faucet_id`: The account ID of the faucet that will burn the assets
 /// - `fungible_asset`: The fungible asset to be burned
-/// - `aux`: Auxiliary data for the note
+/// - `attachment`: The [`NoteAttachment`] of the BURN note
 /// - `rng`: Random number generator for creating the serial number
 ///
 /// # Errors
@@ -238,8 +234,7 @@ pub fn create_burn_note<R: FeltRng>(
     sender: AccountId,
     faucet_id: AccountId,
     fungible_asset: Asset,
-    // TODO(note_attachment): Replace with note attachment.
-    _aux: Felt,
+    attachment: NoteAttachment,
     rng: &mut R,
 ) -> Result<Note, NoteError> {
     let note_script = WellKnownNote::BURN.script();
@@ -251,7 +246,7 @@ pub fn create_burn_note<R: FeltRng>(
     let inputs = NoteInputs::new(vec![])?;
     let tag = NoteTag::with_account_target(faucet_id);
 
-    let metadata = NoteMetadata::new(sender, note_type, tag);
+    let metadata = NoteMetadata::new(sender, note_type, tag).with_attachment(attachment);
     let assets = NoteAssets::new(vec![fungible_asset])?; // BURN notes contain the asset to burn
     let recipient = NoteRecipient::new(serial_num, note_script, inputs);
 

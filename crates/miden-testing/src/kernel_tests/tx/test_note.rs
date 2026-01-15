@@ -399,8 +399,7 @@ async fn test_build_metadata_header() -> miette::Result<()> {
 
         begin
           exec.prologue::prepare_transaction
-          push.{note_type}
-          push.{tag}
+          push.{note_type} push.{tag}
           exec.output_note::build_metadata_header
 
           # truncate the stack

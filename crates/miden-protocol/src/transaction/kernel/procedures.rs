@@ -80,7 +80,7 @@ pub const KERNEL_PROCEDURES: [Word; 53] = [
     // input_note_get_recipient
     word!("0xd3c255177f9243bb1a523a87615bbe76dd5a3605fcae87eb9d3a626d4ecce33c"),
     // output_note_create
-    word!("0x9689eb055efa7153b4498e433056d99cda07a8afd4dac39c9cc82ef8cf22b3fb"),
+    word!("0xf6d7790691427c5d54ac9dd3b7ed1bb587fa6e864bdf7ba372f022a45c7caa47"),
     // output_note_get_metadata
     word!("0x3db8427f20eb70603b72aa574a986506eb7216312004aeaf8b2a7e55d0049a48"),
     // output_note_get_assets_info

@@ -1146,14 +1146,12 @@ end
 
 #! Creates a new note and returns its index.
 #!
-#! Inputs:  [tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
+#! Inputs:  [tag, note_type, RECIPIENT, pad(10)]
 #! Outputs: [note_idx, pad(15)]
 #!
 #! Where:
 #! - tag is the tag to be included in the note.
-#! - aux is the auxiliary metadata to be included in the note.
 #! - note_type is the note storage type.
-#! - execution_hint is the note execution hint tag and payload.
 #! - RECIPIENT is the recipient of the note.
 #! - note_idx is the index of the created note.
 #!
@@ -1161,7 +1159,7 @@ end
 pub proc output_note_create
     # check that this procedure was executed against the native account
     exec.memory::assert_native_account
-    # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
+    # => [tag, note_type, RECIPIENT, pad(10)]
 
     exec.output_note::create
     # => [note_idx, pad(15)]
