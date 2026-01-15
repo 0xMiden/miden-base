@@ -61,7 +61,6 @@ async fn test_transaction_epilogue() -> anyhow::Result<()> {
     let code = format!(
         "
         use $kernel::prologue
-        use $kernel::account
         use $kernel::epilogue
         use miden::protocol::output_note
         use miden::core::sys
@@ -70,9 +69,7 @@ async fn test_transaction_epilogue() -> anyhow::Result<()> {
             exec.prologue::prepare_transaction
 
             push.{recipient}
-            push.{note_execution_hint}
             push.{note_type}
-            push.{aux}
             push.{tag}
             exec.output_note::create
             # => [note_idx]
@@ -88,9 +85,7 @@ async fn test_transaction_epilogue() -> anyhow::Result<()> {
         end
         ",
         recipient = output_note_1.recipient().digest(),
-        note_execution_hint = Felt::from(output_note_1.metadata().execution_hint()),
         note_type = Felt::from(output_note_1.metadata().note_type()),
-        aux = output_note_1.metadata().aux(),
         tag = Felt::from(output_note_1.metadata().tag()),
         asset = Word::from(asset)
     );
@@ -187,9 +182,7 @@ async fn test_compute_output_note_id() -> anyhow::Result<()> {
         code.push_str(&format!(
             "
         push.{recipient}
-        push.{note_execution_hint}
         push.{note_type}
-        push.{aux}
         push.{tag}
         exec.output_note::create
         # => [note_idx]
@@ -199,9 +192,7 @@ async fn test_compute_output_note_id() -> anyhow::Result<()> {
         # => []
         ",
             recipient = note.recipient().digest(),
-            note_execution_hint = Felt::from(note.metadata().execution_hint()),
             note_type = Felt::from(note.metadata().note_type()),
-            aux = note.metadata().aux(),
             tag = Felt::from(note.metadata().tag()),
             asset = Word::from(asset)
         ));
@@ -566,11 +557,10 @@ async fn test_epilogue_execute_empty_transaction() -> anyhow::Result<()> {
 async fn test_epilogue_empty_transaction_with_empty_output_note() -> anyhow::Result<()> {
     let tag =
         NoteTag::with_account_target(ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE.try_into()?);
-    let aux = Felt::new(26);
     let note_type = NoteType::Private;
 
-    // create an empty output note in the transaction script
-    let tx_script_source = format!(
+    // create an empty output note
+    let code = format!(
         r#"
         use miden::core::word
         use miden::protocol::output_note
@@ -583,25 +573,19 @@ async fn test_epilogue_empty_transaction_with_empty_output_note() -> anyhow::Res
 
             # prepare the values for note creation
             push.1.2.3.4      # recipient
-            push.1            # note_execution_hint (NoteExecutionHint::Always)
             push.{note_type}  # note_type
-            push.{aux}        # aux
             push.{tag}        # tag
-            # => [tag, aux, note_type, note_execution_hint, RECIPIENT]
-
-            # pad the stack with zeros before calling the `create_note`.
-            padw padw swapdw
-            # => [tag, aux, execution_hint, note_type, RECIPIENT, pad(8)]
+            # => [tag, note_type, RECIPIENT]
 
             # create the note
-            call.output_note::create
-            # => [note_idx, GARBAGE(15)]
+            exec.output_note::create
+            # => [note_idx]
 
             # make sure that output note was created: compare the output note hash with an empty
             # word
             exec.note::compute_output_notes_commitment
             exec.word::eqz assertz.err="output note was created, but the output notes hash remains to be zeros"
-            # => [note_idx, GARBAGE(15)]
+            # => [note_idx]
 
             # clean the stack
             dropw dropw dropw dropw
@@ -615,7 +599,7 @@ async fn test_epilogue_empty_transaction_with_empty_output_note() -> anyhow::Res
 
     let tx_context = TransactionContextBuilder::with_noop_auth_account().build()?;
 
-    let result = tx_context.execute_code(&tx_script_source).await.map(|_| ());
+    let result = tx_context.execute_code(&code).await.map(|_| ());
 
     // assert that even if the output note was created, the transaction is considered empty
     assert_execution_error!(result, ERR_EPILOGUE_EXECUTED_TRANSACTION_IS_EMPTY);

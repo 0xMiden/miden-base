@@ -16,7 +16,7 @@ use miden_protocol::asset::{Asset, FungibleAsset};
 use miden_protocol::note::{
     Note,
     NoteAssets,
-    NoteExecutionHint,
+    NoteAttachment,
     NoteId,
     NoteInputs,
     NoteMetadata,
@@ -48,8 +48,6 @@ use crate::{get_note_with_fungible_asset_and_script, prove_and_verify_transactio
 pub struct FaucetTestParams {
     pub recipient: Word,
     pub tag: NoteTag,
-    pub aux: Felt,
-    pub note_execution_hint: NoteExecutionHint,
     pub note_type: NoteType,
     pub amount: Felt,
 }
@@ -60,15 +58,13 @@ pub fn create_mint_script_code(params: &FaucetTestParams) -> String {
         "
             begin
                 # pad the stack before call
-                push.0.0.0 padw
+                padw padw push.0
 
                 push.{recipient}
-                push.{note_execution_hint}
                 push.{note_type}
-                push.{aux}
                 push.{tag}
                 push.{amount}
-                # => [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
+                # => [amount, tag, note_type, RECIPIENT, pad(9)]
 
                 call.::miden::standards::faucets::basic_fungible::distribute
                 # => [note_idx, pad(15)]
@@ -79,9 +75,7 @@ pub fn create_mint_script_code(params: &FaucetTestParams) -> String {
             ",
         note_type = params.note_type as u8,
         recipient = params.recipient,
-        aux = params.aux,
         tag = u32::from(params.tag),
-        note_execution_hint = Felt::from(params.note_execution_hint),
         amount = params.amount,
     )
 }
@@ -139,8 +133,6 @@ async fn minting_fungible_asset_on_existing_faucet_succeeds() -> anyhow::Result<
     let params = FaucetTestParams {
         recipient: Word::from([0, 1, 2, 3u32]),
         tag: NoteTag::default(),
-        aux: Felt::new(27),
-        note_execution_hint: NoteExecutionHint::on_block_slot(5, 6, 7),
         note_type: NoteType::Private,
         amount: Felt::new(100),
     };
@@ -161,7 +153,6 @@ async fn faucet_contract_mint_fungible_asset_fails_exceeds_max_supply() -> anyho
     let mock_chain = builder.build()?;
 
     let recipient = Word::from([0, 1, 2, 3u32]);
-    let aux = Felt::new(27);
     let tag = Felt::new(4);
     let amount = Felt::new(250);
 
@@ -169,14 +160,13 @@ async fn faucet_contract_mint_fungible_asset_fails_exceeds_max_supply() -> anyho
         "
             begin
                 # pad the stack before call
-                push.0.0.0 padw
+                padw padw push.0
 
                 push.{recipient}
                 push.{note_type}
-                push.{aux}
                 push.{tag}
                 push.{amount}
-                # => [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
+                # => [amount, tag, note_type, RECIPIENT, pad(9)]
 
                 call.::miden::standards::faucets::basic_fungible::distribute
                 # => [note_idx, pad(15)]
@@ -219,8 +209,6 @@ async fn minting_fungible_asset_on_new_faucet_succeeds() -> anyhow::Result<()> {
     let params = FaucetTestParams {
         recipient: Word::from([0, 1, 2, 3u32]),
         tag: NoteTag::default(),
-        aux: Felt::new(27),
-        note_execution_hint: NoteExecutionHint::on_block_slot(5, 6, 7),
         note_type: NoteType::Private,
         amount: Felt::new(100),
     };
@@ -308,8 +296,6 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
     let recipient_account_id = AccountId::try_from(ACCOUNT_ID_PRIVATE_SENDER)?;
     let amount = Felt::new(75);
     let tag = NoteTag::default();
-    // TODO(note_attachment): Replace with attachment.
-    // let aux = Felt::new(27);
     let note_type = NoteType::Public;
 
     // Create a simple output note script
@@ -371,12 +357,10 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
                 # => [RECIPIENT]
 
                 # Now call distribute with the computed recipient
-                push.0 # note_execution_hint
                 push.{note_type}
-                push.0 # aux
                 push.{tag}
                 push.{amount}
-                # => [amount, tag, aux, note_type, execution_hint, RECIPIENT]
+                # => [amount, tag, note_type, RECIPIENT]
 
                 call.::miden::standards::faucets::basic_fungible::distribute
                 # => [note_idx, pad(15)]
@@ -404,8 +388,6 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
     let trigger_note = NoteBuilder::new(faucet.id(), &mut rng)
         .note_type(NoteType::Private)
         .tag(NoteTag::default().into())
-        .note_execution_hint(NoteExecutionHint::always())
-        .aux(Felt::new(0))
         .serial_number(Word::from([1, 2, 3, 4u32]))
         .code(trigger_note_script_code)
         .build()?;
@@ -510,7 +492,6 @@ async fn network_faucet_mint() -> anyhow::Result<()> {
 
     let amount = Felt::new(75);
     let mint_asset: Asset = FungibleAsset::new(faucet.id(), amount.into()).unwrap().into();
-    let aux = Felt::new(27);
     let serial_num = Word::default();
 
     let output_note_tag = NoteTag::with_account_target(target_account.id());
@@ -519,24 +500,22 @@ async fn network_faucet_mint() -> anyhow::Result<()> {
         target_account.id(),
         vec![mint_asset],
         NoteType::Private,
-        aux,
         serial_num,
     )
     .unwrap();
     let recipient = p2id_mint_output_note.recipient().digest();
 
     // Create the MINT note using the helper function
-    let mint_inputs = MintNoteInputs::new_private(
-        recipient,
-        amount,
-        output_note_tag.into(),
-        NoteExecutionHint::always(),
-        aux,
-    );
+    let mint_inputs = MintNoteInputs::new_private(recipient, amount, output_note_tag.into());
 
     let mut rng = RpoRandomCoin::new([Felt::from(42u32); 4].into());
-    let mint_note =
-        create_mint_note(faucet.id(), faucet_owner_account_id, mint_inputs, aux, &mut rng)?;
+    let mint_note = create_mint_note(
+        faucet.id(),
+        faucet_owner_account_id,
+        mint_inputs,
+        NoteAttachment::default(),
+        &mut rng,
+    )?;
 
     // Add the MINT note to the mock chain
     builder.add_output_note(OutputNote::Full(mint_note.clone()));
@@ -622,7 +601,7 @@ async fn network_faucet_burn() -> anyhow::Result<()> {
         faucet_owner_account_id,
         faucet.id(),
         fungible_asset.into(),
-        Felt::new(0),
+        NoteAttachment::default(),
         &mut rng,
     )?;
 
@@ -679,7 +658,6 @@ async fn test_mint_note_output_note_types(#[case] note_type: NoteType) -> anyhow
 
     let amount = Felt::new(75);
     let mint_asset: Asset = FungibleAsset::new(faucet.id(), amount.into()).unwrap().into();
-    let aux = Felt::new(27);
     let serial_num = Word::from([1, 2, 3, 4u32]);
 
     // Create the expected P2ID output note
@@ -688,7 +666,6 @@ async fn test_mint_note_output_note_types(#[case] note_type: NoteType) -> anyhow
         target_account.id(),
         vec![mint_asset],
         note_type,
-        aux,
         serial_num,
     )
     .unwrap();
@@ -698,13 +675,7 @@ async fn test_mint_note_output_note_types(#[case] note_type: NoteType) -> anyhow
         NoteType::Private => {
             let output_note_tag = NoteTag::with_account_target(target_account.id());
             let recipient = p2id_mint_output_note.recipient().digest();
-            MintNoteInputs::new_private(
-                recipient,
-                amount,
-                output_note_tag.into(),
-                NoteExecutionHint::always(),
-                aux,
-            )
+            MintNoteInputs::new_private(recipient, amount, output_note_tag.into())
         },
         NoteType::Public => {
             let output_note_tag = NoteTag::with_account_target(target_account.id());
@@ -713,20 +684,19 @@ async fn test_mint_note_output_note_types(#[case] note_type: NoteType) -> anyhow
                 vec![target_account.id().suffix(), target_account.id().prefix().as_felt()];
             let note_inputs = NoteInputs::new(p2id_inputs)?;
             let recipient = NoteRecipient::new(serial_num, p2id_script, note_inputs);
-            MintNoteInputs::new_public(
-                recipient,
-                amount,
-                output_note_tag.into(),
-                NoteExecutionHint::always(),
-                aux,
-            )?
+            MintNoteInputs::new_public(recipient, amount, output_note_tag.into())?
         },
         NoteType::Encrypted => unreachable!("Encrypted note type not used in this test"),
     };
 
     let mut rng = RpoRandomCoin::new([Felt::from(42u32); 4].into());
-    let mint_note =
-        create_mint_note(faucet.id(), faucet_owner_account_id, mint_inputs.clone(), aux, &mut rng)?;
+    let mint_note = create_mint_note(
+        faucet.id(),
+        faucet_owner_account_id,
+        mint_inputs.clone(),
+        NoteAttachment::default(),
+        &mut rng,
+    )?;
 
     builder.add_output_note(OutputNote::Full(mint_note.clone()));
     let mut mock_chain = builder.build()?;
@@ -750,12 +720,7 @@ async fn test_mint_note_output_note_types(#[case] note_type: NoteType) -> anyhow
             // For private notes, we can only compare basic properties since we get
             // OutputNote::Partial
             assert_eq!(output_note.id(), p2id_mint_output_note.id());
-            assert_eq!(output_note.metadata().sender(), p2id_mint_output_note.metadata().sender());
-            assert_eq!(
-                output_note.metadata().note_type(),
-                p2id_mint_output_note.metadata().note_type()
-            );
-            assert_eq!(output_note.metadata().aux(), p2id_mint_output_note.metadata().aux());
+            assert_eq!(output_note.metadata(), p2id_mint_output_note.metadata());
         },
         NoteType::Public => {
             // For public notes, we get OutputNote::Full and can compare key properties

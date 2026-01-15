@@ -10,12 +10,7 @@ use super::{
     Serializable,
     Word,
 };
-use crate::note::{
-    NoteAttachment,
-    NoteAttachmentContentType,
-    NoteAttachmentType,
-    NoteExecutionHint,
-};
+use crate::note::{NoteAttachment, NoteAttachmentContentType, NoteAttachmentType};
 use crate::{Hasher, NoteError};
 
 // NOTE METADATA
@@ -107,20 +102,6 @@ impl NoteMetadata {
     /// Returns the tag associated with the note.
     pub fn tag(&self) -> NoteTag {
         self.tag
-    }
-
-    // TODO(note_attachment): Remove this method.
-    // Method left for temporary compatibility.
-    /// Returns the execution hint associated with the note.
-    pub fn execution_hint(&self) -> NoteExecutionHint {
-        NoteExecutionHint::always()
-    }
-
-    // TODO(note_attachment): Remove this method.
-    // Method left for temporary compatibility.
-    /// Returns the note's aux field.
-    pub fn aux(&self) -> Felt {
-        Felt::from(0u32)
     }
 
     /// Returns the attachment of the note.
