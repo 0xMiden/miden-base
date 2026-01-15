@@ -104,7 +104,6 @@ pub proc main
     # => [note_idx, attachment_content_type, attachment_type, ATTACHMENT]
 
     exec.output_note::set_attachment
-    push.0
     # => [pad(12)]
 
     # --- move assets from the SWAP note into the account -------------------------
