@@ -150,7 +150,13 @@ end
 
 #! Sets the attachment of the note specified by the index.
 #!
-#! Inputs:  [note_idx, attachment_scheme, attachment_kind, ATTACHMENT]
+#! If attachment_kind == Array, there must be an advice map entry for ATTACHMENT (see below).
+#!
+#! Inputs:
+#!   Operand Stack: [note_idx, attachment_scheme, attachment_kind, ATTACHMENT]
+#!   Advice map: {
+#!     ATTACHMENT?: [[ATTACHMENT_ELEMENTS]],
+#!   }
 #! Outputs: []
 #!
 #! Where:
@@ -158,6 +164,8 @@ end
 #! - attachment_scheme is the user-defined scheme of the attachment.
 #! - attachment_kind is the kind of the attachment content.
 #! - ATTACHMENT is the attachment to be set.
+#! - ATTACHMENT_ELEMENTS are the elements for which ATTACHMENT is the sequential commitment (only
+#!   needed if attachment_kind == Array).
 #!
 #! Panics if:
 #! - the procedure is called when the active account is not the native one.
@@ -181,8 +189,6 @@ pub proc set_attachment
     dropw dropw dropw dropw
     # => []
 end
-
-
 
 #! Sets the attachment of the note specified by the note index to the provided word.
 #!
@@ -215,13 +221,18 @@ end
 #!
 #! This overwrites any previously set attachment.
 #!
-#! Inputs:  [note_idx, attachment_scheme, ATTACHMENT]
+#! Inputs:
+#!   Operand Stack: [note_idx, attachment_scheme, ATTACHMENT]
+#!   Advice map: {
+#!     ATTACHMENT: [[ATTACHMENT_ELEMENTS]],
+#!   }
 #! Outputs: []
 #!
 #! Where:
 #! - note_idx is the index of the note on which the attachment is set.
 #! - attachment_scheme is the user-defined scheme of the attachment.
 #! - ATTACHMENT is the commitment of the set of elements that form the note attachment.
+#! - ATTACHMENT_ELEMENTS are the elements for which ATTACHMENT is the sequential commitment.
 #!
 #! Panics if:
 #! - the procedure is called when the active account is not the native one.
