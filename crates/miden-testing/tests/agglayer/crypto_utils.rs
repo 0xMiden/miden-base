@@ -10,7 +10,7 @@ use miden_core_lib::CoreLibrary;
 use miden_core_lib::handlers::keccak256::KeccakPreimage;
 use miden_crypto::FieldElement;
 use miden_processor::AdviceInputs;
-use miden_protocol::{Felt, Word};
+use miden_protocol::{Felt, Hasher, Word};
 
 use super::test_utils::execute_program_with_default_host;
 
@@ -105,7 +105,7 @@ async fn test_keccak_hash_get_leaf_value() -> anyhow::Result<()> {
     assert_eq!(input_felts.len(), 32);
 
     // Arbitrary key to store input in advice map (in prod this is RPO(input_felts))
-    let key: Word = [Felt::new(1), Felt::new(1), Felt::new(1), Felt::new(1)].into();
+    let key: Word = Hasher::hash_elements(&input_felts);
     let advice_inputs = AdviceInputs::default().with_map(vec![(key, input_felts)]);
 
     let source = format!(
