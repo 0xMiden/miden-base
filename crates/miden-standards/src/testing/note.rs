@@ -119,8 +119,8 @@ impl NoteBuilder {
     }
 
     /// Overwrites the attachment.
-    pub fn attachment(mut self, attachment: NoteAttachment) -> Self {
-        self.attachment = attachment;
+    pub fn attachment(mut self, attachment: impl Into<NoteAttachment>) -> Self {
+        self.attachment = attachment.into();
         self
     }
 

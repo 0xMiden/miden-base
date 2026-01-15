@@ -240,6 +240,21 @@ fn note_script_that_creates_notes<'note>(
             tag = note.metadata().tag(),
         ));
 
+        out.push_str(&format!(
+            "
+          push.{ATTACHMENT}
+          push.{attachment_type}
+          push.{attachment_content_type}
+          dup.6
+          # => [note_idx, attachment_content_type, attachment_type, ATTACHMENT, note_idx]
+          exec.output_note::set_attachment
+          # => [note_idx]
+        ",
+            ATTACHMENT = note.metadata().to_attachment_word(),
+            attachment_type = note.metadata().attachment().attachment_type().as_u32(),
+            attachment_content_type = note.metadata().attachment().content().content_type().as_u8(),
+        ));
+
         let assets_str = prepare_assets(note.assets());
         for asset in assets_str {
             out.push_str(&format!(

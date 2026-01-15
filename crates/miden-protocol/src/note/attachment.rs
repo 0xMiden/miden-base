@@ -443,6 +443,18 @@ impl TryFrom<u8> for NoteAttachmentContentType {
     }
 }
 
+impl core::fmt::Display for NoteAttachmentContentType {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let output = match self {
+            NoteAttachmentContentType::None => "None",
+            NoteAttachmentContentType::Word => "Word",
+            NoteAttachmentContentType::Array => "Array",
+        };
+
+        f.write_str(output)
+    }
+}
+
 impl Serializable for NoteAttachmentContentType {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         self.as_u8().write_into(target);

@@ -30,7 +30,7 @@ pub use attachment::{
 };
 
 mod execution_hint;
-pub use execution_hint::{AfterBlockNumber, NoteExecutionHint};
+pub use execution_hint::NoteExecutionHint;
 
 mod note_id;
 pub use note_id::NoteId;
