@@ -7,8 +7,8 @@ use miden_protocol::note::{
     NoteAttachment,
     NoteAttachmentArray,
     NoteAttachmentContent,
-    NoteAttachmentContentType,
-    NoteAttachmentType,
+    NoteAttachmentKind,
+    NoteAttachmentScheme,
     NoteId,
     NoteInputs,
     NoteMetadata,
@@ -424,18 +424,18 @@ impl TransactionEvent {
 
             TransactionEventId::NoteBeforeSetAttachment => {
                 // Expected stack state: [
-                //     event, attachment_content_type, attachment_type,
+                //     event, attachment_scheme, attachment_kind,
                 //     note_ptr, note_ptr, ATTACHMENT
                 // ]
 
-                let attachment_content_type = process.get_stack_item(1);
-                let attachment_type = process.get_stack_item(2);
+                let attachment_scheme = process.get_stack_item(1);
+                let attachment_kind = process.get_stack_item(2);
                 let note_ptr = process.get_stack_item(3);
                 let attachment = process.get_stack_word_be(5);
 
                 let (note_idx, attachment) = extract_note_attachment(
-                    attachment_content_type,
-                    attachment_type,
+                    attachment_scheme,
+                    attachment_kind,
                     attachment,
                     note_ptr,
                     process.advice_provider(),
@@ -728,40 +728,38 @@ fn build_note_metadata(
 }
 
 fn extract_note_attachment(
-    attachment_content_type: Felt,
-    attachment_type: Felt,
+    attachment_scheme: Felt,
+    attachment_kind: Felt,
     attachment: Word,
     note_ptr: Felt,
     advice_provider: &AdviceProvider,
 ) -> Result<(usize, NoteAttachment), TransactionKernelError> {
     let note_idx = note_ptr_to_idx(note_ptr)?;
 
-    let attachment_content_type = u8::try_from(attachment_content_type)
-        .map_err(|_| {
-            TransactionKernelError::other("failed to convert attachment content type to u8")
-        })
-        .and_then(|content_type| {
-            NoteAttachmentContentType::try_from(content_type).map_err(|source| {
+    let attachment_kind = u8::try_from(attachment_kind)
+        .map_err(|_| TransactionKernelError::other("failed to convert attachment kind to u8"))
+        .and_then(|attachment_kind| {
+            NoteAttachmentKind::try_from(attachment_kind).map_err(|source| {
                 TransactionKernelError::other_with_source(
-                    "failed to convert u8 to attachment content type",
+                    "failed to convert u8 to attachment kind",
                     source,
                 )
             })
         })?;
 
-    let attachment_type = u32::try_from(attachment_type)
-        .map_err(|_| TransactionKernelError::other("failed to convert attachment type to u32"))
-        .map(NoteAttachmentType::new)?;
+    let attachment_scheme = u32::try_from(attachment_scheme)
+        .map_err(|_| TransactionKernelError::other("failed to convert attachment scheme to u32"))
+        .map(NoteAttachmentScheme::new)?;
 
-    let attachment_content = match attachment_content_type {
-        NoteAttachmentContentType::None => {
+    let attachment_content = match attachment_kind {
+        NoteAttachmentKind::None => {
             if !attachment.is_empty() {
                 return Err(TransactionKernelError::NoteAttachmentNoneIsNotEmpty);
             }
             NoteAttachmentContent::None
         },
-        NoteAttachmentContentType::Word => NoteAttachmentContent::Word(attachment),
-        NoteAttachmentContentType::Array => {
+        NoteAttachmentKind::Word => NoteAttachmentContent::Word(attachment),
+        NoteAttachmentKind::Array => {
             let elements = advice_provider.get_mapped_values(&attachment).ok_or_else(|| {
               TransactionKernelError::other(
                   "elements of a note attachment commitment must be present in the advice provider",
@@ -788,7 +786,7 @@ fn extract_note_attachment(
     };
 
     let attachment =
-        NoteAttachment::new(attachment_type, attachment_content).map_err(|source| {
+        NoteAttachment::new(attachment_scheme, attachment_content).map_err(|source| {
             TransactionKernelError::other_with_source("failed to extract note attachment", source)
         })?;
 

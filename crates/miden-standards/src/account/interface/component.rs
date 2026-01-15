@@ -295,17 +295,17 @@ impl AccountComponentInterface {
             body.push_str(&format!(
                 "
                 push.{ATTACHMENT}
-                push.{attachment_type}
-                push.{attachment_content_type}
+                push.{attachment_kind}
+                push.{attachment_scheme}
                 movup.6
-                # => [note_idx, attachment_content_type, attachment_type, ATTACHMENT, pad(16)]
+                # => [note_idx, attachment_scheme, attachment_kind, ATTACHMENT, pad(16)]
                 exec.::miden::protocol::output_note::set_attachment
                 # => [pad(16)]
             ",
                 ATTACHMENT = partial_note.metadata().to_attachment_word(),
-                attachment_type = partial_note.metadata().attachment().attachment_type().as_u32(),
-                attachment_content_type =
-                    partial_note.metadata().attachment().content_type().as_u8(),
+                attachment_scheme =
+                    partial_note.metadata().attachment().attachment_scheme().as_u32(),
+                attachment_kind = partial_note.metadata().attachment().attachment_kind().as_u8(),
             ));
         }
 

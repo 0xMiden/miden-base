@@ -14,18 +14,17 @@ const PUBLIC_NOTE=1     # 0b01
 const PRIVATE_NOTE=2    # 0b10
 const ENCRYPTED_NOTE=3  # 0b11
 
-# Constants for note attachment content types
-const ATTACHMENT_CONTENT_TYPE_NONE=0
-const ATTACHMENT_CONTENT_TYPE_WORD=1
-const ATTACHMENT_CONTENT_TYPE_ARRAY=2
+# Constants for note attachment kinds
+const ATTACHMENT_KIND_NONE=0
+const ATTACHMENT_KIND_WORD=1
+const ATTACHMENT_KIND_ARRAY=2
 
 # The default value of the felt at index 3 in the note metadata header when a new note is created.
-# All zeros sets the attachment content type to None and the user-defined attachment type to
-# "untyped".
-const ATTACHMENT_DEFAULT_TYPE_INFO=0
+# All zeros sets the attachment kind to None and the user-defined attachment scheme to "none".
+const ATTACHMENT_DEFAULT_KIND_AND_SCHEME=0
 
-#! The default attachment type, representing an untyped attachment.
-const ATTACHMENT_TYPE_UNTYPED=0
+#! The default attachment scheme, representing the absence of an attachment scheme.
+const ATTACHMENT_SCHEME_NONE=0
 
 # ERRORS
 # =================================================================================================
@@ -36,13 +35,13 @@ const ERR_NOTE_INVALID_TYPE="invalid note type"
 
 const ERR_OUTPUT_NOTE_INDEX_OUT_OF_BOUNDS="requested output note index should be less than the total number of created output notes"
 
-const ERR_OUTPUT_NOTE_INVALID_ATTACHMENT_TYPES="attachment types must fit into u32s"
+const ERR_OUTPUT_NOTE_INVALID_ATTACHMENT_SCHEMES="attachment scheme and attachment kind must fit into u32s"
 
-const ERR_OUTPUT_NOTE_UNKNOWN_ATTACHMENT_CONTENT_TYPE="attachment content type variant must be between 0 and 2"
+const ERR_OUTPUT_NOTE_UNKNOWN_ATTACHMENT_KIND="attachment kind variant must be between 0 and 2"
 
-const ERR_OUTPUT_NOTE_ATTACHMENT_NONE_MUST_HAVE_UNTYPED_ATTACHMENT_TYPE="attachment type of content type none must be 0"
+const ERR_OUTPUT_NOTE_ATTACHMENT_KIND_NONE_MUST_HAVE_ATTACHMENT_SCHEME_NONE="attachment kind none must have attachment scheme none"
 
-const ERR_OUTPUT_NOTE_ATTACHMENT_NONE_MUST_BE_EMPTY_WORD="attachment of content type none must be set to an empty word"
+const ERR_OUTPUT_NOTE_ATTACHMENT_KIND_NONE_MUST_BE_EMPTY_WORD="attachment kind None requires ATTACHMENT to be set to an empty word"
 
 const ERR_NOTE_INVALID_INDEX="failed to find note at the given index; index must be within [0, num_of_notes]"
 
@@ -116,7 +115,7 @@ pub proc create
     # => [note_ptr, RECIPIENT, note_idx]
 
     # set the attachment value of a new note to an empty word
-    # note that the attachment content type is set to None by build_metadata_header
+    # note that the attachment kind is set to None by build_metadata_header
     padw dup.4
     # => [note_ptr, EMPTY_WORD, note_ptr, RECIPIENT, note_idx]
 
@@ -248,43 +247,43 @@ end
 
 #! Sets the attachment of the note specified by the index.
 #!
-#! Inputs:  [note_idx, attachment_content_type, attachment_type, ATTACHMENT]
+#! Inputs:  [note_idx, attachment_scheme, attachment_kind, ATTACHMENT]
 #! Outputs: []
 #!
 #! Where:
 #! - note_idx is the index of the note on which the attachment is set.
-#! - attachment_content_type is the content type of the attachment.
-#! - attachment_type is the user-defined type of the attachment.
+#! - attachment_scheme is the user-defined scheme of the attachment.
+#! - attachment_kind is the kind of the attachment content.
 #! - ATTACHMENT is the attachment to be set.
 #!
 #! Panics if:
 #! - the note index points to a non-existent output note.
-#! - any of the attachment types does not fit into a u32.
-#! - the attachment content type is an unknown variant.
+#! - the attachment kind or scheme does not fit into a u32.
+#! - the attachment kind is an unknown variant.
 pub proc set_attachment
     dup exec.memory::get_num_output_notes lte assert.err=ERR_NOTE_INVALID_INDEX
-    # => [note_idx, attachment_content_type, attachment_type, ATTACHMENT]
+    # => [note_idx, attachment_scheme, attachment_kind, ATTACHMENT]
 
     exec.memory::get_output_note_ptr dup
-    # => [note_ptr, note_ptr, attachment_content_type, attachment_type, ATTACHMENT]
+    # => [note_ptr, note_ptr, attachment_scheme, attachment_kind, ATTACHMENT]
 
     dupw.1
-    # => [ATTACHMENT, note_ptr, note_ptr, attachment_content_type, attachment_type, ATTACHMENT]
+    # => [ATTACHMENT, note_ptr, note_ptr, attachment_scheme, attachment_kind, ATTACHMENT]
 
     dup.7 dup.7
-    # => [attachment_content_type, attachment_type, ATTACHMENT, note_ptr, note_ptr,
-    #     attachment_content_type, attachment_type, ATTACHMENT]
+    # => [attachment_scheme, attachment_kind, ATTACHMENT, note_ptr, note_ptr,
+    #     attachment_scheme, attachment_kind, ATTACHMENT]
 
     exec.validate_attachment
-    # => [note_ptr, note_ptr, attachment_content_type, attachment_type, ATTACHMENT]
+    # => [note_ptr, note_ptr, attachment_scheme, attachment_kind, ATTACHMENT]
 
     movdn.3 movdn.3
-    # => [attachment_content_type, attachment_type, note_ptr, note_ptr, ATTACHMENT]
+    # => [attachment_scheme, attachment_kind, note_ptr, note_ptr, ATTACHMENT]
 
     emit.NOTE_BEFORE_SET_ATTACHMENT_EVENT
-    # => [attachment_content_type, attachment_type, note_ptr, note_ptr, ATTACHMENT]
+    # => [attachment_scheme, attachment_kind, note_ptr, note_ptr, ATTACHMENT]
 
-    exec.set_attachment_type_info
+    exec.set_attachment_kind_scheme
     # => [note_ptr, ATTACHMENT]
 
     exec.memory::set_output_note_attachment
@@ -311,7 +310,7 @@ end
 #! Builds the provided inputs into the NOTE_METADATA_HEADER word.
 #!
 #! - The sender ID is set to the native account's ID.
-#! - The attachment type is set to 0 (meaning untyped by convention) and the attachment content
+#! - The attachment scheme is set to 0 (meaning none by convention) and the attachment content
 #!   type is set to None.
 #!
 #! Note that this procedure is only exported so it can be tested. It should not be called from
@@ -353,43 +352,43 @@ pub proc build_metadata_header
     # --------------------------------------------------------------------------------------------
 
     movup.2
-    push.ATTACHMENT_DEFAULT_TYPE_INFO
-    # => [attachment_type_info, tag, sender_id_prefix, sender_id_suffix_and_note_type]
+    push.ATTACHMENT_DEFAULT_KIND_AND_SCHEME
+    # => [attachment_kind_scheme, tag, sender_id_prefix, sender_id_suffix_and_note_type]
     # => [NOTE_METADATA_HEADER]
 end
 
-#! Validate the ATTACHMENT against the content type.
+#! Validate the ATTACHMENT against the attachment kind.
 #!
-#! Inputs:  [attachment_content_type, attachment_type, ATTACHMENT]
+#! Inputs:  [attachment_scheme, attachment_kind, ATTACHMENT]
 #! Outputs: []
 #!
 #! Where:
-#! - attachment_type is the user-defined type of the attachment.
-#! - attachment_content_type is the content type of the attachment.
+#! - attachment_scheme is the user-defined scheme of the attachment.
+#! - attachment_kind is the kind of the attachment content.
 #! - ATTACHMENT is the attachment to validate.
 #!
 #! Panics if:
-#! - any of the attachment types does not fit into a u32.
-#! - the attachment content type is an unknown variant.
-#! - the content type is None and the ATTACHMENT is not an empty word.
+#! - the attachment kind or scheme does not fit into a u32.
+#! - the attachment kind is an unknown variant.
+#! - the attachment kind is None and the ATTACHMENT is not an empty word.
 proc validate_attachment
-    u32assert2.err=ERR_OUTPUT_NOTE_INVALID_ATTACHMENT_TYPES
-    # => [attachment_content_type, attachment_type, ATTACHMENT]
+    u32assert2.err=ERR_OUTPUT_NOTE_INVALID_ATTACHMENT_SCHEMES
+    # => [attachment_scheme, attachment_kind, ATTACHMENT]
 
-    # assert that the attachment content type is valid
-    dup u32lte.ATTACHMENT_CONTENT_TYPE_ARRAY
-    assert.err=ERR_OUTPUT_NOTE_UNKNOWN_ATTACHMENT_CONTENT_TYPE
-    # => [attachment_content_type, attachment_type, ATTACHMENT]
+    # assert that the attachment kind is valid
+    swap dup u32lte.ATTACHMENT_KIND_ARRAY
+    assert.err=ERR_OUTPUT_NOTE_UNKNOWN_ATTACHMENT_KIND
+    # => [attachment_kind, attachment_scheme, ATTACHMENT]
 
-    eq.ATTACHMENT_CONTENT_TYPE_NONE
-    # => [is_attachment_none, attachment_type, ATTACHMENT]
+    eq.ATTACHMENT_KIND_NONE
+    # => [is_attachment_none, attachment_scheme, ATTACHMENT]
 
     if.true
-        eq.ATTACHMENT_TYPE_UNTYPED
-        assert.err=ERR_OUTPUT_NOTE_ATTACHMENT_NONE_MUST_HAVE_UNTYPED_ATTACHMENT_TYPE
+        eq.ATTACHMENT_SCHEME_NONE
+        assert.err=ERR_OUTPUT_NOTE_ATTACHMENT_KIND_NONE_MUST_HAVE_ATTACHMENT_SCHEME_NONE
         # => [ATTACHMENT]
 
-        padw assert_eqw.err=ERR_OUTPUT_NOTE_ATTACHMENT_NONE_MUST_BE_EMPTY_WORD
+        padw assert_eqw.err=ERR_OUTPUT_NOTE_ATTACHMENT_KIND_NONE_MUST_BE_EMPTY_WORD
         # => []
     else
         drop dropw
@@ -398,47 +397,47 @@ proc validate_attachment
     # => []
 end
 
-#! Sets an output note's attachment type info in the metadata header.
+#! Sets an output note's attachment kind and scheme in the note metadata header.
 #!
-#! WARNING: The attachment types must be valid.
+#! WARNING: The attachment scheme and kind must be valid.
 #!
-#! Inputs:  [attachment_content_type, attachment_type, note_ptr]
+#! Inputs:  [attachment_scheme, attachment_kind, note_ptr]
 #! Outputs: []
 #!
 #! Where:
-#! - attachment_content_type is the content type of the attachment.
-#! - attachment_type is the user-defined type of the attachment.
+#! - attachment_scheme is the user-defined type of the attachment.
+#! - attachment_kind is the kind of the attachment content.
 #! - note_ptr is the memory address at which the output note data begins.
-proc set_attachment_type_info
-    exec.merge_attachment_type_info
-    # => [attachment_type_info, note_ptr]
+proc set_attachment_kind_scheme
+    exec.merge_attachment_kind_and_scheme
+    # => [attachment_kind_scheme, note_ptr]
 
     swap
-    # => [note_ptr, attachment_type_info]
+    # => [note_ptr, attachment_kind_scheme]
 
-    exec.memory::set_output_note_attachment_type_info
+    exec.memory::set_output_note_attachment_kind_scheme
     # => []
 end
 
-#! Merges the attachment types into a single felt with the following layout:
+#! Merges the attachment kind and scheme into a single felt with the following layout:
 #!
-#! [30 zero bits | attachment_content_type (2 bits) | attachment_type (32 bits)]
+#! [30 zero bits | attachment_kind (2 bits) | attachment_scheme (32 bits)]
 #!
-#! WARNING: The attachment types must be valid.
+#! WARNING: The attachment scheme and kind must be valid.
 #!
-#! Inputs:  [attachment_content_type, attachment_type]
-#! Outputs: [attachment_type_info]
+#! Inputs:  [attachment_scheme, attachment_kind]
+#! Outputs: [attachment_kind_scheme]
 #!
 #! Where:
-#! - attachment_content_type is the content type of the attachment.
-#! - attachment_type is the user-defined type of the attachment.
-#! - attachment_type_info is the felt constructed from the inputs.
-proc merge_attachment_type_info
-    # shift the content type 32 bits to the left, which is the same as multiplying by 2^32
-    # and set the lower bits to the attachment_type, which is done by adding the values together
-    mul.0x100000000
+#! - attachment_scheme is the user-defined scheme of the attachment.
+#! - attachment_kind is the kind of the attachment content.
+#! - attachment_kind_scheme is the felt constructed from the inputs.
+proc merge_attachment_kind_and_scheme
+    # shift the attachment_kind 32 bits to the left, which is the same as multiplying by 2^32
+    # and set the lower bits to the attachment_scheme, which is done by adding the values together
+    swap mul.0x100000000
     add
-    # => [attachment_type_info]
+    # => [attachment_kind_scheme]
 end
 
 #! Increments the number of output notes by one. Returns the index of the next note to be created.

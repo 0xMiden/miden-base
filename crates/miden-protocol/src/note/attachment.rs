@@ -29,13 +29,13 @@ use crate::{Felt, Hasher, NoteError, Word};
 /// [`NoteAttachmentContent::Array`] variant are available. See the type's docs for more
 /// details.
 ///
-/// Next to the content, a note attachment can optionally specify a [`NoteAttachmentType`]. This
+/// Next to the content, a note attachment can optionally specify a [`NoteAttachmentScheme`]. This
 /// allows a note attachment to describe itself. For example, a network account target attachment
-/// can be identified by a standardized type. For cases when the attachment type is known from
-/// content or typing is otherwise undesirable, [`NoteAttachmentType::untyped`] can be used.
+/// can be identified by a standardized type. For cases when the attachment scheme is known from
+/// content or typing is otherwise undesirable, [`NoteAttachmentScheme::none`] can be used.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct NoteAttachment {
-    attachment_type: NoteAttachmentType,
+    attachment_scheme: NoteAttachmentScheme,
     content: NoteAttachmentContent,
 }
 
@@ -44,22 +44,28 @@ impl NoteAttachment {
     // --------------------------------------------------------------------------------------------
 
     /// Creates a new [`NoteAttachment`] from a user-defined type and the provided content.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The attachment content is [`NoteAttachmentKind::None`] but the scheme is not
+    ///   [`NoteAttachmentScheme::none`].
     pub fn new(
-        attachment_type: NoteAttachmentType,
+        attachment_scheme: NoteAttachmentScheme,
         content: NoteAttachmentContent,
     ) -> Result<Self, NoteError> {
-        if content.content_type().is_none() && !attachment_type.is_untyped() {
-            return Err(NoteError::NoneAttachmentMustHaveUntypedAttachmentType);
+        if content.attachment_kind().is_none() && !attachment_scheme.is_none() {
+            return Err(NoteError::AttachmentKindNoneMustHaveAttachmentSchemeNone);
         }
 
-        Ok(Self { attachment_type, content })
+        Ok(Self { attachment_scheme, content })
     }
 
     /// Creates a new note attachment with content [`NoteAttachmentContent::Word`] from the provided
     /// word.
-    pub fn new_word(attachment_type: NoteAttachmentType, word: Word) -> Self {
+    pub fn new_word(attachment_scheme: NoteAttachmentScheme, word: Word) -> Self {
         Self {
-            attachment_type,
+            attachment_scheme,
             content: NoteAttachmentContent::new_word(word),
         }
     }
@@ -72,32 +78,24 @@ impl NoteAttachment {
     /// Returns an error if:
     /// - The maximum number of elements exceeds [`NoteAttachmentArray::MAX_NUM_ELEMENTS`].
     pub fn new_array(
-        attachment_type: NoteAttachmentType,
+        attachment_scheme: NoteAttachmentScheme,
         elements: Vec<Felt>,
     ) -> Result<Self, NoteError> {
-        NoteAttachmentContent::new_array(elements).map(|content| Self { attachment_type, content })
-    }
-
-    /// Creates a new [`NoteAttachment`] from the provided content and using
-    /// [`NoteAttachmentType::untyped`].
-    pub fn new_untyped(content: NoteAttachmentContent) -> Self {
-        Self {
-            attachment_type: NoteAttachmentType::untyped(),
-            content,
-        }
+        NoteAttachmentContent::new_array(elements)
+            .map(|content| Self { attachment_scheme, content })
     }
 
     // ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns the attachment type.
-    pub fn attachment_type(&self) -> NoteAttachmentType {
-        self.attachment_type
+    /// Returns the attachment scheme.
+    pub fn attachment_scheme(&self) -> NoteAttachmentScheme {
+        self.attachment_scheme
     }
 
-    /// Returns the attachment content type.
-    pub fn content_type(&self) -> NoteAttachmentContentType {
-        self.content.content_type()
+    /// Returns the attachment kind.
+    pub fn attachment_kind(&self) -> NoteAttachmentKind {
+        self.content.attachment_kind()
     }
 
     /// Returns a reference to the attachment content.
@@ -108,17 +106,17 @@ impl NoteAttachment {
 
 impl Serializable for NoteAttachment {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        self.attachment_type().write_into(target);
+        self.attachment_scheme().write_into(target);
         self.content().write_into(target);
     }
 }
 
 impl Deserializable for NoteAttachment {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        let attachment_type = NoteAttachmentType::read_from(source)?;
+        let attachment_scheme = NoteAttachmentScheme::read_from(source)?;
         let content = NoteAttachmentContent::read_from(source)?;
 
-        Self::new(attachment_type, content)
+        Self::new(attachment_scheme, content)
             .map_err(|err| DeserializationError::InvalidValue(err.to_string()))
     }
 }
@@ -174,12 +172,12 @@ impl NoteAttachmentContent {
     // ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns the [`NoteAttachmentContentType`].
-    pub fn content_type(&self) -> NoteAttachmentContentType {
+    /// Returns the [`NoteAttachmentKind`].
+    pub fn attachment_kind(&self) -> NoteAttachmentKind {
         match self {
-            NoteAttachmentContent::None => NoteAttachmentContentType::None,
-            NoteAttachmentContent::Word(_) => NoteAttachmentContentType::Word,
-            NoteAttachmentContent::Array(_) => NoteAttachmentContentType::Array,
+            NoteAttachmentContent::None => NoteAttachmentKind::None,
+            NoteAttachmentContent::Word(_) => NoteAttachmentKind::Word,
+            NoteAttachmentContent::Array(_) => NoteAttachmentKind::Array,
         }
     }
 
@@ -199,7 +197,7 @@ impl NoteAttachmentContent {
 
 impl Serializable for NoteAttachmentContent {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        self.content_type().write_into(target);
+        self.attachment_kind().write_into(target);
 
         match self {
             NoteAttachmentContent::None => (),
@@ -216,15 +214,15 @@ impl Serializable for NoteAttachmentContent {
 
 impl Deserializable for NoteAttachmentContent {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        let content_type = NoteAttachmentContentType::read_from(source)?;
+        let attachment_kind = NoteAttachmentKind::read_from(source)?;
 
-        match content_type {
-            NoteAttachmentContentType::None => Ok(NoteAttachmentContent::None),
-            NoteAttachmentContentType::Word => {
+        match attachment_kind {
+            NoteAttachmentKind::None => Ok(NoteAttachmentContent::None),
+            NoteAttachmentKind::Word => {
                 let word = Word::read_from(source)?;
                 Ok(NoteAttachmentContent::Word(word))
             },
-            NoteAttachmentContentType::Array => {
+            NoteAttachmentKind::Array => {
                 let num_elements = u16::read_from(source)?;
                 let elements = source.read_many(num_elements as usize)?;
                 Self::new_array(elements)
@@ -310,80 +308,81 @@ impl From<NoteAttachmentArray> for NoteAttachmentContent {
     }
 }
 
-// NOTE ATTACHMENT TYPE
+// NOTE ATTACHMENT SCHEME
 // ================================================================================================
 
 /// The user-defined type of a [`NoteAttachment`].
 ///
-/// A note attachment type is an arbitrary 32-bit unsigned integer.
+/// A note attachment scheme is an arbitrary 32-bit unsigned integer.
 ///
-/// Value `0` is reserved to signal that an attachment is untyped. That is, no attempt should be
-/// made to guess the type of the attachment. Whenever the type of attachment is not standardized or
-/// interoperability is unimportant, this untyped value can be used.
+/// Value `0` is reserved to signal that the scheme is none or absent. Whenever the kind of
+/// attachment is not standardized or interoperability is unimportant, this none value can be
+/// used.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct NoteAttachmentType(u32);
+pub struct NoteAttachmentScheme(u32);
 
-impl NoteAttachmentType {
+impl NoteAttachmentScheme {
     // CONSTANTS
     // --------------------------------------------------------------------------------------------
 
-    /// The reserved value to signal an untyped note attachment.
-    const UNTYPED: u32 = 0;
+    /// The reserved value to signal an absent note attachment scheme.
+    const NONE: u32 = 0;
 
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
-    /// Creates a new [`NoteAttachmentType`] from a `u32`.
-    pub const fn new(attachment_type: u32) -> Self {
-        Self(attachment_type)
+    /// Creates a new [`NoteAttachmentScheme`] from a `u32`.
+    pub const fn new(attachment_scheme: u32) -> Self {
+        Self(attachment_scheme)
     }
 
-    /// Returns the [`NoteAttachmentType`] that signals an untyped note attachment.
-    pub const fn untyped() -> Self {
-        Self(Self::UNTYPED)
+    /// Returns the [`NoteAttachmentScheme`] that signals the absence of an attachment scheme.
+    pub const fn none() -> Self {
+        Self(Self::NONE)
     }
 
-    /// Returns `true` if the attachment is untyped, `false` otherwise.
-    pub const fn is_untyped(&self) -> bool {
-        self.0 == Self::UNTYPED
+    /// Returns `true` if the attachment scheme is the reserved value that signals an absent scheme,
+    /// `false` otherwise.
+    pub const fn is_none(&self) -> bool {
+        self.0 == Self::NONE
     }
 
     // ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns the note attachment type as a u32.
+    /// Returns the note attachment scheme as a u32.
     pub const fn as_u32(&self) -> u32 {
         self.0
     }
 }
 
-impl Default for NoteAttachmentType {
-    /// Returns [`NoteAttachmentType::untyped`].
+impl Default for NoteAttachmentScheme {
+    /// Returns [`NoteAttachmentScheme::none`].
     fn default() -> Self {
-        Self::untyped()
+        Self::none()
     }
 }
 
-impl core::fmt::Display for NoteAttachmentType {
+impl core::fmt::Display for NoteAttachmentScheme {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.write_fmt(format_args!("{}", self.0))
     }
 }
 
-impl Serializable for NoteAttachmentType {
+impl Serializable for NoteAttachmentScheme {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         self.as_u32().write_into(target);
     }
 }
 
-impl Deserializable for NoteAttachmentType {
+impl Deserializable for NoteAttachmentScheme {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        let attachment_type = u32::read_from(source)?;
-        Ok(Self::new(attachment_type))
+        let attachment_scheme = u32::read_from(source)?;
+        Ok(Self::new(attachment_scheme))
     }
 }
 
-// NOTE ATTACHMENT CONTENT TYPE
+// NOTE ATTACHMENT KIND
 // ================================================================================================
 
 /// The type of [`NoteAttachmentContent`].
@@ -391,7 +390,7 @@ impl Deserializable for NoteAttachmentType {
 /// See its docs for more details on each type.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 #[repr(u8)]
-pub enum NoteAttachmentContentType {
+pub enum NoteAttachmentKind {
     /// Signals the absence of a note attachment.
     #[default]
     None = Self::NONE,
@@ -403,7 +402,7 @@ pub enum NoteAttachmentContentType {
     Array = Self::ARRAY,
 }
 
-impl NoteAttachmentContentType {
+impl NoteAttachmentKind {
     // CONSTANTS
     // --------------------------------------------------------------------------------------------
 
@@ -414,28 +413,28 @@ impl NoteAttachmentContentType {
     // ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns the content type as a u8.
+    /// Returns the attachment kind as a u8.
     pub const fn as_u8(&self) -> u8 {
         *self as u8
     }
 
-    /// Returns `true` if the content type is `None`, `false` otherwise.
+    /// Returns `true` if the attachment kind is `None`, `false` otherwise.
     pub const fn is_none(&self) -> bool {
         matches!(self, Self::None)
     }
 
-    /// Returns `true` if the content type is `Word`, `false` otherwise.
+    /// Returns `true` if the attachment kind is `Word`, `false` otherwise.
     pub const fn is_word(&self) -> bool {
         matches!(self, Self::Word)
     }
 
-    /// Returns `true` if the content type is `Array`, `false` otherwise.
+    /// Returns `true` if the attachment kind is `Array`, `false` otherwise.
     pub const fn is_array(&self) -> bool {
         matches!(self, Self::Array)
     }
 }
 
-impl TryFrom<u8> for NoteAttachmentContentType {
+impl TryFrom<u8> for NoteAttachmentKind {
     type Error = NoteError;
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
@@ -443,33 +442,33 @@ impl TryFrom<u8> for NoteAttachmentContentType {
             Self::NONE => Ok(Self::None),
             Self::WORD => Ok(Self::Word),
             Self::ARRAY => Ok(Self::Array),
-            _ => Err(NoteError::UnknownNoteAttachmentContentType(value)),
+            _ => Err(NoteError::UnknownNoteAttachmentKind(value)),
         }
     }
 }
 
-impl core::fmt::Display for NoteAttachmentContentType {
+impl core::fmt::Display for NoteAttachmentKind {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let output = match self {
-            NoteAttachmentContentType::None => "None",
-            NoteAttachmentContentType::Word => "Word",
-            NoteAttachmentContentType::Array => "Array",
+            NoteAttachmentKind::None => "None",
+            NoteAttachmentKind::Word => "Word",
+            NoteAttachmentKind::Array => "Array",
         };
 
         f.write_str(output)
     }
 }
 
-impl Serializable for NoteAttachmentContentType {
+impl Serializable for NoteAttachmentKind {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         self.as_u8().write_into(target);
     }
 }
 
-impl Deserializable for NoteAttachmentContentType {
+impl Deserializable for NoteAttachmentKind {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        let content_type = u8::read_from(source)?;
-        Self::try_from(content_type)
+        let attachment_kind = u8::read_from(source)?;
+        Self::try_from(attachment_kind)
             .map_err(|err| DeserializationError::InvalidValue(err.to_string()))
     }
 }
@@ -485,9 +484,9 @@ mod tests {
 
     #[rstest::rstest]
     #[case::attachment_none(NoteAttachment::default())]
-    #[case::attachment_word(NoteAttachment::new_word(NoteAttachmentType::new(1), Word::from([3, 4, 5, 6u32])))]
+    #[case::attachment_word(NoteAttachment::new_word(NoteAttachmentScheme::new(1), Word::from([3, 4, 5, 6u32])))]
     #[case::attachment_array(NoteAttachment::new_array(
-        NoteAttachmentType::new(u32::MAX),
+        NoteAttachmentScheme::new(u32::MAX),
         vec![Felt::new(5), Felt::new(6), Felt::new(7)],
     )?)]
     #[test]
@@ -510,9 +509,9 @@ mod tests {
     }
 
     #[test]
-    fn note_attachment_content_type_fails_on_unknown_variant() -> anyhow::Result<()> {
-        let err = NoteAttachmentContentType::try_from(3u8).unwrap_err();
-        assert_matches!(err, NoteError::UnknownNoteAttachmentContentType(3u8));
+    fn note_attachment_kind_fails_on_unknown_variant() -> anyhow::Result<()> {
+        let err = NoteAttachmentKind::try_from(3u8).unwrap_err();
+        assert_matches!(err, NoteError::UnknownNoteAttachmentKind(3u8));
         Ok(())
     }
 }
