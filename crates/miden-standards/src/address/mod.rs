@@ -137,8 +137,9 @@ impl Address {
                 match id.storage_mode() {
                   AccountStorageMode::Network => NoteTag::from_network_account_id(id),
                   AccountStorageMode::Private | AccountStorageMode::Public => {
-                      NoteTag::from_local_account_id(id, note_tag_len)
-                          .expect("address should validate that tag len does not exceed MAX_LOCAL_TAG_LENGTH bits")
+                      // Address validation ensures tag_len <= MAX_ACCOUNT_TARGET_TAG_LENGTH
+                      NoteTag::with_custom_account_target(id, note_tag_len)
+                          .expect("address should validate that tag len does not exceed MAX_ACCOUNT_TARGET_TAG_LENGTH bits")
                     }
                 }
             },

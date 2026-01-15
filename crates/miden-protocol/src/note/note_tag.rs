@@ -144,8 +144,13 @@ impl NoteTag {
         match account_id.storage_mode() {
             AccountStorageMode::Network => Self::from_network_account_id(account_id),
             AccountStorageMode::Private | AccountStorageMode::Public => {
-                // safe to unwrap since DEFAULT_LOCAL_TAG_LENGTH < MAX_LOCAL_TAG_LENGTH
-                Self::from_local_account_id(account_id, Self::DEFAULT_LOCAL_TAG_LENGTH).unwrap()
+                // safe to unwrap since DEFAULT_LOCAL_ACCOUNT_TARGET_TAG_LENGTH <
+                // MAX_ACCOUNT_TARGET_TAG_LENGTH
+                Self::with_custom_account_target(
+                    account_id,
+                    Self::DEFAULT_LOCAL_ACCOUNT_TARGET_TAG_LENGTH,
+                )
+                .unwrap()
             },
         }
     }
@@ -160,9 +165,12 @@ impl NoteTag {
     ///
     /// # Errors
     ///
-    /// Returns an error if `tag_len` is larger than [`NoteTag::MAX_LOCAL_TAG_LENGTH`].
-    pub fn from_local_account_id(account_id: AccountId, tag_len: u8) -> Result<Self, NoteError> {
-        if tag_len > Self::MAX_LOCAL_TAG_LENGTH {
+    /// Returns an error if `tag_len` is larger than [`NoteTag::MAX_ACCOUNT_TARGET_TAG_LENGTH`].
+    pub fn with_custom_account_target(
+        account_id: AccountId,
+        tag_len: u8,
+    ) -> Result<Self, NoteError> {
+        if tag_len > Self::MAX_ACCOUNT_TARGET_TAG_LENGTH {
             return Err(NoteError::NoteTagLengthTooLarge(tag_len));
         }
 
