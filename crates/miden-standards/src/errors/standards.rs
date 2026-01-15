@@ -40,10 +40,10 @@ pub const ERR_P2ID_TARGET_ACCT_MISMATCH: MasmError = MasmError::from_static_str(
 /// Error Message: "P2ID note expects exactly 2 note storage items"
 pub const ERR_P2ID_UNEXPECTED_STORAGE_LENGTH: MasmError = MasmError::from_static_str("P2ID note expects exactly 2 note storage items");
 
-/// Error Message: "SWAP script requires exactly 1 note asset"
-pub const ERR_SWAP_WRONG_NUMBER_OF_ASSETS: MasmError = MasmError::from_static_str("SWAP script requires exactly 1 note asset");
 /// Error Message: "SWAP script expects exactly 16 note storage items"
 pub const ERR_SWAP_UNEXPECTED_STORAGE_LENGTH: MasmError = MasmError::from_static_str("SWAP script expects exactly 16 note storage items");
+/// Error Message: "SWAP script requires exactly 1 note asset"
+pub const ERR_SWAP_WRONG_NUMBER_OF_ASSETS: MasmError = MasmError::from_static_str("SWAP script requires exactly 1 note asset");
 
 /// Error Message: "failed to approve multisig transaction as it was already executed"
 pub const ERR_TX_ALREADY_EXECUTED: MasmError = MasmError::from_static_str("failed to approve multisig transaction as it was already executed");
