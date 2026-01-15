@@ -600,6 +600,8 @@ pub enum NoteError {
     NoteAttachmentArraySizeExceeded(usize),
     #[error("unknown note attachment content type {0}")]
     UnknownNoteAttachmentContentType(u8),
+    #[error("note attachment of type None must have untyped attachment type")]
+    NoneAttachmentMustHaveUntypedAttachmentType,
     #[error("{error_msg}")]
     Other {
         error_msg: Box<str>,

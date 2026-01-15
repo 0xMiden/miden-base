@@ -158,6 +158,11 @@ where
                 self.base_host.on_note_before_add_asset(note_idx, asset).map(|_| Vec::new())
             },
 
+            TransactionEvent::NoteBeforeSetAttachment { note_idx, attachment } => self
+                .base_host
+                .on_note_before_set_attachment(note_idx, attachment)
+                .map(|_| Vec::new()),
+
             TransactionEvent::AuthRequest { signature, .. } => {
                 if let Some(signature) = signature {
                     Ok(self.base_host.on_auth_requested(signature))

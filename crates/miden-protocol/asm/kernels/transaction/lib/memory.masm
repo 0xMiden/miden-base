@@ -240,6 +240,7 @@ const OUTPUT_NOTE_SECTION_OFFSET=16777216
 # The offsets at which data of an output note is stored relative to the start of its data segment.
 const OUTPUT_NOTE_ID_OFFSET=0
 const OUTPUT_NOTE_METADATA_HEADER_OFFSET=4
+const OUTPUT_NOTE_METADATA_ATTACHMENT_TYPE_INFO_OFFSET=OUTPUT_NOTE_METADATA_HEADER_OFFSET + 3
 const OUTPUT_NOTE_ATTACHMENT_OFFSET=8
 const OUTPUT_NOTE_RECIPIENT_OFFSET=12
 const OUTPUT_NOTE_ASSETS_COMMITMENT_OFFSET=16
@@ -1889,6 +1890,19 @@ end
 pub proc set_output_note_metadata_header
     add.OUTPUT_NOTE_METADATA_HEADER_OFFSET
     mem_storew_be
+end
+
+#! Sets the output note's attachment type info in the metadata header.
+#!
+#! Inputs:  [note_ptr, attachment_type_info]
+#! Outputs: []
+#!
+#! Where:
+#! - attachment_type_info is the type information of the attachment that will be overwritten.
+#! - note_ptr is the memory address at which the output note data begins.
+pub proc set_output_note_attachment_type_info
+    add.OUTPUT_NOTE_METADATA_ATTACHMENT_TYPE_INFO_OFFSET
+    mem_store
 end
 
 #! Returns the output note's attachment.

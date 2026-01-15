@@ -163,8 +163,16 @@ pub const ERR_NOTE_NUM_OF_ASSETS_EXCEED_LIMIT: MasmError = MasmError::from_stati
 /// Error Message: "the note's tag must fit into a u32 so the 32 most significant bits of the felt must be zero"
 pub const ERR_NOTE_TAG_MUST_BE_U32: MasmError = MasmError::from_static_str("the note's tag must fit into a u32 so the 32 most significant bits of the felt must be zero");
 
+/// Error Message: "attachment of content type none must be set to an empty word"
+pub const ERR_OUTPUT_NOTE_ATTACHMENT_NONE_MUST_BE_EMPTY_WORD: MasmError = MasmError::from_static_str("attachment of content type none must be set to an empty word");
+/// Error Message: "attachment type of content type none must be 0"
+pub const ERR_OUTPUT_NOTE_ATTACHMENT_NONE_MUST_HAVE_UNTYPED_ATTACHMENT_TYPE: MasmError = MasmError::from_static_str("attachment type of content type none must be 0");
 /// Error Message: "requested output note index should be less than the total number of created output notes"
 pub const ERR_OUTPUT_NOTE_INDEX_OUT_OF_BOUNDS: MasmError = MasmError::from_static_str("requested output note index should be less than the total number of created output notes");
+/// Error Message: "attachment types must fit into u32s"
+pub const ERR_OUTPUT_NOTE_INVALID_ATTACHMENT_TYPES: MasmError = MasmError::from_static_str("attachment types must fit into u32s");
+/// Error Message: "attachment content type variant must be between 0 and 2"
+pub const ERR_OUTPUT_NOTE_UNKNOWN_ATTACHMENT_CONTENT_TYPE: MasmError = MasmError::from_static_str("attachment content type variant must be between 0 and 2");
 
 /// Error Message: "existing accounts must have a non-zero nonce"
 pub const ERR_PROLOGUE_EXISTING_ACCOUNT_MUST_HAVE_NON_ZERO_NONCE: MasmError = MasmError::from_static_str("existing accounts must have a non-zero nonce");

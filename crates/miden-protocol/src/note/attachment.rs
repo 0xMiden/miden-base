@@ -44,14 +44,24 @@ impl NoteAttachment {
     // --------------------------------------------------------------------------------------------
 
     /// Creates a new [`NoteAttachment`] from a user-defined type and the provided content.
-    pub fn new(attachment_type: NoteAttachmentType, content: NoteAttachmentContent) -> Self {
-        Self { attachment_type, content }
+    pub fn new(
+        attachment_type: NoteAttachmentType,
+        content: NoteAttachmentContent,
+    ) -> Result<Self, NoteError> {
+        if content.content_type().is_none() && !attachment_type.is_untyped() {
+            return Err(NoteError::NoneAttachmentMustHaveUntypedAttachmentType);
+        }
+
+        Ok(Self { attachment_type, content })
     }
 
     /// Creates a new note attachment with content [`NoteAttachmentContent::Word`] from the provided
     /// word.
     pub fn new_word(attachment_type: NoteAttachmentType, word: Word) -> Self {
-        Self::new(attachment_type, NoteAttachmentContent::new_word(word))
+        Self {
+            attachment_type,
+            content: NoteAttachmentContent::new_word(word),
+        }
     }
 
     /// Creates a new note attachment with content [`NoteAttachmentContent::Array`] from the
@@ -65,8 +75,7 @@ impl NoteAttachment {
         attachment_type: NoteAttachmentType,
         elements: Vec<Felt>,
     ) -> Result<Self, NoteError> {
-        NoteAttachmentContent::new_array(elements)
-            .map(|content| Self::new(attachment_type, content))
+        NoteAttachmentContent::new_array(elements).map(|content| Self { attachment_type, content })
     }
 
     /// Creates a new [`NoteAttachment`] from the provided content and using
@@ -104,7 +113,8 @@ impl Deserializable for NoteAttachment {
         let attachment_type = NoteAttachmentType::read_from(source)?;
         let content = NoteAttachmentContent::read_from(source)?;
 
-        Ok(Self::new(attachment_type, content))
+        Self::new(attachment_type, content)
+            .map_err(|err| DeserializationError::InvalidValue(err.to_string()))
     }
 }
 
@@ -290,8 +300,8 @@ impl SequentialCommit for NoteAttachmentArray {
 }
 
 impl From<NoteAttachmentArray> for NoteAttachmentContent {
-    fn from(attachment_commitment: NoteAttachmentArray) -> Self {
-        NoteAttachmentContent::Array(attachment_commitment)
+    fn from(array: NoteAttachmentArray) -> Self {
+        NoteAttachmentContent::Array(array)
     }
 }
 

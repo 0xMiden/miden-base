@@ -12,6 +12,8 @@ use miden_protocol::errors::tx_kernel::{
 use miden_protocol::note::{
     Note,
     NoteAssets,
+    NoteAttachment,
+    NoteAttachmentType,
     NoteExecutionHint,
     NoteInputs,
     NoteMetadata,
@@ -45,6 +47,7 @@ use miden_protocol::{Felt, Word, ZERO};
 use miden_standards::code_builder::CodeBuilder;
 use miden_standards::note::create_p2id_note;
 use miden_standards::testing::mock_account::MockAccountExt;
+use miden_standards::testing::note::NoteBuilder;
 
 use super::{TestSetup, setup_test};
 use crate::kernel_tests::tx::ExecutionOutputExt;
@@ -1027,6 +1030,183 @@ async fn test_get_assets() -> anyhow::Result<()> {
         .build()?;
 
     tx_context.execute().await?;
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_set_none_attachment() -> anyhow::Result<()> {
+    let account = Account::mock(ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET, Auth::IncrNonce);
+    let rng = RpoRandomCoin::new(Word::from([1, 2, 3, 4u32]));
+    let attachment = NoteAttachment::default();
+    let output_note =
+        OutputNote::Full(NoteBuilder::new(account.id(), rng).attachment(attachment).build()?);
+
+    let tx_script = format!(
+        "
+        use miden::protocol::output_note
+
+        begin
+            push.{RECIPIENT}
+            push.{note_execution_hint}
+            push.{note_type}
+            push.{aux}
+            push.{tag}
+            exec.output_note::create
+            # => [note_idx]
+
+            push.{ATTACHMENT}
+            push.{attachment_type}
+            push.{attachment_content_type}
+            movup.6
+            # => [note_idx, attachment_content_type, attachment_type, ATTACHMENT]
+            exec.output_note::set_attachment
+            # => []
+
+            # truncate the stack
+            swapdw dropw dropw
+        end
+        ",
+        RECIPIENT = output_note.recipient().unwrap().digest(),
+        note_type = output_note.metadata().note_type() as u8,
+        aux = output_note.metadata().aux(),
+        note_execution_hint = Felt::from(output_note.metadata().execution_hint()),
+        tag = output_note.metadata().tag().as_u32(),
+        ATTACHMENT = output_note.metadata().to_attachment_word(),
+        attachment_content_type =
+            output_note.metadata().attachment().content().content_type().as_u8(),
+        attachment_type = output_note.metadata().attachment().attachment_type().as_u32(),
+    );
+
+    let tx_script = CodeBuilder::new().compile_tx_script(tx_script)?;
+
+    let tx = TransactionContextBuilder::new(account)
+        .extend_expected_output_notes(vec![output_note.clone()])
+        .tx_script(tx_script)
+        .build()?
+        .execute()
+        .await?;
+
+    let actual_note = tx.output_notes().get_note(0);
+    assert_eq!(actual_note.header(), output_note.header());
+    assert_eq!(actual_note.assets(), output_note.assets());
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_set_word_attachment() -> anyhow::Result<()> {
+    let account = Account::mock(ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET, Auth::IncrNonce);
+    let rng = RpoRandomCoin::new(Word::from([1, 2, 3, 4u32]));
+    let attachment =
+        NoteAttachment::new_word(NoteAttachmentType::new(u32::MAX), Word::from([3, 4, 5, 6u32]));
+    let output_note =
+        OutputNote::Full(NoteBuilder::new(account.id(), rng).attachment(attachment).build()?);
+
+    let tx_script = format!(
+        "
+        use miden::protocol::output_note
+
+        begin
+            push.{RECIPIENT}
+            push.{note_execution_hint}
+            push.{note_type}
+            push.{aux}
+            push.{tag}
+            exec.output_note::create
+            # => [note_idx]
+
+            push.{ATTACHMENT}
+            push.{attachment_type}
+            movup.5
+            # => [note_idx, attachment_type, ATTACHMENT]
+            exec.output_note::set_word_attachment
+            # => []
+
+            # truncate the stack
+            swapdw dropw dropw
+        end
+        ",
+        RECIPIENT = output_note.recipient().unwrap().digest(),
+        note_type = output_note.metadata().note_type() as u8,
+        aux = output_note.metadata().aux(),
+        note_execution_hint = Felt::from(output_note.metadata().execution_hint()),
+        tag = output_note.metadata().tag().as_u32(),
+        attachment_type = output_note.metadata().attachment().attachment_type().as_u32(),
+        ATTACHMENT = output_note.metadata().to_attachment_word(),
+    );
+
+    let tx_script = CodeBuilder::new().compile_tx_script(tx_script)?;
+
+    let tx = TransactionContextBuilder::new(account)
+        .extend_expected_output_notes(vec![output_note.clone()])
+        .tx_script(tx_script)
+        .build()?
+        .execute()
+        .await?;
+
+    let actual_note = tx.output_notes().get_note(0);
+    assert_eq!(actual_note.header(), output_note.header());
+    assert_eq!(actual_note.assets(), output_note.assets());
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_set_array_attachment() -> anyhow::Result<()> {
+    let account = Account::mock(ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET, Auth::IncrNonce);
+    let rng = RpoRandomCoin::new(Word::from([1, 2, 3, 4u32]));
+    let elements = [3, 4, 5, 6, 7, 8, 9u32].map(Felt::from).to_vec();
+    let attachment = NoteAttachment::new_array(NoteAttachmentType::new(42), elements.clone())?;
+    let output_note =
+        OutputNote::Full(NoteBuilder::new(account.id(), rng).attachment(attachment).build()?);
+
+    let tx_script = format!(
+        "
+        use miden::protocol::output_note
+
+        begin
+            push.{RECIPIENT}
+            push.{note_execution_hint}
+            push.{note_type}
+            push.{aux}
+            push.{tag}
+            exec.output_note::create
+            # => [note_idx]
+
+            push.{ATTACHMENT}
+            push.{attachment_type}
+            movup.5
+            # => [note_idx, attachment_type, ATTACHMENT]
+            exec.output_note::set_array_attachment
+            # => []
+
+            # truncate the stack
+            swapdw dropw dropw
+        end
+        ",
+        RECIPIENT = output_note.recipient().unwrap().digest(),
+        note_type = output_note.metadata().note_type() as u8,
+        aux = output_note.metadata().aux(),
+        note_execution_hint = Felt::from(output_note.metadata().execution_hint()),
+        tag = output_note.metadata().tag().as_u32(),
+        attachment_type = output_note.metadata().attachment().attachment_type().as_u32(),
+        ATTACHMENT = output_note.metadata().to_attachment_word(),
+    );
+
+    let tx_script = CodeBuilder::new().compile_tx_script(tx_script)?;
+
+    let tx = TransactionContextBuilder::new(account)
+        .extend_expected_output_notes(vec![output_note.clone()])
+        .tx_script(tx_script)
+        .extend_advice_map(vec![(output_note.metadata().to_attachment_word(), elements)])
+        .build()?
+        .execute()
+        .await?;
+
+    let actual_note = tx.output_notes().get_note(0);
+    assert_eq!(actual_note.header(), output_note.header());
+    assert_eq!(actual_note.assets(), output_note.assets());
 
     Ok(())
 }

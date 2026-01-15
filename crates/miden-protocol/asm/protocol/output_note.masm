@@ -1,6 +1,14 @@
 use miden::protocol::kernel_proc_offsets
 use miden::protocol::note
 
+# CONSTANTS
+# =================================================================================================
+
+# Constants for note attachment content types
+pub const ATTACHMENT_CONTENT_TYPE_NONE=0
+pub const ATTACHMENT_CONTENT_TYPE_WORD=1
+pub const ATTACHMENT_CONTENT_TYPE_ARRAY=2
+
 # PROCEDURES
 # =================================================================================================
 
@@ -136,6 +144,95 @@ pub proc add_asset
 
     # remove excess PADs from the stack
     dropw dropw dropw dropw
+    # => []
+end
+
+#! Sets the attachment of the note specified by the index.
+#!
+#! Inputs:  [note_idx, attachment_content_type, attachment_type, ATTACHMENT]
+#! Outputs: []
+#!
+#! Where:
+#! - note_idx is the index of the note on which the attachment is set.
+#! - attachment_content_type is the content type of the attachment.
+#! - attachment_type is the user-defined type of the attachment.
+#! - ATTACHMENT is the attachment to be set.
+#!
+#! Panics if:
+#! - the procedure is called when the active account is not the native one.
+#! - the note index points to a non-existent output note.
+#! - any of the attachment types does not fit into a u32.
+#! - the attachment content type is an unknown variant.
+#!
+#! Invocation: exec
+pub proc set_attachment
+    exec.kernel_proc_offsets::output_note_set_attachment_offset
+    # => [offset, note_idx, attachment_content_type, attachment_type, ATTACHMENT]
+
+    # pad the stack before the syscall
+    padw padw swapdw
+    # => [offset, note_idx, attachment_content_type, attachment_type, ATTACHMENT, pad(8)]
+
+    syscall.exec_kernel_proc
+    # => [pad(16)]
+
+    # remove excess PADs from the stack
+    dropw dropw dropw dropw
+    # => []
+end
+
+
+
+#! Sets the attachment of the note specified by the note index to the provided word.
+#!
+#! This overwrites any previously set attachment.
+#!
+#! Inputs:  [note_idx, attachment_type, ATTACHMENT]
+#! Outputs: []
+#!
+#! Where:
+#! - note_idx is the index of the note on which the attachment is set.
+#! - attachment_type is the user-defined type of the attachment.
+#! - ATTACHMENT is the raw attachment to set.
+#!
+#! Panics if:
+#! - the procedure is called when the active account is not the native one.
+#! - the note index points to a non-existent output note.
+#! - the attachment_type does not fit into a u32.
+#!
+#! Invocation: exec
+pub proc set_word_attachment
+    push.ATTACHMENT_CONTENT_TYPE_WORD swap
+    # => [note_idx, attachment_content_type, attachment_type, ATTACHMENT]
+
+    exec.set_attachment
+    # => []
+end
+
+#! Sets the attachment of the note specified by the note index to the provided ATTACHMENT which
+#! commits to an array of felts.
+#!
+#! This overwrites any previously set attachment.
+#!
+#! Inputs:  [note_idx, attachment_type, ATTACHMENT]
+#! Outputs: []
+#!
+#! Where:
+#! - note_idx is the index of the note on which the attachment is set.
+#! - attachment_type is the user-defined type of the attachment.
+#! - ATTACHMENT is the commitment of the set of elements that form the note attachment.
+#!
+#! Panics if:
+#! - the procedure is called when the active account is not the native one.
+#! - the note index points to a non-existent output note.
+#! - the attachment_type does not fit into a u32.
+#!
+#! Invocation: exec
+pub proc set_array_attachment
+    push.ATTACHMENT_CONTENT_TYPE_ARRAY swap
+    # => [note_idx, attachment_content_type, attachment_type, ATTACHMENT]
+
+    exec.set_attachment
     # => []
 end
 
