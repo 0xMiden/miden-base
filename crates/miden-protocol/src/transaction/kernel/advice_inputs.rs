@@ -355,10 +355,12 @@ impl TransactionAdviceInputs {
             // assets commitments
             self.add_map_entry(assets.commitment(), assets.to_padded_assets());
             // array attachments
-            if let NoteAttachmentContent::Array(elements) = note.metadata().attachment().content() {
+            if let NoteAttachmentContent::Array(array_attachment) =
+                note.metadata().attachment().content()
+            {
                 self.add_map_entry(
-                    note.metadata().to_attachment_word(),
-                    elements.as_slice().to_vec(),
+                    array_attachment.commitment(),
+                    array_attachment.as_slice().to_vec(),
                 );
             }
 
