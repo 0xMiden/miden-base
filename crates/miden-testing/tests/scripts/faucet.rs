@@ -120,13 +120,7 @@ pub fn verify_minted_output_note(
     assert_eq!(output_note.id(), id);
     assert_eq!(
         output_note.metadata(),
-        &NoteMetadata::new(
-            faucet.id(),
-            params.note_type,
-            params.tag,
-            params.note_execution_hint,
-            params.aux
-        )
+        &NoteMetadata::new(faucet.id(), params.note_type, params.tag)
     );
 
     Ok(())
@@ -314,8 +308,8 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
     let recipient_account_id = AccountId::try_from(ACCOUNT_ID_PRIVATE_SENDER)?;
     let amount = Felt::new(75);
     let tag = NoteTag::default();
-    let aux = Felt::new(27);
-    let note_execution_hint = NoteExecutionHint::on_block_slot(5, 6, 7);
+    // TODO(note_attachment): Replace with attachment.
+    // let aux = Felt::new(27);
     let note_type = NoteType::Public;
 
     // Create a simple output note script
@@ -346,7 +340,7 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
     let output_script_root = note_recipient.script().root();
 
     let asset = FungibleAsset::new(faucet.id(), amount.into())?;
-    let metadata = NoteMetadata::new(faucet.id(), note_type, tag, note_execution_hint, aux);
+    let metadata = NoteMetadata::new(faucet.id(), note_type, tag);
     let expected_note = Note::new(NoteAssets::new(vec![asset.into()])?, metadata, note_recipient);
 
     let trigger_note_script_code = format!(
@@ -377,9 +371,9 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
                 # => [RECIPIENT]
 
                 # Now call distribute with the computed recipient
-                push.{note_execution_hint}
+                push.0 # note_execution_hint
                 push.{note_type}
-                push.{aux}
+                push.0 # aux
                 push.{tag}
                 push.{amount}
                 # => [amount, tag, aux, note_type, execution_hint, RECIPIENT]
@@ -401,9 +395,7 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
         input6 = note_inputs.values()[6],
         script_root = output_script_root,
         serial_num = serial_num,
-        aux = aux,
         tag = u32::from(tag),
-        note_execution_hint = Felt::from(note_execution_hint),
         amount = amount,
     );
 

@@ -35,7 +35,8 @@ use miden_protocol::transaction::memory::{
     NOTE_MEM_SIZE,
     NUM_OUTPUT_NOTES_PTR,
     OUTPUT_NOTE_ASSETS_OFFSET,
-    OUTPUT_NOTE_METADATA_OFFSET,
+    OUTPUT_NOTE_ATTACHMENT_OFFSET,
+    OUTPUT_NOTE_METADATA_HEADER_OFFSET,
     OUTPUT_NOTE_RECIPIENT_OFFSET,
     OUTPUT_NOTE_SECTION_OFFSET,
 };
@@ -100,19 +101,21 @@ async fn test_create_note() -> anyhow::Result<()> {
         "recipient must be stored at the correct memory location",
     );
 
-    let expected_note_metadata: Word = NoteMetadata::new(
-        account_id,
-        NoteType::Public,
-        tag,
-        NoteExecutionHint::after_block(23.into())?,
-        Felt::new(27),
-    )
-    .into();
+    let metadata = NoteMetadata::new(account_id, NoteType::Public, tag);
+    let expected_metadata_header = metadata.to_header_word();
+    let expected_note_attachment = metadata.to_attachment_word();
 
     assert_eq!(
-        exec_output.get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_METADATA_OFFSET),
-        expected_note_metadata,
-        "metadata must be stored at the correct memory location",
+        exec_output
+            .get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_METADATA_HEADER_OFFSET),
+        expected_metadata_header,
+        "metadata header must be stored at the correct memory location",
+    );
+
+    assert_eq!(
+        exec_output.get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_ATTACHMENT_OFFSET),
+        expected_note_attachment,
+        "attachment must be stored at the correct memory location",
     );
 
     assert_eq!(
@@ -256,13 +259,8 @@ async fn test_get_output_notes_commitment() -> anyhow::Result<()> {
     let output_serial_no_1 = Word::from([8u32; 4]);
     let output_tag_1 = NoteTag::with_account_target(network_account);
     let assets = NoteAssets::new(vec![input_asset_1])?;
-    let metadata = NoteMetadata::new(
-        tx_context.tx_inputs().account().id(),
-        NoteType::Public,
-        output_tag_1,
-        NoteExecutionHint::Always,
-        ZERO,
-    );
+    let metadata =
+        NoteMetadata::new(tx_context.tx_inputs().account().id(), NoteType::Public, output_tag_1);
     let inputs = NoteInputs::new(vec![])?;
     let recipient = NoteRecipient::new(output_serial_no_1, input_note_1.script().clone(), inputs);
     let output_note_1 = Note::new(assets, metadata, recipient);
@@ -271,13 +269,8 @@ async fn test_get_output_notes_commitment() -> anyhow::Result<()> {
     let output_serial_no_2 = Word::from([11u32; 4]);
     let output_tag_2 = NoteTag::with_account_target(local_account);
     let assets = NoteAssets::new(vec![input_asset_2])?;
-    let metadata = NoteMetadata::new(
-        tx_context.tx_inputs().account().id(),
-        NoteType::Public,
-        output_tag_2,
-        NoteExecutionHint::after_block(123.into())?,
-        ZERO,
-    );
+    let metadata =
+        NoteMetadata::new(tx_context.tx_inputs().account().id(), NoteType::Public, output_tag_2);
     let inputs = NoteInputs::new(vec![])?;
     let recipient = NoteRecipient::new(output_serial_no_2, input_note_2.script().clone(), inputs);
     let output_note_2 = Note::new(assets, metadata, recipient);
@@ -363,21 +356,30 @@ async fn test_get_output_notes_commitment() -> anyhow::Result<()> {
         "The test creates two notes",
     );
     assert_eq!(
-        NoteMetadata::try_from(
-            exec_output
-                .get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_METADATA_OFFSET)
-        )
-        .unwrap(),
-        *output_note_1.metadata(),
-        "Validate the output note 1 metadata",
+        exec_output
+            .get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_METADATA_HEADER_OFFSET),
+        output_note_1.metadata().to_header_word(),
+        "Validate the output note 1 metadata header",
     );
     assert_eq!(
-        NoteMetadata::try_from(exec_output.get_kernel_mem_word(
-            OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_METADATA_OFFSET + NOTE_MEM_SIZE
-        ))
-        .unwrap(),
-        *output_note_2.metadata(),
-        "Validate the output note 1 metadata",
+        exec_output.get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_ATTACHMENT_OFFSET),
+        output_note_1.metadata().to_attachment_word(),
+        "Validate the output note 1 attachment",
+    );
+
+    assert_eq!(
+        exec_output.get_kernel_mem_word(
+            OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_METADATA_HEADER_OFFSET + NOTE_MEM_SIZE
+        ),
+        output_note_2.metadata().to_header_word(),
+        "Validate the output note 2 metadata header",
+    );
+    assert_eq!(
+        exec_output.get_kernel_mem_word(
+            OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_ATTACHMENT_OFFSET + NOTE_MEM_SIZE
+        ),
+        output_note_2.metadata().to_attachment_word(),
+        "Validate the output note 2 attachment",
     );
 
     assert_eq!(exec_output.get_stack_word_be(0), expected_output_notes_commitment);
@@ -890,11 +892,14 @@ async fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
             # get the metadata (the only existing note has 0'th index)
             push.0
             exec.output_note::get_metadata
-            # => [METADATA]
+            # => [NOTE_ATTACHMENT, METADATA_HEADER]
 
-            # assert the correctness of the metadata
-            push.{METADATA}
-            assert_eqw.err="requested note has incorrect metadata"
+            push.{NOTE_ATTACHMENT}
+            assert_eqw.err="requested note has incorrect note attachment"
+            # => [METADATA_HEADER]
+
+            push.{METADATA_HEADER}
+            assert_eqw.err="requested note has incorrect metadata header"
             # => []
 
             # truncate the stack
@@ -903,7 +908,8 @@ async fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
         "#,
         output_note = create_output_note(&output_note),
         RECIPIENT = output_note.recipient().digest(),
-        METADATA = Word::from(output_note.metadata()),
+        METADATA_HEADER = output_note.metadata().to_header_word(),
+        NOTE_ATTACHMENT = output_note.metadata().to_attachment_word(),
     );
 
     let tx_script = CodeBuilder::default().compile_tx_script(tx_script_src)?;

@@ -14,7 +14,6 @@ use miden_protocol::errors::MasmError;
 use miden_protocol::note::{
     Note,
     NoteAssets,
-    NoteExecutionHint,
     NoteInputs,
     NoteMetadata,
     NoteRecipient,
@@ -381,28 +380,16 @@ async fn test_compute_inputs_commitment() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
-async fn test_build_metadata() -> miette::Result<()> {
+async fn test_build_metadata_header() -> miette::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build().unwrap();
 
     let sender = tx_context.account().id();
     let receiver = AccountId::try_from(ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE)
         .map_err(|e| miette::miette!("Failed to convert account ID: {}", e))?;
 
-    let test_metadata1 = NoteMetadata::new(
-        sender,
-        NoteType::Private,
-        NoteTag::with_account_target(receiver),
-        NoteExecutionHint::after_block(500.into())
-            .map_err(|e| miette::miette!("Failed to create execution hint: {}", e))?,
-        Felt::try_from(1u64 << 63).map_err(|e| miette::miette!("Failed to convert felt: {}", e))?,
-    );
-    let test_metadata2 = NoteMetadata::new(
-        sender,
-        NoteType::Public,
-        NoteTag::new(u32::MAX),
-        NoteExecutionHint::on_block_slot(u8::MAX, u8::MAX, u8::MAX),
-        Felt::try_from(0u64).map_err(|e| miette::miette!("Failed to convert felt: {}", e))?,
-    );
+    let test_metadata1 =
+        NoteMetadata::new(sender, NoteType::Private, NoteTag::with_account_target(receiver));
+    let test_metadata2 = NoteMetadata::new(sender, NoteType::Public, NoteTag::new(u32::MAX));
 
     for (iteration, test_metadata) in [test_metadata1, test_metadata2].into_iter().enumerate() {
         let code = format!(
@@ -412,24 +399,27 @@ async fn test_build_metadata() -> miette::Result<()> {
 
         begin
           exec.prologue::prepare_transaction
-          push.{execution_hint} push.{note_type} push.{aux} push.{tag}
-          exec.output_note::build_metadata
+          push.{note_type}
+          push.{tag}
+          exec.output_note::build_metadata_header
 
           # truncate the stack
           swapw dropw
         end
         ",
-            execution_hint = Felt::from(test_metadata.execution_hint()),
             note_type = Felt::from(test_metadata.note_type()),
-            aux = test_metadata.aux(),
             tag = test_metadata.tag(),
         );
 
-        let exec_output = tx_context.execute_code(&code).await.unwrap();
+        let exec_output = tx_context.execute_code(&code).await?;
 
         let metadata_word = exec_output.get_stack_word_be(0);
 
-        assert_eq!(Word::from(test_metadata), metadata_word, "failed in iteration {iteration}");
+        assert_eq!(
+            test_metadata.to_header_word(),
+            metadata_word,
+            "failed in iteration {iteration}"
+        );
     }
 
     Ok(())
@@ -541,13 +531,7 @@ async fn test_public_key_as_note_input() -> anyhow::Result<()> {
 
     let serial_num = RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])).draw_word();
     let tag = NoteTag::with_account_target(target_account.id());
-    let metadata = NoteMetadata::new(
-        sender_account.id(),
-        NoteType::Public,
-        tag,
-        NoteExecutionHint::always(),
-        Default::default(),
-    );
+    let metadata = NoteMetadata::new(sender_account.id(), NoteType::Public, tag);
     let vault = NoteAssets::new(vec![])?;
     let note_script = CodeBuilder::default().compile_note_script("begin nop end")?;
     let recipient =

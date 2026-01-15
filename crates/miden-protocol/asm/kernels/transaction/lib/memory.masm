@@ -224,11 +224,12 @@ const INPUT_NOTE_SCRIPT_ROOT_OFFSET=8
 const INPUT_NOTE_INPUTS_COMMITMENT_OFFSET=12
 const INPUT_NOTE_ASSETS_COMMITMENT_OFFSET=16
 const INPUT_NOTE_RECIPIENT_OFFSET=20
-const INPUT_NOTE_METADATA_OFFSET=24
-const INPUT_NOTE_ARGS_OFFSET=28
-const INPUT_NOTE_NUM_INPUTS_OFFSET=32
-const INPUT_NOTE_NUM_ASSETS_OFFSET=36
-const INPUT_NOTE_ASSETS_OFFSET=40
+const INPUT_NOTE_METADATA_HEADER_OFFSET=24
+const INPUT_NOTE_ATTACHMENT_OFFSET=28
+const INPUT_NOTE_ARGS_OFFSET=32
+const INPUT_NOTE_NUM_INPUTS_OFFSET=36
+const INPUT_NOTE_NUM_ASSETS_OFFSET=40
+const INPUT_NOTE_ASSETS_OFFSET=44
 
 # OUTPUT NOTES
 # -------------------------------------------------------------------------------------------------
@@ -238,12 +239,13 @@ const OUTPUT_NOTE_SECTION_OFFSET=16777216
 
 # The offsets at which data of an output note is stored relative to the start of its data segment.
 const OUTPUT_NOTE_ID_OFFSET=0
-const OUTPUT_NOTE_METADATA_OFFSET=4
-const OUTPUT_NOTE_RECIPIENT_OFFSET=8
-const OUTPUT_NOTE_ASSETS_COMMITMENT_OFFSET=12
-const OUTPUT_NOTE_NUM_ASSETS_OFFSET=16
-const OUTPUT_NOTE_DIRTY_FLAG_OFFSET=17
-const OUTPUT_NOTE_ASSETS_OFFSET=20
+const OUTPUT_NOTE_METADATA_HEADER_OFFSET=4
+const OUTPUT_NOTE_ATTACHMENT_OFFSET=8
+const OUTPUT_NOTE_RECIPIENT_OFFSET=12
+const OUTPUT_NOTE_ASSETS_COMMITMENT_OFFSET=16
+const OUTPUT_NOTE_NUM_ASSETS_OFFSET=20
+const OUTPUT_NOTE_DIRTY_FLAG_OFFSET=21
+const OUTPUT_NOTE_ASSETS_OFFSET=24
 
 # LINK MAP MEMORY
 # -------------------------------------------------------------------------------------------------
@@ -1607,27 +1609,54 @@ end
 #! Returns the metadata of an input note located at the specified memory address.
 #!
 #! Inputs:  [note_ptr]
-#! Outputs: [METADATA]
+#! Outputs: [NOTE_METADATA_HEADER]
 #!
 #! Where:
 #! - note_ptr is the memory address at which the input note data begins.
-#! - METADATA is the metadata of the input note.
-pub proc get_input_note_metadata
+#! - NOTE_METADATA_HEADER is the metadata header of the input note.
+pub proc get_input_note_metadata_header
     padw
-    movup.4 add.INPUT_NOTE_METADATA_OFFSET
+    movup.4 add.INPUT_NOTE_METADATA_HEADER_OFFSET
     mem_loadw_be
 end
 
 #! Sets the metadata for an input note located at the specified memory address.
 #!
-#! Inputs:  [note_ptr, NOTE_METADATA]
-#! Outputs: [NOTE_METADATA]
+#! Inputs:  [note_ptr, NOTE_METADATA_HEADER]
+#! Outputs: [NOTE_METADATA_HEADER]
 #!
 #! Where:
 #! - note_ptr is the memory address at which the input note data begins.
-#! - NOTE_METADATA is the metadata of the input note.
-pub proc set_input_note_metadata
-    add.INPUT_NOTE_METADATA_OFFSET
+#! - NOTE_METADATA_HEADER is the metadata header of the input note.
+pub proc set_input_note_metadata_header
+    add.INPUT_NOTE_METADATA_HEADER_OFFSET
+    mem_storew_be
+end
+
+#! Returns the attachment of an input note located at the specified memory address.
+#!
+#! Inputs:  [note_ptr]
+#! Outputs: [NOTE_ATTACHMENT]
+#!
+#! Where:
+#! - note_ptr is the memory address at which the input note data begins.
+#! - NOTE_ATTACHMENT is the attachment of the input note.
+pub proc get_input_note_attachment
+    padw
+    movup.4 add.INPUT_NOTE_ATTACHMENT_OFFSET
+    mem_loadw_be
+end
+
+#! Sets the attachment for an input note located at the specified memory address.
+#!
+#! Inputs:  [note_ptr, NOTE_ATTACHMENT]
+#! Outputs: [NOTE_ATTACHMENT]
+#!
+#! Where:
+#! - note_ptr is the memory address at which the input note data begins.
+#! - NOTE_ATTACHMENT is the attachment of the input note.
+pub proc set_input_note_attachment
+    add.INPUT_NOTE_ATTACHMENT_OFFSET
     mem_storew_be
 end
 
@@ -1778,36 +1807,6 @@ pub proc get_input_note_serial_num
     mem_loadw_be
 end
 
-#! Returns the sender for the input note located at the specified memory address.
-#!
-#! Inputs:  [note_ptr]
-#! Outputs: [sender_id_prefix, sender_id_suffix]
-#!
-#! Where:
-#! - note_ptr is the memory address at which the input note data begins.
-#! - sender is the sender for the input note.
-pub proc get_input_note_sender
-    padw
-    movup.4 add.INPUT_NOTE_METADATA_OFFSET
-    mem_loadw_be
-    # => [aux, merged_tag_hint_payload, merged_sender_id_type_hint_tag, sender_id_prefix]
-
-    drop drop
-    # => [merged_sender_id_type_hint_tag, sender_id_prefix]
-
-    # extract suffix of sender from merged layout, which means clearing the least significant byte
-    u32split swap
-    # => [merged_lo, merged_hi, sender_id_prefix]
-
-    # clear least significant byte
-    u32and.0xffffff00 swap
-    # => [sender_id_suffix_hi, sender_id_suffix_lo, sender_id_prefix]
-
-    # reassemble the suffix by multiplying the high part with 2^32 and adding the lo part
-    mul.0x0100000000 add swap
-    # => [sender_id_prefix, sender_id_suffix]
-end
-
 # OUTPUT NOTES
 # -------------------------------------------------------------------------------------------------
 
@@ -1865,31 +1864,60 @@ end
 #! Returns the output note's metadata.
 #!
 #! Inputs:  [note_ptr]
-#! Outputs: [METADATA]
+#! Outputs: [METADATA_HEADER]
 #!
 #! Where:
-#! - METADATA is the note metadata.
+#! - METADATA_HEADER is the note metadata header.
 #! - note_ptr is the memory address at which the output note data begins.
-pub proc get_output_note_metadata
+pub proc get_output_note_metadata_header
     padw
     # => [0, 0, 0, 0, note_ptr]
-    movup.4 add.OUTPUT_NOTE_METADATA_OFFSET
+    movup.4 add.OUTPUT_NOTE_METADATA_HEADER_OFFSET
     # => [(note_ptr + offset), 0, 0, 0, 0]
     mem_loadw_be
-    # => [METADATA]
+    # => [METADATA_HEADER]
 end
 
-#! Sets the output note's metadata.
+#! Sets the output note's metadata header.
 #!
-#! Inputs:  [note_ptr, METADATA]
-#! Outputs: [METADATA]
+#! Inputs:  [note_ptr, METADATA_HEADER]
+#! Outputs: [METADATA_HEADER]
 #!
 #! Where:
-#! - METADATA is the note metadata.
+#! - METADATA_HEADER is the note metadata header.
 #! - note_ptr is the memory address at which the output note data begins.
-pub proc set_output_note_metadata
-    add.OUTPUT_NOTE_METADATA_OFFSET
+pub proc set_output_note_metadata_header
+    add.OUTPUT_NOTE_METADATA_HEADER_OFFSET
     mem_storew_be
+end
+
+#! Returns the output note's attachment.
+#!
+#! Inputs:  [note_ptr]
+#! Outputs: [ATTACHMENT]
+#!
+#! Where:
+#! - ATTACHMENT is the note attachment.
+#! - note_ptr is the memory address at which the output note data begins.
+pub proc get_output_note_attachment
+    padw
+    movup.4 add.OUTPUT_NOTE_ATTACHMENT_OFFSET
+    mem_loadw_be
+    # => [ATTACHMENT]
+end
+
+#! Sets the output note's attachment.
+#!
+#! Inputs:  [note_ptr, ATTACHMENT]
+#! Outputs: []
+#!
+#! Where:
+#! - ATTACHMENT is the note attachment.
+#! - note_ptr is the memory address at which the output note data begins.
+pub proc set_output_note_attachment
+    add.OUTPUT_NOTE_ATTACHMENT_OFFSET
+    mem_storew_be
+    dropw
 end
 
 #! Returns the number of assets in the output note.

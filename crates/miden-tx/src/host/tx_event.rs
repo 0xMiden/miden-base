@@ -3,7 +3,15 @@ use alloc::vec::Vec;
 use miden_processor::{AdviceMutation, ProcessState, RowIndex};
 use miden_protocol::account::{AccountId, StorageMap, StorageSlotName, StorageSlotType};
 use miden_protocol::asset::{Asset, AssetVault, AssetVaultKey, FungibleAsset};
-use miden_protocol::note::{NoteId, NoteInputs, NoteMetadata, NoteRecipient, NoteScript};
+use miden_protocol::note::{
+    NoteId,
+    NoteInputs,
+    NoteMetadata,
+    NoteRecipient,
+    NoteScript,
+    NoteTag,
+    NoteType,
+};
 use miden_protocol::transaction::{TransactionEventId, TransactionSummary};
 use miden_protocol::vm::EventId;
 use miden_protocol::{Felt, Hasher, Word};
@@ -97,7 +105,7 @@ pub(crate) enum TransactionEvent {
         procedure_root: Word,
     },
 
-    NoteAfterCreated {
+    NoteBeforeCreated {
         /// The note index extracted from the stack.
         note_idx: usize,
         /// The note metadata extracted from the stack.
@@ -325,16 +333,16 @@ impl TransactionEvent {
                 })
             },
 
-            TransactionEventId::NoteBeforeCreated => None,
+            TransactionEventId::NoteBeforeCreated => {
+                // Expected stack state:  [event, tag, note_type, RECIPIENT]
+                let tag = process.get_stack_item(1);
+                let note_type = process.get_stack_item(2);
+                let recipient_digest = process.get_stack_word_be(3);
 
-            TransactionEventId::NoteAfterCreated => {
-                // Expected stack state: [event, NOTE_METADATA, note_ptr, RECIPIENT, note_idx]
-                let metadata_word = process.get_stack_word_be(1);
-                let metadata = NoteMetadata::try_from(metadata_word)
-                    .map_err(TransactionKernelError::MalformedNoteMetadata)?;
+                let sender = base_host.native_account_id();
+                let metadata = build_note_metadata(sender, note_type, tag)?;
 
-                let recipient_digest = process.get_stack_word_be(6);
-                let note_idx = process.get_stack_item(10).as_int() as usize;
+                let note_idx = process.get_num_output_notes() as usize;
 
                 // try to read the full recipient from the advice provider
                 let recipient_data = if process.has_advice_map_entry(recipient_digest) {
@@ -379,8 +387,10 @@ impl TransactionEvent {
                     RecipientData::Digest(recipient_digest)
                 };
 
-                Some(TransactionEvent::NoteAfterCreated { note_idx, metadata, recipient_data })
+                Some(TransactionEvent::NoteBeforeCreated { note_idx, metadata, recipient_data })
             },
+
+            TransactionEventId::NoteAfterCreated => None,
 
             TransactionEventId::NoteBeforeAddAsset => {
                 // Expected stack state: [event, ASSET, note_ptr, num_of_assets, note_idx]
@@ -657,6 +667,30 @@ fn extract_tx_summary<'store, STORE>(
 
 // HELPER FUNCTIONS
 // ================================================================================================
+
+/// Builds the note metadata from sender, note type and tag if all inputs are valid.
+fn build_note_metadata(
+    sender: AccountId,
+    note_type: Felt,
+    tag: Felt,
+) -> Result<NoteMetadata, TransactionKernelError> {
+    let note_type = u8::try_from(note_type)
+        .map_err(|_| TransactionKernelError::other("failed to decode note_type into u8"))
+        .and_then(|note_type_byte| {
+            NoteType::try_from(note_type_byte).map_err(|source| {
+                TransactionKernelError::other_with_source(
+                    "failed to decode note_type from u8",
+                    source,
+                )
+            })
+        })?;
+
+    let tag = u32::try_from(tag)
+        .map_err(|_| TransactionKernelError::other("failed to decode note tag into u32"))
+        .map(NoteTag::new)?;
+
+    Ok(NoteMetadata::new(sender, note_type, tag))
+}
 
 /// Extracts a word from a slice of field elements.
 #[inline(always)]

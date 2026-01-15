@@ -972,14 +972,15 @@ end
 #! Returns the metadata of the specified input note.
 #!
 #! Inputs:  [is_active_note, note_index, pad(14)]
-#! Outputs: [METADATA, pad(12)]
+#! Outputs: [NOTE_ATTACHMENT, METADATA_HEADER, pad(8)]
 #!
 #! Where:
 #! - is_active_note is the boolean flag indicating whether we should return the metadata from
 #!   the active note or from the note with the specified index.
 #! - note_index is the index of the input note whose metadata should be returned. Notice that if
 #!   is_active_note is 1, note_index is ignored.
-#! - METADATA is the metadata of the specified input note.
+#! - METADATA_HEADER is the metadata header of the specified input note.
+#! - NOTE_ATTACHMENT is the attachment of the specified input note.
 #!
 #! Panics if:
 #! - the note index is greater or equal to the total number of input notes.
@@ -998,13 +999,21 @@ pub proc input_note_get_metadata
     dup neq.0 assert.err=ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_METADATA_WHILE_NO_NOTE_BEING_PROCESSED
     # => [input_note_ptr, pad(15)]
 
+    # make stack truncation at the end of the procedure easier
+    push.0 swap
+    # => [input_note_ptr, pad(16)]
+
     # get the metadata
-    exec.memory::get_input_note_metadata
-    # => [METADATA, pad(15)]
+    dup exec.memory::get_input_note_metadata_header
+    # => [METADATA_HEADER, input_note_ptr, pad(16)]
+
+    # get the attachment
+    movup.4 exec.memory::get_input_note_attachment
+    # => [NOTE_ATTACHMENT, METADATA_HEADER, pad(16)]
 
     # truncate the stack
-    swapw drop drop drop movdn.4
-    # => [METADATA, pad(12)]
+    swapdw dropw dropw
+    # => [NOTE_ATTACHMENT, METADATA_HEADER, pad(8)]
 end
 
 #! Returns the serial number of the specified input note.
@@ -1244,11 +1253,12 @@ end
 #! Returns the metadata of the output note with the specified index.
 #!
 #! Inputs:  [note_index, pad(15)]
-#! Outputs: [METADATA, pad(12)]
+#! Outputs: [NOTE_ATTACHMENT, METADATA_HEADER, pad(8)]
 #!
 #! Where:
 #! - note_index is the index of the output note whose metadata should be returned.
-#! - METADATA is the metadata of the output note.
+#! - METADATA_HEADER is the metadata header of the specified output note.
+#! - NOTE_ATTACHMENT is the attachment of the specified output note.
 #!
 #! Panics if:
 #! - the note index is greater or equal to the total number of output notes.
@@ -1258,18 +1268,26 @@ pub proc output_note_get_metadata
     # assert that the provided note index is less than the total number of output notes
     exec.output_note::assert_note_index_in_bounds
     # => [note_index, pad(15)]
-    
+
     # get the note data pointer by the provided index
     exec.memory::get_output_note_ptr
     # => [note_ptr, pad(15)]
 
+    # make stack truncation at the end of the procedure easier
+    push.0 swap
+    # => [note_ptr, pad(16)]
+
     # get the metadata
-    exec.memory::get_output_note_metadata
-    # => [METADATA, pad(15)]
+    dup exec.memory::get_output_note_metadata_header
+    # => [METADATA_HEADER, note_ptr, pad(16)]
+
+    # get the attachment
+    movup.4 exec.memory::get_output_note_attachment
+    # => [NOTE_ATTACHMENT, METADATA_HEADER, pad(16)]
 
     # truncate the stack
-    swapw drop drop drop movdn.4
-    # => [METADATA, pad(12)]
+    swapdw dropw dropw
+    # => [NOTE_ATTACHMENT, METADATA_HEADER, pad(8)]
 end
 
 # TRANSACTION

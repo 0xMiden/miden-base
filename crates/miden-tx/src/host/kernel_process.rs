@@ -10,6 +10,7 @@ use miden_protocol::transaction::memory::{
     ACCT_STORAGE_SLOT_VALUE_OFFSET,
     ACTIVE_INPUT_NOTE_PTR,
     NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR,
+    NUM_OUTPUT_NOTES_PTR,
 };
 use miden_protocol::{Hasher, Word};
 
@@ -30,6 +31,9 @@ pub(super) trait TransactionKernelProcess {
 
     #[allow(dead_code)]
     fn get_num_storage_slots(&self) -> Result<u64, TransactionKernelError>;
+
+    /// Returns the current number of output notes.
+    fn get_num_output_notes(&self) -> u64;
 
     fn get_vault_root(&self, vault_root_ptr: Felt) -> Result<Word, TransactionKernelError>;
 
@@ -127,6 +131,14 @@ impl<'a> TransactionKernelProcess for ProcessState<'a> {
             ))?;
 
         Ok(num_storage_slots_felt.as_int())
+    }
+
+    fn get_num_output_notes(&self) -> u64 {
+        // Read the number from memory or default to 0 if the location hasn't been accessed
+        // previously (e.g. when no notes have been created yet).
+        self.get_mem_value(self.ctx(), NUM_OUTPUT_NOTES_PTR)
+            .map(|num_output_notes| num_output_notes.as_int())
+            .unwrap_or(0)
     }
 
     /// Returns the ID of the active note, or None if the note execution hasn't started yet or has

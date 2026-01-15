@@ -10,7 +10,6 @@ use miden_protocol::crypto::rand::FeltRng;
 use miden_protocol::note::{
     Note,
     NoteAssets,
-    NoteExecutionHint,
     NoteInputs,
     NoteMetadata,
     NoteRecipient,
@@ -24,7 +23,7 @@ use miden_protocol::testing::account_id::{
     ACCOUNT_ID_SENDER,
 };
 use miden_protocol::transaction::{InputNote, OutputNote, TransactionKernel};
-use miden_protocol::{Felt, StarkField, Word, ZERO};
+use miden_protocol::{Felt, StarkField, Word};
 use miden_standards::note::{
     NoteConsumptionStatus,
     WellKnownNote,
@@ -794,8 +793,7 @@ fn create_p2ide_note_with_inputs(inputs: impl IntoIterator<Item = u64>, sender: 
     );
 
     let tag = NoteTag::with_account_target(sender);
-    let metadata =
-        NoteMetadata::new(sender, NoteType::Public, tag, NoteExecutionHint::always(), ZERO);
+    let metadata = NoteMetadata::new(sender, NoteType::Public, tag);
 
     Note::new(NoteAssets::default(), metadata, recipient)
 }

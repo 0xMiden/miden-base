@@ -45,7 +45,7 @@ use crate::{
 
 /// Tests that the return values from the tx kernel main.masm program match the expected values.
 #[tokio::test]
-async fn test_epilogue() -> anyhow::Result<()> {
+async fn test_transaction_epilogue() -> anyhow::Result<()> {
     let account = Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, Auth::IncrNonce);
     let asset = FungibleAsset::mock(100);
     let output_note_1 = create_public_p2any_note(account.id(), [asset]);
