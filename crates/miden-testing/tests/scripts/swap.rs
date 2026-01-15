@@ -1,15 +1,7 @@
 use anyhow::Context;
 use miden_protocol::account::{Account, AccountId, AccountStorageMode, AccountType};
 use miden_protocol::asset::{Asset, FungibleAsset, NonFungibleAsset};
-use miden_protocol::note::{
-    Note,
-    NoteAssets,
-    NoteDetails,
-    NoteExecutionHint,
-    NoteMetadata,
-    NoteTag,
-    NoteType,
-};
+use miden_protocol::note::{Note, NoteAssets, NoteDetails, NoteMetadata, NoteTag, NoteType};
 use miden_protocol::testing::account_id::{
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
@@ -43,11 +35,9 @@ pub async fn prove_send_swap_note() -> anyhow::Result<()> {
         use miden::protocol::output_note
         begin
             push.{recipient}
-            push.{note_execution_hint}
             push.{note_type}
-            push.0              # aux
             push.{tag}
-            call.output_note::create
+            exec.output_note::create
 
             push.{asset}
             call.::miden::standards::wallets::basic::move_asset_to_note
@@ -58,7 +48,6 @@ pub async fn prove_send_swap_note() -> anyhow::Result<()> {
         note_type = NoteType::Public as u8,
         tag = Felt::from(swap_note.metadata().tag()),
         asset = Word::from(offered_asset),
-        note_execution_hint = Felt::from(swap_note.metadata().execution_hint())
     );
 
     let tx_script = CodeBuilder::default().compile_tx_script(tx_script_src)?;
@@ -138,7 +127,7 @@ async fn consume_swap_note_private_payback_note() -> anyhow::Result<()> {
 
     let full_payback_note = Note::new(
         payback_note.assets().clone(),
-        *output_payback_note.metadata(),
+        output_payback_note.metadata().clone(),
         payback_note.recipient().clone(),
     );
 
@@ -190,7 +179,6 @@ async fn consume_swap_note_public_payback_note() -> anyhow::Result<()> {
         sender_account.id(),
         vec![requested_asset],
         payback_note_type,
-        Felt::new(0),
         payback_note.serial_num(),
     )
     .unwrap();
@@ -217,7 +205,7 @@ async fn consume_swap_note_public_payback_note() -> anyhow::Result<()> {
 
     let full_payback_note = Note::new(
         payback_note.assets().clone(),
-        *output_payback_note.metadata(),
+        output_payback_note.metadata().clone(),
         payback_note.recipient().clone(),
     );
 
@@ -353,14 +341,13 @@ pub fn create_p2id_note_exact(
     target: AccountId,
     assets: Vec<Asset>,
     note_type: NoteType,
-    aux: Felt,
     serial_num: Word,
 ) -> Result<Note, NoteError> {
     let recipient = utils::build_p2id_recipient(target, serial_num)?;
 
-    let tag = NoteTag::from_account_id(target);
+    let tag = NoteTag::with_account_target(target);
 
-    let metadata = NoteMetadata::new(sender, note_type, tag, NoteExecutionHint::always(), aux)?;
+    let metadata = NoteMetadata::new(sender, note_type, tag);
     let vault = NoteAssets::new(assets)?;
 
     Ok(Note::new(vault, metadata, recipient))

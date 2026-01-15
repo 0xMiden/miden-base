@@ -1,5 +1,3 @@
-use alloc::string::String;
-
 use anyhow::Context;
 use miden_processor::ContextId;
 use miden_processor::fast::ExecutionOutput;
@@ -11,19 +9,7 @@ use miden_protocol::testing::account_id::{
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
     ACCOUNT_ID_SENDER,
 };
-use miden_protocol::testing::storage::prepare_assets;
-use miden_protocol::transaction::memory::{
-    self,
-    MemoryOffset,
-    NOTE_MEM_SIZE,
-    NUM_OUTPUT_NOTES_PTR,
-    OUTPUT_NOTE_ASSETS_OFFSET,
-    OUTPUT_NOTE_DIRTY_FLAG_OFFSET,
-    OUTPUT_NOTE_METADATA_OFFSET,
-    OUTPUT_NOTE_NUM_ASSETS_OFFSET,
-    OUTPUT_NOTE_RECIPIENT_OFFSET,
-    OUTPUT_NOTE_SECTION_OFFSET,
-};
+use miden_protocol::transaction::memory::{self, MemoryOffset};
 use miden_protocol::vm::StackInputs;
 use miden_protocol::{Felt, Word, ZERO};
 
@@ -115,66 +101,6 @@ impl ExecutionOutputExt for ExecutionOutput {
 
 pub fn input_note_data_ptr(note_idx: u32) -> memory::MemoryAddress {
     memory::INPUT_NOTE_DATA_SECTION_OFFSET + note_idx * memory::NOTE_MEM_SIZE
-}
-
-/// Returns MASM code that defines a procedure called `create_mock_notes` which creates the notes
-/// specified in `notes`, which stores output note metadata in the transaction host's memory.
-pub fn create_mock_notes_procedure(notes: &[Note]) -> String {
-    if notes.is_empty() {
-        return String::new();
-    }
-
-    let mut script = String::from(
-        "proc create_mock_notes
-            # remove padding from prologue
-            dropw dropw dropw dropw
-        ",
-    );
-
-    for (idx, note) in notes.iter().enumerate() {
-        let metadata = Word::from(note.metadata());
-        let recipient = note.recipient().digest();
-        let assets = prepare_assets(note.assets());
-        let num_assets = assets.len();
-        let note_offset = (idx as u32) * NOTE_MEM_SIZE;
-
-        assert!(num_assets == 1, "notes are expected to have one asset only");
-
-        script.push_str(&format!(
-            "
-                # populate note {idx}
-                push.{metadata}
-                push.{OUTPUT_NOTE_SECTION_OFFSET} push.{note_offset} push.{OUTPUT_NOTE_METADATA_OFFSET} add add mem_storew_be dropw
-
-                push.{recipient}
-                push.{OUTPUT_NOTE_SECTION_OFFSET} push.{note_offset} push.{OUTPUT_NOTE_RECIPIENT_OFFSET} add add mem_storew_be dropw
-
-                push.{num_assets}
-                push.{OUTPUT_NOTE_SECTION_OFFSET} push.{note_offset} push.{OUTPUT_NOTE_NUM_ASSETS_OFFSET} add add mem_store
-
-                push.1 # dirty flag should be `1` by default
-                push.{OUTPUT_NOTE_SECTION_OFFSET} push.{note_offset} push.{OUTPUT_NOTE_DIRTY_FLAG_OFFSET} add add mem_store
-
-                push.{first_asset}
-                push.{OUTPUT_NOTE_SECTION_OFFSET} push.{note_offset} push.{OUTPUT_NOTE_ASSETS_OFFSET} add add mem_storew_be dropw
-                ",
-            idx = idx,
-            metadata = metadata,
-            recipient = recipient,
-            num_assets = num_assets,
-            first_asset = assets[0],
-            note_offset = note_offset,
-        ));
-    }
-    script.push_str(&format!(
-        "# set num output notes
-                push.{count} push.{NUM_OUTPUT_NOTES_PTR} mem_store
-            end
-            ",
-        count = notes.len(),
-    ));
-
-    script
 }
 
 // HELPER STRUCTURE
