@@ -37,10 +37,10 @@ use miden_standards::account::faucets::NetworkFungibleFaucet;
 use miden_utils_sync::LazyLock;
 
 pub mod errors;
-pub mod eth_address_format;
+pub mod eth_address;
 pub mod utils;
 
-pub use eth_address_format::EthAddressFormat;
+pub use eth_address::EthAddressFormat;
 use utils::bytes32_to_felts;
 
 // AGGLAYER NOTE SCRIPTS
@@ -413,15 +413,11 @@ pub fn create_claim_note<R: FeltRng>(params: ClaimNoteParams<'_, R>) -> Result<N
     claim_inputs.extend(params.global_index);
 
     // mainnetExitRoot (bytes32 as 8 u32 felts)
-    let mainnet_exit_root_felts = bytes32_to_felts(params.mainnet_exit_root).map_err(|e| {
-        NoteError::other(alloc::format!("Failed to convert mainnet exit root: {}", e))
-    })?;
+    let mainnet_exit_root_felts = bytes32_to_felts(params.mainnet_exit_root);
     claim_inputs.extend(mainnet_exit_root_felts);
 
     // rollupExitRoot (bytes32 as 8 u32 felts)
-    let rollup_exit_root_felts = bytes32_to_felts(params.rollup_exit_root).map_err(|e| {
-        NoteError::other(alloc::format!("Failed to convert rollup exit root: {}", e))
-    })?;
+    let rollup_exit_root_felts = bytes32_to_felts(params.rollup_exit_root);
     claim_inputs.extend(rollup_exit_root_felts);
 
     // 2) LEAF DATA
