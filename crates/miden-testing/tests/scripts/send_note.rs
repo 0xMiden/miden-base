@@ -35,14 +35,14 @@ async fn test_send_note_script_basic_wallet() -> anyhow::Result<()> {
 
     let sender_account_interface = AccountInterface::from_account(&sender_basic_wallet_account);
 
-    let tag = NoteTag::from_account_id(sender_basic_wallet_account.id());
+    let tag = NoteTag::with_account_target(sender_basic_wallet_account.id());
     let metadata = NoteMetadata::new(
         sender_basic_wallet_account.id(),
         NoteType::Public,
         tag,
         NoteExecutionHint::always(),
         Default::default(),
-    )?;
+    );
     let assets = NoteAssets::new(vec![sent_asset]).unwrap();
     let note_script = CodeBuilder::default().compile_note_script("begin nop end").unwrap();
     let serial_num = RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])).draw_word();
@@ -95,14 +95,14 @@ async fn test_send_note_script_basic_fungible_faucet() -> anyhow::Result<()> {
     let sender_account_interface =
         AccountInterface::from_account(&sender_basic_fungible_faucet_account);
 
-    let tag = NoteTag::from_account_id(sender_basic_fungible_faucet_account.id());
+    let tag = NoteTag::with_account_target(sender_basic_fungible_faucet_account.id());
     let metadata = NoteMetadata::new(
         sender_basic_fungible_faucet_account.id(),
         NoteType::Public,
         tag,
         NoteExecutionHint::always(),
         Default::default(),
-    )?;
+    );
     let assets = NoteAssets::new(vec![Asset::Fungible(
         FungibleAsset::new(sender_basic_fungible_faucet_account.id(), 10).unwrap(),
     )])?;

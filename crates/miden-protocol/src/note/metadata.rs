@@ -20,11 +20,6 @@ use super::{
 
 /// Metadata associated with a note.
 ///
-/// Note type and tag must be internally consistent according to the following rules:
-///
-/// - For private and encrypted notes, the two most significant bits of the tag must be `0b11`.
-/// - For public notes, the two most significant bits of the tag can be set to any value.
-///
 /// # Word layout & validity
 ///
 /// [`NoteMetadata`] can be encoded into a [`Word`] with the following layout:
@@ -65,25 +60,21 @@ pub struct NoteMetadata {
 }
 
 impl NoteMetadata {
-    /// Returns a new [NoteMetadata] instantiated with the specified parameters.
-    ///
-    /// # Errors
-    /// Returns an error if the note type and note tag are inconsistent.
+    /// Returns a new [`NoteMetadata`] instantiated with the specified parameters.
     pub fn new(
         sender: AccountId,
         note_type: NoteType,
         tag: NoteTag,
         execution_hint: NoteExecutionHint,
         aux: Felt,
-    ) -> Result<Self, NoteError> {
-        let tag = tag.validate(note_type)?;
-        Ok(Self {
+    ) -> Self {
+        Self {
             sender,
             note_type,
             tag,
             aux,
             execution_hint,
-        })
+        }
     }
 
     /// Returns the account which created the note.
@@ -162,7 +153,7 @@ impl TryFrom<Word> for NoteMetadata {
         let (execution_hint, note_tag) =
             unmerge_note_tag_and_hint_payload(elements[2], execution_hint_tag)?;
 
-        Self::new(sender, note_type, note_tag, execution_hint, elements[3])
+        Ok(Self::new(sender, note_type, note_tag, execution_hint, elements[3]))
     }
 }
 
@@ -309,7 +300,7 @@ mod tests {
         // produces valid felts.
         let sender = AccountId::try_from(ACCOUNT_ID_MAX_ONES).unwrap();
         let note_type = NoteType::Public;
-        let tag = NoteTag::from_account_id(sender);
+        let tag = NoteTag::with_account_target(sender);
         let aux = Felt::try_from(0xffff_ffff_0000_0000u64).unwrap();
 
         for execution_hint in [
@@ -318,7 +309,7 @@ mod tests {
             NoteExecutionHint::on_block_slot(10, 11, 12),
             NoteExecutionHint::after_block((u32::MAX - 1).into()).unwrap(),
         ] {
-            let metadata = NoteMetadata::new(sender, note_type, tag, execution_hint, aux).unwrap();
+            let metadata = NoteMetadata::new(sender, note_type, tag, execution_hint, aux);
             NoteMetadata::read_from_bytes(&metadata.to_bytes())
                 .context(format!("failed for execution hint {execution_hint:?}"))?;
         }

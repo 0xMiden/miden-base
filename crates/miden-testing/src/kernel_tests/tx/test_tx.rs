@@ -22,7 +22,6 @@ use miden_protocol::note::{
     Note,
     NoteAssets,
     NoteExecutionHint,
-    NoteExecutionMode,
     NoteHeader,
     NoteId,
     NoteInputs,
@@ -198,11 +197,11 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
         .expect("asset is valid"),
     );
 
-    let tag1 = NoteTag::from_account_id(
+    let tag1 = NoteTag::with_account_target(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
     );
-    let tag2 = NoteTag::for_public_use_case(0, 0, NoteExecutionMode::Local).unwrap();
-    let tag3 = NoteTag::for_public_use_case(0, 0, NoteExecutionMode::Local).unwrap();
+    let tag2 = NoteTag::default();
+    let tag3 = NoteTag::default();
     let aux1 = Felt::new(27);
     let aux2 = Felt::new(28);
     let aux3 = Felt::new(29);
@@ -210,10 +209,6 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
     let note_type1 = NoteType::Private;
     let note_type2 = NoteType::Public;
     let note_type3 = NoteType::Public;
-
-    tag1.validate(note_type1).expect("note tag 1 should support private notes");
-    tag2.validate(note_type2).expect("note tag 2 should support public notes");
-    tag3.validate(note_type3).expect("note tag 3 should support public notes");
 
     // In this test we create 3 notes. Note 1 is private, Note 2 is public and Note 3 is public
     // without assets.
@@ -223,7 +218,7 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
     let note_script_2 = CodeBuilder::default().compile_note_script(DEFAULT_NOTE_CODE)?;
     let inputs_2 = NoteInputs::new(vec![ONE])?;
     let metadata_2 =
-        NoteMetadata::new(account_id, note_type2, tag2, NoteExecutionHint::none(), aux2)?;
+        NoteMetadata::new(account_id, note_type2, tag2, NoteExecutionHint::none(), aux2);
     let vault_2 = NoteAssets::new(vec![removed_asset_3, removed_asset_4])?;
     let recipient_2 = NoteRecipient::new(serial_num_2, note_script_2, inputs_2);
     let expected_output_note_2 = Note::new(vault_2, metadata_2, recipient_2);
@@ -238,7 +233,7 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
         tag3,
         NoteExecutionHint::on_block_slot(1, 2, 3),
         aux3,
-    )?;
+    );
     let vault_3 = NoteAssets::new(vec![])?;
     let recipient_3 = NoteRecipient::new(serial_num_3, note_script_3, inputs_3);
     let expected_output_note_3 = Note::new(vault_3, metadata_3, recipient_3);

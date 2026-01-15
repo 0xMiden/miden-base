@@ -17,7 +17,6 @@ use miden_protocol::note::{
     Note,
     NoteAssets,
     NoteExecutionHint,
-    NoteExecutionMode,
     NoteId,
     NoteInputs,
     NoteMetadata,
@@ -127,7 +126,7 @@ pub fn verify_minted_output_note(
             params.tag,
             params.note_execution_hint,
             params.aux
-        )?
+        )
     );
 
     Ok(())
@@ -145,17 +144,12 @@ async fn minting_fungible_asset_on_existing_faucet_succeeds() -> anyhow::Result<
 
     let params = FaucetTestParams {
         recipient: Word::from([0, 1, 2, 3u32]),
-        tag: NoteTag::for_local_use_case(0, 0).unwrap(),
+        tag: NoteTag::default(),
         aux: Felt::new(27),
         note_execution_hint: NoteExecutionHint::on_block_slot(5, 6, 7),
         note_type: NoteType::Private,
         amount: Felt::new(100),
     };
-
-    params
-        .tag
-        .validate(params.note_type)
-        .expect("note tag should support private notes");
 
     let executed_transaction =
         execute_mint_transaction(&mut mock_chain, faucet.clone(), &params).await?;
@@ -230,17 +224,12 @@ async fn minting_fungible_asset_on_new_faucet_succeeds() -> anyhow::Result<()> {
 
     let params = FaucetTestParams {
         recipient: Word::from([0, 1, 2, 3u32]),
-        tag: NoteTag::for_local_use_case(0, 0).unwrap(),
+        tag: NoteTag::default(),
         aux: Felt::new(27),
         note_execution_hint: NoteExecutionHint::on_block_slot(5, 6, 7),
         note_type: NoteType::Private,
         amount: Felt::new(100),
     };
-
-    params
-        .tag
-        .validate(params.note_type)
-        .expect("note tag should support private notes");
 
     let executed_transaction =
         execute_mint_transaction(&mut mock_chain, faucet.clone(), &params).await?;
@@ -324,7 +313,7 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
     // Parameters for the PUBLIC note that will be created by the faucet
     let recipient_account_id = AccountId::try_from(ACCOUNT_ID_PRIVATE_SENDER)?;
     let amount = Felt::new(75);
-    let tag = NoteTag::for_public_use_case(0, 0, NoteExecutionMode::Local)?;
+    let tag = NoteTag::default();
     let aux = Felt::new(27);
     let note_execution_hint = NoteExecutionHint::on_block_slot(5, 6, 7);
     let note_type = NoteType::Public;
@@ -357,7 +346,7 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
     let output_script_root = note_recipient.script().root();
 
     let asset = FungibleAsset::new(faucet.id(), amount.into())?;
-    let metadata = NoteMetadata::new(faucet.id(), note_type, tag, note_execution_hint, aux)?;
+    let metadata = NoteMetadata::new(faucet.id(), note_type, tag, note_execution_hint, aux);
     let expected_note = Note::new(NoteAssets::new(vec![asset.into()])?, metadata, note_recipient);
 
     let trigger_note_script_code = format!(
@@ -422,7 +411,7 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
     let mut rng = RpoRandomCoin::new([Felt::from(1u32); 4].into());
     let trigger_note = NoteBuilder::new(faucet.id(), &mut rng)
         .note_type(NoteType::Private)
-        .tag(NoteTag::for_local_use_case(0, 0)?.into())
+        .tag(NoteTag::default().into())
         .note_execution_hint(NoteExecutionHint::always())
         .aux(Felt::new(0))
         .serial_number(Word::from([1, 2, 3, 4u32]))
@@ -532,7 +521,7 @@ async fn network_faucet_mint() -> anyhow::Result<()> {
     let aux = Felt::new(27);
     let serial_num = Word::default();
 
-    let output_note_tag = NoteTag::from_account_id(target_account.id());
+    let output_note_tag = NoteTag::with_account_target(target_account.id());
     let p2id_mint_output_note = create_p2id_note_exact(
         faucet.id(),
         target_account.id(),
@@ -715,7 +704,7 @@ async fn test_mint_note_output_note_types(#[case] note_type: NoteType) -> anyhow
     // Create MINT note based on note type
     let mint_inputs = match note_type {
         NoteType::Private => {
-            let output_note_tag = NoteTag::from_account_id(target_account.id());
+            let output_note_tag = NoteTag::with_account_target(target_account.id());
             let recipient = p2id_mint_output_note.recipient().digest();
             MintNoteInputs::new_private(
                 recipient,
@@ -726,7 +715,7 @@ async fn test_mint_note_output_note_types(#[case] note_type: NoteType) -> anyhow
             )
         },
         NoteType::Public => {
-            let output_note_tag = NoteTag::from_account_id(target_account.id());
+            let output_note_tag = NoteTag::with_account_target(target_account.id());
             let p2id_script = WellKnownNote::P2ID.script();
             let p2id_inputs =
                 vec![target_account.id().suffix(), target_account.id().prefix().as_felt()];

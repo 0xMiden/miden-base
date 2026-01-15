@@ -15,7 +15,6 @@ use miden_protocol::note::{
     Note,
     NoteAssets,
     NoteExecutionHint,
-    NoteExecutionMode,
     NoteInputs,
     NoteMetadata,
     NoteRecipient,
@@ -392,22 +391,18 @@ async fn test_build_metadata() -> miette::Result<()> {
     let test_metadata1 = NoteMetadata::new(
         sender,
         NoteType::Private,
-        NoteTag::from_account_id(receiver),
+        NoteTag::with_account_target(receiver),
         NoteExecutionHint::after_block(500.into())
             .map_err(|e| miette::miette!("Failed to create execution hint: {}", e))?,
         Felt::try_from(1u64 << 63).map_err(|e| miette::miette!("Failed to convert felt: {}", e))?,
-    )
-    .map_err(|e| miette::miette!("Failed to create metadata: {}", e))?;
+    );
     let test_metadata2 = NoteMetadata::new(
         sender,
         NoteType::Public,
-        // Use largest allowed use_case_id.
-        NoteTag::for_public_use_case((1 << 14) - 1, u16::MAX, NoteExecutionMode::Local)
-            .map_err(|e| miette::miette!("Failed to create note tag: {}", e))?,
+        NoteTag::new(u32::MAX),
         NoteExecutionHint::on_block_slot(u8::MAX, u8::MAX, u8::MAX),
         Felt::try_from(0u64).map_err(|e| miette::miette!("Failed to convert felt: {}", e))?,
-    )
-    .map_err(|e| miette::miette!("Failed to create metadata: {}", e))?;
+    );
 
     for (iteration, test_metadata) in [test_metadata1, test_metadata2].into_iter().enumerate() {
         let code = format!(
@@ -545,14 +540,14 @@ async fn test_public_key_as_note_input() -> anyhow::Result<()> {
         .build_existing()?;
 
     let serial_num = RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])).draw_word();
-    let tag = NoteTag::from_account_id(target_account.id());
+    let tag = NoteTag::with_account_target(target_account.id());
     let metadata = NoteMetadata::new(
         sender_account.id(),
         NoteType::Public,
         tag,
         NoteExecutionHint::always(),
         Default::default(),
-    )?;
+    );
     let vault = NoteAssets::new(vec![])?;
     let note_script = CodeBuilder::default().compile_note_script("begin nop end")?;
     let recipient =
@@ -573,7 +568,7 @@ async fn test_build_note_tag_for_network_account() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
     let account_id = AccountId::try_from(ACCOUNT_ID_NETWORK_FUNGIBLE_FAUCET)?;
-    let expected_tag = NoteTag::from_account_id(account_id).as_u32();
+    let expected_tag = NoteTag::with_account_target(account_id).as_u32();
 
     let prefix: u64 = account_id.prefix().into();
     let suffix: u64 = account_id.suffix().into();
