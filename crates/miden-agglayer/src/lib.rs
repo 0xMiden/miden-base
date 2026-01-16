@@ -26,22 +26,13 @@ use miden_utils_sync::LazyLock;
 
 pub mod claim_note;
 pub mod errors;
-pub mod eth_address_format;
+pub mod eth_address;
 pub mod eth_amount;
 pub mod utils;
 
-// Re-export the main types from claim_note module
 pub use claim_note::{ClaimNoteInputs, LeafData, OutputNoteData, ProofData, create_claim_note};
-pub use eth_address_format::EthAddressFormat;
+pub use eth_address::EthAddressFormat;
 pub use eth_amount::EthAmount;
-// Re-export utility functions from utils module
-pub use utils::{
-    hex_string_to_address,
-    hex_string_to_bytes32,
-    hex_strings_to_bytes32_array,
-    metadata_hex_to_u32_array,
-    string_to_u256_array,
-};
 
 // AGGLAYER NOTE SCRIPTS
 // ================================================================================================
@@ -406,8 +397,9 @@ pub fn claim_note_test_inputs(
 
     let destination_network = 2u32;
 
-    // Convert AccountId to destination address using EthAddressFormat
-    let destination_address = EthAddressFormat::from_account_id(destination_account_id);
+    // Convert AccountId to destination address bytes
+    let destination_address =
+        EthAddressFormat::from_account_id(destination_account_id).into_bytes();
 
     // Convert amount to EthAmount for agglayer
     let amount_eth = EthAmount::from_u32(amount);
@@ -422,7 +414,7 @@ pub fn claim_note_test_inputs(
         origin_network,
         origin_token_address,
         destination_network,
-        destination_address.into_bytes(),
+        destination_address,
         amount_eth.into_array(),
         metadata,
     )

@@ -565,7 +565,7 @@ where
                     self.base_host.on_account_push_procedure_index(code_commitment, procedure_root)
                 },
 
-                TransactionEvent::NoteAfterCreated { note_idx, metadata, recipient_data } => {
+                TransactionEvent::NoteBeforeCreated { note_idx, metadata, recipient_data } => {
                     match recipient_data {
                         RecipientData::Digest(recipient_digest) => {
                             self.base_host.output_note_from_recipient_digest(
@@ -599,6 +599,11 @@ where
                 TransactionEvent::NoteBeforeAddAsset { note_idx, asset } => {
                     self.base_host.on_note_before_add_asset(note_idx, asset)
                 },
+
+                TransactionEvent::NoteBeforeSetAttachment { note_idx, attachment } => self
+                    .base_host
+                    .on_note_before_set_attachment(note_idx, attachment)
+                    .map(|_| Vec::new()),
 
                 TransactionEvent::AuthRequest { pub_key_hash, tx_summary, signature } => {
                     if let Some(signature) = signature {

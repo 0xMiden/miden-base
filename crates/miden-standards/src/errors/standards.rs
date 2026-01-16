@@ -18,8 +18,8 @@ pub const ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED: M
 /// Error Message: "number of approvers must be equal to or greater than threshold"
 pub const ERR_MALFORMED_MULTISIG_CONFIG: MasmError = MasmError::from_static_str("number of approvers must be equal to or greater than threshold");
 
-/// Error Message: "MINT script expects exactly 8 inputs for private or 12+ inputs for public output notes"
-pub const ERR_MINT_WRONG_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_str("MINT script expects exactly 8 inputs for private or 12+ inputs for public output notes");
+/// Error Message: "MINT script expects exactly 12 inputs for private or 16+ inputs for public output notes"
+pub const ERR_MINT_WRONG_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_str("MINT script expects exactly 12 inputs for private or 16+ inputs for public output notes");
 
 /// Error Message: "note sender is not the owner of the faucet who can mint assets"
 pub const ERR_ONLY_OWNER_CAN_MINT: MasmError = MasmError::from_static_str("note sender is not the owner of the faucet who can mint assets");
@@ -42,8 +42,8 @@ pub const ERR_P2ID_WRONG_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_st
 
 /// Error Message: "SWAP script requires exactly 1 note asset"
 pub const ERR_SWAP_WRONG_NUMBER_OF_ASSETS: MasmError = MasmError::from_static_str("SWAP script requires exactly 1 note asset");
-/// Error Message: "SWAP script expects exactly 12 note inputs"
-pub const ERR_SWAP_WRONG_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_str("SWAP script expects exactly 12 note inputs");
+/// Error Message: "SWAP script expects exactly 16 note inputs"
+pub const ERR_SWAP_WRONG_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_str("SWAP script expects exactly 16 note inputs");
 
 /// Error Message: "failed to approve multisig transaction as it was already executed"
 pub const ERR_TX_ALREADY_EXECUTED: MasmError = MasmError::from_static_str("failed to approve multisig transaction as it was already executed");

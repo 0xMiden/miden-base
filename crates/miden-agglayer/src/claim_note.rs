@@ -9,7 +9,6 @@ use miden_protocol::crypto::rand::FeltRng;
 use miden_protocol::note::{
     Note,
     NoteAssets,
-    NoteExecutionHint,
     NoteInputs,
     NoteMetadata,
     NoteRecipient,
@@ -17,10 +16,8 @@ use miden_protocol::note::{
     NoteType,
 };
 
-use crate::claim_script;
-use crate::eth_address_format::EthAddressFormat;
-use crate::eth_amount::EthAmount;
 use crate::utils::bytes32_to_felts;
+use crate::{EthAddressFormat, claim_script};
 
 // CLAIM NOTE STRUCTURES
 // ================================================================================================
@@ -40,8 +37,8 @@ impl SmtNode {
         &self.0
     }
 
-    /// Converts the SMT node to 8 Felt elements (u256 as 8 u32 values)
-    pub fn to_elements(&self) -> Result<[Felt; 8], &'static str> {
+    /// Converts the SMT node to 8 Felt elements (32-byte value as 8 u32 values in big-endian)
+    pub fn to_elements(&self) -> [Felt; 8] {
         bytes32_to_felts(&self.0)
     }
 }
@@ -68,7 +65,7 @@ impl GlobalExitRoot {
     }
 
     /// Converts the global exit root to 8 Felt elements
-    pub fn to_elements(&self) -> Result<[Felt; 8], &'static str> {
+    pub fn to_elements(&self) -> [Felt; 8] {
         bytes32_to_felts(&self.0)
     }
 }
@@ -96,26 +93,18 @@ pub struct ProofData {
 
 impl ProofData {
     /// Converts the proof data to a vector of field elements for note inputs
-    pub fn to_elements(&self) -> Result<Vec<Felt>, NoteError> {
+    pub fn to_elements(&self) -> Vec<Felt> {
         const PROOF_DATA_ELEMENT_COUNT: usize = 536; // 32*8 + 32*8 + 8 + 8 + 8 (proofs + global_index + 2 exit roots)
         let mut elements = Vec::with_capacity(PROOF_DATA_ELEMENT_COUNT);
 
         // Convert SMT proof elements to felts (each node is 8 felts)
-        for (i, node) in self.smt_proof_local_exit_root.iter().enumerate() {
-            let node_felts = node.to_elements().map_err(|e| {
-                NoteError::other(alloc::format!(
-                    "invalid local exit root SMT proof element at index {i}: {e}"
-                ))
-            })?;
+        for node in self.smt_proof_local_exit_root.iter() {
+            let node_felts = node.to_elements();
             elements.extend(node_felts);
         }
 
-        for (i, node) in self.smt_proof_rollup_exit_root.iter().enumerate() {
-            let node_felts = node.to_elements().map_err(|e| {
-                NoteError::other(alloc::format!(
-                    "invalid rollup exit root SMT proof element at index {i}: {e}"
-                ))
-            })?;
+        for node in self.smt_proof_rollup_exit_root.iter() {
+            let node_felts = node.to_elements();
             elements.extend(node_felts);
         }
 
@@ -123,18 +112,14 @@ impl ProofData {
         elements.extend(self.global_index.iter().map(|&v| Felt::new(v as u64)));
 
         // Mainnet exit root (bytes32 as 8 u32 felts)
-        let mainnet_exit_root_felts = self.mainnet_exit_root.to_elements().map_err(|e| {
-            NoteError::other(alloc::format!("failed to convert mainnet_exit_root: {}", e))
-        })?;
+        let mainnet_exit_root_felts = self.mainnet_exit_root.to_elements();
         elements.extend(mainnet_exit_root_felts);
 
         // Rollup exit root (bytes32 as 8 u32 felts)
-        let rollup_exit_root_felts = self.rollup_exit_root.to_elements().map_err(|e| {
-            NoteError::other(alloc::format!("failed to convert rollup_exit_root: {}", e))
-        })?;
+        let rollup_exit_root_felts = self.rollup_exit_root.to_elements();
         elements.extend(rollup_exit_root_felts);
 
-        Ok(elements)
+        elements
     }
 }
 
@@ -149,8 +134,8 @@ pub struct LeafData {
     pub destination_network: u32,
     /// Destination address
     pub destination_address: EthAddressFormat,
-    /// Amount of tokens (uint256)
-    pub amount: EthAmount,
+    /// Amount of tokens (uint256 as 8 u32 values)
+    pub amount: [u32; 8],
     /// ABI encoded metadata (fixed size of 8 u32 values)
     pub metadata: [u32; 8],
 }
@@ -175,7 +160,7 @@ impl SequentialCommit for LeafData {
         elements.extend(self.destination_address.to_elements());
 
         // Amount (uint256 as 8 u32 felts)
-        elements.extend(self.amount.as_array().iter().map(|&v| Felt::new(v as u64)));
+        elements.extend(self.amount.iter().map(|&v| Felt::new(v as u64)));
 
         // Metadata (8 u32 felts)
         elements.extend(self.metadata.iter().map(|&v| Felt::new(v as u64)));
@@ -236,7 +221,7 @@ impl TryFrom<ClaimNoteInputs> for NoteInputs {
         const TOTAL_ELEMENT_COUNT: usize = 575; // 536 + 28 + 4 + 7 (proof_data + leaf_data + padding + output_note_data)
         let mut claim_inputs = Vec::with_capacity(TOTAL_ELEMENT_COUNT);
 
-        claim_inputs.extend(inputs.proof_data.to_elements()?);
+        claim_inputs.extend(inputs.proof_data.to_elements());
         claim_inputs.extend(inputs.leaf_data.to_elements());
 
         // Keep the same trailing padding as the original implementation
@@ -268,15 +253,9 @@ pub fn create_claim_note<R: FeltRng>(
     let note_inputs = NoteInputs::try_from(inputs)?;
 
     // TODO: Make CLAIM note a Network Note once NoteAttachment PR lands
-    let tag = NoteTag::for_local_use_case(0, 0)?;
+    let tag = NoteTag::new(0);
 
-    let metadata = NoteMetadata::new(
-        sender_account_id,
-        NoteType::Public,
-        tag,
-        NoteExecutionHint::always(),
-        Felt::ZERO,
-    )?;
+    let metadata = NoteMetadata::new(sender_account_id, NoteType::Public, tag);
 
     let recipient = NoteRecipient::new(rng.draw_word(), claim_script(), note_inputs);
     let assets = NoteAssets::new(vec![])?;

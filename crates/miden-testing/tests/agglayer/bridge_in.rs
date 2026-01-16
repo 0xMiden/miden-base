@@ -22,7 +22,6 @@ use miden_protocol::crypto::rand::FeltRng;
 use miden_protocol::note::{
     Note,
     NoteAssets,
-    NoteExecutionHint,
     NoteInputs,
     NoteMetadata,
     NoteRecipient,
@@ -93,8 +92,13 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
         metadata,
     ) = claim_note_test_inputs(claim_amount, user_account.id());
 
+    // Generate a serial number for the P2ID note
+    let serial_num = builder.rng_mut().draw_word();
+
+    // Convert amount to the format expected by the agglayer branch
+    let amount_u256 = EthAmount::from_u32(claim_amount).into_array();
+
     // Convert Vec<[u8; 32]> to [SmtNode; 32] for SMT proofs
-    // Take only the first 32 elements since we now use fixed-size arrays of 32
     let local_proof_array: [SmtNode; 32] = smt_proof_local_exit_root[0..32]
         .iter()
         .map(|&bytes| SmtNode::from(bytes))
@@ -122,27 +126,25 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
         origin_token_address: EthAddressFormat::new(origin_token_address),
         destination_network,
         destination_address: EthAddressFormat::new(destination_address),
-        amount: EthAmount::new(amount_u32),
+        amount: amount_u256,
         metadata,
     };
 
-    // Serial number for the output P2ID note
-    let serial_num = builder.rng_mut().draw_word();
     let output_note_data = OutputNoteData {
         output_p2id_serial_num: serial_num,
         target_faucet_account_id: agglayer_faucet.id(),
-        output_note_tag: NoteTag::from_account_id(user_account.id()),
+        output_note_tag: NoteTag::with_account_target(user_account.id()),
     };
 
     let claim_inputs = ClaimNoteInputs { proof_data, leaf_data, output_note_data };
+
+    let claim_note = create_claim_note(claim_inputs, user_account.id(), builder.rng_mut())?;
 
     // Create P2ID note for the user account (similar to network faucet test)
     let p2id_script = WellKnownNote::P2ID.script();
     let p2id_inputs = vec![user_account.id().suffix(), user_account.id().prefix().as_felt()];
     let note_inputs = NoteInputs::new(p2id_inputs)?;
     let p2id_recipient = NoteRecipient::new(serial_num, p2id_script.clone(), note_inputs);
-
-    let claim_note = create_claim_note(claim_inputs, user_account.id(), builder.rng_mut())?;
 
     // Add the claim note to the builder before building the mock chain
     builder.add_output_note(OutputNote::Full(claim_note.clone()));
@@ -154,18 +156,12 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
 
     // CREATE EXPECTED P2ID NOTE FOR VERIFICATION
     // --------------------------------------------------------------------------------------------
-    let aux = Felt::new(0);
-    let mint_asset: Asset = FungibleAsset::new(agglayer_faucet.id(), claim_amount.into())?.into();
-    let output_note_tag = NoteTag::from_account_id(user_account.id());
+    let amount_felt = Felt::from(claim_amount);
+    let mint_asset: Asset = FungibleAsset::new(agglayer_faucet.id(), amount_felt.into())?.into();
+    let output_note_tag = NoteTag::with_account_target(user_account.id());
     let expected_p2id_note = Note::new(
         NoteAssets::new(vec![mint_asset])?,
-        NoteMetadata::new(
-            agglayer_faucet.id(),
-            NoteType::Public,
-            output_note_tag,
-            NoteExecutionHint::always(),
-            aux,
-        )?,
+        NoteMetadata::new(agglayer_faucet.id(), NoteType::Public, output_note_tag),
         p2id_recipient,
     );
 
