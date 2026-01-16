@@ -6,8 +6,8 @@ use miden_crypto::merkle::InnerNodeInfo;
 use miden_crypto::merkle::smt::SmtLeaf;
 
 use super::{AccountStorage, AccountStorageHeader, StorageSlotContent};
-use crate::AccountError;
 use crate::account::PartialStorageMap;
+use crate::errors::AccountError;
 
 /// A partial representation of an account storage, containing only a subset of the storage data.
 ///

@@ -6,6 +6,7 @@ use miden_protocol::account::AccountId;
 use miden_protocol::assembly::debuginfo::{SourceLanguage, SourceManagerSync, Uri};
 use miden_protocol::assembly::{DefaultSourceManager, Library};
 use miden_protocol::asset::Asset;
+use miden_protocol::errors::NoteError;
 use miden_protocol::note::{
     Note,
     NoteAssets,
@@ -17,7 +18,7 @@ use miden_protocol::note::{
     NoteType,
 };
 use miden_protocol::testing::note::DEFAULT_NOTE_CODE;
-use miden_protocol::{Felt, NoteError, Word};
+use miden_protocol::{Felt, Word};
 use rand::Rng;
 
 use crate::code_builder::CodeBuilder;

@@ -2,8 +2,9 @@ use alloc::string::ToString;
 use alloc::vec::Vec;
 
 use crate::crypto::SequentialCommit;
+use crate::errors::NoteError;
 use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
-use crate::{Felt, Hasher, NoteError, Word};
+use crate::{Felt, Hasher, Word};
 
 // NOTE ATTACHMENT
 // ================================================================================================

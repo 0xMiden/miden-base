@@ -1,5 +1,6 @@
 use alloc::vec::Vec;
 
+use miden_protocol::Word;
 use miden_protocol::account::auth::PublicKeyCommitment;
 use miden_protocol::account::{
     AccountCode,
@@ -8,8 +9,8 @@ use miden_protocol::account::{
     StorageSlot,
     StorageSlotName,
 };
+use miden_protocol::errors::AccountError;
 use miden_protocol::utils::sync::LazyLock;
-use miden_protocol::{AccountError, Word};
 
 use crate::account::components::ecdsa_k256_keccak_acl_library;
 

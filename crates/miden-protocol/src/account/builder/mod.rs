@@ -15,7 +15,8 @@ use crate::account::{
     AccountType,
 };
 use crate::asset::AssetVault;
-use crate::{AccountError, Felt, Word};
+use crate::errors::AccountError;
+use crate::{Felt, Word};
 
 /// A convenient builder for an [`Account`] allowing for safe construction of an account by
 /// combining multiple [`AccountComponent`]s.

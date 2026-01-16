@@ -1,10 +1,11 @@
 use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 
+use miden_protocol::Word;
 use miden_protocol::account::auth::PublicKeyCommitment;
 use miden_protocol::account::{AccountComponent, StorageMap, StorageSlot, StorageSlotName};
+use miden_protocol::errors::AccountError;
 use miden_protocol::utils::sync::LazyLock;
-use miden_protocol::{AccountError, Word};
 
 use crate::account::components::falcon_512_rpo_multisig_library;
 

@@ -14,7 +14,8 @@ pub use code::AccountComponentCode;
 
 use crate::account::{AccountType, StorageSlot};
 use crate::assembly::Path;
-use crate::{AccountError, MastForest, Word};
+use crate::errors::AccountError;
+use crate::{MastForest, Word};
 
 // ACCOUNT COMPONENT
 // ================================================================================================
@@ -271,7 +272,7 @@ mod tests {
             "A test component".to_string(),
             Version::new(1, 0, 0),
             BTreeSet::from_iter([AccountType::RegularAccountImmutableCode]),
-            AccountStorageSchema::default(),
+            StorageSchema::default(),
         );
 
         let metadata_bytes = metadata.to_bytes();
@@ -329,7 +330,7 @@ mod tests {
                 AccountType::RegularAccountImmutableCode,
                 AccountType::RegularAccountUpdatableCode,
             ]),
-            AccountStorageSchema::default(),
+            StorageSchema::default(),
         );
 
         // Test with empty init data - this tests the complete workflow:

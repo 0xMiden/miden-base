@@ -1,5 +1,4 @@
-use crate::AddressError;
-use crate::errors::Bech32Error;
+use crate::errors::{AddressError, Bech32Error};
 
 /// The type of an [`Address`](super::Address) in Miden.
 ///
