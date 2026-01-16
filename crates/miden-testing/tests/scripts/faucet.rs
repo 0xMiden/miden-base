@@ -33,7 +33,10 @@ use miden_standards::account::faucets::{
     NetworkFungibleFaucet,
 };
 use miden_standards::code_builder::CodeBuilder;
-use miden_standards::errors::standards::{ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED, ERR_SENDER_NOT_OWNER};
+use miden_standards::errors::standards::{
+    ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED,
+    ERR_SENDER_NOT_OWNER,
+};
 use miden_standards::note::{MintNoteInputs, WellKnownNote, create_burn_note, create_mint_note};
 use miden_standards::testing::note::NoteBuilder;
 use miden_testing::{Auth, MockChain, assert_transaction_executor_error};
@@ -695,7 +698,6 @@ async fn test_network_faucet_owner_storage() -> anyhow::Result<()> {
 
     Ok(())
 }
-
 
 /// Tests that transfer_ownership updates the owner correctly.
 #[tokio::test]
