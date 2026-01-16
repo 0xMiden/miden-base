@@ -8,7 +8,7 @@ use crate::account::StorageMapDelta;
 use crate::crypto::merkle::InnerNodeInfo;
 use crate::crypto::merkle::smt::{LeafIndex, SMT_DEPTH, Smt, SmtLeaf};
 use crate::errors::StorageMapError;
-use crate::{AccountError, Felt, Hasher};
+use crate::{AccountError, Hasher};
 
 mod partial;
 pub use partial::PartialStorageMap;
@@ -204,16 +204,22 @@ impl StorageMap {
         self.entries
     }
 
+    // UTILITY FUNCTIONS
+    // --------------------------------------------------------------------------------------------
+
     /// Hashes the given key to get the key of the SMT.
     pub fn hash_key(raw_key: Word) -> Word {
         Hasher::hash_elements(raw_key.as_elements())
     }
 
-    // TODO: Replace with https://github.com/0xMiden/crypto/issues/515 once implemented.
+    /// Returns leaf index of a raw map key.
+    pub fn map_key_to_leaf_index(raw_key: Word) -> LeafIndex<SMT_DEPTH> {
+        Self::hash_key(raw_key).into()
+    }
+
     /// Returns the leaf index of a map key.
-    pub fn hashed_map_key_to_leaf_index(hashed_map_key: Word) -> Felt {
-        // The third element in an SMT key is the index.
-        hashed_map_key[3]
+    pub fn hashed_map_key_to_leaf_index(hashed_map_key: Word) -> LeafIndex<SMT_DEPTH> {
+        hashed_map_key.into()
     }
 }
 

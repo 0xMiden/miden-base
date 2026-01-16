@@ -8,6 +8,7 @@ use miden_assembly::diagnostics::reporting::PrintDiagnostic;
 use miden_core::mast::MastForestError;
 use miden_core::{EventId, Felt};
 use miden_crypto::merkle::mmr::MmrError;
+use miden_crypto::merkle::smt::{SmtLeafError, SmtProofError};
 use miden_crypto::utils::HexParseError;
 use miden_processor::DeserializationError;
 use thiserror::Error;
@@ -33,7 +34,14 @@ use crate::address::AddressType;
 use crate::asset::AssetVaultKey;
 use crate::batch::BatchId;
 use crate::block::BlockNumber;
-use crate::note::{NoteAssets, NoteExecutionHint, NoteTag, NoteType, Nullifier};
+use crate::note::{
+    NoteAssets,
+    NoteAttachmentArray,
+    NoteExecutionHint,
+    NoteTag,
+    NoteType,
+    Nullifier,
+};
 use crate::transaction::{TransactionEventId, TransactionId};
 use crate::{
     ACCOUNT_UPDATE_MAX_SIZE,
@@ -294,11 +302,11 @@ pub enum AccountTreeError {
 #[derive(Debug, Error)]
 pub enum AddressError {
     #[error("tag length {0} should be {expected} bits for network accounts",
-        expected = NoteTag::DEFAULT_NETWORK_TAG_LENGTH
+        expected = NoteTag::DEFAULT_NETWORK_ACCOUNT_TARGET_TAG_LENGTH
     )]
     CustomTagLengthNotAllowedForNetworkAccounts(u8),
     #[error("tag length {0} is too large, must be less than or equal to {max}",
-        max = NoteTag::MAX_LOCAL_TAG_LENGTH
+        max = NoteTag::MAX_ACCOUNT_TARGET_TAG_LENGTH
     )]
     TagLengthTooLarge(u8),
     #[error("unknown address interface `{0}`")]
@@ -540,7 +548,7 @@ pub enum PartialAssetVaultError {
 
 #[derive(Debug, Error)]
 pub enum NoteError {
-    #[error("note tag length {0} exceeds the maximum of {max}", max = NoteTag::MAX_LOCAL_TAG_LENGTH)]
+    #[error("note tag length {0} exceeds the maximum of {max}", max = NoteTag::MAX_ACCOUNT_TARGET_TAG_LENGTH)]
     NoteTagLengthTooLarge(u8),
     #[error("duplicate fungible asset from issuer {0} in note")]
     DuplicateFungibleAsset(AccountId),
@@ -552,8 +560,6 @@ pub enum NoteError {
     AddFungibleAssetBalanceError(#[source] AssetError),
     #[error("note sender is not a valid account ID")]
     NoteSenderInvalidAccountId(#[source] AccountIdError),
-    #[error("note tag use case {0} must be less than 2^{exp}", exp = NoteTag::MAX_USE_CASE_ID_EXPONENT)]
-    NoteTagUseCaseTooLarge(u16),
     #[error(
         "note execution hint tag {0} must be in range {from}..={to}",
         from = NoteExecutionHint::NONE_TAG,
@@ -587,6 +593,15 @@ pub enum NoteError {
     TooManyInputs(usize),
     #[error("note tag requires a public note but the note is of type {0}")]
     PublicNoteRequired(NoteType),
+    #[error(
+        "note attachment cannot commit to more than {} elements",
+        NoteAttachmentArray::MAX_NUM_ELEMENTS
+    )]
+    NoteAttachmentArraySizeExceeded(usize),
+    #[error("unknown note attachment kind {0}")]
+    UnknownNoteAttachmentKind(u8),
+    #[error("note attachment of kind None must have attachment scheme None")]
+    AttachmentKindNoneMustHaveAttachmentSchemeNone,
     #[error("{error_msg}")]
     Other {
         error_msg: Box<str>,
@@ -692,6 +707,41 @@ pub enum TransactionInputError {
         "total number of input notes is {0} which exceeds the maximum of {MAX_INPUT_NOTES_PER_TX}"
     )]
     TooManyInputNotes(usize),
+}
+
+// TRANSACTION INPUTS EXTRACTION ERROR
+// ===============================================================================================
+
+#[derive(Debug, Error)]
+pub enum TransactionInputsExtractionError {
+    #[error("specified foreign account id matches the transaction input's account id")]
+    AccountNotForeign,
+    #[error("foreign account data not found in advice map for account {0}")]
+    ForeignAccountNotFound(AccountId),
+    #[error("foreign account code not found for account {0}")]
+    ForeignAccountCodeNotFound(AccountId),
+    #[error("storage header data not found in advice map for account {0}")]
+    StorageHeaderNotFound(AccountId),
+    #[error("failed to handle account data")]
+    AccountError(#[from] AccountError),
+    #[error("failed to handle merkle data")]
+    MerkleError(#[from] MerkleError),
+    #[error("failed to handle account tree data")]
+    AccountTreeError(#[from] AccountTreeError),
+    #[error("missing vault root from Merkle store")]
+    MissingVaultRoot,
+    #[error("missing storage map root from Merkle store")]
+    MissingMapRoot,
+    #[error("failed to construct SMT proof")]
+    SmtProofError(#[from] SmtProofError),
+    #[error("failed to construct asset witness")]
+    AssetError(#[from] AssetError),
+    #[error("failed to handle storage map data")]
+    StorageMapError(#[from] StorageMapError),
+    #[error("failed to convert elements to leaf index: {0}")]
+    LeafConversionError(String),
+    #[error("failed to construct SMT leaf")]
+    SmtLeafError(#[from] SmtLeafError),
 }
 
 // TRANSACTION OUTPUT ERROR
