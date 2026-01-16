@@ -17,6 +17,9 @@ pub const ERR_B2AGG_WRONG_NUMBER_OF_ASSETS: MasmError = MasmError::from_static_s
 /// Error Message: "B2AGG script expects exactly 6 note inputs"
 pub const ERR_B2AGG_WRONG_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_str("B2AGG script expects exactly 6 note inputs");
 
+/// Error Message: "bridge not mainnet"
+pub const ERR_BRIDGE_NOT_MAINNET: MasmError = MasmError::from_static_str("bridge not mainnet");
+
 /// Error Message: "CLAIM's target account address and transaction address do not match"
 pub const ERR_CLAIM_TARGET_ACCT_MISMATCH: MasmError = MasmError::from_static_str("CLAIM's target account address and transaction address do not match");
 
@@ -26,8 +29,14 @@ pub const ERR_FELT_OUT_OF_FIELD: MasmError = MasmError::from_static_str("combine
 /// Error Message: "invalid claim proof"
 pub const ERR_INVALID_CLAIM_PROOF: MasmError = MasmError::from_static_str("invalid claim proof");
 
+/// Error Message: "leading bits of global index must be zero"
+pub const ERR_LEADING_BITS_NON_ZERO: MasmError = MasmError::from_static_str("leading bits of global index must be zero");
+
 /// Error Message: "address limb is not u32"
 pub const ERR_NOT_U32: MasmError = MasmError::from_static_str("address limb is not u32");
+
+/// Error Message: "rollup index must be zero for a mainnet deposit"
+pub const ERR_ROLLUP_INDEX_NON_ZERO: MasmError = MasmError::from_static_str("rollup index must be zero for a mainnet deposit");
 
 /// Error Message: "maximum scaling factor is 18"
 pub const ERR_SCALE_AMOUNT_EXCEEDED_LIMIT: MasmError = MasmError::from_static_str("maximum scaling factor is 18");

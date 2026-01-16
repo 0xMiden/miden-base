@@ -86,10 +86,8 @@ proc verify_leaf
     # => [LEAF_VALUE[8]]
 
     # 3. Inspect `globalIndex` to see if we're dealing with a deposit from mainnet or from a rollup
-    # TODO load global index double word from memory
     padw mem_loadw_le.GLOBAL_INDEX_PTR
     padw push.GLOBAL_INDEX_PTR add.4 mem_loadw_le swapw
-
     # => [GLOBAL_INDEX[8], LEAF_VALUE[8]]
 
     exec.process_global_index_mainnet
@@ -114,13 +112,13 @@ end
 #! Outputs: [leaf_index]
 #!
 #! Invocation: exec
-proc process_global_index_mainnet
+pub proc process_global_index_mainnet
 # for v0.1, let's only implement the mainnet branch
     # the top 191 bits of the global index are zero
     repeat.5 assertz.err=ERR_LEADING_BITS_NON_ZERO end
 
     # the next element is a u32 mainnet flag bit
-    u32and.1
+    # enforce that this limb is one
     # => [mainnet_flag, GLOBAL_INDEX[6..8], LEAF_VALUE[8]]
     assert.err=ERR_BRIDGE_NOT_MAINNET
 
