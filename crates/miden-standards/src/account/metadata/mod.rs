@@ -1,11 +1,7 @@
-use alloc::vec::Vec;
-
+use miden_protocol::Word;
 use miden_protocol::account::component::StorageSchema;
 use miden_protocol::account::{AccountComponent, StorageSlot, StorageSlotName};
-use miden_protocol::crypto::utils::bytes_to_elements_with_padding;
-use miden_protocol::utils::Serializable;
 use miden_protocol::utils::sync::LazyLock;
-use miden_protocol::{Hasher, LexicographicWord, Word};
 
 use crate::account::components::storage_schema_library;
 
@@ -15,6 +11,10 @@ static SCHEMA_COMMITMENT_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(||
 });
 
 /// An [`AccountComponent`] exposing the account storage schema commitment.
+///
+/// The [`AccountSchemaCommitment`] component can be constructed from a list of [`StorageSchema`],
+/// from which a commitment is computed and then inserted into the [`SCHEMA_COMMITMENT_SLOT_NAME`]
+/// slot.
 ///
 /// It reexports the `get_schema_commitment` procedure from
 /// `miden::standards::metadata::storage_schema`.
@@ -29,8 +29,7 @@ pub struct AccountSchemaCommitment {
 impl AccountSchemaCommitment {
     /// Creates a new [`AccountSchemaCommitment`] component from a list of storage schemas.
     ///
-    /// The input schemas are ordered deterministically by their commitments before the final
-    /// commitment is computed.
+    /// The input schemas are merged into a single schema before the final commitment is computed.
     pub fn new(schemas: &[StorageSchema]) -> Self {
         Self {
             schema_commitment: compute_schema_commitment(schemas),
@@ -66,23 +65,21 @@ impl From<AccountSchemaCommitment> for AccountComponent {
 
 /// Computes the schema commitment.
 ///
-/// The account schema commitment is the hash of the ordered list of component schema commitments.
+/// The account schema commitment is computed from the merged schema commitment.
 /// If the passed list of schemas is empty, [`Word::empty()`] is returned.
 fn compute_schema_commitment(schemas: &[StorageSchema]) -> Word {
     if schemas.is_empty() {
         return Word::empty();
     }
 
-    let mut commitments: Vec<Word> = schemas.iter().map(StorageSchema::commitment).collect();
-    commitments.sort_by(|a, b| LexicographicWord::new(*a).cmp(&LexicographicWord::new(*b)));
+    let merged_schema = StorageSchema::new(schemas.iter().flat_map(|schema| {
+        schema
+            .iter()
+            .map(|(slot_name, slot_schema)| (slot_name.clone(), slot_schema.clone()))
+    }))
+    .expect("storage schemas should merge into a valid combined schema");
 
-    let mut bytes = Vec::with_capacity(commitments.len() * Word::SERIALIZED_SIZE);
-    for commitment in commitments.iter() {
-        commitment.write_into(&mut bytes);
-    }
-
-    let elements = bytes_to_elements_with_padding(&bytes);
-    Hasher::hash_elements(&elements)
+    merged_schema.commitment()
 }
 
 #[cfg(test)]
