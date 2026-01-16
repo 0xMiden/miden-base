@@ -15,7 +15,6 @@ use miden_protocol::asset::{Asset, FungibleAsset};
 use miden_protocol::note::{
     Note,
     NoteAssets,
-    NoteExecutionHint,
     NoteInputs,
     NoteMetadata,
     NoteRecipient,
@@ -70,9 +69,7 @@ async fn test_bridge_out_consumes_b2agg_note() -> anyhow::Result<()> {
 
     let amount = Felt::new(100);
     let bridge_asset: Asset = FungibleAsset::new(faucet.id(), amount.into()).unwrap().into();
-    let tag = NoteTag::for_local_use_case(0, 0).unwrap();
-    let aux = Felt::new(0);
-    let note_execution_hint = NoteExecutionHint::always();
+    let tag = NoteTag::new(0);
     let note_type = NoteType::Public; // Use Public note type for network transaction
 
     // Get the B2AGG note script
@@ -93,8 +90,7 @@ async fn test_bridge_out_consumes_b2agg_note() -> anyhow::Result<()> {
     let inputs = NoteInputs::new(input_felts.clone())?;
 
     // Create the B2AGG note with assets from the faucet
-    let b2agg_note_metadata =
-        NoteMetadata::new(faucet.id(), note_type, tag, note_execution_hint, aux)?;
+    let b2agg_note_metadata = NoteMetadata::new(faucet.id(), note_type, tag);
     let b2agg_note_assets = NoteAssets::new(vec![bridge_asset])?;
     let serial_num = Word::from([1, 2, 3, 4u32]);
     let b2agg_note_script = NoteScript::new(b2agg_script);
@@ -146,7 +142,7 @@ async fn test_bridge_out_consumes_b2agg_note() -> anyhow::Result<()> {
 
     assert_eq!(
         burn_note.metadata().tag(),
-        NoteTag::from_account_id(faucet.id()),
+        NoteTag::with_account_target(faucet.id()),
         "BURN note should have the correct tag"
     );
 
@@ -230,9 +226,7 @@ async fn test_b2agg_note_reclaim_scenario() -> anyhow::Result<()> {
 
     let amount = Felt::new(50);
     let bridge_asset: Asset = FungibleAsset::new(faucet.id(), amount.into()).unwrap().into();
-    let tag = NoteTag::for_local_use_case(0, 0).unwrap();
-    let aux = Felt::new(0);
-    let note_execution_hint = NoteExecutionHint::always();
+    let tag = NoteTag::new(0);
     let note_type = NoteType::Public;
 
     // Get the B2AGG note script
@@ -252,8 +246,7 @@ async fn test_b2agg_note_reclaim_scenario() -> anyhow::Result<()> {
 
     // Create the B2AGG note with the USER ACCOUNT as the sender
     // This is the key difference - the note sender will be the same as the consuming account
-    let b2agg_note_metadata =
-        NoteMetadata::new(user_account.id(), note_type, tag, note_execution_hint, aux)?;
+    let b2agg_note_metadata = NoteMetadata::new(user_account.id(), note_type, tag);
     let b2agg_note_assets = NoteAssets::new(vec![bridge_asset])?;
     let serial_num = Word::from([1, 2, 3, 4u32]);
     let b2agg_note_script = NoteScript::new(b2agg_script);

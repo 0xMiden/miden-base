@@ -24,7 +24,6 @@ use miden_protocol::crypto::rand::FeltRng;
 use miden_protocol::note::{
     Note,
     NoteAssets,
-    NoteExecutionHint,
     NoteInputs,
     NoteMetadata,
     NoteRecipient,
@@ -465,23 +464,15 @@ pub fn create_claim_note<R: FeltRng>(params: ClaimNoteParams<'_, R>) -> Result<N
 
     let inputs = NoteInputs::new(claim_inputs)?;
 
-    // Use a default tag since we don't have agg_faucet_id anymore
-    let tag = NoteTag::for_local_use_case(0, 0)?;
+    let tag = NoteTag::with_account_target(params.agglayer_faucet_account_id);
 
     let claim_script = claim_script();
     let serial_num = params.rng.draw_word();
 
     let note_type = NoteType::Public;
-    let execution_hint = NoteExecutionHint::always();
 
     // Use a default sender since we don't have sender anymore - create from destination address
-    let metadata = NoteMetadata::new(
-        params.claim_note_creator_account_id,
-        note_type,
-        tag,
-        execution_hint,
-        Felt::ZERO,
-    )?;
+    let metadata = NoteMetadata::new(params.claim_note_creator_account_id, note_type, tag);
     let assets = NoteAssets::new(vec![])?;
     let recipient = NoteRecipient::new(serial_num, claim_script, inputs);
 
