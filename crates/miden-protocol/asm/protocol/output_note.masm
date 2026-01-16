@@ -1,31 +1,45 @@
 use miden::protocol::kernel_proc_offsets
 use miden::protocol::note
 
+# CONSTANTS
+# =================================================================================================
+
+# Constants for note attachment kinds
+pub const ATTACHMENT_KIND_NONE=0
+pub const ATTACHMENT_KIND_WORD=1
+pub const ATTACHMENT_KIND_ARRAY=2
+
 # PROCEDURES
 # =================================================================================================
 
 #! Creates a new note and returns the index of the note.
 #!
-#! Inputs:  [tag, aux, note_type, execution_hint, RECIPIENT]
+#! Inputs:  [tag, note_type, RECIPIENT]
 #! Outputs: [note_idx]
 #!
 #! Where:
 #! - tag is the tag to be included in the note.
-#! - aux is the auxiliary metadata to be included in the note.
 #! - note_type is the storage type of the note.
-#! - execution_hint is the note's execution hint.
 #! - RECIPIENT is the recipient of the note.
 #! - note_idx is the index of the created note.
+#!
+#! Panics if:
+#! - the note_type is unknown.
+#! - the note tag is not a u32.
+#! - the number of output notes exceeds the maximum limit of 1024.
 #!
 #! Invocation: exec
 pub proc create
     # pad the stack before the syscall to prevent accidental modification of the deeper stack
     # elements
-    padw padw swapdw movup.8 drop
-    # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
+    push.0 movdn.6 push.0
+    # => [0, tag, note_type, RECIPIENT, 0]
+
+    padw padw swapdw drop
+    # => [tag, note_type, RECIPIENT, pad(9)]
 
     exec.kernel_proc_offsets::output_note_create_offset
-    # => [offset, tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
+    # => [offset, tag, note_type, RECIPIENT, pad(9)]
 
     syscall.exec_kernel_proc
     # => [note_idx, pad(15)]
@@ -134,6 +148,95 @@ pub proc add_asset
     # => []
 end
 
+#! Sets the attachment of the note specified by the index.
+#!
+#! Inputs:  [note_idx, attachment_scheme, attachment_kind, ATTACHMENT]
+#! Outputs: []
+#!
+#! Where:
+#! - note_idx is the index of the note on which the attachment is set.
+#! - attachment_scheme is the user-defined scheme of the attachment.
+#! - attachment_kind is the kind of the attachment content.
+#! - ATTACHMENT is the attachment to be set.
+#!
+#! Panics if:
+#! - the procedure is called when the active account is not the native one.
+#! - the note index points to a non-existent output note.
+#! - the attachment kind or scheme does not fit into a u32.
+#! - the attachment kind is an unknown variant.
+#!
+#! Invocation: exec
+pub proc set_attachment
+    exec.kernel_proc_offsets::output_note_set_attachment_offset
+    # => [offset, note_idx, attachment_scheme, attachment_kind, ATTACHMENT]
+
+    # pad the stack before the syscall
+    padw padw swapdw
+    # => [offset, note_idx, attachment_scheme, attachment_kind, ATTACHMENT, pad(8)]
+
+    syscall.exec_kernel_proc
+    # => [pad(16)]
+
+    # remove excess PADs from the stack
+    dropw dropw dropw dropw
+    # => []
+end
+
+
+
+#! Sets the attachment of the note specified by the note index to the provided word.
+#!
+#! This overwrites any previously set attachment.
+#!
+#! Inputs:  [note_idx, attachment_scheme, ATTACHMENT]
+#! Outputs: []
+#!
+#! Where:
+#! - note_idx is the index of the note on which the attachment is set.
+#! - attachment_scheme is the user-defined scheme of the attachment.
+#! - ATTACHMENT is the raw attachment to set.
+#!
+#! Panics if:
+#! - the procedure is called when the active account is not the native one.
+#! - the note index points to a non-existent output note.
+#! - the attachment_scheme does not fit into a u32.
+#!
+#! Invocation: exec
+pub proc set_word_attachment
+    push.ATTACHMENT_KIND_WORD movdn.2
+    # => [note_idx, attachment_scheme, attachment_kind, ATTACHMENT]
+
+    exec.set_attachment
+    # => []
+end
+
+#! Sets the attachment of the note specified by the note index to the provided ATTACHMENT which
+#! commits to an array of felts.
+#!
+#! This overwrites any previously set attachment.
+#!
+#! Inputs:  [note_idx, attachment_scheme, ATTACHMENT]
+#! Outputs: []
+#!
+#! Where:
+#! - note_idx is the index of the note on which the attachment is set.
+#! - attachment_scheme is the user-defined scheme of the attachment.
+#! - ATTACHMENT is the commitment of the set of elements that form the note attachment.
+#!
+#! Panics if:
+#! - the procedure is called when the active account is not the native one.
+#! - the note index points to a non-existent output note.
+#! - the attachment_scheme does not fit into a u32.
+#!
+#! Invocation: exec
+pub proc set_array_attachment
+    push.ATTACHMENT_KIND_ARRAY movdn.2
+    # => [note_idx, attachment_scheme, attachment_kind, ATTACHMENT]
+
+    exec.set_attachment
+    # => []
+end
+
 #! Returns the recipient of the output note with the specified index.
 #!
 #! Inputs:  [note_index]
@@ -170,11 +273,12 @@ end
 #! Returns the metadata of the output note with the specified index.
 #!
 #! Inputs:  [note_index]
-#! Outputs: [METADATA]
+#! Outputs: [NOTE_ATTACHMENT, METADATA_HEADER]
 #!
 #! Where:
 #! - note_index is the index of the output note whose metadata should be returned.
-#! - METADATA is the metadata of the output note.
+#! - METADATA_HEADER is the metadata header of the specified output note.
+#! - NOTE_ATTACHMENT is the attachment of the specified output note.
 #!
 #! Panics if:
 #! - the note index is greater or equal to the total number of output notes.
@@ -193,9 +297,9 @@ pub proc get_metadata
     # => [offset, note_index, pad(14)]
 
     syscall.exec_kernel_proc
-    # => [METADATA, pad(12)]
+    # => [NOTE_ATTACHMENT, METADATA_HEADER, pad(8)]
 
     # clean the stack
-    swapdw dropw dropw swapw dropw
-    # => [METADATA]
+    swapdw dropw dropw
+    # => [NOTE_ATTACHMENT, METADATA_HEADER]
 end

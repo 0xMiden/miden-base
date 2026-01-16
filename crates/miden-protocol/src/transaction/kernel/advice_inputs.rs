@@ -106,6 +106,16 @@ impl TransactionAdviceInputs {
         .into_iter()
     }
 
+    // PUBLIC UTILITIES
+    // --------------------------------------------------------------------------------------------
+
+    /// Returns the advice map key where:
+    /// - the seed for native accounts is stored.
+    /// - the account header for foreign accounts is stored.
+    pub fn account_id_map_key(id: AccountId) -> Word {
+        Word::from([id.suffix(), id.prefix().as_felt(), ZERO, ZERO])
+    }
+
     // MUTATORS
     // --------------------------------------------------------------------------------------------
 
@@ -349,7 +359,8 @@ impl TransactionAdviceInputs {
             note_data.extend(*recipient.inputs().commitment());
             note_data.extend(*assets.commitment());
             note_data.extend(*note_arg);
-            note_data.extend(Word::from(note.metadata()));
+            note_data.extend(note.metadata().to_header_word());
+            note_data.extend(note.metadata().to_attachment_word());
             note_data.push(recipient.inputs().num_values().into());
             note_data.push((assets.num_assets() as u32).into());
             note_data.extend(assets.to_padded_assets());
@@ -409,13 +420,6 @@ impl TransactionAdviceInputs {
     /// nodes.
     fn extend_merkle_store(&mut self, iter: impl Iterator<Item = InnerNodeInfo>) {
         self.0.store.extend(iter);
-    }
-
-    /// Returns the advice map key where:
-    /// - the seed for native accounts is stored.
-    /// - the account header for foreign accounts is stored.
-    fn account_id_map_key(id: AccountId) -> Word {
-        Word::from([id.suffix(), id.prefix().as_felt(), ZERO, ZERO])
     }
 }
 
