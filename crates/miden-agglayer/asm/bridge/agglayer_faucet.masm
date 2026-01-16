@@ -57,28 +57,23 @@ const ERR_INVALID_CLAIM_PROOF = "invalid claim proof"
 #!
 #! Invocation: exec
 proc validate_claim
-    # Get bridge_in::check_claim_proof procedure MAST root
-    procref.bridge_in::check_claim_proof
-    # => [BRIDGE_PROC_MAST_ROOT]
+    # get bridge_in::verify_leaf_bridge procedure MAST root
+    procref.bridge_in::verify_leaf_bridge
+    # => [BRIDGE_PROC_MAST_ROOT, PROOF_DATA_KEY, LEAF_DATA_KEY]
 
     push.BRIDGE_ID_SLOT[0..2]
-    # => [bridge_id_idx, BRIDGE_PROC_MAST_ROOT]
+    # => [bridge_id_idx, BRIDGE_PROC_MAST_ROOT, PROOF_DATA_KEY, LEAF_DATA_KEY]
 
-    # Get Bridge AccountId
+    # get bridge account ID
     exec.active_account::get_item
-    # => [bridge_account_id_prefix, bridge_account_id_suffix, 0, 0, BRIDGE_PROC_MAST_ROOT]
+    # => [bridge_account_id_prefix, bridge_account_id_suffix, 0, 0, BRIDGE_PROC_MAST_ROOT, PROOF_DATA_KEY, LEAF_DATA_KEY]
 
     movup.2 drop movup.2 drop
-    # => [bridge_account_id_prefix, bridge_account_id_suffix, BRIDGE_PROC_MAST_ROOT]
+    # => [bridge_account_id_prefix, bridge_account_id_suffix, BRIDGE_PROC_MAST_ROOT, PROOF_DATA_KEY, LEAF_DATA_KEY]
 
-    # Call check_claim_proof procedure on Bridge
-    # Calling: bridge_in::check_claim_proof
+    # call bridge_in::verify_leaf_bridge
     exec.tx::execute_foreign_procedure
-    # => [validation_result]
-
-    # Assert valid proof data
-    assert.err=ERR_INVALID_CLAIM_PROOF drop
-    # => [] 
+    # => []
 end
 
 # Inputs: []

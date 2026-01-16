@@ -7,7 +7,7 @@ pub proc get_rollup_exit_root
     push.0.0.0.0.0.0.0.0  # dummy GER
 end
 
-#! Checks the validity of the GET proof
+#! Computes the leaf value and verifies it against the AggLayer bridge.
 #!
 #! Inputs:
 #!   Operand stack: [PROOF_DATA_KEY, LEAF_DATA_KEY, pad(8)]
@@ -30,14 +30,30 @@ end
 #!     ],
 #!   }
 #!
+#! Outputs: [pad(16)]
+#!
 #! Invocation: call
-pub proc check_claim_proof
-    exec.get_rollup_exit_root
-    # => [GER_ROOT[8], CLAIM_NOTE_RPO_COMMITMENT]
+pub proc verify_leaf_bridge
+    # get the leaf value. We have all the necessary leaf data in the advice map
+    swapw
+    # => [LEAF_DATA_KEY, PROOF_DATA_KEY, pad(8)]
+    exec.crypto_utils::get_leaf_value
+    # => [LEAF_VALUE[8], PROOF_DATA_KEY, pad(8)]
 
-    # Check CLAIM note proof data against current GER 
-    exec.crypto_utils::verify_claim_proof
-    # => [is_valid_claim_proof]
+    movupw.3 dropw
+    # => [LEAF_VALUE[8], PROOF_DATA_KEY, pad(4)]
 
-    swap drop
+    # delegate proof verification (stubbed for now)
+    exec.verify_leaf
+end
+
+#! Verify leaf and checks that it has not been claimed.
+#!
+#! Inputs:
+#!   Operand stack: [LEAF_VALUE[8], PROOF_DATA_KEY, pad(4)]
+#! Invocation: exec
+proc verify_leaf
+    # TODO: Awaiting https://github.com/0xMiden/miden-base/issues/2277
+    dropw dropw dropw
+    # => [pad(16)]
 end
