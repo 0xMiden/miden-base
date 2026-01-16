@@ -84,10 +84,10 @@ impl From<NetworkAccountTarget> for NoteAttachment {
     }
 }
 
-impl TryFrom<NoteAttachment> for NetworkAccountTarget {
+impl TryFrom<&NoteAttachment> for NetworkAccountTarget {
     type Error = NetworkAccountTargetError;
 
-    fn try_from(attachment: NoteAttachment) -> Result<Self, Self::Error> {
+    fn try_from(attachment: &NoteAttachment) -> Result<Self, Self::Error> {
         if attachment.attachment_scheme() != Self::ATTACHMENT_SCHEME {
             return Err(NetworkAccountTargetError::AttachmentSchemeMismatch(
                 attachment.attachment_scheme(),
@@ -157,7 +157,7 @@ mod tests {
         let network_account_target = NetworkAccountTarget::new(id, NoteExecutionHint::Always)?;
         assert_eq!(
             network_account_target,
-            NetworkAccountTarget::try_from(NoteAttachment::from(network_account_target))?
+            NetworkAccountTarget::try_from(&NoteAttachment::from(network_account_target))?
         );
 
         Ok(())

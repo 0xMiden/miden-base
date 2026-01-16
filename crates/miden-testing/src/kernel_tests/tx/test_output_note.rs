@@ -1194,8 +1194,7 @@ async fn test_set_network_target_account_attachment() -> anyhow::Result<()> {
     assert_eq!(actual_note.assets().unwrap(), output_note.assets());
 
     // Make sure we can deserialize the attachment back into its original type.
-    let actual_attachment =
-        NetworkAccountTarget::try_from(actual_note.metadata().attachment().clone())?;
+    let actual_attachment = NetworkAccountTarget::try_from(actual_note.metadata().attachment())?;
     assert_eq!(actual_attachment, attachment);
 
     Ok(())
