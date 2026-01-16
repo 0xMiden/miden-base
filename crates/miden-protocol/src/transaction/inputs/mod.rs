@@ -431,9 +431,6 @@ impl TransactionInputs {
     /// This also merges the advice inputs from both the transaction inputs and the tx args,
     /// ensuring that `self.advice_inputs` is always a subset of `self.tx_args.advice_inputs()`.
     fn set_tx_args_inner(&mut self, tx_args: TransactionArgs) {
-        // Copy the tx_args advice inputs to self.advice_inputs first, so that any data
-        // from a previous execution (e.g., during re-execution) is preserved.
-        self.advice_inputs.extend(tx_args.advice_inputs().clone());
         self.tx_args = tx_args;
         self.tx_args.extend_advice_inputs(self.advice_inputs.clone());
     }
