@@ -90,8 +90,8 @@ end
 #! Inputs:  [smt_proof_ptr, leaf_index, LEAF_VALUE[8], root_ptr]
 #! Outputs: []
 #!
-#! NOTE: this is currently a stub and performs no verification.
 pub proc verify_merkle_proof
+    # TODO pending https://github.com/0xMiden/miden-base/issues/2278
     drop
     drop
     dropw dropw
