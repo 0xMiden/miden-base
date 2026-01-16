@@ -4,8 +4,8 @@ use alloc::vec::Vec;
 
 use thiserror::Error;
 
-use super::value_name::StorageValueNameError;
 use super::StorageValueName;
+use super::value_name::StorageValueNameError;
 use crate::account::StorageSlotName;
 use crate::errors::StorageSlotNameError;
 use crate::{Felt, FieldElement, Word};

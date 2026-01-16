@@ -125,7 +125,9 @@ fn map_slot_schema_accepts_typed_map_init_value() {
     let slot_name: StorageSlotName = "demo::map".parse().unwrap();
 
     let mut init_data = InitStorageData::default();
-    init_data.insert_map_entry("demo::map", [1u32, 0, 0, 0], [10u32, 11, 12, 13]).unwrap();
+    init_data
+        .insert_map_entry("demo::map", [1u32, 0, 0, 0], [10u32, 11, 12, 13])
+        .unwrap();
 
     let built = slot.try_build_map(&init_data, &slot_name).unwrap();
     let expected = StorageMap::with_entries([(

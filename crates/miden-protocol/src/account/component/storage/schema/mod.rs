@@ -26,7 +26,6 @@ mod value_slot;
 pub use value_slot::ValueSlotSchema;
 
 mod word;
-pub(super) use map_slot::parse_storage_value_with_schema;
 pub use word::WordSchema;
 
 #[cfg(test)]
