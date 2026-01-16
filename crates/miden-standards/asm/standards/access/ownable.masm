@@ -12,7 +12,7 @@ use miden::protocol::native_account
 # ================================================================================================
 
 # The slot in this component's storage layout where the owner config is stored.
-const OWNER_CONFIG_SLOT=word("miden::standards::access::ownable::owner_config")
+const OWNER_CONFIG_SLOT = word("miden::standards::access::ownable::owner_config")
 
 # ZERO_ADDRESS word (all zeros) used to represent no owner
 # Format: [prefix=0, suffix=0, 0, 0] as stored in account storage
