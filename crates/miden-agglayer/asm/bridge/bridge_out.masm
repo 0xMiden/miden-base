@@ -11,9 +11,7 @@ const MMR_PTR=42
 const LOCAL_EXIT_TREE_SLOT=word("miden::agglayer::let")
 
 const BURN_NOTE_ROOT = [15615638671708113717, 1774623749760042586, 2028263167268363492, 12931944505143778072]
-const EXECUTION_HINT_ALWAYS=1
 const PUBLIC_NOTE=1
-const AUX=0
 const NUM_BURN_NOTE_INPUTS=0
 const BURN_ASSET_MEM_PTR=24
 
@@ -75,11 +73,9 @@ proc create_burn_note
     exec.note::build_recipient
     # => [RECIPIENT]
 
-    push.EXECUTION_HINT_ALWAYS
     push.PUBLIC_NOTE
-    push.AUX
     loc_load.5
-    # => [tag, aux, note_type, execution_hint, RECIPIENT]
+    # => [tag, note_type, RECIPIENT]
 
     call.output_note::create
     # => [note_idx]
