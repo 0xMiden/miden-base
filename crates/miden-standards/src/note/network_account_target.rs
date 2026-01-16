@@ -157,7 +157,7 @@ mod tests {
         let network_account_target = NetworkAccountTarget::new(id, NoteExecutionHint::Always)?;
         assert_eq!(
             network_account_target,
-            NetworkAccountTarget::try_from(NoteAttachment::from(network_account_target))?
+            NetworkAccountTarget::try_from(&NoteAttachment::from(network_account_target))?
         );
 
         Ok(())
