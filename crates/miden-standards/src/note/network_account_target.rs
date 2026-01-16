@@ -84,10 +84,10 @@ impl From<NetworkAccountTarget> for NoteAttachment {
     }
 }
 
-impl TryFrom<NoteAttachment> for NetworkAccountTarget {
+impl TryFrom<&NoteAttachment> for NetworkAccountTarget {
     type Error = NetworkAccountTargetError;
 
-    fn try_from(attachment: NoteAttachment) -> Result<Self, Self::Error> {
+    fn try_from(attachment: &NoteAttachment) -> Result<Self, Self::Error> {
         if attachment.attachment_scheme() != Self::ATTACHMENT_SCHEME {
             return Err(NetworkAccountTargetError::AttachmentSchemeMismatch(
                 attachment.attachment_scheme(),
