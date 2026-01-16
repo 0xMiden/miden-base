@@ -74,6 +74,43 @@ pub struct InitStorageData {
 }
 
 impl InitStorageData {
+    /// Creates a new instance of [InitStorageData], validating that there are no conflicting
+    /// entries.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - A slot has both value entries and map entries
+    /// - A slot has both a slot-level value and field values
+    pub fn new(
+        value_entries: BTreeMap<StorageValueName, WordValue>,
+        map_entries: BTreeMap<StorageSlotName, Vec<(WordValue, WordValue)>>,
+    ) -> Result<Self, InitStorageDataError> {
+        // Check for conflicts between value entries and map entries
+        for slot_name in map_entries.keys() {
+            if value_entries.keys().any(|v| v.slot_name() == slot_name) {
+                return Err(InitStorageDataError::ConflictingEntries(slot_name.as_str().into()));
+            }
+        }
+
+        // Check for conflicts between slot-level values and field values
+        for value_name in value_entries.keys() {
+            if value_name.field_name().is_none() {
+                // This is a slot-level value; check if there are field entries for this slot
+                let has_field_entries = value_entries.keys().any(|other| {
+                    other.slot_name() == value_name.slot_name() && other.field_name().is_some()
+                });
+                if has_field_entries {
+                    return Err(InitStorageDataError::ConflictingEntries(
+                        value_name.slot_name().as_str().into(),
+                    ));
+                }
+            }
+        }
+
+        Ok(InitStorageData { value_entries, map_entries })
+    }
+
     /// Returns a reference to the underlying init values map.
     pub fn values(&self) -> &BTreeMap<StorageValueName, WordValue> {
         &self.value_entries

@@ -35,7 +35,7 @@ use crate::AccountError;
 /// # Example
 ///
 /// ```
-/// use std::collections::BTreeSet;
+/// use std::collections::{BTreeMap, BTreeSet};
 ///
 /// use miden_protocol::account::StorageSlotName;
 /// use miden_protocol::account::component::{
