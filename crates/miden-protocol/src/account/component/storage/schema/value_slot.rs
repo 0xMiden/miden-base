@@ -4,11 +4,12 @@ use alloc::string::String;
 use miden_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
 use miden_processor::DeserializationError;
 
-use super::type_registry::SchemaRequirement;
-use super::{InitStorageData, StorageValueName, WordSchema};
-use crate::Word;
+use super::super::type_registry::SchemaRequirement;
+use super::super::{InitStorageData, StorageValueName};
+use super::{validate_description_ascii, WordSchema};
 use crate::account::StorageSlotName;
 use crate::errors::AccountComponentTemplateError;
+use crate::Word;
 
 // VALUE SLOT SCHEMA
 // ================================================================================================
@@ -54,10 +55,19 @@ impl ValueSlotSchema {
         self.word.try_build_word(init_storage_data, slot_name)
     }
 
-    pub(crate) fn validate(
+    pub(super) fn write_into_with_optional_defaults<W: ByteWriter>(
         &self,
-        _slot_name: &StorageSlotName,
-    ) -> Result<(), AccountComponentTemplateError> {
+        target: &mut W,
+        include_defaults: bool,
+    ) {
+        target.write(&self.description);
+        self.word.write_into_with_optional_defaults(target, include_defaults);
+    }
+
+    pub(super) fn validate(&self) -> Result<(), AccountComponentTemplateError> {
+        if let Some(description) = self.description.as_deref() {
+            validate_description_ascii(description)?;
+        }
         self.word.validate()?;
         Ok(())
     }
@@ -65,8 +75,7 @@ impl ValueSlotSchema {
 
 impl Serializable for ValueSlotSchema {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        target.write(&self.description);
-        target.write(&self.word);
+        self.write_into_with_optional_defaults(target, true);
     }
 }
 

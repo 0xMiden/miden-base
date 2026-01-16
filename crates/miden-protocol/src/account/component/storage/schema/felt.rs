@@ -4,8 +4,9 @@ use alloc::string::{String, ToString};
 use miden_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
 use miden_processor::DeserializationError;
 
-use super::type_registry::{SCHEMA_TYPE_REGISTRY, SchemaRequirement, SchemaTypeId};
-use super::{InitStorageData, StorageValueName, WordValue};
+use super::super::type_registry::{SCHEMA_TYPE_REGISTRY, SchemaRequirement, SchemaTypeId};
+use super::super::{InitStorageData, StorageValueName, WordValue};
+use super::validate_description_ascii;
 use crate::account::StorageSlotName;
 use crate::errors::AccountComponentTemplateError;
 use crate::{Felt, FieldElement};
@@ -188,6 +189,10 @@ impl FeltSchema {
 
     /// Validates that the defined felt type exists.
     pub(super) fn validate(&self) -> Result<(), AccountComponentTemplateError> {
+        if let Some(description) = self.description.as_deref() {
+            validate_description_ascii(description)?;
+        }
+
         let type_exists = SCHEMA_TYPE_REGISTRY.contains_felt_type(&self.felt_type());
         if !type_exists {
             return Err(AccountComponentTemplateError::InvalidType(
@@ -223,14 +228,23 @@ impl FeltSchema {
         }
         Ok(())
     }
+
+    pub(super) fn write_into_with_optional_defaults<W: ByteWriter>(
+        &self,
+        target: &mut W,
+        include_defaults: bool,
+    ) {
+        target.write(&self.name);
+        target.write(&self.description);
+        target.write(&self.r#type);
+        let default_value = if include_defaults { self.default_value } else { None };
+        target.write(default_value);
+    }
 }
 
 impl Serializable for FeltSchema {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        target.write(&self.name);
-        target.write(&self.description);
-        target.write(&self.r#type);
-        target.write(self.default_value);
+        self.write_into_with_optional_defaults(target, true);
     }
 }
 

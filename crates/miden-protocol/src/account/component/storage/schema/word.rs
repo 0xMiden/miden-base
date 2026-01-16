@@ -4,8 +4,9 @@ use alloc::string::{String, ToString};
 use miden_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
 use miden_processor::DeserializationError;
 
-use super::type_registry::{SCHEMA_TYPE_REGISTRY, SchemaRequirement, SchemaTypeId};
-use super::{FeltSchema, InitStorageData, StorageValueName};
+use super::super::type_registry::{SCHEMA_TYPE_REGISTRY, SchemaRequirement, SchemaTypeId};
+use super::super::{InitStorageData, StorageValueName};
+use super::FeltSchema;
 use crate::account::StorageSlotName;
 use crate::errors::AccountComponentTemplateError;
 use crate::{Felt, FieldElement, Word};
@@ -230,21 +231,32 @@ impl WordSchema {
             },
         }
     }
-}
 
-impl Serializable for WordSchema {
-    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+    pub(super) fn write_into_with_optional_defaults<W: ByteWriter>(
+        &self,
+        target: &mut W,
+        include_defaults: bool,
+    ) {
         match self {
             WordSchema::Simple { r#type, default_value } => {
                 target.write_u8(0);
                 target.write(r#type);
+                let default_value = if include_defaults { *default_value } else { None };
                 target.write(default_value);
             },
             WordSchema::Composite { value } => {
                 target.write_u8(1);
-                target.write(value);
+                for felt in value.iter() {
+                    felt.write_into_with_optional_defaults(target, include_defaults);
+                }
             },
         }
+    }
+}
+
+impl Serializable for WordSchema {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        self.write_into_with_optional_defaults(target, true);
     }
 }
 

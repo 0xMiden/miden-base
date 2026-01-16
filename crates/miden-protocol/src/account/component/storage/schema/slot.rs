@@ -3,8 +3,9 @@ use alloc::collections::BTreeMap;
 use miden_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
 use miden_processor::DeserializationError;
 
-use super::type_registry::SchemaRequirement;
-use super::{InitStorageData, MapSlotSchema, StorageValueName, ValueSlotSchema};
+use super::super::type_registry::SchemaRequirement;
+use super::super::{InitStorageData, StorageValueName};
+use super::{MapSlotSchema, ValueSlotSchema};
 use crate::account::{StorageSlot, StorageSlotName};
 use crate::errors::AccountComponentTemplateError;
 
@@ -54,31 +55,36 @@ impl StorageSlotSchema {
         }
     }
 
-    pub(crate) fn validate(
-        &self,
-        slot_name: &StorageSlotName,
-    ) -> Result<(), AccountComponentTemplateError> {
+    pub(super) fn validate(&self) -> Result<(), AccountComponentTemplateError> {
         match self {
-            StorageSlotSchema::Value(slot) => slot.validate(slot_name)?,
+            StorageSlotSchema::Value(slot) => slot.validate()?,
             StorageSlotSchema::Map(slot) => slot.validate()?,
         }
 
         Ok(())
     }
+
+    pub(super) fn write_into_with_optional_defaults<W: ByteWriter>(
+        &self,
+        target: &mut W,
+        include_defaults: bool,
+    ) {
+        match self {
+            StorageSlotSchema::Value(slot) => {
+                target.write_u8(0u8);
+                slot.write_into_with_optional_defaults(target, include_defaults);
+            },
+            StorageSlotSchema::Map(slot) => {
+                target.write_u8(1u8);
+                slot.write_into_with_optional_defaults(target, include_defaults);
+            },
+        }
+    }
 }
 
 impl Serializable for StorageSlotSchema {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        match self {
-            StorageSlotSchema::Value(slot) => {
-                target.write_u8(0u8);
-                slot.write_into(target);
-            },
-            StorageSlotSchema::Map(slot) => {
-                target.write_u8(1u8);
-                slot.write_into(target);
-            },
-        }
+        self.write_into_with_optional_defaults(target, true);
     }
 }
 

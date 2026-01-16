@@ -6,8 +6,9 @@ use alloc::vec::Vec;
 use miden_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
 use miden_processor::DeserializationError;
 
-use super::type_registry::{SCHEMA_TYPE_REGISTRY, SchemaTypeId};
-use super::{FeltSchema, InitStorageData, StorageValueName, WordSchema, WordValue};
+use super::super::type_registry::{SCHEMA_TYPE_REGISTRY, SchemaTypeId};
+use super::super::{InitStorageData, StorageValueName, WordValue};
+use super::{validate_description_ascii, FeltSchema, WordSchema};
 use crate::account::{StorageMap, StorageSlotName};
 use crate::errors::AccountComponentTemplateError;
 use crate::{Felt, FieldElement, Word};
@@ -102,7 +103,26 @@ impl MapSlotSchema {
         self.default_values.clone()
     }
 
+    pub(super) fn write_into_with_optional_defaults<W: ByteWriter>(
+        &self,
+        target: &mut W,
+        include_defaults: bool,
+    ) {
+        target.write(&self.description);
+        let default_values = if include_defaults {
+            self.default_values.clone()
+        } else {
+            None
+        };
+        target.write(&default_values);
+        self.key_schema.write_into_with_optional_defaults(target, include_defaults);
+        self.value_schema.write_into_with_optional_defaults(target, include_defaults);
+    }
+
     pub(super) fn validate(&self) -> Result<(), AccountComponentTemplateError> {
+        if let Some(description) = self.description.as_deref() {
+            validate_description_ascii(description)?;
+        }
         self.key_schema.validate()?;
         self.value_schema.validate()?;
         Ok(())
@@ -111,10 +131,7 @@ impl MapSlotSchema {
 
 impl Serializable for MapSlotSchema {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        target.write(&self.description);
-        target.write(&self.default_values);
-        target.write(&self.key_schema);
-        target.write(&self.value_schema);
+        self.write_into_with_optional_defaults(target, true);
     }
 }
 

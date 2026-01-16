@@ -1,7 +1,7 @@
 use alloc::collections::BTreeMap;
 
-use super::type_registry::SchemaTypeId;
-use super::{FeltSchema, InitStorageData, MapSlotSchema, ValueSlotSchema, WordSchema, WordValue};
+use super::super::{InitStorageData, SchemaTypeId, StorageValueName, WordValue};
+use super::{FeltSchema, MapSlotSchema, ValueSlotSchema, WordSchema};
 use crate::account::{StorageMap, StorageSlotName};
 use crate::{Felt, Word};
 
@@ -82,7 +82,9 @@ fn value_slot_schema_accepts_typed_word_init_value() {
 
     let expected = Word::from([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]);
     let mut init_data = InitStorageData::default();
-    init_data.set_value("demo::slot", expected).unwrap();
+    init_data
+        .set_value(StorageValueName::from_slot_name(&slot_name), expected)
+        .unwrap();
 
     let built = slot.try_build_word(&init_data, &slot_name).unwrap();
     assert_eq!(built, expected);
@@ -94,7 +96,9 @@ fn value_slot_schema_accepts_felt_typed_word_init_value() {
     let slot_name: StorageSlotName = "demo::u8_word".parse().unwrap();
 
     let mut init_data = InitStorageData::default();
-    init_data.set_value("demo::u8_word", "6").unwrap();
+    init_data
+        .set_value(StorageValueName::from_slot_name(&slot_name), "6")
+        .unwrap();
 
     let built = slot.try_build_word(&init_data, &slot_name).unwrap();
     assert_eq!(built, Word::from([Felt::new(0), Felt::new(0), Felt::new(0), Felt::new(6)]));
@@ -112,7 +116,12 @@ fn value_slot_schema_accepts_typed_felt_init_value_in_composed_word() {
     let slot_name: StorageSlotName = "demo::slot".parse().unwrap();
 
     let mut init_data = InitStorageData::default();
-    init_data.set_value("demo::slot.a", "1").unwrap();
+    init_data
+        .set_value(
+            StorageValueName::from_slot_name_with_suffix(&slot_name, "a").unwrap(),
+            "1",
+        )
+        .unwrap();
 
     let built = slot.try_build_word(&init_data, &slot_name).unwrap();
     assert_eq!(built, Word::from([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]));
@@ -129,7 +138,7 @@ fn map_slot_schema_accepts_typed_map_init_value() {
         WordValue::Elements(["10".into(), "11".into(), "12".into(), "13".into()]),
     )];
     let mut init_data = InitStorageData::default();
-    init_data.set_map_values("demo::map", entries.clone()).unwrap();
+    init_data.set_map_values(slot_name.clone(), entries.clone()).unwrap();
 
     let built = slot.try_build_map(&init_data, &slot_name).unwrap();
     let expected = StorageMap::with_entries([(
