@@ -10,7 +10,6 @@ use miden_agglayer::{
     LeafData,
     OutputNoteData,
     ProofData,
-    claim_note_test_inputs,
     create_claim_note,
     create_existing_agglayer_faucet,
     create_existing_bridge_account,
@@ -33,6 +32,8 @@ use miden_standards::account::wallets::BasicWallet;
 use miden_standards::note::WellKnownNote;
 use miden_testing::{AccountState, Auth, MockChain};
 use rand::Rng;
+
+use super::testing_utils::claim_note_test_inputs;
 
 /// Tests the bridge-in flow: CLAIM note -> Aggfaucet (FPI to Bridge) -> P2ID note created.
 #[tokio::test]
@@ -87,10 +88,11 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
         origin_network,
         origin_token_address,
         destination_network,
-        destination_address,
-        amount_u32,
         metadata,
-    ) = claim_note_test_inputs(claim_amount, user_account.id());
+    ) = claim_note_test_inputs();
+
+    // Convert AccountId to destination address bytes in the test
+    let destination_address = EthAddressFormat::from_account_id(user_account.id()).into_bytes();
 
     // Generate a serial number for the P2ID note
     let serial_num = builder.rng_mut().draw_word();
