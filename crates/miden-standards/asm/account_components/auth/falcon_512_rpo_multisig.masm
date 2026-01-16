@@ -1,4 +1,4 @@
-# The MASM code of the Multi-Signature RPO Falcon 512 Authentication Component.
+# The MASM code of the Multi-Signature Falcon 512 RPO Authentication Component.
 #
 # See the `AuthFalcon512RpoMultisig` Rust type's documentation for more details.
 

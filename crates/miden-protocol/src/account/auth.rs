@@ -25,7 +25,7 @@ const ECDSA_K256_KECCAK: u8 = 1;
 #[non_exhaustive]
 #[repr(u8)]
 pub enum AuthScheme {
-    /// A deterministic RPO Falcon512 signature scheme.
+    /// A deterministic Falcon512 signature scheme.
     ///
     /// This version differs from the reference Falcon512 implementation in its use of the RPO
     /// algebraic hash function in its hash-to-point algorithm to make signatures very efficient

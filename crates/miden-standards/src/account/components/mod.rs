@@ -53,31 +53,31 @@ static ECDSA_K256_KECCAK_MULTISIG_LIBRARY: LazyLock<Library> = LazyLock::new(|| 
         .expect("Shipped Multisig Ecdsa K256 Keccak library is well-formed")
 });
 
-// Initialize the Rpo Falcon 512 library only once.
+// Initialize the Falcon 512 RPO library only once.
 static FALCON_512_RPO_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
     let bytes = include_bytes!(concat!(
         env!("OUT_DIR"),
         "/assets/account_components/auth/falcon_512_rpo.masl"
     ));
-    Library::read_from_bytes(bytes).expect("Shipped Rpo Falcon 512 library is well-formed")
+    Library::read_from_bytes(bytes).expect("Shipped Falcon 512 RPO library is well-formed")
 });
 
-// Initialize the Rpo Falcon 512 ACL library only once.
+// Initialize the Falcon 512 RPO ACL library only once.
 static FALCON_512_RPO_ACL_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
     let bytes = include_bytes!(concat!(
         env!("OUT_DIR"),
         "/assets/account_components/auth/falcon_512_rpo_acl.masl"
     ));
-    Library::read_from_bytes(bytes).expect("Shipped Rpo Falcon 512 ACL library is well-formed")
+    Library::read_from_bytes(bytes).expect("Shipped Falcon 512 RPO ACL library is well-formed")
 });
 
-// Initialize the Multisig Rpo Falcon 512 library only once.
+// Initialize the Multisig Falcon 512 RPO library only once.
 static FALCON_512_RPO_MULTISIG_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
     let bytes = include_bytes!(concat!(
         env!("OUT_DIR"),
         "/assets/account_components/auth/falcon_512_rpo_multisig.masl"
     ));
-    Library::read_from_bytes(bytes).expect("Shipped Multisig Rpo Falcon 512 library is well-formed")
+    Library::read_from_bytes(bytes).expect("Shipped Multisig Falcon 512 RPO library is well-formed")
 });
 
 // Initialize the NoAuth library only once.

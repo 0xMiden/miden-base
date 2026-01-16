@@ -35,7 +35,7 @@ const TX_SCRIPT_NO_TRIGGER: &str = r#"
 // HELPER FUNCTIONS
 // ================================================================================================
 
-/// Sets up the basic components needed for RPO Falcon ACL tests.
+/// Sets up the basic components needed for Falcon RPO ACL tests.
 /// Returns (account, mock_chain, note).
 fn setup_rpo_falcon_acl_test(
     allow_unauthorized_output_notes: bool,

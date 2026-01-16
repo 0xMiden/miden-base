@@ -19,14 +19,14 @@ pub enum AuthScheme {
         threshold: u32,
         pub_keys: Vec<PublicKeyCommitment>,
     },
-    /// A single-key authentication scheme which relies RPO Falcon512 signatures.
+    /// A single-key authentication scheme which relies Falcon512 RPO signatures.
     ///
-    /// RPO Falcon512 is a variant of the [Falcon](https://falcon-sign.info/) signature scheme.
+    /// Falcon512 RPO is a variant of the [Falcon](https://falcon-sign.info/) signature scheme.
     /// This variant differs from the standard in that instead of using SHAKE256 hash function in
     /// the hash-to-point algorithm we use RPO256. This makes the signature more efficient to
     /// verify in Miden VM.
     Falcon512Rpo { pub_key: PublicKeyCommitment },
-    /// A multi-signature authentication scheme using RPO Falcon512 signatures.
+    /// A multi-signature authentication scheme using Falcon512 RPO signatures.
     ///
     /// Requires a threshold number of signatures from the provided public keys.
     Falcon512RpoMultisig {

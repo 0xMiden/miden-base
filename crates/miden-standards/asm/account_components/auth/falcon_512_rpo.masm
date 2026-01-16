@@ -1,4 +1,4 @@
-# The MASM code of the RPO Falcon 512 authentication Account Component.
+# The MASM code of the Falcon 512 RPO authentication Account Component.
 #
 # See the `AuthFalcon512Rpo` Rust type's documentation for more details.
 

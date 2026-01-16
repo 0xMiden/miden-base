@@ -81,10 +81,10 @@ impl AccountComponentInterface {
             AccountComponentInterface::AuthEcdsaK256KeccakMultisig => {
                 "ECDSA K256 Keccak Multisig".to_string()
             },
-            AccountComponentInterface::AuthFalcon512Rpo => "RPO Falcon512".to_string(),
-            AccountComponentInterface::AuthFalcon512RpoAcl => "RPO Falcon512 ACL".to_string(),
+            AccountComponentInterface::AuthFalcon512Rpo => "Falcon512 RPO".to_string(),
+            AccountComponentInterface::AuthFalcon512RpoAcl => "Falcon512 RPO ACL".to_string(),
             AccountComponentInterface::AuthFalcon512RpoMultisig => {
-                "RPO Falcon512 Multisig".to_string()
+                "Falcon512 RPO Multisig".to_string()
             },
 
             AccountComponentInterface::AuthNoAuth => "No Auth".to_string(),
