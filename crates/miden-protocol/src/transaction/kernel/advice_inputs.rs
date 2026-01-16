@@ -8,6 +8,7 @@ use crate::block::account_tree::AccountWitness;
 use crate::crypto::SequentialCommit;
 use crate::crypto::merkle::InnerNodeInfo;
 use crate::crypto::merkle::smt::SmtProof;
+use crate::note::NoteAttachmentContent;
 use crate::transaction::{
     AccountInputs,
     InputNote,
@@ -349,9 +350,19 @@ impl TransactionAdviceInputs {
             let recipient = note.recipient();
             let note_arg = tx_inputs.tx_args().get_note_args(note.id()).unwrap_or(&EMPTY_WORD);
 
-            // recipient inputs / assets commitments
+            // recipient inputs
             self.add_map_entry(recipient.inputs().commitment(), recipient.inputs().to_elements());
+            // assets commitments
             self.add_map_entry(assets.commitment(), assets.to_padded_assets());
+            // array attachments
+            if let NoteAttachmentContent::Array(array_attachment) =
+                note.metadata().attachment().content()
+            {
+                self.add_map_entry(
+                    array_attachment.commitment(),
+                    array_attachment.as_slice().to_vec(),
+                );
+            }
 
             // note details / metadata
             note_data.extend(recipient.serial_num());

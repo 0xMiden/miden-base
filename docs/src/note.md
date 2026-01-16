@@ -61,10 +61,28 @@ The serial number has two main purposes. Firstly by adding some randomness to th
 ### Metadata
 
 :::note
-Additional `Note` information.
+Additional public `Note` information.
 :::
 
-Notes include metadata such as the sender’s account ID and a [tag](#note-discovery) that aids in discovery. Regardless of [storage mode](#note-storage-mode), these metadata fields remain public.
+Every note includes metadata:
+- the account ID of the sender, i.e. the creator of the note.
+- its note type, i.e. private or public.
+- the [note tag](#note-discovery) that aids in discovery of the note.
+- an optional [note attachment](#attachment).
+
+Regardless of [storage mode](#note-storage-mode), these metadata fields are always public.
+
+### Attachment
+
+An attachment is a variable-size part of a note's metadata:
+- It can either be absent (`None`), store a single `Word` or an `Array` of field elements. These are the three _kinds_ of attachments.
+- The _scheme_ of an attachment is an optional, 32-bit user-defined value that can be used to detect the presence of certain standardized attachments.
+
+Example use cases for attachments are:
+- Communicate the note details of a private note in encrypted form. This means the encrypted note is attached publicly to the otherwise private note.
+- For [network transactions](./transaction.md#network-transaction), encode the ID of the network account that should
+  consume the note. This is a standardized attachment scheme in miden-standards called `NetworkAccountTarget`.
+- Communicate the details of a _private_ note to the receiver so they can derive the note. For example, the payback note of a partially fillable swap note can be private and the receiver already knows a few details: It is a P2ID note, the serial number is derived from the SWAP note's serial number and the note inputs are the account ID of the receiver. The receiver only needs to now the exact amount that was filled to derive the full note for consumption. This amount can be encoded in the public attachment of the payback note, which allows this use case to work with private notes and still not require a side-channel.
 
 ## Note Lifecycle
 
