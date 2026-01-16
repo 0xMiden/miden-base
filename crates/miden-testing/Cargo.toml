@@ -39,6 +39,8 @@ winterfell  = { version = "0.13" }
 [dev-dependencies]
 anyhow            = { features = ["backtrace", "std"], workspace = true }
 assert_matches    = { workspace = true }
+hex               = { version = "0.4" }
+miden-crypto      = { workspace = true }
 miden-protocol    = { features = ["std"], workspace = true }
 primitive-types   = { workspace = true }
 rstest            = { workspace = true }

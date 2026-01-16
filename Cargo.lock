@@ -1753,11 +1753,13 @@ version = "0.13.0"
 dependencies = [
  "anyhow",
  "assert_matches",
+ "hex",
  "itertools 0.14.0",
  "miden-agglayer",
  "miden-assembly",
  "miden-block-prover",
  "miden-core-lib",
+ "miden-crypto",
  "miden-processor",
  "miden-protocol",
  "miden-standards",

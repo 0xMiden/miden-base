@@ -80,4 +80,3 @@ pub proc verify_claim_proof
     dropw dropw dropw dropw
     push.1
 end
-
