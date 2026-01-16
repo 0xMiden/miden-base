@@ -4,10 +4,9 @@ use bech32::Bech32m;
 use bech32::primitives::decode::CheckedHrpstring;
 use miden_processor::DeserializationError;
 
-use crate::AddressError;
 use crate::account::{AccountId, AccountStorageMode};
 use crate::address::{AddressType, NetworkId};
-use crate::errors::Bech32Error;
+use crate::errors::{AddressError, Bech32Error};
 use crate::note::NoteTag;
 use crate::utils::serde::{ByteWriter, Deserializable, Serializable};
 

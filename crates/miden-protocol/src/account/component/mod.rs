@@ -14,7 +14,8 @@ pub use code::AccountComponentCode;
 
 use crate::account::{AccountType, StorageSlot};
 use crate::assembly::Path;
-use crate::{AccountError, MastForest, Word};
+use crate::errors::AccountError;
+use crate::{MastForest, Word};
 
 // ACCOUNT COMPONENT
 // ================================================================================================

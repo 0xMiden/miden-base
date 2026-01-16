@@ -3,7 +3,8 @@ use miden_crypto::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
 use miden_processor::DeserializationError;
 
 use crate::account::AccountId;
-use crate::{Felt, Hasher, NoteError, WORD_SIZE, ZERO};
+use crate::errors::NoteError;
+use crate::{Felt, Hasher, WORD_SIZE, ZERO};
 
 mod assets;
 pub use assets::NoteAssets;

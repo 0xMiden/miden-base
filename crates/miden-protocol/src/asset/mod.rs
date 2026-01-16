@@ -1,4 +1,5 @@
 use super::account::AccountType;
+use super::errors::{AssetError, TokenSymbolError};
 use super::utils::serde::{
     ByteReader,
     ByteWriter,
@@ -6,7 +7,7 @@ use super::utils::serde::{
     DeserializationError,
     Serializable,
 };
-use super::{AssetError, Felt, Hasher, TokenSymbolError, Word, ZERO};
+use super::{Felt, Hasher, Word, ZERO};
 use crate::account::AccountIdPrefix;
 
 mod fungible;
