@@ -100,15 +100,6 @@ impl InitStorageData {
         self.map_entries.get(slot_name)
     }
 
-    /// Merges another [`InitStorageData`] into this one, overwriting value entries and appending
-    /// map entries.
-    pub fn merge_from(&mut self, other: InitStorageData) {
-        self.value_entries.extend(other.value_entries);
-        for (slot_name, entries) in other.map_entries {
-            self.map_entries.entry(slot_name).or_default().extend(entries);
-        }
-    }
-
     /// Returns true if any init value entry targets the given slot name.
     pub fn has_value_entries_for_slot(&self, slot_name: &StorageSlotName) -> bool {
         self.value_entries.keys().any(|name| name.slot_name() == slot_name)
@@ -141,6 +132,21 @@ impl InitStorageData {
         if self.value_entries.contains_key(&name) {
             return Err(InitStorageDataError::DuplicateKey(name.to_string()));
         }
+        if self.map_entries.contains_key(name.slot_name()) {
+            return Err(InitStorageDataError::ConflictingEntries(name.slot_name().as_str().into()));
+        }
+        self.value_entries.insert(name, value.into());
+        Ok(())
+    }
+
+    /// Sets a value entry, overriding any existing entry for the name.
+    ///
+    /// Returns an error if the [`StorageValueName`] has been used for a map slot.
+    pub fn set_value(
+        &mut self,
+        name: StorageValueName,
+        value: impl Into<WordValue>,
+    ) -> Result<(), InitStorageDataError> {
         if self.map_entries.contains_key(name.slot_name()) {
             return Err(InitStorageDataError::ConflictingEntries(name.slot_name().as_str().into()));
         }
@@ -190,19 +196,19 @@ impl InitStorageData {
         Ok(())
     }
 
-    /// Sets a value entry, overriding any existing entry for the name.
-    ///
-    /// Returns an error if the [`StorageValueName`] has been used for a map slot.
-    pub fn set_value(
-        &mut self,
-        name: StorageValueName,
-        value: impl Into<WordValue>,
-    ) -> Result<(), InitStorageDataError> {
-        if self.map_entries.contains_key(name.slot_name()) {
-            return Err(InitStorageDataError::ConflictingEntries(name.slot_name().as_str().into()));
+    /// Merges another [`InitStorageData`] into this one, overwriting value entries and appending
+    /// map entries.
+    pub fn merge_with(&mut self, other: InitStorageData) {
+        self.value_entries.extend(other.value_entries);
+        for (slot_name, entries) in other.map_entries {
+            self.map_entries.entry(slot_name).or_default().extend(entries);
         }
-        self.value_entries.insert(name, value.into());
-        Ok(())
+    }
+
+    /// Merges another [`InitStorageData`] into this one, overwriting value entries and appending
+    /// map entries.
+    pub fn merge_from(&mut self, other: InitStorageData) {
+        self.merge_with(other);
     }
 }
 

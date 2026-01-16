@@ -1,3 +1,5 @@
+use alloc::collections::BTreeMap;
+use alloc::format;
 use alloc::string::ToString;
 use alloc::vec::Vec;
 
@@ -148,6 +150,49 @@ impl AccountStorageHeader {
     /// And then concatenating the resulting elements into a single vector.
     pub fn to_elements(&self) -> Vec<Felt> {
         <Self as SequentialCommit>::to_elements(self)
+    }
+
+    /// Reconstructs an [`AccountStorageHeader`] from field elements with provided slot names.
+    ///
+    /// The elements are expected to be groups of 8 elements per slot:
+    /// `[[0, slot_type, slot_id_suffix, slot_id_prefix], SLOT_VALUE]`
+    pub fn try_from_elements(
+        elements: &[Felt],
+        slot_names: &BTreeMap<StorageSlotId, StorageSlotName>,
+    ) -> Result<Self, AccountError> {
+        if !elements.len().is_multiple_of(StorageSlot::NUM_ELEMENTS) {
+            return Err(AccountError::other(
+                "storage header elements length must be divisible by 8",
+            ));
+        }
+
+        let mut slots = Vec::new();
+        for chunk in elements.chunks_exact(StorageSlot::NUM_ELEMENTS) {
+            // Parse slot type from second element.
+            let slot_type_felt = chunk[1];
+            let slot_type = slot_type_felt.try_into()?;
+
+            // Parse slot ID from third and fourth elements.
+            let slot_id_suffix = chunk[2];
+            let slot_id_prefix = chunk[3];
+            let parsed_slot_id = StorageSlotId::new(slot_id_suffix, slot_id_prefix);
+
+            // Retrieve slot name from the map.
+            let slot_name = slot_names.get(&parsed_slot_id).cloned().ok_or(AccountError::other(
+                format!("slot name not found for slot ID {}", parsed_slot_id),
+            ))?;
+
+            // Parse slot value from last 4 elements.
+            let slot_value = Word::new([chunk[4], chunk[5], chunk[6], chunk[7]]);
+
+            let slot_header = StorageSlotHeader::new(slot_name, slot_type, slot_value);
+            slots.push(slot_header);
+        }
+
+        // Sort slots by ID.
+        slots.sort_by_key(|slot| slot.id());
+
+        Self::new(slots)
     }
 
     /// Returns the commitment to the [`AccountStorage`] this header represents.
@@ -301,12 +346,15 @@ impl Deserializable for StorageSlotHeader {
 
 #[cfg(test)]
 mod tests {
+    use alloc::collections::BTreeMap;
+    use alloc::string::ToString;
+
     use miden_core::Felt;
     use miden_core::utils::{Deserializable, Serializable};
 
     use super::AccountStorageHeader;
     use crate::Word;
-    use crate::account::{AccountStorage, StorageSlotType};
+    use crate::account::{AccountStorage, StorageSlotHeader, StorageSlotName, StorageSlotType};
     use crate::testing::storage::{MOCK_MAP_SLOT, MOCK_VALUE_SLOT0, MOCK_VALUE_SLOT1};
 
     #[test]
@@ -343,5 +391,122 @@ mod tests {
 
         // assert deserialized == storage header
         assert_eq!(storage_header, deserialized);
+    }
+
+    #[test]
+    fn test_to_elements_from_elements_empty() {
+        // Construct empty header.
+        let empty_header = AccountStorageHeader::new(vec![]).unwrap();
+        let empty_elements = empty_header.to_elements();
+
+        // Call from_elements.
+        let empty_slot_names = BTreeMap::new();
+        let reconstructed_empty =
+            AccountStorageHeader::try_from_elements(&empty_elements, &empty_slot_names).unwrap();
+        assert_eq!(empty_header, reconstructed_empty);
+    }
+
+    #[test]
+    fn test_to_elements_from_elements_single_slot() {
+        // Construct single slot header.
+        let slot_name1 = StorageSlotName::new("test::value::slot1".to_string()).unwrap();
+        let slot1 = StorageSlotHeader::new(
+            slot_name1,
+            StorageSlotType::Value,
+            Word::new([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]),
+        );
+
+        let single_slot_header = AccountStorageHeader::new(vec![slot1.clone()]).unwrap();
+        let single_elements = single_slot_header.to_elements();
+
+        // Call from_elements.
+        let slot_names = BTreeMap::from([(slot1.id(), slot1.name().clone())]);
+        let reconstructed_single =
+            AccountStorageHeader::try_from_elements(&single_elements, &slot_names).unwrap();
+
+        assert_eq!(single_slot_header, reconstructed_single);
+    }
+
+    #[test]
+    fn test_to_elements_from_elements_multiple_slot() {
+        // Construct multi slot header.
+        let slot_name2 = StorageSlotName::new("test::map::slot2".to_string()).unwrap();
+        let slot_name3 = StorageSlotName::new("test::value::slot3".to_string()).unwrap();
+
+        let slot2 = StorageSlotHeader::new(
+            slot_name2,
+            StorageSlotType::Map,
+            Word::new([Felt::new(5), Felt::new(6), Felt::new(7), Felt::new(8)]),
+        );
+        let slot3 = StorageSlotHeader::new(
+            slot_name3,
+            StorageSlotType::Value,
+            Word::new([Felt::new(9), Felt::new(10), Felt::new(11), Felt::new(12)]),
+        );
+
+        let mut slots = vec![slot2, slot3];
+        slots.sort_by_key(|slot| slot.id());
+        let multi_slot_header = AccountStorageHeader::new(slots.clone()).unwrap();
+        let multi_elements = multi_slot_header.to_elements();
+
+        // Call from_elements.
+        let slot_names = BTreeMap::from([
+            (slots[0].id(), slots[0].name.clone()),
+            (slots[1].id(), slots[1].name.clone()),
+        ]);
+        let reconstructed_multi =
+            AccountStorageHeader::try_from_elements(&multi_elements, &slot_names).unwrap();
+
+        assert_eq!(multi_slot_header, reconstructed_multi);
+    }
+
+    #[test]
+    fn test_from_elements_errors() {
+        // Test with invalid length (not divisible by 8).
+        let invalid_elements = vec![Felt::new(1), Felt::new(2), Felt::new(3)];
+        let empty_slot_names = BTreeMap::new();
+        assert!(
+            AccountStorageHeader::try_from_elements(&invalid_elements, &empty_slot_names).is_err()
+        );
+
+        // Test with invalid slot type.
+        let mut invalid_type_elements = vec![crate::ZERO; 8];
+        invalid_type_elements[1] = Felt::new(5); // Invalid slot type.
+        assert!(
+            AccountStorageHeader::try_from_elements(&invalid_type_elements, &empty_slot_names)
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn test_from_elements_with_slot_names() {
+        use alloc::collections::BTreeMap;
+
+        // Create original slot with known name.
+        let slot_name1 = StorageSlotName::new("test::value::slot1".to_string()).unwrap();
+        let slot1 = StorageSlotHeader::new(
+            slot_name1.clone(),
+            StorageSlotType::Value,
+            Word::new([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]),
+        );
+
+        // Serialize the single slot to elements
+        let elements = slot1.to_elements();
+
+        // Create slot names map using the slot's ID
+        let mut slot_names = BTreeMap::new();
+        slot_names.insert(slot1.id(), slot_name1.clone());
+
+        // Test from_elements with provided slot names on raw slot elements.
+        let reconstructed_header =
+            AccountStorageHeader::try_from_elements(&elements, &slot_names).unwrap();
+
+        // Verify that the original slot names are preserved.
+        assert_eq!(reconstructed_header.slots().count(), 1);
+        let reconstructed_slot = reconstructed_header.slots().next().unwrap();
+
+        assert_eq!(slot_name1.as_str(), reconstructed_slot.name().as_str());
+        assert_eq!(slot1.slot_type(), reconstructed_slot.slot_type());
+        assert_eq!(slot1.value(), reconstructed_slot.value());
     }
 }

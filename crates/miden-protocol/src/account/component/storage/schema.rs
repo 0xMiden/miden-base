@@ -375,6 +375,11 @@ impl WordSchema {
         Ok(())
     }
 
+    /// Builds a [`Word`] from the provided initialization data according to this schema.
+    ///
+    /// For simple schemas, expects a direct slot value (not map or field entries).
+    /// For composite schemas, either parses a single value or builds the word from individual
+    /// felt entries.
     pub(crate) fn try_build_word(
         &self,
         init_storage_data: &InitStorageData,
@@ -383,15 +388,16 @@ impl WordSchema {
         let slot_prefix = StorageValueName::from_slot_name(slot_name);
         let slot_value = init_storage_data.slot_value_entry(slot_name);
         let has_fields = init_storage_data.has_field_entries_for_slot(slot_name);
-        let has_map = init_storage_data.map_entries(slot_name).is_some();
+
+        if init_storage_data.map_entries(slot_name).is_some() {
+            return Err(AccountComponentTemplateError::InvalidInitStorageValue(
+                slot_prefix,
+                "expected a value, got a map".into(),
+            ));
+        }
+
         match self {
             WordSchema::Simple { r#type, default_value } => {
-                if has_map {
-                    return Err(AccountComponentTemplateError::InvalidInitStorageValue(
-                        slot_prefix,
-                        "expected a value, got a map".into(),
-                    ));
-                }
                 if has_fields {
                     return Err(AccountComponentTemplateError::InvalidInitStorageValue(
                         slot_prefix,
@@ -412,12 +418,6 @@ impl WordSchema {
                 }
             },
             WordSchema::Composite { value } => {
-                if has_map {
-                    return Err(AccountComponentTemplateError::InvalidInitStorageValue(
-                        slot_prefix,
-                        "expected a value, got a map".into(),
-                    ));
-                }
                 if let Some(value) = slot_value {
                     if has_fields {
                         return Err(AccountComponentTemplateError::InvalidInitStorageValue(
@@ -813,6 +813,7 @@ impl ValueSlotSchema {
         )
     }
 
+    /// Builds a [Word] from the provided initialization data using the inner word schema.
     pub fn try_build_word(
         &self,
         init_storage_data: &InitStorageData,
@@ -884,6 +885,10 @@ impl MapSlotSchema {
         self.description.as_ref()
     }
 
+    /// Builds a [`StorageMap`] from the provided initialization data.
+    ///
+    /// Merges any default values with entries from the init data, validating that the data
+    /// contains map entries (not a direct value or field entries).
     pub fn try_build_map(
         &self,
         init_storage_data: &InitStorageData,
@@ -973,32 +978,22 @@ pub(super) fn parse_storage_value_with_schema(
     raw_value: &WordValue,
     slot_prefix: &StorageValueName,
 ) -> Result<Word, AccountComponentTemplateError> {
-    let word = match raw_value {
-        WordValue::FullyTyped(word) => *word,
-        WordValue::Atomic(_) | WordValue::Elements(_) => match schema {
-            WordSchema::Simple { r#type, .. } => {
-                parse_simple_word_value(r#type, raw_value, slot_prefix)?
-            },
-            WordSchema::Composite { value } => match raw_value {
-                WordValue::Elements(elements) => {
-                    parse_composite_elements(value, elements, slot_prefix)?
-                },
-                WordValue::Atomic(value) => SCHEMA_TYPE_REGISTRY
-                    .try_parse_word(&SchemaTypeId::native_word(), value)
-                    .map_err(|err| {
-                        AccountComponentTemplateError::InvalidInitStorageValue(
-                            slot_prefix.clone(),
-                            format!("failed to parse value as `word`: {err}"),
-                        )
-                    })?,
-                WordValue::FullyTyped(_) => {
-                    return Err(AccountComponentTemplateError::InvalidInitStorageValue(
-                        slot_prefix.clone(),
-                        "expected a parseable value, got a word".into(),
-                    ));
-                },
-            },
+    let word = match (schema, raw_value) {
+        (_, WordValue::FullyTyped(word)) => *word,
+        (WordSchema::Simple { r#type, .. }, raw_value) => {
+            parse_simple_word_value(r#type, raw_value, slot_prefix)?
         },
+        (WordSchema::Composite { value }, WordValue::Elements(elements)) => {
+            parse_composite_elements(value, elements, slot_prefix)?
+        },
+        (WordSchema::Composite { .. }, WordValue::Atomic(value)) => SCHEMA_TYPE_REGISTRY
+            .try_parse_word(&SchemaTypeId::native_word(), value)
+            .map_err(|err| {
+                AccountComponentTemplateError::InvalidInitStorageValue(
+                    slot_prefix.clone(),
+                    format!("failed to parse value as `word`: {err}"),
+                )
+            })?,
     };
 
     schema.validate_word_value(slot_prefix, "value", word)?;
@@ -1035,10 +1030,7 @@ fn parse_simple_word_value(
             let felts: [Felt; 4] = felts.try_into().expect("length is 4");
             Ok(Word::from(felts))
         },
-        WordValue::FullyTyped(_) => Err(AccountComponentTemplateError::InvalidInitStorageValue(
-            slot_prefix.clone(),
-            "expected a parseable value, got a word".into(),
-        )),
+        WordValue::FullyTyped(word) => Ok(*word),
     }
 }
 
