@@ -318,25 +318,32 @@ where
             AccountProcedureIndexMap::new([tx_inputs.account().code()]);
 
         let initial_fee_asset_balance = {
+            let vault_root = tx_inputs.account().vault().root();
             let native_asset_id = tx_inputs.block_header().fee_parameters().native_asset_id();
             let fee_asset_vault_key = AssetVaultKey::from_account_id(native_asset_id)
                 .expect("fee asset should be a fungible asset");
 
-            let fee_asset_witness = tx_inputs
-                .asset_witnesses()
-                .iter()
-                .find_map(|witness| witness.find(fee_asset_vault_key));
-
-            match fee_asset_witness {
-                Some(Asset::Fungible(fee_asset)) => fee_asset.amount(),
-                Some(Asset::NonFungible(_)) => {
-                    return Err(TransactionExecutorError::FeeAssetMustBeFungible);
-                },
-                // If the witness does not contain the asset, its balance is zero.
-                None => 0,
+            // extract the fee asset amount from the transaction inputs
+            let fee_asset_witnesses =
+                tx_inputs.read_vault_asset_witnesses(vault_root, [fee_asset_vault_key].into());
+            if let Ok(witnesses) = fee_asset_witnesses {
+                // we requested one witness and if there was no error only one witness should have
+                // been returned
+                assert_eq!(witnesses.len(), 1, "expected exactly one witness");
+                match witnesses[0].find(fee_asset_vault_key) {
+                    Some(Asset::Fungible(fee_asset)) => fee_asset.amount(),
+                    Some(Asset::NonFungible(_)) => {
+                        return Err(TransactionExecutorError::FeeAssetMustBeFungible);
+                    },
+                    // If the witness does not contain the asset, its balance is zero.
+                    None => 0,
+                }
+            } else {
+                // if read_vault_asset_witnesses() returned an error, we assume that the witness
+                // was not found because because otherwise the read request was valid
+                0
             }
         };
-
         let host = TransactionExecutorHost::new(
             tx_inputs.account(),
             input_notes.clone(),

@@ -51,8 +51,6 @@ pub struct TransactionInputs {
     tx_args: TransactionArgs,
     advice_inputs: AdviceInputs,
     foreign_account_code: Vec<AccountCode>,
-    /// Pre-fetched asset witnesses for note assets and the fee asset.
-    asset_witnesses: Vec<AssetWitness>,
     /// Storage slot names for foreign accounts.
     foreign_account_slot_names: BTreeMap<StorageSlotId, StorageSlotName>,
 }
@@ -110,14 +108,20 @@ impl TransactionInputs {
             tx_args: TransactionArgs::default(),
             advice_inputs: AdviceInputs::default(),
             foreign_account_code: Vec::new(),
-            asset_witnesses: Vec::new(),
             foreign_account_slot_names: BTreeMap::new(),
         })
     }
 
     /// Replaces the transaction inputs and assigns the given asset witnesses.
     pub fn with_asset_witnesses(mut self, witnesses: Vec<AssetWitness>) -> Self {
-        self.asset_witnesses = witnesses;
+        for witness in witnesses {
+            self.advice_inputs.store.extend(witness.authenticated_nodes());
+            let smt_proof = SmtProof::from(witness);
+            self.advice_inputs
+                .map
+                .extend([(smt_proof.leaf().hash(), smt_proof.leaf().to_elements())]);
+        }
+
         self
     }
 
@@ -210,11 +214,6 @@ impl TransactionInputs {
         &self.foreign_account_code
     }
 
-    /// Returns the pre-fetched witnesses for note and fee assets.
-    pub fn asset_witnesses(&self) -> &[AssetWitness] {
-        &self.asset_witnesses
-    }
-
     /// Returns the foreign account storage slot names.
     pub fn foreign_account_slot_names(&self) -> &BTreeMap<StorageSlotId, StorageSlotName> {
         &self.foreign_account_slot_names
@@ -263,6 +262,12 @@ impl TransactionInputs {
     }
 
     /// Reads the vault asset witnesses for the given account and vault keys.
+    ///
+    /// # Errors
+    /// Returns an error if:
+    /// - A Merkle tree with the specified root is not present in the advice data of these inputs.
+    /// - Witnesses for any of the requested assets are not in the specified Merkle tree.
+    /// - Construction of the Merkle path or the leaf node for the witness fails.
     pub fn read_vault_asset_witnesses(
         &self,
         vault_root: Word,
@@ -432,7 +437,6 @@ impl Serializable for TransactionInputs {
         self.tx_args.write_into(target);
         self.advice_inputs.write_into(target);
         self.foreign_account_code.write_into(target);
-        self.asset_witnesses.write_into(target);
         self.foreign_account_slot_names.write_into(target);
     }
 }
@@ -448,7 +452,6 @@ impl Deserializable for TransactionInputs {
         let tx_args = TransactionArgs::read_from(source)?;
         let advice_inputs = AdviceInputs::read_from(source)?;
         let foreign_account_code = Vec::<AccountCode>::read_from(source)?;
-        let asset_witnesses = Vec::<AssetWitness>::read_from(source)?;
         let foreign_account_slot_names =
             BTreeMap::<StorageSlotId, StorageSlotName>::read_from(source)?;
 
@@ -460,7 +463,6 @@ impl Deserializable for TransactionInputs {
             tx_args,
             advice_inputs,
             foreign_account_code,
-            asset_witnesses,
             foreign_account_slot_names,
         })
     }
