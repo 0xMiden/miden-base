@@ -6,10 +6,10 @@ use miden_processor::DeserializationError;
 
 use super::super::type_registry::SchemaRequirement;
 use super::super::{InitStorageData, StorageValueName};
-use super::{validate_description_ascii, WordSchema};
+use super::{WordSchema, validate_description_ascii};
+use crate::Word;
 use crate::account::StorageSlotName;
 use crate::errors::AccountComponentTemplateError;
-use crate::Word;
 
 // VALUE SLOT SCHEMA
 // ================================================================================================

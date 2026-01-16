@@ -14,18 +14,20 @@ use crate::errors::AccountComponentTemplateError;
 use crate::{Hasher, Word};
 
 mod felt;
-mod map_slot;
-mod slot;
-mod value_slot;
-mod word;
-
 pub use felt::FeltSchema;
-pub use map_slot::MapSlotSchema;
-pub use slot::StorageSlotSchema;
-pub use value_slot::ValueSlotSchema;
-pub use word::WordSchema;
 
+mod map_slot;
+pub use map_slot::MapSlotSchema;
+
+mod slot;
+pub use slot::StorageSlotSchema;
+
+mod value_slot;
+pub use value_slot::ValueSlotSchema;
+
+mod word;
 pub(super) use map_slot::parse_storage_value_with_schema;
+pub use word::WordSchema;
 
 #[cfg(test)]
 mod tests;

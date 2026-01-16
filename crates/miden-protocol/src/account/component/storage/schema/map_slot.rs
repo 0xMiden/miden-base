@@ -8,7 +8,7 @@ use miden_processor::DeserializationError;
 
 use super::super::type_registry::{SCHEMA_TYPE_REGISTRY, SchemaTypeId};
 use super::super::{InitStorageData, StorageValueName, WordValue};
-use super::{validate_description_ascii, FeltSchema, WordSchema};
+use super::{FeltSchema, WordSchema, validate_description_ascii};
 use crate::account::{StorageMap, StorageSlotName};
 use crate::errors::AccountComponentTemplateError;
 use crate::{Felt, FieldElement, Word};

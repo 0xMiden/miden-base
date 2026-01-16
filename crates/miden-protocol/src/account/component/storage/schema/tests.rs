@@ -96,9 +96,7 @@ fn value_slot_schema_accepts_felt_typed_word_init_value() {
     let slot_name: StorageSlotName = "demo::u8_word".parse().unwrap();
 
     let mut init_data = InitStorageData::default();
-    init_data
-        .set_value(StorageValueName::from_slot_name(&slot_name), "6")
-        .unwrap();
+    init_data.set_value(StorageValueName::from_slot_name(&slot_name), "6").unwrap();
 
     let built = slot.try_build_word(&init_data, &slot_name).unwrap();
     assert_eq!(built, Word::from([Felt::new(0), Felt::new(0), Felt::new(0), Felt::new(6)]));
@@ -117,10 +115,7 @@ fn value_slot_schema_accepts_typed_felt_init_value_in_composed_word() {
 
     let mut init_data = InitStorageData::default();
     init_data
-        .set_value(
-            StorageValueName::from_slot_name_with_suffix(&slot_name, "a").unwrap(),
-            "1",
-        )
+        .set_value(StorageValueName::from_slot_name_with_suffix(&slot_name, "a").unwrap(), "1")
         .unwrap();
 
     let built = slot.try_build_word(&init_data, &slot_name).unwrap();
