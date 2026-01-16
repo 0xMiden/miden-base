@@ -432,7 +432,7 @@ impl RawStorageSlotSchema {
         let mut map = BTreeMap::new();
 
         let parse = |schema: &WordSchema, raw: &WordValue, label: &str| {
-            super::schema::parse_word_value_with_schema(schema, raw, slot_prefix, label).map_err(
+            super::schema::parse_storage_value_with_schema(schema, raw, slot_prefix).map_err(
                 |err| {
                     AccountComponentTemplateError::InvalidSchema(format!(
                         "invalid map `{label}`: {err}"
@@ -467,6 +467,7 @@ impl WordValue {
         label: &str,
     ) -> Result<Word, AccountComponentTemplateError> {
         let word = match self {
+            WordValue::FullyTyped(word) => *word,
             WordValue::Atomic(value) => SCHEMA_TYPE_REGISTRY
                 .try_parse_word(schema_type, value)
                 .map_err(AccountComponentTemplateError::StorageValueParsingError)?,
