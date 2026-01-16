@@ -21,7 +21,7 @@ const ZERO_ADDRESS = [0, 0, 0, 0]
 # ERRORS
 # ================================================================================================
 
-const ERR_SENDER_NOT_OWNER="note sender is not the owner"
+const ERR_SENDER_NOT_OWNER = "note sender is not the owner"
 
 # INTERNAL PROCEDURES
 # ================================================================================================
