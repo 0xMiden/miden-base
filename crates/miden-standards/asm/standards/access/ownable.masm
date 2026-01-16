@@ -16,7 +16,7 @@ const OWNER_CONFIG_SLOT = word("miden::standards::access::ownable::owner_config"
 
 # ZERO_ADDRESS word (all zeros) used to represent no owner
 # Format: [prefix=0, suffix=0, 0, 0] as stored in account storage
-const ZERO_ADDRESS=[0, 0, 0, 0]
+const ZERO_ADDRESS = [0, 0, 0, 0]
 
 # ERRORS
 # ================================================================================================
