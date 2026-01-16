@@ -2,6 +2,7 @@ extern crate alloc;
 
 use core::slice;
 
+use miden_agglayer::claim_note::{GlobalExitRoot, SmtNode};
 use miden_agglayer::{
     ClaimNoteInputs,
     EthAddressFormat,
@@ -92,12 +93,28 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
         metadata,
     ) = claim_note_test_inputs(claim_amount, user_account.id());
 
+    // Convert Vec<[u8; 32]> to [SmtNode; 32] for SMT proofs
+    // Take only the first 32 elements since we now use fixed-size arrays of 32
+    let local_proof_array: [SmtNode; 32] = smt_proof_local_exit_root[0..32]
+        .iter()
+        .map(|&bytes| SmtNode::from(bytes))
+        .collect::<Vec<_>>()
+        .try_into()
+        .expect("should have exactly 32 elements");
+
+    let rollup_proof_array: [SmtNode; 32] = smt_proof_rollup_exit_root[0..32]
+        .iter()
+        .map(|&bytes| SmtNode::from(bytes))
+        .collect::<Vec<_>>()
+        .try_into()
+        .expect("should have exactly 32 elements");
+
     let proof_data = ProofData {
-        smt_proof_local_exit_root,
-        smt_proof_rollup_exit_root,
+        smt_proof_local_exit_root: local_proof_array,
+        smt_proof_rollup_exit_root: rollup_proof_array,
         global_index,
-        mainnet_exit_root,
-        rollup_exit_root,
+        mainnet_exit_root: GlobalExitRoot::from(mainnet_exit_root),
+        rollup_exit_root: GlobalExitRoot::from(rollup_exit_root),
     };
 
     let leaf_data = LeafData {

@@ -4,6 +4,7 @@ use alloc::vec::Vec;
 use miden_core::{Felt, FieldElement, Word};
 use miden_protocol::NoteError;
 use miden_protocol::account::AccountId;
+use miden_protocol::crypto::SequentialCommit;
 use miden_protocol::crypto::rand::FeltRng;
 use miden_protocol::note::{
     Note,
@@ -23,21 +24,117 @@ use crate::utils::bytes32_to_felts;
 // CLAIM NOTE STRUCTURES
 // ================================================================================================
 
+/// SMT node representation (32-byte hash)
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SmtNode([u8; 32]);
+
+impl SmtNode {
+    /// Creates a new SMT node from a 32-byte array
+    pub fn new(bytes: [u8; 32]) -> Self {
+        Self(bytes)
+    }
+
+    /// Returns the inner 32-byte array
+    pub fn as_bytes(&self) -> &[u8; 32] {
+        &self.0
+    }
+
+    /// Converts the SMT node to 8 Felt elements (u256 as 8 u32 values)
+    pub fn to_elements(&self) -> Result<[Felt; 8], &'static str> {
+        bytes32_to_felts(&self.0)
+    }
+}
+
+impl From<[u8; 32]> for SmtNode {
+    fn from(bytes: [u8; 32]) -> Self {
+        Self::new(bytes)
+    }
+}
+
+/// Global exit root representation (32-byte hash)
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct GlobalExitRoot([u8; 32]);
+
+impl GlobalExitRoot {
+    /// Creates a new global exit root from a 32-byte array
+    pub fn new(bytes: [u8; 32]) -> Self {
+        Self(bytes)
+    }
+
+    /// Returns the inner 32-byte array
+    pub fn as_bytes(&self) -> &[u8; 32] {
+        &self.0
+    }
+
+    /// Converts the global exit root to 8 Felt elements
+    pub fn to_elements(&self) -> Result<[Felt; 8], &'static str> {
+        bytes32_to_felts(&self.0)
+    }
+}
+
+impl From<[u8; 32]> for GlobalExitRoot {
+    fn from(bytes: [u8; 32]) -> Self {
+        Self::new(bytes)
+    }
+}
+
 /// Proof data for CLAIM note creation.
-/// Contains SMT proofs and root hashes using native types.
+/// Contains SMT proofs and root hashes using typed representations.
 pub struct ProofData {
-    /// SMT proof for local exit root (bytes32\[_DEPOSIT_CONTRACT_TREE_DEPTH\])
-    /// 256 elements, each bytes32 represented as 32-byte array
-    pub smt_proof_local_exit_root: Vec<[u8; 32]>,
-    /// SMT proof for rollup exit root (bytes32\[_DEPOSIT_CONTRACT_TREE_DEPTH\])
-    /// 256 elements, each bytes32 represented as 32-byte array
-    pub smt_proof_rollup_exit_root: Vec<[u8; 32]>,
+    /// SMT proof for local exit root (32 SMT nodes)
+    pub smt_proof_local_exit_root: [SmtNode; 32],
+    /// SMT proof for rollup exit root (32 SMT nodes)
+    pub smt_proof_rollup_exit_root: [SmtNode; 32],
     /// Global index (uint256 as 8 u32 values)
     pub global_index: [u32; 8],
-    /// Mainnet exit root hash (bytes32 as 32-byte array)
-    pub mainnet_exit_root: [u8; 32],
-    /// Rollup exit root hash (bytes32 as 32-byte array)
-    pub rollup_exit_root: [u8; 32],
+    /// Mainnet exit root hash
+    pub mainnet_exit_root: GlobalExitRoot,
+    /// Rollup exit root hash
+    pub rollup_exit_root: GlobalExitRoot,
+}
+
+impl ProofData {
+    /// Converts the proof data to a vector of field elements for note inputs
+    pub fn to_elements(&self) -> Result<Vec<Felt>, NoteError> {
+        const PROOF_DATA_ELEMENT_COUNT: usize = 536; // 32*8 + 32*8 + 8 + 8 + 8 (proofs + global_index + 2 exit roots)
+        let mut elements = Vec::with_capacity(PROOF_DATA_ELEMENT_COUNT);
+
+        // Convert SMT proof elements to felts (each node is 8 felts)
+        for (i, node) in self.smt_proof_local_exit_root.iter().enumerate() {
+            let node_felts = node.to_elements().map_err(|e| {
+                NoteError::other(alloc::format!(
+                    "invalid local exit root SMT proof element at index {i}: {e}"
+                ))
+            })?;
+            elements.extend(node_felts);
+        }
+
+        for (i, node) in self.smt_proof_rollup_exit_root.iter().enumerate() {
+            let node_felts = node.to_elements().map_err(|e| {
+                NoteError::other(alloc::format!(
+                    "invalid rollup exit root SMT proof element at index {i}: {e}"
+                ))
+            })?;
+            elements.extend(node_felts);
+        }
+
+        // Global index (uint256 as 8 u32 felts)
+        elements.extend(self.global_index.iter().map(|&v| Felt::new(v as u64)));
+
+        // Mainnet exit root (bytes32 as 8 u32 felts)
+        let mainnet_exit_root_felts = self.mainnet_exit_root.to_elements().map_err(|e| {
+            NoteError::other(alloc::format!("failed to convert mainnet_exit_root: {}", e))
+        })?;
+        elements.extend(mainnet_exit_root_felts);
+
+        // Rollup exit root (bytes32 as 8 u32 felts)
+        let rollup_exit_root_felts = self.rollup_exit_root.to_elements().map_err(|e| {
+            NoteError::other(alloc::format!("failed to convert rollup_exit_root: {}", e))
+        })?;
+        elements.extend(rollup_exit_root_felts);
+
+        Ok(elements)
+    }
 }
 
 /// Leaf data for CLAIM note creation.
@@ -55,6 +152,35 @@ pub struct LeafData {
     pub amount: EthAmount,
     /// ABI encoded metadata (fixed size of 8 u32 values)
     pub metadata: [u32; 8],
+}
+
+impl SequentialCommit for LeafData {
+    type Commitment = Word;
+
+    fn to_elements(&self) -> Vec<Felt> {
+        const LEAF_DATA_ELEMENT_COUNT: usize = 28; // 1 + 5 + 1 + 5 + 8 + 8 (networks + addresses + amount + metadata)
+        let mut elements = Vec::with_capacity(LEAF_DATA_ELEMENT_COUNT);
+
+        // Origin network
+        elements.push(Felt::new(self.origin_network as u64));
+
+        // Origin token address (5 u32 felts)
+        elements.extend(self.origin_token_address.to_elements());
+
+        // Destination network
+        elements.push(Felt::new(self.destination_network as u64));
+
+        // Destination address (5 u32 felts)
+        elements.extend(self.destination_address.to_elements());
+
+        // Amount (uint256 as 8 u32 felts)
+        elements.extend(self.amount.as_array().iter().map(|&v| Felt::new(v as u64)));
+
+        // Metadata (8 u32 felts)
+        elements.extend(self.metadata.iter().map(|&v| Felt::new(v as u64)));
+
+        elements
+    }
 }
 
 /// Output note data for CLAIM note creation.
@@ -86,22 +212,8 @@ impl TryFrom<ClaimNoteInputs> for NoteInputs {
     type Error = NoteError;
 
     fn try_from(inputs: ClaimNoteInputs) -> Result<Self, Self::Error> {
-        // Validate SMT proof lengths - each should be 256 elements (bytes32 values)
-        if inputs.proof_data.smt_proof_local_exit_root.len() != 256 {
-            return Err(NoteError::other(alloc::format!(
-                "smt_proof_local_exit_root must be exactly 256 elements, got {}",
-                inputs.proof_data.smt_proof_local_exit_root.len()
-            )));
-        }
-        if inputs.proof_data.smt_proof_rollup_exit_root.len() != 256 {
-            return Err(NoteError::other(alloc::format!(
-                "smt_proof_rollup_exit_root must be exactly 256 elements, got {}",
-                inputs.proof_data.smt_proof_rollup_exit_root.len()
-            )));
-        }
-
         // Total elements:
-        //   256 + 256 (proofs)
+        //   32 + 32 (proofs, now fixed size)
         // + 8 (global index)
         // + 8 + 8 (exit roots)
         // + 1 + 5 + 1 + 5 (networks + addresses)
@@ -110,61 +222,15 @@ impl TryFrom<ClaimNoteInputs> for NoteInputs {
         // + 4 (output serial num)
         // + 2 (target faucet account id)
         // + 1 (note tag)
-        // = 575
-        let mut claim_inputs = Vec::with_capacity(575);
+        // = 127
+        let mut claim_inputs = Vec::with_capacity(127);
 
-        // 1) PROOF DATA
-        //
-        // We expect each SMT proof element to be a Solidity `bytes32` carrying a `uint32`
-        // (e.g. bytes32(uint256(u32))). If any element doesn't fit in u32, something is wrong
-        // and we should fail loudly rather than silently reducing/modifying the value.
-        for (i, b) in inputs.proof_data.smt_proof_local_exit_root.iter().enumerate() {
-            let felt = bytes32_to_u32_felt_strict(b).map_err(|e| {
-                NoteError::other(alloc::format!("invalid SMT proof element at index {i}: {e}"))
-            })?;
-            claim_inputs.push(felt);
-        }
-        for (i, b) in inputs.proof_data.smt_proof_rollup_exit_root.iter().enumerate() {
-            let felt = bytes32_to_u32_felt_strict(b).map_err(|e| {
-                NoteError::other(alloc::format!("invalid SMT proof element at index {i}: {e}"))
-            })?;
-            claim_inputs.push(felt);
-        }
+        // 1) PROOF DATA - use the new to_elements method
+        let proof_elements = inputs.proof_data.to_elements()?;
+        claim_inputs.extend(proof_elements);
 
-        // globalIndex (uint256 as 8 u32 felts)
-        claim_inputs.extend(inputs.proof_data.global_index.iter().map(|&v| Felt::new(v as u64)));
-
-        // mainnetExitRoot (bytes32 as 8 u32 felts)
-        let mainnet_exit_root_felts = bytes32_to_felts(&inputs.proof_data.mainnet_exit_root)
-            .map_err(|e| {
-                NoteError::other(alloc::format!("failed to convert mainnet_exit_root: {}", e))
-            })?;
-        claim_inputs.extend(mainnet_exit_root_felts);
-
-        // rollupExitRoot (bytes32 as 8 u32 felts)
-        let rollup_exit_root_felts = bytes32_to_felts(&inputs.proof_data.rollup_exit_root)
-            .map_err(|e| {
-                NoteError::other(alloc::format!("failed to convert rollup_exit_root: {}", e))
-            })?;
-        claim_inputs.extend(rollup_exit_root_felts);
-
-        // 2) LEAF DATA
-        claim_inputs.push(Felt::new(inputs.leaf_data.origin_network as u64));
-
-        // originTokenAddress (address as 5 u32 felts)
-        claim_inputs.extend(inputs.leaf_data.origin_token_address.to_elements());
-
-        claim_inputs.push(Felt::new(inputs.leaf_data.destination_network as u64));
-
-        // destinationAddress (address as 5 u32 felts)
-        claim_inputs.extend(inputs.leaf_data.destination_address.to_elements());
-
-        // amount (uint256 as 8 u32 felts)
-        claim_inputs
-            .extend(inputs.leaf_data.amount.as_array().iter().map(|&v| Felt::new(v as u64)));
-
-        // metadata (fixed size of 8 felts)
-        claim_inputs.extend(inputs.leaf_data.metadata.iter().map(|&v| Felt::new(v as u64)));
+        // 2) LEAF DATA - use the new to_elements method
+        claim_inputs.extend(inputs.leaf_data.to_elements());
 
         // Keep the same trailing padding as the original implementation.
         claim_inputs.extend(core::iter::repeat_n(Felt::ZERO, 4));
@@ -217,14 +283,4 @@ pub fn create_claim_note<R: FeltRng>(
     let assets = NoteAssets::new(vec![])?;
 
     Ok(Note::new(assets, metadata, recipient))
-}
-
-// Solidity convention when casting smaller integers to bytes32:
-// bytes32(uint256(x)) is left-padded with zeros, so the u32 value sits in the last 4 bytes.
-fn bytes32_to_u32_felt_strict(bytes32: &[u8; 32]) -> Result<Felt, &'static str> {
-    if bytes32[..28].iter().any(|&b| b != 0) {
-        return Err("bytes32 does not fit in u32 (non-zero high bytes)");
-    }
-    let v = u32::from_be_bytes(bytes32[28..32].try_into().unwrap());
-    Ok(Felt::new(v as u64))
 }

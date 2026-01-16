@@ -378,9 +378,9 @@ pub fn claim_note_test_inputs(
     amount: u32,
     destination_account_id: AccountId,
 ) -> ClaimNoteTestInputs {
-    // Create SMT proofs with 256 bytes32 values each
-    let smt_proof_local_exit_root = vec![[0u8; 32]; 256];
-    let smt_proof_rollup_exit_root = vec![[0u8; 32]; 256];
+    // Create SMT proofs with 32 bytes32 values each (SMT path depth)
+    let smt_proof_local_exit_root = vec![[0u8; 32]; 32];
+    let smt_proof_rollup_exit_root = vec![[0u8; 32]; 32];
     let global_index = [12345u32, 0, 0, 0, 0, 0, 0, 0];
 
     let mainnet_exit_root: [u8; 32] = [
