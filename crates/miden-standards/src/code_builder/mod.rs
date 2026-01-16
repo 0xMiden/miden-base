@@ -295,6 +295,17 @@ impl CodeBuilder {
         }
     }
 
+    /// Applies the advice map to a library if it's non-empty.
+    ///
+    /// This avoids cloning the MAST forest when there are no advice map entries.
+    fn apply_advice_map_to_library(advice_map: AdviceMap, library: Library) -> Library {
+        if advice_map.is_empty() {
+            library
+        } else {
+            library.with_advice_map(advice_map)
+        }
+    }
+
     // COMPILATION
     // --------------------------------------------------------------------------------------------
 
@@ -313,7 +324,7 @@ impl CodeBuilder {
         component_path: impl AsRef<str>,
         component_code: impl Parse,
     ) -> Result<AccountComponentCode, CodeBuilderError> {
-        let CodeBuilder { assembler, source_manager, .. } = self;
+        let CodeBuilder { assembler, source_manager, advice_map } = self;
 
         let mut parse_options = ParseOptions::for_library();
         parse_options.path = Some(Path::new(component_path.as_ref()).into());
@@ -329,7 +340,9 @@ impl CodeBuilder {
             CodeBuilderError::build_error_with_report("failed to parse component code", err)
         })?;
 
-        Ok(AccountComponentCode::from(library))
+        Ok(AccountComponentCode::from(Self::apply_advice_map_to_library(
+            advice_map, library,
+        )))
     }
 
     /// Compiles the provided MASM code into a [`TransactionScript`].
@@ -735,6 +748,26 @@ mod tests {
             .advice_map()
             .get(&key)
             .expect("advice map entry should be present in note script");
+        assert_eq!(stored_value.as_ref(), value.as_slice());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_code_builder_advice_map_in_component_code() -> anyhow::Result<()> {
+        let key = Word::from([11u32, 22, 33, 44]);
+        let value = vec![Felt::new(500)];
+
+        let component_code = CodeBuilder::default()
+            .with_advice_map_entry(key, value.clone())
+            .compile_component_code("test::component", "pub proc test nop end")
+            .context("failed to compile component code with advice map")?;
+
+        let mast = component_code.mast_forest();
+        let stored_value = mast
+            .advice_map()
+            .get(&key)
+            .expect("advice map entry should be present in component code");
         assert_eq!(stored_value.as_ref(), value.as_slice());
 
         Ok(())
