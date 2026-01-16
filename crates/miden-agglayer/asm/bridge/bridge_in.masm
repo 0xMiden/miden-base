@@ -10,7 +10,7 @@ end
 #! Computes the leaf value and verifies it against the AggLayer bridge.
 #!
 #! Inputs:
-#!   Operand stack: [PROOF_DATA_KEY, LEAF_DATA_KEY, pad(8)]
+#!   Operand stack: [LEAF_DATA_KEY, PROOF_DATA_KEY, pad(8)]
 #!   Advice map: {
 #!     PROOF_DATA_KEY => [
 #!       smtProofLocalExitRoot[256],      // SMT proof for local exit root (256 felts, bytes32[_DEPOSIT_CONTRACT_TREE_DEPTH])
@@ -35,8 +35,6 @@ end
 #! Invocation: call
 pub proc verify_leaf_bridge
     # get the leaf value. We have all the necessary leaf data in the advice map
-    swapw
-    # => [LEAF_DATA_KEY, PROOF_DATA_KEY, pad(8)]
     exec.crypto_utils::get_leaf_value
     # => [LEAF_VALUE[8], PROOF_DATA_KEY, pad(8)]
 
