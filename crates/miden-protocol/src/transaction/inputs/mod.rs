@@ -116,7 +116,14 @@ impl TransactionInputs {
     }
 
     /// Replaces the transaction inputs and assigns the given asset witnesses.
+    ///
+    /// The asset witness data is added to both the internal advice inputs and the transaction
+    /// arguments' advice inputs, so it can be retrieved later via
+    /// [`Self::read_vault_asset_witnesses`].
     pub fn with_asset_witnesses(mut self, witnesses: Vec<AssetWitness>) -> Self {
+        let mut tx_adv = TransactionAdviceInputs::default();
+        witnesses.iter().for_each(|witness| tx_adv.add_asset_witness(witness.clone()));
+        self.extend_advice_inputs(tx_adv.into_advice_inputs());
         self.asset_witnesses = witnesses;
         self
     }
@@ -163,6 +170,15 @@ impl TransactionInputs {
         let AdviceInputs { map, store, .. } = new_advice_inputs;
         self.advice_inputs = AdviceInputs { stack: Default::default(), map, store };
         self.tx_args.extend_advice_inputs(self.advice_inputs.clone());
+    }
+
+    /// Extends the advice inputs with the provided inputs.
+    ///
+    /// This extends both the internal advice inputs and the transaction arguments' advice inputs,
+    /// ensuring that `self.advice_inputs` is always a subset of `self.tx_args.advice_inputs()`.
+    pub fn extend_advice_inputs(&mut self, advice_inputs: AdviceInputs) {
+        self.advice_inputs.extend(advice_inputs.clone());
+        self.tx_args.extend_advice_inputs(advice_inputs);
     }
 
     /// Updates the transaction arguments of the inputs.
@@ -412,9 +428,12 @@ impl TransactionInputs {
 
     /// Replaces the current tx_args with the provided value.
     ///
-    /// This also appends advice inputs from these transaction inputs to the advice inputs of the
-    /// tx args.
+    /// This also merges the advice inputs from both the transaction inputs and the tx args,
+    /// ensuring that `self.advice_inputs` is always a subset of `self.tx_args.advice_inputs()`.
     fn set_tx_args_inner(&mut self, tx_args: TransactionArgs) {
+        // Copy the tx_args advice inputs to self.advice_inputs first, so that any data
+        // from a previous execution (e.g., during re-execution) is preserved.
+        self.advice_inputs.extend(tx_args.advice_inputs().clone());
         self.tx_args = tx_args;
         self.tx_args.extend_advice_inputs(self.advice_inputs.clone());
     }

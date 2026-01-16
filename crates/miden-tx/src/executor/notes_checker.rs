@@ -5,17 +5,11 @@ use miden_processor::fast::FastProcessor;
 use miden_protocol::account::AccountId;
 use miden_protocol::block::BlockNumber;
 use miden_protocol::note::Note;
-use miden_protocol::transaction::{
-    InputNote,
-    InputNotes,
-    TransactionArgs,
-    TransactionInputs,
-    TransactionKernel,
-};
+use miden_protocol::transaction::{InputNote, InputNotes, TransactionArgs, TransactionKernel};
 use miden_prover::AdviceInputs;
 use miden_standards::note::{NoteConsumptionStatus, WellKnownNote};
 
-use super::TransactionExecutor;
+use super::{PreparedTransactionInputs, TransactionExecutor};
 use crate::auth::TransactionAuthenticator;
 use crate::errors::TransactionCheckerError;
 use crate::executor::map_execution_error;
@@ -124,14 +118,14 @@ where
         notes.sort_unstable_by_key(|note| WellKnownNote::from_note(note).is_none());
 
         let notes = InputNotes::from(notes);
-        let (tx_inputs, _initial_fee_asset_balance) = self
+        let prepared = self
             .0
             .prepare_tx_inputs(target_account_id, block_ref, notes, tx_args)
             .await
             .map_err(NoteCheckerError::TransactionPreparation)?;
 
         // Attempt to find an executable set of notes.
-        self.find_executable_notes_by_elimination(tx_inputs).await
+        self.find_executable_notes_by_elimination(prepared).await
     }
 
     /// Checks whether the provided input note could be consumed by the provided account by
@@ -161,7 +155,7 @@ where
         }
 
         // Prepare transaction inputs.
-        let (mut tx_inputs, _initial_fee_asset_balance) = self
+        let mut prepared = self
             .0
             .prepare_tx_inputs(
                 target_account_id,
@@ -173,7 +167,7 @@ where
             .map_err(NoteCheckerError::TransactionPreparation)?;
 
         // try to consume the provided note
-        match self.try_execute_notes(&mut tx_inputs).await {
+        match self.try_execute_notes(&mut prepared).await {
             // execution succeeded
             Ok(()) => Ok(NoteConsumptionStatus::Consumable),
             Err(tx_checker_error) => {
@@ -208,9 +202,10 @@ where
     /// succeeded or failed to execute.
     async fn find_executable_notes_by_elimination(
         &self,
-        mut tx_inputs: TransactionInputs,
+        mut prepared: PreparedTransactionInputs,
     ) -> Result<NoteConsumptionInfo, NoteCheckerError> {
-        let mut candidate_notes = tx_inputs
+        let mut candidate_notes = prepared
+            .inputs
             .input_notes()
             .iter()
             .map(|note| note.clone().into_note())
@@ -222,8 +217,8 @@ where
         // further reduced.
         loop {
             // Execute the candidate notes.
-            tx_inputs.set_input_notes(candidate_notes.clone());
-            match self.try_execute_notes(&mut tx_inputs).await {
+            prepared.inputs.set_input_notes(candidate_notes.clone());
+            match self.try_execute_notes(&mut prepared).await {
                 Ok(()) => {
                     // A full set of successful notes has been found.
                     let successful = candidate_notes;
@@ -245,7 +240,7 @@ where
                         .find_largest_executable_combination(
                             candidate_notes,
                             failed_notes,
-                            tx_inputs,
+                            prepared,
                         )
                         .await;
                     return Ok(consumption_info);
@@ -270,7 +265,7 @@ where
         &self,
         mut remaining_notes: Vec<Note>,
         mut failed_notes: Vec<FailedNote>,
-        mut tx_inputs: TransactionInputs,
+        mut prepared: PreparedTransactionInputs,
     ) -> NoteConsumptionInfo {
         let mut successful_notes = Vec::new();
         let mut failed_note_index = BTreeMap::new();
@@ -286,8 +281,8 @@ where
             for (idx, note) in remaining_notes.iter().enumerate() {
                 successful_notes.push(note.clone());
 
-                tx_inputs.set_input_notes(successful_notes.clone());
-                match self.try_execute_notes(&mut tx_inputs).await {
+                prepared.inputs.set_input_notes(successful_notes.clone());
+                match self.try_execute_notes(&mut prepared).await {
                     Ok(()) => {
                         // The successfully added note might have failed earlier. Remove it from the
                         // failed list.
@@ -323,17 +318,15 @@ where
     /// or a specific [`NoteExecutionError`] indicating where and why the execution failed.
     async fn try_execute_notes(
         &self,
-        tx_inputs: &mut TransactionInputs,
+        prepared: &mut PreparedTransactionInputs,
     ) -> Result<(), TransactionCheckerError> {
-        if tx_inputs.input_notes().is_empty() {
+        if prepared.inputs.input_notes().is_empty() {
             return Ok(());
         }
 
-        // Note: For note consumption checking, we don't need the actual fee balance.
-        // The fee balance is only relevant for actual transaction execution.
         let (mut host, stack_inputs, advice_inputs) = self
             .0
-            .prepare_transaction(tx_inputs, 0)
+            .prepare_transaction(&prepared.inputs, prepared.initial_fee_balance)
             .await
             .map_err(TransactionCheckerError::TransactionPreparation)?;
 
@@ -355,7 +348,7 @@ where
                     store: merkle_store,
                     ..Default::default()
                 };
-                tx_inputs.set_advice_inputs(advice_inputs);
+                prepared.inputs.set_advice_inputs(advice_inputs);
                 Ok(())
             },
             Err(error) => {

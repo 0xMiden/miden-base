@@ -1,5 +1,9 @@
 use anyhow::Context;
+use miden_protocol::account::AccountType;
 use miden_protocol::asset::FungibleAsset;
+use miden_protocol::crypto::merkle::smt::Smt;
+use miden_protocol::note::NoteType;
+use miden_protocol::testing::account_id::{ACCOUNT_ID_SENDER, AccountIdBuilder};
 use miden_protocol::{self, Felt, Word};
 use miden_testing::{Auth, MockChain};
 
@@ -46,6 +50,59 @@ async fn prove_account_creation_with_fees() -> anyhow::Result<()> {
     assert_ne!(tx.account_delta().to_commitment(), Word::empty());
 
     prove_and_verify_transaction(tx)?;
+
+    Ok(())
+}
+
+/// Test that reexecuting a transaction with no authenticator and the tx inputs from a first
+/// successful execution is possible.
+///
+/// The test setup is a non-empty account vault with a native asset that is sufficient to cover the
+/// fee of the transaction.
+///
+/// When re-executing, the initial_fee_asset_balance is extracted from the asset witness, which is
+/// done differently during execution and re-execution. Since we cannot assert this balance matches
+/// directly, this test ensures that the witness fetched during re-execution isn't 0.
+#[tokio::test]
+async fn tx_reexecution_fetches_correct_fee_asset_witness() -> anyhow::Result<()> {
+    let native_asset_id = AccountIdBuilder::new()
+        .account_type(AccountType::FungibleFaucet)
+        .build_with_seed([4; 32]);
+    let mut builder =
+        MockChain::builder().verification_base_fee(50).native_asset_id(native_asset_id);
+    // Use basic auth so the tx requires a signature for successful execution.
+    // Setup a non-empty vault with a non-zero fee asset. Without this, the test has no point.
+    let account = builder.add_existing_mock_account_with_assets(
+        Auth::BasicAuth,
+        [FungibleAsset::new(native_asset_id, 10_000)?.into()],
+    )?;
+    assert_ne!(
+        account.vault().root(),
+        Smt::default().root(),
+        "account should have a non-default vault root for this test"
+    );
+
+    let note = builder.add_p2id_note(
+        ACCOUNT_ID_SENDER.try_into()?,
+        account.id(),
+        &[FungibleAsset::mock(3)],
+        NoteType::Public,
+    )?;
+    let chain = builder.build()?;
+
+    let tx = chain
+        .build_tx_context(account.id(), &[note.id()], &[])?
+        .build()?
+        .execute()
+        .await?;
+
+    let _reexecuted_tx = chain
+        .build_tx_context(account.id(), &[note.id()], &[])?
+        .authenticator(None)
+        .tx_inputs(tx.tx_inputs().clone())
+        .build()?
+        .execute()
+        .await?;
 
     Ok(())
 }

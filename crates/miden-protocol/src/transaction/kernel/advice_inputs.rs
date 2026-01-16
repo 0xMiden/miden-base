@@ -299,7 +299,7 @@ impl TransactionAdviceInputs {
     }
 
     /// Adds an asset witness to the advice inputs.
-    pub fn add_asset_witness(&mut self, witness: AssetWitness) {
+    pub(crate) fn add_asset_witness(&mut self, witness: AssetWitness) {
         self.extend_merkle_store(witness.authenticated_nodes());
 
         let smt_proof = SmtProof::from(witness);

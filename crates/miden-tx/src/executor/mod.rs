@@ -42,6 +42,25 @@ pub use notes_checker::{
     NoteConsumptionInfo,
 };
 
+// PREPARED TRANSACTION INPUTS
+// ================================================================================================
+
+/// Wrapper for transaction inputs and the initial fee asset balance.
+///
+/// This struct is returned by [`TransactionExecutor::prepare_tx_inputs`] and contains the
+/// transaction inputs along with the initial fee asset balance, which is needed for proper
+/// transaction execution.
+pub(crate) struct PreparedTransactionInputs {
+    pub inputs: TransactionInputs,
+    pub initial_fee_balance: u64,
+}
+
+impl PreparedTransactionInputs {
+    fn new(inputs: TransactionInputs, initial_fee_balance: u64) -> Self {
+        Self { inputs, initial_fee_balance }
+    }
+}
+
 // TRANSACTION EXECUTOR
 // ================================================================================================
 
@@ -181,11 +200,10 @@ where
         notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
     ) -> Result<ExecutedTransaction, TransactionExecutorError> {
-        let (tx_inputs, initial_fee_asset_balance) =
-            self.prepare_tx_inputs(account_id, block_ref, notes, tx_args).await?;
+        let prepared = self.prepare_tx_inputs(account_id, block_ref, notes, tx_args).await?;
 
         let (mut host, stack_inputs, advice_inputs) =
-            self.prepare_transaction(&tx_inputs, initial_fee_asset_balance).await?;
+            self.prepare_transaction(&prepared.inputs, prepared.initial_fee_balance).await?;
 
         let processor = FastProcessor::new_debug(stack_inputs.as_slice(), advice_inputs);
         let output = processor
@@ -203,7 +221,7 @@ where
             ..Default::default()
         };
 
-        build_executed_transaction(advice_inputs, tx_inputs, stack_outputs, host)
+        build_executed_transaction(advice_inputs, prepared.inputs, stack_outputs, host)
     }
 
     // SCRIPT EXECUTION
@@ -228,11 +246,10 @@ where
         tx_args.extend_advice_inputs(advice_inputs);
 
         let notes = InputNotes::default();
-        let (tx_inputs, initial_fee_asset_balance) =
-            self.prepare_tx_inputs(account_id, block_ref, notes, tx_args).await?;
+        let prepared = self.prepare_tx_inputs(account_id, block_ref, notes, tx_args).await?;
 
         let (mut host, stack_inputs, advice_inputs) =
-            self.prepare_transaction(&tx_inputs, initial_fee_asset_balance).await?;
+            self.prepare_transaction(&prepared.inputs, prepared.initial_fee_balance).await?;
 
         let processor =
             FastProcessor::new_with_advice_inputs(stack_inputs.as_slice(), advice_inputs);
@@ -254,14 +271,14 @@ where
     // method needs to be called only once in order to allow many transactions to be prepared based
     // on the transaction inputs returned by this method.
     //
-    // Returns the transaction inputs and the initial fee asset balance.
+    // Returns the prepared transaction inputs containing both the inputs and initial fee balance.
     async fn prepare_tx_inputs(
         &self,
         account_id: AccountId,
         block_ref: BlockNumber,
         input_notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
-    ) -> Result<(TransactionInputs, u64), TransactionExecutorError> {
+    ) -> Result<PreparedTransactionInputs, TransactionExecutorError> {
         let (mut asset_vault_keys, mut ref_blocks) = validate_input_notes(&input_notes, block_ref)?;
         ref_blocks.insert(block_ref);
 
@@ -297,9 +314,21 @@ where
             Vec::new()
         };
 
-        // Calculate the initial fee asset balance before adding witnesses to advice inputs.
+        let tx_inputs = TransactionInputs::new(account, block_header, blockchain, input_notes)
+            .map_err(TransactionExecutorError::InvalidTransactionInputs)?
+            .with_tx_args(tx_args)
+            .with_asset_witnesses(asset_witnesses);
+
+        // Read the fee asset witness back from the tx inputs.
+        // This way, whether the witness was just added or was already present doesn't matter, which
+        // abstracts over execution and re-execution cases.
+        let fee_asset_witnesses = tx_inputs
+            .read_vault_asset_witnesses(vault_root, [fee_asset_vault_key].into())
+            .unwrap_or_default();
+
+        // Calculate the initial fee asset balance.
         let fee_asset_witness =
-            asset_witnesses.iter().find_map(|witness| witness.find(fee_asset_vault_key));
+            fee_asset_witnesses.iter().find_map(|witness| witness.find(fee_asset_vault_key));
         let initial_fee_asset_balance = match fee_asset_witness {
             Some(Asset::Fungible(fee_asset)) => fee_asset.amount(),
             Some(Asset::NonFungible(_)) => {
@@ -308,12 +337,7 @@ where
             None => 0,
         };
 
-        let tx_inputs = TransactionInputs::new(account, block_header, blockchain, input_notes)
-            .map_err(TransactionExecutorError::InvalidTransactionInputs)?
-            .with_tx_args(tx_args)
-            .with_asset_witnesses(asset_witnesses);
-
-        Ok((tx_inputs, initial_fee_asset_balance))
+        Ok(PreparedTransactionInputs::new(tx_inputs, initial_fee_asset_balance))
     }
 
     /// Prepares the data needed for transaction execution.
