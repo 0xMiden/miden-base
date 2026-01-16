@@ -115,7 +115,7 @@ static NETWORK_FUNGIBLE_FAUCET_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
 static STORAGE_SCHEMA_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
     let bytes = include_bytes!(concat!(
         env!("OUT_DIR"),
-        "/assets/account_components/metadata/storage_schema.masl"
+        "/assets/account_components/metadata/schema_commitment.masl"
     ));
     Library::read_from_bytes(bytes).expect("Shipped Storage Schema library is well-formed")
 });

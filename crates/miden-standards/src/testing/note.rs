@@ -9,7 +9,7 @@ use miden_protocol::asset::Asset;
 use miden_protocol::note::{
     Note,
     NoteAssets,
-    NoteExecutionHint,
+    NoteAttachment,
     NoteInputs,
     NoteMetadata,
     NoteRecipient,
@@ -17,7 +17,7 @@ use miden_protocol::note::{
     NoteType,
 };
 use miden_protocol::testing::note::DEFAULT_NOTE_CODE;
-use miden_protocol::{Felt, NoteError, Word, ZERO};
+use miden_protocol::{Felt, NoteError, Word};
 use rand::Rng;
 
 use crate::code_builder::CodeBuilder;
@@ -31,11 +31,10 @@ pub struct NoteBuilder {
     inputs: Vec<Felt>,
     assets: Vec<Asset>,
     note_type: NoteType,
-    note_execution_hint: NoteExecutionHint,
     serial_num: Word,
     tag: NoteTag,
     code: String,
-    aux: Felt,
+    attachment: NoteAttachment,
     dyn_libraries: Vec<Library>,
     source_manager: Arc<dyn SourceManagerSync>,
 }
@@ -54,12 +53,11 @@ impl NoteBuilder {
             inputs: vec![],
             assets: vec![],
             note_type: NoteType::Public,
-            note_execution_hint: NoteExecutionHint::None,
             serial_num,
             // The note tag is not under test, so we choose a value that is always valid.
-            tag: NoteTag::from_account_id(sender),
+            tag: NoteTag::with_account_target(sender),
             code: DEFAULT_NOTE_CODE.to_string(),
-            aux: ZERO,
+            attachment: NoteAttachment::default(),
             dyn_libraries: Vec::new(),
             source_manager: Arc::new(DefaultSourceManager::default()),
         }
@@ -79,11 +77,6 @@ impl NoteBuilder {
 
     pub fn add_assets(mut self, assets: impl IntoIterator<Item = Asset>) -> Self {
         self.assets.extend(assets);
-        self
-    }
-
-    pub fn note_execution_hint(mut self, note_execution_hint: NoteExecutionHint) -> Self {
-        self.note_execution_hint = note_execution_hint;
         self
     }
 
@@ -108,8 +101,9 @@ impl NoteBuilder {
         self
     }
 
-    pub fn aux(mut self, aux: Felt) -> Self {
-        self.aux = aux;
+    /// Overwrites the attachment.
+    pub fn attachment(mut self, attachment: impl Into<NoteAttachment>) -> Self {
+        self.attachment = attachment.into();
         self
     }
 
@@ -154,13 +148,8 @@ impl NoteBuilder {
             .compile_note_script(virtual_source_file)
             .expect("note script should compile");
         let vault = NoteAssets::new(self.assets)?;
-        let metadata = NoteMetadata::new(
-            self.sender,
-            self.note_type,
-            self.tag,
-            self.note_execution_hint,
-            self.aux,
-        )?;
+        let metadata = NoteMetadata::new(self.sender, self.note_type, self.tag)
+            .with_attachment(self.attachment);
         let inputs = NoteInputs::new(self.inputs)?;
         let recipient = NoteRecipient::new(self.serial_num, note_script, inputs);
 

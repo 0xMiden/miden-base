@@ -700,7 +700,7 @@ async fn test_set_item() -> anyhow::Result<()> {
 
             exec.account::get_item
             push.{new_value}
-            assert_eqw
+            assert_eqw.err="new value did not match"
         end
         "#,
     );
@@ -1009,7 +1009,7 @@ async fn test_get_vault_root() -> anyhow::Result<()> {
 
     // get the initial vault root
     let code = format!(
-        "
+        r#"
         use miden::protocol::active_account
         use $kernel::prologue
 
@@ -1019,9 +1019,9 @@ async fn test_get_vault_root() -> anyhow::Result<()> {
             # get the initial vault root
             exec.active_account::get_initial_vault_root
             push.{expected_vault_root}
-            assert_eqw
+            assert_eqw.err="initial vault root mismatch"
         end
-        ",
+        "#,
         expected_vault_root = &account.vault().root(),
     );
     tx_context.execute_code(&code).await?;
@@ -1046,7 +1046,7 @@ async fn test_get_vault_root() -> anyhow::Result<()> {
             # get the current vault root
             exec.active_account::get_vault_root
             push.{expected_vault_root}
-            assert_eqw.err="actual vault root is not equal to the expected one"
+            assert_eqw.err="vault root mismatch"
         end
         "#,
         fungible_asset = Word::from(&fungible_asset),
@@ -1267,7 +1267,7 @@ async fn test_get_init_balance_subtraction() -> anyhow::Result<()> {
 
         begin
             # create random note and move the asset into it
-            exec.util::create_random_note
+            exec.util::create_default_note
             # => [note_idx]
 
             push.{REMOVED_ASSET}

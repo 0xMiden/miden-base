@@ -5,6 +5,13 @@ use core::hash::Hash;
 use miden_core::utils::hash_string_to_word;
 
 use crate::Felt;
+use crate::utils::serde::{
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    Serializable,
+};
 
 /// The partial hash of a [`StorageSlotName`](super::StorageSlotName).
 ///
@@ -88,6 +95,21 @@ impl Display for StorageSlotId {
     /// This means it encodes 16 bytes.
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.write_fmt(format_args!("0x{:032x}", self.as_u128()))
+    }
+}
+
+impl Serializable for StorageSlotId {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        self.suffix.write_into(target);
+        self.prefix.write_into(target);
+    }
+}
+
+impl Deserializable for StorageSlotId {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let suffix = Felt::read_from(source)?;
+        let prefix = Felt::read_from(source)?;
+        Ok(StorageSlotId::new(suffix, prefix))
     }
 }
 

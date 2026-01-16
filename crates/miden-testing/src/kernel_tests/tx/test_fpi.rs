@@ -28,15 +28,15 @@ use miden_protocol::testing::account_id::{
 use miden_protocol::testing::storage::STORAGE_LEAVES_2;
 use miden_protocol::transaction::memory::{
     ACCOUNT_DATA_LENGTH,
+    ACCT_ACTIVE_STORAGE_SLOTS_SECTION_OFFSET,
     ACCT_CODE_COMMITMENT_OFFSET,
     ACCT_ID_AND_NONCE_OFFSET,
+    ACCT_NUM_PROCEDURES_OFFSET,
+    ACCT_NUM_STORAGE_SLOTS_OFFSET,
     ACCT_PROCEDURES_SECTION_OFFSET,
     ACCT_STORAGE_COMMITMENT_OFFSET,
-    ACCT_STORAGE_SLOTS_SECTION_OFFSET,
     ACCT_VAULT_ROOT_OFFSET,
     NATIVE_ACCOUNT_DATA_PTR,
-    NUM_ACCT_PROCEDURES_OFFSET,
-    NUM_ACCT_STORAGE_SLOTS_OFFSET,
 };
 use miden_protocol::{FieldElement, Word, ZERO};
 use miden_standards::code_builder::CodeBuilder;
@@ -610,7 +610,7 @@ async fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
             # => [STORAGE_VALUE]
 
             # assert the correctness of the obtained value
-            push.1.2.3.4 assert_eqw
+            push.1.2.3.4 assert_eqw.err="foreign proc returned unexpected value"
             # => []
 
             # get an item from the storage map
@@ -636,7 +636,7 @@ async fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
             # => [MAP_VALUE]
 
             # assert the correctness of the obtained value
-            push.1.2.3.4 assert_eqw
+            push.1.2.3.4 assert_eqw.err="foreign proc returned unexpected value"
             # => []
 
             # truncate the stack
@@ -1318,7 +1318,7 @@ async fn test_nested_fpi_stack_overflow() -> anyhow::Result<()> {
                     drop drop drop
 
                     # make sure that the resulting value equals 1
-                    assert
+                    assert.err="expected value to be 1"
                 end
         "#,
         mock_value_slot0 = mock_value_slot0.name(),
@@ -1820,7 +1820,7 @@ fn foreign_account_data_memory_assertions(
     );
 
     assert_eq!(
-        exec_output.get_kernel_mem_word(foreign_account_data_ptr + NUM_ACCT_STORAGE_SLOTS_OFFSET),
+        exec_output.get_kernel_mem_word(foreign_account_data_ptr + ACCT_NUM_STORAGE_SLOTS_OFFSET),
         Word::from([u16::try_from(foreign_account.storage().slots().len()).unwrap(), 0, 0, 0]),
     );
 
@@ -1832,14 +1832,16 @@ fn foreign_account_data_memory_assertions(
     {
         assert_eq!(
             exec_output.get_kernel_mem_word(
-                foreign_account_data_ptr + ACCT_STORAGE_SLOTS_SECTION_OFFSET + (i as u32) * 4
+                foreign_account_data_ptr
+                    + ACCT_ACTIVE_STORAGE_SLOTS_SECTION_OFFSET
+                    + (i as u32) * 4
             ),
             Word::try_from(elements).unwrap(),
         )
     }
 
     assert_eq!(
-        exec_output.get_kernel_mem_word(foreign_account_data_ptr + NUM_ACCT_PROCEDURES_OFFSET),
+        exec_output.get_kernel_mem_word(foreign_account_data_ptr + ACCT_NUM_PROCEDURES_OFFSET),
         Word::from([u16::try_from(foreign_account.code().num_procedures()).unwrap(), 0, 0, 0]),
     );
 

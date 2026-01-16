@@ -226,18 +226,16 @@ impl AccountComponentInterface {
             }
 
             body.push_str(&format!(
-                "push.{recipient}
-                push.{execution_hint}
+                "
+                push.{recipient}
                 push.{note_type}
-                push.{aux}
-                push.{tag}\n",
+                push.{tag}
+                # => [tag, note_type, RECIPIENT, pad(16)]
+                ",
                 recipient = partial_note.recipient_digest(),
                 note_type = Felt::from(partial_note.metadata().note_type()),
-                execution_hint = Felt::from(partial_note.metadata().execution_hint()),
-                aux = partial_note.metadata().aux(),
                 tag = Felt::from(partial_note.metadata().tag()),
             ));
-            // stack => [tag, aux, note_type, execution_hint, RECIPIENT]
 
             match self {
                 AccountComponentInterface::BasicFungibleFaucet => {
@@ -256,27 +254,36 @@ impl AccountComponentInterface {
                     }
 
                     body.push_str(&format!(
-                        "push.{amount}
-                        call.::miden::standards::faucets::basic_fungible::distribute dropw dropw drop\n",
+                        "
+                        push.{amount}
+                        call.::miden::standards::faucets::basic_fungible::distribute
+                        # => [note_idx, pad(25)]
+                        swapdw dropw dropw swap drop
+                        # => [note_idx, pad(16)]\n
+                        ",
                         amount = asset.unwrap_fungible().amount()
                     ));
-                    // stack => []
                 },
                 AccountComponentInterface::BasicWallet => {
-                    body.push_str("call.::miden::protocol::output_note::create\n");
-                    // stack => [note_idx]
+                    body.push_str(
+                        "
+                    exec.::miden::protocol::output_note::create
+                    # => [note_idx, pad(16)]\n
+                    ",
+                    );
 
                     for asset in partial_note.assets().iter() {
                         body.push_str(&format!(
-                            "push.{asset}
-                            call.::miden::standards::wallets::basic::move_asset_to_note dropw\n",
+                            "
+                            push.{asset}
+                            # => [ASSET, note_idx, pad(16)]
+                            call.::miden::standards::wallets::basic::move_asset_to_note
+                            dropw
+                            # => [note_idx, pad(16)]\n
+                            ",
                             asset = Word::from(*asset)
                         ));
-                        // stack => [note_idx]
                     }
-
-                    body.push_str("dropw dropw dropw drop\n");
-                    // stack => []
                 },
                 _ => {
                     return Err(AccountInterfaceError::UnsupportedInterface {
@@ -284,6 +291,22 @@ impl AccountComponentInterface {
                     });
                 },
             }
+
+            body.push_str(&format!(
+                "
+                push.{ATTACHMENT}
+                push.{attachment_kind}
+                push.{attachment_scheme}
+                movup.6
+                # => [note_idx, attachment_scheme, attachment_kind, ATTACHMENT, pad(16)]
+                exec.::miden::protocol::output_note::set_attachment
+                # => [pad(16)]
+            ",
+                ATTACHMENT = partial_note.metadata().to_attachment_word(),
+                attachment_scheme =
+                    partial_note.metadata().attachment().attachment_scheme().as_u32(),
+                attachment_kind = partial_note.metadata().attachment().attachment_kind().as_u8(),
+            ));
         }
 
         Ok(body)

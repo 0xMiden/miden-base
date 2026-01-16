@@ -137,15 +137,6 @@ impl InitStorageData {
         self.map_entries.get(slot_name)
     }
 
-    /// Merges another [`InitStorageData`] into this one, overwriting value entries and appending
-    /// map entries.
-    pub fn merge_from(&mut self, other: InitStorageData) {
-        self.value_entries.extend(other.value_entries);
-        for (slot_name, entries) in other.map_entries {
-            self.map_entries.entry(slot_name).or_default().extend(entries);
-        }
-    }
-
     /// Returns true if any init value entry targets the given slot name.
     pub fn has_value_entries_for_slot(&self, slot_name: &StorageSlotName) -> bool {
         self.value_entries.keys().any(|name| name.slot_name() == slot_name)
@@ -185,7 +176,51 @@ impl InitStorageData {
         Ok(())
     }
 
-    /// Inserts map entries, returning an error if there are conflicting value entries.
+    /// Sets a value entry, overriding any existing entry for the name.
+    ///
+    /// Returns an error if the [`StorageValueName`] has been used for a map slot.
+    pub fn set_value(
+        &mut self,
+        name: StorageValueName,
+        value: impl Into<WordValue>,
+    ) -> Result<(), InitStorageDataError> {
+        if self.map_entries.contains_key(name.slot_name()) {
+            return Err(InitStorageDataError::ConflictingEntries(name.slot_name().as_str().into()));
+        }
+        self.value_entries.insert(name, value.into());
+        Ok(())
+    }
+
+    /// Inserts a single map entry, returning an error on duplicate or conflicting keys.
+    ///
+    /// See [`Self::insert_value`] for examples of supported types for `key` and `value`.
+    pub fn insert_map_entry(
+        &mut self,
+        slot_name: StorageSlotName,
+        key: impl Into<WordValue>,
+        value: impl Into<WordValue>,
+    ) -> Result<(), InitStorageDataError> {
+        if self.has_value_entries_for_slot(&slot_name) {
+            return Err(InitStorageDataError::ConflictingEntries(slot_name.as_str().into()));
+        }
+
+        let key = key.into();
+        if let Some(entries) = self.map_entries.get(&slot_name)
+            && entries.iter().any(|(existing_key, _)| existing_key == &key)
+        {
+            return Err(InitStorageDataError::DuplicateKey(format!(
+                "{}[{key:?}]",
+                slot_name.as_str()
+            )));
+        }
+
+        self.map_entries.entry(slot_name).or_default().push((key, value.into()));
+        Ok(())
+    }
+
+    /// Sets map entries for the slot, replacing any existing entries.
+    ///
+    /// Returns an error if there are conflicting value entries.
     pub fn set_map_values(
         &mut self,
         slot_name: StorageSlotName,
@@ -194,20 +229,23 @@ impl InitStorageData {
         if self.has_value_entries_for_slot(&slot_name) {
             return Err(InitStorageDataError::ConflictingEntries(slot_name.as_str().into()));
         }
-        self.map_entries.entry(slot_name).or_default().extend(entries);
+        self.map_entries.insert(slot_name, entries);
         Ok(())
     }
 
-    /// Inserts a single map entry.
-    ///
-    /// See [`Self::insert_value`] for examples of supported types for `key` and `value`.
-    pub fn insert_map_entry(
-        &mut self,
-        slot_name: StorageSlotName,
-        key: impl Into<WordValue>,
-        value: impl Into<WordValue>,
-    ) {
-        self.map_entries.entry(slot_name).or_default().push((key.into(), value.into()));
+    /// Merges another [`InitStorageData`] into this one, overwriting value entries and appending
+    /// map entries.
+    pub fn merge_with(&mut self, other: InitStorageData) {
+        self.value_entries.extend(other.value_entries);
+        for (slot_name, entries) in other.map_entries {
+            self.map_entries.entry(slot_name).or_default().extend(entries);
+        }
+    }
+
+    /// Merges another [`InitStorageData`] into this one, overwriting value entries and appending
+    /// map entries.
+    pub fn merge_from(&mut self, other: InitStorageData) {
+        self.merge_with(other);
     }
 }
 

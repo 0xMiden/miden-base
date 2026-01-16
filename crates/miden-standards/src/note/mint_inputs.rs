@@ -1,11 +1,13 @@
-use miden_protocol::note::{NoteExecutionHint, NoteInputs, NoteRecipient};
+use alloc::vec::Vec;
+
+use miden_protocol::note::{NoteAttachment, NoteInputs, NoteRecipient};
 use miden_protocol::{Felt, MAX_INPUTS_PER_NOTE, NoteError, Word};
 
 /// Represents the different input formats for MINT notes.
-/// - Private: Creates a private output note using a precomputed recipient digest (8 MINT note
+/// - Private: Creates a private output note using a precomputed recipient digest (12 MINT note
 ///   inputs)
 /// - Public: Creates a public output note by providing script root, serial number, and
-///   variable-length inputs (12+ MINT note inputs: 12 fixed + variable number of output note
+///   variable-length inputs (16+ MINT note inputs: 16 fixed + variable number of output note
 ///   inputs)
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MintNoteInputs {
@@ -13,32 +15,23 @@ pub enum MintNoteInputs {
         recipient_digest: Word,
         amount: Felt,
         tag: Felt,
-        execution_hint: NoteExecutionHint,
-        aux: Felt,
+        attachment: NoteAttachment,
     },
     Public {
         recipient: NoteRecipient,
         amount: Felt,
         tag: Felt,
-        execution_hint: NoteExecutionHint,
-        aux: Felt,
+        attachment: NoteAttachment,
     },
 }
 
 impl MintNoteInputs {
-    pub fn new_private(
-        recipient_digest: Word,
-        amount: Felt,
-        tag: Felt,
-        execution_hint: NoteExecutionHint,
-        aux: Felt,
-    ) -> Self {
+    pub fn new_private(recipient_digest: Word, amount: Felt, tag: Felt) -> Self {
         Self::Private {
             recipient_digest,
             amount,
             tag,
-            execution_hint,
-            aux,
+            attachment: NoteAttachment::default(),
         }
     }
 
@@ -46,13 +39,11 @@ impl MintNoteInputs {
         recipient: NoteRecipient,
         amount: Felt,
         tag: Felt,
-        execution_hint: NoteExecutionHint,
-        aux: Felt,
     ) -> Result<Self, NoteError> {
         // Calculate total number of inputs that will be created:
-        // 12 fixed inputs (execution_hint, aux, tag, amount, SCRIPT_ROOT, SERIAL_NUM) +
-        // variable recipient inputs length
-        const FIXED_PUBLIC_INPUTS: usize = 12;
+        // 16 fixed inputs (tag, amount, attachment_kind, attachment_scheme, ATTACHMENT,
+        // SCRIPT_ROOT, SERIAL_NUM) + variable recipient inputs length
+        const FIXED_PUBLIC_INPUTS: usize = 16;
         let total_inputs = FIXED_PUBLIC_INPUTS + recipient.inputs().num_values() as usize;
 
         if total_inputs > MAX_INPUTS_PER_NOTE {
@@ -63,9 +54,28 @@ impl MintNoteInputs {
             recipient,
             amount,
             tag,
-            execution_hint,
-            aux,
+            attachment: NoteAttachment::default(),
         })
+    }
+
+    /// Overwrites the [`NoteAttachment`] of the note inputs.
+    pub fn with_attachment(self, attachment: NoteAttachment) -> Self {
+        match self {
+            MintNoteInputs::Private {
+                recipient_digest,
+                amount,
+                tag,
+                attachment: _,
+            } => MintNoteInputs::Private {
+                recipient_digest,
+                amount,
+                tag,
+                attachment,
+            },
+            MintNoteInputs::Public { recipient, amount, tag, attachment: _ } => {
+                MintNoteInputs::Public { recipient, amount, tag, attachment }
+            },
+        }
     }
 }
 
@@ -76,22 +86,26 @@ impl From<MintNoteInputs> for NoteInputs {
                 recipient_digest,
                 amount,
                 tag,
-                execution_hint,
-                aux,
+                attachment,
             } => {
-                let mut input_values = vec![execution_hint.into(), aux, tag, amount];
+                let attachment_scheme = Felt::from(attachment.attachment_scheme().as_u32());
+                let attachment_kind = Felt::from(attachment.attachment_kind().as_u8());
+                let attachment = attachment.content().to_word();
+
+                let mut input_values = Vec::with_capacity(12);
+                input_values.extend_from_slice(&[tag, amount, attachment_kind, attachment_scheme]);
+                input_values.extend_from_slice(attachment.as_elements());
                 input_values.extend_from_slice(recipient_digest.as_elements());
                 NoteInputs::new(input_values)
                     .expect("number of inputs should not exceed max inputs")
             },
-            MintNoteInputs::Public {
-                recipient,
-                amount,
-                tag,
-                execution_hint,
-                aux,
-            } => {
-                let mut input_values = vec![execution_hint.into(), aux, tag, amount];
+            MintNoteInputs::Public { recipient, amount, tag, attachment } => {
+                let attachment_scheme = Felt::from(attachment.attachment_scheme().as_u32());
+                let attachment_kind = Felt::from(attachment.attachment_kind().as_u8());
+                let attachment = attachment.content().to_word();
+
+                let mut input_values = vec![tag, amount, attachment_kind, attachment_scheme];
+                input_values.extend_from_slice(attachment.as_elements());
                 input_values.extend_from_slice(recipient.script().root().as_elements());
                 input_values.extend_from_slice(recipient.serial_num().as_elements());
                 input_values.extend_from_slice(recipient.inputs().values());
