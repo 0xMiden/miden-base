@@ -1,7 +1,8 @@
 use alloc::string::ToString;
 use core::error::Error;
 
-use miden_core::{Felt, FieldElement, Word};
+use miden_air::FieldElement;
+use miden_core::{Felt, Word};
 
 use crate::account::component::toml::init_storage_data::InitStorageDataError;
 use crate::account::component::{
@@ -257,6 +258,163 @@ fn metadata_from_toml_parses_named_storage_schema() {
 
     assert!(requirements.contains_key(&"demo::test_value".parse::<StorageValueName>().unwrap()));
     assert!(!requirements.contains_key(&"demo::my_map".parse::<StorageValueName>().unwrap()));
+}
+
+#[test]
+fn metadata_from_toml_rejects_non_ascii_component_description() {
+    let toml_str = r#"
+        name = "Test Component"
+        description = "Invalid \u00e9"
+        version = "0.1.0"
+        supported-types = []
+    "#;
+
+    assert_matches::assert_matches!(
+        AccountComponentMetadata::from_toml(toml_str),
+        Err(AccountComponentTemplateError::InvalidSchema(_))
+    );
+}
+
+#[test]
+fn metadata_from_toml_rejects_non_ascii_slot_description() {
+    let toml_str = r#"
+        name = "Test Component"
+        description = "Test description"
+        version = "0.1.0"
+        supported-types = []
+
+        [[storage.slots]]
+        name = "demo::test_value"
+        description = "Invalid \u00e9"
+        type = "word"
+    "#;
+
+    assert_matches::assert_matches!(
+        AccountComponentMetadata::from_toml(toml_str),
+        Err(AccountComponentTemplateError::InvalidSchema(_))
+    );
+}
+
+#[test]
+fn metadata_schema_commitment_ignores_defaults_and_ordering() {
+    let toml_a = r#"
+        name = "Commitment Test"
+        description = "Schema commitments are equal regardless of defaults and ordering"
+        version = "0.1.0"
+        supported-types = []
+
+        [[storage.slots]]
+        name = "demo::first"
+        type = "word"
+        default-value = "0x1"
+
+        [[storage.slots]]
+        name = "demo::map"
+        type = { key = "word", value = "word" }
+        default-values = [
+            { key = "0x1", value = "0x10" },
+        ]
+
+        [[storage.slots]]
+        name = "demo::composed"
+        type = [
+            { name = "a", type = "u8", description = "field a", default-value = "1" },
+            { name = "b", description = "field b", default-value = "2" },
+            { name = "c", type = "u16", description = "field c", default-value = "3" },
+            { type = "void", description = "padding" },
+        ]
+    "#;
+
+    let toml_b = r#"
+        name = "Commitment Test"
+        description = ""
+        version = "0.1.0"
+        supported-types = []
+
+        [[storage.slots]]
+        name = "demo::map"
+        type = { key = "word", value = "word" }
+        default-values = [
+            { key = "0x2", value = "0x20" },
+        ]
+
+        [[storage.slots]]
+        name = "demo::composed"
+        type = [
+            { name = "a", type = "u8", description = "field a", default-value = "9" },
+            { name = "b", description = "field b", default-value = "8" },
+            { name = "c", type = "u16", description = "field c", default-value = "7" },
+            { type = "void", description = "padding" },
+        ]
+
+        [[storage.slots]]
+        name = "demo::first"
+        type = "word"
+        default-value = "0x9"
+    "#;
+
+    let metadata_a = AccountComponentMetadata::from_toml(toml_a).unwrap();
+    let metadata_b = AccountComponentMetadata::from_toml(toml_b).unwrap();
+
+    assert_ne!(metadata_a.storage_schema(), metadata_b.storage_schema());
+    assert_eq!(
+        metadata_a.storage_schema().commitment(),
+        metadata_b.storage_schema().commitment()
+    );
+}
+
+#[test]
+fn metadata_schema_commitment_includes_descriptions() {
+    let toml_a = r#"
+        name = "Commitment Test"
+        description = "Component description"
+        version = "0.1.0"
+        supported-types = []
+
+        [[storage.slots]]
+        name = "demo::value"
+        description = "slot description a"
+        type = "word"
+    "#;
+
+    let toml_bad_description = r#"
+        name = "Commitment Test"
+        description = "Component description"
+        version = "0.1.0"
+        supported-types = []
+
+        [[storage.slots]]
+        name = "demo::value"
+        description = "incorrect description"
+        type = "word"
+    "#;
+
+    let toml_bad_name = r#"
+        name = "Commitment Test"
+        description = "Component description"
+        version = "0.1.0"
+        supported-types = []
+
+        [[storage.slots]]
+        name = "demo::bad_value"
+        description = "slot description a"
+        type = "word"
+    "#;
+
+    let metadata_a = AccountComponentMetadata::from_toml(toml_a).unwrap();
+    let metadata_bad_description =
+        AccountComponentMetadata::from_toml(toml_bad_description).unwrap();
+    let metadata_bad_slot_name = AccountComponentMetadata::from_toml(toml_bad_name).unwrap();
+
+    assert_ne!(
+        metadata_a.storage_schema().commitment(),
+        metadata_bad_description.storage_schema().commitment()
+    );
+
+    assert_ne!(
+        metadata_a.storage_schema().commitment(),
+        metadata_bad_slot_name.storage_schema().commitment()
+    );
 }
 
 #[test]

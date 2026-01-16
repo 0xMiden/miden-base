@@ -23,6 +23,12 @@ pub enum WordValue {
     Elements([String; 4]),
 }
 
+impl From<Word> for WordValue {
+    fn from(value: Word) -> Self {
+        WordValue::FullyTyped(value)
+    }
+}
+
 impl From<String> for WordValue {
     fn from(value: String) -> Self {
         WordValue::Atomic(value)
@@ -35,11 +41,8 @@ impl From<&str> for WordValue {
     }
 }
 
-impl From<Word> for WordValue {
-    fn from(value: Word) -> Self {
-        WordValue::FullyTyped(value)
-    }
-}
+// CONVERSIONS
+// ====================================================================================================
 
 impl From<Felt> for WordValue {
     /// Converts a [`Felt`] to a [`WordValue`] as a Word in the form `[0, 0, 0, felt]`.
@@ -120,7 +123,7 @@ impl InitStorageData {
     /// - `[Felt; 4]`: converted to a Word
     /// - `Felt`: converted to `[0, 0, 0, felt]`
     /// - `String` or `&str`: a parseable string value
-    /// - `WordValue`: a raw or fully-typed word value
+    /// - `WordValue`: a word value (fully typed, atomic, or elements)
     pub fn insert_value(
         &mut self,
         name: StorageValueName,
@@ -200,6 +203,12 @@ impl InitStorageData {
         for (slot_name, entries) in other.map_entries {
             self.map_entries.entry(slot_name).or_default().extend(entries);
         }
+    }
+
+    /// Merges another [`InitStorageData`] into this one, overwriting value entries and appending
+    /// map entries.
+    pub fn merge_from(&mut self, other: InitStorageData) {
+        self.merge_with(other);
     }
 }
 
