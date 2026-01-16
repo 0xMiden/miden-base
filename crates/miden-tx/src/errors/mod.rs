@@ -10,19 +10,18 @@ use miden_protocol::assembly::diagnostics::reporting::PrintDiagnostic;
 use miden_protocol::asset::AssetVaultKey;
 use miden_protocol::block::BlockNumber;
 use miden_protocol::crypto::merkle::smt::SmtProofError;
-use miden_protocol::note::{NoteId, NoteMetadata};
-use miden_protocol::transaction::TransactionSummary;
-use miden_protocol::{
+use miden_protocol::errors::{
     AccountDeltaError,
     AccountError,
     AssetError,
-    Felt,
     NoteError,
     ProvenTransactionError,
     TransactionInputError,
     TransactionOutputError,
-    Word,
 };
+use miden_protocol::note::{NoteId, NoteMetadata};
+use miden_protocol::transaction::TransactionSummary;
+use miden_protocol::{Felt, Word};
 use miden_verifier::VerificationError;
 use thiserror::Error;
 

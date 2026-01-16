@@ -1,4 +1,6 @@
+use miden_protocol::Word;
 use miden_protocol::account::AccountId;
+use miden_protocol::errors::{AccountIdError, NoteError};
 use miden_protocol::note::{
     NoteAttachment,
     NoteAttachmentContent,
@@ -6,7 +8,6 @@ use miden_protocol::note::{
     NoteAttachmentScheme,
     NoteExecutionHint,
 };
-use miden_protocol::{AccountIdError, NoteError, Word};
 
 use crate::note::WellKnownNoteAttachment;
 

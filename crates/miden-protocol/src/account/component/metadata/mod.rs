@@ -8,7 +8,7 @@ use miden_processor::DeserializationError;
 use semver::Version;
 
 use super::{AccountType, SchemaRequirement, StorageSchema, StorageValueName};
-use crate::AccountError;
+use crate::errors::AccountError;
 
 // ACCOUNT COMPONENT METADATA
 // ================================================================================================

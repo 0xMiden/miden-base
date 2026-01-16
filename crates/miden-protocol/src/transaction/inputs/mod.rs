@@ -23,10 +23,10 @@ use crate::asset::{AssetVaultKey, AssetWitness, PartialVault};
 use crate::block::account_tree::{AccountWitness, account_id_to_smt_index};
 use crate::block::{BlockHeader, BlockNumber};
 use crate::crypto::merkle::SparseMerklePath;
-use crate::errors::TransactionInputsExtractionError;
+use crate::errors::{TransactionInputError, TransactionInputsExtractionError};
 use crate::note::{Note, NoteInclusionProof};
 use crate::transaction::{TransactionAdviceInputs, TransactionArgs, TransactionScript};
-use crate::{Felt, TransactionInputError, Word};
+use crate::{Felt, Word};
 
 #[cfg(test)]
 mod tests;

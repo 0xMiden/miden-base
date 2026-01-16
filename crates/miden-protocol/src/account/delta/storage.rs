@@ -618,7 +618,8 @@ mod tests {
 
     use super::{AccountStorageDelta, Deserializable, Serializable};
     use crate::account::{StorageMapDelta, StorageSlotDelta, StorageSlotName};
-    use crate::{AccountDeltaError, ONE, Word};
+    use crate::errors::AccountDeltaError;
+    use crate::{ONE, Word};
 
     #[test]
     fn account_storage_delta_returns_err_on_slot_type_mismatch() {

@@ -7,6 +7,7 @@ use crate::account::Account;
 use crate::account::delta::AccountUpdateDetails;
 use crate::asset::FungibleAsset;
 use crate::block::BlockNumber;
+use crate::errors::ProvenTransactionError;
 use crate::note::NoteHeader;
 use crate::transaction::{
     AccountId,
@@ -24,7 +25,7 @@ use crate::utils::serde::{
     Serializable,
 };
 use crate::vm::ExecutionProof;
-use crate::{ACCOUNT_UPDATE_MAX_SIZE, ProvenTransactionError, Word};
+use crate::{ACCOUNT_UPDATE_MAX_SIZE, Word};
 
 // PROVEN TRANSACTION
 // ================================================================================================
@@ -705,6 +706,7 @@ mod tests {
     };
     use crate::asset::FungibleAsset;
     use crate::block::BlockNumber;
+    use crate::errors::ProvenTransactionError;
     use crate::testing::account_id::{
         ACCOUNT_ID_PRIVATE_SENDER,
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
@@ -713,14 +715,7 @@ mod tests {
     use crate::testing::noop_auth_component::NoopAuthComponent;
     use crate::transaction::{ProvenTransactionBuilder, TxAccountUpdate};
     use crate::utils::Serializable;
-    use crate::{
-        ACCOUNT_UPDATE_MAX_SIZE,
-        EMPTY_WORD,
-        LexicographicWord,
-        ONE,
-        ProvenTransactionError,
-        Word,
-    };
+    use crate::{ACCOUNT_UPDATE_MAX_SIZE, EMPTY_WORD, LexicographicWord, ONE, Word};
 
     fn check_if_sync<T: Sync>() {}
     fn check_if_send<T: Send>() {}
