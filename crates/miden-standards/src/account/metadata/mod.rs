@@ -5,7 +5,7 @@ use miden_protocol::utils::sync::LazyLock;
 
 use crate::account::components::storage_schema_library;
 
-static SCHEMA_COMMITMENT_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
+pub static SCHEMA_COMMITMENT_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
     StorageSlotName::new("miden::standards::metadata::storage_schema")
         .expect("storage slot name should be valid")
 });
