@@ -27,11 +27,13 @@ use miden_utils_sync::LazyLock;
 pub mod claim_note;
 pub mod errors;
 pub mod eth_address_format;
+pub mod eth_amount;
 pub mod utils;
 
 // Re-export the main types from claim_note module
 pub use claim_note::{ClaimNoteInputs, LeafData, OutputNoteData, ProofData, create_claim_note};
-pub use eth_address_format::{EthAddressFormat, EthAmount};
+pub use eth_address_format::EthAddressFormat;
+pub use eth_amount::EthAmount;
 // Re-export utility functions from utils module
 pub use utils::{
     hex_string_to_address,

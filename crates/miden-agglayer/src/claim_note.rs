@@ -18,7 +18,8 @@ use miden_protocol::note::{
 };
 
 use crate::claim_script;
-use crate::eth_address_format::{EthAddressFormat, EthAmount};
+use crate::eth_address_format::EthAddressFormat;
+use crate::eth_amount::EthAmount;
 use crate::utils::bytes32_to_felts;
 
 // CLAIM NOTE STRUCTURES
@@ -195,6 +196,26 @@ pub struct OutputNoteData {
     pub output_note_tag: NoteTag,
 }
 
+impl OutputNoteData {
+    /// Converts the output note data to a vector of field elements for note inputs
+    pub fn to_elements(&self) -> Vec<Felt> {
+        const OUTPUT_NOTE_DATA_ELEMENT_COUNT: usize = 7; // 4 + 2 + 1 (serial_num + account_id + tag)
+        let mut elements = Vec::with_capacity(OUTPUT_NOTE_DATA_ELEMENT_COUNT);
+
+        // P2ID note serial number (4 felts as Word)
+        elements.extend(self.output_p2id_serial_num);
+
+        // Target faucet account ID (2 felts: prefix and suffix)
+        elements.push(self.target_faucet_account_id.prefix().as_felt());
+        elements.push(self.target_faucet_account_id.suffix());
+
+        // Output note tag
+        elements.push(Felt::new(self.output_note_tag.as_u32() as u64));
+
+        elements
+    }
+}
+
 /// Inputs for creating a CLAIM note.
 ///
 /// This struct groups the core data needed to create a CLAIM note that exactly
@@ -212,38 +233,16 @@ impl TryFrom<ClaimNoteInputs> for NoteInputs {
     type Error = NoteError;
 
     fn try_from(inputs: ClaimNoteInputs) -> Result<Self, Self::Error> {
-        // Total elements:
-        //   32 + 32 (proofs, now fixed size)
-        // + 8 (global index)
-        // + 8 + 8 (exit roots)
-        // + 1 + 5 + 1 + 5 (networks + addresses)
-        // + 8 + 8 (amount + metadata)
-        // + 4 (padding)
-        // + 4 (output serial num)
-        // + 2 (target faucet account id)
-        // + 1 (note tag)
-        // = 127
-        let mut claim_inputs = Vec::with_capacity(127);
+        const TOTAL_ELEMENT_COUNT: usize = 575; // 536 + 28 + 4 + 7 (proof_data + leaf_data + padding + output_note_data)
+        let mut claim_inputs = Vec::with_capacity(TOTAL_ELEMENT_COUNT);
 
-        // 1) PROOF DATA - use the new to_elements method
-        let proof_elements = inputs.proof_data.to_elements()?;
-        claim_inputs.extend(proof_elements);
-
-        // 2) LEAF DATA - use the new to_elements method
+        claim_inputs.extend(inputs.proof_data.to_elements()?);
         claim_inputs.extend(inputs.leaf_data.to_elements());
 
-        // Keep the same trailing padding as the original implementation.
+        // Keep the same trailing padding as the original implementation
         claim_inputs.extend(core::iter::repeat_n(Felt::ZERO, 4));
 
-        // 3) OUTPUT NOTE DATA
-        claim_inputs.extend(inputs.output_note_data.output_p2id_serial_num);
-
-        // target_faucet_account_id (2 felts: prefix and suffix)
-        claim_inputs.push(inputs.output_note_data.target_faucet_account_id.prefix().as_felt());
-        claim_inputs.push(inputs.output_note_data.target_faucet_account_id.suffix());
-
-        // output note tag
-        claim_inputs.push(Felt::new(inputs.output_note_data.output_note_tag.as_u32() as u64));
+        claim_inputs.extend(inputs.output_note_data.to_elements());
 
         NoteInputs::new(claim_inputs)
     }
