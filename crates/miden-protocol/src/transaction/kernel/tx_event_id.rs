@@ -51,6 +51,8 @@ pub enum TransactionEventId {
     NoteBeforeAddAsset = NOTE_BEFORE_ADD_ASSET,
     NoteAfterAddAsset = NOTE_AFTER_ADD_ASSET,
 
+    NoteBeforeSetAttachment = NOTE_BEFORE_SET_ATTACHMENT,
+
     AuthRequest = AUTH_REQUEST,
 
     PrologueStart = PROLOGUE_START,
@@ -153,6 +155,8 @@ impl TryFrom<EventId> for TransactionEventId {
 
             NOTE_BEFORE_ADD_ASSET => Ok(TransactionEventId::NoteBeforeAddAsset),
             NOTE_AFTER_ADD_ASSET => Ok(TransactionEventId::NoteAfterAddAsset),
+
+            NOTE_BEFORE_SET_ATTACHMENT => Ok(TransactionEventId::NoteBeforeSetAttachment),
 
             AUTH_REQUEST => Ok(TransactionEventId::AuthRequest),
 

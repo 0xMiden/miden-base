@@ -7,24 +7,22 @@ use crate::utils::sync::LazyLock;
 const MOCK_UTIL_LIBRARY_CODE: &str = "
     use miden::protocol::output_note
 
-    # Inputs:  []
-    # Outputs: [note_idx]
-    pub proc create_random_note
+    #! Inputs:  []
+    #! Outputs: [note_idx]
+    pub proc create_default_note
         push.1.2.3.4           # = RECIPIENT
-        push.1                 # = NoteExecutionHint::Always
         push.2                 # = NoteType::Private
-        push.0                 # = aux
-        push.0xc0000000        # = NoteTag::LocalAny
-        # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
+        push.0                 # = NoteTag
+        # => [tag, note_type, RECIPIENT]
 
         exec.output_note::create
         # => [note_idx]
     end
 
-    # Inputs:  [ASSET]
-    # Outputs: []
-    pub proc create_random_note_with_asset
-        exec.create_random_note
+    #! Inputs:  [ASSET]
+    #! Outputs: []
+    pub proc create_default_note_with_asset
+        exec.create_default_note
         # => [note_idx, ASSET]
 
         movdn.4
