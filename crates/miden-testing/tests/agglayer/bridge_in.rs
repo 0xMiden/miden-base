@@ -97,8 +97,8 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
     // Generate a serial number for the P2ID note
     let serial_num = builder.rng_mut().draw_word();
 
-    // Convert amount to the format expected by the agglayer branch
-    let amount_u256 = EthAmount::from_u32(claim_amount).into_array();
+    // Convert amount to EthAmount for the LeafData
+    let amount_eth = EthAmount::from_u32(claim_amount);
 
     // Convert Vec<[u8; 32]> to [SmtNode; 32] for SMT proofs
     let local_proof_array: [SmtNode; 32] = smt_proof_local_exit_root[0..32]
@@ -128,7 +128,7 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
         origin_token_address: EthAddressFormat::new(origin_token_address),
         destination_network,
         destination_address: EthAddressFormat::new(destination_address),
-        amount: amount_u256,
+        amount: amount_eth,
         metadata,
     };
 

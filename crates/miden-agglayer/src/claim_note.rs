@@ -17,7 +17,7 @@ use miden_protocol::note::{
 };
 
 use crate::utils::bytes32_to_felts;
-use crate::{EthAddressFormat, claim_script};
+use crate::{EthAddressFormat, EthAmount, claim_script};
 
 // CLAIM NOTE STRUCTURES
 // ================================================================================================
@@ -134,8 +134,8 @@ pub struct LeafData {
     pub destination_network: u32,
     /// Destination address
     pub destination_address: EthAddressFormat,
-    /// Amount of tokens (uint256 as 8 u32 values)
-    pub amount: [u32; 8],
+    /// Amount of tokens (uint256)
+    pub amount: EthAmount,
     /// ABI encoded metadata (fixed size of 8 u32 values)
     pub metadata: [u32; 8],
 }
@@ -160,7 +160,7 @@ impl SequentialCommit for LeafData {
         elements.extend(self.destination_address.to_elements());
 
         // Amount (uint256 as 8 u32 felts)
-        elements.extend(self.amount.iter().map(|&v| Felt::new(v as u64)));
+        elements.extend(self.amount.to_elements());
 
         // Metadata (8 u32 felts)
         elements.extend(self.metadata.iter().map(|&v| Felt::new(v as u64)));
@@ -218,15 +218,10 @@ impl TryFrom<ClaimNoteInputs> for NoteInputs {
     type Error = NoteError;
 
     fn try_from(inputs: ClaimNoteInputs) -> Result<Self, Self::Error> {
-        const TOTAL_ELEMENT_COUNT: usize = 575; // 536 + 28 + 4 + 7 (proof_data + leaf_data + padding + output_note_data)
-        let mut claim_inputs = Vec::with_capacity(TOTAL_ELEMENT_COUNT);
+        let mut claim_inputs = Vec::with_capacity(571); // 536 + 28 + 7 (proof_data + leaf_data + output_note_data)
 
         claim_inputs.extend(inputs.proof_data.to_elements());
         claim_inputs.extend(inputs.leaf_data.to_elements());
-
-        // Keep the same trailing padding as the original implementation
-        claim_inputs.extend(core::iter::repeat_n(Felt::ZERO, 4));
-
         claim_inputs.extend(inputs.output_note_data.to_elements());
 
         NoteInputs::new(claim_inputs)
