@@ -24,10 +24,10 @@ use miden_protocol::crypto::rand::FeltRng;
 use miden_protocol::note::{
     Note,
     NoteAssets,
-    NoteInputs,
     NoteMetadata,
     NoteRecipient,
     NoteScript,
+    NoteStorage,
     NoteTag,
     NoteType,
 };
@@ -465,7 +465,7 @@ pub fn create_claim_note<R: FeltRng>(params: ClaimNoteParams<'_, R>) -> Result<N
     // output note tag
     claim_inputs.push(params.output_note_tag.as_u32().into());
 
-    let inputs = NoteInputs::new(claim_inputs)?;
+    let inputs = NoteStorage::new(claim_inputs)?;
 
     let tag = NoteTag::with_account_target(params.agglayer_faucet_account_id);
 

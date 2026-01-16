@@ -265,7 +265,7 @@ impl<'a> TransactionKernelProcess for ProcessState<'a> {
         Ok((inputs, script_root, serial_num))
     }
 
-    /// Extracts and validates note inputs from the advice provider.
+    /// Extracts and validates note storage from the advice provider.
     fn read_note_storage_from_adv_map(
         &self,
         inputs_commitment: &Word,

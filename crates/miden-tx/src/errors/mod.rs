@@ -223,7 +223,7 @@ pub enum TransactionKernelError {
         source: AssetError,
     },
     #[error(
-        "note inputs data extracted from the advice map by the event handler is not well formed"
+        "note storage data extracted from the advice map by the event handler is not well formed"
     )]
     MalformedNoteStorage(#[source] NoteError),
     #[error(

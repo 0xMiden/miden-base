@@ -82,7 +82,7 @@ Example use cases for attachments are:
 - Communicate the note details of a private note in encrypted form. This means the encrypted note is attached publicly to the otherwise private note.
 - For [network transactions](./transaction.md#network-transaction), encode the ID of the network account that should
   consume the note. This is a standardized attachment scheme in miden-standards called `NetworkAccountTarget`.
-- Communicate the details of a _private_ note to the receiver so they can derive the note. For example, the payback note of a partially fillable swap note can be private and the receiver already knows a few details: It is a P2ID note, the serial number is derived from the SWAP note's serial number and the note inputs are the account ID of the receiver. The receiver only needs to now the exact amount that was filled to derive the full note for consumption. This amount can be encoded in the public attachment of the payback note, which allows this use case to work with private notes and still not require a side-channel.
+- Communicate the details of a _private_ note to the receiver so they can derive the note. For example, the payback note of a partially fillable swap note can be private and the receiver already knows a few details: It is a P2ID note, the serial number is derived from the SWAP note's serial number and the note storage is the account ID of the receiver. The receiver only needs to now the exact amount that was filled to derive the full note for consumption. This amount can be encoded in the public attachment of the payback note, which allows this use case to work with private notes and still not require a side-channel.
 
 ## Note Lifecycle
 

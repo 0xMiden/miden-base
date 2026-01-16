@@ -595,7 +595,7 @@ end
 #! - note_ptr is the memory location for the input note.
 #! - SERIAL_NUMBER is the note's serial.
 #! - SCRIPT_ROOT is the note's script root.
-#! - STORAGE_COMMITMENT is the sequential hash of the padded note's inputs.
+#! - STORAGE_COMMITMENT is the sequential hash of the padded note's storage.
 #! - ASSETS_COMMITMENT is the sequential hash of the padded note's assets.
 #! - NULLIFIER is the result of
 #!   `hash(SERIAL_NUMBER || SCRIPT_ROOT || STORAGE_COMMITMENT || ASSETS_COMMITMENT)`.
@@ -877,7 +877,7 @@ end
 #!   notes.
 #! - SERIAL_NUMBER is the note's serial.
 #! - SCRIPT_ROOT is the note's script root.
-#! - STORAGE_COMMITMENT is the sequential hash of the padded note's inputs.
+#! - STORAGE_COMMITMENT is the sequential hash of the padded note's storage.
 #! - ASSETS_COMMITMENT is the sequential hash of the padded note's assets.
 #! - NOTE_METADATA_HEADER is the note's metadata header.
 #! - NOTE_ATTACHMENT is the note's attachment.

@@ -387,7 +387,7 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
     assert_eq!(expected_output_note_3.id(), resulting_output_note_3.id());
     assert_eq!(expected_output_note_3.assets(), resulting_output_note_3.assets().unwrap());
 
-    // make sure that the number of note inputs remains the same
+    // make sure that the number of note storage items remains the same
     let resulting_note_2_recipient =
         resulting_output_note_2.recipient().expect("output note 2 is not full");
     assert_eq!(

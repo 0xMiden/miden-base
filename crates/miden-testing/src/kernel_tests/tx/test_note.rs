@@ -173,7 +173,7 @@ fn note_setup_stack_assertions(exec_output: &ExecutionOutput, inputs: &Transacti
     note_script_root.reverse();
     expected_stack[..4].copy_from_slice(&note_script_root);
 
-    // assert that the stack contains the note inputs at the end of execution
+    // assert that the stack contains the note storage at the end of execution
     assert_eq!(exec_output.stack.as_slice(), expected_stack.as_slice())
 }
 
@@ -269,7 +269,7 @@ async fn test_build_recipient() -> anyhow::Result<()> {
         assert_eq!(
             exec_output.advice.get_mapped_values(&inputs_advice_map_key).unwrap(),
             note_storage.1,
-            "advice entry with note inputs should contain the unpadded values"
+            "advice entry with note storage should contain the unpadded values"
         );
 
         let num_inputs_advice_map_key =
@@ -277,7 +277,7 @@ async fn test_build_recipient() -> anyhow::Result<()> {
         assert_eq!(
             exec_output.advice.get_mapped_values(&num_inputs_advice_map_key).unwrap(),
             &[Felt::from(note_storage.0.len())],
-            "advice entry with num note inputs should contain the original number of values"
+            "advice entry with note storage length should contain the original number of values"
         );
     }
 
@@ -435,13 +435,13 @@ pub async fn test_timelock() -> anyhow::Result<()> {
       use miden::protocol::tx
 
       begin
-          # store the note inputs to memory starting at address 0
+          # store the note storage to memory starting at address 0
           push.0 exec.active_note::get_inputs
-          # => [num_inputs, inputs_ptr]
+          # => [storage_length, storage_ptr]
 
-          # make sure the number of inputs is 1
-          eq.1 assert.err="number of note inputs is not 1"
-          # => [inputs_ptr]
+          # make sure the storage length is 1
+          eq.1 assert.err="note storage length is not 1"
+          # => [storage_ptr]
 
           # read the timestamp at which the note can be consumed
           mem_load
