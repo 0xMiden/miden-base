@@ -1,6 +1,6 @@
 use alloc::collections::BTreeMap;
 
-use super::super::{InitStorageData, SchemaTypeId, StorageValueName, WordValue};
+use super::super::{InitStorageData, SchemaTypeId};
 use super::{FeltSchema, MapSlotSchema, ValueSlotSchema, WordSchema};
 use crate::account::{StorageMap, StorageSlotName};
 use crate::{Felt, Word};
@@ -80,13 +80,11 @@ fn value_slot_schema_accepts_typed_word_init_value() {
     let slot = ValueSlotSchema::new(None, WordSchema::new_simple(SchemaTypeId::native_word()));
     let slot_name: StorageSlotName = "demo::slot".parse().unwrap();
 
-    let expected = Word::from([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]);
     let mut init_data = InitStorageData::default();
-    init_data
-        .set_value(StorageValueName::from_slot_name(&slot_name), expected)
-        .unwrap();
+    init_data.set_value("demo::slot", [1u32, 2, 3, 4]).unwrap();
 
     let built = slot.try_build_word(&init_data, &slot_name).unwrap();
+    let expected = Word::from([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]);
     assert_eq!(built, expected);
 }
 
@@ -96,7 +94,7 @@ fn value_slot_schema_accepts_felt_typed_word_init_value() {
     let slot_name: StorageSlotName = "demo::u8_word".parse().unwrap();
 
     let mut init_data = InitStorageData::default();
-    init_data.set_value(StorageValueName::from_slot_name(&slot_name), "6").unwrap();
+    init_data.set_value("demo::u8_word", 6u8).unwrap();
 
     let built = slot.try_build_word(&init_data, &slot_name).unwrap();
     assert_eq!(built, Word::from([Felt::new(0), Felt::new(0), Felt::new(0), Felt::new(6)]));
@@ -114,9 +112,7 @@ fn value_slot_schema_accepts_typed_felt_init_value_in_composed_word() {
     let slot_name: StorageSlotName = "demo::slot".parse().unwrap();
 
     let mut init_data = InitStorageData::default();
-    init_data
-        .set_value(StorageValueName::from_slot_name_with_suffix(&slot_name, "a").unwrap(), "1")
-        .unwrap();
+    init_data.set_value("demo::slot.a", 1u8).unwrap();
 
     let built = slot.try_build_word(&init_data, &slot_name).unwrap();
     assert_eq!(built, Word::from([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]));
@@ -128,12 +124,8 @@ fn map_slot_schema_accepts_typed_map_init_value() {
     let slot = MapSlotSchema::new(None, None, word_schema.clone(), word_schema);
     let slot_name: StorageSlotName = "demo::map".parse().unwrap();
 
-    let entries = vec![(
-        WordValue::Elements(["1".into(), "0".into(), "0".into(), "0".into()]),
-        WordValue::Elements(["10".into(), "11".into(), "12".into(), "13".into()]),
-    )];
     let mut init_data = InitStorageData::default();
-    init_data.set_map_values(slot_name.clone(), entries.clone()).unwrap();
+    init_data.insert_map_entry("demo::map", [1u32, 0, 0, 0], [10u32, 11, 12, 13]).unwrap();
 
     let built = slot.try_build_map(&init_data, &slot_name).unwrap();
     let expected = StorageMap::with_entries([(
