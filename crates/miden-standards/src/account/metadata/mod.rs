@@ -1,6 +1,9 @@
+use alloc::collections::BTreeMap;
+
 use miden_protocol::Word;
 use miden_protocol::account::component::StorageSchema;
 use miden_protocol::account::{AccountComponent, StorageSlot, StorageSlotName};
+use miden_protocol::errors::AccountComponentTemplateError;
 use miden_protocol::utils::sync::LazyLock;
 
 use crate::account::components::storage_schema_library;
@@ -30,14 +33,20 @@ impl AccountSchemaCommitment {
     /// Creates a new [`AccountSchemaCommitment`] component from a list of storage schemas.
     ///
     /// The input schemas are merged into a single schema before the final commitment is computed.
-    pub fn new(schemas: &[StorageSchema]) -> Self {
-        Self {
-            schema_commitment: compute_schema_commitment(schemas),
-        }
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the schemas contain conflicting definitions for the same slot name.
+    pub fn new(schemas: &[StorageSchema]) -> Result<Self, AccountComponentTemplateError> {
+        Ok(Self {
+            schema_commitment: compute_schema_commitment(schemas)?,
+        })
     }
 
     /// Creates a new [`AccountSchemaCommitment`] component from a [`StorageSchema`].
-    pub fn from_schema(storage_schema: &StorageSchema) -> Self {
+    pub fn from_schema(
+        storage_schema: &StorageSchema,
+    ) -> Result<Self, AccountComponentTemplateError> {
         Self::new(core::slice::from_ref(storage_schema))
     }
 
@@ -67,20 +76,41 @@ impl From<AccountSchemaCommitment> for AccountComponent {
 ///
 /// The account schema commitment is computed from the merged schema commitment.
 /// If the passed list of schemas is empty, [`Word::empty()`] is returned.
-fn compute_schema_commitment(schemas: &[StorageSchema]) -> Word {
+fn compute_schema_commitment(
+    schemas: &[StorageSchema],
+) -> Result<Word, AccountComponentTemplateError> {
     if schemas.is_empty() {
-        return Word::empty();
+        return Ok(Word::empty());
     }
 
-    let merged_schema = StorageSchema::new(schemas.iter().flat_map(|schema| {
-        schema
-            .iter()
-            .map(|(slot_name, slot_schema)| (slot_name.clone(), slot_schema.clone()))
-    }))
-    .expect("storage schemas should merge into a valid combined schema");
+    let mut merged_slots = BTreeMap::new();
+    for schema in schemas {
+        for (slot_name, slot_schema) in schema.iter() {
+            match merged_slots.get(slot_name) {
+                None => {
+                    merged_slots.insert(slot_name.clone(), slot_schema.clone());
+                },
+                // Slot exists, check if the schema is the same before erroring
+                // TODO: If we wanted to not error, we would have to decide on a winning schema
+                // for the StorageSlotName
+                Some(existing) => {
+                    if existing != slot_schema {
+                        return Err(AccountComponentTemplateError::InvalidSchema(format!(
+                            "conflicting definitions for storage slot `{slot_name}`",
+                        )));
+                    }
+                },
+            }
+        }
+    }
 
-    merged_schema.commitment()
+    let merged_schema = StorageSchema::new(merged_slots)?;
+
+    Ok(merged_schema.commitment())
 }
+
+// TESTS
+// ================================================================================================
 
 #[cfg(test)]
 mod tests {
@@ -123,8 +153,9 @@ mod tests {
         let schema_b = metadata_b.storage_schema().clone();
 
         // Create one component for each of two different accounts, but switch orderings
-        let component_a = AccountSchemaCommitment::new(&[schema_a.clone(), schema_b.clone()]);
-        let component_b = AccountSchemaCommitment::new(&[schema_b, schema_a]);
+        let component_a =
+            AccountSchemaCommitment::new(&[schema_a.clone(), schema_b.clone()]).unwrap();
+        let component_b = AccountSchemaCommitment::new(&[schema_b, schema_a]).unwrap();
 
         let account_a = AccountBuilder::new([1u8; 32])
             .with_auth_component(NoAuth)
@@ -147,7 +178,7 @@ mod tests {
 
     #[test]
     fn storage_schema_commitment_is_empty_for_no_schemas() {
-        let component = AccountSchemaCommitment::new(&[]);
+        let component = AccountSchemaCommitment::new(&[]).unwrap();
 
         assert_eq!(component.schema_commitment, Word::empty());
     }

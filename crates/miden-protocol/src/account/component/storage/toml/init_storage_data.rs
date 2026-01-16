@@ -1,5 +1,4 @@
 use alloc::string::{String, ToString};
-use alloc::vec::Vec;
 
 use serde::Deserialize;
 use thiserror::Error;
@@ -69,7 +68,6 @@ impl InitStorageData {
                     if name.field_name().is_some() {
                         return Err(InitStorageDataError::InvalidMapEntryKey(name.to_string()));
                     }
-                    let mut entries = Vec::with_capacity(items.len());
                     for item in items {
                         // Try deserializing as map entry
                         let entry: RawMapEntrySchema = RawMapEntrySchema::deserialize(item)
@@ -77,9 +75,8 @@ impl InitStorageData {
                                 InitStorageDataError::InvalidMapEntrySchema(e.to_string())
                             })?;
 
-                        entries.push((entry.key, entry.value));
+                        data.insert_map_entry(name.slot_name().clone(), entry.key, entry.value)?;
                     }
-                    data.set_map_values(name.slot_name().clone(), entries)?;
                 },
                 // "slot::name" = "value" or "slot::name" = ["a", "b", "c", "d"]
                 other => {

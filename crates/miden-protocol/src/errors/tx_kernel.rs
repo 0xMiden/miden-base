@@ -156,17 +156,23 @@ pub const ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SERIAL_NUMBER_WHILE_NO_NOTE_BEING_PROC
 pub const ERR_NOTE_FUNGIBLE_MAX_AMOUNT_EXCEEDED: MasmError = MasmError::from_static_str("adding a fungible asset to a note cannot exceed the max_amount of 9223372036854775807");
 /// Error Message: "failed to find note at the given index; index must be within [0, num_of_notes]"
 pub const ERR_NOTE_INVALID_INDEX: MasmError = MasmError::from_static_str("failed to find note at the given index; index must be within [0, num_of_notes]");
-/// Error Message: "invalid note type for the given note tag prefix"
-pub const ERR_NOTE_INVALID_NOTE_TYPE_FOR_NOTE_TAG_PREFIX: MasmError = MasmError::from_static_str("invalid note type for the given note tag prefix");
 /// Error Message: "invalid note type"
 pub const ERR_NOTE_INVALID_TYPE: MasmError = MasmError::from_static_str("invalid note type");
 /// Error Message: "number of assets in a note exceed 255"
 pub const ERR_NOTE_NUM_OF_ASSETS_EXCEED_LIMIT: MasmError = MasmError::from_static_str("number of assets in a note exceed 255");
-/// Error Message: "the note's tag must fit into a u32 so the 32 most significant bits must be zero"
-pub const ERR_NOTE_TAG_MUST_BE_U32: MasmError = MasmError::from_static_str("the note's tag must fit into a u32 so the 32 most significant bits must be zero");
+/// Error Message: "the note's tag must fit into a u32 so the 32 most significant bits of the felt must be zero"
+pub const ERR_NOTE_TAG_MUST_BE_U32: MasmError = MasmError::from_static_str("the note's tag must fit into a u32 so the 32 most significant bits of the felt must be zero");
 
+/// Error Message: "attachment kind None requires ATTACHMENT to be set to an empty word"
+pub const ERR_OUTPUT_NOTE_ATTACHMENT_KIND_NONE_MUST_BE_EMPTY_WORD: MasmError = MasmError::from_static_str("attachment kind None requires ATTACHMENT to be set to an empty word");
+/// Error Message: "attachment kind none must have attachment scheme none"
+pub const ERR_OUTPUT_NOTE_ATTACHMENT_KIND_NONE_MUST_HAVE_ATTACHMENT_SCHEME_NONE: MasmError = MasmError::from_static_str("attachment kind none must have attachment scheme none");
 /// Error Message: "requested output note index should be less than the total number of created output notes"
 pub const ERR_OUTPUT_NOTE_INDEX_OUT_OF_BOUNDS: MasmError = MasmError::from_static_str("requested output note index should be less than the total number of created output notes");
+/// Error Message: "attachment scheme and attachment kind must fit into u32s"
+pub const ERR_OUTPUT_NOTE_INVALID_ATTACHMENT_SCHEMES: MasmError = MasmError::from_static_str("attachment scheme and attachment kind must fit into u32s");
+/// Error Message: "attachment kind variant must be between 0 and 2"
+pub const ERR_OUTPUT_NOTE_UNKNOWN_ATTACHMENT_KIND: MasmError = MasmError::from_static_str("attachment kind variant must be between 0 and 2");
 
 /// Error Message: "existing accounts must have a non-zero nonce"
 pub const ERR_PROLOGUE_EXISTING_ACCOUNT_MUST_HAVE_NON_ZERO_NONCE: MasmError = MasmError::from_static_str("existing accounts must have a non-zero nonce");

@@ -226,8 +226,6 @@ pub enum TransactionKernelError {
         "note inputs data extracted from the advice map by the event handler is not well formed"
     )]
     MalformedNoteInputs(#[source] NoteError),
-    #[error("note metadata created by the event handler is not well formed")]
-    MalformedNoteMetadata(#[source] NoteError),
     #[error(
         "note script data `{data:?}` extracted from the advice map by the event handler is not well formed"
     )]
@@ -243,6 +241,12 @@ pub enum TransactionKernelError {
         "public note with metadata {0:?} and recipient digest {1} is missing details in the advice provider"
     )]
     PublicNoteMissingDetails(NoteMetadata, Word),
+    #[error("attachment provided to set_attachment must be empty when attachment kind is None")]
+    NoteAttachmentNoneIsNotEmpty,
+    #[error(
+        "commitment of note attachment {actual} does not match attachment {provided} provided to set_attachment"
+    )]
+    NoteAttachmentArrayMismatch { actual: Word, provided: Word },
     #[error(
         "note input data in advice provider contains fewer elements ({actual}) than specified ({specified}) by its inputs length"
     )]

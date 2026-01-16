@@ -12,6 +12,7 @@ use crate::account::component::{
     SchemaTypeId,
     StorageSlotSchema,
     StorageValueName,
+    StorageValueNameError,
     WordSchema,
     WordValue,
 };
@@ -42,6 +43,42 @@ fn from_toml_str_with_nested_table_and_flattened() {
 }
 
 #[test]
+fn empty_table_is_rejected() {
+    let toml_str = r#"
+        ["demo::empty_table"]
+
+        ["demo::valid_table"]
+        value = "42"
+    "#;
+
+    assert_matches::assert_matches!(
+        InitStorageData::from_toml(toml_str),
+        Err(InitStorageDataError::EmptyTable(key)) if key == "demo::empty_table"
+    );
+}
+
+#[test]
+fn invalid_storage_value_name_is_rejected() {
+    // Nested table fields are flattened to `slot.field` and thus must be valid field segments.
+    let toml_str = r#"
+        ["demo::valid_token_metadata"]
+        max_supply = "1000000000"
+
+        "demo::another_valid_token_metadata.supply" = "1000000000"
+
+        ["demo::invalid_token_metadata"]
+        "bad.field" = "42"
+    "#;
+
+    assert_matches::assert_matches!(
+        InitStorageData::from_toml(toml_str),
+        Err(InitStorageDataError::InvalidStorageValueName(
+            StorageValueNameError::InvalidCharacter { part, character }
+        )) if part == "bad.field" && character == '.'
+    );
+}
+
+#[test]
 fn from_toml_str_with_deeply_nested_tables_is_rejected() {
     let toml_str = r#"
         ["demo::token_metadata"]
@@ -52,6 +89,19 @@ fn from_toml_str_with_deeply_nested_tables_is_rejected() {
     assert_matches::assert_matches!(
         InitStorageData::from_toml(toml_str),
         Err(InitStorageDataError::InvalidValue(_))
+    );
+}
+
+#[test]
+fn from_toml_str_excessive_key_nesting_rejected() {
+    let toml_str = r#"
+        ["demo::token_metadata.nested"]
+        value = "42"
+    "#;
+
+    assert_matches::assert_matches!(
+        InitStorageData::from_toml(toml_str),
+        Err(InitStorageDataError::ExcessiveNesting(_))
     );
 }
 
@@ -108,6 +158,35 @@ fn parse_map_entries_from_array() {
                 "3".to_string(),
                 "4".to_string(),
             ]
+    );
+}
+
+#[test]
+fn map_entries_reject_field_key() {
+    let toml_str = r#"
+        "demo::my_map.entry" = [
+            { key = "0x1", value = "0x2" }
+        ]
+    "#;
+
+    assert_matches::assert_matches!(
+        InitStorageData::from_toml(toml_str),
+        Err(InitStorageDataError::InvalidMapEntryKey(_))
+    );
+}
+
+#[test]
+fn map_entries_reject_invalid_schema() {
+    // Missing required `value` field in the entry table should fail schema deserialization.
+    let toml_str = r#"
+        "demo::my_map" = [
+            { key = "0x1" }
+        ]
+    "#;
+
+    assert_matches::assert_matches!(
+        InitStorageData::from_toml(toml_str),
+        Err(InitStorageDataError::InvalidMapEntrySchema(_))
     );
 }
 
@@ -281,6 +360,60 @@ fn metadata_schema_commitment_ignores_defaults_and_ordering() {
     assert_eq!(
         metadata_a.storage_schema().commitment(),
         metadata_b.storage_schema().commitment()
+    );
+}
+
+#[test]
+fn metadata_schema_commitment_includes_descriptions() {
+    let toml_a = r#"
+        name = "Commitment Test"
+        description = "Component description"
+        version = "0.1.0"
+        supported-types = []
+
+        [[storage.slots]]
+        name = "demo::value"
+        description = "slot description a"
+        type = "word"
+    "#;
+
+    let toml_bad_description = r#"
+        name = "Commitment Test"
+        description = "Component description"
+        version = "0.1.0"
+        supported-types = []
+
+        [[storage.slots]]
+        name = "demo::value"
+        description = "incorrect description"
+        type = "word"
+    "#;
+
+    let toml_bad_name = r#"
+        name = "Commitment Test"
+        description = "Component description"
+        version = "0.1.0"
+        supported-types = []
+
+        [[storage.slots]]
+        name = "demo::bad_value"
+        description = "slot description a"
+        type = "word"
+    "#;
+
+    let metadata_a = AccountComponentMetadata::from_toml(toml_a).unwrap();
+    let metadata_bad_description =
+        AccountComponentMetadata::from_toml(toml_bad_description).unwrap();
+    let metadata_bad_slot_name = AccountComponentMetadata::from_toml(toml_bad_name).unwrap();
+
+    assert_ne!(
+        metadata_a.storage_schema().commitment(),
+        metadata_bad_description.storage_schema().commitment()
+    );
+
+    assert_ne!(
+        metadata_a.storage_schema().commitment(),
+        metadata_bad_slot_name.storage_schema().commitment()
     );
 }
 

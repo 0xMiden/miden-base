@@ -1,7 +1,6 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use miden_processor::Felt;
 use miden_processor::crypto::RpoRandomCoin;
 use miden_protocol::account::AccountId;
 use miden_protocol::asset::Asset;
@@ -128,7 +127,7 @@ pub fn create_p2any_note(
     code_body.push_str("dropw dropw dropw dropw");
 
     let code = format!(
-        "
+        r#"
         use mock::account
         use miden::protocol::active_note
         use miden::standards::wallets::basic->wallet
@@ -138,12 +137,12 @@ pub fn create_p2any_note(
             push.0 exec.active_note::get_assets     # [num_assets, dest_ptr]
 
             # runtime-check we got the expected count
-            push.{num_assets} assert_eq             # [dest_ptr]
+            push.{num_assets} assert_eq.err="unexpected number of assets"             # [dest_ptr]
 
             {code_body}
             dropw dropw dropw dropw
         end
-        ",
+        "#,
         num_assets = assets.len(),
     );
 
@@ -228,16 +227,27 @@ fn note_script_that_creates_notes<'note>(
         out.push_str(&format!(
             "
             push.{recipient}
-            push.{hint}
             push.{note_type}
-            push.{aux}
             push.{tag}
-            call.output_note::create\n",
+            exec.output_note::create\n",
             recipient = note.recipient().digest(),
-            hint = Felt::from(note.metadata().execution_hint()),
             note_type = note.metadata().note_type() as u8,
-            aux = note.metadata().aux(),
             tag = note.metadata().tag(),
+        ));
+
+        out.push_str(&format!(
+            "
+          push.{ATTACHMENT}
+          push.{attachment_scheme}
+          push.{attachment_kind}
+          dup.6
+          # => [note_idx, attachment_kind, attachment_scheme, ATTACHMENT, note_idx]
+          exec.output_note::set_attachment
+          # => [note_idx]
+        ",
+            ATTACHMENT = note.metadata().to_attachment_word(),
+            attachment_scheme = note.metadata().attachment().attachment_scheme().as_u32(),
+            attachment_kind = note.metadata().attachment().content().attachment_kind().as_u8(),
         ));
 
         let assets_str = prepare_assets(note.assets());
