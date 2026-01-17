@@ -8,7 +8,7 @@
 # Using this Double-Word Array utility requires that the underlying storage map is already created and
 # initialized as part of an account component, under the given slot ID.
 
-use miden::core::sys
+
 use miden::protocol::active_account
 use miden::protocol::native_account
 
