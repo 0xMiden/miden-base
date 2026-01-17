@@ -30,14 +30,13 @@ pub proc set(slot_id_prefix: felt, slot_id_suffix: felt, index: felt, value: BeW
     # Build KEY = [index, 0, 0, 0]
     push.0.0.0 movup.5
     # => [index, 0, 0, 0, slot_id_prefix, slot_id_suffix, VALUE, pad(9)]
-    #
-    # Keep stack depth at 16 before the exec below.
+
+    # truncate the stack
     movup.10 drop
     movup.10 drop
     movup.10 drop
     # => [index, 0, 0, 0, slot_id_prefix, slot_id_suffix, VALUE, pad(6)]
 
-    # Move slot IDs above the key
     movup.5 movup.5
     # => [slot_id_prefix, slot_id_suffix, KEY, VALUE, pad(6)]
 
@@ -60,14 +59,13 @@ pub proc get(slot_id_prefix: felt, slot_id_suffix: felt, index: felt) -> BeWord
     # Build KEY = [index, 0, 0, 0]
     push.0.0.0 movup.5
     # => [index, 0, 0, 0, slot_id_prefix, slot_id_suffix, pad(13)]
-    #
-    # Keep stack depth at 16 before the exec below.
+
+    # truncate the stack
     movup.6 drop
     movup.6 drop
     movup.6 drop
     # => [index, 0, 0, 0, slot_id_prefix, slot_id_suffix, pad(10)]
 
-    # Move slot IDs above the key
     movup.5 movup.5
     # => [slot_id_prefix, slot_id_suffix, KEY, pad(10)]
 

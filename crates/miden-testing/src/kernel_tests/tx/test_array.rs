@@ -49,7 +49,6 @@ async fn test_array_get_and_set() -> anyhow::Result<()> {
             exec.array::set
         end
         "#,
-        slot_name = TEST_ARRAY_SLOT
     );
 
     // Build the wrapper component by linking against the array library
