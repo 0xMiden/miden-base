@@ -91,8 +91,6 @@ fn compute_schema_commitment(
                     merged_slots.insert(slot_name.clone(), slot_schema.clone());
                 },
                 // Slot exists, check if the schema is the same before erroring
-                // TODO: If we wanted to not error, we would have to decide on a winning schema
-                // for the StorageSlotName
                 Some(existing) => {
                     if existing != slot_schema {
                         return Err(AccountComponentTemplateError::InvalidSchema(format!(
