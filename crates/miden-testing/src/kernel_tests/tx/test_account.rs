@@ -145,13 +145,8 @@ pub async fn compute_commitment() -> anyhow::Result<()> {
     );
 
     let tx_context_builder = TransactionContextBuilder::new(account);
-    let tx_script = CodeBuilder::with_mock_libraries()
-        .compile_tx_script(tx_script)
-        .map_err(|err| anyhow::anyhow!("{err}"))?;
-    let tx_context = tx_context_builder
-        .tx_script(tx_script)
-        .build()
-        .map_err(|err| anyhow::anyhow!("{err}"))?;
+    let tx_script = CodeBuilder::with_mock_libraries().compile_tx_script(tx_script)?;
+    let tx_context = tx_context_builder.tx_script(tx_script).build()?;
 
     tx_context
         .execute()
@@ -197,10 +192,7 @@ async fn test_account_type() -> anyhow::Result<()> {
             );
 
             let exec_output = CodeExecutor::with_default_host()
-                .stack_inputs(
-                    StackInputs::new(vec![account_id.prefix().as_felt()])
-                        .map_err(|err| anyhow::anyhow!("{err}"))?,
-                )
+                .stack_inputs(StackInputs::new(vec![account_id.prefix().as_felt()])?)
                 .run(&code)
                 .await?;
 
@@ -1433,9 +1425,7 @@ async fn test_was_procedure_called() -> anyhow::Result<()> {
     );
 
     // Compile the transaction script using the testing assembler with mock account
-    let tx_script = CodeBuilder::with_mock_libraries()
-        .compile_tx_script(tx_script_code)
-        .map_err(|err| anyhow::anyhow!("{err}"))?;
+    let tx_script = CodeBuilder::with_mock_libraries().compile_tx_script(tx_script_code)?;
 
     // Create transaction context and execute
     let tx_context = TransactionContextBuilder::new(account).tx_script(tx_script).build().unwrap();
@@ -1507,29 +1497,25 @@ async fn transaction_executor_account_code_using_custom_library() -> anyhow::Res
           end";
 
     let account_component =
-        AccountComponent::new(account_component_lib.clone(), AccountStorage::mock_storage_slots())
-            .map_err(|err| anyhow::anyhow!("{err}"))?
+        AccountComponent::new(account_component_lib.clone(), AccountStorage::mock_storage_slots())?
             .with_supports_all_types();
 
     // Build an existing account with nonce 1.
     let native_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(Auth::IncrNonce)
         .with_component(account_component)
-        .build_existing()
-        .map_err(|err| anyhow::anyhow!("{err}"))?;
+        .build_existing()?;
 
     let tx_script = CodeBuilder::default()
-        .with_dynamically_linked_library(&account_component_lib)
-        .map_err(|err| anyhow::anyhow!("{err}"))?
-        .compile_tx_script(tx_script_src)
-        .map_err(|err| anyhow::anyhow!("{err}"))?;
+        .with_dynamically_linked_library(&account_component_lib)?
+        .compile_tx_script(tx_script_src)?;
 
     let tx_context = TransactionContextBuilder::new(native_account.clone())
         .tx_script(tx_script)
         .build()
         .unwrap();
 
-    let executed_tx = tx_context.execute().await.map_err(|err| anyhow::anyhow!("{err}"))?;
+    let executed_tx = tx_context.execute().await?;
 
     // Account's initial nonce of 1 should have been incremented by 1.
     assert_eq!(executed_tx.account_delta().nonce_delta(), Felt::new(1));
