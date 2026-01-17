@@ -72,5 +72,8 @@ pub proc get(index: felt) -> BeWord
     
     exec.active_account::get_map_item
     # => [VALUE, pad(15)]
+    
+    # truncate the stack
     repeat.3 movup.4 drop end
+    # => [VALUE, pad(12)]
 end
