@@ -1,18 +1,18 @@
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use miden_lib::transaction::TransactionKernel;
-use miden_objects::account::delta::AccountUpdateDetails;
-use miden_objects::account::{AccountDelta, PartialAccount};
-use miden_objects::asset::Asset;
-use miden_objects::block::BlockNumber;
-use miden_objects::transaction::{
+use miden_protocol::account::delta::AccountUpdateDetails;
+use miden_protocol::account::{AccountDelta, PartialAccount};
+use miden_protocol::asset::Asset;
+use miden_protocol::block::BlockNumber;
+use miden_protocol::transaction::{
     InputNote,
     InputNotes,
     OutputNote,
     ProvenTransaction,
     ProvenTransactionBuilder,
     TransactionInputs,
+    TransactionKernel,
     TransactionOutputs,
 };
 pub use miden_prover::ProvingOptions;
@@ -99,8 +99,7 @@ impl LocalTransactionProver {
         tx_inputs: impl Into<TransactionInputs>,
     ) -> Result<ProvenTransaction, TransactionProverError> {
         let tx_inputs = tx_inputs.into();
-        let (stack_inputs, advice_inputs) = TransactionKernel::prepare_inputs(&tx_inputs)
-            .map_err(TransactionProverError::ConflictingAdviceMapEntry)?;
+        let (stack_inputs, advice_inputs) = TransactionKernel::prepare_inputs(&tx_inputs);
 
         self.mast_store.load_account_code(tx_inputs.account().code());
         for account_code in tx_inputs.foreign_account_code() {
@@ -114,8 +113,7 @@ impl LocalTransactionProver {
 
         let account_procedure_index_map = AccountProcedureIndexMap::new(
             tx_inputs.foreign_account_code().iter().chain([tx_inputs.account().code()]),
-        )
-        .map_err(TransactionProverError::CreateAccountProcedureIndexMap)?;
+        );
 
         let (partial_account, ref_block, _, input_notes, _) = tx_inputs.into_parts();
         let mut host = TransactionProverHost::new(
@@ -140,7 +138,7 @@ impl LocalTransactionProver {
         // Extract transaction outputs and process transaction data.
         // Note that the account delta does not contain the removed transaction fee, so it is the
         // "pre-fee" delta of the transaction.
-        let (pre_fee_account_delta, input_notes, output_notes, _tx_progress) = host.into_parts();
+        let (pre_fee_account_delta, input_notes, output_notes) = host.into_parts();
         let tx_outputs =
             TransactionKernel::from_transaction_parts(&stack_outputs, &advice_inputs, output_notes)
                 .map_err(TransactionProverError::TransactionOutputConstructionFailed)?;
@@ -170,7 +168,7 @@ impl Default for LocalTransactionProver {
 impl LocalTransactionProver {
     pub fn prove_dummy(
         &self,
-        executed_transaction: miden_objects::transaction::ExecutedTransaction,
+        executed_transaction: miden_protocol::transaction::ExecutedTransaction,
     ) -> Result<ProvenTransaction, TransactionProverError> {
         let (tx_inputs, tx_outputs, account_delta, _) = executed_transaction.into_parts();
 

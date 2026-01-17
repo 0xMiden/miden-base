@@ -41,7 +41,7 @@ An [Asset](asset) can be fungible and non-fungible. They are stored in the owner
 
 ### Transactions
 
-A [Transactions](transaction) describe the production and consumption of notes by a single account.
+A [Transaction](transaction) describes the production and consumption of notes by a single account.
 
 Executing a transaction always results in a STARK proof.
 

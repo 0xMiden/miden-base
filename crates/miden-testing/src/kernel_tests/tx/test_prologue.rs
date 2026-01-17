@@ -2,22 +2,38 @@ use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
 
 use anyhow::Context;
-use miden_lib::account::wallets::BasicWallet;
-use miden_lib::errors::tx_kernel_errors::{
+use miden_processor::fast::ExecutionOutput;
+use miden_processor::{AdviceInputs, Word};
+use miden_protocol::account::{
+    Account,
+    AccountBuilder,
+    AccountId,
+    AccountIdVersion,
+    AccountProcedureRoot,
+    AccountStorage,
+    AccountStorageMode,
+    AccountType,
+    StorageMap,
+    StorageSlot,
+    StorageSlotName,
+};
+use miden_protocol::asset::{FungibleAsset, NonFungibleAsset};
+use miden_protocol::errors::tx_kernel::{
     ERR_ACCOUNT_SEED_AND_COMMITMENT_DIGEST_MISMATCH,
     ERR_PROLOGUE_NEW_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_EMPTY,
     ERR_PROLOGUE_NEW_NON_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_VALID_EMPTY_SMT,
 };
-use miden_lib::testing::account_component::MockAccountComponent;
-use miden_lib::testing::mock_account::MockAccountExt;
-use miden_lib::transaction::TransactionKernel;
-use miden_lib::transaction::memory::{
+use miden_protocol::testing::account_id::{
+    ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
+    ACCOUNT_ID_SENDER,
+};
+use miden_protocol::testing::noop_auth_component::NoopAuthComponent;
+use miden_protocol::transaction::memory::{
     ACCT_DB_ROOT_PTR,
     BLOCK_COMMITMENT_PTR,
     BLOCK_METADATA_PTR,
     BLOCK_NUMBER_IDX,
     CHAIN_COMMITMENT_PTR,
-    FAUCET_STORAGE_DATA_SLOT,
     FEE_PARAMETERS_PTR,
     INIT_ACCT_COMMITMENT_PTR,
     INIT_NATIVE_ACCT_STORAGE_COMMITMENT_PTR,
@@ -26,9 +42,10 @@ use miden_lib::transaction::memory::{
     INPUT_NOTE_ARGS_OFFSET,
     INPUT_NOTE_ASSETS_COMMITMENT_OFFSET,
     INPUT_NOTE_ASSETS_OFFSET,
+    INPUT_NOTE_ATTACHMENT_OFFSET,
     INPUT_NOTE_ID_OFFSET,
     INPUT_NOTE_INPUTS_COMMITMENT_OFFSET,
-    INPUT_NOTE_METADATA_OFFSET,
+    INPUT_NOTE_METADATA_HEADER_OFFSET,
     INPUT_NOTE_NULLIFIER_SECTION_PTR,
     INPUT_NOTE_NUM_ASSETS_OFFSET,
     INPUT_NOTE_RECIPIENT_OFFSET,
@@ -54,36 +71,20 @@ use miden_lib::transaction::memory::{
     PARTIAL_BLOCKCHAIN_NUM_LEAVES_PTR,
     PARTIAL_BLOCKCHAIN_PEAKS_PTR,
     PREV_BLOCK_COMMITMENT_PTR,
-    PROOF_COMMITMENT_PTR,
     PROTOCOL_VERSION_IDX,
     TIMESTAMP_IDX,
     TX_COMMITMENT_PTR,
     TX_KERNEL_COMMITMENT_PTR,
     TX_SCRIPT_ROOT_PTR,
+    VALIDATOR_KEY_COMMITMENT_PTR,
     VERIFICATION_BASE_FEE_IDX,
 };
-use miden_objects::account::{
-    Account,
-    AccountBuilder,
-    AccountId,
-    AccountIdVersion,
-    AccountProcedureInfo,
-    AccountStorage,
-    AccountStorageMode,
-    AccountType,
-    StorageMap,
-    StorageSlot,
-};
-use miden_objects::asset::{FungibleAsset, NonFungibleAsset};
-use miden_objects::testing::account_id::{
-    ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
-    ACCOUNT_ID_SENDER,
-};
-use miden_objects::testing::noop_auth_component::NoopAuthComponent;
-use miden_objects::transaction::{ExecutedTransaction, TransactionArgs, TransactionScript};
-use miden_objects::{EMPTY_WORD, ONE, WORD_SIZE};
-use miden_processor::fast::ExecutionOutput;
-use miden_processor::{AdviceInputs, Word};
+use miden_protocol::transaction::{ExecutedTransaction, TransactionArgs, TransactionKernel};
+use miden_protocol::{EMPTY_WORD, ONE, WORD_SIZE};
+use miden_standards::account::wallets::BasicWallet;
+use miden_standards::code_builder::CodeBuilder;
+use miden_standards::testing::account_component::MockAccountComponent;
+use miden_standards::testing::mock_account::MockAccountExt;
 use miden_tx::TransactionExecutorError;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
@@ -123,7 +124,7 @@ async fn test_transaction_prologue() -> anyhow::Result<()> {
     };
 
     let code = "
-        use.$kernel::prologue
+        use $kernel::prologue
 
         begin
             exec.prologue::prepare_transaction
@@ -136,12 +137,7 @@ async fn test_transaction_prologue() -> anyhow::Result<()> {
         end
         ";
 
-    let mock_tx_script_program = TransactionKernel::assembler()
-        .with_debug_mode(true)
-        .assemble_program(mock_tx_script_code)
-        .unwrap();
-
-    let tx_script = TransactionScript::new(mock_tx_script_program);
+    let tx_script = CodeBuilder::default().compile_tx_script(mock_tx_script_code).unwrap();
 
     let note_args = [Word::from([91u32; 4]), Word::from([92u32; 4])];
 
@@ -199,7 +195,7 @@ fn global_input_memory_assertions(exec_output: &ExecutionOutput, inputs: &Transa
 
     assert_eq!(
         exec_output.get_kernel_mem_word(INIT_NATIVE_ACCT_STORAGE_COMMITMENT_PTR),
-        inputs.account().storage().commitment(),
+        inputs.account().storage().to_commitment(),
         "The initial native account storage commitment should be stored at the INIT_ACCT_STORAGE_COMMITMENT_PTR"
     );
 
@@ -266,9 +262,9 @@ fn block_data_memory_assertions(exec_output: &ExecutionOutput, inputs: &Transact
     );
 
     assert_eq!(
-        exec_output.get_kernel_mem_word(PROOF_COMMITMENT_PTR),
-        inputs.tx_inputs().block_header().proof_commitment(),
-        "The proof commitment should be stored at the PROOF_COMMITMENT_PTR"
+        exec_output.get_kernel_mem_word(VALIDATOR_KEY_COMMITMENT_PTR),
+        inputs.tx_inputs().block_header().validator_key().to_commitment(),
+        "The public key commitment should be stored at the VALIDATOR_KEY_COMMITMENT_PTR"
     );
 
     assert_eq!(
@@ -332,7 +328,7 @@ fn partial_blockchain_memory_assertions(
     // update the partial blockchain to point to the block against which this transaction is being
     // executed
     let mut partial_blockchain = prepared_tx.tx_inputs().blockchain().clone();
-    partial_blockchain.add_block(prepared_tx.tx_inputs().block_header().clone(), true);
+    partial_blockchain.add_block(prepared_tx.tx_inputs().block_header(), true);
 
     assert_eq!(
         exec_output.get_kernel_mem_word(PARTIAL_BLOCKCHAIN_NUM_LEAVES_PTR)[0],
@@ -393,7 +389,7 @@ fn account_data_memory_assertions(exec_output: &ExecutionOutput, inputs: &Transa
 
     assert_eq!(
         exec_output.get_kernel_mem_word(NATIVE_ACCT_STORAGE_COMMITMENT_PTR),
-        inputs.account().storage().commitment(),
+        inputs.account().storage().to_commitment(),
         "The account storage commitment should be stored at NATIVE_ACCT_STORAGE_COMMITMENT_PTR"
     );
 
@@ -412,8 +408,8 @@ fn account_data_memory_assertions(exec_output: &ExecutionOutput, inputs: &Transa
     for (i, elements) in inputs
         .account()
         .storage()
-        .as_elements()
-        .chunks(StorageSlot::NUM_ELEMENTS_PER_STORAGE_SLOT / 2)
+        .to_elements()
+        .chunks(StorageSlot::NUM_ELEMENTS / 2)
         .enumerate()
     {
         assert_eq!(
@@ -435,14 +431,14 @@ fn account_data_memory_assertions(exec_output: &ExecutionOutput, inputs: &Transa
         .account()
         .code()
         .as_elements()
-        .chunks(AccountProcedureInfo::NUM_ELEMENTS_PER_PROC / 2)
+        .chunks(AccountProcedureRoot::NUM_ELEMENTS)
         .enumerate()
     {
         assert_eq!(
             exec_output
                 .get_kernel_mem_word(NATIVE_ACCT_PROCEDURES_SECTION_PTR + (i * WORD_SIZE) as u32),
             Word::try_from(elements).unwrap(),
-            "The account procedures and storage offsets should be stored starting at NATIVE_ACCT_PROCEDURES_SECTION_PTR"
+            "The account procedures should be stored starting at NATIVE_ACCT_PROCEDURES_SECTION_PTR"
         );
     }
 }
@@ -506,9 +502,15 @@ fn input_notes_memory_assertions(
         );
 
         assert_eq!(
-            exec_output.get_note_mem_word(note_idx, INPUT_NOTE_METADATA_OFFSET),
-            Word::from(note.metadata()),
-            "note metadata should be stored at the correct offset"
+            exec_output.get_note_mem_word(note_idx, INPUT_NOTE_METADATA_HEADER_OFFSET),
+            note.metadata().to_header_word(),
+            "note metadata header should be stored at the correct offset"
+        );
+
+        assert_eq!(
+            exec_output.get_note_mem_word(note_idx, INPUT_NOTE_ATTACHMENT_OFFSET),
+            note.metadata().to_attachment_word(),
+            "note attachment should be stored at the correct offset"
         );
 
         assert_eq!(
@@ -588,11 +590,14 @@ pub async fn create_multiple_accounts_test(storage_mode: AccountStorageMode) -> 
             .account_type(account_type)
             .storage_mode(storage_mode)
             .with_auth_component(Auth::IncrNonce)
-            .with_component(MockAccountComponent::with_slots(vec![StorageSlot::Value(Word::from(
-                [255u32; WORD_SIZE],
-            ))]))
+            .with_component(MockAccountComponent::with_slots(vec![StorageSlot::with_value(
+                StorageSlotName::mock(0),
+                Word::from([255u32; WORD_SIZE]),
+            )]))
             .build()
-            .context("account build failed")?;
+            .with_context(|| {
+                format!("account build for {account_type} and {storage_mode} failed")
+            })?;
 
         accounts.push(account);
     }
@@ -627,7 +632,7 @@ fn compute_valid_account_id(account: Account) -> Account {
         AccountStorageMode::Public,
         AccountIdVersion::Version0,
         account.code().commitment(),
-        account.storage().commitment(),
+        account.storage().to_commitment(),
     )
     .unwrap();
 
@@ -635,7 +640,7 @@ fn compute_valid_account_id(account: Account) -> Account {
         seed,
         AccountIdVersion::Version0,
         account.code().commitment(),
-        account.storage().commitment(),
+        account.storage().to_commitment(),
     )
     .unwrap();
 
@@ -660,7 +665,9 @@ pub async fn create_account_fungible_faucet_invalid_initial_balance() -> anyhow:
     // Set the initial balance to a non-zero value manually, since the builder would not allow us to
     // do that.
     let faucet_data_slot = Word::from([0, 0, 0, 100u32]);
-    storage.set_item(FAUCET_STORAGE_DATA_SLOT, faucet_data_slot).unwrap();
+    storage
+        .set_item(AccountStorage::faucet_sysdata_slot(), faucet_data_slot)
+        .unwrap();
 
     // The compute account ID function will set the nonce to zero so this is considered a new
     // account.
@@ -686,7 +693,11 @@ pub async fn create_account_non_fungible_faucet_invalid_initial_reserved_slot() 
     let asset = NonFungibleAsset::mock(&[1, 2, 3, 4]);
     let non_fungible_storage_map =
         StorageMap::with_entries([(asset.vault_key().into(), asset.into())]).unwrap();
-    let storage = AccountStorage::new(vec![StorageSlot::Map(non_fungible_storage_map)]).unwrap();
+    let storage = AccountStorage::new(vec![StorageSlot::with_map(
+        AccountStorage::faucet_sysdata_slot().clone(),
+        non_fungible_storage_map,
+    )])
+    .unwrap();
 
     let account = AccountBuilder::new([1; 32])
         .account_type(AccountType::NonFungibleFaucet)
@@ -738,7 +749,7 @@ pub async fn create_account_invalid_seed() -> anyhow::Result<()> {
         .build()?;
 
     let code = "
-      use.$kernel::prologue
+      use $kernel::prologue
 
       begin
           exec.prologue::prepare_transaction
@@ -756,8 +767,8 @@ pub async fn create_account_invalid_seed() -> anyhow::Result<()> {
 async fn test_get_blk_version() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
     let code = "
-    use.$kernel::memory
-    use.$kernel::prologue
+    use $kernel::memory
+    use $kernel::prologue
 
     begin
         exec.prologue::prepare_transaction
@@ -782,8 +793,8 @@ async fn test_get_blk_version() -> anyhow::Result<()> {
 async fn test_get_blk_timestamp() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
     let code = "
-    use.$kernel::memory
-    use.$kernel::prologue
+    use $kernel::memory
+    use $kernel::prologue
 
     begin
         exec.prologue::prepare_transaction

@@ -1,8 +1,8 @@
 use alloc::string::String;
 
-use miden_lib::utils::ScriptBuilder;
-use miden_objects::Word;
-use miden_objects::note::Note;
+use miden_protocol::Word;
+use miden_protocol::note::Note;
+use miden_standards::code_builder::CodeBuilder;
 
 use super::{TestSetup, setup_test};
 use crate::TxContextInput;
@@ -47,7 +47,7 @@ async fn test_get_asset_info() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.miden::input_note
+        use miden::protocol::input_note
 
         begin
             {check_note_0}
@@ -74,7 +74,7 @@ async fn test_get_asset_info() -> anyhow::Result<()> {
         ),
     );
 
-    let tx_script = ScriptBuilder::default().compile_tx_script(code)?;
+    let tx_script = CodeBuilder::default().compile_tx_script(code)?;
 
     let tx_context = mock_chain
         .build_tx_context(
@@ -104,7 +104,7 @@ async fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-        use.miden::input_note
+        use miden::protocol::input_note
 
         begin
             # get the recipient from the input note
@@ -120,19 +120,23 @@ async fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
             # get the metadata from the requested input note
             push.0
             exec.input_note::get_metadata
-            # => [METADATA]
+            # => [NOTE_ATTACHMENT, METADATA_HEADER]
 
-            # assert the correctness of the metadata
-            push.{METADATA}
-            assert_eqw.err="note 0 has incorrect metadata"
+            push.{NOTE_ATTACHMENT}
+            assert_eqw.err="note 0 has incorrect note attachment"
+            # => [METADATA_HEADER]
+
+            push.{METADATA_HEADER}
+            assert_eqw.err="note 0 has incorrect metadata header"
             # => []
         end
     "#,
         RECIPIENT = p2id_note_1_asset.recipient().digest(),
-        METADATA = Word::from(p2id_note_1_asset.metadata()),
+        METADATA_HEADER = p2id_note_1_asset.metadata().to_header_word(),
+        NOTE_ATTACHMENT = p2id_note_1_asset.metadata().to_attachment_word(),
     );
 
-    let tx_script = ScriptBuilder::default().compile_tx_script(code)?;
+    let tx_script = CodeBuilder::default().compile_tx_script(code)?;
 
     let tx_context = mock_chain
         .build_tx_context(TxContextInput::AccountId(account.id()), &[], &[p2id_note_1_asset])?
@@ -158,7 +162,7 @@ async fn test_get_sender() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-        use.miden::input_note
+        use miden::protocol::input_note
 
         begin
             # get the sender from the input note
@@ -181,7 +185,7 @@ async fn test_get_sender() -> anyhow::Result<()> {
         sender_suffix = p2id_note_1_asset.metadata().sender().suffix(),
     );
 
-    let tx_script = ScriptBuilder::default().compile_tx_script(code)?;
+    let tx_script = CodeBuilder::default().compile_tx_script(code)?;
 
     let tx_context = mock_chain
         .build_tx_context(TxContextInput::AccountId(account.id()), &[], &[p2id_note_1_asset])?
@@ -257,7 +261,7 @@ async fn test_get_assets() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.miden::input_note
+        use miden::protocol::input_note
 
         begin
             {check_note_0}
@@ -272,7 +276,7 @@ async fn test_get_assets() -> anyhow::Result<()> {
         check_note_2 = check_assets_code(2, 8, &p2id_note_2_assets),
     );
 
-    let tx_script = ScriptBuilder::default().compile_tx_script(code)?;
+    let tx_script = CodeBuilder::default().compile_tx_script(code)?;
 
     let tx_context = mock_chain
         .build_tx_context(
@@ -302,7 +306,7 @@ async fn test_get_inputs_info() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-        use.miden::input_note
+        use miden::protocol::input_note
 
         begin
             # get the inputs commitment and length from the input note with index 0 (the only one
@@ -326,7 +330,7 @@ async fn test_get_inputs_info() -> anyhow::Result<()> {
         inputs_num = p2id_note_1_asset.inputs().num_values(),
     );
 
-    let tx_script = ScriptBuilder::default().compile_tx_script(code)?;
+    let tx_script = CodeBuilder::default().compile_tx_script(code)?;
 
     let tx_context = mock_chain
         .build_tx_context(TxContextInput::AccountId(account.id()), &[], &[p2id_note_1_asset])?
@@ -352,7 +356,7 @@ async fn test_get_script_root() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-        use.miden::input_note
+        use miden::protocol::input_note
 
         begin
             # get the script root from the input note with index 0 (the only one we have)
@@ -369,7 +373,7 @@ async fn test_get_script_root() -> anyhow::Result<()> {
         SCRIPT_ROOT = p2id_note_1_asset.script().root(),
     );
 
-    let tx_script = ScriptBuilder::default().compile_tx_script(code)?;
+    let tx_script = CodeBuilder::default().compile_tx_script(code)?;
 
     let tx_context = mock_chain
         .build_tx_context(TxContextInput::AccountId(account.id()), &[], &[p2id_note_1_asset])?
@@ -395,7 +399,7 @@ async fn test_get_serial_number() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-        use.miden::input_note
+        use miden::protocol::input_note
 
         begin
             # get the serial number from the input note with index 0 (the only one we have)
@@ -412,7 +416,7 @@ async fn test_get_serial_number() -> anyhow::Result<()> {
         SERIAL_NUMBER = p2id_note_1_asset.serial_num(),
     );
 
-    let tx_script = ScriptBuilder::default().compile_tx_script(code)?;
+    let tx_script = CodeBuilder::default().compile_tx_script(code)?;
 
     let tx_context = mock_chain
         .build_tx_context(TxContextInput::AccountId(account.id()), &[], &[p2id_note_1_asset])?

@@ -1,13 +1,13 @@
 use anyhow::Context;
-use miden_lib::account::wallets::BasicWallet;
-use miden_lib::errors::MasmError;
-use miden_lib::errors::note_script_errors::ERR_AUTH_PROCEDURE_CALLED_FROM_WRONG_CONTEXT;
-use miden_lib::testing::account_component::{ConditionalAuthComponent, ERR_WRONG_ARGS_MSG};
-use miden_lib::testing::mock_account::MockAccountExt;
-use miden_lib::utils::ScriptBuilder;
-use miden_objects::account::{Account, AccountBuilder};
-use miden_objects::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE;
-use miden_objects::{Felt, ONE};
+use miden_protocol::account::{Account, AccountBuilder};
+use miden_protocol::errors::MasmError;
+use miden_protocol::errors::tx_kernel::ERR_EPILOGUE_AUTH_PROCEDURE_CALLED_FROM_WRONG_CONTEXT;
+use miden_protocol::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE;
+use miden_protocol::{Felt, ONE};
+use miden_standards::account::wallets::BasicWallet;
+use miden_standards::code_builder::CodeBuilder;
+use miden_standards::testing::account_component::{ConditionalAuthComponent, ERR_WRONG_ARGS_MSG};
+use miden_standards::testing::mock_account::MockAccountExt;
 
 use crate::{Auth, TransactionContextBuilder, assert_transaction_executor_error};
 
@@ -77,12 +77,12 @@ async fn test_auth_procedure_called_from_wrong_context() -> anyhow::Result<()> {
     // Create a transaction script that calls the auth procedure
     let tx_script_source = "
         begin
-            call.::auth_incr_nonce
+            call.::incr_nonce::auth_incr_nonce
         end
     ";
 
-    let tx_script = ScriptBuilder::default()
-        .with_dynamically_linked_library(auth_component.library())?
+    let tx_script = CodeBuilder::default()
+        .with_dynamically_linked_library(auth_component.component_code())?
         .compile_tx_script(tx_script_source)?;
 
     let tx_context = TransactionContextBuilder::new(account).tx_script(tx_script).build()?;
@@ -91,7 +91,7 @@ async fn test_auth_procedure_called_from_wrong_context() -> anyhow::Result<()> {
 
     assert_transaction_executor_error!(
         execution_result,
-        ERR_AUTH_PROCEDURE_CALLED_FROM_WRONG_CONTEXT
+        ERR_EPILOGUE_AUTH_PROCEDURE_CALLED_FROM_WRONG_CONTEXT
     );
 
     Ok(())

@@ -2,17 +2,18 @@
 //!
 //! Once lazy loading is enabled generally, it can be removed and/or integrated into other tests.
 
-use miden_lib::testing::note::NoteBuilder;
-use miden_lib::utils::ScriptBuilder;
-use miden_objects::LexicographicWord;
-use miden_objects::account::{AccountId, AccountStorage};
-use miden_objects::asset::{Asset, FungibleAsset};
-use miden_objects::testing::account_id::{
+use miden_protocol::LexicographicWord;
+use miden_protocol::account::{AccountId, AccountStorage, StorageSlotDelta};
+use miden_protocol::asset::{Asset, FungibleAsset};
+use miden_protocol::testing::account_id::{
     ACCOUNT_ID_NATIVE_ASSET_FAUCET,
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
 };
-use miden_objects::testing::constants::FUNGIBLE_ASSET_AMOUNT;
+use miden_protocol::testing::constants::FUNGIBLE_ASSET_AMOUNT;
+use miden_protocol::testing::storage::MOCK_MAP_SLOT;
+use miden_standards::code_builder::CodeBuilder;
+use miden_standards::testing::note::NoteBuilder;
 
 use super::Word;
 use crate::{Auth, MockChain, TransactionContextBuilder};
@@ -39,7 +40,7 @@ async fn adding_fungible_assets_with_lazy_loading_succeeds() -> anyhow::Result<(
 
     let code = format!(
         "
-      use.mock::account
+      use mock::account
 
       begin
           push.{FUNGIBLE_ASSET1}
@@ -53,7 +54,7 @@ async fn adding_fungible_assets_with_lazy_loading_succeeds() -> anyhow::Result<(
         FUNGIBLE_ASSET2 = Word::from(fungible_asset2)
     );
 
-    let builder = ScriptBuilder::with_mock_libraries()?;
+    let builder = CodeBuilder::with_mock_libraries();
     let source_manager = builder.source_manager();
     let tx_script = builder.compile_tx_script(code)?;
     let tx_context = TransactionContextBuilder::with_existing_mock_account()
@@ -86,8 +87,8 @@ async fn removing_fungible_assets_with_lazy_loading_succeeds() -> anyhow::Result
 
     let code = format!(
         "
-      use.mock::account
-      use.mock::util
+      use mock::account
+      use mock::util
 
       begin
           push.{FUNGIBLE_ASSET1}
@@ -95,7 +96,7 @@ async fn removing_fungible_assets_with_lazy_loading_succeeds() -> anyhow::Result
           # => []
 
           # move asset to note to adhere to asset preservation rules
-          exec.util::create_random_note_with_asset
+          exec.util::create_default_note_with_asset
           # => []
 
           push.{FUNGIBLE_ASSET2}
@@ -103,7 +104,7 @@ async fn removing_fungible_assets_with_lazy_loading_succeeds() -> anyhow::Result
           # => [ASSET]
 
           # move asset to note to adhere to asset preservation rules
-          exec.util::create_random_note_with_asset
+          exec.util::create_default_note_with_asset
           # => []
       end
       ",
@@ -111,7 +112,7 @@ async fn removing_fungible_assets_with_lazy_loading_succeeds() -> anyhow::Result
         FUNGIBLE_ASSET2 = Word::from(fungible_asset2)
     );
 
-    let builder = ScriptBuilder::with_mock_libraries()?;
+    let builder = CodeBuilder::with_mock_libraries();
     let source_manager = builder.source_manager();
     let tx_script = builder.compile_tx_script(code)?;
 
@@ -176,37 +177,39 @@ async fn setting_map_item_with_lazy_loading_succeeds() -> anyhow::Result<()> {
         "test setup requires that the non existent key does not exist"
     );
 
-    // The index of the mock map in account storage is 2.
-    let map_index = 2;
+    // The slot name of the mock map in account storage.
+    let mock_map_slot = &*MOCK_MAP_SLOT;
 
     let value0 = Word::from([3, 4, 5, 6u32]);
     let value1 = Word::from([9, 8, 7, 6u32]);
 
     let code = format!(
-        "
-      use.mock::account
+        r#"
+      use mock::account
+
+      const MOCK_MAP_SLOT = word("{mock_map_slot}")
 
       begin
           # Update an existing key.
           push.{value0}
           push.{existing_key}
-          push.{map_index}
-          # => [index, KEY, VALUE]
+          push.MOCK_MAP_SLOT[0..2]
+          # => [slot_id_prefix, slot_id_suffix, KEY, VALUE]
           call.account::set_map_item
 
           # Insert a non-existent key.
           push.{value1}
           push.{non_existent_key}
-          push.{map_index}
-          # => [index, KEY, VALUE]
+          push.MOCK_MAP_SLOT[0..2]
+          # => [slot_id_prefix, slot_id_suffix, KEY, VALUE]
           call.account::set_map_item
 
-          exec.::std::sys::truncate_stack
+          exec.::miden::core::sys::truncate_stack
       end
-      "
+      "#
     );
 
-    let builder = ScriptBuilder::with_mock_libraries()?;
+    let builder = CodeBuilder::with_mock_libraries();
     let source_manager = builder.source_manager();
     let tx_script = builder.compile_tx_script(code)?;
 
@@ -217,7 +220,13 @@ async fn setting_map_item_with_lazy_loading_succeeds() -> anyhow::Result<()> {
         .execute()
         .await?;
 
-    let map_delta = tx.account_delta().storage().maps().get(&map_index).unwrap();
+    let map_delta = tx
+        .account_delta()
+        .storage()
+        .get(mock_map_slot)
+        .cloned()
+        .map(StorageSlotDelta::unwrap_map)
+        .unwrap();
     assert_eq!(map_delta.entries().get(&LexicographicWord::new(existing_key)).unwrap(), &value0);
     assert_eq!(
         map_delta.entries().get(&LexicographicWord::new(non_existent_key)).unwrap(),
@@ -240,16 +249,20 @@ async fn getting_map_item_with_lazy_loading_succeeds() -> anyhow::Result<()> {
         "test setup requires that the non existent key does not exist"
     );
 
+    let mock_map_slot = &*MOCK_MAP_SLOT;
+
     let code = format!(
         r#"
-      use.std::word
-      use.mock::account
+      use miden::core::word
+      use mock::account
+
+      const MOCK_MAP_SLOT = word("{mock_map_slot}")
 
       begin
           # Fetch value from existing key.
           push.{existing_key}
-          push.2
-          # => [index, KEY]
+          push.MOCK_MAP_SLOT[0..2]
+          # => [slot_id_prefix, slot_id_suffix, KEY]
           call.account::get_map_item
 
           push.{existing_value}
@@ -257,18 +270,18 @@ async fn getting_map_item_with_lazy_loading_succeeds() -> anyhow::Result<()> {
 
           # Fetch a non-existent key.
           push.{non_existent_key}
-          push.2
-          # => [index, KEY]
+          push.MOCK_MAP_SLOT[0..2]
+          # => [slot_id_prefix, slot_id_suffix, KEY]
           call.account::get_map_item
 
           padw assert_eqw.err="non-existent value should be the empty word"
 
-          exec.::std::sys::truncate_stack
+          exec.::miden::core::sys::truncate_stack
       end
       "#
     );
 
-    let builder = ScriptBuilder::with_mock_libraries()?;
+    let builder = CodeBuilder::with_mock_libraries();
     let source_manager = builder.source_manager();
     let tx_script = builder.compile_tx_script(code)?;
 

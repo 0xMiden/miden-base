@@ -3,16 +3,17 @@ use std::collections::BTreeMap;
 
 use anyhow::Context;
 use assert_matches::assert_matches;
-use miden_lib::testing::account_component::MockAccountComponent;
-use miden_lib::testing::note::NoteBuilder;
-use miden_objects::account::{Account, AccountId, AccountStorageMode};
-use miden_objects::batch::ProposedBatch;
-use miden_objects::block::BlockNumber;
-use miden_objects::crypto::merkle::MerkleError;
-use miden_objects::note::{Note, NoteType};
-use miden_objects::testing::account_id::AccountIdBuilder;
-use miden_objects::transaction::{InputNote, InputNoteCommitment, OutputNote, PartialBlockchain};
-use miden_objects::{BatchAccountUpdateError, ProposedBatchError, Word};
+use miden_protocol::Word;
+use miden_protocol::account::{Account, AccountId, AccountStorageMode};
+use miden_protocol::batch::ProposedBatch;
+use miden_protocol::block::BlockNumber;
+use miden_protocol::crypto::merkle::MerkleError;
+use miden_protocol::errors::{BatchAccountUpdateError, ProposedBatchError};
+use miden_protocol::note::{Note, NoteType};
+use miden_protocol::testing::account_id::AccountIdBuilder;
+use miden_protocol::transaction::{InputNote, InputNoteCommitment, OutputNote, PartialBlockchain};
+use miden_standards::testing::account_component::MockAccountComponent;
+use miden_standards::testing::note::NoteBuilder;
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 
@@ -293,20 +294,30 @@ async fn unauthenticated_note_converted_to_authenticated() -> anyhow::Result<()>
     let block2 = chain.prove_next_block()?;
     let block3 = chain.prove_next_block()?;
 
-    assert_eq!(block1.output_notes().count(), 2, "block 1 should contain note1 and note2");
+    assert_eq!(
+        block1.body().output_notes().count(),
+        2,
+        "block 1 should contain note1 and note2"
+    );
     assert!(
-        block1.output_notes().any(|(_, note)| note.commitment() == note1.commitment()),
+        block1
+            .body()
+            .output_notes()
+            .any(|(_, note)| note.commitment() == note1.commitment()),
         "block 1 should contain note1"
     );
     assert!(
-        block1.output_notes().any(|(_, note)| note.commitment() == note2.commitment()),
+        block1
+            .body()
+            .output_notes()
+            .any(|(_, note)| note.commitment() == note2.commitment()),
         "block 1 should contain note2"
     );
 
     // Consume the authenticated note as an unauthenticated one in the transaction.
     let tx1 =
         MockProvenTxBuilder::with_account(account1.id(), Word::empty(), account1.commitment())
-            .ref_block_commitment(block2.commitment())
+            .ref_block_commitment(block2.header().commitment())
             .unauthenticated_notes(vec![note2.clone()])
             .build()?;
 

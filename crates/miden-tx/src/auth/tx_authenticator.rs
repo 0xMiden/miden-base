@@ -3,11 +3,11 @@ use alloc::collections::BTreeMap;
 use alloc::string::ToString;
 use alloc::vec::Vec;
 
-use miden_objects::account::auth::{AuthSecretKey, PublicKeyCommitment, Signature};
-use miden_objects::crypto::SequentialCommit;
-use miden_objects::transaction::TransactionSummary;
-use miden_objects::{Felt, Hasher, Word};
 use miden_processor::FutureMaybeSend;
+use miden_protocol::account::auth::{AuthSecretKey, PublicKey, PublicKeyCommitment, Signature};
+use miden_protocol::crypto::SequentialCommit;
+use miden_protocol::transaction::TransactionSummary;
+use miden_protocol::{Felt, Hasher, Word};
 
 use crate::errors::AuthenticationError;
 use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
@@ -121,24 +121,31 @@ impl Deserializable for SigningInputs {
 /// a key managed by the authenticator. That is, the authenticator maintains a set of public-
 /// private key pairs, and can be requested to generate signatures against any of the managed keys.
 ///
-/// The public keys are defined by [Word]'s which are the hashes of the actual public keys.
+/// The public keys are defined by [PublicKeyCommitment]'s which are the hashes of the actual
+/// public keys.
 pub trait TransactionAuthenticator {
     /// Retrieves a signature for a specific message as a list of [Felt].
     ///
     /// The request is initiated by the VM as a consequence of the SigToStack advice
     /// injector.
     ///
-    /// - `pub_key_hash`: The hash of the public key used for signature generation.
-    /// - `message`: The message to sign, usually a commitment to the transaction data.
-    /// - `account_delta`: An informational parameter describing the changes made to the account up
-    ///   to the point of calling `get_signature()`. This allows the authenticator to review any
-    ///   alterations to the account prior to signing. It should not be directly used in the
-    ///   signature computation.
+    /// - `pub_key_commitment`: the hash of the public key used for signature generation.
+    /// - `signing_inputs`: description of the message to be singed. The inputs could contain
+    ///   arbitrary data or a [TransactionSummary] which would describe the changes made to the
+    ///   account up to the point of calling `get_signature()`. This allows the authenticator to
+    ///   review any alterations to the account prior to signing. It should not be directly used in
+    ///   the signature computation.
     fn get_signature(
         &self,
         pub_key_commitment: PublicKeyCommitment,
         signing_inputs: &SigningInputs,
     ) -> impl FutureMaybeSend<Result<Signature, AuthenticationError>>;
+
+    /// Retrieves a public key for a specific public key commitment.
+    fn get_public_key(
+        &self,
+        pub_key_commitment: PublicKeyCommitment,
+    ) -> impl FutureMaybeSend<Option<&PublicKey>>;
 }
 
 /// A placeholder type for the generic trait bound of `TransactionAuthenticator<'_,'_,_,T>`
@@ -160,6 +167,13 @@ impl TransactionAuthenticator for UnreachableAuth {
     ) -> impl FutureMaybeSend<Result<Signature, AuthenticationError>> {
         async { unreachable!("Type `UnreachableAuth` must not be instantiated") }
     }
+
+    fn get_public_key(
+        &self,
+        _pub_key_commitment: PublicKeyCommitment,
+    ) -> impl FutureMaybeSend<Option<&PublicKey>> {
+        async { unreachable!("Type `UnreachableAuth` must not be instantiated") }
+    }
 }
 
 // BASIC AUTHENTICATOR
@@ -168,16 +182,25 @@ impl TransactionAuthenticator for UnreachableAuth {
 /// Represents a signer for [AuthSecretKey] keys.
 #[derive(Clone, Debug)]
 pub struct BasicAuthenticator {
-    /// pub_key |-> secret_key mapping
-    keys: BTreeMap<PublicKeyCommitment, AuthSecretKey>,
+    /// pub_key |-> (secret_key, public_key) mapping
+    keys: BTreeMap<PublicKeyCommitment, (AuthSecretKey, PublicKey)>,
 }
 
 impl BasicAuthenticator {
     pub fn new(keys: &[AuthSecretKey]) -> Self {
         let mut key_map = BTreeMap::new();
         for secret_key in keys {
-            let pub_key = secret_key.public_key().to_commitment();
-            key_map.insert(pub_key, secret_key.clone());
+            let pub_key = secret_key.public_key();
+            key_map.insert(pub_key.to_commitment(), (secret_key.clone(), pub_key));
+        }
+
+        BasicAuthenticator { keys: key_map }
+    }
+
+    pub fn from_key_pairs(keys: &[(AuthSecretKey, PublicKey)]) -> Self {
+        let mut key_map = BTreeMap::new();
+        for (secret_key, public_key) in keys {
+            key_map.insert(public_key.to_commitment(), (secret_key.clone(), public_key.clone()));
         }
 
         BasicAuthenticator { keys: key_map }
@@ -185,9 +208,9 @@ impl BasicAuthenticator {
 
     /// Returns a reference to the keys map.
     ///
-    /// Map keys represent the public key commitments, and values represent the secret keys that
-    /// the authenticator would use to sign messages.
-    pub fn keys(&self) -> &BTreeMap<PublicKeyCommitment, AuthSecretKey> {
+    /// Map keys represent the public key commitments, and values represent the (secret_key,
+    /// public_key) pair that the authenticator would use to sign messages.
+    pub fn keys(&self) -> &BTreeMap<PublicKeyCommitment, (AuthSecretKey, PublicKey)> {
         &self.keys
     }
 }
@@ -196,10 +219,6 @@ impl TransactionAuthenticator for BasicAuthenticator {
     /// Gets a signature over a message, given a public key commitment.
     ///
     /// The key should be included in the `keys` map and should be a variant of [AuthSecretKey].
-    ///
-    /// Supported signature schemes:
-    /// - RpoFalcon512
-    /// - EcdsaK256Keccak
     ///
     /// # Errors
     /// If the public key is not contained in the `keys` map,
@@ -213,10 +232,20 @@ impl TransactionAuthenticator for BasicAuthenticator {
 
         async move {
             match self.keys.get(&pub_key_commitment) {
-                Some(key) => Ok(key.sign(message)),
+                Some((auth_key, _)) => Ok(auth_key.sign(message)),
                 None => Err(AuthenticationError::UnknownPublicKey(pub_key_commitment)),
             }
         }
+    }
+
+    /// Returns the public key associated with the given public key commitment.
+    ///
+    /// If the public key commitment is not contained in the `keys` map, `None` is returned.
+    fn get_public_key(
+        &self,
+        pub_key_commitment: PublicKeyCommitment,
+    ) -> impl FutureMaybeSend<Option<&PublicKey>> {
+        async move { self.keys.get(&pub_key_commitment).map(|(_, pub_key)| pub_key) }
     }
 }
 
@@ -236,19 +265,26 @@ impl TransactionAuthenticator for () {
             ))
         }
     }
+
+    fn get_public_key(
+        &self,
+        _pub_key_commitment: PublicKeyCommitment,
+    ) -> impl FutureMaybeSend<Option<&PublicKey>> {
+        async { None }
+    }
 }
 
 #[cfg(test)]
 mod test {
-    use miden_lib::utils::{Deserializable, Serializable};
-    use miden_objects::account::auth::AuthSecretKey;
-    use miden_objects::{Felt, Word};
+    use miden_protocol::account::auth::AuthSecretKey;
+    use miden_protocol::utils::{Deserializable, Serializable};
+    use miden_protocol::{Felt, Word};
 
     use super::SigningInputs;
 
     #[test]
     fn serialize_auth_key() {
-        let auth_key = AuthSecretKey::new_rpo_falcon512();
+        let auth_key = AuthSecretKey::new_falcon512_rpo();
         let serialized = auth_key.to_bytes();
         let deserialized = AuthSecretKey::read_from_bytes(&serialized).unwrap();
 

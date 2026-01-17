@@ -1,12 +1,12 @@
-use miden_objects::account::AccountId;
-use miden_objects::asset::NonFungibleAsset;
-use miden_objects::testing::account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET;
-use miden_objects::testing::constants::{
+use miden_protocol::account::AccountId;
+use miden_protocol::asset::NonFungibleAsset;
+use miden_protocol::testing::account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET;
+use miden_protocol::testing::constants::{
     FUNGIBLE_ASSET_AMOUNT,
     FUNGIBLE_FAUCET_INITIAL_BALANCE,
     NON_FUNGIBLE_ASSET_DATA,
 };
-use miden_objects::{Felt, Hasher, Word};
+use miden_protocol::{Felt, Hasher, Word};
 
 use crate::TransactionContextBuilder;
 use crate::kernel_tests::tx::ExecutionOutputExt;
@@ -21,8 +21,8 @@ async fn test_create_fungible_asset_succeeds() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.$kernel::prologue
-        use.miden::faucet
+        use $kernel::prologue
+        use miden::protocol::faucet
 
         begin
             exec.prologue::prepare_transaction
@@ -62,8 +62,8 @@ async fn test_create_non_fungible_asset_succeeds() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.$kernel::prologue
-        use.miden::faucet
+        use $kernel::prologue
+        use miden::protocol::faucet
 
         begin
             exec.prologue::prepare_transaction
@@ -95,7 +95,7 @@ async fn test_validate_non_fungible_asset() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.$kernel::asset
+        use $kernel::asset
 
         begin
             push.{non_fungible_asset}

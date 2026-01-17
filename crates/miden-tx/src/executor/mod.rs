@@ -1,25 +1,25 @@
 use alloc::collections::BTreeSet;
 use alloc::sync::Arc;
 
-use miden_lib::transaction::TransactionKernel;
-use miden_objects::account::AccountId;
-use miden_objects::assembly::DefaultSourceManager;
-use miden_objects::assembly::debuginfo::SourceManagerSync;
-use miden_objects::asset::Asset;
-use miden_objects::block::BlockNumber;
-use miden_objects::transaction::{
+use miden_processor::fast::FastProcessor;
+use miden_processor::{AdviceInputs, ExecutionError, StackInputs};
+pub use miden_processor::{ExecutionOptions, MastForestStore};
+use miden_protocol::account::AccountId;
+use miden_protocol::assembly::DefaultSourceManager;
+use miden_protocol::assembly::debuginfo::SourceManagerSync;
+use miden_protocol::asset::{Asset, AssetVaultKey};
+use miden_protocol::block::BlockNumber;
+use miden_protocol::transaction::{
     ExecutedTransaction,
     InputNote,
     InputNotes,
     TransactionArgs,
     TransactionInputs,
+    TransactionKernel,
     TransactionScript,
 };
-use miden_objects::vm::StackOutputs;
-use miden_objects::{Felt, MAX_TX_EXECUTION_CYCLES, MIN_TX_EXECUTION_CYCLES};
-use miden_processor::fast::FastProcessor;
-use miden_processor::{AdviceInputs, ExecutionError, StackInputs};
-pub use miden_processor::{ExecutionOptions, MastForestStore};
+use miden_protocol::vm::StackOutputs;
+use miden_protocol::{Felt, MAX_TX_EXECUTION_CYCLES, MIN_TX_EXECUTION_CYCLES};
 
 use super::TransactionExecutorError;
 use crate::auth::TransactionAuthenticator;
@@ -101,7 +101,7 @@ where
     ///
     /// The `source_manager` is used to map potential errors back to their source code. To get the
     /// most value out of it, use the same source manager as was used with the
-    /// [`Assembler`](miden_objects::assembly::Assembler) that assembled the Miden Assembly code
+    /// [`Assembler`](miden_protocol::assembly::Assembler) that assembled the Miden Assembly code
     /// that should be debugged, e.g. account components, note scripts or transaction scripts.
     ///
     /// This will overwrite any previously set source manager.
@@ -254,7 +254,7 @@ where
         input_notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
     ) -> Result<TransactionInputs, TransactionExecutorError> {
-        let mut ref_blocks = validate_input_notes(&input_notes, block_ref)?;
+        let (mut asset_vault_keys, mut ref_blocks) = validate_input_notes(&input_notes, block_ref)?;
         ref_blocks.insert(block_ref);
 
         let (account, block_header, blockchain) = self
@@ -263,9 +263,24 @@ where
             .await
             .map_err(TransactionExecutorError::FetchTransactionInputsFailed)?;
 
+        // Add the vault key for the fee asset to the list of asset vault keys which will need to be
+        // accessed at the end of the transaction.
+        let fee_asset_vault_key =
+            AssetVaultKey::from_account_id(block_header.fee_parameters().native_asset_id())
+                .expect("fee asset should be a fungible asset");
+        asset_vault_keys.insert(fee_asset_vault_key);
+
+        // Fetch the witnesses for all asset vault keys.
+        let asset_witnesses = self
+            .data_store
+            .get_vault_asset_witnesses(account_id, account.vault().root(), asset_vault_keys)
+            .await
+            .map_err(TransactionExecutorError::FetchAssetWitnessFailed)?;
+
         let tx_inputs = TransactionInputs::new(account, block_header, blockchain, input_notes)
             .map_err(TransactionExecutorError::InvalidTransactionInputs)?
-            .with_tx_args(tx_args);
+            .with_tx_args(tx_args)
+            .with_asset_witnesses(asset_witnesses);
 
         Ok(tx_inputs)
     }
@@ -281,8 +296,7 @@ where
         (TransactionExecutorHost<'store, 'auth, STORE, AUTH>, StackInputs, AdviceInputs),
         TransactionExecutorError,
     > {
-        let (stack_inputs, tx_advice_inputs) = TransactionKernel::prepare_inputs(tx_inputs)
-            .map_err(TransactionExecutorError::ConflictingAdviceMapEntry)?;
+        let (stack_inputs, tx_advice_inputs) = TransactionKernel::prepare_inputs(tx_inputs);
 
         // This reverses the stack inputs (even though it doesn't look like it does) because the
         // fast processor expects the reverse order.
@@ -301,8 +315,27 @@ where
         // To start executing the transaction, the procedure index map only needs to contain the
         // native account's procedures. Foreign accounts are inserted into the map on first access.
         let account_procedure_index_map =
-            AccountProcedureIndexMap::new([tx_inputs.account().code()])
-                .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
+            AccountProcedureIndexMap::new([tx_inputs.account().code()]);
+
+        let initial_fee_asset_balance = {
+            let native_asset_id = tx_inputs.block_header().fee_parameters().native_asset_id();
+            let fee_asset_vault_key = AssetVaultKey::from_account_id(native_asset_id)
+                .expect("fee asset should be a fungible asset");
+
+            let fee_asset_witness = tx_inputs
+                .asset_witnesses()
+                .iter()
+                .find_map(|witness| witness.find(fee_asset_vault_key));
+
+            match fee_asset_witness {
+                Some(Asset::Fungible(fee_asset)) => fee_asset.amount(),
+                Some(Asset::NonFungible(_)) => {
+                    return Err(TransactionExecutorError::FeeAssetMustBeFungible);
+                },
+                // If the witness does not contain the asset, its balance is zero.
+                None => 0,
+            }
+        };
 
         let host = TransactionExecutorHost::new(
             tx_inputs.account(),
@@ -312,6 +345,7 @@ where
             account_procedure_index_map,
             self.authenticator,
             tx_inputs.block_header().block_num(),
+            initial_fee_asset_balance,
             self.source_manager.clone(),
         );
 
@@ -333,6 +367,7 @@ fn build_executed_transaction<STORE: DataStore + Sync, AUTH: TransactionAuthenti
 ) -> Result<ExecutedTransaction, TransactionExecutorError> {
     // Note that the account delta does not contain the removed transaction fee, so it is the
     // "pre-fee" delta of the transaction.
+
     let (
         pre_fee_account_delta,
         _input_notes,
@@ -340,6 +375,7 @@ fn build_executed_transaction<STORE: DataStore + Sync, AUTH: TransactionAuthenti
         accessed_foreign_account_code,
         generated_signatures,
         tx_progress,
+        foreign_account_slot_names,
     ) = host.into_parts();
 
     let tx_outputs =
@@ -387,6 +423,7 @@ fn build_executed_transaction<STORE: DataStore + Sync, AUTH: TransactionAuthenti
     // guaranteed to be a superset of the original advice inputs.
     let tx_inputs = tx_inputs
         .with_foreign_account_code(accessed_foreign_account_code)
+        .with_foreign_account_slot_names(foreign_account_slot_names)
         .with_advice_inputs(advice_inputs);
 
     Ok(ExecutedTransaction::new(
@@ -399,27 +436,36 @@ fn build_executed_transaction<STORE: DataStore + Sync, AUTH: TransactionAuthenti
 
 /// Validates that input notes were not created after the reference block.
 ///
-/// Returns the set of block numbers required to execute the provided notes.
+/// Returns the set of block numbers required to execute the provided notes and the set of asset
+/// vault keys that will be needed in the transaction prologue.
+///
+/// The transaction input vault is a copy of the account vault and to mutate the input vault (during
+/// the prologue, for asset preservation), witnesses for the note assets against the account vault
+/// must be requested.
 fn validate_input_notes(
     notes: &InputNotes<InputNote>,
     block_ref: BlockNumber,
-) -> Result<BTreeSet<BlockNumber>, TransactionExecutorError> {
-    // Validate that notes were not created after the reference, and build the set of required
-    // block numbers
+) -> Result<(BTreeSet<AssetVaultKey>, BTreeSet<BlockNumber>), TransactionExecutorError> {
     let mut ref_blocks: BTreeSet<BlockNumber> = BTreeSet::new();
-    for note in notes.iter() {
-        if let Some(location) = note.location() {
+    let mut asset_vault_keys: BTreeSet<AssetVaultKey> = BTreeSet::new();
+
+    for input_note in notes.iter() {
+        // Validate that notes were not created after the reference, and build the set of required
+        // block numbers
+        if let Some(location) = input_note.location() {
             if location.block_num() > block_ref {
                 return Err(TransactionExecutorError::NoteBlockPastReferenceBlock(
-                    note.id(),
+                    input_note.id(),
                     block_ref,
                 ));
             }
             ref_blocks.insert(location.block_num());
         }
+
+        asset_vault_keys.extend(input_note.note().assets().iter().map(Asset::vault_key));
     }
 
-    Ok(ref_blocks)
+    Ok((asset_vault_keys, ref_blocks))
 }
 
 /// Validates that the number of cycles specified is within the allowed range.

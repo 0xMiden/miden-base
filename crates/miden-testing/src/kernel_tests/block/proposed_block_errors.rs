@@ -3,13 +3,14 @@ use std::collections::BTreeMap;
 use std::vec::Vec;
 
 use assert_matches::assert_matches;
-use miden_lib::note::create_p2id_note;
-use miden_objects::asset::FungibleAsset;
-use miden_objects::block::{BlockInputs, BlockNumber, ProposedBlock};
-use miden_objects::crypto::merkle::SparseMerklePath;
-use miden_objects::note::{NoteInclusionProof, NoteType};
-use miden_objects::{MAX_BATCHES_PER_BLOCK, ProposedBlockError, ZERO};
 use miden_processor::crypto::MerklePath;
+use miden_protocol::MAX_BATCHES_PER_BLOCK;
+use miden_protocol::asset::FungibleAsset;
+use miden_protocol::block::{BlockInputs, BlockNumber, ProposedBlock};
+use miden_protocol::crypto::merkle::SparseMerklePath;
+use miden_protocol::errors::ProposedBlockError;
+use miden_protocol::note::{NoteAttachment, NoteInclusionProof, NoteType};
+use miden_standards::note::create_p2id_note;
 use miden_tx::LocalTransactionProver;
 
 use crate::kernel_tests::block::utils::MockChainBlockExt;
@@ -352,7 +353,7 @@ async fn proposed_block_fails_on_invalid_proof_or_missing_note_inclusion_referen
         account1.id(),
         vec![],
         NoteType::Private,
-        ZERO,
+        NoteAttachment::default(),
         builder.rng_mut(),
     )?;
     let spawn_note = builder.add_spawn_note([&p2id_note])?;
@@ -418,7 +419,7 @@ async fn proposed_block_fails_on_invalid_proof_or_missing_note_inclusion_referen
         .expect("note proof should have been fetched")
         .clone();
     let mut original_merkle_path = MerklePath::from(original_note_proof.note_path().clone());
-    original_merkle_path.push(block2.commitment());
+    original_merkle_path.push(block2.header().commitment());
     // Add a random hash to the path to make it invalid.
     let invalid_note_path = SparseMerklePath::try_from(original_merkle_path).unwrap();
     let invalid_note_proof = NoteInclusionProof::new(

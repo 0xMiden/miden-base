@@ -2,37 +2,35 @@ use alloc::collections::BTreeMap;
 use alloc::sync::Arc;
 
 use anyhow::Context;
-use miden_lib::account::wallets::BasicWallet;
-use miden_lib::errors::MasmError;
-use miden_lib::testing::note::NoteBuilder;
-use miden_lib::transaction::TransactionKernel;
-use miden_lib::transaction::memory::ACTIVE_INPUT_NOTE_PTR;
-use miden_lib::utils::ScriptBuilder;
-use miden_objects::account::auth::PublicKeyCommitment;
-use miden_objects::account::{AccountBuilder, AccountId};
-use miden_objects::assembly::DefaultSourceManager;
-use miden_objects::assembly::diagnostics::miette::{self, miette};
-use miden_objects::asset::FungibleAsset;
-use miden_objects::crypto::dsa::rpo_falcon512::SecretKey;
-use miden_objects::crypto::rand::{FeltRng, RpoRandomCoin};
-use miden_objects::note::{
+use miden_processor::fast::ExecutionOutput;
+use miden_protocol::account::auth::PublicKeyCommitment;
+use miden_protocol::account::{AccountBuilder, AccountId};
+use miden_protocol::assembly::DefaultSourceManager;
+use miden_protocol::assembly::diagnostics::miette::{self, miette};
+use miden_protocol::asset::FungibleAsset;
+use miden_protocol::crypto::dsa::falcon512_rpo::SecretKey;
+use miden_protocol::crypto::rand::{FeltRng, RpoRandomCoin};
+use miden_protocol::errors::MasmError;
+use miden_protocol::note::{
     Note,
     NoteAssets,
-    NoteExecutionHint,
-    NoteExecutionMode,
     NoteInputs,
     NoteMetadata,
     NoteRecipient,
     NoteTag,
     NoteType,
 };
-use miden_objects::testing::account_id::{
+use miden_protocol::testing::account_id::{
+    ACCOUNT_ID_NETWORK_FUNGIBLE_FAUCET,
     ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
     ACCOUNT_ID_SENDER,
 };
-use miden_objects::transaction::{OutputNote, TransactionArgs};
-use miden_objects::{Felt, Word, ZERO};
-use miden_processor::fast::ExecutionOutput;
+use miden_protocol::transaction::memory::ACTIVE_INPUT_NOTE_PTR;
+use miden_protocol::transaction::{OutputNote, TransactionArgs};
+use miden_protocol::{Felt, Hasher, Word, ZERO};
+use miden_standards::account::wallets::BasicWallet;
+use miden_standards::code_builder::CodeBuilder;
+use miden_standards::testing::note::NoteBuilder;
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 
@@ -66,8 +64,8 @@ async fn test_note_setup() -> anyhow::Result<()> {
     };
 
     let code = "
-        use.$kernel::prologue
-        use.$kernel::note
+        use $kernel::prologue
+        use $kernel::note
 
         begin
             exec.prologue::prepare_transaction
@@ -123,14 +121,14 @@ async fn test_note_script_and_note_args() -> miette::Result<()> {
             .unwrap()
     };
 
-    let code = "
-        use.$kernel::prologue
-        use.$kernel::memory
-        use.$kernel::note
+    let code =  "
+        use $kernel::prologue
+        use $kernel::memory
+        use $kernel::note
 
         begin
             exec.prologue::prepare_transaction
-            exec.memory::get_num_input_notes push.2 assert_eq
+            exec.memory::get_num_input_notes push.2 assert_eq.err=\"unexpected number of input notes\"
             exec.note::prepare_note drop
             # => [NOTE_ARGS0, pad(11), pad(16)]
             repeat.11 movup.4 drop end
@@ -192,49 +190,44 @@ async fn test_build_recipient() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
     // Create test script and serial number
-    let note_script = ScriptBuilder::default().compile_note_script("begin nop end")?;
+    let note_script = CodeBuilder::default().compile_note_script("begin nop end")?;
     let serial_num = Word::default();
 
     // Define test values as Words
     let word_1 = Word::from([1, 2, 3, 4u32]);
     let word_2 = Word::from([5, 6, 7, 8u32]);
-    let word_3 = Word::from([9, 10, 11, 12u32]);
-    let word_4 = Word::from([13, 14, 15, 16u32]);
     const BASE_ADDR: u32 = 4000;
 
     let code = format!(
         "
-        use.std::sys
-
-        use.miden::note
+        use miden::core::sys
+        use miden::protocol::note
 
         begin
             # put the values that will be hashed into the memory
             push.{word_1} push.{base_addr} mem_storew_be dropw
             push.{word_2} push.{addr_1} mem_storew_be dropw
-            push.{word_3} push.{addr_2} mem_storew_be dropw
-            push.{word_4} push.{addr_3} mem_storew_be dropw
 
-            # Test with 4 values
+            # Test with 4 values (needs padding to 8)
             push.{script_root}  # SCRIPT_ROOT
             push.{serial_num}   # SERIAL_NUM
             push.4.4000         # num_inputs, inputs_ptr
             exec.note::build_recipient
             # => [RECIPIENT_4]
 
-            # Test with 5 values
+            # Test with 5 values (needs padding to 8)
             push.{script_root}  # SCRIPT_ROOT
             push.{serial_num}   # SERIAL_NUM
             push.5.4000         # num_inputs, inputs_ptr
             exec.note::build_recipient
             # => [RECIPIENT_5, RECIPIENT_4]
 
-            # Test with 13 values
+            # Test with 8 values (no padding needed - exactly one rate block)
             push.{script_root}  # SCRIPT_ROOT
             push.{serial_num}   # SERIAL_NUM
-            push.13.4000        # num_inputs, inputs_ptr
+            push.8.4000         # num_inputs, inputs_ptr
             exec.note::build_recipient
-            # => [RECIPIENT_13, RECIPIENT_5, RECIPIENT_4]
+            # => [RECIPIENT_8, RECIPIENT_5, RECIPIENT_4]
 
             # truncate the stack
             exec.sys::truncate_stack
@@ -242,38 +235,56 @@ async fn test_build_recipient() -> anyhow::Result<()> {
     ",
         word_1 = word_1,
         word_2 = word_2,
-        word_3 = word_3,
-        word_4 = word_4,
         base_addr = BASE_ADDR,
         addr_1 = BASE_ADDR + 4,
-        addr_2 = BASE_ADDR + 8,
-        addr_3 = BASE_ADDR + 12,
         script_root = note_script.root(),
         serial_num = serial_num,
     );
 
     let exec_output = &tx_context.execute_code(&code).await?;
 
-    // Create expected recipients and get their digests
-    let note_inputs_4 = NoteInputs::new(word_1.to_vec())?;
-    let recipient_4 = NoteRecipient::new(serial_num, note_script.clone(), note_inputs_4);
+    // Create expected NoteInputs for each test case
+    let inputs_4 = word_1.to_vec();
+    let note_inputs_4 = NoteInputs::new(inputs_4.clone())?;
 
     let mut inputs_5 = word_1.to_vec();
     inputs_5.push(word_2[0]);
-    let note_inputs_5 = NoteInputs::new(inputs_5)?;
-    let recipient_5 = NoteRecipient::new(serial_num, note_script.clone(), note_inputs_5);
+    let note_inputs_5 = NoteInputs::new(inputs_5.clone())?;
 
-    let mut inputs_13 = word_1.to_vec();
-    inputs_13.extend_from_slice(&word_2.to_vec());
-    inputs_13.extend_from_slice(&word_3.to_vec());
-    inputs_13.push(word_4[0]);
-    let note_inputs_13 = NoteInputs::new(inputs_13)?;
-    let recipient_13 = NoteRecipient::new(serial_num, note_script, note_inputs_13);
+    let mut inputs_8 = word_1.to_vec();
+    inputs_8.extend_from_slice(&word_2.to_vec());
+    let note_inputs_8 = NoteInputs::new(inputs_8.clone())?;
+
+    // Create expected recipients and get their digests
+    let recipient_4 = NoteRecipient::new(serial_num, note_script.clone(), note_inputs_4.clone());
+    let recipient_5 = NoteRecipient::new(serial_num, note_script.clone(), note_inputs_5.clone());
+    let recipient_8 = NoteRecipient::new(serial_num, note_script.clone(), note_inputs_8.clone());
+
+    for note_inputs in [
+        (note_inputs_4, inputs_4.clone()),
+        (note_inputs_5, inputs_5.clone()),
+        (note_inputs_8, inputs_8.clone()),
+    ] {
+        let inputs_advice_map_key = note_inputs.0.commitment();
+        assert_eq!(
+            exec_output.advice.get_mapped_values(&inputs_advice_map_key).unwrap(),
+            note_inputs.1,
+            "advice entry with note inputs should contain the unpadded values"
+        );
+
+        let num_inputs_advice_map_key =
+            Hasher::hash_elements(note_inputs.0.commitment().as_elements());
+        assert_eq!(
+            exec_output.advice.get_mapped_values(&num_inputs_advice_map_key).unwrap(),
+            &[Felt::from(note_inputs.0.num_values())],
+            "advice entry with num note inputs should contain the original number of values"
+        );
+    }
 
     let mut expected_stack = alloc::vec::Vec::new();
     expected_stack.extend_from_slice(recipient_4.digest().as_elements());
     expected_stack.extend_from_slice(recipient_5.digest().as_elements());
-    expected_stack.extend_from_slice(recipient_13.digest().as_elements());
+    expected_stack.extend_from_slice(recipient_8.digest().as_elements());
     expected_stack.reverse();
 
     assert_eq!(exec_output.stack[0..12], expected_stack);
@@ -293,9 +304,9 @@ async fn test_compute_inputs_commitment() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.std::sys
+        use miden::core::sys
 
-        use.miden::note
+        use miden::protocol::note
 
         begin
             # put the values that will be hashed into the memory
@@ -369,59 +380,45 @@ async fn test_compute_inputs_commitment() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
-async fn test_build_metadata() -> miette::Result<()> {
+async fn test_build_metadata_header() -> miette::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build().unwrap();
 
     let sender = tx_context.account().id();
     let receiver = AccountId::try_from(ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE)
         .map_err(|e| miette::miette!("Failed to convert account ID: {}", e))?;
 
-    let test_metadata1 = NoteMetadata::new(
-        sender,
-        NoteType::Private,
-        NoteTag::from_account_id(receiver),
-        NoteExecutionHint::after_block(500.into())
-            .map_err(|e| miette::miette!("Failed to create execution hint: {}", e))?,
-        Felt::try_from(1u64 << 63).map_err(|e| miette::miette!("Failed to convert felt: {}", e))?,
-    )
-    .map_err(|e| miette::miette!("Failed to create metadata: {}", e))?;
-    let test_metadata2 = NoteMetadata::new(
-        sender,
-        NoteType::Public,
-        // Use largest allowed use_case_id.
-        NoteTag::for_public_use_case((1 << 14) - 1, u16::MAX, NoteExecutionMode::Local)
-            .map_err(|e| miette::miette!("Failed to create note tag: {}", e))?,
-        NoteExecutionHint::on_block_slot(u8::MAX, u8::MAX, u8::MAX),
-        Felt::try_from(0u64).map_err(|e| miette::miette!("Failed to convert felt: {}", e))?,
-    )
-    .map_err(|e| miette::miette!("Failed to create metadata: {}", e))?;
+    let test_metadata1 =
+        NoteMetadata::new(sender, NoteType::Private, NoteTag::with_account_target(receiver));
+    let test_metadata2 = NoteMetadata::new(sender, NoteType::Public, NoteTag::new(u32::MAX));
 
     for (iteration, test_metadata) in [test_metadata1, test_metadata2].into_iter().enumerate() {
         let code = format!(
             "
-        use.$kernel::prologue
-        use.$kernel::output_note
+        use $kernel::prologue
+        use $kernel::output_note
 
         begin
           exec.prologue::prepare_transaction
-          push.{execution_hint} push.{note_type} push.{aux} push.{tag}
-          exec.output_note::build_metadata
+          push.{note_type} push.{tag}
+          exec.output_note::build_metadata_header
 
           # truncate the stack
           swapw dropw
         end
         ",
-            execution_hint = Felt::from(test_metadata.execution_hint()),
             note_type = Felt::from(test_metadata.note_type()),
-            aux = test_metadata.aux(),
             tag = test_metadata.tag(),
         );
 
-        let exec_output = tx_context.execute_code(&code).await.unwrap();
+        let exec_output = tx_context.execute_code(&code).await?;
 
         let metadata_word = exec_output.get_stack_word_be(0);
 
-        assert_eq!(Word::from(test_metadata), metadata_word, "failed in iteration {iteration}");
+        assert_eq!(
+            test_metadata.to_header_word(),
+            metadata_word,
+            "failed in iteration {iteration}"
+        );
     }
 
     Ok(())
@@ -434,8 +431,8 @@ pub async fn test_timelock() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-      use.miden::active_note
-      use.miden::tx
+      use miden::protocol::active_note
+      use miden::protocol::tx
 
       begin
           # store the note inputs to memory starting at address 0
@@ -469,7 +466,7 @@ pub async fn test_timelock() -> anyhow::Result<()> {
         .note_inputs([Felt::from(lock_timestamp)])?
         .source_manager(source_manager.clone())
         .code(code.clone())
-        .dynamically_linked_libraries(TransactionKernel::mock_libraries())
+        .dynamically_linked_libraries(CodeBuilder::mock_libraries())
         .build()?;
 
     builder.add_output_note(OutputNote::Full(timelock_note.clone()));
@@ -532,16 +529,10 @@ async fn test_public_key_as_note_input() -> anyhow::Result<()> {
         .build_existing()?;
 
     let serial_num = RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])).draw_word();
-    let tag = NoteTag::from_account_id(target_account.id());
-    let metadata = NoteMetadata::new(
-        sender_account.id(),
-        NoteType::Public,
-        tag,
-        NoteExecutionHint::always(),
-        Default::default(),
-    )?;
+    let tag = NoteTag::with_account_target(target_account.id());
+    let metadata = NoteMetadata::new(sender_account.id(), NoteType::Public, tag);
     let vault = NoteAssets::new(vec![])?;
-    let note_script = ScriptBuilder::default().compile_note_script("begin nop end")?;
+    let note_script = CodeBuilder::default().compile_note_script("begin nop end")?;
     let recipient =
         NoteRecipient::new(serial_num, note_script, NoteInputs::new(public_key_value.to_vec())?);
     let note_with_pub_key = Note::new(vault.clone(), metadata, recipient);
@@ -552,5 +543,45 @@ async fn test_public_key_as_note_input() -> anyhow::Result<()> {
         .build()?;
 
     tx_context.execute().await?;
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_build_note_tag_for_network_account() -> anyhow::Result<()> {
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
+
+    let account_id = AccountId::try_from(ACCOUNT_ID_NETWORK_FUNGIBLE_FAUCET)?;
+    let expected_tag = NoteTag::with_account_target(account_id).as_u32();
+
+    let prefix: u64 = account_id.prefix().into();
+    let suffix: u64 = account_id.suffix().into();
+
+    let code = format!(
+        "
+        use miden::core::sys
+        use miden::protocol::note
+
+        begin
+            push.{suffix}.{prefix} 
+
+            exec.note::build_note_tag_for_network_account
+            # => [network_account_tag]
+
+            exec.sys::truncate_stack
+        end
+        ",
+        suffix = suffix,
+        prefix = prefix,
+    );
+
+    let exec_output = tx_context.execute_code(&code).await?;
+    let actual_tag = exec_output.stack[0].as_int();
+
+    assert_eq!(
+        actual_tag, expected_tag as u64,
+        "Expected tag {:#010x}, got {:#010x}",
+        expected_tag, actual_tag
+    );
+
     Ok(())
 }

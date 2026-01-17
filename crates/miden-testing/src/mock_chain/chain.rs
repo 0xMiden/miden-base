@@ -2,25 +2,26 @@ use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::vec::Vec;
 
 use anyhow::Context;
-use miden_block_prover::{LocalBlockProver, ProvenBlockError};
-use miden_objects::account::auth::AuthSecretKey;
-use miden_objects::account::delta::AccountUpdateDetails;
-use miden_objects::account::{Account, AccountId, PartialAccount};
-use miden_objects::batch::{ProposedBatch, ProvenBatch};
-use miden_objects::block::account_tree::AccountTree;
-use miden_objects::block::{
-    AccountWitness,
+use miden_block_prover::LocalBlockProver;
+use miden_processor::DeserializationError;
+use miden_protocol::MIN_PROOF_SECURITY_LEVEL;
+use miden_protocol::account::auth::{AuthSecretKey, PublicKey};
+use miden_protocol::account::delta::AccountUpdateDetails;
+use miden_protocol::account::{Account, AccountId, PartialAccount};
+use miden_protocol::batch::{ProposedBatch, ProvenBatch};
+use miden_protocol::block::account_tree::{AccountTree, AccountWitness};
+use miden_protocol::block::nullifier_tree::{NullifierTree, NullifierWitness};
+use miden_protocol::block::{
     BlockHeader,
     BlockInputs,
     BlockNumber,
     Blockchain,
-    NullifierTree,
-    NullifierWitness,
     ProposedBlock,
     ProvenBlock,
 };
-use miden_objects::note::{Note, NoteHeader, NoteId, NoteInclusionProof, Nullifier};
-use miden_objects::transaction::{
+use miden_protocol::crypto::dsa::ecdsa_k256_keccak::SecretKey;
+use miden_protocol::note::{Note, NoteHeader, NoteId, NoteInclusionProof, Nullifier};
+use miden_protocol::transaction::{
     ExecutedTransaction,
     InputNote,
     InputNotes,
@@ -29,7 +30,6 @@ use miden_objects::transaction::{
     ProvenTransaction,
     TransactionInputs,
 };
-use miden_processor::DeserializationError;
 use miden_tx::LocalTransactionProver;
 use miden_tx::auth::BasicAuthenticator;
 use miden_tx::utils::{ByteReader, Deserializable, Serializable};
@@ -63,7 +63,7 @@ use crate::{MockChainBuilder, TransactionContextBuilder};
 /// ## Executing a simple transaction
 /// ```
 /// # use anyhow::Result;
-/// # use miden_objects::{
+/// # use miden_protocol::{
 /// #    asset::{Asset, FungibleAsset},
 /// #    note::NoteType,
 /// # };
@@ -127,7 +127,7 @@ use crate::{MockChainBuilder, TransactionContextBuilder};
 ///
 /// ```
 /// # use anyhow::Result;
-/// # use miden_objects::{Felt, asset::{Asset, FungibleAsset}, note::NoteType};
+/// # use miden_protocol::{Felt, asset::{Asset, FungibleAsset}, note::NoteType};
 /// # use miden_testing::{Auth, MockChain, TransactionContextBuilder};
 /// #
 /// # #[tokio::main(flavor = "current_thread")]
@@ -183,6 +183,9 @@ pub struct MockChain {
     /// AccountId |-> AccountAuthenticator mapping to store the authenticator for accounts to
     /// simplify transaction creation.
     account_authenticators: BTreeMap<AccountId, AccountAuthenticator>,
+
+    /// Validator secret key used for signing blocks.
+    validator_secret_key: SecretKey,
 }
 
 impl MockChain {
@@ -214,6 +217,7 @@ impl MockChain {
         genesis_block: ProvenBlock,
         account_tree: AccountTree,
         account_authenticators: BTreeMap<AccountId, AccountAuthenticator>,
+        secret_key: SecretKey,
     ) -> anyhow::Result<Self> {
         let mut chain = MockChain {
             chain: Blockchain::default(),
@@ -224,6 +228,7 @@ impl MockChain {
             committed_notes: BTreeMap::new(),
             committed_accounts: BTreeMap::new(),
             account_authenticators,
+            validator_secret_key: secret_key,
         };
 
         // We do not have to apply the tree changes, because the account tree is already initialized
@@ -370,6 +375,13 @@ impl MockChain {
         self.blocks[chain_tip.as_usize()].header().clone()
     }
 
+    /// Returns the latest [`ProvenBlock`] in the chain.
+    pub fn latest_block(&self) -> ProvenBlock {
+        let chain_tip =
+            self.chain.chain_tip().expect("chain should contain at least the genesis block");
+        self.blocks[chain_tip.as_usize()].clone()
+    }
+
     /// Returns the [`BlockHeader`] with the specified `block_number`.
     ///
     /// # Panics
@@ -509,16 +521,6 @@ impl MockChain {
         let timestamp = self.latest_block_header().timestamp() + 1;
 
         self.propose_block_at(batches, timestamp)
-    }
-
-    /// Mock-proves a proposed block into a proven block and returns it.
-    ///
-    /// This method does not modify the chain state.
-    pub fn prove_block(
-        &self,
-        proposed_block: ProposedBlock,
-    ) -> Result<ProvenBlock, ProvenBlockError> {
-        LocalBlockProver::new(0).prove_dummy(proposed_block)
     }
 
     // TRANSACTION APIS
@@ -711,9 +713,8 @@ impl MockChain {
 
     /// Gets foreign account inputs to execute FPI transactions.
     ///
-    /// Only used internally and so does not need to be public.
-    #[cfg(test)]
-    pub(crate) fn get_foreign_account_inputs(
+    /// Used in tests to get foreign account inputs for FPI calls.
+    pub fn get_foreign_account_inputs(
         &self,
         account_id: AccountId,
     ) -> anyhow::Result<(Account, AccountWitness)> {
@@ -847,13 +848,13 @@ impl MockChain {
     /// - Consumed notes are removed from the committed notes.
     /// - The block is appended to the [`BlockChain`] and the list of proven blocks.
     fn apply_block(&mut self, proven_block: ProvenBlock) -> anyhow::Result<()> {
-        for account_update in proven_block.updated_accounts() {
+        for account_update in proven_block.body().updated_accounts() {
             self.account_tree
                 .insert(account_update.account_id(), account_update.final_state_commitment())
                 .context("failed to insert account update into account tree")?;
         }
 
-        for nullifier in proven_block.created_nullifiers() {
+        for nullifier in proven_block.body().created_nullifiers() {
             self.nullifier_tree
                 .mark_spent(*nullifier, proven_block.header().block_num())
                 .context("failed to mark block nullifier as spent")?;
@@ -863,7 +864,7 @@ impl MockChain {
             // nullifiers, so we'll have to create a second index to do this.
         }
 
-        for account_update in proven_block.updated_accounts() {
+        for account_update in proven_block.body().updated_accounts() {
             match account_update.details() {
                 AccountUpdateDetails::Delta(account_delta) => {
                     if account_delta.is_full_state() {
@@ -888,8 +889,8 @@ impl MockChain {
             }
         }
 
-        let notes_tree = proven_block.build_output_note_tree();
-        for (block_note_index, created_note) in proven_block.output_notes() {
+        let notes_tree = proven_block.body().compute_block_note_tree();
+        for (block_note_index, created_note) in proven_block.body().output_notes() {
             let note_path = notes_tree.open(block_note_index);
             let note_inclusion_proof = NoteInclusionProof::new(
                 proven_block.header().block_num(),
@@ -906,7 +907,7 @@ impl MockChain {
                     created_note.id(),
                     MockChainNote::Private(
                         created_note.id(),
-                        *created_note.metadata(),
+                        created_note.metadata().clone(),
                         note_inclusion_proof,
                     ),
                 );
@@ -969,9 +970,9 @@ impl MockChain {
             timestamp.unwrap_or(self.latest_block_header().timestamp() + Self::TIMESTAMP_STEP_SECS);
 
         let proposed_block = self
-            .propose_block_at(batches, block_timestamp)
+            .propose_block_at(batches.clone(), block_timestamp)
             .context("failed to create proposed block")?;
-        let proven_block = self.prove_block(proposed_block).context("failed to prove block")?;
+        let proven_block = self.prove_block(proposed_block.clone())?;
 
         // Apply block.
         // ----------------------------------------------------------------------------------------
@@ -979,6 +980,19 @@ impl MockChain {
         self.apply_block(proven_block.clone()).context("failed to apply block")?;
 
         Ok(proven_block)
+    }
+
+    /// Proves proposed block alongside a corresponding list of batches.
+    pub fn prove_block(&self, proposed_block: ProposedBlock) -> anyhow::Result<ProvenBlock> {
+        let (header, body) = proposed_block.clone().into_header_and_body()?;
+        let inputs = self.get_block_inputs(proposed_block.batches().as_slice())?;
+        let block_proof = LocalBlockProver::new(MIN_PROOF_SECURITY_LEVEL).prove_dummy(
+            proposed_block.batches().clone(),
+            header.clone(),
+            inputs,
+        )?;
+        let signature = self.validator_secret_key.sign(header.commitment());
+        Ok(ProvenBlock::new_unchecked(header, body, signature, block_proof))
     }
 }
 
@@ -1001,6 +1015,7 @@ impl Serializable for MockChain {
         self.committed_accounts.write_into(target);
         self.committed_notes.write_into(target);
         self.account_authenticators.write_into(target);
+        self.validator_secret_key.write_into(target);
     }
 }
 
@@ -1015,6 +1030,7 @@ impl Deserializable for MockChain {
         let committed_notes = BTreeMap::<NoteId, MockChainNote>::read_from(source)?;
         let account_authenticators =
             BTreeMap::<AccountId, AccountAuthenticator>::read_from(source)?;
+        let secret_key = SecretKey::read_from(source)?;
 
         Ok(Self {
             chain,
@@ -1025,6 +1041,7 @@ impl Deserializable for MockChain {
             committed_notes,
             committed_accounts,
             account_authenticators,
+            validator_secret_key: secret_key,
         })
     }
 }
@@ -1084,9 +1101,9 @@ impl Serializable for AccountAuthenticator {
 
 impl Deserializable for AccountAuthenticator {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        let authenticator = Option::<Vec<AuthSecretKey>>::read_from(source)?;
+        let authenticator = Option::<Vec<(AuthSecretKey, PublicKey)>>::read_from(source)?;
 
-        let authenticator = authenticator.map(|keys| BasicAuthenticator::new(&keys));
+        let authenticator = authenticator.map(|keys| BasicAuthenticator::from_key_pairs(&keys));
 
         Ok(Self { authenticator })
     }
@@ -1131,15 +1148,15 @@ impl From<Account> for TxContextInput {
 
 #[cfg(test)]
 mod tests {
-    use miden_lib::account::wallets::BasicWallet;
-    use miden_objects::account::{AccountBuilder, AccountStorageMode};
-    use miden_objects::asset::{Asset, FungibleAsset};
-    use miden_objects::note::NoteType;
-    use miden_objects::testing::account_id::{
+    use miden_protocol::account::{AccountBuilder, AccountStorageMode};
+    use miden_protocol::asset::{Asset, FungibleAsset};
+    use miden_protocol::note::NoteType;
+    use miden_protocol::testing::account_id::{
         ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET,
         ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
         ACCOUNT_ID_SENDER,
     };
+    use miden_standards::account::wallets::BasicWallet;
 
     use super::*;
     use crate::Auth;
@@ -1255,5 +1272,37 @@ mod tests {
         assert_eq!(chain.committed_accounts, deserialized.committed_accounts);
         assert_eq!(chain.committed_notes, deserialized.committed_notes);
         assert_eq!(chain.account_authenticators, deserialized.account_authenticators);
+    }
+
+    #[test]
+    fn mock_chain_block_signature() -> anyhow::Result<()> {
+        let mut builder = MockChain::builder();
+        builder.add_existing_mock_account(Auth::IncrNonce)?;
+        let mut chain = builder.build()?;
+
+        // Verify the genesis block signature.
+        let genesis_block = chain.latest_block();
+        assert!(
+            genesis_block.signature().verify(
+                genesis_block.header().commitment(),
+                genesis_block.header().validator_key()
+            )
+        );
+
+        // Add another block.
+        chain.prove_next_block()?;
+
+        // Verify the next block signature.
+        let next_block = chain.latest_block();
+        assert!(
+            next_block
+                .signature()
+                .verify(next_block.header().commitment(), next_block.header().validator_key())
+        );
+
+        // Public keys should be carried through from the genesis header to the next.
+        assert_eq!(next_block.header().validator_key(), next_block.header().validator_key());
+
+        Ok(())
     }
 }
