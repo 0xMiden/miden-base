@@ -512,6 +512,8 @@ end
 
 #! Sets an item in the account storage.
 #!
+#! WARNING: This procedure works only for native accounts.
+#!
 #! Inputs:  [slot_id_prefix, slot_id_suffix, VALUE]
 #! Outputs: [OLD_VALUE]
 #!
@@ -528,7 +530,7 @@ pub proc set_item
     emit.ACCOUNT_STORAGE_BEFORE_SET_ITEM_EVENT
     # => [slot_id_prefix, slot_id_suffix, VALUE]
 
-    exec.memory::get_account_active_storage_slots_section_ptr
+    exec.memory::get_native_account_active_storage_slots_ptr
     # => [storage_slots_ptr, slot_id_prefix, slot_id_suffix, VALUE]
 
     exec.find_storage_slot
@@ -641,9 +643,10 @@ pub proc set_map_item
     # => [OLD_VALUE]
 end
 
-#! Returns the type of the storage slot at the provided index.
+#! Returns the type of the storage slot at the provided index for the native account.
 #!
 #! WARNING: The index must be in bounds.
+#! WARNING: This procedure works only for native accounts.
 #!
 #! Inputs:  [index]
 #! Outputs: [slot_type]
