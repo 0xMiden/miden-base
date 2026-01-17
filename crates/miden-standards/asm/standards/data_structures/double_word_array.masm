@@ -5,7 +5,7 @@
 # (slot_id, index).
 # The array can store up to 2^64 - 2^32 + 1 elements (indices 0 to 2^64 - 2^32).
 #
-# Using this Array utility requires that the underlying storage map is already created and
+# Using this Double-Word Array utility requires that the underlying storage map is already created and
 # initialized as part of an account component, under the given slot ID.
 
 use miden::core::sys
@@ -53,44 +53,33 @@ pub proc set(
     loc_store.0
     loc_store.1
     loc_store.2
-    loc_storew_be.4 dropw
-    loc_storew_be.8 dropw
-    # => [pad(5)]
-
-    repeat.5 drop end
-    # => []
+    # => [VALUE_0, VALUE_1, pad(8)] auto-padding
 
     # Set the first word under key [index, 0, 0, 0].
-    loc_loadw_be.4
     push.0.0.0
     loc_load.2
-    # => [index, 0, 0, 0, VALUE_0]
+    # => [index, 0, 0, 0, VALUE_0, VALUE_1, pad(8)]
 
     loc_load.1
     loc_load.0
-    # => [slot_id_prefix, slot_id_suffix, KEY_0, VALUE_0]
+    # => [slot_id_prefix, slot_id_suffix, KEY_0, VALUE_0, VALUE_1, pad(8)]
 
     exec.native_account::set_map_item
-    # => [OLD_VALUE_0]
+    # => [OLD_VALUE_0, VALUE_1, pad(8)]
+    swapw
 
     # Set the second word under key [index, 1, 0, 0].
-    loc_loadw_be.8
-    push.0.0.0
+    push.0.0.1
     loc_load.2
-    # TODO simplify
-    swap add.1 swap
-    # => [index, 1, 0, 0, VALUE_1]
+    # => [index, 1, 0, 0, VALUE_1, OLD_VALUE_0, pad(8)]
 
     loc_load.1
     loc_load.0
-    # => [slot_id_prefix, slot_id_suffix, KEY_1, VALUE_1]
+    # => [slot_id_prefix, slot_id_suffix, KEY_1, VALUE_1, OLD_VALUE_0, pad(8)]
 
     exec.native_account::set_map_item
-    # => [OLD_VALUE_1]
-
-    # => [OLD_VALUE_0, OLD_VALUE_1, pad(8)]
-
-    exec.sys::truncate_stack
+    # => [OLD_VALUE_1, OLD_VALUE_0, pad(8)]
+    swapw
 end
 
 #! Gets a double-word from the array at the specified index.
@@ -111,33 +100,31 @@ pub proc get(slot_id_prefix: felt, slot_id_suffix: felt, index: felt) -> BeDoubl
     loc_store.0
     loc_store.1
     loc_store.2
-    # => [pad(13)]
+    # => [pad(16)] auto-padding
 
     # Get the first word from key [index, 0, 0, 0].
     push.0.0.0
     loc_load.2
-    # => [index, 0, 0, 0]
+    # => [index, 0, 0, 0, pad(16)]
 
     loc_load.1
     loc_load.0
-    # => [slot_id_prefix, slot_id_suffix, KEY_0]
+    # => [slot_id_prefix, slot_id_suffix, KEY_0, pad(16)]
 
     exec.active_account::get_map_item
-    # => [VALUE_0]
+    # => [VALUE_0, pad(16)]
 
     # Get the second word from key [index, 1, 0, 0].
-    push.0.0.0
+    push.0.0.1
     loc_load.2
-    swap add.1 swap
-    # => [index, 1, 0, 0]
+    # => [index, 1, 0, 0, pad(16)]
 
     loc_load.1
     loc_load.0
-    # => [slot_id_prefix, slot_id_suffix, KEY_1]
+    # => [slot_id_prefix, slot_id_suffix, KEY_1, pad(16)]
 
     exec.active_account::get_map_item
     swapw
-    # => [VALUE_0, VALUE_1, pad(8)]
-
-    exec.sys::truncate_stack
+    # => [VALUE_0, VALUE_1, pad(16)]
+    swapdw dropw dropw
 end
