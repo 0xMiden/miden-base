@@ -17,62 +17,51 @@ use crate::{Auth, TransactionContextBuilder};
 /// The slot name used for testing the array component.
 const TEST_ARRAY_SLOT: &str = "test::array::data";
 
-/// Comprehensive test for the Array utility that verifies:
-/// 1. Initial value can be retrieved via `get`
-/// 2. Value can be updated via `set`
-/// 3. Updated value can be retrieved via `get`
-///
-/// Since we cannot use `exec` from a transaction script to invoke account procedures directly,
-/// we create a wrapper account component that exposes procedures which internally use `exec`
-/// to call the array procedures.
+/// Verify that, given an account component with a storage map to hold the array data,
+/// we can use the array utility to:
+/// 1. Retrieve the initial value via `get`
+/// 2. Update the value via `set`
+/// 3. Retrieve the updated value via `get`
 #[tokio::test]
 async fn test_array_get_and_set() -> anyhow::Result<()> {
-    let data_slot = StorageSlotName::new(TEST_ARRAY_SLOT).expect("slot name should be valid");
+    let slot_name = StorageSlotName::new(TEST_ARRAY_SLOT).expect("slot name should be valid");
 
-    // Initialize the array with the first entry (index 0) set to [42, 42, 42, 42]
-    let initial_value = Word::from([42u32, 42, 42, 42]);
-
-    // Create a wrapper account component that uses `exec` to call the array procedures.
-    // This wrapper is needed because transaction scripts cannot use `exec` to call
-    // account procedures directly - they must use `call`.
     let wrapper_component_code = format!(
         r#"
         use miden::core::word
         use miden::standards::data_structures::array
-
-        const ARRAY_SLOT = word("{slot}")
+        
+        const ARRAY_SLOT_NAME = word("{slot_name}")
 
         #! Wrapper for array::get that uses exec internally.
         #! Inputs:  [index, pad(15)]
         #! Outputs: [VALUE, pad(12)]
         pub proc test_get
-            push.ARRAY_SLOT[0..2]
-            # Drop two padding elements to keep stack depth at 16.
-            movup.4 drop
-            movup.3 drop
+            push.ARRAY_SLOT_NAME[0..2]
             exec.array::get
         end
-
+        
         #! Wrapper for array::set that uses exec internally.
         #! Inputs:  [index, VALUE, pad(11)]
         #! Outputs: [OLD_VALUE, pad(12)]
         pub proc test_set
-            push.ARRAY_SLOT[0..2]
+            push.ARRAY_SLOT_NAME[0..2]
             exec.array::set
         end
-    "#,
-        slot = TEST_ARRAY_SLOT
+        "#,
+        slot_name = TEST_ARRAY_SLOT
     );
 
     // Build the wrapper component by linking against the array library
-    let wrapper_library =
-        CodeBuilder::default().compile_component_code("wrapper::component", wrapper_component_code)?;
+    let wrapper_library = CodeBuilder::default()
+        .compile_component_code("wrapper::component", wrapper_component_code)?;
 
-    // Create the wrapper account component (no storage slots needed for the wrapper itself)
+    // Create the wrapper account component with a storage map to hold the array data
+    let initial_value = Word::from([42u32, 42, 42, 42]);
     let wrapper_component = AccountComponent::new(
         wrapper_library.clone(),
         vec![StorageSlot::with_map(
-            data_slot.clone(),
+            slot_name.clone(),
             StorageMap::with_entries([(
                 Word::from([Felt::ZERO, Felt::ZERO, Felt::ZERO, Felt::ZERO]),
                 initial_value,
@@ -89,7 +78,7 @@ async fn test_array_get_and_set() -> anyhow::Result<()> {
 
     // Verify the storage slot exists
     assert!(
-        account.storage().get(&data_slot).is_some(),
+        account.storage().get(&slot_name).is_some(),
         "Array data slot should exist in account storage"
     );
 

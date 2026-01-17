@@ -1,11 +1,11 @@
-# The MASM code for the Array account component.
+# The MASM code for the Array abstraction.
 #
-#
-# This component provides an array data structure backed by a StorageMap.
-# It supports "set" and "get" operations for storing and retrieving words by index.
+# It provides an abstraction layer over a storage map, treating it as an array,
+# with "set" and "get" for storing and retrieving words by (slot_id, index).
 # The array can store up to 2^64 - 2^32 + 1 elements (indices 0 to 2^64 - 2^32).
 #
-# See the `Array` Rust type's documentation for more details.
+# Using this Array utility requires that the underlying storage map is already created and 
+# initialized as part of an account component, under the given slot ID.
 
 use miden::protocol::active_account
 use miden::protocol::native_account
