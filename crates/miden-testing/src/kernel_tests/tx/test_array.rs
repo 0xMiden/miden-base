@@ -177,14 +177,8 @@ async fn test_double_word_array_get_and_set() -> anyhow::Result<()> {
         vec![StorageSlot::with_map(
             slot_name.clone(),
             StorageMap::with_entries([
-                (
-                    Word::from([Felt::ZERO, Felt::ZERO, Felt::ZERO, index]),
-                    initial_value_0,
-                ),
-                (
-                    Word::from([Felt::ZERO, Felt::ZERO, Felt::ONE, index]),
-                    initial_value_1,
-                ),
+                (Word::from([Felt::ZERO, Felt::ZERO, Felt::ZERO, index]), initial_value_0),
+                (Word::from([Felt::ZERO, Felt::ZERO, Felt::ONE, index]), initial_value_1),
             ])?,
         )],
     )?
@@ -222,17 +216,20 @@ async fn test_double_word_array_get_and_set() -> anyhow::Result<()> {
             push.{updated_value_0}
             push.{index}
             call.wrapper::test_set
-            dropw dropw
+            push.{initial_value_0}
+            assert_eqw.err="set(index) should return the original double-word, left word"
+            push.{initial_value_1}
+            assert_eqw.err="set(index) should return the original double-word, right word"
 
             # Step 3: Get value at index {index} (should return the updated double-word)
             push.{index}
             call.wrapper::test_get
 
             push.{updated_value_0}
-            assert_eqw.err="get(index) should return updated word 0"
+            assert_eqw.err="get(index) should return the updated double-word, left word"
 
             push.{updated_value_1}
-            assert_eqw.err="get(index) should return updated word 1"
+            assert_eqw.err="get(index) should return the updated double-word, right word"
 
             repeat.8 drop end
         end
