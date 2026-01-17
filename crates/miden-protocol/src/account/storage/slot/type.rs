@@ -1,6 +1,10 @@
 use alloc::string::ToString;
 use core::fmt::Display;
 
+use miden_core::{ONE, ZERO};
+
+use crate::Felt;
+use crate::errors::AccountError;
 use crate::utils::serde::{
     ByteReader,
     ByteWriter,
@@ -8,7 +12,6 @@ use crate::utils::serde::{
     DeserializationError,
     Serializable,
 };
-use crate::{AccountError, Felt};
 
 // STORAGE SLOT TYPE
 // ================================================================================================
@@ -50,6 +53,20 @@ impl TryFrom<u8> for StorageSlotType {
             Self::VALUE_TYPE => Ok(StorageSlotType::Value),
             Self::MAP_TYPE => Ok(StorageSlotType::Map),
             _ => Err(AccountError::other(format!("unsupported storage slot type {value}"))),
+        }
+    }
+}
+
+impl TryFrom<Felt> for StorageSlotType {
+    type Error = AccountError;
+
+    fn try_from(value: Felt) -> Result<Self, Self::Error> {
+        if value == ZERO {
+            Ok(StorageSlotType::Value)
+        } else if value == ONE {
+            Ok(StorageSlotType::Map)
+        } else {
+            Err(AccountError::other("invalid storage slot type"))
         }
     }
 }
@@ -100,6 +117,7 @@ mod tests {
     use miden_core::utils::{Deserializable, Serializable};
 
     use crate::account::StorageSlotType;
+    use crate::{Felt, FieldElement};
 
     #[test]
     fn test_serde_account_storage_slot_type() {
@@ -111,5 +129,16 @@ mod tests {
         let deserialized_1 = StorageSlotType::read_from_bytes(&type_1_bytes).unwrap();
         assert_eq!(type_0, deserialized_0);
         assert_eq!(type_1, deserialized_1);
+    }
+
+    #[test]
+    fn test_storage_slot_type_from_felt() {
+        let felt = Felt::ZERO;
+        let slot_type = StorageSlotType::try_from(felt).unwrap();
+        assert_eq!(slot_type, StorageSlotType::Value);
+
+        let felt = Felt::ONE;
+        let slot_type = StorageSlotType::try_from(felt).unwrap();
+        assert_eq!(slot_type, StorageSlotType::Map);
     }
 }

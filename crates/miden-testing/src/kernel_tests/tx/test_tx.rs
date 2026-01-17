@@ -21,8 +21,9 @@ use miden_protocol::block::BlockNumber;
 use miden_protocol::note::{
     Note,
     NoteAssets,
-    NoteExecutionHint,
-    NoteExecutionMode,
+    NoteAttachment,
+    NoteAttachmentContent,
+    NoteAttachmentScheme,
     NoteHeader,
     NoteId,
     NoteInputs,
@@ -49,7 +50,7 @@ use miden_protocol::transaction::{
     TransactionKernel,
     TransactionSummary,
 };
-use miden_protocol::{Felt, FieldElement, Hasher, ONE, Word};
+use miden_protocol::{Felt, Hasher, ONE, Word};
 use miden_standards::AuthScheme;
 use miden_standards::account::interface::{AccountInterface, AccountInterfaceExt};
 use miden_standards::account::wallets::BasicWallet;
@@ -198,22 +199,22 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
         .expect("asset is valid"),
     );
 
-    let tag1 = NoteTag::from_account_id(
+    let tag1 = NoteTag::with_account_target(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
     );
-    let tag2 = NoteTag::for_public_use_case(0, 0, NoteExecutionMode::Local).unwrap();
-    let tag3 = NoteTag::for_public_use_case(0, 0, NoteExecutionMode::Local).unwrap();
-    let aux1 = Felt::new(27);
-    let aux2 = Felt::new(28);
-    let aux3 = Felt::new(29);
+    let tag2 = NoteTag::default();
+    let tag3 = NoteTag::default();
+
+    let attachment2 =
+        NoteAttachment::new_word(NoteAttachmentScheme::new(28), Word::from([2, 3, 4, 5u32]));
+    let attachment3 = NoteAttachment::new_array(
+        NoteAttachmentScheme::new(29),
+        [6, 7, 8, 9u32].map(Felt::from).to_vec(),
+    )?;
 
     let note_type1 = NoteType::Private;
     let note_type2 = NoteType::Public;
     let note_type3 = NoteType::Public;
-
-    tag1.validate(note_type1).expect("note tag 1 should support private notes");
-    tag2.validate(note_type2).expect("note tag 2 should support public notes");
-    tag3.validate(note_type3).expect("note tag 3 should support public notes");
 
     // In this test we create 3 notes. Note 1 is private, Note 2 is public and Note 3 is public
     // without assets.
@@ -223,7 +224,7 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
     let note_script_2 = CodeBuilder::default().compile_note_script(DEFAULT_NOTE_CODE)?;
     let inputs_2 = NoteInputs::new(vec![ONE])?;
     let metadata_2 =
-        NoteMetadata::new(account_id, note_type2, tag2, NoteExecutionHint::none(), aux2)?;
+        NoteMetadata::new(account_id, note_type2, tag2).with_attachment(attachment2.clone());
     let vault_2 = NoteAssets::new(vec![removed_asset_3, removed_asset_4])?;
     let recipient_2 = NoteRecipient::new(serial_num_2, note_script_2, inputs_2);
     let expected_output_note_2 = Note::new(vault_2, metadata_2, recipient_2);
@@ -232,13 +233,8 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
     let serial_num_3 = Word::from([Felt::new(5), Felt::new(6), Felt::new(7), Felt::new(8)]);
     let note_script_3 = CodeBuilder::default().compile_note_script(DEFAULT_NOTE_CODE)?;
     let inputs_3 = NoteInputs::new(vec![ONE, Felt::new(2)])?;
-    let metadata_3 = NoteMetadata::new(
-        account_id,
-        note_type3,
-        tag3,
-        NoteExecutionHint::on_block_slot(1, 2, 3),
-        aux3,
-    )?;
+    let metadata_3 =
+        NoteMetadata::new(account_id, note_type3, tag3).with_attachment(attachment3.clone());
     let vault_3 = NoteAssets::new(vec![])?;
     let recipient_3 = NoteRecipient::new(serial_num_3, note_script_3, inputs_3);
     let expected_output_note_3 = Note::new(vault_3, metadata_3, recipient_3);
@@ -248,35 +244,22 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
         use miden::standards::wallets::basic->wallet
         use miden::protocol::output_note
 
-        # Inputs:  [tag, aux, note_type, execution_hint, RECIPIENT]
-        # Outputs: [note_idx]
-        proc create_note
-            # pad the stack before the call to prevent accidental modification of the deeper stack
-            # elements
-            padw padw swapdw
-            # => [tag, aux, execution_hint, note_type, RECIPIENT, pad(8)]
-
-            call.output_note::create
-            # => [note_idx, pad(15)]
-
-            # remove excess PADs from the stack
-            swapdw dropw dropw movdn.7 dropw drop drop drop
-            # => [note_idx]
-        end
-
-        # Inputs:  [ASSET, note_idx]
-        # Outputs: [ASSET, note_idx]
+        #! Wrapper around move_asset_to_note for use with exec.
+        #!
+        #! Inputs:  [ASSET, note_idx]
+        #! Outputs: [note_idx]
         proc move_asset_to_note
             # pad the stack before call
             push.0.0.0 movdn.7 movdn.7 movdn.7 padw padw swapdw
             # => [ASSET, note_idx, pad(11)]
 
             call.wallet::move_asset_to_note
-            # => [ASSET, note_idx, pad(11)]
+            dropw
+            # => [note_idx, pad(11)]
 
             # remove excess PADs from the stack
-            swapdw dropw dropw swapw movdn.7 drop drop drop
-            # => [ASSET, note_idx]
+            repeat.11 swap drop end
+            # => [note_idx]
         end
 
         ## TRANSACTION SCRIPT
@@ -286,47 +269,54 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
             ## ------------------------------------------------------------------------------------
             # partially deplete fungible asset balance
             push.0.1.2.3                        # recipient
-            push.{EXECUTION_HINT_1}             # note execution hint
             push.{NOTETYPE1}                    # note_type
-            push.{aux1}                         # aux
             push.{tag1}                         # tag
-            exec.create_note
-            # => [note_idx]
+            exec.output_note::create
+            # => [note_idx = 0]
 
             push.{REMOVED_ASSET_1}              # asset_1
             # => [ASSET, note_idx]
 
-            exec.move_asset_to_note dropw
+            exec.move_asset_to_note
             # => [note_idx]
 
             push.{REMOVED_ASSET_2}              # asset_2
-            exec.move_asset_to_note dropw drop
+            exec.move_asset_to_note
+            drop
             # => []
 
             # send non-fungible asset
             push.{RECIPIENT2}                   # recipient
-            push.{EXECUTION_HINT_2}             # note execution hint
             push.{NOTETYPE2}                    # note_type
-            push.{aux2}                         # aux
             push.{tag2}                         # tag
-            exec.create_note
-            # => [note_idx]
+            exec.output_note::create
+            # => [note_idx = 1]
 
             push.{REMOVED_ASSET_3}              # asset_3
-            exec.move_asset_to_note dropw
+            exec.move_asset_to_note
             # => [note_idx]
 
             push.{REMOVED_ASSET_4}              # asset_4
-            exec.move_asset_to_note dropw drop
+            exec.move_asset_to_note
+            # => [note_idx]
+
+            push.{ATTACHMENT2}
+            push.{attachment_scheme2}
+            movup.5
+            exec.output_note::set_word_attachment
             # => []
 
             # create a public note without assets
             push.{RECIPIENT3}                   # recipient
-            push.{EXECUTION_HINT_3}             # note execution hint
             push.{NOTETYPE3}                    # note_type
-            push.{aux3}                         # aux
             push.{tag3}                         # tag
-            exec.create_note drop
+            exec.output_note::create
+            # => [note_idx = 2]
+
+            push.{ATTACHMENT3}
+            push.{attachment_scheme3}
+            movup.5
+            exec.output_note::set_array_attachment
             # => []
         end
     ",
@@ -339,9 +329,10 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
         NOTETYPE1 = note_type1 as u8,
         NOTETYPE2 = note_type2 as u8,
         NOTETYPE3 = note_type3 as u8,
-        EXECUTION_HINT_1 = Felt::from(NoteExecutionHint::always()),
-        EXECUTION_HINT_2 = Felt::from(NoteExecutionHint::none()),
-        EXECUTION_HINT_3 = Felt::from(NoteExecutionHint::on_block_slot(11, 22, 33)),
+        attachment_scheme2 = attachment2.attachment_scheme().as_u32(),
+        ATTACHMENT2 = attachment2.content().to_word(),
+        attachment_scheme3 = attachment3.attachment_scheme().as_u32(),
+        ATTACHMENT3 = attachment3.content().to_word(),
     );
 
     let tx_script = CodeBuilder::default().compile_tx_script(tx_script_src)?;
@@ -350,8 +341,13 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
     // --------------------------------------------------------------------------------------------
     // execute the transaction and get the witness
 
+    let NoteAttachmentContent::Array(array) = attachment3.content() else {
+        panic!("expected array attachment");
+    };
+
     let tx_context = TransactionContextBuilder::new(executor_account)
         .tx_script(tx_script)
+        .extend_advice_map(vec![(attachment3.content().to_word(), array.as_slice().to_vec())])
         .extend_expected_output_notes(vec![
             OutputNote::Full(expected_output_note_2.clone()),
             OutputNote::Full(expected_output_note_3.clone()),
@@ -379,10 +375,10 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
     let resulting_output_note_2 = executed_transaction.output_notes().get_note(1);
 
     let expected_note_id_2 = expected_output_note_2.id();
-    let expected_note_metadata_2 = expected_output_note_2.metadata();
+    let expected_note_metadata_2 = expected_output_note_2.metadata().clone();
     assert_eq!(
-        NoteHeader::from(resulting_output_note_2),
-        NoteHeader::new(expected_note_id_2, *expected_note_metadata_2)
+        *resulting_output_note_2.header(),
+        NoteHeader::new(expected_note_id_2, expected_note_metadata_2)
     );
 
     // assert that the expected output note 3 is present and has no assets
@@ -461,7 +457,7 @@ async fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
         account.id(),
         vec![],
         NoteType::Private,
-        Felt::ZERO,
+        NoteAttachment::default(),
         &mut rng,
     )?;
     let input_note = create_spawn_note(vec![&output_note])?;
@@ -504,7 +500,7 @@ async fn tx_summary_commitment_is_signed_by_falcon_auth() -> anyhow::Result<()> 
         account.id(),
         vec![],
         NoteType::Private,
-        Felt::ZERO,
+        NoteAttachment::default(),
         &mut rng,
     )?;
     let spawn_note = builder.add_spawn_note([&p2id_note])?;
@@ -531,17 +527,17 @@ async fn tx_summary_commitment_is_signed_by_falcon_auth() -> anyhow::Result<()> 
 
     let account_interface = AccountInterface::from_account(&account);
     let pub_key = match account_interface.auth().first().unwrap() {
-        AuthScheme::RpoFalcon512 { pub_key } => pub_key,
-        AuthScheme::NoAuth => panic!("Expected RpoFalcon512 auth scheme, got NoAuth"),
-        AuthScheme::RpoFalcon512Multisig { .. } => {
-            panic!("Expected RpoFalcon512 auth scheme, got RpoFalcon512Multisig")
+        AuthScheme::Falcon512Rpo { pub_key } => pub_key,
+        AuthScheme::NoAuth => panic!("Expected Falcon512Rpo auth scheme, got NoAuth"),
+        AuthScheme::Falcon512RpoMultisig { .. } => {
+            panic!("Expected Falcon512Rpo auth scheme, got Falcon512RpoMultisig")
         },
-        AuthScheme::Unknown => panic!("Expected RpoFalcon512 auth scheme, got Unknown"),
+        AuthScheme::Unknown => panic!("Expected Falcon512Rpo auth scheme, got Unknown"),
         AuthScheme::EcdsaK256Keccak { .. } => {
-            panic!("Expected RpoFalcon512 auth scheme, got EcdsaK256Keccak")
+            panic!("Expected Falcon512Rpo auth scheme, got EcdsaK256Keccak")
         },
         AuthScheme::EcdsaK256KeccakMultisig { .. } => {
-            panic!("Expected RpoFalcon512 auth scheme, got EcdsaK256KeccakMultisig")
+            panic!("Expected Falcon512Rpo auth scheme, got EcdsaK256KeccakMultisig")
         },
     };
 
@@ -568,7 +564,7 @@ async fn tx_summary_commitment_is_signed_by_ecdsa_auth() -> anyhow::Result<()> {
         account.id(),
         vec![],
         NoteType::Private,
-        Felt::ZERO,
+        NoteAttachment::default(),
         &mut rng,
     )?;
     let spawn_note = builder.add_spawn_note([&p2id_note])?;
@@ -600,12 +596,12 @@ async fn tx_summary_commitment_is_signed_by_ecdsa_auth() -> anyhow::Result<()> {
             panic!("Expected EcdsaK256Keccak auth scheme, got EcdsaK256KeccakMultisig")
         },
         AuthScheme::NoAuth => panic!("Expected EcdsaK256Keccak auth scheme, got NoAuth"),
-        AuthScheme::RpoFalcon512Multisig { .. } => {
-            panic!("Expected EcdsaK256Keccak auth scheme, got RpoFalcon512Multisig")
+        AuthScheme::Falcon512RpoMultisig { .. } => {
+            panic!("Expected EcdsaK256Keccak auth scheme, got Falcon512RpoMultisig")
         },
         AuthScheme::Unknown => panic!("Expected EcdsaK256Keccak auth scheme, got Unknown"),
-        AuthScheme::RpoFalcon512 { .. } => {
-            panic!("Expected EcdsaK256Keccak auth scheme, got RpoFalcon512")
+        AuthScheme::Falcon512Rpo { .. } => {
+            panic!("Expected EcdsaK256Keccak auth scheme, got Falcon512Rpo")
         },
     };
 

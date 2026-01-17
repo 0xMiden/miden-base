@@ -16,9 +16,9 @@ pub use interface::AddressInterface;
 use miden_processor::DeserializationError;
 pub use network_id::{CustomNetworkId, NetworkId};
 
-use crate::AddressError;
 use crate::account::AccountStorageMode;
 use crate::crypto::ies::SealingKey;
+use crate::errors::AddressError;
 use crate::note::NoteTag;
 use crate::utils::serde::{ByteWriter, Deserializable, Serializable};
 
@@ -85,8 +85,8 @@ impl Address {
     /// # Errors
     ///
     /// Returns an error if:
-    /// - The tag length routing parameter is not [`NoteTag::DEFAULT_NETWORK_TAG_LENGTH`] for
-    ///   network accounts.
+    /// - The tag length routing parameter is not
+    ///   [`NoteTag::DEFAULT_NETWORK_ACCOUNT_TARGET_TAG_LENGTH`] for network accounts.
     pub fn with_routing_parameters(
         mut self,
         routing_params: RoutingParameters,
@@ -95,7 +95,7 @@ impl Address {
             match self.id {
                 AddressId::AccountId(account_id) => {
                     if account_id.storage_mode() == AccountStorageMode::Network
-                        && tag_len != NoteTag::DEFAULT_NETWORK_TAG_LENGTH
+                        && tag_len != NoteTag::DEFAULT_NETWORK_ACCOUNT_TARGET_TAG_LENGTH
                     {
                         return Err(AddressError::CustomTagLengthNotAllowedForNetworkAccounts(
                             tag_len,
@@ -126,7 +126,8 @@ impl Address {
     /// Returns the preferred tag length.
     ///
     /// This is guaranteed to be in range `0..=30` (e.g. the maximum of
-    /// [`NoteTag::MAX_LOCAL_TAG_LENGTH`] and [`NoteTag::DEFAULT_NETWORK_TAG_LENGTH`]).
+    /// [`NoteTag::MAX_ACCOUNT_TARGET_TAG_LENGTH`] and
+    /// [`NoteTag::DEFAULT_NETWORK_ACCOUNT_TARGET_TAG_LENGTH`]).
     pub fn note_tag_len(&self) -> u8 {
         self.routing_params
             .as_ref()
@@ -143,8 +144,8 @@ impl Address {
                 match id.storage_mode() {
                   AccountStorageMode::Network => NoteTag::from_network_account_id(id),
                   AccountStorageMode::Private | AccountStorageMode::Public => {
-                      NoteTag::from_local_account_id(id, note_tag_len)
-                          .expect("address should validate that tag len does not exceed MAX_LOCAL_TAG_LENGTH bits")
+                      NoteTag::with_custom_account_target(id, note_tag_len)
+                          .expect("address should validate that tag len does not exceed MAX_ACCOUNT_TARGET_TAG_LENGTH bits")
                     }
                 }
             },
@@ -245,10 +246,9 @@ mod tests {
     use bech32::{Bech32, Bech32m, NoChecksum};
 
     use super::*;
-    use crate::AccountIdError;
     use crate::account::{AccountId, AccountType};
     use crate::address::CustomNetworkId;
-    use crate::errors::Bech32Error;
+    use crate::errors::{AccountIdError, Bech32Error};
     use crate::testing::account_id::{ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, AccountIdBuilder};
 
     /// Tests that an account ID address can be encoded and decoded.
@@ -302,7 +302,7 @@ mod tests {
                 // Encode/Decode with routing parameters should be valid.
                 address = address.with_routing_parameters(
                     RoutingParameters::new(AddressInterface::BasicWallet)
-                        .with_note_tag_len(NoteTag::DEFAULT_NETWORK_TAG_LENGTH)?,
+                        .with_note_tag_len(NoteTag::DEFAULT_NETWORK_ACCOUNT_TARGET_TAG_LENGTH)?,
                 )?;
 
                 let bech32_string = address.encode(network_id.clone());
@@ -431,7 +431,7 @@ mod tests {
             let account_id = AccountIdBuilder::new().account_type(account_type).build_with_rng(rng);
             let address = Address::new(account_id).with_routing_parameters(
                 RoutingParameters::new(AddressInterface::BasicWallet)
-                    .with_note_tag_len(NoteTag::DEFAULT_NETWORK_TAG_LENGTH)?,
+                    .with_note_tag_len(NoteTag::DEFAULT_NETWORK_ACCOUNT_TARGET_TAG_LENGTH)?,
             )?;
 
             let serialized = address.to_bytes();

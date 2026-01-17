@@ -11,9 +11,9 @@ use crate::account::auth::{
     AuthEcdsaK256Keccak,
     AuthEcdsaK256KeccakAcl,
     AuthEcdsaK256KeccakMultisig,
-    AuthRpoFalcon512,
-    AuthRpoFalcon512Acl,
-    AuthRpoFalcon512Multisig,
+    AuthFalcon512Rpo,
+    AuthFalcon512RpoAcl,
+    AuthFalcon512RpoMultisig,
 };
 use crate::account::interface::AccountInterfaceError;
 
@@ -41,14 +41,14 @@ pub enum AccountComponentInterface {
     /// [`AuthEcdsaK256KeccakMultisig`][crate::account::auth::AuthEcdsaK256KeccakMultisig] module.
     AuthEcdsaK256KeccakMultisig,
     /// Exposes procedures from the
-    /// [`AuthRpoFalcon512`][crate::account::auth::AuthRpoFalcon512] module.
-    AuthRpoFalcon512,
+    /// [`AuthFalcon512Rpo`][crate::account::auth::AuthFalcon512Rpo] module.
+    AuthFalcon512Rpo,
     /// Exposes procedures from the
-    /// [`AuthRpoFalcon512Acl`][crate::account::auth::AuthRpoFalcon512Acl] module.
-    AuthRpoFalcon512Acl,
+    /// [`AuthFalcon512RpoAcl`][crate::account::auth::AuthFalcon512RpoAcl] module.
+    AuthFalcon512RpoAcl,
     /// Exposes procedures from the
-    /// [`AuthRpoFalcon512Multisig`][crate::account::auth::AuthRpoFalcon512Multisig] module.
-    AuthRpoFalcon512Multisig,
+    /// [`AuthFalcon512RpoMultisig`][crate::account::auth::AuthFalcon512RpoMultisig] module.
+    AuthFalcon512RpoMultisig,
     /// Exposes procedures from the [`NoAuth`][crate::account::auth::NoAuth] module.
     ///
     /// This authentication scheme provides no cryptographic authentication and only increments
@@ -81,10 +81,10 @@ impl AccountComponentInterface {
             AccountComponentInterface::AuthEcdsaK256KeccakMultisig => {
                 "ECDSA K256 Keccak Multisig".to_string()
             },
-            AccountComponentInterface::AuthRpoFalcon512 => "RPO Falcon512".to_string(),
-            AccountComponentInterface::AuthRpoFalcon512Acl => "RPO Falcon512 ACL".to_string(),
-            AccountComponentInterface::AuthRpoFalcon512Multisig => {
-                "RPO Falcon512 Multisig".to_string()
+            AccountComponentInterface::AuthFalcon512Rpo => "Falcon512 RPO".to_string(),
+            AccountComponentInterface::AuthFalcon512RpoAcl => "Falcon512 RPO ACL".to_string(),
+            AccountComponentInterface::AuthFalcon512RpoMultisig => {
+                "Falcon512 RPO Multisig".to_string()
             },
 
             AccountComponentInterface::AuthNoAuth => "No Auth".to_string(),
@@ -108,9 +108,9 @@ impl AccountComponentInterface {
             AccountComponentInterface::AuthEcdsaK256Keccak
                 | AccountComponentInterface::AuthEcdsaK256KeccakAcl
                 | AccountComponentInterface::AuthEcdsaK256KeccakMultisig
-                | AccountComponentInterface::AuthRpoFalcon512
-                | AccountComponentInterface::AuthRpoFalcon512Acl
-                | AccountComponentInterface::AuthRpoFalcon512Multisig
+                | AccountComponentInterface::AuthFalcon512Rpo
+                | AccountComponentInterface::AuthFalcon512RpoAcl
+                | AccountComponentInterface::AuthFalcon512RpoMultisig
                 | AccountComponentInterface::AuthNoAuth
         )
     }
@@ -143,29 +143,29 @@ impl AccountComponentInterface {
                     AuthEcdsaK256KeccakMultisig::approver_public_keys_slot(),
                 )]
             },
-            AccountComponentInterface::AuthRpoFalcon512 => {
-                vec![AuthScheme::RpoFalcon512 {
+            AccountComponentInterface::AuthFalcon512Rpo => {
+                vec![AuthScheme::Falcon512Rpo {
                     pub_key: PublicKeyCommitment::from(
                         storage
-                            .get_item(AuthRpoFalcon512::public_key_slot())
-                            .expect("invalid slot name of the AuthRpoFalcon512 public key"),
+                            .get_item(AuthFalcon512Rpo::public_key_slot())
+                            .expect("invalid slot name of the AuthFalcon512Rpo public key"),
                     ),
                 }]
             },
-            AccountComponentInterface::AuthRpoFalcon512Acl => {
-                vec![AuthScheme::RpoFalcon512 {
+            AccountComponentInterface::AuthFalcon512RpoAcl => {
+                vec![AuthScheme::Falcon512Rpo {
                     pub_key: PublicKeyCommitment::from(
                         storage
-                            .get_item(AuthRpoFalcon512Acl::public_key_slot())
-                            .expect("invalid slot name of the AuthRpoFalcon512Acl public key"),
+                            .get_item(AuthFalcon512RpoAcl::public_key_slot())
+                            .expect("invalid slot name of the AuthFalcon512RpoAcl public key"),
                     ),
                 }]
             },
-            AccountComponentInterface::AuthRpoFalcon512Multisig => {
+            AccountComponentInterface::AuthFalcon512RpoMultisig => {
                 vec![extract_multisig_auth_scheme(
                     storage,
-                    AuthRpoFalcon512Multisig::threshold_config_slot(),
-                    AuthRpoFalcon512Multisig::approver_public_keys_slot(),
+                    AuthFalcon512RpoMultisig::threshold_config_slot(),
+                    AuthFalcon512RpoMultisig::approver_public_keys_slot(),
                 )]
             },
             AccountComponentInterface::AuthNoAuth => vec![AuthScheme::NoAuth],
@@ -226,18 +226,16 @@ impl AccountComponentInterface {
             }
 
             body.push_str(&format!(
-                "push.{recipient}
-                push.{execution_hint}
+                "
+                push.{recipient}
                 push.{note_type}
-                push.{aux}
-                push.{tag}\n",
+                push.{tag}
+                # => [tag, note_type, RECIPIENT, pad(16)]
+                ",
                 recipient = partial_note.recipient_digest(),
                 note_type = Felt::from(partial_note.metadata().note_type()),
-                execution_hint = Felt::from(partial_note.metadata().execution_hint()),
-                aux = partial_note.metadata().aux(),
                 tag = Felt::from(partial_note.metadata().tag()),
             ));
-            // stack => [tag, aux, note_type, execution_hint, RECIPIENT]
 
             match self {
                 AccountComponentInterface::BasicFungibleFaucet => {
@@ -256,27 +254,36 @@ impl AccountComponentInterface {
                     }
 
                     body.push_str(&format!(
-                        "push.{amount}
-                        call.::miden::standards::faucets::basic_fungible::distribute dropw dropw drop\n",
+                        "
+                        push.{amount}
+                        call.::miden::standards::faucets::basic_fungible::distribute
+                        # => [note_idx, pad(25)]
+                        swapdw dropw dropw swap drop
+                        # => [note_idx, pad(16)]\n
+                        ",
                         amount = asset.unwrap_fungible().amount()
                     ));
-                    // stack => []
                 },
                 AccountComponentInterface::BasicWallet => {
-                    body.push_str("call.::miden::protocol::output_note::create\n");
-                    // stack => [note_idx]
+                    body.push_str(
+                        "
+                    exec.::miden::protocol::output_note::create
+                    # => [note_idx, pad(16)]\n
+                    ",
+                    );
 
                     for asset in partial_note.assets().iter() {
                         body.push_str(&format!(
-                            "push.{asset}
-                            call.::miden::standards::wallets::basic::move_asset_to_note dropw\n",
+                            "
+                            push.{asset}
+                            # => [ASSET, note_idx, pad(16)]
+                            call.::miden::standards::wallets::basic::move_asset_to_note
+                            dropw
+                            # => [note_idx, pad(16)]\n
+                            ",
                             asset = Word::from(*asset)
                         ));
-                        // stack => [note_idx]
                     }
-
-                    body.push_str("dropw dropw dropw drop\n");
-                    // stack => []
                 },
                 _ => {
                     return Err(AccountInterfaceError::UnsupportedInterface {
@@ -284,6 +291,22 @@ impl AccountComponentInterface {
                     });
                 },
             }
+
+            body.push_str(&format!(
+                "
+                push.{ATTACHMENT}
+                push.{attachment_kind}
+                push.{attachment_scheme}
+                movup.6
+                # => [note_idx, attachment_scheme, attachment_kind, ATTACHMENT, pad(16)]
+                exec.::miden::protocol::output_note::set_attachment
+                # => [pad(16)]
+            ",
+                ATTACHMENT = partial_note.metadata().to_attachment_word(),
+                attachment_scheme =
+                    partial_note.metadata().attachment().attachment_scheme().as_u32(),
+                attachment_kind = partial_note.metadata().attachment().attachment_kind().as_u8(),
+            ));
         }
 
         Ok(body)
@@ -331,5 +354,5 @@ fn extract_multisig_auth_scheme(
         }
     }
 
-    AuthScheme::RpoFalcon512Multisig { threshold, pub_keys }
+    AuthScheme::Falcon512RpoMultisig { threshold, pub_keys }
 }

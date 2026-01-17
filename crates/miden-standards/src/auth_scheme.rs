@@ -19,17 +19,17 @@ pub enum AuthScheme {
         threshold: u32,
         pub_keys: Vec<PublicKeyCommitment>,
     },
-    /// A single-key authentication scheme which relies RPO Falcon512 signatures.
+    /// A single-key authentication scheme which relies Falcon512 RPO signatures.
     ///
-    /// RPO Falcon512 is a variant of the [Falcon](https://falcon-sign.info/) signature scheme.
+    /// Falcon512 RPO is a variant of the [Falcon](https://falcon-sign.info/) signature scheme.
     /// This variant differs from the standard in that instead of using SHAKE256 hash function in
     /// the hash-to-point algorithm we use RPO256. This makes the signature more efficient to
     /// verify in Miden VM.
-    RpoFalcon512 { pub_key: PublicKeyCommitment },
-    /// A multi-signature authentication scheme using RPO Falcon512 signatures.
+    Falcon512Rpo { pub_key: PublicKeyCommitment },
+    /// A multi-signature authentication scheme using Falcon512 RPO signatures.
     ///
     /// Requires a threshold number of signatures from the provided public keys.
-    RpoFalcon512Multisig {
+    Falcon512RpoMultisig {
         threshold: u32,
         pub_keys: Vec<PublicKeyCommitment>,
     },
@@ -46,8 +46,8 @@ impl AuthScheme {
             AuthScheme::NoAuth => Vec::new(),
             AuthScheme::EcdsaK256Keccak { pub_key } => vec![*pub_key],
             AuthScheme::EcdsaK256KeccakMultisig { pub_keys, .. } => pub_keys.clone(),
-            AuthScheme::RpoFalcon512 { pub_key } => vec![*pub_key],
-            AuthScheme::RpoFalcon512Multisig { pub_keys, .. } => pub_keys.clone(),
+            AuthScheme::Falcon512Rpo { pub_key } => vec![*pub_key],
+            AuthScheme::Falcon512RpoMultisig { pub_keys, .. } => pub_keys.clone(),
             AuthScheme::Unknown => Vec::new(),
         }
     }
