@@ -1,12 +1,13 @@
-//! Tests for the Array account component's `get` and `set` procedures.
+//! Tests for the Array utility `get` and `set` procedures.
 
-use alloc::sync::Arc;
-
-use miden_protocol::account::{AccountBuilder, AccountComponent, StorageSlotName};
-use miden_protocol::assembly::DefaultSourceManager;
-use miden_protocol::assembly::diagnostics::NamedSource;
-use miden_protocol::{Felt, Word};
-use miden_standards::account::array::Array;
+use miden_protocol::account::{
+    AccountBuilder,
+    AccountComponent,
+    StorageMap,
+    StorageSlot,
+    StorageSlotName,
+};
+use miden_protocol::{Felt, FieldElement, Word};
 use miden_standards::code_builder::CodeBuilder;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
@@ -16,17 +17,14 @@ use crate::{Auth, TransactionContextBuilder};
 /// The slot name used for testing the array component.
 const TEST_ARRAY_SLOT: &str = "test::array::data";
 
-/// The component name used for testing the array component.
-const TEST_ARRAY_COMPONENT: &str = "test::array::component";
-
-/// Comprehensive test for the Array component that verifies:
+/// Comprehensive test for the Array utility that verifies:
 /// 1. Initial value can be retrieved via `get`
 /// 2. Value can be updated via `set`
 /// 3. Updated value can be retrieved via `get`
 ///
 /// Since we cannot use `exec` from a transaction script to invoke account procedures directly,
 /// we create a wrapper account component that exposes procedures which internally use `exec`
-/// to call the array component's procedures.
+/// to call the array procedures.
 #[tokio::test]
 async fn test_array_get_and_set() -> anyhow::Result<()> {
     let data_slot = StorageSlotName::new(TEST_ARRAY_SLOT).expect("slot name should be valid");
@@ -34,60 +32,58 @@ async fn test_array_get_and_set() -> anyhow::Result<()> {
     // Initialize the array with the first entry (index 0) set to [42, 42, 42, 42]
     let initial_value = Word::from([42u32, 42, 42, 42]);
 
-    // Generate the array library for linking
-    let array = Array::with_elements(data_slot.clone(), [(Felt::new(0), initial_value)]);
-    let array_library = array.generate_library(TEST_ARRAY_COMPONENT);
-
     // Create a wrapper account component that uses `exec` to call the array procedures.
     // This wrapper is needed because transaction scripts cannot use `exec` to call
     // account procedures directly - they must use `call`.
     let wrapper_component_code = format!(
         r#"
-        use {component}->test_array
+        use miden::core::word
+        use miden::standards::data_structures::array
+
+        const ARRAY_SLOT = word("{slot}")
 
         #! Wrapper for array::get that uses exec internally.
         #! Inputs:  [index, pad(15)]
         #! Outputs: [VALUE, pad(12)]
         pub proc test_get
-            exec.test_array::get
+            push.ARRAY_SLOT[0..2]
+            # Drop two padding elements to keep stack depth at 16.
+            movup.4 drop
+            movup.3 drop
+            exec.array::get
         end
 
         #! Wrapper for array::set that uses exec internally.
         #! Inputs:  [index, VALUE, pad(11)]
         #! Outputs: [OLD_VALUE, pad(12)]
         pub proc test_set
-            exec.test_array::set
+            push.ARRAY_SLOT[0..2]
+            exec.array::set
         end
     "#,
-        component = TEST_ARRAY_COMPONENT
+        slot = TEST_ARRAY_SLOT
     );
 
     // Build the wrapper component by linking against the array library
-    let mut assembler: miden_protocol::assembly::Assembler =
-        CodeBuilder::with_mock_libraries_with_source_manager(Arc::new(
-            DefaultSourceManager::default(),
-        ))
-        .into();
-    assembler
-        .link_static_library(&array_library)
-        .expect("should be able to link array library");
-
-    let wrapper_source = NamedSource::new("wrapper::component", wrapper_component_code);
-    let wrapper_library = assembler
-        .clone()
-        .assemble_library([wrapper_source])
-        .expect("wrapper component MASM should be valid");
+    let wrapper_library =
+        CodeBuilder::default().compile_component_code("wrapper::component", wrapper_component_code)?;
 
     // Create the wrapper account component (no storage slots needed for the wrapper itself)
-    let wrapper_component =
-        AccountComponent::new(wrapper_library.clone(), vec![])?.with_supports_all_types();
+    let wrapper_component = AccountComponent::new(
+        wrapper_library.clone(),
+        vec![StorageSlot::with_map(
+            data_slot.clone(),
+            StorageMap::with_entries([(
+                Word::from([Felt::ZERO, Felt::ZERO, Felt::ZERO, Felt::ZERO]),
+                initial_value,
+            )])?,
+        )],
+    )?
+    .with_supports_all_types();
 
     // Build an account with both the Array component and the wrapper component
-    let array_for_account: AccountComponent =
-        Array::with_elements(data_slot.clone(), [(Felt::new(0), initial_value)]).try_into()?;
     let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(Auth::IncrNonce)
-        .with_component(array_for_account)
         .with_component(wrapper_component)
         .build_existing()?;
 
