@@ -2,6 +2,12 @@
 
 ## 0.14.0 (TBD)
 
+### Features
+
+### Changes
+
+- [BREAKING] refactored `TransactionAuthenticator::get_public_key()` method to return `Arc<PublicKey> `instead of `&PublicKey` ([#2304](https://github.com/0xMiden/miden-base/pull/2304)).
+
 ## 0.13.0 (2026-01-16)
 
 ### Features

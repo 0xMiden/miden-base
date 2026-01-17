@@ -253,7 +253,7 @@ impl TransactionAuthenticator for BasicAuthenticator {
     }
 }
 
-// NONE AUTHENTICATOR
+// EMPTY AUTHENTICATOR
 // ================================================================================================
 
 impl TransactionAuthenticator for () {
