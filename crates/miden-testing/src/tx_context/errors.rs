@@ -20,12 +20,12 @@ impl ExecError {
     }
 
     /// Returns a reference to the inner `ExecutionError`.
-    pub fn inner(&self) -> &ExecutionError {
+    pub fn as_execution_error(&self) -> &ExecutionError {
         &self.0
     }
 
     /// Consumes `ExecError` and returns the inner `ExecutionError`.
-    pub fn into_inner(self) -> ExecutionError {
+    pub fn into_execution_error(self) -> ExecutionError {
         self.0
     }
 }
