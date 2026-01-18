@@ -147,7 +147,7 @@ pub enum TransactionProverError {
     RemoveFeeAssetFromDelta(#[source] AccountDeltaError),
     #[error("failed to construct transaction outputs")]
     TransactionOutputConstructionFailed(#[source] TransactionOutputError),
-    #[error("failed to shrink output note (e.g., public note size limit exceeded)")]
+    #[error("failed to shrink output note")]
     OutputNoteShrinkFailed(#[source] PublicOutputNoteError),
     #[error("failed to build proven transaction")]
     ProvenTransactionBuildFailed(#[source] ProvenTransactionError),
