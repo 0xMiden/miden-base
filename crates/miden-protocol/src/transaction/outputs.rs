@@ -358,7 +358,7 @@ impl RawOutputNote {
     ///
     /// # Errors
     /// Returns an error if a public note exceeds the maximum allowed size ([`NOTE_MAX_SIZE`]).
-    pub fn shrink(&self) -> Result<ProvenOutputNote, PublicOutputNoteError> {
+    pub fn to_proven_output_note(&self) -> Result<ProvenOutputNote, PublicOutputNoteError> {
         match self {
             RawOutputNote::Full(note) if note.metadata().is_private() => {
                 Ok(ProvenOutputNote::Header(*note.header()))
