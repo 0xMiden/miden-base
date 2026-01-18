@@ -1,5 +1,5 @@
 # CONSTANTS
 # =================================================================================================
 
-# The maximum number of input values associated with a single note.
+# The maximum number of storage values associated with a single note.
 pub const MAX_NOTE_STORAGE_ITEMS = 1024

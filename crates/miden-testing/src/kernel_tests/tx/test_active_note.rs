@@ -362,7 +362,7 @@ async fn test_active_note_get_inputs() -> anyhow::Result<()> {
             dropw dropw dropw dropw
             # => []
 
-            push.{NOTE_0_PTR} exec.active_note::get_inputs
+            push.{NOTE_0_PTR} exec.active_note::get_storage
             # => [num_inputs, dest_ptr]
 
             eq.{num_inputs} assert.err="unexpected num inputs"
@@ -445,8 +445,8 @@ async fn test_active_note_get_exactly_8_inputs() -> anyhow::Result<()> {
             begin
                 exec.prologue::prepare_transaction
 
-                # execute the `get_inputs` procedure to trigger note storage length assertion
-                push.0 exec.active_note::get_inputs
+                # execute the `get_storage` procedure to trigger note storage length assertion
+                push.0 exec.active_note::get_storage
                 # => [storage_length, 0]
 
                 # assert that the storage length is 8

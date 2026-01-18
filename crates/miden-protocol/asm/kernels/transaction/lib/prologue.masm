@@ -828,7 +828,7 @@ proc compute_input_note_id
     dup.4 exec.memory::get_input_note_script_root hmerge
     # => [MERGE_SCRIPT, note_ptr]
 
-    # compute RECIPIENT: hash(MERGE_SCRIPT || INPUT_COMMITMENT)
+    # compute RECIPIENT: hash(MERGE_SCRIPT || STORAGE_COMMITMENT)
     dup.4 exec.memory::get_input_note_storage_commitment hmerge
     # => [RECIPIENT, note_ptr]
 

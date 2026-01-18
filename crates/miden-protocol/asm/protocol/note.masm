@@ -34,7 +34,7 @@ const ERR_PROLOGUE_NOTE_STORAGE_LEN_EXCEEDED_LIMIT="number of note storage excee
 #!
 #! Invocation: exec
 pub proc compute_storage_commitment
-    # check that number of inputs is less than or equal to MAX_NOTE_STORAGE_ITEMS
+    # check that number of storage items is less than or equal to MAX_NOTE_STORAGE_ITEMS
     dup.1 push.MAX_NOTE_STORAGE_ITEMS u32assert2.err=ERR_PROLOGUE_NOTE_STORAGE_LEN_EXCEEDED_LIMIT
     u32lte assert.err=ERR_PROLOGUE_NOTE_STORAGE_LEN_EXCEEDED_LIMIT
     # => [inputs_ptr, storage_len]
@@ -168,24 +168,24 @@ pub proc build_recipient
     # => [RECIPIENT]
 end
 
-#! Returns the RECIPIENT for a specified SERIAL_NUM, SCRIPT_ROOT, and inputs commitment.
+#! Returns the RECIPIENT for a specified SERIAL_NUM, SCRIPT_ROOT, and storage commitment.
 #!
-#! Inputs:  [SERIAL_NUM, SCRIPT_ROOT, INPUT_COMMITMENT]
+#! Inputs:  [SERIAL_NUM, SCRIPT_ROOT, STORAGE_COMMITMENT]
 #! Outputs: [RECIPIENT]
 #!
 #! Where:
 #! - SERIAL_NUM is the serial number of the recipient.
 #! - SCRIPT_ROOT is the commitment of the note script.
-#! - INPUT_COMMITMENT is the commitment of the note storage.
+#! - STORAGE_COMMITMENT is the commitment of the note storage.
 #! - RECIPIENT is the recipient of the note.
 #!
 #! Invocation: exec
 pub proc build_recipient_hash
     padw hmerge
-    # => [SERIAL_NUM_HASH, SCRIPT_ROOT, INPUT_COMMITMENT]
+    # => [SERIAL_NUM_HASH, SCRIPT_ROOT, STORAGE_COMMITMENT]
 
     swapw hmerge
-    # => [MERGE_SCRIPT, INPUT_COMMITMENT]
+    # => [MERGE_SCRIPT, STORAGE_COMMITMENT]
 
     swapw hmerge
     # [RECIPIENT]

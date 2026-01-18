@@ -103,7 +103,7 @@ end
 #! - no note is currently active.
 #!
 #! Invocation: exec
-pub proc get_inputs
+pub proc get_storage
     # pad the stack
     padw padw padw push.0.0
     # => [pad(14), dest_ptr]

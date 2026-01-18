@@ -62,7 +62,7 @@ pub proc main
     dropw
     # => [pad(16)]
     # Load note storage into memory starting at address 0
-    push.0 exec.active_note::get_inputs
+    push.0 exec.active_note::get_storage
     # => [storage_len, storage_ptr, pad(16)]
 
     dup

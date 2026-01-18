@@ -7,13 +7,13 @@ use miden::standards::wallets::basic->basic_wallet
 # CONSTANTS
 # =================================================================================================
 
-const B2AGG_NOTE_INPUTS_COUNT=6
+const B2AGG_NOTE_STORAGE_LEN=6
 
 # ERRORS
 # =================================================================================================
 const ERR_B2AGG_WRONG_NUMBER_OF_ASSETS="B2AGG script requires exactly 1 note asset"
 
-const ERR_B2AGG_WRONG_NUMBER_OF_INPUTS="B2AGG script expects exactly 6 note storage items"
+const ERR_B2AGG_UNEXPECTED_STORAGE_LENGTH="B2AGG script expects exactly 6 note storage items"
 
 #! Bridge-to-AggLayer (B2AGG) note script: bridges assets from Miden to an AggLayer-connected chain.
 #!
@@ -59,10 +59,10 @@ begin
         # => [pad(16)]
     else
         # Store note storage -> mem[8..14]
-        push.8 exec.active_note::get_inputs
+        push.8 exec.active_note::get_storage
         # => [storage_length, dest_ptr, pad(16)]
 
-        push.B2AGG_NOTE_INPUTS_COUNT assert_eq.err=ERR_B2AGG_WRONG_NUMBER_OF_INPUTS drop
+        push.B2AGG_NOTE_STORAGE_LEN assert_eq.err=ERR_B2AGG_UNEXPECTED_STORAGE_LENGTH drop
         # => [pad(16)]
 
         # Store note assets -> mem[0..4]

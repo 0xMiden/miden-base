@@ -436,7 +436,7 @@ pub async fn test_timelock() -> anyhow::Result<()> {
 
       begin
           # store the note storage to memory starting at address 0
-          push.0 exec.active_note::get_inputs
+          push.0 exec.active_note::get_storage
           # => [storage_length, storage_ptr]
 
           # make sure the storage length is 1

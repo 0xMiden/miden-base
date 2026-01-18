@@ -30,7 +30,7 @@ const ERR_CLAIM_TARGET_ACCT_MISMATCH = "CLAIM's target account address and trans
 #!
 #! This procedure ensures that only the specified agglayer faucet account can consume
 #! this CLAIM note. It assumes that the note storage has already been loaded into memory
-#! via active_note::get_inputs.
+#! via active_note::get_storage.
 #!
 #! Inputs: []
 #! Output: []
@@ -38,7 +38,7 @@ const ERR_CLAIM_TARGET_ACCT_MISMATCH = "CLAIM's target account address and trans
 #! Panics if:
 #! - The consuming account ID does not match the target faucet account ID stored in memory
 proc assert_aggfaucet_is_consumer
-    # Load target faucet ID (assumes active_note::get_inputs has been called)
+    # Load target faucet ID (assumes active_note::get_storage has been called)
     mem_load.TARGET_FAUCET_SUFFIX_MEM_ADDR mem_load.TARGET_FAUCET_PREFIX_MEM_ADDR
     # => [target_faucet_prefix, target_faucet_suffix]
 
@@ -192,7 +192,7 @@ begin
     # => [pad(16)]
 
     # Load CLAIM note storage into memory, starting at address 0
-    push.0 exec.active_note::get_inputs drop drop
+    push.0 exec.active_note::get_storage drop drop
     # => [pad(16)]
 
     # Check consuming account == aggfaucet
