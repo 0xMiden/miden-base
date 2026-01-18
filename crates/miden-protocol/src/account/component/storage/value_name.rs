@@ -14,6 +14,9 @@ use crate::errors::StorageSlotNameError;
 ///
 /// A storage value name is a string that identifies values supplied during component
 /// instantiation (via [`InitStorageData`](super::InitStorageData)).
+///
+/// Each name is either a storage slot name, or a storage slot name with a suffixed identifier for
+/// composite types (where the suffix identifies the inner type).
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "std", derive(::serde::Deserialize, ::serde::Serialize))]
 #[cfg_attr(feature = "std", serde(try_from = "String", into = "String"))]
@@ -31,50 +34,35 @@ impl StorageValueName {
         }
     }
 
-    /// Adds a field-name suffix to a slot-name key, separated by a period.
-    pub fn with_suffix(self, suffix: &str) -> Result<StorageValueName, StorageValueNameError> {
-        let mut key = self;
-
-        // `StorageValueName` keys are either `slot` or `slot.field`. Appending to a key that is
-        // already suffixed is create an invalid name.
-        if key.element_field.is_some() {
-            return Err(StorageValueNameError::InvalidCharacter {
-                part: key.to_string(),
-                character: '.',
-            });
-        }
-
+    /// Creates a [`StorageValueName`] for the given storage slot and field suffix.
+    ///
+    /// A suffixed slot name is used to identify a specific field element's type in a schema
+    /// (e.g., `miden::contracts::fungible_faucets::token_metadata.max_supply` can specify the
+    /// `max_supply` element in the `token_metadata` storage slot)
+    pub fn from_slot_name_with_suffix(
+        slot_name: &StorageSlotName,
+        suffix: &str,
+    ) -> Result<StorageValueName, StorageValueNameError> {
         Self::validate_field_segment(suffix)?;
-        key.element_field = Some(suffix.to_string());
-        Ok(key)
+        Ok(StorageValueName {
+            slot_name: slot_name.clone(),
+            element_field: Some(suffix.to_string()),
+        })
     }
 
-    fn validate_slot_prefix(prefix: &str) -> Result<StorageSlotName, StorageValueNameError> {
-        match StorageSlotName::new(prefix) {
-            Ok(slot_name) => Ok(slot_name),
-            Err(err) => {
-                let invalid_char = match err {
-                    StorageSlotNameError::UnexpectedColon
-                    | StorageSlotNameError::TooShort
-                    | StorageSlotNameError::TooLong => ':',
-                    StorageSlotNameError::UnexpectedUnderscore => '_',
-                    StorageSlotNameError::InvalidCharacter => prefix
-                        .chars()
-                        .find(|&c| !(c.is_ascii_alphanumeric() || c == '_' || c == ':'))
-                        .unwrap_or(':'),
-                };
+    /// Returns the storage slot name prefix of this value name.
+    pub fn slot_name(&self) -> &StorageSlotName {
+        &self.slot_name
+    }
 
-                Err(StorageValueNameError::InvalidCharacter {
-                    part: prefix.to_string(),
-                    character: invalid_char,
-                })
-            },
-        }
+    /// Returns the optional field suffix of this value name.
+    pub fn field_name(&self) -> Option<&str> {
+        self.element_field.as_deref()
     }
 
     fn validate_field_segment(segment: &str) -> Result<(), StorageValueNameError> {
         if segment.is_empty() {
-            return Err(StorageValueNameError::EmptySegment);
+            return Err(StorageValueNameError::EmptySuffix);
         }
 
         if let Some(offending_char) =
@@ -129,7 +117,7 @@ impl FromStr for StorageValueName {
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
         if value.is_empty() {
-            return Err(StorageValueNameError::EmptySegment);
+            return Err(StorageValueNameError::EmptySuffix);
         }
 
         // `StorageValueName` represents:
@@ -140,7 +128,7 @@ impl FromStr for StorageValueName {
                 Self::validate_field_segment(field)?;
 
                 if slot.is_empty() || field.is_empty() {
-                    return Err(StorageValueNameError::EmptySegment);
+                    return Err(StorageValueNameError::EmptySuffix);
                 }
 
                 (slot, Some(field))
@@ -148,7 +136,8 @@ impl FromStr for StorageValueName {
             None => (value, None),
         };
 
-        let slot_name = Self::validate_slot_prefix(slot)?;
+        let slot_name =
+            StorageSlotName::new(slot).map_err(StorageValueNameError::InvalidSlotName)?;
         let field = match field {
             Some(field) => {
                 Self::validate_field_segment(field)?;
@@ -212,8 +201,10 @@ impl Deserializable for StorageValueName {
 
 #[derive(Debug, Error)]
 pub enum StorageValueNameError {
-    #[error("key segment is empty")]
-    EmptySegment,
+    #[error("key suffix is empty")]
+    EmptySuffix,
     #[error("key segment '{part}' contains invalid character '{character}'")]
     InvalidCharacter { part: String, character: char },
+    #[error("invalid storage slot name")]
+    InvalidSlotName(#[source] StorageSlotNameError),
 }

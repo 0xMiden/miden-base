@@ -3,10 +3,11 @@ use miden_protocol::account::auth::PublicKeyCommitment;
 use miden_protocol::account::{AccountBuilder, AccountComponent, AccountType};
 use miden_protocol::asset::{FungibleAsset, NonFungibleAsset, TokenSymbol};
 use miden_protocol::crypto::rand::{FeltRng, RpoRandomCoin};
+use miden_protocol::errors::NoteError;
 use miden_protocol::note::{
     Note,
     NoteAssets,
-    NoteExecutionHint,
+    NoteAttachment,
     NoteInputs,
     NoteMetadata,
     NoteRecipient,
@@ -17,14 +18,14 @@ use miden_protocol::testing::account_id::{
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE_2,
 };
-use miden_protocol::{Felt, NoteError, Word, ZERO};
+use miden_protocol::{Felt, Word};
 
 use crate::AuthScheme;
 use crate::account::auth::{
     AuthEcdsaK256Keccak,
-    AuthRpoFalcon512,
-    AuthRpoFalcon512Multisig,
-    AuthRpoFalcon512MultisigConfig,
+    AuthFalcon512Rpo,
+    AuthFalcon512RpoMultisig,
+    AuthFalcon512RpoMultisigConfig,
     NoAuth,
 };
 use crate::account::faucets::BasicFungibleFaucet;
@@ -100,9 +101,9 @@ fn test_basic_wallet_default_notes() {
         offered_asset,
         requested_asset,
         NoteType::Public,
-        ZERO,
+        NoteAttachment::default(),
         NoteType::Public,
-        ZERO,
+        NoteAttachment::default(),
         &mut RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])),
     )
     .unwrap();
@@ -193,9 +194,9 @@ fn test_custom_account_default_note() {
         offered_asset,
         requested_asset,
         NoteType::Public,
-        ZERO,
+        NoteAttachment::default(),
         NoteType::Public,
-        ZERO,
+        NoteAttachment::default(),
         &mut RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])),
     )
     .unwrap();
@@ -226,9 +227,9 @@ fn test_required_asset_same_as_offered() {
         offered_asset,
         requested_asset,
         NoteType::Public,
-        ZERO,
+        NoteAttachment::default(),
         NoteType::Public,
-        ZERO,
+        NoteAttachment::default(),
         &mut RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])),
     );
 
@@ -251,15 +252,8 @@ fn test_basic_wallet_custom_notes() {
 
     let sender_account_id = ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE_2.try_into().unwrap();
     let serial_num = RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])).draw_word();
-    let tag = NoteTag::from_account_id(wallet_account.id());
-    let metadata = NoteMetadata::new(
-        sender_account_id,
-        NoteType::Public,
-        tag,
-        NoteExecutionHint::always(),
-        Default::default(),
-    )
-    .unwrap();
+    let tag = NoteTag::with_account_target(wallet_account.id());
+    let metadata = NoteMetadata::new(sender_account_id, NoteType::Public, tag);
     let vault = NoteAssets::new(vec![FungibleAsset::mock(100)]).unwrap();
 
     let compatible_source_code = "
@@ -286,7 +280,7 @@ fn test_basic_wallet_custom_notes() {
     ";
     let note_script = CodeBuilder::default().compile_note_script(compatible_source_code).unwrap();
     let recipient = NoteRecipient::new(serial_num, note_script, NoteInputs::default());
-    let compatible_custom_note = Note::new(vault.clone(), metadata, recipient);
+    let compatible_custom_note = Note::new(vault.clone(), metadata.clone(), recipient);
     assert_eq!(
         NoteAccountCompatibility::Maybe,
         wallet_account_interface.is_compatible_with(&compatible_custom_note)
@@ -341,15 +335,8 @@ fn test_basic_fungible_faucet_custom_notes() {
 
     let sender_account_id = ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE_2.try_into().unwrap();
     let serial_num = RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])).draw_word();
-    let tag = NoteTag::from_account_id(faucet_account.id());
-    let metadata = NoteMetadata::new(
-        sender_account_id,
-        NoteType::Public,
-        tag,
-        NoteExecutionHint::always(),
-        Default::default(),
-    )
-    .unwrap();
+    let tag = NoteTag::with_account_target(faucet_account.id());
+    let metadata = NoteMetadata::new(sender_account_id, NoteType::Public, tag);
     let vault = NoteAssets::new(vec![FungibleAsset::mock(100)]).unwrap();
 
     let compatible_source_code = "
@@ -374,7 +361,7 @@ fn test_basic_fungible_faucet_custom_notes() {
     ";
     let note_script = CodeBuilder::default().compile_note_script(compatible_source_code).unwrap();
     let recipient = NoteRecipient::new(serial_num, note_script, NoteInputs::default());
-    let compatible_custom_note = Note::new(vault.clone(), metadata, recipient);
+    let compatible_custom_note = Note::new(vault.clone(), metadata.clone(), recipient);
     assert_eq!(
         NoteAccountCompatibility::Maybe,
         faucet_account_interface.is_compatible_with(&compatible_custom_note)
@@ -451,15 +438,8 @@ fn test_custom_account_custom_notes() {
         .expect("failed to create wallet account");
 
     let serial_num = RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])).draw_word();
-    let tag = NoteTag::from_account_id(target_account.id());
-    let metadata = NoteMetadata::new(
-        sender_account.id(),
-        NoteType::Public,
-        tag,
-        NoteExecutionHint::always(),
-        Default::default(),
-    )
-    .unwrap();
+    let tag = NoteTag::with_account_target(target_account.id());
+    let metadata = NoteMetadata::new(sender_account.id(), NoteType::Public, tag);
     let vault = NoteAssets::new(vec![FungibleAsset::mock(100)]).unwrap();
 
     let compatible_source_code = "
@@ -487,7 +467,7 @@ fn test_custom_account_custom_notes() {
         .compile_note_script(compatible_source_code)
         .unwrap();
     let recipient = NoteRecipient::new(serial_num, note_script, NoteInputs::default());
-    let compatible_custom_note = Note::new(vault.clone(), metadata, recipient);
+    let compatible_custom_note = Note::new(vault.clone(), metadata.clone(), recipient);
     assert_eq!(
         NoteAccountCompatibility::Maybe,
         target_account_interface.is_compatible_with(&compatible_custom_note)
@@ -562,15 +542,8 @@ fn test_custom_account_multiple_components_custom_notes() {
         .expect("failed to create wallet account");
 
     let serial_num = RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])).draw_word();
-    let tag = NoteTag::from_account_id(target_account.id());
-    let metadata = NoteMetadata::new(
-        sender_account.id(),
-        NoteType::Public,
-        tag,
-        NoteExecutionHint::always(),
-        Default::default(),
-    )
-    .unwrap();
+    let tag = NoteTag::with_account_target(target_account.id());
+    let metadata = NoteMetadata::new(sender_account.id(), NoteType::Public, tag);
     let vault = NoteAssets::new(vec![FungibleAsset::mock(100)]).unwrap();
 
     let compatible_source_code = "
@@ -604,7 +577,7 @@ fn test_custom_account_multiple_components_custom_notes() {
         .compile_note_script(compatible_source_code)
         .unwrap();
     let recipient = NoteRecipient::new(serial_num, note_script, NoteInputs::default());
-    let compatible_custom_note = Note::new(vault.clone(), metadata, recipient);
+    let compatible_custom_note = Note::new(vault.clone(), metadata.clone(), recipient);
     assert_eq!(
         NoteAccountCompatibility::Maybe,
         target_account_interface.is_compatible_with(&compatible_custom_note)
@@ -653,10 +626,10 @@ fn test_custom_account_multiple_components_custom_notes() {
 // ================================================================================================
 
 /// Helper function to create a mock auth component for testing
-fn get_mock_auth_component() -> AuthRpoFalcon512 {
+fn get_mock_auth_component() -> AuthFalcon512Rpo {
     let mock_word = Word::from([0, 1, 2, 3u32]);
     let mock_public_key = PublicKeyCommitment::from(mock_word);
-    AuthRpoFalcon512::new(mock_public_key)
+    AuthFalcon512Rpo::new(mock_public_key)
 }
 
 /// Helper function to create a mock Ecdsa auth component for testing
@@ -700,7 +673,7 @@ fn test_get_auth_scheme_ecdsa_k256_keccak() {
 }
 
 #[test]
-fn test_get_auth_scheme_rpo_falcon512() {
+fn test_get_auth_scheme_falcon512_rpo() {
     let mock_seed = Word::from([0, 1, 2, 3u32]).as_bytes();
     let wallet_account = AccountBuilder::new(mock_seed)
         .with_auth_component(get_mock_auth_component())
@@ -710,22 +683,22 @@ fn test_get_auth_scheme_rpo_falcon512() {
 
     let wallet_account_interface = AccountInterface::from_account(&wallet_account);
 
-    // Find the RpoFalcon512 component interface
+    // Find the Falcon512Rpo component interface
     let rpo_falcon_component = wallet_account_interface
         .components()
         .iter()
-        .find(|component| matches!(component, AccountComponentInterface::AuthRpoFalcon512))
-        .expect("should have RpoFalcon512 component");
+        .find(|component| matches!(component, AccountComponentInterface::AuthFalcon512Rpo))
+        .expect("should have Falcon512Rpo component");
 
     // Test get_auth_schemes method
     let auth_schemes = rpo_falcon_component.get_auth_schemes(wallet_account.storage());
     assert_eq!(auth_schemes.len(), 1);
     let auth_scheme = &auth_schemes[0];
     match auth_scheme {
-        AuthScheme::RpoFalcon512 { pub_key } => {
+        AuthScheme::Falcon512Rpo { pub_key } => {
             assert_eq!(*pub_key, PublicKeyCommitment::from(Word::from([0, 1, 2, 3u32])));
         },
-        _ => panic!("Expected RpoFalcon512 auth scheme"),
+        _ => panic!("Expected Falcon512Rpo auth scheme"),
     }
 }
 
@@ -788,11 +761,11 @@ fn test_account_interface_from_account_uses_get_auth_scheme() {
     assert_eq!(wallet_account_interface.auth().len(), 1);
 
     match &wallet_account_interface.auth()[0] {
-        AuthScheme::RpoFalcon512 { pub_key } => {
+        AuthScheme::Falcon512Rpo { pub_key } => {
             let expected_pub_key = PublicKeyCommitment::from(Word::from([0, 1, 2, 3u32]));
             assert_eq!(*pub_key, expected_pub_key);
         },
-        _ => panic!("Expected RpoFalcon512 auth scheme"),
+        _ => panic!("Expected Falcon512Rpo auth scheme"),
     }
 
     // Test with NoAuth
@@ -813,7 +786,7 @@ fn test_account_interface_from_account_uses_get_auth_scheme() {
     }
 }
 
-/// Test AccountInterface.get_auth_scheme() method with RpoFalcon512 and NoAuth
+/// Test AccountInterface.get_auth_scheme() method with Falcon512Rpo and NoAuth
 #[test]
 fn test_account_interface_get_auth_scheme() {
     let mock_seed = Word::from([0, 1, 2, 3u32]).as_bytes();
@@ -828,10 +801,10 @@ fn test_account_interface_get_auth_scheme() {
     // Test that auth() method provides the authentication schemes
     assert_eq!(wallet_account_interface.auth().len(), 1);
     match &wallet_account_interface.auth()[0] {
-        AuthScheme::RpoFalcon512 { pub_key } => {
+        AuthScheme::Falcon512Rpo { pub_key } => {
             assert_eq!(*pub_key, PublicKeyCommitment::from(Word::from([0, 1, 2, 3u32])));
         },
-        _ => panic!("Expected RpoFalcon512 auth scheme"),
+        _ => panic!("Expected Falcon512Rpo auth scheme"),
     }
 
     // Test AccountInterface.get_auth_scheme() method with NoAuth
@@ -880,8 +853,8 @@ fn test_public_key_extraction_multisig_account() {
     let threshold = 2u32;
 
     // Create multisig component
-    let multisig_component = AuthRpoFalcon512Multisig::new(
-        AuthRpoFalcon512MultisigConfig::new(approvers.clone(), threshold).unwrap(),
+    let multisig_component = AuthFalcon512RpoMultisig::new(
+        AuthFalcon512RpoMultisigConfig::new(approvers.clone(), threshold).unwrap(),
     )
     .expect("multisig component creation failed");
 

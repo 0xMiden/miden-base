@@ -135,7 +135,7 @@ fn compile_note_scripts(source_dir: &Path, target_dir: &Path, assembler: Assembl
 // ================================================================================================
 
 /// Compiles the account components in `source_dir` into MASL libraries and stores the compiled
-/// files in `target_dir`.
+/// files in `target_dir`, preserving the subdirectory structure.
 fn compile_account_components(
     source_dir: &Path,
     target_dir: &Path,
@@ -153,7 +153,7 @@ fn compile_account_components(
             .expect("file stem should be valid UTF-8")
             .to_owned();
 
-        let component_source_code = fs::read_to_string(masm_file_path)
+        let component_source_code = fs::read_to_string(&masm_file_path)
             .expect("reading the component's MASM source code should succeed");
 
         let named_source = NamedSource::new(component_name.clone(), component_source_code);
@@ -163,8 +163,19 @@ fn compile_account_components(
             .assemble_library([named_source])
             .expect("library assembly should succeed");
 
+        // Preserve the subdirectory structure: compute relative path from source_dir
+        let relative_dir = masm_file_path
+            .parent()
+            .and_then(|p| p.strip_prefix(source_dir).ok())
+            .unwrap_or(Path::new(""));
+
+        let output_dir = target_dir.join(relative_dir);
+        if !output_dir.exists() {
+            fs::create_dir_all(&output_dir).unwrap();
+        }
+
         let component_file_path =
-            target_dir.join(component_name).with_extension(Library::LIBRARY_EXTENSION);
+            output_dir.join(component_name).with_extension(Library::LIBRARY_EXTENSION);
         component_library.write_to_file(component_file_path).into_diagnostic()?;
     }
 
@@ -282,7 +293,8 @@ mod shared {
         Ok(())
     }
 
-    /// Returns a vector with paths to all MASM files in the specified directory.
+    /// Returns a vector with paths to all MASM files in the specified directory and its
+    /// subdirectories.
     ///
     /// All non-MASM files are skipped.
     pub fn get_masm_files<P: AsRef<Path>>(dir_path: P) -> Result<Vec<PathBuf>> {
@@ -290,12 +302,9 @@ mod shared {
 
         let path = dir_path.as_ref();
         if path.is_dir() {
-            let entries = fs::read_dir(path)
-                .into_diagnostic()
-                .wrap_err_with(|| format!("failed to read directory {}", path.display()))?;
-            for entry in entries {
-                let file = entry.into_diagnostic().wrap_err("failed to read directory entry")?;
-                let file_path = file.path();
+            for entry in WalkDir::new(path) {
+                let entry = entry.into_diagnostic()?;
+                let file_path = entry.path().to_path_buf();
                 if is_masm_file(&file_path).into_diagnostic()? {
                     files.push(file_path);
                 }

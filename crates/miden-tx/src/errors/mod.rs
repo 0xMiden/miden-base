@@ -10,20 +10,19 @@ use miden_protocol::assembly::diagnostics::reporting::PrintDiagnostic;
 use miden_protocol::asset::AssetVaultKey;
 use miden_protocol::block::BlockNumber;
 use miden_protocol::crypto::merkle::smt::SmtProofError;
-use miden_protocol::note::{NoteId, NoteMetadata};
-use miden_protocol::transaction::TransactionSummary;
-use miden_protocol::{
+use miden_protocol::errors::{
     AccountDeltaError,
     AccountError,
     AssetError,
-    Felt,
     NoteError,
     ProvenTransactionError,
     PublicOutputNoteError,
     TransactionInputError,
     TransactionOutputError,
-    Word,
 };
+use miden_protocol::note::{NoteId, NoteMetadata};
+use miden_protocol::transaction::TransactionSummary;
+use miden_protocol::{Felt, Word};
 use miden_verifier::VerificationError;
 use thiserror::Error;
 
@@ -229,8 +228,6 @@ pub enum TransactionKernelError {
         "note inputs data extracted from the advice map by the event handler is not well formed"
     )]
     MalformedNoteInputs(#[source] NoteError),
-    #[error("note metadata created by the event handler is not well formed")]
-    MalformedNoteMetadata(#[source] NoteError),
     #[error(
         "note script data `{data:?}` extracted from the advice map by the event handler is not well formed"
     )]
@@ -246,6 +243,12 @@ pub enum TransactionKernelError {
         "public note with metadata {0:?} and recipient digest {1} is missing details in the advice provider"
     )]
     PublicNoteMissingDetails(NoteMetadata, Word),
+    #[error("attachment provided to set_attachment must be empty when attachment kind is None")]
+    NoteAttachmentNoneIsNotEmpty,
+    #[error(
+        "commitment of note attachment {actual} does not match attachment {provided} provided to set_attachment"
+    )]
+    NoteAttachmentArrayMismatch { actual: Word, provided: Word },
     #[error(
         "note input data in advice provider contains fewer elements ({actual}) than specified ({specified}) by its inputs length"
     )]

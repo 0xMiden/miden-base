@@ -8,7 +8,6 @@ use miden_protocol::errors::tx_kernel::ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_METADATA_
 use miden_protocol::note::{
     Note,
     NoteAssets,
-    NoteExecutionHint,
     NoteInputs,
     NoteMetadata,
     NoteRecipient,
@@ -101,17 +100,23 @@ async fn test_active_note_get_metadata() -> anyhow::Result<()> {
 
             # get the metadata of the active note
             exec.active_note::get_metadata
-            # => [METADATA]
+            # => [NOTE_ATTACHMENT, METADATA_HEADER]
 
-            # assert this metadata
-            push.{METADATA}
+            push.{NOTE_ATTACHMENT}
+            assert_eqw.err="note 0 has incorrect note attachment"
+            # => [METADATA_HEADER]
+
+            push.{METADATA_HEADER}
             assert_eqw.err="note 0 has incorrect metadata"
+            # => []
 
             # truncate the stack
             swapw dropw
         end
         "#,
-        METADATA = Word::from(tx_context.input_notes().get_note(0).note().metadata())
+        METADATA_HEADER = tx_context.input_notes().get_note(0).note().metadata().to_header_word(),
+        NOTE_ATTACHMENT =
+            tx_context.input_notes().get_note(0).note().metadata().to_attachment_word()
     );
 
     tx_context.execute_code(&code).await?;
@@ -198,10 +203,10 @@ async fn test_active_note_get_assets() -> anyhow::Result<()> {
         let mut code = String::new();
         for asset in note.assets().iter() {
             code += &format!(
-                "
+                r#"
                 # assert the asset is correct
-                dup padw movup.4 mem_loadw_be push.{asset} assert_eqw push.4 add
-                ",
+                dup padw movup.4 mem_loadw_be push.{asset} assert_eqw.err="asset mismatch" push.4 add
+                "#,
                 asset = Word::from(asset)
             );
         }
@@ -210,7 +215,7 @@ async fn test_active_note_get_assets() -> anyhow::Result<()> {
 
     // calling get_assets should return assets at the specified address
     let code = format!(
-        "
+        r#"
         use miden::core::sys
 
         use $kernel::prologue
@@ -228,10 +233,10 @@ async fn test_active_note_get_assets() -> anyhow::Result<()> {
             exec.active_note::get_assets
 
             # assert the number of assets is correct
-            eq.{note_0_num_assets} assert
+            eq.{note_0_num_assets} assert.err="unexpected num assets for note 0"
 
             # assert the pointer is returned
-            dup eq.{DEST_POINTER_NOTE_0} assert
+            dup eq.{DEST_POINTER_NOTE_0} assert.err="unexpected dest ptr for note 0"
 
             # asset memory assertions
             {NOTE_0_ASSET_ASSERTIONS}
@@ -251,10 +256,10 @@ async fn test_active_note_get_assets() -> anyhow::Result<()> {
             exec.active_note::get_assets
 
             # assert the number of assets is correct
-            eq.{note_1_num_assets} assert
+            eq.{note_1_num_assets} assert.err="unexpected num assets for note 1"
 
             # assert the pointer is returned
-            dup eq.{DEST_POINTER_NOTE_1} assert
+            dup eq.{DEST_POINTER_NOTE_1} assert.err="unexpected dest ptr for note 1"
 
             # asset memory assertions
             {NOTE_1_ASSET_ASSERTIONS}
@@ -285,7 +290,7 @@ async fn test_active_note_get_assets() -> anyhow::Result<()> {
             # truncate the stack
             exec.sys::truncate_stack
         end
-        ",
+        "#,
         note_0_num_assets = notes.get_note(0).note().assets().num_assets(),
         note_1_num_assets = notes.get_note(1).note().assets().num_assets(),
         NOTE_0_ASSET_ASSERTIONS = construct_asset_assertions(notes.get_note(0).note()),
@@ -340,7 +345,7 @@ async fn test_active_note_get_inputs() -> anyhow::Result<()> {
     let note0 = tx_context.input_notes().get_note(0).note();
 
     let code = format!(
-        "
+        r#"
         use $kernel::prologue
         use $kernel::note->note_internal
         use miden::protocol::active_note
@@ -360,10 +365,10 @@ async fn test_active_note_get_inputs() -> anyhow::Result<()> {
             push.{NOTE_0_PTR} exec.active_note::get_inputs
             # => [num_inputs, dest_ptr]
 
-            eq.{num_inputs} assert
+            eq.{num_inputs} assert.err="unexpected num inputs"
             # => [dest_ptr]
 
-            dup eq.{NOTE_0_PTR} assert
+            dup eq.{NOTE_0_PTR} assert.err="unexpected dest ptr"
             # => [dest_ptr]
 
             # apply note 1 inputs assertions
@@ -374,7 +379,7 @@ async fn test_active_note_get_inputs() -> anyhow::Result<()> {
             drop
             # => []
         end
-        ",
+        "#,
         num_inputs = note0.inputs().num_values(),
         inputs_assertions = construct_inputs_assertions(note0),
         NOTE_0_PTR = 100000000,
@@ -402,15 +407,8 @@ async fn test_active_note_get_exactly_8_inputs() -> anyhow::Result<()> {
 
     // prepare note data
     let serial_num = RpoRandomCoin::new(Word::from([4u32; 4])).draw_word();
-    let tag = NoteTag::from_account_id(target_id);
-    let metadata = NoteMetadata::new(
-        sender_id,
-        NoteType::Public,
-        tag,
-        NoteExecutionHint::always(),
-        Default::default(),
-    )
-    .context("failed to create metadata")?;
+    let tag = NoteTag::with_account_target(target_id);
+    let metadata = NoteMetadata::new(sender_id, NoteType::Public, tag);
     let vault = NoteAssets::new(vec![]).context("failed to create input note assets")?;
     let note_script = CodeBuilder::default()
         .compile_note_script("begin nop end")

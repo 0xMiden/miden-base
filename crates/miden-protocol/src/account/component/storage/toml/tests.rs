@@ -1,15 +1,18 @@
 use alloc::string::ToString;
 use core::error::Error;
 
-use miden_core::{Felt, FieldElement, Word};
+use miden_air::FieldElement;
+use miden_core::{Felt, Word};
 
 use crate::account::component::toml::init_storage_data::InitStorageDataError;
 use crate::account::component::{
     AccountComponentMetadata,
     InitStorageData,
+    InitStorageDataError as CoreInitStorageDataError,
     SchemaTypeId,
     StorageSlotSchema,
     StorageValueName,
+    StorageValueNameError,
     WordSchema,
     WordValue,
 };
@@ -36,6 +39,43 @@ fn from_toml_str_with_nested_table_and_flattened() {
     let storage_inline = InitStorageData::from_toml(toml_inline).unwrap();
 
     assert_eq!(storage_table.values(), storage_inline.values());
+    assert_eq!(storage_table.maps(), storage_inline.maps());
+}
+
+#[test]
+fn empty_table_is_rejected() {
+    let toml_str = r#"
+        ["demo::empty_table"]
+
+        ["demo::valid_table"]
+        value = "42"
+    "#;
+
+    assert_matches::assert_matches!(
+        InitStorageData::from_toml(toml_str),
+        Err(InitStorageDataError::EmptyTable(key)) if key == "demo::empty_table"
+    );
+}
+
+#[test]
+fn invalid_storage_value_name_is_rejected() {
+    // Nested table fields are flattened to `slot.field` and thus must be valid field segments.
+    let toml_str = r#"
+        ["demo::valid_token_metadata"]
+        max_supply = "1000000000"
+
+        "demo::another_valid_token_metadata.supply" = "1000000000"
+
+        ["demo::invalid_token_metadata"]
+        "bad.field" = "42"
+    "#;
+
+    assert_matches::assert_matches!(
+        InitStorageData::from_toml(toml_str),
+        Err(InitStorageDataError::InvalidStorageValueName(
+            StorageValueNameError::InvalidCharacter { part, character }
+        )) if part == "bad.field" && character == '.'
+    );
 }
 
 #[test]
@@ -48,7 +88,20 @@ fn from_toml_str_with_deeply_nested_tables_is_rejected() {
 
     assert_matches::assert_matches!(
         InitStorageData::from_toml(toml_str),
-        Err(InitStorageDataError::InvalidStorageValueName(_))
+        Err(InitStorageDataError::InvalidValue(_))
+    );
+}
+
+#[test]
+fn from_toml_str_excessive_key_nesting_rejected() {
+    let toml_str = r#"
+        ["demo::token_metadata.nested"]
+        value = "42"
+    "#;
+
+    assert_matches::assert_matches!(
+        InitStorageData::from_toml(toml_str),
+        Err(InitStorageDataError::ExcessiveNesting(_))
     );
 }
 
@@ -59,7 +112,7 @@ fn from_toml_rejects_non_string_atomics() {
     "#;
 
     let result = InitStorageData::from_toml(toml_str);
-    assert_matches::assert_matches!(result.unwrap_err(), InitStorageDataError::NonStringAtomic(_));
+    assert_matches::assert_matches!(result.unwrap_err(), InitStorageDataError::InvalidValue(_));
 }
 
 #[test]
@@ -69,14 +122,7 @@ fn test_error_on_array() {
     "#;
 
     let err = InitStorageData::from_toml(toml_str).unwrap_err();
-    assert_matches::assert_matches!(
-        &err,
-        InitStorageDataError::ArraysNotSupported { key, len }
-            if key == "demo::token_metadata.v" && *len == 5
-    );
-    let msg = err.to_string();
-    assert!(msg.contains("demo::token_metadata.v"));
-    assert!(msg.contains("len 5"));
+    assert_matches::assert_matches!(&err, InitStorageDataError::InvalidValue(key) if key == "demo::token_metadata.v");
 }
 
 #[test]
@@ -89,7 +135,7 @@ fn parse_map_entries_from_array() {
     "#;
 
     let storage = InitStorageData::from_toml(toml_str).expect("Failed to parse map entries");
-    let map_name: StorageValueName = "demo::my_map".parse().unwrap();
+    let map_name: StorageSlotName = "demo::my_map".parse().unwrap();
     let entries = storage.map_entries(&map_name).expect("map entries missing");
     assert_eq!(entries.len(), 2);
 
@@ -103,12 +149,45 @@ fn parse_map_entries_from_array() {
         WordValue::Atomic(v)
             if v == "0x0000000000000000000000000000000000000000000000000000000000000010"
     );
-    assert_matches::assert_matches!(&entries[1].1, WordValue::Elements(elements) if elements == &[
-        "1".to_string(),
-        "2".to_string(),
-        "3".to_string(),
-        "4".to_string(),
-    ]);
+    assert_matches::assert_matches!(
+        &entries[1].1,
+        WordValue::Elements(elements)
+            if elements == &[
+                "1".to_string(),
+                "2".to_string(),
+                "3".to_string(),
+                "4".to_string(),
+            ]
+    );
+}
+
+#[test]
+fn map_entries_reject_field_key() {
+    let toml_str = r#"
+        "demo::my_map.entry" = [
+            { key = "0x1", value = "0x2" }
+        ]
+    "#;
+
+    assert_matches::assert_matches!(
+        InitStorageData::from_toml(toml_str),
+        Err(InitStorageDataError::InvalidMapEntryKey(_))
+    );
+}
+
+#[test]
+fn map_entries_reject_invalid_schema() {
+    // Missing required `value` field in the entry table should fail schema deserialization.
+    let toml_str = r#"
+        "demo::my_map" = [
+            { key = "0x1" }
+        ]
+    "#;
+
+    assert_matches::assert_matches!(
+        InitStorageData::from_toml(toml_str),
+        Err(InitStorageDataError::InvalidMapEntrySchema(_))
+    );
 }
 
 #[test]
@@ -121,7 +200,7 @@ fn error_on_empty_subtable() {
     let result = InitStorageData::from_toml(toml_str);
     assert_matches::assert_matches!(
         result.unwrap_err(),
-        InitStorageDataError::EmptyTable(key) if key == "demo::token_metadata.max_supply"
+        InitStorageDataError::InvalidValue(key) if key == "demo::token_metadata.max_supply"
     );
 }
 
@@ -151,7 +230,8 @@ fn error_on_duplicate_keys_after_flattening() {
     let err = InitStorageData::from_toml(toml_str).unwrap_err();
     assert_matches::assert_matches!(
         err,
-        InitStorageDataError::DuplicateKey(key) if key == "demo::token_metadata.max_supply"
+        InitStorageDataError::InvalidData(CoreInitStorageDataError::DuplicateKey(key))
+            if key == "demo::token_metadata.max_supply"
     );
 }
 
@@ -178,6 +258,163 @@ fn metadata_from_toml_parses_named_storage_schema() {
 
     assert!(requirements.contains_key(&"demo::test_value".parse::<StorageValueName>().unwrap()));
     assert!(!requirements.contains_key(&"demo::my_map".parse::<StorageValueName>().unwrap()));
+}
+
+#[test]
+fn metadata_from_toml_rejects_non_ascii_component_description() {
+    let toml_str = r#"
+        name = "Test Component"
+        description = "Invalid \u00e9"
+        version = "0.1.0"
+        supported-types = []
+    "#;
+
+    assert_matches::assert_matches!(
+        AccountComponentMetadata::from_toml(toml_str),
+        Err(AccountComponentTemplateError::InvalidSchema(_))
+    );
+}
+
+#[test]
+fn metadata_from_toml_rejects_non_ascii_slot_description() {
+    let toml_str = r#"
+        name = "Test Component"
+        description = "Test description"
+        version = "0.1.0"
+        supported-types = []
+
+        [[storage.slots]]
+        name = "demo::test_value"
+        description = "Invalid \u00e9"
+        type = "word"
+    "#;
+
+    assert_matches::assert_matches!(
+        AccountComponentMetadata::from_toml(toml_str),
+        Err(AccountComponentTemplateError::InvalidSchema(_))
+    );
+}
+
+#[test]
+fn metadata_schema_commitment_ignores_defaults_and_ordering() {
+    let toml_a = r#"
+        name = "Commitment Test"
+        description = "Schema commitments are equal regardless of defaults and ordering"
+        version = "0.1.0"
+        supported-types = []
+
+        [[storage.slots]]
+        name = "demo::first"
+        type = "word"
+        default-value = "0x1"
+
+        [[storage.slots]]
+        name = "demo::map"
+        type = { key = "word", value = "word" }
+        default-values = [
+            { key = "0x1", value = "0x10" },
+        ]
+
+        [[storage.slots]]
+        name = "demo::composed"
+        type = [
+            { name = "a", type = "u8", description = "field a", default-value = "1" },
+            { name = "b", description = "field b", default-value = "2" },
+            { name = "c", type = "u16", description = "field c", default-value = "3" },
+            { type = "void", description = "padding" },
+        ]
+    "#;
+
+    let toml_b = r#"
+        name = "Commitment Test"
+        description = ""
+        version = "0.1.0"
+        supported-types = []
+
+        [[storage.slots]]
+        name = "demo::map"
+        type = { key = "word", value = "word" }
+        default-values = [
+            { key = "0x2", value = "0x20" },
+        ]
+
+        [[storage.slots]]
+        name = "demo::composed"
+        type = [
+            { name = "a", type = "u8", description = "field a", default-value = "9" },
+            { name = "b", description = "field b", default-value = "8" },
+            { name = "c", type = "u16", description = "field c", default-value = "7" },
+            { type = "void", description = "padding" },
+        ]
+
+        [[storage.slots]]
+        name = "demo::first"
+        type = "word"
+        default-value = "0x9"
+    "#;
+
+    let metadata_a = AccountComponentMetadata::from_toml(toml_a).unwrap();
+    let metadata_b = AccountComponentMetadata::from_toml(toml_b).unwrap();
+
+    assert_ne!(metadata_a.storage_schema(), metadata_b.storage_schema());
+    assert_eq!(
+        metadata_a.storage_schema().commitment(),
+        metadata_b.storage_schema().commitment()
+    );
+}
+
+#[test]
+fn metadata_schema_commitment_includes_descriptions() {
+    let toml_a = r#"
+        name = "Commitment Test"
+        description = "Component description"
+        version = "0.1.0"
+        supported-types = []
+
+        [[storage.slots]]
+        name = "demo::value"
+        description = "slot description a"
+        type = "word"
+    "#;
+
+    let toml_bad_description = r#"
+        name = "Commitment Test"
+        description = "Component description"
+        version = "0.1.0"
+        supported-types = []
+
+        [[storage.slots]]
+        name = "demo::value"
+        description = "incorrect description"
+        type = "word"
+    "#;
+
+    let toml_bad_name = r#"
+        name = "Commitment Test"
+        description = "Component description"
+        version = "0.1.0"
+        supported-types = []
+
+        [[storage.slots]]
+        name = "demo::bad_value"
+        description = "slot description a"
+        type = "word"
+    "#;
+
+    let metadata_a = AccountComponentMetadata::from_toml(toml_a).unwrap();
+    let metadata_bad_description =
+        AccountComponentMetadata::from_toml(toml_bad_description).unwrap();
+    let metadata_bad_slot_name = AccountComponentMetadata::from_toml(toml_bad_name).unwrap();
+
+    assert_ne!(
+        metadata_a.storage_schema().commitment(),
+        metadata_bad_description.storage_schema().commitment()
+    );
+
+    assert_ne!(
+        metadata_a.storage_schema().commitment(),
+        metadata_bad_slot_name.storage_schema().commitment()
+    );
 }
 
 #[test]
@@ -600,7 +837,7 @@ fn extensive_schema_metadata_and_init_toml_example() {
     "#;
     let init_with_overrides = InitStorageData::from_toml(init_toml_with_overrides).unwrap();
     let parsed_entries = init_with_overrides
-        .map_entries(&"demo::typed_map_new".parse::<StorageValueName>().unwrap())
+        .map_entries(&"demo::typed_map_new".parse::<StorageSlotName>().unwrap())
         .expect("demo::typed_map_new map entries missing");
     assert_eq!(parsed_entries.len(), 2);
     let slots_with_maps =

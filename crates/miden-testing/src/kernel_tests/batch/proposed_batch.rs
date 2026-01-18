@@ -3,20 +3,15 @@ use std::collections::BTreeMap;
 
 use anyhow::Context;
 use assert_matches::assert_matches;
+use miden_protocol::Word;
 use miden_protocol::account::{Account, AccountId, AccountStorageMode};
 use miden_protocol::batch::ProposedBatch;
 use miden_protocol::block::BlockNumber;
 use miden_protocol::crypto::merkle::MerkleError;
+use miden_protocol::errors::{BatchAccountUpdateError, ProposedBatchError};
 use miden_protocol::note::{Note, NoteType};
 use miden_protocol::testing::account_id::AccountIdBuilder;
-use miden_protocol::transaction::{
-    InputNote,
-    InputNoteCommitment,
-    PartialBlockchain,
-    ProvenOutputNote,
-    RawOutputNote,
-};
-use miden_protocol::{BatchAccountUpdateError, ProposedBatchError, Word};
+use miden_protocol::transaction::{InputNote, InputNoteCommitment, OutputNote, PartialBlockchain};
 use miden_standards::testing::account_component::MockAccountComponent;
 use miden_standards::testing::note::NoteBuilder;
 use rand::rngs::SmallRng;

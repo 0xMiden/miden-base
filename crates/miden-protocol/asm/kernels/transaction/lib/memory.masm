@@ -1,4 +1,6 @@
-use $kernel::constants
+use $kernel::constants::ACCOUNT_PROCEDURE_DATA_LENGTH
+use $kernel::constants::MAX_ASSETS_PER_NOTE
+use $kernel::constants::NOTE_MEM_SIZE
 use miden::core::mem
 
 # ERRORS
@@ -166,10 +168,6 @@ const NATIVE_ACCOUNT_DATA_PTR=8192
 # The length of the memory interval that the account data occupies.
 const ACCOUNT_DATA_LENGTH=8192
 
-# The number of field elements it takes to store one account procedure.
-# TODO: Duplicated in account.masm, can we remove that?
-const ACCOUNT_PROCEDURE_DATA_LENGTH=4
-
 # The offsets at which the account data is stored relative to the start of the account data segment.
 const ACCT_ID_AND_NONCE_OFFSET=0
 const ACCT_NONCE_OFFSET=3
@@ -177,17 +175,17 @@ const ACCT_VAULT_ROOT_OFFSET=4
 const ACCT_STORAGE_COMMITMENT_OFFSET=8
 const ACCT_CODE_COMMITMENT_OFFSET=12
 const ACCT_CORE_DATA_SECTION_END_OFFSET=16
-const NUM_ACCT_PROCEDURES_OFFSET=28
+const ACCT_NUM_PROCEDURES_OFFSET=28
 const ACCT_PROCEDURES_SECTION_OFFSET=32
-const ACCT_PROCEDURES_CALL_TRACKING_OFFSET=2084
-const NUM_ACCT_STORAGE_SLOTS_OFFSET=2340
-const ACCT_STORAGE_SLOTS_SECTION_OFFSET=2344
+const ACCT_PROCEDURES_CALL_TRACKING_OFFSET=1060
+const ACCT_NUM_STORAGE_SLOTS_OFFSET=1316
+# Offset at which a copy of the initial account's storage slot section is kept. This section is
+# only present for the native account.
+const ACCT_INITIAL_STORAGE_SLOTS_SECTION_OFFSET=1320
 
-# Offset at which an exact copy of the account's storage slot section starting at
-# ACCT_STORAGE_SLOTS_SECTION_OFFSET is kept. This keeps the initial values of the account storage
-# slots accessible to enable computing a diff between the initial and current account storage slots
-# for use in the account delta. This section is only present for the native account.
-const ACCT_INITIAL_STORAGE_SLOTS_SECTION_OFFSET=4384
+# Offset at which the account's active storage slot section is kept. This section contains the
+# current values of the account storage slots.
+const ACCT_ACTIVE_STORAGE_SLOTS_SECTION_OFFSET=2340
 
 # NATIVE ACCOUNT DELTA
 # -------------------------------------------------------------------------------------------------
@@ -226,11 +224,12 @@ const INPUT_NOTE_SCRIPT_ROOT_OFFSET=8
 const INPUT_NOTE_INPUTS_COMMITMENT_OFFSET=12
 const INPUT_NOTE_ASSETS_COMMITMENT_OFFSET=16
 const INPUT_NOTE_RECIPIENT_OFFSET=20
-const INPUT_NOTE_METADATA_OFFSET=24
-const INPUT_NOTE_ARGS_OFFSET=28
-const INPUT_NOTE_NUM_INPUTS_OFFSET=32
-const INPUT_NOTE_NUM_ASSETS_OFFSET=36
-const INPUT_NOTE_ASSETS_OFFSET=40
+const INPUT_NOTE_METADATA_HEADER_OFFSET=24
+const INPUT_NOTE_ATTACHMENT_OFFSET=28
+const INPUT_NOTE_ARGS_OFFSET=32
+const INPUT_NOTE_NUM_INPUTS_OFFSET=36
+const INPUT_NOTE_NUM_ASSETS_OFFSET=40
+const INPUT_NOTE_ASSETS_OFFSET=44
 
 # OUTPUT NOTES
 # -------------------------------------------------------------------------------------------------
@@ -240,12 +239,14 @@ const OUTPUT_NOTE_SECTION_OFFSET=16777216
 
 # The offsets at which data of an output note is stored relative to the start of its data segment.
 const OUTPUT_NOTE_ID_OFFSET=0
-const OUTPUT_NOTE_METADATA_OFFSET=4
-const OUTPUT_NOTE_RECIPIENT_OFFSET=8
-const OUTPUT_NOTE_ASSETS_COMMITMENT_OFFSET=12
-const OUTPUT_NOTE_NUM_ASSETS_OFFSET=16
-const OUTPUT_NOTE_DIRTY_FLAG_OFFSET=17
-const OUTPUT_NOTE_ASSETS_OFFSET=20
+const OUTPUT_NOTE_METADATA_HEADER_OFFSET=4
+const OUTPUT_NOTE_METADATA_ATTACHMENT_KIND_SCHEME_OFFSET=OUTPUT_NOTE_METADATA_HEADER_OFFSET + 3
+const OUTPUT_NOTE_ATTACHMENT_OFFSET=8
+const OUTPUT_NOTE_RECIPIENT_OFFSET=12
+const OUTPUT_NOTE_ASSETS_COMMITMENT_OFFSET=16
+const OUTPUT_NOTE_NUM_ASSETS_OFFSET=20
+const OUTPUT_NOTE_DIRTY_FLAG_OFFSET=21
+const OUTPUT_NOTE_ASSETS_OFFSET=24
 
 # LINK MAP MEMORY
 # -------------------------------------------------------------------------------------------------
@@ -1222,7 +1223,7 @@ end
 #! Where:
 #! - num_procedures is the number of procedures contained in the account code.
 pub proc get_num_account_procedures
-    exec.get_active_account_data_ptr add.NUM_ACCT_PROCEDURES_OFFSET
+    exec.get_active_account_data_ptr add.ACCT_NUM_PROCEDURES_OFFSET
     mem_load
 end
 
@@ -1234,7 +1235,7 @@ end
 #! Where:
 #! - num_procedures is the number of procedures contained in the account code.
 pub proc set_num_account_procedures
-    exec.get_active_account_data_ptr add.NUM_ACCT_PROCEDURES_OFFSET
+    exec.get_active_account_data_ptr add.ACCT_NUM_PROCEDURES_OFFSET
     mem_store
 end
 
@@ -1346,7 +1347,7 @@ end
 #! Where:
 #! - num_storage_slots is the number of storage slots contained in the account storage.
 pub proc get_num_storage_slots
-    exec.get_active_account_data_ptr add.NUM_ACCT_STORAGE_SLOTS_OFFSET
+    exec.get_active_account_data_ptr add.ACCT_NUM_STORAGE_SLOTS_OFFSET
     mem_load
 end
 
@@ -1358,7 +1359,7 @@ end
 #! Where:
 #! - num_storage_slots is the number of storage slots contained in the account storage.
 pub proc set_num_storage_slots
-    exec.get_active_account_data_ptr add.NUM_ACCT_STORAGE_SLOTS_OFFSET
+    exec.get_active_account_data_ptr add.ACCT_NUM_STORAGE_SLOTS_OFFSET
     mem_store
 end
 
@@ -1369,8 +1370,8 @@ end
 #!
 #! Where:
 #! - storage_slots_section_ptr is the memory pointer to the account storage slots section.
-pub proc get_account_storage_slots_section_ptr
-    exec.get_active_account_data_ptr add.ACCT_STORAGE_SLOTS_SECTION_OFFSET
+pub proc get_account_active_storage_slots_section_ptr
+    exec.get_active_account_data_ptr add.ACCT_ACTIVE_STORAGE_SLOTS_SECTION_OFFSET
 end
 
 #! Returns the memory pointer to the native account's storage slots section.
@@ -1380,8 +1381,8 @@ end
 #!
 #! Where:
 #! - storage_slots_section_ptr is the memory pointer to the native account's storage slots section.
-pub proc get_native_account_storage_slots_ptr
-    exec.get_native_account_data_ptr add.ACCT_STORAGE_SLOTS_SECTION_OFFSET
+pub proc get_native_account_active_storage_slots_ptr
+    exec.get_native_account_data_ptr add.ACCT_ACTIVE_STORAGE_SLOTS_SECTION_OFFSET
 end
 
 #! Returns the memory pointer to the initial storage slots of the native account.
@@ -1409,7 +1410,7 @@ end
 pub proc get_account_initial_storage_slots_ptr
     # For foreign account, use the regular storage slots pointer since foreign accounts are
     # read-only and initial == current
-    exec.get_account_storage_slots_section_ptr
+    exec.get_account_active_storage_slots_section_ptr
     # => [account_storage_slots_ptr]
 
     # For native account, use the initial storage slots pointer
@@ -1467,12 +1468,12 @@ end
 #! Outputs: []
 pub proc mem_copy_native_account_initial_storage_slots
   exec.get_native_account_initial_storage_slots_ptr
-  exec.get_native_account_storage_slots_ptr
-  # => [storage_slots_section_ptr, initial_storage_slots_ptr]
+  exec.get_native_account_active_storage_slots_ptr
+  # => [active_storage_slots_ptr, initial_storage_slots_ptr]
 
   # each slot takes up two words
   exec.get_num_storage_slots mul.2
-  # => [num_storage_slot_words, storage_slots_section_ptr, initial_storage_slots_ptr]
+  # => [num_storage_slot_words, active_storage_slots_ptr, initial_storage_slots_ptr]
 
   exec.mem::memcopy_words
   # => []
@@ -1513,7 +1514,7 @@ end
 #! - idx is the index of the input note.
 #! - note_ptr is the memory address of the data segment for the input note with `idx`.
 pub proc get_input_note_ptr
-    exec.constants::get_note_mem_size mul add.INPUT_NOTE_DATA_SECTION_OFFSET
+    push.NOTE_MEM_SIZE mul add.INPUT_NOTE_DATA_SECTION_OFFSET
 end
 
 #! Set the note id of the input note.
@@ -1609,27 +1610,54 @@ end
 #! Returns the metadata of an input note located at the specified memory address.
 #!
 #! Inputs:  [note_ptr]
-#! Outputs: [METADATA]
+#! Outputs: [NOTE_METADATA_HEADER]
 #!
 #! Where:
 #! - note_ptr is the memory address at which the input note data begins.
-#! - METADATA is the metadata of the input note.
-pub proc get_input_note_metadata
+#! - NOTE_METADATA_HEADER is the metadata header of the input note.
+pub proc get_input_note_metadata_header
     padw
-    movup.4 add.INPUT_NOTE_METADATA_OFFSET
+    movup.4 add.INPUT_NOTE_METADATA_HEADER_OFFSET
     mem_loadw_be
 end
 
 #! Sets the metadata for an input note located at the specified memory address.
 #!
-#! Inputs:  [note_ptr, NOTE_METADATA]
-#! Outputs: [NOTE_METADATA]
+#! Inputs:  [note_ptr, NOTE_METADATA_HEADER]
+#! Outputs: [NOTE_METADATA_HEADER]
 #!
 #! Where:
 #! - note_ptr is the memory address at which the input note data begins.
-#! - NOTE_METADATA is the metadata of the input note.
-pub proc set_input_note_metadata
-    add.INPUT_NOTE_METADATA_OFFSET
+#! - NOTE_METADATA_HEADER is the metadata header of the input note.
+pub proc set_input_note_metadata_header
+    add.INPUT_NOTE_METADATA_HEADER_OFFSET
+    mem_storew_be
+end
+
+#! Returns the attachment of an input note located at the specified memory address.
+#!
+#! Inputs:  [note_ptr]
+#! Outputs: [NOTE_ATTACHMENT]
+#!
+#! Where:
+#! - note_ptr is the memory address at which the input note data begins.
+#! - NOTE_ATTACHMENT is the attachment of the input note.
+pub proc get_input_note_attachment
+    padw
+    movup.4 add.INPUT_NOTE_ATTACHMENT_OFFSET
+    mem_loadw_be
+end
+
+#! Sets the attachment for an input note located at the specified memory address.
+#!
+#! Inputs:  [note_ptr, NOTE_ATTACHMENT]
+#! Outputs: [NOTE_ATTACHMENT]
+#!
+#! Where:
+#! - note_ptr is the memory address at which the input note data begins.
+#! - NOTE_ATTACHMENT is the attachment of the input note.
+pub proc set_input_note_attachment
+    add.INPUT_NOTE_ATTACHMENT_OFFSET
     mem_storew_be
 end
 
@@ -1780,36 +1808,6 @@ pub proc get_input_note_serial_num
     mem_loadw_be
 end
 
-#! Returns the sender for the input note located at the specified memory address.
-#!
-#! Inputs:  [note_ptr]
-#! Outputs: [sender_id_prefix, sender_id_suffix]
-#!
-#! Where:
-#! - note_ptr is the memory address at which the input note data begins.
-#! - sender is the sender for the input note.
-pub proc get_input_note_sender
-    padw
-    movup.4 add.INPUT_NOTE_METADATA_OFFSET
-    mem_loadw_be
-    # => [aux, merged_tag_hint_payload, merged_sender_id_type_hint_tag, sender_id_prefix]
-
-    drop drop
-    # => [merged_sender_id_type_hint_tag, sender_id_prefix]
-
-    # extract suffix of sender from merged layout, which means clearing the least significant byte
-    u32split swap
-    # => [merged_lo, merged_hi, sender_id_prefix]
-
-    # clear least significant byte
-    u32and.0xffffff00 swap
-    # => [sender_id_suffix_hi, sender_id_suffix_lo, sender_id_prefix]
-
-    # reassemble the suffix by multiplying the high part with 2^32 and adding the lo part
-    mul.0x0100000000 add swap
-    # => [sender_id_prefix, sender_id_suffix]
-end
-
 # OUTPUT NOTES
 # -------------------------------------------------------------------------------------------------
 
@@ -1834,7 +1832,7 @@ end
 #! - i is the index of the output note.
 #! - ptr is the memory address of the data segment for output note i.
 pub proc get_output_note_ptr
-    exec.constants::get_note_mem_size mul add.OUTPUT_NOTE_SECTION_OFFSET
+    push.NOTE_MEM_SIZE mul add.OUTPUT_NOTE_SECTION_OFFSET
 end
 
 #! Returns the output note recipient.
@@ -1867,31 +1865,73 @@ end
 #! Returns the output note's metadata.
 #!
 #! Inputs:  [note_ptr]
-#! Outputs: [METADATA]
+#! Outputs: [METADATA_HEADER]
 #!
 #! Where:
-#! - METADATA is the note metadata.
+#! - METADATA_HEADER is the note metadata header.
 #! - note_ptr is the memory address at which the output note data begins.
-pub proc get_output_note_metadata
+pub proc get_output_note_metadata_header
     padw
     # => [0, 0, 0, 0, note_ptr]
-    movup.4 add.OUTPUT_NOTE_METADATA_OFFSET
+    movup.4 add.OUTPUT_NOTE_METADATA_HEADER_OFFSET
     # => [(note_ptr + offset), 0, 0, 0, 0]
     mem_loadw_be
-    # => [METADATA]
+    # => [METADATA_HEADER]
 end
 
-#! Sets the output note's metadata.
+#! Sets the output note's metadata header.
 #!
-#! Inputs:  [note_ptr, METADATA]
-#! Outputs: [METADATA]
+#! Inputs:  [note_ptr, METADATA_HEADER]
+#! Outputs: [METADATA_HEADER]
 #!
 #! Where:
-#! - METADATA is the note metadata.
+#! - METADATA_HEADER is the note metadata header.
 #! - note_ptr is the memory address at which the output note data begins.
-pub proc set_output_note_metadata
-    add.OUTPUT_NOTE_METADATA_OFFSET
+pub proc set_output_note_metadata_header
+    add.OUTPUT_NOTE_METADATA_HEADER_OFFSET
     mem_storew_be
+end
+
+#! Sets the output note's attachment kind and scheme in the metadata header.
+#!
+#! Inputs:  [note_ptr, attachment_kind_scheme]
+#! Outputs: []
+#!
+#! Where:
+#! - attachment_kind_scheme is the type information of the attachment that will be overwritten.
+#! - note_ptr is the memory address at which the output note data begins.
+pub proc set_output_note_attachment_kind_scheme
+    add.OUTPUT_NOTE_METADATA_ATTACHMENT_KIND_SCHEME_OFFSET
+    mem_store
+end
+
+#! Returns the output note's attachment.
+#!
+#! Inputs:  [note_ptr]
+#! Outputs: [ATTACHMENT]
+#!
+#! Where:
+#! - ATTACHMENT is the note attachment.
+#! - note_ptr is the memory address at which the output note data begins.
+pub proc get_output_note_attachment
+    padw
+    movup.4 add.OUTPUT_NOTE_ATTACHMENT_OFFSET
+    mem_loadw_be
+    # => [ATTACHMENT]
+end
+
+#! Sets the output note's attachment.
+#!
+#! Inputs:  [note_ptr, ATTACHMENT]
+#! Outputs: []
+#!
+#! Where:
+#! - ATTACHMENT is the note attachment.
+#! - note_ptr is the memory address at which the output note data begins.
+pub proc set_output_note_attachment
+    add.OUTPUT_NOTE_ATTACHMENT_OFFSET
+    mem_storew_be
+    dropw
 end
 
 #! Returns the number of assets in the output note.
@@ -1922,7 +1962,7 @@ pub proc set_output_note_num_assets
     # => [note_ptr + offset, num_assets]
 
     # check note number of assets limit
-    dup.1 exec.constants::get_max_assets_per_note lt assert.err=ERR_NOTE_NUM_OF_ASSETS_EXCEED_LIMIT
+    dup.1 push.MAX_ASSETS_PER_NOTE lt assert.err=ERR_NOTE_NUM_OF_ASSETS_EXCEED_LIMIT
 
     mem_store
 end

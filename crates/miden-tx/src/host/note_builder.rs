@@ -1,5 +1,12 @@
 use miden_protocol::asset::Asset;
-use miden_protocol::note::{Note, NoteAssets, NoteMetadata, NoteRecipient, PartialNote};
+use miden_protocol::note::{
+    Note,
+    NoteAssets,
+    NoteAttachment,
+    NoteMetadata,
+    NoteRecipient,
+    PartialNote,
+};
 
 use super::{RawOutputNote, Word};
 use crate::errors::TransactionKernelError;
@@ -77,7 +84,12 @@ impl OutputNoteBuilder {
         Ok(())
     }
 
-    /// Converts this builder to a [`RawOutputNote`].
+    /// Overwrites the attachment in the note's metadata.
+    pub fn set_attachment(&mut self, attachment: NoteAttachment) {
+        self.metadata.set_attachment(attachment);
+    }
+
+    /// Converts this builder to an [OutputNote].
     ///
     /// Depending on the available information, this may result in [`RawOutputNote::Full`] or
     /// [`RawOutputNote::Partial`] notes.

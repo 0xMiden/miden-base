@@ -6,6 +6,7 @@ use miden_processor::MastNodeExt;
 
 use super::Felt;
 use crate::assembly::mast::{MastForest, MastNodeId};
+use crate::errors::NoteError;
 use crate::utils::serde::{
     ByteReader,
     ByteWriter,
@@ -14,7 +15,7 @@ use crate::utils::serde::{
     Serializable,
 };
 use crate::vm::Program;
-use crate::{NoteError, PrettyPrint, Word};
+use crate::{PrettyPrint, Word};
 
 // NOTE SCRIPT
 // ================================================================================================

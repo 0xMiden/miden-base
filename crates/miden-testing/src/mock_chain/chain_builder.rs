@@ -42,11 +42,12 @@ use miden_protocol::block::{
 };
 use miden_protocol::crypto::dsa::ecdsa_k256_keccak::SecretKey;
 use miden_protocol::crypto::merkle::smt::Smt;
-use miden_protocol::note::{Note, NoteDetails, NoteType};
+use miden_protocol::errors::NoteError;
+use miden_protocol::note::{Note, NoteAttachment, NoteDetails, NoteType};
 use miden_protocol::testing::account_id::ACCOUNT_ID_NATIVE_ASSET_FAUCET;
 use miden_protocol::testing::random_signer::RandomBlockSigner;
-use miden_protocol::transaction::{OrderedTransactionHeaders, RawOutputNote, TransactionKernel};
-use miden_protocol::{Felt, FieldElement, MAX_OUTPUT_NOTES_PER_BATCH, NoteError, Word, ZERO};
+use miden_protocol::transaction::{OrderedTransactionHeaders, OutputNote, TransactionKernel};
+use miden_protocol::{Felt, MAX_OUTPUT_NOTES_PER_BATCH, Word, ZERO};
 use miden_standards::account::faucets::{BasicFungibleFaucet, NetworkFungibleFaucet};
 use miden_standards::account::wallets::BasicWallet;
 use miden_standards::note::{create_p2id_note, create_p2ide_note, create_swap_note};
@@ -569,7 +570,7 @@ impl MockChainBuilder {
             target_account_id,
             asset.to_vec(),
             note_type,
-            Felt::ZERO,
+            NoteAttachment::default(),
             &mut self.rng,
         )?;
         self.add_output_note(RawOutputNote::Full(note.clone()));
@@ -620,9 +621,9 @@ impl MockChainBuilder {
             offered_asset,
             requested_asset,
             NoteType::Public,
-            Felt::ZERO,
+            NoteAttachment::default(),
             payback_note_type,
-            Felt::ZERO,
+            NoteAttachment::default(),
             &mut self.rng,
         )?;
 

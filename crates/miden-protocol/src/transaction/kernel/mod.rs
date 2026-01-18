@@ -12,12 +12,13 @@ use crate::assembly::{Assembler, DefaultSourceManager, KernelLibrary};
 use crate::asset::FungibleAsset;
 use crate::block::BlockNumber;
 use crate::crypto::SequentialCommit;
+use crate::errors::TransactionOutputError;
 use crate::protocol::ProtocolLib;
 use crate::transaction::{RawOutputNote, RawOutputNotes, TransactionInputs, TransactionOutputs};
 use crate::utils::serde::Deserializable;
 use crate::utils::sync::LazyLock;
 use crate::vm::{AdviceInputs, Program, ProgramInfo, StackInputs, StackOutputs};
-use crate::{Felt, Hasher, TransactionOutputError, Word};
+use crate::{Felt, Hasher, Word};
 
 mod procedures;
 

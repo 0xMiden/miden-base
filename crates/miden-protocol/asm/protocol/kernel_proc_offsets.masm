@@ -67,29 +67,30 @@ const OUTPUT_NOTE_GET_METADATA_OFFSET=37
 const OUTPUT_NOTE_GET_ASSETS_INFO_OFFSET=38
 const OUTPUT_NOTE_GET_RECIPIENT_OFFSET=39
 const OUTPUT_NOTE_ADD_ASSET_OFFSET=40
+const OUTPUT_NOTE_SET_ATTACHMENT_OFFSET=41
 
 ### Tx ##########################################
 
 # input notes
-const TX_GET_NUM_INPUT_NOTES_OFFSET=41
-const TX_GET_INPUT_NOTES_COMMITMENT_OFFSET=42
+const TX_GET_NUM_INPUT_NOTES_OFFSET=42
+const TX_GET_INPUT_NOTES_COMMITMENT_OFFSET=43
 
 # output notes
-const TX_GET_NUM_OUTPUT_NOTES_OFFSET=43
-const TX_GET_OUTPUT_NOTES_COMMITMENT_OFFSET=44
+const TX_GET_NUM_OUTPUT_NOTES_OFFSET=44
+const TX_GET_OUTPUT_NOTES_COMMITMENT_OFFSET=45
 
 # block info
-const TX_GET_BLOCK_COMMITMENT_OFFSET=45
-const TX_GET_BLOCK_NUMBER_OFFSET=46
-const TX_GET_BLOCK_TIMESTAMP_OFFSET=47
+const TX_GET_BLOCK_COMMITMENT_OFFSET=46
+const TX_GET_BLOCK_NUMBER_OFFSET=47
+const TX_GET_BLOCK_TIMESTAMP_OFFSET=48
 
 # foreign context
-const TX_START_FOREIGN_CONTEXT_OFFSET=48
-const TX_END_FOREIGN_CONTEXT_OFFSET=49
+const TX_START_FOREIGN_CONTEXT_OFFSET=49
+const TX_END_FOREIGN_CONTEXT_OFFSET=50
 
 # expiration data
-const TX_GET_EXPIRATION_DELTA_OFFSET=50               # accessor
-const TX_UPDATE_EXPIRATION_BLOCK_DELTA_OFFSET=51      # mutator
+const TX_GET_EXPIRATION_DELTA_OFFSET=51               # accessor
+const TX_UPDATE_EXPIRATION_BLOCK_DELTA_OFFSET=52      # mutator
 
 # ACCESSORS
 # -------------------------------------------------------------------------------------------------
@@ -483,6 +484,19 @@ end
 pub proc output_note_add_asset_offset
     push.OUTPUT_NOTE_ADD_ASSET_OFFSET
 end
+
+#! Returns the offset of the `output_note_set_attachment` kernel procedure.
+#!
+#! Inputs:  []
+#! Outputs: [proc_offset]
+#!
+#! Where:
+#! - proc_offset is the offset of the `output_note_set_attachment` kernel procedure required to get
+#!   the address where this procedure is stored.
+pub proc output_note_set_attachment_offset
+    push.OUTPUT_NOTE_SET_ATTACHMENT_OFFSET
+end
+
 
 #! Returns the offset of the `output_note_get_assets_info` kernel procedure.
 #!

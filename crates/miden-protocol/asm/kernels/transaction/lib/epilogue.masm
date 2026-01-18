@@ -1,10 +1,11 @@
 use $kernel::account
 use $kernel::account_delta
 use $kernel::asset_vault
-use $kernel::constants
+use $kernel::constants::NOTE_MEM_SIZE
 use $kernel::memory
 use $kernel::note
 
+use miden::core::crypto::hashes::rpo256
 use miden::core::word
 
 # ERRORS
@@ -187,7 +188,7 @@ proc build_output_vault
         # => [note_data_ptr, output_note_end_ptr]
 
         # increment output note pointer and check if we should loop again
-        exec.constants::get_note_mem_size add dup.1 dup.1 neq
+        push.NOTE_MEM_SIZE add dup.1 dup.1 neq
         # => [should_loop, output_note_ptr, output_notes_end_ptr]
     end
 
@@ -488,7 +489,7 @@ pub proc finalize_transaction
     adv.insert_hdword
     # => [ACCOUNT_DELTA_COMMITMENT, FINAL_ACCOUNT_COMMITMENT]
 
-    hmerge
+    exec.rpo256::merge
     # => [ACCOUNT_UPDATE_COMMITMENT]
 
     # ------ Build output stack ------

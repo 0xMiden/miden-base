@@ -6,6 +6,7 @@ use core::fmt::Debug;
 use crate::account::AccountHeader;
 use crate::asset::FungibleAsset;
 use crate::block::BlockNumber;
+use crate::errors::TransactionOutputError;
 use crate::note::{
     Note,
     NoteAssets,
@@ -23,15 +24,7 @@ use crate::utils::serde::{
     DeserializationError,
     Serializable,
 };
-use crate::{
-    Felt,
-    Hasher,
-    MAX_OUTPUT_NOTES_PER_TX,
-    NOTE_MAX_SIZE,
-    PublicOutputNoteError,
-    TransactionOutputError,
-    Word,
-};
+use crate::{Felt, Hasher, MAX_OUTPUT_NOTES_PER_TX, Word};
 
 // TRANSACTION OUTPUTS
 // ================================================================================================
@@ -111,9 +104,32 @@ pub struct OutputNotes<N> {
     commitment: Word,
 }
 
-pub type RawOutputNotes = OutputNotes<RawOutputNote>;
+impl OutputNotes {
+    // CONSTRUCTOR
+    // --------------------------------------------------------------------------------------------
 
-pub type ProvenOutputNotes = OutputNotes<ProvenOutputNote>;
+    /// Returns new [OutputNotes] instantiated from the provide vector of notes.
+    ///
+    /// # Errors
+    /// Returns an error if:
+    /// - The total number of notes is greater than [`MAX_OUTPUT_NOTES_PER_TX`].
+    /// - The vector of notes contains duplicates.
+    pub fn new(notes: Vec<OutputNote>) -> Result<Self, TransactionOutputError> {
+        if notes.len() > MAX_OUTPUT_NOTES_PER_TX {
+            return Err(TransactionOutputError::TooManyOutputNotes(notes.len()));
+        }
+
+        let mut seen_notes = BTreeSet::new();
+        for note in notes.iter() {
+            if !seen_notes.insert(note.id()) {
+                return Err(TransactionOutputError::DuplicateOutputNote(note.id()));
+            }
+        }
+
+        let commitment = Self::compute_commitment(notes.iter().map(OutputNote::header));
+
+        Ok(Self { notes, commitment })
+    }
 
 impl<N> OutputNotes<N>
 where
@@ -159,9 +175,13 @@ where
 
     /// Computes a commitment to output notes.
     ///
-    /// For a non-empty list of notes, this is a sequential hash of (note_id, metadata) tuples for
-    /// the notes created in a transaction. For an empty list, [EMPTY_WORD] is returned.
-    pub(crate) fn compute_commitment(notes: impl ExactSizeIterator<Item = NoteHeader>) -> Word {
+    /// - For an empty list, [`Word::empty`] is returned.
+    /// - For a non-empty list of notes, this is a sequential hash of (note_id, metadata_commitment)
+    ///   tuples for the notes created in a transaction, where `metadata_commitment` is the return
+    ///   value of [`NoteMetadata::to_commitment`].
+    pub(crate) fn compute_commitment<'header>(
+        notes: impl ExactSizeIterator<Item = &'header NoteHeader>,
+    ) -> Word {
         if notes.len() == 0 {
             return Word::empty();
         }
@@ -169,7 +189,7 @@ where
         let mut elements: Vec<Felt> = Vec::with_capacity(notes.len() * 8);
         for note_header in notes {
             elements.extend_from_slice(note_header.id().as_elements());
-            elements.extend_from_slice(Word::from(note_header.metadata()).as_elements());
+            elements.extend_from_slice(note_header.metadata().to_commitment().as_elements());
         }
 
         Hasher::hash_elements(&elements)
@@ -360,48 +380,28 @@ impl RawOutputNote {
     /// Returns an error if a public note exceeds the maximum allowed size ([`NOTE_MAX_SIZE`]).
     pub fn to_proven_output_note(&self) -> Result<ProvenOutputNote, PublicOutputNoteError> {
         match self {
-            RawOutputNote::Full(note) if note.metadata().is_private() => {
-                Ok(ProvenOutputNote::Header(*note.header()))
+            OutputNote::Full(note) if note.metadata().is_private() => {
+                OutputNote::Header(note.header().clone())
             },
-            RawOutputNote::Full(note) => {
-                let public_note = PublicOutputNote::new(note.clone())?;
-                Ok(ProvenOutputNote::Public(public_note))
-            },
-            RawOutputNote::Partial(note) => Ok(ProvenOutputNote::Header(note.into())),
-            RawOutputNote::Header(header) => Ok(ProvenOutputNote::Header(*header)),
+            OutputNote::Partial(note) => OutputNote::Header(note.header().clone()),
+            _ => self.clone(),
+        }
+    }
+
+    /// Returns a reference to the [`NoteHeader`] of this note.
+    pub fn header(&self) -> &NoteHeader {
+        match self {
+            OutputNote::Full(note) => note.header(),
+            OutputNote::Partial(note) => note.header(),
+            OutputNote::Header(header) => header,
         }
     }
 
     /// Returns a commitment to the note and its metadata.
     ///
-    /// > hash(NOTE_ID || NOTE_METADATA)
+    /// > hash(NOTE_ID || NOTE_METADATA_COMMITMENT)
     pub fn commitment(&self) -> Word {
         compute_note_commitment(self.id(), self.metadata())
-    }
-}
-
-// CONVERSIONS
-// ------------------------------------------------------------------------------------------------
-
-impl From<RawOutputNote> for NoteHeader {
-    fn from(value: RawOutputNote) -> Self {
-        (&value).into()
-    }
-}
-
-impl From<&RawOutputNote> for NoteHeader {
-    fn from(value: &RawOutputNote) -> Self {
-        match value {
-            RawOutputNote::Full(note) => note.into(),
-            RawOutputNote::Partial(note) => note.into(),
-            RawOutputNote::Header(note) => *note,
-        }
-    }
-}
-
-impl From<&RawOutputNote> for NoteId {
-    fn from(value: &RawOutputNote) -> Self {
-        value.id()
     }
 }
 
@@ -684,28 +684,11 @@ impl Deserializable for PublicOutputNote {
 mod output_notes_tests {
     use assert_matches::assert_matches;
 
-    use super::{PublicOutputNote, RawOutputNote, RawOutputNotes};
-    use crate::account::AccountId;
-    use crate::assembly::Assembler;
-    use crate::asset::FungibleAsset;
-    use crate::note::{
-        Note,
-        NoteAssets,
-        NoteExecutionHint,
-        NoteInputs,
-        NoteMetadata,
-        NoteRecipient,
-        NoteScript,
-        NoteTag,
-        NoteType,
-    };
-    use crate::testing::account_id::{
-        ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET,
-        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
-        ACCOUNT_ID_SENDER,
-    };
-    use crate::utils::serde::Serializable;
-    use crate::{Felt, NOTE_MAX_SIZE, PublicOutputNoteError, TransactionOutputError, Word, ZERO};
+    use super::OutputNotes;
+    use crate::Word;
+    use crate::errors::TransactionOutputError;
+    use crate::note::Note;
+    use crate::transaction::OutputNote;
 
     #[test]
     fn test_duplicate_output_notes() -> anyhow::Result<()> {

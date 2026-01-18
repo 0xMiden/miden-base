@@ -4,11 +4,12 @@ use std::vec::Vec;
 
 use assert_matches::assert_matches;
 use miden_processor::crypto::MerklePath;
+use miden_protocol::MAX_BATCHES_PER_BLOCK;
 use miden_protocol::asset::FungibleAsset;
 use miden_protocol::block::{BlockInputs, BlockNumber, ProposedBlock};
 use miden_protocol::crypto::merkle::SparseMerklePath;
-use miden_protocol::note::{NoteInclusionProof, NoteType};
-use miden_protocol::{MAX_BATCHES_PER_BLOCK, ProposedBlockError, ZERO};
+use miden_protocol::errors::ProposedBlockError;
+use miden_protocol::note::{NoteAttachment, NoteInclusionProof, NoteType};
 use miden_standards::note::create_p2id_note;
 use miden_tx::LocalTransactionProver;
 
@@ -352,7 +353,7 @@ async fn proposed_block_fails_on_invalid_proof_or_missing_note_inclusion_referen
         account1.id(),
         vec![],
         NoteType::Private,
-        ZERO,
+        NoteAttachment::default(),
         builder.rng_mut(),
     )?;
     let spawn_note = builder.add_spawn_note([&p2id_note])?;
