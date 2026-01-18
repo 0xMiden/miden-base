@@ -652,7 +652,7 @@ impl PublicOutputNote {
     }
 
     /// Consumes this wrapper and returns the underlying note.
-    pub fn into_inner(self) -> Note {
+    pub fn into_note(self) -> Note {
         self.note
     }
 }
